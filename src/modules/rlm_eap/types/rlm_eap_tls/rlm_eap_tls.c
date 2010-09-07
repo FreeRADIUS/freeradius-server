@@ -228,12 +228,17 @@ static SSL_SESSION *cbtls_get_session(UNUSED SSL *s,
  */
 static const char *cert_attr_names[5][2] = {
   { "TLS-Client-Cert-Serial",		"TLS-Cert-Serial" },
-  { "TLS-Client-Cert-Expiration",	"TLS-Cert-Expiraton" },
-  { "TLS-Client-Cert-Issuer",		"TLS-Cert-Issuer" },
+  { "TLS-Client-Cert-Expiration",	"TLS-Cert-Expiration" },
   { "TLS-Client-Cert-Subject",		"TLS-Cert-Subject" },
+  { "TLS-Client-Cert-Issuer",		"TLS-Cert-Issuer" },
   { "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" }
 };
 
+#define EAPTLS_SERIAL		(0)
+#define EAPTLS_EXPIRATION	(1)
+#define EAPTLS_SUBJECT		(2)
+#define EAPTLS_ISSUER		(3)
+#define EAPTLS_CN		(4)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -303,11 +308,11 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		int i;
 
 		for (i = 0; i < sn->length; i++) {
-			sprintf(buf, "%02x", (unsigned int)sn->data[i]);
+			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
 		pairadd(&handler->certs,
-			pairmake(cert_attr_names[0][lookup], buf, T_OP_SET));
+			pairmake(cert_attr_names[EAPTLS_SERIAL][lookup], buf, T_OP_SET));
 	}
 
 
@@ -320,7 +325,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		pairadd(&handler->certs,
-			pairmake(cert_attr_names[1][lookup], buf, T_OP_SET));
+			pairmake(cert_attr_names[EAPTLS_EXPIRATION][lookup], buf, T_OP_SET));
 	}
 
 	/*
@@ -332,7 +337,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	subject[sizeof(subject) - 1] = '\0';
 	if (subject[0] && (strlen(subject) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
-			pairmake(cert_attr_names[2][lookup], subject, T_OP_SET));
+			pairmake(cert_attr_names[EAPTLS_SUBJECT][lookup], subject, T_OP_SET));
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
@@ -340,7 +345,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (issuer[0] && (strlen(issuer) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
-			pairmake(cert_attr_names[3][lookup], issuer, T_OP_SET));
+			pairmake(cert_attr_names[EAPTLS_ISSUER][lookup], issuer, T_OP_SET));
 	}
 
 	/*
@@ -351,7 +356,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (common_name[0] && (strlen(common_name) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
-			pairmake(cert_attr_names[4][lookup], common_name, T_OP_SET));
+			pairmake(cert_attr_names[EAPTLS_CN][lookup], common_name, T_OP_SET));
 	}
 
 	if (!my_ok) {
