@@ -306,7 +306,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "options:\n");
 	fprintf(output, "\t-c count\tNumber of packets to capture.\n");
 	fprintf(output, "\t-d directory\tDirectory where the dictionaries are found\n");
-	fprintf(output, "\t-f filter\tPCAP filter. (default is udp port 1812 or 1813 or 1814)\n");
+	fprintf(output, "\t-f filter\tPCAP filter. (default is udp port 1812 or 1813)\n");
 	fprintf(output, "\t-h\t\tPrint this help message.\n");
 	fprintf(output, "\t-i interface\tInterface to capture.\n");
 	fprintf(output, "\t-I filename\tRead packets from filename.\n");
@@ -396,14 +396,14 @@ int main(int argc, char *argv[])
 
 	if (!pcap_filter) {
 		pcap_filter = buffer;
-		snprintf(buffer, sizeof(buffer), "udp port %d or %d or %d",
-			 port, port + 1, port + 2);
+		snprintf(buffer, sizeof(buffer), "udp port %d or %d",
+			 port, port + 1);
 	}
-
-        if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-                fr_perror("radsniff");
-                return 1;
-        }
+	
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radsniff");
+		return 1;
+	}
 
 	if (radius_filter) {
 		parsecode = userparse(radius_filter, &filter_vps);
