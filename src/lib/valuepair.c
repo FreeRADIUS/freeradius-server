@@ -914,6 +914,10 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 						c = '\'';
 						cp++;
 						break;
+					case '\\':
+						c = '\\';
+						cp++;
+						break;
 					case '`':
 						c = '`';
 						cp++;
