@@ -2667,6 +2667,15 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 add_sockets:
 	/*
+	 *	No sockets to receive packets, this is an error.
+	 *	proxying is pointless.
+	 */
+	if (!*head) {
+		radlog(L_ERR, "The server is not configured to listen on any ports.  Cannot start.");
+		return -1;
+	}
+
+	/*
 	 *	Print out which sockets we're listening on, and
 	 *	add them to the event list.
 	 */
