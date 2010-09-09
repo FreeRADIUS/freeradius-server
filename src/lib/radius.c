@@ -816,7 +816,8 @@ static int rad_vp2rfc(const RADIUS_PACKET *packet,
 	ptr[0] = attribute & 0xff; /* NOT vp->attribute */
 	ptr[1] = 2;
 
-	len = vp2data(packet, original, secret, vp, ptr + 2, room - 2);
+	if (room > (255 - ptr[1])) room = 255 - ptr[1];
+	len = vp2data(packet, original, secret, vp, ptr + 2, room);
 	if (len < 0) return len;
 
 	ptr[1] += len;
@@ -921,6 +922,52 @@ static int wimax2data(const RADIUS_PACKET *packet,
 }
 
 
+static int rad_vp2extended(const RADIUS_PACKET *packet,
+		      const RADIUS_PACKET *original,
+		      const char *secret, const VALUE_PAIR *vp,
+		      unsigned int attribute, uint8_t *ptr, size_t room)
+{
+	int len = 2;
+
+	if (room < 3) return 0;
+
+	ptr[0] = attribute & 0xff; /* NOT vp->attribute */
+	ptr[1] = 3;
+
+	if (vp->flags.extended) {
+		ptr[2] = (attribute & 0xff00) >> 8;
+		len++;
+
+	} else if (vp->flags.extended_flags) {
+		if (room < 4) return 0;
+
+		ptr[1] = 4;
+		ptr[2] = (attribute & 0xff00) >> 8;
+		ptr[3] = 0;
+
+		len += 2;
+	}
+
+	/*
+	 *	For now, no extended attribute can be longer than the
+	 *	encapsulating attribute.  Once we add support for the
+	 *	"M" bit, this restriction will be relaxed.
+	 */
+	if (room > (255 - ptr[1])) room = 255 - ptr[1];
+
+	if (!vp->flags.is_tlv) {
+		len = vp2data(packet, original, secret, vp, ptr + ptr[1], room);
+	} else {
+		len = tlv2data(packet, original, secret, vp, ptr + ptr[1], room, 2);
+	}
+
+	if (len < 0) return len;
+
+	ptr[1] += len;
+
+	return ptr[1];
+}
+
 /*
  *	Parse a data structure into a RADIUS attribute.
  */
@@ -939,6 +986,11 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	if (vp->vendor == 0) {
 		return rad_vp2rfc(packet, original, secret, vp,
 				  vp->attribute, start, room);
+	}
+
+	if (vp->vendor == VENDORPEC_EXTENDED) {
+		return rad_vp2extended(packet, original, secret, vp,
+				       vp->attribute, start, room);
 	}
 
 	/*
@@ -1218,10 +1270,12 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 */
 	for (reply = packet->vps; reply; reply = reply->next) {
 		/*
-		 *	Ignore non-wire attributes
+		 *	Ignore non-wire attributes, but allow extended
+		 *	attributes.
 		 */
 		if ((reply->vendor == 0) &&
-		    ((reply->attribute & 0xFFFF) > 0xff)) {
+		    ((reply->attribute & 0xFFFF) >= 256) &&
+		    !reply->flags.extended && !reply->flags.extended_flags) {
 #ifndef NDEBUG
 			/*
 			 *	Permit the admin to send BADLY formatted
@@ -1263,7 +1317,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if (reply->flags.encoded) continue;
 
-		if (reply->flags.is_tlv) {
+		if ((reply->vendor == VENDORPEC_WIMAX) && reply->flags.is_tlv) {
 			len = rad_encode_wimax(packet, original, secret,
 					       reply, ptr,
 					       ((uint8_t *) data) + sizeof(data) - ptr);
@@ -2786,6 +2840,31 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 
 
 /*
+ *	Extended attribute TLV to VP.
+ */
+static VALUE_PAIR *tlv2vp(const RADIUS_PACKET *packet,
+			    const RADIUS_PACKET *original,
+			    const char *secret, int attribute,
+			    int length, const uint8_t *data)
+{
+	VALUE_PAIR *vp;
+
+	if ((length < 2) || (data[1] < 2)) return NULL;
+
+	/*
+	 *	For now, only one TLV is allowed.
+	 */
+	if (data[1] != length) return NULL;
+
+	attribute |= (data[0] << fr_wimax_shift[2]);
+
+	vp = paircreate(attribute, VENDORPEC_EXTENDED, PW_TYPE_OCTETS);
+	if (!vp) return NULL;
+
+	return data2vp(packet, original, secret, length - 2, data + 2, vp);
+}
+
+/*
  *	Parse a RADIUS attribute into a data structure.
  */
 VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet,
@@ -2795,6 +2874,50 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet,
 {
 	VALUE_PAIR *vp;
 
+	/*
+	 *	Hard-coded values are bad...
+	 */
+	if ((vendor == 0) && (attribute >= 241) && (attribute <= 246)) {
+		DICT_ATTR *da;
+
+		da = dict_attrbyvalue(attribute, VENDORPEC_EXTENDED);
+		if (da && (da->flags.extended || da->flags.extended_flags)) {
+
+			if (length == 0) return NULL;
+
+			attribute |= (data[0] << fr_wimax_shift[1]);
+			vendor = VENDORPEC_EXTENDED;
+
+			data++;
+			length--;
+
+			/*
+			 *	There may be a flag octet.
+			 */
+			if (da->flags.extended_flags) {
+				if (length == 0) return NULL;
+
+				/*
+				 *	If there's a flag, we can't
+				 *	handle it.
+				 */
+				if (data[0] != 0) return NULL;
+				data++;
+				length--;
+			}
+
+			/*
+			 *	Now look up the extended attribute, to
+			 *	see if it's a TLV carrying more data.
+			 *	
+			 */
+			da = dict_attrbyvalue(attribute, VENDORPEC_EXTENDED);
+			if (da && da->flags.has_tlv) {
+				return tlv2vp(packet, original, secret,
+					      attribute, length, data);
+			}
+		}
+	}
 	vp = paircreate(attribute, vendor, PW_TYPE_OCTETS);
 	if (!vp) return NULL;
 

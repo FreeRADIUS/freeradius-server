@@ -1,0 +1,23 @@
+ATTRIBUTE	Extended-Attribute-1	241	octets extended
+ATTRIBUTE	Extended-Attribute-2	242	octets extended
+ATTRIBUTE	Extended-Attribute-3	243	octets extended
+ATTRIBUTE	Extended-Attribute-4	244	octets extended
+ATTRIBUTE	Extended-Attribute-5	245	octets extended-flags
+ATTRIBUTE	Extended-Attribute-6	246	octets extended-flags
+
+ATTRIBUTE	Extended-Vendor-Specific-1	241.26	octets
+ATTRIBUTE	Extended-Vendor-Specific-2	242.26	octets
+ATTRIBUTE	Extended-Vendor-Specific-3	243.26	octets
+ATTRIBUTE	Extended-Vendor-Specific-4	244.26	octets
+ATTRIBUTE	Extended-Vendor-Specific-5	245.26	octets
+ATTRIBUTE	Extended-Vendor-Specific-6	246.26	octets
+
+ATTRIBUTE	Extended-Example-1		241.1	integer
+ATTRIBUTE	Extended-Example-2		241.2	ipaddr
+ATTRIBUTE	Extended-Example-3		241.3	tlv
+ATTRIBUTE	Extended-Example-TLV-3-1	241.3.1	integer
+ATTRIBUTE	Extended-Example-TLV-3-2	241.3.2	string
+ATTRIBUTE	Extended-Example-4		241.4	string
+
+ATTRIBUTE	Extended-Example-Flags-1	245.1 integer
+ATTRIBUTE	Extended-Example-Flags-2	245.2 ipaddr

@@ -546,12 +546,33 @@ int dict_addattr(const char *name, int attr, int vendor, int type,
 		}
 	}
 
+	/*
+	 *	Additional checks for extended attributes.
+	 */
+	if (flags.extended || flags.extended_flags) {
+		if (vendor != 0) {
+			fr_strerror_printf("dict_addattr: VSAs cannot use the \"extended\" attribute format.");
+			return -1;
+		}
+		vendor = VENDORPEC_EXTENDED;
+
+		if ((attr < 256) && (type != PW_TYPE_OCTETS)) {
+			fr_strerror_printf("dict_addattr: The base \"extended\" attribute definition MUST be of type \"octets\".");
+			return -1;
+		}
+
+		if (flags.has_tag || flags.array || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+			fr_strerror_printf("dict_addattr: The \"extended\" attributes MUST NOT have any flags set.");
+			return -1;
+		}
+	}
+
 	if (attr < 0) {
 		fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (less than zero)");
 		return -1;
 	}
 
-	if (vendor) {
+	if (vendor && (vendor != VENDORPEC_EXTENDED)) {
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
 
@@ -616,7 +637,6 @@ int dict_addattr(const char *name, int attr, int vendor, int type,
 	da->vendor = vendor;
 	da->type = type;
 	da->flags = flags;
-	da->vendor = vendor;
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
@@ -833,7 +853,7 @@ static int sscanf_i(const char *str, int *pvalue)
 {
 	int rcode = 0;
 	int base = 10;
-	const char *tab = "0123456789";
+	static const char *tab = "0123456789";
 
 	if ((str[0] == '0') &&
 	    ((str[1] == 'x') || (str[1] == 'X'))) {
@@ -871,6 +891,7 @@ static int process_attribute(const char* fn, const int line,
 	int		type;
 	int		length = 0;
 	ATTR_FLAGS	flags;
+	char		*p;
 
 	if ((argc < 3) || (argc > 4)) {
 		fr_strerror_printf("dict_init: %s[%d]: invalid ATTRIBUTE line",
@@ -878,12 +899,115 @@ static int process_attribute(const char* fn, const int line,
 		return -1;
 	}
 
+	memset(&flags, 0, sizeof(flags));
+
+	/*
+	 *	Look for extended attributes before doing anything else.
+	 */
+	p = strchr(argv[1], '.');
+	if (p) *p = '\0';
+
 	/*
 	 *	Validate all entries
 	 */
 	if (!sscanf_i(argv[1], &value)) {
 		fr_strerror_printf("dict_init: %s[%d]: invalid value", fn, line);
 		return -1;
+	}
+
+	/*
+	 *	Parse extended attributes.
+	 */
+	if (p) {
+		int sub;
+		char *q;
+		DICT_ATTR *da;
+
+		*p = '.';	/* reset forlater printing */
+
+		/*
+		 *	Does the parent attribute exist?
+		 */
+		da = dict_attrbyvalue(value, VENDORPEC_EXTENDED);
+		if (!da) {
+			fr_strerror_printf("dict_init: %s[%d]: Entry refers to unknown attribute %d", fn, line, value);
+			return -1;
+		}
+
+		/*
+		 *	241.1 means 241 is of type "extended".
+		 *	Otherwise, die.
+		 */
+		if (!da->flags.extended && !da->flags.extended_flags) {
+			fr_strerror_printf("dict_init: %s[%d]: Entry refers to a non-extended attribute %d", fn, line, value);
+			return -1;
+		}
+
+		/*
+		 *	Look for sub-TLVs
+		 */
+		q = strchr(p + 1, '.');
+		if (q) *q = '\0';
+
+		/*
+		 *	Parse error.
+		 */
+		if (!sscanf_i(p + 1, &sub)) {
+			fr_strerror_printf("dict_init: %s[%d]: Parse error in value \"%s\"", fn, line, argv[1]);
+			return -1;
+		}
+
+		/*
+		 *	Value is out of bounds.
+		 */
+		if ((sub == 0) || (sub > 255)) {
+			fr_strerror_printf("dict_init: %s[%d]: Entry has value out of range 0..255: %d", fn, line, sub);
+			return -1;
+		}
+
+		value |= (sub << fr_wimax_shift[1]);
+
+		/*
+		 *	If this is defining the contents of a TLV,
+		 *	look for the parent, and check it.
+		 */
+		if (q) {
+			DICT_ATTR *tlv;
+
+			tlv = dict_attrbyvalue(value, VENDORPEC_EXTENDED);
+			if (!tlv || !tlv->flags.has_tlv ||
+			    (!tlv->flags.extended && !tlv->flags.extended_flags)) {
+				fr_strerror_printf("dict_init: %s[%d]: Entry refers to Attribute \"%s\", which is not an extended attribute TLV", fn, line, argv[1]);
+				return -1;
+
+			}
+
+			flags.is_tlv = 1;
+			
+			/*
+			 *	Parse error.
+			 */
+			if (!sscanf_i(q + 1, &sub)) {
+				fr_strerror_printf("dict_init: %s[%d]: Parse error in value \"%s\"", fn, line, argv[1]);
+				return -1;
+			}
+
+			/*
+			 *	Value is out of bounds.
+			 */
+			if ((sub == 0) || (sub > 255)) {
+				fr_strerror_printf("dict_init: %s[%d]: Entry has value out of range 0..255: %d", fn, line, sub);
+				return -1;
+			}
+
+			value |= (sub << fr_wimax_shift[2]);
+		}
+
+		/*
+		 *	Set which type of attribute this is.
+		 */
+		flags.extended = da->flags.extended;
+		flags.extended_flags = da->flags.extended_flags;
 	}
 
 	if (strncmp(argv[2], "octets[", 7) != 0) {
@@ -897,7 +1021,6 @@ static int process_attribute(const char* fn, const int line,
 			return -1;
 		}
 	} else {
-		char *p;
 		type = PW_TYPE_OCTETS;
 		
 		p = strchr(argv[2] + 7, ']');
@@ -923,7 +1046,6 @@ static int process_attribute(const char* fn, const int line,
 	 *	Only look up the vendor if the string
 	 *	is non-empty.
 	 */
-	memset(&flags, 0, sizeof(flags));
 	if (argc < 4) {
 		/*
 		 *	Force "length" for data types of fixed length;
@@ -993,7 +1115,7 @@ static int process_attribute(const char* fn, const int line,
 					return -1;
 				}
 				
-			} else if (strncmp(key, "array", 8) == 0) {
+			} else if (strncmp(key, "array", 6) == 0) {
 				flags.array = 1;
 				
 				switch (type) {
@@ -1017,6 +1139,23 @@ static int process_attribute(const char* fn, const int line,
 			} else if ((key == argv[3]) && !next && !block_vendor &&
 				   ((vendor = dict_vendorbyname(key)) !=0)) {
 				break;
+
+			} else if (strncmp(key, "extended-flags", 15) == 0) {
+				if (flags.extended) {
+					fr_strerror_printf( "dict_init: %s[%d] You cannot set two  \"extended\" flags.",
+							    fn, line);
+					return -1;
+				}
+
+				flags.extended_flags = 1;
+
+			} else if (strncmp(key, "extended", 9) == 0) {
+				if (flags.extended_flags) {
+					fr_strerror_printf( "dict_init: %s[%d] You cannot set two  \"extended\" flags.",
+							    fn, line);
+					return -1;
+				}
+				flags.extended = 1;
 
 			} else {
 				fr_strerror_printf( "dict_init: %s[%d]: unknown option \"%s\"",
@@ -1073,7 +1212,6 @@ static int process_attribute(const char* fn, const int line,
 		value |= block_tlv->attr;
 		flags.is_tlv = 1;
 	}
-
 
 	/*
 	 *	Add it in.

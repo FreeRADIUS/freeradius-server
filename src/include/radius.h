@@ -305,6 +305,7 @@
 #define VENDORPEC_MICROSOFT	311
 #define VENDORPEC_FREERADIUS	11344
 #define VENDORPEC_WIMAX		24757
+#define VENDORPEC_EXTENDED	(1 << 25)
 
 /*
  * Vendor specific attributes

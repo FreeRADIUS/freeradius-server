@@ -104,6 +104,8 @@ typedef struct attr_flags {
 	unsigned int		has_tlv : 1; /* has sub attributes */
 	unsigned int		is_tlv : 1; /* is a sub attribute */
 	unsigned int		encoded : 1; /* has been put into packet */
+	unsigned int		extended : 1; /* extended attribute */
+	unsigned int		extended_flags : 1; /* with flag */
 
 	int8_t			tag;	      /* tag for tunneled attributes */
 	uint8_t		        encrypt;      /* encryption method */
