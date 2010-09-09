@@ -1710,6 +1710,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 	}
 
 	if (cf_data_find_internal(cs, filename, PW_TYPE_FILENAME)) {
+		fclose(fp);
 		radlog(L_ERR, "Cannot include the same file twice: \"%s\"",
 		       filename);
 		return -1;
