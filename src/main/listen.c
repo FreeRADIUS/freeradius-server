@@ -2130,16 +2130,19 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 	 *	Otherwise, don't do anything.
 	 */
  do_proxy:
+	/*
+	 *	No sockets to receive packets, this is an error.
+	 *	proxying is pointless.
+	 */
+	if (!*head) {
+		radlog(L_ERR, "The server is not configured to listen on any ports.  Cannot start.");
+		return -1;
+	}
+
 #ifdef WITH_PROXY
 	if (mainconfig.proxy_requests == TRUE) {
 		int		port = -1;
 		listen_socket_t *sock = NULL;
-
-		/*
-		 *	No sockets to receive packets, therefore
-		 *	proxying is pointless.
-		 */
-		if (!*head) return -1;
 
 		if (defined_proxy) goto check_home_servers;
 
