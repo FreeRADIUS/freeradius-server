@@ -2589,7 +2589,7 @@ int cf_pair2xml(FILE *fp, const CONF_PAIR *cp)
 		char *p = buffer;
 		const char *q = cp->value;
 
-		while (*q && (p < (buffer + sizeof(buffer)))) {
+		while (*q && (p < (buffer + sizeof(buffer) - 1))) {
 			if (q[0] == '&') {
 				memcpy(p, "&amp;", 4);
 				p += 5;
