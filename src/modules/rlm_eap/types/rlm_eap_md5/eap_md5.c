@@ -228,6 +228,7 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 
 		eap_ds->request->type.data = malloc(reply->length);
 		if (eap_ds->request->type.data == NULL) {
+			eapmd5_free(&reply);
 			radlog(L_ERR, "rlm_eap_md5: out of memory");
 			return 0;
 		}
