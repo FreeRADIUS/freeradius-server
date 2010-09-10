@@ -261,12 +261,12 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
 		/*
-		 *	Move the saved VP's from the Access-Accept to
-		 *	our Access-Accept.
+		 *	Move the saved VP's to
+		 *	our reply chain.
 		 */
 		peap = tls_session->opaque;
 		if (peap->saved_vps) {
-			RDEBUG2("Using saved reply attributes from the tunneled failure");
+			RDEBUG2("Using saved reply attributes from the tunneled Access-Reject");
 			debug_pair_list(peap->saved_vps);
 			pairadd(&handler->request->reply->vps, peap->saved_vps);
 			peap->saved_vps = NULL;
@@ -281,8 +281,8 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 
 	case RLM_MODULE_OK:
 		/*
-		 *	Move the saved VP's from the Access-Accept to
-		 *	our Access-Accept.
+		 *	Move the saved VP's to
+		 *	our reply chain.
 		 */
 		peap = tls_session->opaque;
 		if (peap->saved_vps) {
