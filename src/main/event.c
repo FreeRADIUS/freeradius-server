@@ -279,9 +279,29 @@ static void remove_from_proxy_hash(REQUEST *request)
   	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
 
+static int proxy_add_fds(rad_listen_t *proxy_listener)
+{
+	int i, proxy, found = -1;
+
+	proxy = proxy_listener->fd;
+	for (i = 0; i < 32; i++) {
+		/*
+		 *	Found a free entry.  Save the socket,
+		 *	and remember where we saved it.
+		 */
+		if (proxy_fds[(proxy + i) & 0x1f] == -1) {
+			found = (proxy + i) & 0x1f;
+			proxy_fds[found] = proxy;
+			proxy_listeners[found] = proxy_listener;
+			break;
+		}
+	}
+
+	return found;
+}
+
 static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 {
-	int i, proxy, found;
 	rad_listen_t *proxy_listener;
 
 	if (fr_packet_list_id_alloc(proxy_list, packet)) return 1;
@@ -302,21 +322,7 @@ static int proxy_id_alloc(REQUEST *request, RADIUS_PACKET *packet)
 	/*
 	 *	Cache it locally.
 	 */
-	found = -1;
-	proxy = proxy_listener->fd;
-	for (i = 0; i < 32; i++) {
-		/*
-		 *	Found a free entry.  Save the socket,
-		 *	and remember where we saved it.
-		 */
-		if (proxy_fds[(proxy + i) & 0x1f] == -1) {
-			found = (proxy + i) & 0x1f;
-			proxy_fds[found] = proxy;
-			proxy_listeners[found] = proxy_listener;
-			break;
-		}
-	}
-	if (found < 0) {
+	if (proxy_add_fds(proxy_listener) < 0) {
 		proxy_all_used = TRUE;
 		listen_free(&proxy_listener);
 		radlog(L_ERR, "Failed creating new proxy socket: server is too busy and home servers appear to be down");
@@ -3669,11 +3675,11 @@ int radius_event_init(CONF_SECTION *cs, int spawn_flag)
 
 #ifdef WITH_PROXY
 		case RAD_LISTEN_PROXY:
-			rad_assert(proxy_fds[this->fd & 0x1f] == -1);
-			rad_assert(proxy_listeners[this->fd & 0x1f] == NULL);
-			
-			proxy_fds[this->fd & 0x1f] = this->fd;
-			proxy_listeners[this->fd & 0x1f] = this;
+			if (proxy_add_fds(this) < 0) {
+				radlog(L_ERR, "Failed creating new proxy socket");
+				return 0;
+			}
+
 			if (!fr_packet_list_socket_add(proxy_list,
 							 this->fd)) {
 				rad_assert(0 == 1);
