@@ -16,6 +16,19 @@ server inner-tunnel {
 #  It is listening on "localhost", so that it can only be used from
 #  the same machine.
 #
+#	$ radtest USER PASSWORD 127.0.0.1:18120 0 testing123
+#
+#  If it works, you have configured the inner tunnel correctly.  To check
+#  if PEAP will work, use:
+#
+#	$ radtest -t mschap USER PASSWORD 127.0.0.1:18120 0 testing123
+#
+#  If that works, PEAP should work.  If that command doesn't work, then
+#
+#	FIX THE INNER TUNNEL CONFIGURATION UNTIL IT WORKS.
+#
+#  Do NOT keep testing PEAP.  It won't help.
+#
 listen {
        ipaddr = 127.0.0.1
        port = 18120
