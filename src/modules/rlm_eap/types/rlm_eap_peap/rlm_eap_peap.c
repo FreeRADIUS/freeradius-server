@@ -145,7 +145,7 @@ static void peap_free(void *p)
 
 	pairfree(&t->username);
 	pairfree(&t->state);
-	pairfree(&t->accept_vps);
+	pairfree(&t->saved_vps);
 
 	free(t);
 }
@@ -260,6 +260,18 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 	rcode = eappeap_process(handler, tls_session);
 	switch (rcode) {
 	case RLM_MODULE_REJECT:
+		/*
+		 *	Move the saved VP's from the Access-Accept to
+		 *	our Access-Accept.
+		 */
+		peap = tls_session->opaque;
+		if (peap->saved_vps) {
+			RDEBUG2("Using saved reply attributes from the tunneled failure");
+			debug_pair_list(peap->saved_vps);
+			pairadd(&handler->request->reply->vps, peap->saved_vps);
+			peap->saved_vps = NULL;
+		}
+
 		eaptls_fail(handler, 0);
 		return 0;
 
@@ -273,11 +285,11 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	our Access-Accept.
 		 */
 		peap = tls_session->opaque;
-		if (peap->accept_vps) {
-			RDEBUG2("Using saved attributes from the original Access-Accept");
-			debug_pair_list(peap->accept_vps);
-			pairadd(&handler->request->reply->vps, peap->accept_vps);
-			peap->accept_vps = NULL;
+		if (peap->saved_vps) {
+			RDEBUG2("Using saved reply attributes from the tunneled Access-Accept");
+			debug_pair_list(peap->saved_vps);
+			pairadd(&handler->request->reply->vps, peap->saved_vps);
+			peap->saved_vps = NULL;
 		}
 
 		/*

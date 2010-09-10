@@ -152,7 +152,7 @@ static void ttls_free(void *p)
 
 	pairfree(&t->username);
 	pairfree(&t->state);
-	pairfree(&t->accept_vps);
+	pairfree(&t->saved_vps);
 	free(t);
 }
 
@@ -211,11 +211,11 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 
 		if (t && t->authenticated) {
-			RDEBUG2("Using saved attributes from the original Access-Accept");
-			debug_pair_list(t->accept_vps);
+			RDEBUG2("Using saved reply attributes from the original Access-Accept");
+			debug_pair_list(t->saved_vps);
 			pairadd(&handler->request->reply->vps,
-				t->accept_vps);
-			t->accept_vps = NULL;
+				t->saved_vps);
+			t->saved_vps = NULL;
 		do_keys:
 			/*
 			 *	Success: Automatically return MPPE keys.
@@ -256,11 +256,16 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 
 	/*
 	 *	We may need TTLS data associated with the session, so
-	 *	allocate it here, if it wasn't already alloacted.
+	 *	allocate it here, if it wasn't already allocated.
 	 */
 	if (!tls_session->opaque) {
 		tls_session->opaque = ttls_alloc(inst);
 		tls_session->free_opaque = ttls_free;
+
+		/*
+		 * Reassign TTLS data pointer now that we've allocated space
+		 */
+		t = tls_session->opaque;
 	}
 
 	/*
@@ -269,6 +274,14 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	rcode = eapttls_process(handler, tls_session);
 	switch (rcode) {
 	case PW_AUTHENTICATION_REJECT:
+		if (t && t->saved_vps) {
+			RDEBUG2("Using saved reply attributes from the tunneled failure");
+			debug_pair_list(t->saved_vps);
+			pairadd(&handler->request->reply->vps,
+				t->saved_vps);
+			t->saved_vps = NULL;
+		}
+
 		eaptls_fail(handler, 0);
 		return 0;
 

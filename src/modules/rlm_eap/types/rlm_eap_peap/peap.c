@@ -348,7 +348,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
-			RDEBUG2("Saving tunneled attributes for later");
+			RDEBUG2("Saving tunneled reply attributes for later");
 
 			/*
 			 *	Clean up the tunneled reply.
@@ -366,7 +366,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, ((311 << 16) | 16));
 			pairdelete(&reply->vps, ((311 << 16) | 17));
 
-			t->accept_vps = reply->vps;
+			t->saved_vps = reply->vps;
 			reply->vps = NULL;
 		}
 		break;
@@ -376,6 +376,35 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		t->status = PEAP_STATUS_SENT_TLV_FAILURE;
 		eappeap_failure(handler, tls_session);
 		rcode = RLM_MODULE_HANDLED;
+		/*
+		 *	If we've been told to use the attributes from
+		 *	the reply, then do so.
+		 *
+		 *	WARNING: This may leak information about the
+		 *	tunneled user!
+		 */
+		if (t->use_tunneled_reply) {
+			RDEBUG2("Saving tunneled reply attributes for later");
+
+			/*
+			 *	Clean up the tunneled reply.
+			 */
+			pairdelete(&reply->vps, PW_PROXY_STATE);
+			pairdelete(&reply->vps, PW_EAP_MESSAGE);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
+
+			/*
+			 *	Delete MPPE keys & encryption policy.  We don't
+			 *	want these here.
+			 */
+			pairdelete(&reply->vps, ((311 << 16) | 7));
+			pairdelete(&reply->vps, ((311 << 16) | 8));
+			pairdelete(&reply->vps, ((311 << 16) | 16));
+			pairdelete(&reply->vps, ((311 << 16) | 17));
+
+			t->saved_vps = reply->vps;
+			reply->vps = NULL;
+		}
 		break;
 
 	case PW_ACCESS_CHALLENGE:
@@ -398,14 +427,14 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE);
 
 		/*
-		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
-		 *	from the home server may contain MS-CHAP-Success,
+		 *	Handle EAP-MSCHAP-V2, where the home server may
+		 *	contain MS-CHAP-Success or MS-CHAP-Error,
 		 *	which the module turns into challenges, so that
 		 *	the client may respond to the challenge with
 		 *	an "ack" packet.
 		 */
-		if (t->home_access_accept && t->use_tunneled_reply) {
-			RDEBUG2("Saving tunneled attributes for later");
+		if (t->use_tunneled_reply) {
+			RDEBUG2("Saving tunneled reply attributes for later");
 
 			/*
 			 *	Clean up the tunneled reply.
@@ -413,7 +442,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, PW_PROXY_STATE);
 			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR);
 
-			t->accept_vps = reply->vps;
+			t->saved_vps = reply->vps;
 			reply->vps = NULL;
 		}
 

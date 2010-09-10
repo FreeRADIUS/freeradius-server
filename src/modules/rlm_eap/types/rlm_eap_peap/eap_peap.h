@@ -31,7 +31,7 @@ RCSIDH(eap_peap_h, "$Id$")
 typedef struct peap_tunnel_t {
 	VALUE_PAIR	*username;
 	VALUE_PAIR	*state;
-	VALUE_PAIR	*accept_vps;
+	VALUE_PAIR	*saved_vps;
 	int		status;
 	int		home_access_accept;
 	int		default_eap_type;

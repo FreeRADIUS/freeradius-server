@@ -685,7 +685,9 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	Use the tunneled reply, but not now.
 			 */
 			if (t->use_tunneled_reply) {
-				t->accept_vps = reply->vps;
+				RDEBUG2("Saving tunneled reply attributes for later");
+
+				t->saved_vps = reply->vps;
 				reply->vps = NULL;
 			}
 
@@ -1288,6 +1290,15 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		switch (rcode) {
 		case RLM_MODULE_REJECT:
 			rcode = PW_AUTHENTICATION_REJECT;
+			/*
+			 *	Use the tunneled reply, but not now.
+			 */
+			if (t && t->use_tunneled_reply) {
+				RDEBUG2("Saving tunneled failure reply attributes for later");
+				t->saved_vps = fake->reply->vps;
+				fake->reply->vps = NULL;
+				debug_pair_list(t->saved_vps);
+			}
 			break;
 
 		case RLM_MODULE_HANDLED:
