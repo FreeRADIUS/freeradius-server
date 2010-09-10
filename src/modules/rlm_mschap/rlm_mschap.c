@@ -704,7 +704,24 @@ static int do_mschap(rlm_mschap_t *inst,
 					     buffer, sizeof(buffer),
 					     NULL, NULL, 1);
 		if (result != 0) {
+			char *p;
+			VALUE_PAIR *vp = NULL;
+
 			RDEBUG2("External script failed.");
+
+			vp = pairmake("Module-Failure-Message", "", T_OP_EQ);
+			if (!vp) {
+				radlog_request(L_ERR, 0, request, "No memory to allocate Module-Failure-Message");
+				return RLM_MODULE_FAIL;
+			}
+
+			p = strchr(buffer, '\n');
+			if (p) *p = '\0';
+			snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue),
+				"%s: External script says %s",
+				 inst->xlat_name, buffer);
+			vp->length = strlen(vp->vp_strvalue);
+			pairadd(&request->reply->vps, vp);
 			return -1;
 		}
 
