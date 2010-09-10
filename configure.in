@@ -72,8 +72,8 @@ if test -z "$makever"; then
 		from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing.)
 fi
 
-AC_ARG_WITH(system-libtldl,
-[  --with-system-libtldl   Use the libltdl installed in your system (default=use our own)],
+AC_ARG_WITH(system-libltdl,
+[  --with-system-libltdl   Use the libltdl installed in your system (default=use our own)],
 [
 LIBLTDL="-lltdl"
 INCLTDL=
@@ -81,6 +81,8 @@ LTDL_SUBDIRS=
 enable_ltdl_install=no
 ],
 [
+dnl If libltdl isn't installable, set it to be installable.
+[test x"$enable_ltdl_install" = x && enable_ltdl_install=yes]
 AC_LIBLTDL_INSTALLABLE
 
 dnl tell Makefile to build ltdl if needed
