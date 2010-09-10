@@ -2115,7 +2115,7 @@ static int command_domain_recv(rad_listen_t *listener,
 			 */
 			if (((co->mode & FR_WRITE) == 0) &&
 			    ((table[i].mode & FR_WRITE) != 0)) {
-				cprintf(listener, "ERROR: You do not have write permission.  See \"mode = rw\" in %s\n", co->path);
+				cprintf(listener, "ERROR: You do not have write permission.  See \"mode = rw\" in the \"listen\" section for this socket.\n");
 				goto do_next;
 			}
 
