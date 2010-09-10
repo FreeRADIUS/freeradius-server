@@ -1294,7 +1294,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Use the tunneled reply, but not now.
 			 */
 			if (t && t->use_tunneled_reply) {
-				RDEBUG2("Saving tunneled failure reply attributes for later");
+				RDEBUG2("Saving tunneled reply attributes for later");
 				t->saved_vps = fake->reply->vps;
 				fake->reply->vps = NULL;
 				debug_pair_list(t->saved_vps);

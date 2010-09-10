@@ -211,7 +211,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 
 		if (t && t->authenticated) {
-			RDEBUG2("Using saved reply attributes from the original Access-Accept");
+			RDEBUG2("Using saved reply attributes from the tunneled Access-Accept");
 			debug_pair_list(t->saved_vps);
 			pairadd(&handler->request->reply->vps,
 				t->saved_vps);
@@ -275,7 +275,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 	switch (rcode) {
 	case PW_AUTHENTICATION_REJECT:
 		if (t && t->saved_vps) {
-			RDEBUG2("Using saved reply attributes from the tunneled failure");
+			RDEBUG2("Using saved reply attributes from the tunneled Access-Reject");
 			debug_pair_list(t->saved_vps);
 			pairadd(&handler->request->reply->vps,
 				t->saved_vps);
