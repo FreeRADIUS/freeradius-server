@@ -2203,9 +2203,8 @@ home_pool_t *home_pool_byname(const char *name, int type)
 #endif
 
 #ifdef WITH_PROXY
-static int home_server_create_callback(void *ctx, void *data)
+static int home_server_create_callback(UNUSED void *ctx, void *data)
 {
-	rad_listen_t *head = ctx;
 	home_server *home = data;
 	rad_listen_t *this;
 
@@ -2221,8 +2220,10 @@ static int home_server_create_callback(void *ctx, void *data)
 		 */
 		if (!this) return 1;
 
-		this->next = head->next;
-		head->next = this;
+		/*
+		 *	Don't do anything else.  The function above
+		 *	takes care of adding the listener to the list.
+		 */
 	}
 
 	return 0;
@@ -2231,21 +2232,15 @@ static int home_server_create_callback(void *ctx, void *data)
 /*
  *	Taking a void* here solves some header issues.
  */
-int home_server_create_listeners(void *ctx)
+int home_server_create_listeners(void)
 {
-	rad_listen_t *head = ctx;
-
 	if (!home_servers_byaddr) return 0;
-
-	rad_assert(head != NULL);
 
 	/*
 	 *	Add the listeners to the TAIL of the list.
 	 */
-	while (head->next) head = head->next;
-
 	if (rbtree_walk(home_servers_byaddr, InOrder,
-			home_server_create_callback, head) != 0) {
+			home_server_create_callback, NULL) != 0) {
 		return -1;
 	}
 

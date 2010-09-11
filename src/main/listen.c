@@ -1728,7 +1728,7 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 		/*
 		 *	Not proxy, ignore it.
 		 */
-		if (tmp->type != RAD_LISTEN_PROXY) continue;
+		if (tmp->type != RAD_LISTEN_PROXY) goto next;
 
 		sock = tmp->data;
 
@@ -1741,11 +1741,12 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 		if ((ipaddr->af != AF_UNSPEC) &&
 		    (fr_ipaddr_cmp(&sock->ipaddr, ipaddr) != 0)) {
 			if (exists) return tmp;
-			continue;
+			goto next;
 		}
 		
 		if (!old) old = sock;
 
+	next:
 		last = &(tmp->next);
 	}
 
@@ -2214,7 +2215,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		 *	on their src_ipaddr.
 		 */
 	check_home_servers:
-		if (home_server_create_listeners(*head) != 0) return -1;
+		if (home_server_create_listeners() != 0) return -1;
 	}
 #endif
 
