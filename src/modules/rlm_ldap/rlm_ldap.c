@@ -1927,7 +1927,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 		LDAP_CONN       *conn1;
 		int auth_state = -1;
 		char            *challenge = NULL;
-		int             challenge_len = MAX_CHALLENGE_LEN;
+		size_t          challenge_len = MAX_CHALLENGE_LEN;
 		char            *state = NULL;
 
 		dattr = dict_attrbyname("eDir-APC");
