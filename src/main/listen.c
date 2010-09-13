@@ -2154,6 +2154,19 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 		for (this = *head; this != NULL; this = this->next) {
 			if (this->type == RAD_LISTEN_AUTH) {
 				sock = this->data;
+
+				/*
+				 *	We shouldn't proxy on loopback.
+				 */
+				if ((sock->ipaddr.af == AF_INET) &&
+				    (sock->ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_LOOPBACK))) continue;
+
+
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+				if ((sock->ipaddr.af == AF_INET6) &&
+				    (IN6_IS_ADDR_LINKLOCAL(&sock->ipaddr.ipaddr.ip6addr))) continue;
+#endif
+
 				if (server_ipaddr.af == AF_UNSPEC) {
 					server_ipaddr = sock->ipaddr;
 				}
