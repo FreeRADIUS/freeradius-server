@@ -718,7 +718,7 @@ static int do_mschap(rlm_mschap_t *inst,
 				"%s: External script says %s",
 				 inst->xlat_name, buffer);
 			vp->length = strlen(vp->vp_strvalue);
-			pairadd(&request->reply->vps, vp);
+			pairadd(&request->request->vps, vp);
 			return -1;
 		}
 
