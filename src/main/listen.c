@@ -2713,6 +2713,18 @@ add_sockets:
 		 *	and use it
 		 */
 		for (this = *head; this != NULL; this = this->next) {
+			/*
+			 *	We shouldn't proxy on loopback.
+			 */
+			if ((sock->my_ipaddr.af == AF_INET) &&
+			    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_LOOPBACK))) continue;
+			
+			
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+			if ((sock->my_ipaddr.af == AF_INET6) &&
+			    (IN6_IS_ADDR_LINKLOCAL(&sock->my_ipaddr.ipaddr.ip6addr))) continue;
+#endif
+
 			if (this->type == RAD_LISTEN_AUTH) {
 				sock = this->data;
 				if (home.src_ipaddr.af == AF_UNSPEC) {
