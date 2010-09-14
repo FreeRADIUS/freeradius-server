@@ -49,6 +49,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
 	int status;
 	rlm_sql_sqlite_sock *sqlite_sock;
+	char *filename;
 	char buffer[2048];
 	
 	if (!sqlsocket->conn) {
@@ -60,12 +61,16 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	sqlite_sock = sqlsocket->conn;
 	memset(sqlite_sock, 0, sizeof(rlm_sql_sqlite_sock));
 	
-	snprintf(buffer, sizeof(buffer), "%s/sqlite_radius_client_database",
-		 radius_dir);
+	filename = config->sql_file;
+	if (!filename) {
+		snprintf(buffer, sizeof(buffer), "%s/sqlite_radius_client_database",
+			 radius_dir);
+		filename = buffer;
+	}
 	radlog(L_INFO, "rlm_sql_sqlite: Opening sqlite database %s for #%d",
-			buffer, sqlsocket->id);
+	       filename, sqlsocket->id);
 	
-	status = sqlite3_open(buffer, &sqlite_sock->pDb);
+	status = sqlite3_open(filename, &sqlite_sock->pDb);
 	radlog(L_INFO, "rlm_sql_sqlite: sqlite3_open() = %d\n", status);
 	return (status != SQLITE_OK) * -1;
 }
@@ -333,7 +338,7 @@ static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static const char *sql_error(UNUSED SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	return NULL;
 }
@@ -403,7 +408,7 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_affected_rows(UNUSED SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
 	return 0;
 }
