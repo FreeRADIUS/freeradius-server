@@ -338,8 +338,15 @@ static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(UNUSED SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static const char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
+	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+
+	if (sqlite_sock->pDb != NULL) {
+		return sqlite3_errmsg(sqlite_sock->pDb);
+	}
+
+	radlog(L_ERR, "rlm_sql_sqlite: Socket not connected");
 	return NULL;
 }
 
@@ -405,12 +412,22 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *
  *	Function: sql_affected_rows
  *
- *	Purpose: End the select query, such as freeing memory or result
+ *	Purpose: Requests the number of rows affected by the last executed 
+ *		 statement 
  *
  *************************************************************************/
-static int sql_affected_rows(UNUSED SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_affected_rows(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 {
-	return 0;
+	int result = -1;
+
+	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+  
+	if (sqlite_sock->pDb != NULL) {
+		result = sqlite3_changes(sqlite_sock->pDb);	
+		DEBUG3("rlm_sql_sqlite: sql_affected_rows() = %i\n", result);
+	}  
+
+	return result;
 }
 
 
