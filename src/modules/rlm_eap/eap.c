@@ -630,7 +630,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 *	to it.
 		 */
 		realm = realm_find(proxy->vp_strvalue);
-		if (realm && (realm->auth_pool == NULL)) {
+		if (!realm || (realm && (realm->auth_pool == NULL))) {
 			proxy = NULL;
 		}
 	}
