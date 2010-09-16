@@ -233,7 +233,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 *	And if they don't specify a source IP address, don't
 	 *	use udpfromto.
 	 */
-	if ((dst_ipaddr->af == AF_INET) ||
+	if ((dst_ipaddr->af == AF_INET) &&
 	    (src_ipaddr->af != AF_UNSPEC)) {
 		return sendfromto(sockfd, data, data_len, flags,
 				  (struct sockaddr *)&src, sizeof_src,
