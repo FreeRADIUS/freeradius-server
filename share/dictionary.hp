@@ -17,6 +17,12 @@ ATTRIBUTE	HP-Command-String			2	string
 ATTRIBUTE	HP-Command-Exception			3	integer
 ATTRIBUTE	HP-Management-Protocol			26	integer
 
+# Dynamic port-access attributes
+ATTRIBUTE	HP-Port-Client-Limit-Dot1x		10	integer
+ATTRIBUTE	HP-Port-Client-Limit-MA			11	integer
+ATTRIBUTE	HP-Port-Client-Limit-WA			12	integer
+ATTRIBUTE	HP-Port-Auth-Mode-Dot1x			13	integer
+
 #
 #  HP's names for some attributes
 #
