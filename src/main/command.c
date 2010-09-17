@@ -1730,6 +1730,54 @@ static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[
 }
 
 
+static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
+{
+#ifdef WITH_DYNAMIC_CLIENTS
+	RADCLIENT *client;
+
+	client = get_client(listener, argc - 1, argv + 1);
+	if (!client) return 0;
+
+	if (!client->dynamic) {
+		cprintf(listener, "ERROR: Client %s was not dynamically defined.\n", argv[1]);
+		return 0;
+	}
+
+	/*
+	 *	DON'T delete it.  Instead, mark it as "dead now".  The
+	 *	next time we receive a packet for the client, it will
+	 *	be deleted.
+	 *
+	 *	If we don't receive a packet from it, the client
+	 *	structure will stick around for a while.  Oh well...
+	 */
+	client->lifetime = 1;
+#else
+	cprintf(listener, "ERROR: Dynamic clients are not supported.\n");
+#endif
+
+	return 1;
+}
+
+
+static fr_command_table_t command_table_del_client[] = {
+	{ "ipaddr", FR_WRITE,
+	  "del client ipaddr <ipaddr> - Delete a dynamically created client",
+	  command_del_client, NULL },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+
+static fr_command_table_t command_table_del[] = {
+	{ "client", FR_WRITE,
+	  "del client <command> - Delete client configuration commands",
+	  NULL, command_table_del_client },
+
+	{ NULL, 0, NULL, NULL, NULL }
+};
+
+
 static fr_command_table_t command_table_add_client[] = {
 	{ "file", FR_WRITE,
 	  "add client file <filename> - Add new client definition from <filename>",
@@ -1813,6 +1861,7 @@ static fr_command_table_t command_table[] = {
 	{ "debug", FR_WRITE,
 	  "debug <command> - debugging commands",
 	  NULL, command_table_debug },
+	{ "del", FR_WRITE, NULL, NULL, command_table_del },
 	{ "hup", FR_WRITE,
 	  "hup [module] - sends a HUP signal to the server, or optionally to one module",
 	  command_hup, NULL },

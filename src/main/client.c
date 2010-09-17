@@ -418,7 +418,11 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 #ifdef WITH_DYNAMIC_CLIENTS
 void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 {
-	if (!clients || !client) return;
+	if (!client) return;
+
+	if (!clients) clients = root_clients;
+
+	if (!client->dynamic) return;
 
 	rad_assert((client->prefix >= 0) && (client->prefix <= 128));
 
