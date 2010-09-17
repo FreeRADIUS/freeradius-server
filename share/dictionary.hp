@@ -21,7 +21,6 @@ ATTRIBUTE	HP-Management-Protocol			26	integer
 #  HP's names for some attributes
 #
 ATTRIBUTE	HP-port-priority-regeneration-table	40	string
-ATTRIBUTE	HP-EI-Status				47	string
 ATTRIBUTE	HP-nas-filter-rule			61	string
 
 # Access control
