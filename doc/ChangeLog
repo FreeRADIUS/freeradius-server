@@ -22,10 +22,15 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Added support for TLS-Cert-* attributes. For details, see
 	  raddb/sites-available/default, "post-auth" section.
 	* Added sample raddb/modules/{opendirectory,dynamic_clients}
-	* Updated Cisco and Huawei dictionaries
+	* Updated Cisco and Huawei, HP, and ERX dictionaries.
 	* Added RFCs 5607, 5904, and 5997.
 	* For EAP-TLS, client certificates can now be validated using an
 	  external command.  See eap.conf, "validate" subsection of "tls".
+	* Made rlm_pap aware of {nthash} prefix, for compatibility with
+	  legacy RADIUS systems.
+	* Add Module-Failure-Message for mschap module (ntlm_auth)
+	* made rlm_sql_sqlite database configurable.  Use "filename"
+	  in sql{} section.
 
 	Bug fixes
 	* Fix endless loop when there are multiple sub-options for
@@ -108,6 +113,20 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Include dhcp test client (not built by default)
 	* Added checks for LDAP constraint violation.  Closes bug #18.
 	* Change default raddebug timeout to 60 seconds.
+	* Made error / warning messages more consistent.
+	* Correct back-slash handling in variable expansion.  Closes bug #46.
+	  You SHOULD check your configuration for backslash expansion!
+	* Fix typo in "configure" script (--enable-libltdl-install)
+	* Use local libltdl in more situations.  This helps to avoid
+	  compile issues complaining about lt__PROGRAM__LTX_preloaded_symbols.
+	* Fix hang on startup when multiple home servers were defined
+	  with "src_ipaddr" field.
+	* Fix 32/64 bit issue in rlm_ldap.  Closes bug #105.
+	* If the first "listen" section uses 127.0.0.1, don't use that
+	  as the source IP for proxying.  It won't work.
+	* When Proxy-To-Realm is set to a non-existent realm, the EAP module
+	  should handle the request, rather than expecting it to be proxied.
+	* Fix IPv4 issues with udpfromto.  Closes bug #110.
 
 FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
