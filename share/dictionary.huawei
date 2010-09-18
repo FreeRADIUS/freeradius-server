@@ -48,7 +48,7 @@ ATTRIBUTE	Huawei-PPP-NCP-Type			70	integer
 ATTRIBUTE	Huawei-VSI-Name				71	string
 ATTRIBUTE	Huawei-Subnet-Mask			72	ipaddr
 ATTRIBUTE	Huawei-Gateway-Address			73	ipaddr
-ATTRIBUTE	Huawei-Lease-Time			74	Integer
+ATTRIBUTE	Huawei-Lease-Time			74	integer
 ATTRIBUTE	Huawei-Primary-WINS			75	ipaddr
 ATTRIBUTE	Huawei-Secondary-WINS			76	ipaddr
 ATTRIBUTE	Huawei-Input-Peak-Burst-Size		77	integer
