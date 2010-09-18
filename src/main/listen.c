@@ -2441,6 +2441,26 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	return this;
 }
 
+static int is_loopback(const fr_ipaddr_t *ipaddr)
+{
+	/*
+	 *	We shouldn't proxy on loopback.
+	 */
+	if ((ipaddr->af == AF_INET) &&
+	    (ipaddr->ipaddr.ip4addr.s_addr == htonl(INADDR_LOOPBACK))) {
+		return 1;
+	}
+	
+#ifdef HAVE_STRUCT_SOCKADDR_IN6
+	if ((ipaddr->af == AF_INET6) &&
+	    (IN6_IS_ADDR_LINKLOCAL(&ipaddr->ipaddr.ip6addr))) {
+		return 1;
+	}
+#endif
+
+	return 0;
+}
+
 /*
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
@@ -2713,20 +2733,11 @@ add_sockets:
 		 *	and use it
 		 */
 		for (this = *head; this != NULL; this = this->next) {
-			/*
-			 *	We shouldn't proxy on loopback.
-			 */
-			if ((sock->my_ipaddr.af == AF_INET) &&
-			    (sock->my_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_LOOPBACK))) continue;
-			
-			
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-			if ((sock->my_ipaddr.af == AF_INET6) &&
-			    (IN6_IS_ADDR_LINKLOCAL(&sock->my_ipaddr.ipaddr.ip6addr))) continue;
-#endif
-
 			if (this->type == RAD_LISTEN_AUTH) {
 				sock = this->data;
+
+				if (is_loopback(&sock->my_ipaddr)) continue;
+
 				if (home.src_ipaddr.af == AF_UNSPEC) {
 					home.src_ipaddr = sock->my_ipaddr;
 				}
@@ -2736,6 +2747,9 @@ add_sockets:
 #ifdef WITH_ACCT
 			if (this->type == RAD_LISTEN_ACCT) {
 				sock = this->data;
+
+				if (is_loopback(&sock->my_ipaddr)) continue;
+
 				if (home.src_ipaddr.af == AF_UNSPEC) {
 					home.src_ipaddr = sock->my_ipaddr;
 				}
@@ -2863,18 +2877,9 @@ rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
 		}
 
 		if ((sock->my_port == port) &&
-		    ((sock->my_ipaddr.af == AF_INET) &&
-		     (sock->my_ipaddr.ipaddr.ip4addr.s_addr == INADDR_ANY))) {
+		    fr_inaddr_any(&sock->my_ipaddr)) {
 			return this;
 		}
-
-#ifdef HAVE_STRUCT_SOCKADDR_IN6
-		if ((sock->my_port == port) &&
-		    (sock->my_ipaddr.af == AF_INET6) &&
-		    (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr))) {
-			return this;
-		}
-#endif
 	}
 
 	return NULL;
