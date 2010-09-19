@@ -434,7 +434,11 @@ int berEncodeAuthData(
         }
 
         /* BER encode the NMAS Version, the objectDN, and the password */
-        rc = ber_printf(requestBer, "{ioooo", RADAUTH_LDAP_EXT_VERSION, utf8ObjPtr, utf8ObjSize, utf8PwdPtr, utf8PwdSize, utf8SeqPtr, utf8SeqSize, utf8NasIPPtr, utf8NasIPSize);
+        rc = ber_printf(requestBer, "{i", RADAUTH_LDAP_EXT_VERSION);
+        rc = ber_printf(requestBer, "o", utf8ObjPtr, utf8ObjSize);
+        rc = ber_printf(requestBer, "o", utf8PwdPtr, utf8PwdSize);
+        rc = ber_printf(requestBer, "o", utf8SeqPtr, utf8SeqSize);
+        rc = ber_printf(requestBer, "o", utf8NasIPPtr, utf8NasIPSize);
 
         if( *auth_state == -2)
         {
