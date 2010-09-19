@@ -52,6 +52,7 @@ do
 	extra="-f $OPTARG"
 	;;
   t)	timeout="$OPTARG"
+	[ "$timout" = "0" ] && timeout=1000000
 	;;
   u)	condition="(User-Name == $OPTARG)"
 	;;
@@ -94,10 +95,12 @@ fi
 cp /dev/null $outfile
 chmod g+w $outfile
 
+TAILPID=$$
+
 #
 #  Set the trap to clean up on exit and any interrupts.
 #
-trap '$radmin -e "debug condition" -e "debug file"; rm -f $outfile; exit 0' 0 1 2 15
+trap '$radmin -e "debug condition" -e "debug file"; rm -f $outfile;kill -TERM $TAILPID;exit 0' 1 2 15
 
 #
 #  Set the debug condition
@@ -107,6 +110,9 @@ $radmin -e "debug condition \"$condition\""
 #
 #  Print the output, and wait for "timeout".  Then, stop printing.
 #
-(tail -f $outfile | sed 's/^.*Debug: //') &
+tail -f $outfile &
+TAILPID=$!
 sleep $timeout
-kill -INT %1
+kill -TERM $TAILPID
+$radmin -e "debug condition" -e "debug file"
+rm -f $outfile
