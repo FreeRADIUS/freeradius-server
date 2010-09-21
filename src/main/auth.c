@@ -175,9 +175,10 @@ static int rad_check_password(REQUEST *request)
 	 */
 	cur_config_item = request->config_items;
 	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTH_TYPE, 0))) != NULL) {
+		DICT_VALUE *dv;
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
-		DICT_VALUE *dv = dict_valbyattr(auth_type_pair->attribute,
+		dv = dict_valbyattr(auth_type_pair->attribute,
 						auth_type_pair->vp_integer, 0);
 
 		RDEBUG2("Found Auth-Type = %s",
