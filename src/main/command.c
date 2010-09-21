@@ -1971,7 +1971,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	return 0;
 }
 
-static int command_socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
+static int command_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	fr_command_socket_t *sock = this->data;
 

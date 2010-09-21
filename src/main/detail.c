@@ -750,7 +750,7 @@ void detail_free(rad_listen_t *this)
 }
 
 
-int detail_print(rad_listen_t *this, char *buffer, size_t bufsize)
+int detail_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	if (!this->server) {
 		return snprintf(buffer, bufsize, "%s",

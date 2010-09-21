@@ -620,7 +620,7 @@ static int auth_tcp_accept(rad_listen_t *listener,
 /*
  *	This function is stupid and complicated.
  */
-static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
+static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
