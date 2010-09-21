@@ -374,7 +374,7 @@ static int rad_status_server(REQUEST *request)
 }
 
 
-static int socket_print(rad_listen_t *this, char *buffer, size_t bufsize)
+static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
