@@ -510,6 +510,8 @@ static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
 	char *p, *q;
 	char buffer[1024];
 
+	if (outlen <= 1) return 0;
+
 	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
 		*out = '\0';
 		return 0;
@@ -526,6 +528,34 @@ static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
+
+/*
+ *	Convert a string to uppercase
+ */
+static size_t xlat_uc(UNUSED void *instance, REQUEST *request,
+		       char *fmt, char *out, size_t outlen,
+		       UNUSED RADIUS_ESCAPE_STRING func)
+{
+	char *p, *q;
+	char buffer[1024];
+
+	if (outlen <= 1) return 0;
+
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		*out = '\0';
+		return 0;
+	}
+
+	for (p = buffer, q = out; *p != '\0'; p++, outlen--) {
+		if (outlen <= 1) break;
+
+		*(q++) = toupper((int) *p);
+	}
+
+	*q = '\0';
+
+	return strlen(out);
+}
 
 
 /*
@@ -641,6 +671,11 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 
 		xlat_register("tolower", xlat_lc, &xlat_inst[0]);
 		c = xlat_find("tolower");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+
+		xlat_register("toupper", xlat_uc, &xlat_inst[0]);
+		c = xlat_find("toupper");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 	}
