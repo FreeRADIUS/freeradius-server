@@ -366,7 +366,8 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				
 				RDEBUG2("    (Attribute %s was not found)",
 				       pleft);
-				return FALSE;
+				*presult = 0;
+				return TRUE;
 			}
 
 #ifdef HAVE_REGEX_H
