@@ -493,7 +493,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		if (pool_type != home->type) {
 		mismatch:
 			cf_log_err(cf_sectiontoitem(cs),
-				   "Server pool cannot include home server %s of type \"%s\"",
+				   "Home server %s of unexpected type \"%s\"",
 				   name2, hs_type);
 			goto error;
 		}
@@ -696,6 +696,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 		}
 #endif
 	}
+
+	/*
+	 *	Mark it as already processed
+	 */
+	cf_data_add(cs, "home_server", "added", NULL);
 
 	return 1;
 }
@@ -1737,6 +1742,22 @@ int realms_init(CONF_SECTION *config)
 		if (type == HOME_TYPE_INVALID) return 0;
 
 		if (!server_pool_add(rc, cs, type, TRUE)) {
+			return 0;
+		}
+	}
+
+	/*
+	 *	CoA home servers aren't tied to realms.
+	 */
+	for (cs = cf_subsection_find_next(config, NULL, "home_server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "home_server")) {
+		/*
+		 *	Server was already loaded.
+		 */
+		if (cf_data_find(cs, "home_server")) continue;
+
+		if (!home_server_add(rc, cs, HOME_TYPE_COA)) {
 			return 0;
 		}
 	}
