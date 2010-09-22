@@ -22,7 +22,7 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Added support for TLS-Cert-* attributes. For details, see
 	  raddb/sites-available/default, "post-auth" section.
 	* Added sample raddb/modules/{opendirectory,dynamic_clients}
-	* Updated Cisco and Huawei, HP, and ERX dictionaries.
+	* Updated Cisco and Huawei, HP, Redback, and ERX dictionaries.
 	* Added RFCs 5607, 5904, and 5997.
 	* For EAP-TLS, client certificates can now be validated using an
 	  external command.  See eap.conf, "validate" subsection of "tls".
@@ -31,6 +31,8 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Add Module-Failure-Message for mschap module (ntlm_auth)
 	* made rlm_sql_sqlite database configurable.  Use "filename"
 	  in sql{} section.
+	* Added %{tolower: ...string ... }, which returns the lowercase
+	  version of the string.
 
 	Bug fixes
 	* Fix endless loop when there are multiple sub-options for
@@ -127,6 +129,11 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* When Proxy-To-Realm is set to a non-existent realm, the EAP module
 	  should handle the request, rather than expecting it to be proxied.
 	* Fix IPv4 issues with udpfromto.  Closes bug #110.
+	* Clean up child processes of raddebug.  Closes bugs #108 and #109
+	* retry OTP if the OTP daemon fails.  Closes bug #58.
+	* Multiple calls to ber_printf seem to work better.  Closes #106.
+	* Fix "unlang" so that "attribute not found" is treated as a "false"
+	  comparison, rather than a syntax error in the configuration.
 
 FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
