@@ -1,7 +1,7 @@
 Summary: High-performance and highly configurable free RADIUS server
 Name: freeradius
 Version: 2.1.10
-Release: 2%{?dist}
+Release: 1%{?dist}
 License: GPLv2+ and LGPLv2+
 Group: System Environment/Daemons
 URL: http://www.freeradius.org/
@@ -325,6 +325,7 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/detail.example.com
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/detail.log
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/digest
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/dynamic_clients
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/echo
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/etc_group
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/exec
@@ -339,6 +340,7 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/mac2vlan
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/mschap
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/ntlm_auth
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/opendirectory
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/otp
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/pam
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/pap
@@ -557,6 +559,226 @@ fi
 %{_libdir}/freeradius/rlm_sql_unixodbc-%{version}.so
 
 %changelog
+* Wed Sep 22 2010 John Dennis <jdennis@redhat.com> - 2.1.10-1
+- upgrade to latest upstream release
+  Feature improvements
+  * Install the "radcrypt" program.
+  * Enable radclient to send requests containing MS-CHAPv1
+    Send packets with: MS-CHAP-Password = "password".  It will
+    be automatically converted to the correct MS-CHAP attributes.
+  * Added "-t" command-line option to radtest.  You can use "-t pap",
+   "-t chap", "-t mschap", or "-t eap-md5".  The default is "-t pap"
+  * Make the "inner-tunnel" virtual server listen on 127.0.0.1:18120
+    This change and the previous one makes PEAP testing much easier.
+  * Added more documentation and examples for the "passwd" module.
+  * Added dictionaries for RFC 5607 and RFC 5904.
+  * Added note in proxy.conf that we recommend setting
+    "require_message_authenticator = yes" for all home servers.
+  * Added example of second "files" configuration, with documentation.
+    This shows how and where to use two instances of a module.
+  * Updated radsniff to have it write pcap files, too.  See '-w'.
+  * Print out large WARNING message if we send an Access-Challenge
+    for EAP, and receive no follow-up messages from the client.
+  * Added Cached-Session-Policy for EAP session resumption.  See
+    raddb/eap.conf.
+  * Added support for TLS-Cert-* attributes. For details, see
+    raddb/sites-available/default, "post-auth" section.
+  * Added sample raddb/modules/{opendirectory,dynamic_clients}
+  * Updated Cisco and Huawei, HP, Redback, and ERX dictionaries.
+  * Added RFCs 5607, 5904, and 5997.
+  * For EAP-TLS, client certificates can now be validated using an
+    external command.  See eap.conf, "validate" subsection of "tls".
+  * Made rlm_pap aware of {nthash} prefix, for compatibility with
+    legacy RADIUS systems.
+  * Add Module-Failure-Message for mschap module (ntlm_auth)
+  * made rlm_sql_sqlite database configurable.  Use "filename"
+    in sql{} section.
+  * Added %{tolower: ...string ... }, which returns the lowercase
+    version of the string.
+
+  Bug fixes
+  * Fix endless loop when there are multiple sub-options for
+    DHCP option 82.
+  * More debug output when sending / receiving DHCP packets.
+  * EAP-MSCHAPv2 should return the MPPE keys when used outside
+    of a TLS tunnel.  This is needed for IKE.
+  * Added SSL "no ticket" option to prevent SSL from creating sessions
+    without IDs.  We need the IDs, so this option should be set.
+  * Fix proxying of packets from inside a TTLS/PEAP tunnel.
+    Closes bug #25.
+  * Allow IPv6 address attributes to be created from domain names
+    Closes bug #82.
+  * Set the string length to the correct value when parsing double
+    quotes.  Closes bug #88.
+  * No longer look users up in /etc/passwd in the default configuration.
+    This can be reverted by enabling "unix" in the "authorize" section.
+  * More #ifdef's to enable building on systems without certain
+    features.
+  * Fixed SQL-Group comparison to register only if the group
+    query is defined.
+  * Fixed SQL-Group comparison to register <instance>-SQL-Group,
+    just like rlm_ldap.  This lets you have multiple SQL group checks.
+  * Fix scanning of octal numbers in "unlang".  Closes bug #89.
+  * Be less aggressive about freeing "stuck" requests.  Closes bug #35.
+  * Fix example in "originate-coa" to refer to the correct packet.
+  * Change default timeout for dynamic clients to 1 hour, not 1 day.
+  * Allow passwd module to map IP addresses, too.
+  * Allow passwd module to be used for CoA packets
+  * Put boot filename into DHCP header when DHCP-Boot-Filename
+    is specified.
+  * raddb/certs/Makefile no longer has certs depend on index.txt and
+     serial.  Closes bug #64.
+  * Ignore NULL errorcode in PostgreSQL client.  Closes bug #39
+  * Made Exec-Program and Exec-Program-Wait work in accounting
+    section again.  See sites-available/default.
+  * Fix long-standing memory leak in esoteric conditions.  Found
+    by Jerry Nichols.
+  * Added "Password-With-Header == userPassword" to raddb/ldap.attrmap
+    This will automatically convert more passwords.
+  * Updated rlm_pap to decode Password-With-Header, if it was base64
+    encoded, and to treat the contents as potentially binary data.
+  * Fix Novell eDir code to use the right function parameters.
+    Closes bug #86.
+  * Allow spaces to be escaped when executing external programs.
+    Closes bug #93.
+  * Be less restrictive about checking permissions on control socket.
+    If we're root, allow connecting to a non-root socket.
+  * Remove control socket on normal server exit.  If the server isn't
+    running, the control socket should not exist.
+  * Use MS-CHAP-User-Name as Name field from EAP-MSCHAPv2 for MS-CHAP
+    calculations.  It *MAY* be different (upper / lower case) from
+    the User-Name attribute.  Closes bug #17.
+  * If the EAP-TLS methods have problems, more SSL errors are now
+    available in the Module-Failure-Message attribute.
+  * Update Oracle configure scripts.  Closes bug #57.
+  * Added text to DESC fields of doc/examples/openldap.schema
+  * Updated more documentation to use "Restructured Text" format.
+    Thanks to James Lockie.
+  * Fixed typos in raddb/sql/mssql/dialup.conf.  Closes bug #11.
+  * Return error for potential proxy loops when using "-XC"
+  * Produce better error messages when slow databases block
+    the server.
+  * Added notes on DHCP broadcast packets for FreeBSD.
+  * Fixed crash when parsing some date strings.  Closes bug #98
+  * Improperly formatted Attributes are now printed as "Attr-##".
+    If they are not correct, they should not use the dictionary name.
+  * Fix rlm_digest to be check the format of the Digest attributes,
+    and return "noop" rather than "fail" if they're not right.
+  * Enable "digest" in raddb/sites-available/default.  This change
+    enables digest authentication to work "out of the box".
+  * Be less aggressive about marking home servers as zombie.
+    If they are responding to some packets, they are still alive.
+  * Added Packet-Transmit-Counter, to track detail file retransmits.
+    Closes bug #13.
+  * Added configure check for lt_dladvise_init().  If it exists, then
+    using it solves some issues related to libraries loading libraries.
+  * Added indexes to the MySQL IP Pool schema.
+  * Print WARNING message if too many attributes are put into a packet.
+  * Include dhcp test client (not built by default)
+  * Added checks for LDAP constraint violation.  Closes bug #18.
+  * Change default raddebug timeout to 60 seconds.
+  * Made error / warning messages more consistent.
+  * Correct back-slash handling in variable expansion.  Closes bug #46.
+    You SHOULD check your configuration for backslash expansion!
+  * Fix typo in "configure" script (--enable-libltdl-install)
+  * Use local libltdl in more situations.  This helps to avoid
+    compile issues complaining about lt__PROGRAM__LTX_preloaded_symbols.
+  * Fix hang on startup when multiple home servers were defined
+    with "src_ipaddr" field.
+  * Fix 32/64 bit issue in rlm_ldap.  Closes bug #105.
+  * If the first "listen" section uses 127.0.0.1, don't use that
+    as the source IP for proxying.  It won't work.
+  * When Proxy-To-Realm is set to a non-existent realm, the EAP module
+    should handle the request, rather than expecting it to be proxied.
+  * Fix IPv4 issues with udpfromto.  Closes bug #110.
+  * Clean up child processes of raddebug.  Closes bugs #108 and #109
+  * retry OTP if the OTP daemon fails.  Closes bug #58.
+  * Multiple calls to ber_printf seem to work better.  Closes #106.
+  * Fix "unlang" so that "attribute not found" is treated as a "false"
+    comparison, rather than a syntax error in the configuration.
+
+
+* Sat Jul 31 2010 Orcan Ogetbil <oget[dot]fedora[at]gmail[dot]com> - 2.1.9-3
+- Rebuilt for https://fedoraproject.org/wiki/Features/Python_2.7/MassRebuild
+
+* Tue Jun 01 2010 Marcela Maslanova <mmaslano@redhat.com> - 2.1.9-2
+- Mass rebuild with perl-5.12.0
+
+* Mon May 24 2010 John Dennis <jdennis@redhat.com> - 2.1.9-1
+- update to latest upstream, mainly bug fix release
+  Feature improvements
+  * Add radmin command "stats detail <file>" to see what
+    is going on inside of a detail file reader.
+  * Added documentation for CoA.  See raddb/sites-available/coa
+  * Add sub-option support for Option 82.  See dictionary.dhcp
+  * Add "server" field to default SQL NAS table, and documented it.
+
+  Bug fixes
+  * Reset "received ping" counter for Status-Server checks.  In some
+    corner cases it was not getting reset.
+  * Handle large VMPS attributes.
+  * Count accounting responses from a home server in SNMP / statistics
+    code.
+  * Set EAP-Session-Resumed = Yes, not "No" when session is resumed.
+  * radmin packet counter statistics are now unsigned, for numbers
+    2^31..2^32.  After that they roll over to zero.
+  * Be more careful about expanding data in PAP and MS-CHAP modules.
+    This prevents login failures when passwords contain '{'.
+  * Clean up zombie children if there were many "exec" modules being
+    run for one packet, all with "wait = no".
+  * re-open log file after HUP.  Closes bug #63.
+  * Fix "no response to proxied packet" complaint for Coa / Disconnect
+    packets.  It shouldn't ignore replies to packets it sent.
+  * Calculate IPv6 netmasks correctly.  Closes bug #69.
+  * Fix SQL module to re-open sockets if they unexpectedly close.
+  * Track scope for IPv6 addresses.  This lets us use link-local
+    addresses properly.  Closes bug #70.
+  * Updated Makefiles to no longer use the shell for recursing into
+    subdirs.  "make -j 2" should now work.
+  * Updated raddb/sql/mysql/ippool.conf to use "= NULL".  Closes
+    bug #75.
+  * Updated Makefiles so that "make reconfig" no longer uses the shell
+    for recursing into subdirs, and re-builds all "configure" files.
+  * Used above method to regenerate all configure scripts.
+    Closes bug #34.
+  * Updated SQL module to allow "server" field of "nas" table
+    to be blank: "".  This means the same as it being NULL.
+  * Fixed regex realm example.  Create Realm attribute with value
+    of realm from User-Name, not from regex.  Closes bug #40.
+  * If processing a DHCP Discover returns "fail / reject", ignore
+    the packet rather than sending a NAK.
+  * Allow '%' to be escaped in sqlcounter module.
+  * Fix typo internal hash table.
+  * For PEAP and TTLS, the tunneled reply is added to the reply,
+    rather than integrated via the operators.  This allows multiple
+    VSAs to be added, where they would previously be discarded.
+  * Make request number unsigned.  This changes nothing other than
+    the debug output when the server receives more than 2^31 packets.
+  * Don't block when reading child output in 'exec wait'.  This means
+    that blocked children get killed, instead of blocking the server.
+  * Enabled building without any proxy functionality
+  * radclient now prefers IPv4, to match the default server config.
+  * Print useful error when a realm regex is invalid
+  * relaxed rules for preprocess module "with_cisco_vsa_hack".  The
+    attributes can now be integer, ipaddr, etc.  (i.e. non-string)
+  * Allow rlm_ldap to build if ldap_set_rebind_proc() has only
+    2 arguments.
+  * Update configure script for rlm_python to avoid dynamic linking
+    problems on some platforms.
+  * Work-around for bug #35
+  * Do suid to "user" when running in debug mode as root
+  * Make "allow_core_dumps" work in more situations.
+  * In detail file reader, treat bad records as EOF.
+    This allows it to continue working when the disk is full.
+  * Fix Oracle default accounting queries to work when there are no
+    gigawords attributes.  Other databases already had the fix.
+  * Fix rlm_sql to show when it opens and closes sockets.  It already
+    says when it cannot connect, so it should say when it can connect.
+  * "chmod -x" for a few C source files.
+  * Pull update spec files, etc. from RedHat into the redhat/ directory.
+  * Allow spaces when parsing integer values.  This helps people who
+    put "too much" into an SQL value field.
+
 * Thu Jan  7 2010 John Dennis <jdennis@redhat.com> - 2.1.8-2
 - resolves: bug #526559 initial install should run bootstrap to create certificates
   running radiusd in debug mode to generate inital temporary certificates
