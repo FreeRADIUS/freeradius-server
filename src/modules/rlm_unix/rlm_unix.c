@@ -71,7 +71,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	The Group = handler.
  */
-static int groupcmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
+static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
 		    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 		    VALUE_PAIR **reply_pairs)
 {
@@ -89,23 +89,18 @@ static int groupcmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 	/*
 	 *	No user name, doesn't compare.
 	 */
-	vp = pairfind(request, PW_STRIPPED_USER_NAME);
-	if (!vp) {
-		vp = pairfind(request, PW_USER_NAME);
-		if (!vp) {
-			return -1;
-		}
+	if (!req->username) {
+		return -1;
 	}
-	username = (char *)vp->vp_strvalue;
 
-	pwd = getpwnam(username);
+	pwd = getpwnam(req->username->vp_strvalue);
 	if (pwd == NULL)
 		return -1;
 
-	grp = getgrnam((char *)check->vp_strvalue);
+	grp = getgrnam(check->vp_strvalue);
 	if (grp == NULL)
 		return -1;
-
+	
 	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
 	if (retval < 0) {
 		for (member = grp->gr_mem; *member && retval; member++) {
