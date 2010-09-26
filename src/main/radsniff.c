@@ -306,15 +306,18 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "options:\n");
 	fprintf(output, "\t-c count\tNumber of packets to capture.\n");
 	fprintf(output, "\t-d directory\tDirectory where the dictionaries are found\n");
+	fprintf(output, "\t-F\t\tFilter PCAP file from stdin to stdout.\n");
+	fprintf(output, "\t\t\tOutput file will contain RADIUS packets.\n");
 	fprintf(output, "\t-f filter\tPCAP filter. (default is udp port 1812 or 1813)\n");
 	fprintf(output, "\t-h\t\tPrint this help message.\n");
 	fprintf(output, "\t-i interface\tInterface to capture.\n");
 	fprintf(output, "\t-I filename\tRead packets from filename.\n");
 	fprintf(output, "\t-m\t\tPrint packet headers only, not contents.\n");
-	fprintf(output, "\t-p port\tList for packets on port.\n");
+	fprintf(output, "\t-p port\t\tListen for packets on port.\n");
 	fprintf(output, "\t-r filter\tRADIUS attribute filter.\n");
 	fprintf(output, "\t-s secret\tRADIUS secret.\n");
-	fprintf(output, "\t-S\t\tSort attributes in the packet.  Used to compare server results.\n");
+	fprintf(output, "\t-S\t\tSort attributes in the packet.\n");
+	fprintf(output, "\t\t\tUsed to compare server results.\n");
 	fprintf(output, "\t-x\t\tPrint out debugging information.\n");
 	exit(status);
 }
@@ -337,12 +340,13 @@ int main(int argc, char *argv[])
 	FR_TOKEN parsecode;
 	const char *radius_dir = RADIUS_DIR;
 	int port = 1812;
+	int filter_stdin = 0;
 
 	/* Default device */
 	dev = pcap_lookupdev(errbuf);
 
 	/* Get options */
-	while ((opt = getopt(argc, argv, "c:d:f:hi:I:mp:r:s:Sw:xX")) != EOF) {
+	while ((opt = getopt(argc, argv, "c:d:Ff:hi:I:mp:r:s:Sw:xX")) != EOF) {
 		switch (opt)
 		{
 		case 'c':
@@ -354,6 +358,9 @@ int main(int argc, char *argv[])
 			break;
 		case 'd':
 			radius_dir = optarg;
+			break;
+		case 'F':
+			filter_stdin = 1;
 			break;
 		case 'f':
 			pcap_filter = optarg;
@@ -394,15 +401,25 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*
+	 *	Cross-check command-line arguments.
+	 */
+	if (filter_stdin && (filename || dump_file)) usage(1);
+
 	if (!pcap_filter) {
 		pcap_filter = buffer;
 		snprintf(buffer, sizeof(buffer), "udp port %d or %d",
 			 port, port + 1);
 	}
 	
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		fr_perror("radsniff");
-		return 1;
+	/*
+	 *	There are many times where we don't need the dictionaries.
+	 */
+	if (fr_debug_flag || radius_filter) {
+		if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+			fr_perror("radsniff");
+			return 1;
+		}
 	}
 
 	if (radius_filter) {
@@ -446,6 +463,9 @@ int main(int argc, char *argv[])
 	if (filename) {
 		descr = pcap_open_offline(filename, errbuf);
 
+	} else if (filter_stdin) {
+		descr = pcap_fopen_offline(stdin, errbuf);
+
 	} else if (!dev) {
 		fprintf(stderr, "radsniff: No filename or device was specified.\n");
 		exit(1);
@@ -465,6 +485,13 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "radsniff: Failed opening output file (%s)\n", pcap_geterr(descr));
 			exit(1);
 		}
+	} else if (filter_stdin) {
+		pcap_dumper = pcap_dump_fopen(descr, stdout);
+		if (!pcap_dumper) {
+			fprintf(stderr, "radsniff: Failed opening stdout: %s\n", pcap_geterr(descr));
+			exit(1);
+		}
+
 	}
 
 	/* Apply the rules */
