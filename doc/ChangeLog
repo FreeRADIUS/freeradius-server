@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
+FreeRADIUS 2.1.10 Tue 28 Sep 12:00:00 CEST 2010, urgency=medium
 	Feature improvements
 	* Install the "radcrypt" program.
 	* Enable radclient to send requests containing MS-CHAPv1
@@ -32,7 +32,7 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* made rlm_sql_sqlite database configurable.  Use "filename"
 	  in sql{} section.
 	* Added %{tolower: ...string ... }, which returns the lowercase
-	  version of the string.
+	  version of the string.  Also added %{toupper: ... } for uppercase.
 
 	Bug fixes
 	* Fix endless loop when there are multiple sub-options for
@@ -124,8 +124,8 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Fix hang on startup when multiple home servers were defined
 	  with "src_ipaddr" field.
 	* Fix 32/64 bit issue in rlm_ldap.  Closes bug #105.
-	* If the first "listen" section uses 127.0.0.1, don't use that
-	  as the source IP for proxying.  It won't work.
+	* If the first "listen" section defines 127.0.0.1, don't use that
+	  as a source IP for proxying.  It won't work.
 	* When Proxy-To-Realm is set to a non-existent realm, the EAP module
 	  should handle the request, rather than expecting it to be proxied.
 	* Fix IPv4 issues with udpfromto.  Closes bug #110.
@@ -134,6 +134,7 @@ FreeRADIUS 2.1.10 Mon 01 Sep 8:00:00 CEST 2010, urgency=medium
 	* Multiple calls to ber_printf seem to work better.  Closes #106.
 	* Fix "unlang" so that "attribute not found" is treated as a "false"
 	  comparison, rather than a syntax error in the configuration.
+	* Fix issue with "Group" attribute.
 
 FreeRADIUS 2.1.9 Mon 24 May 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
