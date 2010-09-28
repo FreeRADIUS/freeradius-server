@@ -387,6 +387,10 @@ static CONF_PARSER home_server_config[] = {
 };
 
 
+static void null_free(UNUSED void *data)
+{
+}
+
 static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 {
 	const char *name2;
@@ -786,7 +790,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	/*
 	 *	Mark it as already processed
 	 */
-	cf_data_add(cs, "home_server", "added", NULL);
+	cf_data_add(cs, "home_server", null_free, null_free);
 
 	return 1;
 }
