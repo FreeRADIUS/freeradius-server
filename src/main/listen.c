@@ -2844,8 +2844,11 @@ RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 	for (this = mainconfig.listen; this != NULL; this = this->next) {
 		listen_socket_t *sock;
 
-		if ((this->type != RAD_LISTEN_AUTH) &&
-		    (this->type != RAD_LISTEN_ACCT)) continue;
+		if ((this->type != RAD_LISTEN_AUTH)
+#ifdef WITH_ACCOUNTING
+		    && (this->type != RAD_LISTEN_ACCT)
+#endif
+		    ) continue;
 		
 		sock = this->data;
 
@@ -2870,8 +2873,11 @@ rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
 		 *	FIXME: For TCP, ignore the *secondary*
 		 *	listeners associated with the main socket.
 		 */
-		if ((this->type != RAD_LISTEN_AUTH) &&
-		    (this->type != RAD_LISTEN_ACCT)) continue;
+		if ((this->type != RAD_LISTEN_AUTH)
+#ifdef WITH_ACCOUNTING
+		    && (this->type != RAD_LISTEN_ACCT)
+#endif
+		    ) continue;
 		
 		sock = this->data;
 

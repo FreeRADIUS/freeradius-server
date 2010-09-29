@@ -402,7 +402,9 @@ typedef struct main_config_t {
 	int		log_auth_goodpass;
 	int		allow_core_dumps;
 	int		debug_level;
+#ifdef WITH_PROXY
 	int		proxy_requests;
+#endif
 	int		reject_delay;
 	int		status_server;
 	int		max_request_time;

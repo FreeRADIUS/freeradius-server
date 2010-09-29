@@ -55,15 +55,21 @@ void request_stats_final(REQUEST *request)
 	if (request->master_state == REQUEST_COUNTED) return;
 
 	if ((request->listener->type != RAD_LISTEN_NONE) &&
-	    (request->listener->type != RAD_LISTEN_AUTH) &&
-	    (request->listener->type != RAD_LISTEN_ACCT)) return;
+#ifdef WITH_ACCOUNTING
+	    (request->listener->type != RAD_LISTEN_ACCT) &&
+#endif
+	    (request->listener->type != RAD_LISTEN_AUTH)) return;
 
 #undef INC_AUTH
 #define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;if (request->client && request->client->auth) request->client->auth->_x++;
 
 
 #undef INC_ACCT
+#ifdef WITH_ACCOUNTING
 #define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;if (request->client && request->client->acct) request->client->acct->_x++
+#else
+#define INC_ACCT(_x)
+#endif
 
 	/*
 	 *	Update the statistics.
@@ -366,6 +372,7 @@ void request_stats_reply(REQUEST *request)
 
 		thread_pool_queue_stats(array);
 
+#ifdef WITH_DETAIL
 		for (i = 0; i <= RAD_LISTEN_DETAIL; i++) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       162 + i, VENDORPEC_FREERADIUS,
@@ -374,6 +381,7 @@ void request_stats_reply(REQUEST *request)
 			if (!vp) continue;
 			vp->vp_integer = array[i];
 		}
+#endif
 #endif
 	}
 

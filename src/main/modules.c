@@ -1106,6 +1106,14 @@ static int load_byserver(CONF_SECTION *cs)
 			continue;
 		}
 
+#ifdef WITHOUT_ACCOUNTING
+		if (comp == RLM_COMPONENT_ACCT) continue;
+#endif
+
+#ifdef WITHOUT_SESSION_MGMT
+		if (comp == RLM_COMPONENT_SESS) continue;
+#endif
+
 		if (load_component_section(subcs, components, comp) < 0) {
 			goto error;
 		}

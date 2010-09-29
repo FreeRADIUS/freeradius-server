@@ -2572,8 +2572,11 @@ static void request_post_handler(REQUEST *request)
 	 *      and it should re-send it.
 	 *	If configured, encode, sign, and send.
 	 */
-	if ((request->reply->code != 0) ||
-	    (request->listener->type == RAD_LISTEN_DETAIL)) {
+	if ((request->reply->code != 0)
+#ifdef WITH_DETAIL
+	    || (request->listener->type == RAD_LISTEN_DETAIL)
+#endif
+	    ) {
 		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener, request);
 	}
@@ -3015,7 +3018,10 @@ int received_request(rad_listen_t *listener,
 	/*
 	 *	We may want to quench the new request.
 	 */
-	if ((listener->type != RAD_LISTEN_DETAIL) &&
+	if (
+#ifdef WITH_DETAIL
+	    (listener->type != RAD_LISTEN_DETAIL) &&
+#endif
 	    !can_handle_new_request(packet, client, root)) {
 		return 0;
 	}
@@ -3644,7 +3650,10 @@ int event_new_fd(rad_listen_t *this)
 	 */
 	if (this->status == RAD_LISTEN_STATUS_CLOSED) {
 		int count = this->count;
+
+#ifdef WITH_DETAIL
 		rad_assert(this->type != RAD_LISTEN_DETAIL);
+#endif
 
 #ifdef WITH_PROXY
 		/*
@@ -3920,7 +3929,10 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 
 	xel = xel;
 
-	if ((listener->type != RAD_LISTEN_DETAIL) &&
+	if (
+#ifdef WITH_DETAIL
+	    (listener->type != RAD_LISTEN_DETAIL) &&
+#endif
 	    (listener->fd < 0)) {
 		char buffer[256];
 
@@ -3940,7 +3952,7 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
 	thread_pool_addrequest(request, fun);
 }
 
-
+#ifdef WITH_DETAIL
 /*
  *	This function is called periodically to see if this detail
  *	file is available for reading.
@@ -3972,7 +3984,7 @@ static void event_poll_detail(void *ctx)
 		exit(1);
 	}
 }
-
+#endif
 
 static void event_status(struct timeval *wake)
 {

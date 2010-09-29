@@ -175,6 +175,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsign
 }
 
 
+#ifdef WITH_ACCOUNTING
 /*
  *	Store logins in the RADIUS utmp file.
  */
@@ -545,7 +546,9 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 
 	return RLM_MODULE_OK;
 }
+#endif
 
+#ifdef WITH_SESSION_MGMT
 /*
  *	See if a user is already logged in. Sets request->simul_count to the
  *	current session count for this user and sets request->simul_mpp to 2
@@ -725,6 +728,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 
 	return RLM_MODULE_OK;
 }
+#endif
 
 /* globally exported name */
 module_t rlm_radutmp = {
@@ -737,8 +741,16 @@ module_t rlm_radutmp = {
 		NULL,                 /* authentication */
 		NULL,                 /* authorization */
 		NULL,                 /* preaccounting */
+#ifdef WITH_ACCOUNTING
 		radutmp_accounting,   /* accounting */
+#else
+		NULL,
+#endif
+#ifdef WITH_SESSION_MGMT
 		radutmp_checksimul,	/* checksimul */
+#else
+		NULL,
+#endif
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */

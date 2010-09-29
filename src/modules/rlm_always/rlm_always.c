@@ -130,6 +130,7 @@ static int always_return(void *instance, REQUEST *request)
 	return ((struct rlm_always_t *)instance)->rcode;
 }
 
+#ifdef WITH_SESSION_MGMT
 /*
  *	checksimul fakes some other variables besides the rcode...
  */
@@ -144,6 +145,7 @@ static int always_checksimul(void *instance, REQUEST *request)
 
 	return inst->rcode;
 }
+#endif
 
 static int always_detach(void *instance)
 {
@@ -162,7 +164,11 @@ module_t rlm_always = {
 		always_return,		/* authorization */
 		always_return,		/* preaccounting */
 		always_return,		/* accounting */
+#ifdef WITH_SESSION_MGMT
 		always_checksimul,	/* checksimul */
+#else
+		NULL,
+#endif
 		always_return,	       	/* pre-proxy */
 		always_return,		/* post-proxy */
 		always_return		/* post-auth */

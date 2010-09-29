@@ -81,6 +81,7 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
 	{"authorize_group_reply_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,authorize_group_reply_query), NULL, ""},
+#ifdef WITH_ACCOUNTING
 	{"accounting_onoff_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,accounting_onoff_query), NULL, ""},
 	{"accounting_update_query", PW_TYPE_STRING_PTR,
@@ -95,14 +96,17 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,accounting_stop_query), NULL, ""},
 	{"accounting_stop_query_alt", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,accounting_stop_query_alt), NULL, ""},
+#endif
 	{"group_membership_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,groupmemb_query), NULL, NULL},
 	{"connect_failure_retry_delay", PW_TYPE_INTEGER,
 	 offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
+#ifdef WITH_SESSION_MGMT
 	{"simul_count_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
 	{"simul_verify_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
+#endif
 	{"postauth_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,postauth_query), NULL, ""},
 	{"safe-characters", PW_TYPE_STRING_PTR,
@@ -1167,6 +1171,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	}
 }
 
+#ifdef WITH_ACCOUNTING
 /*
  *	Accounting: save the account data to our sql table
  */
@@ -1396,8 +1401,10 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 	return ret;
 }
+#endif
 
 
+#ifdef WITH_SESSION_MGMT
 /*
  *        See if a user is already logged in. Sets request->simul_count to the
  *        current session count for this user.
@@ -1584,6 +1591,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	 */
 	return RLM_MODULE_OK;
 }
+#endif
 
 /*
  *	Execute postauth_query after authentication
@@ -1640,8 +1648,16 @@ module_t rlm_sql = {
 		NULL,			/* authentication */
 		rlm_sql_authorize,	/* authorization */
 		NULL,			/* preaccounting */
+#ifdef WITH_ACCOUNTING
 		rlm_sql_accounting,	/* accounting */
+#else
+		NULL,
+#endif
+#ifdef WITH_SESSION_MGMT
 		rlm_sql_checksimul,	/* checksimul */
+#else
+		NULL,
+#endif
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		rlm_sql_postauth	/* post-auth */
