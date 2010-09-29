@@ -1099,8 +1099,8 @@ static int load_byserver(CONF_SECTION *cs)
 		 *	proxying.
 		 */
 		if (!mainconfig.proxy_requests &&
-		    ((comp == PW_PRE_PROXY_TYPE) ||
-		     (comp == PW_PRE_PROXY_TYPE))) {
+		    ((comp == RLM_COMPONENT_PRE_PROXY) ||
+		     (comp == RLM_COMPONENT_POST_PROXY))) {
 			continue;
 		}
 #endif
