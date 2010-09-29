@@ -124,10 +124,12 @@ static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 			data->searchin = RLM_REGEX_INCONFIG;
 		else if (strcmp(data->searchin_str, "reply") == 0)
 			data->searchin = RLM_REGEX_INREPLY;
+#ifdef WITH_PROXY
 		else if (strcmp(data->searchin_str, "proxy") == 0)
 			data->searchin = RLM_REGEX_INPROXY;
 		else if (strcmp(data->searchin_str, "proxy_reply") == 0)
 			data->searchin = RLM_REGEX_INPROXYREPLY;
+#endif
 		else {
 			radlog(L_ERR, "rlm_attr_rewrite: Illegal searchin directive given. Assuming packet.");
 			data->searchin = RLM_REGEX_INPACKET;
@@ -196,6 +198,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			case RLM_REGEX_INREPLY:
 				pairadd(&request->reply->vps,attr_vp);
 				break;
+#ifdef WITH_PROXY
 			case RLM_REGEX_INPROXY:
 				if (!request->proxy) {
 					pairbasicfree(attr_vp);
@@ -210,6 +213,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 				}
 				pairadd(&request->proxy_reply->vps, attr_vp);
 				break;
+#endif
 			default:
 				radlog(L_ERR, "%s: Illegal value for searchin. Changing to packet.", data->name);
 				data->searchin = RLM_REGEX_INPACKET;
@@ -237,6 +241,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			case RLM_REGEX_INREPLY:
 				tmp = request->reply->vps;
 				break;
+#ifdef WITH_PROXY
 			case RLM_REGEX_INPROXYREPLY:
 				if (!request->proxy_reply)
 					return RLM_MODULE_NOOP;
@@ -247,6 +252,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 					return RLM_MODULE_NOOP;
 				tmp = request->proxy->vps;
 				break;
+#endif
 			default:
 				radlog(L_ERR, "%s: Illegal value for searchin. Changing to packet.", data->name);
 				data->searchin = RLM_REGEX_INPACKET;
@@ -438,6 +444,7 @@ static int attr_rewrite_checksimul(void *instance, REQUEST *request)
 	return do_attr_rewrite(instance, request);
 }
 
+#ifdef WITH_PROXY
 static int attr_rewrite_preproxy(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
@@ -447,6 +454,7 @@ static int attr_rewrite_postproxy(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
+#endif
 
 static int attr_rewrite_postauth(void *instance, REQUEST *request)
 {
@@ -480,8 +488,12 @@ module_t rlm_attr_rewrite = {
 		attr_rewrite_preacct,		/* preaccounting */
 		attr_rewrite_accounting,	/* accounting */
 		attr_rewrite_checksimul,	/* checksimul */
+#ifdef WITH_PROXY
 		attr_rewrite_preproxy,		/* pre-proxy */
 		attr_rewrite_postproxy,		/* post-proxy */
+#else
+		NULL, NULL,
+#endif
 		attr_rewrite_postauth		/* post-auth */
 	},
 };

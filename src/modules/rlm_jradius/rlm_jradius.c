@@ -924,8 +924,8 @@ static int read_request(JRADIUS *inst, JRSOCK *jrsock, REQUEST *p)
 static int rlm_jradius_call(char func, void *instance, REQUEST *req, int isproxy)
 {
   JRADIUS        * inst    = instance;
-  RADIUS_PACKET  * request = isproxy ? req->proxy : req->packet;
-  RADIUS_PACKET  * reply   = isproxy ? req->proxy_reply : req->reply;
+  RADIUS_PACKET  * request = req->packet;
+  RADIUS_PACKET  * reply   = req->reply;
   JRSOCK         * jrsock  = 0;
   JRSOCK           sjrsock;
 
@@ -942,6 +942,13 @@ static int rlm_jradius_call(char func, void *instance, REQUEST *req, int isproxy
 
 #define W_ERR(s) { err=s; goto packerror;  }
 #define R_ERR(s) { err=s; goto parseerror; }
+
+#ifdef WITH_PROXY
+  if (isproxy) {
+	  request = req->proxy;
+	  reply   = req->proxy_reply;
+  }
+#endif
 
   if (inst->keepalive) {
     jrsock = get_socket(inst);

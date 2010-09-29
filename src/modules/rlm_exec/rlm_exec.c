@@ -88,6 +88,7 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
 		return &request->reply->vps;
 	}
 
+#ifdef WITH_PROXY
 	if (strcmp(string, "proxy-request") == 0) {
 		if (!request->proxy) return NULL;
 
@@ -99,6 +100,7 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
 
 		return &request->proxy_reply->vps;
 	}
+#endif
 
 	if (strcmp(string, "config") == 0) {
 		return &request->config_items;
@@ -280,11 +282,14 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 */
 	if (!((inst->packet_code == 0) ||
 	      (request->packet->code == inst->packet_code) ||
-	      (request->reply->code == inst->packet_code) ||
-	      (request->proxy &&
+	      (request->reply->code == inst->packet_code)
+#ifdef WITH_PROXY
+	      || (request->proxy &&
 	       (request->proxy->code == inst->packet_code)) ||
 	      (request->proxy_reply &&
-	       (request->proxy_reply->code == inst->packet_code)))) {
+	       (request->proxy_reply->code == inst->packet_code))
+#endif
+		    )) {
 		RDEBUG2("Packet type is not %s.  Not executing.",
 		       inst->packet_type);
 		return RLM_MODULE_NOOP;

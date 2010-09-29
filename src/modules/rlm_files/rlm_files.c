@@ -40,21 +40,24 @@ struct file_instance {
 	char *usersfile;
 	fr_hash_table_t *users;
 
-	/* preacct */
-	char *acctusersfile;
-	fr_hash_table_t *acctusers;
-
-	/* pre-proxy */
-	char *preproxy_usersfile;
-	fr_hash_table_t *preproxy_users;
 
 	/* authenticate */
 	char *auth_usersfile;
 	fr_hash_table_t *auth_users;
 
+	/* preacct */
+	char *acctusersfile;
+	fr_hash_table_t *acctusers;
+
+#ifdef WITH_PROXY
+	/* pre-proxy */
+	char *preproxy_usersfile;
+	fr_hash_table_t *preproxy_users;
+
 	/* post-proxy */
 	char *postproxy_usersfile;
 	fr_hash_table_t *postproxy_users;
+#endif
 
 	/* post-authenticate */
 	char *postauth_usersfile;
@@ -78,12 +81,14 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct file_instance,usersfile), NULL, NULL },
 	{ "acctusersfile", PW_TYPE_FILENAME,
 	  offsetof(struct file_instance,acctusersfile), NULL, NULL },
+#ifdef WITH_PROXY
 	{ "preproxy_usersfile", PW_TYPE_FILENAME,
 	  offsetof(struct file_instance,preproxy_usersfile), NULL, NULL },
-	{ "auth_usersfile", PW_TYPE_FILENAME,
-	  offsetof(struct file_instance,auth_usersfile), NULL, NULL },
 	{ "postproxy_usersfile", PW_TYPE_FILENAME,
 	  offsetof(struct file_instance,postproxy_usersfile), NULL, NULL },
+#endif
+	{ "auth_usersfile", PW_TYPE_FILENAME,
+	  offsetof(struct file_instance,auth_usersfile), NULL, NULL },
 	{ "postauth_usersfile", PW_TYPE_FILENAME,
 	  offsetof(struct file_instance,postauth_usersfile), NULL, NULL },
 	{ "compat",	   PW_TYPE_STRING_PTR,
@@ -319,9 +324,11 @@ static int file_detach(void *instance)
 	struct file_instance *inst = instance;
 	fr_hash_table_free(inst->users);
 	fr_hash_table_free(inst->acctusers);
+#ifdef WITH_PROXY
 	fr_hash_table_free(inst->preproxy_users);
-	fr_hash_table_free(inst->auth_users);
 	fr_hash_table_free(inst->postproxy_users);
+#endif
+	fr_hash_table_free(inst->auth_users);
 	fr_hash_table_free(inst->postauth_users);
 	free(inst);
 	return 0;
@@ -362,6 +369,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
+#ifdef WITH_PROXY
 	/*
 	 *  Get the pre-proxy stuff
 	 */
@@ -372,16 +380,17 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	rcode = getusersfile(inst->auth_usersfile, &inst->auth_users, inst->compat_mode);
-	if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading %s", inst->auth_usersfile);
-		file_detach(inst);
-		return -1;
-	}
-
 	rcode = getusersfile(inst->postproxy_usersfile, &inst->postproxy_users, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR|L_CONS, "Errors reading %s", inst->postproxy_usersfile);
+		file_detach(inst);
+		return -1;
+	}
+#endif
+
+	rcode = getusersfile(inst->auth_usersfile, &inst->auth_users, inst->compat_mode);
+	if (rcode != 0) {
+		radlog(L_ERR|L_CONS, "Errors reading %s", inst->auth_usersfile);
 		file_detach(inst);
 		return -1;
 	}
@@ -526,6 +535,7 @@ static int file_preacct(void *instance, REQUEST *request)
 			   request->packet->vps, &request->reply->vps);
 }
 
+#ifdef WITH_PROXY
 static int file_preproxy(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
@@ -543,6 +553,7 @@ static int file_postproxy(void *instance, REQUEST *request)
 			   inst->postproxy_users,
 			   request->proxy_reply->vps, &request->reply->vps);
 }
+#endif
 
 static int file_authenticate(void *instance, REQUEST *request)
 {
@@ -576,8 +587,12 @@ module_t rlm_files = {
 		file_preacct,		/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
+#ifdef WITH_PROXY
 		file_preproxy,		/* pre-proxy */
 		file_postproxy,		/* post-proxy */
+#else
+		NULL, NULL,
+#endif
 		file_postauth		/* post-auth */
 	},
 };

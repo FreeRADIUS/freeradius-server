@@ -438,6 +438,7 @@ static VALUE_PAIR *find_vp(REQUEST *request, const char *name)
 	} else if (strncasecmp(name, "reply:", 6) == 0) {
 		p += 6;
 		vps = request->reply->vps;
+#ifdef WITH_PROXY
 	} else if (strncasecmp(name, "proxy-request:", 14) == 0) {
 		p += 14;
 		if (request->proxy) {
@@ -448,6 +449,7 @@ static VALUE_PAIR *find_vp(REQUEST *request, const char *name)
 		if (request->proxy_reply) {
 			vps = request->proxy_reply->vps;
 		}
+#endif
 	} else if (strncasecmp(name, "control:", 8) == 0) {
 		p += 8;
 		vps = request->config_items;
@@ -885,6 +887,7 @@ static int evaluate_attr_list(policy_state_t *state, const policy_item_t *item)
 		vps = &(state->request->reply->vps);
 		break;
 
+#ifdef WITH_PROXY
 	case POLICY_RESERVED_PROXY_REQUEST:
 		if (!state->request->proxy) return 0; /* FIXME: print error */
 		vps = &(state->request->proxy->vps);
@@ -894,6 +897,7 @@ static int evaluate_attr_list(policy_state_t *state, const policy_item_t *item)
 		if (!state->request->proxy_reply) return 0; /* FIXME: print error */
 		vps = &(state->request->proxy_reply->vps);
 		break;
+#endif
 
 	default:
 		return 0;

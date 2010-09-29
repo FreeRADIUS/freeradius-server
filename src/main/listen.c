@@ -725,6 +725,7 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 		return 1;
 	}
 
+#ifdef WITH_PROXY
 	/*
 	 *	Maybe it's a socket that we opened to a home server.
 	 */
@@ -755,7 +756,8 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 
 		return 1;
 	}
-#endif
+#endif	/* WITH_PROXY */
+#endif	/* WITH_TCP */
 
 	ADDSTRING(" address ");
 	
@@ -868,13 +870,15 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	TCP requires a destination IP for sockets.
 		 *	UDP doesn't, so it's allowed.
 		 */
+#ifdef WITH_PROXY
 		if ((this->type == RAD_LISTEN_PROXY) &&
 		    (sock->proto != IPPROTO_UDP)) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Proxy listeners can only listen on proto = udp");
 			return -1;
 		}
-#endif
+#endif	/* WITH_PROXY */
+#endif	/* WITH_TCP */
 	}
 
 	sock->my_ipaddr = ipaddr;
@@ -2809,12 +2813,12 @@ void listen_free(rad_listen_t **head)
 		}
 
 #ifdef WITH_TCP
-		if ((this->type == RAD_LISTEN_AUTH) ||
+		if ((this->type == RAD_LISTEN_AUTH)
 #ifdef WITH_ACCT
-		    (this->type == RAD_LISTEN_ACCT) ||
+		    || (this->type == RAD_LISTEN_ACCT)
 #endif
 #ifdef WITH_PROXY
-		    (this->type == RAD_LISTEN_PROXY)
+		    || (this->type == RAD_LISTEN_PROXY)
 #endif
 			) {
 			listen_socket_t *sock = this->data;

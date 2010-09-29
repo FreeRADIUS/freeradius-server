@@ -66,8 +66,10 @@ typedef struct perl_inst {
 	char	*func_checksimul;
 	char	*func_detach;
 	char	*func_xlat;
+#ifdef WITH_PROXY
 	char	*func_pre_proxy;
 	char	*func_post_proxy;
+#endif
 	char	*func_post_auth;
 #ifdef WITH_COA
 	char	*func_recv_coa;
@@ -104,10 +106,12 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(PERL_INST,func_detach), NULL, "detach"},
 	{ "func_xlat", PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,func_xlat), NULL, "xlat"},
+#ifdef WITH_PROXY
 	{ "func_pre_proxy", PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,func_pre_proxy), NULL, "pre_proxy"},
 	{ "func_post_proxy", PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,func_post_proxy), NULL, "post_proxy"},
+#endif
 	{ "func_post_auth", PW_TYPE_STRING_PTR,
 	  offsetof(PERL_INST,func_post_auth), NULL, "post_auth"},
 #ifdef WITH_COA
@@ -402,8 +406,10 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	HV		*rad_check_hv;
 	HV		*rad_config_hv;
 	HV		*rad_request_hv;
+#ifdef WITH_PROXY
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
+#endif
 	AV		*end_AV;
 
 	char **embed;
@@ -497,15 +503,19 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	rad_check_hv = newHV();
 	rad_config_hv = newHV();
 	rad_request_hv = newHV();
+#ifdef WITH_PROXY
 	rad_request_proxy_hv = newHV();
 	rad_request_proxy_reply_hv = newHV();
+#endif
 
 	rad_reply_hv = get_hv("RAD_REPLY",1);
         rad_check_hv = get_hv("RAD_CHECK",1);
 	rad_config_hv = get_hv("RAD_CONFIG",1);
         rad_request_hv = get_hv("RAD_REQUEST",1);
+#ifdef WITH_PROXY
 	rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
 	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
+#endif
 
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL)
@@ -648,8 +658,10 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	HV		*rad_check_hv;
 	HV		*rad_config_hv;
 	HV		*rad_request_hv;
+#ifdef WITH_PROXY
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
+#endif
 
 #ifdef USE_ITHREADS
 	PerlInterpreter *interp;
@@ -681,15 +693,17 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	rad_check_hv = get_hv("RAD_CHECK",1);
 	rad_config_hv = get_hv("RAD_CONFIG",1);
 	rad_request_hv = get_hv("RAD_REQUEST",1);
+#ifdef WITH_PROXY
 	rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
 	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
-
+#endif
 
 	perl_store_vps(request->reply->vps, rad_reply_hv);
 	perl_store_vps(request->config_items, rad_check_hv);
 	perl_store_vps(request->packet->vps, rad_request_hv);
 	perl_store_vps(request->config_items, rad_config_hv);
 
+#ifdef WITH_PROXY
 	if (request->proxy != NULL) {
 		perl_store_vps(request->proxy->vps, rad_request_proxy_hv);
 	} else {
@@ -701,6 +715,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	} else {
 		hv_undef(rad_request_proxy_reply_hv);
 	}
+#endif
 
 	PUSHMARK(SP);
 	/*
@@ -764,6 +779,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		vp = NULL;
 	}
 
+#ifdef WITH_PROXY
 	if (request->proxy &&
 	    (get_hv_content(rad_request_proxy_hv, &vp) > 0)) {
 		pairfree(&request->proxy->vps);
@@ -777,6 +793,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		request->proxy_reply->vps = vp;
 		vp = NULL;
 	}
+#endif
 
 	}
 	return exitstatus;
@@ -862,6 +879,8 @@ static int perl_checksimul(void *instance, REQUEST *request)
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_checksimul);
 }
+
+#ifdef WITH_PROXY
 /*
  *	Pre-Proxy request
  */
@@ -878,6 +897,8 @@ static int perl_post_proxy(void *instance, REQUEST *request)
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_post_proxy);
 }
+#endif
+
 /*
  *	Pre-Auth request
  */
@@ -1004,8 +1025,12 @@ module_t rlm_perl = {
 		perl_preacct,		/* preacct */
 		perl_accounting,	/* accounting */
 		perl_checksimul,      	/* check simul */
+#ifdef WITH_PROXY
 		perl_pre_proxy,		/* pre-proxy */
 		perl_post_proxy,	/* post-proxy */
+#else
+		NULL, NULL,
+#endif
 		perl_post_auth		/* post-auth */
 #ifdef WITH_COA
 		, perl_recv_coa,

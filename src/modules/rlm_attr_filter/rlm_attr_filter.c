@@ -337,6 +337,7 @@ static int attr_filter_accounting(void *instance, REQUEST *request)
 	return attr_filter_common(instance, request, request->reply);
 }
 
+#ifdef WITH_PROXY
 static int attr_filter_preproxy(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->proxy);
@@ -346,6 +347,7 @@ static int attr_filter_postproxy(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->proxy_reply);
 }
+#endif
 
 static int attr_filter_postauth(void *instance, REQUEST *request)
 {
@@ -371,8 +373,12 @@ module_t rlm_attr_filter = {
 		attr_filter_preacct,	/* pre-acct */
 		attr_filter_accounting,	/* accounting */
 		NULL,			/* checksimul */
+#ifdef WITH_PROXY
 		attr_filter_preproxy,	/* pre-proxy */
 		attr_filter_postproxy,	/* post-proxy */
+#else
+		NULL, NULL,
+#endif
 		attr_filter_postauth	/* post-auth */
 	},
 };

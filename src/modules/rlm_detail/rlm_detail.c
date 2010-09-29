@@ -432,6 +432,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	Add non-protocol attibutes.
 	 */
 	if (compat) {
+#ifdef WITH_PROXY
 		if (request->proxy) {
 			char proxy_buffer[128];
 
@@ -443,6 +444,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 				RDEBUG("Freeradius-Proxied-To = %s",
 				      proxy_buffer);
 		}
+#endif
 
 		fprintf(outfp, "\tTimestamp = %ld\n",
 			(unsigned long) request->timestamp);
@@ -523,6 +525,7 @@ static int detail_send_coa(void *instance, REQUEST *request)
 /*
  *	Outgoing Access-Request to home server - write the detail files.
  */
+#ifdef WITH_PROXY
 static int detail_pre_proxy(void *instance, REQUEST *request)
 {
 	if (request->proxy &&
@@ -563,6 +566,7 @@ static int detail_post_proxy(void *instance, REQUEST *request)
 
 	return RLM_MODULE_NOOP;
 }
+#endif
 
 
 /* globally exported name */
@@ -578,8 +582,12 @@ module_t rlm_detail = {
 		NULL,			/* preaccounting */
 		detail_accounting,	/* accounting */
 		NULL,			/* checksimul */
+#ifdef WITH_PROXY
 		detail_pre_proxy,      	/* pre-proxy */
 		detail_post_proxy,	/* post-proxy */
+#else
+		NULL, NULL,
+#endif
 		detail_postauth		/* post-auth */
 #ifdef WITH_COA
 		, detail_recv_coa,

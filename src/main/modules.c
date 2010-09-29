@@ -1093,17 +1093,18 @@ static int load_byserver(CONF_SECTION *cs)
 		cf_log_module(cs, "Checking %s {...} for more modules to load",
 		       section_type_value[comp].section);
 
-#ifdef WITH_PROXY
 		/*
 		 *	Skip pre/post-proxy sections if we're not
 		 *	proxying.
 		 */
-		if (!mainconfig.proxy_requests &&
+		if (
+#ifdef WITH_PROXY
+		    !mainconfig.proxy_requests &&
+#endif
 		    ((comp == RLM_COMPONENT_PRE_PROXY) ||
 		     (comp == RLM_COMPONENT_POST_PROXY))) {
 			continue;
 		}
-#endif
 
 		if (load_component_section(subcs, components, comp) < 0) {
 			goto error;

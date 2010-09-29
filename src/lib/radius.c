@@ -2881,8 +2881,11 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet,
 		DICT_ATTR *da;
 
 		da = dict_attrbyvalue(attribute, VENDORPEC_EXTENDED);
-		if (da && (da->flags.extended || da->flags.extended_flags)) {
+		if (da) {	/* flags.extended MUST be set */
 
+			/*
+			 *	MUST have at least an "extended type" octet.
+			 */
 			if (length == 0) return NULL;
 
 			attribute |= (data[0] << fr_wimax_shift[1]);
@@ -2917,6 +2920,11 @@ VALUE_PAIR *rad_attr2vp(const RADIUS_PACKET *packet,
 					      attribute, length, data);
 			}
 		}
+
+		/*
+		 *	We could avoid another dictionary lookup here
+		 *	by using pairalloc(da), but it's not serious...
+		 */
 	}
 	vp = paircreate(attribute, vendor, PW_TYPE_OCTETS);
 	if (!vp) return NULL;

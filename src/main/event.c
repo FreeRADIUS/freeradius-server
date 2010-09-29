@@ -1945,8 +1945,8 @@ static int request_pre_handler(REQUEST *request)
 #ifdef WITH_PROXY
 	if (request->proxy) {
 		return process_proxy_reply(request);
-#endif
 	}
+#endif
 
 	return 1;
 }
@@ -2642,6 +2642,7 @@ static void request_post_handler(REQUEST *request)
 }
 
 
+#ifdef WITH_PROXY
 static void rad_retransmit_packet(REQUEST *request)
 {
 	char buffer[256];
@@ -2731,7 +2732,7 @@ static int rad_retransmit(REQUEST *request)
 
 	return 1;
 }
-
+#endif
 
 static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 {
