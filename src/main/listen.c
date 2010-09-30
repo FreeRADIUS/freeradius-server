@@ -884,6 +884,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
 
+#ifdef WITH_PROXY
 	if (check_config) {
 		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
@@ -896,6 +897,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		return 0;	/* don't do anything */
 	}
+#endif
 
 	/*
 	 *	If we can bind to interfaces, do so,

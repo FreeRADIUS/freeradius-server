@@ -406,7 +406,9 @@ int main(int argc, char *argv[])
 	 *	Process requests until HUP or exit.
 	 */
 	while ((rcode = radius_event_process()) == 0x80) {
+#ifdef WITH_STATS
 		radius_stats_init(1);
+#endif
 		hup_mainconfig();
 	}
 	
