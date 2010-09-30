@@ -428,7 +428,9 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 
 	client->dynamic = 2;	/* signal to client_free */
 
+#ifdef WITH_STATS
 	rbtree_deletebydata(tree_num, client);
+#endif
 	rbtree_deletebydata(clients->trees[client->prefix], client);
 }
 #endif

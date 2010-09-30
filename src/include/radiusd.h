@@ -683,8 +683,8 @@ RADCLIENT *client_listener_find(const rad_listen_t *listener,
 #ifdef WITH_STATS
 RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 					  int port);
-rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port);
 #endif
+rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port);
 
 /* event.c */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag);

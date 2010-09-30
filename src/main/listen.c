@@ -2445,6 +2445,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	return this;
 }
 
+#ifdef WITH_PROXY
 static int is_loopback(const fr_ipaddr_t *ipaddr)
 {
 	/*
@@ -2464,6 +2465,7 @@ static int is_loopback(const fr_ipaddr_t *ipaddr)
 
 	return 0;
 }
+#endif
 
 /*
  *	Generate a list of listeners.  Takes an input list of

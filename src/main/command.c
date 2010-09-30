@@ -1521,6 +1521,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 	return 1;		/* success */
 }
 
+#ifdef WITH_STATS
 static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 			       int auth)
 {
@@ -1545,7 +1546,6 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	
 	return 1;
 }
-
 
 #ifdef WITH_DETAIL
 static FR_NAME_NUMBER state_names[] = {
@@ -1700,6 +1700,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 	return command_print_stats(listener, client->auth, auth);
 }
+#endif	/* WITH_STATS */
 
 
 static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[])
@@ -1833,6 +1834,7 @@ static fr_command_table_t command_table_set[] = {
 };
 
 
+#ifdef WITH_STATS
 static fr_command_table_t command_table_stats[] = {
 	{ "client", FR_READ,
 	  "stats client [auth/acct] <ipaddr> "
@@ -1855,6 +1857,7 @@ static fr_command_table_t command_table_stats[] = {
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
+#endif
 
 static fr_command_table_t command_table[] = {
 	{ "add", FR_WRITE, NULL, NULL, command_table_add },
@@ -1876,7 +1879,9 @@ static fr_command_table_t command_table[] = {
 	  command_terminate, NULL },
 	{ "set", FR_WRITE, NULL, NULL, command_table_set },
 	{ "show",  FR_READ, NULL, NULL, command_table_show },
+#ifdef WITH_STATS
 	{ "stats",  FR_READ, NULL, NULL, command_table_stats },
+#endif
 
 	{ NULL, 0, NULL, NULL, NULL }
 };

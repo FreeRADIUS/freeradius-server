@@ -374,7 +374,9 @@ int main(int argc, char *argv[])
 		exit(0);
 	}
 
+#ifdef WITH_STATS
 	radius_stats_init(0);
+#endif
 
 	/*
 	 *  Only write the PID file if we're running as a daemon.
