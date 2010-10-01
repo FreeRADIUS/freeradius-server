@@ -715,6 +715,15 @@ else
 	[ PCAP_LIBS=
 	AC_MSG_WARN([pcap.h not found, silently disabling the RADIUS sniffer.])
 	])
+
+    AC_CHECK_LIB(pcap, pcap_fopen_offline,
+	[ AC_DEFINE(HAVE_PCAP_FOPEN_OFFLINE, 1,
+		[Define to 1 if you have the function pcap_fopen_offline.])
+	])
+    AC_CHECK_LIB(pcap, pcap_dump_fopen,
+	[ AC_DEFINE(HAVE_PCAP_DUMP_FOPEN, 1,
+		[Define to 1 if you have the function pcap_dump_fopen.])
+	])
 fi
 AC_SUBST(PCAP_LIBS)
 
