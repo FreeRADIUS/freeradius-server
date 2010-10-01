@@ -406,6 +406,13 @@ int main(int argc, char *argv[])
 	 */
 	if (filter_stdin && (filename || dump_file)) usage(1);
 
+#ifndef HAVE_PCAP_FOPEN_OFFLINE
+	if (filter_stdin) {
+		fr_perror("-F is unsupported on this platform.");
+		return 1;
+	}
+#endif
+
 	if (!pcap_filter) {
 		pcap_filter = buffer;
 		snprintf(buffer, sizeof(buffer), "udp port %d or %d",
@@ -463,8 +470,10 @@ int main(int argc, char *argv[])
 	if (filename) {
 		descr = pcap_open_offline(filename, errbuf);
 
+#ifdef HAVE_PCAP_FOPEN_OFFLINE
 	} else if (filter_stdin) {
 		descr = pcap_fopen_offline(stdin, errbuf);
+#endif
 
 	} else if (!dev) {
 		fprintf(stderr, "radsniff: No filename or device was specified.\n");
@@ -485,6 +494,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "radsniff: Failed opening output file (%s)\n", pcap_geterr(descr));
 			exit(1);
 		}
+
+#ifdef HAVE_PCAP_DUMP_FOPEN
 	} else if (filter_stdin) {
 		pcap_dumper = pcap_dump_fopen(descr, stdout);
 		if (!pcap_dumper) {
@@ -492,6 +503,7 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 
+#endif
 	}
 
 	/* Apply the rules */
