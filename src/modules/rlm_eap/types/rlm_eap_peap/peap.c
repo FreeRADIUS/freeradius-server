@@ -612,13 +612,13 @@ static const char *peap_state(peap_tunnel_t *t)
 	return "?";
 }
 
-static void print_tunneled_data(uint8_t *data, size_t data_len)
+static void print_tunneled_data(const uint8_t *data, size_t data_len)
 {
 	size_t i;
 
 	if ((debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < data_len; i++) {
-			if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data in %04x: ", i);
+		  if ((i & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data in %02x: ", (int) i);
 			
 			fprintf(fr_log_fp, "%02x ", data[i]);
 			

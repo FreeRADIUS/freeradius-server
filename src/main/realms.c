@@ -182,6 +182,36 @@ static int home_pool_name_cmp(const void *one, const void *two)
 }
 
 
+static size_t xlat_cs(CONF_SECTION *cs, char *fmt, char *out, size_t outlen)
+
+{
+	const char *value = NULL;
+
+	/*
+	 *	Instance name
+	 */
+	if (strcmp(fmt, "instance") == 0) {
+		value = cf_section_name2(cs);
+		if (!value) {
+			*out = '\0';
+			return 0;
+		}
+	} else {
+		CONF_PAIR *cp;
+
+		cp = cf_pair_find(cs, fmt);
+		if (!cp || !(value = cf_pair_value(cp))) {
+			*out = '\0';
+			return 0;
+		}
+	}
+
+	strlcpy(out, value, outlen);
+
+	return strlen(out);
+}
+
+
 /*
  *	Xlat for %{home_server:foo}
  */
@@ -189,9 +219,6 @@ static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
 			       char *fmt, char *out, size_t outlen,
 			       UNUSED RADIUS_ESCAPE_STRING func)
 {
-	const char *value = NULL;
-	CONF_PAIR *cp;
-
 	if (!fmt || !out || (outlen < 1)) return 0;
 
 	if (!request || !request->home_server) {
@@ -199,15 +226,7 @@ static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	cp = cf_pair_find(request->home_server->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		*out = '\0';
-		return 0;
-	}
-	
-	strlcpy(out, value, outlen);
-
-	return strlen(out);
+	return xlat_cs(request->home_server->cs, fmt, out, outlen);
 }
 
 
@@ -218,9 +237,6 @@ static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 			       char *fmt, char *out, size_t outlen,
 			       UNUSED RADIUS_ESCAPE_STRING func)
 {
-	const char *value = NULL;
-	CONF_PAIR *cp;
-
 	if (!fmt || !out || (outlen < 1)) return 0;
 
 	if (!request || !request->home_pool) {
@@ -228,15 +244,7 @@ static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	cp = cf_pair_find(request->home_pool->cs, fmt);
-	if (!cp || !(value = cf_pair_value(cp))) {
-		*out = '\0';
-		return 0;
-	}
-	
-	strlcpy(out, value, outlen);
-
-	return strlen(out);
+	return xlat_cs(request->home_pool->cs, fmt, out, outlen);
 }
 #endif
 

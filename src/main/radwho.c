@@ -67,7 +67,7 @@ const char *progname = "radwho";
 const char *radlog_dir = NULL;
 const char *radutmp_file = NULL;
 
-const char *radius_dir = NULL;
+char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;
 uint32_t myip = INADDR_ANY;

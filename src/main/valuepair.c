@@ -46,8 +46,8 @@ RCSID("$Id$")
 #endif
 
 struct cmp {
-	int attribute;
-	int otherattr;
+	unsigned int attribute;
+	unsigned int otherattr;
 	void *instance; /* module instance */
 	RAD_COMPARE_FUNC compare;
 	struct cmp *next;
@@ -281,7 +281,7 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 /*
  *	Find a comparison function for two attributes.
  */
-int radius_find_compare(int attribute)
+int radius_find_compare(unsigned int attribute)
 {
 	struct cmp *c;
 
@@ -298,7 +298,7 @@ int radius_find_compare(int attribute)
 /*
  *	See what attribute we want to compare with.
  */
-static int otherattr(int attr)
+static int otherattr(unsigned int attr)
 {
 	struct cmp	*c;
 
@@ -323,7 +323,7 @@ static int otherattr(int attr)
  *	For example, PW_GROUP in a check item needs to be compared
  *	with PW_USER_NAME in the incoming request.
  */
-int paircompare_register(int attr, int compare_attr, RAD_COMPARE_FUNC fun, void *instance)
+int paircompare_register(unsigned int attr, int compare_attr, RAD_COMPARE_FUNC fun, void *instance)
 {
 	struct cmp	*c;
 
@@ -344,7 +344,7 @@ int paircompare_register(int attr, int compare_attr, RAD_COMPARE_FUNC fun, void 
 /*
  *	Unregister a function.
  */
-void paircompare_unregister(int attr, RAD_COMPARE_FUNC fun)
+void paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC fun)
 {
 	struct cmp	*c, *last;
 
@@ -435,7 +435,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 	try_again:
 		if (other >= 0) {
 			for (; auth_item != NULL; auth_item = auth_item->next) {
-				if (auth_item->attribute == other || other == 0)
+			  if (auth_item->attribute == (unsigned int) other || other == 0)
 					break;
 			}
 		}
@@ -694,7 +694,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
  *	it causes the server to exit!
  */
 VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
-			      int attribute, int vendor, int type)
+			      unsigned int attribute, unsigned int vendor, int type)
 {
 	VALUE_PAIR *vp;
 

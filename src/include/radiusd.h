@@ -498,7 +498,7 @@ extern int		debug_flag;
 extern const char	*radacct_dir;
 extern const char	*radlog_dir;
 extern const char	*radlib_dir;
-extern const char	*radius_dir;
+extern char		*radius_dir;
 extern const char	*radius_libdir;
 extern uint32_t		expiration_seconds;
 extern int		log_stripped_names;
@@ -618,10 +618,10 @@ int		radius_exec_program(const char *,  REQUEST *, int,
 int		timestr_match(char *, time_t);
 
 /* valuepair.c */
-int		paircompare_register(int attr, int otherattr,
+int		paircompare_register(unsigned int attr, int otherattr,
 				     RAD_COMPARE_FUNC func,
 				     void *instance);
-void		paircompare_unregister(int attr, RAD_COMPARE_FUNC func);
+void		paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC func);
 int		paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			    VALUE_PAIR **reply);
 void		pairxlatmove(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);
@@ -629,9 +629,9 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
 int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 			    VALUE_PAIR **reply_pairs);
-int radius_find_compare(int attribute);
+int radius_find_compare(unsigned int attribute);
 VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
-				   int attribute, int vendor, int type);
+				   unsigned int attribute, unsigned int vendor, int type);
 VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    const char *attribute, const char *value,
 			    int operator);
@@ -677,7 +677,7 @@ void fr_suid_down_permanent(void);
 void listen_free(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head);
 int proxy_new_listener(home_server *home, int src_port);
-RADCLIENT *client_listener_find(const rad_listen_t *listener,
+RADCLIENT *client_listener_find(rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port);
 
 #ifdef WITH_STATS
@@ -696,6 +696,8 @@ int received_request(rad_listen_t *listener,
 		     RADCLIENT *client);
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 int event_new_fd(rad_listen_t *listener);
+void revive_home_server(void *ctx);
+void mark_home_server_dead(home_server *home, struct timeval *when);
 
 /* evaluate.c */
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
@@ -703,4 +705,5 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
+int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
 #endif /*RADIUSD_H*/

@@ -944,9 +944,6 @@ static int command_show_home_server_config(rad_listen_t *listener, int argc, cha
 	return 1;
 }
 
-extern void revive_home_server(void *ctx);
-extern void mark_home_server_dead(home_server *home, struct timeval *when);
-
 static int command_set_home_server_state(rad_listen_t *listener, int argc, char *argv[])
 {
 	int last;

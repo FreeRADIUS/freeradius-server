@@ -57,7 +57,7 @@ RCSID("$Id$")
  *  Global variables.
  */
 const char *progname = NULL;
-const char *radius_dir = NULL;
+char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlog_dir = NULL;
 const char *radlib_dir = NULL;

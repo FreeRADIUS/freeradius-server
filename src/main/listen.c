@@ -84,7 +84,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
 /*
  *	Find a per-socket client.
  */
-RADCLIENT *client_listener_find(const rad_listen_t *listener,
+RADCLIENT *client_listener_find(rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port)
 {
 #ifdef WITH_DYNAMIC_CLIENTS

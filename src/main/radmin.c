@@ -72,7 +72,7 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-const char *radius_dir = RADDBDIR;
+char *radius_dir = RADDBDIR;
 const char *progname = "radmin";
 
 /*

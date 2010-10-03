@@ -222,7 +222,7 @@ void pairfree(VALUE_PAIR **pair_ptr)
 /*
  *	Find the pair with the matching attribute
  */
-VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr, int vendor)
+VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor)
 {
 	while (first) {
 		if ((first->attribute == attr) && (first->vendor == vendor)) {
@@ -238,7 +238,7 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, int attr, int vendor)
 /*
  *	Delete the pair(s) with the matching attribute
  */
-void pairdelete(VALUE_PAIR **first, int attr, int vendor)
+void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor)
 {
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **last = first;
@@ -364,7 +364,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 /*
  *	Copy just a certain type of pairs.
  */
-VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr, int vendor)
+VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor)
 {
 	VALUE_PAIR	*first, *n, **last;
 
@@ -372,7 +372,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr, int vendor)
 	last = &first;
 
 	while (vp) {
-		if ((attr >= 0) &&
+		if ((attr > 0) &&
 		    !((vp->attribute == attr) && (vp->vendor == vendor))) {
 			vp = vp->next;
 			continue;
@@ -393,7 +393,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, int attr, int vendor)
  */
 VALUE_PAIR *paircopy(VALUE_PAIR *vp)
 {
-	return paircopy2(vp, -1, 0);
+	return paircopy2(vp, 0, 0);
 }
 
 
@@ -621,7 +621,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 /*
  *	Move one kind of attributes from one list to the other
  */
-void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr, int vendor)
+void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor)
 {
 	VALUE_PAIR *to_tail, *i, *next;
 	VALUE_PAIR *iprev = NULL;

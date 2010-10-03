@@ -137,9 +137,9 @@ typedef struct dict_value {
 
 typedef struct dict_vendor {
 	int			vendorpec;
-	int			type; /* length of type data */
-	int			length;	/* length of length data */
-	int			flags;
+	size_t			type; /* length of type data */
+	size_t			length;	/* length of length data */
+	size_t			flags;
 	char			name[1];
 } DICT_VENDOR;
 
@@ -161,7 +161,7 @@ typedef union value_pair_data {
 typedef struct value_pair {
 	const char	        *name;
 	unsigned int		attribute;
-	int			vendor;
+	unsigned int	       	vendor;
 	int			type;
 	size_t			length; /* of data */
 	FR_TOKEN		operator;
@@ -337,16 +337,16 @@ VALUE_PAIR	*paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *);
 VALUE_PAIR	*paircreate(int attr, int vendor, int type);
 void		pairfree(VALUE_PAIR **);
 void            pairbasicfree(VALUE_PAIR *pair);
-VALUE_PAIR	*pairfind(VALUE_PAIR *, int attr, int vendor);
-void		pairdelete(VALUE_PAIR **, int attr, int vendor);
+VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor);
+void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void            pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
 VALUE_PAIR	*paircopyvp(const VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
-VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, int attr, int vendor);
+VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
-void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, int attr, int vendor);
+void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);

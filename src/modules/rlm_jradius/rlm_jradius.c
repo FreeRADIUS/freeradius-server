@@ -170,7 +170,7 @@ sock_read(JRADIUS * inst, JRSOCK *jrsock, uint8_t *b, size_t blen) {
 }
 
 static int
-sock_write(JRADIUS * inst, JRSOCK *jrsock, char *b, size_t blen) {
+sock_write(JRADIUS * inst, JRSOCK *jrsock, uint8_t *b, size_t blen) {
   int fd = jrsock->con.sock;
   int timeout = inst->write_timeout;
   struct timeval tv;
@@ -636,7 +636,7 @@ static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
 
   for (vp = vps; vp != NULL; vp = vp->next) {
 
-    radlog(L_DBG, LOG_PREFIX "packing attribute %s (type: %d; len: %d)", 	   vp->name, vp->attribute, vp->length);
+    radlog(L_DBG, LOG_PREFIX "packing attribute %s (type: %d; len: %u)", 	   vp->name, vp->attribute, (unsigned int) vp->length);
 
     i = vp->attribute;		/* element is int, not uint32_t */
     if (pack_uint32(ba, i) == -1) return -1;

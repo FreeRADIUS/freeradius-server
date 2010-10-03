@@ -808,17 +808,17 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 *	information.
 	 */
 	if (eaptls_handle_idx < 0) {
-		eaptls_handle_idx = SSL_get_ex_new_index(0, "eaptls_handle_idx",
-							  NULL, NULL, NULL);
+		eaptls_handle_idx = SSL_get_ex_new_index(0, &eaptls_handle_idx,
+							 NULL, NULL, NULL);
 	}
 	
 	if (eaptls_conf_idx < 0) {
-		eaptls_conf_idx = SSL_get_ex_new_index(0, "eaptls_conf_idx",
+		eaptls_conf_idx = SSL_get_ex_new_index(0, &eaptls_conf_idx,
 							  NULL, NULL, NULL);
 	}
 
 	if (eaptls_session_idx < 0) {
-		eaptls_session_idx = SSL_get_ex_new_index(0, "eaptls_session_idx",
+		eaptls_session_idx = SSL_get_ex_new_index(0, &eaptls_session_idx,
 							  NULL, NULL,
 							  eaptls_session_free);
 	}

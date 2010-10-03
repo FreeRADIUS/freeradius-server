@@ -51,7 +51,7 @@ static int filedone = 0;
 static int totalapp = 0;
 static int totaldeny = 0;
 static char filesecret[256];
-const char *radius_dir = RADDBDIR;
+char *radius_dir = NULL;
 const char *progname = "radeapclient";
 /* fr_randctx randctx; */
 
@@ -179,13 +179,13 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 		printf("%s %s packet %s host %s port %d, id=%d, length=%d\n",
 		       received, fr_packet_codes[packet->code], from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
-		       port, packet->id, packet->data_len);
+		       port, packet->id, (int) packet->data_len);
 	} else {
 		printf("%s packet %s host %s port %d code=%d, id=%d, length=%d\n",
 		       received, from,
 		       inet_ntop(ip->af, &ip->ipaddr, buffer, sizeof(buffer)),
 		       port,
-		       packet->code, packet->id, packet->data_len);
+		       packet->code, packet->id, (int) packet->data_len);
 	}
 
 	for (vp = packet->vps; vp != NULL; vp = vp->next) {
@@ -989,7 +989,7 @@ int main(int argc, char **argv)
 			count = atoi(optarg);
 			break;
 		case 'd':
-			radius_dir = optarg;
+			radius_dir = strdup(optarg);
 			break;
 		case 'f':
 			filename = optarg;
@@ -1076,6 +1076,8 @@ int main(int argc, char **argv)
 	    ((secret == NULL) && (argc < 4))) {
 		usage();
 	}
+
+	if (!radius_dir) radius_dir = strdup(RADDBDIR);
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radclient");
@@ -1192,6 +1194,7 @@ int main(int argc, char **argv)
 		sendrecv_eap(req);
 	}
 
+	free(radius_dir);
 	if(do_summary) {
 		printf("\n\t   Total approved auths:  %d\n", totalapp);
 		printf("\t     Total denied auths:  %d\n", totaldeny);

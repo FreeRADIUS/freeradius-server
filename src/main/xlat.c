@@ -56,7 +56,7 @@ static const char * const internal_xlat[] = {"check",
 #if REQUEST_MAX_REGEX > 8
 #error Please fix the following line
 #endif
-static const int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
+static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
 
 /*
@@ -843,7 +843,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 			expand2 = TRUE;
 
 		} else if ((p[0] == '"') || p[0] == '\'') {
-			getstring(&p, l, strlen(l));
+		  getstring((const char **) &p, l, strlen(l));
 
 		} else {
 			l = p;
