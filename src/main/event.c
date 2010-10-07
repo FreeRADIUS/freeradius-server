@@ -3568,7 +3568,7 @@ int event_new_fd(rad_listen_t *this)
 		}		
 #ifdef WITH_PROXY
 		else {
-			int count = this->count;
+			int count;
 
 			/*
 			 *	Duplicate code

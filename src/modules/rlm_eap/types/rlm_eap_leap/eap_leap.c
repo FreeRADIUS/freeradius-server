@@ -365,7 +365,6 @@ LEAP_PACKET *eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
 	memcpy(p, session->peer_challenge, 8); /* PC */
 	p += 8;
 	memcpy(p, session->peer_response, 24); /* PR */
-	p += 24;
 
 	/*
 	 *	These 16 bytes are the session key to use.

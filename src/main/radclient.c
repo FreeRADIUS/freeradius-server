@@ -617,7 +617,7 @@ static int send_one_packet(radclient_t *radclient)
 						radclient->request->id, vp);
 				vp->length = 17;
 
-			} else if ((vp = pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0)) != NULL) {
+			} else if (pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0) != NULL) {
 				mschapv1_encode(&radclient->request->vps,
 						radclient->password);
 			} else if (fr_debug_flag) {

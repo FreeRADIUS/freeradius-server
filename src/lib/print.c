@@ -431,7 +431,6 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR *vp)
 	if (!vp) return 0;
 
 	name = vp->name;
-	len = 0;
 
 	if (!name || !*name) {
 		if (!vp_print_name(namebuf, sizeof(namebuf), vp->attribute, vp->attribute)) {

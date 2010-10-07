@@ -7,7 +7,7 @@
 RCSIDH(smbdes_h, "$Id$")
 
 void smbdes_lmpwdhash(const char *password, uint8_t *lmhash);
-void smbdes_mschap(const char *win_password,
+void smbdes_mschap(const uint8_t win_password[16],
 		 const uint8_t *challenge, uint8_t *response);
 
 #endif /*_SMBDES_H*/

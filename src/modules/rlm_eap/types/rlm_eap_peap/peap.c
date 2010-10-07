@@ -240,6 +240,8 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
  */
 static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 {
+	rad_assert(vp != NULL);
+
 	/*
 	 *	Skip the id, code, and length.  Just write the EAP
 	 *	type & data to the client.
@@ -448,6 +450,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 	tls_session_t *tls_session = (tls_session_t *) data;
 	REQUEST *fake, *request = handler->request;
 
+	rad_assert(request != NULL);
 	RDEBUG2("Passing reply from proxy back into the tunnel.");
 
 	/*
@@ -488,7 +491,7 @@ static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
 		 */
 		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		RDEBUG2("Passing reply back for EAP-MS-CHAP-V2");
-		rcode = module_post_proxy(0, fake);
+		module_post_proxy(0, fake);
 
 		/*
 		 *	FIXME: If rcode returns fail, do something
@@ -643,6 +646,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	REQUEST *request = handler->request;
 	EAP_DS *eap_ds = handler->eap_ds;
+
+	rad_assert(request != NULL);
 
 	/*
 	 *	Just look at the buffer directly, without doing

@@ -60,7 +60,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 {
 	char namebuf[MAX_STRING_LEN];
 	char *username;
-	char *realmname = NULL;
+	const char *realmname = NULL;
 	char *ptr;
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -111,10 +111,10 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	case REALM_FORMAT_SUFFIX:
 
 	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */
-		realmname = strrchr(username, inst->delim[0]);
-		if (realmname) {
-			*realmname = '\0';
-			realmname++;
+		ptr = strrchr(username, inst->delim[0]);
+		if (ptr) {
+			*ptr = '\0';
+			realmname = ptr + 1;
 		}
 		break;
 

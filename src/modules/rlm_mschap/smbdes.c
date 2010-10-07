@@ -336,7 +336,7 @@ void smbdes_lmpwdhash(const char *password, uint8_t *lmhash)
  *
  *	The win_password MUST be exactly 16 bytes long.
  */
-void smbdes_mschap(const char *win_password,
+void smbdes_mschap(const uint8_t win_password[16],
 		 const uint8_t *challenge, uint8_t *response)
 {
 	uint8_t p21[21];

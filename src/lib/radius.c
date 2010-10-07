@@ -936,7 +936,6 @@ static int rad_vp2extended(const RADIUS_PACKET *packet,
 
 	if (vp->flags.extended) {
 		ptr[2] = (attribute & 0xff00) >> 8;
-		len++;
 
 	} else if (vp->flags.extended_flags) {
 		if (room < 4) return 0;
@@ -944,8 +943,6 @@ static int rad_vp2extended(const RADIUS_PACKET *packet,
 		ptr[1] = 4;
 		ptr[2] = (attribute & 0xff00) >> 8;
 		ptr[3] = 0;
-
-		len += 2;
 	}
 
 	/*
@@ -1101,7 +1098,7 @@ static int rad_encode_wimax(const RADIUS_PACKET *packet,
 {
 	int len, redo;
 	uint32_t lvalue;
-	uint8_t *ptr = start, *vsa = start;
+	uint8_t *ptr, *vsa;
 	uint32_t maxattr;
 	VALUE_PAIR *vp = reply;
 
@@ -3705,7 +3702,7 @@ void fr_rand_seed(const void *data, size_t size)
 			size_t total;
 			ssize_t this;
 
-			total = this = 0;
+			total = 0;
 			while (total < sizeof(fr_rand_pool.randrsl)) {
 				this = read(fd, fr_rand_pool.randrsl,
 					    sizeof(fr_rand_pool.randrsl) - total);

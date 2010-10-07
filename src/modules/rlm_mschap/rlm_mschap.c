@@ -663,6 +663,8 @@ static int do_mschap(rlm_mschap_t *inst,
 {
 	uint8_t		calculated[24];
 
+	rad_assert(request != NULL);
+
 	/*
 	 *	Do normal authentication.
 	 */
@@ -675,7 +677,7 @@ static int do_mschap(rlm_mschap_t *inst,
 			return -1;
 		}
 
-		smbdes_mschap(password->vp_strvalue, challenge, calculated);
+		smbdes_mschap(password->vp_octets, challenge, calculated);
 		if (memcmp(response, calculated, 24) != 0) {
 			return -1;
 		}

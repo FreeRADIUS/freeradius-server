@@ -75,7 +75,6 @@ static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
 	char *s;
 	const char *p;
 	int	quote, end = 0;
-	int	escape;
 	unsigned int	x;
 	const FR_NAME_NUMBER*t;
 	FR_TOKEN rcode;
@@ -116,7 +115,6 @@ static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
 		p++;
 	}
 	s = buf;
-	escape = 0;
 
 	while (*p && buflen-- > 1) {
 		if (quote && (*p == '\\')) {
@@ -238,7 +236,11 @@ FR_TOKEN gettoken(const char **ptr, char *buf, int buflen)
  */
 FR_TOKEN getstring(const char **ptr, char *buf, int buflen)
 {
-	const char *p = *ptr;
+	const char *p;
+
+	if (!ptr || !*ptr || !buf) return T_OP_INVALID;
+	
+	p = *ptr;
 
 	while (p && (isspace((int)*p))) p++;
 

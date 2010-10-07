@@ -206,8 +206,7 @@ retry:
   if (!fdp || fdp->fd == -1)
     return -1;
 
-  if (otp_write(fdp, (const char *) request, sizeof(*request)) != 0) {
-    if (rc == 0)
+  if ((rc = otp_write(fdp, (const char *) request, sizeof(*request))) != sizeof(*request)) {    if (rc == 0)
       goto retry;	/* otpd disconnect */	/*TODO: pause */
     else
       return -1;

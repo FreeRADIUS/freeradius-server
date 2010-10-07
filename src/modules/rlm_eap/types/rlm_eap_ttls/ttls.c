@@ -618,6 +618,8 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 	ttls_tunnel_t *t = tls_session->opaque;
 
 	handler = handler;	/* -Wunused */
+	rad_assert(request != NULL);
+	rad_assert(handler->request == request);
 
 	/*
 	 *	If the response packet was Access-Accept, then
@@ -789,6 +791,7 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	tls_session_t *tls_session = (tls_session_t *) data;
 	REQUEST *fake, *request = handler->request;
 
+	rad_assert(request != NULL);
 	RDEBUG("Passing reply from proxy back into the tunnel.");
 
 	/*
@@ -928,6 +931,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	const uint8_t *data;
 	size_t data_len;
 	REQUEST *request = handler->request;
+
+	rad_assert(request != NULL);
 
 	/*
 	 *	Just look at the buffer directly, without doing

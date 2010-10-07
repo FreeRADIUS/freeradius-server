@@ -445,7 +445,6 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	do {
 		if (pl->sockets[i].sockfd == -1) {
 			ps =  &pl->sockets[i];
-			start = i;
 			break;
 		}
 
