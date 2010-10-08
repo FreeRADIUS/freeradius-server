@@ -1,3 +1,10 @@
+FreeRADIUS 2.1.10 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
+	Feature improvements
+	Bug fixes
+	* Ignore pre/post-proxy sections if proxying is disabled
+	* Add configure checks for pcap_fopen*.
+	* Fix call to otp_write in rlm_otp
+
 FreeRADIUS 2.1.10 Tue 28 Sep 12:00:00 CEST 2010, urgency=medium
 	Feature improvements
 	* Install the "radcrypt" program.
