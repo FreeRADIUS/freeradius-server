@@ -27,7 +27,6 @@
 RCSIDH(soh_h, "$Id$")
 
 #include <freeradius-devel/libradius.h>
-#include <freeradius-devel/radiusd.h>
 
 int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len);
 uint16_t soh_pull_be_16(const uint8_t *p);
