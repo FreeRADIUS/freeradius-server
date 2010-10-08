@@ -27,6 +27,7 @@
 RCSIDH(eap_peap_h, "$Id$")
 
 #include "eap_tls.h"
+#include <freeradius-devel/soh.h>
 
 typedef struct peap_tunnel_t {
 	VALUE_PAIR	*username;
@@ -39,6 +40,9 @@ typedef struct peap_tunnel_t {
 	int		use_tunneled_reply;
 	int		proxy_tunneled_request_as_eap;
 	const char	*virtual_server;
+	int		soh;
+	const char	*soh_virtual_server;
+	VALUE_PAIR	*soh_reply_vps;
 	int		session_resumption_state;
 } peap_tunnel_t;
 
@@ -49,6 +53,7 @@ typedef struct peap_tunnel_t {
 #define PEAP_STATUS_INNER_IDENTITY_REQ_SENT 4
 #define PEAP_STATUS_PHASE2_INIT 5
 #define PEAP_STATUS_PHASE2 6
+#define PEAP_STATUS_WAIT_FOR_SOH_RESPONSE 7
 
 #define PEAP_RESUMPTION_NO	(0)
 #define PEAP_RESUMPTION_YES	(1)
