@@ -58,6 +58,12 @@ typedef struct rlm_eap_peap_t {
 	 *	Virtual server for inner tunnel session.
 	 */
   	char	*virtual_server;
+
+	/*
+	 * 	Do we do SoH request?
+	 */
+	int	soh;
+  	char	*soh_virtual_server;
 } rlm_eap_peap_t;
 
 
@@ -78,6 +84,12 @@ static CONF_PARSER module_config[] = {
 
 	{ "virtual_server", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, virtual_server), NULL, NULL },
+
+	{ "soh", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_peap_t, soh), NULL, "no" },
+
+	{ "soh_virtual_server", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_peap_t, soh_virtual_server), NULL, NULL },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -146,6 +158,7 @@ static void peap_free(void *p)
 	pairfree(&t->username);
 	pairfree(&t->state);
 	pairfree(&t->accept_vps);
+	pairfree(&t->soh_reply_vps);
 
 	free(t);
 }
@@ -168,6 +181,8 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	t->proxy_tunneled_request_as_eap = inst->proxy_tunneled_request_as_eap;
 #endif
 	t->virtual_server = inst->virtual_server;
+	t->soh = inst->soh;
+	t->soh_virtual_server = inst->soh_virtual_server;
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
 
 	return t;
@@ -273,6 +288,12 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	our Access-Accept.
 		 */
 		peap = tls_session->opaque;
+		if (peap->soh_reply_vps) {
+			RDEBUG2("Using saved attributes from the SoH reply");
+			debug_pair_list(peap->soh_reply_vps);
+			pairadd(&handler->request->reply->vps, peap->soh_reply_vps);
+			peap->soh_reply_vps = NULL;
+		}
 		if (peap->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			debug_pair_list(peap->accept_vps);
