@@ -32,6 +32,7 @@ rlm_preprocess
 rlm_python
 rlm_radutmp
 rlm_realm
+rlm_soh
 rlm_sql
 rlm_sqlcounter
 rlm_sqlippool
