@@ -176,7 +176,7 @@ static int soh_postauth(UNUSED void * instance, REQUEST *request)
 					} else {
 						RDEBUG("SoH decoding NAP from DHCP request");
 						/* SoH payload */
-						soh_verify(request, request->packet->vps, data, vlen);
+						soh_verify(request->packet->vps, data, vlen);
 					}
 					break;
 				default:
