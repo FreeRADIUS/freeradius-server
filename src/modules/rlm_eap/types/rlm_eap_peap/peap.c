@@ -26,6 +26,8 @@ RCSID("$Id$")
 
 #include "eap_peap.h"
 
+static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t);
+
 /*
  *	Send protected EAP-Failure
  *
@@ -824,14 +826,6 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	}
 
 	/*
-	 *	Tell the request that it's a fake one.
-	 */
-	vp = pairmake("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
-	if (vp) {
-		pairadd(&fake->packet->vps, vp);
-	}
-
-	/*
 	 *	Update other items in the REQUEST data structure.
 	 */
 	if (!t->username) {
@@ -862,92 +856,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		}
 	} /* else there WAS a t->username */
 
-	if (t->username) {
-		vp = paircopy(t->username);
-		pairadd(&fake->packet->vps, vp);
-		fake->username = pairfind(fake->packet->vps, PW_USER_NAME);
-		DEBUG2("  PEAP: Setting User-Name to %s",
-		       fake->username->vp_strvalue);
-	}
-
-	/*
-	 *	Add the State attribute, too, if it exists.
-	 */
-	if (t->state) {
-		vp = paircopy(t->state);
-		if (vp) pairadd(&fake->packet->vps, vp);
-	}
-
-	/*
-	 *	If this is set, we copy SOME of the request attributes
-	 *	from outside of the tunnel to inside of the tunnel.
-	 *
-	 *	We copy ONLY those attributes which do NOT already
-	 *	exist in the tunneled request.
-	 *
-	 *	This code is copied from ../rlm_eap_ttls/ttls.c
-	 */
-	if (t->copy_request_to_tunnel) {
-		VALUE_PAIR *copy;
-
-		for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
-			/*
-			 *	The attribute is a server-side thingy,
-			 *	don't copy it.
-			 */
-			if ((vp->attribute > 255) &&
-			    (((vp->attribute >> 16) & 0xffff) == 0)) {
-				continue;
-			}
-
-			/*
-			 *	The outside attribute is already in the
-			 *	tunnel, don't copy it.
-			 *
-			 *	This works for BOTH attributes which
-			 *	are originally in the tunneled request,
-			 *	AND attributes which are copied there
-			 *	from below.
-			 */
-			if (pairfind(fake->packet->vps, vp->attribute)) {
-				continue;
-			}
-
-			/*
-			 *	Some attributes are handled specially.
-			 */
-			switch (vp->attribute) {
-				/*
-				 *	NEVER copy Message-Authenticator,
-				 *	EAP-Message, or State.  They're
-				 *	only for outside of the tunnel.
-				 */
-			case PW_USER_NAME:
-			case PW_USER_PASSWORD:
-			case PW_CHAP_PASSWORD:
-			case PW_CHAP_CHALLENGE:
-			case PW_PROXY_STATE:
-			case PW_MESSAGE_AUTHENTICATOR:
-			case PW_EAP_MESSAGE:
-			case PW_STATE:
-				continue;
-				break;
-
-				/*
-				 *	By default, copy it over.
-				 */
-			default:
-				break;
-			}
-
-			/*
-			 *	Don't copy from the head, we've already
-			 *	checked it.
-			 */
-			copy = paircopy2(vp, vp->attribute);
-			pairadd(&fake->packet->vps, copy);
-		}
-	}
+	setup_fake_request(request, fake, t);
 
 	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER)) != NULL) {
 		fake->server = vp->vp_strvalue;
@@ -1152,4 +1061,107 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	request_free(&fake);
 
 	return rcode;
+}
+
+static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t) {
+
+	VALUE_PAIR *vp;
+	/*
+	 *	Tell the request that it's a fake one.
+	 */
+	vp = pairmake("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
+	if (vp) {
+		pairadd(&fake->packet->vps, vp);
+	}
+
+	if (t->username) {
+		vp = paircopy(t->username);
+		pairadd(&fake->packet->vps, vp);
+		fake->username = pairfind(fake->packet->vps, PW_USER_NAME);
+		RDEBUG2("Setting User-Name to %s", fake->username->vp_strvalue);
+	} else {
+		RDEBUG2("No tunnel username (SSL resumption?)");
+	}
+
+
+	/*
+	 *	Add the State attribute, too, if it exists.
+	 */
+	if (t->state) {
+		vp = paircopy(t->state);
+		if (vp) pairadd(&fake->packet->vps, vp);
+	}
+
+	/*
+	 *	If this is set, we copy SOME of the request attributes
+	 *	from outside of the tunnel to inside of the tunnel.
+	 *
+	 *	We copy ONLY those attributes which do NOT already
+	 *	exist in the tunneled request.
+	 *
+	 *	This code is copied from ../rlm_eap_ttls/ttls.c
+	 */
+	if (t->copy_request_to_tunnel) {
+		VALUE_PAIR *copy;
+
+		for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+			/*
+			 *	The attribute is a server-side thingy,
+			 *	don't copy it.
+			 */
+			if ((vp->attribute > 255) &&
+			    (((vp->attribute >> 16) & 0xffff) == 0)) {
+				continue;
+			}
+
+			/*
+			 *	The outside attribute is already in the
+			 *	tunnel, don't copy it.
+			 *
+			 *	This works for BOTH attributes which
+			 *	are originally in the tunneled request,
+			 *	AND attributes which are copied there
+			 *	from below.
+			 */
+			if (pairfind(fake->packet->vps, vp->attribute)) {
+				continue;
+			}
+
+			/*
+			 *	Some attributes are handled specially.
+			 */
+			switch (vp->attribute) {
+				/*
+				 *	NEVER copy Message-Authenticator,
+				 *	EAP-Message, or State.  They're
+				 *	only for outside of the tunnel.
+				 */
+			case PW_USER_NAME:
+			case PW_USER_PASSWORD:
+			case PW_CHAP_PASSWORD:
+			case PW_CHAP_CHALLENGE:
+			case PW_PROXY_STATE:
+			case PW_MESSAGE_AUTHENTICATOR:
+			case PW_EAP_MESSAGE:
+			case PW_STATE:
+				continue;
+				break;
+
+				/*
+				 *	By default, copy it over.
+				 */
+			default:
+				break;
+			}
+
+			/*
+			 *	Don't copy from the head, we've already
+			 *	checked it.
+			 */
+			copy = paircopy2(vp, vp->attribute);
+			pairadd(&fake->packet->vps, copy);
+		}
+	}
+
+	return 0;
 }
