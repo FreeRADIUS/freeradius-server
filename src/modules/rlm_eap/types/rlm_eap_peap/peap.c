@@ -1000,7 +1000,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	setup_fake_request(request, fake, t);
 
-	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER)) != NULL) {
+	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0)) != NULL) {
 		fake->server = vp->vp_strvalue;
 
 	} else if (t->virtual_server) {
@@ -1300,7 +1300,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute);
+			copy = paircopy2(vp, vp->attribute, vp->vendor);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}
