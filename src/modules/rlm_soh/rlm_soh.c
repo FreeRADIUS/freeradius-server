@@ -38,14 +38,10 @@ typedef struct rlm_soh_t {
 /*
  * Not sure how to make this useful yet...
  */
-static size_t soh_xlat(void *instance, REQUEST *request, char *fmt, char *out, size_t outlen, RADIUS_ESCAPE_STRING func) {
+static size_t soh_xlat(UNUSED void *instance, REQUEST *request, char *fmt, char *out, size_t outlen, UNUSED RADIUS_ESCAPE_STRING func) {
 
 	VALUE_PAIR* vp[6];
-	char buf[256], *osvendor, *osname;
-	rlm_soh_t	*inst = instance;
-
-
-	func = func;		/* -Wunused */
+	const char *osname;
 
 	/* there will be no point unless SoH-Supported = yes
 	 *
@@ -141,12 +137,11 @@ static int soh_instantiate(CONF_SECTION *conf, void **instance) {
 	return 0;
 }
 
-static int soh_postauth(void * instance, REQUEST *request) {
-	rlm_soh_t	*inst = instance;
-	VALUE_PAIR *vp, *sohvp;
-	int rv;
-
+static int soh_postauth(UNUSED void * instance, REQUEST *request)
+{
 #ifdef WITH_DHCP
+	VALUE_PAIR *vp;
+
 	vp = pairfind(request->packet->vps, DHCP2ATTR(43));
 	if (vp) {
 		/*
@@ -196,9 +191,9 @@ static int soh_postauth(void * instance, REQUEST *request) {
 	return RLM_MODULE_NOOP;
 }
 
-static int soh_authorize(void * instance, REQUEST *request) {
-	rlm_soh_t	*inst = instance;
-	VALUE_PAIR *vp, *sohvp;
+static int soh_authorize(UNUSED void * instance, REQUEST *request)
+{
+	VALUE_PAIR *vp;
 	int rv;
 
 	/* try to find the MS-SoH payload */
@@ -210,7 +205,7 @@ static int soh_authorize(void * instance, REQUEST *request) {
 
 	RDEBUG("SoH radius VP found");
 	/* decode it */
-	rv = soh_verify(request, request->packet->vps, vp->vp_strvalue, vp->length);
+	rv = soh_verify(request, request->packet->vps, vp->vp_octets, vp->length);
 
 	return RLM_MODULE_OK;
 }
