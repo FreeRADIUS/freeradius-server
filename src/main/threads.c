@@ -558,6 +558,7 @@ static void *request_handler_thread(void *arg)
 	 */
 	self->request = NULL;
 	self->status = THREAD_EXITED;
+	exec_trigger(NULL, NULL, "server.thread.stop");
 
 	return NULL;
 }
@@ -613,7 +614,7 @@ static void delete_thread(THREAD_HANDLE *handle)
  *	The thread is started initially in the blocked state, waiting
  *	for the semaphore.
  */
-static THREAD_HANDLE *spawn_thread(time_t now)
+static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 {
 	int rcode;
 	THREAD_HANDLE *handle;
@@ -624,6 +625,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	 */
 	if (thread_pool.total_threads >= thread_pool.max_threads) {
 		DEBUG2("Thread spawn failed.  Maximum number of threads (%d) already running.", thread_pool.max_threads);
+		exec_trigger(NULL, NULL, "server.thread.max_threads");
 		return NULL;
 	}
 
@@ -671,6 +673,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
 			handle->thread_num, thread_pool.total_threads);
+	if (do_trigger) exec_trigger(NULL, NULL, "server.thread.start");
 
 	/*
 	 *	Add the thread handle to the tail of the thread pool list.
@@ -855,7 +858,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 	 *	If we fail while creating them, do something intelligent.
 	 */
 	for (i = 0; i < thread_pool.start_threads; i++) {
-		if (spawn_thread(now) == NULL) {
+		if (spawn_thread(now, 0) == NULL) {
 			return -1;
 		}
 	}
@@ -941,7 +944,7 @@ static void thread_pool_manage(time_t now)
 		 *	Create a number of spare threads.
 		 */
 		for (i = 0; i < total; i++) {
-			handle = spawn_thread(now);
+			handle = spawn_thread(now, 1);
 			if (handle == NULL) {
 				return;
 			}
