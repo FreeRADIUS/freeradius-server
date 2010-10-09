@@ -298,6 +298,10 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		 */
 		if (!client_validate(clients, client, created)) goto unknown;
 	}
+
+	request->server = client->server;
+	exec_trigger(request, NULL, "server.client.add");
+
 	request_free(&request);
 
 	if (!created) goto unknown;
