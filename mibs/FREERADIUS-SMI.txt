@@ -45,6 +45,8 @@ freeRadiusTest OBJECT-IDENTITY
 		MIB registrations."
 	::= { freeRadius 3 }
 
+-- 4 is the notification MIB
+
 -- more to come if necessary.
 
 END
