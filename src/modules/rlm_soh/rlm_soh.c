@@ -205,7 +205,7 @@ static int soh_authorize(UNUSED void * instance, REQUEST *request)
 
 	RDEBUG("SoH radius VP found");
 	/* decode it */
-	rv = soh_verify(request, request->packet->vps, vp->vp_octets, vp->length);
+	rv = soh_verify(request->packet->vps, vp->vp_octets, vp->length);
 
 	return RLM_MODULE_OK;
 }
