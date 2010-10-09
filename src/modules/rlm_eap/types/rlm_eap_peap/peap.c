@@ -813,12 +813,14 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		fake->packet->vps = eapsoh_verify(request, data, data_len);
 		setup_fake_request(request, fake, t);
 
-		if (t->soh_virtual_server) {
-			fake->server = t->soh_virtual_server;
-		}
-		RDEBUG("Sending SoH request to server %s", fake->server ? fake->server : "NULL");
+		rad_assert(t->soh_virtual_server != NULL);
+		fake->server = t->soh_virtual_server;
+
+		RDEBUG("Processing SoH request");
 		debug_pair_list(fake->packet->vps);
+		fprintf(fr_log_fp, "server %s {\n", fake->server);
 		rad_authenticate(fake);
+		fprintf(fr_log_fp, "} # server %s\n", fake->server);
 		RDEBUG("Got SoH reply");
 		debug_pair_list(fake->reply->vps);
 

@@ -129,6 +129,12 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
+	if (inst->soh && !inst->soh_virtual_server) {
+		radlog(L_ERR, "rlm_eap_peap: You MUST specify a value for \"soh_virtual_server\"");
+		eappeap_detach(inst);
+		return -1;
+	}
+
 	/*
 	 *	Convert the name to an integer, to make it easier to
 	 *	handle.
