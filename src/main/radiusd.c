@@ -404,6 +404,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	exec_trigger(NULL, NULL, "server.start");
+
 	/*
 	 *	Process requests until HUP or exit.
 	 */
@@ -421,6 +423,8 @@ int main(int argc, char *argv[])
 	} else {
 		radlog(L_INFO, "Exiting normally.");
 	}
+
+	exec_trigger(NULL, NULL, "server.stop");
 
 	/*
 	 *	Ignore the TERM signal: we're
