@@ -58,6 +58,14 @@ RCSIDH(missing_h, "$Id$")
 #include <unistd.h>
 #endif
 
+#ifndef HAVE_VSNPRINTF
+#include <stdarg.h>
+#endif
+
+#ifdef HAVE_SYS_LOCKING_H
+#include <sys/locking.h>
+#endif
+
 /*
  *  Check for inclusion of <time.h>, versus <sys/time.h>
  *  Taken verbatim from the autoconf manual.
@@ -85,6 +93,10 @@ RCSIDH(missing_h, "$Id$")
 #ifdef __APPLE__
 #undef DARWIN
 #define DARWIN (1)
+#endif
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
 /*
@@ -338,7 +350,6 @@ extern int getnameinfo (const struct sockaddr *__sa,
  */
 
 #ifndef HAVE_VSNPRINTF
-#include <stdarg.h>
 extern int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
 #endif
 
@@ -382,8 +393,6 @@ int gettimeofday (struct timeval *tv, void *tz);
 #endif
 
 #ifdef HAVE_SYS_LOCKING_H
-#include <sys/locking.h>
-
 #define lockf _locking
 
 #define F_ULOCK _LK_UNLCK /* Unlock locked sections. */
@@ -398,5 +407,9 @@ int gettimeofday (struct timeval *tv, void *tz);
 
 void timeval2ntp(const struct timeval *tv, uint8_t *ntp);
 void ntp2timeval(struct timeval *tv, const char *ntp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _FR_MISSING_H */

@@ -27,6 +27,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(packet_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 uint32_t fr_request_packet_hash(const RADIUS_PACKET *packet);
 uint32_t fr_reply_packet_hash(const RADIUS_PACKET *packet);
 int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b);
@@ -76,4 +80,9 @@ int fr_packet_list_num_outgoing(fr_packet_list_t *pl);
  *	required type.
  */
 # define fr_packet2myptr(TYPE, MEMBER, PTR) (TYPE *) (((char *)PTR) - offsetof(TYPE, MEMBER))
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* FR_PACKET_H */

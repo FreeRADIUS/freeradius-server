@@ -10,6 +10,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(radutmp_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  *      Types of connection.
  */
@@ -54,5 +58,9 @@ struct radutmp {
  */
 #define RUT_NAMESIZE sizeof(((struct radutmp *) NULL)->login)
 #define RUT_SESSSIZE sizeof(((struct radutmp *) NULL)->session_id)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _RADUTMP_H */

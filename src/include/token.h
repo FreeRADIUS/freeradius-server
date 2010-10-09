@@ -26,6 +26,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(token_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum fr_token_t {
   T_OP_INVALID = 0,		/* invalid token */
   T_EOL,			/* end of line */
@@ -75,5 +79,9 @@ int		getword (const char **ptr, char *buf, int buflen);
 int		getbareword (const char **ptr, char *buf, int buflen);
 FR_TOKEN	gettoken(const char **ptr, char *buf, int buflen);
 FR_TOKEN	getstring(const char **ptr, char *buf, int buflen);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FR_TOKEN_H */

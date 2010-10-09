@@ -14,6 +14,10 @@ RCSIDH(conffile_h, "$Id$")
 #include <stddef.h>
 #include <freeradius-devel/token.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  * Export the minimum amount of information about these structs
  */
@@ -122,5 +126,9 @@ extern int cf_section2file(FILE *fp, const CONF_SECTION *cs);
  *	Big magic.
  */
 int cf_section_migrate(CONF_SECTION *dst, CONF_SECTION *src);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _CONFFILE_H */

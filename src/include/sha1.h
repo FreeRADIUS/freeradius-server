@@ -1,6 +1,14 @@
 #ifndef _FR_SHA1_H
 #define _FR_SHA1_H
 
+#ifdef WITH_OPENSSL_SHA1
+#include <openssl/sha.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef WITH_OPENSSL_SHA1
 typedef struct {
     uint32_t state[5];
@@ -23,8 +31,6 @@ void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context);
 
 #else  /* WITH_OPENSSL_SHA1 */
 
-#include <openssl/sha.h>
-
 #define fr_SHA1_CTX	SHA_CTX
 #define fr_SHA1Init	SHA1_Init
 #define fr_SHA1Update	SHA1_Update
@@ -39,5 +45,9 @@ void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context);
  *	why is the prototype here?
  */
 extern void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* _FR_SHA1_H */

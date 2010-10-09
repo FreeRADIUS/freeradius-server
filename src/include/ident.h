@@ -21,6 +21,10 @@
 #ifndef IDENT_H
 #define IDENT_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #if defined(__GNUC__)
 /* force inclusion of ident keywords in the face of optimization */
 #define RCSID(id) static const char rcsid[] __attribute__ ((used)) = id;
@@ -33,6 +37,10 @@
 #else
 #define RCSID(id)
 #define RCSIDH(h, id)
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* IDENT_H */

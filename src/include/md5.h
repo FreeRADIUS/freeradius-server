@@ -26,6 +26,14 @@ RCSIDH(md5_h, "$Id$")
 
 #include <string.h>
 
+#ifdef WITH_OPENSSL_MD5
+#include <openssl/md5.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifndef WITH_OPENSSL_MD5
 /*  The below was retrieved from
  *  http://www.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/crypto/md5.h?rev=1.1
@@ -70,13 +78,15 @@ void	 fr_MD5Transform(uint32_t [4], const uint8_t [MD5_BLOCK_LENGTH])
 
 #else  /* WITH_OPENSSL_HASH */
 
-#include <openssl/md5.h>
-
 #define FR_MD5_CTX	MD5_CTX
 #define fr_MD5Init	MD5_Init
 #define fr_MD5Update	MD5_Update
 #define fr_MD5Final	MD5_Final
 #define fr_MD5Transform MD5_Transform
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* _FR_MD5_H */

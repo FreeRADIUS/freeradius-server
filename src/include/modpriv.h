@@ -17,7 +17,13 @@
 
 #ifndef WITHOUT_LIBLTDL
 #include "ltdl.h"
-#else
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+#ifdef WITHOUT_LIBLTDL
 typedef void *lt_dlhandle;
 
 lt_dlhandle lt_dlopenext(const char *name);
@@ -62,4 +68,9 @@ typedef struct module_instance_t {
 module_instance_t *find_module_instance(CONF_SECTION *, const char *instname,
 					int do_link);
 int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif	/* FR_MODPRIV_H */

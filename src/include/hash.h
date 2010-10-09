@@ -27,6 +27,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(hash_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  *	Fast hash, which isn't too bad.  Don't use for cryptography,
  *	just for hashing internal data.
@@ -61,4 +65,9 @@ int		fr_hash_table_num_elements(fr_hash_table_t *ht);
 int		fr_hash_table_walk(fr_hash_table_t *ht,
 				     fr_hash_table_walk_t callback,
 				     void *ctx);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /* FR_HASH_H */
