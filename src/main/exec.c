@@ -660,3 +660,71 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	return 0;
 #endif
 }
+
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name)
+{
+	CONF_SECTION *subcs;
+	CONF_ITEM *ci;
+	CONF_PAIR *cp;
+	const char *attr;
+	const char *value;
+
+	/*
+	 *	Use global "trigger" section if no local config is given.
+	 */
+	if (!cs) {
+		cs = mainconfig.config;
+		attr = name;
+	} else {
+		/*
+		 *	Try to use pair name, rather than reference.
+		 */
+		attr = strrchr(name, '.');
+		if (attr) {
+			attr++;
+		} else {
+			attr = name;
+		}
+	}
+
+	/*
+	 *	Find local "trigger" subsection.  If it isn't found,
+	 *	try using the global "trigger" section, and reset the
+	 *	reference to the full path, rather than the sub-path.
+	 */
+	subcs = cf_section_sub_find(cs, "trigger");
+	if (!subcs && (cs != mainconfig.config)) {
+		subcs = cf_section_sub_find(mainconfig.config, "trigger");
+		attr = name;
+	}
+
+	if (!subcs) {
+		DEBUG3("No trigger subsection: ignoring trigger %s", name);
+		return;
+	}
+
+	ci = cf_reference_item(subcs, mainconfig.config, attr);
+	if (!ci) {
+		DEBUG3("No such item in trigger section: %s", attr);
+		return;
+	}
+
+	if (!cf_item_is_pair(ci)) {
+		DEBUG2("Trigger is not a configuration variable: %s", attr);
+		return;
+	}
+
+	cp = cf_itemtopair(ci);
+	if (!cp) return;
+
+	value = cf_pair_value(cp);
+	if (!value) {
+		DEBUG2("Trigger has no value: %s", name);
+		return;
+	}
+
+	DEBUG("Trigger %s -> %s", name, value);
+	radius_exec_program(value, request, 0, NULL, 0,
+			    request ? request->packet->vps : NULL,
+			    NULL, 1);
+}

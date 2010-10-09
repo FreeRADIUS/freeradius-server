@@ -618,6 +618,7 @@ int		radius_exec_program(const char *,  REQUEST *, int,
 				    VALUE_PAIR *input_pairs,
 				    VALUE_PAIR **output_pairs,
 					int shell_escape);
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);
