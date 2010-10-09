@@ -25,6 +25,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(heap_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef int (*fr_heap_cmp_t)(const void *, const void *);
 
 typedef struct fr_heap_t fr_heap_t;
@@ -35,5 +39,9 @@ int fr_heap_insert(fr_heap_t *hp, void *data);
 int fr_heap_extract(fr_heap_t *hp, void *data);
 void *fr_heap_peek(fr_heap_t *hp);
 int fr_heap_num_elements(fr_heap_t *hp);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* LRAD_HEAP_H */

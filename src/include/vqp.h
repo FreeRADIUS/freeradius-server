@@ -27,9 +27,17 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(vqp_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 RADIUS_PACKET *vqp_recv(int sockfd);
 int vqp_send(RADIUS_PACKET *packet);
 int vqp_decode(RADIUS_PACKET *packet);
 int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FR_VQP_H */

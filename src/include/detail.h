@@ -10,6 +10,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(detail_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef enum detail_state_t {
   STATE_UNOPENED = 0,
   STATE_UNLOCKED,
@@ -55,5 +59,9 @@ int detail_print(const rad_listen_t *this, char *buffer, size_t bufsize);
 int detail_encode(UNUSED rad_listen_t *this, UNUSED REQUEST *request);
 int detail_decode(UNUSED rad_listen_t *this, UNUSED REQUEST *request);
 int detail_parse(CONF_SECTION *cs, rad_listen_t *this);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* DETAIL_H */

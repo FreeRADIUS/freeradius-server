@@ -26,6 +26,14 @@ RCSIDH(md4_h, "$Id$")
 
 #include <string.h>
 
+#ifdef WITH_OPENSSL_MD4
+#include <openssl/md4.h>
+#endif
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 void fr_md4_calc (unsigned char *, const unsigned char *, unsigned int);
 
 #ifndef WITH_OPENSSL_MD4
@@ -66,8 +74,6 @@ typedef struct FR_MD4Context {
 	uint8_t buffer[MD4_BLOCK_LENGTH];	/* input buffer */
 } FR_MD4_CTX;
 
-/*#include <sys/cdefs.h>*/
-
 /*__BEGIN_DECLS*/
 void	 fr_MD4Init(FR_MD4_CTX *);
 void	 fr_MD4Update(FR_MD4_CTX *, const uint8_t *, size_t)
@@ -80,13 +86,15 @@ void	 fr_MD4Transform(uint32_t [4], const uint8_t [MD4_BLOCK_LENGTH])
 /*__END_DECLS*/
 #else  /* WITH_OPENSSL_MD4 */
 
-#include <openssl/md4.h>
-
 #define FR_MD4_CTX	MD4_CTX
 #define fr_MD4Init	MD4_Init
 #define fr_MD4Update	MD4_Update
 #define fr_MD4Final	MD4_Final
 #define fr_MD4Transform MD4_Transform
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* _FR_MD4_H */

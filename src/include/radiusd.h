@@ -104,6 +104,9 @@ typedef struct auth_req REQUEST;
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  *	See util.c
@@ -650,4 +653,9 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
+
+#ifdef __cplusplus
+}
+#endif
+
 #endif /*RADIUSD_H*/

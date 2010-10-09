@@ -53,6 +53,10 @@ RCSIDH(libradius_h, "$Id$")
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/md4.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define EAP_START               2
 
 #define AUTH_VECTOR_LEN		16
@@ -157,7 +161,16 @@ typedef struct value_pair {
 	int			vendor;
 	int			type;
 	size_t			length; /* of data */
+#ifdef __cplusplus
+	/*
+	 *	C++ hackery.  The server and modules are all C, so
+	 *	the defs here don't affect them.  But any C++ code
+	 *	gets excited over "operator", so we change the name.
+	 */
+	FR_TOKEN		op_token;
+#else
 	FR_TOKEN		operator;
+#endif
         ATTR_FLAGS              flags;
 	struct value_pair	*next;
 	uint32_t		lvalue;
@@ -472,6 +485,10 @@ int fr_fifo_push(fr_fifo_t *fi, void *data);
 void *fr_fifo_pop(fr_fifo_t *fi);
 void *fr_fifo_peek(fr_fifo_t *fi);
 int fr_fifo_num_elements(fr_fifo_t *fi);
+
+#ifdef __cplusplus
+}
+#endif
 
 #include <freeradius-devel/packet.h>
 

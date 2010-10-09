@@ -13,6 +13,10 @@ RCSIDH(modules_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef int (*packetmethod)(void *instance, REQUEST *request);
 
 enum {
@@ -87,5 +91,8 @@ int indexed_modcall(int comp, int idx, REQUEST *request);
 int virtual_servers_load(CONF_SECTION *config);
 void virtual_servers_free(time_t when);
 
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* RADIUS_MODULES_H */

@@ -28,6 +28,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(dhcp_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /*
  *	Not for production use.
  */
@@ -59,5 +63,9 @@ int fr_dhcp_decode(RADIUS_PACKET *packet);
 #define DHCP_PACK_OPTION1(x,y) ((x) | ((y) << 8))
 #define DHCP_BASE_ATTR(x) (x & 0xff)
 #define DHCP_UNPACK_OPTION1(x) (((x) & 0xff00) >> 8)
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FR_DHCP_H */

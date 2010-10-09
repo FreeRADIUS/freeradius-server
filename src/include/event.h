@@ -27,6 +27,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(event_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 typedef struct fr_event_list_t fr_event_list_t;
 typedef struct fr_event_t fr_event_t;
 
@@ -53,5 +57,9 @@ int fr_event_fd_insert(fr_event_list_t *el, int type, int fd,
 int fr_event_fd_delete(fr_event_list_t *el, int type, int fd);
 int fr_event_loop(fr_event_list_t *el);
 void fr_event_loop_exit(fr_event_list_t *el, int code);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* FR_HASH_H */

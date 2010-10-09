@@ -37,6 +37,10 @@ RCSIDH(sysutmp_h, "$Id$")
 #  include <utmp.h>
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef __osf__
 #  define UT_NAMESIZE	32
 #  define UT_LINESIZE	32
@@ -97,5 +101,9 @@ struct utmp {
 };
 
 #endif /* HAVE_UTMP_H */
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* SYSUTMP_H_INCLUDED */

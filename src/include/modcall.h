@@ -1,3 +1,6 @@
+#ifndef FR_MODCALL_H
+#define FR_MODCALL_H
+
 /* modcall.h: the outside interface to the module-calling tree. Includes
  * functions to build the tree from the config file, and to call it by
  * feeding it REQUESTs.
@@ -5,6 +8,10 @@
  * Version: $Id$ */
 
 #include <freeradius-devel/conffile.h> /* Need CONF_* definitions */
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /*
  *	For each authorize/authtype/etc, we have an ordered
@@ -32,3 +39,9 @@ void add_to_modcallable(modcallable **parent, modcallable *this,
 
 /* Free a tree returned by compile_modgroup or compile_modsingle */
 void modcallable_free(modcallable **pc);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif

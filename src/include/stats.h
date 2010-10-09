@@ -26,6 +26,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(stats_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #ifdef WITH_STATS_64BIT
 typedef uint64_t fr_uint_t;
 #else
@@ -99,6 +103,10 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 #define RAD_STATS_TYPE_INC(_listener, _x)
 #define RAD_STATS_CLIENT_INC(_listener, _client, _x)
 
+#endif
+
+#ifdef __cplusplus
+}
 #endif
 
 #endif /* FR_STATS_H */

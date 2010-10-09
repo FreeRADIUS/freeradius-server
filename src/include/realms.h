@@ -12,6 +12,10 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(realms_h, "$Id$")
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define HOME_TYPE_INVALID (0)
 #define HOME_TYPE_AUTH    (1)
 #define HOME_TYPE_ACCT    (2)
@@ -139,5 +143,9 @@ home_server *home_server_byname(const char *name, int type);
 home_server *home_server_bynumber(int number);
 #endif
 home_pool_t *home_pool_byname(const char *name, int type);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* REALMS_H */
