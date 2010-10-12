@@ -823,7 +823,9 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		}
 		RDEBUG("Sending SoH request to server %s", fake->server ? fake->server : "NULL");
 		debug_pair_list(fake->packet->vps);
+		RDEBUG("server %s {", fake->server);
 		rad_authenticate(fake);
+		RDEBUG("} # server %s", fake->server);
 		RDEBUG("Got SoH reply");
 		debug_pair_list(fake->reply->vps);
 
