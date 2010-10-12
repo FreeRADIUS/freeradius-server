@@ -26,13 +26,11 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(soh_h, "$Id$")
 
-#include <freeradius-devel/libradius.h>
-
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-int soh_verify(VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len);
+  int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len);
 uint16_t soh_pull_be_16(const uint8_t *p);
 uint32_t soh_pull_be_24(const uint8_t *p);
 uint32_t soh_pull_be_32(const uint8_t *p);
