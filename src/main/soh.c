@@ -117,7 +117,7 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 				 * MS-SOH section 2.2.4.1
 				 */
 				if (data_len < 18) {
-					DEBUG("insufficient data for MS-Machine-Inventory-Packet");
+					RDEBUG("insufficient data for MS-Machine-Inventory-Packet");
 					return 0;
 				}
 				data_len -= 18;
@@ -172,7 +172,7 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 				/* MS-Packet-Info
 				 * MS-SOH 2.2.4.3
 				 */
-				DEBUG("SoH MS-Packet-Info %s vers=%i", *p & 0x10 ? "request" : "response", *p & 0xf);
+				RDEBUG3("SoH MS-Packet-Info %s vers=%i", *p & 0x10 ? "request" : "response", *p & 0xf);
 				p++;
 				data_len--;
 				break;
@@ -253,7 +253,7 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 				break;
 
 			default:
-				DEBUG("SoH Unknown MS TV %i stopping", c);
+				RDEBUG("SoH Unknown MS TV %i stopping", c);
 				return 0;
 		}
 	}
@@ -319,14 +319,14 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 	hdr.tlv_vendor = soh_pull_be_32(data); data += 4;
 
 	if (hdr.tlv_type != 7 || hdr.tlv_vendor != 0x137) {
-		DEBUG("SoH payload is %i %08x not a ms-vendor packet", hdr.tlv_type, hdr.tlv_vendor);
+		RDEBUG("SoH payload is %i %08x not a ms-vendor packet", hdr.tlv_type, hdr.tlv_vendor);
 		return -1;
 	}
 
 	hdr.soh_type = soh_pull_be_16(data); data += 2;
 	hdr.soh_len = soh_pull_be_16(data); data += 2;
 	if (hdr.soh_type != 1) {
-		DEBUG("SoH tlv %04x is not a response", hdr.soh_type);
+		RDEBUG("SoH tlv %04x is not a response", hdr.soh_type);
 		return -1;
 	}
 
@@ -339,13 +339,13 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 
 
 	if (resp.outer_type!=7 || resp.vendor != 0x137) {
-		DEBUG("SoH response outer type %i/vendor %08x not recognised", resp.outer_type, resp.vendor);
+		RDEBUG("SoH response outer type %i/vendor %08x not recognised", resp.outer_type, resp.vendor);
 		return -1;
 	}
 	switch (resp.inner_type) {
 		case 1:
 			/* no mode sub-header */
-			DEBUG("SoH without mode subheader");
+			RDEBUG("SoH without mode subheader");
 			break;
 		case 2:
 			mode.outer_type = soh_pull_be_16(data); data += 2;
@@ -357,13 +357,13 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 			data += 2;
 
 			if (mode.outer_type != 7 || mode.vendor != 0x137 || mode.content_type != 0) {
-				DEBUG("SoH mode subheader outer type %i/vendor %08x/content type %i invalid", mode.outer_type, mode.vendor, mode.content_type);
+				RDEBUG3("SoH mode subheader outer type %i/vendor %08x/content type %i invalid", mode.outer_type, mode.vendor, mode.content_type);
 				return -1;
 			}
-			DEBUG("SoH with mode subheader");
+			RDEBUG3("SoH with mode subheader");
 			break;
 		default:
-			DEBUG("SoH invalid inner type %i", resp.inner_type);
+			RDEBUG("SoH invalid inner type %i", resp.inner_type);
 			return -1;
 	}
 
@@ -401,7 +401,7 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 				 */
 				curr_shid = soh_pull_be_24(data);
 				curr_shid_c = data[3];
-				DEBUG("SoH System-Health-ID vendor %08x component=%i", curr_shid, curr_shid_c);
+				RDEBUG2("SoH System-Health-ID vendor %08x component=%i", curr_shid, curr_shid_c);
 				break;
 
 			case 7:
@@ -412,10 +412,10 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 				 * N bytes payload; for Microsoft component#0 this is the MS TV stuff
 				 */
 				if (curr_shid==0x137 && curr_shid_c==0) {
-					DEBUG("SoH MS type-value payload");
+					RDEBUG2("SoH MS type-value payload");
 					eapsoh_mstlv(request, sohvp, data + 4, tlv.tlv_len - 4);
 				} else {
-					DEBUG("SoH unhandled vendor-specific TLV %08x/component=%i %i bytes payload", curr_shid, curr_shid_c, tlv.tlv_len);
+					RDEBUG2("SoH unhandled vendor-specific TLV %08x/component=%i %i bytes payload", curr_shid, curr_shid_c, tlv.tlv_len);
 				}
 				break;
 
@@ -425,7 +425,7 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 				 *
 				 * 1 byte integer
 				 */
-				DEBUG("SoH Health-Class %i", data[0]);
+				RDEBUG2("SoH Health-Class %i", data[0]);
 				curr_hc = data[0];
 				break;
 
@@ -435,7 +435,7 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 				 *
 				 * 1 byte integer
 				 */
-				DEBUG("SoH Software-Version %i", data[0]);
+				RDEBUG2("SoH Software-Version %i", data[0]);
 				break;
 
 			case 11:
@@ -451,14 +451,14 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 				 *  1 bit - 1==product up-to-date
 				 *  1 bit - 1==product enabled
 				 */
-				DEBUG("SoH Health-Class-Status - current shid=%08x component=%i", curr_shid, curr_shid_c);
+				RDEBUG2("SoH Health-Class-Status - current shid=%08x component=%i", curr_shid, curr_shid_c);
 
 				if (curr_shid==0x137 && curr_shid_c==128) {
 
 					const char *s, *t;
 					uint32_t hcstatus = soh_pull_be_32(data);
 
-					DEBUG("SoH Health-Class-Status microsoft DWORD=%08x", hcstatus);
+					RDEBUG2("SoH Health-Class-Status microsoft DWORD=%08x", hcstatus);
 
 					vp = pairmake("SoH-MS-Windows-Health-Status", NULL, T_OP_EQ);
 					switch (curr_hc) {
@@ -567,7 +567,7 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 				break;
 
 			default:
-				DEBUG("SoH Unknown TLV %i len=%i", tlv.tlv_type, tlv.tlv_len);
+				RDEBUG("SoH Unknown TLV %i len=%i", tlv.tlv_type, tlv.tlv_len);
 				break;
 		}
 
