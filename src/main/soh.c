@@ -23,6 +23,7 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/soh.h>
 
 /*
@@ -318,14 +319,14 @@ int soh_verify(VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
 	hdr.tlv_vendor = soh_pull_be_32(data); data += 4;
 
 	if (hdr.tlv_type != 7 || hdr.tlv_vendor != 0x137) {
-		fr_strerror_printf("SoH payload is %i %08x not a ms-vendor packet", hdr.tlv_type, hdr.tlv_vendor);
+		DEBUG("SoH payload is %i %08x not a ms-vendor packet", hdr.tlv_type, hdr.tlv_vendor);
 		return -1;
 	}
 
 	hdr.soh_type = soh_pull_be_16(data); data += 2;
 	hdr.soh_len = soh_pull_be_16(data); data += 2;
 	if (hdr.soh_type != 1) {
-		fr_strerror_printf("SoH tlv %04x is not a response", hdr.soh_type);
+		DEBUG("SoH tlv %04x is not a response", hdr.soh_type);
 		return -1;
 	}
 
@@ -338,13 +339,13 @@ int soh_verify(VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
 
 
 	if (resp.outer_type!=7 || resp.vendor != 0x137) {
-		fr_strerror_printf("SoH response outer type %i/vendor %08x not recognised", resp.outer_type, resp.vendor);
+		DEBUG("SoH response outer type %i/vendor %08x not recognised", resp.outer_type, resp.vendor);
 		return -1;
 	}
 	switch (resp.inner_type) {
 		case 1:
 			/* no mode sub-header */
-			fr_strerror_printf("SoH without mode subheader");
+			DEBUG("SoH without mode subheader");
 			break;
 		case 2:
 			mode.outer_type = soh_pull_be_16(data); data += 2;
@@ -356,13 +357,13 @@ int soh_verify(VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
 			data += 2;
 
 			if (mode.outer_type != 7 || mode.vendor != 0x137 || mode.content_type != 0) {
-				fr_strerror_printf("SoH mode subheader outer type %i/vendor %08x/content type %i invalid", mode.outer_type, mode.vendor, mode.content_type);
+				DEBUG("SoH mode subheader outer type %i/vendor %08x/content type %i invalid", mode.outer_type, mode.vendor, mode.content_type);
 				return -1;
 			}
 			DEBUG("SoH with mode subheader");
 			break;
 		default:
-			fr_strerror_printf("SoH invalid inner type %i", resp.inner_type);
+			DEBUG("SoH invalid inner type %i", resp.inner_type);
 			return -1;
 	}
 
@@ -414,7 +415,7 @@ int soh_verify(VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
 					DEBUG("SoH MS type-value payload");
 					eapsoh_mstlv(sohvp, data + 4, tlv.tlv_len - 4);
 				} else {
-					fr_strerror_printf("SoH unhandled vendor-specific TLV %08x/component=%i %i bytes payload", curr_shid, curr_shid_c, tlv.tlv_len);
+					DEBUG("SoH unhandled vendor-specific TLV %08x/component=%i %i bytes payload", curr_shid, curr_shid_c, tlv.tlv_len);
 				}
 				break;
 
