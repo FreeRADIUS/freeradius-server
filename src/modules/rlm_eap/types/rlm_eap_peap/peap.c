@@ -818,9 +818,9 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		RDEBUG("Processing SoH request");
 		debug_pair_list(fake->packet->vps);
-		fprintf(fr_log_fp, "server %s {\n", fake->server);
+		RDEBUG("server %s {", fake->server);
 		rad_authenticate(fake);
-		fprintf(fr_log_fp, "} # server %s\n", fake->server);
+		RDEBUG("} # server %s", fake->server);
 		RDEBUG("Got SoH reply");
 		debug_pair_list(fake->reply->vps);
 
