@@ -171,38 +171,50 @@ typedef struct check_handler_t {
 
 static void check_handler(void *data)
 {
+	int do_warning = FALSE;
+	uint8_t state[8];
 	check_handler_t *check = data;
 
 	if (!check) return;
+
 	if (!check->inst || !check->handler) {
 		free(check);
 		return;
 	}
 
-	pthread_mutex_lock(&(check->inst->session_mutex));
+	pthread_mutex_lock(&(check->inst->handler_mutex));
 	if (!rbtree_finddata(check->inst->handler_tree, check->handler)) {
 		goto done;
 	}
 
+	/*
+	 *	The session has continued *after* this packet.
+	 *	Don't do a warning.
+	 */
 	if (check->handler->trips > check->trips) {
 		goto done;
 	}
 
 	if (check->handler->tls && !check->handler->finished) {
+		do_warning = TRUE;
+		memcpy(state, check->handler->state, sizeof(state));
+	}
+
+done:
+	pthread_mutex_unlock(&(check->inst->handler_mutex));
+	free(check);
+
+	if (do_warning) {
 		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		DEBUG("WARNING: !! EAP session for state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!",
-		      check->handler->state[0], check->handler->state[1],
-		      check->handler->state[2], check->handler->state[3],
-		      check->handler->state[4], check->handler->state[5],
-		      check->handler->state[6], check->handler->state[7]);
+		      state[0], state[1],
+		      state[2], state[3],
+		      state[4], state[5],
+		      state[6], state[7]);
 
 		DEBUG("WARNING: !! Please read http://wiki.freeradius.org/Certificate_Compatibility");
 		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
-
-done:
-	pthread_mutex_unlock(&(check->inst->session_mutex));
-	free(check);
 }
 
 void eaptype_free(EAP_TYPES *i)
