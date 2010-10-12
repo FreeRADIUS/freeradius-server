@@ -102,7 +102,7 @@ uint32_t soh_pull_be_32(const uint8_t *p) {
  * unknown types; we need to know their length ahead of time. Therefore, we abort
  * if we find an unknown type.
  */
-static int eapsoh_mstlv(VALUE_PAIR *sohvp, const uint8_t *p, unsigned int data_len) {
+static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, unsigned int data_len) {
 	VALUE_PAIR *vp;
 	uint8_t c;
 	int t;
@@ -305,7 +305,7 @@ static const char* healthclass2str(uint8_t hc) {
 	return NULL;
 }
 
-int soh_verify(VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
+int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;
 	eap_soh hdr;
@@ -413,7 +413,7 @@ int soh_verify(VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
 				 */
 				if (curr_shid==0x137 && curr_shid_c==0) {
 					DEBUG("SoH MS type-value payload");
-					eapsoh_mstlv(sohvp, data + 4, tlv.tlv_len - 4);
+					eapsoh_mstlv(request, sohvp, data + 4, tlv.tlv_len - 4);
 				} else {
 					DEBUG("SoH unhandled vendor-specific TLV %08x/component=%i %i bytes payload", curr_shid, curr_shid_c, tlv.tlv_len);
 				}

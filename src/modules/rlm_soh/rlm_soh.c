@@ -140,6 +140,7 @@ static int soh_instantiate(CONF_SECTION *conf, void **instance) {
 static int soh_postauth(UNUSED void * instance, REQUEST *request)
 {
 #ifdef WITH_DHCP
+	int rcode;
 	VALUE_PAIR *vp;
 
 	vp = pairfind(request->packet->vps, DHCP2ATTR(43));
@@ -176,7 +177,10 @@ static int soh_postauth(UNUSED void * instance, REQUEST *request)
 					} else {
 						RDEBUG("SoH decoding NAP from DHCP request");
 						/* SoH payload */
-						soh_verify(request->packet->vps, data, vlen);
+						rcode = soh_verify(request, request->packet->vps, data, vlen);
+						if (rcode < 0) {
+							return RLM_MODULE_FAIL;
+						}
 					}
 					break;
 				default:
@@ -205,7 +209,10 @@ static int soh_authorize(UNUSED void * instance, REQUEST *request)
 
 	RDEBUG("SoH radius VP found");
 	/* decode it */
-	rv = soh_verify(request->packet->vps, vp->vp_octets, vp->length);
+	rv = soh_verify(request, request->packet->vps, vp->vp_octets, vp->length);
+	if (rv < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	return RLM_MODULE_OK;
 }

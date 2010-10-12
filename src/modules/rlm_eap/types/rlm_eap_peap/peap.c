@@ -194,7 +194,7 @@ static VALUE_PAIR* eapsoh_verify(REQUEST *request, const uint8_t *data, unsigned
 	}
 
 
-	rv = soh_verify(vp, data, data_len - 8);
+	rv = soh_verify(request, vp, data, data_len - 8);
 	if (rv<0) {
 		RDEBUG("SoH - error decoding payload: %s", fr_strerror());
 	} else {
