@@ -383,9 +383,12 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 /*
  *	See if there's a TLV in the response.
  */
-static int eappeap_check_tlv(REQUEST *request, const uint8_t *data)
+static int eappeap_check_tlv(REQUEST *request, const uint8_t *data,
+			     size_t data_len)
 {
 	const eap_packet_t *eap_packet = (const eap_packet_t *) data;
+
+	if (data_len < 11) return 0;
 
 	/*
 	 *	Look for success or failure.
@@ -401,6 +404,8 @@ static int eappeap_check_tlv(REQUEST *request, const uint8_t *data)
 			return 0;
 		}
 	}
+
+	RDEBUG("Unknown TLV %02x", data[10]);
 
 	return 0;
 }
@@ -857,7 +862,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	If we authenticated the user, then it's OK.
 	 */
 	case PEAP_STATUS_SENT_TLV_SUCCESS:
-		if (eappeap_check_tlv(request, data)) {
+		if (eappeap_check_tlv(request, data, data_len)) {
 			RDEBUG2("Success");
 			return RLM_MODULE_OK;
 		}
