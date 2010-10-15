@@ -399,7 +399,7 @@ static void null_free(UNUSED void *data)
 {
 }
 
-static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
+static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	const char *name2;
 	home_server *home;
@@ -408,13 +408,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 
 	free(hs_virtual_server); /* used only for printing during parsing */
 	hs_virtual_server = NULL;
-
-	name2 = cf_section_name1(cs);
-	if (!name2 || (strcasecmp(name2, "home_server") != 0)) {
-		cf_log_err(cf_sectiontoitem(cs),
-			   "Section is not a home_server.");
-		return 0;
-	}
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -537,18 +530,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
 		if (home->no_response_fail == 2) home->no_response_fail = 0;
-		if (pool_type != home->type) {
-		mismatch:
-			cf_log_err(cf_sectiontoitem(cs),
-				   "Home server %s of unexpected type \"%s\"",
-				   name2, hs_type);
-			goto error;
-		}
 
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
 		if (home->no_response_fail == 2) home->no_response_fail = 1;
-		if (pool_type != home->type) goto mismatch;
 
 	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
 		home->type = HOME_TYPE_AUTH;
@@ -558,8 +543,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs, int pool_type)
 	} else if (strcasecmp(hs_type, "coa") == 0) {
 		home->type = HOME_TYPE_COA;
 		dual = FALSE;
-
-		if (pool_type != home->type) goto mismatch;
 
 		if (home->server != NULL) {
 			cf_log_err(cf_sectiontoitem(cs),
@@ -849,10 +832,6 @@ static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
 	if (!server_cs) {
 		cf_log_err(cf_pairtoitem(cp),
 			   "Unknown home_server \"%s\".", name);
-		return 0;
-	}
-	
-	if (!home_server_add(rc, server_cs, server_type)) {
 		return 0;
 	}
 	
@@ -1816,6 +1795,16 @@ int realms_init(CONF_SECTION *config)
 	}
 #endif
 
+	for (cs = cf_subsection_find_next(config, NULL, "home_server");
+	     cs != NULL;
+	     cs = cf_subsection_find_next(config, cs, "home_server")) {
+		if (!home_server_add(rc, cs)) {
+			free(rc);
+			realms_free();
+			return 0;
+		}
+	}
+
 	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "realm")) {
@@ -1844,22 +1833,6 @@ int realms_init(CONF_SECTION *config)
 		if (type == HOME_TYPE_INVALID) return 0;
 
 		if (!server_pool_add(rc, cs, type, TRUE)) {
-			return 0;
-		}
-	}
-
-	/*
-	 *	CoA home servers aren't tied to realms.
-	 */
-	for (cs = cf_subsection_find_next(config, NULL, "home_server");
-	     cs != NULL;
-	     cs = cf_subsection_find_next(config, cs, "home_server")) {
-		/*
-		 *	Server was already loaded.
-		 */
-		if (cf_data_find(cs, "home_server")) continue;
-
-		if (!home_server_add(rc, cs, HOME_TYPE_COA)) {
 			return 0;
 		}
 	}
