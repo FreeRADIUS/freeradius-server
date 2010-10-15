@@ -30,7 +30,7 @@ all: common
 $(LT_OBJS): $(HEADERS)
 
 radeapclient: radeapclient.lo $(CLIENTLIBS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) -o radeapclient radeapclient.lo $(CLIENTLIBS) $(LIBS) $(OPENSSL_LIBS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) -o radeapclient radeapclient.lo $(LIBRADIUS) $(CLIENTLIBS) $(LIBS) $(OPENSSL_LIBS)
 
 radeapclient.lo: radeapclient.c $(HEADERS)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c radeapclient.c
