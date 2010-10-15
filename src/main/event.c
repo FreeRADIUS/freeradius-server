@@ -1170,16 +1170,16 @@ static void wait_a_bit(void *ctx)
 	case REQUEST_RUNNING:
 		/*
 		 *	If we're not thread-capable, OR we're capable,
-		 *	but have been told to run without threads,
-		 *	complain when the requests is queued for a
-		 *	thread, or running in a child thread.
+		 *	but have been told to run without threads, and
+		 *	the request is still running.  This is usually
+		 *	because the request was proxied, and the home
+		 *	server didn't respond.
 		 */
 #ifdef HAVE_PTHREAD_H
 		if (!have_children)
 #endif
 		{
-			rad_assert("We do not have threads, but the request is marked as queued or running in a child thread" == NULL);
-			break;
+			goto done;
 		}
 
 #ifdef HAVE_PTHREAD_H
@@ -1249,6 +1249,7 @@ static void wait_a_bit(void *ctx)
 		 *	and clean it up.
 		 */
 	case REQUEST_DONE:
+	done:
 #ifdef HAVE_PTHREAD_H
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
