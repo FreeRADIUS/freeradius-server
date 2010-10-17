@@ -1241,6 +1241,7 @@ static void wait_a_bit(void *ctx)
 		if (!have_children)
 #endif
 		{
+			request->child_state = REQUEST_DONE;
 			goto done;
 		}
 
