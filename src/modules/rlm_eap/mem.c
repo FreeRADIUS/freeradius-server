@@ -127,7 +127,7 @@ EAP_HANDLER *eap_handler_alloc(rlm_eap_t *inst)
 	handler = rad_malloc(sizeof(EAP_HANDLER));
 	memset(handler, 0, sizeof(EAP_HANDLER));
 
-	if (fr_debug_flag && inst->handler_tree) {
+	if (inst->handler_tree) {
 		PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
 		rbtree_insert(inst->handler_tree, handler);
 		PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
@@ -189,6 +189,8 @@ static void check_handler(void *data)
 		free(check);
 		return;
 	}
+
+	if (!check->inst->handler_tree) goto done;
 
 	PTHREAD_MUTEX_LOCK(&(check->inst->handler_mutex));
 	if (!rbtree_finddata(check->inst->handler_tree, check->handler)) {
@@ -425,7 +427,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	/*
 	 *	Catch Access-Challenge without response.
 	 */
-	if (fr_debug_flag) {
+	if (inst->handler_tree) {
 		check_handler_t *check = rad_malloc(sizeof(*check));
 
 		check->inst = inst;
