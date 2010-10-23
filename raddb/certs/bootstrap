@@ -66,6 +66,7 @@ fi
 
 if [ ! -f server.pem ]; then
   openssl pkcs12 -in server.p12 -out server.pem -passin pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` -passout pass:`grep output_password server.cnf | sed 's/.*=//;s/^ *//'` || exit 1
+  openssl verify -CAfile ca.pem server.pem || exit 1
 fi
 
 if [ ! -f ca.der ]; then
