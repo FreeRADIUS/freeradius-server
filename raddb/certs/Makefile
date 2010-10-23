@@ -36,7 +36,7 @@ client: client.pem
 ca: ca.der
 
 .PHONY: server
-server: server.pem
+server: server.pem server.vrfy
 
 ######################################################################
 #
