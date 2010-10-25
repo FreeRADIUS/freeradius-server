@@ -1174,7 +1174,7 @@ static void no_response_to_proxied_request(void *ctx)
 	home->state = HOME_STATE_ZOMBIE;
 	
 	home->zombie_period_start.tv_sec = home->last_packet;
-	home->zombie_period_start.tv_sec = USEC / 2;
+	home->zombie_period_start.tv_usec = USEC / 2;
 	
 	fr_event_delete(el, &home->ev);
 	home->currently_outstanding = 0;
