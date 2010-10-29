@@ -882,6 +882,8 @@ static void fix_up(REQUEST *request)
 	request->password = NULL;
 	
 	for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+		if (vp->vendor) continue;
+
 		if ((vp->attribute == PW_USER_NAME) &&
 		    !request->username) {
 			request->username = vp;
@@ -892,6 +894,8 @@ static void fix_up(REQUEST *request)
 		} else if (vp->attribute == PW_USER_PASSWORD) {
 			request->password = vp;
 		}
+
+		if (request->username && request->password) continue;
 	}
 }
 
@@ -985,7 +989,8 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			/*
 			 *	Attributes aren't the same, skip them.
 			 */
-			if (from_list[i]->attribute != to_list[j]->attribute) {
+			if ((from_list[i]->attribute != to_list[j]->attribute) &&
+			    (from_list[i]->vendor != to_list[j]->vendor)) {
 				continue;
 			}
 
@@ -1318,7 +1323,8 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		cp = cf_itemtopair(ci);
 
 #ifndef NDEBUG
-		if (debug_flag && radius_find_compare(vp->attribute)) {
+		if (debug_flag && (vp->vendor == 0) &&
+		    radius_find_compare(vp->attribute)) {
 			DEBUG("WARNING: You are modifying the value of virtual attribute %s.  This is not supported.", vp->name);
 		}
 #endif
