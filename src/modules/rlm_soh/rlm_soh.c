@@ -48,19 +48,19 @@ static size_t soh_xlat(UNUSED void *instance, REQUEST *request, char *fmt, char 
 	 * FIXME: should have a #define for the attribute...
 	 * SoH-Supported == 2119 in dictionary.freeradius.internal
 	 */
-	vp[0] = pairfind(request->packet->vps, 2119);
+	vp[0] = pairfind(request->packet->vps, 2119, 0);
 	if (!vp[0])
 		return 0;
 
 
 	if (strncasecmp(fmt, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = pairfind(request->packet->vps, 2100);
-		vp[1] = pairfind(request->packet->vps, 2101);
-		vp[2] = pairfind(request->packet->vps, 2102);
-		vp[3] = pairfind(request->packet->vps, 2103);
-		vp[4] = pairfind(request->packet->vps, 2104);
-		vp[5] = pairfind(request->packet->vps, 2105);
+		vp[0] = pairfind(request->packet->vps, 2100, 0);
+		vp[1] = pairfind(request->packet->vps, 2101, 0);
+		vp[2] = pairfind(request->packet->vps, 2102, 0);
+		vp[3] = pairfind(request->packet->vps, 2103, 0);
+		vp[4] = pairfind(request->packet->vps, 2104, 0);
+		vp[5] = pairfind(request->packet->vps, 2105, 0);
 
 		if (vp[0] && vp[0]->vp_integer == 311) {
 			if (!vp[1]) {
