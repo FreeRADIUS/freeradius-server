@@ -62,7 +62,7 @@ static size_t soh_xlat(UNUSED void *instance, REQUEST *request, char *fmt, char 
 		vp[4] = pairfind(request->packet->vps, 2104, 0);
 		vp[5] = pairfind(request->packet->vps, 2105, 0);
 
-		if (vp[0] && vp[0]->vp_integer == 311) {
+		if (vp[0] && vp[0]->vp_integer == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
 				snprintf(out, outlen, "Windows unknown");
 			} else {
@@ -201,7 +201,7 @@ static int soh_authorize(UNUSED void * instance, REQUEST *request)
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = pairfind(request->packet->vps, (311 << 16) | 55);
+	vp = pairfind(request->packet->vps, 55, VENDORPEC_MICROSOFT)
 	if (!vp) {
 		RDEBUG("SoH radius VP not found");
 		return RLM_MODULE_NOOP;
