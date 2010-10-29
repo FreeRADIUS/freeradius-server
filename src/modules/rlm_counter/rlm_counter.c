@@ -145,7 +145,7 @@ static int counter_cmp(void *instance,
 	/*
 	 *	Find the key attribute.
 	 */
-	key_vp = pairfind(request, data->key_attr);
+	key_vp = pairfind(request, data->key_attr, 0);
 	if (key_vp == NULL) {
 		return RLM_MODULE_NOOP;
 	}
@@ -447,7 +447,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 * Find the attribute for the allowed protocol
 	 */
 	if (data->service_type != NULL) {
-		if ((dval = dict_valbyname(PW_SERVICE_TYPE, data->service_type)) == NULL) {
+		if ((dval = dict_valbyname(PW_SERVICE_TYPE, 0, data->service_type)) == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to find attribute number for %s",
 					data->service_type);
 			counter_detach(data);
@@ -634,7 +634,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 *	Look for the key.  User-Name is special.  It means
 	 *	The REAL username, after stripping.
 	 */
-	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
+	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr, 0);
 	if (key_vp == NULL){
 		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP.");
 		return RLM_MODULE_NOOP;
@@ -643,7 +643,7 @@ static int counter_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Look for the attribute to use as a counter.
 	 */
-	count_vp = pairfind(request->packet->vps, data->count_attr);
+	count_vp = pairfind(request->packet->vps, data->count_attr, 0);
 	if (count_vp == NULL){
 		DEBUG("rlm_counter: Could not find the count-attribute in the request.");
 		return RLM_MODULE_NOOP;
@@ -774,7 +774,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	 *      The REAL username, after stripping.
 	 */
 	DEBUG2("rlm_counter: Entering module authorize code");
-	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
+	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr, 0);
 	if (key_vp == NULL) {
 		DEBUG2("rlm_counter: Could not find Key value pair");
 		return ret;
@@ -783,7 +783,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	/*
 	 *      Look for the check item
 	 */
-	if ((check_vp= pairfind(request->config_items, data->check_attr)) == NULL) {
+	if ((check_vp= pairfind(request->config_items, data->check_attr, 0)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
 		return ret;
 	}
@@ -852,17 +852,17 @@ static int counter_authorize(void *instance, REQUEST *request)
 				if (reply_item->vp_integer > res)
 					reply_item->vp_integer = res;
 			} else {
-				reply_item = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, PW_TYPE_INTEGER);
+				reply_item = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0, PW_TYPE_INTEGER);
 				reply_item->vp_integer = res;
 			}
 		}
 		else if (data->reply_attr) {
-			if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
+			if ((reply_item = pairfind(request->reply->vps, data->reply_attr, 0)) != NULL) {
 				if (reply_item->vp_integer > res)
 					reply_item->vp_integer = res;
 			}
 			else {
-				reply_item = radius_paircreate(request, &request->reply->vps, data->reply_attr, PW_TYPE_INTEGER);
+				reply_item = radius_paircreate(request, &request->reply->vps, data->reply_attr, 0, PW_TYPE_INTEGER);
 				reply_item->vp_integer = res;
 			}
 		}
