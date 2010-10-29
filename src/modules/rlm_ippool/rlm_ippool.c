@@ -569,7 +569,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		{
 			/* Override supplied Framed-IP-Address */
 			RDEBUG("override is set to yes. Override the existing Framed-IP-Address attribute.");
-			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS);
+			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS, 0);
 		} else {
 			/* Abort */
 			RDEBUG("override is set to no. Return NOOP.");
@@ -775,7 +775,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
 		vp = radius_paircreate(request, &request->reply->vps,
-				       PW_FRAMED_IP_ADDRESS, PW_TYPE_IPADDR);
+				       PW_FRAMED_IP_ADDRESS, 0, PW_TYPE_IPADDR);
 		vp->vp_ipaddr = entry.ipaddr;
 
 		/*
@@ -784,7 +784,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		 */
 		if (pairfind(request->reply->vps, PW_FRAMED_IP_NETMASK, 0) == NULL) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       PW_FRAMED_IP_NETMASK,
+					       PW_FRAMED_IP_NETMASK, 0,
 					       PW_TYPE_IPADDR);
 			vp->vp_ipaddr = ntohl(data->netmask);
 		}
