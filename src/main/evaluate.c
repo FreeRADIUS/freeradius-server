@@ -882,7 +882,7 @@ static void fix_up(REQUEST *request)
 	request->password = NULL;
 	
 	for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
-		if (vp->vendor) continue;
+		if (vp->vendor != 0) continue;
 
 		if ((vp->attribute == PW_USER_NAME) &&
 		    !request->username) {
@@ -895,7 +895,7 @@ static void fix_up(REQUEST *request)
 			request->password = vp;
 		}
 
-		if (request->username && request->password) continue;
+		if (request->username && request->password) break;
 	}
 }
 
@@ -989,7 +989,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			/*
 			 *	Attributes aren't the same, skip them.
 			 */
-			if ((from_list[i]->attribute != to_list[j]->attribute) &&
+			if ((from_list[i]->attribute != to_list[j]->attribute) ||
 			    (from_list[i]->vendor != to_list[j]->vendor)) {
 				continue;
 			}
