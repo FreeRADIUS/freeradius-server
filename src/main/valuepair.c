@@ -572,6 +572,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	Don't move 'fallthrough' over.
 		 */
 		if (i->attribute == PW_FALL_THROUGH) {
+			tailfrom = i;
 			continue;
 		}
 
