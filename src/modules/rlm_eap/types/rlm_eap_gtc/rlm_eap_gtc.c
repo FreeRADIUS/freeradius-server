@@ -110,14 +110,17 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
  */
 static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
 {
+	char challenge_str[1024];
 	int length;
 	EAP_DS *eap_ds = handler->eap_ds;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) type_data;
 
-	/*
-	 *	FIXME: call radius_xlat on the challenge
-	 */
-	length = strlen(inst->challenge);
+	if (!radius_xlat(challenge_str, sizeof(challenge_str), inst->challenge, handler->request, NULL)) {
+		radlog(L_ERR, "rlm_eap_gtc: xlat failed.", inst->challenge);
+		return 0;
+	}
+
+	length = strlen(challenge_str);
 
 	/*
 	 *	We're sending a request...
@@ -130,7 +133,7 @@ static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
 		return 0;
 	}
 
-	memcpy(eap_ds->request->type.data, inst->challenge, length);
+	memcpy(eap_ds->request->type.data, challenge_str, length);
 	eap_ds->request->type.length = length;
 
 	/*
