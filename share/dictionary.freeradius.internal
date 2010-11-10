@@ -341,8 +341,6 @@ ATTRIBUTE	Tmp-IP-Address-9			1829	ipaddr
 #	these attributes.
 #
 ATTRIBUTE	WiMAX-MN-NAI				1900	string
-ATTRIBUTE	WiMAX-FA-IP-Address			1901	ipaddr
-ATTRIBUTE	WiMAX-MN-FA				1902	octets
 
 ATTRIBUTE	TLS-Cert-Serial				1910	string
 ATTRIBUTE	TLS-Cert-Expiration			1911	string
