@@ -1778,6 +1778,11 @@ rad_listen_t *proxy_new_listener(fr_ipaddr_t *ipaddr, int exists)
 	sock->port = 0;
 
 	if (listen_bind(this) >= 0) {
+		char buffer[256];
+
+		this->print(this, buffer, sizeof(buffer));
+		radlog(L_INFO, " ... adding new socket %s", buffer);
+
 		/*
 		 *	Add the new listener to the list of
 		 *	listeners.
