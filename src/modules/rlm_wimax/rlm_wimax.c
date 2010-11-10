@@ -480,30 +480,6 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	}
 
 	/*
-	 *	Generate MN-FA = H(FA-RK, "MN FA" | FA-IP | MN-NAI)
-	 */
-	ip = pairfind(request->reply->vps, 1901);
-	if (fa_rk && ip && mn_nai) {
-		HMAC_Init_ex(&hmac, fa_rk->vp_octets, fa_rk->length,
-			     EVP_sha1(), NULL);
-		
-		HMAC_Update(&hmac, (const uint8_t *) "MN FA", 5);
-		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipaddr, 4);
-		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
-
-		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
-
-		vp = radius_paircreate(request, &request->reply->vps,
-				       1902, PW_TYPE_OCTETS);
-		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-MN-FA");
-		} else {
-			memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
-			vp->length = rk1_len;
-		}
-	}
-
-	/*
 	 *	Give additional information about requests && responses
 	 *
 	 *	WiMAX-RRQ-MN-HA-SPI
