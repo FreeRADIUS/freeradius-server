@@ -1945,7 +1945,11 @@ static int listen_bind(rad_listen_t *this)
 	 */
 	this->fd = socket(sock->my_ipaddr.af, sock_type, 0);
 	if (this->fd < 0) {
-		radlog(L_ERR, "Failed opening socket: %s", strerror(errno));
+		char buffer[256];
+
+		this->print(this, buffer, sizeof(buffer));
+
+		radlog(L_ERR, "Failed opening %s: %s", buffer, strerror(errno));
 		return -1;
 	}
 		
