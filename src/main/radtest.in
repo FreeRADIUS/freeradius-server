@@ -112,6 +112,6 @@ fi
 	then
 		echo "Framed-Protocol = PPP"
 	fi
-) | $radclient $OPTIONS -x $3 auth $5
+) | $radclient $OPTIONS -x $3 auth "$5"
 
 exit $?
