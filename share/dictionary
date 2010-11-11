@@ -147,6 +147,7 @@ $INCLUDE dictionary.lucent
 $INCLUDE dictionary.manzara
 $INCLUDE dictionary.merit
 $INCLUDE dictionary.microsoft
+$INCLUDE dictionary.mikrotik
 $INCLUDE dictionary.motorola.wimax
 $INCLUDE dictionary.navini
 $INCLUDE dictionary.netscreen
