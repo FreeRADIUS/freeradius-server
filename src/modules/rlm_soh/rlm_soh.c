@@ -201,7 +201,7 @@ static int soh_authorize(UNUSED void * instance, REQUEST *request)
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = pairfind(request->packet->vps, 55, VENDORPEC_MICROSOFT)
+	vp = pairfind(request->packet->vps, 55, VENDORPEC_MICROSOFT);
 	if (!vp) {
 		RDEBUG("SoH radius VP not found");
 		return RLM_MODULE_NOOP;
