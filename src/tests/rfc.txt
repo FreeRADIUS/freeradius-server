@@ -1,0 +1,84 @@
+#  All attribute lengths are implicit, and are calculated automatically
+#
+#  Input is of the form:
+#
+#	WORD ...
+#
+#  The WORD is a keyword which indicates the format of the following text.
+#  WORD is one of:
+#
+#	raw - read the grammar defined below, and encode an attribute.
+#	      The grammer supports a trivial way of describing RADIUS
+#	      attributes, without reference to dictionaries or fancy
+#	      parsers
+#
+#	encode - reads "Attribute-Name = value", encodes it, and prints
+#	         the result as text.
+#
+#	decode - reads hex, and decodes it "Attribute-Name = value"
+#	         for now, "-" is the only allowed value, and makes it
+#		 decode the last hex "data".
+#
+#	data - the expected output of the previous command, in ASCII form.
+#	       if the actual command output is different, an error message
+#	       is produced, and the program terminates.
+#
+#
+#  The "raw" input satisfies the following grammar:
+#
+#	Identifier = 1*DIGIT *( "." 1*DIGIT )
+#
+#	HEXCHAR = HEXDIG HEXDIG 
+#
+#	STRING = DQUOTE *CHAR DQUOTE
+#
+#	TLV = "{" 1*DIGIT DATA "}"
+#
+#	DATA = 1*HEXCHAR / 1*TLV / STRING
+#
+#	LINE = Identifier DATA
+#
+#  The "Identifier" is a RADIUS attribute identifier, as given in the draft.
+#
+#	e.g.	1		for User-Name
+#		26.9.1		Vendor-Specific, Cisco, Cisco-AVPAir
+#		241.1		Extended Attribute, number 1
+#		241.2.3		Extended Attribute 2, data type TLV, TLV type 3
+#		etc.
+#
+#  The "DATA" portion is the contents of the RADIUS Attribute.
+#
+#		123456789abcdef hex string
+#		12 34 56 ab	with spaces for clarity
+#		"hello"	 	Text string
+#		{ 1 abcdef }	TLV, TLV-Type 1, data "abcdef"
+#
+#  TLVs can be nested:
+#
+#	{ tlv-type { tlv-type data } }		{ 3 { 4 01020304 } }
+#
+#  TLVs can be concatencated
+#
+#	{tlv-type data } { tlv-type data}	{ 3 040506 } { 8 aabbcc }
+#
+#  The "raw" data is encoded without reference to dictionaries.  Any
+#  valid string is parsed to a RADIUS attribute.  The resulting RADIUS
+#  attribute *may not* be correctly formatted to the relevant RADIUS
+#  specifications.  i.e. you can use this tool to create attribute 1
+#  (User-Name), which is encoded as a series of TLVs.  That's up to you.
+#
+#  The purpose of the "raw" command is to have a simple way of encoding
+#  attributes which is independent of any dictionaries or packet processing
+#  routines.
+#
+#  The output data is the hex version of the encoded attribute.
+#
+
+encode User-Name = "bob"
+data 01 05 62 6f 62
+
+decode -
+data User-Name = "bob"
+
+$INCLUDE wimax.txt
+$INCLUDE extended.txt

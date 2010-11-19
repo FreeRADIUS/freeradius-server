@@ -465,46 +465,27 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 	return length + sublen;
 }
 
-int main(int argc, char *argv[])
+static void process_file(const char *filename)
 {
-	int lineno, c;
+	int lineno;
 	size_t i, outlen;
 	ssize_t len, data_len;
 	FILE *fp;
-	const char *filename;
 	char input[8192], buffer[8192];
 	char output[8192];
 	uint8_t *attr, data[2048];
-	const char *radius_dir = RADDBDIR;
 
-	while ((c = getopt(argc, argv, "d:")) != EOF) switch(c) {
-		case 'd':
-			radius_dir = optarg;
-			break;
-		default:
-			fprintf(stderr, "usage: radattr [OPTS] filename\n");
-			exit(1);
-	}
-	argc -= (optind - 1);
-	argv += (optind - 1);
-
-	if ((argc < 2) || (strcmp(argv[1], "-") == 0)) {
+	if (strcmp(filename, "-") == 0) {
 		fp = stdin;
 		filename = "<stdin>";
 
 	} else {
-		fp = fopen(argv[1], "r");
+		fp = fopen(filename, "r");
 		if (!fp) {
 			fprintf(stderr, "Error opening %s: %s\n",
-				argv[1], strerror(errno));
+				filename, strerror(errno));
 			exit(1);
 		}
-		filename = argv[1];
-	}
-
-	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		fr_perror("radattr");
-		return 1;
 	}
 
 	lineno = 0;
@@ -521,7 +502,7 @@ int main(int argc, char *argv[])
 		if (!p) {
 			if (!feof(fp)) {
 				fprintf(stderr, "Line %d too long in %s\n",
-					lineno, argv[1]);
+					lineno, filename);
 				exit(1);
 			}
 		} else {
@@ -558,8 +539,8 @@ int main(int argc, char *argv[])
 
 		if (strncmp(p, "data ", 5) == 0) {
 			if (strcmp(p + 5, output) != 0) {
-				fprintf(stderr, "Mismatch in line %d of %s\n",
-					lineno, filename);
+				fprintf(stderr, "Mismatch in line %d of %s, expected: %s\n",
+					lineno, filename, output);
 				exit(1);
 			}
 			continue;
@@ -642,12 +623,49 @@ int main(int argc, char *argv[])
 			continue;
 		}
 
+		if (strncmp(p, "$INCLUDE ", 9) == 0) {
+			p += 9;
+			while (isspace((int) *p)) p++;
+
+			process_file(p);
+			continue;
+		}
+
 		fprintf(stderr, "Unknown input at line %d of %s\n",
 			lineno, filename);
 		exit(1);
 	}
 
 	if (fp != stdin) fclose(fp);
+}
+
+int main(int argc, char *argv[])
+{
+	int c;
+	const char *radius_dir = RADDBDIR;
+
+	while ((c = getopt(argc, argv, "d:")) != EOF) switch(c) {
+		case 'd':
+			radius_dir = optarg;
+			break;
+		default:
+			fprintf(stderr, "usage: radattr [OPTS] filename\n");
+			exit(1);
+	}
+	argc -= (optind - 1);
+	argv += (optind - 1);
+
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radattr");
+		return 1;
+	}
+
+	if (argc < 2) {
+		process_file("-");
+
+	} else {
+		process_file(argv[1]);
+	}
 
 	return 0;
 }

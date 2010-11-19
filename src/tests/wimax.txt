@@ -1,0 +1,5 @@
+#
+#  Test vectors for WiMAX attributes.
+#
+encode WiMAX-Release = "1.0"
+data 1a 0e 00 00 60 b5 01 08 00 01 05 31 2e 30
