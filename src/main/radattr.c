@@ -119,6 +119,39 @@ static int encode_data_tlv(char *buffer, char **endptr,
 	return length;
 }
 
+static int encode_hex(char *p, uint8_t *output, size_t outlen)
+{
+	int length = 0;
+	while (*p) {
+		char *c1, *c2;
+
+		while (isspace((int) *p)) p++;
+
+		if (!*p) break;
+
+		if(!(c1 = memchr(hextab, tolower((int) p[0]), 16)) ||
+		   !(c2 = memchr(hextab, tolower((int)  p[1]), 16))) {
+			fprintf(stderr, "Invalid data starting at "
+				"\"%s\"\n", p);
+			return 0;
+		}
+
+		*output = ((c1 - hextab) << 4) + (c2 - hextab);
+		output++;
+		length++;
+		p += 2;
+
+		outlen--;
+		if (outlen == 0) {
+			fprintf(stderr, "Too much data\n");
+			return 0;
+		}
+	}
+
+	return length;
+}
+
+
 static int encode_data(char *p, uint8_t *output, size_t outlen)
 {
 	int length;
@@ -165,32 +198,7 @@ static int encode_data(char *p, uint8_t *output, size_t outlen)
 		return length;
 	}
 
-	length = 0;
-	while (*p) {
-		char *c1, *c2;
-
-		while (isspace((int) *p)) p++;
-
-		if (!*p) break;
-
-		if(!(c1 = memchr(hextab, tolower((int) p[0]), 16)) ||
-		   !(c2 = memchr(hextab, tolower((int)  p[1]), 16))) {
-			fprintf(stderr, "Invalid data starting at "
-				"\"%s\"\n", p);
-			return 0;
-		}
-
-		*output = ((c1 - hextab) << 4) + (c2 - hextab);
-		output++;
-		length++;
-		p += 2;
-
-		outlen--;
-		if (outlen == 0) {
-			fprintf(stderr, "Too much data\n");
-			return 0;
-		}
-	}
+	length = encode_hex(p, output, outlen);
 
 	if (length == 0) {
 		fprintf(stderr, "Empty string\n");
@@ -580,8 +588,12 @@ static void process_file(const char *filename)
 				attr = data;
 				len = data_len;
 			} else {
-				fprintf(stderr, "Other decode Not implemented\n");
-				exit(1);
+				attr = data;
+				len = encode_hex(p + 7, data, sizeof(data));
+				if (len == 0) {
+					fprintf(stderr, "Failed decoding hex string at line %d of %s\n", lineno, filename);
+					exit(1);
+				}
 			}
 
 			while (len > 0) {
@@ -589,9 +601,8 @@ static void process_file(const char *filename)
 				my_len = rad_attr2vp(NULL, NULL, NULL,
 						     attr, len, &vp);
 				if (my_len < 0) {
-					strcpy(output, fr_strerror());
 					pairfree(&head);
-					continue;
+					break;
 				}
 
 				if (my_len > len) {
@@ -609,17 +620,25 @@ static void process_file(const char *filename)
 				len -= my_len;				
 			}
 
-			p = output;
-			for (vp = head; vp != NULL; vp = vp->next) {
-				vp_prints(p, sizeof(output) - (p - output), vp);
-				p += strlen(p);
-
-				if (vp->next) {strcpy(p, ", ");
-					p += 2;
+			/*
+			 *	Output may be an error, and we ignore
+			 *	it if so.
+			 */
+			if (head) {
+				p = output;
+				for (vp = head; vp != NULL; vp = vp->next) {
+					vp_prints(p, sizeof(output) - (p - output), vp);
+					p += strlen(p);
+					
+					if (vp->next) {strcpy(p, ", ");
+						p += 2;
+					}
 				}
+				
+				pairfree(&head);
+			} else {
+				strcpy(output, fr_strerror());
 			}
-
-			pairfree(&head);
 			continue;
 		}
 

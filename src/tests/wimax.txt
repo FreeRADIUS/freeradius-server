@@ -3,3 +3,18 @@
 #
 encode WiMAX-Release = "1.0"
 data 1a 0e 00 00 60 b5 01 08 00 01 05 31 2e 30
+
+decode -
+data WiMAX-Release = "1.0"
+
+encode WiMAX-Accounting-Capabilities = 1
+data 1a 0c 00 00 60 b5 01 06 00 02 03 01
+
+decode -
+data WiMAX-Accounting-Capabilities = IP-Session-Based
+
+encode WiMAX-Release = "1.0", WiMAX-Accounting-Capabilities = 1
+data 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 03 01
+
+decode -
+data WiMAX-Release = "1.0", WiMAX-Accounting-Capabilities = IP-Session-Based

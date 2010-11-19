@@ -80,5 +80,11 @@ data 01 05 62 6f 62
 decode -
 data User-Name = "bob"
 
-$INCLUDE wimax.txt
+decode 01 05 62 6f 62
+data User-Name = "bob"
+
+$INCLUDE errors.txt
+
 $INCLUDE extended.txt
+$INCLUDE lucent.txt
+$INCLUDE wimax.txt
