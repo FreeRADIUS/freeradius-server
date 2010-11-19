@@ -69,56 +69,56 @@
 
 # Example attributes as used in the "extended attributes" draft.
 raw 241.1 "bob"
-data f1 06 01 62 6f 62 
+data f1 06 01 62 6f 62
 
 raw 241.2 {1 23 45 }
-data f1 07 02 01 04 23 45 
+data f1 07 02 01 04 23 45
 
 raw 241.2 {1 23 45 } { 2 67 89 }
-data f1 0b 02 01 04 23 45 02 04 67 89 
+data f1 0b 02 01 04 23 45 02 04 67 89
 
 raw 241.2 {1 23 45 } { 3 { 1 ab cd } }
-data f1 0d 02 01 04 23 45 03 06 01 04 ab cd 
+data f1 0d 02 01 04 23 45 03 06 01 04 ab cd
 
 raw 241.2 {1 23 45 } { 3 { 1 ab cd } {2 "foo" } }
-data f1 12 02 01 04 23 45 03 0b 01 04 ab cd 02 05 66 6f 6f 
+data f1 12 02 01 04 23 45 03 0b 01 04 ab cd 02 05 66 6f 6f
 
 raw 241.1 {1 { 2 { 3 { 4 { 5 cd ef } } } } }
-data f1 0f 01 01 0c 02 0a 03 08 04 06 05 04 cd ef 
+data f1 0f 01 01 0c 02 0a 03 08 04 06 05 04 cd ef
 
 raw 241.26.1.4 "test"
-data f1 0c 1a 00 00 00 01 04 74 65 73 74 
+data f1 0c 1a 00 00 00 01 04 74 65 73 74
 
 raw 241.26.1.5 { 3 "test" }
-data f1 0e 1a 00 00 00 01 05 03 06 74 65 73 74 
+data f1 0e 1a 00 00 00 01 05 03 06 74 65 73 74
 
 # More examples.
 raw 245.1 "bob"
-data f5 07 01 00 62 6f 62 
+data f5 07 01 00 62 6f 62
 
 raw 245.2 {1 23 45 }
-data f5 08 02 00 01 04 23 45 
+data f5 08 02 00 01 04 23 45
 
 raw 245.2 {1 23 45 } { 2 67 89 }
-data f5 0c 02 00 01 04 23 45 02 04 67 89 
+data f5 0c 02 00 01 04 23 45 02 04 67 89
 
 raw 245.2 {1 23 45 } { 3 { 1 ab cd } }
-data f5 0e 02 00 01 04 23 45 03 06 01 04 ab cd 
+data f5 0e 02 00 01 04 23 45 03 06 01 04 ab cd
 
 raw 245.2 {1 23 45 } { 3 { 1 ab cd } {2 "foo" } }
-data f5 13 02 00 01 04 23 45 03 0b 01 04 ab cd 02 05 66 6f 6f 
+data f5 13 02 00 01 04 23 45 03 0b 01 04 ab cd 02 05 66 6f 6f
 
 raw 245.1 {1 { 2 { 3 { 4 { 5 cd ef } } } } }
-data f5 10 01 00 01 0c 02 0a 03 08 04 06 05 04 cd ef 
+data f5 10 01 00 01 0c 02 0a 03 08 04 06 05 04 cd ef
 
 raw 245.26.1.4 "test"
-data f5 0d 1a 00 00 00 00 01 04 74 65 73 74 
+data f5 0d 1a 00 00 00 00 01 04 74 65 73 74
 
 raw 245.26.1.5 { 3 "test" }
-data f5 0f 1a 00 00 00 00 01 05 03 06 74 65 73 74 
+data f5 0f 1a 00 00 00 00 01 05 03 06 74 65 73 74
 
 raw 245.4 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccccccccccccc
-data f5 ff 04 80 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa ab bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb f5 13 04 00 cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc 
+data f5 ff 04 80 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa ab bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb f5 13 04 00 cc cc cc cc cc cc cc cc cc cc cc cc cc cc cc
 
 raw 245.26.1.6 aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaabbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbcccccccccccccccccccc13456789
-data f5 ff 1a 80 00 00 00 01 06 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa ab bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb f5 17 1a 00 bb bb bb bb bb cc cc cc cc cc cc cc cc cc cc 13 45 67 89 
+data f5 ff 1a 80 00 00 00 01 06 aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa aa ab bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb bb f5 17 1a 00 bb bb bb bb bb cc cc cc cc cc cc cc cc cc cc 13 45 67 89

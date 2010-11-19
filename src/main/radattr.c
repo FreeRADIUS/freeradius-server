@@ -467,13 +467,26 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 
 int main(int argc, char *argv[])
 {
-	int lineno;
+	int lineno, c;
 	size_t i, outlen;
+	ssize_t len, data_len;
 	FILE *fp;
 	const char *filename;
 	char input[8192], buffer[8192];
 	char output[8192];
-	uint8_t data[2048];
+	uint8_t *attr, data[2048];
+	const char *radius_dir = RADDBDIR;
+
+	while ((c = getopt(argc, argv, "d:")) != EOF) switch(c) {
+		case 'd':
+			radius_dir = optarg;
+			break;
+		default:
+			fprintf(stderr, "usage: radattr [OPTS] filename\n");
+			exit(1);
+	}
+	argc -= (optind - 1);
+	argv += (optind - 1);
 
 	if ((argc < 2) || (strcmp(argv[1], "-") == 0)) {
 		fp = stdin;
@@ -489,11 +502,19 @@ int main(int argc, char *argv[])
 		filename = argv[1];
 	}
 
+	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
+		fr_perror("radattr");
+		return 1;
+	}
+
 	lineno = 0;
 	*output = '\0';
+	data_len = 0;
 
 	while (fgets(buffer, sizeof(buffer), fp) != NULL) {
 		char *p = strchr(buffer, '\n');
+		VALUE_PAIR *vp, *head = NULL;
+		VALUE_PAIR **tail = &head;
 
 		lineno++;
 
@@ -524,10 +545,14 @@ int main(int argc, char *argv[])
 				exit(1);
 			}
 
+		print_hex:
+			data_len = outlen;
 			for (i = 0; i < outlen; i++) {
 				snprintf(output + 3*i, sizeof(output),
 					 "%02x ", data[i]);
 			}
+			outlen = strlen(output);
+			output[outlen - 1] = '\0';
 			continue;
 		}
 
@@ -537,6 +562,83 @@ int main(int argc, char *argv[])
 					lineno, filename);
 				exit(1);
 			}
+			continue;
+		}
+
+		if (strncmp(p, "encode ", 7) == 0) {
+			if (userparse(p + 7, &head) != T_EOL) {
+				fprintf(stderr, "Parse error in line %d of %s: %s\n",
+					lineno, filename, fr_strerror());
+				exit(1);
+			}
+
+			attr = data;
+			for (vp = head; vp != NULL; vp = vp->next) {
+				if (vp->flags.encoded) continue;
+
+				len = rad_vp2attr(NULL, NULL, NULL, vp,
+						  attr, sizeof(data) - (attr - data));
+				if (len < 0) {
+					fprintf(stderr, "Failed encoding %s: %s\n",
+						vp->name, fr_strerror());
+					exit(1);
+				}
+
+				attr += len;
+			}
+			
+			pairfree(&head);
+			outlen = len;
+			goto print_hex;
+		}
+
+		if (strncmp(p, "decode ", 7) == 0) {
+			ssize_t my_len;
+
+			if (strcmp(p + 7, "-") == 0) {
+				attr = data;
+				len = data_len;
+			} else {
+				fprintf(stderr, "Other decode Not implemented\n");
+				exit(1);
+			}
+
+			while (len > 0) {
+				vp = NULL;
+				my_len = rad_attr2vp(NULL, NULL, NULL,
+						     attr, len, &vp);
+				if (my_len < 0) {
+					strcpy(output, fr_strerror());
+					pairfree(&head);
+					continue;
+				}
+
+				if (my_len > len) {
+					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
+					exit(1);
+				}
+				
+				*tail = vp;
+				while (vp) {
+					tail = &(vp->next);
+					vp = vp->next;
+				}				
+
+				attr += my_len;
+				len -= my_len;				
+			}
+
+			p = output;
+			for (vp = head; vp != NULL; vp = vp->next) {
+				vp_prints(p, sizeof(output) - (p - output), vp);
+				p += strlen(p);
+
+				if (vp->next) {strcpy(p, ", ");
+					p += 2;
+				}
+			}
+
+			pairfree(&head);
 			continue;
 		}
 
