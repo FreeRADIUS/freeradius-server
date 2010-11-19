@@ -1049,8 +1049,14 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
 
-	return rad_send(request->reply, request->packet,
-			request->client->secret);
+	if (rad_send(request->reply, request->packet,
+		     request->client->secret) < 0) {
+		radlog_request(L_ERR, 0, request, "Failed sending reply: %s",
+			       fr_strerror());
+		return -1;
+	}
+
+	return 0;
 }
 
 
@@ -1071,8 +1077,14 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (request->reply->code == 0) return 0;
 
-	return rad_send(request->reply, request->packet,
-			request->client->secret);
+	if (rad_send(request->reply, request->packet,
+		     request->client->secret) < 0) {
+		radlog_request(L_ERR, 0, request, "Failed sending reply: %s",
+			       fr_strerror());
+		return -1;
+	}
+
+	return 0;
 }
 #endif
 
@@ -1087,8 +1099,14 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->proxy_listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
 
-	return rad_send(request->proxy, request->packet,
-			request->home_server->secret);
+	if (rad_send(request->proxy, request->packet,
+		     request->home_server->secret) < 0) {
+		radlog_request(L_ERR, 0, request, "Failed sending proxied request: %s",
+			       fr_strerror());
+		return -1;
+	}
+
+	return 0;
 }
 #endif
 
@@ -1739,10 +1757,19 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (!request->reply->code) return 0;
 
-	rad_encode(request->reply, request->packet,
-		   request->client->secret);
-	rad_sign(request->reply, request->packet,
-		 request->client->secret);
+	if (rad_encode(request->reply, request->packet,
+		       request->client->secret) < 0) {
+		radlog_request(L_ERR, 0, request, "Failed encoding packet: %s",
+			       fr_strerror());
+		return -1;
+	}
+
+	if (rad_sign(request->reply, request->packet,
+		     request->client->secret) < 0) {
+		radlog_request(L_ERR, 0, request, "Failed signing packet: %s",
+			       fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
@@ -1762,8 +1789,17 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 #ifdef WITH_PROXY
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
-	rad_encode(request->proxy, NULL, request->home_server->secret);
-	rad_sign(request->proxy, NULL, request->home_server->secret);
+	if (rad_encode(request->proxy, NULL, request->home_server->secret) < 0) {
+		radlog_request(L_ERR, 0, request, "Failed encoding proxied packet: %s",
+			       fr_strerror());
+		return -1;
+	}
+
+	if (rad_sign(request->proxy, NULL, request->home_server->secret) < 0) {
+		radlog_request(L_ERR, 0, request, "Failed signing proxied packet: %s",
+			       fr_strerror());
+		return -1;
+	}
 
 	return 0;
 }
