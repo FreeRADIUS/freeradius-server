@@ -70,7 +70,10 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 	if (!da) name_len = FR_VP_NAME_PAD;
 
 	vp = malloc(sizeof(*vp) + name_len);
-	if (!vp) return NULL;
+	if (!vp) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
 	memset(vp, 0, sizeof(*vp));
 
 	if (da) {
@@ -87,6 +90,7 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 		memset(&vp->flags, 0, sizeof(vp->flags));
 		vp->flags.unknown_attr = 1;
 	}
+	vp->operator = T_OP_EQ;
 
 	switch (vp->type) {
 		case PW_TYPE_BYTE:
@@ -173,10 +177,8 @@ VALUE_PAIR *paircreate(int attr, int vendor, int type)
 
 	da = dict_attrbyvalue(attr, vendor);
 	if ((vp = pairalloc(da)) == NULL) {
-		fr_strerror_printf("out of memory");
 		return NULL;
 	}
-	vp->operator = T_OP_EQ;
 
 	/*
 	 *	It isn't in the dictionary: update the name.
@@ -1524,9 +1526,9 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	}
 
 	if ((vp = pairalloc(da)) == NULL) {
-		fr_strerror_printf("out of memory");
 		return NULL;
 	}
+
 	vp->operator = (operator == 0) ? T_OP_EQ : operator;
 
 	/*      Check for a tag in the 'Merit' format of:
