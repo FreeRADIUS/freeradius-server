@@ -839,7 +839,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	eaptls_status_t	status;
 	REQUEST *request = handler->request;
 
-	rad_assert(request != NULL);
+	if (!request) return EAPTLS_FAIL;
 
 	RDEBUG2("processing EAP-TLS");
 	if (handler->certs) pairadd(&request->packet->vps,
