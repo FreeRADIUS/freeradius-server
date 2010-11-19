@@ -1933,7 +1933,7 @@ static int request_pre_handler(REQUEST *request)
 	}
 
 	if (rcode < 0) {
-		RDEBUG("%s Dropping packet without response.", fr_strerror());
+		RDEBUG("Dropping packet without response because of error %s", fr_strerror());
 		request->reply->offset = -2; /* bad authenticator */
 		request->child_state = REQUEST_DONE;
 		return 0;
