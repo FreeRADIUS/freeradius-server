@@ -663,7 +663,10 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 	fr_packet_dst2id_t my_pd, *pd;
 	fr_packet_socket_t *ps;
 
-	if (!pl || !pl->alloc_id || !request) return 0;
+	if (!pl || !pl->alloc_id || !request) {
+		fr_strerror_printf("Invalid arguments");
+		return 0;
+	}
 
 	/*
 	 *	Error out if no destination is specified.
@@ -683,12 +686,18 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 	}
 
 	src_any = fr_inaddr_any(&request->src_ipaddr);
-	if (src_any < 0) return 0;
+	if (src_any < 0) {
+		fr_strerror_printf("Error checking src IP address");
+		return 0;
+	}
 
 	/*
 	 *	MUST specify a destination address.
 	 */
-	if (fr_inaddr_any(&request->dst_ipaddr) != 0) return 0;
+	if (fr_inaddr_any(&request->dst_ipaddr) != 0) {
+		fr_strerror_printf("Error checking dst IP address");
+		return 0;
+	}
 
 	my_pd.dst_ipaddr = request->dst_ipaddr;
 	my_pd.dst_port = request->dst_port;
@@ -705,6 +714,7 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 
 		if (!fr_hash_table_insert(pl->dst2id_ht, pd)) {
 			free(pd);
+			fr_strerror_printf("Failed inserting into hash");
 			return 0;
 		}
 	}
@@ -726,7 +736,10 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 	redo:
 		id++;
 		id &= 0xff;
-		if (id == start) return 0;
+		if (id == start) {
+			fr_strerror_printf("All IDs are being used");
+			return 0;
+		}
 	}
 
 	free_mask = ~((~pd->id[id]) & pl->mask);
@@ -758,7 +771,10 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 		}
 	}
 
-	if (start < 0) return 0; /* bad error */
+	if (start < 0) {
+		fr_strerror_printf("Internal sanity check failed");
+		return 0; /* bad error */
+	}
 
 	pd->id[id] |= (1 << start);
 	ps = &pl->sockets[start];
