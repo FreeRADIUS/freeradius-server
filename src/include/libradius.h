@@ -110,6 +110,7 @@ typedef struct attr_flags {
 	unsigned int		encoded : 1; /* has been put into packet */
 	unsigned int		extended : 1; /* extended attribute */
 	unsigned int		extended_flags : 1; /* with flag */
+	unsigned int		evs : 1;	    /* extended VSA */
 
 	int8_t			tag;	      /* tag for tunneled attributes */
 	uint8_t		        encrypt;      /* encryption method */
@@ -127,7 +128,7 @@ typedef struct attr_flags {
 typedef struct dict_attr {
 	unsigned int		attr;
 	int			type;
-	int			vendor;
+	unsigned int		vendor;
         ATTR_FLAGS              flags;
 	char			name[1];
 } DICT_ATTR;
@@ -140,7 +141,7 @@ typedef struct dict_value {
 } DICT_VALUE;
 
 typedef struct dict_vendor {
-	int			vendorpec;
+	unsigned int		vendorpec;
 	size_t			type; /* length of type data */
 	size_t			length;	/* length of length data */
 	size_t			flags;
@@ -263,8 +264,8 @@ void		vp_printlist(FILE *, VALUE_PAIR *);
 /*
  *	Dictionary functions.
  */
-int		dict_addvendor(const char *name, int value);
-int		dict_addattr(const char *name, int attr, int vendor, int type, ATTR_FLAGS flags);
+int		dict_addvendor(const char *name, unsigned int value);
+int		dict_addattr(const char *name, int attr, unsigned int vendor, int type, ATTR_FLAGS flags);
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
@@ -337,12 +338,64 @@ int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
 				    const char *secret, const uint8_t *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
-VALUE_PAIR	*rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-			     const char *secret, int attribute, int vendor,
-			     int length, const uint8_t *data);
+
+int rad_attr_ok(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+		DICT_ATTR *da,
+		const uint8_t *data, size_t length);
+int rad_tlv_ok(const uint8_t *data, size_t length,
+	       size_t dv_type, size_t dv_length);
+
+ssize_t rad_attr2vp_raw(const RADIUS_PACKET *packet,
+			const RADIUS_PACKET *original,
+			const char *secret,
+			const uint8_t *data, size_t length,
+			VALUE_PAIR **pvp);
+ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
+			     const RADIUS_PACKET *original,
+			     const char *secret,
+			     const uint8_t *start, size_t length,
+			     VALUE_PAIR **pvp);
+ssize_t rad_attr2vp_wimax(const RADIUS_PACKET *packet,
+			  const RADIUS_PACKET *original,
+			  const char *secret,
+			  const uint8_t *data, size_t length,
+			  VALUE_PAIR **pvp);
+
+ssize_t rad_attr2vp_vsa(const RADIUS_PACKET *packet,
+			const RADIUS_PACKET *original,
+			const char *secret,
+			const uint8_t *data, size_t length,
+			VALUE_PAIR **pvp);
+ssize_t rad_attr2vp_rfc(const RADIUS_PACKET *packet,
+			const RADIUS_PACKET *original,
+			const char *secret,
+			const uint8_t *data, size_t length,
+			VALUE_PAIR **pvp);
+
+ssize_t		rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+			    const char *secret,
+			    const uint8_t *data, size_t length,
+			    VALUE_PAIR **pvp);
+
+int rad_vp2extended(const RADIUS_PACKET *packet,
+		    const RADIUS_PACKET *original,
+		    const char *secret, VALUE_PAIR *vp,
+		    uint8_t *ptr, size_t room);
+int rad_vp2wimax(const RADIUS_PACKET *packet,
+		 const RADIUS_PACKET *original,
+		 const char *secret, VALUE_PAIR *vp,
+		 uint8_t *ptr, size_t room);
+int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+	       const char *secret, VALUE_PAIR *vp, uint8_t *start,
+	       size_t room);
+int rad_vp2rfc(const RADIUS_PACKET *packet,
+	       const RADIUS_PACKET *original,
+	       const char *secret, VALUE_PAIR *vp,
+	       uint8_t *ptr, size_t room);
+
 int		rad_vp2attr(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original, const char *secret,
-			    const VALUE_PAIR *vp, uint8_t *ptr, size_t room);
+			    VALUE_PAIR *vp, uint8_t *ptr, size_t room);
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(DICT_ATTR *da);
