@@ -643,7 +643,7 @@ static int do_next_tlv(const VALUE_PAIR *vp, int nest)
 {
 	unsigned int tlv1, tlv2;
 
-	if (nest >= fr_attr_max_tlv) return 0;
+	if (nest > fr_attr_max_tlv) return 0;
 
 	/*
 	 *	Keep encoding TLVs which have the same scope.
