@@ -1882,6 +1882,7 @@ int rad_tlv_ok(const uint8_t *data, size_t length,
 		}
 
 		data += attrlen;
+		length -= attrlen;
 	}
 
 	return 0;
@@ -2940,6 +2941,14 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 		unsigned int my_attr;
 		unsigned int my_len;
 
+#ifndef NDEBUG
+		if ((data + dv_type + dv_length) > end) {
+			fr_strerror_printf("data2vp_tlvs: Internal sanity check failed in tlvs: Insufficient data");
+			pairfree(&head);
+			return -1;
+		}
+#endif
+
 		switch (dv_type) {
 		case 1:
 			my_attr = attribute;
@@ -2973,6 +2982,21 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 			fr_strerror_printf("data2vp_tlvs: Internal sanity check failed");
 			return -1;
 		}
+		
+#ifndef NDEBUG
+		if (my_len < (dv_type + dv_length)) {
+			fr_strerror_printf("data2vp_tlvs: Internal sanity check failed in tlvs: underflow");
+			pairfree(&head);
+			return -1;
+		}
+
+		if ((data + my_len) > end) {
+			fr_strerror_printf("data2vp_tlvs: Internal sanity check failed in tlvs: overflow");
+			pairfree(&head);
+			return -1;
+		}
+#endif
+
 		my_len -= dv_type + dv_length;
 
 		/*
@@ -3192,11 +3216,12 @@ ssize_t rad_attr2vp_wimax(const RADIUS_PACKET *packet,
 	}
 
 	/*
-	 *	The WiMAX attribute is encapsulated in a VSA.
+	 *	The WiMAX attribute is encapsulated in a VSA.  If the
+	 *	WiMAX length disagrees with the VSA length, it's malformed.
 	 */
 	if ((data[7] + 6) != data[1]) {
-		fr_strerror_printf("rad_attr2vp_wimax: Invalid length");
-		return -1;
+		return rad_attr2vp_raw(packet, original, secret,
+				       data, length, pvp);
 	}
 
 	attribute = data[6];
