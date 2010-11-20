@@ -43,6 +43,9 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
+/* OCSP Header */
+#include <openssl/ocsp.h>
+
 static CONF_PARSER cache_config[] = {
 	{ "enable", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, session_cache_enable), NULL, "no" },
@@ -60,6 +63,16 @@ static CONF_PARSER verify_config[] = {
 	  offsetof(EAP_TLS_CONF, verify_tmp_dir), NULL, NULL},
 	{ "client", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, verify_client_cert_cmd), NULL, NULL},
+ 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+};
+
+static CONF_PARSER ocsp_config[] = {
+	{ "check_ocsp", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, check_ocsp), NULL, "no"},
+	{ "define_ocsp_responder", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, define_ocsp_responder), NULL, "no"},
+	{ "ocsp_url", PW_TYPE_FILENAME,
+	  offsetof(EAP_TLS_CONF, ocsp_url), NULL, NULL },
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
@@ -108,6 +121,8 @@ static CONF_PARSER module_config[] = {
 	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
 
 	{ "verify", PW_TYPE_SUBSECTION, 0, NULL, (const void *) verify_config },
+
+	{ "ocsp", PW_TYPE_SUBSECTION, 0, NULL, (const void *) ocsp_config },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -224,6 +239,124 @@ static SSL_SESSION *cbtls_get_session(UNUSED SSL *s,
 }
 
 /*
+ * This function extracts the OCSP Responder URL 
+ * from an existing x509 certificate.
+ */
+int ocsp_parse_cert_url(X509 *cert, char **phost, char **pport, char **ppath, int *pssl)
+{
+	int i;
+	
+	AUTHORITY_INFO_ACCESS *aia;
+	ACCESS_DESCRIPTION *ad;
+	
+	aia = X509_get_ext_d2i(cert, NID_info_access, NULL, NULL);
+
+	for (i = 0; i < sk_ACCESS_DESCRIPTION_num(aia); i++) {
+		ad = sk_ACCESS_DESCRIPTION_value(aia, 0);
+		if (OBJ_obj2nid(ad->method) == NID_ad_OCSP) {
+			if (ad->location->type == GEN_URI) {
+				if(OCSP_parse_url(ad->location->d.ia5->data, 
+					phost, pport, ppath, pssl))
+					return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+/*
+ * This function sends a OCSP request to a defined OCSP responder
+ * and checks the OCSP response for correctness.
+ */
+int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert, EAP_TLS_CONF *conf)
+{
+	OCSP_CERTID *certid;
+	OCSP_REQUEST *req;
+	OCSP_RESPONSE *resp;
+	OCSP_BASICRESP *bresp = NULL;
+	char *host = NULL;
+	char *port = NULL;
+	char *path = NULL;
+	int use_ssl = -1;
+	BIO *cbio;
+	int ocsp_ok;
+	int status;
+
+	/* 
+	 * Create OCSP Request 
+	 */
+	certid = OCSP_cert_to_id(NULL, client_cert, issuer_cert);
+	req = OCSP_REQUEST_new();
+	OCSP_request_add0_id(req, certid);
+	OCSP_request_add1_nonce(req, NULL, 8);
+
+	/* 
+	 * Send OCSP Request and get OCSP Response
+	 */
+
+	/* Get OCSP responder URL */ 
+	if(conf->define_ocsp_responder) {
+		OCSP_parse_url(conf->ocsp_url, &host, &port, &path, &use_ssl);
+	}
+	else {
+		ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
+	}
+	
+	DEBUG2("[ocsp] --> Resonder URL = http://%s:%s%s", host, port, path);
+
+	/* Setup BIO socket to OCSP responder */
+	cbio = BIO_new_connect(host);
+	BIO_set_conn_port(cbio, port);
+	BIO_do_connect(cbio);
+
+	/* Send OCSP request and wait for response */
+	resp = OCSP_sendreq_bio(cbio, path, req);
+	if(resp==0) {
+		radlog(L_ERR, "Error: Couldn't get OCSP response");
+		ocsp_ok = 0;
+		goto ocsp_end;
+	}
+
+	/* Verify OCSP response */
+	status = OCSP_response_status(resp);
+	if(status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
+		radlog(L_ERR, "Error: OCSP response status: %s", OCSP_response_status_str(status));
+		ocsp_ok = 0;
+		goto ocsp_end;
+	}
+	bresp = OCSP_response_get1_basic(resp);
+	if(OCSP_check_nonce(req, bresp)!=1) {
+		radlog(L_ERR, "Error: OCSP response has wrong nonce value");
+		ocsp_ok = 0;
+		goto ocsp_end;
+	}
+	if(OCSP_basic_verify(bresp, NULL, store, 0)!=1){
+		radlog(L_ERR, "Error: Couldn't verify OCSP basic response");
+		ocsp_ok = 0;
+		goto ocsp_end;
+	}
+	
+	ocsp_ok = 1; 
+
+ocsp_end:
+	/* Free OCSP Stuff */
+	OCSP_REQUEST_free(req);
+	OCSP_RESPONSE_free(resp);
+	free(host);
+	free(port);
+	free(path);
+	BIO_free_all(cbio);
+	OCSP_BASICRESP_free(bresp);
+
+	if(ocsp_ok)
+		DEBUG2("[ocsp] --> Certificate is valid!");
+	else
+		DEBUG2("[ocsp] --> Certificate has been expired/revoked!");
+
+	return ocsp_ok;
+}
+
+/*
  *	For creating certificate attributes.
  */
 static const char *cert_attr_names[5][2] = {
@@ -274,11 +407,13 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char buf[64];
 	EAP_HANDLER *handler = NULL;
 	X509 *client_cert;
+	X509 *issuer_cert;
 	SSL *ssl;
 	int err, depth, lookup;
 	EAP_TLS_CONF *conf;
 	int my_ok = ok;
 	REQUEST *request;
+	X509_STORE *ocsp_store = NULL;
 	ASN1_INTEGER *sn = NULL;
 	ASN1_TIME *asn_time = NULL;
 
@@ -302,6 +437,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	handler = (EAP_HANDLER *)SSL_get_ex_data(ssl, 0);
 	request = handler->request;
 	conf = (EAP_TLS_CONF *)SSL_get_ex_data(ssl, 1);
+	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, 2);
 
 	/*
 	 *	Get the Serial Number
@@ -433,6 +569,12 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 				}
 			}
 		} /* check_cert_cn */
+		if (my_ok && conf->check_ocsp){
+			RDEBUG2("--> Starting OCSP Request");
+			if(X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert)!=1)
+				radlog(L_ERR, "Error: Couldn't get issuer_cert for %s", common_name);
+			my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
+		}
 
 		while (conf->verify_client_cert_cmd) {
 			char filename[256];
@@ -515,6 +657,33 @@ static void eaptls_session_free(UNUSED void *parent, void *data_ptr,
 	pairfree(&vp);
 }
 
+/*
+ * 	Create Global X509 revocation store and use it to verify
+ * 	OCSP responses
+ *
+ * 	- Load the trusted CAs
+ * 	- Load the trusted issuer certificates
+ */
+static X509_STORE *init_revocation_store(EAP_TLS_CONF *conf)
+{
+	X509_STORE *store = NULL;
+	
+	store = X509_STORE_new();
+
+	/* Load the CAs we trust */
+        if (conf->ca_file || conf->ca_path)
+		if(!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
+			radlog(L_ERR, "rlm_eap: X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
+			radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
+			return NULL;
+		}
+
+#ifdef X509_V_FLAG_CRL_CHECK
+	if (conf->check_crl) 
+		X509_STORE_set_flags(store, X509_V_FLAG_CRL_CHECK);
+#endif
+	return store;
+}
 
 /*
  *	Create Global context SSL and use it in every new session
@@ -817,6 +986,11 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 							  NULL, NULL, NULL);
 	}
 
+	if (eaptls_store_idx < 0) {
+		eaptls_store_idx = SSL_get_ex_new_index(0, "eaptls_store_idx",
+							  NULL, NULL, NULL);
+	}
+
 	if (eaptls_session_idx < 0) {
 		eaptls_session_idx = SSL_get_ex_new_index(0, "eaptls_session_idx",
 							  NULL, NULL,
@@ -846,6 +1020,9 @@ static int eaptls_detach(void *arg)
 
 	if (inst->ctx) SSL_CTX_free(inst->ctx);
 	inst->ctx = NULL;
+
+	if (inst->store) X509_STORE_free(inst->store);
+	inst->store = NULL;
 
 	free(inst);
 
@@ -941,6 +1118,15 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	 */
 	inst->ctx = init_tls_ctx(conf);
 	if (inst->ctx == NULL) {
+		eaptls_detach(inst);
+		return -1;
+	}
+
+	/*
+	 * 	Initialize OCSP Revocation Store
+	 */
+	inst->store = init_revocation_store(conf);
+	if (inst->store == NULL) {
 		eaptls_detach(inst);
 		return -1;
 	}
@@ -1076,6 +1262,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	SSL_set_ex_data(ssn->ssl, 0, (void *)handler);
 	SSL_set_ex_data(ssn->ssl, 1, (void *)inst->conf);
+	SSL_set_ex_data(ssn->ssl, 2, (void *)inst->store);
 
 	ssn->length_flag = inst->conf->include_length;
 

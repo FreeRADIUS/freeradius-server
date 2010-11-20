@@ -371,6 +371,7 @@ void 		session_init(tls_session_t *ssn);
 /* SSL Indicies for ex data */
 extern int	eaptls_handle_idx;
 extern int	eaptls_conf_idx;
+extern int	eaptls_store_idx;	/* OCSP Store */
 extern int	eaptls_session_idx;
 
 #endif /*_EAP_TLS_H*/
