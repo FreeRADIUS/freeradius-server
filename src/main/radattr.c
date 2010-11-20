@@ -555,7 +555,13 @@ static void process_file(const char *filename)
 		}
 
 		if (strncmp(p, "encode ", 7) == 0) {
-			if (userparse(p + 7, &head) != T_EOL) {
+			if (strcmp(p + 7, "-") == 0) {
+				p = output;
+			} else {
+				p += 7;
+			}
+
+			if (userparse(p, &head) != T_EOL) {
 				fprintf(stderr, "Parse error in line %d of %s: %s\n",
 					lineno, filename, fr_strerror());
 				exit(1);
