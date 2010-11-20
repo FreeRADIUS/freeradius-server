@@ -385,8 +385,53 @@ static const char *vp_tokens[] = {
   "<`STRING`>"
 };
 
+extern int fr_attr_max_tlv;
+extern int fr_attr_shift[];
+extern int fr_attr_mask[];
+
+static size_t vp_print_attr_oid(char *buffer, size_t size, unsigned int attr,
+				int dv_type)
+{
+	int nest;
+	size_t outlen;
+	size_t len;
+
+	switch (dv_type) {
+	case 4:
+		return snprintf(buffer, size, "Attr-%u", attr);
+
+	case 2:
+		return snprintf(buffer, size, "Attr-%u", attr & 0xffff);
+
+	default:
+	case 1:
+		len = snprintf(buffer, size, "Attr-%u", attr & 0xff);
+		break;
+	}
+
+	if ((attr >> 8) == 0) return len;
+
+	outlen = len;
+	buffer += len;
+	size -= len;
+
+	for (nest = 1; nest <= fr_attr_max_tlv; nest++) {
+		if (((attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]) == 0) break;
+
+		len = snprintf(buffer, size, ".%u",
+			       (attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
+
+		outlen = len;
+		buffer += len;
+		size -= len;
+	}
+
+	return outlen;
+}
+
 const char *vp_print_name(char *buffer, size_t bufsize, int attr, int vendor)
 {
+	int dv_type = 1;
 	size_t len = 0;
 
 	if (!buffer) return NULL;
@@ -397,6 +442,7 @@ const char *vp_print_name(char *buffer, size_t bufsize, int attr, int vendor)
 		v = dict_vendorbyvalue(vendor);
 		if (v) {
 			snprintf(buffer, bufsize, "%s-", v->name);
+			dv_type = v->type;
 		} else {
 			snprintf(buffer, bufsize, "Vendor-%u-", vendor);
 		}
@@ -407,7 +453,7 @@ const char *vp_print_name(char *buffer, size_t bufsize, int attr, int vendor)
 		}
 	}
 
-	snprintf(buffer + len, bufsize - len, "Attr-%u", attr & 0xffff);
+	len = vp_print_attr_oid(buffer + len, bufsize - len, attr, dv_type);
 	len += strlen(buffer + len);
 	if (len == bufsize) {
 		return NULL;
