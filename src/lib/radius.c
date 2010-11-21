@@ -2845,7 +2845,7 @@ static ssize_t attr2vp_vsa(const RADIUS_PACKET *packet,
 		break;
 
 	case 2:
-		attribute = data[0];
+		attribute = data[0] << 8;
 		attribute |= data[1];
 		break;
 
