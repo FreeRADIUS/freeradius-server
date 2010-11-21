@@ -83,8 +83,25 @@ data User-Name = "bob"
 decode 01 05 62 6f 62
 data User-Name = "bob"
 
-$INCLUDE errors.txt
+#
+#  The Type/Length is OK, but the attribute data is of the wrong size.
+#
+decode 04 04 ab cd
+data Attr-4 = 0xabcd
 
+#  Zero-length attributes
+decode 01 02
+data 
+
+# except for CUI.  Thank you, WiMAX!
+decode 59 02
+data Chargeable-User-Identity = ""
+
+# Hah! Thought you had it figured out, didn't you?
+encode -
+data 59 02
+
+$INCLUDE errors.txt
 $INCLUDE extended.txt
 $INCLUDE lucent.txt
 $INCLUDE wimax.txt

@@ -119,7 +119,7 @@ const int fr_attr_shift[MAX_TLV_NEST + 1] = {
 };
 
 const int fr_attr_mask[MAX_TLV_NEST + 1] = {
-  0, 0xff, 0xff, 0x1f, 0x07
+  0xff, 0xff, 0xff, 0x1f, 0x07
 };
 
 
@@ -887,7 +887,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	return 0;
 }
 
-static int sscanf_i(const char *str, int *pvalue)
+static int sscanf_i(const char *str, unsigned int *pvalue)
 {
 	int rcode = 0;
 	int base = 10;
@@ -904,6 +904,8 @@ static int sscanf_i(const char *str, int *pvalue)
 	while (*str) {
 		const char *c;
 
+		if (*str == '.') break;
+
 		c = memchr(tab, tolower((int) *str), base);
 		if (!c) return 0;
 
@@ -917,10 +919,10 @@ static int sscanf_i(const char *str, int *pvalue)
 }
 
 
-static int sscanf_oid(char *ptr, int *pvalue, int vendor, int tlv_depth)
+int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_depth)
 {
-	char *p;
-	int value;
+	const char *p;
+	unsigned int value;
 	DICT_ATTR *da;
 
 	if (tlv_depth > fr_attr_max_tlv) {
@@ -928,24 +930,25 @@ static int sscanf_oid(char *ptr, int *pvalue, int vendor, int tlv_depth)
 		return 0;
 	}
 
-	if (vendor) {
-		da = dict_attrbyvalue(*pvalue, vendor);
-	} else {
-		da = dict_attrbyvalue(*pvalue, VENDORPEC_EXTENDED);
-	}
-	if (!da) {
-		fr_strerror_printf("Unknown parent attribute");
-		return 0;
-	}
+	if (*pvalue) {
+		if (vendor) {
+			da = dict_attrbyvalue(*pvalue, vendor);
+		} else {
+			da = dict_attrbyvalue(*pvalue, VENDORPEC_EXTENDED);
+		}
+		if (!da) {
+			fr_strerror_printf("Unknown parent attribute");
+			return 0;
+		}
 	
-	if (!(da->flags.has_tlv || da->flags.extended || da->flags.extended_flags)) {
-		fr_strerror_printf("Parent attribute %s cannot have sub-tlvs",
-				   da->name);
-		return 0;
+		if (!(da->flags.has_tlv || da->flags.extended || da->flags.extended_flags)) {
+			fr_strerror_printf("Parent attribute %s cannot have sub-tlvs",
+					   da->name);
+			return 0;
+		}
 	}
 
 	p = strchr(ptr, '.');
-	if (p) *p = '\0';
 
 	if (!sscanf_i(ptr, &value)) {
 		fr_strerror_printf("Failed parsing attribute identifier %s",
@@ -956,8 +959,7 @@ static int sscanf_oid(char *ptr, int *pvalue, int vendor, int tlv_depth)
 	*pvalue |= (value & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
 
 	if (p) {
-		*p = '.';
-		return sscanf_oid(p + 1, pvalue, vendor, tlv_depth + 1);
+		return dict_str2oid(p + 1, pvalue, vendor, tlv_depth + 1);
 	}
 
 	return 1;
@@ -972,9 +974,9 @@ static int process_attribute(const char* fn, const int line,
 			     int tlv_depth, char **argv, int argc)
 {
 	unsigned int    vendor = 0;
-	int		value;
+	unsigned int	value;
 	int		type;
-	int		length = 0;
+	unsigned int	length = 0;
 	ATTR_FLAGS	flags;
 	char		*p;
 
@@ -1027,7 +1029,7 @@ static int process_attribute(const char* fn, const int line,
 			return -1;
 		}
 
-		if (!sscanf_oid(p + 1, &value, block_vendor, tlv_depth + 1)) {
+		if (!dict_str2oid(p + 1, &value, block_vendor, tlv_depth + 1)) {
 			char buffer[256];
 
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1282,7 +1284,7 @@ static int process_attribute(const char* fn, const int line,
 static int process_value(const char* fn, const int line, char **argv,
 			 int argc)
 {
-	int	value;
+	unsigned int	value;
 
 	if (argc != 3) {
 		fr_strerror_printf("dict_init: %s[%d]: invalid VALUE line",

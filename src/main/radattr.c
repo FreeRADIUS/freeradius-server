@@ -615,7 +615,7 @@ static void process_file(const char *filename)
 					fprintf(stderr, "Internal sanity check failed at %d\n", __LINE__);
 					exit(1);
 				}
-				
+
 				*tail = vp;
 				while (vp) {
 					tail = &(vp->next);
@@ -642,8 +642,11 @@ static void process_file(const char *filename)
 				}
 				
 				pairfree(&head);
-			} else {
+			} else if (my_len < 0) {
 				strcpy(output, fr_strerror());
+
+			} else { /* zero-length attribute */
+				*output = '\0';
 			}
 			continue;
 		}

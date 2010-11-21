@@ -1,3 +1,6 @@
+#
+#  Bad attributes
+#
 decode 01 04 00
 data rad_attr2vp: Insufficient data
 

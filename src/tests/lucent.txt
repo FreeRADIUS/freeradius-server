@@ -1,0 +1,5 @@
+encode Lucent-Max-Shared-Users = 1
+data 1a 0d 00 00 12 ee 00 02 07 00 00 00 01
+
+decode -
+data Lucent-Max-Shared-Users = 1

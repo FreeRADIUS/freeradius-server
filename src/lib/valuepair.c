@@ -45,18 +45,18 @@ static const char *months[] = {
  *	code accesses vp->name directly, rather than through an
  *	accessor function.
  *
- *	The name padding only has to large enough for:
+ *	The name padding has to be large enough for:
  *
- *		Vendor-65535-Attr-65535
+ *		Attr-{3}.{8}.{3}.{3}.{3}.{3}
  *
- *	i.e. 23 characters, plus a zero.  We add another 8 bytes for
+ *	i.e. 28 characters, plus a zero.  We add some more bytes for
  *	padding, because the VALUE_PAIR structure may be un-aligned.
  *
  *	The result is that for the normal case, the server uses a less
  *	memory (36 bytes * number of VALUE_PAIRs).
  */
 #define FR_VP_NAME_PAD (32)
-#define FR_VP_NAME_LEN (24)
+#define FR_VP_NAME_LEN (30)
 
 VALUE_PAIR *pairalloc(DICT_ATTR *da)
 {
@@ -1292,8 +1292,10 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
  *	where the attribute name is in the form:
  *
  *	Attr-%d
+ *	Attr-%d.%d.%d...
  *	Vendor-%d-Attr-%d
  *	VendorName-Attr-%d
+ *
  */
 static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				int operator)
@@ -1372,9 +1374,9 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	attr = strtol(p + 5, &q, 10);
 
 	/*
-	 *	Invalid, or trailing text after number.
+	 *	Invalid attribute.
 	 */
-	if ((attr == 0) || *q) {
+	if (attr == 0) {
 		fr_strerror_printf("Invalid value in attribute name \"%s\"", attribute);
 		return NULL;
 	}
@@ -1408,6 +1410,59 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				fr_strerror_printf("Internal sanity check failed");
 				return NULL;
 		}
+
+	} else {		/* RADIUS attrs can be 1..255 */
+		if (attr > 255) goto attr_error;
+	}
+
+	/*
+	 *	Look for OIDs.
+	 */
+	if (*q == '.') {
+		int my_attr;
+		DICT_ATTR *da;
+
+		if (vendor != 0) {
+			fr_strerror_printf("Unknown VSAs cannot use OIDs");
+			return NULL;
+			
+		}
+
+		da = dict_attrbyvalue(attr, vendor);
+		if (!da) {
+			fr_strerror_printf("Cannot parse attributes without dictionaries");
+			return NULL;
+		}		
+		
+		if ((attr != PW_VENDOR_SPECIFIC) &&
+		    !(da->flags.extended || da->flags.extended_flags)) {
+			fr_strerror_printf("Standard attributes cannot use attribute OIDs");
+			return NULL;
+		}
+
+		p = q + 1;
+		if ((attr == PW_VENDOR_SPECIFIC) || da->flags.evs) {
+			vendor = strtol(p, &q, 10);
+			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
+				fr_strerror_printf("Invalid vendor");
+				return NULL;
+			}
+
+			if (*q != '.') {
+				fr_strerror_printf("Invalid text after vendor");
+				return NULL;
+			}
+
+			p = q + 1;
+		}
+
+		my_attr = 0;
+		if (!dict_str2oid(p, &my_attr, vendor, 0)) {
+			return NULL;
+		}
+
+		if (da->flags.evs) vendor |= attr * FR_MAX_VENDOR;
+		attr = my_attr;
 	}
 
 	/*
@@ -1622,12 +1677,12 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 
 
 /*
- *	[a-zA-Z0-9_-:]+
+ *	[a-zA-Z0-9_-:.]+
  */
 static const int valid_attr_name[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
 	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
 	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
