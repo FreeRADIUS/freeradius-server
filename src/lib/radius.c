@@ -1301,6 +1301,11 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 		return -1;
 	}
 
+	if ((vp->length == 0) &&
+	    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) {
+		return 0;
+	}
+
 	return vp2attr_rfc(packet, original, secret, vp, vp->attribute,
 			   ptr, room);
 }

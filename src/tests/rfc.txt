@@ -14,10 +14,10 @@
 #
 #	encode - reads "Attribute-Name = value", encodes it, and prints
 #	         the result as text.
+#		use "-" to encode the output of the last command
 #
 #	decode - reads hex, and decodes it "Attribute-Name = value"
-#	         for now, "-" is the only allowed value, and makes it
-#		 decode the last hex "data".
+#		use "-" to decode the output of the last command
 #
 #	data - the expected output of the previous command, in ASCII form.
 #	       if the actual command output is different, an error message
@@ -91,6 +91,10 @@ data Attr-4 = 0xabcd
 
 #  Zero-length attributes
 decode 01 02
+data 
+
+# don't encode zero-length attributes
+encode User-Name = ""
 data 
 
 # except for CUI.  Thank you, WiMAX!
