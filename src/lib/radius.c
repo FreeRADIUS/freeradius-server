@@ -2543,6 +2543,23 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	DICT_ATTR *da;
 	VALUE_PAIR *vp = NULL;
 
+	if (length == 0) {
+		/*
+		 *	Hacks for CUI.  The WiMAX spec says that it
+		 *	can be zero length, even though this is
+		 *	forbidden by the RADIUS specs.  So... we make
+		 *	a special case for it.
+		 */
+		if ((vendor == 0) &&
+		    (attribute == PW_CHARGEABLE_USER_IDENTITY)) {
+			data = (const uint8_t *) "";
+			length = 1;
+		} else {
+			*pvp = NULL;
+			return 0;
+		}
+	}
+
 	da = dict_attrbyvalue(attribute, vendor);
 
 	/*
@@ -3121,9 +3138,9 @@ static ssize_t wimax_attrlen(const uint8_t *start, const uint8_t *end)
 
 	if ((data[8] & 0x80) == 0) return 0;
 	total = data[7] - 3;
+	data += data[1];
 
-	do {
-		data += data[1];
+	while (data < end) {
 		
 		if ((data + 9) > end) return -1;
 
@@ -3135,7 +3152,8 @@ static ssize_t wimax_attrlen(const uint8_t *start, const uint8_t *end)
 
 		total += data[7] - 3;
 		if ((data[8] & 0x80) == 0) break;
-	} while (data < end);
+		data += data[1];
+	}
 
 	return total;
 }
@@ -3155,10 +3173,9 @@ static ssize_t extended_attrlen(const uint8_t *start, const uint8_t *end)
 
 	if ((data[3] & 0x80) == 0) return 0;
 	total = data[1] - 4;
-
-	do {
-		data += data[1];
-		
+	data += data[1];
+	
+	while (data < end) {
 		if ((data + 4) > end) return -1;
 
 		if ((data[0] != start[0]) ||
@@ -3167,7 +3184,8 @@ static ssize_t extended_attrlen(const uint8_t *start, const uint8_t *end)
 
 		total += data[1] - 4;
 		if ((data[3] & 0x80) == 0) break;
-	} while (data < end);
+		data += data[1];
+	}
 
 	return total;
 }
