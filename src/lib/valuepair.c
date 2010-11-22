@@ -1300,11 +1300,13 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				int operator)
 {
-	int		attr, vendor;
+	unsigned int   	attr, vendor;
+	unsigned int    dv_type = 1;
 	size_t		size;
 	const char	*p = attribute;
 	char		*q;
 	VALUE_PAIR	*vp;
+	DICT_VENDOR	*dv;
 
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
@@ -1381,55 +1383,36 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		return NULL;
 	}
 
+	p = q;
+
 	/*
-	 *	Double-check the size of attr.
+	 *	Vendor-%d-Attr-%d
+	 *	VendorName-Attr-%d
+	 *	Attr-%d
+	 *	Attr-%d.
+	 *
+	 *	Anything else is invalid.
 	 */
-	if (vendor) {
-		DICT_VENDOR *dv = dict_vendorbyvalue(vendor);
-
-		if (!dv) {
-			if (attr > 255) {
-			attr_error:
-				fr_strerror_printf("Invalid attribute number in attribute name \"%s\"", attribute);
-				return NULL;
-			}
-
-		} else switch (dv->type) {
-			case 1:
-				if (attr > 255) goto attr_error;
-				break;
-
-			case 2:
-				if (attr > 65535) goto attr_error;
-				break;
-
-			case 4:
-				if (attr > (1 << 24)) goto attr_error;
-				break;
-
-			default:
-				fr_strerror_printf("Internal sanity check failed");
-				return NULL;
-		}
-
-	} else {		/* RADIUS attrs can be 1..255 */
-		if (attr > 255) goto attr_error;
+	if (((vendor != 0) && (*p != '\0')) ||
+	    ((vendor == 0) && *p && (*p != '.'))) {
+	invalid:
+		fr_strerror_printf("Invalid OID");
+		return NULL;
 	}
 
 	/*
-	 *	Look for OIDs.
+	 *	Look for OIDs.  Require the "Attr-26.Vendor-Id.type"
+	 *	format, and disallow "Vendor-%d-Attr-%d" and
+	 *	"VendorName-Attr-%d"
+	 *
+	 *	This section parses the Vendor-Id portion of
+	 *	Attr-%d.%d.  where the first number is 26, *or* an
+	 *	extended attribute of the "evs" data type.
 	 */
-	if (*q == '.') {
-		int my_attr;
+	if (*p == '.') {
 		DICT_ATTR *da;
 
-		if (vendor != 0) {
-			fr_strerror_printf("Unknown VSAs cannot use OIDs");
-			return NULL;
-			
-		}
-
-		da = dict_attrbyvalue(attr, vendor);
+		da = dict_attrbyvalue(attr, 0);
 		if (!da) {
 			fr_strerror_printf("Cannot parse attributes without dictionaries");
 			return NULL;
@@ -1437,35 +1420,69 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		
 		if ((attr != PW_VENDOR_SPECIFIC) &&
 		    !(da->flags.extended || da->flags.extended_flags)) {
-			fr_strerror_printf("Standard attributes cannot use attribute OIDs");
+			fr_strerror_printf("Standard attributes cannot use OIDs");
 			return NULL;
 		}
 
-		p = q + 1;
 		if ((attr == PW_VENDOR_SPECIFIC) || da->flags.evs) {
-			vendor = strtol(p, &q, 10);
+			vendor = strtol(p + 1, &q, 10);
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor");
 				return NULL;
 			}
 
-			if (*q != '.') {
-				fr_strerror_printf("Invalid text after vendor");
-				return NULL;
+			if (*q != '.') goto invalid;
+
+			p = q;
+
+			if (da->flags.evs) {
+				vendor |= attr * FR_MAX_VENDOR;
 			}
+			attr = 0;
+		} /* else the second number is a TLV number */
+	}
 
-			p = q + 1;
+	/*
+	 *	Get the expected maximum size of the attribute.
+	 */
+	if (vendor) {
+		dv = dict_vendorbyvalue(vendor & (FR_MAX_VENDOR - 1));
+		if (dv) {
+			dv_type = dv->type;
+			if (dv_type > 3) dv_type = 3; /* hack */
 		}
+	}
 
-		my_attr = 0;
-		if (!dict_str2oid(p, &my_attr, vendor, 0)) {
+	/*
+	 *	Parse the next number.  It could be a Vendor-Type
+	 *	of 1..2^24, or it could be a TLV.
+	 */
+	if (*p == '.') {
+		attr = strtol(p + 1, &q, 10);
+		if (attr == 0) {
+			fr_strerror_printf("Invalid attribute number");
 			return NULL;
 		}
 
-		if (da->flags.evs) vendor |= attr * FR_MAX_VENDOR;
-		attr = my_attr;
+		if (*q) {
+			if (*q != '.') goto invalid;
+			if (dv_type != 1) goto invalid;
+		}
+
+		p = q;
 	}
 
+	/*
+	 *	Enforce a maximum value on the attribute number.
+	 */
+	if (attr >= (1 << (dv_type << 3))) goto invalid;
+
+	if (*p == '.') {
+		if (!dict_str2oid(p + 1, &attr, vendor, 1)) {
+			return NULL;
+		}
+	}
+	
 	/*
 	 *	We've now parsed the attribute properly, Let's create
 	 *	it.  This next stop also looks the attribute up in the

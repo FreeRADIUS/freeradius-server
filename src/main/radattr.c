@@ -567,9 +567,8 @@ static void process_file(const char *filename)
 			}
 
 			if (userparse(p, &head) != T_EOL) {
-				fprintf(stderr, "Parse error in line %d of %s: %s\n",
-					lineno, filename, fr_strerror());
-				exit(1);
+				strcpy(output, fr_strerror());
+				continue;
 			}
 
 			attr = data;

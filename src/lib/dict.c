@@ -937,7 +937,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
 			da = dict_attrbyvalue(*pvalue, VENDORPEC_EXTENDED);
 		}
 		if (!da) {
-			fr_strerror_printf("Unknown parent attribute");
+			fr_strerror_printf("No such attribute");
 			return 0;
 		}
 	

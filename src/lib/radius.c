@@ -2948,7 +2948,8 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 	}
 
 	/*
-	 *	The VSAs do not exactly fill the data, it's malformed.
+	 *	The VSAs do not exactly fill the data,
+	 *	The *entire* TLV is malformed.
 	 */
 	if (rad_tlv_ok(data, length, dv_type, dv_length) < 0) {
 		return data2vp_raw(packet, original, secret,
