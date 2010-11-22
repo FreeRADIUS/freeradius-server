@@ -986,6 +986,12 @@ static int process_attribute(const char* fn, const int line,
 		return -1;
 	}
 
+	if (strncmp(argv[1], "Attr-", 5) == 0) {
+		fr_strerror_printf("dict_init: %s[%d]: Invalid attribute name",
+				   fn, line);
+		return -1;
+	}
+
 	memset(&flags, 0, sizeof(flags));
 
 	/*
