@@ -23167,6 +23167,7 @@ for ac_header in \
 	openssl/crypto.h \
 	openssl/err.h \
 	openssl/evp.h \
+	openssl/ocsp.h \
 	openssl/engine.h
 do
 as_ac_Header=`echo "ac_cv_header_$ac_header" | $as_tr_sh`
