@@ -136,6 +136,7 @@ int cbtls_password(char *buf,
  */
 int eaptls_handle_idx = -1;
 int eaptls_conf_idx = -1;
+int eaptls_store_idx = -1; /* OCSP Store */
 int eaptls_session_idx = -1;
 
 #endif /* !defined(NO_OPENSSL) */
