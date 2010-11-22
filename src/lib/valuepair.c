@@ -1404,6 +1404,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 				break;
 
 			case 4:
+				if (attr > (1 << 24)) goto attr_error;
 				break;
 
 			default:

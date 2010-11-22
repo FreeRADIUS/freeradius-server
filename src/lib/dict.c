@@ -956,7 +956,11 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
 		return 0;
 	}
 
-	*pvalue |= (value & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
+	if (*pvalue) {
+		*pvalue |= (value & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
+	} else {
+		*pvalue = value;
+	}
 
 	if (p) {
 		return dict_str2oid(p + 1, pvalue, vendor, tlv_depth + 1);
@@ -1008,10 +1012,17 @@ static int process_attribute(const char* fn, const int line,
 		return -1;
 	}
 
-	/*
-	 *	Parse NUM.NUM.NUM.NUM
-	 */
-	if (p) {
+	if (!p) {
+		if (value > (1 <<24)) {
+			fr_strerror_printf("dict_init: %s[%d]: Attribute number is too large", fn, line);
+			return -1;
+		}
+
+		
+		/*
+		 *	Parse NUM.NUM.NUM.NUM
+		 */
+	} else {
 		DICT_ATTR *da;
 
 		*p = '.';	/* reset for later printing */
