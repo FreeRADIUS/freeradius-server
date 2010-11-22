@@ -535,6 +535,11 @@ static void process_file(const char *filename)
 			}
 
 		print_hex:
+			if (outlen == 0) {
+				output[0] = 0;
+				continue;
+			}
+
 			data_len = outlen;
 			for (i = 0; i < outlen; i++) {
 				snprintf(output + 3*i, sizeof(output),
@@ -580,6 +585,7 @@ static void process_file(const char *filename)
 				}
 
 				attr += len;
+				if (len == 0) break;
 			}
 			
 			pairfree(&head);
