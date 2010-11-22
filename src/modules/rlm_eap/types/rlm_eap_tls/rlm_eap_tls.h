@@ -74,7 +74,7 @@ typedef struct eap_tls_conf {
 	/*
 	 * OCSP Configuration
 	 */
-	int		check_ocsp;
+	int		ocsp_enable;
 	int		ocsp_override_url;
 	char		*ocsp_url;
 #endif

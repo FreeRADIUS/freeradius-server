@@ -69,6 +69,8 @@ static CONF_PARSER verify_config[] = {
 
 #ifdef HAVE_OPENSSL_OCSP_H
 static CONF_PARSER ocsp_config[] = {
+	{ "enable", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, ocsp_enable), NULL, "no"},
 	{ "override_cert_url", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, ocsp_override_url), NULL, "no"},
 	{ "url", PW_TYPE_STRING_PTR,
@@ -583,7 +585,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		} /* check_cert_cn */
 
 #ifdef HAVE_OPENSSL_OCSP_H
-		if (my_ok && conf->check_ocsp){
+		if (my_ok && conf->ocsp_enable){
 			RDEBUG2("--> Starting OCSP Request");
 			if(X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert)!=1) {
 				radlog(L_ERR, "Error: Couldn't get issuer_cert for %s", common_name);
@@ -1144,13 +1146,11 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	/*
 	 * 	Initialize OCSP Revocation Store
 	 */
-	if (!conf->ocsp_url && !conf->ocsp_override_url) {
-		conf->check_ocsp = FALSE;
-	} else {
+	if (conf->ocsp_enable) {
 		inst->store = init_revocation_store(conf);
 		if (inst->store == NULL) {
 			eaptls_detach(inst);
-			return -1;
+		  return -1;
 		}
 	}
 #endif HAVE_OPENSSL_OCSP_H
