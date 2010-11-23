@@ -110,7 +110,9 @@ static int eap_handler_cmp(const void *a, const void *b)
  */
 static int eap_handler_ptr_cmp(const void *a, const void *b)
 {
-  return (a - b);
+	if (a < b) return -1;
+	if (a > b) return +1;
+	return 0;
 }
 
 
