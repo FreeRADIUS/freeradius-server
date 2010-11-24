@@ -356,10 +356,11 @@ ocsp_end:
 	BIO_free_all(cbio);
 	OCSP_BASICRESP_free(bresp);
 
-	if(ocsp_ok)
+	if (ocsp_ok) {
 		DEBUG2("[ocsp] --> Certificate is valid!");
-	else
+	} else {
 		DEBUG2("[ocsp] --> Certificate has been expired/revoked!");
+	}
 
 	return ocsp_ok;
 }
@@ -1041,8 +1042,10 @@ static int eaptls_detach(void *arg)
 	if (inst->ctx) SSL_CTX_free(inst->ctx);
 	inst->ctx = NULL;
 
+#ifdef HAVE_OPENSSL_OCSP_H
 	if (inst->store) X509_STORE_free(inst->store);
 	inst->store = NULL;
+#endif
 
 	free(inst);
 
@@ -1284,7 +1287,9 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	SSL_set_ex_data(ssn->ssl, 0, (void *)handler);
 	SSL_set_ex_data(ssn->ssl, 1, (void *)inst->conf);
+#ifdef HAVE_OPENSSL_OCSP_H
 	SSL_set_ex_data(ssn->ssl, 2, (void *)inst->store);
+#endif
 
 	ssn->length_flag = inst->conf->include_length;
 
