@@ -85,7 +85,9 @@ typedef struct eap_tls_conf {
 typedef struct _eap_tls_t {
 	EAP_TLS_CONF 	*conf;
 	SSL_CTX		*ctx;
+#ifdef HAVE_OPENSSL_OCSP_H
 	X509_STORE	*store; /* OCSP Revocation Store */
+#endif
 } eap_tls_t;
 
 
