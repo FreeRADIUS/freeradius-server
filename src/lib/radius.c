@@ -2822,7 +2822,8 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
  */
 static ssize_t attr2vp_vsa(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
-			   const char *secret, DICT_VENDOR *dv,
+			   const char *secret, unsigned int vendor,
+			   size_t dv_type, size_t dv_length,
 			   const uint8_t *data, size_t length,
 			   VALUE_PAIR **pvp)
 {
@@ -2830,13 +2831,13 @@ static ssize_t attr2vp_vsa(const RADIUS_PACKET *packet,
 	ssize_t attrlen, my_len;
 
 #ifndef NDEBUG
-	if (length <= (dv->type + dv->length)) {
+	if (length <= (dv_type + dv_length)) {
 		fr_strerror_printf("attr2vp_vsa: Failure to call rad_tlv_ok");
 		return -1;
 	}
 #endif	
 
-	switch (dv->type) {
+	switch (dv_type) {
 	case 4:
 		/* data[0] must be zero */
 		attribute = data[1] << 16;
@@ -2858,14 +2859,14 @@ static ssize_t attr2vp_vsa(const RADIUS_PACKET *packet,
 		return -1;
 	}
 
-	switch (dv->length) {
+	switch (dv_length) {
 	case 2:
-		/* data[dv->type] must be zero */
-		attrlen = data[dv->type + 1];
+		/* data[dv_type] must be zero */
+		attrlen = data[dv_type + 1];
 		break;
 
 	case 1:
-		attrlen = data[dv->type];
+		attrlen = data[dv_type];
 		break;
 
 	case 0:
@@ -2878,17 +2879,17 @@ static ssize_t attr2vp_vsa(const RADIUS_PACKET *packet,
 	}
 
 #ifndef NDEBUG
-	if (attrlen <= (ssize_t) (dv->type + dv->length)) {
+	if (attrlen <= (ssize_t) (dv_type + dv_length)) {
 		fr_strerror_printf("attr2vp_vsa: Failure to call rad_tlv_ok");
 		return -1;
 	}
 #endif
 
-	attrlen -= (dv->type + dv->length);
+	attrlen -= (dv_type + dv_length);
 	
 	my_len = data2vp_any(packet, original, secret, 0,
-			     attribute, dv->vendorpec,
-			     data + dv->type + dv->length, attrlen, pvp);
+			     attribute, vendor,
+			     data + dv_type + dv_length, attrlen, pvp);
 	if (my_len < 0) return my_len;
 
 #ifndef NDEBUG
@@ -2900,7 +2901,7 @@ static ssize_t attr2vp_vsa(const RADIUS_PACKET *packet,
 	}
 #endif
 
-	return dv->type + dv->length + attrlen;
+	return dv_type + dv_length + attrlen;
 }
 
 /*
@@ -3332,7 +3333,8 @@ ssize_t rad_attr2vp_vsa(const RADIUS_PACKET *packet,
 				       data, length, pvp);
 	}
 
-	my_len = attr2vp_vsa(packet, original, secret, dv,
+	my_len = attr2vp_vsa(packet, original, secret,
+			     lvalue, dv_type, dv_length,
 			     data + 6, data[1] - 6, pvp);
 	if (my_len < 0) return my_len;
 
