@@ -823,7 +823,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
 			return -1;
 		}
-		if (vp->length > room) return 0; /* can't chop TLVs to fit */
+		len = vp->length;
 		break;
 
 	default:		/* unknown type: ignore it */
@@ -2498,13 +2498,6 @@ static ssize_t data2vp_raw(UNUSED const RADIUS_PACKET *packet,
 {
 	VALUE_PAIR *vp;
 
-#ifndef NDEBUG
-	if (length > sizeof(vp->vp_octets)) {
-		fr_strerror_printf("data2vp_raw: Too much data");
-		return -1;
-	}
-#endif
-
 	/*
 	 *	Keep the next function happy.
 	 */
@@ -2516,7 +2509,21 @@ static ssize_t data2vp_raw(UNUSED const RADIUS_PACKET *packet,
 	}
 
 	vp->length = length;
-	memcpy(vp->vp_octets, data, length);
+
+	/*
+	 *	If the data is too large, mark it as a "TLV".
+	 */
+	if (length <= sizeof(vp->vp_octets)) {
+		memcpy(vp->vp_octets, data, length);
+	} else {
+		vp->type = PW_TYPE_TLV;
+		vp->vp_tlv = malloc(length);
+		if (!vp->vp_tlv) {
+			pairfree(&vp);
+			return -1;
+		}
+		memcpy(vp->vp_tlv, data, length);
+	}
 
 	*pvp = vp;
 
