@@ -3124,7 +3124,7 @@ ssize_t rad_attr2vp_raw(const RADIUS_PACKET *packet,
 {
 	ssize_t my_len;
 
-	if ((data[1] < 2) || (data[1] > length)) {
+	if ((length < 2) || (data[1] < 2) || (data[1] > length)) {
 		fr_strerror_printf("rad_attr2vp_raw: Invalid length");
 		return -1;
 	}
