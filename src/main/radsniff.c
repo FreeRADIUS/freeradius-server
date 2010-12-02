@@ -318,6 +318,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "\t-s secret\tRADIUS secret.\n");
 	fprintf(output, "\t-S\t\tSort attributes in the packet.\n");
 	fprintf(output, "\t\t\tUsed to compare server results.\n");
+	fprintf(output, "\t-w file\tWrite output packets to file.\n");
 	fprintf(output, "\t-x\t\tPrint out debugging information.\n");
 	exit(status);
 }
@@ -334,6 +335,7 @@ int main(int argc, char *argv[])
 	char *pcap_filter = NULL;
 	char *radius_filter = NULL;
 	char *filename = NULL;
+	int printable_output = 1;
 	char *dump_file = NULL;
 	int packet_count = -1;		/* how many packets to sniff */
 	int opt;
@@ -361,6 +363,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'F':
 			filter_stdin = 1;
+			printable_output = 0;
 			break;
 		case 'f':
 			pcap_filter = optarg;
@@ -391,6 +394,7 @@ int main(int argc, char *argv[])
 			break;
 		case 'w':
 			dump_file = optarg;
+			printable_output = 0;
 			break;
 		case 'x':
 		case 'X':	/* for backwards compatibility */
@@ -420,9 +424,9 @@ int main(int argc, char *argv[])
 	}
 	
 	/*
-	 *	There are many times where we don't need the dictionaries.
+	 *	There are times when we don't need the dictionaries.
 	 */
-	if (fr_debug_flag || radius_filter) {
+	if (printable_output) {
 		if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 			fr_perror("radsniff");
 			return 1;
