@@ -106,7 +106,33 @@ ATTRIBUTE	Huawei-HTTP-Redirect-URL		140	string
 ATTRIBUTE	Huawei-Loopback-Address			141	string
 ATTRIBUTE	Huawei-QoS-Profile-Type			142	integer
 ATTRIBUTE	Huawei-HW-Max-List-Num			143	integer
+ATTRIBUTE	Huawei-Flow-Info			211	string
+ATTRIBUTE	Huawei-Flow-Id				212	integer
+ATTRIBUTE	Huawei-DHCP-Server-IP			214	ipaddr
+ATTRIBUTE	Huawei-Application-Type			215	integer
+ATTRIBUTE	Huawei-Indication-Flag			216	octets # integer??
+ATTRIBUTE	Huawei-Original_NAS-IP_Address		217	ipaddr
+ATTRIBUTE	Huawei-User-Priority			218	integer
+ATTRIBUTE	Huawei-ACS-Url				219	string
+ATTRIBUTE	Huawei-Provision-Code			220	string
+ATTRIBUTE	Huawei-Application-Scene		221	octets
+ATTRIBUTE	Huawei-MS-Maximum-MAC-Study-Number	222	octets # ether??
 ATTRIBUTE	Huawei-Version				254	string
 ATTRIBUTE	Huawei-Product-ID			255	string
+
+#
+# Integer translations
+#
+
+VALUE		Huawei-User-Priority		Common		0
+VALUE		Huawei-User-Priority		Copper		1
+VALUE		Huawei-User-Priority		Silver		2
+VALUE		Huawei-User-Priority		Gold		3
+
+VALUE		Huawei-Application-Type		Fixed		1
+VALUE		Huawei-Application-Type		Nomadic		2
+VALUE		Huawei-Application-Type		Portable	3
+VALUE		Huawei-Application-Type		Simple-Mobile	4
+VALUE		Huawei-Application-Type		Full-Mobile	5
 
 END-VENDOR	Huawei
