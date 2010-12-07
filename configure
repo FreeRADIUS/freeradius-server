@@ -22760,6 +22760,7 @@ for ac_header in \
 	prot.h \
 	pwd.h \
 	grp.h \
+        fnmatch.h \
 	sia.h \
 	siad.h
 
