@@ -32,6 +32,10 @@ RCSID("$Id$")
 #include	<ctype.h>
 #include	<fcntl.h>
 
+#ifdef HAVE_FNMATCH_H
+#include	<fnmatch.h>
+#endif
+
 #define 	DIRLEN	8192
 
 struct detail_instance {
@@ -231,7 +235,14 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 *	so we've got to create a new one.
 		 */
 		if ((inst->last_made_directory == NULL) ||
-		    (strcmp(inst->last_made_directory, buffer) != 0)) {
+#ifndef HAVE_FNMATCH_H
+		    (strcmp(inst->last_made_directory, buffer) != 0)
+#else
+		    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
+			     ((struct detail_instance *)instance)->detailfile,
+			     FNM_FILE_NAME | FNM_PERIOD ) == 0)
+#endif
+		    ) {
 			free((char *) inst->last_made_directory);
 			inst->last_made_directory = strdup(buffer);
 		}
