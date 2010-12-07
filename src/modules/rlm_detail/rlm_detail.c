@@ -28,9 +28,9 @@ RCSID("$Id$")
 #include	<freeradius-devel/rad_assert.h>
 #include	<freeradius-devel/detail.h>
 
-#include	<sys/stat.h>
 #include	<ctype.h>
 #include	<fcntl.h>
+#include	<sys/stat.h>
 
 #ifdef HAVE_FNMATCH_H
 #include	<fnmatch.h>
@@ -174,6 +174,53 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 /*
+ * Perform a checked write. If the write fails or is not complete, truncate
+ * the file, eliminating the last bytes_accum + current partial write.
+ */
+static int checked_write(REQUEST *request, off_t *bytes_accum, FILE *fp,
+			 const char *format, ...)
+{
+	char buf[2048];
+	int buf_used, written;
+	va_list args;
+
+	va_start(args, format);
+	buf_used = vsnprintf(buf, sizeof(buf), format, args);
+
+	written = fputs(buf, fp);
+	if (written > 0) {
+		*bytes_accum += written;
+	}
+	if (written != buf_used) {
+		/*
+		 *	Don't worry if the truncate fails, since the
+		 *	detail reader ignores partial entries.
+		 */
+		ftruncate(fileno(fp), ftell(fp) - *bytes_accum);
+		fclose(fp);
+
+		radlog_request(L_ERR, 0, request, "Truncated write");		
+		return -1;
+	}
+	return written;
+}
+
+
+static int checked_write_vp(REQUEST *request, off_t *bytes_accum, FILE *fp,
+			    VALUE_PAIR *vp)
+{
+	if (checked_write(request, bytes_accum, fp, "\t") < 0) {
+		return -1;
+	}
+	vp_print(fp, vp);
+	if (checked_write(request, bytes_accum, fp, "\n") < 0) {
+		return -1;
+	}
+
+	return 0;
+}
+
+/*
  *	Do detail, compatible with old accounting
  */
 static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
@@ -187,6 +234,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	struct stat	st;
 	int		locked;
 	int		lock_count;
+	off_t		bytes_accum = 0;
 	struct timeval	tv;
 	VALUE_PAIR	*pair;
 
@@ -209,7 +257,11 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL);
+	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL) == 0) {
+		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to expand detail file %s",
+		    inst->detailfile);
+	    return RLM_MODULE_FAIL;
+	}
 	RDEBUG2("%s expands to %s", inst->detailfile, buffer);
 
 	/*
@@ -343,9 +395,22 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	/*
 	 *	Post a timestamp
 	 */
-	fseek(outfp, 0L, SEEK_END);
-	radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL);
-	fprintf(outfp, "%s\n", timestamp);
+	if (fseek(outfp, 0L, SEEK_END) != 0) {
+		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to seek to the end of detail file %s",
+			buffer);
+		fclose(outfp);
+		return RLM_MODULE_FAIL;
+	}
+	if (radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL) == 0) {
+		radlog_request(L_ERR, 0, request, "rlm_detail: Unable to expand detail header format %s",
+			inst->header);
+		fclose(outfp);
+		return RLM_MODULE_FAIL;
+	}
+	if (checked_write(request, &bytes_accum, outfp,
+			  "%s\n", timestamp) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Write the information to the file.
@@ -357,10 +422,16 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 */
 		if ((packet->code > 0) &&
 		    (packet->code < FR_MAX_PACKET_CODE)) {
-			fprintf(outfp, "\tPacket-Type = %s\n",
-				fr_packet_codes[packet->code]);
+			if (checked_write(request, &bytes_accum, outfp,
+					  "\tPacket-Type = %s\n",
+					  fr_packet_codes[packet->code]) == -1) {
+				return RLM_MODULE_FAIL;	
+			}
 		} else {
-			fprintf(outfp, "\tPacket-Type = %d\n", packet->code);
+			if (checked_write(request, &bytes_accum, outfp,
+					  "\tPacket-Type = %d\n", packet->code) == -1) {
+				return RLM_MODULE_FAIL;
+			}
 		}
 	}
 
@@ -396,12 +467,14 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			break;
 		}
 
-		fputs("\t", outfp);
-		vp_print(outfp, &src_vp);
-		fputs("\n", outfp);
-		fputs("\t", outfp);
-		vp_print(outfp, &dst_vp);
-		fputs("\n", outfp);
+		if (checked_write_vp(request, &bytes_accum,
+				     outfp, &src_vp) < 0) {
+			return RLM_MODULE_FAIL;
+		}
+		if (checked_write_vp(request, &bytes_accum,
+				     outfp, &dst_vp) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		src_vp.attribute = PW_PACKET_SRC_PORT;
 		src_vp.type = PW_TYPE_INTEGER;
@@ -410,12 +483,14 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		dst_vp.type = PW_TYPE_INTEGER;
 		dst_vp.vp_integer = packet->dst_port;
 
-		fputs("\t", outfp);
-		vp_print(outfp, &src_vp);
-		fputs("\n", outfp);
-		fputs("\t", outfp);
-		vp_print(outfp, &dst_vp);
-		fputs("\n", outfp);
+		if (checked_write_vp(request, &bytes_accum,
+				     outfp, &src_vp) < 0) {
+			return RLM_MODULE_FAIL;
+		}
+		if (checked_write_vp(request, &bytes_accum,
+				     outfp, &dst_vp) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 	}
 
 	/* Write each attribute/value to the log file */
@@ -434,9 +509,10 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		/*
 		 *	Print all of the attributes.
 		 */
-		fputs("\t", outfp);
-		vp_print(outfp, pair);
-		fputs("\n", outfp);
+		if (checked_write_vp(request, &bytes_accum,
+				     outfp, pair) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 	}
 
 	/*
@@ -450,24 +526,35 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			inet_ntop(request->proxy->dst_ipaddr.af,
 				  &request->proxy->dst_ipaddr.ipaddr,
 				  proxy_buffer, sizeof(proxy_buffer));
-			fprintf(outfp, "\tFreeradius-Proxied-To = %s\n",
-					proxy_buffer);
-				RDEBUG("Freeradius-Proxied-To = %s",
-				      proxy_buffer);
+			if (checked_write(request, &bytes_accum, outfp,
+				"\tFreeradius-Proxied-To = %s\n",
+				proxy_buffer) < 0) {
+				return RLM_MODULE_FAIL;   
+			}
+			RDEBUG("Freeradius-Proxied-To = %s",
+				proxy_buffer);
 		}
 #endif
 
-		fprintf(outfp, "\tTimestamp = %ld\n",
-			(unsigned long) request->timestamp);
+		if (checked_write(request, &bytes_accum, outfp,
+			"\tTimestamp = %ld\n",
+			(unsigned long) request->timestamp) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 
 		/*
 		 *	We no longer permit Accounting-Request packets
 		 *	with an authenticator of zero.
 		 */
-		fputs("\tRequest-Authenticator = Verified\n", outfp);
+		if (checked_write(request, &bytes_accum, outfp,
+			"\tRequest-Authenticator = Verified\n") < 0) {
+			return RLM_MODULE_FAIL;
+		}
 	}
 
-	fputs("\n", outfp);
+	if (checked_write(request, &bytes_accum, outfp, "\n") < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	if (inst->locking) {
 		fflush(outfp);
