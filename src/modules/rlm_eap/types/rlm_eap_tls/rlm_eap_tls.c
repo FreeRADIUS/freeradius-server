@@ -112,6 +112,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, include_length), NULL, "yes" },
 	{ "check_crl", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, check_crl), NULL, "no"},
+	{ "allow_expired_crl", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, allow_expired_crl), NULL, NULL},
 	{ "check_cert_cn", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, check_cert_cn), NULL, NULL},
 	{ "cipher_list", PW_TYPE_STRING_PTR,
@@ -518,6 +520,16 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if ((lookup <= 1) && common_name[0] && (strlen(common_name) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
 			pairmake(cert_attr_names[EAPTLS_CN][lookup], common_name, T_OP_SET));
+	}
+
+	/*
+	 *	If the CRL has expired, that might still be OK.
+	 */
+	if (!my_ok &&
+	    (conf->allow_expired_crl) &&
+	    (err == X509_V_ERR_CRL_HAS_EXPIRED)) {
+		my_ok = 1;
+		X509_STORE_CTX_set_error( ctx, 0 );
 	}
 
 	if (!my_ok) {
