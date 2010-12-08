@@ -1440,8 +1440,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 */
 	modules = cf_section_sub_find(config, "modules");
 	if (!modules) {
-		radlog(L_ERR, "Cannot find a \"modules\" section in the configuration file!");
-		return -1;
+		radlog(L_INFO, "WARNING: Cannot find a \"modules\" section in the configuration file!");
 	}
 
 	DEBUG2("%s: #### Instantiating modules ####", mainconfig.name);
