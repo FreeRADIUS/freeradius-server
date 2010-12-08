@@ -915,10 +915,13 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			/*
 			 *	FIXME: sizeof(buffer)?
 			 */
-			value = cf_expand_variables("?",
+			value = cf_expand_variables("<internal>",
 						    &lineno,
 						    cs, buffer, value);
-			if (!value) return -1;
+			if (!value) {
+				cf_log_err(cf_sectiontoitem(cs),"Failed expanding variable %s", name);
+				return -1;
+			}
 		}
 
 		cf_log_info(cs, "\t%s = \"%s\"", name, value ? value : "(null)");
@@ -1019,8 +1022,16 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	default:
 		radlog(L_ERR, "type %d not supported yet", type);
 		return -1;
-		break;
 	} /* switch over variable type */
+
+	if (!cp) {
+		CONF_PAIR *cpn;
+
+		cpn = cf_pair_alloc(name, value, T_OP_SET, T_BARE_WORD, cs);
+		cpn->item.filename = "<internal>";
+		cpn->item.lineno = 0;
+		cf_item_add(cs, cf_pairtoitem(cpn));
+	}
 
 	return rcode;
 }

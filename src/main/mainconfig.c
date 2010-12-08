@@ -92,6 +92,9 @@ static const char *radlog_dest = NULL;
  */
 static const char *localstatedir = NULL;
 static const char *prefix = NULL;
+static const char *my_name = NULL;
+static const char *sbindir = NULL;
+static const char *run_dir = NULL;
 static char *syslog_facility = NULL;
 static const FR_NAME_NUMBER str2fac[] = {
 #ifdef LOG_KERN
@@ -210,9 +213,12 @@ static const CONF_PARSER server_config[] = {
 	 *	hard-coded defines for the locations of the various
 	 *	files.
 	 */
+	{ "name",               PW_TYPE_STRING_PTR, 0, &my_name,          "radiusd"},
 	{ "prefix",             PW_TYPE_STRING_PTR, 0, &prefix,            "/usr/local"},
 	{ "localstatedir",      PW_TYPE_STRING_PTR, 0, &localstatedir,     "${prefix}/var"},
+	{ "sbindir",            PW_TYPE_STRING_PTR, 0, &sbindir,            "${prefix}/sbin"},
 	{ "logdir",             PW_TYPE_STRING_PTR, 0, &radlog_dir,        "${localstatedir}/log"},
+	{ "run_dir",            PW_TYPE_STRING_PTR, 0, &run_dir,           "${localstatedir}/run/${name}"},
 	{ "libdir",             PW_TYPE_STRING_PTR, 0, &radlib_dir,        "${prefix}/lib"},
 	{ "radacctdir",         PW_TYPE_STRING_PTR, 0, &radacct_dir,       "${logdir}/radacct" },
 	{ "hostname_lookups",   PW_TYPE_BOOLEAN,    0, &fr_dns_lookups,      "no" },
