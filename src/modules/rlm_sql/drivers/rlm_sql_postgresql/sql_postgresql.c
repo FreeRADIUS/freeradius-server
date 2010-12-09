@@ -146,6 +146,16 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	const char *port, *host;
 	rlm_sql_postgres_sock *pg_sock;
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+	static int ssl_init = 0;
+
+	if (!ssl_init) {
+		PQinitSSL(0);
+		ssl_init = 1;
+	}
+
+#endif
+
 	if (config->sql_server[0] != '\0') {
 		host = " host=";
 	} else {

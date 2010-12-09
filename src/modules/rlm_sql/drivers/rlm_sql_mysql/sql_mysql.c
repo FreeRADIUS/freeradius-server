@@ -90,6 +90,17 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 #ifdef CLIENT_MULTI_STATEMENTS
 	sql_flags |= CLIENT_MULTI_STATEMENTS;
 #endif
+
+ SET:
+CLIENT_REMEMBER_OPTIONS
+
+MYSQL_OPT_CONNECT_TIMEOUT (argument type: unsigned int *)
+mysql_options
+
+int mysql_options(MYSQL *mysql, enum mysql_option option, const void *arg)
+
+THEN call real_connect
+
 	if (!(mysql_sock->sock = mysql_real_connect(&(mysql_sock->conn),
 						    config->sql_server,
 						    config->sql_login,
