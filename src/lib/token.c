@@ -242,7 +242,7 @@ FR_TOKEN getstring(const char **ptr, char *buf, int buflen)
 	
 	p = *ptr;
 
-	while (p && (isspace((int)*p))) p++;
+	while (*p && (isspace((int)*p))) p++;
 
 	*ptr = p;
 
