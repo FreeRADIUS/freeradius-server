@@ -108,7 +108,7 @@ int sql_init_socketpool(SQL_INST * inst)
 			free(sqlsocket);
 			radlog(L_ERR, "rlm_sql: Failed to init lock: %s",
 			       strerror(errno));
-			return 0;
+			return -1;
 		}
 #endif
 
