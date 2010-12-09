@@ -1288,8 +1288,8 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	return 'not found'.
 		 */
 		if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
-		    ((smb_ctrl->vp_integer & ACB_NORMAL) == 0)) {
-			RDEBUG2("SMB-Account-Ctrl says that the account is disabled, or is not a normal account.");
+		    ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)) {
+			RDEBUG2("SMB-Account-Ctrl says that the account is disabled, or is not a normal or workstatin trust account.");
 			mschap_add_reply(request, &request->reply->vps,
 					  *response->vp_octets,
 					  "MS-CHAP-Error", "E=691 R=1", 9);
