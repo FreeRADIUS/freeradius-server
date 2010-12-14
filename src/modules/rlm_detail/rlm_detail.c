@@ -186,8 +186,16 @@ static int checked_write(REQUEST *request, off_t *bytes_accum, FILE *fp,
 
 	va_start(args, format);
 	buf_used = vsnprintf(buf, sizeof(buf), format, args);
+	va_end(args);
 
-	written = fputs(buf, fp);
+	if (buf_used == 0) return 0;
+
+	if (buf_used >= (int) sizeof(buf)) {
+		radlog_request(L_ERR, 0, request, "Truncated vsnprintf");
+		return -1;
+	}
+
+	written = fwrite(buf, 1, buf_used, fp);
 	if (written > 0) {
 		*bytes_accum += written;
 	}
@@ -199,7 +207,8 @@ static int checked_write(REQUEST *request, off_t *bytes_accum, FILE *fp,
 		ftruncate(fileno(fp), ftell(fp) - *bytes_accum);
 		fclose(fp);
 
-		radlog_request(L_ERR, 0, request, "Truncated write");		
+		radlog_request(L_ERR, 0, request, "Truncated write (wanted %d, wrote %d)",
+			       buf_used, written);		
 		return -1;
 	}
 	return written;
