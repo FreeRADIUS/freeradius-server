@@ -692,6 +692,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 		if (!sql_group) {
 			radlog_request(L_ERR, 0, request,
 				       "Error creating Sql-Group attribute");
+			sql_grouplist_free(&group_list);
 			return -1;
 		}
 		pairadd(&request->packet->vps, sql_group);
@@ -700,6 +701,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				       "Error generating query; rejecting user");
 			/* Remove the grouup we added above */
 			pairdelete(&request->packet->vps, PW_SQL_GROUP);
+			sql_grouplist_free(&group_list);
 			return -1;
 		}
 		rows = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr);
@@ -709,6 +711,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			/* Remove the grouup we added above */
 			pairdelete(&request->packet->vps, PW_SQL_GROUP);
 			pairfree(&check_tmp);
+			sql_grouplist_free(&group_list);
 			return -1;
 		} else if (rows > 0) {
 			/*
@@ -726,6 +729,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					/* Remove the grouup we added above */
 					pairdelete(&request->packet->vps, PW_SQL_GROUP);
 					pairfree(&check_tmp);
+					sql_grouplist_free(&group_list);
 					return -1;
 				}
 				if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
@@ -735,6 +739,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					pairdelete(&request->packet->vps, PW_SQL_GROUP);
 					pairfree(&check_tmp);
 					pairfree(&reply_tmp);
+					sql_grouplist_free(&group_list);
 					return -1;
 				}
 				*dofallthrough = fallthrough(reply_tmp);
@@ -759,6 +764,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				/* Remove the grouup we added above */
 				pairdelete(&request->packet->vps, PW_SQL_GROUP);
 				pairfree(&check_tmp);
+				sql_grouplist_free(&group_list);
 				return -1;
 			}
 			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
@@ -768,6 +774,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				pairdelete(&request->packet->vps, PW_SQL_GROUP);
 				pairfree(&check_tmp);
 				pairfree(&reply_tmp);
+				sql_grouplist_free(&group_list);
 				return -1;
 			}
 			*dofallthrough = fallthrough(reply_tmp);
