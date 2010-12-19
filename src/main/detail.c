@@ -679,6 +679,17 @@ int detail_recv(rad_listen_t *listener,
 	packet->vps = paircopy(data->vps);
 
 	/*
+	 *	Prefer the Event-Timestamp in the packet, if it
+	 *	exists.  That is when the event occurred, whereas the
+	 *	"Timestamp" field is when we wrote the packet to the
+	 *	detail file, which could have been much later.
+	 */
+	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP);
+	if (vp) {
+		data->timestamp = vp->vp_integer;
+	}
+
+	/*
 	 *	Look for Acct-Delay-Time, and update
 	 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
 	 */
