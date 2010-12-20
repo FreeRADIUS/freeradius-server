@@ -74,8 +74,9 @@ BUGS
   (gdb) set args ...
 
   Where the "..." are the command-line arguments you normally pass to
-  radiusd.  If you don't normally pass command-line arguments, this
-  line is not necessary.
+  radiusd.  Fo debugging, you probably want to do:
+
+  (gdb) set args -f
 
   Then, do:
 
