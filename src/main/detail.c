@@ -684,7 +684,7 @@ int detail_recv(rad_listen_t *listener,
 	 *	"Timestamp" field is when we wrote the packet to the
 	 *	detail file, which could have been much later.
 	 */
-	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP);
+	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP, 0);
 	if (vp) {
 		data->timestamp = vp->vp_integer;
 	}
