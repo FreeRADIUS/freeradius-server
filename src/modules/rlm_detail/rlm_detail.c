@@ -218,11 +218,14 @@ static int checked_write(REQUEST *request, off_t *bytes_accum, FILE *fp,
 static int checked_write_vp(REQUEST *request, off_t *bytes_accum, FILE *fp,
 			    VALUE_PAIR *vp)
 {
-	if (checked_write(request, bytes_accum, fp, "\t") < 0) {
-		return -1;
-	}
-	vp_print(fp, vp);
-	if (checked_write(request, bytes_accum, fp, "\n") < 0) {
+	int len;
+	char buffer[1024];
+
+	buffer[0] = '\t';
+	len = vp_prints(buffer + 1, sizeof(buffer) - 2, vp);
+	buffer[len + 1] = '\n';
+
+	if (checked_write(request, bytes_accum, fp, "%s", buffer) < 0) {
 		return -1;
 	}
 
