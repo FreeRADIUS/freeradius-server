@@ -409,6 +409,34 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	return valuepair2str(out, outlen, vp, da->type, func);
 }
 
+/*
+ *	Dynamically translate for check:, request:, reply:, etc.
+ */
+static size_t xlat_integer(void *instance, REQUEST *request,
+			   char *fmt, char *out, size_t outlen,
+			   RADIUS_ESCAPE_STRING func)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt) *fmt++;
+
+	if (!radius_get_vp(request, fmt, &vp)) {
+		*out = '\0';
+		return 0;
+	}
+
+	if ((vp->type != PW_TYPE_IPADDR) &&
+	    (vp->type != PW_TYPE_INTEGER) &&
+	    (vp->type != PW_TYPE_SHORT) &&
+	    (vp->type != PW_TYPE_BYTE) &&
+	    (vp->type != PW_TYPE_DATE)) {
+		*out = '\0';
+		return 0;
+	}
+
+	return snprintf(out, outlen, "%u", vp->vp_integer);
+}
+
 #ifdef HAVE_REGEX_H
 /*
  *	Pull %{0} to %{8} out of the packet.
@@ -641,6 +669,11 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		 */
 		xlat_register("control", xlat_packet, &xlat_inst[0]);
 		c = xlat_find("control");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+
+		xlat_register("integer", xlat_integer, "");
+		c = xlat_find("integer");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
