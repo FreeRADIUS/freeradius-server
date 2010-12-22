@@ -1877,6 +1877,11 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 		return NULL;
 	}
 
+	/*
+	 *	Ignore the value if it's a false comparison.
+	 */
+	if (pair->operator == T_OP_CMP_FALSE) return vp;
+
 	if (pair->value_type == T_BARE_WORD) {
 		if ((vp->type == PW_TYPE_STRING) && 
 		    (pair->value[0] == '0') && (pair->value[1] == 'x')) {
