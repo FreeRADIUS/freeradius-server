@@ -412,9 +412,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 /*
  *	Dynamically translate for check:, request:, reply:, etc.
  */
-static size_t xlat_integer(void *instance, REQUEST *request,
+static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 			   char *fmt, char *out, size_t outlen,
-			   RADIUS_ESCAPE_STRING func)
+			   UNUSED RADIUS_ESCAPE_STRING func)
 {
 	VALUE_PAIR *vp;
 
