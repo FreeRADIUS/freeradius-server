@@ -65,11 +65,11 @@ static expr_map_t map[] =
 	{0,	TOKEN_LAST}
 };
 
-static int get_number(REQUEST *request, const char **string, int *answer)
+static int get_number(REQUEST *request, const char **string, int64_t *answer)
 {
 	int		i, found;
-	uint32_t	result;
-	int		x;
+	int64_t		result;
+	int64_t		x;
 	const char	*p;
 	expr_token_t	this;
 
@@ -220,7 +220,8 @@ static size_t expr_xlat(void *instance, REQUEST *request, char *fmt,
 			char *out, size_t outlen,
 		     RADIUS_ESCAPE_STRING func)
 {
-	int		rcode, result;
+	int		rcode;
+	int64_t		result;
 	rlm_expr_t	*inst = instance;
 	const		char *p;
 	char		buffer[256];
@@ -249,7 +250,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, char *fmt,
 		return 0;
 	}
 
-	snprintf(out, outlen, "%d", result);
+	snprintf(out, outlen, "%ld", (long int) result);
 	return strlen(out);
 }
 
