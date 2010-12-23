@@ -256,13 +256,29 @@ static const CONF_PARSER server_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static const CONF_PARSER bootstrap_config[] = {
+static const CONF_PARSER bootstrap_security_config[] = {
 #ifdef HAVE_SETUID
 	{ "user",  PW_TYPE_STRING_PTR, 0, &uid_name, NULL },
 	{ "group",  PW_TYPE_STRING_PTR, 0, &gid_name, NULL },
 #endif
 	{ "chroot",  PW_TYPE_STRING_PTR, 0, &chroot_dir, NULL },
 	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, "no" },
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+static const CONF_PARSER bootstrap_config[] = {
+	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) bootstrap_security_config },
+
+	/*
+	 *	For backwards compatibility.
+	 */
+#ifdef HAVE_SETUID
+	{ "user",  PW_TYPE_STRING_PTR, 0, &uid_name, NULL },
+	{ "group",  PW_TYPE_STRING_PTR, 0, &gid_name, NULL },
+#endif
+	{ "chroot",  PW_TYPE_STRING_PTR, 0, &chroot_dir, NULL },
+	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };

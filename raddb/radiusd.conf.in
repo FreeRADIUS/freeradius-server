@@ -116,57 +116,6 @@ libdir = @libdir@
 #
 pidfile = ${run_dir}/${name}.pid
 
-#  chroot: directory where the server does "chroot".
-#
-#  The chroot is done very early in the process of starting the server.
-#  After the chroot has been performed it switches to the "user" listed
-#  below (which MUST be specified).  If "group" is specified, it switchs
-#  to that group, too.  Any other groups listed for the specified "user"
-#  in "/etc/group" are also added as part of this process.
-#
-#  The current working directory (chdir / cd) is left *outside* of the
-#  chroot until all of the modules have been initialized.  This allows
-#  the "raddb" directory to be left outside of the chroot.  Once the
-#  modules have been initialized, it does a "chdir" to ${logdir}.  This
-#  means that it should be impossible to break out of the chroot.
-#
-#  If you are worried about security issues related to this use of chdir,
-#  then simply ensure that the "raddb" directory is inside of the chroot,
-#  end be sure to do "cd raddb" BEFORE starting the server.
-#
-#  If the server is statically linked, then the only files that have
-#  to exist in the chroot are ${run_dir} and ${logdir}.  If you do the
-#  "cd raddb" as discussed above, then the "raddb" directory has to be
-#  inside of the chroot directory, too.
-#
-#chroot = /path/to/chroot/directory
-
-# user/group: The name (or #number) of the user/group to run radiusd as.
-#
-#   If these are commented out, the server will run as the user/group
-#   that started it.  In order to change to a different user/group, you
-#   MUST be root ( or have root privleges ) to start the server.
-#
-#   We STRONGLY recommend that you run the server with as few permissions
-#   as possible.  That is, if you're not using shadow passwords, the
-#   user and group items below should be set to radius'.
-#
-#  NOTE that some kernels refuse to setgid(group) when the value of
-#  (unsigned)group is above 60000; don't use group nobody on these systems!
-#
-#  On systems with shadow passwords, you might have to set 'group = shadow'
-#  for the server to be able to read the shadow password file.  If you can
-#  authenticate users while in debug mode, but not in daemon mode, it may be
-#  that the debugging mode server is running as a user that can read the
-#  shadow info, and the user listed below can not.
-#
-#  The server will also try to use "initgroups" to read /etc/groups.
-#  It will join all groups where "user" is a member.  This can allow
-#  for some finer-grained access controls.
-#
-#user = radius
-#group = radius
-
 #  max_request_time: The maximum time (in seconds) to handle a request.
 #
 #  Requests which take more time than this to process may be killed, and
@@ -339,24 +288,6 @@ listen {
 #
 hostname_lookups = no
 
-#  Core dumps are a bad thing.  This should only be set to 'yes'
-#  if you're debugging a problem with the server.
-#
-#  allowed values: {no, yes}
-#
-allow_core_dumps = no
-
-#  Regular expressions
-#
-#  These items are set at configure time.  If they're set to "yes",
-#  then setting them to "no" turns off regular expression support.
-#
-#  If they're set to "no" at configure time, then setting them to "yes"
-#  WILL NOT WORK.  It will give you an error.
-#
-regular_expressions	= @REGEX@
-extended_expressions	= @REGEX_EXTENDED@
-
 #
 #  Logging section.  The various "log_*" configuration items
 #  will eventually be moved here.
@@ -474,6 +405,74 @@ checkrad = ${sbindir}/checkrad
 #  of those attacks
 #
 security {
+	#  chroot: directory where the server does "chroot".
+	#
+	#  The chroot is done very early in the process of starting
+	#  the server.  After the chroot has been performed it
+	#  switches to the "user" listed below (which MUST be
+	#  specified).  If "group" is specified, it switches to that
+	#  group, too.  Any other groups listed for the specified
+	#  "user" in "/etc/group" are also added as part of this
+	#  process.
+	#
+	#  The current working directory (chdir / cd) is left
+	#  *outside* of the chroot until all of the modules have been
+	#  initialized.  This allows the "raddb" directory to be left
+	#  outside of the chroot.  Once the modules have been
+	#  initialized, it does a "chdir" to ${logdir}.  This means
+	#  that it should be impossible to break out of the chroot.
+	#
+	#  If you are worried about security issues related to this
+	#  use of chdir, then simply ensure that the "raddb" directory
+	#  is inside of the chroot, end be sure to do "cd raddb"
+	#  BEFORE starting the server.
+	#
+	#  If the server is statically linked, then the only files
+	#  that have to exist in the chroot are ${run_dir} and
+	#  ${logdir}.  If you do the "cd raddb" as discussed above,
+	#  then the "raddb" directory has to be inside of the chroot
+	#  directory, too.
+	#
+#	chroot = /path/to/chroot/directory
+
+	# user/group: The name (or #number) of the user/group to run radiusd as.
+	#
+	#   If these are commented out, the server will run as the
+	#   user/group that started it.  In order to change to a
+	#   different user/group, you MUST be root ( or have root
+	#   privleges ) to start the server.
+	#
+	#   We STRONGLY recommend that you run the server with as few
+	#   permissions as possible.  That is, if you're not using
+	#   shadow passwords, the user and group items below should be
+	#   set to radius'.
+	#
+	#  NOTE that some kernels refuse to setgid(group) when the
+	#  value of (unsigned)group is above 60000; don't use group
+	#  "nobody" on these systems!
+	#
+	#  On systems with shadow passwords, you might have to set
+	#  'group = shadow' for the server to be able to read the
+	#  shadow password file.  If you can authenticate users while
+	#  in debug mode, but not in daemon mode, it may be that the
+	#  debugging mode server is running as a user that can read
+	#  the shadow info, and the user listed below can not.
+	#
+	#  The server will also try to use "initgroups" to read
+	#  /etc/groups.  It will join all groups where "user" is a
+	#  member.  This can allow for some finer-grained access
+	#  controls.
+	#
+#	user = radius
+#	group = radius
+
+	#  Core dumps are a bad thing.  This should only be set to
+	#  'yes' if you're debugging a problem with the server.
+	#
+	#  allowed values: {no, yes}
+	#
+	allow_core_dumps = no
+
 	#
 	#  max_attributes: The maximum number of attributes
 	#  permitted in a RADIUS packet.  Packets which have MORE
