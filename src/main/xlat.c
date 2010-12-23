@@ -418,7 +418,7 @@ static size_t xlat_integer(void *instance, REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	while (isspace((int) *fmt) *fmt++;
+	while (isspace((int) *fmt)) fmt++;
 
 	if (!radius_get_vp(request, fmt, &vp)) {
 		*out = '\0';
