@@ -334,6 +334,7 @@ struct rad_listen_t {
 	rad_listen_decode_t decode;
 	rad_listen_print_t print;
 
+	const CONF_SECTION *cs;
 	void		*data;
 
 #ifdef WITH_STATS
