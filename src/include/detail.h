@@ -43,6 +43,7 @@ typedef struct listen_detail_t {
 	int		retry_interval;
 	int		packets;
 	int		tries;
+	int		one_shot;
 
 	int		has_rtt;
 	int		srtt;
