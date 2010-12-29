@@ -195,6 +195,8 @@ static void ev_request_free(REQUEST **prequest)
 #endif
 	if (request->in_request_hash) remove_from_request_hash(request);
 
+	rad_assert(request->child_state != REQUEST_QUEUED);
+
 	request_free(prequest);
 }
 
@@ -3762,9 +3764,10 @@ static void handle_signal_self(int flag)
 {
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
-			radlog(L_INFO, "Received TERM signal");
+			radlog(L_INFO, "Signalled to exit");
 			fr_event_loop_exit(el, 1);
 		} else {
+			radlog(L_INFO, "Signalled to terminate");
 			fr_event_loop_exit(el, 2);
 		}
 
