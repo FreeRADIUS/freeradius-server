@@ -1550,6 +1550,17 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			}
 
 			/*
+			 *	These are not allowed.  Print a
+			 *	helpful error message.
+			 */
+			if ((t3 == T_BACK_QUOTED_STRING) &&
+			    (!this || (strcmp(this->name1, "update") != 0))) {
+				radlog(L_ERR, "%s[%d]: Syntax error: Invalid string `...` in assignment",
+				       filename, *lineno);
+				return -1;
+			}
+
+			/*
 			 *	Handle variable substitution via ${foo}
 			 */
 			if ((t3 == T_BARE_WORD) ||
