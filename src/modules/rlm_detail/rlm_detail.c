@@ -221,11 +221,9 @@ static int checked_write_vp(REQUEST *request, off_t *bytes_accum, FILE *fp,
 	int len;
 	char buffer[1024];
 
-	buffer[0] = '\t';
-	len = vp_prints(buffer + 1, sizeof(buffer) - 2, vp);
-	buffer[len + 1] = '\n';
+	vp_prints(buffer, sizeof(buffer), vp);
 
-	if (checked_write(request, bytes_accum, fp, "%s", buffer) < 0) {
+	if (checked_write(request, bytes_accum, fp, "\t%s\n", buffer) < 0) {
 		return -1;
 	}
 
@@ -549,15 +547,6 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		if (checked_write(request, &bytes_accum, outfp,
 			"\tTimestamp = %ld\n",
 			(unsigned long) request->timestamp) < 0) {
-			return RLM_MODULE_FAIL;
-		}
-
-		/*
-		 *	We no longer permit Accounting-Request packets
-		 *	with an authenticator of zero.
-		 */
-		if (checked_write(request, &bytes_accum, outfp,
-			"\tRequest-Authenticator = Verified\n") < 0) {
 			return RLM_MODULE_FAIL;
 		}
 	}
