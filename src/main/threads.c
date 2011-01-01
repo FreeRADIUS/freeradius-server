@@ -34,7 +34,10 @@ RCSID("$Id$")
 #include <semaphore.h>
 #endif
 
-#ifdef DARWIN
+#ifdef __APPLE__
+#ifdef WITH_GCD
+#include <dispatch/dispatch.h>
+#endif
 #include <mach/task.h>
 #include <mach/semaphore.h>
 
@@ -64,6 +67,7 @@ RCSID("$Id$")
 #include <openssl/evp.h>
 #endif
 
+#ifndef WITH_GCD
 #define SEMAPHORE_LOCKED	(0)
 #define SEMAPHORE_UNLOCKED	(1)
 
@@ -72,7 +76,6 @@ RCSID("$Id$")
 #define THREAD_EXITED		(3)
 
 #define NUM_FIFOS               RAD_LISTEN_MAX
-
 
 /*
  *  A data structure which contains the information about
@@ -103,6 +106,7 @@ typedef struct request_queue_t {
 	REQUEST	    	  *request;
 	RAD_REQUEST_FUNP  fun;
 } request_queue_t;
+#endif	/* WITH_GCD */
 
 typedef struct thread_fork_t {
 	pid_t		pid;
@@ -117,11 +121,12 @@ typedef struct thread_fork_t {
  *	easier.
  */
 typedef struct THREAD_POOL {
+#ifndef WITH_GCD
 	THREAD_HANDLE *head;
 	THREAD_HANDLE *tail;
 
-	int total_threads;
 	int active_threads;	/* protected by queue_mutex */
+	int total_threads;
 	int max_thread_num;
 	int start_threads;
 	int max_threads;
@@ -131,12 +136,17 @@ typedef struct THREAD_POOL {
 	unsigned long request_count;
 	time_t time_last_spawned;
 	int cleanup_delay;
+#endif	/* WITH_GCD */
 	int spawn_flag;
 
 #ifdef WNOHANG
 	pthread_mutex_t	wait_mutex;
 	fr_hash_table_t *waiters;
 #endif
+
+#ifdef WITH_GCD
+	dispatch_queue_t	queue;
+#else
 
 	/*
 	 *	All threads wait on this semaphore, for requests
@@ -152,15 +162,20 @@ typedef struct THREAD_POOL {
 	int		max_queue_size;
 	int		num_queued;
 	fr_fifo_t	*fifo[NUM_FIFOS];
+#endif	/* WITH_GCD */
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
 static int pool_initialized = FALSE;
-static time_t last_cleaned = 0;
 static time_t almost_now = 0;
 
-static void thread_pool_manage(time_t now);
+#ifndef WITH_GCD
+static time_t last_cleaned = 0;
 
+static void thread_pool_manage(time_t now);
+#endif
+
+#ifndef WITH_GCD
 /*
  *	A mapping of configuration file names to internal integers
  */
@@ -174,7 +189,7 @@ static const CONF_PARSER thread_config[] = {
 	{ "max_queue_size",          PW_TYPE_INTEGER, 0, &thread_pool.max_queue_size,           "65536" },
 	{ NULL, -1, 0, NULL, NULL }
 };
-
+#endif
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 
@@ -282,6 +297,7 @@ static void reap_children(void)
 #define reap_children()
 #endif /* WNOHANG */
 
+#ifndef WITH_GCD
 /*
  *	Add a request to the list of waiting requests.
  *	This function gets called ONLY from the main handler thread...
@@ -685,22 +701,7 @@ static THREAD_HANDLE *spawn_thread(time_t now)
 	 */
 	return handle;
 }
-
-/*
- *      Temporary function to prevent server from executing a SIGHUP
- *      until all threads are finished handling requests.  This returns
- *      the number of active threads to 'radiusd.c'.
- */
-int total_active_threads(void)
-{
-	/*
-	 *	We don't acquire the mutex, so this is just an estimate.
-	 *	We can't return with the lock held, so there's no point
-	 *	in getting the guaranteed correct value; by the time
-	 *	the caller sees it, it can be wrong again.
-	 */
-	return thread_pool.active_threads;
-}
+#endif	/* WITH_GCD */
 
 
 #ifdef WNOHANG
@@ -728,9 +729,13 @@ static int pid_cmp(const void *one, const void *two)
  */
 int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 {
+#ifndef WITH_GCD
 	int		i, rcode;
 	CONF_SECTION	*pool_cf;
+#endif
 	time_t		now;
+
+	cs = cs;		/* -Wunused */
 
 	now = time(NULL);
 
@@ -738,18 +743,22 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 	rad_assert(*spawn_flag == TRUE);
 	rad_assert(pool_initialized == FALSE); /* not called on HUP */
 
+#ifndef WITH_GCD
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
 	if (!pool_cf) *spawn_flag = FALSE;
+#endif
 
 	/*
 	 *	Initialize the thread pool to some reasonable values.
 	 */
 	memset(&thread_pool, 0, sizeof(THREAD_POOL));
+#ifndef WITH_GCD
 	thread_pool.head = NULL;
 	thread_pool.tail = NULL;
 	thread_pool.total_threads = 0;
 	thread_pool.max_thread_num = 1;
 	thread_pool.cleanup_delay = 5;
+#endif
 	thread_pool.spawn_flag = *spawn_flag;
 	
 	/*
@@ -777,6 +786,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 	}
 #endif
 
+#ifndef WITH_GCD
 	if (cf_section_parse(pool_cf, NULL, thread_config) < 0) {
 		return -1;
 	}
@@ -790,6 +800,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 		thread_pool.max_spare_threads = 1;
 	if (thread_pool.max_spare_threads < thread_pool.min_spare_threads)
 		thread_pool.max_spare_threads = thread_pool.min_spare_threads;
+#endif	/* WITH_GCD */
 
 	/*
 	 *	The pool has already been initialized.  Don't spawn
@@ -799,6 +810,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 		return 0;
 	}
 
+#ifndef WITH_GCD
 	/*
 	 *	Initialize the queue of requests.
 	 */
@@ -827,6 +839,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 			return -1;
 		}
 	}
+#endif
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	/*
@@ -840,6 +853,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 #endif
 
 
+#ifndef WITH_GCD
 	/*
 	 *	Create a number of waiting threads.
 	 *
@@ -850,6 +864,14 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 			return -1;
 		}
 	}
+#else
+	thread_pool.queue = dispatch_queue_create("children", NULL);
+	if (!thread_pool.queue) {
+		radlog(L_ERR, "Failed creating dispatch queue: %s\n",
+		       strerror(errno));
+		exit(1);
+	}
+#endif
 
 	DEBUG2("Thread pool initialized");
 	pool_initialized = TRUE;
@@ -865,6 +887,10 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
  */
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
+#ifdef WITH_GCD
+	dispatch_block_t block;
+#endif
+
 	almost_now = request->timestamp;
 
 	/*
@@ -884,6 +910,7 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 		return 1;
 	}
 
+#ifndef WITH_GCD
 	/*
 	 *	Add the new request to the queue.
 	 */
@@ -898,10 +925,22 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	    (thread_pool.active_threads == thread_pool.total_threads)) {
 		thread_pool_manage(almost_now);
 	}
+#else
+	block = ^{
+		if (request->master_state == REQUEST_STOP_PROCESSING) {
+			request->child_state = REQUEST_DONE;
+		} else {
+			radius_handle_request(request, fun);
+		}
+	};
+
+	dispatch_async(thread_pool.queue, block);
+#endif
 
 	return 1;
 }
 
+#ifndef WITH_GCD
 /*
  *	Check the min_spare_threads and max_spare_threads.
  *
@@ -1059,7 +1098,7 @@ static void thread_pool_manage(time_t now)
 	 */
 	return;
 }
-
+#endif	/* WITH_GCD */
 
 #ifdef WNOHANG
 /*
@@ -1157,31 +1196,24 @@ pid_t rad_waitpid(pid_t pid, int *status)
  */
 #endif
 
-void thread_pool_lock(void)
-{
-	pthread_mutex_lock(&thread_pool.queue_mutex);
-}
-
-void thread_pool_unlock(void)
-{
-	pthread_mutex_unlock(&thread_pool.queue_mutex);
-}
-
 void thread_pool_queue_stats(int *array)
 {
 	int i;
 
+#ifndef WITH_GCD
 	if (pool_initialized) {
 		for (i = 0; i < RAD_LISTEN_MAX; i++) {
 			array[i] = fr_fifo_num_elements(thread_pool.fifo[i]);
 		}
-	} else {
+	} else
+#endif	/* WITH_GCD */
+	{
 		for (i = 0; i < RAD_LISTEN_MAX; i++) {
 			array[i] = 0;
 		}
 	}
 }
-#else
+#else  /* HAVE_PTHREAD_Hx */
 int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
 	radius_handle_request(request, fun);
