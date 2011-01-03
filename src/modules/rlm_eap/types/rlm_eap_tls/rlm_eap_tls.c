@@ -609,17 +609,19 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 		while (conf->verify_client_cert_cmd) {
 			char filename[256];
+			int fd;
 			FILE *fp;
 
 			snprintf(filename, sizeof(filename), "%s/%s.client.XXXXXXXX",
 				 conf->verify_tmp_dir, progname);
-			if (mkstemp(filename) < 0) {
+			fd = mkstemp(filename);
+			if (fd < 0) {
 				RDEBUG("Failed creating file in %s: %s",
 				       conf->verify_tmp_dir, strerror(errno));
 				break;				       
 			}
 
-			fp = fopen(filename, "w");
+			fp = fdopen(fd, "w");
 			if (!fp) {
 				RDEBUG("Failed opening file %s: %s",
 				       filename, strerror(errno));
