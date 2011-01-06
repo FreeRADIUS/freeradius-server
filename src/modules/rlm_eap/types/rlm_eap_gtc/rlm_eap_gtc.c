@@ -116,7 +116,7 @@ static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) type_data;
 
 	if (!radius_xlat(challenge_str, sizeof(challenge_str), inst->challenge, handler->request, NULL)) {
-		radlog(L_ERR, "rlm_eap_gtc: xlat failed.", inst->challenge);
+		radlog(L_ERR, "rlm_eap_gtc: xlat of \"%s\" failed", inst->challenge);
 		return 0;
 	}
 
@@ -203,7 +203,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		}
 
 		if (eap_ds->response->type.length != vp->length) {
-			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length. %d %d", eap_ds->response->type.length, vp->length);
+		  DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->length);
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
