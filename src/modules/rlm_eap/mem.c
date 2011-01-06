@@ -205,7 +205,20 @@ static void check_handler(void *data)
 		goto done;
 	}
 
-	if (check->handler->tls && !check->handler->finished) {
+	/*
+	 *	No TLS means no warnings.
+	 */
+	if (!check->handler->tls) goto done;
+
+	/*
+	 *	If we're being deleted early, it's likely because we
+	 *	received a transmit from the client that re-uses the
+	 *	same RADIUS Id, which forces the current packet to be
+	 *	deleted.  In that case, ignore the error.
+	 */
+	if (time(NULL) < (check->handler->timestamp + 3)) goto done;
+
+	if (!check->handler->finished) {
 		do_warning = TRUE;
 		memcpy(state, check->handler->state, sizeof(state));
 	}
