@@ -2,6 +2,7 @@
 #
 # Things should work even if register_globals is set to off
 #
+
 $testVer=intval(str_replace(".", "",'4.1.0'));
 $curVer=intval(str_replace(".", "",phpversion()));
 if( $curVer >= $testVer )
@@ -24,9 +25,9 @@ if (!isset($config)){
 	$EXTRA_ARR = array();
 	foreach($ARR as $val) {
 		$val=chop($val);
-		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+		if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 			continue;
-		list($key,$v)=split(":[[:space:]]*",$val,2);
+		list($key,$v)=preg_split("/:[[:space:]]*/",$val,2);
 		if (preg_match("/%\{(.+)\}/",$v,$matches)){
 			$val=$config[$matches[1]];
 			$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
@@ -45,9 +46,9 @@ if (!isset($config)){
 	foreach($EXTRA_ARR as $val1) {
 		foreach($val1 as $val){
 			$val=chop($val);
-			if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+			if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 				continue;
-			list($key,$v)=split(":[[:space:]]*",$val,2);
+			list($key,$v)=preg_split("/:[[:space:]]*/",$val,2);
 			if (preg_match("/%\{(.+)\}/",$v,$matches)){
 				$val=$config[$matches[1]];
 				$v=preg_replace("/%\{$matches[1]\}/",$val,$v);
@@ -87,14 +88,14 @@ if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 	$ARR = file($config[general_username_mappings_file]);
 	foreach($ARR as $val){
 		$val=chop($val);
-		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+		if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 			continue;
-		list($key,$realm,$v)=split(":[[:space:]]*",$val,3);
+		list($key,$realm,$v)=preg_split("/:[[:space:]]*/",$val,3);
 		if ($realm == 'accounting' || $realm == 'userdb' || $realm == 'nasdb' || $realm == 'nasadmin')
 			$mappings["$key"][$realm] = $v;
 		if ($realm == 'nasdb'){
 			$NAS_ARR = array();
-			$NAS_ARR = split(',',$v);
+			$NAS_ARR = preg_split('/,/',$v);
 			foreach ($nas_list as $key => $nas){
 				foreach ($NAS_ARR as $nas_check){
 					if ($nas_check == $nas[name])
@@ -106,6 +107,8 @@ if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 	if ($config[general_use_session] == 'yes')
 		session_register('mappings');
 }
+
+date_default_timezone_set($config[timezone]);
 
 //Include missing.php3 if needed
 if (!function_exists('array_change_key_case'))

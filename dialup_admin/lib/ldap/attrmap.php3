@@ -7,9 +7,9 @@ if (!isset($attrmap)){
 	$ARR = file("$config[general_ldap_attrmap]");
 	foreach($ARR as $val){
 		$val=chop($val);
-		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+		if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 			continue;
-		list(,$key,$v,$g)=split('[[:space:]]+',$val);
+		list(,$key,$v,$g)=preg_split('/[[:space:]]+/',$val);
 		$v = strtolower($v);
 		$attrmap["$key"]=$v;
 		$attrmap[generic]["$key"]=$g;
@@ -17,9 +17,9 @@ if (!isset($attrmap)){
 	$ARR = file("$config[general_extra_ldap_attrmap]");
 	foreach($ARR as $val){
 		$val=chop($val);
-		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+		if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 			continue;
-		list(,$key,$v,$g)=split('[[:space:]]+',$val);
+		list(,$key,$v,$g)=preg_split('/[[:space:]]+/',$val);
 		$v = strtolower($v);
 		$attrmap["$key"]=$v;
 		$attrmap[generic]["$key"]=$g;

@@ -72,8 +72,8 @@ function encode_string($line,$k)
 
 function decode_string($line,$k)
 {
-	$line = ereg_replace("&","&&",$line);
-	$line = ereg_replace("([,+0-9./() -])", "%\\1", $line);
+	$line = preg_replace("/&/","&&",$line);
+	$line = preg_replace("/([,+0-9.\/() -])/", "%\\1", $line);
 	$mline = chunk_split($line, 2, " ");
 	$chars = explode(" ", $mline);
 	foreach ($chars as $c){
@@ -81,10 +81,10 @@ function decode_string($line,$k)
 		$c = ($val != "") ? "$val" : "$c";
 		$new_line .= $c;
 	}
-	$new_line = ereg_replace("%%", " ", $new_line);
-	$new_line = ereg_replace("%([,+0-9./() -])", "\\1", $new_line);
-	$new_line = ereg_replace("%", " ",$new_line);
-	$new_line = ereg_replace("&&","&",$new_line);
+	$new_line = preg_replace("/%%/", " ", $new_line);
+	$new_line = preg_replace("/%([,+0-9.\/() -])/", "\\1", $new_line);
+	$new_line = preg_replace("/%/", " ",$new_line);
+	$new_line = preg_replace("/&&/","&",$new_line);
 
 	return $new_line;
 }

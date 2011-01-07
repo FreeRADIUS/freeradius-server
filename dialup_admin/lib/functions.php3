@@ -24,7 +24,7 @@ function time2str($time)
 	}
 	if ($time)
 		$str .= "$time seconds, ";
-	$str = ereg_replace(', $','',$str);
+	$str = preg_replace('/, $/','',$str);
 
 	return $str;
 }
@@ -124,7 +124,7 @@ function check_defaults($val,$op,$def)
 }
 
 function check_ip($ipaddr) {
-    if(ereg("^([0-9]{1,3})\x2E([0-9]{1,3})\x2E([0-9]{1,3})\x2E([0-9]{1,3})$", $ipaddr,$digit)) {
+    if(preg_match("/^([0-9]{1,3})\x2E([0-9]{1,3})\x2E([0-9]{1,3})\x2E([0-9]{1,3})$/", $ipaddr,$digit)) {
    	  if(($digit[1] <= 255) && ($digit[2] <= 255) && ($digit[3] <= 255) && ($digit[4] <= 255)) {
         return(1);
       }

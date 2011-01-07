@@ -1,3 +1,8 @@
+Ver X.XX:
+* add comparison operators "!=" and "not like" to Accounting
+* replace ereg -> preg_match, ereg_replace -> preg_replace, split -> preg_split for PHP5.3 compatibility
+* fix LIMIT not working when using MySQL
+* add configuration item "timezone" to make PHP 5.1+ happy
 Ver 1.80:
 * Remove snmp_clearsession. It is replaced by clearsession which supports both snmp and telnet
   methods of removing a user from an access server. Add corresponding configuration directives

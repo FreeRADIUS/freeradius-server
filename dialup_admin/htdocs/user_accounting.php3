@@ -145,8 +145,8 @@ if ($link){
 			$acct_terminate_cause = "$row[acctterminatecause]";
 			if ($acct_terminate_cause == '')
 				$acct_terminate_cause = '-';
-			if (ereg('Login-Incorrect',$acct_terminate_cause) ||
-				ereg('Multiple-Logins', $acct_terminate_cause) || ereg('Invalid-User',$acct_terminate_cause))
+			if (preg_match('/Login-Incorrect/',$acct_terminate_cause) ||
+				preg_match('/Multiple-Logins/', $acct_terminate_cause) || preg_match('/Invalid-User/',$acct_terminate_cause))
 				$tr_color='#ffe8e0';
 			$acct_callerid = "$row[callingstationid]";
 			if ($acct_callerid == '')

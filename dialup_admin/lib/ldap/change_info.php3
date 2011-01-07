@@ -16,7 +16,7 @@ require_once('../lib/ldap/functions.php3');
 		$r = @da_ldap_bind($ds,$config);
 		if ($r){
 			if ($Fcn != '' && $Fcn != '-' && $Fcn != $cn){
-				list ($givenname,$sn) = split(' ',$Fcn,2);
+				list ($givenname,$sn) = preg_split('/ /',$Fcn,2);
 				$mod['cn'] = $Fcn;
 				$mod['cn'] = ($decode_normal) ? encode_string($mod['cn'],$k) : $mod['cn'];
 				$mod['givenname'] = $givenname;

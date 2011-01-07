@@ -24,7 +24,7 @@ EOM;
 	exit();
 }
 
-$operators=array( '=','<', '>', '<=', '>=', 'regexp', 'like' );
+$operators=array( '=','<', '>', '<=', '>=', '!=', 'regexp', 'like', 'not like' );
 if ($config[sql_type] == 'pg'){
 	$operators=array( '=','<', '>', '<=', '>=', '~', 'like', '~*', '~~*', '<<=' );
 }
@@ -233,7 +233,7 @@ if (!is_numeric($maxresults))
 unset($query_view);
 foreach ($accounting_show_attrs as $val)
 	$query_view .= $val . ',';
-$query_view = ereg_replace(',$','',$query_view);
+$query_view = preg_replace('/,$/','',$query_view);
 unset($sql_extra_query);
 if ($config[sql_accounting_extra_query] != '')
 	$sql_extra_query = xlat($config[sql_accounting_extra_query],$login,$config);
