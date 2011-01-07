@@ -949,7 +949,7 @@ dnl #############################################################
 
 old_LIBS="$LIBS"
 LIBS="$LIBS $LIBLTDL"
-AC_CHECK_FUNC(lt_dladvise_init, AC_DEFINE(HAVE_HAVE_LT_DLADVISE_INIT, [], [Do we have the lt_dladvise_init function]))
+AC_CHECK_FUNC(lt_dladvise_init, AC_DEFINE(HAVE_LT_DLADVISE_INIT, [], [Do we have the lt_dladvise_init function]))
 LIBS="$old_LIBS"
 
 dnl Check for libcrypt
