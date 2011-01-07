@@ -9,9 +9,9 @@ if (!isset($show_attrs)){
 	$ARR = file($infile);
 	foreach($ARR as $val){
 		$val=chop($val);
-		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+		if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 			continue;
-		list($key,$v)=split("\t+",$val);
+		list($key,$v)=preg_split("/\t+/",$val);
 		$show_attrs["$key"]=($v != '') ? "$v" : "$key";
 	}
 	if ($config[general_use_session] == 'yes')
@@ -25,9 +25,9 @@ if (!isset($acct_attrs) && isset($config[general_accounting_attrs_file])){
 	$ARR = file($infile);
 	foreach ($ARR as $val){
 		$val=chop($val);
-		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+		if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 			continue;
-		list($num,$desc,$showua,$showuf,$showfl)=split("\t+",$val);
+		list($num,$desc,$showua,$showuf,$showfl)=preg_split("/\t+/",$val);
 		if ($showua == 'yes'){
 			$acct_attrs["ua"]["num"]++;
 			$acct_attrs["ua"]["$num"]=$desc;

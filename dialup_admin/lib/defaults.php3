@@ -7,9 +7,9 @@ if (!isset($text_default_vals)){
 	$ARR=file("$config[general_default_file]");
 	foreach($ARR as $val) {
 		$val=chop($val);
-		if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+		if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 			continue;
-		list($key,$v)=split(":[[:space:]]*",$val,2);
+		list($key,$v)=preg_split("/:[[:space:]]*/",$val,2);
 		$text_default_vals["$key"][0]="$v";
 		$text_default_vals["$key"]['count']++;
 	}

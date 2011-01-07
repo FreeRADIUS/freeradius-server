@@ -76,7 +76,7 @@ if ($test_user == 1){
 	if ($fp){
 		foreach ($req as $val){
 			// Ignore comments
-			if (ereg('^[[:space:]]*#',$val) || ereg('^[[:space:]]*$',$val))
+			if (preg_match('/^[[:space:]]*#/',$val) || preg_match('/^[[:space:]]*$/',$val))
 				continue;
 			fwrite($fp,$val);
 		}
@@ -100,13 +100,13 @@ if ($test_user == 1){
 		unlink($tmp_file);
 		$msg = "<b>" . strftime('%A, %e %B %Y, %T %Z') . "</b><br>\n";
 		$msg .= "<b>Server: </b><i>$server:$port</i><br><br>\n";
-		if (ereg('code 2', $reply[0]))
+		if (preg_match('/code 2/', $reply[0]))
 			$msg .= "<b>Authentication was <font color=green>successful</font>";
-		else if (ereg('code 3',$reply[0]))
+		else if (preg_match('/code 3/',$reply[0]))
 			$msg .= "<b>Authentication <font color=red>failed</font>";
-		else if (ereg('no response from server', $reply[0]))
+		else if (preg_match('/no response from server/', $reply[0]))
 			$msg .= "<b><font color=red>No response from server</font>";
-		else if (ereg('Connection refused',$reply[0]))
+		else if (preg_match('/Connection refused/',$reply[0]))
 			$msg .= "<b><font color=red>Connection was refused</font>";
 		if ($test_login)
 			$msg .= "</b><i> (test user $login)</i><br>\n";

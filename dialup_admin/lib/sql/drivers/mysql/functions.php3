@@ -6,7 +6,7 @@ function da_sql_limit($limit,$point,$config)
 			return '';
 		case 1:
 			return '';
-		case 3:
+		case 2:
 			return "LIMIT $limit";
 	}
 }

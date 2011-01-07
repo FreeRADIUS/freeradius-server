@@ -180,7 +180,7 @@ EOM;
 		$i = 0;
 		foreach($vals as $val){
 			$name1 = $name . $i;
-			$val = ereg_replace('"','&quot;',$val);
+			$val = preg_replace('/"/','&quot;',$val);
 			$oper_name = $name1 . '_op';
 			$oper = $ops[$i];
 			$selected[$oper] = 'selected';

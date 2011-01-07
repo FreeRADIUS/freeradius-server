@@ -19,7 +19,7 @@ if ($config[sql_nas_table] != ''){
 		$extra = '';
 		if (isset($mappings[$auth_user][nasdb])){
 			$NAS_ARR = array();
-			$NAS_ARR = split(',',$mappings[$auth_user][nasdb]);
+			$NAS_ARR = preg_split('/,/',$mappings[$auth_user][nasdb]);
 			$extra = 'WHERE nasname IN (';
 			foreach ($NAS_ARR as $nas)
 				$extra .= "'$nasname',";
