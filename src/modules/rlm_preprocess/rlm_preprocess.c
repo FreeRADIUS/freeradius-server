@@ -481,21 +481,26 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Read the huntgroups file.
 	 */
-	rcode = pairlist_read(data->huntgroup_file, &(data->huntgroups), 0);
-	if (rcode < 0) {
-		radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
-		       data->huntgroup_file);
-		return -1;
+	if (data->huntgroup_file) {
+		rcode = pairlist_read(data->huntgroup_file,
+				      &(data->huntgroups), 0);
+		if (rcode < 0) {
+			radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
+			       data->huntgroup_file);
+			return -1;
+		}
 	}
 
 	/*
 	 *	Read the hints file.
 	 */
-	rcode = pairlist_read(data->hints_file, &(data->hints), 0);
-	if (rcode < 0) {
-		radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
-		       data->hints_file);
-		return -1;
+	if (data->hints_file) {
+		rcode = pairlist_read(data->hints_file, &(data->hints), 0);
+		if (rcode < 0) {
+			radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
+			       data->hints_file);
+			return -1;
+		}
 	}
 
 	/*
