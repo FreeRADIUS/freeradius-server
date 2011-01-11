@@ -668,18 +668,6 @@ modules {
 	#  authenticate, accounting, pre/post-proxy, etc.
 	#
 	$INCLUDE ${confdir}/modules/
-
-	#
-	#  This module is an SQL enabled version of the counter module.
-	#
-	#  Rather than maintaining seperate (GDBM) databases of
-	#  accounting info for each counter, this module uses the data
-	#  stored in the raddacct table by the sql modules. This
-	#  module NEVER does any database INSERTs or UPDATEs.  It is
-	#  totally dependent on the SQL module to process Accounting
-	#  packets.
-	#
-#	$INCLUDE sql/mysql/counter.conf
 }
 
 # Instantiation
