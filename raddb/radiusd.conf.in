@@ -669,13 +669,6 @@ modules {
 	#
 	$INCLUDE ${confdir}/modules/
 
-	#  Extensible Authentication Protocol
-	#
-	#  For all EAP related authentications.
-	#  Now in another file, because it is very large.
-	#
-	$INCLUDE eap.conf
-
 	#  Include another file that has the SQL-related configuration.
 	#  This is another file only because it tends to be big.
 	#
