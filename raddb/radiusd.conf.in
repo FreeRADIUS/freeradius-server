@@ -680,11 +680,6 @@ modules {
 	#  packets.
 	#
 #	$INCLUDE sql/mysql/counter.conf
-
-	#
-	#  IP addresses managed in an SQL table.
-	#
-#	$INCLUDE sqlippool.conf
 }
 
 # Instantiation
