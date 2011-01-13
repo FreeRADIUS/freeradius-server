@@ -37,6 +37,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(REDIS_INST, hostname), NULL, "127.0.0.1"},
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(REDIS_INST, port), NULL, "6379"},
+	{ "password", PW_TYPE_STRING_PTR,
+	  offsetof(REDIS_INST, password), NULL, NULL},
 	{"connect_failure_retry_delay", PW_TYPE_INTEGER,
 	 offsetof(REDIS_INST, connect_failure_retry_delay), NULL, "60"},
 	{"lifetime", PW_TYPE_INTEGER,
@@ -64,12 +66,12 @@ static int redis_close_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 	return 1;
 }
 
-static int connect_single_socket(REDISSOCK *dissocket, REDIS_INST *inst)
+static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 {
 	radlog(L_INFO, "rlm_redis (%s): Attempting to connect #%d",
 	       inst->xlat_name, dissocket->id);
 
-	dissocket->conn = redisConnect((char *) inst->hostname, inst->port);
+	dissocket->conn = redisConnect(inst->hostname, inst->port);
 
 	if (!dissocket->conn->err) {
 		radlog(L_INFO, "rlm_redis (%s): Connected new DB handle, #%d",
@@ -78,7 +80,39 @@ static int connect_single_socket(REDISSOCK *dissocket, REDIS_INST *inst)
 		dissocket->state = sockconnected;
 
 		dissocket->queries = 0;
-		return (0);
+		return 0;
+	}
+
+	if (inst->password) {
+		char buffer[1024];
+
+		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
+
+		dissocket->reply = redisCommand(dissocket->conn, buffer);
+		if (!dissocket->reply) {
+			radlog(L_ERR, "rlm_redis (%s): Failed to run AUTH",
+			       inst->xlat_name);
+			redis_close_socket(inst, dissocket);
+			return -1;
+		}
+
+
+		switch (dissocket->reply->type) {
+		case REDIS_REPLY_STATUS:
+			if (strcmp(dissocket->reply->str, "OK") != 0) {
+				radlog(L_ERR, "rlm_redis (%s): Failed authentication: reply %s",
+				       inst->xlat_name, dissocket->reply->str);
+				redis_close_socket(inst, dissocket);
+				return -1;
+			}
+			break;	/* else it's OK */
+
+		default:
+			radlog(L_ERR, "rlm_redis (%s): Unexpected reply to AUTH",
+			       inst->xlat_name);
+			redis_close_socket(inst, dissocket);
+			return -1;
+		}
 	}
 
 	/*
@@ -88,7 +122,7 @@ static int connect_single_socket(REDISSOCK *dissocket, REDIS_INST *inst)
 	       inst->xlat_name, dissocket->id);
 	inst->connect_after = time(NULL) + inst->connect_failure_retry_delay;
 	dissocket->state = sockunconnected;
-	return (-1);
+	return -1;
 }
 
 static void redis_poolfree(REDIS_INST * inst)
@@ -232,7 +266,7 @@ static int redis_init_socketpool(REDIS_INST *inst)
 			 *	This sets the dissocket->state, and
 			 *	possibly also inst->connect_after
 			 */
-			if (connect_single_socket(dissocket, inst) == 0) {
+			if (connect_single_socket(inst, dissocket) == 0) {
 				success = 1;
 			}
 		}
@@ -301,7 +335,7 @@ int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query)
 		}
 
 		/* reconnect the socket */
-		if (connect_single_socket(dissocket, inst) < 0) {
+		if (connect_single_socket(inst, dissocket) < 0) {
 			radlog(L_ERR, "rlm_redis (%s): reconnect failed, database down?",
 			       inst->xlat_name);
 			return -1;
@@ -421,7 +455,7 @@ REDISSOCK *redis_get_socket(REDIS_INST *inst)
 		reconnect:
 			radlog(L_INFO, "rlm_redis (%s): Trying to (re)connect unconnected handle %d..", inst->xlat_name, cur->id);
 			tried_to_connect++;
-			connect_single_socket(cur, inst);
+			connect_single_socket(inst, cur);
 		}
 
 		/* if we still aren't connected, ignore this handle */

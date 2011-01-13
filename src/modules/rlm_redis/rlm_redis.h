@@ -66,6 +66,7 @@ typedef struct rlm_redis_t {
 
         char            *hostname;
         int             port;
+	char		*password;
 
 	REDISSOCK *(*redis_get_socket)(REDIS_INST * inst);
 	int (*redis_release_socket)(REDIS_INST * inst, REDISSOCK *dissocket);
