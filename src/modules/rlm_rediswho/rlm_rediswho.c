@@ -37,10 +37,15 @@ typedef struct rlm_rediswho_t {
 	char *redis_instance_name;
 	REDIS_INST *redis_inst;
 
-	int expiry_time;            // expiry time in seconds if no updates are
-	// are received for a user
-	int trim_count;             // How many session updates to keep track
-	// of per use
+	/*
+	 * 	expiry time in seconds if no updates are received for a user
+	 */
+	int expiry_time; 
+
+	/*
+	 *	How many session updates to keep track of per user
+	 */
+	int trim_count;             
 
 	char *start_insert;
 	char *start_trim;
@@ -327,6 +332,24 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 
         default:
 		/* We don't care about any other accounting packet */
+		return RLM_MODULE_NOOP;
+	}
+
+	/*
+	 *	Some nonsensical security checks.
+	 */
+	if (!request->username) {
+		RDEBUG("User-Name is required");
+		return RLM_MODULE_NOOP;
+	}
+
+	if (strchr(request->username->vp_strvalue, ' ')) {
+		RDEBUG("Spaces are not allowed in the User-Name");
+		return RLM_MODULE_NOOP;
+	}
+
+	if (strchr(request->username->vp_strvalue, '\n')) {
+		RDEBUG("CR are not allowed in the User-Name");
 		return RLM_MODULE_NOOP;
 	}
 
