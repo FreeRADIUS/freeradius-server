@@ -1,4 +1,4 @@
-<form name="master" action="user_admin.php3#pass" method="post">
+<form name="master" action="user_admin.php#pass" method="post">
 <input type=hidden name=login value=<?php echo $login ?>>
 <input type=hidden name=action value=checkpass>
 <br>

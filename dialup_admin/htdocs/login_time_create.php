@@ -166,7 +166,7 @@ if ($checked[double] == '' && $checked[one] == '')
 	<tr bgcolor="#907030" align=right valign=top><th><font color="white">Login-Time Create Page</font>&nbsp;</th></tr>
 	</table>
 </td></tr>
-<form name=ruleform method=post action="login_time_create.php3">
+<form name=ruleform method=post action="login_time_create.php">
 <input type=hidden name=add value="0">
 <input type=hidden name=delete1 value="0">
 <input type=hidden name=update value="0">

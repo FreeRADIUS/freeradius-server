@@ -2,7 +2,7 @@
 * Clean up html code to make it smaller
 * More messages
 * Multilanguage support for ldap attributes
-* Add language attributes in user_new.php3
+* Add language attributes in user_new.php
 * Finger facility. Should find a way to make it work with all nases. That will
   mean that it should be made modular and fall back to simple queries to the
   sql db if it cannot get user info from the nas server

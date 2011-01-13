@@ -1,15 +1,15 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 ?>
 <html>
 <head>
 <?php
-require('../lib/functions.php3');
-require('../lib/defaults.php3');
+require('../lib/functions.php');
+require('../lib/defaults.php');
 $date = strftime('%A, %e %B %Y, %T %Z');
 
-if (is_file("../lib/$config[general_lib_type]/user_info.php3")){
-	include("../lib/$config[general_lib_type]/user_info.php3");
+if (is_file("../lib/$config[general_lib_type]/user_info.php")){
+	include("../lib/$config[general_lib_type]/user_info.php");
 	if ($user_exists == 'no'){
 		echo <<<EOM
 <title>user information page</title>
@@ -18,7 +18,7 @@ if (is_file("../lib/$config[general_lib_type]/user_info.php3")){
 </head>
 <body>
 <center>
-<form action="user_admin.php3" method=get>
+<form action="user_admin.php" method=get>
 <b>User Name&nbsp;&nbsp;</b>
 <input type="text" size=10 name="login" value="$login">
 <b>&nbsp;&nbsp;does not exist</b><br>
@@ -30,8 +30,8 @@ EOM;
 	}
 }
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>user information page</title>
@@ -319,5 +319,5 @@ if ($expiration != ''){
 EOM;
 }
 
-require('../html/user_admin.html.php3');
+require('../html/user_admin.html.php');
 ?>

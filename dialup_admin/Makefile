@@ -37,7 +37,7 @@ install:
 	    -e 's#/usr/local/bin#$(bindir)#' \
 	    conf/admin.conf > $(R)/$(DIALUP_CONFDIR)/admin.conf
 	sed -e 's#../../README#$(DIALUP_DOCDIR)/README#' \
-	    htdocs/help/help.php3 > $(R)/$(DIALUP_PREFIX)/htdocs/help/help.php3
+	    htdocs/help/help.php > $(R)/$(DIALUP_PREFIX)/htdocs/help/help.php
 	for binfile in backup_radacct clean_radacct clearsession log_badlogins monthly_tot_stats showmodem snmpfinger sqlrelay_query tot_stats truncate_radacct; do \
 	  sed -e 's#/usr/local/bin/#${bindir}#' \
 	      -e 's#/usr/local/dialup_admin/conf/#$(DIALUP_CONFDIR)/#' \

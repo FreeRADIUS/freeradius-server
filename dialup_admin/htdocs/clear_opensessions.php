@@ -1,8 +1,8 @@
 <?php
-require('../conf/config.php3');
-require_once('../lib/xlat.php3');
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+require('../conf/config.php');
+require_once('../lib/xlat.php');
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>Clear Open User Sessions for $login</title>
@@ -36,7 +36,7 @@ echo <<<EOM
 <table border=0 width=400 cellpadding=0 cellspacing=2>
 EOM;
 
-include("../html/user_toolbar.html.php3");
+include("../html/user_toolbar.html.php");
 
 $open_sessions = 0;
 

@@ -1,11 +1,11 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 if ($show == 1){
-	header("Location: user_admin.php3?login=$login");
+	header("Location: user_admin.php?login=$login");
 	exit;
 }
-require('../lib/attrshow.php3');
-require('../lib/defaults.php3');
+require('../lib/attrshow.php');
+require('../lib/defaults.php');
 
 if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 	$colspan=2;
@@ -53,19 +53,19 @@ include("password_generator.jsc");
 
 <?php
 if ($create == 1){
-	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-		include("../lib/$config[general_lib_type]/user_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+		include("../lib/$config[general_lib_type]/user_info.php");
 	if ($user_exists != "no"){
 		echo <<<EOM
 <b>The username <i>$login</i> already exists in the user database</b>
 EOM;
 	}
 	else{
-		if (is_file("../lib/$config[general_lib_type]/create_user.php3"))
-			include("../lib/$config[general_lib_type]/create_user.php3");
-		require("../lib/defaults.php3");
-		if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-			include("../lib/$config[general_lib_type]/user_info.php3");
+		if (is_file("../lib/$config[general_lib_type]/create_user.php"))
+			include("../lib/$config[general_lib_type]/create_user.php");
+		require("../lib/defaults.php");
+		if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+			include("../lib/$config[general_lib_type]/user_info.php");
 	}
 }
 ?>

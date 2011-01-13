@@ -1,5 +1,5 @@
 <?php
-include_once('../lib/xlat.php3');
+include_once('../lib/xlat.php');
 #Read user_edit attribute map
 unset($show_attrs);
 if (isset($_SESSION['show_attrs']))

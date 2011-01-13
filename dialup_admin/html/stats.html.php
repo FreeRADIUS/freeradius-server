@@ -1,4 +1,4 @@
-<form action="stats.php3" method="get">
+<form action="stats.php" method="get">
 <table border=0 width=600 cellpadding=2 cellspacing=0>
 <tr>
 	<td align=left>

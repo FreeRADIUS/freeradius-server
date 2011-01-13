@@ -9,7 +9,7 @@ There's also this FAQ :-)
 > When I try to access some page I see the php code instead of html
 >
 
-Make sure that you have configured php to handle files with .php3 extension
+Make sure that you have configured php to handle files with .php extension
 
 > 
 > What tables do I need to create in the MySQL database?

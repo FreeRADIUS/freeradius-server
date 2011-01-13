@@ -1,12 +1,12 @@
 <?php
 
-require('../conf/config.php3');
-require('../lib/functions.php3');
-require('../lib/sql/functions.php3');
-require('../lib/acctshow.php3');
+require('../conf/config.php');
+require('../lib/functions.php');
+require('../lib/sql/functions.php');
+require('../lib/acctshow.php');
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <html>
@@ -285,7 +285,7 @@ echo "</tr>\n";
 				$info = $sql_attrs[$val][func]($info);
 				if ($val == 'username'){
 					$Info = urlencode($info);
-					$info = "<a href=\"user_admin.php3?login=$Info\" title=\"Edit user $info\">$info<a/>";
+					$info = "<a href=\"user_admin.php?login=$Info\" title=\"Edit user $info\">$info<a/>";
 				}
 				echo <<<EOM
 			<td>$info</td>

@@ -1,7 +1,7 @@
 <?php
-require('../conf/config.php3');
-require('../lib/sql/nas_list.php3');
-require_once('../lib/xlat.php3');
+require('../conf/config.php');
+require('../lib/sql/nas_list.php');
+require_once('../lib/xlat.php');
 ?>
 <html>
 <head>
@@ -13,10 +13,10 @@ require_once('../lib/xlat.php3');
 <center>
 
 <?php
-require_once('../lib/functions.php3');
+require_once('../lib/functions.php');
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <b>Could not include SQL library functions. Aborting</b>
@@ -181,5 +181,5 @@ $data[max][1] = $fun[$column[1]]($max[1]);
 $data[max][2] = $fun[$column[2]]($max[2]);
 $data[max][3] = $fun[$column[3]]($max[3]);
 
-require('../html/stats.html.php3');
+require('../html/stats.html.php');
 ?>

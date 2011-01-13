@@ -1,15 +1,15 @@
 <?php
-require_once('../lib/ldap/functions.php3');
+require_once('../lib/ldap/functions.php');
 	if ($config[ldap_write_server])
 		$ds = @ldap_connect($config[ldap_write_server]);
 	else
 		$ds = @ldap_connect($config[ldap_server]);
 	if ($config[general_decode_normal_attributes] == 'yes'){
 		$decode_normal = 1;
-		if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
-			include_once("../lib/lang/$config[general_prefered_lang]/utf8.php3");
+		if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php"))
+			include_once("../lib/lang/$config[general_prefered_lang]/utf8.php");
 		else
-			include_once('../lib/lang/default/utf8.php3');
+			include_once('../lib/lang/default/utf8.php');
 		$k = init_encoder();
 	}
 	if ($ds){

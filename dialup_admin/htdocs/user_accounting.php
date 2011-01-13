@@ -1,14 +1,14 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 ?>
 <html>
 <?php
-require('../lib/functions.php3');
-require('../lib/sql/functions.php3');
-require('../lib/attrshow.php3');
+require('../lib/functions.php');
+require('../lib/sql/functions.php');
+require('../lib/attrshow.php');
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>subscription analysis for $login</title>
@@ -61,7 +61,7 @@ echo <<<EOM
 <table border=0 width=400 cellpadding=0 cellspacing=2>
 EOM;
 
-include("../html/user_toolbar.html.php3");
+include("../html/user_toolbar.html.php");
 
 print <<<EOM
 </table>
@@ -197,7 +197,7 @@ EOM;
 <tr><td>
 <hr>
 <tr><td align="center">
-	<form action="user_accounting.php3" method="get" name="master">
+	<form action="user_accounting.php" method="get" name="master">
 	<table border=0>
 		<tr><td colspan=6></td>
 			<td rowspan=3 valign="bottom">

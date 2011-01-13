@@ -39,7 +39,7 @@ Dialup-Lock-Msg			<a href="help/lock_message_help.html" target=lm_help onclick=w
 #Max-Daily-Session		Daily Limit (secs)
 #Max-Weekly-Session		Weekly Limit (secs)
 #Max-Monthly-Session		Monthly Limit (secs)
-#Login-Time			<a href="login_time_create.php3?val=$name1&first=yes" target=lt_create onclick=window.open("login_time_create.php3?val=$name1&first=yes","lt_create","width=600,height=490,toolbar=no,scrollbars=yes,resizable=yes") title="Login-Time Creation Page"><font color="blue">User Login Period </font></a>(<a href="help/login_time_help.html" target=lt_help onclick=window.open("help/login_time_help.html","lt_help","width=600,height=370,toolbar=no,scrollbars=no,resizable=yes") title="Login-Time Help Page"><font color="blue">UUCP </font></a>Format)
+#Login-Time			<a href="login_time_create.php?val=$name1&first=yes" target=lt_create onclick=window.open("login_time_create.php?val=$name1&first=yes","lt_create","width=600,height=490,toolbar=no,scrollbars=yes,resizable=yes") title="Login-Time Creation Page"><font color="blue">User Login Period </font></a>(<a href="help/login_time_help.html" target=lt_help onclick=window.open("help/login_time_help.html","lt_help","width=600,height=370,toolbar=no,scrollbars=no,resizable=yes") title="Login-Time Help Page"><font color="blue">UUCP </font></a>Format)
 #Expiration			<a href="help/expiration_help.html" target=lt_help onclick=window.open("help/expiration_help.html","lt_help","width=600,height=180,toolbar=no,scrollbars=no,resizable=yes") title="Expiration Help Page"><font color="blue">User Expiration Date</font></a>
 #
 # Uncomment this if you are using ldap and you are using user regular profiles.

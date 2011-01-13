@@ -1,8 +1,8 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>NAS Administration Page</title>
@@ -45,7 +45,7 @@ if ($link){
 		$selected_nas = da_sql_escape_string($selected_nas);
 		switch ($action) {
 			case 'check_nas':
-				require_once('../lib/functions.php3');
+				require_once('../lib/functions.php');
 				if (!check_ip($selected_nas) && $selected_nas == gethostbyname($selected_nas))
 					$msg = "<b>The NAS name <font color=red>is not</font> valid</b><br>\n";
 				else

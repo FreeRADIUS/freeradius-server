@@ -1,6 +1,6 @@
 <?php
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
@@ -29,7 +29,7 @@ if ($link){
 			"<b>Database query failed: " . da_sql_error($link,$config) . "</b><br>\n";
 	}
 	else if ($search_IN == 'radius' && $radius_attr != ''){
-		require("../lib/sql/attrmap.php3");
+		require("../lib/sql/attrmap.php");
 		if ($attrmap["$radius_attr"] == ''){
 			$attrmap["$radius_attr"] = $radius_attr;
 			$attr_type["$radius_attr"] = 'replyItem';

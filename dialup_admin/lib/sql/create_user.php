@@ -1,13 +1,13 @@
 <?php
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
-include_once('../lib/functions.php3');
+include_once('../lib/functions.php');
 if ($config[sql_use_operators] == 'true'){
-	include("../lib/operators.php3");
+	include("../lib/operators.php");
 	$text = ',op';
 	$passwd_op = ",':='";
 }
@@ -15,8 +15,8 @@ $da_abort=0;
 $op_val2 = '';
 $link = @da_sql_pconnect($config);
 if ($link){
-	if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
-		include("../lib/crypt/$config[general_encryption_method].php3");
+	if (is_file("../lib/crypt/$config[general_encryption_method].php")){
+		include("../lib/crypt/$config[general_encryption_method].php");
 		$passwd = da_encrypt($passwd);
 		$passwd = da_sql_escape_string($passwd);
 		$res = @da_sql_query($link,$config,
@@ -72,7 +72,7 @@ if ($link){
 		}
 		if (!$da_abort){
 			if ($Fgroup != '')
-				require('../lib/defaults.php3');
+				require('../lib/defaults.php');
 			foreach($show_attrs as $key => $attr){
 				if ($attrmap["$key"] == 'none')
 					continue;

@@ -100,7 +100,7 @@ enter the following lines inside the httpd.conf
 LoadModule php4_module libexec/libphp4.so
 AddModule mod_php4.c
 AddType application/x-httpd-php .php
-AddType application/x-httpd-php .php3		# This is most important since many of the PHP scripts of Dialup Admin have this extension
+AddType application/x-httpd-php .php		# This is most important since many of the PHP scripts of Dialup Admin have this extension
 
 [1.3.2.2] Creating a more secure web interface.
 
@@ -548,7 +548,7 @@ Use the totacct table for statistics
 > general_use_session: yes
 
 Set it to yes to use sessions and cache the various mappings. You can also
-set use_session = 1 in config.php3 to also cache the admin.conf
+set use_session = 1 in config.php to also cache the admin.conf
 
 NOTE: Remember to use the 'Clear Cache' page if you use sessions and 
       do any changes in any of the configuration files.

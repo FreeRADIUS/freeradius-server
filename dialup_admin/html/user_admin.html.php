@@ -58,7 +58,7 @@ print <<<EOM
 <table border=0 width=400 cellpadding=0 cellspacing=2>
 EOM;
 
-include("../html/user_toolbar.html.php3");
+include("../html/user_toolbar.html.php");
 
 print <<<EOM
 </table>
@@ -97,7 +97,7 @@ if ($logged_now){
 	</form>
 	</td></tr>
 EOM;
-	require('../html/user_admin_userinfo.html.php3');
+	require('../html/user_admin_userinfo.html.php');
 
 }else if ($not_known)  print <<<EOM
 	<tr><td align=center bgcolor="#d0ddb0">
@@ -122,7 +122,7 @@ else{
 	$lastlog_session_time
 	</td></tr>
 EOM;
-	require('../html/user_admin_userinfo.html.php3');
+	require('../html/user_admin_userinfo.html.php');
 }
 
 print <<<EOM
@@ -142,8 +142,8 @@ print <<<EOM
 
 EOM;
 
-if (is_file("../lib/$config[general_lib_type]/password_check.php3"))
-	include("../lib/$config[general_lib_type]/password_check.php3");
+if (is_file("../lib/$config[general_lib_type]/password_check.php"))
+	include("../lib/$config[general_lib_type]/password_check.php");
 
 echo <<<EOM
 <br>

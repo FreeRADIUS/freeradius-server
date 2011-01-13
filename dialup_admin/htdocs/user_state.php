@@ -1,12 +1,12 @@
 <?php
-require('../conf/config.php3');
-require('../lib/functions.php3');
-require('../lib/defaults.php3');
-if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-	include("../lib/$config[general_lib_type]/user_info.php3");
+require('../conf/config.php');
+require('../lib/functions.php');
+require('../lib/defaults.php');
+if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+	include("../lib/$config[general_lib_type]/user_info.php");
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else
 	exit();
 
