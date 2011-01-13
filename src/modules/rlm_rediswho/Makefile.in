@@ -1,0 +1,16 @@
+#
+# $Id$
+#
+
+INCLUDE += -I/usr/local/include/
+
+TARGET      = @targetname@
+SRCS        = rlm_rediswho.c
+HEADERS     = $(top_builddir)/src/modules/rlm_redis/rlm_redis.h
+RLM_CFLAGS  = -I$(top_builddir)/src/modules/rlm_redis $(INCLTDL)
+RLM_LIBS    =
+RLM_INSTALL =
+
+include ../rules.mak
+
+$(LT_OBJS): $(HEADERS)
