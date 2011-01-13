@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 typedef struct rlm_rediswho_t {
     
-    const char *xlat_name;
+    char *xlat_name;
 
     char *redis_instance_name;
     REDIS_INST *redis_inst;
@@ -64,7 +64,7 @@ static CONF_PARSER module_config[] = {
     { "redis-instance-name", PW_TYPE_STRING_PTR,
         offsetof(rlm_rediswho_t, redis_instance_name), NULL, "redis"},
 
-    { "expiry-time", PW_TYPE_INTEGER,
+    { "expire-time", PW_TYPE_INTEGER,
         offsetof(rlm_rediswho_t, expiry_time), NULL, "86400"}, // 24 hours
     { "trim-count", PW_TYPE_INTEGER,
         offsetof(rlm_rediswho_t, trim_count), NULL, "100"},
@@ -93,114 +93,70 @@ static CONF_PARSER module_config[] = {
     { NULL, -1, 0, NULL, NULL}
 };
 
-
-static int rediswho_expand(char * out, int outlen, const char * fmt,
-        rlm_rediswho_t *data, char * param, int param_len)
+static int rediswho_xlat(void *instance, REQUEST *request,
+        char *fmt, char *out, size_t freespace,
+        UNUSED RADIUS_ESCAPE_STRING func)
 {
-    char *q;
-    const char *p;
-    char tmp[40];
 
-    q = out;
-    for (p = fmt; *p; p++) {
-        int freespace;
-        int c;
+    rlm_rediswho_t *inst = instance;
+    size_t ret = 0;
 
-        freespace = outlen - (q - out);
-        if (freespace <= 1)
-            break;
+    char buffer[21];
 
-        c = *p;
-        if (c != '%' && c != '$' && c != '\\') {
-            *q++ = *p;
-            continue;
-        }
+    char querystr[MAX_QUERY_LEN];
 
-        if (*++p == '\0')
-            break;
+    if (!radius_xlat(querystr, sizeof(querystr), fmt, request, NULL)) {
+	radlog(L_ERR, "rlm_rediswho (%s): xlat failed.",
+                inst->xlat_name);
 
-        if (c == '\\') {
-            switch (*p) {
-                case '\\':
-                    *q++ = '\\';
-                    break;
-                case 't':
-                    *q++ = '\t';
-                    break;
-                case 'n':
-                    *q++ = '\n';
-                    break;
-                default:
-                    *q++ = c;
-                    *q++ = *p;
-                    break;
-            }
-        } else if (c == '%') {
-            switch (*p) {
-                case '%':
-                    *q++ = *p;
-                    break;
-                case 'T': 
-                    sprintf(tmp, "%d", data->trim_count - 1);
-                    strlcpy(q, tmp, freespace);
-                    q += strlen(q);
-                    break;
-                case 'I':
-                    if (param && param_len > 0) {
-                        if (param_len > freespace) {
-                            strlcpy(q, param, freespace);
-                            q += strlen(q);
-                        } else {
-                            memcpy(q, param, param_len);
-                            q += param_len;
-                        }
-                    }
-                    break;
-                case 'U': 
-                    sprintf(tmp, "%d", data->expiry_time);
-                    strlcpy(q, tmp, freespace);
-                    q += strlen(q);
-                    break;
-                default:
-                    *q++ = '%';
-                    *q++ = *p;
-                    break;
-            }
-        }
+	return 0;
     }
-    *q = '\0';
 
-    return strlen(out);
+    if (strncasecmp(fmt, "trim-count", 10) == 0) {
+        
+        snprintf(buffer, sizeof(buffer), "%i",
+            inst->trim_count);
+
+        ret = strlen(buffer);
+
+        strlcpy(out,buffer,freespace);
+    } else if (strncasecmp(fmt, "expire-time", 11) == 0) {
+        
+        snprintf(buffer, sizeof(buffer), "%i",
+            inst->expiry_time);
+
+        ret = strlen(buffer);
+
+        strlcpy(out,buffer,freespace);
+    }
+
+    if (ret > 0 && ret >= freespace) {
+
+        RDEBUG("rlm_redis (%s): Can't write result, insufficient space\n",
+            inst->xlat_name);
+
+        return 0;
+   }
+
+    return ret;
 }
-
 
 /*
  * Query the database executing a command with no result rows
  */
-static int rediswho_command(const char * fmt, REDISSOCK *dissocket,
-        rlm_rediswho_t *data, REQUEST * request,
-        char * param, int param_len)
+static int rediswho_command(char * fmt, REDISSOCK *dissocket,
+        rlm_rediswho_t *data, REQUEST * request)
 {
     
-    char expansion[MAX_STRING_LEN * 4];
     char query[MAX_STRING_LEN * 4];
-
-    rediswho_expand(expansion, sizeof (expansion),
-            fmt, data, param, param_len);
 
     /*
      * Do an xlat on the provided string
      */
-    if (request) {
-        if (!radius_xlat(query, sizeof (query), expansion, request, NULL))
-        {
-            radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
-            return 0;
-        }
-
-    } else
+    if (!radius_xlat(query,  sizeof(query), fmt, request, NULL))
     {
-        strcpy(query, expansion);
+        radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
+        return 0;
     }
 
     if (data->redis_inst->redis_query(dissocket, data->redis_inst, query))
@@ -236,9 +192,13 @@ static int rediswho_command(const char * fmt, REDISSOCK *dissocket,
 
 static int rediswho_detach(void *instance)
 {
-    rlm_rediswho_t *inst;
+    rlm_rediswho_t *inst = instance;
 
-    inst = instance;
+    if (inst->xlat_name) {
+        xlat_unregister(inst->xlat_name, (RAD_XLAT_FUNC)rediswho_xlat);
+        free(inst->xlat_name);
+    }
+
     free(inst);
 
     return 0;
@@ -249,6 +209,8 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 
     module_instance_t *modinst;
     rlm_rediswho_t *inst;
+    const char *xlat_name;
+
 
     /*
      *	Set up a storage area for instance data
@@ -266,14 +228,13 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
         return -1;
     }
 
-    inst->xlat_name = cf_section_name2(conf);
+    xlat_name = cf_section_name2(conf);
 
-    if (!inst->xlat_name) 
-        inst->xlat_name = cf_section_name1(conf);
+    if (!xlat_name)
+        xlat_name = cf_section_name1(conf);
 
-    inst->xlat_name = strdup(inst->xlat_name);
-
-    DEBUG("xlat name %s\n", inst->xlat_name);
+    inst->xlat_name = strdup(xlat_name);
+    xlat_register(inst->xlat_name, (RAD_XLAT_FUNC)rediswho_xlat, inst);
 
     /*
      *	Check that all the queries are in place
@@ -370,19 +331,16 @@ static int rediswho_accounting_start(REDISSOCK *dissocket,
         rlm_rediswho_t *data, REQUEST *request)
 {
 
-    rediswho_command(data->start_insert, dissocket, data, request,
-            (char *) NULL, 0);
+    rediswho_command(data->start_insert, dissocket, data, request);
     
     // Only trim if necessary
     if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
         if (dissocket->reply->integer > data->trim_count) {
-            rediswho_command(data->start_trim, dissocket, data, request,
-                    (char *) NULL, 0);
+            rediswho_command(data->start_trim, dissocket, data, request);
         }
     }
 
-    rediswho_command(data->start_expire, dissocket, data, request,
-            (char *) NULL, 0);
+    rediswho_command(data->start_expire, dissocket, data, request);
 
     return RLM_MODULE_OK;
 }
@@ -392,19 +350,16 @@ static int rediswho_accounting_alive(REDISSOCK *dissocket,
 {
 
 
-    rediswho_command(data->alive_insert, dissocket, data, request,
-            (char *) NULL, 0);
+    rediswho_command(data->alive_insert, dissocket, data, request);
 
     // Only trim if necessary
     if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
         if (dissocket->reply->integer > data->trim_count) {
-            rediswho_command(data->alive_trim, dissocket, data, request,
-                    (char *) NULL, 0);
+            rediswho_command(data->alive_trim, dissocket, data, request);
         }
     }
 
-    rediswho_command(data->alive_expire, dissocket, data, request,
-            (char *) NULL, 0);
+    rediswho_command(data->alive_expire, dissocket, data, request);
 
 
     return RLM_MODULE_OK;
@@ -414,19 +369,16 @@ static int rediswho_accounting_stop(REDISSOCK *dissocket,
         rlm_rediswho_t *data, REQUEST *request)
 {
 
-    rediswho_command(data->stop_insert, dissocket, data, request,
-            (char *) NULL, 0);
+    rediswho_command(data->stop_insert, dissocket, data, request);
 
     // Only trim if necessary
     if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
         if (dissocket->reply->integer > data->trim_count) {
-            rediswho_command(data->stop_trim, dissocket, data, request,
-                    (char *) NULL, 0);
+            rediswho_command(data->stop_trim, dissocket, data, request);
         }
     }
 
-    rediswho_command(data->stop_expire, dissocket, data, request,
-            (char *) NULL, 0);
+    rediswho_command(data->stop_expire, dissocket, data, request);
 
     return RLM_MODULE_OK;
 }

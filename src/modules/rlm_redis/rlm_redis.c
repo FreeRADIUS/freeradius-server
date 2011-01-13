@@ -61,6 +61,7 @@ static int redis_close_socket(REDIS_INST *inst, REDISSOCK *dissocket) {
 }
 
 static int connect_single_socket(REDISSOCK *dissocket, REDIS_INST *inst) {
+
     radlog(L_INFO, "rlm_redis (%s): Attempting to connect #%d",
             inst->xlat_name, dissocket->id);
 
@@ -73,7 +74,7 @@ static int connect_single_socket(REDISSOCK *dissocket, REDIS_INST *inst) {
         dissocket->state = sockconnected;
 
         dissocket->queries = 0;
-        return (0);
+        return 0;
     }
 
     /*
@@ -193,7 +194,7 @@ static int redis_detach(void *instance) {
         xlat_unregister(inst->xlat_name, (RAD_XLAT_FUNC)redis_xlat);
         free(inst->xlat_name);
     }
-    free(inst->xlat_name);
+
     free(inst);
 
     return 0;
@@ -300,7 +301,8 @@ int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query) {
 
         /* close the socket that failed */
         if (dissocket->state == sockconnected) {
-            redis_close_socket(inst, dissocket);
+            redisFree(dissocket->conn);
+            dissocket->state = sockunconnected;
         }
 
         /* reconnect the socket */
