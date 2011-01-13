@@ -1,7 +1,7 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 if ($show == 1 && isset($del_members)){
-        header("Location: user_admin.php3?login=$del_members[0]");
+        header("Location: user_admin.php?login=$del_members[0]");
         exit;
 }
 if ($config[general_lib_type] != 'sql'){
@@ -20,8 +20,8 @@ EOM;
 }
 
 unset($group_members);
-if (is_file("../lib/$config[general_lib_type]/group_info.php3")){
-	include("../lib/$config[general_lib_type]/group_info.php3");
+if (is_file("../lib/$config[general_lib_type]/group_info.php")){
+	include("../lib/$config[general_lib_type]/group_info.php");
 	if ($group_exists == 'no'){
 		echo <<<EOM
 <title>Group Administration Page</title>
@@ -30,7 +30,7 @@ if (is_file("../lib/$config[general_lib_type]/group_info.php3")){
 </head>
 <body>
 <center>
-<form action="group_admin.php3" method=get>
+<form action="group_admin.php" method=get>
 <b>Group Name&nbsp;&nbsp;</b>
 <input type="text" size=10 name="login" value="$login">
 <b>&nbsp;&nbsp;does not exist</b><br>
@@ -59,7 +59,7 @@ EOM;
 <table border=0 width=400 cellpadding=0 cellspacing=2>
 
 <?php
-include("../html/group_toolbar.html.php3");
+include("../html/group_toolbar.html.php");
 ?>
 
 </table>
@@ -80,10 +80,10 @@ include("../html/group_toolbar.html.php3");
 
 <?php
 if ($do_changes == 1){
-	if (is_file("../lib/$config[general_lib_type]/group_admin.php3"))
-		include("../lib/$config[general_lib_type]/group_admin.php3");
-	if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
-		include("../lib/$config[general_lib_type]/group_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/group_admin.php"))
+		include("../lib/$config[general_lib_type]/group_admin.php");
+	if (is_file("../lib/$config[general_lib_type]/group_info.php"))
+		include("../lib/$config[general_lib_type]/group_info.php");
 }
 ?>
 

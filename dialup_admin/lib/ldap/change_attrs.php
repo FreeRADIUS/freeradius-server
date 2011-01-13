@@ -1,6 +1,6 @@
 <?php
-require_once('../lib/functions.php3');
-require_once('../lib/ldap/functions.php3');
+require_once('../lib/functions.php');
+require_once('../lib/ldap/functions.php');
 	if ($config[ldap_write_server])
 		$ds = @ldap_connect($config[ldap_write_server]);
 	else

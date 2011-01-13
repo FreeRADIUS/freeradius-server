@@ -19,6 +19,6 @@ if (!isset($text_default_vals)){
 		session_register('text_default_vals');
 }
 $default_vals = $text_default_vals;
-if (is_file("../lib/$config[general_lib_type]/defaults.php3"))
-        include("../lib/$config[general_lib_type]/defaults.php3");
+if (is_file("../lib/$config[general_lib_type]/defaults.php"))
+        include("../lib/$config[general_lib_type]/defaults.php");
 ?>

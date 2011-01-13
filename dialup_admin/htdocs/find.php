@@ -1,5 +1,5 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 $selected[$search_IN] = 'selected';
 $selected[$radius_attr] = 'selected';
 $max = ($max_results) ? $max_results : 40;
@@ -37,8 +37,8 @@ $max = ($max_results) ? $max_results : 40;
 <?php
 if ($find_user == 1){
 	unset($found_users);
-	if (is_file("../lib/$config[general_lib_type]/find.php3"))
-		include("../lib/$config[general_lib_type]/find.php3");
+	if (is_file("../lib/$config[general_lib_type]/find.php"))
+		include("../lib/$config[general_lib_type]/find.php");
 	if (isset($found_users)){
 		$num = 0;
 		$msg .= <<<EOM
@@ -56,7 +56,7 @@ EOM;
 			$msg .= <<<EOM
 			<tr align=center>
 			 	<td>$num</td>
-				<td><a href="user_admin.php3?login=$User" title="Edit user $user">$user</a></td>
+				<td><a href="user_admin.php?login=$User" title="Edit user $user">$user</a></td>
 			</tr>
 EOM;
 		}
@@ -90,7 +90,7 @@ EOM;
 </tr>
 <?php
 if ($search_IN == 'radius'){
-	require('../lib/attrshow.php3');
+	require('../lib/attrshow.php');
 	echo <<<EOM
 <tr>
 <td align=right bgcolor="#d0ddb0">

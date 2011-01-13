@@ -1,7 +1,7 @@
 <?php
-require('../conf/config.php3');
-require('../lib/attrshow.php3');
-require('../lib/sql/nas_list.php3');
+require('../conf/config.php');
+require('../lib/attrshow.php');
+require('../lib/sql/nas_list.php');
 if (!isset($usage_summary)){
 	echo <<<EOM
 <html>
@@ -15,18 +15,18 @@ EOM;
 }
 
 if ($config[general_decode_normal_attributes] == 'yes'){
-	if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
-		include_once("../lib/lang/$config[general_prefered_lang]/utf8.php3");
+	if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php"))
+		include_once("../lib/lang/$config[general_prefered_lang]/utf8.php");
 	else
-		include_once('../lib/lang/default/utf8.php3');
+		include_once('../lib/lang/default/utf8.php');
 	$k = init_decoder();
 	$decode_normal = 1;
 }
-require_once('../lib/functions.php3');
-require("../lib/$config[general_lib_type]/functions.php3");
+require_once('../lib/functions.php');
+require("../lib/$config[general_lib_type]/functions.php");
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <body>
@@ -200,7 +200,7 @@ EOM;
 		$inf = $user_info[$user];
 		echo <<<EOM
 	<tr align=center>
-	<td>$k</td><td><a href="user_admin.php3?login=$User" title="Edit User $user">$user</a></td>
+	<td>$k</td><td><a href="user_admin.php?login=$User" title="Edit User $user">$user</a></td>
 EOM;
 if ($acct_attrs['uf'][4] != '') echo "<td>$ip</td>\n";
 if ($acct_attrs['uf'][9] != '') echo "<td>$cid</td>\n";

@@ -1,5 +1,5 @@
 dialup_admin is a web based administration interface for the freeradius radius server.
-It is written in PHP4 (although the files have an extension of php3 for historical reasons).
+It is written in PHP4 (although the files have an extension of php for historical reasons).
 It is modular and right now it assumes that user information is stored in an ldap server
 or an sql database and accounting in an sql server.
 
@@ -48,7 +48,7 @@ conf:: Contains various configuration files.
 conf::admin.conf=>
 	The main configuration file. The directives used should be easily
 	understood
-conf::config.php3=>
+conf::config.php=>
 	Just a helper php4 for reading the admin.conf file.
 conf::default.vals=>
 	Contains the default values for check and reply items. If you also use the users
@@ -56,9 +56,9 @@ conf::default.vals=>
 	for the users.Else comment them out.
 conf::sql.attrs=>
 	Contains inmformation about the sql attributes. This is used by the accounting
-	report generator (accounting.php3).
+	report generator (accounting.php).
 conf::user_edit.attrs=>
-	Contains the attributes that user_edit.php3 will show. Just uncomment those
+	Contains the attributes that user_edit.php will show. Just uncomment those
 	which you want to be displayed.
 conf::extra.ldap-attrmap=>
 	Contains a few items not included in ldap.attrmap which are used only by dialup_admin
@@ -75,36 +75,36 @@ htdocs::index.html=>
 	The main index file. Just contains the frames tags
 htdocs::content.html=>
 	Change this file to include the greeting of your choise
-htdocs::buttons.php3=>
+htdocs::buttons.php=>
 	This will open the corresponding buttons html file in the html/buttons folder
 htdocs::style.css=>
 	CSS style file. Change it to match your preferences
-htdocs:: user_state.php3 =>
+htdocs:: user_state.php =>
 	It can be used by outside pages to get a quick
 	overview of the status of a user. It will return the following fields
 	separated by new lines:
 	account_status(active or inactive),lock message,weekly limit,daily limit,
 	weekly used,weekly connections,daily used,daily connections,
 	active sessions number,active sessions time
-htdocs:: user_finger.php3 =>
+htdocs:: user_finger.php =>
 	It will finger the nas(es) and show the logged in users. If an argument server is passed then
 	it will only show users for the specific access server.
 	If an argument usage_summary is passed then it will only show a line like:
 	"Online: <num> Free: <num>" which can be used by other pages
-htdocs::failed_logins.php3 =>
+htdocs::failed_logins.php =>
 	It will show all the failed logins as logged in the radacct table by the log_badlogins script
 
 html:: Contains the html code for a few pages 
-html::user_admin.html.php3 =>
+html::user_admin.html.php =>
 	html code for the user_admin page
-html::stats.html.php3 =>
+html::stats.html.php =>
 	html code for the stats page
-html::user_toolbar.html.php3 =>
+html::user_toolbar.html.php =>
 	the user toolbar (show,edit,accounting...) which appears in almost all pages
-html::group_toolbar.html.php3 =>
+html::group_toolbar.html.php =>
 	the toolbar shown in the group manipulation pages
 html::/buttons
-	contains a folder default which contains a buttons.html.php3 file. When a user is connecting
+	contains a folder default which contains a buttons.html.php file. When a user is connecting
 	with http authentication we first try to open the file in the folder <username>. If that fails
 	we open the file in the default folder. That way each admin can have a different view of the buttons
 	bar (for example see different finger pages).

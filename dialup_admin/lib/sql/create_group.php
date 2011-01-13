@@ -1,13 +1,13 @@
 <?php
-require_once('../lib/functions.php3');
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+require_once('../lib/functions.php');
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
 }
 if ($config[sql_use_operators] == 'true'){
-	include("../lib/operators.php3");
+	include("../lib/operators.php");
 	$text = ',op';
 	$passwd_op = ",':='";
 }

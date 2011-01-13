@@ -1,12 +1,12 @@
 <?php
-require('../conf/config.php3');
-require('../lib/functions.php3');
+require('../conf/config.php');
+require('../lib/functions.php');
 ?>
 <html>
 <?php
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>Unauthorized Service Usage History for $login</title>
@@ -62,7 +62,7 @@ if ($login != 'anyone'){
 <table border=0 width=400 cellpadding=0 cellspacing=2>
 EOM;
 
-include("../html/user_toolbar.html.php3");
+include("../html/user_toolbar.html.php");
 
 print <<<EOM
 </table>
@@ -124,7 +124,7 @@ echo <<<EOM
 	<table border=0 width=100% cellpadding=12 cellspacing=0 bgcolor="#ffffd0" valign=top>
 	<tr><td>
 <b>$prev_str</b> up to <b>$now_str</b>
-<form action="badusers.php3" method="get" name="master">
+<form action="badusers.php" method="get" name="master">
 <input type=hidden name=do_delete value=0>
 <input type=hidden name=row_id value=0>
 EOM;
@@ -169,7 +169,7 @@ if ($link){
 			echo <<<EOM
 			<tr align=center>
 				<td>$num</td>
-				<td><a href="user_admin.php3?login=$User" title="Edit user $user">$user</a></td>
+				<td><a href="user_admin.php?login=$User" title="Edit user $user">$user</a></td>
 				<td>$date</td>
 				<td>$admin</td>
 				<td>$reason</td>

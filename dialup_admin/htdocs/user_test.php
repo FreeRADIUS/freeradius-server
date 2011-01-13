@@ -1,5 +1,5 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 
 if ($login == 'da_server_test'){
 	$login = $config[general_test_account_login];
@@ -25,7 +25,7 @@ echo <<<EOM
 EOM;
 
 if (!$test_login)
-	include("../html/user_toolbar.html.php3");
+	include("../html/user_toolbar.html.php");
 
 print <<<EOM
 </table>

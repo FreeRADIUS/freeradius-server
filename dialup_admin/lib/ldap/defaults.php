@@ -1,7 +1,7 @@
 <?php
-require_once('../lib/ldap/functions.php3');
+require_once('../lib/ldap/functions.php');
 if ($config[ldap_default_dn] != ''){
-	include('../lib/ldap/attrmap.php3');
+	include('../lib/ldap/attrmap.php');
 	$regular_profile_attr = $config[ldap_regular_profile_attr];
 	$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 	if ($ds) {

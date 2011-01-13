@@ -1,6 +1,6 @@
 <?php
-require_once('../lib/functions.php3');
-require_once('../lib/ldap/functions.php3');
+require_once('../lib/functions.php');
+require_once('../lib/ldap/functions.php');
 	if ($config[ldap_write_server])
 		$ds = @ldap_connect($config[ldap_write_server]);
 	else
@@ -24,8 +24,8 @@ require_once('../lib/ldap/functions.php3');
 			$new_user_entry["mobile"]="$Fmobile";
 			$new_user_entry["ou"]="$Fou";
 			$new_user_entry["uid"]="$login";
-			if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
-				include("../lib/crypt/$config[general_encryption_method].php3");
+			if (is_file("../lib/crypt/$config[general_encryption_method].php")){
+				include("../lib/crypt/$config[general_encryption_method].php");
 				$passwd = da_encrypt($passwd);
 		$new_user_entry[$attrmap['User-Password']] = '{' . "$config[general_encryption_method]" . '}' . $passwd;
 			}

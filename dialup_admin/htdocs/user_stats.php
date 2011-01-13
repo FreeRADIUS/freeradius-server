@@ -1,14 +1,14 @@
 <?php
-require('../conf/config.php3');
-require('../lib/functions.php3');
-require('../lib/sql/nas_list.php3');
-require_once('../lib/xlat.php3');
+require('../conf/config.php');
+require('../lib/functions.php');
+require('../lib/sql/nas_list.php');
+require_once('../lib/xlat.php');
 ?>
 <html>
 <?php
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>User Statistics</title>
@@ -122,7 +122,7 @@ if ($link){
 				$acct_login = '-';
 			else{
 				$Acct_login = urlencode($acct_login);
-				$acct_login = "<a href=\"user_admin.php3?login=$Acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
+				$acct_login = "<a href=\"user_admin.php?login=$Acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
 			}
 			$acct_time = $row[conntotduration];
 			$acct_time = time2str($acct_time);
@@ -164,7 +164,7 @@ echo <<<EOM
 <tr><td>
 <hr>
 <tr><td align="left">
-	<form action="user_stats.php3" method="post" name="master">
+	<form action="user_stats.php" method="post" name="master">
 	<table border=0>
 		<tr valign="bottom">
 			<td><small><b>start time</td><td><small><b>stop time</td><td><small><b>pagesize</td><td><b>sort by</td><td><b>order</td>

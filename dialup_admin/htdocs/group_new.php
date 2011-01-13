@@ -1,7 +1,7 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 if ($show == 1){
-	header("Location: group_admin.php3?login=$login");
+	header("Location: group_admin.php?login=$login");
 	exit;
 }
 
@@ -20,9 +20,9 @@ EOM;
         exit();
 }
 
-require('../lib/attrshow.php3');
-require('../lib/defaults.php3');
-require("../lib/$config[general_lib_type]/group_info.php3");
+require('../lib/attrshow.php');
+require('../lib/defaults.php');
+require("../lib/$config[general_lib_type]/group_info.php");
 
 if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 	$colspan=2;
@@ -64,8 +64,8 @@ if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 	<tr><td>
 
 <?php
-if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
-	include("../lib/$config[general_lib_type]/group_info.php3");
+if (is_file("../lib/$config[general_lib_type]/group_info.php"))
+	include("../lib/$config[general_lib_type]/group_info.php");
 if ($create == 1){
 	if ($group_exists != "no"){
 		echo <<<EOM
@@ -73,10 +73,10 @@ if ($create == 1){
 EOM;
 	}
 	else{
-		if (is_file("../lib/$config[general_lib_type]/create_group.php3"))
-			include("../lib/$config[general_lib_type]/create_group.php3");
-		if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
-			include("../lib/$config[general_lib_type]/group_info.php3");
+		if (is_file("../lib/$config[general_lib_type]/create_group.php"))
+			include("../lib/$config[general_lib_type]/create_group.php");
+		if (is_file("../lib/$config[general_lib_type]/group_info.php"))
+			include("../lib/$config[general_lib_type]/group_info.php");
 	}
 }
 ?>

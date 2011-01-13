@@ -1,5 +1,5 @@
 <?php
-require_once('../lib/ldap/functions.php3');
+require_once('../lib/ldap/functions.php');
 $ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!
 if ($ds) {
 	if (!is_numeric($max))
@@ -10,7 +10,7 @@ if ($ds) {
 	if ($search_IN == 'name' || $search_IN == 'ou')
 		$attr = ($search_IN == 'name') ? 'cn' : 'ou';
 	else if ($search_IN == 'radius'){
-		require('../lib/ldap/attrmap.php3');
+		require('../lib/ldap/attrmap.php');
 		$attr = $attrmap[$radius_attr];
 	}
 	if ($config[ldap_debug] == 'true')

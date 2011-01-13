@@ -1,11 +1,11 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 if ($type != 'group')
-	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-		include("../lib/$config[general_lib_type]/user_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+		include("../lib/$config[general_lib_type]/user_info.php");
 else
-	if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
-		include("../lib/$config[general_lib_type]/group_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/group_info.php"))
+		include("../lib/$config[general_lib_type]/group_info.php");
 
 $whatis = ($user_type == 'group') ? 'group' : 'user';
 $whatisL = ($user_type == 'group') ? 'Group' : 'User';
@@ -36,9 +36,9 @@ echo <<<EOM
 EOM;
 
 if ($user_type != 'group')
-	include("../html/user_toolbar.html.php3");
+	include("../html/user_toolbar.html.php");
 else
-	include("../html/group_toolbar.html.php3");
+	include("../html/group_toolbar.html.php");
 
 print <<<EOM
 </table>
@@ -61,12 +61,12 @@ EOM;
 
 if ($delete_user == 1){
 	if ($user_type != 'group'){
-		if (is_file("../lib/$config[general_lib_type]/delete_user.php3"))
-			include("../lib/$config[general_lib_type]/delete_user.php3");
+		if (is_file("../lib/$config[general_lib_type]/delete_user.php"))
+			include("../lib/$config[general_lib_type]/delete_user.php");
 	}
 	else{
-		if (is_file("../lib/$config[general_lib_type]/delete_group.php3"))
-			include("../lib/$config[general_lib_type]/delete_group.php3");
+		if (is_file("../lib/$config[general_lib_type]/delete_group.php"))
+			include("../lib/$config[general_lib_type]/delete_group.php");
 	}
 	echo <<<EOM
 </td></tr>

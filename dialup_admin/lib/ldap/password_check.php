@@ -1,5 +1,5 @@
 <?php
-require('password.php3');
+require('password.php');
 
 if ($action == 'checkpass'){
 	$ds=@ldap_connect("$config[ldap_server]");  // must be a valid ldap server!

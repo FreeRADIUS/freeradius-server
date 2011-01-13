@@ -1,14 +1,14 @@
 <?php
-require('../conf/config.php3');
-require('../lib/attrshow.php3');
-require('../lib/sql/nas_list.php3');
-require_once('../lib/xlat.php3');
+require('../conf/config.php');
+require('../lib/attrshow.php');
+require('../lib/sql/nas_list.php');
+require_once('../lib/xlat.php');
 ?>
 <html>
 <?php
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>Failed logins</title>
@@ -129,7 +129,7 @@ if ($link){
 			if ($acct_login == '')
 				$acct_login = '-';
 			else
-				$acct_login = "<a href=\"user_admin.php3?login=$acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
+				$acct_login = "<a href=\"user_admin.php?login=$acct_login\" title=\"Edit user $acct_login\">$acct_login</a>";
 			$acct_time = $row[acctstoptime];
 			$acct_server = $row[nasipaddress];
 			if ($acct_server != ''){
@@ -176,7 +176,7 @@ echo <<<EOM
 <tr><td>
 <hr>
 <tr><td align="left">
-	<form action="failed_logins.php3" method="get" name="master">
+	<form action="failed_logins.php" method="get" name="master">
 	<table border=0>
 		<tr valign="bottom">
 			<td><small><b>time back (mins)</td><td><small><b>pagesize</td><td><small><b>caller id</td><td><b>order</td>

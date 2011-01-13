@@ -1,11 +1,11 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 ?>
 <html>
 <?php
 
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo <<<EOM
 <title>User Groups</title>
@@ -71,7 +71,7 @@ EOM;
 <?php
 unset($login);
 $num = 0;
-include_once("../lib/$config[general_lib_type]/group_info.php3");
+include_once("../lib/$config[general_lib_type]/group_info.php");
 if (isset($existing_groups)){
 	foreach ($existing_groups as $group => $num_members){
 		$num++;
@@ -79,7 +79,7 @@ if (isset($existing_groups)){
 		echo <<<EOM
 		<tr align=center>
 			<td>$num</td>
-			<td><a href="group_admin.php3?login=$Group" title="Edit group $group">$group</a></td>
+			<td><a href="group_admin.php?login=$Group" title="Edit group $group">$group</a></td>
 			<td>$num_members</td>
 		</tr>
 EOM;

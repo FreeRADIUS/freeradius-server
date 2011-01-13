@@ -1,5 +1,5 @@
 <?php
-require('../conf/config.php3');
+require('../conf/config.php');
 ?>
 
 <html>
@@ -19,20 +19,20 @@ require('../conf/config.php3');
 
 <table border=0 width=400 cellpadding=0 cellspacing=2>
 <?php
-include("../html/user_toolbar.html.php3");
+include("../html/user_toolbar.html.php");
 ?>
 </table>
 
 <?php
 if ($change == 1){
-	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-		include("../lib/$config[general_lib_type]/user_info.php3");
-	if (is_file("../lib/$config[general_lib_type]/change_info.php3"))
-		include("../lib/$config[general_lib_type]/change_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+		include("../lib/$config[general_lib_type]/user_info.php");
+	if (is_file("../lib/$config[general_lib_type]/change_info.php"))
+		include("../lib/$config[general_lib_type]/change_info.php");
 }
 
-if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-	include("../lib/$config[general_lib_type]/user_info.php3");
+if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+	include("../lib/$config[general_lib_type]/user_info.php");
 ?>
 
 <br>

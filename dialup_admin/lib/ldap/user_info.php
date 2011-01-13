@@ -1,10 +1,10 @@
 <?php
-require('../lib/ldap/attrmap.php3');
-require_once('../lib/ldap/functions.php3');
-if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php3"))
-	include_once("../lib/lang/$config[general_prefered_lang]/utf8.php3");
+require('../lib/ldap/attrmap.php');
+require_once('../lib/ldap/functions.php');
+if (is_file("../lib/lang/$config[general_prefered_lang]/utf8.php"))
+	include_once("../lib/lang/$config[general_prefered_lang]/utf8.php");
 else
-	include_once('../lib/lang/default/utf8.php3');
+	include_once('../lib/lang/default/utf8.php');
 
 $cn = '-';
 $cn_lang = '-';

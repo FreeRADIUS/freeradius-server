@@ -1,28 +1,28 @@
 <?php
-require('../conf/config.php3');
-require('../lib/attrshow.php3');
-require('../lib/defaults.php3');
+require('../conf/config.php');
+require('../lib/attrshow.php');
+require('../lib/defaults.php');
 $extra_text = '';
 if ($user_type != 'group'){
-	if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-		include("../lib/$config[general_lib_type]/user_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+		include("../lib/$config[general_lib_type]/user_info.php");
 	if ($config[general_lib_type] == 'sql' && $config[sql_show_all_groups] == 'true'){
 		$extra_text = "<br><font size=-2><i>(The groups that the user is a member of are highlated)</i></font>";
 		$saved_login = $login;
 		$login = '';
-		if (is_file("../lib/sql/group_info.php3"))
-			include("../lib/sql/group_info.php3");
+		if (is_file("../lib/sql/group_info.php"))
+			include("../lib/sql/group_info.php");
 		$login = $saved_login;
 	}
 }
 else{
-	if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
-		include("../lib/$config[general_lib_type]/group_info.php3");
+	if (is_file("../lib/$config[general_lib_type]/group_info.php"))
+		include("../lib/$config[general_lib_type]/group_info.php");
 }
 if ($config[general_lib_type] == 'sql' && $config[sql_use_operators] == 'true'){
 	$colspan=2;
 	$show_ops = 1;
-	include("../lib/operators.php3");
+	include("../lib/operators.php");
 }
 else{
 	$show_ops = 0;
@@ -55,9 +55,9 @@ else
 
 <?php
 if ($user_type != 'group')
-	include("../html/user_toolbar.html.php3");
+	include("../html/user_toolbar.html.php");
 else
-	include("../html/group_toolbar.html.php3");
+	include("../html/group_toolbar.html.php");
 
 print <<<EOM
 </table>
@@ -79,27 +79,27 @@ print <<<EOM
 EOM;
 
 if ($change == 1){
-	if (is_file("../lib/$config[general_lib_type]/change_attrs.php3"))
-		include("../lib/$config[general_lib_type]/change_attrs.php3");
+	if (is_file("../lib/$config[general_lib_type]/change_attrs.php"))
+		include("../lib/$config[general_lib_type]/change_attrs.php");
 	if ($user_type != 'group'){
 		if ($config[general_show_user_password] != 'no' && $passwd != ''
-			&& is_file("../lib/$config[general_lib_type]/change_passwd.php3"))
-			include("../lib/$config[general_lib_type]/change_passwd.php3");
-		if (is_file("../lib/$config[general_lib_type]/user_info.php3"))
-			include("../lib/$config[general_lib_type]/user_info.php3");
+			&& is_file("../lib/$config[general_lib_type]/change_passwd.php"))
+			include("../lib/$config[general_lib_type]/change_passwd.php");
+		if (is_file("../lib/$config[general_lib_type]/user_info.php"))
+			include("../lib/$config[general_lib_type]/user_info.php");
 		if ($group_change && $config[general_lib_type] == 'sql' && $config[sql_show_all_groups] == 'true'){
-			include("../lib/sql/group_change.php3");
-			include("../lib/defaults.php3");
+			include("../lib/sql/group_change.php");
+			include("../lib/defaults.php");
 		}
 	}
 	else{
-		if (is_file("../lib/$config[general_lib_type]/group_info.php3"))
-			include("../lib/$config[general_lib_type]/group_info.php3");
+		if (is_file("../lib/$config[general_lib_type]/group_info.php"))
+			include("../lib/$config[general_lib_type]/group_info.php");
 	}
 }
 else if ($badusers == 1){
-	if (is_file("../lib/add_badusers.php3"))
-		include("../lib/add_badusers.php3");
+	if (is_file("../lib/add_badusers.php"))
+		include("../lib/add_badusers.php");
 }
 
 ?>

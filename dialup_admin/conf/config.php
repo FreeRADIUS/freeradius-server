@@ -110,8 +110,8 @@ if (!isset($mappings) && $config[general_username_mappings_file] != ''){
 
 date_default_timezone_set($config[timezone]);
 
-//Include missing.php3 if needed
+//Include missing.php if needed
 if (!function_exists('array_change_key_case'))
-	include_once('../lib/missing.php3');
+	include_once('../lib/missing.php');
 @header('Content-type: text/html; charset='.$config[general_charset].';');
 ?>

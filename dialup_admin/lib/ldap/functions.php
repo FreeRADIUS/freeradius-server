@@ -1,5 +1,5 @@
 <?php
-require_once('../lib/xlat.php3');
+require_once('../lib/xlat.php');
 
 function da_ldap_bind($ds,$config)
 {

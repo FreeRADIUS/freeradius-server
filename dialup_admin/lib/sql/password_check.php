@@ -1,7 +1,7 @@
 <?php
-require('password.php3');
-if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php3"))
-	include_once("../lib/sql/drivers/$config[sql_type]/functions.php3");
+require('password.php');
+if (is_file("../lib/sql/drivers/$config[sql_type]/functions.php"))
+	include_once("../lib/sql/drivers/$config[sql_type]/functions.php");
 else{
 	echo "<b>Could not include SQL library</b><br>\n";
 	exit();
@@ -15,8 +15,8 @@ if ($action == 'checkpass'){
 			AND attribute = '$config[sql_password_attribute]';");
 		if ($res){
 			$row = @da_sql_fetch_array($res,$config);
-			if (is_file("../lib/crypt/$config[general_encryption_method].php3")){
-				include("../lib/crypt/$config[general_encryption_method].php3");
+			if (is_file("../lib/crypt/$config[general_encryption_method].php")){
+				include("../lib/crypt/$config[general_encryption_method].php");
 				$enc_passwd = $row[value];
 				$passwd = da_encrypt($passwd,$enc_passwd);
 				if ($passwd == $enc_passwd)
