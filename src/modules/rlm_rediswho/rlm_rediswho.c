@@ -315,7 +315,7 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 	rlm_rediswho_t * data = (rlm_rediswho_t *) instance;
 	REDISSOCK *dissocket;
 
-	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE);
+	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet.");
 		return RLM_MODULE_NOOP;
