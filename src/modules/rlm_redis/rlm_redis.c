@@ -331,7 +331,8 @@ int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query)
 
 		/* close the socket that failed */
 		if (dissocket->state == sockconnected) {
-			redis_close_socket(inst, dissocket);
+                    redisFree(dissocket->conn);
+                    dissocket->state = sockunconnected;
 		}
 
 		/* reconnect the socket */
