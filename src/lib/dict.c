@@ -1475,6 +1475,14 @@ static int my_dict_init(const char *dir, const char *fn,
 				return -1;
 			}
 
+			if (block_tlv) {
+				fr_strerror_printf(
+					"dict_init: %s[%d]: Cannot nest TLVs",
+					fn, line);
+				fclose(fp);
+				return -1;
+			}
+
 			block_tlv = da;
 			continue;
 		} /* BEGIN-TLV */
