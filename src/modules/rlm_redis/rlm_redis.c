@@ -73,15 +73,23 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 
 	dissocket->conn = redisConnect(inst->hostname, inst->port);
 
-	if (!dissocket->conn->err) {
-		radlog(L_INFO, "rlm_redis (%s): Connected new DB handle, #%d",
-		       inst->xlat_name, dissocket->id);
-
-		dissocket->state = sockconnected;
-
-		dissocket->queries = 0;
-		return 0;
+        /*
+         *  Error or redis is DOWN.
+         */
+	if (dissocket->conn->err) {
+                radlog(L_CONS | L_ERR, "rlm_redis (%s): Failed to connect DB handle #%d",
+                       inst->xlat_name, dissocket->id);
+                inst->connect_after = time(NULL) + inst->connect_failure_retry_delay;
+                dissocket->state = sockunconnected;
+                return -1;
 	}
+
+        radlog(L_INFO, "rlm_redis (%s): Connected new DB handle, #%d",
+               inst->xlat_name, dissocket->id);
+
+        dissocket->state = sockconnected;
+        if (inst->lifetime) time(&dissocket->connected);
+        dissocket->queries = 0;
 
 	if (inst->password) {
 		char buffer[1024];
@@ -95,7 +103,6 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 			redis_close_socket(inst, dissocket);
 			return -1;
 		}
-
 
 		switch (dissocket->reply->type) {
 		case REDIS_REPLY_STATUS:
@@ -115,14 +122,7 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 		}
 	}
 
-	/*
-	 *  Error, or redis is DOWN.
-	 */
-	radlog(L_CONS | L_ERR, "rlm_redis (%s): Failed to connect DB handle #%d",
-	       inst->xlat_name, dissocket->id);
-	inst->connect_after = time(NULL) + inst->connect_failure_retry_delay;
-	dissocket->state = sockunconnected;
-	return -1;
+        return 0;
 }
 
 static void redis_poolfree(REDIS_INST * inst)
