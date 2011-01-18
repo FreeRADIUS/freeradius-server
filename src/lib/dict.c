@@ -559,7 +559,11 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		}
 		vendor = VENDORPEC_EXTENDED;
 
-		if (flags.has_tag || flags.array || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
+		if (flags.has_tag
+#ifdef WITH_DHCP
+		    || flags.array
+#endif
+		    || (flags.encrypt != FLAG_ENCRYPT_NONE)) {
 			fr_strerror_printf("dict_addattr: The \"extended\" attributes MUST NOT have any flags set.");
 			return -1;
 		}
