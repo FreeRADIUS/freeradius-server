@@ -4223,6 +4223,14 @@ int radius_event_process(void)
 
 void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun)
 {
+	/*
+	 *	Catch being on the thread queue for a long time.
+	 */
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		request->child_state = REQUEST_DONE;
+		return;
+	}
+
 	request->options = RAD_REQUEST_OPTION_DEBUG2;
 
 	if (request_pre_handler(request)) {

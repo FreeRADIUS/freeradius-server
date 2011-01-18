@@ -865,7 +865,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 		}
 	}
 #else
-	thread_pool.queue = dispatch_queue_create("children", NULL);
+	thread_pool.queue = dispatch_queue_create("org.freeradius.threads", NULL);
 	if (!thread_pool.queue) {
 		radlog(L_ERR, "Failed creating dispatch queue: %s\n",
 		       strerror(errno));
@@ -927,11 +927,7 @@ int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
 	}
 #else
 	block = ^{
-		if (request->master_state == REQUEST_STOP_PROCESSING) {
-			request->child_state = REQUEST_DONE;
-		} else {
-			radius_handle_request(request, fun);
-		}
+		radius_handle_request(request, fun);
 	};
 
 	dispatch_async(thread_pool.queue, block);
