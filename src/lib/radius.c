@@ -1322,6 +1322,8 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	RFC format attributes take the fast path.
 	 */
 	if (vp->vendor == 0) {
+		if (vp->attribute > 255) return 0;
+
 		return rad_vp2rfc(packet, original, secret, vp,
 				  start, room);
 	}
