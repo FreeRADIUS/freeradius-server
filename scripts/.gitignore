@@ -4,3 +4,4 @@ radiusd.cron.daily
 radiusd.cron.monthly
 radwatch
 rc.radiusd
+radcrypt
