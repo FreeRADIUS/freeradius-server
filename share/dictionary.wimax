@@ -159,6 +159,41 @@ ATTRIBUTE	WiMAX-Uplink-QOS-Id			28.7	byte
 ATTRIBUTE	WiMAX-Downlink-QOS-Id			28.8	byte
 ATTRIBUTE	WiMAX-Uplink-Classifier			28.9	string
 ATTRIBUTE	WiMAX-Downlink-Classifier		28.10	string
+ATTRIBUTE 	WiMAX-Classifier			28.11	tlv
+ATTRIBUTE	WiMAX-ClassifierID			28.11.1	integer
+ATTRIBUTE	WiMAX-Classifer-Priority		28.11.2	integer
+ATTRIBUTE	WiMAX-Classifer-Protocol		28.11.3	integer
+ATTRIBUTE	WiMAX-Classifer-Direction		28.11.4	byte
+
+VALUE	WiMAX-Classifer-Direction	Reserved-0		0
+VALUE	WiMAX-Classifer-Direction	IN			1
+VALUE	WiMAX-Classifer-Direction	OUT			2
+VALUE	WiMAX-Classifer-Direction	Bi-Directional		3
+VALUE	WiMAX-Classifer-Direction	FF			4
+
+ATTRIBUTE	WiMAX-Source-Specification		28.11.5	tlv
+
+ATTRIBUTE	WiMAX-Source-IPAddress			28.11.5.1	ipaddr
+ATTRIBUTE	WiMAX-Source-IPAddressRange		28.11.5.2	combo-ip
+ATTRIBUTE	WiMAX-Source-IPAddressMask		28.11.5.3	octets
+ATTRIBUTE	WiMAX-Source-Port			28.11.5.4	octets
+ATTRIBUTE	WiMAX-Source-Port-Range			28.11.5.5	octets
+ATTRIBUTE	WiMAX-Source-Inverted			28.11.5.6	octets
+ATTRIBUTE	WiMAX-Source-Assigned			28.11.5.7	octets
+
+ATTRIBUTE	WiMAX-Destination-Specification		28.11.6	tlv
+
+ATTRIBUTE	WiMAX-Destination-IPAddress		28.11.6.1	ipaddr
+ATTRIBUTE	WiMAX-Destination-IPAddressRange	28.11.6.2	combo-ip
+ATTRIBUTE	WiMAX-Destination-IPAddressMask		28.11.6.3	octets
+ATTRIBUTE	WiMAX-Destination-Port			28.11.6.4	octets
+ATTRIBUTE	WiMAX-Destination-Port-Range		28.11.6.5	octets
+ATTRIBUTE	WiMAX-Destination-Inverted		28.11.6.6	octets
+ATTRIBUTE	WiMAX-Destination-Assigned		28.11.6.7	octets
+
+ATTRIBUTE	WiMAX-IP-TOS/DSCP-Range-and-Mask	28.11.7	octets
+ATTRIBUTE	WiMAX-VLAN-ID				28.11.8	integer
+ATTRIBUTE	WiMAX-802.1p				28.11.9	octets
 
 ATTRIBUTE	WiMAX-QoS-Descriptor			29	tlv
 ATTRIBUTE	WiMAX-QoS-Id				29.1	byte
@@ -177,6 +212,19 @@ ATTRIBUTE	WiMAX-Unsolicited-Grant-Interval	29.13	short
 ATTRIBUTE	WiMAX-SDU-Size				29.14	short
 ATTRIBUTE	WiMAX-Unsolicited-Polling-Interval	29.15	short
 ATTRIBUTE	WiMAX-Media-Flow-Description-SDP	29.16	string
+ATTRIBUTE	WiMAX-R3-IF-Descriptor			29.17	tlv
+
+ATTRIBUTE	WiMAX-R3-IF-Name			29.17.1	string
+ATTRIBUTE	WiMAX-R3-IF-ID				29.17.2	octets
+# ATTRIBUTE	WiMAX-PDFID				29.17.3	short
+ATTRIBUTE	WiMAX-IPv4-addr				29.17.4	ipaddr
+ATTRIBUTE	WiMAX-IPv4-Netmask			29.17.5	ipaddr
+ATTRIBUTE	WiMAX-DGW-IPv4-addr			29.17.6	ipaddr
+
+ATTRIBUTE	WiMAX-DHCP-Option			29.18	tlv
+
+ATTRIBUTE	WiMAX-Ref-R3-IF-Name			29.18.1	string
+ATTRIBUTE	WiMAX-DHCP-Option-Container		29.18.2	string
 
 VALUE	WiMAX-Schedule-Type		Best-Effort		2
 VALUE	WiMAX-Schedule-Type		nrtPS			3
