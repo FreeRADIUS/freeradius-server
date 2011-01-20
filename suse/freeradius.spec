@@ -231,19 +231,19 @@ perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radrelay.conf
 touch $RPM_BUILD_ROOT/var/log/radius/radutmp
 touch $RPM_BUILD_ROOT/var/log/radius/radius.log
 # SuSE
-install -d     $RPM_BUILD_ROOT/etc/pam.d
-install -d     $RPM_BUILD_ROOT/etc/logrotate.d
+install -d     $RPM_BUILD_ROOT%{_sysconfdir}/pam.d
+install -d     $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d
 %if 0%{?suse_version} > 920
-install -m 644 suse/radiusd-pam $RPM_BUILD_ROOT/etc/pam.d/radiusd
+install -m 644 suse/radiusd-pam $RPM_BUILD_ROOT%{_sysconfdir}/pam.d/radiusd
 %else
-install -m 644 suse/radiusd-pam-old $RPM_BUILD_ROOT/etc/pam.d/radiusd
+install -m 644 suse/radiusd-pam-old $RPM_BUILD_ROOT%{_sysconfdir}/pam.d/radiusd
 %endif
-install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT/etc/logrotate.d/radiusd
-install -d -m 755 $RPM_BUILD_ROOT/etc/init.d
-install    -m 744 suse/rcradiusd $RPM_BUILD_ROOT/etc/init.d/freeradius
-ln -sf ../../etc/init.d/freeradius $RPM_BUILD_ROOT/usr/sbin/rcfreeradius
+install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/radiusd
+install -d -m 755 $RPM_BUILD_ROOT%{_sysconfdir}/init.d
+install    -m 744 suse/rcradiusd $RPM_BUILD_ROOT%{_sysconfdir}/init.d/freeradius
+ln -sf ../..%{_sysconfdir}/init.d/freeradius $RPM_BUILD_ROOT/usr/sbin/rcfreeradius
 cp $RPM_BUILD_ROOT/usr/sbin/radiusd $RPM_BUILD_ROOT/usr/sbin/radrelay
-install    -m 744 suse/rcradius-relayd $RPM_BUILD_ROOT/etc/init.d/freeradius-relay
+install    -m 744 suse/rcradius-relayd $RPM_BUILD_ROOT%{_sysconfdir}/init.d/freeradius-relay
 ln -sf ../../etc/init.d/freeradius-relay $RPM_BUILD_ROOT/usr/sbin/rcfreeradius-relay
 mv -v doc/README doc/README.doc
 # install dialup_admin
@@ -300,51 +300,51 @@ rm -rf $RPM_BUILD_ROOT
 %doc doc/* LICENSE COPYRIGHT CREDITS README
 %doc doc/examples/*
 # SuSE
-/etc/init.d/freeradius
-/etc/init.d/freeradius-relay
-%config /etc/pam.d/radiusd
-%config /etc/logrotate.d/radiusd
+%{_sysconfdir}/init.d/freeradius
+%{_sysconfdir}/init.d/freeradius-relay
+%config %{_sysconfdir}/pam.d/radiusd
+%config %{_sysconfdir}/logrotate.d/radiusd
 %dir %attr(755,radiusd,radiusd) /var/lib/radiusd
 # configs
-%dir %attr(750,-,radiusd) /etc/raddb
+%dir %attr(750,-,radiusd) %{_sysconfdir}/raddb
 %defattr(-,root,radiusd)
-%config(noreplace) /etc/raddb/dictionary
-%config(noreplace) /etc/raddb/acct_users
-%config(noreplace) /etc/raddb/attrs
-%config(noreplace) /etc/raddb/attrs.access_reject
-%config(noreplace) /etc/raddb/attrs.access_challenge
-%config(noreplace) /etc/raddb/attrs.accounting_response
-%config(noreplace) /etc/raddb/attrs.pre-proxy
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/clients.conf
-%config(noreplace) /etc/raddb/hints
-%config(noreplace) /etc/raddb/huntgroups
-%config(noreplace) /etc/raddb/ldap.attrmap
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sqlippool.conf
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/preproxy_users
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/proxy.conf
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/radiusd.conf
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql.conf
-%dir %attr(640,-,radiusd) /etc/raddb/sql
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/*.conf
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/*.sql
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/*/README
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sql/oracle/msqlippool.txt
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/users
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/experimental.conf
-%dir %attr(750,-,radiusd) /etc/raddb/certs
-/etc/raddb/certs/Makefile
-/etc/raddb/certs/README
-/etc/raddb/certs/xpextensions
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/certs/*.cnf
-%attr(750,-,radiusd) /etc/raddb/certs/bootstrap
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sites-available/*
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/modules/*
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/sites-enabled/*
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/eap.conf
-%attr(640,-,radiusd) /etc/raddb/example.pl
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/policy.conf
-/etc/raddb/policy.txt
-%attr(640,-,radiusd) %config(noreplace) /etc/raddb/templates.conf
+%config(noreplace) %{_sysconfdir}/raddb/dictionary
+%config(noreplace) %{_sysconfdir}/raddb/acct_users
+%config(noreplace) %{_sysconfdir}/raddb/attrs
+%config(noreplace) %{_sysconfdir}/raddb/attrs.access_reject
+%config(noreplace) %{_sysconfdir}/raddb/attrs.access_challenge
+%config(noreplace) %{_sysconfdir}/raddb/attrs.accounting_response
+%config(noreplace) %{_sysconfdir}/raddb/attrs.pre-proxy
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
+%config(noreplace) %{_sysconfdir}/raddb/hints
+%config(noreplace) %{_sysconfdir}/raddb/huntgroups
+%config(noreplace) %{_sysconfdir}/raddb/ldap.attrmap
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sqlippool.conf
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/preproxy_users
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/proxy.conf
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql.conf
+%dir %attr(640,-,radiusd) %{_sysconfdir}/raddb/sql
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/*/*.conf
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/*/*.sql
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/*/README
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/oracle/msqlippool.txt
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/users
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/experimental.conf
+%dir %attr(750,-,radiusd) %{_sysconfdir}/raddb/certs
+%{_sysconfdir}/raddb/certs/Makefile
+%{_sysconfdir}/raddb/certs/README
+%{_sysconfdir}/raddb/certs/xpextensions
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*.cnf
+%attr(750,-,radiusd) %{_sysconfdir}/raddb/certs/bootstrap
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-available/*
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/modules/*
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/eap.conf
+%attr(640,-,radiusd) %{_sysconfdir}/raddb/example.pl
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/policy.conf
+%{_sysconfdir}/raddb/policy.txt
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/templates.conf
 %attr(700,radiusd,radiusd) %dir /var/run/radiusd/
 # binaries
 %defattr(-,root,root)
