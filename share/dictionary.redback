@@ -349,8 +349,8 @@ ATTRIBUTE	Forward-Policy				92	string
 ATTRIBUTE	Remote-Port				93	string
 ATTRIBUTE	Reauth					94	string
 ATTRIBUTE	Reauth-More				95	integer
-ATTRIBUTE	Agent-Remote-Id				96	string
-ATTRIBUTE	Agent-Circuit-Id			97	string
+ATTRIBUTE	Agent-Remote-Id				96	octets
+ATTRIBUTE	Agent-Circuit-Id			97	octets
 ATTRIBUTE	Platform-Type				98	integer
 ATTRIBUTE	Client-NBNS-Pri				99	ipaddr
 ATTRIBUTE	Client-NBNS-Sec				100	ipaddr
