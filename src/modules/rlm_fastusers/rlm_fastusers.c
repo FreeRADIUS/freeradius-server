@@ -38,6 +38,8 @@ struct fastuser_instance {
 	char *compat_mode;
 	int hash_reload;
 
+	char *key;
+
 	/* hash table */
 	int hashsize;
 	PAIR_LIST **hashtable;
@@ -77,6 +79,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct fastuser_instance,compat_mode), NULL, "cistron" },
 	{ "hash_reload",     PW_TYPE_INTEGER,
 	  offsetof(struct fastuser_instance,hash_reload), NULL, "600" },
+	{ "key",     PW_TYPE_STRING_PTR,
+	  offsetof(struct fastuser_instance,key), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -535,6 +539,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	int			defaultfound=0;
 	int			hashidx=0;
 	struct fastuser_instance *inst = instance;
+	char		buffer[256];
 
 	/*
 	 * Do we need to reload the cache?
@@ -552,8 +557,17 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Grab the canonical user name.
 	 */
-	namepair = request->username;
-	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
+	if (!inst->key) {
+		namepair = request->username;
+		name = namepair ? (char *) namepair->vp_strvalue : "NONE";
+	} else {
+		int len;
+
+		len = radius_xlat(buffer, sizeof(buffer), inst->key,
+				  request, NULL);
+		if (len) name = buffer;
+		else name = "NONE";
+	}
 
 	/*
 	 *	Find the entry for the user.
@@ -698,9 +712,19 @@ static int fastuser_preacct(void *instance, REQUEST *request)
 	PAIR_LIST	*pl = NULL;
 	int		found = 0;
 	struct fastuser_instance *inst = instance;
+	char		buffer[256];
 
-	namepair = request->username;
-	name = namepair ? (char *) namepair->vp_strvalue : "NONE";
+	if (!inst->key) {
+		namepair = request->username;
+		name = namepair ? (char *) namepair->vp_strvalue : "NONE";
+	} else {
+		int len;
+
+		len = radius_xlat(buffer, sizeof(buffer), inst->key,
+				  request, NULL);
+		if (len) name = buffer;
+		else name = "NONE";
+	}
 	request_pairs = request->packet->vps;
 	config_pairs = &request->config_items;
 
