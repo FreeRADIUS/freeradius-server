@@ -1069,8 +1069,10 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			}
 
 		  	if (ascend_parse_filter(vp) < 0 ) {
-				fr_strerror_printf("failed to parse Ascend binary attribute: %s",
-					   fr_strerror());
+				char buffer[256];
+
+				snprintf(buffer, sizeof(buffer), "failed to parse Ascend binary attribute: %s", fr_strerror());
+				fr_strerror_printf("%s", buffer);
 				return NULL;
 			}
 			break;
