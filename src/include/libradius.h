@@ -251,7 +251,7 @@ typedef struct radius_packet {
  *	Printing functions.
  */
 int		fr_utf8_char(const uint8_t *str);
-void		fr_print_string(const char *in, size_t inlen,
+size_t		fr_print_string(const char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				VALUE_PAIR *vp, int delimitst);
