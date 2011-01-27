@@ -410,7 +410,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 }
 
 /*
- *	Dynamically translate for check:, request:, reply:, etc.
+ *	Print data as integer, not as VALUE.
  */
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 			   char *fmt, char *out, size_t outlen,
@@ -435,6 +435,36 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	}
 
 	return snprintf(out, outlen, "%u", vp->vp_integer);
+}
+
+/*
+ *	Print data as string, if possible.
+ */
+static size_t xlat_string(void *instance, REQUEST *request,
+			   char *fmt, char *out, size_t outlen,
+			   RADIUS_ESCAPE_STRING func)
+{
+	int len;
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (outlen < 3) {
+	nothing:
+		*out = '\0';
+		return 0;
+	}
+
+	if (!radius_get_vp(request, fmt, &vp)) goto nothing;
+
+	if (vp->type != PW_TYPE_OCTETS) goto nothing;
+
+	*out++ = '"';
+	len = fr_print_string(vp->vp_octets, vp->length, out + 1, outlen - 3);
+	out[len] = '"';
+	out[len + 1] = '\0';
+
+	return len + 2;
 }
 
 #ifdef HAVE_REGEX_H
@@ -674,6 +704,11 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 
 		xlat_register("integer", xlat_integer, "");
 		c = xlat_find("integer");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+
+		xlat_register("string", xlat_string, "");
+		c = xlat_find("string");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
