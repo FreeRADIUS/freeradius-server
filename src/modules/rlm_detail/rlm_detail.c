@@ -386,7 +386,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	/*
 	 *	Post a timestamp
 	 */
-	if (lseek(outfd, 0L, SEEK_END) != 0) {
+	if (lseek(outfd, 0L, SEEK_END) < 0) {
 		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to seek to the end of detail file %s",
 			buffer);
 		close(outfd);
