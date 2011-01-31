@@ -88,7 +88,7 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
                inst->xlat_name, dissocket->id);
 
         dissocket->state = sockconnected;
-        if (inst->lifetime) time(&dissocket->connected);
+        //if (inst->lifetime) time(&dissocket->connected);
         dissocket->queries = 0;
 
 	if (inst->password) {
@@ -429,7 +429,7 @@ REDISSOCK *redis_get_socket(REDIS_INST *inst)
 		if (inst->lifetime && (cur->state == sockconnected) &&
 		    ((cur->connected + inst->lifetime) < now)) {
 			DEBUG2("Closing socket %d as its lifetime has been exceeded", cur->id);
-			redis_close_socket(inst, cur);
+                        redisFree(cur->conn);
 			cur->state = sockunconnected;
 			goto reconnect;
 		}
@@ -441,7 +441,7 @@ REDISSOCK *redis_get_socket(REDIS_INST *inst)
 		if (inst->max_queries && (cur->state == sockconnected) &&
 		    (cur->queries >= inst->max_queries)) {
 			DEBUG2("Closing socket %d as its max_queries has been exceeded", cur->id);
-			redis_close_socket(inst, cur);
+			redisFree(cur->conn);
 			cur->state = sockunconnected;
 			goto reconnect;
 		}
