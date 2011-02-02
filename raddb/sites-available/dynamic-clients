@@ -156,6 +156,45 @@ server dynamic_client_server {
 
 		}
 
+		# Do an LDAP lookup in the elements OU, check to see if
+		# the Packet-Src-IP-Address object has a "ou"
+		# attribute, if it does continue.  Change "ACME.COM" to
+		# the real OU of your organization.
+		#
+		# Assuming the following schema:
+		#
+		# OU=Elements,OU=Radius,DC=ACME,DC=COM
+		#
+		# Elements will hold a record of every NAS in your
+		# Network.  Create Group objects based on the IP
+		# Address of the NAS and set the "Location" or "l"
+		# attribute to the NAS Huntgroup the NAS belongs to
+		# allow them to be centrally managed in LDAP.
+		#
+		# e.g.  CN=10.1.2.3,OU=Elements,OU=Radius,DC=ACME,DC=COM
+		#
+		# With a "l" value of "CiscoRTR" for a Cisco Router
+		# that has a NAS-IP-Address or Source-IP-Address of
+		# 10.1.2.3.
+		#
+		# And with a "ou" value of the shared secret password
+		# for the NAS element. ie "password"
+		if ("%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}") {
+			update control {
+			       FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
+
+				# Set the Client-Shortname to be the Location
+				# "l" just like in the Huntgroups, but this
+				# time to the shortname.
+
+				FreeRADIUS-Client-Shortname = "%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?l?sub?cn=%{Packet-Src-IP-Address}}"
+
+				# Lookup and set the Shared Secret based on
+				# the "ou" attribute.
+				FreeRADIUS-Client-Secret = "%{ldap:ldap:///OU=Elements,OU=Radius,DC=ACME,DC=COM?ou?sub?cn=%{Packet-Src-IP-Address}}"
+			}
+		}
+
 		#
 		#  Tell the caller that the client was defined properly.
 		#
