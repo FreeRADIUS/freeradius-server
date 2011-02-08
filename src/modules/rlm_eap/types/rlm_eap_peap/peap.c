@@ -1133,8 +1133,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			request->proxy = fake->packet;
 			memset(&request->proxy->src_ipaddr, 0,
 			       sizeof(request->proxy->src_ipaddr));
-			memset(&request->proxy->src_ipaddr, 0,
-			       sizeof(request->proxy->src_ipaddr));
+			memset(&request->proxy->dst_ipaddr, 0,
+			       sizeof(request->proxy->dst_ipaddr));
 			request->proxy->src_port = 0;
 			request->proxy->dst_port = 0;
 			fake->packet = NULL;
