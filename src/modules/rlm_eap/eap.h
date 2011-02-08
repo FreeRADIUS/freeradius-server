@@ -107,6 +107,7 @@ typedef struct _eap_handler {
 
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
+	void		*inst_holder;
 
 	int		status;
 
