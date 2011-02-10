@@ -228,12 +228,10 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 
 #ifdef WITH_UDPFROMTO
 	/*
-	 *	Only IPv4 is supported for udpfromto.
-	 *
 	 *	And if they don't specify a source IP address, don't
 	 *	use udpfromto.
 	 */
-	if ((dst_ipaddr->af == AF_INET) &&
+	if (((dst_ipaddr->af == AF_INET) || (dst_ipaddr->af == AF_INET6)) &&
 	    (src_ipaddr->af != AF_UNSPEC)) {
 		return sendfromto(sockfd, data, data_len, flags,
 				  (struct sockaddr *)&src, sizeof_src,
@@ -244,7 +242,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 #endif
 
 	/*
-	 *	No udpfromto, OR an IPv6 socket, fail gracefully.
+	 *	No udpfromto, fail gracefully.
 	 */
 	return sendto(sockfd, data, data_len, flags,
 		      (struct sockaddr *) &dst, sizeof_dst);
@@ -415,14 +413,14 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 *	packet after "len" bytes.
 	 */
 #ifdef WITH_UDPFROMTO
-	if (dst.ss_family == AF_INET) {
+	if ((dst.ss_family == AF_INET) || (dst.ss_family == AF_INET6)) {
 		data_len = recvfromto(sockfd, buf, len, flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst);
 	} else
 #endif
 		/*
-		 *	No udpfromto, OR an IPv6 socket.  Fail gracefully.
+		 *	No udpfromto, fail gracefully.
 		 */
 		data_len = recvfrom(sockfd, buf, len, flags,
 				    (struct sockaddr *)&src, &sizeof_src);
