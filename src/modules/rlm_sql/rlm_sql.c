@@ -912,7 +912,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		dict_addattr(group_name, 0, PW_TYPE_STRING, -1, flags);
 		dattr = dict_attrbyname(group_name);
 		if (dattr == NULL){
-			radlog(L_ERR, "rlm_ldap: Failed to create attribute %s",group_name);
+			radlog(L_ERR, "rlm_sql: Failed to create attribute %s",group_name);
 			free(group_name);
 			free(inst);	/* FIXME: detach */
 			return -1;
