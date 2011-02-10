@@ -324,7 +324,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 	last_logged_failure = now;
 
 	/* We get here if every DB handle is unconnected and unconnectABLE */
-	radlog(L_INFO, "rlm_sql (%s): There are no DB handles to use! skipped %d, tried to connect %d", inst->config->xlat_name, unconnected, tried_to_connect);
+	radlog(L_ERR, "rlm_sql (%s): There are no DB handles to use! skipped %d, tried to connect %d", inst->config->xlat_name, unconnected, tried_to_connect);
 	return NULL;
 }
 
