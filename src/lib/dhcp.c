@@ -375,6 +375,17 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 	fr_ipaddr2sockaddr(&packet->dst_ipaddr, packet->dst_port,
 			   &dst, &sizeof_dst);
 
+	/*
+	 *	The client doesn't yet have an IP address, but is
+	 *	expecting an ethernet packet unicast to it's MAC
+	 *	address.  We need to build a raw frame.
+	 */
+	if (packet->offset == 0) {
+		/*
+		 *	FIXME: Insert code here!
+		 */
+	}
+
 #ifndef WITH_UDPFROMTO
 	/*
 	 *	Assume that the packet is encoded before sending it.
@@ -978,11 +989,10 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 *	to the client.
 		 *
 		 *	if giaddr, send to giaddr.
-		 *	if NAK, send broadcast packet
-		 *	if ciaddr, unicast to ciaddr
-		 *	if flags & 0x8000, broadcast (client request)
-		 *	if sent from 0.0.0.0, broadcast response
-		 *	unicast to client yiaddr
+		 *	if NAK, send broadcast.
+		 *	if broadcast flag, send broadcast.
+		 *	if ciaddr is empty, send broadcast.
+		 *	otherwise unicast to ciaddr.
 		 */
 		
 		/*
@@ -991,6 +1001,12 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 */
 		dhcp = (dhcp_packet_t *) original->data;
 		
+		/*
+		 *	Default to sending it via sendto(), without using
+		 *	raw sockets.
+		 */
+		packet->offset = 1;
+
 		if (dhcp->giaddr != htonl(INADDR_ANY)) {
 			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
 			
@@ -1000,23 +1016,24 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				packet->dst_port = original->src_port; /* debugging */
 			}
 			
-		} else if (packet->code == PW_DHCP_NAK) {
+		} else if ((packet->code == PW_DHCP_NAK) ||
+			   ((dhcp->flags & 0x8000) != 0) ||
+			   (dhcp->ciaddr == htonl(INADDR_ANY))) {
+			/*
+			 *	The kernel will take care of sending it to
+			 *	the broadcast MAC.
+			 */
 			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-			
-		} else if (dhcp->ciaddr != htonl(INADDR_ANY)) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
-			
-		} else if ((dhcp->flags & 0x8000) != 0) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-			
-		} else if (packet->dst_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY)) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-			
-		} else if (dhcp->yiaddr != htonl(INADDR_ANY)) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->yiaddr;
 			
 		} else {
-			/* leave destination IP alone. */
+			/*
+			 *	It was broadcast to us: we need to
+			 *	broadcast the response.
+			 */
+			if (packet->src_ipaddr.ipaddr.ip4addr.s_addr != dhcp->ciaddr) {
+				packet->offset = 0;
+			}
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
 		}
 
 		/*
