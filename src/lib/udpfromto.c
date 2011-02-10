@@ -62,7 +62,7 @@ RCSID("$Id$")
 #  if defined IPV6_RECVPKTINFO
 #    include <linux/version.h>
 #    if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
-#      if defined IPV6_RECVPKTINFO && defined IPV6_2292PKTINFO
+#      if defined IPV6_2292PKTINFO
 #        undef IPV6_RECVPKTINFO
 #        undef IPV6_PKTINFO
 #        define IPV6_RECVPKTINFO IPV6_2292PKTINFO
@@ -115,7 +115,15 @@ int udpfromto_init(int s)
 		 *	This should actually be standard IPv6
 		 */
 		proto = IPPROTO_IPV6;
+#ifdef __linux__
+		/*
+		 *	Requires this for "setsockopt" but not for
+		 *	recv/sendmsg() <sigh>
+		 */
+		flag = IPV6_RECVPKTINFO
+#else
 		flag = IPV6_PKTINFO;
+#endif
 #endif
 #endif
 	} else {
