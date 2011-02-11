@@ -737,6 +737,11 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 #endif
 
 		/*
+		 *	Address families don't match, skip it.
+		 */
+		if (ps->src_ipaddr.af != request->dst_ipaddr.af) continue;
+
+		/*
 		 *	MUST match dst port, if we have one.
 		 */
 		if ((ps->dst_port != 0) && 
