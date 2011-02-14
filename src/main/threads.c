@@ -939,8 +939,13 @@ static void thread_pool_manage(time_t now)
 	/*
 	 *	If there are too few spare threads.  Go create some more.
 	 */
-	if (spare < thread_pool.min_spare_threads) {
+	if ((thread_pool.total_threads < thread_pool.max_threads) &&
+	    (spare < thread_pool.min_spare_threads)) {
 		total = thread_pool.min_spare_threads - spare;
+
+		if ((total + thread_pool.total_threads) > thread_pool.max_threads) {
+			total = thread_pool.max_threads - thread_pool.total_threads;
+		}
 
 		DEBUG2("Threads: Spawning %d spares", total);
 
