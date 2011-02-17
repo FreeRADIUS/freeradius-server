@@ -67,6 +67,10 @@ data Attr-245 = 0x1a800000000106aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 decode f5 04 01 00
 data 
 
+# No "flags" field means it's an invalid attribute.
+decode f5 03 01
+data Attr-245 = 0x01
+
 decode f5 09 1a 00 00 00 00 01 06
 data 
 

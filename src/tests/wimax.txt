@@ -69,7 +69,7 @@ data 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 02 01
 
 # 26.24757.1.1 has the correct length
 # 26.24757.1.2 has the wrong length
-# This means that 26.24757.1 is malformed, and we create a raw attribute.
+# This means that 26.24757.1 is invalid, and we create a raw attribute.
 decode 1a 11 00 00 60 b5 01 0b 00 01 05 31 2e 30 02 04 01
 data Attr-26.24757.1 = 0x0105312e30020401
 
@@ -98,11 +98,11 @@ decode 1a 15 00 00 60 b5 54 0f 00 09 0c 09 0a 03 08 01 03 37 02 04 54
 data Attr-26.24757.84.9.9.3 = 0x010337020454
 
 # 26.24757.84.9.9.3.2 has the wrong length
-# This means that the SECOND 26.24757.84.9.9.3 is malformed.
+# This means that the SECOND 26.24757.84.9.9.3 is invalid.
 decode 1a 17 00 00 60 b5 54 11 00 09 0e 09 0c 03 05 01 03 37 03 05 02 04 54
 data WiMAX-PFDv2-Eth-Priority-Range-Low = 55, Attr-26.24757.84.9.9.3 = 0x020454
 
 # 26.24757.84.9.9.3.1 has the wrong length
-# This means that 26.24757.84.9.9.3 is malformed.
+# This means that 26.24757.84.9.9.3 is invalid.
 decode 1a 17 00 00 60 b5 54 11 00 09 0e 09 0c 03 05 01 02 37 03 05 02 03 54
 data Attr-26.24757.84.9.9.3 = 0x010237, WiMAX-PFDv2-Eth-Priority-Range-High = 84
