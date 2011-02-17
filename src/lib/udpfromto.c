@@ -68,13 +68,24 @@ RCSID("$Id$")
 #        define IPV6_RECVPKTINFO IPV6_2292PKTINFO
 #        define IPV6_PKTINFO IPV6_2292PKTINFO
 #      endif
-#    else
-#      undef IPV6_PKTINFO
-#      define IPV6_PKTINFO IPV6_RECVPKTINFO
 #    endif
 #  endif
 #endif
 
+/*
+ *	Linux requires IPV6_RECVPKTINFO for the setsockopt() call,
+ *	but sendmsg() and recvmsg() require IPV6_PKTINFO. <sigh>
+ *
+ *	We want all *other* (i.e. sane) systems to use IPV6_PKTINFO
+ *	for all three calls.
+ */
+#ifdef IPV6_PKTINFO
+#ifdef __linux__
+#define FR_IPV6_RECVPKTINFO IPV6_RECVPKTINFO
+#else
+#define FR_IPV6_RECVPKTINFO IPV6_PKTINFO
+#endif
+#endif
 
 int udpfromto_init(int s)
 {
@@ -115,15 +126,11 @@ int udpfromto_init(int s)
 		 *	This should actually be standard IPv6
 		 */
 		proto = IPPROTO_IPV6;
-#ifdef __linux__
+
 		/*
-		 *	Requires this for "setsockopt" but not for
-		 *	recv/sendmsg() <sigh>
+		 *	Work around Linux-specific hackery.
 		 */
-		flag = IPV6_RECVPKTINFO
-#else
-		flag = IPV6_PKTINFO;
-#endif
+		flag = FR_IPV6_RECVPKTINFO;
 #endif
 #endif
 	} else {
