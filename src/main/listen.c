@@ -50,7 +50,7 @@ RCSID("$Id$")
 #endif
 
 
-void print_packet(RADIUS_PACKET *packet)
+static void print_packet(RADIUS_PACKET *packet)
 {
 	char src[256], dst[256];
 
@@ -1426,7 +1426,7 @@ static int do_proxy(REQUEST *request)
 		return 0;
 	}
 
-	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL);
+	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0);
 	if (!vp) return 0;
 	
 	if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
