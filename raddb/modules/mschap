@@ -16,24 +16,24 @@ mschap {
 	# add MS-CHAP-MPPE-Keys for MS-CHAPv1 and
 	# MS-MPPE-Recv-Key/MS-MPPE-Send-Key for MS-CHAPv2
 	#
-	#use_mppe = no
+#	use_mppe = no
 
 	# if mppe is enabled require_encryption makes
 	# encryption moderate
 	#
-	#require_encryption = yes
+#	require_encryption = yes
 
 	# require_strong always requires 128 bit key
 	# encryption
 	#
-	#require_strong = yes
+#	require_strong = yes
 
 	# Windows sends us a username in the form of
 	# DOMAIN\user, but sends the challenge response
 	# based on only the user portion.  This hack
 	# corrects for that incorrect behavior.
 	#
-	#with_ntdomain_hack = no
+#	with_ntdomain_hack = no
 
 	# The module can perform authentication itself, OR
 	# use a Windows Domain Controller.  This configuration
@@ -62,5 +62,10 @@ mschap {
 	# attribute, and do prefix/suffix checks in order to obtain
 	# the "best" user name for the request.
 	#
-	#ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{User-Name:-None}} --challenge=%{mschap:Challenge:-00} --nt-response=%{mschap:NT-Response:-00}"
+#	ntlm_auth = "/path/to/ntlm_auth --request-nt-key --username=%{%{Stripped-User-Name}:-%{%{User-Name}:-None}} --challenge=%{%{mschap:Challenge}:-00} --nt-response=%{%{mschap:NT-Response}:-00}"
+
+	# For Apple Server, when running on the same machine as
+	# Open Directory.  It has no effect on other systems.
+	#
+#	use_open_directory = yes
 }
