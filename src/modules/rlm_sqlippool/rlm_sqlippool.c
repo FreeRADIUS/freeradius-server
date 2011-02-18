@@ -297,8 +297,8 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket,
 			     rlm_sqlippool_t *data, REQUEST * request,
 			     char * param, int param_len)
 {
-	char expansion[MAX_STRING_LEN * 4];
-	char query[MAX_STRING_LEN * 4];
+	char expansion[MAX_QUERY_LEN];
+	char query[MAX_QUERY_LEN];
 
 	sqlippool_expand(expansion, sizeof(expansion),
 			 fmt, data, param, param_len);
@@ -335,8 +335,8 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 			    SQLSOCK * sqlsocket, rlm_sqlippool_t *data,
 			    REQUEST * request, char * param, int param_len)
 {
-	char expansion[MAX_STRING_LEN * 4];
-	char query[MAX_STRING_LEN * 4];
+	char expansion[MAX_QUERY_LEN];
+	char query[MAX_QUERY_LEN];
 	int rlen, retval = 0;
 
 	sqlippool_expand(expansion, sizeof(expansion),
