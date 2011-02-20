@@ -210,6 +210,7 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 		      fr_ipaddr_t *src_ipaddr, int src_port,
 		      fr_ipaddr_t *dst_ipaddr, int dst_port)
 {
+	int rcode;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_dst;
 
@@ -233,9 +234,10 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 */
 	if (((dst_ipaddr->af == AF_INET) || (dst_ipaddr->af == AF_INET6)) &&
 	    (src_ipaddr->af != AF_UNSPEC)) {
-		return sendfromto(sockfd, data, data_len, flags,
-				  (struct sockaddr *)&src, sizeof_src,
-				  (struct sockaddr *)&dst, sizeof_dst);
+		rcode = sendfromto(sockfd, data, data_len, flags,
+				   (struct sockaddr *)&src, sizeof_src,
+				   (struct sockaddr *)&dst, sizeof_dst);
+		goto done;
 	}
 #else
 	src_ipaddr = src_ipaddr; /* -Wunused */
@@ -244,8 +246,14 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	/*
 	 *	No udpfromto, fail gracefully.
 	 */
-	return sendto(sockfd, data, data_len, flags,
-		      (struct sockaddr *) &dst, sizeof_dst);
+	rcode = sendto(sockfd, data, data_len, flags,
+		       (struct sockaddr *) &dst, sizeof_dst);
+done:
+	if (rcode < 0) {
+		DEBUG("rad_send() failed: %s\n", strerror(errno));
+	}
+
+	return rcode;
 }
 
 
