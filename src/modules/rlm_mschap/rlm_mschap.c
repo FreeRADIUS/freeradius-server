@@ -678,7 +678,7 @@ static int do_mschap(rlm_mschap_t *inst,
 		}
 
 		smbdes_mschap(password->vp_octets, challenge, calculated);
-		if (memcmp(response, calculated, 24) != 0) {
+		if (rad_digest_cmp(response, calculated, 24) != 0) {
 			return -1;
 		}
 
