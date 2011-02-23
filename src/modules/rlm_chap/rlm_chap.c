@@ -114,8 +114,8 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	rad_chap_encode(request->packet,pass_str,
 			chap->vp_octets[0],passwd_item);
 
-	if (memcmp(pass_str + 1, chap->vp_octets + 1,
-		   CHAP_VALUE_LENGTH) != 0){
+	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1,
+			   CHAP_VALUE_LENGTH) != 0) {
 		RDEBUG("Password check failed");
 		snprintf(module_fmsg, sizeof(module_fmsg),
 			 "rlm_chap: Wrong user password");
