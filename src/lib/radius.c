@@ -1524,7 +1524,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
  *
  *	http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
  */
-static int digest_cmp(const uint8_t *a, const uint8_t *b, size_t length)
+int rad_digest_cmp(const uint8_t *a, const uint8_t *b, size_t length)
 {
 	int result = 0;
 	size_t i;
@@ -1565,7 +1565,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	if (digest_cmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
+	if (rad_digest_cmp(digest, packet->vector, AUTH_VECTOR_LEN) != 0) return 2;
 	return 0;
 }
 
@@ -1608,7 +1608,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	/*
 	 *	Return 0 if OK, 2 if not OK.
 	 */
-	if (digest_cmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
+	if (rad_digest_cmp(packet->vector, calc_digest, AUTH_VECTOR_LEN) != 0) return 2;
 	return 0;
 }
 
@@ -2099,7 +2099,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			fr_hmac_md5(packet->data, packet->data_len,
 				    (const uint8_t *) secret, strlen(secret),
 				    calc_auth_vector);
-			if (digest_cmp(calc_auth_vector, msg_auth_vector,
+			if (rad_digest_cmp(calc_auth_vector, msg_auth_vector,
 				   sizeof(calc_auth_vector)) != 0) {
 				char buffer[32];
 				fr_strerror_printf("Received packet from %s with invalid Message-Authenticator!  (Shared secret is incorrect.)",
