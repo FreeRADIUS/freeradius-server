@@ -1017,7 +1017,7 @@ static int process_attribute(const char* fn, const int line,
 	}
 
 	if (!p) {
-		if (value > (1 <<24)) {
+		if (value > (1 << 24)) {
 			fr_strerror_printf("dict_init: %s[%d]: Attribute number is too large", fn, line);
 			return -1;
 		}
@@ -1261,6 +1261,21 @@ static int process_attribute(const char* fn, const int line,
 	}
 
 	if (type == PW_TYPE_TLV) {
+		if (vendor
+#ifdef WITH_DHCP
+		    && (vendor != DHCP_MAGIC_VENDOR)
+#endif
+			) {
+			DICT_VENDOR *dv;
+
+			dv = dict_vendorbyvalue(vendor);
+			if (!dv || (dv->type != 1) || (dv->length != 1)) {
+				fr_strerror_printf("dict_init: %s[%d]: Type \"tlv\" can only be for \"format=1,1\".",
+						   fn, line);
+				return -1;
+			}
+
+		}
 		flags.has_tlv = 1;
 	}
 	
