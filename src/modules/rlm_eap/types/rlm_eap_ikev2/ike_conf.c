@@ -300,7 +300,7 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
     if(items) {
 	VALUE_PAIR *vp;
 	//idtype
-	vp=pairfind(items,RAD_EAP_IKEV2_IDTYPE);
+	vp=pairfind(items,RAD_EAP_IKEV2_IDTYPE, 0);
 	if(!vp) {
 	    radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Id type not set",id);
 	} else {
@@ -309,14 +309,14 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
 	    }
 	}
 	//secret
-	vp=pairfind(items,RAD_EAP_IKEV2_SECRET);
+	vp=pairfind(items,RAD_EAP_IKEV2_SECRET, 0);
 	if(!vp || !vp->length) {
 	    radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Secret not set",id);
 	} else {
 	    secret=vp->vp_strvalue;
 	}
 	//authtype
-	vp=pairfind(items,RAD_EAP_IKEV2_AUTHTYPE);
+	vp=pairfind(items,RAD_EAP_IKEV2_AUTHTYPE, 0);
 	if(vp && vp->length) {
 	    authtype=AuthtypeFromName(vp->vp_strvalue);
 	    if(authtype==-1) {
