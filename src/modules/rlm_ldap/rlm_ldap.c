@@ -1596,7 +1596,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 							dattr = dict_attrbyname("eDir-APC");
 							apc_attr = dattr->attr;
 
-							vp_inst = pairfind(request->config_items, inst_attr);
+							vp_inst = pairfind(request->config_items, inst_attr, 0);
 							if(vp_inst == NULL){
 								/*
 								 * The authorize method of no other LDAP module instance has
@@ -1647,7 +1647,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 		dattr = dict_attrbyname("eDir-Auth-Option");
 		auth_opt_attr = dattr->attr;
-		if(pairfind(*check_pairs, auth_opt_attr) == NULL){
+		if(pairfind(*check_pairs, auth_opt_attr, 0) == NULL){
 			if ((auth_option = ldap_get_values(conn->ld, msg, "sasDefaultLoginSequence")) != NULL) {
 				if ((vp_auth_opt = paircreate(auth_opt_attr, PW_TYPE_STRING)) == NULL){
 					radlog(L_ERR, "  [%s] Could not allocate memory. Aborting.", inst->xlat_name);
@@ -1698,7 +1698,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		dattr = dict_attrbyname("eDir-APC");
 		apc_attr = dattr->attr;
 
-		vp_apc = pairfind(request->config_items, apc_attr);
+		vp_apc = pairfind(request->config_items, apc_attr, 0);
 		if(vp_apc)
 			vp_apc->vp_strvalue[0] = '1';
 #endif
@@ -1888,7 +1888,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 
 		dattr = dict_attrbyname("eDir-APC");
 		apc_attr = dattr->attr;
-		vp_apc = pairfind(request->config_items, apc_attr);
+		vp_apc = pairfind(request->config_items, apc_attr, 0);
 		if(vp_apc && vp_apc->vp_strvalue[0] == '2')
 			vp_apc->vp_strvalue[0] = '3';
 
@@ -1897,7 +1897,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 		dattr = dict_attrbyname("eDir-Auth-Option");
 		auth_opt_attr = dattr->attr;
 
-		vp_auth_opt = pairfind(request->config_items, auth_opt_attr);
+		vp_auth_opt = pairfind(request->config_items, auth_opt_attr, 0);
 
 		if(vp_auth_opt )
 		{
@@ -2069,7 +2069,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 	dattr = dict_attrbyname("eDir-APC");
 	apc_attr = dattr->attr;
 
-	vp_inst = pairfind(request->config_items, inst_attr);
+	vp_inst = pairfind(request->config_items, inst_attr, 0);
 
 	/*
 	 * Check if the password in the config items list is the user's UP which has
@@ -2078,7 +2078,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 	if((vp_inst == NULL) || strcmp(vp_inst->vp_strvalue, inst->xlat_name))
 		return RLM_MODULE_NOOP;
 
-	vp_apc = pairfind(request->config_items, apc_attr);
+	vp_apc = pairfind(request->config_items, apc_attr, 0);
 
 	switch(vp_apc->vp_strvalue[0]){
 		case '1':
@@ -2123,7 +2123,7 @@ static int ldap_postauth(void *instance, REQUEST * request)
 					return RLM_MODULE_FAIL;
 				}
 
-				vp_fdn = pairfind(request->config_items, da->attr);
+				vp_fdn = pairfind(request->config_items, da->attr, 0);
 				if (vp_fdn == NULL) {
 					RDEBUG("User's FQDN not in config items list.");
 					return RLM_MODULE_FAIL;
