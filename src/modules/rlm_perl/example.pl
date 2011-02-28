@@ -53,6 +53,19 @@ use Data::Dumper;
 	use constant	RLM_MODULE_UPDATED=>   8;#  /* OK (pairs modified) */
 	use constant	RLM_MODULE_NUMCODES=>  9;#  /* How many return codes there are */
 
+#  Global variables can persist across different calls to the module.
+#
+#
+#	{
+#	 my %static_global_hash = ();
+#
+#		sub post_auth {
+#		...
+#		}
+#		...
+#	}
+
+
 # Function to handle authorize
 sub authorize {
 	# For debugging purposes only
