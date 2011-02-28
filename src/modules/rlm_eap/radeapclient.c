@@ -1470,9 +1470,9 @@ main(int argc, char *argv[])
 		}
 
 		vp = pairfind(req2->vps,
-			      ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC);
-		vpkey   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_KEY);
-		vpextra = pairfind(req->vps, ATTRIBUTE_EAP_SIM_EXTRA);
+			      ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
+		vpkey   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_KEY, 0);
+		vpextra = pairfind(req->vps, ATTRIBUTE_EAP_SIM_EXTRA, 0);
 
 		if(vp != NULL && vpkey != NULL && vpextra!=NULL) {
 			uint8_t calcmac[16];
