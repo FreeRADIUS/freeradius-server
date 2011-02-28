@@ -37,6 +37,13 @@ RCSID("$Id$")
 #include	<malloc.h>
 #endif
 
+#if 0
+#define VP_TRACE if (fr_debug_flag) printf
+#else
+#define VP_TRACE(_x, ...)
+#endif
+
+
 /*
  *  The RFC says 4096 octets max, and most packets are less than 256.
  */
@@ -249,7 +256,6 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 */
 	rcode = sendto(sockfd, data, data_len, flags,
 		       (struct sockaddr *) &dst, sizeof_dst);
-done:
 	if (rcode < 0) {
 		DEBUG("rad_send() failed: %s\n", strerror(errno));
 	}
@@ -1177,10 +1183,20 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 	 *	Unknown vendor: RFC format.
 	 *	Known vendor and RFC format: go do that.
 	 */
+	VP_TRACE("Encoding VSA %u.%u\n", vendor, attribute);
 	dv = dict_vendorbyvalue(vendor);
-	if (!dv || ((dv->type == 1) && (dv->length == 1))) {
+	VP_TRACE("Flags %d %d\n", vp->flags.is_tlv, vp->flags.has_tlv);
+	if (!dv ||
+	    (!vp->flags.is_tlv && (dv->type == 1) && (dv->length == 1))) {
+		VP_TRACE("Encoding RFC %u.%u\n", vendor, attribute);
 		return vp2attr_rfc(packet, original, secret, vp,
 				   attribute, ptr, room);
+	}
+
+	if (vp->flags.is_tlv) {
+		VP_TRACE("Encoding TLV %u.%u\n", vendor, attribute);
+		return vp2data_tlvs(packet, original, secret, 0, vp,
+				    ptr, room);
 	}
 
 	switch (dv->type) {
@@ -2586,6 +2602,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	 *	Unknown attribute.  Create it as a "raw" attribute.
 	 */
 	if (!da) {
+		VP_TRACE("Not found %u.%u\n", vendor, attribute);
 	raw:
 		if (vp) pairfree(&vp);
 		return data2vp_raw(packet, original, secret,
@@ -2597,6 +2614,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	 *	they can't be encrypted.
 	 */
 	if (da->type == PW_TYPE_TLV) {
+		VP_TRACE("Found TLV %u.%u\n", vendor, attribute);
 		return data2vp_tlvs(packet, original, secret,
 				    attribute, vendor, nest,
 				    data, length, pvp);
@@ -2968,6 +2986,7 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 	 *	The *entire* TLV is malformed.
 	 */
 	if (rad_tlv_ok(data, length, dv_type, dv_length) < 0) {
+		VP_TRACE("TLV malformed %u.%u\n", vendor, attribute);
 		return data2vp_raw(packet, original, secret,
 				   attribute, vendor, data, length, pvp);
 	}
