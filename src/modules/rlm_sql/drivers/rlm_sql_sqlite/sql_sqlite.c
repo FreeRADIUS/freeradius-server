@@ -138,10 +138,7 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config,
 			    char *querystr)
 {
-	if (strstr(querystr, "nas") != NULL)
-		return sql_query(sqlsocket, config, querystr);
-		
-	return 0;
+	return sql_query(sqlsocket, config, querystr);
 }
 
 
