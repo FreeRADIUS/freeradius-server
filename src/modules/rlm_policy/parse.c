@@ -141,7 +141,6 @@ static const char *policy_lex_string(const char *input,
 				     char *buffer, size_t buflen)
 {
 	rad_assert(input != NULL);
-	rad_assert(buffer != NULL);
 
 	switch (*input) {
 	case '\0':
@@ -373,7 +372,7 @@ static const char *policy_lex_string(const char *input,
 		return input + 1;
 
 	case '"':
-		if (buflen < 2) {
+		if (!buffer || (buflen < 2)) {
 			*token = POLICY_LEX_BAD;
 			return input + 1;
 		}
