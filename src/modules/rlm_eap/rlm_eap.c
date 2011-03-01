@@ -347,10 +347,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	can retrieve it in the post-proxy stage, and
 		 *	send a response.
 		 */
+		handler->inst_holder = inst;
 		rcode = request_data_add(request,
 					 inst, REQUEST_DATA_EAP_HANDLER,
 					 handler,
-					 (void *) eap_handler_free);
+					 (void *) eap_opaque_free);
 		rad_assert(rcode == 0);
 
 		return RLM_MODULE_HANDLED;
@@ -372,10 +373,11 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	can retrieve it in the post-proxy stage, and
 		 *	send a response.
 		 */
+		handler->inst_holder = inst;
 		rcode = request_data_add(request,
 					 inst, REQUEST_DATA_EAP_HANDLER,
 					 handler,
-					 (void *) eap_handler_free);
+					 (void *) eap_opaque_free);
 		rad_assert(rcode == 0);
 
 		/*

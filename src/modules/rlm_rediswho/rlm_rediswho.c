@@ -133,7 +133,7 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 		break;
 	default:
 		break;
-	};
+	}
 
 	(data->redis_inst->redis_finish_query)(dissocket);
 
@@ -340,16 +340,6 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 	 */
 	if (!request->username) {
 		RDEBUG("User-Name is required");
-		return RLM_MODULE_NOOP;
-	}
-
-	if (strchr(request->username->vp_strvalue, ' ')) {
-		RDEBUG("Spaces are not allowed in the User-Name");
-		return RLM_MODULE_NOOP;
-	}
-
-	if (strchr(request->username->vp_strvalue, '\n')) {
-		RDEBUG("CR are not allowed in the User-Name");
 		return RLM_MODULE_NOOP;
 	}
 

@@ -136,6 +136,14 @@ EAP_HANDLER *eap_handler_alloc(rlm_eap_t *inst)
 	return handler;
 }
 
+void eap_opaque_free(EAP_HANDLER *handler)
+{
+	if (!handler)
+		return;
+
+	eap_handler_free(handler->inst_holder, handler);
+}
+
 void eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
 	if (!handler)

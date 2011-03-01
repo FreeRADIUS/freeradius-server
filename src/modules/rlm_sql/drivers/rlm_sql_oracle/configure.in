@@ -86,32 +86,37 @@ if test x$with_[]modname != xno; then
 		if test "x$oracle_lib_dir" != "x" ; then
 			ORACLE_LIBDIR_SWITCH="-L${oracle_lib_dir} "
 		fi
-		LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz10"
-		AC_TRY_LINK([#include <oci.h>
-	
-				static OCIEnv           *p_env;
-				static OCIError         *p_err;
-				static OCISvcCtx        *p_svc;
-				static OCIStmt          *p_sql;
-				static OCIDefine        *p_dfn    = (OCIDefine *) 0;
-				static OCIBind          *p_bnd    = (OCIBind *) 0;
-			],
-			[
-				  int             p_bvi;
-				  char            p_sli[20];
-				  int             rc;
-				  char            errbuf[100];
-				  int             errcode;
-				
-				  rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
-				          (dvoid * (*)(dvoid *, size_t)) 0,
-				          (dvoid * (*)(dvoid *, dvoid *, size_t))0,
-				          (void (*)(dvoid *, dvoid *)) 0 );
+		for oracle_version in 10 11 9 ""; do
+			LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
+			AC_TRY_LINK([#include <oci.h>
+		
+					static OCIEnv           *p_env;
+					static OCIError         *p_err;
+					static OCISvcCtx        *p_svc;
+					static OCIStmt          *p_sql;
+					static OCIDefine        *p_dfn    = (OCIDefine *) 0;
+					static OCIBind          *p_bnd    = (OCIBind *) 0;
+				],
+				[
+					  int             p_bvi;
+					  char            p_sli[20];
+					  int             rc;
+					  char            errbuf[100];
+					  int             errcode;
+					
+					  rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
+							  (dvoid * (*)(dvoid *, size_t)) 0,
+							  (dvoid * (*)(dvoid *, dvoid *, size_t))0,
+							  (void (*)(dvoid *, dvoid *)) 0 );
 
-			],
-			ORACLE_LIBS="$ORACLE_LIBDIR_SWITCH -lclntsh -lnnz10",
-			ORACLE_LIBS=
-		)
+				],
+				ORACLE_LIBS="$ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}",
+				ORACLE_LIBS=
+			)
+			if test "x$ORACLE_LIBS" != "x"; then
+				break
+			fi
+		done
 
 		LIBS="$old_LIBS"
 		CFLAGS="$old_CFLAGS"
@@ -129,7 +134,7 @@ if test x$with_[]modname != xno; then
 
 		if test "x$ORACLE_LIBS" = "x"; then
 			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
-			fail="$fail libclntsh libnnz10"
+			fail="$fail libclntsh libnnz${oracle_version}"
 		else
 			sql_oracle_ldflags="${sql_oracle_ldflags} $ORACLE_LIBS"
 			AC_MSG_RESULT(yes)

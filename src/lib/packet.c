@@ -657,7 +657,7 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
 int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 			      RADIUS_PACKET *request)
 {
-	int i, id, start, fd;
+	int i, id, start;
 	int src_any = 0;
 	uint32_t free_mask;
 	fr_packet_dst2id_t my_pd, *pd;
@@ -733,7 +733,6 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 	id = start = (int) fr_rand() & 0xff;
 
 	while (pd->id[id] == pl->mask) { /* all sockets are using this ID */
-	redo:
 		id++;
 		id &= 0xff;
 		if (id == start) {
@@ -749,6 +748,11 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl,
 		if (pl->sockets[i].sockfd == -1) continue; /* paranoia */
 
 		ps = &(pl->sockets[i]);
+
+		/*
+		 *	Address families don't match, skip it.
+		 */
+		if (ps->ipaddr.af != request->dst_ipaddr.af) continue;
 
 		/*
 		 *	We're sourcing from *, and they asked for a

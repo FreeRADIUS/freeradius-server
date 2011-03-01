@@ -986,6 +986,27 @@ static int rad_coa_reply(REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
+static int do_proxy(REQUEST *request)
+{
+	VALUE_PAIR *vp;
+
+	if (request->in_proxy_hash ||
+	    (request->proxy_reply && (request->proxy_reply->code != 0))) {
+		return 0;
+	}
+
+	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL);
+	if (!vp) return 0;
+	
+	if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
+		RDEBUG2("ERROR: Cannot proxy to unknown pool %s",
+			vp->vp_strvalue);
+		return 0;
+	}
+
+	return 1;
+}
+
 /*
  *	Receive a CoA packet.
  */
@@ -1061,6 +1082,7 @@ static int rad_coa_recv(REQUEST *request)
 		case RLM_MODULE_NOTFOUND:
 		case RLM_MODULE_OK:
 		case RLM_MODULE_UPDATED:
+			if (do_proxy(request)) return RLM_MODULE_OK;
 			request->reply->code = ack;
 			break;
 		}

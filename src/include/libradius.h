@@ -7,18 +7,18 @@
  *
  * Version:	$Id$
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
+ *   This library is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 1999,2000,2001,2002,2003,2004,2005,2006,2007,2008  The FreeRADIUS server project
@@ -240,7 +240,7 @@ typedef struct radius_packet {
  *	Printing functions.
  */
 int		fr_utf8_char(const uint8_t *str);
-void		fr_print_string(const char *in, size_t inlen,
+size_t		fr_print_string(const char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				VALUE_PAIR *vp, int delimitst);
@@ -314,6 +314,7 @@ int		rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 int		rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 const char *secret);
 
+int rad_digest_cmp(const uint8_t *a, const uint8_t *b, size_t length);
 RADIUS_PACKET	*rad_alloc(int newvector);
 RADIUS_PACKET	*rad_alloc_reply(RADIUS_PACKET *);
 void		rad_free(RADIUS_PACKET **);

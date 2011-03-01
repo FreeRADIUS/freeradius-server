@@ -3,18 +3,18 @@
  *
  * Version:	$Id$
  *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This library is free software; you can redistribute it and/or
+ *   modify it under the terms of the GNU Lesser General Public
+ *   License as published by the Free Software Foundation; either
+ *   version 2.1 of the License, or (at your option) any later version.
  *
- *   This program is distributed in the hope that it will be useful,
+ *   This library is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+ *   Lesser General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License
- *   along with this program; if not, write to the Free Software
+ *   You should have received a copy of the GNU Lesser General Public
+ *   License along with this library; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2008 The FreeRADIUS server project
@@ -374,6 +374,17 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 
 	fr_ipaddr2sockaddr(&packet->dst_ipaddr, packet->dst_port,
 			   &dst, &sizeof_dst);
+
+	/*
+	 *	The client doesn't yet have an IP address, but is
+	 *	expecting an ethernet packet unicast to it's MAC
+	 *	address.  We need to build a raw frame.
+	 */
+	if (packet->offset == 0) {
+		/*
+		 *	FIXME: Insert code here!
+		 */
+	}
 
 #ifndef WITH_UDPFROMTO
 	/*
@@ -978,11 +989,10 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 *	to the client.
 		 *
 		 *	if giaddr, send to giaddr.
-		 *	if NAK, send broadcast packet
-		 *	if ciaddr, unicast to ciaddr
-		 *	if flags & 0x8000, broadcast (client request)
-		 *	if sent from 0.0.0.0, broadcast response
-		 *	unicast to client yiaddr
+		 *	if NAK, send broadcast.
+		 *	if broadcast flag, send broadcast.
+		 *	if ciaddr is empty, send broadcast.
+		 *	otherwise unicast to ciaddr.
 		 */
 		
 		/*
@@ -991,6 +1001,12 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 */
 		dhcp = (dhcp_packet_t *) original->data;
 		
+		/*
+		 *	Default to sending it via sendto(), without using
+		 *	raw sockets.
+		 */
+		packet->offset = 1;
+
 		if (dhcp->giaddr != htonl(INADDR_ANY)) {
 			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
 			
@@ -1000,23 +1016,24 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				packet->dst_port = original->src_port; /* debugging */
 			}
 			
-		} else if (packet->code == PW_DHCP_NAK) {
+		} else if ((packet->code == PW_DHCP_NAK) ||
+			   ((dhcp->flags & 0x8000) != 0) ||
+			   (dhcp->ciaddr == htonl(INADDR_ANY))) {
+			/*
+			 *	The kernel will take care of sending it to
+			 *	the broadcast MAC.
+			 */
 			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-			
-		} else if (dhcp->ciaddr != htonl(INADDR_ANY)) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
-			
-		} else if ((dhcp->flags & 0x8000) != 0) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-			
-		} else if (packet->dst_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_ANY)) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-			
-		} else if (dhcp->yiaddr != htonl(INADDR_ANY)) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->yiaddr;
 			
 		} else {
-			/* leave destination IP alone. */
+			/*
+			 *	It was broadcast to us: we need to
+			 *	broadcast the response.
+			 */
+			if (packet->src_ipaddr.ipaddr.ip4addr.s_addr != dhcp->ciaddr) {
+				packet->offset = 0;
+			}
+			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
 		}
 
 		/*

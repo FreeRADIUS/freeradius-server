@@ -127,8 +127,9 @@ int fr_utf8_char(const uint8_t *str)
  *	has to be larger than the input string by at least 5 bytes.
  *	If not, the output is silently truncated...
  */
-void fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
+size_t fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 {
+	const char	*start = out;
 	const uint8_t	*str = (const uint8_t *) in;
 	int		sp = 0;
 	int		utf8 = 0;
@@ -193,6 +194,8 @@ void fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 		} while (--utf8 > 0);
 	}
 	*out = 0;
+
+	return out - start;
 }
 
 

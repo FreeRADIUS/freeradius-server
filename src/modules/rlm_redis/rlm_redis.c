@@ -138,9 +138,56 @@ static void redis_poolfree(REDIS_INST * inst)
 	inst->redispool = NULL;
 }
 
+static size_t redis_escape_func(char *out, size_t outlen, const char *in)
+{
+
+	size_t len = 0;
+
+	while (*in) {
+		/*
+		 *	Non-printable characters get replaced with their
+		 *	mime-encoded equivalents.
+		 */
+		if ((*in <= 32) || (*in == '\\')) {
+			/*
+			 *	Only 3 or less bytes available.
+			 */
+			if (outlen <= 3) {
+				break;
+			}
+
+			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
+			in++;
+			out += 3;
+			outlen -= 3;
+			len += 3;
+			continue;
+		}
+
+		/*
+		 *	Only one byte left.
+		 */
+		if (outlen <= 1) {
+			break;
+		}
+
+		/*
+		 *	Allowed character.
+		 */
+		*out = *in;
+		out++;
+		in++;
+		outlen--;
+		len++;
+	}
+	*out = '\0';
+	return len;
+
+}
+
 static int redis_xlat(void *instance, REQUEST *request,
 		      char *fmt, char *out, size_t freespace,
-		      RADIUS_ESCAPE_STRING func)
+		      UNUSED RADIUS_ESCAPE_STRING func)
 {
 	REDIS_INST *inst = instance;
 	REDISSOCK *dissocket;
@@ -149,7 +196,8 @@ static int redis_xlat(void *instance, REQUEST *request,
 	char buffer[21];
 	char querystr[MAX_QUERY_LEN];
 
-	if (!radius_xlat(querystr, sizeof(querystr), fmt, request, func)) {
+	if (!radius_xlat(querystr, sizeof(querystr), fmt, request,
+		    redis_escape_func)) {
 		radlog(L_ERR, "rlm_redis (%s): xlat failed.",
 		       inst->xlat_name);
 
@@ -285,32 +333,6 @@ static int redis_init_socketpool(REDIS_INST *inst)
 	}
 
 	return 1;
-}
-
-/*
- *	TODO, Actually escape something...
- */
-static size_t redis_escape_func(char *out, size_t outlen, const char *in)
-{
-	size_t len = 0;
-
-	while (in[0]) {
-
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
-		 *	Allowed character.
-		 */
-		*out = *in;
-		out++;
-		in++;
-		outlen--;
-		len++;
-	}
-	*out = '\0';
-	return len;
 }
 
 /*
