@@ -1,2 +1,3 @@
 usr/lib/freeradius/rlm_sql_mysql*.so
 etc/freeradius/sql/mysql/*
+etc/freeradius/modules/sql*

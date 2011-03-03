@@ -1,4 +1,5 @@
 radiusd-to-freeradius.diff
-dialupadmin-help.diff
-gitignore.diff
+sql_modules.diff
+#dialupadmin-help.diff
+#gitignore.diff
 rlm_sql.libs.diff

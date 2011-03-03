@@ -5,7 +5,6 @@ etc/freeradius/attrs.access_challenge
 etc/freeradius/attrs.accounting_response
 etc/freeradius/attrs.pre-proxy
 etc/freeradius/clients.conf
-etc/freeradius/eap.conf
 etc/freeradius/experimental.conf
 etc/freeradius/hints
 etc/freeradius/huntgroups
@@ -16,8 +15,6 @@ etc/freeradius/policy.txt
 etc/freeradius/preproxy_users
 etc/freeradius/proxy.conf
 etc/freeradius/sites-available/*
-etc/freeradius/sql.conf
-etc/freeradius/sqlippool.conf
 etc/freeradius/templates.conf
 etc/freeradius/users
 usr/lib/freeradius/rlm*.so

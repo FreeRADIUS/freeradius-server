@@ -1,9 +1,11 @@
 ## 01-radiusd-to-freeradius.dpatch by Mark Hymers <mark@hymers.org.uk>
 ## DP: change debian binary name from radiusd -> freeradius
 
---- old/Make.inc.in	(revision 1496)
-+++ new/Make.inc.in	(working copy)
-@@ -48,7 +48,7 @@
+diff --git a/Make.inc.in b/Make.inc.in
+index 854bade..0659351 100644
+--- a/Make.inc.in
++++ b/Make.inc.in
+@@ -50,7 +50,7 @@ LDFLAGS		= @LDFLAGS@
  
  LOGDIR		= ${logdir}
  RADDBDIR	= ${raddbdir}
@@ -11,26 +13,28 @@
 +RUNDIR		= ${localstatedir}/run/freeradius
  SBINDIR		= ${sbindir}
  RADIR		= ${radacctdir}
+ LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la
+diff --git a/raddb/radiusd.conf.in b/raddb/radiusd.conf.in
+index 0508300..036e8f5 100644
+--- a/raddb/radiusd.conf.in
++++ b/raddb/radiusd.conf.in
+@@ -62,7 +62,7 @@ radacctdir = @radacctdir@
  
---- old/raddb/radiusd.conf.in   2009-02-19 15:25:59.723240012 +0000
-+++ new/raddb/radiusd.conf.in   2009-02-19 15:32:18.215568132 +0000
-@@ -62,7 +62,7 @@
-
  #
  #  name of the running server.  See also the "-n" command-line option.
 -name = radiusd
 +name = freeradius
-
+ 
  #  Location of config and logfiles.
  confdir = ${raddbdir}
-@@ -164,8 +164,8 @@
- #  It will join all groups where "user" is a member.  This can allow
- #  for some finer-grained access controls.
- #
--#user = radius
--#group = radius
-+user = freerad
-+group = freerad
-
- #  max_request_time: The maximum time (in seconds) to handle a request.
- #
+@@ -463,8 +463,8 @@ security {
+ 	#  member.  This can allow for some finer-grained access
+ 	#  controls.
+ 	#
+-#	user = radius
+-#	group = radius
++	user = freerad
++	group = freerad
+ 
+ 	#  Core dumps are a bad thing.  This should only be set to
+ 	#  'yes' if you're debugging a problem with the server.

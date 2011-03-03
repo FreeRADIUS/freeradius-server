@@ -12,13 +12,11 @@ case "$1" in
 
         for file in /etc/freeradius/preproxy_users \
           /etc/freeradius/policy.conf \
-          /etc/freeradius/eap.conf \
           /etc/freeradius/experimental.conf \
           /etc/freeradius/huntgroups \
           /etc/freeradius/proxy.conf \
           /etc/freeradius/attrs.pre-proxy \
           /etc/freeradius/hints \
-          /etc/freeradius/sql.conf \
           /etc/freeradius/ldap.attrmap \
           /etc/freeradius/attrs \
           /etc/freeradius/policy.txt \
