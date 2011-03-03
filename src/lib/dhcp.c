@@ -28,6 +28,11 @@ RCSID("$Id$")
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/dhcp.h>
 
+/*
+ *	This doesn't appear to work right now.
+ */
+#undef WITH_UDPFROMTO
+
 #ifdef WITH_DHCP
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
