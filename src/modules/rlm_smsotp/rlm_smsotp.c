@@ -220,7 +220,7 @@ static int smsotp_authorize(void *instance, REQUEST *request)
 	if (state != NULL) {
 		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",opt->smsotp_authtype);
 		
-		pairdelete(&request->config_items, PW_AUTH_TYPE); /* delete old auth-type */
+		pairdelete(&request->config_items, PW_AUTH_TYPE, 0); /* delete old auth-type */
 		pairadd(&request->config_items, pairmake("Auth-Type", opt->smsotp_authtype, T_OP_SET));
 	}
 
