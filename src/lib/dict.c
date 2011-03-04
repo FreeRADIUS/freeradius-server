@@ -373,8 +373,10 @@ static void fr_pool_delete(fr_pool_t **pfp)
 
 	for (fp = *pfp; fp != NULL; fp = next) {
 		next = fp->page_next;
+		fp->page_next = NULL;
 		free(fp);
 	}
+	*pfp = NULL;
 }
 
 
