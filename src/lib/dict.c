@@ -995,6 +995,18 @@ static int process_attribute(const char* fn, const int line,
 		flags.is_tlv = 1;
 	}
 
+#ifdef WITH_DICTIONARY_WARNINGS
+	/*
+	 *	Hack to help us discover which vendors have illegal
+	 *	attributes.
+	 */
+	if (!vendor && (value < 256) &&
+	    !strstr(fn, "rfc") && !strstr(fn, "illegal")) {
+		fprintf(stderr, "WARNING: Illegal Attribute %s in %s\n",
+			argv[0], fn);
+	}
+#endif
+
 	/*
 	 *	Add it in.
 	 */
