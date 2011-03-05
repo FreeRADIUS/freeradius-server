@@ -1,0 +1,11 @@
+TARGET		= @targetname@
+SRCS		= rlm_wimax.c
+HEADERS		= 
+RLM_CFLAGS	=
+RLM_LIBS	= $(OPENSSL_LIBS)
+
+include ../rules.mak
+
+$(STATIC_OBJS): $(HEADERS)
+
+$(DYNAMIC_OBJS): $(HEADERS)
