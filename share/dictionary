@@ -101,7 +101,6 @@ $INCLUDE dictionary.apc
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
-$INCLUDE dictionary.ascend.illegal
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cablelabs
@@ -118,7 +117,6 @@ $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
-#$INCLUDE dictionary.dhcp
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
@@ -188,7 +186,6 @@ $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
 $INCLUDE dictionary.usr
-#$INCLUDE dictionary.usr.illegal
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
