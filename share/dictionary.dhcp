@@ -355,7 +355,7 @@ VALUE	DHCP-Parameter-Request-List	DHCP-ARP-Cache-Timeout	35
 VALUE	DHCP-Parameter-Request-List	DHCP-Ethernet-Encapsulation 36
 VALUE	DHCP-Parameter-Request-List	DHCP-Default-TCP-TTL	37
 VALUE	DHCP-Parameter-Request-List	DHCP-Keep-Alive-Interval 38
-VALUE	DHCP-Parameter-Request-List	DHCP-Keep=Alive-Garbage 39
+VALUE	DHCP-Parameter-Request-List	DHCP-Keep-Alive-Garbage 39
 VALUE	DHCP-Parameter-Request-List	DHCP-NIS-Domain-Name	40
 VALUE	DHCP-Parameter-Request-List	DHCP-NIS-Servers	41
 VALUE	DHCP-Parameter-Request-List	DHCP-NTP-Servers	42
