@@ -1,0 +1,41 @@
+AC_PREREQ([2.53])
+AC_INIT(rlm_wimax.c) # change 'wimax'
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_wimax]) # change 'wimax'
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	dnl put configuration checks here.
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+	AC_CHECK_HEADER(openssl/hmac.h,
+		[ wimax_cflags="$wimax_cflags" ],
+		[ fail=$fail" openssl/hmac.h" ]
+	)
+
+	targetname=modname     # keep this!  Don't change!
+else
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+		targetname=""
+	fi
+fi
+
+
+AC_SUBST(wimax_cflags)  # change 'wimax'
+AC_SUBST(wimax_ldflags)  # change 'wimax'
+
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!
