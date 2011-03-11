@@ -185,6 +185,8 @@ $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
+$INCLUDE dictionary.ukerna
+$INCLUDE dictionary.unix
 $INCLUDE dictionary.usr
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
