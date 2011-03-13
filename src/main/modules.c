@@ -1364,6 +1364,7 @@ int module_hup(CONF_SECTION *modules)
  */
 int setup_modules(int reload, CONF_SECTION *config)
 {
+	CONF_ITEM	*ci, *next;
 	CONF_SECTION	*cs, *modules;
 	rad_listen_t	*listener;
 
@@ -1446,6 +1447,43 @@ int setup_modules(int reload, CONF_SECTION *config)
 	DEBUG2("%s: #### Instantiating modules ####", mainconfig.name);
 
 	/*
+	 *	Loop over module definitions, looking for duplicates.
+	 *
+	 *	This is O(N^2) in the number of modules, but most
+	 *	systems should have less than 100 modules.
+	 */
+	for (ci=cf_item_find_next(modules, NULL);
+	     ci != NULL;
+	     ci=next) {
+		const char *name1, *name2;
+		CONF_SECTION *subcs, *duplicate;
+
+		next = cf_item_find_next(modules, ci);
+
+		if (!cf_item_is_section(ci)) continue;
+
+		if (!next || !cf_item_is_section(next)) continue;
+
+		subcs = cf_itemtosection(ci);
+		name1 = cf_section_name1(subcs);
+		name2 = cf_section_name2(subcs);
+
+		duplicate = cf_section_find_name2(cf_itemtosection(next),
+						  name1, name2);
+		if (!duplicate) continue;
+
+		if (!name2) name2 = "";
+
+		radlog(L_ERR, "Duplicate module \"%s %s\", in file %s:%d and file %s:%d",
+		       name1, name2,
+		       cf_section_filename(subcs),
+		       cf_section_lineno(subcs),
+		       cf_section_filename(duplicate),
+		       cf_section_lineno(duplicate));
+		return -1;
+	}
+
+	/*
 	 *  Look for the 'instantiate' section, which tells us
 	 *  the instantiation order of the modules, and also allows
 	 *  us to load modules with no authorize/authenticate/etc.
@@ -1453,7 +1491,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 */
 	cs = cf_section_sub_find(config, "instantiate");
 	if (cs != NULL) {
-		CONF_ITEM *ci;
 		CONF_PAIR *cp;
 		module_instance_t *module;
 		const char *name;
