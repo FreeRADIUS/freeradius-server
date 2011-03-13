@@ -239,6 +239,24 @@ static int virtual_server_idx(const char *name)
 	return hash & (VIRTUAL_SERVER_HASH_SIZE - 1);
 }
 
+static virtual_server_t *virtual_server_find(const char *name)
+{
+	int rcode;
+	virtual_server_t *server;
+
+	rcode = virtual_server_idx(name);
+	for (server = virtual_servers[rcode];
+	     server != NULL;
+	     server = server->next) {
+		if (!name && !server->name) break;
+
+		if ((name && server->name) &&
+		    (strcmp(name, server->name) == 0)) break;
+	}
+
+	return server;
+}
+
 static void virtual_server_free(virtual_server_t *server)
 {
 	if (!server) return;
@@ -682,16 +700,7 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
 	/*
 	 *	Hack to find the correct virtual server.
 	 */
-	rcode = virtual_server_idx(request->server);
-	for (server = virtual_servers[rcode];
-	     server != NULL;
-	     server = server->next) {
-		if (!request->server && !server->name) break;
-
-		if ((request->server && server->name) &&
-		    (strcmp(request->server, server->name) == 0)) break;
-	}
-
+	server = virtual_server_find(request->server);
 	if (!server) {
 		RDEBUG("No such virtual server \"%s\"", request->server);
 		return RLM_MODULE_FAIL;
@@ -1209,11 +1218,24 @@ int virtual_servers_load(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
+		virtual_server_t *server;
+
 		if (!cf_section_name2(cs)) null_server = TRUE;
+
+		server = virtual_server_find(cf_section_name2(cs));
+		if (server) {
+			radlog(L_ERR, "Duplicate virtual server \"%s\" in file %s:%d and file %s:%d",
+			       server->name,
+			       cf_section_filename(server->cs),
+			       cf_section_lineno(server->cs),
+			       cf_section_filename(cs),
+			       cf_section_lineno(cs));
+			return -1;
+		}
 
 		if (load_byserver(cs) < 0) {
 			/*
-			 *	Once we successfully staryed once,
+			 *	Once we successfully started once,
 			 *	continue loading the OTHER servers,
 			 *	even if one fails.
 			 */
