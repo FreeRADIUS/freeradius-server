@@ -64,6 +64,8 @@ int		cf_file_include(const char *file, CONF_SECTION *cs);
 CONF_PAIR	*cf_pair_find(const CONF_SECTION *, const char *name);
 CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, CONF_PAIR *, const char *name);
 CONF_SECTION	*cf_section_find(const char *name);
+CONF_SECTION	*cf_section_find_name2(const CONF_SECTION *section,
+				       const char *name1, const char *name2);
 CONF_SECTION	*cf_section_sub_find(const CONF_SECTION *, const char *name);
 CONF_SECTION	*cf_section_sub_find_name2(const CONF_SECTION *, const char *name1, const char *name2);
 const char 	*cf_section_value_find(const CONF_SECTION *, const char *attr);
