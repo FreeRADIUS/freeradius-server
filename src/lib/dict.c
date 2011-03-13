@@ -97,6 +97,10 @@ static const FR_NAME_NUMBER type_table[] = {
 	{ "extended",	PW_TYPE_EXTENDED },
 	{ "extended-flags",	PW_TYPE_EXTENDED_FLAGS },
 	{ "evs",	PW_TYPE_EVS },
+	{ "uint8",	PW_TYPE_BYTE },
+	{ "uint16",	PW_TYPE_SHORT },
+	{ "uint32",	PW_TYPE_INTEGER },
+	{ "int32",	PW_TYPE_SIGNED },
 	{ NULL, 0 }
 };
 
