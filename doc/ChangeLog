@@ -1,9 +1,87 @@
-FreeRADIUS 2.1.10 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
+FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	Feature improvements
+	* Microsoft SoH support for PEAP from Phil Mayers.
+	  See doc/SoH.txt
+	* Certificate "bootstrap" script now checks for certificate expiry.
+	  See comments in raddb/eap.conf, and then "make_cert_command".
+	* Support for dynamic expansion of EAP-GTC challenges.
+	  Patch from Alexander Clouter.
+	* OCSP support from Alex Bergmann.  See raddb/eap.conf, "ocsp"
+	  section.
+	* Updated dictionary.huawei, and added dictionary.eltex
+	* Experimental redis support from Gabriel Blanchard.
+	  See raddb/modules/redis and raddb/modules/rediswho
+	* Add "key" to rlm_fastusers.  Closes bug #126.
+	* Added scripts/radtee from original software at
+	  http://horde.net/~jwm/software/misc/comparison-tee
+	* Added dictionary.ukerna from Moonshot project
+
 	Bug fixes
 	* Ignore pre/post-proxy sections if proxying is disabled
 	* Add configure checks for pcap_fopen*.
 	* Fix call to otp_write in rlm_otp
+	* Fix issue with Access-Challenge checking from 2.1.10, when the
+	  debug flag was set after server startup.  Closes #116 and #117.
+	* Fix typo in zombie period start time.
+	* Fix leak in src/main/valuepair.c.  Patch from James Ballantine.
+	* Allow radtest to use spaces in shared secret.
+	  Patch from Cedric Carree.
+	* Remove extra calls to HMAC_CTX_init() in rlm_wimax, fixing leak.
+	  Patch from James Ballantine.
+	* Remove MN-FA key generation.  The NAS does this, not AAA.
+	  Patch from Ben Weichman.
+	* Include dictionary.mikrotik by default.  Closes bug #121.
+	* Add group membership query to MS-SQL examples.  Closes bug #120.
+	* Don't cast NAS-Port to integer in Postgresql queries.
+	  Closes bug #112.
+	* Fixes for libtool && autoconf, from Sam Hartman.
+	* radsniff should read the dictionaries in more situations.
+	* Use fnmatch to check for detail file reader==writer.
+	  Closes bug #128.
+	* Check for short writes (i.e. disk full) in rlm_detail.
+	  Closes bug #130.
+	* Fix typo in src/lib/token.c.  Closes bug #124
+	* Allow workstation trust accounts to use MS-CHAP.
+	  Closes bug #123.
+	* Assigning foo=`/bin/echo hello` now produces a syntax error
+	  if it is done outside of an "update" section.
+	* Fix "too many open file descriptors" problem when using
+	  "verify client" in eap.conf.
+	* Many fixes to dialup_admin for PHP5, by Stefan Winter.
+	* Allow preprocess module to have "hints = " and "huntgroups =",
+	  which allows them to be empty or non-existent.
+	* Renamed "php3" files to "php" in dialup_admin/
+	* Produce error when sub-TLVs are used in a dictionary.  They are
+	  supported only in the "master" branch, and not in 2.1.x.
+	* Minor fix in dictionary.redback.  Closes bug #138.
+	* Fixed MySQL "NULL" issues in ippool.conf.  Closes bug #129.
+	* Fix to Access-Challenge warning from Ken-ichirou Matsuzawa.
+	  Closes bug #118.
+	* DHCP fixes to send unicast packets in more situations.
+	* Fix to udpfromto, to enable it to work on IPv6 networks.
+	* Fixes to the Oracle accounting_onoff_query.
+	* When using both IPv4 and IPv6 home servers, ensure that we use the
+	  correct local socket for proxying.  Closes bug #143.
+	* Suppress messages when thread pool is nearly full, all threads
+	  are busy, and we can't create new threads.
+	* IPv6 is now enabled for udpfromto.  Closes bug #141
+	* Make sqlippool query buffer the same size as sql module.
+	  Closes bug #139.
+	* Make Coa / Disconnect proxying work again.
+	* Configure scripts for rlm_caching from Nathaniel McCallum
+	* src/lib/dhcp.c and src/include/libradius.h are LGPL, not GPL.
+	* Updated password routines to use time-insensitive comparisons.
+	  This prevents timing attacks (though none are known).
+	* Allow sqlite module to do normal SELECT queries.
+	* rlm_wimax now has a configure script
+	* Moved Ascend and USR "illegal" dictionaries to their own
+	  files.  See share/dictionary for explanations.
+	* Check for duplicate module definitions in the modules{} section,
+	  and refuse to start if duplicates are found.
+	* Check for duplicate virtual servers, and refuse to start if
+	  duplicates are found.
+	* Don't use udpfromto if source is INADDR_ANY.  Closes bug #148.
+	* Check pre-conditions before running radmin "inject file".
 
 FreeRADIUS 2.1.10 Tue 28 Sep 12:00:00 CEST 2010, urgency=medium
 	Feature improvements
