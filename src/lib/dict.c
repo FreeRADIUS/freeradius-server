@@ -1144,11 +1144,19 @@ static int process_attribute(const char* fn, const int line,
 			break;
 
 		case PW_TYPE_EXTENDED:
+			if ((vendor != 0) || (value < 241)) {
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended\" MUST be RFC attributes with value >= 241.", fn, line);
+				return -1;
+			}
 			type = PW_TYPE_OCTETS;
 			flags.extended = 1;
 			break;
 
 		case PW_TYPE_EXTENDED_FLAGS:
+			if ((vendor != 0) || (value < 241)) {
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended-flags\" MUST be RFC attributes with value >= 241.", fn, line);
+				return -1;
+			}
 			type = PW_TYPE_OCTETS;
 			flags.extended_flags = 1;
 			break;
@@ -1903,7 +1911,8 @@ static int my_dict_init(const char *dir, const char *fn,
 				
 				/*
 				 *	Pack the encapsulating attribute
-				 *	into the vendor Id.
+				 *	into the vendor Id.  This attribute
+				 *	MUST be >= 241.
 				 */
 				block_vendor |= (da->attr & fr_attr_mask[1]) * FR_MAX_VENDOR;
 			}
