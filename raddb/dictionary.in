@@ -9,22 +9,6 @@
 #
 
 #
-#  These two dictionaries define attributes which conflict with the
-#  IANA assigned attributes.  They define attributes for equipment which
-#  is 5-10 years old, and which should *no longer* be used.
-#
-#  Moving the dictionaries here has the following effect:
-#
-#	1) The "old" names in the dictionaries can still be used in
-#	   SQL, the "users" file, etc.
-#
-#	2) Access-Request and Accounting-Request packets will use the
-#	   "new" names.
-#
-$INCLUDE	@prefix@/dictionary.ascend.illegal
-$INCLUDE	@prefix@/dictionary.usr.illegal
-
-#
 #  The DHCP dictionary is used only when the server is built with
 #  "configure --with-dhcp".  It is not (and should not) be used in
 #  other situations.  If you are running just a RADIUS server, this
@@ -35,7 +19,6 @@ $INCLUDE	@prefix@/dictionary.usr.illegal
 #  dictionary, but we don't yet do that.
 #
 #$INCLUDE	@prefix@/dictionary.dhcp
-
 
 #
 #	The filename given here should be an absolute path. 

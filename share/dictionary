@@ -27,15 +27,18 @@
 #	ifid       - 8 octets in network byte order
 #	ipv6addr   - 16 octets in network byte order
 #	ipv6prefix - 18 octets in network byte order
-#	ether      - 6 octets of hh:hh:hh:hh:hh:hh
-#		     where 'h' is hex digits, upper or lowercase.
 #
 #	FreeRADIUS includes extended data types which are not defined
 #	in the RFC's.  These data types are:
 #
 #	abinary - Ascend's binary filter format.
+#	byte    - 8 bit unsigned integer
+#	ether   - 6 octets of hh:hh:hh:hh:hh:hh
+#		  where 'h' is hex digits, upper or lowercase.
+#	short   - 16-bit unsigned integer 
 #	octets  - raw octets, printed and input as hex strings.
 #		  e.g.: 0x123456789abcdef
+#	tlv	- type-length-value (only for certain WiMAX attributes)
 #
 #
 #	Enumerated values are stored in the user file with dictionary
@@ -55,6 +58,8 @@
 #	old names in the logfiles, INSTEAD OF the new names.
 #
 $INCLUDE dictionary.compat
+$INCLUDE dictionary.usr.illegal
+$INCLUDE dictionary.ascend.illegal
 
 #
 #	Include the RFC dictionaries next.
