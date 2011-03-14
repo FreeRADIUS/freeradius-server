@@ -1139,6 +1139,16 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
+	if (!sock->inject_listener) {
+		cprintf(listener, "ERROR: You must specify \"inject to\" before using \"inject file\"\n");
+		return 0;
+	}
+
+	if (!sock->inject_client) {
+		cprintf(listener, "ERROR: You must specify \"inject from\" before using \"inject file\"\n");
+		return 0;
+	}
+
 	/*
 	 *	Output files always go to the logging directory.
 	 */
