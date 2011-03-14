@@ -154,7 +154,7 @@ int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 }
 
 
-static int fr_inaddr_any(fr_ipaddr_t *ipaddr)
+int fr_inaddr_any(fr_ipaddr_t *ipaddr)
 {
 
 	if (ipaddr->af == AF_INET) {
