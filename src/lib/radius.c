@@ -3408,7 +3408,8 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 	}
 
 	da = dict_attrbyvalue(data[0], vendor);
-	if (!da) {
+	if (!da ||
+	    (!da->flags.extended && !da->flags.extended_flags)) {
 		fr_strerror_printf("rad_attr2vp_extended: Attribute is not extended format");
 		return -1;
 	}
@@ -3476,7 +3477,7 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 		
 		/*
 		 *	Pack the *encapsulating* attribute number into
-		 *	the vendor id.
+		 *	the vendor id.  This number should be >= 241.
 		 */
 		vendor |= start[0] * FR_MAX_VENDOR;
 		shift = 0;
