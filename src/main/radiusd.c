@@ -411,9 +411,15 @@ int main(int argc, char *argv[])
 #endif
 		hup_mainconfig();
 	}
-	
-	radlog(L_INFO, "Exiting normally.");
-	
+
+	if (rcode < 0) {
+		radlog(L_ERR, "Exiting due to internal error: %s",
+		       fr_strerror());
+		rcode = 2;
+	} else {
+		radlog(L_INFO, "Exiting normally.");
+	}
+
 	/*
 	 *	Ignore the TERM signal: we're
 	 *	about to die.
