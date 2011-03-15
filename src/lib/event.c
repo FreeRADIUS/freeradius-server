@@ -388,8 +388,10 @@ int fr_event_loop(fr_event_list_t *el)
 		read_fds = master_fds;
 		rcode = select(maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
+			fr_strerror_printf("Failed in select: %s",
+					   strerror(errno));
 			el->dispatch = 0;
-			return 0;
+			return -1;
 		}
 
 		if (fr_heap_num_elements(el->times) > 0) {
