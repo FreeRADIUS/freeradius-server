@@ -10,6 +10,19 @@
 #
 #  This example is for MySQL.  Other SQL variants should be similar.
 #
+#  For versions prior to 2.1.11, this module defined the following
+#  expansion strings:
+#
+#	%k	key_name
+#	%S	sqlmod_inst
+#
+#  These SHOULD NOT be used.  If these are used in your configuration,
+#  they should be replaced by the following strings, which will work
+#  identically to the previous ones:
+#
+#	%k	${key}
+#	%S	${sqlmod-inst}
+#
 sqlcounter expire_on_login {
 	counter-name = Expire-After-Initial-Login
 	check-name = Expire-After
@@ -18,7 +31,7 @@ sqlcounter expire_on_login {
 	reset = never
 	query = "SELECT TIME_TO_SEC(TIMEDIFF(NOW(), acctstarttime)) \
 		 FROM radacct \
-		 WHERE UserName='%{%k}' \
+		 WHERE UserName='%{${key}}' \
 		 ORDER BY acctstarttime \
 		 LIMIT 1;"
 }
