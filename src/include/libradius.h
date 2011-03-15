@@ -111,6 +111,7 @@ typedef struct attr_flags {
 	unsigned int		extended : 1; /* extended attribute */
 	unsigned int		extended_flags : 1; /* with flag */
 	unsigned int		evs : 1;	    /* extended VSA */
+	unsigned int		wimax: 1;	    /* WiMAX format=1,1,c */
 
 	int8_t			tag;	      /* tag for tunneled attributes */
 	uint8_t		        encrypt;      /* encryption method */

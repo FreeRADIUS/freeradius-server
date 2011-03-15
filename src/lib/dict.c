@@ -669,6 +669,15 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 			flags.extended_flags = da->flags.extended_flags;
 			flags.evs = da->flags.evs;
 		}
+
+		/*
+		 *	<sigh> Alvarion, being *again* a horribly
+		 *	broken vendor, has re-used the WiMAX format in
+		 *	their proprietary vendor space.  This re-use
+		 *	means that there are *multiple* conflicting
+		 *	Alvarion dictionaries.
+		 */
+		flags.wimax = dv->flags;
 	}
 
 	/*
