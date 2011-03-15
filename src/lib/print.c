@@ -203,7 +203,7 @@ size_t fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
  *  Print one value into a string.
  *  delimitst will define if strings and dates will be delimited by '"'
  */
-int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
+int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimitst)
 {
 	DICT_VALUE  *v;
 	char        buf[1024];
@@ -475,7 +475,7 @@ const char *vp_print_name(char *buffer, size_t bufsize,
 /*
  *	Print one attribute and value into a string.
  */
-int vp_prints(char *out, size_t outlen, VALUE_PAIR *vp)
+int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 {
 	size_t		len;
 	const char	*token = NULL;
@@ -522,7 +522,7 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR *vp)
 /*
  *	Print one attribute and value.
  */
-void vp_print(FILE *fp, VALUE_PAIR *vp)
+void vp_print(FILE *fp, const VALUE_PAIR *vp)
 {
 	char	buf[1024];
 
@@ -535,7 +535,7 @@ void vp_print(FILE *fp, VALUE_PAIR *vp)
  *	Print a whole list of attributes, indented by a TAB
  *	and with a newline at the end.
  */
-void vp_printlist(FILE *fp, VALUE_PAIR *vp)
+void vp_printlist(FILE *fp, const VALUE_PAIR *vp)
 {
 	for (; vp; vp = vp->next) {
 		fprintf(fp, "\t");

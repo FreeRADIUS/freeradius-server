@@ -131,7 +131,7 @@ int rad_unlockfd(int fd, int lock_len)
 /*
  *	Return an interface-id in standard colon notation
  */
-char *ifid_ntoa(char *buffer, size_t size, uint8_t *ifid)
+char *ifid_ntoa(char *buffer, size_t size, const uint8_t *ifid)
 {
 	snprintf(buffer, size, "%x:%x:%x:%x",
 		 (ifid[0] << 8) + ifid[1], (ifid[2] << 8) + ifid[3],

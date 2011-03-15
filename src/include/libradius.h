@@ -255,12 +255,12 @@ int		fr_utf8_char(const uint8_t *str);
 size_t		fr_print_string(const char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
-				VALUE_PAIR *vp, int delimitst);
+				const VALUE_PAIR *vp, int delimitst);
 const char	*vp_print_name(char *buffer, size_t bufsize,
 			       unsigned int attr, unsigned int vendor);
-int     	vp_prints(char *out, size_t outlen, VALUE_PAIR *vp);
-void		vp_print(FILE *, VALUE_PAIR *);
-void		vp_printlist(FILE *, VALUE_PAIR *);
+int     	vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp);
+void		vp_print(FILE *, const VALUE_PAIR *);
+void		vp_printlist(FILE *, const VALUE_PAIR *);
 #define		fprint_attr_val vp_print
 
 /*
@@ -456,7 +456,7 @@ void		fr_printf_log(const char *, ...)
  *	Several handy miscellaneous functions.
  */
 const char *	ip_ntoa(char *, uint32_t);
-char		*ifid_ntoa(char *buffer, size_t size, uint8_t *ifid);
+char		*ifid_ntoa(char *buffer, size_t size, const uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
@@ -485,7 +485,7 @@ int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 #ifdef ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(VALUE_PAIR *vp, char *buffer, size_t len);
+void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len);
 #endif /*ASCEND_BINARY*/
 
 /* random numbers in isaac.c */
