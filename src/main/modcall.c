@@ -850,24 +850,24 @@ static void dump_mc(modcallable *c, int indent)
 
 	if(c->type==MOD_SINGLE) {
 		modsingle *single = mod_callabletosingle(c);
-		RDEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
+		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->modinst->name);
 	} else {
 		modgroup *g = mod_callabletogroup(c);
 		modcallable *p;
-		RDEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
+		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 		      group_name[c->type]);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
 	}
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
-		RDEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
+		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
 		      fr_int2str(rcode_table, i, "??"),
 		      action2str(c->actions[i]));
 	}
 
-	RDEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
+	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
 }
 
 static void dump_tree(int comp, modcallable *c)
