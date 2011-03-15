@@ -1091,9 +1091,9 @@ int rad_vp2wimax(const RADIUS_PACKET *packet,
 	uint8_t *start = ptr;
 
 	/*
-	 *	Double-check for WiMAX
+	 *	Double-check for WiMAX format.
 	 */
-	if (vp->vendor != VENDORPEC_WIMAX) {
+	if (!vp->flags.wimax) {
 		fr_strerror_printf("rad_vp2wimax called for non-WIMAX VSA");
 		return -1;
 	}
@@ -1267,9 +1267,9 @@ int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	uint32_t lvalue;
 
 	/*
-	 *	Double-check for WiMAX
+	 *	Double-check for WiMAX format.
 	 */
-	if (vp->vendor == VENDORPEC_WIMAX) {
+	if (vp->flags.wimax) {
 		return rad_vp2wimax(packet, original, secret, vp,
 				    ptr, room);
 	}
@@ -1356,7 +1356,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				       start, room);
 	}
 
-	if (vp->vendor == VENDORPEC_WIMAX) {
+	if (vp->flags.wimax) {
 		return rad_vp2wimax(packet, original, secret, vp,
 				    start, room);
 	}
@@ -3172,9 +3172,9 @@ ssize_t rad_attr2vp_raw(const RADIUS_PACKET *packet,
  *	0 for "no continuation"
  *	-1 on malformed packets (continuation followed by non-wimax, etc.)
  */
-static ssize_t wimax_attrlen(const uint8_t *start, const uint8_t *end)
+static ssize_t wimax_attrlen(uint32_t vendor,
+			     const uint8_t *start, const uint8_t *end)
 {
-	uint32_t lvalue = htonl(VENDORPEC_WIMAX);
 	ssize_t total;
 	const uint8_t *data = start;
 
@@ -3188,7 +3188,7 @@ static ssize_t wimax_attrlen(const uint8_t *start, const uint8_t *end)
 
 		if ((data[0] != PW_VENDOR_SPECIFIC) ||
 		    (data[1] < 9) ||
-		    (memcmp(data + 2, &lvalue, 4) != 0) ||
+		    (memcmp(data + 2, &vendor, 4) != 0) ||
 		    (data[6] != start[6]) ||
 		    ((data[7] + 6) != data[1])) return -1;
 
@@ -3268,11 +3268,16 @@ ssize_t rad_attr2vp_wimax(const RADIUS_PACKET *packet,
 	lvalue = ntohl(lvalue);
 
 	/*
-	 *	Not WiMAX
+	 *	Not WiMAX format.
 	 */
 	if (lvalue != VENDORPEC_WIMAX) {
-		fr_strerror_printf("rad_attr2vp_wimax: Not a WiMAX attribute");
-		return -1;
+		DICT_VENDOR *dv;
+
+		dv = dict_vendorbyvalue(lvalue);
+		if (!dv || !dv->flags) {
+			fr_strerror_printf("rad_attr2vp_wimax: Not a WiMAX attribute");
+			return -1;
+		}
 	}
 
 	/*
@@ -3290,7 +3295,7 @@ ssize_t rad_attr2vp_wimax(const RADIUS_PACKET *packet,
 	 *	Attribute is continued.  Do some more work.
 	 */
 	if (data[8] != 0) {
-		my_len = wimax_attrlen(data, data + length);
+		my_len = wimax_attrlen(htonl(lvalue), data, data + length);
 		if (my_len < 0) {
 			return rad_attr2vp_raw(packet, original, secret,
 					       data, length, pvp);
@@ -3298,7 +3303,7 @@ ssize_t rad_attr2vp_wimax(const RADIUS_PACKET *packet,
 
 		return data2vp_continued(packet, original, secret,
 					 data, length, pvp, 0,
-					 data[6], VENDORPEC_WIMAX,
+					 data[6], lvalue,
 					 9, 9, my_len);
 	}
 
@@ -3349,6 +3354,7 @@ ssize_t rad_attr2vp_vsa(const RADIUS_PACKET *packet,
 	 *	WiMAX gets its own set of magic.
 	 */
 	if (lvalue == VENDORPEC_WIMAX) {
+	wimax:
 		return rad_attr2vp_wimax(packet, original, secret,
 					 data, length, pvp);
 	}
@@ -3358,6 +3364,8 @@ ssize_t rad_attr2vp_vsa(const RADIUS_PACKET *packet,
 	if (dv) {
 		dv_type = dv->type;
 		dv_length = dv->length;
+
+		if (dv->flags) goto wimax;
 	}
 
 	/*
