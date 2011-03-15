@@ -2576,7 +2576,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 	discard:
 #endif
 		radlog(L_ERR, "Discarding duplicate request from "
-		       "client %s port %d - ID: %d due to unfinished request %u",
+		       "client %s port %d - ID: %u due to unfinished request %u",
 		       client->shortname,
 		       request->packet->src_port,request->packet->id,
 		       request->number);
