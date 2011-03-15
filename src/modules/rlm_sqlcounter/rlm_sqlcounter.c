@@ -349,10 +349,12 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 				q += strlen(q);
 				break;
 			case 'k': /* Key Name */
+			  	DEBUG2("WARNING: Please replace '%%k' with '${key}'")
 				strlcpy(q, data->key_name, freespace);
 				q += strlen(q);
 				break;
 			case 'S': /* SQL module instance */
+			  	DEBUG2("WARNING: Please replace '%%S' with '${sqlmod-inst}'")
 				strlcpy(q, data->sqlmod_inst, freespace);
 				q += strlen(q);
 				break;
