@@ -107,7 +107,6 @@ typedef struct attr_flags {
 	unsigned int		has_value_alias : 1; /* has a value alias */
 	unsigned int		has_tlv : 1; /* has sub attributes */
 	unsigned int		is_tlv : 1; /* is a sub attribute */
-	unsigned int		encoded : 1; /* has been put into packet */
 	unsigned int		extended : 1; /* extended attribute */
 	unsigned int		extended_flags : 1; /* with flag */
 	unsigned int		evs : 1;	    /* extended VSA */
@@ -384,23 +383,23 @@ ssize_t		rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 int rad_vp2extended(const RADIUS_PACKET *packet,
 		    const RADIUS_PACKET *original,
-		    const char *secret, VALUE_PAIR *vp,
+		    const char *secret, const VALUE_PAIR **pvp,
 		    uint8_t *ptr, size_t room);
 int rad_vp2wimax(const RADIUS_PACKET *packet,
 		 const RADIUS_PACKET *original,
-		 const char *secret, VALUE_PAIR *vp,
+		 const char *secret, const VALUE_PAIR **pvp,
 		 uint8_t *ptr, size_t room);
 int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-	       const char *secret, VALUE_PAIR *vp, uint8_t *start,
+	       const char *secret, const VALUE_PAIR **pvp, uint8_t *start,
 	       size_t room);
 int rad_vp2rfc(const RADIUS_PACKET *packet,
 	       const RADIUS_PACKET *original,
-	       const char *secret, VALUE_PAIR *vp,
+	       const char *secret, const VALUE_PAIR **pvp,
 	       uint8_t *ptr, size_t room);
 
 int		rad_vp2attr(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original, const char *secret,
-			    VALUE_PAIR *vp, uint8_t *ptr, size_t room);
+			    const VALUE_PAIR **pvp, uint8_t *ptr, size_t room);
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(DICT_ATTR *da);

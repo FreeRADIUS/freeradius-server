@@ -658,6 +658,8 @@ static int do_next_tlv(const VALUE_PAIR *vp, int nest)
 
 	if (nest > fr_attr_max_tlv) return 0;
 
+	if (!vp) return 0;
+
 	/*
 	 *	Keep encoding TLVs which have the same scope.
 	 *	e.g. two attributes of:
@@ -677,12 +679,6 @@ static int do_next_tlv(const VALUE_PAIR *vp, int nest)
 	if (vp->vendor != vp->next->vendor) return 0;
 
 	/*
-	 *	The next one has already been done.  Maybe by
-	 *	another level of recursion.  Skip it.
-	 */
-	if (vp->next->flags.encoded) return 0;
-
-	/*
 	 *	In a different TLV space, skip it.
 	 */
 	tlv1 = vp->attribute;
@@ -699,18 +695,24 @@ static int do_next_tlv(const VALUE_PAIR *vp, int nest)
 
 static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
-			   const char *secret, int nest, VALUE_PAIR *vps,
+			   const char *secret, int nest,
+			   const VALUE_PAIR **pvp,
 			   uint8_t *start, size_t room);
+
+static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
+			   const RADIUS_PACKET *original,
+			   const char *secret, const VALUE_PAIR **pvp,
+			   unsigned int attribute, uint8_t *ptr, size_t room);
 
 static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original,
-			    const char *secret, int nest, VALUE_PAIR *vps,
+			    const char *secret, int nest,
+			    const VALUE_PAIR **pvp,
 			    uint8_t *start, size_t room)
 {
 	ssize_t len;
 	uint8_t *ptr = start;
 	uint8_t *end = start + room;
-	VALUE_PAIR *vp = vps;
 
 #ifndef NDEBUG
 	if (nest > fr_attr_max_tlv) {
@@ -719,23 +721,18 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 	}
 #endif
 
-	while (1) {
-		ptr[0] = (vp->attribute >> fr_attr_shift[nest]) & fr_attr_mask[nest];
-		ptr[1] = 2;
-		
-		len = vp2data_any(packet, original, secret, nest + 1, vp,
-				  ptr + ptr[1], end - ptr);
+	while (*pvp) {
+		len = vp2attr_rfc(packet, original, secret, pvp,
+				  ((*pvp)->attribute >> fr_attr_shift[nest]) & fr_attr_mask[nest],
+				  ptr, end - ptr);
 		if (len < 0) {
-			if (vp != vps) break;
+			if (ptr > start) break;
 			return len;
 		}
 		
-		ptr[1] += len;
 		ptr += ptr[1];
-		vp->flags.encoded = 1;
 		
-		if (!do_next_tlv(vp, nest)) break;
-		vp = vp->next;
+		if (!do_next_tlv(*pvp, nest)) break;
 	}
 	
 	return ptr - start;
@@ -747,7 +744,8 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
  */
 static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
-			   const char *secret, int nest, VALUE_PAIR *vp,
+			   const char *secret, int nest,
+			   const VALUE_PAIR **pvp,
 			   uint8_t *start, size_t room)
 {
 	uint32_t lvalue;
@@ -755,6 +753,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	const uint8_t *data;
 	uint8_t *ptr = start;
 	uint8_t	array[4];
+	const VALUE_PAIR *vp = *pvp;
 
 	/*
 	 *	See if we need to encode a TLV.  The low portion of
@@ -766,7 +765,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	 */
 	if ((nest > 0) && (nest <= fr_attr_max_tlv) &&
 	    ((vp->attribute >> fr_attr_shift[nest]) != 0)) {
-		return vp2data_tlvs(packet, original, secret, nest, vp,
+		return vp2data_tlvs(packet, original, secret, nest, pvp,
 				    start, room);
 	}
 
@@ -923,7 +922,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 		break;
 	} /* switch over encryption flags */
 
-	vp->flags.encoded = 1;
+	*pvp = vp->next;
 	return len + (ptr - start);;
 }
 
@@ -992,13 +991,14 @@ static ssize_t attr_shift(const uint8_t *start, const uint8_t *end,
  */
 int rad_vp2extended(const RADIUS_PACKET *packet,
 		    const RADIUS_PACKET *original,
-		    const char *secret, VALUE_PAIR *vp,
+		    const char *secret, const VALUE_PAIR **pvp,
 		    uint8_t *ptr, size_t room)
 {
 	int len;
 	int hdr_len;
 	int nest = 2;
 	uint8_t *start = ptr;
+	const VALUE_PAIR *vp = *pvp;
 
 	if (vp->vendor < VENDORPEC_EXTENDED) {
 		fr_strerror_printf("rad_vp2extended called for non-extended attribute");
@@ -1058,7 +1058,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 	hdr_len = ptr[1];
 
 	len = vp2data_any(packet, original, secret, nest,
-			  vp, ptr + ptr[1], room - hdr_len);
+			  pvp, ptr + ptr[1], room - hdr_len);
 	if (len < 0) return len;
 
 	/*
@@ -1072,7 +1072,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 	}
 
 	ptr[1] += len;
-
+	
 	return (ptr + ptr[1]) - start;
 }
 
@@ -1082,13 +1082,14 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
  */
 int rad_vp2wimax(const RADIUS_PACKET *packet,
 		 const RADIUS_PACKET *original,
-		 const char *secret, VALUE_PAIR *vp,
+		 const char *secret, const VALUE_PAIR **pvp,
 		 uint8_t *ptr, size_t room)
 {
 	int len;
 	uint32_t lvalue;
 	int hdr_len;
 	uint8_t *start = ptr;
+	const VALUE_PAIR *vp = *pvp;
 
 	/*
 	 *	Double-check for WiMAX format.
@@ -1118,7 +1119,7 @@ int rad_vp2wimax(const RADIUS_PACKET *packet,
 
 	hdr_len = 9;
 
-	len = vp2data_any(packet, original, secret, 1, vp, ptr + ptr[1],
+	len = vp2data_any(packet, original, secret, 1, pvp, ptr + ptr[1],
 			  room - hdr_len);
 	if (len <= 0) return len;
 
@@ -1146,7 +1147,7 @@ int rad_vp2wimax(const RADIUS_PACKET *packet,
  */
 static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
-			   const char *secret, VALUE_PAIR *vp,
+			   const char *secret, const VALUE_PAIR **pvp,
 			   unsigned int attribute, uint8_t *ptr, size_t room)
 {
 	ssize_t len;
@@ -1158,7 +1159,7 @@ static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
 
 	if (room > ((unsigned) 255 - ptr[1])) room = 255 - ptr[1];
 
-	len = vp2data_any(packet, original, secret, 0, vp, ptr + ptr[1], room);
+	len = vp2data_any(packet, original, secret, 0, pvp, ptr + ptr[1], room);
 	if (len < 0) return len;
 
 	ptr[1] += len;
@@ -1173,12 +1174,13 @@ static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
  */
 static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 			   const RADIUS_PACKET *original,
-			   const char *secret, VALUE_PAIR *vp,
+			   const char *secret, const VALUE_PAIR **pvp,
 			   unsigned int attribute, unsigned int vendor,
 			   uint8_t *ptr, size_t room)
 {
 	ssize_t len;
 	DICT_VENDOR *dv;
+	const VALUE_PAIR *vp = *pvp;
 
 	/*
 	 *	Unknown vendor: RFC format.
@@ -1190,13 +1192,13 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 	if (!dv ||
 	    (!vp->flags.is_tlv && (dv->type == 1) && (dv->length == 1))) {
 		VP_TRACE("Encoding RFC %u.%u\n", vendor, attribute);
-		return vp2attr_rfc(packet, original, secret, vp,
+		return vp2attr_rfc(packet, original, secret, pvp,
 				   attribute, ptr, room);
 	}
 
 	if (vp->flags.is_tlv) {
 		VP_TRACE("Encoding TLV %u.%u\n", vendor, attribute);
-		return vp2data_tlvs(packet, original, secret, 0, vp,
+		return vp2data_tlvs(packet, original, secret, 0, pvp,
 				    ptr, room);
 	}
 
@@ -1246,7 +1248,7 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 		room = 255 - (dv->type + dv->length);
 	}
 
-	len = vp2data_any(packet, original, secret, 0, vp,
+	len = vp2data_any(packet, original, secret, 0, pvp,
 			  ptr + dv->type + dv->length, room);
 	if (len < 0) return len;
 
@@ -1260,17 +1262,18 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
  *	Encode a Vendor-Specific attribute.
  */
 int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		const char *secret, VALUE_PAIR *vp, uint8_t *ptr,
+		const char *secret, const VALUE_PAIR **pvp, uint8_t *ptr,
 		size_t room)
 {
 	ssize_t len;
 	uint32_t lvalue;
+	const VALUE_PAIR *vp = *pvp;
 
 	/*
 	 *	Double-check for WiMAX format.
 	 */
 	if (vp->flags.wimax) {
-		return rad_vp2wimax(packet, original, secret, vp,
+		return rad_vp2wimax(packet, original, secret, pvp,
 				    ptr, room);
 	}
 
@@ -1295,7 +1298,7 @@ int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 	if (room > ((unsigned) 255 - ptr[1])) room = 255 - ptr[1];
 
-	len = vp2attr_vsa(packet, original, secret, vp,
+	len = vp2attr_vsa(packet, original, secret, pvp,
 			  vp->attribute, vp->vendor,
 			  ptr + ptr[1], room);
 	if (len < 0) return len;
@@ -1311,9 +1314,11 @@ int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
  */
 int rad_vp2rfc(const RADIUS_PACKET *packet,
 	       const RADIUS_PACKET *original,
-	       const char *secret, VALUE_PAIR *vp,
+	       const char *secret, const VALUE_PAIR **pvp,
 	       uint8_t *ptr, size_t room)
 {
+	const VALUE_PAIR *vp = *pvp;
+
 	if (vp->vendor != 0) {
 		fr_strerror_printf("rad_vp2rfc called with VSA");
 		return -1;
@@ -1329,7 +1334,7 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 		return 0;
 	}
 
-	return vp2attr_rfc(packet, original, secret, vp, vp->attribute,
+	return vp2attr_rfc(packet, original, secret, pvp, vp->attribute,
 			   ptr, room);
 }
 
@@ -1338,30 +1343,52 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
  *	Parse a data structure into a RADIUS attribute.
  */
 int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		const char *secret, VALUE_PAIR *vp, uint8_t *start,
+		const char *secret, const VALUE_PAIR **pvp, uint8_t *start,
 		size_t room)
 {
+	const VALUE_PAIR *vp;
+
+	if (!pvp || !*pvp || !start || (room <= 2)) return -1;
+
+	vp = *pvp;
+
 	/*
 	 *	RFC format attributes take the fast path.
 	 */
 	if (vp->vendor == 0) {
 		if (vp->attribute > 255) return 0;
 
-		return rad_vp2rfc(packet, original, secret, vp,
+		/*
+		 *	Message-Authenticator is hard-coded.
+		 */
+		if (vp->attribute == PW_MESSAGE_AUTHENTICATOR) {
+			if (room < 18) return -1;
+			
+			fprintf(stderr, "M-A!\n");
+			if (room < 16) return -1;
+			
+			start[0] = PW_MESSAGE_AUTHENTICATOR;
+			start[1] = 18;
+			memset(start + 2, 0, 16);
+			*pvp = (*pvp)->next;
+			return 18;
+		}
+
+		return rad_vp2rfc(packet, original, secret, pvp,
 				  start, room);
 	}
 
 	if (vp->vendor > FR_MAX_VENDOR) {
-		return rad_vp2extended(packet, original, secret, vp,
+		return rad_vp2extended(packet, original, secret, pvp,
 				       start, room);
 	}
 
 	if (vp->flags.wimax) {
-		return rad_vp2wimax(packet, original, secret, vp,
+		return rad_vp2wimax(packet, original, secret, pvp,
 				    start, room);
 	}
 
-	return rad_vp2vsa(packet, original, secret, vp,
+	return rad_vp2vsa(packet, original, secret, pvp,
 			  start, room);
 }
 
@@ -1376,7 +1403,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	uint8_t	        *ptr;
 	uint16_t	total_length;
 	int		len;
-	VALUE_PAIR	*reply;
+	const VALUE_PAIR	*reply;
 	const char	*what;
 	char		ip_buffer[128];
 
@@ -1458,7 +1485,8 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	/*
 	 *	Loop over the reply attributes for the packet.
 	 */
-	for (reply = packet->vps; reply; reply = reply->next) {
+	reply = packet->vps;
+	while (reply) {
 		/*
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
@@ -1474,9 +1502,11 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			if (reply->attribute == PW_RAW_ATTRIBUTE) {
 				memcpy(ptr, reply->vp_octets, reply->length);
 				len = reply->length;
+				reply = reply->next;
 				goto next;
 			}
 #endif
+			reply = reply->next;
 			continue;
 		}
 
@@ -1485,9 +1515,6 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	length and initial value.
 		 */
 		if (reply->attribute == PW_MESSAGE_AUTHENTICATOR) {
-			reply->length = AUTH_VECTOR_LEN;
-			memset(reply->vp_strvalue, 0, AUTH_VECTOR_LEN);
-
 			/*
 			 *	Cache the offset to the
 			 *	Message-Authenticator
@@ -1502,14 +1529,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		debug_pair(reply);
 
-		/*
-		 *	Skip attributes that have already been
-		 *	encoded.  This can be done when the "vp2attr"
-		 *	function sees multiple contiguous TLVs.
-		 */
-		if (reply->flags.encoded) continue;
-
-		len = rad_vp2attr(packet, original, secret, reply, ptr,
+		len = rad_vp2attr(packet, original, secret, &reply, ptr,
 				  ((uint8_t *) data) + sizeof(data) - ptr);
 		if (len < 0) return -1;
 
@@ -1523,7 +1543,9 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			break;
 		}
 
-	next:
+#ifndef NDEBUG
+	next:			/* Used only for Raw-Attribute */
+#endif
 		ptr += len;
 		total_length += len;
 	} /* done looping over all attributes */

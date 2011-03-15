@@ -572,10 +572,9 @@ static void process_file(const char *filename)
 			}
 
 			attr = data;
-			for (vp = head; vp != NULL; vp = vp->next) {
-				if (vp->flags.encoded) continue;
-
-				len = rad_vp2attr(NULL, NULL, NULL, vp,
+			vp = head;
+			while (vp) {
+			  len = rad_vp2attr(NULL, NULL, NULL, (const VALUE_PAIR **) &vp,
 						  attr, sizeof(data) - (attr - data));
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
