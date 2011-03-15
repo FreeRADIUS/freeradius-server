@@ -1477,7 +1477,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	/*
 	 *	Enforce a maximum value on the attribute number.
 	 */
-	if (attr >= (1 << (dv_type << 3))) goto invalid;
+	if (attr >= (unsigned) (1 << (dv_type << 3))) goto invalid;
 
 	if (*p == '.') {
 		if (!dict_str2oid(p + 1, &attr, vendor, 1)) {
