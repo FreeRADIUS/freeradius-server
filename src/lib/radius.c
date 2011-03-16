@@ -1075,7 +1075,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 		evs[4] = vp->attribute & 0xff;		
 
 		ptr[1] += 5;
-		nest = 1;
+		nest = 0;
 	}
 	hdr_len = ptr[1];
 

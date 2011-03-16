@@ -559,11 +559,11 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	 *	Additional checks for extended attributes.
 	 */
 	if (flags.extended || flags.extended_flags || flags.evs) {
-		if (vendor != 0) {
+		if (vendor && (vendor < FR_MAX_VENDOR)) {
 			fr_strerror_printf("dict_addattr: VSAs cannot use the \"extended\" or \"evs\" attribute formats.");
 			return -1;
 		}
-		vendor = VENDORPEC_EXTENDED;
+		if (!vendor) vendor = VENDORPEC_EXTENDED;
 
 		if (flags.has_tag
 #ifdef WITH_DHCP
@@ -1347,7 +1347,7 @@ static int process_attribute(const char* fn, const int line,
 	}
 
 	if (type == PW_TYPE_TLV) {
-		if (vendor
+		if (vendor && (vendor < FR_MAX_VENDOR)
 #ifdef WITH_DHCP
 		    && (vendor != DHCP_MAGIC_VENDOR)
 #endif
