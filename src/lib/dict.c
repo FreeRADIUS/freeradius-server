@@ -956,7 +956,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
 			da = dict_attrbyvalue(*pvalue, VENDORPEC_EXTENDED);
 		}
 		if (!da) {
-			fr_strerror_printf("No such attribute");
+			fr_strerror_printf("Parent attribute is undefined.");
 			return 0;
 		}
 	
@@ -985,7 +985,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
 		return dict_str2oid(p + 1, pvalue, vendor, tlv_depth + 1);
 	}
 
-	return 1;
+	return tlv_depth;
 }
 
 
@@ -996,6 +996,7 @@ static int process_attribute(const char* fn, const int line,
 			     const unsigned int block_vendor, DICT_ATTR *block_tlv,
 			     int tlv_depth, char **argv, int argc)
 {
+	int		oid = 0;
 	unsigned int    vendor = 0;
 	unsigned int	value;
 	int		type;
@@ -1021,7 +1022,10 @@ static int process_attribute(const char* fn, const int line,
 	 *	Look for extended attributes before doing anything else.
 	 */
 	p = strchr(argv[1], '.');
-	if (p) *p = '\0';
+	if (p) {
+		*p = '\0';
+		oid = 1;
+	}
 
 	/*
 	 *	Validate all entries
@@ -1042,6 +1046,7 @@ static int process_attribute(const char* fn, const int line,
 		 *	Parse NUM.NUM.NUM.NUM
 		 */
 	} else {
+		int my_depth;
 		DICT_ATTR *da;
 
 		*p = '.';	/* reset for later printing */
@@ -1093,7 +1098,8 @@ static int process_attribute(const char* fn, const int line,
 			return -1;
 		}
 
-		if (!dict_str2oid(p + 1, &value, block_vendor, tlv_depth + 1)) {
+		my_depth = dict_str2oid(p + 1, &value, block_vendor, tlv_depth + 1);
+		if (!my_depth) {
 			char buffer[256];
 
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1102,6 +1108,23 @@ static int process_attribute(const char* fn, const int line,
 			return -1;
 		}
 
+#if 0
+		/*
+		 *	Look up the REAL parent TLV.
+		 */
+		if (my_depth > 1) {
+			unsigned int parent = value;
+
+			parent &= ~(fr_attr_mask[my_depth] << fr_attr_shift[my_depth]);
+
+			da = dict_attrbyvalue(parent, block_);
+			if (!da) {
+				fr_strerror_printf("dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
+				return -1;
+			}
+		}
+#endif
+		
 		/*
 		 *	Set which type of attribute this is.
 		 */
@@ -1273,11 +1296,25 @@ static int process_attribute(const char* fn, const int line,
 				 *	The only thing is the vendor name,
 				 *	and it's a known name: allow it.
 				 */
-			} else if ((key == argv[3]) && !next && !block_vendor &&
-				   ((vendor = dict_vendorbyname(key)) !=0)) {
+			} else if ((key == argv[3]) && !next) {
+				if (oid) {
+					fr_strerror_printf( "dict_init: %s[%d] New-style attributes cannot use a vendor flag.",
+							    fn, line);
+					return -1;
+				}
+
+				if (block_vendor) {
+					fr_strerror_printf( "dict_init: %s[%d] Vendor flag inside of \"BEGIN-VENDOR\" is not allowed.",
+							    fn, line);
+					return -1;
+				}
+
+				vendor = dict_vendorbyname(key);
+				if (!vendor) goto unknown;
 				break;
 
 			} else {
+			unknown:
 				fr_strerror_printf( "dict_init: %s[%d]: unknown option \"%s\"",
 					    fn, line, key);
 				return -1;
