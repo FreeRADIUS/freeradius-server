@@ -1048,6 +1048,34 @@ static int process_attribute(const char* fn, const int line,
 
 		if (block_vendor) {
 			da = dict_attrbyvalue(value, block_vendor);
+		} else if (value == PW_VENDOR_SPECIFIC) {
+			char *q;
+			const DICT_VENDOR *dv;
+
+			p++;
+			q = strchr(p, '.');
+			if (!q) {
+			invalid:
+				fr_strerror_printf("dict_init: %s[%d]: Invalid attribute identifier", fn, line);
+				return -1;
+			}
+			*q = '\0';
+
+			if (!sscanf_i(p, &vendor)) {
+				*q = '.';
+				goto invalid;
+			}
+			*(q++) = '.';
+			p = q;
+			dv = dict_vendorbyvalue(vendor);
+			if (!dv) {
+				fr_strerror_printf("dict_init: %s[%d]: Unknown vendor \"%u\" in attribute identifier", fn, line, vendor);
+				return -1;
+			}
+
+			argv[1] = p;
+			return process_attribute(fn, line, vendor, NULL, 0,
+						 argv, argc);
 		} else {
 			da = dict_attrbyvalue(value, VENDORPEC_EXTENDED);
 		}
