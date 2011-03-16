@@ -445,7 +445,7 @@ const char *vp_print_name(char *buffer, size_t bufsize,
 	p += len;
 	bufsize -= len;
 
-	if (vendor) {
+	if (vendor && (vendor != VENDORPEC_EXTENDED)) {
 		DICT_VENDOR *dv;
 
 		if (vendor >= FR_MAX_VENDOR) {
