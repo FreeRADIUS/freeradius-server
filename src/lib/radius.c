@@ -702,6 +702,11 @@ static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
 			   const char *secret, const VALUE_PAIR **pvp,
 			   unsigned int attribute, uint8_t *ptr, size_t room);
 
+/*
+ *	This is really a sub-function of vp2data_any.  It encodes
+ *	the *data* portion of the TLV, and assumes that the encapsulating
+ *	attribute has already been encoded.
+ */
 static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 			    const RADIUS_PACKET *original,
 			    const char *secret, int nest,
@@ -709,8 +714,10 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 			    uint8_t *start, size_t room)
 {
 	ssize_t len;
+	size_t my_room;
 	uint8_t *ptr = start;
-	uint8_t *end = start + room;
+	const VALUE_PAIR *old_vp;
+	const VALUE_PAIR *vp = *pvp;
 
 #ifndef NDEBUG
 	if (nest > fr_attr_max_tlv) {
@@ -719,22 +726,35 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 	}
 #endif
 
-	while (*pvp) {
-		len = vp2attr_rfc(packet, original, secret, pvp,
-				  ((*pvp)->attribute >> fr_attr_shift[nest]) & fr_attr_mask[nest],
-				  ptr, end - ptr);
-		if (len < 0) {
-			if (ptr > start) break;
-			return len;
-		}
+	while (vp) {
+		if (room < 2) return ptr - start;
 		
+		old_vp = vp;
+		ptr[0] = (vp->attribute >> fr_attr_shift[nest]) & fr_attr_mask[nest];
+		ptr[1] = 2;
+		
+		VP_TRACE("TLV encoded %s %u\n", vp->name, start[0]);
+		
+		my_room = room;
+		if (room > 255) my_room = 255;
+
+		len = vp2data_any(packet, original, secret, nest,
+				  &vp, ptr + 2, my_room - 2);
+		if (len < 0) return len;
+		if (len == 0) return ptr - start;
+		/* len can NEVER be more than 253 */
+		
+		ptr[1] += len;
+		room -= ptr[1];
 		ptr += ptr[1];
+		*pvp = vp;
 		
-		if (!do_next_tlv(*pvp, nest)) break;
+		if (!do_next_tlv(old_vp, nest)) break;
 	}
-	
+
 	return ptr - start;
 }
+
 
 /*
  *	Encodes the data portion of an attribute.
@@ -761,11 +781,14 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	 *
 	 *	If we cared about the stack, we could unroll the loop.
 	 */
-	if ((nest > 0) && (nest <= fr_attr_max_tlv) &&
-	    ((vp->attribute >> fr_attr_shift[nest]) != 0)) {
-		return vp2data_tlvs(packet, original, secret, nest, pvp,
+	VP_TRACE("vp2data_any: %u attr %u -> %u\n",
+		 nest, vp->attribute, vp->attribute >> fr_attr_shift[nest + 1]);
+	if ((nest < fr_attr_max_tlv) &&
+	    ((vp->attribute >> fr_attr_shift[nest + 1]) != 0)) {
+		return vp2data_tlvs(packet, original, secret, nest + 1, pvp,
 				    start, room);
 	}
+	VP_TRACE("vp2data_any: Encoding %s\n", vp->name);
 
 	/*
 	 *	Set up the default sources for the data.
@@ -994,10 +1017,11 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 {
 	int len;
 	int hdr_len;
-	int nest = 2;
+	int nest = 1;
 	uint8_t *start = ptr;
 	const VALUE_PAIR *vp = *pvp;
 
+	VP_TRACE("rad_vp2extended %s\n", vp->name);
 	if (vp->vendor < VENDORPEC_EXTENDED) {
 		fr_strerror_printf("rad_vp2extended called for non-extended attribute");
 		return -1;
@@ -1117,7 +1141,7 @@ int rad_vp2wimax(const RADIUS_PACKET *packet,
 
 	hdr_len = 9;
 
-	len = vp2data_any(packet, original, secret, 1, pvp, ptr + ptr[1],
+	len = vp2data_any(packet, original, secret, 0, pvp, ptr + ptr[1],
 			  room - hdr_len);
 	if (len <= 0) return len;
 
@@ -1192,12 +1216,6 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 		VP_TRACE("Encoding RFC %u.%u\n", vendor, attribute);
 		return vp2attr_rfc(packet, original, secret, pvp,
 				   attribute, ptr, room);
-	}
-
-	if (vp->flags.is_tlv) {
-		VP_TRACE("Encoding TLV %u.%u\n", vendor, attribute);
-		return vp2data_tlvs(packet, original, secret, 0, pvp,
-				    ptr, room);
 	}
 
 	switch (dv->type) {
@@ -1361,9 +1379,6 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if (vp->attribute == PW_MESSAGE_AUTHENTICATOR) {
 			if (room < 18) return -1;
-			
-			fprintf(stderr, "M-A!\n");
-			if (room < 16) return -1;
 			
 			start[0] = PW_MESSAGE_AUTHENTICATOR;
 			start[1] = 18;
