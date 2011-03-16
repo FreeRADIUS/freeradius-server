@@ -285,6 +285,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 		pairfree(&packet->vps);
 	}
 	printf("\n");
+	if (fr_debug_flag > 2) rad_print_hex(packet);
 	fflush(stdout);
 
  check_filter:

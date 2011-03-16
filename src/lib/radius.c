@@ -147,8 +147,7 @@ void fr_printf_log(const char *fmt, ...)
 	return;
 }
 
-#if 0
-static void print_hex(RADIUS_PACKET *packet)
+void rad_print_hex(RADIUS_PACKET *packet)
 {
 	int i;
 
@@ -208,7 +207,6 @@ static void print_hex(RADIUS_PACKET *packet)
 	}
 	fflush(stdout);
 }
-#endif
 
 /*
  *	Wrapper for sendto which handles sendfromto, IPv6, and all
