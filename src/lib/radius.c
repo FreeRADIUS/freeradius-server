@@ -3401,13 +3401,15 @@ ssize_t rad_attr2vp_vsa(const RADIUS_PACKET *packet,
 			     data + 6, data[1] - 6, pvp);
 	if (my_len < 0) return my_len;
 
-#ifndef NDEBUG
+	/*
+	 *	Incomplete decode means that something is wrong
+	 *	with the attribute.  Back up, and make it "raw".
+	 */
 	if (my_len != (data[1] - 6)) {
 		pairfree(pvp);
-		fr_strerror_printf("rad_attr2vp_vsa: Incomplete decode");
-		return -1;
+		return rad_attr2vp_raw(packet, original, secret,
+				       data, length, pvp);
 	}
-#endif
 
 	return data[1];
 }
