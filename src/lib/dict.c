@@ -1108,7 +1108,6 @@ static int process_attribute(const char* fn, const int line,
 			return -1;
 		}
 
-#if 0
 		/*
 		 *	Look up the REAL parent TLV.
 		 */
@@ -1117,13 +1116,12 @@ static int process_attribute(const char* fn, const int line,
 
 			parent &= ~(fr_attr_mask[my_depth] << fr_attr_shift[my_depth]);
 
-			da = dict_attrbyvalue(parent, block_);
+			da = dict_attrbyvalue(parent, da->vendor);
 			if (!da) {
 				fr_strerror_printf("dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
 				return -1;
 			}
 		}
-#endif
 		
 		/*
 		 *	Set which type of attribute this is.

@@ -783,7 +783,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	 */
 	VP_TRACE("vp2data_any: %u attr %u -> %u\n",
 		 nest, vp->attribute, vp->attribute >> fr_attr_shift[nest + 1]);
-	if ((nest < fr_attr_max_tlv) &&
+	if (vp->flags.is_tlv && (nest < fr_attr_max_tlv) &&
 	    ((vp->attribute >> fr_attr_shift[nest + 1]) != 0)) {
 		return vp2data_tlvs(packet, original, secret, nest + 1, pvp,
 				    start, room);
