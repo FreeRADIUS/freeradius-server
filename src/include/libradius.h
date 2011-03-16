@@ -379,6 +379,7 @@ extern int	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
 extern const char *fr_packet_codes[FR_MAX_PACKET_CODE];
 extern FILE	*fr_log_fp;
+extern void rad_print_hex(RADIUS_PACKET *packet);
 void		fr_printf_log(const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))

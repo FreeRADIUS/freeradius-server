@@ -140,7 +140,7 @@ void fr_printf_log(const char *fmt, ...)
 	return;
 }
 
-static void print_hex(RADIUS_PACKET *packet)
+void rad_print_hex(RADIUS_PACKET *packet)
 {
 	int i;
 
