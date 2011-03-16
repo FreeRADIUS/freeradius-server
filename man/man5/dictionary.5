@@ -123,21 +123,25 @@ When the server receives an encoded value in a RADIUS packet, it looks
 up the value of that attribute by number in the dictionary, and uses
 the name found there for printing diagnostic and log messages.
 .TP 0.5i
-.B VENDOR vendor-name number [format=t,l]
+.B VENDOR vendor-name number [format=...]
 Define a Vendor Specific Attribute encapsulation for \fIvendor-name\fP
 to \fInumber\fP.  For a list of vendor names and numbers, see
 http://www.iana.org/enterprise-numbers.txt.
-.PP
+
 The "format=t,l" statement tells the server how many octets to use to
 encode/decode the vendor "type" and "length" fields in the attributes.
 The default is "format=1,1", which does not have to be specified.  For
 USR VSA's, the format is "format=4,0", for Lucent VSA's it's
 "format=2,1", and for Starent VSA's it's "format=2,2".
-.PP
+
 The supported values for the number of type octets (i.e. the first
 digit) are 1, 2, and 4.  The support values for the number of length
 octets (i.e. the second digit) are 0, 1, and 2.  Any combination of
 those values will work.
+
+You can also use "format=Extended-Vendor-Specific-1", through
+"format=Extended-Vendor-Specific-6".  These define VSAs in the
+"extended vendor-specific" space.
 .TP 0.5i
 .B BEGIN-VENDOR vendor-name
 Define the start of a block of Vendor-Specific attributes.  All of the
