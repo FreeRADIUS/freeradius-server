@@ -872,7 +872,7 @@ static void dump_mc(modcallable *c, int indent)
 
 static void dump_tree(int comp, modcallable *c)
 {
-	RDEBUG("[%s]", comp2str[comp]);
+	DEBUG("[%s]", comp2str[comp]);
 	dump_mc(c, 0);
 }
 #else
