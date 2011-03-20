@@ -547,7 +547,8 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 #endif
 		
 	default:
-		RDEBUG4(">>> NOT IMPLEMENTED %d", token);
+		DEBUG("ERROR: Comparison operator %s is not supported",
+		      fr_token_name(token));
 		result = FALSE;
 		break;
 	}
