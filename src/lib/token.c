@@ -283,3 +283,8 @@ const char *fr_int2str(const FR_NAME_NUMBER *table, int number,
 
 	return def;
 }
+
+const char *fr_token_name(int token)
+{
+	return fr_int2str(tokens, token, "???");
+}

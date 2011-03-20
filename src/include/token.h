@@ -79,6 +79,7 @@ int		getword (const char **ptr, char *buf, int buflen);
 int		getbareword (const char **ptr, char *buf, int buflen);
 FR_TOKEN	gettoken(const char **ptr, char *buf, int buflen);
 FR_TOKEN	getstring(const char **ptr, char *buf, int buflen);
+const char	*fr_token_name(int);
 
 #ifdef __cplusplus
 }
