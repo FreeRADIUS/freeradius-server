@@ -66,6 +66,8 @@ while (@ARGV) {
 	}
 	$blank = 0;
 
+	s/\s*$/\n/;
+
 	#
 	#  Remember the vendor
 	#
