@@ -1762,6 +1762,10 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		}
 	}
 
+#ifndef NDEBUG
+	if (fr_debug_flag > 3) rad_print_hex(packet);
+#endif
+
 	/*
 	 *	And send it on it's way.
 	 */
@@ -2371,6 +2375,10 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 		DEBUG(", id=%d, length=%d\n",
 		      packet->id, (int) packet->data_len);
 	}
+
+#ifndef NDEBUG
+	if (fr_debug_flag > 3) rad_print_hex(packet);
+#endif
 
 	return packet;
 }
