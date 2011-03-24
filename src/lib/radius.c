@@ -224,8 +224,6 @@ void rad_print_hex(RADIUS_PACKET *packet)
 
 			print_hex_data(ptr, attrlen, 3);
 
-			if ((attrlen & 0x0f) != 0x00) fprintf(fr_log_fp, "\n");
-
 			ptr += attrlen;
 			total -= attrlen;
 		}
@@ -745,6 +743,8 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 	const VALUE_PAIR *vp = *pvp;
 
 #ifndef NDEBUG
+	const VALUE_PAIR *svp = vp;
+
 	if (nest > fr_attr_max_tlv) {
 		fr_strerror_printf("vp2data_tlvs: attribute nesting overflow");
 		return -1;
@@ -785,6 +785,15 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 		if (!do_next_tlv(old_vp, nest)) break;
 		debug_pair(vp);
 	}
+
+#ifndef NDEBUG
+	if ((fr_debug_flag > 3) && fr_log_fp) {
+		DICT_ATTR *da;
+		
+		da = dict_attrbyvalue(svp->attribute & ((1 << fr_attr_shift[nest ]) - 1), svp->vendor);
+		if (da) fprintf(fr_log_fp, "\t%s = ...\n", da->name);
+	}
+#endif
 
 	return ptr - start;
 }
@@ -1129,6 +1138,34 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 
 	ptr[1] += len;
 	
+#ifndef NDEBUG
+	if ((fr_debug_flag > 3) && fr_log_fp) {
+		int jump = 3;
+
+		fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
+		if (!vp->flags.extended_flags) {
+			fprintf(fr_log_fp, "%02x  ", ptr[2]);
+			
+		} else {
+			fprintf(fr_log_fp, "%02x %02x  ", ptr[2], ptr[3]);
+			jump = 4;
+		}
+
+		if (vp->flags.evs) {
+			fprintf(fr_log_fp, "%02x%02x%02x%02x (%u)  %02x  ",
+				ptr[jump], ptr[jump + 1],
+				ptr[jump + 2], ptr[jump + 3],
+				((ptr[jump + 1] << 16) |
+				 (ptr[jump + 2] << 8) |
+				 ptr[jump + 3]),
+				ptr[jump + 4]);
+			jump += 5;
+		}
+
+		print_hex_data(ptr + jump, len, 3);
+	}
+#endif
+
 	return (ptr + ptr[1]) - start;
 }
 
@@ -1194,13 +1231,6 @@ int rad_vp2wimax(const RADIUS_PACKET *packet,
 
 #ifndef NDEBUG
 	if ((fr_debug_flag > 3) && fr_log_fp) {
-		DICT_ATTR *da;
-
-		da = dict_attrbyvalue(ptr[6], vp->vendor);
-		if (da && (da->type == PW_TYPE_TLV)) {
-			fprintf(fr_log_fp, "\t%s = ...\n", da->name);
-		}
-
 		fprintf(fr_log_fp, "\t\t%02x %02x  %02x%02x%02x%02x (%u)  %02x %02x %02x   ",
 		       ptr[0], ptr[1],
 		       ptr[2], ptr[3], ptr[4], ptr[5],
@@ -1288,25 +1318,15 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 		ptr[1] = (attribute >> 16) & 0xff;
 		ptr[2] = (attribute >> 8) & 0xff;
 		ptr[3] = attribute & 0xff;
-#ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) fprintf(fr_log_fp, "\t\t%02x%02x%02x%02x ",
-					      ptr[0], ptr[1], ptr[2], ptr[3]);
-#endif
 		break;
 
 	case 2:
 		ptr[0] = (attribute >> 8) & 0xff;
 		ptr[1] = attribute & 0xff;
-#ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) fprintf(fr_log_fp, "\t\t%02x%02x ", ptr[0], ptr[1]);
-#endif
 		break;
 
 	case 1:
 		ptr[0] = attribute & 0xff;
-#ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) fprintf(fr_log_fp, "\t\t%02x ", ptr[0]);
-#endif
 		break;
 	}
 
@@ -1322,18 +1342,10 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 	case 2:
 		ptr[dv->type] = 0;
 		ptr[dv->type + 1] = dv->type + 2;
-#ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) fprintf(fr_log_fp, "%02x%02x  ",
-					      ptr[dv->type],
-					      ptr[dv->type + 1]);
-#endif
 		break;
 
 	case 1:
-		ptr[dv->type] = dv->type;
-#ifndef NDEBUG
-		if ((fr_debug_flag > 3) && fr_log_fp) fprintf(fr_log_fp, "%02x  ", ptr[dv->type]);
-#endif
+		ptr[dv->type] = dv->type + 1;
 		break;
 
 	}
@@ -1350,6 +1362,47 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 
 #ifndef NDEBUG
 	if ((fr_debug_flag > 3) && fr_log_fp) {
+		switch (dv->type) {
+		default:
+			break;
+
+		case 4:
+			if ((fr_debug_flag > 3) && fr_log_fp)
+				fprintf(fr_log_fp, "\t\t%02x%02x%02x%02x ",
+					ptr[0], ptr[1], ptr[2], ptr[3]);
+			break;
+			
+		case 2:
+			if ((fr_debug_flag > 3) && fr_log_fp)
+				fprintf(fr_log_fp, "\t\t%02x%02x ",
+					ptr[0], ptr[1]);
+		break;
+		
+		case 1:
+			if ((fr_debug_flag > 3) && fr_log_fp)
+				fprintf(fr_log_fp, "\t\t%02x ", ptr[0]);
+			break;
+		}
+		
+		switch (dv->length) {
+		default:
+			break;
+
+		case 0:
+			fprintf(fr_log_fp, "  ");
+			break;
+
+		case 1:
+			fprintf(fr_log_fp, "%02x  ",
+				ptr[dv->type]);
+			break;
+
+		case 2:
+			fprintf(fr_log_fp, "%02x%02x  ",
+				ptr[dv->type], ptr[dv->type] + 1);
+			break;
+		}
+
 		print_hex_data(ptr + dv->type + dv->length, len, 3);
 	}
 #endif
