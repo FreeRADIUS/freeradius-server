@@ -173,6 +173,7 @@ void rad_print_hex(RADIUS_PACKET *packet)
 
 		while (total > 0) {
 			int attrlen;
+			unsigned int vendor = 0;
 
 			printf("\t\t");
 			if (total < 2) { /* too short */
@@ -189,8 +190,21 @@ void rad_print_hex(RADIUS_PACKET *packet)
 
 			printf("%02x  %02x  ", ptr[0], ptr[1]);
 			attrlen = ptr[1] - 2;
-			ptr += 2;
-			total -= 2;
+
+			if ((ptr[0] == PW_VENDOR_SPECIFIC) &&
+			    (attrlen > 4)) {
+				vendor = (ptr[3] << 16) | (ptr[4] << 8) | ptr[5];
+				printf("%02x%02x%02x%02x (%u)  ",
+				       ptr[2], ptr[3], ptr[4], ptr[5], vendor);
+				attrlen -= 4;
+				ptr += 6;
+				total -= 6;
+
+			} else {
+				ptr += 2;
+				total -= 2;
+				vendor = 0;
+			}
 
 			for (i = 0; i < attrlen; i++) {
 				if ((i > 0) && ((i & 0x0f) == 0x00))
