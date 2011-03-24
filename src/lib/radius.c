@@ -673,7 +673,7 @@ extern int fr_attr_max_tlv;
 extern int fr_attr_shift[];
 extern int fr_attr_mask[];
 
-static int do_next_tlv(const VALUE_PAIR *vp, int nest)
+static int do_next_tlv(const VALUE_PAIR *vp, const VALUE_PAIR *next, int nest)
 {
 	unsigned int tlv1, tlv2;
 
@@ -692,18 +692,18 @@ static int do_next_tlv(const VALUE_PAIR *vp, int nest)
 	/*
 	 *	Nothing to follow, we're done.
 	 */
-	if (!vp->next) return 0;
+	if (!next) return 0;
 
 	/*
 	 *	Not from the same vendor, skip it.
 	 */
-	if (vp->vendor != vp->next->vendor) return 0;
+	if (vp->vendor != next->vendor) return 0;
 
 	/*
 	 *	In a different TLV space, skip it.
 	 */
 	tlv1 = vp->attribute;
-	tlv2 = vp->next->attribute;
+	tlv2 = next->attribute;
 	
 	tlv1 &= ((1 << fr_attr_shift[nest]) - 1);
 	tlv2 &= ((1 << fr_attr_shift[nest]) - 1);
@@ -741,9 +741,9 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 	uint8_t *ptr = start;
 	const VALUE_PAIR *old_vp;
 	const VALUE_PAIR *vp = *pvp;
+	const VALUE_PAIR *svp = vp;
 
 #ifndef NDEBUG
-	const VALUE_PAIR *svp = vp;
 
 	if (nest > fr_attr_max_tlv) {
 		fr_strerror_printf("vp2data_tlvs: attribute nesting overflow");
@@ -768,7 +768,7 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 		if (len < 0) return len;
 		if (len == 0) return ptr - start;
 		/* len can NEVER be more than 253 */
-		
+
 		ptr[1] += len;
 
 #ifndef NDEBUG
@@ -782,8 +782,7 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 		ptr += ptr[1];
 		*pvp = vp;
 		
-		if (!do_next_tlv(old_vp, nest)) break;
-		debug_pair(vp);
+		if (!do_next_tlv(svp, vp, nest)) break;
 	}
 
 #ifndef NDEBUG
@@ -831,7 +830,8 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 		return vp2data_tlvs(packet, original, secret, nest + 1, pvp,
 				    start, room);
 	}
-	VP_TRACE("vp2data_any: Encoding %s\n", vp->name);
+
+	debug_pair(vp);
 
 	/*
 	 *	Set up the default sources for the data.
@@ -1687,13 +1687,6 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 */
 			packet->offset = total_length;
 		}
-
-		/*
-		 *	Print out ONLY the attributes which
-		 *	we're sending over the wire, and print
-		 *	them out BEFORE they're encrypted.
-		 */
-		debug_pair(reply);
 
 		len = rad_vp2attr(packet, original, secret, &reply, ptr,
 				  ((uint8_t *) data) + sizeof(data) - ptr);
