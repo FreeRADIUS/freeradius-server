@@ -130,15 +130,15 @@ ATTRIBUTE	WiMAX-Downlink-QOS-Id			28.8	byte
 ATTRIBUTE 	WiMAX-Classifier			28.11	tlv
 
 ATTRIBUTE	WiMAX-ClassifierID			28.11.1	byte
-ATTRIBUTE	WiMAX-Classifer-Priority		28.11.2	byte
-ATTRIBUTE	WiMAX-Classifer-Protocol		28.11.3	byte
-ATTRIBUTE	WiMAX-Classifer-Direction		28.11.4	byte
+ATTRIBUTE	WiMAX-Classifier-Priority		28.11.2	byte
+ATTRIBUTE	WiMAX-Classifier-Protocol		28.11.3	byte
+ATTRIBUTE	WiMAX-Classifier-Direction		28.11.4	byte
 
-VALUE	WiMAX-Classifer-Direction			Reserved-0		0
-VALUE	WiMAX-Classifer-Direction			IN			1
-VALUE	WiMAX-Classifer-Direction			OUT			2
-VALUE	WiMAX-Classifer-Direction			Bi-Directional		3
-VALUE	WiMAX-Classifer-Direction			FF			4
+VALUE	WiMAX-Classifier-Direction			Reserved-0		0
+VALUE	WiMAX-Classifier-Direction			IN			1
+VALUE	WiMAX-Classifier-Direction			OUT			2
+VALUE	WiMAX-Classifier-Direction			Bi-Directional		3
+VALUE	WiMAX-Classifier-Direction			FF			4
 
 ATTRIBUTE	WiMAX-Source-Specification		28.11.5	tlv
 
