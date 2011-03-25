@@ -48,7 +48,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 		port = pair->vp_integer;
 
 	if (request->packet->dst_port == 0) {
-		if (pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO)) {
+		if (pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO, 0)) {
 			tls = " via TLS tunnel";
 		} else {
 			tls = " via proxy to virtual server";
