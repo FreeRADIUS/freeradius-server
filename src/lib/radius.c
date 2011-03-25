@@ -758,8 +758,6 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 		ptr[0] = (vp->attribute >> fr_attr_shift[nest]) & fr_attr_mask[nest];
 		ptr[1] = 2;
 		
-		VP_TRACE("TLV encoded %s %u\n", vp->name, start[0]);
-		
 		my_room = room;
 		if (room > 255) my_room = 255;
 
@@ -823,8 +821,6 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	 *
 	 *	If we cared about the stack, we could unroll the loop.
 	 */
-	VP_TRACE("vp2data_any: %u attr %u -> %u\n",
-		 nest, vp->attribute, vp->attribute >> fr_attr_shift[nest + 1]);
 	if (vp->flags.is_tlv && (nest < fr_attr_max_tlv) &&
 	    ((vp->attribute >> fr_attr_shift[nest + 1]) != 0)) {
 		return vp2data_tlvs(packet, original, secret, nest + 1, pvp,
@@ -1064,7 +1060,6 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 	uint8_t *start = ptr;
 	const VALUE_PAIR *vp = *pvp;
 
-	VP_TRACE("rad_vp2extended %s\n", vp->name);
 	if (vp->vendor < VENDORPEC_EXTENDED) {
 		fr_strerror_printf("rad_vp2extended called for non-extended attribute");
 		return -1;
@@ -1297,12 +1292,9 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 	 *	Unknown vendor: RFC format.
 	 *	Known vendor and RFC format: go do that.
 	 */
-	VP_TRACE("Encoding VSA %u.%u\n", vendor, attribute);
 	dv = dict_vendorbyvalue(vendor);
-	VP_TRACE("Flags %d %d\n", vp->flags.is_tlv, vp->flags.has_tlv);
 	if (!dv ||
 	    (!vp->flags.is_tlv && (dv->type == 1) && (dv->length == 1))) {
-		VP_TRACE("Encoding RFC %u.%u\n", vendor, attribute);
 		return vp2attr_rfc(packet, original, secret, pvp,
 				   attribute, ptr, room);
 	}
@@ -1527,6 +1519,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		if (vp->attribute == PW_MESSAGE_AUTHENTICATOR) {
 			if (room < 18) return -1;
 			
+			debug_pair(vp);
 			start[0] = PW_MESSAGE_AUTHENTICATOR;
 			start[1] = 18;
 			memset(start + 2, 0, 16);
