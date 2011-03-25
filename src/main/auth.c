@@ -40,16 +40,25 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
 	int		port = 0;
+	const char	*tls = "";
 
 	if ((cli = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0)) == NULL)
 		do_cli = 0;
 	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT, 0)) != NULL)
 		port = pair->vp_integer;
 
+	if (request->packet->dst_port == 0) {
+		if (pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO)) {
+			tls = " via TLS tunnel";
+		} else {
+			tls = " via proxy to virtual server";
+		}
+	}
+
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
 			request->client->shortname, port,
 		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""),
-		 (request->packet->dst_port == 0) ? " via TLS tunnel" : "");
+		 tls);
 
 	return buf;
 }
