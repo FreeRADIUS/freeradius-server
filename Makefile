@@ -118,7 +118,7 @@ distclean: clean
 reconfig:
 	@$(MAKE) $(MFLAGS) -C src reconfig
 	@$(MAKE) configure
-	@$(MAKE) sec/include/autoconf.h.in
+	@$(MAKE) src/include/autoconf.h.in
 
 configure: configure.in aclocal.m4
 	$(AUTOCONF)
