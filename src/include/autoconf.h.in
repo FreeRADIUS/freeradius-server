@@ -50,6 +50,9 @@
 /* Define to 1 if you have the <fcntl.h> header file. */
 #undef HAVE_FCNTL_H
 
+/* Define to 1 if you have the <fnmatch.h> header file. */
+#undef HAVE_FNMATCH_H
+
 /* Define to 1 if you have the `getaddrinfo' function. */
 #undef HAVE_GETADDRINFO
 
@@ -137,6 +140,9 @@
 /* Define to 1 if you have the `lockf' function. */
 #undef HAVE_LOCKF
 
+/* Do we have the lt_dladvise_init function */
+#undef HAVE_LT_DLADVISE_INIT
+
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
 
@@ -167,8 +173,17 @@
 /* Define to 1 if you have the <openssl/evp.h> header file. */
 #undef HAVE_OPENSSL_EVP_H
 
+/* Define to 1 if you have the <openssl/ocsp.h> header file. */
+#undef HAVE_OPENSSL_OCSP_H
+
 /* Define to 1 if you have the <openssl/ssl.h> header file. */
 #undef HAVE_OPENSSL_SSL_H
+
+/* Define to 1 if you have the function pcap_dump_fopen. */
+#undef HAVE_PCAP_DUMP_FOPEN
+
+/* Define to 1 if you have the function pcap_fopen_offline. */
+#undef HAVE_PCAP_FOPEN_OFFLINE
 
 /* Define to 1 if you have the <pcap.h> header file. */
 #undef HAVE_PCAP_H

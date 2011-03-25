@@ -123,15 +123,9 @@ reconfig:
 configure: configure.in aclocal.m4
 	$(AUTOCONF)
 
-# autoheader might not change autoconf.h.in, so touch a stamp file
-src/include/autoconf.h.in: src/include/stamp-h.in
-src/include/stamp-h.in: configure.in
+.PHONY: src/include/autoconf.h.in
+src/include/autoconf.h.in:
 	$(AUTOHEADER)
-	echo timestamp > src/include/stamp-h.in
-
-src/include/autoconf.h: src/include/stamp-h
-src/include/stamp-h: src/include/autoconf.h.in config.status
-	./config.status
 
 config.status: configure
 	./config.status --recheck
