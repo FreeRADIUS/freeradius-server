@@ -114,8 +114,11 @@ distclean: clean
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
 #
 ######################################################################
-reconfig: configure src/include/autoconf.h.in
+.PHONY: reconfig
+reconfig:
 	@$(MAKE) $(MFLAGS) -C src reconfig
+	@$(MAKE) configure
+	@$(MAKE) sec/include/autoconf.h.in
 
 configure: configure.in aclocal.m4
 	$(AUTOCONF)
