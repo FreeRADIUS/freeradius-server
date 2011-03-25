@@ -915,6 +915,10 @@ int read_mainconfig(int reload)
 	 */
 	cf_section_parse(cs, NULL, server_config);
 
+	if (mainconfig.max_request_time == 0) mainconfig.max_request_time = 100;
+	if (mainconfig.reject_delay > 5) mainconfig.reject_delay = 5;
+	if (mainconfig.cleanup_delay > 5) mainconfig.cleanup_delay =5;
+
 	/*
 	 *	Free the old configuration items, and replace them
 	 *	with the new ones.
