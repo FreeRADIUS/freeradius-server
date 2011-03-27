@@ -684,6 +684,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	if (home->response_window < 1) home->response_window = 1;
 	if (home->response_window > 60) home->response_window = 60;
+	if (home->response_window > mainconfig.max_request_time) home->response_window = mainconfig.max_request_time;
 
 	if (home->zombie_period < 1) home->zombie_period = 1;
 	if (home->zombie_period > 120) home->zombie_period = 120;
