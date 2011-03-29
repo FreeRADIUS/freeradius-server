@@ -144,15 +144,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 #endif
 
 	case RADLOG_FILES:
-		write(myconfig->radlog_fd, buffer, strlen(buffer));
-		break;
-
 	case RADLOG_STDOUT:
-		write(STDOUT_FILENO, buffer, strlen(buffer));
-		break;
-
 	case RADLOG_STDERR:
-		write(STDERR_FILENO, buffer, strlen(buffer));
+		write(myconfig->radlog_fd, buffer, strlen(buffer));
 		break;
 
 	default:
