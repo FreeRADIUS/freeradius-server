@@ -700,7 +700,7 @@ int received_request(rad_listen_t *listener,
 		     RADCLIENT *client);
 REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 int event_new_fd(rad_listen_t *listener);
-void revive_home_server(void *ctx);
+void revive_home_server(fr_event_list_t *el, void *ctx);
 void mark_home_server_dead(home_server *home, struct timeval *when);
 
 /* evaluate.c */
