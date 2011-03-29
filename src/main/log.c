@@ -201,7 +201,7 @@ void vp_listdebug(VALUE_PAIR *vp)
 }
 
 extern char *request_log_file;
-#ifdef HAVE_SYS_UN_H
+#ifdef WITH_COMMAND_SOCKET
 extern char *debug_log_file;
 #endif
 
@@ -235,7 +235,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		 *	Use the debug output file, if specified,
 		 *	otherwise leave it as "request_log_file".
 		 */
-#ifdef HAVE_SYS_UN_H
+#ifdef WITH_COMMAND_SOCKET
 		filename = debug_log_file;
 		if (!filename)
 #endif

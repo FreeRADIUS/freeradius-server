@@ -45,22 +45,10 @@ typedef struct auth_req REQUEST;
 
 /*
  *	New defines for minimizing the size of the server, to strip
- *	out functionality.  In order to ensure that people don't have
- *	to re-run "configure", after "cvs update", we play some
- *	special games with the defines.  i.e. any top-level "configure"
- *	option should set both WITH_FOO and WITHOUT_FOO.  After a few
- *	weeks, the WITHOUT_FOO can be deleted from the configure script.
+ *	out functionality.
  */
 #ifndef WITHOUT_PROXY
 #define WITH_PROXY (1)
-#endif
-
-#ifndef WITHOUT_DETAIL
-#define WITH_DETAIL (1)
-#endif
-
-#ifndef WITHOUT_SESSION_MGMT
-#define WITH_SESSION_MGMT (1)
 #endif
 
 #ifndef WITHOUT_UNLANG
@@ -69,12 +57,17 @@ typedef struct auth_req REQUEST;
 
 #ifndef WITHOUT_ACCOUNTING
 #define WITH_ACCOUNTING (1)
-#else
-#ifdef WITH_SESSION_MGMT
-#error WITH_SESSION_MGMT is defined, but WITH_ACCOUNTING is not.  Session management requires accounting.
 #endif
-#ifdef WITH_DETAIL
-#error WITH_DETAIL is defined, but WITH_ACCOUNTING is not.  Detail file reading requires accounting.
+
+#ifdef WITH_ACCOUNTING
+#ifndef WITHOUT_DETAIL
+#define WITH_DETAIL (1)
+#endif
+#endif
+
+#ifdef WITH_ACCOUNTING
+#ifndef WITHOUT_SESSION_MGMT
+#define WITH_SESSION_MGMT (1)
 #endif
 #endif
 
@@ -89,8 +82,6 @@ typedef struct auth_req REQUEST;
 #ifndef WITHOUT_COMMAND_SOCKET
 #ifdef HAVE_SYS_UN_H
 #define WITH_COMMAND_SOCKET (1)
-#else
-#define WITHOUT_COMMAND_SOCKET (1)
 #endif
 #endif
 
@@ -99,6 +90,13 @@ typedef struct auth_req REQUEST;
 #ifndef WITH_PROXY
 #error WITH_COA requires WITH_PROXY
 #endif
+#endif
+
+/*
+ *	WITH_VMPS is handled by src/include/autoconf.h
+ */
+#ifdef WITHOUT_VMPS
+#undef WITH_VMPS
 #endif
 
 #include <freeradius-devel/stats.h>

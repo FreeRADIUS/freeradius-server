@@ -1794,7 +1794,6 @@ int realms_init(CONF_SECTION *config)
 		rc->fallback = 0;
 		rc->wake_all_if_all_dead= 0;
 	}
-#endif
 
 	for (cs = cf_subsection_find_next(config, NULL, "home_server");
 	     cs != NULL;
@@ -1805,6 +1804,7 @@ int realms_init(CONF_SECTION *config)
 			return 0;
 		}
 	}
+#endif
 
 	for (cs = cf_subsection_find_next(config, NULL, "realm");
 	     cs != NULL;
