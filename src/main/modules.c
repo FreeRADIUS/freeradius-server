@@ -1115,11 +1115,11 @@ static int load_byserver(CONF_SECTION *cs)
 			continue;
 		}
 
-#ifdef WITHOUT_ACCOUNTING
+#ifndef WITH_ACCOUNTING
 		if (comp == RLM_COMPONENT_ACCT) continue;
 #endif
 
-#ifdef WITHOUT_SESSION_MGMT
+#ifndef WITH_SESSION_MGMT
 		if (comp == RLM_COMPONENT_SESS) continue;
 #endif
 
