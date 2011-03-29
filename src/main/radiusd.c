@@ -228,10 +228,10 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
+				fr_log_fp = stdout;
 		do_stdout:
 				mainconfig.radlog_dest = RADLOG_STDOUT;
 				mainconfig.radlog_fd = STDOUT_FILENO;
-				fr_log_fp = stdout;
 				break;
 
 			case 'x':
@@ -309,15 +309,17 @@ int main(int argc, char *argv[])
 		}
 		dup2(devnull, STDIN_FILENO);
 		if (mainconfig.radlog_dest == RADLOG_STDOUT) {
-			mainconfig.radlog_fd = dup(STDOUT_FILENO);
 			setlinebuf(stdout);
+			mainconfig.radlog_fd = STDOUT_FILENO;
+		} else {
+			dup2(devnull, STDOUT_FILENO);
 		}
-		dup2(devnull, STDOUT_FILENO);
 		if (mainconfig.radlog_dest == RADLOG_STDERR) {
-			mainconfig.radlog_fd = dup(STDERR_FILENO);
-			setlinebuf(stdout);
+			setlinebuf(stderr);
+			mainconfig.radlog_fd = STDERR_FILENO;
+		} else {
+			dup2(devnull, STDERR_FILENO);
 		}
-		dup2(devnull, STDERR_FILENO);
 		close(devnull);
 
 	} else {
