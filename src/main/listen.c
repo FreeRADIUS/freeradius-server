@@ -415,7 +415,7 @@ static int rad_status_server(REQUEST *request)
 }
 
 #ifdef WITH_TCP
-static int auth_tcp_recv(rad_listen_t *listener,
+static int dual_tcp_recv(rad_listen_t *listener,
 			 RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
 {
 	int rcode;
@@ -497,9 +497,18 @@ static int auth_tcp_recv(rad_listen_t *listener,
 	 */
 	switch(packet->code) {
 	case PW_AUTHENTICATION_REQUEST:
+	  if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
 		RAD_STATS_CLIENT_INC(listener, client, total_requests);
 		fun = rad_authenticate;
 		break;
+
+#ifdef WITH_ACCOUNTING
+	case PW_ACCOUNTING_REQUEST:
+		if (listener->type != RAD_LISTEN_ACCT) goto bad_packet;
+		RAD_STATS_CLIENT_INC(listener, client, total_requests);
+		fun = rad_accounting;
+		break;
+#endif
 
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
@@ -513,10 +522,11 @@ static int auth_tcp_recv(rad_listen_t *listener,
 		break;
 
 	default:
+	bad_packet:
 		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
 		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
 
-		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
+		DEBUG("Invalid packet code %d sent from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
 		rad_free(&sock->packet);
 		return 0;
@@ -534,7 +544,7 @@ static int auth_tcp_recv(rad_listen_t *listener,
 	return 1;
 }
 
-static int auth_tcp_accept(rad_listen_t *listener,
+static int dual_tcp_accept(rad_listen_t *listener,
 			   UNUSED RAD_REQUEST_FUNP *pfun,
 			   UNUSED REQUEST **prequest)
 {
@@ -628,7 +638,7 @@ static int auth_tcp_accept(rad_listen_t *listener,
 
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
-	this->recv = auth_tcp_recv;
+	this->recv = dual_tcp_recv;
 
 	/*
 	 *	FIXME: set O_NONBLOCK on the accept'd fd.
@@ -712,7 +722,7 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 	}
 
 #ifdef WITH_TCP
-	if (this->recv == auth_tcp_accept) {
+	if (this->recv == dual_tcp_accept) {
 		ADDSTRING(" proto tcp");
 	}
 #endif
@@ -1065,7 +1075,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	Re-write the listener receive function to
 		 *	allow us to accept the socket.
 		 */
-		this->recv = auth_tcp_accept;
+		this->recv = dual_tcp_accept;
 	}
 #endif
 
