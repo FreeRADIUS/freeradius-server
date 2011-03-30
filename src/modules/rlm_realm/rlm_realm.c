@@ -80,13 +80,15 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Also, if there's no User-Name attribute, we can't
 	 *	proxy it, either.
 	 */
+	if ((request->username == NULL)
 #ifdef WITH_PROXY
-	if ((request->proxy != NULL) ||
-	    (request->username == NULL)) {
+	    || (request->proxy != NULL)
+#endif
+	    ) {
+	    
 		RDEBUG2("Proxy reply, or no User-Name.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
-#endif
 
 	/*
 	 *      Check for 'Realm' attribute.  If it exists, then we've proxied
