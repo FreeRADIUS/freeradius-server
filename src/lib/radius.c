@@ -904,6 +904,14 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	}
 
 	/*
+	 *	No data: skip it.
+	 */
+	if (len == 0) {
+		*pvp = vp->next;
+		return 0;
+	}
+
+	/*
 	 *	Bound the data to the calling size
 	 */
 	if (len > (ssize_t) room) len = room;
@@ -983,7 +991,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	} /* switch over encryption flags */
 
 	*pvp = vp->next;
-	return len + (ptr - start);;
+	return len + (ptr - start);
 }
 
 static ssize_t attr_shift(const uint8_t *start, const uint8_t *end,
@@ -1119,7 +1127,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 
 	len = vp2data_any(packet, original, secret, nest,
 			  pvp, ptr + ptr[1], room - hdr_len);
-	if (len < 0) return len;
+	if (len <= 0) return len;
 
 	/*
 	 *	There may be more than 252 octets of data encoded in
@@ -1259,7 +1267,7 @@ static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
 	if (room > ((unsigned) 255 - ptr[1])) room = 255 - ptr[1];
 
 	len = vp2data_any(packet, original, secret, 0, pvp, ptr + ptr[1], room);
-	if (len < 0) return len;
+	if (len <= 0) return len;
 
 	ptr[1] += len;
 
@@ -1348,7 +1356,7 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 
 	len = vp2data_any(packet, original, secret, 0, pvp,
 			  ptr + dv->type + dv->length, room);
-	if (len < 0) return len;
+	if (len <= 0) return len;
 
 	if (dv->length) ptr[dv->type + dv->length - 1] += len;
 
@@ -1486,6 +1494,7 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 
 	if ((vp->length == 0) &&
 	    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) {
+		*pvp = vp->next;
 		return 0;
 	}
 
@@ -1646,6 +1655,9 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 */
 	reply = packet->vps;
 	while (reply) {
+		size_t last_len;
+		const char *last_name = NULL;
+
 		/*
 		 *	Ignore non-wire attributes, but allow extended
 		 *	attributes.
@@ -1679,7 +1691,11 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			 *	Message-Authenticator
 			 */
 			packet->offset = total_length;
+			last_len = 16;
+		} else {
+			last_len = reply->length;
 		}
+		last_name = reply->name;
 
 		len = rad_vp2attr(packet, original, secret, &reply, ptr,
 				  ((uint8_t *) data) + sizeof(data) - ptr);
@@ -1689,10 +1705,12 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	Failed to encode the attribute, likely because
 		 *	the packet is full.
 		 */
-		if ((len == 0) &&
-		    (total_length > (sizeof(data) - 2 - reply->length))) {
-			DEBUG("WARNING: Attributes are too long for packet.  Discarding data past %d bytes", total_length);
-			break;
+		if (len == 0) {
+			if (last_len != 0) {
+				DEBUG("WARNING: Failed encoding attribute %s\n", last_name);
+			} else {
+				DEBUG("WARNING: Skipping zero-length attribute %s\n", last_name);
+			}
 		}
 
 #ifndef NDEBUG
