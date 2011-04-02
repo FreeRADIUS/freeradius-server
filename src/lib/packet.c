@@ -391,6 +391,19 @@ int fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd)
 	return 1;
 }
 
+int fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd)
+{
+	fr_packet_socket_t *ps;
+
+	if (!pl) return 0;
+
+	ps = fr_socket_find(pl, sockfd);
+	if (!ps) return 0;
+
+	ps->dont_use = 0;
+	return 1;
+}
+
 int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
 				 void **pctx)
 {

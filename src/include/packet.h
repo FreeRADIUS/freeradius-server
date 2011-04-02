@@ -64,6 +64,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 int fr_packet_list_socket_remove(fr_packet_list_t *pl, int sockfd,
 				 void **pctx);
 int fr_packet_list_socket_freeze(fr_packet_list_t *pl, int sockfd);
+int fr_packet_list_socket_thaw(fr_packet_list_t *pl, int sockfd);
 int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
 			  fr_hash_table_walk_t callback);
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set);
