@@ -32,7 +32,7 @@ void cbtls_info(const SSL *s, int where, int ret)
 {
 	const char *str, *state;
 	int w;
-	EAP_HANDLER *handler = (EAP_HANDLER *)SSL_get_ex_data(s, 0);
+	EAP_HANDLER *handler = (EAP_HANDLER *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_HANDLER);
 	REQUEST *request = NULL;
 	char buffer[1024];
 
@@ -130,13 +130,5 @@ int cbtls_password(char *buf,
 	strcpy(buf, (char *)userdata);
 	return(strlen((char *)userdata));
 }
-
-/*
- *	For callbacks
- */
-int eaptls_handle_idx = -1;
-int eaptls_conf_idx = -1;
-int eaptls_store_idx = -1; /* OCSP Store */
-int eaptls_session_idx = -1;
 
 #endif /* !defined(NO_OPENSSL) */

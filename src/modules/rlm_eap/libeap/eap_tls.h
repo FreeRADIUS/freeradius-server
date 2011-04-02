@@ -368,10 +368,12 @@ void 		session_free(void *ssn);
 void 		session_close(tls_session_t *ssn);
 void 		session_init(tls_session_t *ssn);
 
-/* SSL Indicies for ex data */
-extern int	eaptls_handle_idx;
-extern int	eaptls_conf_idx;
-extern int	eaptls_store_idx;	/* OCSP Store */
-extern int	eaptls_session_idx;
+#define FR_TLS_EX_INDEX_HANDLER (0)
+#define FR_TLS_EX_INDEX_CONF	(1)
+#define FR_TLS_EX_INDEX_REQUEST	(2)
+#define FR_TLS_EX_INDEX_CERTS	(3)
+#define FR_TLS_EX_INDEX_IDENTITY (4)
+#define FR_TLS_EX_INDEX_VPS	(5)
+#define FR_TLS_EX_INDEX_STORE	(6)
 
 #endif /*_EAP_TLS_H*/

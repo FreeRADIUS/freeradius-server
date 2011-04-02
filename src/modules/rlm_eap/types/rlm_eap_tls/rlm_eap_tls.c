@@ -448,11 +448,11 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 * and the application specific data stored into the SSL object.
 	 */
 	ssl = X509_STORE_CTX_get_ex_data(ctx, SSL_get_ex_data_X509_STORE_CTX_idx());
-	handler = (EAP_HANDLER *)SSL_get_ex_data(ssl, 0);
+	handler = (EAP_HANDLER *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_HANDLER);
 	request = handler->request;
-	conf = (EAP_TLS_CONF *)SSL_get_ex_data(ssl, 1);
+	conf = (EAP_TLS_CONF *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 #ifdef HAVE_OPENSSL_OCSP_H
-	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, 2);
+	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
 #endif
 
 
@@ -676,19 +676,6 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	return my_ok;
 }
 
-
-/*
- *	Free cached session data, which is always a list of VALUE_PAIRs
- */
-static void eaptls_session_free(UNUSED void *parent, void *data_ptr,
-				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-				UNUSED long argl, UNUSED void *argp)
-{
-	VALUE_PAIR *vp = data_ptr;
-	if (!data_ptr) return;
-
-	pairfree(&vp);
-}
 
 #ifdef HAVE_OPENSSL_OCSP_H
 /*
@@ -1005,33 +992,6 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		SSL_CTX_set_session_cache_mode(ctx, SSL_SESS_CACHE_OFF);
 	}
 
-	/*
-	 *	Register the application indices.  We can't use
-	 *	hard-coded "0" and "1" as before, because we need to
-	 *	set up a "free" handler for the cached session
-	 *	information.
-	 */
-	if (eaptls_handle_idx < 0) {
-		eaptls_handle_idx = SSL_get_ex_new_index(0, &eaptls_handle_idx,
-							 NULL, NULL, NULL);
-	}
-	
-	if (eaptls_conf_idx < 0) {
-		eaptls_conf_idx = SSL_get_ex_new_index(0, &eaptls_conf_idx,
-							  NULL, NULL, NULL);
-	}
-
-	if (eaptls_store_idx < 0) {
-		eaptls_store_idx = SSL_get_ex_new_index(0, "eaptls_store_idx",
-							  NULL, NULL, NULL);
-	}
-
-	if (eaptls_session_idx < 0) {
-		eaptls_session_idx = SSL_get_ex_new_index(0, &eaptls_session_idx,
-							  NULL, NULL,
-							  eaptls_session_free);
-	}
-
 	return ctx;
 }
 
@@ -1299,10 +1259,10 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	NOTE: If we want to set each item sepearately then
 	 *	this index should be global.
 	 */
-	SSL_set_ex_data(ssn->ssl, 0, (void *)handler);
-	SSL_set_ex_data(ssn->ssl, 1, (void *)inst->conf);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_HANDLER, (void *)handler);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)inst->conf);
 #ifdef HAVE_OPENSSL_OCSP_H
-	SSL_set_ex_data(ssn->ssl, 2, (void *)inst->store);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)inst->store);
 #endif
 
 	ssn->length_flag = inst->conf->include_length;
@@ -1474,39 +1434,6 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		}
 
 		return 0;
-	}
-
-	/*
-	 *	New sessions cause some additional information to be
-	 *	cached.
-	 */
-	if (!SSL_session_reused(tls_session->ssl)) {
-		/*
-		 *	FIXME: Store miscellaneous data.
-		 */
-		RDEBUG2("Adding user data to cached session");
-		
-#if 0
-		SSL_SESSION_set_ex_data(tls_session->ssl->session,
-					ssl_session_idx_user_session, session_data);
-#endif
-	} else {
-		/*
-		 *	FIXME: Retrieve miscellaneous data.
-		 */
-#if 0
-		data = SSL_SESSION_get_ex_data(tls_session->ssl->session,
-					       ssl_session_idx_user_session);
-
-		if (!session_data) {
-			radlog_request(L_ERR, 0, request,
-				       "No user session data in cached session - "
-				       " REJECTING");
-			return 0;
-		}
-#endif
-
-		RDEBUG2("Retrieved session data from cached session");
 	}
 
 	/*

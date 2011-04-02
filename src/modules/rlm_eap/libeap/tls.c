@@ -299,6 +299,14 @@ void session_init(tls_session_t *ssn)
 
 void session_close(tls_session_t *ssn)
 {	
+	if (ssn->ssl->session) {
+		VALUE_PAIR *vp;
+
+		vp = SSL_SESSION_get_ex_data(ssn->ssl->session,
+					     FR_TLS_EX_INDEX_VPS);
+		if (vp) pairfree(&vp);
+	}
+
 	SSL_set_quiet_shutdown(ssn->ssl, 1);
 	SSL_shutdown(ssn->ssl);
 
@@ -582,7 +590,7 @@ void tls_session_information(tls_session_t *tls_session)
 		 (unsigned long)tls_session->info.record_len,
 		 str_details1, str_details2);
 
-	handler = (EAP_HANDLER *)SSL_get_ex_data(tls_session->ssl, 0);
+	handler = (EAP_HANDLER *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_HANDLER);
 	if (handler) {
 		request = handler->request;
 	} else {
