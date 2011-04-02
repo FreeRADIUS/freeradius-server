@@ -25,7 +25,9 @@
  */
 
 #include <freeradius-devel/ident.h>
-RCSIDH(heap_h, "$Id$")
+RCSIDH(tls_h, "$Id$")
+
+#include <freeradius-devel/radiusd.h>
 
 /*
  *	For RH 9, which apparently needs this.
@@ -38,8 +40,6 @@ RCSIDH(heap_h, "$Id$")
 #include <openssl/engine.h>
 #endif
 #include <openssl/ssl.h>
-
-#include <freeradius-devel/radiusd.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -287,6 +287,7 @@ int 		cbtls_password(char *buf, int num, int rwflag, void *userdata);
 void 		cbtls_info(const SSL *s, int where, int ret);
 void 		cbtls_msg(int write_p, int msg_version, int content_type,
 			const void *buf, size_t len, SSL *ssl, void *arg);
+int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
 /* TLS */
 tls_session_t 	*tls_new_session(SSL_CTX *ssl_ctx, int client_cert);
@@ -306,6 +307,63 @@ void 		session_init(tls_session_t *ssn);
 #define FR_TLS_EX_INDEX_IDENTITY (4)
 #define FR_TLS_EX_INDEX_VPS	(5)
 #define FR_TLS_EX_INDEX_STORE	(6)
+
+/* configured values goes right here */
+typedef struct fr_tls_server_conf_t {
+	SSL_CTX		*ctx;
+	CONF_SECTION	*cs;
+
+	char		*private_key_password;
+	char		*private_key_file;
+	char		*certificate_file;
+	char		*random_file;
+	char		*ca_path;
+	char		*ca_file;
+	char		*dh_file;
+	char		*rsa_file;
+	char		*make_cert_command;
+	int		rsa_key;
+	int		dh_key;
+	int		rsa_key_length;
+	int		dh_key_length;
+	int		verify_depth;
+	int		file_type;
+	int		include_length;
+
+	/*
+	 *	Always < 4096 (due to radius limit), 0 by default = 2048
+	 */
+	int		fragment_size;
+	int		check_crl;
+	int		allow_expired_crl;
+	char		*check_cert_cn;
+	char		*cipher_list;
+	char		*check_cert_issuer;
+
+        int     	session_cache_enable;
+        int     	session_timeout;
+        int     	session_cache_size;
+	char		*session_id_name;
+	char		session_context_id[128];
+	time_t		session_last_flushed;
+
+	char		*verify_tmp_dir;
+	char		*verify_client_cert_cmd;
+
+#ifdef HAVE_OPENSSL_OCSP_H
+	/*
+	 * OCSP Configuration
+	 */
+	int		ocsp_enable;
+	int		ocsp_override_url;
+	char		*ocsp_url;
+	X509_STORE	*ocsp_store;
+#endif
+
+} fr_tls_server_conf_t;
+
+fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
+void tls_server_conf_free(fr_tls_server_conf_t *conf);
 
 #ifdef __cplusplus
 }
