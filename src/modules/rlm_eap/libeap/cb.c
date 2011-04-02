@@ -24,7 +24,7 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include "eap_tls.h"
+#include <freeradius-devel/tls.h>
 
 #ifndef NO_OPENSSL
 
@@ -32,11 +32,8 @@ void cbtls_info(const SSL *s, int where, int ret)
 {
 	const char *str, *state;
 	int w;
-	EAP_HANDLER *handler = (EAP_HANDLER *)SSL_get_ex_data(s, FR_TLS_EX_INDEX_HANDLER);
-	REQUEST *request = NULL;
+	REQUEST *request = SSL_get_ex_data(s, FR_TLS_EX_INDEX_REQUEST);
 	char buffer[1024];
-
-	if (handler) request = handler->request;
 
 	w = where & ~SSL_ST_MASK;
 	if (w & SSL_ST_CONNECT) str="    TLS_connect";

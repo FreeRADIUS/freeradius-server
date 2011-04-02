@@ -842,6 +842,8 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	if (!request) return EAPTLS_FAIL;
 
 	RDEBUG2("processing EAP-TLS");
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
+
 	if (handler->certs) pairadd(&request->packet->vps,
 				    paircopy(handler->certs));
 
@@ -863,8 +865,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 *	more tunneled data.
 		 */
 	case EAPTLS_SUCCESS:
-		return status;
-		break;
+		goto done;
 
 		/*
 		 *	Normal TLS request, continue with the "get rest
@@ -872,8 +873,8 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 */
 	case EAPTLS_REQUEST:
 		eaptls_request(handler->eap_ds, tls_session);
-		return EAPTLS_HANDLED;
-		break;
+		status = EAPTLS_HANDLED;
+		goto done;
 
 		/*
 		 *	The handshake is done, and we're in the "tunnel
@@ -895,8 +896,10 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	/*
 	 *	Extract the TLS packet from the buffer.
 	 */
-	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL)
-		return EAPTLS_FAIL;
+	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL) {
+		status = EAPTLS_FAIL;
+		goto done;
+	}
 
 	/*
 	 *	Get the session struct from the handler
@@ -912,7 +915,8 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	    (tls_session->record_plus)(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
 		eaptls_free(&tlspacket);
 		RDEBUG("Exceeded maximum record size");
-		return EAPTLS_FAIL;
+		status =EAPTLS_FAIL;
+		goto done;
 	}
 
 	/*
@@ -943,7 +947,8 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 			eaptls_send_ack(handler->eap_ds,
 					tls_session->peap_flag);
 			RDEBUG2("Init is done, but tunneled data is fragmented");
-			return EAPTLS_HANDLED;
+			status = EAPTLS_HANDLED;
+			goto done;
 		}
 
 		/*	
@@ -981,7 +986,8 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 				 */
 				break;
 			}
-			return EAPTLS_FAIL;
+			status = EAPTLS_FAIL;
+			goto done;
 		}
 
 		if (err == 0) {
@@ -993,13 +999,19 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 */
 		tls_session->clean_out.used = err;
 		
-		return EAPTLS_OK;
+		status = EAPTLS_OK;
+		goto done;
 	}
 
 	/*
 	 *	Continue the handshake.
 	 */
-	return eaptls_operation(status, handler);
+	status = eaptls_operation(status, handler);
+
+ done:
+	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, NULL);
+
+	return status;
 }
 
 

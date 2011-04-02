@@ -25,7 +25,7 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include "eap_tls.h"
+#include <freeradius-devel/tls.h>
 
 /* record */
 static void 		record_init(record_t *buf);
@@ -405,7 +405,6 @@ void tls_session_information(tls_session_t *tls_session)
 {
 	const char *str_write_p, *str_version, *str_content_type = "";
 	const char *str_details1 = "", *str_details2= "";
-	EAP_HANDLER *handler;
 	REQUEST *request;
 
 	/*
@@ -590,12 +589,7 @@ void tls_session_information(tls_session_t *tls_session)
 		 (unsigned long)tls_session->info.record_len,
 		 str_details1, str_details2);
 
-	handler = (EAP_HANDLER *)SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_HANDLER);
-	if (handler) {
-		request = handler->request;
-	} else {
-		request = NULL;
-	}
+	request = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST);
 
 	RDEBUG2("%s\n", tls_session->info.info_description);
 }
