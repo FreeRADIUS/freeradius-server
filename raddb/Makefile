@@ -28,6 +28,11 @@ all:
 	@if [ ! -f sites-enabled/inner-tunnel ]; then \
 		cd sites-enabled && ln -s ../sites-available/inner-tunnel; \
 	fi
+ifneq "${OPENSSL_INCLUDE}" ""
+	@if [ ! -f sites-enabled/tls ]; then \
+		cd sites-enabled && ln -s ../sites-available/tls; \
+	fi
+endif
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
@@ -85,9 +90,16 @@ install:
 		cd $(R)$(raddbdir)/sites-enabled/; \
 		ln -s ../sites-available/control-socket; \
 	fi
+ifneq "${OPENSSL_INCLUDE}" ""
+	if [ ! -f $(R)$(raddbdir)/sites-enabled/control-socket ]; then \
+		cd $(R)$(raddbdir)/sites-enabled/; \
+		ln -s ../sites-available/control-socket; \
+	fi
+endif
 
 clean:
-	rm -rf sites-enabled/inner-tunnel sites-enabled/default
+	rm -rf sites-enabled/inner-tunnel sites-enabled/default \
+		sites-enabled/tls
 
 triggers:
 	@grep exec_trigger `find ../src -name "*.c" -print` | grep '"' | sed -e 's/.*,//' -e 's/ *"//' -e 's/");.*//'
