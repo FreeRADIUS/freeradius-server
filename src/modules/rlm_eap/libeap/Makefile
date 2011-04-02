@@ -8,7 +8,7 @@ include ../../../../Make.inc
 
 SRCS		= eapcommon.c eapcrypto.c eapsimlib.c fips186prf.c
 ifneq ($(OPENSSL_LIBS),)
-SRCS		+= cb.c eap_tls.c mppe_keys.c tls.c
+SRCS		+= eap_tls.c mppe_keys.c
 endif
 LT_OBJS		= $(SRCS:.c=.lo)
 INCLUDES	= eap_types.h eap_tls.h
