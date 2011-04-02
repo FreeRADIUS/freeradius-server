@@ -289,7 +289,7 @@ void 		cbtls_msg(int write_p, int msg_version, int content_type,
 			const void *buf, size_t len, SSL *ssl, void *arg);
 
 /* TLS */
-tls_session_t 	*eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert);
+tls_session_t 	*tls_new_session(SSL_CTX *ssl_ctx, int client_cert);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *,tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *tls_session);

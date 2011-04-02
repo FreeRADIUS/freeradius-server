@@ -1235,7 +1235,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = eaptls_new_session(inst->ctx, client_cert);
+	ssn = tls_new_session(inst->ctx, client_cert);
 	if (!ssn) {
 		return 0;
 	}

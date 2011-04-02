@@ -35,7 +35,7 @@ static unsigned int 	record_plus(record_t *buf, const void *ptr,
 static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
-tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
+tls_session_t *tls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 {
 	tls_session_t *state = NULL;
 	SSL *new_tls = NULL;
@@ -73,7 +73,7 @@ tls_session_t *eaptls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	 *	that SSL is aware of, is our defined BIO buffers.
 	 *
 	 *	This means that all SSL IO is done to/from memory,
-	 *	and we can update those BIOs from the EAP packets we've
+	 *	and we can update those BIOs from the packets we've
 	 *	received.
 	 */
 	state->into_ssl = BIO_new(BIO_s_mem());
@@ -108,7 +108,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
 		const char *p = ERR_error_string(l, NULL);
 		VALUE_PAIR *vp;
 
-		radlog(L_ERR, "rlm_eap: SSL error %s", p);
+		radlog(L_ERR, "SSL error %s", p);
 
 		if (request) {
 			vp = pairmake("Module-Failure-Message", p, T_OP_ADD);
@@ -173,8 +173,8 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
  * After clean-up, dirty_out will be filled with
  * the data required for handshaking. So we check
  * if dirty_out is empty then we simply send it back.
- * As of now, if handshake is successful, then it is EAP-Success
- * or else EAP-failure should be sent
+ * As of now, if handshake is successful, then we keep going,
+ * otherwise we fail.
  *
  * Fill the Bio with the dirty data to clean it
  * Get the cleaned data from SSL, if it is not Handshake data
