@@ -114,10 +114,10 @@ static void check_for_zombie_home_server(REQUEST *request);
 #endif
 
 static void request_post_handler(REQUEST *request);
-static void wait_a_bit(fr_event_list_t *, void *ctx);
+static void wait_a_bit(void *ctx);
 static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd, void *ctx);
 #ifdef WITH_DETAIL
-static void event_poll_detail(fr_event_list_t *, void *ctx);
+static void event_poll_detail(void *ctx);
 #endif
 
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
@@ -435,7 +435,7 @@ retry:
 /*
  *	Called as BOTH an event, and in-line from other functions.
  */
-static void wait_for_proxy_id_to_expire(UNUSED fr_event_list_t *elx, void *ctx)
+static void wait_for_proxy_id_to_expire(void *ctx)
 {
 	REQUEST *request = ctx;
 
@@ -477,7 +477,7 @@ static void wait_for_proxy_id_to_expire(UNUSED fr_event_list_t *elx, void *ctx)
 #endif
 
 #ifdef HAVE_PTHREAD_H
-static void wait_for_child_to_die(UNUSED fr_event_list_t *elx, void *ctx)
+static void wait_for_child_to_die(void *ctx)
 {
 	REQUEST *request = ctx;
 
@@ -515,7 +515,7 @@ static void wait_for_child_to_die(UNUSED fr_event_list_t *elx, void *ctx)
 
 #ifdef WITH_PROXY
 	if (request->proxy) {
-		wait_for_proxy_id_to_expire(el, request);
+		wait_for_proxy_id_to_expire(request);
 		return;
 	}
 #endif
@@ -524,7 +524,7 @@ static void wait_for_child_to_die(UNUSED fr_event_list_t *elx, void *ctx)
 }
 #endif
 
-static void cleanup_delay(UNUSED fr_event_list_t *elx, void *ctx)
+static void cleanup_delay(void *ctx)
 {
 	REQUEST *request = ctx;
 
@@ -536,7 +536,7 @@ static void cleanup_delay(UNUSED fr_event_list_t *elx, void *ctx)
 
 #ifdef WITH_PROXY
 	if (request->proxy && request->in_proxy_hash) {
-		wait_for_proxy_id_to_expire(el, request);
+		wait_for_proxy_id_to_expire(request);
 		return;
 	}
 #endif
@@ -604,7 +604,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 	}
 }
 
-static void reject_delay(UNUSED fr_event_list_t *elx, void *ctx)
+static void reject_delay(void *ctx)
 {
 	REQUEST *request = ctx;
 
@@ -625,7 +625,7 @@ static void reject_delay(UNUSED fr_event_list_t *elx, void *ctx)
 
 
 #ifdef WITH_PROXY
-void revive_home_server(UNUSED fr_event_list_t *elx, void *ctx)
+void revive_home_server(void *ctx)
 {
 	home_server *home = ctx;
 	char buffer[128];
@@ -651,7 +651,7 @@ void revive_home_server(UNUSED fr_event_list_t *elx, void *ctx)
 }
 
 
-static void no_response_to_ping(UNUSED fr_event_list_t *elx, void *ctx)
+static void no_response_to_ping(void *ctx)
 {
 	REQUEST *request = ctx;
 	home_server *home;
@@ -675,7 +675,7 @@ static void no_response_to_ping(UNUSED fr_event_list_t *elx, void *ctx)
 
 	check_for_zombie_home_server(request);
 
-	wait_for_proxy_id_to_expire(el, request);
+	wait_for_proxy_id_to_expire(request);
 }
 
 
@@ -745,7 +745,7 @@ static void received_response_to_ping(REQUEST *request)
  *	Called from start of zombie period, OR after control socket
  *	marks the home server dead.
  */
-static void ping_home_server(UNUSED fr_event_list_t *elx, void *ctx)
+static void ping_home_server(void *ctx)
 {
 	uint32_t jitter;
 	home_server *home = ctx;
@@ -869,7 +869,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 		 *	pinging when it was marked "zombie".
 		 */
 		if (previous_state == HOME_STATE_ALIVE) {
-			ping_home_server(el, home);
+			ping_home_server(home);
 		}
 
 	} else {
@@ -941,7 +941,7 @@ static void proxy_fallback_handler(REQUEST *request)
 	 *	wait_a_bit(), which means that "request" may not
 	 *	exist any more...
 	 */
-	if (have_children) wait_a_bit(el, request);
+	if (have_children) wait_a_bit(request);
 #endif
 }
 
@@ -1052,11 +1052,11 @@ static void post_proxy_fail_handler(REQUEST *request)
 	 *	wait_a_bit(), which means that "request" may not
 	 *	exist any more...
 	 */
-	if (have_children) wait_a_bit(el, request);
+	if (have_children) wait_a_bit(request);
 }
 
 /* maybe check this against wait_for_proxy_id_to_expire? */
-static void no_response_to_proxied_request(UNUSED fr_event_list_t *elx, void *ctx)
+static void no_response_to_proxied_request(void *ctx)
 {
 	REQUEST *request = ctx;
 	home_server *home;
@@ -1077,7 +1077,7 @@ static void no_response_to_proxied_request(UNUSED fr_event_list_t *elx, void *ct
 	 *	is due to locking issues with child threads...
 	 */
 	if (request->home_server->server) {
-		wait_a_bit(el, request);
+		wait_a_bit(request);
 		return;
 	}
 
@@ -1114,7 +1114,7 @@ static void no_response_to_proxied_request(UNUSED fr_event_list_t *elx, void *ct
 		 */
 		rad_assert(request->ev == NULL);
 		request->child_state = REQUEST_RUNNING;
-		wait_a_bit(el, request);
+		wait_a_bit(request);
 	}
 
 	/*
@@ -1190,11 +1190,11 @@ static void no_response_to_proxied_request(UNUSED fr_event_list_t *elx, void *ct
 	/*
 	 *	Start pinging the home server.
 	 */
-	ping_home_server(el, home);
+	ping_home_server(home);
 }
 #endif
 
-static void wait_a_bit(UNUSED fr_event_list_t *elx, void *ctx)
+static void wait_a_bit(void *ctx)
 {
 	struct timeval when;
 	REQUEST *request = ctx;
@@ -1337,7 +1337,7 @@ static void wait_a_bit(UNUSED fr_event_list_t *elx, void *ctx)
 			return;
 		}
 #endif
-		cleanup_delay(el, request);
+		cleanup_delay(request);
 		return;
 
 	case REQUEST_REJECT_DELAY:
@@ -1380,7 +1380,7 @@ static void wait_a_bit(UNUSED fr_event_list_t *elx, void *ctx)
 }
 
 #ifdef WITH_COA
-static void no_response_to_coa_request(UNUSED fr_event_list_t *elx, void *ctx)
+static void no_response_to_coa_request(void *ctx)
 {
 	REQUEST *request = ctx;
 	char buffer[128];
@@ -1425,7 +1425,7 @@ static int update_event_timestamp(RADIUS_PACKET *packet, time_t when)
 /*
  *	Called when we haven't received a response to a CoA request.
  */
-static void retransmit_coa_request(UNUSED fr_event_list_t *elx, void *ctx)
+static void retransmit_coa_request(void *ctx)
 {
 	int delay, frac;
 	struct timeval mrd;
@@ -1444,7 +1444,7 @@ static void retransmit_coa_request(UNUSED fr_event_list_t *elx, void *ctx)
 	 */
 	if (request->home_server->coa_mrc &&
 	    (request->num_coa_requests >= request->home_server->coa_mrc)) {
-		no_response_to_coa_request(el, request);
+		no_response_to_coa_request(request);
 		return;
 	}
 
@@ -2645,7 +2645,7 @@ static void request_post_handler(REQUEST *request)
 	/*
 	 *	Single threaded mode: update timers now.
 	 */
-	if (!have_children) wait_a_bit(el, request);
+	if (!have_children) wait_a_bit(request);
 }
 
 
@@ -3013,7 +3013,7 @@ int received_request(rad_listen_t *listener,
 		case REQUEST_CLEANUP_DELAY:
 			request->child_state = REQUEST_DONE;
 		case REQUEST_DONE:
-			cleanup_delay(el, request);
+			cleanup_delay(request);
 			request = NULL;
 			break;
 		}
@@ -3378,7 +3378,7 @@ REQUEST *received_proxy_response(RADIUS_PACKET *packet)
 #endif /* WITH_PROXY */
 
 #ifdef WITH_TCP
-static void tcp_socket_lifetime(UNUSED fr_event_list_t *elx, void *ctx)
+static void tcp_socket_lifetime(void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	char buffer[256];
@@ -3391,7 +3391,7 @@ static void tcp_socket_lifetime(UNUSED fr_event_list_t *elx, void *ctx)
 	event_new_fd(listener);
 }
 
-static void tcp_socket_idle_timeout(UNUSED fr_event_list_t *elx, void *ctx)
+static void tcp_socket_idle_timeout(void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	listen_socket_t *sock = listener->data;
@@ -3520,7 +3520,7 @@ int event_new_fd(rad_listen_t *this)
 			/*
 			 *	Set up the first poll interval.
 			 */
-			event_poll_detail(el, this);
+			event_poll_detail(this);
 			return 1;
 		}
 #endif
@@ -3815,7 +3815,7 @@ static void handle_signal_self(int flag)
 			/*
 			 *	Go service the interrupt.
 			 */
-			event_poll_detail(el, this);
+			event_poll_detail(this);
 		}
 	}
 #endif
@@ -3962,7 +3962,7 @@ static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
  *	This function is called periodically to see if this detail
  *	file is available for reading.
  */
-static void event_poll_detail(UNUSED fr_event_list_t *elx, void *ctx)
+static void event_poll_detail(void *ctx)
 {
 	int delay;
 	rad_listen_t *this = ctx;
