@@ -137,6 +137,8 @@ typedef struct rlm_mschap_t {
 	const char *xlat_name;
 	char *ntlm_auth;
 	const char *auth_type;
+	int allow_retry;
+	char *retry_msg;
 #ifdef __APPLE__
 	int  open_directory;
 #endif  
@@ -534,6 +536,10 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
+	{ "allow_retry",   PW_TYPE_BOOLEAN,
+	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
+	{ "retry_msg",   PW_TYPE_STRING_PTR,
+	  offsetof(rlm_mschap_t, retry_msg), NULL,  NULL },
 #ifdef __APPLE__
 	{ "use_open_directory",    PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t,open_directory), NULL, "yes" },
@@ -1127,10 +1133,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			      response->vp_octets + offset, nthashhash,
 			      do_ntlm_auth) < 0) {
 			RDEBUG2("MS-CHAP-Response is incorrect.");
-			mschap_add_reply(request, &request->reply->vps,
-					 *response->vp_octets,
-					 "MS-CHAP-Error", "E=691 R=1", 9);
-			return RLM_MODULE_REJECT;
+			goto do_error;
 		}
 
 		chap = 1;
@@ -1238,10 +1241,28 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
 			      response->vp_octets + 26, nthashhash,
 			      do_ntlm_auth) < 0) {
+			int i;
+			char buffer[128];
+
 			RDEBUG2("FAILED: MS-CHAP2-Response is incorrect");
+
+		do_error:
+			snprintf(buffer, sizeof(buffer), "E=691 R=%d",
+				 inst->allow_retry);
+
+			if (inst->retry_msg) {
+				snprintf(buffer + 9, sizeof(buffer), " C=");
+				for (i = 0; i < 16; i++) {
+					snprintf(buffer + 12 + i*2,
+						 sizeof(buffer), "%02x",
+						 fr_rand() & 0xff);
+				}
+				snprintf(buffer + 12 + 32, sizeof(buffer) - 45,
+					 " V=3 M=%s", inst->retry_msg);
+			}
 			mschap_add_reply(request, &request->reply->vps,
-					 *response->vp_octets,
-					 "MS-CHAP-Error", "E=691 R=1", 9);
+					 *response->vp_octets, "MS-CHAP-Error",
+					 buffer, strlen(buffer));
 			return RLM_MODULE_REJECT;
 		}
 
