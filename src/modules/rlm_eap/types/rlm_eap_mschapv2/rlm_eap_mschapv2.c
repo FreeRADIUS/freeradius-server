@@ -194,7 +194,7 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 
 	case PW_MSCHAP_ERROR:
 		DEBUG2("MSCHAP Failure\n");
-		length = 4 + MSCHAPV2_FAILURE_MESSAGE_LEN;
+		length = 4 + reply->length - 1;
 		eap_ds->request->type.data = malloc(length);
 
 		/*
@@ -211,7 +211,11 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 		eap_ds->request->type.data[1] = eap_ds->response->id;
 		length = htons(length);
 		memcpy((eap_ds->request->type.data + 2), &length, sizeof(uint16_t));
-		memcpy((eap_ds->request->type.data + 4), MSCHAPV2_FAILURE_MESSAGE, MSCHAPV2_FAILURE_MESSAGE_LEN);
+		/*
+		 *	Copy the entire failure message.
+		 */
+		memcpy((eap_ds->request->type.data + 4),
+		       reply->vp_strvalue + 1, reply->length - 1);
 		break;
 
 	default:
@@ -485,6 +489,19 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		break;
 
 		/*
+		 *	Ack of a failure message
+		 */
+        case PW_EAP_MSCHAPV2_FAILURE:
+		if (data->code != PW_EAP_MSCHAPV2_FAILURE) {
+			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected FAILURE received");
+			return 0;
+		}
+
+                handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+                eap_ds->request->code = PW_EAP_FAILURE;
+                return 1;
+
+		/*
 		 *	Something else, we don't know what it is.
 		 */
 	default:
@@ -652,16 +669,10 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 	} else {
-		/*
-		 *	Don't return anything in the error message.
-		 */
 		eap_ds->request->code = PW_EAP_FAILURE;
-		return 1;
-#if 0
-		pairmove2(&handler->request->reply->vps, &response
+		pairmove2(&handler->request->reply->vps, &response,
 			  PW_MSCHAP_ERROR);
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
-#endif
 	}
 
 	/*
