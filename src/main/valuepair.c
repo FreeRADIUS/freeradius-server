@@ -521,7 +521,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 #ifdef HAVE_REGEX_H
 			case T_OP_REG_EQ:
 			case T_OP_REG_NE:
-				result = compare;
+				if (compare != 0) result = -1;
 				break;
 #endif
 		} /* switch over the operator of the check item */
