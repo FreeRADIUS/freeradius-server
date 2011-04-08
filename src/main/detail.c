@@ -604,7 +604,7 @@ int detail_recv(rad_listen_t *listener,
 	 */
 	if (!data->vps) {
 		data->state = STATE_HEADER;
-		if (feof(data->fp)) goto cleanup; 
+		if (!data->fp || feof(data->fp)) goto cleanup; 
 		return 0;
 	}
 
