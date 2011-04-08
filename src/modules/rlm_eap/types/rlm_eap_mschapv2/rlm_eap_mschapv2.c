@@ -34,11 +34,15 @@ RCSID("$Id$")
 
 typedef struct rlm_eap_mschapv2_t {
         int with_ntdomain_hack;
+	int send_error;
 } rlm_eap_mschapv2_t;
 
 static CONF_PARSER module_config[] = {
 	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_mschapv2_t,with_ntdomain_hack), NULL, "no" },
+
+	{ "send_error",     PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_mschapv2_t,send_error), NULL, "no" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -381,6 +385,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	mschapv2_opaque_t *data;
 	EAP_DS *eap_ds = handler->eap_ds;
 	VALUE_PAIR *challenge, *response, *name;
+	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
@@ -585,7 +590,6 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	if (handler->request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
 		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
-		rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
 
 		/*
 		 *	Set up the callbacks for the tunnel
@@ -668,11 +672,15 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		pairmove2(&response, &handler->request->reply->vps,
 			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
-	} else {
+
+	} else if (inst->send_error) {
 		eap_ds->request->code = PW_EAP_FAILURE;
 		pairmove2(&handler->request->reply->vps, &response,
 			  PW_MSCHAP_ERROR);
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
+	} else {
+		eap_ds->request->code = PW_EAP_FAILURE;
+		return 1;
 	}
 
 	/*
