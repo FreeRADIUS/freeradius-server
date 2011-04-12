@@ -675,7 +675,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 
 	} else if (inst->send_error) {
 	  pairmove2(&response, &handler->request->reply->vps,
-		    PW_MSCHAP_ERROR);
+		    PW_MSCHAP_ERROR, 0);
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
 	} else {
 		eap_ds->request->code = PW_EAP_FAILURE;
