@@ -207,8 +207,11 @@ static int we_are_master(void)
 
 	return 1;
 }
+#define ASSERT_MASTER 	if (!we_are_master()) rad_panic("We are not master")
+
 #else
 #define we_are_master(_x) (1)
+#define ASSERT_MASTER
 #endif
 
 static void request_reject_delay(REQUEST *request, int action);
@@ -370,11 +373,9 @@ static void request_done(REQUEST *request, int action)
 		rad_assert(request->ev == NULL);
 	} else
 #endif
-
-	if (!we_are_master()) {
-		rad_assert("request_done called from a child thread" == NULL);
-		return;
-	}
+	  {
+		  ASSERT_MASTER;
+	  }
 
 	/*
 	 *	Mark ourselves as handling the request.
@@ -559,11 +560,7 @@ static void request_process_timer(REQUEST *request)
 #endif
 
 	TRACE_STATE_MACHINE;
-
-	if (!we_are_master()) {
-		rad_assert("request_process_timer called from a child thread" == NULL);
-		return;
-	}
+	ASSERT_MASTER;
 
 #ifdef WITH_COA
 	/*
@@ -730,11 +727,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 #endif
 
 	TRACE_STATE_MACHINE;
-
-	if (!we_are_master()) {
-		rad_assert("request_queue_or_run called from a child thread" == NULL);
-		_exit(1);
-	}
+	ASSERT_MASTER;
 
 #ifdef HAVE_PTHREAD_H
 	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
@@ -852,11 +845,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 	struct timeval when;
 
 	TRACE_STATE_MACHINE;
-
-	if (!we_are_master()) {
-		rad_assert("request_cleanup_delay called from child thread" == NULL);
-		return;
-	}
+	ASSERT_MASTER;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -891,11 +880,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 static void request_reject_delay(REQUEST *request, int action)
 {
 	TRACE_STATE_MACHINE;
-
-	if (!we_are_master()) {
-		rad_assert("request_reject_delay called from child thread" == NULL);
-		return;
-	}
+	ASSERT_MASTER;
 
 	switch (action) {
 	case FR_ACTION_DUP:
@@ -2220,11 +2205,7 @@ static void request_ping(REQUEST *request, int action)
 	char buffer[128];
 
 	TRACE_STATE_MACHINE;
-
-	if (!we_are_master()) {
-		rad_assert("request_ping called from a child thread" == NULL);
-		return;
-	}
+	ASSERT_MASTER;
 
 	switch (action) {
 	case FR_ACTION_TIMER:
@@ -2442,10 +2423,7 @@ static void mark_home_server_zombie(home_server *home)
 {
 	char buffer[128];
 
-	if (!we_are_master()) {
-		rad_assert("mark_home_server_zombie called from a child thread" == NULL);
-		return;
-	}
+	ASSERT_MASTER;
 
 	rad_assert(home->state == HOME_STATE_ALIVE);
 
