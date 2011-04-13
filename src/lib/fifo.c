@@ -27,145 +27,106 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
-typedef struct fr_fifo_entry_t {
-	struct fr_fifo_entry_t *next;
-	void			*data;
-} fr_fifo_entry_t;
-
 struct fr_fifo_t {
-	fr_fifo_entry_t *head, **tail;
-	fr_fifo_entry_t *freelist;
-
-	int num_elements;
-	int max_entries;
+	int num;
+	int first;
+	int max;
 	fr_fifo_free_t freeNode;
+
+	void *data[1];
 };
 
 
-fr_fifo_t *fr_fifo_create(int max_entries, fr_fifo_free_t freeNode)
+fr_fifo_t *fr_fifo_create(int max, fr_fifo_free_t freeNode)
 {
 	fr_fifo_t *fi;
 
-	if ((max_entries < 2) || (max_entries > (1024 * 1024))) return NULL;
+	if ((max < 2) || (max > (1024 * 1024))) return NULL;
 
-	fi = malloc(sizeof(*fi));
+	fi = malloc(sizeof(*fi) + (sizeof(fi->data[0])*max));
 	if (!fi) return NULL;
 
 	memset(fi, 0, sizeof(*fi));
 
-	fi->max_entries = max_entries;
+	fi->max = max;
+	fi->first = 0;
+	fi->num = 0;
 	fi->freeNode = freeNode;
 
 	return fi;
 }
 
-static void fr_fifo_free_entries(fr_fifo_t *fi, fr_fifo_entry_t *head)
-{
-	fr_fifo_entry_t *next;
-
-	while (head) {
-		next = head->next;
-
-		if (fi->freeNode && head->data) fi->freeNode(head->data);
-		free(head);
-
-		head = next;
-	}
-}
-
 void fr_fifo_free(fr_fifo_t *fi)
 {
+	int i;
+
 	if (!fi) return;
 
-	fr_fifo_free_entries(fi, fi->head);
-	fr_fifo_free_entries(fi, fi->freelist);
+	if (fi->freeNode) {
+		for (i = 0 ; i < fi->num; i++) {
+			int element;
 
-	free(fi);
-}
+			element = i + fi->first;
+			if (element > fi->max) {
+				element -= fi->max;
+			}
 
-static fr_fifo_entry_t *fr_fifo_alloc_entry(fr_fifo_t *fi)
-{
-	fr_fifo_entry_t *entry;
-
-	if (fi->freelist) {
-		entry = fi->freelist;
-		fi->freelist = entry->next;
-	} else {
-		entry = malloc(sizeof(*entry));
-		if (!entry) return NULL;
+			fi->freeNode(fi->data[element]);
+			fi->data[element] = NULL;
+		}
 	}
 
-	memset(entry, 0, sizeof(*entry));
-	return entry;
+	memset(fi, 0, sizeof(fi));
+	free(fi);
 }
 
 int fr_fifo_push(fr_fifo_t *fi, void *data)
 {
-	fr_fifo_entry_t *entry;
+	int where;
 
 	if (!fi || !data) return 0;
 
-	if (fi->num_elements >= fi->max_entries) return 0;
+	if (fi->num >= fi->max) return 0;
 
-	entry = fr_fifo_alloc_entry(fi);
-	if (!entry) return 0;
-	entry->data = data;
-
-	if (!fi->head) {
-		fi->head = entry;
-	} else {
-		*fi->tail = entry;
+	where = fi->first + fi->num;
+	if (where > fi->max) {
+		where -= fi->max;
 	}
-	fi->tail = &(entry->next);
 
-	fi->num_elements++;
+	fi->data[where] = data;
+	fi->num++;
 
 	return 1;
 }
 
-static void fr_fifo_free_entry(fr_fifo_t *fi, fr_fifo_entry_t *entry)
-{
-	entry->data = NULL;
-	entry->next = fi->freelist;
-	fi->freelist = entry;
-}
-
-
 void *fr_fifo_pop(fr_fifo_t *fi)
 {
 	void *data;
-	fr_fifo_entry_t *entry;
 
-	if (!fi || !fi->head) return NULL;
+	if (!fi || (fi->num == 0)) return NULL;
 
-	entry = fi->head;
-	fi->head = entry->next;
+	data = fi->data[fi->first++];
 
-	data = entry->data;
-	fr_fifo_free_entry(fi, entry);
-
-	fi->num_elements--;
-
-	if (!fi->head) {
-		fi->tail = NULL;
-		fi->num_elements = 0;
+	if (fi->first >= fi->max) {
+		fi->first -= fi->max;
 	}
+	fi->num--;
 
 	return data;
 }
 
 void *fr_fifo_peek(fr_fifo_t *fi)
 {
-	if (!fi || !fi->head) return NULL;
+	if (!fi || (fi->num == 0)) return NULL;
 
-	return fi->head->data;
+	return fi->data[fi->first];
 }
 
 int fr_fifo_num_elements(fr_fifo_t *fi)
 {
 	if (!fi) return 0;
 
-	return fi->num_elements;
+	return fi->num;
 }
 
 #ifdef TESTING
@@ -179,30 +140,68 @@ int fr_fifo_num_elements(fr_fifo_t *fi)
 #define MAX 1024
 int main(int argc, char **argv)
 {
-	int i, array[MAX];
+	int i, j, array[MAX];
 	fr_fifo_t *fi;
 
 	fi = fr_fifo_create(MAX, NULL);
 	if (!fi) exit(1);
 
-	for (i = 0; i < MAX; i++) {
-		array[i] = i;
-
-		if (!fr_fifo_push(fi, &array[i])) exit(2);
-	}
-
-	for (i = 0; i < MAX; i++) {
-		int *p;
-
-		p = fr_fifo_pop(fi);
-		if (!p) {
-			fprintf(stderr, "No pop at %d\n", i);
-			exit(3);
+	for (j = 0; j < 5; j++) {
+#define SPLIT (MAX/3)
+#define COUNT ((j * SPLIT) + i)
+		for (i = 0; i < SPLIT; i++) {
+			array[COUNT % MAX] = COUNT;
+			
+			if (!fr_fifo_push(fi, &array[COUNT % MAX])) {
+				fprintf(stderr, "%d %d\tfailed pushing %d\n",
+					j, i, COUNT);
+				exit(2);
+			}
+			
+			if (fr_fifo_num_elements(fi) != (i + 1)) {
+				fprintf(stderr, "%d %d\tgot size %d expected %d\n",
+					j, i, i + 1, fr_fifo_num_elements(fi));
+				exit(1);
+			}
 		}
 
-		if (*p != i) exit(4);
+		if (fr_fifo_num_elements(fi) != SPLIT) {
+			fprintf(stderr, "HALF %d %d\n",
+				fr_fifo_num_elements(fi), SPLIT);
+			exit(1);
+		}
+
+		for (i = 0; i < SPLIT; i++) {
+			int *p;
+			
+			p = fr_fifo_pop(fi);
+			if (!p) {
+				fprintf(stderr, "No pop at %d\n", i);
+				exit(3);
+			}
+			
+			if (*p != COUNT) {
+				fprintf(stderr, "%d %d\tgot %d expected %d\n",
+					j, i, *p, COUNT);
+				exit(4);
+			}
+			
+			if (fr_fifo_num_elements(fi) != SPLIT - (i + 1)) {
+				fprintf(stderr, "%d %d\tgot size %d expected %d\n",
+					j, i, SPLIT - (i + 1), fr_fifo_num_elements(fi));
+				exit(1);
+			}
+		}
+
+		if (fr_fifo_num_elements(fi) != 0) {
+			fprintf(stderr, "ZERO %d %d\n",
+				fr_fifo_num_elements(fi), 0);
+			exit(1);
+		}
 	}
 
+	fr_fifo_free(fi);
+	
 	exit(0);
 }
 #endif
