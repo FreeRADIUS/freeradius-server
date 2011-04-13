@@ -25,6 +25,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/process.h>
 #include <freeradius-devel/rad_assert.h>
 
 /*
@@ -99,13 +100,6 @@ typedef struct THREAD_HANDLE {
 	REQUEST		     *request;
 } THREAD_HANDLE;
 
-/*
- *	For the request queue.
- */
-typedef struct request_queue_t {
-	REQUEST	    	  *request;
-	RAD_REQUEST_FUNP  fun;
-} request_queue_t;
 #endif	/* WITH_GCD */
 
 typedef struct thread_fork_t {
@@ -304,40 +298,47 @@ static void reap_children(void)
  *
  *	This function should never fail.
  */
-static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
+int request_enqueue(REQUEST *request)
 {
-	request_queue_t *entry;
+	static int last_complained = 0;
+
+	almost_now = request->timestamp;
+
+	/*
+	 *	If we haven't checked the number of child threads
+	 *	in a while, OR if the thread pool appears to be full,
+	 *	go manage it.
+	 */
+	if ((last_cleaned < request->timestamp) ||
+	    (thread_pool.active_threads == thread_pool.total_threads)) {
+		thread_pool_manage(request->timestamp);
+	}
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
 	thread_pool.request_count++;
 
-	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
+	if ((thread_pool.num_queued >= thread_pool.max_queue_size) &&
+	    (last_complained != almost_now)) {
+		last_complained = almost_now;
+
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 		/*
 		 *	Mark the request as done.
 		 */
 		radlog(L_ERR, "Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
-		request->child_state = REQUEST_DONE;
 		return 0;
 	}
-	request->child_state = REQUEST_QUEUED;
 	request->component = "<core>";
 	request->module = "<queue>";
-
-	entry = rad_malloc(sizeof(*entry));
-	entry->request = request;
-	entry->fun = fun;
 
 	/*
 	 *	Push the request onto the appropriate fifo for that
 	 */
-	if (!fr_fifo_push(thread_pool.fifo[request->priority],
-			    entry)) {
+	if (!fr_fifo_push(thread_pool.fifo[request->priority], request)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
-		request->child_state = REQUEST_DONE;
 		return 0;
 	}
 
@@ -362,11 +363,11 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 /*
  *	Remove a request from the queue.
  */
-static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
+static int request_dequeue(REQUEST **prequest)
 {
 	int blocked;
 	RAD_LISTEN_TYPE i, start;
-	request_queue_t *entry;
+	REQUEST *request;
 
 	reap_children();
 
@@ -381,20 +382,18 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	requests will be quickly cleared.
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		entry = fr_fifo_peek(thread_pool.fifo[i]);
-		if (!entry ||
-		    (entry->request->master_state != REQUEST_STOP_PROCESSING)) {
+		request = fr_fifo_peek(thread_pool.fifo[i]);
+		if (!request ||
+		    (request->master_state != REQUEST_STOP_PROCESSING)) {
 			continue;
 }
 		/*
 		 *	This entry was marked to be stopped.  Acknowledge it.
 		 */
-		entry = fr_fifo_pop(thread_pool.fifo[i]);
-		rad_assert(entry != NULL);
-		entry->request->child_state = REQUEST_DONE;
+		request = fr_fifo_pop(thread_pool.fifo[i]);
+		rad_assert(request != NULL);
+		request->child_state = REQUEST_DONE;
 		thread_pool.num_queued--;
-		free(entry);
-		entry = NULL;
 	}
 
 	start = 0;
@@ -403,33 +402,28 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	Pop results from the top of the queue
 	 */
 	for (i = start; i < RAD_LISTEN_MAX; i++) {
-		entry = fr_fifo_pop(thread_pool.fifo[i]);
-		if (entry) {
+		request = fr_fifo_pop(thread_pool.fifo[i]);
+		if (request) {
 			start = i;
 			break;
 		}
 	}
 
-	if (!entry) {
+	if (!request) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		*request = NULL;
-		*fun = NULL;
+		*prequest = NULL;
 		return 0;
 	}
 
 	rad_assert(thread_pool.num_queued > 0);
 	thread_pool.num_queued--;
-	*request = entry->request;
-	*fun = entry->fun;
-	free(entry);
-	entry = NULL;
+	*prequest = request;
 
-	rad_assert(*request != NULL);
-	rad_assert((*request)->magic == REQUEST_MAGIC);
-	rad_assert(*fun != NULL);
+	rad_assert(*prequest != NULL);
+	rad_assert(request->magic == REQUEST_MAGIC);
 
-	(*request)->component = "<core>";
-	(*request)->module = "<thread>";
+	request->component = "<core>";
+	request->module = "<thread>";
 
 	/*
 	 *	If the request has sat in the queue for too long,
@@ -439,9 +433,9 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	the queue, and therefore won't clean it up until we
 	 *	have acknowledged it as "done".
 	 */
-	if ((*request)->master_state == REQUEST_STOP_PROCESSING) {
-		(*request)->module = "<done>";
-		(*request)->child_state = REQUEST_DONE;
+	if (request->master_state == REQUEST_STOP_PROCESSING) {
+		request->module = "<done>";
+		request->child_state = REQUEST_DONE;
 		goto retry;
 	}
 
@@ -450,7 +444,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 	 *	in a database, without indexes.
 	 */
 	rad_assert(almost_now != 0);
-	blocked = almost_now - (*request)->timestamp;
+	blocked = almost_now - request->timestamp;
 	if (blocked < 5) {
 		blocked = 0;
 	} else {
@@ -472,7 +466,7 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
 
 	if (blocked) {
 		radlog(L_ERR, "Request %u has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		       (*request)->number, blocked);
+		       request->number, blocked);
 	}
 
 	return 1;
@@ -486,7 +480,6 @@ static int request_dequeue(REQUEST **request, RAD_REQUEST_FUNP *fun)
  */
 static void *request_handler_thread(void *arg)
 {
-	RAD_REQUEST_FUNP  fun;
 	THREAD_HANDLE	  *self = (THREAD_HANDLE *) arg;
 
 	/*
@@ -529,7 +522,7 @@ static void *request_handler_thread(void *arg)
 		 *	It may be empty, in which case we fail
 		 *	gracefully.
 		 */
-		if (!request_dequeue(&self->request, &fun)) continue;
+		if (!request_dequeue(&self->request)) continue;
 
 		self->request->child_pid = self->pthread_id;
 		self->request_count++;
@@ -538,7 +531,7 @@ static void *request_handler_thread(void *arg)
 		       self->thread_num, self->request->number,
 		       self->request_count);
 
-		radius_handle_request(self->request, fun);
+		self->request->process(self->request, FR_ACTION_RUN);
 
 		/*
 		 *	Update the active threads.
@@ -800,6 +793,8 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 		thread_pool.max_spare_threads = 1;
 	if (thread_pool.max_spare_threads < thread_pool.min_spare_threads)
 		thread_pool.max_spare_threads = thread_pool.min_spare_threads;
+	if (thread_pool.max_threads == 0)
+		thread_pool.max_threads = 256;
 #endif	/* WITH_GCD */
 
 	/*
@@ -879,62 +874,20 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 }
 
 
-/*
- *	Assign a new request to a free thread.
- *
- *	If there isn't a free thread, then try to create a new one,
- *	up to the configured limits.
- */
-int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
-{
 #ifdef WITH_GCD
+int request_enqueue(REQUEST *request)
+{
 	dispatch_block_t block;
-#endif
 
-	almost_now = request->timestamp;
-
-	/*
-	 *	We've been told not to spawn threads, so don't.
-	 */
-	if (!thread_pool.spawn_flag) {
-		radius_handle_request(request, fun);
-
-#ifdef WNOHANG
-		/*
-		 *	Requests that care about child process exit
-		 *	codes have already either called
-		 *	rad_waitpid(), or they've given up.
-		 */
-		wait(NULL);
-#endif
-		return 1;
-	}
-
-#ifndef WITH_GCD
-	/*
-	 *	Add the new request to the queue.
-	 */
-	if (!request_enqueue(request, fun)) return 0;
-
-	/*
-	 *	If we haven't checked the number of child threads
-	 *	in a while, OR if the thread pool appears to be full,
-	 *	go manage it.
-	 */
-	if ((last_cleaned < almost_now) ||
-	    (thread_pool.active_threads == thread_pool.total_threads)) {
-		thread_pool_manage(almost_now);
-	}
-#else
 	block = ^{
 		radius_handle_request(request, fun);
 	};
 
 	dispatch_async(thread_pool.queue, block);
-#endif
 
 	return 1;
 }
+#endif
 
 #ifndef WITH_GCD
 /*
@@ -1214,20 +1167,4 @@ void thread_pool_queue_stats(int *array)
 		}
 	}
 }
-#else  /* HAVE_PTHREAD_Hx */
-int thread_pool_addrequest(REQUEST *request, RAD_REQUEST_FUNP fun)
-{
-	radius_handle_request(request, fun);
-	
-#ifdef WNOHANG
-	/*
-	 *	Requests that care about child process exit
-	 *	codes have already either called
-	 *	rad_waitpid(), or they've given up.
-	 */
-	wait(NULL);
-#endif
-	return 1;
-}
-
 #endif /* HAVE_PTHREAD_H */

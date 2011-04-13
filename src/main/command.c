@@ -1166,7 +1166,6 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	int filedone;
 	fr_command_socket_t *sock = listener->data;
 	rad_listen_t *fake;
-	REQUEST *request = NULL;
 	RADIUS_PACKET *packet;
 	VALUE_PAIR *vp;
 	FILE *fp;
@@ -1243,23 +1242,8 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 #endif
 	}
 
-	if (!received_request(fake, packet, &request, sock->inject_client)) {
-		cprintf(listener, "ERROR: Failed to inject request.  See log file for details\n");
-		rad_free(&packet);
-		free(fake);
-		return 0;
-	}
-
-	/*
-	 *	Remember what the output file is, and remember to
-	 *	delete the fake listener when done.
-	 */
-	request_data_add(request, null_socket_send, 0, strdup(buffer), free);
-	request_data_add(request, null_socket_send, 1, fake, free);
-
 	if (debug_flag) {
-		request->radlog(L_DBG, 0, request,
-				"Injected %s packet from host %s port 0 code=%d, id=%d",
+		radlog(L_DBG, "Injecting %s packet from host %s port 0 code=%d, id=%d",
 				fr_packet_codes[packet->code],
 				inet_ntop(packet->src_ipaddr.af,
 					  &packet->src_ipaddr.ipaddr,
@@ -1268,14 +1252,28 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		
 		for (vp = packet->vps; vp != NULL; vp = vp->next) {
 			vp_prints(buffer, sizeof(buffer), vp);
-			request->radlog(L_DBG, 0, request, "\t%s", buffer);
+			radlog(L_DBG, "\t%s", buffer);
 		}
+
+		DEBUG("WARNING: INJECTION IS LEAKING MEMORY!");
 	}
 
+	if (!request_receive(fake, packet, sock->inject_client, fun)) {
+		cprintf(listener, "ERROR: Failed to inject request.  See log file for details\n");
+		rad_free(&packet);
+		free(fake);
+		return 0;
+	}
+
+#if 0
 	/*
-	 *	And go process it.
+	 *	Remember what the output file is, and remember to
+	 *	delete the fake listener when done.
 	 */
-	thread_pool_addrequest(request, fun);
+	request_data_add(request, null_socket_send, 0, strdup(buffer), free);
+	request_data_add(request, null_socket_send, 1, fake, free);
+
+#endif
 
 	return 1;
 }
@@ -2083,9 +2081,7 @@ static void print_help(rad_listen_t *listener,
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
  */
-static int command_domain_recv(rad_listen_t *listener,
-			       UNUSED RAD_REQUEST_FUNP *pfun,
-			       UNUSED REQUEST **prequest)
+static int command_domain_recv(rad_listen_t *listener)
 {
 	int i, rcode;
 	ssize_t len;
@@ -2093,9 +2089,6 @@ static int command_domain_recv(rad_listen_t *listener,
 	char *my_argv[MAX_ARGV], **argv;
 	fr_command_table_t *table;
 	fr_command_socket_t *co = listener->data;
-
-	*pfun = NULL;
-	*prequest = NULL;
 
 	do {
 		ssize_t c;
@@ -2299,9 +2292,7 @@ static int command_domain_recv(rad_listen_t *listener,
 }
 
 
-static int command_domain_accept(rad_listen_t *listener,
-				 UNUSED RAD_REQUEST_FUNP *pfun,
-				 UNUSED REQUEST **prequest)
+static int command_domain_accept(rad_listen_t *listener)
 {
 	int newfd;
 	uint32_t magic;
@@ -2314,9 +2305,6 @@ static int command_domain_accept(rad_listen_t *listener,
 
 	DEBUG2(" ... new connection request on command socket.");
 
-	*pfun = NULL;
-	*prequest = NULL;
-	
 	newfd = accept(listener->fd, (struct sockaddr *) &src, &salen);
 	if (newfd < 0) {
 		/*

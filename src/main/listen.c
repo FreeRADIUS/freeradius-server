@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/vqp.h>
 #include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/process.h>
 
 #include <freeradius-devel/vmps.h>
 #include <freeradius-devel/detail.h>
@@ -415,8 +416,7 @@ static int rad_status_server(REQUEST *request)
 }
 
 #ifdef WITH_TCP
-static int dual_tcp_recv(rad_listen_t *listener,
-			 RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int dual_tcp_recv(rad_listen_t *listener)
 {
 	int rcode;
 	RADIUS_PACKET	*packet;
@@ -532,21 +532,18 @@ static int dual_tcp_recv(rad_listen_t *listener,
 		return 0;
 	} /* switch over packet types */
 
-	if (!received_request(listener, packet, prequest, sock->client)) {
+	if (!request_receive(listener, packet, client, fun)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
 		RAD_STATS_CLIENT_INC(listener, sock->client, total_packets_dropped);
 		rad_free(&sock->packet);
 		return 0;
 	}
 
-	*pfun = fun;
 	sock->packet = NULL;	/* we have no need for more partial reads */
 	return 1;
 }
 
-static int dual_tcp_accept(rad_listen_t *listener,
-			   UNUSED RAD_REQUEST_FUNP *pfun,
-			   UNUSED REQUEST **prequest)
+static int dual_tcp_accept(rad_listen_t *listener)
 {
 	int newfd, src_port;
 	rad_listen_t *this;
@@ -1158,8 +1155,7 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
   */
-static int stats_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int stats_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
 	int		code, src_port;
@@ -1207,14 +1203,13 @@ static int stats_socket_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	if (!received_request(listener, packet, prequest, client)) {
+	if (!request_receive(listener, packet, client, rad_status_server)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
 		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
 
-	*pfun = rad_status_server;
 	return 1;
 }
 #endif
@@ -1226,8 +1221,7 @@ static int stats_socket_recv(rad_listen_t *listener,
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
   */
-static int auth_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int auth_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
 	int		code, src_port;
@@ -1295,14 +1289,13 @@ static int auth_socket_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	if (!received_request(listener, packet, prequest, client)) {
+	if (!request_receive(listener, packet, client, fun)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
 		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
 
-	*pfun = fun;
 	return 1;
 }
 
@@ -1311,8 +1304,7 @@ static int auth_socket_recv(rad_listen_t *listener,
 /*
  *	Receive packets from an accounting socket
  */
-static int acct_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int acct_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
 	int		code, src_port;
@@ -1383,50 +1375,19 @@ static int acct_socket_recv(rad_listen_t *listener,
 	/*
 	 *	There can be no duplicate accounting packets.
 	 */
-	if (!received_request(listener, packet, prequest, client)) {
+	if (!request_receive(listener, packet, client, fun)) {
 		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
 		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
 
-	*pfun = fun;
 	return 1;
 }
 #endif
 
 
 #ifdef WITH_COA
-/*
- *	For now, all CoA requests are *only* originated, and not
- *	proxied.  So all of the necessary work is done in the
- *	post-proxy section, which is automatically handled by event.c.
- *	As a result, we don't have to do anything here.
- */
-static int rad_coa_reply(REQUEST *request)
-{
-	VALUE_PAIR *s1, *s2;
-
-	/*
-	 *	Inform the user about RFC requirements.
-	 */
-	s1 = pairfind(request->proxy->vps, PW_STATE, 0);
-	if (s1) {
-		s2 = pairfind(request->proxy_reply->vps, PW_STATE, 0);
-
-		if (!s2) {
-			DEBUG("WARNING: Client was sent State in CoA, and did not respond with State.");
-
-		} else if ((s1->length != s2->length) ||
-			   (memcmp(s1->vp_octets, s2->vp_octets,
-				   s1->length) != 0)) {
-			DEBUG("WARNING: Client was sent State in CoA, and did not respond with the same State.");
-		}
-	}
-
-	return RLM_MODULE_OK;
-}
-
 static int do_proxy(REQUEST *request)
 {
 	VALUE_PAIR *vp;
@@ -1527,7 +1488,7 @@ static int rad_coa_recv(REQUEST *request)
 			request->reply->code = ack;
 			break;
 		}
-	} else {
+	} else if (request->proxy_reply) {
 		/*
 		 *	Start the reply code with the proxy reply
 		 *	code.
@@ -1545,14 +1506,15 @@ static int rad_coa_recv(REQUEST *request)
 	/*
 	 *	We may want to over-ride the reply.
 	 */
-	rcode = module_send_coa(0, request);
-	switch (rcode) {
-		/*
-		 *	We need to send CoA-NAK back if Service-Type
-		 *	is Authorize-Only.  Rely on the user's policy
-		 *	to do that.  We're not a real NAS, so this
-		 *	restriction doesn't (ahem) apply to us.
-		 */
+	if (request->reply->code) {
+		rcode = module_send_coa(0, request);
+		switch (rcode) {
+			/*
+			 *	We need to send CoA-NAK back if Service-Type
+			 *	is Authorize-Only.  Rely on the user's policy
+			 *	to do that.  We're not a real NAS, so this
+			 *	restriction doesn't (ahem) apply to us.
+			 */
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
 		case RLM_MODULE_REJECT:
@@ -1580,7 +1542,7 @@ static int rad_coa_recv(REQUEST *request)
 				request->reply->code = ack;
 			}
 			break;
-
+		}
 	}
 
 	return RLM_MODULE_OK;
@@ -1593,8 +1555,7 @@ static int rad_coa_recv(REQUEST *request)
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
   */
-static int coa_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int coa_socket_recv(rad_listen_t *listener)
 {
 	ssize_t		rcode;
 	int		code, src_port;
@@ -1648,12 +1609,11 @@ static int coa_socket_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	if (!received_request(listener, packet, prequest, client)) {
+	if (!request_receive(listener, packet, client, fun)) {
 		rad_free(&packet);
 		return 0;
 	}
 
-	*pfun = fun;
 	return 1;
 }
 #endif
@@ -1662,12 +1622,9 @@ static int coa_socket_recv(rad_listen_t *listener,
 /*
  *	Recieve packets from a proxy socket.
  */
-static int proxy_socket_recv(rad_listen_t *listener,
-			      RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int proxy_socket_recv(rad_listen_t *listener)
 {
-	REQUEST		*request;
 	RADIUS_PACKET	*packet;
-	RAD_REQUEST_FUNP fun = NULL;
 	char		buffer[128];
 
 	packet = rad_recv(listener->fd, 0);
@@ -1683,12 +1640,10 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	case PW_AUTHENTICATION_ACK:
 	case PW_ACCESS_CHALLENGE:
 	case PW_AUTHENTICATION_REJECT:
-		fun = rad_authenticate;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-		fun = rad_accounting;
 		break;
 #endif
 
@@ -1697,7 +1652,6 @@ static int proxy_socket_recv(rad_listen_t *listener,
 	case PW_DISCONNECT_NAK:
 	case PW_COA_ACK:
 	case PW_COA_NAK:
-		fun = rad_coa_reply;
 		break;
 #endif
 
@@ -1714,26 +1668,10 @@ static int proxy_socket_recv(rad_listen_t *listener,
 		return 0;
 	}
 
-	request = received_proxy_response(packet);
-	if (!request) {
+	if (!request_proxy_reply(packet)) {
 		rad_free(&packet);
 		return 0;
 	}
-
-#ifdef WITH_COA
-	/*
-	 *	Distinguish proxied CoA requests from ones we
-	 *	originate.
-	 */
-	if ((fun == rad_coa_reply) &&
-	    (request->packet->code == request->proxy->code)) {
-		fun = rad_coa_recv;
-	}
-#endif
-
-	rad_assert(fun != NULL);
-	*pfun = fun;
-	*prequest = request;
 
 	return 1;
 }
@@ -1742,12 +1680,9 @@ static int proxy_socket_recv(rad_listen_t *listener,
 /*
  *	Recieve packets from a proxy socket.
  */
-static int proxy_socket_tcp_recv(rad_listen_t *listener,
-				 RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int proxy_socket_tcp_recv(rad_listen_t *listener)
 {
-	REQUEST		*request;
 	RADIUS_PACKET	*packet;
-	RAD_REQUEST_FUNP fun = NULL;
 	listen_socket_t	*sock = listener->data;
 	char		buffer[128];
 
@@ -1765,12 +1700,10 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener,
 	case PW_AUTHENTICATION_ACK:
 	case PW_ACCESS_CHALLENGE:
 	case PW_AUTHENTICATION_REJECT:
-		fun = rad_authenticate;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-		fun = rad_accounting;
 		break;
 #endif
 
@@ -1799,16 +1732,12 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener,
 	 *
 	 *	Close the socket on bad packets...
 	 */
-	request = received_proxy_response(packet);
-	if (!request) {
+	if (!request_proxy_reply(packet)) {
+		rad_free(&packet);
 		return 0;
 	}
 
-	rad_assert(fun != NULL);
-	sock->opened = sock->last_packet = request->timestamp;
-
-	*pfun = fun;
-	*prequest = request;
+	sock->opened = sock->last_packet = time(NULL);
 
 	return 1;
 }

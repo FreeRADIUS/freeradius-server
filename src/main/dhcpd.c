@@ -245,8 +245,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
  */
-static int dhcp_socket_recv(rad_listen_t *listener,
-			    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+static int dhcp_socket_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET	*packet;
 	dhcp_socket_t	*sock;
@@ -258,12 +257,10 @@ static int dhcp_socket_recv(rad_listen_t *listener,
 	}
 
 	sock = listener->data;
-	if (!received_request(listener, packet, prequest, &sock->dhcp_client)) {
+	if (!request_receive(listener, packet, &sock->dhcp_client, dhcp_process)) {
 		rad_free(&packet);
 		return 0;
 	}
-
-	*pfun = dhcp_process;
 
 	return 1;
 }

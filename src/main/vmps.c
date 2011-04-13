@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/process.h>
 #include <freeradius-devel/vqp.h>
 #include <freeradius-devel/vmps.h>
 #include <freeradius-devel/rad_assert.h>
@@ -37,8 +38,7 @@ RCSID("$Id$")
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
  */
-int vqp_socket_recv(rad_listen_t *listener,
-		    RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+int vqp_socket_recv(rad_listen_t *listener)
 {
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
@@ -62,12 +62,10 @@ int vqp_socket_recv(rad_listen_t *listener,
 	 */
 	fun = vmps_process;
 
-	if (!received_request(listener, packet, prequest, client)) {
+	if (!request_receive(listener, packet, client, fun)) {
 		rad_free(&packet);
 		return 0;
 	}
-
-	*pfun = fun;
 
 	return 1;
 }

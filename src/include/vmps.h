@@ -14,8 +14,7 @@ RCSIDH(vmps_h, "$Id$")
 extern "C" {
 #endif
 
-int vqp_socket_recv(rad_listen_t *listener,
-		    RAD_REQUEST_FUNP *pfun, REQUEST **prequest);
+int vqp_socket_recv(rad_listen_t *listener);
 int vqp_socket_send(rad_listen_t *listener, REQUEST *request);
 int vqp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request);
 int vqp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request);

@@ -77,6 +77,7 @@ typedef struct home_server {
 
 	int		ping_interval;
 	int		num_pings_to_alive;
+	int		num_sent_pings;
 	int		num_received_pings;
 	int		ping_timeout;
 

@@ -52,8 +52,7 @@ typedef struct listen_detail_t {
 	RADCLIENT	detail_client;
 } listen_detail_t;
 
-int detail_recv(rad_listen_t *listener,
-		RAD_REQUEST_FUNP *pfun, REQUEST **prequest);
+int detail_recv(rad_listen_t *listener);
 int detail_send(rad_listen_t *listener, REQUEST *request);
 void detail_free(rad_listen_t *this);
 int detail_print(const rad_listen_t *this, char *buffer, size_t bufsize);

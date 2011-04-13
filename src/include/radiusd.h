@@ -192,6 +192,12 @@ typedef enum RAD_LISTEN_TYPE {
 typedef struct rad_listen_t rad_listen_t;
 typedef		void (*radlog_func_t)(int, int, REQUEST *, const char *, ...);
 
+typedef		void (*fr_request_process_t)(REQUEST *, int);
+/*
+ *  Function handler for requests.
+ */
+typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
+
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
 
@@ -211,6 +217,8 @@ struct auth_req {
 	VALUE_PAIR		*username;
 	VALUE_PAIR		*password;
 
+	fr_request_process_t	process;
+	RAD_REQUEST_FUNP	handle;
 	struct main_config_t	*root;
 
 	request_data_t		*data;
@@ -238,6 +246,7 @@ struct auth_req {
 	const char		*component; /* ditto */
 
 	struct timeval		received;
+	struct timeval		finished;
 	struct timeval		when; 		/* to wake up */
 	int			delay;
 
@@ -246,8 +255,6 @@ struct auth_req {
 	RAD_LISTEN_TYPE		priority;
 
 	fr_event_t		*ev;
-	struct timeval		next_when;
-	fr_event_callback_t	next_callback;
 
 	int			in_request_hash;
 #ifdef WITH_PROXY
@@ -256,7 +263,8 @@ struct auth_req {
 	home_server	       	*home_server;
 	home_pool_t		*home_pool; /* for dynamic failover */
 
-	struct timeval		proxy_when;
+	struct timeval		proxy_start;
+	struct timeval		proxy_retransmit;
 
 	int			num_proxied_requests;
 	int			num_proxied_responses;
@@ -288,11 +296,6 @@ struct auth_req {
 #define REQUEST_CLEANUP_DELAY	(5)
 #define REQUEST_DONE		(6)
 
-/*
- *  Function handler for requests.
- */
-typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
-
 typedef struct radclient_list RADCLIENT_LIST;
 
 typedef struct pair_list {
@@ -306,7 +309,7 @@ typedef struct pair_list {
 } PAIR_LIST;
 
 
-typedef int (*rad_listen_recv_t)(rad_listen_t *, RAD_REQUEST_FUNP *, REQUEST **);
+typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
 typedef int (*rad_listen_print_t)(const rad_listen_t *, char *, size_t);
 typedef int (*rad_listen_encode_t)(rad_listen_t *, REQUEST *);

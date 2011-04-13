@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/detail.h>
+#include <freeradius-devel/process.h>
 #include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_SYS_STAT_H
@@ -295,8 +296,7 @@ static int detail_open(rad_listen_t *this)
  *	t_rtt + t_delay wait for signal that the server is idle.
  *	
  */
-int detail_recv(rad_listen_t *listener,
-		RAD_REQUEST_FUNP *pfun, REQUEST **prequest)
+int detail_recv(rad_listen_t *listener)
 {
 	char		key[256], op[8], value[1024];
 	VALUE_PAIR	*vp, **tail;
@@ -720,8 +720,6 @@ int detail_recv(rad_listen_t *listener,
 	}
 	vp->vp_integer = data->tries;
 
-	*pfun = rad_accounting;
-
 	if (debug_flag) {
 		fr_printf_log("detail_recv: Read packet from %s\n", data->filename_work);
 		for (vp = packet->vps; vp; vp = vp->next) {
@@ -735,8 +733,8 @@ int detail_recv(rad_listen_t *listener,
 	 *
 	 *	Try again later...
 	 */
-	if (!received_request(listener, packet, prequest,
-			      &data->detail_client)) {
+	if (!request_receive(listener, packet, &data->detail_client,
+			     rad_accounting)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
