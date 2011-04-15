@@ -580,11 +580,6 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	EAP_HANDLER	*handler;
 
 	/*
-	 *	Just in case the admin lists EAP in post-proxy-type Fail.
-	 */
-	if (!request->proxy_reply) return RLM_MODULE_NOOP;
-
-	/*
 	 *	If there was a handler associated with this request,
 	 *	then it's a tunneled request which was proxied...
 	 */
