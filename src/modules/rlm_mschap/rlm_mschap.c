@@ -36,6 +36,10 @@ RCSID("$Id$")
 #include	"mschap.h"
 #include	"smbdes.h"
 
+#ifdef HAVE_OPENSSL_CRYPTO_H
+#include	<openssl/rc4.h>
+#endif
+
 #ifdef __APPLE__
 extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
 #endif
@@ -52,11 +56,12 @@ extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * 
 #define ACB_SVRTRUST   0x0100  /* 1 = Server trust account */
 #define ACB_PWNOEXP    0x0200  /* 1 = User password does not expire */
 #define ACB_AUTOLOCK   0x0400  /* 1 = Account auto locked */
+#define ACB_PW_EXPIRED 0x00020000   /* 1 = Password Expired */
 
 static int pdb_decode_acct_ctrl(const char *p)
 {
 	int acct_ctrl = 0;
-	int finished = 0;
+	int done = 0;
 
 	/*
 	 * Check if the account type bits have been encoded after the
@@ -65,7 +70,7 @@ static int pdb_decode_acct_ctrl(const char *p)
 
 	if (*p != '[') return 0;
 
-	for (p++; *p && !finished; p++) {
+	for (p++; *p && !done; p++) {
 		switch (*p) {
 			case 'N': /* 'N'o password. */
 			  acct_ctrl |= ACB_PWNOTREQ;
@@ -111,6 +116,10 @@ static int pdb_decode_acct_ctrl(const char *p)
 			  acct_ctrl |= ACB_DOMTRUST;
 			  break;
 
+			case 'e': /* 'e'xpired, the password has */
+			  acct_ctrl |= ACB_PW_EXPIRED;
+			  break;
+
 		        case ' ': /* ignore spaces */
 			  break;
 
@@ -119,7 +128,7 @@ static int pdb_decode_acct_ctrl(const char *p)
 			case '\0':
 			case ']':
 			default:
-			  finished = 1;
+			  done = 1;
 			  break;
 		}
 	}
@@ -136,6 +145,10 @@ typedef struct rlm_mschap_t {
 	char *passwd_file;
 	const char *xlat_name;
 	char *ntlm_auth;
+	char *ntlm_cpw;
+	char *ntlm_cpw_username;
+	char *ntlm_cpw_domain;
+	char *local_cpw;
 	const char *auth_type;
 	int allow_retry;
 	char *retry_msg;
@@ -523,6 +536,17 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 }
 
 
+static const CONF_PARSER passchange_config[] = {
+	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
+	  offsetof(rlm_mschap_t, ntlm_cpw), NULL,  NULL },
+	{ "ntlm_auth_username",   PW_TYPE_STRING_PTR,
+	  offsetof(rlm_mschap_t, ntlm_cpw_username), NULL,  NULL },
+	{ "ntlm_auth_domain",   PW_TYPE_STRING_PTR,
+	  offsetof(rlm_mschap_t, ntlm_cpw_domain), NULL,  NULL },
+	{ "local_cpw",   PW_TYPE_STRING_PTR,
+	  offsetof(rlm_mschap_t, local_cpw), NULL,  NULL },
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
 static const CONF_PARSER module_config[] = {
 	/*
 	 *	Cache the password by default.
@@ -539,6 +563,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
+	{ "passchange", PW_TYPE_SUBSECTION, 0, NULL, (const void *) passchange_config },
 	{ "allow_retry",   PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
 	{ "retry_msg",   PW_TYPE_STRING_PTR,
@@ -654,6 +679,360 @@ static void mppe_add_reply(REQUEST *request,
        vp->length = len;
 }
 
+static int write_all(int fd, const char *buf, int len) {
+	int rv,done=0;
+
+	while (done < len) {
+		rv = write(fd, buf+done, len-done);
+		if (rv <= 0)
+			break;
+		done += rv;
+	}
+	return done;
+}
+
+/*
+ * Perform an MS-CHAP2 password change
+ */
+
+static int do_mschap_cpw(rlm_mschap_t *inst,
+		     REQUEST *request, VALUE_PAIR *nt_password,
+		     uint8_t *new_nt_password,
+		     uint8_t *old_nt_hash,
+		     int do_ntlm_auth)
+{
+	if (inst->ntlm_cpw && do_ntlm_auth) {
+		/*
+		 * we're going to run ntlm_auth in helper-mode
+		 * we're expecting to use the ntlm-change-password-1 protocol
+		 * which needs the following on stdin:
+		 *
+		 * username: %{mschap:User-Name}
+		 * nt-domain: %{mschap:NT-Domain}
+		 * new-nt-password-blob: bin2hex(new_nt_password) - 1032 bytes encoded
+		 * old-nt-hash-blob: bin2hex(old_nt_hash) - 32 bytes encoded
+		 * new-lm-password-blob: 00000...0000 - 1032 bytes null
+		 * old-lm-hash-blob: 000....000 - 32 bytes null
+		 * .\n
+		 *
+		 * ...and it should then print out
+		 *
+		 * Password-Change: Yes
+		 *
+		 * or
+		 *
+		 * Password-Change: No
+		 * Password-Change-Error: blah
+		 */
+
+		int to_child=-1;
+		int from_child=-1;
+		pid_t pid, child_pid;
+		int status, len;
+		char buf[2048];
+		char *emsg;
+
+		RDEBUG("Doing MS-CHAPv2 password change via ntlm_auth helper");
+
+		/*
+		 * Start up ntlm_auth with a pipe on stdin and stdout
+		 */
+
+		pid = radius_start_program(inst->ntlm_cpw, request, 1, &to_child, &from_child, NULL, 0);
+		if (pid < 0) {
+			RDEBUG2("could not exec ntlm_auth cpw command");
+			return -1;
+		}
+
+		/*
+		 * write the stuff to the client
+		 */
+
+		if (inst->ntlm_cpw_username) {
+			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_username, request, NULL);
+			strcat(buf, "\n");
+			len++;
+
+			if (write_all(to_child, buf, len) != len) {
+				RDEBUG2("failed to write username to child");
+				goto ntlm_auth_err;
+			}
+		} else {
+			RDEBUG("No ntlm_auth username set - passchange will definitely fail!");
+		}
+
+		if (inst->ntlm_cpw_domain) {
+			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_domain, request, NULL);
+			strcat(buf, "\n");
+			len++;
+
+			if (write_all(to_child, buf, len) != len) {
+				RDEBUG2("failed to write domain to child");
+				goto ntlm_auth_err;
+			}
+		} else {
+			RDEBUG("No ntlm_auth domain set - username must be full-username to work");
+		}
+
+		/* now the password blobs */
+		len = sprintf(buf, "new-nt-password-blob: ");
+		fr_bin2hex(new_nt_password, buf+len, 516);
+		buf[len+1032] = '\n';
+		buf[len+1033] = '\0';
+		len = strlen(buf);
+		if (write_all(to_child, buf, len) != len) {
+			RDEBUG2("failed to write new password blob to child");
+			goto ntlm_auth_err;
+		}
+
+		len = sprintf(buf, "old-nt-hash-blob: ");
+		fr_bin2hex(old_nt_hash, buf+len, 16);
+		buf[len+32] = '\n';
+		buf[len+33] = '\0';
+		len = strlen(buf);
+		if (write_all(to_child, buf, len) != len) {
+			RDEBUG2("failed to write old hash blob to child");
+			goto ntlm_auth_err;
+		}
+
+		/*
+		 * in current samba versions, failure to supply empty
+		 * LM password/hash blobs causes the change to fail
+		 */
+		len = sprintf(buf, "new-lm-password-blob: %01032i\n", 0);
+		if (write_all(to_child, buf, len) != len) {
+			RDEBUG2("failed to write dummy LM password to child");
+			goto ntlm_auth_err;
+		}
+		len = sprintf(buf, "old-lm-hash-blob: %032i\n", 0);
+		if (write_all(to_child, buf, len) != len) {
+			RDEBUG2("failed to write dummy LM hash to child");
+			goto ntlm_auth_err;
+		}
+		if (write_all(to_child, ".\n", 2) != 2) {
+			RDEBUG2("failed to send finish to child");
+			goto ntlm_auth_err;
+		}
+		close(to_child);
+		to_child = -1;
+
+		/*
+		 * Read from the child
+		 */
+		len = radius_readfrom_program(from_child, pid, 10, buf, sizeof(buf));
+		if (len < 0) {
+			/* radius_readfrom_program will have closed from_child for us */
+			RDEBUG2("Failure reading from child");
+			return -1;
+		}
+		close(from_child);
+		from_child = -1;
+
+		buf[len] = 0;
+		RDEBUG2("ntlm_auth said: %s", buf);
+
+		child_pid = rad_waitpid(pid, &status);
+		if (child_pid == 0) {
+			RDEBUG2("Timeout waiting for child");
+			return -1;
+		}
+		if (child_pid != pid) {
+			RDEBUG("Abnormal exit status: %s", strerror(errno));
+			return -1;
+		}
+
+		if (strstr(buf, "Password-Change: Yes")) {
+			RDEBUG2("ntlm_auth password change succeeded");
+			return 0;
+		}
+
+		emsg = strstr(buf, "Password-Change-Error: ");
+		if (emsg) {
+			emsg = strsep(&emsg, "\n");
+		} else {
+			emsg = "could not find error";
+		}
+		RDEBUG2("ntlm auth password change failed: %s", emsg);
+
+ntlm_auth_err:
+		/* safe because these either need closing or are == -1 */
+		close(to_child);
+		close(from_child);
+
+		return -1;
+
+	} else if (inst->local_cpw) {
+#ifdef HAVE_OPENSSL_CRYPTO_H
+		/*
+		 * decrypt the new password blob, add it as a temporary request
+		 * variable, xlat the local_cpw string, then remove it
+		 *
+		 * this allows is to write e..g
+		 *
+		 * %{sql:insert into ...}
+		 *
+		 * ...or...
+		 *
+		 * %{exec:/path/to %{mschap:User-Name} %{MS-CHAP-New-Password}}"
+		 *
+		 */
+
+		VALUE_PAIR *new_pass, *new_hash;
+		uint8_t *p;
+		int i, result_len;
+		uint32_t passlen;
+		char result[253];
+		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[16];
+		RC4_KEY key;
+
+		if (!nt_password) {
+			RDEBUG("Local MS-CHAPv2 password change requires NT-Password attribute");
+			return -1;
+		} else {
+			RDEBUG("Doing MS-CHAPv2 password change locally");
+		}
+
+		/*
+		 * decrypt the blob
+		 */
+		RC4_set_key(&key, nt_password->length, nt_password->vp_octets);
+		RC4(&key, 516, new_nt_password, nt_pass_decrypted);
+
+		/*
+		 * pwblock is
+		 * 512-N bytes random pad
+		 * N bytes password as utf-16-le
+		 * 4 bytes - N as big-endian int
+		 */
+
+		passlen = nt_pass_decrypted[512];
+		passlen += nt_pass_decrypted[513] << 8;
+		passlen += nt_pass_decrypted[514] << 16;
+		passlen += nt_pass_decrypted[515] << 24;
+
+		/*
+		 * sanity check - passlen positive and <= 512
+		 * if not, crypto has probably gone wrong
+		 */
+		if (passlen > 512) {
+			RDEBUG2("Decrypted new password blob claims length %u > 512 - probably an invalid NT-Password", passlen);
+			return -1;
+		}
+
+		p = nt_pass_decrypted + 512 - passlen;
+
+		/*
+		 * the new NT hash - this should be preferred over the
+		 * cleartext password as it avoids unicode hassles
+		 */
+		new_hash = radius_pairmake(request, &request->packet->vps,
+				"MS-CHAP-New-NT-Password", "",
+				T_OP_EQ);
+		fr_md4_calc(new_hash->vp_octets, p, passlen);
+		new_hash->length = 16;
+
+		/*
+		 * check that nt_password encrypted with new_hash
+		 * matches the old_hash value from the client
+		 */
+		smbhash(old_nt_hash_expected, nt_password->vp_octets, new_hash->vp_octets);
+		smbhash(old_nt_hash_expected+8, nt_password->vp_octets+8, new_hash->vp_octets+7);
+		if (memcmp(old_nt_hash_expected, old_nt_hash, 16)!=0) {
+			RDEBUG2("old NT hash value from client does not match our value");
+			return -1;
+		}
+
+		/*
+		 * the new cleartext password, which is utf-16
+		 * do some unpleasant vileness to turn it into
+		 * utf8 without pulling in libraries like iconv
+		 */
+		new_pass = radius_pairmake(request, &request->packet->vps,
+				"MS-CHAP-New-Cleartext-Password", "",
+				T_OP_EQ);
+		new_pass->length = 0;
+		i = 0;
+		while (i<passlen) {
+			/*
+			 * The client-supplied password is utf-16.
+			 * We really must perform a proper conversion
+			 * to utf8 here, and the same in the other direction
+			 * when we calculate NT-Password below, else non-ascii
+			 * characters will fail - I know from experience that
+			 * UK pound and Euro symbols are common in users
+			 * passwords (money obsessed!)
+			 */
+			int c;
+
+			c = p[i++];
+			c += p[i++] << 8;
+
+			/*
+			 * gah. nasty. maybe we should just pull in iconv?
+			 */
+
+			if (c < 0x7f) {
+				/* ascii char */
+				if (new_pass->length >= 253) {
+					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
+					break;
+				}
+				new_pass->vp_strvalue[new_pass->length++] = c;
+			} else if (c < 0x7ff) {
+				/* 2-byte */
+				if (new_pass->length >= 252) {
+					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
+					break;
+				}
+				new_pass->vp_strvalue[new_pass->length++] = 0xc0 + (c >> 6);
+				new_pass->vp_strvalue[new_pass->length++] = 0x80 + (c & 0x3f);
+			} else {
+				/* 3-byte */
+				if (new_pass->length >= 251) {
+					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
+					break;
+				}
+				new_pass->vp_strvalue[new_pass->length++] = 0xe0 + (c >> 12);
+				new_pass->vp_strvalue[new_pass->length++] = 0x80 + ((c>>6) & 0x3f);
+				new_pass->vp_strvalue[new_pass->length++] = 0x80 + (c & 0x3f);
+			}
+		}
+
+
+
+
+		/*
+		 * perform the xlat
+		 */
+		result_len = radius_xlat(result, sizeof(result), inst->local_cpw, request, NULL);
+		if (!result_len) {
+			RDEBUG("Local MS-CHAPv2 password change - xlat didn't give any result, assuming failure");
+			return -1;
+		}
+
+		RDEBUG("MS-CHAPv2 password change succeeded: %s", result);
+
+		/*
+		 * update the NT-Password attribute with the new hash
+		 * this lets us fall through to the authentication
+		 * code using the new hash, not the old one
+		 */
+		memcpy(nt_password->vp_octets, new_hash->vp_octets, new_hash->length);
+
+		/*
+		 * rock on! password change succeeded
+		 */
+		return 0;
+#else
+		RDEBUG("Local MS-CHAPv2 password changes require OpenSSL support");
+		return -1;
+#endif
+	} else {
+		RDEBUG("MS-CHAPv2 password change not configured");
+	}
+
+	return -1;
+}
 
 /*
  *	Do the MS-CHAP stuff.
@@ -714,6 +1093,14 @@ static int do_mschap(rlm_mschap_t *inst,
 		if (result != 0) {
 			char *p;
 			VALUE_PAIR *vp = NULL;
+
+			/*
+			 * look for "Password expired"
+			 */
+			if (strstr(buffer, "Password expired")) {
+				RDEBUG2("ntlm_auth says password has expired");
+				return -648;
+			}
 
 			RDEBUG2("External script failed.");
 
@@ -892,7 +1279,7 @@ static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
 static int mschap_authorize(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
-	VALUE_PAIR *challenge = NULL, *response = NULL;
+	VALUE_PAIR *challenge = NULL;
 
 	challenge = pairfind(request->packet->vps,
 			     PW_MSCHAP_CHALLENGE,
@@ -901,19 +1288,13 @@ static int mschap_authorize(void * instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	response = pairfind(request->packet->vps,
-			    PW_MSCHAP_RESPONSE,
-			    VENDORPEC_MICROSOFT);
-	if (!response)
-		response = pairfind(request->packet->vps,
-				    PW_MSCHAP2_RESPONSE,
-				    VENDORPEC_MICROSOFT);
-
-	/*
-	 *	Nothing we recognize.  Don't do anything.
-	 */
-	if (!response) {
-		RDEBUG2("Found MS-CHAP-Challenge, but no MS-CHAP-Response.");
+	if (!pairfind(request->packet->vps, PW_MSCHAP_RESPONSE,
+		      VENDORPEC_MICROSOFT) &&
+	    !pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE,
+		      VENDORPEC_MICROSOFT) &&
+	    !pairfind(request->packet->vps, PW_MSCHAP2_CPW,
+		      VENDORPEC_MICROSOFT)) {
+		RDEBUG2("Found MS-CHAP-Challenge, but no MS-CHAP response or change-password");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -960,6 +1341,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL;
 	VALUE_PAIR *response = NULL;
+	VALUE_PAIR *cpw = NULL;
 	VALUE_PAIR *password = NULL;
 	VALUE_PAIR *lm_password, *nt_password, *smb_ctrl;
 	VALUE_PAIR *username;
@@ -1090,6 +1472,131 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 	}
 
+	cpw = pairfind(request->packet->vps, PW_MSCHAP2_CPW,
+		       VENDORPEC_MICROSOFT);
+	if (cpw) {
+		/*
+		 * mschap2 password change request
+		 * we cheat - first decode and execute the passchange
+		 * we then extract the response, add it into the request
+		 * then jump into mschap2 auth with the chal/resp
+		 */
+		uint8_t new_nt_encrypted[516], old_nt_encrypted[16];
+		VALUE_PAIR *nt_enc=NULL;
+		int seq, new_nt_enc_len=0;
+
+		RDEBUG("MS-CHAPv2 password change request received");
+
+		if (cpw->length != 68) {
+			RDEBUG2("MS-CHAP2-CPW has the wrong format - length %d!=68", cpw->length);
+			return RLM_MODULE_INVALID;
+		} else if (cpw->vp_octets[0]!=7) {
+			RDEBUG2("MS-CHAP2-CPW has the wrong format - code %d!=7", cpw->vp_octets[0]);
+			return RLM_MODULE_INVALID;
+		}
+
+		/*
+		 * look for the new (encrypted) password
+		 * bah stupid composite attributes
+		 * we're expecting 3 attributes with the leading bytes
+		 * 06:<mschapid>:00:01:<1st chunk>
+		 * 06:<mschapid>:00:02:<2nd chunk>
+		 * 06:<mschapid>:00:03:<3rd chunk>
+		 */
+		for (seq=1;seq<4;seq++) {
+			int found=0;
+			for (nt_enc=request->packet->vps; nt_enc; nt_enc=nt_enc->next) {
+				if (nt_enc->attribute != PW_MSCHAP_NT_ENC_PW)
+					continue;
+
+				if (nt_enc->vp_octets[0] != 6) {
+					RDEBUG2("MS-CHAP-NT-Enc-PW with invalid format");
+					return RLM_MODULE_INVALID;
+				}
+				if (nt_enc->vp_octets[2]==0 && nt_enc->vp_octets[3]==seq) {
+					found = 1;
+					break;
+				}
+			}
+
+			if (!found) {
+				RDEBUG2("Could not find MS-CHAP-NT-Enc-PW w/ sequence number %d", seq);
+				return RLM_MODULE_INVALID;
+			}
+
+			/*
+			 * copy the data into the buffer
+			 */
+			memcpy(new_nt_encrypted + new_nt_enc_len, nt_enc->vp_octets + 4, nt_enc->length - 4);
+			new_nt_enc_len += nt_enc->length - 4;
+		}
+		if (new_nt_enc_len != 516) {
+			RDEBUG2("Unpacked MS-CHAP-NT-Enc-PW length != 516");
+			return RLM_MODULE_INVALID;
+		}
+
+		/*
+		 * RFC 2548 is confusing here
+		 * it claims:
+		 *
+		 * 1 byte code
+		 * 1 byte ident
+		 * 16 octets - old hash encrypted with new hash
+		 * 24 octets - peer challenge
+		 *   this is actually:
+		 *   16 octets - peer challenge
+		 *    8 octets - reserved
+		 * 24 octets - nt response
+		 * 2 octets  - flags (ignored)
+		 */
+
+		memcpy(old_nt_encrypted, cpw->vp_octets+2, sizeof(old_nt_encrypted));
+
+		RDEBUG2("Password change payload valid");
+
+		/* perform the actual password change */
+		if (do_mschap_cpw(inst, request, nt_password, new_nt_encrypted, old_nt_encrypted, do_ntlm_auth) < 0) {
+			char buffer[128];
+
+			RDEBUG("Password change failed");
+
+			snprintf(buffer, sizeof(buffer), "E=709 R=0 M=Password change failed");
+			mschap_add_reply(request, &request->reply->vps,
+					cpw->vp_octets[1], "MS-CHAP-Error",
+					buffer, strlen(buffer));
+			return RLM_MODULE_REJECT;
+		}
+		RDEBUG("Password change successful");
+
+		/*
+		 * Clear any expiry bit so the user can now login;
+		 * obviously the password change action will need
+		 * to have cleared this bit in the config/SQL/wherever
+		 */
+		if (smb_ctrl && smb_ctrl->vp_integer & ACB_PW_EXPIRED) {
+			RDEBUG("clearing expiry bit in SMB-Acct-Ctrl to allow authentication");
+			smb_ctrl->vp_integer &= ~ACB_PW_EXPIRED;
+		} else {
+		}
+
+		/*
+		 * extract the challenge & response from the end of the password
+		 * change, add them into the request and then continue with
+		 * the authentication
+		 */
+
+		response = radius_paircreate(request, &request->packet->vps,
+					     PW_MSCHAP2_RESPONSE,
+					     VENDORPEC_MICROSOFT,
+					     PW_TYPE_OCTETS);
+		response->length = 50;
+		/* ident & flags */
+		response->vp_octets[0] = cpw->vp_octets[1];
+		response->vp_octets[1] = 0;
+		/* peer challenge and client NT response */
+		memcpy(response->vp_octets+2, cpw->vp_octets + 18, 48);
+	}
+
 	challenge = pairfind(request->packet->vps,
 			     PW_MSCHAP_CHALLENGE,
 			     VENDORPEC_MICROSOFT);
@@ -1153,7 +1660,10 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		chap = 1;
 
-	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT)) != NULL) {
+	} else if ((response = pairfind(request->packet->vps,
+					PW_MSCHAP2_RESPONSE,
+					VENDORPEC_MICROSOFT)) != NULL) {
+		int mschap_result;
 		uint8_t	mschapv1_challenge[16];
 		VALUE_PAIR *name_attr, *response_name;
 
@@ -1253,9 +1763,13 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		RDEBUG2("Told to do MS-CHAPv2 for %s with NT-Password",
 		       username_string);
 
-		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
-			      response->vp_octets + 26, nthashhash,
-			      do_ntlm_auth) < 0) {
+		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
+				response->vp_octets + 26, nthashhash,
+				do_ntlm_auth);
+		if (mschap_result == -648)
+			goto password_expired;
+
+		if (mschap_result < 0) {
 			int i;
 			char buffer[128];
 
@@ -1275,6 +1789,26 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				snprintf(buffer + 12 + 32, sizeof(buffer) - 45,
 					 " V=3 M=%s", inst->retry_msg);
 			}
+			mschap_add_reply(request, &request->reply->vps,
+					 *response->vp_octets, "MS-CHAP-Error",
+					 buffer, strlen(buffer));
+			return RLM_MODULE_REJECT;
+		}
+
+		if (smb_ctrl && smb_ctrl->vp_integer & ACB_PW_EXPIRED) {
+			/*
+			 * if the password is correct and it has expired
+			 * we can permit password changes (only in MS-CHAPv2)
+			 */
+			char newchal[33], buffer[128];
+			int i;
+		password_expired:
+
+			for (i = 0; i < 16; i++)
+				snprintf(newchal + i*2, 3, "%02x", fr_rand() & 0xff);
+
+			snprintf(buffer, sizeof(buffer), "E=648 R=0 C=%s V=3 M=Password Expired", newchal);
+
 			mschap_add_reply(request, &request->reply->vps,
 					 *response->vp_octets, "MS-CHAP-Error",
 					 buffer, strlen(buffer));
