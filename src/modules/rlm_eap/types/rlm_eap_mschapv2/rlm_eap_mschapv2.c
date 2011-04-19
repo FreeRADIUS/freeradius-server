@@ -674,8 +674,28 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	} else if (inst->send_error) {
-	  pairmove2(&response, &handler->request->reply->vps,
-		    PW_MSCHAP_ERROR, 0);
+		pairmove2(&response, &handler->request->reply->vps,
+			  PW_MSCHAP_ERROR, 0);
+		if (response) {
+			int n,err,retry;
+			char buf[34];
+
+			DEBUG2("  MSCHAP-Error: %s", response->vp_strvalue);
+
+			/*
+			 *	Pxarse the new challenge out of the
+			 *	MS-CHAP-Error, so that if the client
+			 *	issues a re-try, we will know which
+			 *	challenge value that they used.
+			 */
+			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf);
+			if (n == 3) {
+				DEBUG2("  Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s", err, retry, buf);
+				fr_hex2bin(buf, data->challenge, 16);
+			} else {
+				DEBUG2("  Could not parse new challenge from MS-CHAP-Error: %d", n);
+			}
+		}
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
 	} else {
 		eap_ds->request->code = PW_EAP_FAILURE;
