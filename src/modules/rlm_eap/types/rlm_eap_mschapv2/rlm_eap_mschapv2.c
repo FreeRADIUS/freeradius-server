@@ -381,7 +381,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
  */
 static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 {
-	int rcode;
+	int rcode, ccode;
 	mschapv2_opaque_t *data;
 	EAP_DS *eap_ds = handler->eap_ds;
 	VALUE_PAIR *challenge, *response, *name;
@@ -400,118 +400,166 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		return 0;
 	}
 
-	/*
-	 *	Switch over the MS-CHAP type.
-	 */
-	switch (eap_ds->response->type.data[0]) {
-		/*
-		 *	We should get an ACK from the client ONLY if we've
-		 *	sent them a SUCCESS packet.
-		 */
-		case PW_EAP_MSCHAPV2_ACK:
-		if (data->code != PW_EAP_MSCHAPV2_SUCCESS) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected ACK received");
-			return 0;
-		}
+	ccode = eap_ds->response->type.data[0];
 
-		/*
-		 *	It's a success.  Don't proxy it.
-		 */
-		handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+	switch (data->code) {
+		case PW_EAP_MSCHAPV2_FAILURE:
+			if (ccode == PW_EAP_MSCHAPV2_RESPONSE) {
+				DEBUG2("  rlm_eap_mschapv2: authentication re-try from client after we sent a failure");
+				break;
+			}
 
-		/*
-		 *	And upon receiving the clients ACK, we do nothing
-		 *	other than return EAP-Success, with no EAP-MS-CHAPv2
-		 *	data.
-		 */
-		return 1;
-		break;
+			/*
+			 * if we sent error 648 (password expired) to the client
+			 * we might get an MSCHAP-CPW packet here; turn it into a
+			 * regular MS-CHAP2-CPW packet and pass it to rlm_mschap
+			 * (or proxy it, I guess)
+			 */
+			if (ccode == PW_EAP_MSCHAPV2_CHGPASSWD) {
+				VALUE_PAIR *cpw;
+				int mschap_id = eap_ds->response->type.data[1];
+				int copied=0,seq=1;
 
-		/*
-		 *	We should get a response ONLY after we've sent
-		 *	a challenge.
-		 */
-	case PW_EAP_MSCHAPV2_RESPONSE:
-		if (data->code != PW_EAP_MSCHAPV2_CHALLENGE) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected response received");
-			return 0;
-		}
+				DEBUG2("  rlm_eap_mschapv2: password change packet received");
 
-		/*
-		 *	Ensure that we have at least enough data
-		 *	to do the following checks.
-		 *
-		 *	EAP header (4), EAP type, MS-CHAP opcode,
-		 *	MS-CHAP ident, MS-CHAP data length (2),
-		 *	MS-CHAP value length.
-		 */
-		if (eap_ds->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Response is too short");
-			return 0;
-		}
+				challenge = pairmake("MS-CHAP-Challenge", "0x00", T_OP_EQ);
+				if (!challenge) {
+					radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
+					return 0;
+				}
+				challenge->length = MSCHAPV2_CHALLENGE_LEN;
+				memcpy(challenge->vp_strvalue, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+				pairadd(&handler->request->packet->vps, challenge);
 
-		/*
-		 *	The 'value_size' is the size of the response,
-		 *	which is supposed to be the response (48
-		 *	bytes) plus 1 byte of flags at the end.
-		 */
-		if (eap_ds->response->type.data[4] != 49) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Response is of incorrect length %d", eap_ds->response->type.data[4]);
-			return 0;
-		}
+				cpw = pairmake("MS-CHAP2-CPW", "", T_OP_EQ);
+				cpw->vp_octets[0] = 7;
+				cpw->vp_octets[1] = mschap_id;
+				memcpy(cpw->vp_octets+2, eap_ds->response->type.data + 520, 66);
+				cpw->length = 68;
+				pairadd(&handler->request->packet->vps, cpw);
 
-		/*
-		 *	The MS-Length field is 5 + value_size + length
-		 *	of name, which is put after the response.
-		 */
-		if (((eap_ds->response->type.data[2] << 8) |
-		     eap_ds->response->type.data[3]) < (5 + 49)) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Response contains contradictory length %d %d",
-			      (eap_ds->response->type.data[2] << 8) |
-			       eap_ds->response->type.data[3], 5 + 49);
-			return 0;
-		}
-		break;
+				/*
+				 * break the encoded password into VPs (3 of them)
+				 */
+				while (copied < 516) {
+					VALUE_PAIR *nt_enc;
 
-	case PW_EAP_MSCHAPV2_SUCCESS:
-		if (data->code != PW_EAP_MSCHAPV2_SUCCESS) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected success received");
-			return 0;
-		}
+					int to_copy = 516 - copied;
+					if (to_copy > 243)
+						to_copy = 243;
 
+					nt_enc = pairmake("MS-CHAP-NT-Enc-PW", "", T_OP_ADD);
+					nt_enc->vp_octets[0] = 6;
+					nt_enc->vp_octets[1] = mschap_id;
+					nt_enc->vp_octets[2] = 0;
+					nt_enc->vp_octets[3] = seq++;
+
+					memcpy(nt_enc->vp_octets + 4, eap_ds->response->type.data + 4 + copied, to_copy);
+					copied += to_copy;
+					nt_enc->length = 4 + to_copy;
+					pairadd(&handler->request->packet->vps, nt_enc);
+				}
+
+				DEBUG2("  rlm_eap_mschapv2: built change password packet");
+				debug_pair_list(handler->request->packet->vps);
+
+				/*
+				 * jump to "authentication"
+				 */
+				goto packet_ready;
+
+
+			}
+
+			/*
+			 * we sent a failure and are expecting a failure back
+			 */
+			if (ccode != PW_EAP_MSCHAPV2_FAILURE) {
+				radlog(L_ERR, "rlm_eap_mschapv2: Sent FAILURE expecting FAILURE but got %d", ccode);
+				return 0;
+			}
+
+			handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+			eap_ds->request->code = PW_EAP_FAILURE;
+	                return 1;
+
+		case PW_EAP_MSCHAPV2_SUCCESS:
+			/*
+			 * we sent a success to the client; some clients send a
+			 * success back as-per the RFC, some send an ACK. Permit
+			 * both, I guess...
+			 */
+
+			switch (ccode) {
+				case PW_EAP_MSCHAPV2_SUCCESS:
+					eap_ds->request->code = PW_EAP_SUCCESS;
+					pairadd(&handler->request->reply->vps, data->mppe_keys);
+					data->mppe_keys = NULL;
+					/* fall through... */
+
+				case PW_EAP_MSCHAPV2_ACK:
 #ifdef WITH_PROXY
-		/*
-		 *	It's a success.  Don't proxy it.
-		 */
-		handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+					/*
+					 *	It's a success.  Don't proxy it.
+					 */
+					handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-
-		eap_ds->request->code = PW_EAP_SUCCESS;
-
-		pairadd(&handler->request->reply->vps, data->mppe_keys);
-		data->mppe_keys = NULL;
-		return 1;
-		break;
-
-		/*
-		 *	Ack of a failure message
-		 */
-        case PW_EAP_MSCHAPV2_FAILURE:
-		if (data->code != PW_EAP_MSCHAPV2_FAILURE) {
-			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected FAILURE received");
+					return 1;
+			}
+			radlog(L_ERR, "rlm_eap_mschapv2: Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
 			return 0;
-		}
 
-                handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-                eap_ds->request->code = PW_EAP_FAILURE;
-                return 1;
+		case PW_EAP_MSCHAPV2_CHALLENGE:
+			/*
+			 * we sent a challenge, expecting a response
+			 */
+			if (ccode != PW_EAP_MSCHAPV2_RESPONSE) {
+				radlog(L_ERR, "rlm_eap_mschapv2: Sent CHALLENGE expecting RESPONSE but got %d", ccode);
+				return 0;
+			}
+			/* authentication happens below */
+			break;
 
-		/*
-		 *	Something else, we don't know what it is.
-		 */
-	default:
-		radlog(L_ERR, "rlm_eap_mschapv2: Invalid response type %d",
-		       eap_ds->response->type.data[0]);
+
+		default:
+			/* should never happen */
+			radlog(L_ERR, "rlm_eap_mschapv2: unknown state %d", data->code);
+			return 0;
+	}
+
+
+	/*
+	 *	Ensure that we have at least enough data
+	 *	to do the following checks.
+	 *
+	 *	EAP header (4), EAP type, MS-CHAP opcode,
+	 *	MS-CHAP ident, MS-CHAP data length (2),
+	 *	MS-CHAP value length.
+	 */
+	if (eap_ds->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
+		radlog(L_ERR, "rlm_eap_mschapv2: Response is too short");
+		return 0;
+	}
+
+	/*
+	 *	The 'value_size' is the size of the response,
+	 *	which is supposed to be the response (48
+	 *	bytes) plus 1 byte of flags at the end.
+	 */
+	if (eap_ds->response->type.data[4] != 49) {
+		radlog(L_ERR, "rlm_eap_mschapv2: Response is of incorrect length %d", eap_ds->response->type.data[4]);
+		return 0;
+	}
+
+	/*
+	 *	The MS-Length field is 5 + value_size + length
+	 *	of name, which is put after the response.
+	 */
+	if (((eap_ds->response->type.data[2] << 8) |
+	     eap_ds->response->type.data[3]) < (5 + 49)) {
+		radlog(L_ERR, "rlm_eap_mschapv2: Response contains contradictory length %d %d",
+		      (eap_ds->response->type.data[2] << 8) |
+		       eap_ds->response->type.data[3], 5 + 49);
 		return 0;
 	}
 
@@ -575,6 +623,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	pairadd(&handler->request->packet->vps, challenge);
 	pairadd(&handler->request->packet->vps, response);
 	pairadd(&handler->request->packet->vps, name);
+
+packet_ready:
 
 #ifdef WITH_PROXY
 	/*
