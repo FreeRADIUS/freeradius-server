@@ -641,6 +641,13 @@ int		rad_authenticate (REQUEST *);
 int		rad_postauth(REQUEST *);
 
 /* exec.c */
+pid_t radius_start_program(const char *cmd, REQUEST *request,
+			int exec_wait,
+			int *input_fd,
+			int *output_fd,
+			VALUE_PAIR *input_pairs,
+			int shell_escape);
+int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer, int left);
 int		radius_exec_program(const char *,  REQUEST *, int,
 				    char *user_msg, int msg_len,
 				    VALUE_PAIR *input_pairs,
