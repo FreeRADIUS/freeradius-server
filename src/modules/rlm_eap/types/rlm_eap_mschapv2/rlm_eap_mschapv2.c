@@ -327,7 +327,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 	 */
 	switch (handler->request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		DEBUG("  rlm_eap_mschapv2: Authentication succeeded.");
+		DEBUG("  rlm_eap_mschapv2: Proxied authentication succeeded.");
 		/*
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
@@ -339,7 +339,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 
 	default:
 	case PW_AUTHENTICATION_REJECT:
-		DEBUG("  rlm_eap_mschapv2: Authentication did not succeed.");
+		DEBUG("  rlm_eap_mschapv2: Proxied authentication did not succeed.");
 		return 0;
 	}
 
@@ -347,7 +347,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 	 *	No response, die.
 	 */
 	if (!response) {
-		radlog(L_ERR, "rlm_eap_mschapv2: No MS-CHAPv2-Success or MS-CHAP-Error was found.");
+		radlog(L_ERR, "rlm_eap_mschapv2: Proxied reply contained no MS-CHAPv2-Success or MS-CHAP-Error");
 		return 0;
 	}
 
@@ -640,6 +640,8 @@ packet_ready:
 	if (handler->request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
 		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
+
+		DEBUG2("rlm_eap_mschapv2: cancelling authentication and letting it be proxied");
 
 		/*
 		 *	Set up the callbacks for the tunnel
