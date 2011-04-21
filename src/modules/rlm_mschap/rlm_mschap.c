@@ -1374,7 +1374,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 module_t rlm_mschap = {
 	RLM_MODULE_INIT,
 	"MS-CHAP",
-	RLM_TYPE_THREAD_SAFE,		/* type */
+	RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,		/* type */
 	mschap_instantiate,		/* instantiation */
 	mschap_detach,		/* detach */
 	{
