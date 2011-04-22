@@ -741,6 +741,14 @@ $INCLUDE policy.conf
 
 ######################################################################
 #
+#  SNMP notificiations.  Uncomment the following line to enable
+#  snmptraps.  Note that you MUST also configure the full path
+#  to the "snmptrap" command in the "trigger.conf" file.
+#
+#$INCLUDE trigger.conf
+
+######################################################################
+#
 #	Load virtual servers.
 #
 #	This next $INCLUDE line loads files in the directory that

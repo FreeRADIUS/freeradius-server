@@ -12,7 +12,7 @@ include ../Make.inc
 FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	attrs.pre-proxy clients.conf dictionary eap.conf templates.conf	\
 	experimental.conf hints huntgroups ldap.attrmap			\
-	policy.txt preproxy_users proxy.conf radiusd.conf		\
+	policy.txt preproxy_users proxy.conf radiusd.conf trigger.conf	\
 	sql.conf sqlippool.conf users	policy.conf attrs.access_challenge
 
 #
@@ -88,3 +88,6 @@ install:
 
 clean:
 	rm -rf sites-enabled/inner-tunnel sites-enabled/default
+
+triggers:
+	@grep exec_trigger `find ../src -name "*.c" -print` | grep '"' | sed -e 's/.*,//' -e 's/ *"//' -e 's/");.*//'
