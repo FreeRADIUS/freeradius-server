@@ -594,7 +594,8 @@ static void request_process_timer(REQUEST *request)
 	 *	A child thread is still working on the request,
 	 *	OR it was proxied, and there was no response.
 	 */
-	if (request->child_state != REQUEST_DONE) {
+	if ((request->child_state != REQUEST_DONE) &&
+	    (request->master_state != REQUEST_STOP_PROCESSING)) {
 		when = request->received;
 		when.tv_sec += request->root->max_request_time;
 		
@@ -613,6 +614,7 @@ static void request_process_timer(REQUEST *request)
 				       request->number,
 				       request->component ? request->component : "<server core>",
 			       request->module ? request->module : "<server core>");
+				exec_trigger(request, NULL, "server.thread.unresponsive");
 			}
 #endif
 
@@ -1223,11 +1225,25 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	    (listener->type != RAD_LISTEN_DETAIL)  &&
 #endif
 	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
+		struct timeval now;
+
+		static time_t last_complained = 0;
+
 		radlog(L_ERR, "Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 		       client->shortname,
 		       packet->src_port, packet->id);
 		radlog(L_INFO, "WARNING: Please check the configuration file.\n"
 		       "\tThe value for 'max_requests' is probably set too low.\n");
+
+		/*
+		 *	Complain once every 10 seconds.
+		 */
+		gettimeofday(&now, NULL);
+		if ((last_complained + 10) < now.tv_sec) {
+			last_complained = now.tv_sec;
+			exec_trigger(NULL, NULL, "server.max_requests");
+		}
+
 		return 0;
 	}
 
@@ -2251,6 +2267,7 @@ static void request_ping(REQUEST *request, int action)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
+		exec_trigger(request, request->home_server->cs, "home_server.alive");
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;
@@ -2419,6 +2436,21 @@ static void ping_home_server(void *ctx)
 	INSERT_EVENT(ping_home_server, home);
 }
 
+static void home_trigger(home_server *home, const char *trigger)
+{
+	REQUEST my_request;
+	RADIUS_PACKET my_packet;
+
+	memset(&my_request, 0, sizeof(my_request));
+	memset(&my_packet, 0, sizeof(my_packet));
+	my_request.proxy = &my_packet;
+	my_packet.dst_ipaddr = home->ipaddr;
+	my_packet.src_ipaddr = home->src_ipaddr;
+
+	exec_trigger(&my_request, home->cs, trigger);
+}
+
+
 static void mark_home_server_zombie(home_server *home)
 {
 	char buffer[128];
@@ -2428,6 +2460,7 @@ static void mark_home_server_zombie(home_server *home)
 	rad_assert(home->state == HOME_STATE_ALIVE);
 
 	home->state = HOME_STATE_ZOMBIE;
+	home_trigger(home, "home_server.zombie");
 
 	home->zombie_period_start.tv_sec = home->last_packet;
 	home->zombie_period_start.tv_usec = USEC / 2;
@@ -2455,6 +2488,7 @@ void revive_home_server(void *ctx)
 #endif
 
 	home->state = HOME_STATE_ALIVE;
+	home_trigger(home, "home_server.alive");
 	home->currently_outstanding = 0;
 	gettimeofday(&home->revive_time, NULL);
 
@@ -2480,6 +2514,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 	       home->port);
 
 	home->state = HOME_STATE_IS_DEAD;
+	home_trigger(home, "home_server.dead");
 
 	if (home->ping_check != HOME_PING_CHECK_NONE) {
 		/*
@@ -3520,6 +3555,7 @@ static void handle_signal_self(int flag)
 			fr_event_loop_exit(el, 1);
 		} else {
 			radlog(L_INFO, "Signalled to terminate");
+			exec_trigger(NULL, NULL, "server.signal.term");
 			fr_event_loop_exit(el, 2);
 		}
 
@@ -3543,6 +3579,7 @@ static void handle_signal_self(int flag)
 
 		last_hup = when;
 
+		exec_trigger(NULL, NULL, "server.signal.hup");
 		fr_event_loop_exit(el, 0x80);
 	}
 

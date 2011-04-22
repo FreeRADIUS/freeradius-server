@@ -2128,10 +2128,28 @@ home_server *home_server_ldb(const char *realmname,
 	 */
 	if (!found && pool->fallback) {
 		found = pool->fallback;
+
+		if (pool->in_fallback) goto update_and_return;
+
+		pool->in_fallback = TRUE;
+		
+		/*
+		 *      Run the trigger once an hour saying that
+		 *      they're all dead.
+		 */
+		if ((pool->time_all_dead + 3600) < request->timestamp) {
+			pool->time_all_dead = request->timestamp;
+			exec_trigger(request, pool->cs, "home_server_pool.fallback");
+		}
 	}
 
 	if (found) {
 	update_and_return:
+		if ((found != pool->fallback) && pool->in_fallback) {
+			pool->in_fallback = FALSE;
+			exec_trigger(request, pool->cs, "home_server_pool.normal");
+		}
+
 		/*
 		 *	Allocate the proxy packet, only if it wasn't
 		 *	already allocated by a module.  This check is

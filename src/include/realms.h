@@ -121,6 +121,8 @@ typedef struct home_pool_t {
 	const char		*virtual_server; /* for pre/post-proxy */
 	
 	home_server		*fallback;
+	int			in_fallback;
+	time_t			time_all_dead;
 
 	int			num_home_servers;
 	home_server		*servers[1];

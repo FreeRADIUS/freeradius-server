@@ -668,6 +668,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name)
 	CONF_PAIR *cp;
 	const char *attr;
 	const char *value;
+	VALUE_PAIR *vp;
 
 	/*
 	 *	Use global "trigger" section if no local config is given.
@@ -723,8 +724,12 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name)
 		return;
 	}
 
+	/*
+	 *	May be called for Status-Server packets.
+	 */
+	vp = NULL;
+	if (request && request->packet) vp = request->packet->vps;
+
 	DEBUG("Trigger %s -> %s", name, value);
-	radius_exec_program(value, request, 0, NULL, 0,
-			    request ? request->packet->vps : NULL,
-			    NULL, 1);
+	radius_exec_program(value, request, 0, NULL, 0, vp, NULL, 1);
 }
