@@ -66,6 +66,7 @@ struct sql_inst {
 	SQLSOCK		*sqlpool;
 	SQLSOCK		*last_used;
 	SQL_CONFIG	*config;
+	CONF_SECTION	*cs;
 
 	lt_dlhandle handle;
 	rlm_sql_module_t *module;

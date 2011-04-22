@@ -57,6 +57,7 @@ static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
 	if (rcode == 0) {
 		radlog(L_INFO, "rlm_sql (%s): Connected new DB handle, #%d",
 		       inst->config->xlat_name, sqlsocket->id);
+		exec_trigger(NULL, inst->cs, "modules.sql.open");
 		sqlsocket->state = sockconnected;
 		if (inst->config->lifetime) time(&sqlsocket->connected);
 		sqlsocket->queries = 0;
@@ -168,6 +169,7 @@ int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
 {
 	radlog(L_INFO, "rlm_sql (%s): Closing sqlsocket %d",
 	       inst->config->xlat_name, sqlsocket->id);
+	exec_trigger(NULL, inst->cs, "modules.sql.close");
 	if (sqlsocket->state == sockconnected) {
 		(inst->module->sql_close)(sqlsocket, inst->config);
 	}
@@ -325,6 +327,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
 
 	/* We get here if every DB handle is unconnected and unconnectABLE */
 	radlog(L_ERR, "rlm_sql (%s): There are no DB handles to use! skipped %d, tried to connect %d", inst->config->xlat_name, unconnected, tried_to_connect);
+	exec_trigger(NULL, inst->cs, "modules.sql.none");
 	return NULL;
 }
 

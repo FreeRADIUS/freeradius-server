@@ -872,6 +872,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 
 	inst->config = rad_malloc(sizeof(SQL_CONFIG));
 	memset(inst->config, 0, sizeof(SQL_CONFIG));
+	inst->cs = conf;
 
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
