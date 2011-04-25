@@ -69,3 +69,16 @@ And in radiusd.conf::
   
         sql0
   }
+
+Note:
+-------
+
+Any Acct-Type value should be declared in a known dictionary. For example, if you want to use:
+
+  DEFAULT Acct-Status-Type == Stop, Acct-Type := Stop
+
+Then you have to specify
+
+  VALUE Acct-Type Stop 2
+
+in 'dictionary' file. Otherwise you will have 'Unknown value' errors. 
