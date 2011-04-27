@@ -994,18 +994,18 @@ static int request_pre_handler(REQUEST *request, int action)
 	return 1;
 }
 
-static int request_post_handler(REQUEST *request, UNUSED int action)
+static void request_post_handler(REQUEST *request, UNUSED int action)
 {
 	TRACE_STATE_MACHINE;
 
 	VALUE_PAIR *vp;
 
-	if (request->master_state == REQUEST_STOP_PROCESSING) return 0;
+	if (request->master_state == REQUEST_STOP_PROCESSING) return;
 
 	/*
 	 *	Don't send replies if there are none to send.
 	 */
-	if (!request->in_request_hash) return 0;
+	if (!request->in_request_hash) return;
 
 	/*
 	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
@@ -1042,7 +1042,17 @@ static int request_post_handler(REQUEST *request, UNUSED int action)
 	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0);
 	if (vp) pairadd(&request->reply->vps, vp);
 
-	return 1;
+	/*
+	 *	Send the reply here.
+	 */
+	if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
+	    (request->root->reject_delay == 0)) {
+		DEBUG_PACKET(request, request->reply, 1);
+		request->listener->send(request->listener,
+					request);
+	}
+
+	return;
 }
 
 static void request_cleanup(REQUEST *request)
@@ -1122,8 +1132,6 @@ static void request_running(REQUEST *request, int action)
 		rad_assert(request->handle != NULL);
 		request->handle(request);
 
-		if (!request_post_handler(request, action)) goto done;
-
 #ifdef WITH_PROXY
 		/*
 		 *	We may need to send a proxied request.
@@ -1157,15 +1165,9 @@ static void request_running(REQUEST *request, int action)
 			}
 #endif
 
-			if ((request->packet->dst_port != 0) &&
-			    (request->reply->code != 0) &&
-			    ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
-			     (request->root->reject_delay == 0))) {
-				DEBUG_PACKET(request, request->reply, 1);
-				request->listener->send(request->listener,
-							request);
-			}
 		done:
+			request_post_handler(request, action);
+
 			request_cleanup(request);
 #ifdef HAVE_PTHREAD_H
 			request->child_pid = NO_SUCH_CHILD_PID;
@@ -1841,14 +1843,13 @@ static int request_will_proxy(REQUEST *request)
 	if (!request->root->proxy_requests) return 0;
 	if (request->packet->dst_port == 0) return 0;
 	if (request->packet->code == PW_STATUS_SERVER) return 0;
-	if (request->proxy) return 0;
+	if (request->in_proxy_hash) return 0;
+
 
 	/*
 	 *	FIXME: for 3.0, allow this only for rejects?
 	 */
 	if (request->reply->code != 0) return 0;
-
-	rad_assert(request->in_proxy_hash == 0);
 
 	vp = pairfind(request->config_items, PW_PROXY_TO_REALM, 0);
 	if (vp) {
