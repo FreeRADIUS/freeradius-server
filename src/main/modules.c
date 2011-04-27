@@ -1004,7 +1004,7 @@ static int load_byserver(CONF_SECTION *cs)
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);
 		if (!subcs) continue;
-			
+
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
 
 		/*
@@ -1053,7 +1053,7 @@ static int load_byserver(CONF_SECTION *cs)
 			
 			subsubcs = cf_itemtosection(modref);
 			name1 = cf_section_name1(subsubcs);
-		
+
 			if (strcmp(name1, section_type_value[comp].typename) == 0) {
 				if (!define_type(dattr,
 						 cf_section_name2(subsubcs))) {
@@ -1206,11 +1206,29 @@ static int load_byserver(CONF_SECTION *cs)
  */
 int virtual_servers_load(CONF_SECTION *config)
 {
-	int null_server = FALSE;
 	CONF_SECTION *cs;
 	static int first_time = TRUE;
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
+
+	/*
+	 *	If we have "server { ...}", then there SHOULD NOT be
+	 *	bare "authorize", etc. sections.  if there is no such
+	 *	server, then try to load the old-style sections first.
+	 *
+	 *	In either case, load the "default" virtual server first.
+	 *	this matches better iwth users expectations.
+	 */
+	cs = cf_section_find_name2(config, "server", NULL);
+	if (!cs) {
+		if (load_byserver(config) < 0) {
+			return -1;
+		}
+	} else {
+		if (load_byserver(cs) < 0) {
+			return -1;
+		}
+	}
 
 	/*
 	 *	Load all of the virtual servers.
@@ -1218,11 +1236,13 @@ int virtual_servers_load(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
+		const char *name2;
 		virtual_server_t *server;
 
-		if (!cf_section_name2(cs)) null_server = TRUE;
+		name2 = cf_section_name2(cs);
+		if (!name2) continue; /* handled above */
 
-		server = virtual_server_find(cf_section_name2(cs));
+		server = virtual_server_find(name2);
 		if (server) {
 			radlog(L_ERR, "Duplicate virtual server \"%s\" in file %s:%d and file %s:%d",
 			       server->name,
@@ -1240,16 +1260,6 @@ int virtual_servers_load(CONF_SECTION *config)
 			 *	even if one fails.
 			 */
 			if (!first_time) continue;
-			return -1;
-		}
-	}
-
-	/*
-	 *	No empty server defined.  Try to load an old-style
-	 *	one for backwards compatibility.
-	 */
-	if (!null_server) {
-		if (load_byserver(config) < 0) {
 			return -1;
 		}
 	}
