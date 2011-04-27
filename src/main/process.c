@@ -994,7 +994,7 @@ static int request_pre_handler(REQUEST *request, int action)
 	return 1;
 }
 
-static void request_post_handler(REQUEST *request, UNUSED int action)
+static void request_finish(REQUEST *request, UNUSED int action)
 {
 	TRACE_STATE_MACHINE;
 
@@ -1043,6 +1043,19 @@ static void request_post_handler(REQUEST *request, UNUSED int action)
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	/*
+	 *	Run rejected packets through
+	 *
+	 *	Post-Auth-Type = Reject
+	 */
+	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
+		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0);
+		vp = radius_pairmake(request, &request->config_items,
+				     "Post-Auth-Type", "Reject",
+				     T_OP_SET);
+		if (vp) rad_postauth(request);
+	}
+
+	/*
 	 *	Send the reply here.
 	 */
 	if ((request->reply->code != PW_AUTHENTICATION_REJECT) ||
@@ -1050,27 +1063,6 @@ static void request_post_handler(REQUEST *request, UNUSED int action)
 		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener,
 					request);
-	}
-
-	return;
-}
-
-static void request_cleanup(REQUEST *request)
-{
-	/*
-	 *	Run rejected packets through
-	 *
-	 *	Post-Auth-Type = Reject
-	 */
-	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
-		VALUE_PAIR *vp;
-
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0);
-		vp = radius_pairmake(request, &request->config_items,
-				     "Post-Auth-Type", "Reject",
-				     T_OP_SET);
-		if (vp) rad_postauth(request);
-		
 	}
 
 	/*
@@ -1166,9 +1158,8 @@ static void request_running(REQUEST *request, int action)
 #endif
 
 		done:
-			request_post_handler(request, action);
+			request_finish(request, action);
 
-			request_cleanup(request);
 #ifdef HAVE_PTHREAD_H
 			request->child_pid = NO_SUCH_CHILD_PID;
 #endif	
@@ -1844,7 +1835,6 @@ static int request_will_proxy(REQUEST *request)
 	if (request->packet->dst_port == 0) return 0;
 	if (request->packet->code == PW_STATUS_SERVER) return 0;
 	if (request->in_proxy_hash) return 0;
-
 
 	/*
 	 *	FIXME: for 3.0, allow this only for rejects?
