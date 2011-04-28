@@ -309,25 +309,6 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 }
 
 
-/*
- *	Remove the request from the cache.  This means that duplicate
- *	requests will no longer be detected.
- */
-static void request_uncache(REQUEST *request)
-{
-	if (!request->in_request_hash) return;
-
-	fr_packet_list_yank(pl, request->packet);
-	request->in_request_hash = FALSE;
-
-	request_stats_final(request);
-
-#ifdef WITH_TCP
-	request->listener->count--;
-#endif
-}
-
-
 /***********************************************************************
  *
  *	Start of RADIUS server state machine.
@@ -463,7 +444,19 @@ static void request_done(REQUEST *request, int action)
 		break;
 	}
 
-	if (request->in_request_hash) request_uncache(request);
+	/*
+	 *	Remove it from the request hash.
+	 */
+	if (request->in_request_hash) {
+		fr_packet_list_yank(pl, request->packet);
+		request->in_request_hash = FALSE;
+		
+		request_stats_final(request);
+		
+#ifdef WITH_TCP
+		request->listener->count--;
+#endif
+	}
 	
 #ifdef WITH_PROXY
 	/*
@@ -486,20 +479,22 @@ static void request_done(REQUEST *request, int action)
 		when.tv_sec += request->home_server->response_window;
 
 		/*
-		 *	We've received all responses, OR the timeout
-		 *	has hit.
+		 *	We haven't received all responses, AND there's still
+		 *	time to wait.  Do so.
 		 */
-		if ((request->num_proxied_requests <= request->num_proxied_responses) ||
+		if ((request->num_proxied_requests > request->num_proxied_responses) &&
 #ifdef WITH_TCP
-		    (request->home_server->proto == IPPROTO_TCP) ||
+		    (request->home_server->proto != IPPROTO_TCP) &&
 #endif
-		    timercmp(&now, &when, >)) {
-			remove_from_proxy_hash(request);
-
-		} else {
+		    timercmp(&now, &when, <)) {
 			RDEBUG("Waiting for more responses from the home server");
 			goto wait_some_more;
 		}
+
+		/*
+		 *	Time to remove it.
+		 */
+		remove_from_proxy_hash(request);
 	}
 #endif
 
@@ -543,9 +538,7 @@ static void request_done(REQUEST *request, int action)
 	} /* else don't print anything */
 
 	if (request->ev) fr_event_delete(el, &request->ev);
-#ifdef WITH_PROXY
-	if (request->in_proxy_hash) remove_from_proxy_hash(request);
-#endif
+
 	request_free(&request);
 }
 
