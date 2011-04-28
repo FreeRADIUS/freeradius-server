@@ -43,6 +43,8 @@ RCSID("$Id$")
 #	include <sys/wait.h>
 #endif
 
+#define NDEBUG
+
 extern pid_t radius_pid;
 extern int check_config;
 extern char *debug_condition;
@@ -53,7 +55,6 @@ time_t				fr_start_time;
 static fr_packet_list_t *pl = NULL;
 static fr_event_list_t *el = NULL;
 
-#ifndef NDEBUG
 static const char *action_codes[] = {
 	"INVALID",
 	"run",
@@ -908,7 +909,7 @@ static void request_reject_delay(REQUEST *request, int action)
 }
 
 
-static int request_pre_handler(REQUEST *request, int action)
+static int request_pre_handler(REQUEST *request, UNUSED int action)
 {
 	TRACE_STATE_MACHINE;
 
@@ -2131,7 +2132,9 @@ static int request_proxy_anew(REQUEST *request)
 	RADIUS_PACKET old = *request->proxy;
 	home_server *home;
 	home_server *old_home = request->home_server;
+#ifdef WITH_TCP
 	rad_listen_t *listener = request->proxy_listener;
+#endif
 
 	rad_assert(old_home != NULL);
 	
@@ -3077,7 +3080,6 @@ static void request_coa_process(REQUEST *request, int action)
 			return;
 		}
 		/* FALL-THROUGH */
-#endif
 #endif
 	case FR_ACTION_RUN:
 		request_running(request, action);
