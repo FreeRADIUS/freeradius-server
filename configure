@@ -23168,6 +23168,9 @@ for ac_header in \
 	openssl/crypto.h \
 	openssl/err.h \
 	openssl/evp.h \
+	openssl/md5.h \
+	openssl/md4.h \
+	openssl/sha.h \
 	openssl/ocsp.h \
 	openssl/engine.h
 do

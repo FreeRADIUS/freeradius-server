@@ -173,6 +173,15 @@
 /* Define to 1 if you have the <openssl/evp.h> header file. */
 #undef HAVE_OPENSSL_EVP_H
 
+/* Define to 1 if you have the <openssl/md4.h> header file. */
+#undef HAVE_OPENSSL_MD4_H
+
+/* Define to 1 if you have the <openssl/md5.h> header file. */
+#undef HAVE_OPENSSL_MD5_H
+
+/* Define to 1 if you have the <openssl/sha.h> header file. */
+#undef HAVE_OPENSSL_SHA_H
+
 /* Define to 1 if you have the <openssl/ocsp.h> header file. */
 #undef HAVE_OPENSSL_OCSP_H
 
