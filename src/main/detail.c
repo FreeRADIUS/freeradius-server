@@ -623,7 +623,7 @@ int detail_recv(rad_listen_t *listener)
 	packet->src_ipaddr.af = AF_INET;
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 	packet->code = PW_ACCOUNTING_REQUEST;
-	packet->timestamp = time(NULL);
+	gettimeofday(&packet->timestamp, NULL);
 
 	/*
 	 *	Remember where it came from, so that we don't
@@ -741,7 +741,7 @@ int detail_recv(rad_listen_t *listener)
 	}
 
 	data->state = STATE_RUNNING;
-	data->running = packet->timestamp;
+	data->running = packet->timestamp.tv_sec;
 
 	return 1;
 }

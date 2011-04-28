@@ -1248,7 +1248,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->listener = listener;
 	request->client = client;
 	request->packet = packet;
-	request->packet->timestamp = request->timestamp;
+	gettimeofday(&request->packet->timestamp, NULL);
 	request->number = request_num_counter++;
 	request->priority = listener->type;
 	request->master_state = REQUEST_ACTIVE;
@@ -2436,7 +2436,6 @@ static void home_trigger(home_server *home, const char *trigger)
 
 	exec_trigger(&my_request, home->cs, trigger);
 }
-
 
 static void mark_home_server_zombie(home_server *home)
 {

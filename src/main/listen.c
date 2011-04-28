@@ -259,7 +259,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		request_free(&request);
 		goto unknown;
 	}
-	request->packet->timestamp = request->timestamp;
+	gettimeofday(&request->packet->timestamp, NULL);
 	request->number = 0;
 	request->priority = listener->type;
 	request->server = client->client_server;
