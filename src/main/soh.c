@@ -559,7 +559,7 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 							break;
 					}
 				} else {
-					vp = pairmake("SoH-Other-Health-Status", NULL, T_OP_EQ);
+					vp = pairmake("SoH-MS-Health-Other", NULL, T_OP_EQ);
 					/* FIXME: what to do with the payload? */
 					snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%08x/%i ?", curr_shid, curr_shid_c);
 				}
