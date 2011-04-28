@@ -596,7 +596,7 @@ static void request_process_timer(REQUEST *request)
 		/*
 		 *	Taking too long: tell it to die.
 		 */
-		if (timercmp(&when, &now, >)) {
+		if (timercmp(&now, &when, >=)) {
 #ifdef HAVE_PTHREAD_H
 			/*
 			 *	If there's a child thread processing it,
