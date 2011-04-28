@@ -38,17 +38,58 @@ RCSID("$Id$")
 static struct timeval	start_time;
 static struct timeval	hup_time;
 
-fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0, 0, 0, 0 };
 #ifdef WITH_ACCOUNTING
-fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0, 0, 0, 0 };
 #endif
 
 #ifdef WITH_PROXY
-fr_stats_t proxy_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+fr_stats_t proxy_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0, 0, 0, 0 };
 #ifdef WITH_ACCOUNTING
-fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+				 0, 0, 0, 0, 0, 0, 0, 0 };
 #endif
 #endif
+
+static void stats_time(fr_stats_t *stats, struct timeval *start,
+		       struct timeval *end)
+{
+	struct timeval diff;
+
+	diff.tv_sec = end->tv_sec - start->tv_sec;
+	diff.tv_usec = USEC;
+	diff.tv_usec += end->tv_usec;
+	diff.tv_usec -= start->tv_usec;
+	if (diff.tv_usec >= USEC) {
+		diff.tv_usec -= USEC;
+	} else {
+		rad_assert(diff.tv_sec > 0);
+		diff.tv_sec--;
+	}
+
+	if (diff.tv_sec >= 10) {
+		stats->s_10++;
+	} else if (diff.tv_sec >= 1) {
+		stats->s_1++;
+	} else if (diff.tv_usec >= 100000) {
+		stats->ms_100++;
+	} else if (diff.tv_usec >= 10000) {
+		stats->ms_10++;
+	} else if (diff.tv_usec >= 1000) {
+		stats->ms_1++;
+	} else if (diff.tv_usec >= 100) {
+		stats->us_100++;
+	} else if (diff.tv_usec >= 100) {
+		stats->us_100++;
+	} else if (diff.tv_usec >= 10) {
+		stats->us_10++;
+	} else {
+		stats->us_1++;
+	}
+}
 
 void request_stats_final(REQUEST *request)
 {
@@ -81,23 +122,39 @@ void request_stats_final(REQUEST *request)
 	 */
 	if (request->reply) switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		INC_AUTH(total_responses);
 		INC_AUTH(total_access_accepts);
+
+		auth_stats:
+		INC_AUTH(total_responses);
+		stats_time(&radius_auth_stats,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		if (request->client && request->client->auth) {
+			stats_time(request->client->auth,
+				   &request->packet->timestamp,
+				   &request->reply->timestamp);
+		}
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
-		INC_AUTH(total_responses);
 		INC_AUTH(total_access_rejects);
-		break;
+		goto auth_stats;
 
 	case PW_ACCESS_CHALLENGE:
-		INC_AUTH(total_responses);
 		INC_AUTH(total_access_challenges);
-		break;
+		goto auth_stats;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 		INC_ACCT(total_responses);
+		stats_time(&radius_acct_stats,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		if (request->client && request->client->acct) {
+			stats_time(request->client->acct,
+				   &request->packet->timestamp,
+				   &request->reply->timestamp);
+		}
 		break;
 #endif
 
@@ -154,25 +211,36 @@ void request_stats_final(REQUEST *request)
 
 	switch (request->proxy_reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		INC(total_responses);
 		INC(total_access_accepts);
+	proxy_stats:
+		INC(total_responses);
+		stats_time(&proxy_auth_stats,
+			   &request->proxy->timestamp,
+			   &request->proxy_reply->timestamp);
+		stats_time(&request->home_server->stats,
+			   &request->proxy->timestamp,
+			   &request->proxy_reply->timestamp);
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
-		INC(total_responses);
 		INC(total_access_rejects);
-		break;
+		goto proxy_stats;
 
 	case PW_ACCESS_CHALLENGE:
-		INC(total_responses);
 		INC(total_access_challenges);
-		break;
+		goto proxy_stats;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
 		proxy_acct_stats.total_responses++;
 		request->proxy_listener->stats.total_responses++;
 		request->home_server->stats.total_responses++;
+		stats_time(&proxy_acct_stats,
+			   &request->proxy->timestamp,
+			   &request->proxy_reply->timestamp);
+		stats_time(&request->home_server->stats,
+			   &request->proxy->timestamp,
+			   &request->proxy_reply->timestamp);
 		break;
 #endif
 

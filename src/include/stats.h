@@ -50,6 +50,7 @@ typedef struct fr_stats_t {
 	fr_uint_t		total_packets_dropped;
 	fr_uint_t		total_no_records;
 	fr_uint_t		total_unknown_types;
+	fr_uint_t		us_1, us_10, us_100, ms_1, ms_10, ms_100, s_1, s_10;
 } fr_stats_t;
 
 typedef struct fr_stats_ema_t {

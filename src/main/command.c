@@ -1548,6 +1548,15 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	cprintf(listener, "\tbad_signature\t%u\n", stats->total_bad_authenticators);
 	cprintf(listener, "\tdropped\t\t%u\n", stats->total_packets_dropped);
 	cprintf(listener, "\tunknown_types\t%u\n", stats->total_unknown_types);
+
+	cprintf(listener, "\telapsed.1us\t%u\n", stats->us_1);
+	cprintf(listener, "\telapsed.10us\t%u\n", stats->us_10);
+	cprintf(listener, "\telapsed.100us\t%u\n", stats->us_100);
+	cprintf(listener, "\telapsed.1ms\t%u\n", stats->ms_1);
+	cprintf(listener, "\telapsed.10ms\t%u\n", stats->ms_10);
+	cprintf(listener, "\telapsed.100ms\t%u\n", stats->ms_100);
+	cprintf(listener, "\telapsed.1s\t%u\n", stats->s_1);
+	cprintf(listener, "\telapsed.10s\t%u\n", stats->s_10);
 	
 	return 1;
 }
