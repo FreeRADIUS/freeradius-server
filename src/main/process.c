@@ -1190,6 +1190,12 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		if ((request->packet->data_len == packet->data_len) &&
 		    (memcmp(request->packet->vector, packet->vector,
 			    sizeof(packet->vector)) == 0)) {
+
+			RAD_STATS_TYPE_INC(request->listener,
+					   total_dup_requests);
+			RAD_STATS_CLIENT_INC(request->listener, client,
+					     total_dup_requests);
+
 			request->process(request, FR_ACTION_DUP);
 			return 0;
 		}
