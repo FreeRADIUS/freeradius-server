@@ -54,21 +54,31 @@ fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 #endif
 #endif
 
+static void tv_sub(struct timeval *end, struct timeval *start,
+		   struct timeval *elapsed)
+{
+	elapsed->tv_sec = end->tv_sec - start->tv_sec;
+	if (elapsed->tv_sec > 0) {
+		elapsed->tv_sec--;
+		elapsed->tv_usec = USEC;
+	} else {
+		elapsed->tv_usec = 0;
+	}
+	elapsed->tv_usec += end->tv_usec;
+	elapsed->tv_usec -= start->tv_usec;
+	
+	if (elapsed->tv_usec >= USEC) {
+		elapsed->tv_usec -= USEC;
+		elapsed->tv_sec++;
+	}
+}
+
 static void stats_time(fr_stats_t *stats, struct timeval *start,
 		       struct timeval *end)
 {
 	struct timeval diff;
 
-	diff.tv_sec = end->tv_sec - start->tv_sec;
-	diff.tv_usec = USEC;
-	diff.tv_usec += end->tv_usec;
-	diff.tv_usec -= start->tv_usec;
-	if (diff.tv_usec >= USEC) {
-		diff.tv_usec -= USEC;
-	} else {
-		rad_assert(diff.tv_sec > 0);
-		diff.tv_sec--;
-	}
+	tv_sub(end, start, &diff);
 
 	if (diff.tv_sec >= 10) {
 		stats->s_10++;
