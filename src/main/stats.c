@@ -653,7 +653,7 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 #endif
 	if (ema->window == 0) return;
 
-	rad_assert(start->tv_sec >= end->tv_sec);
+	rad_assert(start->tv_sec <= end->tv_sec);
 
 	/*
 	 *	Initialize it.
