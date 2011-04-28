@@ -467,7 +467,7 @@ static void request_done(REQUEST *request, int action)
 		struct timeval when;
 		
 		fr_event_now(el, &now);
-		when = request->proxy_start;
+		when = request->proxy->timestamp;
 
 #ifdef WITH_COA
 		if ((request->packet->code != request->proxy->code) &&
@@ -590,7 +590,7 @@ static void request_process_timer(REQUEST *request)
 	 */
 	if ((request->child_state != REQUEST_DONE) &&
 	    (request->master_state != REQUEST_STOP_PROCESSING)) {
-		when = request->received;
+		when = request->packet->timestamp;
 		when.tv_sec += request->root->max_request_time;
 		
 		/*
@@ -653,7 +653,7 @@ static void request_process_timer(REQUEST *request)
 
 	if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
 	    (request->root->reject_delay)) {
-		when = request->finished; 
+		when = request->reply->timestamp; 
 		when.tv_sec += request->root->reject_delay;
 
 		/*
@@ -675,7 +675,7 @@ static void request_process_timer(REQUEST *request)
 			 *	Assume we're at (or near) the reject
 			 *	delay time.
 			 */
-			request->finished = now;
+			request->reply->timestamp = now;
 			
 			RDEBUG2("Sending delayed reject");
 			DEBUG_PACKET(request, request->reply, 1);
@@ -692,7 +692,7 @@ static void request_process_timer(REQUEST *request)
 	 */
 	if ((request->packet->code != PW_ACCOUNTING_REQUEST) &&
 	    (request->root->cleanup_delay)) {
-		when = request->finished;
+		when = request->reply->timestamp;
 		request->delay = request->root->cleanup_delay;
 		when.tv_sec += request->delay;
 
@@ -852,7 +852,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 		/*
 		 *	Double the cleanup_delay to catch retransmits.
 		 */
-		when = request->finished;
+		when = request->reply->timestamp;
 		request->delay += request->delay ;
 		when.tv_sec += request->delay;
 		fr_event_insert(el, request_timer, request,
@@ -1140,7 +1140,7 @@ static void request_running(REQUEST *request, int action)
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tFinished\t********\n", request->number);
 #endif
-			gettimeofday(&request->finished, NULL);
+			gettimeofday(&request->reply->timestamp, NULL);
 
 #ifdef WITH_COA
 			/*
@@ -2102,7 +2102,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	DEBUG_PACKET(request, request->proxy, 1);
 
 	gettimeofday(&request->proxy_retransmit, NULL);
-	if (!retransmit) request->proxy_start = request->proxy_retransmit;
+	if (!retransmit) request->proxy->timestamp = request->proxy_retransmit;
 
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
@@ -2603,7 +2603,7 @@ static void request_proxied(REQUEST *request, int action)
 			mark_home_server_zombie(home);
 		}
 
-		when = request->proxy_start;
+		when = request->proxy->timestamp;
 		when.tv_sec += home->response_window;
 
 		/*
@@ -2628,7 +2628,7 @@ static void request_proxied(REQUEST *request, int action)
 #ifdef HAVE_PTHREAD_H
 			request->child_pid = NO_SUCH_CHILD_PID;
 #endif
-			gettimeofday(&request->finished, NULL);
+			gettimeofday(&request->reply->timestamp, NULL);
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
 #endif
@@ -2875,8 +2875,8 @@ static void request_coa_originate(REQUEST *request)
 	 *	Instead, we wait for the timer on the parent request
 	 *	to fire.
 	 */
-	gettimeofday(&coa->proxy_start, NULL);
-	coa->received = coa->proxy_start; /* for max_request_time */
+	gettimeofday(&coa->proxy->timestamp, NULL);
+	coa->packet->timestamp = coa->proxy->timestamp; /* for max_request_time */
 	coa->delay = 0;		/* need to calculate a new delay */
 
 	DEBUG_PACKET(coa, coa->proxy, 1);
@@ -2942,7 +2942,7 @@ static void request_coa_timer(REQUEST *request)
 		delay += request->delay;
 		request->delay = delay;
 		
-		when = request->proxy_start;
+		when = request->proxy->timestamp;
 		tv_add(&when, delay);
 
 		if (timercmp(&when, &now, >)) {
@@ -3005,7 +3005,7 @@ static void request_coa_timer(REQUEST *request)
 	request->delay = delay;
 	when = now;
 	tv_add(&when, request->delay);
-	mrd = request->proxy_start;
+	mrd = request->proxy->timestamp;
 	mrd.tv_sec += request->home_server->coa_mrd;
 
 	/*

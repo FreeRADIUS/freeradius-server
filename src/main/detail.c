@@ -111,10 +111,10 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	trip timeout (RTO).  We use SRTT to calculate a rough
 	 *	load factor.
 	 */
-	rtt = now.tv_sec - request->received.tv_sec;
+	rtt = now.tv_sec - request->packet->timestamp.tv_sec;
 	rtt *= USEC;
 	rtt += now.tv_usec;
-	rtt -= request->received.tv_usec;
+	rtt -= request->packet->timestamp.tv_usec;
 
 	/*
 	 *	If we're proxying, the RTT is our processing time,

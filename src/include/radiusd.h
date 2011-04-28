@@ -245,9 +245,6 @@ struct auth_req {
 	const char		*module; /* for debugging unresponsive children */
 	const char		*component; /* ditto */
 
-	struct timeval		received;
-	struct timeval		finished;
-	struct timeval		when; 		/* to wake up */
 	int			delay;
 
 	int			master_state;
@@ -263,7 +260,6 @@ struct auth_req {
 	home_server	       	*home_server;
 	home_pool_t		*home_pool; /* for dynamic failover */
 
-	struct timeval		proxy_start;
 	struct timeval		proxy_retransmit;
 
 	int			num_proxied_requests;
