@@ -39,18 +39,18 @@ static struct timeval	start_time;
 static struct timeval	hup_time;
 
 fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0, 0, 0, 0 };
+				 { 0, 0, 0, 0, 0, 0, 0, 0 }};
 #ifdef WITH_ACCOUNTING
 fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0, 0, 0, 0 };
+				 { 0, 0, 0, 0, 0, 0, 0, 0 }};
 #endif
 
 #ifdef WITH_PROXY
 fr_stats_t proxy_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0, 0, 0, 0 };
+				{ 0, 0, 0, 0, 0, 0, 0, 0 }};
 #ifdef WITH_ACCOUNTING
 fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				 0, 0, 0, 0, 0, 0, 0, 0 };
+				{ 0, 0, 0, 0, 0, 0, 0, 0 }};
 #endif
 #endif
 
@@ -77,27 +77,29 @@ static void stats_time(fr_stats_t *stats, struct timeval *start,
 		       struct timeval *end)
 {
 	struct timeval diff;
+	uint32_t delay;
+
+	if ((start->tv_sec == 0) || (end->tv_sec == 0) ||
+	    (end->tv_sec < start->tv_sec)) return;
 
 	tv_sub(end, start, &diff);
 
 	if (diff.tv_sec >= 10) {
-		stats->s_10++;
-	} else if (diff.tv_sec >= 1) {
-		stats->s_1++;
-	} else if (diff.tv_usec >= 100000) {
-		stats->ms_100++;
-	} else if (diff.tv_usec >= 10000) {
-		stats->ms_10++;
-	} else if (diff.tv_usec >= 1000) {
-		stats->ms_1++;
-	} else if (diff.tv_usec >= 100) {
-		stats->us_100++;
-	} else if (diff.tv_usec >= 100) {
-		stats->us_100++;
-	} else if (diff.tv_usec >= 10) {
-		stats->us_10++;
+		stats->elapsed[7]++;
 	} else {
-		stats->us_1++;
+		int i;
+		uint32_t cmp;
+
+		delay = (diff.tv_sec * USEC) + diff.tv_usec;
+
+		cmp = 10;
+		for (i = 0; i < 7; i++) {
+			if (delay < cmp) {
+				stats->elapsed[i]++;
+				break;
+			}
+			cmp *= 10;
+		}
 	}
 }
 
