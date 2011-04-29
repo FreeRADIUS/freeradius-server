@@ -402,6 +402,14 @@ static void request_done(REQUEST *request, int action)
 	case FR_ACTION_CONFLICTING:
 		if (request->child_state == REQUEST_DONE) break;
 
+		/*
+		 *	If there's a reply packet, then we presume
+		 *	that the child has sent the reply, and we get
+		 *	pinged here before the child has a chance to
+		 *	say "I'm done!"
+		 */
+		if (request->reply->data) break;
+
 		radlog(L_ERR, "Received conflicting packet from "
 		       "client %s port %d - ID: %d due to unfinished request %u.  Giving up on old request.",
 		       request->client->shortname,
