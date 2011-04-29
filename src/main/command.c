@@ -1907,6 +1907,7 @@ static void command_socket_free(rad_listen_t *this)
 {
 	fr_command_socket_t *sock = this->data;
 
+	if (!sock->copy) return;
 	unlink(sock->copy);
 	free(sock->copy);
 	sock->copy = NULL;
