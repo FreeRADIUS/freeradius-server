@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 struct fr_fifo_t {
 	int num;
-	int first;
+	int first, last;
 	int max;
 	fr_fifo_free_t freeNode;
 
@@ -50,6 +50,7 @@ fr_fifo_t *fr_fifo_create(int max, fr_fifo_free_t freeNode)
 
 	fi->max = max;
 	fi->first = 0;
+	fi->last = 0;
 	fi->num = 0;
 	fi->freeNode = freeNode;
 
@@ -88,12 +89,8 @@ int fr_fifo_push(fr_fifo_t *fi, void *data)
 
 	if (fi->num >= fi->max) return 0;
 
-	where = fi->first + fi->num;
-	if (where > fi->max) {
-		where -= fi->max;
-	}
-
-	fi->data[where] = data;
+	fi->data[fi->last++] = data;
+	if (fi->last >= fi->max) fi->last = 0;
 	fi->num++;
 
 	return 1;
@@ -108,7 +105,7 @@ void *fr_fifo_pop(fr_fifo_t *fi)
 	data = fi->data[fi->first++];
 
 	if (fi->first >= fi->max) {
-		fi->first -= fi->max;
+		fi->first = 0;
 	}
 	fi->num--;
 
