@@ -383,10 +383,14 @@ static int request_dequeue(REQUEST **prequest)
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
 		request = fr_fifo_peek(thread_pool.fifo[i]);
-		if (!request ||
-		    (request->master_state != REQUEST_STOP_PROCESSING)) {
+		if (!request) continue;
+
+		rad_assert(request->magic == REQUEST_MAGIC);
+
+		if (request->master_state != REQUEST_STOP_PROCESSING) {
 			continue;
-}
+		}
+
 		/*
 		 *	This entry was marked to be stopped.  Acknowledge it.
 		 */
@@ -831,7 +835,10 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 	 *	Allocate multiple fifos.
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		thread_pool.fifo[i] = fr_fifo_create(65536, NULL);
+		int num = mainconfig.max_requests;
+
+		if (!num || (num > 65536)) num = 65536;
+		thread_pool.fifo[i] = fr_fifo_create(num, NULL);
 		if (!thread_pool.fifo[i]) {
 			radlog(L_ERR, "FATAL: Failed to set up request fifo");
 			return -1;
