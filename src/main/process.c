@@ -1067,6 +1067,8 @@ static void request_finish(REQUEST *request, UNUSED int action)
 					request);
 	}
 
+	gettimeofday(&request->reply->timestamp, NULL);
+
 	/*
 	 *	Clean up.  These are no longer needed.
 	 */
@@ -1148,7 +1150,6 @@ static void request_running(REQUEST *request, int action)
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tFinished\t********\n", request->number);
 #endif
-			gettimeofday(&request->reply->timestamp, NULL);
 
 #ifdef WITH_COA
 			/*
@@ -1162,13 +1163,13 @@ static void request_running(REQUEST *request, int action)
 		done:
 			request_finish(request, action);
 
-#ifdef HAVE_PTHREAD_H
-			request->child_pid = NO_SUCH_CHILD_PID;
-#endif	
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
 #endif
 
+#ifdef HAVE_PTHREAD_H
+			request->child_pid = NO_SUCH_CHILD_PID;
+#endif	
 			request->child_state = REQUEST_DONE;
 		}
 		break;
