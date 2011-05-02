@@ -20091,17 +20091,19 @@ echo "${ECHO_T}no" >&6; }
 fi
 
 
+
+
+
+
+
+
+
+
+
+
 else
 
   LIBTOOL="`pwd`/libtool"
-
-
-
-
-
-
-
-
 
 
 
@@ -22726,6 +22728,8 @@ fi
 
 
 
+
+
 for ac_header in \
 	unistd.h \
 	crypt.h \
@@ -22760,6 +22764,7 @@ for ac_header in \
 	prot.h \
 	pwd.h \
 	grp.h \
+	stddef.h \
         fnmatch.h \
 	sia.h \
 	siad.h
@@ -23158,6 +23163,7 @@ echo "$as_me: skipping test for openssl/ssl.h" >&6;}
 	CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
     fi
         CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
+
 
 
 
@@ -24778,6 +24784,9 @@ cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
 #include <utmpx.h>
+#ifdef HAVE_STDDEF_H
+#include <stddef.h>
+#endif
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((int) &((TYPE *)0)->MEMBER)
 #endif
@@ -24851,6 +24860,9 @@ cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
 #include <netinet/in.h>
+#ifdef HAVE_STDDEF_H
+#include <stddef.h>
+#endif
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((int) &((TYPE *)0)->MEMBER)
 #endif
@@ -24923,6 +24935,9 @@ cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
 #include <netinet/in.h>
+#ifdef HAVE_STDDEF_H
+#include <stddef.h>
+#endif
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((int) &((TYPE *)0)->MEMBER)
 #endif
