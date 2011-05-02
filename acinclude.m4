@@ -349,6 +349,9 @@ dnl
 
   AC_TRY_COMPILE([
 $1
+#ifdef HAVE_STDDEF_H
+#include <stddef.h>
+#endif
 #ifndef offsetof
 #define offsetof(TYPE, MEMBER) ((int) &((TYPE *)0)->MEMBER)
 #endif

@@ -619,6 +619,7 @@ AC_CHECK_HEADERS( \
 	prot.h \
 	pwd.h \
 	grp.h \
+	stddef.h \
         fnmatch.h \
 	sia.h \
 	siad.h
