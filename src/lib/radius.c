@@ -2249,7 +2249,7 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 	/*
 	 *	Decrypt the attribute.
 	 */
-	switch (vp->flags.encrypt) {
+	if (secret) switch (vp->flags.encrypt) {
 		/*
 		 *  User-Password
 		 */
