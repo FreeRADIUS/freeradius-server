@@ -1278,6 +1278,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 #endif
 
 #ifdef WITH_STATS
+	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
 	if (packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->client->auth->last_packet = request->packet->timestamp.tv_sec;
 		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
@@ -1739,9 +1740,10 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	packet->timestamp = now;
 	request->priority = RAD_LISTEN_PROXY;
 
-	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
-
 #ifdef WITH_STATS
+	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
+	request->proxy_listener->stats.last_packet = packet->timestamp.tv_sec;
+
 	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
 		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
 #ifdef WITH_ACCOUNTING
