@@ -1069,60 +1069,66 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 	return 0;
 }
 
-static int command_inject_to(rad_listen_t *listener, int argc, char *argv[])
+static rad_listen_t *get_socket(rad_listen_t *listener, int argc,
+			       char *argv[], int *last)
 {
+	rad_listen_t *sock;
 	int port;
-	RAD_LISTEN_TYPE type;
-	fr_command_socket_t *sock = listener->data;
+	int proto = IPPROTO_UDP;
 	fr_ipaddr_t ipaddr;
-	rad_listen_t *found = NULL;
 
-	if (argc < 1) {
-		cprintf(listener, "ERROR: Must specify [auth/acct]\n");
-		return 0;
+	if (argc < 2) {
+		cprintf(listener, "ERROR: Must specify <ipaddr> <port> [proto]\n");
+		return NULL;
 	}
 
-	if (strcmp(argv[0], "auth") == 0) {
-		type = RAD_LISTEN_AUTH;
-
-	} else if (strcmp(argv[0], "acct") == 0) {
-#ifdef WITH_ACCOUNTING
-		type = RAD_LISTEN_ACCT;
-#else
-		cprintf(listener, "ERROR: This server was built without accounting support.\n");
-		return 0;
-#endif
-
-	} else {
-		cprintf(listener, "ERROR: Unknown socket type\n");
-		return 0;
-	}
-
-	if (argc < 3) {
-		cprintf(listener, "ERROR: No <ipaddr> <port> was given\n");
-		return 0;
-	}
-
-	/*
-	 *	FIXME:  Look for optional arg 4, and bind interface.
-	 */
-
-	if (ip_hton(argv[1], AF_UNSPEC, &ipaddr) < 0) {
+	if (ip_hton(argv[0], AF_UNSPEC, &ipaddr) < 0) {
 		cprintf(listener, "ERROR: Failed parsing IP address; %s\n",
 			fr_strerror());
-		return 0;
+		return NULL;
 	}
-	port = atoi(argv[2]);
 
-	found = listener_find_byipaddr(&ipaddr, port);
+	port = atoi(argv[1]);
+
+	if (last) *last = 2;
+	if (argc > 2) {
+		if (strcmp(argv[2], "udp") == 0) {
+			proto = IPPROTO_UDP;
+			if (last) *last = 3;
+		}
+#ifdef WITH_TCP
+		if (strcmp(argv[2], "tcp") == 0) {
+			proto = IPPROTO_TCP;
+			if (last) *last = 3;
+		}
+#endif
+	}
+
+	sock = listener_find_byipaddr(&ipaddr, port);
+	if (!sock) {
+		cprintf(listener, "ERROR: No such listen section\n");
+		return NULL;
+	}
+
+	return sock;
+}
+
+
+static int command_inject_to(rad_listen_t *listener, int argc, char *argv[])
+{
+	fr_command_socket_t *sock = listener->data;
+	listen_socket_t *data;
+	rad_listen_t *found;
+
+	found = get_socket(listener, argc, argv, NULL);
 	if (!found) {
-		cprintf(listener, "ERROR: Could not find matching listener\n");
 		return 0;
 	}
 
+	data = found->data;
 	sock->inject_listener = found;
-	sock->dst_ipaddr = ipaddr;
-	sock->dst_port = port;
+	sock->dst_ipaddr = data->my_ipaddr;
+	sock->dst_port = data->my_port;
 
 	return 1;
 }
@@ -1717,6 +1723,22 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 	return command_print_stats(listener, client->auth, auth);
 }
+
+
+static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
+{
+	int auth = TRUE;
+	rad_listen_t *sock;
+
+	sock = get_socket(listener, argc, argv, NULL);
+	if (!sock) {
+		return 0;
+	}
+
+	if (sock->type != RAD_LISTEN_AUTH) auth = FALSE;
+
+	return command_print_stats(listener, &sock->stats, auth);
+}
 #endif	/* WITH_STATS */
 
 
@@ -1860,17 +1882,26 @@ static fr_command_table_t command_table_stats[] = {
 #endif
 	  "- show statistics for given client, or for all clients (auth or acct)",
 	  command_stats_client, NULL },
-#ifdef WITH_PROXY
-	{ "home_server", FR_READ,
-	  "stats home_server [<ipaddr>/auth/acct] <port> - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
-	  command_stats_home_server, NULL },
-#endif
 
 #ifdef WITH_DETAIL
 	{ "detail", FR_READ,
 	  "stats detail <filename> - show statistics for the given detail file",
 	  command_stats_detail, NULL },
 #endif
+
+#ifdef WITH_PROXY
+	{ "home_server", FR_READ,
+	  "stats home_server [<ipaddr>/auth/acct] <port> - show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)",
+	  command_stats_home_server, NULL },
+#endif
+
+	{ "socket", FR_READ,
+	  "stats socket <ipaddr> <port> "
+#ifdef WITH_TCP
+	  "[proto] "
+#endif
+	  "- show statistics for given socket",
+	  command_stats_socket, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };

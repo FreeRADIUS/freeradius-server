@@ -138,11 +138,20 @@ void request_stats_final(REQUEST *request)
 
 		auth_stats:
 		INC_AUTH(total_responses);
+
+		/*
+		 *	FIXME: Do the time calculations once...
+		 */
 		stats_time(&radius_auth_stats,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
 		if (request->client && request->client->auth) {
 			stats_time(request->client->auth,
+				   &request->packet->timestamp,
+				   &request->reply->timestamp);
+		}
+		if (request->listener) {
+			stats_time(&request->listener->stats,
 				   &request->packet->timestamp,
 				   &request->reply->timestamp);
 		}
