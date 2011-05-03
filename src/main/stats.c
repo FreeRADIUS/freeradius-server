@@ -601,7 +601,8 @@ void request_stats_reply(REQUEST *request)
 		ipaddr.af = AF_INET;
 		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 		this = listener_find_byipaddr(&ipaddr,
-					      server_port->vp_integer);
+					      server_port->vp_integer,
+					      IPPROTO_UDP);
 		
 		/*
 		 *	Not found: don't do anything

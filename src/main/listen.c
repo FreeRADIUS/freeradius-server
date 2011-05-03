@@ -2905,34 +2905,35 @@ RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 }
 #endif
 
-rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port)
+rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port, int proto)
 {
 	rad_listen_t *this;
 
 	for (this = mainconfig.listen; this != NULL; this = this->next) {
 		listen_socket_t *sock;
 
-		/*
-		 *	FIXME: For TCP, ignore the *secondary*
-		 *	listeners associated with the main socket.
-		 */
-		if ((this->type != RAD_LISTEN_AUTH)
-#ifdef WITH_ACCOUNTING
-		    && (this->type != RAD_LISTEN_ACCT)
-#endif
-		    ) continue;
-		
 		sock = this->data;
 
-		if ((sock->my_port == port) &&
-		    (fr_ipaddr_cmp(ipaddr, &sock->my_ipaddr) == 0)) {
-			return this;
-		}
+		if (sock->my_port != port) continue;
+		if (sock->proto != proto) continue;
+		if (fr_ipaddr_cmp(ipaddr, &sock->my_ipaddr) != 0) continue;
 
-		if ((sock->my_port == port) &&
-		    fr_inaddr_any(&sock->my_ipaddr)) {
-			return this;
-		}
+		return this;
+	}
+
+	/*
+	 *	Failed to find a specific one.  Find INADDR_ANY
+	 */
+	for (this = mainconfig.listen; this != NULL; this = this->next) {
+		listen_socket_t *sock;
+
+		sock = this->data;
+
+		if (sock->my_port != port) continue;
+		if (sock->proto != proto) continue;
+		if (!fr_ipaddr_any(&sock->my_ipaddr)) continue;
+
+		return this;
 	}
 
 	return NULL;

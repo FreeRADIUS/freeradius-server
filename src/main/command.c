@@ -1104,7 +1104,7 @@ static rad_listen_t *get_socket(rad_listen_t *listener, int argc,
 #endif
 	}
 
-	sock = listener_find_byipaddr(&ipaddr, port);
+	sock = listener_find_byipaddr(&ipaddr, port, proto);
 	if (!sock) {
 		cprintf(listener, "ERROR: No such listen section\n");
 		return NULL;
