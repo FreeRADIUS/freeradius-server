@@ -38,18 +38,18 @@ RCSID("$Id$")
 static struct timeval	start_time;
 static struct timeval	hup_time;
 
-fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }};
 #ifdef WITH_ACCOUNTING
-fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }};
 #endif
 
 #ifdef WITH_PROXY
-fr_stats_t proxy_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+fr_stats_t proxy_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				{ 0, 0, 0, 0, 0, 0, 0, 0 }};
 #ifdef WITH_ACCOUNTING
-fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 				{ 0, 0, 0, 0, 0, 0, 0, 0 }};
 #endif
 #endif

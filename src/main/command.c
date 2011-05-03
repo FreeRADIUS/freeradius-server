@@ -1555,6 +1555,7 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	cprintf(listener, "\tdropped\t\t%u\n", stats->total_packets_dropped);
 	cprintf(listener, "\tunknown_types\t%u\n", stats->total_unknown_types);
 
+	cprintf(listener, "\tlast_packet\t%lu\n", stats->last_packet);
 	for (i = 0; i < 8; i++) {
 		cprintf(listener, "\telapsed.%s\t%u\n",
 			elapsed_names[i], stats->elapsed[i]);

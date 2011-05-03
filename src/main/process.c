@@ -1277,6 +1277,18 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 
+#ifdef WITH_STATS
+	if (packet->code == PW_AUTHENTICATION_REQUEST) {
+		request->client->auth->last_packet = request->packet->timestamp.tv_sec;
+		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
+#ifdef WITH_ACCOUNTING
+	} else if (packet->code == PW_ACCOUNTING_REQUEST) {
+		request->client->acct->last_packet = request->packet->timestamp.tv_sec;
+		radius_acct_stats.last_packet = request->packet->timestamp.tv_sec;
+#endif
+	}
+#endif	/* WITH_STATS */
+
 	/*
 	 *	Status-Server packets go to the head of the queue.
 	 */
@@ -1697,11 +1709,12 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 		return 0;
 	}
 
+	gettimeofday(&now, NULL);
+
 	/*
 	 *	Status-Server packets don't count as real packets.
 	 */
 	if (request->proxy->code != PW_STATUS_SERVER) {
-		gettimeofday(&now, NULL);
 		request->home_server->last_packet = now.tv_sec;
 	}
 
@@ -1723,7 +1736,20 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	request.
 	 */
 	request->proxy_reply = packet;
+	packet->timestamp = now;
 	request->priority = RAD_LISTEN_PROXY;
+
+	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
+
+#ifdef WITH_STATS
+	if (request->proxy->code == PW_AUTHENTICATION_REQUEST) {
+		proxy_auth_stats.last_packet = packet->timestamp.tv_sec;
+#ifdef WITH_ACCOUNTING
+	} else if (request->proxy->code == PW_ACCOUNTING_REQUEST) {
+		proxy_acct_stats.last_packet = packet->timestamp.tv_sec;
+#endif
+	}
+#endif	/* WITH_STATS */
 
 #ifdef WITH_COA
 	/*
