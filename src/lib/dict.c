@@ -25,6 +25,10 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
 
+#ifdef WITH_DHCP
+#include	<freeradius-devel/dhcp.h>
+#endif
+
 #include	<ctype.h>
 
 #ifdef HAVE_MALLOC_H
@@ -34,6 +38,7 @@ RCSID("$Id$")
 #ifdef HAVE_SYS_STAT_H
 #include	<sys/stat.h>
 #endif
+
 
 #define DICT_VALUE_MAX_NAME_LEN (128)
 #define DICT_VENDOR_MAX_NAME_LEN (128)
