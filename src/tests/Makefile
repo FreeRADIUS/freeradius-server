@@ -18,7 +18,8 @@ ACCTPORT = $(shell expr $(PORT) + 1)
 
 EAPOL_TEST = eapol_test
 
-EAP_TLS_TESTS = eap-ttls-pap.conf eap-ttls-mschapv2.conf peap-mschapv2.conf
+EAP_TLS_TESTS = eap-ttls-pap.conf eap-mschapv2.conf \
+	      eap-ttls-mschapv2.conf peap-mschapv2.conf
 
 SECRET	= testing123
 
@@ -77,10 +78,18 @@ tests: ../../raddb/test.conf radiusd.kill
 	@$(MAKE) radiusd.kill
 	@rm -f ../../raddb/test.conf
 
+tests.eap: ../../raddb/test.conf radiusd.kill
+	@chmod a+x runtests.sh
+	@rm -f radius.log
+	@$(MAKE) radiusd.pid
+	@$(MAKE) eap
+	@$(MAKE) radiusd.kill
+	@rm -f ../../raddb/test.conf
+
 eap: $(EAP_TLS_TESTS)
-	$(EAPOL_TEST) -c eap-ttls-pap.conf -s $(SECRET) 
-	$(EAPOL_TEST) -c peap-mschapv2.conf -s $(SECRET)
-	$(EAPOL_TEST) -c eap-ttls-mschapv2.conf -s $(SECRET)
+	for x in $(EAP_TLS_TESTS); do \
+		$(EAPOL_TEST) -c $$x -p $(PORT) -s $(SECRET); \
+	done
 
 md5:
 	$(EAPOL_TEST) -c eap-md5.conf -s $(SECRET) 

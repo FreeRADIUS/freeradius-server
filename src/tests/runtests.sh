@@ -2,6 +2,7 @@
 
 PORT=12340
 HOME_PORT=12350
+SECRET=testing123
 
 rm -f verbose.log
 RCODE=0
@@ -43,7 +44,7 @@ do
    echo "-f .cache/$x" >> .bar
 done
 
-../main/radclient `cat .bar` -xFd . 127.0.0.1:$PORT auth testing123 > radclient.log 2>&1
+../main/radclient `cat .bar` -xFd . 127.0.0.1:$PORT auth $SECRET > radclient.log 2>&1
 
 for x in `cat .foo`
 do
