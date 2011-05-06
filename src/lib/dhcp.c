@@ -910,7 +910,6 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 		 *	non-TLV attribute.
 		 */
 		if (!vp->flags.is_tlv ||
-		    vp->flags.encoded ||
 		    ((vp->attribute & 0xffff00ff) != attribute)) {
 			break;
 		}
@@ -932,7 +931,6 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 	ptr = tlv->vp_tlv;
 	for (vp = vps; vp != NULL; vp = vp->next) {
 		if (!vp->flags.is_tlv ||
-		    vp->flags.encoded ||
 		    ((vp->attribute & 0xffff00ff) != attribute)) {
 			break;
 		}
@@ -948,7 +946,6 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 		ptr[1] = length;
 
 		ptr += length + 2;
-		vp->flags.encoded = 1;
 	}
 
 	return tlv;
@@ -1380,7 +1377,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		    (DHCP_BASE_ATTR(vp->attribute) != PW_DHCP_OPTION_82)) goto next;
 
 		debug_pair(vp);
-		if (vp->flags.encoded) goto next;
 
 		length = vp->length;
 
