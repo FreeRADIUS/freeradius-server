@@ -1674,21 +1674,62 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 {
 	int auth = TRUE;
-	RADCLIENT *client;
+	fr_stats_t *stats;
+	RADCLIENT *client, fake;
 
 	if (argc < 1) {
 		cprintf(listener, "ERROR: Must specify [auth/acct]\n");
 		return 0;
 	}
 
+	if (argc == 1) {
+		/*
+		 *	Global statistics.
+		 */
+		fake.auth = &radius_auth_stats;
+#ifdef WITH_ACCOUNTING
+		fake.auth = &radius_acct_stats;
+#endif
+		client = &fake;
+
+	} else {
+		/*
+		 *	Per-client statistics.
+		 */
+		client = get_client(listener, argc - 1, argv + 1);
+		if (!client) {
+			return 0;
+		}
+	}
+
 	if (strcmp(argv[0], "auth") == 0) {
 		auth = TRUE;
+		stats = client->auth;
 
 	} else if (strcmp(argv[0], "acct") == 0) {
 #ifdef WITH_ACCOUNTING
 		auth = FALSE;
+		stats = client->acct;
 #else
 		cprintf(listener, "ERROR: This server was built without accounting support.\n");
+		return 0;
+#endif
+
+	} else if (strcmp(argv[0], "coa") == 0) {
+#ifdef WITH_COA
+		auth = FALSE;
+		stats = client->coa;
+#else
+		cprintf(listener, "ERROR: This server was built without CoA support.\n");
+		return 0;
+#endif
+
+	} else if (strcmp(argv[0], "disconnect") == 0) {
+#ifdef WITH_COA
+		auth = FALSE;
+		stats = client->dsc;
+#else
+		cprintf(listener, "ERROR: This server was built without CoA support.\n");
 		return 0;
 #endif
 
@@ -1710,18 +1751,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 		return command_print_stats(listener, &radius_auth_stats, auth);
 	}
 
-	client = get_client(listener, argc - 1, argv + 1);
-	if (!client) {
-		return 0;
-	}
-
-#ifdef WITH_ACCOUNTING
-	if (!auth) {
-		return command_print_stats(listener, client->acct, auth);
-	}
-#endif
-
-	return command_print_stats(listener, client->auth, auth);
+	return command_print_stats(listener, stats, auth);
 }
 
 

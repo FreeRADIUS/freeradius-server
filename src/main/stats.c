@@ -54,6 +54,7 @@ fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
 #endif
 #endif
 
+
 static void tv_sub(struct timeval *end, struct timeval *start,
 		   struct timeval *elapsed)
 {
@@ -111,6 +112,9 @@ void request_stats_final(REQUEST *request)
 #ifdef WITH_ACCOUNTING
 	    (request->listener->type != RAD_LISTEN_ACCT) &&
 #endif
+#ifdef WITH_COA
+	    (request->listener->type != RAD_LISTEN_COA) &&
+#endif
 	    (request->listener->type != RAD_LISTEN_AUTH)) return;
 
 #undef INC_AUTH
@@ -122,6 +126,20 @@ void request_stats_final(REQUEST *request)
 #define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;if (request->client && request->client->acct) request->client->acct->_x++
 #else
 #define INC_ACCT(_x)
+#endif
+
+#undef INC_COA
+#ifdef WITH_COA
+#define INC_COA(_x) request->listener->stats._x++;if (request->client && request->client->coa) request->client->coa->_x++
+#else
+#define INC_COA(_x)
+#endif
+
+#undef INC_DSC
+#ifdef WITH_DSC
+#define INC_DSC(_x) request->listener->stats._x++;if (request->client && request->client->dsc) request->client->dsc->_x++
+#else
+#define INC_DSC(_x)
 #endif
 
 	/*
@@ -177,6 +195,38 @@ void request_stats_final(REQUEST *request)
 				   &request->reply->timestamp);
 		}
 		break;
+#endif
+
+#ifdef WITH_COA
+	case PW_COA_ACK:
+		INC_COA(total_access_accepts);
+	  coa_stats:
+		INC_COA(total_responses);
+		if (request->client && request->client->coa) {
+			stats_time(request->client->coa,
+				   &request->packet->timestamp,
+				   &request->reply->timestamp);
+		}
+		break;
+
+	case PW_COA_NAK:
+		INC_COA(total_access_rejects);
+		goto coa_stats;
+
+	case PW_DISCONNECT_ACK:
+		INC_DSC(total_access_accepts);
+	  dsc_stats:
+		INC_DSC(total_responses);
+		if (request->client && request->client->dsc) {
+			stats_time(request->client->dsc,
+				   &request->packet->timestamp,
+				   &request->reply->timestamp);
+		}
+		break;
+
+	case PW_DISCONNECT_NAK:
+		INC_DSC(total_access_rejects);
+		goto dsc_stats;
 #endif
 
 		/*

@@ -129,6 +129,10 @@ typedef struct radclient {
 #ifdef WITH_ACCOUNTING
 	fr_stats_t		*acct;
 #endif
+#ifdef WITH_COA
+	fr_stats_t		*coa;
+	fr_stats_t		*dsc;
+#endif
 #endif
 
 	int			proto;
