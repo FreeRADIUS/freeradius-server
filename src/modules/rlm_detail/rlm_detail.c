@@ -291,6 +291,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	doesn't exist, so we must create it the directories..
 	 */
 	if (p) {
+		*p = '\0';
+
 		/*
 		 *	Always try to create the directory.  If it
 		 *	exists, rad_mkdir() will check via stat(), and
