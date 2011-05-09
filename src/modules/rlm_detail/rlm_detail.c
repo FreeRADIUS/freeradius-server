@@ -48,9 +48,6 @@ struct detail_instance {
 	/* directory permissions */
 	int dirperm;
 
-	/* last made directory */
-	char *last_made_directory;
-
 	/* timestamp & stuff */
 	char *header;
 
@@ -86,7 +83,6 @@ static const CONF_PARSER module_config[] = {
 static int detail_detach(void *instance)
 {
         struct detail_instance *inst = instance;
-	free((char*) inst->last_made_directory);
 	if (inst->ht) fr_hash_table_free(inst->ht);
 
         free(inst);
@@ -124,8 +120,6 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 		detail_detach(inst);
 		return -1;
 	}
-
-	inst->last_made_directory = NULL;
 
 	/*
 	 *	Suppress certain attributes.
@@ -272,53 +266,44 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	}
 	RDEBUG2("%s expands to %s", inst->detailfile, buffer);
 
+#ifdef HAVE_FNMATCH_H
+	/*
+	 *	If we read it from a detail file, and we're about to
+	 *	write it back to the SAME detail file directory, then
+	 *	suppress the write.  This check prevents an infinite
+	 *	loop.
+	 */
+	if ((request->listener == RAD_LISTEN_DETAIL) &&
+	    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
+		     buffer, FNM_FILE_NAME | FNM_PERIOD ) == 0)) {
+		RDEBUG2("WARNING: Suppressing infinite loop.");
+		return RLM_MODULE_NOOP;
+	}
+#endif
+
 	/*
 	 *	Grab the last directory delimiter.
 	 */
 	p = strrchr(buffer,'/');
 
 	/*
-	 *	There WAS a directory delimiter there, and
-	 *	the file doesn't exist, so
-	 *	we prolly must create it the dir(s)
+	 *	There WAS a directory delimiter there, and the file
+	 *	doesn't exist, so we must create it the directories..
 	 */
-	if ((p) && (stat(buffer, &st) < 0)) {
-		*p = '\0';
+	if (p) {
 		/*
-		 *	NO previously cached directory name, so we've
-		 *	got to create a new one.
+		 *	Always try to create the directory.  If it
+		 *	exists, rad_mkdir() will check via stat(), and
+		 *	return immediately.
 		 *
-		 *	OR the new directory name is different than the old,
-		 *	so we've got to create a new one.
-		 *
-		 *	OR the cached directory has somehow gotten removed,
-		 *	so we've got to create a new one.
+		 *	This catches the case where some idiot deleted
+		 *	a directory that the server was using.
 		 */
-		if ((inst->last_made_directory == NULL) ||
-#ifndef HAVE_FNMATCH_H
-		    (strcmp(inst->last_made_directory, buffer) != 0)
-#else
-		    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
-			     ((struct detail_instance *)instance)->detailfile,
-			     FNM_FILE_NAME | FNM_PERIOD ) == 0)
-#endif
-		    ) {
-			free((char *) inst->last_made_directory);
-			inst->last_made_directory = strdup(buffer);
-		}
-
-		/*
-		 *	stat the directory, and don't do anything if
-		 *	it exists.  If it doesn't exist, create it.
-		 *
-		 *	This also catches the case where some idiot
-		 *	deleted a directory that the server was using.
-		 */
-		if (rad_mkdir(inst->last_made_directory, inst->dirperm) < 0) {
-			radlog_request(L_ERR, 0, request, "rlm_detail: Failed to create directory %s: %s", inst->last_made_directory, strerror(errno));
+		if (rad_mkdir(buffer, inst->dirperm) < 0) {
+			radlog_request(L_ERR, 0, request, "rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
-
+		
 		*p = '/';
 	} /* else there was no directory delimiter. */
 
