@@ -3827,7 +3827,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	if (check_config) {
 		DEBUG("%s: #### Skipping IP addresses and Ports ####",
 		       mainconfig.name);
-		if (listen_init(cs, &head) < 0) {
+		if (listen_init(cs, &head, spawn_flag) < 0) {
 			fflush(NULL);
 			exit(1);
 		}
@@ -3874,7 +3874,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	*	themselves around the functions that need a privileged
 	*	uid.
 	*/
-	if (listen_init(cs, &head) < 0) {
+       if (listen_init(cs, &head, spawn_flag) < 0) {
 		_exit(1);
 	}
 	

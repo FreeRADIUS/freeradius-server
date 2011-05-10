@@ -35,6 +35,10 @@ RCSIDH(radiusd_h, "$Id$")
 
 typedef struct auth_req REQUEST;
 
+#ifdef WITH_TLS
+#include <freeradius-devel/tls.h>
+#endif
+
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 #endif
@@ -98,7 +102,9 @@ typedef struct auth_req REQUEST;
 #endif
 #else
 #ifdef HAVE_OPENSSL_SSL_H
+#ifndef WITH_TLS
 #define WITH_TLS (1)
+#endif
 #endif
 #endif
 
@@ -339,6 +345,10 @@ struct rad_listen_t {
 	int		count;
 #endif
 
+#ifdef WITH_TLS
+	fr_tls_server_conf_t *tls;
+#endif
+
 	rad_listen_recv_t recv;
 	rad_listen_send_t send;
 	rad_listen_encode_t encode;
@@ -389,6 +399,14 @@ typedef struct listen_socket_t {
 
 	RADIUS_PACKET   *packet; /* for reading partial packets */
 #endif
+
+#ifdef WITH_TLS
+	tls_session_t	*ssn;
+	REQUEST		*request; /* horrible hacks */
+	VALUE_PAIR	*certs;
+	pthread_mutex_t mutex;
+#endif
+
 	RADCLIENT_LIST	*clients;
 } listen_socket_t;
 
@@ -691,7 +709,7 @@ void fr_suid_down_permanent(void);
 
 /* listen.c */
 void listen_free(rad_listen_t **head);
-int listen_init(CONF_SECTION *cs, rad_listen_t **head);
+int listen_init(CONF_SECTION *cs, rad_listen_t **head, int spawn_flag);
 int proxy_new_listener(home_server *home, int src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port);

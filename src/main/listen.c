@@ -750,6 +750,11 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 		snprintf(buffer, bufsize, "%d", sock->my_port);
 		FORWARD;
 
+		if (this->tls) {
+			ADDSTRING(" (TLS)");
+			FORWARD;
+		}
+
 		if (this->server) {
 			ADDSTRING(", virtual-server=");
 			ADDSTRING(this->server);
@@ -879,7 +884,9 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 #else
 		char *proto = NULL;
-
+#ifdef WITH_TLS
+		CONF_SECTION *tls;
+#endif
 
 		rcode = cf_item_parse(cs, "proto", PW_TYPE_STRING_PTR,
 				      &proto, "udp");
@@ -915,7 +922,59 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 #endif	/* WITH_PROXY */
+
+#ifdef WITH_TLS
+		tls = cf_section_sub_find(cs, "tls");
+
+		/*
+		 *	Don't allow TLS configurations for UDP sockets.
+		 */
+		if (sock->proto != IPPROTO_TCP) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "TLS transport is not available for UDP sockets.");
+			return -1;
+		}
+
+		if (tls) {
+			/*
+			 *	FIXME: Make this better.
+			 */
+			if (listen_port == 0) listen_port = 2083;
+
+			this->tls = tls_server_conf_parse(tls);
+			if (!this->tls) {
+				return -1;
+			}
+
+#ifdef HAVE_PTRHEAD_H
+			if (pthread_mutex_init(&sock->mutex, NULL) < 0) {
+				rad_assert(0 == 1);
+				listen_free(&this);
+				return 0;
+			}
+#endif
+
+		}		
+#else  /* WITH_TLS */
+		/*
+		 *	Built without TLS.  Disallow it.
+		 */
+		if (cf_section_sub_find(cs, "tls")) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "TLS transport is not available in this executable.");
+			return -1;
+		}
+#endif	/* WITH_TLS */
+
 #endif	/* WITH_TCP */
+
+		/*
+		 *	No "proto" field.  Disallow TLS.
+		 */
+	} else if (cf_section_sub_find(cs, "tls")) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "TLS transport is not available in this \"listen\" section.");
+		return -1;
 	}
 
 	sock->my_ipaddr = ipaddr;
@@ -2508,7 +2567,7 @@ static int is_loopback(const fr_ipaddr_t *ipaddr)
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
-int listen_init(CONF_SECTION *config, rad_listen_t **head)
+int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 {
 	int		override = FALSE;
 	int		rcode;
@@ -2598,6 +2657,15 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 			if (cs) this->server = mainconfig.name;
 		}
 
+#ifdef WITH_TLS
+		if (!spawn_flag && this->tls) {
+		tls_error:
+			cf_log_err(cf_sectiontoitem(cs), "Threading must be enabled for TLS sockets to function properly.");
+			listen_free(&this);
+			return -1;
+		}
+#endif
+
 		*last = this;
 		last = &(this->next);
 
@@ -2679,6 +2747,10 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 				listen_free(head);
 				return -1;
 			}
+
+#ifdef WITH_TLS
+			if (!spawn_flag && this->tls) goto tls_error;
+#endif
 
 			*last = this;
 			last = &(this->next);
@@ -2852,6 +2924,10 @@ void listen_free(rad_listen_t **head)
 			master_listen[this->type].free(this);
 		}
 
+#ifdef WITH_TLS
+		if (this->tls) tls_server_conf_free(this->tls);		
+#endif
+
 #ifdef WITH_TCP
 		if ((this->type == RAD_LISTEN_AUTH)
 #ifdef WITH_ACCT
@@ -2862,9 +2938,21 @@ void listen_free(rad_listen_t **head)
 #endif
 			) {
 			listen_socket_t *sock = this->data;
-			rad_free(&sock->packet);
-		}
+
+#ifdef WITH_TLS
+			if (sock->request) {
+				pthread_mutex_destroy(&(sock->mutex));
+				request_free(&sock->request);
+				sock->packet = NULL;
+
+				if (sock->ssn) session_free(sock->ssn);
+				request_free(&sock->request);
+			} else
 #endif
+				rad_free(&sock->packet);
+
+		}
+#endif	/* WITH_TCP */
 
 		free(this->data);
 		free(this);

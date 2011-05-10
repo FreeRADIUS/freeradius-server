@@ -27,7 +27,8 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(tls_h, "$Id$")
 
-#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/conffile.h>
 
 /*
  *	For RH 9, which apparently needs this.

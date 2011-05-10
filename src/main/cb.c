@@ -24,7 +24,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/tls.h>
+#include <freeradius-devel/autoconf.h>
+#include <freeradius-devel/radiusd.h>
 
 #ifndef NO_OPENSSL
 
