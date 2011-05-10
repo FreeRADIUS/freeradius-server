@@ -1691,3 +1691,5 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 
 	return conf;
 }
+#endif	/* WITH_TLS */
+

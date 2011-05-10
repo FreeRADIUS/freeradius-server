@@ -92,6 +92,16 @@ typedef struct auth_req REQUEST;
 #endif
 #endif
 
+#ifdef WITHOUT_TLS
+#ifndef HAVE_OPENSSL_SSL_H
+#error TLS requires OpenSSL
+#endif
+#else
+#ifdef HAVE_OPENSSL_SSL_H
+#define WITH_TLS (1)
+#endif
+#endif
+
 /*
  *	WITH_VMPS is handled by src/include/autoconf.h
  */
