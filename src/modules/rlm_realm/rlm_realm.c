@@ -293,9 +293,9 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		 *	See detail_recv() in src/main/listen.c for the
 		 *	additional checks.
 		 */
+#ifdef WITH_DETAIL
 	} else if ((request->listener->type == RAD_LISTEN_DETAIL) &&
-		   ((request->packet->src_ipaddr.af == AF_INET6) ||
-		    (request->packet->src_ipaddr.ipaddr.ip4addr.s_addr != htonl(INADDR_NONE)))) {
+		   !fr_inaddr_any(&request->packet->src_ipaddr)) {
 		int i;
 
 		/*
@@ -313,9 +313,9 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 				return RLM_MODULE_OK;
 			}
 		}
-
+#endif	/* WITH_DETAIL */
 	}
-#endif
+#endif	/* WITH_PROXY */
 
 	/*
 	 *	We got this far, which means we have a realm, set returnrealm
