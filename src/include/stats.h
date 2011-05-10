@@ -87,35 +87,15 @@ void request_stats_reply(REQUEST *request);
 void radius_stats_ema(fr_stats_ema_t *ema,
 		      struct timeval *start, struct timeval *end);
 
-#define RAD_STATS_INC(_x) _x++
-#ifdef WITH_ACCOUNTING
-#define RAD_STATS_TYPE_INC(_listener, _x) if (_listener->type == RAD_LISTEN_AUTH) { \
-                                       radius_auth_stats._x++; \
-				     } else if (_listener->type == RAD_LISTEN_ACCT) { \
-                                       radius_acct_stats._x++; } \
-				       _listener->stats._x++
-
-#define RAD_STATS_CLIENT_INC(_listener, _client, _x) if (_listener->type == RAD_LISTEN_AUTH) \
-                                       _client->auth->_x++; \
-				     else if (_listener->type == RAD_LISTEN_ACCT) \
-                                       _client->acct->_x++
-
-#else  /* WITH_ACCOUNTING */
-
-#define RAD_STATS_TYPE_INC(_listener, _x) { radius_auth_stats._x++; _listener->stats._x++; }
-
-#define RAD_STATS_CLIENT_INC(_listener, _client, _x) _client->auth->_x++
-
-#endif /* WITH_ACCOUNTING */
-
+#define FR_STATS_INC(_x, _y) radius_ ## _x ## _stats._y++;if (listener) listener->stats._y++;if (client) client->_x->_y++;
+#define FR_STATS_TYPE_INC(_x) _x++
 
 #else  /* WITH_STATS */
 #define request_stats_init(_x)
 #define request_stats_final(_x)
 
-#define  RAD_STATS_INC(_x)
-#define RAD_STATS_TYPE_INC(_listener, _x)
-#define RAD_STATS_CLIENT_INC(_listener, _client, _x)
+#define FR_STATS_INC(_x)
+#define FR_STATS_TYPE_INC(_x)
 
 #endif
 

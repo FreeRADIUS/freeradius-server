@@ -494,30 +494,27 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		return 0;
 	}
 
-	RAD_STATS_TYPE_INC(listener, total_requests);
-
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(packet->code) {
 	case PW_AUTHENTICATION_REQUEST:
-	  if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
-		RAD_STATS_CLIENT_INC(listener, client, total_requests);
+		if (listener->type != RAD_LISTEN_AUTH) goto bad_packet;
+		FR_STATS_INC(auth, total_requests);
 		fun = rad_authenticate;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_REQUEST:
 		if (listener->type != RAD_LISTEN_ACCT) goto bad_packet;
-		RAD_STATS_CLIENT_INC(listener, client, total_requests);
+		FR_STATS_INC(acct, total_requests);
 		fun = rad_accounting;
 		break;
 #endif
 
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
-			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-			RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
+			FR_STATS_INC(auth, total_unknown_types);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			rad_free(&sock->packet);
 			return 0;
@@ -527,8 +524,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 
 	default:
 	bad_packet:
-		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+		FR_STATS_INC(auth, total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent from client %s port %d : IGNORED",
 		      packet->code, client->shortname, packet->src_port);
@@ -537,8 +533,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	} /* switch over packet types */
 
 	if (!request_receive(listener, packet, client, fun)) {
-		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, sock->client, total_packets_dropped);
+		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&sock->packet);
 		return 0;
 	}
@@ -586,7 +581,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
 		close(newfd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+		FR_STATS_INC(auth, total_invalid_requests);
 		return 0;
 	}
 
@@ -1170,19 +1165,21 @@ static int stats_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	RAD_STATS_TYPE_INC(listener, total_requests);
+	FR_STATS_INC(auth, total_requests);
 
 	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+		FR_STATS_INC(auth, total_invalid_requests);
 		return 0;
 	}
+
+	FR_STATS_TYPE_INC(client->auth->total_requests);
 
 	/*
 	 *	We only understand Status-Server on this socket.
@@ -1191,8 +1188,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 		DEBUG("Ignoring packet code %d sent to Status-Server port",
 		      code);
 		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+		FR_STATS_INC(auth, total_unknown_types);
 		return 0;
 	}
 
@@ -1202,14 +1198,13 @@ static int stats_socket_recv(rad_listen_t *listener)
 	 */
 	packet = rad_recv(listener->fd, 1); /* require message authenticator */
 	if (!packet) {
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(auth, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
 		return 0;
 	}
 
 	if (!request_receive(listener, packet, client, rad_status_server)) {
-		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
+		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
@@ -1237,34 +1232,34 @@ static int auth_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	RAD_STATS_TYPE_INC(listener, total_requests);
+	FR_STATS_INC(auth, total_requests);
 
 	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(auth, total_malformed_requests);
 		return 0;
 	}
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+		FR_STATS_INC(auth, total_invalid_requests);
 		return 0;
 	}
+
+	FR_STATS_TYPE_INC(client->auth->total_requests);
 
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(code) {
 	case PW_AUTHENTICATION_REQUEST:
-		RAD_STATS_CLIENT_INC(listener, client, total_requests);
 		fun = rad_authenticate;
 		break;
 
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
-			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-			RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
+			FR_STATS_INC(auth, total_unknown_types);
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
@@ -1273,8 +1268,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 
 	default:
 		rad_recv_discard(listener->fd);
-		RAD_STATS_INC(radius_auth_stats.total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+		FR_STATS_INC(auth,total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent to authentication port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
@@ -1288,14 +1282,13 @@ static int auth_socket_recv(rad_listen_t *listener)
 	 */
 	packet = rad_recv(listener->fd, client->message_authenticator);
 	if (!packet) {
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(auth, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
 		return 0;
 	}
 
 	if (!request_receive(listener, packet, client, fun)) {
-		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
+		FR_STATS_INC(auth, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
@@ -1320,34 +1313,34 @@ static int acct_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	RAD_STATS_TYPE_INC(listener, total_requests);
+	FR_STATS_INC(acct, total_requests);
 
 	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(acct, total_malformed_requests);
 		return 0;
 	}
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+		FR_STATS_INC(acct, total_invalid_requests);
 		return 0;
 	}
+
+	FR_STATS_TYPE_INC(client->acct->total_requests);
 
 	/*
 	 *	Some sanity checks, based on the packet code.
 	 */
 	switch(code) {
 	case PW_ACCOUNTING_REQUEST:
-		RAD_STATS_CLIENT_INC(listener, client, total_requests);
 		fun = rad_accounting;
 		break;
 
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
-			RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-			RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+			FR_STATS_INC(acct, total_unknown_types);
 
 			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
 			return 0;
@@ -1357,8 +1350,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 
 	default:
 		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_unknown_types);
-		RAD_STATS_CLIENT_INC(listener, client, total_unknown_types);
+		FR_STATS_INC(acct, total_unknown_types);
 
 		DEBUG("Invalid packet code %d sent to a accounting port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
@@ -1371,7 +1363,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 */
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(acct, total_malformed_requests);
 		radlog(L_ERR, "%s", fr_strerror());
 		return 0;
 	}
@@ -1380,8 +1372,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	 *	There can be no duplicate accounting packets.
 	 */
 	if (!request_receive(listener, packet, client, fun)) {
-		RAD_STATS_TYPE_INC(listener, total_packets_dropped);
-		RAD_STATS_CLIENT_INC(listener, client, total_packets_dropped);
+		FR_STATS_INC(acct, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}
@@ -1571,17 +1562,17 @@ static int coa_socket_recv(rad_listen_t *listener)
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
 	if (rcode < 0) return 0;
 
-	RAD_STATS_TYPE_INC(listener, total_requests);
-
 	if (rcode < 20) {	/* AUTH_HDR_LEN */
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(coa, total_requests);
+		FR_STATS_INC(coa, total_malformed_requests);
 		return 0;
 	}
 
 	if ((client = client_listener_find(listener,
 					   &src_ipaddr, src_port)) == NULL) {
 		rad_recv_discard(listener->fd);
-		RAD_STATS_TYPE_INC(listener, total_invalid_requests);
+		FR_STATS_INC(coa, total_requests);
+		FR_STATS_INC(coa, total_invalid_requests);
 		return 0;
 	}
 
@@ -1590,16 +1581,21 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 */
 	switch(code) {
 	case PW_COA_REQUEST:
+		FR_STATS_INC(coa, total_requests);
+		fun = rad_coa_recv;
+		break;
+
 	case PW_DISCONNECT_REQUEST:
+		FR_STATS_INC(dsc, total_requests);
 		fun = rad_coa_recv;
 		break;
 
 	default:
 		rad_recv_discard(listener->fd);
+		FR_STATS_INC(coa, total_unknown_types);
 		DEBUG("Invalid packet code %d sent to coa port from client %s port %d : IGNORED",
 		      code, client->shortname, src_port);
 		return 0;
-		break;
 	} /* switch over packet types */
 
 	/*
@@ -1608,12 +1604,13 @@ static int coa_socket_recv(rad_listen_t *listener)
 	 */
 	packet = rad_recv(listener->fd, client->message_authenticator);
 	if (!packet) {
-		RAD_STATS_TYPE_INC(listener, total_malformed_requests);
+		FR_STATS_INC(coa, total_malformed_requests);
 		DEBUG("%s", fr_strerror());
 		return 0;
 	}
 
 	if (!request_receive(listener, packet, client, fun)) {
+		FR_STATS_INC(coa, total_packets_dropped);
 		rad_free(&packet);
 		return 0;
 	}

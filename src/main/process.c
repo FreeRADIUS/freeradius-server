@@ -1200,10 +1200,31 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		    (memcmp(request->packet->vector, packet->vector,
 			    sizeof(packet->vector)) == 0)) {
 
-			RAD_STATS_TYPE_INC(request->listener,
-					   total_dup_requests);
-			RAD_STATS_CLIENT_INC(request->listener, client,
-					     total_dup_requests);
+#ifdef WITH_STATS
+			switch (packet->code) {
+			case PW_AUTHENTICATION_REQUEST:
+				FR_STATS_INC(auth, total_dup_requests);
+				break;
+
+#ifdef WITH_ACCOUNTING
+			case PW_ACCOUNTING_REQUEST:
+				FR_STATS_INC(acct, total_dup_requests);
+				break;
+#endif					     
+#ifdef WITH_COA
+			case PW_COA_REQUEST:
+				FR_STATS_INC(coa, total_dup_requests);
+				break;
+
+			case PW_DISCONNECT_REQUEST:
+				FR_STATS_INC(dsc, total_dup_requests);
+				break;
+#endif
+
+			default:
+			  break;
+			}
+#endif	/* WITH_STATS */
 
 			request->process(request, FR_ACTION_DUP);
 			return 0;
