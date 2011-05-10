@@ -1695,6 +1695,10 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 #ifdef WITH_ACCOUNTING
 		fake.auth = &radius_acct_stats;
 #endif
+#ifdef WITH_COA
+		fake.coa = &radius_coa_stats;
+		fake.dsc = &radius_dsc_stats;
+#endif
 		client = &fake;
 
 	} else {

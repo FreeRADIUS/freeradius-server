@@ -38,19 +38,26 @@ RCSID("$Id$")
 static struct timeval	start_time;
 static struct timeval	hup_time;
 
-fr_stats_t radius_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				 { 0, 0, 0, 0, 0, 0, 0, 0 }};
+#define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+				 { 0, 0, 0, 0, 0, 0, 0, 0 }}
+
+fr_stats_t radius_auth_stats = FR_STATS_INIT;
 #ifdef WITH_ACCOUNTING
-fr_stats_t radius_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				 { 0, 0, 0, 0, 0, 0, 0, 0 }};
+fr_stats_t radius_acct_stats = FR_STATS_INIT;
+#endif
+#ifdef WITH_COA
+fr_stats_t radius_coa_stats = FR_STATS_INIT;
+fr_stats_t radius_dsc_stats = FR_STATS_INIT;
 #endif
 
 #ifdef WITH_PROXY
-fr_stats_t proxy_auth_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				{ 0, 0, 0, 0, 0, 0, 0, 0 }};
+fr_stats_t proxy_auth_stats = FR_STATS_INIT;
 #ifdef WITH_ACCOUNTING
-fr_stats_t proxy_acct_stats = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-				{ 0, 0, 0, 0, 0, 0, 0, 0 }};
+fr_stats_t proxy_acct_stats = FR_STATS_INIT;
+#endif
+#ifdef WITH_COA
+fr_stats_t proxy_coa_stats = FR_STATS_INIT;
+fr_stats_t proxy_dsc_stats = FR_STATS_INIT;
 #endif
 #endif
 
@@ -130,14 +137,14 @@ void request_stats_final(REQUEST *request)
 
 #undef INC_COA
 #ifdef WITH_COA
-#define INC_COA(_x) request->listener->stats._x++;if (request->client && request->client->coa) request->client->coa->_x++
+#define INC_COA(_x) radius_coa_stats._x++;request->listener->stats._x++;if (request->client && request->client->coa) request->client->coa->_x++
 #else
 #define INC_COA(_x)
 #endif
 
 #undef INC_DSC
 #ifdef WITH_DSC
-#define INC_DSC(_x) request->listener->stats._x++;if (request->client && request->client->dsc) request->client->dsc->_x++
+#define INC_DSC(_x) radius_dsc_stats._x++;request->listener->stats._x++;if (request->client && request->client->dsc) request->client->dsc->_x++
 #else
 #define INC_DSC(_x)
 #endif

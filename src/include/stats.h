@@ -63,10 +63,22 @@ typedef struct fr_stats_ema_t {
 } fr_stats_ema_t;
 
 extern fr_stats_t	radius_auth_stats;
+#ifdef WITH_ACCOUNTING
 extern fr_stats_t	radius_acct_stats;
+#endif
+#ifdef WITH_COA
+extern fr_stats_t	radius_coa_stats;
+extern fr_stats_t	radius_dsc_stats;
+#endif
 #ifdef WITH_PROXY
 extern fr_stats_t	proxy_auth_stats;
+#ifdef WITH_ACCOUNTING
 extern fr_stats_t	proxy_acct_stats;
+#endif
+#ifdef WITH_COA
+extern fr_stats_t	proxy_coa_stats;
+extern fr_stats_t	proxy_dsc_stats;
+#endif
 #endif
 
 void radius_stats_init(int flag);
