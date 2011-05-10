@@ -617,6 +617,12 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			hs_proto = NULL;
 			home->proto = IPPROTO_TCP;
 			
+			if (home->ping_check == HOME_PING_CHECK_REQUEST) {
+				cf_log_err(cf_sectiontoitem(cs),
+					   "Cannot use 'status_check = request' for home servers where 'proto = tcp'");
+				goto error;
+			}
+
 		} else {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Unknown proto \"%s\".", hs_proto);
@@ -657,6 +663,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			 *	Source isn't specified: Source is
 			 *	the correct address family, but all zeros.
 			 */
+			memset(&home->src_ipaddr, 0, sizeof(home->src_ipaddr));
 			home->src_ipaddr.af = home->ipaddr.af;
 		}
 
