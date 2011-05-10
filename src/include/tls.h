@@ -46,6 +46,8 @@ RCSIDH(tls_h, "$Id$")
 extern "C" {
 #endif
 
+typedef struct fr_tls_server_conf_t fr_tls_server_conf_t;
+
 typedef enum {
         FR_TLS_INVALID = 0,	  	/* invalid, don't reply */
         FR_TLS_REQUEST,       		/* request, ok to send, invalid to receive */
@@ -292,6 +294,10 @@ int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
 /* TLS */
 tls_session_t 	*tls_new_session(SSL_CTX *ssl_ctx, int client_cert);
+tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);
+fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
+fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
+void tls_server_conf_free(fr_tls_server_conf_t *conf);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *,tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *tls_session);
@@ -310,7 +316,7 @@ void 		session_init(tls_session_t *ssn);
 #define FR_TLS_EX_INDEX_STORE	(6)
 
 /* configured values goes right here */
-typedef struct fr_tls_server_conf_t {
+struct fr_tls_server_conf_t {
 	SSL_CTX		*ctx;
 	CONF_SECTION	*cs;
 
@@ -361,10 +367,7 @@ typedef struct fr_tls_server_conf_t {
 	X509_STORE	*ocsp_store;
 #endif
 
-} fr_tls_server_conf_t;
-
-fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
-void tls_server_conf_free(fr_tls_server_conf_t *conf);
+};
 
 #ifdef __cplusplus
 }

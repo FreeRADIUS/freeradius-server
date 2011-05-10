@@ -59,6 +59,49 @@ static unsigned int 	record_plus(record_t *buf, const void *ptr,
 static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
+tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
+{
+	int verify_mode;
+	tls_session_t *ssn = NULL;
+	
+	ssn = (tls_session_t *) malloc(sizeof(*ssn));
+	memset(ssn, 0, sizeof(*ssn));
+
+	ssn->ctx = conf->ctx;
+	ssn->ssl = SSL_new(ssn->ctx);
+	rad_assert(ssn->ssl != NULL);
+
+	/*
+	 *	Add the message callback to identify what type of
+	 *	message/handshake is passed
+	 */
+	SSL_set_msg_callback(ssn->ssl, cbtls_msg);
+	SSL_set_msg_callback_arg(ssn->ssl, ssn);
+	SSL_set_info_callback(ssn->ssl, cbtls_info);
+
+	/*
+	 *	Always verify the peer certificate.
+	 */
+	DEBUG2("Requiring Server certificate");
+	verify_mode = SSL_VERIFY_PEER;
+	verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
+
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
+	SSL_set_fd(ssn->ssl, fd);
+	if (SSL_connect(ssn->ssl) <= 0) {
+		int err;
+		while ((err = ERR_get_error())) {
+			DEBUG("OpenSSL Err says %s",
+			      ERR_error_string(err, NULL));
+		}
+		free(ssn);
+		return NULL;
+	}
+
+	return ssn;
+}
+
 tls_session_t *tls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 {
 	tls_session_t *state = NULL;
@@ -704,6 +747,51 @@ static CONF_PARSER tls_server_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
+
+
+static CONF_PARSER tls_client_config[] = {
+	{ "rsa_key_exchange", PW_TYPE_BOOLEAN,
+	  offsetof(fr_tls_server_conf_t, rsa_key), NULL, "no" },
+	{ "dh_key_exchange", PW_TYPE_BOOLEAN,
+	  offsetof(fr_tls_server_conf_t, dh_key), NULL, "yes" },
+	{ "rsa_key_length", PW_TYPE_INTEGER,
+	  offsetof(fr_tls_server_conf_t, rsa_key_length), NULL, "512" },
+	{ "dh_key_length", PW_TYPE_INTEGER,
+	  offsetof(fr_tls_server_conf_t, dh_key_length), NULL, "512" },
+	{ "verify_depth", PW_TYPE_INTEGER,
+	  offsetof(fr_tls_server_conf_t, verify_depth), NULL, "0" },
+	{ "CA_path", PW_TYPE_FILENAME,
+	  offsetof(fr_tls_server_conf_t, ca_path), NULL, NULL },
+	{ "pem_file_type", PW_TYPE_BOOLEAN,
+	  offsetof(fr_tls_server_conf_t, file_type), NULL, "yes" },
+	{ "private_key_file", PW_TYPE_FILENAME,
+	  offsetof(fr_tls_server_conf_t, private_key_file), NULL, NULL },
+	{ "certificate_file", PW_TYPE_FILENAME,
+	  offsetof(fr_tls_server_conf_t, certificate_file), NULL, NULL },
+	{ "CA_file", PW_TYPE_FILENAME,
+	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
+	{ "private_key_password", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, private_key_password), NULL, NULL },
+	{ "dh_file", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, dh_file), NULL, NULL },
+	{ "random_file", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, random_file), NULL, NULL },
+	{ "fragment_size", PW_TYPE_INTEGER,
+	  offsetof(fr_tls_server_conf_t, fragment_size), NULL, "1024" },
+	{ "include_length", PW_TYPE_BOOLEAN,
+	  offsetof(fr_tls_server_conf_t, include_length), NULL, "yes" },
+	{ "check_crl", PW_TYPE_BOOLEAN,
+	  offsetof(fr_tls_server_conf_t, check_crl), NULL, "no"},
+	{ "check_cert_cn", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, check_cert_cn), NULL, NULL},
+	{ "cipher_list", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, cipher_list), NULL, NULL},
+	{ "check_cert_issuer", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, check_cert_issuer), NULL, NULL},
+
+ 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+};
+
 
 /*
  *	TODO: Check for the type of key exchange * like conf->dh_key
@@ -1690,5 +1778,46 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 
 	return conf;
 }
-#endif	/* WITH_TLS */
 
+fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
+{
+	fr_tls_server_conf_t *conf;
+
+	conf = malloc(sizeof(*conf));
+	if (!conf) {
+		radlog(L_ERR, "Out of memory");
+		return NULL;
+	}
+	memset(conf, 0, sizeof(*conf));
+
+	if (cf_section_parse(cs, conf, tls_client_config) < 0) {
+	error:
+		tls_server_conf_free(conf);
+		return NULL;
+	}
+
+	/*
+	 *	Save people from their own stupidity.
+	 */
+	if (conf->fragment_size < 100) conf->fragment_size = 100;
+
+	/*
+	 *	Initialize TLS
+	 */
+	conf->ctx = init_tls_ctx(conf);
+	if (conf->ctx == NULL) {
+		goto error;
+	}
+
+	if (load_dh_params(conf->ctx, conf->dh_file) < 0) {
+		goto error;
+	}
+
+        if (generate_eph_rsa_key(conf->ctx) < 0) {
+		goto error;
+        }
+
+	return conf;
+}
+
+#endif	/* WITH_TLS */
