@@ -89,6 +89,9 @@ typedef struct home_server {
 	int			coa_mrt;
 	int			coa_mrd;
 #endif
+#ifdef WITH_TLS
+	fr_tls_server_conf_t	*tls;
+#endif
 #ifdef WITH_STATS
 	int		number;
 

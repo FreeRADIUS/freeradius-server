@@ -124,6 +124,18 @@ static int realm_name_cmp(const void *one, const void *two)
 
 
 #ifdef WITH_PROXY
+static void home_server_free(void *data)
+{
+	home_server *home = data;
+
+#ifdef WITH_TLS
+	tls_server_conf_free(home->tls);
+	home->tls = NULL;
+#endif
+
+	free(home);
+}
+
 static int home_server_name_cmp(const void *one, const void *two)
 {
 	const home_server *a = one;
@@ -405,6 +417,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	home_server *home;
 	int dual = FALSE;
 	CONF_PAIR *cp;
+	CONF_SECTION *tls;
 
 	free(hs_virtual_server); /* used only for printing during parsing */
 	hs_virtual_server = NULL;
@@ -619,6 +632,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	}
 
 	/*
+	 *	Check the TLS configuration.
+	 */
+	tls = cf_section_sub_find(cs, "tls");
+
+	/*
 	 *	If the home is a virtual server, don't look up source IP.
 	 */
 	if (!home->server) {
@@ -641,6 +659,30 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			 */
 			home->src_ipaddr.af = home->ipaddr.af;
 		}
+
+		if (tls && (home->proto != IPPROTO_TCP)) {
+			cf_log_err(cf_sectiontoitem(cs), "TLS transport is not available for UDP sockets.");
+			goto error;
+		}
+
+#ifndef WITH_TLS
+		cf_log_err(cf_sectiontoitem(cs), "TLS transport is not available in this executable.");
+		goto error;
+#else
+		/*
+		 *	Parse the SSL client configuration.
+		 */
+		if (tls) {
+			home->tls = tls_client_conf_parse(tls);
+			if (!home->tls) {
+				goto error;
+			}
+		}
+#endif
+
+	} else if (tls) {
+		cf_log_err(cf_sectiontoitem(cs), "Virtual home_servers cannot have a \"tls\" subsection");
+		goto error;
 	}
 
 	free(hs_srcipaddr);
@@ -1752,7 +1794,7 @@ int realms_init(CONF_SECTION *config)
 	}
 
 #ifdef WITH_PROXY
-	home_servers_byaddr = rbtree_create(home_server_addr_cmp, free, 0);
+	home_servers_byaddr = rbtree_create(home_server_addr_cmp, home_server_free, 0);
 	if (!home_servers_byaddr) {
 		realms_free();
 		return 0;
