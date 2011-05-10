@@ -1232,6 +1232,10 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 					ret = RLM_MODULE_FAIL;
 				}
+				/*
+				 *	If no one is online, num_affected_rows
+				 *	will be zero, which is OK.
+				 */
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
 			}
 
@@ -1276,8 +1280,12 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 								radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting ALIVE record - %s",
 								       (inst->module->sql_error)(sqlsocket, inst->config));
 								ret = RLM_MODULE_FAIL;
+							} else {
+								numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+								if (numaffected < 1) {
+									ret = RLM_MODULE_NOOP;
+								}
 							}
-							(inst->module->sql_finish_query)(sqlsocket, inst->config);
 						}
 					}
 				}
@@ -1319,8 +1327,12 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 							radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting START record - %s",
 							       (inst->module->sql_error)(sqlsocket, inst->config));
 							ret = RLM_MODULE_FAIL;
+						} else {
+							numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+							if (numaffected < 1) {
+								ret = RLM_MODULE_NOOP;
+							}
 						}
-						(inst->module->sql_finish_query)(sqlsocket, inst->config);
 					}
 				}
 				(inst->module->sql_finish_query)(sqlsocket, inst->config);
@@ -1385,8 +1397,12 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 								       (inst->module->sql_error)(sqlsocket, inst->config));
 								ret = RLM_MODULE_FAIL;
+							} else {
+								numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+								if (numaffected < 1) {
+									ret = RLM_MODULE_NOOP;
+								}
 							}
-							(inst->module->sql_finish_query)(sqlsocket, inst->config);
 						}
 					}
 				}
