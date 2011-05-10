@@ -64,6 +64,10 @@ RCSID("$Id$")
 #include "config.h"
 #include <ctype.h>
 
+#ifdef WITH_DHCP
+#include <freeradius-devel/dhcp.h>
+#endif
+
 #include "../../include/md5.h"
 
 #include <gdbm.h>
@@ -451,6 +455,12 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	char hex_str[35];
 	char xlat_str[MAX_STRING_LEN];
 	FR_MD5_CTX md5_context;
+#ifdef WITH_DHCP
+        int dhcp = FALSE;
+#endif
+        int attr_ipaddr = PW_FRAMED_IP_ADDRESS;
+        int attr_ipmask = PW_FRAMED_IP_NETMASK;
+        int vendor_ipaddr = 0;
 
 
 	/* quiet the compiler */
@@ -475,6 +485,14 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0)) != NULL)
 		cli = vp->vp_strvalue;
 
+#ifdef WITH_DHCP
+        if (request->listener->type == RAD_LISTEN_DHCP) {
+		dhcp = 1;
+		attr_ipaddr = PW_DHCP_YOUR_IP_ADDRESS;
+		vendor_ipaddr = DHCP_MAGIC_VENDOR;
+		attr_ipmask = PW_DHCP_SUBNET_MASK;
+	}
+#endif
 
 	if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL)){
 		RDEBUG("xlat on the 'key' directive failed");
@@ -561,15 +579,15 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	pthread_mutex_unlock(&data->op_mutex);
 
 	/*
-	 * If there is a Framed-IP-Address attribute in the reply, check for override
+	 * If there is a Framed-IP-Address (or Dhcp-Your-IP-Address)
+	 * attribute in the reply, check for override
 	 */
-	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0) != NULL) {
-		RDEBUG("Found Framed-IP-Address attribute in reply attribute list.");
+	if (pairfind(request->reply->vps, attr_ipaddr, vendor_ipaddr) != NULL) {
+		RDEBUG("Found IP address attribute in reply attribute list.");
 		if (data->override)
 		{
-			/* Override supplied Framed-IP-Address */
-			RDEBUG("override is set to yes. Override the existing Framed-IP-Address attribute.");
-			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS, 0);
+			RDEBUG("Override supplied IP address");
+			pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr);
 		} else {
 			/* Abort */
 			RDEBUG("override is set to no. Return NOOP.");
@@ -729,10 +747,19 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		free(key_datum.dptr);
 		entry.active = 1;
 		entry.timestamp = request->timestamp;
-		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0)) != NULL)
+		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0)) != NULL) {
 			entry.timeout = (time_t) vp->vp_integer;
-		else
+#ifdef WITH_DHCP
+			if (dhcp) {
+		                vp = radius_paircreate(request, &request->reply->vps,
+						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR, PW_TYPE_INTEGER);
+				vp->vp_integer = entry.timeout;
+				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0);
+                        }
+#endif
+		} else {
 			entry.timeout = 0;
+		}
 		if (extra)
 			entry.extra = 1;
 		data_datum.dptr = (char *) &entry;
@@ -775,16 +802,16 @@ static int ippool_postauth(void *instance, REQUEST *request)
 
 		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
 		vp = radius_paircreate(request, &request->reply->vps,
-				       PW_FRAMED_IP_ADDRESS, 0, PW_TYPE_IPADDR);
+				       attr_ipaddr, vendor_ipaddr, PW_TYPE_IPADDR);
 		vp->vp_ipaddr = entry.ipaddr;
 
 		/*
 		 *	If there is no Framed-Netmask attribute in the
 		 *	reply, add one
 		 */
-		if (pairfind(request->reply->vps, PW_FRAMED_IP_NETMASK, 0) == NULL) {
+		if (pairfind(request->reply->vps, attr_ipmask, vendor_ipaddr) == NULL) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       PW_FRAMED_IP_NETMASK, 0,
+					       attr_ipmask, vendor_ipaddr,
 					       PW_TYPE_IPADDR);
 			vp->vp_ipaddr = ntohl(data->netmask);
 		}
