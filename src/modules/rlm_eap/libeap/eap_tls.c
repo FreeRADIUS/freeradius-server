@@ -88,7 +88,7 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 {
 	EAPTLS_PACKET 	reply;
 
-	reply.code = EAPTLS_START;
+	reply.code = FR_TLS_START;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/;
 
 	reply.flags = peap_flag;
@@ -110,7 +110,7 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	tls_session_t *tls_session = handler->opaque;
 
 	handler->finished = TRUE;
-	reply.code = EAPTLS_SUCCESS;
+	reply.code = FR_TLS_SUCCESS;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
 	reply.data = NULL;
@@ -214,7 +214,7 @@ int eaptls_fail(EAP_HANDLER *handler, int peap_flag)
 	tls_session_t *tls_session = handler->opaque;
 
 	handler->finished = TRUE;
-	reply.code = EAPTLS_FAIL;
+	reply.code = FR_TLS_FAIL;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
 	reply.data = NULL;
@@ -272,7 +272,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 		ssn->tls_msg_len = ssn->dirty_out.used;
 	}
 
-	reply.code = EAPTLS_REQUEST;
+	reply.code = FR_TLS_REQUEST;
 	reply.flags = ssn->peap_flag;
 
 	/* Send data, NOT more than the FRAGMENT size */
@@ -313,7 +313,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
  * 2. Alert Message, now send, EAP-Failure
  * 3. Fragment Message, now send, next Fragment
  */
-static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
+static fr_tls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 {
 	tls_session_t *tls_session;
 	REQUEST *request = handler->request;
@@ -321,23 +321,23 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 	tls_session = (tls_session_t *)handler->opaque;
 	if (tls_session == NULL){
 		radlog_request(L_ERR, 0, request, "FAIL: Unexpected ACK received.  Could not obtain session information.");
-		return EAPTLS_FAIL;
+		return FR_TLS_FAIL;
 	}
 	if (tls_session->info.initialized == 0) {
 		RDEBUG("No SSL info available. Waiting for more SSL data.");
-		return EAPTLS_REQUEST;
+		return FR_TLS_REQUEST;
 	}
 	if ((tls_session->info.content_type == handshake) &&
 	    (tls_session->info.origin == 0)) {
 		radlog_request(L_ERR, 0, request, "FAIL: ACK without earlier message.");
-		return EAPTLS_FAIL;
+		return FR_TLS_FAIL;
 	}
 
 	switch (tls_session->info.content_type) {
 	case alert:
 		RDEBUG2("ACK alert");
 		eaptls_fail(handler, tls_session->peap_flag);
-		return EAPTLS_FAIL;
+		return FR_TLS_FAIL;
 
 	case handshake:
 		if ((tls_session->info.handshake_type == finished) &&
@@ -350,16 +350,16 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 			 *	sets it.
 			 */
 			tls_session->info.content_type = application_data;
-			return EAPTLS_SUCCESS;
+			return FR_TLS_SUCCESS;
 		} /* else more data to send */
 
 		RDEBUG2("ACK handshake fragment handler");
 		/* Fragmentation handler, send next fragment */
-		return EAPTLS_REQUEST;
+		return FR_TLS_REQUEST;
 
 	case application_data:
 		RDEBUG2("ACK handshake fragment handler in application data");
-		return EAPTLS_REQUEST;
+		return FR_TLS_REQUEST;
 						
 		/*
 		 *	For the rest of the conditions, switch over
@@ -369,7 +369,7 @@ static eaptls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
 		RDEBUG2("ACK default");
 		radlog_request(L_ERR, 0, request, "Invalid ACK received: %d",
 		       tls_session->info.content_type);
-		return EAPTLS_FAIL;
+		return FR_TLS_FAIL;
 	}
 }
 
@@ -392,7 +392,7 @@ static int eaptls_send_ack(EAP_DS *eap_ds, int peap_flag)
 {
 	EAPTLS_PACKET 	reply;
 
-	reply.code = EAPTLS_ACK;
+	reply.code = FR_TLS_ACK;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/;
 	reply.flags = peap_flag;
 	reply.data = NULL;
@@ -412,7 +412,7 @@ static int eaptls_send_ack(EAP_DS *eap_ds, int peap_flag)
  *	EAP-Type=EAP-TLS and no data. This serves as a fragment
  *	ACK. The EAP peer MUST wait.
  */
-static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
+static fr_tls_status_t eaptls_verify(EAP_HANDLER *handler)
 {
 	EAP_DS *eap_ds = handler->eap_ds;
 	EAP_DS *prev_eap_ds = handler->prev_eapds;
@@ -465,7 +465,7 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 			return eaptls_ack_handler(handler);
 		} else {
 			radlog_request(L_ERR, 0, request, "Received Invalid TLS ACK");
-			return EAPTLS_INVALID;
+			return FR_TLS_INVALID;
 		}
 #endif
 	}
@@ -475,7 +475,7 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 	 */
 	if (TLS_START(eaptls_packet->flags)) {
 		RDEBUG("Received unexpected EAP-TLS Start message");
-		return EAPTLS_INVALID;
+		return FR_TLS_INVALID;
 	}
 
 	/*
@@ -507,28 +507,28 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
 
 				RDEBUG2("Received EAP-TLS First Fragment of the message");
-				return EAPTLS_FIRST_FRAGMENT;
+				return FR_TLS_FIRST_FRAGMENT;
 			} else {
 
 				RDEBUG2("More Fragments with length included");
-				return EAPTLS_MORE_FRAGMENTS_WITH_LENGTH;
+				return FR_TLS_MORE_FRAGMENTS_WITH_LENGTH;
 			}
 		} else {
 			RDEBUG2("Length Included");
-			return EAPTLS_LENGTH_INCLUDED;
+			return FR_TLS_LENGTH_INCLUDED;
 		}
 	}
 
 	if (TLS_MORE_FRAGMENTS(eaptls_packet->flags)) {
 		RDEBUG2("More fragments to follow");
-		return EAPTLS_MORE_FRAGMENTS;
+		return FR_TLS_MORE_FRAGMENTS;
 	}
 
 	/*
 	 *	None of the flags are set, but it's still a valid
 	 *	EAPTLS packet.
 	 */
-	return EAPTLS_OK;
+	return FR_TLS_OK;
 }
 
 /*
@@ -565,14 +565,14 @@ static eaptls_status_t eaptls_verify(EAP_HANDLER *handler)
  *  packet including the Code, Identifir, Length, Type, and TLS data
  *  fields.
  */
-static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, eaptls_status_t status)
+static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_status_t status)
 {
 	EAPTLS_PACKET	*tlspacket;
 	uint32_t	data_len = 0;
 	uint32_t	len = 0;
 	uint8_t		*data = NULL;
 
-	if (status  == EAPTLS_INVALID)
+	if (status  == FR_TLS_INVALID)
 		return NULL;
 
 	/*
@@ -656,9 +656,9 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, eaptls_st
 	 *	Dynamic allocation of buffers as & when we know the
 	 *	length should solve the problem.
 	 */
-	case EAPTLS_FIRST_FRAGMENT:
-	case EAPTLS_LENGTH_INCLUDED:
-	case EAPTLS_MORE_FRAGMENTS_WITH_LENGTH:
+	case FR_TLS_FIRST_FRAGMENT:
+	case FR_TLS_LENGTH_INCLUDED:
+	case FR_TLS_MORE_FRAGMENTS_WITH_LENGTH:
 		if (tlspacket->length < 5) { /* flags + TLS message length */
 			RDEBUG("Invalid EAP-TLS packet received.  (Expected length, got none.)");
 			eaptls_free(&tlspacket);
@@ -686,8 +686,8 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, eaptls_st
 		/*
 		 *	Data length is implicit, from the EAP header.
 		 */
-	case EAPTLS_MORE_FRAGMENTS:
-	case EAPTLS_OK:
+	case FR_TLS_MORE_FRAGMENTS:
+	case FR_TLS_OK:
 		data_len = eap_ds->response->type.length - 1/*flags*/;
 		data = eap_ds->response->type.data + 1/*flags*/;
 		break;
@@ -736,21 +736,21 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, eaptls_st
  *	SSL_CTX (internally) or TLS module(explicitly). If TLS module,
  *	then how to let SSL API know about these sessions.)
  */
-static eaptls_status_t eaptls_operation(eaptls_status_t status,
+static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
 					EAP_HANDLER *handler)
 {
 	tls_session_t *tls_session;
 
 	tls_session = (tls_session_t *)handler->opaque;
 
-	if ((status == EAPTLS_MORE_FRAGMENTS) ||
-	    (status == EAPTLS_MORE_FRAGMENTS_WITH_LENGTH) ||
-	    (status == EAPTLS_FIRST_FRAGMENT)) {
+	if ((status == FR_TLS_MORE_FRAGMENTS) ||
+	    (status == FR_TLS_MORE_FRAGMENTS_WITH_LENGTH) ||
+	    (status == FR_TLS_FIRST_FRAGMENT)) {
 		/*
 		 *	Send the ACK.
 		 */
 		eaptls_send_ack(handler->eap_ds, tls_session->peap_flag);
-		return EAPTLS_HANDLED;
+		return FR_TLS_HANDLED;
 
 	}
 
@@ -768,7 +768,7 @@ static eaptls_status_t eaptls_operation(eaptls_status_t status,
 	if (!tls_handshake_recv(handler->request, tls_session)) {
 		DEBUG2("TLS receive handshake failed during operation");
 		eaptls_fail(handler, tls_session->peap_flag);
-		return EAPTLS_FAIL;
+		return FR_TLS_FAIL;
 	}
 
 	/*
@@ -778,7 +778,7 @@ static eaptls_status_t eaptls_operation(eaptls_status_t status,
 	 */
 	if (tls_session->dirty_out.used > 0) {
 		eaptls_request(handler->eap_ds, tls_session);
-		return EAPTLS_HANDLED;
+		return FR_TLS_HANDLED;
 	}
 		
 	/* 
@@ -794,14 +794,14 @@ static eaptls_status_t eaptls_operation(eaptls_status_t status,
 		 *	application data.
 		 */
 		tls_session->info.content_type = application_data; 
-		return EAPTLS_SUCCESS;
+		return FR_TLS_SUCCESS;
 	}
 	
 	/*
 	 *	Who knows what happened...
 	 */
 	DEBUG2("TLS failed during operation");
-	return EAPTLS_FAIL;
+	return FR_TLS_FAIL;
 }
 
 
@@ -832,14 +832,14 @@ static eaptls_status_t eaptls_operation(eaptls_status_t status,
 /*
  *	Process an EAP request
  */
-eaptls_status_t eaptls_process(EAP_HANDLER *handler)
+fr_tls_status_t eaptls_process(EAP_HANDLER *handler)
 {
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	EAPTLS_PACKET	*tlspacket;
-	eaptls_status_t	status;
+	fr_tls_status_t	status;
 	REQUEST *request = handler->request;
 
-	if (!request) return EAPTLS_FAIL;
+	if (!request) return FR_TLS_FAIL;
 
 	RDEBUG2("processing EAP-TLS");
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
@@ -855,8 +855,8 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 
 	switch (status) {
 	default:
-	case EAPTLS_INVALID:
-	case EAPTLS_FAIL:
+	case FR_TLS_INVALID:
+	case FR_TLS_FAIL:
 
 		/*
 		 *	Success means that we're done the initial
@@ -864,32 +864,32 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 *	back to the client, and the client sends us
 		 *	more tunneled data.
 		 */
-	case EAPTLS_SUCCESS:
+	case FR_TLS_SUCCESS:
 		goto done;
 
 		/*
 		 *	Normal TLS request, continue with the "get rest
 		 *	of fragments" phase.
 		 */
-	case EAPTLS_REQUEST:
+	case FR_TLS_REQUEST:
 		eaptls_request(handler->eap_ds, tls_session);
-		status = EAPTLS_HANDLED;
+		status = FR_TLS_HANDLED;
 		goto done;
 
 		/*
 		 *	The handshake is done, and we're in the "tunnel
 		 *	data" phase.
 		 */
-	case EAPTLS_OK:
+	case FR_TLS_OK:
 		RDEBUG2("Done initial handshake");
 
 		/*
 		 *	Get the rest of the fragments.
 		 */
-	case EAPTLS_FIRST_FRAGMENT:
-	case EAPTLS_MORE_FRAGMENTS:
-	case EAPTLS_LENGTH_INCLUDED:
-	case EAPTLS_MORE_FRAGMENTS_WITH_LENGTH:
+	case FR_TLS_FIRST_FRAGMENT:
+	case FR_TLS_MORE_FRAGMENTS:
+	case FR_TLS_LENGTH_INCLUDED:
+	case FR_TLS_MORE_FRAGMENTS_WITH_LENGTH:
 		break;
 	}
 
@@ -897,7 +897,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	 *	Extract the TLS packet from the buffer.
 	 */
 	if ((tlspacket = eaptls_extract(request, handler->eap_ds, status)) == NULL) {
-		status = EAPTLS_FAIL;
+		status = FR_TLS_FAIL;
 		goto done;
 	}
 
@@ -915,7 +915,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 	    (tls_session->record_plus)(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
 		eaptls_free(&tlspacket);
 		RDEBUG("Exceeded maximum record size");
-		status =EAPTLS_FAIL;
+		status =FR_TLS_FAIL;
 		goto done;
 	}
 
@@ -938,16 +938,16 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 *	and get the caller to continue the
 		 *	conversation.
 		 */	
-	        if ((status == EAPTLS_MORE_FRAGMENTS) ||
-        	    (status == EAPTLS_MORE_FRAGMENTS_WITH_LENGTH) ||
-            	    (status == EAPTLS_FIRST_FRAGMENT)) {
+	        if ((status == FR_TLS_MORE_FRAGMENTS) ||
+        	    (status == FR_TLS_MORE_FRAGMENTS_WITH_LENGTH) ||
+            	    (status == FR_TLS_FIRST_FRAGMENT)) {
 			/*
 			 *	Send the ACK.
 			 */
 			eaptls_send_ack(handler->eap_ds,
 					tls_session->peap_flag);
 			RDEBUG2("Init is done, but tunneled data is fragmented");
-			status = EAPTLS_HANDLED;
+			status = FR_TLS_HANDLED;
 			goto done;
 		}
 
@@ -986,7 +986,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 				 */
 				break;
 			}
-			status = EAPTLS_FAIL;
+			status = FR_TLS_FAIL;
 			goto done;
 		}
 
@@ -999,7 +999,7 @@ eaptls_status_t eaptls_process(EAP_HANDLER *handler)
 		 */
 		tls_session->clean_out.used = err;
 		
-		status = EAPTLS_OK;
+		status = FR_TLS_OK;
 		goto done;
 	}
 
@@ -1057,15 +1057,15 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	if (reply->dlen) memcpy(ptr, reply->data, reply->dlen);
 
 	switch (reply->code) {
-	case EAPTLS_ACK:
-	case EAPTLS_START:
-	case EAPTLS_REQUEST:
+	case FR_TLS_ACK:
+	case FR_TLS_START:
+	case FR_TLS_REQUEST:
 		eap_ds->request->code = PW_EAP_REQUEST;
 		break;
-	case EAPTLS_SUCCESS:
+	case FR_TLS_SUCCESS:
 		eap_ds->request->code = PW_EAP_SUCCESS;
 		break;
-	case EAPTLS_FAIL:
+	case FR_TLS_FAIL:
 		eap_ds->request->code = PW_EAP_FAILURE;
 		break;
 	default:

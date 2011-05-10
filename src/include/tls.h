@@ -46,22 +46,22 @@ extern "C" {
 #endif
 
 typedef enum {
-        EAPTLS_INVALID = 0,	  	/* invalid, don't reply */
-        EAPTLS_REQUEST,       		/* request, ok to send, invalid to receive */
-        EAPTLS_RESPONSE,       		/* response, ok to receive, invalid to send */
-        EAPTLS_SUCCESS,       		/* success, send success */
-        EAPTLS_FAIL,       		/* fail, send fail */
-        EAPTLS_NOOP,       		/* noop, continue */
+        FR_TLS_INVALID = 0,	  	/* invalid, don't reply */
+        FR_TLS_REQUEST,       		/* request, ok to send, invalid to receive */
+        FR_TLS_RESPONSE,       		/* response, ok to receive, invalid to send */
+        FR_TLS_SUCCESS,       		/* success, send success */
+        FR_TLS_FAIL,       		/* fail, send fail */
+        FR_TLS_NOOP,       		/* noop, continue */
 
-        EAPTLS_START,       		/* start, ok to send, invalid to receive */
-        EAPTLS_OK, 	         	/* ok, continue */
-        EAPTLS_ACK,       		/* acknowledge, continue */
-        EAPTLS_FIRST_FRAGMENT,    	/* first fragment */
-        EAPTLS_MORE_FRAGMENTS,    	/* more fragments, to send/receive */
-        EAPTLS_LENGTH_INCLUDED,          	/* length included */
-        EAPTLS_MORE_FRAGMENTS_WITH_LENGTH,   /* more fragments with length */
-        EAPTLS_HANDLED	  		/* tls code has handled it */
-} eaptls_status_t;
+        FR_TLS_START,       		/* start, ok to send, invalid to receive */
+        FR_TLS_OK, 	         	/* ok, continue */
+        FR_TLS_ACK,       		/* acknowledge, continue */
+        FR_TLS_FIRST_FRAGMENT,    	/* first fragment */
+        FR_TLS_MORE_FRAGMENTS,    	/* more fragments, to send/receive */
+        FR_TLS_LENGTH_INCLUDED,          	/* length included */
+        FR_TLS_MORE_FRAGMENTS_WITH_LENGTH,   /* more fragments with length */
+        FR_TLS_HANDLED	  		/* tls code has handled it */
+} fr_tls_status_t;
 
 #define MAX_RECORD_SIZE 16384
 
@@ -104,7 +104,7 @@ typedef struct _tls_info_t {
 /*
  * tls_session_t Structure gets stored as opaque in EAP_HANDLER
  * This contains EAP-REQUEST specific data
- * (ie EAPTLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
+ * (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *
  * clean_in  - data that needs to be sent but only after it is soiled.
  * dirty_in  - data EAP server receives.

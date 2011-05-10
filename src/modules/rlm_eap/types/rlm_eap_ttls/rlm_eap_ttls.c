@@ -181,7 +181,7 @@ static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst)
 static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 {
 	int rcode;
-	eaptls_status_t	status;
+	fr_tls_status_t	status;
 	rlm_eap_ttls_t *inst = (rlm_eap_ttls_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	ttls_tunnel_t *t = (ttls_tunnel_t *) tls_session->opaque;
@@ -204,7 +204,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	If this was EAP-TLS, we would just return
 		 *	an EAP-TLS-Success packet here.
 		 */
-	case EAPTLS_SUCCESS:
+	case FR_TLS_SUCCESS:
 		if (SSL_session_reused(tls_session->ssl)) {
 			RDEBUG("Skipping Phase2 due to session resumption");
 			goto do_keys;
@@ -231,14 +231,14 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	exchange, and it's a valid TLS request.
 		 *	do nothing.
 		 */
-	case EAPTLS_HANDLED:
+	case FR_TLS_HANDLED:
 		return 1;
 
 		/*
 		 *	Handshake is done, proceed with decoding tunneled
 		 *	data.
 		 */
-	case EAPTLS_OK:
+	case FR_TLS_OK:
 		break;
 
 		/*

@@ -58,7 +58,7 @@ RCSIDH(eap_tls_h, "$Id$")
 /*
  *	Externally exported TLS functions.
  */
-eaptls_status_t eaptls_process(EAP_HANDLER *handler);
+fr_tls_status_t eaptls_process(EAP_HANDLER *handler);
 
 int 		eaptls_success(EAP_HANDLER *handler, int peap_flag);
 int 		eaptls_fail(EAP_HANDLER *handler, int peap_flag);

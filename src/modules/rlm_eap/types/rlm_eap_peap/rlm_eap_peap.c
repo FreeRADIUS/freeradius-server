@@ -194,7 +194,7 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 {
 	int rcode;
-	eaptls_status_t status;
+	fr_tls_status_t status;
 	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	peap_tunnel_t *peap = tls_session->opaque;
@@ -219,8 +219,8 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	If this was EAP-TLS, we would just return
 		 *	an EAP-TLS-Success packet here.
 		 */
-	case EAPTLS_SUCCESS:
-		RDEBUG2("EAPTLS_SUCCESS");
+	case FR_TLS_SUCCESS:
+		RDEBUG2("FR_TLS_SUCCESS");
 		peap->status = PEAP_STATUS_TUNNEL_ESTABLISHED;
 		break;
 
@@ -229,28 +229,28 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	exchange, and it's a valid TLS request.
 		 *	do nothing.
 		 */
-	case EAPTLS_HANDLED:
+	case FR_TLS_HANDLED:
 	  /*
 	   *	FIXME: If the SSL session is established, grab the state
 	   *	and EAP id from the inner tunnel, and update it with
 	   *	the expected EAP id!
 	   */
-		RDEBUG2("EAPTLS_HANDLED");
+		RDEBUG2("FR_TLS_HANDLED");
 		return 1;
 
 		/*
 		 *	Handshake is done, proceed with decoding tunneled
 		 *	data.
 		 */
-	case EAPTLS_OK:
-		RDEBUG2("EAPTLS_OK");
+	case FR_TLS_OK:
+		RDEBUG2("FR_TLS_OK");
 		break;
 
 		/*
 		 *	Anything else: fail.
 		 */
 	default:
-		RDEBUG2("EAPTLS_OTHERS");
+		RDEBUG2("FR_TLS_OTHERS");
 		return 0;
 	}
 

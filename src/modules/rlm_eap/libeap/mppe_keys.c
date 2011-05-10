@@ -119,7 +119,7 @@ static void PRF(const unsigned char *secret, unsigned int secret_len,
 
 #define EAPTLS_MPPE_KEY_LEN     32
 
-#define EAPTLS_PRF_LABEL "ttls keying material"
+#define FR_TLS_PRF_LABEL "ttls keying material"
 
 /*
  *	Generate keys according to RFC 2716 and add to reply
@@ -157,7 +157,7 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 }
 
 
-#define EAPTLS_PRF_CHALLENGE        "ttls challenge"
+#define FR_TLS_PRF_CHALLENGE        "ttls challenge"
 
 /*
  *	Generate the TTLS challenge
@@ -168,11 +168,11 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 {
 	uint8_t out[32], buf[32];
-	uint8_t seed[sizeof(EAPTLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
+	uint8_t seed[sizeof(FR_TLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
 	uint8_t *p = seed;
 
-	memcpy(p, EAPTLS_PRF_CHALLENGE, sizeof(EAPTLS_PRF_CHALLENGE)-1);
-	p += sizeof(EAPTLS_PRF_CHALLENGE)-1;
+	memcpy(p, FR_TLS_PRF_CHALLENGE, sizeof(FR_TLS_PRF_CHALLENGE)-1);
+	p += sizeof(FR_TLS_PRF_CHALLENGE)-1;
 	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);

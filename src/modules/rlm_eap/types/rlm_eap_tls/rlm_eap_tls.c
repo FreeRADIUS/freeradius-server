@@ -310,7 +310,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
  */
 static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 {
-	eaptls_status_t	status;
+	fr_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	REQUEST *request = handler->request;
 	fr_tls_server_conf_t *inst = arg;
@@ -324,7 +324,7 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	EAP-TLS handshake was successful, return an
 		 *	EAP-TLS-Success packet here.
 		 */
-	case EAPTLS_SUCCESS:
+	case FR_TLS_SUCCESS:
 		break;
 
 		/*
@@ -332,14 +332,14 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	exchange, and it's a valid TLS request.
 		 *	do nothing.
 		 */
-	case EAPTLS_HANDLED:
+	case FR_TLS_HANDLED:
 		return 1;
 
 		/*
 		 *	Handshake is done, proceed with decoding tunneled
 		 *	data.
 		 */
-	case EAPTLS_OK:
+	case FR_TLS_OK:
 		RDEBUG2("Received unexpected tunneled data after successful handshake.");
 #ifndef NDEBUG
 		if ((debug_flag > 2) && fr_log_fp) {

@@ -950,11 +950,11 @@ static const char *cert_attr_names[5][2] = {
   { "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" }
 };
 
-#define EAPTLS_SERIAL		(0)
-#define EAPTLS_EXPIRATION	(1)
-#define EAPTLS_SUBJECT		(2)
-#define EAPTLS_ISSUER		(3)
-#define EAPTLS_CN		(4)
+#define FR_TLS_SERIAL		(0)
+#define FR_TLS_EXPIRATION	(1)
+#define FR_TLS_SUBJECT		(2)
+#define FR_TLS_ISSUER		(3)
+#define FR_TLS_CN		(4)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -1055,7 +1055,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			p += 2;
 		}
 		pairadd(certs,
-			pairmake(cert_attr_names[EAPTLS_SERIAL][lookup], buf, T_OP_SET));
+			pairmake(cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET));
 	}
 
 
@@ -1068,7 +1068,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		pairadd(certs,
-			pairmake(cert_attr_names[EAPTLS_EXPIRATION][lookup], buf, T_OP_SET));
+			pairmake(cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET));
 	}
 
 	/*
@@ -1080,7 +1080,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	subject[sizeof(subject) - 1] = '\0';
 	if ((lookup <= 1) && subject[0] && (strlen(subject) < MAX_STRING_LEN)) {
 		pairadd(certs,
-			pairmake(cert_attr_names[EAPTLS_SUBJECT][lookup], subject, T_OP_SET));
+			pairmake(cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET));
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
@@ -1088,7 +1088,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	issuer[sizeof(issuer) - 1] = '\0';
 	if ((lookup <= 1) && issuer[0] && (strlen(issuer) < MAX_STRING_LEN)) {
 		pairadd(certs,
-			pairmake(cert_attr_names[EAPTLS_ISSUER][lookup], issuer, T_OP_SET));
+			pairmake(cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET));
 	}
 
 	/*
@@ -1099,7 +1099,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	common_name[sizeof(common_name) - 1] = '\0';
 	if ((lookup <= 1) && common_name[0] && (strlen(common_name) < MAX_STRING_LEN)) {
 		pairadd(certs,
-			pairmake(cert_attr_names[EAPTLS_CN][lookup], common_name, T_OP_SET));
+			pairmake(cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET));
 	}
 
 	/*
