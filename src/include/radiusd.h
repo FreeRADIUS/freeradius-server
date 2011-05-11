@@ -111,12 +111,12 @@ typedef struct auth_req REQUEST;
 #undef WITH_VMPS
 #endif
 
-#include <freeradius-devel/stats.h>
-#include <freeradius-devel/realms.h>
-
 #ifdef WITH_TLS
 #include <freeradius-devel/tls.h>
 #endif
+
+#include <freeradius-devel/stats.h>
+#include <freeradius-devel/realms.h>
 
 #ifdef __cplusplus
 extern "C" {
