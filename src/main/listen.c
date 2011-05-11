@@ -550,7 +550,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	struct sockaddr_storage src;
 	listen_socket_t *sock;
 	fr_ipaddr_t src_ipaddr;
-	RADCLIENT *client;
+	RADCLIENT *client = NULL;
 	
 	salen = sizeof(src);
 
@@ -1218,7 +1218,7 @@ static int stats_socket_recv(rad_listen_t *listener)
 	ssize_t		rcode;
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
-	RADCLIENT	*client;
+	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
@@ -1285,7 +1285,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
-	RADCLIENT	*client;
+	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
@@ -1366,7 +1366,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
-	RADCLIENT	*client;
+	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
@@ -1615,7 +1615,7 @@ static int coa_socket_recv(rad_listen_t *listener)
 	int		code, src_port;
 	RADIUS_PACKET	*packet;
 	RAD_REQUEST_FUNP fun = NULL;
-	RADCLIENT	*client;
+	RADCLIENT	*client = NULL;
 	fr_ipaddr_t	src_ipaddr;
 
 	rcode = rad_recv_header(listener->fd, &src_ipaddr, &src_port, &code);
