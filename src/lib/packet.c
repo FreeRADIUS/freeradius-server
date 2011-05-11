@@ -632,7 +632,8 @@ RADIUS_PACKET **fr_packet_list_yank(fr_packet_list_t *pl,
 	packet_p = rbtree_finddata(pl->tree, &request);
 	if (!packet_p) return NULL;
 
-	rbtree_deletebydata(pl->tree, packet_p);
+	if (!rbtree_deletebydata(pl->tree, packet_p)) return NULL;
+
 	return packet_p;
 }
 
