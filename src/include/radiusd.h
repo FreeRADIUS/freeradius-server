@@ -35,10 +35,6 @@ RCSIDH(radiusd_h, "$Id$")
 
 typedef struct auth_req REQUEST;
 
-#ifdef WITH_TLS
-#include <freeradius-devel/tls.h>
-#endif
-
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 #endif
@@ -117,6 +113,10 @@ typedef struct auth_req REQUEST;
 
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
+
+#ifdef WITH_TLS
+#include <freeradius-devel/tls.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
