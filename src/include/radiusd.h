@@ -720,6 +720,7 @@ RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 #endif
 rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port,
 				     int proto);
+int rad_status_server(REQUEST *request);
 
 /* event.c */
 int radius_event_init(CONF_SECTION *cs, int spawn_flag);
@@ -741,6 +742,16 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
+
+#ifdef WITH_TLS
+/*
+ *	For run-time patching of which function handles which socket.
+ */
+int dual_tls_recv(rad_listen_t *listener);
+int dual_tls_send(rad_listen_t *listener, REQUEST *request);
+int proxy_tls_recv(rad_listen_t *listener);
+int proxy_tls_send(rad_listen_t *listener, REQUEST *request);
+#endif
 
 #ifdef __cplusplus
 }

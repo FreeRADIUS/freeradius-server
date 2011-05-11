@@ -318,7 +318,7 @@ static int listen_bind(rad_listen_t *this);
  *	Like rad_authenticate and rad_accounting this should
  *	live in it's own file but it's so small we don't bother.
  */
-static int rad_status_server(REQUEST *request)
+int rad_status_server(REQUEST *request)
 {
 	int rcode = RLM_MODULE_OK;
 	DICT_VALUE *dval;
