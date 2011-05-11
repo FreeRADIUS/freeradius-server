@@ -8,8 +8,6 @@ detail {
 	#  Note that we do NOT use NAS-IP-Address here, as
 	#  that attribute MAY BE from the originating NAS, and
 	#  NOT from the proxy which actually sent us the
-	#  request.  The Client-IP-Address attribute is ALWAYS
-	#  the address of the client which sent us the
 	#  request.
 	#
 	#  The following line creates a new detail file for
@@ -33,7 +31,7 @@ detail {
 	#  be ONE "listen" section reading detail files from a
 	#  particular directory.
 	#
-	detailfile = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
+	detailfile = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/detail-%Y%m%d
 
 	#
 	#  The Unix-style permissions on the 'detail' file.
@@ -54,6 +52,12 @@ detail {
 	#  of what can be put here.
 	#
 	header = "%t"
+
+	#
+	#  Log the Packet src/dst IP/port.  This is disabled by
+	#  default, as that information isn't used by many people.
+	#
+#	log_packet_header = yes
 
 	#
 	# Certain attributes such as User-Password may be
