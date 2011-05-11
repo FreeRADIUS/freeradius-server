@@ -1,6 +1,6 @@
 # -*- text -*-
 ##
-## radiusd.conf	-- FreeRADIUS server configuration file.
+## radiusd.conf	-- FreeRADIUS server configuration file - @RADIUSD_VERSION@
 ##
 ##	http://www.freeradius.org/
 ##	$Id$
