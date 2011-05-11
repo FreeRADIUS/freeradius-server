@@ -105,7 +105,6 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
-	VALUE_PAIR *vp, *vps = NULL;
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
@@ -116,79 +115,7 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	/*
-	 *	If there's no session resumption, delete the entry
-	 *	from the cache.  This means either it's disabled
-	 *	globally for this SSL context, OR we were told to
-	 *	disable it for this user.
-	 *
-	 *	This also means you can't turn it on just for one
-	 *	user.
-	 */
-	if ((!tls_session->allow_session_resumption) ||
-	    (((vp = pairfind(request->config_items, 1127, 0)) != NULL) &&
-	     (vp->vp_integer == 0))) {
-		SSL_CTX_remove_session(tls_session->ctx,
-				       tls_session->ssl->session);
-		tls_session->allow_session_resumption = 0;
-
-		/*
-		 *	If we're in a resumed session and it's
-		 *	not allowed, 
-		 */
-		if (SSL_session_reused(tls_session->ssl)) {
-			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed.");
-			return eaptls_fail(handler, peap_flag);
-		}
-		
-		/*
-		 *	Else resumption IS allowed, so we store the
-		 *	user data in the cache.
-		 */
-	} else if (!SSL_session_reused(tls_session->ssl)) {
-		RDEBUG2("Saving response in the cache");
-		
-		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0);
-		if (vp) pairadd(&vps, vp);
-		
-		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0);
-		if (vp) pairadd(&vps, vp);
-		
-		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0);
-		if (vp) pairadd(&vps, vp);
-		
-		if (vps) {
-			SSL_SESSION_set_ex_data(tls_session->ssl->session,
-						FR_TLS_EX_INDEX_VPS, vps);
-		} else {
-			RDEBUG2("WARNING: No information to cache: session caching will be disabled for this session.");
-			SSL_CTX_remove_session(tls_session->ctx,
-					       tls_session->ssl->session);
-		}
-
-		/*
-		 *	Else the session WAS allowed.  Copy the cached
-		 *	reply.
-		 */
-	} else {
-	       
-		vp = SSL_SESSION_get_ex_data(tls_session->ssl->session,
-					     FR_TLS_EX_INDEX_VPS);
-		if (!vp) {
-			RDEBUG("WARNING: No information in cached session!");
-			return eaptls_fail(handler, peap_flag);
-		} else {
-			RDEBUG("Adding cached attributes to the reply:");
-			debug_pair_list(vp);
-			pairadd(&request->reply->vps, paircopy(vp));
-
-			/*
-			 *	Mark the request as resumed.
-			 */
-			vp = pairmake("EAP-Session-Resumed", "1", T_OP_SET);
-			if (vp) pairadd(&request->packet->vps, vp);
-		}
-	}
+	tls_success(tls_session, request);
 
 	/*
 	 *	Call compose AFTER checking for cached data.
@@ -307,71 +234,6 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	return 1;
 }
 
-/*
- * Acknowledge received is for one of the following messages sent earlier
- * 1. Handshake completed Message, so now send, EAP-Success
- * 2. Alert Message, now send, EAP-Failure
- * 3. Fragment Message, now send, next Fragment
- */
-static fr_tls_status_t eaptls_ack_handler(EAP_HANDLER *handler)
-{
-	tls_session_t *tls_session;
-	REQUEST *request = handler->request;
-
-	tls_session = (tls_session_t *)handler->opaque;
-	if (tls_session == NULL){
-		radlog_request(L_ERR, 0, request, "FAIL: Unexpected ACK received.  Could not obtain session information.");
-		return FR_TLS_FAIL;
-	}
-	if (tls_session->info.initialized == 0) {
-		RDEBUG("No SSL info available. Waiting for more SSL data.");
-		return FR_TLS_REQUEST;
-	}
-	if ((tls_session->info.content_type == handshake) &&
-	    (tls_session->info.origin == 0)) {
-		radlog_request(L_ERR, 0, request, "FAIL: ACK without earlier message.");
-		return FR_TLS_FAIL;
-	}
-
-	switch (tls_session->info.content_type) {
-	case alert:
-		RDEBUG2("ACK alert");
-		eaptls_fail(handler, tls_session->peap_flag);
-		return FR_TLS_FAIL;
-
-	case handshake:
-		if ((tls_session->info.handshake_type == finished) &&
-		    (tls_session->dirty_out.used == 0)) {
-			RDEBUG2("ACK handshake is finished");
-
-			/* 
-			 *	From now on all the content is
-			 *	application data set it here as nobody else
-			 *	sets it.
-			 */
-			tls_session->info.content_type = application_data;
-			return FR_TLS_SUCCESS;
-		} /* else more data to send */
-
-		RDEBUG2("ACK handshake fragment handler");
-		/* Fragmentation handler, send next fragment */
-		return FR_TLS_REQUEST;
-
-	case application_data:
-		RDEBUG2("ACK handshake fragment handler in application data");
-		return FR_TLS_REQUEST;
-						
-		/*
-		 *	For the rest of the conditions, switch over
-		 *	to the default section below.
-		 */
-	default:
-		RDEBUG2("ACK default");
-		radlog_request(L_ERR, 0, request, "Invalid ACK received: %d",
-		       tls_session->info.content_type);
-		return FR_TLS_FAIL;
-	}
-}
 
 /*
  *	Similarly, when the EAP server receives an EAP-Response with
@@ -449,25 +311,17 @@ static fr_tls_status_t eaptls_verify(EAP_HANDLER *handler)
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
 
-#if 0
-		/*
-		 *	Un-comment this for TLS inside of TTLS/PEAP
-		 */
-		RDEBUG2("Received EAP-TLS ACK message");
-		return eaptls_ack_handler(handler);
-#else
 		if (prev_eap_ds &&
 		    (prev_eap_ds->request->id == eap_ds->response->id)) {
 			/*
 			 *	Run the ACK handler directly from here.
 			 */
 			RDEBUG2("Received TLS ACK");
-			return eaptls_ack_handler(handler);
+			return tls_ack_handler(handler->opaque, request);
 		} else {
 			radlog_request(L_ERR, 0, request, "Received Invalid TLS ACK");
 			return FR_TLS_INVALID;
 		}
-#endif
 	}
 
 	/*
@@ -930,8 +784,6 @@ fr_tls_status_t eaptls_process(EAP_HANDLER *handler)
 	 *	The TLS data will be in the tls_session structure.
 	 */
 	if (SSL_is_init_finished(tls_session->ssl)) {
-		int err;
-
 		/*
 		 *	The initialization may be finished, but if
 		 *	there more fragments coming, then send ACK,
@@ -951,55 +803,7 @@ fr_tls_status_t eaptls_process(EAP_HANDLER *handler)
 			goto done;
 		}
 
-		/*	
-		 *	Decrypt the complete record.
-		 */
-		BIO_write(tls_session->into_ssl, tls_session->dirty_in.data,
-			  tls_session->dirty_in.used);
-
-		/*
-		 *      Clear the dirty buffer now that we are done with it
-		 *      and init the clean_out buffer to store decrypted data
-		 */
-		(tls_session->record_init)(&tls_session->dirty_in);
-		(tls_session->record_init)(&tls_session->clean_out);
-
-		/*
-		 *      Read (and decrypt) the tunneled data from the
-		 *      SSL session, and put it into the decrypted
-		 *      data buffer.
-		 */
-		err = SSL_read(tls_session->ssl, tls_session->clean_out.data,
-			       sizeof(tls_session->clean_out.data));
-
-		if (err < 0) {
-			RDEBUG("SSL_read Error");
-
-			switch (SSL_get_error(tls_session->ssl, err)) {
-			case SSL_ERROR_WANT_READ:
-			case SSL_ERROR_WANT_WRITE:
-				RDEBUG("Error in fragmentation logic");
-				break;
-			default:
-				/*
-				 *	FIXME: Call int_ssl_check?
-				 */
-				break;
-			}
-			status = FR_TLS_FAIL;
-			goto done;
-		}
-
-		if (err == 0) {
-			RDEBUG("WARNING: No data inside of the tunnel.");
-		}
-	
-		/*
-		 *	Passed all checks, successfully decrypted data
-		 */
-		tls_session->clean_out.used = err;
-		
-		status = FR_TLS_OK;
+		status = tls_application_data(tls_session, request);
 		goto done;
 	}
 

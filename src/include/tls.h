@@ -299,8 +299,16 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
 void tls_server_conf_free(fr_tls_server_conf_t *conf);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
-int 		tls_handshake_send(REQUEST *,tls_session_t *ssn);
-void 		tls_session_information(tls_session_t *tls_session);
+int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
+void 		tls_session_information(tls_session_t *ssn);
+
+/*
+ *	Low-level TLS stuff
+ */
+int tls_success(tls_session_t *ssn, REQUEST *request);
+void tls_fail(tls_session_t *ssn);
+fr_tls_status_t tls_ack_handler(tls_session_t *tls_session, REQUEST *request);
+fr_tls_status_t tls_application_data(tls_session_t *ssn, REQUEST *request);
 
 /* Session */
 void 		session_free(void *ssn);
@@ -356,6 +364,7 @@ struct fr_tls_server_conf_t {
 
 	char		*verify_tmp_dir;
 	char		*verify_client_cert_cmd;
+	int		require_client_cert;
 
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*

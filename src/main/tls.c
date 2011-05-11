@@ -736,6 +736,8 @@ static CONF_PARSER tls_server_config[] = {
 	  offsetof(fr_tls_server_conf_t, check_cert_issuer), NULL, NULL},
 	{ "make_cert_command", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, make_cert_command), NULL, NULL},
+	{ "require_client_cert", PW_TYPE_BOOLEAN,
+	  offsetof(fr_tls_server_conf_t, require_client_cert), NULL, NULL },
 
 	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
 
@@ -1076,7 +1078,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char cn_str[1024];
 	char buf[64];
 	X509 *client_cert;
-	X509 *issuer_cert;
 	SSL *ssl;
 	int err, depth, lookup;
 	fr_tls_server_conf_t *conf;
@@ -1818,6 +1819,237 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
         }
 
 	return conf;
+}
+
+int tls_success(tls_session_t *ssn, REQUEST *request)
+{
+	VALUE_PAIR *vp, *vps = NULL;
+	fr_tls_server_conf_t *conf;
+
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF);
+	rad_assert(conf != NULL);
+
+	/*
+	 *	If there's no session resumption, delete the entry
+	 *	from the cache.  This means either it's disabled
+	 *	globally for this SSL context, OR we were told to
+	 *	disable it for this user.
+	 *
+	 *	This also means you can't turn it on just for one
+	 *	user.
+	 */
+	if ((!ssn->allow_session_resumption) ||
+	    (((vp = pairfind(request->config_items, 1127, 0)) != NULL) &&
+	     (vp->vp_integer == 0))) {
+		SSL_CTX_remove_session(ssn->ctx,
+				       ssn->ssl->session);
+		ssn->allow_session_resumption = 0;
+
+		/*
+		 *	If we're in a resumed session and it's
+		 *	not allowed, 
+		 */
+		if (SSL_session_reused(ssn->ssl)) {
+			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed.");
+			return -1;
+		}
+		
+		/*
+		 *	Else resumption IS allowed, so we store the
+		 *	user data in the cache.
+		 */
+	} else if (!SSL_session_reused(ssn->ssl)) {
+		RDEBUG2("Saving response in the cache");
+		
+		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0);
+		if (vp) pairadd(&vps, vp);
+		
+		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0);
+		if (vp) pairadd(&vps, vp);
+		
+		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0);
+		if (vp) pairadd(&vps, vp);
+		
+		if (vps) {
+			SSL_SESSION_set_ex_data(ssn->ssl->session,
+						FR_TLS_EX_INDEX_VPS, vps);
+		} else {
+			RDEBUG2("WARNING: No information to cache: session caching will be disabled for this session.");
+			SSL_CTX_remove_session(ssn->ctx,
+					       ssn->ssl->session);
+		}
+
+		/*
+		 *	Else the session WAS allowed.  Copy the cached
+		 *	reply.
+		 */
+	} else {
+	       
+		vp = SSL_SESSION_get_ex_data(ssn->ssl->session,
+					     FR_TLS_EX_INDEX_VPS);
+		if (!vp) {
+			RDEBUG("WARNING: No information in cached session!");
+			return -1;
+
+		} else {
+			RDEBUG("Adding cached attributes to the reply:");
+			debug_pair_list(vp);
+			pairadd(&request->reply->vps, paircopy(vp));
+
+			/*
+			 *	Mark the request as resumed.
+			 */
+			vp = pairmake("EAP-Session-Resumed", "1", T_OP_SET);
+			if (vp) pairadd(&request->packet->vps, vp);
+		}
+	}
+
+	return 0;
+}
+
+
+void tls_fail(tls_session_t *ssn)
+{
+	/*
+	 *	Force the session to NOT be cached.
+	 */
+	SSL_CTX_remove_session(ssn->ctx, ssn->ssl->session);
+}
+
+fr_tls_status_t tls_application_data(tls_session_t *ssn,
+				     REQUEST *request)
+				     
+{
+	int err;
+
+	/*	
+	 *	Decrypt the complete record.
+	 */
+	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data,
+			ssn->dirty_in.used);
+	if (err != (int) ssn->dirty_in.used) {
+		record_init(&ssn->dirty_in);
+		RDEBUG("Failed writing %d to SSL BIO: %d",
+		       ssn->dirty_in.used, err);
+		return FR_TLS_FAIL;
+	}
+	
+	/*
+	 *      Clear the dirty buffer now that we are done with it
+	 *      and init the clean_out buffer to store decrypted data
+	 */
+	record_init(&ssn->dirty_in);
+	record_init(&ssn->clean_out);
+	
+	/*
+	 *      Read (and decrypt) the tunneled data from the
+	 *      SSL session, and put it into the decrypted
+	 *      data buffer.
+	 */
+	err = SSL_read(ssn->ssl, ssn->clean_out.data,
+		       sizeof(ssn->clean_out.data));
+	
+	if (err < 0) {
+		int code;
+
+		RDEBUG("SSL_read Error");
+		
+		code = SSL_get_error(ssn->ssl, err);
+		switch (code) {
+		case SSL_ERROR_WANT_READ:
+			return FR_TLS_MORE_FRAGMENTS;
+			DEBUG("Error in fragmentation logic: SSL_WANT_READ");
+			break;
+
+		case SSL_ERROR_WANT_WRITE:
+			DEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
+			break;
+
+		default:
+			DEBUG("Error in fragmentation logic: ?");
+
+			/*
+			 *	FIXME: Call int_ssl_check?
+			 */
+			break;
+		}
+		return FR_TLS_FAIL;
+	}
+	
+	if (err == 0) {
+		RDEBUG("WARNING: No data inside of the tunnel.");
+	}
+	
+	/*
+	 *	Passed all checks, successfully decrypted data
+	 */
+	ssn->clean_out.used = err;
+	
+	return FR_TLS_OK;
+}
+
+
+/*
+ * Acknowledge received is for one of the following messages sent earlier
+ * 1. Handshake completed Message, so now send, EAP-Success
+ * 2. Alert Message, now send, EAP-Failure
+ * 3. Fragment Message, now send, next Fragment
+ */
+fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
+{
+	RDEBUG2("Received TLS ACK");
+
+	if (ssn == NULL){
+		radlog_request(L_ERR, 0, request, "FAIL: Unexpected ACK received.  Could not obtain session information.");
+		return FR_TLS_INVALID;
+	}
+	if (ssn->info.initialized == 0) {
+		RDEBUG("No SSL info available. Waiting for more SSL data.");
+		return FR_TLS_REQUEST;
+	}
+	if ((ssn->info.content_type == handshake) &&
+	    (ssn->info.origin == 0)) {
+		radlog_request(L_ERR, 0, request, "FAIL: ACK without earlier message.");
+		return FR_TLS_INVALID;
+	}
+
+	switch (ssn->info.content_type) {
+	case alert:
+		RDEBUG2("ACK alert");
+		return FR_TLS_FAIL;
+
+	case handshake:
+		if ((ssn->info.handshake_type == finished) &&
+		    (ssn->dirty_out.used == 0)) {
+			RDEBUG2("ACK handshake is finished");
+
+			/* 
+			 *	From now on all the content is
+			 *	application data set it here as nobody else
+			 *	sets it.
+			 */
+			ssn->info.content_type = application_data;
+			return FR_TLS_SUCCESS;
+		} /* else more data to send */
+
+		RDEBUG2("ACK handshake fragment handler");
+		/* Fragmentation handler, send next fragment */
+		return FR_TLS_REQUEST;
+
+	case application_data:
+		RDEBUG2("ACK handshake fragment handler in application data");
+		return FR_TLS_REQUEST;
+						
+		/*
+		 *	For the rest of the conditions, switch over
+		 *	to the default section below.
+		 */
+	default:
+		RDEBUG2("ACK default");
+		radlog_request(L_ERR, 0, request, "Invalid ACK received: %d",
+		       ssn->info.content_type);
+		return FR_TLS_INVALID;
+	}
 }
 
 #endif	/* WITH_TLS */

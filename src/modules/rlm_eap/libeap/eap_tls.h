@@ -51,6 +51,7 @@ RCSIDH(eap_tls_h, "$Id$")
 #include <unistd.h>
 #endif
 
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/tls.h>
 
 #include "eap.h"
