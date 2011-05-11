@@ -750,11 +750,6 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 		snprintf(buffer, bufsize, "%d", sock->my_port);
 		FORWARD;
 
-		if (this->tls) {
-			ADDSTRING(" (TLS)");
-			FORWARD;
-		}
-
 		if (this->server) {
 			ADDSTRING(", virtual-server=");
 			ADDSTRING(this->server);
@@ -812,6 +807,11 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 	ADDSTRING(" port ");
 	snprintf(buffer, bufsize, "%d", sock->my_port);
 	FORWARD;
+
+	if (this->tls) {
+		ADDSTRING(" (TLS)");
+		FORWARD;
+	}
 
 	if (this->server) {
 		ADDSTRING(" as server ");
@@ -2352,6 +2352,9 @@ int proxy_new_listener(home_server *home, int src_port)
 {
 	rad_listen_t *this;
 	listen_socket_t *sock;
+#ifndef NDEBUG
+	char buffer[256];
+#endif
 
 	if (!home) return 0;
 
@@ -2373,8 +2376,13 @@ int proxy_new_listener(home_server *home, int src_port)
 	sock->my_port = src_port;
 	sock->proto = home->proto;
 
+	if (debug_flag >= 2) {
+		this->print(this, buffer, sizeof(buffer));
+		DEBUG("Opening new %s", buffer);
+	}
+
 #ifdef WITH_TCP
-	sock->last_packet = time(NULL);
+	sock->opened = sock->last_packet = time(NULL);
 
 	if (home->proto == IPPROTO_TCP) {
 		this->recv = proxy_socket_tcp_recv;
@@ -2393,7 +2401,9 @@ int proxy_new_listener(home_server *home, int src_port)
 		this->fd = fr_socket(&home->src_ipaddr, src_port);
 
 	if (this->fd < 0) {
-		DEBUG("Failed opening client socket: %s", fr_strerror());
+		this->print(this, buffer,sizeof(buffer));
+		DEBUG("Failed opening client socket ::%s:: : %s",
+		      buffer, fr_strerror());
 		listen_free(&this);
 		return 0;
 	}
