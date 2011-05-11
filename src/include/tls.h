@@ -293,7 +293,8 @@ void 		cbtls_msg(int write_p, int msg_version, int content_type,
 int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
 /* TLS */
-tls_session_t 	*tls_new_session(SSL_CTX *ssl_ctx, int client_cert);
+tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
+			       int client_cert);
 tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);

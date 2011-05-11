@@ -102,14 +102,31 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	return ssn;
 }
 
-tls_session_t *tls_new_session(SSL_CTX *ssl_ctx, int client_cert)
+tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
+			       int client_cert)
 {
 	tls_session_t *state = NULL;
 	SSL *new_tls = NULL;
+	int		verify_mode = 0;
+	VALUE_PAIR	*vp;
 
-	client_cert = client_cert; /* -Wunused.  See bug #350 */
+	/*
+	 *	Manually flush the sessions every so often.  If HALF
+	 *	of the session lifetime has passed since we last
+	 *	flushed, then flush it again.
+	 *
+	 *	FIXME: Also do it every N sessions?
+	 */
+	if (conf->session_cache_enable &&
+	    ((conf->session_last_flushed + (conf->session_timeout * 1800)) <= request->timestamp)){
+		RDEBUG2("Flushing SSL sessions (of #%ld)",
+			SSL_CTX_sess_number(conf->ctx));
 
-	if ((new_tls = SSL_new(ssl_ctx)) == NULL) {
+		SSL_CTX_flush_sessions(conf->ctx, request->timestamp);
+		conf->session_last_flushed = request->timestamp;
+	}
+
+	if ((new_tls = SSL_new(conf->ctx)) == NULL) {
 		radlog(L_ERR, "SSL: Error creating new SSL: %s",
 		       ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
@@ -122,7 +139,7 @@ tls_session_t *tls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	memset(state, 0, sizeof(*state));
 	session_init(state);
 
-	state->ctx = ssl_ctx;
+	state->ctx = conf->ctx;
 	state->ssl = new_tls;
 
 	/*
@@ -159,6 +176,44 @@ tls_session_t *tls_new_session(SSL_CTX *ssl_ctx, int client_cert)
 	 *	In Server mode we only accept.
 	 */
 	SSL_set_accept_state(state->ssl);
+
+	/*
+	 *	Verify the peer certificate, if asked.
+	 */
+	if (client_cert) {
+		RDEBUG2("Requiring client certificate");
+		verify_mode = SSL_VERIFY_PEER;
+		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	}
+	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
+
+	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
+	state->length_flag = conf->include_length;
+
+	/*
+	 *	We use default fragment size, unless the Framed-MTU
+	 *	tells us it's too big.  Note that we do NOT account
+	 *	for the EAP-TLS headers if conf->fragment_size is
+	 *	large, because that config item looks to be confusing.
+	 *
+	 *	i.e. it should REALLY be called MTU, and the code here
+	 *	should figure out what that means for TLS fragment size.
+	 *	asking the administrator to know the internal details
+	 *	of EAP-TLS in order to calculate fragment sizes is
+	 *	just too much.
+	 */
+	state->offset = conf->fragment_size;
+	vp = pairfind(request->packet->vps, PW_FRAMED_MTU, 0);
+	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->offset)) {
+		state->offset = vp->vp_integer;
+	}
+
+	if (conf->session_cache_enable) {
+		state->allow_session_resumption = 1; /* otherwise it's zero */
+	}
+
+	RDEBUG2("Initiate");
 
 	return state;
 }

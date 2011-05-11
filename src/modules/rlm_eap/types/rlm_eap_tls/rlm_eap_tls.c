@@ -138,22 +138,6 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	handler->finished = FALSE;
 
 	/*
-	 *	Manually flush the sessions every so often.  If HALF
-	 *	of the session lifetime has passed since we last
-	 *	flushed, then flush it again.
-	 *
-	 *	FIXME: Also do it every N sessions?
-	 */
-	if (inst->session_cache_enable &&
-	    ((inst->session_last_flushed + (inst->session_timeout * 1800)) <= request->timestamp)) {
-		RDEBUG2("Flushing SSL sessions (of #%ld)",
-			SSL_CTX_sess_number(inst->ctx));
-
-		SSL_CTX_flush_sessions(inst->ctx, request->timestamp);
-		inst->session_last_flushed = request->timestamp;
-	}
-
-	/*
 	 *	If we're TTLS or PEAP, then do NOT require a client
 	 *	certificate.
 	 *
@@ -176,7 +160,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = tls_new_session(inst->ctx, client_cert);
+	ssn = tls_new_session(inst, request, client_cert);
 	if (!ssn) {
 		return 0;
 	}
