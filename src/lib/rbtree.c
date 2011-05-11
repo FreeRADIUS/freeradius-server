@@ -511,17 +511,21 @@ static int WalkNodePreOrder(rbnode_t *X,
 			    int (*callback)(void *, void *), void *context)
 {
 	int rcode;
+	rbnode_t *Left, *Right;
+
+	Left = X->Left;
+	Right = X->Right;
 
 	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
-	if (X->Left != NIL) {
-		rcode = WalkNodePreOrder(X->Left, callback, context);
+	if (Left != NIL) {
+		rcode = WalkNodePreOrder(Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
-	if (X->Right != NIL) {
-		rcode = WalkNodePreOrder(X->Right, callback, context);
+	if (Right != NIL) {
+		rcode = WalkNodePreOrder(Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
@@ -535,17 +539,20 @@ static int WalkNodeInOrder(rbnode_t *X,
 			   int (*callback)(void *, void *), void *context)
 {
 	int rcode;
+	rbnode_t *Right;
 
 	if (X->Left != NIL) {
 		rcode = WalkNodeInOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
+	Right = X->Right;
+
 	rcode = callback(context, X->Data);
 	if (rcode != 0) return rcode;
 
-	if (X->Right != NIL) {
-		rcode = WalkNodeInOrder(X->Right, callback, context);
+	if (Right != NIL) {
+		rcode = WalkNodeInOrder(Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
