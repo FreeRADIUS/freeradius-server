@@ -422,19 +422,23 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
+			src_vp.name = "Packet-Src-IP-Address";
 			src_vp.type = PW_TYPE_IPADDR;
 			src_vp.attribute = PW_PACKET_SRC_IP_ADDRESS;
 			src_vp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+			dst_vp.name = "Packet-Dst-IP-Address";
 			dst_vp.type = PW_TYPE_IPADDR;
 			dst_vp.attribute = PW_PACKET_DST_IP_ADDRESS;
 			dst_vp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 			break;
 		case AF_INET6:
+			src_vp.name = "Packet-Src-IPv6-Address";
 			src_vp.type = PW_TYPE_IPV6ADDR;
 			src_vp.attribute = PW_PACKET_SRC_IPV6_ADDRESS;
 			memcpy(src_vp.vp_strvalue,
 			       &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
+			dst_vp.name = "Packet-Dst-IPv6-Address";
 			dst_vp.type = PW_TYPE_IPV6ADDR;
 			dst_vp.attribute = PW_PACKET_DST_IPV6_ADDRESS;
 			memcpy(dst_vp.vp_strvalue,
@@ -454,9 +458,11 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			return RLM_MODULE_FAIL;
 		}
 
+		src_vp.name = "Packet-Src-IP-Port";
 		src_vp.attribute = PW_PACKET_SRC_PORT;
 		src_vp.type = PW_TYPE_INTEGER;
 		src_vp.vp_integer = packet->src_port;
+		dst_vp.name = "Packet-Dst-IP-Port";
 		dst_vp.attribute = PW_PACKET_DST_PORT;
 		dst_vp.type = PW_TYPE_INTEGER;
 		dst_vp.vp_integer = packet->dst_port;
