@@ -55,6 +55,14 @@ char *radius_dir = NULL;
 const char *progname = "radeapclient";
 /* fr_randctx randctx; */
 
+#ifdef WITH_TLS
+#include <freeradius-devel/tls.h>
+
+int tls_success(UNUSED tls_session_t *ssn, UNUSED REQUEST *request){return 0;}
+void tls_fail(UNUSED tls_session_t *ssn){_exit(1);}
+fr_tls_status_t tls_ack_handler(UNUSED tls_session_t *tls_session, UNUSED REQUEST *request){return FR_TLS_INVALID;}
+fr_tls_status_t tls_application_data(UNUSED tls_session_t *ssn, UNUSED REQUEST *request){return FR_TLS_INVALID;}
+#endif
 
 radlog_dest_t radlog_dest = RADLOG_STDERR;
 const char *radlog_dir = NULL;
