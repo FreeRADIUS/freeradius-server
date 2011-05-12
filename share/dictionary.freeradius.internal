@@ -56,8 +56,7 @@ ATTRIBUTE	EAP-Type				1018	integer
 ATTRIBUTE	EAP-TLS-Require-Client-Cert		1019	integer
 ATTRIBUTE	EAP-Id					1020	integer
 ATTRIBUTE	EAP-Code				1021	integer
-# Attribute 1022 unused, was EAP-MD5-Password, which was
-# used only be radeapclient.  It's been replaced by Cleartext-Password
+ATTRIBUTE	EAP-MD5-Password			1022	string
 ATTRIBUTE	PEAP-Version				1023	integer
 ATTRIBUTE	Client-Shortname			1024	string
 ATTRIBUTE	Load-Balance-Key			1025	string
