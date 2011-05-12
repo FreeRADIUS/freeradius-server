@@ -105,3 +105,8 @@ peap:
 
 leap:
 	$(EAPOL_TEST) -c leap.conf -s $(SECRET)
+
+ATTRS	:= rfc.txt errors.txt extended.txt lucent.txt wimax.txt
+
+attrs:	${ATTRS}
+	../main/radattr -d ../../share rfc.txt
