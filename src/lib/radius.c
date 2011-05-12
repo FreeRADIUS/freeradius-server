@@ -1492,10 +1492,17 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 		return -1;
 	}
 
+	/*
+	 *	Only CUI is allowed to have zero length.
+	 *	Thank you, WiMAX!
+	 */
 	if ((vp->length == 0) &&
-	    (vp->attribute != PW_CHARGEABLE_USER_IDENTITY)) {
+	    (vp->attribute == PW_CHARGEABLE_USER_IDENTITY)) {
+		ptr[0] = PW_CHARGEABLE_USER_IDENTITY;
+		ptr[1] = 2;
+
 		*pvp = vp->next;
-		return 0;
+		return 2;
 	}
 
 	return vp2attr_rfc(packet, original, secret, pvp, vp->attribute,
