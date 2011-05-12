@@ -1145,6 +1145,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char **identity;
 #ifdef HAVE_OPENSSL_OCSP_H
 	X509_STORE *ocsp_store = NULL;
+	X509 *issuer_cert;
 #endif
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
