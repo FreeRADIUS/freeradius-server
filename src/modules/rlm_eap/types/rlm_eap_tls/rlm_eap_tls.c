@@ -192,42 +192,8 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)inst->ocsp_store);
 #endif
 
-	ssn->length_flag = inst->include_length;
-
-	/*
-	 *	We use default fragment size, unless the Framed-MTU
-	 *	tells us it's too big.  Note that we do NOT account
-	 *	for the EAP-TLS headers if conf->fragment_size is
-	 *	large, because that config item looks to be confusing.
-	 *
-	 *	i.e. it should REALLY be called MTU, and the code here
-	 *	should figure out what that means for TLS fragment size.
-	 *	asking the administrator to know the internal details
-	 *	of EAP-TLS in order to calculate fragment sizes is
-	 *	just too much.
-	 */
-	ssn->offset = inst->fragment_size;
-	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0);
-	if (vp && ((vp->vp_integer - 14) < ssn->offset)) {
-		/*
-		 *	Discount the Framed-MTU by:
-		 *	 4 : EAPOL header
-		 *	 4 : EAP header (code + id + length)
-		 *	 1 : EAP type == EAP-TLS
-		 *	 1 : EAP-TLS Flags
-		 *	 4 : EAP-TLS Message length
-		 *	    (even if conf->include_length == 0,
-		 *	     just to be lazy).
-		 *	---
-		 *	14
-		 */
-		ssn->offset = vp->vp_integer - 14;
-	}
-
 	handler->opaque = ((void *)ssn);
 	handler->free_opaque = session_free;
-
-	RDEBUG2("Initiate");
 
 	/*
 	 *	Set up type-specific information.
@@ -266,10 +232,6 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 
 		ssn->prf_label = "client EAP encryption";
 		break;
-	}
-
-	if (inst->session_cache_enable) {
-		ssn->allow_session_resumption = 1; /* otherwise it's zero */
 	}
 
 	/*
@@ -355,10 +317,7 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	the client can't re-use it.
 		 */
 	default:
-		if (inst->session_cache_enable) {
-			SSL_CTX_remove_session(inst->ctx,
-					       tls_session->ssl->session);
-		}
+		tls_fail(tls_session);
 
 		return 0;
 	}

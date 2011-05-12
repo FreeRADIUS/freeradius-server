@@ -306,13 +306,19 @@ int tls_handshake_recv(REQUEST *request, tls_session_t *ssn)
 {
 	int err;
 
-	BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
+	err = BIO_write(ssn->into_ssl, ssn->dirty_in.data, ssn->dirty_in.used);
+	if (err != (int) ssn->dirty_in.used) {
+		RDEBUG("Failed writing %d to SSL BIO: %d", ssn->dirty_in.used,
+			err);
+		record_init(&ssn->dirty_in);
+		return 0;
+	}
+	record_init(&ssn->dirty_in);
 
 	err = SSL_read(ssn->ssl, ssn->clean_out.data + ssn->clean_out.used,
 		       sizeof(ssn->clean_out.data) - ssn->clean_out.used);
 	if (err > 0) {
 		ssn->clean_out.used += err;
-		record_init(&ssn->dirty_in);
 		return 1;
 	}
 
@@ -1191,7 +1197,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	For this next bit, we create the attributes *only* if
 	 *	we're at the client or issuing certificate.
 	 */
-	if ((lookup <= 1) && sn && (sn->length < (sizeof(buf) / 2))) {
+	if ((lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
 
@@ -1441,7 +1447,7 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
  */
 static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf)
 {
-	SSL_METHOD *meth;
+	const SSL_METHOD *meth;
 	SSL_CTX *ctx;
 	X509_STORE *certstore;
 	int verify_mode = SSL_VERIFY_NONE;
@@ -1484,7 +1490,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf)
 		/*
 		 * We don't want to put the private key password in eap.conf, so  check
 		 * for our special string which indicates we should get the password
-		 * programmatically.
+		 * programmatically. 
 		 */
 		const char* special_string = "Apple:UseCertAdmin";
 		if (strncmp(conf->private_key_password,
@@ -1536,20 +1542,25 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf)
 	 *	the cert chain needs to be given in PEM from
 	 *	openSSL.org
 	 */
+	if (!conf->certificate_file) goto load_ca;
+
 	if (type == SSL_FILETYPE_PEM) {
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
-			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			radlog(L_ERR, "rlm_eap_tls: Error reading certificate file %s", conf->certificate_file);
+			radlog(L_ERR, "Error reading certificate file %s:%s",
+			       conf->certificate_file,
+			       ERR_error_string(ERR_get_error(), NULL));
 			return NULL;
 		}
 
 	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-		radlog(L_ERR, "rlm_eap_tls: Error reading certificate file %s", conf->certificate_file);
+		radlog(L_ERR, "Error reading certificate file %s:%s",
+		       conf->certificate_file,
+		       ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
 	}
 
 	/* Load the CAs we trust */
+load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
 			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
@@ -1558,18 +1569,22 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf)
 		}
 	}
 	if (conf->ca_file && *conf->ca_file) SSL_CTX_set_client_CA_list(ctx, SSL_load_client_CA_file(conf->ca_file));
-	if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-		radlog(L_ERR, "rlm_eap_tls: Error reading private key file %s", conf->private_key_file);
-		return NULL;
-	}
 
-	/*
-	 * Check if the loaded private key is the right one
-	 */
-	if (!SSL_CTX_check_private_key(ctx)) {
-		radlog(L_ERR, "rlm_eap_tls: Private key does not match the certificate public key");
-		return NULL;
+	if (conf->private_key_file) {
+		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
+			radlog(L_ERR, "Failed reading private key file %s:%s",
+			       conf->private_key_file,
+			       ERR_error_string(ERR_get_error(), NULL));
+			return NULL;
+		}
+		
+		/*
+		 * Check if the loaded private key is the right one
+		 */
+		if (!SSL_CTX_check_private_key(ctx)) {
+			radlog(L_ERR, "Private key does not match the certificate public key");
+			return NULL;
+		}
 	}
 
 	/*
@@ -1621,7 +1636,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf)
 
 	/*
 	 *	Callbacks, etc. for session resumption.
-	 */
+	 */						      
 	if (conf->session_cache_enable) {
 		SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
 		SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);

@@ -636,6 +636,13 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	this->status = RAD_LISTEN_STATUS_INIT;
 	this->recv = dual_tcp_recv;
 
+#ifdef WITH_TLS
+	if (this->tls) {
+		this->recv = dual_tls_recv;
+		this->send = dual_tls_send;
+	}
+#endif
+
 	/*
 	 *	FIXME: set O_NONBLOCK on the accept'd fd.
 	 *	See djb's portability rants for details.
@@ -2396,6 +2403,19 @@ int proxy_new_listener(home_server *home, int src_port)
 		 */
 		this->fd = fr_tcp_client_socket(&home->src_ipaddr,
 						&home->ipaddr, home->port);
+#ifdef WITH_TLS
+		if (home->tls) {
+			DEBUG("Trying SSL to port %d\n", home->port);
+			sock->ssn = tls_new_client_session(home->tls, this->fd);
+			if (!sock->ssn) {
+				listen_free(&this);
+				return 0;
+			}
+
+			this->recv = proxy_tls_recv;
+			this->send = proxy_tls_send;
+		}
+#endif
 	} else
 #endif
 		this->fd = fr_socket(&home->src_ipaddr, src_port);

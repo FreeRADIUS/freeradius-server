@@ -147,10 +147,7 @@ int eaptls_fail(EAP_HANDLER *handler, int peap_flag)
 	reply.data = NULL;
 	reply.dlen = 0;
 
-	/*
-	 *	Force the session to NOT be cached.
-	 */
-	SSL_CTX_remove_session(tls_session->ctx, tls_session->ssl->session);
+	tls_fail(tls_session);
 
 	eaptls_compose(handler->eap_ds, &reply);
 
