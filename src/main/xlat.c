@@ -51,6 +51,7 @@ static const char * const internal_xlat[] = {"check",
 					     "proxy-reply",
 					     "outer.request",
 					     "outer.reply",
+					     "outer.control",
 					     NULL};
 
 #if REQUEST_MAX_REGEX > 8
@@ -147,6 +148,12 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		if (request->parent && request->parent->reply) {
 			vps = request->parent->reply->vps;
 			packet = request->parent->reply;
+		}
+		break;
+			
+	case 7:
+		if (request->parent) {
+			vps = request->parent->config_items;
 		}
 		break;
 			
