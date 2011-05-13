@@ -2687,15 +2687,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 			if (cs) this->server = mainconfig.name;
 		}
 
-#ifdef WITH_TLS
-		if (!spawn_flag && this->tls) {
-		tls_error:
-			cf_log_err(cf_sectiontoitem(cs), "Threading must be enabled for TLS sockets to function properly.");
-			listen_free(&this);
-			return -1;
-		}
-#endif
-
 		*last = this;
 		last = &(this->next);
 
@@ -2778,10 +2769,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 				return -1;
 			}
 
-#ifdef WITH_TLS
-			if (!spawn_flag && this->tls) goto tls_error;
-#endif
-
 			*last = this;
 			last = &(this->next);
 		} /* loop over "listen" directives in server <foo> */
@@ -2850,6 +2837,14 @@ add_sockets:
 			defined_proxy = 1;
 		}
 
+#endif
+
+#ifdef WITH_TLS
+		if (!spawn_flag && this->tls) {
+			cf_log_err(cf_sectiontoitem(this->cs), "Threading must be enabled for TLS sockets to function properly.");
+			cf_log_err(cf_sectiontoitem(this->cs), "You probably need to do 'radiusd -fxx -l stdout' for debugging");
+			return -1;
+		}
 #endif
 		event_new_fd(this);
 	}
