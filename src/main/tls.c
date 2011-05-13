@@ -1398,7 +1398,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		RDEBUG2("chain-depth=%d, ", depth);
 		RDEBUG2("error=%d", err);
 
-		RDEBUG2("--> User-Name = %s", *identity);
+		if (identity) RDEBUG2("--> User-Name = %s", *identity);
 		RDEBUG2("--> BUF-Name = %s", common_name);
 		RDEBUG2("--> subject = %s", subject);
 		RDEBUG2("--> issuer  = %s", issuer);
