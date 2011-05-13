@@ -15,6 +15,7 @@ usage() {
 	echo "        -d RADIUS_DIR       Set radius directory" >&2
 	echo "        -t <type>           Set authentication method" >&2
 	echo "                            type can be pap, chap, mschap, or eap-md5" >&2
+	echo "        -P protocol         Select udp (default) or tcp" >&2
 	echo "        -x                  Enable debug output" >&2
 	echo "        -4                  Use IPv4 for the NAS address (default)" >&2
 	echo "        -6                  Use IPv6 for the NAS address" >&2
@@ -56,6 +57,10 @@ do
 		;;
 	-d) 
 		OPTIONS="$OPTIONS -d $2"
+    		shift;shift
+		;;
+	-P) 
+		OPTIONS="$OPTIONS -P $2"
     		shift;shift
 		;;
 	-x)
