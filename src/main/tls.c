@@ -1195,9 +1195,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	/*
 	 *	For this next bit, we create the attributes *only* if
-	 *	we're at the client or issuing certificate.
+	 *	we're at the client or issuing certificate, AND we
+	 *	have a user identity.  i.e. we don't create the
+	 *	attributes for RadSec connections.
 	 */
-	if ((lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
+	if (identity && 
+	    (lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
 
@@ -1215,7 +1218,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
-	if ((lookup <= 1) && asn_time && (asn_time->length < MAX_STRING_LEN)) {
+	if (identity && (lookup <= 1) && asn_time &&
+	    (asn_time->length < MAX_STRING_LEN)) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		pairadd(certs,
@@ -1229,7 +1233,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject,
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
-	if ((lookup <= 1) && subject[0] && (strlen(subject) < MAX_STRING_LEN)) {
+	if (identity && (lookup <= 1) && subject[0] &&
+	    (strlen(subject) < MAX_STRING_LEN)) {
 		pairadd(certs,
 			pairmake(cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET));
 	}
@@ -1237,7 +1242,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
-	if ((lookup <= 1) && issuer[0] && (strlen(issuer) < MAX_STRING_LEN)) {
+	if (identity && (lookup <= 1) && issuer[0] &&
+	    (strlen(issuer) < MAX_STRING_LEN)) {
 		pairadd(certs,
 			pairmake(cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET));
 	}
@@ -1248,7 +1254,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
-	if ((lookup <= 1) && common_name[0] && (strlen(common_name) < MAX_STRING_LEN)) {
+	if (identity && (lookup <= 1) && common_name[0] &&
+	    (strlen(common_name) < MAX_STRING_LEN)) {
 		pairadd(certs,
 			pairmake(cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET));
 	}
@@ -2327,6 +2334,12 @@ static int tls_socket_recv(rad_listen_t *listener)
 	}
 
 app:
+	/*
+	 *	FIXME: Run the packet through a virtual server in
+	 *	order to see if we like the certificate presented by
+	 *	the client.
+	 */
+
 	status = tls_application_data(sock->ssn, request);
 	RDEBUG("Application data status %d", status);
 
