@@ -1186,6 +1186,20 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	int count;
 	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;
+	struct timeval now;
+
+	/*
+	 *	Set the last packet received.
+	 */
+	gettimeofday(&now, NULL);
+#ifdef WITH_DETAIL
+	if (listener->type != RAD_LISTEN_DETAIL)
+#endif
+	{
+		listen_socket_t *sock = listener->data;
+
+		sock->last_packet = now.tv_sec;
+	}
 
 	packet_p = fr_packet_list_find(pl, packet);
 	if (packet_p) {
@@ -1248,8 +1262,6 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	    (listener->type != RAD_LISTEN_DETAIL)  &&
 #endif
 	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
-		struct timeval now;
-
 		static time_t last_complained = 0;
 
 		radlog(L_ERR, "Dropping request (%d is too many): from client %s port %d - ID: %d", count,
@@ -1261,7 +1273,6 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		/*
 		 *	Complain once every 10 seconds.
 		 */
-		gettimeofday(&now, NULL);
 		if ((last_complained + 10) < now.tv_sec) {
 			last_complained = now.tv_sec;
 			exec_trigger(NULL, NULL, "server.max_requests");
@@ -1284,7 +1295,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->listener = listener;
 	request->client = client;
 	request->packet = packet;
-	gettimeofday(&request->packet->timestamp, NULL);
+	request->packet->timestamp = now;
 	request->number = request_num_counter++;
 	request->priority = listener->type;
 	request->master_state = REQUEST_ACTIVE;
@@ -1737,7 +1748,10 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	 *	Status-Server packets don't count as real packets.
 	 */
 	if (request->proxy->code != PW_STATUS_SERVER) {
+		listen_socket_t *sock = request->proxy_listener->data;
+
 		request->home_server->last_packet = now.tv_sec;
+		sock->last_packet = now.tv_sec;
 	}
 
 	/*

@@ -631,6 +631,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	sock->other_ipaddr = src_ipaddr;
 	sock->other_port = src_port;
 	sock->client = client;
+	sock->opened = sock->last_packet = time(NULL);
 
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
