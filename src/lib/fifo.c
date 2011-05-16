@@ -83,8 +83,6 @@ void fr_fifo_free(fr_fifo_t *fi)
 
 int fr_fifo_push(fr_fifo_t *fi, void *data)
 {
-	int where;
-
 	if (!fi || !data) return 0;
 
 	if (fi->num >= fi->max) return 0;
