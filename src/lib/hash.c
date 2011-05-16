@@ -311,7 +311,7 @@ fr_hash_table_t *fr_hash_table_create(fr_hash_table_hash_t hashNode,
  */
 static void fr_hash_table_fixup(fr_hash_table_t *ht, uint32_t entry)
 {
-	uint32_t parent_entry = parent_of(entry);
+	uint32_t parent_entry;
 	fr_hash_entry_t **last, *cur;
 	uint32_t this;
 
