@@ -219,7 +219,6 @@ void rad_print_hex(RADIUS_PACKET *packet)
 			} else {
 				ptr += 2;
 				total -= 2;
-				vendor = 0;
 			}
 
 			print_hex_data(ptr, attrlen, 3);
@@ -739,12 +738,12 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 	ssize_t len;
 	size_t my_room;
 	uint8_t *ptr = start;
-	const VALUE_PAIR *old_vp;
 	const VALUE_PAIR *vp = *pvp;
 	const VALUE_PAIR *svp = vp;
 
-#ifndef NDEBUG
+	if (!svp) return 0;
 
+#ifndef NDEBUG
 	if (nest > fr_attr_max_tlv) {
 		fr_strerror_printf("vp2data_tlvs: attribute nesting overflow");
 		return -1;
@@ -754,7 +753,6 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 	while (vp) {
 		if (room < 2) return ptr - start;
 		
-		old_vp = vp;
 		ptr[0] = (vp->attribute >> fr_attr_shift[nest]) & fr_attr_mask[nest];
 		ptr[1] = 2;
 		
@@ -895,7 +893,6 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
 			return -1;
 		}
-		len = vp->length;
 		break;
 
 	default:		/* unknown type: ignore it */
