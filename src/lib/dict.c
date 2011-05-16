@@ -1728,6 +1728,7 @@ static int my_dict_init(const char *dir, const char *fn,
 	block_tlv[0] = NULL;
 	block_tlv[1] = NULL;
 	block_tlv[2] = NULL;
+	block_tlv[3] = NULL;
 
 	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
 	    strlen(dir) >= sizeof(dirtmp) / 2) {
