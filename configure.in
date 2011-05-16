@@ -270,6 +270,19 @@ AC_ARG_WITH(dhcp,
 )
 
 
+dnl extra argument: --with-post-proxy-authorize
+WITH_POST_PROXY_AUTHORIZE=
+AC_ARG_WITH(post-proxy-authorize,
+[  --with-post-proxy-authorize  1.x compatibility  (default=no) ],
+[ case "$withval" in
+    yes)
+	WITH_POST_PROXY_AUTHORIZE=""
+        ;;
+    *)
+	;;
+  esac ]
+)
+
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
 dnl #  statically to the server.
@@ -1109,6 +1122,10 @@ else
 fi
 
 AC_SUBST(HOSTINFO, $host)
+
+if test "x$WITH_POST_PROXY_AUTHORIZE" != "x"; then
+	AC_DEFINE(WITH_POST_PROXY_AUTHORIZE, 1, [1.x compatibility])
+fi
 
 dnl #############################################################
 dnl #
