@@ -110,6 +110,11 @@ static const CONF_PARSER proxy_config[] = {
 	  offsetof(realm_config_t, wake_all_if_all_dead),
 	  NULL, "no" },
 
+#ifdef WITH_POST_PROXY_AUTHORIZE
+        { "post_proxy_authorize", PW_TYPE_BOOLEAN, 0,
+	  &mainconfig.post_proxy_authorize, "yes" },
+#endif
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 #endif

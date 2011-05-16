@@ -1559,6 +1559,19 @@ int setup_modules(int reload, CONF_SECTION *config)
  */
 int module_authorize(int autz_type, REQUEST *request)
 {
+#ifdef WITH_POST_PROXY_AUTHORIZE
+	/*
+	 *	We have a proxied packet, and we've been told
+	 *	to NOT pass proxied packets through 'authorize'
+	 *	a second time.  So stop.
+	 */
+	if ((request->proxy != NULL &&
+	     mainconfig.post_proxy_authorize == FALSE)) {
+		DEBUG2(" authorize: Skipping authorize in post-proxy stage");
+		return RLM_MODULE_NOOP;
+	}
+#endif
+
 	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
 }
 
