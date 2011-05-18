@@ -168,14 +168,14 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 /*
- * Perform a checked write. If the write fails or is not complete, truncate
- * the file, eliminating the last bytes_accum + current partial write.
+ * Perform a checked write. If the write fails or is not complete,
+ * return an error.
  */
-static int checked_write(REQUEST *request, off_t *bytes_accum, int fd,
-			 const char *format, ...)
+static ssize_t checked_write(REQUEST *request, int fd, const char *format, ...)
 {
-	char buf[2048];
-	int buf_used, written;
+	char buf[2048], *p;
+	size_t buf_used;
+	ssize_t written;
 	va_list args;
 
 	va_start(args, format);
@@ -184,39 +184,31 @@ static int checked_write(REQUEST *request, off_t *bytes_accum, int fd,
 
 	if (buf_used == 0) return 0;
 
-	if (buf_used >= (int) sizeof(buf)) {
+	if (buf_used >= sizeof(buf)) {
 		radlog_request(L_ERR, 0, request, "Truncated vsnprintf");
 		return -1;
 	}
 
-	written = write(fd, buf, buf_used);
-	if (written > 0) {
-		*bytes_accum += written;
-	}
-	if (written != buf_used) {
-		/*
-		 *	Don't worry if the truncate fails, since the
-		 *	detail reader ignores partial entries.
-		 */
-		ftruncate(fd, lseek(fd, 0, SEEK_CUR) - *bytes_accum);
-		close(fd);
+	p = buf;
+	while (buf_used > 0) {
+		written = write(fd, p, buf_used);
+		if (written <= 0) return -1;
 
-		radlog_request(L_ERR, 0, request, "Truncated write (wanted %d, wrote %d)",
-			       buf_used, written);		
-		return -1;
+		p += written;
+		buf_used -= written;
 	}
-	return written;
+
+	return 1;		/* wrote stuff OK. */
 }
 
 
-static int checked_write_vp(REQUEST *request, off_t *bytes_accum, int fd,
-			    VALUE_PAIR *vp)
+static int checked_write_vp(REQUEST *request, int fd, VALUE_PAIR *vp)
 {
 	char buffer[1024];
 
 	vp_prints(buffer, sizeof(buffer), vp);
 
-	if (checked_write(request, bytes_accum, fd, "\t%s\n", buffer) < 0) {
+	if (checked_write(request, fd, "\t%s\n", buffer) < 0) {
 		return -1;
 	}
 
@@ -236,9 +228,9 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	struct stat	st;
 	int		locked;
 	int		lock_count;
-	off_t		bytes_accum = 0;
 	struct timeval	tv;
 	VALUE_PAIR	*pair;
+	off_t		fsize;
 
 	struct detail_instance *inst = instance;
 
@@ -267,6 +259,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	RDEBUG2("%s expands to %s", inst->detailfile, buffer);
 
 #ifdef HAVE_FNMATCH_H
+#ifdef FNM_FILE_NAME
 	/*
 	 *	If we read it from a detail file, and we're about to
 	 *	write it back to the SAME detail file directory, then
@@ -279,6 +272,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		RDEBUG2("WARNING: Suppressing infinite loop.");
 		return RLM_MODULE_NOOP;
 	}
+#endif
 #endif
 
 	/*
@@ -373,20 +367,24 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	/*
 	 *	Post a timestamp
 	 */
-	if (lseek(outfd, 0L, SEEK_END) < 0) {
+	fsize = lseek(outfd, 0L, SEEK_END);
+	if (fsize < 0) {
 		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to seek to the end of detail file %s",
 			buffer);
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
+
 	if (radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL) == 0) {
 		radlog_request(L_ERR, 0, request, "rlm_detail: Unable to expand detail header format %s",
 			inst->header);
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
-	if (checked_write(request, &bytes_accum, outfd,
-			  "%s\n", timestamp) < 0) {
+	if (checked_write(request, outfd, "%s\n", timestamp) < 0) {
+	fail:
+		ftruncate(outfd, fsize); /* ignore errors! */
+		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -400,15 +398,15 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 */
 		if ((packet->code > 0) &&
 		    (packet->code < FR_MAX_PACKET_CODE)) {
-			if (checked_write(request, &bytes_accum, outfd,
+			if (checked_write(request, outfd,
 					  "\tPacket-Type = %s\n",
-					  fr_packet_codes[packet->code]) == -1) {
-				return RLM_MODULE_FAIL;	
+					  fr_packet_codes[packet->code]) < 0) {
+				goto fail;
 			}
 		} else {
-			if (checked_write(request, &bytes_accum, outfd,
-					  "\tPacket-Type = %d\n", packet->code) == -1) {
-				return RLM_MODULE_FAIL;
+			if (checked_write(request,outfd,
+					  "\tPacket-Type = %d\n", packet->code) < 0) {
+				goto fail;
 			}
 		}
 	}
@@ -449,13 +447,11 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			break;
 		}
 
-		if (checked_write_vp(request, &bytes_accum,
-				     outfd, &src_vp) < 0) {
-			return RLM_MODULE_FAIL;
+		if (checked_write_vp(request, outfd, &src_vp) < 0) {
+			goto fail;
 		}
-		if (checked_write_vp(request, &bytes_accum,
-				     outfd, &dst_vp) < 0) {
-			return RLM_MODULE_FAIL;
+		if (checked_write_vp(request, outfd, &dst_vp) < 0) {
+			goto fail;
 		}
 
 		src_vp.name = "Packet-Src-IP-Port";
@@ -467,13 +463,11 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		dst_vp.type = PW_TYPE_INTEGER;
 		dst_vp.vp_integer = packet->dst_port;
 
-		if (checked_write_vp(request, &bytes_accum,
-				     outfd, &src_vp) < 0) {
-			return RLM_MODULE_FAIL;
+		if (checked_write_vp(request, outfd, &src_vp) < 0) {
+			goto fail;
 		}
-		if (checked_write_vp(request, &bytes_accum,
-				     outfd, &dst_vp) < 0) {
-			return RLM_MODULE_FAIL;
+		if (checked_write_vp(request, outfd, &dst_vp) < 0) {
+			goto fail;
 		}
 	}
 
@@ -493,9 +487,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		/*
 		 *	Print all of the attributes.
 		 */
-		if (checked_write_vp(request, &bytes_accum,
-				     outfd, pair) < 0) {
-			return RLM_MODULE_FAIL;
+		if (checked_write_vp(request, outfd, pair) < 0) {
+			goto fail;
 		}
 	}
 
@@ -510,25 +503,25 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			inet_ntop(request->proxy->dst_ipaddr.af,
 				  &request->proxy->dst_ipaddr.ipaddr,
 				  proxy_buffer, sizeof(proxy_buffer));
-			if (checked_write(request, &bytes_accum, outfd,
-				"\tFreeradius-Proxied-To = %s\n",
-				proxy_buffer) < 0) {
-				return RLM_MODULE_FAIL;   
+			if (checked_write(request, outfd,
+					  "\tFreeradius-Proxied-To = %s\n",
+					  proxy_buffer) < 0) {
+				goto fail;
 			}
 			RDEBUG("Freeradius-Proxied-To = %s",
 				proxy_buffer);
 		}
 #endif
 
-		if (checked_write(request, &bytes_accum, outfd,
-			"\tTimestamp = %ld\n",
-			(unsigned long) request->timestamp) < 0) {
-			return RLM_MODULE_FAIL;
+		if (checked_write(request, outfd,
+				  "\tTimestamp = %ld\n",
+				  (unsigned long) request->timestamp) < 0) {
+			goto fail;
 		}
 	}
 
-	if (checked_write(request, &bytes_accum, outfd, "\n") < 0) {
-		return RLM_MODULE_FAIL;
+	if (checked_write(request, outfd, "\n") < 0) {
+		goto fail;
 	}
 
 	if (inst->locking) {
