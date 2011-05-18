@@ -37,7 +37,6 @@ radeapclient.lo: radeapclient.c $(HEADERS)
 
 install-subdirs:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=install common
-	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radeapclient$(EXEEXT) $(R)$(bindir)
 
 .PHONY: common $(RLM_SUBDIRS)
 

@@ -174,3 +174,9 @@ install:
 	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
 	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $$?; \
 	fi
+ifneq ($(RLM_UTILS),)
+	$(INSTALL) -d -m 755 $(R)$(bindir)
+	for x in $(RLM_UTILS); do \
+		$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) $$x$(EXEEXT) $(R)$(bindir); \
+	done
+endif
