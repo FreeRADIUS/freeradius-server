@@ -92,6 +92,7 @@ struct conf_data {
 	void       (*free)(void *); /* free user data function */
 };
 
+extern int check_config;
 
 static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
 				void *data, void (*data_free)(void *),
@@ -300,10 +301,13 @@ void cf_section_parse_free(CONF_SECTION *cs, void *base)
 	 *	Free up dynamically allocated string pointers.
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
+		int type;
 		char **p;
 
-		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
-		    (variables[i].type != PW_TYPE_FILENAME)) {
+		type = variables[i].type & ~PW_TYPE_DEPRECATED;
+
+		if ((type != PW_TYPE_STRING_PTR) &&
+		    (type != PW_TYPE_FILENAME)) {
 			continue;
 		}
 
@@ -847,12 +851,15 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 int cf_item_parse(CONF_SECTION *cs, const char *name,
 		  int type, void *data, const char *dflt)
 {
-	int rcode = 0;
+	int deprecated, rcode = 0;
 	char **q;
 	const char *value;
 	fr_ipaddr_t ipaddr;
 	const CONF_PAIR *cp = NULL;
 	char ipbuf[128];
+
+	deprecated = (type & PW_TYPE_DEPRECATED);
+	type &= ~PW_TYPE_DEPRECATED;
 
 	if (cs) cp = cf_pair_find(cs, name);
 	if (cp) {
@@ -868,6 +875,13 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 
 	if (!value) {
 		return 0;
+	}
+
+	if (deprecated) {
+		cf_log_err(cf_sectiontoitem(cs), "\"%s\" is deprecated.  Please replace it with the up-to-date configuration", name);
+		if (check_config) {
+			return -1;
+		}
 	}
 
 	switch (type) {

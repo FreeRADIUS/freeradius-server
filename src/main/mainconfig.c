@@ -246,10 +246,10 @@ static const CONF_PARSER server_config[] = {
 	 *	DON'T exist in radiusd.conf, then the previously parsed
 	 *	values for "log { foo = bar}" will be used.
 	 */
-	{ "log_auth", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth, NULL },
-	{ "log_auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, NULL },
-	{ "log_auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, NULL },
-	{ "log_stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names, NULL },
+	{ "log_auth", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &mainconfig.log_auth, NULL },
+	{ "log_auth_badpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &mainconfig.log_auth_badpass, NULL },
+	{ "log_auth_goodpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &mainconfig.log_auth_goodpass, NULL },
+	{ "log_stripped_names", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &log_stripped_names, NULL },
 
 	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
 
@@ -274,11 +274,11 @@ static const CONF_PARSER bootstrap_config[] = {
 	 *	For backwards compatibility.
 	 */
 #ifdef HAVE_SETUID
-	{ "user",  PW_TYPE_STRING_PTR, 0, &uid_name, NULL },
-	{ "group",  PW_TYPE_STRING_PTR, 0, &gid_name, NULL },
+	{ "user",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, 0, &uid_name, NULL },
+	{ "group",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, 0, &gid_name, NULL },
 #endif
-	{ "chroot",  PW_TYPE_STRING_PTR, 0, &chroot_dir, NULL },
-	{ "allow_core_dumps", PW_TYPE_BOOLEAN, 0, &allow_core_dumps, NULL },
+	{ "chroot",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, 0, &chroot_dir, NULL },
+	{ "allow_core_dumps", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &allow_core_dumps, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -913,7 +913,9 @@ int read_mainconfig(int reload)
 	 *	This allows us to figure out where, relative to
 	 *	radiusd.conf, the other configuration files exist.
 	 */
-	cf_section_parse(cs, NULL, server_config);
+	if (cf_section_parse(cs, NULL, server_config) < 0) {
+		return -1;
+	}
 
 	if (mainconfig.max_request_time == 0) mainconfig.max_request_time = 100;
 	if (mainconfig.reject_delay > 5) mainconfig.reject_delay = 5;

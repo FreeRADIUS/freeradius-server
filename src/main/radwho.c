@@ -66,6 +66,7 @@ int debug_flag = 0;
 const char *progname = "radwho";
 const char *radlog_dir = NULL;
 const char *radutmp_file = NULL;
+int check_config = FALSE;
 
 char *radius_dir = NULL;
 const char *radacct_dir = NULL;

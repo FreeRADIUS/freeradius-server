@@ -89,6 +89,7 @@ int radius_xlat(UNUSED char *out, UNUSED int outlen, UNUSED const char *fmt,
 {
 	return -1;
 }
+int check_config = FALSE;
 
 static FILE *outputfp = NULL;
 static int echo = FALSE;
