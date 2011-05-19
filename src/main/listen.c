@@ -816,10 +816,12 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 	snprintf(buffer, bufsize, "%d", sock->my_port);
 	FORWARD;
 
+#ifdef WITH_TLS
 	if (this->tls) {
 		ADDSTRING(" (TLS)");
 		FORWARD;
 	}
+#endif
 
 	if (this->server) {
 		ADDSTRING(" as server ");
@@ -2609,6 +2611,9 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 	int		auth_port = 0;
 #ifdef WITH_PROXY
 	int		defined_proxy = 0;
+#endif
+#ifndef WITH_TLS
+	spawn_flag = spawn_flag; /* -Wunused */
 #endif
 
 	/*
