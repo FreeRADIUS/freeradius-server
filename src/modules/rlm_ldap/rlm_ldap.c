@@ -249,22 +249,22 @@ static const CONF_PARSER module_config[] = {
 	 *	TLS configuration  The first few are here for backwards
 	 *	compatibility.  The last is the new subsection.
 	 */
-	{"tls_mode", PW_TYPE_BOOLEAN,
+	{"tls_mode", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
 	 offsetof(ldap_instance,tls_mode), NULL, "no"},
 
-	{"start_tls", PW_TYPE_BOOLEAN,
+	{"start_tls", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
 	 offsetof(ldap_instance,start_tls), NULL, "no"},
-	{"tls_cacertfile", PW_TYPE_FILENAME,
+	{"tls_cacertfile", PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
 	 offsetof(ldap_instance,tls_cacertfile), NULL, NULL},
-	{"tls_cacertdir", PW_TYPE_FILENAME,
+	{"tls_cacertdir", PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
 	 offsetof(ldap_instance,tls_cacertdir), NULL, NULL},
-	{"tls_certfile", PW_TYPE_FILENAME,
+	{"tls_certfile", PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
 	 offsetof(ldap_instance,tls_certfile), NULL, NULL},
-	{"tls_keyfile", PW_TYPE_FILENAME,
+	{"tls_keyfile", PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
 	 offsetof(ldap_instance,tls_keyfile), NULL, NULL},
-	{"tls_randfile", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
+	{"tls_randfile", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, /* OK if it changes on HUP */
 	 offsetof(ldap_instance,tls_randfile), NULL, NULL},
-	{"tls_require_cert", PW_TYPE_STRING_PTR,
+	{"tls_require_cert", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
 	 offsetof(ldap_instance,tls_require_cert), NULL, TLS_DEFAULT_VERIFY},
 	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
 
