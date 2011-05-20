@@ -27,7 +27,7 @@ CA_DEFAULT_DAYS = `grep default_days ca.cnf | sed 's/.*=//;s/^ *//'`
 #
 ######################################################################
 .PHONY: all
-all: index.txt serial dh random server ca
+all: index.txt serial dh random server ca client
 
 .PHONY: client
 client: client.pem
