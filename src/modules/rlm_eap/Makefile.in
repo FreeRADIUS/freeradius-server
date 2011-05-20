@@ -10,7 +10,7 @@ CLIENTLIBS  = libeap/$(LIBPREFIX)freeradius-eap.la $(LIBRADIUS)
 RLM_LIBS    = libeap/$(LIBPREFIX)freeradius-eap.la $(LIBLTDL)
 RLM_INSTALL = install-subdirs
 RLM_SUBDIRS = libeap @eaptypes@
-RLM_UTILS   = radeapclient
+RLM_UTILS   = 
 
 #
 # Not using shared libraries, add in ALL known static modules
