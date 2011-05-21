@@ -2826,6 +2826,31 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	}
 
 	/*
+	 *	The data is very long.
+	 */
+	if (length > sizeof(vp->vp_octets)) {
+		/*
+		 *	Long encrypted attributes are forbidden.
+		 */
+		if (da->flags.encrypt != FLAG_ENCRYPT_NONE) goto raw;
+
+#ifndef NDEBUG
+		/*
+		 *	Catch programming errors.
+		 */
+		if ((da->type != PW_TYPE_STRING) &&
+		    (da->type != PW_TYPE_OCTETS)) goto raw;
+
+#endif
+
+		/*
+		 *	FIXME: Figure out how to deal with long
+		 *	strings and binary data!
+		 */
+		goto raw;
+	}
+
+	/*
 	 *	The attribute is known, and well formed.  We can now
 	 *	create it.  The main failure from here on in is being
 	 *	out of memory.
@@ -3325,6 +3350,7 @@ static ssize_t data2vp_continued(const RADIUS_PACKET *packet,
 	while (left > 0) {
 #ifndef NDEBUG
 		if (data >= (start + length)) {
+			free(attr);
 			fr_strerror_printf("data2vp_continued: Internal sanity check failed");
 			return -1;
 		}
