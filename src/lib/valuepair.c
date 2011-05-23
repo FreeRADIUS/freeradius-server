@@ -1420,10 +1420,20 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		vp->type = PW_TYPE_OCTETS;
 		/* FALL-THROUGH */
 		
-	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_ABINARY:
 		vp->length = size >> 1;
+		if (vp->length > sizeof(vp->vp_octets)) {
+			vp->length = sizeof(vp->vp_octets);
+		}
+		break;
+
+	case PW_TYPE_STRING:
+		vp->length = size >> 1;
+		memset(&vp->vp_strvalue, 0, sizeof(vp->vp_strvalue));
+		if (vp->length >= sizeof(vp->vp_strvalue)) {
+			vp->length = sizeof(vp->vp_strvalue) - 1;
+		}
 		break;
 	}
 
