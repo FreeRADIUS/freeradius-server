@@ -108,5 +108,11 @@ leap:
 
 ATTRS	:= rfc.txt errors.txt extended.txt lucent.txt wimax.txt
 
-attrs:	${ATTRS}
+attrs:	${ATTRS} ../main/radattr
 	../main/radattr -d ../../share rfc.txt
+
+${LIBRADIUS}: $(wildcard ../include/*.h) $(wildcard ../lib/*.c)
+	${MAKE} -C ../lib all
+
+../main/radattr: ${LIBRADIUS} ../main/radattr.c
+	${MAKE} -C ../main radattr
