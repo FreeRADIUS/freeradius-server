@@ -25,6 +25,8 @@
 #define PW_TYPE_EXTENDED_FLAGS	       	16
 #define PW_TYPE_EVS	       		17
 
+#define PW_FLAG_LONG			(1 << 8)
+
 #define	PW_AUTHENTICATION_REQUEST	1
 #define	PW_AUTHENTICATION_ACK		2
 #define	PW_AUTHENTICATION_REJECT	3

@@ -833,6 +833,12 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	data = vp->vp_octets;
 	len = vp->length;
 
+	/*
+	 *	Short-circuit it for long attributes.  They can't be
+	 *	encrypted, tagged, etc.
+	 */
+	if ((vp->type & PW_FLAG_LONG) != 0) goto do_tlv;
+
 	switch(vp->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
@@ -888,6 +894,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	}
 
 	case PW_TYPE_TLV:
+	do_tlv:
 		data = vp->vp_tlv;
 		if (!data) {
 			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
@@ -2740,12 +2747,13 @@ static ssize_t data2vp_raw(UNUSED const RADIUS_PACKET *packet,
 	vp->length = length;
 
 	/*
-	 *	If the data is too large, mark it as a "TLV".
+	 *	If it's short, put it into the array.  If it's too
+	 *	long, flag it as such, and put it somewhere else;
 	 */
 	if (length <= sizeof(vp->vp_octets)) {
 		memcpy(vp->vp_octets, data, length);
 	} else {
-		vp->type = PW_TYPE_TLV;
+		vp->type |= PW_FLAG_LONG;
 		vp->vp_tlv = malloc(length);
 		if (!vp->vp_tlv) {
 			pairfree(&vp);

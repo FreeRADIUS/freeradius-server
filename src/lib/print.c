@@ -215,6 +215,8 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 	out[0] = '\0';
 	if (!vp) return 0;
 
+	if ((vp->type & PW_FLAG_LONG) != 0) goto do_tlv;
+
 	switch (vp->type) {
 		case PW_TYPE_STRING:
 			if ((delimitst == 1) && vp->flags.has_tag) {
@@ -337,6 +339,7 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 			break;
 
 		case PW_TYPE_TLV:
+	do_tlv:
 			if (outlen <= (2 * (vp->length + 1))) return 0;
 
 			strcpy(buf, "0x");
@@ -466,7 +469,7 @@ const char *vp_print_name(char *buffer, size_t bufsize,
 		bufsize -= len;
 	}
 
-	len = vp_print_attr_oid(p, bufsize , attr, dv_type);
+	vp_print_attr_oid(p, bufsize , attr, dv_type);
 
 	return buffer;
 }

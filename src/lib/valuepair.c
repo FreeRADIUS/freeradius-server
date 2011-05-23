@@ -1108,34 +1108,36 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/* raw octets: 0x01020304... */
 		case PW_TYPE_OCTETS:
 			if (strncasecmp(value, "0x", 2) == 0) {
+				size_t size;
 				uint8_t *us;
+
 				cp = value + 2;
 				us = vp->vp_octets;
 				vp->length = 0;
 
-
 				/*
-				 *	There is only one character,
-				 *	die.
+				 *	Invalid.
 				 */
-				if ((strlen(cp) & 0x01) != 0) {
+				size = strlen(cp);
+				if ((size  & 0x01) != 0) {
 					fr_strerror_printf("Hex string is not an even length string.");
 					return NULL;
 				}
 
-
-				while (*cp &&
-				       (vp->length < MAX_STRING_LEN)) {
-					unsigned int tmp;
-
-					if (sscanf(cp, "%02x", &tmp) != 1) {
-						fr_strerror_printf("Non-hex characters at %c%c", cp[0], cp[1]);
+				vp->length = size >> 1;
+				if (size > 2*sizeof(vp->vp_octets)) {
+					vp->type |= PW_FLAG_LONG;
+					us = vp->vp_tlv = malloc(vp->length);
+					if (!us) {
+						fr_strerror_printf("Out of memory.");
 						return NULL;
 					}
+				}
 
-					cp += 2;
-					*(us++) = tmp;
-					vp->length++;
+				if (fr_hex2bin(cp, us,
+					       vp->length) != vp->length) {
+					fr_strerror_printf("Invalid hex data");
+					return NULL;
 				}
 			}
 			break;
@@ -1306,6 +1308,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	unsigned int    dv_type = 1;
 	size_t		size;
 	const char	*p = attribute;
+	void		*data;
 	char		*q;
 	VALUE_PAIR	*vp;
 	DICT_VENDOR	*dv;
@@ -1499,6 +1502,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	if (!value) return vp;
 
 	size = strlen(value + 2);
+	data = vp->vp_octets;
 
 	/*
 	 *	We may be reading something like Attr-5.  i.e.
@@ -1515,7 +1519,14 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	case PW_TYPE_ABINARY:
 		vp->length = size >> 1;
 		if (vp->length > sizeof(vp->vp_octets)) {
-			vp->length = sizeof(vp->vp_octets);
+			vp->vp_tlv = malloc(vp->length);
+			if (!vp->vp_tlv) {
+				fr_strerror_printf("Out of memory");
+				free(vp);
+				return NULL;
+			}
+			data = vp->vp_tlv;
+			vp->type |= PW_FLAG_LONG;
 		}
 		break;
 
@@ -1523,12 +1534,19 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		vp->length = size >> 1;
 		memset(&vp->vp_strvalue, 0, sizeof(vp->vp_strvalue));
 		if (vp->length >= sizeof(vp->vp_strvalue)) {
-			vp->length = sizeof(vp->vp_strvalue) - 1;
+			vp->vp_tlv = malloc(vp->length);
+			if (!vp->vp_tlv) {
+				fr_strerror_printf("Out of memory");
+				free(vp);
+				return NULL;
+			}
+			data = vp->vp_tlv;
+			vp->type |= PW_FLAG_LONG;
 		}
 		break;
 	}
 
-	if (fr_hex2bin(value + 2, vp->vp_octets, size) != vp->length) {
+	if (fr_hex2bin(value + 2, data, size) != vp->length) {
 		fr_strerror_printf("Invalid hex string");
 		free(vp);
 		return NULL;
