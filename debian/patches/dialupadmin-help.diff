@@ -1,8 +1,8 @@
 ## 02-dialupadmin-help.dpatch by Mark Hymers <mark@hymers.org.uk>
 ## DP: Fix README location
 
---- old/dialup_admin/htdocs/help/help.php3	(revision 1519)
-+++ new/dialup_admin/htdocs/help/help.php3	(working copy)
+--- old/dialup_admin/htdocs/help/help.php	(revision 1519)
++++ new/dialup_admin/htdocs/help/help.php	(working copy)
 @@ -48,13 +48,13 @@
  <?php
  $in_file = '';
