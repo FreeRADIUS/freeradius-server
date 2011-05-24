@@ -127,7 +127,7 @@ ATTRIBUTE	3GPP2-PrePaid-Tariff-Switching		98	octets
 ATTRIBUTE	3GPP2-MEID				116	octets
 ATTRIBUTE	3GPP2-DNS-Server-IP-Address		117	octets
 
-ATTRIBUTE	3GPP2-Carrier-ID			142	octets
+ATTRIBUTE	3GPP2-Carrier-ID			142	string
 
 # More sub-types
 ATTRIBUTE	3GPP2-GMT-Time-Zone-Offset		143	signed
