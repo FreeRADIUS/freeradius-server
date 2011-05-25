@@ -41,21 +41,24 @@ static void cleanup(RADIUS_PACKET *packet)
 static int replicate_packet(void *instance, REQUEST *request)
 {
 	int rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *last;
 	home_server *home;
 	REALM *realm;
 	home_pool_t *pool;
-	RADIUS_PACKET *packet;
+	RADIUS_PACKET *packet = NULL;
 
 	instance = instance;	/* -Wunused */
+	last = request->config_items;
 
 	/*
 	 *	Send as many packets as necessary to different
 	 *	destinations.
 	 */
 	while (1) {
-		vp = pairfind(request->config_items, PW_REPLICATE_TO_REALM);
+		vp = pairfind(last, PW_REPLICATE_TO_REALM);
 		if (!vp) break;
+
+		last = vp->next;
 
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
@@ -119,9 +122,9 @@ static int replicate_packet(void *instance, REQUEST *request)
 				return RLM_MODULE_FAIL;
 			}
 		} else {
-			int i;
+			size_t i;
 
-			for (i = 0; i < sizeof(packet->vector)) {
+			for (i = 0; i < sizeof(packet->vector); i++) {
 				packet->vector[i] = fr_rand() & 0xff;
 			}
 
@@ -142,6 +145,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 		/*
 		 *	Encode, sign and then send the packet.
 		 */
+		RDEBUG("Replicating packet to Realm %s", realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
 			RDEBUG("ERROR: Failed replicating packet: %s",
 			       fr_strerror());
