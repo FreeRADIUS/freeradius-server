@@ -849,7 +849,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 */
 	varlen = rad_copy_variable(buffer, *from);
 	if (varlen < 0) {
-		RDEBUG2("Badly formatted variable: %s", *from);
+		RDEBUG2("ERROR: Badly formatted variable: %s", *from);
 		return -1;
 	}
 	*from += varlen;
@@ -880,7 +880,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 */
 		len1 = rad_copy_variable(buffer, p);
 		if (len1 < 0) {
-			RDEBUG2("Badly formatted variable: %s", p);
+			RDEBUG2("ERROR: Badly formatted variable: %s", p);
 			return -1;
 		}
 
@@ -913,7 +913,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 			len2 = rad_copy_variable(l, p);
 
 			if (len2 < 0) {
-				RDEBUG2("Invalid text after :- at %s", p);
+				RDEBUG2("ERROR: Invalid text after :- at %s", p);
 				return -1;
 			}
 			p += len2;
