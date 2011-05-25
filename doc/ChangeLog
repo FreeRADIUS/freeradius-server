@@ -1,5 +1,7 @@
 FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	Feature improvements
+	* Added doc/rfc/rfc6158.txt: RADIUS Design Guidelines.
+	  All vendors need to read it and follow its directions.
 	* Microsoft SoH support for PEAP from Phil Mayers.
 	  See doc/SoH.txt
 	* Certificate "bootstrap" script now checks for certificate expiry.
@@ -8,13 +10,18 @@ FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	  Patch from Alexander Clouter.
 	* OCSP support from Alex Bergmann.  See raddb/eap.conf, "ocsp"
 	  section.
-	* Updated dictionary.huawei, and added dictionary.eltex
+	* Updated dictionary.huawei, dictionary.3gpp, dictionary.3gpp3.
+	* Added dictionary.eltex, dictionary.motorola, and dictionary.ukerna.
 	* Experimental redis support from Gabriel Blanchard.
 	  See raddb/modules/redis and raddb/modules/rediswho
 	* Add "key" to rlm_fastusers.  Closes bug #126.
 	* Added scripts/radtee from original software at
 	  http://horde.net/~jwm/software/misc/comparison-tee
-	* Added dictionary.ukerna from Moonshot project
+	* Updated radmin "man" page for new commands.
+	* radsniff now prints the hex decoding of the packet (-x -x -x)
+	* mschap module now reloads its configuration on HUP
+	* Added experimental "replicate" module.  See raddb/modules/replicate
+	  Build it with "./configure --with-experimental-modules"
 
 	Bug fixes
 	* Ignore pre/post-proxy sections if proxying is disabled
@@ -34,12 +41,12 @@ FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	* Add group membership query to MS-SQL examples.  Closes bug #120.
 	* Don't cast NAS-Port to integer in Postgresql queries.
 	  Closes bug #112.
-	* Fixes for libtool && autoconf, from Sam Hartman.
+	* Fixes for libtool and autoconf from Sam Hartman.
 	* radsniff should read the dictionaries in more situations.
 	* Use fnmatch to check for detail file reader==writer.
 	  Closes bug #128.
 	* Check for short writes (i.e. disk full) in rlm_detail.
-	  Closes bug #130.
+	  Closes bug #130.  Patches and testing from John Morrissey.
 	* Fix typo in src/lib/token.c.  Closes bug #124
 	* Allow workstation trust accounts to use MS-CHAP.
 	  Closes bug #123.
@@ -74,7 +81,7 @@ FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	  This prevents timing attacks (though none are known).
 	* Allow sqlite module to do normal SELECT queries.
 	* rlm_wimax now has a configure script
-	* Moved Ascend and USR "illegal" dictionaries to their own
+	* Moved Ascend, USR, and Motorola "illegal" dictionaries to separate
 	  files.  See share/dictionary for explanations.
 	* Check for duplicate module definitions in the modules{} section,
 	  and refuse to start if duplicates are found.
@@ -82,6 +89,22 @@ FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	  duplicates are found.
 	* Don't use udpfromto if source is INADDR_ANY.  Closes bug #148.
 	* Check pre-conditions before running radmin "inject file".
+	* Don't over-ride "no match" with "match" for regexes.
+	  Closes bug #152.
+	* Make retry and error message configurable in mschap.
+	  See raddb/modules/mschap
+	* Allow EAP-MSCHAPv2 to send error message to client.  This change
+	  allows some clients to prompt the user for a new password.
+	  See raddb/eap.conf, mschapv2 section, "send_error".
+	* Load the default virtual server before any others.
+	  This matches what users expect, and reduces confusion.
+	* Fix configure checks for udpfromto.  Fixes Debian bug #606866
+	* Definitive fix for bug #35, where the server could crash under
+	  certain loads.  Changes src/lib/packet.c to use RB trees.
+	* Updated "configure" checks to allow IPv6 udpfromto on Linux.
+	* SQL module now returns NOOP if the accounting start/interim/stop
+	  queries don't do anything.
+	* Allow %{outer.control: ... } in string expansions
 
 FreeRADIUS 2.1.10 Tue 28 Sep 12:00:00 CEST 2010, urgency=medium
 	Feature improvements
