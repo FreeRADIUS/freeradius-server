@@ -113,13 +113,34 @@ static int replicate_packet(void *instance, REQUEST *request)
 			packet->sockfd = -1;
 			packet->code = request->packet->code;
 			packet->id = fr_rand() & 0xff;
-			packet->vps = paircopy(request->packet->vps);
 
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
 				RDEBUG("ERROR: Failed opening socket: %s", fr_strerror());
 				cleanup(packet);
 				return RLM_MODULE_FAIL;
+			}
+
+			packet->vps = paircopy(request->packet->vps);
+			if (!packet->vps) {
+				RDEBUG("ERROR: Out of memory!");
+				cleanup(packet);
+				return RLM_MODULE_FAIL;
+			}
+
+			/*
+			 *	For CHAP, create the CHAP-Challenge if
+			 *	it doesn't exist.
+			 */
+			if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD) != NULL) &&
+			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE) == NULL)) {
+				vp = radius_paircreate(request, &packet->vps,
+						       PW_CHAP_CHALLENGE,
+						       PW_TYPE_OCTETS);
+				vp->length = AUTH_VECTOR_LEN;
+				memcpy(vp->vp_strvalue, request->packet->vector,
+				       AUTH_VECTOR_LEN);
 			}
 		} else {
 			size_t i;
