@@ -692,6 +692,13 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		goto error;
 	}
 
+	/*
+	 *	Make sure that this is set.
+	 */
+	if (home->src_ipaddr.af == AF_UNSPEC) {
+		home->src_ipaddr.af = home->ipaddr.af;
+	}
+
 	free(hs_srcipaddr);
 	hs_srcipaddr = NULL;
 
