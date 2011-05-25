@@ -55,7 +55,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 	 *	destinations.
 	 */
 	while (1) {
-		vp = pairfind(last, PW_REPLICATE_TO_REALM);
+		vp = pairfind(last, PW_REPLICATE_TO_REALM, 0);
 		if (!vp) break;
 
 		last = vp->next;
@@ -133,10 +133,10 @@ static int replicate_packet(void *instance, REQUEST *request)
 			 *	it doesn't exist.
 			 */
 			if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD) != NULL) &&
-			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE) == NULL)) {
+			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0) != NULL) &&
+			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0) == NULL)) {
 				vp = radius_paircreate(request, &packet->vps,
-						       PW_CHAP_CHALLENGE,
+						       PW_CHAP_CHALLENGE, 0,
 						       PW_TYPE_OCTETS);
 				vp->length = AUTH_VECTOR_LEN;
 				memcpy(vp->vp_strvalue, request->packet->vector,
