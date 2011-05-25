@@ -21,7 +21,6 @@ FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	* radsniff now prints the hex decoding of the packet (-x -x -x)
 	* mschap module now reloads its configuration on HUP
 	* Added experimental "replicate" module.  See raddb/modules/replicate
-	  Build it with "./configure --with-experimental-modules"
 
 	Bug fixes
 	* Ignore pre/post-proxy sections if proxying is disabled
