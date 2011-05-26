@@ -238,9 +238,10 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 
 				*(out++) = '\n';
 
-				if (outlen == 0) break;
+				if (outlen <= 1) break;
 			}
 
+			*out = '\0';
 			return total;
 		}
 
