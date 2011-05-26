@@ -306,7 +306,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 	uint32_t lint, rint;
 	VALUE_PAIR *vp = NULL;
 #ifdef HAVE_REGEX_H
-	char buffer[1024];
+	char buffer[8192];
 #else
 	cflags = cflags;	/* -Wunused */
 #endif
