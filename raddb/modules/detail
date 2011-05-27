@@ -54,6 +54,12 @@ detail {
 	header = "%t"
 
 	#
+	#  Uncomment this line if the detail file reader will be
+	#  reading this detail file.
+	#
+#	locking = yes
+
+	#
 	#  Log the Packet src/dst IP/port.  This is disabled by
 	#  default, as that information isn't used by many people.
 	#
