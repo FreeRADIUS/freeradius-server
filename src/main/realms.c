@@ -286,6 +286,21 @@ static char *hs_type = NULL;
 static char *hs_check = NULL;
 static char *hs_virtual_server = NULL;
 
+#ifdef WITH_COA
+static CONF_PARSER home_server_coa[] = {
+	{ "irt",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_irt), 0, Stringify(2) },
+	{ "mrt",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrt), 0, Stringify(16) },
+	{ "mrc",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrc), 0, Stringify(5) },
+	{ "mrd",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrd), 0, Stringify(30) },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+#endif
+
 static CONF_PARSER home_server_config[] = {
 	{ "ipaddr",  PW_TYPE_IPADDR,
 	  0, &hs_ip4addr,  NULL },
@@ -346,14 +361,7 @@ static CONF_PARSER home_server_config[] = {
 #endif
 
 #ifdef WITH_COA
-	{ "irt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_irt), 0, Stringify(2) },
-	{ "mrt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrt), 0, Stringify(16) },
-	{ "mrc",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrc), 0, Stringify(5) },
-	{ "mrd",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrd), 0, Stringify(30) },
+	{  "coa", PW_TYPE_SUBSECTION, 0, NULL, (const void *) home_server_coa },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
