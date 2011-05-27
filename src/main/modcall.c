@@ -51,6 +51,7 @@ struct modcallable {
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
+	       MOD_FOREACH,
 #endif
 	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
 	int method;
@@ -339,6 +340,7 @@ static const char *group_name[] = {
 	"update",
 	"switch",
 	"case",
+	"foreach",
 #endif
 	"policy"
 };
@@ -479,6 +481,52 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			}
 			goto handle_result;
 		}
+
+		if (child->type == MOD_FOREACH) {
+			int i, depth = -1;
+			VALUE_PAIR *vp;
+			modgroup *g = mod_callabletogroup(child);
+
+			for (i = 0; i < 8; i++) {
+				if (!request_data_get(request, radius_get_vp, i)) {
+					depth = i;
+					break;
+				}
+			}
+
+			if (depth < 0) {
+				RDEBUG("ERROR: Foreach Nesting too deep!");
+				myresult = RLM_MODULE_FAIL;
+				goto handle_result;
+			}
+
+			if (radius_get_vp(request, child->name, &vp)) {
+				RDEBUG2("Foreach %s", child->name);
+				while (vp) {
+					request_data_add(request, modcall,
+							 depth, vp, NULL);
+
+				 	myresult = modcall(component,
+							   g->children,
+							   request);
+					if (myresult == MOD_ACTION_RETURN) {
+						myresult = RLM_MODULE_OK;
+						break;
+					}
+					vp = pairfind(vp->next,
+						      vp->attribute,
+						      vp->vendor);
+				}
+
+				/*
+				 *	Delete the cached attribute.
+				 */
+				request_data_get(request, radius_get_vp, depth);
+			}
+
+			myresult = RLM_MODULE_OK;
+			goto handle_result;
+		}
 #endif
 	
 		if (child->type == MOD_REFERENCE) {
@@ -552,6 +600,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			case MOD_ELSE:
 			case MOD_ELSIF:
 			case MOD_CASE:
+			case MOD_FOREACH:
 #endif
 			case MOD_GROUP:
 			case MOD_POLICY: /* same as MOD_GROUP */
@@ -757,6 +806,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			case MOD_ELSE:
 			case MOD_ELSIF:
 			case MOD_CASE:
+			case MOD_FOREACH:
 #endif
 			case MOD_GROUP:
 			case MOD_POLICY: /* same as MOD_GROUP */
@@ -794,10 +844,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		if (!stack.children[stack.pointer]) {
 		do_return:
-			rad_assert(stack.pointer > 0);
 			myresult = stack.result[stack.pointer];
+			if (stack.pointer == 0) break;
 			stack.pointer--;
-
 			if (stack.pointer == 0) break;
 
 			RDEBUG2("%.*s- %s %s returns %s",
@@ -1432,7 +1481,7 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err(cf_sectiontoitem(cs), "'switch' statments cannot be empty.");
+		cf_log_err(cf_sectiontoitem(cs), "'switch' statements cannot be empty.");
 		return NULL;
 	}
 
@@ -1477,6 +1526,33 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
 	if (!csingle) return NULL;
 	csingle->type = MOD_SWITCH;
+	return csingle;
+}
+
+static modcallable *do_compile_modforeach(modcallable *parent,
+					  int component, CONF_SECTION *cs,
+					  const char *name2)
+{
+	modcallable *csingle;
+
+	component = component;	/* -Wunused */
+
+	if (!cf_section_name2(cs)) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "You must specify an attribute to loop over in 'foreach'.");
+		return NULL;
+	}
+
+	if (!cf_item_find_next(cs, NULL)) {
+		cf_log_err(cf_sectiontoitem(cs), "'foreach' blocks cannot be empty.");
+		return NULL;
+	}
+
+	csingle= do_compile_modgroup(parent, component, cs,
+				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
+	if (!csingle) return NULL;
+	csingle->name = name2;
+	csingle->type = MOD_FOREACH;
 	return csingle;
 }
 #endif
@@ -1798,6 +1874,15 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			for (i = 0; i < RLM_MODULE_NUMCODES; i++) {
 				csingle->actions[i] = MOD_ACTION_RETURN;
 			}
+
+			return csingle;
+
+		} else 	if (strcmp(modrefname, "foreach") == 0) {
+			*modname = name2;
+
+			csingle = do_compile_modforeach(parent, component, cs,
+							name2);
+			if (!csingle) return NULL;
 
 			return csingle;
 #endif

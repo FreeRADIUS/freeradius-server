@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "19 May 2010" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "27 May 2011" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -86,6 +86,30 @@ returned false, and if the specified condition evaluates to true.
 
 .DS
 	elsif (condition) {
+.br
+		...
+.br
+	}
+.DE
+.IP foreach
+.br
+Loops over a named variable, running the block for each copy of the
+named variable.  The return value of the block is the return value of
+the last statement executed.  There is currently no way to exit the
+loop early.
+
+The attribute name is just the name, e.g. reply:Reply-Message, with
+none of the usual variable referenced %{...}.  This is because it is a
+reference to the attribute, and not an expansion of the attribute.
+
+Inside of the "foreach" block, the attribute which is being looped
+over can be referenced as "Foreach-Variable-#".  Where "#" is the
+depth of the loop, starting at "0".  e.g. "Foreach-Variable-0".  The
+loops can be nested up to eight (8) deep, though this is not
+recommended.
+
+.DS
+	foreach Attribute-Name {
 .br
 		...
 .br

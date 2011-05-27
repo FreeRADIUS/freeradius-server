@@ -53,6 +53,19 @@ static const char * const internal_xlat[] = {"check",
 					     "outer.reply",
 					     "outer.control",
 					     NULL};
+#ifdef WITH_UNLANG
+static const char * const xlat_foreach_names[] = {"Foreach-Variable-0",
+						  "Foreach-Variable-1",
+						  "Foreach-Variable-2",
+						  "Foreach-Variable-3",
+						  "Foreach-Variable-4",
+						  "Foreach-Variable-5",
+						  "Foreach-Variable-6",
+						  "Foreach-Variable-7",
+						  "Foreach-Variable-8",
+						  "Foreach-Variable-9",
+						  NULL};
+#endif
 
 #if REQUEST_MAX_REGEX > 8
 #error Please fix the following line
@@ -445,6 +458,30 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	return snprintf(out, outlen, "%u", vp->vp_integer);
 }
 
+
+#ifdef WITH_UNLANG
+/*
+ *	Dynamically translate for check:, request:, reply:, etc.
+ */
+static size_t xlat_foreach(void *instance, REQUEST *request,
+			  char *fmt, char *out, size_t outlen,
+			  RADIUS_ESCAPE_STRING func)
+{
+	VALUE_PAIR	*vp;
+
+	/*
+	 *	See modcall, "FOREACH" for how this works.
+	 */
+	vp = request_data_reference(request, radius_get_vp, *(int*) instance);
+	if (!vp) {
+		*out = '\0';
+		return 0;
+	}
+
+	return valuepair2str(out, outlen, vp, vp->type, func);	
+}
+#endif
+
 /*
  *	Print data as string, if possible.
  */
@@ -702,6 +739,14 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 			c = xlat_find(internal_xlat[i]);
 			rad_assert(c != NULL);
 			c->internal = TRUE;
+
+#ifdef WITH_UNLANG
+			xlat_register(xlat_foreach_names[i],
+				      xlat_foreach, &xlat_inst[i]);
+			c = xlat_find(xlat_foreach_names[i]);
+			rad_assert(c != NULL);
+			c->internal = TRUE;
+#endif
 		}
 
 		/*
