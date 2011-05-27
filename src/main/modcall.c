@@ -503,7 +503,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			if (radius_get_vp(request, child->name, &vp)) {
 				RDEBUG2("Foreach %s", child->name);
 				while (vp) {
-					request_data_add(request, modcall,
+					request_data_add(request, radius_get_vp,
 							 depth, vp, NULL);
 
 				 	myresult = modcall(component,
