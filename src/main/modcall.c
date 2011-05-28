@@ -365,6 +365,12 @@ typedef struct modcall_stack {
 } modcall_stack;
 
 
+static void pairfree_wrapper(void *data)
+{
+	VALUE_PAIR **vp = (VALUE_PAIR **) data;
+	pairfree(vp);
+}
+
 /*
  *	Call a module, iteratively, with a local stack, rather than
  *	recursively.  What did Paul Graham say about Lisp...?
@@ -494,7 +500,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			modgroup *g = mod_callabletogroup(child);
 
 			for (i = 0; i < 8; i++) {
-				if (!request_data_get(request, radius_get_vp, i)) {
+				if (!request_data_reference(request,
+							    radius_get_vp, i)) {
 					depth = i;
 					break;
 				}
@@ -511,6 +518,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					stack.pointer + 1, modcall_spaces,
 					child->name);
 				while (vp) {
+					VALUE_PAIR *copy = NULL, **copy_p;
+
 #ifndef NDEBUG
 					if (fr_debug_flag >= 2) {
 						char buffer[1024];
@@ -520,8 +529,12 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					}
 #endif
 
+					copy = paircopy(vp);
+					copy_p = &copy;
+
 					request_data_add(request, radius_get_vp,
-							 depth, vp, NULL);
+							 depth, copy_p,
+							 pairfree_wrapper);
 
 				 	myresult = modcall(component,
 							   g->children,
@@ -533,13 +546,21 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					vp = pairfind(vp->next,
 						      vp->attribute,
 						      vp->vendor);
-				}
 
-				/*
-				 *	Delete the cached attribute.
-				 */
-				request_data_get(request, radius_get_vp, depth);
-			}
+					/*
+					 *	Delete the cached attribute,
+					 *	if it exists.
+					 */
+					if (copy) {
+						request_data_get(request,
+								 radius_get_vp,
+								 depth);
+						pairfree(&copy);
+					} else {
+						break;
+					}
+				} /* loop over VPs */
+			}  /* if the VP exists */
 
 			myresult = RLM_MODULE_OK;
 			goto handle_result;

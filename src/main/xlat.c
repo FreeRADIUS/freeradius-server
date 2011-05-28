@@ -464,21 +464,22 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
  *	Dynamically translate for check:, request:, reply:, etc.
  */
 static size_t xlat_foreach(void *instance, REQUEST *request,
-			  char *fmt, char *out, size_t outlen,
-			  RADIUS_ESCAPE_STRING func)
+			   UNUSED char *fmt, char *out, size_t outlen,
+			   RADIUS_ESCAPE_STRING func)
 {
-	VALUE_PAIR	*vp;
+	VALUE_PAIR	**pvp;
 
 	/*
 	 *	See modcall, "FOREACH" for how this works.
 	 */
-	vp = request_data_reference(request, radius_get_vp, *(int*) instance);
-	if (!vp) {
+	pvp = (VALUE_PAIR **) request_data_reference(request, radius_get_vp,
+						     *(int*) instance);
+	if (!pvp || !*pvp) {
 		*out = '\0';
 		return 0;
 	}
 
-	return valuepair2str(out, outlen, vp, vp->type, func);	
+	return valuepair2str(out, outlen, (*pvp), (*pvp)->type, func);	
 }
 #endif
 
