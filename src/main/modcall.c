@@ -342,10 +342,12 @@ static const char *group_name[] = {
 	"case",
 	"foreach",
 #endif
-	"policy"
+	"policy",
+	"reference",
+	"xlat"
 };
 
-static const char *modcall_spaces = "++++++++++++++++++++++++++++++++";
+static const char *modcall_spaces = "                              ";
 
 #define MODCALL_STACK_MAX (32)
 
@@ -465,6 +467,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			int rcode;
 			modgroup *g = mod_callabletogroup(child);
 
+			RDEBUG2("%.*supdate %s {",
+				stack.pointer + 1, modcall_spaces,
+				child->name);
+
 			rcode = radius_update_attrlist(request, g->cs,
 						       g->vps, child->name);
 			if (rcode != RLM_MODULE_UPDATED) {
@@ -495,14 +501,25 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			}
 
 			if (depth < 0) {
-				RDEBUG("ERROR: Foreach Nesting too deep!");
+				RDEBUG("ERROR: foreach Nesting too deep!");
 				myresult = RLM_MODULE_FAIL;
 				goto handle_result;
 			}
 
 			if (radius_get_vp(request, child->name, &vp)) {
-				RDEBUG2("Foreach %s", child->name);
+				RDEBUG2("%.*sforeach %s {",
+					stack.pointer + 1, modcall_spaces,
+					child->name);
 				while (vp) {
+#ifndef NDEBUG
+					if (fr_debug_flag >= 2) {
+						char buffer[1024];
+
+						vp_prints_value(buffer, sizeof(buffer), vp, 1);
+						RDEBUG2("%.*s #  Foreach-Variable-%d = %s", stack.pointer + 1, modcall_spaces, depth, buffer);
+					}
+#endif
+
 					request_data_add(request, radius_get_vp,
 							 depth, vp, NULL);
 
@@ -592,6 +609,11 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			stack.priority[stack.pointer] = 0;
 			stack.result[stack.pointer] = default_component_results[component];
+
+			RDEBUG2("%.*s%s %s {",
+				stack.pointer + 1, modcall_spaces,
+				group_name[child->type], child->name);
+
 			switch (child->type) {
 #ifdef WITH_UNLANG
 				char buffer[1024];
@@ -692,7 +714,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				/*
 				 *	Print message for NULL group
 				 */
-				RDEBUG2("%.*s- %s %s returns %s",
+				RDEBUG2("%.*s- %s %s = %s",
 				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       child->name ? child->name : "",
@@ -717,12 +739,19 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		sp = mod_callabletosingle(child);
 
 		myresult = call_modsingle(child->method, sp, request);
-	handle_result:
-		RDEBUG2("%.*s[%s] returns %s",
-		       stack.pointer + 1, modcall_spaces,
-		       child->name ? child->name : "",
-		       fr_int2str(rcode_table, myresult, "??"));
-
+		RDEBUG2("%.*s[%s] = %s",
+			stack.pointer + 1, modcall_spaces,
+			child->name ? child->name : "",
+			fr_int2str(rcode_table, myresult, "??"));
+		
+		if (0) {
+		handle_result:
+			RDEBUG2("%.*s} # %s %s = %s",
+				stack.pointer + 1, modcall_spaces,
+				group_name[child->type], child->name ? child->name : "",
+				fr_int2str(rcode_table, myresult, "??"));
+		}
+		
 		/*
 		 *	This is a bit of a hack...
 		 */
