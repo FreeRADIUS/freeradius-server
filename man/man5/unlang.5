@@ -95,8 +95,12 @@ returned false, and if the specified condition evaluates to true.
 .br
 Loops over a named variable, running the block for each copy of the
 named variable.  The return value of the block is the return value of
-the last statement executed.  There is currently no way to exit the
-loop early.
+the last statement executed.  The loop can be exited early by using
+the "break" keyword.  Unlike other languages, "break" here means "exit
+the loop at the next iteration", not "exit the loop now".  The result
+is that any statements after the "break" keyword will still be
+executed.  We recommend using "break" only when it is the last
+statement in a "foreach" block.
 
 The attribute name is just the name, e.g. reply:Reply-Message, with
 none of the usual variable referenced %{...}.  This is because it is a

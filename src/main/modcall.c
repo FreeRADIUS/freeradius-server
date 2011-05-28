@@ -51,7 +51,7 @@ struct modcallable {
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
-	       MOD_FOREACH,
+	       MOD_FOREACH, MOD_BREAK,
 #endif
 	       MOD_POLICY, MOD_REFERENCE, MOD_XLAT } type;
 	int method;
@@ -341,6 +341,7 @@ static const char *group_name[] = {
 	"switch",
 	"case",
 	"foreach",
+	"break",
 #endif
 	"policy",
 	"reference",
@@ -491,6 +492,24 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				 *	
 				 */
 			}
+			goto handle_result;
+		}
+
+		if (child->type == MOD_BREAK) {
+			int i;
+			VALUE_PAIR **copy_p;
+
+			for (i = 8; i >= 0; i--) {
+				copy_p = request_data_get(request,
+							  radius_get_vp, i);
+				if (copy_p) {
+						RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", stack.pointer + 1, modcall_spaces, i);
+					pairfree(copy_p);
+					break;
+				}
+			}
+
+			myresult = RLM_MODULE_NOOP;
 			goto handle_result;
 		}
 
@@ -767,10 +786,12 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		
 		if (0) {
 		handle_result:
-			RDEBUG2("%.*s} # %s %s = %s",
-				stack.pointer + 1, modcall_spaces,
-				group_name[child->type], child->name ? child->name : "",
-				fr_int2str(rcode_table, myresult, "??"));
+			if (child->type != MOD_BREAK) {
+				RDEBUG2("%.*s} # %s %s = %s",
+					stack.pointer + 1, modcall_spaces,
+					group_name[child->type], child->name ? child->name : "",
+					fr_int2str(rcode_table, myresult, "??"));
+			}
 		}
 		
 		/*
@@ -1605,6 +1626,21 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	csingle->type = MOD_FOREACH;
 	return csingle;
 }
+
+static modcallable *do_compile_modbreak(modcallable *parent, int component)
+{
+	modcallable *csingle;
+
+	component = component;	/* -Wunused */
+
+
+	csingle= do_compile_modgroup(parent, component, NULL,
+				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
+	if (!csingle) return NULL;
+	csingle->name = "";
+	csingle->type = MOD_BREAK;
+	return csingle;
+}
 #endif
 
 static modcallable *do_compile_modserver(modcallable *parent,
@@ -2003,6 +2039,10 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 	}
 
+	if (strcmp(modrefname, "break") == 0) {
+		return do_compile_modbreak(parent, component);
+	}
+
 	/*
 	 *	Not a virtual module.  It must be a real module.
 	 */
@@ -2161,12 +2201,18 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	g = rad_malloc(sizeof(*g));
 	memset(g, 0, sizeof(*g));
 	g->grouptype = grouptype;
+	g->children = NULL;
 
 	c = mod_grouptocallable(g);
 	c->parent = parent;
 	c->type = MOD_GROUP;
 	c->next = NULL;
 	memset(c->actions, 0, sizeof(c->actions));
+
+	if (!cs) {		/* only for "break" */
+		c->name = "";
+		goto set_codes;
+	}
 
 	/*
 	 *	Remember the name for printing, etc.
@@ -2183,7 +2229,6 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			c->type = MOD_POLICY;
 		}
 	}
-	g->children = NULL;
 
 	/*
 	 *	Loop over the children of this group.
@@ -2254,6 +2299,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 		}
 	}
 
+set_codes:
 	/*
 	 *	Set the default actions, if they haven't already been
 	 *	set.
