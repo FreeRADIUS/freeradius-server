@@ -168,54 +168,6 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 /*
- * Perform a checked write. If the write fails or is not complete,
- * return an error.
- */
-static ssize_t checked_write(REQUEST *request, int fd, const char *format, ...)
-{
-	char buf[2048], *p;
-	size_t buf_used;
-	ssize_t written;
-	va_list args;
-
-	va_start(args, format);
-	buf_used = vsnprintf(buf, sizeof(buf), format, args);
-	va_end(args);
-
-	if (buf_used == 0) return 0;
-
-	if (buf_used >= sizeof(buf)) {
-		radlog_request(L_ERR, 0, request, "Truncated vsnprintf");
-		return -1;
-	}
-
-	p = buf;
-	while (buf_used > 0) {
-		written = write(fd, p, buf_used);
-		if (written <= 0) return -1;
-
-		p += written;
-		buf_used -= written;
-	}
-
-	return 1;		/* wrote stuff OK. */
-}
-
-
-static int checked_write_vp(REQUEST *request, int fd, VALUE_PAIR *vp)
-{
-	char buffer[1024];
-
-	vp_prints(buffer, sizeof(buffer), vp);
-
-	if (checked_write(request, fd, "\t%s\n", buffer) < 0) {
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
  *	Do detail, compatible with old accounting
  */
 static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
@@ -231,6 +183,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	struct timeval	tv;
 	VALUE_PAIR	*pair;
 	off_t		fsize;
+	FILE		*fp;
 
 	struct detail_instance *inst = instance;
 
@@ -381,12 +334,18 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
-	if (checked_write(request, outfd, "%s\n", timestamp) < 0) {
-	fail:
-		ftruncate(outfd, fsize); /* ignore errors! */
+
+	/*
+	 *	Open the FP for buffering.
+	 */
+	if ((fp = fdopen(outfd, "a")) == NULL) {
+		radlog_request(L_ERR, 0, request, "rlm_detail: Couldn't open file %s: %s",
+			       buffer, strerror(errno));
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}
+
+	fprintf(fp, "%s\n", timestamp);
 
 	/*
 	 *	Write the information to the file.
@@ -398,16 +357,10 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		 */
 		if ((packet->code > 0) &&
 		    (packet->code < FR_MAX_PACKET_CODE)) {
-			if (checked_write(request, outfd,
-					  "\tPacket-Type = %s\n",
-					  fr_packet_codes[packet->code]) < 0) {
-				goto fail;
-			}
+			fprintf(fp, "\tPacket-Type = %s\n",
+				fr_packet_codes[packet->code]);
 		} else {
-			if (checked_write(request,outfd,
-					  "\tPacket-Type = %d\n", packet->code) < 0) {
-				goto fail;
-			}
+			fprintf(fp, "\tPacket-Type = %d\n", packet->code);
 		}
 	}
 
@@ -447,12 +400,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			break;
 		}
 
-		if (checked_write_vp(request, outfd, &src_vp) < 0) {
-			goto fail;
-		}
-		if (checked_write_vp(request, outfd, &dst_vp) < 0) {
-			goto fail;
-		}
+		vp_print(fp, &src_vp);
+		vp_print(fp, &dst_vp);
 
 		src_vp.name = "Packet-Src-IP-Port";
 		src_vp.attribute = PW_PACKET_SRC_PORT;
@@ -463,12 +412,8 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		dst_vp.type = PW_TYPE_INTEGER;
 		dst_vp.vp_integer = packet->dst_port;
 
-		if (checked_write_vp(request, outfd, &src_vp) < 0) {
-			goto fail;
-		}
-		if (checked_write_vp(request, outfd, &dst_vp) < 0) {
-			goto fail;
-		}
+		vp_print(fp, &src_vp);
+		vp_print(fp, &dst_vp);
 	}
 
 	/* Write each attribute/value to the log file */
@@ -487,9 +432,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		/*
 		 *	Print all of the attributes.
 		 */
-		if (checked_write_vp(request, outfd, pair) < 0) {
-			goto fail;
-		}
+		vp_print(fp, pair);
 	}
 
 	/*
@@ -502,30 +445,26 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			inet_ntop(request->proxy->dst_ipaddr.af,
 				  &request->proxy->dst_ipaddr.ipaddr,
 				  proxy_buffer, sizeof(proxy_buffer));
-			if (checked_write(request, outfd,
-					  "\tFreeradius-Proxied-To = %s\n",
-					  proxy_buffer) < 0) {
-				goto fail;
-			}
+			fprintf(fp, "\tFreeradius-Proxied-To = %s\n",
+				proxy_buffer);
 			RDEBUG("Freeradius-Proxied-To = %s",
 				proxy_buffer);
 		}
 
-		if (checked_write(request, outfd,
-				  "\tTimestamp = %ld\n",
-				  (unsigned long) request->timestamp) < 0) {
-			goto fail;
-		}
+		fprintf(fp, "\tTimestamp = %ld\n",
+			(unsigned long) request->timestamp);
 	}
 
-	if (checked_write(request, outfd, "\n") < 0) {
-		goto fail;
-	}
+	fprintf(fp, "\n");
 
-	if (inst->locking) {
-		lseek(outfd, 0L, SEEK_SET);
-		rad_unlockfd(outfd, 0);
-		RDEBUG2("Released filelock");
+	/*
+	 *	If we can't flush it to disk, truncate the file and
+	 *	return an error.
+	 */
+	if (fflush(fp) != 0) {
+		ftruncate(outfd, fsize); /* ignore errors! */
+		close(outfd);
+		return RLM_MODULE_FAIL;
 	}
 
 	close(outfd);
