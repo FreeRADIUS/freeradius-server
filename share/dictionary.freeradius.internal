@@ -438,6 +438,7 @@ VALUE	Auth-Type			CRAM			1030
 VALUE	Auth-Type			NS-MTA-MD5		1031
 # 1032 is unused (was a duplicate of CRAM)
 VALUE	Auth-Type			SMB			1033
+VALUE	Auth-Type			MS-CHAP-V2		1034
 
 #
 #	Authorization type, too.
