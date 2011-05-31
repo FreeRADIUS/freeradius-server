@@ -479,6 +479,7 @@ void vp_print(FILE *fp, VALUE_PAIR *vp)
 
 	vp_prints(buf, sizeof(buf), vp);
 	fputs(buf, fp);
+	fputc('\n', fp);
 }
 
 
@@ -491,7 +492,6 @@ void vp_printlist(FILE *fp, VALUE_PAIR *vp)
 	for (; vp; vp = vp->next) {
 		fprintf(fp, "\t");
 		vp_print(fp, vp);
-		fprintf(fp, "\n");
 	}
 }
 
