@@ -72,9 +72,7 @@ extern "C" {
 #define VENDORPEC_STARENT	8164
 #  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
 #  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
-					fputc('\t', fr_log_fp); \
 					vp_print(fr_log_fp, vp); \
-					fputc('\n', fr_log_fp); \
 				     } \
 				} while(0)
 #  define TAG_VALID(x)          ((x) > 0 && (x) < 0x20)
