@@ -739,7 +739,6 @@ void debug_pair(VALUE_PAIR *vp)
 {
 	if (!vp || !debug_flag || !fr_log_fp) return;
 
-	fputc('\t', fr_log_fp);
 	vp_print(fr_log_fp, vp);
 }
 
@@ -748,7 +747,6 @@ void debug_pair_list(VALUE_PAIR *vp)
 	if (!vp || !debug_flag || !fr_log_fp) return;
 
 	while (vp) {
-		fputc('\t', fr_log_fp);
 		vp_print(fr_log_fp, vp);
 		vp = vp->next;
 	}
