@@ -160,7 +160,6 @@ static int digest_fix(REQUEST *request)
 			if ((debug_flag > 1) && fr_log_fp) {
 			  fputc('\t', fr_log_fp);
 			  vp_print(fr_log_fp, sub);
-			  fputc('\n', fr_log_fp);
 			}
 
 			/*

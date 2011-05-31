@@ -741,7 +741,6 @@ void debug_pair(VALUE_PAIR *vp)
 
 	fputc('\t', fr_log_fp);
 	vp_print(fr_log_fp, vp);
-	fputc('\n', fr_log_fp);
 }
 
 void debug_pair_list(VALUE_PAIR *vp)
@@ -751,7 +750,6 @@ void debug_pair_list(VALUE_PAIR *vp)
 	while (vp) {
 		fputc('\t', fr_log_fp);
 		vp_print(fr_log_fp, vp);
-		fputc('\n', fr_log_fp);
 		vp = vp->next;
 	}
 	fflush(fr_log_fp);
