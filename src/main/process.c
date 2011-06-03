@@ -426,6 +426,9 @@ static void request_done(REQUEST *request, int action)
 #ifdef DEBUG_STATE_MACHINE
 		if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
 #endif
+#ifdef HAVE_PTHREAD_H
+		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+#endif
 		request->child_state = REQUEST_DONE;
 		break;
 
@@ -1187,19 +1190,13 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	RADIUS_PACKET **packet_p;
 	REQUEST *request = NULL;
 	struct timeval now;
+	listen_socket_t *sock = listener->data;
 
 	/*
 	 *	Set the last packet received.
 	 */
 	gettimeofday(&now, NULL);
-#ifdef WITH_DETAIL
-	if (listener->type != RAD_LISTEN_DETAIL)
-#endif
-	{
-		listen_socket_t *sock = listener->data;
-
-		sock->last_packet = now.tv_sec;
-	}
+	sock->last_packet = now.tv_sec;
 
 	packet_p = fr_packet_list_find(pl, packet);
 	if (packet_p) {
@@ -1254,13 +1251,8 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 
 	/*
 	 *	Quench maximum number of outstanding requests.
-	 *
-	 *	But we can always read from the detail file.
 	 */
 	if (mainconfig.max_requests &&
-#ifdef WITH_DETAIL
-	    (listener->type != RAD_LISTEN_DETAIL)  &&
-#endif
 	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
 		static time_t last_complained = 0;
 
@@ -1281,6 +1273,15 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		return 0;
 	}
 
+	return request_insert(listener, packet, client, fun);
+}
+
+int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
+		   RADCLIENT *client, RAD_REQUEST_FUNP fun,
+		   struct timeval *pnow)
+{
+	REQUEST *request;
+
 	/*
 	 *	Create and initialize the new request.
 	 */
@@ -1295,7 +1296,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->listener = listener;
 	request->client = client;
 	request->packet = packet;
-	request->packet->timestamp = now;
+	request->packet->timestamp = *pnow;
 	request->number = request_num_counter++;
 	request->priority = listener->type;
 	request->master_state = REQUEST_ACTIVE;
@@ -2452,6 +2453,9 @@ static void ping_home_server(void *ctx)
 	if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
 	if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_ping");
 #endif
+#ifdef HAVE_PTHREAD_H
+	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
+#endif
 	request->child_state = REQUEST_DONE;
 	request->process = request_ping;
 
@@ -2709,6 +2713,9 @@ static void request_proxied(REQUEST *request, int action)
 			gettimeofday(&request->reply->timestamp, NULL);
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
+#endif
+#ifdef HAVE_PTHREAD_H
+			rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
 			request->child_state = REQUEST_DONE;
 			request_process_timer(request);
@@ -3159,7 +3166,6 @@ static void request_coa_process(REQUEST *request, int action)
 		RDEBUG3("%s: Ignoring action %s", __FUNCTION__, action_codes[action]);
 		break;
 	}
-	
 }
 
 #endif	/* WITH_COA */
