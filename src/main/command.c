@@ -1691,13 +1691,13 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 		/*
 		 *	Global statistics.
 		 */
-		fake.auth = &radius_auth_stats;
+		fake.auth = radius_auth_stats;
 #ifdef WITH_ACCOUNTING
-		fake.auth = &radius_acct_stats;
+		fake.auth = radius_acct_stats;
 #endif
 #ifdef WITH_COA
-		fake.coa = &radius_coa_stats;
-		fake.dsc = &radius_dsc_stats;
+		fake.coa = radius_coa_stats;
+		fake.dsc = radius_dsc_stats;
 #endif
 		client = &fake;
 
@@ -1713,12 +1713,12 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 	if (strcmp(argv[0], "auth") == 0) {
 		auth = TRUE;
-		stats = client->auth;
+		stats = &client->auth;
 
 	} else if (strcmp(argv[0], "acct") == 0) {
 #ifdef WITH_ACCOUNTING
 		auth = FALSE;
-		stats = client->acct;
+		stats = &client->acct;
 #else
 		cprintf(listener, "ERROR: This server was built without accounting support.\n");
 		return 0;
@@ -1727,7 +1727,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 	} else if (strcmp(argv[0], "coa") == 0) {
 #ifdef WITH_COA
 		auth = FALSE;
-		stats = client->coa;
+		stats = &client->coa;
 #else
 		cprintf(listener, "ERROR: This server was built without CoA support.\n");
 		return 0;
@@ -1736,7 +1736,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 	} else if (strcmp(argv[0], "disconnect") == 0) {
 #ifdef WITH_COA
 		auth = FALSE;
-		stats = client->dsc;
+		stats = &client->dsc;
 #else
 		cprintf(listener, "ERROR: This server was built without CoA support.\n");
 		return 0;

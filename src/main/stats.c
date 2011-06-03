@@ -115,6 +115,9 @@ void request_stats_final(REQUEST *request)
 {
 	if (request->master_state == REQUEST_COUNTED) return;
 
+	if (!request->listener) return;
+	if (!request->client) return;
+
 	if ((request->listener->type != RAD_LISTEN_NONE) &&
 #ifdef WITH_ACCOUNTING
 	    (request->listener->type != RAD_LISTEN_ACCT) &&
@@ -125,26 +128,26 @@ void request_stats_final(REQUEST *request)
 	    (request->listener->type != RAD_LISTEN_AUTH)) return;
 
 #undef INC_AUTH
-#define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;if (request->client && request->client->auth) request->client->auth->_x++;
+#define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;request->client->auth._x++;
 
 
 #undef INC_ACCT
 #ifdef WITH_ACCOUNTING
-#define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;if (request->client && request->client->acct) request->client->acct->_x++
+#define INC_ACCT(_x) radius_acct_stats._x++;request->listener->stats._x++;request->client->acct._x++
 #else
 #define INC_ACCT(_x)
 #endif
 
 #undef INC_COA
 #ifdef WITH_COA
-#define INC_COA(_x) radius_coa_stats._x++;request->listener->stats._x++;if (request->client && request->client->coa) request->client->coa->_x++
+#define INC_COA(_x) radius_coa_stats._x++;request->listener->stats._x++;request->client->coa._x++
 #else
 #define INC_COA(_x)
 #endif
 
 #undef INC_DSC
 #ifdef WITH_DSC
-#define INC_DSC(_x) radius_dsc_stats._x++;request->listener->stats._x++;if (request->client && request->client->dsc) request->client->dsc->_x++
+#define INC_DSC(_x) radius_dsc_stats._x++;request->listener->stats._x++;request->client->dsc._x++
 #else
 #define INC_DSC(_x)
 #endif
@@ -170,16 +173,12 @@ void request_stats_final(REQUEST *request)
 		stats_time(&radius_auth_stats,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		if (request->client && request->client->auth) {
-			stats_time(request->client->auth,
-				   &request->packet->timestamp,
-				   &request->reply->timestamp);
-		}
-		if (request->listener) {
-			stats_time(&request->listener->stats,
-				   &request->packet->timestamp,
-				   &request->reply->timestamp);
-		}
+		stats_time(&request->client->auth,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
+		stats_time(&request->listener->stats,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
 		break;
 
 	case PW_AUTHENTICATION_REJECT:
@@ -196,11 +195,9 @@ void request_stats_final(REQUEST *request)
 		stats_time(&radius_acct_stats,
 			   &request->packet->timestamp,
 			   &request->reply->timestamp);
-		if (request->client && request->client->acct) {
-			stats_time(request->client->acct,
-				   &request->packet->timestamp,
-				   &request->reply->timestamp);
-		}
+		stats_time(&request->client->acct,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
 		break;
 #endif
 
@@ -209,11 +206,9 @@ void request_stats_final(REQUEST *request)
 		INC_COA(total_access_accepts);
 	  coa_stats:
 		INC_COA(total_responses);
-		if (request->client && request->client->coa) {
-			stats_time(request->client->coa,
-				   &request->packet->timestamp,
-				   &request->reply->timestamp);
-		}
+		stats_time(&request->client->coa,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
 		break;
 
 	case PW_COA_NAK:
@@ -224,11 +219,9 @@ void request_stats_final(REQUEST *request)
 		INC_DSC(total_access_accepts);
 	  dsc_stats:
 		INC_DSC(total_responses);
-		if (request->client && request->client->dsc) {
-			stats_time(request->client->dsc,
-				   &request->packet->timestamp,
-				   &request->reply->timestamp);
-		}
+		stats_time(&request->client->dsc,
+			   &request->packet->timestamp,
+			   &request->reply->timestamp);
 		break;
 
 	case PW_DISCONNECT_NAK:
@@ -620,16 +613,14 @@ void request_stats_reply(REQUEST *request)
 					paircopyvp(server_port));
 			}
 
-			if (client->auth &&
-			    ((flag->vp_integer & 0x01) != 0)) {
+			if ((flag->vp_integer & 0x01) != 0) {
 				request_stats_addvp(request, client_authvp,
-						    client->auth);
+						    &client->auth);
 			}
 #ifdef WITH_ACCOUNTING
-			if (client->acct &&
-			    ((flag->vp_integer & 0x01) != 0)) {
+			if ((flag->vp_integer & 0x01) != 0) {
 				request_stats_addvp(request, client_acctvp,
-						    client->acct);
+						    &client->acct);
 			}
 #endif
 		} /* else client wasn't found, don't echo it back */

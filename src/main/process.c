@@ -1312,11 +1312,11 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 #ifdef WITH_STATS
 	request->listener->stats.last_packet = request->packet->timestamp.tv_sec;
 	if (packet->code == PW_AUTHENTICATION_REQUEST) {
-		request->client->auth->last_packet = request->packet->timestamp.tv_sec;
+		request->client->auth.last_packet = request->packet->timestamp.tv_sec;
 		radius_auth_stats.last_packet = request->packet->timestamp.tv_sec;
 #ifdef WITH_ACCOUNTING
 	} else if (packet->code == PW_ACCOUNTING_REQUEST) {
-		request->client->acct->last_packet = request->packet->timestamp.tv_sec;
+		request->client->acct.last_packet = request->packet->timestamp.tv_sec;
 		radius_acct_stats.last_packet = request->packet->timestamp.tv_sec;
 #endif
 	}

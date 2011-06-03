@@ -141,13 +141,13 @@ typedef struct radclient {
 	int			number;	/* internal use only */
 	const CONF_SECTION	*cs;
 #ifdef WITH_STATS
-	fr_stats_t		*auth;
+	fr_stats_t		auth;
 #ifdef WITH_ACCOUNTING
-	fr_stats_t		*acct;
+	fr_stats_t		acct;
 #endif
 #ifdef WITH_COA
-	fr_stats_t		*coa;
-	fr_stats_t		*dsc;
+	fr_stats_t		coa;
+	fr_stats_t		dsc;
 #endif
 #endif
 

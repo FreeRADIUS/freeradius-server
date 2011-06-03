@@ -102,13 +102,6 @@ void client_free(RADCLIENT *client)
 	free(client->password);
 	free(client->server);
 
-#ifdef WITH_STATS
-	free(client->auth);
-#ifdef WITH_ACCOUNTING
-	free(client->acct);
-#endif
-#endif
-
 #ifdef WITH_DYNAMIC_CLIENTS
 	free(client->client_server);
 #endif
@@ -364,22 +357,6 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		tree_num = rbtree_create(client_num_cmp, NULL, 0);
 	}
 
-
-	/*
-	 *	Catch clients added by rlm_sql.
-	 */
-	if (!client->auth) {
-		client->auth = rad_malloc(sizeof(*client->auth));
-		memset(client->auth, 0, sizeof(*client->auth));
-	}
-
-#ifdef WITH_ACCOUNTING
-	if (!client->acct) {
-		client->acct = rad_malloc(sizeof(*client->acct));
-		memset(client->acct, 0, sizeof(*client->acct));
-	}
-#endif
-
 #ifdef WITH_DYNAMIC_CLIENTS
 	/*
 	 *	More catching of clients added by rlm_sql.
@@ -594,16 +571,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	c = rad_malloc(sizeof(*c));
 	memset(c, 0, sizeof(*c));
 	c->cs = cs;
-
-#ifdef WITH_STATS
-	c->auth = rad_malloc(sizeof(*c->auth));
-	memset(c->auth, 0, sizeof(*c->auth));
-
-#ifdef WITH_ACCOUNTING
-	c->acct = rad_malloc(sizeof(*c->acct));
-	memset(c->acct, 0, sizeof(*c->acct));
-#endif
-#endif
 
 	memset(&cl_ip4addr, 0, sizeof(cl_ip4addr));
 	memset(&cl_ip6addr, 0, sizeof(cl_ip6addr));
