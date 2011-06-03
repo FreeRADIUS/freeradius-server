@@ -890,7 +890,7 @@ int request_enqueue(REQUEST *request)
 	dispatch_block_t block;
 
 	block = ^{
-		radius_handle_request(request, fun);
+		request->process(request, fun);
 	};
 
 	dispatch_async(thread_pool.queue, block);
