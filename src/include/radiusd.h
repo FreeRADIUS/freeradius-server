@@ -733,11 +733,6 @@ int rad_status_server(REQUEST *request);
 int radius_event_init(CONF_SECTION *cs, int spawn_flag);
 void radius_event_free(void);
 int radius_event_process(void);
-void radius_handle_request(REQUEST *request, RAD_REQUEST_FUNP fun);
-int received_request(rad_listen_t *listener,
-		     RADIUS_PACKET *packet, REQUEST **prequest,
-		     RADCLIENT *client);
-REQUEST *received_proxy_response(RADIUS_PACKET *packet);
 int event_new_fd(rad_listen_t *listener);
 void revive_home_server(void *ctx);
 void mark_home_server_dead(home_server *home, struct timeval *when);
