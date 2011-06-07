@@ -67,6 +67,7 @@ install:
 		for i in Makefile README xpextensions ca.cnf server.cnf client.cnf; do \
 			$(INSTALL) -m 640 certs/$$i $(R)$(raddbdir)/certs; \
 		done; \
+		$(MAKE) -C $(R)$(raddbdir)/certs; \
 	fi
 	if [ ! -d $(R)$(raddbdir)/sql ]; then \
 		find sql -name CVS -prune -o -print | \
