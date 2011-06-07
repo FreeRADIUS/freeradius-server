@@ -85,7 +85,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		return -1;
 	}
 
-	rcode = SQLConnect(iodbc_sock->dbc_handle, config->sql_db,
+	rcode = SQLConnect(iodbc_sock->dbc_handle, config->sql_server,
 			   SQL_NTS, config->sql_login, SQL_NTS,
 			   config->sql_password, SQL_NTS);
 	if (!SQL_SUCCEEDED(rcode)) {
