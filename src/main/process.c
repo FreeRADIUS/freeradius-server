@@ -1273,7 +1273,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		return 0;
 	}
 
-	return request_insert(listener, packet, client, fun);
+	return request_insert(listener, packet, client, fun, &now);
 }
 
 int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,

@@ -303,6 +303,7 @@ int detail_recv(rad_listen_t *listener)
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
+	struct timeval	now;
 
 	/*
 	 *	We may be in the main thread.  It needs to update the
@@ -728,13 +729,11 @@ int detail_recv(rad_listen_t *listener)
 	}
 
 	/*
-	 *	FIXME: many of these checks may not be necessary when
-	 *	reading from the detail file.
-	 *
-	 *	Try again later...
+	 *	Don't bother doing limit checks, etc.
 	 */
+	gettimeofday(&now, NULL);
 	if (!request_insert(listener, packet, &data->detail_client,
-			     rad_accounting)) {
+			    rad_accounting, &now)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
