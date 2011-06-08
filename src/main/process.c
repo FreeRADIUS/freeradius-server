@@ -2370,10 +2370,6 @@ static void ping_home_server(void *ctx)
 	VALUE_PAIR *vp;
 	struct timeval when, now;
 
-#ifdef WITH_TCP
-	rad_assert(home->proto != IPPROTO_TCP);
-#endif
-
 	if ((home->state == HOME_STATE_ALIVE) ||
 	    (home->ping_check == HOME_PING_CHECK_NONE) ||
 	    (home->ev != NULL)) {
