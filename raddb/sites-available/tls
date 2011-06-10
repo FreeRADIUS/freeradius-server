@@ -19,12 +19,6 @@ listen {
 	#  idea to use different server certificates for EAP and for RADIUS
 	#  transport.
 	tls {
-		#
-		#  These is used to simplify later configurations.
-		#
-		certdir = ${confdir}/certs
-		cadir = ${confdir}/certs
-
 		private_key_password = whatever
 		private_key_file = ${certdir}/server.pem
 
@@ -275,12 +269,6 @@ home_server tls {
 	status_check = status-server
 
 	tls {
-		#
-		#  These is used to simplify later configurations.
-		#
-		certdir = ${confdir}/certs
-		cadir = ${confdir}/certs
-
 		private_key_password = whatever
 		private_key_file = ${certdir}/client.pem
 

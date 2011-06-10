@@ -149,12 +149,6 @@
 		#  ANYONE who has a certificate signed by them can
 		#  authenticate via EAP-TLS!  This is likely not what you want.
 		tls {
-			#
-			#  These is used to simplify later configurations.
-			#
-			certdir = ${confdir}/certs
-			cadir = ${confdir}/certs
-
 			private_key_password = whatever
 			private_key_file = ${certdir}/server.pem
 
