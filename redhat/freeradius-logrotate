@@ -54,3 +54,7 @@
         compress
         missingok
 }
+
+lastrotate
+	kill -HUP `cat /var/run/radiusd/radiusd.pid`
+endscript
