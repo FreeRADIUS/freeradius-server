@@ -350,8 +350,12 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/preprocess
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/radutmp
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/realm
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/redis
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/rediswho
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/replicate
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/smbpasswd
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/smsotp
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/soh
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sql_log
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sqlcounter_expire_on_login
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sradutmp
@@ -488,6 +492,10 @@ fi
 %{_libdir}/freeradius/rlm_radutmp-%{version}.so
 %{_libdir}/freeradius/rlm_realm.so
 %{_libdir}/freeradius/rlm_realm-%{version}.so
+%{_libdir}/freeradius/rlm_replicate.so
+%{_libdir}/freeradius/rlm_replicate-%{version}.so
+%{_libdir}/freeradius/rlm_soh.so
+%{_libdir}/freeradius/rlm_soh-%{version}.so
 %{_libdir}/freeradius/rlm_sql.so
 %{_libdir}/freeradius/rlm_sql-%{version}.so
 %{_libdir}/freeradius/rlm_sql_log.so
