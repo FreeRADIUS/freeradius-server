@@ -91,6 +91,7 @@ int cf_pair_lineno(CONF_PAIR *pair);
 const char *cf_pair_filename(CONF_PAIR *pair);
 const char *cf_section_filename(CONF_SECTION *section);
 CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item);
+CONF_SECTION *cf_item_parent(CONF_ITEM *ci);
 int cf_item_is_section(CONF_ITEM *item);
 int cf_item_is_pair(CONF_ITEM *item);
 CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
