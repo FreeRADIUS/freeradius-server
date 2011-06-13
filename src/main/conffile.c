@@ -2183,6 +2183,13 @@ CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item)
 	}
 }
 
+CONF_SECTION *cf_item_parent(CONF_ITEM *ci)
+{
+	if (!ci) return NULL;
+
+	return ci->parent;
+}
+
 int cf_section_lineno(CONF_SECTION *section)
 {
 	return cf_sectiontoitem(section)->lineno;

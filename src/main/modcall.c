@@ -1982,6 +1982,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 *	codes.
 		 */
 	} else {
+		CONF_SECTION *loop;
 		CONF_PAIR *cp = cf_itemtopair(ci);
 		modrefname = cf_pair_attr(cp);
 
@@ -2013,6 +2014,20 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
 								  modrefname);
 		}
+
+		/*
+		 *	Allow policies to over-ride module names.
+		 *	i.e. the "sql" policy can do some extra things,
+		 *	and then call the "sql" module.
+		 */
+		for (loop = cf_item_parent(ci);
+		     loop && subcs;
+		     loop = cf_item_parent(cf_sectiontoitem(loop))) {
+			if (loop == subcs) {
+				subcs = NULL;
+			}
+		}
+
 		if (subcs) {
 			DEBUG2(" Module: Loading virtual module %s",
 			       modrefname);
