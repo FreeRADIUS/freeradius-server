@@ -149,25 +149,23 @@ static int home_server_name_cmp(const void *one, const void *two)
 
 static int home_server_addr_cmp(const void *one, const void *two)
 {
+	int rcode;
 	const home_server *a = one;
 	const home_server *b = two;
 
 	if (a->server && !b->server) return -1;
 	if (!a->server && b->server) return +1;
-
 	if (a->server && b->server) {
-		int rcode = a->type - b->type;
+		rcode = a->type - b->type;
 		if (rcode != 0) return rcode;
 		return strcmp(a->server, b->server);
 	}
 
-#ifdef WITH_TCP
-	if (a->proto < b->proto) return -1;
-	if (a->proto > b->proto) return +1;
-#endif
-
 	if (a->port < b->port) return -1;
 	if (a->port > b->port) return +1;
+
+	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+	if (rcode != 0) return rcode;
 
 	return fr_ipaddr_cmp(&a->ipaddr, &b->ipaddr);
 }
