@@ -794,6 +794,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	if ((home->lifetime > 0) && (home->idle_timeout > home->lifetime))
 		home->idle_timeout = 0;
 
+	tls = cf_item_parent(cf_sectiontoitem(cs));
+	if (strcmp(cf_section_name1(tls), "server") == 0) {
+		home->parent_server = cf_section_name2(tls);
+	}
+
 	if (dual) {
 		home_server *home2 = rad_malloc(sizeof(*home2));
 
@@ -803,6 +808,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		home2->port++;
 		home2->ping_user_password = NULL;
 		home2->cs = cs;
+		home2->parent_server = home->parent_server;
 
 		if (home->no_response_fail == 2) home->no_response_fail = 0;
 		if (home2->no_response_fail == 2) home2->no_response_fail = 1;

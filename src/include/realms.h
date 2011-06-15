@@ -36,6 +36,7 @@ typedef struct home_server {
 
 	const char	*hostname;
 	const char	*server; /* for internal proxying */
+	const char	*parent_server;
 
 	fr_ipaddr_t	ipaddr;
 
