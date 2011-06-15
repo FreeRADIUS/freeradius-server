@@ -2122,6 +2122,30 @@ home_server *home_server_ldb(const char *realmname,
 #endif
 
 		/*
+		 *	Default virtual: ignore homes tied to a
+		 *	virtual.
+		 */
+		if (!request->server && home->parent_server) {
+			continue;
+		}
+
+		/*
+		 *	A virtual AND home is tied to virtual,
+		 *	ignore ones which don't match.
+		 */
+		if (request->server && home->parent_server &&
+		    strcmp(request->server, home->parent_server) != 0) {
+			continue;
+		}
+
+		/*
+		 *	Allow request->server && !home->parent_server
+		 *
+		 *	i.e. virtuals can proxy to globally defined
+		 *	homes.
+		 */
+
+		/*
 		 *	It's zombie, so we remember the first zombie
 		 *	we find, but we don't mark it as a "live"
 		 *	server.
