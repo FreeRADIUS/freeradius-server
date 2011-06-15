@@ -164,6 +164,13 @@ static int dhcp_process(REQUEST *request)
 		break;
 	}
 
+	/*
+	 *	Releases don't get replies.
+	 */
+	if (request->packet->code == PW_DHCP_RELEASE) {
+		request->reply->code = 0;
+	}
+
 	return 1;
 }
 
