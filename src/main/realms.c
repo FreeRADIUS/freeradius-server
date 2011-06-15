@@ -1809,6 +1809,9 @@ static int pool_peek_type(CONF_SECTION *config, CONF_SECTION *cs)
 int realms_init(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
+#ifdef WITH_PROXY
+	CONF_SECTION *server_cs;
+#endif
 	realm_config_t *rc, *old_rc;
 
 	if (realms_byname) return 1;
@@ -1870,6 +1873,24 @@ int realms_init(CONF_SECTION *config)
 			free(rc);
 			realms_free();
 			return 0;
+		}
+	}
+
+	/*
+	 *	Loop over virtual servers to find homes which are
+	 *	defined in them.
+	 */
+	for (server_cs = cf_subsection_find_next(config, NULL, "server");
+	     server_cs != NULL;
+	     server_cs = cf_subsection_find_next(config, server_cs, "server")) {
+		for (cs = cf_subsection_find_next(server_cs, NULL, "home_server");
+		     cs != NULL;
+		     cs = cf_subsection_find_next(server_cs, cs, "home_server")) {
+			if (!home_server_add(rc, cs)) {
+				free(rc);
+				realms_free();
+				return 0;
+			}
 		}
 	}
 #endif
