@@ -1230,6 +1230,28 @@ static const char *cf_local_file(CONF_SECTION *cs, const char *local,
 	return buffer;
 }
 
+static int seen_too_much(const char *filename, int lineno, const char *ptr)
+{
+	while (*ptr) {
+		if (isspace(*ptr)) {
+			ptr++;
+			continue;
+		}
+
+		if (*ptr == '#') return FALSE;
+
+		break;
+	}
+
+	if (*ptr) {
+		radlog(L_ERR, "%s[%d] Unexpected text %s.  See \"man unlang\"",
+		       filename, lineno, ptr);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 
 /*
  *	Read a part of the config file.
@@ -1365,6 +1387,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 		       }
 		       this = this->item.parent;
+		       if (seen_too_much(filename, *lineno, ptr)) return -1;
 		       continue;
 		}
 
@@ -1630,6 +1653,12 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				buf2[end - ptr + 1] = '\0';
 				ptr = end + 1;
 				t2 = T_BARE_WORD;
+
+				if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
+					radlog(L_ERR, "%s[%d]: Expected '{'",
+					       filename, *lineno);
+					return -1;
+				}
 				goto section_alloc;
 
 			} else {
@@ -1655,6 +1684,8 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 		case T_LCBRACE:
 		section_alloc:
+			if (seen_too_much(filename, *lineno, ptr)) return -1;
+
 			css = cf_section_alloc(buf1,
 					       t2 == T_LCBRACE ? NULL : buf2,
 					       this);
