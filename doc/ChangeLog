@@ -21,6 +21,12 @@ FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	* radsniff now prints the hex decoding of the packet (-x -x -x)
 	* mschap module now reloads its configuration on HUP
 	* Added experimental "replicate" module.  See raddb/modules/replicate
+	* Policy "foo" can now refer to module "foo".  This lets you
+	  over-ride the behavior of a module.
+	* Policy "foo.authorize" can now over-ride the behavior of module
+	  "foo", "authorize" method.
+	* Produce errors in more situations when the configuration files
+	  have invalid syntax.
 
 	Bug fixes
 	* Ignore pre/post-proxy sections if proxying is disabled
@@ -104,6 +110,8 @@ FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
 	* SQL module now returns NOOP if the accounting start/interim/stop
 	  queries don't do anything.
 	* Allow %{outer.control: ... } in string expansions
+	* home_server coa config now matches raddb/proxy.conf
+	* Never send a reply to a DHCP Release.
 
 FreeRADIUS 2.1.10 Tue 28 Sep 12:00:00 CEST 2010, urgency=medium
 	Feature improvements
