@@ -26,13 +26,13 @@ extern "C" {
 #ifdef WITHOUT_LIBLTDL
 typedef void *lt_dlhandle;
 
+int lt_dlinit(void);
 lt_dlhandle lt_dlopenext(const char *name);
 void *lt_dlsym(lt_dlhandle handle, const char *symbol);
 int lt_dlclose(lt_dlhandle handle);
 const char *lt_dlerror(void);
 
 #define LTDL_SET_PRELOADED_SYMBOLS(_x)
-#define lt_dlinit(_x) (0)
 #define lt_dlexit(_x)
 #define lt_dlsetsearchpath(_x)
 #endif

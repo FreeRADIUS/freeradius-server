@@ -107,17 +107,46 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #define fr_dlopenext lt_dlopenext
 #ifndef LT_SHREXT
 #ifdef __APPLE__
-#define LT_SHREXT ".so"
+#define LT_SHREXT ".dylib"
+#define LD_LIBRARY_PATH "DYLD_FALLBACK_LIBRARY_PATH"
 #elif defined (WIN32)
 #define LT_SHREXT ".dll"
 #else
-#define LT_SHREXT ".dylib"
+#define LT_SHREXT ".so"
+#define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
 #endif
 
+int lt_dlinit(void)
+{
+	char *p, *val;
+	char buffer[1024];
+
+	/*
+	 *	This doesn't really do anything...
+	 */
+	p = getenv(LD_LIBRARY_PATH);
+	if (p) {
+		snprintf(buffer, sizeof(buffer), "%s:%s", p, radlib_dir);
+		val = buffer;
+	} else {
+		val = radlib_dir;
+	}
+
+	return setenv(LD_LIBRARY_PATH, val, 1);
+}
+
 lt_dlhandle lt_dlopenext(const char *name)
 {
-	char buffer[256];
+	void *handle;
+	char buffer[2048];
+
+	/*
+	 *	Prefer loading our libraries by absolute path.
+	 */
+	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
+	handle = dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
+	if (handle) return handle;
 
 	strlcpy(buffer, name, sizeof(buffer));
 
