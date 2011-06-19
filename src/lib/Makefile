@@ -12,7 +12,7 @@ SRCS		= dict.c filters.c hash.c hmac.c hmacsha1.c isaac.c log.c \
 		  valuepair.c fifo.c packet.c event.c getaddrinfo.c vqp.c \
 		  heap.c dhcp.c tcp.c
 
-LT_OBJS		= $(SRCS:.c=.lo)
+LT_OBJS		= $(SRCS:.c=.$(LO))
 
 INCLUDES	= ../include/radius.h ../include/libradius.h \
 		  ../include/missing.h ../include/autoconf.h \
@@ -25,29 +25,22 @@ CFLAGS		+= -D_LIBRADIUS -I$(top_builddir)/src
 # the other end is doing.
 #CFLAGS += -DHMAC_SHA1_DATA_PROBLEMS
 
-ifeq ($(USE_SHARED_LIBS),yes)
-LINK_MODE	= -export-dynamic
-else
-LINK_MODE	= -static
-endif
-
 TARGET		= $(LIBPREFIX)freeradius-radius
 
 # Define new rule for libtool objects
-%.lo : %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
+%.$(LO) : %.c
+	$(COMPILE.c) $(CFLAGS) -c $<
 
 .PHONY: all clean install reconfig
-all: $(TARGET).la
+all: $(TARGET).$(LA)
 
-$(TARGET).la: $(LT_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^
+$(TARGET).$(LA): $(LT_OBJS)
+	$(LINK.lib) $@ $(LDFLAGS) $^
 
 $(LT_OBJS): $(INCLUDES)
 
 clean:
-	rm -f *.o *.lo $(TARGET).la
+	rm -f *.$(LO) $(TARGET).$(LA)
 	rm -rf .libs
 
 install: all

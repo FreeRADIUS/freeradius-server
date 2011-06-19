@@ -107,3 +107,39 @@ ifneq ($(SCAN),)
 CC		:= $(SCAN)/scan-build gcc -DFR_SCAN_BUILD
 LIBTOOL		:= 
 endif
+
+#
+#  Portability cruft.  This is for replacing libtroll && libltdl
+#  with gcc and dlopen().
+#
+ifeq "$(USE_SHARED_LIBS)" "yes"
+LINK_MODE.exe	= -export-dynamic
+CFLAGS		+= -fPIC
+else
+LINK_MODE.exe	= -static
+endif
+
+ifneq "$(LIBTOOL)" ""
+COMPILE.c	:= $(LIBTOOL) --mode=compile $(CC)
+LINK.lib	:= $(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) -rpath $(libdir) -o
+LO		:= lo
+LA		:= la
+else
+COMPILE.c	:= $(CC)
+LO		:= o
+
+ifeq "$(USE_SHARED_LIBS)" "yes"
+LINK.lib	:= $(CC) -shared -o
+LA		:= so
+else
+LINK.lib	:= $(AR) cru
+LA		:= a
+endif
+
+endif
+
+ifeq "$(LA)" "so"
+ifneq "$(findstring Darwin,$(shell uname -a))" ""
+LA		:= dylib
+endif
+endif
