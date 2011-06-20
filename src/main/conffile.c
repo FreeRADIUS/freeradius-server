@@ -1665,7 +1665,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				buf2[0] = '(';
 				memcpy(buf2 + 1, ptr, end - ptr);
 				buf2[end - ptr + 1] = '\0';
-				ptr = end + 1;
+				ptr = end;
 				t2 = T_BARE_WORD;
 
 				if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
