@@ -1,4 +1,4 @@
-FreeRADIUS 2.1.11 Tue 1 Jan 12:00:00 CEST 2010, urgency=medium
+FreeRADIUS 2.1.11 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
 	* Added doc/rfc/rfc6158.txt: RADIUS Design Guidelines.
 	  All vendors need to read it and follow its directions.
