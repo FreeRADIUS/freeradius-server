@@ -1392,62 +1392,68 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
  *
  ***********************************************************************/
 
-static void tcp_socket_lifetime(void *ctx)
-{
-	rad_listen_t *listener = ctx;
-	char buffer[256];
-
-	listener->print(listener, buffer, sizeof(buffer));
-
-	DEBUG("Reached maximum lifetime on socket %s", buffer);
-
-	listener->status = RAD_LISTEN_STATUS_CLOSED;
-	event_new_fd(listener);
-}
-
-static void tcp_socket_idle_timeout(void *ctx)
+/*
+ *	Timer function for all TCP sockets.
+ */
+static void tcp_socket_timer(void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	listen_socket_t *sock = listener->data;
-	struct timeval now;
+	struct timeval idle, end, now;
 	char buffer[256];
 
-	fr_event_now(el, &now);	/* should always succeed... */
-
-	rad_assert(sock->home != NULL);
+	fr_event_now(el, &now);
 
 	/*
-	 *	We implement idle timeout by polling, because it's
-	 *	cheaper than resetting the idle timeout every time
-	 *	we send / receive a packet.
+	 *	If we enforce a lifetime, do it now.
 	 */
-	if ((sock->last_packet + sock->home->idle_timeout) > now.tv_sec) {
-		struct timeval when;
-		void *fun = tcp_socket_idle_timeout;
-		
-		when.tv_sec = sock->last_packet;
-		when.tv_sec += sock->home->idle_timeout;
-		when.tv_usec = 0;
+	if (sock->home->lifetime) {
+		end.tv_sec = sock->opened + sock->home->lifetime;
+		end.tv_usec = 0;
 
-		if (sock->home->lifetime &&
-		    (sock->opened + sock->home->lifetime < when.tv_sec)) {
-			when.tv_sec = sock->opened + sock->home->lifetime;
-			fun = tcp_socket_lifetime;
+		if (timercmp(&end, &now, <=)) {
+			DEBUG("Reached maximum lifetime on socket %s", buffer);
+			
+		do_close:
+			listener->print(listener, buffer, sizeof(buffer));
+			
+			listener->status = RAD_LISTEN_STATUS_CLOSED;
+			event_new_fd(listener);
+			return;
 		}
-		
-		if (!fr_event_insert(el, fun, listener, &when, &sock->ev)) {
-			rad_panic("Failed to insert event");
-		}
-
-		return;
+	} else {
+		end = now;
+		end.tv_sec += 3600;
 	}
 
-	listener->print(listener, buffer, sizeof(buffer));
-	
-	DEBUG("Reached idle timeout on socket %s", buffer);
+	/*
+	 *	Enforce an idle timeout.
+	 */
+	rad_assert(sock->home->idle_timeout > 0);
+	idle.tv_sec = sock->last_packet + sock->home->idle_timeout;
+	idle.tv_usec = 0;
 
-	listener->status = RAD_LISTEN_STATUS_CLOSED;
-	event_new_fd(listener);
+	if (timercmp(&idle, &now, <=)) {
+		DEBUG("Reached idle timeout on socket %s", buffer);
+		goto do_close;
+	}
+
+	/*
+	 *	Enforce the minimum of idle timeout or lifetime.
+	 */
+	if (timercmp(&idle, &end, >=)) {
+		idle = end;
+	}
+
+	/*
+	 *	Wake up at t + 0.5s.  The code above checks if the timers
+	 *	are <= t.  This addition gives us a bit of leeway.
+	 */
+	idle.tv_usec = USEC / 2;
+
+	if (!fr_event_insert(el, tcp_socket_timer, listener, &idle, &sock->ev)) {
+		rad_panic("Failed to insert event");
+	}
 }
 
 static int remove_all_proxied_requests(void *ctx, void *data)
@@ -3703,7 +3709,6 @@ static void handle_signal_self(int flag)
 	 */
 	if ((flag & RADIUS_SIGNAL_SELF_NEW_FD) != 0) {
 		struct timeval when, now;
-		void *fun = NULL;
 
 		fr_event_now(el, &now);
 
@@ -3713,6 +3718,7 @@ static void handle_signal_self(int flag)
 			rad_listen_t *this = proxy_listener_list;
 			listen_socket_t *sock = this->data;
 
+			rad_assert(sock->proto == IPPROTO_TCP);
 			proxy_listener_list = this->next;
 			this->next = NULL;
 
@@ -3720,19 +3726,7 @@ static void handle_signal_self(int flag)
 
 			when = now;
 
-			if (!sock->home->idle_timeout) {
-				rad_assert(sock->home->lifetime != 0);
-
-				when.tv_sec += sock->home->lifetime;
-				fun = tcp_socket_lifetime;
-			} else {
-				rad_assert(sock->home->idle_timeout != 0);
-
-				when.tv_sec += sock->home->idle_timeout;
-				fun = tcp_socket_idle_timeout;
-			}
-
-			if (!fr_event_insert(el, fun, this, &when,
+			if (!fr_event_insert(el, tcp_socket_timer, this, &when,
 					     &(sock->ev))) {
 				rad_panic("Failed to insert event");
 			}
