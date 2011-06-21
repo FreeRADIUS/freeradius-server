@@ -497,6 +497,8 @@ static void NEVER_RETURNS usage(int status)
  */
 static void sig_fatal(int sig)
 {
+	if (getpid() != radius_pid) _exit(sig);
+
 	switch(sig) {
 		case SIGTERM:
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
