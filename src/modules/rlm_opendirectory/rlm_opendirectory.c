@@ -18,12 +18,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2007 Apple Inc.
+ * Copyright 2007-2010 Apple Inc.  All rights reserved.
  */
 
 /*
  * 	For a typical Makefile, add linker flag like this:
- *	LDFLAGS = -framework DirectoryService
+ *	LDFLAGS = -framework OpenDirectory
  */
 
 #include <freeradius-devel/radiusd.h>
@@ -37,8 +37,9 @@
 #include <pwd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <uuid/uuid.h>
 
-#include <DirectoryService/DirectoryService.h>
+#include <OpenDirectory/OpenDirectory.h>
 #include <membership.h>
 
 #if HAVE_APPLE_SPI
@@ -52,235 +53,59 @@ int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember)
 #define kRadiusSACLName		"com.apple.access_radius"
 #define kRadiusServiceName	"radius"
 
-#define kAuthType           "opendirectory"
+#define kAuthType               "opendirectory"
 
 /*
- *	od_check_passwd
+ * Finds the record in given node.
  *
- *  Returns: ds err
+ * Can return NULL.  If non-NULL is returned, caller must CFRelease() the
+ * returned value.
  */
-
-static long od_check_passwd(const char *uname, const char *password)
+static ODRecordRef od_find_rec(REQUEST* request, ODNodeRef node, CFStringRef recName, const char* recNameStr)
 {
-	long						result				= eDSAuthFailed;
-	tDirReference				dsRef				= 0;
-    tDataBuffer				   *tDataBuff			= NULL;
-    tDirNodeReference			nodeRef				= 0;
-    long						status				= eDSNoErr;
-    tContextData				context				= 0;
-	unsigned long				nodeCount			= 0;
-	uint32_t			    	attrIndex			= 0;
-	tDataList				   *nodeName			= NULL;
-    tAttributeEntryPtr			pAttrEntry			= NULL;
-	tDataList				   *pRecName			= NULL;
-	tDataList				   *pRecType			= NULL;
-	tDataList				   *pAttrType			= NULL;
-	unsigned long				recCount			= 0;
-	tRecordEntry		  	 	*pRecEntry			= NULL;
-	tAttributeListRef			attrListRef			= 0;
-	char					   *pUserLocation		= NULL;
-	char					   *pUserName			= NULL;
-	tAttributeValueListRef		valueRef			= 0;
-	tAttributeValueEntry  	 	*pValueEntry		= NULL;
-	tDataList				   *pUserNode			= NULL;
-	tDirNodeReference			userNodeRef			= 0;
-	tDataBuffer					*pStepBuff			= NULL;
-	tDataNode				   *pAuthType			= NULL;
-	tAttributeValueEntry	   *pRecordType			= NULL;
-	uint32_t    				uiCurr				= 0;
-	uint32_t    				uiLen				= 0;
-	uint32_t    				pwLen				= 0;
-	
-	if (uname == NULL || password == NULL)
-		return result;
-	
-	do
-	{		
-		status = dsOpenDirService( &dsRef );
-		if ( status != eDSNoErr )
-			return result;
-		
-		tDataBuff = dsDataBufferAllocate( dsRef, 4096 );
-		if (tDataBuff == NULL)
-			break;
-		
-		/* find user on search node */
-		status = dsFindDirNodes( dsRef, tDataBuff, NULL, eDSSearchNodeName, &nodeCount, &context );
-		if (status != eDSNoErr || nodeCount < 1)
-			break;
-		
-		status = dsGetDirNodeName( dsRef, tDataBuff, 1, &nodeName );
-		if (status != eDSNoErr)
-			break;
-		
-		status = dsOpenDirNode( dsRef, nodeName, &nodeRef );
-		dsDataListDeallocate( dsRef, nodeName );
-		free( nodeName );
-		nodeName = NULL;
-		if (status != eDSNoErr)
-			break;
+    if (!node || !recName) return NULL;
 
-		pRecName = dsBuildListFromStrings( dsRef, uname, NULL );
-		pRecType = dsBuildListFromStrings( dsRef, kDSStdRecordTypeUsers, kDSStdRecordTypeComputers, kDSStdRecordTypeMachines, NULL );
-		pAttrType = dsBuildListFromStrings( dsRef, kDSNAttrMetaNodeLocation, kDSNAttrRecordName, kDSNAttrRecordType, NULL );
-		
-		recCount = 1;
-		status = dsGetRecordList( nodeRef, tDataBuff, pRecName, eDSExact, pRecType,
-													pAttrType, 0, &recCount, &context );
-		if ( status != eDSNoErr || recCount == 0 )
-			break;
-				
-		status = dsGetRecordEntry( nodeRef, tDataBuff, 1, &attrListRef, &pRecEntry );
-		if ( status != eDSNoErr )
-			break;
-		
-		for ( attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++ )
-		{
-			status = dsGetAttributeEntry( nodeRef, tDataBuff, attrListRef, attrIndex, &valueRef, &pAttrEntry );
-			if ( status == eDSNoErr && pAttrEntry != NULL )
-			{
-				if ( strcmp( pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrMetaNodeLocation ) == 0 )
-				{
-					status = dsGetAttributeValue( nodeRef, tDataBuff, 1, valueRef, &pValueEntry );
-					if ( status == eDSNoErr && pValueEntry != NULL )
-					{
-						pUserLocation = (char *) calloc( pValueEntry->fAttributeValueData.fBufferLength + 1, sizeof(char) );
-						memcpy( pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength );
-					}
-				}
-				else
-				if ( strcmp( pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName ) == 0 )
-				{
-					status = dsGetAttributeValue( nodeRef, tDataBuff, 1, valueRef, &pValueEntry );
-					if ( status == eDSNoErr && pValueEntry != NULL )
-					{
-						pUserName = (char *) calloc( pValueEntry->fAttributeValueData.fBufferLength + 1, sizeof(char) );
-						memcpy( pUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength );
-					}
-				}
-				else
-				if ( strcmp( pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordType ) == 0 )
-				{
-					status = dsGetAttributeValue( nodeRef, tDataBuff, 1, valueRef, &pValueEntry );
-					if ( status == eDSNoErr && pValueEntry != NULL )
-					{
-						pRecordType = pValueEntry;
-						pValueEntry = NULL;
-					}
-				}
-				
-				if ( pValueEntry != NULL ) {
-					dsDeallocAttributeValueEntry( dsRef, pValueEntry );
-					pValueEntry = NULL;
-				}
-				if ( pAttrEntry != NULL ) {
-					dsDeallocAttributeEntry( dsRef, pAttrEntry );
-					pAttrEntry = NULL;
-				}
-				dsCloseAttributeValueList( valueRef );
-				valueRef = 0;
-			}
-		}
-		
-		pUserNode = dsBuildFromPath( dsRef, pUserLocation, "/" );
-		status = dsOpenDirNode( dsRef, pUserNode, &userNodeRef );
-		dsDataListDeallocate( dsRef, pUserNode );
-		free( pUserNode );
-		pUserNode = NULL;
-		if ( status != eDSNoErr )
-			break;
-		
-		pStepBuff = dsDataBufferAllocate( dsRef, 128 );
-		
-		pAuthType = dsDataNodeAllocateString( dsRef, kDSStdAuthNodeNativeClearTextOK );
-		uiCurr = 0;
-		
-		/* User name */
-		uiLen = (uint32_t)strlen( pUserName );
-		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), &uiLen, sizeof(uiLen) );
-		uiCurr += (uint32_t)sizeof( uiLen );
-		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), pUserName, uiLen );
-		uiCurr += uiLen;
-		
-		/* pw */
-		pwLen = (uint32_t)strlen( password );
-		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), &pwLen, sizeof(pwLen) );
-		uiCurr += (uint32_t)sizeof( pwLen );
-		memcpy( &(tDataBuff->fBufferData[ uiCurr ]), password, pwLen );
-		uiCurr += pwLen;
-		
-		tDataBuff->fBufferLength = uiCurr;
-		
-		result = dsDoDirNodeAuthOnRecordType( userNodeRef, pAuthType, 1, tDataBuff, pStepBuff, NULL, &pRecordType->fAttributeValueData );
-	}
-	while ( 0 );
-	
-	/* clean up */
-	if (pAuthType != NULL) {
-		dsDataNodeDeAllocate( dsRef, pAuthType );
-		pAuthType = NULL;
-	}
-	if (pRecordType != NULL) {
-		dsDeallocAttributeValueEntry( dsRef, pRecordType );
-		pRecordType = NULL;
-	}
-	if (tDataBuff != NULL) {
-		bzero( tDataBuff, tDataBuff->fBufferSize );
-		dsDataBufferDeAllocate( dsRef, tDataBuff );
-		tDataBuff = NULL;
-	}
-	if (pStepBuff != NULL) {
-		dsDataBufferDeAllocate( dsRef, pStepBuff );
-		pStepBuff = NULL;
-	}
-	if (pUserLocation != NULL) {
-		free(pUserLocation);
-		pUserLocation = NULL;
-	}
-	if (pRecName != NULL) {
-		dsDataListDeallocate( dsRef, pRecName );
-		free( pRecName );
-		pRecName = NULL;
-	}
-	if (pRecType != NULL) {
-		dsDataListDeallocate( dsRef, pRecType );
-		free( pRecType );
-		pRecType = NULL;
-	}
-	if (pAttrType != NULL) {
-		dsDataListDeallocate( dsRef, pAttrType );
-		free( pAttrType );
-		pAttrType = NULL;
-	}
-	if (nodeRef != 0) {
-		dsCloseDirNode(nodeRef);
-		nodeRef = 0;
-	}
-	if (dsRef != 0) {
-		dsCloseDirService(dsRef);
-		dsRef = 0;
-	}
-	
-	return result;
+    ODRecordRef rec = NULL;
+
+    ODQueryRef query = ODQueryCreateWithNode(kCFAllocatorDefault,
+                                             node,
+                                             kODRecordTypeUsers,
+                                             kODAttributeTypeRecordName,
+                                             kODMatchEqualTo,
+                                             recName,
+                                             NULL,
+                                             0,
+                                             NULL);
+
+    if (!query) {
+        RDEBUG2("Unable to create OD query for %s", recNameStr);
+    } else {
+        CFArrayRef queryResults = ODQueryCopyResults(query, false, NULL);
+        if (queryResults == NULL || CFArrayGetCount(queryResults) == 0) {
+            RDEBUG2("Unable to find record '%s' in OD", recNameStr);
+        } else {
+            rec = (ODRecordRef)CFArrayGetValueAtIndex(queryResults, 0);
+            CFRetain(rec);
+            CFRelease(queryResults);
+        }
+
+        CFRelease(query);
+    }
+
+    return rec;
 }
 
-
 /*
- *	Check the users password against the standard UNIX
- *	password table.
+ *	Check the users password against OD.
  */
 static int od_authenticate(UNUSED void *instance, REQUEST *request)
 {
-	char *name, *passwd;
-	int		ret;
-	long odResult = eDSAuthFailed;
-	
 	/*
 	 *	We can only authenticate user requests which HAVE
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		RDEBUG("ERROR: You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Name attribute!");
+		RDEBUG("ERROR: Request does not contain a User-Name attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -289,43 +114,64 @@ static int od_authenticate(UNUSED void *instance, REQUEST *request)
 	 */
 	if (!request->password ||
 	    (request->password->attribute != PW_PASSWORD)) {
-		RDEBUG("ERROR: You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
+		RDEBUG("ERROR: Request does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 	
-	name = (char *)request->username->vp_strvalue;
-	passwd = (char *)request->password->vp_strvalue;
-	
-	odResult = od_check_passwd(name, passwd);
-	switch(odResult)
-	{
-		case eDSNoErr:
-			ret = RLM_MODULE_OK;
-			break;
-			
-		case eDSAuthUnknownUser:
-		case eDSAuthInvalidUserName:
-		case eDSAuthNewPasswordRequired:
-		case eDSAuthPasswordExpired:
-		case eDSAuthAccountDisabled:
-		case eDSAuthAccountExpired:
-		case eDSAuthAccountInactive:
-		case eDSAuthInvalidLogonHours:
-		case eDSAuthInvalidComputer:
-			ret = RLM_MODULE_USERLOCK;
-			break;
-		
-		default:
-			ret = RLM_MODULE_REJECT;
-			break;
+	/* Open Search node for querying. */
+	ODNodeRef searchNode = ODNodeCreateWithName(kCFAllocatorDefault, kODSessionDefault, CFSTR("/Search"), NULL);
+	if (!searchNode) {
+		RDEBUG2("Unable to open OD search node");
+		return RLM_MODULE_FAIL;
 	}
-	
-	if (ret != RLM_MODULE_OK) {
-		RDEBUG("[%s]: Invalid password", name);
- 		return ret;
+
+	CFStringRef username = CFStringCreateWithCString(kCFAllocatorDefault,
+							 request->username->vp_strvalue,
+							 kCFStringEncodingUTF8);
+
+	CFStringRef password = CFStringCreateWithCString(kCFAllocatorDefault,
+							 request->password->vp_strvalue,
+							 kCFStringEncodingUTF8);
+
+	int status = RLM_MODULE_REJECT;
+	CFErrorRef error = NULL;
+	ODRecordRef rec = od_find_rec(request, searchNode, username, request->username->vp_strvalue);
+	if (rec) {
+		if (ODRecordVerifyPassword(rec, password, &error)) {
+			status = RLM_MODULE_OK;
+		} else {
+			if (error == NULL) {
+				RDEBUG2("Authentication failed for %s", request->username->vp_strvalue);
+			} else {
+				char* desc_str = NULL;
+				CFStringRef desc = CFErrorCopyDescription(error);
+				if (desc) {
+					size_t desc_str_size = CFStringGetLength(desc) + 1;
+					desc_str = malloc(desc_str_size);
+					if (desc_str) {
+						CFStringGetCString(desc,
+								   desc_str,
+								   desc_str_size,
+								   kCFStringEncodingUTF8);
+					}
+				}
+
+				RDEBUG2("Authentication failed for %s: error %d: %s",
+					request->username->vp_strvalue, CFErrorGetCode(error),
+					desc_str ? desc_str : "unknown error");
+
+				CFRelease(error);
+			}
+		}
+
+		CFRelease(rec);
 	}
-		
-	return RLM_MODULE_OK;
+
+	if (username) CFRelease(username);
+	if (password) CFRelease(password);
+	CFRelease(searchNode);
+
+	return status;
 }
 
 
@@ -334,8 +180,6 @@ static int od_authenticate(UNUSED void *instance, REQUEST *request)
  */
 static int od_authorize(UNUSED void *instance, REQUEST *request)
 {
-	char *name = NULL;
-	struct passwd *userdata = NULL;
 	struct group *groupdata = NULL;
 	int ismember = 0;
 	RADCLIENT *rad_client = NULL;
@@ -404,27 +248,48 @@ static int od_authorize(UNUSED void *instance, REQUEST *request)
 		}
 	}
 	
-	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
-		RDEBUG("no access control groups, all users allowed.");
-    	if (pairfind(request->config_items, PW_AUTH_TYPE) == NULL) {
-    		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
-    		RDEBUG("Setting Auth-Type = %s", kAuthType);
-		}
-		return RLM_MODULE_OK;
-	}
-
 	/* resolve user */
 	uuid_clear(uuid);
-	name = (char *)request->username->vp_strvalue;
-	rad_assert(name != NULL);
 
-	userdata = getpwnam(name);
-	if (userdata != NULL) {
-		err = mbr_uid_to_uuid(userdata->pw_uid, uuid);
-		if (err != 0)
-			uuid_clear(uuid);
+	ODNodeRef searchNode = ODNodeCreateWithName(kCFAllocatorDefault, kODSessionDefault, CFSTR("/Search"), NULL);
+	if (!searchNode) {
+		RDEBUG2("Unable to open OD search node");
+		return RLM_MODULE_FAIL;
 	}
-	
+
+	CFStringRef username = CFStringCreateWithCString(kCFAllocatorDefault,
+							 request->username->vp_strvalue,
+							 kCFStringEncodingUTF8);
+
+	ODRecordRef rec = od_find_rec(request, searchNode, username, request->username->vp_strvalue);
+	if (!rec) {
+		RDEBUG("User %s does not exist in OD", request->username->vp_strvalue);
+	} else {
+		RDEBUG("User %s exists in OD", request->username->vp_strvalue);
+		CFArrayRef vals = ODRecordCopyValues(rec, kODAttributeTypeGUID, NULL);
+		if (!vals || CFArrayGetCount(vals) == 0) {
+			RDEBUG("Could not find GUID for user %s", request->username->vp_strvalue);
+		} else {
+		    CFTypeRef user_guid = CFArrayGetValueAtIndex(vals, 0);
+			if (CFGetTypeID(user_guid) == CFStringGetTypeID()) {
+				size_t len = CFStringGetLength(user_guid) + 1;
+				char* user_guid_str = malloc(len);
+				if (user_guid_str) {
+					CFStringGetCString(user_guid, user_guid_str, len, kCFStringEncodingUTF8);
+					uuid_parse(user_guid_str, uuid);
+				}
+			}
+			CFRelease(vals);
+		    }
+		CFRelease(rec);
+	}
+	if (username) CFRelease(username);
+	CFRelease(searchNode);
+
+	/*
+	 * Check the user membership in the access groups (if they exist).
+	 */
+
 	if (uuid_is_null(uuid)) {
 		radius_pairmake(request, &request->packet->vps,
 				"Module-Failure-Message", "Could not get the user's uuid", T_OP_EQ);
@@ -440,10 +305,13 @@ static int od_authorize(UNUSED void *instance, REQUEST *request)
 		}
 		
 		if (ismember == 0) {
+			RDEBUG("User %s is not a member of the RADUIS SACL", request->username->vp_strvalue);
 			radius_pairmake(request, &request->packet->vps,
 					"Module-Failure-Message", "User is not authorized", T_OP_EQ);
-			return RLM_MODULE_USERLOCK;
+			return RLM_MODULE_REJECT;
 		}
+
+		RDEBUG("User %s is a member of the RADUIS SACL", request->username->vp_strvalue);
 	}
 	
 	if (!uuid_is_null(guid_nasgroup)) {
@@ -455,12 +323,19 @@ static int od_authorize(UNUSED void *instance, REQUEST *request)
 		}
 		
 		if (ismember == 0) {
+			RDEBUG("User %s is not a member of the host access group", request->username->vp_strvalue);
 			radius_pairmake(request, &request->packet->vps,
 					"Module-Failure-Message", "User is not authorized", T_OP_EQ);
-			return RLM_MODULE_USERLOCK;
+			return RLM_MODULE_REJECT;
 		}
+
+		RDEBUG("User %s is a member of the hostaccess group", request->username->vp_strvalue);
 	}
 	
+	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
+		RDEBUG("no access control groups, all OD users allowed.");
+	}
+
 	if (pairfind(request->config_items, PW_AUTH_TYPE) == NULL) {
 		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
 		RDEBUG("Setting Auth-Type = %s", kAuthType);

@@ -37,7 +37,7 @@ RCSID("$Id$")
 #include	"smbdes.h"
 
 #ifdef __APPLE__
-extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
+extern int do_od_mschap(REQUEST* request, VALUE_PAIR* response, VALUE_PAIR* challenge, const char* username_string);
 #endif
 
 /* Allowable account control bits */
@@ -1203,23 +1203,6 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 
-#ifdef __APPLE__
-		/*
-		 *  No "known good" NT-Password attribute.  Try to do
-		 *  OpenDirectory authentication.
-		 *
-		 *  If OD determines the user is an AD user it will return noop, which
-		 *  indicates the auth process should continue directly to AD.
-		 *  Otherwise OD will determine auth success/fail.
-		 */
-		if (!nt_password && inst->open_directory) {
-			RDEBUG2("No NT-Password configured. Trying OpenDirectory Authentication.");
-			int odStatus = od_mschap_auth(request, challenge, username);
-			if (odStatus != RLM_MODULE_NOOP) {
-				return odStatus;
-			}
-		}
-#endif
 		/*
 		 *	The old "mschapv2" function has been moved to
 		 *	here.
@@ -1236,6 +1219,12 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		RDEBUG2("Told to do MS-CHAPv2 for %s with NT-Password",
 		       username_string);
+
+#ifdef __APPLE__
+		if (inst->open_directory) {
+			return do_od_mschap(request, response, challenge, username_string);
+		}
+#endif
 
 		if (do_mschap(inst, request, nt_password, mschapv1_challenge,
 			      response->vp_octets + 26, nthashhash,

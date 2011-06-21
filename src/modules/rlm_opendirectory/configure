@@ -2790,7 +2790,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	od_ldflags="${od_ldflags} -framework DirectoryService"
+	od_ldflags="${od_ldflags} -framework OpenDirectory"
 
 
 

@@ -15,389 +15,346 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- * Copyright 2007 Apple Inc.
+ * Copyright 2007-2010 Apple Inc.  All rights reserved.
  */
 
-#include	<freeradius-devel/ident.h>
+#include        <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/modules.h>
-#include	<freeradius-devel/rad_assert.h>
+#include        <freeradius-devel/radiusd.h>
+#include        <freeradius-devel/modules.h>
+#include        <freeradius-devel/rad_assert.h>
 #include        <freeradius-devel/md5.h>
 
-#include 	<ctype.h>
+#include        <ctype.h>
 
-#include	"smbdes.h"
+#include        "mschap.h"
 
-#include <DirectoryService/DirectoryService.h>
+#include        <OpenDirectory/OpenDirectory.h>
+#include        <nt/ntlm.h>
 
-#define kActiveDirLoc "/Active Directory/"
 
-static int getUserNodeRef(char* inUserName, char **outUserName,
-			  tDirNodeReference* userNodeRef, tDirReference dsRef)
+extern void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
+                             const char* name, const char* value, int len);
+
+/*
+ * Finds the record in given node.
+ *
+ * Can return NULL.  If non-NULL is returned, caller must CFRelease() the
+ * returned value.
+ */
+static ODRecordRef od_find_rec(REQUEST* request, ODNodeRef node, CFStringRef recName, const char* recNameStr)
 {
-	tDataBuffer             *tDataBuff	= NULL;
-	tDirNodeReference       nodeRef		= 0;
-	long                    status		= eDSNoErr;
-	tContextData            context		= 0;
-	unsigned long           nodeCount	= 0;
-	uint32_t                attrIndex	= 0;
-	tDataList               *nodeName	= NULL;
-	tAttributeEntryPtr      pAttrEntry	= NULL;
-	tDataList               *pRecName	= NULL;
-	tDataList               *pRecType	= NULL;
-	tDataList               *pAttrType	= NULL;
-	unsigned long           recCount	= 0;
-	tRecordEntry            *pRecEntry	= NULL;
-	tAttributeListRef       attrListRef	= 0;
-	char                    *pUserLocation	= NULL;
-	tAttributeValueListRef  valueRef	= 0;
-	tAttributeValueEntry    *pValueEntry	= NULL;
-	tDataList               *pUserNode	= NULL;
-	int                     result		= RLM_MODULE_FAIL;
-	
-	if (inUserName == NULL) {
-		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): no username");
-		return RLM_MODULE_FAIL;
-	}
-    
-	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
-	if (tDataBuff == NULL) {
-		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);  
-		return RLM_MODULE_FAIL;
-	}
-	
-	do {
-		/* find on search node */
-		status = dsFindDirNodes(dsRef, tDataBuff, NULL,
-					eDSAuthenticationSearchNodeName,
-					&nodeCount, &context);
-		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);  
-			result = RLM_MODULE_FAIL;
-			break;
-		}
-		if (nodeCount < 1) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): nodeCount < 1, status = %ld", status);  
-			result = RLM_MODULE_FAIL;
-			break;
-		}
-		
-		status = dsGetDirNodeName(dsRef, tDataBuff, 1, &nodeName);
-		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetDirNodeName() status = %ld", status);  
-			result = RLM_MODULE_FAIL;
-			break;
-		}
-		
-		status = dsOpenDirNode(dsRef, nodeName, &nodeRef);
-		dsDataListDeallocate(dsRef, nodeName);
-		free(nodeName);
-		nodeName = NULL;
-		
-		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);  
-			result = RLM_MODULE_FAIL;
-			break;
-		}
-		
-		pRecName = dsBuildListFromStrings(dsRef, inUserName, NULL);
-		pRecType = dsBuildListFromStrings(dsRef, kDSStdRecordTypeUsers,
-						  NULL);
-		pAttrType = dsBuildListFromStrings(dsRef,
-						   kDSNAttrMetaNodeLocation,
-						   kDSNAttrRecordName, NULL);
-		
-		recCount = 1;
-		status = dsGetRecordList(nodeRef, tDataBuff, pRecName,
-					 eDSExact, pRecType, pAttrType, 0,
-					 &recCount, &context);
-		if (status != eDSNoErr || recCount == 0) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordList() status = %ld, recCount=%lu", status, recCount);  
-			result = RLM_MODULE_FAIL;
-			break;
-		}
-		
-		status = dsGetRecordEntry(nodeRef, tDataBuff, 1,
-					  &attrListRef, &pRecEntry);
-		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);  
-			result = RLM_MODULE_FAIL;
-			break;	
-		}
-		
-		for (attrIndex = 1; (attrIndex <= pRecEntry->fRecordAttributeCount) && (status == eDSNoErr); attrIndex++) {
-			status = dsGetAttributeEntry(nodeRef, tDataBuff, attrListRef, attrIndex, &valueRef, &pAttrEntry);
-			if (status == eDSNoErr && pAttrEntry != NULL) {
-				if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrMetaNodeLocation) == 0) {
-					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
-					if (status == eDSNoErr && pValueEntry != NULL) {
-						pUserLocation = (char *) calloc(pValueEntry->fAttributeValueData.fBufferLength + 1, sizeof(char));
-						memcpy(pUserLocation, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-					}
-				} else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
-					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
-					if (status == eDSNoErr && pValueEntry != NULL) {
-						*outUserName = (char *) malloc(pValueEntry->fAttributeValueData.fBufferLength + 1);
-						bzero(*outUserName,pValueEntry->fAttributeValueData.fBufferLength + 1);
-						memcpy(*outUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
-					}
-				}
-				
-				if (pValueEntry != NULL) {
-					dsDeallocAttributeValueEntry(dsRef, pValueEntry);
-					pValueEntry = NULL;
-				}
-				
-				dsDeallocAttributeEntry(dsRef, pAttrEntry);
-				pAttrEntry = NULL;
-				dsCloseAttributeValueList(valueRef);
-				valueRef = 0;
-			}
-		}
-		
-		/* OpenDirectory doesn't support mschapv2 authentication against
-		 * Active Directory.  AD users need to be authenticated using the
-		 * normal freeradius AD path (i.e. ntlm_auth).
-		 */
-		if (strncmp(pUserLocation, kActiveDirLoc, strlen(kActiveDirLoc)) == 0) {
-			DEBUG2("[mschap] OpenDirectory authentication returning noop.  OD doesn't support MSCHAPv2 for ActiveDirectory users.");
-			result = RLM_MODULE_NOOP;
-			break;
-		}
-        
-		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
-		if (pUserNode == NULL) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");  
-			result = RLM_MODULE_FAIL;
-			break;
-		}
-		
-		status = dsOpenDirNode(dsRef, pUserNode, userNodeRef);
-		dsDataListDeallocate(dsRef, pUserNode);
-		free(pUserNode);
+    if (!node || !recName) return NULL;
 
-		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);  
-			result = RLM_MODULE_FAIL;
-			break;
-		}
-		
-		result = RLM_MODULE_OK;
-	}
-	while (0);
-	
-	if (pRecEntry != NULL)
-		dsDeallocRecordEntry(dsRef, pRecEntry);
+    ODRecordRef rec = NULL;
 
-	if (tDataBuff != NULL)
-		dsDataBufferDeAllocate(dsRef, tDataBuff);
-		
-	if (pUserLocation != NULL)
-		free(pUserLocation);
-		
-	if (pRecName != NULL) {
-		dsDataListDeallocate(dsRef, pRecName);
-		free(pRecName);
-	}
-	if (pRecType != NULL) {
-		dsDataListDeallocate(dsRef, pRecType);
-		free(pRecType);
-	}
-	if (pAttrType != NULL) {
-		dsDataListDeallocate(dsRef, pAttrType);
-		free(pAttrType);
-	}
-	if (nodeRef != 0)
-		dsCloseDirNode(nodeRef);
-	
-	return  result;
+    ODQueryRef query = ODQueryCreateWithNode(kCFAllocatorDefault,
+                                             node,
+                                             kODRecordTypeUsers,
+                                             kODAttributeTypeRecordName,
+                                             kODMatchEqualTo,
+                                             recName,
+                                             NULL,
+                                             0,
+                                             NULL);
+
+    if (!query) {
+        RDEBUG2("Unable to create OD query for %s", recNameStr);
+    } else {
+        CFArrayRef queryResults = ODQueryCopyResults(query, false, NULL);
+        if (queryResults == NULL || CFArrayGetCount(queryResults) == 0) {
+            RDEBUG2("Unable to find record %s in OD", recNameStr);
+        } else {
+            rec = (ODRecordRef)CFArrayGetValueAtIndex(queryResults, 0);
+            CFRetain(rec);
+            CFRelease(queryResults);
+        }
+
+        CFRelease(query);
+    }
+
+    return rec;
 }
 
 
-int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
-		   VALUE_PAIR * usernamepair)
+static CFErrorRef create_nt_error(uint32_t nt_status)
 {
-	tDirStatus		status		 = eDSNoErr;
-	tDirReference		dsRef		 = 0;
-	tDirNodeReference	userNodeRef	 = 0;
-	tDataBuffer		*tDataBuff	 = NULL;
-	tDataBuffer		*pStepBuff	 = NULL;
-	tDataNode		*pAuthType	 = NULL;
-	uint32_t		uiCurr		 = 0;
-	uint32_t		uiLen		 = 0;
-	char			*username_string = NULL;
-	char			*shortUserName	 = NULL;
-	VALUE_PAIR		*response	 = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE);
-#ifndef NDEBUG
-	int t;
-#endif
-	
-	username_string = (char *) malloc(usernamepair->length + 1);
-	if (username_string == NULL)
-		return RLM_MODULE_FAIL;
-	
-	strlcpy(username_string, (char *)usernamepair->vp_strvalue,
-		usernamepair->length + 1);
-	
-	status = dsOpenDirService(&dsRef);
-	if (status != eDSNoErr) {
-		free(username_string);
-		radlog(L_ERR,"rlm_mschap: od_mschap_auth(): dsOpenDirService = %d", status);
-		return RLM_MODULE_FAIL;
-	}
+    CFStringRef desc = NULL;
+    switch (nt_status) {
+        case 0xC000005E: // STATUS_NO_LOGON_SERVERS
+            desc = CFSTR("no logon servers");
+            break;
+        case 0xC0000064: // STATUS_NO_SUCH_USER
+            desc = CFSTR("no such user");
+            break;
+        case 0xC000006A: // STATUS_WRONG_PASSWORD
+            desc = CFSTR("no wrong password");
+            break;
+        case 0xC000006D: // STATUS_LOGON_FAILURE
+            desc = CFSTR("logon failure");
+            desc = CFStringCreateCopy(kCFAllocatorDefault, desc);
+            break;
+        case 0xC000006F: // STATUS_INVALID_LOGON_HOURS
+            desc = CFSTR("invalid logon hours");
+            break;
+        case 0xC0000070: // STATUS_INVALID_WORKSTATION
+            desc = CFSTR("invalid workstation");
+            break;
+        case 0xC0000071: // STATUS_PASSWORD_EXPIRED
+            desc = CFSTR("password expired");
+            break;
+        case 0xC0000072: // STATUS_ACCOUNT_DISABLED
+            desc = CFSTR("account disabled");
+            break;
+        case 0xC000000D: // STATUS_INVALID_PARAMETER
+            desc = CFSTR("invalid parameter");
+            break;
+        default:
+            desc = CFSTR("unknown error");
+            break;
+    }
+
+    return CFErrorCreateWithUserInfoKeysAndValues(kCFAllocatorDefault,
+                                                  CFSTR("com.apple.netlogon.freeradius"),
+                                                  nt_status,
+                                                  (const void* const*)&kCFErrorDescriptionKey,
+                                                  (const void* const*)&desc,
+                                                  1);
+}
+
+/*
+ * Handles NT auth for AD users.
+ */
+static int od_nt_auth(REQUEST*    request,
+                      VALUE_PAIR* response,
+                      VALUE_PAIR* challenge,
+                      ODNodeRef   node,
+                      ODRecordRef rec,
+                      CFStringRef recName,
+                      const char* username_string,
+                      CFErrorRef* error)
+{
+    int status = RLM_MODULE_REJECT;
+
+    NTLM_LOGON_REQ logonReq = {
+        .Version = NTLM_LOGON_REQ_VERSION,
+        .LogonDomainName = NULL,
+        .UserName = username_string,
+        .Workstation = NULL,
+        .LmChallenge = { 0 },
+        .LmChallengeResponseLength = 0,
+        .LmChallengeResponse = NULL,
+        .NtChallengeResponseLength = 24,
+        .NtChallengeResponse = response->vp_octets + 26
+    };
+
+    char *accountName = NULL;
+    char *accountDomain = NULL;
+    uint32_t userFlags = 0;
+    uint8_t sessionKey[16] = { 0 };
     
-	status = getUserNodeRef(username_string, &shortUserName, &userNodeRef, dsRef);
-	if(status != RLM_MODULE_OK) {
-		if (status != RLM_MODULE_NOOP) {
-			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
-		}
-		if (username_string != NULL)
-			free(username_string);
-		if (dsRef != 0)
-			dsCloseDirService(dsRef);
-		return status;
-	}
-	
-	/* We got a node; fill the stepBuffer 
-	   kDSStdAuthMSCHAP2
-	   MS-CHAPv2 authentication method. The Open Directory plug-in generates the reply data for the client. 
-	   The input buffer format consists of 
-	   a four byte length specifying the length of the user name that follows, the user name, 
-	   a four byte value specifying the length of the server challenge that follows, the server challenge, 
-	   a four byte value specifying the length of the peer challenge that follows, the peer challenge, 
-	   a four byte value specifying the length of the client's digest that follows, and the client's digest. 
-	   The output buffer consists of a four byte value specifying the length of the return digest for the client's challenge.
-	   r = FillAuthBuff(pAuthBuff, 5,
-	   strlen(inName), inName,						// Directory Services long or short name
-	   strlen(schal), schal,						// server challenge
-	   strlen(peerchal), peerchal,					// client challenge
-	   strlen(p24), p24,							// P24 NT-Response
-	   4, "User");									// must match the username that was used for the hash
-		
-	   inName		= 	username_string
-	   schal		=   challenge->vp_strvalue
-	   peerchal	=   response->vp_strvalue + 2 (16 octets)
-	   p24			=   response->vp_strvalue + 26 (24 octets)
-	*/
+    CFDataRef serverChallenge = NULL;
+    if (challenge->length == 8) {
+        serverChallenge = CFDataCreate(kCFAllocatorDefault, (UInt8*)challenge->vp_strvalue, 8);
+    } else if (challenge->length == 16) {
+        uint8_t buffer[32];
+        mschap_challenge_hash(response->vp_octets + 2,
+                              challenge->vp_octets,
+                              username_string,
+                              buffer);
 
-	pStepBuff = dsDataBufferAllocate(dsRef, 4096);
-	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
-	pAuthType = dsDataNodeAllocateString(dsRef, kDSStdAuthMSCHAP2);
-	uiCurr = 0;
-	
-	RDEBUG2("OD username_string = %s, OD shortUserName=%s (length = %lu)\n", username_string, shortUserName, strlen(shortUserName));
-	
-	/* User name length + username */
-	uiLen = (uint32_t)strlen(shortUserName);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), shortUserName, uiLen);
-	uiCurr += uiLen;
-#ifndef NDEBUG
-	RDEBUG2("	stepbuf server challenge:\t");
-	for (t = 0; t < challenge->length; t++) {
-		fprintf(stderr, "%02x", challenge->vp_strvalue[t]);
-	}
-	fprintf(stderr, "\n");
-#endif
-	
-	/* server challenge (ie. my (freeRADIUS) challenge) */
-	uiLen = 16;
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(challenge->vp_strvalue[0]),
-	       uiLen);
-	uiCurr += uiLen;
-	
-#ifndef NDEBUG
-	RDEBUG2("	stepbuf peer challenge:\t\t");
-	for (t = 2; t < 18; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
-	}
-	fprintf(stderr, "\n");
-#endif
-	
-	/* peer challenge (ie. the client-generated response) */
-	uiLen = 16;
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[2]),
-	       uiLen);
-	uiCurr += uiLen;	
-	
-#ifndef NDEBUG
-	RDEBUG2("	stepbuf p24:\t\t");
-	for (t = 26; t < 50; t++) {
-		fprintf(stderr, "%02x", response->vp_strvalue[t]);
-	}
-	fprintf(stderr, "\n");
-#endif
-	
-	/* p24 (ie. second part of client-generated response) */
-	uiLen =  24; /* strlen(&(response->vp_strvalue[26])); may contain NULL byte in the middle. */
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &(response->vp_strvalue[26]),
-	       uiLen);
-	uiCurr += uiLen;
-	
-	/* Client generated use name (short name?) */
-	uiLen =  (uint32_t)strlen(username_string);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), &uiLen, sizeof(uiLen));
-	uiCurr += sizeof(uiLen);
-	memcpy(&(tDataBuff->fBufferData[uiCurr]), username_string, uiLen);
-	uiCurr += uiLen;
+        serverChallenge = CFDataCreate(kCFAllocatorDefault, (UInt8*)buffer, 8);
+    }
 
-	tDataBuff->fBufferLength = uiCurr;
-	
-	status = dsDoDirNodeAuth(userNodeRef, pAuthType, 1, tDataBuff,
-				 pStepBuff, NULL);
-	if (status == eDSNoErr) {
-		if (pStepBuff->fBufferLength > 4) {
-			uint32_t len;
-			
-			memcpy(&len, pStepBuff->fBufferData, sizeof(len));
-			if (len == 40) {
-				char mschap_reply[42] = { '\0' };
-				pStepBuff->fBufferData[len+4] = '\0';
-				mschap_reply[0] = 'S';
-				mschap_reply[1] = '=';
-				memcpy(&(mschap_reply[2]), &(pStepBuff->fBufferData[4]), len);
-				mschap_add_reply(request, &request->reply->vps,
-						 *response->vp_strvalue,
-						 "MS-CHAP2-Success",
-						 mschap_reply, len+2);
-				RDEBUG2("dsDoDirNodeAuth returns stepbuff: %s (len=%ld)\n", mschap_reply, len);
-			}
-		}
-	}
+    if (serverChallenge) {
+        memcpy(logonReq.LmChallenge, CFDataGetBytePtr(serverChallenge), 8);
+    }
 
-	/* clean up */
-	if (username_string != NULL)
-		free(username_string);
-	if (shortUserName != NULL)
-		free(shortUserName);
+    uint32_t auth_status = NTLMLogon(&logonReq, NULL, NULL, &accountName, &accountDomain, sessionKey, &userFlags);
+    if (auth_status != 0) {
+        *error = create_nt_error(auth_status);
+    } else {
+        char mschap_reply[42];
+        memset(mschap_reply, 0, sizeof(mschap_reply));
 
-	if (tDataBuff != NULL)
-		dsDataBufferDeAllocate(dsRef, tDataBuff);
-	if (pStepBuff != NULL)
-		dsDataBufferDeAllocate(dsRef, pStepBuff);
-	if (pAuthType != NULL)
-		dsDataNodeDeAllocate(dsRef, pAuthType);
-	if (userNodeRef != 0)
-		dsCloseDirNode(userNodeRef);
-	if (dsRef != 0)
-		dsCloseDirService(dsRef);
-	
-	if (status != eDSNoErr) {
-		errno = EACCES;
-		radlog(L_ERR, "rlm_mschap: authentication failed %d", status); /* <-- returns -14091 (eDSAuthMethodNotSupported) -14090 */
-		return RLM_MODULE_REJECT;
-	}
-	
-	return RLM_MODULE_OK;
+        mschap_auth_response(username_string, /* without the domain */
+                             sessionKey, /* nt-hash-hash */
+                             response->vp_octets + 26, /* peer response */
+                             response->vp_octets + 2, /* peer challenge */
+                             challenge->vp_octets, /* our challenge */
+                             mschap_reply); /* calculated MPPE key */
+        mschap_add_reply(request, &request->reply->vps, *response->vp_octets,
+                         "MS-CHAP2-Success", mschap_reply, 42);
+
+        status = RLM_MODULE_OK;
+    }
+
+    CFRelease(serverChallenge);
+    return status;
+}
+
+/*
+ * Handles MSCHAPv2 auths for OD users.
+ */
+static int od_mschap_auth(REQUEST*    request,
+                          VALUE_PAIR* response,
+                          VALUE_PAIR* challenge,
+                          ODNodeRef   node,
+                          ODRecordRef rec,
+                          CFStringRef recName,
+                          CFErrorRef* error)
+{
+    int status = RLM_MODULE_REJECT;
+
+    /* Create the array of auth-specific data to pass to OD and do the auth. */
+    CFMutableArrayRef authItems = CFArrayCreateMutable(kCFAllocatorDefault, 0, &kCFTypeArrayCallBacks);
+    if (authItems) {
+        CFArrayInsertValueAtIndex(authItems, 0, recName);
+
+        CFDataRef serverChallenge = CFDataCreate(kCFAllocatorDefault, (UInt8*)challenge->vp_strvalue, 16);
+        CFArrayInsertValueAtIndex(authItems, 1, serverChallenge);
+        CFRelease(serverChallenge);
+
+        CFDataRef peerChallenge = CFDataCreate(kCFAllocatorDefault, (UInt8*)&response->vp_strvalue[2], 16);
+        CFArrayInsertValueAtIndex(authItems, 2, peerChallenge);
+        CFRelease(peerChallenge);
+
+        CFDataRef p24 = CFDataCreate(kCFAllocatorDefault, (UInt8*)&response->vp_strvalue[26], 24);
+        CFArrayInsertValueAtIndex(authItems, 3, p24);
+        CFRelease(p24);
+
+        CFArrayInsertValueAtIndex(authItems, 4, recName);
+        CFArrayRef returnedItems = NULL;
+        if (ODRecordVerifyPasswordExtended(rec, kODAuthenticationTypeMSCHAP2, authItems, &returnedItems, NULL, error) &&
+            returnedItems && CFArrayGetCount(returnedItems) == 1)
+        {
+            /* Extract the data from OD and create the reply. */
+            unsigned char* respData = NULL;
+            size_t respDataLen = 0;
+            CFTypeRef cfRespData = CFArrayGetValueAtIndex(returnedItems, 0);
+            if (CFGetTypeID(cfRespData) == CFStringGetTypeID()) {
+                respDataLen = CFStringGetLength(cfRespData);
+                respData = malloc(respDataLen + 1);
+                CFStringGetCString(cfRespData, (char*)respData, respDataLen+1, kCFStringEncodingUTF8);
+            } else if (CFGetTypeID(cfRespData) == CFDataGetTypeID()) {
+                respDataLen = CFDataGetLength(cfRespData);
+                respData = malloc(respDataLen);
+                CFDataGetBytes(cfRespData, CFRangeMake(0, respDataLen), respData);
+            }
+
+            if (respData) {
+                if (respDataLen == 40) {
+                    char mschap_reply[42];
+                    memset(mschap_reply, 0, sizeof(mschap_reply));
+                    mschap_reply[0] = 'S';
+                    mschap_reply[1] = '=';
+                    memcpy(&mschap_reply[2], respData, respDataLen);
+                    mschap_add_reply(request,
+                                     &request->reply->vps,
+                                     *response->vp_strvalue,
+                                     "MS-CHAP2-Success",
+                                     mschap_reply,
+                                     42);
+                    status = RLM_MODULE_OK;
+                }
+
+                free(respData);
+            }
+        }
+
+        if (returnedItems) CFRelease(returnedItems);
+        CFRelease(authItems);
+    }
+
+    return status;
+}
+
+
+/*
+ * Handles auths for both AD & OD users.
+ */
+int do_od_mschap(REQUEST*    request,
+                 VALUE_PAIR* response,
+                 VALUE_PAIR* challenge,
+                 const char* username_string)
+{
+    RDEBUG2("Using OpenDirectory to authenticate");
+
+    /* Open Search node for querying. */
+    ODNodeRef searchNode = ODNodeCreateWithName(kCFAllocatorDefault, kODSessionDefault, CFSTR("/Search"), NULL);
+    if (!searchNode) {
+        RDEBUG2("Unable to open OD search node");
+        return RLM_MODULE_FAIL;
+    }
+
+    /* Find the record to be used for the auth attempt. */
+    int         status  = RLM_MODULE_FAIL;
+    CFErrorRef  error   = NULL;
+    CFStringRef recName = CFStringCreateWithCString(kCFAllocatorDefault, username_string, kCFStringEncodingUTF8);
+    ODRecordRef rec     = od_find_rec(request, searchNode, recName, username_string);
+    if (rec) {
+        CFArrayRef vals = ODRecordCopyValues(rec, kODAttributeTypeMetaNodeLocation, NULL);
+        if (vals && CFArrayGetCount(vals) != 0) {
+            /* opendirectoryd supports MSCHAPv2 for OD users but not for AD
+             * users.  Use netlogon for AD users.
+             */
+            CFStringRef metaNodeLoc = CFArrayGetValueAtIndex(vals, 0);
+            if (CFStringFind(metaNodeLoc, CFSTR("/Active Directory/"), 0).location == kCFNotFound) {
+                RDEBUG2("Doing OD MSCHAPv2 auth");
+                status = od_mschap_auth(request, response, challenge, searchNode, rec, recName, &error);
+            } else {
+                RDEBUG2("Doing AD netlogon auth");
+                status = od_nt_auth(request, response, challenge, searchNode, rec, recName, username_string, &error);
+            }
+        }
+        CFRelease(rec);
+    }
+
+    if (recName) CFRelease(recName);
+    CFRelease(searchNode);
+
+    /* On success the auth functions have already created the response
+     * data since the work differs for AD & OD. Handle the error response
+     * here since it's common.
+     */
+    if (status == RLM_MODULE_OK) {
+        RDEBUG2("Successful authentication for %s", username_string);
+    } else {
+        mschap_add_reply(request, &request->reply->vps,
+                         *response->vp_octets,
+                         "MS-CHAP-Error", "E=691 R=1", 9);
+        if (error == NULL) {
+            RDEBUG2("Authentication failed for %s", username_string);
+        } else {
+            char* desc_str = NULL;
+            CFDictionaryRef userInfo = CFErrorCopyUserInfo(error);
+            if (userInfo) {
+                CFStringRef desc = CFDictionaryGetValue(userInfo, kCFErrorDescriptionKey);
+                if (desc) {
+                    size_t desc_str_size = CFStringGetLength(desc) + 1;
+                    desc_str = malloc(desc_str_size);
+                    if (desc_str) {
+                        if (!CFStringGetCString(desc, desc_str, desc_str_size, kCFStringEncodingUTF8)) {
+                            free(desc_str);
+                            desc_str = NULL;
+                        }
+                    }
+                }
+                CFRelease(userInfo);
+            }
+            RDEBUG2("Authentication failed for %s: error %d (0x%x): %s",
+                    username_string,
+                    CFErrorGetCode(error),
+                    CFErrorGetCode(error),
+                    desc_str ? desc_str : "unknown error");
+
+            if (desc_str) free(desc_str);
+            CFRelease(error);
+        }
+    }
+
+    return status;
 }
 
 #endif /* __APPLE__ */

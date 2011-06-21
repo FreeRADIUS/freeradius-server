@@ -7,9 +7,10 @@
 TARGET		= rlm_mschap
 SRCS		= rlm_mschap.c mschap.c smbdes.c opendir.c
 HEADERS		= mschap.h smbdes.h
-RLM_CFLAGS	=
+RLM_CFLAGS	= -F /System/Library/PrivateFrameworks
 RLM_LDFLAGS	=
-RLM_LIBS	=
+# libtool doesn't seem to pass the -F option to the linker so provide the full path to nt framework
+RLM_LIBS	= -framework OpenDirectory /System/Library/PrivateFrameworks/nt.framework/nt
 RLM_UTILS   	= smbencrypt
 RLM_INSTALL 	= smbencrypt-install
 
