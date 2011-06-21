@@ -2372,6 +2372,9 @@ static void ping_home_server(void *ctx)
 
 	if ((home->state == HOME_STATE_ALIVE) ||
 	    (home->ping_check == HOME_PING_CHECK_NONE) ||
+#ifdef WITH_TCP
+	    (home->proto == IPPROTO_TCP) ||
+#endif
 	    (home->ev != NULL)) {
 		return;
 	}
@@ -2523,6 +2526,13 @@ static void mark_home_server_zombie(home_server *home)
 
 	rad_assert(home->state == HOME_STATE_ALIVE);
 
+#ifdef WITH_TCP
+	if (home->proto == IPPROTO_TCP) {
+		DEBUG("WARNING: Not marking TCP server zombie");
+		return;
+	}
+#endif
+
 	home->state = HOME_STATE_ZOMBIE;
 	home_trigger(home, "home_server.zombie");
 
@@ -2571,6 +2581,13 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 {
 	int previous_state = home->state;
 	char buffer[128];
+
+#ifdef WITH_TCP
+	if (home->proto == IPPROTO_TCP) {
+		DEBUG("WARNING: Not marking TCP server dead");
+		return;
+	}
+#endif
 
 	radlog(L_PROXY, "Marking home server %s port %d as dead.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
@@ -2674,9 +2691,14 @@ static void request_proxied(REQUEST *request, int action)
 	case FR_ACTION_TIMER:
 		/*
 		 *	If we haven't received a packet for a while,
-		 *	mark it as zombie.
+		 *	mark it as zombie.  If the connection is TCP,
+		 *	then another "watchdog timer" function takes
+		 *	care of pings, etc.
 		 */
 		if ((home->state == HOME_STATE_ALIVE) &&
+#ifdef WITH_TCP
+		    (home->proto != IPPROTO_TCP) &&
+#endif
 		    ((home->last_packet + ((home->zombie_period + 3) / 4)) < now.tv_sec)) {
 			mark_home_server_zombie(home);
 		}
