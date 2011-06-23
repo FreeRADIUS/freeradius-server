@@ -1299,6 +1299,15 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				}
 				p++;
 				break;
+			case 'G': /* request minute. main purpose is detail log files by minute. place %H%G in detail filename */
+				TM = localtime_r(&request->timestamp, &s_TM);
+				len = strftime(tmpdt, sizeof(tmpdt), "%M", TM);
+				if (len > 0) {
+					strlcpy(q, tmpdt, freespace);
+					q += strlen(q);
+				}
+				p++;
+				break;
 			case 'L': /* radlog_dir */
 				strlcpy(q,radlog_dir,freespace);
 				q += strlen(q);
