@@ -463,11 +463,11 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 */
 	if (fflush(fp) != 0) {
 		ftruncate(outfd, fsize); /* ignore errors! */
-		close(outfd);
+		fclose(fp);
 		return RLM_MODULE_FAIL;
 	}
 
-	close(outfd);
+	fclose(fp);
 
 	/*
 	 *	And everything is fine.
