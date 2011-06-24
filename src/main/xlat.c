@@ -1,6 +1,6 @@
 /*
- * xlat.c	Translate strings.  This is the first version of xlat
- * 		incorporated to RADIUS
+ * @file xlat.c
+ * @brief String expansion ("translation"). Implements %Attribute -> value
  *
  * Version:	$Id$
  *
@@ -73,8 +73,8 @@ static const char * const xlat_foreach_names[] = {"Foreach-Variable-0",
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
 
-/*
- *	Convert the value on a VALUE_PAIR to string
+/**
+ * @brief Convert the value on a VALUE_PAIR to string
  */
 static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 			 int type, RADIUS_ESCAPE_STRING func)
@@ -109,8 +109,8 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 }
 
 
-/*
- *	Dynamically translate for check:, request:, reply:, etc.
+/**
+ * @brief Dynamically translate for check:, request:, reply:, etc.
  */
 static size_t xlat_packet(void *instance, REQUEST *request,
 			  char *fmt, char *out, size_t outlen,
@@ -294,7 +294,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	Some "magic" handlers, which are never in VP's, but
 		 *	which are in the packet.
 		 *
-		 *	FIXME: We should really do this in a more
+		 *	@bug FIXME: We should really do this in a more
 		 *	intelligent way...
 		 */
 		if (packet) {
@@ -430,8 +430,8 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	return valuepair2str(out, outlen, vp, da->type, func);
 }
 
-/*
- *	Print data as integer, not as VALUE.
+/**
+ * @brief Print data as integer, not as VALUE.
  */
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 			   char *fmt, char *out, size_t outlen,
@@ -460,8 +460,10 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 
 #ifdef WITH_UNLANG
-/*
- *	Dynamically translate for check:, request:, reply:, etc.
+/**
+ * @brief Implements the Foreach-Variable-X
+ *
+ * @see modcall()
  */
 static size_t xlat_foreach(void *instance, REQUEST *request,
 			   UNUSED char *fmt, char *out, size_t outlen,
@@ -483,8 +485,12 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
 }
 #endif
 
-/*
- *	Print data as string, if possible.
+/**
+ * @brief Print data as string, if possible.
+ *
+ * If attribute "Foo" is defined as "octets" it will normally
+ * be printed as 0x0a0a0a. The xlat "%{string:Foo}" will instead
+ * expand to "\n\n\n"
  */
 static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 			  char *fmt, char *out, size_t outlen,
@@ -517,7 +523,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 #ifdef HAVE_REGEX_H
 /*
- *	Pull %{0} to %{8} out of the packet.
+ * @brief Expand regexp matches %{0} to %{8}
  */
 static size_t xlat_regex(void *instance, REQUEST *request,
 			 char *fmt, char *out, size_t outlen,
@@ -546,8 +552,10 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 #endif				/* HAVE_REGEX_H */
 
 
-/*
- *	Change the debugging level.
+/**
+ * @brief Dynamically change the debugging level for the current request
+ *
+ * Example %{debug:3}
  */
 static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 			  char *fmt, char *out, size_t outlen,
@@ -572,8 +580,10 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 }
 
 
-/*
- *	Calculate the MD5 hash of a string.
+/**
+ * @brief Calculate the MD5 hash of a string.
+ *
+ * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
 static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
 		       char *fmt, char *out, size_t outlen,
@@ -606,8 +616,12 @@ static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
 }
 
 
-/*
- *	Convert a string to lowercase
+/**
+ * @brief Convert a string to lowercase
+ *
+ * Example "%{lc:Bar}" == "bar"
+ *
+ * Probably only works for ASCII
  */
 static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
 		       char *fmt, char *out, size_t outlen,
@@ -635,8 +649,12 @@ static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
 }
 
 
-/*
- *	Convert a string to uppercase
+/**
+ * @brief Convert a string to uppercase
+ *
+ * Example: "%{uc:Foo}" == "FOO"
+ *
+ * Probably only works for ASCII
  */
 static size_t xlat_uc(UNUSED void *instance, REQUEST *request,
 		       char *fmt, char *out, size_t outlen,
@@ -701,8 +719,13 @@ static xlat_t *xlat_find(const char *module)
 }
 
 
-/*
- *      Register an xlat function.
+/**
+ * @brief Register an xlat function.
+ *
+ * @param module xlat name
+ * @param func xlat function to be called
+ * @param instance argument to xlat function
+ * @return 0 on success, -1 on failure
  */
 int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 {
@@ -837,11 +860,15 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	return 0;
 }
 
-/*
- *      Unregister an xlat function.
+/**
+ * @brief Unregister an xlat function.
  *
  *	We can only have one function to call per name, so the
  *	passing of "func" here is extraneous.
+ *
+ * @param module xlat to unregister
+ * @param func Unused
+ * @return Void.
  */
 void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
 {
@@ -861,9 +888,8 @@ void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
 	rbtree_delete(xlat_root, node);
 }
 
-/*
- *	De-register all xlat functions,
- *	used mainly for debugging.
+/**
+ * @brief De-register all xlat functions, used mainly for debugging.
  */
 void xlat_free(void)
 {
@@ -871,8 +897,22 @@ void xlat_free(void)
 }
 
 
-/*
- *	Decode an attribute name into a string.
+/**
+ * @brief Decode an attribute name into a string.
+ *
+ * This expands the various formats:
+ * - %{Name}
+ * - %{xlat:name}
+ * - %{Name:-Other}
+ *
+ * calls radius_xlat() to do most of the work
+ *
+ * @param from string to expand
+ * @param to buffer for output
+ * @param freespace space remaining in output buffer
+ * @param request current server request
+ * @param func optional function to escape output; passed to radius_xlat()
+ * @return 0 on success, -1 on failure
  */
 static int decode_attribute(const char **from, char **to, int freespace,
 			     REQUEST *request,
@@ -1116,10 +1156,17 @@ static size_t xlat_copy(char *out, size_t outlen, const char *in)
 	return (outlen - freespace); /* count does not include NUL */
 }
 
-/*
- *	Replace %<whatever> in a string.
+/**
+ * @brief Replace %whatever in a string.
  *
  *	See 'doc/variables.txt' for more information.
+ *
+ * @param out output buffer
+ * @param outlen size of output buffer
+ * @param fmt string to expand
+ * @param request current request
+ * @param func function to escape final value e.g. SQL quoting
+ * @return length of string written @bug should really have -1 for failure
  */
 int radius_xlat(char *out, int outlen, const char *fmt,
 		REQUEST *request, RADIUS_ESCAPE_STRING func)

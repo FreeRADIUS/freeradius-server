@@ -1,5 +1,5 @@
 /*
- * modcall.c
+ * @name modcall.c
  *
  * Version:	$Id$
  *
@@ -372,8 +372,8 @@ static void pairfree_wrapper(void *data)
 	pairfree(vp);
 }
 
-/*
- *	Call a module, iteratively, with a local stack, rather than
+/**
+ * @brief Call a module, iteratively, with a local stack, rather than
  *	recursively.  What did Paul Graham say about Lisp...?
  */
 int modcall(int component, modcallable *c, REQUEST *request)

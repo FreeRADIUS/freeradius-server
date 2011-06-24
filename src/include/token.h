@@ -2,7 +2,8 @@
 #define FR_TOKEN_H
 
 /*
- * token.h	Special tokens.
+ * @file token.h
+ * @brief Tokenisation code and constants
  *
  * $Id$
  *

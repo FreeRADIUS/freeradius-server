@@ -1,6 +1,8 @@
 /*
- * valuepair.c	Valuepair functions that are radiusd-specific
+ * @file valuepair.c
+ * @brief	Valuepair functions that are radiusd-specific
  *		and as such do not belong in the library.
+ * @ingroup AVP
  *
  * Version:	$Id$
  *
@@ -54,6 +56,16 @@ struct cmp {
 };
 static struct cmp *cmp;
 
+/**
+ * @brief Compares check and vp by value. Does not call any per-attribute
+ *        comparison function, but does honour check.operator
+ *
+ * This function basically does "vp.value check.op check.value"
+ *
+ * @param request Current request
+ * @param check rvalue, and operator
+ * @param vp lvalue
+ */
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 {
 	int ret = -2;
@@ -243,8 +255,18 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 }
 
 
-/*
- *	Compare 2 attributes. May call the attribute compare function.
+/**
+ * @brief Compare check and vp. May call the attribute compare function.
+ *
+ * Unlike radius_compare_vps() this function will call any attribute-
+ * specific comparison function.
+ *
+ * @param req Current request
+ * @param request value pairs in the reqiest
+ * @param check erm...
+ * @param check_pairs erm...
+ * @param reply_pairs value pairs in the reply
+ * @return 
  */
 int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
@@ -278,8 +300,8 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 }
 
 
-/*
- *	Find a comparison function for two attributes.
+/**
+ * @brief Find a comparison function for two attributes.
  */
 int radius_find_compare(unsigned int attribute)
 {
@@ -295,8 +317,8 @@ int radius_find_compare(unsigned int attribute)
 }
 
 
-/*
- *	See what attribute we want to compare with.
+/**
+ * @brief See what attribute we want to compare with.
  */
 static int otherattr(unsigned int attr)
 {
@@ -310,18 +332,20 @@ static int otherattr(unsigned int attr)
 	return attr;
 }
 
-/*
- *	Register a function as compare function.
- *	compare_attr is the attribute in the request we want to
- *	compare with. Normally this is the same as "attr".
+/**
+ * @brief Register a function as compare function.
+ * @param attr Attribute
+ * @param compare_attr
+ *      The attribute in the request we want to
+ *      compare with. Normally this is the same as "attr".
  *	You can set this to:
- *
- *	-1   the same as "attr"
- *	0    always call compare function, not tied to request attribute
- *	>0   Attribute to compare with.
- *
- *	For example, PW_GROUP in a check item needs to be compared
- *	with PW_USER_NAME in the incoming request.
+ *	 - -1   the same as "attr"
+ *	 - 0    always call compare function, not tied to request attribute
+ *	 - >0   Attribute to compare with. For example, PW_GROUP in a check
+ *	 item needs to be compared with PW_USER_NAME in the incoming request.
+ * @param fun comparison function
+ * @param instance argument to comparison function
+ * @return 0
  */
 int paircompare_register(unsigned int attr, int compare_attr, RAD_COMPARE_FUNC fun, void *instance)
 {
@@ -341,8 +365,12 @@ int paircompare_register(unsigned int attr, int compare_attr, RAD_COMPARE_FUNC f
 	return 0;
 }
 
-/*
- *	Unregister a function.
+/**
+ * @brief Unregister comparison function for an attribute
+ *
+ * @param attr Attribute to unregister for
+ * @param fun Comparison function to remove
+ * @return Void.
  */
 void paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC fun)
 {
@@ -365,12 +393,18 @@ void paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC fun)
 	free(c);
 }
 
-/*
- *	Compare two pair lists except for the password information.
+/**
+ * @brief Compare two pair lists except for the password information.
+ *
  *	For every element in "check" at least one matching copy must
  *	be present in "reply".
  *
- *	Return 0 on match.
+ * @param req Current request
+ * @param request request valuepairs
+ * @param check check/control valuepairs
+ * @param[in,out] reply reply value pairs
+ *
+ * @return 0 on match.
  */
 int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
 {
@@ -542,10 +576,9 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 	return result;
 }
 
-/*
- *	Move pairs, replacing/over-writing them, and doing xlat.
- */
-/*
+/**
+ * @brief Move pairs, replacing/over-writing them, and doing xlat.
+ *
  *	Move attributes from one list to the other
  *	if not already present.
  */
@@ -688,8 +721,8 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 	} /* loop over the 'from' list */
 }
 
-/*
- *	Create a pair, and add it to a particular list of VPs
+/**
+ * @brief Create a pair, and add it to a particular list of VPs
  *
  *	Note that this function ALWAYS returns.  If we're OOM, then
  *	it causes the server to exit!
@@ -713,11 +746,17 @@ VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 	return vp;
 }
 
-/*
- *	Create a pair, and add it to a particular list of VPs
+/**	@brief Create a pair, and add it to a particular list of VPs
  *
  *	Note that this function ALWAYS returns.  If we're OOM, then
  *	it causes the server to exit!
+ *
+ *	@param request The current request
+ *	@param vps The list of VPs to modify
+ *	@param attribute Attribute name
+ *	@param value Attribute value
+ *	@param operator Operator e.g. := +=
+ *	@return The new VALUE_PAIR*
  */
 VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    const char *attribute, const char *value,
@@ -735,6 +774,9 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 	return vp;
 }
 
+/**
+ * @brief print a single valuepair to stderr or error log
+ */
 void debug_pair(VALUE_PAIR *vp)
 {
 	if (!vp || !debug_flag || !fr_log_fp) return;
@@ -742,6 +784,9 @@ void debug_pair(VALUE_PAIR *vp)
 	vp_print(fr_log_fp, vp);
 }
 
+/**
+ * @brief print a list of valuepairs to stderr or error log
+ */
 void debug_pair_list(VALUE_PAIR *vp)
 {
 	if (!vp || !debug_flag || !fr_log_fp) return;

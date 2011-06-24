@@ -2,7 +2,8 @@
 #define FR_TCP_H
 
 /*
- * tcp.h	RADIUS over TCP
+ * @file tcp.h
+ * @brief RADIUS over TCP
  *
  * Version:	$Id$
  *

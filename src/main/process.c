@@ -1,5 +1,6 @@
-/*
- * process.c	Handle requests
+/**
+ * @file process.c
+ * @brief Handle requests
  *
  * Version:	$Id$
  *
@@ -73,30 +74,34 @@ static const char *action_codes[] = {
 #define TRACE_STATE_MACHINE {}
 #endif
 
-/*
+/**
+ * @section request_timeline
+ *
  *	Time sequence of a request
+ * @code
  *
  *	RQ-----------------P=============================Y-J-C
  *	 ::::::::::::::::::::::::::::::::::::::::::::::::::::::::M
+ * @endcode
  *
- * 	R: received.  Duplicate detection is done, and request is
+ * -	R: received.  Duplicate detection is done, and request is
  * 	   cached.
  *
- *	Q: Request is placed onto a queue for child threads to pick up.
+ * -	Q: Request is placed onto a queue for child threads to pick up.
  *	   If there are no child threads, the request goes immediately
  *	   to P.
  *
- *	P: Processing the request through the modules.
+ * -	P: Processing the request through the modules.
  *
- *	Y: Reply is ready.  Rejects MAY be delayed here.  All other
+ * -	Y: Reply is ready.  Rejects MAY be delayed here.  All other
  *	   replies are sent immediately.
  *
- *	J: Reject is sent "reject_delay" after the reply is ready.
+ * -	J: Reject is sent "reject_delay" after the reply is ready.
  *
- *	C: For Access-Requests, After "cleanup_delay", the request is
+ * -	C: For Access-Requests, After "cleanup_delay", the request is
  *	   deleted.  Accounting-Request packets go directly from Y to C.
  *
- *	M: Max request time.  If the request hits this timer, it is
+ * -	M: Max request time.  If the request hits this timer, it is
  *	   forcibly stopped.
  *
  *	Other considerations include duplicate and conflicting

@@ -1,7 +1,8 @@
 #ifndef RADIUSD_H
 #define RADIUSD_H
-/*
- * radiusd.h	Structures, prototypes and global variables
+/**
+ * @file radiusd.h
+ * @brief	Structures, prototypes and global variables
  *		for the FreeRADIUS server.
  *
  * Version:	$Id$

@@ -1,7 +1,8 @@
 #ifndef VMPS_H
 #define VMPS_H
 /*
- *	vmps.h	Routines to handle VMPS sockets.
+ * @file vmps.h
+ * @brief Routines to handle VMPS sockets.
  *
  * Version:	$Id$
  *

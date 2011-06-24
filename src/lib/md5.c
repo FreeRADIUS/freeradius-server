@@ -81,9 +81,14 @@ static const uint8_t PADDING[MD5_BLOCK_LENGTH] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
-/*
- * Start MD5 accumulation.  Set bit count to 0 and buffer to mysterious
+/**
+ * @brief Start MD5 accumulation.
+ *
+ * Set bit count to 0 and buffer to mysterious
  * initialization constants.
+ *
+ * @param ctx MD5 context to be initialized.
+ * @return Void.
  */
 void
 fr_MD5Init(FR_MD5_CTX *ctx)
@@ -96,9 +101,16 @@ fr_MD5Init(FR_MD5_CTX *ctx)
 	ctx->state[3] = 0x10325476;
 }
 
-/*
+/**
+ * @brief Hash more data into the MD5 context
+ *
  * Update context to reflect the concatenation of another buffer full
  * of bytes.
+ *
+ * @param ctx MD5 hashing context to update
+ * @param input Data to add to hash
+ * @param len Data length
+ * @return Void.
  */
 void
 fr_MD5Update(FR_MD5_CTX *ctx, const unsigned char *input, size_t len)

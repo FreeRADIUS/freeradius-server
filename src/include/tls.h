@@ -4,7 +4,8 @@
 #ifndef NO_OPENSSL
 
 /*
- * tls.h	Structures and prototypes for TLS wrappers
+ * @file tls.h
+ * @brief Structures and prototypes for TLS wrappers
  * Version:	$Id$
  *
  *   This program is free software; you can redistribute it and/or modify

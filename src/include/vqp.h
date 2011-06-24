@@ -2,7 +2,8 @@
 #define FR_VQP_H
 
 /*
- * vqp.h	Structures and prototypes for Cisco's VLAN Query Protocol
+ * @file vqp.h
+ * @brief Structures and prototypes for Cisco's VLAN Query Protocol
  *
  * Version:	$Id$
  *

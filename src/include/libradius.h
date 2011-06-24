@@ -2,7 +2,8 @@
 #define LIBRADIUS_H
 
 /*
- * libradius.h	Structures and prototypes
+ * @file libradius.h
+ * @brief	Structures and prototypes
  *		for the radius library.
  *
  * Version:	$Id$

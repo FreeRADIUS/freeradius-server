@@ -2,7 +2,8 @@
 #define FR_SOH_H
 
 /*
- * soh.h        Microsoft SoH support
+ * @file soh.h
+ * @brief Microsoft SoH support
  *
  * Version:     $Id$
  *

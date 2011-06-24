@@ -1,5 +1,6 @@
-/*
- * soh.c contains the interfaces that are called from eap
+/**
+ * @file soh.c
+ * @brief Implements the MS-SOH parsing code. This is called from rlm_eap_peap
  *
  * Version:     $Id$
  *
@@ -31,18 +32,27 @@ RCSID("$Id$")
  * allowing for FreeRadius MS-NAP policies
  */
 
+/**
+ * EAP-SOH packet
+ */
 typedef struct {
-	uint16_t tlv_type;	/* ==7 */
+	uint16_t tlv_type;	/**< ==7 for EAP-SOH */
 	uint16_t tlv_len;
 	uint32_t tlv_vendor;
 
-	/* then it's either an soh request or response */
-	uint16_t soh_type;	/* ==2 for request, 1 for response */
+	/**
+	 * @name soh-payload
+	 * @brief either an soh request or response */
+	uint16_t soh_type;	/**< ==2 for request, 1 for response */
 	uint16_t soh_len;
 
 	/* an soh-response may now follow... */
 } eap_soh;
 
+/**
+ * SOH response payload
+ * Send by client to server
+ */
 typedef struct {
 	uint16_t outer_type;
 	uint16_t outer_len;
@@ -51,6 +61,10 @@ typedef struct {
 	uint16_t inner_len;
 } soh_response;
 
+/**
+ * SOH mode subheader
+ * Typical microsoft binary blob nonsense
+ */
 typedef struct {
 	uint16_t outer_type;
 	uint16_t outer_len;
@@ -60,12 +74,17 @@ typedef struct {
 	uint8_t content_type;
 } soh_mode_subheader;
 
+/**
+ * SOH type-length-value header
+ */
 typedef struct {
 	uint16_t tlv_type;
 	uint16_t tlv_len;
 } soh_tlv;
 
-/* utils for pulling big-endian 2/3/4 byte integers
+/**
+ * @brief read big-endian 2-byte unsigned from p
+ *
  * caller must ensure enough data exists at "p"
  */
 uint16_t soh_pull_be_16(const uint8_t *p) {
@@ -76,6 +95,11 @@ uint16_t soh_pull_be_16(const uint8_t *p) {
 
 	return r;
 }
+/**
+ * @brief read big-endian 3-byte unsigned from p
+ *
+ * caller must ensure enough data exists at "p"
+ */
 uint32_t soh_pull_be_24(const uint8_t *p) {
 	uint32_t r;
 
@@ -85,6 +109,11 @@ uint32_t soh_pull_be_24(const uint8_t *p) {
 
 	return r;
 }
+/**
+ * @brief read big-endian 4-byte unsigned from p
+ *
+ * caller must ensure enough data exists at "p"
+ */
 uint32_t soh_pull_be_32(const uint8_t *p) {
 	uint32_t r;
 
@@ -96,11 +125,20 @@ uint32_t soh_pull_be_32(const uint8_t *p) {
 	return r;
 }
 
-/*
- * This parses the microsoft type/value (note: NOT type/length/value) data; see
- * section 2.2.4 of MS-SOH. Because there's no "length" field we CANNOT just skip
+/**
+ * @brief Parses the MS-SOH type/value (note: NOT type/length/value) data and
+ * 	update the sohvp list
+ *
+ * See section 2.2.4 of MS-SOH. Because there's no "length" field we CANNOT just skip
  * unknown types; we need to know their length ahead of time. Therefore, we abort
- * if we find an unknown type.
+ * if we find an unknown type. Note that sohvp may still have been modified in the
+ * failure case.
+ *
+ * @param request Current request
+ * @param[out] sohvp value pair list which will be updated
+ * @param p binary blob
+ * @param data_len length of blob
+ * @return 1 on success, 0 on failure
  */
 static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, unsigned int data_len) {
 	VALUE_PAIR *vp;
@@ -277,7 +315,10 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 	}
 	return 1;
 }
-
+/**
+ * @brief Convert windows Health Class status into human-readable
+ * 	string. Tedious, really, really tedious...
+ */
 static const char* clientstatus2str(uint32_t hcstatus) {
 	switch (hcstatus) {
 		/* this lot should all just be for windows updates */
@@ -307,6 +348,9 @@ static const char* clientstatus2str(uint32_t hcstatus) {
 	return NULL;
 }
 
+/**
+ * @brief convert a Health Class into a string
+ */
 static const char* healthclass2str(uint8_t hc) {
 	switch (hc) {
 		case 0:
@@ -323,6 +367,19 @@ static const char* healthclass2str(uint8_t hc) {
 	return NULL;
 }
 
+/**
+ * @brief Parse the MS-SOH response in data and update sohvp.
+ *
+ * Note that sohvp might still have been updated in event of a failure.
+ *
+ * @param request Current request
+ * @param[out] sohvp list of value pairs to update
+ * @param data MS-SOH blob
+ * @param data_len length of MS-SOH blob
+ *
+ * @return 0 on success, -1 on failure
+ *
+ */
 int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;

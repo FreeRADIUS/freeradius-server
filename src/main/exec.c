@@ -1,5 +1,6 @@
 /*
- * exec.c	Execute external programs.
+ * @file exec.c
+ * @brief Execute external programs.
  *
  * Version:	$Id$
  *
@@ -65,8 +66,20 @@ static void tv_sub(struct timeval *end, struct timeval *start,
 }
 
 
-/*
- *	Start a process
+/**
+ * @brief Start a process
+ *
+ * @param cmd Command to execute. This is parsed into argv[] parts,
+ * 	then each individual argv part is xlat'ed
+ * @param request Current reuqest
+ * @param exec_wait set to 1 if you want to read from or write to child
+ * @param[in,out] input_fd pointer to int, receives the stdin file
+ * 	descriptor. Set to NULL and the child will have /dev/null on stdin
+ * @param[in,out] output_fd pinter to int, receives the stdout file
+ * 	descriptor. Set to NULL and child will have /dev/null on stdout
+ * @param input_pairs list of value pairs - these will be put into
+ * 	the environment variables of the child
+ * @return PID of the child process, -1 on error
  */
 pid_t radius_start_program(const char *cmd, REQUEST *request,
 			int exec_wait,
@@ -412,8 +425,15 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	return pid;
 }
 
-/*
- * read from the child process into buffer "answer" of length "left"
+/**
+ * @brief read from the child process
+ *
+ * @param fd file descriptor to read from
+ * @param pid pid of child, will be reaped if it dies
+ * @param timeout amount of time to wait, in seconds
+ * @param answer buffer to write into
+ * @param left length of buffer
+ * @return -1 on error, or length of output
  */
 int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer, int left) {
 
@@ -533,11 +553,20 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer, int le
 	return done;
 }
 
-/*
- *	Execute a program on successful authentication.
- *	Return 0 if exec_wait == 0.
- *	Return the exit code of the called program if exec_wait != 0.
- *	Return -1 on fork/other errors in the parent process.
+/**
+ * @brief Execute a program
+ *
+ * @param cmd Command to execute. This is parsed into argv[] parts,
+ * 	then each individual argv part is xlat'ed
+ * @param request Current reuqest
+ * @param exec_wait set to 1 if you want to read from or write to child
+ * @param user_msg buffer to append plaintext (non valuepair) output
+ * @param user_msg_len length of user_msg buffer
+ * @param input_pairs list of value pairs - these will be put into
+ * 	the environment variables of the child
+ * @param[out] output_pairs list of value pairs - child stdout will be
+ * 	parsed and added into this list of value pairs
+ * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error
  */
 int radius_exec_program(const char *cmd, REQUEST *request,
 			int exec_wait,
