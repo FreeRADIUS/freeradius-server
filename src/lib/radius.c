@@ -1,4 +1,4 @@
-/*
+>/*
  * radius.c	Functions to send/receive radius packets.
  *
  * Version:	$Id$
@@ -1365,8 +1365,12 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 		switch (packet->code) {
-		case PW_ACCOUNTING_REQUEST:
 		case PW_ACCOUNTING_RESPONSE:
+			if (original && original->code == PW_STATUS_SERVER) {
+				goto do_ack;
+			}
+
+		case PW_ACCOUNTING_REQUEST:
 		case PW_DISCONNECT_REQUEST:
 		case PW_DISCONNECT_ACK:
 		case PW_DISCONNECT_NAK:
@@ -1376,6 +1380,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 			break;
 
+		do_ack:
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCESS_CHALLENGE:
@@ -2075,8 +2080,13 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			default:
 				break;
 
-			case PW_ACCOUNTING_REQUEST:
 			case PW_ACCOUNTING_RESPONSE:
+				if (original &&
+				    (original->code == PW_STATUS_SERVER)) {
+					goto do_ack;
+				}
+
+			case PW_ACCOUNTING_REQUEST:
 			case PW_DISCONNECT_REQUEST:
 			case PW_DISCONNECT_ACK:
 			case PW_DISCONNECT_NAK:
@@ -2086,6 +2096,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
+			do_ack:
 			case PW_AUTHENTICATION_ACK:
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
