@@ -246,13 +246,13 @@ static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 
 static void tv_add(struct timeval *tv, int usec_delay)
 {
-	if (usec_delay > USEC) {
+	if (usec_delay >= USEC) {
 		tv->tv_sec += usec_delay / USEC;
 		usec_delay %= USEC;
 	}
 	tv->tv_usec += usec_delay;
 
-	if (tv->tv_usec > USEC) {
+	if (tv->tv_usec >= USEC) {
 		tv->tv_sec += tv->tv_usec / USEC;
 		tv->tv_usec %= USEC;
 	}
