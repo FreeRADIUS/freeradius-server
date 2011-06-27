@@ -164,6 +164,11 @@ static int home_server_addr_cmp(const void *one, const void *two)
 	if (a->port < b->port) return -1;
 	if (a->port > b->port) return +1;
 
+#ifdef WITH_TCP
+	if (a->proto < b->proto) return -1;
+	if (a->proto > b->proto) return +1;
+#endif
+
 	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
 	if (rcode != 0) return rcode;
 
@@ -707,6 +712,19 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	free(hs_srcipaddr);
 	hs_srcipaddr = NULL;
+
+	if (rbtree_finddata(home_servers_byname, home) != NULL) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Duplicate home server name %s.", name2);
+		goto error;
+	}
+
+	if (!home->server &&
+	    (rbtree_finddata(home_servers_byaddr, home) != NULL)) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Duplicate home server IP %s.", name2);
+		goto error;
+	}
 
 	if (!rbtree_insert(home_servers_byname, home)) {
 		cf_log_err(cf_sectiontoitem(cs),
