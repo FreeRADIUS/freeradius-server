@@ -1,4 +1,4 @@
->/*
+/*
  * radius.c	Functions to send/receive radius packets.
  *
  * Version:	$Id$
