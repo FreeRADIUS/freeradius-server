@@ -66,26 +66,18 @@ static int dhcp_process(REQUEST *request)
 		VALUE_PAIR *giaddr;
 		RADIUS_PACKET relayed;
 		
-		request->reply->code = 0; /* don't reply to the client */
-
 		/*
 		 *	Find the original giaddr.
 		 *	FIXME: Maybe look in the original packet?
 		 *
 		 *	It's invalid to have giaddr=0 AND a relay option
 		 */
-		giaddr = pairfind(request->packet->vps, 266);
+		giaddr = pairfind(request->packet->vps, DHCP2ATTR(266));
 		if (giaddr && (giaddr->vp_ipaddr == htonl(INADDR_ANY))) {
 			if (pairfind(request->packet->vps, DHCP2ATTR(82))) {
 				RDEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet");
 				return 1;
 			}
-
-			/*
-			 *	FIXME: Add cache by XID.
-			 */
-			RDEBUG("DHCP: Cannot yet relay packets with giaddr = 0");
-			return 1;
 		}
 
 		if (request->packet->data[3] > 10) {
@@ -111,7 +103,19 @@ static int dhcp_process(REQUEST *request)
 		relayed.vps = NULL;
 
 		/*
-		 *	The only field that changes is the number of hops
+		 *	If we were told to re-write the giaddr, do so.
+		 */
+		if (giaddr) {
+			memcpy(relayed.data + 24, &giaddr->vp_ipaddr, 4);
+		}
+
+		/*
+		 *	The only field that changes is the number of hops.
+		 *
+		 *	FIXME: Allow for re-writing of the entire
+		 *	packet contents!  This should be as simple as
+		 *	re-encoding the packet from
+		 *	request->packet->vps!
 		 */
 		relayed.data[3]++; /* number of hops */
 		
@@ -122,6 +126,9 @@ static int dhcp_process(REQUEST *request)
 		 */
 		fr_dhcp_send(&relayed);
 		free(relayed.data);
+
+		request->reply->code = 0; /* don't reply to the client */
+
 		return 1;
 	}
 
@@ -295,9 +302,6 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 	sock = listener->data;
 	if (sock->suppress_responses) return 0;
 
-	/*
-	 *	Don't send anything
-	 */
 	return fr_dhcp_send(request->reply);
 }
 
