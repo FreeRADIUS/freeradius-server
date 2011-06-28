@@ -684,8 +684,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		}
 
 #ifndef WITH_TLS
-		cf_log_err(cf_sectiontoitem(cs), "TLS transport is not available in this executable.");
-		goto error;
+
+		if (tls) {
+			cf_log_err(cf_sectiontoitem(cs), "TLS transport is not available in this executable.");
+			goto error;
+		}
 #else
 		/*
 		 *	Parse the SSL client configuration.
