@@ -59,12 +59,14 @@ static int dhcp_process(REQUEST *request)
 	}
 
 	/*
-	 *	Look for Relay attribute, and forward it if necessary.
+	 *	For messages from a client, look for Relay attribute,
+	 *	and forward it if necessary.
 	 */
-	vp = pairfind(request->config_items, DHCP2ATTR(270));
+	if (request->packet->data[0] == 1) {
+		vp = pairfind(request->config_items, DHCP2ATTR(270));
+	}
 	if (vp) {
 		VALUE_PAIR *giaddr;
-		RADIUS_PACKET relayed;
 		
 		/*
 		 *	Find the original giaddr.
@@ -86,49 +88,77 @@ static int dhcp_process(REQUEST *request)
 		}
 
 		/*
-		 *	Forward it VERBATIM to the next server, rather
-		 *	than to the client.
+		 *	Say there's no "original" packet.  Instead,
+		 *	just forward the "response".
 		 */
-		memcpy(&relayed, request->packet, sizeof(relayed));
+		rad_free(&request->reply);
+		request->reply = request->packet;
+		request->packet = NULL;
 
-		relayed.dst_ipaddr.af = AF_INET;
-		relayed.dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		relayed.dst_port = request->packet->dst_port;
-
-		relayed.src_ipaddr = request->packet->dst_ipaddr;
-		relayed.src_port = request->packet->dst_port;
-
-		relayed.data = rad_malloc(relayed.data_len);
-		memcpy(relayed.data, request->packet->data, request->packet->data_len);
-		relayed.vps = NULL;
+		request->reply->src_ipaddr = request->reply->dst_ipaddr;
+		request->reply->src_port = request->reply->dst_port;
+		request->reply->dst_ipaddr.af = AF_INET;
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		/*
+		 *	Don't change the destination port.  It's the
+		 *	server port.
+		 */
 
 		/*
-		 *	If we were told to re-write the giaddr, do so.
+		 *	Hop count goes up.
 		 */
-		if (giaddr) {
-			memcpy(relayed.data + 24, &giaddr->vp_ipaddr, 4);
+		vp = pairfind(request->reply->vps, DHCP2ATTR(259));
+		if (vp) vp->vp_integer++;
+		
+		return 1;
+	}
+
+	/*
+	 *	Responses from a server.  Handle them differently.
+	 */
+	if (request->packet->data[0] == 2) {
+		/*
+		 *	Delete any existing giaddr.  If we received a
+		 *	message from the server, then we're NOT the
+		 *	server.  So we must be the destination of the
+		 *	giaddr field.
+		 */
+		pairdelete(&request->packet->vps, DHCP2ATTR(266));
+
+		rad_free(&request->reply);
+		request->reply = request->packet;
+		request->packet = NULL;
+
+		/*
+		 *	Search for client IP address.
+		 */
+		vp = pairfind(request->packet->vps, DHCP2ATTR(264));
+		if (!vp) {
+			request->reply->code = 0;
+			RDEBUG("DHCP: No YIAddr in the reply. Discarding packet");
+			return 1;
 		}
 
 		/*
-		 *	The only field that changes is the number of hops.
-		 *
-		 *	FIXME: Allow for re-writing of the entire
-		 *	packet contents!  This should be as simple as
-		 *	re-encoding the packet from
-		 *	request->packet->vps!
+		 *	FROM us, TO the client's IP, OUR port + 1.
 		 */
-		relayed.data[3]++; /* number of hops */
-		
+		request->reply->src_ipaddr = request->reply->dst_ipaddr;
+		request->reply->src_port = request->reply->dst_port;
+		request->reply->dst_ipaddr.af = AF_INET;
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		request->reply->dst_port++;
+
 		/*
-		 *	Forward the relayed packet VERBATIM, don't
-		 *	respond to the client, and forget completely
-		 *	about this request.
+		 *	Hop count goes down.
 		 */
-		fr_dhcp_send(&relayed);
-		free(relayed.data);
+		vp = pairfind(request->reply->vps, DHCP2ATTR(259));
+		if (vp && (vp->vp_integer > 0)) vp->vp_integer--;
 
-		request->reply->code = 0; /* don't reply to the client */
-
+		/*
+		 *	FIXME: Keep original somewhere?  If the
+		 *	broadcast flags are set, use them here?
+		 */
+		
 		return 1;
 	}
 
