@@ -628,9 +628,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			hs_proto = NULL;
 			home->proto = IPPROTO_TCP;
 			
-			if (home->ping_check == HOME_PING_CHECK_REQUEST) {
+			if (home->ping_check != HOME_PING_CHECK_NONE) {
 				cf_log_err(cf_sectiontoitem(cs),
-					   "Cannot use 'status_check = request' for home servers where 'proto = tcp'");
+					   "Only 'status_check = none' is allowed for home servers with 'proto = tcp'");
 				goto error;
 			}
 
