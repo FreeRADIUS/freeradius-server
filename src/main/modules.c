@@ -1303,7 +1303,8 @@ int virtual_servers_load(CONF_SECTION *config)
 		if (!name2) continue; /* handled above */
 
 		server = virtual_server_find(name2);
-		if (server) {
+		if (server &&
+		    (cf_top_section(server->cs) == config)) {
 			radlog(L_ERR, "Duplicate virtual server \"%s\" in file %s:%d and file %s:%d",
 			       server->name,
 			       cf_section_filename(server->cs),
