@@ -132,7 +132,6 @@ ATTRIBUTE	Virtual-Server				1099	string
 ATTRIBUTE	Cleartext-Password			1100	string
 ATTRIBUTE	Password-With-Header			1101	string
 ATTRIBUTE	Inner-Tunnel-User-Name			1102	string
-
 #
 #	EAP-IKEv2 is experimental.
 #
@@ -217,6 +216,11 @@ ATTRIBUTE	Packet-Transmit-Counter			1134	integer
 ATTRIBUTE	Cached-Session-Policy			1135	string
 ATTRIBUTE	MS-CHAP-New-Cleartext-Password		1136	string
 ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
+
+#	For default policies
+
+ATTRIBUTE	Stripped-User-Domain			1138	string
+ATTRIBUTE	Called-Station-SSID			1139	string
 
 #
 #	Range:	1200-1279

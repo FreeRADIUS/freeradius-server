@@ -540,6 +540,12 @@ post-auth {
 	#		}
 	#	}
 
+	#  Insert class attribute (with unique value) into response,
+	#  aids matching auth and acct records, and protects against duplicate
+	#  Acct-Session-Id. Note: Only works if the NAS has implemented
+	#  RFC 2865 behaviour for the class attribute. 
+	insert_acct_class
+
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
