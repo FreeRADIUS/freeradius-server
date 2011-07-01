@@ -546,6 +546,9 @@ post-auth {
 	#  RFC 2865 behaviour for the class attribute. 
 	insert_acct_class
 
+	#  Remove reply message if the response contains an EAP-Message
+	remove_reply_message_if_eap
+
 	#
 	#  Access-Reject packets are sent through the REJECT sub-section of the
 	#  post-auth section.
@@ -557,6 +560,9 @@ post-auth {
 		# log failed authentications in SQL, too.
 #		sql
 		attr_filter.access_reject
+
+		#  Remove reply message if the response contains an EAP-Message
+		remove_reply_message_if_eap
 	}
 }
 
