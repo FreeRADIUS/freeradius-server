@@ -41,9 +41,10 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 struct attr_filter_instance {
-        char *attrsfile;
+	char *attrsfile;
 	char *key;
-        PAIR_LIST *attrs;
+	int relaxed;
+	PAIR_LIST *attrs;
 };
 
 static const CONF_PARSER module_config[] = {
@@ -51,6 +52,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct attr_filter_instance,attrsfile), NULL, "${raddbdir}/attrs" },
 	{ "key",     PW_TYPE_STRING_PTR,
 	  offsetof(struct attr_filter_instance,key), NULL, "%{Realm}" },
+	{ "relaxed",    PW_TYPE_BOOLEAN,
+		offsetof(struct attr_filter_instance,relaxed), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -287,8 +290,12 @@ static int attr_filter_common(void *instance, REQUEST *request,
 				}
 			}
 
-			/* only move attribute if it passed all rules */
-			if (fail == 0 && pass > 0) {
+			/*  
+			 *  Only move attribute if it passed all rules,
+			 *  or if the config says we should copy unmatched
+			 *  attributes ('relaxed' mode).
+			 */
+			if (fail == 0 && (pass > 0 || inst->relaxed)) {
 				*output_tail = paircopyvp(vp);
 				if (!*output_tail) {
 					pairfree(&output);
