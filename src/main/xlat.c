@@ -513,10 +513,8 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	if (vp->type != PW_TYPE_OCTETS) goto nothing;
 
-	*out++ = '"';
-	len = fr_print_string(vp->vp_strvalue, vp->length, out + 1, outlen - 3);
-	out[len] = '"';
-	out[len + 1] = '\0';
+	len = fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
+	out[len] = '\0';
 
 	return len + 2;
 }
