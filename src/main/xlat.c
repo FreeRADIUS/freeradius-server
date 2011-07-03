@@ -472,7 +472,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 	len = fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
 	out[len] = '\0';
 
-	return len + 2;
+	return len;
 }
 
 #ifdef HAVE_REGEX_H
