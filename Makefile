@@ -191,8 +191,8 @@ dist: dist-check freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$
 dist-sign: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
 
 dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
-	scp $^ freeradius.org@ns5.freeradius.org:public_ftp
-	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
+	scp $^ freeradius.org@ftp.freeradius.org:public_ftp
+#	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
 
 #
 #  Note that we do NOT do the tagging here!  We just print out what
