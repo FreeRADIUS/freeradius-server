@@ -12,6 +12,7 @@
 
 # 	These attributes CAN go in the reply item list.
 ATTRIBUTE	Fall-Through				500	integer
+ATTRIBUTE	Relax-Filter				501	integer
 ATTRIBUTE	Exec-Program				502	string
 ATTRIBUTE	Exec-Program-Wait			503	string
 
@@ -464,6 +465,9 @@ VALUE	Post-Auth-Type			Local			0
 #
 VALUE	Fall-Through			No			0
 VALUE	Fall-Through			Yes			1
+
+VALUE	Relax-Filter			No			0
+VALUE	Relax-Filter			Yes			1
 
 VALUE	Strip-User-Name			No			0
 VALUE	Strip-User-Name			Yes			1

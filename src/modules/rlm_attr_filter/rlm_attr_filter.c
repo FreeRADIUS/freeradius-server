@@ -214,6 +214,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	 */
 	for (pl = inst->attrs; pl; pl = pl->next) {
 		int fall_through = 0;
+		int relax_filter = inst->relaxed;
 
 		/*
 		 *  If the current entry is NOT a default,
@@ -225,16 +226,24 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		    continue;
 		}
 
-		DEBUG2(" attr_filter: Matched entry %s at line %d", pl->name,
+		DEBUG2("attr_filter: Matched entry %s at line %d", pl->name,
 		       pl->lineno);
 		found = 1;
 
 		for (check_item = pl->check;
-		     check_item != NULL;
-		     check_item = check_item->next) {
+			check_item != NULL;
+			check_item = check_item->next) {
 			if ((check_item->attribute == PW_FALL_THROUGH) &&
-			    (check_item->vp_integer == 1)) {
+				(check_item->vp_integer == 1)) {
 				fall_through = 1;
+				continue;
+			}
+			else if (check_item->attribute == PW_RELAX_FILTER) {
+				if ( check_item->vp_integer != inst->relaxed ) {
+					DEBUG3("attr_filter: Overriding relaxed config-item with check-item value %d",
+						check_item->vp_integer);
+					relax_filter = check_item->vp_integer;
+				}
 				continue;
 			}
 
@@ -295,7 +304,10 @@ static int attr_filter_common(void *instance, REQUEST *request,
 			 *  or if the config says we should copy unmatched
 			 *  attributes ('relaxed' mode).
 			 */
-			if (fail == 0 && (pass > 0 || inst->relaxed)) {
+			if (fail == 0 && (pass > 0 || relax_filter)) {
+				if (!pass) {
+					DEBUG3("attr_filter: Attribute (%s) allowed by relaxed mode", vp->name);
+				}
 				*output_tail = paircopyvp(vp);
 				if (!*output_tail) {
 					pairfree(&output);
