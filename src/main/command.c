@@ -2302,7 +2302,7 @@ static int command_domain_accept(rad_listen_t *listener,
 		uid_t uid;
 		gid_t gid;
 
-		if (getpeereid(listener->fd, &uid, &gid) < 0) {
+		if (getpeereid(newfd, &uid, &gid) < 0) {
 			radlog(L_ERR, "Failed getting peer credentials for %s: %s",
 			       sock->path, strerror(errno));
 			close(newfd);
