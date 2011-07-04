@@ -1,3 +1,17 @@
+FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
+	Feature improvements
+	* Better DHCP relaying support.
+
+	Bug fixes
+	* Fix memory leak in rlm_detail
+	* Fix "failed to insert event" problem.
+	* Allow virtual servers to be reloaded on HUP.
+	  It no longer complains about duplicate virtual servers.
+	* Fix %{string:...} expansion
+	* Fix "server closed socket" loop in radmin
+	* Always allow root to connect to control socket, even if
+	  "uid" is set.  They're root.  They can already do anything.
+
 FreeRADIUS 2.1.11 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
 	* Added doc/rfc/rfc6158.txt: RADIUS Design Guidelines.
