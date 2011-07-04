@@ -1928,6 +1928,23 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
+#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
+	/*
+	 *	Don't chown it from (possibly) non-root to root.
+	 *	Do chown it from (possibly) root to non-root.
+	 */
+	if ((sock->uid != 0) && (sock->gid != 0)) {
+		fr_suid_up();
+		if (fchown(this->fd, sock->uid, sock->gid) < 0) {
+			radlog(L_ERR, "Failed setting ownership of %s: %s",
+			       sock->path, strerror(errno));
+			fr_suid_down();
+			return -1;
+		}
+		fr_suid_down();
+	}
+#endif
+
 	return 0;
 }
 
