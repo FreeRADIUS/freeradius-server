@@ -2415,18 +2415,26 @@ static int command_domain_accept(rad_listen_t *listener)
 			return 0;
 		}
 
-		if (sock->uid_name && (sock->uid != uid)) {
-			radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
-			       sock->path, (long int) uid);
-			close(newfd);
-			return 0;
-		}
-
-		if (sock->gid_name && (sock->gid != gid)) {
-			radlog(L_ERR, "Unauthorized connection to %s from gid %ld",
-			       sock->path, (long int) gid);
-			close(newfd);
-			return 0;
+		/*
+		 *	Only do UID checking if the caller is
+		 *	non-root.  The superuser can do anything, so
+		 *	we might as well let them.
+		 */
+		if (uid != 0) {
+			if (sock->uid_name && (sock->uid != uid)) {
+				radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
+				       
+				       sock->path, (long int) uid);
+				close(newfd);
+				return 0;
+			}
+			
+			if (sock->gid_name && (sock->gid != gid)) {
+				radlog(L_ERR, "Unauthorized connection to %s from gid %ld",
+				       sock->path, (long int) gid);
+				close(newfd);
+				return 0;
+			}
 		}
 	}
 
