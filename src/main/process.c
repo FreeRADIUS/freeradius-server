@@ -1404,7 +1404,7 @@ static void tcp_socket_timer(void *ctx)
 {
 	rad_listen_t *listener = ctx;
 	listen_socket_t *sock = listener->data;
-	struct timeval idle, end, now;
+	struct timeval end, now;
 	char buffer[256];
 
 	fr_event_now(el, &now);
@@ -1434,32 +1434,58 @@ static void tcp_socket_timer(void *ctx)
 	/*
 	 *	Enforce an idle timeout.
 	 */
-	rad_assert(sock->home->idle_timeout > 0);
-	idle.tv_sec = sock->last_packet + sock->home->idle_timeout;
-	idle.tv_usec = 0;
+	if (sock->home->idle_timeout > 0) {
+		struct timeval idle;
 
-	if (timercmp(&idle, &now, <=)) {
-		DEBUG("Reached idle timeout on socket %s", buffer);
-		goto do_close;
-	}
+		idle.tv_sec = sock->last_packet + sock->home->idle_timeout;
+		idle.tv_usec = 0;
 
-	/*
-	 *	Enforce the minimum of idle timeout or lifetime.
-	 */
-	if (timercmp(&idle, &end, >=)) {
-		idle = end;
+		if (timercmp(&idle, &now, <=)) {
+			listener->print(listener, buffer, sizeof(buffer));
+			DEBUG("Reached idle timeout on socket %s", buffer);
+			goto do_close;
+		}
+
+		/*
+		 *	Enforce the minimum of idle timeout or lifetime.
+		 */
+		if (timercmp(&idle, &end, <)) {
+			end = idle;
+		}
 	}
 
 	/*
 	 *	Wake up at t + 0.5s.  The code above checks if the timers
 	 *	are <= t.  This addition gives us a bit of leeway.
 	 */
-	idle.tv_usec = USEC / 2;
+	end.tv_usec = USEC / 2;
 
-	if (!fr_event_insert(el, tcp_socket_timer, listener, &idle, &sock->ev)) {
+	if (!fr_event_insert(el, tcp_socket_timer, listener, &end, &sock->ev)) {
 		rad_panic("Failed to insert event");
 	}
 }
+
+
+/*
+ *	Add +/- 2s of jitter, as suggested in RFC 3539
+ *	and in RFC 5080.
+ */
+static void add_jitter(struct timeval *when)
+{
+	uint32_t jitter;
+
+	when->tv_sec -= 2;
+
+	jitter = fr_rand();
+	jitter ^= (jitter >> 10);
+	jitter &= ((1 << 22) - 1); /* 22 bits of 1 */
+
+	/*
+	 *	Add in ~ (4 * USEC) of jitter.
+	 */
+	tv_add(when, jitter);
+}
+
 
 static int remove_all_proxied_requests(void *ctx, void *data)
 {
@@ -1469,6 +1495,11 @@ static int remove_all_proxied_requests(void *ctx, void *data)
 	
 	request = fr_packet2myptr(REQUEST, proxy, proxy_p);
 	if (request->proxy->sockfd != this->fd) return 0;
+
+	/*
+	 *	FIXME: Force replies==requests, so that we can delete
+	 *	the packet immediately.
+	 */
 
 	request_done(request, FR_ACTION_DONE);
 	return 0;
@@ -2375,7 +2406,6 @@ static void request_ping(REQUEST *request, int action)
  */
 static void ping_home_server(void *ctx)
 {
-	uint32_t jitter;
 	home_server *home = ctx;
 	REQUEST *request;
 	VALUE_PAIR *vp;
@@ -2503,13 +2533,9 @@ static void ping_home_server(void *ctx)
 	 *	and in the Issues and Fixes draft.
 	 */
 	home->when = now;
-	home->when.tv_sec += home->ping_interval - 2;
+	home->when.tv_sec += home->ping_interval;
 
-	jitter = fr_rand();
-	jitter ^= (jitter >> 10);
-	jitter &= ((1 << 23) - 1); /* 22 bits of 1 */
-
-	tv_add(&home->when, jitter);
+	add_jitter(&home->when);
 
 	DEBUG("PING: Next status packet in %u seconds", home->ping_interval);
 	INSERT_EVENT(ping_home_server, home);
