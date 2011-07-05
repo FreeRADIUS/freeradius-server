@@ -45,6 +45,7 @@ RCSID("$Id$")
 typedef struct rlm_linelog_t {
 	CONF_SECTION	*cs;
 	char		*filename;
+	int		permissions;
 	char		*line;
 	char		*reference;
 } rlm_linelog_t;
@@ -61,6 +62,8 @@ typedef struct rlm_linelog_t {
 static const CONF_PARSER module_config[] = {
 	{ "filename",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
+	{ "permissions",  PW_TYPE_INTEGER,
+	  offsetof(rlm_linelog_t,permissions), NULL,  "0600"},
 	{ "format",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,line), NULL,  NULL},
 	{ "reference",  PW_TYPE_STRING_PTR,
@@ -240,7 +243,7 @@ static int do_linelog(void *instance, REQUEST *request)
 		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
 			    NULL);
 		
-		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
+		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->permissions);
 		if (fd == -1) {
 			radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
 			       buffer, strerror(errno));
