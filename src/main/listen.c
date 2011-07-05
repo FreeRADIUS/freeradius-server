@@ -705,7 +705,7 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	request->proxy->src_ipaddr = sock->ipaddr;
 	request->proxy->src_port = sock->port;
 
-	return rad_send(request->proxy, request->packet,
+	return rad_send(request->proxy, NULL,
 			request->home_server->secret);
 }
 #endif
