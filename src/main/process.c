@@ -1417,10 +1417,10 @@ static void tcp_socket_timer(void *ctx)
 		end.tv_usec = 0;
 
 		if (timercmp(&end, &now, <=)) {
+			listener->print(listener, buffer, sizeof(buffer));
 			DEBUG("Reached maximum lifetime on socket %s", buffer);
 			
 		do_close:
-			listener->print(listener, buffer, sizeof(buffer));
 			
 			listener->status = RAD_LISTEN_STATUS_CLOSED;
 			event_new_fd(listener);
