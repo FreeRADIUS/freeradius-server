@@ -1205,7 +1205,7 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->proxy_listener == listener);
 	rad_assert(listener->send == proxy_socket_send);
 
-	if (rad_send(request->proxy, request->packet,
+	if (rad_send(request->proxy, NULL,
 		     request->home_server->secret) < 0) {
 		radlog_request(L_ERR, 0, request, "Failed sending proxied request: %s",
 			       fr_strerror());
