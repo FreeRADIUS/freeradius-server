@@ -1884,6 +1884,8 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 
 		sock->uid = pw->pw_uid;
+	} else {
+		sock->uid = -1;
 	}
 
 	if (sock->gid_name) {
@@ -1896,6 +1898,8 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 		sock->gid = gr->gr_gid; 
+	} else {
+		sock->gid = -1;
 	}
 
 #else  /* can't get uid or gid of connecting user */
@@ -1933,7 +1937,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Don't chown it from (possibly) non-root to root.
 	 *	Do chown it from (possibly) root to non-root.
 	 */
-	if ((sock->uid != 0) && (sock->gid != 0)) {
+	if ((sock->uid != -1) || (sock->gid != -1)) {
 		fr_suid_up();
 		if (fchown(this->fd, sock->uid, sock->gid) < 0) {
 			radlog(L_ERR, "Failed setting ownership of %s: %s",
