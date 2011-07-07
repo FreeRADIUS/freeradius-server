@@ -239,11 +239,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 				continue;
 			}
 			else if (check_item->attribute == PW_RELAX_FILTER) {
-				if ( check_item->vp_integer != inst->relaxed ) {
-					DEBUG3("attr_filter: Overriding relaxed config-item with check-item value %d",
-						check_item->vp_integer);
-					relax_filter = check_item->vp_integer;
-				}
+				relax_filter = check_item->vp_integer;
 				continue;
 			}
 
@@ -257,8 +253,8 @@ static int attr_filter_common(void *instance, REQUEST *request,
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
 				}
-				*output_tail = vp;
-				output_tail = &(vp->next);
+				pairxlatmove(request, output_tail, &vp);
+				output_tail = &((*output_tail)->next);
 			}
 		}
 
