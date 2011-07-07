@@ -61,6 +61,7 @@ static void free_data(void *ptr)
 	mschapv2_opaque_t *data = ptr;
 
 	pairfree(&data->mppe_keys);
+	pairfree(&data->reply);
 	free(data);
 }
 
@@ -270,6 +271,7 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
 	data->code = PW_EAP_MSCHAPV2_CHALLENGE;
 	memcpy(data->challenge, challenge->vp_strvalue, MSCHAPV2_CHALLENGE_LEN);
 	data->mppe_keys = NULL;
+	data->reply = NULL;
 
 	handler->opaque = data;
 	handler->free_opaque = free_data;
@@ -364,6 +366,13 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 	 *	FIXME: Use intelligent names...
 	 */
 	fix_mppe_keys(handler, data);
+
+	/*
+	 * save any other attributes for re-use in the final
+	 * access-accept e.g. vlan, etc. This lets the PEAP
+	 * use_tunneled_reply code work
+	 */
+	data->reply = paircopy(handler->request->reply->vps);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
@@ -504,6 +513,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 					 */
 					handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
+					pairadd(&handler->request->reply->vps, data->reply);
+					data->reply = NULL;
 					return 1;
 			}
 			radlog(L_ERR, "rlm_eap_mschapv2: Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
