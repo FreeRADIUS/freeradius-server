@@ -263,7 +263,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
 {
 	int result;
 	VALUE_PAIR **input_pairs, **output_pairs;
-	VALUE_PAIR *answer;
+	VALUE_PAIR *answer = NULL;
 	rlm_exec_t *inst = (rlm_exec_t *) instance;
 
 	/*
