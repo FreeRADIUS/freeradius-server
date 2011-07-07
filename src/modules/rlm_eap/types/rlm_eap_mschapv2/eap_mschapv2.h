@@ -45,6 +45,7 @@ typedef struct mschapv2_opaque_t {
 	int		code;
 	uint8_t		challenge[MSCHAPV2_CHALLENGE_LEN];
 	VALUE_PAIR	*mppe_keys;
+	VALUE_PAIR	*reply;
 } mschapv2_opaque_t;
 
 #endif /*_EAP_MSCHAPV2_H*/
