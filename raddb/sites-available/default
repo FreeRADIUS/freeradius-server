@@ -543,8 +543,11 @@ post-auth {
 	#  Insert class attribute (with unique value) into response,
 	#  aids matching auth and acct records, and protects against duplicate
 	#  Acct-Session-Id. Note: Only works if the NAS has implemented
-	#  RFC 2865 behaviour for the class attribute. 
-	insert_acct_class
+	#  RFC 2865 behaviour for the class attribute, AND if the NAS
+	#  supports long Class attributes.  Many older or cheap NASes
+	#  only support 16-octet Class attributes.
+	#
+#	insert_acct_class
 
 	#  Remove reply message if the response contains an EAP-Message
 	remove_reply_message_if_eap
