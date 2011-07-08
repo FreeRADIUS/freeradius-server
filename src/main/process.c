@@ -734,6 +734,7 @@ done:
 static void request_queue_or_run(UNUSED REQUEST *request,
 				 fr_request_process_t process)
 {
+	struct timeval now;
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
@@ -746,18 +747,14 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 #endif
 
 	/*
-	 *	Set the initial delay.
+	 *	(re) set the initial delay.
 	 */
-	if (!request->ev) {
-		struct timeval now;
-
-		request->delay = USEC / 10;
-		gettimeofday(&now, NULL);
-		tv_add(&now, request->delay);
-		request->delay += request->delay >> 1;
-		fr_event_insert(el, request_timer, request, &now,
+	request->delay = USEC / 3;
+	gettimeofday(&now, NULL);
+	tv_add(&now, request->delay);
+	request->delay += request->delay >> 1;
+	fr_event_insert(el, request_timer, request, &now,
 				&request->ev);
-	}
 
 	/*
 	 *	Do this here so that fewer other functions need to do
