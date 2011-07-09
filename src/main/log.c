@@ -205,7 +205,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	const char *filename = request_log_file;
 	FILE *fp = NULL;
 	va_list ap;
-	char buffer[1024];
+	char buffer[8192];
 
 	va_start(ap, msg);
 
