@@ -99,6 +99,9 @@ static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
 				int flag);
 static void *cf_data_find_internal(CONF_SECTION *cs, const char *name,
 				   int flag);
+static const char *cf_expand_variables(const char *cf, int *lineno,
+				       CONF_SECTION *outercs,
+				       char *output, const char *input);
 
 int cf_log_config = 1;
 int cf_log_modules = 1;
@@ -408,11 +411,25 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 	size_t name1_len, name2_len = 0;
 	char *p;
 	CONF_SECTION	*cs;
+	char buffer[256];
 
 	if (!name1) return NULL;
 
 	name1_len = strlen(name1) + 1;
-	if (name2) name2_len = strlen(name2) + 1;
+	if (name2) {
+		if (strchr(name2, '$')) {
+			p = cf_expand_variables(parent->item.filename,
+						&parent->item.lineno,
+						parent,
+						buffer, name2);
+			if (!p) {
+				radlog(L_ERR, "Failed expanding section name");
+				return NULL;
+			}
+			name2 = p;
+		}
+		name2_len = strlen(name2) + 1;
+	}
 
 	p = rad_malloc(sizeof(*cs) + name1_len + name2_len);
 
