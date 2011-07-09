@@ -1,6 +1,5 @@
 usr/bin/rlm_dbm_cat
 usr/bin/rlm_dbm_parser
-usr/bin/radeapclient
 usr/bin/rlm_ippool_tool
 usr/bin/smbencrypt
 usr/bin/radclient

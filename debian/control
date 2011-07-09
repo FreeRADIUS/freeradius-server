@@ -28,7 +28,7 @@ Homepage: http://www.freeradius.org/
 
 Package: freeradius
 Architecture: any
-Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, freeradius-common, libfreeradius2 (= ${binary:Version}), ssl-cert, adduser
+Depends: lsb-base (>= 3.1-23.2), ${shlibs:Depends}, freeradius-common, libfreeradius3 (= ${binary:Version}), ssl-cert, adduser
 Provides: radius-server
 Recommends: freeradius-utils
 Suggests: freeradius-ldap, freeradius-postgresql, freeradius-mysql, freeradius-krb5
@@ -54,7 +54,7 @@ Package: freeradius-utils
 Architecture: any
 Replaces: freeradius (<< 2.0)
 Conflicts: radiusd-livingston, yardradius
-Depends: ${shlibs:Depends}, freeradius-common, libfreeradius2 (= ${binary:Version})
+Depends: ${shlibs:Depends}, freeradius-common, libfreeradius3 (= ${binary:Version})
 Recommends: libdbi-perl
 Description: FreeRADIUS client utilities
  This package contains various client programs and utilities from
@@ -72,7 +72,7 @@ Description: FreeRADIUS client utilities
   - rlm_ippool_tool
   - smbencrypt
 
-Package: libfreeradius2
+Package: libfreeradius3
 Architecture: any
 Depends: ${shlibs:Depends}
 Description: FreeRADIUS shared library
@@ -82,7 +82,7 @@ Description: FreeRADIUS shared library
 Package: libfreeradius-dev
 Architecture: any
 Section: libdevel
-Depends: ${shlibs:Depends}, libfreeradius2 (= ${binary:Version})
+Depends: ${shlibs:Depends}, libfreeradius3 (= ${binary:Version})
 Description: FreeRADIUS shared library development files
  The FreeRADIUS projects' libfreeradius-radius and libfreeradius-eap, used by
  the FreeRADIUS server and some of the utilities.

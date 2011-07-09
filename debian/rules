@@ -152,14 +152,14 @@ install-arch: build-arch-stamp
 	dh_testroot
 	dh_installdirs -s
 	test -d $(freeradius_dir)/usr/lib/freeradius || mkdir -p $(freeradius_dir)/usr/lib/freeradius
-	ln -s rlm_sql.so $(freeradius_dir)/usr/lib/freeradius/librlm_sql.so
+	ln -fs rlm_sql.so $(freeradius_dir)/usr/lib/freeradius/librlm_sql.so
 	$(MAKE) install R=$(freeradius_dir)
 	
 	# rename radius binary to play nicely with others
 	mv $(freeradius_dir)/usr/sbin/radiusd $(freeradius_dir)/usr/sbin/$(package)
 	mv $(freeradius_dir)/$(mandir)/man8/radiusd.8 $(freeradius_dir)/$(mandir)/man8/$(package).8
 	
-	dh_install --sourcedir=$(freeradius_dir) -p libfreeradius2
+	dh_install --sourcedir=$(freeradius_dir) -p libfreeradius3
 	dh_install --sourcedir=$(freeradius_dir) -p libfreeradius-dev
 
 	for mod in ${modulelist}; do \
