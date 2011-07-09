@@ -677,7 +677,10 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 		}
 	}
 #ifdef NOVELL
-	inst->atts[atts_num - 1] = "sasdefaultloginsequence";
+	{
+		static char ts[] = "sasdefaultloginsequence";
+		inst->atts[atts_num - 1] = ts;
+	}
 #endif
 	inst->atts[atts_num] = NULL;
 
@@ -765,7 +768,7 @@ read_mappings(ldap_instance* inst)
 			operator = T_OP_INVALID; /* use defaults */
 		} else {
 			ptr = opstring;
-			operator = gettoken(&ptr, buf, sizeof(buf));
+			operator = gettoken((void*)&ptr, buf, sizeof(buf));
 			if ((operator < T_OP_ADD) || (operator > T_OP_CMP_EQ)) {
 				radlog(L_ERR, "rlm_ldap: file %s: skipping line %i: unknown or invalid operator %s",
 				       filename, linenumber, opstring);
@@ -989,7 +992,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
         LDAPMessage     *result = NULL;
         LDAPMessage     *msg = NULL;
         char            basedn[MAX_FILTER_STR_LEN];
-	char		*attrs[] = {"dn",NULL};
+	static char	firstattr[] = "dn";
+	char		*attrs[] = {firstattr,NULL};
 	char		**vals;
         ldap_instance   *inst = instance;
 	char		*group_attrs[] = {inst->groupmemb_attr,NULL};
@@ -1541,7 +1545,6 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				value = passwd_vals[i];
 				if (!value) continue;
 
-			create_attr:
 				passwd_item = radius_paircreate(request,
 								&request->config_items,
 								attr, 0,
@@ -1761,7 +1764,8 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	LDAP           *ld_user;
 	LDAPMessage    *result, *msg;
 	ldap_instance  *inst = instance;
-	char           *user_dn, *attrs[] = {"uid", NULL};
+	static char	firstattr[] = "uid";
+	char           *user_dn, *attrs[] = {firstattr, NULL};
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 	int		res;

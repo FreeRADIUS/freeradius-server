@@ -342,7 +342,8 @@ static int ippool_accounting(void *instance, REQUEST *request)
 				return RLM_MODULE_NOOP;
 			}
 			fr_MD5Init(&md5_context);
-			fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
+			fr_MD5Update(&md5_context, (uint8_t *)xlat_str,
+			 strlen(xlat_str));
 			fr_MD5Final(key_str, &md5_context);
 			key_str[16] = '\0';
 			fr_bin2hex(key_str,hex_str,16);
@@ -499,7 +500,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 	fr_MD5Init(&md5_context);
-	fr_MD5Update(&md5_context, xlat_str, strlen(xlat_str));
+	fr_MD5Update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
 	fr_MD5Final(key_str, &md5_context);
 	key_str[16] = '\0';
 	fr_bin2hex(key_str,hex_str,16);
