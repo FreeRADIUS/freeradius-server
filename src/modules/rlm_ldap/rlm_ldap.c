@@ -1580,7 +1580,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				if (res == 0){
 					passwd_val = universal_password;
 					if (passwd_val){
-						passwd_item = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, PW_TYPE_STRING);
+						passwd_item = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, 0, PW_TYPE_STRING);
 						strlcpy(passwd_item->vp_strvalue,passwd_val,sizeof(passwd_item->vp_strvalue));
 						passwd_item->length = strlen(passwd_item->vp_strvalue);
 						added_known_password = 1;
@@ -1602,7 +1602,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 								 * The authorize method of no other LDAP module instance has
 								 * processed this request.
 								 */
-								vp_inst = radius_paircreate(request, &request->config_items, inst_attr, PW_TYPE_STRING);
+								vp_inst = radius_paircreate(request, &request->config_items, inst_attr, 0, PW_TYPE_STRING);
 								strlcpy(vp_inst->vp_strvalue, inst->xlat_name, sizeof(vp_inst->vp_strvalue));
 								vp_inst->length = strlen(vp_inst->vp_strvalue);
 
@@ -1611,7 +1611,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 								 * of UP in the config items list and whether eDirectory account
 								 * policy check is to be performed or not.
 								 */
-								vp_apc = radius_paircreate(request, &request->config_items, apc_attr, PW_TYPE_STRING);
+								vp_apc = radius_paircreate(request, &request->config_items, apc_attr, 0, PW_TYPE_STRING);
 								if(!inst->edir_account_policy_check){
 									/* Do nothing */
 									strcpy(vp_apc->vp_strvalue, "1");
@@ -1649,7 +1649,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		auth_opt_attr = dattr->attr;
 		if(pairfind(*check_pairs, auth_opt_attr, 0) == NULL){
 			if ((auth_option = ldap_get_values(conn->ld, msg, "sasDefaultLoginSequence")) != NULL) {
-				if ((vp_auth_opt = paircreate(auth_opt_attr, PW_TYPE_STRING)) == NULL){
+				if ((vp_auth_opt = paircreate(auth_opt_attr, 0, PW_TYPE_STRING)) == NULL){
 					radlog(L_ERR, "  [%s] Could not allocate memory. Aborting.", inst->xlat_name);
 					ldap_msgfree(result);
 					ldap_release_conn(conn_id, inst);
@@ -1979,7 +1979,7 @@ retry:
 							/* Generate state attribute */
 							state = rad_malloc(MAX_CHALLENGE_LEN);
 							(void) sprintf(state, "%s%s", challenge, challenge);
-							vp_state = paircreate(PW_STATE, PW_TYPE_OCTETS);
+							vp_state = paircreate(PW_STATE, 0, PW_TYPE_OCTETS);
 							memcpy(vp_state->vp_strvalue, state, strlen(state));
 							vp_state->length = strlen(state);
 							pairadd(&request->reply->vps, vp_state);
