@@ -62,7 +62,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet);
 #define DHCP_UNPACK_OPTION1(x) (((x) & 0xff00) >> 8)
 
 #define PW_DHCP_MESSAGE_TYPE   (53)
-#define PW_DHCP_YOU_IP_ADDRESS (264)
+#define PW_DHCP_YOUR_IP_ADDRESS (264)
 #define PW_DHCP_SUBNET_MASK    (1)
 #define PW_DHCP_IP_ADDRESS_LEASE_TIME (51)
 

@@ -107,7 +107,7 @@ static int dhcp_process(REQUEST *request)
 		/*
 		 *	Hop count goes up.
 		 */
-		vp = pairfind(request->reply->vps, DHCP2ATTR(259));
+		vp = pairfind(request->reply->vps, 259, DHCP_MAGIC_VENDOR);
 		if (vp) vp->vp_integer++;
 		
 		return 1;
@@ -123,7 +123,7 @@ static int dhcp_process(REQUEST *request)
 		 *	server.  So we must be the destination of the
 		 *	giaddr field.
 		 */
-		pairdelete(&request->packet->vps, DHCP2ATTR(266));
+		pairdelete(&request->packet->vps, 266, DHCP_MAGIC_VENDOR);
 
 		rad_free(&request->reply);
 		request->reply = request->packet;
@@ -132,7 +132,7 @@ static int dhcp_process(REQUEST *request)
 		/*
 		 *	Search for client IP address.
 		 */
-		vp = pairfind(request->packet->vps, DHCP2ATTR(264));
+		vp = pairfind(request->packet->vps, 264, DHCP_MAGIC_VENDOR);
 		if (!vp) {
 			request->reply->code = 0;
 			RDEBUG("DHCP: No YIAddr in the reply. Discarding packet");
@@ -151,7 +151,7 @@ static int dhcp_process(REQUEST *request)
 		/*
 		 *	Hop count goes down.
 		 */
-		vp = pairfind(request->reply->vps, DHCP2ATTR(259));
+		vp = pairfind(request->reply->vps, 259, DHCP_MAGIC_VENDOR);
 		if (vp && (vp->vp_integer > 0)) vp->vp_integer--;
 
 		/*

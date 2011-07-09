@@ -1141,7 +1141,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		}
 	}
 
-	vp = pairfind(packet->vps, DHCP2ATTR(256));
+	vp = pairfind(packet->vps, 256, DHCP_MAGIC_VENDOR);
 	if (vp) {
 		*p++ = vp->vp_integer & 0xff;
 	} else {
@@ -1154,7 +1154,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	*p++ = 1;		/* hardware type = ethernet */
 	*p++ = 6;		/* 6 bytes of ethernet */
 
-	vp = pairfind(packet->vps, DHCP2ATTR(259));
+	vp = pairfind(packet->vps, 259, DHCP_MAGIC_VENDOR);
 	if (vp) {
 		*p++ = vp->vp_integer & 0xff;
 	} else {
