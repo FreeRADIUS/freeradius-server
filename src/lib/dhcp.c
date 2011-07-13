@@ -1074,6 +1074,15 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				 &packet->dst_ipaddr.ipaddr,
 				 dst_ip_buf, sizeof(dst_ip_buf)),
 		       packet->dst_port);
+
+		if (fr_debug_flag) {
+			for (i = 256; i < 269; i++) {
+				vp = pairfind(packet->vps, DHCP2ATTR(i));
+				if (!vp) continue;
+
+				debug_pair(vp);
+			}
+		}
 	}
 
 	p = packet->data;
