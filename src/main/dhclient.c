@@ -69,7 +69,7 @@ static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: dhclient [options] server[:port] <command>\n");
 
-	fprintf(stderr, "  <command>    One of discover, request\n");
+	fprintf(stderr, "  <command>    One of discover, request, offer\n");
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
@@ -358,6 +358,10 @@ int main(int argc, char **argv)
 	} else if (strcmp(argv[2], "request") == 0) {
 		if (server_port == 0) server_port = 67;
 		packet_code = PW_DHCP_REQUEST;
+
+	} else if (strcmp(argv[2], "offer") == 0) {
+		if (server_port == 0) server_port = 67;
+		packet_code = PW_DHCP_OFFER;
 
 	} else if (isdigit((int) argv[2][0])) {
 		if (server_port == 0) server_port = 67;
