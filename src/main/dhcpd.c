@@ -62,6 +62,7 @@ static int dhcp_process(REQUEST *request)
 	 *	For messages from a client, look for Relay attribute,
 	 *	and forward it if necessary.
 	 */
+	vp = NULL;
 	if (request->packet->data[0] == 1) {
 		vp = pairfind(request->config_items, DHCP2ATTR(270));
 	}
@@ -88,15 +89,14 @@ static int dhcp_process(REQUEST *request)
 		}
 
 		/*
-		 *	Say there's no "original" packet.  Instead,
-		 *	just forward the "response".
+		 *	Forward a reply...
 		 */
-		rad_free(&request->reply);
-		request->reply = request->packet;
-		request->packet = NULL;
-
-		request->reply->src_ipaddr = request->reply->dst_ipaddr;
-		request->reply->src_port = request->reply->dst_port;
+		pairfree(&request->reply->vps);
+		request->reply->vps = paircopy(request->packet->vps);
+		request->reply->code = request->packet->code;
+		request->reply->id = request->packet->id;
+		request->reply->src_ipaddr = request->packet->dst_ipaddr;
+		request->reply->src_port = request->packet->dst_port;
 		request->reply->dst_ipaddr.af = AF_INET;
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		/*
@@ -117,22 +117,23 @@ static int dhcp_process(REQUEST *request)
 	 *	Responses from a server.  Handle them differently.
 	 */
 	if (request->packet->data[0] == 2) {
+		pairfree(&request->reply->vps);
+		request->reply->vps = paircopy(request->packet->vps);
+		request->reply->code = request->packet->code;
+		request->reply->id = request->packet->id;
+
 		/*
 		 *	Delete any existing giaddr.  If we received a
 		 *	message from the server, then we're NOT the
 		 *	server.  So we must be the destination of the
 		 *	giaddr field.
 		 */
-		pairdelete(&request->packet->vps, DHCP2ATTR(266));
-
-		rad_free(&request->reply);
-		request->reply = request->packet;
-		request->packet = NULL;
+		pairdelete(&request->reply->vps, DHCP2ATTR(266));
 
 		/*
 		 *	Search for client IP address.
 		 */
-		vp = pairfind(request->packet->vps, DHCP2ATTR(264));
+		vp = pairfind(request->reply->vps, DHCP2ATTR(264));
 		if (!vp) {
 			request->reply->code = 0;
 			RDEBUG("DHCP: No YIAddr in the reply. Discarding packet");
@@ -142,11 +143,11 @@ static int dhcp_process(REQUEST *request)
 		/*
 		 *	FROM us, TO the client's IP, OUR port + 1.
 		 */
-		request->reply->src_ipaddr = request->reply->dst_ipaddr;
-		request->reply->src_port = request->reply->dst_port;
+		request->reply->src_ipaddr = request->packet->dst_ipaddr;
+		request->reply->src_port = request->packet->dst_port;
 		request->reply->dst_ipaddr.af = AF_INET;
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		request->reply->dst_port++;
+		request->reply->dst_port = request->packet->dst_port + 1;
 
 		/*
 		 *	Hop count goes down.
@@ -325,8 +326,14 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	if (request->reply->code == 0) return 0; /* don't reply */
 
-	if (fr_dhcp_encode(request->reply, request->packet) < 0) {
-		return -1;
+	if (request->packet->code != request->reply->code) {
+		if (fr_dhcp_encode(request->reply, request->packet) < 0) {
+			return -1;
+		}
+	} else {
+		if (fr_dhcp_encode(request->reply, NULL) < 0) {
+			return -1;
+		}
 	}
 
 	sock = listener->data;
