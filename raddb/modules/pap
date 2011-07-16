@@ -13,6 +13,10 @@
 #  automatically create the attribute on the right-hand side,
 #  with the correct value.  It will also automatically handle
 #  Base-64 encoded data, hex strings, and binary data.
+#
+#  For instructions on creating the various types of passwords, see:
+#
+#  http://www.openldap.org/faq/data/cache/347.html
 pap {
 	auto_header = no
 }
