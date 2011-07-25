@@ -31,8 +31,12 @@ RCSID("$Id$")
 #  include	<malloc.h>
 #endif
 
+#ifdef HAVE_PCREPOSIX_H
+#  include	<pcreposix.h>
+#else
 #ifdef HAVE_REGEX_H
 #  include	<regex.h>
+#endif
 #endif
 
 static const char *months[] = {

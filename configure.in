@@ -641,9 +641,19 @@ AC_CHECK_HEADERS(net/if.h, [], [],
 ])
 
 REGEX=no
+AC_CHECK_HEADER(pcreposix.h, AC_DEFINE(HAVE_PCREPOSIX_H, [], [define this if we have the <pcreposix.h> header file]))
+if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
+  AC_DEFINE(HAVE_REGEX_H [], [define if we have any regex])
+  REGEX_EXTENDED=yes
+  REGEX_PCRE=yes
+  REGEX=yes
+  LIBS="$LIBS -lpcreposix"
+else
+
 AC_CHECK_HEADER(regex.h, AC_DEFINE(HAVE_REGEX_H, [], [define this if we have the <regex.h> header file]))
 if test "x$ac_cv_header_regex_h" = "xyes"; then
   REGEX_EXTENDED=no
+  REGEX_PCRE=no
   REGEX=yes
   AC_EGREP_CPP(yes,
     [#include <regex.h>
@@ -652,7 +662,10 @@ if test "x$ac_cv_header_regex_h" = "xyes"; then
      #endif
      ], [AC_DEFINE(HAVE_REG_EXTENDED, [], [define this if we have REG_EXTENDED (from <regex.h>)]) REGEX_EXTENDED=yes])
 fi
+fi
+
 AC_SUBST(REGEX)
+AC_SUBST(REGEX_PCRE)
 AC_SUBST(REGEX_EXTENDED)
 
 dnl #

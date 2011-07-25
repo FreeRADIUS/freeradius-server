@@ -256,6 +256,18 @@ int main(int argc, char *argv[])
 		radlog(L_INFO, "PARTICULAR PURPOSE.\n");
 		radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the\n");
 		radlog(L_INFO, "GNU General Public License v2.\n");
+		radlog(L_INFO, "\n");
+		radlog(L_INFO, "Compilation options:\n");
+#ifdef HAVE_PCREPOSIX_H
+		radlog(L_INFO, "Regex flavour: PCRE\n");
+#else
+#ifdef HAVE_REGEX_H
+		radlog(L_INFO, "Regex flavour: Posix\n");
+#else
+		radlog(L_INFO, "Regex flavour: none\n");
+#endif
+#endif
+
 		fflush(NULL);
 	}
 

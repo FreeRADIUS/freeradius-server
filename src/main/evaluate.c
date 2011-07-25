@@ -30,6 +30,9 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+#ifdef HAVE_PCREPOSIX_H
+#include <pcreposix.h>
+#else
 #ifdef HAVE_REGEX_H
 #include <regex.h>
 
@@ -44,6 +47,7 @@ RCSID("$Id$")
 
 #ifndef REG_NOSUB
 #define REG_NOSUB (0)
+#endif
 #endif
 #endif
 
