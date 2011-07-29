@@ -2411,7 +2411,7 @@ app:
 	packet = sock->packet;
 	packet->data = rad_malloc(sock->ssn->clean_out.used);
 	packet->data_len = sock->ssn->clean_out.used;
-	memcpy(packet->data, sock->ssn->clean_out.data, packet->data_len);
+	record_minus(&sock->ssn->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
