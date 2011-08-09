@@ -230,6 +230,18 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		case PW_TYPE_INTEGER:
 			ret = vp->vp_integer - check->vp_integer;
 			break;
+		case PW_TYPE_INTEGER64:
+			/*
+			 *	Don't want integer overflow!
+			 */
+			if (vp->vp_integer64 < check->vp_integer64) {
+				ret = -1;
+			} else if (vp->vp_integer64 > check->vp_integer64) {
+				ret = +1;
+			} else {
+				ret = 0;
+			}
+			break;
 		case PW_TYPE_DATE:
 			ret = vp->vp_date - check->vp_date;
 			break;

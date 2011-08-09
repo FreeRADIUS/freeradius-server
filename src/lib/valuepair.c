@@ -2162,6 +2162,18 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		compare = two->vp_integer - one->vp_integer;
 		break;
 
+	case PW_TYPE_INTEGER64:
+		/*
+		 *	Don't want integer overflow!
+		 */
+		if (two->vp_integer64 < one->vp_integer64) {
+			compare = -1;
+		} else if (two->vp_integer64 > one->vp_integer64) {
+			compare = +1;
+		} else {
+			compare = 0;
+		}
+		break;
 	case PW_TYPE_IPADDR:
 		compare = ntohl(two->vp_ipaddr) - ntohl(one->vp_ipaddr);
 		break;
