@@ -412,6 +412,11 @@ int gettimeofday (struct timeval *tv, void *tz);
 void timeval2ntp(const struct timeval *tv, uint8_t *ntp);
 void ntp2timeval(struct timeval *tv, const char *ntp);
 
+#define ntohll(x) (((uint64_t)(ntohl((uint32_t)((x << 32) >> 32))) << 32) | \
+		   (uint64_t)ntohl(((uint32_t)(x >> 32))))
+
+#define htonll(x) ntohll(x)
+
 #ifdef __cplusplus
 }
 #endif

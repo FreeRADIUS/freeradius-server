@@ -112,6 +112,10 @@ VALUE_PAIR *pairalloc(DICT_ATTR *da)
 			vp->length = 4;
 			break;
 
+		case PW_TYPE_INTEGER64:
+			vp->length = 8;
+			break;
+
 		case PW_TYPE_IFID:
 			vp->length = sizeof(vp->vp_ifid);
 			break;
@@ -891,6 +895,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	char		*p, *s=0;
 	const char	*cp, *cs;
 	int		x;
+	unsigned long long y;
 	size_t		length;
 	DICT_VALUE	*dval;
 
@@ -1063,6 +1068,22 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				return NULL;
 			}
 			vp->vp_integer = dval->value;
+			break;
+
+		case PW_TYPE_INTEGER64:
+			/*
+			 *	Note that ALL integers are unsigned!
+			 */
+			p = vp->vp_strvalue;
+			if (sscanf(p, "%llu", &y) != 1) {
+				fr_strerror_printf("Invalid value %s for attribute %s",
+						   value, vp->name);
+				return NULL;
+			}
+			vp->vp_integer64 = y;
+			vp->length = 8;
+			p += strspn(p, "0123456789");
+			if (check_for_whitespace(p)) break;
 			break;
 
 		case PW_TYPE_DATE:

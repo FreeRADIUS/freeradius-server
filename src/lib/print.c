@@ -266,6 +266,10 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 				}
 			}
 			break;
+		case PW_TYPE_INTEGER64:
+			snprintf(buf, sizeof(buf), "%llu", vp->vp_integer64);
+			a = buf;
+			break;
 		case PW_TYPE_DATE:
 			t = vp->vp_date;
 			if (delimitst == 1) {

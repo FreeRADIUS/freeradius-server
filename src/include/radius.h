@@ -24,6 +24,7 @@
 #define PW_TYPE_EXTENDED       		15
 #define PW_TYPE_EXTENDED_FLAGS	       	16
 #define PW_TYPE_EVS	       		17
+#define PW_TYPE_INTEGER64	       	18
 
 #define PW_FLAG_LONG			(1 << 8)
 

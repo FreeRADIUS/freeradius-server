@@ -106,6 +106,8 @@ static const FR_NAME_NUMBER type_table[] = {
 	{ "uint16",	PW_TYPE_SHORT },
 	{ "uint32",	PW_TYPE_INTEGER },
 	{ "int32",	PW_TYPE_SIGNED },
+	{ "integer64",	PW_TYPE_INTEGER64 },
+	{ "uint64",	PW_TYPE_INTEGER64 },
 	{ NULL, 0 }
 };
 
@@ -843,6 +845,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			case PW_TYPE_INTEGER:
 				break;
 
+			case PW_TYPE_INTEGER64:
 			default:
 				fr_pool_free(dval);
 				fr_strerror_printf("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
@@ -1192,6 +1195,10 @@ static int process_attribute(const char* fn, const int line,
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_SIGNED:
 			length = 4;
+			break;
+
+		case PW_TYPE_INTEGER64:
+			length = 8;
 			break;
 
 		case PW_TYPE_ETHERNET:

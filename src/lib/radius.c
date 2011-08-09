@@ -808,6 +808,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	const uint8_t *data;
 	uint8_t *ptr = start;
 	uint8_t	array[4];
+	uint64_t lvalue64;
 	const VALUE_PAIR *vp = *pvp;
 
 	/*
@@ -866,6 +867,12 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 		lvalue = htonl(vp->vp_integer);
 		memcpy(array, &lvalue, sizeof(lvalue));
 		data = array;
+		break;
+
+	case PW_TYPE_INTEGER64:
+		len = 8;	/* just in case */
+		lvalue64 = htonll(vp->vp_integer64);
+		data = &lvalue64;
 		break;
 
 	case PW_TYPE_IPADDR:
@@ -3005,6 +3012,12 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 					sizeof(vp->vp_strvalue));
 			}
 		}
+		break;
+
+	case PW_TYPE_INTEGER64:
+		if (vp->length != 8) goto raw;
+
+		vp->vp_integer64 = ntohll(*(uint64_t *)(vp->vp_octets));
 		break;
 
 	case PW_TYPE_DATE:
