@@ -90,6 +90,7 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	case PW_TYPE_STRING :
 		strlcpy(out,"_",outlen);
 		break;
+	case PW_TYPE_INTEGER64:
 	case PW_TYPE_INTEGER :
 		strlcpy(out,"0",outlen);
 		break;
@@ -211,6 +212,10 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			case PW_TYPE_SHORT:
 			case PW_TYPE_BYTE:
 				snprintf(out, outlen, "%u", vp->lvalue);
+				return strlen(out);
+
+			case PW_TYPE_INTEGER64:
+				snprintf(out, outlen, "%llu", vp->vp_integer64);
 				return strlen(out);
 			}
 
@@ -448,11 +453,16 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	if ((vp->type != PW_TYPE_IPADDR) &&
 	    (vp->type != PW_TYPE_INTEGER) &&
+	    (vp->type != PW_TYPE_INTEGER64) &&
 	    (vp->type != PW_TYPE_SHORT) &&
 	    (vp->type != PW_TYPE_BYTE) &&
 	    (vp->type != PW_TYPE_DATE)) {
 		*out = '\0';
 		return 0;
+	}
+
+	if (vp->type == PW_TYPE_INTEGER64) {
+		return snprintf(out, outlen, "%llu", vp->vp_integer64);
 	}
 
 	return snprintf(out, outlen, "%u", vp->vp_integer);
