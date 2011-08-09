@@ -1498,7 +1498,8 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		    (vp->operator == T_OP_GE)) {
 			if ((vp->type != PW_TYPE_BYTE) &&
 			    (vp->type != PW_TYPE_SHORT) &&
-			    (vp->type != PW_TYPE_INTEGER)) {
+			    (vp->type != PW_TYPE_INTEGER) &&
+			    (vp->type != PW_TYPE_INTEGER64)) {
 				pairfree(&head);
 				pairfree(&vp);
 				cf_log_err(ci, "Enforcment of <= or >= is possible only for integer attributes");
