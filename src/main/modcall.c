@@ -1025,7 +1025,7 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 			1,			/* invalid  */
 			1,			/* userlock */
 			1,			/* notfound */
-			2,			/* noop     */
+			MOD_ACTION_RETURN,	/* noop     */
 			4			/* updated  */
 		},
 		/* append */
