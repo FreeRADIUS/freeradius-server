@@ -286,6 +286,22 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			vp->vp_integer = ntohl(vp->vp_integer);
 			break;
 
+		case PW_TYPE_INTEGER64:
+			if (size != vp->length) {
+				RDEBUG2("Invalid length attribute %d",
+				       attr);
+				pairfree(&first);
+				pairfree(&vp);
+				return NULL;
+			}
+			memcpy(&vp->vp_integer64, data, vp->length);
+
+			/*
+			 *	Stored in host byte order: change it.
+			 */
+			vp->vp_integer64 = ntohll(vp->vp_integer64);
+			break;
+
 		case PW_TYPE_IPADDR:
 			if (size != vp->length) {
 				RDEBUG2("Invalid length attribute %d",
@@ -468,6 +484,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 	uint32_t	length;
 	uint32_t	vendor;
 	size_t		total;
+	uint64_t	attr64;
 	VALUE_PAIR	*vp;
 
 	p = buffer;
@@ -535,9 +552,15 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		switch (vp->type) {
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
-			attr = ntohl(vp->vp_integer); /* stored in host order */
+			attr = htonl(vp->vp_integer); /* stored in host order */
 			memcpy(p, &attr, sizeof(attr));
 			length = 4;
+			break;
+
+		case PW_TYPE_INTEGER64:
+			attr64 = htonll(vp->vp_integer64); /* stored in host order */
+			memcpy(p, &attr64, sizeof(attr64));
+			length = 8;
 			break;
 
 		case PW_TYPE_IPADDR:
