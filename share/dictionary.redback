@@ -102,7 +102,7 @@ ATTRIBUTE	Tunnel-Mobil-Group			77	string
 ATTRIBUTE	Tunnel-Client-VPN			78	string
 ATTRIBUTE	Tunnel-Server-VPN			79	string
 ATTRIBUTE	PPP-Compression				84	integer
-ATTRIBUTE	Tunnel-Hello-Timer			85	integer
+ATTRIBUTE	Tunnel-Hello-Timer			85	integer has_tag
 ATTRIBUTE	Redback-Reason				86	integer
 ATTRIBUTE	Qos-Policy-Policing			87	string
 ATTRIBUTE	Qos-Policy-Metering			88	string
@@ -338,7 +338,7 @@ ATTRIBUTE	Tunnel-Server-Rhost			81	string
 ATTRIBUTE	Tunnel-Client-Int-Addr			82	ipaddr
 ATTRIBUTE	Tunnel-Server-Int-Addr			83	ipaddr
 ATTRIBUTE	PPP-Compression				84	integer
-ATTRIBUTE	Tunnel-Hello-Timer			85	integer
+ATTRIBUTE	Tunnel-Hello-Timer			85	integer has_tag
 ATTRIBUTE	Redback-Reason				86	integer
 ATTRIBUTE	Qos-Policing-Profile-Name		87	string
 ATTRIBUTE	Qos-Metering-Profile-Name		88	string
@@ -433,11 +433,11 @@ ATTRIBUTE	Class-Volume-In-Counter			187	string
 ATTRIBUTE	Class-Volume-Out-Counter		188	string
 ATTRIBUTE	Flow-FAC-Profile			189	string
 ATTRIBUTE	Flow-FAC-Profile			189	string
-ATTRIBUTE	Service-Name				190	string
-ATTRIBUTE	Service-Action				191	integer
-ATTRIBUTE	Service-Parameter			192	string
-ATTRIBUTE	Service-Error-Cause			193	integer
-ATTRIBUTE	Deactivate-Service-Name			194	string
+ATTRIBUTE	Service-Name				190	string has_tag
+ATTRIBUTE	Service-Action				191	integer has_tag
+ATTRIBUTE	Service-Parameter			192	string has_tag
+ATTRIBUTE	Service-Error-Cause			193	integer has_tag
+ATTRIBUTE	Deactivate-Service-Name			194	string has_tag
 ATTRIBUTE	Qos-Profile-Overhead			195	string
 ATTRIBUTE	Dynamic-QoS-Param			196	string
 ATTRIBUTE	Acct-Alt-Session-ID			197	string
@@ -449,7 +449,7 @@ ATTRIBUTE	DHCP-Field				201	string
 #binary in radiator
 ATTRIBUTE	DHCP-Option				202	string
 ATTRIBUTE	Security-Service			203	string
-ATTRIBUTE	Reauth-Service-Name			204	string
+ATTRIBUTE	Reauth-Service-Name			204	string has_tag
 ATTRIBUTE	Flow-IP-Profile				205	string
 ATTRIBUTE	Radius-Throttle-Watermark		206	integer
 
