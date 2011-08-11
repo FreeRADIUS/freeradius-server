@@ -643,4 +643,15 @@ VALUE	Service-Action			DE-ACTIVATE		0
 VALUE	Service-Action			ACTIVATE-WITH-ACCT	1
 VALUE	Service-Action			ACTIVATE-WITHOUT-ACCT	2
 
+VALUE	Service-Error-Cause		Service-success		0
+VALUE	Service-Error-Cause		Unsupported-attribute	401
+VALUE	Service-Error-Cause		Missing-attribute	402
+VALUE	Service-Error-Cause		Invalid-request		404
+VALUE	Service-Error-Cause		Resource-unavailable	506
+VALUE	Service-Error-Cause		Generic-service-error	550
+VALUE	Service-Error-Cause		Service-not-found	551
+VALUE	Service-Error-Cause		Service-already-active	552
+VALUE	Service-Error-Cause		Service-accounting-disabled 553
+VALUE	Service-Error-Cause		Service-duplicate-parameter 554
+
 END-VENDOR	Redback
