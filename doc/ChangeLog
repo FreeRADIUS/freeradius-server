@@ -1,6 +1,11 @@
 FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
 	* Better DHCP relaying support.
+	* Updates to dictionary.erx, dictionary.siemens, dictionary.starent,
+	  dictionary.starent.vsa1
+	* Added support for PCRE from Phil Mayers
+	* Configurable file permission in rlm_linelog
+	* Added "relaxed" option to rlm_attr_filter.
 
 	Bug fixes
 	* Fix memory leak in rlm_detail
@@ -9,8 +14,14 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	  It no longer complains about duplicate virtual servers.
 	* Fix %{string:...} expansion
 	* Fix "server closed socket" loop in radmin
+	* Set ownership of control socket when starting up
 	* Always allow root to connect to control socket, even if
 	  "uid" is set.  They're root.  They can already do anything.
+	* Save all attributes in Access-Accept when proxying inner-tunnel
+	  EAP-MSCHAPv2x
+	* Fixes for DHCP relaying.
+	* Check certificate validity when using OCSP.
+	* Updated Oracle "configure" script
 
 FreeRADIUS 2.1.11 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
