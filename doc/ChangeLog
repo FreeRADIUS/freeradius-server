@@ -8,6 +8,7 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Complete WiMAX support, using new encoder/decoder.  The old code
 	  could not handle some unusual corner cases.
 	* Support for "extended attributes" using new encoder/decoder.
+	* Support for "integer64" data type.
 	* Updated internal API to support new attributes
 	* Re-arranged configuration entries in radiusd.conf to make more
 	  sense.
