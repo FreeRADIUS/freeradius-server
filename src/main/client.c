@@ -1070,7 +1070,11 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 		case PW_TYPE_STRING_PTR:
 			p = (char **) ((char *) c + dynamic_config[i].offset);
 			if (*p) free(*p);
-			*p = strdup(vp->vp_strvalue);
+			if (vp->vp_strvalue[0]) {
+				*p = strdup(vp->vp_strvalue);
+			} else {
+				*p = NULL;
+			}
 			break;
 
 		case PW_TYPE_BOOLEAN:
