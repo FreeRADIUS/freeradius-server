@@ -218,10 +218,8 @@ ATTRIBUTE	SN1-Secondary-DCCA-Peer			224	string
 ATTRIBUTE	SN1-Subs-Acc-Flow-Traffic-Valid		225	integer
 ATTRIBUTE	SN1-Acct-Input-Packets-Dropped		226	integer
 ATTRIBUTE	SN1-Acct-Output-Packets-Dropped		227	integer
-# SN-Acct-Input-Octets-Dropped is octets and not integer as length is 8
-ATTRIBUTE	SN1-Acct-Input-Octets-Dropped		228	octets
-# SN-Acct-Output-Octets-Dropped is octets and not integer as length is 8
-ATTRIBUTE	SN1-Acct-Output-Octets-Dropped		229	octets
+ATTRIBUTE	SN1-Acct-Input-Octets-Dropped		228	integer64
+ATTRIBUTE	SN1-Acct-Output-Octets-Dropped		229	integer64
 ATTRIBUTE	SN1-Acct-Input-Giga-Dropped		230	integer
 ATTRIBUTE	SN1-Acct-Output-Giga-Dropped		231	integer
 ATTRIBUTE	SN1-Overload-Disc-Connect-Time		233	integer
