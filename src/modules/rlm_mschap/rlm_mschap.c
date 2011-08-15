@@ -210,7 +210,6 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			VALUE_PAIR *name_attr, *response_name;
 			char *username_string;
 
-			RDEBUG2(" mschap2: %02x", chap_challenge->vp_octets[0]);
 			response = pairfind(request->packet->vps,
 					    PW_MSCHAP2_RESPONSE,
 					    VENDORPEC_MICROSOFT);
