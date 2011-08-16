@@ -2207,6 +2207,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!insert_into_proxy_hash(request)) {
+		radlog_request(L_PROXY, 0, request, "Failed to insert initial packet into the proxy list.");
 		return -1;
 	}
 
@@ -2271,7 +2272,7 @@ static int request_proxy_anew(REQUEST *request)
 	 *	Don't free the old Id on error.
 	 */
 	if (!insert_into_proxy_hash(request)) {
-		radlog(L_PROXY,"Failed to insert retransmission of request %u into the proxy list.", request->number);
+		radlog_request(L_PROXY, 0, request, "Failed to insert retransmission into the proxy list.");
 		goto post_proxy_fail;
 	}
 
