@@ -415,11 +415,12 @@ static void request_done(REQUEST *request, int action)
 		 */
 		if (request->reply->data) break;
 
-		radlog(L_ERR, "Received conflicting packet from "
-		       "client %s port %d - ID: %d due to unfinished request %u.  Giving up on old request.",
-		       request->client->shortname,
-		       request->packet->src_port, request->packet->id,
-		       request->number);
+		radlog_request(L_ERR, 0, request,
+			       "Received conflicting packet from "
+			       "client %s port %d - ID: %d due to "
+			       "unfinished request.  Giving up on old request.",
+			       request->client->shortname,
+			       request->packet->src_port, request->packet->id);
 		break;
 
 		/*
@@ -1345,7 +1346,7 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 *	Remember the request in the list.
 	 */
 	if (!fr_packet_list_insert(pl, &request->packet)) {
-		radlog(L_ERR, "Failed to insert request %u in the list of live requests: discarding", request->number);
+		radlog_request(L_ERR, 0, request, "Failed to insert request in the list of live requests: discarding it");
 		request_done(request, FR_ACTION_DONE);
 		return 1;
 	}
@@ -1622,7 +1623,7 @@ retry:
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		radlog(L_PROXY, "Failed to insert entry into proxy list.");
+		radlog_request(L_PROXY, 0, request, "Failed to insert entry into proxy list.");
 		return 0;
 	}
 
@@ -2174,6 +2175,8 @@ static int request_proxy(REQUEST *request, int retransmit)
 	rad_assert(request->parent == NULL);
 	rad_assert(request->home_server != NULL);
 
+	if (request->master_state == REQUEST_STOP_PROCESSING) return 0;
+
 #ifdef WITH_COA
 	if (request->coa) {
 		RDEBUG("WARNING: Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
@@ -2204,8 +2207,6 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!insert_into_proxy_hash(request)) {
-		radlog(L_PROXY, "Failed to insert request %u into proxy list.",
-			request->number);
 		return -1;
 	}
 
@@ -2342,7 +2343,7 @@ static void request_ping(REQUEST *request, int action)
 		rad_assert(request->in_proxy_hash);
 
 		request->home_server->num_received_pings++;
-		radlog(L_PROXY, "Received response to status check %d (%d in current sequence)",
+		radlog_request(L_PROXY, 0, request, "Received response to status check %d (%d in current sequence)",
 		       request->number, home->num_received_pings);
 
 		/*
@@ -2380,7 +2381,7 @@ static void request_ping(REQUEST *request, int action)
 		
 		fr_event_delete(el, &home->ev);
 
-		radlog(L_PROXY, "Marking home server %s port %d alive",
+		radlog_request(L_PROXY, 0, request, "Marking home server %s port %d alive",
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
@@ -2499,7 +2500,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		radlog(L_PROXY, "Failed to insert status check %d into proxy list.  Discarding it.",
+		radlog_request(L_PROXY, 0, request, "Failed to insert status check %d into proxy list.  Discarding it.",
 		       request->number);
 
 		rad_assert(!request->in_request_hash);
@@ -2999,7 +3000,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->proxy->dst_port = coa->home_server->port;
 
 	if (!insert_into_proxy_hash(coa)) {
-		radlog(L_PROXY, "Failed to insert CoA request into proxy list.");
+		radlog_request(L_PROXY, 0, coa, "Failed to insert CoA request into proxy list.");
 		goto fail;
 	}
 
