@@ -278,7 +278,10 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 */
 	rcode = sendto(sockfd, data, data_len, flags,
 		       (struct sockaddr *) &dst, sizeof_dst);
-done:	if (rcode < 0) {
+#ifdef WITH_UDPFROMTO
+done:
+#endif
+	if (rcode < 0) {
 		DEBUG("rad_send() failed: %s\n", strerror(errno));
 	}
 
@@ -872,7 +875,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	case PW_TYPE_INTEGER64:
 		len = 8;	/* just in case */
 		lvalue64 = htonll(vp->vp_integer64);
-		data = &lvalue64;
+		data = (uint8_t *) &lvalue64;
 		break;
 
 	case PW_TYPE_IPADDR:
