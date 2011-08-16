@@ -1499,6 +1499,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			if ((vp->type != PW_TYPE_BYTE) &&
 			    (vp->type != PW_TYPE_SHORT) &&
 			    (vp->type != PW_TYPE_INTEGER) &&
+			    (vp->type != PW_TYPE_SIGNED) &&
 			    (vp->type != PW_TYPE_INTEGER64)) {
 				pairfree(&head);
 				pairfree(&vp);

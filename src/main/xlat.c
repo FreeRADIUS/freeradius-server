@@ -91,7 +91,8 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 		strlcpy(out,"_",outlen);
 		break;
 	case PW_TYPE_INTEGER64:
-	case PW_TYPE_INTEGER :
+	case PW_TYPE_SIGNED:
+	case PW_TYPE_INTEGER:
 		strlcpy(out,"0",outlen);
 		break;
 	case PW_TYPE_IPADDR :
@@ -212,6 +213,10 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			case PW_TYPE_SHORT:
 			case PW_TYPE_BYTE:
 				snprintf(out, outlen, "%u", vp->lvalue);
+				return strlen(out);
+
+			case PW_TYPE_SIGNED:
+				snprintf(out, outlen, "%d", vp->vp_signed);
 				return strlen(out);
 
 			case PW_TYPE_INTEGER64:

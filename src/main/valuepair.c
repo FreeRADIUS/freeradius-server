@@ -242,6 +242,15 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 				ret = 0;
 			}
 			break;
+		case PW_TYPE_SIGNED:
+			if (vp->vp_signed < check->vp_signed) {
+				ret = -1;
+			} else if (vp->vp_signed > check->vp_signed) {
+				ret = +1;
+			} else {
+				ret = 0;
+			}
+			break;
 		case PW_TYPE_DATE:
 			ret = vp->vp_date - check->vp_date;
 			break;
