@@ -194,6 +194,7 @@ static int do_linelog(void *instance, REQUEST *request)
 {
 	int fd = -1;
 	char buffer[4096];
+	char *p;
 	char line[1024];
 	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
 	const char *value = inst->line;
@@ -243,6 +244,17 @@ static int do_linelog(void *instance, REQUEST *request)
 		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
 			    NULL);
 		
+		/* check path and eventually create subdirs */
+		p = strrchr(buffer,'/');
+		if (p) {
+			*p = '\0';
+			if (rad_mkdir(buffer, 0700) < 0) {
+				radlog_request(L_ERR, 0, request, "rlm_linelog: Failed to create directory %s: %s", buffer, strerror(errno));
+				return RLM_MODULE_FAIL;
+			}
+			*p = '/';
+		}
+
 		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->permissions);
 		if (fd == -1) {
 			radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
