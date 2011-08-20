@@ -1,15 +1,15 @@
 FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
-	* Better DHCP relaying support.
 	* Updates to dictionary.erx, dictionary.siemens, dictionary.starent,
 	  dictionary.starent.vsa1
 	* Added support for PCRE from Phil Mayers
 	* Configurable file permission in rlm_linelog
-	* Added "relaxed" option to rlm_attr_filter.
+	* Added "relaxed" option to rlm_attr_filter.  This copies attributes
+	  if at least one match occurred.
 
 	Bug fixes
 	* Fix memory leak in rlm_detail
-	* Fix "failed to insert event" problem.
+	* Fix "failed to insert event"
 	* Allow virtual servers to be reloaded on HUP.
 	  It no longer complains about duplicate virtual servers.
 	* Fix %{string:...} expansion
@@ -18,7 +18,7 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	* Always allow root to connect to control socket, even if
 	  "uid" is set.  They're root.  They can already do anything.
 	* Save all attributes in Access-Accept when proxying inner-tunnel
-	  EAP-MSCHAPv2x
+	  EAP-MSCHAPv2
 	* Fixes for DHCP relaying.
 	* Check certificate validity when using OCSP.
 	* Updated Oracle "configure" script
