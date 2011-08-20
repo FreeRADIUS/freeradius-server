@@ -266,7 +266,7 @@ home_server tls {
 	type = auth
 	secret = testing123
 	proto = tcp
-	status_check = status-server
+	status_check = none
 
 	tls {
 		private_key_password = whatever
