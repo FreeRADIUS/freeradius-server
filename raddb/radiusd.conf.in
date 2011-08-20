@@ -66,8 +66,8 @@ name = radiusd
 
 #  Location of config and logfiles.
 confdir = ${raddbdir}
-certdir = ${raddbdir}/certs
-cadir   = ${raddbdir}/certs
+certdir = ${confdir}/certs
+cadir   = ${confdir}/certs
 run_dir = ${localstatedir}/run/${name}
 
 # Should likely be ${localstatedir}/lib/radiusd
