@@ -1077,7 +1077,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 		if (fr_debug_flag) {
 			for (i = 256; i < 269; i++) {
-				vp = pairfind(packet->vps, DHCP2ATTR(i));
+				vp = pairfind(packet->vps, i,
+					      DHCP_MAGIC_VENDOR);
 				if (!vp) continue;
 
 				debug_pair(vp);
