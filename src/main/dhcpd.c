@@ -247,7 +247,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	}
 
 	if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-		radlog(L_ERR, "Can't set re-use addres option: %s\n",
+		radlog(L_ERR, "Can't set re-use address option: %s\n",
 		       strerror(errno));
 		return -1;
 	}

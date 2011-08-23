@@ -441,7 +441,7 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 }
 
 /*
- *	Look IP addreses up, and print names (depending on DNS config)
+ *	Look IP addresses up, and print names (depending on DNS config)
  */
 const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 {
