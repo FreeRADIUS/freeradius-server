@@ -1814,7 +1814,7 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 #ifdef WITH_DYNAMIC_CLIENTS
 	RADCLIENT *client;
 
-	client = get_client(listener, argc - 1, argv + 1);
+	client = get_client(listener, argc, argv);
 	if (!client) return 0;
 
 	if (!client->dynamic) {
