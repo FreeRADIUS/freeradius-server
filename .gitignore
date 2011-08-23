@@ -8,7 +8,12 @@
 *.lai
 .libs
 .depends
-config.log
+*.log
+*.substvars
+*-stamp
+*.cache
+*.dist
+.pc
 config.status
 Make.inc
 libtool
@@ -17,3 +22,8 @@ src/include/build-radpaths-h
 src/include/radpaths.h
 src/include/stamp-h
 autom4te.cache
+config.guess
+config.sub
+debian/*
+src/main/radattr
+src/modules/lib/
