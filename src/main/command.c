@@ -1703,7 +1703,7 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 	if (!client) return 0;
 
 	if (!client->dynamic) {
-		cprintf(listener, "ERROR: Client %s was not dynamically defined.\n", argv[1]);
+		cprintf(listener, "ERROR: Client %s was not dynamically defined.\n", argv[0]);
 		return 0;
 	}
 
