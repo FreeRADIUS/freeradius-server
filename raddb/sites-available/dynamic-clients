@@ -100,6 +100,12 @@ server dynamic_client_server {
 		#  The attributes used to define a dynamic client mirror
 		#  the configuration items in the "client" structure.
 		#
+
+		#
+		#  Example 1: Hard-code a client IP.  This example is
+		#             useless, but it documents the attributes
+		#             you need.
+		#
 		update control {
 
 			#
@@ -133,7 +139,20 @@ server dynamic_client_server {
 		}
 
 		#
-		#  Or, look the client up in SQL.
+		#  Example 2: Read the clients from "clients" files
+		#             in a directory.
+		#
+
+		#             This requires you to uncomment the
+		#             "directory" configuration in the
+		#             "client dynamic" configuration above,
+		#	      and then put one file per IP address in
+		#             that directory.
+		#
+		dynamic_clients
+
+		#
+		#  Example 3: Look the clients up in SQL.
 		#
 		#  This requires the SQL module to be configured, of course.
 		if ("%{sql: SELECT nasname FROM nas WHERE nasname = '%{Packet-Src-IP-Address}'}") {
