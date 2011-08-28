@@ -6,6 +6,10 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	* Configurable file permission in rlm_linelog
 	* Added "relaxed" option to rlm_attr_filter.  This copies attributes
 	  if at least one match occurred.
+	* Added documentation on dynamic clients.
+	  See raddb/modules/dynamic_clients.
+	* Added support for elliptical curve cryptography.
+	  See ecdh_curve in raddb/eap.conf.
 
 	Bug fixes
 	* Fix memory leak in rlm_detail
