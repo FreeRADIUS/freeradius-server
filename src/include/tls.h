@@ -378,6 +378,11 @@ struct fr_tls_server_conf_t {
 	X509_STORE	*ocsp_store;
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	char		*ecdh_curve;
+#endif
+#endif
 };
 
 #ifdef __cplusplus

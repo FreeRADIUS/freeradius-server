@@ -801,6 +801,13 @@ static CONF_PARSER tls_server_config[] = {
 	{ "require_client_cert", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, require_client_cert), NULL, NULL },
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	{ "ecdh_curve", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, ecdh_curve), NULL, "prime256v1"},
+#endif
+#endif
+
 	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
 
 	{ "verify", PW_TYPE_SUBSECTION, 0, NULL, (const void *) verify_config },
@@ -852,6 +859,13 @@ static CONF_PARSER tls_client_config[] = {
 	  offsetof(fr_tls_server_conf_t, cipher_list), NULL, NULL},
 	{ "check_cert_issuer", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, check_cert_issuer), NULL, NULL},
+
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	{ "ecdh_curve", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, ecdh_curve), NULL, "prime256v1"},
+#endif
+#endif
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -1486,6 +1500,38 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+static int set_ecdh_curve(SSL_CTX *ctx, const char *ecdh_curve)
+{
+	int      nid; 
+	EC_KEY  *ecdh; 
+
+	if (!ecdh_curve || !*ecdh_curve) return 0;
+
+	nid = OBJ_sn2nid(ecdh_curve); 
+	if (!nid) { 
+		radlog(L_ERR, "Unknown ecdh_curve \"%s\"", ecdh_curve);
+		return -1;
+	}
+
+	ecdh = EC_KEY_new_by_curve_name(nid); 
+	if (!ecdh) { 
+		radlog(L_ERR, "Unable to create new curve \"%s\"", ecdh_curve);
+		return -1;
+	} 
+
+	SSL_CTX_set_tmp_ecdh(ctx, ecdh); 
+
+	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE); 
+
+	EC_KEY_free(ecdh);
+
+	return 0;
+}
+#endif
+#endif
+
 /*
  *	Create Global context SSL and use it in every new session
  *
@@ -1678,6 +1724,17 @@ load_ca:
 	 *
 	 *	SSL_CTX_set_msg_callback(ctx, cbtls_msg);
 	 */
+
+	/*
+	 *	Set eliptical curve crypto configuration.
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	if (set_ecdh_curve(ctx, conf->ecdh_curve) < 0) {
+		return NULL;
+	}
+#endif
+#endif
 
 	/* Set Info callback */
 	SSL_CTX_set_info_callback(ctx, cbtls_info);
