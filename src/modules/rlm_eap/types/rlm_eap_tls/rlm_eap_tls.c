@@ -123,6 +123,13 @@ static CONF_PARSER module_config[] = {
 	{ "make_cert_command", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, make_cert_command), NULL, NULL},
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	{ "ecdh_curve", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, ecdh_curve), NULL, "prime256v1"},
+#endif
+#endif
+
 	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
 
 	{ "verify", PW_TYPE_SUBSECTION, 0, NULL, (const void *) verify_config },
@@ -760,6 +767,38 @@ static X509_STORE *init_revocation_store(EAP_TLS_CONF *conf)
 }
 #endif	/* HAVE_OPENSSL_OCSP_H */
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+static int set_ecdh_curve(SSL_CTX *ctx, const char *ecdh_curve)
+{
+	int      nid; 
+	EC_KEY  *ecdh; 
+
+	if (!ecdh_curve || !*ecdh_curve) return 0;
+
+	nid = OBJ_sn2nid(ecdh_curve); 
+	if (!nid) { 
+		radlog(L_ERR, "Unknown ecdh_curve \"%s\"", ecdh_curve);
+		return -1;
+	}
+
+	ecdh = EC_KEY_new_by_curve_name(nid); 
+	if (!ecdh) { 
+		radlog(L_ERR, "Unable to create new curve \"%s\"", ecdh_curve);
+		return -1;
+	} 
+
+	SSL_CTX_set_tmp_ecdh(ctx, ecdh); 
+
+	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE); 
+
+	EC_KEY_free(ecdh);
+
+	return 0;
+}
+#endif
+#endif
+
 /*
  *	Create Global context SSL and use it in every new session
  *
@@ -935,6 +974,17 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	 *	SSL_CTX_set_tmp_rsa_callback(ctx, cbtls_rsa);
 	 *	SSL_CTX_set_tmp_dh_callback(ctx, cbtls_dh);
 	 */
+
+	/*
+	 *	Set eliptical curve crypto configuration.
+	 */
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	if (set_ecdh_curve(ctx, conf->ecdh_curve) < 0) {
+		return NULL;
+	}
+#endif
+#endif
 
 	/*
 	 *	set the message callback to identify the type of

@@ -80,6 +80,11 @@ typedef struct eap_tls_conf {
 	char		*ocsp_url;
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	char		*ecdh_curve;
+#endif
+#endif
 } EAP_TLS_CONF;
 
 /* This structure gets stored in arg */
