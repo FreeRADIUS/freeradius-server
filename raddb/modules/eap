@@ -282,7 +282,7 @@
 			#
 			#  Only for OpenSSL >= 0.9.8.f
 			#
-#			ecdh_curve = "prime256v1"
+			ecdh_curve = "prime256v1"
 
 			#
 			#  Session resumption / fast reauthentication
