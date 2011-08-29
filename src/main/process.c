@@ -483,13 +483,15 @@ static void request_done(REQUEST *request, int action)
 	if (request->in_proxy_hash) {
 		struct timeval when;
 		
+		rad_assert(request->proxy != NULL);
+
 		fr_event_now(el, &now);
 		when = request->proxy->timestamp;
 
 #ifdef WITH_COA
-		if ((request->packet->code != request->proxy->code) &&
-		    ((request->proxy->code == PW_COA_REQUEST) ||
-		     (request->proxy->code == PW_DISCONNECT_REQUEST))) {
+		if (((request->proxy->code == PW_COA_REQUEST) ||
+		     (request->proxy->code == PW_DISCONNECT_REQUEST)) &&
+		    (request->packet->code != request->proxy->code)) {
 			when.tv_sec += request->home_server->coa_mrd;
 		} else
 #endif
