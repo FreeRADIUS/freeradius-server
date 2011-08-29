@@ -68,6 +68,17 @@
 #  need to setup hints for the remote radius server
 authorize {
 	#
+	#  Security settings.  Take a User-Name, and do some simple
+	#  checks on it, for spaces and other invalid characters.  If
+	#  it looks like the user is trying to play games, reject it.
+	#
+	#  This should probably be enabled by default.
+	#
+	#  See policy.conf for the definition of the filter_username policy.
+	#
+#	filter_username
+
+	#
 	#  The preprocess module takes care of sanitizing some bizarre
 	#  attributes in the request, and turning them into attributes
 	#  which are more standard.
