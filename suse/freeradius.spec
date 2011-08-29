@@ -3,7 +3,7 @@ License:      GPL, LGPL
 Group:        Productivity/Networking/Radius/Servers
 Provides:     radiusd
 Conflicts:    freeradius
-Version: 2.1.11
+Version: 2.1.12
 Release:      0
 URL:          http://www.freeradius.org/
 Summary:      The world's most popular RADIUS Server
