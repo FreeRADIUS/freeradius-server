@@ -65,6 +65,12 @@ $cmmty_string	= "public";
 # path to finger command
 $finger = "/usr/bin/finger";
 
+# Extremely slow way of converting port descriptions to actual indexes
+$portisdescr = 0;
+
+# Realm used by Cisco sub
+$realm = '';
+
 #
 #	USR-Hiper: $hiper_density is the reported port density (default 256
 #	but 24 makes more sense)
@@ -191,7 +197,7 @@ sub snmpget_prog {
 	} elsif (/^.*=.*"(.*)"/) {
 		# oid = "...." junk format.
 		$ret = $1;
-	} elsif (/^.*=\s*(\S+)/) {
+	} elsif (/^.*=\s*(?:.*:\s*)?(\S+)/) {
 		# oid = string format
 		$ret = $1;
 	}
@@ -261,6 +267,28 @@ sub snmpget {
 }
 
 #
+#   Get ifindex from description
+#
+sub ifindex {
+	my $port = shift;
+	
+	# If its not an integer, portisdescr lies!
+	return $port unless $portisdescr || $port !~ /^[0-9]*$/;
+	
+	$_ = snmpwalk($ARGV[1], "$cmmty_string", ".1.3.6.1.2.1.2.2.1.2");
+	
+	foreach (split /\n/){
+		if(/\.([0-9]+)\s*=.*$port"?$/){
+			print LOG "  port descr $port is at SNMP ifIndex $1\n" if ($debug);
+			return $1;
+		}
+	}
+	
+
+	return $port;
+}
+
+#
 #	Strip domains, prefixes and suffixes from username
 #
 #	Known prefixes: (P)PP, (S)LIP e (C)SLIP
@@ -281,6 +309,33 @@ sub strip_username {
 	$user =~ s/^[PSC]//;
 	$user =~ s/\.(ppp|slip|cslip)$//;
 	$user;
+}
+
+#
+#	Check whether a session is current on any device which implements the standard IEEE 802.1X MIB
+#
+#	Note: Vendors use different formats for the session ID, and it often doesn't map
+#	between Acct-Session-ID so can't be used to identify and 802.1X session (we ignore it).
+#
+#	If a session matching the username is found on the port specified, and the 
+#	session is still active then thats good enough...
+#
+#	Author: Arran Cudbard-Bell <arran.cudbard-bell@freeradius.org>
+#
+$ieeedot1m   = '.iso.0.8802.1.1';
+sub dot1x_snmp {
+	$ifIndex = ifindex($ARGV[2]);
+	
+	# User matches and not terminated yet?
+	if(
+		snmpget($ARGV[1], "$cmmty_string", "$ieeedot1m.1.1.2.4.1.9.$ifIndex") eq $ARGV[3] &&
+		snmpget($ARGV[1], "$cmmty_string", "$ieeedot1m.1.1.2.4.1.8.$ifIndex") eq '999'
+	){
+		print LOG "  found user $ARGV[3] at port $ARGV[2] ($ifIndex)" if $debug;
+		return 1;
+	}
+	
+	0;
 }
 
 #
@@ -1380,7 +1435,7 @@ if ($ARGV[0] eq 'livingston') {
 } elsif ($ARGV[0] eq 'cvx') {
 	$ret = &cvx_snmp;
 } elsif ($ARGV[0] eq 'multitech') {
-        $ret = &multitech_snmp;
+	$ret = &multitech_snmp;
 } elsif ($ARGV[0] eq 'computone') {
 	$ret = &computone_finger;
 } elsif ($ARGV[0] eq 'max40xx') {
@@ -1406,17 +1461,19 @@ if ($ARGV[0] eq 'livingston') {
 } elsif ($ARGV[0] eq 'netserver') {
 	$ret = &usrnet_telnet;
 } elsif ($ARGV[0] eq 'versanet') {
-        $ret = &versanet_snmp;
+	$ret = &versanet_snmp;
 } elsif ($ARGV[0] eq 'bay') {
 	$ret = &bay_finger;
 } elsif ($ARGV[0] eq 'cisco_l2tp'){
-        $ret = &cisco_l2tp_snmp;
+	$ret = &cisco_l2tp_snmp;
 } elsif ($ARGV[0] eq 'mikrotik'){
-        $ret = &mikrotik_telnet;
+	$ret = &mikrotik_telnet;
 } elsif ($ARGV[0] eq 'mikrotik_snmp'){
-        $ret = &mikrotik_snmp;
+	$ret = &mikrotik_snmp;
 } elsif ($ARGV[0] eq 'redback'){
-        $ret = &redback_telnet;
+	$ret = &redback_telnet;
+} elsif ($ARGV[0] eq 'dot1x'){
+	$ret = &dot1x_snmp;
 } elsif ($ARGV[0] eq 'other') {
 	$ret = 1;
 } else {
