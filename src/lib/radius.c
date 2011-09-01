@@ -3020,7 +3020,8 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	case PW_TYPE_INTEGER64:
 		if (vp->length != 8) goto raw;
 
-		vp->vp_integer64 = ntohll(*(uint64_t *)(vp->vp_octets));
+		/* vp_integer64 is a union with vp_octets */
+		vp->vp_integer64 = ntohll(vp->vp_integer64);
 		break;
 
 	case PW_TYPE_DATE:
