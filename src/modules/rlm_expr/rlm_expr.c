@@ -254,6 +254,40 @@ static size_t expr_xlat(void *instance, REQUEST *request, char *fmt,
 	return strlen(out);
 }
 
+static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
+			char *out, size_t outlen,
+			RADIUS_ESCAPE_STRING func)
+{
+	int		rcode;
+	int64_t		result;
+	rlm_expr_t	*inst = instance;
+	char		buffer[256];
+
+	inst = inst;		/* -Wunused */
+
+	/*
+	 * Do an xlat on the provided string (nice recursive operation).
+	 */
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		return 0;
+	}
+
+	result = atoi(buffer);
+
+	/*
+	 *	Too small or too big.
+	 */
+	if (result <= 0) return 0;
+	if (result >= (1 << 30)) result = (1 << 30);
+
+	result *= fr_rand();	/* 0..2^32-1 */
+	result >>= 32;
+
+	snprintf(out, outlen, "%ld", (long int) result);
+	return strlen(out);
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -285,6 +319,9 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 		inst->xlat_name = strdup(xlat_name);
 		xlat_register(xlat_name, expr_xlat, inst);
 	}
+
+	xlat_register("rand", rand_xlat, inst);
+
 	/*
 	 * Initialize various paircompare functions
 	 */
