@@ -10,6 +10,9 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	  See raddb/modules/dynamic_clients.
 	* Added support for elliptical curve cryptography.
 	  See ecdh_curve in raddb/eap.conf.
+	* Added support for 802.1X MIBs in checkrad
+	* Added support for %{rand:...}, which generates a uniformly
+	  distributed number between 0 and the number you specify.
 
 	Bug fixes
 	* Fix memory leak in rlm_detail
