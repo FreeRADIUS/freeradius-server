@@ -13,6 +13,11 @@
 *-stamp
 *.cache
 *.dist
+*.dylib
+*.rej
+*.orig
+*.dSYM
+*.patch
 .pc
 config.status
 Make.inc
