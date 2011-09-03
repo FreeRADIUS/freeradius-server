@@ -2299,6 +2299,7 @@ static int command_domain_accept(rad_listen_t *listener,
 		return 0;
 	}
 
+#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	/*
 	 *	Perform user authentication.
 	 */
@@ -2318,7 +2319,13 @@ static int command_domain_accept(rad_listen_t *listener,
 		 *	non-root.  The superuser can do anything, so
 		 *	we might as well let them.
 		 */
-		if (uid != 0) {
+		if (uid != 0) do {
+			/*
+			 *	Allow entry if UID or GID matches.
+			 */
+			if (sock->uid_name && (sock->uid == uid)) break;
+			if (sock->gid_name && (sock->gid == gid)) break;
+
 			if (sock->uid_name && (sock->uid != uid)) {
 				radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
 
@@ -2333,8 +2340,9 @@ static int command_domain_accept(rad_listen_t *listener,
 				close(newfd);
 				return 0;
 			}
-		}
-	}
+		} while (0);
+        }
+#endif
 
 	/*
 	 *	Write 32-bit magic number && version information.
