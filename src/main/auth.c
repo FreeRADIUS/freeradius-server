@@ -692,12 +692,15 @@ autz_redo:
 			char *p;
 
 			p = auth_item->vp_strvalue;
-			while (*p != '\0') {
-				if (!isprint((int) *p)) {
-					log_debug("  WARNING: Unprintable characters in the password.\n\t  Double-check the shared secret on the server and the NAS!");
+			while (*p) {
+				int size;
+
+				size = fr_utf8_char(p);
+				if (!size) {
+					log_debug("  WARNING: Unprintable characters in the password.  Double-check the shared secret on the server and the NAS!");
 					break;
 				}
-				p++;
+				p += size;
 			}
 		}
 	}
