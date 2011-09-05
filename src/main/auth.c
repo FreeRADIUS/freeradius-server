@@ -499,7 +499,7 @@ int rad_authenticate(REQUEST *request)
 						&request->config_items,
 						PW_AUTH_TYPE, PW_TYPE_INTEGER);
 			if (tmp) tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
-#ifdef WITH_POXT_PROXY_AUTHORIZE
+#ifdef WITH_POST_PROXY_AUTHORIZE
 			if (mainconfig.post_proxy_authorize) break;
 #endif
 			goto authenticate;
