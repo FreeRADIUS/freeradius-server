@@ -177,4 +177,21 @@ ldap {
         #  "password_header" configuration items have been removed.
         #  Since they were deprecated long ago, this change should not
         #  affect anyone.
+
+	#
+	#  Keepalive configuration.  This MAY NOT be supported by your
+	#  LDAP library.  If these configuration entries appear in the
+	#  output of "radiusd -X", then they are supported.  Otherwise,
+	#  they are unsupported, and changing them will do nothing.
+	#
+	keepalive {
+		# LDAP_OPT_X_KEEPALIVE_IDLE
+		idle = 60
+
+		# LDAP_OPT_X_KEEPALIVE_PROBES
+		probes = 3
+
+		# LDAP_OPT_X_KEEPALIVE_INTERVAL
+		interval = 3
+	}
 }
