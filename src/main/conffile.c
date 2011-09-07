@@ -376,19 +376,28 @@ void cf_section_free(CONF_SECTION **cs)
 			break;
 		}
 	}
+	(*cs)->children = NULL;
 
 	/*
 	 *	Name1 and name2 are allocated contiguous with
 	 *	cs.
 	 */
-	if ((*cs)->pair_tree)
+	if ((*cs)->pair_tree) {
 		rbtree_free((*cs)->pair_tree);
-	if ((*cs)->section_tree)
+		(*cs)->pair_tree = NULL;
+	}
+	if ((*cs)->section_tree) {
 		rbtree_free((*cs)->section_tree);
-	if ((*cs)->name2_tree)
+		(*cs)->section_tree = NULL;
+	}
+	if ((*cs)->name2_tree) {
 		rbtree_free((*cs)->name2_tree);
-	if ((*cs)->data_tree)
+		(*cs)->name2_tree = NULL;
+	}
+	if ((*cs)->data_tree) {
 		rbtree_free((*cs)->data_tree);
+		(*cs)->data_tree = NULL;
+	}
 
 	/*
 	 * And free the section
