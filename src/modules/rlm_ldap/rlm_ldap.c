@@ -192,6 +192,7 @@ typedef struct {
 /* The default setting for TLS Certificate Verification */
 #define TLS_DEFAULT_VERIFY "allow"
 
+#if defined(LDAP_OPT_X_KEEPALIVE_IDLE) || defined(LDAP_OPT_X_KEEPALIVE_PROBES) || defined (LDAP_OPT_ERROR_NUMBER)
 static CONF_PARSER keepalive_config[] = {
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
 	{"idle", PW_TYPE_INTEGER, offsetof(ldap_instance,keepalive_idle), NULL, "60"},
@@ -205,6 +206,7 @@ static CONF_PARSER keepalive_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
+#endf				/* KEEPALIVE */
 
 static CONF_PARSER tls_config[] = {
 	{"start_tls", PW_TYPE_BOOLEAN,
@@ -344,7 +346,10 @@ static const CONF_PARSER module_config[] = {
 
 	{"set_auth_type", PW_TYPE_BOOLEAN, offsetof(ldap_instance,set_auth_type), NULL, "yes"},
 
+#if defined(LDAP_OPT_X_KEEPALIVE_IDLE) || defined(LDAP_OPT_X_KEEPALIVE_PROBES) || defined (LDAP_OPT_ERROR_NUMBER)
 	{ "keepalive", PW_TYPE_SUBSECTION, 0, NULL, (const void *) keepalive_config },
+#endif
+
 	{NULL, -1, 0, NULL, NULL}
 };
 
