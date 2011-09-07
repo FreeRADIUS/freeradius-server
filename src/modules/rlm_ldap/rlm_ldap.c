@@ -206,7 +206,7 @@ static CONF_PARSER keepalive_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
-#endf				/* KEEPALIVE */
+#endif				/* KEEPALIVE */
 
 static CONF_PARSER tls_config[] = {
 	{"start_tls", PW_TYPE_BOOLEAN,
