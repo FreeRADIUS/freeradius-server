@@ -620,6 +620,23 @@ thread pool {
 	min_spare_servers = 3
 	max_spare_servers = 10
 
+	#  When the server receives a packet, it places it onto an
+	#  internal queue, where the worker threads (configured above)
+	#  pick it up for processing.  The maximum size of that queue
+	#  is given here.
+	#
+	#  When the queue is full, any new packets will be silently
+	#  discarded.
+	#
+	#  The most common cause of the queue being full is that the
+	#  server is dependent on a slow database, and it has received
+	#  a large "spike" of traffic.  When that happens, there is
+	#  very little you can do other than make sure the server
+	#  receives less traffic, or make sure that the database can
+	#  handle the load.
+	#
+#	max_queue_size = 65536
+
 	#  There may be memory leaks or resource allocation problems with
 	#  the server.  If so, set this value to 300 or so, so that the
 	#  resources will be cleaned up periodically.
