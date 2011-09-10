@@ -399,7 +399,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			if (!vp) {
 				vp = radius_paircreate(request,
 						       &request->packet->vps,
-						       PW_HUNTGROUP_NAME, 9,
+						       PW_HUNTGROUP_NAME, 0,
 						       PW_TYPE_STRING);
 				strlcpy(vp->vp_strvalue, i->name,
 					sizeof(vp->vp_strvalue));
