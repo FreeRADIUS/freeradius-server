@@ -297,12 +297,24 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 	thread_pool.request_count++;
 
 	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
+		int complain = FALSE;
+		time_t now;
+		static time_t last_complained = 0;
+
+		now = time(NLL);
+		if (last_complained != now) {
+			last_complained = now;
+			complain = TRUE;
+		}
+		    
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 		/*
 		 *	Mark the request as done.
 		 */
-		radlog(L_ERR, "Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
+		if (complain) {
+			radlog(L_ERR, "Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
+		}
 		request->child_state = REQUEST_DONE;
 		return 0;
 	}
