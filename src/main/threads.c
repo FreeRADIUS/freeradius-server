@@ -161,7 +161,6 @@ typedef struct THREAD_POOL {
 
 static THREAD_POOL thread_pool;
 static int pool_initialized = FALSE;
-static time_t almost_now = 0;
 
 #ifndef WITH_GCD
 static time_t last_cleaned = 0;
@@ -300,10 +299,6 @@ static void reap_children(void)
  */
 int request_enqueue(REQUEST *request)
 {
-	static int last_complained = 0;
-
-	almost_now = request->timestamp;
-
 	/*
 	 *	If we haven't checked the number of child threads
 	 *	in a while, OR if the thread pool appears to be full,
@@ -318,16 +313,25 @@ int request_enqueue(REQUEST *request)
 
 	thread_pool.request_count++;
 
-	if ((thread_pool.num_queued >= thread_pool.max_queue_size) &&
-	    (last_complained != almost_now)) {
-		last_complained = almost_now;
+	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
+		int complain = FALSE;
+		time_t now;
+		static time_t last_complained = 0;
 
+		now = time(NULL);
+		if (last_complained != now) {
+			last_complained = now;
+			complain = TRUE;
+		}
+		    
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 		/*
 		 *	Mark the request as done.
 		 */
-		radlog(L_ERR, "Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
+		if (complain) {
+			radlog(L_ERR, "Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
+		}
 		return 0;
 	}
 	request->component = "<core>";
@@ -365,7 +369,8 @@ int request_enqueue(REQUEST *request)
  */
 static int request_dequeue(REQUEST **prequest)
 {
-	int blocked;
+	time_t blocked;
+	static time_t last_complained;
 	RAD_LISTEN_TYPE i, start;
 	REQUEST *request;
 
@@ -444,33 +449,26 @@ static int request_dequeue(REQUEST **prequest)
 	}
 
 	/*
-	 *	Produce messages for people who have 10 million rows
-	 *	in a database, without indexes.
-	 */
-	rad_assert(almost_now != 0);
-	blocked = almost_now - request->timestamp;
-	if (blocked < 5) {
-		blocked = 0;
-	} else {
-		static time_t last_complained = 0;
-		
-		if (last_complained != almost_now) {
-			last_complained = almost_now;
-		} else {
-			blocked = 0;
-		}
-	}
-
-	/*
 	 *	The thread is currently processing a request.
 	 */
 	thread_pool.active_threads++;
+
+	blocked = time(NULL);
+	if ((blocked - request->timestamp) > 5) {
+		if (last_complained < blocked) {
+			blocked -= request->timestamp;
+		} else {
+			blocked = 0;
+		}
+	} else {
+		blocked = 0;
+	}
 
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	if (blocked) {
 		radlog(L_ERR, "Request %u has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		       request->number, blocked);
+		       request->number, (int) blocked);
 	}
 
 	return 1;
