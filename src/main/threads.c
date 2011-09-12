@@ -301,7 +301,7 @@ static int request_enqueue(REQUEST *request, RAD_REQUEST_FUNP fun)
 		time_t now;
 		static time_t last_complained = 0;
 
-		now = time(NLL);
+		now = time(NULL);
 		if (last_complained != now) {
 			last_complained = now;
 			complain = TRUE;
