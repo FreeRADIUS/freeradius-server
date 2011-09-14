@@ -29,6 +29,7 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	* Fixes for DHCP relaying.
 	* Check certificate validity when using OCSP.
 	* Updated Oracle "configure" script
+	* Fixed typos in dictionary.alvarion
 
 FreeRADIUS 2.1.11 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
