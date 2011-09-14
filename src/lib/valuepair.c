@@ -1289,7 +1289,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	Unknown attributes MUST be of type 'octets'
 	 */
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		fr_strerror_printf("Invalid octet string \"%s\" for attribute name \"%s\"", value, attribute);
+		fr_strerror_printf("Unknown attribute \"%s\" requires a hex string, not \"%s\"", attribute, value);
 		return NULL;
 	}
 
