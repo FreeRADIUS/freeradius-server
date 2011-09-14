@@ -187,8 +187,8 @@ static int rad_check_password(REQUEST *request)
 		DICT_VALUE *dv;
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
-		dv = dict_valbyattr(auth_type_pair->attribute,
-						auth_type_pair->vp_integer, 0);
+		dv = dict_valbyattr(PW_AUTH_TYPE,
+				    auth_type_pair->vp_integer, 0);
 
 		RDEBUG2("Found Auth-Type = %s",
 			(dv != NULL) ? dv->name : "?");
