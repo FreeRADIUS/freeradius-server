@@ -873,6 +873,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 		value = fr_rand() & 0x00ffffff;
 	} while (dict_valbyattr(dattr->attr, dattr->vendor, value));
 
+	DEBUG2("  Module: Creating %s = %s", dattr->name, name);
 	if (dict_addvalue(name, dattr->name, value) < 0) {
 		radlog(L_ERR, "%s", fr_strerror());
 		return 0;
