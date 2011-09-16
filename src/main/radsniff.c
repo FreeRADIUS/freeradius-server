@@ -42,7 +42,9 @@ static int minimal = 0;
 static int do_sort = 0;
 struct timeval start_pcap = {0, 0};
 static rbtree_t *filter_tree = NULL;
+static rbtree_t *request_tree = NULL;
 static pcap_dumper_t *pcap_dumper = NULL;
+static RADIUS_PACKET *nullpacket = NULL;
 
 typedef int (*rbcmp)(const void *, const void *);
 
@@ -196,7 +198,7 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 	int size_ip = sizeof(struct ip_header);
 	int size_udp = sizeof(struct udp_header);
 	/* For FreeRADIUS */
-	RADIUS_PACKET *packet;
+	RADIUS_PACKET *packet, *original;
 	struct timeval elapsed;
 
 	args = args;		/* -Wunused */
@@ -241,15 +243,41 @@ static void got_packet(uint8_t *args, const struct pcap_pkthdr *header, const ui
 		free(packet);
 		return;
 	}
+	
+	switch (packet->code) {
+	case PW_COA_REQUEST:
+		/* we need a 16 x 0 byte vector for decrypting encrypted VSAs */
+		original = nullpacket;
+		break;
+	case PW_AUTHENTICATION_ACK:
+		/* look for a matching request and use it for decoding */
+		original = rbtree_finddata(request_tree, packet);
+		break;
+	case PW_AUTHENTICATION_REQUEST:
+		/* save the request for later matching */
+		original = rad_alloc_reply(packet);
+		if (original) { /* just ignore allocation failures */
+			rbtree_deletebydata(request_tree, original);
+			rbtree_insert(request_tree, original);
+		}
+		/* fallthrough */
+	default:
+		/* don't attempt to decode any encrypted attributes */
+		original = NULL;
+	}
 
 	/*
 	 *	Decode the data without bothering to check the signatures.
 	 */
-	if (rad_decode(packet, NULL, radius_secret) != 0) {
+	if (rad_decode(packet, original, radius_secret) != 0) {
 		free(packet);
 		fr_perror("decode");
 		return;
 	}
+
+	/* we've seen a successfull reply to this, so delete it now */
+	if (original)
+		rbtree_deletebydata(request_tree, original);
 
 	if (filter_vps && filter_packet(packet)) {
 		free(packet);
@@ -451,6 +479,20 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "radsniff: Failed creating filter tree\n");
 			exit(1);
 		}
+	}
+
+	/* setup the request tree */
+	request_tree = rbtree_create((rbcmp) fr_packet_cmp, free, 0);
+	if (!request_tree) {
+		fprintf(stderr, "radsniff: Failed creating request tree\n");
+		exit(1);
+	}
+
+	/* allocate a null packet for decrypting attributes in CoA requests */
+	nullpacket = rad_alloc(0);
+	if (!nullpacket) {
+		fprintf(stderr, "radsniff: Out of memory\n");
+		exit(1);
 	}
 
 	/* Set our device */
