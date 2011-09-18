@@ -83,6 +83,7 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
+	fprintf(stderr, "  -h          Print usage help information.\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
 	fprintf(stderr, "  -q          Do not print anything out.\n");

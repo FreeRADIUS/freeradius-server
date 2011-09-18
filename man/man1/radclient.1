@@ -3,18 +3,23 @@
 radclient - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
 .B radclient
+.RB [ \-4 ]
+.RB [ \-6 ]
 .RB [ \-d
 .IR raddb_directory ]
 .RB [ \-c
 .IR count ]
 .RB [ \-f
 .IR file ]
+.RB [ \-F ]
+.RB [ \-h ]
 .RB [ \-i
 .IR id ]
 .RB [ \-n
 .IR num_requests_per_second ]
 .RB [ \-p
 .IR num_requests_in_parallel ]
+.RB [ \-q ]
 .RB [ \-r
 .IR num_retries ]
 .RB [ \-s ]
@@ -22,7 +27,8 @@ radclient - send packets to a RADIUS server, show reply
 .IR shared_secret_file ]
 .RB [ \-t
 .IR timeout ]
-.RB [ \-qvx ]
+.RB [ \-v ]
+.RB [ \-x ]
 \fIserver {acct|auth|status|disconnect|auto} secret\fP
 .SH DESCRIPTION
 \fBradclient\fP is a radius client program. It can send arbitrary radius
@@ -40,6 +46,10 @@ automatically encrypted before the packet is sent to the server.
 
 .SH OPTIONS
 
+.IP \-4
+Use IPv4 (default)
+.IP \-6
+Use IPv6
 .IP \-c\ \fIcount\fP
 Send each packet \fIcount\fP times.
 .IP \-d\ \fIraddb_directory\fP
@@ -51,6 +61,10 @@ they are read from stdin.  This option can be specified multiple
 times, in which case packets are sent in order by file, and within
 each file, by first packet to last packet.  A blank line separates
 logical packets within a file.
+.IP \-F
+Print the file name, packet number and reply code.
+.IP \-h
+Print usage help information.
 .IP \-i\ \fIid\fP
 Use \fIid\fP as the RADIUS request Id.
 .IP \-n\ \fInum_requests_per_second\fP

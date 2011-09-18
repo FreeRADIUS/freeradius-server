@@ -5,6 +5,7 @@ radzap - remove rogue entries from the active sessions database
 .B radzap
 .RB [ \-d
 .IR raddb_directory ]
+.RB [ \-h ]
 .RB [ \-N
 .IR nas_ip_address ]
 .RB [ \-P
@@ -13,6 +14,7 @@ radzap - remove rogue entries from the active sessions database
 .IR user ]
 .RB [ \-U
 .IR user ]
+.RB [ \-x ]
 \fIserver[:port] secret\fP
 .SH DESCRIPTION
 The FreeRadius server can be configured to maintain an active session
@@ -34,6 +36,8 @@ also be maintained in SQL.
 The directory that contains the RADIUS configuration files.
 \fBradzap\fP reads \fIradiusd.conf\fP to determine the location of the
 \fIradutmp\fP file.
+.IP \-h
+Print usage help information.
 .IP \-N\ \fInas_ip_address\fP
 Zap the entries which match the given NAS IP address.
 .IP \-P\ \fInas_port\fP
@@ -42,6 +46,8 @@ Zap the entries which match the given NAS port.
 Zap the entries which match the given username (case insensitive).
 .IP \-U\ \fIuser\fP
 Zap the entries which match the given username (case sensitive).
+.IP \-x
+Enable debugging output.
 .IP server[:port]
 The hostname or IP address of the remote server. Optionally a UDP port
 can be specified. If no UDP port is specified, it is looked up in

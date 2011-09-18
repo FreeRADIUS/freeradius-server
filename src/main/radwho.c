@@ -317,7 +317,7 @@ int main(int argc, char **argv)
 
 	radius_dir = RADIUS_DIR;
 
-	while((c = getopt(argc, argv, "d:flnN:sSipP:crRu:U:Z")) != EOF) switch(c) {
+	while((c = getopt(argc, argv, "d:fnN:sSipP:crRu:U:Z")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
