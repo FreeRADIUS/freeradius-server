@@ -1,3 +1,4 @@
+
 #
 #  This program is free software; you can redistribute it and/or modify
 #  it under the terms of the GNU General Public License as published by
@@ -27,10 +28,13 @@
 #
 
 use strict;
+use warnings;
+
 # use ...
-# This is very important ! Without this script will not get the filled hashesh from main.
-use vars qw(%RAD_REQUEST %RAD_REPLY %RAD_CHECK);
 use Data::Dumper;
+
+# Bring the global hashes into the package scope
+our (%RAD_REQUEST, %RAD_REPLY, %RAD_CHECK);
 
 # This is hash wich hold original request from radius
 #my %RAD_REQUEST;
@@ -42,16 +46,17 @@ use Data::Dumper;
 #
 # This the remapping of return values
 #
-	use constant    RLM_MODULE_REJECT=>    0;#  /* immediately reject the request */
-	use constant	RLM_MODULE_FAIL=>      1;#  /* module failed, don't reply */
-	use constant	RLM_MODULE_OK=>        2;#  /* the module is OK, continue */
-	use constant	RLM_MODULE_HANDLED=>   3;#  /* the module handled the request, so stop. */
-	use constant	RLM_MODULE_INVALID=>   4;#  /* the module considers the request invalid. */
-	use constant	RLM_MODULE_USERLOCK=>  5;#  /* reject the request (user is locked out) */
-	use constant	RLM_MODULE_NOTFOUND=>  6;#  /* user not found */
-	use constant	RLM_MODULE_NOOP=>      7;#  /* module succeeded without doing anything */
-	use constant	RLM_MODULE_UPDATED=>   8;#  /* OK (pairs modified) */
-	use constant	RLM_MODULE_NUMCODES=>  9;#  /* How many return codes there are */
+use constant {
+	RLM_MODULE_REJECT 	=> 0, # immediately reject the request
+	RLM_MODULE_OK		=> 2, # the module is OK, continue
+	RLM_MODULE_HANDLED	=> 3, # the module handled the request, so stop
+	RLM_MODULE_INVALID	=> 4, # the module considers the request invalid
+	RLM_MODULE_USERLOCK	=> 5, # reject the request (user is locked out)
+	RLM_MODULE_NOTFOUND	=> 6, # user not found
+	RLM_MODULE_NOOP		=> 7, # module succeeded without doing anything
+	RLM_MODULE_UPDATED	=> 8, # OK (pairs modified)
+	RLM_MODULE_NUMCODES	=> 9  # How many return codes there are
+};
 
 #  Global variables can persist across different calls to the module.
 #
