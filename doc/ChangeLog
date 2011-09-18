@@ -13,6 +13,8 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	* Added support for 802.1X MIBs in checkrad
 	* Added support for %{rand:...}, which generates a uniformly
 	  distributed number between 0 and the number you specify.
+	* Created "man" pages for all installed commands, and documented
+	  options for all commands.  Patch from John Dennis.
 
 	Bug fixes
 	* Fix memory leak in rlm_detail
@@ -30,6 +32,9 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	* Check certificate validity when using OCSP.
 	* Updated Oracle "configure" script
 	* Fixed typos in dictionary.alvarion
+ 	* WARNING on potential proxy loop.
+	* Be more aggressive about clearing old requests from the
+	  internal queue
 
 FreeRADIUS 2.1.11 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
