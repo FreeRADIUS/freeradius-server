@@ -7,13 +7,18 @@ radiusd - Authentication, Authorization and Accounting server
 .RB [ \-d
 .IR config_directory ]
 .RB [ \-f ]
+.RB [ \-h ]
 .RB [ \-i
 .IR ip-address ]
+.RB [ \-l
+.IR log_file ]
+.RB [ \-m ]
 .RB [ \-n
 .IR name ]
 .RB [ \-p
 .IR port ]
 .RB [ \-s ]
+.RB [ \-t ]
 .RB [ \-v ]
 .RB [ \-x ]
 .RB [ \-X ]
@@ -60,6 +65,14 @@ If this command-line option is given, then the "bind_address" and all
 This option MUST be used in conjunction with "-p".
 .IP \-f
 Do not fork, stay running as a foreground process.
+.IP \-h
+Print usage help information.
+.IP "\-l \fIlog_file\fP"
+Defaults to \fI${logdir}/radius.log\fP. \fBRadiusd\fP writes it's logging
+information to this file. If log_file is the string "stdout" logging will
+be written to stdout.
+.IP \-m
+On SIGINT or SIGQUIT exit cleanly instead of immediately.
 .IP "\-n \fIname\fP"
 Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
 .IP "\-p \fIport\fP"
@@ -79,6 +92,8 @@ requests.  Some systems have issues with threading, however, so
 running in "single server" mode may help to address those issues.  In
 single server mode, the server will also not "daemonize"
 (auto-background) itself.
+.IP \-t
+Do not spawn threads.
 .IP \-v
 Print server version information and exit.
 .IP \-X

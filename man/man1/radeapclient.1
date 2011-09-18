@@ -3,13 +3,25 @@
 radeapclient - send EAP packets to a RADIUS server, calculate responses
 .SH SYNOPSIS
 .B radeapclient
+.RB [ \-c
+.IR count ]
 .RB [ \-d
 .IR raddb_directory ]
 .RB [ \-f
 .IR file ]
+.RB [ \-h ]
 .RB [ \-i
 .IR source_ip ]
-.RB [ \-xy ]
+.RB [ \-q ]
+.RB [ \-s ]
+.RB [ \-r
+.IR retries ]
+.RB [ \-S
+.IR file ]
+.RB [ \-t
+.IR timeout ]
+.RB [ \-v ]
+.RB [ \-x ]
 \fIserver {acct|auth} secret\fP
 .SH DESCRIPTION
 \fBradeapclient\fP is a radius client program. It can send arbitrary radius
@@ -27,6 +39,32 @@ The \fIEAP-MD5-Password\fP attribute, if present is used to respond to an
 MD5 challenge. 
 .PP
 No other EAP types are currently supported.
+
+.SH OPTIONS
+.IP \-c\ \fIcount\fP
+Send each packet \fIcount\fP times.
+.IP \-d\ \fIraddb\fP
+Set dictionary directory.
+.IP \-f\ \fIfile\fP
+Read packets from \fIfile\fP, not stdin.
+.IP \-r\ \fIretries\fP
+If timeout, retry sending the packet \fIretries\fP times.
+.IP \-t\ \fItimeout\fP
+Wait \fItimeout\fP seconds before retrying (may be a floating point number).
+.IP \-h
+Print usage help information.
+.IP \-i\ \fIid\fP
+Set request id to '\fIid\fP'.  Values may be 0..255
+.IP \-S\ \fIfile\fP
+Read secret from \fIfile\fP, not command line.
+.IP \-q
+Quiet, do not print anything out.
+.IP \-s
+Print out summary information of auth results.
+.IP \-v
+Show program version information.
+.IP \-x
+Enable debugging mode.
 
 .SH EXAMPLE
 

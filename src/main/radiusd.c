@@ -501,10 +501,13 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h              Print this help message.\n");
-	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY\n");
+	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY.\n");
+	fprintf(output, "  -l log_file     Logging output will be written to this file.\n");
+	fprintf(output, "  -m              On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
-	fprintf(output, "  -p port         Listen on port ONLY\n");
+	fprintf(output, "  -p port         Listen on port ONLY.\n");
 	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
+	fprintf(output, "  -t              Disable threads.\n");
 	fprintf(output, "  -v              Print server version information.\n");
 	fprintf(output, "  -X              Turn on full debugging.\n");
 	fprintf(output, "  -x              Turn on additional debugging. (-xx gives more debugging).\n");

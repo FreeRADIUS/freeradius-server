@@ -7,8 +7,10 @@ radmin - FreeRADIUS Administration tool
 .IR config_directory ]
 .RB [ \-e
 .IR command ]
+.RB [ \-E ]
 .RB [ \-f
 .IR socket_file ]
+.RB [ \-h ]
 .RB [ \-i
 .IR input_file ]
 .RB [ \-n
@@ -36,8 +38,12 @@ configuration files to find the "listen" section that defines the
 control socket filename.
 .IP "\-e \fIcommand\fP"
 Run \fIcommand\fP and exit.
+.IP \-E
+Echo commands as they are being executed.
 .IP "\-f \fIsocket_file\fP"
 Specify the socket filename directly.  The radiusd.conf file is not read.
+.IP \-h
+Print usage help information.
 .IP "\-i \fIinput_file\fP"
 Reads input from the specified file.  If not specified, stdin is used.
 This also sets "-q".

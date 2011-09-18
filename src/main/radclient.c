@@ -99,6 +99,8 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
+	fprintf(stderr, "  -F          Print the file name, packet number and reply code.\n");
+	fprintf(stderr, "  -h          Print usage help information.\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -n num      Send N requests/s\n");
 	fprintf(stderr, "  -p num      Send 'num' packets from a file in parallel.\n");

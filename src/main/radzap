@@ -5,12 +5,13 @@
 
 usage() {
 	echo "Usage: radzap [options] server[:port] secret" >&2
-        echo "       -d raddb_directory: directory where radiusd.conf is located"
+        echo "       -h Print usage help information."
+        echo "       -d raddb_directory: directory where radiusd.conf is located."
         echo "       -N nas_ip_address: IP address of the NAS to zap."
 	echo "       -P nas_port: NAS port that the user is logged into."
 	echo "       -u username: Name of user to zap (case insensitive)."
 	echo "       -U username: like -u, but case-sensitive."
-	echo "       -x : more debugging output"
+	echo "       -x Enable debugging output."
 	exit ${1:-0}
 }
 

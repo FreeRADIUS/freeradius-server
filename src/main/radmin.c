@@ -169,6 +169,7 @@ static int usage(void)
 	printf("  -e command      Execute 'command' and then exit.\n");
 	printf("  -E              Echo commands as they are being executed.\n");
 	printf("  -f socket_file  Open socket_file directly, without reading radius.conf\n");
+	printf("  -h              Print usage help information.\n");
 	printf("  -i input_file   Read commands from 'input_file'.\n");
 	printf("  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	printf("  -o output_file  Write commands to 'output_file'.\n");
