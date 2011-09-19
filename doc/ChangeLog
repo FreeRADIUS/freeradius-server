@@ -15,6 +15,8 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	  distributed number between 0 and the number you specify.
 	* Created "man" pages for all installed commands, and documented
 	  options for all commands.  Patch from John Dennis.
+	* Allow radsniff to decode encrypted VSAs and CoA packets.
+	  Patch from Bjorn Mork.
 
 	Bug fixes
 	* Fix memory leak in rlm_detail
