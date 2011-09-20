@@ -120,11 +120,11 @@ fi
 	echo "$PASSWORD = \"$2\""
 	echo "$NAS_ADDR_ATTR = $nas"
 	echo "NAS-Port = $4"
+	echo "Message-Authenticator = 0x00"
 	if [ "$radclient" = "$radeapclient" ]
 	then
 	    echo "EAP-Code = Response"
 	    echo "EAP-Type-Identity = \"$1\""
-	    echo "Message-Authenticator = 0x00"
 	fi
 	if [ "$6" ]
 	then
