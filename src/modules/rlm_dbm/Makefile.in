@@ -22,4 +22,4 @@ rlm_dbm_cat: rlm_dbm_cat.lo $(LIBRADIUS)
 
 rlm_dbm_install: rlm_dbm_cat rlm_dbm_parser
 	$(INSTALL) -m 644 rlm_dbm_cat.8 $(R)$(mandir)/man8
-	$(INSTALL) -m 644 rlm_dbm_parsel.8 $(R)$(mandir)/man8
+	$(INSTALL) -m 644 rlm_dbm_parse.8 $(R)$(mandir)/man8
