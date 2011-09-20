@@ -2412,6 +2412,7 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto)
 
 	memset(&myhome, 0, sizeof(myhome));
 	myhome.ipaddr = *ipaddr;
+	myhome.src_ipaddr.af = ipaddr->af;
 	myhome.port = port;
 #ifdef WITH_TCP
 	myhome.proto = proto;
