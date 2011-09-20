@@ -187,6 +187,7 @@ $INCLUDE dictionary.slipstream
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
+$INCLUDE dictionary.symbol
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tropos
