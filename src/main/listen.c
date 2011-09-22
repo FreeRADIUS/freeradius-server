@@ -1503,6 +1503,14 @@ static int listen_bind(rad_listen_t *this)
 	}
 
 	/*
+	 *	Don't open sockets if we're checking the config.
+	 */
+	if (check_config) {
+		this->fd = -1;
+		return 0;
+	}
+
+	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
 	 */
 	this->fd = socket(sock->ipaddr.af, SOCK_DGRAM, 0);
