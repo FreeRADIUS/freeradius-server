@@ -12,7 +12,7 @@
  */
 CREATE TABLE radacct (
 	radacctid		INT PRIMARY KEY,
-	acctsessionid		VARCHAR(64) NOT NULL,
+	acctsessionid		VARCHAR(96) NOT NULL,
 	acctuniqueid		VARCHAR(32),
 	username		VARCHAR(64) NOT NULL,
 	groupname		VARCHAR(32),
@@ -166,5 +166,45 @@ CREATE TABLE realms (
 	options		VARCHAR(128)
 );
 CREATE SEQUENCE realms_seq START WITH 1 INCREMENT BY 1;
+
+CREATE TABLE radhuntgroup (
+        id              INT PRIMARY KEY,
+        GroupName VARCHAR(64) NOT NULL,
+        Nasipaddress VARCHAR(15) UNIQUE NOT NULL,
+        NASPortID VARCHAR(15)
+);
+
+CREATE SEQUENCE radhuntgroup_seq START WITH 1 INCREMENT BY 1;
+
+CREATE OR REPLACE TRIGGER radhuntgroup_serialnumber
+        BEFORE INSERT OR UPDATE OF id ON radhuntgroup
+        FOR EACH ROW
+        BEGIN
+                if ( :new.id = 0 or :new.id is null ) then
+                        SELECT radhuntgroup_seq.nextval into :new.id from dual;
+                end if;
+        END;
+
+CREATE TABLE radpostauth (
+          id            INT PRIMARY KEY,
+          UserName      VARCHAR(64) NOT NULL,
+          Pass          VARCHAR(64),
+          Reply         VARCHAR(64),
+          AuthDate 	DATE
+);
+
+CREATE SEQUENCE radpostauth_seq START WITH 1 INCREMENT BY 1;
+
+CREATE OR REPLACE TRIGGER radpostauth_TRIG
+        BEFORE INSERT OR UPDATE OF id ON radpostauth
+        FOR EACH ROW
+        BEGIN
+                if ( :new.id = 0 or :new.id is null ) then
+                        SELECT radpostauth_seq.nextval into :new.id from dual;
+                end if;
+                if (:new.AuthDate is null) then
+                  select sysdate into :new.AuthDate from dual;
+                end if;
+        END;
 
 /
