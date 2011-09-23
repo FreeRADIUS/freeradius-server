@@ -2869,7 +2869,7 @@ add_sockets:
 	 */
 #ifdef WITH_PROXY
 	if ((mainconfig.proxy_requests == TRUE) &&
-	    !check_config
+	    !check_config &&
 	    (*head != NULL) && !defined_proxy) {
 		listen_socket_t *sock = NULL;
 		int		port = 0;
