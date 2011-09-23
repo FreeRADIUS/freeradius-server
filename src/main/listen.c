@@ -2860,7 +2860,7 @@ add_sockets:
 			return -1;
 		}
 #endif
-		event_new_fd(this);
+		if (!check_config) event_new_fd(this);
 	}
 
 	/*
@@ -2869,6 +2869,7 @@ add_sockets:
 	 */
 #ifdef WITH_PROXY
 	if ((mainconfig.proxy_requests == TRUE) &&
+	    !check_config
 	    (*head != NULL) && !defined_proxy) {
 		listen_socket_t *sock = NULL;
 		int		port = 0;
