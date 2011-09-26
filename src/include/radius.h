@@ -291,6 +291,10 @@
 #define PW_AUTHTYPE_ACCEPT		254
 #define PW_AUTHTYPE_MS_CHAP		1028
 
+/* Post-auth types */
+#define PW_POSTAUTHTYPE_LOCAL   0
+#define PW_POSTAUTHTYPE_REJECT  1
+
 /*	Port Types		*/
 
 #define PW_NAS_PORT_ASYNC		0

@@ -575,6 +575,10 @@ post-auth {
 #		sql
 		attr_filter.access_reject
 
+		# Insert EAP-Failure message if the request was rejected by policy
+		# instead of because of an authentication failure
+		eap
+
 		#  Remove reply message if the response contains an EAP-Message
 		remove_reply_message_if_eap
 	}
