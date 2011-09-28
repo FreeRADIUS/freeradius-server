@@ -1,7 +1,7 @@
-FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
+FreeRADIUS 2.1.12 Fri 30 Sept 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
 	* Updates to dictionary.erx, dictionary.siemens, dictionary.starent,
-	  dictionary.starent.vsa1
+	  dictionary.starent.vsa1, added dictionary.symbol
 	* Added support for PCRE from Phil Mayers
 	* Configurable file permission in rlm_linelog
 	* Added "relaxed" option to rlm_attr_filter.  This copies attributes
@@ -17,6 +17,10 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	  options for all commands.  Patch from John Dennis.
 	* Allow radsniff to decode encrypted VSAs and CoA packets.
 	  Patch from Bjorn Mork.
+	* Always send Message-Authenticator in radtest. Patch from John Dennis.
+	  radclient continues to be more flexible.
+	* Updated Oracle schema and queries
+	* Added SecurID module.  See src/modules/rlm_securid/README
 
 	Bug fixes
 	* Fix memory leak in rlm_detail
@@ -37,6 +41,7 @@ FreeRADIUS 2.1.12 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
  	* WARNING on potential proxy loop.
 	* Be more aggressive about clearing old requests from the
 	  internal queue
+	* Don't open network sockets when using -C
 
 FreeRADIUS 2.1.11 Mon 20 Jun 2011 12:57:38 CEST, urgency=medium
 	Feature improvements
