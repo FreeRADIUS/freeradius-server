@@ -2193,6 +2193,9 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	processing.
 	 */
 	if (request->home_server->server) {
+		DEBUG("Proxying to virtual server %s",
+		      request->home_server->server);
+
 		if (!we_are_master()) {
 			request_virtual_server(request, FR_ACTION_RUN);
 #ifdef HAVE_PTHREAD_H
