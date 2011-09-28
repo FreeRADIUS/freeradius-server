@@ -2267,6 +2267,8 @@ home_server *home_server_ldb(const char *realmname,
 	if (!found && pool->fallback) {
 		found = pool->fallback;
 
+		DEBUG("WARNING: Home server pool %s failing over to fallback %s",
+		      pool->name, found->server);
 		if (pool->in_fallback) goto update_and_return;
 
 		pool->in_fallback = TRUE;
