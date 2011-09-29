@@ -2056,6 +2056,8 @@ CONF_PAIR *cf_pair_find_next(const CONF_SECTION *cs,
 {
 	CONF_ITEM	*ci;
 
+	if (!cs) return NULL;
+
 	/*
 	 * If pair is NULL this must be a first time run
 	 * Find the pair with correct name
@@ -2184,6 +2186,8 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 {
 	CONF_ITEM	*ci;
 
+	if (!section) return NULL;
+
 	/*
 	 * If subsection is NULL this must be a first time run
 	 * Find the subsection with correct name
@@ -2217,6 +2221,8 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
 				   CONF_SECTION *subsection,
 				   const char *name1)
 {
+	if (!section) return NULL;
+
 	if (!section->item.parent) return NULL;
 
 	return cf_subsection_find_next(section->item.parent, subsection, name1);
@@ -2228,6 +2234,8 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
 
 CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item)
 {
+	if (!section) return NULL;
+
 	/*
 	 * If item is NULL this must be a first time run
 	 * Return the first item
