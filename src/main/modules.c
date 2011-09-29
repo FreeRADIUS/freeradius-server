@@ -1280,13 +1280,15 @@ int virtual_servers_load(CONF_SECTION *config)
 	 *	In either case, load the "default" virtual server first.
 	 *	this matches better iwth users expectations.
 	 */
-	cs = cf_section_find_name2(config, "server", NULL);
-	if (!cs) {
-		if (load_byserver(config) < 0) {
+	cs = cf_section_find_name2(cf_subsection_find_next(config, NULL,
+							   "server"),
+				   "server", NULL);
+	if (cs) {
+		if (load_byserver(cs) < 0) {
 			return -1;
 		}
 	} else {
-		if (load_byserver(cs) < 0) {
+		if (load_byserver(config) < 0) {
 			return -1;
 		}
 	}
