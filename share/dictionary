@@ -206,6 +206,7 @@ $INCLUDE dictionary.wimax
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
 $INCLUDE dictionary.xylan
+$INCLUDE dictionary.zyxel
 
 #
 #	And finally the server internal attributes.
