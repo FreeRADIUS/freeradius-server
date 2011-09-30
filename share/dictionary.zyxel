@@ -15,6 +15,7 @@
 VENDOR Zyxel 890
 BEGIN-VENDOR	Zyxel
 
+ATTRIBUTE	Zyxel-Privilege-AVPair			3	string
 ATTRIBUTE	Zyxel-Callback-Option			192	integer
 ATTRIBUTE	Zyxel-Callback-Phone-Source		193	integer
 
