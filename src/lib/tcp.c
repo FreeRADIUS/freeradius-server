@@ -226,10 +226,13 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 
 		len = recv(packet->sockfd, packet->vector + packet->data_len,
 			   4 - packet->data_len, 0);
-		if ((len == 0) || /* clean close */
-		    ((len < 0) && (errno == ECONNRESET))) { /* forced */
+		if (len == 0) return -2; /* clean close */
+
+#ifdef ECONNRESET
+		if ((len < 0) && (errno == ECONNRESET)) { /* forced */
 			return -2;
 		}
+#endif
 
 		if (len < 0) {
 			fr_strerror_printf("Error receiving packet: %s",
@@ -273,10 +276,13 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 	 */
 	len = recv(packet->sockfd, packet->data + packet->partial,
 		   packet->data_len - packet->partial, 0);
-	if ((len == 0) || /* clean close */
-	    ((len < 0) && (errno == ECONNRESET))) { /* forced */
-	  return -2;
+	if (len == 0) return -2; /* clean close */
+
+#ifdef ECONNRESET
+	if ((len < 0) && (errno == ECONNRESET)) { /* forced */
+		return -2;
 	}
+#endif
 
 	if (len < 0) {
 		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
@@ -343,6 +349,7 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 		/*
 		 *	Non-blocking sockets must handle this.
 		 */
+#ifdef EWOULDBLOCK
 		if (errno == EWOULDBLOCK) {
 			packet = rad_alloc(0);
 			if (!packet) return NULL;
@@ -351,6 +358,7 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 			packet->src_ipaddr.af = AF_UNSPEC;
 			return packet;
 		}
+#endif
 
 		return NULL;
 	}
