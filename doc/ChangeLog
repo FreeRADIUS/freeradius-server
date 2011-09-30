@@ -1,7 +1,7 @@
-FreeRADIUS 2.1.12 Fri 30 Sept 2011 12:57:38 CEST, urgency=medium
+FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
 	* Updates to dictionary.erx, dictionary.siemens, dictionary.starent,
-	  dictionary.starent.vsa1, added dictionary.symbol
+	  dictionary.starent.vsa1, dictionary.zyxel, added dictionary.symbol
 	* Added support for PCRE from Phil Mayers
 	* Configurable file permission in rlm_linelog
 	* Added "relaxed" option to rlm_attr_filter.  This copies attributes
