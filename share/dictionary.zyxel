@@ -3,9 +3,6 @@
 #
 #	Zyxel attributes, of course in the RFC space...
 #
-#	This dictionary is NOT included by default, because it conflicts
-#	with other dictionaries!
-#
 #	http://www.zyxel.com/support/supportnote/p200/ap_note/isdn/radius.htm
 #
 #	$Id$
