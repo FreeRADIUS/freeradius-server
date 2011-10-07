@@ -770,6 +770,18 @@ static int eap_post_auth(void *instance, REQUEST *request)
 	RDEBUG2("Request was previously rejected, inserting EAP-Failure");
 	eap_fail(handler);
 	eap_handler_free(inst, handler);
+	
+	/*
+	 * Make sure there's a message authenticator attribute in the response
+	 * RADIUS protocol code will calculate the correct value later...
+	 */
+	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
+	if (!vp) {
+		vp = pairmake("Message-Authenticator",
+				  "0x00", T_OP_EQ);
+		rad_assert(vp != NULL);
+		pairadd(&(request->reply->vps), vp);
+	}
 
 	return RLM_MODULE_UPDATED;
 }
