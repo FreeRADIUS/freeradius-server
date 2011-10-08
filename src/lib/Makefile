@@ -29,19 +29,21 @@ TARGET		= $(LIBPREFIX)freeradius-radius
 
 # Define new rule for libtool objects
 %.$(LO) : %.c
-	$(COMPILE.c) $(CFLAGS) -c $<
+	@echo CC $<
+	@$(COMPILE.c) $(CFLAGS) -c $<
 
 .PHONY: all clean install reconfig
 all: $(TARGET).$(LA)
 
 $(TARGET).$(LA): $(LT_OBJS)
-	$(LINK.lib) $@ $(LDFLAGS) $^
+	@echo LINK $@ $^
+	@$(LINK.lib) $@ $(LDFLAGS) $^
 
 $(LT_OBJS): $(INCLUDES)
 
 clean:
-	rm -f *.$(LO) $(TARGET).$(LA)
-	rm -rf .libs
+	@rm -f *.$(LO) $(TARGET).$(LA)
+	@rm -rf .libs
 
 install: all
 	$(INSTALL) -d -m 755	$(R)$(libdir)

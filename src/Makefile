@@ -5,6 +5,7 @@
 #
 
 include ../Make.inc
+MFLAGS += --no-print-directory
 
 SUBDIRS		= include lib modules main
 WHAT_TO_MAKE	= all
@@ -36,8 +37,8 @@ main: modules
 common: $(SUBDIRS)
 
 $(SUBDIRS): 
-	@echo "Making $(WHAT_TO_MAKE) in $@..."
-	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $(X)src/$@..."
+	@$(MAKE) $(MFLAGS) X=$(X)src/ -C $@ $(WHAT_TO_MAKE)
 
 freeradius-devel:
 	ln -s include freeradius-devel

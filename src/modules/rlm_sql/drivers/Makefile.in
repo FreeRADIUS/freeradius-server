@@ -20,5 +20,5 @@ common: $(SUBDIRS)
 	@[ -d lib/ ] || mkdir lib
 
 $(SUBDIRS):
-	@echo "Making $(WHAT_TO_MAKE) in $@."
-	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $(X)drivers/$@."
+	@$(MAKE) $(MFLAGS) X=$(X)drivers/ -C $@ $(WHAT_TO_MAKE)

@@ -45,8 +45,8 @@ common: $(RLM_SUBDIRS)
 types: libeap
 
 $(RLM_SUBDIRS):
-	@echo "Making $(WHAT_TO_MAKE) in $@..."
-	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $(X)rlm_eap/$@..."
+	@$(MAKE) $(MFLAGS) X=$(X)rlm_eap/ -C $@ $(WHAT_TO_MAKE)
 
 libeap/$(LIBPREFIX)freeradius-eap.la: libeap
 

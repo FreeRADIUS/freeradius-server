@@ -26,7 +26,7 @@ refs: $(RFC)
 	@echo 'rfc2865 State' >> refs
 
 clean:
-	rm -f refs *rfc*.html *~ .rewrite index.html
+	@rm -f refs *rfc*.html *~ .rewrite index.html
 
 install:
 	$(INSTALL) -d -m 755 $(R)$(docdir)/rfc

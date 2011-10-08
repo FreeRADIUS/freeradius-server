@@ -8,6 +8,7 @@
 #
 
 include Make.inc
+MFLAGS += --no-print-directory
 
 .PHONY: all clean install
 

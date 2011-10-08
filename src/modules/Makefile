@@ -7,6 +7,7 @@
 include ../../Make.inc
 
 WHAT_TO_MAKE	= all
+MFLAGS += --no-print-directory
 
 all:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
@@ -34,8 +35,8 @@ libs:
 common: libs $(SUBDIRS)
 
 $(SUBDIRS): 
-	@echo "Making $(WHAT_TO_MAKE) in $@..."
-	$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $(X)modules/$@..."
+	@$(MAKE) $(MFLAGS) X=$(X)modules/ -C $@ $(WHAT_TO_MAKE)
 
 # The rlm_*/*/* stuff is to catch the configure
 CONFIG_FILES := $(wildcard rlm_*/configure.in rlm_*/*/*/configure.in)

@@ -99,7 +99,7 @@ ifneq "${OPENSSL_INCLUDE}" ""
 endif
 
 clean:
-	rm -rf sites-enabled/inner-tunnel sites-enabled/default \
+	@rm -rf sites-enabled/inner-tunnel sites-enabled/default \
 		sites-enabled/tls
 
 triggers:

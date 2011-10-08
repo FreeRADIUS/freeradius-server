@@ -67,56 +67,51 @@ all: $(BINARIES)
 $(SERVER_OBJS): $(INCLUDES)
 
 radiusd: $(SERVER_OBJS) $(MODULE_OBJS) $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) -export-dynamic -dlopen self \
+	$(LIBTOOL) --quiet --mode=link $(CC) -export-dynamic -dlopen self \
 		$(LDFLAGS) $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
 		$(MODULE_LIBS) $(LIBRADIUS) $(LIBS) $(SNMP_LIBS) \
 		$(LCRYPT) $(PTHREADLIB) $(LIBLTDL) $(OPENSSL_LIBS)
 
 radiusd.lo: radiusd.c  ../include/modules.h ../include/modcall.h ../include/modpriv.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radiusd.c
 
 %.lo: %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS)  -c $<
+	@echo CC $<
+	@$(LIBTOOL) --quiet --mode=compile $(CC) $(CFLAGS)  -c $<
 
 acct.lo: acct.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c acct.c
 
 auth.lo: auth.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c auth.c
 
 client.lo: client.c ../include/conffile.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c client.c
 
 conffile.lo: conffile.c ../include/conffile.h ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c conffile.c
 
 mainconfig.lo: mainconfig.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c mainconfig.c
 
 modcall.lo: modcall.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c modcall.c
 
 modules.lo: modules.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(VFLAGS) $(INCLTDL) -c modules.c
 
 session.lo: session.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
 
 # It's #include'd for simplicity.  This should be fixed...
 listen.lo: listen.c dhcpd.c command.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c listen.c
+	@echo CC $<
+	@$(LIBTOOL) --quiet --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c listen.c
 
 #
 # Helper programs
 #
 
 radclient.lo: radclient.c $(INCLUDES)
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -I ../modules/rlm_mschap -c radclient.c
+	@echo CC $<
+	@$(LIBTOOL) --quiet --mode=compile $(CC) $(CFLAGS) -I ../modules/rlm_mschap -c radclient.c
 
 MSCHAP_OBJS := ../modules/rlm_mschap/smbdes.lo ../modules/rlm_mschap/mschap.lo 
 
 radclient: radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radclient radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS) $(LIBS)
+	@echo LINK $< ...
+	@$(LIBTOOL) --quiet --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radclient radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS) $(LIBS)
 
 # These two rules need to be specific in order to supercede the generic
 # "compile C file" rules.
@@ -127,10 +122,10 @@ radclient: radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS)
 	${MAKE} -C ../modules/rlm_mschap/
 
 radsniff.lo: radsniff.c $(INCLUDES) ../include/radsniff.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radsniff.c
 
 radsniff: radsniff.lo $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radsniff radsniff.lo $(LIBRADIUS) $(LIBS) $(PCAP_LIBS)
+	@echo LINK $@ $<
+	@$(LIBTOOL) --quiet --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radsniff radsniff.lo $(LIBRADIUS) $(LIBS) $(PCAP_LIBS)
 
 radwho.lo: radwho.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
@@ -155,7 +150,7 @@ dhclient: dhclient.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o dhclient dhclient.lo $(LIBRADIUS) $(LIBS)
 
 clean:
-	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
+	@rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
 
 install:
 	$(INSTALL) -d -m 755	$(R)$(sbindir)

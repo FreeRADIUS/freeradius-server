@@ -31,5 +31,5 @@ install-drivers:
 common: $(RLM_SUBDIRS)
 
 $(RLM_SUBDIRS):
-	@echo "Making $(WHAT_TO_MAKE) in $@..."
-	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $(X)rlm_sql/$@..."
+	@$(MAKE) $(MFLAGS) X=$(X)rlm_sql/ -C $@ $(WHAT_TO_MAKE)

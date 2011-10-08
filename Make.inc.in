@@ -28,7 +28,7 @@ datarootdir	= @datarootdir@
 MAKE		= @MAKE@
 CC		= @CC@
 RANLIB		= @RANLIB@
-INCLUDE		=
+INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src
 CFLAGS		= $(INCLUDE) @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
@@ -120,8 +120,8 @@ LINK_MODE.exe	= -static
 endif
 
 ifneq "$(LIBTOOL)" ""
-COMPILE.c	:= $(LIBTOOL) --mode=compile $(CC)
-LINK.lib	:= $(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) -rpath $(libdir) -o
+COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC)
+LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) -rpath $(libdir) -o
 LO		:= lo
 LA		:= la
 else

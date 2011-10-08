@@ -5,16 +5,16 @@
 #
 
 all:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 clean:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 install:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 reconfig:
-	$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
 SUBDIRS := $(patsubst %/,%,$(dir $(wildcard rlm_eap*/Makefile)))
 
@@ -30,5 +30,5 @@ common: $(SUBDIRS)
 rlm_eap_peap rlm_eap_ttls: rlm_eap_tls
 
 $(SUBDIRS): 
-	@echo "Making $(WHAT_TO_MAKE) in $@..."
-	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
+	@echo "Making $(WHAT_TO_MAKE) in $(X)types/$@..."
+	@$(MAKE) $(MFLAGS) X=$(X)types/ -C $@ $(WHAT_TO_MAKE)

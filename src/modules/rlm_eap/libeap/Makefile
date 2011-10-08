@@ -22,14 +22,16 @@ TARGET		= $(LIBPREFIX)freeradius-eap
 
 # Define new rule for libtool objects
 %.lo: %.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c $<
+	@echo CC $<
+	@$(LIBTOOL) --quiet --mode=compile $(CC) $(CFLAGS) -c $<
 
 all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
-	$(LIBRADIUS) $(LIBS)
+	@echo LINK $@ $<
+	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	    $(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
+	    $(LIBRADIUS) $(LIBS)
 	@for x in .libs/* $^; do \
 		rm -f $(top_builddir)/src/modules/lib/$$x; \
 		ln -s $(top_builddir)/src/modules/rlm_eap/libeap/$$x $(top_builddir)/src/modules/lib/$$x; \
@@ -38,8 +40,8 @@ $(TARGET).la: $(LT_OBJS)
 $(LT_OBJS): $(INCLUDES)
 
 clean:
-	rm -f *.o *.lo $(TARGET).la
-	rm -rf .libs
+	@rm -f *.o *.lo $(TARGET).la
+	@rm -rf .libs
 
 install: all
 	$(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la \
