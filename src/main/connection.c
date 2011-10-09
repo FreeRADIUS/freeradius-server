@@ -223,7 +223,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 
 	cs = cf_section_sub_find(parent, "pool");
 	if (!cs) {
-		cf_log_err(cf_sectiontoitem(cs), "No \"pool\" subsection found");
+		cf_log_err(cf_sectiontoitem(parent), "No \"pool\" subsection found");
 		return NULL;
 	}
 
