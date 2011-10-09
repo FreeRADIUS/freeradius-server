@@ -1906,11 +1906,6 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-	if (!conf->private_key_password) {
-		radlog(L_ERR, "TLS Server requires a private key password");
-		goto error;
-	}
-
 	if (!conf->certificate_file) {
 		radlog(L_ERR, "TLS Server requires a certificate file");
 		goto error;
