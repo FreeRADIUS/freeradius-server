@@ -285,16 +285,18 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 	rad_assert(fc != NULL);
 	rad_assert(this != NULL);
 
-	if (this->num_uses >= fc->max_uses) {
+	if ((fc->max_uses > 0) && (this->num_uses >= fc->max_uses)) {
 	do_delete:
 		fr_connection_close(fc, this);
 		pthread_mutex_unlock(&fc->mutex);
 		return 0;
 	}
 
-	if ((this->start + fc->lifetime) < now) goto do_delete;
+	if ((fc->lifetime > 0) && ((this->start + fc->lifetime) < now))
+	        goto do_delete;
 
-	if ((this->last_used + fc->idle_timeout) < now) goto do_delete;
+	if ((fc->idle_timeout > 0) && ((this->last_used + fc->idle_timeout) < now))
+	        goto do_delete;
 
 	return 1;
 }
