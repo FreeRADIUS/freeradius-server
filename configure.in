@@ -83,7 +83,7 @@ AC_ARG_WITH(system-libltdl,
 [  --with-system-libltdl   Use the libltdl installed in your system (default=use our own)],
 [
 LIBLTDL="-lltdl"
-INCLTDL=
+INCLTDL=-DWITH_SYSTEM_LTDL
 LTDL_SUBDIRS=
 enable_ltdl_install=no
 ],

@@ -4796,7 +4796,7 @@ fi
 if test "${with_system_libltdl+set}" = set; then
   withval=$with_system_libltdl;
 LIBLTDL="-lltdl"
-INCLTDL=
+INCLTDL=-DWITH_SYSTEM_LTDL
 LTDL_SUBDIRS=
 
 else

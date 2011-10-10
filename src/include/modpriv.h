@@ -16,7 +16,11 @@
 #endif
 
 #ifndef WITHOUT_LIBLTDL
+#ifdef WITH_SYSTEM_LTDL
 #include "ltdl.h"
+#else
+#include "libltdl/ltdl.h"
+#endif
 #endif
 
 #ifdef __cplusplus
