@@ -2431,7 +2431,8 @@ static void ping_home_server(void *ctx)
 		when.tv_sec += home->zombie_period;
 
 		if (timercmp(&when, &now, <)) {
-			DEBUG("PING: Zombie period is over");
+			DEBUG("PING: Zombie period is over for home server %s",
+				home->name);
 			mark_home_server_dead(home, &now);
 		}
 	}
@@ -2569,7 +2570,7 @@ static void mark_home_server_zombie(home_server *home)
 
 #ifdef WITH_TCP
 	if (home->proto == IPPROTO_TCP) {
-		DEBUG("WARNING: Not marking TCP server zombie");
+		DEBUG("WARNING: Not marking TCP server %s zombie", home->name);
 		return;
 	}
 #endif
@@ -2647,7 +2648,8 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 		if (previous_state == HOME_STATE_ALIVE) {
 			ping_home_server(home);
 		} else {
-			DEBUG("PING: Already pinging home server");
+			DEBUG("PING: Already pinging home server %s",
+			      home->name);
 		}
 
 	} else {
@@ -2658,8 +2660,8 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 		home->when = *when;
 		home->when.tv_sec += home->revive_interval;
 
-		DEBUG("PING: Reviving home server in %u seconds",
-			home->revive_interval);
+		DEBUG("PING: Reviving home server %s in %u seconds",
+		      home->name, home->revive_interval);
 		INSERT_EVENT(revive_home_server, home);
 	}
 }
