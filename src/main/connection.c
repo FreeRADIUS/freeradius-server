@@ -39,7 +39,7 @@ struct fr_connection_t {
 
 	int		num_uses;
 	int		used;
-	int		number;	/* unique ID */
+	int		number;		/* unique ID */
 	void		*connection;
 };
 
@@ -50,8 +50,9 @@ struct fr_connection_pool_t {
 	int		spare;
 	int		cleanup_delay;
 
-	int		num;
-	int		active;
+	unsigned int    count;		/* num connections spawned */
+	int		num;		/* num connections in pool */
+	int		active;	 	/* num connections active */
 
 	time_t		last_checked;
 	time_t		last_spawned;
@@ -140,7 +141,6 @@ static void fr_connection_link(fr_connection_pool_t *fc,
 	}
 }
 
-
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 					    time_t now)
 {
@@ -167,9 +167,11 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 
 	this->start = now;
 	this->connection = conn;
+	this->number = fc->count;
 
 	fr_connection_link(fc, this);
 
+	fc->count++;
 	fc->num++;
 
 	return this;
@@ -217,6 +219,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 {
 	int i;
 	fr_connection_pool_t *fc;
+	fr_connection_t *this;
 	CONF_SECTION *cs;
 
 	if (!parent || !ctx || !c || !a || !d) return NULL;
@@ -263,12 +266,20 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 */
 	for (i = 0; i < fc->start; i++) {
 		time_t now = time(NULL);
-
-		if (!fr_connection_spawn(fc, now)) {
+		
+		this = fr_connection_spawn(fc, now);
+		
+		if (!this) {
 		error:
 			fr_connection_pool_delete(fc);
 			return NULL;
 		}
+		
+		/* 
+		 * If we don't set last_used here, the connection will be closed as
+		 * idle, the first time get_connecton is called.
+		 */
+		this->last_used = now;
 	}
 
 	return fc;
@@ -293,10 +304,10 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 	}
 
 	if ((fc->lifetime > 0) && ((this->start + fc->lifetime) < now))
-	        goto do_delete;
+		goto do_delete;
 
 	if ((fc->idle_timeout > 0) && ((this->last_used + fc->idle_timeout) < now))
-	        goto do_delete;
+		goto do_delete;
 
 	return 1;
 }
