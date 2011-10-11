@@ -477,7 +477,7 @@ do_return:
 	this->used = TRUE;
 
 	pthread_mutex_unlock(&fc->mutex);
-	return this;
+	return this->connection;
 }
 
 void fr_connection_release(fr_connection_pool_t *fc, void *conn)
