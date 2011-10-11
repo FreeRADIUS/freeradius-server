@@ -185,7 +185,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 static void fr_connection_close(fr_connection_pool_t *fc,
 				fr_connection_t *this)
 {
-	rad_assert(this->used == FALSE);
+	rad_assert(this->used == TRUE);
 
 	fr_connection_unlink(fc, this);
 	fc->delete(fc->ctx, this->connection);
@@ -318,6 +318,11 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 {
 	rad_assert(fc != NULL);
 	rad_assert(this != NULL);
+	
+	/*
+	 * Don't terminated reserved connections
+	 */
+	if (this->used) return 1;
 
 	if ((fc->max_uses > 0) && (this->num_uses >= fc->max_uses)) {
 		DEBUG("%s: Closing expired connection (%i), hit max_uses limit",
