@@ -325,7 +325,7 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 	if (this->used) return 1;
 
 	if ((fc->max_uses > 0) && (this->num_uses >= fc->max_uses)) {
-		DEBUG("%s: Closing expired connection (%i), hit max_uses limit",
+		DEBUG("%s: Closing expired connection (%i): Hit max_uses limit",
 			fc->log_prefix, this->number);
 	do_delete:
 		fr_connection_close(fc, this);
@@ -344,6 +344,7 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 			fc->log_prefix, this->number);
 		goto do_delete;
 	}
+	
 	return 1;
 }
 
@@ -369,7 +370,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 		}
 
 		for (i = 0; i < spawn; i++) {
-			DEBUG("%s: Spawning additional connection (%i), not enough free connections",
+			DEBUG("%s: Spawning additional connection (%i): Not enough free connections",
 				fc->log_prefix, fc->count);
 			if (!fr_connection_spawn(fc, now)) {
 				pthread_mutex_unlock(&fc->mutex);
@@ -399,7 +400,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 
 		rad_assert(idle != NULL);
 		
-		DEBUG("%s: Closing idle connection (%i), too many free connections",
+		DEBUG("%s: Closing idle connection (%i): Too many free connections",
 			fc->log_prefix, idle->number);
 		fr_connection_close(fc, idle);
 	}
@@ -461,11 +462,13 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 	}
 
 	if (fc->num == fc->max) {
+		radlog(L_ERR, "%s: No connections available and at max connection limit",
+			fc->log_prefix);
 		pthread_mutex_unlock(&fc->mutex);
 		return NULL;
 	}
 
-	DEBUG("%s: Spawning additional connection (%i), no connections available",
+	DEBUG("%s: Spawning additional connection (%i)",
 		fc->log_prefix, fc->count);
 	this = fr_connection_spawn(fc, now);
 	if (!this) {
@@ -474,14 +477,15 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 	}
 
 do_return:
-	DEBUG("%s: Reserving connection (%i)", fc->log_prefix, this->number);
-	
 	fc->active++;
 	this->num_uses++;
 	this->last_used = now;
 	this->used = TRUE;
 
 	pthread_mutex_unlock(&fc->mutex);
+	
+	DEBUG("%s: Reserved connection (%i)", fc->log_prefix, this->number);
+	
 	return this->connection;
 }
 
@@ -559,7 +563,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 					radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
 						fc->log_prefix, conn_number);
 				}else{
-					DEBUG("%s: Failed to reconnect (%i), using connection (%i)",
+					DEBUG("%s: Failed to reconnect (%i), using alternate connection (%i)",
 						fc->log_prefix, conn_number, this->number);
 				}
 				
