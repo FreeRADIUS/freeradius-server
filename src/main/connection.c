@@ -25,6 +25,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
+#include <freeradius-devel/radiusd.h>
+
 #include <freeradius-devel/connection.h>
 
 #include <freeradius-devel/rad_assert.h>
@@ -69,12 +71,15 @@ struct fr_connection_pool_t {
 
 	CONF_SECTION	*cs;
 	void		*ctx;
+	
+	char  		*log_prefix;
 
 	fr_connection_create_t	create;
 	fr_connection_alive_t	alive;
 	fr_connection_delete_t	delete;
 };
 
+#define LOG_PREFIX "rlm_%s (%s)"
 #ifndef HAVE_PTHREAD_H
 #define pthread_mutex_lock(_x)
 #define pthread_mutex_unlock(_x)
@@ -91,9 +96,9 @@ static const CONF_PARSER connection_config[] = {
 	  0, "3" },
 	{ "uses",     PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, max_uses),
 	  0, "0" },
-	{ "lifetime",   PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, lifetime),
+	{ "lifetime", PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, lifetime),
 	  0, "0" },
-	{ "idle_timeout",     PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
+	{ "idle_timeout",    PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
 	  0, "60" },
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -146,7 +151,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 {
 	fr_connection_t *this;
 	void *conn;
-
+	
 	rad_assert(fc != NULL);
 	rad_assert(fc->num <= fc->max);
 
@@ -195,10 +200,13 @@ void fr_connection_pool_delete(fr_connection_pool_t *fc)
 {
 	fr_connection_t *this, *next;
 
+	DEBUG("%s: Removing connection pool", fc->log_prefix);
+
 	pthread_mutex_lock(&fc->mutex);
 
 	for (this = fc->head; this != NULL; this = next) {
 		next = this->next;
+		DEBUG("%s: Closing connection (%i)", fc->log_prefix, this->number);
 		fr_connection_close(fc, this);
 	}
 
@@ -208,6 +216,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *fc)
 
 	cf_section_parse_free(fc->cs, fc);
 
+	free(fc->log_prefix);
 	free(fc);
 }
 
@@ -217,10 +226,11 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      fr_connection_alive_t a,
 					      fr_connection_delete_t d)
 {
-	int i;
+	int i, lp_len;
 	fr_connection_pool_t *fc;
 	fr_connection_t *this;
 	CONF_SECTION *cs;
+	const char *cs_name1, *cs_name2;
 
 	if (!parent || !ctx || !c || !a || !d) return NULL;
 
@@ -245,6 +255,18 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pthread_mutex_init(&fc->mutex, NULL);
 #endif
 
+	cs_name1 = cf_section_name1(parent);
+	cs_name2 = cf_section_name2(parent);
+	if (cs_name2 == NULL) {
+		cs_name2 = cs_name1;
+	}
+	
+	lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
+	fc->log_prefix = rad_malloc(lp_len);
+	snprintf(fc->log_prefix, lp_len, LOG_PREFIX, cs_name1, cs_name2);
+	
+	DEBUG("%s: Initialising connection pool", fc->log_prefix);
+
 	if (cf_section_parse(cs, fc, connection_config) < 0) {
 		goto error;
 	}
@@ -266,9 +288,10 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 */
 	for (i = 0; i < fc->start; i++) {
 		time_t now = time(NULL);
+
+		DEBUG("%s: Spawning additional connection (%i)", fc->log_prefix, fc->count);
 		
-		this = fr_connection_spawn(fc, now);
-		
+		this = fr_connection_spawn(fc, now);	
 		if (!this) {
 		error:
 			fr_connection_pool_delete(fc);
@@ -297,18 +320,25 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 	rad_assert(this != NULL);
 
 	if ((fc->max_uses > 0) && (this->num_uses >= fc->max_uses)) {
+		DEBUG("%s: Closing expired connection (%i), hit max_uses limit",
+			fc->log_prefix, this->number);
 	do_delete:
 		fr_connection_close(fc, this);
 		pthread_mutex_unlock(&fc->mutex);
 		return 0;
 	}
 
-	if ((fc->lifetime > 0) && ((this->start + fc->lifetime) < now))
+	if ((fc->lifetime > 0) && ((this->start + fc->lifetime) < now)){
+		DEBUG("%s: Closing expired connection (%i) ",
+			fc->log_prefix, this->number);
 		goto do_delete;
+	}
 
-	if ((fc->idle_timeout > 0) && ((this->last_used + fc->idle_timeout) < now))
+	if ((fc->idle_timeout > 0) && ((this->last_used + fc->idle_timeout) < now)){
+		DEBUG("%s: Closing idle connection (%i)",
+			fc->log_prefix, this->number);
 		goto do_delete;
-
+	}
 	return 1;
 }
 
@@ -334,6 +364,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 		}
 
 		for (i = 0; i < spawn; i++) {
+			DEBUG("%s: Spawning additional connection (%i), not enough free connections",
+				fc->log_prefix, fc->count);
 			if (!fr_connection_spawn(fc, now)) {
 				pthread_mutex_unlock(&fc->mutex);
 				return 0;
@@ -355,12 +387,15 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 			if (this->used) continue;
 
 			if (!idle ||
-			    (this->last_used < idle->last_used)) {
+			   (this->last_used < idle->last_used)) {
 				idle = this;
 			}
 		}
 
 		rad_assert(idle != NULL);
+		
+		DEBUG("%s: Closing idle connection (%i), too many free connections",
+			fc->log_prefix, idle->number);
 		fr_connection_close(fc, idle);
 	}
 
@@ -425,6 +460,8 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 		return NULL;
 	}
 
+	DEBUG("%s: Spawning additional connection (%i), no connections available",
+		fc->log_prefix, fc->count);
 	this = fr_connection_spawn(fc, now);
 	if (!this) {
 		pthread_mutex_unlock(&fc->mutex);
@@ -480,10 +517,13 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 {
 	void *new_conn;
 	fr_connection_t *this;
+	int conn_number;
 
 	if (!fc || !conn) return NULL;
 
 	pthread_mutex_lock(&fc->mutex);
+	
+	conn_number = this->number;
 
 	/*
 	 *	FIXME: This loop could be avoided if we passed a 'void
@@ -493,7 +533,9 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 	for (this = fc->head; this != NULL; this = this->next) {
 		if (this->connection == conn) {
 			rad_assert(this->used == TRUE);
-
+			
+			DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
+			
 			new_conn = fc->create(fc->ctx);
 			if (!new_conn) {
 				fr_connection_close(fc, conn);
@@ -503,7 +545,16 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 				 *	Can't create a new socket.
 				 *	Try grabbing a pre-existing one.
 				 */
-				return fr_connection_get(fc);
+				this = fr_connection_get(fc);
+				if(!new_conn){
+					radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
+						fc->log_prefix, conn_number);
+				}else{
+					DEBUG("%s: Failed to reconnect (%i), using connection (%i)",
+						fc->log_prefix, conn_number, this->number);
+				}
+				
+				return this;
 			}
 
 			fc->delete(fc->ctx, conn);
