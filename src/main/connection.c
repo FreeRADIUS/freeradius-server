@@ -469,6 +469,8 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 	}
 
 do_return:
+	DEBUG("%s: Reserving connection (%i)", fc->log_prefix, this->number);
+	
 	fc->active++;
 	this->num_uses++;
 	this->last_used = now;
@@ -511,6 +513,8 @@ void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 	}
 
 	pthread_mutex_unlock(&fc->mutex);
+	
+	DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
 }
 
 void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
