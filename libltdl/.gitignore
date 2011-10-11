@@ -8,5 +8,6 @@ lt__*.c
 lt_dlloader.c
 lt_error.c
 m4
+Makefile
 slist.c
 stamp-h1
