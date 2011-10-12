@@ -185,7 +185,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 static void fr_connection_close(fr_connection_pool_t *fc,
 				fr_connection_t *this)
 {
-	rad_assert(this->used == TRUE);
+	rad_assert(this->used == FALSE);
 
 	fr_connection_unlink(fc, this);
 	fc->delete(fc->ctx, this->connection);
