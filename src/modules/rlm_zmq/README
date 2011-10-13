@@ -1,0 +1,87 @@
+2011-10-13
+Author: Roelf Diedericks <roelf@neology.co.za>
+
+rlm_zmq is a thread safe freeradius-to-zeromq bridge that employs 
+a request-reply model
+
+Module Requirements
+------------
+ - The json-c library (libjson0-dev on debian)
+ - The zeromq C libraries
+
+Theory of Operation
+--------------------
+rlm_zmq is configured with a single zmq_socket_path to send requests to.
+this is typically a zmq queue process (see the included queue.php)
+
+rlm_zmq simply converts the 'request', 'control' and 'reply' structures 
+of a freeradius request to json, and puts it onto a zeromq socket. 
+
+The zeromq socket is a "requester" in zeromq terms.
+
+Typical json string that is sent:
+
+{ 	"type": "authorize", 
+	"control": { "FreeRADIUS-Client-IP-Address": "127.0.0.1" }, 
+	"request": { 	"User-Name": "joe@joe.com", 
+					"User-Password": "foo", 
+					"NAS-IP-Address": "1.2.3.4", 
+					"NAS-Identifier": "test", 
+					"NAS-Port-Id": "1" }, 
+	"reply": { } 
+}
+
+It then waits for a response from the ZMQ socket, decodes the json, 
+and replaces the original 'request', 'control' and 'reply' structures as it 
+finds them in the response from the zmq socket. Note that all response
+elements should be strings.
+
+rlm_zmq is somewhat based off the rlm_perl and rlm_ldap code and deals with 
+multivalue attributes the same way as the rlm_perl does, by creating a single 
+attribute, with multiple values stored inside the json hash.
+
+a pool of zeromq sockets is maintained with mutexes locking to ensure single
+access per freeradius thread. the pool is configurable and indicates how many
+outbound connection will be made to the queue manager
+
+Example module configuration
+----------------------------
+	zmq {
+		zmq_socket_path=tcp://127.0.0.1:5454
+		zmq_num_connections=200
+	}
+
+
+Usage
+----
+You can place a "zmq" module incantation anywhere in your freeradius configuration
+where you would normally use the "files" or "sql" modules to do lookups, or other
+actions.
+
+
+Example code
+------------
+The included example queue manager and worker requires the zeromq php bindings v1.x 
+
+queue.php is a simple queue manager that listens on port 5454. the freeradius pool
+sockets connect to it on that port
+
+queue.php also listens on port 5455. worker processes can connect to it on that port
+and receive radius requests.
+
+queue.php simply receives requests from a farm of freeradius threads that connect 
+to it, and relays requests and responses to and from a bunch of worker.php scripts
+
+
+Performance
+-----------
+Performance is good. On my system with the 'files' method of auth only, freeradius
+does 10 000 requests per second. This is the best case scenario
+
+With zmq included in all of the possible sections (authentication, authorization) etc.
+I can manage 3 500 requests per second, which is impressive, considering the number
+of invocations for an auth request (3) and for an accounting request (2).
+
+All tests were performed with radperf.
+
+
