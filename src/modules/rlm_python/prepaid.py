@@ -158,8 +158,18 @@ def authorize(authData):
   return (radiusd.RLM_MODULE_UPDATED,
           (('Session-Timeout', str(sessionTimeout)),),
           (('Auth-Type', 'python'),))
-
-    
+  # If you want to use different operators 
+  # you can do
+  # return (radiusd.RLM_MODULE_UPDATED,
+  #         radiusd.resolve(
+  #            'Session-Timeout := %s' % str(sessionTimeout),
+  #            'Some-other-option -= Value',
+  #         ),
+  #         radiusd.resolve(
+  #            'Auth-Type := python'
+  #         )
+  #        ) 
+  # Edit operators you need in OP_TRY in radiusd.py
 
 def authenticate(p):
   p = p
