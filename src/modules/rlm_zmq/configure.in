@@ -28,7 +28,7 @@ if test x$with_[]modname != xno; then
 		[ zmq_cflags="$zmq_cflags -I/usr/include" ],
 		[ fail=$fail" stdio.h" ]
 	)
-	AC_CHECK_HEADER(json.h,
+	AC_CHECK_HEADER(json/json.h,
 		[ zmq_cflags="$zmq_cflags -I/usr/include/json" ],
 		[ fail=$fail" json.h" ]
 	)
