@@ -1,0 +1,68 @@
+AC_PREREQ([2.53])
+AC_INIT(rlm_zmq.c) # change 'zmq'
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_zmq]) # change 'zmq'
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	dnl put configuration checks here.
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+	AC_CHECK_LIB(c, printf,
+		[ zmq_ldflags="$zmq_ldflags -lc" ],
+		[ fail=$fail" printf" ]
+	)
+	AC_CHECK_LIB(json, printf,
+		[ zmq_ldflags="$zmq_ldflags -ljson" ],
+		[ fail=$fail" printf" ]
+	)
+	AC_CHECK_LIB(zmq, printf,
+		[ zmq_ldflags="$zmq_ldflags -lzmq" ],
+		[ fail=$fail" printf" ]
+	)
+
+	AC_CHECK_HEADER(stdio.h,
+		[ zmq_cflags="$zmq_cflags -I/usr/include" ],
+		[ fail=$fail" stdio.h" ]
+	)
+	AC_CHECK_HEADER(json/json.h,
+		[ zmq_cflags="$zmq_cflags -I/usr/include/json" ],
+		[ fail=$fail" json.h" ]
+	)
+
+	AC_CHECK_HEADER(zmq.h,
+		[ zmq_cflags="$zmq_cflags -I/usr/include" ],
+		[ fail=$fail" zmq.h" ]
+	)
+
+	AC_CHECK_HEADERS(stdio.h stdlib.h)  # for the config.h defs
+	AC_CHECK_FUNCS(printf)  # for the config.h defs
+
+	targetname=modname     # keep this!  Don't change!
+else
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+		targetname=""
+	fi
+fi
+
+
+AC_SUBST(zmq_cflags)  # change 'zmq'
+AC_SUBST(zmq_ldflags)  # change 'zmq'
+
+AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
+
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!
