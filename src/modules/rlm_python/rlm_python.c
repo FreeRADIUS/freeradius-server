@@ -271,29 +271,42 @@ static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
                 PyObject *pTupleElement = PyTuple_GET_ITEM(pValue, i);
                 PyObject *pStr1;
                 PyObject *pStr2;
+		PyObject *pOp;
                 int pairsize;
                 const char *s1;
                 const char *s2;
+                long Op;
 
                 if (!PyTuple_CheckExact(pTupleElement)) {
                         radlog(L_ERR, "rlm_python:%s: tuple element %d is not a tuple", funcname, i);
                         continue;
                 }
                 /* Check if it's a pair */
-                if ((pairsize = PyTuple_GET_SIZE(pTupleElement)) != 2) {
-                        radlog(L_ERR, "rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2", funcname, i, pairsize);
+
+                pairsize = PyTuple_GET_SIZE(pTupleElement);
+                if ((pairsize < 2) || (pairsize > 3)) {
+                        radlog(L_ERR, "rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2 or 3.", funcname, i, pairsize);
                         continue;
                 }
+
+                if (pairsize == 2) {
                 pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
                 pStr2 = PyTuple_GET_ITEM(pTupleElement, 1);
+		Op = T_OP_EQ;
+		} else {
+                pStr1  = PyTuple_GET_ITEM(pTupleElement, 0);
+                pStr2  = PyTuple_GET_ITEM(pTupleElement, 2);
+                pOp    = PyTuple_GET_ITEM(pTupleElement, 1);
+		Op = PyInt_AsLong(pOp);
+		}
+
                 if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
                         radlog(L_ERR, "rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
                         continue;
                 }
                 s1 = PyString_AsString(pStr1);
                 s2 = PyString_AsString(pStr2);
-                /* xxx Might need to support other T_OP */
-                vp = pairmake(s1, s2, T_OP_EQ);
+	        vp = pairmake(s1, s2, Op);
                 if (vp != NULL) {
                         pairadd(vpp, vp);
                         radlog(L_DBG, "rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
