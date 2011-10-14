@@ -49,8 +49,12 @@ Example module configuration
 	zmq {
 		zmq_socket_path=tcp://127.0.0.1:5454
 		zmq_num_connections=200
+		zmq_send_control_pairs=yes
 	}
 
+zmq_send_control_pairs disables or enables the sending of the FreeRADIUS "control"
+structures. Sending of the control pairs is off by default. You may still send
+them back in your response, regardless of the setting.
 
 Usage
 ----
@@ -76,7 +80,7 @@ to it, and relays requests and responses to and from a bunch of worker.php scrip
 Performance
 -----------
 Performance is good. On my system with the 'files' method of auth only, freeradius
-does 10 000 requests per second. This is the best case scenario
+does 10 000 requests per second. This is the best case scenario.
 
 With zmq included in all of the possible sections (authentication, authorization) etc.
 I can manage 3 500 requests per second, which is impressive, considering the number

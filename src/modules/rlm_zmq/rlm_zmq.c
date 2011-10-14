@@ -61,6 +61,7 @@ typedef struct zmq_conn {
  */
 typedef struct rlm_zmq_t {
 	char		*zmq_socket_path;
+    int         zmq_send_control_pairs;
     void        *zmq_context;
 
     /* managed pool of zmq connections */
@@ -87,6 +88,7 @@ typedef struct rlm_zmq_t {
 static const CONF_PARSER module_config[] = {
   { "zmq_socket_path",  PW_TYPE_STRING_PTR, offsetof(rlm_zmq_t,zmq_socket_path), NULL,  NULL},
   { "zmq_num_connections",  PW_TYPE_INTEGER, offsetof(rlm_zmq_t,num_conns), NULL,  "10"},
+  { "zmq_send_control_pairs",  PW_TYPE_BOOLEAN, offsetof(rlm_zmq_t,zmq_send_control_pairs), NULL,  "no"},
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -526,7 +528,9 @@ static int do_zmq(void *instance, REQUEST *request, const char *request_type)
     /* add the request type */
     json_object_object_add(json_req,"type", json_object_new_string(request_type));
 
-    zmq_build_json_req(json_req,request->config_items,"control");
+    if (inst->zmq_send_control_pairs) {
+        zmq_build_json_req(json_req,request->config_items,"control");
+    }
     zmq_build_json_req(json_req,request->packet->vps,"request");
     zmq_build_json_req(json_req,request->reply->vps,"reply");
 
