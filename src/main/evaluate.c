@@ -879,31 +879,6 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 }
 #endif
 
-static void fix_up(REQUEST *request)
-{
-	VALUE_PAIR *vp;
-
-	request->username = NULL;
-	request->password = NULL;
-	
-	for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
-		if (vp->vendor != 0) continue;
-
-		if ((vp->attribute == PW_USER_NAME) &&
-		    !request->username) {
-			request->username = vp;
-			
-		} else if (vp->attribute == PW_STRIPPED_USER_NAME) {
-			request->username = vp;
-			
-		} else if (vp->attribute == PW_USER_PASSWORD) {
-			request->password = vp;
-		}
-
-		if (request->username && request->password) break;
-	}
-}
-
 
 /*
  *	The pairmove() function in src/lib/valuepair.c does all sorts of
@@ -919,6 +894,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
 	int *edited = NULL;
+	REQUEST *fixup = NULL;
 
 	/*
 	 *	Set up arrays for editing, to remove some of the
@@ -1155,10 +1131,21 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	*to = NULL;
 	last = to;
 
+	if (to == &request->packet->vps) {
+		fixup = request;
+	} else if (request->parent && (to == &request->parent->packet->vps)) {
+		fixup = request->parent;
+	}
+	if (fixup) {
+		fixup->username = NULL;
+		fixup->password = NULL;
+	}
+
 	for (i = 0; i < tailto; i++) {
 		if (!to_list[i]) continue;
 		
-		RDEBUG4("::: to[%d] = %s", i, to_list[i]->name);
+		vp = to_list[i];
+		RDEBUG4("::: to[%d] = %s", i, vp->name);
 
 		/*
 		 *	Mash the operator to a simple '='.  The
@@ -1167,23 +1154,30 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		 *	file and debug output, where we don't want to
 		 *	see the operators.
 		 */
-		to_list[i]->operator = T_OP_EQ;
+		vp->operator = T_OP_EQ;
 
-		*last = to_list[i];
+		/*
+		 *	Fix dumb cache issues
+		 */
+		if (fixup && (vp->vendor == 0)) {
+			if ((vp->attribute == PW_USER_NAME) &&
+			    !fixup->username) {
+				fixup->username = vp;
+
+			} else if (vp->attribute == PW_STRIPPED_USER_NAME) {
+				fixup->username = vp;
+
+			} else if (vp->attribute == PW_USER_PASSWORD) {
+				fixup->password = vp;
+			}
+		}
+
+		*last = vp;
 		last = &(*last)->next;
 	}
 
 	rad_assert(request != NULL);
 	rad_assert(request->packet != NULL);
-
-	/*
-	 *	Fix dumb cache issues
-	 */
-	if (to == &request->packet->vps) {
-		fix_up(request);
-	} else if (request->parent && (to == &request->parent->packet->vps)) {
-		fix_up(request->parent);
-	}
 
 	free(to_list);
 	free(edited);
