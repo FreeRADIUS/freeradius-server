@@ -58,6 +58,7 @@ struct fr_connection_pool_t {
 
 	time_t		last_checked;
 	time_t		last_spawned;
+	time_t		last_complained;
 
 	int		max_uses;
 	int		lifetime;
@@ -545,37 +546,43 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 	 *	order to find top of the parent structure.
 	 */
 	for (this = fc->head; this != NULL; this = this->next) {
-		if (this->connection == conn) {
-			rad_assert(this->used == TRUE);
-			
-			DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
-			
-			new_conn = fc->create(fc->ctx);
-			if (!new_conn) {
-				fr_connection_close(fc, conn);
-				pthread_mutex_unlock(&fc->mutex);
+		if (this->connection != conn) continue;
 
-				/*
-				 *	Can't create a new socket.
-				 *	Try grabbing a pre-existing one.
-				 */
-				this = fr_connection_get(fc);
-				if (!new_conn) {
-					radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
-					       fc->log_prefix, conn_number);
-				} else {
-					DEBUG("%s: Failed to reconnect (%i), using connection (%i)",
-					      fc->log_prefix, conn_number, this->number);
-				}
-				
-				return this;
+		rad_assert(this->used == TRUE);
+			
+		DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
+			
+		new_conn = fc->create(fc->ctx);
+		if (!new_conn) {
+			time_t now = time(NULL);
+
+			if (fc->last_complained == now) {
+				now = 0;
+			} else {
+				fc->last_complained = now;
 			}
 
-			fc->delete(fc->ctx, conn);
-			this->connection = new_conn;
+			fr_connection_close(fc, conn);
 			pthread_mutex_unlock(&fc->mutex);
-			return new_conn;
+
+			/*
+			 *	Can't create a new socket.
+			 *	Try grabbing a pre-existing one.
+			 */
+			new_conn = fr_connection_get(fc);
+			if (new_conn) return new_conn;
+
+			if (!now) return NULL;
+
+			radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
+			       fc->log_prefix, conn_number);
+			return NULL;
 		}
+
+		fc->delete(fc->ctx, conn);
+		this->connection = new_conn;
+		pthread_mutex_unlock(&fc->mutex);
+		return new_conn;
 	}
 
 	pthread_mutex_unlock(&fc->mutex);
