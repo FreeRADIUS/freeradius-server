@@ -257,7 +257,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 
 	cs_name1 = cf_section_name1(parent);
 	cs_name2 = cf_section_name2(parent);
-	if (cs_name2 == NULL) {
+	if (!cs_name2) {
 		cs_name2 = cs_name1;
 	}
 	
@@ -299,8 +299,9 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		}
 		
 		/* 
-		 * If we don't set last_used here, the connection will be closed as
-		 * idle, the first time get_connecton is called.
+		 *	If we don't set last_used here, the connection
+		 *	will be closed as idle, the first time
+		 *	get_connecton is called.
 		 */
 		this->last_used = now;
 	}
@@ -380,9 +381,9 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 	}
 
 	/*
-	 *	We haven't spawned threads in a while, and there are
-	 *	too many spare connections.  Close the one which has
-	 *	been idle for the longest.
+	 *	We haven't spawned connections in a while, and there
+	 *	are too many spare ones.  Close the one which has been
+	 *	idle for the longest.
 	 */
 	if ((now >= (fc->last_spawned + fc->cleanup_delay)) &&
 	    (spare > fc->spare)) {
@@ -559,12 +560,12 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 				 *	Try grabbing a pre-existing one.
 				 */
 				this = fr_connection_get(fc);
-				if(!new_conn){
+				if (!new_conn) {
 					radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
-						fc->log_prefix, conn_number);
-				}else{
-					DEBUG("%s: Failed to reconnect (%i), using alternate connection (%i)",
-						fc->log_prefix, conn_number, this->number);
+					       fc->log_prefix, conn_number);
+				} else {
+					DEBUG("%s: Failed to reconnect (%i), using connection (%i)",
+					      fc->log_prefix, conn_number, this->number);
 				}
 				
 				return this;
