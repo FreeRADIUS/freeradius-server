@@ -11,10 +11,7 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(rlm_sql_h, "$Id$")
 
-#ifdef HAVE_PTHREAD_H
-#include        <pthread.h>
-#endif
-
+#include	<freeradius-devel/connection.h>
 #include	<freeradius-devel/modpriv.h>
 
 #include "conf.h"
@@ -28,17 +25,8 @@ RCSIDH(rlm_sql_h, "$Id$")
 typedef char** SQL_ROW;
 
 typedef struct sql_socket {
-	int     id;
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t mutex;
-#endif
-	struct sql_socket *next;
-	enum { sockconnected, sockunconnected } state;
-
 	void	*conn;
 	SQL_ROW row;
-	time_t  connected;
-	int	queries;
 } SQLSOCK;
 
 typedef struct rlm_sql_module_t {
@@ -62,9 +50,7 @@ typedef struct rlm_sql_module_t {
 typedef struct sql_inst SQL_INST;
 
 struct sql_inst {
-	time_t		connect_after;
-	SQLSOCK		*sqlpool;
-	SQLSOCK		*last_used;
+	fr_connection_pool_t *pool;
 	SQL_CONFIG	*config;
 	CONF_SECTION	*cs;
 

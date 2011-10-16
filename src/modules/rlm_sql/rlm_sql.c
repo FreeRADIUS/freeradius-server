@@ -809,9 +809,7 @@ static int rlm_sql_detach(void *instance)
 	if (inst->config) {
 		int i;
 
-		if (inst->sqlpool) {
-			sql_poolfree(inst);
-		}
+		if (inst->pool) sql_poolfree(inst);
 
 		if (inst->config->xlat_name) {
 			xlat_unregister(inst->config->xlat_name,(RAD_XLAT_FUNC)sql_xlat);

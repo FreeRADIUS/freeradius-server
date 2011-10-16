@@ -40,37 +40,42 @@ RCSID("$Id$")
 #endif
 
 
-/*
- * Connect to a server.  If error, set this socket's state to be
- * "sockunconnected" and set a grace period, during which we won't try
- * connecting again (to prevent unduly lagging the server and being
- * impolite to a DB server that may be having other issues).  If
- * successful in connecting, set state to sockconnected.
- * - chad
- */
-static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
+static void *sql_conn_create(void *ctx)
 {
 	int rcode;
-	radlog(L_INFO, "rlm_sql (%s): Attempting to connect %s #%d",
-	       inst->config->xlat_name, inst->module->name, sqlsocket->id);
+	SQL_INST *inst = ctx;
+	SQLSOCK *sqlsocket;
+
+	sqlsocket = rad_malloc(sizeof(*sqlsocket));
+	memset(sqlsocket, 0, sizeof(*sqlsocket));
+
 	rcode = (inst->module->sql_init_socket)(sqlsocket, inst->config);
 	if (rcode == 0) {
-		radlog(L_INFO, "rlm_sql (%s): Connected new DB handle, #%d",
-		       inst->config->xlat_name, sqlsocket->id);
 		exec_trigger(NULL, inst->cs, "modules.sql.open");
-		sqlsocket->state = sockconnected;
-		if (inst->config->lifetime) time(&sqlsocket->connected);
-		sqlsocket->queries = 0;
-		return(0);
+		return sqlsocket;
 	}
 
-	/*
-	 *  Error, or SQL_DOWN.
-	 */
-	radlog(L_CONS | L_ERR, "rlm_sql (%s): Failed to connect DB handle #%d", inst->config->xlat_name, sqlsocket->id);
-	inst->connect_after = time(NULL) + inst->config->connect_failure_retry_delay;
-	sqlsocket->state = sockunconnected;
-	return(-1);
+	free(sqlsocket);
+	return NULL;
+}
+
+
+static int sql_conn_delete(void *ctx, void *connection)
+{
+	SQL_INST *inst = ctx;
+	SQLSOCK *sqlsocket = connection;
+
+	exec_trigger(NULL, inst->cs, "modules.sql.close");
+
+	if (sqlsocket->conn) {
+		(inst->module->sql_close)(sqlsocket, inst->config);
+	}
+	if (inst->module->sql_destroy_socket) {
+		(inst->module->sql_destroy_socket)(sqlsocket, inst->config);
+	}
+	free(sqlsocket);
+
+	return 0;
 }
 
 
@@ -83,56 +88,11 @@ static int connect_single_socket(SQLSOCK *sqlsocket, SQL_INST *inst)
  *************************************************************************/
 int sql_init_socketpool(SQL_INST * inst)
 {
-	int i, rcode;
-	int success = 0;
-	SQLSOCK *sqlsocket;
-
-	inst->connect_after = 0;
-	inst->sqlpool = NULL;
-
-	for (i = 0; i < inst->config->num_sql_socks; i++) {
-		radlog(L_DBG, "rlm_sql (%s): starting %d",
-		       inst->config->xlat_name, i);
-
-		sqlsocket = rad_malloc(sizeof(*sqlsocket));
-		if (sqlsocket == NULL) {
-			return -1;
-		}
-		memset(sqlsocket, 0, sizeof(*sqlsocket));
-		sqlsocket->conn = NULL;
-		sqlsocket->id = i;
-		sqlsocket->state = sockunconnected;
-
-#ifdef HAVE_PTHREAD_H
-		rcode = pthread_mutex_init(&sqlsocket->mutex,NULL);
-		if (rcode != 0) {
-			free(sqlsocket);
-			radlog(L_ERR, "rlm_sql: Failed to init lock: %s",
-			       strerror(errno));
-			return -1;
-		}
-#endif
-
-		if (time(NULL) > inst->connect_after) {
-			/*
-			 *	This sets the sqlsocket->state, and
-			 *	possibly also inst->connect_after
-			 */
-			if (connect_single_socket(sqlsocket, inst) == 0) {
-				success = 1;
-			}
-		}
-
-		/* Add this socket to the list of sockets */
-		sqlsocket->next = inst->sqlpool;
-		inst->sqlpool = sqlsocket;
-	}
-	inst->last_used = NULL;
-
-	if (!success) {
-		radlog(L_DBG, "rlm_sql (%s): Failed to connect to any SQL server.",
-		       inst->config->xlat_name);
-	}
+	inst->pool = fr_connection_pool_init(inst->cs, inst,
+					     sql_conn_create,
+					     NULL,
+					     sql_conn_delete);
+	if (!inst->pool) return -1;
 
 	return 1;
 }
@@ -146,44 +106,8 @@ int sql_init_socketpool(SQL_INST * inst)
  *************************************************************************/
 void sql_poolfree(SQL_INST * inst)
 {
-	SQLSOCK *cur;
-	SQLSOCK *next;
-
-	for (cur = inst->sqlpool; cur; cur = next) {
-		next = cur->next;
-		sql_close_socket(inst, cur);
-	}
-
-	inst->sqlpool = NULL;
+	fr_connection_pool_delete(inst->pool);
 }
-
-
-/*************************************************************************
- *
- *	Function: sql_close_socket
- *
- *	Purpose: Close and free a sql sqlsocket
- *
- *************************************************************************/
-int sql_close_socket(SQL_INST *inst, SQLSOCK * sqlsocket)
-{
-	radlog(L_INFO, "rlm_sql (%s): Closing sqlsocket %d",
-	       inst->config->xlat_name, sqlsocket->id);
-	exec_trigger(NULL, inst->cs, "modules.sql.close");
-	if (sqlsocket->state == sockconnected) {
-		(inst->module->sql_close)(sqlsocket, inst->config);
-	}
-	if (inst->module->sql_destroy_socket) {
-		(inst->module->sql_destroy_socket)(sqlsocket, inst->config);
-	}
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_destroy(&sqlsocket->mutex);
-#endif
-	free(sqlsocket);
-	return 1;
-}
-
-static time_t last_logged_failure = 0;
 
 
 /*************************************************************************
@@ -195,140 +119,7 @@ static time_t last_logged_failure = 0;
  *************************************************************************/
 SQLSOCK * sql_get_socket(SQL_INST * inst)
 {
-	SQLSOCK *cur, *start;
-	int tried_to_connect = 0;
-	int unconnected = 0;
-	time_t now = time(NULL);
-
-	/*
-	 *	Start at the last place we left off.
-	 */
-	start = inst->last_used;
-	if (!start) start = inst->sqlpool;
-
-	cur = start;
-
-	while (cur) {
-#ifdef HAVE_PTHREAD_H
-		/*
-		 *	If this socket is in use by another thread,
-		 *	skip it, and try another socket.
-		 *
-		 *	If it isn't used, then grab it ourselves.
-		 */
-		if (pthread_mutex_trylock(&cur->mutex) != 0) {
-			goto next;
-		} /* else we now have the lock */
-#endif
-
-		/*
-		 *	If the socket has outlived its lifetime, and
-		 *	is connected, close it, and mark it as open for
-		 *	reconnections.
-		 */
-		if (inst->config->lifetime && (cur->state == sockconnected) &&
-		    ((cur->connected + inst->config->lifetime) < now)) {
-			DEBUG2("Closing socket %d as its lifetime has been exceeded", cur->id);
-			(inst->module->sql_close)(cur, inst->config);
-			cur->state = sockunconnected;
-			goto reconnect;
-		}
-
-		/*
-		 *	If we have performed too many queries over this
-		 *	socket, then close it.
-		 */
-		if (inst->config->max_queries && (cur->state == sockconnected) &&
-		    (cur->queries >= inst->config->max_queries)) {
-			DEBUG2("Closing socket %d as its max_queries has been exceeded", cur->id);
-			(inst->module->sql_close)(cur, inst->config);
-			cur->state = sockunconnected;
-			goto reconnect;
-		}
-
-		/*
-		 *	If we happen upon an unconnected socket, and
-		 *	this instance's grace period on
-		 *	(re)connecting has expired, then try to
-		 *	connect it.  This should be really rare.
-		 */
-		if ((cur->state == sockunconnected) && (now > inst->connect_after)) {
-		reconnect:
-			radlog(L_INFO, "rlm_sql (%s): Trying to (re)connect unconnected handle %d..", inst->config->xlat_name, cur->id);
-			tried_to_connect++;
-			connect_single_socket(cur, inst);
-		}
-
-		/* if we still aren't connected, ignore this handle */
-		if (cur->state == sockunconnected) {
-			DEBUG("rlm_sql (%s): Ignoring unconnected handle %d..", inst->config->xlat_name, cur->id);
-		        unconnected++;
-#ifdef HAVE_PTHREAD_H
-			pthread_mutex_unlock(&cur->mutex);
-#endif
-			goto next;
-		}
-
-		/* should be connected, grab it */
-		DEBUG("rlm_sql (%s): Reserving sql socket id: %d", inst->config->xlat_name, cur->id);
-
-		if (unconnected != 0 || tried_to_connect != 0) {
-			DEBUG("rlm_sql (%s): got socket %d after skipping %d unconnected handles, tried to reconnect %d though", inst->config->xlat_name, cur->id, unconnected, tried_to_connect);
-		}
-
-		/*
-		 *	The socket is returned in the locked
-		 *	state.
-		 *
-		 *	We also remember where we left off,
-		 *	so that the next search can start from
-		 *	here.
-		 *
-		 *	Note that multiple threads MAY over-write
-		 *	the 'inst->last_used' variable.  This is OK,
-		 *	as it's a pointer only used for reading.
-		 */
-		inst->last_used = cur->next;
-		cur->queries++;
-		return cur;
-
-		/* move along the list */
-	next:
-		cur = cur->next;
-
-		/*
-		 *	Because we didnt start at the start, once we
-		 *	hit the end of the linklist, we should go
-		 *	back to the beginning and work toward the
-		 *	middle!
-		 */
-		if (!cur) {
-			cur = inst->sqlpool;
-		}
-
-		/*
-		 *	If we're at the socket we started
-		 */
-		if (cur == start) {
-			break;
-		}
-	}
-
-	/*
-	 *	Suppress most of the log messages.  We don't want to
-	 *	flood the log with this message for EVERY packet.
-	 *	Instead, write to the log only once a second or so.
-	 *
-	 *	This code has race conditions when threaded, but the
-	 *	only result is that a few more messages are logged.
-	 */
-	if (now <= last_logged_failure) return NULL;
-	last_logged_failure = now;
-
-	/* We get here if every DB handle is unconnected and unconnectABLE */
-	radlog(L_ERR, "rlm_sql (%s): There are no DB handles to use! skipped %d, tried to connect %d", inst->config->xlat_name, unconnected, tried_to_connect);
-	exec_trigger(NULL, inst->cs, "modules.sql.none");
-	return NULL;
+	return fr_connection_get(inst->pool);
 }
 
 /*************************************************************************
@@ -340,13 +131,7 @@ SQLSOCK * sql_get_socket(SQL_INST * inst)
  *************************************************************************/
 int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
 {
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_unlock(&sqlsocket->mutex);
-#endif
-
-	radlog(L_DBG, "rlm_sql (%s): Released sql socket id: %d",
-	       inst->config->xlat_name, sqlsocket->id);
-
+	fr_connection_release(inst->pool, sqlsocket);
 	return 0;
 }
 
@@ -474,16 +259,8 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst)
 	}
 
 	if (ret == SQL_DOWN) {
-	        /* close the socket that failed, but only if it was open */
-		if (sqlsocket->conn) {
-			(inst->module->sql_close)(sqlsocket, inst->config);
-		}
-
-		/* reconnect the socket */
-		if (connect_single_socket(sqlsocket, inst) < 0) {
-			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
-			return -1;
-		}
+		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
+		if (!sqlsocket) return -1;
 
 		/* retry the query on the newly connected socket */
 		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
@@ -523,16 +300,8 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 	}
 
 	if (ret == SQL_DOWN) {
-	        /* close the socket that failed */
-		if (sqlsocket->state == sockconnected) {
-			(inst->module->sql_close)(sqlsocket, inst->config);
-		}
-
-		/* reconnect the socket */
-		if (connect_single_socket(sqlsocket, inst) < 0) {
-			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
-			return -1;
-		}
+		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
+		if (!sqlsocket) return -1;
 
 		/* retry the query on the newly connected socket */
 		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
@@ -573,16 +342,8 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 	}
 
 	if (ret == SQL_DOWN) {
-	        /* close the socket that failed */
-		if (sqlsocket->state == sockconnected) {
-			(inst->module->sql_close)(sqlsocket, inst->config);
-		}
-
-		/* reconnect the socket */
-		if (connect_single_socket(sqlsocket, inst) < 0) {
-			radlog(L_ERR, "rlm_sql (%s): reconnect failed, database down?", inst->config->xlat_name);
-			return -1;
-		}
+		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
+		if (!sqlsocket) return -1;
 
 		/* retry the query on the newly connected socket */
 		ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
