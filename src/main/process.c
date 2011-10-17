@@ -2688,6 +2688,8 @@ static void request_proxied(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_DUP:
+		if (!request->proxy_listener) return;
+
 		if ((home->state == HOME_STATE_IS_DEAD) ||
 		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
 			request_proxy_anew(request);
