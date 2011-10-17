@@ -90,8 +90,6 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
     int deadlock=0;
- if (config->sqltrace)
-        radlog(L_DBG, "sock_id %i: query:  %s", sqlsocket->id,querystr);
 
 #ifdef _PTHREAD_H
  pthread_mutex_lock(&firebird_sock->mut);
@@ -102,14 +100,13 @@ TryAgain:
 //Try again query when deadlock, beacuse in any case it will be retried.
 // but may be lost for short sessions
    if ((firebird_sock->sql_code==DEADLOCK_SQL_CODE) && !deadlock) {
-      radlog(L_DBG,"sock_id %i: deadlock. Retry query %s\n",sqlsocket->id,querystr);
+      radlog(L_DBG,"sock_id deadlock. Retry query %s\n",querystr);
 //For non READ_COMMITED transactions put rollback here
 // fb_rollback(sock);
       deadlock=1;
       goto TryAgain;
    }
-   radlog(L_ERR, "sock_id %i: rlm_sql_firebird,sql_query error:sql_code=%li, error='%s', query=%s\n",
-     sqlsocket->id,
+   radlog(L_ERR, "sock_id rlm_sql_firebird,sql_query error:sql_code=%li, error='%s', query=%s\n",
      firebird_sock->sql_code,
      firebird_sock->lasterror,
      querystr);
@@ -185,7 +182,6 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *************************************************************************/
 static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     int res=sql_affected_rows(sqlsocket, config);
-    radlog(L_DBG,"sock_id %i: sql_num_rows: %i\n",sqlsocket->id,res);
     return res;
 }
 
@@ -295,7 +291,6 @@ static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  int affected_rows=fb_affected_rows(sqlsocket->conn);
  if (affected_rows<0)
    radlog(L_ERR, "sql_affected_rows, rlm_sql_firebird. error:%s\n", sql_error(sqlsocket,config));
- radlog(L_DBG,"sock_id %i: affected_rows: %i\n",sqlsocket->id,affected_rows);
  return affected_rows;
 }
 
