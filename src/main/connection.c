@@ -65,6 +65,7 @@ struct fr_connection_pool_t {
 	int		lifetime;
 	int		idle_timeout;
 	int		lazy_init;
+	int		spawning;
 
 	fr_connection_t	*head, *tail;
 
@@ -151,6 +152,10 @@ static void fr_connection_link(fr_connection_pool_t *fc,
 	}
 }
 
+
+/*
+ *	Called with the mutex free.
+ */
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 					    time_t now)
 {
@@ -158,10 +163,29 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	void *conn;
 	
 	rad_assert(fc != NULL);
+
+	pthread_mutex_lock(&fc->mutex);
 	rad_assert(fc->num <= fc->max);
 
-	if (fc->last_failed == now) return NULL;
+	if ((fc->last_failed == now) || fc->spawning) {
+		pthread_mutex_unlock(&fc->mutex);
+		return NULL;
+	}
 
+	fc->spawning = TRUE;
+
+	/*
+	 *	Unlock the mutex while we try to open a new
+	 *	connection.  If there are issues with the back-end,
+	 *	opening a new connection may take a LONG time.  In
+	 *	that case, we want the other connections to continue
+	 *	to be used.
+	 */
+	pthread_mutex_unlock(&fc->mutex);
+
+	DEBUG("%s: Opening additional connection (%i)",
+	      fc->log_prefix, fc->count);
+	
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
@@ -175,17 +199,25 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	if (!conn) {
 		fc->last_failed = now;
 		free(this);
+		fc->spawning = FALSE; /* atomic, so no lock is needed */
 		return NULL;
 	}
 
 	this->start = now;
-	this->connection = conn;
-	this->number = fc->count;
+	this->connection = conn;	
 
+	/*
+	 *	And lock the mutex again while we link the new
+	 *	connection back into the pool.
+	 */
+	pthread_mutex_lock(&fc->mutex);
+
+	this->number = fc->count++;
 	fr_connection_link(fc, this);
-
-	fc->count++;
 	fc->num++;
+	fc->spawning = FALSE;
+
+	pthread_mutex_unlock(&fc->mutex);
 
 	return this;
 }
@@ -239,6 +271,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	fr_connection_t *this;
 	CONF_SECTION *cs;
 	const char *cs_name1, *cs_name2;
+	time_t now = time(NULL);
 
 	if (!parent || !ctx || !c || !d) return NULL;
 
@@ -296,10 +329,6 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 *	not to.
 	 */
 	if (!fc->lazy_init) for (i = 0; i < fc->start; i++) {
-		time_t now = time(NULL);
-
-		DEBUG("%s: Spawning additional connection (%i)", fc->log_prefix, fc->count);
-		
 		this = fr_connection_spawn(fc, now);	
 		if (!this) {
 		error:
@@ -361,7 +390,7 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 
 static int fr_connection_pool_check(fr_connection_pool_t *fc)
 {
-	int i, spare, spawn;
+	int spare, spawn;
 	time_t now = time(NULL);
 	fr_connection_t *this;
 
@@ -372,20 +401,16 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 	spare = fc->num - fc->active;
 
 	spawn = 0;
-	if ((fc->num < fc->max) &&
-	    (spare < fc->spare)) {
+	if ((fc->num < fc->max) && (spare < fc->spare)) {
 		spawn = fc->spare - spare;
 		if ((spawn + fc->num) > fc->max) {
 			spawn = fc->max - fc->num;
 		}
+		if (fc->spawning) spawn = 0;
 
-		for (i = 0; i < spawn; i++) {
-			DEBUG("%s: Spawning additional connection (%i): Not enough free connections",
-				fc->log_prefix, fc->count);
-			if (!fr_connection_spawn(fc, now)) {
-				pthread_mutex_unlock(&fc->mutex);
-				return 0;
-			}
+		if (spawn) {
+			pthread_mutex_unlock(&fc->mutex);
+			fr_connection_spawn(fc, now); /* ignore return code */
 		}
 	}
 
@@ -474,19 +499,22 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 	}
 
 	if (fc->num == fc->max) {
-		radlog(L_ERR, "%s: No connections available and at max connection limit",
-			fc->log_prefix);
+		/*
+		 *	Rate-limit complaints.
+		 */
+		if (fc->last_complained != now) {
+			radlog(L_ERR, "%s: No connections available and at max connection limit",
+			       fc->log_prefix);
+			fc->last_complained = now;
+		}
 		pthread_mutex_unlock(&fc->mutex);
 		return NULL;
 	}
 
-	DEBUG("%s: Spawning additional connection (%i)",
-		fc->log_prefix, fc->count);
+	pthread_mutex_unlock(&fc->mutex);
 	this = fr_connection_spawn(fc, now);
-	if (!this) {
-		pthread_mutex_unlock(&fc->mutex);
-		return NULL;
-	}
+	if (!this) return NULL;
+	pthread_mutex_lock(&fc->mutex);
 
 do_return:
 	fc->active++;
@@ -533,22 +561,17 @@ void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 		}
 	}
 
+	pthread_mutex_unlock(&fc->mutex);
+
+	DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
 
 	/*
 	 *	We mirror the "spawn on get" functionality by having
 	 *	"delete on release".  If there are too many spare
 	 *	connections, go manage the pool && clean some up.
 	 */
-	if ((time(NULL) >= (fc->last_spawned + fc->cleanup_delay)) &&
-	    ((fc->num - fc->active) > fc->spare)) {
-		pthread_mutex_unlock(&fc->mutex);
+	fr_connection_pool_check(fc);
 
-		fr_connection_pool_check(fc);
-	} else {
-		pthread_mutex_unlock(&fc->mutex);
-	}
-
-	DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
 }
 
 void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
