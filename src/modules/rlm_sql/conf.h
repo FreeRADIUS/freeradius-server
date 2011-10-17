@@ -42,10 +42,6 @@ typedef struct sql_config {
 	char   *tracefile;
 	char   *xlat_name;
 	int     deletestalesessions;
-	int     num_sql_socks;
-	int     lifetime;
-	int     max_queries;
-	int     connect_failure_retry_delay;
 	char   *postauth_query;
 	char   *allowed_chars;
 	int	query_timeout;
@@ -89,7 +85,6 @@ typedef struct sql_config {
 #define SQL_DOWN			1 /* for re-connect */
 
 #define MAX_COMMUNITY_LEN		50
-#define MAX_SQL_SOCKS			256
 #define MAX_TABLE_LEN			20
 #define MAX_AUTH_QUERY_LEN		256
 #define AUTH_STRING_LEN			128

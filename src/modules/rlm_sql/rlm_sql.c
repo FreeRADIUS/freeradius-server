@@ -61,12 +61,6 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,do_clients), NULL, "no"},
 	{"deletestalesessions", PW_TYPE_BOOLEAN,
 	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "yes"},
-	{"num_sql_socks", PW_TYPE_INTEGER,
-	 offsetof(SQL_CONFIG,num_sql_socks), NULL, "5"},
-	{"lifetime", PW_TYPE_INTEGER,
-	 offsetof(SQL_CONFIG,lifetime), NULL, "0"},
-	{"max_queries", PW_TYPE_INTEGER,
-	 offsetof(SQL_CONFIG,max_queries), NULL, "0"},
 	{"sql_user_name", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,query_user), NULL, ""},
 	{"default_user_profile", PW_TYPE_STRING_PTR,
@@ -99,8 +93,6 @@ static const CONF_PARSER module_config[] = {
 #endif
 	{"group_membership_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,groupmemb_query), NULL, NULL},
-	{"connect_failure_retry_delay", PW_TYPE_INTEGER,
-	 offsetof(SQL_CONFIG,connect_failure_retry_delay), NULL, "60"},
 #ifdef WITH_SESSION_MGMT
 	{"simul_count_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
@@ -928,13 +920,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	if (xlat_name){
 		inst->config->xlat_name = strdup(xlat_name);
 		xlat_register(xlat_name, (RAD_XLAT_FUNC)sql_xlat, inst);
-	}
-
-	if (inst->config->num_sql_socks > MAX_SQL_SOCKS) {
-		radlog(L_ERR, "rlm_sql (%s): sql_instantiate: number of sqlsockets cannot exceed MAX_SQL_SOCKS, %d",
-		       inst->config->xlat_name, MAX_SQL_SOCKS);
-		rlm_sql_detach(inst);
-		return -1;
 	}
 
 	/*
