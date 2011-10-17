@@ -1287,6 +1287,12 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS, 0),PW_TYPE_IPADDR, func);
 				p++;
 				break;
+			case 'I': /* Request ID */
+				snprintf(tmpdt, sizeof(tmpdt), "%i", request->packet->id);
+				strlcpy(q, tmpdt, freespace);
+				q += strlen(q);
+				p++;
+				break;
 			case 'i': /* Calling station ID */
 				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID, 0),PW_TYPE_STRING, func);
 				p++;
