@@ -142,9 +142,9 @@ listen {
 	type = detail
 
 	#
-	#  The "radacctdir" parameter below replaces the "-a" command-
-	#  line option in radrelay.  The "detail" parameter replaces
-	#  the "detailfile" command-line option in radrelay
+	#  The filename here should be the same as the one used by the
+	#  main radiusd program.  It writes the file using the "detail"
+	#  module (see raddb/modules/detail).
 	#
 	filename = ${radacctdir}/detail
 	load_factor = 90
