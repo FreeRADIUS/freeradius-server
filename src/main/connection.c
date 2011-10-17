@@ -64,6 +64,7 @@ struct fr_connection_pool_t {
 	int		max_uses;
 	int		lifetime;
 	int		idle_timeout;
+	int		lazy_init;
 
 	fr_connection_t	*head, *tail;
 
@@ -102,6 +103,8 @@ static const CONF_PARSER connection_config[] = {
 	  0, "0" },
 	{ "idle_timeout",    PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
 	  0, "60" },
+	{ "lazy",     PW_TYPE_BOOLEAN, offsetof(fr_connection_pool_t, lazy_init),
+	  0, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -289,9 +292,10 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	}
 
 	/*
-	 *	Create all of the connections.
+	 *	Create all of the connections, unless the admin says
+	 *	not to.
 	 */
-	for (i = 0; i < fc->start; i++) {
+	if (!fc->lazy_init) for (i = 0; i < fc->start; i++) {
 		time_t now = time(NULL);
 
 		DEBUG("%s: Spawning additional connection (%i)", fc->log_prefix, fc->count);
