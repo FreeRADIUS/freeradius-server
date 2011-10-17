@@ -73,24 +73,39 @@ sql {
 	sqltrace = no
 	sqltracefile = ${logdir}/sqltrace.sql
 
-	# number of sql connections to make to server
-	num_sql_socks = 5
+	#  As of version 3.0, the "pool" section has replaced the
+	#  following configuration items:
+	#
+	#  num_sql_socks
+	#  connect_failure_retry_delay
+	#  lifetime
+	#  max_queries
 
-	# number of seconds to dely retrying on a failed database
-	# connection (per_socket)
-	connect_failure_retry_delay = 60
+	pool {
+		# Number of connections to start
+		start = 5
 
-	# lifetime of an SQL socket.  If you are having network issues
-	# such as TCP sessions expiring, you may need to set the socket
-	# lifetime.  If set to non-zero, any open connections will be
-	# closed "lifetime" seconds after they were first opened.
-	lifetime = 0
+		# Minimum number of connections to keep open
+		min = 4
 
-	# Maximum number of queries used by an SQL socket.  If you are
-	# having issues with SQL sockets lasting "too long", you can
-	# limit the number of queries performed over one socket.  After
-	# "max_qeuries", the socket will be closed.  Use 0 for "no limit".
-	max_queries = 0
+		# Maximum number of connections
+		max = 10
+
+		# Spare connections to be left idle
+		spare = 3
+
+		# Number of uses before the connection is closed
+		#
+		# 0 means "infinite"
+		uses = 0
+
+		# The lifetime (in seconds) of the connection
+		lifetime = 0
+
+		# idle timeout (in seconds).  A connection which is
+		# unused for this length of time will be closed.
+		idle_timeout = 60
+	}
 
 	# Set to 'yes' to read radius clients from the database ('nas' table)
 	# Clients will ONLY be read on server startup.  For performance
