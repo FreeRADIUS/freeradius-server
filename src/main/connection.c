@@ -233,7 +233,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	CONF_SECTION *cs;
 	const char *cs_name1, *cs_name2;
 
-	if (!parent || !ctx || !c || !a || !d) return NULL;
+	if (!parent || !ctx || !c || !d) return NULL;
 
 	cs = cf_section_sub_find(parent, "pool");
 	if (!cs) {
