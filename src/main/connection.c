@@ -58,6 +58,7 @@ struct fr_connection_pool_t {
 
 	time_t		last_checked;
 	time_t		last_spawned;
+	time_t		last_failed;
 	time_t		last_complained;
 
 	int		max_uses;
@@ -156,6 +157,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	rad_assert(fc != NULL);
 	rad_assert(fc->num <= fc->max);
 
+	if (fc->last_failed == now) return NULL;
+
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
@@ -167,6 +170,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	 */
 	conn = fc->create(fc->ctx);
 	if (!conn) {
+		fc->last_failed = now;
 		free(this);
 		return NULL;
 	}
@@ -322,7 +326,7 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 	rad_assert(this != NULL);
 	
 	/*
-	 * Don't terminated reserved connections
+	 *	Don't terminated in-use connections
 	 */
 	if (this->used) return 1;
 
@@ -357,7 +361,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 	time_t now = time(NULL);
 	fr_connection_t *this;
 
-	if (now == fc->last_checked) return 1;
+	if (fc->last_checked == now) return 1;
 
 	pthread_mutex_lock(&fc->mutex);
 
@@ -425,16 +429,18 @@ int fr_connection_check(fr_connection_pool_t *fc, void *conn)
 {
 	int rcode = 1;
 	fr_connection_t *this;
-
+	time_t now;
+	
 	if (!fc) return 1;
 
 	if (!conn) return fr_connection_pool_check(fc);
 
+	now = time(NULL);
 	pthread_mutex_lock(&fc->mutex);
 
 	for (this = fc->head; this != NULL; this = this->next) {
 		if (this->connection == conn) {
-			rcode = fr_connection_manage(fc, conn, time(NULL));
+			rcode = fr_connection_manage(fc, conn, now);
 			break;
 		}
 	}
@@ -523,8 +529,21 @@ void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 		}
 	}
 
-	pthread_mutex_unlock(&fc->mutex);
-	
+
+	/*
+	 *	We mirror the "spawn on get" functionality by having
+	 *	"delete on release".  If there are too many spare
+	 *	connections, go manage the pool && clean some up.
+	 */
+	if ((time(NULL) >= (fc->last_spawned + fc->cleanup_delay)) &&
+	    ((fc->num - fc->active) > fc->spare)) {
+		pthread_mutex_unlock(&fc->mutex);
+
+		fr_connection_pool_check(fc);
+	} else {
+		pthread_mutex_unlock(&fc->mutex);
+	}
+
 	DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
 }
 
