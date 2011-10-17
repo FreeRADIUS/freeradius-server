@@ -439,14 +439,14 @@ static size_t vp_print_attr_oid(char *buffer, size_t size, unsigned int attr,
 	return outlen;
 }
 
-const char *vp_print_name(char *buffer, size_t bufsize,
-			  unsigned int attr, unsigned int vendor)
+size_t vp_print_name(char *buffer, size_t bufsize,
+		     unsigned int attr, unsigned int vendor)
 {
 	char *p = buffer;
 	int dv_type = 1;
 	size_t len = 0;
 
-	if (!buffer) return NULL;
+	if (!buffer) return 0;
 	
 	len = snprintf(p, bufsize, "Attr-");
 	p += len;
@@ -473,9 +473,9 @@ const char *vp_print_name(char *buffer, size_t bufsize,
 		bufsize -= len;
 	}
 
-	vp_print_attr_oid(p, bufsize , attr, dv_type);
+	p += vp_print_attr_oid(p, bufsize , attr, dv_type);
 
-	return buffer;
+	return p - buffer;
 }
 
 
@@ -486,20 +486,9 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 {
 	size_t		len;
 	const char	*token = NULL;
-	const char	*name;
-	char		namebuf[128];
 
 	out[0] = 0;
 	if (!vp) return 0;
-
-	name = vp->name;
-
-	if (!name || !*name) {
-		if (!vp_print_name(namebuf, sizeof(namebuf), vp->attribute, vp->attribute)) {
-			return 0;
-		}
-		name = namebuf;
-	}
 
 	if ((vp->operator > T_OP_INVALID) &&
 	    (vp->operator < T_TOKEN_LAST)) {
@@ -510,13 +499,13 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 
 	if( vp->flags.has_tag ) {
 		snprintf(out, outlen, "%s:%d %s ",
-			 name, vp->flags.tag, token);
+			 vp->name, vp->flags.tag, token);
 
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
 	} else {
-	        snprintf(out, outlen, "%s %s ", name, token);
+	        snprintf(out, outlen, "%s %s ", vp->name, token);
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 

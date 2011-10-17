@@ -256,7 +256,7 @@ size_t		fr_print_string(const char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				const VALUE_PAIR *vp, int delimitst);
-const char	*vp_print_name(char *buffer, size_t bufsize,
+size_t		vp_print_name(char *buffer, size_t bufsize,
 			       unsigned int attr, unsigned int vendor);
 int     	vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp);
 void		vp_print(FILE *, const VALUE_PAIR *);
