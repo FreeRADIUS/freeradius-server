@@ -1,0 +1,26 @@
+# -*- text -*-
+#
+#  $Id$
+
+#  Write "detail" files which can be read by radrelay.
+#  This module should be used only by a server which receives
+#  Accounting-Request packets from the network.
+#
+#  It should NOT be used in the radrelay.conf file.
+#
+#  Use it by adding "radrelay" to the "accounting" section:
+#
+#	accounting {
+#		...
+#		radrelay
+#		...
+#	}
+#
+detail radrelay {
+	detailfile = ${radacctdir}/detail
+
+	locking = yes
+
+	#  The other directives from the main detail module
+	#  can be used here, but they're not required.
+}
