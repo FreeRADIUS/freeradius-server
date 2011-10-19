@@ -1,3 +1,7 @@
+freeradius (2.2.0+git) unstable; urgency=medium
+
+ -- Alan DeKok <aland@freeradius.org>  Sat, 18 Jan 2012 10:45:03 +0100
+
 freeradius (2.1.12+git) unstable; urgency=medium
 
  -- Alan DeKok <aland@freeradius.org>  Sat, 18 Jan 2012 10:45:03 +0100
