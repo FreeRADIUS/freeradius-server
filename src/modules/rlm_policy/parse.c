@@ -1031,6 +1031,7 @@ static int parse_attribute_block(policy_lex_file_t *lexer,
 		fprintf(stderr, "%s[%d]: Unexpected token %s\n",
 			lexer->filename, lexer->lineno,
 			fr_int2str(rlm_policy_tokens, token, "?"));
+		rlm_policy_free_item((policy_item_t *)this);
 		return 0;	/* unknown */
 	}
 
