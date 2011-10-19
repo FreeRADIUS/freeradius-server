@@ -305,6 +305,7 @@ static int rad_check_password(REQUEST *request)
 			case -1:
 			  rad_authlog("Login incorrect "
 						  "(system failed to supply an encrypted password for comparison)", request, 0);
+			  /* FALL-THROUGH */
 			case 1:
 			  return -1;
 			}
