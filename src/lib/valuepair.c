@@ -323,6 +323,8 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 {
 	size_t name_len;
 	VALUE_PAIR *n;
+
+	if (!vp) return NULL;
 	
 	if (!vp->flags.unknown_attr) {
 		name_len = 0;
