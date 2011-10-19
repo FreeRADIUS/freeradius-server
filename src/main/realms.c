@@ -1630,7 +1630,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			return 0;
 		}
 
-		if (!auth_pool ||
+		if (!auth_pool || auth_pool_name &&
 		    (strcmp(auth_pool_name, acct_pool_name) != 0)) {
 			do_print = TRUE;
 		}
