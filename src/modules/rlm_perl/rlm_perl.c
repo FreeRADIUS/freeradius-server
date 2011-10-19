@@ -424,6 +424,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
+		free(embed);
 		free(inst);
 		return -1;
 	}
@@ -454,6 +455,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 #ifdef USE_ITHREADS
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
+		free(embed);
+		free(inst);
 		return (-1);
 	}
 
@@ -467,6 +470,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 #else
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_ERR, "rlm_perl: No memory for allocating new perl !");
+		free(embed);
+		free(inst);
 		return -1;
 	}
 
@@ -486,6 +491,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		exitstatus = perl_run(inst->perl);
 	} else {
 		radlog(L_ERR,"rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
+		free(embed);
+		free(inst);
 		return (-1);
 	}
 
