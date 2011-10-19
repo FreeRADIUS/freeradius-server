@@ -746,8 +746,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 							   HOME_TYPE_COA);
 		}
 		if (!c->coa_pool && !c->coa_server) {
-			client_free(c);
 			cf_log_err(cf_sectiontoitem(cs), "No such home_server or home_server_pool \"%s\"", c->coa_name);
+			client_free(c);
 			return NULL;
 		}
 	}
