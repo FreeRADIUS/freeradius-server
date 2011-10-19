@@ -661,12 +661,14 @@ static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char
 
 	if (argc == 0) {
 		cprintf(listener, "ERROR: <reference> is required\n");
+		fclose(fp);
 		return 0;
 	}
 	
 	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
 	if (!ci) {
 		cprintf(listener, "ERROR: No such item <reference>\n");
+		fclose(fp);
 		return 0;
 	}
 
