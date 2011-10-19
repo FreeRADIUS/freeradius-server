@@ -49,6 +49,7 @@ void (*reset_signal(int signo, void (*func)(int)))(int)
 #ifdef HAVE_SIGACTION
 	struct sigaction act, oact;
 
+	memset(&act, 0, sizeof(act));
 	act.sa_handler = func;
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
