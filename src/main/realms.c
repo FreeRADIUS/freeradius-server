@@ -1081,7 +1081,7 @@ static int server_pool_add(realm_config_t *rc,
 
 		value = cf_pair_value(cp);
 
-		memset(&myhome, 0, sizeof(&myhome));
+		memset(&myhome, 0, sizeof(myhome));
 		myhome.name = value;
 		myhome.type = server_type;
 
