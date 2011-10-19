@@ -2134,7 +2134,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 		
 		*modname = NULL;
-		cf_log_err(ci, "Failed to load module \"%s\".", modrefname);
+		cf_log_err(ci, "Failed to find \"%s\" in the \"modules\" section.", modrefname);
 		return NULL;
 	} while (0);
 
