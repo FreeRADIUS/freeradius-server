@@ -854,6 +854,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Try IPv4 first
 	 */
+	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 	rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
 			      &ipaddr.ipaddr.ip4addr, NULL);
