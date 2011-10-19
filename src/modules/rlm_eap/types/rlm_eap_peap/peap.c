@@ -933,7 +933,9 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		vp->vp_octets[3] = len & 0xff;
 		vp->vp_octets[4] = PW_EAP_IDENTITY;
 
-		memcpy(vp->vp_octets + EAP_HEADER_LEN + 1, t->username->vp_strvalue, t->username->length);
+		if (len > sizeof(vp->vp_octets)) len = sizeof(vp->vp_octets);
+		memcpy(vp->vp_octets + EAP_HEADER_LEN + 1,
+		       t->username->vp_strvalue, len - EAP_HEADER_LEN - 1);
 		vp->length = len;
 
 		pairadd(&fake->packet->vps, vp);
