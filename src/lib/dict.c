@@ -1284,6 +1284,13 @@ static int process_attribute(const char* fn, const int line,
 						    fn, line, key);
 					return -1;
 				}
+
+				if ((flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) &&
+				    (type != PW_TYPE_STRING)) {
+					fr_strerror_printf( "dict_init: %s[%d] Only \"string\" types can have the \"encrypt=2\" flag set.",
+							    fn, line);
+					return -1;
+				}
 				
 			} else if (strncmp(key, "array", 6) == 0) {
 				flags.array = 1;
