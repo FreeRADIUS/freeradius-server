@@ -1945,9 +1945,15 @@ int realms_init(CONF_SECTION *config)
 		if (cf_data_find(cs, "home_server_pool")) continue;
 
 		type = pool_peek_type(config, cs);
-		if (type == HOME_TYPE_INVALID) return 0;
+		if (type == HOME_TYPE_INVALID) {
+			free(rc);
+			realms_free();
+			return 0;
+		}
 
 		if (!server_pool_add(rc, cs, type, TRUE)) {
+			free(rc);
+			realms_free();
 			return 0;
 		}
 	}
