@@ -512,6 +512,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 
 		memcpy(&next_reset, time_datum.dptr, sizeof(time_t));
 		free(time_datum.dptr);
+		time_datum.dptr = NULL;
 		if (next_reset && next_reset <= now){
 
 			data->last_reset = now;
