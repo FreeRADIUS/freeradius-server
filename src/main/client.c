@@ -891,6 +891,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 					cf_log_err(cf_sectiontoitem(cs),
 						   "Failed reading client file \"%s\"", buf2);
 					client_free(c);
+					closedir(dir);
 					return NULL;
 				}
 
@@ -900,6 +901,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 				if (!client_validate(clients, c, dc)) {
 					
 					client_free(c);
+					closedir(dir);
 					return NULL;
 				}
 			} /* loop over the directory */
