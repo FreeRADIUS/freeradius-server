@@ -779,6 +779,9 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 		 *	always fits.
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
+#ifndef NDEBUG
+		if (data == array) return NULL;
+#endif
 		make_secret(ptr, packet->vector, secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
@@ -859,7 +862,10 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 		}
 
 		length = (end - ptr);
-		if (length > 255) return NULL;
+		if (length > 255) {
+			pairfree(&tlv);
+			return NULL;
+		}
 
 		/*
 		 *	Pack the attribute.
