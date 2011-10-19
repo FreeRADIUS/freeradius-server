@@ -411,8 +411,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	const char *xlat_name;
 	int exitstatus = 0, argc=0;
 
-        embed = rad_malloc(4*(sizeof(char *)));
-        memset(embed, 0, sizeof(4*(sizeof(char *))));
+        embed = rad_malloc(4 * sizeof(char *));
+        memset(embed, 0, 4 *sizeof(char *));
 	/*
 	 *	Set up a storage area for instance data
 	 */

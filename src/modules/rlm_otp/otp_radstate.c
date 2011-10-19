@@ -97,7 +97,7 @@ otp_gen_state(char rad_state[OTP_MAX_RADSTATE_LEN],
    * DES, so we'll use it's hmac functionality also -- saves us from
    * having to collect the data to be signed into one contiguous piece.
    */
-  HMAC_Init(&hmac_ctx, key, sizeof(key), EVP_md5());
+  HMAC_Init(&hmac_ctx, key, sizeof(key[0] * 16), EVP_md5());
   HMAC_Update(&hmac_ctx, challenge, clen);
   HMAC_Update(&hmac_ctx, (unsigned char *) &flags, 4);
   HMAC_Update(&hmac_ctx, (unsigned char *) &when, 4);
