@@ -1561,6 +1561,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				       filename, *lineno);
 				return -1;
 			}
+			/* FALL-THROUGH */
 
 		case T_OP_EQ:
 		case T_OP_SET:
@@ -1681,6 +1682,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				       filename, *lineno, buf1, buf2);
 				return -1;
 			}
+			/* FALL-THROUGH */
 
 		case T_LCBRACE:
 		section_alloc:
