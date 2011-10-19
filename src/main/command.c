@@ -1546,6 +1546,11 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 		break;
 	}
 
+	if (!data) {
+		cprintf(listener, "ERROR: No detail file listener\n");
+		return 0;
+	}
+
 	cprintf(listener, "\tstate\t%s\n",
 		fr_int2str(state_names, data->state, "?"));
 
