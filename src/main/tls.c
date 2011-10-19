@@ -428,29 +428,12 @@ void session_init(tls_session_t *ssn)
 
 void session_close(tls_session_t *ssn)
 {	
-	if (ssn->ssl->session) {
-		VALUE_PAIR *vp;
-
-		vp = SSL_SESSION_get_ex_data(ssn->ssl->session,
-					     FR_TLS_EX_INDEX_VPS);
-		if (vp) pairfree(&vp);
-	}
-
 	SSL_set_quiet_shutdown(ssn->ssl, 1);
 	SSL_shutdown(ssn->ssl);
 
 	if(ssn->ssl)
 		SSL_free(ssn->ssl);
-#if 0
-/*
- * WARNING: SSL_free seems to decrement the reference counts already,
- * 	so doing this might crash the application.
- */
-	if(ssn->into_ssl)
-		BIO_free(ssn->into_ssl);
-	if(ssn->from_ssl)
-		BIO_free(ssn->from_ssl);
-#endif
+
 	record_close(&ssn->clean_in);
 	record_close(&ssn->clean_out);
 	record_close(&ssn->dirty_in);
@@ -923,8 +906,7 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 
 
 /*
- *	These functions don't do anything other than print debugging
- *	messages.
+ *	Print debugging messages, and free data.
  *
  *	FIXME: Write sessions to some long-term storage, so that
  *	       session resumption can still occur after the server
@@ -935,6 +917,7 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	size_t size;
+	VALUE_PAIR *vp;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
 
 	size = sess->session_id_length;
@@ -943,6 +926,10 @@ static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 	fr_bin2hex(sess->session_id, buffer, size);
 
         DEBUG2("  SSL: Removing session %s from the cache", buffer);
+
+	vp = SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_VPS);
+	if (vp) pairfree(&vp);
+
         SSL_SESSION_free(sess);
 
         return;
