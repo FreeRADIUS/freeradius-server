@@ -459,6 +459,8 @@ void request_stats_reply(REQUEST *request)
 			if (server_ip) {
 				pairadd(&request->reply->vps,
 					paircopyvp(server_ip));
+			}
+			if (server_port) {
 				pairadd(&request->reply->vps,
 					paircopyvp(server_port));
 			}
