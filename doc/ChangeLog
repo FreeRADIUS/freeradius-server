@@ -9,6 +9,7 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Better documentation for radrelay and detail file writer.
 	  See raddb/modules/radrelay and raddb/radrelay.conf
 	* Free cached replies when closing resumed SSL sessions.
+	* Fix a number of issues found by Coverity.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
