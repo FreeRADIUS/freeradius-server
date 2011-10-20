@@ -214,6 +214,8 @@ static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 	vp = SSL_SESSION_get_ex_data(sess, eaptls_session_idx);
 	if (vp) pairfree(&vp);
 
+	SSL_SESSION_set_ex_data(sess, eaptls_session_idx, NULL);
+
         DEBUG2("  SSL: Removing session %s from the cache", buffer);
         SSL_SESSION_free(sess);
 
