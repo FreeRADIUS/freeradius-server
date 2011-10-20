@@ -919,7 +919,6 @@ static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 	int i;
 
 	size_t size;
-	VALUE_PAIR *vp;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
 
 	size = sess->session_id_length;
@@ -928,15 +927,6 @@ static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 	fr_bin2hex(sess->session_id, buffer, size);
 
         DEBUG2("  SSL: Removing session %s from the cache", buffer);
-
-	vp = SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_VPS);
-	if (vp) pairfree(&vp);
-
-	for (i = 0; i <= FR_TLS_EX_INDEX_STORE; i++) {
-		SSL_SESSION_get_ex_data(sess, i, NULL);
-	}
-
-        SSL_SESSION_free(sess);
 
         return;
 }
@@ -953,12 +943,12 @@ static int cbtls_new_session(UNUSED SSL *s, SSL_SESSION *sess)
 
 	DEBUG2("  SSL: adding session %s to cache", buffer);
 
-	return 1;
+	return 0;
 }
 
 static SSL_SESSION *cbtls_get_session(UNUSED SSL *s,
 				      unsigned char *data, int len,
-				      UNUSED int *copy)
+				      int *copy)
 {
 	size_t size;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
@@ -971,6 +961,7 @@ static SSL_SESSION *cbtls_get_session(UNUSED SSL *s,
         DEBUG2("  SSL: Client requested nonexistent cached session %s",
 	       buffer);
 
+	*copy = 0;
 	return NULL;
 }
 
@@ -1525,6 +1516,32 @@ static int set_ecdh_curve(SSL_CTX *ctx, const char *ecdh_curve)
 #endif
 #endif
 
+/* index we use to store cached session VPs
+ * needs to be dynamic so we can supply a "free" function
+ */
+static int FR_TLS_EX_INDEX_VPS = -1;
+
+/*
+ * DIE OPENSSL DIE DIE DIE
+ *
+ * What a palaver, just to free some data attached the
+ * session. We need to do this because the "remove" callback
+ * is called when refcount > 0 sometimes, if another thread
+ * is using the session
+ */
+static void sess_free_vps(UNUSED void *parent, void *data_ptr,
+                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
+                                UNUSED long argl, UNUSED void *argp)
+{
+	VALUE_PAIR *vp = data_ptr;
+	if (!vp) return;
+
+	DEBUG2("  Freeing cached session VPs %p", vp);
+
+	pairfree(&vp);
+}
+
+
 /*
  *	Create Global context SSL and use it in every new session
  *
@@ -1741,6 +1758,8 @@ load_ca:
 		SSL_CTX_sess_set_remove_cb(ctx, cbtls_remove_session);
 
 		SSL_CTX_set_quiet_shutdown(ctx, 1);
+		if (FR_TLS_EX_INDEX_VPS < 0)
+			FR_TLS_EX_INDEX_VPS = SSL_SESSION_get_ex_new_index(0, NULL, NULL, NULL, sess_free_vps);
 	}
 
 	/*
@@ -2024,7 +2043,14 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	user data in the cache.
 		 */
 	} else if (!SSL_session_reused(ssn->ssl)) {
-		RDEBUG2("Saving response in the cache");
+		size_t size;
+		char buffer[2 * MAX_SESSION_SIZE + 1];
+
+		size = ssn->ssl->session->session_id_length;
+		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
+
 		
 		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0);
 		if (vp) pairadd(&vps, vp);
@@ -2036,10 +2062,11 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		if (vp) pairadd(&vps, vp);
 		
 		if (vps) {
+			RDEBUG2("Saving session %s vps %p in the cache", buffer, vps);
 			SSL_SESSION_set_ex_data(ssn->ssl->session,
 						FR_TLS_EX_INDEX_VPS, vps);
 		} else {
-			RDEBUG2("WARNING: No information to cache: session caching will be disabled for this session.");
+			RDEBUG2("WARNING: No information to cache: session caching will be disabled for session %s", buffer);
 			SSL_CTX_remove_session(ssn->ctx,
 					       ssn->ssl->session);
 		}
@@ -2049,15 +2076,23 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	reply.
 		 */
 	} else {
+		size_t size;
+		char buffer[2 * MAX_SESSION_SIZE + 1];
+
+		size = ssn->ssl->session->session_id_length;
+		if (size > MAX_SESSION_SIZE) size = MAX_SESSION_SIZE;
+
+		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
+
 	       
 		vp = SSL_SESSION_get_ex_data(ssn->ssl->session,
 					     FR_TLS_EX_INDEX_VPS);
 		if (!vp) {
-			RDEBUG("WARNING: No information in cached session!");
+			RDEBUG("WARNING: No information in cached session %s", buffer);
 			return -1;
 
 		} else {
-			RDEBUG("Adding cached attributes to the reply:");
+			RDEBUG("Adding cached attributes for session %s vps %p to the reply:", buffer, vp);
 			debug_pair_list(vp);
 			pairadd(&request->reply->vps, paircopy(vp));
 

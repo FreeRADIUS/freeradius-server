@@ -322,7 +322,6 @@ void 		session_init(tls_session_t *ssn);
 #define FR_TLS_EX_INDEX_REQUEST	(2)
 #define FR_TLS_EX_INDEX_CERTS	(3)
 #define FR_TLS_EX_INDEX_IDENTITY (4)
-#define FR_TLS_EX_INDEX_VPS	(5)
 #define FR_TLS_EX_INDEX_STORE	(6)
 
 /* configured values goes right here */
