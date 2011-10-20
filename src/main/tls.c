@@ -916,6 +916,8 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 
 static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
+	int i;
+
 	size_t size;
 	VALUE_PAIR *vp;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
@@ -929,6 +931,10 @@ static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 
 	vp = SSL_SESSION_get_ex_data(sess, FR_TLS_EX_INDEX_VPS);
 	if (vp) pairfree(&vp);
+
+	for (i = 0; i <= FR_TLS_EX_INDEX_STORE; i++) {
+		SSL_SESSION_get_ex_data(sess, i, NULL);
+	}
 
         SSL_SESSION_free(sess);
 
