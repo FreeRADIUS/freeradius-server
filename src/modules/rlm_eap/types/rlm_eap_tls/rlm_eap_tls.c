@@ -211,9 +211,6 @@ static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 
 	fr_bin2hex(sess->session_id, buffer, size);
 
-	vp = SSL_SESSION_get_ex_data(sess, eaptls_session_idx);
-	if (vp) pairfree(&vp);
-
         DEBUG2("  SSL: Removing session %s from the cache", buffer);
         SSL_SESSION_free(sess);
 
@@ -1118,7 +1115,7 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	}
 
 	if (eaptls_session_idx < 0) {
-		eaptls_session_idx = SSL_get_ex_new_index(0, "eaptls_session_idx",
+		eaptls_session_idx = SSL_SESSION_get_ex_new_index(0, "eaptls_session_idx",
 							  NULL, NULL,
 							  eaptls_session_free);
 	}
