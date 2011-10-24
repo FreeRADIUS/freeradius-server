@@ -363,6 +363,86 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 }
 
 /*
+ *  Almost identical to vp_prints_value, but escapes certain chars so the string
+ *  may be used as a JSON value.
+ *
+ *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
+ *  JSON value to.
+ */
+int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
+{
+	int s = 0;
+	char *p = buffer;
+	const char *q;
+ 
+	if (!vp->flags.has_tag) {
+		switch (vp->type) {
+			case PW_TYPE_INTEGER:
+			case PW_TYPE_BYTE:
+			case PW_TYPE_SHORT:
+				if (vp->flags.has_value) break;
+				
+				s = snprintf(buffer, bufsize, "%u", vp->vp_integer);
+				return ((unsigned) s == (bufsize - 1)) ? -1 : s;
+			case PW_TYPE_SIGNED:
+				s = snprintf(buffer, bufsize, "%d", vp->vp_signed);
+				return ((unsigned) s == (bufsize - 1)) ? -1 : s;
+		}
+	}
+
+	if(bufsize < 3) return -1;
+	*p++ = '"';
+
+	switch (vp->type) {
+		case PW_TYPE_STRING:
+			for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
+				s = bufsize - (p - buffer);
+				if (s < 3) return -1;
+				
+				if (*q == '"') {
+					*p++ = '\\';
+					*p++ = '"';
+				} else if (*q == '\\') {
+					*p++ = '\\';
+					*p++ = '\\';
+				} else if (*q == '/') {
+					*p++ = '\\';
+					*p++ = '/';
+				} else if (*q >= ' ') {
+					*p++ = *q;
+				} else {
+					*p++ = '\\';
+					
+					if (*q == '\b') {
+						*p++ = 'b';
+					} else if (*q == '\f') {
+						*p++ = 'f';
+					} else if (*q == '\n') {
+						*p++ = 'n';
+					} else if (*q == '\r') {
+						*p++ = 'r';
+					} else if (*q == '\t'){ 
+						*p++ = 't';
+					} else {
+						if(s < 7) return -1;
+						*p += sprintf(p, "u%04X", *q);
+					}
+				}
+			}
+			break;
+
+		default:
+			p += vp_prints_value(p, bufsize, vp, 0);
+			break;
+	}
+
+	*p++ = '"';
+	*p = '\0';
+   
+	return p - buffer;
+}
+
+/*
  *  This is a hack, and has to be kept in sync with tokens.h
  */
 static const char *vp_tokens[] = {
