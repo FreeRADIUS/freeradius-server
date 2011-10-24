@@ -532,12 +532,30 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 {
 	size_t namelen;
 	static int      max_attr = 0;
+	const char	*p;
 	DICT_ATTR	*da;
 
 	namelen = strlen(name);
 	if (namelen >= DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("dict_addattr: attribute name too long");
 		return -1;
+	}
+
+	for (p = name; *p != '\0'; p++) {
+		if (*p < ' ') {
+			fr_strerror_printf("dict_addattr: attribute name cannot contain control characters");
+			return -1;
+		}
+
+		if ((*p == '"') || (*p == '\\')) {
+			fr_strerror_printf("dict_addattr: attribute name cannot contain quotation or backslash");
+			return -1;
+		}
+
+		if ((*p == '<') || (*p == '>') || (*p == '&')) {
+			fr_strerror_printf("dict_addattr: attribute name cannot contain XML control characters");
+			return -1;
+		}
 	}
 
 	/*
