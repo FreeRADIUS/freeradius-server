@@ -558,6 +558,13 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		}
 	}
 
+	if (flags.has_tag &&
+	    !((type == PW_TYPE_INTEGER) || (type == PW_TYPE_STRING))) {
+		fr_strerror_printf("dict_addattr: Only 'integer' and 'string' attributes can have tags");
+		return -1;
+	}
+
+
 	/*
 	 *	If the attr is '-1', that means use a pre-existing
 	 *	one (if it already exists).  If one does NOT already exist,
