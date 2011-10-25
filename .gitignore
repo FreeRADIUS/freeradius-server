@@ -12,6 +12,7 @@
 *.log
 *.substvars
 *-stamp
+*.swp
 *.cache
 *.dist
 *.dylib
