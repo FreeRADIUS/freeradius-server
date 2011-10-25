@@ -2,6 +2,7 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	Feature improvements
 	* Update dictionary.aruba
 	* Switch to using SHA1 for certificate digests instead of MD5.
+	  See raddb/certs/*.cnf
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
@@ -10,6 +11,11 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  See raddb/modules/radrelay and raddb/radrelay.conf
 	* Free cached replies when closing resumed SSL sessions.
 	* Fix a number of issues found by Coverity.
+	* Fix memory leak and race condition in the EAP-TLS session cache.
+	  Thanks to Phil Mayers for tracking down OpenSSL APIs.
+	* Restrict ATTRIBUTE names to character sets that make sense.
+	* Fix EAP-TLS session Id length so that OpenSSL doesn't get
+	  excited.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
