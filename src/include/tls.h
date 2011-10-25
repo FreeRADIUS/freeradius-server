@@ -360,7 +360,7 @@ struct fr_tls_server_conf_t {
         int     	session_timeout;
         int     	session_cache_size;
 	char		*session_id_name;
-	char		session_context_id[128];
+	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 	time_t		session_last_flushed;
 
 	char		*verify_tmp_dir;
