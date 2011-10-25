@@ -1061,12 +1061,12 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 		if (conf->session_id_name) {
 			snprintf(conf->session_context_id,
 				 sizeof(conf->session_context_id),
-				 "FreeRADIUS EAP-TLS %s",
+				 "FR eap %s",
 				 conf->session_id_name);
 		} else {
 			snprintf(conf->session_context_id,
 				 sizeof(conf->session_context_id),
-				 "FreeRADIUS EAP-TLS %p", conf);
+				 "FR eap %p", conf);
 		}
 
 		/*
