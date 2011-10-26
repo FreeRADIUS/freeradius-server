@@ -22,6 +22,9 @@
 *.patch
 .pc
 config.status
+*confdefs.h
+*conftest*
+*confcache
 Make.inc
 libtool
 src/include/autoconf.h
