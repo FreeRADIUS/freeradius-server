@@ -205,7 +205,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE)) == NULL) {
-		radlog(L_ERR, "rlm_radutmp: No Accounting-Status-Type record.");
+		RDEBUG("No Accounting-Status-Type record.");
 		return RLM_MODULE_NOOP;
 	}
 	status = vp->vp_integer;
