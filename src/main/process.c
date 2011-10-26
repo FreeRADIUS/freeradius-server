@@ -963,6 +963,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	if (request->packet->vps == NULL) {
 		rcode = request->listener->decode(request->listener, request);
 		
+#ifdef WITH_UNLANG
 		if (debug_condition) {
 			int result = FALSE;
 			const char *my_debug = debug_condition;
@@ -978,6 +979,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 				request->radlog = radlog_request;
 			}
 		}
+#endif
 		
 		DEBUG_PACKET(request, request->packet, 0);
 	} else {

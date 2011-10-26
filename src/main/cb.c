@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/radiusd.h>
 
-#ifndef NO_OPENSSL
+#ifdef WITH_TLS
 
 void cbtls_info(const SSL *s, int where, int ret)
 {
@@ -129,4 +129,4 @@ int cbtls_password(char *buf,
 	return(strlen((char *)userdata));
 }
 
-#endif /* !defined(NO_OPENSSL) */
+#endif

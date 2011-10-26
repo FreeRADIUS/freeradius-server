@@ -822,3 +822,98 @@ void debug_pair_list(VALUE_PAIR *vp)
 	}
 	fflush(fr_log_fp);
 }
+
+
+int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
+{
+	const char *vp_name = name;
+	REQUEST *myrequest = request;
+	DICT_ATTR *da;
+	VALUE_PAIR *vps = NULL;
+
+	*vp_p = NULL;
+
+	/*
+	 *	Allow for tunneled sessions.
+	 */
+	if (strncmp(vp_name, "outer.", 6) == 0) {
+		if (!myrequest->parent) return TRUE;
+		vp_name += 6;
+		myrequest = myrequest->parent;
+	}
+
+	if (strncmp(vp_name, "request:", 8) == 0) {
+		vp_name += 8;
+		vps = myrequest->packet->vps;
+
+	} else if (strncmp(vp_name, "reply:", 6) == 0) {
+		vp_name += 6;
+		vps = myrequest->reply->vps;
+
+#ifdef WITH_PROXY
+	} else if (strncmp(vp_name, "proxy-request:", 14) == 0) {
+		vp_name += 14;
+		if (request->proxy) vps = myrequest->proxy->vps;
+
+	} else if (strncmp(vp_name, "proxy-reply:", 12) == 0) {
+		vp_name += 12;
+		if (request->proxy_reply) vps = myrequest->proxy_reply->vps;
+#endif
+
+	} else if (strncmp(vp_name, "config:", 7) == 0) {
+		vp_name += 7;
+		vps = myrequest->config_items;
+
+	} else if (strncmp(vp_name, "control:", 8) == 0) {
+		vp_name += 8;
+		vps = myrequest->config_items;
+
+#ifdef WITH_COA
+	} else if (strncmp(vp_name, "coa:", 4) == 0) {
+		vp_name += 4;
+
+		if (myrequest->coa &&
+		    (myrequest->coa->proxy->code == PW_COA_REQUEST)) {
+			vps = myrequest->coa->proxy->vps;
+		}
+
+	} else if (strncmp(vp_name, "coa-reply:", 10) == 0) {
+		vp_name += 10;
+
+		if (myrequest->coa && /* match reply with request */
+		    (myrequest->coa->proxy->code == PW_COA_REQUEST) &&
+		    (myrequest->coa->proxy_reply)) {
+			vps = myrequest->coa->proxy_reply->vps;
+		}
+
+	} else if (strncmp(vp_name, "disconnect:", 11) == 0) {
+		vp_name += 11;
+
+		if (myrequest->coa &&
+		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST)) {
+			vps = myrequest->coa->proxy->vps;
+		}
+
+	} else if (strncmp(vp_name, "disconnect-reply:", 17) == 0) {
+		vp_name += 17;
+
+		if (myrequest->coa && /* match reply with request */
+		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
+		    (myrequest->coa->proxy_reply)) {
+			vps = myrequest->coa->proxy_reply->vps;
+		}
+#endif
+
+	} else {
+		vps = myrequest->packet->vps;
+	}
+
+	da = dict_attrbyname(vp_name);
+	if (!da) return FALSE;	/* not a dictionary name */
+
+	/*
+	 *	May not may not be found, but it *is* a known name.
+	 */
+	*vp_p = pairfind(vps, da->attr, da->vendor);
+	return TRUE;
+}

@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
+#ifdef WITH_DYNAMIC_CLIENTS
 /*
  *	Find the client definition.
  */
@@ -89,6 +90,13 @@ static int dynamic_client_authorize(UNUSED void *instance, REQUEST *request)
 
 	return RLM_MODULE_OK;
 }
+#else
+static int dynamic_client_authorize(UNUSED void *instance, REQUEST *request)
+{
+	RDEBUG("Dynamic clients are unsupported in this build.");
+	return RLM_MODULE_FAIL;
+}
+#endif
 
 /*
  *	The module name should be the only globally exported symbol.

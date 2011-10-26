@@ -94,7 +94,7 @@ void radius_stats_ema(fr_stats_ema_t *ema,
 #define request_stats_init(_x)
 #define request_stats_final(_x)
 
-#define FR_STATS_INC(_x)
+#define FR_STATS_INC(_x, _y)
 #define FR_STATS_TYPE_INC(_x)
 
 #endif

@@ -366,11 +366,13 @@ typedef struct modcall_stack {
 } modcall_stack;
 
 
+#ifdef WITH_UNLANG
 static void pairfree_wrapper(void *data)
 {
 	VALUE_PAIR **vp = (VALUE_PAIR **) data;
 	pairfree(vp);
 }
+#endif
 
 /**
  * @brief Call a module, iteratively, with a local stack, rather than
@@ -784,6 +786,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			child->name ? child->name : "",
 			fr_int2str(rcode_table, myresult, "??"));
 		
+#ifdef WITH_UNLANG
 		if (0) {
 		handle_result:
 			if (child->type != MOD_BREAK) {
@@ -793,6 +796,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					fr_int2str(rcode_table, myresult, "??"));
 			}
 		}
+#else
+		handle_result:
+#endif
 		
 		/*
 		 *	This is a bit of a hack...
@@ -2068,9 +2074,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 	}
 
+#ifdef WITH_UNLANG
 	if (strcmp(modrefname, "break") == 0) {
 		return do_compile_modbreak(parent, component);
 	}
+#endif
 
 	/*
 	 *	Not a virtual module.  It must be a real module.

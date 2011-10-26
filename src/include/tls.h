@@ -1,7 +1,7 @@
 #ifndef FR_TLS_H
 #define FR_TLS_H
 
-#ifndef NO_OPENSSL
+#ifdef WITH_TLS
 
 /*
  * @file tls.h
@@ -388,5 +388,5 @@ struct fr_tls_server_conf_t {
 }
 #endif
 
-#endif	/* NO_OPENSSL */
+#endif	/* WITH_TLS */
 #endif /* FR_TLS_H */

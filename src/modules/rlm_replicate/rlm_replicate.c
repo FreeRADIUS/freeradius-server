@@ -27,7 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-
+#ifdef WITH_PROXY
 static void cleanup(RADIUS_PACKET *packet)
 {
 	if (!packet) return;
@@ -183,6 +183,13 @@ static int replicate_packet(void *instance, REQUEST *request)
 	cleanup(packet);
 	return rcode;
 }
+#else
+static int replicate_packet(void *instance, REQUEST *request)
+{
+	RDEBUG("Replication is unsupported in this build.");
+	return RLM_MODULE_FAIL;
+}
+#endif
 
 /*
  *	The module name should be the only globally exported symbol.

@@ -100,7 +100,9 @@ typedef struct auth_req REQUEST;
 #else
 #ifdef HAVE_OPENSSL_SSL_H
 #ifndef WITH_TLS
+#ifndef NO_OPENSSL
 #define WITH_TLS (1)
+#endif
 #endif
 #endif
 #endif
