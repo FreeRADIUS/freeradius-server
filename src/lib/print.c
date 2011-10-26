@@ -432,7 +432,10 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 			break;
 
 		default:
-			p += vp_prints_value(p, bufsize, vp, 0);
+			s = vp_prints_value(p, bufsize, vp, 0);
+			if ((unsigned) s == (bufsize - 1)) return -1;
+			
+			p += s;
 			break;
 	}
 
