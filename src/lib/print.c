@@ -372,6 +372,7 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 {
 	int s = 0;
+	int len;
 	char *p = buffer;
 	const char *q;
  
@@ -382,11 +383,11 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 			case PW_TYPE_SHORT:
 				if (vp->flags.has_value) break;
 				
-				s = snprintf(buffer, bufsize, "%u", vp->vp_integer);
-				return ((unsigned) s == (bufsize - 1)) ? -1 : s;
+				len = snprintf(buffer, bufsize, "%u", vp->vp_integer);
+				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;
 			case PW_TYPE_SIGNED:
-				s = snprintf(buffer, bufsize, "%d", vp->vp_signed);
-				return ((unsigned) s == (bufsize - 1)) ? -1 : s;
+				len = snprintf(buffer, bufsize, "%d", vp->vp_signed);
+				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;
 		}
 	}
 
@@ -397,7 +398,7 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 		case PW_TYPE_STRING:
 			for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
 				s = bufsize - (p - buffer);
-				if (s < 3) return -1;
+				if (s < 4) return -1;
 				
 				if (*q == '"') {
 					*p++ = '\\';
@@ -424,24 +425,27 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 					} else if (*q == '\t'){ 
 						*p++ = 't';
 					} else {
-						if(s < 7) return -1;
-						*p += sprintf(p, "u%04X", *q);
+						if(s < 8) return -1;
+						p += sprintf(p, "u%04X", *q);
 					}
 				}
 			}
 			break;
 
 		default:
-			s = vp_prints_value(p, bufsize, vp, 0);
-			if ((unsigned) s == (bufsize - 1)) return -1;
+			/* -1 to account for trailing double quote */
+			s = bufsize - ((p - buffer) - 1);
 			
-			p += s;
+			len = vp_prints_value(p, s, vp, 0);
+			if (len >= (s - 1)) return -1;
+			
+			p += len;
 			break;
 	}
 
 	*p++ = '"';
 	*p = '\0';
-   
+
 	return p - buffer;
 }
 
