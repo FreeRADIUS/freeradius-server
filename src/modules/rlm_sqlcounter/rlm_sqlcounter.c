@@ -684,7 +684,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	 * Check if check item > counter
 	 */
 	if (check_vp->vp_integer > counter) {
-		unsigned int res = check_vp->lvalue - counter;
+		unsigned int res = check_vp->vp_integer - counter;
 
 		DEBUG2("rlm_sqlcounter: Check item is greater than query result");
 		/*
@@ -695,24 +695,26 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		 */
 
 		/*
-		 *	User is allowed, but set Session-Timeout.
-		 *	Stolen from main/auth.c
-		 */
-
-		/*
 		 *	If we are near a reset then add the next
-		 *	limit, so that the user will not need to
-		 *	login again
+		 *	limit, so that the user will not need to login
+		 *	again.  Do this only for Session-Timeout.
 		 */
-		if (data->reset_time &&
+		if ((data->reply_attr->attr == PW_SESSION_TIMEOUT) &&
+		    data->reset_time &&
 		    (res >= (data->reset_time - request->timestamp))) {
 			res = data->reset_time - request->timestamp;
 			res += check_vp->vp_integer;
 		}
 
-		if ((reply_item = pairfind(request->reply->vps, data->reply_attr->attr, data->reply_attr->vendor)) != NULL) {
+		/*
+		 *	Limit the reply attribute to the minimum of
+		 *	the existing value, or this new one.
+		 */
+		reply_item = pairfind(request->reply->vps, data->reply_attr->attr, data->reply_attr->vendor);
+		if (reply_item) {
 			if (reply_item->vp_integer > res)
 				reply_item->vp_integer = res;
+
 		} else {
 			reply_item = radius_paircreate(request,
 						       &request->reply->vps,
