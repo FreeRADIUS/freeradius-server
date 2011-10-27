@@ -89,7 +89,7 @@ typedef struct rlm_sqlcounter_t {
 static const CONF_PARSER module_config[] = {
   { "counter-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,counter_name), NULL,  NULL },
   { "check-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,check_name), NULL, NULL },
-  { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reply_name), NULL, NULL },
+  { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reply_name), NULL, "Session-Timeout" },
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,key_name), NULL, NULL },
   { "sqlmod-inst", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
   { "query", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,query), NULL, NULL },
@@ -482,28 +482,16 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	data->key_attr = dattr;
 
-	/*
-	 *	Discover the attribute number of the reply.
-	 *	If not set, set it to Session-Timeout
-	 *	for backward compatibility.
-	 */
-	if (data->reply_name == NULL) {
-		DEBUG2("rlm_sqlcounter: Reply attribute set to Session-Timeout.");
-		data->reply_attr = dict_attrbyvalue(PW_SESSION_TIMEOUT, 0);
-		data->reply_name = strdup("Session-Timeout");
-	}
-	else {
-		dattr = dict_attrbyname(data->reply_name);
-		if (dattr == NULL) {
-			radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
+	dattr = dict_attrbyname(data->reply_name);
+	if (dattr == NULL) {
+		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
 			       data->reply_name);
-			sqlcounter_detach(data);
-			return -1;
-		}
-		data->reply_attr = dattr;
-		DEBUG2("rlm_sqlcounter: Reply attribute %s is number %d",
-		       data->reply_name, dattr->attr);
+		sqlcounter_detach(data);
+		return -1;
 	}
+	data->reply_attr = dattr;
+	DEBUG2("rlm_sqlcounter: Reply attribute %s is number %d",
+		       data->reply_name, dattr->attr);
 
 	/*
 	 *	Check the "sqlmod-inst" option.
