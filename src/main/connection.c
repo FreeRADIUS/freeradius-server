@@ -216,6 +216,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	fr_connection_link(fc, this);
 	fc->num++;
 	fc->spawning = FALSE;
+	fc->last_spawned = time(NULL);
 
 	pthread_mutex_unlock(&fc->mutex);
 
