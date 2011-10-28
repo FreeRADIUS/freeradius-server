@@ -1,7 +1,7 @@
 /*
- * radius.h	Constants of the radius protocol.
+ * radius.h  Constants of the radius protocol.
  *
- * Version:	$Id$
+ * Version:  $Id$
  *
  */
 
@@ -17,27 +17,27 @@
 #define PW_TYPE_IPV6PREFIX		8
 #define PW_TYPE_BYTE			9
 #define PW_TYPE_SHORT			10
-#define PW_TYPE_ETHERNET	       	11
+#define PW_TYPE_ETHERNET		11
 #define PW_TYPE_SIGNED			12
-#define PW_TYPE_COMBO_IP	       	13
-#define PW_TYPE_TLV	       		14
-#define PW_TYPE_EXTENDED       		15
-#define PW_TYPE_EXTENDED_FLAGS	       	16
-#define PW_TYPE_EVS	       		17
-#define PW_TYPE_INTEGER64	       	18
+#define PW_TYPE_COMBO_IP		13
+#define PW_TYPE_TLV			14
+#define PW_TYPE_EXTENDED		15
+#define PW_TYPE_EXTENDED_FLAGS		16
+#define PW_TYPE_EVS			17
+#define PW_TYPE_INTEGER64		18
 
 #define PW_FLAG_LONG			(1 << 8)
 
-#define	PW_AUTHENTICATION_REQUEST	1
-#define	PW_AUTHENTICATION_ACK		2
-#define	PW_AUTHENTICATION_REJECT	3
-#define	PW_ACCOUNTING_REQUEST		4
-#define	PW_ACCOUNTING_RESPONSE		5
-#define	PW_ACCOUNTING_STATUS		6
+#define PW_AUTHENTICATION_REQUEST	1
+#define PW_AUTHENTICATION_ACK		2
+#define PW_AUTHENTICATION_REJECT	3
+#define PW_ACCOUNTING_REQUEST		4
+#define PW_ACCOUNTING_RESPONSE		5
+#define PW_ACCOUNTING_STATUS		6
 #define PW_PASSWORD_REQUEST		7
 #define PW_PASSWORD_ACK			8
 #define PW_PASSWORD_REJECT		9
-#define	PW_ACCOUNTING_MESSAGE		10
+#define PW_ACCOUNTING_MESSAGE		10
 #define PW_ACCESS_CHALLENGE		11
 #define PW_STATUS_SERVER		12
 #define PW_STATUS_CLIENT		13
@@ -48,8 +48,8 @@
 #define PW_COA_ACK			44
 #define PW_COA_NAK			45
 
-#define PW_AUTH_UDP_PORT                1812
-#define PW_ACCT_UDP_PORT                1813
+#define PW_AUTH_UDP_PORT		1812
+#define PW_ACCT_UDP_PORT		1813
 #define PW_POD_UDP_PORT			1700
 #define PW_COA_UDP_PORT			3799
 
@@ -76,7 +76,7 @@
 #define PW_CALLBACK_ID			20
 #if 0
 /*
- *  Deprecated, and no longer used.
+ *	Deprecated, and no longer used.
  */
 #define PW_EXPIRATION			21
 #endif
@@ -118,11 +118,11 @@
 #define PW_PROMPT			76
 #define PW_CONNECT_INFO			77
 #define PW_CONFIGURATION_TOKEN		78
-#define PW_EAP_MESSAGE                  79
-#define PW_MESSAGE_AUTHENTICATOR        80
+#define PW_EAP_MESSAGE			79
+#define PW_MESSAGE_AUTHENTICATOR	80
 
 #define PW_ARAP_CHALLENGE_RESPONSE	84
-#define PW_NAS_PORT_ID_STRING  		87
+#define PW_NAS_PORT_ID_STRING		87
 #define PW_FRAMED_POOL			88
 #define PW_CHARGEABLE_USER_IDENTITY	89
 #define PW_NAS_IPV6_ADDRESS		95
@@ -174,14 +174,14 @@
 #define PW_REALM			1045
 #define PW_NO_SUCH_ATTRIBUTE		1046
 #define PW_PACKET_TYPE			1047
-#define PW_PROXY_TO_REALM      		1048
-#define PW_REPLICATE_TO_REALM  		1049
+#define PW_PROXY_TO_REALM		1048
+#define PW_REPLICATE_TO_REALM		1049
 #define PW_ACCT_SESSION_START_TIME	1050
 #define PW_ACCT_UNIQUE_SESSION_ID	1051
 #define PW_CLIENT_IP_ADDRESS		1052
 #define PW_LDAP_USERDN			1053
 #define PW_NS_MTA_MD5_PASSWORD		1054
-#define PW_SQL_USER_NAME  		1055
+#define PW_SQL_USER_NAME		1055
 #define PW_LM_PASSWORD			1057
 #define PW_NT_PASSWORD			1058
 #define PW_SMB_ACCOUNT_CTRL		1059
@@ -232,13 +232,13 @@
 #define PW_PASSWORD_WITH_HEADER		1101
 #define PW_SEND_COA_REQUEST		1107
 #define PW_MODULE_RETURN_CODE		1108
-#define PW_PACKET_ORIGINAL_TIMESTAMP   	1109
+#define PW_PACKET_ORIGINAL_TIMESTAMP	1109
 #define PW_HOME_SERVER_POOL		1111
-#define PW_RECV_COA_TYPE   		1131
-#define PW_SEND_COA_TYPE   		1132
+#define PW_RECV_COA_TYPE		1131
+#define PW_SEND_COA_TYPE		1132
 #define PW_MSCHAP_PASSWORD		1133
-#define PW_PACKET_TRANSMIT_COUNTER     	1134
-#define PW_CACHED_SESSION_POLICY     	1135
+#define PW_PACKET_TRANSMIT_COUNTER	1134
+#define PW_CACHED_SESSION_POLICY	1135
 
 /*
  *	Integer Translations
@@ -246,10 +246,10 @@
 
 /*	User Types	*/
 
-#define	PW_LOGIN_USER			1
-#define	PW_FRAMED_USER			2
-#define	PW_CALLBACK_LOGIN_USER		3
-#define	PW_CALLBACK_FRAMED_USER		4
+#define PW_LOGIN_USER			1
+#define PW_FRAMED_USER			2
+#define PW_CALLBACK_LOGIN_USER		3
+#define PW_CALLBACK_FRAMED_USER		4
 #define PW_OUTBOUND_USER		5
 #define PW_ADMINISTRATIVE_USER		6
 #define PW_NAS_PROMPT_USER		7
@@ -258,26 +258,26 @@
 
 /*	Framed Protocols	*/
 
-#define	PW_PPP				1
-#define	PW_SLIP				2
+#define PW_PPP				1
+#define PW_SLIP				2
 
 /*	Framed Routing Values	*/
 
-#define	PW_NONE				0
-#define	PW_BROADCAST			1
-#define	PW_LISTEN			2
-#define	PW_BROADCAST_LISTEN		3
+#define PW_NONE				0
+#define PW_BROADCAST			1
+#define PW_LISTEN			2
+#define PW_BROADCAST_LISTEN		3
 
 /*	Framed Compression Types	*/
 
-#define	PW_VAN_JACOBSEN_TCP_IP		1
+#define PW_VAN_JACOBSEN_TCP_IP		1
 
 /*	Login Services	*/
 
-#define	PW_TELNET			0
-#define	PW_RLOGIN			1
-#define	PW_TCP_CLEAR			2
-#define	PW_PORTMASTER			3
+#define PW_TELNET			0
+#define PW_RLOGIN			1
+#define PW_TCP_CLEAR			2
+#define PW_PORTMASTER			3
 
 /*	Authentication Level	*/
 
@@ -287,13 +287,13 @@
 #define PW_AUTHTYPE_CRYPT		3
 #define PW_AUTHTYPE_REJECT		4
 #define PW_AUTHTYPE_ACTIVCARD		5
-#define PW_AUTHTYPE_EAP                 6
+#define PW_AUTHTYPE_EAP			6
 #define PW_AUTHTYPE_ACCEPT		254
 #define PW_AUTHTYPE_MS_CHAP		1028
 
 /* Post-auth types */
-#define PW_POSTAUTHTYPE_LOCAL   0
-#define PW_POSTAUTHTYPE_REJECT  1
+#define PW_POSTAUTHTYPE_LOCAL		0
+#define PW_POSTAUTHTYPE_REJECT		1
 
 /*	Port Types		*/
 
@@ -312,12 +312,12 @@
 #define PW_STATUS_ACCOUNTING_OFF	8
 
 /*
- *  Vendor Private Enterprise Codes
+ *	Vendor Private Enterprise Codes
  */
-#define VENDORPEC_MICROSOFT	311
-#define VENDORPEC_FREERADIUS	11344
-#define VENDORPEC_WIMAX		24757
-#define VENDORPEC_EXTENDED	(1 << 25)
+#define VENDORPEC_MICROSOFT		311
+#define VENDORPEC_FREERADIUS		11344
+#define VENDORPEC_WIMAX			24757
+#define VENDORPEC_EXTENDED		(1 << 25)
 
 /*
  * Vendor specific attributes
@@ -325,20 +325,20 @@
 #define PW_FREERADIUS_PROXIED_TO	1
 
 /*
- *  Microsoft has vendor code 311.
+ *	Microsoft has vendor code 311.
  */
-#define PW_MSCHAP_RESPONSE	1
-#define PW_MSCHAP_ERROR		2
-#define PW_MSCHAP_CPW_1		3
-#define PW_MSCHAP_CPW_2		4
-#define PW_MSCHAP_NT_ENC_PW	6
-#define PW_MSCHAP_CHALLENGE	11
-#define PW_MSCHAP2_RESPONSE	25
-#define PW_MSCHAP2_SUCCESS	26
-#define PW_MSCHAP2_CPW		27
+#define PW_MSCHAP_RESPONSE		1
+#define PW_MSCHAP_ERROR			2
+#define PW_MSCHAP_CPW_1			3
+#define PW_MSCHAP_CPW_2			4
+#define PW_MSCHAP_NT_ENC_PW		6
+#define PW_MSCHAP_CHALLENGE		11
+#define PW_MSCHAP2_RESPONSE		25
+#define PW_MSCHAP2_SUCCESS		26
+#define PW_MSCHAP2_CPW			27
 
 /*
- *  Old nonsense.  Will be deleted ASAP
+ *	Old nonsense.	Will be deleted ASAP
  */
 #define PW_AUTHTYPE			1000
 #define PW_AUTZTYPE			1011
@@ -353,7 +353,7 @@
 #define PW_VQP_ERROR_CODE		0x2b01
 #define PW_VQP_SEQUENCE_NUMBER		0x2b02
 
-#define PW_VQP_CLIENT_IP_ADDRESS        0x2c01
+#define PW_VQP_CLIENT_IP_ADDRESS	0x2c01
 #define PW_VQP_PORT_NAME		0x2c02
 #define PW_VQP_VLAN_NAME		0x2c03
 #define PW_VQP_DOMAIN_NAME		0x2c04
