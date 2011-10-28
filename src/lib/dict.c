@@ -78,7 +78,7 @@ typedef struct value_fixup_t {
  */
 static value_fixup_t *value_fixup = NULL;
 
-static const FR_NAME_NUMBER type_table[] = {
+extern const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "integer",	PW_TYPE_INTEGER },
 	{ "string",	PW_TYPE_STRING },
 	{ "ipaddr",	PW_TYPE_IPADDR },
@@ -763,7 +763,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			default:
 				fr_pool_free(dval);
 				fr_strerror_printf("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
-					   fr_int2str(type_table, dattr->type, "?Unknown?"));
+					   fr_int2str(dict_attr_types, dattr->type, "?Unknown?"));
 				return -1;
 		}
 
@@ -887,7 +887,7 @@ static int process_attribute(const char* fn, const int line,
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_str2int(type_table, argv[2], -1);
+	type = fr_str2int(dict_attr_types, argv[2], -1);
 	if (type < 0) {
 		fr_strerror_printf("dict_init: %s[%d]: invalid type \"%s\"",
 			fn, line, argv[2]);
@@ -986,7 +986,7 @@ static int process_attribute(const char* fn, const int line,
 		default:
 			fr_strerror_printf("dict_init: %s[%d]: Attributes of type %s cannot be tagged.",
 				   fn, line,
-				   fr_int2str(type_table, type, "?Unknown?"));
+				   fr_int2str(dict_attr_types, type, "?Unknown?"));
 			return -1;
 
 		}
