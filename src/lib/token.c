@@ -270,6 +270,28 @@ int fr_str2int(const FR_NAME_NUMBER *table, const char *name, int def)
 }
 
 /*
+ *	Convert a string matching part of name to an integer.
+ */
+int fr_substr2int(const FR_NAME_NUMBER *table, const char *name, int def, int len)
+{
+	const FR_NAME_NUMBER *this;
+	size_t max;
+	
+	for (this = table; this->name != NULL; this++) {
+		/* 
+		 * Match up to the length of the table entry if len is < 0.
+		 */
+		max = (len < 0) ? strlen(this->name) : (unsigned)len;
+		
+		if (strncasecmp(this->name, name, max) == 0) {
+			return this->number;
+		}
+	}
+
+	return def;
+}
+
+/*
  *	Convert an integer to a string.
  */
 const char *fr_int2str(const FR_NAME_NUMBER *table, int number,

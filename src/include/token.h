@@ -72,6 +72,7 @@ typedef struct FR_NAME_NUMBER {
 } FR_NAME_NUMBER;
 
 int fr_str2int(const FR_NAME_NUMBER *table, const char *name, int def);
+int fr_substr2int(const FR_NAME_NUMBER *table, const char *name, int def, int len);
 const char *fr_int2str(const FR_NAME_NUMBER *table, int number,
 			 const char *def);
 
