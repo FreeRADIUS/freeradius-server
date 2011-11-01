@@ -30,7 +30,7 @@ RCSIDH(sysutmp_h, "$Id$")
 #  define UT_NAMESIZE	32
 #  define UT_LINESIZE	32
 #  define UT_HOSTSIZE	257
-#ifdef hpux
+#if defined(hpux) || defined(__FreeBSD__)
 #  define ut_name ut_user
 #endif
 #else
@@ -47,7 +47,8 @@ extern "C" {
 #  define UT_HOSTSIZE	64
 #endif
 
-#if defined(__FreeBSD__) || defined(__NetBSD__) || defined(bsdi) || defined(__OpenBSD__) || defined(__APPLE__)
+#if (defined(__FreeBSD__) && !defined(HAVE_UTMPX_H)) || defined(__NetBSD__) ||
+defined(bsdi) || defined(__OpenBSD__) || defined(__APPLE__)
 #  ifndef UTMP_FILE
 #    define UTMP_FILE "/var/run/utmp"
 #  endif
