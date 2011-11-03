@@ -1,0 +1,17 @@
+#
+# $Id$
+#
+
+TARGET     = @targetname@
+SRCS       = rlm_protobuf.c vsa.pb-c.c
+HEADERS    = vsa.pb-c.h
+RLM_LIBS   = @protobuf_ldflags@
+RLM_CFLAGS = @protobuf_cflags@
+RLM_UTILS  = vsa.pb-c.h vsa.pb-c.c
+
+include ../rules.mak
+
+vsa.pb-c.c vsa.pb-c.h: vsa.proto
+	protoc-c --c_out . vsa.proto
+
+$(LT_OBJS): $(HEADERS)

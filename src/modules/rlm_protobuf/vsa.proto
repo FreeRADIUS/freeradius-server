@@ -1,0 +1,85 @@
+package org.freeradius;
+
+
+/**
+ * ip6 address.
+ **/
+message IpV6Addr {
+       required fixed64 addr1 = 30;
+       required fixed64 addr2 = 31;
+};
+
+/**
+ * ip6 prefix. (see rfc4818 )
+ **/
+message IpV6Prefix {
+      required fixed32 description = 32; 
+      optional fixed32 prefix1 = 33;
+      optional fixed32 prefix2 = 34;
+      optional fixed32 prefix3 = 35;
+      optional fixed32 prefix4 = 36;
+};
+
+
+
+/**
+ * Represent value pair. 
+ * Note, that message tag for value can be used as union discriminator
+ **/
+message ValuePair { 
+     required int32 attribute = 1;
+     optional int32 vendor = 2;
+     optional string string_value = 3;
+     optional int32  int_value = 4; 
+     optional fixed32  ipv4addr_value = 5; // address in network order.
+     optional fixed32  date_value = 6;
+     optional bytes  octets_value = 8;  // octets and abinary
+     optional int64  ifid_value = 9;
+     optional IpV6Addr  ipv6addr_value = 10;
+     optional IpV6Prefix  ipv6prefix_value = 11;
+     optional int32  byte_value = 12; 
+     optional int32  short_value = 13; 
+     optional int64  macaddr_value = 14;  // will use only 6 low bytes.
+     optional sint32 signed_value = 15;
+     optional bytes  comboip_value = 16;
+     // see draft-ietf-radext-radius-extensions-02
+     optional bytes  tlv_value = 17;
+     optional bytes  extended_value = 18;
+     optional bytes  extended_flags_value = 19;
+     optional int64  int64_value = 20;
+};
+
+enum ProcessingState {
+    AUTHORIZE = 1;
+    AUTHENTICATE = 2;
+    PREACCOUNT = 3;
+    ACCOUNT = 4;
+    CHECKSIM = 5;
+    POSTAUTH = 6;
+};
+
+message RequestData {
+    required int32 protocol_version = 50;
+    required ProcessingState state = 51;
+    repeated ValuePair vps = 52;
+};
+
+enum ValuePairOp {
+    REPLACE = 1;
+    ADD = 2;
+    REMOVE = 3;
+}
+
+message ValuePairAction {
+    required ValuePairOp op = 53;
+    required ValuePair   vp = 54;
+}
+
+message RequestDataReply {
+    required int32 protocol_version = 60;
+    optional bool allow = 61;
+    optional string error_message = 62;
+    repeated ValuePairAction actions = 63;
+};
+
+
