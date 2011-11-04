@@ -429,11 +429,18 @@ static void request_done(REQUEST *request, int action)
 		 *	under us.
 		 */
 	case FR_ACTION_DONE:
+#ifdef HAVE_PTHREAD_H
+		/*
+		 *	If we have child threads and we're NOT the
+		 *	thread handling the request, don't do anything.
+		 */
+		if (spawn_flag &&
+		    !pthread_equal(pthread_self(), request->child_pid)) {
+			break;
+		}
+#endif
 #ifdef DEBUG_STATE_MACHINE
 		if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
-#endif
-#ifdef HAVE_PTHREAD_H
-		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
 		request->child_state = REQUEST_DONE;
 		break;
