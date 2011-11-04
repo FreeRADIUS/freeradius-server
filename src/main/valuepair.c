@@ -852,7 +852,7 @@ void debug_pair_list(VALUE_PAIR *vp)
  */
 int radius_get_vps(REQUEST *request, const char *name,
 	VALUE_PAIR **vps, const char **attribute){
-	REQUEST *my_request;
+	REQUEST *my_request = request;
 	
 	const char *p = name;
 	const char *q;
