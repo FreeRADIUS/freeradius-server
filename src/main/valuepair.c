@@ -51,6 +51,24 @@ RCSID("$Id$")
 #endif
 #endif
 
+const FR_NAME_NUMBER pair_lists[] = {
+	{ "request",		PAIR_LIST_REQUEST },
+	{ "reply",		PAIR_LIST_REPLY },
+	{ "config",		PAIR_LIST_CONTROL },
+	{ "control",		PAIR_LIST_CONTROL },
+#ifdef WITH_PROXY
+	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST },
+	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },	
+#endif
+#ifdef WITH_COA
+	{ "coa",		PAIR_LIST_COA },
+	{ "coa-reply",		PAIR_LIST_COA_REPLY },
+	{ "disconnect",		PAIR_LIST_DM },
+	{ "disconnect-reply",	PAIR_LIST_DM_REPLY },
+#endif
+	{  NULL , -1 }
+};
+
 struct cmp {
 	unsigned int attribute;
 	unsigned int otherattr;
@@ -823,92 +841,128 @@ void debug_pair_list(VALUE_PAIR *vp)
 	fflush(fr_log_fp);
 }
 
-
-int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
-{
-	const char *vp_name = name;
-	REQUEST *myrequest = request;
-	DICT_ATTR *da;
-	VALUE_PAIR *vps = NULL;
-
-	*vp_p = NULL;
+/** @brief Resolve attribute qualifiers to an attribute list
+ *
+ * @param request The current request
+ * @param name Attribute name including qualifiers
+ * @param vps Where to write the pointer to resolved list. Will be NULL if list name
+ * couldn't be resolved, or is invalid in the current context
+ * @param attribute Where to write pointer into name (name minus qualifiers)
+ * @return False if the list qualifiers were invalid, else true
+ */
+int radius_get_vps(REQUEST *request, const char *name,
+	VALUE_PAIR **vps, const char **attribute){
+	REQUEST *my_request;
+	
+	const char *p = name;
+	const char *q;
+	
+	*vps = NULL;
+	*attribute = p;
+	
+	pair_lists_t list;
 
 	/*
 	 *	Allow for tunneled sessions.
 	 */
-	if (strncmp(vp_name, "outer.", 6) == 0) {
-		if (!myrequest->parent) return TRUE;
-		vp_name += 6;
-		myrequest = myrequest->parent;
+	if (strncmp(p, "outer.", 6) == 0) {
+		if (!request->parent) return TRUE;
+		p += 6;
+		my_request = request->parent;
 	}
 
-	if (strncmp(vp_name, "request:", 8) == 0) {
-		vp_name += 8;
-		vps = myrequest->packet->vps;
+	q = strchr(p, ':');
+	if (q == NULL) {
+		*vps = my_request->packet->vps;
+		*attribute = p;
+		return TRUE;
+	}
+	*attribute = q + 1;
 
-	} else if (strncmp(vp_name, "reply:", 6) == 0) {
-		vp_name += 6;
-		vps = myrequest->reply->vps;
+	list = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, q - p);
+	switch (list) {
+		case PAIR_LIST_REQUEST:
+			*vps = my_request->packet->vps;
+			break;
 
-#ifdef WITH_PROXY
-	} else if (strncmp(vp_name, "proxy-request:", 14) == 0) {
-		vp_name += 14;
-		if (request->proxy) vps = myrequest->proxy->vps;
+		case PAIR_LIST_REPLY:
+			*vps = my_request->reply->vps;
+			break;
 
-	} else if (strncmp(vp_name, "proxy-reply:", 12) == 0) {
-		vp_name += 12;
-		if (request->proxy_reply) vps = myrequest->proxy_reply->vps;
+		case PAIR_LIST_CONTROL:
+			*vps = my_request->config_items;
+			break;
+
+#ifdef WITH_PROXY		
+		case PAIR_LIST_PROXY_REQUEST:
+			*vps = my_request->proxy->vps;
+			break;
+
+		case PAIR_LIST_PROXY_REPLY:
+			*vps = my_request->proxy_reply->vps;
+			break;
 #endif
-
-	} else if (strncmp(vp_name, "config:", 7) == 0) {
-		vp_name += 7;
-		vps = myrequest->config_items;
-
-	} else if (strncmp(vp_name, "control:", 8) == 0) {
-		vp_name += 8;
-		vps = myrequest->config_items;
-
 #ifdef WITH_COA
-	} else if (strncmp(vp_name, "coa:", 4) == 0) {
-		vp_name += 4;
+		case PAIR_LIST_COA:
+			if (my_request->coa &&
+			   (my_request->coa->proxy->code == PW_COA_REQUEST))
+				*vps = my_request->coa->proxy->vps;
+				
+			break;
 
-		if (myrequest->coa &&
-		    (myrequest->coa->proxy->code == PW_COA_REQUEST)) {
-			vps = myrequest->coa->proxy->vps;
-		}
+		case PAIR_LIST_COA_REPLY:
+			if (my_request->coa && /* match reply with request */
+			   (my_request->coa->proxy->code == PW_COA_REQUEST) &&
+			    my_request->coa->proxy_reply)
+				*vps = my_request->coa->proxy_reply->vps;
+			
+			break;
 
-	} else if (strncmp(vp_name, "coa-reply:", 10) == 0) {
-		vp_name += 10;
+		case PAIR_LIST_DM:
+			if (my_request->coa &&
+			   (my_request->coa->proxy->code == PW_DISCONNECT_REQUEST))
+				*vps = my_request->coa->proxy->vps;
+			
+			break;
 
-		if (myrequest->coa && /* match reply with request */
-		    (myrequest->coa->proxy->code == PW_COA_REQUEST) &&
-		    (myrequest->coa->proxy_reply)) {
-			vps = myrequest->coa->proxy_reply->vps;
-		}
-
-	} else if (strncmp(vp_name, "disconnect:", 11) == 0) {
-		vp_name += 11;
-
-		if (myrequest->coa &&
-		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST)) {
-			vps = myrequest->coa->proxy->vps;
-		}
-
-	} else if (strncmp(vp_name, "disconnect-reply:", 17) == 0) {
-		vp_name += 17;
-
-		if (myrequest->coa && /* match reply with request */
-		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
-		    (myrequest->coa->proxy_reply)) {
-			vps = myrequest->coa->proxy_reply->vps;
-		}
+		case PAIR_LIST_DM_REPLY:
+			if (my_request->coa && /* match reply with request */
+			   (my_request->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
+			    my_request->coa->proxy_reply)
+			   	*vps = my_request->coa->proxy->vps;
+			break;
 #endif
+		default:
+			return FALSE;
 
-	} else {
-		vps = myrequest->packet->vps;
 	}
+	return TRUE;
+}
 
-	da = dict_attrbyname(vp_name);
+/** @brief Return a VP from the specified request
+ *
+ * @param request The current request
+ * @param name Attribute name including qualifiers
+ * @param vp_p Where to write the pointer to the resolved VP. Will be NULL if the attribute
+ * couldn't be resolved
+ * @return False if either the attribute or qualifier were invalid, else true
+ */
+int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
+{
+	const char *attribute;
+	
+	VALUE_PAIR *vps = NULL;
+	DICT_ATTR *da;
+	
+	int ret;
+
+	*vp_p = NULL;
+
+	ret = radius_get_vps(request, name, &vps, &attribute);
+	if (!ret) return FALSE; /* not a valid attribute list */
+	if (!vps) return TRUE;	/* list is valid but not in current context */
+
+	da = dict_attrbyname(attribute);
 	if (!da) return FALSE;	/* not a dictionary name */
 
 	/*

@@ -317,6 +317,25 @@ struct auth_req {
 
 typedef struct radclient_list RADCLIENT_LIST;
 
+typedef enum pair_lists {
+	PAIR_LIST_UNKNOWN = 0,
+	PAIR_LIST_REQUEST,
+	PAIR_LIST_REPLY,
+	PAIR_LIST_CONTROL,
+#ifdef WITH_PROXY
+	PAIR_LIST_PROXY_REQUEST,
+	PAIR_LIST_PROXY_REPLY,
+#endif
+#ifdef WITH_COA
+	PAIR_LIST_COA,
+	PAIR_LIST_COA_REPLY,
+	PAIR_LIST_DM,
+	PAIR_LIST_DM_REPLY
+#endif
+} pair_lists_t;
+
+extern const FR_NAME_NUMBER pair_lists[];
+
 typedef struct pair_list {
 	const char		*name;
 	VALUE_PAIR		*check;
@@ -326,7 +345,6 @@ typedef struct pair_list {
 	struct pair_list	*next;
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
-
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
@@ -747,6 +765,10 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
+int radius_get_vps(REQUEST *request, const char *name,
+	VALUE_PAIR **vps, const char **attr);
+
+
 
 #ifdef WITH_TLS
 /*
