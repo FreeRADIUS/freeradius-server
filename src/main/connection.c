@@ -365,7 +365,6 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 			fc->log_prefix, this->number);
 	do_delete:
 		fr_connection_close(fc, this);
-		pthread_mutex_unlock(&fc->mutex);
 		return 0;
 	}
 
