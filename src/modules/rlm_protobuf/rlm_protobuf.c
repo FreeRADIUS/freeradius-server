@@ -12,6 +12,7 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/connection.h>
 
 #include <curl/curl.h>
 
@@ -23,7 +24,9 @@
 #define ACCOUNT    4
 #define CHECKSIM    5
 #define POSTAUTH    6
+#define ALIVE       7
 
+#define PROTOCOL_VERSION 2
 
 typedef struct rlm_protobuf_t {
   char*  uri;
@@ -37,6 +40,7 @@ typedef struct rlm_protobuf_t {
   int    postauth;
   int    input_buffer_size;
   int    timeout;
+  fr_connection_pool_t* curl_connection_pool;
 } rlm_protobuf_t;
 
 static const CONF_PARSER module_config[] = {
@@ -55,36 +59,45 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static pthread_key_t curl_key;
-static pthread_once_t curl_once = PTHREAD_ONCE_INIT;
 
-static void rlm_curl_make_key(void);
 static CURL* rlm_curl_create_curlhandle(rlm_protobuf_t* instance);
 static void rlm_curl_destroy_curlhandle(CURL*);
+static int do_protobuf_curl_connection_call(rlm_protobuf_t* instance, 
+                                            CURL* curl, 
+                                            int method, 
+                                            REQUEST* request);
 
 
-static void rlm_curl_make_key(void)
+static void* fr_curl_connection_create(void* ctx)
 {
-  pthread_key_create(&curl_key, rlm_curl_destroy_curlhandle);
+ return rlm_curl_create_curlhandle((rlm_protobuf_t*)ctx);
 }
 
-static CURL* get_threadspecific_curl_handle(rlm_protobuf_t* instance)
+static int fr_curl_connection_delete(void* ctx, void* connection)
 {
-  CURL* retval = (CURL*)pthread_getspecific(curl_key);
-  if (retval==NULL) {
-     retval=rlm_curl_create_curlhandle(instance);
-     pthread_setspecific(curl_key,retval);
-  }
-  return retval;
+ (void)ctx; 
+ rlm_curl_destroy_curlhandle((CURL*)connection);
+ return TRUE;
 }
+
+static int fr_curl_connection_alive(void* ctx, void* connection)
+{
+ int rc = do_protobuf_curl_connection_call((rlm_protobuf_t*)ctx, 
+                                           (CURL*)connection,
+                                           ALIVE, 
+                                           NULL);
+ return (rc != RLM_MODULE_FAIL);
+}
+
 
 static CURL* rlm_curl_create_curlhandle(rlm_protobuf_t* instance)
 {
   CURL* retval = curl_easy_init();
   curl_easy_setopt(retval,CURLOPT_URL,instance->uri);
+  curl_easy_setopt(retval,CURLOPT_TIMEOUT,instance->timeout);
   if (instance->verbose) {
-       curl_easy_setopt(retval,CURLOPT_VERBOSE,1);
- }
+      curl_easy_setopt(retval,CURLOPT_VERBOSE,1);
+  }
   return retval;
 }
 
@@ -116,15 +129,21 @@ static int rlm_protobuf_instantiate(CONF_SECTION* conf, void ** instance)
      return -1;
  }
 
+ data->curl_connection_pool = fr_connection_pool_init(conf,
+                                                data,
+                                                fr_curl_connection_create,
+                                                fr_curl_connection_alive,
+                                                fr_curl_connection_delete);
+
  *instance=data;
 
- pthread_once(&curl_once, rlm_curl_make_key);
- 
  return 0;
 }
 
 static int rlm_protobuf_detach(void* instance)
 {
+ rlm_protobuf_t* data = (rlm_protobuf_t*)instance;
+ fr_connection_pool_delete(data->curl_connection_pool);
  curl_global_cleanup();
  free(instance);
  return 0;
@@ -303,13 +322,14 @@ static Org__Freeradius__RequestData*
                                       REQUEST* request,
                                       ProtobufCAllocator* allocator)
 {
- RADIUS_PACKET* packet = request->packet;
+ RADIUS_PACKET* packet = (request==NULL ? NULL : request->packet );
  VALUE_PAIR* pair;
  Org__Freeradius__RequestData* request_data = 
                    allocator->alloc(allocator->allocator_data,
                                    sizeof(Org__Freeradius__RequestData));
  Org__Freeradius__RequestData tmp = ORG__FREERADIUS__REQUEST_DATA__INIT ;
  *request_data = tmp;
+ request_data->protocol_version = PROTOCOL_VERSION;
  request_data->state = method;
  request_data->n_vps = 0;
  if (packet!=NULL) {
@@ -353,7 +373,7 @@ static VALUE_PAIR* create_radius_vp(Org__Freeradius__ValuePair* cvp,
                                      (cvp->has_vendor ? cvp->vendor : 0));
   VALUE_PAIR* vp;
   if (attr==NULL) {
-     radlog(L_ERR,"skipping unknown attribute %d, %d",cvp->attribute,
+     radlog(L_ERR,"rlm_protobuf: skipping unknown attribute %d, %d",cvp->attribute,
                                      (cvp->has_vendor ? cvp->vendor : 0));
      return NULL;
   }
@@ -631,10 +651,11 @@ static int adapt_protobuf_reply(int method,
   unsigned int i=0;
   if  (rdr->error_message!=NULL) {
      radlog(L_ERR,"rlm_protobuf: error from protoserver: %s",rdr->error_message);
-     return RLM_MODULE_INVALID;
+     return RLM_MODULE_FAIL;
   }
   
-  for(i=0; i < rdr->n_actions; ++i) {
+  if (request!=NULL) {
+    for(i=0; i < rdr->n_actions; ++i) {
      int errflg=0;
      Org__Freeradius__ValuePairAction* action = rdr->actions[i]; 
      Org__Freeradius__ValuePair* cvp = action->vp; 
@@ -673,6 +694,12 @@ static int adapt_protobuf_reply(int method,
          /* incorrect attribute: just skip. */
        }
      }
+    }
+  } else {
+    /* without request (this is ALIVE method). */
+    if (rdr->n_actions!=0) {
+       radlog(L_ERR,"rlm_protobuf: server returns actions on allow, ignoring");
+    }
   }
 
   return retval; 
@@ -701,21 +728,33 @@ static size_t rlm_protobuf_read_function( void *ptr,
  return bytesToTransfer;
 }
 
-static size_t rlm_protobuf_write_function( char *ptr, 
+static size_t rlm_protobuf_write_function(char *ptr,
                                     size_t size, 
                                     size_t nmemb, 
-                                    void *userdata)
+                                    void *userdata )
 {
  BufferWithAllocator* pba = (BufferWithAllocator*)userdata;
  size_t nBytes = size*nmemb;
  pba->buffer.base.append(&pba->buffer.base,nBytes,(void*)ptr);
+ radlog(L_DBG,"write call, received %d bytes",(int)nBytes);
  return nBytes;
 }
 
-
 static int do_protobuf_curl_call(rlm_protobuf_t* instance, int method, REQUEST* request)
 {
- CURL* handle = get_threadspecific_curl_handle(instance);
+ CURL* handle = (CURL*)fr_connection_get(instance->curl_connection_pool);
+ if (handle==NULL) {
+   radlog(L_ERR,"can't get handle from connection pool");
+   return RLM_MODULE_FAIL;
+ } 
+ radlog(L_DBG,"received handle %p",handle);
+ int rc = do_protobuf_curl_connection_call(instance, handle, method, request);
+ fr_connection_release(instance->curl_connection_pool, handle);
+ return rc;
+}
+
+static int do_protobuf_curl_connection_call(rlm_protobuf_t* instance, CURL* handle, int method, REQUEST* request)
+{
  CURLcode rc;
  int retval;
  struct BufferWithAllocator rba = {
@@ -737,6 +776,7 @@ static int do_protobuf_curl_call(rlm_protobuf_t* instance, int method, REQUEST* 
     &protobuf_c_default_allocator
  };
  char errbuff[CURL_ERROR_SIZE];
+ memset(errbuff,0,sizeof(errbuff));
  Org__Freeradius__RequestData* proto_request = 
          code_protobuf_request(method,request, &protobuf_c_default_allocator);
                                                          
@@ -760,10 +800,11 @@ static int do_protobuf_curl_call(rlm_protobuf_t* instance, int method, REQUEST* 
  curl_easy_setopt(handle,CURLOPT_ERRORBUFFER,errbuff);
  rc=curl_easy_perform(handle);
  if (rc!=0) {
-   radlog(L_ERR,"%s",errbuff);
-   curl_easy_cleanup(handle);
-   pthread_setspecific(curl_key,NULL);
-   retval = RLM_MODULE_INVALID;
+   radlog(L_ERR,"curl perform failed, rc=%d, %s", rc, curl_easy_strerror(rc));
+   radlog(L_ERR,errbuff);
+   // curl will transparently handle reconnection
+   // handle = fr_connection_reconnect(instance->curl_connection_pool,handle);
+   retval = RLM_MODULE_FAIL;
  }else {
    retval=RLM_MODULE_NOOP;
  }
