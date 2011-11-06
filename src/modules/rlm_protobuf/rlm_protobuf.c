@@ -773,22 +773,26 @@ static int do_protobuf_curl_call(rlm_protobuf_t* instance, int method, REQUEST* 
  org__freeradius__request_data__free_unpacked(proto_request,rba.allocator);
  rba.allocator->free(rba.allocator->allocator_data,rba.buffer.data);
  if (rc==0) {
-    // i. e. whe have no errors in curl
-    //
+    /* i. e. whe have no errors in curl */
     Org__Freeradius__RequestDataReply* proto_reply = 
        org__freeradius__request_data_reply__unpack(wba.allocator,
                                                    wba.buffer.len,
                                                    wba.buffer.data);
-
-    retval = adapt_protobuf_reply(method, proto_reply, request); 
-    org__freeradius__request_data_reply__free_unpacked(
+    if (proto_reply==NULL) {
+       /* we receive invalid protobuf response */
+       retval = RLM_MODULE_FAIL; 
+    } else {
+      retval = adapt_protobuf_reply(method, proto_reply, request); 
+      org__freeradius__request_data_reply__free_unpacked(
                                                 proto_reply,wba.allocator);
-    wba.allocator->free(wba.allocator->allocator_data, wba.buffer.data);
- } else {
-    if (wba.buffer.data!=NULL) {
-       wba.allocator->free(wba.allocator->allocator_data, wba.buffer.data);
     }
+ } 
+ 
+
+ if (wba.buffer.data!=NULL) {
+     wba.allocator->free(wba.allocator->allocator_data, wba.buffer.data);
  }
+
  return retval;
 }
 
