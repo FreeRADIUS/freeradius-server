@@ -690,9 +690,9 @@ autz_redo:
 		/* double check: maybe the secret is wrong? */
 		if ((debug_flag > 1) && (auth_item != NULL) &&
 				(auth_item->attribute == PW_USER_PASSWORD)) {
-			char *p;
+			uint8_t *p;
 
-			p = auth_item->vp_strvalue;
+			p = (uint8_t *) auth_item->vp_strvalue;
 			while (*p) {
 				int size;
 
