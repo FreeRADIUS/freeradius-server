@@ -28,7 +28,6 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(connection_h, "$Id$")
 
-#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/conffile.h>
 
 #ifdef __cplusplus
@@ -52,6 +51,8 @@ int fr_connection_check(fr_connection_pool_t *fc, void *conn);
 void *fr_connection_get(fr_connection_pool_t *fc);
 void fr_connection_release(fr_connection_pool_t *fc, void *conn);
 void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn);
+int fr_connection_add(fr_connection_pool_t *fc, void *conn);
+int fr_connection_del(fr_connection_pool_t *fc, void *conn);
 
 #ifdef __cplusplus
 }

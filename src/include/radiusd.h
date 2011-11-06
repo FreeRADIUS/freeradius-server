@@ -33,6 +33,7 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/event.h>
+#include <freeradius-devel/connection.h>
 
 typedef struct auth_req REQUEST;
 

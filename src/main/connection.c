@@ -64,7 +64,6 @@ struct fr_connection_pool_t {
 	int		max_uses;
 	int		lifetime;
 	int		idle_timeout;
-	int		lazy_init;
 	int		spawning;
 	int		trigger; /* do triggering */
 
@@ -107,8 +106,6 @@ static const CONF_PARSER connection_config[] = {
 	  0, "5" },
 	{ "idle_timeout",  PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
 	  0, "60" },
-	{ "lazy",     PW_TYPE_BOOLEAN, offsetof(fr_connection_pool_t, lazy_init),
-	  0, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -229,6 +226,50 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	return this;
 }
 
+
+int fr_connection_add(fr_connection_pool_t *fc, void *conn)
+{
+	fr_connection_t *this;
+
+	if (!fc) return 0;
+
+	pthread_mutex_lock(&fc->mutex);
+
+	if (!conn) {
+		conn = fc->create(fc->ctx);
+		if (!conn) {
+			pthread_mutex_unlock(&fc->mutex);
+			return 0;
+		}
+	}
+
+	/*
+	 *	Too many connections: can't add it.
+	 */
+        if (fc->num >= fc->max) {
+		pthread_mutex_unlock(&fc->mutex);
+		return 0;
+	}
+
+	this = rad_malloc(sizeof(*this));
+	memset(this, 0, sizeof(*this));
+
+	this->start = time(NULL);
+	this->connection = conn;
+
+	this->number = fc->count++;
+	this->last_used = time(NULL);
+	fr_connection_link(fc, this);
+	fc->num++;
+
+	pthread_mutex_unlock(&fc->mutex);
+
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "open");
+
+	return 1;
+}
+
+
 static void fr_connection_close(fr_connection_pool_t *fc,
 				fr_connection_t *this)
 {
@@ -243,6 +284,37 @@ static void fr_connection_close(fr_connection_pool_t *fc,
 	free(this);
 }
 
+
+int fr_connection_del(fr_connection_pool_t *fc, void *conn)
+{
+	fr_connection_t *this;
+
+	if (!fc || !conn) return 0;
+
+	pthread_mutex_lock(&fc->mutex);
+
+	/*
+	 *	FIXME: This loop could be avoided if we passed a 'void
+	 *	**connection' instead.  We could use "offsetof" in
+	 *	order to find top of the parent structure.
+	 */
+	for (this = fc->head; this != NULL; this = this->next) {
+		if (this->connection != conn) continue;
+
+		if (this->used) {
+			pthread_mutex_unlock(&fc->mutex);
+			return 0;
+		}
+
+
+		fr_connection_close(fc, this);
+		pthread_mutex_unlock(&fc->mutex);
+		return 1;
+	}
+
+	pthread_mutex_unlock(&fc->mutex);
+	return 0;
+}
 
 
 void fr_connection_pool_delete(fr_connection_pool_t *fc)
@@ -280,6 +352,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	int i, lp_len;
 	fr_connection_pool_t *fc;
 	fr_connection_t *this;
+	CONF_SECTION *modules;
 	CONF_SECTION *cs;
 	const char *cs_name1, *cs_name2;
 	time_t now = time(NULL);
@@ -287,10 +360,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	if (!parent || !ctx || !c || !d) return NULL;
 
 	cs = cf_section_sub_find(parent, "pool");
-	if (!cs) {
-		cf_log_err(cf_sectiontoitem(parent), "No \"pool\" subsection found");
-		return NULL;
-	}
+	if (!cs) cs = cf_section_sub_find(parent, "limit");
 
 	fc = rad_malloc(sizeof(*fc));
 	memset(fc, 0, sizeof(*fc));
@@ -307,23 +377,37 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pthread_mutex_init(&fc->mutex, NULL);
 #endif
 
-	cs_name1 = cf_section_name1(parent);
-	cs_name2 = cf_section_name2(parent);
-	if (!cs_name2) {
-		cs_name2 = cs_name1;
+	modules = cf_item_parent(cf_sectiontoitem(parent));
+	if (modules) {
+		cs_name1 = cf_section_name1(modules);
+		if (cs_name1 && (strcmp(cs_name1, "modules") == 0)) {
+			cs_name1 = cf_section_name1(parent);
+			cs_name2 = cf_section_name2(parent);
+			if (!cs_name2) {
+				cs_name2 = cs_name1;
+			}
+
+			lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
+			fc->log_prefix = rad_malloc(lp_len);
+			snprintf(fc->log_prefix, lp_len, LOG_PREFIX, cs_name1, cs_name2);
+		}
+	} else {		/* not a module configuration */
+		cs_name1 = cf_section_name1(parent);
+
+		fc->log_prefix = strdup(cs_name1);
 	}
-	
-	lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
-	fc->log_prefix = rad_malloc(lp_len);
-	snprintf(fc->log_prefix, lp_len, LOG_PREFIX, cs_name1, cs_name2);
 	
 	DEBUG("%s: Initialising connection pool", fc->log_prefix);
 
-	if (cf_section_parse(cs, fc, connection_config) < 0) {
-		goto error;
-	}
+	if (cs) {
+		if (cf_section_parse(cs, fc, connection_config) < 0) {
+			goto error;
+		}
 
-	if (cf_section_sub_find(cs, "trigger")) fc->trigger = TRUE;
+		if (cf_section_sub_find(cs, "trigger")) fc->trigger = TRUE;
+	} else {
+		fc->max = 1024;
+	}
 
 	/*
 	 *	Some simple limits
@@ -341,7 +425,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	 *	Create all of the connections, unless the admin says
 	 *	not to.
 	 */
-	if (!fc->lazy_init) for (i = 0; i < fc->start; i++) {
+	for (i = 0; i < fc->start; i++) {
 		this = fr_connection_spawn(fc, now);	
 		if (!this) {
 		error:
@@ -609,7 +693,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 		rad_assert(this->used == TRUE);
 			
 		DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
-			
+
 		new_conn = fc->create(fc->ctx);
 		if (!new_conn) {
 			time_t now = time(NULL);
