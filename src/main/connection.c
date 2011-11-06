@@ -66,6 +66,7 @@ struct fr_connection_pool_t {
 	int		idle_timeout;
 	int		lazy_init;
 	int		spawning;
+	int		trigger; /* do triggering */
 
 	fr_connection_t	*head, *tail;
 
@@ -223,12 +224,16 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 
 	pthread_mutex_unlock(&fc->mutex);
 
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "open");
+
 	return this;
 }
 
 static void fr_connection_close(fr_connection_pool_t *fc,
 				fr_connection_t *this)
 {
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "close");
+
 	rad_assert(this->used == FALSE);
 
 	fr_connection_unlink(fc, this);
@@ -253,6 +258,8 @@ void fr_connection_pool_delete(fr_connection_pool_t *fc)
 		DEBUG("%s: Closing connection (%i)", fc->log_prefix, this->number);
 		fr_connection_close(fc, this);
 	}
+
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "stop");
 
 	rad_assert(fc->head == NULL);
 	rad_assert(fc->tail == NULL);
@@ -316,6 +323,8 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		goto error;
 	}
 
+	if (cf_section_sub_find(cs, "trigger")) fc->trigger = TRUE;
+
 	/*
 	 *	Some simple limits
 	 */
@@ -340,6 +349,8 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 			return NULL;
 		}
 	}
+
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "start");
 
 	return fc;
 }
