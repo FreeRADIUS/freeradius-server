@@ -1,6 +1,6 @@
 FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	Feature improvements
-	* Update dictionary.aruba
+	* Update dictionary.aruba, dictionary.apc
 	* Switch to using SHA1 for certificate digests instead of MD5.
 	  See raddb/certs/*.cnf
 
@@ -16,6 +16,11 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Restrict ATTRIBUTE names to character sets that make sense.
 	* Fix EAP-TLS session Id length so that OpenSSL doesn't get
 	  excited.
+	* Fix SQL IPPool logic for non-timer attributes.  Closes bug #181
+	* Change some informational messages to DEBUG rather than error.
+	* Portability fixes for FreeBSD.  Closes bug #177
+	* A much better fix for _lt__PROGRAM__LTX_preloaded_symbols
+	  nonsense.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
