@@ -585,7 +585,6 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 
 	pthread_mutex_lock(&fc->mutex);
 	
-	conn_number = this->number;
 
 	/*
 	 *	FIXME: This loop could be avoided if we passed a 'void
@@ -596,6 +595,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 		if (this->connection != conn) continue;
 
 		rad_assert(this->used == TRUE);
+		conn_number = this->number;
 			
 		DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
 			
