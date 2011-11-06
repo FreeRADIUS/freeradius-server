@@ -215,6 +215,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	pthread_mutex_lock(&fc->mutex);
 
 	this->number = fc->count++;
+	this->last_used = now;
 	fr_connection_link(fc, this);
 	fc->num++;
 	fc->spawning = FALSE;
@@ -338,13 +339,6 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 			fr_connection_pool_delete(fc);
 			return NULL;
 		}
-		
-		/* 
-		 *	If we don't set last_used here, the connection
-		 *	will be closed as idle, the first time
-		 *	get_connecton is called.
-		 */
-		this->last_used = now;
 	}
 
 	return fc;
