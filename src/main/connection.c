@@ -453,7 +453,6 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 
 int fr_connection_check(fr_connection_pool_t *fc, void *conn)
 {
-	int rcode = 1;
 	fr_connection_t *this;
 	time_t now;
 	
@@ -466,7 +465,7 @@ int fr_connection_check(fr_connection_pool_t *fc, void *conn)
 
 	for (this = fc->head; this != NULL; this = this->next) {
 		if (this->connection == conn) {
-			rcode = fr_connection_manage(fc, conn, now);
+			fr_connection_manage(fc, conn, now);
 			break;
 		}
 	}
