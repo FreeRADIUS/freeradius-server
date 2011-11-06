@@ -388,7 +388,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 {
 	int spare, spawn;
 	time_t now = time(NULL);
-	fr_connection_t *this;
+	fr_connection_t *this, *next;
 
 	if (fc->last_checked == now) return 1;
 
@@ -440,7 +440,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 	 *	Pass over all of the connections in the pool, limiting
 	 *	lifetime, idle time, max requests, etc.
 	 */
-	for (this = fc->head; this != NULL; this = this->next) {
+	for (this = fc->head; this != NULL; this = next) {
+		next = this->next;
 		fr_connection_manage(fc, this, now);
 	}
 
