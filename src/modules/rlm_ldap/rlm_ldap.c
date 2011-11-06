@@ -2438,7 +2438,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	}
 
 	if (inst->tls_randfile != NULL) {
-		DEBUG("  [%s] setting TLS Key File to %s", inst->xlat_name,
+		DEBUG("  [%s] setting TLS Rand File to %s", inst->xlat_name,
 		      inst->tls_randfile);
 
 		if (ldap_set_option(NULL, LDAP_OPT_X_TLS_RANDOM_FILE,
