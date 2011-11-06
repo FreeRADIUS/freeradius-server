@@ -364,6 +364,11 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 		DEBUG("%s: Closing expired connection (%i): Hit max_uses limit",
 			fc->log_prefix, this->number);
 	do_delete:
+		if ((fc->num <= fc->min) &&
+		    (fc->last_complained < now)) {
+			radlog(L_INFO, "WARNING in %s: You probably need to lower \"min\"", fc->log_prefix);
+			fc->last_complained = now;
+		}
 		fr_connection_close(fc, this);
 		return 0;
 	}
