@@ -564,7 +564,11 @@ void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 
 	pthread_mutex_unlock(&fc->mutex);
 
-	DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
+        if (this!=NULL) {
+	   DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
+        } else {
+	   radlog(L_ERR, "%s: Attempt to release connection not from pool", fc->log_prefix);
+        }
 
 	/*
 	 *	We mirror the "spawn on get" functionality by having
