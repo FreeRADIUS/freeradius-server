@@ -29,7 +29,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static const FR_NAME_NUMBER tokens[] = {
+const FR_NAME_NUMBER fr_tokens[] = {
 	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
 	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
@@ -204,7 +204,7 @@ static FR_TOKEN getthing(const char **ptr, char *buf, int buflen, int tok,
  */
 int getword(const char **ptr, char *buf, int buflen)
 {
-	return getthing(ptr, buf, buflen, 0, tokens) == T_EOL ? 0 : 1;
+	return getthing(ptr, buf, buflen, 0, fr_tokens) == T_EOL ? 0 : 1;
 }
 
 /*
@@ -228,7 +228,7 @@ int getbareword(const char **ptr, char *buf, int buflen)
  */
 FR_TOKEN gettoken(const char **ptr, char *buf, int buflen)
 {
-	return getthing(ptr, buf, buflen, 1, tokens);
+	return getthing(ptr, buf, buflen, 1, fr_tokens);
 }
 
 /*
@@ -250,7 +250,7 @@ FR_TOKEN getstring(const char **ptr, char *buf, int buflen)
 		return gettoken(ptr, buf, buflen);
 	}
 
-	return getthing(ptr, buf, buflen, 0, tokens);
+	return getthing(ptr, buf, buflen, 0, fr_tokens);
 }
 
 /*
@@ -310,5 +310,5 @@ const char *fr_int2str(const FR_NAME_NUMBER *table, int number,
 
 const char *fr_token_name(int token)
 {
-	return fr_int2str(tokens, token, "???");
+	return fr_int2str(fr_tokens, token, "???");
 }
