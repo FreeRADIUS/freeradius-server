@@ -19,7 +19,7 @@ extern "C" {
 
 typedef int (*packetmethod)(void *instance, REQUEST *request);
 
-enum {
+typedef enum rlm_components {
   RLM_COMPONENT_AUTH = 0,
   RLM_COMPONENT_AUTZ,		/* 1 */
   RLM_COMPONENT_PREACCT,	/* 2 */
@@ -33,7 +33,7 @@ enum {
   RLM_COMPONENT_SEND_COA,	/* 9 */
 #endif
   RLM_COMPONENT_COUNT		/* 8 / 10: How many components are there */
-};
+} rlm_components_t;
 
 #define RLM_TYPE_THREAD_SAFE		(0 << 0)
 #define RLM_TYPE_THREAD_UNSAFE		(1 << 0)
@@ -52,7 +52,7 @@ typedef struct module_t {
 	packetmethod	methods[RLM_COMPONENT_COUNT];
 } module_t;
 
-enum {
+typedef enum rlm_rcodes {
 	RLM_MODULE_REJECT,	/* immediately reject the request */
 	RLM_MODULE_FAIL,	/* module failed, don't reply */
 	RLM_MODULE_OK,		/* the module is OK, continue */
@@ -63,7 +63,7 @@ enum {
 	RLM_MODULE_NOOP,	/* module succeeded without doing anything */
 	RLM_MODULE_UPDATED,	/* OK (pairs modified) */
 	RLM_MODULE_NUMCODES	/* How many return codes there are */
-};
+} rlm_rcodes_t;
 
 int setup_modules(int, CONF_SECTION *);
 int detach_modules(void);
