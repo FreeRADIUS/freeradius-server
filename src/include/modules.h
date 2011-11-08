@@ -35,6 +35,14 @@ typedef enum rlm_components {
   RLM_COMPONENT_COUNT		/* 8 / 10: How many components are there */
 } rlm_components_t;
 
+typedef struct section_type_value_t {
+        const char      *section;
+        const char      *typename;
+        int             attr;
+} section_type_value_t;
+
+extern const section_type_value_t section_type_value[];
+
 #define RLM_TYPE_THREAD_SAFE		(0 << 0)
 #define RLM_TYPE_THREAD_UNSAFE		(1 << 0)
 #define RLM_TYPE_CHECK_CONFIG_SAFE	(1 << 1)
