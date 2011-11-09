@@ -455,7 +455,8 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 	 */
 	if (this->used) return 1;
 
-	if ((fc->max_uses > 0) && (this->num_uses >= fc->max_uses)) {
+	if ((fc->max_uses > 0) &&
+	    (this->num_uses >= fc->max_uses)) {
 		DEBUG("%s: Closing expired connection (%i): Hit max_uses limit",
 			fc->log_prefix, this->number);
 	do_delete:
@@ -468,13 +469,15 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 		return 0;
 	}
 
-	if ((fc->lifetime > 0) && ((this->start + fc->lifetime) < now)){
+	if ((fc->lifetime > 0) &&
+	    ((this->start + fc->lifetime) < now)) {
 		DEBUG("%s: Closing expired connection (%i) ",
 			fc->log_prefix, this->number);
 		goto do_delete;
 	}
 
-	if ((fc->idle_timeout > 0) && ((this->last_used + fc->idle_timeout) < now)){
+	if ((fc->idle_timeout > 0) &&
+	    ((this->last_used + fc->idle_timeout) < now)) {
 		DEBUG("%s: Closing idle connection (%i)",
 			fc->log_prefix, this->number);
 		goto do_delete;
