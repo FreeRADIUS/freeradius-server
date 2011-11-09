@@ -1,7 +1,8 @@
-/*
+/** Valuepair functions that are radiusd-specific and as such do not belong in
+ * the library.
+ *
  * @file valuepair.c
- * @brief	Valuepair functions that are radiusd-specific
- *		and as such do not belong in the library.
+ *
  * @ingroup AVP
  *
  * Version:	$Id$
@@ -58,7 +59,7 @@ const FR_NAME_NUMBER pair_lists[] = {
 	{ "control",		PAIR_LIST_CONTROL },
 #ifdef WITH_PROXY
 	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST },
-	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },	
+	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },
 #endif
 #ifdef WITH_COA
 	{ "coa",		PAIR_LIST_COA },
@@ -78,11 +79,10 @@ struct cmp {
 };
 static struct cmp *cmp;
 
-/**
- * @brief Compares check and vp by value. Does not call any per-attribute
- *        comparison function, but does honour check.operator
+/** Compares check and vp by value.
  *
- * This function basically does "vp.value check.op check.value"
+ * Does not call any per-attribute comparison function, but does honour
+ * check.operator. Basically does "vp.value check.op check.value".
  *
  * @param request Current request
  * @param check rvalue, and operator
@@ -95,10 +95,8 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	/*
 	 *      Check for =* and !* and return appropriately
 	 */
-	if( check->operator == T_OP_CMP_TRUE )
-	         return 0;
-	if( check->operator == T_OP_CMP_FALSE )
-	         return 1;
+	if (check->operator == T_OP_CMP_TRUE)  return 0;
+	if (check->operator == T_OP_CMP_FALSE) return 1;
 
 #ifdef HAVE_REGEX_H
 	if (check->operator == T_OP_REG_EQ) {
@@ -239,15 +237,18 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			ret = memcmp(vp->vp_strvalue, check->vp_strvalue,
 				     vp->length);
 			break;
+
 		case PW_TYPE_STRING:
 			ret = strcmp((char *)vp->vp_strvalue,
 				     (char *)check->vp_strvalue);
 			break;
+
 		case PW_TYPE_BYTE:
 		case PW_TYPE_SHORT:
 		case PW_TYPE_INTEGER:
 			ret = vp->vp_integer - check->vp_integer;
 			break;
+
 		case PW_TYPE_INTEGER64:
 			/*
 			 *	Don't want integer overflow!
@@ -260,6 +261,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 				ret = 0;
 			}
 			break;
+
 		case PW_TYPE_SIGNED:
 			if (vp->vp_signed < check->vp_signed) {
 				ret = -1;
@@ -269,12 +271,15 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 				ret = 0;
 			}
 			break;
+
 		case PW_TYPE_DATE:
 			ret = vp->vp_date - check->vp_date;
 			break;
+
 		case PW_TYPE_IPADDR:
 			ret = ntohl(vp->vp_ipaddr) - ntohl(check->vp_ipaddr);
 			break;
+
 		case PW_TYPE_IPV6ADDR:
 			ret = memcmp(&vp->vp_ipv6addr, &check->vp_ipv6addr,
 				     sizeof(vp->vp_ipv6addr));
@@ -298,16 +303,15 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 }
 
 
-/**
- * @brief Compare check and vp. May call the attribute compare function.
+/** Compare check and vp. May call the attribute compare function.
  *
- * Unlike radius_compare_vps() this function will call any attribute-
- * specific comparison function.
+ * Unlike radius_compare_vps() this function will call any attribute-specific
+ * comparison function.
  *
  * @param req Current request
  * @param request value pairs in the reqiest
- * @param check erm...
- * @param check_pairs erm...
+ * @param check
+ * @param check_pairs
  * @param reply_pairs value pairs in the reply
  * @return 
  */
@@ -320,22 +324,21 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 	/*
 	 *      Check for =* and !* and return appropriately
 	 */
-	if( check->operator == T_OP_CMP_TRUE )
-	         return 0;  /* always return 0/EQUAL */
-	if( check->operator == T_OP_CMP_FALSE )
-	         return 1;  /* always return 1/NOT EQUAL */
+	if (check->operator == T_OP_CMP_TRUE)  return 0;
+	if (check->operator == T_OP_CMP_FALSE) return 1;
 
 	/*
 	 *	See if there is a special compare function.
 	 *
 	 *	FIXME: use new RB-Tree code.
 	 */
-	for (c = cmp; c; c = c->next)
+	for (c = cmp; c; c = c->next) {
 		if ((c->attribute == check->attribute) &&
 		    (check->vendor == 0)) {
 			return (c->compare)(c->instance, req, request, check,
 				check_pairs, reply_pairs);
 		}
+	}
 
 	if (!request) return -1; /* doesn't exist, don't compare it */
 
@@ -343,8 +346,9 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 }
 
 
-/**
- * @brief Find a comparison function for two attributes.
+/** Find a comparison function for two attributes.
+ *
+ * @param attribute
  */
 int radius_find_compare(unsigned int attribute)
 {
@@ -360,87 +364,89 @@ int radius_find_compare(unsigned int attribute)
 }
 
 
-/**
- * @brief See what attribute we want to compare with.
+/** See what attribute we want to compare with.
+ *
+ * @param attribute
  */
-static int otherattr(unsigned int attr)
+static int otherattr(unsigned int attribute)
 {
-	struct cmp	*c;
+	struct cmp *c;
 
 	for (c = cmp; c; c = c->next) {
-		if (c->attribute == attr)
+		if (c->attribute == attribute) {
 			return c->otherattr;
+		}
 	}
 
-	return attr;
+	return attribute;
 }
 
-/**
- * @brief Register a function as compare function.
- * @param attr Attribute
- * @param compare_attr
- *      The attribute in the request we want to
- *      compare with. Normally this is the same as "attr".
- *	You can set this to:
- *	 - -1   the same as "attr"
- *	 - 0    always call compare function, not tied to request attribute
- *	 - >0   Attribute to compare with. For example, PW_GROUP in a check
- *	 item needs to be compared with PW_USER_NAME in the incoming request.
- * @param fun comparison function
+/** Register a function as compare function.
+ *
+ * @param attr attribute
+ * @param other_attr we want to compare with. Normally this is the
+ *	same as attribute.
+ * You can set this to:
+ *	- -1	The same as attribute.
+ *	- 0	Always call compare function, not tied to request attribute.
+ *	- >0	Attribute to compare with. For example, PW_GROUP in a check
+ *		item needs to be compared with PW_USER_NAME in the incoming request.
+ * @param func comparison function
  * @param instance argument to comparison function
  * @return 0
  */
-int paircompare_register(unsigned int attr, int compare_attr, RAD_COMPARE_FUNC fun, void *instance)
+int paircompare_register(unsigned int attribute, int other_attr, 
+			 RAD_COMPARE_FUNC func, void *instance)
 {
-	struct cmp	*c;
+	struct cmp *c;
 
-	paircompare_unregister(attr, fun);
+	paircompare_unregister(attribute, func);
 
 	c = rad_malloc(sizeof(struct cmp));
 
-	c->compare = fun;
-	c->attribute = attr;
-	c->otherattr = compare_attr;
-	c->instance = instance;
-	c->next = cmp;
+	c->compare   = func;
+	c->attribute = attribute;
+	c->otherattr = other_attr;
+	c->instance  = instance;
+	c->next      = cmp;
 	cmp = c;
 
 	return 0;
 }
 
-/**
- * @brief Unregister comparison function for an attribute
+/** Unregister comparison function for an attribute
  *
- * @param attr Attribute to unregister for
- * @param fun Comparison function to remove
+ * @param attribute attribute to unregister for.
+ * @param func comparison function to remove.
  * @return Void.
  */
-void paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC fun)
+void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
 {
-	struct cmp	*c, *last;
+	struct cmp *c, *last;
 
 	last = NULL;
 	for (c = cmp; c; c = c->next) {
-		if (c->attribute == attr && c->compare == fun)
+		if (c->attribute == attribute && c->compare == func) {
 			break;
+		}
 		last = c;
 	}
 
 	if (c == NULL) return;
 
-	if (last != NULL)
+	if (last != NULL) {
 		last->next = c->next;
-	else
+	} else {
 		cmp = c->next;
+	}
 
 	free(c);
 }
 
-/**
- * @brief Compare two pair lists except for the password information.
+/** Compare two pair lists except for the password information.
  *
- *	For every element in "check" at least one matching copy must
- *	be present in "reply".
+ * For every element in "check" at least one matching copy must be present
+ * in "reply".
  *
  * @param req Current request
  * @param request request valuepairs
@@ -449,15 +455,19 @@ void paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC fun)
  *
  * @return 0 on match.
  */
-int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR **reply)
+int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+		VALUE_PAIR **reply)
 {
 	VALUE_PAIR *check_item;
 	VALUE_PAIR *auth_item;
+	
 	int result = 0;
 	int compare;
 	int other;
 
-	for (check_item = check; check_item != NULL; check_item = check_item->next) {
+	for (check_item = check;
+	     check_item != NULL;
+	     check_item = check_item->next) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -511,9 +521,13 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 		auth_item = request;
 	try_again:
 		if (other >= 0) {
-			for (; auth_item != NULL; auth_item = auth_item->next) {
-			  if (auth_item->attribute == (unsigned int) other || other == 0)
+			while (auth_item != NULL) {
+				if ((auth_item->attribute == 
+				    (unsigned int) other) ||
+				    (other == 0)) {
 					break;
+				}
+				auth_item = auth_item->next;
 			}
 		}
 
@@ -525,18 +539,20 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 			 *	Didn't find it.  If we were *trying*
 			 *	to not find it, then we succeeded.
 			 */
-			if (check_item->operator == T_OP_CMP_FALSE)
+			if (check_item->operator == T_OP_CMP_FALSE) {
 				continue;
-			else
+			} else {
 				return -1;
+			}
 		}
 
 		/*
 		 *	Else we found it, but we were trying to not
 		 *	find it, so we failed.
 		 */
-		if (check_item->operator == T_OP_CMP_FALSE)
+		if (check_item->operator == T_OP_CMP_FALSE) {
 			return -1;
+		}
 
 
 		/*
@@ -569,9 +585,9 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 			default:
 				radlog(L_INFO,  "Invalid operator for item %s: "
 						"reverting to '=='", check_item->name);
-				/*FALLTHRU*/
-		        case T_OP_CMP_TRUE:    /* compare always == 0 */
-		        case T_OP_CMP_FALSE:   /* compare always == 1 */
+
+			case T_OP_CMP_TRUE:
+			case T_OP_CMP_FALSE:
 			case T_OP_CMP_EQ:
 				if (compare != 0) result = -1;
 				break;
@@ -619,11 +635,9 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check, VALUE_PAIR
 	return result;
 }
 
-/**
- * @brief Move pairs, replacing/over-writing them, and doing xlat.
+/** Move pairs, replacing/over-writing them, and doing xlat.
  *
- *	Move attributes from one list to the other
- *	if not already present.
+ * Move attributes from one list to the other if not already present.
  */
 void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 {
@@ -635,14 +649,14 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 	 *	Point "tailto" to the end of the "to" list.
 	 */
 	tailto = to;
-	for(i = *to; i; i = i->next) {
+	for (i = *to; i; i = i->next) {
 		tailto = &i->next;
 	}
 
 	/*
 	 *	Loop over the "from" list.
 	 */
-	for(i = *from; i; i = next) {
+	for (i = *from; i; i = next) {
 		next = i->next;
 
 		/*
@@ -676,22 +690,23 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 		switch (i->operator) {
 
 			/*
-			 *  If a similar attribute is found,
-			 *  delete it.
+			 *	If a similar attribute is found,
+			 *	delete it.
 			 */
-		case T_OP_SUB:		/* -= */
-			if (found) {
-				if (!i->vp_strvalue[0] ||
-				    (strcmp((char *)found->vp_strvalue,
-					    (char *)i->vp_strvalue) == 0)){
-				  pairdelete(to, found->attribute, found->vendor);
+			case T_OP_SUB:		/* -= */
+				if (found) {
+					if (!i->vp_strvalue[0] ||
+				    	    (strcmp((char *)found->vp_strvalue,
+					    	    (char *)i->vp_strvalue) == 0)) {
+				  		pairdelete(to, found->attribute,
+				  			found->vendor);
 
 					/*
 					 *	'tailto' may have been
 					 *	deleted...
 					 */
 					tailto = to;
-					for(j = *to; j; j = j->next) {
+					for (j = *to; j; j = j->next) {
 						tailto = &j->next;
 					}
 				}
@@ -701,52 +716,53 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			break;
 
 			/*
-			 *  Add it, if it's not already there.
+			 *	Add it, if it's not already there.
 			 */
-		case T_OP_EQ:		/* = */
-			if (found) {
-				tailfrom = i;
-				continue; /* with the loop */
-			}
-			break;
+			case T_OP_EQ:		/* = */
+				if (found) {
+					tailfrom = i;
+					continue; /* with the loop */
+				}
+				break;
 
 			/*
-			 *  If a similar attribute is found,
-			 *  replace it with the new one.  Otherwise,
-			 *  add the new one to the list.
+			 *	If a similar attribute is found,
+			 *	replace it with the new one.  Otherwise,
+			 *	add the new one to the list.
 			 */
-		case T_OP_SET:		/* := */
-			if (found) {
-				VALUE_PAIR *vp;
+			case T_OP_SET:		/* := */
+				if (found) {
+					VALUE_PAIR *vp;
 
-				vp = found->next;
-				memcpy(found, i, sizeof(*found));
-				found->next = vp;
-				tailfrom = i;
-				continue;
-			}
-			break;
+					vp = found->next;
+					memcpy(found, i, sizeof(*found));
+					found->next = vp;
+					tailfrom = i;
+					continue;
+				}
+				break;
 
 			/*
-			 *  FIXME: Add support for <=, >=, <, >
+			 *	FIXME: Add support for <=, >=, <, >
 			 *
-			 *  which will mean (for integers)
-			 *  'make the attribute the smaller, etc'
+			 *	which will mean (for integers)
+			 *	'make the attribute the smaller, etc'
 			 */
 
 			/*
 			 *  Add the new element to the list, even
 			 *  if similar ones already exist.
 			 */
-		default:
-		case T_OP_ADD:		/* += */
-			break;
+			default:
+			case T_OP_ADD:		/* += */
+				break;
 		}
 
-		if (tailfrom)
+		if (tailfrom) {
 			tailfrom->next = next;
-		else
+		} else {
 			*from = next;
+		}
 
 		/*
 		 *	If ALL of the 'to' attributes have been deleted,
@@ -764,18 +780,15 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 	} /* loop over the 'from' list */
 }
 
-/**
- * @brief Create a pair, and add it to a particular list of VPs
+/** Create a pair and add it to a particular list of VPs
  *
- *	Note that this function ALWAYS returns.  If we're OOM, then
- *	it causes the server to exit!
+ * Note that this function ALWAYS returns. If we're OOM, then it causes the
+ * server to exit!
  */
-VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
+VALUE_PAIR *radius_paircreate(UNUSED REQUEST *request, VALUE_PAIR **vps,
 			      unsigned int attribute, unsigned int vendor, int type)
 {
 	VALUE_PAIR *vp;
-
-	request = request;	/* -Wunused */
 
 	vp = paircreate(attribute, vendor, type);
 	if (!vp) {
@@ -789,25 +802,23 @@ VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 	return vp;
 }
 
-/**	@brief Create a pair, and add it to a particular list of VPs
+/** Create a pair, and add it to a particular list of VPs
  *
- *	Note that this function ALWAYS returns.  If we're OOM, then
- *	it causes the server to exit!
+ * Note that this function ALWAYS returns.  If we're OOM, then it causes the
+ * server to exit!
  *
- *	@param request The current request
- *	@param vps The list of VPs to modify
- *	@param attribute Attribute name
- *	@param value Attribute value
- *	@param operator Operator e.g. := +=
- *	@return The new VALUE_PAIR*
+ * @param[in] request current request.
+ * @param[in] vps to modify.
+ * @param[in] attribute name.
+ * @param[in] value attribute value.
+ * @param[in] operator fr_tokens value.
+ * @return a new VALUE_PAIR.
  */
-VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
+VALUE_PAIR *radius_pairmake(UNUSED REQUEST *request, VALUE_PAIR **vps,
 			    const char *attribute, const char *value,
 			    int operator)
 {
 	VALUE_PAIR *vp;
-
-	request = request;	/* -Wunused */
 
 	vp = pairmake(attribute, value, operator);
 	if (!vp) return NULL;
@@ -817,8 +828,9 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 	return vp;
 }
 
-/**
- * @brief print a single valuepair to stderr or error log
+/** Print a single valuepair to stderr or error log.
+ *
+ * @param[in] vp list to print.
  */
 void debug_pair(VALUE_PAIR *vp)
 {
@@ -827,8 +839,9 @@ void debug_pair(VALUE_PAIR *vp)
 	vp_print(fr_log_fp, vp);
 }
 
-/**
- * @brief print a list of valuepairs to stderr or error log
+/** Print a list of valuepairs to stderr or error log.
+ *
+ * @param[in] vp to print.
  */
 void debug_pair_list(VALUE_PAIR *vp)
 {
@@ -893,7 +906,7 @@ int radius_get_vps(REQUEST *request, const char *name,
 			*vps = my_request->config_items;
 			break;
 
-#ifdef WITH_PROXY		
+#ifdef WITH_PROXY
 		case PAIR_LIST_PROXY_REQUEST:
 			*vps = my_request->proxy->vps;
 			break;
@@ -937,7 +950,7 @@ int radius_get_vps(REQUEST *request, const char *name,
 
 	}
 	return TRUE;
-}
+	}
 
 /** @brief Return a VP from the specified request
  *
