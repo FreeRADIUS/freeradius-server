@@ -765,11 +765,11 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
+
+VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);
+pair_lists_t radius_list_name(const char **name, pair_lists_t unknown);
+int radius_ref_request(const char **name, REQUEST **request);
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
-int radius_get_vps(REQUEST *request, const char *name,
-	VALUE_PAIR **vps, const char **attr);
-
-
 
 #ifdef WITH_TLS
 /*
