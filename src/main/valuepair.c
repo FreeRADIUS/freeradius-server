@@ -1,7 +1,7 @@
 /** Valuepair functions that are radiusd-specific and as such do not belong in
  * the library.
  *
- * @file valuepair.c
+ * @file main/valuepair.c
  *
  * @ingroup AVP
  *
@@ -383,7 +383,7 @@ static int otherattr(unsigned int attribute)
 
 /** Register a function as compare function.
  *
- * @param attr attribute
+ * @param attribute
  * @param other_attr we want to compare with. Normally this is the
  *	same as attribute.
  * You can set this to:
@@ -971,9 +971,8 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  * radius_ref_request should be called before radius_list_name.
  *
  * @see radius_list_name
- *
- * @param[in,out] current request.
  * @param[in,out] name of attribute.
+ * @param[in,out] request current request.
  * @return FALSE if qualifiers found but not in a tunnel, else TRUE.
  */
 int radius_ref_request(const char **name, REQUEST **request)
@@ -994,10 +993,10 @@ int radius_ref_request(const char **name, REQUEST **request)
 
 /** Return a VP from the specified request.
  *
- * @param request The current request
- * @param name Attribute name including qualifiers
- * @param vp_p Where to write the pointer to the resolved VP. Will be NULL if the attribute
- * couldn't be resolved
+ * @param request current request.
+ * @param name attribute name including qualifiers.
+ * @param vp_p where to write the pointer to the resolved VP. 
+ *	Will be NULL if the attribute couldn't be resolved.
  * @return False if either the attribute or qualifier were invalid, else true
  */
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
