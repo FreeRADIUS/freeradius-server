@@ -28,6 +28,8 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
+#include <ctype.h>
+
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
 
@@ -945,17 +947,34 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
 {
 	const char *p = *name;
-	char *q;
+	const char *q;
 	
 	/* This should never be a NULL pointer or zero length string */
 	rad_assert(name && *name);
 
-	q = strrchr(p, ':');
-	if (!q) {
+	/*
+	 *	We couldn't determine the list if:
+	 *	
+	 * 	A colon delimiter was found, but the next char was a 
+	 *	number, indicating a tag, not a list qualifier.
+	 *
+	 *	No colon was found and the first char was upper case 
+	 *	indicating an attribute.
+	 *
+	 *	This allows the function to be used to resolve list names too.
+	 */
+	q = strchr(p, ':');
+	if (((q && (q[1] >= '0') && (q[1] <= '9'))) ||
+	    (!q && isupper((int) *p))) {
 		return unknown;
 	}
 	
-	*name = (q + 1);
+	if (q) {
+		*name = (q + 1);	/* Consume the list and delimiter */
+	} else {
+		q = (p + strlen(p));	/* Consume the entire string */
+		*name = q;
+	}
 	
 	return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
 }
@@ -971,11 +990,11 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  * radius_ref_request should be called before radius_list_name.
  *
  * @see radius_list_name
- * @param[in,out] name of attribute.
  * @param[in,out] request current request.
+ * @param[in,out] name of attribute.
  * @return FALSE if qualifiers found but not in a tunnel, else TRUE.
  */
-int radius_ref_request(const char **name, REQUEST **request)
+int radius_ref_request(REQUEST **request, const char **name)
 {
 	rad_assert(name && *name);
 	rad_assert(request && *request);
@@ -1008,7 +1027,7 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	
 	*vp_p = NULL;
 	
-	if (!radius_ref_request(&name, &request)) {
+	if (!radius_ref_request(&request, &name)) {
 		RDEBUG("WARNING: Attribute name refers to outer request"
 		       " but not in a tunnel.");
 		return TRUE;	/* Discuss, we don't actually know if
