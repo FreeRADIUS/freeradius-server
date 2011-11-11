@@ -444,6 +444,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	to accidentally failing it.
 		 */
 		if (!eaplist_add(inst, handler)) {
+			RDEBUG("Failed adding handler to the list");
 			eap_fail(handler);
 			eap_handler_free(inst, handler);
 			return RLM_MODULE_FAIL;
