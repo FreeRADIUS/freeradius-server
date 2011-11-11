@@ -180,6 +180,7 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
 					exit(1);
 				}
+				fr_log_fp = fdopen(mainconfig.radlog_fd, "a");
 				break;		  
 
 			case 'i':
@@ -228,8 +229,8 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
-				fr_log_fp = stdout;
 		do_stdout:
+				fr_log_fp = stdout;
 				mainconfig.radlog_dest = RADLOG_STDOUT;
 				mainconfig.radlog_fd = STDOUT_FILENO;
 				break;
