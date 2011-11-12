@@ -21,6 +21,14 @@
 *.dSYM
 *.patch
 .pc
+
+# Certificates and signing requests
+*.pem
+*.der
+*.csr
+*.key
+
+# Autoconf and libtool output
 config.status
 *confdefs.h
 *conftest*
