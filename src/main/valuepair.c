@@ -1,7 +1,7 @@
 /** Valuepair functions that are radiusd-specific and as such do not belong in
  * the library.
  *
- * @file valuepair.c
+ * @file main/valuepair.c
  *
  * @ingroup AVP
  *
@@ -27,6 +27,8 @@
 
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
+
+#include <ctype.h>
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/rad_assert.h>
@@ -383,7 +385,7 @@ static int otherattr(unsigned int attribute)
 
 /** Register a function as compare function.
  *
- * @param attr attribute
+ * @param attribute
  * @param other_attr we want to compare with. Normally this is the
  *	same as attribute.
  * You can set this to:
@@ -854,133 +856,202 @@ void debug_pair_list(VALUE_PAIR *vp)
 	fflush(fr_log_fp);
 }
 
-/** @brief Resolve attribute qualifiers to an attribute list
+/** Resolve attribute pair_lists_t value to an attribute list.
+ * 
+ * The value returned is a pointer to the pointer of the HEAD of the list
+ * in the REQUEST. If the head of the list changes, the pointer will still
+ * be valid.
  *
- * @param request The current request
- * @param name Attribute name including qualifiers
- * @param vps Where to write the pointer to resolved list. Will be NULL if list name
- * couldn't be resolved, or is invalid in the current context
- * @param attribute Where to write pointer into name (name minus qualifiers)
- * @return False if the list qualifiers were invalid, else true
+ * @param[in] request containing the target lists.
+ * @param[in] list pair_list_t value to resolve to VALUE_PAIR list.
+ *	Will be NULL if list name couldn't be resolved.
  */
-int radius_get_vps(REQUEST *request, const char *name,
-	VALUE_PAIR **vps, const char **attribute){
-	REQUEST *my_request = request;
-	
-	const char *p = name;
-	const char *q;
-	
-	*vps = NULL;
-	*attribute = p;
-	
-	pair_lists_t list;
-
-	/*
-	 *	Allow for tunneled sessions.
-	 */
-	if (strncmp(p, "outer.", 6) == 0) {
-		if (!request->parent) return TRUE;
-		p += 6;
-		my_request = request->parent;
-	}
-
-	q = strchr(p, ':');
-	if (q == NULL) {
-		*vps = my_request->packet->vps;
-		*attribute = p;
-		return TRUE;
-	}
-	*attribute = q + 1;
-
-	list = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, q - p);
+VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
+{	
 	switch (list) {
-		case PAIR_LIST_REQUEST:
-			*vps = my_request->packet->vps;
+		case PAIR_LIST_UNKNOWN:
+		default:
 			break;
+
+		case PAIR_LIST_REQUEST:
+			return &request->packet->vps;
 
 		case PAIR_LIST_REPLY:
-			*vps = my_request->reply->vps;
-			break;
+			return &request->reply->vps;
 
 		case PAIR_LIST_CONTROL:
-			*vps = my_request->config_items;
-			break;
+			return &request->config_items;
 
 #ifdef WITH_PROXY
 		case PAIR_LIST_PROXY_REQUEST:
-			*vps = my_request->proxy->vps;
-			break;
+			return &request->proxy->vps;
 
 		case PAIR_LIST_PROXY_REPLY:
-			*vps = my_request->proxy_reply->vps;
-			break;
+			return &request->proxy_reply->vps;
 #endif
 #ifdef WITH_COA
 		case PAIR_LIST_COA:
-			if (my_request->coa &&
-			   (my_request->coa->proxy->code == PW_COA_REQUEST))
-				*vps = my_request->coa->proxy->vps;
-				
+			if (request->coa &&
+			    (request->coa->proxy->code == PW_COA_REQUEST)) {
+				return &request->coa->proxy->vps;
+			}
 			break;
 
 		case PAIR_LIST_COA_REPLY:
-			if (my_request->coa && /* match reply with request */
-			   (my_request->coa->proxy->code == PW_COA_REQUEST) &&
-			    my_request->coa->proxy_reply)
-				*vps = my_request->coa->proxy_reply->vps;
-			
+			if (request->coa && /* match reply with request */
+			    (request->coa->proxy->code == PW_COA_REQUEST) &&
+			    request->coa->proxy_reply) {
+				return &request->coa->proxy_reply->vps;
+			}
 			break;
 
 		case PAIR_LIST_DM:
-			if (my_request->coa &&
-			   (my_request->coa->proxy->code == PW_DISCONNECT_REQUEST))
-				*vps = my_request->coa->proxy->vps;
-			
+			if (request->coa &&
+			    (request->coa->proxy->code == PW_DISCONNECT_REQUEST)) {
+				return &request->coa->proxy->vps;
+			}
 			break;
 
 		case PAIR_LIST_DM_REPLY:
-			if (my_request->coa && /* match reply with request */
-			   (my_request->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
-			    my_request->coa->proxy_reply)
-			   	*vps = my_request->coa->proxy->vps;
+			if (request->coa && /* match reply with request */
+			    (request->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
+			    request->coa->proxy_reply) {
+			   	return &request->coa->proxy->vps;
+			}
 			break;
 #endif
-		default:
-			return FALSE;
-
 	}
-	return TRUE;
-	}
+	
+	return NULL;
+}
 
-/** @brief Return a VP from the specified request
+/** Resolve attribute name to a list.
  *
- * @param request The current request
- * @param name Attribute name including qualifiers
- * @param vp_p Where to write the pointer to the resolved VP. Will be NULL if the attribute
- * couldn't be resolved
+ * Check the name string for qualifiers that specify a list and return
+ * an pair_lists_t value for that list. This value may be passed to
+ * radius_list, along with the current request, to get a pointer to the
+ * actual list in the request.
+ * 
+ * If qualifiers were consumed, write a new pointer into name to the
+ * char after the last qualifier to be consumed.
+ *
+ * radius_list_name should be called before passing a name string that
+ * may contain qualifiers to dict_attrbyname.
+ *
+ * @see dict_attrbyname
+ *
+ * @param[in,out] name of attribute.
+ * @param[in] unknown the list to return if no qualifiers were found.
+ * @return PAIR_LIST_UNKOWN if qualifiers couldn't be resolved to a list.
+ */
+pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
+{
+	const char *p = *name;
+	const char *q;
+	
+	/* This should never be a NULL pointer or zero length string */
+	rad_assert(name && *name);
+
+	/*
+	 *	We couldn't determine the list if:
+	 *	
+	 * 	A colon delimiter was found, but the next char was a 
+	 *	number, indicating a tag, not a list qualifier.
+	 *
+	 *	No colon was found and the first char was upper case 
+	 *	indicating an attribute.
+	 *
+	 *	This allows the function to be used to resolve list names too.
+	 */
+	q = strchr(p, ':');
+	if (((q && (q[1] >= '0') && (q[1] <= '9'))) ||
+	    (!q && isupper((int) *p))) {
+		return unknown;
+	}
+	
+	if (q) {
+		*name = (q + 1);	/* Consume the list and delimiter */
+	} else {
+		q = (p + strlen(p));	/* Consume the entire string */
+		*name = q;
+	}
+	
+	return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+}
+
+/** Resolve attribute name to a request.
+ * 
+ * Check the name string for qualifiers that reference a parent request and
+ * write the pointer to this request to 'request'.
+ *
+ * If qualifiers were consumed, write a new pointer into name to the
+ * char after the last qualifier to be consumed.
+ *
+ * radius_ref_request should be called before radius_list_name.
+ *
+ * @see radius_list_name
+ * @param[in,out] request current request.
+ * @param[in,out] name of attribute.
+ * @return FALSE if qualifiers found but not in a tunnel, else TRUE.
+ */
+int radius_ref_request(REQUEST **request, const char **name)
+{
+	rad_assert(name && *name);
+	rad_assert(request && *request);
+	
+	if (strncmp(*name, "outer.", 6) == 0) {
+		if (!(*request)->parent) {
+			return FALSE;
+		}
+		*request = (*request)->parent;
+		*name += 6;
+	}
+	
+	return TRUE;
+}
+
+/** Return a VP from the specified request.
+ *
+ * @param request current request.
+ * @param name attribute name including qualifiers.
+ * @param vp_p where to write the pointer to the resolved VP. 
+ *	Will be NULL if the attribute couldn't be resolved.
  * @return False if either the attribute or qualifier were invalid, else true
  */
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 {
-	const char *attribute;
+	VALUE_PAIR **vps;
+	pair_lists_t list;
 	
-	VALUE_PAIR *vps = NULL;
-	DICT_ATTR *da;
+	const DICT_ATTR *da;
 	
-	int ret;
-
 	*vp_p = NULL;
+	
+	if (!radius_ref_request(&request, &name)) {
+		RDEBUG("WARNING: Attribute name refers to outer request"
+		       " but not in a tunnel.");
+		return TRUE;	/* Discuss, we don't actually know if
+				   the attrname was valid... */
+	}
+	
+	list = radius_list_name(&name, PAIR_LIST_REQUEST);
+	if (list == PAIR_LIST_UNKNOWN) {
+		RDEBUG("ERROR: Invalid list qualifier");
+		return FALSE;
+	}
+	
+	da = dict_attrbyname(name);
+	if (!da) {
+		RDEBUG("ERROR: Attribute \"%s\" unknown", name);
+		return FALSE;
+	}
 
-	ret = radius_get_vps(request, name, &vps, &attribute);
-	if (!ret) return FALSE; /* not a valid attribute list */
-	if (!vps) return TRUE;	/* list is valid but not in current context */
-
-	da = dict_attrbyname(attribute);
-	if (!da) return FALSE;	/* not a dictionary name */
-
+	vps = radius_list(request, list);
+	rad_assert(vps);
+	
 	/*
 	 *	May not may not be found, but it *is* a known name.
 	 */
-	*vp_p = pairfind(vps, da->attr, da->vendor);
+	*vp_p = pairfind(*vps, da->attr, da->vendor);
 	return TRUE;
 }
