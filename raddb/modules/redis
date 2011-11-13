@@ -19,17 +19,36 @@ redis {
 	#  We recommend using a strong password.
 #	password = thisisreallysecretandhardtoguess
 
-	# The number of connections to open to the database.
-	num_connections = 20
+	#
+	#  Information for the connection pool.  The configuration items
+	#  below are the same for all modules which use the new
+	#  connection pool.
+	#
+	pool {
+		# start this many connections
+		start = 1
 
-	# If a connection fails, retry after this time.
-	connect_failure_retry_delay = 60
+		# Keep at least "min" connections open
+		min = 1
 
-	#  Set the maximum lifetime for one connection.
-	#  Use 0 for "lives forever"
-	lifetime = 86400
+		# No more than "max" connections at any one time
+		max = 10
 
-	#  Set the maximum queries used for one connection.
-	#  Use 0 for "no limit"
-	max_queries = 0
+		# try to keep "spare" connections
+		spare = 0
+
+		# If we have spare connections for "cleanup_delay" seconds,
+		# start deleting them
+		cleanup_delay = 300
+
+		# connections last no more than "lifeime" seconds.
+		lifetime = 86400
+
+		# close idle connections are "idle_timeout" seconds
+		idle_timeout = 600
+
+		# allow no more than "uses" queries through a connection.
+		# after that, close it and open a new one.
+		uses = 0
+	}
 }

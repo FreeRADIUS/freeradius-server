@@ -33,6 +33,7 @@ RCSID("$Id$")
 
 typedef struct rlm_rediswho_t {
 	const char *xlat_name;
+	CONF_SECTION *cs;
 
 	char *redis_instance_name;
 	REDIS_INST *redis_inst;
@@ -46,59 +47,21 @@ typedef struct rlm_rediswho_t {
 	 *	How many session updates to keep track of per user
 	 */
 	int trim_count;             
-
-	char *start_insert;
-	char *start_trim;
-	char *start_expire;
-
-	char *alive_insert;
-	char *alive_trim;
-	char *alive_expire;
-
-	char *stop_insert;
-	char *stop_trim;
-	char *stop_expire;
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
 	{ "redis-instance-name", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_rediswho_t, redis_instance_name), NULL, "redis"},
-
-	{ "expiry-time", PW_TYPE_INTEGER,
-	  offsetof(rlm_rediswho_t, expiry_time), NULL, "86400"},
-	{ "trim-count", PW_TYPE_INTEGER,
-	  offsetof(rlm_rediswho_t, trim_count), NULL, "100"},
-
-	{ "start-insert", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, start_insert), NULL, ""},
-	{ "start-trim", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, start_trim), NULL, ""},
-	{ "start-expire", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, start_expire), NULL, ""},
-
-	{ "alive-insert", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, alive_insert), NULL, ""},
-	{ "alive-trim", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, alive_trim), NULL, ""},
-	{ "alive-expire", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, alive_expire), NULL, ""},
-
-	{ "stop-insert", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, stop_insert), NULL, ""},
-	{ "stop-trim", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, stop_trim), NULL, ""},
-	{ "stop-expire", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rediswho_t, stop_expire), NULL, ""},
-
 	{ NULL, -1, 0, NULL, NULL}
 };
 
 /*
  *	Query the database executing a command with no result rows
  */
-static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
-			    rlm_rediswho_t *data, REQUEST *request)
+static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
+			    rlm_rediswho_t *inst, REQUEST *request)
 {
+	REDISSOCK *dissocket;
 	char query[MAX_STRING_LEN * 4];
 
 	/*
@@ -114,12 +77,13 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 		strcpy(query, fmt);
 	}
 
-	if (data->redis_inst->redis_query(dissocket, data->redis_inst, query) < 0) {
+	if (inst->redis_inst->redis_query(dissocket_p, inst->redis_inst, query) < 0) {
 
 		radlog(L_ERR, "rediswho_command: database query error in: '%s'", query);
-		return 0;
+		return -1;
 
 	}
+	dissocket = *dissocket_p;
 
 	switch (dissocket->reply->type) {
 	case REDIS_REPLY_INTEGER:
@@ -135,7 +99,7 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 		break;
 	}
 
-	(data->redis_inst->redis_finish_query)(dissocket);
+	(inst->redis_inst->redis_finish_query)(dissocket);
 
 	return 0;
 }
@@ -176,59 +140,7 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 		inst->xlat_name = cf_section_name1(conf);
 
 	inst->xlat_name = strdup(inst->xlat_name);
-
-	DEBUG("xlat name %s\n", inst->xlat_name);
-
-	/*
-	 *	Check that all the queries are in place
-	 */
-	if ((inst->start_insert == NULL) || !*inst->start_insert) {
-		radlog(L_ERR, "rlm_rediswho: the 'start_insert' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-	if ((inst->start_trim == NULL) || !*inst->start_trim) {
-		radlog(L_ERR, "rlm_rediswho: the 'start_trim' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-	if ((inst->start_expire == NULL) || !*inst->start_expire) {
-		radlog(L_ERR, "rlm_rediswho: the 'start_expire' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-
-	if ((inst->alive_insert == NULL) || !*inst->alive_insert) {
-		radlog(L_ERR, "rlm_rediswho: the 'alive_insert' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-	if ((inst->alive_trim == NULL) || !*inst->alive_trim) {
-		radlog(L_ERR, "rlm_rediswho: the 'alive_trim' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-	if ((inst->alive_expire == NULL) || !*inst->alive_expire) {
-		radlog(L_ERR, "rlm_rediswho: the 'alive_expire' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-
-	if ((inst->stop_insert == NULL) || !*inst->stop_insert) {
-		radlog(L_ERR, "rlm_rediswho: the 'stop_insert' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-	if ((inst->stop_trim == NULL) || !*inst->stop_trim) {
-		radlog(L_ERR, "rlm_rediswho: the 'stop_trim' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
-	if ((inst->stop_expire == NULL) || !*inst->stop_expire) {
-		radlog(L_ERR, "rlm_rediswho: the 'stop_expire' statement must be set.");
-		rediswho_detach(inst);
-		return -1;
-	}
+	inst->cs = conf;
 
 	modinst = find_module_instance(cf_section_find("modules"),
 				       inst->redis_instance_name, 1);
@@ -255,54 +167,32 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 	return 0;
 }
 
-static int rediswho_accounting_start(REDISSOCK *dissocket,
-				     rlm_rediswho_t *data, REQUEST *request)
+static int rediswho_accounting_all(REDISSOCK **dissocket_p,
+				   rlm_rediswho_t *inst, REQUEST *request,
+				   const char *insert,
+				   const char *trim,
+				   const char *expire)
 {
-	rediswho_command(data->start_insert, dissocket, data, request);
-    
+	REDISSOCK *dissocket;
+
+	if (!insert || !trim || !expire) return 0;
+
+	if (rediswho_command(insert, dissocket_p, inst, request) < 0) {
+		return -1;
+	}
+
 	/* Only trim if necessary */
+	dissocket = *dissocket_p;
 	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
-		if (dissocket->reply->integer > data->trim_count) {
-			rediswho_command(data->start_trim, dissocket, data, request);
+		if (dissocket->reply->integer > inst->trim_count) {
+			if (rediswho_command(trim, dissocket_p,
+					     inst, request) < 0) {
+				return -1;
+			}
 		}
 	}
 
-	rediswho_command(data->start_expire, dissocket, data, request);
-
-	return RLM_MODULE_OK;
-}
-
-static int rediswho_accounting_alive(REDISSOCK *dissocket,
-				     rlm_rediswho_t *data, REQUEST *request)
-{
-	rediswho_command(data->alive_insert, dissocket, data, request);
-
-	/* Only trim if necessary */
-	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
-		if (dissocket->reply->integer > data->trim_count) {
-			rediswho_command(data->alive_trim, dissocket, data, request);
-		}
-	}
-
-	rediswho_command(data->alive_expire, dissocket, data, request);
-
-	return RLM_MODULE_OK;
-}
-
-static int rediswho_accounting_stop(REDISSOCK *dissocket,
-				    rlm_rediswho_t *data, REQUEST *request)
-{
-
-	rediswho_command(data->stop_insert, dissocket, data, request);
-
-	/* Only trim if necessary */
-	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
-		if (dissocket->reply->integer > data->trim_count) {
-			rediswho_command(data->stop_trim, dissocket, data, request);
-		}
-	}
-
-	rediswho_command(data->stop_expire, dissocket, data, request);
+	rediswho_command(expire, dissocket_p, inst, request);
 
 	return RLM_MODULE_OK;
 }
@@ -311,8 +201,10 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 {
 	int rcode;
 	VALUE_PAIR * vp;
-	int acct_status_type;
-	rlm_rediswho_t * data = (rlm_rediswho_t *) instance;
+	DICT_VALUE *dv;
+	CONF_SECTION *cs;
+	const char *insert, *trim, *expire;
+	rlm_rediswho_t *inst = (rlm_rediswho_t *) instance;
 	REDISSOCK *dissocket;
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0);
@@ -320,56 +212,35 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 		RDEBUG("Could not find account status type in packet.");
 		return RLM_MODULE_NOOP;
 	}
-	acct_status_type = vp->vp_integer;
 
-	switch (acct_status_type) {
-        case PW_STATUS_START:
-        case PW_STATUS_ALIVE:
-        case PW_STATUS_STOP:
-        case PW_STATUS_ACCOUNTING_ON:
-        case PW_STATUS_ACCOUNTING_OFF:
-		break;
-
-        default:
-		/* We don't care about any other accounting packet */
+	dv = dict_valbyattr(vp->attr, vp->vendor, vp->vp_integer);
+	if (!dv) {
+		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_integer);
 		return RLM_MODULE_NOOP;
 	}
 
-	/*
-	 *	Some nonsensical security checks.
-	 */
-	if (!request->username) {
-		RDEBUG("User-Name is required");
+	cs = cf_section_sub_find(inst->cs, dv->name);
+	if (!cs) {
+		RDEBUG("No subsection %s", dv->name);
 		return RLM_MODULE_NOOP;
 	}
 
-	dissocket = data->redis_inst->redis_get_socket(data->redis_inst);
-	if (dissocket == NULL) {
+	dissocket = fr_connection_get(inst->redis_inst->pool);
+	if (!dissocket) {
 		RDEBUG("cannot allocate redis connection");
 		return RLM_MODULE_FAIL;
 	}
 
-	switch (acct_status_type) {
-        case PW_STATUS_START:
-		rcode = rediswho_accounting_start(dissocket, data, request);
-		break;
+	insert = cf_pair_value(cf_pair_find(cs, "insert");
+	trim = cf_pair_value(cf_pair_find(cs, "trim");
+	expire = cf_pair_value(cf_pair_find(cs, "expire");
 
-        case PW_STATUS_ALIVE:
-		rcode = rediswho_accounting_alive(dissocket, data, request);
-		break;
+	rcode = rediswho_accounting_all(&dissocket, inst, request,
+					inst->start_insert,
+					inst->start_trim,
+					inst->start_expire);
 
-        case PW_STATUS_STOP:
-		rcode = rediswho_accounting_stop(dissocket, data, request);
-		break;
-
-        case PW_STATUS_ACCOUNTING_ON:
-        case PW_STATUS_ACCOUNTING_OFF:
-		/* TODO */
-		break;
-
-	}
-
-	data->redis_inst->redis_release_socket(data->redis_inst, dissocket);
+	if (dissocket) fr_connection_release(inst->redis_inst->pool, dissocket);
 
 	return rcode;
 }

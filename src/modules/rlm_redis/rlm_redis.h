@@ -34,43 +34,22 @@ RCSIDH(rlm_redis_h, "$Id$")
 #include <freeradius-devel/modpriv.h>
 #include <hiredis/hiredis.h>
 
-typedef struct redis_socket {
-	int     id;
-
-#ifdef HAVE_PTHREAD_H
-	pthread_mutex_t mutex;
-#endif
-	struct redis_socket *next;
-	enum { sockconnected, sockunconnected } state;
-
+typedef struct redis_socket_t {
 	redisContext	*conn;
         redisReply      *reply;
-
-	time_t  connected;
-	int	queries;
 } REDISSOCK;
 
 typedef struct rlm_redis_t REDIS_INST;
 
 typedef struct rlm_redis_t {
-	time_t		connect_after;
-	REDISSOCK	*redispool;
-	REDISSOCK	*last_used;
-
         char            *xlat_name;
-
-        int             numconnections;
-        int             connect_failure_retry_delay;
-	int             lifetime;
-	int             max_queries;
 
         char            *hostname;
         int             port;
 	char		*password;
+	fr_connection_pool_t *pool;
 
-	REDISSOCK *(*redis_get_socket)(REDIS_INST * inst);
-	int (*redis_release_socket)(REDIS_INST * inst, REDISSOCK *dissocket);
-        int (*redis_query)(REDISSOCK *dissocket, REDIS_INST *inst, char *query);
+        int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, char *query);
         int (*redis_finish_query)(REDISSOCK *dissocket);
         size_t (*redis_escape_func)(char *out, size_t outlen, const char *in);
 
@@ -78,11 +57,8 @@ typedef struct rlm_redis_t {
 
 #define MAX_QUERY_LEN			4096
 
-int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query);
+int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst, char *query);
 int rlm_redis_finish_query(REDISSOCK *dissocket);
-
-REDISSOCK * redis_get_socket(REDIS_INST * inst);
-int redis_release_socket(REDIS_INST * inst, REDISSOCK *dissocket);
 
 #endif	/* RLM_REDIS_H */
 
