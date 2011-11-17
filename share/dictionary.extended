@@ -1,3 +1,10 @@
+# -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
+#
+#  These attributes are "place-holder".  They should NEVER be used
+#  by name.  The "extended" and "extended-flags" and "evs" data types
+#  should NEVER be used in any other dictionary.
+#
 ATTRIBUTE	Extended-Attribute-1	241	extended
 ATTRIBUTE	Extended-Attribute-2	242	extended
 ATTRIBUTE	Extended-Attribute-3	243	extended
