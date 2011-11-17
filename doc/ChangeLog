@@ -3,6 +3,9 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Update dictionary.aruba, dictionary.apc
 	* Switch to using SHA1 for certificate digests instead of MD5.
 	  See raddb/certs/*.cnf
+	* Added Copyright statements to the dictionaries, so that we know
+	  when people are using them.
+	* Finalize DHCP and DHCP relay code.  It should now work everywhere.
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
