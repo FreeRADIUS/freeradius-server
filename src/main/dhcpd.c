@@ -148,21 +148,21 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 
 	sock = request->listener->data;
 
+#ifdef WITH_UDPFROMTO
 	/*
-	 * Check that packet is for us.
+	 *	Check that packet is for us by looking at the
+	 *	DHCP-Gateway-IP-Address.
 	 */
-	vp = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR); /* DHCP-Gateway-IP-Address */
+	vp = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR);
 	rad_assert(vp != NULL);
 
-#ifndef WITH_UDPFROMTO
-#error "DHCP as a Relay requires WITH_UDPFROMTO compilation flag"
-#endif
 	/* --with-udpfromto is needed just for the following test */
 	if (!vp || vp->vp_ipaddr != request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr) {
 		DEBUG("DHCP: Packet received from server was not for us (was for 0x%x). Discarding packet",
 		    ntohl(request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr));
 		return 1;
 	}
+#endif
 
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
