@@ -78,7 +78,7 @@ typedef struct value_fixup_t {
  */
 static value_fixup_t *value_fixup = NULL;
 
-extern const FR_NAME_NUMBER dict_attr_types[] = {
+const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "integer",	PW_TYPE_INTEGER },
 	{ "string",	PW_TYPE_STRING },
 	{ "ipaddr",	PW_TYPE_IPADDR },
