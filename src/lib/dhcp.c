@@ -1533,4 +1533,41 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	return 0;
 }
+
+int fr_dhcp_add_arp_entry(int fd, const char *interface,
+			  VALUE_PAIR *macaddr, VALUE_PAIR *ip)
+{
+#ifdef SIOCSARP
+	struct sockaddr_in *sin
+	struct arpreq req;
+
+	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
+		fr_strerror_printf("ERROR: DHCP only supports up to %d octets for "
+				   "Client Hardware Address (got %d octets)\n",
+				   sizeof(req.arp_ha.sa_data),
+				   macaddr->length);
+		return -1;
+	}
+
+	memset(&req, 0, sizeof(req));
+	sin = (struct sockaddr_in *) &req.arp_pa;
+	sin->sin_family = AF_INET;
+	sin->sin_addr.s_addr = ip->vp_ipaddr;
+	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
+	memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->length);
+
+	req.arp_flags = ATF_COM;
+	if (ioctl(fd, SIOCSARP, &req) < 0) {
+		fr_strerror_printf("DHCP: Failed to add entry in ARP cache: %s (%d)",
+				   strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+#else
+	fr_strerror_printf("Adding ARP entry is unsupported on this system");
+	return -1;
+#endif
+}
+
 #endif /* WITH_DHCP */
