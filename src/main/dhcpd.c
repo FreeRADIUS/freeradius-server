@@ -1,5 +1,5 @@
 /*
- * dhcp.c	DHCP processing.  Done poorly for now.
+ * dhcp.c	DHCP processing.
  *
  * Version:	$Id$
  *
@@ -18,7 +18,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2008 The FreeRADIUS server project
- * Copyright 2008 Alan DeKok <aland@deployingradius.com>
+ * Copyright 2008,2011 Alan DeKok <aland@deployingradius.com>
  */
 
 #ifdef WITH_DHCP
@@ -60,7 +60,7 @@ typedef struct dhcp_socket_t {
 
 	/*
 	 *	DHCP-specific additions.
-	 */  
+	 */
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
 } dhcp_socket_t;
@@ -126,7 +126,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	request->packet->dst_port = request->packet->dst_port;
 
-	if (fr_dhcp_encode(request->packet, NULL) < 0) {
+	if (fr_dhcp_encode(request->packet) < 0) {
 		DEBUG("dhcprelay_process_client_request: ERROR in fr_dhcp_encode\n");
 		return -1;
 	}
@@ -224,7 +224,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		}
 	}
 
-	if (fr_dhcp_encode(request->packet, NULL) < 0) {
+	if (fr_dhcp_encode(request->packet) < 0) {
 		DEBUG("dhcprelay_process_server_reply: ERROR in fr_dhcp_encode\n");
 		return -1;
 	}
@@ -232,10 +232,25 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	return fr_dhcp_send(request->packet);
 }
 
+static const uint32_t attrnums[] = {
+	57,	/* DHCP-DHCP-Maximum-Msg-Size */
+	256,	/* DHCP-Opcode */
+	257,	/* DHCP-Hardware-Type */
+	258,	/* DHCP-Hardware-Address-Length */
+	259,	/* DHCP-Hop-Count */
+	260,	/* DHCP-Transaction-Id */
+	262,	/* DHCP-Flags */
+	263,	/* DHCP-Client-IP-Address */
+	266,	/* DHCP-Gateway-IP-Address */
+	267	/* DHCP-Client-Hardware-Address */
+};
+
 static int dhcp_process(REQUEST *request)
 {
 	int rcode;
+	unsigned int i;
 	VALUE_PAIR *vp;
+	dhcp_socket_t *sock;
 
 	vp = pairfind(request->packet->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
 	if (vp) {
@@ -246,111 +261,6 @@ static int dhcp_process(REQUEST *request)
 	} else {
 		DEBUG("DHCP: Failed to find DHCP-Message-Type in packet!");
 		rcode = RLM_MODULE_FAIL;
-	}
-
-	/*
-	 *	For messages from a client, look for Relay attribute,
-	 *	and forward it if necessary.
-	 */
-	vp = NULL;
-	if (request->packet->data[0] == 1) {
-		vp = pairfind(request->config_items, DHCP2ATTR(270));
-	}
-	if (vp) {
-		VALUE_PAIR *giaddr;
-		
-		/*
-		 *	Find the original giaddr.
-		 *	FIXME: Maybe look in the original packet?
-		 *
-		 *	It's invalid to have giaddr=0 AND a relay option
-		 */
-		giaddr = pairfind(request->packet->vps, DHCP2ATTR(266));
-		if (giaddr && (giaddr->vp_ipaddr == htonl(INADDR_ANY))) {
-			if (pairfind(request->packet->vps, DHCP2ATTR(82))) {
-				RDEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet");
-				return 1;
-			}
-		}
-
-		if (request->packet->data[3] > 10) {
-			RDEBUG("DHCP: Number of hops is greater than 10: not relaying");
-			return 1;
-		}
-
-		/*
-		 *	Forward a reply...
-		 */
-		pairfree(&request->reply->vps);
-		request->reply->vps = paircopy(request->packet->vps);
-		request->reply->code = request->packet->code;
-		request->reply->id = request->packet->id;
-		request->reply->src_ipaddr = request->packet->dst_ipaddr;
-		request->reply->src_port = request->packet->dst_port;
-		request->reply->dst_ipaddr.af = AF_INET;
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		/*
-		 *	Don't change the destination port.  It's the
-		 *	server port.
-		 */
-
-		/*
-		 *	Hop count goes up.
-		 */
-		vp = pairfind(request->reply->vps, DHCP2ATTR(259));
-		if (vp) vp->vp_integer++;
-		
-		return 1;
-	}
-
-	/*
-	 *	Responses from a server.  Handle them differently.
-	 */
-	if (request->packet->data[0] == 2) {
-		pairfree(&request->reply->vps);
-		request->reply->vps = paircopy(request->packet->vps);
-		request->reply->code = request->packet->code;
-		request->reply->id = request->packet->id;
-
-		/*
-		 *	Delete any existing giaddr.  If we received a
-		 *	message from the server, then we're NOT the
-		 *	server.  So we must be the destination of the
-		 *	giaddr field.
-		 */
-		pairdelete(&request->reply->vps, DHCP2ATTR(266));
-
-		/*
-		 *	Search for client IP address.
-		 */
-		vp = pairfind(request->reply->vps, DHCP2ATTR(264));
-		if (!vp) {
-			request->reply->code = 0;
-			RDEBUG("DHCP: No YIAddr in the reply. Discarding packet");
-			return 1;
-		}
-
-		/*
-		 *	FROM us, TO the client's IP, OUR port + 1.
-		 */
-		request->reply->src_ipaddr = request->packet->dst_ipaddr;
-		request->reply->src_port = request->packet->dst_port;
-		request->reply->dst_ipaddr.af = AF_INET;
-		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		request->reply->dst_port = request->packet->dst_port + 1;
-
-		/*
-		 *	Hop count goes down.
-		 */
-		vp = pairfind(request->reply->vps, DHCP2ATTR(259));
-		if (vp && (vp->vp_integer > 0)) vp->vp_integer--;
-
-		/*
-		 *	FIXME: Keep original somewhere?  If the
-		 *	broadcast flags are set, use them here?
-		 */
-		
-		return 1;
 	}
 
 	vp = pairfind(request->reply->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
@@ -380,7 +290,7 @@ static int dhcp_process(REQUEST *request)
 	case RLM_MODULE_FAIL:
 	case RLM_MODULE_INVALID:
 	case RLM_MODULE_NOOP:
-	case RLM_MODULE_NOTFOUND:	
+	case RLM_MODULE_NOTFOUND:
 		if (request->packet->code == PW_DHCP_DISCOVER) {
 			request->reply->code = 0; /* ignore the packet */
 		} else {
@@ -389,14 +299,132 @@ static int dhcp_process(REQUEST *request)
 		break;
 
 	case RLM_MODULE_HANDLED:
+		request->reply->code = 0; /* ignore the packet */
 		break;
 	}
+
+	/*
+	 *	TODO: Handle 'output' of RLM_MODULE when acting as a
+	 *	DHCP relay We may want to not forward packets in
+	 *	certain circumstances.
+	 */
+
+	/*
+	 * 	Handle requests when acting as a DHCP relay
+	 */
+	vp = pairfind(request->packet->vps, DHCP2ATTR(256)); /* DHCP-Opcode */
+	if (!vp) {
+		RDEBUG("FAILURE: Someone deleted the DHCP-Opcode!");
+		return 1;
+	}
+
+	/* BOOTREPLY received on port 67 (i.e. from a server) */
+	if (vp->vp_integer == 2) {
+		return dhcprelay_process_server_reply(request);
+	}
+
+	/* Packet from client, and we have DHCP-Relay-To-IP-Address */
+	if (pairfind(request->config_items, DHCP2ATTR(270))) { 
+		return dhcprelay_process_client_request(request);
+	}
+
+	/* else it's a packet from a client, without relaying */
+	rad_assert(vp->vp_integer == 1); /* BOOTREQUEST */
+	sock = request->listener->data;
+
+	/*
+	 *	Handle requests when acting as a DHCP server
+	 */
 
 	/*
 	 *	Releases don't get replies.
 	 */
 	if (request->packet->code == PW_DHCP_RELEASE) {
 		request->reply->code = 0;
+	}
+
+	if (request->reply->code == 0) {
+		return 1;
+	}
+
+	request->reply->sockfd = request->packet->sockfd;
+
+	/*
+	 *	Copy specific fields from packet to reply, if they
+	 *	don't already exist
+	 */
+	for (i = 0; i < sizeof(attrnums) / sizeof(attrnums[0]); i++) {
+		uint32_t attr = attrnums[i];
+
+		if (pairfind(request->reply->vps, DHCP2ATTR(attr))) continue;
+		if ((vp = pairfind(request->packet->vps, DHCP2ATTR(attr)))) {
+			pairadd(&request->reply->vps, paircopyvp(vp));
+		}
+	}
+
+	vp = pairfind(request->reply->vps, DHCP2ATTR(256)); /* DHCP-Opcode */
+	rad_assert(vp != NULL);
+	vp->vp_integer = 2; /* BOOTREPLY */
+
+	/*
+	 * Prepare the reply packet for sending through dhcp_socket_send()
+	 */
+	request->reply->dst_ipaddr.af = AF_INET;
+	request->reply->src_ipaddr.af = AF_INET;
+	/* XXX sock->ipaddr == 0 (listening on '*') */
+	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->ipaddr.ipaddr.ip4addr.s_addr;
+
+	request->reply->dst_port = request->packet->src_port;
+	request->reply->src_port = request->packet->dst_port;
+
+	vp = pairfind(request->reply->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
+	if (vp && (vp->vp_ipaddr != htonl(INADDR_ANY))) {
+		/* Answer to client's nearest DHCP relay */
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+	} else if ((request->reply->code == PW_DHCP_NAK) ||
+	    ((vp = pairfind(request->reply->vps, DHCP2ATTR(262))) /* DHCP-Flags */ &&
+		(vp->vp_integer & 0x8000) &&
+		((vp = pairfind(request->reply->vps, DHCP2ATTR(263))) /* DHCP-Client-IP-Address */ &&
+		    (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
+		/*
+		 * RFC 2131, page 23
+		 *
+		 * Broadcast on
+		 * - DHCPNAK
+		 * or
+		 * - Broadcast flag is set up and ciaddr == NULL
+		 */
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+	} else {
+		/*
+		 * RFC 2131, page 23
+		 *
+		 * Unicast to
+		 * - ciaddr if present
+		 * otherwise to yiaddr
+		 */
+		if ((vp = pairfind(request->reply->vps, DHCP2ATTR(263))) /* DHCP-Client-IP-Address */ &&
+		    (vp->vp_ipaddr != htonl(INADDR_ANY))) {
+			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		} else {
+			vp = pairfind(request->reply->vps, DHCP2ATTR(264)); /* DHCP-Your-IP-Address */
+			rad_assert(vp != NULL);
+			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+
+			/*
+			 * When sending a DHCP_OFFER, make sure our ARP table
+			 * contains an entry for the client IP address, or else
+			 * packet may not be forwarded if it was the first time
+			 * the client was requesting an IP address.
+			 */
+			if (request->reply->code == PW_DHCP_OFFER) {
+				VALUE_PAIR *hwvp = pairfind(request->reply->vps, DHCP2ATTR(267)); /* DHCP-Client-Hardware-Address */
+				rad_assert(hwvp != NULL);
+				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->interface, hwvp, vp) < 0) {
+					return -1;
+				}
+			}
+		}
 	}
 
 	return 1;
@@ -516,16 +544,10 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	if (request->reply->code == 0) return 0; /* don't reply */
 
-	if (request->packet->code != request->reply->code) {
-		if (fr_dhcp_encode(request->reply, request->packet) < 0) {
-			return -1;
-		}
-	} else {
-		if (fr_dhcp_encode(request->reply, NULL) < 0) {
-			return -1;
-		}
+	if (fr_dhcp_encode(request->reply) < 0) {
+		DEBUG("dhcp_socket_send: ERROR\n");
+		return -1;
 	}
-
 	sock = listener->data;
 	if (sock->suppress_responses) return 0;
 
@@ -533,11 +555,10 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 }
 
 
-static int dhcp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
+static int dhcp_socket_encode(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
 {
 	DEBUG2("NO ENCODE!");
 	return 0;
-	return fr_dhcp_encode(request->reply, request->packet);
 }
 
 
