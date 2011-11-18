@@ -106,6 +106,14 @@ listen {
 	#
 	# It's set to "no" here for testing.
 	broadcast = no
+
+	# On Linux if you're running the server as non-root, you
+	# will need to do:
+	#
+	#	sudo setcap cap_net_admin=ei /path/to/radiusd
+	#
+	# This will allow the server to set ARP table entries
+	# for newly allocated IPs
 }
 
 #  Packets received on the socket will be processed through one
