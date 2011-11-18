@@ -1530,6 +1530,7 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->interface) {
 #ifdef SO_BINDTODEVICE
 		struct ifreq ifreq;
+                memset(&ifreq, 0, sizeof (ifreq));
 		strcpy(ifreq.ifr_name, sock->interface);
 
 		fr_suid_up();

@@ -88,7 +88,8 @@ endif
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
 		--without-rlm_sql_unixodbc \
-		--with-system-libtool
+		--with-system-libtool \
+		--with-system-libltdl
 
 #Architecture 
 build: patch build-arch build-indep
