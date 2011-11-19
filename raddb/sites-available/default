@@ -532,12 +532,14 @@ post-auth {
 #	       Reply-Message += "%{TLS-Cert-Subject}"
 #	       Reply-Message += "%{TLS-Cert-Issuer}"
 #	       Reply-Message += "%{TLS-Cert-Common-Name}"
+#	       Reply-Message += "%{TLS-Cert-Subject-Alt-Name-Email}"
 #
 #	       Reply-Message += "%{TLS-Client-Cert-Serial}"
 #	       Reply-Message += "%{TLS-Client-Cert-Expiration}"
 #	       Reply-Message += "%{TLS-Client-Cert-Subject}"
 #	       Reply-Message += "%{TLS-Client-Cert-Issuer}"
 #	       Reply-Message += "%{TLS-Client-Cert-Common-Name}"
+#	       Reply-Message += "%{TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 
 

@@ -36,6 +36,8 @@ RCSID("$Id$")
 #include <openssl/evp.h>
 #endif
 
+#include <openssl/x509.h>
+
 #include "rlm_eap_tls.h"
 #include "config.h"
 
@@ -416,12 +418,13 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static const char *cert_attr_names[5][2] = {
+static const char *cert_attr_names[6][2] = {
   { "TLS-Client-Cert-Serial",		"TLS-Cert-Serial" },
   { "TLS-Client-Cert-Expiration",	"TLS-Cert-Expiration" },
   { "TLS-Client-Cert-Subject",		"TLS-Cert-Subject" },
   { "TLS-Client-Cert-Issuer",		"TLS-Cert-Issuer" },
-  { "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" }
+  { "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" },
+  { "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" }
 };
 
 #define EAPTLS_SERIAL		(0)
@@ -429,6 +432,7 @@ static const char *cert_attr_names[5][2] = {
 #define EAPTLS_SUBJECT		(2)
 #define EAPTLS_ISSUER		(3)
 #define EAPTLS_CN		(4)
+#define EAPTLS_SAN_EMAIL	(5)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -466,7 +470,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509 *client_cert;
 	X509 *issuer_cert;
 	SSL *ssl;
-	int err, depth, lookup;
+	int err, depth, lookup, loc;
 	EAP_TLS_CONF *conf;
 	int my_ok = ok;
 	REQUEST *request;
@@ -566,6 +570,41 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		pairadd(&handler->certs,
 			pairmake(cert_attr_names[EAPTLS_CN][lookup], common_name, T_OP_SET));
 	}
+
+#ifdef GEN_EMAIL
+	/*
+	 *	Get the RFC822 Subject Alternative Name
+	 */
+	loc = X509_get_ext_by_NID(client_cert, NID_subject_alt_name, 0);
+	if (lookup <= 1 && loc >= 0) {
+		X509_EXTENSION *ext = NULL;
+		GENERAL_NAMES *names = NULL;
+		int i;
+
+		if ((ext = X509_get_ext(client_cert, loc)) &&
+		    (names = X509V3_EXT_d2i(ext))) {
+			for (i = 0; i < sk_GENERAL_NAME_num(names); i++) {
+				GENERAL_NAME *name = sk_GENERAL_NAME_value(names, i);
+
+				switch (name->type) {
+				case GEN_EMAIL:
+					if (ASN1_STRING_length(name->d.rfc822Name) >= MAX_STRING_LEN)
+						break;
+
+					pairadd(&handler->certs,
+						pairmake(cert_attr_names[EAPTLS_SAN_EMAIL][lookup],
+							 ASN1_STRING_data(name->d.rfc822Name), T_OP_SET));
+					break;
+				default:
+					/* XXX TODO handle other SAN types */
+					break;
+				}
+			}
+		}
+		if (names != NULL)
+			sk_GENERAL_NAME_free(names);
+	}
+#endif	/* GEN_EMAIL */
 
 	/*
 	 *	If the CRL has expired, that might still be OK.
