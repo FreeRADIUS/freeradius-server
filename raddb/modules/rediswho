@@ -28,19 +28,19 @@ rediswho {
 	#
 	Start {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords:-0},%{Acct-Output-Gigawords:-0},%{Acct-Input-Octets:-0},%{Acct-Output-Octets:-0}"
-		trim =   "LTRIM %{User-Name} 0 ${trim-count}"
-		expire = "EXPIRE %{User-Name} ${expire-time}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim-count}"
+		expire = "EXPIRE %{User-Name} ${..expire-time}"
 	}
 
 	Interim-Update {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords:-0},%{Acct-Output-Gigawords:-0},%{Acct-Input-Octets:-0},%{Acct-Output-Octets:-0}"
-		trim =   "LTRIM %{User-Name} 0 ${trim-count}"
-		expire = "EXPIRE %{User-Name} ${expire-time}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim-count}"
+		expire = "EXPIRE %{User-Name} ${..expire-time}"
 	}
 
 	Stop {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{Acct-Input-Gigawords:-0},%{Acct-Output-Gigawords:-0},%{Acct-Input-Octets:-0},%{Acct-Output-Octets:-0}"
-		trim =   "LTRIM %{User-Name} 0 ${trim-count}"
-		expire = "EXPIRE %{User-Name} ${expire-time}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim-count}"
+		expire = "EXPIRE %{User-Name} ${..expire-time}"
 	}
 }
