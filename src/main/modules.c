@@ -790,7 +790,8 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
  *	block
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
-				     rbtree_t *components, int attr, int comp)
+				     rbtree_t *components,
+				     const DICT_ATTR *dattr, int comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -824,7 +825,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_valbyname(attr, 0, name2);
+	dval = dict_valbyname(dattr->attr, dattr->vendor, name2);
 	if (!dval) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "%s %s Not previously configured",
@@ -917,7 +918,7 @@ static int load_component_section(CONF_SECTION *cs,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(NULL, scs,
 							       components,
-							       dattr->attr,
+							       dattr,
 							       comp)) {
 					return -1; /* FIXME: memleak? */
 				}
@@ -1202,7 +1203,7 @@ static int load_byserver(CONF_SECTION *cs)
 				DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
 				if (!load_subcomponent_section(NULL, subcs,
 							       components,
-							       dattr->attr,
+							       dattr,
 							       RLM_COMPONENT_POST_AUTH)) {
 					goto error; /* FIXME: memleak? */
 				}
