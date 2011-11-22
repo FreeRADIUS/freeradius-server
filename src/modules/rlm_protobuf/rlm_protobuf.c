@@ -572,7 +572,7 @@ static VALUE_PAIR* create_radius_vp(Org__Freeradius__ValuePair* cvp,
             vp->vp_ether[3] = (v & 0xFF); v >>= 8; 
             vp->vp_ether[2] = (v & 0xFF); v >>= 8; 
             vp->vp_ether[1] = (v & 0xFF); v >>= 8; 
-            vp->vp_ether[1] = (v & 0xFF);  
+            vp->vp_ether[0] = (v & 0xFF);  
             vp->length=sizeof(vp->vp_ether);
           } else {
             radlog(L_ERR,"rlm_protobuf: reply: invalid type for ether address in %s", attr->name);
