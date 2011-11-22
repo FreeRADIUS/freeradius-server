@@ -2814,6 +2814,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	int data_offset = 0;
 	DICT_ATTR *da;
 	VALUE_PAIR *vp = NULL;
+	uint8_t buffer[256];
 
 	if (length == 0) {
 		/*
@@ -2912,8 +2913,8 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	/*
 	 *	Copy the data to be decrypted
 	 */
-	vp->length = length - data_offset;
-	memcpy(&vp->vp_octets[0], data + data_offset, vp->length);
+	vp->length = length - data_offset;	
+	memcpy(buffer, data + data_offset, vp->length);
 
 	/*
 	 *	Decrypt the attribute.
@@ -2924,16 +2925,17 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		 */
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		if (original) {
-			rad_pwdecode(vp->vp_strvalue,
+			rad_pwdecode(buffer,
 				     vp->length, secret,
 				     original->vector);
 		} else {
-			rad_pwdecode(vp->vp_strvalue,
+			rad_pwdecode(buffer,
 				     vp->length, secret,
 				     packet->vector);
 		}
+		buffer[253] = '\0';
 		if (vp->attribute == PW_USER_PASSWORD) {
-			vp->length = strlen(vp->vp_strvalue);
+			vp->length = strlen(buffer);
 		}
 		break;
 
@@ -2944,7 +2946,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
 		if (!original) goto raw;
 
-		if (rad_tunnel_pwdecode(vp->vp_octets, &vp->length,
+		if (rad_tunnel_pwdecode(buffer, &vp->length,
 					secret, original->vector) < 0) {
 			goto raw;
 		}
@@ -2962,10 +2964,10 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 			make_secret(my_digest,
 				    original->vector,
 				    secret, data);
-			memcpy(vp->vp_strvalue, my_digest,
+			memcpy(buffer, my_digest,
 			       AUTH_VECTOR_LEN );
-			vp->vp_strvalue[AUTH_VECTOR_LEN] = '\0';
-			vp->length = strlen(vp->vp_strvalue);
+			buffer[AUTH_VECTOR_LEN] = '\0';
+			vp->length = strlen(buffer);
 		}
 		break;
 
@@ -2976,58 +2978,49 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 
 	switch (vp->type) {
 	case PW_TYPE_STRING:
+		memcpy(vp->vp_strvalue, buffer, vp->length);
+		vp->vp_strvalue[vp->length] = '\0';
+		break;
+
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_ABINARY:
-		/* nothing more to do */
+		memcpy(vp->vp_octets, buffer, vp->length);
 		break;
 
 	case PW_TYPE_BYTE:
 		if (vp->length != 1) goto raw;
 
-		vp->vp_integer = vp->vp_octets[0];
+		vp->vp_integer = buffer[0];
 		break;
 
 
 	case PW_TYPE_SHORT:
 		if (vp->length != 2) goto raw;
 
-		vp->vp_integer = (vp->vp_octets[0] << 8) | vp->vp_octets[1];
+		vp->vp_integer = (buffer[0] << 8) | buffer[1];
 		break;
 
 	case PW_TYPE_INTEGER:
 		if (vp->length != 4) goto raw;
 
-		memcpy(&vp->vp_integer, vp->vp_octets, 4);
+		memcpy(&vp->vp_integer, buffer, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 
 		if (vp->flags.has_tag) vp->vp_integer &= 0x00ffffff;
-
-		/*
-		 *	Try to get named VALUEs
-		 */
-		{
-			DICT_VALUE *dval;
-			dval = dict_valbyattr(vp->attribute, vp->vendor,
-					      vp->vp_integer);
-			if (dval) {
-				strlcpy(vp->vp_strvalue,
-					dval->name,
-					sizeof(vp->vp_strvalue));
-			}
-		}
 		break;
 
 	case PW_TYPE_INTEGER64:
 		if (vp->length != 8) goto raw;
 
 		/* vp_integer64 is a union with vp_octets */
+		memcpy(&vp->vp_integer64, buffer, 8);
 		vp->vp_integer64 = ntohll(vp->vp_integer64);
 		break;
 
 	case PW_TYPE_DATE:
 		if (vp->length != 4) goto raw;
 
-		memcpy(&vp->vp_date, vp->vp_octets, 4);
+		memcpy(&vp->vp_date, buffer, 4);
 		vp->vp_date = ntohl(vp->vp_date);
 		break;
 
@@ -3035,7 +3028,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	case PW_TYPE_IPADDR:
 		if (vp->length != 4) goto raw;
 
-		memcpy(&vp->vp_ipaddr, vp->vp_octets, 4);
+		memcpy(&vp->vp_ipaddr, buffer, 4);
 		break;
 
 		/*
@@ -3043,7 +3036,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		 */
 	case PW_TYPE_IFID:
 		if (vp->length != 8) goto raw;
-		/* vp->vp_ifid == vp->vp_octets */
+		memcpy(&vp->vp_ifid, buffer, 8);
 		break;
 
 		/*
@@ -3051,7 +3044,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		 */
 	case PW_TYPE_IPV6ADDR:
 		if (vp->length != 16) goto raw;
-		/* vp->vp_ipv6addr == vp->vp_octets */
+		memcpy(&vp->vp_ipv6addr, buffer, 16);
 		break;
 
 		/*
@@ -3065,14 +3058,15 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		 */
 	case PW_TYPE_IPV6PREFIX:
 		if (vp->length < 2 || vp->length > 18) goto raw;
-		if (vp->vp_octets[1] > 128) goto raw;
+		if (buffer[1] > 128) goto raw;
 
 		/*
 		 *	FIXME: double-check that
 		 *	(vp->vp_octets[1] >> 3) matches vp->length + 2
 		 */
+		memcpy(&vp->vp_ipv6prefix, buffer, vp->length);
 		if (vp->length < 18) {
-			memset(vp->vp_octets + vp->length, 0,
+			memset(((uint8_t *)vp->vp_ipv6prefix) + vp->length, 0,
 			       18 - vp->length);
 		}
 		break;
@@ -3084,9 +3078,8 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		 *	Overload vp_integer for ntohl, which takes
 		 *	uint32_t, not int32_t
 		 */
-		memcpy(&vp->vp_integer, vp->vp_octets, 4);
+		memcpy(&vp->vp_integer, buffer, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
-		memcpy(&vp->vp_signed, &vp->vp_integer, 4);
 		break;
 
 	case PW_TYPE_TLV:
@@ -3097,12 +3090,12 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	case PW_TYPE_COMBO_IP:
 		if (vp->length == 4) {
 			vp->type = PW_TYPE_IPADDR;
-			memcpy(&vp->vp_ipaddr, vp->vp_octets, 4);
+			memcpy(&vp->vp_ipaddr, buffer, 4);
 			break;
 
 		} else if (vp->length == 16) {
 			vp->type = PW_TYPE_IPV6ADDR;
-			/* vp->vp_ipv6addr == vp->vp_octets */
+			memcpy(&vp->vp_ipv6addr, buffer, 16);
 			break;
 
 		}
