@@ -779,30 +779,6 @@ autz_redo:
 	}
 
 	/*
-	 *	Add the port number to the Framed-IP-Address if
-	 *	vp->addport is set.
-	 */
-	if (((tmp = pairfind(request->reply->vps,
-			     PW_FRAMED_IP_ADDRESS, 0)) != NULL) &&
-	    (tmp->flags.addport != 0)) {
-		VALUE_PAIR *vpPortId;
-
-		/*
-		 *  Find the NAS port ID.
-		 */
-		if ((vpPortId = pairfind(request->packet->vps,
-					 PW_NAS_PORT, 0)) != NULL) {
-		  unsigned long tvalue = ntohl(tmp->vp_integer);
-		  tmp->vp_integer = htonl(tvalue + vpPortId->vp_integer);
-		  tmp->flags.addport = 0;
-		  ip_ntoa(tmp->vp_strvalue, tmp->vp_integer);
-		} else {
-			RDEBUG2("WARNING: No NAS-Port attribute in request.  CANNOT return a Framed-IP-Address + NAS-Port.\n");
-			pairdelete(&request->reply->vps, PW_FRAMED_IP_ADDRESS, 0);
-		}
-	}
-
-	/*
 	 *	Set the reply to Access-Accept, if it hasn't already
 	 *	been set to something.  (i.e. Access-Challenge)
 	 */

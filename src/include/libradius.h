@@ -97,7 +97,6 @@ extern "C" {
 #endif
 
 typedef struct attr_flags {
-	unsigned int		addport : 1;  /* add NAS-Port to IP address */
 	unsigned int		has_tag : 1;  /* tagged attribute */
 	unsigned int		do_xlat : 1;  /* strvalue is dynamic */
 	unsigned int		unknown_attr : 1; /* not in dictionary */

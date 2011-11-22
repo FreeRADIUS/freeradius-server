@@ -991,16 +991,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	cannot be resolved, or resolve later!
 			 */
 			s = NULL;
-			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
-				cs = s = strdup(value);
-				if (!s) return NULL;
-				p = strrchr(s, '+');
-				*p = 0;
-				vp->flags.addport = 1;
-			} else {
-				p = NULL;
-				cs = value;
-			}
+			p = NULL;
+			cs = value;
 
 			{
 				fr_ipaddr_t ipaddr;
