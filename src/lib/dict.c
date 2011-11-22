@@ -927,7 +927,7 @@ static int process_attribute(const char* fn, const int line,
 
 				if ((flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) &&
 				    (type != PW_TYPE_STRING)) {
-					fr_strerror_printf( "dict_init: %s[%d] Only \"string\" types can have the \"encrypt=2\" flag set.",
+					fr_strerror_printf( "dict_init: %s[%d] Only \"string\" types can have the \"encrypt=3\" flag set.",
 							    fn, line);
 					return -1;
 				}

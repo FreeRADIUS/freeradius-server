@@ -21,7 +21,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  * Copyright 2011 The FreeRADIUS server project
- * Copyright 201  Alan DeKok <aland@networkradius.com>
+ * Copyright 2011  Alan DeKok <aland@networkradius.com>
  */
 
 #include <freeradius-devel/ident.h>
@@ -31,31 +31,26 @@
 
 #include "rlm_securid.h"
 
-/* RADIUS PROTOCOL ATTRUBUTES */
-#define PW_ATTRIBUTE_NAME_PROMPT         76 /* Prompt */
-#define PW_ATTRIBUTE_VALUE_NO_ECHO       0  /* No-Echo */
-#define PW_ATTRIBUTE_VALUE_ECHO          1  /* Echo */
-
 typedef enum {
-     RC_SECURID_AUTH_SUCCESS = 0,
-     RC_SECURID_AUTH_FAILURE = -3,
-     RC_SECURID_AUTH_ACCESS_DENIED_FAILURE = -4,
-     RC_SECURID_AUTH_INVALID_SERVER_FAILURE = -5,
-     RC_SECURID_AUTH_CHALLENGE = -17
+	RC_SECURID_AUTH_SUCCESS = 0,
+	RC_SECURID_AUTH_FAILURE = -3,
+	RC_SECURID_AUTH_ACCESS_DENIED_FAILURE = -4,
+	RC_SECURID_AUTH_INVALID_SERVER_FAILURE = -5,
+	RC_SECURID_AUTH_CHALLENGE = -17
 }
-SECURID_AUTH_RC;
+	SECURID_AUTH_RC;
 
 
 static const CONF_PARSER module_config[] = {
-       { "timer_expire", PW_TYPE_INTEGER,offsetof(rlm_securid_t, timer_limit),
-	 NULL, "600"},
-       { "max_sessions", PW_TYPE_INTEGER,offsetof(rlm_securid_t, max_sessions),
-	 NULL, "2048"},
-       { "max_trips_per_session", PW_TYPE_INTEGER,offsetof(rlm_securid_t, max_trips_per_session),
-	 NULL, NULL},
-       { "max_round_trips", PW_TYPE_INTEGER,offsetof(rlm_securid_t, max_trips_per_session),
-	 NULL, "6"},
-       { NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ "timer_expire", PW_TYPE_INTEGER,
+	  offsetof(rlm_securid_t, timer_limit), NULL, "600"},
+	{ "max_sessions", PW_TYPE_INTEGER,
+	  offsetof(rlm_securid_t, max_sessions), NULL, "2048"},
+	{ "max_trips_per_session", PW_TYPE_INTEGER,
+	  offsetof(rlm_securid_t, max_trips_per_session), NULL, NULL},
+	{ "max_round_trips", PW_TYPE_INTEGER,
+	  offsetof(rlm_securid_t, max_trips_per_session), NULL, "6"},
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 
@@ -83,6 +78,9 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 {
 	rlm_securid_t *inst = (rlm_securid_t *) instance;
 	int         acmRet;
+	SD_PIN pinParams;
+	char newPin[10];
+	char format[30];
 	SECURID_SESSION *pSecurid_session=NULL;
 	int rc=-1;
 
@@ -96,8 +94,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 		return RC_SECURID_AUTH_FAILURE;		
 	}
 
-	memset(replyMsgBuffer,replyMsgBufferSize,0);
-
+	*replyMsgBuffer = '\0';
 
 	pSecurid_session = securid_sessionlist_find(inst,request);
 	if (pSecurid_session == NULL) {
@@ -116,54 +113,83 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			return -2;
 		}
 
-		acmRet = SD_Check(sdiHandle, (SD_CHAR*)passcode, (SD_CHAR*)username);
+		acmRet = SD_Check(sdiHandle, (SD_CHAR*) passcode,
+				  (SD_CHAR*) username);
 		switch (acmRet) {
 		case ACM_OK:
-		     /* we are in now */
-		     radlog(L_INFO,"SecurID authentication successful for [%s].",username);
-		     SD_Close(sdiHandle);
+			/* we are in now */
+			RDEBUG("SecurID authentication successful for %s.",
+			       username);
+			SD_Close(sdiHandle);
 
-		     /* strncpy(replyMsgBuffer,"PASSCODE Accepted",replyMsgBufferSize-1); */
-		     return RC_SECURID_AUTH_SUCCESS;
+			return RC_SECURID_AUTH_SUCCESS;
+
 		case ACM_ACCESS_DENIED:         
-		     /* not this time */
-			 radlog(L_AUTH, "rlm_securid: [%s] Access denied",username);
-		     SD_Close(sdiHandle);
+			/* not this time */
+			RDEBUG("SecurID Access denied for %s", username);
+			SD_Close(sdiHandle);
+			return RC_SECURID_AUTH_ACCESS_DENIED_FAILURE;
 
-		     /* strncpy(replyMsgBuffer,"Access denied",replyMsgBufferSize-1); */
-		     return RC_SECURID_AUTH_ACCESS_DENIED_FAILURE;
 		case ACM_INVALID_SERVER:
-		     radlog(L_ERR,"SecurID: Invalid ACE server.");
-		     /* strncpy(replyMsgBuffer,"Access not possible. Internal error",replyMsgBufferSize-1); */
-		     return RC_SECURID_AUTH_INVALID_SERVER_FAILURE;
+			radlog(L_ERR,"SecurID: Invalid ACE server.");
+			return RC_SECURID_AUTH_INVALID_SERVER_FAILURE;
+
 		case ACM_NEW_PIN_REQUIRED:
-		     DEBUG2("New securid pin required for user [%s]",username);
+			RDEBUG2("SeecurID new pin required for %s",
+				username);
 
-		     /* create a new session */
-		     pSecurid_session = securid_session_alloc();
-		     pSecurid_session->sdiHandle = sdiHandle; /* save ACE handle for future use */
-		     pSecurid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
-		     pSecurid_session->identity = strdup(username);
+			/* create a new session */
+			pSecurid_session = securid_session_alloc();
+			pSecurid_session->sdiHandle = sdiHandle; /* save ACE handle for future use */
+			pSecurid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
+			pSecurid_session->identity = strdup(username);
+			 
+			/* Get PIN requirements */
+			acmRet = AceGetPinParams(sdiHandle, &pinParams);
+			 
+			/* If a system-generated PIN is required */
+			if (pinParams.Selectable == CANNOT_CHOOSE_PIN) {
+				/* Prompt user to accept a system generated PIN */
+				snprintf(replyMsgBuffer, replyMsgBufferSize,
+					 "\r\nAre you prepared to accept a new system-generated PIN [y/n]?");
+				pSecurid_session->securidSessionState = NEW_PIN_SYSTEM_ACCEPT_STATE;
 
-		     /* insert new session in the session list */
-		     securid_sessionlist_add(inst,request,pSecurid_session);
-		
-		     strncpy(replyMsgBuffer," \r\n   Enter your new PIN, containing 4 to 6 digits,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure:",replyMsgBufferSize-1);
-		     return RC_SECURID_AUTH_CHALLENGE;
+			} else if (pinParams.Selectable == USER_SELECTABLE) { //may be returned by AM 6.x servers.
+				snprintf(replyMsgBuffer, replyMsgBufferSize,
+					 "\r\nPress 'y' to generate a new PIN\r\nOR\r\n'n'to enter a new PIN yourself [y/n]");
+				pSecurid_session->securidSessionState = NEW_PIN_USER_SELECT_STATE;
+
+			} else {
+				if (pinParams.Alphanumeric) {
+					strcpy(format, "alphanumeric characters");
+				} else {
+					strcpy(format, "digits");
+				}
+				snprintf(replyMsgBuffer, replyMsgBufferSize,
+					 " \r\n   Enter your new PIN of %d to %d %s,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
+					 pinParams.Min, pinParams.Max, format);
+			}
+
+			/* insert new session in the session list */
+			securid_sessionlist_add(inst,request,pSecurid_session);
+			 
+			return RC_SECURID_AUTH_CHALLENGE;
+
 		case ACM_NEXT_CODE_REQUIRED:
-		     DEBUG2("Next securid token code required for user [%s]",username);
+			RDEBUG2("Next securid token code required for %s",
+				username);
 
-		     /* create a new session */
-		     pSecurid_session = securid_session_alloc();
-		     pSecurid_session->sdiHandle = sdiHandle;
-		     pSecurid_session->securidSessionState = NEXT_CODE_REQUIRED_STATE;
-		     pSecurid_session->identity = strdup(username);
+			/* create a new session */
+			pSecurid_session = securid_session_alloc();
+			pSecurid_session->sdiHandle = sdiHandle;
+			pSecurid_session->securidSessionState = NEXT_CODE_REQUIRED_STATE;
+			pSecurid_session->identity = strdup(username);
 
-		     /* insert new session in the session list */
-		     securid_sessionlist_add(inst,request,pSecurid_session);
+			/* insert new session in the session list */
+			securid_sessionlist_add(inst,request,pSecurid_session);
 		     
-		     strncpy(replyMsgBuffer,"\r\nPlease Enter the Next Code from Your Token:",replyMsgBufferSize-1);
-		     return RC_SECURID_AUTH_CHALLENGE;
+			strlcpy(replyMsgBuffer, "\r\nPlease Enter the Next Code from Your Token:", replyMsgBufferSize);
+			return RC_SECURID_AUTH_CHALLENGE;
 		default:
 			radlog(L_ERR,"SecurID: Unexpected error from ACE/Agent API acmRet=%d",acmRet);
 			return RC_SECURID_AUTH_FAILURE;
@@ -176,55 +202,63 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 		/* continue previous session */
 		switch (pSecurid_session->securidSessionState) {
-		     case NEXT_CODE_REQUIRED_STATE:
-			  DEBUG2("Securid NEXT_CODE_REQUIRED_STATE: User [%s]",username);
-			  /* next token code mode */
+		case NEXT_CODE_REQUIRED_STATE:
+			DEBUG2("Securid NEXT_CODE_REQUIRED_STATE: User [%s]",username);
+			/* next token code mode */
 
-			  acmRet = SD_Next(pSecurid_session->sdiHandle, (SD_CHAR*)passcode);
-			  if (acmRet == ACM_OK) {
+			acmRet = SD_Next(pSecurid_session->sdiHandle, (SD_CHAR*)passcode);
+			if (acmRet == ACM_OK) {
 				radlog(L_INFO,"Next SecurID token accepted for [%s].",pSecurid_session->identity);
-				/* strncpy(replyMsgBuffer,"Next PASSCODE Accepted",replyMsgBufferSize-1);  */
 				rc = RC_SECURID_AUTH_SUCCESS;
-			  } else {
+
+			} else {
 				radlog(L_INFO,"SecurID: Next token rejected for [%s].",pSecurid_session->identity);
-
-				/* strncpy(replyMsgBuffer,"Next token rejected",replyMsgBufferSize-1); */
 				rc = RC_SECURID_AUTH_FAILURE;
-			  }
-			  /* deallocate session */
-			  securid_session_free(inst,request,pSecurid_session);
-			  
-			  return rc;
-		     case NEW_PIN_REQUIRED_STATE:
-			  DEBUG2("SecurID NEW_PIN_REQUIRED_STATE: User [%s]",username);
+			}
 
-			  /* save the previous pin */
-			  if (pSecurid_session->pin) {
+			/* deallocate session */
+			securid_session_free(inst,request,pSecurid_session);
+			return rc;
+
+		case NEW_PIN_REQUIRED_STATE:
+			RDEBUG2("SecurID NEW_PIN_REQUIRED_STATE for %s",
+				username);
+
+			/* save the previous pin */
+			if (pSecurid_session->pin) {
 				free(pSecurid_session->pin);
 				pSecurid_session->pin = NULL;
-			  }
-			  pSecurid_session->pin = strdup(passcode);
+			}
+			pSecurid_session->pin = strdup(passcode);
 
-			  strncpy(replyMsgBuffer,"\r\n                 Please re-enter new PIN:",replyMsgBufferSize-1);
+			strlcpy(replyMsgBuffer,"\r\n                 Please re-enter new PIN:", replyMsgBufferSize);
 
-			  /* set next state */
-			  pSecurid_session->securidSessionState = NEW_PIN_USER_CONFIRM_STATE;
+			/* set next state */
+			pSecurid_session->securidSessionState = NEW_PIN_USER_CONFIRM_STATE;
 
-			  /* insert the updated session in the session list */
-			  securid_sessionlist_add(inst,request,pSecurid_session);
-			  return RC_SECURID_AUTH_CHALLENGE;			   
+			/* insert the updated session in the session list */
+			securid_sessionlist_add(inst,request,pSecurid_session);
+			return RC_SECURID_AUTH_CHALLENGE;
 			  
-		     case NEW_PIN_USER_CONFIRM_STATE:
-			  DEBUG2("SecurID NEW_PIN_USER_CONFIRM_STATE: User [%s]",username);
-			  /* compare previous pin and current pin */
-			  if (!pSecurid_session->pin || strcmp(pSecurid_session->pin,passcode)) {
-				DEBUG2("Pin confirmation failed. Pins do not match [%s] and [%s]",
-					    SAFE_STR(pSecurid_session->pin),
-					    passcode);
+		case NEW_PIN_USER_CONFIRM_STATE:
+			RDEBUG2("SecurID NEW_PIN_USER_CONFIRM_STATE: User [%s]",username);
+			/* compare previous pin and current pin */
+			if (!pSecurid_session->pin || strcmp(pSecurid_session->pin,passcode)) {
+				RDEBUG2("Pin confirmation failed. Pins do not match [%s] and [%s]",
+				       SAFE_STR(pSecurid_session->pin),
+				       passcode);
 				/* pins do not match */
 
 				/* challenge the user again */
-				strncpy(replyMsgBuffer," \r\nPINs do not match. Please try again.\r\n\r\n   Enter your new PIN, containing 4 to 6 digits,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure: ",replyMsgBufferSize-1);
+				AceGetPinParams(pSecurid_session->sdiHandle, &pinParams);
+				if (pinParams.Alphanumeric) {
+					strcpy(format, "alphanumeric characters");
+				} else {
+					strcpy(format, "digits");
+				}
+				snprintf(replyMsgBuffer, replyMsgBufferSize,
+					 " \r\n   Pins do not match--Please try again.\r\n   Enter your new PIN of %d to %d %s,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
+					 pinParams.Min, pinParams.Max, format);
 
 				pSecurid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
 
@@ -232,13 +266,12 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				securid_sessionlist_add(inst,request,pSecurid_session);
 				rc = RC_SECURID_AUTH_CHALLENGE;
 
-			  } else {
+			} else {
 				/* pins match */
-				DEBUG2("Pin confirmation succeeded. Pins match");
+				RDEBUG2("Pin confirmation succeeded. Pins match");
 				acmRet = SD_Pin(pSecurid_session->sdiHandle, (SD_CHAR*)passcode);
-				if (acmRet == ACM_NEW_PIN_ACCEPTED)
-				{
-					radlog(L_INFO,"New SecurID pin accepted for [%s].",pSecurid_session->identity);
+				if (acmRet == ACM_NEW_PIN_ACCEPTED) {
+					RDEBUG("New SecurID pin accepted for %s.",pSecurid_session->identity);
 
 					pSecurid_session->securidSessionState = NEW_PIN_AUTH_VALIDATE_STATE;
 
@@ -246,45 +279,135 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 					securid_sessionlist_add(inst,request,pSecurid_session);
 
 					rc = RC_SECURID_AUTH_CHALLENGE;
-					strncpy(replyMsgBuffer," \r\n\r\nWait for the code on your card to change, then enter new PIN and TokenCode\r\n\r\nEnter PASSCODE:",replyMsgBufferSize-1);
+					strlcpy(replyMsgBuffer," \r\n\r\nWait for the code on your card to change, then enter new PIN and TokenCode\r\n\r\nEnter PASSCODE:", replyMsgBufferSize);
 				} else {
-					radlog(L_INFO,"SecurID: New SecurID pin rejected for [%s].",pSecurid_session->identity);
+					RDEBUG("SecurID: New SecurID pin rejected for %s.",pSecurid_session->identity);
 					SD_Pin(pSecurid_session->sdiHandle, (SD_CHAR*)"");  /* cancel PIN */
 					
 
-					/* strncpy(replyMsgBuffer,"New PIN Rejected",replyMsgBufferSize-1); */
 					rc = RC_SECURID_AUTH_FAILURE;
 
 					/* deallocate session */
-					securid_session_free(inst,request,pSecurid_session);
-
+					securid_session_free(inst, request,
+							     pSecurid_session);
 				}
-			  }
-			  return rc;		  
-		     case NEW_PIN_AUTH_VALIDATE_STATE:
-				acmRet = SD_Check(pSecurid_session->sdiHandle, (SD_CHAR*)passcode, (SD_CHAR*)username);
-				if (acmRet == ACM_OK) {
-					radlog(L_INFO,"New SecurID passcode accepted for [%s].",pSecurid_session->identity);
+			}
+			return rc;		  
+		case NEW_PIN_AUTH_VALIDATE_STATE:
+			acmRet = SD_Check(pSecurid_session->sdiHandle, (SD_CHAR*)passcode, (SD_CHAR*)username);
+			if (acmRet == ACM_OK) {
+				RDEBUG("New SecurID passcode accepted for %s.",
+				       pSecurid_session->identity);
+				rc = RC_SECURID_AUTH_SUCCESS;
 
-					/* strncpy(replyMsgBuffer,"PASSCODE Accepted",replyMsgBufferSize-1); */
-					rc = RC_SECURID_AUTH_SUCCESS;
+			} else {
+				radlog(L_INFO,"SecurID: New passcode rejected for [%s].",pSecurid_session->identity);
+				rc = RC_SECURID_AUTH_FAILURE;
+			}
 
-				} else {
-					radlog(L_INFO,"SecurID: New passcode rejected for [%s].",pSecurid_session->identity);
+			/* deallocate session */
+			securid_session_free(inst,request,pSecurid_session);
 
-					/* strncpy(replyMsgBuffer,"New PASSCODE Rejected",replyMsgBufferSize-1);  */
-					rc = RC_SECURID_AUTH_FAILURE;
+			return rc;
+		case NEW_PIN_SYSTEM_ACCEPT_STATE:
+			if (!strcmp(passcode, "y")) {
+				AceGetSystemPin(pSecurid_session->sdiHandle, newPin);
+					
+				/* Save the PIN for the next session
+				 * continuation */
+				if (pSecurid_session->pin) {
+					free(pSecurid_session->pin);
+					pSecurid_session->pin = NULL;
 				}
+				pSecurid_session->pin = strdup(newPin);
+					
+				snprintf(replyMsgBuffer, replyMsgBufferSize,
+					 "\r\nYour new PIN is: %s\r\nDo you accept this [y/n]?",
+					 newPin);
+				pSecurid_session->securidSessionState = NEW_PIN_SYSTEM_CONFIRM_STATE;
+					
+				/* insert the updated session in the
+				 * session list */
+				securid_sessionlist_add(inst, request,
+							pSecurid_session);
+					
+				rc = RC_SECURID_AUTH_CHALLENGE;
 
+			} else {
+				SD_Pin(pSecurid_session->sdiHandle, (SD_CHAR*)""); //Cancel new PIN
+					
 				/* deallocate session */
-				securid_session_free(inst,request,pSecurid_session);
+				securid_session_free(inst, request,
+						     pSecurid_session);
+					
+				rc = RC_SECURID_AUTH_FAILURE;
+			}
+				
+			return rc;				
+			 
+		case NEW_PIN_SYSTEM_CONFIRM_STATE:
+			acmRet = SD_Pin(pSecurid_session->sdiHandle, (SD_CHAR*)pSecurid_session->pin);
+			if (acmRet == ACM_NEW_PIN_ACCEPTED) {
+				strlcpy(replyMsgBuffer," \r\n\r\nPin Accepted. Wait for the code on your card to change, then enter new PIN and TokenCode\r\n\r\nEnter PASSCODE:",replyMsgBufferSize);
+				pSecurid_session->securidSessionState = NEW_PIN_AUTH_VALIDATE_STATE;
+				/* insert the updated session in the session list */
+				securid_sessionlist_add(inst,request,pSecurid_session);
+				rc = RC_SECURID_AUTH_CHALLENGE;
 
-				return rc;
-		     default:
-			  radlog(L_ERR|L_CONS, "rlm_securid: Invalid session state %d for user [%s]",
-					       pSecurid_session->securidSessionState,
-					       username);
-			  break;	
+			} else {
+				SD_Pin(pSecurid_session->sdiHandle, (SD_CHAR*)""); //Cancel new PIN
+				strlcpy(replyMsgBuffer," \r\n\r\nPin Rejected. Wait for the code on your card to change, then try again.\r\n\r\nEnter PASSCODE:",replyMsgBufferSize);
+				/* deallocate session */
+				securid_session_free(inst, request,
+						     pSecurid_session);
+				rc = RC_SECURID_AUTH_FAILURE;
+			}
+				
+			return rc;
+			 
+			/* USER_SELECTABLE state should be implemented to preserve compatibility with AM 6.x servers, which can return this state */
+		case NEW_PIN_USER_SELECT_STATE:
+			if (!strcmp(passcode, "y")) {
+				/* User has opted for a system-generated PIN */
+				AceGetSystemPin(pSecurid_session->sdiHandle, newPin);
+				snprintf(replyMsgBuffer, replyMsgBufferSize,
+					 "\r\nYour new PIN is: %s\r\nDo you accept this [y/n]?",
+					 newPin);
+				pSecurid_session->securidSessionState = NEW_PIN_SYSTEM_CONFIRM_STATE;
+					
+				/* insert the updated session in the session list */
+				securid_sessionlist_add(inst, request,
+							pSecurid_session);
+				rc = RC_SECURID_AUTH_CHALLENGE;
+
+			} else {
+				/* User has opted for a user-defined PIN */
+				AceGetPinParams(pSecurid_session->sdiHandle,
+						&pinParams);
+				if (pinParams.Alphanumeric) {
+					strcpy(format, "alphanumeric characters");
+				} else {
+					strcpy(format, "digits");
+				}
+					
+				snprintf(replyMsgBuffer, replyMsgBufferSize,
+					 " \r\n   Enter your new PIN of %d to %d %s,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
+					 pinParams.Min, pinParams.Max, format);
+				pSecurid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
+					
+				/* insert the updated session in the session list */
+				securid_sessionlist_add(inst, request,
+							pSecurid_session);
+				rc = RC_SECURID_AUTH_CHALLENGE;
+			}
+				
+			return rc;
+				
+		default:
+			radlog(L_ERR|L_CONS, "rlm_securid: Invalid session state %d for user [%s]",
+			       pSecurid_session->securidSessionState,
+			       username);
+			break;	
 		}
 	}
 	
@@ -344,23 +467,18 @@ static int securid_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 
-
-
 /*
  *	Authenticate the user via one of any well-known password.
  */
 static int securid_authenticate(void *instance, REQUEST *request)
 {
-	int rc;
-	int   moduleRC;
+	int rcode;
 	rlm_securid_t *inst = instance;
 	VALUE_PAIR *module_fmsg_vp;
-	VALUE_PAIR *vp_replyPrompt=NULL;
-	VALUE_PAIR *vp_replyMessage=NULL;
-	char  replyMsgBuffer[MAX_STRING_LEN]="";
+	VALUE_PAIR *vp;
+	char  buffer[MAX_STRING_LEN]="";
 	const char *username=NULL, *password=NULL;
 	char module_fmsg[MAX_STRING_LEN]="";
-
 	
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -400,72 +518,53 @@ static int securid_authenticate(void *instance, REQUEST *request)
 	username = request->username->vp_strvalue;
 	password = request->password->vp_strvalue;
 	
-	RDEBUG("User [%s] login attempt with password [%s]",username,password);
+	RDEBUG("User [%s] login attempt with password [%s]",
+	       username, password);
 	
-	rc = securidAuth(inst,request,username,password,replyMsgBuffer,sizeof(replyMsgBuffer));
+	rcode = securidAuth(inst, request, username, password,
+			    buffer, sizeof(buffer));
 	
-	switch (rc) {
-		case RC_SECURID_AUTH_SUCCESS:
-			if (replyMsgBuffer[0] != '\0') {
-				/* Generate Reply-Message attribute with reply message data */
-				vp_replyMessage = pairmake("Reply-Message", replyMsgBuffer, T_OP_EQ);
+	switch (rcode) {
+	case RC_SECURID_AUTH_SUCCESS:
+		rcode = RLM_MODULE_OK;
+		break;
 
-				/* make sure message ends with '\0' */
-				if (vp_replyMessage->length < (int) sizeof(vp_replyMessage->vp_strvalue)) 
-				{
-					vp_replyMessage->vp_strvalue[vp_replyMessage->length] = '\0';
-					vp_replyMessage->length++;
-				}
-				pairadd(&request->reply->vps,vp_replyMessage);
-		     }
+	case RC_SECURID_AUTH_CHALLENGE:
+		/* reply with Access-challenge message code (11) */
 
-		     moduleRC = RLM_MODULE_OK;
-		     break;
-		case RC_SECURID_AUTH_CHALLENGE:
-		     /* reply with Access-challenge message code (11) */
+		/* Generate Prompt attribute */
+		vp = paircreate(PW_PROMPT, PW_TYPE_INTEGER);
+				
+		rad_assert(vp != NULL);
+		vp->vp_integer = 0; /* no echo */
+		pairadd(&request->reply->vps, vp);
 
-		     /* Generate Prompt attribute */
-		     vp_replyPrompt = paircreate(PW_ATTRIBUTE_NAME_PROMPT , PW_TYPE_INTEGER); /* name="Prompt" */
-		     rad_assert(vp_replyPrompt != NULL);
-		     vp_replyPrompt->vp_integer = PW_ATTRIBUTE_VALUE_NO_ECHO; /* value=No-Echo 0 */
-		     pairadd(&request->reply->vps,vp_replyPrompt);
+		/* Mark the packet as a Acceess-Challenge Packet */
+		request->reply->code = PW_ACCESS_CHALLENGE;
+		RDEBUG("Sending Access-Challenge.");
+		rcode = RLM_MODULE_HANDLED;
+		break;
 
-		     /* Generate Reply-Message attribute with challenge data */
-		     vp_replyMessage = pairmake("Reply-Message", replyMsgBuffer, T_OP_EQ);
-
-		     /* make sure message ends with '\0' */
-		     if (vp_replyMessage->length < (int) sizeof(vp_replyMessage->vp_strvalue)) {
-			vp_replyMessage->vp_strvalue[vp_replyMessage->length] = '\0';
-			vp_replyMessage->length++;
-		     }
-
-		     pairadd(&request->reply->vps,vp_replyMessage);
-
-		     /* Mark the packet as a Acceess-Challenge Packet */
-		     request->reply->code = PW_ACCESS_CHALLENGE;
-		     RDEBUG("Sending Access-Challenge.");
-		     moduleRC = RLM_MODULE_HANDLED;
-		     break;
-		case RC_SECURID_AUTH_FAILURE:
-		case RC_SECURID_AUTH_ACCESS_DENIED_FAILURE:
-		case RC_SECURID_AUTH_INVALID_SERVER_FAILURE:
-		default:
-			if (replyMsgBuffer[0] != '\0') {
-				/* Generate Reply-Message attribute with reply message data */
-				vp_replyMessage = pairmake("Reply-Message", replyMsgBuffer, T_OP_EQ);
-
-				/* make sure message ends with '\0' */
-				if (vp_replyMessage->length < (int) sizeof(vp_replyMessage->vp_strvalue)) {
-					vp_replyMessage->vp_strvalue[vp_replyMessage->length] = '\0';
-					vp_replyMessage->length++;
-				}
-				pairadd(&request->reply->vps,vp_replyMessage);
-			}
-			moduleRC = RLM_MODULE_REJECT;
-			break;
+	case RC_SECURID_AUTH_FAILURE:
+	case RC_SECURID_AUTH_ACCESS_DENIED_FAILURE:
+	case RC_SECURID_AUTH_INVALID_SERVER_FAILURE:
+	default:
+		rcode = RLM_MODULE_REJECT;
+		break;
 	}
 
-	return moduleRC;
+	if (*buffer) {
+		/* Generate Reply-Message attribute with reply message data */
+		vp = pairmake("Reply-Message", buffer, T_OP_EQ);
+		
+		/* make sure message ends with '\0' */
+		if (vp->length < (int) sizeof(vp->vp_strvalue)) {
+			vp->vp_strvalue[vp->length] = '\0';
+			vp->length++;
+		}
+		pairadd(&request->reply->vps,vp);
+	}
+	return rcode;
 }
 
 
