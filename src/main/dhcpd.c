@@ -372,7 +372,7 @@ static int dhcp_process(REQUEST *request)
 	request->reply->dst_ipaddr.af = AF_INET;
 	request->reply->src_ipaddr.af = AF_INET;
 	/* XXX sock->ipaddr == 0 (listening on '*') */
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->ipaddr.ipaddr.ip4addr.s_addr;
+	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->ipaddr.ipaddr.ip4addr.s_addr;
 
 	request->reply->dst_port = request->packet->src_port;
 	request->reply->src_port = request->packet->dst_port;
