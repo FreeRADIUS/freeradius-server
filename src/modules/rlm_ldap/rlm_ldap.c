@@ -1076,8 +1076,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
 
 	if (strchr((char *)check->vp_strvalue,',') != NULL) {
 		/* This looks like a DN */
-		snprintf(filter,sizeof(filter), "%s",gr_filter);
-		snprintf(basedn,sizeof(basedn), "%s",(char *)check->vp_strvalue);
+		strlcpy(filter, gr_filter, sizeof(filter));
+		strlcpy(basedn, check->vp_strvalue, sizeof(basedn));
 	} else
 		snprintf(filter,sizeof(filter), "(&(%s=%s)%s)",
 			 inst->groupname_attr,
