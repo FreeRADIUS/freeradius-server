@@ -1358,6 +1358,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	char		*q;
 	VALUE_PAIR	*vp;
 	DICT_VENDOR	*dv;
+	const DICT_ATTR *da;
 
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
@@ -1533,6 +1534,23 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 			return NULL;
 		}
 	}
+
+	/*
+	 *	Maybe we're reading an old detail/config file, where
+	 *	it didn't know about a particular attribute and dumped
+	 *	it as hex.  Now the dictionaries have been updated,
+	 *	and we know about it.  So... convert it to the
+	 *	appropriate type.
+	 *
+	 *	FIXME: call data2vp_any.
+	 */
+	da = dict_attrbyvalue(attr, vendor);
+	if (da) {
+		/*
+		 *	FIXME: convert hex to the data type.
+		 */
+		return NULL;
+	}
 	
 	/*
 	 *	We've now parsed the attribute properly, Let's create
@@ -1550,46 +1568,16 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	size = strlen(value + 2);
 	data = vp->vp_octets;
 
-	/*
-	 *	We may be reading something like Attr-5.  i.e.
-	 *	who-ever wrote the text didn't understand it, but we
-	 *	do.
-	 */
-	switch (vp->type) {
-	default:
-		if (size == (vp->length * 2)) break;
-		vp->type = PW_TYPE_OCTETS;
-		/* FALL-THROUGH */
-		
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_ABINARY:
-		vp->length = size >> 1;
-		if (vp->length > sizeof(vp->vp_octets)) {
-			vp->vp_tlv = malloc(vp->length);
-			if (!vp->vp_tlv) {
-				fr_strerror_printf("Out of memory");
-				free(vp);
-				return NULL;
-			}
-			data = vp->vp_tlv;
-			vp->type |= PW_FLAG_LONG;
+	vp->length = size >> 1;
+	if (vp->length > sizeof(vp->vp_octets)) {
+		vp->vp_tlv = malloc(vp->length);
+		if (!vp->vp_tlv) {
+			fr_strerror_printf("Out of memory");
+			free(vp);
+			return NULL;
 		}
-		break;
-
-	case PW_TYPE_STRING:
-		vp->length = size >> 1;
-		memset(&vp->vp_strvalue, 0, sizeof(vp->vp_strvalue));
-		if (vp->length >= sizeof(vp->vp_strvalue)) {
-			vp->vp_tlv = malloc(vp->length);
-			if (!vp->vp_tlv) {
-				fr_strerror_printf("Out of memory");
-				free(vp);
-				return NULL;
-			}
-			data = vp->vp_tlv;
-			vp->type |= PW_FLAG_LONG;
-		}
-		break;
+		data = vp->vp_tlv;
+		vp->type |= PW_FLAG_LONG;
 	}
 
 	if (fr_hex2bin(value + 2, data, size) != vp->length) {
@@ -1598,22 +1586,6 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		return NULL;
 	}
 
-	/*
-	 *	Move contents around based on type.  This is
-	 *	to work around the historical use of "lvalue".
-	 */
-	switch (vp->type) {
-	case PW_TYPE_DATE:
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_INTEGER:
-		memcpy(&vp->lvalue, vp->vp_octets, sizeof(vp->lvalue));
-		vp->vp_strvalue[0] = '\0';
-		break;
-		
-	default:
-		break;
-	}
-       
 	return vp;
 }
 

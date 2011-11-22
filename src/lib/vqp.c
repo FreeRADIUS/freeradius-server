@@ -435,34 +435,34 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	tail = &packet->vps;
 
-	vp = paircreate(PW_VQP_PACKET_TYPE, 0, PW_TYPE_OCTETS);
+	vp = paircreate(PW_VQP_PACKET_TYPE, 0, PW_TYPE_INTEGER);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
 	}
-	vp->lvalue = packet->data[1];
+	vp->vp_integer = packet->data[1];
 	debug_pair(vp);
 
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_ERROR_CODE, 0, PW_TYPE_OCTETS);
+	vp = paircreate(PW_VQP_ERROR_CODE, 0, PW_TYPE_INTEGER);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
 	}
-	vp->lvalue = packet->data[2];
+	vp->vp_integer = packet->data[2];
 	debug_pair(vp);
 
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, 0, PW_TYPE_OCTETS);
+	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, 0, PW_TYPE_INTEGER);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
 	}
-	vp->lvalue = packet->id; /* already set by vqp_recv */
+	vp->vp_integer = packet->id; /* already set by vqp_recv */
 	debug_pair(vp);
 
 	*tail = vp;
@@ -562,7 +562,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		return -1;
 	}
 
-	code = vp->lvalue;
+	code = vp->vp_integer;
 	if ((code < 1) || (code > 4)) {
 		fr_strerror_printf("Invalid value %d for VQP-Packet-Type", code);
 		return -1;
@@ -616,7 +616,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (!vp) {
 		ptr[2] = 0;
 	} else {
-		ptr[2] = vp->lvalue & 0xff;
+		ptr[2] = vp->vp_integer & 0xff;
 		return 0;
 	}
 

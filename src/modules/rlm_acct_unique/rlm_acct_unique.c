@@ -215,7 +215,7 @@ static int add_unique_id(void *instance, REQUEST *request)
 				hack.type = cur->dattr->type;
 				hack.operator = T_OP_EQ;
 				hack.length = 4;
-				hack.lvalue = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
+				hack.vp_ipaddr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				vp = &hack;
 			} else {
 				RDEBUG2("WARNING: Attribute %s was not found in request, unique ID MAY be inconsistent", cur->dattr->name);

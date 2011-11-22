@@ -746,7 +746,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 *	DHCP Opcode is request
 		 */
 		vp = pairfind(head, 256, DHCP_MAGIC_VENDOR);
-		if (vp && vp->lvalue == 3) {
+		if (vp && vp->vp_integer == 3) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
@@ -757,7 +757,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				/*
 				 *	Reply should be broadcast.
 				 */
-				if (vp) vp->lvalue |= 0x8000;
+				if (vp) vp->vp_integer |= 0x8000;
 				packet->data[10] |= 0x80;			
 			}
 		}

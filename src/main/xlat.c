@@ -212,7 +212,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			case PW_TYPE_DATE:
 			case PW_TYPE_SHORT:
 			case PW_TYPE_BYTE:
-				snprintf(out, outlen, "%u", vp->lvalue);
+				snprintf(out, outlen, "%u", vp->vp_integer);
 				return strlen(out);
 
 			case PW_TYPE_SIGNED:
