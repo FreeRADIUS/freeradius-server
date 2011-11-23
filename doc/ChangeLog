@@ -19,3 +19,4 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 
 	Bug fixes
 	* All known bug fixes are included.
+	* Removed "addport" functionality.
