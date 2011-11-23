@@ -63,12 +63,13 @@ typedef struct dhcp_socket_t {
 	 */
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
+	const char	*arp_interface;
 } dhcp_socket_t;
 
 static int dhcprelay_process_client_request(REQUEST *request)
 {
 	uint8_t maxhops = 16;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *giaddrvp;
 	dhcp_socket_t *sock;
 
 	rad_assert(request->packet->data[0] == 1);
@@ -81,7 +82,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	/*
 	 * It's invalid to have giaddr=0 AND a relay option
 	 */
-	vp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
+	giaddrvp = vp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
 	if ((vp && (vp->vp_ipaddr == htonl(INADDR_ANY))) &&
 	    pairfind(request->packet->vps, DHCP2ATTR(82))) { /* DHCP-Relay-Agent-Information */
 		DEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet\n");
@@ -114,8 +115,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 */
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
-	/* XXX sock->ipaddr == 0 (listening on '*') */
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->ipaddr.ipaddr.ip4addr.s_addr;
+	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
 	request->packet->src_port = sock->port;
 
 	vp = pairfind(request->config_items, DHCP2ATTR(270)); /* DHCP-Relay-To-IP-Address */
@@ -136,7 +136,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 
 static int dhcprelay_process_server_reply(REQUEST *request)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *giaddrvp;
 	dhcp_socket_t *sock;
 
 	rad_assert(request->packet->data[0] == 2);
@@ -151,7 +151,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	/*
 	 * Check that packet is for us.
 	 */
-	vp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
+	giaddrvp = vp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
 	rad_assert(vp != NULL);
 
 #ifndef WITH_UDPFROMTO
@@ -166,8 +166,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 
 	/* set SRC ipaddr/port to the listener ipaddr/port */
 	request->packet->src_ipaddr.af = AF_INET;
-	/* XXX sock->ipaddr == 0 (listening on '*') */
-	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = sock->ipaddr.ipaddr.ip4addr.s_addr;
+	request->packet->src_ipaddr.ipaddr.ip4addr.s_addr = giaddrvp->vp_ipaddr;
 	request->packet->src_port = sock->port;
 
 	/* set DEST ipaddr/port to clientip/68 or broadcast in specific cases */
@@ -217,7 +216,9 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 					    "no Client Hardware Address. Discarding packet");
 					return 1;
 				}
-				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->interface, hwvp, vp) < 0) {
+				if (sock->arp_interface == NULL)
+					sock->arp_interface = sock->interface;
+				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->arp_interface, hwvp, vp) < 0) {
 					return -1;
 				}
 			}
@@ -330,6 +331,7 @@ static int dhcp_process(REQUEST *request)
 
 	/* else it's a packet from a client, without relaying */
 	rad_assert(vp->vp_integer == 1); /* BOOTREQUEST */
+
 	sock = request->listener->data;
 
 	/*
@@ -420,7 +422,9 @@ static int dhcp_process(REQUEST *request)
 			if (request->reply->code == PW_DHCP_OFFER) {
 				VALUE_PAIR *hwvp = pairfind(request->reply->vps, DHCP2ATTR(267)); /* DHCP-Client-Hardware-Address */
 				rad_assert(hwvp != NULL);
-				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->interface, hwvp, vp) < 0) {
+				if (sock->arp_interface == NULL)
+					sock->arp_interface = sock->interface;
+				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->arp_interface, hwvp, vp) < 0) {
 					return -1;
 				}
 			}
@@ -484,6 +488,13 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (value && (strcmp(value, "yes") == 0)) {
 			sock->suppress_responses = TRUE;
 		}
+	}
+
+	cp = cf_pair_find(cs, "arp_interface");
+	if (cp) {
+		const char *value;
+		value = cf_pair_value(cp);
+		sock->arp_interface = value;
 	}
 
 	/*
