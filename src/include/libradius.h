@@ -166,10 +166,15 @@ typedef union value_pair_data {
 
 typedef struct value_pair {
 	const char	        *name;
+	struct value_pair	*next;
+
+	/*
+	 *	Pack 4 32-bit fields together.  Saves ~8 bytes per struct
+	 *	on 64-bit machines.
+	 */
 	unsigned int		attribute;
 	unsigned int	       	vendor;
 	int			type;
-	size_t			length; /* of data */
 #ifdef __cplusplus
 	/*
 	 *	C++ hackery.  The server and modules are all C, so
@@ -180,8 +185,10 @@ typedef struct value_pair {
 #else
 	FR_TOKEN		operator;
 #endif
+
         ATTR_FLAGS              flags;
-	struct value_pair	*next;
+
+	size_t			length; /* of data field */
 	VALUE_PAIR_DATA		data;
 } VALUE_PAIR;
 #define vp_strvalue   data.strvalue
