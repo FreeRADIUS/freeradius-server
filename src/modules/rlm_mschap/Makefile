@@ -19,5 +19,6 @@ include ../rules.mak
 $(LT_OBJS): $(HEADERS)
 
 smbencrypt: smbencrypt.lo smbdes.lo $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
+	@echo LINK $@ $^
+	@$(LIBTOOL) --quiet --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
 		-o $@ $^ $(RLM_LIBS) $(LIBS)
