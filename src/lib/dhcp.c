@@ -955,7 +955,8 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 }
 
 
-int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
+int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original, 
+                                          fr_ipaddr_t* broadcast_ipaddr)
 {
 	int i, num_vps;
 	uint8_t *p;
@@ -1013,7 +1014,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		packet->offset = 1;
 
 		if (dhcp->giaddr != htonl(INADDR_ANY)) {
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
+                        if (dhcp->giaddr != htonl(INADDR_BROADCAST)) {
+			   packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->giaddr;
+                        } else {
+			   packet->dst_ipaddr = *broadcast_ipaddr;
+                        }
 			
 			if (dhcp->giaddr != htonl(INADDR_LOOPBACK)) {
 				packet->dst_port = original->dst_port;
@@ -1028,7 +1033,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			 *	The kernel will take care of sending it to
 			 *	the broadcast MAC.
 			 */
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
+			packet->dst_ipaddr = *broadcast_ipaddr;
 			
 		} else {
 			/*
@@ -1038,7 +1043,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			if (packet->src_ipaddr.ipaddr.ip4addr.s_addr != dhcp->ciaddr) {
 				packet->offset = 0;
 			}
-			packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
+                        if (dhcp->ciaddr == htonl(INADDR_BROADCAST)) {
+			   packet->dst_ipaddr = *broadcast_ipaddr;
+                        } else {
+			   packet->dst_ipaddr.ipaddr.ip4addr.s_addr = dhcp->ciaddr;
+                        }
 		}
 
 		/*
@@ -1049,6 +1058,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		}
 	} else {
 		memset(packet->data, 0, packet->data_len);
+                if (packet->dst_ipaddr.ipaddr.ip4addr.s_addr == htonl(INADDR_BROADCAST)) {
+			   packet->dst_ipaddr = *broadcast_ipaddr;
+                }
 	}
 
 	if (fr_debug_flag > 1) {

@@ -40,6 +40,12 @@ typedef struct dhcp_socket_t {
 	 */  
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
+
+        /*
+         * broadcast address for dhcp
+         */
+        fr_ipaddr_t     broadcast_ipaddr;
+
 } dhcp_socket_t;
 
 static int dhcp_process(REQUEST *request)
@@ -268,6 +274,20 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 	}
 
+        sock->broadcast_ipaddr.af = AF_INET;
+        sock->broadcast_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+        if ((rcode = cf_item_parse(cs, "broadcast_ipaddr", PW_TYPE_IPADDR,
+                        &sock->broadcast_ipaddr.ipaddr.ip4addr, NULL)) < 0) {
+              radlog(L_ERR,"can't parse broadcast_ipaddr");
+              return -1;
+        } else if (rcode == 0) {
+            if (!broadcast) {
+              radlog(L_ERR,"warning: broadcast_ipaddr is set but broadcast is disabled");
+            }
+        }
+
+        
+
 	/*
 	 *	Initialize the fake client.
 	 */
@@ -323,28 +343,31 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	if (request->reply->code == 0) return 0; /* don't reply */
 
+	sock = listener->data;
+
 	if (request->packet->code != request->reply->code) {
-		if (fr_dhcp_encode(request->reply, request->packet) < 0) {
+		if (fr_dhcp_encode(request->reply, request->packet, 
+                                                  &sock->broadcast_ipaddr) < 0) {
 			return -1;
 		}
 	} else {
-		if (fr_dhcp_encode(request->reply, NULL) < 0) {
+		if (fr_dhcp_encode(request->reply, NULL, &sock->broadcast_ipaddr) < 0) {
 			return -1;
 		}
 	}
 
-	sock = listener->data;
 	if (sock->suppress_responses) return 0;
 
 	return fr_dhcp_send(request->reply);
 }
 
 
-static int dhcp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
+static int dhcp_socket_encode(rad_listen_t *listener, REQUEST *request)
 {
 	DEBUG2("NO ENCODE!");
 	return 0;
-	return fr_dhcp_encode(request->reply, request->packet);
+	return fr_dhcp_encode(request->reply, request->packet, 
+                              &((dhcp_socket_t*)listener->data)->broadcast_ipaddr);
 }
 
 

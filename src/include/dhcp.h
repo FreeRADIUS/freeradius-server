@@ -38,7 +38,7 @@ extern "C" {
 RADIUS_PACKET *fr_dhcp_recv(int sockfd);
 int fr_dhcp_send(RADIUS_PACKET *packet);
 
-int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
+int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original, fr_ipaddr_t* broadband_ipaddr);
 int fr_dhcp_decode(RADIUS_PACKET *packet);
 
 /*
