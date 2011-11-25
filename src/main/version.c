@@ -34,57 +34,74 @@ void NEVER_RETURNS version(void)
 {
 
 	printf("%s: %s\n", progname, radiusd_version);
-#if 0
-	printf("Compilation flags: ");
 
-	/* here are all the conditional feature flags */
-#if defined(WITH_DHCP)
-	printf(" WITH_DHCP");
-#endif
-#if defined(WITH_VMPS)
-	printf(" WITH_VMPS");
-#endif
-#if defined(OSFC2)
-	printf(" OSFC2");
-#endif
-#if defined(WITHOUT_PROXY)
-	printf(" WITHOUT_PROXY");
-#endif
-#if defined(WITHOUT_DETAIL)
-	printf(" WITHOUT_DETAIL");
-#endif
-#if defined(WITHOUT_SESSION_MGMT)
-	printf(" WITHOUT_SESSION_MGMT");
-#endif
-#if defined(WITHOUT_UNLANG)
-	printf(" WITHOUT_UNLANG");
-#endif
-#if defined(WITHOUT_ACCOUNTING)
-	printf(" WITHOUT_ACCOUNTING");
-#endif
-#if defined(WITHOUT_DYNAMIC_CLIENTS)
-	printf(" WITHOUT_DYNAMIC_CLIENTS");
-#endif
-#if defined(WITHOUT_STATS)
-	printf(" WITHOUT_STATS");
-#endif
-#if defined(WITHOUT_COMMAND_SOCKET)
-	printf(" WITHOUT_COMMAND_SOCKET");
-#endif
-#if defined(WITHOUT_COA)
-	printf(" WITHOUT_COA");
-#endif
-#if defined(WITHOUT_TLS)
-	printf(" WITHOUT_TLS");
-#endif
-	printf("\n");
-#endif
 	printf("Copyright (C) 1999-2011 The FreeRADIUS server project and contributors.\n");
 	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 	printf("PARTICULAR PURPOSE.\n");
 	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
 	printf("GNU General Public License.\n");
 	printf("For more information about these matters, see the file named COPYRIGHT.\n");
+
+	if (debug_flag) {
+		printf("\n");
+
+		printf("Functionality: ");
+		
+#ifdef WITH_ACCOUNTING
+		printf("accounting, ");
+#endif
+		printf("authentication, "); /* always enabled */
+
+#ifdef WITH_COA
+		printf("coa, ");
+#endif
+#ifdef WITH_COMMAND_SOCKET
+		printf("control-socket, ");
+#endif
+#ifdef WITH_DETAIL
+		printf("detail, ");
+#endif
+#ifdef WITH_DHCP
+		printf("dhcp, ");
+#endif
+#ifdef WITH_DYNAMIC_CLIENTS
+		printf("dynamic clients, ");
+#endif
+#ifdef OSFC2
+		printf("OSFC2, ");
+#endif
+#ifdef WITH_PROXY
+		printf("proxy, ");
+#endif
+#ifdef HAVE_PCREPOSIX_H
+		printf("regex-PCRE, ");
+#else
+#ifdef HAVE_REGEX_H
+		printf("regex-posix, ");
+#endif
+#endif
+
+#ifdef WITH_SESSION_MGMT
+		printf("session-management, ");
+#endif
+#ifdef WITH_STATS
+		printf("stats, ");
+#endif
+#ifdef WITH_TCP
+		printf("tcp, ");
+#endif
+#ifdef WITH_TLS
+		printf("TLS, ");
+#endif
+#ifdef WITH_UNLANG
+		printf("unlang, ");
+#endif
+#ifdef WITH_VMPS
+		printf("vmps, ");
+#endif
+		printf("\n");
+	}
+
 	exit (0);
 }
 
