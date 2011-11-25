@@ -700,7 +700,8 @@ CONF_SECTION *cf_top_section(CONF_SECTION *cs)
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
 				       CONF_SECTION *outercs,
-				       char *output, const char *input)
+				       char *output, size_t outsize,
+				       const char *input)
 {
 	char *p;
 	const char *end, *ptr;
@@ -917,7 +918,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			 */
 			value = cf_expand_variables("<internal>",
 						    &lineno,
-						    cs, buffer, value);
+						    cs, buffer, sizeof(buffer),
+						    value);
 			if (!value) {
 				cf_log_err(cf_sectiontoitem(cs),"Failed expanding variable %s", name);
 				return -1;
@@ -956,7 +958,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			 */
 			value = cf_expand_variables("?",
 						    &lineno,
-						    cs, buffer, value);
+						    cs, buffer, sizeof(buffer),
+						    value);
 			if (!value) return -1;
 		}
 
@@ -1405,7 +1408,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 			if (buf2[0] == '$') relative = 0;
 
-			value = cf_expand_variables(filename, lineno, this, buf, buf2);
+			value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf2);
 			if (!value) return -1;
 
 			if (!FR_DIR_IS_RELATIVE(value)) relative = 0;
@@ -1590,7 +1593,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			if ((t3 == T_BARE_WORD) ||
 			    (t3 == T_DOUBLE_QUOTED_STRING)) {
 				value = cf_expand_variables(filename, lineno, this,
-							    buf, buf3);
+							    buf, sizeof(buf), buf3);
 				if (!value) return -1;
 			} else if ((t3 == T_EOL) ||
 				   (t3 == T_HASH)) {
