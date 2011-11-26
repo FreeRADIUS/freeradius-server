@@ -138,21 +138,22 @@ int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 {
 	int rcode;
 
-	if (a->sockfd < b->sockfd) return -1;
-	if (a->sockfd > b->sockfd) return +1;
-
-	if (a->id < b->id) return -1;
-	if (a->id > b->id) return +1;
-
-	if (a->src_port < b->src_port) return -1;
-	if (a->src_port > b->src_port) return +1;
-
-	if (a->dst_port < b->dst_port) return -1;
-	if (a->dst_port > b->dst_port) return +1;
-
-	rcode = fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
+	rcode = a->id - b->id;
 	if (rcode != 0) return rcode;
-	return fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+
+	rcode = (int) a->src_port - (int) b->src_port;
+	if (rcode != 0) return rcode;
+
+	rcode = (int) a->dst_port - (int) b->dst_port;
+	if (rcode != 0) return rcode;
+
+	rcode = a->sockfd - b->sockfd;
+	if (rcode != 0) return rcode;
+
+	rcode = fr_ipaddr_cmp(&a->src_ipaddr, &b->src_ipaddr);
+	if (rcode != 0) return rcode;
+
+	return fr_ipaddr_cmp(&a->dst_ipaddr, &b->dst_ipaddr);
 }
 
 int fr_inaddr_any(fr_ipaddr_t *ipaddr)
@@ -519,8 +520,6 @@ static int packet_entry_cmp(const void *one, const void *two)
 	const RADIUS_PACKET * const *a = one;
 	const RADIUS_PACKET * const *b = two;
 
-	if (!a || !*a || !b || !*b) return -1; /* work-around for bug #35 */
-
 	return fr_packet_cmp(*a, *b);
 }
 
@@ -622,19 +621,16 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 }
 
 
-RADIUS_PACKET **fr_packet_list_yank(fr_packet_list_t *pl,
-				      RADIUS_PACKET *request)
+void fr_packet_list_yank(fr_packet_list_t *pl, RADIUS_PACKET *request)
 {
-	RADIUS_PACKET **packet_p;
+	rbnode_t *node;
 
-	if (!pl || !request) return NULL;
+	if (!pl || !request) return;
 
-	packet_p = rbtree_finddata(pl->tree, &request);
-	if (!packet_p) return NULL;
+	node = rbtree_find(pl->tree, &request);
+	if (!node) return;
 
-	if (!rbtree_deletebydata(pl->tree, packet_p)) return NULL;
-
-	return packet_p;
+	rbtree_delete(pl->tree, node);
 }
 
 int fr_packet_list_num_elements(fr_packet_list_t *pl)
