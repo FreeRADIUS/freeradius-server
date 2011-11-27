@@ -75,7 +75,6 @@ EAP CODE ORGANIZATION
   EAP is implemented as a module in freeradius 
   and the code is placed in src/modules/rlm_eap. 
   All EAP-Types are organized as subdirectories in rlm_eap/types/.
-  Currently Freeradius supports only 2 EAP-Types (EAP-MD5, EAP-TLS).
 
   Each EAP-Type, like types/rlm_eap_md5, contains a chunk of code that 
   knows how to deal with a particular kind of authentication mechanism. 
