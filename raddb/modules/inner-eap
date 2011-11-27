@@ -9,15 +9,13 @@
 #
 #  See also raddb/sites-available/inner-tunnel
 #
-#  To use this module, edit raddb/sites-available/inner-tunnel, and
-#  replace the references to "eap" with "inner-eap".
-#
-#  See raddb/eap.conf for full documentation on the meaning of the
-#  configuration entries here.
+#  See raddb/modules/eap for full documentation on the meaning of these
+#  configuration entries.
 #
 eap inner-eap {
 	# This is the best choice for PEAP.
 	default_eap_type = mschapv2
+
 	timer_expire     = 60
 
 	#  This should be the same as the outer eap "max sessions"
@@ -36,6 +34,8 @@ eap inner-eap {
 	}
 
 	mschapv2 {
+		# See eap for documentation
+#		send_error = no
 	}
 
 	# No TTLS or PEAP configuration should be listed here.
@@ -46,16 +46,11 @@ eap inner-eap {
 	#  for the outer EAP configuration!
 	#
 	#  Support for PEAP/TLS and RFC 5176 TLS/TLS is experimental.
+	#  It might work, or it might not.
 	#
 	tls {
-		#
-		#  These is used to simplify later configurations.
-		#
-		certdir = ${confdir}/certs
-		cadir = ${confdir}/certs
-
 		private_key_password = whatever
-		private_key_file = ${certdir}/server.pem
+		private_key_file = ${certdir}/inner-server.pem
 
 		#  If Private key & Certificate are located in
 		#  the same file, then private_key_file &
@@ -67,91 +62,29 @@ eap inner-eap {
 		#  only the server certificate, but ALSO all
 		#  of the CA certificates used to sign the
 		#  server certificate.
-		certificate_file = ${certdir}/server.pem
+		certificate_file = ${certdir}/inner-server.pem
 
-		#  Trusted Root CA list
-		#
-		#  ALL of the CA's in this list will be trusted
-		#  to issue client certificates for authentication.
-		#
-		#  In general, you should use self-signed
-		#  certificates for 802.1x (EAP) authentication.
-		#  In that case, this CA file should contain
-		#  *one* CA certificate.
-		#
-		#  This parameter is used only for EAP-TLS,
-		#  when you issue client certificates.  If you do
-		#  not use client certificates, and you do not want
-		#  to permit EAP-TLS authentication, then delete
-		#  this configuration item.
+		#  You may want different CAs for inner and outer
+		#  certificates.  If so, edit this file.
 		CA_file = ${cadir}/ca.pem
 
+		cipher_list = "DEFAULT"
+
+		#  You may want to set a very small fragment size.
+		#  The TLS data here needs to go inside of the
+		#  outer EAP-TLS protocol.
 		#
-		#  For DH cipher suites to work, you have to
-		#  run OpenSSL to create the DH file first:
-		#
-		#  	openssl dhparam -out certs/dh 1024
-		#
+		#  Try values and see if they work...
+	#	fragment_size = 1024
+
+		#  Other needful things
 		dh_file = ${certdir}/dh
 		random_file = ${certdir}/random
 
-		#
-		#  This can never exceed the size of a RADIUS
-		#  packet (4096 bytes), and is preferably half
-		#  that, to accomodate other attributes in
-		#  RADIUS packet.  On most APs the MAX packet
-		#  length is configured between 1500 - 1600
-		#  In these cases, fragment size should be
-		#  1024 or less.
-		#
-	#	fragment_size = 1024
-
-		#  include_length is a flag which is
-		#  by default set to yes If set to
-		#  yes, Total Length of the message is
-		#  included in EVERY packet we send.
-		#  If set to no, Total Length of the
-		#  message is included ONLY in the
-		#  First packet of a fragment series.
-		#
-	#	include_length = yes
-
-		#  Check the Certificate Revocation List
-		#
-		#  1) Copy CA certificates and CRLs to same directory.
-		#  2) Execute 'c_rehash <CA certs&CRLs Directory>'.
-		#    'c_rehash' is OpenSSL's command.
-		#  3) uncomment the line below.
-		#  5) Restart radiusd
+		#  CRL and OCSP things go here.  See the main "eap"
+		#  file for details.
 	#	check_crl = yes
 	#	CA_path = /path/to/directory/with/ca_certs/and/crls/
-
-	       #
-	       #  If check_cert_issuer is set, the value will
-	       #  be checked against the DN of the issuer in
-	       #  the client certificate.  If the values do not
-	       #  match, the cerficate verification will fail,
-	       #  rejecting the user.
-	       #
-	#       check_cert_issuer = "/C=GB/ST=Berkshire/L=Newbury/O=My Company Ltd"
-
-	       #
-	       #  If check_cert_cn is set, the value will
-	       #  be xlat'ed and checked against the CN
-	       #  in the client certificate.  If the values
-	       #  do not match, the certificate verification
-	       #  will fail rejecting the user.
-	       #
-	       #  This check is done only if the previous
-	       #  "check_cert_issuer" is not set, or if
-	       #  the check succeeds.
-	       #
-	#	check_cert_cn = %{User-Name}
-	#
-		# Set this option to specify the allowed
-		# TLS cipher suites.  The format is listed
-		# in "man 1 ciphers".
-		cipher_list = "DEFAULT"
 
 		#
 		#  The session resumption / fast reauthentication
