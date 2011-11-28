@@ -341,7 +341,9 @@ preacct {
 	#  was "Acct-Delay-Time" seconds in the past.
 	#
 	#  The code below creates an explicit start time, which can
-	#  then be used in other modules.
+	#  then be used in other modules.  It will be *mostly* correct.
+	#  Any errors are due to the 1-second resolution of RADIUS,
+	#  and the possibility that the time on the NAS may be off.
 	#
 	#  The start time is: NOW - delay - session_length
 	#
@@ -542,17 +544,6 @@ post-auth {
 #	       Reply-Message += "%{TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 
-
-	#  If the WiMAX module did it's work, you may want to do more
-	#  things here, like delete the MS-MPPE-*-Key attributes.
-	#
-	#	if (updated) {
-	#		update reply {
-	#			MS-MPPE-Recv-Key !* 0x00
-	#			MS-MPPE-Send-Key !* 0x00
-	#		}
-	#	}
-
 	#  Insert class attribute (with unique value) into response,
 	#  aids matching auth and acct records, and protects against duplicate
 	#  Acct-Session-Id. Note: Only works if the NAS has implemented
@@ -577,8 +568,9 @@ post-auth {
 #		sql
 		attr_filter.access_reject
 
-		# Insert EAP-Failure message if the request was rejected by policy
-		# instead of because of an authentication failure
+		# Insert EAP-Failure message if the request was
+		# rejected by policy instead of because of an
+		# authentication failure
 		eap
 
 		#  Remove reply message if the response contains an EAP-Message
