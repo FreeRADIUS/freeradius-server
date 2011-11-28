@@ -202,8 +202,8 @@ static int request_num_counter = 0;
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request);
 static int request_proxy(REQUEST *request, int retransmit);
-STATE_MACHINE_DECL(request_proxied);
-STATE_MACHINE_DECL(request_post_proxy);
+STATE_MACHINE_DECL(proxy_wait_for_reply);
+STATE_MACHINE_DECL(proxy_running);
 static int process_proxy_reply(REQUEST *request);
 static void remove_from_proxy_hash(REQUEST *request);
 static int insert_into_proxy_hash(REQUEST *request);
@@ -659,7 +659,7 @@ static void request_process_timer(REQUEST *request)
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_proxied");
 #endif
-			request->process = request_proxied;
+			request->process = proxy_wait_for_reply;
 		}
 #endif
 
@@ -827,7 +827,7 @@ STATE_MACHINE_DECL(request_common)
 			/*
 			 *	TODO: deal with this in a better way?
 			 */
-			request_proxied(request, action);
+			proxy_wait_for_reply(request, action);
 			return;
 		}
 #endif
@@ -1141,8 +1141,8 @@ STATE_MACHINE_DECL(request_running)
 		 *	from the main worker thread.
 		 */
 		if (we_are_master() &&
-		    (request->process != request_post_proxy)) {
-			request_queue_or_run(request, request_post_proxy);
+		    (request->process != proxy_running)) {
+			request_queue_or_run(request, proxy_running);
 			return;
 		}
 		/* FALL-THROUGH */
@@ -1911,7 +1911,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	return 1;
 }
 
-STATE_MACHINE_DECL(request_post_proxy)
+STATE_MACHINE_DECL(proxy_running)
 {
 	TRACE_STATE_MACHINE;
 
@@ -2288,7 +2288,7 @@ static int request_proxy_anew(REQUEST *request)
 			return 0;
 		}
 		
-		request_queue_or_run(request, request_post_proxy);
+		request_queue_or_run(request, proxy_running);
 		return 0;
 	}
 
@@ -2685,7 +2685,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 	}
 }
 
-STATE_MACHINE_DECL(request_proxied)
+STATE_MACHINE_DECL(proxy_wait_for_reply)
 {
 	struct timeval now, when;
 	home_server *home = request->home_server;
@@ -2825,7 +2825,7 @@ STATE_MACHINE_DECL(request_proxied)
 		 *	receive a new reply from the home server.
 		 */
 	case FR_ACTION_PROXY_REPLY:
-		request_queue_or_run(request, request_post_proxy);
+		request_queue_or_run(request, proxy_running);
 		break;
 
 	case FR_ACTION_CONFLICTING:
@@ -3132,7 +3132,7 @@ static void request_coa_timer(REQUEST *request)
 			return;
 		}
 		
-		request_queue_or_run(request, request_post_proxy);
+		request_queue_or_run(request, proxy_running);
 		return;
 	}
 
@@ -3190,7 +3190,7 @@ static void request_coa_timer(REQUEST *request)
 }
 
 
-STATE_MACHINE_DECL(request_coa_post_proxy)
+STATE_MACHINE_DECL(coa_running)
 {
 	TRACE_STATE_MACHINE;
 
@@ -3234,8 +3234,8 @@ STATE_MACHINE_DECL(request_coa_process)
 		 *	from the main worker thread.
 		 */
 		if (we_are_master() &&
-		    (request->process != request_coa_post_proxy)) {
-			request_queue_or_run(request, request_coa_post_proxy);
+		    (request->process != coa_running)) {
+			request_queue_or_run(request, coa_running);
 			return;
 		}
 		/* FALL-THROUGH */
