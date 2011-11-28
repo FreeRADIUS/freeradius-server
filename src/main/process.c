@@ -74,6 +74,13 @@ static const char *action_codes[] = {
 #define TRACE_STATE_MACHINE {}
 #endif
 
+/*
+ *	Declare a state in the state machine.
+ *
+ */
+#define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
+
+
 /**
  * @section request_timeline
  *
@@ -195,13 +202,14 @@ static int request_num_counter = 0;
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request);
 static int request_proxy(REQUEST *request, int retransmit);
-static void request_proxied(UNUSED REQUEST *request, int action);
-static void request_post_proxy(REQUEST *request, int action);
+STATE_MACHINE_DECL(request_proxied);
+STATE_MACHINE_DECL(request_post_proxy);
 static int process_proxy_reply(REQUEST *request);
 static void remove_from_proxy_hash(REQUEST *request);
 static int insert_into_proxy_hash(REQUEST *request);
 #endif
-static void request_common(UNUSED REQUEST *request, int action);
+
+STATE_MACHINE_DECL(request_common);
 
 #if  defined(HAVE_PTHREAD_H) && !defined (NDEBUG)
 static int we_are_master(void)
@@ -220,13 +228,13 @@ static int we_are_master(void)
 #define ASSERT_MASTER
 #endif
 
-static void request_reject_delay(REQUEST *request, int action);
-static void request_cleanup_delay(REQUEST *request, int action);
-static void request_running(REQUEST *request, int action);
+STATE_MACHINE_DECL(request_reject_delay);
+STATE_MACHINE_DECL(request_cleanup_delay);
+STATE_MACHINE_DECL(request_running);
 #ifdef WITH_COA
 static void request_coa_timer(REQUEST *request);
 static void request_coa_originate(REQUEST *request);
-static void request_coa_process(REQUEST *request, int action);
+STATE_MACHINE_DECL(request_coa_process);
 static void request_coa_separate(REQUEST *coa);
 #endif
 
@@ -340,7 +348,7 @@ static void request_timer(void *ctx)
 /*
  *	Only ever called from the master thread.
  */
-static void request_done(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_done)
 {
 	struct timeval now;
 
@@ -803,7 +811,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	}
 }
 
-static void request_common(UNUSED REQUEST *request, int action)
+STATE_MACHINE_DECL(request_common)
 {
 #ifdef WITH_PROXY
 	char buffer[128];
@@ -859,7 +867,7 @@ static void request_common(UNUSED REQUEST *request, int action)
 	}
 }
 
-static void request_cleanup_delay(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_cleanup_delay)
 {
 	struct timeval when;
 
@@ -896,7 +904,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 	}
 }
 
-static void request_reject_delay(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_reject_delay)
 {
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
@@ -1013,11 +1021,13 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	return 1;
 }
 
-static void request_finish(REQUEST *request, UNUSED int action)
+STATE_MACHINE_DECL(request_finish)
 {
+	VALUE_PAIR *vp;
+
 	TRACE_STATE_MACHINE;
 
-	VALUE_PAIR *vp;
+	action = action;	/* -Wunused */
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return;
 
@@ -1112,7 +1122,7 @@ static void request_finish(REQUEST *request, UNUSED int action)
 	RDEBUG2("Finished request %u.", request->number);
 }
 
-static void request_running(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_running)
 {
 	TRACE_STATE_MACHINE;
 
@@ -1901,7 +1911,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	return 1;
 }
 
-static void request_post_proxy(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_post_proxy)
 {
 	TRACE_STATE_MACHINE;
 
@@ -1923,7 +1933,7 @@ static void request_post_proxy(REQUEST *request, int action)
 	}
 }
 
-static void request_virtual_server(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_virtual_server)
 {
 	TRACE_STATE_MACHINE;
 
@@ -2336,7 +2346,7 @@ static int request_proxy_anew(REQUEST *request)
 	return 1;
 }
 
-static void request_ping(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_ping)
 {
 	home_server *home = request->home_server;
 	char buffer[128];
@@ -2675,7 +2685,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 	}
 }
 
-static void request_proxied(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_proxied)
 {
 	struct timeval now, when;
 	home_server *home = request->home_server;
@@ -3180,7 +3190,7 @@ static void request_coa_timer(REQUEST *request)
 }
 
 
-static void request_coa_post_proxy(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_coa_post_proxy)
 {
 	TRACE_STATE_MACHINE;
 
@@ -3207,7 +3217,7 @@ static void request_coa_post_proxy(REQUEST *request, int action)
 /*
  *	Process CoA requests that we originated.
  */
-static void request_coa_process(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_coa_process)
 {
 	TRACE_STATE_MACHINE;
 
