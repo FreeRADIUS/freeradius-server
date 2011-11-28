@@ -285,11 +285,14 @@ static void fr_connection_close(fr_connection_pool_t *fc,
 }
 
 
-int fr_connection_del(fr_connection_pool_t *fc, void *conn)
+/*
+ *	Find a connection.  Called with the mutex free.  If it finds a
+ *	connection, it returns with the mutex held.  Otherwise, it
+ *	releases the mutex.
+ */
+static fr_connection_t *fr_connection_find(fr_connection_pool_t *fc, void *conn)
 {
 	fr_connection_t *this;
-
-	if (!fc || !conn) return 0;
 
 	pthread_mutex_lock(&fc->mutex);
 
@@ -299,21 +302,32 @@ int fr_connection_del(fr_connection_pool_t *fc, void *conn)
 	 *	order to find top of the parent structure.
 	 */
 	for (this = fc->head; this != NULL; this = this->next) {
-		if (this->connection != conn) continue;
-
-		if (this->used) {
-			pthread_mutex_unlock(&fc->mutex);
-			return 0;
-		}
-
-
-		fr_connection_close(fc, this);
-		pthread_mutex_unlock(&fc->mutex);
-		return 1;
+		if (this->connection == conn) return this;
 	}
 
 	pthread_mutex_unlock(&fc->mutex);
-	return 0;
+	return NULL;
+}
+
+int fr_connection_del(fr_connection_pool_t *fc, void *conn)
+{
+	fr_connection_t *this;
+
+	if (!fc || !conn) return 0;
+
+	this = fr_connection_find(fc, conn);
+	if (!this) {
+		return 0;
+	}
+
+	if (this->used) {
+		pthread_mutex_unlock(&fc->mutex);
+		return 0;
+	}
+
+	fr_connection_close(fc, this);
+	pthread_mutex_unlock(&fc->mutex);
+	return 1;
 }
 
 
@@ -628,39 +642,31 @@ do_return:
 	return this->connection;
 }
 
+
 void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 {
 	fr_connection_t *this;
 
 	if (!fc || !conn) return;
 
-	pthread_mutex_lock(&fc->mutex);
-
-	/*
-	 *	FIXME: This loop could be avoided if we passed a 'void
-	 *	**connection' instead.  We could use "offsetof" in
-	 *	order to find top of the parent structure.
-	 */
-	for (this = fc->head; this != NULL; this = this->next) {
-		if (this->connection == conn) {
-			rad_assert(this->used == TRUE);
-			this->used = FALSE;
-
-			/*
-			 *	Put it at the head of the list, so
-			 *	that it will get re-used quickly.
-			 */
-			if (this != fc->head) {
-				fr_connection_unlink(fc, this);
-				fr_connection_link(fc, this);
-			}
-			rad_assert(fc->active > 0);
-			fc->active--;
-			break;
-		}
+	this = fr_connection_find(fc, conn);
+	if (!this) {
+		return;
 	}
 
-	pthread_mutex_unlock(&fc->mutex);
+	rad_assert(this->used == TRUE);
+	this->used = FALSE;
+	
+	/*
+	 *	Put it at the head of the list, so
+	 *	that it will get re-used quickly.
+	 */
+	if (this != fc->head) {
+		fr_connection_unlink(fc, this);
+		fr_connection_link(fc, this);
+	}
+	rad_assert(fc->active > 0);
+	fc->active--;
 
 	DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
 
@@ -681,59 +687,44 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 
 	if (!fc || !conn) return NULL;
 
-	pthread_mutex_lock(&fc->mutex);
+	this= fr_connection_find(fc, conn);
+	if (!this) return NULL;
 	
 	conn_number = this->number;
 
-	/*
-	 *	FIXME: This loop could be avoided if we passed a 'void
-	 *	**connection' instead.  We could use "offsetof" in
-	 *	order to find top of the parent structure.
-	 */
-	for (this = fc->head; this != NULL; this = this->next) {
-		if (this->connection != conn) continue;
-
-		rad_assert(this->used == TRUE);
-			
-		DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
-
-		new_conn = fc->create(fc->ctx);
-		if (!new_conn) {
-			time_t now = time(NULL);
-
-			if (fc->last_complained == now) {
-				now = 0;
-			} else {
-				fc->last_complained = now;
-			}
-
-			fr_connection_close(fc, conn);
-			pthread_mutex_unlock(&fc->mutex);
-
-			/*
-			 *	Can't create a new socket.
-			 *	Try grabbing a pre-existing one.
-			 */
-			new_conn = fr_connection_get(fc);
-			if (new_conn) return new_conn;
-
-			if (!now) return NULL;
-
-			radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
-			       fc->log_prefix, conn_number);
-			return NULL;
+	rad_assert(this->used == TRUE);
+	
+	DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
+	
+	new_conn = fc->create(fc->ctx);
+	if (!new_conn) {
+		time_t now = time(NULL);
+		
+		if (fc->last_complained == now) {
+			now = 0;
+		} else {
+			fc->last_complained = now;
 		}
-
-		fc->delete(fc->ctx, conn);
-		this->connection = new_conn;
+		
+		fr_connection_close(fc, conn);
 		pthread_mutex_unlock(&fc->mutex);
-		return new_conn;
+		
+		/*
+		 *	Can't create a new socket.
+		 *	Try grabbing a pre-existing one.
+		 */
+		new_conn = fr_connection_get(fc);
+		if (new_conn) return new_conn;
+		
+		if (!now) return NULL;
+		
+		radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
+		       fc->log_prefix, conn_number);
+		return NULL;
 	}
-
+	
+	fc->delete(fc->ctx, conn);
+	this->connection = new_conn;
 	pthread_mutex_unlock(&fc->mutex);
-
-	/*
-	 *	Caller passed us something that isn't in the pool.
-	 */
-	return NULL;
+	return new_conn;
 }
