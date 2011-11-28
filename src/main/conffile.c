@@ -1042,6 +1042,46 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 static const char *parse_spaces = "                                                                                                                                                                                                                                                                ";
 
 /*
+ *	A copy of cf_section_parse that initializes pointers before
+ *	parsing them.
+ */
+static void cf_section_parse_init(CONF_SECTION *cs, void *base,
+				  const CONF_PARSER *variables)
+{
+	int i;
+	void *data;
+
+	for (i = 0; variables[i].name != NULL; i++) {
+		if (variables[i].type == PW_TYPE_SUBSECTION) {
+			CONF_SECTION *subcs;
+			subcs = cf_section_sub_find(cs, variables[i].name);
+			if (!subcs) continue;
+
+			if (!variables[i].dflt) continue;
+
+			cf_section_parse_init(subcs, base,
+					      (const CONF_PARSER *) variables[i].dflt);
+			continue;
+		}
+
+		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
+		    (variables[i].type != PW_TYPE_FILENAME)) {
+			continue;
+		}
+
+		if (variables[i].data) {
+			data = variables[i].data; /* prefer this. */
+		} else if (base) {
+			data = ((char *)base) + variables[i].offset;
+		} else {
+			continue;
+		}
+
+		*(char **) data = NULL;
+	} /* for all variables in the configuration section */
+}
+
+/*
  *	Parse a configuration section into user-supplied variables.
  */
 int cf_section_parse(CONF_SECTION *cs, void *base,
@@ -1059,6 +1099,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		cf_log_info(cs, "%.*s%s %s {", cs->depth, parse_spaces,
 		       cs->name1, cs->name2);
 	}
+
+	cf_section_parse_init(cs, base, variables);
 
 	/*
 	 *	Handle the known configuration parameters.
@@ -1099,11 +1141,6 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		} else {
 			DEBUG2("Internal sanity check 2 failed in cf_section_parse");
 			goto error;
-		}
-
-		if ((variables[i].type == PW_TYPE_STRING_PTR) ||
-		    (variables[i].type == PW_TYPE_FILENAME)) {
-			*(char **) data = NULL;
 		}
 
 		/*
