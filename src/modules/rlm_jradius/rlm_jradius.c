@@ -656,7 +656,7 @@ static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
 	if (pack_uint32(ba, vp->vp_integer) == -1) return -1;
 	break;
       case PW_TYPE_DATE:
-	if (pack_uint32(ba, vp->vp_datex) == -1) return -1;
+	if (pack_uint32(ba, vp->vp_date) == -1) return -1;
 	break;
       case PW_TYPE_IPADDR:
 	if (pack_bytes(ba, (void *)&vp->vp_ipaddr, vp->length) == -1) return -1;
