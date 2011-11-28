@@ -6,6 +6,7 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Added Copyright statements to the dictionaries, so that we know
 	  when people are using them.
 	* Finalize DHCP and DHCP relay code.  It should now work everywhere.
+	* Added TLS-Cert-Subject-Alt-Name-Email from patch by Luke Howard
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
@@ -24,6 +25,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Portability fixes for FreeBSD.  Closes bug #177
 	* A much better fix for _lt__PROGRAM__LTX_preloaded_symbols
 	  nonsense.
+	* Safely handle extremely long lines in conf file variable expansion
+	* Fix for Debian bug #606450
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
