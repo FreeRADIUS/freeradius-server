@@ -1101,6 +1101,11 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			goto error;
 		}
 
+		if ((variables[i].type == PW_TYPE_STRING_PTR) ||
+		    (variables[i].type == PW_TYPE_FILENAME)) {
+			*(char **) data = NULL;
+		}
+
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
