@@ -94,14 +94,22 @@ server dhcp {
 # The other only solution is to update FreeRADIUS to use BPF sockets.
 #
 
-	# When the machine is not Linux, or has only one network interface, use
-	# the following listener:
+	#  So that we only specify these values once, and then
+	#  use them in all of the listen sections.
+	port = 6700
+	ipaddr = 127.0.0.1
+	interface = lo0
+
+	#  When the machine is not Linux, or has only one network
+	#  interface, use the following listener.  It receives
+	#  broadcast *and* unicast packets.
 	listen {
-		# Listen for broadcasts + unicast on lo0
-		ipaddr = *
-		port = 6700
 		type = dhcp
-		interface = lo0
+
+		ipaddr = *
+		port = ${..port}
+		interface = ${..interface}
+
 		# The DHCP server defaults to allowing broadcast packets.
 		# Set this to "no" only when the server receives *all* packets
 		# from a relay agent.  i.e. when *no* clients are on the same
@@ -110,32 +118,31 @@ server dhcp {
 		# It's set to "no" here for testing.
 		broadcast = no
 	}
+
 	# When the machine is Linux and has multiple network interfaces, use
-	# the following listeners instead:
+	# the following two listeners instead of the one above.
+
+	#  Listen for broadcasts on a specific interface.
 	listen {
-		# Listen for broadcasts on lo0
+		type = dhcp
 		ipaddr = 255.255.255.255
-		port = 6700
-		type = dhcp
-		interface = lo0
-	}
-	listen {
-		# Listen for unicast on our IP address, not bound to any
-		# interface but telling on which interface to forward the
-		# packets to.
-		ipaddr = 127.0.0.1
-		port = 6700
-		type = dhcp
-		arp_interface = lo0
+		port = ${..port}
+		interface = ${..interface}
 	}
 
-	# On Linux if you're running the server as non-root, you
-	# will need to do:
+	#  Listen for unicasts on an IP, but not bound to any interface.
+	#  This allows Linux systems to receive packets on interface X
+	#  when the IP is associated with interface Y.
 	#
-	#	sudo setcap cap_net_admin=ei /path/to/radiusd
-	#
-	# This will allow the server to set ARP table entries
-	# for newly allocated IPs, but this has not been tested.
+	#  Then, define which interface the packets go out of, via
+	#  "arp_interface".  This means that the outbound packets
+	#  get sent via the correct interface.
+	listen {
+		type = dhcp
+		ipaddr = ${..ipaddr}
+		port = ${..port}
+		arp_interface = ${..interface}
+	}
 
 #  Packets received on the socket will be processed through one
 #  of the following sections, named after the DHCP packet type.
