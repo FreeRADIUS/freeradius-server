@@ -294,6 +294,8 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *fc, void *conn)
 {
 	fr_connection_t *this;
 
+	if (!fc || !conn) return NULL;
+
 	pthread_mutex_lock(&fc->mutex);
 
 	/*
@@ -313,12 +315,8 @@ int fr_connection_del(fr_connection_pool_t *fc, void *conn)
 {
 	fr_connection_t *this;
 
-	if (!fc || !conn) return 0;
-
 	this = fr_connection_find(fc, conn);
-	if (!this) {
-		return 0;
-	}
+	if (!this) return 0;
 
 	if (this->used) {
 		pthread_mutex_unlock(&fc->mutex);
@@ -501,15 +499,19 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 }
 
 
+/*
+ *	Called with the mutex held.  Releases it.
+ */
 static int fr_connection_pool_check(fr_connection_pool_t *fc)
 {
 	int spare, spawn;
 	time_t now = time(NULL);
 	fr_connection_t *this, *next;
 
-	if (fc->last_checked == now) return 1;
-
-	pthread_mutex_lock(&fc->mutex);
+	if (fc->last_checked == now) {
+		pthread_mutex_unlock(&fc->mutex);
+		return 1;
+	}
 
 	spare = fc->num - fc->active;
 
@@ -524,6 +526,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 		if (spawn) {
 			pthread_mutex_unlock(&fc->mutex);
 			fr_connection_spawn(fc, now); /* ignore return code */
+			pthread_mutex_lock(&fc->mutex);
 		}
 	}
 
@@ -575,10 +578,10 @@ int fr_connection_check(fr_connection_pool_t *fc, void *conn)
 	
 	if (!fc) return 1;
 
-	if (!conn) return fr_connection_pool_check(fc);
-
 	now = time(NULL);
 	pthread_mutex_lock(&fc->mutex);
+
+	if (!conn) return fr_connection_pool_check(fc);
 
 	for (this = fc->head; this != NULL; this = this->next) {
 		if (this->connection == conn) {
@@ -647,12 +650,8 @@ void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 {
 	fr_connection_t *this;
 
-	if (!fc || !conn) return;
-
 	this = fr_connection_find(fc, conn);
-	if (!this) {
-		return;
-	}
+	if (!this) return;
 
 	rad_assert(this->used == TRUE);
 	this->used = FALSE;
