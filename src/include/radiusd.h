@@ -275,6 +275,7 @@ struct auth_req {
 	int			child_state;
 	RAD_LISTEN_TYPE		priority;
 
+	int			timer_action;
 	fr_event_t		*ev;
 
 	int			in_request_hash;

@@ -80,6 +80,11 @@ static const char *action_codes[] = {
  */
 #define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
 
+#define STATE_MACHINE_TIMER(_x) request->timer_action = _x; \
+		fr_event_insert(el, request_timer, request, \
+				&when, &request->ev);
+
+
 
 /**
  * @section request_timeline
@@ -334,13 +339,11 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 static void request_timer(void *ctx)
 {
 	REQUEST *request = ctx;
-#ifdef DEBUG_STATE_MACHINE
-	int action = FR_ACTION_TIMER;
-#endif
+	int action = request->timer_action;
 
 	TRACE_STATE_MACHINE;
 
-	request->process(request, FR_ACTION_TIMER);
+	request->process(request, action);
 }
 
 #define USEC (1000000)
@@ -350,7 +353,7 @@ static void request_timer(void *ctx)
  */
 STATE_MACHINE_DECL(request_done)
 {
-	struct timeval now;
+	struct timeval now, when;
 
 	TRACE_STATE_MACHINE;
 
@@ -496,8 +499,6 @@ STATE_MACHINE_DECL(request_done)
 	 *	avoid re-use of proxy IDs for a while.
 	 */
 	if (request->in_proxy_hash) {
-		struct timeval when;
-		
 		rad_assert(request->proxy != NULL);
 
 		fr_event_now(el, &now);
@@ -553,11 +554,13 @@ STATE_MACHINE_DECL(request_done)
 			RDEBUG("Waiting for child thread to stop");
 		}
 #endif
-		tv_add(&now, request->delay);
+
+		when = now;
+		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
 		if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
-		fr_event_insert(el, request_timer, request, &now,
-				&request->ev);
+
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
 
@@ -670,8 +673,8 @@ static void request_process_timer(REQUEST *request)
 		when = now;
 		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
-		fr_event_insert(el, request_timer, request,
-				&when, &request->ev);
+
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
 
@@ -699,8 +702,7 @@ static void request_process_timer(REQUEST *request)
 #endif
 			request->process = request_reject_delay;
 
-			fr_event_insert(el, request_timer, request,
-					&when, &request->ev);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
 
@@ -739,8 +741,7 @@ static void request_process_timer(REQUEST *request)
 #endif
 			request->process = request_cleanup_delay;
 
-			fr_event_insert(el, request_timer, request,
-					&when, &request->ev);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
 	}
@@ -752,7 +753,7 @@ done:
 static void request_queue_or_run(UNUSED REQUEST *request,
 				 fr_request_process_t process)
 {
-	struct timeval now;
+	struct timeval when;
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
@@ -768,11 +769,11 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	 *	(re) set the initial delay.
 	 */
 	request->delay = USEC / 3;
-	gettimeofday(&now, NULL);
-	tv_add(&now, request->delay);
+	gettimeofday(&when, NULL);
+	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
-	fr_event_insert(el, request_timer, request, &now,
-				&request->ev);
+
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
 	/*
 	 *	Do this here so that fewer other functions need to do
@@ -886,8 +887,8 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 		when = request->reply->timestamp;
 		request->delay += request->delay ;
 		when.tv_sec += request->delay;
-		fr_event_insert(el, request_timer, request,
-				&when, &request->ev);
+
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 
 #ifdef WITH_PROXY
@@ -2544,8 +2545,8 @@ static void ping_home_server(void *ctx)
 
 	DEBUG("PING: Waiting %u seconds for response to ping",
 	      home->ping_timeout);
-	fr_event_insert(el, request_timer, request, &when,
-			&request->ev);
+
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 	home->num_sent_pings++;
 
 	rad_assert(request->proxy_listener != NULL);
@@ -2775,8 +2776,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	that.
 		 */
 		if (timercmp(&when, &now, >)) {
-			fr_event_insert(el, request_timer, request,
-					&when, &request->ev);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
 
@@ -3113,8 +3113,7 @@ static void request_coa_timer(REQUEST *request)
 		tv_add(&when, delay);
 
 		if (timercmp(&when, &now, >)) {
-			fr_event_insert(el, request_timer, request, &when,
-					&request->ev);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
 	}
@@ -3181,7 +3180,7 @@ static void request_coa_timer(REQUEST *request)
 	if (timercmp(&mrd, &when, <)) {
 		when = mrd;
 	}
-	fr_event_insert(el, request_timer, request, &when, &request->ev);
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
