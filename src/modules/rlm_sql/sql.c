@@ -222,15 +222,14 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 	/*
 	 *	Create the pair
 	 */
-	pair = pairmake(row[2], value, operator);
+	if (do_xlat) {
+		pair = pairmake_xlat(row[2], value, operator);
+	} else {
+		pair = pairmake(row[2], value, operator);
+	}
 	if (pair == NULL) {
 		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s", fr_strerror());
 		return -1;
-	}
-	if (do_xlat) {
-		pair->flags.do_xlat = 1;
-		strlcpy(pair->vp_strvalue, buf, sizeof(pair->vp_strvalue));
-		pair->length = 0;
 	}
 
 	/*

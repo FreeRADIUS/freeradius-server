@@ -1989,8 +1989,6 @@ extern void fr_strerror_printf(const char *, ...);
  */
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 {
-	VALUE_PAIR *vp;
-
 	if (!pair) {
 		fr_strerror_printf("Internal error");
 		return NULL;
@@ -2002,40 +2000,16 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	}
 
 	/*
-	 *	pairmake handles tags.  pairalloc() doesn't.
+	 *	FALSE comparisons never match.  BUT if it's a "string"
+	 *	or `string`, then remember to expand it later.
 	 */
-	vp = pairmake(pair->attr, NULL, pair->operator);
-	if (!vp) {
-		return NULL;
+	if ((pair->operator != T_OP_CMP_FALSE) &&
+	    ((pair->value_type == T_DOUBLE_QUOTED_STRING) ||
+	     (pair->value_type == T_BACK_QUOTED_STRING))) {
+		return pairmake_xlat(pair->attr, pair->value, pair->operator);
 	}
 
-	/*
-	 *	Ignore the value if it's a false comparison.
-	 */
-	if (pair->operator == T_OP_CMP_FALSE) return vp;
-
-	if (pair->value_type == T_BARE_WORD) {
-		if ((vp->type == PW_TYPE_STRING) && 
-		    (pair->value[0] == '0') && (pair->value[1] == 'x')) {
-			vp->type = PW_TYPE_OCTETS;
-		}
-		if (!pairparsevalue(vp, pair->value)) {
-			pairfree(&vp);
-			return NULL;
-		}
-		vp->flags.do_xlat = 0;
-	  
-	} else if (pair->value_type == T_SINGLE_QUOTED_STRING) {
-		if (!pairparsevalue(vp, pair->value)) {
-			pairfree(&vp);
-			return NULL;
-		}
-		vp->flags.do_xlat = 0;
-	} else {
-		vp->flags.do_xlat = 1;
-	}
-
-	return vp;
+	return pairmake(pair->attr, pair->value, pair->operator);
 }
 
 /*

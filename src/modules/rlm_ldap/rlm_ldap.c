@@ -2781,20 +2781,20 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				/*
 				 *	Create the pair.
 				 */
-				newpair = pairmake(element->radius_attr,
-						   do_xlat ? NULL : value,
-						   operator);
+				if (do_xlat) {
+					newpair = pairmake_xlat(element->radius_attr,
+								value,
+								operator);
+				} else {
+					newpair = pairmake(element->radius_attr,
+							   value,
+							   operator);
+				}
 				if (newpair == NULL) {
 					radlog(L_ERR, "  [%s] Failed to create the pair: %s", inst->xlat_name, fr_strerror());
 					continue;
 				}
 
-				if (do_xlat) {
-					newpair->flags.do_xlat = 1;
-					strlcpy(newpair->vp_strvalue, buf,
-						sizeof(newpair->vp_strvalue));
-					newpair->length = 0;
-				}
 				vp_prints(print_buffer, sizeof(print_buffer),
 					  newpair);
 				DEBUG("  [%s] %s -> %s", inst->xlat_name,

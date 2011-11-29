@@ -1435,8 +1435,6 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	extended attribute of the "evs" data type.
 	 */
 	if (*p == '.') {
-		DICT_ATTR *da;
-
 		da = dict_attrbyvalue(attr, 0);
 		if (!da) {
 			fr_strerror_printf("Cannot parse attributes without dictionaries");
@@ -1687,15 +1685,9 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		        pairbasicfree(vp);
 			return NULL;
 		}
-	  
-		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-		vp->length = strlen(vp->vp_strvalue);
-		/*
-		 *	If anything goes wrong, this is a run-time error,
-		 *	not a compile-time error.
-		 */
-		return vp;
 
+		pairbasicfree(vp);
+		return pairmake_xlat(attribute, value, operator);
 	}
 
 	/*
@@ -1714,6 +1706,24 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	return vp;
 }
 
+VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value, int operator)
+{
+	VALUE_PAIR *vp;
+
+	if (!value) {
+		fr_strerror_printf("Empty value passed to pairmake_xlat()");
+		return NULL;
+	}
+
+	vp = pairmake(attribute, NULL, operator);
+	if (!vp) return vp;
+
+	strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+	vp->flags.do_xlat = 1;
+	vp->length = 0;
+
+	return vp;
+}
 
 /*
  *	[a-zA-Z0-9_-:.]+
@@ -1842,15 +1852,12 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 				fr_strerror_printf("Value too long");
 				return NULL;
 			}
-			vp = pairmake(attr, NULL, token);
+			vp = pairmake_xlat(attr, value, token);
 			if (!vp) {
 				*eol = T_OP_INVALID;
 				return NULL;
 			}
 
-			strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-			vp->flags.do_xlat = 1;
-			vp->length = 0;
 		} else {
 			/*
 			 *	Parse && escape it, as defined by the
@@ -1900,15 +1907,11 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 			return NULL;
 		}
 
-		vp = pairmake(attr, NULL, token);
+		vp = pairmake_xlat(attr, value, token);
 		if (!vp) {
 			*eol = T_OP_INVALID;
 			return NULL;
 		}
-
-		vp->flags.do_xlat = 1;
-		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-		vp->length = 0;
 		break;
 	}
 
