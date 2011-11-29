@@ -363,7 +363,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	if (fr_crypt_check((char *) request->password->vp_strvalue,
 			     (char *) vp->vp_strvalue) != 0) {
 		radlog_request(L_AUTH, 0, request, "invalid password \"%s\"",
-			       request->username->vp_strvalue);
+			       request->password->vp_strvalue);
 		return RLM_MODULE_REJECT;
 	}
 #endif /* OSFFIA */
