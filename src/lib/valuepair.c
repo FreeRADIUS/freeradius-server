@@ -32,9 +32,11 @@ RCSID("$Id$")
 #endif
 
 #ifdef HAVE_PCREPOSIX_H
+#define WITH_REGEX
 #  include	<pcreposix.h>
 #else
 #ifdef HAVE_REGEX_H
+#define WITH_REGEX
 #  include	<regex.h>
 #endif
 #endif
@@ -508,50 +510,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 				continue;
 				break;
 
-/* really HAVE_REGEX_H */
-#if 0
-				/*
-				 *  Attr-Name =~ "s/find/replace/"
-				 *
-				 *  Very bad code.  Barely working,
-				 *  if at all.
-				 */
-
-			case T_OP_REG_EQ:
-			  if (found &&
-			      (i->vp_strvalue[0] == 's')) {
-			    regex_t		reg;
-			    regmatch_t		match[1];
-
-			    char *str;
-			    char *p, *q;
-
-			    p = i->vp_strvalue + 1;
-			    q = strchr(p + 1, *p);
-			    if (!q || (q[strlen(q) - 1] != *p)) {
-			      tailfrom = i;
-			      continue;
-			    }
-			    str = strdup(i->vp_strvalue + 2);
-			    q = strchr(str, *p);
-			    *(q++) = '\0';
-			    q[strlen(q) - 1] = '\0';
-
-			    regcomp(&reg, str, 0);
-			    if (regexec(&reg, found->vp_strvalue,
-					1, match, 0) == 0) {
-			      fprintf(stderr, "\"%s\" will have %d to %d replaced with %s\n",
-				      found->vp_strvalue, match[0].rm_so,
-				      match[0].rm_eo, q);
-
-			    }
-			    regfree(&reg);
-			    free(str);
-			  }
-			  tailfrom = i;	/* don't copy it over */
-			  continue;
-			  break;
-#endif
 			case T_OP_EQ:		/* = */
 				/*
 				 *  FIXME: Tunnel attributes with
@@ -1571,7 +1529,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	char            *tc, *ts;
 	signed char     tag;
 	int             found_tag;
-	char		buffer[64];
+	char		buffer[256];
 	const char	*attrname = attribute;
 
 	/*
@@ -1679,6 +1637,11 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 */
 	case T_OP_REG_EQ:	/* =~ */
 	case T_OP_REG_NE:	/* !~ */
+#ifndef WITH_REGEX
+		fr_strerror_printf("Regular expressions are not supported");
+		return NULL;
+
+#else
 		if (!value) {
 			fr_strerror_printf("No regular expression found in %s",
 					   vp->name);
@@ -1687,7 +1650,22 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		}
 
 		pairbasicfree(vp);
+		
+		if (1) {
+			int compare;
+			regex_t reg;
+			
+			compare = regcomp(&reg, value, REG_EXTENDED);
+			if (compare != 0) {
+				regerror(compare, &reg, buffer, sizeof(buffer));
+				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
+					   attribute, buffer);
+				return NULL;
+			}
+		}
+
 		return pairmake_xlat(attribute, value, operator);
+#endif
 	}
 
 	/*
@@ -2054,7 +2032,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		 */
 	case T_OP_REG_EQ:
 	case T_OP_REG_NE:
-#ifndef HAVE_REGEX_H
+#ifndef WITH_REGEX
 		return -1;
 #else
 		{
