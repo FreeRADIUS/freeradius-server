@@ -24,6 +24,10 @@ install:
 reconfig:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 
+.PHONY: tests
+tests:
+	@$(MAKE) -C tests tests
+
 .PHONY: common $(SUBDIRS)
 
 #
