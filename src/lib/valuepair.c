@@ -62,54 +62,23 @@ static const char *months[] = {
 #define FR_VP_NAME_PAD (32)
 #define FR_VP_NAME_LEN (30)
 
-static const int typesize[] = {
-	sizeof(((VALUE_PAIR *)0)->vp_strvalue),			/* string */
-	4,			/* integer */
-	4,			/* ipaddr */
-	4,			/* date */
-	sizeof(((VALUE_PAIR *)0)->data),			/* abinary */
-	sizeof(((VALUE_PAIR *)0)->vp_octets),			/* octets */
-	sizeof(((VALUE_PAIR *)0)->vp_ifid),
-	sizeof(((VALUE_PAIR *)0)->vp_ipv6addr),
-	sizeof(((VALUE_PAIR *)0)->vp_ipv6prefix),
-	4,			/* byte (integer internally) */
-	4,			/* short (integer internally) */
-	sizeof(((VALUE_PAIR *)0)->vp_ether),
-	4,			/* signed */
-	sizeof(((VALUE_PAIR *)0)->data),			/* combo IP */
-	sizeof(((VALUE_PAIR *)0)->vp_tlv),
-	sizeof(((VALUE_PAIR *)0)->data),			/* extended */
-	sizeof(((VALUE_PAIR *)0)->data),			/* extended-flags */
-	sizeof(((VALUE_PAIR *)0)->data),			/* evs */
-	8			/* integer64 */
-};
-
 VALUE_PAIR *pairalloc(DICT_ATTR *da)
 {
 	size_t name_len = 0;
-	size_t dsize;
 	VALUE_PAIR *vp;
 
 	/*
 	 *	Not in the dictionary: the name is allocated AFTER
 	 *	the VALUE_PAIR struct.
 	 */
-	if (da) {
-		dsize = typesize[da->type];
-		name_len = 0;
-	} else {
-		dsize = sizeof(vp->data);
-		name_len = FR_VP_NAME_PAD;
-	}
+	if (!da) name_len = FR_VP_NAME_PAD;
 
-	dsize += sizeof(*vp) - sizeof(vp->data) + name_len;
-	
-	vp = malloc(dsize);
+	vp = malloc(sizeof(*vp) + name_len);
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
-	memset(vp, 0, dsize);
+	memset(vp, 0, sizeof(*vp));
 
 	if (da) {
 		vp->attribute = da->attr;
@@ -235,7 +204,7 @@ void pairbasicfree(VALUE_PAIR *pair)
 {
 	if (pair->type == PW_TYPE_TLV) free(pair->vp_tlv);
 	/* clear the memory here */
-	memset(pair, 0, sizeof(*pair) - sizeof(pair->data));
+	memset(pair, 0, sizeof(*pair));
 	free(pair);
 }
 
@@ -369,24 +338,22 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
  */
 VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 {
-	size_t dsize, name_len;
+	size_t name_len;
 	VALUE_PAIR *n;
 
 	if (!vp) return NULL;
-
+	
 	if (!vp->flags.unknown_attr) {
-		dsize = typesize[vp->type];
 		name_len = 0;
 	} else {
-		dsize = sizeof(vp->data);
 		name_len = FR_VP_NAME_PAD;
 	}
-	dsize += sizeof(*vp) - sizeof(vp->data) + name_len;
-
-	n = malloc(dsize);
-	if (!n) return NULL;
-
-	memcpy(n, vp, dsize);
+	
+	if ((n = malloc(sizeof(*n) + name_len)) == NULL) {
+		fr_strerror_printf("out of memory");
+		return NULL;
+	}
+	memcpy(n, vp, sizeof(*n) + name_len);
 
 	/*
 	 *	Reset the name field to point to the NEW attribute,
@@ -936,6 +903,15 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 	if (!value) return NULL;
 
+	/*
+	 *	Even for integers, dates and ip addresses we
+	 *	keep the original string in vp->vp_strvalue.
+	 */
+	if (vp->type != PW_TYPE_TLV) {
+		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+		vp->length = strlen(vp->vp_strvalue);
+	}
+
 	switch(vp->type) {
 		case PW_TYPE_STRING:
 			/*
@@ -1168,7 +1144,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 
 				vp->length = size >> 1;
-				if (size > 2 * sizeof(vp->vp_octets)) {
+				if (size > 2*sizeof(vp->vp_octets)) {
 					vp->type |= PW_FLAG_LONG;
 					us = vp->vp_tlv = malloc(vp->length);
 					if (!us) {
@@ -1182,9 +1158,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 					fr_strerror_printf("Invalid hex data");
 					return NULL;
 				}
-			} else {
-				strlcpy(vp->vp_octets, value, sizeof(vp->vp_octets));
-				vp->length = strlen(value);
 			}
 			break;
 
