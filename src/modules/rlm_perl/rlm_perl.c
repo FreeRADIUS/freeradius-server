@@ -79,6 +79,8 @@ typedef struct perl_inst {
 	char	*perl_flags;
 	PerlInterpreter *perl;
 	pthread_key_t	*thread_key;
+
+	pthread_mutex_t clone_mutex;
 } PERL_INST;
 /*
  *	A mapping of configuration file names to internal variables.
@@ -440,6 +442,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 
 #ifdef USE_ITHREADS
+	pthread_mutex_init(&inst->clone_mutex, NULL);
+
 	inst->thread_key = rad_malloc(sizeof(*inst->thread_key));
 	memset(inst->thread_key,0,sizeof(*inst->thread_key));
 	
@@ -669,8 +673,10 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
 #endif
-
+	
 #ifdef USE_ITHREADS
+	pthread_mutex_lock(&inst->clone_mutex);
+
 	PerlInterpreter *interp;
 
 	interp = rlm_perl_clone(inst->perl,inst->thread_key);
@@ -678,9 +684,12 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	  dTHXa(interp);
 	  PERL_SET_CONTEXT(interp);
 	}
+	
+	pthread_mutex_unlock(&inst->clone_mutex);
 #else
 	PERL_SET_CONTEXT(inst->perl);
 #endif
+
 	{
 	dSP;
 
@@ -996,6 +1005,7 @@ static int perl_detach(void *instance)
 
 #ifdef USE_ITHREADS
 	rlm_perl_destruct(inst->perl);
+	pthread_mutex_destroy(&inst->clone_mutex);
 #else
 	perl_destruct(inst->perl);
 	perl_free(inst->perl);
