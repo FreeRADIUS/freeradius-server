@@ -394,6 +394,8 @@ static int sqlippool_detach(void *instance)
 	return 0;
 }
 
+#define IS_EMPTY(_x) (!_x ||!*_x)
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -425,8 +427,7 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 		return -1;
 	}
 
-	if ((data->sql_instance_name == NULL) ||
-	    (strlen(data->sql_instance_name) == 0)) {
+	if (IS_EMPTY(data->sql_instance_name)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'sql-instance-name' variable must be set.");
 		sqlippool_detach(data);
 		return -1;
@@ -436,57 +437,49 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	 *	Check that all the queries are in place
 	 */
 
-	if ((data->allocate_clear == NULL) ||
-	    (strlen(data->allocate_clear) == 0)) {
+	if (IS_EMPTY(data->allocate_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate-clear' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
-	if ((data->allocate_find == NULL) || 
-	    (strlen(data->allocate_find) == 0)) {
+	if (IS_EMPTY(data->allocate_find)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate_find' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
-	if ((data->allocate_update == NULL) ||
-	    (strlen(data->allocate_update) == 0)) {
+	if (IS_EMPTY(data->allocate_update)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate_update' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
-	if ((data->start_update == NULL) ||
-	    (strlen(data->start_update) == 0)) {
+	if (IS_EMPTY(data->start_update)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'start-update' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
-	if ((data->alive_update == NULL) ||
-	     (strlen(data->alive_update) == 0)) {
+	if (IS_EMPTY(data->alive_update)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'alive-update' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
-	if ((data->stop_clear == NULL) ||
-	     (strlen(data->stop_clear) == 0)) {
+	if (IS_EMPTY(data->stop_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'stop-clear' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
-	if ((data->on_clear == NULL) ||
-	     (strlen(data->on_clear) == 0)) {
+	if (IS_EMPTY(data->on_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'on-clear' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
-	if ((data->off_clear == NULL) ||
-	    (strlen(data->off_clear) == 0)) {
+	if (IS_EMPTY(data->off_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'off-clear' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
