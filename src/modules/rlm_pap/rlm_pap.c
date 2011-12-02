@@ -144,7 +144,7 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		pap_detach(inst);
                 return -1;
         }
-	if (inst->scheme == NULL || strlen(inst->scheme) == 0){
+	if (!inst->scheme || !*inst->scheme) {
 		radlog(L_ERR, "rlm_pap: No scheme defined");
 		pap_detach(inst);
 		return -1;
