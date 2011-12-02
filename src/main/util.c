@@ -347,10 +347,18 @@ void *rad_malloc(size_t size)
 	void *ptr = malloc(size);
 
 	if (ptr == NULL) {
-		radlog(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR, "no memory");
 		exit(1);
 	}
 
+	return ptr;
+}
+
+
+void *rad_calloc(size_t size)
+{
+	void *ptr = rad_malloc(size);
+	memset(ptr, 0, size);
 	return ptr;
 }
 
