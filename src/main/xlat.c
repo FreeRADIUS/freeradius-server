@@ -745,7 +745,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	xlat_t	*c;
 	xlat_t	my_xlat;
 
-	if ((module == NULL) || (strlen(module) == 0)) {
+	if (!module || !*module) {
 		DEBUG("xlat_register: Invalid module name");
 		return -1;
 	}
