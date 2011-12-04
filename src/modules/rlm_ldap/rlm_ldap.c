@@ -1223,7 +1223,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, char *fmt,
 	}
 	if (ldap_url->lud_attrs == NULL || ldap_url->lud_attrs[0] == NULL ||
 	    ( ldap_url->lud_attrs[1] != NULL ||
-	      ( ! strlen(ldap_url->lud_attrs[0]) ||
+	      ( !*ldap_url->lud_attrs[0] ||
 		! strcmp(ldap_url->lud_attrs[0],"*") ) ) ){
 		radlog (L_ERR, "  [%s] Invalid Attribute(s) request.\n", inst->xlat_name);
 		ldap_free_urldesc(ldap_url);
@@ -1453,7 +1453,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		strlcpy(filter,inst->base_filter,sizeof(filter));
 		if (user_profile)
 			profile = user_profile->vp_strvalue;
-		if (profile && strlen(profile)){
+		if (profile && *profile){
 			if ((res = perform_search(instance, conn,
 				profile, LDAP_SCOPE_BASE,
 				filter, inst->atts, &def_result)) == RLM_MODULE_OK){
@@ -1492,7 +1492,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		if ((vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL) {
 			unsigned int i=0;
 			strlcpy(filter,inst->base_filter,sizeof(filter));
-			while(vals[i] != NULL && strlen(vals[i])){
+			while(vals[i] && *vals[i]){
 				if ((res = perform_search(instance, conn,
 					vals[i], LDAP_SCOPE_BASE,
 					filter, inst->atts, &def_attr_result)) == RLM_MODULE_OK){
@@ -1522,7 +1522,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			ldap_value_free(vals);
 		}
 	}
-	if (inst->passwd_attr && strlen(inst->passwd_attr)) {
+	if (inst->passwd_attr && *inst->passwd_attr) {
 #ifdef NOVELL_UNIVERSAL_PASSWORD
 		if (strcasecmp(inst->passwd_attr,"nspmPassword") != 0) {
 #endif
@@ -1546,7 +1546,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					      i++) {
 				int attr = PW_USER_PASSWORD;
 
-				if (strlen(passwd_vals[i]) == 0)
+				if (!*passwd_vals[i])
 					continue;
 
 				value = passwd_vals[i];
@@ -1569,7 +1569,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 					goto create_attr;
 
 				} else if (inst->passwd_hdr &&
-					   strlen(inst->passwd_hdr)) {
+					   *inst->passwd_hdr) {
 					if (strncasecmp(value,
 							inst->passwd_hdr,
 							strlen(inst->passwd_hdr)) == 0) {
@@ -1619,7 +1619,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 				if (res == 0){
 					passwd_val = universal_password;
 
-					if (inst->passwd_hdr && strlen(inst->passwd_hdr)){
+					if (inst->passwd_hdr && *inst->passwd_hdr){
 						passwd_val = strstr(passwd_val,inst->passwd_hdr);
 
 						if (passwd_val != NULL)
@@ -2146,8 +2146,8 @@ static int ldap_postauth(void *instance, REQUEST * request)
 				if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 				  /* Bind to eDirectory as the RADIUS user with a wrong password. */
 				  vp_pwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD);
-				  strcpy(password, vp_pwd->vp_strvalue);
-				  if (strlen(password) > 0) {
+				  if (vp_pwd && *vp_pwd->vp_strvalue) {
+				  	  strcpy(password, vp_pwd->vp_strvalue);
 					  if (password[0] != 'a') {
 						  password[0] = 'a';
 					  } else {
