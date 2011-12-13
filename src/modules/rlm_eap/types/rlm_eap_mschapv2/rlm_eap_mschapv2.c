@@ -405,7 +405,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	/*
 	 *	Sanity check the response.
 	 */
-	if (eap_ds->response->length <= 4) {
+	if (eap_ds->response->length <= 5) {
 		radlog(L_ERR, "rlm_eap_mschapv2: corrupted data");
 		return 0;
 	}
