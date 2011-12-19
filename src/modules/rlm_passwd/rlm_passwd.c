@@ -38,7 +38,6 @@ struct hashtable {
 	int ignorenis;
 	char * filename;
 	struct mypasswd **table;
-	struct mypasswd *last_found;
 	char buffer[1024];
 	FILE *fp;
 	char delimiter;
@@ -245,7 +244,8 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 #undef passwd
 }
 
-static struct mypasswd * get_next(char *name, struct hashtable *ht)
+static struct mypasswd * get_next(char *name, struct hashtable *ht,
+				  struct mypasswd **last_found)
 {
 #define passwd ((struct mypasswd *) ht->buffer)
 	struct mypasswd * hashentry;
@@ -255,11 +255,11 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 
 	if (ht->tablesize > 0) {
 		/* get saved address of next item to check from buffer */
-		hashentry = ht->last_found;
+		hashentry = *last_found;
 		for (; hashentry; hashentry = hashentry->next) {
 			if (!strcmp(hashentry->field[ht->keyfield], name)) {
 				/* save new address */
-				ht->last_found = hashentry->next;
+				*last_found = hashentry->next;
 				return hashentry;
 			}
 		}
@@ -291,19 +291,20 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 #undef passwd
 }
 
-static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
+static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
+				    struct mypasswd **last_found)
 {
 	int h;
 	struct mypasswd * hashentry;
 
 	if (!ht || !name || *name == '\0') return NULL;
-	ht->last_found = NULL;
+	*last_found = NULL;
 	if (ht->tablesize > 0) {
 		h = hash (name, ht->tablesize);
 		for (hashentry = ht->table[h]; hashentry; hashentry = hashentry->next)
 			if (!strcmp(hashentry->field[ht->keyfield], name)){
 				/* save address of next item to check into buffer */
-				ht->last_found=hashentry->next;
+				*last_found=hashentry->next;
 				return hashentry;
 			}
 		return NULL;
@@ -313,7 +314,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 		ht->fp = NULL;
 	}
 	if (!(ht->fp=fopen(ht->filename, "r"))) return NULL;
-	return get_next(name, ht);
+	return get_next(name, ht, last_found);
 }
 
 #ifdef TEST
@@ -323,7 +324,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 int main(void){
  struct hashtable *ht;
  char *buffer;
- struct mypasswd* pw;
+ struct mypasswd* pw, *last_found;
  int i;
 
  ht = build_hash_table("/etc/group", 4, 3, 1, 100, 0, ":");
@@ -338,9 +339,9 @@ int main(void){
 
  while(fgets(buffer, 1024, stdin)){
   buffer[strlen(buffer)-1] = 0;
-  pw = get_pw_nam(buffer, ht);
+  pw = get_pw_nam(buffer, ht, &last_found);
   printpw(pw,4);
-  while (pw = get_next(buffer, ht)) printpw(pw,4);
+  while (pw = get_next(buffer, ht, &last_found)) printpw(pw,4);
  }
  release_ht(ht);
 }
@@ -521,7 +522,7 @@ static int passwd_map(void *instance, REQUEST *request)
 #define inst ((struct passwd_instance *)instance)
 	char buffer[1024];
 	VALUE_PAIR * key;
-	struct mypasswd * pw;
+	struct mypasswd * pw, *last_found;
 	int found = 0;
 
 	for (key = request->packet->vps;
@@ -531,14 +532,14 @@ static int passwd_map(void *instance, REQUEST *request)
 		 *	Ensure we have the string form of the attribute
 		 */
 		vp_prints_value(buffer, sizeof(buffer), key, 0);
-		if (! (pw = get_pw_nam(buffer, inst->ht)) ) {
+		if (! (pw = get_pw_nam(buffer, inst->ht, &last_found)) ) {
 			continue;
 		}
 		do {
 			addresult(inst, request, &request->config_items, pw, 0, "config_items");
 			addresult(inst, request, &request->reply->vps, pw, 1, "reply_items");
 			addresult(inst, request, &request->packet->vps, 	pw, 2, "request_items");
-		} while ( (pw = get_next(buffer, inst->ht)) );
+		} while ( (pw = get_next(buffer, inst->ht, &last_found)) );
 		found++;
 		if (!inst->allowmultiple) break;
 	}
