@@ -404,12 +404,21 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	if(!inst->filename || *inst->filename == '\0' || !inst->format || *inst->format == '\0') {
-		radlog(L_ERR, "rlm_passwd: cann't find passwd file and/or format in configuration");
+		radlog(L_ERR, "rlm_passwd: can't find passwd file and/or format in configuration");
+		free(inst);
 		return -1;
 	}
+
+	if (inst->hashsize == 0) {
+		radlog(L_ERR, "rlm_passwd: hashsize=0 is no longer permitted as it will break the server.");
+		free(inst);
+		return -1;
+	}
+
 	lf=strdup(inst->format);
 	if ( lf == NULL) {
 		radlog(L_ERR, "rlm_passwd: memory allocation failed for lf");
+		free(inst);
 		return -1;
 	}
 	memset(lf, 0, strlen(inst->format));
