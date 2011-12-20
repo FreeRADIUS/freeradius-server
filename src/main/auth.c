@@ -40,16 +40,25 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
 	int		port = 0;
+	const char	*tls = "";
 
 	if ((cli = pairfind(request->packet->vps, PW_CALLING_STATION_ID)) == NULL)
 		do_cli = 0;
 	if ((pair = pairfind(request->packet->vps, PW_NAS_PORT)) != NULL)
 		port = pair->vp_integer;
 
+	if (request->packet->dst_port == 0) {
+		if (pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO)) {
+			tls = " via TLS tunnel";
+		} else {
+			tls = " via proxy to virtual server";
+		}
+	}
+
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
 			request->client->shortname, port,
 		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""),
-		 (request->packet->dst_port == 0) ? " via TLS tunnel" : "");
+		 tls);
 
 	return buf;
 }
@@ -297,6 +306,7 @@ static int rad_check_password(REQUEST *request)
 			case -1:
 			  rad_authlog("Login incorrect "
 						  "(system failed to supply an encrypted password for comparison)", request, 0);
+			  /* FALL-THROUGH */
 			case 1:
 			  return -1;
 			}
@@ -490,6 +500,9 @@ int rad_authenticate(REQUEST *request)
 						&request->config_items,
 						PW_AUTH_TYPE, PW_TYPE_INTEGER);
 			if (tmp) tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
+#ifdef WITH_POST_PROXY_AUTHORIZE
+			if (mainconfig.post_proxy_authorize) break;
+#endif
 			goto authenticate;
 
 		/*
@@ -684,12 +697,15 @@ autz_redo:
 			char *p;
 
 			p = auth_item->vp_strvalue;
-			while (*p != '\0') {
-				if (!isprint((int) *p)) {
-					log_debug("  WARNING: Unprintable characters in the password.\n\t  Double-check the shared secret on the server and the NAS!");
+			while (*p) {
+				int size;
+
+				size = fr_utf8_char(p);
+				if (!size) {
+					log_debug("  WARNING: Unprintable characters in the password.  Double-check the shared secret on the server and the NAS!");
 					break;
 				}
-				p++;
+				p += size;
 			}
 		}
 	}

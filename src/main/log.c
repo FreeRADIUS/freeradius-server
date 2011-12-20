@@ -49,6 +49,9 @@ static const FR_NAME_NUMBER levels[] = {
 	{ NULL, 0 }
 };
 
+int log_dates_utc = 0;
+
+
 /*
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
@@ -144,15 +147,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 #endif
 
 	case RADLOG_FILES:
-		write(myconfig->radlog_fd, buffer, strlen(buffer));
-		break;
-
 	case RADLOG_STDOUT:
-		write(STDOUT_FILENO, buffer, strlen(buffer));
-		break;
-
 	case RADLOG_STDERR:
-		write(STDERR_FILENO, buffer, strlen(buffer));
+		write(myconfig->radlog_fd, buffer, strlen(buffer));
 		break;
 
 	default:
@@ -286,7 +283,14 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		time_t timeval;
 		timeval = time(NULL);
 
-		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+#ifdef HAVE_GMTIME_R
+		if (log_dates_utc) {
+			struct tm utc;
+			gmtime_r(&timeval, &utc);
+			asctime_r(&utc, buffer + len);
+		} else
+#endif
+			CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
 		
 		s = strrchr(buffer, '\n');
 		if (s) {
@@ -294,9 +298,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 			s[1] = '\0';
 		}
 		
-		s = fr_int2str(levels, (lvl & ~L_CONS), ": ");
-		
-		strcat(buffer, s);
+		strcat(buffer, fr_int2str(levels, (lvl & ~L_CONS), ": "));
 		len = strlen(buffer);
 	}
 	

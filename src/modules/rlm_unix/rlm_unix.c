@@ -363,7 +363,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	if (fr_crypt_check((char *) request->password->vp_strvalue,
 			     (char *) vp->vp_strvalue) != 0) {
 		radlog_request(L_AUTH, 0, request, "invalid password \"%s\"",
-			       request->username->vp_strvalue);
+			       request->password->vp_strvalue);
 		return RLM_MODULE_REJECT;
 	}
 #endif /* OSFFIA */
@@ -440,7 +440,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	Which type is this.
 	 */
 	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE))==NULL) {
-		radlog(L_ERR, "rlm_unix: no Accounting-Status-Type attribute in request.");
+		RDEBUG("no Accounting-Status-Type attribute in request.");
 		return RLM_MODULE_NOOP;
 	}
 	status = vp->vp_integer;

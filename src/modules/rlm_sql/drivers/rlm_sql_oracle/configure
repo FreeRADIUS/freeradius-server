@@ -2726,8 +2726,9 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 		if test "x$oracle_lib_dir" != "x" ; then
 			ORACLE_LIBDIR_SWITCH="-L${oracle_lib_dir} "
 		fi
-		LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz10"
-		cat >conftest.$ac_ext <<_ACEOF
+		for oracle_version in 10 11 9 ""; do
+			LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
+			cat >conftest.$ac_ext <<_ACEOF
 /* confdefs.h.  */
 _ACEOF
 cat confdefs.h >>conftest.$ac_ext
@@ -2735,27 +2736,27 @@ cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 #include <oci.h>
 
-				static OCIEnv           *p_env;
-				static OCIError         *p_err;
-				static OCISvcCtx        *p_svc;
-				static OCIStmt          *p_sql;
-				static OCIDefine        *p_dfn    = (OCIDefine *) 0;
-				static OCIBind          *p_bnd    = (OCIBind *) 0;
+					static OCIEnv           *p_env;
+					static OCIError         *p_err;
+					static OCISvcCtx        *p_svc;
+					static OCIStmt          *p_sql;
+					static OCIDefine        *p_dfn    = (OCIDefine *) 0;
+					static OCIBind          *p_bnd    = (OCIBind *) 0;
 
 int
 main ()
 {
 
-				  int             p_bvi;
-				  char            p_sli[20];
-				  int             rc;
-				  char            errbuf[100];
-				  int             errcode;
+					  int             p_bvi;
+					  char            p_sli[20];
+					  int             rc;
+					  char            errbuf[100];
+					  int             errcode;
 
-				  rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
-				          (dvoid * (*)(dvoid *, size_t)) 0,
-				          (dvoid * (*)(dvoid *, dvoid *, size_t))0,
-				          (void (*)(dvoid *, dvoid *)) 0 );
+					  rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
+							  (dvoid * (*)(dvoid *, size_t)) 0,
+							  (dvoid * (*)(dvoid *, dvoid *, size_t))0,
+							  (void (*)(dvoid *, dvoid *)) 0 );
 
 
   ;
@@ -2780,7 +2781,7 @@ eval "echo \"\$as_me:$LINENO: $ac_try_echo\"") >&5
 	 test ! -s conftest.err
        } && test -s conftest$ac_exeext &&
        $as_test_x conftest$ac_exeext; then
-  ORACLE_LIBS="$ORACLE_LIBDIR_SWITCH -lclntsh -lnnz10"
+  ORACLE_LIBS="$ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
 else
   echo "$as_me: failed program was:" >&5
 sed 's/^/| /' conftest.$ac_ext >&5
@@ -2791,6 +2792,10 @@ fi
 
 rm -f core conftest.err conftest.$ac_objext conftest_ipa8_conftest.oo \
       conftest$ac_exeext conftest.$ac_ext
+			if test "x$ORACLE_LIBS" != "x"; then
+				break
+			fi
+		done
 
 		LIBS="$old_LIBS"
 		CFLAGS="$old_CFLAGS"
@@ -2812,7 +2817,7 @@ echo "${ECHO_T}yes" >&6; }
 		if test "x$ORACLE_LIBS" = "x"; then
 			{ echo "$as_me:$LINENO: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path>." >&5
 echo "$as_me: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path>." >&2;}
-			fail="$fail libclntsh libnnz10"
+			fail="$fail libclntsh libnnz${oracle_version}"
 		else
 			sql_oracle_ldflags="${sql_oracle_ldflags} $ORACLE_LIBS"
 			{ echo "$as_me:$LINENO: result: yes" >&5
@@ -2843,11 +2848,7 @@ fi
 
 
 
-
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
-
-  ac_config_files="$ac_config_files Makefile"
+ac_config_files="$ac_config_files Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3854,5 +3855,4 @@ if test "$no_create" != yes; then
   # would make configure fail if this is the last instruction.
   $ac_cs_success || { (exit 1); exit 1; }
 fi
-
 

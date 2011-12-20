@@ -110,6 +110,11 @@ static const CONF_PARSER proxy_config[] = {
 	  offsetof(realm_config_t, wake_all_if_all_dead),
 	  NULL, "no" },
 
+#ifdef WITH_POST_PROXY_AUTHORIZE
+        { "post_proxy_authorize", PW_TYPE_BOOLEAN, 0,
+	  &mainconfig.post_proxy_authorize, "yes" },
+#endif
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 #endif
@@ -281,6 +286,21 @@ static char *hs_type = NULL;
 static char *hs_check = NULL;
 static char *hs_virtual_server = NULL;
 
+#ifdef WITH_COA
+static CONF_PARSER home_server_coa[] = {
+	{ "irt",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_irt), 0, Stringify(2) },
+	{ "mrt",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrt), 0, Stringify(16) },
+	{ "mrc",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrc), 0, Stringify(5) },
+	{ "mrd",  PW_TYPE_INTEGER,
+	  offsetof(home_server, coa_mrd), 0, Stringify(30) },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+#endif
+
 static CONF_PARSER home_server_config[] = {
 	{ "ipaddr",  PW_TYPE_IPADDR,
 	  0, &hs_ip4addr,  NULL },
@@ -341,14 +361,7 @@ static CONF_PARSER home_server_config[] = {
 #endif
 
 #ifdef WITH_COA
-	{ "irt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_irt), 0, Stringify(2) },
-	{ "mrt",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrt), 0, Stringify(16) },
-	{ "mrc",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrc), 0, Stringify(5) },
-	{ "mrd",  PW_TYPE_INTEGER,
-	  offsetof(home_server, coa_mrd), 0, Stringify(30) },
+	{  "coa", PW_TYPE_SUBSECTION, 0, NULL, (const void *) home_server_coa },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
@@ -565,6 +578,14 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			goto error;
 		}
 	}
+
+	/*
+	 *	Make sure that this is set.
+	 */
+	if (home->src_ipaddr.af == AF_UNSPEC) {
+		home->src_ipaddr.af = home->ipaddr.af;
+	}
+
 	free(hs_srcipaddr);
 	hs_srcipaddr = NULL;
 
@@ -891,7 +912,7 @@ static int server_pool_add(realm_config_t *rc,
 
 		value = cf_pair_value(cp);
 
-		memset(&myhome, 0, sizeof(&myhome));
+		memset(&myhome, 0, sizeof(myhome));
 		myhome.name = value;
 		myhome.type = server_type;
 
@@ -1438,7 +1459,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			return 0;
 		}
 
-		if (!auth_pool ||
+		if (!auth_pool || auth_pool_name &&
 		    (strcmp(auth_pool_name, acct_pool_name) != 0)) {
 			do_print = TRUE;
 		}
@@ -1732,9 +1753,15 @@ int realms_init(CONF_SECTION *config)
 		if (cf_data_find(cs, "home_server_pool")) continue;
 
 		type = pool_peek_type(config, cs);
-		if (type == HOME_TYPE_INVALID) return 0;
+		if (type == HOME_TYPE_INVALID) {
+			free(rc);
+			realms_free();
+			return 0;
+		}
 
 		if (!server_pool_add(rc, cs, type, TRUE)) {
+			free(rc);
+			realms_free();
 			return 0;
 		}
 	}

@@ -1,10 +1,12 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #
 #	3GPP2 stuff.
 #
 #	http://www.3gpp2.org/Public_html/specs/index.cfm
 #	X.S0011-005-C v1.0
 #	http://www.3gpp2.org/Public_html/specs/X.S0011-005-C_v2.0_050708.pdf
+#	http://www.3gpp2.org/public_html/specs/X.S0011-005-C_v3.0_061030.pdf
 #
 #	$Id$
 #
@@ -58,7 +60,7 @@ ATTRIBUTE	3GPP2-IP-QoS				36	integer
 # 37-38 ?
 ATTRIBUTE	3GPP2-Airlink-Priority			39	integer
 ATTRIBUTE	3GPP2-Airlink-Record-Type		40	integer # ?
-#ATTRIBUTE	3GPP2-R-P-Session-ID		41	string
+#ATTRIBUTE	3GPP2-R-P-Session-ID			41	string
 ATTRIBUTE	3GPP2-Airlink-Sequence-Number		42	integer # ?
 ATTRIBUTE	3GPP2-Received-HDLC-Octets		43	integer
 ATTRIBUTE	3GPP2-Correlation-Id			44	string
@@ -123,6 +125,13 @@ ATTRIBUTE	3GPP2-Disconnect-Reason			96	integer
 # The next set of attributes contain sub-types
 ATTRIBUTE	3GPP2-Remote-IPv6-Octet-Count		97	octets
 ATTRIBUTE	3GPP2-PrePaid-Tariff-Switching		98	octets
+ATTRIBUTE	3GPP2-MEID				116	octets
+ATTRIBUTE	3GPP2-DNS-Server-IP-Address		117	octets
+
+ATTRIBUTE	3GPP2-Carrier-ID			142	string
+
+# More sub-types
+ATTRIBUTE	3GPP2-GMT-Time-Zone-Offset		143	signed
 
 ATTRIBUTE       3GPP2-HA-Request                        168     integer
 ATTRIBUTE       3GPP2-HA-Authorised                     169     integer

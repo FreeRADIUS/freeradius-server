@@ -746,8 +746,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 							   HOME_TYPE_COA);
 		}
 		if (!c->coa_pool && !c->coa_server) {
-			client_free(c);
 			cf_log_err(cf_sectiontoitem(cs), "No such home_server or home_server_pool \"%s\"", c->coa_name);
+			client_free(c);
 			return NULL;
 		}
 	}
@@ -874,6 +874,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 					cf_log_err(cf_sectiontoitem(cs),
 						   "Failed reading client file \"%s\"", buf2);
 					client_free(c);
+					closedir(dir);
 					return NULL;
 				}
 
@@ -883,6 +884,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 				if (!client_validate(clients, c, dc)) {
 					
 					client_free(c);
+					closedir(dir);
 					return NULL;
 				}
 			} /* loop over the directory */
@@ -1053,7 +1055,11 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 		case PW_TYPE_STRING_PTR:
 			p = (char **) ((char *) c + dynamic_config[i].offset);
 			if (*p) free(*p);
-			*p = strdup(vp->vp_strvalue);
+			if (vp->vp_strvalue[0]) {
+				*p = strdup(vp->vp_strvalue);
+			} else {
+				*p = NULL;
+			}
 			break;
 
 		case PW_TYPE_BOOLEAN:

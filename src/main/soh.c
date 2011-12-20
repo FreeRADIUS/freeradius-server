@@ -123,32 +123,44 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 				data_len -= 18;
 
 				vp = pairmake("SoH-MS-Machine-OS-vendor", "Microsoft", T_OP_EQ);
+				if (!vp) return 0;
 				pairadd(&sohvp, vp);
 
 				vp = pairmake("SoH-MS-Machine-OS-version", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				vp->vp_integer = soh_pull_be_32(p); p+=4;
 				pairadd(&sohvp, vp);
 
 				vp = pairmake("SoH-MS-Machine-OS-release", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				vp->vp_integer = soh_pull_be_32(p); p+=4;
 				pairadd(&sohvp, vp);
 
 				vp = pairmake("SoH-MS-Machine-OS-build", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				vp->vp_integer = soh_pull_be_32(p); p+=4;
 				pairadd(&sohvp, vp);
 
 				vp = pairmake("SoH-MS-Machine-SP-version", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				vp->vp_integer = soh_pull_be_16(p); p+=2;
 				pairadd(&sohvp, vp);
 
 				vp = pairmake("SoH-MS-Machine-SP-release", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				vp->vp_integer = soh_pull_be_16(p); p+=2;
 				pairadd(&sohvp, vp);
 
 				vp = pairmake("SoH-MS-Machine-Processor", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				vp->vp_integer = soh_pull_be_16(p); p+=2;
 				pairadd(&sohvp, vp);
-
 				break;
 
 			case 2:
@@ -201,6 +213,8 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 				p += 2;
 
 				vp = pairmake("SoH-MS-Machine-Name", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				memcpy(vp->vp_strvalue, p, t);
 				vp->vp_strvalue[t] = 0;
 
@@ -217,6 +231,8 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 				 * to echo back to the client in a final SoHR
 				 */
 				vp = pairmake("SoH-MS-Correlation-Id", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				memcpy(vp->vp_octets, p, 24);
 				vp->length = 24;
 				pairadd(&sohvp, vp);
@@ -246,6 +262,8 @@ static int eapsoh_mstlv(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *p, u
 				 */
 				p += 4;
 				vp = pairmake("SoH-MS-Machine-Role", NULL, T_OP_EQ);
+				if (!vp) return 0;
+
 				vp->vp_integer = *p;
 				pairadd(&sohvp, vp);
 				p++;
@@ -461,6 +479,8 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 					RDEBUG2("SoH Health-Class-Status microsoft DWORD=%08x", hcstatus);
 
 					vp = pairmake("SoH-MS-Windows-Health-Status", NULL, T_OP_EQ);
+					if (!vp) return 0;
+
 					switch (curr_hc) {
 						case 4:
 							/* security updates */
@@ -559,7 +579,9 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 							break;
 					}
 				} else {
-					vp = pairmake("SoH-Other-Health-Status", NULL, T_OP_EQ);
+					vp = pairmake("SoH-MS-Health-Other", NULL, T_OP_EQ);
+					if (!vp) return 0;
+
 					/* FIXME: what to do with the payload? */
 					snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%08x/%i ?", curr_shid, curr_shid_c);
 				}

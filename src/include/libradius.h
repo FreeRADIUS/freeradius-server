@@ -72,9 +72,7 @@ extern "C" {
 #define VENDORPEC_STARENT	8164
 #  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
 #  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
-					fputc('\t', fr_log_fp); \
 					vp_print(fr_log_fp, vp); \
-					fputc('\n', fr_log_fp); \
 				     } \
 				} while(0)
 #  define TAG_VALID(x)          ((x) > 0 && (x) < 0x20)
@@ -117,6 +115,8 @@ typedef struct attr_flags {
 #define FLAG_ENCRYPT_USER_PASSWORD   (1)
 #define FLAG_ENCRYPT_TUNNEL_PASSWORD (2)
 #define FLAG_ENCRYPT_ASCEND_SECRET   (3)
+
+extern const FR_NAME_NUMBER dict_attr_types[];
 
 typedef struct dict_attr {
 	unsigned int		attr;
@@ -379,6 +379,7 @@ extern int	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
 extern const char *fr_packet_codes[FR_MAX_PACKET_CODE];
 extern FILE	*fr_log_fp;
+extern void rad_print_hex(RADIUS_PACKET *packet);
 void		fr_printf_log(const char *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))

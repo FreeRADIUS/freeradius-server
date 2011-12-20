@@ -51,6 +51,7 @@ static const char * const internal_xlat[] = {"check",
 					     "proxy-reply",
 					     "outer.request",
 					     "outer.reply",
+					     "outer.control",
 					     NULL};
 
 #if REQUEST_MAX_REGEX > 8
@@ -150,6 +151,12 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		}
 		break;
 			
+	case 7:
+		if (request->parent) {
+			vps = request->parent->config_items;
+		}
+		break;
+			
 	default:		/* WTF? */
 		return 0;
 	}
@@ -231,9 +238,10 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 
 				*(out++) = '\n';
 
-				if (outlen == 0) break;
+				if (outlen <= 1) break;
 			}
 
+			*out = '\0';
 			return total;
 		}
 
@@ -461,12 +469,10 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	if (vp->type != PW_TYPE_OCTETS) goto nothing;
 
-	*out++ = '"';
-	len = fr_print_string(vp->vp_strvalue, vp->length, out + 1, outlen - 3);
-	out[len] = '"';
-	out[len + 1] = '\0';
+	len = fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
+	out[len] = '\0';
 
-	return len + 2;
+	return len;
 }
 
 #ifdef HAVE_REGEX_H
@@ -663,7 +669,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	xlat_t	*c;
 	xlat_t	my_xlat;
 
-	if ((module == NULL) || (strlen(module) == 0)) {
+	if (!module || !*module) {
 		DEBUG("xlat_register: Invalid module name");
 		return -1;
 	}
@@ -842,7 +848,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 */
 	varlen = rad_copy_variable(buffer, *from);
 	if (varlen < 0) {
-		RDEBUG2("Badly formatted variable: %s", *from);
+		RDEBUG2("ERROR: Badly formatted variable: %s", *from);
 		return -1;
 	}
 	*from += varlen;
@@ -873,7 +879,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 */
 		len1 = rad_copy_variable(buffer, p);
 		if (len1 < 0) {
-			RDEBUG2("Badly formatted variable: %s", p);
+			RDEBUG2("ERROR: Badly formatted variable: %s", p);
 			return -1;
 		}
 
@@ -906,7 +912,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 			len2 = rad_copy_variable(l, p);
 
 			if (len2 < 0) {
-				RDEBUG2("Invalid text after :- at %s", p);
+				RDEBUG2("ERROR: Invalid text after :- at %s", p);
 				return -1;
 			}
 			p += len2;
@@ -1045,7 +1051,7 @@ static size_t xlat_copy(char *out, size_t outlen, const char *in)
 {
 	int freespace = outlen;
 
-	rad_assert(outlen > 0);
+	if (outlen < 1) return 0;
 
 	while ((*in) && (freespace > 1)) {
 		/*

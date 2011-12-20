@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
 #	DHCP to RADUS gateway dictionary.
@@ -47,6 +48,7 @@ ATTRIBUTE	DHCP-Server-Host-Name			268	string	  # 64 octets
 ATTRIBUTE	DHCP-Boot-Filename			269	string	  # 128 octets
 
 ATTRIBUTE	DHCP-Relay-To-IP-Address		270	ipaddr
+ATTRIBUTE	DHCP-Relay-Max-Hop-Count		271	integer
 
 VALUE	DHCP-Flags			Broadcast		0x8000
 
@@ -87,15 +89,15 @@ VALUE	DHCP-Hardware-Type		CAI-TIA-102		33
 
 ##############################################################################
 #
-#	DHCP Options, with comments.  For now, many are as FreeRADIUS
-#	doesn't handle MAC addresses natively.
+#	DHCP Options, with comments.  For now, many are "octets",
+#	as FreeRADIUS doesn't handle complex data structures.
 #
 ##############################################################################
 
 #ATTRIBUTE	DHCP-Pad				0	octets
 ATTRIBUTE	DHCP-Subnet-Mask			1	ipaddr
-# Time Offset in
-ATTRIBUTE	DHCP-Time-Offset			2	octets
+# Time Offset in twos-complement notation.
+ATTRIBUTE	DHCP-Time-Offset			2	integer
 ATTRIBUTE	DHCP-Router-Address			3	ipaddr array
 ATTRIBUTE	DHCP-Time-Server			4	ipaddr array
 ATTRIBUTE	DHCP-IEN-116-Name-Server		5	ipaddr array
@@ -279,8 +281,7 @@ ATTRIBUTE	DHCP-GeoConf-Option			123	octets
 ATTRIBUTE	DHCP-V-I-Vendor-Class			124	octets
 # Vendor-Specific
 ATTRIBUTE	DHCP-V-I-Vendor-Specific		125	octets # tlv
-# 6 bytes: E4:45:74:68:00:00
-ATTRIBUTE	DHCP-Etherboot				128	octets
+ATTRIBUTE	DHCP-Etherboot				128	ether
 # (for IP Phone software load)
 ATTRIBUTE	DHCP-TFTP-Server-IP-Address		128	octets
 
@@ -355,7 +356,7 @@ VALUE	DHCP-Parameter-Request-List	DHCP-ARP-Cache-Timeout	35
 VALUE	DHCP-Parameter-Request-List	DHCP-Ethernet-Encapsulation 36
 VALUE	DHCP-Parameter-Request-List	DHCP-Default-TCP-TTL	37
 VALUE	DHCP-Parameter-Request-List	DHCP-Keep-Alive-Interval 38
-VALUE	DHCP-Parameter-Request-List	DHCP-Keep=Alive-Garbage 39
+VALUE	DHCP-Parameter-Request-List	DHCP-Keep-Alive-Garbage 39
 VALUE	DHCP-Parameter-Request-List	DHCP-NIS-Domain-Name	40
 VALUE	DHCP-Parameter-Request-List	DHCP-NIS-Servers	41
 VALUE	DHCP-Parameter-Request-List	DHCP-NTP-Servers	42

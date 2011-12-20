@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #
 #	Non Protocol Attributes used by FreeRADIUS
 #
@@ -12,6 +13,7 @@
 
 # 	These attributes CAN go in the reply item list.
 ATTRIBUTE	Fall-Through				500	integer
+ATTRIBUTE	Relax-Filter				501	integer
 ATTRIBUTE	Exec-Program				502	string
 ATTRIBUTE	Exec-Program-Wait			503	string
 
@@ -347,13 +349,15 @@ ATTRIBUTE	TLS-Cert-Expiration			1911	string
 ATTRIBUTE	TLS-Cert-Issuer				1912	string
 ATTRIBUTE	TLS-Cert-Subject			1913	string
 ATTRIBUTE	TLS-Cert-Common-Name			1914	string
-# 1915 - 1919: reserved for future cert attributes
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string
+# 1916 - 1919: reserved for future cert attributes
 ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
 ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
 ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string
 ATTRIBUTE	TLS-Client-Cert-Subject			1923	string
 ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string
 ATTRIBUTE	TLS-Client-Cert-Filename		1925	string
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Email	1926	string
 
 #
 #	Range:	1910-2099
@@ -438,6 +442,7 @@ VALUE	Auth-Type			CRAM			1030
 VALUE	Auth-Type			NS-MTA-MD5		1031
 # 1032 is unused (was a duplicate of CRAM)
 VALUE	Auth-Type			SMB			1033
+VALUE	Auth-Type			MS-CHAP-V2		1034
 
 #
 #	Authorization type, too.
@@ -463,6 +468,9 @@ VALUE	Post-Auth-Type			Local			0
 #
 VALUE	Fall-Through			No			0
 VALUE	Fall-Through			Yes			1
+
+VALUE	Relax-Filter			No			0
+VALUE	Relax-Filter			Yes			1
 
 VALUE	Strip-User-Name			No			0
 VALUE	Strip-User-Name			Yes			1

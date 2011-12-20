@@ -1,4 +1,4 @@
-.TH RADMIN 8 "19 Jul 2010" "" "FreeRADIUS Server Administration Tool"
+.TH RADMIN 8 "14 Mar 2011" "" "FreeRADIUS Server Administration Tool"
 .SH NAME
 radmin - FreeRADIUS Administration tool
 .SH SYNOPSIS
@@ -7,8 +7,10 @@ radmin - FreeRADIUS Administration tool
 .IR config_directory ]
 .RB [ \-e
 .IR command ]
+.RB [ \-E ]
 .RB [ \-f
 .IR socket_file ]
+.RB [ \-h ]
 .RB [ \-i
 .IR input_file ]
 .RB [ \-n
@@ -36,8 +38,12 @@ configuration files to find the "listen" section that defines the
 control socket filename.
 .IP "\-e \fIcommand\fP"
 Run \fIcommand\fP and exit.
+.IP \-E
+Echo commands as they are being executed.
 .IP "\-f \fIsocket_file\fP"
 Specify the socket filename directly.  The radiusd.conf file is not read.
+.IP \-h
+Print usage help information.
 .IP "\-i \fIinput_file\fP"
 Reads input from the specified file.  If not specified, stdin is used.
 This also sets "-q".
@@ -97,8 +103,22 @@ Enable debugging for requests matching [condition]
 Set debug level to <number>.  Higher is more debugging.
 .IP debug\ file\ [filename]
 Send all debugging output to [filename]
+.IP del\ <command>
+do sub-command of del
+.IP del\ client\ <command>
+Delete client configuration commands
+.IP del\ client\ ipaddr\ <ipaddr>
+Delete a dynamically created client
 .IP hup\ [module]
 sends a HUP signal to the server, or optionally to one module
+.IP inject\ <command>
+commands to inject packets into a running server
+.IP inject\ to\ <ipaddr>\ <port>
+Inject packets to the destination IP and port.
+.IP inject\ from\ <ipaddr>
+Inject packets as if they came from <ipaddr>
+.IP inject\ file\ <input-file>\ <output-file>
+Inject packet from input-file>, with results sent to <output-file>
 .IP reconnect
 reconnect to a running server
 .IP terminate
@@ -109,6 +129,8 @@ do sub-command of set
 set module commands
 .IP set\ module\ config\ <module>\ variable\ value
 set configuration for <module>
+.IP set\ module\ status\ [alive|dead]
+set the module to be alive or dead (always return "fail")
 .IP set\ home_server\ <command>
 set home server commands
 .IP set\ home_server\ state\ <ipaddr>\ <port>\ [alive|dead]
@@ -156,9 +178,11 @@ Prints out configuration as XML
 .IP stats\ <command>
 do sub-command of stats
 .IP stats\ client\ [auth/acct]\ <ipaddr>
-show statistics for client
-.IP stats\ home_server\ <ipaddr>\ <port>
-show statistics for home server
+show statistics for given client, or for all clients (auth or acct)
+.IP stats\ home_server\ [<ipaddr>/auth/acct]\ <port>
+show statistics for given home server (ipaddr and port), or for all home servers (auth or acct)
+.IP stats\ detail\ <filename>
+show statistics for the given detail file
 .SH SEE ALSO
 unlang(5), radiusd.conf(5), raddb/sites-available/control-socket
 .SH AUTHOR

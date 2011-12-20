@@ -16,6 +16,8 @@ usage() {
 	echo "        -t <type>           Set authentication method" >&2
 	echo "                            type can be pap, chap, mschap, or eap-md5" >&2
 	echo "        -x                  Enable debug output" >&2
+	echo "        -4                  Use IPv4 for the NAS address (default)" >&2
+	echo "        -6                  Use IPv6 for the NAS address" >&2
 	exit 1
 }
 
@@ -30,6 +32,7 @@ radeapclient=$bindir/radeapclient
 
 OPTIONS=
 PASSWORD="User-Password"
+NAS_ADDR_ATTR="NAS-IP-Address"
 
 #  We need at LEAST these many options
 if [ $# -lt 5 ]
@@ -41,6 +44,16 @@ fi
 while [ `echo "$1" | cut -c 1` = "-" ]
 do
    case "$1" in
+	-4) 
+		OPTIONS="$OPTIONS -4"
+		NAS_ADDR_ATTR="NAS-IP-Address"
+		shift
+		;;
+	-6) 
+		OPTIONS="$OPTIONS -6"
+		NAS_ADDR_ATTR="NAS-IPv6-Address"
+		shift
+		;;
 	-d) 
 		OPTIONS="$OPTIONS -d $2"
     		shift;shift
@@ -100,13 +113,13 @@ fi
 (
 	echo "User-Name = \"$1\""
 	echo "$PASSWORD = \"$2\""
-	echo "NAS-IP-Address = $nas"
+	echo "$NAS_ADDR_ATTR = $nas"
 	echo "NAS-Port = $4"
+	echo "Message-Authenticator = 0x00"
 	if [ "$radclient" = "$radeapclient" ]
 	then
 	    echo "EAP-Code = Response"
 	    echo "EAP-Type-Identity = \"$1\""
-	    echo "Message-Authenticator = 0x00"
 	fi
 	if [ "$6" ]
 	then

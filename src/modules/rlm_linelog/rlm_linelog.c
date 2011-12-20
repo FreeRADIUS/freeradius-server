@@ -45,6 +45,7 @@ RCSID("$Id$")
 typedef struct rlm_linelog_t {
 	CONF_SECTION	*cs;
 	char		*filename;
+	int		permissions;
 	char		*line;
 	char		*reference;
 } rlm_linelog_t;
@@ -61,6 +62,8 @@ typedef struct rlm_linelog_t {
 static const CONF_PARSER module_config[] = {
 	{ "filename",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
+	{ "permissions",  PW_TYPE_INTEGER,
+	  offsetof(rlm_linelog_t,permissions), NULL,  "0600"},
 	{ "format",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,line), NULL,  NULL},
 	{ "reference",  PW_TYPE_STRING_PTR,
@@ -191,6 +194,7 @@ static int do_linelog(void *instance, REQUEST *request)
 {
 	int fd = -1;
 	char buffer[4096];
+	char *p;
 	char line[1024];
 	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
 	const char *value = inst->line;
@@ -240,7 +244,18 @@ static int do_linelog(void *instance, REQUEST *request)
 		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
 			    NULL);
 		
-		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, 0600);
+		/* check path and eventually create subdirs */
+		p = strrchr(buffer,'/');
+		if (p) {
+			*p = '\0';
+			if (rad_mkdir(buffer, 0700) < 0) {
+				radlog_request(L_ERR, 0, request, "rlm_linelog: Failed to create directory %s: %s", buffer, strerror(errno));
+				return RLM_MODULE_FAIL;
+			}
+			*p = '/';
+		}
+
+		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->permissions);
 		if (fd == -1) {
 			radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
 			       buffer, strerror(errno));

@@ -125,13 +125,13 @@ static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 
 static void tv_add(struct timeval *tv, int usec_delay)
 {
-	if (usec_delay > USEC) {
+	if (usec_delay >= USEC) {
 		tv->tv_sec += usec_delay / USEC;
 		usec_delay %= USEC;
 	}
 	tv->tv_usec += usec_delay;
 
-	if (tv->tv_usec > USEC) {
+	if (tv->tv_usec >= USEC) {
 		tv->tv_sec += tv->tv_usec / USEC;
 		tv->tv_usec %= USEC;
 	}
@@ -1284,6 +1284,7 @@ static void wait_a_bit(void *ctx)
 		request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 		request_stats_final(request);
+		/* FALL-THROUGH */
 
 	case REQUEST_PROXIED:
 		rad_assert(request->next_callback != NULL);
@@ -2450,6 +2451,7 @@ static void request_post_handler(REQUEST *request)
 				return;
 			}
 		}
+		/* FALL-THROUGH */
 
 #ifdef WITH_COA
 	case PW_COA_REQUEST:
@@ -2576,7 +2578,7 @@ static void received_retransmit(REQUEST *request, const RADCLIENT *client)
 	discard:
 #endif
 		radlog(L_ERR, "Discarding duplicate request from "
-		       "client %s port %d - ID: %d due to unfinished request %u",
+		       "client %s port %d - ID: %u due to unfinished request %u",
 		       client->shortname,
 		       request->packet->src_port,request->packet->id,
 		       request->number);
@@ -2899,6 +2901,8 @@ int received_request(rad_listen_t *listener,
 		case REQUEST_REJECT_DELAY:
 		case REQUEST_CLEANUP_DELAY:
 			request->child_state = REQUEST_DONE;
+			/* FALL-THROUGH  */
+
 		case REQUEST_DONE:
 			cleanup_delay(request);
 			request = NULL;

@@ -72,9 +72,9 @@ typedef struct rlm_sqlcounter_t {
 	char *allowed_chars;	/* safe characters list for SQL queries */
 	time_t reset_time;
 	time_t last_reset;
-	int  key_attr;		/* attribute number for key field */
-	int  dict_attr;		/* attribute number for the counter. */
-	int  reply_attr;	/* attribute number for the reply */
+	const DICT_ATTR *key_attr;  /* attribute for key field */
+	const DICT_ATTR *dict_attr; /* attribute for the counter. */
+	const DICT_ATTR *reply_attr;  /* attribute for the reply */
 } rlm_sqlcounter_t;
 
 /*
@@ -89,7 +89,7 @@ typedef struct rlm_sqlcounter_t {
 static const CONF_PARSER module_config[] = {
   { "counter-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,counter_name), NULL,  NULL },
   { "check-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,check_name), NULL, NULL },
-  { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reply_name), NULL, NULL },
+  { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reply_name), NULL, "Session-Timeout" },
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,key_name), NULL, NULL },
   { "sqlmod-inst", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
   { "query", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,query), NULL, NULL },
@@ -349,10 +349,12 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 				q += strlen(q);
 				break;
 			case 'k': /* Key Name */
+				DEBUG2("WARNING: Please replace '%%k' with '${key}'");
 				strlcpy(q, data->key_name, freespace);
 				q += strlen(q);
 				break;
 			case 'S': /* SQL module instance */
+			  	DEBUG2("WARNING: Please replace '%%S' with '${sqlmod-inst}'");
 				strlcpy(q, data->sqlmod_inst, freespace);
 				q += strlen(q);
 				break;
@@ -478,30 +480,24 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		sqlcounter_detach(data);
 		return -1;
 	}
-	data->key_attr = dattr->attr;
+	data->key_attr = dattr;
 
-	/*
-	 *	Discover the attribute number of the reply.
-	 *	If not set, set it to Session-Timeout
-	 *	for backward compatibility.
-	 */
-	if (data->reply_name == NULL) {
-		DEBUG2("rlm_sqlcounter: Reply attribute set to Session-Timeout.");
-		data->reply_attr = PW_SESSION_TIMEOUT;
-		data->reply_name = strdup("Session-Timeout");
+	dattr = dict_attrbyname(data->reply_name);
+	if (!dattr) {
+		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
+		       data->reply_name);
+		sqlcounter_detach(data);
+		return -1;
 	}
-	else {
-		dattr = dict_attrbyname(data->reply_name);
-		if (dattr == NULL) {
-			radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
-			       data->reply_name);
-			sqlcounter_detach(data);
-			return -1;
-		}
-		data->reply_attr = dattr->attr;
-		DEBUG2("rlm_sqlcounter: Reply attribute %s is number %d",
-		       data->reply_name, dattr->attr);
+
+	if (dattr->type != PW_TYPE_INTEGER) {
+		radlog(L_ERR, "rlm_sqlcounter: Reply attribute %s is not 'integer'",
+		       data->reply_name);
+		sqlcounter_detach(data);
+		return -1;
 	}
+
+	data->reply_attr = dattr;
 
 	/*
 	 *	Check the "sqlmod-inst" option.
@@ -536,9 +532,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		sqlcounter_detach(data);
 		return -1;
 	}
-	data->dict_attr = dattr->attr;
-	DEBUG2("rlm_sqlcounter: Counter attribute %s is number %d",
-			data->counter_name, data->dict_attr);
+	data->dict_attr = dattr;
 
 	/*
 	 * Create a new attribute for the check item.
@@ -590,7 +584,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Register the counter comparison operation.
 	 */
-	paircompare_register(data->dict_attr, 0, sqlcounter_cmp, data);
+	paircompare_register(data->dict_attr->attr, 0, sqlcounter_cmp, data);
 
 	*instance = data;
 
@@ -638,7 +632,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	 *      The REAL username, after stripping.
 	 */
 	DEBUG2("rlm_sqlcounter: Entering module authorize code");
-	key_vp = (data->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, data->key_attr);
+	key_vp = pairfind(request->packet->vps, data->key_attr->attr);
 	if (key_vp == NULL) {
 		DEBUG2("rlm_sqlcounter: Could not find Key value pair");
 		return ret;
@@ -679,7 +673,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	 * Check if check item > counter
 	 */
 	if (check_vp->vp_integer > counter) {
-		unsigned int res = check_vp->lvalue - counter;
+		unsigned int res = check_vp->vp_integer - counter;
 
 		DEBUG2("rlm_sqlcounter: Check item is greater than query result");
 		/*
@@ -690,28 +684,31 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		 */
 
 		/*
-		 *	User is allowed, but set Session-Timeout.
-		 *	Stolen from main/auth.c
-		 */
-
-		/*
 		 *	If we are near a reset then add the next
-		 *	limit, so that the user will not need to
-		 *	login again
+		 *	limit, so that the user will not need to login
+		 *	again.  Do this only for Session-Timeout.
 		 */
-		if (data->reset_time &&
+		if ((data->reply_attr->attr == PW_SESSION_TIMEOUT) &&
+		    data->reset_time &&
 		    (res >= (data->reset_time - request->timestamp))) {
 			res = data->reset_time - request->timestamp;
 			res += check_vp->vp_integer;
 		}
 
-		if ((reply_item = pairfind(request->reply->vps, data->reply_attr)) != NULL) {
+		/*
+		 *	Limit the reply attribute to the minimum of
+		 *	the existing value, or this new one.
+		 */
+		reply_item = pairfind(request->reply->vps,
+				      data->reply_attr->attr);
+		if (reply_item) {
 			if (reply_item->vp_integer > res)
 				reply_item->vp_integer = res;
+
 		} else {
 			reply_item = radius_paircreate(request,
 						       &request->reply->vps,
-						       data->reply_attr,
+						       data->reply_attr->attr,
 						       PW_TYPE_INTEGER);
 			reply_item->vp_integer = res;
 		}
@@ -756,7 +753,7 @@ static int sqlcounter_detach(void *instance)
 	rlm_sqlcounter_t *inst = (rlm_sqlcounter_t *)instance;
 
 	allowed_chars = NULL;
-	paircompare_unregister(inst->dict_attr, sqlcounter_cmp);
+	paircompare_unregister(inst->dict_attr->attr, sqlcounter_cmp);
 
 	/*
 	 *	Free up dynamically allocated string pointers.

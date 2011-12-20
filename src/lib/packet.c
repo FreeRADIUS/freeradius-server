@@ -154,7 +154,7 @@ int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
 }
 
 
-static int fr_inaddr_any(fr_ipaddr_t *ipaddr)
+int fr_inaddr_any(fr_ipaddr_t *ipaddr)
 {
 
 	if (ipaddr->af == AF_INET) {
@@ -310,9 +310,9 @@ typedef struct fr_packet_socket_t {
  *	that should be managed.
  */
 struct fr_packet_list_t {
-	fr_hash_table_t *ht;
+	rbtree_t	*tree;
 
-	fr_hash_table_t *dst2id_ht;
+	fr_hash_table_t	*dst2id_ht;
 
 	int		alloc_id;
 	int		num_outgoing;
@@ -432,11 +432,6 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd)
 	return 1;
 }
 
-static uint32_t packet_entry_hash(const void *data)
-{
-	return fr_request_packet_hash(*(const RADIUS_PACKET * const *) data);
-}
-
 static int packet_entry_cmp(const void *one, const void *two)
 {
 	const RADIUS_PACKET * const *a = one;
@@ -515,7 +510,7 @@ void fr_packet_list_free(fr_packet_list_t *pl)
 {
 	if (!pl) return;
 
-	fr_hash_table_free(pl->ht);
+	rbtree_free(pl->tree);
 	fr_hash_table_free(pl->dst2id_ht);
 	free(pl);
 }
@@ -533,10 +528,8 @@ fr_packet_list_t *fr_packet_list_create(int alloc_id)
 	if (!pl) return NULL;
 	memset(pl, 0, sizeof(*pl));
 
-	pl->ht = fr_hash_table_create(packet_entry_hash,
-					packet_entry_cmp,
-					NULL);
-	if (!pl->ht) {
+	pl->tree = rbtree_create(packet_entry_cmp, NULL, 0);
+	if (!pl->tree) {
 		fr_packet_list_free(pl);
 		return NULL;
 	}
@@ -570,9 +563,7 @@ int fr_packet_list_insert(fr_packet_list_t *pl,
 {
 	if (!pl || !request_p || !*request_p) return 0;
 
-	(*request_p)->hash = fr_request_packet_hash(*request_p);
-
-	return fr_hash_table_insert(pl->ht, request_p);
+	return rbtree_insert(pl->tree, request_p);
 }
 
 RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
@@ -580,7 +571,7 @@ RADIUS_PACKET **fr_packet_list_find(fr_packet_list_t *pl,
 {
 	if (!pl || !request) return 0;
 
-	return fr_hash_table_finddata(pl->ht, &request);
+	return rbtree_finddata(pl->tree, &request);
 }
 
 
@@ -617,27 +608,33 @@ RADIUS_PACKET **fr_packet_list_find_byreply(fr_packet_list_t *pl,
 
 	my_request.dst_ipaddr = reply->src_ipaddr;
 	my_request.dst_port = reply->src_port;
-	my_request.hash = 0;
 
 	request = &my_request;
 
-	return fr_hash_table_finddata(pl->ht, &request);
+	return rbtree_finddata(pl->tree, &request);
 }
 
 
 RADIUS_PACKET **fr_packet_list_yank(fr_packet_list_t *pl,
 				      RADIUS_PACKET *request)
 {
+	RADIUS_PACKET **packet_p;
+
 	if (!pl || !request) return NULL;
 
-	return fr_hash_table_yank(pl->ht, &request);
+	packet_p = rbtree_finddata(pl->tree, &request);
+	if (!packet_p) return NULL;
+
+	rbtree_deletebydata(pl->tree, packet_p);
+	return packet_p;
+
 }
 
 int fr_packet_list_num_elements(fr_packet_list_t *pl)
 {
 	if (!pl) return 0;
 
-	return fr_hash_table_num_elements(pl->ht);
+	return rbtree_num_elements(pl->tree);
 }
 
 
@@ -820,7 +817,6 @@ int fr_packet_list_id_free(fr_packet_list_t *pl,
 	if (!pd) return 0;
 
 	pd->id[request->id] &= ~(1 << ps->offset);
-	request->hash = 0;	/* invalidate the cached hash */
 
 	ps->num_outgoing--;
 	pl->num_outgoing--;
@@ -833,7 +829,7 @@ int fr_packet_list_walk(fr_packet_list_t *pl, void *ctx,
 {
 	if (!pl || !callback) return 0;
 
-	return fr_hash_table_walk(pl->ht, callback, ctx);
+	return rbtree_walk(pl->tree, InOrder, callback, ctx);
 }
 
 int fr_packet_list_fd_set(fr_packet_list_t *pl, fd_set *set)
@@ -900,7 +896,7 @@ int fr_packet_list_num_incoming(fr_packet_list_t *pl)
 
 	if (!pl) return 0;
 
-	num_elements = fr_hash_table_num_elements(pl->ht);
+	num_elements = rbtree_num_elements(pl->tree);
 	if (num_elements < pl->num_outgoing) return 0; /* panic! */
 
 	return num_elements - pl->num_outgoing;

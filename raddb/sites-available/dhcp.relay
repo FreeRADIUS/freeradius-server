@@ -1,0 +1,65 @@
+# -*- text -*-
+######################################################################
+#
+#	This is a virtual server that handles DHCP relaying
+#
+#	Only one server can listen on a socket, so you cannot
+#	do DHCP relaying && run a DHCP server at the same time.
+#
+######################################################################
+
+server dhcp.eth1 {
+	# When the machine is not Linux, or has only one network interface, use
+	# the following listener:
+	listen {
+		# Listen for broadcasts + unicast on eth1
+		ipaddr = *
+		port = 67
+		type = dhcp
+		interface = eth1
+	}
+	# When the machine is Linux and has multiple network interfaces, use
+	# the following listeners instead:
+	listen {
+		# Listen for broadcasts on eth1
+		ipaddr = 255.255.255.255
+		port = 67
+		type = dhcp
+		interface = eth1
+	}
+	listen {
+		# Listen for unicast on our IP address, not bound to any
+		# interface but telling on which interface to forward the
+		# packets to.
+		ipaddr = 192.0.100.2
+		port = 67
+		type = dhcp
+		arp_interface = eth1
+	}
+
+	#  Packets received on the socket will be processed through one
+	#  of the following sections, named after the DHCP packet type.
+	#  See dictionary.dhcp for the packet types.
+	dhcp DHCP-Discover {
+		update config {
+			# IP Address of the DHCP server
+			DHCP-Relay-To-IP-Address := 192.0.1.2
+		}
+		update request {
+			# IP Address of the DHCP relay (eth1)
+			DHCP-Gateway-IP-Address := 192.0.100.2
+		}
+		ok
+	}
+
+	dhcp DHCP-Request {
+		update config {
+			# IP Address of the DHCP server
+			DHCP-Relay-To-IP-Address := 192.0.1.2
+		}
+		update request {
+			DHCP-Gateway-IP-Address := 192.0.100.2
+		}
+		ok
+	}
+}

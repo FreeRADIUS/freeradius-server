@@ -207,6 +207,7 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
  */
 static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 {
+	int		num_proxy_state;
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*tmp;
@@ -269,6 +270,19 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 		tmp = radius_paircreate(request, &request->packet->vps,
 					PW_SERVICE_TYPE, PW_TYPE_INTEGER);
 		tmp->vp_integer = PW_FRAMED_USER;
+	}
+
+	num_proxy_state = 0;
+	for (tmp = request->packet->vps; tmp != NULL; tmp = tmp->next) {
+		if (tmp->vendor != 0) continue;
+		if (tmp->attribute != PW_PROXY_STATE) continue;
+
+		num_proxy_state++;
+	}
+
+	if (num_proxy_state > 10) {
+		DEBUG("WARNING: There are more than 10 Proxy-State attributes in the request.");
+		DEBUG("WARNING: You have likely configured an infinite proxy loop.");
 	}
 }
 

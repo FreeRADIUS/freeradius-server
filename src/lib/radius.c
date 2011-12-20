@@ -140,7 +140,7 @@ void fr_printf_log(const char *fmt, ...)
 	return;
 }
 
-static void print_hex(RADIUS_PACKET *packet)
+void rad_print_hex(RADIUS_PACKET *packet)
 {
 	int i;
 
@@ -233,7 +233,8 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 *	use udpfromto.
 	 */
 	if (((dst_ipaddr->af == AF_INET) || (dst_ipaddr->af == AF_INET6)) &&
-	    (src_ipaddr->af != AF_UNSPEC)) {
+	    (src_ipaddr->af != AF_UNSPEC) &&
+	    !fr_inaddr_any(src_ipaddr)) {
 		rcode = sendfromto(sockfd, data, data_len, flags,
 				   (struct sockaddr *)&src, sizeof_src,
 				   (struct sockaddr *)&dst, sizeof_dst);
@@ -778,6 +779,9 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 		 *	always fits.
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
+#ifndef NDEBUG
+		if (data == array) return NULL;
+#endif
 		make_secret(ptr, packet->vector, secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
@@ -858,7 +862,10 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 		}
 
 		length = (end - ptr);
-		if (length > 255) return NULL;
+		if (length > 255) {
+			pairfree(&tlv);
+			return NULL;
+		}
 
 		/*
 		 *	Pack the attribute.
@@ -1364,8 +1371,12 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		uint8_t calc_auth_vector[AUTH_VECTOR_LEN];
 
 		switch (packet->code) {
-		case PW_ACCOUNTING_REQUEST:
 		case PW_ACCOUNTING_RESPONSE:
+			if (original && original->code == PW_STATUS_SERVER) {
+				goto do_ack;
+			}
+
+		case PW_ACCOUNTING_REQUEST:
 		case PW_DISCONNECT_REQUEST:
 		case PW_DISCONNECT_ACK:
 		case PW_DISCONNECT_NAK:
@@ -1375,6 +1386,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			memset(hdr->vector, 0, AUTH_VECTOR_LEN);
 			break;
 
+		do_ack:
 		case PW_AUTHENTICATION_ACK:
 		case PW_AUTHENTICATION_REJECT:
 		case PW_ACCESS_CHALLENGE:
@@ -2074,8 +2086,13 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			default:
 				break;
 
-			case PW_ACCOUNTING_REQUEST:
 			case PW_ACCOUNTING_RESPONSE:
+				if (original &&
+				    (original->code == PW_STATUS_SERVER)) {
+					goto do_ack;
+				}
+
+			case PW_ACCOUNTING_REQUEST:
 			case PW_DISCONNECT_REQUEST:
 			case PW_DISCONNECT_ACK:
 			case PW_DISCONNECT_NAK:
@@ -2085,6 +2102,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
+			do_ack:
 			case PW_AUTHENTICATION_ACK:
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
@@ -2248,7 +2266,7 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 	/*
 	 *	Decrypt the attribute.
 	 */
-	switch (vp->flags.encrypt) {
+	if (secret) switch (vp->flags.encrypt) {
 		/*
 		 *  User-Password
 		 */

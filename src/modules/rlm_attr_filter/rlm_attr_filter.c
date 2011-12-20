@@ -41,9 +41,10 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 struct attr_filter_instance {
-        char *attrsfile;
+	char *attrsfile;
 	char *key;
-        PAIR_LIST *attrs;
+	int relaxed;
+	PAIR_LIST *attrs;
 };
 
 static const CONF_PARSER module_config[] = {
@@ -51,6 +52,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct attr_filter_instance,attrsfile), NULL, "${raddbdir}/attrs" },
 	{ "key",     PW_TYPE_STRING_PTR,
 	  offsetof(struct attr_filter_instance,key), NULL, "%{Realm}" },
+	{ "relaxed",    PW_TYPE_BOOLEAN,
+		offsetof(struct attr_filter_instance,relaxed), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -211,6 +214,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	 */
 	for (pl = inst->attrs; pl; pl = pl->next) {
 		int fall_through = 0;
+		int relax_filter = inst->relaxed;
 
 		/*
 		 *  If the current entry is NOT a default,
@@ -222,16 +226,20 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		    continue;
 		}
 
-		DEBUG2(" attr_filter: Matched entry %s at line %d", pl->name,
+		DEBUG2("attr_filter: Matched entry %s at line %d", pl->name,
 		       pl->lineno);
 		found = 1;
 
 		for (check_item = pl->check;
-		     check_item != NULL;
-		     check_item = check_item->next) {
+			check_item != NULL;
+			check_item = check_item->next) {
 			if ((check_item->attribute == PW_FALL_THROUGH) &&
-			    (check_item->vp_integer == 1)) {
+				(check_item->vp_integer == 1)) {
 				fall_through = 1;
+				continue;
+			}
+			else if (check_item->attribute == PW_RELAX_FILTER) {
+				relax_filter = check_item->vp_integer;
 				continue;
 			}
 
@@ -245,8 +253,8 @@ static int attr_filter_common(void *instance, REQUEST *request,
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
 				}
-				*output_tail = vp;
-				output_tail = &(vp->next);
+				pairxlatmove(request, output_tail, &vp);
+				output_tail = &((*output_tail)->next);
 			}
 		}
 
@@ -287,8 +295,15 @@ static int attr_filter_common(void *instance, REQUEST *request,
 				}
 			}
 
-			/* only move attribute if it passed all rules */
-			if (fail == 0 && pass > 0) {
+			/*  
+			 *  Only move attribute if it passed all rules,
+			 *  or if the config says we should copy unmatched
+			 *  attributes ('relaxed' mode).
+			 */
+			if (fail == 0 && (pass > 0 || relax_filter)) {
+				if (!pass) {
+					DEBUG3("attr_filter: Attribute (%s) allowed by relaxed mode", vp->name);
+				}
 				*output_tail = paircopyvp(vp);
 				if (!*output_tail) {
 					pairfree(&output);

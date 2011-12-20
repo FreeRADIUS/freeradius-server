@@ -126,17 +126,17 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Check if data_type exists
 	 */
-	if (!data->data_type || !strlen(data->data_type)){
+	if (!data->data_type || !*data->data_type){
 		radlog(L_ERR, "rlm_checkval: Data type not defined");
 		checkval_detach(data);
 		return -1;
 	}
-	if (!data->item_name || !strlen(data->item_name)){
+	if (!data->item_name || !*data->item_name){
 		radlog(L_ERR, "rlm_checkval: Item name not defined");
 		checkval_detach(data);
 		return -1;
 	}
-	if (!data->check_name || !strlen(data->check_name)){
+	if (!data->check_name || !*data->check_name){
 		radlog(L_ERR, "rlm_checkval: Check item name not defined");
 		checkval_detach(data);
 		return -1;

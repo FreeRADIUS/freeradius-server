@@ -34,8 +34,6 @@ RCSIDH(eap_mschapv2_h, "$Id$")
 #define MSCHAPV2_CHALLENGE_LEN  16
 #define MSCHAPV2_RESPONSE_LEN  50
 
-#define MSCHAPV2_FAILURE_MESSAGE "E=691 R=0"
-#define MSCHAPV2_FAILURE_MESSAGE_LEN 9
 typedef struct mschapv2_header_t {
 	uint8_t opcode;
 	uint8_t mschapv2_id;
@@ -47,6 +45,7 @@ typedef struct mschapv2_opaque_t {
 	int		code;
 	uint8_t		challenge[MSCHAPV2_CHALLENGE_LEN];
 	VALUE_PAIR	*mppe_keys;
+	VALUE_PAIR	*reply;
 } mschapv2_opaque_t;
 
 #endif /*_EAP_MSCHAPV2_H*/

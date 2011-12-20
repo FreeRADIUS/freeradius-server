@@ -114,21 +114,18 @@ distclean: clean
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
 #
 ######################################################################
-reconfig: configure src/include/autoconf.h.in
+.PHONY: reconfig
+reconfig:
 	@$(MAKE) $(MFLAGS) -C src reconfig
+	@$(MAKE) configure
+	@$(MAKE) src/include/autoconf.h.in
 
 configure: configure.in aclocal.m4
 	$(AUTOCONF)
 
-# autoheader might not change autoconf.h.in, so touch a stamp file
-src/include/autoconf.h.in: src/include/stamp-h.in
-src/include/stamp-h.in: configure.in
+.PHONY: src/include/autoconf.h.in
+src/include/autoconf.h.in:
 	$(AUTOHEADER)
-	echo timestamp > src/include/stamp-h.in
-
-src/include/autoconf.h: src/include/stamp-h
-src/include/stamp-h: src/include/autoconf.h.in config.status
-	./config.status
 
 config.status: configure
 	./config.status --recheck
@@ -194,8 +191,8 @@ dist: dist-check freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$
 dist-sign: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
 
 dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
-	scp $^ freeradius.org@ns5.freeradius.org:public_ftp
-	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
+	scp $^ freeradius.org@ftp.freeradius.org:public_ftp
+#	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
 
 #
 #  Note that we do NOT do the tagging here!  We just print out what

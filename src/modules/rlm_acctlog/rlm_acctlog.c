@@ -112,8 +112,7 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
 
 	}
 
-	if (strlen(logstr))
-		radlog(L_ACCT,"%s", logstr);
+	if (*logstr) radlog(L_ACCT,"%s", logstr);
 
 	return RLM_MODULE_OK;
 }

@@ -111,6 +111,7 @@ int main(int argc, char **argv)
 
 	if (!file || (strcmp(file, "-") == 0)) {
 		fp = stdout;
+		file = NULL;
 	} else {
 		fp = fopen(file, "w");
 		if (!fp) {
@@ -121,7 +122,7 @@ int main(int argc, char **argv)
 	}
 
 	if (!cf_section2xml(fp, cs)) {
-		if (fp != stdout) unlink(file);
+		if (file) unlink(file);
 		return 1;
 	}
 

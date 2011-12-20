@@ -323,6 +323,8 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 {
 	size_t name_len;
 	VALUE_PAIR *n;
+
+	if (!vp) return NULL;
 	
 	if (!vp->flags.unknown_attr) {
 		name_len = 0;
@@ -1289,7 +1291,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	Unknown attributes MUST be of type 'octets'
 	 */
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
-		fr_strerror_printf("Invalid octet string \"%s\" for attribute name \"%s\"", value, attribute);
+		fr_strerror_printf("Unknown attribute \"%s\" requires a hex string, not \"%s\"", attribute, value);
 		return NULL;
 	}
 
@@ -1420,10 +1422,20 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		vp->type = PW_TYPE_OCTETS;
 		/* FALL-THROUGH */
 		
-	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_ABINARY:
 		vp->length = size >> 1;
+		if (vp->length > sizeof(vp->vp_octets)) {
+			vp->length = sizeof(vp->vp_octets);
+		}
+		break;
+
+	case PW_TYPE_STRING:
+		vp->length = size >> 1;
+		memset(&vp->vp_strvalue, 0, sizeof(vp->vp_strvalue));
+		if (vp->length >= sizeof(vp->vp_strvalue)) {
+			vp->length = sizeof(vp->vp_strvalue) - 1;
+		}
 		break;
 	}
 

@@ -68,4 +68,11 @@ mschap {
 	# Open Directory.  It has no effect on other systems.
 	#
 #	use_open_directory = yes
+
+	# On failure, set (or not) the MS-CHAP error code saying
+	# "retries allowed".
+#	allow_retry = yes
+
+	# An optional retry message.
+#	retry_msg = "Re-enter (or reset) the password"
 }

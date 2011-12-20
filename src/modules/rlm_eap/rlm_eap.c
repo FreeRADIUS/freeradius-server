@@ -444,6 +444,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	to accidentally failing it.
 		 */
 		if (!eaplist_add(inst, handler)) {
+			RDEBUG("Failed adding handler to the list");
 			eap_fail(handler);
 			eap_handler_free(inst, handler);
 			return RLM_MODULE_FAIL;
@@ -578,11 +579,6 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	size_t		len;
 	VALUE_PAIR	*vp;
 	EAP_HANDLER	*handler;
-
-	/*
-	 *	Just in case the admin lists EAP in post-proxy-type Fail.
-	 */
-	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 
 	/*
 	 *	If there was a handler associated with this request,

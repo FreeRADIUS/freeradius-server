@@ -17,6 +17,7 @@ radsqlrelay - relay SQL queries to a central database server
 
 .SH SYNOPSIS
 .B radsqlrelay
+.RB [ \-? ]
 .RB [ \-d
 .IR sql_driver ]
 .RB [ \-b
@@ -27,9 +28,12 @@ radsqlrelay - relay SQL queries to a central database server
 .IR host ]
 .RB [ \-u
 .IR user ]
+.RB [ \-P
+.IR port ]
 .RB [ \-p
 .IR password ]
 .RB [ \-1 ]
+.RB [ \-x ]
 \fIfile_path\fP
 
 .SH DESCRIPTION
@@ -42,6 +46,8 @@ must be configured in the \fBradiusd\fP server before you can use
 \fBradsqlrelay\fP.
 
 .SH OPTIONS
+.IP "\-?"
+Print usage help information.
 .IP "\-d \fIsql_driver\fP"
 Driver to use: mysql, pg, oracle.
 .IP "\-b \fIdatabase\fP"
@@ -52,10 +58,14 @@ Read password from file, instead of command line.
 Connect to host.
 .IP "\-u \fIuser\fP"
 User for login.
+.IP "\-P \fIport\fP"
+Port number to use for connection.
 .IP "\-p \fIpassword\fP"
 Password to use when connecting to server.
 .IP "\-1"
 One-shot mode: push the file to database and exit.
+.IP "\-x"
+Turn on debugging.
 .IP "file_path"
 The pathname of the SQL logfile to use.
 

@@ -77,6 +77,8 @@ typedef struct perl_inst {
 	char	*perl_flags;
 	PerlInterpreter *perl;
 	pthread_key_t	*thread_key;
+
+	pthread_mutex_t clone_mutex;
 } PERL_INST;
 /*
  *	A mapping of configuration file names to internal variables.
@@ -411,8 +413,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	const char *xlat_name;
 	int exitstatus = 0, argc=0;
 
-        embed = rad_malloc(4*(sizeof(char *)));
-        memset(embed, 0, sizeof(4*(sizeof(char *))));
+        embed = rad_malloc(4 * sizeof(char *));
+        memset(embed, 0, 4 *sizeof(char *));
 	/*
 	 *	Set up a storage area for instance data
 	 */
@@ -424,6 +426,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
+		free(embed);
 		free(inst);
 		return -1;
 	}
@@ -433,6 +436,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 
 #ifdef USE_ITHREADS
+	pthread_mutex_init(&inst->clone_mutex, NULL);
+
 	inst->thread_key = rad_malloc(sizeof(*inst->thread_key));
 	memset(inst->thread_key,0,sizeof(*inst->thread_key));
 	
@@ -454,6 +459,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 #ifdef USE_ITHREADS
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
+		free(embed);
+		free(inst);
 		return (-1);
 	}
 
@@ -467,6 +474,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 #else
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_ERR, "rlm_perl: No memory for allocating new perl !");
+		free(embed);
+		free(inst);
 		return -1;
 	}
 
@@ -486,6 +495,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		exitstatus = perl_run(inst->perl);
 	} else {
 		radlog(L_ERR,"rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
+		free(embed);
+		free(inst);
 		return (-1);
 	}
 
@@ -649,8 +660,10 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	HV		*rad_request_hv;
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
-
+	
 #ifdef USE_ITHREADS
+	pthread_mutex_lock(&inst->clone_mutex);
+
 	PerlInterpreter *interp;
 
 	interp = rlm_perl_clone(inst->perl,inst->thread_key);
@@ -658,9 +671,12 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	  dTHXa(interp);
 	  PERL_SET_CONTEXT(interp);
 	}
+	
+	pthread_mutex_unlock(&inst->clone_mutex);
 #else
 	PERL_SET_CONTEXT(inst->perl);
 #endif
+
 	{
 	dSP;
 
@@ -967,6 +983,7 @@ static int perl_detach(void *instance)
 
 #ifdef USE_ITHREADS
 	rlm_perl_destruct(inst->perl);
+	pthread_mutex_destroy(&inst->clone_mutex);
 #else
 	perl_destruct(inst->perl);
 	perl_free(inst->perl);

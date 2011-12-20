@@ -850,24 +850,24 @@ static void dump_mc(modcallable *c, int indent)
 
 	if(c->type==MOD_SINGLE) {
 		modsingle *single = mod_callabletosingle(c);
-		RDEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
+		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 			single->modinst->name);
 	} else {
 		modgroup *g = mod_callabletogroup(c);
 		modcallable *p;
-		RDEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
+		DEBUG("%.*s%s {", indent, "\t\t\t\t\t\t\t\t\t\t\t",
 		      group_name[c->type]);
 		for(p = g->children;p;p = p->next)
 			dump_mc(p, indent+1);
 	}
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
-		RDEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
+		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
 		      fr_int2str(rcode_table, i, "??"),
 		      action2str(c->actions[i]));
 	}
 
-	RDEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
+	DEBUG("%.*s}", indent, "\t\t\t\t\t\t\t\t\t\t\t");
 }
 
 static void dump_tree(int comp, modcallable *c)
@@ -1811,6 +1811,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 *	codes.
 		 */
 	} else {
+		CONF_SECTION *loop;
 		CONF_PAIR *cp = cf_itemtopair(ci);
 		modrefname = cf_pair_attr(cp);
 
@@ -1837,11 +1838,37 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		cs = cf_section_find("instantiate");
 		if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
 							  modrefname);
-		if (!subcs) {
-			cs = cf_section_find("policy");
-			if (cs) subcs = cf_section_sub_find_name2(cs, NULL,
+		if (!subcs &&
+		    (cs = cf_section_find("policy")) != NULL) {
+			char buffer[256];
+			
+			snprintf(buffer, sizeof(buffer), "%s.%s",
+				 modrefname, comp2str[component]);
+
+			/*
+			 *	Prefer name.section, then name.
+			 */
+			subcs = cf_section_sub_find_name2(cs, NULL,
+							  buffer);
+			if (!subcs) {
+				subcs = cf_section_sub_find_name2(cs, NULL,
 								  modrefname);
+			}
 		}
+
+		/*
+		 *	Allow policies to over-ride module names.
+		 *	i.e. the "sql" policy can do some extra things,
+		 *	and then call the "sql" module.
+		 */
+		for (loop = cf_item_parent(ci);
+		     loop && subcs;
+		     loop = cf_item_parent(cf_sectiontoitem(loop))) {
+			if (loop == subcs) {
+				subcs = NULL;
+			}
+		}
+
 		if (subcs) {
 			DEBUG2(" Module: Loading virtual module %s",
 			       modrefname);
@@ -1930,7 +1957,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 		
 		*modname = NULL;
-		cf_log_err(ci, "Failed to load module \"%s\".", modrefname);
+		cf_log_err(ci, "Failed to find \"%s\" in the \"modules\" section.", modrefname);
 		return NULL;
 	} while (0);
 

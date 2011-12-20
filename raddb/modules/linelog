@@ -18,6 +18,14 @@ linelog {
 	filename = ${logdir}/linelog
 
 	#
+	#  The Unix-style permissions on the log file.
+	#
+	#  Depending on format string, the log file may contain secret or
+	#  private information about users.  Keep the file permissions as
+	#  restrictive as possible.
+	permissions = 0600
+
+	#
 	#  The default format string.
 	format = "This is a log message for %{User-Name}"
 

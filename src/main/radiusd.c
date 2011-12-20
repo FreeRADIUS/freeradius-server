@@ -228,10 +228,10 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
+				fr_log_fp = stdout;
 		do_stdout:
 				mainconfig.radlog_dest = RADLOG_STDOUT;
 				mainconfig.radlog_fd = STDOUT_FILENO;
-				fr_log_fp = stdout;
 				break;
 
 			case 'x':
@@ -309,15 +309,17 @@ int main(int argc, char *argv[])
 		}
 		dup2(devnull, STDIN_FILENO);
 		if (mainconfig.radlog_dest == RADLOG_STDOUT) {
-			mainconfig.radlog_fd = dup(STDOUT_FILENO);
 			setlinebuf(stdout);
+			mainconfig.radlog_fd = STDOUT_FILENO;
+		} else {
+			dup2(devnull, STDOUT_FILENO);
 		}
-		dup2(devnull, STDOUT_FILENO);
 		if (mainconfig.radlog_dest == RADLOG_STDERR) {
-			mainconfig.radlog_fd = dup(STDERR_FILENO);
-			setlinebuf(stdout);
+			setlinebuf(stderr);
+			mainconfig.radlog_fd = STDERR_FILENO;
+		} else {
+			dup2(devnull, STDERR_FILENO);
 		}
-		dup2(devnull, STDERR_FILENO);
 		close(devnull);
 
 	} else {
@@ -407,9 +409,15 @@ int main(int argc, char *argv[])
 		radius_stats_init(1);
 		hup_mainconfig();
 	}
-	
-	radlog(L_INFO, "Exiting normally.");
-	
+
+	if (rcode < 0) {
+		radlog(L_ERR, "Exiting due to internal error: %s",
+		       fr_strerror());
+		rcode = 2;
+	} else {
+		radlog(L_INFO, "Exiting normally.");
+	}
+
 	/*
 	 *	Ignore the TERM signal: we're
 	 *	about to die.
@@ -473,10 +481,13 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
 	fprintf(output, "  -h              Print this help message.\n");
-	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY\n");
+	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY.\n");
+	fprintf(output, "  -l log_file     Logging output will be written to this file.\n");
+	fprintf(output, "  -m              On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
 	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
-	fprintf(output, "  -p port         Listen on port ONLY\n");
+	fprintf(output, "  -p port         Listen on port ONLY.\n");
 	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
+	fprintf(output, "  -t              Disable threads.\n");
 	fprintf(output, "  -v              Print server version information.\n");
 	fprintf(output, "  -X              Turn on full debugging.\n");
 	fprintf(output, "  -x              Turn on additional debugging. (-xx gives more debugging).\n");
@@ -489,6 +500,8 @@ static void NEVER_RETURNS usage(int status)
  */
 static void sig_fatal(int sig)
 {
+	if (getpid() != radius_pid) _exit(sig);
+
 	switch(sig) {
 		case SIGTERM:
 			radius_signal_self(RADIUS_SIGNAL_SELF_TERM);

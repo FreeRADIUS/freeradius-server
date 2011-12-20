@@ -1,4 +1,4 @@
-.TH RADTEST 1 "3 August 2010" "" "FreeRADIUS Daemon"
+.TH RADTEST 1 "5 April 2010" "" "FreeRADIUS Daemon"
 .SH NAME
 radtest - send packets to a RADIUS server, show reply
 .SH SYNOPSIS
@@ -8,6 +8,10 @@ radtest - send packets to a RADIUS server, show reply
 .RB [ \-t
 .IR pap/chap/mschap ]
 .RB [ \-x
+.IR ]
+.RB [ \-4
+.IR ]
+.RB [ \-6
 .IR ]
 .I user password radius-server nas-port-number secret
 .RB [ ppphint ]
@@ -31,6 +35,12 @@ that the "radeapclient" program is installed.
 
 .IP "\-x"
 Enables debugging output for the RADIUS client.
+
+.IP "\-4"
+Use NAS-IP-Address for the NAS address (default)
+
+.IP "\-6"
+Use NAS-IPv6-Address for the NAS address (default)
 
 .IP user
 Username to send.

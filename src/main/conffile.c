@@ -700,7 +700,8 @@ CONF_SECTION *cf_top_section(CONF_SECTION *cs)
  */
 static const char *cf_expand_variables(const char *cf, int *lineno,
 				       CONF_SECTION *outercs,
-				       char *output, const char *input)
+				       char *output, size_t outsize,
+				       const char *input)
 {
 	char *p;
 	const char *end, *ptr;
@@ -917,7 +918,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			 */
 			value = cf_expand_variables("<internal>",
 						    &lineno,
-						    cs, buffer, value);
+						    cs, buffer, sizeof(buffer),
+						    value);
 			if (!value) {
 				cf_log_err(cf_sectiontoitem(cs),"Failed expanding variable %s", name);
 				return -1;
@@ -956,7 +958,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			 */
 			value = cf_expand_variables("?",
 						    &lineno,
-						    cs, buffer, value);
+						    cs, buffer, sizeof(buffer),
+						    value);
 			if (!value) return -1;
 		}
 
@@ -1039,6 +1042,46 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 static const char *parse_spaces = "                                                                                                                                                                                                                                                                ";
 
 /*
+ *	A copy of cf_section_parse that initializes pointers before
+ *	parsing them.
+ */
+static void cf_section_parse_init(CONF_SECTION *cs, void *base,
+				  const CONF_PARSER *variables)
+{
+	int i;
+	void *data;
+
+	for (i = 0; variables[i].name != NULL; i++) {
+		if (variables[i].type == PW_TYPE_SUBSECTION) {
+			CONF_SECTION *subcs;
+			subcs = cf_section_sub_find(cs, variables[i].name);
+			if (!subcs) continue;
+
+			if (!variables[i].dflt) continue;
+
+			cf_section_parse_init(subcs, base,
+					      (const CONF_PARSER *) variables[i].dflt);
+			continue;
+		}
+
+		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
+		    (variables[i].type != PW_TYPE_FILENAME)) {
+			continue;
+		}
+
+		if (variables[i].data) {
+			data = variables[i].data; /* prefer this. */
+		} else if (base) {
+			data = ((char *)base) + variables[i].offset;
+		} else {
+			continue;
+		}
+
+		*(char **) data = NULL;
+	} /* for all variables in the configuration section */
+}
+
+/*
  *	Parse a configuration section into user-supplied variables.
  */
 int cf_section_parse(CONF_SECTION *cs, void *base,
@@ -1056,6 +1099,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		cf_log_info(cs, "%.*s%s %s {", cs->depth, parse_spaces,
 		       cs->name1, cs->name2);
 	}
+
+	cf_section_parse_init(cs, base, variables);
 
 	/*
 	 *	Handle the known configuration parameters.
@@ -1230,6 +1275,28 @@ static const char *cf_local_file(CONF_SECTION *cs, const char *local,
 	return buffer;
 }
 
+static int seen_too_much(const char *filename, int lineno, const char *ptr)
+{
+	while (*ptr) {
+		if (isspace(*ptr)) {
+			ptr++;
+			continue;
+		}
+
+		if (*ptr == '#') return FALSE;
+
+		break;
+	}
+
+	if (*ptr) {
+		radlog(L_ERR, "%s[%d] Unexpected text %s.  See \"man unlang\"",
+		       filename, lineno, ptr);
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 
 /*
  *	Read a part of the config file.
@@ -1365,6 +1432,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 		       }
 		       this = this->item.parent;
+		       if (seen_too_much(filename, *lineno, ptr)) return -1;
 		       continue;
 		}
 
@@ -1382,7 +1450,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 			if (buf2[0] == '$') relative = 0;
 
-			value = cf_expand_variables(filename, lineno, this, buf, buf2);
+			value = cf_expand_variables(filename, lineno, this, buf, sizeof(buf), buf2);
 			if (!value) return -1;
 
 			if (!FR_DIR_IS_RELATIVE(value)) relative = 0;
@@ -1538,6 +1606,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				       filename, *lineno);
 				return -1;
 			}
+			/* FALL-THROUGH */
 
 		case T_OP_EQ:
 		case T_OP_SET:
@@ -1566,7 +1635,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			if ((t3 == T_BARE_WORD) ||
 			    (t3 == T_DOUBLE_QUOTED_STRING)) {
 				value = cf_expand_variables(filename, lineno, this,
-							    buf, buf3);
+							    buf, sizeof(buf), buf3);
 				if (!value) return -1;
 			} else if ((t3 == T_EOL) ||
 				   (t3 == T_HASH)) {
@@ -1628,8 +1697,14 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				buf2[0] = '(';
 				memcpy(buf2 + 1, ptr, end - ptr);
 				buf2[end - ptr + 1] = '\0';
-				ptr = end + 1;
+				ptr = end;
 				t2 = T_BARE_WORD;
+
+				if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
+					radlog(L_ERR, "%s[%d]: Expected '{'",
+					       filename, *lineno);
+					return -1;
+				}
 				goto section_alloc;
 
 			} else {
@@ -1652,9 +1727,12 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				       filename, *lineno, buf1, buf2);
 				return -1;
 			}
+			/* FALL-THROUGH */
 
 		case T_LCBRACE:
 		section_alloc:
+			if (seen_too_much(filename, *lineno, ptr)) return -1;
+
 			css = cf_section_alloc(buf1,
 					       t2 == T_LCBRACE ? NULL : buf2,
 					       this);
@@ -1947,6 +2025,33 @@ const char *cf_section_value_find(const CONF_SECTION *cs, const char *attr)
 	return (cp ? cp->value : NULL);
 }
 
+
+CONF_SECTION *cf_section_find_name2(const CONF_SECTION *section,
+				    const char *name1, const char *name2)
+{
+	const char	*their2;
+	CONF_ITEM	*ci;
+
+	if (!section || !name1) return NULL;
+
+	for (ci = cf_sectiontoitem(section); ci; ci = ci->next) {
+		if (ci->type != CONF_ITEM_SECTION)
+			continue;
+
+		if (strcmp(cf_itemtosection(ci)->name1, name1) != 0)
+			continue;
+
+		their2 = cf_itemtosection(ci)->name2;
+
+		if ((!name2 && !their2) ||
+		    (name2 && their2 && (strcmp(name2, their2) == 0))) {
+			return cf_itemtosection(ci);
+		}
+	}
+	
+	return NULL;
+}
+
 /*
  * Return the next pair after a CONF_PAIR
  * with a certain name (char *attr) If the requested
@@ -1957,6 +2062,8 @@ CONF_PAIR *cf_pair_find_next(const CONF_SECTION *cs,
 			     CONF_PAIR *pair, const char *attr)
 {
 	CONF_ITEM	*ci;
+
+	if (!cs) return NULL;
 
 	/*
 	 * If pair is NULL this must be a first time run
@@ -2086,6 +2193,8 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
 {
 	CONF_ITEM	*ci;
 
+	if (!section) return NULL;
+
 	/*
 	 * If subsection is NULL this must be a first time run
 	 * Find the subsection with correct name
@@ -2119,6 +2228,8 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
 				   CONF_SECTION *subsection,
 				   const char *name1)
 {
+	if (!section) return NULL;
+
 	if (!section->item.parent) return NULL;
 
 	return cf_subsection_find_next(section->item.parent, subsection, name1);
@@ -2130,6 +2241,8 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
 
 CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item)
 {
+	if (!section) return NULL;
+
 	/*
 	 * If item is NULL this must be a first time run
 	 * Return the first item
@@ -2140,6 +2253,13 @@ CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item)
 	} else {
 		return item->next;
 	}
+}
+
+CONF_SECTION *cf_item_parent(CONF_ITEM *ci)
+{
+	if (!ci) return NULL;
+
+	return ci->parent;
 }
 
 int cf_section_lineno(CONF_SECTION *section)

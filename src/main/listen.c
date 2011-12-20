@@ -510,6 +510,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	/*
 	 *	Try IPv4 first
 	 */
+	memset(&ipaddr, 0, sizeof(ipaddr));
 	ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 	rcode = cf_item_parse(cs, "ipaddr", PW_TYPE_IPADDR,
 			      &ipaddr.ipaddr.ip4addr, NULL);
@@ -705,7 +706,7 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 	request->proxy->src_ipaddr = sock->ipaddr;
 	request->proxy->src_port = sock->port;
 
-	return rad_send(request->proxy, request->packet,
+	return rad_send(request->proxy, NULL,
 			request->home_server->secret);
 }
 #endif
@@ -1503,6 +1504,14 @@ static int listen_bind(rad_listen_t *this)
 	}
 
 	/*
+	 *	Don't open sockets if we're checking the config.
+	 */
+	if (check_config) {
+		this->fd = -1;
+		return 0;
+	}
+
+	/*
 	 *	Copy fr_socket() here, as we may need to bind to a device.
 	 */
 	this->fd = socket(sock->ipaddr.af, SOCK_DGRAM, 0);
@@ -1521,7 +1530,8 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->interface) {
 #ifdef SO_BINDTODEVICE
 		struct ifreq ifreq;
-		strcpy(ifreq.ifr_name, sock->interface);
+		memset(&ifreq, 0, sizeof (ifreq));
+		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
 
 		fr_suid_up();
 		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,

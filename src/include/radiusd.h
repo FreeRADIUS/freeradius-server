@@ -377,6 +377,9 @@ typedef struct main_config_t {
 	const char	*name;
 	const char	*auth_badpass_msg;
 	const char	*auth_goodpass_msg;
+#ifdef WITH_POST_PROXY_AUTHORIZE
+	int		post_proxy_authorize;
+#endif
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug

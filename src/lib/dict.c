@@ -78,7 +78,7 @@ typedef struct value_fixup_t {
  */
 static value_fixup_t *value_fixup = NULL;
 
-static const FR_NAME_NUMBER type_table[] = {
+const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "integer",	PW_TYPE_INTEGER },
 	{ "string",	PW_TYPE_STRING },
 	{ "ipaddr",	PW_TYPE_IPADDR },
@@ -340,8 +340,10 @@ static void fr_pool_delete(fr_pool_t **pfp)
 
 	for (fp = *pfp; fp != NULL; fp = next) {
 		next = fp->page_next;
+		fp->page_next = NULL;
 		free(fp);
 	}
+	*pfp = NULL;
 }
 
 
@@ -486,12 +488,30 @@ int dict_addattr(const char *name, int vendor, int type, int value,
 {
 	size_t namelen;
 	static int      max_attr = 0;
+	const char	*p;
 	DICT_ATTR	*attr;
 
 	namelen = strlen(name);
 	if (namelen >= DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("dict_addattr: attribute name too long");
 		return -1;
+	}
+
+	for (p = name; *p != '\0'; p++) {
+		if (*p < ' ') {
+			fr_strerror_printf("dict_addattr: attribute name cannot contain control characters");
+			return -1;
+		}
+
+		if ((*p == '"') || (*p == '\\')) {
+			fr_strerror_printf("dict_addattr: attribute name cannot contain quotation or backslash");
+			return -1;
+		}
+
+		if ((*p == '<') || (*p == '>') || (*p == '&')) {
+			fr_strerror_printf("dict_addattr: attribute name cannot contain XML control characters");
+			return -1;
+		}
 	}
 
 	/*
@@ -743,7 +763,7 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 			default:
 				fr_pool_free(dval);
 				fr_strerror_printf("dict_addvalue: VALUEs cannot be defined for attributes of type '%s'",
-					   fr_int2str(type_table, dattr->type, "?Unknown?"));
+					   fr_int2str(dict_attr_types, dattr->type, "?Unknown?"));
 				return -1;
 		}
 
@@ -867,7 +887,7 @@ static int process_attribute(const char* fn, const int line,
 	/*
 	 *	find the type of the attribute.
 	 */
-	type = fr_str2int(type_table, argv[2], -1);
+	type = fr_str2int(dict_attr_types, argv[2], -1);
 	if (type < 0) {
 		fr_strerror_printf("dict_init: %s[%d]: invalid type \"%s\"",
 			fn, line, argv[2]);
@@ -902,6 +922,13 @@ static int process_attribute(const char* fn, const int line,
 				if (*last) {
 					fr_strerror_printf( "dict_init: %s[%d] invalid option %s",
 						    fn, line, key);
+					return -1;
+				}
+
+				if ((flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) &&
+				    (type != PW_TYPE_STRING)) {
+					fr_strerror_printf( "dict_init: %s[%d] Only \"string\" types can have the \"encrypt=3\" flag set.",
+							    fn, line);
 					return -1;
 				}
 				
@@ -959,7 +986,7 @@ static int process_attribute(const char* fn, const int line,
 		default:
 			fr_strerror_printf("dict_init: %s[%d]: Attributes of type %s cannot be tagged.",
 				   fn, line,
-				   fr_int2str(type_table, type, "?Unknown?"));
+				   fr_int2str(dict_attr_types, type, "?Unknown?"));
 			return -1;
 
 		}
@@ -992,6 +1019,18 @@ static int process_attribute(const char* fn, const int line,
 		value |= (block_tlv->attr & 0xffff);
 		flags.is_tlv = 1;
 	}
+
+#ifdef WITH_DICTIONARY_WARNINGS
+	/*
+	 *	Hack to help us discover which vendors have illegal
+	 *	attributes.
+	 */
+	if (!vendor && (value < 256) &&
+	    !strstr(fn, "rfc") && !strstr(fn, "illegal")) {
+		fprintf(stderr, "WARNING: Illegal Attribute %s in %s\n",
+			argv[0], fn);
+	}
+#endif
 
 	/*
 	 *	Add it in.

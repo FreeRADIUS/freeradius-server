@@ -52,6 +52,13 @@ AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
 
+dnl #
+dnl # Set Default CFLAGS
+dnl #
+if test "x$GCC" = "xyes"; then
+    CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+fi
+
 dnl Compile in large (2G+) file support.
 AC_SYS_LARGEFILE
 
@@ -76,7 +83,7 @@ AC_ARG_WITH(system-libltdl,
 [  --with-system-libltdl   Use the libltdl installed in your system (default=use our own)],
 [
 LIBLTDL="-lltdl"
-INCLTDL=
+INCLTDL=-DWITH_SYSTEM_LTDL
 LTDL_SUBDIRS=
 ],
 [
@@ -262,6 +269,19 @@ AC_ARG_WITH(dhcp,
   esac ]
 )
 
+
+dnl extra argument: --with-post-proxy-authorize
+WITH_POST_PROXY_AUTHORIZE=
+AC_ARG_WITH(post-proxy-authorize,
+[  --with-post-proxy-authorize  1.x compatibility  (default=no) ],
+[ case "$withval" in
+    yes)
+	WITH_POST_PROXY_AUTHORIZE=""
+        ;;
+    *)
+	;;
+  esac ]
+)
 
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
@@ -619,6 +639,7 @@ AC_CHECK_HEADERS( \
 	prot.h \
 	pwd.h \
 	grp.h \
+	stddef.h \
         fnmatch.h \
 	sia.h \
 	siad.h
@@ -918,13 +939,6 @@ else
 fi
 AC_SUBST(LIBPREFIX)
 
-dnl #
-dnl # Set Default CFLAGS
-dnl #
-if test "x$GCC" = "xyes"; then
-    CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
-fi
-
 AC_MSG_CHECKING(for developer gcc flags)
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
   devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef"
@@ -1108,6 +1122,10 @@ else
 fi
 
 AC_SUBST(HOSTINFO, $host)
+
+if test "x$WITH_POST_PROXY_AUTHORIZE" != "x"; then
+	AC_DEFINE(WITH_POST_PROXY_AUTHORIZE, 1, [1.x compatibility])
+fi
 
 dnl #############################################################
 dnl #

@@ -34,6 +34,7 @@ extern "C" {
 uint32_t fr_request_packet_hash(const RADIUS_PACKET *packet);
 uint32_t fr_reply_packet_hash(const RADIUS_PACKET *packet);
 int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b);
+int fr_inaddr_any(fr_ipaddr_t *ipaddr);
 void fr_request_from_reply(RADIUS_PACKET *request,
 			     const RADIUS_PACKET *reply);
 int fr_socket(fr_ipaddr_t *ipaddr, int port);

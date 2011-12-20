@@ -155,7 +155,7 @@ int fr_event_insert(fr_event_list_t *el,
 {
 	fr_event_t *ev;
 
-	if (!el || !callback | !when || (when->tv_usec > USEC)) return 0;
+	if (!el || !callback | !when || (when->tv_usec >= USEC)) return 0;
 
 	if (ev_p && *ev_p) fr_event_delete(el, ev_p);
 
@@ -364,9 +364,11 @@ int fr_event_loop(fr_event_list_t *el)
 				if (when.tv_sec > 0) {
 					when.tv_sec--;
 					when.tv_usec += USEC;
+				} else {
+					when.tv_sec = 0;
 				}
 				when.tv_usec -= el->now.tv_usec;
-				if (when.tv_usec > USEC) {
+				if (when.tv_usec >= USEC) {
 					when.tv_usec -= USEC;
 					when.tv_sec++;
 				}
@@ -388,8 +390,10 @@ int fr_event_loop(fr_event_list_t *el)
 		read_fds = master_fds;
 		rcode = select(maxfd + 1, &read_fds, NULL, NULL, wake);
 		if ((rcode < 0) && (errno != EINTR)) {
+			fr_strerror_printf("Failed in select: %s",
+					   strerror(errno));
 			el->dispatch = 0;
-			return 0;
+			return -1;
 		}
 
 		if (fr_heap_num_elements(el->times) > 0) {

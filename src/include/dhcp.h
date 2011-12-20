@@ -38,7 +38,9 @@ extern "C" {
 RADIUS_PACKET *fr_dhcp_recv(int sockfd);
 int fr_dhcp_send(RADIUS_PACKET *packet);
 
-int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original);
+int fr_dhcp_add_arp_entry(int fd, const char *interface, VALUE_PAIR *hwvp, VALUE_PAIR *clvp);
+
+int fr_dhcp_encode(RADIUS_PACKET *packet);
 int fr_dhcp_decode(RADIUS_PACKET *packet);
 
 /*

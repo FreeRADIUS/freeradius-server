@@ -111,6 +111,11 @@ the NAS.
 Usually %{Realm} (the default).  Can also be %{User-Name}, or other
 attribute that exists in the request.  Note that the module always
 keys off of attributes in the request, and NOT in any other packet.
+.IP relaxed
+If set to 'yes', then attributes which do not match any filter rules
+explicitly, will also be allowed. This behaviour may be overridden 
+for an individual filter block using the Relax-Filter check item.
+The default for this configuration item is 'no'.
 .PP
 .SH SECTIONS
 .IP preacct

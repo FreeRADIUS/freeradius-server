@@ -465,7 +465,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		rcode = select(pd[0] + 1, &fds, NULL, NULL, &wake);
 		if (rcode == 0) {
 		too_long:
-			radlog(L_ERR, "Child PID %u is taking too much time: forcing failure and killing child.", pid);
+			radlog(L_ERR, "Child PID %u (%s) is taking too much time: forcing failure and killing child.", pid, argv[0]);
 			kill(pid, SIGTERM);
 			close(pd[0]); /* should give SIGPIPE to child, too */
 

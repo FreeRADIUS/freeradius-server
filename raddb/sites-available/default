@@ -7,6 +7,10 @@
 #	directory.  Soft links should be created in the "sites-enabled"
 #	directory to these files.  This is done in a normal installation.
 #
+#	If you are using 802.1X (EAP) authentication, please see also
+#	the "inner-tunnel" virtual server.  You wll likely have to edit
+#	that, too, for authentication to work.
+#
 #	$Id$
 #
 ######################################################################
@@ -54,12 +58,26 @@
 #  Authorization. First preprocess (hints and huntgroups files),
 #  then realms, and finally look in the "users" file.
 #
+#  Any changes made here should also be made to the "inner-tunnel"
+#  virtual server.
+#
 #  The order of the realm modules will determine the order that
 #  we try to find a matching realm.
 #
 #  Make *sure* that 'preprocess' comes before any realm if you 
 #  need to setup hints for the remote radius server
 authorize {
+	#
+	#  Security settings.  Take a User-Name, and do some simple
+	#  checks on it, for spaces and other invalid characters.  If
+	#  it looks like the user is trying to play games, reject it.
+	#
+	#  This should probably be enabled by default.
+	#
+	#  See policy.conf for the definition of the filter_username policy.
+	#
+#	filter_username
+
 	#
 	#  The preprocess module takes care of sanitizing some bizarre
 	#  attributes in the request, and turning them into attributes
@@ -514,12 +532,14 @@ post-auth {
 #	       Reply-Message += "%{TLS-Cert-Subject}"
 #	       Reply-Message += "%{TLS-Cert-Issuer}"
 #	       Reply-Message += "%{TLS-Cert-Common-Name}"
+#	       Reply-Message += "%{TLS-Cert-Subject-Alt-Name-Email}"
 #
 #	       Reply-Message += "%{TLS-Client-Cert-Serial}"
 #	       Reply-Message += "%{TLS-Client-Cert-Expiration}"
 #	       Reply-Message += "%{TLS-Client-Cert-Subject}"
 #	       Reply-Message += "%{TLS-Client-Cert-Issuer}"
 #	       Reply-Message += "%{TLS-Client-Cert-Common-Name}"
+#	       Reply-Message += "%{TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
 
 

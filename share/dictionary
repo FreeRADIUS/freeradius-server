@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #
 # Version $Id$
 #
@@ -27,15 +28,18 @@
 #	ifid       - 8 octets in network byte order
 #	ipv6addr   - 16 octets in network byte order
 #	ipv6prefix - 18 octets in network byte order
-#	ether      - 6 octets of hh:hh:hh:hh:hh:hh
-#		     where 'h' is hex digits, upper or lowercase.
 #
 #	FreeRADIUS includes extended data types which are not defined
 #	in the RFC's.  These data types are:
 #
 #	abinary - Ascend's binary filter format.
+#	byte    - 8 bit unsigned integer
+#	ether   - 6 octets of hh:hh:hh:hh:hh:hh
+#		  where 'h' is hex digits, upper or lowercase.
+#	short   - 16-bit unsigned integer 
 #	octets  - raw octets, printed and input as hex strings.
 #		  e.g.: 0x123456789abcdef
+#	tlv	- type-length-value (only for certain WiMAX attributes)
 #
 #
 #	Enumerated values are stored in the user file with dictionary
@@ -55,6 +59,8 @@
 #	old names in the logfiles, INSTEAD OF the new names.
 #
 $INCLUDE dictionary.compat
+$INCLUDE dictionary.usr.illegal
+$INCLUDE dictionary.ascend.illegal
 
 #
 #	Include the RFC dictionaries next.
@@ -100,7 +106,6 @@ $INCLUDE dictionary.apc
 $INCLUDE dictionary.aruba
 $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
-$INCLUDE dictionary.ascend.illegal
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cablelabs
@@ -117,13 +122,13 @@ $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
-$INCLUDE dictionary.dhcp
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
 $INCLUDE dictionary.erx
 $INCLUDE dictionary.ericsson
 $INCLUDE dictionary.extreme
+$INCLUDE dictionary.f5
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.fortinet
@@ -149,6 +154,7 @@ $INCLUDE dictionary.manzara
 $INCLUDE dictionary.merit
 $INCLUDE dictionary.microsoft
 $INCLUDE dictionary.mikrotik
+$INCLUDE dictionary.motorola
 $INCLUDE dictionary.motorola.wimax
 $INCLUDE dictionary.navini
 $INCLUDE dictionary.netscreen
@@ -178,17 +184,19 @@ $INCLUDE dictionary.riverstone
 $INCLUDE dictionary.roaringpenguin
 $INCLUDE dictionary.shasta
 $INCLUDE dictionary.shiva
+$INCLUDE dictionary.siemens
 $INCLUDE dictionary.slipstream
 $INCLUDE dictionary.sonicwall
 $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
+$INCLUDE dictionary.symbol
 $INCLUDE dictionary.telebit
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
+$INCLUDE dictionary.ukerna
 $INCLUDE dictionary.unix
 $INCLUDE dictionary.usr
-$INCLUDE dictionary.usr.illegal
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
@@ -200,6 +208,7 @@ $INCLUDE dictionary.wimax
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
 $INCLUDE dictionary.xylan
+$INCLUDE dictionary.zyxel
 
 #
 #	And finally the server internal attributes.

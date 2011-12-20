@@ -65,7 +65,7 @@ typedef struct eap_tls_conf {
         int     	session_timeout;
         int     	session_cache_size;
 	char		*session_id_name;
-	char		session_context_id[128];
+	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 	time_t		session_last_flushed;
 
 	char		*verify_tmp_dir;
@@ -80,6 +80,11 @@ typedef struct eap_tls_conf {
 	char		*ocsp_url;
 #endif
 
+#if OPENSSL_VERSION_NUMBER >= 0x0090800fL
+#ifndef OPENSSL_NO_ECDH
+	char		*ecdh_curve;
+#endif
+#endif
 } EAP_TLS_CONF;
 
 /* This structure gets stored in arg */

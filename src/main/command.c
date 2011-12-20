@@ -661,12 +661,14 @@ static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char
 
 	if (argc == 0) {
 		cprintf(listener, "ERROR: <reference> is required\n");
+		fclose(fp);
 		return 0;
 	}
 	
 	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
 	if (!ci) {
 		cprintf(listener, "ERROR: No such item <reference>\n");
+		fclose(fp);
 		return 0;
 	}
 
@@ -1139,6 +1141,16 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
+	if (!sock->inject_listener) {
+		cprintf(listener, "ERROR: You must specify \"inject to\" before using \"inject file\"\n");
+		return 0;
+	}
+
+	if (!sock->inject_client) {
+		cprintf(listener, "ERROR: You must specify \"inject from\" before using \"inject file\"\n");
+		return 0;
+	}
+
 	/*
 	 *	Output files always go to the logging directory.
 	 */
@@ -1536,6 +1548,11 @@ static int command_stats_detail(rad_listen_t *listener, int argc, char *argv[])
 		break;
 	}
 
+	if (!data) {
+		cprintf(listener, "ERROR: No detail file listener\n");
+		return 0;
+	}
+
 	cprintf(listener, "\tstate\t%s\n",
 		fr_int2str(state_names, data->state, "?"));
 
@@ -1689,11 +1706,11 @@ static int command_del_client(rad_listen_t *listener, int argc, char *argv[])
 #ifdef WITH_DYNAMIC_CLIENTS
 	RADCLIENT *client;
 
-	client = get_client(listener, argc - 1, argv + 1);
+	client = get_client(listener, argc, argv);
 	if (!client) return 0;
 
 	if (!client->dynamic) {
-		cprintf(listener, "ERROR: Client %s was not dynamically defined.\n", argv[1]);
+		cprintf(listener, "ERROR: Client %s was not dynamically defined.\n", argv[0]);
 		return 0;
 	}
 
@@ -1874,6 +1891,8 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		}
 
 		sock->uid = pw->pw_uid;
+	} else {
+		sock->uid = -1;
 	}
 
 	if (sock->gid_name) {
@@ -1886,6 +1905,8 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 		sock->gid = gr->gr_gid; 
+	} else {
+		sock->gid = -1;
 	}
 
 #else  /* can't get uid or gid of connecting user */
@@ -1917,6 +1938,23 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (this->fd < 0) {
 		return -1;
 	}
+
+#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
+	/*
+	 *	Don't chown it from (possibly) non-root to root.
+	 *	Do chown it from (possibly) root to non-root.
+	 */
+	if ((sock->uid != -1) || (sock->gid != -1)) {
+		fr_suid_up();
+		if (fchown(this->fd, sock->uid, sock->gid) < 0) {
+			radlog(L_ERR, "Failed setting ownership of %s: %s",
+			       sock->path, strerror(errno));
+			fr_suid_down();
+			return -1;
+		}
+		fr_suid_down();
+	}
+#endif
 
 	return 0;
 }
@@ -2268,6 +2306,7 @@ static int command_domain_accept(rad_listen_t *listener,
 		return 0;
 	}
 
+#if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	/*
 	 *	Perform user authentication.
 	 */
@@ -2275,27 +2314,42 @@ static int command_domain_accept(rad_listen_t *listener,
 		uid_t uid;
 		gid_t gid;
 
-		if (getpeereid(listener->fd, &uid, &gid) < 0) {
+		if (getpeereid(newfd, &uid, &gid) < 0) {
 			radlog(L_ERR, "Failed getting peer credentials for %s: %s",
 			       sock->path, strerror(errno));
 			close(newfd);
 			return 0;
 		}
 
-		if (sock->uid_name && (sock->uid != uid)) {
-			radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
-			       sock->path, (long int) uid);
-			close(newfd);
-			return 0;
-		}
+		/*
+		 *	Only do UID checking if the caller is
+		 *	non-root.  The superuser can do anything, so
+		 *	we might as well let them.
+		 */
+		if (uid != 0) do {
+			/*
+			 *	Allow entry if UID or GID matches.
+			 */
+			if (sock->uid_name && (sock->uid == uid)) break;
+			if (sock->gid_name && (sock->gid == gid)) break;
 
-		if (sock->gid_name && (sock->gid != gid)) {
-			radlog(L_ERR, "Unauthorized connection to %s from gid %ld",
-			       sock->path, (long int) gid);
-			close(newfd);
-			return 0;
-		}
-	}
+			if (sock->uid_name && (sock->uid != uid)) {
+				radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
+
+				       sock->path, (long int) uid);
+				close(newfd);
+				return 0;
+			}
+
+			if (sock->gid_name && (sock->gid != gid)) {
+				radlog(L_ERR, "Unauthorized connection to %s from gid %ld",
+				       sock->path, (long int) gid);
+				close(newfd);
+				return 0;
+			}
+		} while (0);
+        }
+#endif
 
 	/*
 	 *	Write 32-bit magic number && version information.
