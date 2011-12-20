@@ -27,6 +27,10 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  nonsense.
 	* Safely handle extremely long lines in conf file variable expansion
 	* Fix for Debian bug #606450
+	* Mutex lock around rlm_perl Clone routines.
+	  Patch from Eike Dehling
+	* The passwd module no longer permits "hashsize = 0".  Setting that
+	  is pointless for a host of reasons.  It will also break the server.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
