@@ -73,23 +73,22 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 
 	dissocket->conn = redisConnect(inst->hostname, inst->port);
 
-        /*
-         *  Error or redis is DOWN.
-         */
+	/*
+	 *  Error or redis is DOWN.
+	 */
 	if (dissocket->conn->err) {
-                radlog(L_CONS | L_ERR, "rlm_redis (%s): Failed to connect DB handle #%d",
-                       inst->xlat_name, dissocket->id);
-                inst->connect_after = time(NULL) + inst->connect_failure_retry_delay;
-                dissocket->state = sockunconnected;
-                return -1;
+		radlog(L_CONS | L_ERR, "rlm_redis (%s): Failed to connect DB handle #%d",
+			   inst->xlat_name, dissocket->id);
+		inst->connect_after = time(NULL) + inst->connect_failure_retry_delay;
+		dissocket->state = sockunconnected;
+		return -1;
 	}
 
-        radlog(L_INFO, "rlm_redis (%s): Connected new DB handle, #%d",
-               inst->xlat_name, dissocket->id);
+	radlog(L_INFO, "rlm_redis (%s): Connected new DB handle, #%d",
+		   inst->xlat_name, dissocket->id);
 
-        dissocket->state = sockconnected;
-        //if (inst->lifetime) time(&dissocket->connected);
-        dissocket->queries = 0;
+	dissocket->state = sockconnected;
+	dissocket->queries = 0;
 
 	if (inst->password) {
 		char buffer[1024];
@@ -219,25 +218,25 @@ static int redis_xlat(void *instance, REQUEST *request,
 		return 0;
 	}
 
-        switch (dissocket->reply->type) {
-	case REDIS_REPLY_INTEGER:
-                buffer_ptr = buffer;
-                snprintf(buffer_ptr, sizeof(buffer), "%lld",
-			 dissocket->reply->integer);
+	switch (dissocket->reply->type) {
+		case REDIS_REPLY_INTEGER:
+			buffer_ptr = buffer;
+			snprintf(buffer_ptr, sizeof(buffer), "%lld",
+			dissocket->reply->integer);
 
-                ret = strlen(buffer_ptr);
-                break;
+			ret = strlen(buffer_ptr);
+			break;
 
-	case REDIS_REPLY_STATUS:
-	case REDIS_REPLY_STRING:
-                buffer_ptr = dissocket->reply->str;
-                ret = dissocket->reply->len;
-                break;
+		case REDIS_REPLY_STATUS:
+		case REDIS_REPLY_STRING:
+			buffer_ptr = dissocket->reply->str;
+			ret = dissocket->reply->len;
+			break;
 
-	default:
-                buffer_ptr = NULL;
-                break;
-        }
+		default:
+			buffer_ptr = NULL;
+			break;
+	}
 
 	if ((ret >= freespace) || (buffer_ptr == NULL)) {
 		RDEBUG("rlm_redis (%s): Can't write result, insufficient space or unsupported result\n",
