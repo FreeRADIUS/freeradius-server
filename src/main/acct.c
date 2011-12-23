@@ -87,8 +87,9 @@ int rad_accounting(REQUEST *request)
 		 */
 		vp = pairfind(request->config_items, PW_ACCT_TYPE, 0);
 		if (vp) {
-			DEBUG2("  Found Acct-Type %s", vp->vp_strvalue);
 			acct_type = vp->vp_integer;
+			DEBUG2("  Found Acct-Type %s",
+			       dict_valnamebyattr(PW_ACCT_TYPE, 0, acct_type));
 		}
 		result = module_accounting(acct_type, request);
 		switch (result) {
