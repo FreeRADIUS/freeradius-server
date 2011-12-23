@@ -606,8 +606,9 @@ autz_redo:
 	if (!autz_retry) {
 		tmp = pairfind(request->config_items, PW_AUTZ_TYPE);
 		if (tmp) {
-			RDEBUG2("Using Autz-Type %s", tmp->vp_strvalue);
 			autz_type = tmp->vp_integer;
+			RDEBUG2("Using Autz-Type %s",
+				dict_valnamebyattr(PW_AUTZ_TYPE, autz_type));
 			autz_retry = 1;
 			goto autz_redo;
 		}
@@ -720,8 +721,9 @@ autz_redo:
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE);
 		if (tmp) {
-			RDEBUG2("Using Session-Type %s", tmp->vp_strvalue);
 			session_type = tmp->vp_integer;
+			RDEBUG2("Using Session-Type %s",
+				dict_valnamebyattr(PW_SESSION_TYPE, session_type));
 		}
 
 		/*
