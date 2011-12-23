@@ -112,10 +112,11 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass)
 
 			auth_type = pairfind(request->config_items,
 					     PW_AUTH_TYPE);
-			if (auth_type && (auth_type->vp_strvalue[0] != '\0')) {
+			if (auth_type) {
 				snprintf(clean_password, sizeof(clean_password),
 					 "<via Auth-Type = %s>",
-					 auth_type->vp_strvalue);
+					 dict_valnamebyattr(PW_AUTH_TYPE,
+							    auth_type->vp_integer));
 			} else {
 				strcpy(clean_password, "<no User-Password attribute>");
 			}
@@ -184,15 +185,13 @@ static int rad_check_password(REQUEST *request)
 	 */
 	cur_config_item = request->config_items;
 	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTH_TYPE))) != NULL) {
-		DICT_VALUE *dv;
 
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
-		dv = dict_valbyattr(auth_type_pair->attribute,
-						auth_type_pair->vp_integer);
 
 		RDEBUG2("Found Auth-Type = %s",
-			(dv != NULL) ? dv->name : "?");
+			dict_valnamebyattr(PW_AUTH_TYPE,
+					   auth_type_pair->vp_integer));
 		cur_config_item = auth_type_pair->next;
 
 		if (auth_type == PW_AUTHTYPE_REJECT) {
@@ -427,7 +426,8 @@ int rad_postauth(REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_POST_AUTH_TYPE);
 	if (vp) {
-		RDEBUG2("Using Post-Auth-Type %s", vp->vp_strvalue);
+		RDEBUG2("Using Post-Auth-Type %s",
+			dict_valnamebyattr(PW_POST_AUTH_TYPE, vp->vp_integer));
 		postauth_type = vp->vp_integer;
 	}
 	result = module_post_auth(postauth_type, request);
