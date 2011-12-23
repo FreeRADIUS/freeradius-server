@@ -262,6 +262,7 @@ DICT_ATTR	*dict_attrbyvalue(unsigned int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, int val);
 DICT_VALUE	*dict_valbyname(unsigned int attr, const char *val);
+const char	*dict_valnamebyattr(unsigned int attr, int value);
 int		dict_vendorbyname(const char *name);
 DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 

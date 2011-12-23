@@ -1839,6 +1839,34 @@ DICT_VALUE *dict_valbyattr(unsigned int attr, int value)
 }
 
 /*
+ *	Associate a value with an attribute and return it.
+ */
+const char *dict_valnamebyattr(unsigned int attr, int value)
+{
+	DICT_VALUE dval, *dv;
+
+	/*
+	 *	First, look up aliases.
+	 */
+	dval.attr = attr;
+	dval.name[0] = '\0';
+
+	/*
+	 *	Look up the attribute alias target, and use
+	 *	the correct attribute number if found.
+	 */
+	dv = fr_hash_table_finddata(values_byname, &dval);
+	if (dv)	dval.attr = dv->value;
+
+	dval.value = value;
+
+	dv = fr_hash_table_finddata(values_byvalue, &dval);
+	if (!dv) return "";
+
+	return dv->name;
+}
+
+/*
  *	Get a value by its name, keyed off of an attribute.
  */
 DICT_VALUE *dict_valbyname(unsigned int attr, const char *name)
