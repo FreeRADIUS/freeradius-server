@@ -716,8 +716,9 @@ autz_redo:
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE, 0);
 		if (tmp) {
-			RDEBUG2("Using Session-Type %s", tmp->vp_strvalue);
 			session_type = tmp->vp_integer;
+			RDEBUG2("Using Session-Type %s",
+				dict_valnamebyattr(PW_SESSION_TYPE, 0, session_type));
 		}
 
 		/*
