@@ -2301,6 +2301,19 @@ DICT_VALUE *dict_valbyattr(unsigned int attr, unsigned int vendor, int value)
 }
 
 /*
+ *	Associate a value with an attribute and return it.
+ */
+const char *dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value)
+{
+	DICT_VALUE *dv;
+
+	dv = dict_valbyattr(attr, vendor, value);
+	if (!dv) return "";
+
+	return dv->name;
+}
+
+/*
  *	Get a value by its name, keyed off of an attribute.
  */
 DICT_VALUE *dict_valbyname(unsigned int attr, unsigned int vendor, const char *name)
