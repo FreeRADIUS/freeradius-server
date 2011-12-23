@@ -258,7 +258,6 @@ static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
 			char *out, size_t outlen,
 			RADIUS_ESCAPE_STRING func)
 {
-	int		rcode;
 	int64_t		result;
 	rlm_expr_t	*inst = instance;
 	char		buffer[256];
