@@ -2925,17 +2925,17 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		 */
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		if (original) {
-			rad_pwdecode(buffer,
+			rad_pwdecode((char *) buffer,
 				     vp->length, secret,
 				     original->vector);
 		} else {
-			rad_pwdecode(buffer,
+			rad_pwdecode((char *) buffer,
 				     vp->length, secret,
 				     packet->vector);
 		}
 		buffer[253] = '\0';
 		if (vp->attribute == PW_USER_PASSWORD) {
-			vp->length = strlen(buffer);
+			vp->length = strlen((char *) buffer);
 		}
 		break;
 
@@ -2967,7 +2967,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 			memcpy(buffer, my_digest,
 			       AUTH_VECTOR_LEN );
 			buffer[AUTH_VECTOR_LEN] = '\0';
-			vp->length = strlen(buffer);
+			vp->length = strlen((char *) buffer);
 		}
 		break;
 
