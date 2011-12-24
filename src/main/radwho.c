@@ -68,7 +68,7 @@ const char *radlog_dir = NULL;
 const char *radutmp_file = NULL;
 int check_config = FALSE;
 
-char *radius_dir = NULL;
+const char *raddb_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlib_dir = NULL;
 uint32_t myip = INADDR_ANY;
@@ -316,11 +316,11 @@ int main(int argc, char **argv)
 	uint32_t nas_ip_address = INADDR_NONE;
 	int zap = 0;
 
-	radius_dir = RADIUS_DIR;
+	raddb_dir = RADIUS_DIR;
 
 	while((c = getopt(argc, argv, "d:fnN:sSipP:crRu:U:Z")) != EOF) switch(c) {
 		case 'd':
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 		case 'f':
 			fingerd++;
@@ -407,7 +407,7 @@ int main(int argc, char **argv)
 	mainconfig.radlog_dest = RADLOG_STDOUT;
 
         /* Read radiusd.conf */
-	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", radius_dir);
+	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);
 	maincs = cf_file_read(buffer);
 	if (!maincs) {
 		fprintf(stderr, "%s: Error reading radiusd.conf.\n", argv[0]);

@@ -34,7 +34,7 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-char *radius_dir = RADDBDIR;
+const char *raddb_dir = RADDBDIR;
 const char *progname = "radconf2xml";
 
 /*
@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
 				exit(1);
 			}
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		default:
@@ -102,7 +102,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-	snprintf(buffer, sizeof(buffer), "%s/%s.conf", radius_dir, name);
+	snprintf(buffer, sizeof(buffer), "%s/%s.conf", raddb_dir, name);
 	cs = cf_file_read(buffer);
 	if (!cs) {
 		fprintf(stderr, "%s: Errors reading %s\n",
