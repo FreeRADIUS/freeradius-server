@@ -244,7 +244,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 
 	if (packet->data_len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%d < %d)",
-		      packet->data_len, MIN_PACKET_SIZE);
+				   (int) packet->data_len, MIN_PACKET_SIZE);
 		rad_free(&packet);
 		return NULL;
 	}
@@ -1565,6 +1565,11 @@ int fr_dhcp_add_arp_entry(int fd, const char *interface,
 
 	return 0;
 #else
+	fd = fd;		/* -Wunused */
+	interface = interface;	/* -Wunused */
+	macaddr = macaddr;	/* -Wunused */
+	ip = ip;		/* -Wunused */
+
 	fr_strerror_printf("Adding ARP entry is unsupported on this system");
 	return -1;
 #endif
