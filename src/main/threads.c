@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include <dispatch/dispatch.h>
 #endif
 #include <mach/task.h>
+#include <mach/mach_init.h>
 #include <mach/semaphore.h>
 
 #undef sem_t
