@@ -348,23 +348,23 @@ static int policy_stack_push(policy_state_t *state, const policy_item_t *item)
 /*
  *	Pop an item from the state.
  */
-static int policy_stack_pop(policy_state_t *state, const policy_item_t **pitem)
+static int policy_stack_pop(policy_state_t *state, const policy_item_t **item)
 {
-	rad_assert(pitem != NULL);
+	rad_assert(item != NULL);
 	rad_assert(state->depth >= 0);
 
  redo:
 	if (state->depth == 0) {
-		*pitem = NULL;
+		*item = NULL;
 		return 0;
 	}
 
-	*pitem = state->stack[state->depth - 1];
+	*item = state->stack[state->depth - 1];
 
 	/*
 	 *	Named policies are on the stack for catching recursion.
 	 */
-	if ((*pitem)->type == POLICY_TYPE_NAMED_POLICY) {
+	if ((*item)->type == POLICY_TYPE_NAMED_POLICY) {
 		state->depth--;
 		goto redo;
 	}
@@ -372,12 +372,12 @@ static int policy_stack_pop(policy_state_t *state, const policy_item_t **pitem)
 	/*
 	 *	Process the whole item list.
 	 */
-	if ((*pitem)->next) {
-		state->stack[state->depth - 1] = (*pitem)->next;
-		debug_evaluate("pop/push %d %p\n", state->depth - 1, *pitem);
+	if ((*item)->next) {
+		state->stack[state->depth - 1] = (*item)->next;
+		debug_evaluate("pop/push %d %p\n", state->depth - 1, *item);
 	} else {
 		state->depth--;		/* points to unused entry */
-		debug_evaluate("pop %d %p\n", state->depth, *pitem);
+		debug_evaluate("pop %d %p\n", state->depth, *item);
 	}
 
 	return 1;
