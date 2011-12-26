@@ -64,6 +64,7 @@ typedef struct dhcp_socket_t {
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
 	const char	*arp_interface;
+        fr_ipaddr_t     interface_ipaddr;
 } dhcp_socket_t;
 
 static int dhcprelay_process_client_request(REQUEST *request)
@@ -216,8 +217,6 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 					    "no Client Hardware Address. Discarding packet");
 					return 1;
 				}
-				if (sock->arp_interface == NULL)
-					sock->arp_interface = sock->interface;
 				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->arp_interface, hwvp, vp) < 0) {
 					return -1;
 				}
@@ -373,8 +372,7 @@ static int dhcp_process(REQUEST *request)
 	 */
 	request->reply->dst_ipaddr.af = AF_INET;
 	request->reply->src_ipaddr.af = AF_INET;
-	/* XXX sock->ipaddr == 0 (listening on '*') */
-	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->ipaddr.ipaddr.ip4addr.s_addr;
+	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->interface_ipaddr.ipaddr.ip4addr.s_addr;
 
 	request->reply->dst_port = request->packet->src_port;
 	request->reply->src_port = request->packet->dst_port;
@@ -422,8 +420,6 @@ static int dhcp_process(REQUEST *request)
 			if (request->reply->code == PW_DHCP_OFFER) {
 				VALUE_PAIR *hwvp = pairfind(request->reply->vps, DHCP2ATTR(267)); /* DHCP-Client-Hardware-Address */
 				rad_assert(hwvp != NULL);
-				if (sock->arp_interface == NULL)
-					sock->arp_interface = sock->interface;
 				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->arp_interface, hwvp, vp) < 0) {
 					return -1;
 				}
@@ -495,6 +491,21 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		const char *value;
 		value = cf_pair_value(cp);
 		sock->arp_interface = value;
+	} else {
+                sock->arp_interface = sock->interface;
+        }
+
+	cp = cf_pair_find(cs, "interface_ipaddr");
+	if (cp) {
+		memset(&sock->interface_ipaddr, 0, sizeof(sock->interface_ipaddr));
+		sock->interface_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+		rcode = cf_item_parse(cs, "interface_ipaddr", PW_TYPE_IPADDR,
+					&sock->interface_ipaddr.ipaddr.ip4addr, NULL);
+		if (rcode < 0) return -1;
+
+		sock->interface_ipaddr.af = AF_INET;
+	} else {
+		memcpy(&sock->interface_ipaddr, &sock->ipaddr, sizeof(sock->interface_ipaddr));
 	}
 
 	/*

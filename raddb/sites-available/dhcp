@@ -128,6 +128,7 @@ server dhcp {
 		ipaddr = 255.255.255.255
 		port = ${..port}
 		interface = ${..interface}
+                interface_ipaddr = ${..ipaddr}
 	}
 
 	#  Listen for unicasts on an IP, but not bound to any interface.
