@@ -270,6 +270,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "       -d: set the raddb directory (default is %s)\n",
 		RADIUS_DIR);
 	fprintf(output, "       -f: give fingerd output\n");
+	fprintf(output, "       -F <file>: Use radutmp <file>\n");
 	fprintf(output, "       -i: show session ID\n");
 	fprintf(output, "       -n: no full name\n");
 	fprintf(output, "       -N <nas-ip-address>: Show entries matching the given NAS IP address\n");
@@ -318,13 +319,16 @@ int main(int argc, char **argv)
 
 	raddb_dir = RADIUS_DIR;
 
-	while((c = getopt(argc, argv, "d:fnN:sSipP:crRu:U:Z")) != EOF) switch(c) {
+	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch(c) {
 		case 'd':
 			raddb_dir = optarg;
 			break;
 		case 'f':
 			fingerd++;
 			showname = 0;
+			break;
+		case 'F':
+			radutmp_file = optarg;
 			break;
 		case 'h':
 			usage(0);
@@ -400,6 +404,8 @@ int main(int argc, char **argv)
 		exit(0);	/* don't bother printing anything else */
 	}
 
+	if (radutmp_file) goto have_radutmp;
+
 	/*
 	 *	Initialize mainconfig
 	 */
@@ -415,7 +421,7 @@ int main(int argc, char **argv)
 	}
 
         /* Read the radutmp section of radiusd.conf */
-        cs = cf_section_sub_find(cf_section_sub_find(maincs, "modules"), "radutmp");
+        cs = cf_section_find_name2(cf_section_sub_find(maincs, "modules"), "radutmp", NULL);
         if(!cs) {
                 fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
                         argv[0]);
@@ -427,6 +433,7 @@ int main(int argc, char **argv)
 	/* Assign the correct path for the radutmp file */
 	radutmp_file = radutmpconfig.radutmp_fn;
 
+ have_radutmp:
 	/*
 	 *	See if we are "fingerd".
 	 */
