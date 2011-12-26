@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
 	{
 		WSADATA wsaData;
 		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
-			fprintf(stderr, "%s: Unable to initialize socket library.\n");
+		  fprintf(stderr, "%s: Unable to initialize socket library.\n", progname);
 			return 1;
 		}
 	}
