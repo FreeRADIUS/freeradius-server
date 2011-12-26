@@ -1413,7 +1413,7 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	TLV's can be only one octet.
 		 */
-		if ((value <= 0) || ((value & ~fr_attr_mask[tlv_depth]) != 0)) {
+		if ((value == 0) || ((value & ~fr_attr_mask[tlv_depth]) != 0)) {
 			fr_strerror_printf( "dict_init: %s[%d]: sub-tlv has invalid attribute number",
 					    fn, line);
 			return -1;
