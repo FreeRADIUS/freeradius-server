@@ -1,4 +1,4 @@
-.TH RADWHO 1 "7 April 2005" "" "FreeRADIUS Daemon"
+.TH RADWHO 1 "26 Dec 2011" "" "FreeRADIUS Daemon"
 .SH NAME
 radwho - show online users
 .SH SYNOPSIS
@@ -7,6 +7,8 @@ radwho - show online users
 .RB [ \-d
 .IR raddb_directory ]
 .RB [ \-f ]
+.RB [ \-F
+.IR radutmp_file ]
 .RB [ \-i ]
 .RB [ \-n ]
 .RB [ \-N
@@ -36,6 +38,9 @@ The directory that contains the RADIUS configuration files. Defaults to
 .IP \-f
 Behave as the 'fingerd' daemon - waits for one line of input, then
 prints the output with lines \\r\\n terminated.
+.IP \-F\ \fIradutmp_file\fP
+The file that contains the radutmp file.  If this is specified, -d is
+not necessary.
 .IP \-i
 Shows the session ID instead of the full name.
 .IP \-n
