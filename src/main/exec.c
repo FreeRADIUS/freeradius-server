@@ -88,20 +88,24 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 			VALUE_PAIR *input_pairs,
 			int shell_escape)
 {
-	VALUE_PAIR *vp;
-	char mycmd[1024];
 	const char *from;
-	char *p, *to;
+	char *to;
+#ifndef __MINGW32__
+	char *p;
+	VALUE_PAIR *vp;
+	int n;
 	int to_child[2] = {-1, -1};
 	int from_child[2] = {-1, -1};
 	pid_t pid;
+#endif
 	int argc = -1;
 	int i;
-	int n, left;
+	int left;
 	char *argv[MAX_ARGV];
 	char argv_buf[4096];
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
+	char mycmd[1024];
 
 	if (strlen(cmd) > (sizeof(mycmd) - 1)) {
 		radlog(L_ERR|L_CONS, "Command line is too long");
@@ -423,6 +427,42 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	}
 
 	return pid;
+#else
+	if (exec_wait) {
+		radlog(L_ERR, "Exec-Program-Wait is not supported");
+		return -1;
+	}
+	
+	{
+		/*
+		 *	The _spawn and _exec families of functions are
+		 *	found in Windows compiler libraries for
+		 *	portability from UNIX. There is a variety of
+		 *	functions, including the ability to pass
+		 *	either a list or array of parameters, to
+		 *	search in the PATH or otherwise, and whether
+		 *	or not to pass an environment (a set of
+		 *	environment variables). Using _spawn, you can
+		 *	also specify whether you want the new process
+		 *	to close your program (_P_OVERLAY), to wait
+		 *	until the new process is finished (_P_WAIT) or
+		 *	for the two to run concurrently (_P_NOWAIT).
+		 
+		 *	_spawn and _exec are useful for instances in
+		 *	which you have simple requirements for running
+		 *	the program, don't want the overhead of the
+		 *	Windows header file, or are interested
+		 *	primarily in portability.
+		 */
+
+		/*
+		 *	FIXME: check return code... what is it?
+		 */
+		_spawnve(_P_NOWAIT, argv[0], argv, envp);
+	}
+
+	return 0;
+#endif
 }
 
 /** Read from the child process.
@@ -434,9 +474,11 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
  * @param left length of buffer.
  * @return -1 on error, or length of output.
  */
-int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer, int left) {
-
-	int done;
+int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer,
+			    int left)
+{
+	int done = 0;
+#ifndef __MINGW32__
 	int status;
 	struct timeval start;
 #ifdef O_NONBLOCK
@@ -468,7 +510,6 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer, int le
 	 *	Read from the pipe until we doesn't get any more or
 	 *	until the message is full.
 	 */
-	done = 0;
 	gettimeofday(&start, NULL);
 	while (1) {
 		int rcode;
@@ -548,7 +589,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer, int le
 		left -= status;
 		if (left <= 0) break;
 	}
-
+#endif	/* __MINGW32__ */
 	return done;
 }
 
@@ -574,14 +615,17 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			VALUE_PAIR **output_pairs,
 			int shell_escape)
 {
+	pid_t pid;
+	int from_child;
+#ifndef __MINGW32__
 	VALUE_PAIR *vp;
 	char *p;
-	int from_child;
-	pid_t pid, child_pid;
+	pid_t child_pid;
 	int comma = 0;
 	int status;
 	int n, done;
 	char answer[4096];
+#endif
 
 	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, input_pairs, shell_escape);
 	if (pid < 0) {
@@ -591,6 +635,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	if (!exec_wait)
 		return 0;
 
+#ifndef __MINGW32__
 	done = radius_readfrom_program(from_child, pid, 10, answer, sizeof(answer));
 	if (done < 0) {
 		/*
@@ -691,52 +736,9 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 
 	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit: %s",
 	       strerror(errno));
+#endif	/* __MINGW32__ */
+
 	return 1;
-#else
-	msg_len = msg_len;	/* -Wunused */
-
-	if (exec_wait) {
-		radlog(L_ERR, "Exec-Program-Wait is not supported");
-		return -1;
-	}
-	
-	/*
-	 *	We're not waiting, so we don't look for a
-	 *	message, or VP's.
-	 */
-	user_msg = NULL;
-	output_pairs = NULL;
-
-	{
-		/*
-		 *	The _spawn and _exec families of functions are
-		 *	found in Windows compiler libraries for
-		 *	portability from UNIX. There is a variety of
-		 *	functions, including the ability to pass
-		 *	either a list or array of parameters, to
-		 *	search in the PATH or otherwise, and whether
-		 *	or not to pass an environment (a set of
-		 *	environment variables). Using _spawn, you can
-		 *	also specify whether you want the new process
-		 *	to close your program (_P_OVERLAY), to wait
-		 *	until the new process is finished (_P_WAIT) or
-		 *	for the two to run concurrently (_P_NOWAIT).
-		 
-		 *	_spawn and _exec are useful for instances in
-		 *	which you have simple requirements for running
-		 *	the program, don't want the overhead of the
-		 *	Windows header file, or are interested
-		 *	primarily in portability.
-		 */
-
-		/*
-		 *	FIXME: check return code... what is it?
-		 */
-		_spawnve(_P_NOWAIT, argv[0], argv, envp);
-	}
-
-	return 0;
-#endif
 }
 
 void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name)

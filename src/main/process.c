@@ -1617,7 +1617,9 @@ retry:
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 	
 	if (!rcode) {
+#ifdef HAVE_PTHREAD_H
 		if (proxy_no_new_sockets) return 0;
+#endif
 
 		/*
 		 *	Also locks the proxy mutex, so we have to call
@@ -3189,6 +3191,7 @@ static void request_coa_timer(REQUEST *request)
 }
 
 
+#ifdef HAVE_PTHREAD_H
 STATE_MACHINE_DECL(coa_running)
 {
 	TRACE_STATE_MACHINE;
@@ -3211,6 +3214,7 @@ STATE_MACHINE_DECL(coa_running)
 		break;
 	}
 }
+#endif	/* HAVE_PTHREAD_H */
 
 
 /*
@@ -3397,7 +3401,9 @@ int event_new_fd(rad_listen_t *this)
 						       &sock->other_ipaddr, sock->other_port,
 						       this)) {
 
+#ifdef HAVE_PTHREAD_H
 				proxy_no_new_sockets = TRUE;
+#endif
 				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 				/*
@@ -3414,6 +3420,7 @@ int event_new_fd(rad_listen_t *this)
 			if (sock->home) {
 				sock->home->num_connections++;
 				
+#ifdef HAVE_PTHREAD_H
 				/*
 				 *	If necessary, add it to the list of
 				 *	new proxy listeners.
@@ -3422,6 +3429,7 @@ int event_new_fd(rad_listen_t *this)
 					this->next = proxy_listener_list;
 					proxy_listener_list = this;
 				}
+#endif
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
@@ -3761,6 +3769,7 @@ static void handle_signal_self(int flag)
 
 #ifdef WITH_TCP
 #ifdef WITH_PROXY
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Add event handlers for idle timeouts && maximum lifetime.
 	 */
@@ -3791,6 +3800,7 @@ static void handle_signal_self(int flag)
 
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 	}
+#endif	/* HAVE_PTHREAD_H */
 #endif	/* WITH_PROXY */
 #endif	/* WITH_TCP */
 }

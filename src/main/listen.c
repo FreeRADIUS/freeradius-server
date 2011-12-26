@@ -561,9 +561,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	Non-blocking sockets must handle this.
 		 */
+#ifdef EWOULDBLOCK
 		if (errno == EWOULDBLOCK) {
 			return 0;
 		}
+#endif
 
 		DEBUG2(" ... failed to accept connection.");
 		return -1;
