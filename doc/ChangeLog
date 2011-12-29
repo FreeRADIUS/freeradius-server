@@ -7,6 +7,7 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  when people are using them.
 	* Finalize DHCP and DHCP relay code.  It should now work everywhere.
 	* Added TLS-Cert-Subject-Alt-Name-Email from patch by Luke Howard
+	* Added -F <file> to radwho
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
@@ -31,6 +32,10 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  Patch from Eike Dehling
 	* The passwd module no longer permits "hashsize = 0".  Setting that
 	  is pointless for a host of reasons.  It will also break the server.
+	* Fix proxied inner-tunnel packets sometimes having zero authentication
+	  vector.  Found by Brian Julin.
+	* Added $(EXEEXT) to Makefiles for portability.  Closes bug #188.
+	* Fix minor build issue which would cause rlm_eap to be built twice.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
