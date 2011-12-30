@@ -45,4 +45,4 @@ $(SUBDIRS):
 	@$(MAKE) $(MFLAGS) X=$(X)src/ -C $@ $(WHAT_TO_MAKE)
 
 freeradius-devel:
-	ln -s include freeradius-devel
+	ln -sf include freeradius-devel
