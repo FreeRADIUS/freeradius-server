@@ -71,16 +71,14 @@ static const CONF_PARSER module_config[] = {
 /*
  *	The Group = handler.
  */
-static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
+static int groupcmp(void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
 		    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 		    VALUE_PAIR **reply_pairs)
 {
 	struct passwd	*pwd;
 	struct group	*grp;
 	char		**member;
-	char		*username;
 	int		retval;
-	VALUE_PAIR	*vp;
 
 	instance = instance;
 	check_pairs = check_pairs;
