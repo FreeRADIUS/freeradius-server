@@ -2375,9 +2375,7 @@ int proxy_new_listener(home_server *home, int src_port)
 {
 	rad_listen_t *this;
 	listen_socket_t *sock;
-#ifndef NDEBUG
 	char buffer[256];
-#endif
 
 	if (!home) return 0;
 
