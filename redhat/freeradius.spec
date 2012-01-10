@@ -289,11 +289,9 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/clients.conf
 %config(noreplace) /etc/raddb/hints
 %config(noreplace) /etc/raddb/huntgroups
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/sqlippool.conf
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/preproxy_users
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/proxy.conf
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/radiusd.conf
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/sql.conf
 %dir %attr(750,root,radiusd) /etc/raddb/sql
 #%attr(640,root,radiusd) %config(noreplace) /etc/raddb/sql/oracle/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/users
@@ -307,7 +305,6 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-available/*
 %dir %attr(750,root,radiusd) /etc/raddb/sites-enabled
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-enabled/*
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/eap.conf
 %config(noreplace) %attr(640,root,radiusd) /etc/raddb/example.pl
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/policy.conf
 %config(noreplace) /etc/raddb/policy.txt
