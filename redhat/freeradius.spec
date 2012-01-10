@@ -310,6 +310,10 @@ fi
 %config(noreplace) /etc/raddb/policy.txt
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/templates.conf
 %dir %attr(750,root,radiusd) /etc/raddb/modules
+%dir %attr(750,root,radiusd) /etc/raddb/mods-available
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/*
+%dir %attr(750,root,radiusd) /etc/raddb/mods-enabled
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-enabled/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/*
 %dir %attr(755,radiusd,radiusd) /var/run/radiusd/
 # binaries
