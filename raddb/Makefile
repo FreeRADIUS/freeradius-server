@@ -15,15 +15,24 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	policy.txt preproxy_users proxy.conf radiusd.conf trigger.conf	\
 	users	policy.conf attrs.access_challenge
 
-DEFAULT_SITES = default inner-tunnel control-socket
+DEFAULT_SITES = default inner-tunnel
 ifneq "${OPENSSL_INCLUDE}" ""
 DEFAULT_SITES += tls
 endif
 
+DEFAULT_MODULES = acct_unique always attr_filter attr_rewrite chap checkval \
+		counter cui detail detail.log digest dynamic_clients eap \
+		echo exec expiration expr files inner-eap linelog logintime \
+		mschap ntlm_auth pap passwd preprocess radutmp realm \
+		replicate soh sradutmp unix utf8 wimax
+
 #
 #	This target is here for local debugging
 #
-all: 
+all: sites-enabled mods-enabled
+
+.PHONY: sites-enabled
+sites-enabled:
 	@if [ ! -d sites-enabled ]; then \
 		mkdir sites-enabled; \
 	fi
@@ -31,6 +40,18 @@ all:
 	 for x in $(DEFAULT_SITES); do \
 	    if [ ! -f $$x ]; then \
 		ln -s ../sites-available/$$x; \
+	    fi; \
+	done
+
+.PHONY: mods-enabled
+mods-enabled:
+	@if [ ! -d mods-enabled ]; then \
+		mkdir mods-enabled; \
+	fi
+	@cd mods-enabled/; \
+	 for x in $(DEFAULT_MODULES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../modules/$$x; \
 	    fi; \
 	done
 
@@ -79,7 +100,7 @@ install:
 		    fi; \
 		  done; \
 	fi
-	@cd $(R)$(raddbdir)sites-enabled/; \
+	@cd $(R)$(raddbdir)/sites-enabled/; \
 	 for x in $(DEFAULT_SITES); do \
 	    if [ ! -f $$x ]; then \
 		ln -s ../sites-available/$$x; \
@@ -87,7 +108,8 @@ install:
 	done
 
 clean:
-	@rm -rf *~ $(addprefix sites-enabled/,$(DEFAULT_SITES))
+	@rm -rf *~ $(addprefix sites-enabled/,$(DEFAULT_SITES)) \
+		$(addprefix mods-enabled/,$(DEFAULT_MODULES))
 
 triggers:
 	@grep exec_trigger `find ../src -name "*.c" -print` | grep '"' | sed -e 's/.*,//' -e 's/ *"//' -e 's/");.*//'
