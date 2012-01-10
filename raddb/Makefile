@@ -15,24 +15,24 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	policy.txt preproxy_users proxy.conf radiusd.conf trigger.conf	\
 	users	policy.conf attrs.access_challenge
 
+DEFAULT_SITES = default inner-tunnel control-socket
+ifneq "${OPENSSL_INCLUDE}" ""
+DEFAULT_SITES += tls
+endif
+
 #
 #	This target is here for local debugging
 #
-all:
+all: 
 	@if [ ! -d sites-enabled ]; then \
 		mkdir sites-enabled; \
 	fi
-	@if [ ! -f sites-enabled/default ]; then \
-		cd sites-enabled && ln -s ../sites-available/default; \
-	fi
-	@if [ ! -f sites-enabled/inner-tunnel ]; then \
-		cd sites-enabled && ln -s ../sites-available/inner-tunnel; \
-	fi
-ifneq "${OPENSSL_INCLUDE}" ""
-	@if [ ! -f sites-enabled/tls ]; then \
-		cd sites-enabled && ln -s ../sites-available/tls; \
-	fi
-endif
+	@cd sites-enabled/; \
+	 for x in $(DEFAULT_SITES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../sites-available/$$x; \
+	    fi; \
+	done
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
@@ -79,28 +79,15 @@ install:
 		    fi; \
 		  done; \
 	fi
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/default ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/default; \
-	fi
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/inner-tunnel ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/inner-tunnel; \
-	fi
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/control-socket ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/control-socket; \
-	fi
-ifneq "${OPENSSL_INCLUDE}" ""
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/control-socket ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/control-socket; \
-	fi
-endif
+	@cd $(R)$(raddbdir)sites-enabled/; \
+	 for x in $(DEFAULT_SITES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../sites-available/$$x; \
+	    fi; \
+	done
 
 clean:
-	@rm -rf sites-enabled/inner-tunnel sites-enabled/default \
-		sites-enabled/tls
+	@rm -rf *~ $(addprefix sites-enabled/,$(DEFAULT_SITES))
 
 triggers:
 	@grep exec_trigger `find ../src -name "*.c" -print` | grep '"' | sed -e 's/.*,//' -e 's/ *"//' -e 's/");.*//'
