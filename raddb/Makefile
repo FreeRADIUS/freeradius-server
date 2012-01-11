@@ -51,7 +51,7 @@ mods-enabled:
 	@cd mods-enabled/; \
 	 for x in $(DEFAULT_MODULES); do \
 	    if [ ! -f $$x ]; then \
-		ln -s ../modules/$$x; \
+		ln -s ../mods-available/$$x; \
 	    fi; \
 	done
 
@@ -59,9 +59,10 @@ install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-available
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-enabled
-	$(INSTALL) -d -m 750	$(R)$(raddbdir)/modules
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/mods-available
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/mods-enabled
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
-	for i in $(FILES) `find sites-available/ modules/ -type f -print | sed 's/.*CVS.*//;s/.*~//;s/.*#.*//' `; do \
+	for i in $(FILES) `find sites-available/ mods-available/ -type f -print | sed 's/.*~//;s/.*#.*//' `; do \
 		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 640 $$i $(R)$(raddbdir)/$$i; \
 		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
 			echo "** $(R)$(raddbdir)/$$i"; \
@@ -104,6 +105,12 @@ install:
 	 for x in $(DEFAULT_SITES); do \
 	    if [ ! -f $$x ]; then \
 		ln -s ../sites-available/$$x; \
+	    fi; \
+	done
+	@cd $(R)$(raddbdir)/mods-enabled/; \
+	 for x in $(DEFAULT_MODULES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../mods-available/$$x; \
 	    fi; \
 	done
 

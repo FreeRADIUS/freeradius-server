@@ -680,13 +680,13 @@ modules {
 	#
 
 	#
-	#  As of 2.0.5, most of the module configurations are in a
-	#  sub-directory.  Files matching the regex /[a-zA-Z0-9_.]+/
-	#  are loaded.  The modules are initialized ONLY if they are
-	#  referenced in a processing section, such as authorize,
-	#  authenticate, accounting, pre/post-proxy, etc.
+	#  As of 3.0, modules are in mods-enabled/.  Files matching
+	#  the regex /[a-zA-Z0-9_.]+/ are loaded.  The modules are
+	#  initialized ONLY if they are referenced in a processing
+	#  section, such as authorize, authenticate, accounting,
+	#  pre/post-proxy, etc.
 	#
-	$INCLUDE ${confdir}/modules/
+	$INCLUDE ${confdir}/mods-enabled/
 }
 
 # Instantiation
