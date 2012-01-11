@@ -1,0 +1,3 @@
+# Options for the FreeRADIUS deamon.
+#FREERADIUS_OPTIONS="-d /etc/freeradius"
+

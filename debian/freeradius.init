@@ -21,6 +21,10 @@ PROGRAM="/usr/sbin/freeradius"
 PIDFILE="/var/run/freeradius/freeradius.pid"
 DESCR="FreeRADIUS daemon"
 
+if [ -r /etc/default/$PROG ]; then
+  . /etc/default/$PROG
+fi
+
 test -f $PROGRAM || exit 0
 
 # /var/run may be a tmpfs
@@ -36,7 +40,7 @@ ret=0
 case "$1" in
         start)
                 log_daemon_msg "Starting $DESCR" "$PROG"
-                start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $PROGRAM || ret=$?
+                start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $PROGRAM -- $FREERADIUS_OPTIONS || ret=$?
                 log_end_msg $ret
                 exit $ret
                 ;;
