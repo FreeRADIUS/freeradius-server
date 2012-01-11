@@ -13,7 +13,7 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	attrs.pre-proxy clients.conf dictionary templates.conf	\
 	experimental.conf hints huntgroups ldap.attrmap			\
 	policy.txt preproxy_users proxy.conf radiusd.conf trigger.conf	\
-	users	policy.conf attrs.access_challenge
+	users policy.conf attrs.access_challenge README
 
 DEFAULT_SITES = default inner-tunnel
 ifneq "${OPENSSL_INCLUDE}" ""
