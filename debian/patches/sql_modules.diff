@@ -1,0 +1,30 @@
+diff --git a/raddb/modules/sql b/raddb/modules/sql
+index 690c3a2..ec33ed1 100644
+--- a/raddb/modules/sql
++++ b/raddb/modules/sql
+@@ -103,5 +103,5 @@ sql {
+ 	nas_table = "nas"
+ 
+ 	# Read driver-specific configuration
+-	$INCLUDE sql/${database}/dialup.conf
++	#$INCLUDE sql/${database}/dialup.conf
+ }
+diff --git a/raddb/modules/sqlippool b/raddb/modules/sqlippool
+index 94fabc0..aa9ea6b 100644
+--- a/raddb/modules/sqlippool
++++ b/raddb/modules/sqlippool
+@@ -46,7 +46,7 @@ sqlippool {
+  #  same as the "database" field of the SQL module referred to in the
+  #  "sql-instance-name", above.
+  #
+-$INCLUDE sql/postgresql/ippool.conf
++#$INCLUDE sql/mysql/ippool.conf
+  
+  ## Logging configuration. (Comment out to disable logging)
+  sqlippool_log_exists = "Existing IP: %{reply:Framed-IP-Address} \
+@@ -63,5 +63,4 @@ $INCLUDE sql/postgresql/ippool.conf
+ 
+  sqlippool_log_nopool = "No Pool-Name defined \
+   (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+-
+ }
