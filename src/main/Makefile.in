@@ -91,17 +91,17 @@ mainconfig.lo: mainconfig.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c mainconfig.c
 
 modcall.lo: modcall.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c modcall.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c modcall.c
 
 modules.lo: modules.c ../include/modules.h
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(VFLAGS) $(INCLTDL) -c modules.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(VFLAGS) -c modules.c
 
 session.lo: session.c ../include/modules.h
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c session.c
 
 # It's #include'd for simplicity.  This should be fixed...
 listen.lo: listen.c dhcpd.c command.c
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c listen.c
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c listen.c
 
 #
 # Helper programs

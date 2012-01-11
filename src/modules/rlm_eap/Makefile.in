@@ -5,7 +5,7 @@
 TARGET      = @targetname@
 SRCS        = rlm_eap.c eap.c mem.c
 HEADERS     = eap.h rlm_eap.h
-RLM_CFLAGS  = $(INCLTDL) -Ilibeap
+RLM_CFLAGS  = -Ilibeap
 CLIENTLIBS  = libeap/$(LIBPREFIX)freeradius-eap.la $(LIBRADIUS)
 RLM_LIBS    = libeap/$(LIBPREFIX)freeradius-eap.la $(LIBLTDL)
 RLM_INSTALL = install-subdirs

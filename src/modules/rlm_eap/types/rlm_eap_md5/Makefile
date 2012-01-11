@@ -7,7 +7,7 @@
 TARGET      = rlm_eap_md5
 SRCS        = rlm_eap_md5.c eap_md5.c
 HEADERS     = eap_md5.h
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap
+RLM_CFLAGS  = -I../.. -I../../libeap
 RLM_INSTALL =
 
 RLM_DIR=../../
