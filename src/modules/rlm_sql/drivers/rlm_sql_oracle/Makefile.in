@@ -2,7 +2,7 @@ include ../../../../../Make.inc
 
 TARGET         = @targetname@
 SRCS           = sql_oracle.c
-RLM_SQL_CFLAGS = @sql_oracle_cflags@ $(INCLTDL)
+RLM_SQL_CFLAGS = @sql_oracle_cflags@
 RLM_SQL_LIBS   = @sql_oracle_ldflags@
 
 include ../rules.mak

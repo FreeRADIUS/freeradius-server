@@ -2,7 +2,7 @@ include ../../../../../Make.inc
 
 TARGET		= @targetname@
 SRCS		= sql_unixodbc.c
-RLM_SQL_CFLAGS	= @sql_unixodbc_cflags@ $(INCLTDL)
+RLM_SQL_CFLAGS	= @sql_unixodbc_cflags@
 RLM_SQL_LIBS	= @sql_unixodbc_ldflags@
 
 include ../rules.mak

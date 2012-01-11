@@ -2,7 +2,7 @@ include ../../../../../Make.inc
 
 TARGET         = @targetname@
 SRCS           = sql_iodbc.c
-RLM_SQL_CFLAGS = @sql_iodbc_cflags@ $(INCLTDL)
+RLM_SQL_CFLAGS = @sql_iodbc_cflags@
 RLM_SQL_LIBS   = @sql_iodbc_ldflags@
 
 include ../rules.mak

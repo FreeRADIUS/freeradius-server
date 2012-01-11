@@ -5,7 +5,7 @@
 TARGET      = @targetname@
 SRCS        = rlm_eap_ttls.c ttls.c
 HEADERS     = eap_ttls.h ../../eap.h ../../rlm_eap.h
-RLM_CFLAGS  = -I../.. -I../../libeap $(INCLTDL) $(OPENSSL_INCLUDE) @eap_ttls_cflags@
+RLM_CFLAGS  = -I../.. -I../../libeap $(OPENSSL_INCLUDE) @eap_ttls_cflags@
 RLM_LIBS    = @eap_ttls_ldflags@ ../../libeap/$(LIBPREFIX)freeradius-eap.la $(OPENSSL_LIBS)
 RLM_INSTALL =
 

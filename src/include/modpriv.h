@@ -17,7 +17,7 @@
 
 #ifndef WITHOUT_LIBLTDL
 #ifdef WITH_SYSTEM_LTDL
-#include "ltdl.h"
+#include <ltdl.h>
 #else
 #include "libltdl/ltdl.h"
 #endif

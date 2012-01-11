@@ -20,7 +20,7 @@ HOSTAP	    = /path/to/hostap
 TARGET      = 
 SRCS        = rlm_eap2.c
 HEADERS     =
-RLM_CFLAGS  = $(INCLTDL) -I$(HOSTAP)/src/eap_common \
+RLM_CFLAGS  = -I$(HOSTAP)/src/eap_common \
 	      -I$(HOSTAP)/src/eap_server  -I$(HOSTAP)/src  \
 	      -I$(HOSTAP)/src/common -I$(HOSTAP)/src/utils
 RLM_LIBS    = $(HOSTAP)/eap_example/libeap.so

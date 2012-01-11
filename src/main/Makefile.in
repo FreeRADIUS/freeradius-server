@@ -96,8 +96,6 @@ session.lo: session.c ../include/modules.h
 
 # It's #include'd for simplicity.  This should be fixed...
 listen.lo: listen.c dhcpd.c command.c
-	@echo CC $<
-	@$(LIBTOOL) --quiet --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c listen.c
 
 #
 # Helper programs
