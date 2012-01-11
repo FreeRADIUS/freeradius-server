@@ -26,6 +26,14 @@ linelog {
 	permissions = 0600
 
 	#
+	# The Unix group of the log file.
+	#
+	# The user that freeradius runs as must be in the specified
+	# group, otherwise it will not be possible to set the group.
+	#
+	# group = freerad
+
+	#
 	#  The default format string.
 	format = "This is a log message for %{User-Name}"
 
