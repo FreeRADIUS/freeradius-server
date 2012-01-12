@@ -18,7 +18,7 @@
 #  Ideally, the "configure" process should automatically enable this
 #  dictionary, but we don't yet do that.
 #
-#$INCLUDE	@prefix@/dictionary.dhcp
+#$INCLUDE	@prefix@/share/freeradius/dictionary.dhcp
 
 #
 #	The filename given here should be an absolute path. 
