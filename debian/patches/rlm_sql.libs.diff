@@ -23,7 +23,7 @@
 @@ -8,7 +8,7 @@
  SRCS        = rlm_sqlippool.c
  HEADERS     = $(top_builddir)/src/modules/rlm_sql/rlm_sql.h
- RLM_CFLAGS  = -I$(top_builddir)/src/modules/rlm_sql $(INCLTDL)
+ RLM_CFLAGS  = -I$(top_builddir)/src/modules/rlm_sql
 -RLM_LIBS    =
 +RLM_LIBS    += $(top_builddir)/src/modules/rlm_sql/.libs/rlm_sql.la
  RLM_INSTALL =
