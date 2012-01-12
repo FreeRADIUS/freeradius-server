@@ -77,6 +77,8 @@ static CONF_PARSER ocsp_config[] = {
 	  offsetof(EAP_TLS_CONF, ocsp_override_url), NULL, "no"},
 	{ "url", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, ocsp_url), NULL, NULL },
+	{ "use_nonce", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, ocsp_use_nonce), NULL, "yes"},
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 #endif
@@ -312,7 +314,9 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	certid = OCSP_cert_to_id(NULL, client_cert, issuer_cert);
 	req = OCSP_REQUEST_new();
 	OCSP_request_add0_id(req, certid);
-	OCSP_request_add1_nonce(req, NULL, 8);
+	if(conf->ocsp_use_nonce){
+		OCSP_request_add1_nonce(req, NULL, 8);
+	}
 	
 	/* 
 	 * Send OCSP Request and get OCSP Response
@@ -351,7 +355,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
-	if(OCSP_check_nonce(req, bresp)!=1) {
+	if(conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
 		radlog(L_ERR, "Error: OCSP response has wrong nonce value");
 		goto ocsp_end;
 	}
