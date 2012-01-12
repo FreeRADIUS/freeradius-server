@@ -5,15 +5,19 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  See raddb/certs/*.cnf
 	* Added Copyright statements to the dictionaries, so that we know
 	  when people are using them.
+	* Better documentation for radrelay and detail file writer.
+	  See raddb/modules/radrelay and raddb/radrelay.conf
 	* Finalize DHCP and DHCP relay code.  It should now work everywhere.
+	  See raddb/sites-available/dhcp, src_ipaddr and src_interface.
 	* Added TLS-Cert-Subject-Alt-Name-Email from patch by Luke Howard
 	* Added -F <file> to radwho
+	* Added query timeouts to MySQL driver.  Patch from Brian De Wolf.
+	* Add /etc/default/freeradius to debian package.
+	  Patch from Matthew Newton
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
 	  was read from this detail file.
-	* Better documentation for radrelay and detail file writer.
-	  See raddb/modules/radrelay and raddb/radrelay.conf
 	* Free cached replies when closing resumed SSL sessions.
 	* Fix a number of issues found by Coverity.
 	* Fix memory leak and race condition in the EAP-TLS session cache.
@@ -24,7 +28,7 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Fix SQL IPPool logic for non-timer attributes.  Closes bug #181
 	* Change some informational messages to DEBUG rather than error.
 	* Portability fixes for FreeBSD.  Closes bug #177
-	* A much better fix for _lt__PROGRAM__LTX_preloaded_symbols
+	* A much better fix for the _lt__PROGRAM__LTX_preloaded_symbols
 	  nonsense.
 	* Safely handle extremely long lines in conf file variable expansion
 	* Fix for Debian bug #606450
@@ -36,6 +40,9 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  vector.  Found by Brian Julin.
 	* Added $(EXEEXT) to Makefiles for portability.  Closes bug #188.
 	* Fix minor build issue which would cause rlm_eap to be built twice.
+	* When using "status_check=request" for a home server, the username
+	  and password must be specified, or the server will not start.
+	* Fixed path to dictionary.dhcp in raddb/dictionary
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
