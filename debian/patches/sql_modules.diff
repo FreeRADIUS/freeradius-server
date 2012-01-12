@@ -1,7 +1,7 @@
-diff --git a/raddb/modules/sql b/raddb/modules/sql
+diff --git a/raddb/mods-available/sql b/raddb/mods-available/sql
 index 690c3a2..ec33ed1 100644
---- a/raddb/modules/sql
-+++ b/raddb/modules/sql
+--- a/raddb/mods-available/sql
++++ b/raddb/mods-available/sql
 @@ -103,5 +103,5 @@ sql {
  	nas_table = "nas"
  
@@ -9,10 +9,10 @@ index 690c3a2..ec33ed1 100644
 -	$INCLUDE sql/${database}/dialup.conf
 +	#$INCLUDE sql/${database}/dialup.conf
  }
-diff --git a/raddb/modules/sqlippool b/raddb/modules/sqlippool
+diff --git a/raddb/mods-available/sqlippool b/raddb/mods-available/sqlippool
 index 94fabc0..aa9ea6b 100644
---- a/raddb/modules/sqlippool
-+++ b/raddb/modules/sqlippool
+--- a/raddb/mods-available/sqlippool
++++ b/raddb/mods-available/sqlippool
 @@ -46,7 +46,7 @@ sqlippool {
   #  same as the "database" field of the SQL module referred to in the
   #  "sql-instance-name", above.
