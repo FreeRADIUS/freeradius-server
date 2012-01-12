@@ -15,7 +15,10 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Moved eap.conf to modules/eap
 	* Moved sql.conf to modules/sql
 	* Preliminary support for Apple's Grand Central Dispatch.
+	* All modules have been moved to raddb/mods-available/
+	  and raddb/modes-enabled/.  See raddb/README for more details.
 	* Largely config-file compatible with 2.1.x.
+	* For upgrade instructions, see raddb/README
 
 	Bug fixes
 	* All known bug fixes are included.
