@@ -60,6 +60,51 @@ static unsigned int 	record_plus(record_t *buf, const void *ptr,
 static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
+#ifdef PSK_MAX_IDENTITY_LEN
+static unsigned int psk_server_callback(SSL *ssl, const char *identity,
+					unsigned char *psk, int max_psk_len)
+{
+	unsigned int psk_len;
+	fr_tls_server_conf_t *conf;
+
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl,
+						       FR_TLS_EX_INDEX_CONF);
+	if (!conf) return 0;
+
+	/*
+	 *	FIXME: Look up the PSK password based on the identity!
+	 */
+	if (strcmp(identity, conf->psk_identity) != 0) {
+		return 0;
+	}
+
+	psk_len = strlen(conf->psk_password);
+	if (psk_len > (2 * max_psk_len)) return 0;
+
+	return fr_hex2bin(conf->psk_password, psk, psk_len);
+}
+
+static unsigned int psk_client_callback(SSL *ssl, UNUSED const char *hint,
+					char *identity, unsigned int max_identity_len,
+					unsigned char *psk, unsigned int max_psk_len)
+{
+	unsigned int psk_len;
+	fr_tls_server_conf_t *conf;
+
+	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl,
+						       FR_TLS_EX_INDEX_CONF);
+	if (!conf) return 0;
+
+	psk_len = strlen(conf->psk_password);
+	if (psk_len > (2 * max_psk_len)) return 0;
+
+	strlcpy(identity, conf->psk_identity, max_identity_len);
+
+	return fr_hex2bin(conf->psk_password, psk, psk_len);
+}
+
+#endif
+
 tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 {
 	int verify_mode;
@@ -761,6 +806,12 @@ static CONF_PARSER tls_server_config[] = {
 	  offsetof(fr_tls_server_conf_t, ca_file), NULL, NULL },
 	{ "private_key_password", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, private_key_password), NULL, NULL },
+#ifdef PSK_MAX_IDENTITY_LEN
+	{ "psk_identity", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, psk_identity), NULL, NULL },
+	{ "psk_hexphrase", PW_TYPE_STRING_PTR,
+	  offsetof(fr_tls_server_conf_t, psk_password), NULL, NULL },
+#endif
 	{ "dh_file", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, dh_file), NULL, NULL },
 	{ "random_file", PW_TYPE_STRING_PTR,
@@ -916,8 +967,6 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 
 static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
-	int i;
-
 	size_t size;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
 
@@ -1586,7 +1635,7 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
  *	- Load the Private key & the certificate
  *	- Set the Context options & Verify options
  */
-static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf)
+static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 {
 	const SSL_METHOD *meth;
 	SSL_CTX *ctx;
@@ -1674,6 +1723,51 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf)
 		SSL_CTX_set_default_passwd_cb(ctx, cbtls_password);
 	}
 
+#ifdef PSK_MAX_IDENTITY_LEN
+	if ((conf->psk_identity && !conf->psk_password) ||
+	    (!conf->psk_identity && conf->psk_password) ||
+	    (conf->psk_identity && !*conf->psk_identity) ||
+	    (conf->psk_password && !*conf->psk_password)) {
+		radlog(L_ERR, "Invalid PSK Configuration: psk_identity or psk_password are empty");
+		return NULL;
+	}
+
+	if (conf->psk_identity) {
+		size_t psk_len, hex_len;
+		char buffer[PSK_MAX_PSK_LEN];
+
+		if (conf->certificate_file ||
+		    conf->private_key_password || conf->private_key_file ||
+		    conf->ca_file || conf->ca_path) {
+			radlog(L_ERR, "When PSKs are used, No certificate configuration is permitted");
+			return NULL;
+		}
+
+		if (client) {
+			SSL_CTX_set_psk_client_callback(ctx,
+							psk_client_callback);
+		} else {
+			SSL_CTX_set_psk_server_callback(ctx,
+							psk_server_callback);
+		}
+
+		psk_len = strlen(conf->psk_password);
+		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
+			radlog(L_ERR, "psk_hexphrase is too long (max %d)",
+			       PSK_MAX_PSK_LEN);
+			return NULL;			    
+		}
+
+		hex_len = fr_hex2bin(conf->psk_password, buffer, psk_len);
+		if (psk_len != (2 * hex_len)) {
+			radlog(L_ERR, "psk_hexphrase is not all hex");
+			return NULL;			    
+		}
+
+		goto post_ca;
+	}
+#endif
+
 	/*
 	 *	Load our keys and certificates
 	 *
@@ -1727,6 +1821,10 @@ load_ca:
 			return NULL;
 		}
 	}
+
+#ifdef PSK_MAX_IDENTITY_LEN
+post_ca:
+#endif
 
 	/*
 	 *	Set ctx_options
@@ -1963,7 +2061,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = init_tls_ctx(conf);
+	conf->ctx = init_tls_ctx(conf, 0);
 	if (conf->ctx == NULL) {
 		goto error;
 	}
@@ -2026,7 +2124,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 	/*
 	 *	Initialize TLS
 	 */
-	conf->ctx = init_tls_ctx(conf);
+	conf->ctx = init_tls_ctx(conf, 1);
 	if (conf->ctx == NULL) {
 		goto error;
 	}

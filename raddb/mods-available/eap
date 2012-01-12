@@ -182,6 +182,30 @@
 			CA_file = ${cadir}/ca.pem
 
 			#
+			#  If OpenSSL supports TLS-PSK, then we can use
+			#  a PSK identity and (hex) password.  When the
+			#  following two configuration items are specified,
+			#  then certificate-based configuration items are
+			#  not allowed.  e.g.:
+			#
+			#	private_key_password
+			#	private_key_file
+			#	certificate_file
+			#	CA_file
+			#	CA_path
+			#
+			#  For now, the identity is fixed, and must be the
+			#  same on the client.  The passphrase must be a hex
+			#  value, and can be up to 256 hex digits.
+			#
+			#  Future versions of the server may be able to
+			#  look up the shared key (hexphrase) based on the
+			#  identity.
+			#
+		#	psk_identity = "test"
+		#	psk_hexphrase = "036363823"
+
+			#
 			#  For DH cipher suites to work, you have to
 			#  run OpenSSL to create the DH file first:
 			#

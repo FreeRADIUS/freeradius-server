@@ -382,6 +382,12 @@ struct fr_tls_server_conf_t {
 	char		*ecdh_curve;
 #endif
 #endif
+
+#ifdef PSK_MAX_IDENTITY_LEN
+	char		*psk_identity;
+	char		*psk_password;
+#endif
+
 };
 
 #ifdef __cplusplus
