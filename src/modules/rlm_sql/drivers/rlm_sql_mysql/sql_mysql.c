@@ -66,6 +66,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock;
 	unsigned long sql_flags;
+	unsigned int timeout = config->query_timeout;
 
 	if (!sqlsocket->conn) {
 		sqlsocket->conn = (rlm_sql_mysql_sock *)rad_malloc(sizeof(rlm_sql_mysql_sock));
@@ -80,6 +81,15 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 
 	mysql_init(&(mysql_sock->conn));
 	mysql_options(&(mysql_sock->conn), MYSQL_READ_DEFAULT_GROUP, "freeradius");
+
+#if (MYSQL_VERSION_ID >= 50000)
+	if(timeout) {
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_READ_TIMEOUT, &timeout);
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_WRITE_TIMEOUT, &timeout);
+	}
+#endif
+
 #if (MYSQL_VERSION_ID >= 40100)
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
 #else
