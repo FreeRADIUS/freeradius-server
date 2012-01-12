@@ -66,7 +66,6 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
 	rlm_sql_mysql_sock *mysql_sock;
 	unsigned long sql_flags;
-	unsigned int timeout = config->query_timeout;
 
 	if (!sqlsocket->conn) {
 		sqlsocket->conn = (rlm_sql_mysql_sock *)rad_malloc(sizeof(rlm_sql_mysql_sock));
@@ -83,10 +82,22 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	mysql_options(&(mysql_sock->conn), MYSQL_READ_DEFAULT_GROUP, "freeradius");
 
 #if (MYSQL_VERSION_ID >= 50000)
-	if(timeout) {
-		mysql_options(&(mysql_sock->conn), MYSQL_OPT_CONNECT_TIMEOUT, &timeout);
-		mysql_options(&(mysql_sock->conn), MYSQL_OPT_READ_TIMEOUT, &timeout);
-		mysql_options(&(mysql_sock->conn), MYSQL_OPT_WRITE_TIMEOUT, &timeout);
+	if (config->query_timeout) {
+		unsigned int timeout = config->query_timeout;
+
+		/*
+		 *	3 retries are hard-coded into the MySQL library.
+		 *	We ensure that the REAL timeout is what the user
+		 *	set by accounting for that.
+		 */
+		if (timeout > 3) timeout /= 3;
+
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_CONNECT_TIMEOUT,
+			      &timeout);
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_READ_TIMEOUT,
+			      &timeout);
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_WRITE_TIMEOUT,
+			      &timeout);
 	}
 #endif
 
