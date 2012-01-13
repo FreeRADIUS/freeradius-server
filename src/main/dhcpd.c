@@ -484,7 +484,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			      &sock->suppress_responses, NULL);
 	}
 	
-	if (!sock->src_interface) sock->src_interface = strdup(sock->interface)
+	if (!sock->src_interface) sock->src_interface = strdup(sock->interface);
 
 	cp = cf_pair_find(cs, "src_interface");
 	if (cp) {
