@@ -218,6 +218,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 					return 1;
 				}
 				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
+					DEBUG("%s", fr_strerror());
 					return -1;
 				}
 			}
