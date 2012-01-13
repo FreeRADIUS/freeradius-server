@@ -201,7 +201,11 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 			request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		} else {
 			vp = pairfind(request->packet->vps, DHCP2ATTR(264)); /* DHCP-Your-IP-Address */
-			rad_assert(vp != NULL);
+			if (!vp) {
+				DEBUG("DHCP: Failed to find IP Address for request.");
+				return -1;
+			}
+
 			request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 			/*
@@ -409,7 +413,11 @@ static int dhcp_process(REQUEST *request)
 			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		} else {
 			vp = pairfind(request->reply->vps, DHCP2ATTR(264)); /* DHCP-Your-IP-Address */
-			rad_assert(vp != NULL);
+			if (!vp) {
+				DEBUG("DHCP: Failed to find IP Address for request.");
+				return -1;
+			}
+			
 			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 			/*
@@ -420,7 +428,9 @@ static int dhcp_process(REQUEST *request)
 			 */
 			if (request->reply->code == PW_DHCP_OFFER) {
 				VALUE_PAIR *hwvp = pairfind(request->reply->vps, DHCP2ATTR(267)); /* DHCP-Client-Hardware-Address */
-				rad_assert(hwvp != NULL);
+
+				if (!hwvp) return -1;
+
 				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
 					return -1;
 				}
