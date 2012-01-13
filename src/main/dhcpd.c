@@ -479,18 +479,16 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cp) {
 		const char *value;
 
-		value = cf_pair_value(cp);
-
-		if (value && (strcmp(value, "yes") == 0)) {
-			sock->suppress_responses = TRUE;
-		}
+		cf_item_parse(cs, "suppress_responses", PW_TYPE_BOOLEAN,
+			      &sock->suppress_responses, NULL);
 	}
+	
+	if (!sock->src_interface) sock->src_interface = strdup(sock->interface)
 
 	cp = cf_pair_find(cs, "src_interface");
 	if (cp) {
-		const char *value;
-		value = cf_pair_value(cp);
-		sock->src_interface = value;
+		cf_item_parse(cs, "src_interface", PW_TYPE_STRING_PTR,
+			      &sock->src_interface, NULL);
 	} else {
                 sock->src_interface = sock->interface;
         }
@@ -500,7 +498,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
 		sock->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
 		rcode = cf_item_parse(cs, "src_ipaddr", PW_TYPE_IPADDR,
-					&sock->src_ipaddr.ipaddr.ip4addr, NULL);
+				      &sock->src_ipaddr.ipaddr.ip4addr, NULL);
 		if (rcode < 0) return -1;
 
 		sock->src_ipaddr.af = AF_INET;
