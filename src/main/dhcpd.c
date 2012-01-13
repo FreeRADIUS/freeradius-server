@@ -446,6 +446,10 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock = this->data;
 
+	if (!sock->interface) {
+		DEBUG("WARNING: No \"interface\" setting is defined.  Only unicast DHCP will work.");
+	}
+
 	/*
 	 *	See whether or not we enable broadcast packets.
 	 */
@@ -484,8 +488,6 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			      &sock->suppress_responses, NULL);
 	}
 	
-	if (!sock->src_interface) sock->src_interface = strdup(sock->interface);
-
 	cp = cf_pair_find(cs, "src_interface");
 	if (cp) {
 		cf_item_parse(cs, "src_interface", PW_TYPE_STRING_PTR,
@@ -493,6 +495,10 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	} else {
                 sock->src_interface = sock->interface;
         }
+
+	if (!sock->src_interface && sock->interface) {
+		sock->src_interface = strdup(sock->interface);
+	}
 
 	cp = cf_pair_find(cs, "src_ipaddr");
 	if (cp) {
