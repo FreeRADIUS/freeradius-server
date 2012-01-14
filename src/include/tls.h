@@ -374,6 +374,7 @@ struct fr_tls_server_conf_t {
 	int		ocsp_enable;
 	int		ocsp_override_url;
 	char		*ocsp_url;
+	int		ocsp_use_nonce;
 	X509_STORE	*ocsp_store;
 #endif
 
