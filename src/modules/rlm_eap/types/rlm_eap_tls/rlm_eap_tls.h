@@ -78,6 +78,7 @@ typedef struct eap_tls_conf {
 	int		ocsp_enable;
 	int		ocsp_override_url;
 	char		*ocsp_url;
+	int		ocsp_use_nonce;
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
