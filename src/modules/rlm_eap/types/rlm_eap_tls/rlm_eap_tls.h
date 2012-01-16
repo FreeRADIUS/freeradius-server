@@ -80,6 +80,7 @@ typedef struct eap_tls_conf {
 	char		*ocsp_url;
 	int		ocsp_use_nonce;
 	int		ocsp_timeout;
+	int		ocsp_softfail;
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
