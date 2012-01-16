@@ -31,6 +31,14 @@ RCSID("$Id$")
 #include <fcntl.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
+
 #ifdef HAVE_SYSLOG_H
 #include <syslog.h>
 
@@ -46,6 +54,7 @@ typedef struct rlm_linelog_t {
 	CONF_SECTION	*cs;
 	char		*filename;
 	int		permissions;
+	char		*group;
 	char		*line;
 	char		*reference;
 } rlm_linelog_t;
@@ -64,6 +73,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
 	{ "permissions",  PW_TYPE_INTEGER,
 	  offsetof(rlm_linelog_t,permissions), NULL,  "0600"},
+	{ "group",  PW_TYPE_STRING_PTR,
+	  offsetof(rlm_linelog_t,group), NULL,  NULL},
 	{ "format",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,line), NULL,  NULL},
 	{ "reference",  PW_TYPE_STRING_PTR,
@@ -199,6 +210,12 @@ static int do_linelog(void *instance, REQUEST *request)
 	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
 	const char *value = inst->line;
 
+#ifdef HAVE_GRP_H
+	gid_t gid;
+	struct group *grp;
+	char *endptr;
+#endif
+
 	if (inst->reference) {
 		CONF_ITEM *ci;
 		CONF_PAIR *cp;
@@ -263,6 +280,25 @@ static int do_linelog(void *instance, REQUEST *request)
 		}
 	}
 
+#ifdef HAVE_GRP_H
+	if (inst->group != NULL) {
+		gid = strtol(inst->group, &endptr, 10);
+		if (*endptr != '\0') {
+			grp = getgrnam(inst->group);
+			if (grp == NULL) {
+				RDEBUG2("Unable to find system group \"%s\"", inst->group);
+				goto skip_group;
+			}
+			gid = grp->gr_gid;
+		}
+
+		if (chown(buffer, -1, gid) == -1) {
+			RDEBUG2("Unable to change system group of \"%s\"", buffer);
+		}
+	}
+#endif
+
+ skip_group:
 	/*
 	 *	FIXME: Check length.
 	 */
