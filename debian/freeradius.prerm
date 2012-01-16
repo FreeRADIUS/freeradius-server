@@ -28,7 +28,7 @@ case "$1" in
           /etc/freeradius/clients.conf \
           /etc/freeradius/acct_users
         do
-          if dpkg-statoverride --list | grep -qw $file$; then
+          if dpkg-statoverride --list $file >/dev/null; then
             dpkg-statoverride --remove $file
           fi
         done
@@ -39,7 +39,7 @@ case "$1" in
           /var/run/freeradius \
           /var/log/freeradius
         do
-          if dpkg-statoverride --list | grep -qw $dir$; then
+          if dpkg-statoverride --list $dir >/dev/null; then
             dpkg-statoverride --remove $dir
           fi
         done
