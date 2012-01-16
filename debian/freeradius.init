@@ -48,18 +48,28 @@ case "$1" in
                 log_daemon_msg "Stopping $DESCR" "$PROG"
                 if [ -f "$PIDFILE" ] ; then
                   start-stop-daemon --stop --retry=TERM/30/KILL/5 --quiet --pidfile $PIDFILE || ret=$?
-                  log_end_msg $ret
                 else 
                   log_action_cont_msg "$PIDFILE not found"
-                  log_end_msg 0
+                  ret=0
                 fi
+                log_end_msg $ret
                 ;;
-        restart|force-reload)
+        restart)
                 $0 stop
                 $0 start
                 ;;
+        reload|force-reload)
+                log_daemon_msg "Reloading $DESCR" "$PROG"
+                if [ -f "$PIDFILE" ] ; then
+                  start-stop-daemon --stop --signal HUP --quiet --pidfile $PIDFILE || ret=$?
+                else 
+                  log_action_cont_msg "$PIDFILE not found"
+                  ret=0
+                fi
+                log_end_msg $ret
+                ;;
         *)
-                echo "Usage: $0 start|stop|restart|force-reload"
+                echo "Usage: $0 start|stop|restart|force-reload|reload"
                 exit 1 
                 ;;
 esac
