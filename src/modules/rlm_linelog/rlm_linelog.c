@@ -296,9 +296,10 @@ static int do_linelog(void *instance, REQUEST *request)
 			RDEBUG2("Unable to change system group of \"%s\"", buffer);
 		}
 	}
-#endif
 
  skip_group:
+#endif
+
 	/*
 	 *	FIXME: Check length.
 	 */
