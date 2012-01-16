@@ -79,6 +79,8 @@ static CONF_PARSER ocsp_config[] = {
 	  offsetof(EAP_TLS_CONF, ocsp_url), NULL, NULL },
 	{ "use_nonce", PW_TYPE_BOOLEAN,
 	  offsetof(EAP_TLS_CONF, ocsp_use_nonce), NULL, "yes"},
+	{ "timeout", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, ocsp_timeout), NULL, "0" },
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 #endif
@@ -295,7 +297,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 {
 	OCSP_CERTID *certid;
 	OCSP_REQUEST *req;
-	OCSP_RESPONSE *resp;
+	OCSP_RESPONSE *resp = NULL;
 	OCSP_BASICRESP *bresp = NULL;
 	char *host = NULL;
 	char *port = NULL;
@@ -307,6 +309,10 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	int status ;
 	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
 	int reason;
+	OCSP_REQ_CTX *ctx;
+	int rc;
+	struct timeval now;
+	struct timeval when;
 
 	/* 
 	 * Create OCSP Request 
@@ -338,11 +344,42 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
 
 	BIO_set_conn_port(cbio, port);
-	BIO_do_connect(cbio);
 
-	/* Send OCSP request and wait for response */
-	resp = OCSP_sendreq_bio(cbio, path, req);
-	if(resp==0) {
+	if (conf->ocsp_timeout)
+		BIO_set_nbio(cbio, 1);
+
+	rc = BIO_do_connect(cbio);
+	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
+		radlog(L_ERR, "Error: Couldn't connect to OCSP responder");
+		goto ocsp_end;
+	}
+
+	ctx = OCSP_sendreq_new(cbio, path, req, -1);
+	if (!ctx) {
+		radlog(L_ERR, "Error: Couldn't send OCSP request");
+		goto ocsp_end;
+	}
+
+	gettimeofday(&when, NULL);
+	when.tv_sec += conf->ocsp_timeout;
+
+	do {
+		rc = OCSP_sendreq_nbio(&resp, ctx);
+		if (conf->ocsp_timeout) {
+			gettimeofday(&now, NULL);
+			if (!timercmp(&now, &when, <))
+				break;
+		}
+	} while ((rc == -1) && BIO_should_retry(cbio));
+
+	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
+		radlog(L_ERR, "Error: OCSP response timed out");
+		goto ocsp_end;
+	}
+
+	OCSP_REQ_CTX_free(ctx);
+
+	if (rc == 0) {
 		radlog(L_ERR, "Error: Couldn't get OCSP response");
 		goto ocsp_end;
 	}
