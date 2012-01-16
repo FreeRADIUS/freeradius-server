@@ -353,9 +353,9 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 			RDEBUG2("rlm_detail: Unable to change system group of \"%s\"", buffer);
 		}
 	}
-#endif
 
  skip_group:
+#endif
 
 	/*
 	 *	Post a timestamp
