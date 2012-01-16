@@ -2,6 +2,73 @@
 
 set -e
 
+update_fs_from_statoverride() {
+  # I wish a simple dpkg-statoverride --update $file just did
+  # the right thing, but it doesn't, so we have to do it manually.
+  type=$1
+  user=$2
+  group=$3
+  mode=$4
+  file=$5
+  if [ -n "$type" -a -n "$group" -a -n "$mode" -a -n "$file" ]; then
+    if [ "$(find $file -maxdepth 0 -type $type -group $group -perm $mode)" = "" -a -$type $file ]; then
+      chgrp $group $file
+      chmod $mode $file
+    fi
+  fi
+}
+
+handle_config_files() {
+  runmode=$1
+
+  set +e
+  so=$(dpkg-statoverride --list /etc/freeradius)
+  ret=$?
+  set -e
+  case "$runmode" in
+    initial)
+      if [ $ret != 0 ]; then
+        dpkg-statoverride --add --update freerad freerad 2751 /etc/freeradius
+      fi
+      ;;
+    upgrade)
+      update_fs_from_statoverride d $so
+      ;;
+  esac
+
+  set +e
+  so=$(dpkg-statoverride --list /etc/freeradius/radiusd.conf)
+  ret=$?
+  set -e
+  case "$runmode" in
+    initial)
+      if [ $ret != 0 ]; then
+        dpkg-statoverride --add --update root freerad 0640 /etc/freeradius/radiusd.conf 
+      fi
+      ;;
+    upgrade)
+      update_fs_from_statoverride f $so
+      ;;
+  esac
+
+  # Relax permissions on local dictionary - allows radclient to run and should
+  # not contain secrets.  At any rate, only do it on fresh install
+  set +e
+  so=$(dpkg-statoverride --list /etc/freeradius/dictionary)
+  ret=$?
+  set -e
+  case "$runmode" in
+    initial)
+      if [ $ret != 0 ]; then
+        dpkg-statoverride --add --update root freerad 0644 /etc/freeradius/dictionary
+      fi
+      ;;
+    upgrade)
+      update_fs_from_statoverride f $so
+      ;;
+  esac
+}
+
 case "$1" in
   configure)
         if [ -z "$2" ]; then
@@ -13,20 +80,10 @@ case "$1" in
           # group if authenticating by another mechanism
           adduser --quiet freerad shadow
 
-          if ! dpkg-statoverride --list | grep -qw /etc/freeradius$; then
-            dpkg-statoverride --add --update freerad freerad 2751 /etc/freeradius
-          fi
+          handle_config_files initial
 
-          if ! dpkg-statoverride --list | grep -qw /etc/freeradius/radiusd.conf$; then
-            dpkg-statoverride --add --update root freerad 0640 /etc/freeradius/radiusd.conf 
-          fi
-
-          # Relax permissions on local dictionary - allows radclient to run and should
-          # not contain secrets.  At any rate, only do it on fresh install
-          if ! dpkg-statoverride --list | grep -qw /etc/freeradius/dictionary$; then
-            dpkg-statoverride --add --update root freerad 0644 /etc/freeradius/dictionary
-          fi
-
+        else
+          handle_config_files upgrade
         fi
         ;;
 esac

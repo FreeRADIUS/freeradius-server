@@ -2,9 +2,84 @@
 
 set -e
 
+update_fs_from_statoverride() {
+  # I wish a simple dpkg-statoverride --update $file just did
+  # the right thing, but it doesn't, so we have to do it manually.
+  type=$1
+  user=$2
+  group=$3
+  mode=$4
+  file=$5
+  if [ -n "$type" -a -n "$group" -a -n "$mode" -a -n "$file" ]; then
+    if [ "$(find $file -maxdepth 0 -type $type -group $group -perm $mode)" = "" -a -$type $file ]; then
+      chgrp $group $file
+      chmod $mode $file
+    fi
+  fi
+}
+
+handle_config_files() {
+  runmode=$1
+
+  for file in /etc/freeradius/preproxy_users \
+              /etc/freeradius/policy.conf \
+              /etc/freeradius/eap.conf \
+              /etc/freeradius/experimental.conf \
+              /etc/freeradius/huntgroups \
+              /etc/freeradius/proxy.conf \
+              /etc/freeradius/attrs.pre-proxy \
+              /etc/freeradius/hints \
+              /etc/freeradius/sql.conf \
+              /etc/freeradius/ldap.attrmap \
+              /etc/freeradius/attrs \
+              /etc/freeradius/policy.txt \
+              /etc/freeradius/attrs.accounting_response \
+              /etc/freeradius/attrs.access_reject \
+              /etc/freeradius/attrs.access_challenge \
+              /etc/freeradius/clients.conf \
+              /etc/freeradius/acct_users
+  do
+    set +e
+    so=$(dpkg-statoverride --list $file)
+    ret=$?
+    set -e
+    case "$runmode" in
+      initial)
+        if [ $ret != 0 ]; then
+          dpkg-statoverride --add --update root freerad 0640 $file
+        fi
+        ;;
+      upgrade)
+        update_fs_from_statoverride f $so
+        ;;
+    esac
+  done
+
+  for dir in /etc/freeradius/certs \
+             /etc/freeradius/sites-available \
+             /etc/freeradius/sites-enabled
+  do
+    set +e
+    so=$(dpkg-statoverride --list $dir)
+    ret=$?
+    set -e
+    case "$runmode" in
+      initial)
+        if [ $ret != 0 ]; then
+          dpkg-statoverride --add --update freerad freerad 2751 $dir
+        fi
+        ;;
+      upgrade)
+        update_fs_from_statoverride d $so
+        ;;
+    esac
+  done
+}
+
 case "$1" in
   configure)
         if [ -z "$2" ]; then
+
           # Changed in 1.1.5-1 for new installs (we used to start at S50
           # and stop at K50)  We now start at S50 and stop at K19 so we
           # start after services which may be used and stop before them.
@@ -12,11 +87,11 @@ case "$1" in
 
           # Set up initial permissions on all the freeradius directories
 
-          if ! dpkg-statoverride --list | grep -q /var/run/freeradius$; then
+          if ! dpkg-statoverride --list /var/run/freeradius >/dev/null; then
             dpkg-statoverride --add --update freerad freerad 0755 /var/run/freeradius
           fi
 
-          if ! dpkg-statoverride --list | grep -q /var/log/freeradius$; then
+          if ! dpkg-statoverride --list /var/log/freeradius >/dev/null; then
             dpkg-statoverride --add --update freerad freerad 0750 /var/log/freeradius
           fi
 
@@ -24,41 +99,15 @@ case "$1" in
             [ ! -f "/var/log/freeradius/${file}" ] && install -o freerad -g freerad -m 644 /dev/null /var/log/freeradius/${file}
           done
 
-          for file in /etc/freeradius/preproxy_users \
-            /etc/freeradius/policy.conf \
-            /etc/freeradius/eap.conf \
-            /etc/freeradius/experimental.conf \
-            /etc/freeradius/huntgroups \
-            /etc/freeradius/proxy.conf \
-            /etc/freeradius/attrs.pre-proxy \
-            /etc/freeradius/hints \
-            /etc/freeradius/sql.conf \
-            /etc/freeradius/ldap.attrmap \
-            /etc/freeradius/attrs \
-            /etc/freeradius/policy.txt \
-            /etc/freeradius/attrs.accounting_response \
-            /etc/freeradius/attrs.access_reject \
-            /etc/freeradius/attrs.access_challenge \
-            /etc/freeradius/clients.conf \
-            /etc/freeradius/acct_users
-          do
-            if ! dpkg-statoverride --list | grep -qw $file$; then
-              dpkg-statoverride --add --update root freerad 0640 $file
-            fi
-          done
-
-          for dir in /etc/freeradius/certs/ \
-            /etc/freeradius/sites-available/ \
-            /etc/freeradius/sites-enabled/
-          do
-            if ! dpkg-statoverride --list | grep -qw $dir$; then
-              dpkg-statoverride --add --update freerad freerad 2751 $dir
-            fi
-          done
+          handle_config_files initial
 
           action="start"
+
         else
+
+          handle_config_files upgrade
           action="restart"
+
         fi
 
         # Create links for default sites, but only if this is an initial
@@ -93,8 +142,11 @@ case "$1" in
               serverpem=wasnotthere
 	      ln -s /etc/ssl/certs/ssl-cert-snakeoil.pem /etc/freeradius/certs/server.pem
 	    fi
-            if egrep -q '^[ 	]*private_key_file = \${certdir}/server.pem' /etc/freeradius/eap.conf && \
-               [ "$serverpem" = "wasnotthere" ]
+            if ( egrep -q '^[ 	]*private_key_file = \${certdir}/server.pem' /etc/freeradius/eap.conf && \
+                 [ "$serverpem" = "wasnotthere" ] ) \
+               || \
+               ( egrep -q '^[ 	]*private_key_file = \${certdir}/server.key' /etc/freeradius/eap.conf && \
+                 test ! -f /etc/freeradius/certs/server.key )
             then
 	      ln -s /etc/ssl/private/ssl-cert-snakeoil.key /etc/freeradius/certs/server.key
 	      sed -i -e 's,^\([ 	]*private_key_file = \${certdir}\)/server.pem$,\1/server.key,' /etc/freeradius/eap.conf
@@ -106,12 +158,12 @@ case "$1" in
             if egrep -q '^[ 	]*CA_file = \${cadir}/ca.pem' /etc/freeradius/eap.conf && \
                test ! -f /etc/freeradius/certs/ca.pem
             then
-	      ln -s /etc/ssl/certs/ca.pem /etc/freeradius/certs/ca.pem
+	      ln -s /etc/ssl/certs/ca-certificates.crt /etc/freeradius/certs/ca.pem
 	    fi
             if egrep -q '^[ 	]*random_file = \${certdir}/random' /etc/freeradius/eap.conf && \
                test ! -f /etc/freeradius/certs/random
             then
-	      ln -s /dev/urandom /etc/freeradius/certs/random
+	      sed -i -e 's,^\([ 	]*random_file = \)\${certdir}/random$,\1/dev/urandom,' /etc/freeradius/eap.conf
 	    fi
             if egrep -q '^[ 	]*dh_file = \${certdir}/dh' /etc/freeradius/eap.conf && \
                test ! -f /etc/freeradius/certs/dh
