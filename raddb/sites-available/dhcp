@@ -168,6 +168,10 @@ server dhcp {
 		#  MAX and IP of the DHCP client.  The server can then
 		#  send a normal UDP unicast socket.
 		#
+		#  NOTE: The server MUST be running as "root" in order
+		#  to update the ARP table.  Or, it must have the
+		#  apropriate capabilities added to it after it starts up.
+		#
 		src_interface = ${..interface}
 	}
 
