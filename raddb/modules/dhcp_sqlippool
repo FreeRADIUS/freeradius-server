@@ -4,7 +4,7 @@
 ##
 ##  $Id$
 
-sqlippool sqlippool-dhcp {
+sqlippool dhcp_sqlippool {
 	sql-instance-name = "sql"
 
 	ippool_table = "radippool"
