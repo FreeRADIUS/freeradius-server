@@ -148,6 +148,9 @@ dhcp DHCP-Discover {
 	# ...
 	#}
 
+	#  Or, allocate IPs from the DHCP pool in SQL.
+#	dhcp_sqlippool
+
 	ok
 }
 
@@ -179,6 +182,9 @@ dhcp DHCP-Request {
 	#if (notfound) {
 	# ...
 	#}
+
+	#  Or, allocate IPs from the DHCP pool in SQL.
+#	dhcp_sqlippool
 
 	ok
 }
