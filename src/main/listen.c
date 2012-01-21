@@ -530,6 +530,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 		ipaddr.af = AF_INET6;
+		ipaddr.scope = 0;
 	}
 
 	rcode = cf_item_parse(cs, "port", PW_TYPE_INTEGER,
