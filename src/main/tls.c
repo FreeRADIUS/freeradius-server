@@ -1073,10 +1073,12 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	int status ;
 	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
 	int reason;
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
 	OCSP_REQ_CTX *ctx;
 	int rc;
 	struct timeval now;
 	struct timeval when;
+#endif
 
 	/*
 	 * Create OCSP Request
@@ -1108,7 +1110,17 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
 
 	BIO_set_conn_port(cbio, port);
-
+#if OPENSSL_VERSION_NUMBER < 0x1000003f
+	BIO_do_connect(cbio);
+ 
+	/* Send OCSP request and wait for response */
+	resp = OCSP_sendreq_bio(cbio, path, req);
+	if (!resp) {
+		radlog(L_ERR, "Error: Couldn't get OCSP response");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+#else
 	if (conf->ocsp_timeout)
 		BIO_set_nbio(cbio, 1);
 
@@ -1151,6 +1163,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
+#endif
 
 	/* Verify OCSP response status */
 	status = OCSP_response_status(resp);
