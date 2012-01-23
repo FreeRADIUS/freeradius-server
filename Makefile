@@ -10,6 +10,49 @@
 include Make.inc
 MFLAGS += --no-print-directory
 
+# Speed up the build for developers.  This means editing Make.inc,
+# and adding "BOILER = yes" to the bottom.  Once that's done, the
+#
+#
+ifeq "$(BOILER)" "yes"
+
+# Require at least GNU Make 3.81 for the new build system
+# Don't allow 3.80.  Allow any 3.8x.  This will need to be changed
+# in a decade or two when GNU Make 3.90 is released.
+BOILERMAKE=$(subst 3.8,yes,$(subst 3.80,,$(MAKE_VERSION)))
+
+# The version of GNU Make is too old, don't use it.
+ifeq "" "$(findstring yes,$(BOILERMAKE))"
+BOILERMAKE=
+endif
+
+# Static-only builds still require libtool.
+# This is because it does all kinds of preload magic in order
+# to force the linker to put the libraries into the main binary.
+# We don't support that yet, so we miss it...
+ifneq "$(USE_SHARED_LIBS)" "yes"
+BOILERMAKE=
+endif
+endif
+
+# If possible, drastically decrease the build time.
+# The new build system means that 
+ifneq "" "$(BOILERMAKE)"
+
+# Don't use libtool or libltdl.
+# They are a blight upon the face of the earth.
+LIBLTDL		:=
+INCLTDL		:= -DWITH_DLOPEN
+CFLAGS		+= -DWITHOUT_LIBLTDL
+LIBTOOL		:= JLIBTOOL
+LTDL_SUBDIRS	:=
+
+export DESTDIR := $(R)
+
+# And over-ride all of the other magic.
+include scripts/boiler.mk
+
+else
 .PHONY: all clean install
 
 SUBDIRS		= $(LTDL_SUBDIRS) $(wildcard src raddb scripts doc)
@@ -21,6 +64,7 @@ all:
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f *~
+endif
 
 .PHONY: tests
 tests:
@@ -44,6 +88,7 @@ tests:
 # we make sure DESTDIR is defined.
 #
 export DESTDIR := $(R)
+ifeq "$(BOILERMAKE)" ""
 install:
 	$(INSTALL) -d -m 755	$(R)$(sbindir)
 	$(INSTALL) -d -m 755	$(R)$(bindir)
@@ -67,6 +112,7 @@ install:
 		$(INSTALL) -m 644 $$i $(R)$(dictdir); \
 	done
 	$(LIBTOOL) --finish $(R)$(libdir)
+endif
 
 ifneq ($(RADMIN),)
 ifneq ($(RGROUP),)
