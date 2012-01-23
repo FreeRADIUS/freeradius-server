@@ -376,6 +376,7 @@ struct fr_tls_server_conf_t {
 	char		*ocsp_url;
 	int		ocsp_use_nonce;
 	X509_STORE	*ocsp_store;
+	int		ocsp_timeout;
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
