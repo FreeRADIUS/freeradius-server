@@ -783,6 +783,8 @@ static CONF_PARSER ocsp_config[] = {
 	  offsetof(fr_tls_server_conf_t, ocsp_use_nonce), NULL, "yes"},
 	{ "timeout", PW_TYPE_INTEGER,
 	  offsetof(fr_tls_server_conf_t, ocsp_timeout), NULL, "yes"},
+	{ "softfail", PW_TYPE_BOOLEAN,
+	  offsetof(fr_tls_server_conf_t, ocsp_softfail), NULL, "yes"},
 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 #endif
@@ -1113,12 +1115,14 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	rc = BIO_do_connect(cbio);
 	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
 		radlog(L_ERR, "Error: Couldn't connect to OCSP responder");
+		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
 	ctx = OCSP_sendreq_new(cbio, path, req, -1);
 	if (!ctx) {
 		radlog(L_ERR, "Error: Couldn't send OCSP request");
+		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
@@ -1136,6 +1140,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
 		radlog(L_ERR, "Error: OCSP response timed out");
+		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
@@ -1143,6 +1148,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	if (rc == 0) {
 		radlog(L_ERR, "Error: Couldn't get OCSP response");
+		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
@@ -1209,10 +1215,23 @@ ocsp_end:
 	BIO_free_all(cbio);
 	OCSP_BASICRESP_free(bresp);
 
-	if (ocsp_ok) {
+	switch (ocsp_ok) {
+	case 1:
 		DEBUG2("[ocsp] --> Certificate is valid!");
-	} else {
+		break;
+	case 2:
+		if (conf->ocsp_softfail) {
+			DEBUG2("[ocsp] --> Unable to check certificate; assuming valid.");
+			DEBUG2("[ocsp] --> Warning! This may be insecure.");
+			ocsp_ok = 1;
+		} else {
+			DEBUG2("[ocsp] --> Unable to check certificate; failing!");
+			ocsp_ok = 0;
+		}
+		break;
+	default:
 		DEBUG2("[ocsp] --> Certificate has been expired/revoked!");
+		break;
 	}
 
 	return ocsp_ok;
