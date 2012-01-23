@@ -1,0 +1,1 @@
+SUBMAKEFILES := src/all.mk
