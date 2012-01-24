@@ -287,7 +287,7 @@ typedef struct {
 } command_t;
 
 #ifdef RPATH
-void add_rpath(count_chars *cc, const char *path);
+static void add_rpath(count_chars *cc, const char *path);
 #endif
 
 static void usage(int code)
