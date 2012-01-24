@@ -36,5 +36,5 @@ ${SRC_INCLUDE_DIR}/:
 # install the headers by re-writing the local files
 ${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h
 	@echo INSTALL $(notdir $<)
-	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $^ > $@
+	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
 	@chmod 644 $@
