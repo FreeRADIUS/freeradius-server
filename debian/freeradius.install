@@ -9,7 +9,7 @@ etc/freeradius/experimental.conf
 etc/freeradius/hints
 etc/freeradius/huntgroups
 etc/freeradius/ldap.attrmap
-etc/freeradius/modules/*
+etc/freeradius/mods-available/*
 etc/freeradius/policy.conf
 etc/freeradius/policy.txt
 etc/freeradius/preproxy_users
