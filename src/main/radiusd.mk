@@ -12,7 +12,7 @@ SRC_CFLAGS	+= -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
 SRC_CFLAGS	+= $(OPENSSL_INCLUDE)
 TGT_INSTALLDIR  := ${sbindir}
 TGT_LDLIBS	:= $(OPENSSL_LIBS)
-TGT_LDFLAGS     := -framework DirectoryService
+TGT_LDFLAGS     := $(LIBS)
 
 TGT_PREREQS	:= libfreeradius-radius.a $(filter rlm_%,${ALL_TGTS})
 
