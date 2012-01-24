@@ -88,7 +88,6 @@ define FILTER_DEPENDS
 	  -e 's,^$${BUILD_DIR},$$$${BUILD_DIR},' \
 	  -e 's, $${BUILD_DIR}/make/include/[^ :]*,,' \
 	  -e 's, $${BUILD_DIR}, $$$${BUILD_DIR},' \
-	  -e '/^$$$$/ d' \
 	  < $${BUILD_DIR}/objs/$$*.d | sed -e '$$$$!N; /^\(.*\)\n\1$$$$/!P; D' \
 	  >  $${BUILD_DIR}/make/src/$$*.mk
 	@sed -e 's/#.*//' \
@@ -98,7 +97,6 @@ define FILTER_DEPENDS
 	  -e 's, $${BUILD_DIR}/make/include/[^ :]*,,' \
 	  -e 's/^[^:]*: *//' \
 	  -e 's/ *\\$$$$//' \
-	  -e '/^$$$$/ d' \
 	  -e 's/$$$$/ :/' \
 	  < $${BUILD_DIR}/objs/$$*.d | sed -e '$$$$!N; /^\(.*\)\n\1$$$$/!P; D' \
 	 >> $${BUILD_DIR}/make/src/$$*.mk
