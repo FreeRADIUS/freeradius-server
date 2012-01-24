@@ -1,4 +1,4 @@
-TARGET   := radeapclient
+TARGET   := 
 SOURCES := radeapclient.c
 
 TGT_PREREQS := libfreeradius-radius.a libfreeradius-eap.a
