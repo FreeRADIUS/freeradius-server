@@ -36,7 +36,7 @@ define ADD_INSTALL_RULE.exe
 
     # Install executable ${1}
     $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/$${RELINK}${1}
-	@echo INSTALL $${${1}_INSTALLDIR}
+	@echo INSTALL ${1}
 	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
 	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/bin/$${RELINK}${1} $${${1}_INSTALLDIR}/
 	@$${${1}_POSTINSTALL}
