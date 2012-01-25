@@ -1,0 +1,5 @@
+TARGET		= rlm_ldap.a
+SOURCES		= rlm_ldap.c @edir@
+
+SRC_CFLAGS	= @ldap_cflags@
+TGT_LDLIBS	= @ldap_ldflags@

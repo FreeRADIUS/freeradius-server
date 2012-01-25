@@ -1,0 +1,5 @@
+TARGET		= @targetname.a
+SOURCES		= rlm_python.c
+
+TGT_LDLIBS	= @python_ldflags@
+SRC_CFLAGS	= @python_cflags@
