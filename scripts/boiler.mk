@@ -80,21 +80,23 @@ define FILTER_DEPENDS
 	@mkdir -p $$(dir $${BUILD_DIR}/make/src/$$*)
 	@mkdir -p $$(dir $${BUILD_DIR}/objs/$$*)
 	@sed  -e 's/#.*//' \
+	  -e 's,^$${top_srcdir},$$$${top_srcdir},' \
+	  -e 's, $${top_srcdir}, $$$${top_srcdir},' \
+	  -e 's,^$${BUILD_DIR},$$$${BUILD_DIR},' \
+	  -e 's, $${BUILD_DIR}/make/include/[^ :]*,,' \
+	  -e 's, $${BUILD_DIR}, $$$${BUILD_DIR},' \
 	  -e 's, /[^: ]*,,g' \
 	  -e 's,^ *[^:]* *: *$$$$,,' \
 	  -e '/: </ d' \
 	  -e 's/\.o: /.$$$${OBJ_EXT}: /' \
 	  -e '/^ *\\$$$$/ d' \
-	  -e 's,^$${BUILD_DIR},$$$${BUILD_DIR},' \
-	  -e 's, $${BUILD_DIR}/make/include/[^ :]*,,' \
-	  -e 's, $${BUILD_DIR}, $$$${BUILD_DIR},' \
 	  < $${BUILD_DIR}/objs/$$*.d | sed -e '$$$$!N; /^\(.*\)\n\1$$$$/!P; D' \
 	  >  $${BUILD_DIR}/make/src/$$*.mk
 	@sed -e 's/#.*//' \
+	  -e 's, $${BUILD_DIR}/make/include/[^ :]*,,' \
 	  -e 's, /[^: ]*,,g' \
 	  -e 's,^ *[^:]* *: *$$$$,,' \
 	  -e '/: </ d' \
-	  -e 's, $${BUILD_DIR}/make/include/[^ :]*,,' \
 	  -e 's/^[^:]*: *//' \
 	  -e 's/ *\\$$$$//' \
 	  -e 's/$$$$/ :/' \
