@@ -177,7 +177,7 @@ define ADD_TARGET_RULE.exe
     # Create executable ${1}
     $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_PRLIBS}
 	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
-	    @echo LINK $${${1}_BUILD}/${1}
+	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    @$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_PRLIBS} \
                 $${LDLIBS} $${${1}_LDLIBS}
@@ -197,7 +197,7 @@ define ADD_TARGET_RULE.a
     # Create static library ${1}
     $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PREREQS}
 	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
-	    @echo LINK $${${1}_BUILD}/${1}
+	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    @$${AR} $${ARFLAGS} $${${1}_BUILD}/${1} $${${1}_OBJS}
 	    @$${${1}_POSTMAKE}
 
@@ -240,7 +240,7 @@ endef
 # COMPILE_C_CMDS - Commands for compiling C source code.
 define COMPILE_C_CMDS
 	@mkdir -p $(dir $@)
-	@echo CC $<
+	@$(ECHO) CC $<
 	@$(strip ${COMPILE.c} -o $@ -c -MD ${CFLAGS} ${SRC_CFLAGS} ${INCDIRS} \
 	    ${SRC_INCDIRS} ${SRC_DEFS} ${DEFS} $<)
 endef
@@ -523,6 +523,9 @@ COMPILE.cxx = ${CXX}
 CPP = cc -E
 LINK.c = ${CC}
 LINK.cxx = ${CXX}
+
+# Set ECHO to "true" for *very* quiet builds
+ECHO = echo
 
 # Define the "all" target (which simply builds all user-defined targets) as the
 # default goal.

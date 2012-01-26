@@ -36,7 +36,7 @@ define ADD_INSTALL_RULE.exe
 
     # Install executable ${1}
     $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/$${RELINK}${1}
-	@echo INSTALL ${1}
+	@$(ECHO) INSTALL ${1}
 	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
 	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/bin/$${RELINK}${1} $${${1}_INSTALLDIR}/
 	@$${${1}_POSTINSTALL}
@@ -56,7 +56,7 @@ define ADD_INSTALL_RULE.a
 
     # Install static library ${1}
     $${${1}_INSTALLDIR}/$(notdir ${1}): ${1}
-	@echo INSTALL ${1}
+	@$(ECHO) INSTALL ${1}
 	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
 	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
 	@$${${1}_POSTINSTALL}
@@ -79,7 +79,7 @@ define ADD_INSTALL_RULE.la
 
     # Install libtool library ${1}
     $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/$${RELINK}${1}
-	@echo INSTALL ${1}
+	@$(ECHO) INSTALL ${1}
 	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
 	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/lib/$${RELINK}${1} $${${1}_INSTALLDIR}/
 	@$${${1}_POSTINSTALL}
@@ -100,7 +100,7 @@ define ADD_INSTALL_RULE.man
 
     # Install manual page ${1}
     ${2}/$(notdir ${1}): ${1} ${2}
-	@echo INSTALL ${1}
+	@$(ECHO) INSTALL ${1}
 	@$${PROGRAM_INSTALL} -c -m 644 ${1} ${2}/
 
 endef
@@ -223,6 +223,6 @@ install: install_ERROR
 
 .PHONY: install_ERROR
 install_ERROR:
-	@echo Please define INSTALL in order to enable the installation rules.
+	@$(ECHO) Please define INSTALL in order to enable the installation rules.
 	@exit 1
 endif
