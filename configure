@@ -26177,7 +26177,7 @@ USE_STATIC_LIBS=$enable_static
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/Makefile ./src/main/checkrad.pl ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/radwatch ./scripts/radiusd.cron.daily ./scripts/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
+  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/Makefile ./src/main/radsniff.mk ./src/main/checkrad.pl ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/radwatch ./scripts/radiusd.cron.daily ./scripts/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure

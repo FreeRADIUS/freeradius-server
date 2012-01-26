@@ -1220,6 +1220,7 @@ AC_OUTPUT(\
 	./Make.inc \
 	./src/include/build-radpaths-h \
 	./src/main/Makefile \
+	./src/main/radsniff.mk \
 	./src/main/checkrad.pl \
 	./src/main/radlast \
 	./src/main/radtest \

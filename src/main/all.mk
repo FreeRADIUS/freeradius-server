@@ -1,1 +1,1 @@
-SUBMAKEFILES := radclient.mk radiusd.mk
+SUBMAKEFILES := radclient.mk radiusd.mk radsniff.mk
