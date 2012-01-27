@@ -1,0 +1,2 @@
+TARGET		= @targetname@.a
+SOURCES		= rlm_pam.c
