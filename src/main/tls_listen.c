@@ -51,6 +51,24 @@ RCSID("$Id$")
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
+static void dump_hex(const char *msg, const uint8_t *data, size_t data_len)
+{
+	size_t i;
+
+	if (debug_flag < 3) return;
+
+	printf("%s %d\n", msg, (int) data_len);
+	if (data_len > 256) data_len = 256;
+
+	for (i = 0; i < data_len; i++) {
+		if ((i & 0x0f) == 0x00) printf ("%02x: ", (unsigned int) i);
+		printf("%02x ", data[i]);
+		if ((i & 0x0f) == 0x0f) printf ("\n");
+	}
+	printf("\n");
+	fflush(stdout);
+}
+
 static void tls_socket_close(rad_listen_t *listener)
 {
 	listen_socket_t *sock = listener->data;

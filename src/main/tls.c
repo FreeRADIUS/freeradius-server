@@ -43,15 +43,6 @@ RCSID("$Id$")
 #include <openssl/ocsp.h>
 #endif
 
-#ifdef HAVE_PTHREAD_H
-#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
-#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
-#else
-#define PTHREAD_MUTEX_LOCK(_x)
-#define PTHREAD_MUTEX_UNLOCK(_x)
-#endif
-
-
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -2458,24 +2449,6 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		       ssn->info.content_type);
 		return FR_TLS_INVALID;
 	}
-}
-
-static void dump_hex(const char *msg, const uint8_t *data, size_t data_len)
-{
-	size_t i;
-
-	if (debug_flag < 3) return;
-
-	printf("%s %d\n", msg, (int) data_len);
-	if (data_len > 256) data_len = 256;
-
-	for (i = 0; i < data_len; i++) {
-		if ((i & 0x0f) == 0x00) printf ("%02x: ", (unsigned int) i);
-		printf("%02x ", data[i]);
-		if ((i & 0x0f) == 0x0f) printf ("\n");
-	}
-	printf("\n");
-	fflush(stdout);
 }
 
 #endif	/* WITH_TLS */
