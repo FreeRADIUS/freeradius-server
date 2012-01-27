@@ -1,2 +1,5 @@
 TARGET		= @targetname@.a
 SOURCES		= rlm_pam.c
+
+SRC_CFLAGS	= @pam_cflags@
+TGT_LDLIBS	= @pam_ldflags@
