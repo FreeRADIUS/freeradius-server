@@ -1,4 +1,9 @@
-TARGET		= @targetname@.a
+TARGETNAME	= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		= $(TARGETNAME).a
+endif
+
 SOURCES		= rlm_perl.c
 
 SRC_CFLAGS	= @perl_cflags@

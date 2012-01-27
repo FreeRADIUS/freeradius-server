@@ -1,4 +1,9 @@
-TARGET		= rlm_ldap.a
+TARGETNAME	= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		= $(TARGETNAME).a
+endif
+
 SOURCES		= rlm_ldap.c @edir@
 
 SRC_CFLAGS	= @ldap_cflags@
