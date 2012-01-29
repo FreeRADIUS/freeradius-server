@@ -1489,7 +1489,7 @@ Optional Packages:
   --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)
   --with-threads          Use threads, if available.  (default=yes)
   --with-vmps             Compile in VMPS support. (default=yes)
-  --with-dhcp             Compile in DHCP support. (default=no)
+  --with-dhcp             Compile in DHCP support. (default=yes)
   --with-static-modules=QUOTED-MODULE-LIST
  --with-modules=QUOTED-MODULE-LIST
   --with-experimental-modules      Use experimental and unstable modules. (default=no)
@@ -20303,22 +20303,28 @@ _ACEOF
 
 fi
 
+WITH_DHCP=yes
 
 # Check whether --with-dhcp was given.
 if test "${with_dhcp+set}" = set; then
   withval=$with_dhcp;  case "$withval" in
     yes)
+        ;;
+    *)
+	WITH_DHCP=no
+  esac
+
+fi
+
+if test "x$WITH_DHCP" = "xyes"; then
 
 cat >>confdefs.h <<\_ACEOF
 #define WITH_DHCP 1
 _ACEOF
 
-	;;
-    *)
-	;;
-  esac
-
 fi
+
+
 
 
 
