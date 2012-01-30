@@ -112,7 +112,8 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 
 int lt_dlinit(void)
 {
-	char *p, *val;
+	char *p;
+	const char *val;
 	char buffer[1024];
 
 	/*
