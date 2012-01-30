@@ -1565,18 +1565,20 @@ static int parse_output_file_name(char *arg, command_t *cmd_data)
         cmd_data->module_name.install = gen_install_name(arg, 2);
 
         if (!cmd_data->options.dry_run) {
-		name = malloc(strlen(cmd_data->static_name.normal) + 1);
+		char *cname;
+
+		cname = malloc(strlen(cmd_data->static_name.normal) + 1);
 		
-		strcpy(name, cmd_data->static_name.normal);
-		ext = strrchr(name, '/');
+		strcpy(cname, cmd_data->static_name.normal);
+		ext = strrchr(cname, '/');
 		if (!ext) {
 			/* Check first to see if the dir already exists! */
 			safe_mkdir(".libs");
 		} else {
 			*ext = '\0';
-			safe_mkdir(name);
+			safe_mkdir(cname);
 		}
-		free(name);
+		free(cname);
         }
 
 #ifdef TRUNCATE_DLL_NAME
