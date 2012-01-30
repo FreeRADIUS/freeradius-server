@@ -254,12 +254,11 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
+static int eaptls_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 {
 	fr_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	REQUEST *request = handler->request;
-	fr_tls_server_conf_t *inst = arg;
 
 	RDEBUG2("Authenticate");
 
