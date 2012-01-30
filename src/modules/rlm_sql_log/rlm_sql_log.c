@@ -199,14 +199,14 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 
 static size_t sql_utf8_escape_func(char *out, size_t outlen, const char *in)
 {
-	int len = 0;
-	int utf8 = 0;
+	size_t len = 0;
+	size_t utf8 = 0;
 
 	while (in[0]) {
 		/* 
 		 * Skip over UTF8 characters
 		 */
-		utf8 = fr_utf8_char((uint8_t *)in);
+		utf8 = fr_utf8_char((const uint8_t *)in);
 		if (utf8) {
 			if (outlen <= utf8) {
 				break;
