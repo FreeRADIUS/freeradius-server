@@ -751,7 +751,7 @@ packet_ready:
 			 *	issues a re-try, we will know which
 			 *	challenge value that they used.
 			 */
-			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf);
+			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
 			if (n == 3) {
 				DEBUG2("  Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s", err, retry, buf);
 				fr_hex2bin(buf, data->challenge, 16);
