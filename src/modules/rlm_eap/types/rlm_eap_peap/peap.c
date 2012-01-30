@@ -926,7 +926,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		 */
 		
 	case PEAP_STATUS_PHASE2_INIT: {
-		int len = t->username->length + EAP_HEADER_LEN + 1;
+		size_t len = t->username->length + EAP_HEADER_LEN + 1;
 
 		t->status = PEAP_STATUS_PHASE2;
 
