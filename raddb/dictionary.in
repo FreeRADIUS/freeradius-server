@@ -9,18 +9,6 @@
 #
 
 #
-#  The DHCP dictionary is used only when the server is built with
-#  "configure --with-dhcp".  It is not (and should not) be used in
-#  other situations.  If you are running just a RADIUS server, this
-#  line can be deleted.  If you are using DHCP, the following line
-#  should be uncommented.
-#
-#  Ideally, the "configure" process should automatically enable this
-#  dictionary, but we don't yet do that.
-#
-#$INCLUDE	@prefix@/share/freeradius/dictionary.dhcp
-
-#
 #	The filename given here should be an absolute path. 
 #
 $INCLUDE	@prefix@/share/freeradius/dictionary
