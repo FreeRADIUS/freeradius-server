@@ -43,6 +43,7 @@ typedef struct rlm_preprocess_t {
 	int		with_specialix_jetstream_hack;
 	int		with_cisco_vsa_hack;
 	int		with_alvarion_vsa_hack;
+	int		with_cablelabs_vsa_hack;
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {
@@ -66,6 +67,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_preprocess_t,with_cisco_vsa_hack), NULL, "no" },
 	{ "with_alvarion_vsa_hack",        PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_alvarion_vsa_hack), NULL, "no" },
+	{ "with_cablelabs_vsa_hack",        PW_TYPE_BOOLEAN,
+	  offsetof(rlm_preprocess_t,with_cablelabs_vsa_hack), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -199,6 +202,66 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 		number++;
 	}
 }
+
+/*
+ *	Cablelabs magic, taken from:
+ *
+ * http://www.cablelabs.com/packetcable/downloads/specs/PKT-SP-EM-I12-05812.pdf
+ *
+ *	Sample data is:
+ *
+ *	0x0001d2d2026d30310000000000003030
+ *	  3130303030000e812333000100033031
+ *	  00000000000030303130303030000000
+ *	  00063230313230313331303630323231
+ *	  2e3633390000000081000500
+ */
+
+typedef struct cl_timezone_t {
+	uint8_t		dst;
+	uint8_t		sign;
+	uint8_t		hh[2];
+	uint8_t		mm[2];
+	uint8_t		ss[2];
+} cl_timezone_t;
+
+typedef struct cl_bcid_t {
+	uint32_t	timestamp;
+	uint8_t		element_id[8];
+	cl_timezone_t	timezone;
+	uint32_t	event_counter;
+} cl_bcid_t;
+
+typedef struct cl_em_hdr_t {
+	uint16_t	version;
+	cl_bcid_t	bcid;
+	uint16_t        message_type;
+	uint16_t	element_type;
+	uint8_t		element_id[8];
+	cl_timezone_t	time_zone;
+	uint32_t	sequence_number;
+	uint8_t		event_time[18];
+	uint8_t		status[4];
+	uint8_t		priority;
+	uint16_t	attr_count; /* of normal Cablelabs VSAs */
+	uint8_t		event_object;
+} cl_em_hdr_t;
+
+
+static void cablelabs_vsa_hack(VALUE_PAIR **list)
+{
+	VALUE_PAIR *ev, *vp;
+
+	ev = pairfind(&list, 1, 4491); /* Cablelabs-Event-Message */
+	if (!ev) return;
+
+	/*
+	 *	FIXME: write 100's of lines of code to decode
+	 *	each data structure above.
+	 */
+}
+
+
 
 /*
  *	Mangle username if needed, IN PLACE.
@@ -566,6 +629,14 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		alvarion_vsa_hack(request->packet->vps);
 	}
 
+	if (data->with_cablelabs_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the Cablelabs
+		 *	people are crazy.
+		 */
+		cablelabs_vsa_hack(&request->packet->vps);
+	}
+
 	/*
 	 *	Note that we add the Request-Src-IP-Address to the request
 	 *	structure BEFORE checking huntgroup access.  This allows
@@ -633,6 +704,14 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 		 *	people are crazy.
 		 */
 		alvarion_vsa_hack(request->packet->vps);
+	}
+
+	if (data->with_cablelabs_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the Cablelabs
+		 *	people are crazy.
+		 */
+		cablelabs_vsa_hack(&request->packet->vps);
 	}
 
 	/*
