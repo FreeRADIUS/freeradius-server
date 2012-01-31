@@ -1401,7 +1401,7 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
     if (strcmp(ext, "lo") == 0) {
         newarg = check_object_exists(cmd_data, arg, ext - arg);
         if (!newarg) {
-            printf("Can not find suitable object file for %s\n", arg);
+	    fprintf(stderr, "Can not find suitable object file for %s\n", arg);
             exit(1);
         }
         if (cmd_data->mode != mLink) {
@@ -1422,7 +1422,7 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
                 /* Try the normal dir next. */
                 newarg = check_library_exists(cmd_data, arg, pathlen, 0, &libtype);
                 if (!newarg) {
-                    printf("Can not find suitable library for %s\n", arg);
+		   fprintf(stderr, "Can not find suitable library for %s\n", arg);
                     exit(1);
                 }
             }
@@ -1776,6 +1776,11 @@ static void link_fixup(command_t *c)
     if (!c->install_path && (c->output == otDynamicLibraryOnly ||
         c->output == otModule || c->output == otLibrary)) {
         c->output = otStaticLibraryOnly;
+
+	if (c->options.shared == share_SHARED) {
+	    fprintf(stderr, "Can not build a shared library without -rpath");
+            exit(1);
+	}
     }
 
     if (c->output == otDynamicLibraryOnly ||
