@@ -143,7 +143,7 @@ typedef struct rlm_mschap_t {
         int require_strong;
         int with_ntdomain_hack;	/* this should be in another module */
 	char *passwd_file;
-	const char *xlat_name;
+	char *xlat_name;
 	char *ntlm_auth;
 	char *ntlm_cpw;
 	char *ntlm_cpw_username;
@@ -596,6 +596,7 @@ static int mschap_detach(void *instance){
  */
 static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 {
+	const char *name;
 	rlm_mschap_t *inst;
 
 	inst = *instance = rad_malloc(sizeof(*inst));
@@ -624,9 +625,9 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Create the dynamic translation.
 	 */
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-	inst->xlat_name = strdup(inst->xlat_name);
+	name = cf_section_name2(conf);
+	if (name) name = cf_section_name1(conf);
+	inst->xlat_name = strdup(name);
 	xlat_register(inst->xlat_name, mschap_xlat, inst);
 
 	/*
@@ -729,7 +730,8 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		pid_t pid, child_pid;
 		int status, len;
 		char buf[2048];
-		char *emsg;
+		char *pmsg;
+		const char *emsg;
 
 		RDEBUG("Doing MS-CHAPv2 password change via ntlm_auth helper");
 
@@ -845,9 +847,9 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 			return 0;
 		}
 
-		emsg = strstr(buf, "Password-Change-Error: ");
-		if (emsg) {
-			emsg = strsep(&emsg, "\n");
+		pmsg = strstr(buf, "Password-Change-Error: ");
+		if (pmsg) {
+			emsg = strsep(&pmsg, "\n");
 		} else {
 			emsg = "could not find error";
 		}
@@ -878,8 +880,8 @@ ntlm_auth_err:
 
 		VALUE_PAIR *new_pass, *new_hash;
 		uint8_t *p;
-		int i, result_len;
-		uint32_t passlen;
+		size_t i, result_len;
+		size_t passlen;
 		char result[253];
 		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[16];
 		RC4_KEY key;
