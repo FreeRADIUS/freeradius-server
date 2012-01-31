@@ -81,6 +81,9 @@ sql {
 	#  lifetime
 	#  max_queries
 
+	#  The connection pool is new for 3.0, and will be used in many
+	#  modules, for all kinds of connection-related activity.
+	#
 	pool {
 		# Number of connections to start
 		start = 5
@@ -89,9 +92,15 @@ sql {
 		min = 4
 
 		# Maximum number of connections
+		#
+		# If these connections are all in use and a new one
+		# is requested, the request will NOT get a connection.
 		max = 10
 
 		# Spare connections to be left idle
+		#
+		# NOTE: Idle connections WILL be closed if "idle_timeout"
+		# is set.
 		spare = 3
 
 		# Number of uses before the connection is closed
@@ -105,6 +114,16 @@ sql {
 		# idle timeout (in seconds).  A connection which is
 		# unused for this length of time will be closed.
 		idle_timeout = 60
+
+		# NOTE: All configuration settings are enforced.  If a
+		# connection is closed because of "idle_timeout",
+		# "uses", or "lifetime", then the total number of
+		# connections MAY fall below "min".  When that
+		# happens, it will open a new connection.  It will
+		# also log a WARNING message.
+		#
+		# The solution is to either lower the "min" connections,
+		# or increase lifetime/idle_timeout.
 	}
 
 	# Set to 'yes' to read radius clients from the database ('nas' table)
