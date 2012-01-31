@@ -948,7 +948,7 @@ AC_SUBST(LIBPREFIX)
 
 AC_MSG_CHECKING(for developer gcc flags)
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef"
+  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
   CFLAGS="$CFLAGS $devflags"
   INSTALLSTRIP=""
   AC_MSG_RESULT(yes.  Using $devflags)

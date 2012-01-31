@@ -25130,7 +25130,7 @@ fi
 { echo "$as_me:$LINENO: checking for developer gcc flags" >&5
 echo $ECHO_N "checking for developer gcc flags... $ECHO_C" >&6; }
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef"
+  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
   CFLAGS="$CFLAGS $devflags"
   INSTALLSTRIP=""
   { echo "$as_me:$LINENO: result: yes.  Using $devflags" >&5
