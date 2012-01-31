@@ -16,9 +16,6 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	users policy.conf attrs.access_challenge README
 
 DEFAULT_SITES = default inner-tunnel
-ifneq "${OPENSSL_INCLUDE}" ""
-DEFAULT_SITES += tls
-endif
 
 DEFAULT_MODULES = acct_unique always attr_filter attr_rewrite chap checkval \
 		counter cui detail detail.log digest dynamic_clients eap \
