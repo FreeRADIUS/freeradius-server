@@ -794,12 +794,12 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
-		xlat_register("integer", xlat_integer, "");
+		xlat_register("integer", xlat_integer, NULL);
 		c = xlat_find("integer");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
-		xlat_register("string", xlat_string, "");
+		xlat_register("string", xlat_string, NULL);
 		c = xlat_find("string");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
