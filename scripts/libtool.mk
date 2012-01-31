@@ -32,7 +32,8 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     # binary!
     jlibtool ${JLIBTOOL}: ${top_makedir}/jlibtool.c
 	@mkdir -p $(dir ${JLIBTOOL})
-	${CC} $< -o ${JLIBTOOL}
+	@echo CC jlibtool.c
+	@${CC} $< -o ${JLIBTOOL}
 
     clean: jlibtool_clean
 
