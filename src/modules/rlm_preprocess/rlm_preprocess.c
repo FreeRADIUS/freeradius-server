@@ -250,9 +250,9 @@ typedef struct cl_em_hdr_t {
 
 static void cablelabs_vsa_hack(VALUE_PAIR **list)
 {
-	VALUE_PAIR *ev, *vp;
+	VALUE_PAIR *ev;
 
-	ev = pairfind(&list, 1, 4491); /* Cablelabs-Event-Message */
+	ev = pairfind(*list, 1, 4491); /* Cablelabs-Event-Message */
 	if (!ev) return;
 
 	/*
