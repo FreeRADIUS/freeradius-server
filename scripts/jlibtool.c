@@ -548,9 +548,9 @@ static int run_command(command_t *cmd_data, count_chars *cc)
  * print configuration
  * shlibpath_var is used in configure.
  */
-#define printc(_x,_y) printf(_x "=\"%s\"\n", _y)
+#define printc(_x,_y) if (!value || !strcmp(value, _x)) printf(_x "=\"%s\"\n", _y)
 
-static void print_config(void)
+static void print_config(const char *value)
 {
 #ifdef LD_RUN_PATH
     printc("runpath_var", LD_RUN_PATH);
@@ -618,6 +618,7 @@ static int parse_long_opt(char *arg, command_t *cmd_data)
         strcpy(value, equal_pos + 1);
     } else {
         strcpy(var, arg);
+	value[0] = '\0';
     }
 
     if (strcmp(var, "silent") == 0) {
@@ -658,7 +659,8 @@ static int parse_long_opt(char *arg, command_t *cmd_data)
     } else if (strcmp(var, "help") == 0) {
 	usage(0);
     } else if (strcmp(var, "config") == 0) {
-        print_config();
+        print_config(value);
+	exit(0);
     } else if (strcmp(var, "tag") == 0) {
         if (strcmp(value, "CC") == 0) {
             /* Do nothing. */
