@@ -314,7 +314,8 @@ static int pap_authorize(void *instance, REQUEST *request)
 		{
 			int attr;
 			char *p, *q;
-			char buffer[128];
+			uint8_t binbuf[128];
+			char charbuf[128];
 			VALUE_PAIR *new_vp;
 
 			found_pw = TRUE;
@@ -340,10 +341,10 @@ static int pap_authorize(void *instance, REQUEST *request)
 				 *	and re-write the attribute to
 				 *	have the decoded value.
 				 */
-				decoded = base64_decode(vp->vp_strvalue, buffer);
-				if ((decoded > 0) && (buffer[0] == '{') &&
-				    (strchr(buffer, '}') != NULL)) {
-					memcpy(vp->vp_octets, buffer, decoded);
+				decoded = base64_decode(vp->vp_strvalue, binbuf);
+				if ((decoded > 0) && (binbuf[0] == '{') &&
+				    (memchr(binbuf, '}', decoded) != NULL)) {
+					memcpy(vp->vp_octets, binbuf, decoded);
 					vp->length = decoded;
 					goto redo;
 				}
@@ -352,14 +353,14 @@ static int pap_authorize(void *instance, REQUEST *request)
 				break;
 			}
 
-			if ((size_t) (p - q) > sizeof(buffer)) break;
+			if ((size_t) (p - q) > sizeof(charbuf)) break;
 
-			memcpy(buffer, q, p - q + 1);
-			buffer[p - q + 1] = '\0';
+			memcpy(charbuf, q, p - q + 1);
+			charbuf[p - q + 1] = '\0';
 
-			attr = fr_str2int(header_names, buffer, 0);
+			attr = fr_str2int(header_names, charbuf, 0);
 			if (!attr) {
-				RDEBUG2("Found unknown header {%s}: Not doing anything", buffer);
+				RDEBUG2("Found unknown header {%s}: Not doing anything", charbuf);
 				break;
 			}
 
@@ -511,7 +512,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	char module_fmsg[MAX_STRING_LEN];
 	FR_MD5_CTX md5_context;
 	fr_SHA1_CTX sha1_context;
-	uint8_t digest[40];
+	uint8_t binbuf[128];
+	char charbuf[128];
 	char buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
 	int scheme = PAP_ENC_INVALID;
@@ -605,9 +607,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		RDEBUG("Using clear text password \"%s\"",
 		      vp->vp_strvalue);
 		if ((vp->length != request->password->length) ||
-		    (rad_digest_cmp(vp->vp_strvalue,
-				request->password->vp_strvalue,
-				vp->length) != 0)) {
+		    (rad_digest_cmp(vp->vp_octets,
+				    request->password->vp_octets,
+				    vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: CLEAR TEXT password check failed");
 			goto make_msg;
 		}
@@ -642,8 +644,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		fr_MD5Init(&md5_context);
 		fr_MD5Update(&md5_context, request->password->vp_octets,
 			     request->password->length);
-		fr_MD5Final(digest, &md5_context);
-		if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
+		fr_MD5Final(binbuf, &md5_context);
+		if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: MD5 password check failed");
 			goto make_msg;
 		}
@@ -665,12 +667,12 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		fr_MD5Update(&md5_context, request->password->vp_octets,
 			     request->password->length);
 		fr_MD5Update(&md5_context, &vp->vp_octets[16], vp->length - 16);
-		fr_MD5Final(digest, &md5_context);
+		fr_MD5Final(binbuf, &md5_context);
 
 		/*
 		 *	Compare only the MD5 hash results, not the salt.
 		 */
-		if (rad_digest_cmp(digest, vp->vp_octets, 16) != 0) {
+		if (rad_digest_cmp(binbuf, vp->vp_octets, 16) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SMD5 password check failed");
 			goto make_msg;
 		}
@@ -691,8 +693,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		fr_SHA1Init(&sha1_context);
 		fr_SHA1Update(&sha1_context, request->password->vp_octets,
 			      request->password->length);
-		fr_SHA1Final(digest,&sha1_context);
-		if (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0) {
+		fr_SHA1Final(binbuf,&sha1_context);
+		if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SHA1 password check failed");
 			goto make_msg;
 		}
@@ -715,8 +717,8 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		fr_SHA1Update(&sha1_context, request->password->vp_octets,
 			   request->password->length);
 		fr_SHA1Update(&sha1_context, &vp->vp_octets[20], vp->length - 20);
-		fr_SHA1Final(digest,&sha1_context);
-		if (rad_digest_cmp(digest, vp->vp_octets, 20) != 0) {
+		fr_SHA1Final(binbuf,&sha1_context);
+		if (rad_digest_cmp(binbuf, vp->vp_octets, 20) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: SSHA password check failed");
 			goto make_msg;
 		}
@@ -736,13 +738,13 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 
 		strlcpy(buff2, "%{mschap:NT-Hash %{User-Password}}", sizeof(buff2));
-		if (!radius_xlat(digest, sizeof(digest),buff2,request,NULL)){
+		if (!radius_xlat(charbuf, sizeof(charbuf),buff2,request,NULL)){
 			RDEBUG("mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
-		if ((fr_hex2bin(digest, digest, 16) != vp->length) ||
-		    (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0)) {
+		if ((fr_hex2bin(charbuf, binbuf, 16) != vp->length) ||
+		    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NT password check failed");
 			goto make_msg;
 		}
@@ -760,13 +762,13 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		strlcpy(buff2, "%{mschap:LM-Hash %{User-Password}}", sizeof(buff2));
-		if (!radius_xlat(digest,sizeof(digest),buff2,request,NULL)){
+		if (!radius_xlat(charbuf,sizeof(charbuf),buff2,request,NULL)){
 			RDEBUG("mschap xlat failed");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: mschap xlat failed");
 			goto make_msg;
 		}
-		if ((fr_hex2bin(digest, digest, 16) != vp->length) ||
-		    (rad_digest_cmp(digest, vp->vp_octets, vp->length) != 0)) {
+		if ((fr_hex2bin(charbuf, binbuf, 16) != vp->length) ||
+		    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: LM password check failed");
 		make_msg:
 			RDEBUG("Passwords don't match");
@@ -791,7 +793,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Sanity check the value of NS-MTA-MD5-Password
 		 */
-		if (fr_hex2bin(vp->vp_strvalue, buff, 32) != 16) {
+		if (fr_hex2bin(vp->vp_strvalue, binbuf, 32) != 16) {
 			RDEBUG("Configured NS-MTA-MD5-Password has invalid value");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: Configured NS-MTA-MD5-Password has invalid value");
 			goto make_msg;
@@ -802,7 +804,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		 *
 		 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 		 */
-		if (strlen(request->password->vp_strvalue) >= (sizeof(buff2) - 2 - 2 * 32)) {
+		if (strlen(request->password->vp_strvalue) >= (sizeof(buff) - 2 - 2 * 32)) {
 			RDEBUG("Configured password is too long");
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: password is too long");
 			goto make_msg;
@@ -826,9 +828,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			fr_MD5Init(&md5_context);
 			fr_MD5Update(&md5_context, (uint8_t *) buff2,
 				     p - buff2);
-			fr_MD5Final(digest, &md5_context);
+			fr_MD5Final(binbuf, &md5_context);
 		}
-		if (rad_digest_cmp(digest, buff, 16) != 0) {
+		if (rad_digest_cmp(binbuf, (uint8_t *) buff, 16) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NS-MTA-MD5 password check failed");
 			goto make_msg;
 		}
