@@ -1030,8 +1030,8 @@ static int ocsp_parse_cert_url(X509 *cert, char **phost, char **pport,
 		ad = sk_ACCESS_DESCRIPTION_value(aia, 0);
 		if (OBJ_obj2nid(ad->method) == NID_ad_OCSP) {
 			if (ad->location->type == GEN_URI) {
-				if(OCSP_parse_url(ad->location->d.ia5->data,
-					phost, pport, ppath, pssl))
+			  if(OCSP_parse_url((char *) ad->location->d.ia5->data,
+						  phost, pport, ppath, pssl))
 					return 1;
 			}
 		}
@@ -1436,7 +1436,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 					pairadd(certs,
 						pairmake(cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
-							 ASN1_STRING_data(name->d.rfc822Name), T_OP_SET));
+							 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET));
 					break;
 				default:
 					/* XXX TODO handle other SAN types */
@@ -1701,7 +1701,6 @@ static void sess_free_vps(UNUSED void *parent, void *data_ptr,
  */
 static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 {
-	const SSL_METHOD *meth;
 	SSL_CTX *ctx;
 	X509_STORE *certstore;
 	int verify_mode = SSL_VERIFY_NONE;
@@ -1724,8 +1723,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 	EVP_add_digest(EVP_sha256());
 #endif
 
-	meth = TLSv1_method();
-	ctx = SSL_CTX_new(meth);
+	ctx = SSL_CTX_new(TLSv1_method());
 
 	/*
 	 * Identify the type of certificates that needs to be loaded
