@@ -364,8 +364,10 @@ ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string
 ATTRIBUTE	TLS-Client-Cert-Filename		1925	string
 ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Email	1926	string
 
+# 1927 - 1939: reserved for future cert attributes
+
 #
-#	Range:	1910-2099
+#	Range:	1940-2099
 #		Free
 #
 #	Range:	2100-2199
