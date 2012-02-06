@@ -626,7 +626,7 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Create the dynamic translation.
 	 */
 	name = cf_section_name2(conf);
-	if (name) name = cf_section_name1(conf);
+	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = strdup(name);
 	xlat_register(inst->xlat_name, mschap_xlat, inst);
 
