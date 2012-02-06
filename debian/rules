@@ -153,7 +153,7 @@ install-arch: build-arch-stamp
 	dh_testroot
 	dh_installdirs -s
 	test -d $(freeradius_dir)/usr/lib/freeradius || mkdir -p $(freeradius_dir)/usr/lib/freeradius
-	ln -s rlm_sql.so $(freeradius_dir)/usr/lib/freeradius/librlm_sql.so
+	ln -fs rlm_sql.so $(freeradius_dir)/usr/lib/freeradius/librlm_sql.so
 	$(MAKE) install R=$(freeradius_dir)
 	
 	# rename radius binary to play nicely with others
@@ -183,7 +183,7 @@ binary-common:
 	dh_installchangelogs doc/ChangeLog
 	dh_installdocs
 	dh_installexamples
-	chmod -x debian/freeradius/usr/share/doc/freeradius/examples/example.pl
+	chmod a-x debian/freeradius/usr/share/doc/freeradius/examples/example.pl
 	dh_installlogrotate	
 	dh_installpam --name=radiusd 
 	dh_installinit --noscripts
