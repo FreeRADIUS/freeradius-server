@@ -2275,6 +2275,7 @@ static int run_mode(command_t *cmd_data)
 	    l = ".libs/";
 	}
 
+	l = "./build/lib/.libs";
 	setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
 	rv = run_command(cmd_data, cmd_data->arglist);
 	if (rv) {
