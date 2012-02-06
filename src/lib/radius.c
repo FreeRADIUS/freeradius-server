@@ -2919,7 +2919,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	/*
 	 *	Decrypt the attribute.
 	 */
-	if (secret) switch (vp->flags.encrypt) {
+	if (secret && packet) switch (vp->flags.encrypt) {
 		/*
 		 *  User-Password
 		 */
