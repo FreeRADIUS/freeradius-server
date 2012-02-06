@@ -34,6 +34,12 @@ linelog {
 	# group = freerad
 
 	#
+	# If logging via syslog, the facility can be set here. Otherwise
+	# the syslog_facility option in radiusd.conf will be used.
+	#
+	# syslog_facility = daemon
+
+	#
 	#  The default format string.
 	format = "This is a log message for %{User-Name}"
 

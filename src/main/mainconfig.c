@@ -97,7 +97,11 @@ static const char *my_name = NULL;
 static const char *sbindir = NULL;
 static const char *run_dir = NULL;
 static char *syslog_facility = NULL;
-static const FR_NAME_NUMBER str2fac[] = {
+
+/*
+ *	Syslog facility table.
+ */
+const FR_NAME_NUMBER syslog_str2fac[] = {
 #ifdef LOG_KERN
 	{ "kern", LOG_KERN },
 #endif
@@ -854,7 +858,7 @@ int read_mainconfig(int reload)
 				cf_section_free(&cs);
 				return -1;
 			}
-			mainconfig.syslog_facility = fr_str2int(str2fac, syslog_facility, -1);
+			mainconfig.syslog_facility = fr_str2int(syslog_str2fac, syslog_facility, -1);
 			if (mainconfig.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);

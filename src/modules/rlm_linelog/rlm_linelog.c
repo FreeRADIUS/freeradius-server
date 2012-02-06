@@ -48,11 +48,18 @@ RCSID("$Id$")
 #endif
 
 /*
+ *	Syslog facilities from main/mainconfig.c
+ */
+extern const FR_NAME_NUMBER syslog_str2fac[];
+
+/*
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_linelog_t {
 	CONF_SECTION	*cs;
 	char		*filename;
+	char		*syslog_facility;
+	int		facility;
 	int		permissions;
 	char		*group;
 	char		*line;
@@ -71,6 +78,8 @@ typedef struct rlm_linelog_t {
 static const CONF_PARSER module_config[] = {
 	{ "filename",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
+	{ "syslog_facility",  PW_TYPE_STRING_PTR,
+	  offsetof(rlm_linelog_t,syslog_facility), NULL,  NULL},
 	{ "permissions",  PW_TYPE_INTEGER,
 	  offsetof(rlm_linelog_t,permissions), NULL,  "0600"},
 	{ "group",  PW_TYPE_STRING_PTR,
@@ -125,6 +134,19 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 		linelog_detach(inst);
 		return -1;
 	}
+#else
+	inst->facility = 0;
+
+	if (inst->syslog_facility) {
+		inst->facility = fr_str2int(syslog_str2fac, inst->syslog_facility, -1);
+		if (inst->facility < 0) {
+			radlog(L_ERR, "rlm_linelog: Bad syslog facility '%s'", inst->syslog_facility);
+			linelog_detach(inst);
+			return -1;
+		}
+	}
+
+	inst->facility |= LOG_INFO;
 #endif
 
 	if (!inst->line) {
@@ -314,7 +336,7 @@ static int do_linelog(void *instance, REQUEST *request)
 
 #ifdef HAVE_SYSLOG_H
 	} else {
-		syslog(LOG_INFO, "%s", line);
+		syslog(inst->facility, "%s", line);
 #endif
 	}
 
