@@ -1,5 +1,7 @@
 FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	Feature improvements
+	* 100% configuration file compatible with 2.1.x.
+	  The only fix needed is to disallow "hashsize=0" for rlm_passwd
 	* Update dictionary.aruba, dictionary.apc
 	* Switch to using SHA1 for certificate digests instead of MD5.
 	  See raddb/certs/*.cnf
@@ -14,6 +16,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Added query timeouts to MySQL driver.  Patch from Brian De Wolf.
 	* Add /etc/default/freeradius to debian package.
 	  Patch from Matthew Newton
+	* DHCP capabilitiies are now compiled in by default.
+	  It runs as a DHCP server ONLY if you change the configuration.
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
@@ -42,7 +46,6 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Fix minor build issue which would cause rlm_eap to be built twice.
 	* When using "status_check=request" for a home server, the username
 	  and password must be specified, or the server will not start.
-	* Fixed path to dictionary.dhcp in raddb/dictionary
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
