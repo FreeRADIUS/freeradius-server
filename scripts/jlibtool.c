@@ -1784,6 +1784,17 @@ static void parse_args(int argc, char *argv[], command_t *cmd_data)
 	  break;
 	}
 
+	/*
+	 *	Stop if we get another magic method
+	 */
+	if ((a == 1) &&
+	    ((strncmp(arg, "LINK", 4) == 0) ||
+	     (strcmp(arg, "CC") == 0) ||
+	     (strcmp(argv, "CXX") == 0))) {
+	  base = NULL;
+	  break;
+	}
+
 	if (strncmp(arg, "-o", 2) == 0) {
 	  base = argv[++a];
 	}
@@ -2012,8 +2023,7 @@ static void link_fixup(command_t *c)
         else {
             char *tmp;
             push_count_chars(c->shared_opts.normal, c->shared_name.normal);
-#if 0
-	    /* really #ifdef DYNAMIC_INSTALL_NAME */
+#ifdef DYNAMIC_INSTALL_NAME
             push_count_chars(c->shared_opts.normal, DYNAMIC_INSTALL_NAME);
 
             tmp = (char*)malloc(PATH_MAX);
