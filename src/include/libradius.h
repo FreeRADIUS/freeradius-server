@@ -420,7 +420,7 @@ int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 #ifdef ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(VALUE_PAIR *vp, char *buffer, size_t len);
+void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimitst);
 #endif /*ASCEND_BINARY*/
 
 /* random numbers in isaac.c */

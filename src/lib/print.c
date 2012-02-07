@@ -286,7 +286,7 @@ int vp_prints_value(char * out, size_t outlen, VALUE_PAIR *vp, int delimitst)
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
 			a = buf;
-			print_abinary(vp, buf, sizeof(buf));
+			print_abinary(vp, buf, sizeof(buf), delimitst);
 			break;
 #else
 		  /* FALL THROUGH */
