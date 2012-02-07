@@ -272,9 +272,17 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
 	/*
 	 *      Check if password has expired.
 	 */
+	if (spwd && spwd->sp_lstchg > 0 && spwd->sp_max >= 0 &&
+	    (request->timestamp / 86400) > (spwd->sp_lstchg + spwd->sp_max)) {
+		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
+		return RLM_MODULE_REJECT;
+	}
+	/*
+	 *      Check if account has expired.
+	 */
 	if (spwd && spwd->sp_expire > 0 &&
 	    (request->timestamp / 86400) > spwd->sp_expire) {
-		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
+		radlog_request(L_AUTH, 0, request, "[%s]: account has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
