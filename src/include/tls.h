@@ -367,6 +367,8 @@ struct fr_tls_server_conf_t {
 	char		*verify_client_cert_cmd;
 	int		require_client_cert;
 
+	char		*virtual_server; /* for processing certificates */
+
 #ifdef HAVE_OPENSSL_OCSP_H
 	/*
 	 * OCSP Configuration

@@ -259,6 +259,7 @@ static int eaptls_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 	fr_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	REQUEST *request = handler->request;
+	fr_tls_server_conf_t *conf;
 
 	RDEBUG2("Authenticate");
 
@@ -268,8 +269,54 @@ static int eaptls_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 		/*
 		 *	EAP-TLS handshake was successful, return an
 		 *	EAP-TLS-Success packet here.
+		 *
+		 *	If a virtual server was configured, check that
+		 *	it accepts the certificates, too.
 		 */
 	case FR_TLS_SUCCESS:
+		conf = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
+		if (conf && conf->virtual_server) {
+			VALUE_PAIR *vp;
+			REQUEST *fake;
+
+			/* create a fake request */
+			fake = request_alloc_fake(request);
+			rad_assert(fake->packet->vps == NULL);
+
+			fake->packet->vps = paircopy(request->packet->vps);
+
+			/* set the virtual server to use */
+			if ((vp = pairfind(request->config_items,
+					   PW_VIRTUAL_SERVER, 0)) != NULL) {
+				fake->server = vp->vp_strvalue;
+			} else {
+				fake->server = conf->virtual_server;
+			}
+
+			RDEBUG("Processing EAP-TLS Certificate check:");
+			debug_pair_list(fake->packet->vps);
+
+			RDEBUG("server %s {", fake->server);
+
+			rad_authenticate(fake);
+
+			RDEBUG("} # server %s", fake->server);
+
+			/* copy the reply vps back to our reply */
+			pairadd(&request->reply->vps, fake->reply->vps);
+			fake->reply->vps = NULL;
+
+			/* reject if virtual server didn't return accept */
+			if (fake->reply->code != PW_AUTHENTICATION_ACK) {
+				RDEBUG2("Certifictes were rejected by the virtual server");
+				request_free(&fake);
+				eaptls_fail(handler, 0);
+				return 0;
+			}
+
+			request_free(&fake);
+			/* success */
+		}
 		break;
 
 		/*

@@ -1,0 +1,54 @@
+# This virtual server allows EAP-TLS to reject access requests
+# based on some certificate attributes.
+
+# Value-pairs that are available for checking include:
+#
+#   TLS-Client-Cert-Subject
+#   TLS-Client-Cert-Issuer
+#   TLS-Client-Cert-Common-Name
+#   TLS-Client-Cert-Subject-Alt-Name-Email
+#
+# To see a full list of attributes, run the server in debug mode
+# with this virtual server configured, and look at the attributes
+# passed in to this virtual server.
+
+server check-eap-tls {
+
+
+# Authorize - this is the only section required.
+#
+# To accept the access request, set Auth-Type = Accept, otherwise
+# set it to Reject.
+
+authorize {
+	if ("%{TLS-Client-Cert-Common-Name}" == "client.example.com") {
+		update config {
+			Auth-Type = Accept
+		}
+	}
+	else {
+		update config {
+			Auth-Type = Reject
+		}
+		update reply {
+			Reply-Message = "Your certificate is not valid."
+		}
+	}
+
+#	if ("host/%{TLS-Client-Cert-Common-Name}" == "%{User-Name}") {
+#		update config {
+#			Auth-Type = Accept
+#		}
+#	}
+#	else {
+#		update config {
+#			Auth-Type = Reject
+#		}
+#	}
+
+}
+
+
+
+}
+

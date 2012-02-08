@@ -309,6 +309,14 @@
 			ecdh_curve = "prime256v1"
 
 			#
+			# As part of checking a client certificate, the EAP-TLS
+			# sets some attributes such as TLS-Client-Cert-CN. This
+			# virtual server has access to these attributes, and can
+			# be used to accept or reject the request.
+			#
+		#	virtual_server = check-eap-tls
+
+			#
 			#  Session resumption / fast reauthentication
 			#  cache.
 			#
