@@ -1,2 +1,2 @@
-TARGET		= rlm_cram.a
+TARGET		=
 SOURCES		= rlm_cram.c
