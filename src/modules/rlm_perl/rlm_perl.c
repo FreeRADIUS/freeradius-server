@@ -541,6 +541,48 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
+/* XXX: should this be moved to src/lib/valuepair.c? */
+static VALUE_PAIR *paircopy_tag(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag) {
+	VALUE_PAIR *first, *n, **last;
+
+	first = NULL;
+	last = &first;
+
+	while (vp) {
+		if ((attr > 0) &&
+		    ((vp->attribute != attr) || (vp->vendor != vendor) ||
+		     (vp->flags.has_tag && (vp->flags.tag != tag)))) {
+			vp = vp->next;
+			continue;
+		}
+
+		n = paircopyvp(vp);
+		if (!n) return first;
+		*last = n;
+		last = &n->next;
+		vp = vp->next;
+	}
+	return first;
+}
+
+/* XXX: should this be moved to src/lib/valuepair.c? */
+static void pairdelete_tag(VALUE_PAIR **first, unsigned int attr, unsigned int vendor, int8_t tag) {
+	VALUE_PAIR *i, *next;
+	VALUE_PAIR **last=first;
+
+	for (i = *first; i; i = next) {
+		next = i->next;
+		if ((i->attribute == attr) && (i->vendor == vendor) &&
+		    (!i->flags.has_tag || (i->flags.tag == tag))) {
+			*last = next;
+			if (i == *first) *first = next;
+			pairbasicfree(i);
+		} else {
+			last = &i->next;
+		}
+	}
+}
+
 /*
  *  	get the vps and put them in perl hash
  *  	If one VP have multiple values it is added as array_ref
@@ -549,51 +591,41 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
  */
 static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 {
-        VALUE_PAIR	*nvp, *vpa, *vpn;
-	AV		*av;
-	char		namebuf[256], *name;
-	char            buffer[1024];
-	int		attr, vendor, len;
+	VALUE_PAIR *nvp, *vpa, *vpn;
+	AV *av;
+	char namebuf[256], *name;
+	char buffer[1024];
+	int len;
 
 	hv_undef(rad_hv);
 	nvp = paircopy(vp);
 
 	while (nvp != NULL) {
-		name = nvp->name;
-		attr = nvp->attribute;
-		vendor = nvp->vendor;
-		vpa = paircopy2(nvp, attr, vendor);
+
+		if (nvp->flags.has_tag && (nvp->flags.tag != 0)) {
+			snprintf(namebuf, sizeof(namebuf), "%s:%d",
+			         nvp->name, nvp->flags.tag);
+			name = namebuf;
+		} else {
+			name = nvp->name;
+		}
+
+		vpa = paircopy_tag(nvp, nvp->attribute, nvp->vendor, nvp->flags.tag);
 
 		if (vpa->next) {
 			av = newAV();
-			vpn = vpa;
-			while (vpn) {
-				len = vp_prints_value(buffer, sizeof(buffer),
-						vpn, FALSE);
+			for (vpn = vpa; vpn; vpn = vpn->next) {
+				len = vp_prints_value(buffer, sizeof(buffer), vpn, FALSE);
 				av_push(av, newSVpv(buffer, len));
-				vpn = vpn->next;
 			}
-			hv_store(rad_hv, nvp->name, strlen(nvp->name),
-					newRV_noinc((SV *) av), 0);
+			hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 		} else {
-			if ((vpa->flags.has_tag) &&
-			    (vpa->flags.tag != 0)) {
-				snprintf(namebuf, sizeof(namebuf), "%s:%d",
-					 nvp->name, nvp->flags.tag);
-				name = namebuf;
-			}
-
-			len = vp_prints_value(buffer, sizeof(buffer),
-					      vpa, FALSE);
-			hv_store(rad_hv, name, strlen(name),
-				 newSVpv(buffer, len), 0);
+			len = vp_prints_value(buffer, sizeof(buffer), vpa, FALSE);
+			hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 
 		pairfree(&vpa);
-		vpa = nvp; while ((vpa != NULL) && (vpa->attribute == attr) && (vpa->vendor == vendor))
-			vpa = vpa->next;
-		pairdelete(&nvp, attr, vendor);
-		nvp = vpa;
+		pairdelete_tag(&nvp, nvp->attribute, nvp->vendor, nvp->flags.tag);
 	}
 }
 
