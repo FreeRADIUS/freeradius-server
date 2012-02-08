@@ -770,8 +770,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 			}
 
 			nasip.s_addr = vp->vp_ipaddr;
-			strncpy(nasipstr, inet_ntoa(nasip), sizeof(nasipstr) - 1);
-			nasipstr[sizeof(nasipstr)] = 0;
+			strlcpy(nasipstr, inet_ntoa(nasip), sizeof(nasipstr));
 
 			if (!nvp_query(__LINE__, data, sqlsock,
 			    "UPDATE `%s`.`ips`, `radacct` "
