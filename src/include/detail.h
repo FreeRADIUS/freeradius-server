@@ -44,10 +44,12 @@ typedef struct listen_detail_t {
 	int		packets;
 	int		tries;
 	int		one_shot;
-
+	int		outstanding;
+	int		max_outstanding;
 	int		has_rtt;
 	int		srtt;
 	int		rttvar;
+	uint32_t	counter;
 	struct timeval  last_packet;
 	RADCLIENT	detail_client;
 } listen_detail_t;

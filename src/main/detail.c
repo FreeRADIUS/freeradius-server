@@ -158,6 +158,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	data->last_packet = now;
 	data->signal = 1;
 	data->state = STATE_REPLIED;
+	data->counter++;
 	radius_signal_self(RADIUS_SIGNAL_SELF_DETAIL);
 
 	return 0;
@@ -661,22 +662,14 @@ int detail_recv(rad_listen_t *listener)
 	}
 
 	/*
-	 *	We've got to give SOME value for Id & ports, so that
-	 *	the packets can be added to the request queue.
-	 *	However, we don't want to keep track of used/unused
-	 *	id's and ports, as that's a lot of work.  This hack
-	 *	ensures that (if we have real random numbers), that
-	 *	there will be a collision on every 2^(16+15+15+24 - 1)
-	 *	packets, on average.  That means we can read 2^37
-	 *	packets before having a collision, which means it's
-	 *	effectively impossible.
+	 *	Generate packet ID, ports, IP via a counter.
 	 */
-	packet->id = fr_rand() & 0xffff;
-	packet->src_port = 1024 + (fr_rand() & 0x7fff);
-	packet->dst_port = 1024 + (fr_rand() & 0x7fff);
+	packet->id = data->counter & 0xff;
+	packet->src_port = 1024 + ((data->counter >> 8) & 0xff);
+	packet->dst_port = 1024 + ((data->counter >> 16) & 0xff);
 
 	packet->dst_ipaddr.af = AF_INET;
-	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | (fr_rand() & 0xffffff));
+	packet->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl((INADDR_LOOPBACK & ~0xffffff) | ((data->counter >> 24) & 0xff));
 
 	/*
 	 *	If everything's OK, this is a waste of memory.
@@ -837,6 +830,8 @@ static const CONF_PARSER detail_config[] = {
 	  offsetof(listen_detail_t, retry_interval), NULL, Stringify(30)},
 	{ "one_shot",   PW_TYPE_BOOLEAN,
 	  offsetof(listen_detail_t, one_shot), NULL, NULL},
+	{ "max_outstanding",   PW_TYPE_INTEGER,
+	  offsetof(listen_detail_t, load_factor), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -883,6 +878,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
+	if (data->max_outstanding == 0) data->max_outstanding = 1;
+	
 	/*
 	 *	If the filename is a glob, use "detail.work" as the
 	 *	work file name.
