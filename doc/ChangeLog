@@ -9,16 +9,18 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	  could not handle some unusual corner cases.
 	* Support for "extended attributes" using new encoder/decoder.
 	* Support for "integer64" data type.
-	* Updated internal API to support new attributes
+	* Updated internal API to support new attributes and formts
+	* Support for MS-CHAP Change Password.  See raddb/mods-available/mschap,
+	  "passchange" subsection.
 	* Re-arranged configuration entries in radiusd.conf to make more
 	  sense.
-	* Moved eap.conf to modules/eap
-	* Moved sql.conf to modules/sql
+	* Moved raddb/modules/ to raddb/mods-available, and raddb/mods-enabled
+	  See raddb/README.rst for more information.
+	* Moved eap.conf to mods-available/eap
+	* Moved sql.conf to mods-available/sql
 	* Preliminary support for Apple's Grand Central Dispatch.
-	* All modules have been moved to raddb/mods-available/
-	  and raddb/modes-enabled/.  See raddb/README for more details.
 	* Largely config-file compatible with 2.1.x.
-	* For upgrade instructions, see raddb/README
+	* Upgrade instructions are in raddb/README.rst
 
 	Bug fixes
 	* All known bug fixes are included.
