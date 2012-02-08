@@ -3307,6 +3307,7 @@ static void event_poll_detail(void *ctx)
 
 	rad_assert(this->type == RAD_LISTEN_DETAIL);
 
+ redo:
 	event_socket_handler(el, this->fd, this);
 
 	fr_event_now(el, &now);
@@ -3317,6 +3318,8 @@ static void event_poll_detail(void *ctx)
 	 *	time.
 	 */
 	delay = this->encode(this, NULL);
+	if (delay == 0) goto redo;
+
 	tv_add(&when, delay);
 
 	if (!fr_event_insert(el, event_poll_detail, this,
