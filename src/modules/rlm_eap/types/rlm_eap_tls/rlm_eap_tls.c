@@ -634,12 +634,12 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	/*
-	 *	Get the Common Name
+	 *	Get the Common Name, if there is a subject.
 	 */
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
-	if ((lookup <= 1) && common_name[0] && (strlen(common_name) < MAX_STRING_LEN)) {
+	if ((lookup <= 1) && common_name[0] && subject[0] && (strlen(common_name) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
 			pairmake(cert_attr_names[EAPTLS_CN][lookup], common_name, T_OP_SET));
 	}
