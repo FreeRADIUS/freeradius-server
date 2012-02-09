@@ -361,12 +361,19 @@ static int sql_log_write(rlm_sql_log_t *inst, REQUEST *request, const char *line
 	FILE *fp;
 	int locked = 0;
 	struct stat st;
-	char path[MAX_STRING_LEN];
+	char *p, path[1024];
 
 	path[0] = '\0';
 	radius_xlat(path, sizeof(path), inst->path, request, NULL);
 	if (path[0] == '\0') {
 		return RLM_MODULE_FAIL;
+	}
+
+	p = strrchr(path, '/');
+	if (p) {
+		*p = '\0';
+		rad_mkdir(path, 0644);
+		*p = '/';
 	}
 
 	while (!locked) {
