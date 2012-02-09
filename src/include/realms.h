@@ -50,9 +50,7 @@ typedef struct home_server {
 	int		lifetime;
 	int		idle_timeout;
 
-	/*
-	 *	Maybe also have list of source IP/ports, && socket?
-	 */
+	fr_ipaddr_t	src_ipaddr; /* preferred source IP address */
 
 	const char	*secret;
 
@@ -93,10 +91,9 @@ typedef struct home_server {
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
 #endif
+
 #ifdef WITH_STATS
 	int		number;
-
-	fr_ipaddr_t	src_ipaddr; /* preferred source IP address */
 
 	fr_stats_t	stats;
 
