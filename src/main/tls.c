@@ -2245,6 +2245,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 */
 	} else if (!SSL_session_reused(ssn->ssl)) {
 		size_t size;
+		VALUE_PAIR **certs;
 		char buffer[2 * MAX_SESSION_SIZE + 1];
 
 		size = ssn->ssl->session->session_id_length;
@@ -2252,7 +2253,6 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
-		
 		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0);
 		if (vp) pairadd(&vps, vp);
 		
@@ -2261,7 +2261,16 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		
 		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0);
 		if (vp) pairadd(&vps, vp);
-		
+
+		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS);
+
+		/*
+		 *	Hmm... the certs should probably be session data.
+		 */
+		if (certs) {
+			pairadd(&vps, paircopy(*certs));
+		}
+
 		if (vps) {
 			RDEBUG2("Saving session %s vps %p in the cache", buffer, vps);
 			SSL_SESSION_set_ex_data(ssn->ssl->session,
@@ -2286,16 +2295,32 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
 	       
-		vp = SSL_SESSION_get_ex_data(ssn->ssl->session,
+		vps = SSL_SESSION_get_ex_data(ssn->ssl->session,
 					     FR_TLS_EX_INDEX_VPS);
-		if (!vp) {
+		if (!vps) {
 			RDEBUG("WARNING: No information in cached session %s", buffer);
 			return -1;
 
 		} else {
-			RDEBUG("Adding cached attributes for session %s vps %p to the reply:", buffer, vp);
-			debug_pair_list(vp);
-			pairadd(&request->reply->vps, paircopy(vp));
+			RDEBUG("Adding cached attributes for session %s:",
+			       buffer);
+			debug_pair_list(vps);
+
+			for (vp = vps; vp != NULL; vp = vp->next) {
+				/*
+				 *	TLS-* attrs get added back to
+				 *	the request list.
+				 */
+				if ((vp->vendor == 0) &&
+				    (vp->attribute >= 1910) &&
+				    (vp->attribute < 1929)) {
+					pairadd(&request->packet->vps,
+						paircopyvp(vp));
+				} else {
+					pairadd(&request->reply->vps,
+						paircopyvp(vp));
+				}
+			}
 
 			/*
 			 *	Mark the request as resumed.
