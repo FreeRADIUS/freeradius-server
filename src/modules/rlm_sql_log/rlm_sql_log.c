@@ -372,7 +372,7 @@ static int sql_log_write(rlm_sql_log_t *inst, REQUEST *request, const char *line
 	p = strrchr(path, '/');
 	if (p) {
 		*p = '\0';
-		rad_mkdir(path, 0644);
+		rad_mkdir(path, 0755);
 		*p = '/';
 	}
 
