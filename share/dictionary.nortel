@@ -13,6 +13,8 @@
 VENDOR		Nortel				562
 BEGIN-VENDOR	Nortel
 
+ATTRIBUTE	Nortel-User-Role			110	string
+
 ATTRIBUTE	Nortel-Privilege-Level			166	integer
 
 ATTRIBUTE	Passport-Command-Scope			200	integer
