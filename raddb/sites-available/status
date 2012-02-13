@@ -34,7 +34,7 @@ server status {
 		type = status
 
 		ipaddr = 127.0.0.1
-		port = 18120
+		port = 18121
 	}
 
 	#
