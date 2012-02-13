@@ -1796,7 +1796,7 @@ static int my_dict_init(const char *dir, const char *fn,
 			fr_strerror_printf("dict_init: %s[%d]: Couldn't open dictionary \"%s\": %s",
 				   src_file, src_line, fn, strerror(errno));
 		}
-		return -1;
+		return -2;
 	}
 
 	stat(fn, &statbuf); /* fopen() guarantees this will succeed */
@@ -1888,6 +1888,21 @@ static int my_dict_init(const char *dir, const char *fn,
 			}
 			continue;
 		} /* $INCLUDE */
+
+		/*
+		 *	Optionally include a dictionary
+		 */
+		if (strcasecmp(argv[0], "$INCLUDE-") == 0) {
+			int rcode = my_dict_init(dir, argv[1], fn, line);
+
+			if (rcode == -2) continue;
+
+			if (rcode < 0) {
+				fclose(fp);
+				return -1;
+			}
+			continue;
+		} /* $INCLUDE- */
 
 		if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
 			if (process_value_alias(fn, line,

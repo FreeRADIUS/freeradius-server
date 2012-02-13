@@ -5,6 +5,8 @@
 #	Any new/changed attributes MUST be placed in this file, as
 #	the pre-defined dictionaries SHOULD NOT be edited.
 #
+#	See "man dictionary" for documentation on its format.
+#
 #	$Id$
 #
 
@@ -26,19 +28,38 @@
 $INCLUDE	@prefix@/share/freeradius/dictionary
 
 #
-#	Place additional attributes or $INCLUDEs here.  They will
-#	over-ride the definitions in the pre-defined dictionaries.
-#
-#	See the 'man' page for 'dictionary' for information on
-#	the format of the dictionary files.
+#	All additional attributes an $INCLUDE's should go into
+#	a file "dictionary.local".
 
-#
 #	If you want to add entries to the dictionary file,
 #	which are NOT going to be placed in a RADIUS packet,
-#	add them here.  The numbers you pick should be between
-#	3000 and 4000.
+#	add them to the 'dictionary.local' file.
+#
+#	The numbers you pick should be between 3000 and 4000.
+#	These attributes will NOT go into a RADIUS packet.
+#
+#	If you want that, you will need to use VSAs.  This means
+#	requesting allocation of a Private Enterprise Code from
+#	http://iana.org.  We STRONGLY suggest doing that only if
+#	you are a vendor of RADIUS equipment.
+#
+#	See RFC 6158 for more details.
+#	http://ietf.org/rfc/rfc6158.txt
 #
 
+#
+#	These attributes are examples.  Don't edit them here.
+#	Instead, create a "dictionary.local" file, and place
+#	them there.
+#
 #ATTRIBUTE	My-Local-String		3000	string
 #ATTRIBUTE	My-Local-IPAddr		3001	ipaddr
 #ATTRIBUTE	My-Local-Integer	3002	integer
+
+#
+#	Include dictionary.local, IF it exists.  Otherwise, ignore it.
+#
+#	This file WILL NOT EVER be created, edited, or modified
+#	by FreeRADIUS.
+#
+$INCLUDE-	dictionary.local
