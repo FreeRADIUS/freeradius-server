@@ -75,6 +75,17 @@
 		md5 {
 		}
 
+		# 
+		# EAP-pwd -- secure password-based authentication
+		#
+		pwd {
+		    group = 19
+		    #
+		    server_id = theserver@example.com
+		    #
+		    fragment_size = 1020
+		}
+
 		# Cisco LEAP
 		#
 		#  We do not recommend using LEAP in new deployments.  See:
@@ -358,7 +369,7 @@
 			      #  enable resumption for just one user
 			      #  by setting the above attribute to "yes".
 			      #
-			      enable = no
+			      enable = yes
 
 			      #
 			      #  Lifetime of the cached entries, in hours.
