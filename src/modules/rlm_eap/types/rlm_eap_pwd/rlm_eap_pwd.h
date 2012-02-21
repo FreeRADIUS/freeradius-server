@@ -43,6 +43,7 @@ typedef struct eap_pwd_conf {
     int group;
     int fragment_size;
     char *server_id;
+    char *virtual_server;
 } EAP_PWD_CONF;
 
 typedef struct _eap_pwd_t {

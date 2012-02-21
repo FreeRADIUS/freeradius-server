@@ -50,6 +50,8 @@ static CONF_PARSER pwd_module_config[] = {
       offsetof(EAP_PWD_CONF, fragment_size), NULL, "1020"},
     { "server_id", PW_TYPE_STRING_PTR,
       offsetof(EAP_PWD_CONF, server_id), NULL, NULL },
+    { "virtual_server", PW_TYPE_STRING_PTR,
+      offsetof(EAP_PWD_CONF, virtual_server), NULL, NULL },
     { NULL, -1, 0, NULL, NULL }
 };
 
@@ -301,7 +303,7 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
     pwd_id_packet *id;
     EAP_PACKET *response;
     REQUEST *request, *fake;
-    VALUE_PAIR *pw, **outvps;
+    VALUE_PAIR *pw, **outvps, *vp;
     EAP_DS *eap_ds;
     int len, ret = 0;
     eap_pwd_t *inst = (eap_pwd_t *)arg;
@@ -443,7 +445,42 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
                    pwd_session->peer_id_len);
             fake->username->length = pwd_session->peer_id_len;
             fake->username->vp_strvalue[fake->username->length] = 0;
-            module_authorize(0, fake);
+
+	    if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0)) != NULL) {
+		    fake->server = vp->vp_strvalue;
+		    
+	    } else if (inst->conf->virtual_server) {
+		    fake->server = inst->conf->virtual_server;
+		    
+	    } /* else fake->server == request->server */
+	    
+	    if ((debug_flag > 0) && fr_log_fp) {
+		    RDEBUG("Sending tunneled request");
+		    
+		    debug_pair_list(fake->packet->vps);
+		    
+		    fprintf(fr_log_fp, "server %s {\n",
+			    (fake->server == NULL) ? "" : fake->server);
+	    }
+	    
+	    /*
+	     *	Call authorization recursively, which will
+	     *	get the password.
+	     */
+	    module_authorize(0, fake);
+	    
+	    /*
+	     *	Note that we don't do *anything* with the reply
+	     *	attributes.
+	     */
+	    if ((debug_flag > 0) && fr_log_fp) {
+		    fprintf(fr_log_fp, "} # server %s\n",
+			    (fake->server == NULL) ? "" : fake->server);
+		    
+		    RDEBUG("Got tunneled reply code %d", fake->reply->code);
+		    
+		    debug_pair_list(fake->reply->vps);
+	    }
 
             if ((pw = pairfind(fake->config_items, PW_CLEARTEXT_PASSWORD, 0)) == NULL) {
                 DEBUG2("failed to find password for %s to do pwd authentication",
