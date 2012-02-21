@@ -1334,9 +1334,9 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		pps = USEC - now.tv_usec;
 		pps /= 1000;		   /* now 0..9999 */
 		pps *= sock->rate_pps_old; /* capped at 1000000 */
-		pps /= 1000;
 
-		pps += sock->rate_pps_now;
+		pps += sock->rate_pps_now * 1000;
+		pps /= 1000;
 
 		if (pps > sock->max_rate) {
 			DEBUG("Dropping request due to rate limiting");
