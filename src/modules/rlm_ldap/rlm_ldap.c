@@ -2544,6 +2544,8 @@ ldap_detach(void *instance)
 		int i;
 
 		for (i = 0;i < inst->num_conns; i++) {
+			if (inst->conns[i].locked) return -1;
+
 			if (inst->conns[i].ld){
 				ldap_unbind_s(inst->conns[i].ld);
 			}
@@ -2557,6 +2559,8 @@ ldap_detach(void *instance)
 		int i;
 
 		for (i = 0; i < inst->num_conns; i++) {
+			if (inst->apc_conns[i].locked) return -1;
+
 			if (inst->apc_conns[i].ld){
 				ldap_unbind_s(inst->apc_conns[i].ld);
 			}
