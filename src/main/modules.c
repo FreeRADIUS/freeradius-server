@@ -356,7 +356,10 @@ static void module_instance_free_old(CONF_SECTION *cs, module_instance_t *node,
 		cf_section_parse_free(cs, mh->insthandle);
 		
 		if (node->entry->module->detach) {
-			(node->entry->module->detach)(mh->insthandle);
+			if ((node->entry->module->detach)(mh->insthandle) < 0) {
+				DEBUG("WARNING: Failed detaching module %s cleanly.  Doing forcible shutdown", node->name);
+
+			}
 		} else {
 			free(mh->insthandle);
 		}
