@@ -58,8 +58,9 @@ RCSIDH(eap_types_h, "$Id$")
 #define PW_EAP_CISCO_MSCHAPV2	29
 #define PW_EAP_TNC		38
 #define PW_EAP_IKEV2		49
+#define PW_EAP_PWD              52
      /* same number as last type */
-#define PW_EAP_MAX_TYPES	49
+#define PW_EAP_MAX_TYPES	52
 
 #define EAP_HEADER_LEN 		4
 
