@@ -400,6 +400,10 @@ typedef struct listen_socket_t {
 #ifdef SO_BROADCAST
 	int		broadcast;
 #endif
+	time_t		rate_time;
+	int		rate_pps_old;
+	int		rate_pps_now;
+	int		max_rate;
 	
 	/* for outgoing sockets */
 	home_server	*home;

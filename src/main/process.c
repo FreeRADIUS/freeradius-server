@@ -1298,6 +1298,53 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		return 0;
 	}
 
+	/*
+	 *	Rate-limit the incoming packets
+	 */
+	if (sock->max_rate) {
+		int pps;
+
+		/*
+		 *	Track packets in the previous second.
+		 */
+		if (sock->rate_time != now.tv_sec) {
+			sock->rate_time = now.tv_sec;
+			sock->rate_pps_old = sock->rate_pps_now;
+			sock->rate_pps_now = 0;
+		}
+
+		/*
+		 *	Bootstrap PPS by looking at a percentage of
+		 *	the previous PPS.  This lets us take a moving
+		 *	count, without doing a moving average.  If
+		 *	we're a fraction "f" (0..1) into the current
+		 *	second, we can get a good guess for PPS by
+		 *	doing:
+		 *
+		 *	PPS = pps_now + pps_old * (1 - f)
+		 *
+		 *	It's an instantaneous measurement, rather than
+		 *	a moving average.  This will hopefully let it
+		 *	respond better to sudden spikes.
+		 *
+		 *	Doing the calculations by thousands allows us
+		 *	to not overflow 2^32, AND to not underflow
+		 *	when we divide by USEC.
+		 */
+		pps = USEC - now.tv_usec;
+		pps /= 1000;		   /* now 0..9999 */
+		pps *= sock->rate_pps_old; /* capped at 1000000 */
+		pps /= 1000;
+
+		pps += sock->rate_pps_now;
+
+		if (pps > sock->max_rate) {
+			DEBUG("Dropping request due to rate limiting");
+			return 0;
+		}
+		sock->rate_pps_now++;
+	}
+
 	return request_insert(listener, packet, client, fun, &now);
 }
 

@@ -845,7 +845,7 @@ extern int check_config;	/* radiusd.c */
 static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
-	int		listen_port;
+	int		listen_port, max_pps;
 	fr_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
 	char		*section_name = NULL;
@@ -885,6 +885,16 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if ((listen_port < 0) || (listen_port > 65535)) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Invalid value for \"port\"");
+			return -1;
+	}
+
+	rcode = cf_item_parse(cs, "max_pps", PW_TYPE_INTEGER,
+			      &max_pps, "0");
+	if (rcode < 0) return -1;
+
+	if ((max_pps < 10) || (max_pps > 1000000)) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Invalid value for \"max_pps\"");
 			return -1;
 	}
 
@@ -992,6 +1002,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
+	sock->max_rate = max_pps;
 
 #ifdef WITH_PROXY
 	if (check_config) {
