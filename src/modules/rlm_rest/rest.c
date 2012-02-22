@@ -2001,6 +2001,8 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 						       buffer);
 				if (ret != CURLE_OK) goto error;
 			}
+
+#ifdef CURLOPT_TLSAUTH_USERNAME
 		} else if (type == HTTP_AUTH_TLS_SRP) {
 			ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_TYPE,
 					       http_curl_auth[auth]);
@@ -2023,7 +2025,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 						       buffer);
 				if (ret != CURLE_OK) goto error;
 			}
-	
+#endif
 		}
 	}
 	
