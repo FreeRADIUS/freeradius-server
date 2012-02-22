@@ -110,6 +110,15 @@ typedef struct thread_fork_t {
 } thread_fork_t;
 
 
+#ifdef WITH_STATS
+typedef struct fr_pps_t {
+	int	pps_old;
+	int	pps_now;
+	time_t	time_old;
+} fr_pps_t;
+#endif
+
+
 /*
  *	A data structure to manage the thread pool.  There's no real
  *	need for a data structure, but it makes things conceptually
@@ -142,6 +151,13 @@ typedef struct THREAD_POOL {
 #ifdef WITH_GCD
 	dispatch_queue_t	queue;
 #else
+
+#ifdef WITH_STATS
+	fr_pps_t	pps_in, pps_out;
+#ifdef WITH_ACCOUNTING
+	int		auto_limit_acct;
+#endif
+#endif
 
 	/*
 	 *	All threads wait on this semaphore, for requests
@@ -181,6 +197,11 @@ static const CONF_PARSER thread_config[] = {
 	{ "max_requests_per_server", PW_TYPE_INTEGER, 0, &thread_pool.max_requests_per_thread, "0" },
 	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" },
 	{ "max_queue_size",          PW_TYPE_INTEGER, 0, &thread_pool.max_queue_size,           "65536" },
+#ifdef WITH_STATS
+#ifdef WITH_ACCOUNTING
+	{ "auto_limit_acct",	     PW_TYPE_BOOLEAN, 0, &thread_pool.auto_limit_acct, NULL },
+#endif
+#endif
 	{ NULL, -1, 0, NULL, NULL }
 };
 #endif
@@ -300,6 +321,11 @@ static void reap_children(void)
  */
 int request_enqueue(REQUEST *request)
 {
+#ifdef WITH_STATS
+	int pps;
+	struct timeval when;
+#endif
+
 	/*
 	 *	If we haven't checked the number of child threads
 	 *	in a while, OR if the thread pool appears to be full,
@@ -310,7 +336,34 @@ int request_enqueue(REQUEST *request)
 		thread_pool_manage(request->timestamp);
 	}
 
+
 	pthread_mutex_lock(&thread_pool.queue_mutex);
+
+#ifdef WITH_STATS
+#ifdef WITH_ACCOUTING
+	/*
+	 *	Throw away accounting requests if we're too busy.
+	 */
+	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+	    thread_pool.auto_limit_acct &&
+	    (fr_fifo_num_elements(thread_pool.fifo[RAD_LISTEN_ACCT]) > 0) && 
+	    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
+	    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
+
+		pthread_mutex_unlock(&thread_pool.queue_mutex);
+		return 0;
+	}
+#endif	/* WITH_ACCOUNTING */
+
+	gettimeofday(&when, NULL);
+
+	pps = rad_pps(&thread_pool.pps_in.pps_old,
+		      &thread_pool.pps_in.pps_now,
+		      &thread_pool.pps_in.time_old,
+		      &when);
+
+	thread_pool.pps_in.pps_now++;
+#endif
 
 	thread_pool.request_count++;
 
@@ -374,10 +427,23 @@ static int request_dequeue(REQUEST **prequest)
 	static time_t last_complained;
 	RAD_LISTEN_TYPE i, start;
 	REQUEST *request;
-
+#ifdef WITH_STATS
+	int pps;
+	struct timeval now;
+#endif
 	reap_children();
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
+
+#ifdef WITH_STATS
+	gettimeofday(&now, NULL);
+
+	pps = rad_pps(&thread_pool.pps_out.pps_old,
+		      &thread_pool.pps_out.pps_now,
+		      &thread_pool.pps_out.time_old,
+		      &now);
+	thread_pool.pps_out.pps_now++;
+#endif
 
 	/*
 	 *	Clear old requests from all queues.
