@@ -5,7 +5,7 @@ rest {
 	#
 	# If you wish to disable this pre-caching and reachability check,
 	# comment out the configuration item below.
-	connect_uri = "http://power.freeradius.org"
+	connect_uri = "http://127.0.0.1/"
 	
 	pool {
 	     start = 5
@@ -18,7 +18,7 @@ rest {
 
 	authorize {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
-		method = "get"`
+		method = "get"
 	}
 	authenticate {
 		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
