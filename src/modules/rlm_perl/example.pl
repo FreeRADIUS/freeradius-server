@@ -66,6 +66,14 @@ use constant	L_ERR=>   4;
 use constant	L_PROXY=> 5;
 use constant	L_ACCT=>  6;
 
+# Same as src/include/radiusd.h
+use constant	L_DBG=>   1;
+use constant	L_AUTH=>  2;
+use constant	L_INFO=>  3;
+use constant	L_ERR=>   4;
+use constant	L_PROXY=> 5;
+use constant	L_ACCT=>  6;
+
 #  Global variables can persist across different calls to the module.
 #
 #
