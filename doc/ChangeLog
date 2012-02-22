@@ -2,13 +2,13 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
 	* Support for RADIUS over TLS (i.e. RadSec).
 	  See raddb/sites-available/tls
-	* SNMP Traps.  See raddb/trigger.conf.
+	* Can send SNMP Traps.  See raddb/trigger.conf.
 	* Re-written packet encode/decoder.  The resulting code is
 	  much simpler and easier to extend.
-	* Complete WiMAX support, using new encoder/decoder.  The old code
-	  could not handle some unusual corner cases.
-	* Support for "extended attributes" using new encoder/decoder.
-	* Support for "integer64" data type.
+	* Complete WiMAX support, using the new encoder/decoder.  The old
+	  code could not handle some unusual corner cases.
+	* Support for "extended attributes" using nthe ew encoder/decoder.
+	* Support for the "integer64" data type.
 	* Updated internal API to support new attributes and formts
 	* Support for MS-CHAP Change Password.  See raddb/mods-available/mschap,
 	  "passchange" subsection.
@@ -19,8 +19,12 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Moved eap.conf to mods-available/eap
 	* Moved sql.conf to mods-available/sql
 	* Preliminary support for Apple's Grand Central Dispatch.
+	* Added provisions for raddb/dictionary.local, for local changes.
+	  See raddb/dictionary for more details.
+	* EAP-PWD implementation from Dan Harkins
 	* Largely config-file compatible with 2.1.x.
 	* Upgrade instructions are in raddb/README.rst
+	* DHCP is now a fully supported protocol, enabled by default.
 
 	Bug fixes
 	* All known bug fixes are included.
