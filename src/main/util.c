@@ -610,3 +610,43 @@ int rad_copy_variable(char *to, const char *from)
 	return -1;
 }
 
+#ifndef USEC
+#define USEC 1000000
+#endif
+
+int rad_pps(int *past, int *present, time_t *then, struct timeval *now)
+{
+	int pps;
+
+	if (*then != now->tv_sec) {
+		*then = now->tv_sec;
+		*past = *present;
+		*present = 0;
+	}
+
+	/*
+	 *	Bootstrap PPS by looking at a percentage of
+	 *	the previous PPS.  This lets us take a moving
+	 *	count, without doing a moving average.  If
+	 *	we're a fraction "f" (0..1) into the current
+	 *	second, we can get a good guess for PPS by
+	 *	doing:
+	 *
+	 *	PPS = pps_now + pps_old * (1 - f)
+	 *
+	 *	It's an instantaneous measurement, rather than
+	 *	a moving average.  This will hopefully let it
+	 *	respond better to sudden spikes.
+	 *
+	 *	Doing the calculations by thousands allows us
+	 *	to not overflow 2^32, AND to not underflow
+	 *	when we divide by USEC.
+	 */
+	pps = USEC - now->tv_usec; /* useconds left in previous second */
+	pps /= 1000;		   /* scale to milliseconds */
+	pps *= *past;		   /* multiply by past count to get fraction */
+	pps /= 1000;		   /* scale to usec again */
+	pps += *present;	   /* add in current count */
+
+	return pps;
+}

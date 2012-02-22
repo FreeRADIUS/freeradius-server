@@ -892,7 +892,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			      &max_pps, "0");
 	if (rcode < 0) return -1;
 
-	if ((max_pps < 10) || (max_pps > 1000000)) {
+	if (max_pps && ((max_pps < 10) || (max_pps > 1000000))) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Invalid value for \"max_pps\"");
 			return -1;
