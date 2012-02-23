@@ -99,7 +99,7 @@ client.pem: client.p12
 	cp client.pem $(USER_NAME).pem
 
 .PHONY: client.vrfy
-client.vrfy: server.pem client.pem 
+client.vrfy: ca.pem client.pem 
 	c_rehash .
 	openssl verify -CApath . client.pem
 
