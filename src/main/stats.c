@@ -522,7 +522,7 @@ void request_stats_reply(REQUEST *request)
 
 		for (i = 0; i < 2; i++) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       180 + i, VENDORPEC_FREERADIUS,
+					       181 + i, VENDORPEC_FREERADIUS,
 					       PW_TYPE_INTEGER);
 			
 			if (!vp) continue;
