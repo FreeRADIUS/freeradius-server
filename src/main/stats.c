@@ -507,12 +507,11 @@ void request_stats_reply(REQUEST *request)
 		if (vp) vp->vp_date = hup_time.tv_sec;
 		
 #ifdef HAVE_PTHREAD_H
-		int i, array[RAD_LISTEN_MAX];
+		int i, array[RAD_LISTEN_MAX], pps[2];
 
-		thread_pool_queue_stats(array);
+		thread_pool_queue_stats(array, pps);
 
-#ifdef WITH_DETAIL
-		for (i = 0; i <= RAD_LISTEN_DETAIL; i++) {
+		for (i = 0; i <= 4; i++) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       162 + i, VENDORPEC_FREERADIUS,
 					       PW_TYPE_INTEGER);
@@ -520,7 +519,15 @@ void request_stats_reply(REQUEST *request)
 			if (!vp) continue;
 			vp->vp_integer = array[i];
 		}
-#endif
+
+		for (i = 0; i < 2; i++) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       180 + i, VENDORPEC_FREERADIUS,
+					       PW_TYPE_INTEGER);
+			
+			if (!vp) continue;
+			vp->vp_integer = pps[i];
+		}
 #endif
 	}
 
