@@ -321,11 +321,6 @@ static void reap_children(void)
  */
 int request_enqueue(REQUEST *request)
 {
-#ifdef WITH_STATS
-	int pps;
-	struct timeval when;
-#endif
-
 	/*
 	 *	If we haven't checked the number of child threads
 	 *	in a while, OR if the thread pool appears to be full,
@@ -340,29 +335,33 @@ int request_enqueue(REQUEST *request)
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
 #ifdef WITH_STATS
-#ifdef WITH_ACCOUTING
-	/*
-	 *	Throw away accounting requests if we're too busy.
-	 */
-	if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-	    thread_pool.auto_limit_acct &&
-	    (fr_fifo_num_elements(thread_pool.fifo[RAD_LISTEN_ACCT]) > 0) && 
-	    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
-	    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
+#ifdef WITH_ACCOUNTING
+	if (thread_pool.auto_limit_acct) {
+		int pps;
+		struct timeval now;
 
-		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		return 0;
+		/*
+		 *	Throw away accounting requests if we're too busy.
+		 */
+		if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		    (fr_fifo_num_elements(thread_pool.fifo[RAD_LISTEN_ACCT]) > 0) && 
+		    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
+		    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
+			
+			pthread_mutex_unlock(&thread_pool.queue_mutex);
+			return 0;
+		}
+
+		gettimeofday(&now, NULL);
+		
+		pps = rad_pps(&thread_pool.pps_in.pps_old,
+			      &thread_pool.pps_in.pps_now,
+			      &thread_pool.pps_in.time_old,
+			      &now);
+		
+		thread_pool.pps_in.pps_now++;
 	}
 #endif	/* WITH_ACCOUNTING */
-
-	gettimeofday(&when, NULL);
-
-	pps = rad_pps(&thread_pool.pps_in.pps_old,
-		      &thread_pool.pps_in.pps_now,
-		      &thread_pool.pps_in.time_old,
-		      &when);
-
-	thread_pool.pps_in.pps_now++;
 #endif
 
 	thread_pool.request_count++;
@@ -427,22 +426,25 @@ static int request_dequeue(REQUEST **prequest)
 	static time_t last_complained;
 	RAD_LISTEN_TYPE i, start;
 	REQUEST *request;
-#ifdef WITH_STATS
-	int pps;
-	struct timeval now;
-#endif
 	reap_children();
 
 	pthread_mutex_lock(&thread_pool.queue_mutex);
 
 #ifdef WITH_STATS
-	gettimeofday(&now, NULL);
+#ifdef WITH_ACCOUNTING
+	if (thread_pool.auto_limit_acct) {
+		int pps;
+		struct timeval now;
 
-	pps = rad_pps(&thread_pool.pps_out.pps_old,
-		      &thread_pool.pps_out.pps_now,
-		      &thread_pool.pps_out.time_old,
-		      &now);
-	thread_pool.pps_out.pps_now++;
+		gettimeofday(&now, NULL);
+		
+		pps = rad_pps(&thread_pool.pps_out.pps_old,
+			      &thread_pool.pps_out.pps_now,
+			      &thread_pool.pps_out.time_old,
+			      &now);
+		thread_pool.pps_out.pps_now++;
+	}
+#endif
 #endif
 
 	/*
