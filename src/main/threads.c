@@ -114,6 +114,7 @@ typedef struct thread_fork_t {
 typedef struct fr_pps_t {
 	int	pps_old;
 	int	pps_now;
+	int	pps;
 	time_t	time_old;
 } fr_pps_t;
 #endif
@@ -337,7 +338,6 @@ int request_enqueue(REQUEST *request)
 #ifdef WITH_STATS
 #ifdef WITH_ACCOUNTING
 	if (thread_pool.auto_limit_acct) {
-		int pps;
 		struct timeval now;
 
 		/*
@@ -354,10 +354,10 @@ int request_enqueue(REQUEST *request)
 
 		gettimeofday(&now, NULL);
 		
-		pps = rad_pps(&thread_pool.pps_in.pps_old,
-			      &thread_pool.pps_in.pps_now,
-			      &thread_pool.pps_in.time_old,
-			      &now);
+		thread_pool.pps_in.pps = rad_pps(&thread_pool.pps_in.pps_old,
+						 &thread_pool.pps_in.pps_now,
+						 &thread_pool.pps_in.time_old,
+						 &now);
 		
 		thread_pool.pps_in.pps_now++;
 	}
@@ -433,15 +433,14 @@ static int request_dequeue(REQUEST **prequest)
 #ifdef WITH_STATS
 #ifdef WITH_ACCOUNTING
 	if (thread_pool.auto_limit_acct) {
-		int pps;
 		struct timeval now;
 
 		gettimeofday(&now, NULL);
 		
-		pps = rad_pps(&thread_pool.pps_out.pps_old,
-			      &thread_pool.pps_out.pps_now,
-			      &thread_pool.pps_out.time_old,
-			      &now);
+		thread_pool.pps_out.pps  = rad_pps(&thread_pool.pps_out.pps_old,
+						   &thread_pool.pps_out.pps_now,
+						   &thread_pool.pps_out.time_old,
+						   &now);
 		thread_pool.pps_out.pps_now++;
 	}
 #endif
@@ -601,6 +600,31 @@ static void *request_handler_thread(void *arg)
 		DEBUG2("Thread %d handling request %d, (%d handled so far)",
 		       self->thread_num, self->request->number,
 		       self->request_count);
+
+		if ((self->request->packet->code == PW_ACCOUNTING_REQUEST) &&
+		    thread_pool.auto_limit_acct) {
+			VALUE_PAIR *vp;
+			REQUEST *request = self->request;
+
+			vp = radius_paircreate(request, &request->config_items,
+					       181, VENDORPEC_FREERADIUS,
+					       PW_TYPE_INTEGER);
+			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
+
+			vp = radius_paircreate(request, &request->config_items,
+					       182, VENDORPEC_FREERADIUS,
+					       PW_TYPE_INTEGER);
+			if (vp) vp->vp_integer = thread_pool.pps_in.pps;
+			
+			vp = radius_paircreate(request, &request->config_items,
+					       183, VENDORPEC_FREERADIUS,
+					       PW_TYPE_INTEGER);
+			if (vp) {
+				vp->vp_integer = thread_pool.max_queue_size - thread_pool.num_queued;
+				vp->vp_integer *= 100;
+				vp->vp_integer /= thread_pool.max_queue_size;
+			}
+		}
 
 		self->request->process(self->request, FR_ACTION_RUN);
 
