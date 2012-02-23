@@ -136,6 +136,8 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 		return NULL;
 	}
 
+	ssn->offset = conf->fragment_size;
+
 	return ssn;
 }
 

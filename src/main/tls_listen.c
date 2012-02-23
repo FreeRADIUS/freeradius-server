@@ -475,7 +475,7 @@ int proxy_tls_recv(rad_listen_t *listener)
 	RAD_REQUEST_FUNP fun = NULL;
 	uint8_t *data;
 
-	if (!sock->data) sock->data = rad_malloc(listener->tls->fragment_size);
+	if (!sock->data) sock->data = rad_malloc(sock->ssn->offset);
 	data = sock->data;
 
 	DEBUG3("Proxy SSL socket has data to read");
@@ -513,7 +513,7 @@ redo:
 	DEBUG3("Proxy received header saying we have a packet of %u bytes",
 	       (unsigned int) length);
 
-	if (length > listener->tls->fragment_size) {
+	if (length > sock->ssn->offset) {
 		radlog(L_INFO,
 		       "Received packet will be too large! Set \"fragment_size=%u\"",
 		       (data[2] << 8) | data[3]);
