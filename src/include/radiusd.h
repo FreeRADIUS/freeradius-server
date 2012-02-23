@@ -432,6 +432,7 @@ typedef struct listen_socket_t {
 	REQUEST		*request; /* horrible hacks */
 	VALUE_PAIR	*certs;
 	pthread_mutex_t mutex;
+	uint8_t		*data;
 #endif
 
 	RADCLIENT_LIST	*clients;
