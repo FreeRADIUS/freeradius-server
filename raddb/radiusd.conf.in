@@ -270,6 +270,29 @@ listen {
 	type = acct
 #	interface = eth0
 #	clients = per_socket_clients
+
+	#  The number of packets received can be rate limited via the
+	#  "max_pps" configuration item.  When it is set, the server
+	#  tracks the total number of packets received in the previous
+	#  second.  If the count is greater than "max_pps", then the
+	#  new packet is silently discarded.  This helps the server
+	#  deal with overload situations.
+	#
+	#  The packets/s counter is tracked in a sliding window.  This
+	#  means that the pps calculation is done for the second
+	#  before the current packet was received.  NOT for the current
+	#  wall-clock second, and NOT for the previous wall-clock second.
+	#
+	#  Useful values are 0 (no limit), or 100 to 10000.
+	#  Values lower than 100 will likely cause the server to ignore
+	#  normal traffic.  Few systems are capable of handling more than
+	#  10K packets/s.
+	#
+	#  It is most useful for accounting systems.  Set it to 50%
+	#  more than the normal accounting load, and you can be sure that
+	#  the server will never get overloaded
+	#  
+#	max_pps = 0
 }
 
 #  hostname_lookups: Log the names of clients or just their IP addresses
@@ -648,6 +671,20 @@ thread pool {
 	#  '0' is a special value meaning 'infinity', or 'the servers never
 	#  exit'
 	max_requests_per_server = 0
+
+	#  Automatically limit the number of accounting requests.
+	#  This configuration item tracks how many requests per second
+	#  the server can handle.  It does this by tracking the
+	#  packets/s received by the server for processing, and
+	#  comparing that to the packets/s handled by the child
+	#  threads.
+	#
+	#  If the received PPS is larger than the processed PPS, *and*
+	#  the queue is more than half full, then all new accounting
+	#  requests are discarded.  This lowers the received rate,
+	#  and over time allows the server to "catch up" to the traffic.
+	#
+	auto_limit_acct = no
 }
 
 # MODULE CONFIGURATION
