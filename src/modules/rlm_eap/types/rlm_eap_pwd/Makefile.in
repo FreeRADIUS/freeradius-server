@@ -6,7 +6,7 @@
 
 TARGET      = @targetname@
 
-SRCS        = rlm_eap_pwd.c eap_pwdc
+SRCS        = rlm_eap_pwd.c eap_pwd.c
 HEADERS     = rlm_eap_pwd.h eap_pwd.h
 RLM_CFLAGS  = -I../.. -I../../libeap
 
