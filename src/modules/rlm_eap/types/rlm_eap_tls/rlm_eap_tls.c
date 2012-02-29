@@ -48,7 +48,6 @@ RCSID("$Id$")
  */
 static int eaptls_detach(void *arg)
 {
-	tls_server_conf_free(arg);
 	return 0;
 }
 

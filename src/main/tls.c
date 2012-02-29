@@ -43,6 +43,8 @@ RCSID("$Id$")
 #include <openssl/ocsp.h>
 #endif
 
+static void tls_server_conf_free(fr_tls_server_conf_t *conf);
+
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
@@ -2056,7 +2058,13 @@ post_ca:
 }
 
 
-void tls_server_conf_free(fr_tls_server_conf_t *conf)
+/*
+ *	Free TLS client/server config
+ *	Should not be called outside this code, as a callback is
+ *	added to automatically free the data when the CONF_SECTION
+ *	is freed.
+ */
+static void tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
 	if (!conf) return;
 
@@ -2077,6 +2085,16 @@ void tls_server_conf_free(fr_tls_server_conf_t *conf)
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 {
 	fr_tls_server_conf_t *conf;
+
+	/*
+	 *	If cs has already been parsed there should be a cached copy
+	 *	of conf already stored, so just return that.
+	 */
+	conf = cf_data_find(cs, "tls-conf");
+	if (conf) {
+		DEBUG(" debug: Using cached TLS configuration from previous invocation");
+		return conf;
+	}
 
 	conf = malloc(sizeof(*conf));
 	if (!conf) {
@@ -2164,12 +2182,23 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
+	/*
+	 *	Cache conf in cs in case we're asked to parse this again.
+	 */
+	cf_data_add(cs, "tls-conf", conf, (void *)(void *) tls_server_conf_free);
+
 	return conf;
 }
 
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 {
 	fr_tls_server_conf_t *conf;
+
+	conf = cf_data_find(cs, "tls-conf");
+	if (conf) {
+		DEBUG(" debug: Using cached TLS configuration from previous invocation");
+		return conf;
+	}
 
 	conf = malloc(sizeof(*conf));
 	if (!conf) {
@@ -2204,6 +2233,8 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
         if (generate_eph_rsa_key(conf->ctx) < 0) {
 		goto error;
         }
+
+	cf_data_add(cs, "tls-conf", conf, (void *)(void *) tls_server_conf_free);
 
 	return conf;
 }

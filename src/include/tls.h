@@ -299,7 +299,6 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
-void tls_server_conf_free(fr_tls_server_conf_t *conf);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *ssn);

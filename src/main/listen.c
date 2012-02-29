@@ -2978,10 +2978,6 @@ void listen_free(rad_listen_t **head)
 			master_listen[this->type].free(this);
 		}
 
-#ifdef WITH_TLS
-		if (this->tls) tls_server_conf_free(this->tls);		
-#endif
-
 #ifdef WITH_TCP
 		if ((this->type == RAD_LISTEN_AUTH)
 #ifdef WITH_ACCT

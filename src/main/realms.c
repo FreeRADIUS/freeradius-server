@@ -132,11 +132,6 @@ static void home_server_free(void *data)
 {
 	home_server *home = data;
 
-#ifdef WITH_TLS
-	tls_server_conf_free(home->tls);
-	home->tls = NULL;
-#endif
-
 	free(home);
 }
 
