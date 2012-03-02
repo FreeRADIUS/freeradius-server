@@ -96,95 +96,27 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 
 
 /*
- *	Send an initial eap-tls request to the peer.
- *
- *	Frame eap reply packet.
- *	len = header + type + tls_typedata
- *	tls_typedata = flags(Start (S) bit set, and no data)
- *
- *	Once having received the peer's Identity, the EAP server MUST
- *	respond with an EAP-TLS/Start packet, which is an
- *	EAP-Request packet with EAP-Type=EAP-TLS, the Start (S) bit
- *	set, and no data.  The EAP-TLS conversation will then begin,
- *	with the peer sending an EAP-Response packet with
- *	EAP-Type = EAP-TLS.  The data field of that packet will
- *	be the TLS data.
- *
- *	Fragment length is Framed-MTU - 4.
- *
- *	http://mail.frascone.com/pipermail/public/eap/2003-July/001426.html
+ *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
 static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 {
 	int		status;
 	tls_session_t	*ssn;
 	rlm_eap_tls_t	*inst;
-	fr_tls_server_conf_t	*tls_conf;
-	VALUE_PAIR	*vp;
-	int		client_cert = TRUE;
-	int		verify_mode = 0;
 	REQUEST		*request = handler->request;
 
 	inst = type_arg;
-	tls_conf = inst->tls_conf;
 
 	handler->tls = TRUE;
 	handler->finished = FALSE;
 
 	/*
-	 *	If we're TTLS or PEAP, then do NOT require a client
-	 *	certificate.
-	 *
-	 *	FIXME: This should be more configurable.
+	 *	EAP-TLS always requires a client certificate.
 	 */
-	if (handler->eap_type != PW_EAP_TLS) {
-		vp = pairfind(handler->request->config_items,
-			      PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0);
-		if (!vp) {
-			client_cert = FALSE;
-		} else {
-			client_cert = vp->vp_integer;
-		}
-	}
-
-	/*
-	 *	Every new session is started only from EAP-TLS-START.
-	 *	Before Sending EAP-TLS-START, open a new SSL session.
-	 *	Create all the required data structures & store them
-	 *	in Opaque.  So that we can use these data structures
-	 *	when we get the response
-	 */
-	ssn = tls_new_session(tls_conf, request, client_cert);
+	ssn = eaptls_session(inst->tls_conf, handler, TRUE);
 	if (!ssn) {
 		return 0;
 	}
-
-	/*
-	 *	Verify the peer certificate, if asked.
-	 */
-	if (client_cert) {
-		RDEBUG2("Requiring client certificate");
-		verify_mode = SSL_VERIFY_PEER;
-		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
-		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
-	}
-	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
-
-	/*
-	 *	Create a structure for all the items required to be
-	 *	verified for each client and set that as opaque data
-	 *	structure.
-	 *
-	 *	NOTE: If we want to set each item sepearately then
-	 *	this index should be global.
-	 */
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_HANDLER, (void *)handler);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&(handler->certs));
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(handler->identity));
-#ifdef HAVE_OPENSSL_OCSP_H
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
-#endif
 
 	handler->opaque = ((void *)ssn);
 	handler->free_opaque = session_free;
@@ -192,41 +124,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	/*
 	 *	Set up type-specific information.
 	 */
-	switch (handler->eap_type) {
-	case PW_EAP_TLS:
-	default:
-		ssn->prf_label = "client EAP encryption";
-		break;
-
-	case PW_EAP_TTLS:
-		ssn->prf_label = "ttls keying material";
-		break;
-
-		/*
-		 *	PEAP-specific breakage.
-		 */
-	case PW_EAP_PEAP:
-		/*
-		 *	As it is a poorly designed protocol, PEAP uses
-		 *	bits in the TLS header to indicate PEAP
-		 *	version numbers.  For now, we only support
-		 *	PEAP version 0, so it doesn't matter too much.
-		 *	However, if we support later versions of PEAP,
-		 *	we will need this flag to indicate which
-		 *	version we're currently dealing with.
-		 */
-		ssn->peap_flag = 0x00;
-
-		/*
-		 *	PEAP version 0 requires 'include_length = no',
-		 *	so rather than hoping the user figures it out,
-		 *	we force it here.
-		 */
-		ssn->length_flag = 0;
-
-		ssn->prf_label = "client EAP encryption";
-		break;
-	}
+	ssn->prf_label = "client EAP encryption";
 
 	/*
 	 *	TLS session initialization is over.  Now handle TLS
@@ -234,8 +132,9 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 */
 	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
 	RDEBUG2("Start returned %d", status);
-	if (status == 0)
+	if (status == 0) {
 		return 0;
+	}
 
 	/*
 	 *	The next stage to process the packet.

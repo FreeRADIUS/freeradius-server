@@ -81,6 +81,74 @@ void eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr)
 }
 
 /*
+ *	Send an initial eap-tls request to the peer.
+ *
+ *	Frame eap reply packet.
+ *	len = header + type + tls_typedata
+ *	tls_typedata = flags(Start (S) bit set, and no data)
+ *
+ *	Once having received the peer's Identity, the EAP server MUST
+ *	respond with an EAP-TLS/Start packet, which is an
+ *	EAP-Request packet with EAP-Type=EAP-TLS, the Start (S) bit
+ *	set, and no data.  The EAP-TLS conversation will then begin,
+ *	with the peer sending an EAP-Response packet with
+ *	EAP-Type = EAP-TLS.  The data field of that packet will
+ *	be the TLS data.
+ *
+ *	Fragment length is Framed-MTU - 4.
+ */
+tls_session_t *eaptls_session(fr_tls_server_conf_t *tls_conf, EAP_HANDLER *handler, int client_cert)
+{
+	tls_session_t	*ssn;
+	int		verify_mode = 0;
+	REQUEST		*request = handler->request;
+
+	handler->tls = TRUE;
+	handler->finished = FALSE;
+
+	/*
+	 *	Every new session is started only from EAP-TLS-START.
+	 *	Before Sending EAP-TLS-START, open a new SSL session.
+	 *	Create all the required data structures & store them
+	 *	in Opaque.  So that we can use these data structures
+	 *	when we get the response
+	 */
+	ssn = tls_new_session(tls_conf, request, client_cert);
+	if (!ssn) {
+		return NULL;
+	}
+
+	/*
+	 *	Verify the peer certificate, if asked.
+	 */
+	if (client_cert) {
+		RDEBUG2("Requiring client certificate");
+		verify_mode = SSL_VERIFY_PEER;
+		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	}
+	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
+
+	/*
+	 *	Create a structure for all the items required to be
+	 *	verified for each client and set that as opaque data
+	 *	structure.
+	 *
+	 *	NOTE: If we want to set each item sepearately then
+	 *	this index should be global.
+	 */
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_HANDLER, (void *)handler);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&(handler->certs));
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(handler->identity));
+#ifdef HAVE_OPENSSL_OCSP_H
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
+#endif
+
+	return ssn;
+}
+
+/*
    The S flag is set only within the EAP-TLS start message
    sent from the EAP server to the peer.
 */
