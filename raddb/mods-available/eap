@@ -523,64 +523,69 @@
 		#	virtual_server = check-eap-tls
 		}
 
+
+		## EAP-TTLS
+		#
 		#  The TTLS module implements the EAP-TTLS protocol,
 		#  which can be described as EAP inside of Diameter,
 		#  inside of TLS, inside of EAP, inside of RADIUS...
 		#
 		#  Surprisingly, it works quite well.
 		#
-		#  The TTLS module needs the TLS module to be installed
-		#  and configured, in order to use the TLS tunnel
-		#  inside of the EAP packet.  You will still need to
-		#  configure the TLS module, even if you do not want
-		#  to deploy EAP-TLS in your network.  Users will not
-		#  be able to request EAP-TLS, as it requires them to
-		#  have a client certificate.  EAP-TTLS does not
-		#  require a client certificate.
-		#
-		#  You can make TTLS require a client cert by setting
+		#  EAP-TTLS does not normally require a client certificate,
+		#  but you can make it require one by setting
 		#
 		#	EAP-TLS-Require-Client-Cert = Yes
 		#
 		#  in the control items for a request.
 		#
 		ttls {
-			#  The tunneled EAP session needs a default
-			#  EAP type which is separate from the one for
-			#  the non-tunneled EAP module.  Inside of the
-			#  TTLS tunnel, we recommend using EAP-MD5.
-			#  If the request does not contain an EAP
-			#  conversation, then this configuration entry
-			#  is ignored.
+			#  Which tls-config section the TLS negotiation parameters
+			#  are in - see EAP-TLS above for an explanation.
+			#
+			#  In the case that an old configuration from FreeRADIUS
+			#  v2.x is being used, all the options of the tls-config
+			#  section may also appear instead in the 'tls' section
+			#  above. If that is done, the tls= option here (and in
+			#  tls above) MUST be commented out.
+			# 
+			tls = tls-common
+
+			#  The tunneled EAP session needs a default EAP type
+			#  which is separate from the one for the non-tunneled
+			#  EAP module.  Inside of the TTLS tunnel, we recommend
+			#  using EAP-MD5.  If the request does not contain an
+			#  EAP conversation, then this configuration entry is
+			#  ignored.
+			#
 			default_eap_type = md5
 
-			#  The tunneled authentication request does
-			#  not usually contain useful attributes
-			#  like 'Calling-Station-Id', etc.  These
-			#  attributes are outside of the tunnel,
+			#  The tunneled authentication request does not usually
+			#  contain useful attributes like 'Calling-Station-Id',
+			#  etc.  These attributes are outside of the tunnel,
 			#  and normally unavailable to the tunneled
 			#  authentication request.
 			#
-			#  By setting this configuration entry to
-			#  'yes', any attribute which NOT in the
-			#  tunneled authentication request, but
-			#  which IS available outside of the tunnel,
-			#  is copied to the tunneled request.
+			#  By setting this configuration entry to 'yes',
+			#  any attribute which is NOT in the tunneled
+			#  authentication request, but which IS available
+			#  outside of the tunnel, is copied to the tunneled
+			#  request.
 			#
-			# allowed values: {no, yes}
+			#  allowed values: {no, yes}
+			#
 			copy_request_to_tunnel = no
 
-			#  The reply attributes sent to the NAS are
-			#  usually based on the name of the user
-			#  'outside' of the tunnel (usually
-			#  'anonymous').  If you want to send the
-			#  reply attributes based on the user name
-			#  inside of the tunnel, then set this
-			#  configuration entry to 'yes', and the reply
-			#  to the NAS will be taken from the reply to
-			#  the tunneled request.
+			#  The reply attributes sent to the NAS are usually
+			#  based on the name of the user 'outside' of the
+			#  tunnel (usually 'anonymous').  If you want to send
+			#  the reply attributes based on the user name inside
+			#  of the tunnel, then set this configuration entry to
+			#  'yes', and the reply to the NAS will be taken from
+			#  the reply to the tunneled request.
 			#
-			# allowed values: {no, yes}
+			#  allowed values: {no, yes}
+			#
 			use_tunneled_reply = no
 
 			#
@@ -595,9 +600,10 @@
 			#
 			virtual_server = "inner-tunnel"
 
-			#  This has the same meaning as the
-			#  same field in the "tls" module, above.
+			#  This has the same meaning, and overwrites, the
+			#  same field in the "tls" configuration, above.
 			#  The default value here is "yes".
+			#
 		#	include_length = yes
 		}
 
