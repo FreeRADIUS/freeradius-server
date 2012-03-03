@@ -162,6 +162,7 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
     pwd_hdr *hdr;
 
     len = (sess->out_buf_len - sess->out_buf_pos) + sizeof(pwd_hdr);
+    rad_assert(len > 0);
     eap_ds->request->code = PW_EAP_REQUEST;
     eap_ds->request->type.type = PW_EAP_PWD;
     eap_ds->request->type.length = (len > sess->mtu) ? sess->mtu : len;
@@ -214,6 +215,7 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
         memcpy(hdr->data, sess->out_buf + sess->out_buf_pos, 
                (sess->out_buf_len - sess->out_buf_pos));
         free(sess->out_buf);
+	sess->out_buf = NULL;
         sess->out_buf_pos = sess->out_buf_len = 0;
     }
     return 1;
@@ -232,7 +234,7 @@ eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
         radlog(L_ERR, "rlm_eap_pwd: initiate, NULL data provided");
         return -1;
     }
-    if ((pwd_session = (pwd_session_t *)malloc(sizeof(pwd_session_t))) == NULL) {
+    if ((pwd_session = (pwd_session_t *)malloc(sizeof(*pwd_session))) == NULL) {
         radlog(L_ERR, "rlm_eap_pwd: initiate, out of memory (1)");
         return -1;
     }
@@ -267,7 +269,8 @@ eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
     }
 
     pwd_session->state = PWD_STATE_ID_REQ;
-    pwd_session->in_buf_len = pwd_session->in_buf_pos = pwd_session->out_buf_pos = 0;
+    pwd_session->in_buf = NULL;
+    pwd_session->out_buf_pos = 0;
     handler->opaque = pwd_session;
     handler->free_opaque = free_session;
 
@@ -340,11 +343,11 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
      * buffer to hold all the fragments
      */
     if (EAP_PWD_GET_LENGTH_BIT(hdr)) {
-        if (pwd_session->in_buf_len) {
+        if (pwd_session->in_buf) {
             RDEBUG2("pwd already alloced buffer for fragments");
             return 0;
         }
-        pwd_session->in_buf_len = ntohs(*((unsigned short *)buf));
+        pwd_session->in_buf_len = ntohs(buf[0] * 256 | buf[1]);
         if ((pwd_session->in_buf = malloc(pwd_session->in_buf_len)) == NULL) {
             RDEBUG2("pwd cannot malloc %d buffer to hold fragments",
                     pwd_session->in_buf_len);
@@ -355,11 +358,13 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
         buf += sizeof(unsigned short);
         len -= sizeof(unsigned short);
     }
+
     /*
      * all fragments, including the 1st will have the M(ore) bit set,
      * buffer those fragments!
      */
     if (EAP_PWD_GET_MORE_BIT(hdr)) {
+        rad_assert(pwd_session->in_buf != NULL);
         if ((pwd_session->in_buf_pos + len) > pwd_session->in_buf_len) {
             RDEBUG2("pwd will not overflow a fragment buffer. Nope, not prudent.");
             return 0;
@@ -382,7 +387,9 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
         EAP_PWD_SET_EXCHANGE(hdr, exch);
         return 1;
 
-    } else if (pwd_session->in_buf_len) {
+    }
+
+    if (pwd_session->in_buf) {
         /*
          * the last fragment...
          */
@@ -613,12 +620,13 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
             RDEBUG2("unknown PWD state");
             return 0;
     }
+
     /*
      * we processed the buffered fragments, get rid of them
      */
-    if (pwd_session->in_buf_len) {
+    if (pwd_session->in_buf) {
         free(pwd_session->in_buf);
-        pwd_session->in_buf_len = pwd_session->in_buf_pos = 0;
+	pwd_session->in_buf = NULL;
     }
 
     return ret;
