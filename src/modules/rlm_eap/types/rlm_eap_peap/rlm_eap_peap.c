@@ -29,6 +29,12 @@ RCSID("$Id$")
 
 typedef struct rlm_eap_peap_t {
 	/*
+	 *	TLS configuration
+	 */
+	char	*tls_conf_name;
+	fr_tls_server_conf_t *tls_conf;
+
+	/*
 	 *	Default tunneled EAP type
 	 */
 	char	*default_eap_type_name;
@@ -68,6 +74,9 @@ typedef struct rlm_eap_peap_t {
 
 
 static CONF_PARSER module_config[] = {
+	{ "tls", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_peap_t, tls_conf_name), NULL, NULL },
+
 	{ "default_eap_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, default_eap_type_name), NULL, "mschapv2" },
 
@@ -101,7 +110,6 @@ static int eappeap_detach(void *arg)
 {
 	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
 
-
 	free(inst);
 
 	return 0;
@@ -112,7 +120,7 @@ static int eappeap_detach(void *arg)
  */
 static int eappeap_attach(CONF_SECTION *cs, void **instance)
 {
-	rlm_eap_peap_t *inst;
+	rlm_eap_peap_t		*inst;
 
 	inst = malloc(sizeof(*inst));
 	if (!inst) {
@@ -137,6 +145,18 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 	if (inst->default_eap_type < 0) {
 		radlog(L_ERR, "rlm_eap_peap: Unknown EAP type %s",
 		       inst->default_eap_type_name);
+		eappeap_detach(inst);
+		return -1;
+	}
+
+	/*
+	 *	Read tls configuration, either from group given by 'tls'
+	 *	option, or from the eap-tls configuration.
+	 */
+	inst->tls_conf = eaptls_conf_parse(cs, "tls");
+
+	if (!inst->tls_conf) {
+		radlog(L_ERR, "rlm_eap_peap: Failed initializing SSL context");
 		eappeap_detach(inst);
 		return -1;
 	}
@@ -186,6 +206,83 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	t->session_resumption_state = PEAP_RESUMPTION_MAYBE;
 
 	return t;
+}
+
+/*
+ *	Send an initial eap-tls request to the peer, using the libeap functions.
+ */
+static int eappeap_initiate(void *type_arg, EAP_HANDLER *handler)
+{
+	int		status;
+	tls_session_t	*ssn;
+	rlm_eap_peap_t	*inst;
+	VALUE_PAIR	*vp;
+	int		client_cert = FALSE;
+	REQUEST		*request = handler->request;
+
+	inst = type_arg;
+
+	handler->tls = TRUE;
+	handler->finished = FALSE;
+
+	/*
+	 *	Check if we need a client certificate.
+	 *
+	 *	FIXME: This should be more configurable.
+	 */
+	vp = pairfind(handler->request->config_items,
+		      PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0);
+	if (vp) {
+		client_cert = vp->vp_integer;
+	}
+
+	ssn = eaptls_session(inst->tls_conf, handler, client_cert);
+	if (!ssn) {
+		return 0;
+	}
+
+	handler->opaque = ((void *)ssn);
+	handler->free_opaque = session_free;
+
+	/*
+	 *	Set up type-specific information.
+	 */
+	ssn->prf_label = "client EAP encryption";
+
+	/*
+	 *	As it is a poorly designed protocol, PEAP uses
+	 *	bits in the TLS header to indicate PEAP
+	 *	version numbers.  For now, we only support
+	 *	PEAP version 0, so it doesn't matter too much.
+	 *	However, if we support later versions of PEAP,
+	 *	we will need this flag to indicate which
+	 *	version we're currently dealing with.
+	 */
+	ssn->peap_flag = 0x00;
+
+	/*
+	 *	PEAP version 0 requires 'include_length = no',
+	 *	so rather than hoping the user figures it out,
+	 *	we force it here.
+	 */
+	ssn->length_flag = 0;
+
+	/*
+	 *	TLS session initialization is over.  Now handle TLS
+	 *	related handshaking or application data.
+	 */
+	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
+	RDEBUG2("Start returned %d", status);
+	if (status == 0) {
+		return 0;
+	}
+
+	/*
+	 *	The next stage to process the packet.
+	 */
+	handler->stage = AUTHENTICATE;
+
+	return 1;
 }
 
 /*
@@ -335,16 +432,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
 EAP_TYPE rlm_eap_peap = {
 	"eap_peap",
 	eappeap_attach,			/* attach */
-	/*
-	 *	Note! There is NO eappeap_initate() function, as the
-	 *	main EAP module takes care of calling
-	 *	eaptls_initiate().
-	 *
-	 *	This is because PEAP is a protocol on top of TLS, so
-	 *	before we need to do PEAP, we've got to initiate a TLS
-	 *	session.
-	 */
-	NULL,				/* Start the initial request */
+	eappeap_initiate,		/* Start the initial request */
 	NULL,				/* authorization */
 	eappeap_authenticate,		/* authentication */
 	eappeap_detach			/* detach */

@@ -274,8 +274,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *
 		 *	Handler->eap_type holds the TRUE type.
 		 */
-		if ((default_eap_type == PW_EAP_TTLS) ||
-		    (default_eap_type == PW_EAP_PEAP)) {
+		if (default_eap_type == PW_EAP_TTLS) {
 			default_eap_type = PW_EAP_TLS;
 		}
 
