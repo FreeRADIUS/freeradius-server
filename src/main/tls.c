@@ -835,8 +835,6 @@ static CONF_PARSER tls_server_config[] = {
 	  offsetof(fr_tls_server_conf_t, make_cert_command), NULL, NULL},
 	{ "require_client_cert", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, require_client_cert), NULL, NULL },
-	{ "virtual_server", PW_TYPE_STRING_PTR,
-	  offsetof(fr_tls_server_conf_t, virtual_server), NULL, NULL},
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH

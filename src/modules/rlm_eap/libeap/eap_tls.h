@@ -104,4 +104,6 @@ void 		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
 int 		eaptls_start(EAP_DS *eap_ds, int peap);
 int 		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
 
+fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *key);
+
 #endif /*_EAP_TLS_H*/

@@ -48,6 +48,10 @@ RCSID("$Id$")
  */
 static int eaptls_detach(void *arg)
 {
+	rlm_eap_tls_t *inst = (rlm_eap_tls_t *) arg;
+
+	free(inst);
+
 	return 0;
 }
 
@@ -57,44 +61,33 @@ static int eaptls_detach(void *arg)
  */
 static int eaptls_attach(CONF_SECTION *cs, void **instance)
 {
-	fr_tls_server_conf_t	 *inst;
+	rlm_eap_tls_t		*inst;
+	fr_tls_server_conf_t	*tls_conf;
 
 	/*
 	 *	Parse the config file & get all the configured values
 	 */
-	inst = tls_server_conf_parse(cs);
+	inst = rad_malloc(sizeof(*inst));
 	if (!inst) {
+		radlog(L_ERR, "rlm_eap_tls: out of memory");
+		return -1;
+	}
+	memset(inst, 0, sizeof(*inst));
+
+	if (cf_section_parse(cs, inst, module_config) < 0) {
+		eaptls_detach(inst);
+		return -1;
+	}
+
+	tls_conf = eaptls_conf_parse(cs, "tls");
+
+	if (!tls_conf) {
 		radlog(L_ERR, "rlm_eap_tls: Failed initializing SSL context");
-		return -1;
-	}
-
-	/*
-	 *	The EAP RFC's say 1020, but we're less picky.
-	 */
-	if (inst->fragment_size < 100) {
-		radlog(L_ERR, "rlm_eap_tls: Fragment size is too small.");
 		eaptls_detach(inst);
 		return -1;
 	}
 
-	/*
-	 *	The maximum size for a RADIUS packet is 4096,
-	 *	minus the header (20), Message-Authenticator (18),
-	 *	and State (18), etc. results in about 4000 bytes of data
-	 *	that can be devoted *solely* to EAP.
-	 */
-	if (inst->fragment_size > 4000) {
-		radlog(L_ERR, "rlm_eap_tls: Fragment size is too large.");
-		eaptls_detach(inst);
-		return -1;
-	}
-
-	/*
-	 *	Account for the EAP header (4), and the EAP-TLS header
-	 *	(6), as per Section 4.2 of RFC 2716.  What's left is
-	 *	the maximum amount of data we read from a TLS buffer.
-	 */
-	inst->fragment_size -= 10;
+	inst->tls_conf = tls_conf;
 
 	*instance = inst;
 
@@ -125,13 +118,15 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 {
 	int		status;
 	tls_session_t	*ssn;
-	fr_tls_server_conf_t	*inst;
+	rlm_eap_tls_t	*inst;
+	fr_tls_server_conf_t	*tls_conf;
 	VALUE_PAIR	*vp;
 	int		client_cert = TRUE;
 	int		verify_mode = 0;
 	REQUEST		*request = handler->request;
 
 	inst = type_arg;
+	tls_conf = inst->tls_conf;
 
 	handler->tls = TRUE;
 	handler->finished = FALSE;
@@ -159,7 +154,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	in Opaque.  So that we can use these data structures
 	 *	when we get the response
 	 */
-	ssn = tls_new_session(inst, request, client_cert);
+	ssn = tls_new_session(tls_conf, request, client_cert);
 	if (!ssn) {
 		return 0;
 	}
@@ -184,11 +179,11 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	this index should be global.
 	 */
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_HANDLER, (void *)handler);
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)inst);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&(handler->certs));
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(handler->identity));
 #ifdef HAVE_OPENSSL_OCSP_H
-	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)inst->ocsp_store);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
 #endif
 
 	handler->opaque = ((void *)ssn);
@@ -253,12 +248,14 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eaptls_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
+static int eaptls_authenticate(void *type_arg, EAP_HANDLER *handler)
 {
 	fr_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	REQUEST *request = handler->request;
-	fr_tls_server_conf_t *conf;
+	rlm_eap_tls_t *inst;
+
+	inst = type_arg;
 
 	RDEBUG2("Authenticate");
 
@@ -273,8 +270,7 @@ static int eaptls_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 		 *	it accepts the certificates, too.
 		 */
 	case FR_TLS_SUCCESS:
-		conf = SSL_get_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_CONF);
-		if (conf && conf->virtual_server) {
+		if (inst->virtual_server) {
 			VALUE_PAIR *vp;
 			REQUEST *fake;
 
@@ -289,7 +285,7 @@ static int eaptls_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 					   PW_VIRTUAL_SERVER, 0)) != NULL) {
 				fake->server = vp->vp_strvalue;
 			} else {
-				fake->server = conf->virtual_server;
+				fake->server = inst->virtual_server;
 			}
 
 			RDEBUG("Processing EAP-TLS Certificate check:");

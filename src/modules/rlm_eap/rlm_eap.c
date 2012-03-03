@@ -160,6 +160,8 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 		if (!auth_type)  continue;
 
+		if (!strcmp(auth_type, TLS_CONFIG_SECTION))  continue;
+
 		eap_type = eaptype_name2type(auth_type);
 		if (eap_type < 0) {
 			radlog(L_ERR, "rlm_eap: Unknown EAP type %s",

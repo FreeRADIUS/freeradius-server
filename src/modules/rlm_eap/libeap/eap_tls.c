@@ -877,3 +877,87 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 
 	return 1;
 }
+
+/*
+ *	Parse TLS configuration
+ *
+ *	If the option given by 'attr' is set, we find the config section
+ *	of that name and use that for the TLS configuration. If not, we
+ *	fall back to compatibility mode and read the TLS options from
+ *	the 'tls' section.
+ */
+fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *attr)
+{
+	const char 		*tls_conf_name;
+	CONF_PAIR		*cp;
+	CONF_SECTION		*parent;
+	CONF_SECTION		*tls_cs;
+	fr_tls_server_conf_t	*tls_conf;
+
+	if (!cs)
+		return NULL;
+
+	rad_assert(attr != NULL);
+
+	parent = cf_item_parent(cf_sectiontoitem(cs));
+
+	cp = cf_pair_find(cs, attr);
+	if (cp) {
+		tls_conf_name = cf_pair_value(cp);
+
+		tls_cs = cf_section_sub_find_name2(parent, TLS_CONFIG_SECTION, tls_conf_name);
+
+		if (!tls_cs) {
+			radlog(L_ERR, "error: cannot find tls config '%s'", tls_conf_name);
+			return NULL;
+		}
+	} else {
+		/*
+		 *	If we can't find the section given by the 'attr', we
+		 *	fall-back to looking for the "tls" section, as in
+		 *	previous versions.
+		 *
+		 *	We don't fall back if the 'attr' is specified, but we can't
+		 *	find the section - that is just a config error.
+		 */
+		radlog(L_INFO, "debug: '%s' option missing, trying to use legacy configuration", attr);
+		tls_cs = cf_section_sub_find(parent, "tls");
+	}
+
+	if (!tls_cs)
+		return NULL;
+
+	tls_conf = tls_server_conf_parse(tls_cs);
+
+	if (!tls_conf)
+		return NULL;
+
+	/*
+	 *	The EAP RFC's say 1020, but we're less picky.
+	 */
+	if (tls_conf->fragment_size < 100) {
+		radlog(L_ERR, "error: Fragment size is too small.");
+		return NULL;
+	}
+
+	/*
+	 *	The maximum size for a RADIUS packet is 4096,
+	 *	minus the header (20), Message-Authenticator (18),
+	 *	and State (18), etc. results in about 4000 bytes of data
+	 *	that can be devoted *solely* to EAP.
+	 */
+	if (tls_conf->fragment_size > 4000) {
+		radlog(L_ERR, "error: Fragment size is too large.");
+		return NULL;
+	}
+
+	/*
+	 *	Account for the EAP header (4), and the EAP-TLS header
+	 *	(6), as per Section 4.2 of RFC 2716.  What's left is
+	 *	the maximum amount of data we read from a TLS buffer.
+	 */
+	tls_conf->fragment_size -= 10;
+
+	return tls_conf;
+}
+
