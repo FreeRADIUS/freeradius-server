@@ -2529,6 +2529,7 @@ static void ping_home_server(void *ctx)
 		vp->length = strlen(vp->vp_strvalue);
 	}
 
+	request->proxy->src_ipaddr = home->src_ipaddr;
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
 	request->home_server = home;
