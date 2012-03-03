@@ -266,18 +266,6 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		handler->stage = INITIATE;
 		handler->eap_type = default_eap_type;
 
-		/*
-		 *	Wild & crazy stuff!  For TTLS & PEAP, we
-		 *	initiate a TLS session, and then pass that
-		 *	session data to TTLS or PEAP for the
-		 *	authenticate stage.
-		 *
-		 *	Handler->eap_type holds the TRUE type.
-		 */
-		if (default_eap_type == PW_EAP_TTLS) {
-			default_eap_type = PW_EAP_TLS;
-		}
-
 		if ((default_eap_type == PW_EAP_TNC) &&
 		    !handler->request->parent) {
 			RDEBUG2("ERROR: EAP-TNC must be run inside of a TLS method.");
