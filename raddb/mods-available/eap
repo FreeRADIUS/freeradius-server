@@ -601,6 +601,10 @@
 		#	include_length = yes
 		}
 
+
+		## EAP-PEAP
+		#
+
 		##################################################
 		#
 		#  !!!!! WARNINGS for Windows compatibility  !!!!!
@@ -641,33 +645,37 @@
 		#  EAP module.  Inside of the TLS/PEAP tunnel, we
 		#  recommend using EAP-MS-CHAPv2.
 		#
-		#  The PEAP module needs the TLS module to be installed
-		#  and configured, in order to use the TLS tunnel
-		#  inside of the EAP packet.  You will still need to
-		#  configure the TLS module, even if you do not want
-		#  to deploy EAP-TLS in your network.  Users will not
-		#  be able to request EAP-TLS, as it requires them to
-		#  have a client certificate.  EAP-PEAP does not
-		#  require a client certificate.
-		#
-		#
-		#  You can make PEAP require a client cert by setting
+		#  Unlike EAP-TLS, PEAP does not require a client certificate.
+		#  However, you can require one by setting
 		#
 		#	EAP-TLS-Require-Client-Cert = Yes
 		#
 		#  in the control items for a request.
 		#
 		peap {
+			#  Which tls-config section the TLS negotiation parameters
+			#  are in - see EAP-TLS above for an explanation.
+			#
+			#  In the case that an old configuration from FreeRADIUS
+			#  v2.x is being used, all the options of the tls-config
+			#  section may also appear instead in the 'tls' section
+			#  above. If that is done, the tls= option here (and in
+			#  tls above) MUST be commented out.
+			# 
+			tls = tls-common
+
 			#  The tunneled EAP session needs a default
 			#  EAP type which is separate from the one for
 			#  the non-tunneled EAP module.  Inside of the
 			#  PEAP tunnel, we recommend using MS-CHAPv2,
 			#  as that is the default type supported by
 			#  Windows clients.
+			#
 			default_eap_type = mschapv2
 
-			#  the PEAP module also has these configuration
+			#  The PEAP module also has these configuration
 			#  items, which are the same as for TTLS.
+			#
 			copy_request_to_tunnel = no
 			use_tunneled_reply = no
 
@@ -675,6 +683,7 @@
 			#  home server may not understand EAP-MSCHAP-V2.
 			#  Set this entry to "no" to proxy the tunneled
 			#  EAP-MSCHAP-V2 as normal MSCHAPv2.
+			#
 		#	proxy_tunneled_request_as_eap = yes
 
 			#
@@ -693,13 +702,13 @@
 			# see doc/SoH.txt for more info.
 			# It is disabled by default.
 			#
-#			soh = yes
+		#	soh = yes
 
 			#
 			# The SoH reply will be turned into a request which
 			# can be sent to a specific virtual server:
 			#
-#			soh_virtual_server = "soh-server"
+		#	soh_virtual_server = "soh-server"
 		}
 
 		#
