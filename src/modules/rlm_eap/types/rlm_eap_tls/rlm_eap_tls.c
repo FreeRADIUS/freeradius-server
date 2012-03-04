@@ -62,7 +62,6 @@ static int eaptls_detach(void *arg)
 static int eaptls_attach(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_tls_t		*inst;
-	fr_tls_server_conf_t	*tls_conf;
 
 	/*
 	 *	Parse the config file & get all the configured values
@@ -79,15 +78,13 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	tls_conf = eaptls_conf_parse(cs, "tls");
+	inst->tls_conf = eaptls_conf_parse(cs, "tls");
 
-	if (!tls_conf) {
+	if (!inst->tls_conf) {
 		radlog(L_ERR, "rlm_eap_tls: Failed initializing SSL context");
 		eaptls_detach(inst);
 		return -1;
 	}
-
-	inst->tls_conf = tls_conf;
 
 	*instance = inst;
 
