@@ -138,5 +138,6 @@ ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-10	180	integer
 
 ATTRIBUTE	FreeRADIUS-Queue-PPS-In			181	integer
 ATTRIBUTE	FreeRADIUS-Queue-PPS-Out		182	integer
+ATTRIBUTE	FreeRADIUS-Queue-Use-Percentage		183	integer
 
 END-VENDOR FreeRADIUS
