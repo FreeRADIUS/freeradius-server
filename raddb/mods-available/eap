@@ -142,7 +142,7 @@
 			auth_type = PAP
 		}
 
-		## EAP-TLS
+		## Common TLS configuration for TLS-based EAP types
 		#
 		#  See raddb/certs/README for additional comments
 		#  on certificates.
@@ -169,7 +169,7 @@
 		#  e.g. using a Verisign cert as a "known CA" means that
 		#  ANYONE who has a certificate signed by them can
 		#  authenticate via EAP-TLS!  This is likely not what you want.
-		tls {
+		tls-config tls-common {
 			private_key_password = whatever
 			private_key_file = ${certdir}/server.pem
 
@@ -328,14 +328,6 @@
 			#  Only for OpenSSL >= 0.9.8.f
 			#
 			ecdh_curve = "prime256v1"
-
-			#
-			# As part of checking a client certificate, the EAP-TLS
-			# sets some attributes such as TLS-Client-Cert-CN. This
-			# virtual server has access to these attributes, and can
-			# be used to accept or reject the request.
-			#
-		#	virtual_server = check-eap-tls
 
 			#
 			#  Session resumption / fast reauthentication
@@ -511,6 +503,24 @@
 			      #
 			      # softfail = no
 			}
+		}
+
+		## EAP-TLS
+		#
+		#  As of Version 3.0, the TLS configuration for TLS-based
+		#  EAP types is above in the "tls-config" section.
+		#
+		tls {
+			# Point to the common TLS configuration
+			tls = tls-common
+
+			#
+			# As part of checking a client certificate, the EAP-TLS
+			# sets some attributes such as TLS-Client-Cert-CN. This
+			# virtual server has access to these attributes, and can
+			# be used to accept or reject the request.
+			#
+		#	virtual_server = check-eap-tls
 		}
 
 		#  The TTLS module implements the EAP-TTLS protocol,
