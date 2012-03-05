@@ -195,7 +195,7 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
              */
             EAP_PWD_SET_LENGTH_BIT(hdr);
             totlen = ntohs(sess->out_buf_len);
-            memcpy(hdr->data, (char *)&totlen, sizeof(unsigned short));
+            memcpy(hdr->data, (char *)&totlen, sizeof(totlen));
             memcpy(hdr->data + sizeof(unsigned short),
                    sess->out_buf,
                    sess->mtu - sizeof(pwd_hdr) - sizeof(unsigned short));

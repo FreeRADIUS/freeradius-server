@@ -36,12 +36,12 @@
 
 #include <freeradius-devel/ident.h>
 RCSIDH(eap_pwd_h, "$Id$")
+#include "eap.h"
 #include <openssl/bn.h>
 #include <openssl/sha.h>
 #include <openssl/ec.h>
 #include <openssl/evp.h>
 #include <openssl/hmac.h>
-#include "eap.h"
 
 typedef struct _pwd_hdr {
     unsigned char lm_exchange;
@@ -79,8 +79,8 @@ typedef struct _pwd_session_t {
 #define PWD_STATE_COMMIT                2
 #define PWD_STATE_CONFIRM               3
     unsigned short group_num;
-    unsigned long ciphersuite;
-    unsigned long token;
+    uint32_t ciphersuite;
+    uint32_t token;
     char peer_id[MAX_STRING_LEN];
     int peer_id_len;
     int mtu;
@@ -107,7 +107,7 @@ int compute_password_element(pwd_session_t *sess, unsigned short grp_num,
                              char *password, int password_len,
                              char *id_server, int id_server_len,
                              char *id_peer, int id_peer_len, 
-                             unsigned long *token);
+                             uint32_t *token);
 int compute_scalar_element(pwd_session_t *sess, BN_CTX *bnctx);
 int process_peer_commit (pwd_session_t *sess, unsigned char *commit, BN_CTX *bnctx);
 int compute_server_confirm(pwd_session_t *sess, unsigned char *buf, BN_CTX *bnctx);
