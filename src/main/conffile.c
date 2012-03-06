@@ -805,6 +805,13 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 				       cf, *lineno, input);
 				return NULL;
 			}
+
+			if (p + strlen(cp->value) >= output + outsize) {
+				radlog(L_ERR, "%s[%d]: Reference \"%s\" is too long",
+				       cf, *lineno, input);
+				return NULL;
+			}
+
 			strcpy(p, cp->value);
 			p += strlen(p);
 			ptr = end + 1;
@@ -850,6 +857,12 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 				env = name;
 			}
 
+			if (p + strlen(env) >= output + outsize) {
+				radlog(L_ERR, "%s[%d]: Reference \"%s\" is too long",
+				       cf, *lineno, input);
+				return NULL;
+			}
+
 			strcpy(p, env);
 			p += strlen(p);
 			ptr = end + 1;
@@ -861,7 +874,12 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			*(p++) = *(ptr++);
 		}
 
-		if ((p - output) > outsize) return NULL;		
+
+		if (p >= (output + outsize)) {
+			radlog(L_ERR, "%s[%d]: Reference \"%s\" is too long",
+			       cf, *lineno, input);
+			return NULL;
+		}
 	} /* loop over all of the input string. */
 
 	*p = '\0';
