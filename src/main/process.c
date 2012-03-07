@@ -211,6 +211,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply);
 STATE_MACHINE_DECL(proxy_running);
 static int process_proxy_reply(REQUEST *request);
 static void remove_from_proxy_hash(REQUEST *request);
+static void remove_from_proxy_hash_nl(REQUEST *request);
 static int insert_into_proxy_hash(REQUEST *request);
 #endif
 
@@ -1523,7 +1524,7 @@ static void add_jitter(struct timeval *when)
 }
 
 
-static int remove_all_proxied_requests(void *ctx, void *data)
+static int disconnect_all_proxied_requests(void *ctx, void *data)
 {
 	rad_listen_t *this = ctx;
 	RADIUS_PACKET **proxy_p = data;
@@ -1533,11 +1534,20 @@ static int remove_all_proxied_requests(void *ctx, void *data)
 	if (request->proxy->sockfd != this->fd) return 0;
 
 	/*
-	 *	FIXME: Force replies==requests, so that we can delete
-	 *	the packet immediately.
+	 *	The normal "remove_from_proxy_hash" tries to grab the
+	 *	proxy mutex.  We already have it held, so grabbing it
+	 *	again will cause a deadlock.  Instead, call the "no
+	 *	lock" version of the function.
 	 */
+	if (request->in_proxy_hash) {
+		remove_from_proxy_hash_nl(request);
+	}
+	request->proxy_listener = NULL;
 
-	request_done(request, FR_ACTION_DONE);
+	/*
+	 *	Don't mark it as DONE.  The client can retransmit, and
+	 *	the packet SHOULD be re-proxied somewhere else.
+	 */
 	return 0;
 }
 #endif	/* WITH_PROXY */
@@ -1563,26 +1573,8 @@ static int remove_all_requests(void *ctx, void *data)
  *
  ***********************************************************************/
 
-static void remove_from_proxy_hash(REQUEST *request)
+static void remove_from_proxy_hash_nl(REQUEST *request)
 {
-	/*
-	 *	Check this without grabbing the mutex because it's a
-	 *	lot faster that way.
-	 */
-	if (!request->in_proxy_hash) return;
-
-	/*
-	 *	The "not in hash" flag is definitive.  However, if the
-	 *	flag says that it IS in the hash, there might still be
-	 *	a race condition where it isn't.
-	 */
-	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-
-	if (!request->in_proxy_hash) {
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		return;
-	}
-
 	fr_packet_list_yank(proxy_list, request->proxy);
 	fr_packet_list_id_free(proxy_list, request->proxy);
 
@@ -1609,6 +1601,29 @@ static void remove_from_proxy_hash(REQUEST *request)
 	 *	grabs the mutex, the "not in hash" flag is correct.
 	 */
 	request->in_proxy_hash = FALSE;
+}
+
+static void remove_from_proxy_hash(REQUEST *request)
+{
+	/*
+	 *	Check this without grabbing the mutex because it's a
+	 *	lot faster that way.
+	 */
+	if (!request->in_proxy_hash) return;
+
+	/*
+	 *	The "not in hash" flag is definitive.  However, if the
+	 *	flag says that it IS in the hash, there might still be
+	 *	a race condition where it isn't.
+	 */
+	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+
+	if (!request->in_proxy_hash) {
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		return;
+	}
+
+	remove_from_proxy_hash_nl(request);
 
   	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
@@ -2727,9 +2742,10 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		if (!request->proxy_listener) return;
+		if (request->proxy_reply) return;
 
 		if ((home->state == HOME_STATE_IS_DEAD) ||
+		    !request->proxy_listener ||
 		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
 			request_proxy_anew(request);
 			return;
@@ -2767,6 +2783,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			request->proxy->id);
 		request->num_proxied_requests++;
 
+		rad_assert(request->proxy_listener != NULL);;
 		DEBUG_PACKET(request, request->proxy, 1);
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
@@ -3552,7 +3569,7 @@ int event_new_fd(rad_listen_t *this)
 			count = this->count;
 			if (count > 0) {
 				fr_packet_list_walk(proxy_list, this,
-						    remove_all_proxied_requests);
+						    disconnect_all_proxied_requests);
 			}
 			count = this->count; /* protected by mutex */
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
