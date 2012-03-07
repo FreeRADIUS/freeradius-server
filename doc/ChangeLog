@@ -1,30 +1,32 @@
 FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
-	* Support for RADIUS over TLS (i.e. RadSec).
-	  See raddb/sites-available/tls
-	* Can send SNMP Traps.  See raddb/trigger.conf.
-	* Re-written packet encode/decoder.  The resulting code is
-	  much simpler and easier to extend.
-	* Complete WiMAX support, using the new encoder/decoder.  The old
+	* Largely configuration file compatible with 2.1.x.
+	* Documentation for upgrading from 2.x is in raddb/README.rst
+	  Please follow it.  Do not just install 3.0.
+	* Updated packet encode/decoder.  The resulting code is much
+	  simpler and easier to extend.
+	* Updated internal API to support new attributes and formats
+	* Added RADIUS over TLS (i.e. RadSec). See raddb/sites-available/tls
+	* Added "extended attributes" using the new encoder/decoder.
+	* Added the "integer64" data type.
+	* Added full WiMAX support, using the new encoder/decoder.  The old
 	  code could not handle some unusual corner cases.
-	* Support for "extended attributes" using nthe ew encoder/decoder.
-	* Support for the "integer64" data type.
-	* Updated internal API to support new attributes and formts
-	* Support for MS-CHAP Change Password.  See raddb/mods-available/mschap,
-	  "passchange" subsection.
-	* Re-arranged configuration entries in radiusd.conf to make more
-	  sense.
-	* Moved raddb/modules/ to raddb/mods-available, and raddb/mods-enabled
-	  See raddb/README.rst for more information.
-	* Moved eap.conf to mods-available/eap
-	* Moved sql.conf to mods-available/sql
-	* Preliminary support for Apple's Grand Central Dispatch.
+	* Added code to send SNMP Traps.  See raddb/trigger.conf.
+	* Added support for Apple's Grand Central Dispatch
+	* Added for MS-CHAP Change Password from Phil Mayers.
+	  See raddb/mods-available/mschap, "passchange" subsection.
 	* Added provisions for raddb/dictionary.local, for local changes.
 	  See raddb/dictionary for more details.
-	* EAP-PWD implementation from Dan Harkins
-	* Largely config-file compatible with 2.1.x.
-	* Upgrade instructions are in raddb/README.rst
-	* DHCP is now a fully supported protocol, enabled by default.
+	* Added EAP-PWD implementation from Dan Harkins
+	* Added packet/s tracking. See max_pps in the "listen" sections,
+	  and auto_limit_acct in the "thread pool" section.
+	* Moved configuration entries in radiusd.conf to make more sense.
+	* Moved raddb/modules/ to raddb/mods-available, and raddb/mods-enabled,
+	  following the examples of other projects.
+	* Moved eap.conf to mods-available/eap
+	* Moved sql.conf to mods-available/sql
+	* Moved TLS configuration for EAP into a common subsection.
+	  See raddb/mods-available/eap, tls-config section.
 
 	Bug fixes
 	* All known bug fixes are included.
