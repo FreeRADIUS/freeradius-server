@@ -627,6 +627,7 @@ static void *request_handler_thread(void *arg)
 		}
 
 		self->request->process(self->request, FR_ACTION_RUN);
+		self->request = NULL;
 
 		/*
 		 *	Update the active threads.
