@@ -536,6 +536,9 @@ static void *request_handler_thread(void *arg)
 
 		radius_handle_request(self->request, fun);
 
+		/*      Forget about the request we just processed */
+		self->request = NULL;
+
 		/*
 		 *	Update the active threads.
 		 */
