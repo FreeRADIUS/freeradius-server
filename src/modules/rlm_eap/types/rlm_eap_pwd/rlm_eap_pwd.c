@@ -229,6 +229,25 @@ eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
     VALUE_PAIR *vp;
     pwd_id_packet *pack;
 
+    /*
+     * make sure the server's been configured properly
+     */
+    if (inst->conf->server_id == NULL) {
+        radlog(L_ERR, "rlm_eap_pwd: server ID is not configured!");
+        return -1;
+    }
+    switch (inst->conf->group) {
+        case 19:
+        case 20:
+        case 21:
+        case 25:
+        case 26:
+            break;
+        default:
+            radlog(L_ERR, "rlm_eap_pwd: group is not supported!");
+            return -1;
+    }
+
     if ((inst == NULL) ||
         (handler == NULL)) {
         radlog(L_ERR, "rlm_eap_pwd: initiate, NULL data provided");
