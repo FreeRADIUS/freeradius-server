@@ -28,6 +28,16 @@ if test x$with_[]modname != xno; then
 	eap_pwd_cflags="-I$withval")
 
 	dnl ############################################################
+	dnl # Check for header files
+	dnl ############################################################
+
+	smart_try_dir=$rlm_eap_pwd_include_dir
+	FR_SMART_CHECK_INCLUDE(openssl/ec.h)
+	if test "$ac_cv_header_openssl_ec_h" != "yes"; then
+	  fail="$fail openssl/ec.h"
+	fi
+
+	dnl ############################################################
 	dnl # Check for OpenSSL support
 	dnl ############################################################
 
