@@ -2787,7 +2787,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		DEBUG_PACKET(request, request->proxy, 1);
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
-		/* FALL-THROUGH */
+		break;
 
 	case FR_ACTION_TIMER:
 		/*
