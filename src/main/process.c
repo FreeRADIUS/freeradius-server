@@ -2264,7 +2264,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	/*
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
-	if (!insert_into_proxy_hash(request)) {
+	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
 		radlog_request(L_PROXY, 0, request, "Failed to insert initial packet into the proxy list.");
 		return -1;
 	}
@@ -2298,9 +2298,13 @@ static int request_proxy_anew(REQUEST *request)
 	/*
 	 *	Keep a copy of the old Id so that the
 	 *	re-transmitted request doesn't re-use the old
-	 *	Id.
+	 *	Id.  Note that in certain cases (socket crash)
+	 *	there is no Id as they have been purged from
+	 *	proxy_list, but there should still be a leftover
+	 *	packet hung off this request.
 	 */
 	RADIUS_PACKET old = *request->proxy;
+	int old_hash = request->in_proxy_hash;
 	home_server *home;
 	home_server *old_home = request->home_server;
 #ifdef WITH_TCP
@@ -2327,7 +2331,7 @@ static int request_proxy_anew(REQUEST *request)
 	}
 
 	/*
-	 *	Don't free the old Id on error.
+	 *	Don't free the old Id (if any) on error.
 	 */
 	if (!insert_into_proxy_hash(request)) {
 		radlog_request(L_PROXY, 0, request, "Failed to insert retransmission into the proxy list.");
@@ -2335,16 +2339,18 @@ static int request_proxy_anew(REQUEST *request)
 	}
 
 	/*
-	 *	Now that we have a new Id, free the old one
+	 *	Now that we have a new Id, free the old one (if any)
 	 *	and update the various statistics.
 	 */
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	fr_packet_list_yank(proxy_list, &old);
-	fr_packet_list_id_free(proxy_list, &old);
-	old_home->currently_outstanding--;
+	if (old_hash) {
+		fr_packet_list_yank(proxy_list, &old);
+		fr_packet_list_id_free(proxy_list, &old);
+		old_home->currently_outstanding--;
 #ifdef WITH_TCP
-	if (listener) listener->count--;
+		if (listener) listener->count--;
 #endif
+	}
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	/*
