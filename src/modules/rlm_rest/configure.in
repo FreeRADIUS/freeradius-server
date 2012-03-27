@@ -13,6 +13,10 @@ if test x$with_[]modname != xno; then
 	dnl use AC_MSG_WARN() on important messages.
 	AC_CHECK_HEADERS(curl/curl.h json/json.h)
 
+	if test "$ac_cv_header_curl_curl_h" != "yes"; then
+	  fail="$fail curl/curl.h"
+	fi
+
 	targetname=modname     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!

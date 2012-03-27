@@ -3156,6 +3156,10 @@ fi
 done
 
 
+	if test "$ac_cv_header_curl_curl_h" != "yes"; then
+	  fail="$fail curl/curl.h"
+	fi
+
 	targetname=rlm_rest     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
