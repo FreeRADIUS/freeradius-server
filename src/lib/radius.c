@@ -67,7 +67,9 @@ typedef struct radius_packet_t {
 static fr_randctx fr_rand_pool;	/* across multiple calls */
 static int fr_rand_initialized = 0;
 static unsigned int salt_offset = 0;
-static uint8_t nullvector[AUTH_VECTOR_LEN]; /* for CoA decode */
+static uint8_t nullvector[AUTH_VECTOR_LEN] = { /* for CoA decode */
+  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
 
 const char *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "",
