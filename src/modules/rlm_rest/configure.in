@@ -1,177 +1,39 @@
-AAC_PREREQ([2.61])
-AC_INIT(rlm_rest.c)
+AC_PREREQ([2.53])
+AC_INIT(rlm_rest.c) # change 'rest'
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_rest])
+AC_DEFUN(modname,[rlm_rest]) # change 'rest'
 
-fail=
-SMART_LIBS=
-SMART_CLFAGS=
 if test x$with_[]modname != xno; then
 
-	dnl ############################################################
-	dnl # Check for command line options
-	dnl ############################################################
-
-	dnl extra argument: --with-curl-include-dir=DIR
-	curl_include_dir=
-	AC_ARG_WITH(curl-include-dir,
-	[AS_HELP_STRING([--with-curl-include-dir=DIR],
-		[Directory where the curl includes may be found])],
-	[case "$withval" in
-		no)
-		AC_MSG_ERROR(Need curl-include-dir)
-		;;
-		yes)
-		;;
-		*)
-		curl_include_dir="$withval"
-		;;
-	esac])
-
-	dnl extra argument: --with-curl-lib-dir=DIR
-	curl_lib_dir=
-	AC_ARG_WITH(curl-lib-dir,
-	[AS_HELP_STRING([--with-curl-lib-dir=DIR],
-		[Directory where the curl libraries may be found])],
-	[case "$withval" in
-		no)
-		AC_MSG_ERROR(Need curl-lib-dir)
-		;;
-		yes)
-		;;
-		*)
-		curl_lib_dir="$withval"
-		;;
-	esac])
-
-	dnl extra argument: --with-curl-dir=DIR
-	AC_ARG_WITH(curl-dir,
-	[AS_HELP_STRING([--with-curl-dir=DIR],
-		[Base directory where curl is installed])],
-	[case "$withval" in
-		no)
-		AC_MSG_ERROR(Need curl-dir)
-		;;
-		yes)
-		;;
-		*)
-		curl_lib_dir="$withval/lib"
-		curl_include_dir="$withval/include"
-		;;
-	esac])
-	
-	dnl extra argument: --with-json-include-dir=DIR
-	json_include_dir=
-	AC_ARG_WITH(json-include-dir,
-	[AS_HELP_STRING([--with-json-include-dir=DIR],
-		[Directory where the json includes may be found])],
-	[case "$withval" in
-		no)
-		AC_MSG_ERROR(Need json-include-dir)
-		;;
-		yes)
-		;;
-		*)
-		json_include_dir="$withval"
-		;;
-	esac])
-
-	dnl extra argument: --with-json-lib-dir=DIR
-	json_lib_dir=
-	AC_ARG_WITH(json-lib-dir,
-	[AS_HELP_STRING([--with-json-lib-dir=DIR],
-		[Directory where the json-c libraries may be found])],
-	[case "$withval" in
-		no)
-		AC_MSG_ERROR(Need json-lib-dir)
-		;;
-		yes)
-		;;
-		*)
-		json_lib_dir="$withval"
-		;;
-	esac])
-
-	dnl extra argument: --with-json-dir=DIR
-	AC_ARG_WITH(json-dir,
-	[AS_HELP_STRING([--with-json-dir=DIR],
-		[Base directory where json-c is installed])],
-	[case "$withval" in
-		no)
-		AC_MSG_ERROR(Need json-dir)
-		;;
-		yes)
-		;;
-		*)
-		json_lib_dir="$withval/lib"
-		json_include_dir="$withval/include"
-		;;
-	esac])
-
-	dnl ############################################################
-	dnl # Check for programs
-	dnl ############################################################
-
 	AC_PROG_CC
+	AC_PROG_CPP
 
-	dnl ############################################################
-	dnl # Check for libraries
-	dnl ############################################################
+	dnl put configuration checks here.
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+	AC_CHECK_HEADERS(curl/curl.h json/json.h)
 
-	smart_try_dir="$curl_lib_dir"
-	FR_SMART_CHECK_LIB(curl, curl_easy_init)
-	if test "x$ac_cv_lib_curl_curl_easy_init" != "xyes"
-	then
-	  AC_MSG_WARN([curl libraries not found. Use --with-curl-lib-dir=<path>.])
-	  fail="$fail libcurl"
-	fi
-	
-	smart_try_dir="$json_lib_dir"
-	FR_SMART_CHECK_LIB(json, json_tokener_parse)
-	if test "x$ac_cv_lib_json_json_tokener_parse" != "xyes"
-	then
-	  AC_MSG_WARN([json-c libraries not found. Use --with-json-lib-dir=<path>.])
-	  fail="$fail json"
-	fi
-
-	dnl ############################################################
-	dnl # Check for header files
-	dnl ############################################################
-
-	smart_try_dir="$curl_include_dir"
-	FR_SMART_CHECK_INCLUDE(curl/curl.h)
-	if test "x$ac_cv_header_curl_curl_h" != "xyes"; then
-	  AC_MSG_WARN([curl headers not found. Use --with-curl-include-dir=<path>.])
-	  fail="$fail curl/curl.h"
-	fi
-	
-	smart_try_dir="$json_include_dir"
-	FR_SMART_CHECK_INCLUDE(json/json.h)
-	if test "x$ac_cv_header_json_json_h" != "xyes"; then
-	  AC_MSG_WARN([json-c headers not found. Use --with-json-include-dir=<path>.])
-	  fail="$fail json/json.h"
-	fi
-
-	targetname=modname
+	targetname=modname     # keep this!  Don't change!
 else
-	targetname=
-	echo \*\*\* module modname is disabled.
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
 fi
 
-dnl Don't change this section.
-if test "x$fail" != x; then
-	if test "x${enable_strict_dependencies}" = xyes; then
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
-		targetname=
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+		targetname=""
 	fi
 fi
 
-rest_ldflags="$SMART_LIBS"
-rest_cflags="$SMART_CFLAGS"
-AC_SUBST(rest_ldflags)
-AC_SUBST(rest_cflags)
-AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
+
+AC_SUBST(rest_cflags)  # change 'rest'
+AC_SUBST(rest_ldflags)  # change 'rest'
+
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!
+AC_OUTPUT(all.mk)  # keep this!  Don't change!
