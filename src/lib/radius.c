@@ -67,6 +67,7 @@ typedef struct radius_packet_t {
 static fr_randctx fr_rand_pool;	/* across multiple calls */
 static int fr_rand_initialized = 0;
 static unsigned int salt_offset = 0;
+static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
 
 const char *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "",
@@ -2290,12 +2291,9 @@ static VALUE_PAIR *data2vp(const RADIUS_PACKET *packet,
 		 *	in response packets.
 		 */
 	case FLAG_ENCRYPT_TUNNEL_PASSWORD:
-		if (!original) goto raw;
-
-		if (rad_tunnel_pwdecode(vp->vp_octets, &vp->length,
-					secret, original->vector) < 0) {
+		if (rad_tunnel_pwdecode(vp->vp_octets, &vp->length, secret,
+					original ? original->vector : nullvector) < 0)
 			goto raw;
-		}
 		break;
 
 		/*
