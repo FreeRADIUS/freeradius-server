@@ -2140,7 +2140,16 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return do_compile_modserver(parent, component, ci,
 						    modrefname, cs, buffer);
 		}
-		
+
+		/*
+		 *	We tried to load the module, but it doesn't exist.
+		 *	Give a silent error.
+		 */
+		if (modrefname[0] == '-') {
+			*modname = modrefname;
+			return NULL;
+		}
+
 		*modname = NULL;
 		cf_log_err(ci, "Failed to find \"%s\" in the \"modules\" section.", modrefname);
 		return NULL;

@@ -574,15 +574,23 @@ static module_entry_t *linkto_module(const char *module_name,
  *	Find a module instance.
  */
 module_instance_t *find_module_instance(CONF_SECTION *modules,
-					const char *instname, int do_link)
+					const char *askedname, int do_link)
 {
 	int check_config_safe = FALSE;
 	CONF_SECTION *cs;
-	const char *name1;
+	const char *name1, *instname;
 	module_instance_t *node, myNode;
 	char module_name[256];
 
 	if (!modules) return NULL;
+
+	/*
+	 *	Look for the real name.  Ignore the first character,
+	 *	which tells the server "it's OK for this module to not
+	 *	exist."
+	 */
+	instname = askedname;
+	if (instname[0] == '-') instname++;
 
 	/*
 	 *	Module instances are declared in the modules{} block
@@ -942,6 +950,15 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	Try to compile one entry.
 		 */
 		this = compile_modsingle(NULL, comp, modref, &modname);
+
+		/*
+		 *	It's OK for the module to not exist.
+		 */
+		if (!this && (modname[0] == '-')) {
+			DEBUG("WARNING: Not loading module \"%s\" as it is not enabled", modname + 1);
+			continue;
+		}
+
 		if (!this) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Errors parsing %s section.\n",
@@ -1579,7 +1596,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 			cp = cf_itemtopair(ci);
 			name = cf_pair_attr(cp);
 			module = find_module_instance(modules, name, 1);
-			if (!module) {
+			if (!module && (name[0] != '-')) {
 				return -1;
 			}
 		} /* loop over items in the subsection */
