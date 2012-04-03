@@ -442,6 +442,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	a challenge.
 		 */
 	case PW_EAP_MSCHAPV2_RESPONSE:
+		if (data->code == PW_EAP_MSCHAPV2_FAILURE) goto failure;
+
 		if (data->code != PW_EAP_MSCHAPV2_CHALLENGE) {
 			radlog(L_ERR, "rlm_eap_mschapv2: Unexpected response received");
 			return 0;
@@ -514,6 +516,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 			return 0;
 		}
 
+	failure:
                 handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
                 eap_ds->request->code = PW_EAP_FAILURE;
                 return 1;
