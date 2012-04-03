@@ -476,8 +476,6 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 				 * jump to "authentication"
 				 */
 				goto packet_ready;
-
-
 			}
 
 			/*
@@ -488,6 +486,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 				return 0;
 			}
 
+	failure:
 			handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 			eap_ds->request->code = PW_EAP_FAILURE;
 	                return 1;
@@ -521,6 +520,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 			return 0;
 
 		case PW_EAP_MSCHAPV2_CHALLENGE:
+			if (ccode == PW_EAP_MSCHAPV2_FAILURE) goto failure;
+
 			/*
 			 * we sent a challenge, expecting a response
 			 */
