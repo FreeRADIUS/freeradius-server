@@ -194,6 +194,7 @@ $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
 $INCLUDE dictionary.symbol
 $INCLUDE dictionary.telebit
+$INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova
