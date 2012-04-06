@@ -21011,7 +21011,7 @@ fi
 echo "${ECHO_T}$ac_cv_lib_pthread_pthread_create" >&6; }
 if test $ac_cv_lib_pthread_pthread_create = yes; then
    CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-                  LIBS="$LIBS -lpthread"
+                  LIBS="-lpthread $LIBS"
 else
   { echo "$as_me:$LINENO: checking for pthread_create in -lc_r" >&5
 echo $ECHO_N "checking for pthread_create in -lc_r... $ECHO_C" >&6; }
