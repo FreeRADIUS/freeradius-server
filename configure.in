@@ -500,7 +500,7 @@ dnl # to do the threading properly.
 dnl #
   AC_CHECK_LIB(pthread, pthread_create,
 		[ CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-                  LIBS="$LIBS -lpthread" ],
+                  LIBS="-lpthread $LIBS" ],
 		AC_CHECK_LIB(c_r, pthread_create,
 			    [ CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE" ],
 			    [ WITH_THREADS="no" ]
