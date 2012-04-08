@@ -300,27 +300,27 @@ static int do_linelog(void *instance, REQUEST *request)
 			       buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
-	}
 
 #ifdef HAVE_GRP_H
-	if (inst->group != NULL) {
-		gid = strtol(inst->group, &endptr, 10);
-		if (*endptr != '\0') {
-			grp = getgrnam(inst->group);
-			if (grp == NULL) {
-				RDEBUG2("Unable to find system group \"%s\"", inst->group);
-				goto skip_group;
+		if (inst->group != NULL) {
+			gid = strtol(inst->group, &endptr, 10);
+			if (*endptr != '\0') {
+				grp = getgrnam(inst->group);
+				if (grp == NULL) {
+					RDEBUG2("Unable to find system group \"%s\"", inst->group);
+					goto skip_group;
+				}
+				gid = grp->gr_gid;
 			}
-			gid = grp->gr_gid;
-		}
 
-		if (chown(buffer, -1, gid) == -1) {
-			RDEBUG2("Unable to change system group of \"%s\"", buffer);
+			if (chown(buffer, -1, gid) == -1) {
+				RDEBUG2("Unable to change system group of \"%s\"", buffer);
+			}
 		}
+#endif
 	}
 
  skip_group:
-#endif
 
 	/*
 	 *	FIXME: Check length.
