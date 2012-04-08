@@ -954,7 +954,7 @@ static int load_component_section(CONF_SECTION *cs,
 		/*
 		 *	It's OK for the module to not exist.
 		 */
-		if (!this && (modname[0] == '-')) {
+		if (!this && modname && (modname[0] == '-')) {
 			DEBUG("WARNING: Not loading module \"%s\" as it is not enabled", modname + 1);
 			continue;
 		}
