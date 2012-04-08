@@ -192,18 +192,6 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 #endif
 
 		/*
-		 *	If we're asked to load TTLS or PEAP, ensure
-		 *	that we've first loaded TLS.
-		 */
-		if (((eap_type == PW_EAP_TTLS) ||
-		     (eap_type == PW_EAP_PEAP)) &&
-		    (inst->types[PW_EAP_TLS] == NULL)) {
-			radlog(L_ERR, "rlm_eap: Unable to load EAP-Type/%s, as EAP-Type/TLS is required first.",
-			       auth_type);
-			return -1;
-		}
-
-		/*
 		 *	Load the type.
 		 */
 		if (eaptype_load(&inst->types[eap_type], eap_type, scs) < 0) {
