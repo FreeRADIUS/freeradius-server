@@ -67,6 +67,7 @@ typedef struct dhcp_socket_t {
         fr_ipaddr_t     src_ipaddr;
 } dhcp_socket_t;
 
+#ifdef WITH_UDPFROMTO
 static int dhcprelay_process_client_request(REQUEST *request)
 {
 	uint8_t maxhops = 16;
@@ -155,9 +156,6 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	giaddrvp = vp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
 	rad_assert(vp != NULL);
 
-#ifndef WITH_UDPFROMTO
-#error "DHCP as a Relay requires WITH_UDPFROMTO compilation flag"
-#endif
 	/* --with-udpfromto is needed just for the following test */
 	if (!vp || vp->vp_ipaddr != request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr) {
 		DEBUG("DHCP: Packet received from server was not for us (was for 0x%x). Discarding packet",
@@ -236,6 +234,20 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 
 	return fr_dhcp_send(request->packet);
 }
+#else  /* WITH_UDPFROMTO */
+static int dhcprelay_process_server_reply(UNUSED REQUEST *request)
+{
+	DEBUG("WARNING: DHCP Relaying requires the server to be configured with UDPFROMTO");
+	return -1;
+}
+
+static int dhcprelay_process_client_request(UNUSED REQUEST *request)
+{
+	DEBUG("WARNING: DHCP Relaying requires the server to be configured with UDPFROMTO");
+	return -1;
+}
+
+#endif	/* WITH_UDPFROMTO */
 
 static const uint32_t attrnums[] = {
 	57,	/* DHCP-DHCP-Maximum-Msg-Size */
