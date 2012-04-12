@@ -1769,6 +1769,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	*/
        if (debug_flag > 1) {
 	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD) &&
+		   !pairfind(request->config_items, PW_NT_PASSWORD) &&
 		   !pairfind(request->config_items, PW_USER_PASSWORD) &&
 		   !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER) &&
 		   !pairfind(request->config_items, PW_CRYPT_PASSWORD)) {
