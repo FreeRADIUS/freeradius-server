@@ -2596,7 +2596,7 @@ ldap_detach(void *instance)
 		free(inst->atts);
 
 	paircompare_unregister(PW_LDAP_GROUP, ldap_groupcmp);
-	xlat_unregister(inst->xlat_name,ldap_xlat);
+	xlat_unregister(inst->xlat_name,ldap_xlat, instance);
 	free(inst->xlat_name);
 
 	free(inst);

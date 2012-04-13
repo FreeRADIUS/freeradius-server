@@ -337,7 +337,7 @@ static int expr_detach(void *instance)
 {
 	rlm_expr_t	*inst = instance;
 
-	xlat_unregister(inst->xlat_name, expr_xlat);
+	xlat_unregister(inst->xlat_name, expr_xlat, instance);
 	pair_builtincompare_detach();
 	free(inst->xlat_name);
 

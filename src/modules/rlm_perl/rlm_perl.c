@@ -1000,7 +1000,7 @@ static int perl_detach(void *instance)
 	}
 	}
 
-	xlat_unregister(inst->xlat_name, perl_xlat);
+	xlat_unregister(inst->xlat_name, perl_xlat, instance);
 	free(inst->xlat_name);
 
 #ifdef USE_ITHREADS

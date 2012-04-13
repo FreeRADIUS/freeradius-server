@@ -232,7 +232,7 @@ static int redis_detach(void *instance)
 	fr_connection_pool_delete(inst->pool);
 
 	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, (RAD_XLAT_FUNC)redis_xlat);
+		xlat_unregister(inst->xlat_name, (RAD_XLAT_FUNC)redis_xlat, instance);
 		free(inst->xlat_name);
 	}
 	free(inst->xlat_name);
