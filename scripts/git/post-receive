@@ -1,0 +1,133 @@
+#!/bin/sh
+# git Post-receive configuration update script
+#
+# To install:
+# * cd <config-dir>/raddb git config receive.denyCurrentBranch ignore
+# * cp ./post-receive <config-dir>/raddb/.git/hooks/
+# * # Edit the capitalized variables below to match your environment.
+#
+# Copyright 2012  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
+
+# Tag to update when we successfully manage to start the server with a new configuration
+STABLE_TAG='stable'
+
+# Command used to restart the RADIUS daemon
+RAD_REST='/etc/init.d/freeradius restart'
+
+# Command used to verify the new configuration
+RAD_CONF='radiusd -C'
+
+# Command used to execute git functions
+GIT_EXEC='env -i git'
+
+# Abort if there are local untracked files
+ABORT_UNTRACKED=true
+
+while read oldrev newrev refname
+do
+:
+done
+
+status () {
+	if [ $1 -ne 0 ]; then
+		echo "failed"
+	else
+		echo "ok"
+	fi
+}
+
+conf_rollback () {
+	# Use stable tag if it exists...
+	if [ `$GIT_EXEC tag -l $STABLE_TAG | wc -l` -gt 0 ]; then
+		echo -n "Attempting to roll config back to tag: \"$STABLE_TAG\"... "
+		$GIT_EXEC reset --hard $STABLE_TAG; ret=$?
+	else
+		echo -n "Attempting to roll config back to commit: \"$oldrev\"... "
+		$GIT_EXEC reset --hard $oldrev; ret=$?
+	fi
+
+	status $ret
+	return $ret
+}
+
+conf_check () {
+	echo -n "Checking new configuration... "
+	$RAD_CONF; ret=$?
+
+	status $ret
+	return $ret
+}
+
+rad_restart () {
+	echo -n "Restarting server... "
+	
+	$RAD_REST > /dev/null 2>&1; ret=$?
+
+	status $ret
+	return $ret 
+}
+
+# Reset the current working directory state
+cd ..
+
+# Friendly update of working copy to head state
+$GIT_EXEC checkout -f
+if [ $ABORT_UNTRACKED -a `$GIT_EXEC status --porcelain | wc -l` -gt 0 ]; then
+	echo "WARNING: Untracked changes have been made to this git repository,"
+	echo "changes have been committed but untracked files should be removed,"
+	echo "committed or added to .gitignore and FreeRADIUS restarted manually."
+	$GIT_EXEC status --short
+
+	conf_check
+	if [ $? -eq 0 ]; then
+		exit 64
+	fi
+
+	echo "WARNING: FreeRADIUS found errors in the configuration,"
+	echo "these errors should be corrected before updating working copy."
+	exit 65
+fi
+
+# Clean out all untracked files and directories (if there are local files you
+# wish to keep, they should be add to .gitignore)
+$GIT_EXEC clean -d -f
+if [ $? -ne 0 ]; then
+	exit $?
+fi
+
+# Reset all tracked files to the HEAD state
+$GIT_EXEC reset --hard
+if [ $? -ne 0 ]; then
+	exit $?
+fi
+
+# Check if the server finds any errors in the new config
+conf_check
+if [ $? -ne 0 ]; then
+	echo "WARNING: FreeRADIUS found errors in the configuration,"
+	echo "please fix the errors and push the corrected configuration."
+
+	conf_rollback
+	exit 64
+else
+	rad_restart
+	if [ $? -ne 0 ]; then
+		conf_rollback
+		if [ $? -ne 0 ]; then
+			echo "WARNING: Manually verify server status immediately!"
+			exit 64
+		fi
+
+		rad_restart
+		if [ $? -ne 0 ]; then
+			echo "WARNING: Manually verify server status immediately!"
+			exit 64	
+		fi
+
+		exit 64
+	fi
+	
+	$GIT_EXEC tag -f $STABLE_TAG $newrev
+fi
+
+exit 0
