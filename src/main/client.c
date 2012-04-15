@@ -502,6 +502,21 @@ static struct in6_addr cl_ip6addr;
 static char *hs_proto = NULL;
 #endif
 
+#ifdef WITH_TCP
+static CONF_PARSER limit_config[] = {
+	{ "max_connections", PW_TYPE_INTEGER,
+	  offsetof(home_server, limit.max_connections), NULL,   "16" },
+
+	{ "lifetime", PW_TYPE_INTEGER,
+	  offsetof(home_server, limit.lifetime), NULL,   "0" },
+
+	{ "idle_timeout", PW_TYPE_INTEGER,
+	  offsetof(home_server, limit.idle_timeout), NULL,   "30" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+#endif
+
 static const CONF_PARSER client_config[] = {
 	{ "ipaddr",  PW_TYPE_IPADDR,
 	  0, &cl_ip4addr,  NULL },
@@ -531,8 +546,8 @@ static const CONF_PARSER client_config[] = {
 #ifdef WITH_TCP
 	{ "proto",  PW_TYPE_STRING_PTR,
 	  0, &hs_proto, NULL },
-	{ "max_connections",  PW_TYPE_INTEGER,
-	  offsetof(RADCLIENT, max_connections), 0, "16" },
+
+	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (const void *) limit_config },
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -767,6 +782,17 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			cf_log_err(cf_sectiontoitem(cs), "No such home_server or home_server_pool \"%s\"", c->coa_name);
 			goto error;
 		}
+	}
+#endif
+
+#ifdef WITH_TCP
+	if ((c->proto == IPPROTO_TCP) || (c->proto == IPPROTO_IP)) {
+		if ((c->limit.idle_timeout > 0) && (c->limit.idle_timeout < 5))
+			c->limit.idle_timeout = 5;
+		if ((c->limit.lifetime > 0) && (c->limit.lifetime < 5))
+			c->limit.lifetime = 5;
+		if ((c->limit.lifetime > 0) && (c->limit.idle_timeout > c->limit.lifetime))
+			c->limit.idle_timeout = 0;
 	}
 #endif
 

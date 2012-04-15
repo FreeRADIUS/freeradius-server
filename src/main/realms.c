@@ -304,16 +304,16 @@ void realms_free(void)
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
 	{ "max_connections", PW_TYPE_INTEGER,
-	  offsetof(home_server, max_connections), NULL,   "16" },
+	  offsetof(home_server, limit.max_connections), NULL,   "16" },
 
 	{ "max_requests", PW_TYPE_INTEGER,
-	  offsetof(home_server,max_requests), NULL,   "0" },
+	  offsetof(home_server, limit.max_requests), NULL,   "0" },
 
 	{ "lifetime", PW_TYPE_INTEGER,
-	  offsetof(home_server,lifetime), NULL,   "0" },
+	  offsetof(home_server, limit.lifetime), NULL,   "0" },
 
 	{ "idle_timeout", PW_TYPE_INTEGER,
-	  offsetof(home_server,idle_timeout), NULL,   "0" },
+	  offsetof(home_server, limit.idle_timeout), NULL,   "0" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -811,21 +811,21 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (home->coa_mrd > 60 ) home->coa_mrd = 60;
 #endif
 
-	if (home->max_connections > 1024) home->max_connections = 1024;
+	if (home->limit.max_connections > 1024) home->limit.max_connections = 1024;
 
 #ifdef WITH_TCP
 	/*
 	 *	UDP sockets can't be connection limited.
 	 */
-	if (home->proto != IPPROTO_TCP) home->max_connections = 0;
+	if (home->proto != IPPROTO_TCP) home->limit.max_connections = 0;
 #endif
 
-	if ((home->idle_timeout > 0) && (home->idle_timeout < 5))
-		home->idle_timeout = 5;
-	if ((home->lifetime > 0) && (home->lifetime < 5))
-		home->lifetime = 5;
-	if ((home->lifetime > 0) && (home->idle_timeout > home->lifetime))
-		home->idle_timeout = 0;
+	if ((home->limit.idle_timeout > 0) && (home->limit.idle_timeout < 5))
+		home->limit.idle_timeout = 5;
+	if ((home->limit.lifetime > 0) && (home->limit.lifetime < 5))
+		home->limit.lifetime = 5;
+	if ((home->limit.lifetime > 0) && (home->limit.idle_timeout > home->limit.lifetime))
+		home->limit.idle_timeout = 0;
 
 	tls = cf_item_parent(cf_sectiontoitem(cs));
 	if (strcmp(cf_section_name1(tls), "server") == 0) {

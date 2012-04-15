@@ -1443,14 +1443,29 @@ static void tcp_socket_timer(void *ctx)
 	listen_socket_t *sock = listener->data;
 	struct timeval end, now;
 	char buffer[256];
+	fr_socket_limit_t *limit;
 
 	fr_event_now(el, &now);
+
+	switch (listener->type) {
+	case RAD_LISTEN_PROXY:
+		limit = &sock->home->limit;
+		break;
+
+	case RAD_LISTEN_AUTH:
+	case RAD_LISTEN_ACCT:
+		limit = &sock->limit;
+		break;
+
+	default:
+		return;
+	}
 
 	/*
 	 *	If we enforce a lifetime, do it now.
 	 */
-	if (sock->home->lifetime) {
-		end.tv_sec = sock->opened + sock->home->lifetime;
+	if (limit->lifetime > 0) {
+		end.tv_sec = sock->opened + limit->lifetime;
 		end.tv_usec = 0;
 
 		if (timercmp(&end, &now, <=)) {
@@ -1471,10 +1486,11 @@ static void tcp_socket_timer(void *ctx)
 	/*
 	 *	Enforce an idle timeout.
 	 */
-	if (sock->home->idle_timeout > 0) {
+	if (limit->idle_timeout > 0) {
 		struct timeval idle;
 
-		idle.tv_sec = sock->last_packet + sock->home->idle_timeout;
+		rad_assert(sock->last_packet != 0);
+		idle.tv_sec = sock->last_packet + limit->idle_timeout;
 		idle.tv_usec = 0;
 
 		if (timercmp(&idle, &now, <=)) {
@@ -3423,6 +3439,8 @@ int event_new_fd(rad_listen_t *this)
 	this->print(this, buffer, sizeof(buffer));
 
 	if (this->status == RAD_LISTEN_STATUS_INIT) {
+		listen_socket_t *sock = this->data;
+
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
 		} else {
@@ -3436,8 +3454,6 @@ int event_new_fd(rad_listen_t *this)
 		 *	added to the packet list.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
-			listen_socket_t *sock = this->data;
-
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_add(proxy_list, this->fd,
 						       sock->proto,
@@ -3461,14 +3477,14 @@ int event_new_fd(rad_listen_t *this)
 			}
 
 			if (sock->home) {
-				sock->home->num_connections++;
+				sock->home->limit.num_connections++;
 				
 #ifdef HAVE_PTHREAD_H
 				/*
 				 *	If necessary, add it to the list of
 				 *	new proxy listeners.
 				 */
-				if (sock->home->lifetime || sock->home->idle_timeout) {
+				if (sock->home->limit.lifetime || sock->home->limit.idle_timeout) {
 					this->next = proxy_listener_list;
 					proxy_listener_list = this;
 				}
@@ -3484,7 +3500,7 @@ int event_new_fd(rad_listen_t *this)
 			 *	contention.
 			 */
 			if (sock->home) {
-				if (sock->home->lifetime || sock->home->idle_timeout) {
+				if (sock->home->limit.lifetime || sock->home->limit.idle_timeout) {
 					radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
 				}
 			}
@@ -3504,6 +3520,26 @@ int event_new_fd(rad_listen_t *this)
 			 */
 			event_poll_detail(this);
 			return 1;
+		}
+#endif
+
+#ifdef WITH_TCP
+		/*
+		 *	Add timers to child sockets, if necessary.
+		 */
+		if (sock->proto == IPPROTO_TCP && sock->opened &&
+		    (sock->limit.lifetime || sock->limit.idle_timeout)) {
+			struct timeval when;
+
+			ASSERT_MASTER;
+
+			when.tv_sec = sock->opened + 1;
+			when.tv_usec = 0;
+
+			if (!fr_event_insert(el, tcp_socket_timer, this, &when,
+					     &(sock->ev))) {
+				rad_panic("Failed to insert event");
+			}
 		}
 #endif
 
@@ -3722,7 +3758,7 @@ finish:
 				       fr_strerror());
 				exit(1);
 			}
-			if (sock->home) sock->home->num_connections--;
+			if (sock->home) sock->home->limit.num_connections--;
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
 #endif
@@ -3834,6 +3870,13 @@ static void handle_signal_self(int flag)
 			if (!sock->home) continue; /* skip UDP sockets */
 
 			when = now;
+
+			/*
+			 *	Sockets should only be added to the
+			 *	proxy_listener_list if they have limits.
+			 *	
+			 */
+			rad_assert(sock->home->limit.lifetime || sock->home->limit.idle_timeout);
 
 			if (!fr_event_insert(el, tcp_socket_timer, this, &when,
 					     &(sock->ev))) {

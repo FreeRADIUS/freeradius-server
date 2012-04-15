@@ -157,8 +157,7 @@ typedef struct radclient {
 
 	int			proto;
 #ifdef WITH_TCP
-	int			max_connections;
-	int			num_connections;
+	fr_socket_limit_t	limit;
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -418,9 +417,8 @@ typedef struct listen_socket_t {
 	time_t		opened;
 	fr_event_t	*ev;
 
-	/* for clients connecting to the server */
-	int		max_connections;
-	int		num_connections;
+	fr_socket_limit_t limit;
+
 	struct listen_socket_t *parent;
 	RADCLIENT	*client;
 

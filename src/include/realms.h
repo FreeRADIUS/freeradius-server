@@ -31,6 +31,15 @@ extern "C" {
 #define HOME_STATE_ZOMBIE		(1)
 #define HOME_STATE_IS_DEAD		(2)
 
+typedef struct fr_socket_limit_t {
+	int		max_connections;
+	int		num_connections;
+	int		max_requests;
+	int		num_requests;
+	int		lifetime;
+	int		idle_timeout;
+} fr_socket_limit_t;
+
 typedef struct home_server {
 	const char	*name;
 
@@ -44,11 +53,7 @@ typedef struct home_server {
 	int		type;		/* auth/acct */
 
 	int		proto;
-	int		max_connections;
-	int		num_connections; /* protected by proxy mutex */
-	int		max_requests;	 /* for one connection */
-	int		lifetime;
-	int		idle_timeout;
+	fr_socket_limit_t limit;
 
 	fr_ipaddr_t	src_ipaddr; /* preferred source IP address */
 

@@ -471,11 +471,11 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		/*
 		 *	Decrement the number of connections.
 		 */
-		if (sock->parent->num_connections > 0) {
-			sock->parent->num_connections--;
+		if (sock->parent->limit.num_connections > 0) {
+			sock->parent->limit.num_connections--;
 		}
-		if (sock->client->num_connections > 0) {
-			sock->client->num_connections--;
+		if (sock->client->limit.num_connections > 0) {
+			sock->client->limit.num_connections--;
 		}
 
 		/*
@@ -588,21 +588,21 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	}
 
 	/*
-	 *	Enforce max_connectionsx on client && listen section.
+	 *	Enforce max_connections on client && listen section.
 	 */
-	if ((client->max_connections != 0) &&
-	    (client->max_connections == client->num_connections)) {
+	if ((client->limit.max_connections != 0) &&
+	    (client->limit.max_connections == client->limit.num_connections)) {
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		radlog(L_INFO, "Ignoring new connection due to client max_connections (%d)", client->max_connections);
+		radlog(L_INFO, "Ignoring new connection due to client max_connections (%d)", client->limit.max_connections);
 		close(newfd);
 		return 0;
 	}
 
 	sock = listener->data;
-	if ((sock->max_connections != 0) &&
-	    (sock->max_connections == sock->num_connections)) {
+	if ((sock->limit.max_connections != 0) &&
+	    (sock->limit.max_connections == sock->limit.num_connections)) {
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
@@ -610,8 +610,8 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		close(newfd);
 		return 0;
 	}
-	client->num_connections++;
-	sock->num_connections++;
+	client->limit.num_connections++;
+	sock->limit.num_connections++;
 
 	/*
 	 *	Add the new listener.
@@ -634,6 +634,25 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	sock->other_port = src_port;
 	sock->client = client;
 	sock->opened = sock->last_packet = time(NULL);
+
+	/*
+	 *	Set the limits.  The defaults are the parent limits.
+	 *	Client limits on max_connections are enforced dynamically.
+	 *	Set the MINIMUM of client/socket idle timeout or lifetime.
+	 */
+	memcpy(&sock->limit, &sock->parent->limit, sizeof(sock->limit));
+
+	if (client->limit.idle_timeout &&
+	    ((sock->limit.idle_timeout == 0) ||
+	     (client->limit.idle_timeout < sock->limit.idle_timeout))) {
+		sock->limit.idle_timeout = client->limit.idle_timeout;
+	}
+
+	if (client->limit.lifetime &&
+	    ((sock->limit.lifetime == 0) ||
+	     (client->limit.lifetime < sock->limit.lifetime))) {
+		sock->limit.lifetime = client->limit.lifetime;
+	}
 
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
@@ -838,6 +857,20 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 
 extern int check_config;	/* radiusd.c */
 
+#ifdef WITH_TCP
+static CONF_PARSER limit_config[] = {
+	{ "max_connections", PW_TYPE_INTEGER,
+	  offsetof(listen_socket_t, limit.max_connections), NULL,   "16" },
+
+	{ "lifetime", PW_TYPE_INTEGER,
+	  offsetof(listen_socket_t, limit.lifetime), NULL,   "0" },
+
+	{ "idle_timeout", PW_TYPE_INTEGER,
+	  offsetof(listen_socket_t, limit.idle_timeout), NULL,   "30" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+#endif
 
 /*
  *	Parse an authentication or accounting socket.
@@ -921,10 +954,15 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
 
-			rcode = cf_item_parse(cs, "max_connections", PW_TYPE_INTEGER,
-					      &sock->max_connections, "64");
+			rcode = cf_section_parse(cf_section_sub_find(cs, "limit"), sock, limit_config);
 			if (rcode < 0) return -1;
 
+			if ((sock->limit.idle_timeout > 0) && (sock->limit.idle_timeout < 5))
+				sock->limit.idle_timeout = 5;
+			if ((sock->limit.lifetime > 0) && (sock->limit.lifetime < 5))
+				sock->limit.lifetime = 5;
+			if ((sock->limit.lifetime > 0) && (sock->limit.idle_timeout > sock->limit.lifetime))
+				sock->limit.idle_timeout = 0;
 		} else {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Unknown proto name \"%s\"", proto);
@@ -2405,10 +2443,10 @@ int proxy_new_listener(home_server *home, int src_port)
 
 	if (!home) return 0;
 
-	if ((home->max_connections > 0) &&
-	    (home->num_connections >= home->max_connections)) {
+	if ((home->limit.max_connections > 0) &&
+	    (home->limit.num_connections >= home->limit.max_connections)) {
 		DEBUG("WARNING: Home server has too many open connections (%d)",
-		      home->max_connections);
+		      home->limit.max_connections);
 		return 0;
 	}
 

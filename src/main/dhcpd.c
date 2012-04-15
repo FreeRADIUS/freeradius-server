@@ -410,6 +410,8 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	RADCLIENT *client;
 	CONF_PAIR *cp;
 
+	// LOOK UP DNS DICTIONARY ENTRIES.  DIE IF THEY'RE NOT FOUND
+
 	rcode = common_socket_parse(cs, this);
 	if (rcode != 0) return rcode;
 

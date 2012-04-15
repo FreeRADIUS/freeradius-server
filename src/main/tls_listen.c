@@ -80,11 +80,11 @@ static void tls_socket_close(rad_listen_t *listener)
 		/*
 		 *	Decrement the number of connections.
 		 */
-		if (sock->parent->num_connections > 0) {
-			sock->parent->num_connections--;
+		if (sock->parent->limit.num_connections > 0) {
+			sock->parent->limit.num_connections--;
 		}
-		if (sock->client->num_connections > 0) {
-			sock->client->num_connections--;
+		if (sock->client->limit.num_connections > 0) {
+			sock->client->limit.num_connections--;
 		}
 	}
 	

@@ -258,6 +258,40 @@ listen {
 	#  See clients.conf for the configuration of "per_socket_clients".
 	#
 #	clients = per_socket_clients
+
+	#
+	#  Connection limiting for sockets with "proto = tcp".
+	#
+	#  This section is ignored for other kinds of sockets.
+	#
+	limit {
+	      #
+	      #  Limit the number of simultaneous TCP connections to the socket
+	      #
+	      #  The default is 16.
+	      #  Setting this to 0 means "no limit"
+	      max_connections = 16
+
+	      #  The per-socket "max_requests" option does not exist.
+
+	      #
+	      #  The lifetime, in seconds, of a TCP connection.  After
+	      #  this lifetime, the connection will be closed.
+	      #
+	      #  Setting this to 0 means "forever".
+	      lifetime = 0
+
+	      #
+	      #  The idle timeout, in seconds, of a TCP connection.
+	      #  If no packets have been received over the connection for
+	      #  this time, the connection will be closed.
+	      #
+	      #  Setting this to 0 means "no timeout".
+	      #
+	      #  We STRONGLY RECOMMEND that you set an idle timeout.
+	      #
+	      idle_timeout = 30
+	}
 }
 
 #  This second "listen" section is for listening on the accounting
