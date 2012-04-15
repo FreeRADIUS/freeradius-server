@@ -78,7 +78,7 @@ ldap {
 		#			
 		# The StartTLS operation is supposed to be
 		# used with normal ldap connections instead of
-		# using ldaps (port 689) connections
+		# using ldaps (port 636) connections
 		start_tls = no
 
 		# cacertfile	= /path/to/cacert.pem
