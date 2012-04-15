@@ -42,6 +42,11 @@ ldap {
 	#  every authentication request.
 	ldap_connections_number = 5
 
+	#  Port to connect on, defaults to 389. Setting this to
+	#  636 will enable LDAPS if start_tls (see below) is not
+	#  able to be used.
+	#port = 389
+
 	# seconds to wait for LDAP query to finish. default: 20
 	timeout = 4
 
