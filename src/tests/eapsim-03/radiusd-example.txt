@@ -709,7 +709,7 @@ modules {
 		# to the LDAP database by using the StartTLS extended
 		# operation.
 		# The StartTLS operation is supposed to be used with normal
-		# ldap connections instead of using ldaps (port 689) connections
+		# ldap connections instead of using ldaps (port 636) connections
 		start_tls = no
 
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
