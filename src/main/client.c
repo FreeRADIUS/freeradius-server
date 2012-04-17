@@ -505,13 +505,13 @@ static char *hs_proto = NULL;
 #ifdef WITH_TCP
 static CONF_PARSER limit_config[] = {
 	{ "max_connections", PW_TYPE_INTEGER,
-	  offsetof(home_server, limit.max_connections), NULL,   "16" },
+	  offsetof(RADCLIENT, limit.max_connections), NULL,   "16" },
 
 	{ "lifetime", PW_TYPE_INTEGER,
-	  offsetof(home_server, limit.lifetime), NULL,   "0" },
+	  offsetof(RADCLIENT, limit.lifetime), NULL,   "0" },
 
 	{ "idle_timeout", PW_TYPE_INTEGER,
-	  offsetof(home_server, limit.idle_timeout), NULL,   "30" },
+	  offsetof(RADCLIENT, limit.idle_timeout), NULL,   "30" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -613,7 +613,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			   "Clients inside of an server section cannot point to a server.");
 		goto error;
 	}
-		
+
 	/*
 	 *	No "ipaddr" or "ipv6addr", use old-style
 	 *	"client <ipaddr> {" syntax.
