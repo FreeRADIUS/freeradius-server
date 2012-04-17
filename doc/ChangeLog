@@ -2,22 +2,22 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	Feature improvements
 	* 100% configuration file compatible with 2.1.x.
 	  The only fix needed is to disallow "hashsize=0" for rlm_passwd
-	* Update dictionary.aruba, dictionary.apc
+	* Update Aruba, APC, Pureware, and Mikrotik dictionaries
 	* Switch to using SHA1 for certificate digests instead of MD5.
 	  See raddb/certs/*.cnf
-	* Added Copyright statements to the dictionaries, so that we know
+	* Added copyright statements to the dictionaries, so that we know
 	  when people are using them.
 	* Better documentation for radrelay and detail file writer.
 	  See raddb/modules/radrelay and raddb/radrelay.conf
-	* Finalize DHCP and DHCP relay code.  It should now work everywhere.
-	  See raddb/sites-available/dhcp, src_ipaddr and src_interface.
 	* Added TLS-Cert-Subject-Alt-Name-Email from patch by Luke Howard
 	* Added -F <file> to radwho
 	* Added query timeouts to MySQL driver.  Patch from Brian De Wolf.
 	* Add /etc/default/freeradius to debian package.
 	  Patch from Matthew Newton
+	* Finalize DHCP and DHCP relay code.  It should now work everywhere.
+	  See raddb/sites-available/dhcp, src_ipaddr and src_interface.
 	* DHCP capabilitiies are now compiled in by default.
-	  It runs as a DHCP server ONLY if you change the configuration.
+	  It runs as a DHCP server ONLY when manually enabled.
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
@@ -36,8 +36,7 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  nonsense.
 	* Safely handle extremely long lines in conf file variable expansion
 	* Fix for Debian bug #606450
-	* Mutex lock around rlm_perl Clone routines.
-	  Patch from Eike Dehling
+	* Mutex lock around rlm_perl Clone routines. Patch from Eike Dehling
 	* The passwd module no longer permits "hashsize = 0".  Setting that
 	  is pointless for a host of reasons.  It will also break the server.
 	* Fix proxied inner-tunnel packets sometimes having zero authentication
@@ -46,6 +45,13 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Fix minor build issue which would cause rlm_eap to be built twice.
 	* When using "status_check=request" for a home server, the username
 	  and password must be specified, or the server will not start.
+	* EAP-SIM now calculates keys from the SIM identity, not from the
+	  EAP-Identity.  Changing the EAP type via NAK may result in
+	  identities changing.  Bug reported by Microsoft EAP team.
+	* Use home server src_ipaddr when sending Status-Server packets
+	* Decrypt encrypted ERX attributes in CoA packets.
+	* Fix registration of internal xlat's so %{mschap:...} doesn't
+	  disappear after a HUP.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
