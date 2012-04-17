@@ -76,7 +76,7 @@ mschap {
 		#
 #		ntlm_auth = "/usr/bin/ntlm_auth --helper-protocol=ntlm-change-password-1"
 #		ntlm_auth_username = "username: %{mschap:User-Name}"
-#		ntlm_auth_domain = "username: %{mschap:NT-Domain}"
+#		ntlm_auth_domain = "nt-domain: %{mschap:NT-Domain}"
 
 		# To implement a local password change, you need to
 		# supply a string which is then expanded, so that the
