@@ -76,7 +76,9 @@ SQL connection pools.
 EAP
 ---
 
-The EAP configuration has been moved from ``eap.conf`` to ``mods-available/eap``.
+The EAP configuration has been moved from ``eap.conf`` to
+``mods-available/eap``.  A new ``pwd`` subsection has been added for
+EAP-PWD.
 
 It is otherwise unchanged.  You chould be able to copy your old
 ``eap.conf`` file directly to ``mods-enabled/eap``.
@@ -95,7 +97,7 @@ TLS connections.
 The TLS configuration is taken from the old EAP-TLS configuration.  It
 is largely identical to the old EAP-TLS configuration, so it should be
 simple to use and configure.  It re-uses much of the EAP-TLS code,
-too.
+so it is well-tested and reliable.
 
 Once RadSec is enabled, normal debugging mode will not work.  This is
 because the TLS code requires threading to work properly.  Instead of doing::
