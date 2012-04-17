@@ -40,10 +40,10 @@ conf_rollback () {
 	# Use stable tag if it exists...
 	if [ `$GIT_EXEC tag -l $STABLE_TAG | wc -l` -gt 0 ]; then
 		echo -n "Attempting to roll config back to tag: \"$STABLE_TAG\"... "
-		$GIT_EXEC reset --hard $STABLE_TAG; ret=$?
+		$GIT_EXEC reset -q --hard $STABLE_TAG; ret=$?
 	else
 		echo -n "Attempting to roll config back to commit: \"$oldrev\"... "
-		$GIT_EXEC reset --hard $oldrev; ret=$?
+		$GIT_EXEC reset -q --hard $oldrev; ret=$?
 	fi
 
 	status $ret
