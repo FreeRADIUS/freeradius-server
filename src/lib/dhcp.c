@@ -21,9 +21,6 @@
  * Copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
 
-#include <sys/ioctl.h>
-#include <net/if_arp.h>
-
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
@@ -32,6 +29,18 @@ RCSID("$Id$")
 #include <freeradius-devel/dhcp.h>
 
 #ifdef WITH_DHCP
+
+#include <sys/ioctl.h>
+
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h
+#endif
+
+#include <net/if_arp.h>
+
 
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
