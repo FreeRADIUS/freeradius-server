@@ -41,7 +41,7 @@ RCSID("$Id$")
 #include <sys/socket.h>
 #endif
 #ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h
+#include <sys/types.h>
 #endif
 
 #include <net/if_arp.h>
