@@ -92,6 +92,13 @@ serverModuleConnectionFail NOTIFICATION-TYPE
        DESCRIPTION "Notification that the module has failed to open a new connection"
        ::= { serverModuleGeneric 4 }
 
+serverModuleHup NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance }
+       STATUS current
+       DESCRIPTION "Notification that the module has been HUP'd via radmin"
+       ::= { serverModuleGeneric 5 }
+
 homeServer  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 3 }
 
 --

@@ -297,6 +297,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
 	module_instance_t *mi;
+	char buffer[256];
 
 	if (argc == 0) {
 		radius_signal_self(RADIUS_SIGNAL_SELF_HUP);
@@ -322,6 +323,9 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		cprintf(listener, "ERROR: Failed to reload module\n");
 		return 0;
 	}
+
+	snprintf(buffer, sizeof(buffer), "modules.%s.hup", argv[0]);
+	exec_trigger(NULL, mi->cs, buffer);
 
 	return 1;		/* success */
 }
