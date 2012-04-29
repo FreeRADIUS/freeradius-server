@@ -83,7 +83,7 @@ serverModuleConnectionNone NOTIFICATION-TYPE
 		 radiusdModuleInstance }
        STATUS current
        DESCRIPTION "Notification that the module has no connections"
-       ::= { serverModuleGeneric 2 }
+       ::= { serverModuleGeneric 3 }
 
 homeServer  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 3 }
 
