@@ -122,6 +122,7 @@ typedef struct ldap_conn {
 } LDAP_CONN;
 
 typedef struct {
+	CONF_SECTION   *cs;
 	char           *server;
 	int             port;
 	int             timelimit;
@@ -436,6 +437,7 @@ ldap_instantiate(CONF_SECTION * conf, void **instance)
 	memset(inst, 0, sizeof(*inst));
 	inst->chase_referrals = 2; /* use OpenLDAP defaults */
 	inst->rebind = 2;
+	inst->cs = conf;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		free(inst);
@@ -2223,6 +2225,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 #ifdef HAVE_LDAP_INITIALIZE
 		DEBUG("  [%s] (re)connect to %s, authentication %d", inst->xlat_name, inst->server, auth);
 		if (ldap_initialize(&ld, inst->server) != LDAP_SUCCESS) {
+			exec_trigger(NULL, inst->cs, "modules.ldap.fail");
 			radlog(L_ERR, "  [%s] ldap_initialize() failed", inst->xlat_name);
 			*result = RLM_MODULE_FAIL;
 			return (NULL);
@@ -2231,11 +2234,13 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	} else {
 		DEBUG("  [%s] (re)connect to %s:%d, authentication %d", inst->xlat_name, inst->server, inst->port, auth);
 		if ((ld = ldap_init(inst->server, inst->port)) == NULL) {
+			exec_trigger(NULL, inst->cs, "modules.ldap.fail");
 			radlog(L_ERR, "  [%s] ldap_init() failed", inst->xlat_name);
 			*result = RLM_MODULE_FAIL;
 			return (NULL);
 		}
 	}
+
 	tv.tv_sec = inst->net_timeout;
 	tv.tv_usec = 0;
 	if (ldap_set_option(ld, LDAP_OPT_NETWORK_TIMEOUT,
@@ -2425,6 +2430,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			       ldap_err2string(ldap_errno));
 			*result = RLM_MODULE_FAIL;
 			ldap_unbind_s(ld);
+			exec_trigger(NULL, inst->cs, "modules.ldap.fail");
 			return (NULL);
 		}
 	}
