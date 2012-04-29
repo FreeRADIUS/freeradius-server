@@ -110,9 +110,26 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	return strlen(out);
 }
 
+static VALUE_PAIR *pairfind_tag(VALUE_PAIR *vps, int attr, int tag)
+{
+	VALUE_PAIR *vp = vps;
 
-/**
- * @brief Dynamically translate for check:, request:, reply:, etc.
+redo:
+	if (!vp) return NULL;
+
+	vp = pairfind(vp, attr);
+	if (!tag) return vp;
+
+	if (!vp->flags.has_tag) return NULL;
+
+	if (vp->flags.tag == tag) return vp;
+	
+	vp = vp->next;
+	goto redo;
+}
+
+/*
+ *	Dynamically translate for check:, request:, reply:, etc.
  */
 static size_t xlat_packet(void *instance, REQUEST *request,
 			  char *fmt, char *out, size_t outlen,
@@ -182,64 +199,95 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	da = dict_attrbyname(fmt);
 	if (!da) {
 		int do_number = FALSE;
-		size_t count;
-		const char *p;
+		int do_array = FALSE;
+		int do_count = FALSE;
+		int do_all = FALSE;
+		int tag = 0;
+		size_t count, total;
+		char *p;
 		char buffer[256];
 
 		if (strlen(fmt) > sizeof(buffer)) return 0;
 
-		p = strchr(fmt, '[');
-		if (!p) {
-			p = strchr(fmt, '#');
-			if (!p) return 0;
+		strlcpy(buffer, fmt, sizeof(buffer));
+
+		/*
+		 *	%{Attribute-name#} - print integer version of it.
+		 */
+		p = buffer + strlen(buffer) - 1;
+		if (*p == '#') {
+			*p = '\0';
 			do_number = TRUE;
 		}
 
-		strlcpy(buffer, fmt, p - fmt + 1);
+		/*
+		 *	%{Attribute-Name:tag} - get the name with the specified
+		 *	value of the tag.
+		 */
+		p = strchr(buffer, ':');
+		if (p) {
+			tag = atoi(p + 1);
+			*p = '\0';
+			p++;
+
+		} else {
+			/*
+			 *	Allow %{Attribute-Name:tag[...]}
+			 */
+			p = buffer;
+		}
+
+		/*
+		 *	%{Attribute-Name[...] does more stuff
+		 */
+		p = strchr(p, '[');
+		if (p) {
+			do_array = TRUE;
+			if (p[1] == '#') {
+				do_count = TRUE;
+			} else if (p[1] == '*') {
+				do_all = TRUE;
+			} else {
+				count = atoi(p + 1);
+				p += 1 + strspn(p + 1, "0123456789");
+				if (*p != ']') {
+					RDEBUG2("xlat: Invalid array reference in string at %s %s",
+						fmt, p);
+					return 0;
+				}
+			}
+			*p = '\0';
+		}
+
+		/*
+		 *	We COULD argue about %{Attribute-Name[#]#} etc.
+		 *	But that looks like more work than it's worth.
+		 */
 
 		da = dict_attrbyname(buffer);
 		if (!da) return 0;
 
-		if (do_number) {
-			vp = pairfind(vps, da->attr, 0);
-			if (!vp) return 0;
-
-			switch (da->type) {
-			default:
-				break;
-
-			case PW_TYPE_INTEGER:
-			case PW_TYPE_DATE:
-			case PW_TYPE_SHORT:
-			case PW_TYPE_BYTE:
-				snprintf(out, outlen, "%u", vp->vp_integer);
-				return strlen(out);
-
-			case PW_TYPE_SIGNED:
-				snprintf(out, outlen, "%d", vp->vp_signed);
-				return strlen(out);
-
-			case PW_TYPE_INTEGER64:
-				snprintf(out, outlen, "%llu", vp->vp_integer64);
-				return strlen(out);
-			}
-
+		/*
+		 *	No array, print the tagged attribute.
+		 */
+		if (!do_array) {
+			vp = pairfind_tag(vps, da->attr, tag);
 			goto just_print;
 		}
 
-		/*
-		 *	%{Attribute-Name[#]} returns the count of
-		 *	attributes of that name in the list.
-		 */
-		if ((p[1] == '#') && (p[2] == ']')) {
-			count = 0;
+		total = 0;
 
-			for (vp = pairfind(vps, da->attr, da->vendor);
+		/*
+		 *	Array[#] - return the total
+		 */
+		if (do_count) {
+			for (vp = pairfind_tag(vps, da->attr, tag);
 			     vp != NULL;
-			     vp = pairfind(vp->next, da->attr, da->vendor)) {
-				count++;
+			     vp = pairfind_tag(vp->next, da->attr, tag)) {
+				total++;
 			}
-			snprintf(out, outlen, "%d", (int) count);
+
+			snprintf(out, outlen, "%d", (int) total);
 			return strlen(out);
 		}
 
@@ -247,12 +295,10 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	%{Attribute-Name[*]} returns ALL of the
 		 *	the attributes, separated by a newline.
 		 */
-		if ((p[1] == '*') && (p[2] == ']')) {
-			int total = 0;
-
-			for (vp = pairfind(vps, da->attr, da->vendor);
+		if (do_all) {
+			for (vp = pairfind_tag(vps, da->attr, tag);
 			     vp != NULL;
-			     vp = pairfind(vp->next, da->attr, da->vendor)) {
+			     vp = pairfind_tag(vp->next, da->attr, tag)) {
 				count = valuepair2str(out, outlen - 1, vp, da->type, func);
 				rad_assert(count <= outlen);
 				total += count + 1;
@@ -268,33 +314,38 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			return total;
 		}
 
-		count = atoi(p + 1);
-
-		/*
-		 *	Skip the numbers.
-		 */
-		p += 1 + strspn(p + 1, "0123456789");
-		if (*p != ']') {
-			RDEBUG2("xlat: Invalid array reference in string at %s %s",
-			       fmt, p);
-			return 0;
-		}
-
 		/*
 		 *	Find the N'th value.
 		 */
-		for (vp = pairfind(vps, da->attr, da->vendor);
+		for (vp = pairfind_tag(vps, da->attr, tag);
 		     vp != NULL;
-		     vp = pairfind(vp->next, da->attr, da->vendor)) {
-			if (count == 0) break;
-			count--;
+		     vp = pairfind_tag(vp->next, da->attr, tag)) {
+			if (total == count) break;
+			total++;
+			if (total > count) {
+				vp = NULL;
+				break;
+			}
 		}
 
 		/*
 		 *	Non-existent array reference.
 		 */
-		if (!vp) return 0;
 	just_print:
+		if (do_number) {
+			if ((vp->type != PW_TYPE_IPADDR) &&
+			    (vp->type != PW_TYPE_INTEGER) &&
+			    (vp->type != PW_TYPE_SHORT) &&
+			    (vp->type != PW_TYPE_BYTE) &&
+			    (vp->type != PW_TYPE_DATE)) {
+				*out = '\0';
+				return 0;
+			}
+			
+			return snprintf(out, outlen, "%u", vp->vp_integer);
+		}
+
+		if (!vp) return 0;
 		return valuepair2str(out, outlen, vp, da->type, func);
 	}
 
@@ -709,21 +760,13 @@ static int xlat_cmp(const void *a, const void *b)
 		      ((const xlat_t *)a)->length);
 }
 
+
 /*
  *	find the appropriate registered xlat function.
  */
 static xlat_t *xlat_find(const char *module)
 {
 	xlat_t my_xlat;
-
-	/*
-	 *	Look for dictionary attributes first.
-	 */
-	if ((dict_attrbyname(module) != NULL) ||
-	    (strchr(module, '[') != NULL) ||
-	    (strchr(module, '#') != NULL)) {
-		module = "request";
-	}
 
 	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
 	my_xlat.length = strlen(my_xlat.module);
@@ -934,7 +977,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 			     RADIUS_ESCAPE_STRING func)
 {
 	int	do_length = 0;
-	char	*xlat_name, *xlat_str;
+	char	*module_name, *xlat_str;
 	char *p, *q, *l, *next = NULL;
 	int retlen=0;
 	const xlat_t *c;
@@ -1062,7 +1105,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	/*
 	 *	See if we're supposed to expand a module name.
 	 */
-	xlat_name = NULL;
+	module_name = NULL;
 	for (l = p; *l != '\0'; l++) {
 		if (*l == '\\') {
 			l++;
@@ -1070,7 +1113,9 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		}
 
 		if (*l == ':') {
-			xlat_name = p; /* start of name */
+			if (isdigit(l[1])) break;
+
+			module_name = p; /* start of name */
 			*l = '\0';
 			p = l + 1;
 			break;
@@ -1086,8 +1131,13 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 *	%{name} is a simple attribute reference,
 	 *	or regex reference.
 	 */
-	if (!xlat_name) {
-		xlat_name = xlat_str = p;
+	if (!module_name) {
+		if (isdigit(*p)) {
+			module_name = xlat_str = p;
+		} else {
+			module_name = internal_xlat[1];
+			xlat_str = p;
+		}
 		goto do_xlat;
 	}
 
@@ -1098,7 +1148,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		RDEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
 		p++;
 
-		xlat_str = xlat_name;
+		xlat_str = module_name;
 		next = p;
 		goto do_xlat;
 	}
@@ -1112,33 +1162,34 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	xlat_str = p;
 	
 do_xlat:
-	if ((c = xlat_find(xlat_name)) != NULL) {
-		if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
-					  c->module, xlat_str);
-		retlen = c->do_xlat(c->instance, request, xlat_str,
-				    q, freespace, func);
-		if (retlen > 0) {
-			if (do_length) {
-				snprintf(q, freespace, "%d", retlen);
-				retlen = strlen(q);
-			}
-
-		} else if (next) {
-			/*
-			 *	Expand the second bit.
-			 */
-			RDEBUG2("\t... expanding second conditional");
-			retlen = radius_xlat(q, freespace, next, request, func);
+	c = xlat_find(module_name);
+	if (!c) {
+		if (module_name == internal_xlat[1]) {
+			RDEBUG2("WARNING: Unknown Attribute \"%s\" in string expansion \"%%%s\"", module_name, *from);
+		} else {
+			RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", module_name, *from);
 		}
-		q += retlen;
-
-	} else {
-		/*
-		 *	No attribute by that name, return an error.
-		 */
-		RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", xlat_name, *from);
 		return -1;
 	}
+
+	if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
+				  c->module, xlat_str);
+	retlen = c->do_xlat(c->instance, request, xlat_str,
+			    q, freespace, func);
+	if (retlen > 0) {
+		if (do_length) {
+			snprintf(q, freespace, "%d", retlen);
+			retlen = strlen(q);
+		}
+		
+	} else if (next) {
+		/*
+		 *	Expand the second bit.
+		 */
+		RDEBUG2("\t... expanding second conditional");
+		retlen = radius_xlat(q, freespace, next, request, func);
+	}
+	q += retlen;
 
 done:
 	*to = q;
