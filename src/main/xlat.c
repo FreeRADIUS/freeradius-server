@@ -110,14 +110,14 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	return strlen(out);
 }
 
-static VALUE_PAIR *pairfind_tag(VALUE_PAIR *vps, int attr, int tag)
+static VALUE_PAIR *pairfind_tag(VALUE_PAIR *vps, const DICT_ATTR *da, int tag)
 {
 	VALUE_PAIR *vp = vps;
 
 redo:
 	if (!vp) return NULL;
 
-	vp = pairfind(vp, attr);
+	vp = pairfind(vp, da->attr, da->vendor);
 	if (!tag) return vp;
 
 	if (!vp->flags.has_tag) return NULL;
@@ -271,7 +271,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	No array, print the tagged attribute.
 		 */
 		if (!do_array) {
-			vp = pairfind_tag(vps, da->attr, tag);
+			vp = pairfind_tag(vps, da, tag);
 			goto just_print;
 		}
 
@@ -281,9 +281,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	Array[#] - return the total
 		 */
 		if (do_count) {
-			for (vp = pairfind_tag(vps, da->attr, tag);
+			for (vp = pairfind_tag(vps, da, tag);
 			     vp != NULL;
-			     vp = pairfind_tag(vp->next, da->attr, tag)) {
+			     vp = pairfind_tag(vp->next, da, tag)) {
 				total++;
 			}
 
@@ -296,9 +296,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	the attributes, separated by a newline.
 		 */
 		if (do_all) {
-			for (vp = pairfind_tag(vps, da->attr, tag);
+			for (vp = pairfind_tag(vps, da, tag);
 			     vp != NULL;
-			     vp = pairfind_tag(vp->next, da->attr, tag)) {
+			     vp = pairfind_tag(vp->next, da, tag)) {
 				count = valuepair2str(out, outlen - 1, vp, da->type, func);
 				rad_assert(count <= outlen);
 				total += count + 1;
@@ -317,9 +317,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		/*
 		 *	Find the N'th value.
 		 */
-		for (vp = pairfind_tag(vps, da->attr, tag);
+		for (vp = pairfind_tag(vps, da, tag);
 		     vp != NULL;
-		     vp = pairfind_tag(vp->next, da->attr, tag)) {
+		     vp = pairfind_tag(vp->next, da, tag)) {
 			if (total == count) break;
 			total++;
 			if (total > count) {

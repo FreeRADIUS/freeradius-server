@@ -51,11 +51,11 @@ static void *sql_conn_create(void *ctx)
 
 	rcode = (inst->module->sql_init_socket)(sqlsocket, inst->config);
 	if (rcode == 0) {
-		exec_trigger(NULL, inst->cs, "modules.sql.open");
+	  exec_trigger(NULL, inst->cs, "modules.sql.open", FALSE);
 		return sqlsocket;
 	}
 
-	exec_trigger(NULL, inst->cs, "modules.sql.fail");
+	exec_trigger(NULL, inst->cs, "modules.sql.fail", TRUE);
 
 	free(sqlsocket);
 	return NULL;
@@ -67,7 +67,7 @@ static int sql_conn_delete(void *ctx, void *connection)
 	SQL_INST *inst = ctx;
 	SQLSOCK *sqlsocket = connection;
 
-	exec_trigger(NULL, inst->cs, "modules.sql.close");
+	exec_trigger(NULL, inst->cs, "modules.sql.close", FALSE);
 
 	if (sqlsocket->conn) {
 		(inst->module->sql_close)(sqlsocket, inst->config);

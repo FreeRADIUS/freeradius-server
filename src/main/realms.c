@@ -2294,7 +2294,7 @@ home_server *home_server_ldb(const char *realmname,
 		 */
 		if ((pool->time_all_dead + 3600) < request->timestamp) {
 			pool->time_all_dead = request->timestamp;
-			exec_trigger(request, pool->cs, "home_server_pool.fallback");
+			exec_trigger(request, pool->cs, "home_server_pool.fallback", FALSE);
 		}
 	}
 
@@ -2302,7 +2302,7 @@ home_server *home_server_ldb(const char *realmname,
 	update_and_return:
 		if ((found != pool->fallback) && pool->in_fallback) {
 			pool->in_fallback = FALSE;
-			exec_trigger(request, pool->cs, "home_server_pool.normal");
+			exec_trigger(request, pool->cs, "home_server_pool.normal", FALSE);
 		}
 
 		/*

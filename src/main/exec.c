@@ -741,7 +741,12 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	return 1;
 }
 
-void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name)
+static void time_free(void *data)
+{
+	free(data);
+}
+
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name, int quench)
 {
 	CONF_SECTION *subcs;
 	CONF_ITEM *ci;
@@ -809,6 +814,34 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name)
 	 */
 	vp = NULL;
 	if (request && request->packet) vp = request->packet->vps;
+
+	/*
+	 *	Perform periodic quenching.
+	 */
+	if (quench) {
+		time_t *last_time;
+
+		last_time = cf_data_find(cs, value);
+		if (!last_time) {
+			last_time = rad_malloc(sizeof(*last_time));
+			*last_time = 0;
+
+			if (cf_data_add(cs, value, last_time, time_free) < 0) {
+				free(last_time);
+				last_time = NULL;
+			}
+		}
+
+		/*
+		 *	Send the quenched traps at most once per second.
+		 */
+		if (last_time) {
+			time_t now = time(NULL);
+			if (*last_time == now) return;
+
+			*last_time = now;
+		}
+	}
 
 	DEBUG("Trigger %s -> %s", name, value);
 	radius_exec_program(value, request, 0, NULL, 0, vp, NULL, 1);

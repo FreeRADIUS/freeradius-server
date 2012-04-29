@@ -896,6 +896,7 @@ retry:
 		ldap_msgfree(*result);
 		return RLM_MODULE_FAIL;
 	case LDAP_TIMEOUT:
+		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
 		radlog(L_ERR, "  [%s] ldap_search() failed: Timed out while waiting for server to respond. Please increase the timeout.", inst->xlat_name);
 		ldap_msgfree(*result);
 		return RLM_MODULE_FAIL;
@@ -904,6 +905,8 @@ retry:
 		ldap_msgfree(*result);
 		return RLM_MODULE_FAIL;
 	case LDAP_TIMELIMIT_EXCEEDED:
+		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
+
 	case LDAP_BUSY:
 	case LDAP_UNAVAILABLE:
 		/* We don't need to reconnect in these cases so we don't set conn->bound */
@@ -2225,7 +2228,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 #ifdef HAVE_LDAP_INITIALIZE
 		DEBUG("  [%s] (re)connect to %s, authentication %d", inst->xlat_name, inst->server, auth);
 		if (ldap_initialize(&ld, inst->server) != LDAP_SUCCESS) {
-			exec_trigger(NULL, inst->cs, "modules.ldap.fail");
+			exec_trigger(NULL, inst->cs, "modules.ldap.fail", FALSE);
 			radlog(L_ERR, "  [%s] ldap_initialize() failed", inst->xlat_name);
 			*result = RLM_MODULE_FAIL;
 			return (NULL);
@@ -2234,7 +2237,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 	} else {
 		DEBUG("  [%s] (re)connect to %s:%d, authentication %d", inst->xlat_name, inst->server, inst->port, auth);
 		if ((ld = ldap_init(inst->server, inst->port)) == NULL) {
-			exec_trigger(NULL, inst->cs, "modules.ldap.fail");
+			exec_trigger(NULL, inst->cs, "modules.ldap.fail", FALSE);
 			radlog(L_ERR, "  [%s] ldap_init() failed", inst->xlat_name);
 			*result = RLM_MODULE_FAIL;
 			return (NULL);
@@ -2430,7 +2433,7 @@ static LDAP *ldap_connect(void *instance, const char *dn, const char *password,
 			       ldap_err2string(ldap_errno));
 			*result = RLM_MODULE_FAIL;
 			ldap_unbind_s(ld);
-			exec_trigger(NULL, inst->cs, "modules.ldap.fail");
+			exec_trigger(NULL, inst->cs, "modules.ldap.fail", FALSE);
 			return (NULL);
 		}
 	}

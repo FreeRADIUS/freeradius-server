@@ -654,7 +654,7 @@ static void *request_handler_thread(void *arg)
 	 */
 	self->request = NULL;
 	self->status = THREAD_EXITED;
-	exec_trigger(NULL, NULL, "server.thread.stop");
+	exec_trigger(NULL, NULL, "server.thread.stop", TRUE);
 
 	return NULL;
 }
@@ -721,7 +721,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 */
 	if (thread_pool.total_threads >= thread_pool.max_threads) {
 		DEBUG2("Thread spawn failed.  Maximum number of threads (%d) already running.", thread_pool.max_threads);
-		exec_trigger(NULL, NULL, "server.thread.max_threads");
+		exec_trigger(NULL, NULL, "server.thread.max_threads", TRUE);
 		return NULL;
 	}
 
@@ -769,7 +769,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
 			handle->thread_num, thread_pool.total_threads);
-	if (do_trigger) exec_trigger(NULL, NULL, "server.thread.start");
+	if (do_trigger) exec_trigger(NULL, NULL, "server.thread.start", TRUE);
 
 	/*
 	 *	Add the thread handle to the tail of the thread pool list.

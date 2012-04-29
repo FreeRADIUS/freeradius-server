@@ -646,7 +646,7 @@ static void request_process_timer(REQUEST *request)
 				       request->number,
 				       request->component ? request->component : "<server core>",
 			       request->module ? request->module : "<server core>");
-				exec_trigger(request, NULL, "server.thread.unresponsive");
+				exec_trigger(request, NULL, "server.thread.unresponsive", TRUE);
 			}
 #endif
 
@@ -1280,22 +1280,13 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	if (mainconfig.max_requests &&
 	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
-		static time_t last_complained = 0;
-
 		radlog(L_ERR, "Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 		       client->shortname,
 		       packet->src_port, packet->id);
 		radlog(L_INFO, "WARNING: Please check the configuration file.\n"
 		       "\tThe value for 'max_requests' is probably set too low.\n");
 
-		/*
-		 *	Complain once every 10 seconds.
-		 */
-		if ((last_complained + 10) < now.tv_sec) {
-			last_complained = now.tv_sec;
-			exec_trigger(NULL, NULL, "server.max_requests");
-		}
-
+		exec_trigger(NULL, NULL, "server.max_requests", TRUE);
 		return 0;
 	}
 
@@ -2454,7 +2445,7 @@ STATE_MACHINE_DECL(request_ping)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
-		exec_trigger(request, request->home_server->cs, "home_server.alive");
+		exec_trigger(request, request->home_server->cs, "home_server.alive", FALSE);
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;
@@ -2633,7 +2624,7 @@ static void home_trigger(home_server *home, const char *trigger)
 	my_packet.dst_ipaddr = home->ipaddr;
 	my_packet.src_ipaddr = home->src_ipaddr;
 
-	exec_trigger(&my_request, home->cs, trigger);
+	exec_trigger(&my_request, home->cs, trigger, FALSE);
 }
 
 static void mark_home_server_zombie(home_server *home)
@@ -3792,7 +3783,7 @@ static void handle_signal_self(int flag)
 			fr_event_loop_exit(el, 1);
 		} else {
 			radlog(L_INFO, "Signalled to terminate");
-			exec_trigger(NULL, NULL, "server.signal.term");
+			exec_trigger(NULL, NULL, "server.signal.term", TRUE);
 			fr_event_loop_exit(el, 2);
 		}
 
@@ -3816,7 +3807,7 @@ static void handle_signal_self(int flag)
 
 		last_hup = when;
 
-		exec_trigger(NULL, NULL, "server.signal.hup");
+		exec_trigger(NULL, NULL, "server.signal.hup", TRUE);
 		fr_event_loop_exit(el, 0x80);
 	}
 

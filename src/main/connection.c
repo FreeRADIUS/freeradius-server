@@ -221,7 +221,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 
 	pthread_mutex_unlock(&fc->mutex);
 
-	if (fc->trigger) exec_trigger(NULL, fc->cs, "open");
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "open", TRUE);
 
 	return this;
 }
@@ -264,7 +264,7 @@ int fr_connection_add(fr_connection_pool_t *fc, void *conn)
 
 	pthread_mutex_unlock(&fc->mutex);
 
-	if (fc->trigger) exec_trigger(NULL, fc->cs, "open");
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "open", TRUE);
 
 	return 1;
 }
@@ -273,7 +273,7 @@ int fr_connection_add(fr_connection_pool_t *fc, void *conn)
 static void fr_connection_close(fr_connection_pool_t *fc,
 				fr_connection_t *this)
 {
-	if (fc->trigger) exec_trigger(NULL, fc->cs, "close");
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "close", TRUE);
 
 	rad_assert(this->used == FALSE);
 
@@ -343,7 +343,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *fc)
 		fr_connection_close(fc, this);
 	}
 
-	if (fc->trigger) exec_trigger(NULL, fc->cs, "stop");
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "stop", TRUE);
 
 	rad_assert(fc->head == NULL);
 	rad_assert(fc->tail == NULL);
@@ -446,7 +446,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		}
 	}
 
-	if (fc->trigger) exec_trigger(NULL, fc->cs, "start");
+	if (fc->trigger) exec_trigger(NULL, fc->cs, "start", TRUE);
 
 	return fc;
 }

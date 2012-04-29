@@ -326,7 +326,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 
 	snprintf(buffer, sizeof(buffer), "modules.%s.hup",
 		 cf_section_name1(mi->cs));
-	exec_trigger(NULL, mi->cs, buffer);
+	exec_trigger(NULL, mi->cs, buffer, TRUE);
 
 	return 1;		/* success */
 }

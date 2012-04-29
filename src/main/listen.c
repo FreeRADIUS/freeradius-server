@@ -300,7 +300,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	}
 
 	request->server = client->server;
-	exec_trigger(request, NULL, "server.client.add");
+	exec_trigger(request, NULL, "server.client.add", FALSE);
 
 	request_free(&request);
 
