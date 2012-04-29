@@ -46,7 +46,7 @@ serverMaxRequests NOTIFICATION-TYPE
        DESCRIPTION "Notification that the server has reached the max_requests limit"
        ::= { serverGlobal 3 }
 
-serverSignal  OBJECT IDENTIFIER ::= { serverGlobal 3 }
+serverSignal  OBJECT IDENTIFIER ::= { serverGlobal 4 }
 
 signalHup NOTIFICATION-TYPE
        OBJECTS { identity }
@@ -59,6 +59,32 @@ signalTerm NOTIFICATION-TYPE
        STATUS current
        DESCRIPTION "Notification that the server has received a TERM signal"
        ::= { serverSignal 2 }
+
+serverThread  OBJECT IDENTIFIER ::= { serverGlobal 5 }
+
+threadStart NOTIFICATION-TYPE
+       OBJECTS { identity }
+       STATUS current
+       DESCRIPTION "Notification that a thread has started"
+       ::= { serverThread 1 }
+
+threadStop NOTIFICATION-TYPE
+       OBJECTS { identity }
+       STATUS current
+       DESCRIPTION "Notification that a thread has stopped"
+       ::= { serverThread 2 }
+
+threadUnresponsive NOTIFICATION-TYPE
+       OBJECTS { identity }
+       STATUS current
+       DESCRIPTION "Notification that a child thread is unresponsive"
+       ::= { serverThread 3 }
+
+threadMaxThreads NOTIFICATION-TYPE
+       OBJECTS { identity }
+       STATUS current
+       DESCRIPTION "Notification that the max_threads limit has been reached"
+       ::= { serverThread 4 }
 
 serverModules  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 2 }
 
