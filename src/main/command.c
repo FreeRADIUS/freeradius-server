@@ -28,6 +28,10 @@
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
+#ifdef HAVE_INTTYPES_H
+#include <inttypes.h>
+#endif
+
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
 #ifndef SUN_LEN
@@ -1544,29 +1548,44 @@ static const char *elapsed_names[8] = {
 	"1us", "10us", "100us", "1ms", "10ms", "100ms", "1s", "10s"
 };
 
+#undef PU
+#ifdef WITH_STATS_64BIT
+#ifdef PRIu64
+#define PU "%" PRIu64
+#else
+#define PU "%lu"
+#endif
+#else
+#ifdef PRIu32
+#define PU "%" PRIu32
+#else
+#define PU "%u"
+#endif
+#endif
+
 static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 			       int auth)
 {
 	int i;
 
-	cprintf(listener, "\trequests\t%u\n", stats->total_requests);
-	cprintf(listener, "\tresponses\t%u\n", stats->total_responses);
+	cprintf(listener, "\trequests\t" PU "\n", stats->total_requests);
+	cprintf(listener, "\tresponses\t" PU "\n", stats->total_responses);
 	
 	if (auth) {
-		cprintf(listener, "\taccepts\t\t%u\n",
+		cprintf(listener, "\taccepts\t\t" PU "\n",
 			stats->total_access_accepts);
-		cprintf(listener, "\trejects\t\t%u\n",
+		cprintf(listener, "\trejects\t\t" PU "\n",
 			stats->total_access_rejects);
-		cprintf(listener, "\tchallenges\t%u\n",
+		cprintf(listener, "\tchallenges\t" PU "\n",
 			stats->total_access_challenges);
 	}
 
-	cprintf(listener, "\tdup\t\t%u\n", stats->total_dup_requests);
-	cprintf(listener, "\tinvalid\t\t%u\n", stats->total_invalid_requests);
-	cprintf(listener, "\tmalformed\t%u\n", stats->total_malformed_requests);
-	cprintf(listener, "\tbad_signature\t%u\n", stats->total_bad_authenticators);
-	cprintf(listener, "\tdropped\t\t%u\n", stats->total_packets_dropped);
-	cprintf(listener, "\tunknown_types\t%u\n", stats->total_unknown_types);
+	cprintf(listener, "\tdup\t\t" PU "\n", stats->total_dup_requests);
+	cprintf(listener, "\tinvalid\t\t" PU "\n", stats->total_invalid_requests);
+	cprintf(listener, "\tmalformed\t" PU "\n", stats->total_malformed_requests);
+	cprintf(listener, "\tbad_signature\t" PU "\n", stats->total_bad_authenticators);
+	cprintf(listener, "\tdropped\t\t" PU "\n", stats->total_packets_dropped);
+	cprintf(listener, "\tunknown_types\t" PU "\n", stats->total_unknown_types);
 
 	cprintf(listener, "\tlast_packet\t%lu\n", stats->last_packet);
 	for (i = 0; i < 8; i++) {
