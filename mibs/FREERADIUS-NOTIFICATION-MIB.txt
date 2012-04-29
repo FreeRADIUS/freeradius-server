@@ -85,6 +85,13 @@ serverModuleConnectionNone NOTIFICATION-TYPE
        DESCRIPTION "Notification that the module has no connections"
        ::= { serverModuleGeneric 3 }
 
+serverModuleConnectionFail NOTIFICATION-TYPE
+       OBJECTS { radiusdModuleName,
+		 radiusdModuleInstance }
+       STATUS current
+       DESCRIPTION "Notification that the module has failed to open a new connection"
+       ::= { serverModuleGeneric 4 }
+
 homeServer  OBJECT IDENTIFIER ::= { freeRadiusNotificationMib 3 }
 
 --
