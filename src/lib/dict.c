@@ -100,7 +100,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "tlv",	PW_TYPE_TLV },
 	{ "signed",	PW_TYPE_SIGNED },
 	{ "extended",	PW_TYPE_EXTENDED },
-	{ "extended-flags",	PW_TYPE_EXTENDED_FLAGS },
+	{ "long-extended",	PW_TYPE_LONG_EXTENDED },
 	{ "evs",	PW_TYPE_EVS },
 	{ "uint8",	PW_TYPE_BYTE },
 	{ "uint16",	PW_TYPE_SHORT },
@@ -590,7 +590,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	/*
 	 *	Additional checks for extended attributes.
 	 */
-	if (flags.extended || flags.extended_flags || flags.evs) {
+	if (flags.extended || flags.long_extended || flags.evs) {
 		if (vendor && (vendor < FR_MAX_VENDOR)) {
 			fr_strerror_printf("dict_addattr: VSAs cannot use the \"extended\" or \"evs\" attribute formats.");
 			return -1;
@@ -608,7 +608,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	}
 
 	if (flags.evs) {
-		if (!(flags.extended || flags.extended_flags)) {
+		if (!(flags.extended || flags.long_extended)) {
 			fr_strerror_printf("dict_addattr: Attributes of type \"evs\" MUST have a parent of type \"extended\"");
 			return -1;
 		}
@@ -698,7 +698,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 				return -1;
 			}
 			flags.extended = da->flags.extended;
-			flags.extended_flags = da->flags.extended_flags;
+			flags.long_extended = da->flags.long_extended;
 			flags.evs = da->flags.evs;
 		}
 
@@ -993,7 +993,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
 			return 0;
 		}
 	
-		if (!(da->flags.has_tlv || da->flags.extended || da->flags.extended_flags)) {
+		if (!(da->flags.has_tlv || da->flags.extended || da->flags.long_extended)) {
 			fr_strerror_printf("Parent attribute %s cannot have sub-tlvs",
 					   da->name);
 			return 0;
@@ -1126,7 +1126,7 @@ static int process_attribute(const char* fn, const int line,
 		 *	241.1 means 241 is of type "extended".
 		 *	Otherwise, die.
 		 */
-		if (!(da->flags.has_tlv || da->flags.extended || da->flags.extended_flags)) {
+		if (!(da->flags.has_tlv || da->flags.extended || da->flags.long_extended)) {
 			fr_strerror_printf("dict_init: %s[%d]: Parent attribute %s cannot contain sub-attributes", fn, line, da->name);
 			return -1;
 		}
@@ -1160,7 +1160,7 @@ static int process_attribute(const char* fn, const int line,
 		 *	Set which type of attribute this is.
 		 */
 		flags.extended = da->flags.extended;
-		flags.extended_flags = da->flags.extended_flags;
+		flags.long_extended = da->flags.long_extended;
 		flags.evs = da->flags.evs;
 		if (da->flags.has_tlv) flags.is_tlv = 1;
 	}
@@ -1247,13 +1247,13 @@ static int process_attribute(const char* fn, const int line,
 			flags.extended = 1;
 			break;
 
-		case PW_TYPE_EXTENDED_FLAGS:
+		case PW_TYPE_LONG_EXTENDED:
 			if ((vendor != 0) || (value < 241)) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended-flags\" MUST be RFC attributes with value >= 241.", fn, line);
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"long-extended\" MUST be RFC attributes with value >= 241.", fn, line);
 				return -1;
 			}
 			type = PW_TYPE_OCTETS;
-			flags.extended_flags = 1;
+			flags.long_extended = 1;
 			break;
 
 		case PW_TYPE_EVS:
@@ -1277,7 +1277,7 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	Keep it real.
 		 */
-		if (flags.extended || flags.extended_flags || flags.evs) {
+		if (flags.extended || flags.long_extended || flags.evs) {
 			fr_strerror_printf("dict_init: %s[%d]: Extended attributes cannot use flags", fn, line);
 			return -1;
 		}

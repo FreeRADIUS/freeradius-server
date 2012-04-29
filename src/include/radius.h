@@ -22,7 +22,7 @@
 #define PW_TYPE_COMBO_IP		13
 #define PW_TYPE_TLV			14
 #define PW_TYPE_EXTENDED		15
-#define PW_TYPE_EXTENDED_FLAGS		16
+#define PW_TYPE_LONG_EXTENDED		16
 #define PW_TYPE_EVS			17
 #define PW_TYPE_INTEGER64		18
 

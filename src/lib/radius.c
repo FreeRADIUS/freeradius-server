@@ -1095,7 +1095,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 	if (vp->flags.extended) {
 		ptr[2] = (vp->attribute & 0xff00) >> 8;
 
-	} else if (vp->flags.extended_flags) {
+	} else if (vp->flags.long_extended) {
 		if (room < 4) return 0;
 
 		ptr[1] = 4;
@@ -1107,7 +1107,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 	 *	Only "flagged" attributes can be longer than one
 	 *	attribute.
 	 */
-	if (!vp->flags.extended_flags && (room > 255)) {
+	if (!vp->flags.long_extended && (room > 255)) {
 		room = 255;
 	}
 
@@ -1149,7 +1149,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 	 *	and copy the existing header over.  Set the "M" flag ONLY
 	 *	after copying the rest of the data.
 	 */
-	if (vp->flags.extended_flags && (len > (255 - ptr[1]))) {
+	if (vp->flags.long_extended && (len > (255 - ptr[1]))) {
 		return attr_shift(start, start + room, ptr, 4, len, 3, 0);
 	}
 
@@ -1160,7 +1160,7 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 		int jump = 3;
 
 		fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
-		if (!vp->flags.extended_flags) {
+		if (!vp->flags.long_extended) {
 			fprintf(fr_log_fp, "%02x  ", ptr[2]);
 			
 		} else {
@@ -1687,7 +1687,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 */
 		if ((reply->vendor == 0) &&
 		    ((reply->attribute & 0xFFFF) >= 256) &&
-		    !reply->flags.extended && !reply->flags.extended_flags) {
+		    !reply->flags.extended && !reply->flags.long_extended) {
 #ifndef NDEBUG
 			/*
 			 *	Permit the admin to send BADLY formatted
@@ -3681,7 +3681,7 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 
 	da = dict_attrbyvalue(data[0], vendor);
 	if (!da ||
-	    (!da->flags.extended && !da->flags.extended_flags)) {
+	    (!da->flags.extended && !da->flags.long_extended)) {
 		fr_strerror_printf("rad_attr2vp_extended: Attribute is not extended format");
 		return -1;
 	}
@@ -3722,7 +3722,7 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 	 *	a raw attribute.  If the flag is set, it's supposed to
 	 *	be continued.
 	 */
-	if (da->flags.extended_flags) {
+	if (da->flags.long_extended) {
 		if (data_len == 0) goto raw;
 
 		continued = ((data[0] & 0x80) != 0);

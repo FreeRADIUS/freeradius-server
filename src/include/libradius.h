@@ -106,7 +106,7 @@ typedef struct attr_flags {
 	unsigned int		has_tlv : 1; /* has sub attributes */
 	unsigned int		is_tlv : 1; /* is a sub attribute */
 	unsigned int		extended : 1; /* extended attribute */
-	unsigned int		extended_flags : 1; /* with flag */
+	unsigned int		long_extended : 1; /* long format */
 	unsigned int		evs : 1;	    /* extended VSA */
 	unsigned int		wimax: 1;	    /* WiMAX format=1,1,c */
 

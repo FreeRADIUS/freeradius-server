@@ -1400,7 +1400,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		}		
 		
 		if ((attr != PW_VENDOR_SPECIFIC) &&
-		    !(da->flags.extended || da->flags.extended_flags)) {
+		    !(da->flags.extended || da->flags.long_extended)) {
 			fr_strerror_printf("Standard attributes cannot use OIDs");
 			return NULL;
 		}
