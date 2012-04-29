@@ -431,6 +431,7 @@ static void request_stats_addvp(REQUEST *request,
 				fr_stats2vp *table, fr_stats_t *stats)
 {
 	int i;
+	fr_uint_t counter;
 	VALUE_PAIR *vp;
 
 	for (i = 0; table[i].attribute != 0; i++) {
@@ -439,7 +440,8 @@ static void request_stats_addvp(REQUEST *request,
 				       PW_TYPE_INTEGER);
 		if (!vp) continue;
 
-		vp->vp_integer = *(int *)(((char *) stats) + table[i].offset);
+		counter = *(fr_uint_t *) (((uint8_t *) stats) + table[i].offset);
+		vp->vp_integer = counter;
 	}
 }
 
