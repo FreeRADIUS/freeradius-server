@@ -177,6 +177,7 @@ $INCLUDE dictionary.nortel
 #
 #$INCLUDE dictionary.openser
 $INCLUDE dictionary.packeteer
+$INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.prosoft
