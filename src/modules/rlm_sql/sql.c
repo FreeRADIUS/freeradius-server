@@ -55,6 +55,8 @@ static void *sql_conn_create(void *ctx)
 		return sqlsocket;
 	}
 
+	exec_trigger(NULL, inst->cs, "modules.sql.fail");
+
 	free(sqlsocket);
 	return NULL;
 }
