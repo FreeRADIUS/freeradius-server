@@ -82,6 +82,12 @@ typedef struct rad_listen_master_t {
 
 static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
 
+#ifdef WITH_COMMAND_SOCKET
+static int command_tcp_recv(rad_listen_t *listener);
+static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
+static int command_write_magic(int newfd, listen_socket_t *sock);
+#endif
+
 /*
  *	Xlat for %{listen:foo}
  */
@@ -656,14 +662,26 @@ static int dual_tcp_accept(rad_listen_t *listener)
 
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
-	this->recv = dual_tcp_recv;
 
-#ifdef WITH_TLS
-	if (this->tls) {
-		this->recv = dual_tls_recv;
-		this->send = dual_tls_send;
-	}
+
+#ifdef WITH_COMMAND_SOCKET
+	if (this->type == RAD_LISTEN_COMMAND) {
+		this->recv = command_tcp_recv;
+		this->send = command_tcp_send;
+		command_write_magic(this->fd, sock);
+	} else
 #endif
+	{
+
+		this->recv = dual_tcp_recv;
+		
+#ifdef WITH_TLS
+		if (this->tls) {
+			this->recv = dual_tls_recv;
+		this->send = dual_tls_send;
+		}
+#endif
+	}
 
 	/*
 	 *	FIXME: set O_NONBLOCK on the accept'd fd.
@@ -728,6 +746,12 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 #ifdef WITH_COA
 	case RAD_LISTEN_COA:
 		name = "coa";
+		break;
+#endif
+
+#ifdef WITH_COMMAND_SOCKET
+	case RAD_LISTEN_COMMAND:
+		name = "control";
 		break;
 #endif
 
@@ -953,9 +977,18 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
-
-			rcode = cf_section_parse(cf_section_sub_find(cs, "limit"), sock, limit_config);
-			if (rcode < 0) return -1;
+			CONF_SECTION *limit;
+			
+			limit = cf_section_sub_find(cs, "limit");
+			if (limit) {
+				rcode = cf_section_parse(limit, sock,
+							 limit_config);
+				if (rcode < 0) return -1;
+			} else {
+				sock->limit.max_connections = 60;
+				sock->limit.idle_timeout = 30;
+				sock->limit.lifetime = 0;
+			}
 
 			if ((sock->limit.idle_timeout > 0) && (sock->limit.idle_timeout < 5))
 				sock->limit.idle_timeout = 5;
@@ -2070,6 +2103,12 @@ static int listen_bind(rad_listen_t *this)
 #ifdef WITH_VMPS
 		case RAD_LISTEN_VQP:
 			sock->my_port = 1589;
+			break;
+#endif
+
+#ifdef WITH_COMMAND_SOCKET
+		case RAD_LISTEN_COMMAND:
+			sock->my_port = PW_RADMIN_PORT;
 			break;
 #endif
 

@@ -31,6 +31,10 @@ RCSID("$Id$")
 #include <sys/socket.h>
 #endif
 
+#ifdef HAVE_NETINET_IN_H
+#include <netinet/in.h>
+#endif
+
 #ifdef HAVE_SYS_UN_H
 #include <sys/un.h>
 #ifndef SUN_LEN
@@ -93,6 +97,7 @@ int check_config = FALSE;
 
 static FILE *outputfp = NULL;
 static int echo = FALSE;
+static const char *secret = "testing123";
 
 static int fr_domain_socket(const char *path)
 {
@@ -161,6 +166,72 @@ static int fr_domain_socket(const char *path)
 #endif
 	return sockfd;
 }
+
+static int client_socket(const char *server)
+{
+	int sockfd, port;
+	fr_ipaddr_t ipaddr;
+	char *p, buffer[1024];
+
+	strlcpy(buffer, server, sizeof(buffer));
+
+	p = strchr(buffer, ':');
+	if (!p) {
+		port = PW_RADMIN_PORT;
+	} else {
+		port = atoi(p + 1);
+		*p = '\0';
+	}
+
+	if (ip_hton(buffer, AF_INET, &ipaddr) < 0) {
+		fprintf(stderr, "%s: Failed looking up host %s: %s\n",
+			progname, buffer, strerror(errno));
+		exit(1);
+	}
+
+	sockfd = fr_tcp_client_socket(NULL, &ipaddr, port);
+	if (sockfd < 0) {
+		fprintf(stderr, "%s: Failed opening socket %s: %s\n",
+			progname, server, strerror(errno));
+		exit(1);
+	}
+	
+	return sockfd;
+}
+
+static void do_challenge(int sockfd)
+{
+	ssize_t total, r;
+	uint8_t challenge[16];
+
+	for (total = 0; total < sizeof(challenge); ) {
+		r = read(sockfd, challenge + total, sizeof(challenge) - total);
+		if (r == 0) exit(1);
+		
+		if (r < 0) {
+#ifdef ECONNRESET
+			if (errno == ECONNRESET) {
+				fprintf(stderr, "%s: Connection reset",
+					progname);
+				exit(1);
+			}
+#endif
+			if (errno == EINTR) continue;
+			
+			fprintf(stderr, "%s: Failed reading data: %s\n",
+				progname, strerror(errno));
+			exit(1);
+		}
+		total += r;
+		fflush(stdout);
+	}
+
+	fr_hmac_md5(secret, strlen(secret), challenge, sizeof(challenge),
+		    challenge);
+
+	write(sockfd, challenge, sizeof(challenge));
+}
+
 
 static int usage(void)
 {
@@ -282,7 +353,7 @@ int main(int argc, char **argv)
 	int argval, quiet = 0;
 	int done_license = 0;
 	int sockfd;
-	uint32_t magic;
+	uint32_t magic, needed;
 	char *line = NULL;
 	ssize_t len, size;
 	const char *file = NULL;
@@ -291,6 +362,7 @@ int main(int argc, char **argv)
 	const char *input_file = NULL;
 	FILE *inputfp = stdin;
 	const char *output_file = NULL;
+	const char *server = NULL;
 	
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -302,11 +374,15 @@ int main(int argc, char **argv)
 	else
 		progname++;
 
-	while ((argval = getopt(argc, argv, "d:hi:e:Ef:n:o:q")) != EOF) {
+	while ((argval = getopt(argc, argv, "d:hi:e:Ef:n:o:qs:S")) != EOF) {
 		switch(argval) {
 		case 'd':
 			if (file) {
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
+				exit(1);
+			}
+			if (server) {
+				fprintf(stderr, "%s: -d and -s cannot be used together.\n", progname);
 				exit(1);
 			}
 			radius_dir = optarg;
@@ -356,6 +432,19 @@ int main(int argc, char **argv)
 
 		case 'q':
 			quiet = 1;
+			break;
+
+		case 's':
+			if (file) {
+				fprintf(stderr, "%s: -s and -f cannot be used together.\n", progname);
+				exit(1);
+			}
+			radius_dir = NULL;
+			server = optarg;
+			break;
+
+		case 'S':
+			secret = NULL;
 			break;
 		}
 	}
@@ -447,12 +536,16 @@ int main(int argc, char **argv)
 #endif
 
  reconnect:
-	/*
-	 *	FIXME: Get destination from command line, if possible?
-	 */
-	sockfd = fr_domain_socket(file);
-	if (sockfd < 0) {
-		exit(1);
+	if (file) {
+		/*
+		 *	FIXME: Get destination from command line, if possible?
+		 */
+		sockfd = fr_domain_socket(file);
+		if (sockfd < 0) {
+			exit(1);
+		}
+	} else {
+		sockfd = client_socket(server);
 	}
 
 	/*
@@ -476,11 +569,20 @@ int main(int argc, char **argv)
 	
 	memcpy(&magic, buffer + 4, 4);
 	magic = ntohl(magic);
-	if (magic != 1) {
-		fprintf(stderr, "%s: Socket version mismatch: Need 1, got %d\n",
-			progname, magic);
+
+	if (!server) {
+		needed = 1;
+	} else {
+		needed = 2;
+	}
+
+	if (magic != needed) {
+		fprintf(stderr, "%s: Socket version mismatch: Need %d, got %d\n",
+			progname, needed, magic);
 		exit(1);
-	}	
+	}
+
+	if (server && secret) do_challenge(sockfd);
 
 	/*
 	 *	Run one command.
@@ -593,12 +695,27 @@ int main(int argc, char **argv)
 			goto reconnect;
 		}
 
+		if (memcmp(line, "secret ", 7) == 0) {
+			if (!secret) {
+				secret = line + 7;
+				do_challenge(sockfd);
+			}
+			line = NULL;
+			continue;
+		}
+
 		/*
 		 *	Exit, done, etc.
 		 */
 		if ((strcmp(line, "exit") == 0) ||
 		    (strcmp(line, "quit") == 0)) {
 			break;
+		}
+
+		if (server && !secret) {
+			fprintf(stderr, "ERROR: You must enter 'secret <SECRET>' before running any commands\n");
+			line = NULL;
+			continue;
 		}
 
 		size = run_command(sockfd, line, buffer, sizeof(buffer));

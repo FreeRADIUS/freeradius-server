@@ -122,6 +122,10 @@ typedef struct auth_req REQUEST;
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
+#ifdef WITH_COMMAND_SOCKET
+#define PW_RADMIN_PORT 18120
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

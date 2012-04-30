@@ -68,12 +68,21 @@ struct fr_command_table_t {
 
 #define COMMAND_BUFFER_SIZE (1024)
 
+typedef struct fr_cs_buffer_t {
+	int	auth;
+	int	mode;
+	ssize_t offset;
+	ssize_t next;
+	char buffer[COMMAND_BUFFER_SIZE];
+} fr_cs_buffer_t;
+
+#define COMMAND_SOCKET_MAGIC (0xffdeadee)
 typedef struct fr_command_socket_t {
+	uint32_t magic;
 	char	*path;
 	char	*copy;		/* <sigh> */
 	uid_t	uid;
 	gid_t	gid;
-	int	mode;
 	char	*uid_name;
 	char	*gid_name;
 	char	*mode_name;
@@ -89,12 +98,7 @@ typedef struct fr_command_socket_t {
 	rad_listen_t	*inject_listener;
 	RADCLIENT	*inject_client;
 
-	/*
-	 *	The next few entries do buffer management.
-	 */
-	ssize_t offset;
-	ssize_t next;
-	char buffer[COMMAND_BUFFER_SIZE];
+	fr_cs_buffer_t  co;
 } fr_command_socket_t;
 
 static const CONF_PARSER command_config[] = {
@@ -2007,12 +2011,19 @@ static fr_command_table_t command_table[] = {
 
 static void command_socket_free(rad_listen_t *this)
 {
-	fr_command_socket_t *sock = this->data;
+	fr_command_socket_t *cmd = this->data;
 
-	if (!sock->copy) return;
-	unlink(sock->copy);
-	free(sock->copy);
-	sock->copy = NULL;
+	if (cmd->magic != COMMAND_SOCKET_MAGIC) {
+		listen_socket_t *sock = this->data;
+
+		free(sock->packet);
+		return;
+	}
+
+	if (!cmd->copy) return;
+	unlink(cmd->copy);
+	free(cmd->copy);
+	cmd->copy = NULL;
 }
 
 
@@ -2021,7 +2032,7 @@ static void command_socket_free(rad_listen_t *this)
  *
  *	FIXME: TCP + SSL, after RadSec is in.
  */
-static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 {
 	fr_command_socket_t *sock;
 
@@ -2033,6 +2044,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
+	sock->magic = COMMAND_SOCKET_MAGIC;
 	sock->copy = NULL;
 	if (sock->path) sock->copy = strdup(sock->path);
 
@@ -2076,10 +2088,10 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #endif
 
 	if (!sock->mode_name) {
-		sock->mode = FR_READ;
+		sock->co.mode = FR_READ;
 	} else {
-		sock->mode = fr_str2int(mode_names, sock->mode_name, 0);
-		if (!sock->mode) {
+		sock->co.mode = fr_str2int(mode_names, sock->mode_name, 0);
+		if (!sock->co.mode) {
 			radlog(L_ERR, "Invalid mode name \"%s\"",
 			       sock->mode_name);
 			return -1;
@@ -2116,9 +2128,39 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	return 0;
 }
 
+static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+{
+	int rcode;
+	const CONF_PAIR *cp;
+	listen_socket_t *sock;
+
+	cp = cf_pair_find(cs, "socket");
+	if (cp) return command_socket_parse_unix(cs, this);
+
+	rcode = common_socket_parse(cs, this);
+	if (rcode < 0) return -1;
+
+	if (this->tls) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "TLS is not supported for control sockets");
+		return -1;
+	}
+
+	sock = this->data;
+	if (sock->proto != IPPROTO_TCP) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "UDP is not supported for control sockets");
+		return -1;
+	}
+}
+
 static int command_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	fr_command_socket_t *sock = this->data;
+
+	if (sock->magic != COMMAND_SOCKET_MAGIC) {
+		return socket_print(this, buffer, bufsize);
+	}
 
 	snprintf(buffer, bufsize, "command file %s", sock->path);
 	return 1;
@@ -2216,14 +2258,13 @@ static void print_help(rad_listen_t *listener,
  *	It takes packets, not requests.  It sees if the packet looks
  *	OK.  If so, it does a number of sanity checks on it.
  */
-static int command_domain_recv(rad_listen_t *listener)
+static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 {
 	int i, rcode;
 	ssize_t len;
 	int argc;
 	char *my_argv[MAX_ARGV], **argv;
 	fr_command_table_t *table;
-	fr_command_socket_t *co = listener->data;
 
 	do {
 		ssize_t c;
@@ -2318,32 +2359,6 @@ static int command_domain_recv(rad_listen_t *listener)
 	if ((strcmp(argv[0], "exit") == 0) ||
 	    (strcmp(argv[0], "quit") == 0)) goto close_socket;
 
-#if 0
-	if (!co->user[0]) {
-		if (strcmp(argv[0], "login") != 0) {
-			cprintf(listener, "ERROR: Login required\n");
-			goto do_next;
-		}
-
-		if (argc < 3) {
-			cprintf(listener, "ERROR: login <user> <password>\n");
-			goto do_next;
-		}
-
-		/*
-		 *	FIXME: Generate && process fake RADIUS request.
-		 */
-		if ((strcmp(argv[1], "root") == 0) &&
-		    (strcmp(argv[2], "password") == 0)) {
-			strlcpy(co->user, argv[1], sizeof(co->user));
-			goto do_next;
-		}
-
-		cprintf(listener, "ERROR: Login incorrect\n");
-		goto do_next;
-	}
-#endif
-
 	table = command_table;
  retry:
 	len = 0;
@@ -2427,10 +2442,130 @@ static int command_domain_recv(rad_listen_t *listener)
 }
 
 
+	/*
+	 *	Write 32-bit magic number && version information.
+	 */
+static int command_write_magic(int newfd, listen_socket_t *sock)
+{
+	uint32_t magic;
+
+	magic = htonl(0xf7eead15);
+	if (write(newfd, &magic, 4) < 0) {
+		radlog(L_ERR, "Failed writing initial data to socket: %s",
+		       strerror(errno));
+		return -1;
+	}
+	
+	if (sock) {
+		magic = htonl(2);	/* protocol version */
+	} else {
+		magic = htonl(1);
+	}
+	if (write(newfd, &magic, 4) < 0) {
+		radlog(L_ERR, "Failed writing initial data to socket: %s",
+		       strerror(errno));
+		return -1;
+	}
+
+	/*
+	 *	Write an initial challenge
+	 */
+	if (sock) {
+		int i;
+		fr_cs_buffer_t *co;
+
+		co = rad_malloc(sizeof(*co));
+		memset(co, 0, sizeof(*co));
+
+		sock->packet = (void *) co;
+
+		for (i = 0; i < 16; i++) {
+			co->buffer[i] = fr_rand();
+		}
+
+		/*
+		 *	FIXME: EINTR, etc.
+		 */
+		write(newfd, co->buffer, 16);
+	}
+
+	return 0;
+}
+
+
+static int command_tcp_recv(rad_listen_t *this)
+{
+	listen_socket_t *sock = this->data;
+	fr_cs_buffer_t *co = (void *) sock->packet;
+
+	rad_assert(co != NULL);
+
+	if (!co->auth) {
+		uint8_t expected[16];
+
+		/*
+		 *	No response yet: keep reading it.
+		 */
+		if (co->offset < 16) {
+			ssize_t r;
+			
+			r = read(this->fd,
+				 co->buffer + 16 + co->offset, 16 - co->offset);
+			if (r == 0) {
+			close_socket:
+				command_close_socket(this);
+				return 0;
+			}
+
+			if (r < 0) {
+#ifdef ECONNRESET
+				if (errno == ECONNRESET) goto close_socket;
+#endif
+				if (errno == EINTR) return 0;
+				
+				radlog(L_ERR, "Failed reading from control socket; %s",
+				       strerror(errno));
+				goto close_socket;
+			}
+
+			co->offset += r;
+
+			if (co->offset < 16) return 0;
+		}
+
+		fr_hmac_md5(sock->client->secret, strlen(sock->client->secret),
+			    co->buffer, 16, expected);
+
+		if (rad_digest_cmp(expected, co->buffer + 16, 16 != 0)) {
+			radlog(L_ERR, "radmin failed challenge: Closing socket");
+			goto close_socket;
+		}
+
+		co->auth = TRUE;
+		co->offset = 0;
+	}
+
+	return command_domain_recv_co(this, co);
+}
+
+/*
+ *	Should never be called.  The functions should just call write().
+ */
+static int command_tcp_send(UNUSED rad_listen_t *listener, UNUSED REQUEST *request)
+{
+	return 0;
+}
+
+static int command_domain_recv(rad_listen_t *listener)
+{
+	fr_command_socket_t *sock = listener->data;
+
+	return command_domain_recv_co(listener, &sock->co);
+}
+
 static int command_domain_accept(rad_listen_t *listener)
 {
 	int newfd;
-	uint32_t magic;
 	rad_listen_t *this;
 	socklen_t salen;
 	struct sockaddr_storage src;
@@ -2498,24 +2633,10 @@ static int command_domain_accept(rad_listen_t *listener)
         }
 #endif
 
-	/*
-	 *	Write 32-bit magic number && version information.
-	 */
-	magic = htonl(0xf7eead15);
-	if (write(newfd, &magic, 4) < 0) {
-		radlog(L_ERR, "Failed writing initial data to socket: %s",
-		       strerror(errno));
+	if (command_write_magic(newfd, NULL) < 0) {
 		close(newfd);
 		return 0;
 	}
-	magic = htonl(1);	/* protocol version */
-	if (write(newfd, &magic, 4) < 0) {
-		radlog(L_ERR, "Failed writing initial data to socket: %s",
-		       strerror(errno));
-		close(newfd);
-		return 0;
-	}
-
 
 	/*
 	 *	Add the new listener.
@@ -2533,10 +2654,10 @@ static int command_domain_accept(rad_listen_t *listener)
 	this->next = NULL;
 	this->data = sock;	/* fix it back */
 
-	sock->offset = 0;
 	sock->user[0] = '\0';
 	sock->path = ((fr_command_socket_t *) listener->data)->path;
-	sock->mode = ((fr_command_socket_t *) listener->data)->mode;
+	sock->co.offset = 0;
+	sock->co.mode = ((fr_command_socket_t *) listener->data)->co.mode;
 
 	this->fd = newfd;
 	this->recv = command_domain_recv;
