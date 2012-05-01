@@ -33,6 +33,8 @@ typedef struct rlm_sometimes_t {
 	int	rcode;
 	int	start;
 	int	end;
+	char	*key;
+	DICT_ATTR *da;
 } rlm_sometimes_t;
 
 /*
@@ -47,6 +49,9 @@ typedef struct rlm_sometimes_t {
 static const CONF_PARSER module_config[] = {
   { "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_sometimes_t,rcode_str),
     NULL, "fail" },
+
+  { "key", PW_TYPE_STRING,    offsetof(rlm_sometimes_t,key),
+    NULL, "User-Name" },
 
   { "start", PW_TYPE_INTEGER,    offsetof(rlm_sometimes_t,start),
     NULL, "0" },
@@ -84,6 +89,17 @@ static int str2rcode(const char *s)
 	}
 }
 
+static int sometimes_detach(void *instance)
+{
+	rlm_sometimes_t *inst = instance;
+
+	free(inst->rcode_str);
+	free(inst->key);
+	free(inst);
+
+	return 0;
+}
+
 static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_sometimes_t *inst;
@@ -102,7 +118,7 @@ static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
+		sometimes_detach(inst);
 		return -1;
 	}
 
@@ -111,7 +127,14 @@ static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->rcode = str2rcode(inst->rcode_str);
 	if (inst->rcode == -1) {
-		free(inst);
+		sometimes_detach(inst);
+		return -1;
+	}
+
+	inst->da = dict_attrbyname(inst->key);
+	if (!inst->da) {
+		radlog(L_ERR, "rlm_sometimes; Unknown attributes %s", inst->key);
+		return -1;
 		return -1;
 	}
 
@@ -129,6 +152,7 @@ static int sometimes_return(void *instance, RADIUS_PACKET *packet,
 	uint32_t hash;
 	int value;
 	rlm_sometimes_t *inst = instance;
+	VALUE_PAIR *vp;
 
 	/*
 	 *	Set it to NOOP and the module will always do nothing
@@ -136,9 +160,12 @@ static int sometimes_return(void *instance, RADIUS_PACKET *packet,
 	if (inst->rcode == RLM_MODULE_NOOP) return inst->rcode;
 
 	/*
-	 *	Take into account src/dst ip/port, ID, code, vector, etc.
+	 *	Hash based on the given key.  Usually User-Name.
 	 */
-	hash = fr_hash(packet, sizeof(*packet));
+	vp = pairfind(packet->vps, inst->da->attr, inst->da->vendor);
+	if (!vp) return RLM_MODULE_NOOP;
+
+	hash = fr_hash(&vp->data, vp->length);
 	hash &= 0xff;		/* ensure it's 0..255 */
 	value = hash;
 
@@ -209,7 +236,7 @@ module_t rlm_sometimes = {
 	"sometimes",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	sometimes_instantiate,		/* instantiation */
-	NULL,				/* detach */
+	sometimes_detach,		/* detach */
 	{
 		sometimes_packet,	/* authentication */
 		sometimes_packet,	/* authorization */
