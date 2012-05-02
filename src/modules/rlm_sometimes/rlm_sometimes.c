@@ -50,7 +50,7 @@ static const CONF_PARSER module_config[] = {
   { "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_sometimes_t,rcode_str),
     NULL, "fail" },
 
-  { "key", PW_TYPE_STRING,    offsetof(rlm_sometimes_t,key),
+  { "key", PW_TYPE_STRING_PTR,    offsetof(rlm_sometimes_t,key),
     NULL, "User-Name" },
 
   { "start", PW_TYPE_INTEGER,    offsetof(rlm_sometimes_t,start),
