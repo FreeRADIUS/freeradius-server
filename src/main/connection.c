@@ -563,8 +563,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 
 		rad_assert(idle != NULL);
 		
-		DEBUG("%s: Closing idle connection (%i): Too many free connections",
-			fc->log_prefix, idle->number);
+		DEBUG("%s: Closing idle connection (%i): Too many free connections (%d > %d)",
+		      fc->log_prefix, idle->number, spare, fc->spare);
 		fr_connection_close(fc, idle);
 	}
 
