@@ -33,6 +33,8 @@ RCSID("$Id$")
 
 typedef struct fr_connection_t fr_connection_t;
 
+static int fr_connection_pool_check(fr_connection_pool_t *fc);
+
 struct fr_connection_t {
 	fr_connection_t	*prev, *next;
 
@@ -277,6 +279,8 @@ static void fr_connection_close(fr_connection_pool_t *fc,
 
 	rad_assert(this->used == FALSE);
 
+	DEBUG("%s: Closing connection (%i)", fc->log_prefix, this->number);
+
 	fr_connection_unlink(fc, this);
 	fc->delete(fc->ctx, this->connection);
 	rad_assert(fc->num > 0);
@@ -318,13 +322,19 @@ int fr_connection_del(fr_connection_pool_t *fc, void *conn)
 	this = fr_connection_find(fc, conn);
 	if (!this) return 0;
 
+	/*
+	 *	If it's used, release it.
+	 */
 	if (this->used) {
-		pthread_mutex_unlock(&fc->mutex);
-		return 0;
+		rad_assert(this->used == TRUE);
+		this->used = FALSE;
+		
+		rad_assert(fc->active > 0);
+		fc->active--;
 	}
 
 	fr_connection_close(fc, this);
-	pthread_mutex_unlock(&fc->mutex);
+	fr_connection_pool_check(fc);
 	return 1;
 }
 
@@ -332,6 +342,8 @@ int fr_connection_del(fr_connection_pool_t *fc, void *conn)
 void fr_connection_pool_delete(fr_connection_pool_t *fc)
 {
 	fr_connection_t *this, *next;
+
+	if (!fc) return;
 
 	DEBUG("%s: Removing connection pool", fc->log_prefix);
 
