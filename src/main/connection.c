@@ -625,15 +625,19 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 	}
 
 	if (fc->num == fc->max) {
+		int complain = FALSE;
+
 		/*
 		 *	Rate-limit complaints.
 		 */
 		if (fc->last_complained != now) {
-			radlog(L_ERR, "%s: No connections available and at max connection limit",
-			       fc->log_prefix);
+			complain = TRUE;
 			fc->last_complained = now;
 		}
 		pthread_mutex_unlock(&fc->mutex);
+
+		radlog(L_ERR, "%s: No connections available and at max connection limit",
+		       fc->log_prefix);
 		return NULL;
 	}
 
