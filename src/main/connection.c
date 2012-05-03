@@ -621,8 +621,6 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 	for (this = fc->head; this != NULL; this = next) {
 		next = this->next;
 
-		if (!fr_connection_manage(fc, this, now)) continue;
-
 		if (!this->used) goto do_return;
 	}
 
