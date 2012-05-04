@@ -524,6 +524,40 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	return snprintf(out, outlen, "%u", vp->vp_integer);
 }
 
+/**
+ * @brief Print data as hex, not as VALUE.
+ */
+static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
+			   char *fmt, char *out, size_t outlen,
+			   UNUSED RADIUS_ESCAPE_STRING func)
+{
+	size_t i;
+	uint8_t *p;
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+
+	/*
+	 *	Don't truncate the data.
+	 */
+	if (outlen < (vp->length * 2)) {
+		*out = 0;
+		return 0;
+	}
+
+	p = &vp->vp_octets[0];
+	for (i = 0; i < vp->length; i++) {
+		snprintf(out + 2*i, 3, "%02x", p[i]);
+	}
+
+	return vp->length * 2;
+}
+
 
 #ifdef WITH_UNLANG
 /**
@@ -839,6 +873,11 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 
 		xlat_register("integer", xlat_integer, NULL);
 		c = xlat_find("integer");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+
+		xlat_register("hex", xlat_hex, NULL);
+		c = xlat_find("hex");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
