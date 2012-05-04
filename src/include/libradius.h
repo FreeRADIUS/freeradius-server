@@ -262,6 +262,7 @@ void		vp_printlist(FILE *, const VALUE_PAIR *);
 /*
  *	Dictionary functions.
  */
+int		str2argv(char *str, char **argv, int max_argc);
 int		dict_str2oid(const char *ptr, unsigned int *pattr,
 			     int vendor, int tlv_depth);
 int		dict_addvendor(const char *name, unsigned int value);

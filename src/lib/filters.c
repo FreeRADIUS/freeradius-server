@@ -351,31 +351,6 @@ static const FR_NAME_NUMBER filterCompare[] = {
 
 
 /*
- *	String split routine.  Splits an input string IN PLACE
- *	into pieces, based on spaces.
- */
-static int str2argv(char *str, char **argv, int max_argc)
-{
-	int argc = 0;
-
-	while (*str) {
-		if (argc >= max_argc) return argc;
-
-		while (*str == ' ') *(str++) = '\0';
-
-		if (!*str) return argc;
-
-		argv[argc] = str;
-		argc++;
-
-		while (*str && (*str != ' ')) str++;
-	}
-
-	return argc;
-}
-
-
-/*
  *	ascend_parse_ipx_net
  *
  *	srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]

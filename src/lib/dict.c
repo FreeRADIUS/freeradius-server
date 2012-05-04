@@ -1708,7 +1708,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
  *	String split routine.  Splits an input string IN PLACE
  *	into pieces, based on spaces.
  */
-static int str2argv(char *str, char **argv, int max_argc)
+int str2argv(char *str, char **argv, int max_argc)
 {
 	int argc = 0;
 
