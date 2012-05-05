@@ -1573,7 +1573,7 @@ static const char *elapsed_names[8] = {
 #endif
 
 static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
-			       int auth)
+			       int auth, int server)
 {
 	int i;
 
@@ -1595,6 +1595,10 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	cprintf(listener, "\tbad_signature\t" PU "\n", stats->total_bad_authenticators);
 	cprintf(listener, "\tdropped\t\t" PU "\n", stats->total_packets_dropped);
 	cprintf(listener, "\tunknown_types\t" PU "\n", stats->total_unknown_types);
+
+	if (server) {
+		cprintf(listener, "\ttimeouts\t" PU "\n", stats->total_timeouts);
+	}
 
 	cprintf(listener, "\tlast_packet\t%lu\n", stats->last_packet);
 	for (i = 0; i < 8; i++) {
@@ -1687,12 +1691,12 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 #ifdef WITH_ACCOUNTING
 		if (strcmp(argv[0], "acct") == 0) {
 			return command_print_stats(listener,
-						   &proxy_acct_stats, 0);
+						   &proxy_acct_stats, 0, 1);
 		}
 #endif
 		if (strcmp(argv[0], "auth") == 0) {
 			return command_print_stats(listener,
-						   &proxy_auth_stats, 1);
+						   &proxy_auth_stats, 1, 1);
 		}
 
 		cprintf(listener, "ERROR: Should specify [auth/acct]\n");
@@ -1705,7 +1709,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 	}
 
 	command_print_stats(listener, &home->stats,
-			    (home->type == HOME_TYPE_AUTH));
+			    (home->type == HOME_TYPE_AUTH), 1);
 	cprintf(listener, "\toutstanding\t%d\n", home->currently_outstanding);
 	return 1;
 }
@@ -1789,13 +1793,13 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 #ifdef WITH_ACCOUNTING
 		if (!auth) {
 			return command_print_stats(listener,
-						   &radius_acct_stats, auth);
+						   &radius_acct_stats, auth, 0);
 		}
 #endif
-		return command_print_stats(listener, &radius_auth_stats, auth);
+		return command_print_stats(listener, &radius_auth_stats, auth, 0);
 	}
 
-	return command_print_stats(listener, stats, auth);
+	return command_print_stats(listener, stats, auth, 0);
 }
 
 
@@ -1811,7 +1815,7 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 
 	if (sock->type != RAD_LISTEN_AUTH) auth = FALSE;
 
-	return command_print_stats(listener, &sock->stats, auth);
+	return command_print_stats(listener, &sock->stats, auth, 0);
 }
 #endif	/* WITH_STATS */
 

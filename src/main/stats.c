@@ -38,7 +38,7 @@ RCSID("$Id$")
 static struct timeval	start_time;
 static struct timeval	hup_time;
 
-#define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+#define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	\
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }}
 
 fr_stats_t radius_auth_stats = FR_STATS_INIT;

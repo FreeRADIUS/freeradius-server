@@ -2829,6 +2829,18 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 			return;
 		}
 
+		FR_STATS_TYPE_INC(home->stats.total_timeouts);
+		if (home->type == HOME_TYPE_AUTH) {
+			FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+			FR_STATS_TYPE_INC(proxy_auth_stats.total_timeouts);
+		}
+#ifdef WITH_ACCT
+		else if (home->rtype == HOME_TYPE_ACCT) {
+			FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+			FR_STATS_TYPE_INC(proxy_acct_stats.total_timeouts);
+		}
+#endif
+
 		/*
 		 *	FIXME: debug log no response to proxied request
 		 */
