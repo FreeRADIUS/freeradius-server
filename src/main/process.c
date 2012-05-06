@@ -2292,6 +2292,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
+	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 	return 1;
@@ -2798,6 +2799,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 		rad_assert(request->proxy_listener != NULL);;
 		DEBUG_PACKET(request, request->proxy, 1);
+		FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
 		break;
@@ -3115,6 +3117,7 @@ static void request_coa_originate(REQUEST *request)
 #endif
 	coa->child_state = REQUEST_ACTIVE;
 	rad_assert(coa->proxy_reply == NULL);
+	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 	coa->proxy_listener->send(coa->proxy_listener, coa);
 }
 
@@ -3245,6 +3248,7 @@ static void request_coa_timer(REQUEST *request)
 
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
+	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 }
