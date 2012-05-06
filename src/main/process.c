@@ -1591,8 +1591,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 	 *	packets, but whether or not the home server has
 	 *	responded at all.
 	 */
-	if (!request->proxy_reply &&
-	    request->home_server &&
+	if (request->home_server &&
 	    request->home_server->currently_outstanding) {
 		request->home_server->currently_outstanding--;
 	}
