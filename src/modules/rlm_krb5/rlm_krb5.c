@@ -322,7 +322,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 #else /* HEIMDAL_KRB5 */
 
 /* validate user/pass, heimdal krb5 way */
-static int krb5_auth(rlm_krb5_t *instance, REQUEST *request)
+static int krb5_auth(void *instance, REQUEST *request)
 {
 	int r;
 	krb5_error_code ret, ret2;
@@ -343,14 +343,13 @@ static int krb5_auth(rlm_krb5_t *instance, REQUEST *request)
 	krb5_verify_opt krb_verify_options;
 	krb5_keytab keytab;
 
-	if (instance->service_princ != NULL) {
-		servername = strchr(instance->service_princ, '/');
+	if (((rlm_krb5_t *)instance)->service_princ != NULL) {
+		servername = strchr(((rlm_krb5_t *)instance)->service_princ, '/');
 		if (servername != NULL) {
 			*servername = '\0';
 		}
 
-		strncpy(service,instance->service_princ,sizeof(service));
-		service[sizeof(service)-1] = '\0';
+		strlcpy(service,((rlm_krb5_t *)instance)->service_princ,sizeof(service));
 		if (servername != NULL) {
 			*servername = '/';
 			servername++;
@@ -426,14 +425,12 @@ static int krb5_auth(rlm_krb5_t *instance, REQUEST *request)
 	 *  the default system keytab
 	 */
 
-	if (instance->keytab != NULL)
-	{
-		ret = krb5_kt_resolve(context, instance->keytab, &keytab);
+	if (((rlm_krb5_t *)instance)->keytab != NULL) {
+		ret = krb5_kt_resolve(context, ((rlm_krb5_t *)instance)->keytab, &keytab);
 
-		if ( ret )
-		{
+		if ( ret ) {
 			radlog(L_AUTH, "rlm_krb: unable to resolve keytab %s: %s",
-			       instance->keytab, error_message(ret));
+			       ((rlm_krb5_t *)instance)->keytab, error_message(ret));
 			krb5_kt_close(context, keytab);
 			return RLM_MODULE_REJECT;
 		}
