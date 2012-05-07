@@ -203,7 +203,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		int do_count = FALSE;
 		int do_all = FALSE;
 		int tag = 0;
-		size_t count, total;
+		size_t count = 0, total;
 		char *p;
 		char buffer[256];
 
