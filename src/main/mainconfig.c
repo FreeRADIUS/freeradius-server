@@ -425,34 +425,6 @@ static size_t xlat_client(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
-/*
- *	Recursively make directories.
- */
-static int r_mkdir(const char *part)
-{
-	char *ptr, parentdir[500];
-	struct stat st;
-
-	if (stat(part, &st) == 0)
-		return(0);
-
-	ptr = strrchr(part, FR_DIR_SEP);
-
-	if (ptr == part)
-		return(0);
-
-	snprintf(parentdir, (ptr - part)+1, "%s", part);
-
-	if (r_mkdir(parentdir) != 0)
-		return(1);
-
-	if (mkdir(part, 0770) != 0) {
-		radlog(L_ERR, "mkdir(%s) error: %s\n", part, strerror(errno));
-		return(1);
-	}
-
-	return(0);
-}
 
 #ifdef HAVE_SYS_RESOURCE_H
 static struct rlimit core_limits;
