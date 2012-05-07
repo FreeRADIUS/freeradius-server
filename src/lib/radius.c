@@ -2095,11 +2095,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 			case PW_ACCOUNTING_REQUEST:
 			case PW_DISCONNECT_REQUEST:
-			case PW_DISCONNECT_ACK:
-			case PW_DISCONNECT_NAK:
 			case PW_COA_REQUEST:
-			case PW_COA_ACK:
-			case PW_COA_NAK:
 			  	memset(packet->data + 4, 0, AUTH_VECTOR_LEN);
 				break;
 
@@ -2107,6 +2103,10 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			case PW_AUTHENTICATION_ACK:
 			case PW_AUTHENTICATION_REJECT:
 			case PW_ACCESS_CHALLENGE:
+			case PW_DISCONNECT_ACK:
+			case PW_DISCONNECT_NAK:
+			case PW_COA_ACK:
+			case PW_COA_NAK:
 				if (!original) {
 					fr_strerror_printf("ERROR: Cannot validate Message-Authenticator in response packet without a request packet.");
 					return -1;
