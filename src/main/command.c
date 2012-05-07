@@ -2156,6 +2156,8 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			   "UDP is not supported for control sockets");
 		return -1;
 	}
+
+	return 0;
 }
 
 static int command_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
