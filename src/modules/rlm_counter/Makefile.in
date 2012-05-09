@@ -7,8 +7,16 @@ SRCS        = rlm_counter.c
 HEADERS     =
 RLM_CFLAGS  = @counter_cflags@
 RLM_LIBS    = @counter_ldflags@
-RLM_INSTALL =
+
+ifneq ($TARGET,)
+RLM_INSTALL = rad_counter-install
+endif
 
 include ../rules.mak
 
 $(LT_OBJS): $(HEADERS)
+
+rad_counter-install:
+	$(INSTALL) -d -m 755 $(R)$(bindir)
+	$(LIBTOOL) --mode=install $(INSTALL) -m 755 \
+		rad_counter$(EXEEXT) $(R)$(bindir)
