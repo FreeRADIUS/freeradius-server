@@ -560,6 +560,18 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 }
 
 
+/**
+ * @brief Prints the current module processing the request
+ */
+static size_t xlat_module(UNUSED void *instance, REQUEST *request,
+			   UNUSED char *fmt, char *out, size_t outlen,
+			   UNUSED RADIUS_ESCAPE_STRING func)
+{
+	strlcpy(out, request->module, outlen);
+
+	return strlen(out);
+}
+
 #ifdef WITH_UNLANG
 /**
  * @brief Implements the Foreach-Variable-X
@@ -872,20 +884,15 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
-		xlat_register("integer", xlat_integer, NULL);
-		c = xlat_find("integer");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
+#define XLAT_REGISTER(_x) xlat_register(Stringify(_x), xlat_ ## _x, NULL); \
+		c = xlat_find(Stringify(_x)); \
+		rad_assert(c != NULL); \
+		c->internal = TRUE
 
-		xlat_register("hex", xlat_hex, NULL);
-		c = xlat_find("hex");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
-
-		xlat_register("string", xlat_string, NULL);
-		c = xlat_find("string");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
+		XLAT_REGISTER(integer);
+		XLAT_REGISTER(hex);
+		XLAT_REGISTER(string);
+		XLAT_REGISTER(module);
 
 #ifdef HAVE_REGEX_H
 		/*
