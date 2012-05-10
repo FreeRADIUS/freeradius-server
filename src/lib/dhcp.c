@@ -1551,7 +1551,7 @@ int fr_dhcp_add_arp_entry(int fd, const char *interface,
 			  VALUE_PAIR *macaddr, VALUE_PAIR *ip)
 {
 #ifdef SIOCSARP
-	struct sockaddr_in *sin
+	struct sockaddr_in *sin;
 	struct arpreq req;
 
 	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
