@@ -121,6 +121,9 @@ static struct {
   A(RLM_MODULE_NOOP)
   A(RLM_MODULE_UPDATED)
   A(RLM_MODULE_NUMCODES)
+  A(T_OP_EQ)
+  A(T_OP_ADD)
+  A(T_OP_CMP_EQ)
 
 #undef A
 
@@ -271,6 +274,8 @@ static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
                 PyObject *pTupleElement = PyTuple_GET_ITEM(pValue, i);
                 PyObject *pStr1;
                 PyObject *pStr2;
+                PyObject *pOperator = NULL;
+		int operator = T_OP_EQ;
                 int pairsize;
                 const char *s1;
                 const char *s2;
@@ -280,8 +285,8 @@ static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
                         continue;
                 }
                 /* Check if it's a pair */
-                if ((pairsize = PyTuple_GET_SIZE(pTupleElement)) != 2) {
-                        radlog(L_ERR, "rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2", funcname, i, pairsize);
+                if ((pairsize = PyTuple_GET_SIZE(pTupleElement)) < 2) {
+                        radlog(L_ERR, "rlm_python:%s: tuple element %d is a tuple of size %d. Must be at least 2", funcname, i, pairsize);
                         continue;
                 }
                 pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
@@ -290,10 +295,15 @@ static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
                         radlog(L_ERR, "rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
                         continue;
                 }
+		
+		if (PyTuple_GET_SIZE(pTupleElement) > 2) {
+		    pOperator = PyTuple_GET_ITEM(pTupleElement, 2);
+		    operator = PyInt_AsLong(pOperator);
+		}
                 s1 = PyString_AsString(pStr1);
                 s2 = PyString_AsString(pStr2);
-                /* xxx Might need to support other T_OP */
-                vp = pairmake(s1, s2, T_OP_EQ);
+		
+                vp = pairmake(s1, s2, operator);
                 if (vp != NULL) {
                         pairadd(vpp, vp);
                         radlog(L_DBG, "rlm_python:%s: '%s' = '%s'", funcname, s1, s2);

@@ -32,6 +32,11 @@ L_ERR = 4
 L_PROXY	= 5
 L_CONS = 128
 
+# from token.h
+T_OP_ADD = 8
+T_OP_EQ = 11
+T_OP_CMP_EQ = 21
+
 
 # log function
 def radlog(level, msg):
