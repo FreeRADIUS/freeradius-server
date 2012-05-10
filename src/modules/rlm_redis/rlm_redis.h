@@ -32,7 +32,7 @@ RCSIDH(rlm_redis_h, "$Id$")
 #endif
 
 #include <freeradius-devel/modpriv.h>
-#include <hiredis/hiredis.h>
+#include <hiredis.h>
 
 typedef struct redis_socket {
 	int     id;
