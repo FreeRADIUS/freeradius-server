@@ -2,7 +2,8 @@
 # git Post-receive configuration update script
 #
 # To install:
-# * cd <config-dir>/raddb git config receive.denyCurrentBranch ignore
+# * cd <config-dir>/raddb
+# * git config receive.denyCurrentBranch ignore
 # * cp ./post-receive <config-dir>/raddb/.git/hooks/
 # * # Edit the capitalized variables below to match your environment.
 #
