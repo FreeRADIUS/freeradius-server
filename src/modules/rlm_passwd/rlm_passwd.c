@@ -155,8 +155,6 @@ static void release_ht(struct hashtable * ht){
 static struct hashtable * build_hash_table (const char * file, int nfields,
 	int keyfield, int islist, int tablesize, int ignorenis, char delimiter)
 {
-#define passwd ((struct mypasswd *) ht->buffer)
-	char buffer[1024];
 	struct hashtable* ht;
 	size_t len;
 	unsigned int h;
@@ -164,6 +162,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	char *list;
 	char *nextlist=0;
 	int i;
+	char buffer[1024];
 
 	ht = (struct hashtable *) rad_malloc(sizeof(struct hashtable));
 	if(!ht) {
@@ -247,11 +246,13 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 static struct mypasswd * get_next(char *name, struct hashtable *ht,
 				  struct mypasswd **last_found)
 {
-#define passwd ((struct mypasswd *) ht->buffer)
+	struct mypasswd * passwd;
 	struct mypasswd * hashentry;
 	char buffer[1024];
 	int len;
 	char *list, *nextlist;
+
+	passwd = (struct mypasswd *) ht->buffer;
 
 	if (ht->tablesize > 0) {
 		/* get saved address of next item to check from buffer */
@@ -267,6 +268,9 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	}
 	/*	printf("try to find in file\n"); */
 	if (!ht->fp) return NULL;
+
+	passwd = (struct mypasswd *) ht->buffer;
+
 	while (fgets(buffer, 1024,ht->fp)) {
 		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
 			(!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
@@ -288,7 +292,6 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 	fclose(ht->fp);
 	ht->fp = NULL;
 	return NULL;
-#undef passwd
 }
 
 static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
