@@ -3552,7 +3552,7 @@ int event_new_fd(rad_listen_t *this)
 		FD_MUTEX_LOCK(&fd_mutex);
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
-			radlog(L_ERR, "Failed adding event handler for proxy socket!");
+			radlog(L_ERR, "Failed adding event handler for socket!");
 			exit(1);
 		}
 		FD_MUTEX_UNLOCK(&fd_mutex);
