@@ -70,7 +70,7 @@ typedef struct _pwd_id_packet {
 #define EAP_PWD_PREP_NONE               0
 #define EAP_PWD_PREP_MS                 1
 #define EAP_PWD_PREP_SASL               2
-    uint8_t identity[0];
+    char identity[0];
 } __attribute__ ((packed)) pwd_id_packet;
 
 typedef struct _pwd_session_t {
