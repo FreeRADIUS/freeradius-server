@@ -201,7 +201,8 @@ static int client_socket(const char *server)
 
 static void do_challenge(int sockfd)
 {
-	ssize_t total, r;
+	size_t total;
+	ssize_t r;
 	uint8_t challenge[16];
 
 	for (total = 0; total < sizeof(challenge); ) {
@@ -226,8 +227,8 @@ static void do_challenge(int sockfd)
 		fflush(stdout);
 	}
 
-	fr_hmac_md5(secret, strlen(secret), challenge, sizeof(challenge),
-		    challenge);
+	fr_hmac_md5((const uint8_t *) secret, strlen(secret), 
+		    challenge, sizeof(challenge), challenge);
 
 	write(sockfd, challenge, sizeof(challenge));
 }
