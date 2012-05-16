@@ -2117,7 +2117,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Don't chown it from (possibly) non-root to root.
 	 *	Do chown it from (possibly) root to non-root.
 	 */
-	if ((sock->uid != -1) || (sock->gid != -1)) {
+	if ((sock->uid != (uid_t) -1) || (sock->gid != (gid_t) -1)) {
 		fr_suid_up();
 		if (fchown(this->fd, sock->uid, sock->gid) < 0) {
 			radlog(L_ERR, "Failed setting ownership of %s: %s",
@@ -2539,10 +2539,12 @@ static int command_tcp_recv(rad_listen_t *this)
 			if (co->offset < 16) return 0;
 		}
 
-		fr_hmac_md5(sock->client->secret, strlen(sock->client->secret),
-			    co->buffer, 16, expected);
+		fr_hmac_md5((void *) sock->client->secret,
+			    strlen(sock->client->secret),
+			    (uint8_t *) co->buffer, 16, expected);
 
-		if (rad_digest_cmp(expected, co->buffer + 16, 16 != 0)) {
+		if (rad_digest_cmp(expected,
+				   (uint8_t *) co->buffer + 16, 16 != 0)) {
 			radlog(L_ERR, "radmin failed challenge: Closing socket");
 			goto close_socket;
 		}
