@@ -158,7 +158,7 @@ static int
 send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
 {
     int len;
-    unsigned short totlen;
+    uint16_t totlen;
     pwd_hdr *hdr;
 
     len = (sess->out_buf_len - sess->out_buf_pos) + sizeof(pwd_hdr);
@@ -196,10 +196,10 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
             EAP_PWD_SET_LENGTH_BIT(hdr);
             totlen = ntohs(sess->out_buf_len);
             memcpy(hdr->data, (char *)&totlen, sizeof(totlen));
-            memcpy(hdr->data + sizeof(unsigned short),
+            memcpy(hdr->data + sizeof(uint16_t),
                    sess->out_buf,
-                   sess->mtu - sizeof(pwd_hdr) - sizeof(unsigned short));
-            sess->out_buf_pos += (sess->mtu - sizeof(pwd_hdr) - sizeof(unsigned short));
+                   sess->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
+            sess->out_buf_pos += (sess->mtu - sizeof(pwd_hdr) - sizeof(uint16_t));
         } else {
             /*
              * an intermediate fragment
@@ -329,9 +329,9 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
     EAP_DS *eap_ds;
     int len, ret = 0;
     eap_pwd_t *inst = (eap_pwd_t *)arg;
-    unsigned short offset;
-    unsigned char exch, *buf, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
-    unsigned char peer_confirm[SHA256_DIGEST_LENGTH];
+    uint16_t offset;
+    uint8_t exch, *buf, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
+    uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
     BIGNUM *x = NULL, *y = NULL;
 
     if ((handler == NULL) || 
@@ -374,8 +374,8 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
         }
         memset(pwd_session->in_buf, 0, pwd_session->in_buf_len);
         pwd_session->in_buf_pos = 0;
-        buf += sizeof(unsigned short);
-        len -= sizeof(unsigned short);
+        buf += sizeof(uint16_t);
+        len -= sizeof(uint16_t);
     }
 
     /*
@@ -439,11 +439,11 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
             /*
              * we've agreed on the ciphersuite, record it...
              */
-            ptr = (unsigned char *)&pwd_session->ciphersuite;
-            memcpy(ptr, (char *)&id->group_num, sizeof(unsigned short));
-            ptr += sizeof(unsigned short);
+            ptr = (uint8_t *)&pwd_session->ciphersuite;
+            memcpy(ptr, (char *)&id->group_num, sizeof(uint16_t));
+            ptr += sizeof(uint16_t);
             *ptr = EAP_PWD_DEF_RAND_FUN;
-            ptr += sizeof(unsigned char);
+            ptr += sizeof(uint8_t);
             *ptr = EAP_PWD_DEF_PRF;
             
             pwd_session->peer_id_len = len - sizeof(pwd_id_packet);

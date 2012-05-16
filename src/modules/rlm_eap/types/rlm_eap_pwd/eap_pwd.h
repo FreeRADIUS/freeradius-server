@@ -44,12 +44,12 @@ RCSIDH(eap_pwd_h, "$Id$")
 #include <openssl/hmac.h>
 
 typedef struct _pwd_hdr {
-    unsigned char lm_exchange;
+    uint8_t lm_exchange;
 #define EAP_PWD_EXCH_ID                 1
 #define EAP_PWD_EXCH_COMMIT             2
 #define EAP_PWD_EXCH_CONFIRM            3
-//    unsigned short total_length;      /* there if the L-bit is set */
-    unsigned char data[0];
+//    uint16_t total_length;      /* there if the L-bit is set */
+    uint8_t data[0];
 } __attribute__ ((packed)) pwd_hdr;
 
 #define EAP_PWD_GET_LENGTH_BIT(x)       ((x)->lm_exchange & 0x80)
@@ -60,34 +60,34 @@ typedef struct _pwd_hdr {
 #define EAP_PWD_SET_EXCHANGE(x,y)       ((x)->lm_exchange |= (y))
 
 typedef struct _pwd_id_packet {
-    unsigned short group_num;
-    unsigned char random_function;
+    uint16_t group_num;
+    uint8_t random_function;
 #define EAP_PWD_DEF_RAND_FUN            1
-    unsigned char prf;
+    uint8_t prf;
 #define EAP_PWD_DEF_PRF                 1
-    unsigned char token[4];
-    unsigned char prep;
+    uint8_t token[4];
+    uint8_t prep;
 #define EAP_PWD_PREP_NONE               0
 #define EAP_PWD_PREP_MS                 1
 #define EAP_PWD_PREP_SASL               2
-    unsigned char identity[0];
+    uint8_t identity[0];
 } __attribute__ ((packed)) pwd_id_packet;
 
 typedef struct _pwd_session_t {
-    unsigned short state;
+    uint16_t state;
 #define PWD_STATE_ID_REQ                1
 #define PWD_STATE_COMMIT                2
 #define PWD_STATE_CONFIRM               3
-    unsigned short group_num;
+    uint16_t group_num;
     uint32_t ciphersuite;
     uint32_t token;
     char peer_id[MAX_STRING_LEN];
     int peer_id_len;
     int mtu;
-    unsigned char *in_buf;      /* reassembled fragments */
+    uint8_t *in_buf;      /* reassembled fragments */
     int in_buf_pos;
     int in_buf_len;
-    unsigned char *out_buf;     /* message to fragment */
+    uint8_t *out_buf;     /* message to fragment */
     int out_buf_pos;
     int out_buf_len;
     EC_GROUP *group;
@@ -100,22 +100,22 @@ typedef struct _pwd_session_t {
     BIGNUM *my_scalar;
     EC_POINT *my_element;
     EC_POINT *peer_element;
-    unsigned char my_confirm[SHA256_DIGEST_LENGTH];
+    uint8_t my_confirm[SHA256_DIGEST_LENGTH];
 } pwd_session_t;
 
-int compute_password_element(pwd_session_t *sess, unsigned short grp_num,
+int compute_password_element(pwd_session_t *sess, uint16_t grp_num,
                              char *password, int password_len,
                              char *id_server, int id_server_len,
                              char *id_peer, int id_peer_len, 
                              uint32_t *token);
 int compute_scalar_element(pwd_session_t *sess, BN_CTX *bnctx);
-int process_peer_commit (pwd_session_t *sess, unsigned char *commit, BN_CTX *bnctx);
-int compute_server_confirm(pwd_session_t *sess, unsigned char *buf, BN_CTX *bnctx);
-int compute_peer_confirm(pwd_session_t *sess, unsigned char *buf, BN_CTX *bnctx);
-int compute_keys(pwd_session_t *sess, unsigned char *peer_confirm,
-                 unsigned char *msk, unsigned char *emsk);
+int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx);
+int compute_server_confirm(pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx);
+int compute_peer_confirm(pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx);
+int compute_keys(pwd_session_t *sess, uint8_t *peer_confirm,
+                 uint8_t *msk, uint8_t *emsk);
 #ifdef PRINTBUF
-void print_buf(char *str, unsigned char *buf, int len);
+void print_buf(char *str, uint8_t *buf, int len);
 #endif  /* PRINTBUF */
 
 #endif  /* _EAP_PWD_H */
