@@ -860,6 +860,7 @@ static int rlm_sql_detach(void *instance)
 }
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 {
+	int i;
 	SQL_INST *inst;
 	const char *xlat_name;
 
@@ -989,6 +990,23 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		}
 	}
 	allowed_chars = inst->config->allowed_chars;
+
+	for (i = 0; module_config[i].name != NULL; i++) {
+		char **p;
+
+		if (module_config[i].type != PW_TYPE_STRING_PTR) continue;
+		if (strstr(module_config[i].name, "_query") != NULL) continue;
+		
+		p = (char **) (((char *)inst->config) + module_config[i].offset);
+
+		if (!*p) continue;
+
+		if (strlen(*p) > ((2 * MAX_QUERY_LEN) / 3)) {
+			DEBUG("%s: WARNING Query '%s' is probably too long!",
+			      inst->config->xlat_name, module_config[i].name);
+		}
+	}
+
 
 	*instance = inst;
 
