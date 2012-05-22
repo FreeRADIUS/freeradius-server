@@ -76,7 +76,7 @@ case "$1" in
           rm_conffile "$file"
 
           # must get rid of the overrides otherwise they corrupt the database
-          if dpkg-statoverride --list | grep -qw $file$; then
+          if dpkg-statoverride --list $file >/dev/null; then
             dpkg-statoverride --remove $file
           fi
 

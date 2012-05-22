@@ -539,9 +539,22 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	} else if (strcasecmp(hs_check, "request") == 0) {
 		home->ping_check = HOME_PING_CHECK_REQUEST;
 
+		if (!home->ping_user_name ||
+		    !*home->ping_user_name) {
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a 'username' to enable status_check=request");
+			goto error;
+		}
+
+		if ((home->type == HOME_TYPE_AUTH) &&
+		    (!home->ping_user_password ||
+		     !*home->ping_user_password)) {
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable status_check=request");
+			goto error;
+		}
+
 	} else {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Invalid ping_check \"%s\" for home server %s.",
+			   "Invalid status__check \"%s\" for home server %s.",
 			   hs_check, name2);
 		goto error;
 	}
@@ -551,13 +564,13 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	if ((home->ping_check != HOME_PING_CHECK_NONE) &&
 	    (home->ping_check != HOME_PING_CHECK_STATUS_SERVER)) {
 		if (!home->ping_user_name) {
-			cf_log_err(cf_sectiontoitem(cs), "You must supply a user name to enable ping checks");
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a user name to enable status_check=request");
 			goto error;
 		}
 
 		if ((home->type == HOME_TYPE_AUTH) &&
 		    !home->ping_user_password) {
-			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable ping checks");
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable status_check=request");
 			goto error;
 		}
 	}

@@ -262,6 +262,7 @@ DICT_ATTR	*dict_attrbyvalue(unsigned int attr);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, int val);
 DICT_VALUE	*dict_valbyname(unsigned int attr, const char *val);
+const char	*dict_valnamebyattr(unsigned int attr, int value);
 int		dict_vendorbyname(const char *name);
 DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
@@ -419,7 +420,7 @@ int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 #ifdef ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(VALUE_PAIR *vp, char *buffer, size_t len);
+void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimitst);
 #endif /*ASCEND_BINARY*/
 
 /* random numbers in isaac.c */

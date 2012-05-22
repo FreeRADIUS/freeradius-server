@@ -206,7 +206,7 @@ static size_t sql_utf8_escape_func(char *out, size_t outlen, const char *in)
 		/* 
 		 * Skip over UTF8 characters
 		 */
-		utf8 = fr_utf8_char((uint8_t *)in);
+		utf8 = fr_utf8_char((const uint8_t *)in);
 		if (utf8) {
 			if (outlen <= utf8) {
 				break;
@@ -361,12 +361,19 @@ static int sql_log_write(rlm_sql_log_t *inst, REQUEST *request, const char *line
 	FILE *fp;
 	int locked = 0;
 	struct stat st;
-	char path[MAX_STRING_LEN];
+	char *p, path[1024];
 
 	path[0] = '\0';
 	radius_xlat(path, sizeof(path), inst->path, request, NULL);
 	if (path[0] == '\0') {
 		return RLM_MODULE_FAIL;
+	}
+
+	p = strrchr(path, '/');
+	if (p) {
+		*p = '\0';
+		rad_mkdir(path, 0755);
+		*p = '/';
 	}
 
 	while (!locked) {

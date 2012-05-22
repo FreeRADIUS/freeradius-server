@@ -14,7 +14,7 @@ case "$1" in
           /etc/freeradius/sql/postgresql/update_radacct_group_trigger.sql \
           /etc/freeradius/sql/postgresql/voip-postpaid.conf
         do
-          if dpkg-statoverride --list | grep -qw $file$; then
+          if dpkg-statoverride --list $file >/dev/null; then
             dpkg-statoverride --remove $file
           fi
         done
@@ -22,7 +22,7 @@ case "$1" in
         for dir in /etc/freeradius/sql \
           /etc/freeradius/sql/postgresql
         do
-          if dpkg-statoverride --list | grep -qw $dir$; then
+          if dpkg-statoverride --list $dir >/dev/null; then
             dpkg-statoverride --remove $dir
           fi
         done

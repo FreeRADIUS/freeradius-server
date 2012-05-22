@@ -1296,6 +1296,7 @@ static const FR_NAME_NUMBER header_names[] = {
 	{ "{clear}",	PW_CLEARTEXT_PASSWORD },
 	{ "{cleartext}", PW_CLEARTEXT_PASSWORD },
 	{ "{md5}",	PW_MD5_PASSWORD },
+	{ "{BASE64_MD5}",	PW_MD5_PASSWORD },
 	{ "{smd5}",	PW_SMD5_PASSWORD },
 	{ "{crypt}",	PW_CRYPT_PASSWORD },
 	{ "{sha}",	PW_SHA_PASSWORD },
@@ -1768,6 +1769,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	*/
        if (debug_flag > 1) {
 	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD) &&
+		   !pairfind(request->config_items, PW_NT_PASSWORD) &&
 		   !pairfind(request->config_items, PW_USER_PASSWORD) &&
 		   !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER) &&
 		   !pairfind(request->config_items, PW_CRYPT_PASSWORD)) {
@@ -2584,6 +2586,8 @@ ldap_detach(void *instance)
 		int i;
 
 		for (i = 0;i < inst->num_conns; i++) {
+			if (inst->conns[i].locked) return -1;
+
 			if (inst->conns[i].ld){
 				ldap_unbind_s(inst->conns[i].ld);
 			}
@@ -2597,6 +2601,8 @@ ldap_detach(void *instance)
 		int i;
 
 		for (i = 0; i < inst->num_conns; i++) {
+			if (inst->apc_conns[i].locked) return -1;
+
 			if (inst->apc_conns[i].ld){
 				ldap_unbind_s(inst->apc_conns[i].ld);
 			}
@@ -2630,7 +2636,7 @@ ldap_detach(void *instance)
 		free(inst->atts);
 
 	paircompare_unregister(PW_LDAP_GROUP, ldap_groupcmp);
-	xlat_unregister(inst->xlat_name,ldap_xlat);
+	xlat_unregister(inst->xlat_name,ldap_xlat, instance);
 	free(inst->xlat_name);
 
 	free(inst);

@@ -530,6 +530,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 		}
 		ipaddr.af = AF_INET6;
+		ipaddr.scope = 0;
 	}
 
 	rcode = cf_item_parse(cs, "port", PW_TYPE_INTEGER,
@@ -1523,6 +1524,21 @@ static int listen_bind(rad_listen_t *this)
 		radlog(L_ERR, "Failed opening %s: %s", buffer, strerror(errno));
 		return -1;
 	}
+
+#ifdef FD_CLOEXEC
+	/*
+	 *	We don't want child processes inheriting these
+	 *	file descriptors.
+	 */
+	rcode = fcntl(this->fd, F_GETFD);
+	if (rcode >= 0) {
+		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
+			close(this->fd);
+			radlog(L_ERR, "Failed setting close on exec: %s", strerror(errno));
+			return -1;
+		}
+	}
+#endif
 		
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.

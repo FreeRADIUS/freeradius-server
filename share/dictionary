@@ -85,6 +85,7 @@ $INCLUDE dictionary.rfc4679
 $INCLUDE dictionary.rfc4818
 $INCLUDE dictionary.rfc4849
 $INCLUDE dictionary.rfc5176
+$INCLUDE dictionary.rfc5447
 $INCLUDE dictionary.rfc5580
 $INCLUDE dictionary.rfc5607
 $INCLUDE dictionary.rfc5904
@@ -122,6 +123,7 @@ $INCLUDE dictionary.cisco.bbsm
 $INCLUDE dictionary.clavister
 $INCLUDE dictionary.colubris
 $INCLUDE dictionary.cosine
+$INCLUDE dictionary.dhcp
 $INCLUDE dictionary.digium
 $INCLUDE dictionary.eltex
 $INCLUDE dictionary.epygi
@@ -173,9 +175,11 @@ $INCLUDE dictionary.nortel
 #
 #$INCLUDE dictionary.openser
 $INCLUDE dictionary.packeteer
+$INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.prosoft
+$INCLUDE dictionary.purewave
 $INCLUDE dictionary.quiconnect
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
@@ -191,6 +195,7 @@ $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
 $INCLUDE dictionary.symbol
 $INCLUDE dictionary.telebit
+$INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova

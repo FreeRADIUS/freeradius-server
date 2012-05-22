@@ -63,9 +63,11 @@ typedef struct dhcp_socket_t {
 	 */
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
-	const char	*arp_interface;
+	const char	*src_interface;
+        fr_ipaddr_t     src_ipaddr;
 } dhcp_socket_t;
 
+#ifdef WITH_UDPFROMTO
 static int dhcprelay_process_client_request(REQUEST *request)
 {
 	uint8_t maxhops = 16;
@@ -154,9 +156,6 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 	giaddrvp = vp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
 	rad_assert(vp != NULL);
 
-#ifndef WITH_UDPFROMTO
-#error "DHCP as a Relay requires WITH_UDPFROMTO compilation flag"
-#endif
 	/* --with-udpfromto is needed just for the following test */
 	if (!vp || vp->vp_ipaddr != request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr) {
 		DEBUG("DHCP: Packet received from server was not for us (was for 0x%x). Discarding packet",
@@ -200,7 +199,11 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 			request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		} else {
 			vp = pairfind(request->packet->vps, DHCP2ATTR(264)); /* DHCP-Your-IP-Address */
-			rad_assert(vp != NULL);
+			if (!vp) {
+				DEBUG("DHCP: Failed to find IP Address for request.");
+				return -1;
+			}
+
 			request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 			/*
@@ -216,9 +219,8 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 					    "no Client Hardware Address. Discarding packet");
 					return 1;
 				}
-				if (sock->arp_interface == NULL)
-					sock->arp_interface = sock->interface;
-				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->arp_interface, hwvp, vp) < 0) {
+				if (fr_dhcp_add_arp_entry(request->packet->sockfd, sock->src_interface, hwvp, vp) < 0) {
+					DEBUG("%s", fr_strerror());
 					return -1;
 				}
 			}
@@ -232,6 +234,20 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 
 	return fr_dhcp_send(request->packet);
 }
+#else  /* WITH_UDPFROMTO */
+static int dhcprelay_process_server_reply(UNUSED REQUEST *request)
+{
+	DEBUG("WARNING: DHCP Relaying requires the server to be configured with UDPFROMTO");
+	return -1;
+}
+
+static int dhcprelay_process_client_request(UNUSED REQUEST *request)
+{
+	DEBUG("WARNING: DHCP Relaying requires the server to be configured with UDPFROMTO");
+	return -1;
+}
+
+#endif	/* WITH_UDPFROMTO */
 
 static const uint32_t attrnums[] = {
 	57,	/* DHCP-DHCP-Maximum-Msg-Size */
@@ -373,8 +389,7 @@ static int dhcp_process(REQUEST *request)
 	 */
 	request->reply->dst_ipaddr.af = AF_INET;
 	request->reply->src_ipaddr.af = AF_INET;
-	/* XXX sock->ipaddr == 0 (listening on '*') */
-	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->ipaddr.ipaddr.ip4addr.s_addr;
+	request->reply->src_ipaddr.ipaddr.ip4addr.s_addr = sock->src_ipaddr.ipaddr.ip4addr.s_addr;
 
 	request->reply->dst_port = request->packet->src_port;
 	request->reply->src_port = request->packet->dst_port;
@@ -410,7 +425,11 @@ static int dhcp_process(REQUEST *request)
 			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 		} else {
 			vp = pairfind(request->reply->vps, DHCP2ATTR(264)); /* DHCP-Your-IP-Address */
-			rad_assert(vp != NULL);
+			if (!vp) {
+				DEBUG("DHCP: Failed to find IP Address for request.");
+				return -1;
+			}
+			
 			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 			/*
@@ -421,10 +440,10 @@ static int dhcp_process(REQUEST *request)
 			 */
 			if (request->reply->code == PW_DHCP_OFFER) {
 				VALUE_PAIR *hwvp = pairfind(request->reply->vps, DHCP2ATTR(267)); /* DHCP-Client-Hardware-Address */
-				rad_assert(hwvp != NULL);
-				if (sock->arp_interface == NULL)
-					sock->arp_interface = sock->interface;
-				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->arp_interface, hwvp, vp) < 0) {
+
+				if (!hwvp) return -1;
+
+				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
 					return -1;
 				}
 			}
@@ -448,6 +467,10 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (check_config) return 0;
 
 	sock = this->data;
+
+	if (!sock->interface) {
+		DEBUG("WARNING: No \"interface\" setting is defined.  Only unicast DHCP will work.");
+	}
 
 	/*
 	 *	See whether or not we enable broadcast packets.
@@ -483,18 +506,33 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (cp) {
 		const char *value;
 
-		value = cf_pair_value(cp);
+		cf_item_parse(cs, "suppress_responses", PW_TYPE_BOOLEAN,
+			      &sock->suppress_responses, NULL);
+	}
+	
+	cp = cf_pair_find(cs, "src_interface");
+	if (cp) {
+		cf_item_parse(cs, "src_interface", PW_TYPE_STRING_PTR,
+			      &sock->src_interface, NULL);
+	} else {
+                sock->src_interface = sock->interface;
+        }
 
-		if (value && (strcmp(value, "yes") == 0)) {
-			sock->suppress_responses = TRUE;
-		}
+	if (!sock->src_interface && sock->interface) {
+		sock->src_interface = strdup(sock->interface);
 	}
 
-	cp = cf_pair_find(cs, "arp_interface");
+	cp = cf_pair_find(cs, "src_ipaddr");
 	if (cp) {
-		const char *value;
-		value = cf_pair_value(cp);
-		sock->arp_interface = value;
+		memset(&sock->src_ipaddr, 0, sizeof(sock->src_ipaddr));
+		sock->src_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
+		rcode = cf_item_parse(cs, "src_ipaddr", PW_TYPE_IPADDR,
+				      &sock->src_ipaddr.ipaddr.ip4addr, NULL);
+		if (rcode < 0) return -1;
+
+		sock->src_ipaddr.af = AF_INET;
+	} else {
+		memcpy(&sock->src_ipaddr, &sock->ipaddr, sizeof(sock->src_ipaddr));
 	}
 
 	/*

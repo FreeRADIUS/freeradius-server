@@ -527,7 +527,7 @@ int main(int argc, char *argv[])
 		exit(1);
 
 	} else {
-		descr = pcap_open_live(dev, 65536, 1, 0, errbuf);
+		descr = pcap_open_live(dev, 65536, 1, 1, errbuf);
 	}
 	if (descr == NULL)
 	{

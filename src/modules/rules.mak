@@ -113,14 +113,13 @@ endif
 WHERE=$(shell pwd)
 
 build-module: $(TARGET).la $(RLM_UTILS)
-	@[ "x$(RLM_SUBDIRS)" = "x" ] || $(MAKE) $(MFLAGS) WHAT_TO_MAKE=all common
 	@[ -d $(top_builddir)/src/modules/lib/.libs ] || mkdir $(top_builddir)/src/modules/lib/.libs
 	for x in .libs/* $^; do \
 		rm -rf $(top_builddir)/src/modules/lib/$$x; \
 		ln -s $(WHERE)/$$x $(top_builddir)/src/modules/lib/$$x; \
 	done
 
-$(TARGET).la: $(LT_OBJS)
+$(TARGET).la: $(RLM_SUBDIRS) $(LT_OBJS)
 	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	-module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
 	-rpath $(libdir) $^ $(LIBRADIUS) $(RLM_LIBS) $(LIBS)

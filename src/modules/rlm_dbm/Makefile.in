@@ -29,4 +29,4 @@ rlm_dbm_install: rlm_dbm_cat rlm_dbm_parser
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) \
 		rlm_dbm_parser$(EXEEXT) $(R)$(bindir)
 	$(INSTALL) -m 644 rlm_dbm_cat.8 $(R)$(mandir)/man8
-	$(INSTALL) -m 644 rlm_dbm_parse.8 $(R)$(mandir)/man8
+	$(INSTALL) -m 644 rlm_dbm_parser.8 $(R)$(mandir)/man8

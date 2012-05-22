@@ -53,6 +53,14 @@ use Data::Dumper;
 	use constant	RLM_MODULE_UPDATED=>   8;#  /* OK (pairs modified) */
 	use constant	RLM_MODULE_NUMCODES=>  9;#  /* How many return codes there are */
 
+# Same as src/include/radiusd.h
+use constant	L_DBG=>   1;
+use constant	L_AUTH=>  2;
+use constant	L_INFO=>  3;
+use constant	L_ERR=>   4;
+use constant	L_PROXY=> 5;
+use constant	L_ACCT=>  6;
+
 #  Global variables can persist across different calls to the module.
 #
 #
@@ -152,8 +160,8 @@ sub xlat {
 
 	# Loads some external perl and evaluate it
 	my ($filename,$a,$b,$c,$d) = @_;
-	&radiusd::radlog(1, "From xlat $filename ");
-	&radiusd::radlog(1,"From xlat $a $b $c $d ");
+	&radiusd::radlog(L_DBG, "From xlat $filename ");
+	&radiusd::radlog(L_DBG,"From xlat $a $b $c $d ");
 	local *FH;
 	open FH, $filename or die "open '$filename' $!";
 	local($/) = undef;
@@ -170,7 +178,7 @@ sub detach {
 #	&log_request_attributes;
 
 	# Do some logging.
-	&radiusd::radlog(0,"rlm_perl::Detaching. Reloading. Done.");
+	&radiusd::radlog(L_DBG,"rlm_perl::Detaching. Reloading. Done.");
 }
 
 #
@@ -185,7 +193,7 @@ sub log_request_attributes {
 	# This shouldn't be done in production environments!
 	# This is only meant for debugging!
 	for (keys %RAD_REQUEST) {
-		&radiusd::radlog(1, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
+		&radiusd::radlog(L_DBG, "RAD_REQUEST: $_ = $RAD_REQUEST{$_}");
 	}
 }
 

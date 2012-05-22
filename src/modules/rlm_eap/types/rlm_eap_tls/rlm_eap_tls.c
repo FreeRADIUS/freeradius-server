@@ -77,6 +77,12 @@ static CONF_PARSER ocsp_config[] = {
 	  offsetof(EAP_TLS_CONF, ocsp_override_url), NULL, "no"},
 	{ "url", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, ocsp_url), NULL, NULL },
+	{ "use_nonce", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, ocsp_use_nonce), NULL, "yes"},
+	{ "timeout", PW_TYPE_INTEGER,
+	  offsetof(EAP_TLS_CONF, ocsp_timeout), NULL, "0" },
+	{ "softfail", PW_TYPE_BOOLEAN,
+	  offsetof(EAP_TLS_CONF, ocsp_softfail), NULL, "no"},
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 #endif
@@ -293,7 +299,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 {
 	OCSP_CERTID *certid;
 	OCSP_REQUEST *req;
-	OCSP_RESPONSE *resp;
+	OCSP_RESPONSE *resp = NULL;
 	OCSP_BASICRESP *bresp = NULL;
 	char *host = NULL;
 	char *port = NULL;
@@ -305,6 +311,12 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	int status ;
 	ASN1_GENERALIZEDTIME *rev, *thisupd, *nextupd;
 	int reason;
+#if OPENSSL_VERSION_NUMBER >= 0x1000003f
+	OCSP_REQ_CTX *ctx;
+	int rc;
+	struct timeval now;
+	struct timeval when;
+#endif
 
 	/* 
 	 * Create OCSP Request 
@@ -312,7 +324,9 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	certid = OCSP_cert_to_id(NULL, client_cert, issuer_cert);
 	req = OCSP_REQUEST_new();
 	OCSP_request_add0_id(req, certid);
-	OCSP_request_add1_nonce(req, NULL, 8);
+	if(conf->ocsp_use_nonce){
+		OCSP_request_add1_nonce(req, NULL, 8);
+	}
 	
 	/* 
 	 * Send OCSP Request and get OCSP Response
@@ -334,14 +348,60 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	bio_out = BIO_new_fp(stdout, BIO_NOCLOSE);
 
 	BIO_set_conn_port(cbio, port);
+#if OPENSSL_VERSION_NUMBER < 0x1000003f
 	BIO_do_connect(cbio);
-
+ 
 	/* Send OCSP request and wait for response */
 	resp = OCSP_sendreq_bio(cbio, path, req);
-	if(resp==0) {
+	if (!resp) {
 		radlog(L_ERR, "Error: Couldn't get OCSP response");
+		ocsp_ok = 2;
 		goto ocsp_end;
 	}
+#else
+	if (conf->ocsp_timeout)
+		BIO_set_nbio(cbio, 1);
+
+	rc = BIO_do_connect(cbio);
+	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
+		radlog(L_ERR, "Error: Couldn't connect to OCSP responder");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+
+	ctx = OCSP_sendreq_new(cbio, path, req, -1);
+	if (!ctx) {
+		radlog(L_ERR, "Error: Couldn't send OCSP request");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+
+	gettimeofday(&when, NULL);
+	when.tv_sec += conf->ocsp_timeout;
+
+	do {
+		rc = OCSP_sendreq_nbio(&resp, ctx);
+		if (conf->ocsp_timeout) {
+			gettimeofday(&now, NULL);
+			if (!timercmp(&now, &when, <))
+				break;
+		}
+	} while ((rc == -1) && BIO_should_retry(cbio));
+
+	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
+		radlog(L_ERR, "Error: OCSP response timed out");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+
+	OCSP_REQ_CTX_free(ctx);
+
+	if (rc == 0) {
+		radlog(L_ERR, "Error: Couldn't get OCSP response");
+		ocsp_ok = 2;
+		goto ocsp_end;
+	}
+#endif
 
 	/* Verify OCSP response status */
 	status = OCSP_response_status(resp);
@@ -351,7 +411,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
-	if(OCSP_check_nonce(req, bresp)!=1) {
+	if(conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
 		radlog(L_ERR, "Error: OCSP response has wrong nonce value");
 		goto ocsp_end;
 	}
@@ -405,10 +465,23 @@ ocsp_end:
 	BIO_free_all(cbio);
 	OCSP_BASICRESP_free(bresp);
 
-	if (ocsp_ok) {
+	switch (ocsp_ok) {
+	case 1:
 		DEBUG2("[ocsp] --> Certificate is valid!");
-	} else {
+		break;
+	case 2:
+		if (conf->ocsp_softfail) {
+			DEBUG2("[ocsp] --> Unable to check certificate; assuming valid.");
+			DEBUG2("[ocsp] --> Warning! This may be insecure.");
+			ocsp_ok = 1;
+		} else {
+			DEBUG2("[ocsp] --> Unable to check certificate; failing!");
+			ocsp_ok = 0;
+		}
+		break;
+	default:
 		DEBUG2("[ocsp] --> Certificate has been expired/revoked!");
+		break;
 	}
 
 	return ocsp_ok;
@@ -561,12 +634,12 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	/*
-	 *	Get the Common Name
+	 *	Get the Common Name, if there is a subject.
 	 */
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
-	if ((lookup <= 1) && common_name[0] && (strlen(common_name) < MAX_STRING_LEN)) {
+	if ((lookup <= 1) && common_name[0] && subject[0] && (strlen(common_name) < MAX_STRING_LEN)) {
 		pairadd(&handler->certs,
 			pairmake(cert_attr_names[EAPTLS_CN][lookup], common_name, T_OP_SET));
 	}

@@ -48,6 +48,13 @@ sql_log {
 	 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
 	 '%{Framed-IP-Address}', '0', '0', '%{Acct-Session-Time}','');"
 
+	# The same as "Alive"
+	Interim-Update = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
+	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
+	 AcctSessionTime, AcctTerminateCause) VALUES                 \
+	 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
+	 '%{Framed-IP-Address}', '0', '0', '%{Acct-Session-Time}','');"
+
 	Post-Auth = "INSERT INTO ${postauth_table}                   \
 	 (username, pass, reply, authdate) VALUES                    \
 	 ('%{User-Name}', '%{User-Password:-Chap-Password}',         \

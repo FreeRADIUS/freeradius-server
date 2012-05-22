@@ -1,8 +1,8 @@
-.TH RLM_DBM_PARSE 8
+.TH RLM_DBM_PARSER 8
 .SH NAME
-rlm_dbm_parse - transforms simple syntax into rlm_dbm format
+rlm_dbm_parser - transforms simple syntax into rlm_dbm format
 .SH SYNOPSIS
-.B rlm_dbm_parse
+.B rlm_dbm_parser
 .RB [ \-c ]
 .RB [ \-d
 .IR raddb ]
@@ -12,17 +12,17 @@ rlm_dbm_parse - transforms simple syntax into rlm_dbm format
 .IR outputfile ]
 .RB [ \-x ]
 .RB [ \-v ]
-.RB [ \-q ] 
+.RB [ \-q ]
 [\fIusername ...\fP]
 
 .SH DESCRIPTION
-\fBrlm_dbm_parse\fP reads a file of the syntax defined below, and writes
+\fBrlm_dbm_parser\fP reads a file of the syntax defined below, and writes
 a database file usable by rlm_dbm or edits current database.
 .PP
 
 .SH INPUT FORMAT
 
-\fIrlm_dbm_parse\fP reads a format similar to the one used by the files
+\fIrlm_dbm_parser\fP reads a format similar to the one used by the files
 module. In incomplete RFC2234 ABNF, it looks like this:
 
 .nf

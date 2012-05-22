@@ -204,13 +204,13 @@ with ALL operating systems.  Some common issues are:
 
 		SECURITY CONSIDERATIONS
 
-The default certificate configuration files uses MD5 for message
-digests, to maintain compatibility with network equipment that
-supports only this algorithm.
+The default certificate configuration files used to use MD5 for
+message digests, to maintain compatibility with network equipment that
+supports only this algorithm.  They now use SHA1.
 
 MD5 has known weaknesses and is discouraged in favor of SHA1 (see
 http://www.kb.cert.org/vuls/id/836068 for details). If your network
-equipment supports the SHA1 signature algorithm, we recommend that you
+equipment requires the MD5 signature algorithm, we recommend that you
 change the "ca.cnf", "server.cnf", and "client.cnf" files to specify
 the use of SHA1 for the certificates. To do this, change the
-'default_md' entry in those files from 'md5' to 'sha1'.
+'default_md' entry in those files from 'sha1' to 'md5'.

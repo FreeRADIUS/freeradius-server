@@ -429,7 +429,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
    */
   fake->server = request->server;
 
-  fake->packet = rad_alloc(0);
+  fake->packet = rad_alloc(1);
   if (!fake->packet) {
 	  request_free(&fake);
 	  return NULL;

@@ -128,6 +128,19 @@ server dhcp {
 		ipaddr = 255.255.255.255
 		port = ${..port}
 		interface = ${..interface}
+
+		#
+		#  When running as a DHCP relay, or sending unicast
+		#  responses, this IP address is used as the source
+		#  IP.  If unset, the value is taken from the "ipaddr"
+		#  field in this section. Since this might be
+		#  broadcast, it can be wrong.
+		#
+		#  This example uses the "ipaddr = 127.0.0.1" line above.
+		#  It doesn't use the "ipaddr = 255.255.255.255" in this
+		#  section.
+		#
+                src_ipaddr = ${..ipaddr}
 	}
 
 	#  Listen for unicasts on an IP, but not bound to any interface.
@@ -135,13 +148,31 @@ server dhcp {
 	#  when the IP is associated with interface Y.
 	#
 	#  Then, define which interface the packets go out of, via
-	#  "arp_interface".  This means that the outbound packets
+	#  "src_interface".  This means that the outbound packets
 	#  get sent via the correct interface.
 	listen {
 		type = dhcp
 		ipaddr = ${..ipaddr}
 		port = ${..port}
-		arp_interface = ${..interface}
+
+		#
+		#  When sending unicast responses, this interface is
+		#  used as the source interface.  If unset, the value
+		#  is taken from the "interface" field in this
+		#  section.
+		#
+		#  This interface is also used when adding ARP entries.
+		#  FreeRADIUS doesn't open "raw" network sockets to send
+		#  unicast DHCP responses on the local network.  Instead,
+		#  it updates the ARP table for this interface with the
+		#  MAX and IP of the DHCP client.  The server can then
+		#  send a normal UDP unicast socket.
+		#
+		#  NOTE: The server MUST be running as "root" in order
+		#  to update the ARP table.  Or, it must have the
+		#  apropriate capabilities added to it after it starts up.
+		#
+		src_interface = ${..interface}
 	}
 
 #  Packets received on the socket will be processed through one
@@ -176,6 +207,9 @@ dhcp DHCP-Discover {
 	# ...
 	#}
 
+	#  Or, allocate IPs from the DHCP pool in SQL.
+#	dhcp_sqlippool
+
 	ok
 }
 
@@ -207,6 +241,9 @@ dhcp DHCP-Request {
 	#if (notfound) {
 	# ...
 	#}
+
+	#  Or, allocate IPs from the DHCP pool in SQL.
+#	dhcp_sqlippool
 
 	ok
 }

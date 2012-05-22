@@ -108,7 +108,7 @@ static int soh_detach(void *instance) {
 	rlm_soh_t	*inst = instance;
 
 	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, soh_xlat);
+		xlat_unregister(inst->xlat_name, soh_xlat, instance);
 		free(inst->xlat_name);
 	}
 	free(instance);

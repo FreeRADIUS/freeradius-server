@@ -26,6 +26,20 @@ linelog {
 	permissions = 0600
 
 	#
+	# The Unix group of the log file.
+	#
+	# The user that freeradius runs as must be in the specified
+	# group, otherwise it will not be possible to set the group.
+	#
+	# group = freerad
+
+	#
+	# If logging via syslog, the facility can be set here. Otherwise
+	# the syslog_facility option in radiusd.conf will be used.
+	#
+	# syslog_facility = daemon
+
+	#
 	#  The default format string.
 	format = "This is a log message for %{User-Name}"
 

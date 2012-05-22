@@ -554,7 +554,7 @@ static const CONF_PARSER module_config[] = {
 static int mschap_detach(void *instance){
 #define inst ((rlm_mschap_t *)instance)
 	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, mschap_xlat);
+		xlat_unregister(inst->xlat_name, mschap_xlat, instance);
 		free(inst->xlat_name);
 	}
 	free(instance);

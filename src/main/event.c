@@ -794,6 +794,7 @@ static void ping_home_server(void *ctx)
 			"NAS-Identifier", "Status Check. Are you alive?",
 			T_OP_SET);
 
+	request->proxy->src_ipaddr = home->src_ipaddr;
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
 	request->home_server = home;

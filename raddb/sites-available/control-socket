@@ -3,9 +3,6 @@
 #
 #	Control socket interface.
 #
-#	HIGHLY experimental!  It should NOT be used in production
-#	environments.
-#
 #	In the future, we will add username/password checking for
 #	connections to the control socket.  We will also add
 #	command authorization, where the commands entered by the

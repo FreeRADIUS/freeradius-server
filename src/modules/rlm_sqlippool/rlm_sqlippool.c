@@ -444,13 +444,13 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	}
 
 	if (IS_EMPTY(data->allocate_find)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'allocate_find' statement must be set.");
+		radlog(L_ERR, "rlm_sqlippool: the 'allocate-find' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}
 
 	if (IS_EMPTY(data->allocate_update)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'allocate_update' statement must be set.");
+		radlog(L_ERR, "rlm_sqlippool: the 'allocate-update' statement must be set.");
 		sqlippool_detach(data);
 		return -1;
 	}

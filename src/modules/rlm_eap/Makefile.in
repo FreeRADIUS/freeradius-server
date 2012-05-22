@@ -5,7 +5,7 @@
 TARGET      = @targetname@
 SRCS        = rlm_eap.c eap.c mem.c
 HEADERS     = eap.h rlm_eap.h
-RLM_CFLAGS  = $(INCLTDL) -Ilibeap
+RLM_CFLAGS  = -Ilibeap
 CLIENTLIBS  = libeap/$(LIBPREFIX)freeradius-eap.la $(LIBRADIUS)
 RLM_LIBS    = libeap/$(LIBPREFIX)freeradius-eap.la $(LIBLTDL)
 RLM_INSTALL = install-subdirs
@@ -29,8 +29,13 @@ all: common
 
 $(LT_OBJS): $(HEADERS)
 
-radeapclient: radeapclient.lo $(CLIENTLIBS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) -o radeapclient radeapclient.lo $(LIBRADIUS) $(CLIENTLIBS) $(LIBS) $(OPENSSL_LIBS)
+## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
+# This needs to be before the radeapclient rule, as the lhs $(EXEECT)
+# expansion is done as soon as the Makefile is loaded
+include ../rules.mak
+
+radeapclient$(EXEEXT): radeapclient.lo $(CLIENTLIBS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) -o radeapclient$(EXEEXT) radeapclient.lo $(LIBRADIUS) $(CLIENTLIBS) $(LIBS) $(OPENSSL_LIBS)
 
 radeapclient.lo: radeapclient.c $(HEADERS)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c radeapclient.c
@@ -50,6 +55,3 @@ $(RLM_SUBDIRS):
 	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 libeap/$(LIBPREFIX)freeradius-eap.la: libeap
-
-## this uses the RLM_CFLAGS and RLM_LIBS and SRCS defs to make TARGET.
-include ../rules.mak

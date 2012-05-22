@@ -1,7 +1,7 @@
 TARGET      = @targetname@
 SRCS        = rlm_rediswho.c
 HEADERS     = $(top_builddir)/src/modules/rlm_redis/rlm_redis.h
-RLM_CFLAGS  = -I$(top_builddir)/src/modules/rlm_redis $(INCLTDL) @redis_cflags@
+RLM_CFLAGS  = -I$(top_builddir)/src/modules/rlm_redis @redis_cflags@
 RLM_LIBS    = @redis_ldflags@
 RLM_INSTALL =
 

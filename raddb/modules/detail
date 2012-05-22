@@ -48,6 +48,13 @@ detail {
 	#  people from seeing that information.
 	detailperm = 0600
 
+	# The Unix group of the log file.
+	#
+	# The user that the server runs as must be in the specified
+	# system group otherwise this will fail to work.
+	#
+#	group = freerad
+
 	#
 	#  Every entry in the detail file has a header which
 	#  is a timestamp.  By default, we use the ctime
