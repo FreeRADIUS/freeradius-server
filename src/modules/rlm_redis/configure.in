@@ -70,7 +70,7 @@ if test x$with_[]modname != xno; then
     dnl # Check for libraries
     dnl ############################################################
 
-    smart_try_dir="$redis_lib_dir"
+    smart_try_dir="$redis_lib_dir /usr/lib /usr/local/lib/"
     FR_SMART_CHECK_LIB(hiredis, redisConnect)
     if test "x$ac_cv_lib_hiredis_redisConnect" != "xyes"
     then

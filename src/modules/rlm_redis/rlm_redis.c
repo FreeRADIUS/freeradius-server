@@ -38,7 +38,7 @@ static const CONF_PARSER module_config[] = {
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(REDIS_INST, port), NULL, "6379"},
 	{ "password", PW_TYPE_STRING_PTR,
-	  offsetof(REDIS_INST, password), NULL, NULL},
+	  offsetof(REDIS_INST, db), NULL, "0"},
 	{"connect_failure_retry_delay", PW_TYPE_INTEGER,
 	 offsetof(REDIS_INST, connect_failure_retry_delay), NULL, "60"},
 	{"lifetime", PW_TYPE_INTEGER,
@@ -68,6 +68,8 @@ static int redis_close_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 
 static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 {
+	char buffer[1024];
+
 	radlog(L_INFO, "rlm_redis (%s): Attempting to connect #%d",
 	       inst->xlat_name, dissocket->id);
 
@@ -91,8 +93,6 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 	dissocket->queries = 0;
 
 	if (inst->password) {
-		char buffer[1024];
-
 		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
 
 		dissocket->reply = redisCommand(dissocket->conn, buffer);
@@ -121,7 +121,7 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 		}
 	}
 
-        return 0;
+	return 0;
 }
 
 static void redis_poolfree(REDIS_INST * inst)
@@ -335,7 +335,7 @@ static int redis_init_socketpool(REDIS_INST *inst)
 }
 
 /*
- *	Free the redis database
+ *	Query the redis database
  */
 int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query)
 {

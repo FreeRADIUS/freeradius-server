@@ -14,15 +14,15 @@ rediswho {
 	#  an update in this time will be automatically expired.
 	expire-time = 86400
 
-	start-insert = "LPUSH rediswho:%{User-Name} %l,%{Acct-Session-Id}:%{NAS-IP-Address}:%{Acct-Session-Time}:%{Framed-IP-Address}:%{Acct-Input-Gigawords:-0}:%{Acct-Output-Gigawords:-0}:%{Acct-Input-Octets:-0}:%{Acct-Output-Octets:-0}"
+	start-insert = "LPUSH rediswho:%{User-Name} %l,%{Acct-Session-Id}:%{NAS-IP-Address}:%{Acct-Session-Time}:%{Framed-IP-Address}:%{%{Acct-Input-Gigawords}:-0}:%{%{Acct-Output-Gigawords}:-0}:%{%{Acct-Input-Octets}:-0}:%{%{Acct-Output-Octets}:-0}"
 	start-trim =   "LTRIM rediswho:%{User-Name} 0 ${trim-count}"
 	start-expire = "EXPIRE rediswho:%{User-Name} ${expire-time}"
 
-	alive-insert = "LPUSH rediswho:%{User-Name} %l,%{Acct-Session-Id}:%{NAS-IP-Address}:%{Acct-Session-Time}:%{Framed-IP-Address}:%{Acct-Input-Gigawords:-0}:%{Acct-Output-Gigawords:-0}:%{Acct-Input-Octets:-0}:%{Acct-Output-Octets:-0}"
+	alive-insert = "LPUSH rediswho:%{User-Name} %l,%{Acct-Session-Id}:%{NAS-IP-Address}:%{Acct-Session-Time}:%{Framed-IP-Address}:%{%{Acct-Input-Gigawords}:-0}:%{%{Acct-Output-Gigawords}:-0}:%{%{Acct-Input-Octets}:-0}:%{%{Acct-Output-Octets}:-0}"
 	alive-trim =   "LTRIM rediswho:%{User-Name} 0 ${trim-count}"
 	alive-expire = "EXPIRE rediswho:%{User-Name} ${expire-time}"
 
-	stop-insert = "LPUSH rediswho:%{User-Name} %l,%{Acct-Session-Id}:%{NAS-IP-Address}:%{Acct-Session-Time}:%{Framed-IP-Address}:%{Acct-Input-Gigawords:-0}:%{Acct-Output-Gigawords:-0}:%{Acct-Input-Octets:-0}:%{Acct-Output-Octets:-0}"
+	stop-insert = "LPUSH rediswho:%{User-Name} %l,%{Acct-Session-Id}:%{NAS-IP-Address}:%{Acct-Session-Time}:%{Framed-IP-Address}:%{%{Acct-Input-Gigawords}:-0}:%{%{Acct-Output-Gigawords}:-0}:%{%{Acct-Input-Octets}:-0}:%{%{Acct-Output-Octets}:-0}"
 	stop-trim =   "LTRIM rediswho:%{User-Name} 0 ${trim-count}"
 	stop-expire = "EXPIRE rediswho:%{User-Name} ${expire-time}"
 }
