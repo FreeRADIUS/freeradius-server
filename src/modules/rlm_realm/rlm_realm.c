@@ -457,6 +457,57 @@ static int realm_preacct(void *instance, REQUEST *request)
 	return RLM_MODULE_UPDATED; /* try the next module */
 }
 
+#ifdef WITH_COA
+/*
+ *	CoA realms via Operator-Name.  Because the realm isn't in a
+ *	User-Name, concepts like "prefix" and "suffix' don't matter.
+ */
+static int realm_coa(UNUSED void *instance, REQUEST *request)
+{
+	VALUE_PAIR *vp;
+	REALM *realm;
+
+	if (pairfind(request->packet->vps, PW_REALM, 0) != NULL) {
+	        RDEBUG2("Request already proxied.  Ignoring.");
+		return RLM_MODULE_OK;
+	}
+
+	vp = pairfind(request->packet->vps, PW_OPERATOR_NAME, 0);
+
+	/*
+	 *	Catch the case of broken dictionaries.
+	 */
+	if (vp->type != PW_TYPE_STRING) return RLM_MODULE_NOOP;
+
+	/*
+	 *	The string is too short.
+	 */
+	if (vp->length == 1) return RLM_MODULE_NOOP;
+
+	/*
+	 *	'1' means "the rest of the string is a realm"
+	 */
+	if (vp->vp_strvalue[0] != '1') return RLM_MODULE_NOOP;
+
+	realm = realm_find(vp->vp_strvalue + 1);
+	if (!realm) return RLM_MODULE_NOTFOUND;
+
+	if (!realm->coa_pool) {
+		RDEBUG2("CoA realm is LOCAL.");
+		return RLM_MODULE_OK;
+	}
+
+	/*
+	 *	Maybe add a Proxy-To-Realm attribute to the request.
+	 */
+	RDEBUG2("Preparing to proxy authentication request to realm \"%s\"\n",
+	       realm->name);
+	add_proxy_to_realm(&request->config_items, realm);
+
+	return RLM_MODULE_UPDATED; /* try the next module */
+}
+#endif
+
 static int realm_detach(void *instance)
 {
 	free(instance);
@@ -479,5 +530,9 @@ module_t rlm_realm = {
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
+#ifdef WITH_COA
+		, realm_coa,		/* recv-coa */
+		NULL			/* send-coa */
+#endif
 	},
 };

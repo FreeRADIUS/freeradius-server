@@ -26,6 +26,12 @@ server coa {
 		#  Just set Proxy-To-Realm, or Home-Server-Pool, and the
 		#  packets will be proxied.
 
+		#  Do proxying based on realms here.  You don't need
+		#  "IPASS" or "ntdomain", as the proxying is based on
+		#  the Operator-Name attribute.  It contains the realm,
+		#  and ONLY the realm (prefixed by a '1')
+		suffix
+
 		#  Insert your own policies here.
 		ok
 	}
