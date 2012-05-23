@@ -1576,6 +1576,10 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 #ifdef WITH_PROXY
 	home_pool_t *auth_pool, *acct_pool;
 	const char *auth_pool_name, *acct_pool_name;
+#ifdef WITH_COA
+	const char *coa_pool_name;
+	home_pool_t *coa_pool;
+#endif
 #endif
 
 	name2 = cf_section_name1(cs);
@@ -1593,6 +1597,10 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 #ifdef WITH_PROXY
 	auth_pool = acct_pool = NULL;
 	auth_pool_name = acct_pool_name = NULL;
+#ifdef WITH_COA
+	coa_pool = NULL;
+	coa_pool_name = NULL;
+#endif
 
 	/*
 	 *	Prefer new configuration to old one.
@@ -1650,6 +1658,20 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			return 0;
 		}
 	}
+
+#ifdef WITH_COA
+	cp = cf_pair_find(cs, "coa_pool");
+	if (cp) coa_pool_name = cf_pair_value(cp);
+	if (cp && coa_pool_name) {
+		int do_print = TRUE;
+
+		if (!add_pool_to_realm(rc, cs,
+				       coa_pool_name, &coa_pool,
+				       HOME_TYPE_COA, do_print)) {
+			return 0;
+		}
+	}
+#endif
 #endif
 
 	cf_log_info(cs, " realm %s {", name2);
@@ -1708,13 +1730,19 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 #ifdef WITH_PROXY
 	r->auth_pool = auth_pool;
 	r->acct_pool = acct_pool;
-	
+#ifdef WITH_COA
+	r->coa_pool = coa_pool;
+#endif
+
 	if (auth_pool_name &&
 	    (auth_pool_name == acct_pool_name)) { /* yes, ptr comparison */
 		cf_log_info(cs, "\tpool = %s", auth_pool_name);
 	} else {
 		if (auth_pool_name) cf_log_info(cs, "\tauth_pool = %s", auth_pool_name);
 		if (acct_pool_name) cf_log_info(cs, "\tacct_pool = %s", acct_pool_name);
+#ifdef WITH_COA
+		if (coa_pool_name) cf_log_info(cs, "\tcoa_pool = %s", coa_pool_name);
+#endif
 	}
 #endif
 
@@ -1941,7 +1969,7 @@ int realms_init(CONF_SECTION *config)
 
 #ifdef WITH_COA
 	/*
-	 *	CoA pools aren't tied to realms.
+	 *	CoA pools aren't necessarily tied to realms.
 	 */
 	for (cs = cf_subsection_find_next(config, NULL, "home_server_pool");
 	     cs != NULL;

@@ -142,6 +142,9 @@ typedef struct _realm {
 
 	home_pool_t		*auth_pool;
 	home_pool_t		*acct_pool;
+#ifdef WITH_COA
+	home_pool_t		*coa_pool;
+#endif
 } REALM;
 
 int realms_init(CONF_SECTION *config);
