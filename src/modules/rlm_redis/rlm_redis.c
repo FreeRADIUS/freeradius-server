@@ -126,7 +126,7 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 	}
 
 	if (inst->database) {
-		snprintf(buffer, sizeof(buffer), "SELECT %s", inst->database);
+		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
 
 		dissocket->reply = redisCommand(dissocket->conn, buffer);
 		if (!dissocket->reply) {
