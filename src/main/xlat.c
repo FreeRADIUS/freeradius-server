@@ -100,10 +100,10 @@ static VALUE_PAIR *pairfind_tag(VALUE_PAIR *vps, int attr, int tag)
 	VALUE_PAIR *vp = vps;
 
 redo:
-	if (!vp) return NULL;
-
 	vp = pairfind(vp, attr);
 	if (!tag) return vp;
+
+	if (!vp) return NULL;
 
 	if (!vp->flags.has_tag) return NULL;
 
@@ -317,6 +317,8 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	Non-existent array reference.
 		 */
 	just_print:
+		if (!vp) return 0;
+
 		if (do_number) {
 			if ((vp->type != PW_TYPE_IPADDR) &&
 			    (vp->type != PW_TYPE_INTEGER) &&
@@ -330,7 +332,6 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			return snprintf(out, outlen, "%u", vp->vp_integer);
 		}
 
-		if (!vp) return 0;
 		return valuepair2str(out, outlen, vp, da->type, func);
 	}
 
