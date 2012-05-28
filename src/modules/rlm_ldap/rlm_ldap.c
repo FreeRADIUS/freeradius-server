@@ -357,7 +357,7 @@ static void     fieldcpy(char *, char **);
 #endif
 static VALUE_PAIR *ldap_pairget(LDAP *, LDAPMessage *, TLDAP_RADIUS *,VALUE_PAIR **,int, ldap_instance *);
 static int ldap_groupcmp(void *, REQUEST *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
-static size_t ldap_xlat(void *, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING);
+static size_t ldap_xlat(void *, REQUEST *, const char *, char *, size_t, RADIUS_ESCAPE_STRING);
 static LDAP    *ldap_connect(void *instance, const char *, const char *, int, int *, char **);
 static int     read_mappings(ldap_instance* inst);
 
@@ -1197,7 +1197,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
  * ldap_xlat()
  * Do an xlat on an LDAP URL
  */
-static size_t ldap_xlat(void *instance, REQUEST *request, char *fmt,
+static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 		     char *out, size_t freespace, RADIUS_ESCAPE_STRING func)
 {
 	char url[MAX_FILTER_STR_LEN];

@@ -165,7 +165,7 @@ typedef struct rlm_mschap_t {
  *	attributes.
  */
 static size_t mschap_xlat(void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
+		       const char *fmt, char *out, size_t outlen,
 		       RADIUS_ESCAPE_STRING func)
 {
 	size_t		i, data_len;
@@ -454,7 +454,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 * Return the NT-Hash of the passed string
 		 */
 	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
-		char *p;
+		const char *p;
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
@@ -480,7 +480,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 * Return the LM-Hash of the passed string
 		 */
 	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
-		char *p;
+		const char *p;
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */

@@ -624,7 +624,8 @@ static void request_process_timer(REQUEST *request)
 
 	/*
 	 *	A child thread is still working on the request,
-	 *	OR it was proxied, and there was no response.
+	 *	OR it was proxied, and there was no response,
+	 *	OR it was sitting in the queue for too long.
 	 */
 	if ((request->child_state != REQUEST_DONE) &&
 	    (request->master_state != REQUEST_STOP_PROCESSING)) {

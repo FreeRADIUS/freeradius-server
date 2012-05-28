@@ -132,7 +132,7 @@ redo:
  *	Dynamically translate for check:, request:, reply:, etc.
  */
 static size_t xlat_packet(void *instance, REQUEST *request,
-			  char *fmt, char *out, size_t outlen,
+			  const char *fmt, char *out, size_t outlen,
 			  RADIUS_ESCAPE_STRING func)
 {
 	DICT_ATTR	*da;
@@ -496,7 +496,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
  * @brief Print data as integer, not as VALUE.
  */
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
-			   char *fmt, char *out, size_t outlen,
+			   const char *fmt, char *out, size_t outlen,
 			   UNUSED RADIUS_ESCAPE_STRING func)
 {
 	VALUE_PAIR *vp;
@@ -529,8 +529,8 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
  * @brief Print data as hex, not as VALUE.
  */
 static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
-			   char *fmt, char *out, size_t outlen,
-			   UNUSED RADIUS_ESCAPE_STRING func)
+		       const char *fmt, char *out, size_t outlen,
+		       UNUSED RADIUS_ESCAPE_STRING func)
 {
 	size_t i;
 	uint8_t *p;
@@ -564,8 +564,8 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
  * @brief Prints the current module processing the request
  */
 static size_t xlat_module(UNUSED void *instance, REQUEST *request,
-			   UNUSED char *fmt, char *out, size_t outlen,
-			   UNUSED RADIUS_ESCAPE_STRING func)
+			  UNUSED const char *fmt, char *out, size_t outlen,
+			  UNUSED RADIUS_ESCAPE_STRING func)
 {
 	strlcpy(out, request->module, outlen);
 
@@ -579,7 +579,7 @@ static size_t xlat_module(UNUSED void *instance, REQUEST *request,
  * @see modcall()
  */
 static size_t xlat_foreach(void *instance, REQUEST *request,
-			   UNUSED char *fmt, char *out, size_t outlen,
+			   UNUSED const char *fmt, char *out, size_t outlen,
 			   RADIUS_ESCAPE_STRING func)
 {
 	VALUE_PAIR	**pvp;
@@ -606,7 +606,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
  * expand to "\n\n\n"
  */
 static size_t xlat_string(UNUSED void *instance, REQUEST *request,
-			  char *fmt, char *out, size_t outlen,
+			  const char *fmt, char *out, size_t outlen,
 			  UNUSED RADIUS_ESCAPE_STRING func)
 {
 	int len;
@@ -637,7 +637,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
  * @brief Expand regexp matches %{0} to %{8}
  */
 static size_t xlat_regex(void *instance, REQUEST *request,
-			 char *fmt, char *out, size_t outlen,
+			 const char *fmt, char *out, size_t outlen,
 			 RADIUS_ESCAPE_STRING func)
 {
 	char *regex;
@@ -669,8 +669,8 @@ static size_t xlat_regex(void *instance, REQUEST *request,
  * Example %{debug:3}
  */
 static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
-			  char *fmt, char *out, size_t outlen,
-			  UNUSED RADIUS_ESCAPE_STRING func)
+			 const char *fmt, char *out, size_t outlen,
+			 UNUSED RADIUS_ESCAPE_STRING func)
 {
 	int level = 0;
 
@@ -697,7 +697,7 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
 static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
+		       const char *fmt, char *out, size_t outlen,
 		       UNUSED RADIUS_ESCAPE_STRING func)
 {
 	int i;
@@ -735,8 +735,8 @@ static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
+		      const char *fmt, char *out, size_t outlen,
+		      UNUSED RADIUS_ESCAPE_STRING func)
 {
 	char *p, *q;
 	char buffer[1024];
@@ -768,8 +768,8 @@ static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t xlat_uc(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
+		      const char *fmt, char *out, size_t outlen,
+		      UNUSED RADIUS_ESCAPE_STRING func)
 {
 	char *p, *q;
 	char buffer[1024];
@@ -1024,7 +1024,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 			     RADIUS_ESCAPE_STRING func)
 {
 	int	do_length = 0;
-	char	*module_name, *xlat_str;
+	const char *module_name, *xlat_str;
 	char *p, *q, *l, *next = NULL;
 	int retlen=0;
 	const xlat_t *c;

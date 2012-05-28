@@ -352,7 +352,7 @@ static size_t config_escape_func(char *out, size_t outlen, const char *in)
  *	Xlat for %{config:section.subsection.attribute}
  */
 static size_t xlat_config(void *instance, REQUEST *request,
-			  char *fmt, char *out,
+			  const char *fmt, char *out,
 			  size_t outlen,
 			  RADIUS_ESCAPE_STRING func)
 {
@@ -400,7 +400,7 @@ static size_t xlat_config(void *instance, REQUEST *request,
  *	Xlat for %{client:foo}
  */
 static size_t xlat_client(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out,
+		       const char *fmt, char *out,
 		       size_t outlen,
 		       UNUSED RADIUS_ESCAPE_STRING func)
 {

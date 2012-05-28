@@ -216,7 +216,7 @@ static int get_number(REQUEST *request, const char **string, int64_t *answer)
 /*
  *  Do xlat of strings!
  */
-static size_t expr_xlat(void *instance, REQUEST *request, char *fmt,
+static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
 			char *out, size_t outlen,
 		     RADIUS_ESCAPE_STRING func)
 {
@@ -254,7 +254,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, char *fmt,
 	return strlen(out);
 }
 
-static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
+static size_t rand_xlat(void *instance, REQUEST *request, const char *fmt,
 			char *out, size_t outlen,
 			RADIUS_ESCAPE_STRING func)
 {

@@ -196,7 +196,7 @@ static int home_pool_name_cmp(const void *one, const void *two)
 }
 
 
-static size_t xlat_cs(CONF_SECTION *cs, char *fmt, char *out, size_t outlen)
+static size_t xlat_cs(CONF_SECTION *cs, const char *fmt, char *out, size_t outlen)
 
 {
 	const char *value = NULL;
@@ -230,7 +230,7 @@ static size_t xlat_cs(CONF_SECTION *cs, char *fmt, char *out, size_t outlen)
  *	Xlat for %{home_server:foo}
  */
 static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
-			       char *fmt, char *out, size_t outlen,
+			       const char *fmt, char *out, size_t outlen,
 			       UNUSED RADIUS_ESCAPE_STRING func)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
@@ -248,7 +248,7 @@ static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
  *	Xlat for %{home_server_pool:foo}
  */
 static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
-			       char *fmt, char *out, size_t outlen,
+			       const char *fmt, char *out, size_t outlen,
 			       UNUSED RADIUS_ESCAPE_STRING func)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
