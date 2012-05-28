@@ -707,6 +707,12 @@ uint32_t fr_hash(const void *data, size_t size)
 	 */
 	while (p != q) {
 		/*
+		 *	XOR the 8-bit quantity into the bottom of
+		 *	the hash.
+		 */
+		hash ^= (uint32_t) (*p++);
+
+		/*
 		 *	Multiple by 32-bit magic FNV prime, mod 2^32
 		 */
 		hash *= FNV_MAGIC_PRIME;
@@ -716,11 +722,6 @@ uint32_t fr_hash(const void *data, size_t size)
 		 */
 		hash += (hash<<1) + (hash<<4) + (hash<<7) + (hash<<8) + (hash<<24);
 #endif
-		/*
-		 *	XOR the 8-bit quantity into the bottom of
-		 *	the hash.
-		 */
-		hash ^= (uint32_t) (*p++);
     }
 
     return hash;
