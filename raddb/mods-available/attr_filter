@@ -28,7 +28,7 @@ attr_filter attr_filter.access_reject {
 	attrsfile = ${confdir}/attrs.access_reject
 }
 
-# Enforce RFC requirements on the contents of Access-Reject
+# Enforce RFC requirements on the contents of Access-Challenge
 # packets.  See the comments at the top of the file for
 # more details.
 #
