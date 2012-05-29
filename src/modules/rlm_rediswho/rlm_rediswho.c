@@ -107,7 +107,7 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 	if (request) {
 		if (!radius_xlat(query, sizeof (query), fmt, request, NULL)) {
 			radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
-			return 0;
+			return -1;
 		}
 
 	} else {
@@ -117,8 +117,7 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 	if (data->redis_inst->redis_query(dissocket, data->redis_inst, query) < 0) {
 
 		radlog(L_ERR, "rediswho_command: database query error in: '%s'", query);
-		return 0;
-
+		return -1;
 	}
 
 	switch (dissocket->reply->type) {
@@ -255,10 +254,12 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 	return 0;
 }
 
+#define REDISWHO_COMMAND(_a, _b, _c, _d) if (rediswho_command(_a, _b, _c, _d) < 0) return RLM_MODULE_FAIL
+
 static int rediswho_accounting_start(REDISSOCK *dissocket,
 				     rlm_rediswho_t *data, REQUEST *request)
 {
-	rediswho_command(data->start_insert, dissocket, data, request);
+	REDISWHO_COMMAND(data->start_insert, dissocket, data, request);
     
 	/* Only trim if necessary */
 	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
@@ -267,7 +268,7 @@ static int rediswho_accounting_start(REDISSOCK *dissocket,
 		}
 	}
 
-	rediswho_command(data->start_expire, dissocket, data, request);
+	REDISWHO_COMMAND(data->start_expire, dissocket, data, request);
 
 	return RLM_MODULE_OK;
 }
@@ -275,7 +276,7 @@ static int rediswho_accounting_start(REDISSOCK *dissocket,
 static int rediswho_accounting_alive(REDISSOCK *dissocket,
 				     rlm_rediswho_t *data, REQUEST *request)
 {
-	rediswho_command(data->alive_insert, dissocket, data, request);
+	REDISWHO_COMMAND(data->alive_insert, dissocket, data, request);
 
 	/* Only trim if necessary */
 	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
@@ -284,7 +285,7 @@ static int rediswho_accounting_alive(REDISSOCK *dissocket,
 		}
 	}
 
-	rediswho_command(data->alive_expire, dissocket, data, request);
+	REDISWHO_COMMAND(data->alive_expire, dissocket, data, request);
 
 	return RLM_MODULE_OK;
 }
@@ -293,7 +294,7 @@ static int rediswho_accounting_stop(REDISSOCK *dissocket,
 				    rlm_rediswho_t *data, REQUEST *request)
 {
 
-	rediswho_command(data->stop_insert, dissocket, data, request);
+	REDISWHO_COMMAND(data->stop_insert, dissocket, data, request);
 
 	/* Only trim if necessary */
 	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
@@ -302,7 +303,7 @@ static int rediswho_accounting_stop(REDISSOCK *dissocket,
 		}
 	}
 
-	rediswho_command(data->stop_expire, dissocket, data, request);
+	REDISWHO_COMMAND(data->stop_expire, dissocket, data, request);
 
 	return RLM_MODULE_OK;
 }
