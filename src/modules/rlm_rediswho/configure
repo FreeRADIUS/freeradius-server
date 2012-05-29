@@ -2870,12 +2870,12 @@ echo "$as_me: WARNING: hiredis libraries not found. Use --with-redis-lib-dir=<pa
     fi
 
 
-    smart_try_dir="$redis_include_dir"
+    smart_try_dir="$redis_include_dir /usr/local/include/"
 
 
-ac_safe=`echo "hiredis.h" | sed 'y%./+-%__pm%'`
-{ echo "$as_me:$LINENO: checking for hiredis.h" >&5
-echo $ECHO_N "checking for hiredis.h... $ECHO_C" >&6; }
+ac_safe=`echo "hiredis/hiredis.h" | sed 'y%./+-%__pm%'`
+{ echo "$as_me:$LINENO: checking for hiredis/hiredis.h" >&5
+echo $ECHO_N "checking for hiredis/hiredis.h... $ECHO_C" >&6; }
 
 old_CFLAGS="$CFLAGS"
 smart_include=
@@ -2891,7 +2891,7 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-		    #include <hiredis.h>
+		    #include <hiredis/hiredis.h>
 int
 main ()
 {
@@ -2941,7 +2941,7 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-		  #include <hiredis.h>
+		  #include <hiredis/hiredis.h>
 int
 main ()
 {
@@ -2983,7 +2983,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=hiredis.h
+  file=hiredis/hiredis.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -3016,7 +3016,7 @@ cat confdefs.h >>conftest.$ac_ext
 cat >>conftest.$ac_ext <<_ACEOF
 /* end confdefs.h.  */
 
-		    #include <hiredis.h>
+		    #include <hiredis/hiredis.h>
 int
 main ()
 {
@@ -3069,7 +3069,7 @@ else
 echo "${ECHO_T}no" >&6; }
 fi
 
-    if test "x$ac_cv_header_hiredis_h" != "xyes"; then
+    if test "x$ac_cv_header_hiredis_hiredis_h" != "xyes"; then
       { echo "$as_me:$LINENO: WARNING: hiredis headers not found. Use --with-redis-include-dir=<path>." >&5
 echo "$as_me: WARNING: hiredis headers not found. Use --with-redis-include-dir=<path>." >&2;}
       fail="$fail hiredis.h"

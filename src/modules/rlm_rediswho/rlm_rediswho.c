@@ -1,5 +1,5 @@
 /*
- *  rlm_rediswho.c     rlm_rediswho - FreeRADIUS redis/bashtable "radwho" Module
+ *  rlm_rediswho.c     rlm_rediswho - FreeRADIUS redis/hashtable "radwho" Module
  *
  * Version:  $Id$
  *
@@ -107,7 +107,7 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 	if (request) {
 		if (!radius_xlat(query, sizeof (query), fmt, request, NULL)) {
 			radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
-			return 0;
+			return -1;
 		}
 
 	} else {
@@ -117,7 +117,7 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 	if (data->redis_inst->redis_query(dissocket, data->redis_inst, query) < 0) {
 
 		radlog(L_ERR, "rediswho_command: database query error in: '%s'", query);
-		return 0;
+		return -1;
 
 	}
 
@@ -258,7 +258,8 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 static int rediswho_accounting_start(REDISSOCK *dissocket,
 				     rlm_rediswho_t *data, REQUEST *request)
 {
-	rediswho_command(data->start_insert, dissocket, data, request);
+	if (rediswho_command(data->start_insert, dissocket, data, request) < 0)
+		return RLM_MODULE_FAIL;
     
 	/* Only trim if necessary */
 	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
@@ -275,7 +276,8 @@ static int rediswho_accounting_start(REDISSOCK *dissocket,
 static int rediswho_accounting_alive(REDISSOCK *dissocket,
 				     rlm_rediswho_t *data, REQUEST *request)
 {
-	rediswho_command(data->alive_insert, dissocket, data, request);
+	if (rediswho_command(data->alive_insert, dissocket, data, request) < 0)
+		return RLM_MODULE_FAIL;
 
 	/* Only trim if necessary */
 	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
@@ -293,7 +295,8 @@ static int rediswho_accounting_stop(REDISSOCK *dissocket,
 				    rlm_rediswho_t *data, REQUEST *request)
 {
 
-	rediswho_command(data->stop_insert, dissocket, data, request);
+	if (rediswho_command(data->stop_insert, dissocket, data, request) < 0)
+		return RLM_MODULE_FAIL;
 
 	/* Only trim if necessary */
 	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {

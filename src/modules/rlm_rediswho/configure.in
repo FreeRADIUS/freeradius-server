@@ -70,7 +70,7 @@ if test x$with_[]modname != xno; then
     dnl # Check for libraries
     dnl ############################################################
 
-    smart_try_dir="$redis_lib_dir"
+    smart_try_dir="$redis_lib_dir /usr/lib /usr/local/lib/"
     FR_SMART_CHECK_LIB(hiredis, redisConnect)
     if test "x$ac_cv_lib_hiredis_redisConnect" != "xyes"
     then
@@ -82,9 +82,9 @@ if test x$with_[]modname != xno; then
     dnl # Check for header files
     dnl ############################################################
 
-    smart_try_dir="$redis_include_dir"
-    FR_SMART_CHECK_INCLUDE(hiredis.h)
-    if test "x$ac_cv_header_hiredis_h" != "xyes"; then
+    smart_try_dir="$redis_include_dir /usr/local/include/"
+    FR_SMART_CHECK_INCLUDE(hiredis/hiredis.h)
+    if test "x$ac_cv_header_hiredis_hiredis_h" != "xyes"; then
       AC_MSG_WARN([hiredis headers not found. Use --with-redis-include-dir=<path>.])
       fail="$fail hiredis.h"
     fi
