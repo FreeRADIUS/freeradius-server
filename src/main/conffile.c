@@ -490,8 +490,8 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, const char *value)
 			     cs);
 	if (!newp) return -1;
 
-	ci = cf_pairtoitem(cp);
-	cn = cf_pairtoitem(newp);
+	ci = &(cp->item);
+	cn = &(newp->item);
 
 	/*
 	 *	Find the old one from the linked list, and replace it
@@ -671,7 +671,7 @@ CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 			 */
 			if (!q[1]) {
 				if (!next) goto no_such_item;
-				return cf_sectiontoitem(next);
+				return &(next->item);
 			}
 
 			q++;	/* ensure we skip the ']' and '.' */
@@ -696,10 +696,10 @@ CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 	 *	section.
 	 */
 	cp = cf_pair_find(cs, p);
-	if (cp) return cf_pairtoitem(cp);
+	if (cp) return &(cp->item);
 
 	next = cf_section_sub_find(cs, p);
-	if (next) return cf_sectiontoitem(next);
+	if (next) return &(next->item);
 	
 	/*
 	 *	"foo" is "in the current section, OR in main".
@@ -925,7 +925,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	}
 
 	if (deprecated) {
-		cf_log_err(cf_sectiontoitem(cs), "\"%s\" is deprecated.  Please replace it with the up-to-date configuration", name);
+		cf_log_err(&(cs->item), "\"%s\" is deprecated.  Please replace it with the up-to-date configuration", name);
 		if (check_config) {
 			return -1;
 		}
@@ -981,7 +981,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 						    cs, buffer, sizeof(buffer),
 						    value);
 			if (!value) {
-				cf_log_err(cf_sectiontoitem(cs),"Failed expanding variable %s", name);
+				cf_log_err(&(cs->item),"Failed expanding variable %s", name);
 				return -1;
 			}
 		}
@@ -1093,7 +1093,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		cpn = cf_pair_alloc(name, value, T_OP_SET, T_BARE_WORD, cs);
 		cpn->item.filename = "<internal>";
 		cpn->item.lineno = 0;
-		cf_item_add(cs, cf_pairtoitem(cpn));
+		cf_item_add(cs, &(cpn->item));
 	}
 
 	return rcode;
@@ -1711,7 +1711,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			cpn = cf_pair_alloc(buf1, value, t2, t3, this);
 			cpn->item.filename = filename;
 			cpn->item.lineno = *lineno;
-			cf_item_add(this, cf_pairtoitem(cpn));
+			cf_item_add(this, &(cpn->item));
 			continue;
 
 			/*
@@ -1801,7 +1801,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 						filename, *lineno);
 				return -1;
 			}
-			cf_item_add(this, cf_sectiontoitem(css));
+			cf_item_add(this, &(css->item));
 			css->item.filename = filename;
 			css->item.lineno = *lineno;
 
@@ -1933,7 +1933,7 @@ CONF_SECTION *cf_file_read(const char *filename)
 
 	cp->item.filename = "internal";
 	cp->item.lineno = 0;
-	cf_item_add(cs, cf_pairtoitem(cp));
+	cf_item_add(cs, &(cp->item));
 
 	if (cf_file_include(filename, cs) < 0) {
 		cf_section_free(&cs);
@@ -2068,7 +2068,7 @@ CONF_SECTION *cf_section_find_name2(const CONF_SECTION *section,
 
 	if (!section || !name1) return NULL;
 
-	for (ci = cf_sectiontoitem(section); ci; ci = ci->next) {
+	for (ci = &(section->item); ci; ci = ci->next) {
 		if (ci->type != CONF_ITEM_SECTION)
 			continue;
 
