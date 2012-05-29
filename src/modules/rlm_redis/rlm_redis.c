@@ -37,6 +37,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(REDIS_INST, hostname), NULL, "127.0.0.1"},
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(REDIS_INST, port), NULL, "6379"},
+	{ "database", PW_TYPE_INTEGER,
+	  offsetof(REDIS_INST, database), NULL, "0"},
 	{ "password", PW_TYPE_STRING_PTR,
 	  offsetof(REDIS_INST, password), NULL, NULL},
 	{"connect_failure_retry_delay", PW_TYPE_INTEGER,
@@ -115,6 +117,38 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 			return -1;
 		}
 	}
+
+	if (inst->database) {
+		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
+
+		dissocket->reply = redisCommand(dissocket->conn, buffer);
+		if (!dissocket->reply) {
+			radlog(L_ERR, "rlm_redis (%s): Failed select database",
+			       inst->xlat_name);
+			redis_close_socket(inst, dissocket);
+			return -1;
+		}
+
+		switch (dissocket->reply->type) {
+		case REDIS_REPLY_STATUS:
+			if (strcmp(dissocket->reply->str, "OK") != 0) {
+				radlog(L_ERR, "rlm_redis (%s): Failed SELECT %u : reply %s",
+				       inst->xlat_name, inst->database,
+				       dissocket->reply->str);
+				redis_close_socket(inst, dissocket);
+				return -1;
+			}
+			break;	/* else it's OK */
+
+		default:
+			radlog(L_ERR, "rlm_redis (%s): Unexpected reply to SELECT",
+			       inst->xlat_name);
+			redis_close_socket(inst, dissocket);
+			return -1;
+		}
+	}
+
+
 
 	radlog(L_INFO, "rlm_redis (%s): Connected new DB handle, #%d",
 	       inst->xlat_name, dissocket->id);
