@@ -78,6 +78,7 @@ static int connect_single_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 		       inst->xlat_name, dissocket->id);
 
 		dissocket->state = sockconnected;
+		if (inst->lifetime) time(&dissocket->connected);
 
 		dissocket->queries = 0;
 		return 0;
