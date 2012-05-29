@@ -35,6 +35,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(REDIS_INST, hostname), NULL, "127.0.0.1"},
 	{ "port", PW_TYPE_INTEGER,
 	  offsetof(REDIS_INST, port), NULL, "6379"},
+	{ "database", PW_TYPE_INTEGER,
+	  offsetof(REDIS_INST, database), NULL, "0"},
 	{ "password", PW_TYPE_STRING_PTR,
 	  offsetof(REDIS_INST, password), NULL, NULL},
 
@@ -61,13 +63,13 @@ static void *redis_create_conn(void *ctx)
 	REDIS_INST *inst = ctx;
 	REDISSOCK *dissocket = NULL;
 	redisContext *conn;
+	char buffer[1024];
 
 	conn = redisConnect(inst->hostname, inst->port);
-	if (!dissocket->conn->err) goto do_alloc;
+	if (dissocket->conn->err) return NULL;
 
 	if (inst->password) {
 		redisReply *reply = NULL;
-		char buffer[1024];
 
 		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
 
@@ -98,7 +100,36 @@ static void *redis_create_conn(void *ctx)
 		}
 	}
 
-do_alloc:
+	if (inst->database) {
+		redisReply *reply = NULL;
+
+		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
+
+		reply = redisCommand(dissocket->conn, buffer);
+		if (!reply) {
+			radlog(L_ERR, "rlm_redis (%s): Failed to run SELECT",
+			       inst->xlat_name);
+			goto do_close;
+		}
+
+
+		switch (reply->type) {
+		case REDIS_REPLY_STATUS:
+			if (strcmp(reply->str, "OK") != 0) {
+				radlog(L_ERR, "rlm_redis (%s): Failed SELECT %d: reply %s",
+				       inst->xlat_name, inst->database,
+				       dissocket->reply->str);
+				goto do_close;
+			}
+			break;	/* else it's OK */
+
+		default:
+			radlog(L_ERR, "rlm_redis (%s): Unexpected reply to SELECT",
+			       inst->xlat_name);
+			goto do_close;
+		}
+	}
+
 	dissocket = rad_malloc(sizeof(*dissocket));
 	memset(dissocket, 0, sizeof(*dissocket));
 	dissocket->conn = conn;

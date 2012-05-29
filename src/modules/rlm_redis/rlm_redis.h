@@ -46,6 +46,7 @@ typedef struct rlm_redis_t {
 
         char            *hostname;
         int             port;
+	int		database;
 	char		*password;
 	fr_connection_pool_t *pool;
 
