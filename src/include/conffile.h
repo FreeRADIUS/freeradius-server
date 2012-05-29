@@ -81,18 +81,18 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 const char *cf_section_name1(const CONF_SECTION *);
 const char *cf_section_name2(const CONF_SECTION *);
 int dump_config(const CONF_SECTION *cs);
-CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
+CONF_SECTION *cf_subsection_find_next(const CONF_SECTION *section,
 				      const CONF_SECTION *subsection,
 				      const char *name1);
-CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
+CONF_SECTION *cf_section_find_next(const CONF_SECTION *section,
 				   const CONF_SECTION *subsection,
 				   const char *name1);
 int cf_section_lineno(const CONF_SECTION *section);
 int cf_pair_lineno(const CONF_PAIR *pair);
 const char *cf_pair_filename(const CONF_PAIR *pair);
 const char *cf_section_filename(const CONF_SECTION *section);
-CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item);
-CONF_SECTION *cf_item_parent(CONF_ITEM *ci);
+CONF_ITEM *cf_item_find_next(const CONF_SECTION *section, const CONF_ITEM *item);
+CONF_SECTION *cf_item_parent(const CONF_ITEM *ci);
 int cf_item_is_section(const CONF_ITEM *item);
 int cf_item_is_pair(const CONF_ITEM *item);
 CONF_PAIR *cf_itemtopair(CONF_ITEM *item);

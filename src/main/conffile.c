@@ -2218,7 +2218,7 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
  * name1 is NULL, any name1 matches.
  */
 
-CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
+CONF_SECTION *cf_subsection_find_next(const CONF_SECTION *section,
 				      const CONF_SECTION *subsection,
 				      const char *name1)
 {
@@ -2255,7 +2255,7 @@ CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
  * name1 is NULL, any name1 matches.
  */
 
-CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
+CONF_SECTION *cf_section_find_next(const CONF_SECTION *section,
 				   const CONF_SECTION *subsection,
 				   const char *name1)
 {
@@ -2270,7 +2270,7 @@ CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
  * Return the next item after a CONF_ITEM.
  */
 
-CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item)
+CONF_ITEM *cf_item_find_next(const CONF_SECTION *section, const CONF_ITEM *item)
 {
 	if (!section) return NULL;
 
@@ -2286,7 +2286,7 @@ CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item)
 	}
 }
 
-CONF_SECTION *cf_item_parent(CONF_ITEM *ci)
+CONF_SECTION *cf_item_parent(const CONF_ITEM *ci)
 {
 	if (!ci) return NULL;
 
