@@ -646,7 +646,7 @@ AC_CHECK_HEADERS(net/if.h, [], [],
 REGEX=no
 AC_CHECK_HEADER(pcreposix.h, AC_DEFINE(HAVE_PCREPOSIX_H, [], [define this if we have the <pcreposix.h> header file]))
 if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
-  AC_DEFINE(HAVE_REGEX_H [], [define if we have any regex])
+  AC_DEFINE(HAVE_REGEX_H, [], [define if we have any regex])
   REGEX_EXTENDED=yes
   REGEX_PCRE=yes
   REGEX=yes
