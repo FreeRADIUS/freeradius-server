@@ -1134,7 +1134,7 @@ int main(int argc, char **argv)
 	 *	If no '-f' is specified, we're reading from stdin.
 	 */
 	if (rbtree_num_elements(filename_tree) == 0) {
-		rbtree_insert(filename_tree, "-");
+		if (!radclient_init("-")) exit(1);
 	}
 
 	/*
