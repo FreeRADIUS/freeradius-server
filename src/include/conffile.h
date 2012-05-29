@@ -63,7 +63,7 @@ CONF_SECTION	*cf_file_read(const char *file);
 int		cf_file_include(const char *file, CONF_SECTION *cs);
 
 CONF_PAIR	*cf_pair_find(const CONF_SECTION *, const char *name);
-CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, CONF_PAIR *, const char *name);
+CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, const CONF_PAIR *, const char *name);
 CONF_SECTION	*cf_section_find(const char *name);
 CONF_SECTION	*cf_section_find_name2(const CONF_SECTION *section,
 				       const char *name1, const char *name2);
@@ -72,45 +72,45 @@ CONF_SECTION	*cf_section_sub_find_name2(const CONF_SECTION *, const char *name1,
 const char 	*cf_section_value_find(const CONF_SECTION *, const char *attr);
 CONF_SECTION	*cf_top_section(CONF_SECTION *cs);
 
-void *cf_data_find(CONF_SECTION *, const char *);
+void *cf_data_find(const CONF_SECTION *, const char *);
 int cf_data_add(CONF_SECTION *, const char *, void *, void (*)(void *));
 
-const char *cf_pair_attr(CONF_PAIR *pair);
-const char *cf_pair_value(CONF_PAIR *pair);
+const char *cf_pair_attr(const CONF_PAIR *pair);
+const char *cf_pair_value(const CONF_PAIR *pair);
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 const char *cf_section_name1(const CONF_SECTION *);
 const char *cf_section_name2(const CONF_SECTION *);
-int dump_config(CONF_SECTION *cs);
+int dump_config(const CONF_SECTION *cs);
 CONF_SECTION *cf_subsection_find_next(CONF_SECTION *section,
-				      CONF_SECTION *subsection,
+				      const CONF_SECTION *subsection,
 				      const char *name1);
 CONF_SECTION *cf_section_find_next(CONF_SECTION *section,
-				   CONF_SECTION *subsection,
+				   const CONF_SECTION *subsection,
 				   const char *name1);
-int cf_section_lineno(CONF_SECTION *section);
-int cf_pair_lineno(CONF_PAIR *pair);
-const char *cf_pair_filename(CONF_PAIR *pair);
-const char *cf_section_filename(CONF_SECTION *section);
+int cf_section_lineno(const CONF_SECTION *section);
+int cf_pair_lineno(const CONF_PAIR *pair);
+const char *cf_pair_filename(const CONF_PAIR *pair);
+const char *cf_section_filename(const CONF_SECTION *section);
 CONF_ITEM *cf_item_find_next(CONF_SECTION *section, CONF_ITEM *item);
 CONF_SECTION *cf_item_parent(CONF_ITEM *ci);
-int cf_item_is_section(CONF_ITEM *item);
-int cf_item_is_pair(CONF_ITEM *item);
+int cf_item_is_section(const CONF_ITEM *item);
+int cf_item_is_pair(const CONF_ITEM *item);
 CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
 CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
 CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp);
 CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs);
 int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template);
-void cf_log_err(CONF_ITEM *ci, const char *fmt, ...)
+void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
 #endif
 ;
-void cf_log_info(CONF_SECTION *cs, const char *fmt, ...)
+void cf_log_info(const CONF_SECTION *cs, const char *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
 #endif
 ;
-void cf_log_module(CONF_SECTION *cs, const char *fmt, ...)
+void cf_log_module(const CONF_SECTION *cs, const char *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
 #endif
