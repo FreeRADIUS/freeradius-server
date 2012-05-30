@@ -65,6 +65,7 @@ typedef struct dhcp_socket_t {
 	RADCLIENT	dhcp_client;
 } dhcp_socket_t;
 
+#ifdef PORTED_FROM_220
 static int dhcprelay_process_client_request(REQUEST *request)
 {
 	uint8_t maxhops = 16;
@@ -231,6 +232,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 
 	return fr_dhcp_send(request->packet);
 }
+#endif	/* PORTED_FROM_220 */
 
 static int dhcp_process(REQUEST *request)
 {
@@ -462,13 +464,15 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	/*
 	 *	Initialize the fake client.
+	 *
+	 *	FIXME: add dhcp_socket_free() to free up this memory...
 	 */
 	client = &sock->dhcp_client;
 	memset(client, 0, sizeof(*client));
 	client->ipaddr.af = AF_INET;
 	client->ipaddr.ipaddr.ip4addr.s_addr = INADDR_NONE;
 	client->prefix = 0;
-	client->longname = client->shortname = "dhcp";
+	client->longname = client->shortname = strdup("dhcp");
 	client->secret = client->shortname;
 	client->nastype = strdup("none");
 
