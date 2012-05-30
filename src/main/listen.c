@@ -51,6 +51,7 @@ RCSID("$Id$")
 #endif
 
 
+#ifdef DEBUG_PRINT_PACKET
 static void print_packet(RADIUS_PACKET *packet)
 {
 	char src[256], dst[256];
@@ -62,7 +63,7 @@ static void print_packet(RADIUS_PACKET *packet)
 		src, packet->src_port, dst, packet->dst_port);
 
 }
-
+#endif
 
 /*
  *	We'll use this below.
@@ -92,7 +93,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
  *	Xlat for %{listen:foo}
  */
 static size_t xlat_listen(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out,
+		       const char *fmt, char *out,
 		       size_t outlen,
 		       UNUSED RADIUS_ESCAPE_STRING func)
 {
