@@ -2234,7 +2234,7 @@ CONF_SECTION *cf_subsection_find_next(const CONF_SECTION *section,
 	if (!subsection) {
 		ci = section->children;
 	} else {
-		ci = section->item.next;
+		ci = subsection->item.next;
 	}
 
 	for (; ci; ci = ci->next) {
