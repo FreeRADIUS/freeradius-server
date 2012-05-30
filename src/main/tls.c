@@ -55,7 +55,8 @@ static unsigned int 	record_minus(record_t *buf, void *ptr,
 
 #ifdef PSK_MAX_IDENTITY_LEN
 static unsigned int psk_server_callback(SSL *ssl, const char *identity,
-					unsigned char *psk, int max_psk_len)
+					unsigned char *psk,
+					unsigned int max_psk_len)
 {
 	unsigned int psk_len;
 	fr_tls_server_conf_t *conf;
@@ -1824,7 +1825,8 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 			return NULL;			    
 		}
 
-		hex_len = fr_hex2bin(conf->psk_password, buffer, psk_len);
+		hex_len = fr_hex2bin(conf->psk_password,
+				     (uint8_t *) buffer, psk_len);
 		if (psk_len != (2 * hex_len)) {
 			radlog(L_ERR, "psk_hexphrase is not all hex");
 			return NULL;			    
