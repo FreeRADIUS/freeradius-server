@@ -57,7 +57,6 @@ int fr_dhcp_decode(RADIUS_PACKET *packet);
 #define DHCP_MAGIC_VENDOR (54)
 #define DHCP2ATTR(x) ((DHCP_MAGIC_VENDOR << 16) | (x))
 #define ATTR2DHCP(x) ((x) & 0xff)
-#define IS_DHCP_ATTR(x) (VENDOR((x)->attribute) == DHCP_MAGIC_VENDOR)
 
 #define PW_DHCP_OPTION_82 (82)
 #define DHCP_PACK_OPTION1(x,y) ((x) | ((y) << 8))

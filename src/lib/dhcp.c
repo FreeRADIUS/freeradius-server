@@ -418,7 +418,7 @@ static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
 
 	p = data;
 	while (p < (data + data_len)) {
-		vp = paircreate(tlv->attribute | (p[0] << 8), PW_TYPE_OCTETS);
+		vp = paircreate(tlv->attribute | (p[0] << 8), DHCP_MAGIC_VENDOR, PW_TYPE_OCTETS);
 		if (!vp) {
 			pairfree(&head);
 			goto make_tlv;
@@ -639,7 +639,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			continue;
 		}
 				
-		da = dict_attrbyvalue(DHCP2ATTR(p[0]));
+		da = dict_attrbyvalue(DHCP2ATTR(p[0]), DHCP_MAGIC_VENDOR);
 		if (!da) {
 			fr_strerror_printf("Attribute not in our dictionary: %u",
 			      p[0]);
@@ -729,14 +729,14 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		/*
 		 *	DHCP Opcode is request
 		 */
-		vp = pairfind(head, DHCP2ATTR(256));
+		vp = pairfind(head, DHCP2ATTR(256), DHCP_MAGIC_VENDOR);
 		if (vp && vp->lvalue == 3) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
-			vp = pairfind(head, DHCP2ATTR(63));
+			vp = pairfind(head, DHCP2ATTR(63), DHCP_MAGIC_VENDOR);
 			if (vp && (strcmp(vp->vp_strvalue, "MSFT 98") == 0)) {
-				vp = pairfind(head, DHCP2ATTR(262));
+				vp = pairfind(head, DHCP2ATTR(262), DHCP_MAGIC_VENDOR);
 
 				/*
 				 *	Reply should be broadcast.
@@ -757,8 +757,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	Client can request a LARGER size, but not a smaller
 	 *	one.  They also cannot request a size larger than MTU.
 	 */
-	maxms = pairfind(packet->vps, DHCP2ATTR(57));
-	mtu = pairfind(packet->vps, DHCP2ATTR(26));
+	maxms = pairfind(packet->vps, DHCP2ATTR(57), DHCP_MAGIC_VENDOR);
+	mtu = pairfind(packet->vps, DHCP2ATTR(26), DHCP_MAGIC_VENDOR);
 
 	if (mtu && (mtu->vp_integer < DEFAULT_PACKET_SIZE)) {
 		fr_strerror_printf("DHCP Fatal: Client says MTU is smaller than minimum permitted by the specification.");
@@ -884,7 +884,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 	attribute = vps->attribute & 0xffff00ff;
 
-	tlv = paircreate(attribute, PW_TYPE_TLV);
+	tlv = paircreate(attribute, DHCP_MAGIC_VENDOR, PW_TYPE_TLV);
 	if (!tlv) return NULL;
 
 	tlv->length = 0;
@@ -1064,7 +1064,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		 *	smaller one.  They also cannot request a size
 		 *	larger than MTU.
 		 */
-		vp = pairfind(original->vps, DHCP2ATTR(57));
+		vp = pairfind(original->vps, DHCP2ATTR(57), DHCP_MAGIC_VENDOR);
 		if (vp && (vp->vp_integer > mms)) {
 			mms = vp->vp_integer;
 			
@@ -1075,7 +1075,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	/*
 	 *	RFC 3118: Authentication option.
 	 */
-	vp = pairfind(packet->vps, DHCP2ATTR(90));
+	vp = pairfind(packet->vps, DHCP2ATTR(90), DHCP_MAGIC_VENDOR);
 	if (vp) {
 		if (vp->length < 2) {
 			memset(vp->vp_octets + vp->length, 0,
@@ -1099,7 +1099,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			VALUE_PAIR *pass;
 			vp->vp_octets[1] = 0;
 
-			pass = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD);
+			pass = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, DHCP_MAGIC_VENDOR);
 			if (pass) {
 				length = pass->length;
 				if ((length + 11) > sizeof(vp->vp_octets)) {
@@ -1146,7 +1146,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	/*
 	 *	Allow the admin to set the broadcast flag.
 	 */
-	vp = pairfind(packet->vps, DHCP2ATTR(262));
+	vp = pairfind(packet->vps, DHCP2ATTR(262), DHCP_MAGIC_VENDOR);
 	if (vp) {
 		p[0] |= (vp->vp_integer & 0xff00) >> 8;
 		p[1] |= (vp->vp_integer & 0xff);
@@ -1157,7 +1157,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	/*
 	 *	Set client IP address.
 	 */
-	vp = pairfind(packet->vps, DHCP2ATTR(264)); /* Your IP address */
+	vp = pairfind(packet->vps, DHCP2ATTR(264), DHCP_MAGIC_VENDOR); /* Your IP address */
 	if (vp) {
 		lvalue = vp->vp_ipaddr;
 	} else {
@@ -1166,8 +1166,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	memcpy(p, &lvalue, 4);	/* your IP address */
 	p += 4;
 
-	vp = pairfind(packet->vps, DHCP2ATTR(265)); /* server IP address */
-	if (!vp) vp = pairfind(packet->vps, DHCP2ATTR(54)); /* identifier */
+	vp = pairfind(packet->vps, DHCP2ATTR(265), DHCP_MAGIC_VENDOR); /* server IP address */
+	if (!vp) vp = pairfind(packet->vps, DHCP2ATTR(54), DHCP_MAGIC_VENDOR); /* identifier */
 	if (vp) {
 		lvalue = vp->vp_ipaddr;
 	} else {
@@ -1179,7 +1179,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (original) {
 		memcpy(p, original->data + 24, 4); /* copy gateway IP address */
 	} else {
-		vp = pairfind(packet->vps, DHCP2ATTR(266));
+		vp = pairfind(packet->vps, DHCP2ATTR(266), DHCP_MAGIC_VENDOR);
 		if (vp) {
 			lvalue = vp->vp_ipaddr;
 		} else {
@@ -1192,7 +1192,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (original) {
 		memcpy(p, original->data + 28, DHCP_CHADDR_LEN);
 	} else {
-		vp = pairfind(packet->vps, DHCP2ATTR(267));
+		vp = pairfind(packet->vps, DHCP2ATTR(267), DHCP_MAGIC_VENDOR);
 		if (vp) {
 			if (vp->length > DHCP_CHADDR_LEN) {
 				memcpy(p, vp->vp_octets, DHCP_CHADDR_LEN);
@@ -1218,7 +1218,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 *	When that happens, the boot filename is passed as an option,
 	 *	instead of being placed verbatim in the filename field.
 	 */
-	vp = pairfind(packet->vps, DHCP2ATTR(269));
+	vp = pairfind(packet->vps, DHCP2ATTR(269), DHCP_MAGIC_VENDOR);
 	if (vp) {
 		if (vp->length > DHCP_FILE_LEN) {
 			memcpy(p, vp->vp_strvalue, DHCP_FILE_LEN);
@@ -1352,7 +1352,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		VALUE_PAIR *same;
 		uint8_t *plength, *pattr;
 
-		if (!IS_DHCP_ATTR(vp)) goto next;
+		if (vp->vendor != DHCP_MAGIC_VENDOR) goto next;
 		if (vp->attribute == DHCP2ATTR(53)) goto next; /* already done */
 		if ((vp->attribute > 255) &&
 		    (DHCP_BASE_ATTR(vp->attribute) != PW_DHCP_OPTION_82)) goto next;

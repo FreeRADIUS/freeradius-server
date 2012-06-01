@@ -47,9 +47,9 @@ static int dhcp_process(REQUEST *request)
 	int rcode;
 	VALUE_PAIR *vp;
 
-	vp = pairfind(request->packet->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
+	vp = pairfind(request->packet->vps, DHCP2ATTR(53), DHCP_MAGIC_VENDOR); /* DHCP-Message-Type */
 	if (vp) {
-		DICT_VALUE *dv = dict_valbyattr(DHCP2ATTR(53), vp->vp_integer);
+		DICT_VALUE *dv = dict_valbyattr(DHCP2ATTR(53), DHCP_MAGIC_VENDOR, vp->vp_integer);
 		DEBUG("Trying sub-section dhcp %s {...}",
 		      dv->name ? dv->name : "<unknown>");
 		rcode = module_post_auth(vp->vp_integer, request);
@@ -61,7 +61,7 @@ static int dhcp_process(REQUEST *request)
 	/*
 	 *	Look for Relay attribute, and forward it if necessary.
 	 */
-	vp = pairfind(request->config_items, DHCP2ATTR(270));
+	vp = pairfind(request->config_items, DHCP2ATTR(270), DHCP_MAGIC_VENDOR);
 	if (vp) {
 		VALUE_PAIR *giaddr;
 		RADIUS_PACKET relayed;
@@ -74,9 +74,9 @@ static int dhcp_process(REQUEST *request)
 		 *
 		 *	It's invalid to have giaddr=0 AND a relay option
 		 */
-		giaddr = pairfind(request->packet->vps, 266);
+		giaddr = pairfind(request->packet->vps, DHCP2ATTR(266), DHCP_MAGIC_VENDOR);
 		if (giaddr && (giaddr->vp_ipaddr == htonl(INADDR_ANY))) {
-			if (pairfind(request->packet->vps, DHCP2ATTR(82))) {
+			if (pairfind(request->packet->vps, DHCP2ATTR(82), DHCP_MAGIC_VENDOR)) {
 				RDEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet");
 				return 1;
 			}
@@ -125,7 +125,7 @@ static int dhcp_process(REQUEST *request)
 		return 1;
 	}
 
-	vp = pairfind(request->reply->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
+	vp = pairfind(request->reply->vps, DHCP2ATTR(53), DHCP_MAGIC_VENDOR); /* DHCP-Message-Type */
 	if (vp) {
 		request->reply->code = vp->vp_integer;
 		if ((request->reply->code != 0) &&
