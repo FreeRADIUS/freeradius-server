@@ -3111,7 +3111,7 @@ static void request_coa_originate(REQUEST *request)
 #endif
 	coa->child_state = REQUEST_ACTIVE;
 	rad_assert(coa->proxy_reply == NULL);
-	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
+	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
 	coa->proxy_listener->send(coa->proxy_listener, coa);
 }
 
