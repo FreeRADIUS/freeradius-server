@@ -29,7 +29,7 @@ AC_REVISION($Revision$)dnl
 dnl # The version of the software
 RADIUSD_VERSION=`cat VERSION`
 RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
-RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^2\.//'`
+RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^3\.//'`
 PACKAGE=freeradius
 
 dnl #############################################################
