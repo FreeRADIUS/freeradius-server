@@ -2041,13 +2041,7 @@ static int request_will_proxy(REQUEST *request)
 #ifdef WITH_COA
 		} else if ((request->packet->code == PW_COA_REQUEST) ||
 			   (request->packet->code == PW_DISCONNECT_REQUEST)) {
-			/*
-			 *	FIXME: This is likely wrong.  We don't
-			 *	want to set Proxy-To-Realm for CoA
-			 *	packets.  OR, we have a CoA pool
-			 *	specifically for them.
-			 */
-			pool = realm->acct_pool;
+			pool = realm->coa_pool;
 #endif
 
 		} else {
