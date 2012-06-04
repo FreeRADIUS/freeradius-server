@@ -25,9 +25,10 @@ server inner-tunnel {
 #
 #  If that works, PEAP should work.  If that command doesn't work, then
 #
-#	FIX THE INNER TUNNEL CONFIGURATION UNTIL IT WORKS.
+#	FIX THE INNER TUNNEL CONFIGURATION SO THAT IT WORKS.
 #
-#  Do NOT keep testing PEAP.  It won't help.
+#  Do NOT do any PEAP tests.  It won't help.  Instead, concentrate
+#  on fixing the inner tunnel configuration.  DO NOTHING ELSE.
 #
 listen {
        ipaddr = 127.0.0.1
