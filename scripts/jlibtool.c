@@ -1790,7 +1790,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd_data)
 	if ((a == 1) &&
 	    ((strncmp(arg, "LINK", 4) == 0) ||
 	     (strcmp(arg, "CC") == 0) ||
-	     (strcmp(argv, "CXX") == 0))) {
+	     (strcmp(arg, "CXX") == 0))) {
 	  base = NULL;
 	  break;
 	}
