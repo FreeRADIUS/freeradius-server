@@ -112,6 +112,7 @@ $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
+$INCLUDE dictionary.camiant
 $INCLUDE dictionary.chillispot
 $INCLUDE dictionary.cisco
 #
