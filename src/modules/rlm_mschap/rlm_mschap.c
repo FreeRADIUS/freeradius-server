@@ -1642,11 +1642,11 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	response
 		 */
 		if (response->vp_octets[1] & 0x01) {
-			RDEBUG2("Told to do MS-CHAPv1 with NT-Password");
+			RDEBUG2("Client is using MS-CHAPv1 with NT-Password");
 			password = nt_password;
 			offset = 26;
 		} else {
-			RDEBUG2("Told to do MS-CHAPv1 with LM-Password");
+			RDEBUG2("Client is using MS-CHAPv1 with LM-Password");
 			password = lm_password;
 			offset = 2;
 		}
@@ -1763,7 +1763,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			       username_string,	/* user name */
 			       mschapv1_challenge); /* resulting challenge */
 
-		RDEBUG2("Told to do MS-CHAPv2 for %s with NT-Password",
+		RDEBUG2("Client is using MS-CHAPv2 for %s, we need NT-Password",
 		       username_string);
 
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
@@ -1789,7 +1789,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						 sizeof(buffer) - 12 - i*2, "%02x",
 						 fr_rand() & 0xff);
 				}
-				snprintf(buffer + 12 + 32, sizeof(buffer) - 45,
+				snprintf(buffer + 45, sizeof(buffer) - 45,
 					 " V=3 M=%s", inst->retry_msg);
 			}
 			mschap_add_reply(request, &request->reply->vps,
