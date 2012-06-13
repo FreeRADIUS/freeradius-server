@@ -739,7 +739,7 @@ packet_ready:
 
 	} else if (inst->send_error) {
 		pairmove2(&response, &handler->request->reply->vps,
-			  PW_MSCHAP_ERROR, 0);
+			  PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT);
 		if (response) {
 			int n,err,retry;
 			char buf[34];
