@@ -1096,10 +1096,12 @@ static int do_mschap(rlm_mschap_t *inst,
 			VALUE_PAIR *vp = NULL;
 
 			/*
-			 * look for "Password expired"
+			 * look for "Password expired", or "Must
+			 * change password".
 			 */
-			if (strstr(buffer, "Password expired")) {
-				RDEBUG2("ntlm_auth says password has expired");
+			if (strstr(buffer, "Password expired") ||
+			    strstr(buffer, "Must change password")) {
+			  	RDEBUG2("ntlm_auth says %s", buffer);
 				return -648;
 			}
 
