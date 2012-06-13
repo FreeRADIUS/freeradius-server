@@ -435,7 +435,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 				pairadd(&request->config_items, item);
 			}
 			else{
-				strcmp(item->vp_strvalue, cache_data.auth_type);
+				strcpy(item->vp_strvalue, cache_data.auth_type);
 				item->length = strlen(cache_data.auth_type);
 			}
 		}
@@ -447,7 +447,7 @@ static int caching_authorize(void *instance, REQUEST *request)
 				pairadd(&request->config_items, item);
 			}
 			else{
-				strcmp(item->vp_strvalue, data->post_auth);
+				strcpy(item->vp_strvalue, data->post_auth);
 				item->length = strlen(data->post_auth);
 			}
 		}
