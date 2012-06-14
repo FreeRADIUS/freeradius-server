@@ -1512,6 +1512,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				if (nt_enc->attribute != PW_MSCHAP_NT_ENC_PW)
 					continue;
 
+				if (nt_enc->vendor != VENDORPEC_MICROSOFT)
+					continue;
+
 				if (nt_enc->vp_octets[0] != 6) {
 					RDEBUG2("MS-CHAP-NT-Enc-PW with invalid format");
 					return RLM_MODULE_INVALID;
