@@ -10,15 +10,15 @@ Do the following as the root user ``sudo -s``.
 Copy the service management script ``svc-radius`` to ``/lib/srv/method/``:
 
 ```bash
-cp ./svc-radius /lib/srv/method/
-chown root:bin /lib/srv/method/svc-radius
-chmod 555 /lib/srv/method/svc-radius
+cp ./svc-radius /lib/svc/method/
+chown root:bin /lib/svc/method/svc-radius
+chmod 555 /lib/svc/method/svc-radius
 ```
 
 Copy the ``radius.xml`` manifest to ``/var/svc/manifest/network/``, and import it into SMF:
 
 ```bash
-cp ./radius.xml /var/srv/manifest/network/
+cp ./radius.xml /var/svc/manifest/network/
 svccfg import /var/svc/manifest/network/radius.xml
 ```
 ### Authorizing additional users
