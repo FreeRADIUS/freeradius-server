@@ -18,7 +18,7 @@ chmod 555 /lib/srv/method/svc-radius
 Copy the ``radius.xml`` manifest to ``/var/svc/manifest/network/``, and import it into SMF:
 
 ```bash
-cp ./radius.xml /var/srv/manifest/network/radius.xml
+cp ./radius.xml /var/srv/manifest/network/
 svccfg import /var/svc/manifest/network/radius.xml
 ```
 ### Authorizing additional users
