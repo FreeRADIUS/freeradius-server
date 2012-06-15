@@ -88,7 +88,8 @@ case "$1" in
         [ -f $rundir/radiusd.pid ] && kill -HUP `cat $rundir/radiusd.pid`
         ;;
   check)
-        $RADIUSD -C $ARGS
+        $RADIUSD -CX $ARGS
+        exit $?
         ;;
   *)
         echo "Usage: $0 {start|stop|refresh|check}"
