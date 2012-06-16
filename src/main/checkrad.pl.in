@@ -24,6 +24,7 @@
 #		digitro_rusers	 1.1	Author: accdias@sst.com.br
 #		cyclades_snmp	 1.0	Author: accdias@sst.com.br
 #		usrhiper_snmp    1.0    Author: igor@ipass.net
+#		juniper_e_snmp   1.0    Author: guilhermefranco@gmail.com
 #		multitech_snmp   1.0    Author: ehonzay@willmar.com
 #		netserver_telnet 1.0	Author: mts@interplanet.es
 #		versanet_snmp    1.0    Author: support@versanetcomm.com
@@ -463,6 +464,22 @@ sub cisco_snmp {
                 	return 0;
         	}
 	}
+}
+
+#
+#       Check the subscriber name on a Juniper JunosE E-Series BRAS (ERX, E120, E320 )
+#
+#       Author: Guilherme Franco <guilhermefranco@gmail.com>
+#
+sub juniper_e_snmp {
+
+
+out=snmpwalk($ARGV[1],$cmmty_string,".1.3.6.1.4.1.4874.2.2.20.1.8.4.1.2");
+                if($out=~/\"$ARGV[3]\"/){
+                        return 1;
+                }else{
+                        return 0;
+                }
 }
 
 #
@@ -1434,6 +1451,8 @@ if ($ARGV[0] eq 'livingston') {
 	$ret = &cisco_snmp;
 } elsif ($ARGV[0] eq 'cvx') {
 	$ret = &cvx_snmp;
+} elsif ($ARGV[0] eq 'juniper') {
+        $ret = &juniper_e_snmp;
 } elsif ($ARGV[0] eq 'multitech') {
 	$ret = &multitech_snmp;
 } elsif ($ARGV[0] eq 'computone') {
