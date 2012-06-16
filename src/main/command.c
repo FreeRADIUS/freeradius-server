@@ -1453,7 +1453,7 @@ static int command_set_module_config(rad_listen_t *listener, int argc, char *arg
 	return 1;		/* success */
 }
 
-static int command_set_module_status(rad_listen_t *listener, int argc, char *argv[])
+static int command_set_module_state(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_SECTION *cs;
 	module_instance_t *mi;
@@ -1782,9 +1782,9 @@ static fr_command_table_t command_table_set_module[] = {
 	  "set module config <module> variable value - set configuration for <module>",
 	  command_set_module_config, NULL },
 
-	{ "status", FR_WRITE,
-	  "set module status [alive|dead] - set the module to be alive or dead (always return \"fail\")",
-	  command_set_module_status, NULL },
+	{ "state", FR_WRITE,
+	  "set module state NAME [alive|dead] - set the module NAME to be alive or dead (always return \"fail\")",
+	  command_set_module_state, NULL },
 
 	{ NULL, 0, NULL, NULL, NULL }
 };
