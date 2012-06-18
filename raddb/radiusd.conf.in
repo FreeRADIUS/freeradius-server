@@ -249,7 +249,7 @@ listen {
 	#		see raddb/sites-available/status
 	#	coa     listen for CoA-Request and Disconnect-Request
 	#		packets.  For examples, see the file
-	#		raddb/sites-available/coa-server
+	#		raddb/sites-available/coa
 	#
 	type = auth
 
