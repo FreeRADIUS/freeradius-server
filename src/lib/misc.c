@@ -428,13 +428,13 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 
 	if (!ai) {
 		fr_strerror_printf("ip_hton failed to find requested information for host %.100s", src);
-		freeaddrinfo(ai);
+		freeaddrinfo(res);
 		return -1;
 	}
 
 	rcode = fr_sockaddr2ipaddr((struct sockaddr_storage *)ai->ai_addr,
 				   ai->ai_addrlen, dst, NULL);
-	freeaddrinfo(ai);
+	freeaddrinfo(res);
 	if (!rcode) return -1;
 
 	return 0;
