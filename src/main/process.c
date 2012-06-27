@@ -2793,7 +2793,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 		rad_assert(request->proxy_listener != NULL);;
 		DEBUG_PACKET(request, request->proxy, 1);
-		FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
+		FR_STATS_TYPE_INC(home->stats.total_requests);
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
 		break;
