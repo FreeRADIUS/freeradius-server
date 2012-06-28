@@ -5,10 +5,15 @@
 #
 #  Write Chargeable-User-Identity to the database.
 #
-#  Schema	raddb/sql/mysql/cui.sql
-#  Queries	raddb/sql/mysql/cui.conf
+#  Schema	raddb/sql/DB/cui.sql
+#  Queries	raddb/sql/DB/cui.conf
 #
 sql cui {
+	#
+	#  Set the database to one of:
+	#
+	#	mysql, postgresql
+	#
 	database = "mysql"
 	driver = "rlm_sql_${database}"
 	server = "localhost"
