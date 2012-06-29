@@ -1,5 +1,5 @@
 CREATE TABLE `cui` (
-  `clientipaddress` varchar(15) NOT NULL default '',
+  `clientipaddress` varchar(46) NOT NULL default '',
   `callingstationid` varchar(50) NOT NULL default '',
   `username` varchar(64) NOT NULL default '',
   `cui` varchar(32) NOT NULL default '',
