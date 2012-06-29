@@ -2,6 +2,7 @@
 # git Post-receive configuration update script
 #
 # To install:
+# * Enable r/w control socket for the user you're pushing with
 # * cd <config-dir>/raddb git config receive.denyCurrentBranch ignore
 # * cp ./post-receive <config-dir>/raddb/.git/hooks/
 # * # Edit the capitalized variables below to match your environment.
@@ -12,7 +13,7 @@
 STABLE_TAG='stable'
 
 # Command used to restart the RADIUS daemon
-RAD_REST='/etc/init.d/freeradius restart'
+RAD_REST='radmin -e hup'
 
 # Command used to verify the new configuration
 RAD_CONF='radiusd -C'
