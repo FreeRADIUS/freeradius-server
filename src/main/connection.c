@@ -700,7 +700,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 
 	if (!fc || !conn) return NULL;
 
-	this= fr_connection_find(fc, conn);
+	this = fr_connection_find(fc, conn);
 	if (!this) return NULL;
 	
 	conn_number = this->number;
@@ -718,8 +718,13 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 		} else {
 			fc->last_complained = now;
 		}
-		
-		fr_connection_close(fc, conn);
+	
+		this->used = FALSE;
+
+		rad_assert(fc->active > 0);
+		fc->active--;
+	
+		fr_connection_close(fc, this);
 		pthread_mutex_unlock(&fc->mutex);
 		
 		/*
