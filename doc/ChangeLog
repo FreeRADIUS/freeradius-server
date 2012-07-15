@@ -2,7 +2,7 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	Feature improvements
 	* 100% configuration file compatible with 2.1.x.
 	  The only fix needed is to disallow "hashsize=0" for rlm_passwd
-	* Update Aruba, APC, Pureware, and Mikrotik dictionaries
+	* Update Aruba, APC, PaloAlto, Pureware, and Mikrotik dictionaries
 	* Switch to using SHA1 for certificate digests instead of MD5.
 	  See raddb/certs/*.cnf
 	* Added copyright statements to the dictionaries, so that we know
@@ -52,6 +52,11 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Decrypt encrypted ERX attributes in CoA packets.
 	* Fix registration of internal xlat's so %{mschap:...} doesn't
 	  disappear after a HUP.
+	* Can now reference tagged attributes in expansions.
+	  e.g. %{Tunnel-Type:1} and %{Tunnel-Type:1[0]} now work.
+	* Correct calculation of Message-Authenticator for CoA and Disconnect
+	  replies.  Patch from Jouni Malinen
+	* Install rad_counter, for managing rlm_counter files.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
