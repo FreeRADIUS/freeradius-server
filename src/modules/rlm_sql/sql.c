@@ -253,24 +253,20 @@ int rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst)
 {
 	int ret;
 
-	if ((*sqlsocket)->conn) {
-		ret = (inst->module->sql_fetch_row)(*sqlsocket, inst->config);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		return -1;
 	}
-
-	if (ret == SQL_DOWN) {
-		*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
-		if (!*sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
-		ret = (inst->module->sql_fetch_row)(*sqlsocket, inst->config);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
-		}
+	
+	/* 
+	 * We can't implement reconnect logic here, because the caller may require
+	 * the original connection to free up queries or result sets associated with
+	 * that connection.
+	 */
+	ret = (inst->module->sql_fetch_row)(*sqlsocket, inst->config);
+	
+	if (ret < 0) {
+		radlog(L_ERR, "rlm_sql (%s): error fetching row: %s", inst->config->xlat_name,
+			   (inst->module->sql_error)(*sqlsocket, inst->config));
 	}
 
 	return ret;
@@ -294,27 +290,34 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		return -1;
 	}
 
-	if ((*sqlsocket)->conn) {
-		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		ret = -1;
+		goto sql_down;
 	}
-
-	if (ret == SQL_DOWN) {
-		*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
-		if (!*sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
+	
+	while (1) {
 		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
+		/*
+		 * Run through all available sockets until we exhaust all existing sockets
+		 * in the pool and fail to establish a *new* connection.
+		 */
+		if (ret == SQL_DOWN) {
+			sql_down:
+			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
+			if (!*sqlsocket) return -1;
+			
+			continue;
 		}
+		
+		if (ret < 0) {
+			radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+				   inst->config->xlat_name,
+				   query,
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
+		}
+		
+		return ret;
 	}
-
-	return ret;
 }
 
 /*************************************************************************
@@ -335,28 +338,34 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		return -1;
 	}
 
-	if ((*sqlsocket)->conn) {
-		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config,
-						       query);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		ret = -1;
+		goto sql_down;
 	}
-
-	if (ret == SQL_DOWN) {
-		*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
-		if (!*sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
+	
+	while (1) {
 		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config, query);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
+		/*
+		 * Run through all available sockets until we exhaust all existing sockets
+		 * in the pool and fail to establish a *new* connection.
+		 */
+		if (ret == SQL_DOWN) {
+			sql_down:
+			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
+			if (!*sqlsocket) return -1;
+			
+			continue;
 		}
+		
+		if (ret < 0) {
+			radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+				   inst->config->xlat_name,
+				   query,
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
+		}
+		
+		return ret;
 	}
-
-	return ret;
 }
 
 
