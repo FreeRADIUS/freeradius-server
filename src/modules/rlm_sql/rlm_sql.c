@@ -1,3 +1,4 @@
+
 /*
  * rlm_sql.c		SQL Module
  * 		Main SQL module file. Most ICRADIUS code is located in sql.c
@@ -183,12 +184,9 @@ static int sql_xlat(void *instance, REQUEST *request,
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
-		if (rlm_sql_query(sqlsocket,inst,querystr)) {
-			radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
-				inst->config->xlat_name, querystr,
-				(inst->module->sql_error)(sqlsocket,
-							  inst->config));
+		if (rlm_sql_query(&sqlsocket,inst,querystr)) {
 			sql_release_socket(inst,sqlsocket);
+			
 			return 0;
 		}
 	       
@@ -225,16 +223,12 @@ static int sql_xlat(void *instance, REQUEST *request,
 		return ret;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(sqlsocket,inst,querystr)){
-		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
-		       inst->config->xlat_name,querystr,
-		       (inst->module->sql_error)(sqlsocket, inst->config));
+	if (rlm_sql_select_query(&sqlsocket,inst,querystr)){
 		sql_release_socket(inst,sqlsocket);
 		return 0;
 	}
 
-	ret = rlm_sql_fetch_row(sqlsocket, inst);
-
+	ret = rlm_sql_fetch_row(&sqlsocket, inst);
 	if (ret) {
 		RDEBUG("SQL query did not succeed");
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
@@ -294,29 +288,25 @@ static int generate_sql_clients(SQL_INST *inst)
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return -1;
-	if (rlm_sql_select_query(sqlsocket,inst,querystr)){
-		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
-		       inst->config->xlat_name,querystr,
-		       (inst->module->sql_error)(sqlsocket, inst->config));
-		sql_release_socket(inst,sqlsocket);
+	if (rlm_sql_select_query(&sqlsocket,inst,querystr)){
 		return -1;
 	}
 
-	while(rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+	while(rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
 		i++;
 		row = sqlsocket->row;
 		if (row == NULL)
 			break;
-	/*
-	 *  The return data for each row MUST be in the following order:
-	 *
-	 *  0. Row ID (currently unused)
-	 *  1. Name (or IP address)
-	 *  2. Shortname
-	 *  3. Type
-	 *  4. Secret
-	 *  5. Virtual Server (optional)
-	 */
+		/*
+		 *  The return data for each row MUST be in the following order:
+		 *
+		 *  0. Row ID (currently unused)
+		 *  1. Name (or IP address)
+		 *  2. Shortname
+		 *  3. Type
+		 *  4. Secret
+		 *  5. Virtual Server (optional)
+		 */
 		if (!row[0]){
 			radlog(L_ERR, "rlm_sql (%s): No row id found on pass %d",inst->config->xlat_name,i);
 			continue;
@@ -543,14 +533,10 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 		return -1;
 	}
 
-	if (rlm_sql_select_query(sqlsocket, inst, querystr) < 0) {
-		radlog_request(L_ERR, 0, request,
-			       "database query error, %s: %s",
-			       querystr,
-		       (inst->module->sql_error)(sqlsocket,inst->config));
+	if (rlm_sql_select_query(&sqlsocket, inst, querystr) < 0) {
 		return -1;
 	}
-	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+	while (rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
 		row = sqlsocket->row;
 		if (row == NULL)
 			break;
@@ -700,7 +686,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			sql_grouplist_free(&group_list);
 			return -1;
 		}
-		rows = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr);
+		rows = sql_getvpdata(inst, &sqlsocket, &check_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
 			       group_list_tmp->groupname);
@@ -728,7 +714,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					sql_grouplist_free(&group_list);
 					return -1;
 				}
-				if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
+				if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
 					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 					       group_list_tmp->groupname);
 					/* Remove the grouup we added above */
@@ -763,7 +749,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				sql_grouplist_free(&group_list);
 				return -1;
 			}
-			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
+			if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
 				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 				       group_list_tmp->groupname);
 				/* Remove the grouup we added above */
@@ -1035,7 +1021,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
 		return RLM_MODULE_FAIL;
 	}
-	rows = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr);
+	rows = sql_getvpdata(inst, &sqlsocket, &check_tmp, querystr);
 	if (rows < 0) {
 		radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 		sql_release_socket(inst, sqlsocket);
@@ -1065,7 +1051,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				pairfree(&check_tmp);
 				return RLM_MODULE_FAIL;
 			}
-			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
+			if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
 				radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 				sql_release_socket(inst, sqlsocket);
 				/* Remove the username we (maybe) added above */
@@ -1171,7 +1157,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	SQLSOCK *sqlsocket = NULL;
 	VALUE_PAIR *pair;
 	SQL_INST *inst = instance;
-	int	ret = RLM_MODULE_OK;
+	int		sql_ret;
+	int		ret = RLM_MODULE_OK;
 	int     numaffected = 0;
 	int     acctstatustype = 0;
 	char    querystr[MAX_QUERY_LEN];
@@ -1187,226 +1174,229 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	/*
 	 * Find the Acct Status Type
 	 */
-	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL) {
-		acctstatustype = pair->vp_integer;
-	} else {
-		radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
+	pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0);
+	if (pair == NULL) {
+		radius_xlat(logstr, sizeof(logstr), "Packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
 		radlog_request(L_ERR, 0, request, "%s", logstr);
+		
 		return RLM_MODULE_INVALID;
 	}
+	
+	acctstatustype = pair->vp_integer;
 
+	/*
+	 *  Bulk update queries
+	 */
+	if (acctstatustype == PW_STATUS_ACCOUNTING_ON ||
+	    acctstatustype == PW_STATUS_ACCOUNTING_OFF) {
+		/*
+		 * The NAS informed us that it was rebooted, close all sessions
+		 * associated with it.
+		 */
+		radius_xlat(logstr, sizeof(logstr), "Bulk closing sessions using 'accounting_onoff_query' - [nas '%{NAS-IP-Address}']", request, NULL);
+		radlog_request(L_DBG, 0, request, "%s", logstr);
+		
+		radius_xlat(querystr, sizeof(querystr), 
+					inst->config->accounting_onoff_query, request,
+					sql_escape_func);
+		if (!*querystr)
+			goto null_query;
+
+		query_log(request, inst, querystr);
+
+		sqlsocket = sql_get_socket(inst);
+		if (sqlsocket == NULL)
+			return RLM_MODULE_FAIL;
+
+		sql_ret = rlm_sql_query(&sqlsocket, inst, querystr);
+		if (sql_ret)
+			return RLM_MODULE_FAIL;
+							
+		numaffected = (inst->module->sql_affected_rows)(sqlsocket,
+														inst->config);
+		radlog_request(L_DBG, 0, request, "Closed %i sessions", numaffected);
+		if (numaffected < 1)
+			ret = RLM_MODULE_NOOP;
+		
+		goto cleanup;
+	}
+	
+	/*
+	 *  Session specific queries
+	 */
+	sql_set_user(inst, request, sqlusername, NULL);
+	
+	/*
+	 *  Setup the primary query for a given packet type
+	 */
 	switch (acctstatustype) {
-			/*
-			 * The Terminal server informed us that it was rebooted
-			 * STOP all records from this NAS
-			 */
-		case PW_STATUS_ACCOUNTING_ON:
-		case PW_STATUS_ACCOUNTING_OFF:
-			RDEBUG("Received Acct On/Off packet");
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_onoff_query, request, sql_escape_func);
-			query_log(request, inst, querystr);
-
-			sqlsocket = sql_get_socket(inst);
-			if (sqlsocket == NULL)
-				return(RLM_MODULE_FAIL);
-			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting for Acct On/Off packet - %s",
-					       (inst->module->sql_error)(sqlsocket, inst->config));
-					ret = RLM_MODULE_FAIL;
-				}
-				/*
-				 *	If no one is online, num_affected_rows
-				 *	will be zero, which is OK.
-				 */
-				(inst->module->sql_finish_query)(sqlsocket, inst->config);
-			}
-
-			break;
-
-			/*
-			 * Got an update accounting packet
-			 */
 		case PW_STATUS_ALIVE:
-
-			/*
-			 * Set, escape, and check the user attr here
-			 */
-			sql_set_user(inst, request, sqlusername, NULL);
-
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query, request, sql_escape_func);
-			query_log(request, inst, querystr);
-
-			sqlsocket = sql_get_socket(inst);
-			if (sqlsocket == NULL)
-				return(RLM_MODULE_FAIL);
-			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting ALIVE record - %s",
-					       (inst->module->sql_error)(sqlsocket, inst->config));
-					ret = RLM_MODULE_FAIL;
-				}
-				else {
-					numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
-					if (numaffected < 1) {
-
-						/*
-						 * If our update above didn't match anything
-						 * we assume it's because we haven't seen a
-						 * matching Start record.  So we have to
-						 * insert this update rather than do an update
-						 */
-						radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query_alt, request, sql_escape_func);
-						query_log(request, inst, querystr);
-						if (*querystr) { /* non-empty query */
-							if (rlm_sql_query(sqlsocket, inst, querystr)) {
-								radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting ALIVE record - %s",
-								       (inst->module->sql_error)(sqlsocket, inst->config));
-								ret = RLM_MODULE_FAIL;
-							} else {
-								numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
-								if (numaffected < 1) {
-									ret = RLM_MODULE_NOOP;
-								}
-							}
-						}
-					}
-				}
-				(inst->module->sql_finish_query)(sqlsocket, inst->config);
-			}
+			radlog_request(L_DBG, 0, request, "Updating session using 'accounting_update_query'");
+			
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_update_query, request,
+						sql_escape_func);
+			if (!*querystr)
+				goto null_query;
+				
 			break;
-
-			/*
-			 * Got accounting start packet
-			 */
+		
 		case PW_STATUS_START:
-
-			/*
-			 * Set, escape, and check the user attr here
-			 */
-			sql_set_user(inst, request, sqlusername, NULL);
-
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query, request, sql_escape_func);
-			query_log(request, inst, querystr);
-
-			sqlsocket = sql_get_socket(inst);
-			if (sqlsocket == NULL)
-				return(RLM_MODULE_FAIL);
-			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting START record - %s",
-					       (inst->module->sql_error)(sqlsocket, inst->config));
-
-					/*
-					 * We failed the insert above.  It's probably because
-					 * the stop record came before the start.  We try
-					 * our alternate query now (typically an UPDATE)
-					 */
-					radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query_alt, request, sql_escape_func);
-					query_log(request, inst, querystr);
-
-					if (*querystr) { /* non-empty query */
-						if (rlm_sql_query(sqlsocket, inst, querystr)) {
-							radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting START record - %s",
-							       (inst->module->sql_error)(sqlsocket, inst->config));
-							ret = RLM_MODULE_FAIL;
-						}
-					}
-				} else {
-					numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
-					if (numaffected < 1) {
-						ret = RLM_MODULE_NOOP;
-					}
-				}
-				(inst->module->sql_finish_query)(sqlsocket, inst->config);
-			}
+			radlog_request(L_DBG, 0, request, "Creating session using 'accounting_start_query'");
+		
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_start_query, request,
+						sql_escape_func);
+			if (!*querystr)
+				goto null_query;
+				
 			break;
-
-			/*
-			 * Got accounting stop packet
-			 */
+		
 		case PW_STATUS_STOP:
-
-			/*
-			 * Set, escape, and check the user attr here
-			 */
-			sql_set_user(inst, request, sqlusername, NULL);
-
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_stop_query, request, sql_escape_func);
-			query_log(request, inst, querystr);
-
-			sqlsocket = sql_get_socket(inst);
-			if (sqlsocket == NULL)
-				return(RLM_MODULE_FAIL);
-			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
-					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting STOP record - %s",
-					       (inst->module->sql_error)(sqlsocket, inst->config));
-					ret = RLM_MODULE_FAIL;
-				}
-				else {
-					numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
-					if (numaffected < 1) {
-						/*
-						 * If our update above didn't match anything
-						 * we assume it's because we haven't seen a
-						 * matching Start record.  So we have to
-						 * insert this stop rather than do an update
-						 */
-#ifdef CISCO_ACCOUNTING_HACK
-					        /*
-					         * If stop but zero session length AND no previous
-					         * session found, drop it as in invalid packet
-				        	 * This is to fix CISCO's aaa from filling our
-				        	 * table with bogus crap
-					         */
-					        if ((pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME, 0)) != NULL)
-					                acctsessiontime = pair->vp_integer;
-
-						if (acctsessiontime <= 0) {
-							radius_xlat(logstr, sizeof(logstr), "stop packet with zero session length. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
-							radlog_request(L_DBG, 0, request, "%s", logstr);
-							sql_release_socket(inst, sqlsocket);
-							return RLM_MODULE_NOOP;
-						}
-#endif
-
-						radius_xlat(querystr, sizeof(querystr), inst->config->accounting_stop_query_alt, request, sql_escape_func);
-						query_log(request, inst, querystr);
-
-						if (*querystr) { /* non-empty query */
-							if (rlm_sql_query(sqlsocket, inst, querystr)) {
-								radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting STOP record - %s",
-
-								       (inst->module->sql_error)(sqlsocket, inst->config));
-								ret = RLM_MODULE_FAIL;
-							} else {
-								numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
-								if (numaffected < 1) {
-									ret = RLM_MODULE_NOOP;
-								}
-							}
-						}
-					}
-				}
-				(inst->module->sql_finish_query)(sqlsocket, inst->config);
-			}
+			radlog_request(L_DBG, 0, request, "Closing session using 'accounting_stop_query'");
+			
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_stop_query, request,
+						sql_escape_func);
+			if (!*querystr)
+				goto null_query;
+				
 			break;
-
-			/*
-			 *	Anything else is ignored.
-			 */
+		
 		default:
-			RDEBUG("Unsupported Acct-Status-Type = %d",
-		       acctstatustype);
+			RDEBUG("Unsupported Acct-Status-Type value (%d)", acctstatustype);
+			
 			return RLM_MODULE_NOOP;
-			break;
-
 	}
 
-	sql_release_socket(inst, sqlsocket);
+	/*
+	 * Log the query. Maybe we should do this only if were not using the 
+	 * alternate?
+	 */
+	query_log(request, inst, querystr);
+
+	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL)
+		return RLM_MODULE_FAIL;
+
+	sql_ret = rlm_sql_query(&sqlsocket, inst, querystr);	
+	if (sql_ret == SQL_DOWN)
+		return RLM_MODULE_FAIL;
+		
+	rad_assert(sqlsocket);
+
+	/* 
+	 * Assume all other errors are incidental, and just meant our operation
+	 * failed and its not a client or SQL syntax error.
+	 */
+	if (sql_ret == 0) {
+		numaffected = (inst->module->sql_affected_rows)(sqlsocket,
+														inst->config);
+		if (numaffected > 0)
+			goto cleanup;
+	}
+						
+	/*
+	 * The primary query failed this may be because:
+	 *		update - The session hasn't be created with a start record - 
+	 *				 so create the session.
+	 *		start  - The session was created from a stop or interim update
+	 *				 packet so the insert failed (presumably on unique index 
+	 *				 constraint) - so update the session.
+	 *		stop   - The session does not already exist. We never received 
+	 *				 a Start or Interim-Update packet for this session -
+	 *				 so create the session.
+	 */
+	(inst->module->sql_finish_query)(sqlsocket, inst->config);
+	
+	/*
+	 *  Setup the alternate query for a given packet type
+	 */
+	switch (acctstatustype) {
+		case PW_STATUS_ALIVE:
+			radlog_request(L_DBG, 0, request, "Failed updating session, creating session using 'accounting_update_query_alt'");
+			
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_update_query_alt,
+						request, sql_escape_func);
+			if (!*querystr)
+				goto null_query;
+				
+			break;
+		
+		case PW_STATUS_START:
+			radlog_request(L_DBG, 0, request, "Failed creating session, updating session using 'accounting_start_query_alt'");
+		
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_start_query_alt,
+						request, sql_escape_func);
+			if (!*querystr)
+				goto null_query;
+				
+			break;
+		
+		case PW_STATUS_STOP:
+#ifdef CISCO_ACCOUNTING_HACK
+			/*
+			 * If stop but zero session length AND no previous session found,
+			 * drop it as in invalid packet This is to fix CISCO's aaa from
+			 * filling our table with bogus crap
+			 */
+			pair = pairfind(request->packet->vps, PW_ACCT_SESSION_TIME, 0);
+			if (pair != NULL)
+				acctsessiontime = pair->vp_integer;
+	
+			if (acctsessiontime <= 0) {
+				radius_xlat(logstr, sizeof(logstr), "Stop packet with zero session length. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
+				radlog_request(L_DBG, 0, request, "%s", logstr);
+
+				goto release;
+			}
+#endif
+
+			radlog_request(L_DBG, 0, request, "Failed closing session, creating closed session using 'accounting_stop_query_alt'");
+			
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_stop_query_alt,
+						request, sql_escape_func);
+			if (!*querystr)
+				goto null_query;
+
+			break;
+		default:
+			rad_assert(0);
+	}
+		
+	query_log(request, inst, querystr);
+
+	if (rlm_sql_query(&sqlsocket, inst, querystr) == SQL_DOWN)
+		return RLM_MODULE_FAIL;
+		
+	rad_assert(sqlsocket);
+
+	/*
+	 * This time we *know* this was some sort of error...
+	 */
+	if (sql_ret) {
+		ret = RLM_MODULE_FAIL;
+		goto cleanup;
+	}
+	
+	numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+	if (numaffected < 1)
+		ret = RLM_MODULE_NOOP;
+	
+	cleanup:
+		(inst->module->sql_finish_query)(sqlsocket, inst->config);
+
+	release:
+		sql_release_socket(inst, sqlsocket);
 
 	return ret;
+	
+	null_query:
+	radlog_request(L_DBG, 0, request, "Ignoring null query");
+	return RLM_MODULE_NOOP;
 }
 #endif
 
@@ -1442,7 +1432,8 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	}
 
 	if((request->username == NULL) || (request->username->length == 0)) {
-		radlog_request(L_ERR, 0, request, "Zero Length username not permitted\n");
+		radlog_request(L_ERR, 0, request,
+					   "Zero Length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -1457,14 +1448,12 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	if(sqlsocket == NULL)
 		return RLM_MODULE_FAIL;
 
-	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
-		radlog(L_ERR, "rlm_sql (%s) sql_checksimul: Database query failed", inst->config->xlat_name);
+	if(rlm_sql_select_query(&sqlsocket, inst, querystr)) {
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
 
-	ret = rlm_sql_fetch_row(sqlsocket, inst);
-
+	ret = rlm_sql_fetch_row(&sqlsocket, inst);
 	if (ret != 0) {
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
 		sql_release_socket(inst, sqlsocket);
@@ -1497,8 +1486,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	}
 
 	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, sql_escape_func);
-	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
-		radlog_request(L_ERR, 0, request, "Database query error");
+	if(rlm_sql_select_query(&sqlsocket, inst, querystr)) {
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
@@ -1514,7 +1502,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
                 call_num = vp->vp_strvalue;
 
 
-	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+	while (rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
 		row = sqlsocket->row;
 		if (row == NULL)
 			break;
@@ -1631,11 +1619,9 @@ static int rlm_sql_postauth(void *instance, REQUEST *request) {
 		return RLM_MODULE_FAIL;
 
 	/* Process the query */
-	if (rlm_sql_query(sqlsocket, inst, querystr)) {
-		radlog(L_ERR, "rlm_sql (%s) in sql_postauth: Database query error - %s",
-		       inst->config->xlat_name,
-		       (inst->module->sql_error)(sqlsocket, inst->config));
+	if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 		sql_release_socket(inst, sqlsocket);
+		
 		return RLM_MODULE_FAIL;
 	}
 	(inst->module->sql_finish_query)(sqlsocket, inst->config);

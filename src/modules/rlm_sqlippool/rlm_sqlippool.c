@@ -318,7 +318,7 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket,
 #if 0
 	DEBUG2("sqlippool_command: '%s'", query);
 #endif
-	if (data->sql_inst->sql_query(sqlsocket, data->sql_inst, query)){
+	if (data->sql_inst->sql_query(&sqlsocket, data->sql_inst, query)){
 		radlog(L_ERR, "sqlippool_command: database query error in: '%s'", query);
 		return 0;
 	}
@@ -356,7 +356,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 		strcpy(query, expansion);
 	}
 
-	if (data->sql_inst->sql_select_query(sqlsocket, data->sql_inst, query)){
+	if (data->sql_inst->sql_select_query(&sqlsocket, data->sql_inst, query)){
 		radlog(L_ERR, "sqlippool_query1: database query error");
 		out[0] = '\0';
 		return 0;
@@ -364,7 +364,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 
 	out[0] = '\0';
 
-	if (!data->sql_inst->sql_fetch_row(sqlsocket, data->sql_inst)) {
+	if (!data->sql_inst->sql_fetch_row(&sqlsocket, data->sql_inst)) {
 		if (sqlsocket->row) {
 			if (sqlsocket->row[0]) {
 				if ((rlen = strlen(sqlsocket->row[0])) < outlen) {
