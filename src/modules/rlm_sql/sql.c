@@ -249,28 +249,24 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
  *	Purpose: call the module's sql_fetch_row and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst)
+int rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst)
 {
 	int ret;
 
-	if (sqlsocket->conn) {
-		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		return -1;
 	}
-
-	if (ret == SQL_DOWN) {
-		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
-		if (!sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
-		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
-		}
+	
+	/* 
+	 * We can't implement reconnect logic here, because the caller may require
+	 * the original connection to free up queries or result sets associated with
+	 * that connection.
+	 */
+	ret = (inst->module->sql_fetch_row)(*sqlsocket, inst->config);
+	
+	if (ret < 0) {
+		radlog(L_ERR, "rlm_sql (%s): Error fetching row: %s", inst->config->xlat_name,
+			   (inst->module->sql_error)(*sqlsocket, inst->config));
 	}
 
 	return ret;
@@ -283,7 +279,7 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst)
  *	Purpose: call the module's sql_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
+int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 {
 	int ret;
 
@@ -294,27 +290,37 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 		return -1;
 	}
 
-	if (sqlsocket->conn) {
-		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		ret = -1;
+		goto sql_down;
 	}
-
-	if (ret == SQL_DOWN) {
-		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
-		if (!sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
-		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
+	
+	while (1) {
+		radlog(L_ERR, "rlm_sql (%s): Executing query",
+			   inst->config->xlat_name);
+			   
+		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
+		/*
+		 * Run through all available sockets until we exhaust all existing
+		 * sockets in the pool and fail to establish a *new* connection.
+		 */
+		if (ret == SQL_DOWN) {
+			sql_down:
+			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
+			if (!*sqlsocket) return SQL_DOWN;
+			
+			continue;
 		}
+		
+		if (ret < 0) {
+			radlog(L_ERR, "rlm_sql (%s): Database query error, %s: %s",
+				   inst->config->xlat_name,
+				   query,
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
+		}
+		
+		return ret;
 	}
-
-	return ret;
 }
 
 /*************************************************************************
@@ -324,7 +330,7 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
  *	Purpose: call the module's sql_select_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
+int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 {
 	int ret;
 
@@ -335,28 +341,37 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 		return -1;
 	}
 
-	if (sqlsocket->conn) {
-		ret = (inst->module->sql_select_query)(sqlsocket, inst->config,
-						       query);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		ret = -1;
+		goto sql_down;
 	}
-
-	if (ret == SQL_DOWN) {
-		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
-		if (!sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
-		ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
+	
+	while (1) {
+		radlog(L_ERR, "rlm_sql (%s): Executing query",
+			   inst->config->xlat_name);
+			   
+		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config, query);
+		/*
+		 * Run through all available sockets until we exhaust all existing
+		 * sockets in the pool and fail to establish a *new* connection.
+		 */
+		if (ret == SQL_DOWN) {
+			sql_down:
+			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
+			if (!*sqlsocket) return SQL_DOWN;
+			
+			continue;
 		}
+		
+		if (ret < 0) {
+			radlog(L_ERR, "rlm_sql (%s): Database query error, %s: %s",
+				   inst->config->xlat_name,
+				   query,
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
+		}
+		
+		return ret;
 	}
-
-	return ret;
 }
 
 
@@ -367,27 +382,27 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query)
+int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char *query)
 {
 	SQL_ROW row;
 	int     rows = 0;
 
 	if (rlm_sql_select_query(sqlsocket, inst, query)) {
-		radlog(L_ERR, "rlm_sql_getvpdata: database query error");
+		radlog(L_ERR, "rlm_sql_getvpdata: Database query error");
 		return -1;
 	}
-	while (rlm_sql_fetch_row(sqlsocket, inst)==0) {
-		row = sqlsocket->row;
+	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+		row = (*sqlsocket)->row;
 		if (!row)
 			break;
 		if (sql_userparse(pair, row) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			(inst->module->sql_finish_select_query)(*sqlsocket, inst->config);
 			return -1;
 		}
 		rows++;
 	}
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	(inst->module->sql_finish_select_query)(*sqlsocket, inst->config);
 
 	return rows;
 }

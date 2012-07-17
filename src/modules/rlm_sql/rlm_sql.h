@@ -61,9 +61,9 @@ struct sql_inst {
 	SQLSOCK *(*sql_get_socket)(SQL_INST * inst);
 	int (*sql_release_socket)(SQL_INST * inst, SQLSOCK * sqlsocket);
 	size_t (*sql_escape_func)(char *out, size_t outlen, const char *in);
-	int (*sql_query)(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-	int (*sql_select_query)(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-	int (*sql_fetch_row)(SQLSOCK *sqlsocket, SQL_INST *inst);
+	int (*sql_query)(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+	int (*sql_select_query)(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+	int (*sql_fetch_row)(SQLSOCK **sqlsocket, SQL_INST *inst);
 };
 
 typedef struct sql_grouplist {
@@ -79,13 +79,13 @@ SQLSOCK *sql_get_socket(SQL_INST * inst);
 int     sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket);
 int     sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row);
 int     sql_read_realms(SQLSOCK * sqlsocket);
-int     sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query);
+int     sql_getvpdata(SQL_INST * inst, SQLSOCK ** sqlsocket, VALUE_PAIR **pair, char *query);
 int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
 void    query_log(REQUEST *request, SQL_INST * inst, char *querystr);
-int	rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-int	rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-int	rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst);
+int	rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+int	rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+int	rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst);
 int	sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
 #endif
