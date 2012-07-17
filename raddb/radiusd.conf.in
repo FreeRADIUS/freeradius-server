@@ -822,12 +822,21 @@ instantiate {
 
 ######################################################################
 #
-#	Policies that can be applied in multiple places are listed
-#	globally.  That way, they can be defined once, and referred
-#	to multiple times.
+#  Policies are virtual modules, similar to those defined in the
+#  "instantate" section above.
+#
+#  Defining a policy in one of the policy.d files means that it can be
+#  referenced in multiple places as a *name*, rather than as a series of
+#  conditions to match, and actions to take.
+#
+#  Policies are something like subroutines in a normal language, but
+#  they cannot be called recursively. They MUST be defined in order.
+#  If policy A calls policy B, then B MUST be defined before A.
 #
 ######################################################################
-$INCLUDE policy.conf
+policy {
+	$INCLUDE policy.d/
+}
 
 ######################################################################
 #

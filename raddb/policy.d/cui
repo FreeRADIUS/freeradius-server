@@ -1,0 +1,72 @@
+#	
+#  The following policies are for the Chargeable-User-Identity
+#  (CUI) configuration.
+#
+#  The policies below can be called as just 'cui' (not
+#  cui.authorize etc..)  from the various config sections.
+#
+
+#
+#  The client indicates it can do CUI by sending a CUI attribute	
+#  containing one zero byte
+#
+cui.authorize {
+	update request {
+		Chargeable-User-Identity:='\\000'
+	}
+}
+
+#
+#  Add a CUI attribute based on the User-Name, and a secret key
+#  known only to this server.
+#
+cui.post-auth {
+	if (FreeRadius-Proxied-To == 127.0.0.1) {
+		if (outer.request:Chargeable-User-Identity) {
+			update outer.reply {
+				Chargeable-User-Identity:="%{md5:%{config:cui_hash_key}%{User-Name}}"
+			}
+		}
+	}
+	else {
+		if (Chargeable-User-Identity) {
+			update reply {
+				Chargeable-User-Identity="%{md5:%{config:cui_hash_key}%{User-Name}}"
+			}
+		}
+	}
+}
+
+
+#
+#  If we had stored a CUI for the User, add it to the request.
+#
+cui.accounting {
+	#
+	#  If the CUI isn't in the packet, see if we can find it
+	#  in the DB.
+	#
+	if (!Chargeable-User-Identity) {
+		update request {
+			Chargeable-User-Identity := "%{cui: SELECT cui FROM cui WHERE clientipaddress = '%{%{Packet-Src-IPv6-Address}:-%{Packet-Src-IP-Address}}' AND callingstationid = '%{Calling-Station-Id}' AND username = '%{User-Name}'}"
+		}
+	}
+
+	#
+	#  If it exists now, then write out when we last saw
+	#  this CUI.
+	#
+	if (Chargeable-User-Identity && (Chargeable-User-Identity != "")) {
+		cui
+	}
+}
+
+#
+#  If there is a CUI attribute in the reply, add it to the DB.
+#
+cui_updatedb {
+	if (reply:Chargeable-User-Identity) {
+		cui
+	}
+}
+
