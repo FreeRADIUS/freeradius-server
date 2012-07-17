@@ -265,7 +265,7 @@ int rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst)
 	ret = (inst->module->sql_fetch_row)(*sqlsocket, inst->config);
 	
 	if (ret < 0) {
-		radlog(L_ERR, "rlm_sql (%s): error fetching row: %s", inst->config->xlat_name,
+		radlog(L_ERR, "rlm_sql (%s): Error fetching row: %s", inst->config->xlat_name,
 			   (inst->module->sql_error)(*sqlsocket, inst->config));
 	}
 
@@ -296,6 +296,9 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 	}
 	
 	while (1) {
+		radlog(L_ERR, "rlm_sql (%s): Executing query",
+			   inst->config->xlat_name);
+			   
 		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
 		/*
 		 * Run through all available sockets until we exhaust all existing sockets
@@ -304,13 +307,13 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		if (ret == SQL_DOWN) {
 			sql_down:
 			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
-			if (!*sqlsocket) return -1;
+			if (!*sqlsocket) return SQL_DOWN;
 			
 			continue;
 		}
 		
 		if (ret < 0) {
-			radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+			radlog(L_ERR, "rlm_sql (%s): Database query error, %s: %s",
 				   inst->config->xlat_name,
 				   query,
 				   (inst->module->sql_error)(*sqlsocket, inst->config));
@@ -344,6 +347,9 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 	}
 	
 	while (1) {
+		radlog(L_ERR, "rlm_sql (%s): Executing query",
+			   inst->config->xlat_name);
+			   
 		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config, query);
 		/*
 		 * Run through all available sockets until we exhaust all existing sockets
@@ -352,13 +358,13 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		if (ret == SQL_DOWN) {
 			sql_down:
 			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
-			if (!*sqlsocket) return -1;
+			if (!*sqlsocket) return SQL_DOWN;
 			
 			continue;
 		}
 		
 		if (ret < 0) {
-			radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
+			radlog(L_ERR, "rlm_sql (%s): Database query error, %s: %s",
 				   inst->config->xlat_name,
 				   query,
 				   (inst->module->sql_error)(*sqlsocket, inst->config));
@@ -382,7 +388,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char 
 	int     rows = 0;
 
 	if (rlm_sql_select_query(sqlsocket, inst, query)) {
-		radlog(L_ERR, "rlm_sql_getvpdata: database query error");
+		radlog(L_ERR, "rlm_sql_getvpdata: Database query error");
 		return -1;
 	}
 	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
