@@ -301,8 +301,8 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 			   
 		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
 		/*
-		 * Run through all available sockets until we exhaust all existing sockets
-		 * in the pool and fail to establish a *new* connection.
+		 * Run through all available sockets until we exhaust all existing
+		 * sockets in the pool and fail to establish a *new* connection.
 		 */
 		if (ret == SQL_DOWN) {
 			sql_down:
@@ -352,8 +352,8 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 			   
 		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config, query);
 		/*
-		 * Run through all available sockets until we exhaust all existing sockets
-		 * in the pool and fail to establish a *new* connection.
+		 * Run through all available sockets until we exhaust all existing
+		 * sockets in the pool and fail to establish a *new* connection.
 		 */
 		if (ret == SQL_DOWN) {
 			sql_down:

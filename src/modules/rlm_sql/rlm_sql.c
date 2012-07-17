@@ -1,3 +1,4 @@
+
 /*
  * rlm_sql.c		SQL Module
  * 		Main SQL module file. Most ICRADIUS code is located in sql.c
@@ -1193,9 +1194,11 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		 * associated with it.
 		 */
 		radius_xlat(logstr, sizeof(logstr), "Bulk closing sessions using 'accounting_onoff_query' - [nas '%{NAS-IP-Address}']", request, NULL);
-		radlog_request(L_ERR, 0, request, "%s", logstr);
+		radlog_request(L_DBG, 0, request, "%s", logstr);
 		
-		radius_xlat(querystr, sizeof(querystr), inst->config->accounting_onoff_query, request, sql_escape_func);
+		radius_xlat(querystr, sizeof(querystr), 
+					inst->config->accounting_onoff_query, request,
+					sql_escape_func);
 		if (!*querystr)
 			goto null_query;
 
@@ -1209,7 +1212,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		if (sql_ret)
 			return RLM_MODULE_FAIL;
 							
-		numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+		numaffected = (inst->module->sql_affected_rows)(sqlsocket,
+														inst->config);
+		radlog_request(L_DBG, 0, request, "Closed %i sessions", numaffected);
 		if (numaffected < 1)
 			ret = RLM_MODULE_NOOP;
 		
@@ -1228,7 +1233,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		case PW_STATUS_ALIVE:
 			radlog_request(L_DBG, 0, request, "Updating session using 'accounting_update_query'");
 			
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query, request, sql_escape_func);
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_update_query, request,
+						sql_escape_func);
 			if (!*querystr)
 				goto null_query;
 				
@@ -1237,7 +1244,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		case PW_STATUS_START:
 			radlog_request(L_DBG, 0, request, "Creating session using 'accounting_start_query'");
 		
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query, request, sql_escape_func);
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_start_query, request,
+						sql_escape_func);
 			if (!*querystr)
 				goto null_query;
 				
@@ -1246,7 +1255,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		case PW_STATUS_STOP:
 			radlog_request(L_DBG, 0, request, "Closing session using 'accounting_stop_query'");
 			
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_stop_query, request, sql_escape_func);
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_stop_query, request,
+						sql_escape_func);
 			if (!*querystr)
 				goto null_query;
 				
@@ -1279,7 +1290,8 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	 * failed and its not a client or SQL syntax error.
 	 */
 	if (sql_ret == 0) {
-		numaffected = (inst->module->sql_affected_rows)(sqlsocket, inst->config);
+		numaffected = (inst->module->sql_affected_rows)(sqlsocket,
+														inst->config);
 		if (numaffected > 0)
 			goto cleanup;
 	}
@@ -1304,7 +1316,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		case PW_STATUS_ALIVE:
 			radlog_request(L_DBG, 0, request, "Failed updating session, creating session using 'accounting_update_query_alt'");
 			
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query_alt, request, sql_escape_func);
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_update_query_alt,
+						request, sql_escape_func);
 			if (!*querystr)
 				goto null_query;
 				
@@ -1313,7 +1327,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 		case PW_STATUS_START:
 			radlog_request(L_DBG, 0, request, "Failed creating session, updating session using 'accounting_start_query_alt'");
 		
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_start_query_alt, request, sql_escape_func);
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_start_query_alt,
+						request, sql_escape_func);
 			if (!*querystr)
 				goto null_query;
 				
@@ -1331,7 +1347,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 				acctsessiontime = pair->vp_integer;
 	
 			if (acctsessiontime <= 0) {
-				radius_xlat(logstr, sizeof(logstr), "stop packet with zero session length. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
+				radius_xlat(logstr, sizeof(logstr), "Stop packet with zero session length. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
 				radlog_request(L_DBG, 0, request, "%s", logstr);
 
 				goto release;
@@ -1340,7 +1356,9 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 
 			radlog_request(L_DBG, 0, request, "Failed closing session, creating closed session using 'accounting_stop_query_alt'");
 			
-			radius_xlat(querystr, sizeof(querystr), inst->config->accounting_stop_query_alt, request, sql_escape_func);
+			radius_xlat(querystr, sizeof(querystr),
+						inst->config->accounting_stop_query_alt,
+						request, sql_escape_func);
 			if (!*querystr)
 				goto null_query;
 
@@ -1414,7 +1432,8 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	}
 
 	if((request->username == NULL) || (request->username->length == 0)) {
-		radlog_request(L_ERR, 0, request, "Zero Length username not permitted\n");
+		radlog_request(L_ERR, 0, request,
+					   "Zero Length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
 
