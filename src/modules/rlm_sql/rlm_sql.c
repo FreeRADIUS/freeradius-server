@@ -183,7 +183,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
-		if (rlm_sql_query(sqlsocket,inst,querystr)) {
+		if (rlm_sql_query(&sqlsocket,inst,querystr)) {
 			radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
 				inst->config->xlat_name, querystr,
 				(inst->module->sql_error)(sqlsocket,
@@ -225,7 +225,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 		return ret;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(sqlsocket,inst,querystr)){
+	if (rlm_sql_select_query(&sqlsocket,inst,querystr)){
 		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
 		       inst->config->xlat_name,querystr,
 		       (inst->module->sql_error)(sqlsocket, inst->config));
@@ -233,7 +233,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	ret = rlm_sql_fetch_row(sqlsocket, inst);
+	ret = rlm_sql_fetch_row(&sqlsocket, inst);
 
 	if (ret) {
 		RDEBUG("SQL query did not succeed");
@@ -294,7 +294,7 @@ static int generate_sql_clients(SQL_INST *inst)
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return -1;
-	if (rlm_sql_select_query(sqlsocket,inst,querystr)){
+	if (rlm_sql_select_query(&sqlsocket,inst,querystr)){
 		radlog(L_ERR, "rlm_sql (%s): database query error, %s: %s",
 		       inst->config->xlat_name,querystr,
 		       (inst->module->sql_error)(sqlsocket, inst->config));
@@ -302,7 +302,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		return -1;
 	}
 
-	while(rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+	while(rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
 		i++;
 		row = sqlsocket->row;
 		if (row == NULL)
@@ -543,14 +543,14 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 		return -1;
 	}
 
-	if (rlm_sql_select_query(sqlsocket, inst, querystr) < 0) {
+	if (rlm_sql_select_query(&sqlsocket, inst, querystr) < 0) {
 		radlog_request(L_ERR, 0, request,
 			       "database query error, %s: %s",
 			       querystr,
 		       (inst->module->sql_error)(sqlsocket,inst->config));
 		return -1;
 	}
-	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+	while (rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
 		row = sqlsocket->row;
 		if (row == NULL)
 			break;
@@ -700,7 +700,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			sql_grouplist_free(&group_list);
 			return -1;
 		}
-		rows = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr);
+		rows = sql_getvpdata(inst, &sqlsocket, &check_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
 			       group_list_tmp->groupname);
@@ -728,7 +728,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					sql_grouplist_free(&group_list);
 					return -1;
 				}
-				if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
+				if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
 					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 					       group_list_tmp->groupname);
 					/* Remove the grouup we added above */
@@ -763,7 +763,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				sql_grouplist_free(&group_list);
 				return -1;
 			}
-			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
+			if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
 				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 				       group_list_tmp->groupname);
 				/* Remove the grouup we added above */
@@ -1035,7 +1035,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
 		return RLM_MODULE_FAIL;
 	}
-	rows = sql_getvpdata(inst, sqlsocket, &check_tmp, querystr);
+	rows = sql_getvpdata(inst, &sqlsocket, &check_tmp, querystr);
 	if (rows < 0) {
 		radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 		sql_release_socket(inst, sqlsocket);
@@ -1065,7 +1065,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 				pairfree(&check_tmp);
 				return RLM_MODULE_FAIL;
 			}
-			if (sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr) < 0) {
+			if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
 				radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 				sql_release_socket(inst, sqlsocket);
 				/* Remove the username we (maybe) added above */
@@ -1210,7 +1210,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
+				if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting for Acct On/Off packet - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 					ret = RLM_MODULE_FAIL;
@@ -1241,7 +1241,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
+				if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting ALIVE record - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 					ret = RLM_MODULE_FAIL;
@@ -1259,7 +1259,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 						radius_xlat(querystr, sizeof(querystr), inst->config->accounting_update_query_alt, request, sql_escape_func);
 						query_log(request, inst, querystr);
 						if (*querystr) { /* non-empty query */
-							if (rlm_sql_query(sqlsocket, inst, querystr)) {
+							if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 								radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting ALIVE record - %s",
 								       (inst->module->sql_error)(sqlsocket, inst->config));
 								ret = RLM_MODULE_FAIL;
@@ -1293,7 +1293,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
+				if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 					radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting START record - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 
@@ -1306,7 +1306,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 					query_log(request, inst, querystr);
 
 					if (*querystr) { /* non-empty query */
-						if (rlm_sql_query(sqlsocket, inst, querystr)) {
+						if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 							radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting START record - %s",
 							       (inst->module->sql_error)(sqlsocket, inst->config));
 							ret = RLM_MODULE_FAIL;
@@ -1339,7 +1339,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 			if (sqlsocket == NULL)
 				return(RLM_MODULE_FAIL);
 			if (*querystr) { /* non-empty query */
-				if (rlm_sql_query(sqlsocket, inst, querystr)) {
+				if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 					radlog_request(L_ERR, 0, request, "Couldn't update SQL accounting STOP record - %s",
 					       (inst->module->sql_error)(sqlsocket, inst->config));
 					ret = RLM_MODULE_FAIL;
@@ -1375,7 +1375,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
 						query_log(request, inst, querystr);
 
 						if (*querystr) { /* non-empty query */
-							if (rlm_sql_query(sqlsocket, inst, querystr)) {
+							if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 								radlog_request(L_ERR, 0, request, "Couldn't insert SQL accounting STOP record - %s",
 
 								       (inst->module->sql_error)(sqlsocket, inst->config));
@@ -1457,13 +1457,13 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	if(sqlsocket == NULL)
 		return RLM_MODULE_FAIL;
 
-	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
+	if(rlm_sql_select_query(&sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "rlm_sql (%s) sql_checksimul: Database query failed", inst->config->xlat_name);
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
 	}
 
-	ret = rlm_sql_fetch_row(sqlsocket, inst);
+	ret = rlm_sql_fetch_row(&sqlsocket, inst);
 
 	if (ret != 0) {
 		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
@@ -1497,7 +1497,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	}
 
 	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, sql_escape_func);
-	if(rlm_sql_select_query(sqlsocket, inst, querystr)) {
+	if(rlm_sql_select_query(&sqlsocket, inst, querystr)) {
 		radlog_request(L_ERR, 0, request, "Database query error");
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;
@@ -1514,7 +1514,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
                 call_num = vp->vp_strvalue;
 
 
-	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+	while (rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
 		row = sqlsocket->row;
 		if (row == NULL)
 			break;
@@ -1631,7 +1631,7 @@ static int rlm_sql_postauth(void *instance, REQUEST *request) {
 		return RLM_MODULE_FAIL;
 
 	/* Process the query */
-	if (rlm_sql_query(sqlsocket, inst, querystr)) {
+	if (rlm_sql_query(&sqlsocket, inst, querystr)) {
 		radlog(L_ERR, "rlm_sql (%s) in sql_postauth: Database query error - %s",
 		       inst->config->xlat_name,
 		       (inst->module->sql_error)(sqlsocket, inst->config));
