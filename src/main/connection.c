@@ -351,7 +351,6 @@ void fr_connection_pool_delete(fr_connection_pool_t *fc)
 
 	for (this = fc->head; this != NULL; this = next) {
 		next = this->next;
-		DEBUG("%s: Closing connection (%i)", fc->log_prefix, this->number);
 		fr_connection_close(fc, this);
 	}
 
