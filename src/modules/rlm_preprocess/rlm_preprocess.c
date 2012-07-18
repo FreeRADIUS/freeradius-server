@@ -682,6 +682,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 static int preprocess_preaccounting(void *instance, REQUEST *request)
 {
 	int r;
+	VALUE_PAIR *vp;
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
 	/*
@@ -722,6 +723,23 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	}
 
 	hints_setup(data->hints, request);
+
+	/*
+	 *	Add an event timestamp.  This means that the rest of
+	 *	the server can use it, rather than various error-prone
+	 *	manual calculations.
+	 */
+	vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+	if (!vp) {
+		VALUE_PAIR *delay;
+
+		vp = radius_paircreate(request, &request->packet->vps,
+				       PW_EVENT_TIMESTAMP, 0,
+				       PW_TYPE_DATE);
+		vp->vp_date = request->packet->timestamp.tv_sec;
+		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0);
+		if (delay) vp->vp_date -= delay->vp_integer;
+	}
 
 	if ((r = huntgroup_access(request,
 				  data->huntgroups)) != RLM_MODULE_OK) {
