@@ -50,7 +50,7 @@ CREATE TABLE radacct (
   KEY acctstarttime (acctstarttime),
   KEY acctstoptime (acctstoptime),
   KEY nasipaddress (nasipaddress)
-) ;
+) ENGINE = INNODB;
 
 #
 # Table structure for table 'radcheck'
@@ -131,4 +131,4 @@ CREATE TABLE radpostauth (
   reply varchar(32) NOT NULL default '',
   authdate timestamp NOT NULL,
   PRIMARY KEY  (id)
-) ;
+) ENGINE = INNODB;
