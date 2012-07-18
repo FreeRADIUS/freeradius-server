@@ -313,10 +313,11 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		}
 		
 		if (ret < 0) {
-			radlog(L_ERR, "rlm_sql (%s): Database query error, %s: %s",
+			radlog(L_ERR,
+				   "rlm_sql (%s): Database query error '%s' in query '%s'",
 				   inst->config->xlat_name,
-				   query,
-				   (inst->module->sql_error)(*sqlsocket, inst->config));
+				   (inst->module->sql_error)(*sqlsocket, inst->config),
+				   query);
 		}
 		
 		return ret;
@@ -364,10 +365,11 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		}
 		
 		if (ret < 0) {
-			radlog(L_ERR, "rlm_sql (%s): Database query error, %s: %s",
+			radlog(L_ERR,
+				   "rlm_sql (%s): Database query error '%s' in query '%s'",
 				   inst->config->xlat_name,
-				   query,
-				   (inst->module->sql_error)(*sqlsocket, inst->config));
+				   (inst->module->sql_error)(*sqlsocket, inst->config),
+				   query);
 		}
 		
 		return ret;
