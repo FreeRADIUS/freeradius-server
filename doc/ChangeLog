@@ -18,6 +18,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  See raddb/sites-available/dhcp, src_ipaddr and src_interface.
 	* DHCP capabilitiies are now compiled in by default.
 	  It runs as a DHCP server ONLY when manually enabled.
+	* Added one letter expansions: %G - request minute and %I request
+	  ID.
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
