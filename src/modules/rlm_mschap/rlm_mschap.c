@@ -1256,7 +1256,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						 sizeof(buffer) - 12 - i*2, "%02x",
 						 fr_rand() & 0xff);
 				}
-				snprintf(buffer + 45, sizeof(buffer) - 45,
+				snprintf(buffer + 44, sizeof(buffer) - 44,
 					 " V=3 M=%s", inst->retry_msg);
 			}
 			mschap_add_reply(request, &request->reply->vps,
