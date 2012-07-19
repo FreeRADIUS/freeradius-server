@@ -166,6 +166,14 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	
 	rad_assert(fc != NULL);
 
+	/*
+	 *  Prevent all threads from blocking if the resource
+	 *  were managing connections for appears to be unavailable.
+	 */
+	if ((fc->num == 0) && fc->spawning) {
+		return NULL;
+	}
+
 	pthread_mutex_lock(&fc->mutex);
 	rad_assert(fc->num <= fc->max);
 
