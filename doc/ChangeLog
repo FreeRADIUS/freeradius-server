@@ -59,6 +59,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Correct calculation of Message-Authenticator for CoA and Disconnect
 	  replies.  Patch from Jouni Malinen
 	* Install rad_counter, for managing rlm_counter files.
+	* Add unique index constraint to MySQl so that alternate queries
+	  work correctly.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
