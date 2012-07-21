@@ -213,8 +213,48 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		}
 
 		/*
+		 *	RADIUS VSAs are handled as Diameter attributes
+		 *	with Vendor-Id == 0, and the VSA data packed
+		 *	into the "String" field as per normal.
+		 *
+		 *	EXCEPT for the MS-CHAP attributes.
+		 */
+		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
+			ssize_t decoded;
+			uint8_t buffer[256];
+
+			buffer[0] = PW_VENDOR_SPECIFIC;
+			buffer[1] = size + 2;
+			memcpy(buffer + 2, data, size);
+
+			vp = NULL;
+			decoded = rad_attr2vp_vsa(NULL, NULL, NULL,
+						  buffer, size + 2, &vp);
+			if (decoded < 0) {
+				RDEBUG2("ERROR: diameter2vp failed decoding attr: %s",
+					fr_strerror());
+				goto do_octets;
+			}
+
+			if ((size_t) decoded != size + 2) {
+				RDEBUG2("ERROR: diameter2vp failed to entirely decode VSA");
+				pairfree(&vp);
+				goto do_octets;
+			}
+
+			*last = vp;
+			do {
+				last = &(vp->next);
+				vp = vp->next;
+			} while (vp != NULL);
+
+			goto next_attr;
+		}
+
+		/*
 		 *	Create it.  If this fails, it's because we're OOM.
 		 */
+	do_octets:
 		vp = paircreate(attr, vendor, PW_TYPE_OCTETS);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
