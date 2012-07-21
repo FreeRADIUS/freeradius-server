@@ -64,7 +64,7 @@ static int diameter_verify(REQUEST *request,
 		memcpy(&length, data + 4, 4);
 		length = ntohl(length);
 
-		if ((data[8] & 0x80) != 0) {
+		if ((data[4] & 0x80) != 0) {
 			if (data_len < 16) {
 				RDEBUG2(" Diameter attribute is too small to contain a Diameter header with Vendor-Id");
 				return 0;
@@ -203,7 +203,6 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 
 		if (size > 253) {
 			RDEBUG2("WARNING: diameter2vp skipping long attribute %u, attr");
-			pairfree(&vp);
 			goto next_attr;
 		}
 
