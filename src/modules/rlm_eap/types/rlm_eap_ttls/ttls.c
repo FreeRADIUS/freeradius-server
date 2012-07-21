@@ -48,98 +48,43 @@ static int diameter_verify(REQUEST *request,
 {
 	uint32_t attr;
 	uint32_t length;
-	unsigned int offset;
+	unsigned int hdr_len;
 	unsigned int data_left = data_len;
 
 	while (data_left > 0) {
+		hdr_len = 12;
+
 		if (data_len < 12) {
 			RDEBUG2(" Diameter attribute is too small to contain a Diameter header");
 			return 0;
 		}
 
-		rad_assert(data_left <= data_len);
-		memcpy(&attr, data, sizeof(attr));
-		data += 4;
-		attr = ntohl(attr);
-		if (attr > 255) {
-			RDEBUG2(" Non-RADIUS attribute in tunneled authentication is not supported");
-			return 0;
-		}
-
-		memcpy(&length, data , sizeof(length));
-		data += 4;
+		memcpy(&attr, data, 4);
+		attr = htonl(attr);
+		memcpy(&length, data + 4, 4);
 		length = ntohl(length);
 
-		/*
-		 *	A "vendor" flag, with a vendor ID of zero,
-		 *	is equivalent to no vendor.  This is stupid.
-		 */
-		offset = 8;
-		if ((length & (1 << 31)) != 0) {
-			int attribute;
-			uint32_t vendor;
-			DICT_ATTR *da;
-
-			memcpy(&vendor, data, sizeof(vendor));
-			vendor = ntohl(vendor);
-
-			if (attr > 65535) {
-				RDEBUG2("Cannot handle vendor attributes greater than 65535");
+		if ((data[8] & 0x80) != 0) {
+			if (data_len < 16) {
+				RDEBUG2(" Diameter attribute is too small to contain a Diameter header with Vendor-Id");
 				return 0;
 			}
 
-			if (vendor > 65535) {
-				RDEBUG2("Cannot handle vendor Id greater than 65535");
-				return 0;
-			}
-
-			attribute = (vendor << 16) | attr;
-
-			da = dict_attrbyvalue(attribute);
-
-			/*
-			 *	SHOULD check ((length & (1 << 30)) != 0)
-			 *	for the mandatory bit.
-			 */
-			if (!da) {
-				RDEBUG2("Fatal! Vendor %u, Attribute %u was not found in our dictionary. ",
-				       vendor, attr);
-				return 0;
-			}
-
-			data += 4; /* skip the vendor field */
-			offset += 4; /* offset to value field */
+			hdr_len = 16;
 		}
 
-		/*
-		 *	Ignore the M bit.  We support all RADIUS attributes...
-		 */
-
-		/*
-		 *	Get the length.  If it's too big, die.
-		 */
 		length &= 0x00ffffff;
 
 		/*
 		 *	Too short or too long is bad.
 		 */
-		if (length < offset) {
-			RDEBUG2("Tunneled attribute %d is too short (%d)to contain anything useful.", attr, length);
-			return 0;
-		}
-
-		/*
-		 *	EAP Messages cane be longer than MAX_STRING_LEN.
-		 *	Other attributes cannot be.
-		 */
-		if ((attr != PW_EAP_MESSAGE) &&
-		    (length > (MAX_STRING_LEN + 8))) {
-			RDEBUG2("Tunneled attribute %d is too long (%d) to pack into a RADIUS attribute.", attr, length);
+		if (length <= (hdr_len - 4)) {
+			RDEBUG2("Tunneled attribute %u is too short (%u < %u) to contain anything useful.", attr, length, hdr_len);
 			return 0;
 		}
 
 		if (length > data_left) {
-			RDEBUG2("Tunneled attribute %d is longer than room left in the packet (%d > %d).", attr, length, data_left);
+			RDEBUG2("Tunneled attribute %u is longer than room left in the packet (%u > %u).", attr, length, data_left);
 			return 0;
 		}
 
@@ -170,16 +115,10 @@ static int diameter_verify(REQUEST *request,
 		}
 
 		/*
-		 *	Check again for equality, now that we're padded
-		 *	length to a multiple of 4 octets.
-		 */
-		if (data_left == length) break;
-
-		/*
 		 *	data_left > length, continue.
 		 */
 		data_left -= length;
-		data += length - offset;
+		data += length;
 	}
 
 	/*
@@ -257,7 +196,14 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	Normal attributes cannot be.
 		 */
 		if ((attr > 255) && (VENDOR(attr) == 0)) {
-			RDEBUG2("Cannot handle Diameter attributes");
+			RDEBUG2("WARNING: Skipping Diameter attribute %u",
+				attr);
+			goto next_attr;
+		}
+
+		if (size > 253) {
+			RDEBUG2("WARNING: diameter2vp skipping long attribute %u, attr");
+			pairfree(&vp);
 			goto next_attr;
 		}
 
