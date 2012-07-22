@@ -11,47 +11,6 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(conf_h, "$Id$")
 
-typedef struct sql_config {
-	char   *sql_driver;
-	char   *sql_server;
-	char   *sql_port;
-	char   *sql_login;
-	char   *sql_password;
-	char   *sql_db;
-	char   *sql_file;	/* for sqlite */
-	char   *query_user;
-	char   *default_profile;
-	char   *nas_query;
-	char   *authorize_check_query;
-	char   *authorize_reply_query;
-	char   *authorize_group_check_query;
-	char   *authorize_group_reply_query;
-	char   *accounting_onoff_query;
-	char   *accounting_update_query;
-	char   *accounting_update_query_alt;
-	char   *accounting_start_query;
-	char   *accounting_start_query_alt;
-	char   *accounting_stop_query;
-	char   *accounting_stop_query_alt;
-	char   *simul_count_query;
-	char   *simul_verify_query;
-	char   *groupmemb_query;
-	int     sqltrace;
-	int	do_clients;
-	int	read_groups;
-	char   *tracefile;
-	char   *xlat_name;
-	int     deletestalesessions;
-	char   *postauth_query;
-	char   *allowed_chars;
-	int	query_timeout;
-
-	/* individual driver config */
-	void	*localcfg;
-
-} SQL_CONFIG;
-
-
 #define CHECKRAD1		"/usr/sbin/checkrad"
 #define CHECKRAD2		"/usr/local/sbin/checkrad"
 
@@ -74,7 +33,6 @@ typedef struct sql_config {
 
 #define ASCEND_PORT_HACK
 #define ASCEND_CHANNELS_PER_LINE        23
-#define CISCO_ACCOUNTING_HACK
 
 /* SQL defines */
 #define MAX_QUERY_LEN			4096
