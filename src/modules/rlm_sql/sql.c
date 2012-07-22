@@ -314,10 +314,9 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		
 		if (ret < 0) {
 			radlog(L_ERR,
-				   "rlm_sql (%s): Database query error '%s' in query '%s'",
+				   "rlm_sql (%s): Database query error '%s'",
 				   inst->config->xlat_name,
-				   (inst->module->sql_error)(*sqlsocket, inst->config),
-				   query);
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
 		}
 		
 		return ret;
@@ -366,10 +365,9 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		
 		if (ret < 0) {
 			radlog(L_ERR,
-				   "rlm_sql (%s): Database query error '%s' in query '%s'",
+				   "rlm_sql (%s): Database query error '%s'",
 				   inst->config->xlat_name,
-				   (inst->module->sql_error)(*sqlsocket, inst->config),
-				   query);
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
 		}
 		
 		return ret;
@@ -409,31 +407,35 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char 
 	return rows;
 }
 
-void query_log(REQUEST *request, SQL_INST *inst, char *querystr)
+void query_log(SQL_INST *inst, REQUEST *request,
+	       rlm_sql_config_section_t *section, char *querystr)
 {
-	FILE   *sqlfile = NULL;
+	FILE	*sqlfile = NULL;
+	
+	if (!inst->config->sqltrace && (!section || !section->sqltrace))
+		return;
 
-	if (inst->config->sqltrace) {
-		char buffer[8192];
+	char buffer[8192];
 
-		if (!radius_xlat(buffer, sizeof(buffer),
-				 inst->config->tracefile, request, NULL)) {
-		  radlog(L_ERR, "rlm_sql (%s): xlat failed.",
-			 inst->config->xlat_name);
-		  return;
-		}
+	if (!radius_xlat(buffer, sizeof(buffer),
+			 section && section->tracefile ? section->tracefile :
+			 	inst->config->tracefile,
+			 request, NULL)) {
+	  radlog(L_ERR, "rlm_sql (%s): xlat failed.",
+		 inst->config->xlat_name);
+	  return;
+	}
 
-		if ((sqlfile = fopen(buffer, "a")) == (FILE *) NULL) {
-			radlog(L_ERR, "rlm_sql (%s): Couldn't open file %s",
-			       inst->config->xlat_name,
-			       buffer);
-		} else {
-			int fd = fileno(sqlfile);
+	if ((sqlfile = fopen(buffer, "a")) == (FILE *) NULL) {
+		radlog(L_ERR, "rlm_sql (%s): Couldn't open file %s",
+		       inst->config->xlat_name,
+		       buffer);
+	} else {
+		int fd = fileno(sqlfile);
 
-			rad_lockfd(fd, MAX_QUERY_LEN);
-			fputs(querystr, sqlfile);
-			fputs(";\n", sqlfile);
-			fclose(sqlfile); /* and release the lock */
-		}
+		rad_lockfd(fd, MAX_QUERY_LEN);
+		fputs(querystr, sqlfile);
+		fputs(";\n", sqlfile);
+		fclose(sqlfile); /* and release the lock */
 	}
 }
