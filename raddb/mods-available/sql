@@ -41,7 +41,7 @@ sql {
 	# Database table configuration for everything except Oracle
 	radius_db = "radius"
 	# If you are using Oracle then use this instead
-        # radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
+	# radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
 
 	# If you want both stop and start records logged to the
 	# same SQL table, leave this as is.  If you want them in

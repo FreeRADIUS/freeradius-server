@@ -1374,6 +1374,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 	char buf2[8192];
 	char buf3[8192];
 	int t1, t2, t3;
+	int spaces = FALSE;
 	char *cbuf = buf;
 	size_t len;
 
@@ -1405,6 +1406,16 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			return -1;
 		}
 
+		if (spaces) {
+			ptr = cbuf;
+			while (isspace((int) *ptr)) ptr++;
+
+			if (ptr > cbuf) {
+				memmove(cbuf, ptr, len - (ptr - cbuf));
+				len -= (ptr - cbuf);
+			}
+		}
+
 		/*
 		 *	Not doing continuations: check for edge
 		 *	conditions.
@@ -1433,12 +1444,20 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		}
 
 		if ((len > 0) && (cbuf[len - 1] == '\\')) {
+			/*
+			 *	Check for "suppress spaces" magic.
+			 */
+			if (!spaces && (len > 2) && (cbuf[len - 2] == '"')) {
+				spaces = TRUE;
+			}
+
 			cbuf[len - 1] = '\0';
 			cbuf += len - 1;
 			continue;
 		}
 
 		ptr = cbuf = buf;
+		spaces = FALSE;
 
 		/*
 		 *	The parser is getting to be evil.

@@ -16,13 +16,61 @@ RCSIDH(rlm_sql_h, "$Id$")
 
 #include "conf.h"
 
-#define SQLSOCK_LOCKED		0
-#define SQLSOCK_UNLOCKED	1
-
-#define PW_ITEM_CHECK			0
-#define PW_ITEM_REPLY			1
+#define PW_ITEM_CHECK		0
+#define PW_ITEM_REPLY		1
 
 typedef char** SQL_ROW;
+
+/*
+ *  Sections where we dynamically resolve the config entry to use,
+ *  by xlating reference.
+ */
+typedef struct rlm_sql_config_section {
+	CONF_SECTION	*cs;
+	
+	char	*reference;
+	
+	int		sqltrace;
+	char	*tracefile;
+} rlm_sql_config_section_t;
+
+typedef struct sql_config {
+	char   *sql_driver;
+	char   *sql_server;
+	char   *sql_port;
+	char   *sql_login;
+	char   *sql_password;
+	char   *sql_db;
+	char   *sql_file;	/* for sqlite */
+	char   *query_user;
+	char   *default_profile;
+	char   *nas_query;
+	char   *authorize_check_query;
+	char   *authorize_reply_query;
+	char   *authorize_group_check_query;
+	char   *authorize_group_reply_query;
+	char   *simul_count_query;
+	char   *simul_verify_query;
+	char   *groupmemb_query;
+	int     sqltrace;
+	int		do_clients;
+	int		read_groups;
+	char   *tracefile;
+	char   *xlat_name;
+	int     deletestalesessions;
+	char   *allowed_chars;
+	int	query_timeout;
+	void	*localcfg;			 /* individual driver config */
+	
+	/* 
+	 * TODO: The rest of the queries should also be moved into their own
+	 * sections.
+	 */
+	
+	/* Section configurations */
+	rlm_sql_config_section_t	postauth;
+	rlm_sql_config_section_t	accounting;
+} SQL_CONFIG;
 
 typedef struct sql_socket {
 	void	*conn;
@@ -83,7 +131,8 @@ int     sql_getvpdata(SQL_INST * inst, SQLSOCK ** sqlsocket, VALUE_PAIR **pair, 
 int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
-void    query_log(REQUEST *request, SQL_INST * inst, char *querystr);
+void 	query_log(SQL_INST *inst, REQUEST *request,
+	       		  rlm_sql_config_section_t *section, char *querystr);
 int	rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
 int	rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
 int	rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst);
