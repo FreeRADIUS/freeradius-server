@@ -138,7 +138,7 @@ else
 fi
 
 if [ $PUSH_TO_REMOTES ]; then
-        echo "Pushing to remote servers"
+        echo "Pushing to remote repositories"
         for remote in `$GIT_EXEC remote`; do
                 $GIT_EXEC push "$remote" "$PUSH_TO_BRANCH"
         done
