@@ -27,9 +27,6 @@ ABORT_UNTRACKED=true
 # Push changes to any remotes we have configured
 PUSH_TO_REMOTES=false
 
-# The remote branch to push to
-PUSH_TO_BRANCH='master'
-
 while read oldrev newrev refname
 do
 :
@@ -140,7 +137,7 @@ fi
 if [ $PUSH_TO_REMOTES ]; then
         echo "Pushing to remote repositories"
         for remote in `$GIT_EXEC remote`; do
-                $GIT_EXEC push "$remote" "$PUSH_TO_BRANCH"
+                $GIT_EXEC push "$remote"
         done
 fi
 
