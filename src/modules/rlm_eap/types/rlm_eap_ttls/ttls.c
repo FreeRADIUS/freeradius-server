@@ -56,6 +56,20 @@ static int diameter_verify(REQUEST *request,
 
 		if (data_len < 12) {
 			RDEBUG2(" Diameter attribute is too small to contain a Diameter header");
+#ifndef NDEBUG
+		dump_hex:
+			if (debug_flag) {
+				unsigned int i;
+
+				for (i = 0; i < data_len; i++) {
+					if ((i & 0x0f) == 0) printf("%04x: ", i);
+					printf("%02x ", data[i]);
+					if ((i & 0x0f) == 0x0f) printf("\n");
+				}
+				if ((data_len & 0x0f) != 0x0f) printf("\n");
+			}
+#endif
+
 			return 0;
 		}
 
@@ -67,7 +81,7 @@ static int diameter_verify(REQUEST *request,
 		if ((data[4] & 0x80) != 0) {
 			if (data_len < 16) {
 				RDEBUG2(" Diameter attribute is too small to contain a Diameter header with Vendor-Id");
-				return 0;
+				goto dump_hex;
 			}
 
 			hdr_len = 16;
@@ -83,12 +97,12 @@ static int diameter_verify(REQUEST *request,
 		 */
 		if (length <= (hdr_len - 4)) {
 			RDEBUG2("Tunneled attribute %u is too short (%u < %u) to contain anything useful.", attr, length, hdr_len);
-			return 0;
+			goto dump_hex;
 		}
 
 		if (length > data_left) {
 			RDEBUG2("Tunneled attribute %u is longer than room left in the packet (%u > %u).", attr, length, data_left);
-			return 0;
+			goto dump_hex;
 		}
 
 		/*
@@ -114,7 +128,7 @@ static int diameter_verify(REQUEST *request,
 		 */
 		if (data_left < length) {
 			RDEBUG2("ERROR! Diameter attribute overflows packet!");
-			return 0;
+			goto dump_hex;
 		}
 
 		/*
