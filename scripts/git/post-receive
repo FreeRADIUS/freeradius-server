@@ -16,7 +16,7 @@ STABLE_TAG='stable'
 RAD_REST='radmin -e hup'
 
 # Command used to verify the new configuration
-RAD_CONF='radiusd -C'
+RAD_CONF='radiusd -Cxl stdout'
 
 # Command used to execute git functions
 GIT_EXEC='env -i git'
