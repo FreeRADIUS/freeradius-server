@@ -24,6 +24,12 @@ GIT_EXEC='env -i git'
 # Abort if there are local untracked files
 ABORT_UNTRACKED=true
 
+# Push changes to any remotes we have configured
+PUSH_TO_REMOTES=false
+
+# The remote branch to push to
+PUSH_TO_BRANCH='master'
+
 while read oldrev newrev refname
 do
 :
@@ -129,6 +135,13 @@ else
 	fi
 	
 	$GIT_EXEC tag -f $STABLE_TAG $newrev
+fi
+
+if [ $PUSH_TO_REMOTES ]; then
+        echo "Pushing to remote servers"
+        for remote in `$GIT_EXEC remote`; do
+                $GIT_EXEC push "$remote" "$PUSH_TO_BRANCH"
+        done
 fi
 
 exit 0
