@@ -213,6 +213,7 @@ static int detail_open(rad_listen_t *this)
 
 			memset(&files, 0, sizeof(files));
 			if (glob(filename, 0, NULL, &files) != 0) {
+				globfree(&files);
 				return 0;
 			}
 
