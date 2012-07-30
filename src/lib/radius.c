@@ -250,7 +250,9 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	 */
 	rcode = sendto(sockfd, data, data_len, flags,
 		       (struct sockaddr *) &dst, sizeof_dst);
+#ifdef WITH_UDPFROMTO
 done:
+#endif
 	if (rcode < 0) {
 		DEBUG("rad_send() failed: %s\n", strerror(errno));
 	}
@@ -738,7 +740,7 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 	 *	Attributes with encrypted values MUST be less than
 	 *	128 bytes long.
 	 */
-	switch (vp->flags.encrypt) {
+	if (packet) switch (vp->flags.encrypt) {
 	case FLAG_ENCRYPT_USER_PASSWORD:
 		make_passwd(ptr, &len, data, len,
 			    secret, packet->vector);
@@ -970,7 +972,7 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 	ptr = start;
 	end = ptr + 255;
-	vendorcode = total_length = 0;
+	total_length = 0;
 	length_ptr = vsa_length_ptr = tlv_length_ptr = NULL;
 
 	/*
@@ -1130,7 +1132,6 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	*length_ptr += len;
 	if (vsa_length_ptr) *vsa_length_ptr += len;
 	if (tlv_length_ptr) *tlv_length_ptr += len;
-	ptr += len;
 	total_length += len;
 
 	return total_length;	/* of attribute */
@@ -2657,7 +2658,10 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 		}
 		
 		vp = paircreate(attribute, PW_TYPE_OCTETS);
-		if (!vp) return NULL;
+		if (!vp) {
+			free(tlv_data);
+			return NULL;
+		}
 			
 		vp->type = PW_TYPE_TLV;
 		vp->flags.encrypt = FLAG_ENCRYPT_NONE;
@@ -2715,7 +2719,7 @@ static VALUE_PAIR *rad_continuation2vp(const RADIUS_PACKET *packet,
 	 */
 	if (tlv_data != data) free(tlv_data);
 
-	if (head->next) rad_sortvp(&head);
+	if (head && head->next) rad_sortvp(&head);
 
 	return head;
 }
