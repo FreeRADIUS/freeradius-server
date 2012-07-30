@@ -489,6 +489,8 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, const char *value)
  */
 static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 {
+	if (!cs || !ci) return;
+
 	if (!cs->children) {
 		rad_assert(cs->tail == NULL);
 		cs->children = ci;
@@ -687,6 +689,8 @@ no_such_item:
 
 CONF_SECTION *cf_top_section(CONF_SECTION *cs)
 {
+	if (!cs) return NULL;
+
 	while (cs->item.parent != NULL) {
 		cs = cs->item.parent;
 	}
@@ -1050,6 +1054,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		CONF_PAIR *cpn;
 
 		cpn = cf_pair_alloc(name, value, T_OP_SET, T_BARE_WORD, cs);
+		if (!cpn) return -1;
 		cpn->item.filename = "<internal>";
 		cpn->item.lineno = 0;
 		cf_item_add(cs, cf_pairtoitem(cpn));
