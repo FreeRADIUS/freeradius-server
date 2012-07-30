@@ -434,9 +434,11 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	BIO_puts(bio_out, "\tThis Update: ");
         ASN1_GENERALIZEDTIME_print(bio_out, thisupd);
         BIO_puts(bio_out, "\n");
-	BIO_puts(bio_out, "\tNext Update: ");
-        ASN1_GENERALIZEDTIME_print(bio_out, nextupd);
-        BIO_puts(bio_out, "\n");
+	if (nextupd) {
+		BIO_puts(bio_out, "\tNext Update: ");
+		ASN1_GENERALIZEDTIME_print(bio_out, nextupd);
+		BIO_puts(bio_out, "\n");
+	}
 
 	switch (status) {
 	case V_OCSP_CERTSTATUS_GOOD:
