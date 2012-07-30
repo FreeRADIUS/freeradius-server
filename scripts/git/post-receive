@@ -16,13 +16,16 @@ STABLE_TAG='stable'
 RAD_REST='radmin -e hup'
 
 # Command used to verify the new configuration
-RAD_CONF='radiusd -C'
+RAD_CONF='radiusd -Cxl stdout'
 
 # Command used to execute git functions
 GIT_EXEC='env -i git'
 
 # Abort if there are local untracked files
 ABORT_UNTRACKED=true
+
+# Push changes to any remotes we have configured
+PUSH_TO_REMOTES=false
 
 while read oldrev newrev refname
 do
@@ -129,6 +132,13 @@ else
 	fi
 	
 	$GIT_EXEC tag -f $STABLE_TAG $newrev
+fi
+
+if [ $PUSH_TO_REMOTES ]; then
+        echo "Pushing to remote repositories"
+        for remote in `$GIT_EXEC remote`; do
+                $GIT_EXEC push "$remote"
+        done
 fi
 
 exit 0
