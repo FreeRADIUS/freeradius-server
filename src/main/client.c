@@ -63,6 +63,8 @@ static fr_fifo_t	*deleted_clients = NULL;
  */
 void client_free(RADCLIENT *client)
 {
+	if (!client) return;
+
 #ifdef WITH_DYNAMIC_CLIENTS
 	if (client->dynamic == 2) {
 		time_t now;
