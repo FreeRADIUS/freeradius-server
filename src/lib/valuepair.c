@@ -445,6 +445,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			case T_OP_CMP_TRUE:
 			case T_OP_CMP_FALSE:
 			case T_OP_CMP_EQ:
+			case T_OP_REG_EQ:
+			case T_OP_REG_NE:
 				tailfrom = i;
 				continue;
 
