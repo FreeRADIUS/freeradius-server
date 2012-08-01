@@ -2770,7 +2770,6 @@ static void received_conflicting_request(REQUEST *request,
 		 */
 	case REQUEST_PROXIED:
 	default:
-		rad_assert(request->ev != NULL);
 		break;
 	}
 }
