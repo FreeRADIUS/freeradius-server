@@ -37,19 +37,21 @@ cui.pre_proxy {
 #
 #  Add a CUI attribute based on the User-Name, and a secret key
 #  known only to this server.
+#  For EAP-TTLS and EAP-PEAP methods
+#  use_tunneled_reply parameter MUST be set to yes 
 #
 cui.post-auth {
 	if (FreeRadius-Proxied-To == 127.0.0.1) {
 		if (outer.request:Chargeable-User-Identity) {
-			update outer.reply {
+			update reply {
 				Chargeable-User-Identity:="%{md5:%{config:cui_hash_key}%{User-Name}}"
 			}
 		}
 	}
 	else {
-		if (Chargeable-User-Identity) {
+		if (Chargeable-User-Identity && !(reply:Chargeable-User-Identity)) {
 			update reply {
-				Chargeable-User-Identity="%{md5:%{config:cui_hash_key}%{User-Name}}"
+				Chargeable-User-Identity="%{md5:%{policy.cui_hash_key}%{User-Name}}"
 			}
 		}
 	}
