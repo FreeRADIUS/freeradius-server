@@ -26,7 +26,7 @@ cui.authorize {
 # Before proxing the client adds a CUI attribute containing one zero byte
 # if it is not already present in that list
 #
-cui.pre_proxy {
+cui.pre-proxy {
 	if (Packet-Type == Access-Request) {
 		update proxy-request {
 			Chargeable-User-Identity = '\\000'
