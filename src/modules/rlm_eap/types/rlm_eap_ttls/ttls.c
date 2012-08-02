@@ -49,27 +49,13 @@ static int diameter_verify(REQUEST *request,
 	uint32_t attr;
 	uint32_t length;
 	unsigned int hdr_len;
-	unsigned int data_left = data_len;
+	unsigned int remaining = data_len;
 
-	while (data_left > 0) {
+	while (remaining > 0) {
 		hdr_len = 12;
 
-		if (data_len < 12) {
-			RDEBUG2(" Diameter attribute is too small to contain a Diameter header");
-#ifndef NDEBUG
-		dump_hex:
-			if (debug_flag) {
-				unsigned int i;
-
-				for (i = 0; i < data_len; i++) {
-					if ((i & 0x0f) == 0) printf("%04x: ", i);
-					printf("%02x ", data[i]);
-					if ((i & 0x0f) == 0x0f) printf("\n");
-				}
-				if ((data_len & 0x0f) != 0x0f) printf("\n");
-			}
-#endif
-
+		if (remaining < hdr_len) {
+		  RDEBUG2(" Diameter attribute is too small (%u) to contain a Diameter header", remaining);
 			return 0;
 		}
 
@@ -79,9 +65,9 @@ static int diameter_verify(REQUEST *request,
 		length = ntohl(length);
 
 		if ((data[4] & 0x80) != 0) {
-			if (data_len < 16) {
+			if (remaining < 16) {
 				RDEBUG2(" Diameter attribute is too small to contain a Diameter header with Vendor-Id");
-				goto dump_hex;
+				return 0;
 			}
 
 			hdr_len = 16;
@@ -97,19 +83,19 @@ static int diameter_verify(REQUEST *request,
 		 */
 		if (length <= (hdr_len - 4)) {
 			RDEBUG2("Tunneled attribute %u is too short (%u < %u) to contain anything useful.", attr, length, hdr_len);
-			goto dump_hex;
+			return 0;
 		}
 
-		if (length > data_left) {
-			RDEBUG2("Tunneled attribute %u is longer than room left in the packet (%u > %u).", attr, length, data_left);
-			goto dump_hex;
+		if (length > remaining) {
+			RDEBUG2("Tunneled attribute %u is longer than room remaining in the packet (%u > %u).", attr, length, remaining);
+			return 0;
 		}
 
 		/*
 		 *	Check for broken implementations, which don't
 		 *	pad the AVP to a 4-octet boundary.
 		 */
-		if (data_left == length) break;
+		if (remaining == length) break;
 
 		/*
 		 *	The length does NOT include the padding, so
@@ -126,21 +112,15 @@ static int diameter_verify(REQUEST *request,
 		 *	Otherwise, if the attribute over-flows the end
 		 *	of the packet, die.
 		 */
-		if (data_left < length) {
+		if (remaining < length) {
 			RDEBUG2("ERROR! Diameter attribute overflows packet!");
-			goto dump_hex;
+			return 0;
 		}
 
 		/*
-		 *	Check again for equality, now that we're padded
-		 *	length to a multiple of 4 octets.
+		 *	remaining > length, continue.
 		 */
-		if (data_left == length) break;
-
-		/*
-		 *	data_left > length, continue.
-		 */
-		data_left -= length;
+		remaining -= length;
 		data += length;
 	}
 
