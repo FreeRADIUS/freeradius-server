@@ -54,6 +54,12 @@ cui.post-auth {
 				Chargeable-User-Identity="%{md5:%{policy.cui_hash_key}%{User-Name}}"
 			}
 		}
+		#
+		# If you want to store a CUI for the User in the DB
+		#
+		if (reply:Chargeable-User-Identity) {
+			cui
+		}
 	}
 }
 
@@ -77,15 +83,6 @@ cui.accounting {
 	#  this CUI.
 	#
 	if (Chargeable-User-Identity && (Chargeable-User-Identity != "")) {
-		cui
-	}
-}
-
-#
-#  If there is a CUI attribute in the reply, add it to the DB.
-#
-cui_updatedb {
-	if (reply:Chargeable-User-Identity) {
 		cui
 	}
 }
