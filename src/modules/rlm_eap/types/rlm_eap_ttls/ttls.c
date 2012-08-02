@@ -61,7 +61,7 @@ static int diameter_verify(REQUEST *request,
 
 		memcpy(&attr, data, sizeof(attr));
 		attr = ntohl(attr);
-		memcpy(&length, data , sizeof(length));
+		memcpy(&length, data + 4, sizeof(length));
 		length = ntohl(length);
 
 		if ((data[4] & 0x80) != 0) {
