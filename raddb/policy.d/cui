@@ -7,6 +7,11 @@
 #
 
 #
+# cui_hash_key definition
+#
+cui_hash_key = "some_hash
+
+#
 #  The client indicates it can do CUI by sending a CUI attribute	
 #  containing one zero byte
 #
@@ -16,23 +21,44 @@ cui.authorize {
 	}
 }
 
+
+#
+# Before proxing the client adds a CUI attribute containing one zero byte
+# if it is not already present in that list
+#
+cui.pre-proxy {
+	if (Packet-Type == Access-Request) {
+		update proxy-request {
+			Chargeable-User-Identity = '\\000'
+		}
+	}
+}
+
 #
 #  Add a CUI attribute based on the User-Name, and a secret key
 #  known only to this server.
+#  For EAP-TTLS and EAP-PEAP methods
+#  use_tunneled_reply parameter MUST be set to yes 
 #
 cui.post-auth {
 	if (FreeRadius-Proxied-To == 127.0.0.1) {
 		if (outer.request:Chargeable-User-Identity) {
-			update outer.reply {
+			update reply {
 				Chargeable-User-Identity:="%{md5:%{config:cui_hash_key}%{User-Name}}"
 			}
 		}
 	}
 	else {
-		if (Chargeable-User-Identity) {
+		if (Chargeable-User-Identity && !(reply:Chargeable-User-Identity)) {
 			update reply {
-				Chargeable-User-Identity="%{md5:%{config:cui_hash_key}%{User-Name}}"
+				Chargeable-User-Identity="%{md5:%{policy.cui_hash_key}%{User-Name}}"
 			}
+		}
+		#
+		# If you want to store a CUI for the User in the DB
+		#
+		if (reply:Chargeable-User-Identity) {
+			cui
 		}
 	}
 }
@@ -57,15 +83,6 @@ cui.accounting {
 	#  this CUI.
 	#
 	if (Chargeable-User-Identity && (Chargeable-User-Identity != "")) {
-		cui
-	}
-}
-
-#
-#  If there is a CUI attribute in the reply, add it to the DB.
-#
-cui_updatedb {
-	if (reply:Chargeable-User-Identity) {
 		cui
 	}
 }
