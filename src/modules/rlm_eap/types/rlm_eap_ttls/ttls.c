@@ -49,13 +49,13 @@ static int diameter_verify(REQUEST *request,
 	uint32_t attr;
 	uint32_t length;
 	unsigned int hdr_len;
-	unsigned int data_left = data_len;
+	unsigned int remaining = data_len;
 
-	while (data_left > 0) {
+	while (remaining > 0) {
 		hdr_len = 12;
 
-		if (data_len < 12) {
-			RDEBUG2(" Diameter attribute is too small to contain a Diameter header");
+		if (remaining < hdr_len) {
+		  RDEBUG2(" Diameter attribute is too small (%u) to contain a Diameter header", remaining);
 			return 0;
 		}
 
@@ -65,7 +65,7 @@ static int diameter_verify(REQUEST *request,
 		length = ntohl(length);
 
 		if ((data[4] & 0x80) != 0) {
-			if (data_len < 16) {
+			if (remaining < 16) {
 				RDEBUG2(" Diameter attribute is too small to contain a Diameter header with Vendor-Id");
 				return 0;
 			}
@@ -83,8 +83,8 @@ static int diameter_verify(REQUEST *request,
 			return 0;
 		}
 
-		if (length > data_left) {
-			RDEBUG2("Tunneled attribute %u is longer than room left in the packet (%u > %u).", attr, length, data_left);
+		if (length > remaining) {
+			RDEBUG2("Tunneled attribute %u is longer than room remaining in the packet (%u > %u).", attr, length, remaining);
 			return 0;
 		}
 
@@ -92,7 +92,7 @@ static int diameter_verify(REQUEST *request,
 		 *	Check for broken implementations, which don't
 		 *	pad the AVP to a 4-octet boundary.
 		 */
-		if (data_left == length) break;
+		if (remaining == length) break;
 
 		/*
 		 *	The length does NOT include the padding, so
@@ -109,15 +109,15 @@ static int diameter_verify(REQUEST *request,
 		 *	Otherwise, if the attribute over-flows the end
 		 *	of the packet, die.
 		 */
-		if (data_left < length) {
+		if (remaining < length) {
 			RDEBUG2("ERROR! Diameter attribute overflows packet!");
 			return 0;
 		}
 
 		/*
-		 *	data_left > length, continue.
+		 *	remaining > length, continue.
 		 */
-		data_left -= length;
+		remaining -= length;
 		data += length;
 	}
 
