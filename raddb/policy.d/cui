@@ -7,6 +7,11 @@
 #
 
 #
+# cui_hash_key definition
+#
+cui_hash_key = "some_hash
+
+#
 #  The client indicates it can do CUI by sending a CUI attribute	
 #  containing one zero byte
 #
