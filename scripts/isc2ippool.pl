@@ -38,7 +38,7 @@ my $sql_database	= 'radius';
 my $sql_table		= 'radippool';
 my $pool_name		= '';
 my $pool_key		= 'Calling-Station-Id';
-my $insert_only 	= 1;
+my $insert_only 	= 0;
 
 my $verbose;
 my $help;
