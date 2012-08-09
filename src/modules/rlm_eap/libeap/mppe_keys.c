@@ -132,6 +132,11 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 	unsigned char *p = seed;
 	size_t prf_size;
 
+	if (!s->s3) {
+		radlog(L_ERR, "ERROR: OpenSSL build / link incompatibility detected");
+		return;
+	}
+
 	prf_size = strlen(prf_label);
 
 	memcpy(p, prf_label, prf_size);
@@ -170,6 +175,11 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 	uint8_t out[32], buf[32];
 	uint8_t seed[sizeof(EAPTLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
 	uint8_t *p = seed;
+
+	if (!s->s3) {
+		radlog(L_ERR, "ERROR: OpenSSL build / link incompatibility detected");
+		return;
+	}
 
 	memcpy(p, EAPTLS_PRF_CHALLENGE, sizeof(EAPTLS_PRF_CHALLENGE)-1);
 	p += sizeof(EAPTLS_PRF_CHALLENGE)-1;
