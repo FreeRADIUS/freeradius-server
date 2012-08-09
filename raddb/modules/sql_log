@@ -31,6 +31,11 @@ sql_log {
 	#
 	utf8 = no
 
+	#
+	#  The names here are taken from the Acct-Status-Type names.
+	#  Just add another entry here for Accounting-On,
+	#  Accounting-Off, etc.
+	#
 	Start = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
 	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
 	 AcctSessionTime, AcctTerminateCause) VALUES                 \
