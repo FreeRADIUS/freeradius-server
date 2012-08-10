@@ -1,0 +1,13 @@
+diff -u -r freeradius-server-2.1.12.orig/src/main/radtest.in freeradius-server-2.1.12/src/main/radtest.in
+--- freeradius-server-2.1.12.orig/src/main/radtest.in	2011-09-30 10:12:07.000000000 -0400
++++ freeradius-server-2.1.12/src/main/radtest.in	2012-01-05 15:51:56.877585514 -0500
+@@ -121,7 +121,7 @@
+ 	    echo "EAP-Code = Response"
+ 	    echo "EAP-Type-Identity = \"$1\""
+ 	fi
+-	if [ "$6" ]
++	if [ ! -z "$6" ] && [[ $6 =~ ^[0-9]+$ ]] && [ $6 -gt 0 ]
+ 	then
+ 		echo "Framed-Protocol = PPP"
+ 	fi
+Only in freeradius-server-2.1.12/src/main: radtest.in~
