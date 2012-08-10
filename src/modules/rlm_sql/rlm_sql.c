@@ -45,10 +45,8 @@ static const CONF_PARSER section_config[] = {
 	{ "reference",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_sql_config_section_t, reference), NULL, ".query"},
 	  
-	{"sqltrace", PW_TYPE_BOOLEAN,
-	 offsetof(rlm_sql_config_section_t, sqltrace), NULL, "no"},
-	{"sqltracefile", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_sql_config_section_t, tracefile), NULL, NULL},
+	{"logfile", PW_TYPE_STRING_PTR,
+	 offsetof(rlm_sql_config_section_t, logfile), NULL, NULL},
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -162,10 +160,11 @@ static int sql_xlat(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	query_log(inst, request, NULL, querystr);
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return 0;
+
+	query_log(inst, request, NULL, querystr);
 
 	/*
 	 *	If the query starts with any of the following prefixes,
@@ -1220,7 +1219,6 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 
 	CONF_ITEM	*item;
 	CONF_PAIR	*pair;
-	CONF_SECTION	*base;
 	const char	*attr = NULL;
 	const char	*value;
 
@@ -1230,8 +1228,6 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	
 	char	*p = path;
 
-	memset(querystr, 0, sizeof(querystr));
-	
 	sql_set_user(inst, request, sqlusername, NULL);
 	
 	if (section->reference[0] != '.')
@@ -1297,7 +1293,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 		 *  We assume all entries with the same name form a redundant
 		 *  set of queries.
 		 */
-		pair = cf_pair_find_next(base, pair, attr);
+		pair = cf_pair_find_next(section->cs, pair, attr);
 		
 		if (!pair) {
 			RDEBUG("No additional queries configured");
