@@ -13,11 +13,11 @@ Source103: freeradius-pam-conf
 
 Patch1: freeradius-cert-config.patch
 Patch2: freeradius-radtest.patch
-Patch3: freeradius-man.patch
-Patch4: freeradius-unix-passwd-expire.patch
+#Patch3: freeradius-man.patch
+#Patch4: freeradius-unix-passwd-expire.patch
 Patch5: freeradius-radeapclient-ipv6.patch
 Patch6: freeradius-postgres-sql.patch
-Patch7: freeradius-perl.patch
+#Patch7: freeradius-perl.patch
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -149,11 +149,11 @@ This plugin provides the unixODBC support for the FreeRADIUS server project.
 %setup -q -n freeradius-server-%{version}
 %patch1 -p1 -b .cert-config
 %patch2 -p1 -b .radtest
-%patch3 -p1 -b .man
-%patch4 -p1 -b unix-passwd-expire
+#%patch3 -p1 -b .man
+#%patch4 -p1 -b unix-passwd-expire
 %patch5 -p1 -b radeapclient-ipv6
 %patch6 -p1 -b postgres-sql
-%patch7 -p1 -b perl
+#%patch7 -p1 -b perl
 
 # Some source files mistakenly have execute permissions set
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +
