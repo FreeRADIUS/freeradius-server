@@ -72,6 +72,32 @@ The pool configuration adds a number of new configuration options,
 which allow the administrator to better control how FreeRADIUS uses
 SQL connection pools.
 
+The following parameters have been changed::
+
+  trace				-> removed
+  tracefile			-> logfile
+
+The logfile is intended to log SQL queries performed.  If you need to
+debug the server, use debugging mode.  If ``logfile`` is set, then
+*all* SQL queries will go to ``logfile``.
+
+You can now use a NULL SQL database::
+
+  driver = rlm_sql_null
+
+This is an empty driver which will always return "success".  It is
+intended to be used to replace the ``sql_log`` module, and in
+conjunction with the ``radsqlrelay`` program.  Simply take your normal
+configuration for raddb/mods-enabled/sql, and set::
+
+  driver = rlm_sql_null
+  ...
+  logfile = ${radacctdir}/log.sql
+
+And all of the SQL queries will be logged to that file.  The
+connection pool	will still need to be configured for the NULL SQL
+driver, but the defaults will work.
+
 
 EAP
 ---
