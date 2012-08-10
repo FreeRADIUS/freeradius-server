@@ -296,9 +296,8 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 	}
 	
 	while (1) {
-		radlog(L_ERR, "rlm_sql (%s): Executing query",
-			   inst->config->xlat_name);
-			   
+		DEBUG("Executing query %s", query);
+
 		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
 		/*
 		 * Run through all available sockets until we exhaust all existing
@@ -347,9 +346,8 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 	}
 	
 	while (1) {
-		radlog(L_ERR, "rlm_sql (%s): Executing query",
-			   inst->config->xlat_name);
-			   
+		DEBUG("Executing query %s", query);
+
 		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config, query);
 		/*
 		 * Run through all available sockets until we exhaust all existing
