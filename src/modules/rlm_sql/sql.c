@@ -408,18 +408,16 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char 
 /*
  *	Log the query to a file.
  */
-void query_log(SQL_INST *inst, REQUEST *request,
-	       rlm_sql_config_section_t *section, char *query)
+void rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
+		       rlm_sql_config_section_t *section, char *query)
 {
 	int fd;
-	const char *filename;
+	const char *filename = NULL;
 	char buffer[8192];
 
-	if (section) {
-		filename = section->logfile;
-	} else {
-		filename = inst->config->logfile;
-	}
+	if (section) filename = section->logfile;
+
+	if (!filename) filename = inst->config->logfile;
 
 	if (!filename) return;
 

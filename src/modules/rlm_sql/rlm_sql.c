@@ -73,6 +73,8 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "yes"},
 	{"sql_user_name", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,query_user), NULL, ""},
+	{"logfile", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,logfile), NULL, NULL},
 	{"default_user_profile", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,default_profile), NULL, ""},
 	{"nas_query", PW_TYPE_STRING_PTR,
@@ -164,7 +166,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 	if (sqlsocket == NULL)
 		return 0;
 
-	query_log(inst, request, NULL, querystr);
+	rlm_sql_query_log(inst, request, NULL, querystr);
 
 	/*
 	 *	If the query starts with any of the following prefixes,
@@ -900,14 +902,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 			
 		goto error;
 	}
-	/*
-	 *	Sanity check for crazy people.
-	 */
-	if (strncmp(inst->config->sql_driver, "rlm_sql_", 8) != 0) {
-		radlog(L_ERR, "\"%s\" is NOT an SQL driver!",
-		       inst->config->sql_driver);	
-		goto error;
-	}
 
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL) {
@@ -955,6 +949,15 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	inst->config->xlat_name = strdup(xlat_name);
 	xlat_register(xlat_name, (RAD_XLAT_FUNC)sql_xlat, inst);
 		
+	/*
+	 *	Sanity check for crazy people.
+	 */
+	if (strncmp(inst->config->sql_driver, "rlm_sql_", 8) != 0) {
+		radlog(L_ERR, "\"%s\" is NOT an SQL driver!",
+		       inst->config->sql_driver);
+		goto error;
+	}
+
 	/*
 	 *	Load the appropriate driver for our database
 	 */
@@ -1250,7 +1253,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	pair = cf_itemtopair(item);
 	attr = cf_pair_attr(pair);
 	
-	RDEBUG2("Failing between pairs with name '%s'", attr);
+	RDEBUG2("Using query template '%s'", attr);
 	
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
@@ -1266,7 +1269,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 		if (!*querystr)
 			goto null_query;
 		
-		query_log(inst, request, section, querystr);
+		rlm_sql_query_log(inst, request, section, querystr);
 		
 		sql_ret = rlm_sql_query(&sqlsocket, inst, querystr);	
 		if (sql_ret == SQL_DOWN)

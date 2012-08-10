@@ -129,7 +129,7 @@ int     sql_getvpdata(SQL_INST * inst, SQLSOCK ** sqlsocket, VALUE_PAIR **pair, 
 int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
-void 	query_log(SQL_INST *inst, REQUEST *request,
+void 	rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
 	       		  rlm_sql_config_section_t *section, char *querystr);
 int	rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
 int	rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
