@@ -41,12 +41,14 @@ sql_log {
 	 AcctSessionTime, AcctTerminateCause) VALUES                 \
 	 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
 	 '%{Framed-IP-Address}', '%S', '0', '0', '');"
+
 	Stop = "INSERT INTO ${acct_table} (AcctSessionId, UserName,  \
 	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
 	 AcctSessionTime, AcctTerminateCause) VALUES                 \
 	 ('%{Acct-Session-Id}', '%{User-Name}', '%{NAS-IP-Address}', \
 	 '%{Framed-IP-Address}', '0', '%S', '%{Acct-Session-Time}',  \
 	 '%{Acct-Terminate-Cause}');"
+
 	Alive = "INSERT INTO ${acct_table} (AcctSessionId, UserName, \
 	 NASIPAddress, FramedIPAddress, AcctStartTime, AcctStopTime, \
 	 AcctSessionTime, AcctTerminateCause) VALUES                 \
@@ -64,5 +66,27 @@ sql_log {
 	 (username, pass, reply, authdate) VALUES                    \
 	 ('%{User-Name}', '%{User-Password:-Chap-Password}',         \
 	 '%{reply:Packet-Type}', '%S');"
+
+	Accounting-On = "UPDATE ${acct_table} \
+	  SET \
+	     acctstoptime       =  '%S', \
+	     acctsessiontime    =  unix_timestamp('%S') - \
+	                           unix_timestamp(acctstarttime), \
+	     acctterminatecause =  '%{Acct-Terminate-Cause}', \
+	     acctstopdelay      =  %{%{Acct-Delay-Time}:-0} \
+	  WHERE acctstoptime IS NULL \
+	  AND nasipaddress      =  '%{NAS-IP-Address}' \
+	  AND acctstarttime     <= '%S'""
+
+	Accounting-Off = "UPDATE ${acct_table} \
+	  SET \
+	     acctstoptime       =  '%S', \
+	     acctsessiontime    =  unix_timestamp('%S') - \
+	                           unix_timestamp(acctstarttime), \
+	     acctterminatecause =  '%{Acct-Terminate-Cause}', \
+	     acctstopdelay      =  %{%{Acct-Delay-Time}:-0} \
+	  WHERE acctstoptime IS NULL \
+	  AND nasipaddress      =  '%{NAS-IP-Address}' \
+	  AND acctstarttime     <= '%S'""
 }
 
