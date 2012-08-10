@@ -30,8 +30,7 @@ typedef struct rlm_sql_config_section {
 	
 	char	*reference;
 	
-	int		sqltrace;
-	char	*tracefile;
+	char	*logfile;
 } rlm_sql_config_section_t;
 
 typedef struct sql_config {
@@ -52,10 +51,9 @@ typedef struct sql_config {
 	char   *simul_count_query;
 	char   *simul_verify_query;
 	char   *groupmemb_query;
-	int     sqltrace;
-	int		do_clients;
-	int		read_groups;
-	char   *tracefile;
+	int     do_clients;
+	int	read_groups;
+	char   *logfile;
 	char   *xlat_name;
 	int     deletestalesessions;
 	char   *allowed_chars;

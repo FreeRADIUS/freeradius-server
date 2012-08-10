@@ -405,35 +405,39 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char 
 	return rows;
 }
 
+/*
+ *	Log the query to a file.
+ */
 void query_log(SQL_INST *inst, REQUEST *request,
-	       rlm_sql_config_section_t *section, char *querystr)
+	       rlm_sql_config_section_t *section, char *query)
 {
-	FILE	*sqlfile = NULL;
-	
-	if (!inst->config->sqltrace && (!section || !section->sqltrace))
-		return;
-
+	int fd;
+	const char *filename;
 	char buffer[8192];
 
-	if (!radius_xlat(buffer, sizeof(buffer),
-			 section && section->tracefile ? section->tracefile :
-			 	inst->config->tracefile,
-			 request, NULL)) {
-	  radlog(L_ERR, "rlm_sql (%s): xlat failed.",
-		 inst->config->xlat_name);
-	  return;
-	}
-
-	if ((sqlfile = fopen(buffer, "a")) == (FILE *) NULL) {
-		radlog(L_ERR, "rlm_sql (%s): Couldn't open file %s",
-		       inst->config->xlat_name,
-		       buffer);
+	if (section) {
+		filename = section->logfile;
 	} else {
-		int fd = fileno(sqlfile);
-
-		rad_lockfd(fd, MAX_QUERY_LEN);
-		fputs(querystr, sqlfile);
-		fputs(";\n", sqlfile);
-		fclose(sqlfile); /* and release the lock */
+		filename = inst->config->logfile;
 	}
+
+	if (!filename) return;
+
+	if (!radius_xlat(buffer, sizeof(buffer), filename, request, NULL)) {
+		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
+		       inst->config->xlat_name);
+		return;
+	}
+
+	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
+	if (fd < 0) {
+		radlog(L_ERR, "rlm_sql (%s): Couldn't open file %s: %s",
+		       inst->config->xlat_name, buffer, strerror(errno));
+		return;
+	}
+
+	rad_lockfd(fd, MAX_QUERY_LEN);
+	write(fd, query, strlen(query));
+	write(fd, ";\n", 2);
+	close(fd);		/* and release the lock */
 }
