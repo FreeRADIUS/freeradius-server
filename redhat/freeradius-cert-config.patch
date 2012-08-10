@@ -1,68 +1,17 @@
-diff -r -u freeradius-server-2.1.8.orig/raddb/certs/ca.cnf freeradius-server-2.1.8/raddb/certs/ca.cnf
---- freeradius-server-2.1.8.orig/raddb/certs/ca.cnf	2009-12-30 10:44:35.000000000 -0500
-+++ freeradius-server-2.1.8/raddb/certs/ca.cnf	2010-01-08 12:35:23.000000000 -0500
-@@ -14,9 +14,9 @@
- RANDFILE		= $dir/.rand
- name_opt		= ca_default
- cert_opt		= ca_default
--default_days		= 365
-+default_days		= 60
- default_crl_days	= 30
--default_md		= md5
-+default_md		= sha1
- preserve		= no
- policy			= policy_match
- 
-Only in freeradius-server-2.1.8/raddb/certs: ca.cnf~
-diff -r -u freeradius-server-2.1.8.orig/raddb/certs/client.cnf freeradius-server-2.1.8/raddb/certs/client.cnf
---- freeradius-server-2.1.8.orig/raddb/certs/client.cnf	2009-12-30 10:44:35.000000000 -0500
-+++ freeradius-server-2.1.8/raddb/certs/client.cnf	2010-01-08 12:35:37.000000000 -0500
-@@ -14,9 +14,9 @@
- RANDFILE		= $dir/.rand
- name_opt		= ca_default
- cert_opt		= ca_default
--default_days		= 365
-+default_days		= 60
- default_crl_days	= 30
--default_md		= md5
-+default_md		= sha1
- preserve		= no
- policy			= policy_match
- 
-Only in freeradius-server-2.1.8/raddb/certs: client.cnf~
-diff -r -u freeradius-server-2.1.8.orig/raddb/certs/server.cnf freeradius-server-2.1.8/raddb/certs/server.cnf
---- freeradius-server-2.1.8.orig/raddb/certs/server.cnf	2009-12-30 10:44:35.000000000 -0500
-+++ freeradius-server-2.1.8/raddb/certs/server.cnf	2010-01-08 12:35:05.000000000 -0500
-@@ -14,9 +14,9 @@
- RANDFILE		= $dir/.rand
- name_opt		= ca_default
- cert_opt		= ca_default
--default_days		= 365
-+default_days		= 60
- default_crl_days	= 30
--default_md		= md5
-+default_md		= sha1
- preserve		= no
- policy			= policy_match
- 
-Only in freeradius-server-2.1.8/raddb/certs: server.cnf~
-diff -r -u freeradius-server-2.1.8.orig/raddb/eap.conf freeradius-server-2.1.8/raddb/eap.conf
---- freeradius-server-2.1.8.orig/raddb/eap.conf	2009-12-30 10:44:35.000000000 -0500
-+++ freeradius-server-2.1.8/raddb/eap.conf	2010-01-08 12:36:04.000000000 -0500
-@@ -251,15 +251,6 @@
- 			cipher_list = "DEFAULT"
- 
+diff -r -u freeradius-server-2.1.12.orig/raddb/eap.conf freeradius-server-2.1.12/raddb/eap.conf
+--- freeradius-server-2.1.12.orig/raddb/eap.conf	2011-09-07 06:59:21.000000000 -0400
++++ freeradius-server-2.1.12/raddb/eap.conf	2011-09-07 10:28:28.000000000 -0400
+@@ -281,7 +281,11 @@
+ 			# for the server to print out an error message,
+ 			# and refuse to start.
  			#
--
--			#  This configuration entry should be deleted
--			#  once the server is running in a normal
--			#  configuration.  It is here ONLY to make
--			#  initial deployments easier.
--			#
 -			make_cert_command = "${certdir}/bootstrap"
--
--			#
- 			#  Session resumption / fast reauthentication
- 			#  cache.
++			# Redhat RPM's run the bootstrap certificate creation
++			# as part of the RPM install (not upgrade), therefore
++			# the make_cert_command is commented out.
++			#
++			#make_cert_command = "${certdir}/bootstrap"
+ 
  			#
-Only in freeradius-server-2.1.8/raddb: eap.conf~
+ 			#  Elliptical cryptography configuration
+Only in freeradius-server-2.1.12/raddb: eap.conf.orig
