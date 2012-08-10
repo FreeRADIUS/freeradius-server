@@ -152,12 +152,12 @@ This plugin provides the unixODBC support for the FreeRADIUS server project.
 %patch1 -p1 -b .cert-config
 %patch2 -p1 -b .radtest
 #%patch3 -p1 -b .man
-#%patch4 -p1 -b unix-passwd-expire
-%patch5 -p1 -b radeapclient-ipv6
-%patch6 -p1 -b postgres-sql
+#%patch4 -p1 -b .unix-passwd-expire
+%patch5 -p1 -b .radeapclient-ipv6
+%patch6 -p1
 #%patch7 -p1 -b perl
-%patch8 -p1 -b dhcp_sqlippool
-%patch9 -p1 -b rlm_wimax
+%patch8 -p1
+%patch9 -p1 -b .rlm_wimax
 
 # Some source files mistakenly have execute permissions set
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +
