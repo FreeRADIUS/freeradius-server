@@ -383,6 +383,8 @@ exit 0
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sradutmp
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/unix
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/wimax
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/dhcp_sqlippool
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/radrelay
 # binaries
 %defattr(-,root,root)
 /usr/sbin/checkrad
