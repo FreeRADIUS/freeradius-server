@@ -18,6 +18,7 @@ Patch2: freeradius-radtest.patch
 Patch5: freeradius-radeapclient-ipv6.patch
 Patch6: freeradius-postgres-sql.patch
 #Patch7: freeradius-perl.patch
+Patch8: freeradius-dhcp_sqlippool.patch
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -154,6 +155,7 @@ This plugin provides the unixODBC support for the FreeRADIUS server project.
 %patch5 -p1 -b radeapclient-ipv6
 %patch6 -p1 -b postgres-sql
 #%patch7 -p1 -b perl
+%patch8 -p1 -b dhcp_sqlippool
 
 # Some source files mistakenly have execute permissions set
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +

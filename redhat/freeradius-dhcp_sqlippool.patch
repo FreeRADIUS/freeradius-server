@@ -1,0 +1,18 @@
+diff --git a/raddb/modules/dhcp_sqlippool b/raddb/modules/dhcp_sqlippool
+index 39358b2..2a29daf 100644
+--- a/raddb/modules/dhcp_sqlippool
++++ b/raddb/modules/dhcp_sqlippool
+@@ -14,8 +14,11 @@ sqlippool dhcp_sqlippool {
+ 	# Client's MAC address is mapped to Calling-Station-Id in policy.conf
+ 	pool-key = "%{Calling-Station-Id}"
+ 
+-	# For now, it only works with MySQL.
+-	$INCLUDE ${confdir}/sql/mysql/ippool-dhcp.conf
++	# For now, it only works with MySQL. 
++	# This line is commented by default to enable clean startup when you
++	# don't have freeradius-mysql installed. Uncomment this line if you 
++	# use this module.
++	#$INCLUDE ${confdir}/sql/mysql/ippool-dhcp.conf
+  
+ 	sqlippool_log_exists = "DHCP: Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+ 
