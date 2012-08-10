@@ -1,0 +1,9 @@
+diff --git a/src/modules/stable b/src/modules/stable
+index 39d4516..dd9aa40 100644
+--- a/src/modules/stable
++++ b/src/modules/stable
+@@ -41,3 +41,4 @@ rlm_unix
+ rlm_policy
+ rlm_dynamic_clients
+ rlm_replicate
++rlm_wimax

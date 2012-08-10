@@ -12,6 +12,14 @@ Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
 
 Patch1: freeradius-cert-config.patch
+Patch2: freeradius-radtest.patch
+#Patch3: freeradius-man.patch
+#Patch4: freeradius-unix-passwd-expire.patch
+Patch5: freeradius-radeapclient-ipv6.patch
+Patch6: freeradius-postgres-sql.patch
+#Patch7: freeradius-perl.patch
+Patch8: freeradius-dhcp_sqlippool.patch
+Patch9: freeradius-rlm_wimax.patch
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -142,6 +150,15 @@ This plugin provides the unixODBC support for the FreeRADIUS server project.
 %prep
 %setup -q -n freeradius-server-%{version}
 %patch1 -p1 -b .cert-config
+%patch2 -p1 -b .radtest
+#%patch3 -p1 -b .man
+#%patch4 -p1 -b .unix-passwd-expire
+%patch5 -p1 -b .radeapclient-ipv6
+%patch6 -p1
+#%patch7 -p1 -b perl
+%patch8 -p1
+%patch9 -p1 -b .rlm_wimax
+
 # Some source files mistakenly have execute permissions set
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +
 
@@ -155,7 +172,9 @@ export CFLAGS="$RPM_OPT_FLAGS -fpic"
 %configure \
         --libdir=%{_libdir}/freeradius \
         --with-system-libtool \
+        --with-system-libltdl \
         --disable-ltdl-install \
+        --with-udpfromto \
         --with-gnu-ld \
         --with-threads \
         --with-thread-pool \
@@ -178,12 +197,10 @@ export CFLAGS="$RPM_OPT_FLAGS -fpic"
 perl -pi -e 's:sys_lib_search_path_spec=.*:sys_lib_search_path_spec="/lib64 /usr/lib64 /usr/local/lib64":' libtool
 %endif
 
-make
+make LINK_MODE=-pie
 
 %install
-rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/var/run/radiusd
-mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
+mkdir -p $RPM_BUILD_ROOT/%{_localstatedir}/lib/radiusd
 # fix for bad libtool bug - can not rebuild dependent libs and bins
 #FIXME export LD_LIBRARY_PATH=$RPM_BUILD_ROOT/%{_libdir}
 make install R=$RPM_BUILD_ROOT
@@ -199,6 +216,9 @@ install -D -m 755 %{SOURCE100} $RPM_BUILD_ROOT/%{initddir}/radiusd
 install -D -m 644 %{SOURCE102} $RPM_BUILD_ROOT/%{_sysconfdir}/logrotate.d/radiusd
 install -D -m 644 %{SOURCE103} $RPM_BUILD_ROOT/%{_sysconfdir}/pam.d/radiusd
 
+mkdir -p %{buildroot}%{_localstatedir}/run/
+install -d -m 0710 %{buildroot}%{_localstatedir}/run/radiusd/
+
 # remove unneeded stuff
 rm -rf doc/00-OLD
 rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
@@ -210,7 +230,7 @@ rm -rf $RPM_BUILD_ROOT/%{_datadir}/dialup_admin/sql/oracle
 rm -rf $RPM_BUILD_ROOT/%{_datadir}/dialup_admin/lib/sql/oracle
 rm -rf $RPM_BUILD_ROOT/%{_datadir}/dialup_admin/lib/sql/drivers/oracle
 
-# remove header files, we don't ship a devel package and the 
+# remove header files, we don't ship a devel package and the
 # headers have multilib conflicts
 rm -rf $RPM_BUILD_ROOT/%{_includedir}
 
@@ -237,37 +257,39 @@ Please reference that document.
 
 EOF
 
-%clean
-rm -rf $RPM_BUILD_ROOT
-
-
 
 # Make sure our user/group is present prior to any package or subpackage installation
 %pre
-getent group  radiusd >/dev/null || /usr/sbin/groupadd -r -g 95 radiusd
+getent group  radiusd >/dev/null || /usr/sbin/groupadd -r -g 95 radiusd > /dev/null 2>&1
 getent passwd radiusd >/dev/null || /usr/sbin/useradd  -r -g radiusd -u 95 -c "radiusd user" -s /sbin/nologin radiusd > /dev/null 2>&1
 exit 0
 
 %post
-if [ $1 = 1 ]; then
+if [ $1 -eq 1 ]; then           # install
   /sbin/chkconfig --add radiusd
   if [ ! -e /etc/raddb/certs/server.pem ]; then
-    /sbin/runuser -g radiusd -c 'umask 007; /etc/raddb/certs/bootstrap' > /dev/null 2>&1 || :
+    /sbin/runuser -g radiusd -c 'umask 007; /etc/raddb/certs/bootstrap' > /dev/null 2>&1
   fi
 fi
+exit 0
 
 %preun
-if [ $1 = 0 ]; then
+if [ $1 -eq 0 ]; then           # uninstall
   /sbin/service radiusd stop > /dev/null 2>&1
   /sbin/chkconfig --del radiusd
 fi
+exit 0
 
 
 %postun
-if [ $1 -ge 1 ]; then
-  /sbin/service radiusd condrestart >/dev/null 2>&1 || :
+if [ $1 -ge 1 ]; then           # upgrade
+  /sbin/service radiusd condrestart >/dev/null 2>&1
 fi
-
+if [ $1 -eq 0 ]; then           # uninstall
+  getent passwd radiusd >/dev/null && /usr/sbin/userdel  radiusd > /dev/null 2>&1
+  getent group  radiusd >/dev/null && /usr/sbin/groupdel radiusd > /dev/null 2>&1
+fi
+exit 0
 
 %files
 %defattr(-,root,root)
@@ -275,7 +297,8 @@ fi
 %config(noreplace) %{_sysconfdir}/pam.d/radiusd
 %config(noreplace) %{_sysconfdir}/logrotate.d/radiusd
 %{initddir}/radiusd
-%dir %attr(755,radiusd,radiusd) /var/lib/radiusd
+%dir %attr(710,radiusd,radiusd) %{_localstatedir}/run/radiusd
+%dir %attr(755,radiusd,radiusd) %{_localstatedir}/lib/radiusd
 # configs
 %dir %attr(755,root,radiusd) /etc/raddb
 %defattr(-,root,radiusd)
@@ -361,7 +384,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sradutmp
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/unix
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/wimax
-%dir %attr(755,radiusd,radiusd) /var/run/radiusd/
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/dhcp_sqlippool
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/radrelay
 # binaries
 %defattr(-,root,root)
 /usr/sbin/checkrad
@@ -510,7 +534,6 @@ fi
 %{_libdir}/freeradius/rlm_wimax-%{version}.so
 
 %files utils
-%defattr(-,root,root)
 /usr/bin/*
 # man-pages
 %doc %{_mandir}/man1/radclient.1.gz
@@ -519,27 +542,30 @@ fi
 %doc %{_mandir}/man1/radtest.1.gz
 %doc %{_mandir}/man1/radwho.1.gz
 %doc %{_mandir}/man1/radzap.1.gz
+%doc %{_mandir}/man1/smbencrypt.1.gz
+%doc %{_mandir}/man5/checkrad.5.gz
+%doc %{_mandir}/man8/radconf2xml.8.gz
+%doc %{_mandir}/man8/radcrypt.8.gz
+%doc %{_mandir}/man8/radsniff.8.gz
 %doc %{_mandir}/man8/radsqlrelay.8.gz
+%doc %{_mandir}/man8/rlm_dbm_cat.8.gz
+%doc %{_mandir}/man8/rlm_dbm_parser.8.gz
 %doc %{_mandir}/man8/rlm_ippool_tool.8.gz
 
 %files krb5
-%defattr(-,root,root)
 %{_libdir}/freeradius/rlm_krb5.so
 %{_libdir}/freeradius/rlm_krb5-%{version}.so
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/krb5
 
 %files perl
-%defattr(-,root,root)
 %{_libdir}/freeradius/rlm_perl.so
 %{_libdir}/freeradius/rlm_perl-%{version}.so
 
 %files python
-%defattr(-,root,root)
 %{_libdir}/freeradius/rlm_python.so
 %{_libdir}/freeradius/rlm_python-%{version}.so
 
 %files mysql
-%defattr(-,root,root)
 %dir %attr(750,root,radiusd) /etc/raddb/sql/mysql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sql/mysql/*
 %dir %attr(750,root,radiusd) /etc/raddb/sql/ndb
@@ -548,27 +574,51 @@ fi
 %{_libdir}/freeradius/rlm_sql_mysql-%{version}.so
 
 %files postgresql
-%defattr(-,root,root)
 %dir %attr(750,root,radiusd) /etc/raddb/sql/postgresql
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sql/postgresql/*
 %{_libdir}/freeradius/rlm_sql_postgresql.so
 %{_libdir}/freeradius/rlm_sql_postgresql-%{version}.so
 
 %files ldap
-%defattr(-,root,root)
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/ldap.attrmap
 %{_libdir}/freeradius/rlm_ldap.so
 %{_libdir}/freeradius/rlm_ldap-%{version}.so
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/ldap
 
 %files unixODBC
-%defattr(-,root,root)
 %{_libdir}/freeradius/rlm_sql_unixodbc.so
 %{_libdir}/freeradius/rlm_sql_unixodbc-%{version}.so
 
 %changelog
-* Wed Sep 22 2010 John Dennis <jdennis@redhat.com> - 2.1.10-1
-- upgrade to latest upstream release
+* Tue Apr 10 2012 John Dennis <jdennis@redhat.com> - 2.1.12-2
+- resolves: bug#810605 Segfault with freeradius-perl threading
+
+* Mon Feb 27 2012 John Dennis <jdennis@redhat.com> - 2.1.12-1
+- Upgrade to latest upstream release: 2.1.12
+  resolves: bug#736878 Rebase to latest upstream
+  resolves: bug#705723 logrotate script does not reload running daemon
+  resolves: bug#787116 radtest PPPhint option not parsed correctly
+  resolves: bug#700870 freeradius not compiled with --with-udpfromto
+  resolves: bug#753764 shadow password expiration does not work
+  resolves: bug#712803 radtest script is not working with eap-md5 option
+  resolves: bug#690756 errors in raddb/sql/postgresql/admin.sql template
+
+* Thu Mar 24 2011 John Dennis <jdennis@redhat.com> - 2.1.10-5
+- Resolves: #689045 Using rlm_perl cause radiusd failed to start
+  Fix configure typo which caused lt_dladvise_* functions to be skipped.
+  run autogen.sh because HAVE_LT_DLADVISE_INIT isn't in src/main/autogen.h
+  Implemented by: freeradius-lt-dladvise.patch
+
+* Wed Feb 23 2011 John Dennis <jdennis@redhat.com> - 2.1.10-4
+- Resolves: #599528 - make radtest IPv6 compatible
+
+* Wed Jan 12 2011 John Dennis <jdennis@redhat.com> - 2.1.10-3
+- Resolves: #644100, Rebase to current release
+- Fix 666589 - removing freeradius from system does not delete the user "radiusd"
+  fix scriptlet argument testing, simplify always exiting with zero
+
+* Tue Oct 19 2010 John Dennis <jdennis@redhat.com> - 2.1.10-1
+- Upgrade to latest upstream release
   Feature improvements
   * Install the "radcrypt" program.
   * Enable radclient to send requests containing MS-CHAPv1
@@ -601,8 +651,8 @@ fi
   * Add Module-Failure-Message for mschap module (ntlm_auth)
   * made rlm_sql_sqlite database configurable.  Use "filename"
     in sql{} section.
-  * Added %{tolower: ...string ... }, which returns the lowercase
-    version of the string.
+  * Added %%{tolower: ...string ... }, which returns the lowercase
+    version of the string.  Also added %%{toupper: ... } for uppercase.
 
   Bug fixes
   * Fix endless loop when there are multiple sub-options for
@@ -694,8 +744,8 @@ fi
   * Fix hang on startup when multiple home servers were defined
     with "src_ipaddr" field.
   * Fix 32/64 bit issue in rlm_ldap.  Closes bug #105.
-  * If the first "listen" section uses 127.0.0.1, don't use that
-    as the source IP for proxying.  It won't work.
+  * If the first "listen" section defines 127.0.0.1, don't use that
+    as a source IP for proxying.  It won't work.
   * When Proxy-To-Realm is set to a non-existent realm, the EAP module
     should handle the request, rather than expecting it to be proxied.
   * Fix IPv4 issues with udpfromto.  Closes bug #110.
@@ -704,16 +754,20 @@ fi
   * Multiple calls to ber_printf seem to work better.  Closes #106.
   * Fix "unlang" so that "attribute not found" is treated as a "false"
     comparison, rather than a syntax error in the configuration.
+  * Fix issue with "Group" attribute.
 
+* Fri Sep  3 2010 Nalin Dahyabhai <nalin@redhat.com> - 2.1.9-3
+- Resolves: bug #629951
+  override LINK_MODE at compile-time to add -pie to linker flags, so that
+  radiusd will be built as a PIE
 
-* Sat Jul 31 2010 Orcan Ogetbil <oget[dot]fedora[at]gmail[dot]com> - 2.1.9-3
-- Rebuilt for https://fedoraproject.org/wiki/Features/Python_2.7/MassRebuild
-
-* Tue Jun 01 2010 Marcela Maslanova <mmaslano@redhat.com> - 2.1.9-2
-- Mass rebuild with perl-5.12.0
+* Thu Jun 10 2010 John Dennis <jdennis@redhat.com> - 2.1.9-2
+- Resolves: bug #599521
+  use DNS to resolve NAS-IPv6-Address attribute
 
 * Mon May 24 2010 John Dennis <jdennis@redhat.com> - 2.1.9-1
 - update to latest upstream, mainly bug fix release
+- Resolves: bug #584101
   Feature improvements
   * Add radmin command "stats detail <file>" to see what
     is going on inside of a detail file reader.
@@ -787,12 +841,15 @@ fi
   * Allow spaces when parsing integer values.  This helps people who
     put "too much" into an SQL value field.
 
+* Thu Apr  8 2010 John Dennis <jdennis@redhat.com> - 2.1.8-3
+- Resolves: bug #539466
+
 * Thu Jan  7 2010 John Dennis <jdennis@redhat.com> - 2.1.8-2
-- resolves: bug #526559 initial install should run bootstrap to create certificates
+- bug #526559 initial install should run bootstrap to create certificates
   running radiusd in debug mode to generate inital temporary certificates
   is no longer necessary, the /etc/raddb/certs/bootstrap is invoked on initial
   rpm install (not upgrade) if there is no existing /etc/raddb/certs/server.pem file
-- resolves: bug #528493 use sha1 algorithm instead of md5 during cert generation
+- bug #528493 use sha1 algorithm instead of md5 during cert generation
   the certificate configuration (/etc/raddb/certs/{ca,server,client}.cnf) files
   were modifed to use sha1 instead of md5 and the validity reduced from 1 year to 2 months
 
@@ -865,7 +922,7 @@ fi
 - rebuild against perl 5.10.1
 
 * Thu Dec  3 2009 John Dennis <jdennis@redhat.com> - 2.1.7-3
-- resolves: bug #522111 non-conformant initscript
+- bug #522111 non-conformant initscript
   also change permission of /var/run/radiusd from 0700 to 0755
   so that "service radiusd status" can be run as non-root
 
