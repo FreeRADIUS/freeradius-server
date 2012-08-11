@@ -561,7 +561,6 @@ int modcall(int component, modcallable *c, REQUEST *request)
 							   g->children,
 							   request);
 					if (myresult == MOD_ACTION_RETURN) {
-						myresult = RLM_MODULE_OK;
 						break;
 					}
 					vp = pairfind(vp->next,
