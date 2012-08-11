@@ -487,8 +487,8 @@ redo:
 		switch (err) {
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
-			rcode = 0;
 			goto redo;
+
 		case SSL_ERROR_ZERO_RETURN:
 			/* remote end sent close_notify, send one back */
 			SSL_shutdown(sock->ssn->ssl);
@@ -525,7 +525,6 @@ redo:
 		switch (SSL_get_error(sock->ssn->ssl, rcode)) {
 		case SSL_ERROR_WANT_READ:
 		case SSL_ERROR_WANT_WRITE:
-			rcode = 0;
 			break;
 
 		case SSL_ERROR_ZERO_RETURN:
@@ -558,12 +557,10 @@ redo:
 	case PW_AUTHENTICATION_ACK:
 	case PW_ACCESS_CHALLENGE:
 	case PW_AUTHENTICATION_REJECT:
-		fun = rad_authenticate;
 		break;
 
 #ifdef WITH_ACCOUNTING
 	case PW_ACCOUNTING_RESPONSE:
-		fun = rad_accounting;
 		break;
 #endif
 
