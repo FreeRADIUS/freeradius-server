@@ -472,7 +472,6 @@ int proxy_tls_recv(rad_listen_t *listener)
 	listen_socket_t *sock = listener->data;
 	char buffer[256];
 	RADIUS_PACKET *packet;
-	RAD_REQUEST_FUNP fun = NULL;
 	uint8_t *data;
 
 	if (!sock->data) sock->data = rad_malloc(sock->ssn->offset);
