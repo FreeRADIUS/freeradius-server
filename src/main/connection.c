@@ -437,7 +437,12 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 
 		if (cf_section_sub_find(cs, "trigger")) fc->trigger = TRUE;
 	} else {
-		fc->max = 1024;
+		fc->start = 5;
+		fc->min = 5;
+		fc->max = 10;
+		fc->spare = 3;
+		fc->cleanup_delay = 5;
+		fc->idle_timeout = 60;
 	}
 
 	/*
