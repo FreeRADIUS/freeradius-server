@@ -843,24 +843,18 @@ static int parse_sub_section(CONF_SECTION *parent,
 	const char *name = section_type_value[comp].section;
 	
 	cs = cf_section_sub_find(parent, name);
-	if (!cs) {
-		/* TODO: Should really setup section with default values */
-		goto error;
-	}
+	if (!cs) return 1;	/* no section == OK */
 	
-	if (cf_section_parse(cs, config, section_config) < 0)
-		goto error;
+	if (cf_section_parse(cs, config, section_config) < 0) {
+		radlog(L_ERR, "Failed parsing configuration for section %s",
+		       name);
+		
+		return -1;
+	}
 		
 	config->cs = cs;
 
 	return 1;
-	
-	error:
-	radlog(L_ERR, "Failed parsing configuration for section %s",
-	       name);
-	
-	return -1;
-		
 }
 
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
@@ -889,17 +883,14 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
 	 */
-	if (
-		(cf_section_parse(conf, inst->config, module_config) < 0) ||
-		(parse_sub_section(conf, inst,
-				   &inst->config->accounting,
-				   RLM_COMPONENT_ACCT) < 0) ||
-		(parse_sub_section(conf, inst,
-				   &inst->config->postauth,
-				   RLM_COMPONENT_POST_AUTH) < 0)
-	) {
+	if ((cf_section_parse(conf, inst->config, module_config) < 0) ||
+	    (parse_sub_section(conf, inst,
+			       &inst->config->accounting,
+			       RLM_COMPONENT_ACCT) < 0) ||
+	    (parse_sub_section(conf, inst,
+			       &inst->config->postauth,
+			       RLM_COMPONENT_POST_AUTH) < 0)) {
 		radlog(L_ERR, "Failed parsing configuration");
-			
 		goto error;
 	}
 
