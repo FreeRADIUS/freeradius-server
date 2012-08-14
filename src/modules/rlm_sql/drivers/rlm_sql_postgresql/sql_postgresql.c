@@ -211,9 +211,6 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
 	char *errorcode;
 	char *errormsg;
 
-	if (config->sqltrace)
-		radlog(L_DBG,"rlm_sql_postgresql: query:\n%s", querystr);
-
 	if (pg_sock->conn == NULL) {
 		radlog(L_ERR, "rlm_sql_postgresql: Socket not connected");
 		return SQL_DOWN;

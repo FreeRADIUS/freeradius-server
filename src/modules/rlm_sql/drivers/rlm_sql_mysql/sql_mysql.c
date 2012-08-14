@@ -186,8 +186,6 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
-	if (config->sqltrace)
-		radlog(L_DBG,"rlm_sql_mysql: query:  %s", querystr);
 	if (mysql_sock->sock == NULL) {
 		radlog(L_ERR, "rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;

@@ -132,8 +132,6 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 		return -1;
 	}
 
-	if (config->sqltrace)
-		radlog(L_DBG, "rlm_sql:  %s", querystr);
 	if (iodbc_sock->dbc_handle == NULL) {
 		radlog(L_ERR, "sql_query:  Socket not connected");
 		return -1;

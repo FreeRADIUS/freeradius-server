@@ -154,9 +154,6 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr)
 {
 	rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
 	
-	if (config->sqltrace)
-		radlog(L_DBG,"rlm_sql_freetds: query:  %s", querystr);
-	
 	if (freetds_sock->dbproc == NULL || DBDEAD(freetds_sock->dbproc)) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Socket not connected", config->xlat_name);
 		return SQL_DOWN;

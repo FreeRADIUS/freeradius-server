@@ -113,8 +113,6 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
 	const char *zTail;
 	
-	if (config->sqltrace)
-		radlog(L_DBG,"rlm_sql_sqlite: query:  %s", querystr);
 	if (sqlite_sock->pDb == NULL) {
 		radlog(L_ERR, "rlm_sql_sqlite: Socket not connected");
 		return SQL_DOWN;
