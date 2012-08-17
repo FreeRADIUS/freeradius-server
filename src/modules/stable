@@ -42,3 +42,4 @@ rlm_policy
 rlm_dynamic_clients
 rlm_replicate
 rlm_sometimes
+rlm_wimax
