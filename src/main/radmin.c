@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2008   The FreeRADIUS server project
- * Copyright 2008   Alan DeKok <aland@deployingradius.com>
+ * Copyright 2012   The FreeRADIUS server project
+ * Copyright 2012   Alan DeKok <aland@deployingradius.com>
  */
 
 #include <freeradius-devel/ident.h>
@@ -607,7 +607,7 @@ int main(int argc, char **argv)
 
 	if (!done_license && !quiet) {
 		printf("radmin " RADIUSD_VERSION " - FreeRADIUS Server administration tool.\n");
-		printf("Copyright (C) 2008-2011 The FreeRADIUS server project and contributors.\n");
+		printf("Copyright (C) 2008-2012 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");
 		printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
