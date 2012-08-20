@@ -1577,12 +1577,6 @@ edit radiusd.conf::
                     locking = yes
             }
 
-            acct_unique {
-                    key = "User-Name, Acct-Session-Id, NAS-IP-Address,
-    Client-IP-Address, NAS-Port-Id"
-            }
-
-
             #radutmp {
             #	filename = ${logdir}/radutmp
             #	perm = 0600

@@ -1,5 +1,4 @@
 rlm_acctlog
-rlm_acct_unique
 rlm_always
 rlm_attr_filter
 rlm_attr_rewrite

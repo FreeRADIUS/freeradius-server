@@ -329,7 +329,6 @@ fi
 %doc %{_mandir}/man5/dictionary.5.gz
 %doc %{_mandir}/man5/radiusd.conf.5.gz
 %doc %{_mandir}/man5/radrelay.conf.5.gz
-%doc %{_mandir}/man5/rlm_acct_unique.5.gz
 %doc %{_mandir}/man5/rlm_always.5.gz
 %doc %{_mandir}/man5/rlm_attr_filter.5.gz
 %doc %{_mandir}/man5/rlm_attr_rewrite.5.gz
@@ -368,8 +367,6 @@ fi
 %dir %attr(755,root,root) %{_libdir}/freeradius
 #%attr(755,root,root) %{_libdir}/freeradius/rlm_*.so*
 #%{_libdir}/freeradius/rlm_acctlog*.so
-%{_libdir}/freeradius/rlm_acct_unique.so
-%{_libdir}/freeradius/rlm_acct_unique-%{version}.so
 %{_libdir}/freeradius/rlm_acctlog.so
 %{_libdir}/freeradius/rlm_acctlog-%{version}.so
 %{_libdir}/freeradius/rlm_always.so

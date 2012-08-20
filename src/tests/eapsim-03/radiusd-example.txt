@@ -946,20 +946,6 @@ modules {
 		detailperm = 0600
 	}
 
-	# Create a unique accounting session Id.  Many NASes re-use or
-	# repeat values for Acct-Session-Id, causing no end of
-	# confusion.
-	#
-	#  This module will add a (probably) unique session id 
-	#  to an accounting packet based on the attributes listed
-	#  below found in the packet.  See doc/rlm_acct_unique for
-	#  more information.
-	#
-	acct_unique {
-		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port-Id"
-	}
-
-
 	#  Include another file that has the SQL-related configuration.
 	#  This is another file only because it tends to be big.
 	#

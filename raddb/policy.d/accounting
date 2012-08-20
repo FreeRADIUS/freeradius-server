@@ -4,8 +4,7 @@
 class_value_prefix = 'ai:'
 
 #
-# 	Overload the default acct_unique module, it's not
-# 	smart enough.
+#	Replacement for the old rlm_acct_unique module
 #
 acct_unique {
 	#
