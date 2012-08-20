@@ -46,7 +46,7 @@ acct_unique {
 	#
 	else {
 		update request {
-			Acct-Unique-Session-Id := "%{md5:%{User-Name}%{Acct-Session-ID}%{NAS-IP-Address}%{NAS-Port-ID}%{NAS-Port}}" 
+			Acct-Unique-Session-Id := "%{md5:%{User-Name}%{Acct-Session-ID}%{NAS-IP-Address}%{NAS-Identifier}%{NAS-Port-ID}%{NAS-Port}}" 
 		 }	 
 	}	 
 }	 
