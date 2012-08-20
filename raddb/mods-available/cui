@@ -22,8 +22,15 @@ sql cui {
 	radius_db = "db_name"
 #	sqltrace = yes
 #	sqltracefile = ${logdir}/cuitrace.sql
-	num_sql_socks = 5
-	connect_failure_retry_delay = 60
+        pool {
+                start = 5
+                min = 4
+                max = 10
+                spare = 3
+                uses = 0
+                lifetime = 0
+                idle_timeout = 60
+        }
 	cui_table = "cui"
 	sql_user_name = "%{User-Name}"
 #$INCLUDE sql/${database}/cui.conf
