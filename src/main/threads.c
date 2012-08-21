@@ -927,10 +927,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 	 *	Allocate multiple fifos.
 	 */
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
-		int num = mainconfig.max_requests;
-
-		if (!num || (num > 65536)) num = 65536;
-		thread_pool.fifo[i] = fr_fifo_create(num, NULL);
+		thread_pool.fifo[i] = fr_fifo_create(thread_pool.max_queue_size, NULL);
 		if (!thread_pool.fifo[i]) {
 			radlog(L_ERR, "FATAL: Failed to set up request fifo");
 			return -1;
