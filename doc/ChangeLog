@@ -20,6 +20,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  It runs as a DHCP server ONLY when manually enabled.
 	* Added one letter expansions: %G - request minute and %I request
 	  ID.
+	* Script to convert ISC DHCP lease files to SQL pools.
+	  See scripts/isc2ippool.pl
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
@@ -67,6 +69,9 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  Closes bug #207.
 	* Operator =~ shouldn't copy the attribute, like :=.  It should
 	  instead behave more like ==.
+	* Build main Debian package without SQL dependencies
+	* Use max_queue_size in threading code
+	* Update permissions in raddb/sql/postgresql/admin.sql
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
