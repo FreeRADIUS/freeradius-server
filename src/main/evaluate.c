@@ -1122,18 +1122,18 @@ struct conf_pair {
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name)
 {
+	int list;
 	CONF_ITEM *ci;
 	VALUE_PAIR *newlist, *vp;
 	VALUE_PAIR **output_vps;
-	
-	int list;
+	REQUEST *update_request = request;
 
 	if (!request || !cs) return RLM_MODULE_INVALID;
 
 	/* 
 	 *	Qualifiers not valid for this request
 	 */
-	if(!radius_ref_request(&request, &name)){
+	if(!radius_ref_request(&update_request, &name)){
 		RDEBUG("WARNING: List name refers to outer request"
 		       " but not in a tunnel.");
 		return RLM_MODULE_NOOP; 
@@ -1145,11 +1145,11 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	 *	Bad list name name
 	 */
 	if (list == PAIR_LIST_UNKNOWN) {
-		RDEBUG("ERROR: Invalid list name");
+		RDEBUG("ERROR: Invalid list name '%s'", name);
 		return RLM_MODULE_INVALID;
 	}
 	
-	output_vps = radius_list(request, list);
+	output_vps = radius_list(update_request, list);
 	
 	rad_assert(output_vps);
 
@@ -1208,7 +1208,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		vp = vp->next;
 	}
 
-	radius_pairmove(request, output_vps, newlist);
+	radius_pairmove(update_request, output_vps, newlist);
 
 	return RLM_MODULE_UPDATED;
 }
