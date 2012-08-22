@@ -296,7 +296,8 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 	}
 	
 	while (1) {
-		DEBUG("Executing query %s", query);
+		DEBUG("rlm_sql (%s): Executing query: '%s'",
+		      inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
 		/*
@@ -313,7 +314,7 @@ int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 		
 		if (ret < 0) {
 			radlog(L_ERR,
-				   "rlm_sql (%s): Database query error '%s'",
+				   "rlm_sql (%s): Database query error: '%s'",
 				   inst->config->xlat_name,
 				   (inst->module->sql_error)(*sqlsocket, inst->config));
 		}
@@ -346,7 +347,8 @@ int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 	}
 	
 	while (1) {
-		DEBUG("Executing query %s", query);
+		DEBUG("rlm_sql (%s): Executing query: '%s'",
+		      inst->config->xlat_name, query);
 
 		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config, query);
 		/*
@@ -385,17 +387,18 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char 
 	SQL_ROW row;
 	int     rows = 0;
 
-	if (rlm_sql_select_query(sqlsocket, inst, query)) {
-		radlog(L_ERR, "rlm_sql_getvpdata: Database query error");
+	if (rlm_sql_select_query(sqlsocket, inst, query))
 		return -1;
-	}
+
 	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
 		row = (*sqlsocket)->row;
 		if (!row)
 			break;
 		if (sql_userparse(pair, row) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
+			
 			(inst->module->sql_finish_select_query)(*sqlsocket, inst->config);
+			
 			return -1;
 		}
 		rows++;
@@ -429,14 +432,14 @@ void rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
 
 	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
 	if (fd < 0) {
-		radlog(L_ERR, "rlm_sql (%s): Couldn't open logfile %s: %s",
+		radlog(L_ERR, "rlm_sql (%s): Couldn't open logfile '%s': %s",
 		       inst->config->xlat_name, buffer, strerror(errno));
 		return;
 	}
 
 	rad_lockfd(fd, MAX_QUERY_LEN);
 	if ((write(fd, query, strlen(query) < 0) || (write(fd, ";\n", 2) < 0)))
-		radlog(L_ERR, "rlm_sql (%s): Failed writing to logfile %s: %s",
+		radlog(L_ERR, "rlm_sql (%s): Failed writing to logfile '%s': %s",
 		       inst->config->xlat_name, buffer, strerror(errno));
 
 	close(fd);		/* and release the lock */

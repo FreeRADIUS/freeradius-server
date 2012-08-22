@@ -1320,7 +1320,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	
 	null_query:
 	
-	radlog_request(L_DBG, 0, request, "Ignoring null query");
+	RDEBUG("Ignoring null query");
 	
 	sql_release_socket(inst, sqlsocket);
 
