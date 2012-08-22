@@ -843,7 +843,12 @@ static int parse_sub_section(CONF_SECTION *parent,
 	const char *name = section_type_value[comp].section;
 	
 	cs = cf_section_sub_find(parent, name);
-	if (!cs) return 1;	/* no section == OK */
+	if (!cs) {
+		radlog(L_INFO, "Couldn't find configuration for %s. \
+		       Will return NOOP for calls from this section.", name);
+		
+		 return 1;
+	}
 	
 	if (cf_section_parse(cs, config, section_config) < 0) {
 		radlog(L_ERR, "Failed parsing configuration for section %s",
@@ -1222,6 +1227,12 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	
 	char	*p = path;
 
+	if (!section) {
+		DEBUG("No configuration provided for this section");
+		
+		return RLM_MODULE_NOOP;	
+	}
+	
 	sql_set_user(inst, request, sqlusername, NULL);
 	
 	if (section->reference[0] != '.')
