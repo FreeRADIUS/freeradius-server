@@ -105,6 +105,8 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
 	{"postauth_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,postauth_query), NULL, ""},
+	{"post_proxy_reply_query", PW_TYPE_STRING_PTR,
+	 offsetof(SQL_CONFIG,post_proxy_reply_query), NULL, ""},
 	{"safe-characters", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,allowed_chars), NULL,
 	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
@@ -1193,6 +1195,94 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 }
 
 /*
+  Look up additional reply-attributes in a table similar to, or even the same as,
+  the authreply_table. The attributes from the home server may be overwritten
+  by this function.
+*/
+
+
+static int rlm_sql_post_proxy(void *instance, REQUEST * request)
+{
+	VALUE_PAIR *reply_tmp = NULL;
+	int     found = 0;
+	int	rows;
+	SQLSOCK *sqlsocket;
+	SQL_INST *inst = instance;
+	char    querystr[MAX_QUERY_LEN];
+	char	sqlusername[MAX_STRING_LEN];
+	/*
+	 * the profile username is used as the sqlusername during
+	 * profile checking so that we don't overwrite the orignal
+	 * sqlusername string
+	 */
+	char   profileusername[MAX_STRING_LEN];
+
+	/*
+	 * Set, escape, and check the user attr here
+	 */
+	if (sql_set_user(inst, request, sqlusername, NULL) < 0)
+		return RLM_MODULE_FAIL;
+
+
+	/*
+	 * reserve a socket
+	 */
+	sqlsocket = sql_get_socket(inst);
+	if (sqlsocket == NULL) {
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+		return RLM_MODULE_FAIL;
+	}
+
+
+	/*
+	 *  After this point, ALL 'return's MUST release the SQL socket!
+	 */
+
+	/*
+	 * Alright, start by getting the specific entry for the user
+	 */
+	if (!radius_xlat(querystr, sizeof(querystr), inst->config->post_proxy_reply_query, request, sql_escape_func)) {
+		radlog_request(L_ERR, 0, request, "Error generating query; leaving home-server reply unchanged");
+		sql_release_socket(inst, sqlsocket);
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+		return RLM_MODULE_NOOP;
+	}
+	rows = sql_getvpdata(inst, sqlsocket, &reply_tmp, querystr);
+
+	if (rows < 0) {
+		sql_release_socket(inst, sqlsocket);
+		/* Remove the username we (maybe) added above */
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+		pairfree(&reply_tmp);
+		return RLM_MODULE_NOOP;
+	} else if (rows > 0) {
+		/*
+		 *	Only do this if *some* check pairs were returned
+		 */
+		found = 1;
+		pairxlatmove(request, &request->reply->vps, &reply_tmp);
+	}
+
+	/*
+	 *	Clear out the pairlists
+	 */
+	pairfree(&reply_tmp);
+
+	/* Remove the username we (maybe) added above */
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME);
+	sql_release_socket(inst, sqlsocket);
+
+	if (!found) {
+		RDEBUG("User %s not found", sqlusername);
+		return RLM_MODULE_NOTFOUND;
+	} else {
+		return RLM_MODULE_OK;
+	}
+}
+
+/*
  *	Accounting: save the account data to our sql table
  */
 static int rlm_sql_accounting(void *instance, REQUEST * request) {
@@ -1684,7 +1774,7 @@ module_t rlm_sql = {
 		rlm_sql_accounting,	/* accounting */
 		rlm_sql_checksimul,	/* checksimul */
 		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
+		rlm_sql_post_proxy,		/* post-proxy */
 		rlm_sql_postauth	/* post-auth */
 	},
 };
