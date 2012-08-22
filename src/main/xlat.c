@@ -227,6 +227,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 */
 		p = strchr(p, '[');
 		if (p) {
+			*p = '\0';
 			do_array = TRUE;
 			if (p[1] == '#') {
 				do_count = TRUE;
@@ -241,7 +242,6 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 					return 0;
 				}
 			}
-			*p = '\0';
 		}
 
 		/*
