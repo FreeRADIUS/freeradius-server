@@ -844,8 +844,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
-		radlog(L_INFO, "Couldn't find configuration for %s. \
-		       Will return NOOP for calls from this section.", name);
+		radlog(L_INFO, "Couldn't find configuration for %s. Will return NOOP for calls from this section.", name);
 		
 		 return 1;
 	}
