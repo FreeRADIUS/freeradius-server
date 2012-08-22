@@ -1227,7 +1227,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	char	*p = path;
 
 	if (!section || !section->reference) {
-		DEBUG("No configuration provided for this section");
+		RDEBUG("No configuration provided for this section");
 		
 		return RLM_MODULE_NOOP;	
 	}
