@@ -1179,7 +1179,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 *	or regex reference.
 	 */
 	if (!module_name) {
-		if (isdigit(*p)) {
+		if (isdigit(*p) || !dict_attrbyname(p)) {
 			module_name = xlat_str = p;
 		} else {
 			module_name = internal_xlat[1];
