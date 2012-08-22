@@ -1154,14 +1154,10 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 */
 	module_name = NULL;
 	for (l = p; *l != '\0'; l++) {
-		if (*l == '\\') {
-			l++;
-			continue;
-		}
-
+		/*
+		 *	module:string
+		 */
 		if (*l == ':') {
-			if (isdigit(l[1])) break;
-
 			module_name = p; /* start of name */
 			*l = '\0';
 			p = l + 1;
@@ -1179,10 +1175,9 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 *	or regex reference.
 	 */
 	if (!module_name) {
-		if (isdigit(*p) || !dict_attrbyname(p)) {
+		if (isdigit(*p) && !p[1]) { /* regex 0..8 */
 			module_name = xlat_str = p;
 		} else {
-			module_name = internal_xlat[1];
 			xlat_str = p;
 		}
 		goto do_xlat;
@@ -1209,10 +1204,24 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	xlat_str = p;
 	
 do_xlat:
-	c = xlat_find(module_name);
+	/*
+	 *	Just "foo".  Maybe it's a magic attr, which doesn't
+	 *	really exist.
+	 *
+	 *	If we can't find that, then assume it's a dictionary
+	 *	attribute in the request.
+	 *
+	 *	Else if it's module:foo, look for module, and pass it "foo".
+	 */
+	if (!module_name) {
+		c = xlat_find(xlat_str);
+		if (!c) c = xlat_find("request");
+	} else {
+		c = xlat_find(module_name);
+	}
 	if (!c) {
-		if (module_name == internal_xlat[1]) {
-			RDEBUG2("WARNING: Unknown Attribute \"%s\" in string expansion \"%%%s\"", module_name, *from);
+		if (!module_name) {
+			RDEBUG2("WARNING: Unknown Attribute \"%s\" in string expansion \"%%%s\"", xlat_str, *from);
 		} else {
 			RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", module_name, *from);
 		}
