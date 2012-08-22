@@ -74,6 +74,8 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	FR_TOKEN parsecode;
 	char newfile[8192];
 
+	DEBUG2("reading pairlist file %s", file);
+	
 	/*
 	 *	Open the file.  The error message should be a little
 	 *	more useful...
@@ -132,7 +134,7 @@ parse_again:
 			 *	Include another file if we see
 			 *	$INCLUDE filename
 			 */
-			if (strcasecmp(entry, "$include") == 0) {
+			if (strcasecmp(entry, "$INCLUDE") == 0) {
 				while(isspace((int) *ptr))
 					ptr++;
 
@@ -162,6 +164,7 @@ parse_again:
 				}
 
 				t = NULL;
+				
 				if (pairlist_read(newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
 					radlog(L_ERR|L_CONS,
