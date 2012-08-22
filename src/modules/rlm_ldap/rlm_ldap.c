@@ -249,6 +249,7 @@ static const CONF_PARSER module_config[] = {
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER,
 	 offsetof(ldap_instance,timelimit), NULL, "20"},
+	/* how many times the connection can be used before being re-established */	
 	{"max_uses", PW_TYPE_INTEGER,
 	 offsetof(ldap_instance,max_uses), NULL, "0"},
 
@@ -399,9 +400,11 @@ static inline void ldap_release_conn(int i, ldap_instance *inst)
 
 	DEBUG("  [%s] ldap_release_conn: Release Id: %d", inst->xlat_name, i);
 	if ((inst->max_uses > 0) && (conns[i].uses >= inst->max_uses)) {
-		if (inst->conns[i].ld){
+		if (conns[i].ld){
 			DEBUG("  [%s] ldap_release_conn: Hit max usage limit, closing Id: %d", inst->xlat_name, i);
-			ldap_unbind_s(inst->conns[i].ld);
+			ldap_unbind_s(conns[i].ld);
+			
+			conns[i].ld = NULL	
 		}
 		conns[i].bound = 0;
 		conns[i].uses = 0;
