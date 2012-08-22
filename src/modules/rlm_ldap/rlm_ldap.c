@@ -400,6 +400,7 @@ static inline void ldap_release_conn(int i, ldap_instance *inst)
 	DEBUG("  [%s] ldap_release_conn: Release Id: %d", inst->xlat_name, i);
 	if ((inst->max_uses > 0) && (conns[i].uses >= inst->max_uses)) {
 		if (inst->conns[i].ld){
+			DEBUG("  [%s] ldap_release_conn: Hit max usage limit, closing Id: %d", inst->xlat_name, i);
 			ldap_unbind_s(inst->conns[i].ld);
 		}
 		conns[i].bound = 0;
