@@ -625,6 +625,15 @@ post-proxy {
 	eap
 
 	#
+	# If you want to add user-specific reply-attributes to the reply
+	# after the home server has processed the request, you can enable
+	# this function. You can choose to re-use the radreply table
+	# or have a separate table with a similar structure
+	# the post_proxy_query must be defined in sql.conf for this to work
+	#
+	# sql
+
+	#
 	#  If the server tries to proxy a request and fails, then the
 	#  request is processed through the modules in this section.
 	#

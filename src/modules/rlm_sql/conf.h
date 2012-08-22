@@ -47,6 +47,7 @@ typedef struct sql_config {
 	int     max_queries;
 	int     connect_failure_retry_delay;
 	char   *postauth_query;
+	char   *post_proxy_reply_query;
 	char   *allowed_chars;
 	int	query_timeout;
 
