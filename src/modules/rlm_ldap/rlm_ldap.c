@@ -116,6 +116,7 @@ typedef struct ldap_conn {
 	char		bound;
 	char		locked;
 	int		failed_conns;
+	int		uses;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	mutex;
 #endif
@@ -126,6 +127,7 @@ typedef struct {
 	char           *server;
 	int             port;
 	int             timelimit;
+	int		max_uses;
 	int  		net_timeout;
 	int		timeout;
 	int             debug;
@@ -247,6 +249,8 @@ static const CONF_PARSER module_config[] = {
 	/* allow server unlimited time for search (server-side limit) */
 	{"timelimit", PW_TYPE_INTEGER,
 	 offsetof(ldap_instance,timelimit), NULL, "20"},
+	{"max_uses", PW_TYPE_INTEGER,
+	 offsetof(ldap_instance,max_uses), NULL, "0"},
 
 	/*
 	 *	TLS configuration  The first few are here for backwards
@@ -377,6 +381,7 @@ static inline int ldap_get_conn(LDAP_CONN *conns,LDAP_CONN **ret,
 			}
 			/* found an unused connection */
 			*ret = &conns[i];
+			conns[i].uses++;
 			conns[i].locked = 1;
 			DEBUG("  [%s] ldap_get_conn: Got Id: %d",
 			      inst->xlat_name, i);
@@ -393,6 +398,13 @@ static inline void ldap_release_conn(int i, ldap_instance *inst)
 	LDAP_CONN *conns = inst->conns;
 
 	DEBUG("  [%s] ldap_release_conn: Release Id: %d", inst->xlat_name, i);
+	if ((inst->max_uses > 0) && (conns[i].uses >= inst->max_uses)) {
+		if (inst->conns[i].ld){
+			ldap_unbind_s(inst->conns[i].ld);
+		}
+		conns[i].bound = 0;
+		conns[i].uses = 0;
+	}
 	conns[i].locked = 0;
 	pthread_mutex_unlock(&(conns[i].mutex));
 }
