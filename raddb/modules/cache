@@ -51,9 +51,9 @@ cache {
 	#  You can specify which list the attribute goes into by
 	#  prefixing the attribute name with the list.  This allows
 	#  you to update multiple lists with one configuration.
-	attributes {
+	update cache {
 		# list:Attr-Name
-		reply:Filter-Id := "%l"
+		reply:Filter-Id += "%l"
 
 		control:Class := 0x010203
 	}

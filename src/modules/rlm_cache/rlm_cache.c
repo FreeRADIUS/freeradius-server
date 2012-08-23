@@ -289,7 +289,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 
 /*
- *	Verify that the "attributes" section makes sense.
+ *	Verify that the cache section makes sense.
  */
 static int cache_verify(rlm_cache_t *inst)
 {
@@ -432,7 +432,7 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	inst->cs = cf_section_sub_find(conf, "attributes");
+	inst->cs = cf_section_sub_find(conf, "update");
 	if (!inst->cs) {
 		radlog(L_ERR, "rlm_cache: Failed to find \"attributes\" subsection");
 		cache_detach(inst);
