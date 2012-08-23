@@ -218,6 +218,7 @@ ATTRIBUTE	Send-CoA-Type				1132	integer
 ATTRIBUTE	MS-CHAP-Password			1133	string
 ATTRIBUTE	Packet-Transmit-Counter			1134	integer
 ATTRIBUTE	Cached-Session-Policy			1135	string
+ATTRIBUTE	Cache-TTL				1136	integer
 
 #
 #	Range:	1200-1279
