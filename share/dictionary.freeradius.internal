@@ -120,8 +120,6 @@ ATTRIBUTE	Packet-Dst-Port				1087	integer
 ATTRIBUTE	Packet-Authentication-Vector		1088	octets
 ATTRIBUTE	Time-Of-Day				1089	string
 ATTRIBUTE	Request-Processing-Stage		1090	string
-ATTRIBUTE	Cache-No-Caching			1091	string
-ATTRIBUTE	Cache-Delete-Cache			1092	string
 ATTRIBUTE	SHA-Password				1093	octets
 ATTRIBUTE	SSHA-Password				1094	octets
 ATTRIBUTE	SHA1-Password				1093	octets
@@ -228,6 +226,7 @@ ATTRIBUTE	Cache-Status-Only			1141	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
