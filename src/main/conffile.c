@@ -1959,6 +1959,11 @@ const char *cf_pair_value(CONF_PAIR *pair)
 	return (pair ? pair->value : NULL);
 }
 
+FR_TOKEN cf_pair_operator(CONF_PAIR *pair)
+{
+	return (pair ? pair->operator : T_OP_INVALID);
+}
+
 /*
  *	Copied here for error reporting.
  */
