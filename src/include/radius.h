@@ -233,6 +233,7 @@
 #define PW_PACKET_TRANSMIT_COUNTER     	1134
 #define PW_CACHED_SESSION_POLICY     	1135
 #define PW_CACHE_TTL			1136
+#define PW_CACHE_STATUS_ONLY		1137
 
 /*
  *	Integer Translations

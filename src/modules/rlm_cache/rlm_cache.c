@@ -17,8 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  your name <your address>
+ * Copyright 2012  The FreeRADIUS server project
  */
 
 #include <freeradius-devel/ident.h>
@@ -166,10 +165,15 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	if ((c->expires < request->timestamp) ||
 	    (c->created < inst->epoch)) {
 	delete:
+		DEBUG("rlm_cache: Entry has expired, removing");
+
 		fr_heap_extract(inst->heap, c);
 		rbtree_deletebydata(inst->cache, c);
+		
 		return NULL;
 	}
+
+	DEBUG("rlm_cache: Found entry for \"%s\"", key);
 
 	/*
 	 *	Update the expiry time based on the TTL.
@@ -178,15 +182,11 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	vp = pairfind(request->config_items, PW_CACHE_TTL);
 	if (vp) {
 		if (vp->vp_integer == 0) goto delete;
-
+		
 		ttl = vp->vp_integer;
-	} else {
-		ttl = inst->ttl;
+		c->expires = request->timestamp + ttl;
+		DEBUG("rlm_cache: Adding %d to the TTL", ttl);
 	}
-
-	DEBUG("rlm_cache: Found entry for \"%s\".  Adding %d to the TTL",
-	      key, ttl);
-	c->expires = request->timestamp + ttl;
 
 	return c;
 }
@@ -354,7 +354,7 @@ static const CONF_PARSER module_config[] = {
 	{ "ttl", PW_TYPE_INTEGER,
 	  offsetof(rlm_cache_t, ttl), NULL,   "500" },
 	{ "epoch", PW_TYPE_INTEGER,
-	  offsetof(rlm_cache_t, epoch), NULL,   NULL },
+	  offsetof(rlm_cache_t, epoch), NULL,   "0" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -410,6 +410,12 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 		cache_detach(inst);
 		return -1;
 	}
+	
+	if (inst->epoch != 0){
+		radlog(L_ERR, "rlm_cache: Epoch should only be set dynamically");
+		cache_detach(inst);
+		return -1;
+	}
 
 	/*
 	 *	The cache.
@@ -431,6 +437,7 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 		cache_detach(inst);
 		return -1;
 	}
+	
 
 	inst->cs = cf_section_sub_find(conf, "update");
 	if (!inst->cs) {
@@ -463,14 +470,26 @@ static int cache_it(void *instance, REQUEST *request)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;
+	VALUE_PAIR *vp;
 	char buffer[1024];
 
 	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
 
 	c = cache_find(inst, request, buffer);
+	
+	/*
+	 *	If yes, only return whether we found a valid cache entry
+	 */
+	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY);
+	if (vp && vp->vp_integer) {
+		return c ?
+			RLM_MODULE_OK:
+			RLM_MODULE_NOTFOUND;
+	}
+	
 	if (c) {
 		cache_merge(request, c);
-		return RLM_MODULE_UPDATED;
+		return RLM_MODULE_OK;
 	}
 
 	c = cache_add(inst, request, buffer);
@@ -478,7 +497,7 @@ static int cache_it(void *instance, REQUEST *request)
 
 	cache_merge(request, c);
 
-	return RLM_MODULE_OK;
+	return RLM_MODULE_UPDATED;
 }
 
 

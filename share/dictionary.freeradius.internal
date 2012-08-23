@@ -219,7 +219,10 @@ ATTRIBUTE	MS-CHAP-Password			1133	string
 ATTRIBUTE	Packet-Transmit-Counter			1134	integer
 ATTRIBUTE	Cached-Session-Policy			1135	string
 ATTRIBUTE	Cache-TTL				1136	integer
+ATTRIBUTE	Cache-Status-Only			1137	integer
 
+VALUE	Cache-Status-Only		no			0
+VALUE	Cache-Status-Only		yes			1
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
