@@ -223,7 +223,11 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 
 ATTRIBUTE	Stripped-User-Domain			1138	string
 ATTRIBUTE	Called-Station-SSID			1139	string
+ATTRIBUTE	Cache-TTL				1140	integer
+ATTRIBUTE	Cache-Status-Only			1141	integer
 
+VALUE	Cache-Status-Only		no			0
+VALUE	Cache-Status-Only		yes			1
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.
