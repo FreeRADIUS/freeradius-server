@@ -3,6 +3,7 @@ rlm_acct_unique
 rlm_always
 rlm_attr_filter
 rlm_attr_rewrite
+rlm_cache
 rlm_chap
 rlm_checkval
 rlm_copy_packet
@@ -10,6 +11,7 @@ rlm_counter
 rlm_dbm
 rlm_detail
 rlm_digest
+rlm_dynamic_clients
 rlm_eap
 rlm_exec
 rlm_expiration
@@ -28,16 +30,16 @@ rlm_pam
 rlm_pap
 rlm_passwd
 rlm_perl
+rlm_policy
 rlm_preprocess
 rlm_python
 rlm_radutmp
 rlm_realm
+rlm_replicate
 rlm_soh
 rlm_sql
 rlm_sqlcounter
 rlm_sqlippool
 rlm_sql_log
 rlm_unix
-rlm_policy
-rlm_dynamic_clients
-rlm_replicate
+rlm_wimax
