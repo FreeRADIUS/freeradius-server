@@ -232,8 +232,9 @@
 #define PW_MSCHAP_PASSWORD		1133
 #define PW_PACKET_TRANSMIT_COUNTER     	1134
 #define PW_CACHED_SESSION_POLICY     	1135
-#define PW_CACHE_TTL			1136
-#define PW_CACHE_STATUS_ONLY		1137
+
+#define PW_CACHE_TTL			1140
+#define PW_CACHE_STATUS_ONLY		1141
 
 /*
  *	Integer Translations
