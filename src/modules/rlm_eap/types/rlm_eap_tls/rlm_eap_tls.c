@@ -935,6 +935,12 @@ static SSL_CTX *init_tls_ctx(EAP_TLS_CONF *conf)
 	SSL_load_error_strings();
 
 	/*
+	 *	Bug fix
+	 *	http://old.nabble.com/Backward-compatibility-of-private-key-files--td27937046.html
+	 */
+	OpenSSL_add_all_algorithms();
+
+	/*
 	 *	SHA256 is in all versions of OpenSSL, but isn't
 	 *	initialized by default.  It's needed for WiMAX
 	 *	certificates.
