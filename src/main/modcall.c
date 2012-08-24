@@ -275,8 +275,15 @@ static void safe_unlock(module_instance_t *instance)
 static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 {
 	int myresult;
+	int blocked;
 
 	rad_assert(request != NULL);
+
+	/*
+	 *	If the request should stop, refuse to do anything.
+	 */
+	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
+	if (blocked) return RLM_MODULE_NOOP;
 
 	RDEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
@@ -299,6 +306,15 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 
 	request->module = "";
 	safe_unlock(sp->modinst);
+
+	/*
+	 *	Wasn't blocked, and now is.  Complain!
+	 */
+	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
+	if (blocked) {
+		radlog(L_INFO, "WARNING: Module %s became blocked for request %u",
+		       sp->modinst->entry->name, request->number);
+	}
 
  fail:
 	RDEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
