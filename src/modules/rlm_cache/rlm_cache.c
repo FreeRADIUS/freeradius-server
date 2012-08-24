@@ -179,7 +179,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	 *	Update the expiry time based on the TTL.
 	 *	A TTL of 0 means "delete from the cache".
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_TTL);
+	vp = pairfind(request->config_items, PW_CACHE_TTL, 0);
 	if (vp) {
 		if (vp->vp_integer == 0) goto delete;
 		
@@ -209,7 +209,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	/*
 	 *	TTL of 0 means "don't cache this entry"
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_TTL);
+	vp = pairfind(request->config_items, PW_CACHE_TTL, 0);
 	if (vp && (vp->vp_integer == 0)) return NULL;
 
 	c = rad_malloc(sizeof(*c));
@@ -480,7 +480,7 @@ static int cache_it(void *instance, REQUEST *request)
 	/*
 	 *	If yes, only return whether we found a valid cache entry
 	 */
-	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY);
+	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY, 0);
 	if (vp && vp->vp_integer) {
 		return c ?
 			RLM_MODULE_OK:
