@@ -63,7 +63,7 @@ cache {
 	#  you to update multiple lists with one configuration.
 	#
 	#  If no list is specified the request list will be updated.
-	attributes {
+	update cache {
 		# list:Attr-Name
 		reply:Reply-Message += "I'm the cached reply from %t"
 
