@@ -313,7 +313,7 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 	 */
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) {
-		radlog(L_INFO, "WARNING: Module %s became blocked for request %u",
+		radlog(L_INFO, "WARNING: Module %s became unblocked for request %u",
 		       sp->modinst->entry->name, request->number);
 	}
 
