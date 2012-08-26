@@ -36,6 +36,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_cache_t {
+	const char	*xlat_name;
 	char		*key;
 	int		ttl;
 	int		epoch;
@@ -338,6 +339,64 @@ static int cache_verify(rlm_cache_t *inst)
 	return 1;
 }
 
+/*
+ *	Allow single attribute values to be retrieved from the cache.
+ */
+static int cache_xlat(void *instance, REQUEST *request,
+		      char *fmt, char *out, size_t freespace,
+		      UNUSED RADIUS_ESCAPE_STRING func)
+{
+	rlm_cache_entry_t *c;
+	rlm_cache_t *inst = instance;
+	VALUE_PAIR *vp, *vps;
+	DICT_ATTR *target;
+	const char *p = fmt;
+	char buffer[1024];
+
+	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
+
+	c = cache_find(inst, request, buffer);
+	
+	if (!c) {
+		RDEBUG("No cache entry for key \"%s\"", buffer);
+		
+		return 0;
+	}
+	
+	if (strncmp(fmt, "control:", 8) == 0) {
+		p = fmt + 8;
+		vps = c->control;
+
+	} else if (strncmp(fmt, "request:", 8) == 0) {
+		p = fmt + 8;
+		vps = c->request;
+
+	} else if (strncmp(fmt, "reply:", 6) == 0) {
+		p = fmt + 6;
+		vps = c->reply;
+
+	} else {
+		p = fmt;
+		vps = c->request;
+	}
+
+	target = dict_attrbyname(p);
+	if (!target) {
+		radlog(L_ERR, "rlm_cache: Unknown attribute \"%s\"", p);
+		
+		return 0;
+	}
+	
+	vp = pairfind(vps, target->attr);
+	if (!vp) {
+		RDEBUG("No instance of this attribute has been cached");
+		
+		return 0;
+	}
+	
+	return vp_prints_value(out, freespace, vp, 0);
+}
+
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -369,6 +428,7 @@ static int cache_detach(void *instance)
 	rlm_cache_t *inst = instance;
 
 	free(inst->key);
+	free(inst->xlat_name);
 
 	fr_heap_delete(inst->heap);
 	rbtree_free(inst->cache);
@@ -382,6 +442,7 @@ static int cache_detach(void *instance)
  */
 static int cache_instantiate(CONF_SECTION *conf, void **instance)
 {
+	const char *xlat_name;
 	rlm_cache_t *inst;
 
 	inst = rad_malloc(sizeof(*inst));
@@ -398,6 +459,19 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 		free(inst);
 		return -1;
 	}
+
+	xlat_name = cf_section_name2(conf);
+	if (xlat_name == NULL) {
+		xlat_name = cf_section_name1(conf);
+	}
+	
+	rad_assert(xlat_name);
+
+	/*
+	 *	Register the cache xlat function
+	 */
+	inst->xlat_name = strdup(xlat_name);
+	xlat_register(xlat_name, (RAD_XLAT_FUNC)cache_xlat, inst);
 
 	if (!inst->key || !*inst->key) {
 		radlog(L_ERR, "rlm_cache: You must specify a key");
