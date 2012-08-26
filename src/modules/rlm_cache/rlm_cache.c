@@ -201,7 +201,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 {
 	int ttl;
 	const char *attr, *p;
-	VALUE_PAIR *vp, **list;
+	VALUE_PAIR *vp, **vps;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 	rlm_cache_entry_t *c;
@@ -239,23 +239,25 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		rad_assert(cf_item_is_pair(ci));
 
 		cp = cf_itemtopair(ci);
-		attr = cf_pair_attr(cp);
+		attr = p = cf_pair_attr(cp);
+		
+		switch (radius_list_name(&p, PAIR_LIST_REQUEST))
+		{
+			case PAIR_LIST_REQUEST:
+				vps = &c->request;
+				break;
+				
+			case PAIR_LIST_REPLY:
+				vps = &c->reply;
+				break;
+				
+			case PAIR_LIST_CONTROL:
+				vps = &c->control;
+				break;
 
-		if (strncmp(attr, "control:", 8) == 0) {
-			p = attr + 8;
-			list = &c->control;
-
-		} else if (strncmp(attr, "request:", 8) == 0) {
-			p = attr + 8;
-			list = &c->request;
-
-		} else if (strncmp(attr, "reply:", 6) == 0) {
-			p = attr + 6;
-			list = &c->reply;
-
-		} else {
-			p = attr;
-			list = &c->request;
+			default:
+				rad_assert(0); 
+		
 		}
 
 		/*
@@ -267,7 +269,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			    request, NULL);
 
 		vp = pairmake(p, buffer, cf_pair_operator(cp));
-		pairadd(list, vp);
+		pairadd(vps, vp);
 	}
 
 	if (!rbtree_insert(inst->cache, c)) {
@@ -288,13 +290,13 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	return c;
 }
 
-
 /*
  *	Verify that the cache section makes sense.
  */
 static int cache_verify(rlm_cache_t *inst)
 {
 	const char *attr, *p;
+	pair_lists_t list;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
@@ -307,19 +309,23 @@ static int cache_verify(rlm_cache_t *inst)
 		}
 
 		cp = cf_itemtopair(ci);
-		attr = cf_pair_attr(cp);
-
-		if (strncmp(attr, "control:", 8) == 0) {
-			p = attr + 8;
-
-		} else if (strncmp(attr, "request:", 8) == 0) {
-			p = attr + 8;
-
-		} else if (strncmp(attr, "reply:", 6) == 0) {
-			p = attr + 6;
-
-		} else {
-			p = attr;
+		attr = p = cf_pair_attr(cp);
+		
+		list = radius_list_name(&p, PAIR_LIST_REQUEST);
+		
+		switch (list)
+		{
+			case PAIR_LIST_REQUEST:
+			case PAIR_LIST_REPLY:
+			case PAIR_LIST_CONTROL:
+				break;
+				
+			case PAIR_LIST_UNKNOWN:
+				cf_log_err(ci, "rlm_cache: Unknown list qualifier in \"%s\"", attr);
+				return 0;
+			default:
+				cf_log_err(ci, "rlm_cache: Unsupported list \"%s\"", fr_int2str(pair_lists, list, "¿Unknown?"));
+				return 0;
 		}
 
 		/*
