@@ -201,7 +201,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 {
 	int ttl;
 	const char *attr, *p;
-	VALUE_PAIR *vp, **list;
+	VALUE_PAIR *vp, **vps;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 	rlm_cache_entry_t *c;
@@ -243,19 +243,19 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 		if (strncmp(attr, "control:", 8) == 0) {
 			p = attr + 8;
-			list = &c->control;
+			vps = &c->control;
 
 		} else if (strncmp(attr, "request:", 8) == 0) {
 			p = attr + 8;
-			list = &c->request;
+			vps = &c->request;
 
 		} else if (strncmp(attr, "reply:", 6) == 0) {
 			p = attr + 6;
-			list = &c->reply;
+			vps = &c->reply;
 
 		} else {
 			p = attr;
-			list = &c->request;
+			vps = &c->request;
 		}
 
 		/*
@@ -267,7 +267,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			    request, NULL);
 
 		vp = pairmake(p, buffer, cf_pair_operator(cp));
-		pairadd(list, vp);
+		pairadd(vps, vp);
 	}
 
 	if (!rbtree_insert(inst->cache, c)) {
