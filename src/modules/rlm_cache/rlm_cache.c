@@ -40,6 +40,7 @@ typedef struct rlm_cache_t {
 	char		*key;
 	int		ttl;
 	int		epoch;
+	int		stats;
 	CONF_SECTION	*cs;
 	rbtree_t	*cache;
 	fr_heap_t	*heap;
@@ -48,6 +49,7 @@ typedef struct rlm_cache_t {
 typedef struct rlm_cache_entry_t {
 	const char	*key;
 	int		offset;
+	long long int	hits;
 	time_t		created;
 	time_t		expires;
 	VALUE_PAIR	*control;
@@ -98,7 +100,8 @@ static int cache_heap_cmp(const void *one, const void *two)
 /*
  *	Merge a cached entry into a REQUEST.
  */
-static void cache_merge(REQUEST *request, rlm_cache_entry_t *c)
+static void cache_merge(rlm_cache_t *inst, REQUEST *request,
+			rlm_cache_entry_t *c)
 {
 	VALUE_PAIR *vp;
 
@@ -121,6 +124,15 @@ static void cache_merge(REQUEST *request, rlm_cache_entry_t *c)
 		vp = paircopy(c->reply);
 		pairmove(&request->reply->vps, &vp);
 		pairfree(&vp);
+	}
+	
+	if (inst->stats) {
+		vp = paircreate(PW_CACHE_ENTRY_HITS, 0, PW_TYPE_INTEGER);
+		rad_assert(vp != NULL);
+		
+		vp->vp_integer = c->hits;
+
+		pairadd(&request->packet->vps, vp);
 	}
 }
 
@@ -188,6 +200,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 		c->expires = request->timestamp + ttl;
 		DEBUG("rlm_cache: Adding %d to the TTL", ttl);
 	}
+	c->hits++;
 
 	return c;
 }
@@ -414,6 +427,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_cache_t, ttl), NULL,   "500" },
 	{ "epoch", PW_TYPE_INTEGER,
 	  offsetof(rlm_cache_t, epoch), NULL,   "0" },
+	{ "add-stats", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_cache_t, stats), NULL,   "no" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -562,14 +577,14 @@ static int cache_it(void *instance, REQUEST *request)
 	}
 	
 	if (c) {
-		cache_merge(request, c);
+		cache_merge(inst, request, c);
 		return RLM_MODULE_OK;
 	}
 
 	c = cache_add(inst, request, buffer);
 	if (!c) return RLM_MODULE_NOOP;
 
-	cache_merge(request, c);
+	cache_merge(inst, request, c);
 
 	return RLM_MODULE_UPDATED;
 }

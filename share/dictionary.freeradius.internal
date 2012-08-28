@@ -219,8 +219,9 @@ ATTRIBUTE	MS-CHAP-Password			1133	string
 ATTRIBUTE	Packet-Transmit-Counter			1134	integer
 ATTRIBUTE	Cached-Session-Policy			1135	string
 
-\ATTRIBUTE	Cache-TTL				1136	integer
-ATTRIBUTE	Cache-Status-Only			1137	integer
+ATTRIBUTE	Cache-TTL				1140	integer
+ATTRIBUTE	Cache-Status-Only			1141	integer
+ATTRIBUTE	Cache-Entry-Hits			1142	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
