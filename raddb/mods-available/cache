@@ -47,7 +47,7 @@ cache {
 	#  The module can also operate in status-only mode where it will
 	#  not add new cache entries, or merge existing ones.
 	#
-	#  To enable set the control variable "Cache-Status-Only" to "yes"
+	#  To enable set the control attribute "Cache-Status-Only" to "yes"
 	#  The module will return "ok" if it found a cache entry.
 	#  The module will return "notfound" if it failed to find a cache entry,
 	#  or the entry had expired.
