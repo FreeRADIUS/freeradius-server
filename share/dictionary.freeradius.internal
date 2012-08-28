@@ -223,6 +223,7 @@ ATTRIBUTE	Stripped-User-Domain			1138	string
 ATTRIBUTE	Called-Station-SSID			1139	string
 ATTRIBUTE	Cache-TTL				1140	integer
 ATTRIBUTE	Cache-Status-Only			1141	integer
+ATTRIBUTE	Cache-Entry-Hits			1142	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1

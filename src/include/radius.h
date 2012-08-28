@@ -240,6 +240,7 @@
 #define PW_CACHED_SESSION_POLICY     	1135
 #define PW_CACHE_TTL			1140
 #define PW_CACHE_STATUS_ONLY		1141
+#define PW_CACHE_ENTRY_HITS		1142
 
 /*
  *	Integer Translations
