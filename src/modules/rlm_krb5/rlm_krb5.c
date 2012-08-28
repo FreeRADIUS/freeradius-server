@@ -35,6 +35,7 @@ RCSID("$Id$")
 typedef struct rlm_krb5_t {
 	const char *keytab;
 	const char *service_princ;
+	const char *cache;
 	krb5_context *context;
 } rlm_krb5_t;
 
@@ -43,10 +44,38 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_krb5_t,keytab), NULL, NULL },
 	{ "service_principal", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_krb5_t,service_princ), NULL, NULL },
+	{ "cache", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_krb5_t,cache), NULL, "yes" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 #ifndef HEIMDAL_KRB5
+
+static int krb5_build_auth_context(rlm_krb5_t *instance,
+				    krb5_context context,
+				    krb5_auth_context *auth_context)
+{
+	int r;
+	krb5_int32 flags;
+	
+	r = krb5_auth_con_init(context, auth_context);
+	if (r)
+		return r;
+	
+	r = krb5_auth_con_getflags(context, *auth_context, &flags);
+	if (r)
+		return r;
+		
+	if (!instance->cache && (flags & KRB5_AUTH_CONTEXT_DO_TIME)) {
+		r = krb5_auth_con_setflags(context, *auth_context, flags & ~KRB5_AUTH_CONTEXT_DO_TIME);
+
+		if (r)
+			return r;
+	}
+	
+	return 0;
+}
+
 static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
                            const char *user, krb5_ccache ccache)
 {
@@ -112,6 +141,14 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 		krb5_free_keyblock(context, keyblock);
 
 	/* Talk to the kdc and construct the ticket. */
+ 	r = krb5_build_auth_context(instance, context, &auth_context);
+ 	if (r) {
+		radlog(L_DBG, "rlm_krb5: [%s] krb5_build_auth_context() failed: %s",
+		       user, error_message(r));
+		r = RLM_MODULE_REJECT;
+		goto cleanup;
+	}
+	
 	r = krb5_mk_req(context, &auth_context, 0, service, phost, NULL,
 	                ccache, &packet);
 	if (auth_context) {
@@ -143,6 +180,14 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 	}
 
 	/* Try to use the ticket. */
+	r = krb5_build_auth_context(instance, context, &auth_context);
+ 	if (r) {
+		radlog(L_DBG, "rlm_krb5: [%s] krb5_build_auth_context() failed: %s",
+		       user, error_message(r));
+		r = RLM_MODULE_REJECT;
+		goto cleanup;
+	}
+	
 	r = krb5_rd_req(context, &auth_context, &packet, princ,
 	                keytab, NULL, NULL);
 	if (auth_context)
