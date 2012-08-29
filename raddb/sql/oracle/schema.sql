@@ -38,8 +38,11 @@ CREATE TABLE radacct (
 	acctstopdelay		NUMERIC(12),
 	XAscendSessionSvrKey	VARCHAR(10)
 );
+
+CREATE UNIUQE INDEX radacct_idx0
+	ON radacct(accuniqueid);
 CREATE UNIQUE INDEX radacct_idx1
-       ON radacct(acctsessionid,username,acctstarttime,
+	ON radacct(acctsessionid,username,acctstarttime,
 		acctstoptime,nasipaddress,framedipaddress);
 
 CREATE SEQUENCE radacct_seq START WITH 1 INCREMENT BY 1;
