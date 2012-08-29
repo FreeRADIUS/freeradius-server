@@ -44,11 +44,11 @@ CREATE TABLE radacct (
   acctstopdelay int(12) default NULL,
   xascendsessionsvrkey varchar(10) default NULL,
   PRIMARY KEY  (radacctid),
+  UNIQUE KEY acctuniqueid (acctuniqueid),
   KEY username (username),
   KEY framedipaddress (framedipaddress),
   KEY acctsessionid (acctsessionid),
   KEY acctsessiontime (acctsessiontime),
-  KEY acctuniqueid (acctuniqueid),
   KEY acctstarttime (acctstarttime),
   KEY acctstoptime (acctstoptime),
   KEY nasipaddress (nasipaddress)
