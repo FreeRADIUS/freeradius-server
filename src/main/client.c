@@ -1136,6 +1136,13 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 		goto error;
 	}
 
+	if (!c->secret || !*c->secret) {
+		DEBUG("- Cannot add client %s: No secret was specified.",
+		      ip_ntoh(&request->packet->src_ipaddr,
+			      buffer, sizeof(buffer)));
+		goto error;
+	}
+
 	if (!client_validate(clients, request->client, c)) {
 		return NULL;
 	}
