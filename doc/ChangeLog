@@ -63,8 +63,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Correct calculation of Message-Authenticator for CoA and Disconnect
 	  replies.  Patch from Jouni Malinen
 	* Install rad_counter, for managing rlm_counter files.
-	* Add unique index constraint to MySQL so that alternate queries
-	  work correctly.
+	* Add unique index constraint to all SQL flavours so that alternate
+	  queries work correctly.
 	* The TTLS diameter decoder is now more lenient.  It ignores
 	  unknown attributes, instead of rejecting the TTLS session.
 	* Use "globfree" in detail file reader.  Prevents very slow leak.
