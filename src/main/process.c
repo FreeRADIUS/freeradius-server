@@ -1173,7 +1173,7 @@ STATE_MACHINE_DECL(request_running)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request, 0) < 0) goto done;
+			if (request_proxy(request, 0) < 0) goto finished;
 		} else
 #endif
 		{
@@ -1190,9 +1190,10 @@ STATE_MACHINE_DECL(request_running)
 			}
 #endif
 
-		done:
+		finished:
 			request_finish(request, action);
 
+		done:
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
 #endif
