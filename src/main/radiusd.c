@@ -251,7 +251,7 @@ int main(int argc, char *argv[])
 
 	if (debug_flag) {
 		radlog(L_INFO, "%s", radiusd_version);
-		radlog(L_INFO, "Copyright (C) 1999-2009 The FreeRADIUS server project and contributors.\n");
+		radlog(L_INFO, "Copyright (C) 1999-2012 The FreeRADIUS server project and contributors.\n");
 		radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		radlog(L_INFO, "PARTICULAR PURPOSE.\n");
 		radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the\n");
