@@ -1,0 +1,11 @@
+#
+#  Script for use with Monit
+#
+#	http://mmonit.com/monit/
+#
+check process radiusd with pidfile /var/named/chroot/var/run/radiusd/radiusd.pid
+   start program = "/etc/init.d/radiusd start"
+   stop program = "/etc/init.d/radiusd stop"
+   if failed host 127.0.0.1 port 1812 type udp protocol radius secret testing123 then alert
+   if failed host 127.0.0.1 port 1812 type udp protocol radius secret testing123 then alert
+   if 5 restarts within 5 cycles then timeout
