@@ -790,7 +790,7 @@ int read_mainconfig(int reload)
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
 		 radius_dir, mainconfig.name);
 	if ((cs = cf_file_read(buffer)) == NULL) {
-		radlog(L_ERR, "Errors reading %s", buffer);
+		radlog(L_ERR, "Errors reading or parsing %s", buffer);
 		return -1;
 	}
 
@@ -1015,7 +1015,7 @@ void hup_mainconfig(void)
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
 		 radius_dir, mainconfig.name);
 	if ((cs = cf_file_read(buffer)) == NULL) {
-		radlog(L_ERR, "Failed to re-read %s", buffer);
+		radlog(L_ERR, "Failed to re-read or parse %s", buffer);
 		return;
 	}
 
