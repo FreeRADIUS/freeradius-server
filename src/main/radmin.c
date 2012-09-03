@@ -370,7 +370,7 @@ int main(int argc, char **argv)
 
 		cs = cf_file_read(buffer);
 		if (!cs) {
-			fprintf(stderr, "%s: Errors reading %s\n",
+			fprintf(stderr, "%s: Errors reading or parsing %s\n",
 				progname, buffer);
 			exit(1);
 		}
