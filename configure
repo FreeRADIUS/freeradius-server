@@ -733,8 +733,8 @@ ac_subst_files=''
 ac_user_opts='
 enable_option_checking
 enable_largefile
-with_system_libtool
 with_system_libltdl
+with_system_libtool
 enable_shared
 enable_static
 with_pic
@@ -1400,7 +1400,12 @@ Optional Features:
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-strict-dependencies  Fail configure on lack of module dependancy.
   --enable-developer               Enables features of interest to developers.
+
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-system-libltdl   Use the libltdl installed in your system (default=use dlopen)
+  --with-system-libtool   Use the libtool installed in your system (default=use our own)
   --with-pic              try to use only PIC/non-PIC objects [default=use
                           both]
   --with-gnu-ld           assume the C compiler uses GNU ld [default=no]
@@ -4670,6 +4675,16 @@ if test -z "$makever"; then
 		from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing." "$LINENO" 5
 fi
 
+
+# Check whether --with-system-libltdl was given.
+if test "${with_system_libltdl+set}" = set; then :
+  withval=$with_system_libltdl;
+LIBLTDL="-lltdl"
+INCLTDL=-DWITH_SYSTEM_LTDL
+
+fi
+
+
 ac_aux_dir=
 for ac_dir in "$srcdir" "$srcdir/.." "$srcdir/../.."; do
   if test -f "$ac_dir/install-sh"; then
@@ -7900,19 +7915,6 @@ func_stripname_cnf ()
 } # func_stripname_cnf
 
 
-# Check whether --with-system-libltdl was given.
-if test "${with_system_libltdl+set}" = set; then :
-  withval=$with_system_libltdl;
-LIBLTDL="-lltdl"
-INCLTDL=-DWITH_SYSTEM_LTDL
-
-else
-
-Optional Packages:
-  --with-PACKAGE=ARG    use PACKAGE ARG=yes
-  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-
-  --with-system-libtool   Use the libtool installed in your system (default=use our own)
 # Check whether --with-system-libtool was given.
 if test "${with_system_libtool+set}" = set; then :
   withval=$with_system_libtool;  # Extract the first word of "libtool", so it can be a program name with args.
@@ -7923,9 +7925,7 @@ if ${ac_cv_path_LIBTOOL+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   case $LIBTOOL in
-  \\/* | ?:\\/*
-fi
-
+  [\\/]* | ?:[\\/]*)
   ac_cv_path_LIBTOOL="$LIBTOOL" # Let the user override the test with a path.
   ;;
   *)

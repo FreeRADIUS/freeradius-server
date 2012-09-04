@@ -57,7 +57,6 @@ LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la
 
 LIBLTDL		= @LIBLTDL@
 INCLTDL		= @INCLTDL@
-LTDL_SUBDIRS	= @LTDL_SUBDIRS@
 CFLAGS		+= $(INCLTDL)
 
 USE_SHARED_LIBS	= @USE_SHARED_LIBS@

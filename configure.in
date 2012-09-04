@@ -85,6 +85,7 @@ AC_ARG_WITH(system-libltdl,
 LIBLTDL="-lltdl"
 INCLTDL=-DWITH_SYSTEM_LTDL
 ],
+)
 
 dnl use system-wide libtool, if it exists
 AC_ARG_WITH(system-libtool,
