@@ -16,10 +16,9 @@ Patch2: freeradius-radtest.patch
 #Patch3: freeradius-man.patch
 #Patch4: freeradius-unix-passwd-expire.patch
 Patch5: freeradius-radeapclient-ipv6.patch
-Patch6: freeradius-postgres-sql.patch
+#Patch6: freeradius-postgres-sql.patch
 #Patch7: freeradius-perl.patch
 Patch8: freeradius-dhcp_sqlippool.patch
-Patch9: freeradius-rlm_wimax.patch
 
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
@@ -154,10 +153,9 @@ This plugin provides the unixODBC support for the FreeRADIUS server project.
 #%patch3 -p1 -b .man
 #%patch4 -p1 -b .unix-passwd-expire
 %patch5 -p1 -b .radeapclient-ipv6
-%patch6 -p1
+#%patch6 -p1
 #%patch7 -p1 -b perl
 %patch8 -p1
-%patch9 -p1 -b .rlm_wimax
 
 # Some source files mistakenly have execute permissions set
 find $RPM_BUILD_DIR/freeradius-server-%{version} \( -name '*.c' -o -name '*.h' \) -a -perm /0111 -exec chmod a-x {} +
@@ -340,6 +338,7 @@ exit 0
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/always
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/attr_filter
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/attr_rewrite
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/cache
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/chap
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/checkval
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/counter
@@ -448,6 +447,8 @@ exit 0
 %{_libdir}/freeradius/rlm_attr_filter-%{version}.so
 %{_libdir}/freeradius/rlm_attr_rewrite.so
 %{_libdir}/freeradius/rlm_attr_rewrite-%{version}.so
+%{_libdir}/freeradius/rlm_cache.so
+%{_libdir}/freeradius/rlm_cache-%{version}.so
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_chap-%{version}.so
 %{_libdir}/freeradius/rlm_checkval.so
