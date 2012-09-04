@@ -86,8 +86,8 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 };
 
 
-#ifdef WITHOUT_LIBLTDL
-#ifdef WITH_DLOPEN
+#ifndef WITH_LIBLTDL
+#ifdef HAVE_DLFCN_H
 #include <dlfcn.h>
 
 #ifndef RTLD_NOW
@@ -237,8 +237,8 @@ const char *lt_dlerror(void)
 	return "Unspecified error";
 }
 
-#endif	/* WITH_DLOPEN */
-#else	/* WITHOUT_LIBLTDL */
+#endif	/* HAVE_DLFCN_H */
+#else	/* WIT_LIBLTDL */
 
 /*
  *	Solve the issues of libraries linking to other libraries
@@ -263,7 +263,7 @@ static lt_dlhandle fr_dlopenext(const char *filename)
 	return handle;
 }
 #endif	/* HAVE_LT_DLADVISE_INIT */
-#endif /* WITHOUT_LIBLTDL */
+#endif /* WITH_LIBLTDL */
 
 static int virtual_server_idx(const char *name)
 {
@@ -501,7 +501,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	p = strrchr(module_struct, '-');
 	if (p) *p = '\0';
 
-#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	module = lt_dlsym(RTLD_SELF, module_struct);
 	if (module) goto open_self;
 #endif
@@ -532,7 +532,7 @@ static module_entry_t *linkto_module(const char *module_name,
 		return NULL;
 	}
 
-#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+#if !defined(WIT_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
  open_self:
 #endif
 	/*

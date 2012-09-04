@@ -103,15 +103,9 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	node->typename = eaptype_name;
 	node->type_data = NULL;
 
-#ifdef WITHOUT_LIBLTDL
-#ifdef WITH_DLOPEN
-#include <dlfcn.h>
-
-#ifdef RTLD_SELF
+#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	node->type = (EAP_TYPE *)lt_dlsym(RTLD_SELF, buffer);
 	if (node->type) goto open_self;
-#endif
-#endif
 #endif
 
 	/* Link the loaded EAP-Type */
@@ -132,7 +126,7 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 		return -1;
 	}
 
-#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 open_self:
 #endif
 	cf_log_module(cs, "Linked to sub-module %s", buffer);

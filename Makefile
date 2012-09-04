@@ -42,8 +42,8 @@ ifneq "" "$(BOILERMAKE)"
 # Don't use libtool or libltdl.
 # They are a blight upon the face of the earth.
 LIBLTDL		:=
-INCLTDL		:= -DWITH_DLOPEN
-CFLAGS		+= -DWITHOUT_LIBLTDL
+INCLTDL		:= 
+CFLAGS		+= 
 LIBTOOL		:= JLIBTOOL
 LTDL_SUBDIRS	:=
 
