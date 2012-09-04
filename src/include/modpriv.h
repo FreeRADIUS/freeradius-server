@@ -10,16 +10,12 @@
 
 #ifdef WITH_SYSTEM_LTDL
 #define WITH_LIBLTDL
-#endif
-
-#ifdef WITH_LIBLTDL
 #include <ltdl.h>
-#endif
 
 #else
 #ifndef HAVE_DLFCN_H
 #error FreeRADIUS needs either libltdl, or a working dlopen()
-#endif
+#endif	/* WITH_LIBLTDL */
 #endif	/* WITH_LIBLTDL */
 
 #ifdef __cplusplus
@@ -38,7 +34,7 @@ const char *lt_dlerror(void);
 #define LTDL_SET_PRELOADED_SYMBOLS(_x)
 #define lt_dlexit(_x)
 #define lt_dlsetsearchpath(_x)
-#endif
+#endif	/* WITH_LIBLTDL */
 
 /*
  *	Keep track of which modules we've loaded.
