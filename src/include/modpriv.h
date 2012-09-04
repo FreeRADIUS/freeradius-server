@@ -8,11 +8,12 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-#ifdef WITH_LIBLTDL
 #ifdef WITH_SYSTEM_LTDL
+#define WITH_LIBLTDL
+#endif
+
+#ifdef WITH_LIBLTDL
 #include <ltdl.h>
-#else
-#include "libltdl/ltdl.h"
 #endif
 
 #else

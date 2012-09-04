@@ -80,24 +80,11 @@ if test -z "$makever"; then
 fi
 
 AC_ARG_WITH(system-libltdl,
-[  --with-system-libltdl   Use the libltdl installed in your system (default=use our own)],
+[  --with-system-libltdl   Use the libltdl installed in your system (default=use dlopen)],
 [
 LIBLTDL="-lltdl"
 INCLTDL=-DWITH_SYSTEM_LTDL
-LTDL_SUBDIRS=
-enable_ltdl_install=no
 ],
-[
-dnl If libltdl isn't installable, set it to be installable.
-[test x"$enable_ltdl_install" = x && enable_ltdl_install=yes]
-AC_LIBLTDL_INSTALLABLE
-
-dnl tell Makefile to build ltdl if needed
-if test x"$enable_ltdl_install" = x"yes"; then
-  LTDL_SUBDIRS=libltdl
-fi
-])
-AC_SUBST(LTDL_SUBDIRS)
 
 dnl use system-wide libtool, if it exists
 AC_ARG_WITH(system-libtool,
@@ -1154,7 +1141,7 @@ dnl #  Configure in any module directories.
 dnl #
 dnl #############################################################
 
-mysubdirs="$LIBLTDLPATH"
+mysubdirs=""
 if test "x$EXPERIMENTAL" = "xyes"; then
   bar=`ls -1 "${srcdir}"/src/modules/rlm_*/configure | sed 's%/configure%%'`
   dnl # get rid of LF's.
@@ -1190,7 +1177,7 @@ dnl #
 dnl #  Don't change the variable name here.  Autoconf goes bonkers
 dnl #  if you do.
 dnl #
-AC_CONFIG_SUBDIRS($LTDL_SUBDIRS $mysubdirs)
+AC_CONFIG_SUBDIRS($mysubdirs)
 AC_SUBST(MODULES)
 
 dnl #############################################################
