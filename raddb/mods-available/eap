@@ -78,14 +78,14 @@ eap {
 	# 
 	# EAP-pwd -- secure password-based authentication
 	#
-	pwd {
-		group = 19
+#	pwd {
+#		group = 19
 
 		#
-		server_id = theserver@example.com
+#		server_id = theserver@example.com
 
 		#  This has the same meaning as for TLS.
-		fragment_size = 1020
+#		fragment_size = 1020
 
 		# The virtual server which determines the 
 		# "known good" password for the user.
@@ -93,8 +93,8 @@ eap {
 		# section is processed.  EAP-PWD requests can be
 		# distinguished by having a User-Name, but
 		# no User-Password, CHAP-Password, EAP-Message, etc.
-		virtual_server = "inner-tunnel"
-	}
+#		virtual_server = "inner-tunnel"
+#	}
 
 	# Cisco LEAP
 	#
