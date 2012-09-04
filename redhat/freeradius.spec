@@ -16,7 +16,7 @@ Patch2: freeradius-radtest.patch
 #Patch3: freeradius-man.patch
 #Patch4: freeradius-unix-passwd-expire.patch
 Patch5: freeradius-radeapclient-ipv6.patch
-Patch6: freeradius-postgres-sql.patch
+#Patch6: freeradius-postgres-sql.patch
 #Patch7: freeradius-perl.patch
 Patch8: freeradius-dhcp_sqlippool.patch
 
@@ -153,7 +153,7 @@ This plugin provides the unixODBC support for the FreeRADIUS server project.
 #%patch3 -p1 -b .man
 #%patch4 -p1 -b .unix-passwd-expire
 %patch5 -p1 -b .radeapclient-ipv6
-%patch6 -p1
+#%patch6 -p1
 #%patch7 -p1 -b perl
 %patch8 -p1
 
