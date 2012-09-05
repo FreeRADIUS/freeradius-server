@@ -5,6 +5,6 @@ ifneq (${OPENSSL_LIBS},)
 SOURCES		+= eap_tls.c mppe_keys.c
 endif
 
-SRC_CFLAGS	:= -DEAPLIB $(OPENSSL_INCLUDE)
+SRC_CFLAGS	:= -DEAPLIB
 
 SRC_INCDIRS	:= . ..
