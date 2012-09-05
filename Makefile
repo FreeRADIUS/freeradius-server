@@ -64,6 +64,16 @@ all:
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f *~
+
+ifeq "scripts/jlibtool" "$(JLIBTOOL)"
+all: scripts/jlibtool
+
+scripts/jlibtool: scripts/jlibtool.c
+	$(CC) $^ -o $@
+
+LIBTOOL := $(top_srcdir)/scripts/jlibtool
+endif
+
 endif
 
 .PHONY: tests
