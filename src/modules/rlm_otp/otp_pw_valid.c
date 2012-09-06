@@ -104,7 +104,7 @@ otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
    */
   switch (otp_request.pwe.pwe) {
   case PWE_PAP:
-    if (rvp->length > OTP_MAX_PASSCODE_LEN) {
+    if (rvp->length >= sizeof(otp_request.pwe.u.pap.passcode)) {
       (void) radlog(L_AUTH, "rlm_otp: passcode for [%s] too long", username);
       return RLM_MODULE_REJECT;
     }
