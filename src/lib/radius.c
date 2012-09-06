@@ -541,7 +541,7 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 	if (len > MAX_PASS_LEN) len = MAX_PASS_LEN;
 
 	memcpy(passwd, input, len);
-	memset(passwd + len, 0, sizeof(passwd) - len);
+	if (len < sizeof(passwd)) memset(passwd + len, 0, sizeof(passwd) - len);
 
 	if (len == 0) {
 		len = AUTH_PASS_LEN;
