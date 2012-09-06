@@ -110,6 +110,9 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
 			radius_xlat(logstr, sizeof(logstr), inst->acctoff, request, NULL);
 		break;
 
+	default:
+		*logstr = 0;
+
 	}
 
 	if (*logstr) radlog(L_ACCT,"%s", logstr);
