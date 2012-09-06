@@ -61,14 +61,14 @@ case "$1" in
                 log_end_msg $ret
                 ;;
 
-        restart)
+        restart|force-reload)
                 test_freeradius_config || exit $?
 
                 $0 stop
                 $0 start
                 ;;
 
-        reload|force-reload)
+        reload)
                 test_freeradius_config || exit $?
 
                 if status_of_proc -p "$PIDFILE" "$PROG" "$DESCR"; then
@@ -82,8 +82,13 @@ case "$1" in
         configtest|testconfig)
                 test_freeradius_config || exit $?
                 ;;
+
+        debug)
+                $PROGRAM -X $FREERADIUS_OPTIONS
+                ;;
+
         *)
-                echo "Usage: $0 start|stop|restart|force-reload|reload|configtest"
+                echo "Usage: $0 start|stop|restart|force-reload|reload|configtest|debug"
                 exit 1
                 ;;
 esac
