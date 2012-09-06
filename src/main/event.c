@@ -3269,7 +3269,7 @@ void event_new_fd(rad_listen_t *this)
 	}
 	
 	if (this->status == RAD_LISTEN_STATUS_CLOSED) {
-		radlog(L_INFO, " ... closing socket %s", buffer);
+		DEBUG(" ... closing socket %s", buffer);
 		
 		fr_event_fd_delete(el, 0, this->fd);
 		this->status = RAD_LISTEN_STATUS_FINISH;
