@@ -515,7 +515,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	fr_SHA1_CTX sha1_context;
 	uint8_t binbuf[128];
 	char charbuf[128];
-	char buff[MAX_STRING_LEN];
+	uint8_t buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
 	int scheme = PAP_ENC_INVALID;
 
@@ -829,9 +829,9 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			fr_MD5Init(&md5_context);
 			fr_MD5Update(&md5_context, (uint8_t *) buff2,
 				     p - buff2);
-			fr_MD5Final(binbuf, &md5_context);
+			fr_MD5Final(buff, &md5_context);
 		}
-		if (rad_digest_cmp(binbuf, (uint8_t *) buff, 16) != 0) {
+		if (rad_digest_cmp(binbuf, buff, 16) != 0) {
 			snprintf(module_fmsg,sizeof(module_fmsg),"rlm_pap: NS-MTA-MD5 password check failed");
 			goto make_msg;
 		}
