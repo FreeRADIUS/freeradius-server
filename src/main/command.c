@@ -183,6 +183,7 @@ static int fr_server_domain_socket(const char *path)
 		if (errno != ENOENT) {
 			radlog(L_ERR, "Failed to stat %s: %s",
 			       path, strerror(errno));
+			close(sockfd);
 			return -1;
 		}
 
@@ -196,6 +197,7 @@ static int fr_server_domain_socket(const char *path)
 #endif
 			) {
 			radlog(L_ERR, "Cannot turn %s into socket", path);
+			close(sockfd);
 			return -1;		       
 		}
 
@@ -204,12 +206,14 @@ static int fr_server_domain_socket(const char *path)
 		 */
 		if (buf.st_uid != geteuid()) {
 			radlog(L_ERR, "We do not own %s", path);
+			close(sockfd);
 			return -1;
 		}
 
 		if (unlink(path) < 0) {
 			radlog(L_ERR, "Failed to delete %s: %s",
 			       path, strerror(errno));
+			close(sockfd);
 			return -1;
 		}
 	}
