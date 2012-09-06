@@ -597,6 +597,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	*login = '\0';
 	radius_xlat(login, sizeof(login), inst->username, request, NULL);
 	if (!*login) {
+		close(fd);
 		return RLM_MODULE_NOOP;
 	}
 
