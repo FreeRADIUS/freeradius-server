@@ -651,6 +651,8 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 */
 	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!vps[i]) break;
+		if ((ptr - packet->data) >= packet->data_len) break;
+
 		vp = vps[i];
 
 		debug_pair(vp);
