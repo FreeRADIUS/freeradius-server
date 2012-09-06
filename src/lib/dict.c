@@ -1253,6 +1253,12 @@ static int process_vendor(const char* fn, const int line, char **argv,
 		length = (int) (p[2] - '0');
 
 		if (p[3] == ',') {
+			if (!p[4]) {
+				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+				   fn, line, p);
+				return -1;
+			}
+
 			if ((p[4] != 'c') ||
 			    (p[5] != '\0')) {
 				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
