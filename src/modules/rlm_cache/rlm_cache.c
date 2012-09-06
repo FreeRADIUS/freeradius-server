@@ -622,8 +622,8 @@ module_t rlm_cache = {
 	{
 		NULL,			/* authentication */
 		cache_it,		/* authorization */
-		NULL,			/* preaccounting */
-		NULL,			/* accounting */
+		cache_it,		/* preaccounting */
+		cache_it,		/* accounting */
 		NULL,			/* checksimul */
 		cache_it,	      	/* pre-proxy */
 		cache_it,	       	/* post-proxy */
