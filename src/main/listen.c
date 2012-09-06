@@ -2031,6 +2031,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head)
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		listen_socket_t *sock;
+
+		memset(&server_ipaddr, 0, sizeof(server_ipaddr));
 		server_ipaddr.af = AF_INET;
 
 		radlog(L_INFO, "WARNING: The directive 'bind_address' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
