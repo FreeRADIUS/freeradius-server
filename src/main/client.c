@@ -890,6 +890,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 					return NULL;
 				}
 			} /* loop over the directory */
+			closedir(dir);
 		}
 #endif /* HAVE_DIRENT_H */
 #endif /* WITH_DYNAMIC_CLIENTS */
