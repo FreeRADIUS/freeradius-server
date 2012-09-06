@@ -544,7 +544,7 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 
 	inst->cs = cf_section_sub_find(conf, "update");
 	if (!inst->cs) {
-		radlog(L_ERR, "rlm_cache: Failed to find \"attributes\" subsection");
+		radlog(L_ERR, "rlm_cache: Failed to find \"update\" subsection");
 		cache_detach(inst);
 		return -1;
 	}
