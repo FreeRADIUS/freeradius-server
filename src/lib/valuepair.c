@@ -978,8 +978,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				fr_ipaddr_t ipaddr;
 
 				if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
-					free(s);
 					fr_strerror_printf("Failed to find IP address for %s", cs);
+					free(s);
 					return NULL;
 				}
 
