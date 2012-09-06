@@ -272,9 +272,8 @@ fail:
         EC_POINT_free(sess->pwe);
         BN_free(sess->order);
         BN_free(sess->prime);
-        if (prfbuf != NULL) {
-            free(prfbuf);
-        }
+	free(prfbuf);
+	ptrbuf = NULL;
         free(sess);
         sess = NULL;
         ret = -1;
@@ -283,9 +282,7 @@ fail:
     BN_free(cofactor);
     BN_free(x_candidate);
     BN_free(rnd);
-    if (prfbuf != NULL) {
-        free(prfbuf);
-    }
+    free(prfbuf);
 
     return ret;
 }
