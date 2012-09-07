@@ -1165,8 +1165,14 @@ RADCLIENT *client_read(const char *filename, int in_server, int flag)
 
 	cs = cf_file_read(filename);
 	if (!cs) return NULL;
+	
+	cs = cf_section_sub_find(cs, "client");
+	if (!cs) {
+		radlog(L_ERR, "No \"client\" section found in client file");
+		return NULL;
+	}
 
-	c = client_parse(cf_section_sub_find(cs, "client"), in_server);
+	c = client_parse(cs, in_server);
 
 	p = strrchr(filename, FR_DIR_SEP);
 	if (p) {
