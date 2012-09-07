@@ -1130,6 +1130,7 @@ RADCLIENT *client_read(const char *filename, int in_server, int flag)
 	}
 
 	c = client_parse(cs, in_server);
+	if (!c) return NULL;
 
 	p = strrchr(filename, FR_DIR_SEP);
 	if (p) {
@@ -1149,8 +1150,6 @@ RADCLIENT *client_read(const char *filename, int in_server, int flag)
 		client_free(c);
 		return NULL;
 	}
-
-
 
 	return c;
 }
