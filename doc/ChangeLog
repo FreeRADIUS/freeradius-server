@@ -2,8 +2,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	Feature improvements
 	* 100% configuration file compatible with 2.1.x.
 	  The only fix needed is to disallow "hashsize=0" for rlm_passwd
-	* Update Aruba, APC, PaloAlto, Pureware, Redback, and Mikrotik
-	  dictionaries
+	* Update Aruba, Alcatel Lucent, APC, BT, PaloAlto, Pureware, 
+	  Redback, and Mikrotik dictionaries
 	* Switch to using SHA1 for certificate digests instead of MD5.
 	  See raddb/certs/*.cnf
 	* Added copyright statements to the dictionaries, so that we know
@@ -21,9 +21,15 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  It runs as a DHCP server ONLY when manually enabled.
 	* Added one letter expansions: %G - request minute and %I request
 	  ID.
-	* Script to convert ISC DHCP lease files to SQL pools.
+	* Added script to convert ISC DHCP lease files to SQL pools.
 	  See scripts/isc2ippool.pl
-	* Added rlm_cache.
+	* Added rlm_cache to cache arbitrary attributes.
+	* Added max_use to rlm_ldap to force connection to be re-established
+	  after a given number of queries.
+	* Added configtest option to Debian init scripts, and automatic
+	  config test on restart.
+	* Added cache config item to rlm_krb5. When set to "no" ticket
+	  caching is disabled which may increase performance.
 
 	Bug fixes
 	* Fix typo in detail file writer, to skip writing if the packet
@@ -76,6 +82,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	* Update permissions in raddb/sql/postgresql/admin.sql
 	* Added OpenSSL_add_all_algorithms() to fix issues where OpenSSL
 	  wouldn't use methods it knew about.
+	* Add more sanity checks in dynamic_clients code so the server won't
+	  crash if it attempts to load a badly formated client definition.
 
 FreeRADIUS 2.1.12 Fri 30 Sept 2011 16:57:38 CEST, urgency=medium
 	Feature improvements
