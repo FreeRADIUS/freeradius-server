@@ -3,7 +3,7 @@
 #
 #  It needs to be edited for your local configuration.
 #
-@localstatedir@/log/radius/radius.log {
+/var/log/radius/radius.log {
 	daily
 	rotate 14
 	compress
@@ -11,6 +11,6 @@
 	missingok
 	notifempty
 	postrotate
-		kill -HUP `cat @localstatedir@/run/radiusd.pid` > /dev/null 2>&1
+		kill -HUP `cat /var/run/radiusd.pid` > /dev/null 2>&1
 	endscript
 }
