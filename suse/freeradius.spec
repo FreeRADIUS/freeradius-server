@@ -36,7 +36,6 @@ BuildRequires: gcc-c++
 BuildRequires: gdbm-devel
 BuildRequires: gettext-devel
 BuildRequires: glibc-devel
-BuildRequires: libeap-ikev2-devel
 BuildRequires: libpcap-devel
 BuildRequires: libtool
 BuildRequires: ncurses-devel
@@ -224,6 +223,7 @@ export LDFLAGS="-pie"
 		--with-experimental-modules \
         --with-gnu-ld \
 		--with-system-libtool \
+		--with-system-libltdl \
         --with-udpfromto \
         --with-rlm-krb5-lib-dir=%{_libdir} \
 		--without-rlm_opendirectory \
