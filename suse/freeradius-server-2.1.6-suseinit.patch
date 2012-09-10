@@ -1,0 +1,37 @@
+diff --git a/suse/rcradius-relayd b/suse/rcradius-relayd
+index 4ebe557..ea28188 100644
+--- suse/rcradius-relayd
++++ suse/rcradius-relayd
+@@ -13,7 +13,9 @@
+ ### BEGIN INIT INFO
+ # Provides:          radius-relayd
+ # Required-Start:    $network $syslog $remotefs
+-# Required-Stop:
++# Should-Start:      $time ypbind smtp
++# Required-Stop:     $syslog $remote_fs
++# Should-Stop:       ypbind smtp
+ # Default-Start:     3 5
+ # Default-Stop:      0 1 2 6
+ # Short-Description: RADIUS Relay Server
+diff --git a/suse/rcradiusd b/suse/rcradiusd
+index 83e2af0..06adba5 100644
+--- suse/rcradiusd
++++ suse/rcradiusd
+@@ -13,13 +13,16 @@
+ ### BEGIN INIT INFO
+ # Provides:          radiusd
+ # Required-Start:    $network $syslog $remotefs
+-# Required-Stop:
++# Should-Start:      $time ypbind smtp
++# Required-Stop:     $syslog $remote_fs
++# Should-Stop:       ypbind smtp
+ # Default-Start:     3 5
+ # Default-Stop:      0 1 2 6
+ # Short-Description: RADIUS-Server
+ # Description:       Remote Authentication Dialin User Server
+ ### END INIT INFO
+ 
++
+ RADIUSD_BIN=/usr/sbin/radiusd
+ test -x $RADIUSD_BIN || { echo "$RADIUSD_BIN not installed"; \
+ 	if [ "$1" = "stop" ]; then exit 0;
