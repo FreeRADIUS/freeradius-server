@@ -1,8 +1,8 @@
-FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
+FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
 	* 100% configuration file compatible with 2.1.x.
 	  The only fix needed is to disallow "hashsize=0" for rlm_passwd
-	* Update Aruba, Alcatel Lucent, APC, BT, PaloAlto, Pureware, 
+	* Update Aruba, Alcatel Lucent, APC, BT, PaloAlto, Pureware,
 	  Redback, and Mikrotik dictionaries
 	* Switch to using SHA1 for certificate digests instead of MD5.
 	  See raddb/certs/*.cnf
@@ -32,6 +32,8 @@ FreeRADIUS 2.2.0 Fri 31 Dec 2011 21:00:00 CEST, urgency=medium
 	  caching is disabled which may increase performance.
 
 	Bug fixes
+	* Fix CVE-2012-3547.  All users of 2.1.10, 2.1.11, 2.1.12,
+	  and 802.1X should upgrade immediately.
 	* Fix typo in detail file writer, to skip writing if the packet
 	  was read from this detail file.
 	* Free cached replies when closing resumed SSL sessions.
