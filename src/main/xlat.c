@@ -1021,6 +1021,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		}
 
 		if (*l == ':') {
+			if (l[1] == '-') break;
 			if (isdigit(l[1])) break;
 
 			module_name = p; /* start of name */
