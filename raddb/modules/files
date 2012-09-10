@@ -8,7 +8,7 @@ files {
 	# The default key attribute to use for matches.  The content
 	# of this attribute is used to match the "name" of the
 	# entry.
-	#key = "%{Stripped-User-Name:-%{User-Name}}"
+	#key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	usersfile = ${confdir}/users
 	acctusersfile = ${confdir}/acct_users
@@ -33,7 +33,7 @@ files {
 #	"second_files" - this is a named configuration, which isn't
 #			the default configuration.
 files second_files {
-	#key = "%{Stripped-User-Name:-%{User-Name}}"
+	#key = "%{%{Stripped-User-Name}:-%{User-Name}}"
 
 	#  The names here don't matter.  They just need to be different
 	#  from the names for the "files" configuration above.  If they
