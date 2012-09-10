@@ -608,7 +608,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 */
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
-	if ((lookup <= 1) && asn_time && (asn_time->length < MAX_STRING_LEN)) {
+	if ((lookup <= 1) && asn_time && (asn_time->length < sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		pairadd(&handler->certs,
