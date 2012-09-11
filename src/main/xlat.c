@@ -210,7 +210,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	value of the tag.
 		 */
 		p = strchr(buffer, ':');
-		if (p) {
+		if (p && (p[1] != '-')) {
 			tag = atoi(p + 1);
 			*p = '\0';
 			p++;
@@ -1021,7 +1021,15 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		}
 
 		if (*l == ':') {
-			if (l[1] == '-') break;
+			if (l[1] == '-') {
+				RDEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
+				module_name = internal_xlat[1];
+				xlat_str = p;
+				*l = '\0';
+				next = l + 2;
+				goto do_xlat;
+			}
+
 			if (isdigit(l[1])) break;
 
 			module_name = p; /* start of name */
@@ -1047,18 +1055,6 @@ static int decode_attribute(const char **from, char **to, int freespace,
 			module_name = internal_xlat[1];
 			xlat_str = p;
 		}
-		goto do_xlat;
-	}
-
-	/*
-	 *	Maybe it's the old-style %{foo:-bar}
-	 */
-	if (*p == '-') {
-		RDEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
-		p++;
-
-		xlat_str = module_name;
-		next = p;
 		goto do_xlat;
 	}
 
