@@ -1190,7 +1190,7 @@ dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
-AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts    && chmod +x rc.radiusd radwatch radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
+AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts    && chmod +x rc.radiusd radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
 
 dnl #
 dnl #  Substitute whatever libraries we found to be necessary
@@ -1216,7 +1216,6 @@ AC_OUTPUT(\
 	./src/main/radlast \
 	./src/main/radtest \
 	./scripts/rc.radiusd \
-	./scripts/radwatch \
 	./scripts/radiusd.cron.daily \
 	./scripts/radiusd.cron.monthly \
 	./scripts/cryptpasswd \
