@@ -27,7 +27,16 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Moved sql.conf to mods-available/sql
 	* Moved TLS configuration for EAP into a common subsection.
 	  See raddb/mods-available/eap, tls-config section.
+	* Added internal connection pool API, this consolidates connection
+	  management code that was previously spread across many modules.
+	  Advantages are that it actually works, well, under nearly all
+	  conditions, supports triggers, and has 'elastic' limits on the numbers
+	  of connections.
+	* SQL now uses the connection pool.
+	* SQL query config has changed to support arbitrary Acct-Status-Types,
+	  this change breaks config compatibility with 2.1.x. Configurations
+	  must be updated.
 
 	Bug fixes
-	* All known bug fixes are included.
+	* All known bug fixes from 2.1.x are included.
 	* Removed "addport" functionality.
