@@ -87,11 +87,6 @@ authorize {
 	#  'raddb/huntgroups' files.
 	preprocess
 
-        #  If you require that the Operator-Name be set
-        #  for your local clients then uncomment the operator-name
-        #  below and set the operator-name for your clients in clients.conf
-#       operator-name
-
 	#
 	#  If you want to have a log of authentication requests,
 	#  un-comment the following line, and the 'detail auth_log'
@@ -593,12 +588,6 @@ post-auth {
 #
 pre-proxy {
 #	attr_rewrite
-
-        # Before proxing the request add an Operator-Name attribute identifying
-        # if the operator-name is found for this client.
-        # No need to uncomment this if you have already enabled this in 
-        # the authorize section.
-#       operator-name
 
 	#  Uncomment the following line if you want to change attributes
 	#  as defined in the preproxy_users file.
