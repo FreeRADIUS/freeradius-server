@@ -557,7 +557,8 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 					 handler->eap_ds->response->type.length);
 
 	if(!success) {
-	  return 0;
+		DEBUG("Failed to decode EAP-SIM");
+		return 0;
 	}
 
 	/* see what kind of message we have gotten */
@@ -572,6 +573,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
 	 *	Client error supersedes anything else.
 	 */
 	if (subtype == eapsim_client_error) {
+		DEBUG2("Client says error.  Stopping!");
 		return 0;
 	}
 
