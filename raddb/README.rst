@@ -98,6 +98,58 @@ And all of the SQL queries will be logged to that file.  The
 connection pool	will still need to be configured for the NULL SQL
 driver, but the defaults will work.
 
+SQL-dialup.conf
+---------------
+
+Queries for post-auth and accounting calls have been re-arranged.
+The SQL module will now expand the 'reference' configuration item
+in the appropriate sub-section, and resolve this to a configuration
+item. This behaviour is similar to rlm_linelog.
+
+The queries can manually be moved to copy of the v3.0.x ``dialup.conf`` file.
+The mapping is as follows::
+
+  accounting_onoff_query		-> accounting.type.accounting-on.query
+  accounting_update_query		-> accounting.type.interim-update.query
+  accounting_update_query_alt		+> accounting.type.interim-update.query
+  accounting_start_query		-> accounting.type.start.query
+  accounting_start_query_alt		+> accounting.type.start.query
+  accounting_stop_query			-> accounting.type.stop.query
+  accounting_stop_query_alt		+> accounting.type.stop.query
+  postauth_query			-> post-auth.query
+
+References to to the accounting tables may also need to be updated.
+
+Alternitavely a v2.1.x may be patched to work with the v3.0.x module.
+Add the following at the bottom of your ``dialup.conf`` file::
+
+  accounting {
+  	reference = "%{tolower:type.%{Acct-Status-Type}.query}"
+  	type {
+  		accounting-on {
+  			query = "${....accounting_onoff_query}"
+  		}
+  		accounting-off {
+  			query = "${....accounting_onoff_query}"
+  		}	
+   		start {
+  			query = "${....accounting_start_query}"
+  			query = "${....accounting_start_query_alt}"
+  		}
+  		interim-update {
+  			query = "${....accounting_update_query}"
+  			query = "${....accounting_update_query_alt}"
+  		}
+  		stop {
+  			query = "${....accounting_stop_query}"
+  			query = "${....accounting_stop_query_alt}"
+  		}
+  	}
+  }
+
+  post-auth {
+  	query = "${..postauth_query}"
+  }
 
 EAP
 ---
