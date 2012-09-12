@@ -273,7 +273,7 @@ fail:
         BN_free(sess->order);
         BN_free(sess->prime);
 	free(prfbuf);
-	ptrbuf = NULL;
+	prfbuf = NULL;
         free(sess);
         sess = NULL;
         ret = -1;
