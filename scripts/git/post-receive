@@ -45,7 +45,7 @@ status () {
 
 conf_rollback () {
 	# Use stable tag if it exists...
-	if $GIT_EXEC tag -v $STABLE_TAG > /dev/null 2>&1; then
+	if $GIT_EXEC show-ref $STABLE_TAG > /dev/null 2>&1; then
 		echo -n "Attempting to roll config back to tag: \"$STABLE_TAG\"... "
 		$GIT_EXEC reset -q --hard $STABLE_TAG; ret=$?
 	else
