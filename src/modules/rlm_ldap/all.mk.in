@@ -4,7 +4,7 @@ ifneq "$(TARGETNAME)" ""
 TARGET		= $(TARGETNAME).a
 endif
 
-SOURCES		= rlm_ldap.c @edir@
+SOURCES		= rlm_ldap.c mapping.c
 
 SRC_CFLAGS	= @ldap_cflags@
 TGT_LDLIBS	= @ldap_ldflags@

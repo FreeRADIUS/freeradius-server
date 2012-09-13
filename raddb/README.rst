@@ -151,6 +151,30 @@ Add the following at the bottom of your ``dialup.conf`` file::
   	query = "${..postauth_query}"
   }
 
+LDAP
+----
+
+The LDAP module configuration has been substantially changed.  Please
+read raddb/mods-available/ldap.  It now uses a connection pool, just
+like the SQL module.
+
+Many of the configuration items remain the same, but they have been
+moved into subsections.  This change is largely cosmetic, but it makes
+the configuration clearer.  Instead of having a large set of random
+configuration items, they are now organized into logical groups.
+
+You will need to read your old LDAP configuration, and migrate it
+manually to the new configuration.  Simply copying the old
+configuration WILL NOT WORK.
+
+The eDirectory support has been removed.  It was written by
+duplicating large amounts of code in the module.  As a result, it was
+incomprehensible, and unmaintainable.  It's probably easy to add the
+code back, but doing so requires access to an eDirectory server.
+
+As always, patches are welcome.
+
+
 EAP
 ---
 
