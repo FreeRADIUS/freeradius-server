@@ -23,29 +23,8 @@ BOILERMAKE=$(subst 3.8,yes,$(subst 3.80,,$(MAKE_VERSION)))
 
 # The version of GNU Make is too old, don't use it.
 ifeq "" "$(findstring yes,$(BOILERMAKE))"
-BOILERMAKE=
+$(error The build system requires GNU Make 3.81 or later.)
 endif
-
-# Static-only builds still require libtool.
-# This is because it does all kinds of preload magic in order
-# to force the linker to put the libraries into the main binary.
-# We don't support that yet, so we miss it...
-ifneq "$(USE_SHARED_LIBS)" "yes"
-BOILERMAKE=
-endif
-endif
-
-# If possible, drastically decrease the build time.
-# The new build system means that 
-ifneq "" "$(BOILERMAKE)"
-
-# Don't use libtool or libltdl.
-# They are a blight upon the face of the earth.
-LIBLTDL		:=
-INCLTDL		:= 
-CFLAGS		+= 
-LIBTOOL		:= JLIBTOOL
-LTDL_SUBDIRS	:=
 
 export DESTDIR := $(R)
 
@@ -64,16 +43,6 @@ all:
 clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f *~
-
-ifeq "scripts/jlibtool" "$(JLIBTOOL)"
-all: scripts/jlibtool
-
-scripts/jlibtool: scripts/jlibtool.c
-	$(CC) $^ -o $@
-
-LIBTOOL := $(top_srcdir)/scripts/jlibtool
-endif
-
 endif
 
 .PHONY: tests

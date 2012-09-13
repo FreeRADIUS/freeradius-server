@@ -93,13 +93,10 @@ AC_ARG_WITH(system-libtool,
 [ AC_PATH_PROG(LIBTOOL, libtool,,$PATH:/usr/local/bin) AC_LIBTOOL_DLOPEN
  AC_PROG_LIBTOOL],
 [
-  LIBTOOL="`pwd`/libtool"
+  LIBTOOL='${top_srcdir}/scripts/jlibtool'
   AC_SUBST(LIBTOOL)
   dnl ensure that we're looking for dlopen
   AC_LIBTOOL_DLOPEN
-
-  dnl Figure out how to build shared libraries
-  AC_PROG_LIBTOOL
 ])
 
 

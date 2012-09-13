@@ -15130,7 +15130,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 else
 
-  LIBTOOL="`pwd`/libtool"
+  LIBTOOL='${top_srcdir}/scripts/jlibtool'
 
     enable_dlopen=yes
 

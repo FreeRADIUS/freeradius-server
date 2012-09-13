@@ -66,7 +66,7 @@ all: $(BINARIES)
 $(SERVER_OBJS): $(INCLUDES)
 
 radiusd$(EXEEXT): $(SERVER_OBJS) $(MODULE_OBJS) $(LIBRADIUS)
-	$(LIBTOOL) --quiet --mode=link $(CC) -export-dynamic -dlopen self \
+	$(LIBTOOL) --quiet --mode=link $(CC) -export-dynamic \
 		$(LDFLAGS) $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
 		$(MODULE_LIBS) $(LIBRADIUS) $(LIBS) $(SNMP_LIBS) \
 		$(LCRYPT) $(PTHREADLIB) $(LIBLTDL) $(OPENSSL_LIBS)
