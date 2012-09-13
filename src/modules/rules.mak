@@ -40,8 +40,9 @@ all: build-module
 # along with a number of other useful definitions.
 #
 #######################################################################
-LT_OBJS		+= $(SRCS:.c=.lo)
-LT_OBJS		+= $(SRCS:.cpp=.lo)
+LT_OBJS		:= $(patsubst %.c,%.lo,$(filter %.c,$(SRCS)))
+LT_OBJS		+= $(patsubst %.cxx,%.lo,$(filter %.cxx,$(SRCS)))
+LT_OBJS		+= $(patsubst %.cpp,%.lo,$(filter %.cpp,$(SRCS)))
 CFLAGS		+= -I$(top_builddir)/src $(INCLTDL)
 
 #######################################################################
@@ -63,7 +64,6 @@ $(LT_OBJS): $(SERVER_HEADERS)
 #
 #######################################################################
 %.lo: %.c
-	@echo CC $<
 	@echo CC $<
 	@$(LIBTOOL) --quiet --mode=compile $(CC) $(CFLAGS) $(RLM_CFLAGS) -c $<
 
@@ -123,10 +123,10 @@ build-module: $(TARGET).la $(RLM_UTILS)
 	done
 
 $(TARGET).la: $(RLM_SUBDIRS) $(LT_OBJS)
-	@echo LINK $@ $^
+	@echo LINK $@ $(filter %.lo,$^)
 	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) \
 	    -module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
-	    -rpath $(libdir) $^ $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
+	    -rpath $(libdir) $(filter %.lo,$^) $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #
