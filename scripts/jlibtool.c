@@ -648,6 +648,8 @@ static int parse_long_opt(char *arg, command_t *cmd_data)
 
     if (strcmp(var, "silent") == 0) {
         cmd_data->options.silent = 1;
+    } else if (strcmp(var, "quiet") == 0) {
+        cmd_data->options.silent = 1;
     } else if (strcmp(var, "debug") == 0) {
         cmd_data->options.debug = 1;
     } else if (strcmp(var, "mode") == 0) {
