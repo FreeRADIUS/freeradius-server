@@ -321,6 +321,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 	int                     eapsim_attribute;
 	unsigned int            eapsim_len;
 	int                     es_attribute_count;
+	unsigned int		id_len;
 
 	es_attribute_count=0;
 
@@ -366,12 +367,35 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			       return 0;
 		}
 
+		/* AT_IDENTITY has special format */
+		if (eapsim_attribute == PW_EAP_SIM_IDENTITY) {
+			if (eapsim_len < 4) {
+				radlog(L_ERR, "eap: EAP-Sim AT_IDENTITY (no.%d) has length too small",
+					es_attribute_count);
+				goto loop_end;
+			}
+			id_len = (attr[2] << 8) + attr[3];
+			if (4 + id_len > eapsim_len) {
+				radlog(L_ERR, "eap: EAP-Sim AT_IDENTITY (no.%d) invalid length",
+					es_attribute_count);
+				goto loop_end;
+			}
+		}
+
 		newvp = paircreate(eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, PW_TYPE_OCTETS);
-		memcpy(newvp->vp_strvalue, &attr[2], eapsim_len-2);
-		newvp->length = eapsim_len-2;
+		switch (eapsim_attribute) {
+		case PW_EAP_SIM_IDENTITY:
+			memcpy(newvp->vp_strvalue, &attr[4], id_len);
+			newvp->length = id_len;
+			break;
+		default:
+			memcpy(newvp->vp_strvalue, &attr[2], eapsim_len-2);
+			newvp->length = eapsim_len-2;
+		}
 		pairadd(&(r->vps), newvp);
 		newvp = NULL;
 
+	loop_end:
 		/* advance pointers, decrement length */
 		attr += eapsim_len;
 		attrlen  -= eapsim_len;
