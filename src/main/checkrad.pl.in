@@ -472,9 +472,7 @@ sub cisco_snmp {
 #       Author: Guilherme Franco <guilhermefranco@gmail.com>
 #
 sub juniper_e_snmp {
-
-
-out=snmpwalk($ARGV[1],$cmmty_string,".1.3.6.1.4.1.4874.2.2.20.1.8.4.1.2");
+                $out=snmpwalk($ARGV[1],$cmmty_string,".1.3.6.1.4.1.4874.2.2.20.1.8.4.1.2");
                 if($out=~/\"$ARGV[3]\"/){
                         return 1;
                 }else{
