@@ -1098,6 +1098,12 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		ocsp_parse_cert_url(client_cert, &host, &port, &path, &use_ssl);
 	}
 
+	if (!host || !port || !path) {
+		DEBUG2("[ocsp] - Host / port / path missing.  Not doing OCSP.");
+		ocsp_ok = 2;
+		goto ocsp_skip;
+	}
+	
 	DEBUG2("[ocsp] --> Responder URL = http://%s:%s%s", host, port, path);
 
 	/* Setup BIO socket to OCSP responder */
@@ -1226,6 +1232,7 @@ ocsp_end:
 	BIO_free_all(cbio);
 	OCSP_BASICRESP_free(bresp);
 
+ ocsp_skip:
 	switch (ocsp_ok) {
 	case 1:
 		DEBUG2("[ocsp] --> Certificate is valid!");
