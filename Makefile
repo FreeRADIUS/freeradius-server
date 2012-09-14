@@ -90,7 +90,6 @@ install:
 	for i in dictionary*; do \
 		$(INSTALL) -m 644 $$i $(R)$(dictdir); \
 	done
-	$(LIBTOOL) --finish $(R)$(libdir)
 endif
 
 ifneq ($(RADMIN),)
