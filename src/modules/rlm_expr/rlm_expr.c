@@ -65,6 +65,12 @@ static expr_map_t map[] =
 	{0,	TOKEN_LAST}
 };
 
+/*
+ *	Lookup tables for randstr char classes
+ */
+static char randstr_punc[32] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+static char randstr_salt[] = ".0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/";
+
 static int get_number(REQUEST *request, const char **string, int64_t *answer)
 {
 	int		i, found;
@@ -289,6 +295,84 @@ static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
 }
 
 /*
+ *  Build strings of random chars, useful for generating tokens and passcodes
+ *  Format identical to String::Random.
+ */
+static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
+			char *out, size_t outlen,
+			RADIUS_ESCAPE_STRING func)
+{
+	rlm_expr_t	*inst = instance;
+	char		buffer[256];
+	unsigned int	result;
+	size_t		s = outlen;
+	size_t		len;
+	char		*p;
+	
+	inst = inst;		/* -Wunused */
+
+	/*
+	 * Do an xlat on the provided string (nice recursive operation).
+	 */
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
+	if (!len) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		return 0;
+	}
+	
+	p = buffer;
+	while ((len-- > 0) && (--s > 0)) {
+		result = fr_rand();
+		switch (*p) {
+			case 'c':
+				*out++ = 'a' + (result % 26);
+			break;
+			
+			case 'C':
+				*out++ = 'A' + (result % 26);
+			break;
+			
+			case 'n':
+				*out++ = '0' + (result % 10);
+			break;
+			
+			case '!':
+				*out++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
+			break;
+			
+			case '.':
+				*out++ = '!' + (result % 95);
+			break;
+			
+			case 's':
+				*out++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
+			break;
+			
+			/*
+			 *  Don't output NULLs apparently some places in the 
+			 *  code still use them instead of the length returned.
+			 */
+			case 'b':
+				*out++ = (result % 255) + 1;
+			break;
+			
+			default:
+				radlog(L_ERR,
+				       "rlm_expr: invalid character class '%c'", *p);
+				       
+				return 0;
+			break;
+		}
+	
+		p++;
+	}
+	
+	*out++ = '\0';
+	
+	return outlen - s;
+}
+
+/*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
  *	to external databases, read configuration files, set up
@@ -321,6 +405,7 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	xlat_register("rand", rand_xlat, inst);
+	xlat_register("randstr", randstr_xlat, inst);
 
 	/*
 	 * Initialize various paircompare functions
