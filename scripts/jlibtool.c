@@ -2028,9 +2028,18 @@ static void link_fixup(command_t *c)
 #ifdef DYNAMIC_INSTALL_NAME
             push_count_chars(c->shared_opts.normal, DYNAMIC_INSTALL_NAME);
 
+	    if (!c->install_path) {
+		    fprintf(stderr, "Installation mode requires -rpath\n");
+		    exit(1);
+	    }
+
             tmp = (char*)malloc(PATH_MAX);
             strcpy(tmp, c->install_path);
-            strcat(tmp, strrchr(c->shared_name.normal, '/'));
+	    if (c->shared_name.install) {
+		    strcat(tmp, strrchr(c->shared_name.install, '/'));
+	    } else {
+		    strcat(tmp, strrchr(c->shared_name.normal, '/'));
+	    }
             push_count_chars(c->shared_opts.normal, tmp);
 #endif
         }
