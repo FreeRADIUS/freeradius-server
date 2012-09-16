@@ -68,8 +68,8 @@ static expr_map_t map[] =
 /*
  *	Lookup tables for randstr char classes
  */
-static char randstr_punc[32] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
-static char randstr_salt[] = ".0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/";
+static char randstr_punc[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
+static char randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/.";
 
 static int get_number(REQUEST *request, const char **string, int64_t *answer)
 {
@@ -304,7 +304,7 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 	rlm_expr_t	*inst = instance;
 	char		buffer[256];
 	unsigned int	result;
-	size_t		s = outlen;
+	size_t		free = outlen;
 	size_t		len;
 	char		*p;
 	
@@ -320,34 +320,61 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 	}
 	
 	p = buffer;
-	while ((len-- > 0) && (--s > 0)) {
+	while ((len-- > 0) && (--free > 0)) {
 		result = fr_rand();
 		switch (*p) {
+			/*
+			 *  Lowercase letters
+			 */
 			case 'c':
 				*out++ = 'a' + (result % 26);
 			break;
 			
+			/*
+			 *  Uppercase letters
+			 */
 			case 'C':
 				*out++ = 'A' + (result % 26);
 			break;
 			
+			/*
+			 *  Numbers
+			 */
 			case 'n':
 				*out++ = '0' + (result % 10);
 			break;
 			
+			/*
+			 *  Alpha numeric
+			 */
+			case 'a':
+				*out++ = randstr_salt[result % (sizeof(randstr_salt) - 3)];
+			break;
+			
+			/*
+			 *  Punctuation
+			 */
 			case '!':
 				*out++ = randstr_punc[result % (sizeof(randstr_punc) - 1)];
 			break;
 			
+			/*
+			 *  Alpa numeric + punctuation
+			 */
 			case '.':
 				*out++ = '!' + (result % 95);
 			break;
 			
+			/*
+			 *  Alpha numeric + salt chars './'
+			 */	
 			case 's':
 				*out++ = randstr_salt[result % (sizeof(randstr_salt) - 1)];
 			break;
 			
 			/*
+			 *  Any binary data.
+			 *
 			 *  Don't output NULLs apparently some places in the 
 			 *  code still use them instead of the length returned.
 			 */
@@ -368,7 +395,7 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 	
 	*out++ = '\0';
 	
-	return outlen - s;
+	return outlen - free;
 }
 
 /*
