@@ -146,6 +146,7 @@ ifeq "${bm_shared_libs}" "yes"
     #          with no dependency on the source. 
     RPATH_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/.libs -rdynamic
     RELINK_FLAGS := -rpath ${libdir} -rdynamic
+    RELINK_FLAGS_MIN := -rpath ${libdir}
     RELINK := relink/
 
     ifneq "${bm_static_libs}" "yes"
