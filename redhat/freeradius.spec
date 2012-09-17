@@ -249,7 +249,7 @@ cat >> $RPM_BUILD_ROOT/%{docdir}/REDHAT << EOF
 Red Hat, RHEL, Fedora, and CentOS specific information can be found on the
 FreeRADIUS Wiki in the Red Hat FAQ.
 
-http://wiki.freeradius.org/Red_Hat_FAQ
+http://wiki.freeradius.org/guide/Red_Hat_FAQ
 
 Please reference that document.
 
