@@ -803,6 +803,10 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 		thread_pool.max_spare_threads = 1;
 	if (thread_pool.max_spare_threads < thread_pool.min_spare_threads)
 		thread_pool.max_spare_threads = thread_pool.min_spare_threads;
+	if ((thread_pool.max_queue_size < 2) || (thread_pool.max_queue_size > 1048576)) {
+		radlog(L_ERR, "FATAL: max_queue_size value must be in range 2-1048576");
+		return -1;
+	}
 
 	/*
 	 *	The pool has already been initialized.  Don't spawn
