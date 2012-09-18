@@ -2198,21 +2198,22 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	maybe a csingle as a ref?
 	 */
 	if (cf_item_is_section(ci)) {
+		CONF_ITEM *csi;
+		
 		cs = cf_itemtosection(ci);
+		for (csi=cf_item_find_next(cs, NULL);
+		     csi != NULL;
+		     csi=cf_item_find_next(cs, csi)) {
 
-		for (ci=cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci=cf_item_find_next(cs, ci)) {
-
-			if (cf_item_is_section(ci)) {
-				cf_log_err(ci, "Subsection of module instance call not allowed");
+			if (cf_item_is_section(csi)) {
+				cf_log_err(csi, "Subsection of module instance call not allowed");
 				modcallable_free(&csingle);
 				return NULL;
 			}
 
-			if (!cf_item_is_pair(ci)) continue;
+			if (!cf_item_is_pair(csi)) continue;
 
-			if (!compile_action(csingle, cf_itemtopair(ci))) {
+			if (!compile_action(csingle, cf_itemtopair(csi))) {
 				modcallable_free(&csingle);
 				return NULL;
 			}
