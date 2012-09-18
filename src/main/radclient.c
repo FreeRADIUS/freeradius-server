@@ -842,7 +842,7 @@ static int recv_one_packet(int wait_time)
 
 	/* libradius debug already prints out the value pairs for us */
 	if (!fr_debug_flag && do_output) {
-		printf("Received response ID %d, code %d, length = %ld\n",
+		printf("Received response ID %d, code %d, length = %zd\n",
 		       radclient->reply->id, radclient->reply->code,
 		       radclient->reply->data_len);
 		vp_printlist(stdout, radclient->reply->vps);
