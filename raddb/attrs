@@ -124,7 +124,4 @@ DEFAULT
 	State =* ANY,
 	Session-Timeout <= 28800,
 	Idle-Timeout <= 600,
-	Port-Limit <= 2,
-	Calling-Station-Id =* ANY,
-	Operator-Name =* ANY
-
+	Port-Limit <= 2
