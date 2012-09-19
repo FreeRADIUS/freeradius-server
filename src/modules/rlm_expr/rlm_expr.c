@@ -305,7 +305,7 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 	rlm_expr_t	*inst = instance;
 	char		buffer[256];
 	unsigned int	result;
-	size_t		free = outlen;
+	size_t		freespace = outlen;
 	size_t		len;
 	char		*p;
 	
@@ -321,7 +321,7 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 	}
 	
 	p = buffer;
-	while ((len-- > 0) && (--free > 0)) {
+	while ((len-- > 0) && (--freespace > 0)) {
 		result = fr_rand();
 		switch (*p) {
 			/*
@@ -396,7 +396,7 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 	
 	*out++ = '\0';
 	
-	return outlen - free;
+	return outlen - freespace;
 }
 
 /*
