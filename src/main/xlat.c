@@ -759,6 +759,52 @@ static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
+static size_t xlat_urlquote(UNUSED void *instance, REQUEST *request,
+		      const char *fmt, char *out, size_t outlen,
+		      UNUSED RADIUS_ESCAPE_STRING func)
+{
+	char *in, *o;
+	char buffer[1024];
+
+	if (outlen <= 1) return 0;
+
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		*out = '\0';
+		return 0;
+	}
+
+	in = buffer;
+	o = out;
+
+	while (*in && outlen > 1) {
+		if (isalnum(*in)) {
+			*o++ = *in++;
+			outlen--;
+			continue;
+		}
+
+		switch (*in) {
+			case '-':
+			case '_':
+			case '.':
+			case '~':
+				*o++ = *in++;
+				outlen--;
+				break;
+			default:
+				if (outlen <= 3)
+					break;
+				snprintf(o, 4, "%%%02x", *in++);
+				outlen -= 3;
+				o += 3;
+		}
+	}
+
+	*o = '\0';
+
+	return strlen(out);
+}
+
 
 /**
  * @brief Convert a string to uppercase
@@ -893,6 +939,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(module);
+		XLAT_REGISTER(urlquote);
 
 #ifdef HAVE_REGEX_H
 		/*
