@@ -1214,7 +1214,8 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
  * Do an xlat on an LDAP URL
  */
 static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
-		     char *out, size_t freespace, RADIUS_ESCAPE_STRING func)
+		     char *out, size_t freespace,
+		     UNUSED RADIUS_ESCAPE_STRING func)
 {
 	char url[MAX_FILTER_STR_LEN];
 	int res;
@@ -1228,7 +1229,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	LDAP_CONN *conn;
 
 	DEBUG("  [%s] - ldap_xlat", inst->xlat_name);
-	if (!radius_xlat(url, sizeof(url), fmt, request, func)) {
+	if (!radius_xlat(url, sizeof(url), fmt, request, ldap_escape_func)) {
 		radlog (L_ERR, "  [%s] Unable to create LDAP URL.\n", inst->xlat_name);
 		return 0;
 	}
