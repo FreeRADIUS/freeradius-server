@@ -1256,14 +1256,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			case '%':
 				*q++ = *p++;
 				break;
-			case 'a': /* Protocol: */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL, 0),PW_TYPE_INTEGER, func);
-				p++;
-				break;
-			case 'c': /* Callback-Number */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER, 0),PW_TYPE_STRING, func);
-				p++;
-				break;
 			case 'd': /* request day */
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%d", TM);
@@ -1271,14 +1263,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
-				p++;
-				break;
-			case 'f': /* Framed IP address */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS, 0),PW_TYPE_IPADDR, func);
-				p++;
-				break;
-			case 'i': /* Calling station ID */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'l': /* request timestamp */
@@ -1297,32 +1281,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				}
 				p++;
 				break;
-			case 'n': /* NAS IP address */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS, 0),PW_TYPE_IPADDR, func);
-				p++;
-				break;
-			case 'p': /* Port number */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT, 0),PW_TYPE_INTEGER, func);
-				p++;
-				break;
-			case 's': /* Speed */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO, 0),PW_TYPE_STRING, func);
-				p++;
-				break;
 			case 't': /* request timestamp */
 				CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
 				nl = strchr(tmpdt, '\n');
 				if (nl) *nl = '\0';
 				strlcpy(q, tmpdt, freespace);
-				q += strlen(q);
-				p++;
-				break;
-			case 'u': /* User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME, 0),PW_TYPE_STRING, func);
-				p++;
-				break;
-			case 'A': /* radacct_dir */
-				strlcpy(q,radacct_dir,freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -1364,20 +1327,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				p++;
 				break;
-			case 'L': /* radlog_dir */
-				strlcpy(q,radlog_dir,freespace);
-				q += strlen(q);
-				p++;
-				break;
-			case 'M': /* MTU */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU, 0),PW_TYPE_INTEGER, func);
-				p++;
-				break;
-			case 'R': /* radius_dir */
-				strlcpy(q,radius_dir,freespace);
-				q += strlen(q);
-				p++;
-				break;
 			case 'S': /* request timestamp in SQL format*/
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d %H:%M:%S", TM);
@@ -1394,10 +1343,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
-				p++;
-				break;
-			case 'U': /* Stripped User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'V': /* Request-Authenticator */
