@@ -260,21 +260,23 @@ static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
 	return strlen(out);
 }
 
-static size_t rand_xlat(void *instance, REQUEST *request, const char *fmt,
+/**
+ *  @brief Generate a random integer value
+ *
+ */
+static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt,
 			char *out, size_t outlen,
 			RADIUS_ESCAPE_STRING func)
 {
 	int64_t		result;
-	rlm_expr_t	*inst = instance;
 	char		buffer[256];
-
-	inst = inst;		/* -Wunused */
 
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
 	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
 		return 0;
 	}
 
