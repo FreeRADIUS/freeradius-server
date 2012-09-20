@@ -294,22 +294,23 @@ static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
 	return strlen(out);
 }
 
-/*
+/**
+ *  @brief Generate a string of random chars
+ *
  *  Build strings of random chars, useful for generating tokens and passcodes
  *  Format identical to String::Random.
  */
-static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
-			char *out, size_t outlen,
-			RADIUS_ESCAPE_STRING func)
+static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
+			   const char *fmt, char *out, size_t outlen,
+			   RADIUS_ESCAPE_STRING func)
 {
-	rlm_expr_t	*inst = instance;
-	char		buffer[256];
+	char		*p;
+	char		buffer[1024];
 	unsigned int	result;
 	size_t		freespace = outlen;
 	size_t		len;
-	char		*p;
 	
-	inst = inst;		/* -Wunused */
+	if (outlen <= 1) return 0;
 
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
@@ -317,6 +318,7 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
 		return 0;
 	}
 	
@@ -374,18 +376,24 @@ static size_t randstr_xlat(void *instance, REQUEST *request, const char *fmt,
 			break;
 			
 			/*
-			 *  Any binary data.
-			 *
-			 *  Don't output NULLs apparently some places in the 
-			 *  code still use them instead of the length returned.
+			 *  Binary data as hexits (we don't really support 
+			 *  non printable chars).
 			 */
-			case 'b':
-				*out++ = (result % 255) + 1;
+			case 'h':
+				if (freespace < 2)
+					break;
+				
+				snprintf(out, 3, "%02x", result % 256);
+				
+				/* Already decremented */
+				freespace -= 1;
+				out += 2;
 			break;
 			
 			default:
 				radlog(L_ERR,
-				       "rlm_expr: invalid character class '%c'", *p);
+				       "rlm_expr: invalid character class '%c'",
+				       *p);
 				       
 				return 0;
 			break;
