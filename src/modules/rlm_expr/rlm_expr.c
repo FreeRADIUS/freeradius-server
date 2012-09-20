@@ -25,7 +25,11 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/md5.h>
 #include <freeradius-devel/modules.h>
+
+#include <ctype.h>
+
 #include "rlm_expr.h"
 
 /*
@@ -408,6 +412,159 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 	return outlen - freespace;
 }
 
+/**
+ * @brief URLencode special characters 
+ *
+ * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
+ */
+static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
+			    const char *fmt, char *out, size_t outlen,
+			    UNUSED RADIUS_ESCAPE_STRING func)
+{
+	char	*p;
+	char 	buffer[1024];
+	size_t	freespace = outlen;
+	size_t	len;
+	
+	if (outlen <= 1) return 0;
+
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
+	if (!len) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
+		return 0;
+	}
+
+	p = buffer;
+	while ((len-- > 0) && (--freespace > 0)) {
+		if (isalnum(*p)) {
+			*out++ = *p++;
+			continue;
+		}
+
+		switch (*p) {
+			case '-':
+			case '_':
+			case '.':
+			case '~':
+				*out++ = *p++;
+				break;
+			default:
+				if (freespace < 3)
+					break;
+				
+				snprintf(out, 4, "%%%02x", *p++); /* %xx */
+				
+				/* Already decremented */
+				freespace -= 2;
+				out += 3;
+		}
+	}
+
+	*out = '\0';
+
+	return outlen - freespace;
+}
+
+/**
+ * @brief Convert a string to lowercase
+ *
+ * Example "%{lc:Bar}" == "bar"
+ *
+ * Probably only works for ASCII
+ */
+static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
+		      const char *fmt, char *out, size_t outlen,
+		      UNUSED RADIUS_ESCAPE_STRING func)
+{
+	char *p, *q;
+	char buffer[1024];
+
+	if (outlen <= 1) return 0;
+
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		*out = '\0';
+		return 0;
+	}
+
+	for (p = buffer, q = out; *p != '\0'; p++, outlen--) {
+		if (outlen <= 1) break;
+
+		*(q++) = tolower((int) *p);
+	}
+
+	*q = '\0';
+
+	return strlen(out);
+}
+
+/**
+ * @brief Convert a string to uppercase
+ *
+ * Example: "%{uc:Foo}" == "FOO"
+ *
+ * Probably only works for ASCII
+ */
+static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
+		      const char *fmt, char *out, size_t outlen,
+		      UNUSED RADIUS_ESCAPE_STRING func)
+{
+	char *p, *q;
+	char buffer[1024];
+
+	if (outlen <= 1) return 0;
+
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		*out = '\0';
+		return 0;
+	}
+
+	for (p = buffer, q = out; *p != '\0'; p++, outlen--) {
+		if (outlen <= 1) break;
+
+		*(q++) = toupper((int) *p);
+	}
+
+	*q = '\0';
+
+	return strlen(out);
+}
+
+/**
+ * @brief Calculate the MD5 hash of a string.
+ *
+ * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
+ */
+static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
+		       const char *fmt, char *out, size_t outlen,
+		       UNUSED RADIUS_ESCAPE_STRING func)
+{
+	char buffer[1024];
+	uint8_t digest[16];
+	int i;
+	FR_MD5_CTX ctx;
+
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+		*out = '\0';
+		return 0;
+	}
+
+	fr_MD5Init(&ctx);
+	fr_MD5Update(&ctx, (void *) buffer, strlen(buffer));
+	fr_MD5Final(digest, &ctx);
+
+	if (outlen < 33) {
+		snprintf(out, outlen, "md5_overflow");
+		return strlen(out);
+	}
+
+	for (i = 0; i < 16; i++) {
+		snprintf(out + i * 2, 3, "%02x", digest[i]);
+	}
+
+	return strlen(out);
+}
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -442,6 +599,10 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 
 	xlat_register("rand", rand_xlat, inst);
 	xlat_register("randstr", randstr_xlat, inst);
+	xlat_register("urlquote", urlquote_xlat, inst);
+	xlat_register("tolower", lc_xlat, inst);
+	xlat_register("toupper", uc_xlat, inst);
+	xlat_register("md5", md5_xlat, inst);
 
 	/*
 	 * Initialize various paircompare functions

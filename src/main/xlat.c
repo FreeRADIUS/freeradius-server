@@ -26,7 +26,6 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/md5.h>
 #include	<freeradius-devel/rad_assert.h>
 
 #include	<ctype.h>
@@ -690,155 +689,6 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
-
-/**
- * @brief Calculate the MD5 hash of a string.
- *
- * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
- */
-static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
-{
-	int i;
-	uint8_t digest[16];
-	FR_MD5_CTX ctx;
-	char buffer[1024];
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		*out = '\0';
-		return 0;
-	}
-
-	fr_MD5Init(&ctx);
-	fr_MD5Update(&ctx, (void *) buffer, strlen(buffer));
-	fr_MD5Final(digest, &ctx);
-
-	if (outlen < 33) {
-		snprintf(out, outlen, "md5_overflow");
-		return strlen(out);
-	}
-
-	for (i = 0; i < 16; i++) {
-		snprintf(out + i * 2, 3, "%02x", digest[i]);
-	}
-
-	return strlen(out);
-}
-
-
-/**
- * @brief Convert a string to lowercase
- *
- * Example "%{lc:Bar}" == "bar"
- *
- * Probably only works for ASCII
- */
-static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen,
-		      UNUSED RADIUS_ESCAPE_STRING func)
-{
-	char *p, *q;
-	char buffer[1024];
-
-	if (outlen <= 1) return 0;
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		*out = '\0';
-		return 0;
-	}
-
-	for (p = buffer, q = out; *p != '\0'; p++, outlen--) {
-		if (outlen <= 1) break;
-
-		*(q++) = tolower((int) *p);
-	}
-
-	*q = '\0';
-
-	return strlen(out);
-}
-
-static size_t xlat_urlquote(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen,
-		      UNUSED RADIUS_ESCAPE_STRING func)
-{
-	char *in, *o;
-	char buffer[1024];
-
-	if (outlen <= 1) return 0;
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		*out = '\0';
-		return 0;
-	}
-
-	in = buffer;
-	o = out;
-
-	while (*in && outlen > 1) {
-		if (isalnum(*in)) {
-			*o++ = *in++;
-			outlen--;
-			continue;
-		}
-
-		switch (*in) {
-			case '-':
-			case '_':
-			case '.':
-			case '~':
-				*o++ = *in++;
-				outlen--;
-				break;
-			default:
-				if (outlen <= 3)
-					break;
-				snprintf(o, 4, "%%%02x", *in++);
-				outlen -= 3;
-				o += 3;
-		}
-	}
-
-	*o = '\0';
-
-	return strlen(out);
-}
-
-
-/**
- * @brief Convert a string to uppercase
- *
- * Example: "%{uc:Foo}" == "FOO"
- *
- * Probably only works for ASCII
- */
-static size_t xlat_uc(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen,
-		      UNUSED RADIUS_ESCAPE_STRING func)
-{
-	char *p, *q;
-	char buffer[1024];
-
-	if (outlen <= 1) return 0;
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		*out = '\0';
-		return 0;
-	}
-
-	for (p = buffer, q = out; *p != '\0'; p++, outlen--) {
-		if (outlen <= 1) break;
-
-		*(q++) = toupper((int) *p);
-	}
-
-	*q = '\0';
-
-	return strlen(out);
-}
-
-
 /*
  *	Compare two xlat_t structs, based ONLY on the module name.
  */
@@ -939,7 +789,6 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(module);
-		XLAT_REGISTER(urlquote);
 
 #ifdef HAVE_REGEX_H
 		/*
@@ -958,21 +807,6 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 
 		xlat_register("debug", xlat_debug, &xlat_inst[0]);
 		c = xlat_find("debug");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
-
-		xlat_register("md5", xlat_md5, &xlat_inst[0]);
-		c = xlat_find("md5");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
-
-		xlat_register("tolower", xlat_lc, &xlat_inst[0]);
-		c = xlat_find("tolower");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
-
-		xlat_register("toupper", xlat_uc, &xlat_inst[0]);
-		c = xlat_find("toupper");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 	}
