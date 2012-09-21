@@ -184,8 +184,8 @@ static size_t redis_escape_func(char *out, size_t outlen, const char *in)
 
 }
 
-static int redis_xlat(void *instance, REQUEST *request,
-		      char *fmt, char *out, size_t freespace,
+static size_t redis_xlat(void *instance, REQUEST *request,
+		      const char *fmt, char *out, size_t freespace,
 		      UNUSED RADIUS_ESCAPE_STRING func)
 {
 	REDIS_INST *inst = instance;
@@ -263,7 +263,7 @@ static int redis_detach(void *instance)
 	fr_connection_pool_delete(inst->pool);
 
 	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, (RAD_XLAT_FUNC)redis_xlat, instance);
+		xlat_unregister(inst->xlat_name, redis_xlat, instance);
 		free(inst->xlat_name);
 	}
 	free(inst->xlat_name);
@@ -366,7 +366,7 @@ static int redis_instantiate(CONF_SECTION *conf, void **instance)
 		xlat_name = cf_section_name1(conf);
 
 	inst->xlat_name = strdup(xlat_name);
-	xlat_register(inst->xlat_name, (RAD_XLAT_FUNC)redis_xlat, inst);
+	xlat_register(inst->xlat_name, redis_xlat, inst);
 
 	inst->pool = fr_connection_pool_init(conf, inst,
 					     redis_create_conn, NULL,
