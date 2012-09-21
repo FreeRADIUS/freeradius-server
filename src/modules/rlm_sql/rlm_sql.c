@@ -134,8 +134,8 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in);
  *  for inserts, updates and deletes the number of rows afftected will be
  *  returned instead.
  */
-static int sql_xlat(void *instance, REQUEST *request,
-		    char *fmt, char *out, size_t freespace,
+static size_t sql_xlat(void *instance, REQUEST *request,
+		    const char *fmt, char *out, size_t freespace,
 		    UNUSED RADIUS_ESCAPE_STRING func)
 {
 	SQLSOCK *sqlsocket;
@@ -784,7 +784,7 @@ static int rlm_sql_detach(void *instance)
 		if (inst->pool) sql_poolfree(inst);
 
 		if (inst->config->xlat_name) {
-			xlat_unregister(inst->config->xlat_name,(RAD_XLAT_FUNC)sql_xlat, instance);
+			xlat_unregister(inst->config->xlat_name, sql_xlat, instance);
 			free(inst->config->xlat_name);
 		}
 
@@ -942,7 +942,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	 *	Register the SQL xlat function
 	 */
 	inst->config->xlat_name = strdup(xlat_name);
-	xlat_register(xlat_name, (RAD_XLAT_FUNC)sql_xlat, inst);
+	xlat_register(xlat_name, sql_xlat, inst);
 		
 	/*
 	 *	Sanity check for crazy people.
