@@ -1190,7 +1190,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	VALUE_PAIR *tmp;
 	struct tm *TM, s_TM;
 	char tmpdt[40]; /* For temporary storing of dates */
-	int openbraces=0;
 
 	/*
 	 *	Catch bad modules.
@@ -1219,11 +1218,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			 * then we assume this brace is NOT literal, but is
 			 * a closing brace and apply it
 			 */
-			if ((c == '}') && openbraces) {
-				openbraces--;
-				p++; /* skip it */
-				continue;
-			}
 			*q++ = *p++;
 			continue;
 		}
