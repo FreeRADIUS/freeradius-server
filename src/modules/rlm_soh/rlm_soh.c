@@ -30,7 +30,7 @@ RCSID("$Id$")
 
 
 typedef struct rlm_soh_t {
-	const char *xlat_name;
+	char *xlat_name;
 	int dhcp;
 } rlm_soh_t;
 
@@ -38,7 +38,7 @@ typedef struct rlm_soh_t {
 /*
  * Not sure how to make this useful yet...
  */
-static size_t soh_xlat(UNUSED void *instance, REQUEST *request, char *fmt, char *out, size_t outlen, UNUSED RADIUS_ESCAPE_STRING func) {
+static size_t soh_xlat(UNUSED void *instance, REQUEST *request, const char *fmt, char *out, size_t outlen, UNUSED RADIUS_ESCAPE_STRING func) {
 
 	VALUE_PAIR* vp[6];
 	const char *osname;
@@ -116,6 +116,7 @@ static int soh_detach(void *instance) {
 }
 
 static int soh_instantiate(CONF_SECTION *conf, void **instance) {
+	const char *name;
 	rlm_soh_t *inst;
 
 	inst = *instance = rad_malloc(sizeof(*inst));
@@ -129,9 +130,9 @@ static int soh_instantiate(CONF_SECTION *conf, void **instance) {
 		return -1;
 	}
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-	inst->xlat_name = strdup(inst->xlat_name);
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->xlat_name = strdup(name);
 	xlat_register(inst->xlat_name, soh_xlat, inst);
 
 	return 0;
