@@ -196,7 +196,7 @@ static size_t redis_xlat(void *instance, REQUEST *request,
 	char querystr[MAX_QUERY_LEN];
 
 	if (!radius_xlat(querystr, sizeof(querystr), fmt, request,
-		    redis_escape_func, NULL)) {
+		    redis_escape_func, inst)) {
 		radlog(L_ERR, "rlm_redis (%s): xlat failed.",
 		       inst->xlat_name);
 
