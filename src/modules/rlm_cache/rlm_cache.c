@@ -361,8 +361,8 @@ static int cache_verify(rlm_cache_t *inst)
 /*
  *	Allow single attribute values to be retrieved from the cache.
  */
-static int cache_xlat(void *instance, REQUEST *request,
-		      char *fmt, char *out, size_t freespace,
+static size_t cache_xlat(void *instance, REQUEST *request,
+		      const char *fmt, char *out, size_t freespace,
 		      UNUSED RADIUS_ESCAPE_STRING func)
 {
 	rlm_cache_entry_t *c;
@@ -500,7 +500,7 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Register the cache xlat function
 	 */
 	inst->xlat_name = strdup(xlat_name);
-	xlat_register(xlat_name, (RAD_XLAT_FUNC)cache_xlat, inst);
+	xlat_register(xlat_name, cache_xlat, inst);
 
 	if (!inst->key || !*inst->key) {
 		radlog(L_ERR, "rlm_cache: You must specify a key");
