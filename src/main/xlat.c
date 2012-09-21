@@ -1141,32 +1141,6 @@ done:
 	return 0;
 }
 
-/*
- *  If the caller doesn't pass xlat an escape function, then
- *  we use this one.  It simplifies the coding, as the check for
- *  func == NULL only happens once.
- */
-static size_t xlat_copy(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
-{
-	int freespace = outlen;
-
-	if (outlen < 1) return 0;
-
-	while ((*in) && (freespace > 1)) {
-		/*
-		 *  Copy data.
-		 *
-		 *  FIXME: Do escaping of bad stuff!
-		 */
-		*(out++) = *(in++);
-
-		freespace--;
-	}
-	*out = '\0';
-
-	return (outlen - freespace); /* count does not include NUL */
-}
-
 /**
  * @brief Replace %whatever in a string.
  *
@@ -1195,13 +1169,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	 *	Catch bad modules.
 	 */
 	if (!fmt || !out || !request) return 0;
-
-	/*
-	 *  Ensure that we always have an escaping function.
-	 */
-	if (func == NULL) {
-		func = xlat_copy;
-	}
 
        	q = out;
 	p = fmt;
