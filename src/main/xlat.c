@@ -910,7 +910,7 @@ void xlat_free(void)
  */
 static int decode_attribute(const char **from, char **to, int freespace,
 			     REQUEST *request,
-			     RADIUS_ESCAPE_STRING func)
+			     RADIUS_ESCAPE_STRING func, void *funcarg)
 {
 	int	do_length = 0;
 	const char *module_name, *xlat_str;
@@ -1011,7 +1011,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 *	Expand the first one.  If we did, exit the
 		 *	conditional.
 		 */
-		retlen = radius_xlat(q, freespace, buffer, request, func);
+		retlen = radius_xlat(q, freespace, buffer, request, func, funcarg);
 		if (retlen) {
 			q += retlen;
 			goto done;
@@ -1023,7 +1023,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 */
 		if (expand2) {
 			retlen = radius_xlat(q, freespace, l,
-					    request, func);
+					    request, func, funcarg);
 			if (retlen) {
 				q += retlen;
 			}
@@ -1132,7 +1132,7 @@ do_xlat:
 		 *	Expand the second bit.
 		 */
 		RDEBUG2("\t... expanding second conditional");
-		retlen = radius_xlat(q, freespace, next, request, func);
+		retlen = radius_xlat(q, freespace, next, request, func, funcarg);
 	}
 	q += retlen;
 
@@ -1180,7 +1180,8 @@ static size_t xlat_copy(char *out, size_t outlen, const char *in)
  * @return length of string written @bug should really have -1 for failure
  */
 int radius_xlat(char *out, int outlen, const char *fmt,
-		REQUEST *request, RADIUS_ESCAPE_STRING func)
+		REQUEST *request,
+		RADIUS_ESCAPE_STRING func, void *funcarg)
 {
 	int c, len, freespace;
 	const char *p;
@@ -1258,7 +1259,7 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 		} else if (c == '%') switch(*p) {
 			case '{':
 				p--;
-				if (decode_attribute(&p, &q, freespace, request, func) < 0) return 0;
+				if (decode_attribute(&p, &q, freespace, request, func, funcarg) < 0) return 0;
 				break;
 
 			case '%':

@@ -342,7 +342,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Get the utmp filename, via xlat.
 	 */
-	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL);
+	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL, NULL);
 
 	/*
 	 *	See if this was a reboot.
@@ -383,7 +383,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
 	 *	they told us to use.
 	 */
 	*buffer = '\0';
-	radius_xlat(buffer, sizeof(buffer), inst->username, request, NULL);
+	radius_xlat(buffer, sizeof(buffer), inst->username, request, NULL, NULL);
 
 	/*
 	 *  Copy the previous translated user name.
@@ -574,7 +574,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	/*
 	 *	Get the filename, via xlat.
 	 */
-	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL);
+	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL, NULL);
 
 	if ((fd = open(filename, O_RDWR)) < 0) {
 		/*
@@ -595,7 +595,7 @@ static int radutmp_checksimul(void *instance, REQUEST *request)
 	}
 
 	*login = '\0';
-	radius_xlat(login, sizeof(login), inst->username, request, NULL);
+	radius_xlat(login, sizeof(login), inst->username, request, NULL, NULL);
 	if (!*login) {
 		close(fd);
 		return RLM_MODULE_NOOP;

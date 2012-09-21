@@ -334,7 +334,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	*/
-	if (!radius_xlat(params, sizeof(params), fmt, request, func)) {
+	if (!radius_xlat(params, sizeof(params), fmt, request, func, NULL)) {
 		radlog(L_ERR, "rlm_perl: xlat failed.");
 		return 0;
 	}

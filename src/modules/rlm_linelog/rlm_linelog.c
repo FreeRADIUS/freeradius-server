@@ -243,7 +243,7 @@ static int do_linelog(void *instance, REQUEST *request)
 		CONF_PAIR *cp;
 
 		radius_xlat(line + 1, sizeof(line) - 2, inst->reference,
-			    request, linelog_escape_func);
+			    request, linelog_escape_func, NULL);
 		line[0] = '.';	/* force to be in current section */
 
 		/*
@@ -281,7 +281,7 @@ static int do_linelog(void *instance, REQUEST *request)
 	 */
 	if (strcmp(inst->filename, "syslog") != 0) {
 		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
-			    NULL);
+			    NULL, NULL);
 		
 		/* check path and eventually create subdirs */
 		p = strrchr(buffer,'/');
@@ -326,7 +326,7 @@ static int do_linelog(void *instance, REQUEST *request)
 	 *	FIXME: Check length.
 	 */
 	radius_xlat(line, sizeof(line) - 1, value, request,
-		    linelog_escape_func);
+		    linelog_escape_func, NULL);
 
 	if (fd >= 0) {
 		strcat(line, "\n");

@@ -279,7 +279,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	I don't want to make that change for 2.0.
 		 */
 		radius_xlat(buffer, sizeof(buffer), cf_pair_value(cp),
-			    request, NULL);
+			    request, NULL, NULL);
 
 		vp = pairmake(p, buffer, cf_pair_operator(cp));
 		pairadd(vps, vp);
@@ -373,7 +373,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	const char *p = fmt;
 	char buffer[1024];
 
-	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
+	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
 
 	c = cache_find(inst, request, buffer);
 	
@@ -576,7 +576,7 @@ static int cache_it(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	char buffer[1024];
 
-	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
+	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
 
 	c = cache_find(inst, request, buffer);
 	

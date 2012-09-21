@@ -1042,7 +1042,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
                 return 1;
         }
 
-        if (!radius_xlat(basedn, sizeof(basedn), inst->basedn, req, ldap_escape_func)) {
+        if (!radius_xlat(basedn, sizeof(basedn), inst->basedn, req, ldap_escape_func, NULL)) {
                 DEBUG("rlm_ldap::ldap_groupcmp: unable to create basedn.");
                 return 1;
         }
@@ -1051,7 +1051,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
                 char            *user_dn = NULL;
 
                 if (!radius_xlat(filter, sizeof(filter), inst->filter,
-					req, ldap_escape_func)){
+					req, ldap_escape_func, NULL)){
                         DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter");
                         return 1;
                 }
@@ -1090,7 +1090,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
         }
 
         if(!radius_xlat(gr_filter, sizeof(gr_filter),
-			inst->groupmemb_filt, req, ldap_escape_func)) {
+			inst->groupmemb_filt, req, ldap_escape_func, NULL)) {
                 DEBUG("rlm_ldap::ldap_groupcmp: unable to create filter.");
                 return 1;
         }
@@ -1229,7 +1229,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	LDAP_CONN *conn;
 
 	DEBUG("  [%s] - ldap_xlat", inst->xlat_name);
-	if (!radius_xlat(url, sizeof(url), fmt, request, ldap_escape_func)) {
+	if (!radius_xlat(url, sizeof(url), fmt, request, ldap_escape_func, NULL)) {
 		radlog (L_ERR, "  [%s] Unable to create LDAP URL.\n", inst->xlat_name);
 		return 0;
 	}
@@ -1377,13 +1377,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	       request->username->vp_strvalue);
 
 	if (!radius_xlat(filter, sizeof(filter), inst->filter,
-			 request, ldap_escape_func)) {
+			 request, ldap_escape_func, NULL)) {
 		radlog(L_ERR, "  [%s] unable to create filter.\n", inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
-			 request, ldap_escape_func)) {
+			 request, ldap_escape_func, NULL)) {
 		radlog(L_ERR, "  [%s] unable to create basedn.\n", inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
@@ -1855,13 +1855,13 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	while ((vp_user_dn = pairfind(request->config_items,
 				      PW_LDAP_USERDN, 0)) == NULL) {
 		if (!radius_xlat(filter, sizeof(filter), inst->filter,
-				request, ldap_escape_func)) {
+				request, ldap_escape_func, NULL)) {
 			radlog(L_ERR, "  [%s] unable to create filter.\n", inst->xlat_name);
 			return RLM_MODULE_INVALID;
 		}
 
 		if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
-		 		request, ldap_escape_func)) {
+				request, ldap_escape_func, NULL)) {
 			radlog(L_ERR, "  [%s] unable to create basedn.\n", inst->xlat_name);
 			return RLM_MODULE_INVALID;
 		}

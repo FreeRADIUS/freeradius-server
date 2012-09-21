@@ -730,7 +730,7 @@ static int pap_auth_nt(REQUEST *request, VALUE_PAIR *vp, char *fmsg)
 	}
 
 	strlcpy(buff2, "%{mschap:NT-Hash %{User-Password}}", sizeof(buff2));
-	if (!radius_xlat(charbuf, sizeof(charbuf),buff2,request,NULL)){
+	if (!radius_xlat(charbuf, sizeof(charbuf),buff2,request,NULL,NULL)){
 		RDEBUG("mschap xlat failed");
 		snprintf(fmsg, sizeof(char[MAX_STRING_LEN]),
 			"rlm_pap: mschap xlat failed");
@@ -765,7 +765,7 @@ static int pap_auth_lm(REQUEST *request, VALUE_PAIR *vp, char *fmsg)
 	}
 
 	strlcpy(buff2, "%{mschap:LM-Hash %{User-Password}}", sizeof(buff2));
-	if (!radius_xlat(charbuf,sizeof(charbuf),buff2,request,NULL)){
+	if (!radius_xlat(charbuf,sizeof(charbuf),buff2,request,NULL,NULL)){
 		RDEBUG("mschap xlat failed");
 		snprintf(fmsg, sizeof(char[MAX_STRING_LEN]),
 			"rlm_pap: mschap xlat failed");

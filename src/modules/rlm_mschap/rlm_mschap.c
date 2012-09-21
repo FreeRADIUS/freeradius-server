@@ -463,7 +463,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL)) {
+		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL,NULL)) {
 			RDEBUG("xlat failed");
 			*buffer = '\0';
 			return 0;
@@ -489,7 +489,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL)) {
+		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL,NULL)) {
 			RDEBUG("xlat failed");
 			*buffer = '\0';
 			return 0;
@@ -750,7 +750,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		 */
 
 		if (inst->ntlm_cpw_username) {
-			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_username, request, NULL);
+			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_username, request, NULL, NULL);
 			strcat(buf, "\n");
 			len++;
 
@@ -763,7 +763,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		}
 
 		if (inst->ntlm_cpw_domain) {
-			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_domain, request, NULL);
+			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_domain, request, NULL, NULL);
 			strcat(buf, "\n");
 			len++;
 
@@ -1005,7 +1005,7 @@ ntlm_auth_err:
 		/*
 		 * perform the xlat
 		 */
-		result_len = radius_xlat(result, sizeof(result), inst->local_cpw, request, NULL);
+		result_len = radius_xlat(result, sizeof(result), inst->local_cpw, request, NULL, NULL);
 		if (!result_len) {
 			RDEBUG("Local MS-CHAPv2 password change - xlat didn't give any result, assuming failure");
 			return -1;

@@ -283,7 +283,7 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 		strlcpy(tmpuser, username, MAX_STRING_LEN);
 	} else if (inst->sql_user_name[0] != '\0') {
 		radius_xlat(tmpuser, sizeof(tmpuser), inst->sql_user_name,
-			    request, NULL);
+			    request, NULL, NULL);
 	} else {
 		return 0;
 	}
@@ -324,7 +324,7 @@ static int sql_xlat_query(rlm_sql_log_t *inst, REQUEST *request, const char *que
 	/* Expand variables in the query */
 	xlat_query[0] = '\0';
 	radius_xlat(xlat_query, len, query, request,
-		    inst->utf8 ? sql_utf8_escape_func : sql_escape_func);
+		    inst->utf8 ? sql_utf8_escape_func : sql_escape_func, NULL);
 	if (xlat_query[0] == '\0') {
 		radlog_request(L_ERR, 0, request, "Couldn't xlat the query %s",
 		       query);
@@ -364,7 +364,7 @@ static int sql_log_write(rlm_sql_log_t *inst, REQUEST *request, const char *line
 	char *p, path[1024];
 
 	path[0] = '\0';
-	radius_xlat(path, sizeof(path), inst->path, request, NULL);
+	radius_xlat(path, sizeof(path), inst->path, request, NULL, NULL);
 	if (path[0] == '\0') {
 		return RLM_MODULE_FAIL;
 	}

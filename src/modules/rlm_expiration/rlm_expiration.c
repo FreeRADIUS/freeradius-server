@@ -80,7 +80,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 			RDEBUG("Account has expired");
 
 			if (data->msg && data->msg[0]){
-				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL)) {
+				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL, NULL)) {
 					radlog(L_ERR, "rlm_expiration: xlat failed.");
 					return RLM_MODULE_FAIL;
 				}

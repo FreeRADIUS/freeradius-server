@@ -367,7 +367,7 @@ static size_t xlat_config(void *instance, REQUEST *request,
 	/*
 	 *	Expand it safely.
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, config_escape_func)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, config_escape_func, NULL)) {
 		return 0;
 	}
 

@@ -391,14 +391,14 @@ static int sqlcounter_cmp(void *instance, REQUEST *req,
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, sql_escape_func);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, sql_escape_func, NULL);
 
 	/* third, wrap query with sql module call & expand */
 	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, sql_escape_func);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, sql_escape_func, NULL);
 
 	counter = atoi(querystr);
 
@@ -653,14 +653,14 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
 	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, sql_escape_func);
+	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, sql_escape_func, NULL);
 
 	/* third, wrap query with sql module & expand */
 	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
 	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, sql_escape_func);
+	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, sql_escape_func, NULL);
 
 	if (sscanf(querystr, "%u", &counter) != 1) {
 		DEBUG2("rlm_sqlcounter: No integer found in string \"%s\"",

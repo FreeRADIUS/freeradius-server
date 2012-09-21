@@ -248,7 +248,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
 		return 0;
@@ -286,7 +286,7 @@ static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
 		return 0;
@@ -328,7 +328,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL);
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
@@ -436,7 +436,7 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
 	
 	if (outlen <= 1) return 0;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL);
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
@@ -491,7 +491,7 @@ static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
 	
 	if (outlen <= 1) return 0;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL);
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
@@ -540,7 +540,7 @@ static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
 
 	if (outlen <= 1) return 0;
 
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
 		*out = '\0';
 		return 0;
 	}
@@ -572,7 +572,7 @@ static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
 
 	if (outlen <= 1) return 0;
 
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
 		*out = '\0';
 		return 0;
 	}
@@ -602,7 +602,7 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
 	int i;
 	FR_MD5_CTX ctx;
 
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
 		*out = '\0';
 		return 0;
 	}
