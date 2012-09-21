@@ -165,7 +165,9 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Escape unprintable characters.
  */
-static size_t linelog_escape_func(char *out, size_t outlen, const char *in)
+static size_t linelog_escape_func(UNUSED REQUEST *request,
+		char *out, size_t outlen, const char *in,
+		UNUSED void *arg)
 {
 	int len = 0;
 

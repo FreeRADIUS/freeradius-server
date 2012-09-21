@@ -296,7 +296,7 @@ static const CONF_PARSER bootstrap_config[] = {
 #define MAX_ARGV (256)
 
 
-static size_t config_escape_func(char *out, size_t outlen, const char *in)
+static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
 {
 	size_t len = 0;
 	static const char *disallowed = "%{}\\'\"`";

@@ -125,7 +125,7 @@ static int fallthrough(VALUE_PAIR *vp)
  *	Yucky prototype.
  */
 static int generate_sql_clients(SQL_INST *inst);
-static size_t sql_escape_func(char *out, size_t outlen, const char *in);
+static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
 /*
  *			SQL xlat function
@@ -403,7 +403,7 @@ static int generate_sql_clients(SQL_INST *inst)
 /*
  *	Translate the SQL queries.
  */
-static size_t sql_escape_func(char *out, size_t outlen, const char *in)
+static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
 {
 	size_t len = 0;
 

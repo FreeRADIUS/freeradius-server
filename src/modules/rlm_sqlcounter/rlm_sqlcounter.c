@@ -103,7 +103,7 @@ static char *allowed_chars = NULL;
 /*
  *	Translate the SQL queries.
  */
-static size_t sql_escape_func(char *out, size_t outlen, const char *in)
+static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
 {
 	int len = 0;
 
@@ -467,7 +467,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		sqlcounter_detach(data);
 		return -1;
 	}
-	sql_escape_func(buffer, sizeof(buffer), data->key_name);
+	sql_escape_func(NULL, buffer, sizeof(buffer), data->key_name, NULL);
 	if (strcmp(buffer, data->key_name) != 0) {
 		radlog(L_ERR, "rlm_sqlcounter: The value for option 'key' is too long or contains unsafe characters.");
 		sqlcounter_detach(data);
@@ -501,7 +501,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 		sqlcounter_detach(data);
 		return -1;
 	}
-	sql_escape_func(buffer, sizeof(buffer), data->sqlmod_inst);
+	sql_escape_func(NULL, buffer, sizeof(buffer), data->sqlmod_inst, NULL);
 	if (strcmp(buffer, data->sqlmod_inst) != 0) {
 		radlog(L_ERR, "rlm_sqlcounter: The value for option 'sqlmod-inst' is too long or contains unsafe characters.");
 		sqlcounter_detach(data);

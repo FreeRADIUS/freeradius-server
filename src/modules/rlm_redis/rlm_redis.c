@@ -137,7 +137,8 @@ static void *redis_create_conn(void *ctx)
 	return dissocket;
 }
 
-static size_t redis_escape_func(char *out, size_t outlen, const char *in)
+static size_t redis_escape_func(UNUSED REQUEST *request,
+	char *out, size_t outlen, const char *in, UNUSED void *arg)
 {
 
 	size_t len = 0;

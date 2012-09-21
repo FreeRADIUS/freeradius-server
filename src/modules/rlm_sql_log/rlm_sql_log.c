@@ -151,7 +151,7 @@ static int sql_log_detach(void *instance)
 /*
  *	Translate the SQL queries.
  */
-static size_t sql_escape_func(char *out, size_t outlen, const char *in)
+static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
 {
 	int len = 0;
 
@@ -197,7 +197,7 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 	return len;
 }
 
-static size_t sql_utf8_escape_func(char *out, size_t outlen, const char *in)
+static size_t sql_utf8_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
 {
 	size_t len = 0;
 	size_t utf8 = 0;

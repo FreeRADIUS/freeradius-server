@@ -712,7 +712,7 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    int operator);
 
 /* xlat.c */
-typedef size_t (*RADIUS_ESCAPE_STRING)(char *out, size_t outlen, const char *in);
+typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
 int            radius_xlat(char * out, int outlen, const char *fmt,
 			   REQUEST * request, RADIUS_ESCAPE_STRING func, void *funcarg);

@@ -957,7 +957,7 @@ retry:
 /*
  *	Translate the LDAP queries.
  */
-static size_t ldap_escape_func(char *out, size_t outlen, const char *in)
+static size_t ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, void *arg)
 {
 	size_t len = 0;
 

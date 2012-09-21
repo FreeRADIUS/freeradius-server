@@ -1111,7 +1111,7 @@ do_xlat:
 		char tmpbuf[8192];
 		retlen = c->do_xlat(c->instance, request, xlat_str, tmpbuf, sizeof(tmpbuf));
 		if (retlen > 0) {
-			retlen = func(q, freespace, tmpbuf);
+			retlen = func(request, q, freespace, tmpbuf, funcarg);
 			if (retlen > 0) {
 				RDEBUG2("string escaped from \'%s\' to \'%s\'", tmpbuf, q);
 			} else if (retlen < 0) {
@@ -1146,7 +1146,7 @@ done:
  *  we use this one.  It simplifies the coding, as the check for
  *  func == NULL only happens once.
  */
-static size_t xlat_copy(char *out, size_t outlen, const char *in)
+static size_t xlat_copy(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
 {
 	int freespace = outlen;
 
