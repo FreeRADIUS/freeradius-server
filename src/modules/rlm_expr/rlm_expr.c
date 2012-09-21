@@ -37,7 +37,15 @@ RCSID("$Id$")
  */
 typedef struct rlm_expr_t {
 	char *xlat_name;
+	char *allowed_chars;
 } rlm_expr_t;
+
+static const CONF_PARSER module_config[] = {
+	{"safe-characters", PW_TYPE_STRING_PTR,
+	 offsetof(rlm_expr_t, allowed_chars), NULL,
+	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
+	{NULL, -1, 0, NULL, NULL}
+};
 
 typedef enum expr_token_t {
   TOKEN_NONE = 0,
@@ -227,8 +235,7 @@ static int get_number(REQUEST *request, const char **string, int64_t *answer)
  *  Do xlat of strings!
  */
 static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
-			char *out, size_t outlen,
-		     RADIUS_ESCAPE_STRING func)
+			char *out, size_t outlen, RADIUS_ESCAPE_STRING func)
 {
 	int		rcode;
 	int64_t		result;
@@ -243,6 +250,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
 	 */
 	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
 		return 0;
 	}
 
@@ -467,6 +475,56 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
 }
 
 /**
+ * @brief Equivalent to the old safe-characters functionality in rlm_sql
+ *
+ * Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60=/img=62"
+ */
+static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
+			  const char *fmt, char *out, size_t outlen,
+			  UNUSED RADIUS_ESCAPE_STRING func)
+{
+	rlm_expr_t *inst = instance;
+	char	*p;
+	char 	buffer[1024];
+	size_t	freespace = outlen;
+	size_t	len;
+	
+	if (outlen <= 1) return 0;
+
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
+	if (!len) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
+		return 0;
+	}
+
+	p = buffer;
+	while ((len-- > 0) && (--freespace > 0)) {
+		/*
+		 *	Non-printable characters get replaced with their
+		 *	mime-encoded equivalents.
+		 */
+		if ((*p > 31) && strchr(inst->allowed_chars, *p)) {
+			*out++ = *p++;
+			continue;
+		}
+		
+		if (freespace < 3)
+			break;
+
+		snprintf(out, 4, "=%02X", *p++);
+		
+		/* Already decremented */
+		freespace -= 2;
+		out += 3;
+	}
+	
+	*out = '\0';
+	
+	return outlen - freespace;
+}
+
+/**
  * @brief Convert a string to lowercase
  *
  * Example "%{lc:Bar}" == "bar"
@@ -566,6 +624,21 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
 }
 
 /*
+ * Detach a instance free all ..
+ */
+static int expr_detach(void *instance)
+{
+	rlm_expr_t	*inst = instance;
+
+	xlat_unregister(inst->xlat_name, expr_xlat, instance);
+	pair_builtincompare_detach();
+	free(inst->xlat_name);
+
+	free(inst);
+	return 0;
+}
+
+/*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
  *	to external databases, read configuration files, set up
@@ -588,6 +661,11 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst)
 		return -1;
 	memset(inst, 0, sizeof(rlm_expr_t));
+	
+	if (cf_section_parse(conf, inst, module_config) < 0) {
+		expr_detach(inst);
+		return -1;
+	}
 
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL)
@@ -600,6 +678,7 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register("rand", rand_xlat, inst);
 	xlat_register("randstr", randstr_xlat, inst);
 	xlat_register("urlquote", urlquote_xlat, inst);
+	xlat_register("escape", escape_xlat, inst);
 	xlat_register("tolower", lc_xlat, inst);
 	xlat_register("toupper", uc_xlat, inst);
 	xlat_register("md5", md5_xlat, inst);
@@ -610,21 +689,6 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	pair_builtincompare_init();
 	*instance = inst;
 
-	return 0;
-}
-
-/*
- * Detach a instance free all ..
- */
-static int expr_detach(void *instance)
-{
-	rlm_expr_t	*inst = instance;
-
-	xlat_unregister(inst->xlat_name, expr_xlat, instance);
-	pair_builtincompare_detach();
-	free(inst->xlat_name);
-
-	free(inst);
 	return 0;
 }
 

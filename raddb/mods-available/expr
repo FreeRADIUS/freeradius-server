@@ -3,8 +3,6 @@
 #  $Id$
 
 #
-#  The 'expression' module currently has no configuration.
-#
 #  This module is useful only for 'xlat'.  To use it,
 #  put 'expr' into the 'instantiate' section.  You can then
 #  do dynamic translation of attributes like:
@@ -15,6 +13,14 @@
 #  of the program which is executed.  Due to RADIUS protocol
 #  limitations, any output over 253 bytes will be ignored.
 #
-#  The module also registers a few paircompare functions
-expr {
+#  The module also registers a few paircompare functions, and 
+#  many string manipulation functions.
+#
+
+expr {  
+	#
+	# Characters that will not be encoded by the %{encode}
+	# xlat function.
+	# 
+	safe-characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
 }
