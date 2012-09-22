@@ -505,6 +505,9 @@ else
 fi
 
 dnl Check if we need -lsocket
+AC_CHECK_LIB(dl, dlopen)
+
+dnl Check if we need -lsocket
 AC_CHECK_LIB(socket, getsockname)
 
 dnl Check for -lresolv
