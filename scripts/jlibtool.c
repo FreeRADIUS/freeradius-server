@@ -1528,6 +1528,14 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
                 cmd_data->static_name.install = gen_install_name(arg, 0);
                 cmd_data->shared_name.install = gen_install_name(arg, 1);
                 cmd_data->module_name.install = gen_install_name(arg, 2);
+
+		if (!cmd_data->static_name.install &&
+		    !cmd_data->shared_name.install &&
+		    !cmd_data->module_name.install) {
+		  fprintf(stderr, "Files to install do not exist\n");
+		  exit(1);
+		}
+
             }
             break;
         default:
