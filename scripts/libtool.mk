@@ -99,6 +99,9 @@ endef
 define ADD_RELINK_RULE.exe
     ${1}: $${${1}_BUILD}/$${${1}_RELINK}
 
+    # force the in-source file to be re-built, too
+    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_BUILD}/${1}
+
     # used to fix up RPATH for ${1} on install.
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_R_PRLIBS}
 	    @$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
@@ -115,6 +118,9 @@ endef
 #
 define ADD_RELINK_RULE.la
     ${1}: $${${1}_BUILD}/$${${1}_RELINK}
+
+    # force the in-source file to be re-built, too
+    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_BUILD}/${1}
 
     # used to fix up RPATH for ${1} on install.
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PREREQS}
