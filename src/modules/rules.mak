@@ -86,7 +86,7 @@ ifneq ($(TARGET),)
 #  Yes, this is a horrible hack.
 #
 ifeq ($(findstring $(TARGET),$(STATIC_MODULES)),)
-LINK_MODE = -export-dynamic
+LINK_MODE = -export-dynamic -rpath ${libdir} -rdynamic
 else
 LINK_MODE = -static
 endif
@@ -125,8 +125,8 @@ build-module: $(TARGET).la $(RLM_UTILS)
 $(TARGET).la: $(RLM_SUBDIRS) $(LT_OBJS)
 	@echo LINK $@ $(filter %.lo,$^)
 	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	    -module $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
-	    -rpath $(libdir) $(filter %.lo,$^) $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
+	    $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
+	    $(filter %.lo,$^) $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
 
 #######################################################################
 #
@@ -173,7 +173,7 @@ install:
 	@[ "x$(RLM_INSTALL)" = "x" ] || $(MAKE) $(MFLAGS) $(RLM_INSTALL)
 	if [ "x$(TARGET)" != "x" ]; then \
 	    $(LIBTOOL) --mode=install $(INSTALL) -c \
-		$(TARGET).la $(R)$(libdir)/$(TARGET).la || exit $$?; \
+		-rpath $(libdir) $(TARGET).la $(R)$(libdir)/$(TARGET).la || exit $$?; \
 	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
 	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $$?; \
 	fi
