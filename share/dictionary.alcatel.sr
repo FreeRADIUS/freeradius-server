@@ -14,27 +14,31 @@ BEGIN-VENDOR	Alcatel-Lucent-Service-Router
 
 # Alcatel Timetra attributes
 ATTRIBUTE	Timetra-Access				1	integer
-ATTRIBUTE	Timetra-Home-Directory			2	string
-ATTRIBUTE	Timetra-Restrict-To-Home		3	integer
-ATTRIBUTE	Timetra-Profile				4	string
-ATTRIBUTE	Timetra-Default-Action			5	integer
-ATTRIBUTE	Timetra-Cmd				6	string
-ATTRIBUTE	Timetra-Action				7	integer
-ATTRIBUTE	Timetra-Exec-File			8	string
 
 VALUE	Timetra-Access			ftp			1
 VALUE	Timetra-Access			console			2
 VALUE	Timetra-Access			both			3
 
+ATTRIBUTE	Timetra-Home-Directory			2	string
+
 VALUE	Timetra-Restrict-To-Home	true			1
 VALUE	Timetra-Restrict-To-Home	false			2
+
+ATTRIBUTE	Timetra-Restrict-To-Home		3	integer
+ATTRIBUTE	Timetra-Profile				4	string
+ATTRIBUTE	Timetra-Default-Action			5	integer
 
 VALUE	Timetra-Default-Action		permit-all		1
 VALUE	Timetra-Default-Action		deny-all		2
 VALUE	Timetra-Default-Action		none			3
 
+ATTRIBUTE	Timetra-Cmd				6	string
+ATTRIBUTE	Timetra-Action				7	integer
+
 VALUE	Timetra-Action			permit			1
 VALUE	Timetra-Action			deny			2
+
+ATTRIBUTE	Timetra-Exec-File			8	string
 
 # RADIUS subscriber authorization and CoA VSAs
 ATTRIBUTE	Alc-Primary-Dns				9	ipaddr
@@ -48,7 +52,6 @@ ATTRIBUTE	Alc-ANCP-Str				16	string	# CoA
 ATTRIBUTE	Alc-Retail-Serv-Id			17	integer
 ATTRIBUTE	Alc-Default-Router			18	ipaddr
 ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
-ATTRIBUTE	Alc-Force-Nak				98	string	# CoA
 
 # RADIUS subscriber accounting VSAs
 ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	integer
@@ -170,6 +173,7 @@ ATTRIBUTE	Alc-Credit-Control-CategoryMap		95	string
 ATTRIBUTE	Alc-Credit-Control-Quota		96	string
 
 ATTRIBUTE	Alc-Tunnel-Challenge			97	integer	has_tag
+ATTRIBUTE	Alc-Force-Nak				98	string	# CoA
 
 VALUE	Alc-Tunnel-Challenge		 never			1
 VALUE	Alc-Tunnel-Challenge		 always			2
@@ -235,5 +239,98 @@ ATTRIBUTE	Alc-Subscriber-QoS-Override		126	string
 
 # RADIUS subscriber accounting VSAs (Policers)
 ATTRIBUTE	Alc-Acct-O-statmode			127	string
+
+# ATM Traffic Descriptor Profiles
+ATTRIBUTE	Alc-ATM-Ingress-TD-Profile		128	integer
+ATTRIBUTE	Alc-ATM-Egress-TD-Profile		129	integer
+ 
+# Application-assurance transit ip (CoA)
+ATTRIBUTE	Alc-AA-Transit-IP			130	integer	# CoA
+ 
+VALUE	Alc-AA-Transit-IP		host			1
+VALUE	Alc-AA-Transit-IP		audit-start		2
+VALUE	Alc-AA-Transit-IP		audit-end		3
+ 
+# DHCPv6 Relay pool selection attributes
+ATTRIBUTE	Alc-Delegated-IPv6-Pool			131	string
+ 
+ATTRIBUTE	Alc-Access-Loop-Rate-Down		132	integer
+ATTRIBUTE	Alc-Access-Loop-Encap-Offset		133	octets
+ 
+# Submgt SLA-profile filter overrrule
+ATTRIBUTE	Alc-Subscriber-Filter			134	string
+ 
+ATTRIBUTE	Alc-PPP-Force-IPv6CP			135	integer
+ 
+# One-Time HTTP Redirection
+ATTRIBUTE	Alc-Onetime-Http-Redirection-Filter-Id	136	string
+ 
+# Used when clearing all radius li triggered sources from a mirror destination
+# via CoA. The value of this attribute is used to authenticate the coa.
+ATTRIBUTE	Alc-Authentication-Policy-Name		137	string # CoA
+ 
+# Lawful intercept VSAs continued
+ATTRIBUTE	Alc-LI-Intercept-Id			138	integer	encrypt=2
+ATTRIBUTE	Alc-LI-Session-Id			139	integer	encrypt=2
+ 
+# NAT
+ATTRIBUTE	Alc-Nat-Outside-Serv-Id			140	integer
+ATTRIBUTE	Alc-Nat-Outside-Ip-Addr			141	ipaddr
+ 
+# Mobile-Gateway APN-Password VSA (password used for the next APN AccessReq)
+ATTRIBUTE	Alc-APN-Password			142	string	encrypt=2
+ 
+# Mobile-Gateway Next-APN-Name VSA (PGW-APN to be used for the session)
+ATTRIBUTE	Alc-APN-Name				143	string
+ 
+ATTRIBUTE	Alc-Tunnel-Acct-Policy			144	string	has_tag
+ 
+# Wlan-Gateway
+ATTRIBUTE	Alc-Mgw-Interface-Type			145	integer
+ 
+VALUE	Alc-Mgw-Interface-Type		gn			1
+VALUE	Alc-Mgw-Interface-Type		s2a			2
+VALUE	Alc-Mgw-Interface-Type		s2b			3
+ 
+ATTRIBUTE	Alc-Wlan-APN-Name			146	string
+ 
+ATTRIBUTE	Alc-MsIsdn				147	string
+ 
+# WIFI Received Signal Strength Indication
+ATTRIBUTE	Alc-RSSI				148	integer
+ 
+# Number of attached WIFI UEs
+ATTRIBUTE	Alc-Num-Attached-UEs			149	integer
+ 
+# Mobile-Gateway Charging-profile-ID VSA
+ATTRIBUTE	Alc-Charging-Prof-ID			150	integer
+ 
+# 151-155 are currently unused
+ 
+# Application-Assurance Radius Accounting Attributes
+ATTRIBUTE	Alc-AA-Group-Partition-Isa-Id		156	string
+ 
+# Application-Assurance Radius Peer Information
+ATTRIBUTE	Alc-AA-Peer-Identifier			157	string
+ 
+# Relative Session-Timeout
+ATTRIBUTE	Alc-Relative-Session-Timeout		160	integer
+ 
+# 161-162 are currently unused
+ 
+# Accounting interim update trigger reason
+ATTRIBUTE	Alc-Acct-Triggered-Reason		163	integer
+ 
+VALUE	Alc-Acct-Triggered-Reason	regular			1
+VALUE	Alc-Acct-Triggered-Reason	sla-start		2
+VALUE	Alc-Acct-Triggered-Reason	sla-stop		3
+VALUE	Alc-Acct-Triggered-Reason	Framed-IP-Address-up	4
+VALUE	Alc-Acct-Triggered-Reason	Framed-IP-Address-down	5
+VALUE	Alc-Acct-Triggered-Reason	Alc-Ipv6-Address-up	6
+VALUE	Alc-Acct-Triggered-Reason	Alc-Ipv6-Address-down	7
+VALUE	Alc-Acct-Triggered-Reason	Delegated-IPv6-Prefix-up	8
+VALUE	Alc-Acct-Triggered-Reason	Delegated-IPv6-Prefix-down	9
+VALUE	Alc-Acct-Triggered-Reason	Framed-IPv6-Prefix-up	10
+VALUE	Alc-Acct-Triggered-Reason	Framed-IPv6-Prefix-down	11
 
 END-VENDOR	Alcatel-Lucent-Service-Router
