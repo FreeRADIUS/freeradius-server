@@ -798,3 +798,36 @@ autz_redo:
 
 	return result;
 }
+
+/*
+ *	Run a virtual server auth and postauth
+ *
+ */
+int rad_virtual_server(REQUEST *request)
+{
+	VALUE_PAIR *vp;
+	int result;
+
+	/*
+	 *	We currently only handle AUTH packets here.
+	 *	This could be expanded to handle other packets as well if required.
+	 */
+	rad_assert(request->packet->code == PW_AUTHENTICATION_REQUEST);
+
+	result = rad_authenticate(request);
+
+        if (request->reply->code == PW_AUTHENTICATION_REJECT) {
+                pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0);
+                vp = radius_pairmake(request, &request->config_items,
+                                     "Post-Auth-Type", "Reject",
+                                     T_OP_SET);
+                if (vp) rad_postauth(request);
+        }
+
+        if (request->reply->code == PW_AUTHENTICATION_ACK) {
+                rad_postauth(request);
+        }
+
+	return result;
+}
+
