@@ -796,10 +796,5 @@ autz_redo:
 		rad_authlog("Login OK", request, 1);
 	}
 
-	/*
-	 *	Run the modules in the 'post-auth' section.
-	 */
-	result = rad_postauth(request);
-
 	return result;
 }
