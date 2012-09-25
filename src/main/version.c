@@ -30,78 +30,70 @@ RCSID("$Id$")
 /*
  *	Display the revision number for this program
  */
-void NEVER_RETURNS version(void)
+void version(void)
 {
-
-	printf("%s: %s\n", progname, radiusd_version);
-
-	printf("Copyright (C) 1999-2012 The FreeRADIUS server project and contributors.\n");
-	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
-	printf("PARTICULAR PURPOSE.\n");
-	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
-	printf("GNU General Public License.\n");
-	printf("For more information about these matters, see the file named COPYRIGHT.\n");
-
-	if (debug_flag) {
-		printf("\n");
-
-		printf("Functionality: ");
+	radlog(L_INFO, "%s: %s", progname, radiusd_version);
+	DEBUG3("Functionality: ");
 		
 #ifdef WITH_ACCOUNTING
-		printf("accounting, ");
+	DEBUG3(" accounting");
 #endif
-		printf("authentication, "); /* always enabled */
+	DEBUG3(" authentication"); /* always enabled */
 
 #ifdef WITH_COA
-		printf("coa, ");
+	DEBUG3(" coa");
 #endif
 #ifdef WITH_COMMAND_SOCKET
-		printf("control-socket, ");
+	DEBUG3(" control-socket");
 #endif
 #ifdef WITH_DETAIL
-		printf("detail, ");
+	DEBUG3(" detail");
 #endif
 #ifdef WITH_DHCP
-		printf("dhcp, ");
+	DEBUG3(" dhcp");
 #endif
 #ifdef WITH_DYNAMIC_CLIENTS
-		printf("dynamic clients, ");
+	DEBUG3(" dynamic clients");
 #endif
 #ifdef OSFC2
-		printf("OSFC2, ");
+	DEBUG3(" OSFC2");
 #endif
 #ifdef WITH_PROXY
-		printf("proxy, ");
+	DEBUG3(" proxy");
 #endif
 #ifdef HAVE_PCREPOSIX_H
-		printf("regex-PCRE, ");
+	DEBUG3(" regex-PCRE");
 #else
 #ifdef HAVE_REGEX_H
-		printf("regex-posix, ");
+	DEBUG3(" regex-posix");
 #endif
 #endif
 
 #ifdef WITH_SESSION_MGMT
-		printf("session-management, ");
+	DEBUG3(" session-management");
 #endif
 #ifdef WITH_STATS
-		printf("stats, ");
+	DEBUG3(" stats");
 #endif
 #ifdef WITH_TCP
-		printf("tcp, ");
+	DEBUG3(" tcp");
 #endif
 #ifdef WITH_TLS
-		printf("TLS, ");
+	DEBUG3(" TLS");
 #endif
 #ifdef WITH_UNLANG
-		printf("unlang, ");
+	DEBUG3(" unlang");
 #endif
 #ifdef WITH_VMPS
-		printf("vmps, ");
+	DEBUG3(" vmps");
 #endif
-		printf("\n");
-	}
-
-	exit (0);
+	radlog(L_INFO, "Copyright (C) 1999-2012 The FreeRADIUS server project and contributors.");
+	radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
+	radlog(L_INFO, "PARTICULAR PURPOSE.");
+	radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the");
+	radlog(L_INFO, "GNU General Public License.");
+	radlog(L_INFO, "For more information about these matters, see the file named COPYRIGHT.");
+	
+	fflush(NULL);
 }
 
