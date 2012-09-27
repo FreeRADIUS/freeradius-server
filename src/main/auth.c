@@ -195,16 +195,19 @@ static int rad_check_password(REQUEST *request)
 		}
 	}
 
+	/*
+	 *	Warn if more than one Auth-Type was found, because only the last
+	 *	one found will actually be used.
+	 */
 	if (( auth_type_count > 1) && (debug_flag)) {
 		radlog_request(L_ERR, 0, request, "Warning:  Found %d auth-types on request for user '%s'",
 			auth_type_count, request->username->vp_strvalue);
 	}
 
 	/*
-	 *	This means we have a proxy reply or an accept
-	 *  and it wasn't rejected in the above loop.  So
-	 *  that means it is accepted and we do no further
-	 *  authentication
+	 *	This means we have a proxy reply or an accept and it wasn't
+	 *	rejected in the above loop. So that means it is accepted and we
+	 *	do no further authentication.
 	 */
 	if ((auth_type == PW_AUTHTYPE_ACCEPT)
 #ifdef WITH_PROXY
