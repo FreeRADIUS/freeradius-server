@@ -216,17 +216,6 @@ static int rad_check_password(REQUEST *request)
 	}
 
 	/*
-	 *	Sanity check and warn on existance of legacy
-	 *	User-Password control attribute.
-	 */
-	if (pairfind(request->config_items, PW_USER_PASSWORD, 0) != NULL) {
-		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		RDEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
-		RDEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
-		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	}
-
-	/*
 	 *	Check that Auth-Type has been set, and reject if not.
 	 *
 	 *	Do quick checks to see if Cleartext-Password or Crypt-Password have
