@@ -672,6 +672,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 int		rad_postauth(REQUEST *);
+int		rad_virtual_server(REQUEST *);
 
 /* exec.c */
 pid_t radius_start_program(const char *cmd, REQUEST *request,

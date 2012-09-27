@@ -189,7 +189,7 @@ static int eaptls_authenticate(void *type_arg, EAP_HANDLER *handler)
 
 			RDEBUG("server %s {", fake->server);
 
-			rad_authenticate(fake);
+			rad_virtual_server(fake);
 
 			RDEBUG("} # server %s", fake->server);
 
