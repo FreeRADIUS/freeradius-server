@@ -198,6 +198,37 @@ listen {
 		      #  who are logged in... which can be a LOT.
 		      #
 		      max_entries = 255
+
+		      #
+		      #  Internal "name" of the session cache.
+		      #  Used to distinguish which TLS context
+		      #  sessions belong to.
+		      #
+		      #  The server will generate a random value
+		      #  if unset. This will change across server
+		      #  restart so you MUST set the "name" if you
+		      #  want to persist sessions (see below).
+		      #
+		      #  If you use IPv6, change the "ipaddr" below
+		      #  to "ipv6addr"
+		      #
+		      #name = "TLS ${..ipaddr} ${..port} ${..proto}"
+
+		      #
+		      #  Simple directory-based storage of sessions.
+		      #  Two files per session will be written, the SSL
+		      #  state and the cached VPs. This will persist session
+		      #  across server restarts.
+		      #
+		      #  The server will need write perms, and the directory
+		      #  should be secured from anyone else. You might want
+		      #  a script to remove old files from here periodically:
+		      #
+		      #    find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
+		      #
+		      #  This feature REQUIRES "name" option be set above.
+		      #
+		      #persist_dir = "${logdir}/tlscache"
 		}
 
 		#
