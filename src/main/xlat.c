@@ -58,9 +58,8 @@ static const char * const internal_xlat[] = {"check",
 #endif
 static const int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
-
-/*
- *	Convert the value on a VALUE_PAIR to string
+/**
+ * @brief Convert the value on a VALUE_PAIR to string
  */
 static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 			 int type, RADIUS_ESCAPE_STRING func)
@@ -565,17 +564,29 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 #endif				/* HAVE_REGEX_H */
 
 
-/*
- *	Change the debugging level.
+/**
+ * @brief Dynamically change the debugging level for the current request
+ *
+ * Example %{debug:3}
  */
 static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 			  char *fmt, char *out, size_t outlen,
 			  UNUSED RADIUS_ESCAPE_STRING func)
 {
 	int level = 0;
+	
+	/* 
+	 *  Expand to previous (or current) level
+	 */
+	snprintf(out, outlen, "%d", request->options & RAD_REQUEST_OPTION_DEBUG4);
 
-	if (*fmt) level = atoi(fmt);
-
+	/* 
+	 *  Assume we just want to get the current value and NOT set it to 0
+	 */
+	if (!*fmt)
+		goto done;
+		
+	level = atoi(fmt);
 	if (level == 0) {
 		request->options = RAD_REQUEST_OPTION_NONE;
 		request->radlog = NULL;
@@ -585,8 +596,8 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 		request->options = level;
 		request->radlog = radlog_request;
 	}
-
-	snprintf(out, outlen, "%d", level);
+	
+	done:
 	return strlen(out);
 }
 
