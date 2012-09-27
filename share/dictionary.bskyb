@@ -12,11 +12,11 @@ VENDOR		BSkyB				16924
 
 BEGIN-VENDOR	BSkyB	
 
-ATTRIBUTE	Sky-Wifi-AP-ID				1    string
+ATTRIBUTE	Sky-Wifi-AP-ID				1    integer
 ATTRIBUTE	Sky-Wifi-Service-ID			2    integer
 ATTRIBUTE	Sky-Wifi-Filter-Profile			3    string
 ATTRIBUTE	Sky-Wifi-Billing-Class			4    octets
-ATTRIBUTE	Sky-Wifi-Provider-Name			5    string
+ATTRIBUTE	Sky-Wifi-Provider-Name			5    integer
 ATTRIBUTE	Sky-Wifi-Credentials			6    string
 
 END-VENDOR	BSkyB
