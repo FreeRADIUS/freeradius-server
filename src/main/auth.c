@@ -170,7 +170,6 @@ static int rad_check_password(REQUEST *request)
 {
 	VALUE_PAIR *auth_type_pair;
 	VALUE_PAIR *cur_config_item;
-	VALUE_PAIR *password_pair;
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
@@ -216,30 +215,15 @@ static int rad_check_password(REQUEST *request)
 		return 0;
 	}
 
-	password_pair =  pairfind(request->config_items, PW_USER_PASSWORD, 0);
-	if (password_pair &&
-	    pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) {
-	  pairdelete(&request->config_items, PW_USER_PASSWORD, 0);
-		password_pair = NULL;
-	}
-
-	if (password_pair) {
-		DICT_ATTR *da;
-
-		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		RDEBUG("!!!    Replacing User-Password in config items with Cleartext-Password.     !!!");
+	/*
+	 *	Sanity check and warn on existance of legacy
+	 *	User-Password control attribute.
+	 */
+	if (pairfind(request->config_items, PW_USER_PASSWORD, 0) != NULL) {
 		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		RDEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
 		RDEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
 		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		password_pair->attribute = PW_CLEARTEXT_PASSWORD;
-		da = dict_attrbyvalue(PW_CLEARTEXT_PASSWORD, 0);
-		if (!da) {
-			radlog_request(L_ERR, 0, request, "FATAL: You broke the dictionaries.  Please use the default dictionaries!");
-			_exit(1);
-		}
-
-		password_pair->name = da->name;
 	}
 
 	/*
