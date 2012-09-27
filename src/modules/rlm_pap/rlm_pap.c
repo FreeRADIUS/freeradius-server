@@ -517,7 +517,6 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	char charbuf[128];
 	uint8_t buff[MAX_STRING_LEN];
 	char buff2[MAX_STRING_LEN + 50];
-	int scheme = PAP_ENC_INVALID;
 
 	if (!request->password ||
 	    (request->password->attribute != PW_USER_PASSWORD)) {
@@ -546,10 +545,6 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		for (vp = request->config_items; vp != NULL; vp = vp->next) {
 			switch (vp->attribute) {
 			case PW_USER_PASSWORD: /* deprecated */
-				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-				RDEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
-				RDEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
-				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			case PW_CLEARTEXT_PASSWORD: /* preferred */
 				goto do_clear;
 
@@ -595,20 +590,30 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		}
 
 		/*
-		 *	Old-style: all passwords are in User-Password.
+		 *	When forced with encryption_scheme, all passwords (except Crypt)
+		 *	must now be in Cleartext-Password
 		 */
 		if (!vp) {
-			vp = pairfind(request->config_items, PW_USER_PASSWORD, 0);
-			if (!vp) goto fail;
+			vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+			if (!vp) {
+				RDEBUG("WARNING: fixed encryption_scheme set, but no Cleartext-Password found!");
+				goto fail;
+			}
 		}
 	}
 
 	/*
 	 *	Now that we've decided what to do, go do it.
 	 */
-	switch (scheme) {
+	switch (inst->sch) {
 	case PAP_ENC_CLEAR:
 	do_clear:
+		if (vp->attribute == PW_USER_PASSWORD) {
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RDEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
+			RDEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		}
 		RDEBUG("Using clear text password \"%s\"",
 		      vp->vp_strvalue);
 		if ((vp->length != request->password->length) ||
