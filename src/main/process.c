@@ -1087,6 +1087,10 @@ STATE_MACHINE_DECL(request_finish)
 		if (vp) rad_postauth(request);
 	}
 
+	if (request->reply->code == PW_AUTHENTICATION_ACK) {
+		rad_postauth(request);
+	}
+
 	/*
 	 *	Send the reply here.
 	 */
