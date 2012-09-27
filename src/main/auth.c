@@ -171,8 +171,6 @@ static int rad_check_password(REQUEST *request)
 	VALUE_PAIR *auth_type_pair;
 	VALUE_PAIR *cur_config_item;
 	VALUE_PAIR *password_pair;
-	VALUE_PAIR *auth_item;
-	uint8_t my_chap[MAX_STRING_LEN];
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
@@ -245,163 +243,61 @@ static int rad_check_password(REQUEST *request)
 	}
 
 	/*
-	 *	Find the "known good" password.
+	 *	Check that Auth-Type has been set, and reject if not.
 	 *
-	 *	FIXME: We should get rid of these hacks, and replace
-	 *	them with a module.
+	 *	Do quick checks to see if Cleartext-Password or Crypt-Password have
+	 *	been set, and complain if so.
 	 */
-	if ((password_pair = pairfind(request->config_items, PW_CRYPT_PASSWORD, 0)) != NULL) {
-		/*
-		 *	Re-write Auth-Type, but ONLY if it isn't already
-		 *	set.
-		 */
-		if (auth_type == -1) auth_type = PW_AUTHTYPE_CRYPT;
-	} else {
-		password_pair = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
-	}
-
 	if (auth_type < 0) {
-		if (password_pair) {
-			auth_type = PW_AUTHTYPE_LOCAL;
-		} else {
-			/*
-		 	*	The admin hasn't told us how to
-		 	*	authenticate the user, so we reject them!
-		 	*
-		 	*	This is fail-safe.
-		 	*/
-			RDEBUG2("ERROR: No authenticate method (Auth-Type) found for the request: Rejecting the user");
-			return -2;
-		}
-	}
-
-	switch(auth_type) {
-		case PW_AUTHTYPE_CRYPT:
+		if (pairfind(request->config_items, PW_CRYPT_PASSWORD, 0) != NULL) {
 			RDEBUG2("WARNING: Please update your configuration, and remove 'Auth-Type = Crypt'");
 			RDEBUG2("WARNING: Use the PAP module instead.");
-
-			/*
-			 *	Find the password sent by the user. It
-			 *	SHOULD be there, if it's not
-			 *	authentication fails.
-			 */
-			auth_item = request->password;
-			if (auth_item == NULL) {
-				RDEBUG2("No User-Password or CHAP-Password attribute in the request");
-				return -1;
-			}
-
-			if (password_pair == NULL) {
-				RDEBUG2("No Crypt-Password configured for the user");
-				rad_authlog("Login incorrect "
-					"(No Crypt-Password configured for the user)", request, 0);
-				return -1;
-			}
-
-			switch (fr_crypt_check((char *)auth_item->vp_strvalue,
-									 (char *)password_pair->vp_strvalue)) {
-			case -1:
-			  rad_authlog("Login incorrect "
-						  "(system failed to supply an encrypted password for comparison)", request, 0);
-			  /* FALL-THROUGH */
-			case 1:
-			  return -1;
-			}
-			break;
-		case PW_AUTHTYPE_LOCAL:
+		}
+		else if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0) != NULL) {
 			RDEBUG2("WARNING: Please update your configuration, and remove 'Auth-Type = Local'");
 			RDEBUG2("WARNING: Use the PAP or CHAP modules instead.");
+		}
 
-			/*
-			 *	Find the password sent by the user. It
-			 *	SHOULD be there, if it's not
-			 *	authentication fails.
-			 */
-			auth_item = request->password;
-			if (!auth_item)
-				auth_item = pairfind(request->packet->vps,
-						     PW_CHAP_PASSWORD, 0);
-			if (!auth_item) {
-				RDEBUG2("No User-Password or CHAP-Password attribute in the request.");
-				RDEBUG2("Cannot perform authentication.");
-				return -1;
-			}
+		/*
+	 	 *	The admin hasn't told us how to
+	 	 *	authenticate the user, so we reject them!
+	 	 *
+	 	 *	This is fail-safe.
+	 	 */
 
-			/*
-			 *	Plain text password.
-			 */
-			if (password_pair == NULL) {
-				RDEBUG2("No \"known good\" password was configured for the user.");
-				RDEBUG2("As a result, we cannot authenticate the user.");
-				rad_authlog("Login incorrect "
-					"(No password configured for the user)", request, 0);
-				return -1;
-			}
+		RDEBUG2("ERROR: No authenticate method (Auth-Type) found for the request: Rejecting the user");
+		return -2;
+	}
 
-			/*
-			 *	Local password is just plain text.
-	 		 */
-			if (auth_item->attribute == PW_USER_PASSWORD) {
-				if (strcmp((char *)password_pair->vp_strvalue,
-					   (char *)auth_item->vp_strvalue) != 0) {
-					RDEBUG2("User-Password in the request does NOT match \"known good\" password.");
-					return -1;
-				}
-				RDEBUG2("User-Password in the request is correct.");
-				break;
-
-			} else if (auth_item->attribute != PW_CHAP_PASSWORD) {
-				RDEBUG2("The user did not supply a User-Password or a CHAP-Password attribute");
-				rad_authlog("Login incorrect "
-					"(no User-Password or CHAP-Password attribute)", request, 0);
-				return -1;
-			}
-
-			rad_chap_encode(request->packet, my_chap,
-					auth_item->vp_octets[0], password_pair);
-
-			/*
-			 *	Compare them
-			 */
-			if (memcmp(my_chap + 1, auth_item->vp_strvalue + 1,
-				   CHAP_VALUE_LENGTH) != 0) {
-				RDEBUG2("CHAP-Password is incorrect.");
-				return -1;
-			}
-			RDEBUG2("CHAP-Password is correct.");
-			break;
+	/*
+	 *	See if there is a module that handles
+	 *	this Auth-Type, and turn the RLM_ return
+	 *	status into the values as defined at
+	 *	the top of this function.
+	 */
+	result = module_authenticate(auth_type, request);
+	switch (result) {
+		/*
+		 *	An authentication module FAIL
+		 *	return code, or any return code that
+		 *	is not expected from authentication,
+		 *	is the same as an explicit REJECT!
+		 */
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_NOOP:
+		case RLM_MODULE_NOTFOUND:
+		case RLM_MODULE_REJECT:
+		case RLM_MODULE_UPDATED:
+		case RLM_MODULE_USERLOCK:
 		default:
-			/*
-			 *	See if there is a module that handles
-			 *	this type, and turn the RLM_ return
-			 *	status into the values as defined at
-			 *	the top of this function.
-			 */
-			result = module_authenticate(auth_type, request);
-			switch (result) {
-				/*
-				 *	An authentication module FAIL
-				 *	return code, or any return code that
-				 *	is not expected from authentication,
-				 *	is the same as an explicit REJECT!
-				 */
-				case RLM_MODULE_FAIL:
-				case RLM_MODULE_INVALID:
-				case RLM_MODULE_NOOP:
-				case RLM_MODULE_NOTFOUND:
-				case RLM_MODULE_REJECT:
-				case RLM_MODULE_UPDATED:
-				case RLM_MODULE_USERLOCK:
-				default:
-					result = -1;
-					break;
-				case RLM_MODULE_OK:
-					result = 0;
-					break;
-				case RLM_MODULE_HANDLED:
-					result = 1;
-					break;
-			}
+			result = -1;
+			break;
+		case RLM_MODULE_OK:
+			result = 0;
+			break;
+		case RLM_MODULE_HANDLED:
+			result = 1;
 			break;
 	}
 
