@@ -607,6 +607,7 @@ AC_CHECK_HEADERS( \
 	sys/types.h \
 	sys/socket.h \
 	winsock.h \
+	utime.h \
 	sys/time.h \
 	sys/wait.h \
 	sys/security.h \
