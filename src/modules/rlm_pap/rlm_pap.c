@@ -546,6 +546,10 @@ static int pap_authenticate(void *instance, REQUEST *request)
 		for (vp = request->config_items; vp != NULL; vp = vp->next) {
 			switch (vp->attribute) {
 			case PW_USER_PASSWORD: /* deprecated */
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+				RDEBUG("!!! Please update your configuration so that the \"known good\"               !!!");
+				RDEBUG("!!! clear text password is in Cleartext-Password, and not in User-Password. !!!");
+				RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			case PW_CLEARTEXT_PASSWORD: /* preferred */
 				goto do_clear;
 
