@@ -35,68 +35,6 @@ RCSID("$Id$")
 
 #include "rlm_pap.h"
 
-#define PAP_ENC_INVALID	-1
-#define PAP_ENC_CLEAR		0
-#define PAP_ENC_CRYPT		1
-#define PAP_ENC_MD5		2
-#define PAP_ENC_SHA1		3
-#define PAP_ENC_NT		4
-#define PAP_ENC_LM		5
-#define PAP_ENC_SMD5		6
-#define PAP_ENC_SSHA		7
-#define PAP_ENC_NS_MTA_MD5	8
-#define PAP_ENC_AUTO		9
-#define PAP_MAX_ENC		9
-
-/*
- *      Define a structure for our module configuration.
- *
- *      These variables do not need to be in a structure, but it's
- *      a lot cleaner to do so, and a pointer to the structure can
- *      be used as the instance handle.
- */
-typedef struct rlm_pap_t {
-	const char *name;	/* CONF_SECTION->name, not strdup'd */
-	int auto_header;
-	int auth_type;
-} rlm_pap_t;
-
-/*
- *      A mapping of configuration file names to internal variables.
- *
- *      Note that the string is dynamically allocated, so it MUST
- *      be freed.  When the configuration file parse re-reads the string,
- *      it free's the old one, and strdup's the new one, placing the pointer
- *      to the strdup'd string into 'config.string'.  This gets around
- *      buffer over-flows.
- */
-static const CONF_PARSER module_config[] = {
-	{ "auto_header", PW_TYPE_BOOLEAN, offsetof(rlm_pap_t,auto_header), NULL, "no" },
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-
-/*
- *	For auto-header discovery.
- */
-static const FR_NAME_NUMBER header_names[] = {
-	{ "{clear}",		PW_CLEARTEXT_PASSWORD },
-	{ "{cleartext}",	PW_CLEARTEXT_PASSWORD },
-	{ "{md5}",		PW_MD5_PASSWORD },
-	{ "{BASE64_MD5}",	PW_MD5_PASSWORD },
-	{ "{smd5}",		PW_SMD5_PASSWORD },
-	{ "{crypt}",		PW_CRYPT_PASSWORD },
-	{ "{sha}",		PW_SHA_PASSWORD },
-	{ "{ssha}",		PW_SSHA_PASSWORD },
-	{ "{nt}",		PW_NT_PASSWORD },
-	{ "{nthash}",		PW_NT_PASSWORD },
-	{ "{x-nthash}",		PW_NT_PASSWORD },
-	{ "{ns-mta-md5}",	PW_NS_MTA_MD5_PASSWORD },
-	{ "{x- orcllmv}",	PW_LM_PASSWORD },
-	{ "{X- ORCLNTV}",	PW_NT_PASSWORD },
-	{ NULL, 0 }
-};
-
 
 static int pap_detach(void *instance)
 {
@@ -610,6 +548,7 @@ static int pap_auth_clear(REQUEST *request, VALUE_PAIR *vp, char *fmsg)
 			"rlm_pap: CLEAR TEXT password check failed");
 		return RLM_MODULE_REJECT;
 	}
+
 	return RLM_MODULE_OK;
 }
 
@@ -623,6 +562,7 @@ static int pap_auth_crypt(REQUEST *request, VALUE_PAIR *vp, char *fmsg)
 			"rlm_pap: CRYPT password check failed");
 		return RLM_MODULE_REJECT;
 	}
+
 	return RLM_MODULE_OK;
 }
 
