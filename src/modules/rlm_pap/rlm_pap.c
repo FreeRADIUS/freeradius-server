@@ -484,6 +484,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
 	int rc = RLM_MODULE_INVALID;
+	int (*auth_func)(REQUEST *, VALUE_PAIR *, char *) = NULL;
 
 	/* Shut the compiler up */
 	instance = instance;
@@ -507,73 +508,81 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	RDEBUG("login attempt with password \"%s\"", request->password->vp_strvalue);
 
 	/*
-	 *	First, auto-detect passwords, by attribute in the
-	 *	config items.
+	 *	Auto-detect passwords, by attribute in the
+	 *	config items, to find out which authentication
+	 *	function to call.
 	 */
 	for (vp = request->config_items; vp != NULL; vp = vp->next) {
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD: /* deprecated */
 		case PW_CLEARTEXT_PASSWORD: /* preferred */
-			rc = pap_auth_clear(request, vp, module_fmsg);
+			auth_func = &pap_auth_clear;
 			break;
 
 		case PW_CRYPT_PASSWORD:
-			rc = pap_auth_crypt(request, vp, module_fmsg);
+			auth_func = &pap_auth_crypt;
 			break;
 
 		case PW_MD5_PASSWORD:
-			rc = pap_auth_md5(request, vp, module_fmsg);
+			auth_func = &pap_auth_md5;
 			break;
 
 		case PW_SMD5_PASSWORD:
-			rc = pap_auth_smd5(request, vp, module_fmsg);
+			auth_func = &pap_auth_smd5;
 			break;
 
 		case PW_SHA_PASSWORD:
-			rc = pap_auth_sha(request, vp, module_fmsg);
+			auth_func = &pap_auth_sha;
 			break;
 
 		case PW_SSHA_PASSWORD:
-			rc = pap_auth_ssha(request, vp, module_fmsg);
+			auth_func = &pap_auth_ssha;
 			break;
 
 		case PW_NT_PASSWORD:
-			rc = pap_auth_nt(request, vp, module_fmsg);
+			auth_func = &pap_auth_nt;
 			break;
 
 		case PW_LM_PASSWORD:
-			rc = pap_auth_lm(request, vp, module_fmsg);
+			auth_func = &pap_auth_lm;
 			break;
 
 		case PW_NS_MTA_MD5_PASSWORD:
-			rc = pap_auth_ns_mta_md5(request, vp, module_fmsg);
+			auth_func = &pap_auth_ns_mta_md5;
 			break;
 
 		default:
 			break;
 		}
 
-		if (rc != RLM_MODULE_INVALID) {
-			if (rc == RLM_MODULE_REJECT) {
-				RDEBUG("Passwords don't match");
-				RDEBUG("return message '%s'", module_fmsg);
-				module_fmsg_vp = pairmake("Module-Failure-Message",
-							  module_fmsg, T_OP_EQ);
-				pairadd(&request->packet->vps, module_fmsg_vp);
-				return RLM_MODULE_REJECT;
-			}
-
-			if (rc == RLM_MODULE_OK) {
-				RDEBUG("User authenticated successfully");
-				return RLM_MODULE_OK;
-			}
-
-			return rc;
-		}
+		if (auth_func != NULL) break;
 	}
 
-	RDEBUG("No password configured for the user.  Cannot do authentication");
-	return RLM_MODULE_FAIL;
+	/*
+	 *	No attribute was found that looked like a password to match.
+	 */
+	if (auth_func == NULL) {
+		RDEBUG("No password configured for the user.  Cannot do authentication");
+		return RLM_MODULE_FAIL;
+	}
+
+	/*
+	 *	Authenticate, and return.
+	 */
+	rc = auth_func(request, vp, module_fmsg);
+
+	if (rc == RLM_MODULE_REJECT) {
+		RDEBUG("Passwords don't match");
+		module_fmsg_vp = pairmake("Module-Failure-Message",
+					  module_fmsg, T_OP_EQ);
+		pairadd(&request->packet->vps, module_fmsg_vp);
+	}
+
+	if (rc == RLM_MODULE_OK) {
+		RDEBUG("User authenticated successfully");
+	}
+
+	return rc;
 }
 
 
