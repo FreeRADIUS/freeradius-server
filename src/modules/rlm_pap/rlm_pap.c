@@ -55,9 +55,6 @@ RCSID("$Id$")
  */
 typedef struct rlm_pap_t {
 	const char *name;	/* CONF_SECTION->name, not strdup'd */
-        char *scheme;  /* password encryption scheme */
-	int sch;
-	char norm_passwd;
 	int auto_header;
 	int auth_type;
 } rlm_pap_t;
@@ -72,22 +69,8 @@ typedef struct rlm_pap_t {
  *      buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "encryption_scheme", PW_TYPE_STRING_PTR, offsetof(rlm_pap_t,scheme), NULL, "auto" },
 	{ "auto_header", PW_TYPE_BOOLEAN, offsetof(rlm_pap_t,auto_header), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
-};
-
-static const FR_NAME_NUMBER schemes[] = {
-	{ "clear", PAP_ENC_CLEAR },
-	{ "crypt", PAP_ENC_CRYPT },
-	{ "md5", PAP_ENC_MD5 },
-	{ "sha1", PAP_ENC_SHA1 },
-	{ "nt", PAP_ENC_NT },
-	{ "lm", PAP_ENC_LM },
-	{ "smd5", PAP_ENC_SMD5 },
-	{ "ssha", PAP_ENC_SSHA },
-	{ "auto", PAP_ENC_AUTO },
-	{ NULL, PAP_ENC_INVALID }
 };
 
 
@@ -145,18 +128,6 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 		pap_detach(inst);
                 return -1;
         }
-	if (!inst->scheme || !*inst->scheme) {
-		radlog(L_ERR, "rlm_pap: No scheme defined");
-		pap_detach(inst);
-		return -1;
-	}
-
-	inst->sch = fr_str2int(schemes, inst->scheme, PAP_ENC_INVALID);
-	if (inst->sch == PAP_ENC_INVALID) {
-		radlog(L_ERR, "rlm_pap: Unknown scheme \"%s\"", inst->scheme);
-		pap_detach(inst);
-		return -1;
-	}
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -541,7 +512,6 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	 *	First, auto-detect passwords, by attribute in the
 	 *	config items.
 	 */
-	if (inst->sch == PAP_ENC_AUTO) {
 		for (vp = request->config_items; vp != NULL; vp = vp->next) {
 			switch (vp->attribute) {
 			case PW_USER_PASSWORD: /* deprecated */
@@ -578,35 +548,13 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			}
 		}
 
-	fail:
 		RDEBUG("No password configured for the user.  Cannot do authentication");
 		return RLM_MODULE_FAIL;
 
-	} else {
-		vp = NULL;
-
-		if (inst->sch == PAP_ENC_CRYPT) {
-			vp = pairfind(request->config_items, PW_CRYPT_PASSWORD, 0);
-		}
-
-		/*
-		 *	When forced with encryption_scheme, all passwords (except Crypt)
-		 *	must now be in Cleartext-Password
-		 */
-		if (!vp) {
-			vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
-			if (!vp) {
-				RDEBUG("WARNING: fixed encryption_scheme set, but no Cleartext-Password found!");
-				goto fail;
-			}
-		}
-	}
 
 	/*
 	 *	Now that we've decided what to do, go do it.
 	 */
-	switch (inst->sch) {
-	case PAP_ENC_CLEAR:
 	do_clear:
 		if (vp->attribute == PW_USER_PASSWORD) {
 			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -626,9 +574,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	done:
 		RDEBUG("User authenticated successfully");
 		return RLM_MODULE_OK;
-		break;
 
-	case PAP_ENC_CRYPT:
 	do_crypt:
 		RDEBUG("Using CRYPT password \"%s\"",
 		       vp->vp_strvalue);
@@ -638,9 +584,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		goto done;
-		break;
 
-	case PW_MD5_PASSWORD:
 	do_md5:
 		RDEBUG("Using MD5 encryption.");
 
@@ -660,9 +604,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		goto done;
-		break;
 
-	case PW_SMD5_PASSWORD:
 	do_smd5:
 		RDEBUG("Using SMD5 encryption.");
 
@@ -687,9 +629,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		goto done;
-		break;
 
-	case PW_SHA_PASSWORD:
 	do_sha:
 		RDEBUG("Using SHA1 encryption.");
 
@@ -709,9 +649,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		goto done;
-		break;
 
-	case PW_SSHA_PASSWORD:
 	do_ssha:
 		RDEBUG("Using SSHA encryption.");
 
@@ -733,9 +671,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		goto done;
-		break;
 
-	case PW_NT_PASSWORD:
 	do_nt:
 		RDEBUG("Using NT encryption.");
 
@@ -759,9 +695,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		goto done;
-		break;
 
-	case PW_LM_PASSWORD:
 	do_lm:
 		RDEBUG("Using LM encryption.");
 
@@ -788,9 +722,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 		goto done;
-		break;
 
-	case PAP_ENC_NS_MTA_MD5:
 	do_ns_mta_md5:
 		RDEBUG("Using NT-MTA-MD5 password");
 
@@ -845,13 +777,6 @@ static int pap_authenticate(void *instance, REQUEST *request)
 			goto make_msg;
 		}
 		goto done;
-
-	default:
-		break;
-	}
-
-	RDEBUG("No password configured for the user.  Cannot do authentication");
-	return RLM_MODULE_FAIL;
 }
 
 
