@@ -99,7 +99,16 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		request->username->vp_strvalue);
 
 	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) == NULL){
-	  RDEBUG("Cleartext-Password is required for authentication");
+		if ((passwd_item = pairfind(request->config_items, PW_USER_PASSWORD, 0)) != NULL){
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RDEBUG("!!! Please update your configuration so that the \"known !!!");
+			RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
+			RDEBUG("!!! and NOT in User-Password.                           !!!");
+			RDEBUG("!!!                                                     !!!");
+			RDEBUG("!!! Authentication will fail because of this.           !!!");
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		}
+		RDEBUG("Cleartext-Password is required for authentication");
 		snprintf(module_fmsg, sizeof(module_fmsg),
 			 "rlm_chap: Clear text password not available");
 		module_fmsg_vp = pairmake("Module-Failure-Message",
