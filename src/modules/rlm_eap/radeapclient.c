@@ -93,6 +93,8 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
 	fprintf(stderr, "  -v          Show program version information.\n");
 	fprintf(stderr, "  -x          Debugging mode.\n");
+	fprintf(stderr, "  -4          Use IPv4 address of server\n");
+	fprintf(stderr, "  -6          Use IPv6 address of server.\n");
 
 	exit(1);
 }
@@ -172,7 +174,7 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 		ip = &packet->dst_ipaddr;
 		port = packet->dst_port;
 	}
-	
+
 	/*
 	 *	Client-specific debugging re-prints the input
 	 *	packet into the client log.
@@ -978,15 +980,22 @@ int main(int argc, char **argv)
 	FILE *fp;
 	int count = 1;
 	int id;
+	int force_af = AF_UNSPEC;
 
 	id = ((int)getpid() & 0xff);
 	fr_debug_flag = 0;
 
 	radlog_dest = RADLOG_STDERR;
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xXv")) != EOF)
+	while ((c = getopt(argc, argv, "46c:d:f:hi:qst:r:S:xXv")) != EOF)
 	{
 		switch(c) {
+		case '4':
+			force_af = AF_INET;
+			break;
+		case '6':
+			force_af = AF_INET6;
+			break;
 		case 'c':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -1111,11 +1120,45 @@ int main(int argc, char **argv)
 	req->id = id;
 
 	/*
-	 *	Strip port from hostname if needed.
+	 *	Resolve hostname.
 	 */
-	if ((p = strchr(argv[1], ':')) != NULL) {
-		*p++ = 0;
-		port = atoi(p);
+	if (force_af == AF_UNSPEC) force_af = AF_INET;
+	req->dst_ipaddr.af = force_af;
+	if (strcmp(argv[1], "-") != 0) {
+		const char *hostname = argv[1];
+		const char *portname = argv[1];
+		char buffer[256];
+
+		if (*argv[1] == '[') { /* IPv6 URL encoded */
+			p = strchr(argv[1], ']');
+			if ((size_t) (p - argv[1]) >= sizeof(buffer)) {
+				usage();
+			}
+
+			memcpy(buffer, argv[1] + 1, p - argv[1] - 1);
+			buffer[p - argv[1] - 1] = '\0';
+
+			hostname = buffer;
+			portname = p + 1;
+
+		}
+		p = strchr(portname, ':');
+		if (p && (strchr(p + 1, ':') == NULL)) {
+			*p = '\0';
+			portname = p + 1;
+		} else {
+			portname = NULL;
+		}
+
+		if (ip_hton(hostname, force_af, &req->dst_ipaddr) < 0) {
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			exit(1);
+		}
+
+		/*
+		 *	Strip port from hostname if needed.
+		 */
+		if (portname) port = atoi(portname);
 	}
 
 	/*
@@ -1148,15 +1191,7 @@ int main(int argc, char **argv)
 	} else {
 		usage();
 	}
-
-	/*
-	 *	Resolve hostname.
-	 */
 	req->dst_port = port;
-	if (ip_hton(argv[1], AF_INET, &req->dst_ipaddr) < 0) {
-		fprintf(stderr, "radclient: Failed to find IP address for host %s\n", argv[1]);
-		exit(1);
-	}
 
 	/*
 	 *	Add the secret.
