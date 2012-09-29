@@ -560,13 +560,6 @@ eap {
 	#
 	#  Surprisingly, it works quite well.
 	#
-	#  EAP-TTLS does not normally require a client certificate,
-	#  but you can make it require one by setting
-	#
-	#	EAP-TLS-Require-Client-Cert = Yes
-	#
-	#  in the control items for a request.
-	#
 	ttls {
 		#  Which tls-config section the TLS negotiation parameters
 		#  are in - see EAP-TLS above for an explanation.
@@ -633,6 +626,18 @@ eap {
 		#  The default value here is "yes".
 		#
 	#	include_length = yes
+
+		#
+		# Unlike EAP-TLS, EAP-TTLS does not require a client
+		# certificate. However, you can require one by setting the
+		# following option. You can also override this option by
+		# setting
+		#
+		#	EAP-TLS-Require-Client-Cert = Yes
+		#
+		# in the control items for a request.
+		#
+	#	require_client_cert = yes
 	}
 
 
@@ -678,13 +683,6 @@ eap {
 	#  which is separate from the one for the non-tunneled
 	#  EAP module.  Inside of the TLS/PEAP tunnel, we
 	#  recommend using EAP-MS-CHAPv2.
-	#
-	#  Unlike EAP-TLS, PEAP does not require a client certificate.
-	#  However, you can require one by setting
-	#
-	#	EAP-TLS-Require-Client-Cert = Yes
-	#
-	#  in the control items for a request.
 	#
 	peap {
 		#  Which tls-config section the TLS negotiation parameters
@@ -743,6 +741,17 @@ eap {
 		# can be sent to a specific virtual server:
 		#
 	#	soh_virtual_server = "soh-server"
+
+		#
+		# Unlike EAP-TLS, PEAP does not require a client certificate.
+		# However, you can require one by setting the following
+		# option. You can also override this option by setting
+		#
+		#	EAP-TLS-Require-Client-Cert = Yes
+		#
+		# in the control items for a request.
+		#
+	#	require_client_cert = yes
 	}
 
 	#

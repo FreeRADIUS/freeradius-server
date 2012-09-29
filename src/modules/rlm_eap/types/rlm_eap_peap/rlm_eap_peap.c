@@ -70,6 +70,11 @@ typedef struct rlm_eap_peap_t {
 	 */
 	int	soh;
   	char	*soh_virtual_server;
+
+	/*
+	 * 	Do we do require a client cert?
+	 */
+	int	req_client_cert;
 } rlm_eap_peap_t;
 
 
@@ -96,6 +101,9 @@ static CONF_PARSER module_config[] = {
 
 	{ "soh", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_peap_t, soh), NULL, "no" },
+
+	{ "require_client_cert", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_peap_t, req_client_cert), NULL, "no" },
 
 	{ "soh_virtual_server", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, soh_virtual_server), NULL, NULL },
@@ -227,8 +235,12 @@ static int eappeap_initiate(void *type_arg, EAP_HANDLER *handler)
 
 	/*
 	 *	Check if we need a client certificate.
-	 *
-	 *	FIXME: This should be more configurable.
+	 */
+	client_cert = inst->req_client_cert;
+
+	/*
+	 * EAP-TLS-Require-Client-Cert attribute will override
+	 * the require_client_cert configuration option.
 	 */
 	vp = pairfind(handler->request->config_items,
 		      PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0);
