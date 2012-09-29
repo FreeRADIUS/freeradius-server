@@ -35,19 +35,6 @@ RCSID("$Id$")
 
 #include "rlm_pap.h"
 
-#define PAP_ENC_INVALID	-1
-#define PAP_ENC_CLEAR		0
-#define PAP_ENC_CRYPT		1
-#define PAP_ENC_MD5		2
-#define PAP_ENC_SHA1		3
-#define PAP_ENC_NT		4
-#define PAP_ENC_LM		5
-#define PAP_ENC_SMD5		6
-#define PAP_ENC_SSHA		7
-#define PAP_ENC_NS_MTA_MD5	8
-#define PAP_ENC_AUTO		9
-#define PAP_MAX_ENC		9
-
 /*
  *      Define a structure for our module configuration.
  *
