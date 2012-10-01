@@ -1556,9 +1556,9 @@ int fr_dhcp_add_arp_entry(int fd, const char *interface,
 
 	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
 		fr_strerror_printf("ERROR: DHCP only supports up to %u octets for "
-				   "Client Hardware Address (got %u octets)\n",
+				   "Client Hardware Address (got %lu octets)\n",
 				   sizeof(req.arp_ha.sa_data),
-				   macaddr->length);
+				   (unsigned long)macaddr->length);
 		return -1;
 	}
 
