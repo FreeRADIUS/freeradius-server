@@ -1,19 +1,35 @@
+freeradius (2.2.1+git) unstable; urgency=medium
+
+  * New upstream version.
+  
+ -- Arran Cudbard-Bell <a.cudbardb@freeradius.org>  Mon, 01 Oct 2012 17:13:00 +0100
+  
 freeradius (2.2.0+git) unstable; urgency=medium
+
+  * New upstream version.
 
  -- Alan DeKok <aland@freeradius.org>  Sat, 18 Jan 2012 10:45:03 +0100
 
 freeradius (2.1.12+git) unstable; urgency=medium
 
+  * New upstream version.
+
  -- Alan DeKok <aland@freeradius.org>  Sat, 18 Jan 2012 10:45:03 +0100
 
 freeradius (2.1.11+git) unstable; urgency=medium
+
+  * New upstream version.
 
  -- Alan DeKok <aland@freeradius.org>  Sat, 18 Jun 2011 10:45:03 +0100
 
 freeradius (2.1.10+git) unstable; urgency=medium
 
+  * New upstream version.
+
  -- Alan DeKok <aland@freeradius.org>  Sat, 02 Jan 2010 20:22:47 +0100
 
+  * New upstream version.
+  
 freeradius (2.1.8+dfsg-1) unstable; urgency=medium
 
   * New upstream version.
