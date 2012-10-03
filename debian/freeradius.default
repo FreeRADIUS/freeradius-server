@@ -1,3 +1,6 @@
 # Options for the FreeRADIUS deamon.
-#FREERADIUS_OPTIONS="-d /etc/freeradius"
+FREERADIUS_CONF_LOCAL="/usr/local/etc/freeradius"
 
+if [ -d "$FREERADIUS_CONF_LOCAL" ]; then
+	FREERADIUS_OPTIONS="-d $FREERADIUS_CONF_LOCAL"
+fi
