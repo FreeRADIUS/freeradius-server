@@ -260,16 +260,12 @@ static int pap_authorize(void *instance, REQUEST *request)
 
 		switch (vp->attribute) {
 		case PW_USER_PASSWORD: /* deprecated */
-			found_pw = TRUE;
-
-			/*
-			 *	Look for '{foo}', and use them
-			 */
-			if (!inst->auto_header ||
-			    (vp->vp_strvalue[0] != '{')) {
-				break;
-			}
-			/* FALL-THROUGH */
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RDEBUG("!!! Please update your configuration so that the \"known !!!");
+			RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
+			RDEBUG("!!! and NOT in User-Password.                           !!!");
+			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			break;
 
 		case PW_PASSWORD_WITH_HEADER: /* preferred */
 		{
@@ -290,8 +286,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 				 *	Password already exists: use
 				 *	that instead of this one.
 				 */
-				if (pairfind(request->config_items, PW_USER_PASSWORD, 0) ||
-				    pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) {
+				if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) {
 					RDEBUG("Config already contains \"known good\" password.  Ignoring Password-With-Header");
 					break;
 				}
@@ -336,14 +331,6 @@ static int pap_authorize(void *instance, REQUEST *request)
 			new_vp->length = vp->length;
 			new_vp->length -= (p - q + 1);
 			memcpy(new_vp->vp_strvalue, p + 1, new_vp->length);
-
-			/*
-			 *	May be old-style User-Password with header.
-			 *	We've found the header & created the proper
-			 *	attribute, so we should delete the old
-			 *	User-Password here.
-			 */
-			pairdelete(&request->config_items, PW_USER_PASSWORD, 0);
 		}
 			break;
 
@@ -501,8 +488,7 @@ static int pap_authenticate(void *instance, REQUEST *request)
 	 */
 	for (vp = request->config_items; vp != NULL; vp = vp->next) {
 		switch (vp->attribute) {
-		case PW_USER_PASSWORD: /* deprecated */
-		case PW_CLEARTEXT_PASSWORD: /* preferred */
+		case PW_CLEARTEXT_PASSWORD:
 			auth_func = &pap_auth_clear;
 			break;
 
@@ -579,14 +565,6 @@ static int pap_authenticate(void *instance, REQUEST *request)
 
 static int pap_auth_clear(REQUEST *request, VALUE_PAIR *vp, char *fmsg)
 {
-	if (vp->attribute == PW_USER_PASSWORD) {
-		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		RDEBUG("!!! Please update your configuration so that the \"known !!!");
-		RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
-		RDEBUG("!!! and NOT in User-Password.                           !!!");
-		RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-	}
-
 	RDEBUG("Using clear text password \"%s\"", vp->vp_strvalue);
 
 	if ((vp->length != request->password->length) ||
