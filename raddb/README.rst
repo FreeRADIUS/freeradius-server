@@ -185,3 +185,26 @@ because the TLS code requires threading to work properly.  Instead of doing::
 you will need to do::
 
   $ radiusd -fxx -l stdout
+
+
+PAP and User-Password
+---------------------
+
+From version 3.0 onwards the server no longer supports authenticating
+against a cleartext password in the 'User-Password' attribute. Any
+occurances of this (for instance, in the users file) should now be changed
+to 'Cleartext-Password' instead.
+
+If this is not done, authentication is likely to fail.
+
+If it really is impossible to do this, the following unlang inserted above
+the call to the pap module may be used to copy User-Password to the correct
+attribute. However, this should only be seen as a temporary, not permanent,
+fix.
+
+  if (!control:Cleartext-Password && control:User-Password) {
+    update control {
+      Cleartext-Password := "%{control:User-Password}"
+    }
+  }
+
