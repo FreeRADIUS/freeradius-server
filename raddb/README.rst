@@ -199,8 +199,7 @@ If this is not done, authentication is likely to fail.
 
 If it really is impossible to do this, the following unlang inserted above
 the call to the pap module may be used to copy User-Password to the correct
-attribute. However, this should only be seen as a temporary, not permanent,
-fix.
+attribute::
 
   if (!control:Cleartext-Password && control:User-Password) {
     update control {
@@ -208,3 +207,4 @@ fix.
     }
   }
 
+However, this should only be seen as a temporary, not permanent, fix.
