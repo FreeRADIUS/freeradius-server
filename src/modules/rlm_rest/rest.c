@@ -1987,7 +1987,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			
 			if (section->username) {
 				radius_xlat(buffer, sizeof(buffer),
-					    section->username, request, NULL);
+					    section->username, request, NULL, NULL);
 					    
 				ret = curl_easy_setopt(candle, CURLOPT_USERNAME,
 						       buffer);
@@ -1995,7 +1995,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			}
 			if (section->password) {
 				radius_xlat(buffer, sizeof(buffer),
-					    section->password, request, NULL);
+					    section->password, request, NULL, NULL);
 					    
 				ret = curl_easy_setopt(candle, CURLOPT_PASSWORD,
 						       buffer);
@@ -2009,7 +2009,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 		
 			if (section->username) {
 				radius_xlat(buffer, sizeof(buffer),
-					    section->username, request, NULL);
+					    section->username, request, NULL, NULL);
 					    
 				ret = curl_easy_setopt(candle,
 						       CURLOPT_TLSAUTH_USERNAME,
@@ -2018,7 +2018,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			}
 			if (section->password) {
 				radius_xlat(buffer, sizeof(buffer),
-					    section->password, request, NULL);
+					    section->password, request, NULL, NULL);
 					    
 				ret = curl_easy_setopt(candle,
 						       CURLOPT_TLSAUTH_PASSWORD,
@@ -2373,12 +2373,12 @@ ssize_t rest_uri_build(rlm_rest_t *instance, rlm_rest_section_t *section,
 	path = (q + 1);
 
 	out = buffer;
-	out += radius_xlat(out, bufsize, scheme, request, NULL);
+	out += radius_xlat(out, bufsize, scheme, request, NULL, NULL);
 
 	free(scheme);
 
 	out += radius_xlat(out, (bufsize - (buffer - out)), path, request,
-			 rest_uri_escape);
+			 rest_uri_escape, NULL);
 
 	return (buffer - out);
 }

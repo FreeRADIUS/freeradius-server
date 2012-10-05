@@ -109,7 +109,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
 		snprintf(name, sizeof(name), "%%{%s}", check->name);
-		radius_xlat(value, sizeof(value), name, request, NULL);
+		radius_xlat(value, sizeof(value), name, request, NULL, NULL);
 
 		/*
 		 *	Include substring matches.
@@ -186,7 +186,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 
 		snprintf(name, sizeof(name), "%%{%s}", check->name);
-		radius_xlat(value, sizeof(value), name, request, NULL);
+		radius_xlat(value, sizeof(value), name, request, NULL, NULL);
 
 		/*
 		 *	Include substring matches.
@@ -568,7 +568,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			check_item->flags.do_xlat = 0;
 			rcode = radius_xlat(buffer, sizeof(buffer),
 					    check_item->vp_strvalue,
-					    req, NULL);
+					    req, NULL, NULL);
 
 			/*
 			 *	Parse the string into a new value.
@@ -680,7 +680,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			i->flags.do_xlat = 0;
 			rcode = radius_xlat(buffer, sizeof(buffer),
 					    i->vp_strvalue,
-					    req, NULL);
+					    req, NULL, NULL);
 
 			/*
 			 *	Parse the string into a new value.

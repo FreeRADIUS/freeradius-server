@@ -431,7 +431,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 		int len;
 
 		len = radius_xlat(buffer, sizeof(buffer), inst->key,
-				  request, NULL);
+				  request, NULL, NULL);
 		if (len) name = buffer;
 		else name = "NONE";
 	}

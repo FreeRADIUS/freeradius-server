@@ -1696,7 +1696,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 *	previous checks passed.
 		 */
 		if (my_ok && conf->check_cert_cn) {
-			if (!radius_xlat(cn_str, sizeof(cn_str), conf->check_cert_cn, request, NULL)) {
+			if (!radius_xlat(cn_str, sizeof(cn_str), conf->check_cert_cn, request, NULL, NULL)) {
 				radlog(L_ERR, "rlm_eap_tls (%s): xlat failed.",
 				       conf->check_cert_cn);
 				/* if this fails, fail the verification */

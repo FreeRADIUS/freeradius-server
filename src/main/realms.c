@@ -230,8 +230,7 @@ static size_t xlat_cs(CONF_SECTION *cs, const char *fmt, char *out, size_t outle
  *	Xlat for %{home_server:foo}
  */
 static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
-			       const char *fmt, char *out, size_t outlen,
-			       UNUSED RADIUS_ESCAPE_STRING func)
+			       const char *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
@@ -248,8 +247,7 @@ static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
  *	Xlat for %{home_server_pool:foo}
  */
 static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
-			       const char *fmt, char *out, size_t outlen,
-			       UNUSED RADIUS_ESCAPE_STRING func)
+			       const char *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 

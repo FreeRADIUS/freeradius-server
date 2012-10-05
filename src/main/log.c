@@ -257,7 +257,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		 */
 		
 		radius_xlat(buffer, sizeof(buffer), filename,
-			    request, NULL); /* FIXME: escape chars! */
+			    request, NULL, NULL); /* FIXME: escape chars! */
 		request->radlog = rl;
 		
 		p = strrchr(buffer, FR_DIR_SEP);

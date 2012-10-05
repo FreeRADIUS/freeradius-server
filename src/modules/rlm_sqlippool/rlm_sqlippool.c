@@ -307,7 +307,7 @@ static int sqlippool_command(const char * fmt, SQLSOCK * sqlsocket,
 	 * Do an xlat on the provided string
 	 */
 	if (request) {
-		if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func)) {
+		if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func, data->sql_inst)) {
 			radlog(L_ERR, "sqlippool_command: xlat failed on: '%s'", query);
 			return 0;
 		}
@@ -346,7 +346,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 	 * Do an xlat on the provided string
 	 */
 	if (request) {
-		if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func)) {
+		if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func, data->sql_inst)) {
 			radlog(L_ERR, "sqlippool_command: xlat failed.");
 			out[0] = '\0';
 			return 0;
@@ -547,7 +547,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0) != NULL) {
 		/* We already have a Framed-IP-Address */
 		radius_xlat(logstr, sizeof(logstr), data->log_exists,
-			    request, NULL);
+			    request, NULL, NULL);
 		RDEBUG("Framed-IP-Address already exists");
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
@@ -556,7 +556,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	if (pairfind(request->config_items, PW_POOL_NAME, 0) == NULL) {
 		RDEBUG("No Pool-Name defined.");
 		radius_xlat(logstr, sizeof(logstr), data->log_nopool,
-			    request, NULL);
+			    request, NULL, NULL);
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
@@ -626,7 +626,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 				 *	NOTFOUND
 				 */
 				RDEBUG("pool appears to be full");
-				radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL);
+				radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL, NULL);
 				return do_logging(logstr, RLM_MODULE_NOTFOUND);
 
 			}
@@ -646,7 +646,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 
 		RDEBUG("IP address could not be allocated.");
 		radius_xlat(logstr, sizeof(logstr), data->log_failed,
-			    request, NULL);
+			    request, NULL, NULL);
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
@@ -666,7 +666,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		RDEBUG("Invalid IP number [%s] returned from database query.", allocation);
 		data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
 		radius_xlat(logstr, sizeof(logstr), data->log_failed,
-			    request, NULL);
+			    request, NULL, NULL);
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
@@ -690,7 +690,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 			  (char *) NULL, 0);
 
 	data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
-	radius_xlat(logstr, sizeof(logstr), data->log_success, request, NULL);
+	radius_xlat(logstr, sizeof(logstr), data->log_success, request, NULL, NULL);
 
 	return do_logging(logstr, RLM_MODULE_OK);
 }
@@ -766,7 +766,7 @@ static int sqlippool_accounting_stop(SQLSOCK * sqlsocket,
 	sqlippool_command(data->stop_commit, sqlsocket, data, request,
 			  (char *) NULL, 0);
 
-	radius_xlat(logstr, sizeof(logstr), data->log_clear, request, NULL);
+	radius_xlat(logstr, sizeof(logstr), data->log_clear, request, NULL, NULL);
 
 	return do_logging(logstr, RLM_MODULE_OK);
 }
