@@ -215,7 +215,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 
 		if (!request) continue;
 
-		sublen = radius_xlat(to, left - 1, argv[i], request, NULL);
+		sublen = radius_xlat(to, left - 1, argv[i], request, NULL, NULL);
 		if (sublen <= 0) {
 			/*
 			 *	Fail to be backwards compatible.

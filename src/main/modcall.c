@@ -627,7 +627,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			if (!mx->exec) {
 				radius_xlat(buffer, sizeof(buffer),
-					    mx->xlat_name, request, NULL);
+					    mx->xlat_name, request, NULL, NULL);
 			} else {
 				RDEBUG("`%s`", mx->xlat_name);
 				radius_exec_program(mx->xlat_name, request,
@@ -730,7 +730,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					}
 				} else {
 					radius_xlat(buffer, sizeof(buffer),
-						    child->name, request, NULL);
+						    child->name, request, NULL, NULL);
 				}
 				null_case = q = NULL;
 				for(p = g->children; p; p = p->next) {

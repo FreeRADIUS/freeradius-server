@@ -337,7 +337,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	}
 	switch(acctstatustype){
 		case PW_STATUS_STOP:
-			if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL)){
+			if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL, NULL)){
 				RDEBUG("xlat on the 'key' directive failed");
 				return RLM_MODULE_NOOP;
 			}
@@ -495,7 +495,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	}
 #endif
 
-	if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL)){
+	if (!radius_xlat(xlat_str,MAX_STRING_LEN,data->key, request, NULL, NULL)){
 		RDEBUG("xlat on the 'key' directive failed");
 		return RLM_MODULE_NOOP;
 	}

@@ -106,7 +106,7 @@ struct sql_inst {
 	int (*sql_set_user)(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
 	SQLSOCK *(*sql_get_socket)(SQL_INST * inst);
 	int (*sql_release_socket)(SQL_INST * inst, SQLSOCK * sqlsocket);
-	size_t (*sql_escape_func)(char *out, size_t outlen, const char *in);
+	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 	int (*sql_query)(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
 	int (*sql_select_query)(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
 	int (*sql_fetch_row)(SQLSOCK **sqlsocket, SQL_INST *inst);
