@@ -353,8 +353,7 @@ static size_t config_escape_func(char *out, size_t outlen, const char *in)
  */
 static size_t xlat_config(void *instance, REQUEST *request,
 			  const char *fmt, char *out,
-			  size_t outlen,
-			  RADIUS_ESCAPE_STRING func)
+			  size_t outlen)
 {
 	const char *value;
 	CONF_PAIR *cp;
@@ -392,7 +391,9 @@ static size_t xlat_config(void *instance, REQUEST *request,
 		}
 	}
 
-	return func(out, outlen, value);
+	strlcpy(out, value, outlen);
+
+	return strlen(out);
 }
 
 
@@ -401,8 +402,7 @@ static size_t xlat_config(void *instance, REQUEST *request,
  */
 static size_t xlat_client(UNUSED void *instance, REQUEST *request,
 		       const char *fmt, char *out,
-		       size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
+		       size_t outlen)
 {
 	const char *value = NULL;
 	CONF_PAIR *cp;

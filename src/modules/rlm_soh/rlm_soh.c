@@ -38,7 +38,7 @@ typedef struct rlm_soh_t {
 /*
  * Not sure how to make this useful yet...
  */
-static size_t soh_xlat(UNUSED void *instance, REQUEST *request, const char *fmt, char *out, size_t outlen, UNUSED RADIUS_ESCAPE_STRING func) {
+static size_t soh_xlat(UNUSED void *instance, REQUEST *request, const char *fmt, char *out, size_t outlen) {
 
 	VALUE_PAIR* vp[6];
 	const char *osname;

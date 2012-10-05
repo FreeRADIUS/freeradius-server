@@ -185,8 +185,7 @@ static size_t redis_escape_func(char *out, size_t outlen, const char *in)
 }
 
 static size_t redis_xlat(void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t freespace,
-		      UNUSED RADIUS_ESCAPE_STRING func)
+		      const char *fmt, char *out, size_t freespace)
 {
 	REDIS_INST *inst = instance;
 	REDISSOCK *dissocket;

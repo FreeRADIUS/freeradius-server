@@ -321,7 +321,7 @@ static XS(XS_radiusd_radlog)
  * The xlat function
  */
 static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
-			size_t freespace, RADIUS_ESCAPE_STRING func)
+			size_t freespace)
 {
 
 	PERL_INST	*inst= (PERL_INST *) instance;
@@ -334,7 +334,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	*/
-	if (!radius_xlat(params, sizeof(params), fmt, request, func, NULL)) {
+	if (!radius_xlat(params, sizeof(params), fmt, request, NULL, NULL)) {
 		radlog(L_ERR, "rlm_perl: xlat failed.");
 		return 0;
 	}

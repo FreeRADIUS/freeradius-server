@@ -362,8 +362,7 @@ static int cache_verify(rlm_cache_t *inst)
  *	Allow single attribute values to be retrieved from the cache.
  */
 static size_t cache_xlat(void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t freespace,
-		      UNUSED RADIUS_ESCAPE_STRING func)
+		      const char *fmt, char *out, size_t freespace)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;

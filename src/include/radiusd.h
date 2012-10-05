@@ -716,7 +716,7 @@ typedef size_t (*RADIUS_ESCAPE_STRING)(char *out, size_t outlen, const char *in)
 
 int            radius_xlat(char * out, int outlen, const char *fmt,
 			   REQUEST * request, RADIUS_ESCAPE_STRING func, void *funcarg);
-typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t, RADIUS_ESCAPE_STRING func);
+typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t);
 int		xlat_register(const char *module, RAD_XLAT_FUNC func,
 			      void *instance);
 void		xlat_unregister(const char *module, RAD_XLAT_FUNC func,

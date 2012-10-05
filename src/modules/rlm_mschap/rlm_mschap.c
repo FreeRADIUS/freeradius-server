@@ -165,8 +165,7 @@ typedef struct rlm_mschap_t {
  *	attributes.
  */
 static size_t mschap_xlat(void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen,
-		       RADIUS_ESCAPE_STRING func)
+		       const char *fmt, char *out, size_t outlen)
 {
 	size_t		i, data_len;
 	uint8_t		*data = NULL;
@@ -176,8 +175,6 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	rlm_mschap_t	*inst = instance;
 
 	response = NULL;
-
-	func = func;		/* -Wunused */
 
 	/*
 	 *	Challenge means MS-CHAPv1 challenge, or

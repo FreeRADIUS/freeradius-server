@@ -74,14 +74,11 @@ static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 /**
  * @brief Convert the value on a VALUE_PAIR to string
  */
-static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
-			 int type, RADIUS_ESCAPE_STRING func)
+static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 {
-	char buffer[MAX_STRING_LEN * 4];
-
 	if (pair != NULL) {
-		vp_prints_value(buffer, sizeof(buffer), pair, -1);
-		return func(out, outlen, buffer);
+		vp_prints_value(out, outlen, pair, -1);
+		return strlen(out);
 	}
 
 	switch (type) {
@@ -130,8 +127,7 @@ redo:
  *	Dynamically translate for check:, request:, reply:, etc.
  */
 static size_t xlat_packet(void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen,
-			  RADIUS_ESCAPE_STRING func)
+			  const char *fmt, char *out, size_t outlen)
 {
 	DICT_ATTR	*da;
 	VALUE_PAIR	*vp;
@@ -297,7 +293,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			for (vp = pairfind_tag(vps, da, tag);
 			     vp != NULL;
 			     vp = pairfind_tag(vp->next, da, tag)) {
-				count = valuepair2str(out, outlen - 1, vp, da->type, func);
+				count = valuepair2str(out, outlen - 1, vp, da->type);
 				rad_assert(count <= outlen);
 				total += count + 1;
 				outlen -= (count + 1);
@@ -345,7 +341,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			return snprintf(out, outlen, "%u", vp->vp_integer);
 		}
 
-		return valuepair2str(out, outlen, vp, da->type, func);
+		return valuepair2str(out, outlen, vp, da->type);
 	}
 
 	vp = pairfind(vps, da->attr, da->vendor);
@@ -472,8 +468,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			}
 
 			localvp.type = da->type;
-			return valuepair2str(out, outlen, &localvp,
-					     da->type, func);
+			return valuepair2str(out, outlen, &localvp, da->type);
 		}
 
 		/*
@@ -487,15 +482,14 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	/*
 	 *	Convert the VP to a string, and return it.
 	 */
-	return valuepair2str(out, outlen, vp, da->type, func);
+	return valuepair2str(out, outlen, vp, da->type);
 }
 
 /**
  * @brief Print data as integer, not as VALUE.
  */
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
-			   const char *fmt, char *out, size_t outlen,
-			   UNUSED RADIUS_ESCAPE_STRING func)
+			   const char *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
@@ -527,8 +521,7 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
  * @brief Print data as hex, not as VALUE.
  */
 static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
+		       const char *fmt, char *out, size_t outlen)
 {
 	size_t i;
 	uint8_t *p;
@@ -562,8 +555,7 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
  * @brief Prints the current module processing the request
  */
 static size_t xlat_module(UNUSED void *instance, REQUEST *request,
-			  UNUSED const char *fmt, char *out, size_t outlen,
-			  UNUSED RADIUS_ESCAPE_STRING func)
+			  UNUSED const char *fmt, char *out, size_t outlen)
 {
 	strlcpy(out, request->module, outlen);
 
@@ -577,8 +569,7 @@ static size_t xlat_module(UNUSED void *instance, REQUEST *request,
  * @see modcall()
  */
 static size_t xlat_foreach(void *instance, REQUEST *request,
-			   UNUSED const char *fmt, char *out, size_t outlen,
-			   RADIUS_ESCAPE_STRING func)
+			   UNUSED const char *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR	**pvp;
 
@@ -592,7 +583,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	return valuepair2str(out, outlen, (*pvp), (*pvp)->type, func);	
+	return valuepair2str(out, outlen, (*pvp), (*pvp)->type);
 }
 #endif
 
@@ -604,8 +595,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
  * expand to "\n\n\n"
  */
 static size_t xlat_string(UNUSED void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen,
-			  UNUSED RADIUS_ESCAPE_STRING func)
+			  const char *fmt, char *out, size_t outlen)
 {
 	int len;
 	VALUE_PAIR *vp;
@@ -635,8 +625,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
  * @brief Expand regexp matches %{0} to %{8}
  */
 static size_t xlat_regex(void *instance, REQUEST *request,
-			 const char *fmt, char *out, size_t outlen,
-			 RADIUS_ESCAPE_STRING func)
+			 const char *fmt, char *out, size_t outlen)
 {
 	char *regex;
 
@@ -645,7 +634,6 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 	 *	are already in the "instance".
 	 */
 	fmt = fmt;		/* -Wunused */
-	func = func;		/* -Wunused FIXME: do escaping? */
 
 	regex = request_data_reference(request, request,
 				 REQUEST_DATA_REGEX | *(int *)instance);
@@ -666,8 +654,7 @@ static size_t xlat_regex(void *instance, REQUEST *request,
  * Example %{debug:3}
  */
 static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
-			 const char *fmt, char *out, size_t outlen,
-			 UNUSED RADIUS_ESCAPE_STRING func)
+			 const char *fmt, char *out, size_t outlen)
 {
 	int level = 0;
 	
@@ -1119,8 +1106,21 @@ do_xlat:
 
 	if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
 				  c->module, xlat_str);
-	retlen = c->do_xlat(c->instance, request, xlat_str,
-			    q, freespace, func);
+	if (func) {
+		/* xlat to a temporary buffer, then escape */
+		char tmpbuf[8192];
+		retlen = c->do_xlat(c->instance, request, xlat_str, tmpbuf, sizeof(tmpbuf));
+		if (retlen > 0) {
+			retlen = func(q, freespace, tmpbuf);
+			if (retlen > 0) {
+				RDEBUG2("string escaped from \'%s\' to \'%s\'", tmpbuf, q);
+			} else if (retlen < 0) {
+				RDEBUG2("string escape failed");
+			}
+		}
+	} else {
+		retlen = c->do_xlat(c->instance, request, xlat_str, q, freespace);
+	}
 	if (retlen > 0) {
 		if (do_length) {
 			snprintf(q, freespace, "%d", retlen);

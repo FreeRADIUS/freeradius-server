@@ -235,7 +235,7 @@ static int get_number(REQUEST *request, const char **string, int64_t *answer)
  *  Do xlat of strings!
  */
 static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
-			char *out, size_t outlen, RADIUS_ESCAPE_STRING func)
+			char *out, size_t outlen)
 {
 	int		rcode;
 	int64_t		result;
@@ -248,7 +248,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
 		return 0;
@@ -277,8 +277,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
  *
  */
 static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt,
-			char *out, size_t outlen,
-			RADIUS_ESCAPE_STRING func)
+			char *out, size_t outlen)
 {
 	int64_t		result;
 	char		buffer[256];
@@ -286,7 +285,7 @@ static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
 		return 0;
@@ -314,8 +313,7 @@ static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
  *  Format identical to String::Random.
  */
 static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
-			   const char *fmt, char *out, size_t outlen,
-			   RADIUS_ESCAPE_STRING func)
+			   const char *fmt, char *out, size_t outlen)
 {
 	char		*p;
 	char		buffer[1024];
@@ -328,7 +326,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
@@ -426,8 +424,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
 static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
-			    const char *fmt, char *out, size_t outlen,
-			    UNUSED RADIUS_ESCAPE_STRING func)
+			    const char *fmt, char *out, size_t outlen)
 {
 	char	*p;
 	char 	buffer[1024];
@@ -436,7 +433,7 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
 	
 	if (outlen <= 1) return 0;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
@@ -480,8 +477,7 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60=/img=62"
  */
 static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen,
-			  UNUSED RADIUS_ESCAPE_STRING func)
+			  const char *fmt, char *out, size_t outlen)
 {
 	rlm_expr_t *inst = instance;
 	char	*p;
@@ -491,7 +487,7 @@ static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
 	
 	if (outlen <= 1) return 0;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
 		*out = '\0';
@@ -532,15 +528,14 @@ static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen,
-		      UNUSED RADIUS_ESCAPE_STRING func)
+		      const char *fmt, char *out, size_t outlen)
 {
 	char *p, *q;
 	char buffer[1024];
 
 	if (outlen <= 1) return 0;
 
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
 		*out = '\0';
 		return 0;
 	}
@@ -564,15 +559,14 @@ static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen,
-		      UNUSED RADIUS_ESCAPE_STRING func)
+		      const char *fmt, char *out, size_t outlen)
 {
 	char *p, *q;
 	char buffer[1024];
 
 	if (outlen <= 1) return 0;
 
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
 		*out = '\0';
 		return 0;
 	}
@@ -594,15 +588,14 @@ static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
 static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
+		       const char *fmt, char *out, size_t outlen)
 {
 	char buffer[1024];
 	uint8_t digest[16];
 	int i;
 	FR_MD5_CTX ctx;
 
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func, NULL)) {
+	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
 		*out = '\0';
 		return 0;
 	}

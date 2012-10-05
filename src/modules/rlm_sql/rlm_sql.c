@@ -135,8 +135,7 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in);
  *  returned instead.
  */
 static size_t sql_xlat(void *instance, REQUEST *request,
-		    const char *fmt, char *out, size_t freespace,
-		    UNUSED RADIUS_ESCAPE_STRING func)
+		    const char *fmt, char *out, size_t freespace)
 {
 	SQLSOCK *sqlsocket;
 	SQL_ROW row;
