@@ -757,15 +757,17 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 			c = xlat_find(internal_xlat[i]);
 			rad_assert(c != NULL);
 			c->internal = TRUE;
+		}
 
 #ifdef WITH_UNLANG
+		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
 			xlat_register(xlat_foreach_names[i],
 				      xlat_foreach, &xlat_inst[i]);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = TRUE;
-#endif
 		}
+#endif
 
 		/*
 		 *	New name: "control"
