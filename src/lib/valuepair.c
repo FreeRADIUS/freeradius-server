@@ -1645,10 +1645,10 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 
 #else
 		if (!value) {
-			fr_strerror_printf("No regular expression found in %s",
-					   vp->name);
-		        pairbasicfree(vp);
-			return NULL;
+			/* just return the vp - we've probably been called
+			 * by pairmake_xlat who will fill in the value for us
+			 */
+			return vp;
 		}
 
 		pairbasicfree(vp);

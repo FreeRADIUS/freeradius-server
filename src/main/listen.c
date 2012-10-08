@@ -94,8 +94,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock);
  */
 static size_t xlat_listen(UNUSED void *instance, REQUEST *request,
 		       const char *fmt, char *out,
-		       size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
+		       size_t outlen)
 {
 	const char *value = NULL;
 	CONF_PAIR *cp;

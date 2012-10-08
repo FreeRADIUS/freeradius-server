@@ -69,7 +69,6 @@ typedef struct rlm_sqlcounter_t {
 	char *sqlmod_inst;	/* instance of SQL module to use, usually just 'sql' */
 	char *query;		/* SQL query to retrieve current session time */
 	char *reset;  		/* daily, weekly, monthly, never or user defined */
-	char *allowed_chars;	/* safe characters list for SQL queries */
 	time_t reset_time;
 	time_t last_reset;
 	DICT_ATTR *key_attr;		/* attribute number for key field */
@@ -94,60 +93,8 @@ static const CONF_PARSER module_config[] = {
   { "sqlmod-inst", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
   { "query", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,query), NULL, NULL },
   { "reset", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reset), NULL,  NULL },
-  { "safe-characters", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,allowed_chars), NULL, "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
   { NULL, -1, 0, NULL, NULL }
 };
-
-static char *allowed_chars = NULL;
-
-/*
- *	Translate the SQL queries.
- */
-static size_t sql_escape_func(char *out, size_t outlen, const char *in)
-{
-	int len = 0;
-
-	while (in[0]) {
-		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
-		 */
-		if ((in[0] < 32) ||
-		    strchr(allowed_chars, *in) == NULL) {
-			/*
-			 *	Only 3 or less bytes available.
-			 */
-			if (outlen <= 3) {
-				break;
-			}
-
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
-			in++;
-			out += 3;
-			outlen -= 3;
-			len += 3;
-			continue;
-		}
-
-		/*
-		 *	Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
-		 *	Allowed character.
-		 */
-		*out = *in;
-		out++;
-		in++;
-		outlen--;
-		len++;
-	}
-	*out = '\0';
-	return len;
-}
 
 static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 {
@@ -353,11 +300,6 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 				strlcpy(q, data->key_name, freespace);
 				q += strlen(q);
 				break;
-			case 'S': /* SQL module instance */
-			  	DEBUG2("WARNING: Please replace '%%S' with '${sqlmod-inst}'");
-				strlcpy(q, data->sqlmod_inst, freespace);
-				q += strlen(q);
-				break;
 			default:
 				*q++ = '%';
 				*q++ = *p;
@@ -382,7 +324,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *req,
 	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
 	int counter;
 	char querystr[MAX_QUERY_LEN];
-	char responsestr[MAX_QUERY_LEN];
+	char sqlxlat[MAX_QUERY_LEN];
 
 	check_pairs = check_pairs; /* shut the compiler up */
 	reply_pairs = reply_pairs;
@@ -390,15 +332,11 @@ static int sqlcounter_cmp(void *instance, REQUEST *req,
 	/* first, expand %k, %b and %e in query */
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
-	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, req, sql_escape_func);
-
 	/* third, wrap query with sql module call & expand */
-	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
-	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
+	snprintf(sqlxlat, sizeof(sqlxlat), "%%{%s:%s}", data->sqlmod_inst, querystr);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, req, sql_escape_func);
+	radius_xlat(querystr, MAX_QUERY_LEN, sqlxlat, req, NULL, NULL);
 
 	counter = atoi(querystr);
 
@@ -422,7 +360,6 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
 	time_t now;
-	char buffer[MAX_STRING_LEN];
 
 	/*
 	 *	Set up a storage area for instance data
@@ -454,22 +391,10 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/*
-	 *	Safe characters list for sql queries. Everything else is
-	 *	replaced with their mime-encoded equivalents.
-	 */
-	allowed_chars = data->allowed_chars;
-
-	/*
 	 *	Discover the attribute number of the key.
 	 */
 	if (data->key_name == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
-		sqlcounter_detach(data);
-		return -1;
-	}
-	sql_escape_func(buffer, sizeof(buffer), data->key_name);
-	if (strcmp(buffer, data->key_name) != 0) {
-		radlog(L_ERR, "rlm_sqlcounter: The value for option 'key' is too long or contains unsafe characters.");
 		sqlcounter_detach(data);
 		return -1;
 	}
@@ -498,12 +423,6 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (data->sqlmod_inst == NULL) {
 		radlog(L_ERR, "rlm_sqlcounter: 'sqlmod-inst' must be set.");
-		sqlcounter_detach(data);
-		return -1;
-	}
-	sql_escape_func(buffer, sizeof(buffer), data->sqlmod_inst);
-	if (strcmp(buffer, data->sqlmod_inst) != 0) {
-		radlog(L_ERR, "rlm_sqlcounter: The value for option 'sqlmod-inst' is too long or contains unsafe characters.");
 		sqlcounter_detach(data);
 		return -1;
 	}
@@ -606,7 +525,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR *reply_item;
 	char msg[128];
 	char querystr[MAX_QUERY_LEN];
-	char responsestr[MAX_QUERY_LEN];
+	char sqlxlat[MAX_QUERY_LEN];
 
 	/* quiet the compiler */
 	instance = instance;
@@ -652,15 +571,11 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	/* first, expand %k, %b and %e in query */
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, data->query, instance);
 
-	/* second, xlat any request attribs in query */
-	radius_xlat(responsestr, MAX_QUERY_LEN, querystr, request, sql_escape_func);
-
-	/* third, wrap query with sql module & expand */
-	snprintf(querystr, sizeof(querystr), "%%{%%S:%s}", responsestr);
-	sqlcounter_expand(responsestr, MAX_QUERY_LEN, querystr, instance);
+	/* next, wrap query with sql module & expand */
+	snprintf(sqlxlat, sizeof(sqlxlat), "%%{%s:%s}", data->sqlmod_inst, querystr);
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, responsestr, request, sql_escape_func);
+	radius_xlat(querystr, MAX_QUERY_LEN, sqlxlat, request, NULL, NULL);
 
 	if (sscanf(querystr, "%u", &counter) != 1) {
 		DEBUG2("rlm_sqlcounter: No integer found in string \"%s\"",
@@ -751,7 +666,6 @@ static int sqlcounter_detach(void *instance)
 	char **p;
 	rlm_sqlcounter_t *inst = (rlm_sqlcounter_t *)instance;
 
-	allowed_chars = NULL;
 	paircompare_unregister(inst->dict_attr->attr, sqlcounter_cmp);
 
 	/*

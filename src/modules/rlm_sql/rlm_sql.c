@@ -39,8 +39,6 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-static char *allowed_chars = NULL;
-
 static const CONF_PARSER section_config[] = {
 	{ "reference",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_sql_config_section_t, reference), NULL, ".query"},
@@ -125,7 +123,7 @@ static int fallthrough(VALUE_PAIR *vp)
  *	Yucky prototype.
  */
 static int generate_sql_clients(SQL_INST *inst);
-static size_t sql_escape_func(char *out, size_t outlen, const char *in);
+static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
 /*
  *			SQL xlat function
@@ -134,9 +132,8 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in);
  *  for inserts, updates and deletes the number of rows afftected will be
  *  returned instead.
  */
-static int sql_xlat(void *instance, REQUEST *request,
-		    char *fmt, char *out, size_t freespace,
-		    UNUSED RADIUS_ESCAPE_STRING func)
+static size_t sql_xlat(void *instance, REQUEST *request,
+		    const char *fmt, char *out, size_t freespace)
 {
 	SQLSOCK *sqlsocket;
 	SQL_ROW row;
@@ -156,7 +153,7 @@ static int sql_xlat(void *instance, REQUEST *request,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(querystr, sizeof(querystr), fmt, request, sql_escape_func)) {
+	if (!radius_xlat(querystr, sizeof(querystr), fmt, request, sql_escape_func, inst)) {
 		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
 		       inst->config->xlat_name);
 		return 0;
@@ -404,8 +401,9 @@ static int generate_sql_clients(SQL_INST *inst)
 /*
  *	Translate the SQL queries.
  */
-static size_t sql_escape_func(char *out, size_t outlen, const char *in)
+static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, void *arg)
 {
+	SQL_INST *inst = arg;
 	size_t len = 0;
 
 	while (in[0]) {
@@ -414,7 +412,7 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr(allowed_chars, *in) == NULL) {
+		    strchr(inst->config->allowed_chars, *in) == NULL) {
 			/*
 			 *	Only 3 or less bytes available.
 			 */
@@ -472,7 +470,7 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char
 	if (username != NULL) {
 		strlcpy(tmpuser, username, sizeof(tmpuser));
 	} else if (strlen(inst->config->query_user)) {
-		radius_xlat(tmpuser, sizeof(tmpuser), inst->config->query_user, request, NULL);
+		radius_xlat(tmpuser, sizeof(tmpuser), inst->config->query_user, request, NULL, NULL);
 	} else {
 		return 0;
 	}
@@ -521,7 +519,7 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 	    (inst->config->groupmemb_query[0] == 0))
 		return 0;
 
-	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, request, sql_escape_func)) {
+	if (!radius_xlat(querystr, sizeof(querystr), inst->config->groupmemb_query, request, sql_escape_func, inst)) {
 		radlog_request(L_ERR, 0, request, "xlat \"%s\" failed.",
 			       inst->config->groupmemb_query);
 		return -1;
@@ -672,7 +670,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			return -1;
 		}
 		pairadd(&request->packet->vps, sql_group);
-		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query, request, sql_escape_func)) {
+		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query, request, sql_escape_func, inst)) {
 			radlog_request(L_ERR, 0, request,
 				       "Error generating query; rejecting user");
 			/* Remove the grouup we added above */
@@ -700,7 +698,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				/*
 				 *	Now get the reply pairs since the paircompare matched
 				 */
-				if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func)) {
+				if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func, inst)) {
 					radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 					/* Remove the grouup we added above */
 					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
@@ -735,7 +733,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
-			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func)) {
+			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func, inst)) {
 				radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 				/* Remove the grouup we added above */
 				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
@@ -784,7 +782,7 @@ static int rlm_sql_detach(void *instance)
 		if (inst->pool) sql_poolfree(inst);
 
 		if (inst->config->xlat_name) {
-			xlat_unregister(inst->config->xlat_name,(RAD_XLAT_FUNC)sql_xlat, instance);
+			xlat_unregister(inst->config->xlat_name, sql_xlat, instance);
 			free(inst->config->xlat_name);
 		}
 
@@ -809,12 +807,6 @@ static int rlm_sql_detach(void *instance)
 			}
 			free(*p);
 			*p = NULL;
-		}
-		/*
-		 *	Catch multiple instances of the module.
-		 */
-		if (allowed_chars == inst->config->allowed_chars) {
-			allowed_chars = NULL;
 		}
 		free(inst->config);
 		inst->config = NULL;
@@ -942,7 +934,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	 *	Register the SQL xlat function
 	 */
 	inst->config->xlat_name = strdup(xlat_name);
-	xlat_register(xlat_name, (RAD_XLAT_FUNC)sql_xlat, inst);
+	xlat_register(xlat_name, sql_xlat, inst);
 		
 	/*
 	 *	Sanity check for crazy people.
@@ -1004,7 +996,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 			goto error;
 		}
 	}
-	allowed_chars = inst->config->allowed_chars;
 
 	*instance = inst;
 
@@ -1061,7 +1052,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	/*
 	 * Alright, start by getting the specific entry for the user
 	 */
-	if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_check_query, request, sql_escape_func)) {
+	if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_check_query, request, sql_escape_func, inst)) {
 		radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 		sql_release_socket(inst, sqlsocket);
 		/* Remove the username we (maybe) added above */
@@ -1090,7 +1081,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
-			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_reply_query, request, sql_escape_func)) {
+			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_reply_query, request, sql_escape_func, inst)) {
 				radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 				sql_release_socket(inst, sqlsocket);
 				/* Remove the username we (maybe) added above */
@@ -1238,7 +1229,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 		*p++ = '.';
 	
 	if (radius_xlat(p, (sizeof(path) - (p - path)) - 1,
-			section->reference, request, NULL) < 0)
+			section->reference, request, NULL, NULL) < 0)
 		return RLM_MODULE_FAIL;
 
 	item = cf_reference_item(NULL, section->cs, path);
@@ -1266,7 +1257,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 			goto null_query;
 		
 		radius_xlat(querystr, sizeof(querystr), value, request,
-			    sql_escape_func);
+			    sql_escape_func, inst);
 		if (!*querystr)
 			goto null_query;
 		
@@ -1380,7 +1371,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	if(sql_set_user(inst, request, sqlusername, NULL) < 0)
 		return RLM_MODULE_FAIL;
 
-	radius_xlat(querystr, sizeof(querystr), inst->config->simul_count_query, request, sql_escape_func);
+	radius_xlat(querystr, sizeof(querystr), inst->config->simul_count_query, request, sql_escape_func, inst);
 
 	/* initialize the sql socket */
 	sqlsocket = sql_get_socket(inst);
@@ -1424,7 +1415,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 		return RLM_MODULE_OK;
 	}
 
-	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, sql_escape_func);
+	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, sql_escape_func, inst);
 	if(rlm_sql_select_query(&sqlsocket, inst, querystr)) {
 		sql_release_socket(inst, sqlsocket);
 		return RLM_MODULE_FAIL;

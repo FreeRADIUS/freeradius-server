@@ -424,7 +424,7 @@ void rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
 
 	if (!filename) return;
 
-	if (!radius_xlat(buffer, sizeof(buffer), filename, request, NULL)) {
+	if (!radius_xlat(buffer, sizeof(buffer), filename, request, NULL, NULL)) {
 		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
 		       inst->config->xlat_name);
 		return;

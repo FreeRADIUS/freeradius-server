@@ -564,7 +564,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		int len;
 
 		len = radius_xlat(buffer, sizeof(buffer), inst->key,
-				  request, NULL);
+				  request, NULL, NULL);
 		if (len) name = buffer;
 		else name = "NONE";
 	}
@@ -721,7 +721,7 @@ static int fastuser_preacct(void *instance, REQUEST *request)
 		int len;
 
 		len = radius_xlat(buffer, sizeof(buffer), inst->key,
-				  request, NULL);
+				  request, NULL, NULL);
 		if (len) name = buffer;
 		else name = "NONE";
 	}

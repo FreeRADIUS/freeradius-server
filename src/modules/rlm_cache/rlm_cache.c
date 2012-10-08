@@ -279,7 +279,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	I don't want to make that change for 2.0.
 		 */
 		radius_xlat(buffer, sizeof(buffer), cf_pair_value(cp),
-			    request, NULL);
+			    request, NULL, NULL);
 
 		vp = pairmake(p, buffer, cf_pair_operator(cp));
 		pairadd(vps, vp);
@@ -361,9 +361,8 @@ static int cache_verify(rlm_cache_t *inst)
 /*
  *	Allow single attribute values to be retrieved from the cache.
  */
-static int cache_xlat(void *instance, REQUEST *request,
-		      char *fmt, char *out, size_t freespace,
-		      UNUSED RADIUS_ESCAPE_STRING func)
+static size_t cache_xlat(void *instance, REQUEST *request,
+		      const char *fmt, char *out, size_t freespace)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;
@@ -373,7 +372,7 @@ static int cache_xlat(void *instance, REQUEST *request,
 	const char *p = fmt;
 	char buffer[1024];
 
-	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
+	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
 
 	c = cache_find(inst, request, buffer);
 	
@@ -500,7 +499,7 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Register the cache xlat function
 	 */
 	inst->xlat_name = strdup(xlat_name);
-	xlat_register(xlat_name, (RAD_XLAT_FUNC)cache_xlat, inst);
+	xlat_register(xlat_name, cache_xlat, inst);
 
 	if (!inst->key || !*inst->key) {
 		radlog(L_ERR, "rlm_cache: You must specify a key");
@@ -576,7 +575,7 @@ static int cache_it(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	char buffer[1024];
 
-	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
+	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
 
 	c = cache_find(inst, request, buffer);
 	

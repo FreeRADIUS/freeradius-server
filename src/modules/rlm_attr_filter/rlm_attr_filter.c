@@ -199,7 +199,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		int len;
 
 		len = radius_xlat(buffer, sizeof(buffer), inst->key,
-				  request, NULL);
+				  request, NULL, NULL);
 		if (!len) {
 			return RLM_MODULE_NOOP;
 		}

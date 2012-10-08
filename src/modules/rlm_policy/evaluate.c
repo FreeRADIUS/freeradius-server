@@ -401,7 +401,7 @@ static int evaluate_print(policy_state_t *state, const policy_item_t *item)
 		char buffer[1024];
 
 		radius_xlat(buffer, sizeof(buffer), this->rhs,
-			    state->request, NULL);
+			    state->request, NULL, NULL);
 		fprintf(fr_log_fp, "%s", buffer);
 		if (!strchr(buffer, '\n')) fprintf(fr_log_fp, "\n");
 	}
@@ -533,7 +533,7 @@ static int evaluate_condition(policy_state_t *state, const policy_item_t *item)
 			strlcpy(lhs_buffer, data, sizeof(lhs_buffer)); /* FIXME: yuck */
 		} else if (this->lhs_type == POLICY_LEX_DOUBLE_QUOTED_STRING) {
 			if (radius_xlat(lhs_buffer, sizeof(lhs_buffer), this->lhs,
-					state->request, NULL) > 0) {
+					state->request, NULL, NULL) > 0) {
 				data = lhs_buffer;
 			}
 		}
@@ -824,7 +824,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 	if ((assign->rhs_type == POLICY_LEX_DOUBLE_QUOTED_STRING) &&
 	    (strchr(assign->rhs, '%') != NULL)) {
 		radius_xlat(buffer, sizeof(buffer), assign->rhs,
-			    request, NULL);
+			    request, NULL, NULL);
 		value = buffer;
 	}
 

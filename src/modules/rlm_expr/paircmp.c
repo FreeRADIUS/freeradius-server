@@ -228,7 +228,7 @@ static int genericcmp(void *instance UNUSED,
 
 		snprintf(name, sizeof(name), "%%{%s}", check->name);
 
-		radius_xlat(value, sizeof(value), name, req, NULL);
+		radius_xlat(value, sizeof(value), name, req, NULL, NULL);
 		vp = pairmake(check->name, value, check->operator);
 
 		/*
