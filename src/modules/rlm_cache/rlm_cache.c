@@ -270,7 +270,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 			default:
 				rad_assert(0); 
-		
+				return NULL;		
 		}
 
 		/*
