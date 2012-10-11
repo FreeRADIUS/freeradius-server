@@ -1276,6 +1276,41 @@ static int condition_looks_ok(const char **ptr)
 	return 0;
 }
 
+int cf_exclude_file(const char *filename)
+{
+	int i;
+	size_t len;
+	const char *p = filename;
+
+	/*
+	 *	FIXME: Maybe later make this a globally set configuration
+	 *	variable.  But that's low priority.
+	 */
+	static const char *excluded[] = {
+		"rpmsave", "rpmnew", "dpkg-new", "dpkg-dist", "dpkg-old",
+		"bak", NULL
+	};
+
+	if (!p || !*p) return TRUE; /* coding error */
+
+	if (*p == '.') return TRUE; /* ".", "..", ".foo", ... */
+
+	if (*p == '#') return TRUE; /* #foo# */
+
+	len = strlen(p);
+	if (p[len - 1] == '~') return TRUE; /* foo~ */
+
+	p = strrchr(p, '.');
+	if (!p) return FALSE;	/* just "foo", it's OK */
+
+	p++;
+	for (i = 0; excluded[i] != NULL; i++) {
+		if (strcmp(p, excluded[i]) == 0) return TRUE;
+	}
+
+	return FALSE;
+}
+
 
 static const char *cf_local_file(CONF_SECTION *cs, const char *local,
 				 char *buffer, size_t bufsize)
@@ -1512,25 +1547,11 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				}
 
 				/*
-				 *	Read the directory, ignoring "." files.
+				 *	Read the directory, ignoring some files.
 				 */
 				while ((dp = readdir(dir)) != NULL) {
-					const char *p;
-
-					if (dp->d_name[0] == '.') continue;
-
-					/*
-					 *	Check for valid characters
-					 */
-					for (p = dp->d_name; *p != '\0'; p++) {
-						if (isalpha((int)*p) ||
-						    isdigit((int)*p) ||
-						    (*p == '-') ||
-						    (*p == '_') ||
-						    (*p == '.')) continue;
-						break;
-					}
-					if (*p != '\0') continue;
+					if (cf_exclude_file(dp->d_name))
+						continue;
 
 					snprintf(buf2, sizeof(buf2), "%s%s",
 						 value, dp->d_name);

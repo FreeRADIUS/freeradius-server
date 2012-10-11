@@ -58,6 +58,7 @@ int		cf_section_parse(CONF_SECTION *, void *base,
 				 const CONF_PARSER *variables);
 void		cf_section_parse_free(CONF_SECTION *cs, void *base);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
+int cf_exclude_file(const char *filename);
 CONF_SECTION	*cf_file_read(const char *file);
 int		cf_file_include(const char *file, CONF_SECTION *cs);
 

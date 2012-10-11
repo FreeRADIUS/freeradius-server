@@ -1589,8 +1589,7 @@ static int parse_include(policy_lex_file_t *lexer)
 			while ((dp = readdir(dir)) != NULL) {
 				struct stat buf;
 
-				if (dp->d_name[0] == '.') continue;
-				if (strchr(dp->d_name, '~') != NULL) continue;
+				if (cf_exclude_file(dp->d_name)) continue;
 
 				strlcpy(p, dp->d_name,
 					sizeof(buffer) - (p - buffer));
