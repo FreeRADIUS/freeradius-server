@@ -1583,13 +1583,22 @@ static int parse_include(policy_lex_file_t *lexer)
 			}
 
 			/*
-			 *	Read the directory, ignoring "." files.
+			 *	Read the directory, ignoring invalid files.
 			 */
 			while ((dp = readdir(dir)) != NULL) {
 				struct stat buf;
 
-				if (dp->d_name[0] == '.') continue;
-				if (strchr(dp->d_name, '~') != NULL) continue;
+				/*
+				 *	Check for invalid file names
+				 */
+				if (fr_exclude_config_file(dp->d_name)) {
+					if (!(strcmp(dp->d_name, ".")  == 0 ||
+					      strcmp(dp->d_name, "..") == 0)) {
+	                                    fprintf(stderr, "skipping policy file, invalid name \"%s%s\"",
+						buffer, dp->d_name);
+					}
+					continue;
+				}
 
 				strlcpy(p, dp->d_name,
 					sizeof(buffer) - (p - buffer));
