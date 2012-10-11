@@ -416,6 +416,17 @@ int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
 int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, int * port);
 
+int
+str_starts_with(const char *subject, const char *pattern);
+int
+strn_starts_with(const char *subject, const char *pattern, size_t sbj_len, size_t pat_len);
+int
+str_ends_with(const char *subject, const char *pattern);
+int
+strn_ends_with(const char *subject, const char *pattern, size_t sbj_len, size_t pat_len);
+int
+fr_exclude_config_file(const char *basename);
+
 
 #ifdef ASCEND_BINARY
 /* filters.c */

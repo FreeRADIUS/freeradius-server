@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include	<ctype.h>
 #include	<sys/file.h>
 #include	<fcntl.h>
+#include	<string.h>
 
 int		fr_dns_lookups = 0;
 int		fr_debug_flag = 0;
@@ -650,3 +651,169 @@ int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 
 	return 1;
 }
+
+
+/*
+ * Return true if subject starts with pattern, false otherwise.
+ * subject and pattern are NULL terminated strings.
+ */
+int
+str_starts_with(const char *subject, const char *pattern)
+{
+    size_t sbj_len;
+    size_t pat_len;
+
+    pat_len = strlen(pattern);
+    sbj_len = strlen(subject);
+
+    return strn_starts_with(subject, pattern, sbj_len, pat_len);
+}
+
+/*
+ * Return true if subject starts with pattern, false otherwise.
+ * subject and pattern are terminated by their respective length parameters.
+ */
+int
+strn_starts_with(const char *subject, const char *pattern, size_t sbj_len, size_t pat_len)
+{
+    const char *s = NULL;
+    const char *p = NULL;
+    const char *pat_end = NULL;
+
+    if (subject == NULL || pattern == NULL) return 0;
+
+    if (pat_len > sbj_len) return 0;
+
+    pat_end = pattern + pat_len;
+
+    for (p = pattern, s = subject; p < pat_end; p++, s++) {
+        if (*p != *s) return 0;
+    }
+    return 1;
+
+}
+
+/*
+ * Return true if subject starts with pattern, false otherwise.
+ * subject and pattern are NULL terminated strings.
+ */
+int
+str_ends_with(const char *subject, const char *pattern)
+{
+    size_t sbj_len;
+    size_t pat_len;
+
+    pat_len = strlen(pattern);
+    sbj_len = strlen(subject);
+
+    return strn_ends_with(subject, pattern, sbj_len, pat_len);
+}
+
+/*
+ * Return true if subject ends with pattern, false otherwise.
+ * subject and pattern are terminated by their respective length parameters.
+ */
+int
+strn_ends_with(const char *subject, const char *pattern, size_t sbj_len, size_t pat_len)
+{
+    const char *s = NULL;
+    const char *sbj_end = NULL;
+    const char *p = NULL;
+    const char *pat_end = NULL;
+
+    if (subject == NULL || pattern == NULL) return 0;
+
+    if (pat_len > sbj_len) return 0;
+
+    pat_end = pattern + pat_len - 1;
+    sbj_end = subject + sbj_len - 1;
+
+    for (p = pat_end, s = sbj_end; p >= pattern; p--, s--) {
+        if (*p != *s) return 0;
+    }
+    return 1;
+
+}
+
+/*
+ * Tests to see if the basename of a file found in a config directory
+ * should be excluded from being read because it is not a valid config
+ * file. The function returns true if the file basename should be
+ * excluded.
+ *
+ * The following basename's are excluded:
+ *
+ * Any basename beginning with a dot (.)
+ * Any basename beginning with a hash (i.e. pound sign, octothorp) (#)
+ * Any basename ending with a tilde (~)
+ * Any basename ending with the substring ".rpmsave"
+ * Any basename ending with the substring ".rpmnew"
+ * Any basename ending with the substring ".dpkg-new"
+ * Any basename ending with the substring ".dpkg-dist"
+ * Any basename ending with the substring ".dpkg-old"
+ * Any basename ending with the substring ".bak"
+
+
+ */
+
+#ifdef HAVE_REGEX_H
+#include <regex.h>
+
+/*
+ * Performs test with a regular expression.  The regexp is compiled on
+ * first use and then saved in a static variable for future use.
+ */
+
+int
+fr_exclude_config_file(const char *basename)
+{
+    char *pattern = "^\\.|^#|~$|\\.rpmsave$|\\.rpmnew$|\\.dpkg-new$|\\.dpkg-dist$|\\.dpkg-old$|\\.bak$";
+    int status;
+    static regex_t re;
+    static int compiled = 0;
+
+    if (!compiled) {
+        if ((status = regcomp(&re, pattern, REG_NOSUB | REG_EXTENDED)) != 0) {
+            char error_buf[256];
+
+            regerror(status, &re, error_buf, sizeof(error_buf));
+            fprintf(stderr, "fr_exclude_config_file: failed to compile regular expression \"%s\": %s",
+                    pattern, error_buf);
+
+            return(0);      /* Since we can't perform test, accept all files */
+        }
+        compiled = 1;
+    }
+    status = regexec(&re, basename, (size_t) 0, NULL, 0);
+
+    if (status == 0) {
+        return 1;
+    } else {
+        return 0;
+    }
+}
+
+#else
+
+/*
+ * Performs the test with starts_with and ends_with string utilities.
+ */
+
+int
+fr_exclude_config_file(const char *basename)
+{
+    if (str_starts_with(basename, ".")) return 1;
+    if (str_starts_with(basename, "#")) return 1;
+
+    if (str_ends_with(basename, "~")) return 1;
+    if (str_ends_with(basename, ".rpmsave")) return 1;
+    if (str_ends_with(basename, ".rpmnew")) return 1;
+    if (str_ends_with(basename, ".dpkg-new")) return 1;
+    if (str_ends_with(basename, ".dpkg-dist")) return 1;
+    if (str_ends_with(basename, ".dpkg-old")) return 1;
+    if (str_ends_with(basename, ".bak")) return 1;
+
+    return 0;
+}
+
+#endif

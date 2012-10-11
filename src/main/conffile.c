@@ -1512,12 +1512,23 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				}
 
 				/*
-				 *	Read the directory, ignoring "." files.
+				 *	Read the directory, ignoring invalid files.
 				 */
 				while ((dp = readdir(dir)) != NULL) {
 					const char *p;
 
-					if (dp->d_name[0] == '.') continue;
+					/*
+					 *	Check for invalid file names
+					 */
+					if (fr_exclude_config_file(dp->d_name)) {
+						if (!(strcmp(dp->d_name, ".")  == 0 ||
+						      strcmp(dp->d_name, "..") == 0)) {
+							radlog(L_INFO, "skipping config file, invalid name \"%s%s\"",
+							value, dp->d_name);
+						}
+						continue;
+					}
+
 
 					/*
 					 *	Check for valid characters
@@ -1530,7 +1541,11 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 						    (*p == '.')) continue;
 						break;
 					}
-					if (*p != '\0') continue;
+					if (*p != '\0') {
+                                            radlog(L_INFO, "skipping config file, invalid characters in name \"%s%s\"",
+                                                   value, dp->d_name);
+                                            continue;
+                                        }
 
 					snprintf(buf2, sizeof(buf2), "%s%s",
 						 value, dp->d_name);
