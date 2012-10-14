@@ -1013,7 +1013,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	int ret = RLM_MODULE_NOTFOUND;
 	
 	SQL_INST *inst = instance;
-	SQLSOCK *sqlsocket;
+	SQLSOCK  *sqlsocket;
 	
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
@@ -1054,7 +1054,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	 */
 	if (inst->config->authorize_check_query &&
 	    *inst->config->authorize_check_query) {
-		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_check_query, request, sql_escape_func)) {
+		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_check_query, request, sql_escape_func, inst)) {
 			radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 	
 			goto error;
@@ -1092,7 +1092,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		/*
 		 *  Now get the reply pairs since the paircompare matched
 		 */
-		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_reply_query, request, sql_escape_func)) {
+		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_reply_query, request, sql_escape_func, inst)) {
 			radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 			
 			goto error;
@@ -1206,16 +1206,16 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request, 
 			     rlm_sql_config_section_t *section)
 {
-	int		ret = RLM_MODULE_OK;
+	int	ret = RLM_MODULE_OK;
 
-	SQLSOCK		*sqlsocket = NULL;
-	int		sql_ret;
-	int		numaffected = 0;
+	SQLSOCK	*sqlsocket = NULL;
+	int	sql_ret;
+	int	numaffected = 0;
 
-	CONF_ITEM	*item;
-	CONF_PAIR	*pair;
-	const char	*attr = NULL;
-	const char	*value;
+	CONF_ITEM  *item;
+	CONF_PAIR  *pair;
+	const char *attr = NULL;
+	const char *value;
 
 	char	path[MAX_STRING_LEN];
 	char	querystr[MAX_QUERY_LEN];
@@ -1228,8 +1228,6 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 		
 		return RLM_MODULE_NOOP;	
 	}
-	
-	sql_set_user(inst, request, sqlusername, NULL);
 	
 	if (section->reference[0] != '.')
 		*p++ = '.';
@@ -1256,23 +1254,42 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL)
 		return RLM_MODULE_FAIL;
+		
+	sql_set_user(inst, request, sqlusername, NULL);
 
 	while (TRUE) {
 		value = cf_pair_value(pair);
-		if (!value)
-			goto null_query;
+		if (!value) {
+			RDEBUG("Ignoring null query");
+			ret = RLM_MODULE_NOOP;
+			
+			goto release;
+		}
 		
 		radius_xlat(querystr, sizeof(querystr), value, request,
 			    sql_escape_func, inst);
-		if (!*querystr)
-			goto null_query;
+		if (!*querystr) {
+			RDEBUG("Ignoring null query");
+			ret = RLM_MODULE_NOOP;
+			
+			goto release;
+		}
 		
 		rlm_sql_query_log(inst, request, section, querystr);
 		
+		/*
+		 *  If rlm_sql_query cannot use the socket it'll try and
+		 *  reconnect. Reconnecting will automatically release 
+		 *  the current socket, and try to select a new one.
+		 *
+		 *  If we get SQL_DOWN it means all connections in the pool
+		 *  were exhausted, and we couldn't create a new connection,
+		 *  so we do not need to call sql_release_socket.
+		 */
 		sql_ret = rlm_sql_query(&sqlsocket, inst, querystr);	
 		if (sql_ret == SQL_DOWN)
 			return RLM_MODULE_FAIL;
-			
+		
 		rad_assert(sqlsocket);
 	
 		/* 
@@ -1310,18 +1327,13 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	(inst->module->sql_finish_query)(sqlsocket, inst->config);
 
 	release:
+		
+	/* Remove the username we (maybe) added above */
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
 	
 	sql_release_socket(inst, sqlsocket);
 
 	return ret;
-	
-	null_query:
-	
-	RDEBUG("Ignoring null query");
-	
-	sql_release_socket(inst, sqlsocket);
-
-	return RLM_MODULE_NOOP;
 }
 
 #ifdef WITH_ACCOUNTING
