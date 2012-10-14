@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/base64.h>
 #include <freeradius-devel/modules.h>
 
 #include <ctype.h>
@@ -302,7 +303,7 @@ static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
  *  @brief Generate a string of random chars
  *
  *  Build strings of random chars, useful for generating tokens and passcodes
- *  Format identical to String::Random.
+ *  Format similar to String::Random.
  */
 static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 			   const char *fmt, char *out, size_t outlen,
@@ -564,6 +565,90 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
 	return strlen(out);
 }
 
+/**
+ * @brief Encode string as base64
+ *
+ * Example: "%{strtobase64:foo}" == "Zm9v"
+ */
+static size_t base64_encode_xlat(UNUSED void *instance, REQUEST *request,
+				 const char *fmt, char *out, size_t outlen)
+{
+	size_t len;
+	char buffer[1024];
+
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
+	
+	/* 
+	 *  We can accurately calculate the length of the output string
+	 *  if it's larger than outlen, the output would be useless so abort.
+	 */
+	if (!len || ((FR_BASE64_ENC_LENGTH(len) + 1) > outlen)) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
+		return 0;
+	}
+	
+	fr_base64_encode(buffer, len, out, outlen);
+
+	return strlen(out);
+}
+
+/**
+ * @brief Decode base64 string
+ *
+ * Example: "%{base64tostr:Zm9v}" == "foo"
+ */
+static size_t base64_decode_xlat(UNUSED void *instance, REQUEST *request,
+				 const char *fmt, char *out, size_t outlen)
+{	
+	char *p;
+	
+	char buffer[1024];
+	char decbuf[1024];
+	
+	size_t declen = sizeof(decbuf);
+	size_t freespace = outlen;
+	size_t len;
+
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
+	
+	if (!len) {
+		radlog(L_ERR, "rlm_expr: xlat failed.");
+		*out = '\0';
+		return 0;
+	}
+	
+	if (!fr_base64_decode(buffer, len, decbuf, &declen)) {
+		radlog(L_ERR, "rlm_expr: base64 string invalid");
+		*out = '\0';
+		return 0;
+	}
+	
+	p = decbuf;
+	while ((declen-- > 0) && (--freespace > 0)) {
+		/*
+		 *	Non-printable characters get replaced with their
+		 *	mime-encoded equivalents.
+		 */
+		if (*p > 31) {
+			*out++ = *p++;
+			continue;
+		}
+		
+		if (freespace < 3)
+			break;
+
+		snprintf(out, 4, "=%02X", *p++);
+		
+		/* Already decremented */
+		freespace -= 2;
+		out += 3;
+	}
+
+	return outlen - freespace;
+}
+
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -602,6 +687,8 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register("tolower", lc_xlat, inst);
 	xlat_register("toupper", uc_xlat, inst);
 	xlat_register("md5", md5_xlat, inst);
+	xlat_register("strtobase64", base64_encode_xlat, inst);
+	xlat_register("base64tostr", base64_decode_xlat, inst);
 
 	/*
 	 * Initialize various paircompare functions

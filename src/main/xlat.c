@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/rad_assert.h>
+#include	<freeradius-devel/base64.h>
 
 #include	<ctype.h>
 
@@ -567,6 +568,37 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	return vp->length * 2;
 }
 
+/**
+ * @brief Print data as base64, not as VALUE
+ */
+static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
+			  const char *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+	size_t len;
+	
+	while (isspace((int) *fmt)) fmt++;
+
+	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+	
+	len = FR_BASE64_ENC_LENGTH(vp->length);
+	
+	/*
+	 *	Don't truncate the data.
+	 */
+	if (outlen < (len + 1)) {
+		*out = 0;
+		return 0;
+	}
+	
+	fr_base64_encode((char *) vp->vp_octets, vp->length, out, outlen);
+
+	return len;
+}
+
 #ifdef HAVE_REGEX_H
 /*
  *	Pull %{0} to %{8} out of the packet.
@@ -720,6 +752,11 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 
 		xlat_register("integer", xlat_integer, "");
 		c = xlat_find("integer");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+		
+		xlat_register("base64", xlat_hex, "");
+		c = xlat_find("base64");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
