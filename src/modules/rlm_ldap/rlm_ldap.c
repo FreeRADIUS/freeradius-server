@@ -1811,8 +1811,9 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		RDEBUG("Setting Auth-Type = %s", inst->auth_type);
 	}
 
-	RDEBUG("user %s authorized to use remote access",
-	      request->username->vp_strvalue);
+	if (inst->access_attr)
+		RDEBUG("user %s authorized to use remote access",
+		       request->username->vp_strvalue);
 	ldap_msgfree(result);
 	ldap_release_conn(conn_id,inst);
 
