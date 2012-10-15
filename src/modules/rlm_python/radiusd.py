@@ -32,6 +32,21 @@ L_ERR = 4
 L_PROXY	= 5
 L_CONS = 128
 
+OP={       '{':2,   '}':3,   '(':4,   ')':5,   ',':6,   ';':7,  '+=':8,  '-=':9,  ':=':10,
+  '=':11, '!=':12, '>=':13,  '>':14, '<=':15,  '<':16, '=~':17, '!~':18, '=*':19, '!*':20,
+ '==':21 , '#':22 }
+
+OP_TRY = (':=', '+=', '-=', '=' )
+
+def resolve(*lines):
+    tuples = []
+    for line in lines:
+        for op in OP_TRY:
+            arr = line.rsplit(op)
+            if len(arr)==2:
+                tuples.append((str(arr[0].strip()),OP[op],str(arr[1].strip())))
+                break
+    return tuple(tuples)
 
 # log function
 def radlog(level, msg):
@@ -39,7 +54,5 @@ def radlog(level, msg):
     sys.stdout.write(msg + '\n')
 
     level = level
-  
 
 
-  
