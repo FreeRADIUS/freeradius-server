@@ -415,18 +415,6 @@ typedef struct main_config_t {
 #define L_ACCT			6
 #define L_CONS			128
 
-#ifndef FALSE
-#define FALSE 0
-#endif
-#ifndef TRUE
-/*
- *	This definition of true as NOT false is definitive. :) Making
- *	it '1' can cause problems on stupid platforms.  See articles
- *	on C portability for more information.
- */
-#define TRUE (!FALSE)
-#endif
-
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
