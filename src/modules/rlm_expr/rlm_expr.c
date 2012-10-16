@@ -269,7 +269,6 @@ static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
 			char *out, size_t outlen,
 			RADIUS_ESCAPE_STRING func)
 {
-	int		rcode;
 	int64_t		result;
 	rlm_expr_t	*inst = instance;
 	char		buffer[256];
@@ -306,7 +305,7 @@ static size_t rand_xlat(void *instance, REQUEST *request, char *fmt,
  *  Format similar to String::Random.
  */
 static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
-			   const char *fmt, char *out, size_t outlen,
+			   char *fmt, char *out, size_t outlen,
 			   RADIUS_ESCAPE_STRING func)
 {
 	char		*p;
@@ -418,7 +417,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
 static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
-			    const char *fmt, char *out, size_t outlen,
+			    char *fmt, char *out, size_t outlen,
 			    UNUSED RADIUS_ESCAPE_STRING func)
 {
 	char	*p;
@@ -474,7 +473,7 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen,
+		      char *fmt, char *out, size_t outlen,
 		      UNUSED RADIUS_ESCAPE_STRING func)
 {
 	char *p, *q;
@@ -506,7 +505,7 @@ static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen,
+		      char *fmt, char *out, size_t outlen,
 		      UNUSED RADIUS_ESCAPE_STRING func)
 {
 	char *p, *q;
@@ -536,7 +535,7 @@ static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
 static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen,
+		       char *fmt, char *out, size_t outlen,
 		       UNUSED RADIUS_ESCAPE_STRING func)
 {
 	char buffer[1024];
@@ -571,12 +570,13 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{strtobase64:foo}" == "Zm9v"
  */
 static size_t base64_encode_xlat(UNUSED void *instance, REQUEST *request,
-				 const char *fmt, char *out, size_t outlen)
+				 char *fmt, char *out, size_t outlen,
+				 UNUSED RADIUS_ESCAPE_STRING func)
 {
 	size_t len;
 	char buffer[1024];
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
 	
 	/* 
 	 *  We can accurately calculate the length of the output string
@@ -599,7 +599,8 @@ static size_t base64_encode_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{base64tostr:Zm9v}" == "foo"
  */
 static size_t base64_decode_xlat(UNUSED void *instance, REQUEST *request,
-				 const char *fmt, char *out, size_t outlen)
+				 char *fmt, char *out, size_t outlen,
+				 UNUSED RADIUS_ESCAPE_STRING func)
 {	
 	char *p;
 	
@@ -610,7 +611,7 @@ static size_t base64_decode_xlat(UNUSED void *instance, REQUEST *request,
 	size_t freespace = outlen;
 	size_t len;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
+	len = radius_xlat(buffer, sizeof(buffer), fmt, request, func);
 	
 	if (!len) {
 		radlog(L_ERR, "rlm_expr: xlat failed.");
