@@ -19,28 +19,27 @@
 #ifndef _FR_BASE64_H
 # define _FR_BASE64_H
 
-/* Get size_t. */
-# include <stddef.h>
+#include <freeradius-devel/ident.h>
+RCSIDH(base64_h, "$Id$")
 
-/* Get bool. */
-# include <stdbool.h>
+# include <stddef.h>
 
 /* This uses that the expression (n+(k-1))/k means the smallest
    integer >= n/k, i.e., the ceiling of n/k.  */
 # define FR_BASE64_ENC_LENGTH(inlen) ((((inlen) + 2) / 3) * 4)
 # define FR_BASE64_DEC_LENGTH(inlen) ((3 * (inlen / 4)) + 2)
 
-extern bool fr_isbase64 (char ch);
+extern int fr_isbase64 (char ch);
 
 extern void fr_base64_encode (const char *in, size_t inlen,
 			      char *out, size_t outlen);
 
 extern size_t fr_base64_encode_alloc (const char *in, size_t inlen, char **out);
 
-extern bool fr_base64_decode (const char *in, size_t inlen,
-			      char *out, size_t *outlen);
+extern int fr_base64_decode (const char *in, size_t inlen,
+			     char *out, size_t *outlen);
 
-extern bool fr_base64_decode_alloc (const char *in, size_t inlen,
-				    char **out, size_t *outlen);
+extern int fr_base64_decode_alloc (const char *in, size_t inlen,
+				   char **out, size_t *outlen);
 
 #endif /* BASE64_H */
