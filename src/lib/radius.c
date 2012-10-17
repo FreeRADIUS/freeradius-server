@@ -796,7 +796,6 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 	return ptr - start;
 }
 
-
 /**
  * @brief Encodes the data portion of an attribute.
  * @return -1 on error, or the length of the data portion.
@@ -3844,6 +3843,80 @@ ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
 	return rad_attr2vp_rfc(packet, original, secret, data, length, pvp);
 }
 
+/**
+ * @brief Converts vp_data to network byte order
+ * @return -1 on error, or the length of the value
+ */
+ssize_t rad_vp2data(const VALUE_PAIR *vp, uint8_t *out, size_t outlen)
+{
+	size_t		len = 0;
+	uint32_t	lvalue;
+	uint64_t	lvalue64;
+
+	len = vp->length;
+	if (outlen < len) {
+		fr_strerror_printf("ERROR: rad_vp2data buffer passed too small");
+		return -1;
+	}
+	
+	/*
+	 *	Short-circuit it for long attributes.
+	 */
+	if ((vp->type & PW_FLAG_LONG) != 0) goto do_raw;
+
+	switch(vp->type) {
+		case PW_TYPE_STRING:
+		case PW_TYPE_OCTETS:
+		case PW_TYPE_IFID:
+		case PW_TYPE_IPADDR:
+		case PW_TYPE_IPV6ADDR:
+		case PW_TYPE_IPV6PREFIX:
+		case PW_TYPE_ABINARY:
+		case PW_TYPE_TLV:
+			do_raw:
+			memcpy(out, vp->vp_octets, len);
+			break;
+		case PW_TYPE_BYTE:
+			out[0] = vp->vp_integer & 0xff;
+			break;
+	
+		case PW_TYPE_SHORT:
+			out[0] = (vp->vp_integer >> 8) & 0xff;
+			out[1] = vp->vp_integer & 0xff;
+			break;
+	
+		case PW_TYPE_INTEGER:
+			lvalue = htonl(vp->vp_integer);
+			memcpy(out, &lvalue, sizeof(lvalue));
+			break;
+	
+		case PW_TYPE_INTEGER64:
+			lvalue64 = htonll(vp->vp_integer64);
+			memcpy(out, &lvalue64, sizeof(lvalue64));
+			break;
+
+		case PW_TYPE_DATE:
+			lvalue = htonl(vp->vp_date);
+			memcpy(out, &lvalue, sizeof(lvalue));
+			break;
+	
+		case PW_TYPE_SIGNED:
+		{
+			int32_t slvalue;
+			
+			slvalue = htonl(vp->vp_signed);
+			memcpy(out, &slvalue, sizeof(slvalue));
+			break;
+		}
+		/* unknown type: ignore it */
+		default:		
+			fr_strerror_printf("ERROR: Unknown attribute type %d",
+					   vp->type);
+			return -1;
+	}
+	
+	return len;
+}
 
 /**
  * @brief Calculate/check digest, and decode radius attributes.

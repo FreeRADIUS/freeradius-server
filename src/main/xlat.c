@@ -525,8 +525,10 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 		       const char *fmt, char *out, size_t outlen)
 {
 	size_t i;
-	uint8_t *p;
 	VALUE_PAIR *vp;
+	uint8_t	buffer[MAX_STRING_LEN];
+	ssize_t	ret;
+	size_t	len;
 
 	while (isspace((int) *fmt)) fmt++;
 
@@ -534,21 +536,23 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 		*out = '\0';
 		return 0;
 	}
-
+	
+	ret = rad_vp2data(vp, buffer, sizeof(buffer));
+	len = (size_t) ret;
+	
 	/*
 	 *	Don't truncate the data.
 	 */
-	if (outlen < (vp->length * 2)) {
+	if ((ret < 0 ) || (outlen < (len * 2))) {
 		*out = 0;
 		return 0;
 	}
 
-	p = &vp->vp_octets[0];
-	for (i = 0; i < vp->length; i++) {
-		snprintf(out + 2*i, 3, "%02x", p[i]);
+	for (i = 0; i < len; i++) {
+		snprintf(out + 2*i, 3, "%02x", buffer[i]);
 	}
 
-	return vp->length * 2;
+	return len * 2;
 }
 
 /**
@@ -558,7 +562,10 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 			  const char *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
-	size_t len;
+	uint8_t buffer[MAX_STRING_LEN];
+	ssize_t	ret;
+	size_t	len;
+	size_t	enc;
 	
 	while (isspace((int) *fmt)) fmt++;
 
@@ -567,19 +574,27 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 	
-	len = FR_BASE64_ENC_LENGTH(vp->length);
-	
-	/*
-	 *	Don't truncate the data.
-	 */
-	if (outlen < (len + 1)) {
+	ret = rad_vp2data(vp, buffer, sizeof(buffer));
+	if (ret < 0) {
 		*out = 0;
 		return 0;
 	}
 	
-	fr_base64_encode((char *) vp->vp_octets, vp->length, out, outlen);
+	len = (size_t) ret;
+	
+	enc = FR_BASE64_ENC_LENGTH(len);
+	
+	/*
+	 *	Don't truncate the data.
+	 */
+	if (outlen < (enc + 1)) {
+		*out = 0;
+		return 0;
+	}
+	
+	fr_base64_encode(buffer, len, out, outlen);
 
-	return len;
+	return enc;
 }
 
 /**
