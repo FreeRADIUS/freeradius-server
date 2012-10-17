@@ -620,10 +620,10 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
 /**
  * @brief Encode string as base64
  *
- * Example: "%{strtobase64:foo}" == "Zm9v"
+ * Example: "%{tobase64:foo}" == "Zm9v"
  */
-static size_t base64_encode_xlat(UNUSED void *instance, REQUEST *request,
-				 const char *fmt, char *out, size_t outlen)
+static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
+			  const char *fmt, char *out, size_t outlen)
 {
 	size_t len;
 	char buffer[1024];
@@ -640,17 +640,17 @@ static size_t base64_encode_xlat(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 	
-	fr_base64_encode(buffer, len, out, outlen);
+	fr_base64_encode((uint8_t *) buffer, len, out, outlen);
 
 	return strlen(out);
 }
 
 /**
- * @brief Decode base64 string
+ * @brief Convert base64 to hex
  *
- * Example: "%{base64tostr:Zm9v}" == "foo"
+ * Example: "%{base64tohex:Zm9v}" == "666f6f"
  */
-static size_t base64_decode_xlat(UNUSED void *instance, REQUEST *request,
+static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 				 const char *fmt, char *out, size_t outlen)
 {	
 	char *p;
@@ -678,23 +678,14 @@ static size_t base64_decode_xlat(UNUSED void *instance, REQUEST *request,
 	
 	p = decbuf;
 	while ((declen-- > 0) && (--freespace > 0)) {
-		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
-		 */
-		if (*p > 31) {
-			*out++ = *p++;
-			continue;
-		}
-		
 		if (freespace < 3)
 			break;
 
-		snprintf(out, 4, "=%02X", *p++);
+		snprintf(out, 3, "%02x", *p++);
 		
 		/* Already decremented */
-		freespace -= 2;
-		out += 3;
+		freespace -= 1;
+		out += 2;
 	}
 
 	return outlen - freespace;
@@ -760,8 +751,8 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register("tolower", lc_xlat, inst);
 	xlat_register("toupper", uc_xlat, inst);
 	xlat_register("md5", md5_xlat, inst);
-	xlat_register("strtobase64", base64_encode_xlat, inst);
-	xlat_register("base64tostr", base64_decode_xlat, inst);
+	xlat_register("tobase64", base64_xlat, inst);
+	xlat_register("base64tohex", base64_to_hex_xlat, inst);
 
 	/*
 	 * Initialize various paircompare functions
