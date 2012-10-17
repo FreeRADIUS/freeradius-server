@@ -63,7 +63,7 @@ to_uchar (char ch)
    If OUTLEN is less than FR_BASE64_ENC_LENGTH(INLEN), write as many bytes as
    possible.  If OUTLEN is larger than FR_BASE64_ENC_LENGTH(INLEN), also zero
    terminate the output buffer. */
-void fr_base64_encode (const char *in, size_t inlen,
+void fr_base64_encode (const uint8_t *in, size_t inlen,
 		       char *out, size_t outlen)
 {
   static const char b64str[64] =
@@ -71,23 +71,23 @@ void fr_base64_encode (const char *in, size_t inlen,
 
   while (inlen && outlen)
     {
-      *out++ = b64str[(to_uchar (in[0]) >> 2) & 0x3f];
+      *out++ = b64str[(in[0] >> 2) & 0x3f];
       if (!--outlen)
 	break;
-      *out++ = b64str[((to_uchar (in[0]) << 4)
-		       + (--inlen ? to_uchar (in[1]) >> 4 : 0))
+      *out++ = b64str[((in[0] << 4)
+		       + (--inlen ? in[1] >> 4 : 0))
 		      & 0x3f];
       if (!--outlen)
 	break;
       *out++ =
 	(inlen
-	 ? b64str[((to_uchar (in[1]) << 2)
-		   + (--inlen ? to_uchar (in[2]) >> 6 : 0))
+	 ? b64str[((in[1] << 2)
+		   + (--inlen ? in[2] >> 6 : 0))
 		  & 0x3f]
 	 : '=');
       if (!--outlen)
 	break;
-      *out++ = inlen ? b64str[to_uchar (in[2]) & 0x3f] : '=';
+      *out++ = inlen ? b64str[in[2] & 0x3f] : '=';
       if (!--outlen)
 	break;
       if (inlen)
@@ -110,7 +110,7 @@ void fr_base64_encode (const char *in, size_t inlen,
    indicates length of the requested memory block, i.e.,
    FR_BASE64_ENC_LENGTH(inlen) + 1. */
 size_t
-fr_base64_encode_alloc (const char *in, size_t inlen, char **out)
+fr_base64_encode_alloc (const uint8_t *in, size_t inlen, char **out)
 {
   size_t outlen = 1 + FR_BASE64_ENC_LENGTH (inlen);
 

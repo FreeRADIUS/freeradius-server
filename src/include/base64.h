@@ -31,10 +31,10 @@ RCSIDH(base64_h, "$Id$")
 
 extern int fr_isbase64 (char ch);
 
-extern void fr_base64_encode (const char *in, size_t inlen,
+extern void fr_base64_encode (const uint8_t *in, size_t inlen,
 			      char *out, size_t outlen);
 
-extern size_t fr_base64_encode_alloc (const char *in, size_t inlen, char **out);
+extern size_t fr_base64_encode_alloc (const uint8_t *in, size_t inlen, char **out);
 
 extern int fr_base64_decode (const char *in, size_t inlen,
 			     char *out, size_t *outlen);
