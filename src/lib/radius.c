@@ -1831,7 +1831,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 
 		/*
 		 *	Set the authentication vector to zero,
-		 *	calculate the signature, and put it
+		 *	calculate the HMAC, and put it
 		 *	into the Message-Authenticator
 		 *	attribute.
 		 */
@@ -1983,7 +1983,7 @@ int rad_digest_cmp(const uint8_t *a, const uint8_t *b, size_t length)
 
 /**
  * @brief Validates the requesting client NAS.  Calculates the
- *	signature based on the clients private key.
+ *	Request Authenticator based on the clients private key.
  */
 static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 {
@@ -2016,7 +2016,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 
 /**
  * @brief Validates the requesting client NAS.  Calculates the
- *	signature based on the clients private key.
+ *	Response Authenticator based on the clients private key.
  */
 static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			    const char *secret)
@@ -2571,7 +2571,8 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 
 
 /**
- * @brief Verify the signature of a packet.
+ * @brief Verify the Request/Response Authenticator
+ * 	(and Message-Authenticator if present) of a packet.
  */
 int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	       const char *secret)
@@ -2665,13 +2666,13 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	} /* loop over the packet, sanity checking the attributes */
 
 	/*
-	 *	It looks like a RADIUS packet, but we can't validate
-	 *	the signature.
+	 *	It looks like a RADIUS packet, but we don't know what it is
+	 *	so can't validate the authenticators.
 	 */
 	if ((packet->code == 0) || (packet->code >= FR_MAX_PACKET_CODE)) {
 		char buffer[32];
 		fr_strerror_printf("Received Unknown packet code %d "
-			   "from client %s port %d: Cannot validate signature.",
+			   "from client %s port %d: Cannot validate Request/Response Authenticator.",
 			   packet->code,
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
@@ -2681,7 +2682,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	}
 
 	/*
-	 *	Calculate and/or verify digest.
+	 *	Calculate and/or verify Request or Response Authenticator.
 	 */
 	switch(packet->code) {
 		int rcode;
@@ -2700,7 +2701,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 		case PW_ACCOUNTING_REQUEST:
 			if (calc_acctdigest(packet, secret) > 1) {
 				fr_strerror_printf("Received %s packet "
-					   "from client %s with invalid signature!  (Shared secret is incorrect.)",
+					   "from client %s with invalid Request Authenticator!  (Shared secret is incorrect.)",
 					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
@@ -2721,7 +2722,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			rcode = calc_replydigest(packet, original, secret);
 			if (rcode > 1) {
 				fr_strerror_printf("Received %s packet "
-					   "from home server %s port %d with invalid signature!  (Shared secret is incorrect.)",
+					   "from home server %s port %d with invalid Response Authenticator!  (Shared secret is incorrect.)",
 					   fr_packet_codes[packet->code],
 					   inet_ntop(packet->src_ipaddr.af,
 						     &packet->src_ipaddr.ipaddr,
@@ -2733,7 +2734,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 
 		default:
 			fr_strerror_printf("Received Unknown packet code %d "
-				   "from client %s port %d: Cannot validate signature",
+				   "from client %s port %d: Cannot validate Request/Response Authenticator",
 				   packet->code,
 				   inet_ntop(packet->src_ipaddr.af,
 					     &packet->src_ipaddr.ipaddr,
@@ -4379,7 +4380,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 
 	/*
 	 *	Use Chap-Challenge pair if present,
-	 *	Request-Authenticator otherwise.
+	 *	Request Authenticator otherwise.
 	 */
 	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE, 0);
 	if (challenge) {

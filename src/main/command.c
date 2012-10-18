@@ -1596,7 +1596,7 @@ static int command_print_stats(rad_listen_t *listener, fr_stats_t *stats,
 	cprintf(listener, "\tdup\t\t" PU "\n", stats->total_dup_requests);
 	cprintf(listener, "\tinvalid\t\t" PU "\n", stats->total_invalid_requests);
 	cprintf(listener, "\tmalformed\t" PU "\n", stats->total_malformed_requests);
-	cprintf(listener, "\tbad_signature\t" PU "\n", stats->total_bad_authenticators);
+	cprintf(listener, "\tbad_authenticator\t" PU "\n", stats->total_bad_authenticators);
 	cprintf(listener, "\tdropped\t\t" PU "\n", stats->total_packets_dropped);
 	cprintf(listener, "\tunknown_types\t" PU "\n", stats->total_unknown_types);
 
