@@ -530,8 +530,8 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
 	uint8_t passwd[MAX_PASS_LEN];
-	int	i, n;
-	int	len;
+	size_t	i, n;
+	size_t	len;
 
 	/*
 	 *	If the length is zero, round it up.
