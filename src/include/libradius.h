@@ -246,11 +246,11 @@ typedef struct radius_packet {
 	uint8_t			vector[AUTH_VECTOR_LEN];
 	struct timeval		timestamp;
 	uint8_t			*data;
-	ssize_t			data_len;
+	size_t			data_len;
 	VALUE_PAIR		*vps;
 	ssize_t			offset;
 #ifdef WITH_TCP
-	ssize_t			partial;
+	size_t			partial;
 #endif
 } RADIUS_PACKET;
 

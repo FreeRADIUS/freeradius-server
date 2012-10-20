@@ -286,20 +286,20 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	}
 	memset(packet, 0, sizeof(*packet));
 
-	packet->data_len = vqp_recvfrom(sockfd, &packet->data, 0,
+	length = vqp_recvfrom(sockfd, &packet->data, 0,
 					&packet->src_ipaddr, &packet->src_port,
 					&packet->dst_ipaddr, &packet->dst_port);
 
 	/*
 	 *	Check for socket errors.
 	 */
-	if (packet->data_len < 0) {
+	if (length < 0) {
 		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
 		/* packet->data is NULL */
 		free(packet);
 		return NULL;
 	}
-
+	packet->data_len = length; /* unsigned vs signed */
 
 	/*
 	 *	We can only receive packets formatted in a way we
@@ -315,9 +315,9 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	ptr = packet->data;
 
 	if (0) {
-		int i;
+		size_t i;
 		for (i = 0; i < packet->data_len; i++) {
-			if ((i & 0x0f) == 0) fprintf(stderr, "%02x: ", i);
+		  if ((i & 0x0f) == 0) fprintf(stderr, "%02x: ", (int) i);
 			fprintf(stderr, "%02x ", ptr[i]);
 			if ((i & 0x0f) == 0x0f) fprintf(stderr, "\n");
 		}
@@ -651,7 +651,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 */
 	for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!vps[i]) break;
-		if ((ptr - packet->data) >= packet->data_len) break;
+		if (ptr >= (packet->data + packet->data_len)) break;
 
 		vp = vps[i];
 

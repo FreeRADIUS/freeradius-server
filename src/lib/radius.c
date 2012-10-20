@@ -2153,7 +2153,7 @@ int rad_tlv_ok(const uint8_t *data, size_t length,
 int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 {
 	uint8_t			*attr;
-	int			totallen;
+	size_t			totallen;
 	int			count;
 	radius_packet_t		*hdr;
 	char			host_ipaddr[128];
@@ -2169,11 +2169,11 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (packet->data_len < AUTH_HDR_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (received %d < minimum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (received %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-				   (int) packet->data_len, AUTH_HDR_LEN);
+				     packet->data_len, AUTH_HDR_LEN);
 		return 0;
 	}
 
@@ -2183,11 +2183,11 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	" ... and maximum length is 4096."
 	 */
 	if (packet->data_len > MAX_PACKET_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (received %d > maximum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (received %zu > maximum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-				   (int) packet->data_len, MAX_PACKET_LEN);
+				     packet->data_len, MAX_PACKET_LEN);
 		return 0;
 	}
 
@@ -2236,11 +2236,11 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	"The minimum length is 20 ..."
 	 */
 	if (totallen < AUTH_HDR_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (length %d < minimum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too short (length %zu < minimum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-			   totallen, AUTH_HDR_LEN);
+				     totallen, AUTH_HDR_LEN);
 		return 0;
 	}
 
@@ -2252,11 +2252,11 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	" ... and maximum length is 4096."
 	 */
 	if (totallen > MAX_PACKET_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (length %d > maximum %d)",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (length %zu > maximum %d)",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-			   totallen, MAX_PACKET_LEN);
+			             totallen, MAX_PACKET_LEN);
 		return 0;
 	}
 
@@ -2269,11 +2269,11 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	i.e. No response to the NAS.
 	 */
 	if (packet->data_len < totallen) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: received %d octets, packet length says %d",
+		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: received %zu octets, packet length says %zu",
 			   inet_ntop(packet->src_ipaddr.af,
 				     &packet->src_ipaddr.ipaddr,
 				     host_ipaddr, sizeof(host_ipaddr)),
-				   (int) packet->data_len, totallen);
+				     packet->data_len, totallen);
 		return 0;
 	}
 
@@ -2462,6 +2462,7 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 RADIUS_PACKET *rad_recv(int fd, int flags)
 {
 	int sock_flags = 0;
+	ssize_t data_len;
 	RADIUS_PACKET		*packet;
 
 	/*
@@ -2478,19 +2479,20 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 		flags &= ~0x02;
 	}
 
-	packet->data_len = rad_recvfrom(fd, &packet->data, sock_flags,
+	data_len = rad_recvfrom(fd, &packet->data, sock_flags,
 					&packet->src_ipaddr, &packet->src_port,
 					&packet->dst_ipaddr, &packet->dst_port);
 
 	/*
 	 *	Check for socket errors.
 	 */
-	if (packet->data_len < 0) {
+	if (data_len < 0) {
 		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
 		/* packet->data is NULL */
 		free(packet);
 		return NULL;
 	}
+	packet->data_len = data_len; /* unsigned vs signed */
 
 	/*
 	 *	If the packet is too big, then rad_recvfrom did NOT
