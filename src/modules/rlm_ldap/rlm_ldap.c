@@ -141,6 +141,7 @@ typedef struct {
 	int		is_url;
 	int		chase_referrals;
 	int		rebind;
+	int		expect_password;
 	char           *login;
 	char           *password;
 	char           *filter;
@@ -234,6 +235,8 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(ldap_instance,port), NULL, "389"},
 	{"password", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,password), NULL, ""},
+	{"expect_password", PW_TYPE_BOOLEAN,
+	 offsetof(ldap_instance,expect_password), NULL, "yes"},
 	{"identity", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,login), NULL, ""},
 
@@ -1748,7 +1751,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	*	More warning messages for people who can't be bothered
 	*	to read the documentation.
 	*/
-       if (debug_flag > 1) {
+       if (inst->expect_password && (debug_flag > 1)) {
 	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0) &&
 		   !pairfind(request->config_items, PW_NT_PASSWORD, 0) &&
 		   !pairfind(request->config_items, PW_USER_PASSWORD, 0) &&
@@ -1773,8 +1776,9 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		RDEBUG("Setting Auth-Type = %s", inst->auth_type);
 	}
 
-	RDEBUG("user %s authorized to use remote access",
-	      request->username->vp_strvalue);
+	if (inst->access_attr)
+		RDEBUG("user %s authorized to use remote access",
+		       request->username->vp_strvalue);
 	ldap_msgfree(result);
 	ldap_release_conn(conn_id,inst);
 
