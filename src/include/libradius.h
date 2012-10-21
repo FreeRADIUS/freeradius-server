@@ -263,9 +263,9 @@ size_t		fr_print_string(const char *in, size_t inlen,
 int     	vp_prints_value(char *out, size_t outlen,
 				const VALUE_PAIR *vp, int delimitst);
 int     	vp_prints_value_json(char *out, size_t outlen,
-				const VALUE_PAIR *vp);
+				     const VALUE_PAIR *vp);
 size_t		vp_print_name(char *buffer, size_t bufsize,
-			       unsigned int attr, unsigned int vendor);
+			      unsigned int attr, unsigned int vendor);
 int     	vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp);
 void		vp_print(FILE *, const VALUE_PAIR *);
 void		vp_printlist(FILE *, const VALUE_PAIR *);
@@ -410,9 +410,9 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 	       const char *secret, const VALUE_PAIR **pvp,
 	       uint8_t *ptr, size_t room);
 
-int		rad_vp2attr(const RADIUS_PACKET *packet,
-			    const RADIUS_PACKET *original, const char *secret,
-			    const VALUE_PAIR **pvp, uint8_t *ptr, size_t room);
+int rad_vp2attr(const RADIUS_PACKET *packet,
+		const RADIUS_PACKET *original, const char *secret,
+		const VALUE_PAIR **pvp, uint8_t *ptr, size_t room);
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(DICT_ATTR *da);
@@ -432,7 +432,7 @@ void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
-VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value, int operator);
+VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
 FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);
 VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
@@ -469,7 +469,7 @@ void		fr_printf_log(const char *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
-const char *	ip_ntoa(char *, uint32_t);
+const char 	*ip_ntoa(char *, uint32_t);
 char		*ifid_ntoa(char *buffer, size_t size, const uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
@@ -527,8 +527,8 @@ typedef struct rbtree_t rbtree_t;
 typedef struct rbnode_t rbnode_t;
 
 rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
-			       void (*freeNode)(void *),
-			       int replace_flag);
+			      void (*freeNode)(void *),
+			      int replace_flag);
 void		rbtree_free(rbtree_t *tree);
 int		rbtree_insert(rbtree_t *tree, void *Data);
 rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);
