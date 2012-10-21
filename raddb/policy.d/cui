@@ -7,6 +7,14 @@
 #
 
 #
+#  cui_hash_key definition
+#  This key serves the purpose of protecting CUI values against
+#  dictionary attacks, therefore should be chosen as a "random"
+#  string and kept secret.
+#
+cui_hash_key = "some_hash_key"
+
+#
 #  The client indicates it can do CUI by sending a CUI attribute	
 #  containing one zero byte
 #
