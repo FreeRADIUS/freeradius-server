@@ -7,12 +7,12 @@
 #
 
 #
-##  cui_hash_key definition
-##  This key serves the purpose of protecting CUI values against
-##  dictionary attacks, therefore should be chosen as a "random"
-##  string and kept secret.
-##
-#cui_hash_key = "some_hash_key"
+#  cui_hash_key definition
+#  This key serves the purpose of protecting CUI values against
+#  dictionary attacks, therefore should be chosen as a "random"
+#  string and kept secret.
+#
+cui_hash_key = "some_hash_key"
 
 #
 # cui_require_operator_name switch
@@ -22,22 +22,22 @@
 cui_require_operator_name = 0
 
 #
-##  The client indicates it can do CUI by sending a CUI attribute	
-##  containing one zero byte. 
-##  A non-empty value in Operator-Name can be an additional requirement.
-##  Normally CUI support is turned on only for such requests.
-##  CUI support can be used for local clients which do not
-##  supports CUI themselves, the server can simulate a CUI request
-##  adding the missing NUL CUI value and the Operator-Name attribute.
-##  Clients which are supposed to get this treatment should
-##  be marked by add_cui flag in clients.conf
-##  We assume that local clients are marked in the client.conf with
-##  add_cui flag, e.g.
-##  client xxxx {
-##    ...
-##    add_cui = yes
-##  }
-##
+#  The client indicates it can do CUI by sending a CUI attribute	
+#  containing one zero byte. 
+#  A non-empty value in Operator-Name can be an additional requirement.
+#  Normally CUI support is turned on only for such requests.
+#  CUI support can be used for local clients which do not
+#  supports CUI themselves, the server can simulate a CUI request
+#  adding the missing NUL CUI value and the Operator-Name attribute.
+#  Clients which are supposed to get this treatment should
+#  be marked by add_cui flag in clients.conf
+#  We assume that local clients are marked in the client.conf with
+#  add_cui flag, e.g.
+#  client xxxx {
+#    ...
+#    add_cui = yes
+#  }
+#
 cui.authorize {
 	if ( "%{client:add-cui}" == "yes" ) {
 		update request {
@@ -47,9 +47,9 @@ cui.authorize {
 }
 
 #
-##  Before proxing an Access-Request to a remote server, a NUL CUI 
-##  attribute should be added, unless it is already present in the request.
-##  
+#  Before proxing an Access-Request to a remote server, a NUL CUI 
+#  attribute should be added, unless it is already present in the request.
+#  
 cui.pre-proxy {
 	if (Packet-Type == Access-Request && "%{client:add-cui}" == "yes") {
 		update proxy-request {
