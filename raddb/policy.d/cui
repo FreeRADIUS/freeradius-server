@@ -15,12 +15,27 @@
 #cui_hash_key = "some_hash_key"
 
 #
-#  The client indicates it can do CUI by sending a CUI attribute	
-#  containing one zero byte
-#
+##  The client indicates it can do CUI by sending a CUI attribute	
+##  containing one zero byte. 
+##  A non-empty value in Operator-Name can be an additional requirement.
+##  Normally CUI support is turned on only for such requests.
+##  CUI support can be used for local clients which do not
+##  supports CUI themselves, the server can simulate a CUI request
+##  adding the missing NUL CUI value and the Operator-Name attribute.
+##  Clients which are supposed to get this treatment should
+##  be marked by add_cui flag in clients.conf
+##  We assume that local clients are marked in the client.conf with
+##  add_cui flag, e.g.
+##  client xxxx {
+##    ...
+##    add_cui = yes
+##  }
+##
 cui.authorize {
-	update request {
-		Chargeable-User-Identity:='\\000'
+	if ( "%{client:add-cui}" == "yes" ) {
+		update request {
+			Chargeable-User-Identity := '\\000'
+		}
 	}
 }
 
