@@ -8,7 +8,7 @@
 #  Schema	raddb/sql/DB/cui.sql
 #  Queries	raddb/sql/DB/cui.conf
 #
-sql cui {
+sql cuisql {
 	#
 	#  Set the database to one of:
 	#
@@ -33,5 +33,5 @@ sql cui {
         }
 	cui_table = "cui"
 	sql_user_name = "%{User-Name}"
-#$INCLUDE sql/${database}/cui.conf
+$INCLUDE sql/${database}/cui.conf
 }
