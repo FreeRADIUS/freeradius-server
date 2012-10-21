@@ -86,10 +86,21 @@ cui.post-auth {
                 update reply {
                         User-Name-="%{reply:User-Name}"
                 }
+		#
+		#  The section below will store a CUI for the User in the DB.
+		#  You need to configure the cuisql module and your database for this to work.
+		#  If your NAS-es can do CUI based accounting themselves
+		#  or you do not care about accounting, comment out the three lines below.
+		#
+		if (reply:Chargeable-User-Identity) {
+			cuisql
+		}
 	}	
 }
 
-
+#
+#  If your NAS-es can do CUI based accounting or you do not care about 
+#  accounting then just comment out the call to cui in ......
 #
 #  If we had stored a CUI for the User, add it to the request.
 #
@@ -109,16 +120,6 @@ cui.accounting {
 	#  this CUI.
 	#
 	if (Chargeable-User-Identity && (Chargeable-User-Identity != "")) {
-		cui
+		cuisql
 	}
 }
-
-#
-#  If there is a CUI attribute in the reply, add it to the DB.
-#
-cui_updatedb {
-	if (reply:Chargeable-User-Identity) {
-		cui
-	}
-}
-
