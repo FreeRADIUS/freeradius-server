@@ -325,17 +325,18 @@ post-auth {
 	#  to contain the real user name removes ALL privacy from
 	#  their session.
 	#
-	#  If you want privacy to remain, see the
-	#  Chargeable-User-Identity attribute from RFC 4372.  In order
-	#  to use that attribute, you will have to allocate a
-	#  per-session identifier for the user, and store it in a
-	#  long-term database (e.g. SQL).  You should also use that
-	#  attribute INSTEAD of the configuration below.
-	#
-	#update outer.reply {
-	#	User-Name = "%{request:User-Name}"
-	#}
-
+        #  If you still want to use the inner tunnel User-Name then
+        #  uncomment the section below, otherwise you may want
+        #  to use  Chargeable-User-Identity attribute from RFC 4372.
+        #  See further on.
+        #update outer.reply {
+        #  User-Name = "%{request:User-Name}"
+        #}
+        #
+        #  If you want privacy to remain, see the
+        #  Chargeable-User-Identity attribute from RFC 4372.
+        #  If you want to use it just uncomment the line below.
+#       cui
 }
 
 #
