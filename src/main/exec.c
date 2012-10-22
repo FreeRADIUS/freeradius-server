@@ -784,10 +784,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name, int quen
 		attr = name;
 	}
 
-	if (!subcs) {
-		DEBUG3("No trigger subsection: ignoring trigger %s", name);
-		return;
-	}
+	if (!subcs) return;
 
 	ci = cf_reference_item(subcs, mainconfig.config, attr);
 	if (!ci) {
