@@ -33,5 +33,6 @@ sql cuisql {
         }
 	cui_table = "cui"
 	sql_user_name = "%{User-Name}"
-#$INCLUDE sql/${database}/cui.conf
+	
+	$INCLUDE sql/${database}/cui.conf
 }

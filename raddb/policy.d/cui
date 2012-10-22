@@ -12,14 +12,14 @@
 #  dictionary attacks, therefore should be chosen as a "random"
 #  string and kept secret.
 #
-cui_hash_key = "some_hash_key"
+cui_hash_key = "changeme"
 
 #
 # cui_require_operator_name switch
 # If this is set to nonzero value then CUI will only be added
 # when a non-empty Operator-Name value is present in the request
 #
-cui_require_operator_name = 0
+cui_require_operator_name = "no"
 
 #
 #  The client indicates it can do CUI by sending a CUI attribute
@@ -39,7 +39,7 @@ cui_require_operator_name = 0
 #  }
 #
 cui.authorize {
-	if ( "%{client:add-cui}" == "yes" ) {
+	if ("%{client:add-cui}" == 'yes') {
 		update request {
 			Chargeable-User-Identity := '\\000'
 		}
@@ -51,13 +51,13 @@ cui.authorize {
 #  attribute should be added, unless it is already present in the request.
 #
 cui.pre-proxy {
-        if (Packet-Type == Access-Request && "%{client:add-cui}" == "yes") {
+	if (("%{request:Packet-Type}" == 'Access-Request') && ("%{client:add-cui}" == 'yes')) {
 		update proxy-request {
 			Chargeable-User-Identity = '\\000'
 		}
 	}
 }
-                                                                        
+									
 
 #
 #  Add a CUI attribute based on the User-Name, and a secret key
@@ -66,26 +66,26 @@ cui.pre-proxy {
 #  use_tunneled_reply parameter MUST be set to yes
 #
 cui.post-auth {
-	if (Freeradius-Proxied-To == 127.0.0.1) {
-                if (outer.request:Chargeable-User-Identity && \
-                    (outer.request:Operator-Name || !("${policy.cui_require_operator_name}"))) {
-                        update reply {
-                                Chargeable-User-Identity:="%{md5:${policy.cui_hash_key}%{User-Name}%{outer.request:Operator-Name:-}}"
-                        }
-                }
-        }
-        else {
-                if (!("%{control:Proxy-To-Realm}") && \
-                    Chargeable-User-Identity && \
-                    !(reply:Chargeable-User-Identity) && \
-                    (Operator-Name || !("${policy.cui_require_operator_name}")) ) {
-                        update reply {
-                                Chargeable-User-Identity="%{md5:${policy.cui_hash_key}%{User-Name}%{%{Operator-Name}:-}}"
-                        }
-                }
-                update reply {
-                        User-Name-="%{reply:User-Name}"
-                }
+	if (outer.request:EAP-Message) {
+		if (outer.request:Chargeable-User-Identity && \
+		    (outer.request:Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
+			update reply {
+				Chargeable-User-Identity := "%{md5:${policy.cui_hash_key}%{User-Name}%{%{outer.request:Operator-Name}:-}}"
+			}
+		}
+	}
+	else {
+		if (!control:Proxy-To-Realm && \
+		    Chargeable-User-Identity && \
+		    !reply:Chargeable-User-Identity && \
+		    (Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
+			update reply {
+				Chargeable-User-Identity = "%{md5:${policy.cui_hash_key}%{User-Name}%{%{Operator-Name}:-}}"
+			}
+		}
+		update reply {
+			User-Name -= "%{reply:User-Name}"
+		}
 		#
 		#  The section below will store a CUI for the User in the DB.
 		#  You need to configure the cuisql module and your database for this to work.
@@ -111,7 +111,7 @@ cui.accounting {
 	#
 	if (!Chargeable-User-Identity) {
 		update request {
-			Chargeable-User-Identity := "%{cui: SELECT cui FROM cui WHERE clientipaddress = '%{%{Packet-Src-IPv6-Address}:-%{Packet-Src-IP-Address}}' AND callingstationid = '%{Calling-Station-Id}' AND username = '%{User-Name}'}"
+			Chargeable-User-Identity := "%{cuisql:SELECT cui FROM cui WHERE clientipaddress = '%{%{Packet-Src-IPv6-Address}:-%{Packet-Src-IP-Address}}' AND callingstationid = '%{Calling-Station-Id}' AND username = '%{User-Name}'}"
 		}
 	}
 
@@ -119,7 +119,7 @@ cui.accounting {
 	#  If it exists now, then write out when we last saw
 	#  this CUI.
 	#
-	if (Chargeable-User-Identity && (Chargeable-User-Identity != "")) {
+	if (Chargeable-User-Identity && (Chargeable-User-Identity != '')) {
 		cuisql
 	}
 }
