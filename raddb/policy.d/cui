@@ -30,12 +30,12 @@ cui_require_operator_name = "no"
 #  supports CUI themselves, the server can simulate a CUI request
 #  adding the missing NUL CUI value and the Operator-Name attribute.
 #  Clients which are supposed to get this treatment should
-#  be marked by add_cui flag in clients.conf
+#  be marked by add-cui flag in clients.conf
 #  We assume that local clients are marked in the client.conf with
-#  add_cui flag, e.g.
+#  add-cui flag, e.g.
 #  client xxxx {
 #    ...
-#    add_cui = yes
+#    add-cui = yes
 #  }
 #
 cui.authorize {
