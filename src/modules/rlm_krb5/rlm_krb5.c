@@ -32,6 +32,9 @@ RCSID("$Id$")
 #include <krb5.h>
 #include <com_err.h>
 
+ /* Arbitrary 64char limit on service names */
+#define SERVICE_NAME_LEN 64;
+
 typedef struct rlm_krb5_t {
 	const char *keytab;
 	const char *service_princ;
@@ -86,9 +89,7 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *instance,
 	krb5_data packet, *server;
 	krb5_auth_context auth_context = NULL;
 	krb5_keytab keytab;
-	/* arbitrary 64-byte limit on service names; I've never seen a
-	   service name this long, and hope never to. -srl */
-	char service[64] = "host";
+	char service[SERVICE_NAME_LEN] = "host";
 	char *servername = NULL;
 
 	if (instance->service_princ != NULL) {
@@ -254,8 +255,9 @@ static int krb5_detach(void *instance)
 #ifndef HEIMDAL_KRB5
 static int krb5_auth(void *instance, REQUEST *request)
 {
+	rlm_krb5_t *inst = instance;
 	int r;
-
+	
         krb5_data tgtname = {
                 0,
                 KRB5_TGS_NAME_SIZE,
@@ -265,7 +267,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 	krb5_ccache ccache;
 	char cache_name[L_tmpnam + 8];
 
-	krb5_context context = *((rlm_krb5_t *)instance)->context; /* copy data */
+	krb5_context context = *(inst->context); /* copy data */
 	const char *user, *pass;
 
 	/*
@@ -355,7 +357,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_REJECT;
 	} else {
 		/* Now verify the KDC's identity. */
-		r = verify_krb5_tgt(context, (rlm_krb5_t *)instance, user, ccache);
+		r = verify_krb5_tgt(context, inst, user, ccache);
 		krb5_free_cred_contents(context, &kcreds);
 		krb5_cc_destroy(context, ccache);
 		return r;
@@ -369,13 +371,34 @@ static int krb5_auth(void *instance, REQUEST *request)
 /* validate user/pass, heimdal krb5 way */
 static int krb5_auth(void *instance, REQUEST *request)
 {
+	rlm_krb5_t *inst = instance;
 	int r;
 	krb5_error_code ret;
 	krb5_ccache id;
 	krb5_principal userP;
 
-	krb5_context context = *((rlm_krb5_t *)instance)->context; /* copy data */
+	krb5_context context = *(inst->context); /* copy data */
 	const char *user, *pass;
+
+	char service[SERVICE_NAME_LEN] = "host";
+	char *servername = NULL;
+	char *princ_name;
+
+	krb5_verify_opt krb_verify_options;
+	krb5_keytab keytab;
+
+	if (inst->service_princ != NULL) {
+		servername = strchr(inst->service_princ, '/');
+		if (servername != NULL) {
+			*servername = '\0';
+		}
+
+		strlcpy(service, inst->service_princ, sizeof(service));
+		if (servername != NULL) {
+			*servername = '/';
+			servername++;
+		}
+	}
 
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -419,26 +442,72 @@ static int krb5_auth(void *instance, REQUEST *request)
 	/*
 	 * Heimdal krb5 verification
 	 */
-	radlog(L_AUTH, "rlm_krb5: Parsed name is: %s@%s\n",
-	       *userP->name.name_string.val,
-	       userP->realm);
+
+
+	/*
+	 *  The following bit allows us to also log user/instance@REALM if someone
+	 *  logs in using an instance
+	 */
+	ret = krb5_unparse_name(context, userP, &princ_name);
+	if (ret != 0) {
+		radlog(L_AUTH, "rlm_krb5: Unparsable name");
+	} else {
+		radlog(L_AUTH, "rlm_krb5: Parsed name is: %s", princ_name);
+		free(princ_name);
+	}
 
 	krb5_cc_default(context, &id);
 
-	ret = krb5_verify_user(context,
-			       userP,
-			       id,
-			       pass, 1, "radius");
+        /* Set up krb5_verify_user options */
+        krb5_verify_opt_init(&krb_verify_options);
 
-       if (ret == 0)
-	 return RLM_MODULE_OK;
+        krb5_verify_opt_set_ccache(&krb_verify_options, id);
 
-       radlog(L_AUTH, "rlm_krb5: failed verify_user: %s (%s@%s )",
-	      error_message(ret),
-	      *userP->name.name_string.val,
-	      userP->realm);
+        /*
+	 *  Resolve keytab name. This allows us to use something other than
+	 *  the default system keytab
+	 */
+	if (inst->keytab != NULL) {
+		ret = krb5_kt_resolve(context, inst->keytab, &keytab);
 
-       return RLM_MODULE_REJECT;
+		if (ret) {
+			radlog(L_AUTH, "rlm_krb: unable to resolve keytab %s: %s",
+			       inst->keytab, error_message(ret));
+			krb5_kt_close(context, keytab);
+			return RLM_MODULE_REJECT;
+		}
+		krb5_verify_opt_set_keytab(&krb_verify_options, keytab);
+	}
+
+	/*
+	 *  Verify aquired credentials against the keytab
+	 */
+	krb5_verify_opt_set_secure(&krb_verify_options, 1);
+
+	/*
+	 *  Allow us to use an arbitrary service name
+	 */
+        krb5_verify_opt_set_service(&krb_verify_options, service);
+
+	/* 
+	 *  Verify the user, using the above set options
+	 */
+	ret = krb5_verify_user_opt(context, userP, pass, &krb_verify_options);
+
+	/*
+	 *  We are done with the keytab, close it
+	 */
+        krb5_kt_close(context, keytab);
+
+	if (ret == 0)
+		return RLM_MODULE_OK;
+
+	radlog(L_AUTH, "rlm_krb5: failed verify_user: %s (%s@%s)",
+	       error_message(ret),
+	       *userP->name.name_string.val,
+	       userP->realm);
+
+	return RLM_MODULE_REJECT;
 }
 
 #endif /* HEIMDAL_KRB5 */
