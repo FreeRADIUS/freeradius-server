@@ -141,6 +141,7 @@ typedef struct THREAD_POOL {
 	unsigned long request_count;
 	time_t time_last_spawned;
 	int cleanup_delay;
+	int stop_flag;
 #endif	/* WITH_GCD */
 	int spawn_flag;
 
@@ -587,6 +588,12 @@ static void *request_handler_thread(void *arg)
 #endif
 
 		/*
+		 *	The server is exiting.  Don't dequeue any
+		 *	requests.
+		 */
+		if (thread_pool.stop_flag) break;
+
+		/*
 		 *	Try to grab a request from the queue.
 		 *
 		 *	It may be empty, in which case we fail
@@ -714,7 +721,6 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 {
 	int rcode;
 	THREAD_HANDLE *handle;
-	pthread_attr_t attr;
 
 	/*
 	 *	Ensure that we don't spawn too many threads.
@@ -738,30 +744,19 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	handle->timestamp = time(NULL);
 
 	/*
-	 *	Initialize the thread's attributes to detached.
-	 *
-	 *	We could call pthread_detach() later, but if the thread
-	 *	exits between the create & detach calls, it will need to
-	 *	be joined, which will never happen.
-	 */
-	pthread_attr_init(&attr);
-	pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-
-	/*
-	 *	Create the thread detached, so that it cleans up it's
-	 *	own memory when it exits.
+	 *	Create the thread joinable, so that it can be cleaned up
+	 *	using pthread_join().
 	 *
 	 *	Note that the function returns non-zero on error, NOT
 	 *	-1.  The return code is the error, and errno isn't set.
 	 */
-	rcode = pthread_create(&handle->pthread_id, &attr,
+	rcode = pthread_create(&handle->pthread_id, 0,
 			request_handler_thread, handle);
 	if (rcode != 0) {
 		radlog(L_ERR, "Thread create failed: %s",
 		       strerror(rcode));
 		return NULL;
 	}
-	pthread_attr_destroy(&attr);
 
 	/*
 	 *	One more thread to go into the list.
@@ -850,6 +845,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 	thread_pool.total_threads = 0;
 	thread_pool.max_thread_num = 1;
 	thread_pool.cleanup_delay = 5;
+	thread_pool.stop_flag = 0;
 #endif
 	thread_pool.spawn_flag = *spawn_flag;
 	
@@ -865,7 +861,7 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 		       strerror(errno));
 		return -1;
 	}
-	
+
 	/*
 	 *	Create the hash table of child PID's
 	 */
@@ -977,6 +973,42 @@ int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
 }
 
 
+/*
+ *	Stop all threads in the pool.
+ */
+void thread_pool_stop(void)
+{
+#ifndef WITH_GCD
+	int i;
+	int total_threads;
+	THREAD_HANDLE *handle;
+	THREAD_HANDLE *next;
+
+	/*
+	 *	Set pool stop flag.
+	 */
+	thread_pool.stop_flag = 1;
+
+	/*
+	 *	Wakeup all threads to make them see stop flag.
+	 */
+	total_threads = thread_pool.total_threads;
+	for (i = 0; i != total_threads; i++) {
+		sem_post(&thread_pool.semaphore);
+	}
+
+	/*
+	 *	Join and free all threads.
+	 */
+	for (handle = thread_pool.head; handle; handle = next) {
+		next = handle->next;
+		pthread_join(handle->pthread_id, NULL);
+		delete_thread(handle);
+	}
+#endif
+}
+
+
 #ifdef WITH_GCD
 int request_enqueue(REQUEST *request)
 {
@@ -1073,6 +1105,7 @@ static void thread_pool_manage(time_t now)
 		 *	has agreed.
 		 */
 		if (handle->status == THREAD_EXITED) {
+			pthread_join(handle->pthread_id, NULL);
 			delete_thread(handle);
 		}
 	}

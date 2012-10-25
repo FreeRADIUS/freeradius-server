@@ -4109,10 +4109,11 @@ static int proxy_hash_cb(UNUSED void *ctx, void *data)
 void radius_event_free(void)
 {
 	/*
-	 *	FIXME: Stop all threads, or at least check that
-	 *	they're all waiting on the semaphore, and the queues
-	 *	are empty.
+	 *	Stop and join all threads.
 	 */
+#ifdef HAVE_PTHREAD_H
+	thread_pool_stop();
+#endif
 
 #ifdef WITH_PROXY
 	/*
