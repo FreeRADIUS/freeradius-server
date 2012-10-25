@@ -96,7 +96,7 @@ static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *inst,
 	char *keytab_name;
 	
 	/* krb5_kt_read_service_key lacks const qualifier */
-	memcpy(keytab_name, inst->keytab, sizeof(keytab_name));
+	memcpy(&keytab_name, &inst->keytab, sizeof(keytab_name));
 
 	if (inst->service_princ != NULL) {
 		server_name = strchr(inst->service_princ, '/');
