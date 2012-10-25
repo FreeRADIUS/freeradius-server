@@ -713,6 +713,7 @@ void		xlat_free(void);
 
 /* threads.c */
 extern		int thread_pool_init(CONF_SECTION *cs, int *spawn_flag);
+extern		void thread_pool_stop(void);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
 extern		pid_t rad_waitpid(pid_t pid, int *status);
