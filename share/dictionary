@@ -182,6 +182,7 @@ $INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.prosoft
+$INCLUDE dictionary.proxim
 $INCLUDE dictionary.purewave
 $INCLUDE dictionary.quiconnect
 $INCLUDE dictionary.quintum
