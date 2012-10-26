@@ -44,6 +44,9 @@ typedef struct rlm_cache_t {
 	CONF_SECTION	*cs;
 	rbtree_t	*cache;
 	fr_heap_t	*heap;
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_t	cache_mutex;
+#endif
 } rlm_cache_t;
 
 typedef struct rlm_cache_entry_t {
@@ -56,6 +59,14 @@ typedef struct rlm_cache_entry_t {
 	VALUE_PAIR	*request;
 	VALUE_PAIR	*reply;
 } rlm_cache_entry_t;
+
+#ifdef HAVE_PTHREAD_H
+#define PTHREAD_MUTEX_LOCK pthread_mutex_lock
+#define PTHREAD_MUTEX_UNLOCK pthread_mutex_unlock
+#else
+#define PTHREAD_MUTEX_LOCK(_x)
+#define PTHREAD_MUTEX_UNLOCK(_x)
+#endif
 
 
 /*
@@ -365,15 +376,16 @@ static int cache_xlat(void *instance, REQUEST *request,
 	DICT_ATTR *target;
 	const char *p = fmt;
 	char buffer[1024];
+	int ret=0;
 
 	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
 
+	PTHREAD_MUTEX_LOCK(&inst->cache_mutex);
 	c = cache_find(inst, request, buffer);
 	
 	if (!c) {
 		RDEBUG("No cache entry for key \"%s\"", buffer);
-		
-		return 0;
+		goto done;
 	}
 	
 	if (strncmp(fmt, "control:", 8) == 0) {
@@ -396,18 +408,20 @@ static int cache_xlat(void *instance, REQUEST *request,
 	target = dict_attrbyname(p);
 	if (!target) {
 		radlog(L_ERR, "rlm_cache: Unknown attribute \"%s\"", p);
-		
-		return 0;
+		goto done;
 	}
 	
 	vp = pairfind(vps, target->attr);
 	if (!vp) {
 		RDEBUG("No instance of this attribute has been cached");
-		
-		return 0;
+		goto done;
 	}
 	
-	return vp_prints_value(out, freespace, vp, 0);
+	ret = vp_prints_value(out, freespace, vp, 0);
+done:
+	PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
+	return ret;
+
 }
 
 
@@ -447,6 +461,9 @@ static int cache_detach(void *instance)
 
 	fr_heap_delete(inst->heap);
 	rbtree_free(inst->cache);
+#ifdef HAVE_PTHREAD_H
+	pthread_mutex_destroy(&inst->cache_mutex);
+#endif
 	free(instance);
 	return 0;
 }
@@ -506,6 +523,14 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
+#ifdef HAVE_PTHREAD_H
+	if (pthread_mutex_init(&inst->cache_mutex, NULL) < 0) {
+		radlog(L_ERR, "rlm_cache: Failed initializing mutex: %s", strerror(errno));
+		cache_detach(inst);
+		return -1;
+	}
+#endif
+
 	/*
 	 *	The cache.
 	 */
@@ -561,9 +586,11 @@ static int cache_it(void *instance, REQUEST *request)
 	rlm_cache_t *inst = instance;
 	VALUE_PAIR *vp;
 	char buffer[1024];
+	int retcode;
 
 	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL);
 
+	PTHREAD_MUTEX_LOCK(&inst->cache_mutex);
 	c = cache_find(inst, request, buffer);
 	
 	/*
@@ -571,22 +598,31 @@ static int cache_it(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY);
 	if (vp && vp->vp_integer) {
-		return c ?
-			RLM_MODULE_OK:
-			RLM_MODULE_NOTFOUND;
+		if (c) {
+			retcode = RLM_MODULE_OK;
+		} else {
+			retcode = RLM_MODULE_NOTFOUND;
+		}
+		goto done;
 	}
 	
 	if (c) {
 		cache_merge(inst, request, c);
-		return RLM_MODULE_OK;
+		retcode = RLM_MODULE_OK;
+		goto done;
 	}
 
 	c = cache_add(inst, request, buffer);
-	if (!c) return RLM_MODULE_NOOP;
+	if (!c) {
+		retcode = RLM_MODULE_NOOP;
+		goto done;
+	}
 
 	cache_merge(inst, request, c);
-
-	return RLM_MODULE_UPDATED;
+	retcode = RLM_MODULE_UPDATED;
+done:
+	PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
+	return retcode;
 }
 
 
