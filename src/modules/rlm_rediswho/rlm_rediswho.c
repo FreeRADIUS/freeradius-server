@@ -68,7 +68,9 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	 *	Do an xlat on the provided string
 	 */
 	if (request) {
-		if (!radius_xlat(query, sizeof (query), fmt, request, NULL, NULL)) {
+		if (!radius_xlat(query, sizeof (query), fmt, request,
+				 data->redis_inst->redis_escape_func,
+				 data->redis_inst)) {
 			radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
 			return 0;
 		}
