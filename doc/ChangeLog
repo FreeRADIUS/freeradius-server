@@ -3,6 +3,10 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Updated dictionary.alcatel, dictionary.bskyb
 	* Added %{randstr:..} support.  Creates random strings in a
 	  controllable format.
+	* Added operator support to rlm_python
+	* Added %{hex:...} for hex version of raw attribute data
+	* Added %{base64:...} for raw attribute data (e.g. 32-bit IP addr),
+	  and %{tobase64:...} for the printable string form (e.g. 1.2.3.4)
 
 	Bug fixes
 	* Skip OCSP if there's no host / port / url, with soft_fail
@@ -13,7 +17,11 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* radtest is more generous about parsing ppphint
 	* radeapclient now accepts -4 and -6, just like radclient.
 	  Patch from John Dennis.
-
+	* Ignore ".rpmnew" and a bunch of other files when loading config
+	  files from a directory.
+	* Wait for child threads before exiting.  This prevents errors on
+	  exit, but may increase exit time if databases are blocked!
+	  Patch from Iliya Peregoudov.
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
