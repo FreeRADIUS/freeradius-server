@@ -47,7 +47,7 @@ clean:
 
 install: all
 	$(INSTALL) -d -m 755	$(R)$(libdir)
-	$(LIBTOOL) --mode=install $(INSTALL) -c -rpath $(libdir) $(TARGET).la \
+	$(LIBTOOL) --mode=install $(INSTALL) -c $(MOD_RPATH) $(TARGET).la \
 		$(R)$(libdir)/$(TARGET).la
 	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
 	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
