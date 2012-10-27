@@ -27,7 +27,7 @@ TARGET		= $(LIBPREFIX)freeradius-eap
 all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
-	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
 	$(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
 	$(LIBRADIUS) $(LIBS)
 	@for x in .libs/* $^; do \
@@ -44,5 +44,5 @@ clean:
 install: all
 	$(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la \
 		$(R)$(libdir)/$(TARGET).la
-	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
-	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
+	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la;
+	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la
