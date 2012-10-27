@@ -68,7 +68,6 @@ typedef struct rlm_cache_entry_t {
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-
 /*
  *	Compare two entries by key.  There may only be one entry with
  *	the same key.
@@ -373,7 +372,7 @@ static int cache_verify(rlm_cache_t *inst)
  *	Allow single attribute values to be retrieved from the cache.
  */
 static size_t cache_xlat(void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t freespace)
+			 const char *fmt, char *out, size_t freespace)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;
@@ -382,7 +381,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	DICT_ATTR *target;
 	const char *p = fmt;
 	char buffer[1024];
-	int ret=0;
+	int ret = 0;
 
 	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
 
@@ -433,8 +432,8 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	ret = vp_prints_value(out, freespace, vp, 0);
 done:
 	PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
+	
 	return ret;
-
 }
 
 
@@ -449,13 +448,13 @@ done:
  */
 static const CONF_PARSER module_config[] = {
 	{ "key",  PW_TYPE_STRING_PTR,
-	  offsetof(rlm_cache_t, key), NULL,  NULL},
+	  offsetof(rlm_cache_t, key), NULL, NULL},
 	{ "ttl", PW_TYPE_INTEGER,
-	  offsetof(rlm_cache_t, ttl), NULL,   "500" },
+	  offsetof(rlm_cache_t, ttl), NULL, "500" },
 	{ "epoch", PW_TYPE_INTEGER,
-	  offsetof(rlm_cache_t, epoch), NULL,   "0" },
+	  offsetof(rlm_cache_t, epoch), NULL, "0" },
 	{ "add-stats", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_cache_t, stats), NULL,   "no" },
+	  offsetof(rlm_cache_t, stats), NULL, "no" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -599,7 +598,7 @@ static int cache_it(void *instance, REQUEST *request)
 	rlm_cache_t *inst = instance;
 	VALUE_PAIR *vp;
 	char buffer[1024];
-	int retcode;
+	int rcode;
 
 	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
 
@@ -611,31 +610,30 @@ static int cache_it(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY, 0);
 	if (vp && vp->vp_integer) {
-		if (c) {
-			retcode = RLM_MODULE_OK;
-		} else {
-			retcode = RLM_MODULE_NOTFOUND;
-		}
+		rcode = c ? RLM_MODULE_OK:
+			    RLM_MODULE_NOTFOUND;
 		goto done;
 	}
 	
 	if (c) {
 		cache_merge(inst, request, c);
-		retcode = RLM_MODULE_OK;
+		
+		rcode = RLM_MODULE_OK;
 		goto done;
 	}
 
 	c = cache_add(inst, request, buffer);
 	if (!c) {
-		retcode = RLM_MODULE_NOOP;
+		rcode = RLM_MODULE_NOOP;
 		goto done;
 	}
 
 	cache_merge(inst, request, c);
-	retcode = RLM_MODULE_UPDATED;
+	rcode = RLM_MODULE_UPDATED;
+	
 done:
 	PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
-	return retcode;
+	return rcode;
 }
 
 
@@ -651,7 +649,7 @@ done:
 module_t rlm_cache = {
 	RLM_MODULE_INIT,
 	"cache",
-	0,			/* type */
+	0,				/* type */
 	cache_instantiate,		/* instantiation */
 	cache_detach,			/* detach */
 	{
