@@ -30,6 +30,7 @@ extern "C" {
 #define HOME_STATE_ALIVE		(0)
 #define HOME_STATE_ZOMBIE		(1)
 #define HOME_STATE_IS_DEAD		(2)
+#define HOME_STATE_UNKNOWN		(3)
 
 typedef struct fr_socket_limit_t {
 	int		max_connections;
@@ -63,12 +64,12 @@ typedef struct home_server {
 	struct timeval	when;
 
 	int		response_window;
-	int		no_response_fail;
 	int		max_outstanding; /* don't overload it */
 	int		currently_outstanding;
 	int		message_authenticator;
 
-	time_t		last_packet;
+	time_t		last_packet_sent;
+	time_t		last_packet_recv;
 	struct timeval	revive_time;
 	struct timeval	zombie_period_start;
 	int		zombie_period; /* unresponsive for T, mark it dead */

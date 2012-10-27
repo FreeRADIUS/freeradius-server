@@ -641,6 +641,9 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 		} else if (home->state == HOME_STATE_IS_DEAD) {
 			state = "dead";
 
+		} else if (home->state == HOME_STATE_UNKNOWN) {
+			state = "unknown";
+
 		} else continue;
 
 		cprintf(listener, "%s\t%d\t%s\t%s\t%s\t%d\n",
@@ -1022,8 +1025,12 @@ static int command_show_home_server_state(rad_listen_t *listener, int argc, char
 		cprintf(listener, "zombie\n");
 		break;
 
-	default:
+	case HOME_STATE_UNKNOWN:
 		cprintf(listener, "unknown\n");
+		break;
+
+	default:
+		cprintf(listener, "invalid\n");
 		break;
 	}
 	

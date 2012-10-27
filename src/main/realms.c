@@ -368,8 +368,6 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "response_window", PW_TYPE_INTEGER,
 	  offsetof(home_server,response_window), NULL,   "30" },
-	{ "no_response_fail", PW_TYPE_BOOLEAN,
-	  offsetof(home_server,no_response_fail), NULL,   NULL },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server,max_outstanding), NULL,   "65536" },
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
@@ -442,24 +440,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	home->name = name2;
 	home->cs = cs;
-
-        /*
-	 *      For zombie period calculations.  We want to count
-	 *      zombies from the time when the server starts, instead
-	 *      of from 1970.
-	 */
-	home->last_packet = time(NULL);
+	home->state = HOME_STATE_UNKNOWN;
 
 	/*
-	 *	Authentication servers have a default "no_response_fail = 0".
-	 *	Accounting servers have a default "no_response_fail = 1".
-	 *
-	 *	This is because authentication packets are retried, so
-	 *	they can fail over to another home server.  Accounting
-	 *	packets are not retried, so they cannot fail over, and
-	 *	instead should be rejected immediately.
+	 *	Last packet sent / received are zero.
 	 */
-	home->no_response_fail = 2;
 
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
@@ -550,11 +535,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
-		if (home->no_response_fail == 2) home->no_response_fail = 0;
 
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
-		if (home->no_response_fail == 2) home->no_response_fail = 1;
 
 	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
 		home->type = HOME_TYPE_AUTH;
@@ -840,9 +823,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		home2->ping_user_password = NULL;
 		home2->cs = cs;
 		home2->parent_server = home->parent_server;
-
-		if (home->no_response_fail == 2) home->no_response_fail = 0;
-		if (home2->no_response_fail == 2) home2->no_response_fail = 1;
 
 		if (!rbtree_insert(home_servers_byname, home2)) {
 			cf_log_err(cf_sectiontoitem(cs),
@@ -2183,6 +2163,9 @@ home_server *home_server_ldb(const char *realmname,
 
 		/*
 		 *	Skip dead home servers.
+		 *
+		 *	Home servers that are unknown, alive, or zombie
+		 *	are used for proxying.
 		 */
 		if (home->state == HOME_STATE_IS_DEAD) {
 			continue;

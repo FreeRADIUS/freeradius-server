@@ -580,6 +580,48 @@ STATE_MACHINE_DECL(request_done)
 	request_free(&request);
 }
 
+
+static void request_cleanup_delay_init(REQUEST *request, const struct timeval *pnow)
+{
+	struct timeval now, when;
+
+	if (request->packet->code == PW_ACCOUNTING_REQUEST) goto done;
+	if (!request->root->cleanup_delay) goto done;
+
+	if (pnow) {
+		now = *pnow;
+	} else {
+		gettimeofday(&now, NULL);
+	}
+
+	if (request->reply->timestamp.tv_sec == 0) {
+		when = now;
+	} else {
+		when = request->reply->timestamp;
+	}
+	request->delay = request->root->cleanup_delay;
+	when.tv_sec += request->delay;
+
+	/*
+	 *	Set timer for when we need to clean it up.
+	 */
+	if (timercmp(&when, &now, >)) {
+#ifdef DEBUG_STATE_MACHINE
+		if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+#endif
+		request->process = request_cleanup_delay;
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		return;
+	}
+
+	/*
+	 *	Otherwise just clean it up.
+	 */
+done:
+	request_done(request, FR_ACTION_DONE);
+}
+
+
 /*
  *	Function to do all time-related events.
  */
@@ -682,7 +724,9 @@ static void request_process_timer(REQUEST *request)
 
 #ifdef WITH_ACCOUNTING
 	if (request->reply->code == PW_ACCOUNTING_RESPONSE) {
-		goto done;
+	done:
+		request_done(request, FR_ACTION_DONE);
+		return;
 	}
 #endif
 
@@ -728,28 +772,8 @@ static void request_process_timer(REQUEST *request)
 	 *	cleanup_delay even if we don't respond to the NAS, so
 	 *	that any retransmit is *not* processed as a new packet.
 	 */
-	if ((request->packet->code != PW_ACCOUNTING_REQUEST) &&
-	    (request->root->cleanup_delay)) {
-		when = request->reply->timestamp;
-		request->delay = request->root->cleanup_delay;
-		when.tv_sec += request->delay;
-
-		/*
-		 *	Set timer for when we need to clean it up.
-		 */
-		if (timercmp(&when, &now, >)) {
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
-#endif
-			request->process = request_cleanup_delay;
-
-			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
-			return;
-		}
-	}
-
-done:
-	request_done(request, FR_ACTION_DONE);
+	request_cleanup_delay_init(request, &now);
+	return;
 }
 
 static void request_queue_or_run(UNUSED REQUEST *request,
@@ -881,6 +905,8 @@ STATE_MACHINE_DECL(request_cleanup_delay)
 	case FR_ACTION_DUP:
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);
+		} else {
+			RDEBUG("No reply.  Ignoring retransmit.");
 		}
 
 		/*
@@ -1600,6 +1626,17 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 	if (request->home_server &&
 	    request->home_server->currently_outstanding) {
 		request->home_server->currently_outstanding--;
+
+		/*
+		 *	If we're NOT sending it packets, then we don't know
+		 *	if it's alive or dead.
+		 */
+		if ((request->home_server->currently_outstanding == 0) &&
+		    (request->home_server->state == HOME_STATE_ALIVE)) {
+			request->home_server->state = HOME_STATE_UNKNOWN;
+			request->home_server->last_packet_sent = 0;
+			request->home_server->last_packet_recv = 0;
+		}
 	}
 
 #ifdef WITH_TCP
@@ -1858,7 +1895,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	if (request->proxy->code != PW_STATUS_SERVER) {
 		listen_socket_t *sock = request->proxy_listener->data;
 
-		request->home_server->last_packet = now.tv_sec;
+		request->home_server->last_packet_recv = now.tv_sec;
 		sock->last_packet = now.tv_sec;
 	}
 
@@ -1882,6 +1919,14 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	request->proxy_reply = packet;
 	packet->timestamp = now;
 	request->priority = RAD_LISTEN_PROXY;
+
+	/*
+	 *	We've received a reply.  If we hadn't been sending it
+	 *	packets for a while, just mark it alive.
+	 */
+	if (request->home_server->state == HOME_STATE_UNKNOWN) {
+		request->home_server->state = HOME_STATE_ALIVE;
+	}
 
 #ifdef WITH_STATS
 	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
@@ -1938,6 +1983,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 #endif
 	} else {
 		DEBUG("WARNING: Unknown packet type in Post-Proxy-Type Fail: ignoring");
+		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
 	
@@ -1946,6 +1992,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	if (!dval) {
 		DEBUG("No Post-Proxy-Type Fail: ignoring");
 		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0);
+		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
 	
@@ -2275,8 +2322,6 @@ static int request_proxy(REQUEST *request, int retransmit)
 		return -1;
 	}
 
-	request->proxy_listener->encode(request->proxy_listener, request);
-
 	RDEBUG2("Proxying request to home server %s port %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
 			 &request->proxy->dst_ipaddr.ipaddr,
@@ -2292,6 +2337,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
+	request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 	return 1;
@@ -2633,7 +2679,8 @@ static void mark_home_server_zombie(home_server *home)
 
 	ASSERT_MASTER;
 
-	rad_assert(home->state == HOME_STATE_ALIVE);
+	rad_assert((home->state == HOME_STATE_ALIVE) ||
+		   (home->state == HOME_STATE_UNKNOWN));
 
 #ifdef WITH_TCP
 	if (home->proto == IPPROTO_TCP) {
@@ -2645,17 +2692,25 @@ static void mark_home_server_zombie(home_server *home)
 	home->state = HOME_STATE_ZOMBIE;
 	home_trigger(home, "home_server.zombie");
 
-	home->zombie_period_start.tv_sec = home->last_packet;
-	home->zombie_period_start.tv_usec = USEC / 2;
+	/*
+	 *	Back-date the zombie period to when we last expected
+	 *	to see a response.  i.e. when we last sent a request.
+	 */
+	if (home->last_packet_sent == 0) {
+		gettimeofday(&home->zombie_period_start, NULL);
+	} else {
+		home->zombie_period_start.tv_sec = home->last_packet_sent;
+		home->zombie_period_start.tv_usec = 0;
+	}
 	
 	fr_event_delete(el, &home->ev);
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
 	
-	radlog(L_PROXY, "Marking home server %s port %d as zombie (it looks like it is dead).",
+	radlog(L_PROXY, "Marking home server %s port %d as zombie (it has not responded in %d seconds).",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
-	       home->port);
+	       home->port, home->response_window);
 
 	ping_home_server(home);
 }
@@ -2799,25 +2854,41 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		rad_assert(request->proxy_listener != NULL);;
 		DEBUG_PACKET(request, request->proxy, 1);
 		FR_STATS_TYPE_INC(home->stats.total_requests);
+		home->last_packet_sent = now.tv_sec;
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
 		break;
 
 	case FR_ACTION_TIMER:
 		/*
-		 *	If we haven't received a packet for a while,
-		 *	mark it as zombie.  If the connection is TCP,
-		 *	then another "watchdog timer" function takes
-		 *	care of pings, etc.
+		 *	If we haven't received any packets for
+		 *	"response_window", then mark the home server
+		 *	as zombie.
+		 *
+		 *	If the connection is TCP, then another
+		 *	"watchdog timer" function takes care of pings,
+		 *	etc.  So we don't need to do it here.
+		 *
+		 *	This check should really be part of a home
+		 *	server state machine.
 		 */
-		if ((home->state == HOME_STATE_ALIVE) &&
+		if (((home->state == HOME_STATE_ALIVE) ||
+		     (home->state == HOME_STATE_UNKNOWN)) &&
 #ifdef WITH_TCP
 		    (home->proto != IPPROTO_TCP) &&
 #endif
-		    ((home->last_packet + ((home->zombie_period + 3) / 4)) < now.tv_sec)) {
+		    ((home->last_packet_sent + home->response_window) <= now.tv_sec)) {
 			mark_home_server_zombie(home);
 		}
 
+		/*
+		 *	Wake up "response_window" time in the future.
+		 *	i.e. when MY packet hasn't received a response.
+		 *
+		 *	Note that we DO NOT mark the home server as
+		 *	zombie if it doesn't respond to us.  It may be
+		 *	responding to other (better looking) packets.
+		 */
 		when = request->proxy->timestamp;
 		when.tv_sec += home->response_window;
 
@@ -2826,9 +2897,12 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	that.
 		 */
 		if (timercmp(&when, &now, >)) {
+			RDEBUG("Expecting proxy response no later than %d seconds from now", home->response_window);
 			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
+
+		RDEBUG("No proxy response, giving up on request and marking it done");
 
 		FR_STATS_TYPE_INC(home->stats.total_timeouts);
 		if (home->type == HOME_TYPE_AUTH) {
@@ -2843,34 +2917,12 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 #endif
 
 		/*
-		 *	FIXME: debug log no response to proxied request
+		 *	There was no response within the window.  Stop
+		 *	the request.  If the client retransmitted, it
+		 *	may have failed over to another home server.
+		 *	But that one may be dead, too.
 		 */
-
-		/*
-		 *	No response, but we're supposed to do nothing
-		 *	when there's no response.  The request is finished.
-		 */
-		if (!home->no_response_fail) {
-#ifdef HAVE_PTHREAD_H
-			request->child_pid = NO_SUCH_CHILD_PID;
-#endif
-			gettimeofday(&request->reply->timestamp, NULL);
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
-#endif
-#ifdef HAVE_PTHREAD_H
-			rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-#endif
-			request->child_state = REQUEST_DONE;
-			request_process_timer(request);
-			return;
-		}
-
-		/*
-		 *	Do "fail on no response".
-		 */
-		radlog_request(L_ERR, 0, request, "Rejecting request (proxy Id %d) due to lack of any response from home server %s port %d",
-			       request->proxy->id,
+		radlog_request(L_ERR, 0, request, "Failing request due to lack of any response from home server %s port %d",
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
@@ -3117,6 +3169,7 @@ static void request_coa_originate(REQUEST *request)
 	coa->child_state = REQUEST_ACTIVE;
 	rad_assert(coa->proxy_reply == NULL);
 	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
+	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
 	coa->proxy_listener->send(coa->proxy_listener, coa);
 }
 
@@ -3248,6 +3301,10 @@ static void request_coa_timer(REQUEST *request)
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
+
+	/*
+	 *	Status servers don't count as real packets sent.
+	 */
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 }
