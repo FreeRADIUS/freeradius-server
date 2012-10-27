@@ -92,6 +92,11 @@ typedef struct radclient_t {
 static radclient_t *radclient_head = NULL;
 static radclient_t *radclient_tail = NULL;
 
+const char *radclient_version = "radclient version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" RADIUSD_VERSION_COMMIT ")"
+#endif
+", built on " __DATE__ " at " __TIME__;
 
 static void NEVER_RETURNS usage(void)
 {
@@ -1017,7 +1022,7 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("radclient: " RADIUSD_VERSION " built on " __DATE__ " at " __TIME__ "\n");
+			printf(radclient_version);
 			exit(0);
 			break;
 		case 'x':

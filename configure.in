@@ -27,9 +27,18 @@ AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
 dnl # The version of the software
-RADIUSD_VERSION=`cat VERSION`
+
 RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
-RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^3\.//'`
+RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^[^\.]*\.//' | sed 's/\..*$//'`
+RADIUSD_INCRM_VERSION=`cat VERSION | sed 's/^.*\..*\.//' | sed 's/-.*$//'`
+
+RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
+-v minor="$RADIUSD_MINOR_VERSION" \
+-v incrm="$RADIUSD_INCRM_VERSION" \
+'{ printf "%02i%02i%02i", major, minor, incrm }'`
+
+dnl # Still useful for custom builds
+RADIUSD_VERSION_STRING=`cat VERSION`
 PACKAGE=freeradius
 
 dnl #############################################################
@@ -78,6 +87,9 @@ if test -z "$makever"; then
   AC_MSG_ERROR(GNU Make is not installed.  Please download and install it
 		from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing.)
 fi
+
+dnl See if we have Git.
+AC_CHECK_PROG(GIT, git, yes, no)
 
 AC_ARG_WITH(system-libltdl,
 [  --with-system-libltdl   Use the libltdl installed in your system (default=use dlopen)],
@@ -298,14 +310,16 @@ AC_ARG_ENABLE(developer,
   esac ]
 )
 
-if test "x$developer" != "xno" -a -d $srcdir/CVS; then
-  dnl turn on the developer flag when taken from a CVS checkout (not a release)
-  developer="yes"
-fi
-
-if test "x$developer" != "xno" -a -d $srcdir/.git; then
-  dnl turn on the developer flag when taken from a git checkout (not a release)
-  developer="yes"
+if test -d $srcdir/.git; then
+  if test "x$developer" != "xno"; then
+    dnl turn on the developer flag when taken from a git checkout (not a release)
+    developer="yes"
+  fi  
+  
+  dnl append the current git hash onto the version string
+  if test $GIT = yes; then
+  	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+  fi
 fi
 
 dnl extra argument: --with-experimental-modules
@@ -1211,7 +1225,10 @@ AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
 AC_SUBST(RADIUSD_MAJOR_VERSION)
 AC_SUBST(RADIUSD_MINOR_VERSION)
+AC_SUBST(RADIUSD_INCRM_VERSION)
 AC_SUBST(RADIUSD_VERSION)
+AC_SUBST(RADIUSD_VERSION_STRING)
+AC_SUBST(RADIUSD_VERSION_COMMIT)
 
 AC_OUTPUT(\
 	./Make.inc \

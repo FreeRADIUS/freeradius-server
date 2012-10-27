@@ -78,6 +78,12 @@ RCSID("$Id$")
  */
 char *radius_dir = RADDBDIR;
 const char *progname = "radmin";
+const char *radmin_version = "radmin version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" RADIUSD_VERSION_COMMIT ")"
+#endif
+;
+
 
 /*
  *	The rest of this is because the conffile.c, etc. assume
@@ -607,7 +613,7 @@ int main(int argc, char **argv)
 	}
 
 	if (!done_license && !quiet) {
-		printf("radmin " RADIUSD_VERSION " - FreeRADIUS Server administration tool.\n");
+		printf("%s - FreeRADIUS Server administration tool.\n", radmin_version);
 		printf("Copyright (C) 2008-2012 The FreeRADIUS server project and contributors.\n");
 		printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
 		printf("PARTICULAR PURPOSE.\n");

@@ -65,7 +65,11 @@ int log_stripped_names;
 int debug_flag = 0;
 int check_config = FALSE;
 
-const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
+const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" RADIUSD_VERSION_COMMIT ")"
+#endif
+", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 pid_t radius_pid;
 

@@ -179,43 +179,43 @@ certs:
 #  BEFORE running this command!
 #
 ######################################################################
-freeradius-server-$(RADIUSD_VERSION).tar.gz: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ stable | gzip > $@
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz: .git
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ stable | gzip > $@
 
-freeradius-server-$(RADIUSD_VERSION).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION).tar.gz
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz
 	gpg --default-key aland@freeradius.org -b $<
 
-freeradius-server-$(RADIUSD_VERSION).tar.bz2: .git
-	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION)/ stable | bzip2 > $@
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2: .git
+	git archive --format=tar --prefix=freeradius-server-$(RADIUSD_VERSION_STRING)/ stable | bzip2 > $@
 
-freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION).tar.bz2
+freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig: freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 	gpg --default-key aland@freeradius.org -b $<
 
 # high-level targets
 .PHONY: dist-check
 dist-check: redhat/freeradius.spec suse/freeradius.spec debian/changelog
-	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION)" ]; then \
-		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION)/' > redhat/.foo; \
+	@if [ `grep ^Version: redhat/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+		cat redhat/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION_STRING)/' > redhat/.foo; \
 		mv redhat/.foo redhat/freeradius.spec; \
 		echo redhat/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION)" ]; then \
-		cat suse/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION)/' > suse/.foo; \
+	@if [ `grep ^Version: suse/freeradius.spec | sed 's/.*://;s/ //'` != "$(RADIUSD_VERSION_STRING)" ]; then \
+		cat suse/freeradius.spec | sed 's/^Version: .*/Version: $(RADIUSD_VERSION_STRING)/' > suse/.foo; \
 		mv suse/.foo suse/freeradius.spec; \
 		echo suse/freeradius.spec 'Version' needs to be updated; \
 		exit 1; \
 	fi
-	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;'`  != "$(RADIUSD_VERSION)" ]; then \
+	@if [ `head -n 1 debian/changelog | sed 's/.*(//;s/-0).*//;s/-1).*//;'`  != "$(RADIUSD_VERSION_STRING)" ]; then \
 		echo debian/changelog needs to be updated; \
 		exit 1; \
 	fi
 
-dist: dist-check freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
+dist: dist-check freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
 
-dist-sign: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
+dist-sign: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig
 
-dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2 freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-$(RADIUSD_VERSION).tar.bz2.sig
+dist-publish: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2 freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz.sig freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2.sig
 	scp $^ freeradius.org@ns5.freeradius.org:public_ftp
 	scp $^ freeradius.org@www.tr.freeradius.org:public_ftp
 
@@ -223,8 +223,8 @@ dist-publish: freeradius-server-$(RADIUSD_VERSION).tar.gz.sig freeradius-server-
 #  Note that we do NOT do the tagging here!  We just print out what
 #  to do!
 #
-dist-tag: freeradius-server-$(RADIUSD_VERSION).tar.gz freeradius-server-$(RADIUSD_VERSION).tar.bz2
-	@echo "git tag release_`echo $(RADIUSD_VERSION) | tr .- __`"
+dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$(RADIUSD_VERSION_STRING).tar.bz2
+	@echo "git tag release_`echo $(RADIUSD_VERSION_STRING) | tr .- __`"
 
 #
 #	Build a debian package
