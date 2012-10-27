@@ -125,7 +125,7 @@ build-module: $(TARGET).la $(RLM_UTILS)
 $(TARGET).la: $(RLM_SUBDIRS) $(LT_OBJS)
 	@echo LINK $@ $(filter %.lo,$^)
 	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	    $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) -o $@     \
+	    $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) $(RLM_MOD) -o $@     \
 	    $(filter %.lo,$^) $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
 
 #######################################################################

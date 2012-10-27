@@ -152,3 +152,10 @@ all: $(top_srcdir)/scripts/jlibtool
 
 $(top_srcdir)/scripts/jlibtool: $(top_srcdir)/scripts/jlibtool.c
 	$(CC) $^ -o $@
+
+# Add -module for normal libtool.  It doesn't like building "foo.la"
+# as a library unless you tell it to shut up, yes, I KNOW this is a module
+ifeq "$(findstring jlibtool,$(LIBTOOL))" ""
+  RLM_MOD = "-module"
+endif
+

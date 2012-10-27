@@ -104,7 +104,7 @@ build-module: $(TARGET).la
 $(TARGET).la: $(LT_OBJS)
 	@echo LINK $@ $^
 	@$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	    $(LINK_MODE) $(LDFLAGS) $(RLM_SQL_LDFLAGS) -o $@ \
+	    $(LINK_MODE) $(LDFLAGS) $(RLM_SQL_LDFLAGS) $(RLM_MOD) -o $@ \
 	    -rpath $(libdir) $^ $(RLM_SQL_LIBS)
 
 #######################################################################
