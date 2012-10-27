@@ -742,7 +742,6 @@ enable_fast_install
 with_gnu_ld
 with_sysroot
 enable_libtool_lock
-with_gnu_ld
 enable_strict_dependencies
 with_docdir
 with_logdir
@@ -773,9 +772,6 @@ LIBS
 CPPFLAGS
 CXX
 CXXFLAGS
-LDFLAGS
-LIBS
-CPPFLAGS
 CCC
 CPP
 CXXCPP'
@@ -4679,9 +4675,22 @@ fi
 # Check whether --with-system-libltdl was given.
 if test "${with_system_libltdl+set}" = set; then :
   withval=$with_system_libltdl;
-LIBLTDL="-lltdl"
-INCLTDL=-DWITH_SYSTEM_LTDL
+else
+  with_system_libltdl=no
+fi
 
+
+if test "x$with_system_libltdl" = "xyes" ; then :
+   LIBLTDL="-lltdl"
+INCLTDL=-DWITH_SYSTEM_LTDL
+fi
+
+
+# Check whether --with-system-libtool was given.
+if test "${with_system_libtool+set}" = set; then :
+  withval=$with_system_libtool;
+else
+  with_system_libtool=no
 fi
 
 
@@ -4735,9 +4744,6 @@ macro_revision='1.3293'
 
 
 
-
-
-ltmain="$ac_aux_dir/ltmain.sh"
 
 # Make sure we can run config.sub.
 $SHELL "$ac_aux_dir/config.sub" sun4 >/dev/null 2>&1 ||
@@ -7914,10 +7920,8 @@ func_stripname_cnf ()
   esac
 } # func_stripname_cnf
 
-
-# Check whether --with-system-libtool was given.
-if test "${with_system_libtool+set}" = set; then :
-  withval=$with_system_libtool;  # Extract the first word of "libtool", so it can be a program name with args.
+if test "x$with_system_libtool" = "xyes" ; then :
+   # Extract the first word of "libtool", so it can be a program name with args.
 set dummy libtool; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
@@ -8084,12 +8088,6 @@ fi
 
 
 
-
-# This can be used to rebuild libtool when needed
-LIBTOOL_DEPS="$ltmain"
-
-# Always use our own libtool.
-LIBTOOL='$(SHELL) $(top_builddir)/libtool'
 
 
 
@@ -15137,10 +15135,7 @@ else
 
 
 
-
-
 fi
-
 
 
 
@@ -16876,6 +16871,7 @@ for ac_header in \
 	sys/types.h \
 	sys/socket.h \
 	winsock.h \
+	utime.h \
 	sys/time.h \
 	sys/wait.h \
 	sys/security.h \
@@ -19458,7 +19454,6 @@ postlink_cmds_CXX; do
     esac
 done
 
-ac_aux_dir='$ac_aux_dir'
 xsi_shell='$xsi_shell'
 lt_shell_append='$lt_shell_append'
 
@@ -20528,8 +20523,6 @@ _LT_EOF
     ;;
   esac
 
-
-ltmain="$ac_aux_dir/ltmain.sh"
 
 
   # We use sed instead of cat because bash on DJGPP gets confused if

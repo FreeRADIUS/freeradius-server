@@ -96,19 +96,11 @@ AC_REQUIRE([LTOPTIONS_VERSION])dnl
 AC_REQUIRE([LTSUGAR_VERSION])dnl
 AC_REQUIRE([LTVERSION_VERSION])dnl
 AC_REQUIRE([LTOBSOLETE_VERSION])dnl
-m4_require([_LT_PROG_LTMAIN])dnl
 
 _LT_SHELL_INIT([SHELL=${CONFIG_SHELL-/bin/sh}])
 
 dnl Parse OPTIONS
 _LT_SET_OPTIONS([$0], [$1])
-
-# This can be used to rebuild libtool when needed
-LIBTOOL_DEPS="$ltmain"
-
-# Always use our own libtool.
-LIBTOOL='$(SHELL) $(top_builddir)/libtool'
-AC_SUBST(LIBTOOL)dnl
 
 _LT_SETUP
 
@@ -277,19 +269,6 @@ delay_single_quote_subst='s/'\''/'\'\\\\\\\'\''/g'
 # Sed substitution to avoid accidental globbing in evaled expressions
 no_glob_subst='s/\*/\\\*/g'
 ])
-
-# _LT_PROG_LTMAIN
-# ---------------
-# Note that this code is called both from `configure', and `config.status'
-# now that we use AC_CONFIG_COMMANDS to generate libtool.  Notably,
-# `config.status' has no value for ac_aux_dir unless we are using Automake,
-# so we pass a copy along to make sure it has a sensible value anyway.
-m4_defun([_LT_PROG_LTMAIN],
-[m4_ifdef([AC_REQUIRE_AUX_FILE], [AC_REQUIRE_AUX_FILE([ltmain.sh])])dnl
-_LT_CONFIG_LIBTOOL_INIT([ac_aux_dir='$ac_aux_dir'])
-ltmain="$ac_aux_dir/ltmain.sh"
-])# _LT_PROG_LTMAIN
-
 
 
 # So that we can recreate a full libtool script including additional
