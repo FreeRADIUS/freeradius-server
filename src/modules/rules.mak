@@ -124,7 +124,7 @@ build-module: $(TARGET).la $(RLM_UTILS)
 
 $(TARGET).la: $(RLM_SUBDIRS) $(LT_OBJS)
 	@echo LINK $@ $(filter %.lo,$^)
-	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
 	    $(LINK_MODE) $(LDFLAGS) $(RLM_LDFLAGS) $(RLM_MOD) -o $@     \
 	    $(MOD_RPATH) $(filter %.lo,$^) $(LIBRADIUS) $(RLM_LIBS) $(LIBS)
 
@@ -174,8 +174,8 @@ install:
 	if [ "x$(TARGET)" != "x" ]; then \
 	    $(LIBTOOL) --mode=install $(INSTALL) -c \
 		$(MOD_RPATH) $(TARGET).la $(R)$(libdir)/$(TARGET).la || exit $$?; \
-	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
-	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $$?; \
+	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la; \
+	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la || exit $$?; \
 	fi
 ifneq ($(RLM_UTILS),)
 	$(INSTALL) -d -m 755 $(R)$(bindir)

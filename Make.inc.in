@@ -128,7 +128,7 @@ endif
 
 ifneq "$(LIBTOOL)" ""
 COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC)
-LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) -rpath $(libdir) -o
+LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) -rpath $(libdir) -o
 LO		:= lo
 LA		:= la
 else

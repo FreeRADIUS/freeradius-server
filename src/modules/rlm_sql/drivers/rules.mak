@@ -103,7 +103,7 @@ build-module: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
 	@echo LINK $@ $^
-	@$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	@$(LIBTOOL) --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
 	    $(LINK_MODE) $(LDFLAGS) $(RLM_SQL_LDFLAGS) $(RLM_MOD) -o $@ \
 	    $(MOD_RPATH) $^ $(RLM_SQL_LIBS)
 
@@ -149,6 +149,6 @@ install:
 	if [ "x$(TARGET)" != "x" ]; then \
 	    $(LIBTOOL) --mode=install $(INSTALL) -c $(MOD_RPATH) \
 		$(TARGET).la $(R)$(libdir)/$(TARGET).la || exit $$?; \
-	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la; \
-	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la || exit $$?; \
+	    rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la; \
+	    ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la || exit $$?; \
 	fi

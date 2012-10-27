@@ -29,7 +29,7 @@ all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
 	@echo LINK $@ $<
-	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) \
+	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
 	    $(LDFLAGS) $(LINK_MODE) -o $@ $(MOD_RPATH)$^ \
 	    $(LIBRADIUS) $(LIBS)
 	@for x in .libs/* $^; do \
@@ -46,5 +46,5 @@ clean:
 install: all
 	$(LIBTOOL) --mode=install $(INSTALL) -c $(MOD_RPATH) $(TARGET).la \
 		$(R)$(libdir)/$(TARGET).la
-	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
-	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
+	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la;
+	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la
