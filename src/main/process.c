@@ -2331,13 +2331,15 @@ static int request_proxy(REQUEST *request, int retransmit)
 	DEBUG_PACKET(request, request->proxy, 1);
 
 	gettimeofday(&request->proxy_retransmit, NULL);
-	if (!retransmit) request->proxy->timestamp = request->proxy_retransmit;
+	if (!retransmit) {
+		request->proxy->timestamp = request->proxy_retransmit;
+		request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
+	}
 
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
-	request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 	return 1;
