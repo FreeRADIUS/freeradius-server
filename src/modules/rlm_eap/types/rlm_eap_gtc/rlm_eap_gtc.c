@@ -226,7 +226,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		 *	If there was a User-Password in the request,
 		 *	why the heck are they using EAP-GTC?
 		 */
-		pairdelete(&handler->request->packet->vps, PW_USER_PASSWORD, 0);
+		pairdelete(&handler->request->packet->vps, PW_USER_PASSWORD, 0, -1);
 
 		vp = pairmake("User-Password", "", T_OP_EQ);
 		if (!vp) {

@@ -1097,7 +1097,7 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
-	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0);
+	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0, -1);
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	/*
@@ -1106,7 +1106,7 @@ STATE_MACHINE_DECL(request_finish)
 	 *	Post-Auth-Type = Reject
 	 */
 	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0);
+		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, -1);
 		vp = radius_pairmake(request, &request->config_items,
 				     "Post-Auth-Type", "Reject",
 				     T_OP_SET);
@@ -1809,7 +1809,7 @@ static int process_proxy_reply(REQUEST *request)
 		 *	the reply.  These include Proxy-State
 		 *	attributes from us and remote server.
 		 */
-		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE, 0);
+		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE, 0, -1);
 		
 		/*
 		 *	Add the attributes left in the proxy
@@ -1991,7 +1991,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	
 	if (!dval) {
 		DEBUG("No Post-Proxy-Type Fail: ignoring");
-		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0);
+		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0, -1);
 		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}

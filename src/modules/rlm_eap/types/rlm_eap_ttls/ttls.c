@@ -698,10 +698,10 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT);
+			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, -1);
 
 			/*
 			 *	Use the tunneled reply, but not now.
@@ -742,7 +742,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
-			pairdelete(&reply->vps, PW_PROXY_STATE, 0);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0, -1);
 			pairadd(&request->reply->vps, reply->vps);
 			reply->vps = NULL;
 		}
@@ -1181,7 +1181,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute, vp->vendor);
+			copy = paircopy2(vp, vp->attribute, vp->vendor, -1);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}

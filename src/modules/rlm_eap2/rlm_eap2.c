@@ -683,7 +683,7 @@ static int eap_req2vp(EAP_HANDLER *handler)
 		total -= size;
 	} while (total > 0);
 
-	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE);
+	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, -1);
 	pairadd(&handler->request->reply->vps, head);
 
 	return encoded;

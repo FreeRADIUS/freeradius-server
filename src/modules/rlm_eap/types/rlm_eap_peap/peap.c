@@ -448,18 +448,18 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			pairdelete(&reply->vps, PW_PROXY_STATE, 0);
-			pairdelete(&reply->vps, PW_EAP_MESSAGE, 0);
-			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0, -1);
+			pairdelete(&reply->vps, PW_EAP_MESSAGE, 0, -1);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, -1);
 
 			/*
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT);
+			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, -1);
 
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
@@ -505,8 +505,8 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			pairdelete(&reply->vps, PW_PROXY_STATE, 0);
-			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0, -1);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, -1);
 
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
@@ -1114,7 +1114,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	of attributes.
 				 */
 				pairdelete(&fake->packet->vps,
-					   PW_EAP_MESSAGE, 0);
+					   PW_EAP_MESSAGE, 0, -1);
 			}
 
 			DEBUG2("  PEAP: Tunneled authentication will be proxied to %s", vp->vp_strvalue);
@@ -1309,7 +1309,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute, vp->vendor);
+			copy = paircopy2(vp, vp->attribute, vp->vendor, -1);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}

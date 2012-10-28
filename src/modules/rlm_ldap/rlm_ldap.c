@@ -2841,7 +2841,7 @@ static VALUE_PAIR *ldap_pairget(LDAP *ld, LDAPMessage *entry,
 				 *	Add the pair into the packet.
 				 */
 				if (!vals_idx){
-				  pairdelete(pairs, newpair->attribute, newpair->vendor);
+					pairdelete(pairs, newpair->attribute, newpair->vendor, newpair->flags.tag);
 				}
 				pairadd(&pairlist, newpair);
 			}

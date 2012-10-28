@@ -826,8 +826,8 @@ void eap_fail(EAP_HANDLER *handler)
 	/*
 	 *	Delete any previous replies.
 	 */
-	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0);
-	pairdelete(&handler->request->reply->vps, PW_STATE, 0);
+	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0, -1);
+	pairdelete(&handler->request->reply->vps, PW_STATE, 0, -1);
 
 	eap_packet_free(&handler->eap_ds->request);
 	handler->eap_ds->request = eap_packet_alloc();

@@ -300,8 +300,8 @@ static void cleanresp(RADIUS_PACKET *resp)
 	 * maybe should just copy things we care about, or keep
 	 * a copy of the original input and start from there again?
 	 */
-	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0);
-	pairdelete(&resp->vps, ATTRIBUTE_EAP_BASE+PW_EAP_IDENTITY, 0);
+	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, -1);
+	pairdelete(&resp->vps, ATTRIBUTE_EAP_BASE+PW_EAP_IDENTITY, 0, -1);
 
 	last = &resp->vps;
 	for(vp = *last; vp != NULL; vp = vpnext)
@@ -673,12 +673,12 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
 
-	if ((radstate = paircopy2(req->vps, PW_STATE, 0)) == NULL)
+	if ((radstate = paircopy2(req->vps, PW_STATE, 0, -1)) == NULL)
 	{
 		return 0;
 	}
 
-	if ((eapid = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0)) == NULL)
+	if ((eapid = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, -1)) == NULL)
 	{
 		return 0;
 	}
@@ -782,13 +782,13 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 
 	cleanresp(rep);
 
-	if ((state = paircopy2(req->vps, PW_STATE, 0)) == NULL)
+	if ((state = paircopy2(req->vps, PW_STATE, 0, -1)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no state attribute found\n");
 		return 0;
 	}
 
-	if ((id = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0)) == NULL)
+	if ((id = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, -1)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no EAP-ID attribute found\n");
 		return 0;
@@ -1309,7 +1309,7 @@ static void map_eap_types(RADIUS_PACKET *req)
 		 */
 
 		/* nuke any existing EAP-Messages */
-		pairdelete(&req->vps, PW_EAP_MESSAGE, 0);
+		pairdelete(&req->vps, PW_EAP_MESSAGE, 0, -1);
 
 		memset(&ep, 0, sizeof(ep));
 		ep.code = eapcode;
@@ -1493,7 +1493,7 @@ main(int argc, char *argv[])
 		}
 
 		/* find the EAP-Message, copy it to req2 */
-		vp = paircopy2(req->vps, PW_EAP_MESSAGE);
+		vp = paircopy2(req->vps, PW_EAP_MESSAGE, 0, -1);
 
 		if(vp == NULL) continue;
 

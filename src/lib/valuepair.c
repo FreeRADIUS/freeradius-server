@@ -247,17 +247,26 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor)
 }
 
 
-/*
- *	Delete the pair(s) with the matching attribute
+/** Delete matching pairs
+ *
+ * Delete matching pairs from the attribute list.
+ * 
+ * @param[in+out] vp which is head of the list.
+ * @param[in] attr to match.
+ * @param[in] vendor to match.
+ * @param[in] tag to match, only used if > 0.
  */
-void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor)
+void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
+		int8_t tag)
 {
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **last = first;
 
 	for(i = *first; i; i = next) {
 		next = i->next;
-		if ((i->attribute == attr) && (i->vendor == vendor)) {
+		if ((i->attribute == attr) && (i->vendor == vendor) &&
+		    ((tag < 0) ||
+		     (i->flags.has_tag && (i->flags.tag == tag)))) {
 			*last = next;
 			pairbasicfree(i);
 		} else {
@@ -375,10 +384,20 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 }
 
 
-/*
- *	Copy just a certain type of pairs.
+/** Copy matching pairs
+ *
+ * Copy pairs of a matching attribute number, vendor number and tag from the
+ * the input list to a new list, and return the head of this list.
+ * 
+ * @param[in] vp which is head of the input list.
+ * @param[in] attr to match, if 0 input list will not be filtered by attr.
+ * @param[in] vendor to match
+ * @param[in] tag to match, if < 0 input list will not be filtered by vendor,
+ *	      if >= 0 only attributes with that tag value will be copied.
+ * @return the head of the new VALUE_PAIR list.
  */
-VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor)
+VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
+		      int8_t tag)
 {
 	VALUE_PAIR	*first, *n, **last;
 
@@ -387,17 +406,25 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor)
 
 	while (vp) {
 		if ((attr > 0) &&
-		    !((vp->attribute == attr) && (vp->vendor == vendor))) {
-			vp = vp->next;
-			continue;
-		}
+		    ((vp->attribute != attr) || (vp->vendor != vendor)))
+			goto skip;
+			
+		if ((tag >= 0) && vp->flags.has_tag && (vp->flags.tag != tag))
+			goto skip;
 
 		n = paircopyvp(vp);
 		if (!n) return first;
+		
 		*last = n;
 		last = &n->next;
 		vp = vp->next;
+		
+		continue;
+		
+		skip:
+		vp = vp->next;
 	}
+	
 	return first;
 }
 
@@ -407,7 +434,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor)
  */
 VALUE_PAIR *paircopy(VALUE_PAIR *vp)
 {
-	return paircopy2(vp, 0, 0);
+	return paircopy2(vp, 0, 0, -1);
 }
 
 
@@ -496,7 +523,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					if (!i->vp_strvalue[0] ||
 					    (strcmp((char *)found->vp_strvalue,
 						    (char *)i->vp_strvalue) == 0)){
-						pairdelete(to, found->attribute, found->vendor);
+						pairdelete(to, found->attribute, found->vendor, found->flags.tag);
 
 						/*
 						 *	'tailto' may have been
@@ -547,7 +574,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					memcpy(found, i, sizeof(*found));
 					found->next = mynext;
 
-					pairdelete(&found->next, found->attribute, found->vendor);
+					pairdelete(&found->next, found->attribute, found->vendor, found->flags.tag);
 
 					/*
 					 *	'tailto' may have been

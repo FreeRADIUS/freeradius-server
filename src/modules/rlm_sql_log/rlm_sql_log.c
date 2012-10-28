@@ -276,7 +276,7 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 	rad_assert(request->packet != NULL);
 
 	/* Remove any user attr we added previously */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 
 	if (username != NULL) {
 		strlcpy(tmpuser, username, MAX_STRING_LEN);

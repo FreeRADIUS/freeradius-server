@@ -320,7 +320,7 @@ static int dhcp_process(REQUEST *request)
 		 *	server.  So we must be the destination of the
 		 *	giaddr field.
 		 */
-		pairdelete(&request->packet->vps, 266, DHCP_MAGIC_VENDOR);
+		pairdelete(&request->packet->vps, 266, DHCP_MAGIC_VENDOR, -1);
 
 		/*
 		 *	Search for client IP address.

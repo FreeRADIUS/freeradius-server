@@ -465,7 +465,7 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char
 	sqlusername[0]= '\0';
 
 	/* Remove any user attr we added previously */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 
 	if (username != NULL) {
 		strlcpy(tmpuser, username, sizeof(tmpuser));
@@ -596,7 +596,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL) {
 		/* Remove the username we (maybe) added above */
-		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 		return 1;
 	}
 
@@ -607,7 +607,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 		radlog_request(L_ERR, 0, request,
 			       "Error getting group membership");
 		/* Remove the username we (maybe) added above */
-		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 		sql_release_socket(inst, sqlsocket);
 		return 1;
 	}
@@ -619,7 +619,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 			/* Free the grouplist */
 			sql_grouplist_free(&group_list);
 			/* Remove the username we (maybe) added above */
-			pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+			pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 			sql_release_socket(inst, sqlsocket);
 			return 0;
 		}
@@ -628,7 +628,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	/* Free the grouplist */
 	sql_grouplist_free(&group_list);
 	/* Remove the username we (maybe) added above */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 	sql_release_socket(inst,sqlsocket);
 
 	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s",
@@ -674,7 +674,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			radlog_request(L_ERR, 0, request,
 				       "Error generating query; rejecting user");
 			/* Remove the grouup we added above */
-			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
+			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
 			sql_grouplist_free(&group_list);
 			return -1;
 		}
@@ -683,7 +683,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
 			       group_list_tmp->groupname);
 			/* Remove the grouup we added above */
-			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
+			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
 			pairfree(&check_tmp);
 			sql_grouplist_free(&group_list);
 			return -1;
@@ -701,7 +701,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func, inst)) {
 					radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 					/* Remove the grouup we added above */
-					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
+					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
 					pairfree(&check_tmp);
 					sql_grouplist_free(&group_list);
 					return -1;
@@ -710,7 +710,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 					       group_list_tmp->groupname);
 					/* Remove the grouup we added above */
-					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
+					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
 					pairfree(&check_tmp);
 					pairfree(&reply_tmp);
 					sql_grouplist_free(&group_list);
@@ -736,7 +736,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func, inst)) {
 				radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 				/* Remove the grouup we added above */
-				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
+				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
 				pairfree(&check_tmp);
 				sql_grouplist_free(&group_list);
 				return -1;
@@ -745,7 +745,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 				       group_list_tmp->groupname);
 				/* Remove the grouup we added above */
-				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
+				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
 				pairfree(&check_tmp);
 				pairfree(&reply_tmp);
 				sql_grouplist_free(&group_list);
@@ -760,7 +760,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 		 * Delete the Sql-Group we added above
 		 * And clear out the pairlists
 		 */
-		pairdelete(&request->packet->vps, PW_SQL_GROUP, 0);
+		pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
 		pairfree(&check_tmp);
 		pairfree(&reply_tmp);
 	}
@@ -1185,7 +1185,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	sql_release_socket(inst, sqlsocket);
 
 	/* Remove the username we (maybe) added above */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 		
 	pairfree(&check_tmp);
 	pairfree(&reply_tmp);
@@ -1329,7 +1329,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	release:
 		
 	/* Remove the username we (maybe) added above */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 	
 	sql_release_socket(inst, sqlsocket);
 

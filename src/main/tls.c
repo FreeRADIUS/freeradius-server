@@ -2468,13 +2468,13 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
-		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0);
+		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0, -1);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0);
+		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0, -1);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0);
+		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0, -1);
 		if (vp) pairadd(&vps, vp);
 
 		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS);

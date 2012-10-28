@@ -683,7 +683,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the handler & request back into the tunnel.
 		 */
-		pairdelete(&handler->request->packet->vps, PW_STATE, 0);
+		pairdelete(&handler->request->packet->vps, PW_STATE, 0, -1);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off

@@ -588,7 +588,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		if (data->override)
 		{
 			RDEBUG("Override supplied IP address");
-			pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr);
+			pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, -1);
 		} else {
 			/* Abort */
 			RDEBUG("override is set to no. Return NOOP.");
@@ -755,7 +755,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		                vp = radius_paircreate(request, &request->reply->vps,
 						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR, PW_TYPE_INTEGER);
 				vp->vp_integer = entry.timeout;
-				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0);
+				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0, -1);
                         }
 #endif
 		} else {

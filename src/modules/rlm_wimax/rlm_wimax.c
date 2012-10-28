@@ -190,8 +190,8 @@ static int wimax_postauth(void *instance, REQUEST *request)
 	 *	the WiMAX-MSK so that the client has a key available.
 	 */
 	if (inst->delete_mppe_keys) {
-		pairdelete(&request->reply->vps, 16, VENDORPEC_MICROSOFT);
-		pairdelete(&request->reply->vps, 17, VENDORPEC_MICROSOFT);
+		pairdelete(&request->reply->vps, 16, VENDORPEC_MICROSOFT, -1);
+		pairdelete(&request->reply->vps, 17, VENDORPEC_MICROSOFT, -1);
 
 		vp = radius_pairmake(request, &request->reply->vps, "WiMAX-MSK", "0x00", T_OP_EQ);
 		if (vp) {

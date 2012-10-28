@@ -240,7 +240,7 @@ static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
 							}
 							join_attr = join_attr -> next;
    	 					}
-						pairdelete(&vp,SM_JOIN_ATTR, 0);
+						pairdelete(&vp,SM_JOIN_ATTR, 0, -1);
 						if ( parse_state != SMP_ERROR ) {
 							if ( ! isfallthrough(vp) ) {
 							  continue_search = 0;

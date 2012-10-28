@@ -562,7 +562,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		name = nvp->name;
 		attr = nvp->attribute;
 		vendor = nvp->vendor;
-		vpa = paircopy2(nvp, attr, vendor);
+		vpa = paircopy2(nvp, attr, vendor, -1);
 
 		if (vpa->next) {
 			av = newAV();
@@ -592,7 +592,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		pairfree(&vpa);
 		vpa = nvp; while ((vpa != NULL) && (vpa->attribute == attr) && (vpa->vendor == vendor))
 			vpa = vpa->next;
-		pairdelete(&nvp, attr, vendor);
+		pairdelete(&nvp, attr, vendor, -1);
 		nvp = vpa;
 	}
 }

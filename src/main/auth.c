@@ -689,7 +689,7 @@ int rad_virtual_server(REQUEST *request)
 	result = rad_authenticate(request);
 
         if (request->reply->code == PW_AUTHENTICATION_REJECT) {
-                pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0);
+                pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, -1);
                 vp = radius_pairmake(request, &request->config_items,
                                      "Post-Auth-Type", "Reject",
                                      T_OP_SET);

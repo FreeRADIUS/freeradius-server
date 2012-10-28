@@ -697,7 +697,8 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 				    	    (strcmp((char *)found->vp_strvalue,
 					    	    (char *)i->vp_strvalue) == 0)) {
 				  		pairdelete(to, found->attribute,
-				  			found->vendor);
+				  			found->vendor,
+				  			found->flags.tag);
 
 					/*
 					 *	'tailto' may have been

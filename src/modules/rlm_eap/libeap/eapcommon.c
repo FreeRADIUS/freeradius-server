@@ -261,7 +261,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
-	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0);
+	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0, -1);
 
 	vp = eap_packet2vp(eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;

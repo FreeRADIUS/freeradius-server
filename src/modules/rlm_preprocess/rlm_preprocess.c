@@ -422,8 +422,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 */
 			add = paircopy(i->reply);
 			ft = fallthrough(add);
-			pairdelete(&add, PW_STRIP_USER_NAME, 0);
-			pairdelete(&add, PW_FALL_THROUGH, 0);
+			pairdelete(&add, PW_STRIP_USER_NAME, 0, -1);
+			pairdelete(&add, PW_FALL_THROUGH, 0, -1);
 			pairxlatmove(request, &request->packet->vps, &add);
 			pairfree(&add);
 			updated = 1;
