@@ -249,7 +249,7 @@ static void rlm_destroy_perl(PerlInterpreter *perl)
 /* Create Key */
 static void rlm_perl_make_key(pthread_key_t *key)
 {
-	pthread_key_create(key, rlm_destroy_perl);
+	pthread_key_create(key, (void*)rlm_destroy_perl);
 }
 
 static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key)
@@ -283,7 +283,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 static void xs_init(pTHX)
 {
-	char *file = __FILE__;
+	const char *file = __FILE__;
 
 	/* DynaLoader is a special case */
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
@@ -320,8 +320,8 @@ static XS(XS_radiusd_radlog)
 /*
  * The xlat function
  */
-static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
-			size_t freespace)
+static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
+			char *out, size_t freespace)
 {
 
 	PERL_INST	*inst= (PERL_INST *) instance;
@@ -369,14 +369,14 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 	if (SvTRUE(ERRSV)) {
 		radlog(L_ERR, "rlm_perl: perl_xlat exit %s\n",
 		       SvPV(ERRSV,n_a));
-		POPs ;
+		(void)POPs;
 	} else if (count > 0) {
 		tmp = POPp;
 		strlcpy(out, tmp, freespace);
 		ret = strlen(out);
 
-		radlog(L_DBG,"rlm_perl: Len is %d , out is %s freespace is %d",
-		       ret, out,freespace);
+		radlog(L_DBG,"rlm_perl: Len is %zu , out is %s freespace is %zu",
+		       ret, out, freespace);
 	}
 
 	PUTBACK ;
@@ -453,11 +453,11 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	if (inst->perl_flags) {
 		embed[1] = inst->perl_flags;
 		embed[2] = inst->module;
-		embed[3] = "0";
+		strcpy(embed[3], "0");
 		argc = 4;
 	} else {
 		embed[1] = inst->module;
-		embed[2] = "0";
+		strcpy(embed[2], "0");
 		argc = 3;
 	}
 
@@ -551,7 +551,8 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 {
 	VALUE_PAIR *nvp, *vpa, *vpn;
 	AV *av;
-	char namebuf[256], *name;
+	const char *name;
+	char namebuf[256];
 	char buffer[1024];
 	int len;
 
@@ -575,10 +576,10 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 				len = vp_prints_value(buffer, sizeof(buffer), vpn, FALSE);
 				av_push(av, newSVpv(buffer, len));
 			}
-			hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
+			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 		} else {
 			len = vp_prints_value(buffer, sizeof(buffer), vpa, FALSE);
-			hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
+			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 
 		pairfree(&vpa);
@@ -739,7 +740,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		radlog(L_ERR, "rlm_perl: perl_embed:: module = %s , func = %s exit status= %s\n",
 		       inst->module,
 		       function_name, SvPV(ERRSV,n_a));
-		POPs;
+		(void)POPs;
 	}
 
 	if (count == 1) {
