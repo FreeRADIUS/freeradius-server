@@ -2863,27 +2863,6 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 
 	case FR_ACTION_TIMER:
 		/*
-		 *	If we haven't received any packets for
-		 *	"response_window", then mark the home server
-		 *	as zombie.
-		 *
-		 *	If the connection is TCP, then another
-		 *	"watchdog timer" function takes care of pings,
-		 *	etc.  So we don't need to do it here.
-		 *
-		 *	This check should really be part of a home
-		 *	server state machine.
-		 */
-		if (((home->state == HOME_STATE_ALIVE) ||
-		     (home->state == HOME_STATE_UNKNOWN)) &&
-#ifdef WITH_TCP
-		    (home->proto != IPPROTO_TCP) &&
-#endif
-		    ((home->last_packet_sent + home->response_window) <= now.tv_sec)) {
-			mark_home_server_zombie(home);
-		}
-
-		/*
 		 *	Wake up "response_window" time in the future.
 		 *	i.e. when MY packet hasn't received a response.
 		 *
@@ -2905,6 +2884,27 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		}
 
 		RDEBUG("No proxy response, giving up on request and marking it done");
+
+		/*
+		 *	If we haven't received any packets for
+		 *	"response_window", then mark the home server
+		 *	as zombie.
+		 *
+		 *	If the connection is TCP, then another
+		 *	"watchdog timer" function takes care of pings,
+		 *	etc.  So we don't need to do it here.
+		 *
+		 *	This check should really be part of a home
+		 *	server state machine.
+		 */
+		if (((home->state == HOME_STATE_ALIVE) ||
+		     (home->state == HOME_STATE_UNKNOWN)) &&
+#ifdef WITH_TCP
+		    (home->proto != IPPROTO_TCP) &&
+#endif
+		    ((home->last_packet_recv + home->response_window) <= now.tv_sec)) {
+			mark_home_server_zombie(home);
+		}
 
 		FR_STATS_TYPE_INC(home->stats.total_timeouts);
 		if (home->type == HOME_TYPE_AUTH) {
