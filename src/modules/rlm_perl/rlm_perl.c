@@ -34,7 +34,6 @@ RCSID("$Id$")
 #ifdef INADDR_ANY
 #undef INADDR_ANY
 #endif
-
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
@@ -449,15 +448,18 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	
 	rlm_perl_make_key(inst->thread_key);
 #endif
+
+	char arg[] = "0";
+	
 	embed[0] = NULL;
 	if (inst->perl_flags) {
 		embed[1] = inst->perl_flags;
 		embed[2] = inst->module;
-		strcpy(embed[3], "0");
+		embed[3] = arg;
 		argc = 4;
 	} else {
 		embed[1] = inst->module;
-		strcpy(embed[2], "0");
+		embed[2] = arg;
 		argc = 3;
 	}
 
