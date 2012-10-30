@@ -46,6 +46,7 @@ src/include/stamp-h
 autom4te.cache
 config.guess
 config.sub
+config.h
 debian/*
 src/main/radattr
 src/modules/lib/
