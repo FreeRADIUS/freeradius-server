@@ -2318,7 +2318,8 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance,
  * @param[in] raw string to be urlencoded.
  * @return length of data written to out (excluding NULL).
  */
-static size_t rest_uri_escape(char *out, size_t outlen, const char *raw)
+static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
+			      const char *raw, UNUSED void *arg)
 {
 	char *escaped;
 
