@@ -199,7 +199,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		int len;
 
 		len = radius_xlat(buffer, sizeof(buffer), inst->key,
-				  request, NULL);
+				  request, NULL, NULL);
 		if (!len) {
 			return RLM_MODULE_NOOP;
 		}
@@ -226,7 +226,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 		    continue;
 		}
 
-		DEBUG2("attr_filter: Matched entry %s at line %d", pl->name,
+		RDEBUG2("Matched entry %s at line %d", pl->name,
 		       pl->lineno);
 		found = 1;
 
@@ -302,7 +302,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
 				if (!pass) {
-					DEBUG3("attr_filter: Attribute (%s) allowed by relaxed mode", vp->name);
+					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->name);
 				}
 				*output_tail = paircopyvp(vp);
 				if (!*output_tail) {

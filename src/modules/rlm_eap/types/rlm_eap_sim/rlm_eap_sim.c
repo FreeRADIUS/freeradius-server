@@ -247,8 +247,14 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	pairreplace(outvps, newvp);
 
 	/* make a copy of the identity */
-	ess->keys.identitylen = strlen(handler->identity);
-	memcpy(ess->keys.identity, handler->identity, ess->keys.identitylen);
+	newvp = pairfind(*invps, ATTRIBUTE_EAP_SIM_BASE + PW_EAP_SIM_IDENTITY, 0);
+	if (newvp) {
+		ess->keys.identitylen = newvp->length;
+		memcpy(ess->keys.identity, newvp->vp_octets, newvp->length);
+	} else {
+		ess->keys.identitylen = strlen(handler->identity);
+		memcpy(ess->keys.identity, handler->identity, ess->keys.identitylen);
+	}
 
 	/* all set, calculate keys! */
 	eapsim_calculate_keys(&ess->keys);

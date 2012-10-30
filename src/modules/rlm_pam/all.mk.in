@@ -1,0 +1,10 @@
+TARGETNAME	= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		= $(TARGETNAME).a
+endif
+
+SOURCES		= rlm_pam.c
+
+SRC_CFLAGS	= @pam_cflags@
+TGT_LDLIBS	= @pam_ldflags@

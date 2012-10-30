@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
 #	Nortel Passport 8600 VSA's.
@@ -11,6 +12,8 @@
 
 VENDOR		Nortel				562
 BEGIN-VENDOR	Nortel
+
+ATTRIBUTE	Nortel-User-Role			110	string
 
 ATTRIBUTE	Nortel-Privilege-Level			166	integer
 

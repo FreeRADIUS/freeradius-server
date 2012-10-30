@@ -2,7 +2,7 @@
 If you need to build FreeRADIUS from source on a RedHat system (RHEL,
 Fedora, or CentOS), please read the following FAQ:
 
-	http://wiki.freeradius.org/Red_Hat_FAQ
+	http://wiki.freeradius.org/guide/Red_Hat_FAQ
 
   It was written by the person who maintains the RedHat FreeRADIUS
 packages, and contains detailed instructions for creating an RPM from

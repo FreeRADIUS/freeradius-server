@@ -231,7 +231,7 @@ cat >> $RPM_BUILD_ROOT/%{docdir}/REDHAT << EOF
 Red Hat, RHEL, Fedora, and CentOS specific information can be found on the
 FreeRADIUS Wiki in the Red Hat FAQ.
 
-http://wiki.freeradius.org/Red_Hat_FAQ
+http://wiki.freeradius.org/guide/Red_Hat_FAQ
 
 Please reference that document.
 
@@ -289,11 +289,9 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/clients.conf
 %config(noreplace) /etc/raddb/hints
 %config(noreplace) /etc/raddb/huntgroups
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/sqlippool.conf
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/preproxy_users
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/proxy.conf
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/radiusd.conf
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/sql.conf
 %dir %attr(750,root,radiusd) /etc/raddb/sql
 #%attr(640,root,radiusd) %config(noreplace) /etc/raddb/sql/oracle/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/users
@@ -307,60 +305,16 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-available/*
 %dir %attr(750,root,radiusd) /etc/raddb/sites-enabled
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-enabled/*
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/eap.conf
 %config(noreplace) %attr(640,root,radiusd) /etc/raddb/example.pl
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/policy.conf
 %config(noreplace) /etc/raddb/policy.txt
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/templates.conf
 %dir %attr(750,root,radiusd) /etc/raddb/modules
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/acct_unique
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/always
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/attr_filter
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/attr_rewrite
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/chap
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/checkval
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/counter
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/cui
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/detail
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/detail.example.com
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/detail.log
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/digest
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/dynamic_clients
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/echo
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/etc_group
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/exec
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/expiration
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/expr
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/files
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/inner-eap
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/ippool
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/logintime
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/linelog
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/mac2ip
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/mac2vlan
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/mschap
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/ntlm_auth
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/opendirectory
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/otp
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/pam
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/pap
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/perl
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/passwd
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/policy
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/preprocess
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/radutmp
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/realm
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/redis
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/rediswho
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/replicate
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/smbpasswd
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/smsotp
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/soh
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sql_log
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sqlcounter_expire_on_login
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/sradutmp
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/unix
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/wimax
+%dir %attr(750,root,radiusd) /etc/raddb/mods-available
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-available/*
+%dir %attr(750,root,radiusd) /etc/raddb/mods-enabled
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-enabled/*
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/*
 %dir %attr(755,radiusd,radiusd) /var/run/radiusd/
 # binaries
 %defattr(-,root,root)
@@ -375,7 +329,6 @@ fi
 %doc %{_mandir}/man5/dictionary.5.gz
 %doc %{_mandir}/man5/radiusd.conf.5.gz
 %doc %{_mandir}/man5/radrelay.conf.5.gz
-%doc %{_mandir}/man5/rlm_acct_unique.5.gz
 %doc %{_mandir}/man5/rlm_always.5.gz
 %doc %{_mandir}/man5/rlm_attr_filter.5.gz
 %doc %{_mandir}/man5/rlm_attr_rewrite.5.gz
@@ -414,8 +367,6 @@ fi
 %dir %attr(755,root,root) %{_libdir}/freeradius
 #%attr(755,root,root) %{_libdir}/freeradius/rlm_*.so*
 #%{_libdir}/freeradius/rlm_acctlog*.so
-%{_libdir}/freeradius/rlm_acct_unique.so
-%{_libdir}/freeradius/rlm_acct_unique-%{version}.so
 %{_libdir}/freeradius/rlm_acctlog.so
 %{_libdir}/freeradius/rlm_acctlog-%{version}.so
 %{_libdir}/freeradius/rlm_always.so

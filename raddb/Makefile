@@ -13,34 +13,54 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	attrs.pre-proxy clients.conf dictionary templates.conf	\
 	experimental.conf hints huntgroups ldap.attrmap			\
 	policy.txt preproxy_users proxy.conf radiusd.conf trigger.conf	\
-	users	policy.conf attrs.access_challenge
+	users attrs.access_challenge README.rst
+
+DEFAULT_SITES = default inner-tunnel
+
+DEFAULT_MODULES = acct_unique always attr_filter attr_rewrite chap checkval \
+		counter cui detail detail.log digest dynamic_clients eap \
+		echo exec expiration expr files inner-eap linelog logintime \
+		mschap ntlm_auth pap passwd preprocess radutmp realm \
+		replicate soh sradutmp unix utf8 wimax
 
 #
 #	This target is here for local debugging
 #
-all:
+all: sites-enabled mods-enabled
+
+.PHONY: sites-enabled
+sites-enabled:
 	@if [ ! -d sites-enabled ]; then \
 		mkdir sites-enabled; \
 	fi
-	@if [ ! -f sites-enabled/default ]; then \
-		cd sites-enabled && ln -s ../sites-available/default; \
+	@cd sites-enabled/; \
+	 for x in $(DEFAULT_SITES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../sites-available/$$x; \
+	    fi; \
+	done
+
+.PHONY: mods-enabled
+mods-enabled:
+	@if [ ! -d mods-enabled ]; then \
+		mkdir mods-enabled; \
 	fi
-	@if [ ! -f sites-enabled/inner-tunnel ]; then \
-		cd sites-enabled && ln -s ../sites-available/inner-tunnel; \
-	fi
-ifneq "${OPENSSL_INCLUDE}" ""
-	@if [ ! -f sites-enabled/tls ]; then \
-		cd sites-enabled && ln -s ../sites-available/tls; \
-	fi
-endif
+	@cd mods-enabled/; \
+	 for x in $(DEFAULT_MODULES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../mods-available/$$x; \
+	    fi; \
+	done
 
 install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-available
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/sites-enabled
-	$(INSTALL) -d -m 750	$(R)$(raddbdir)/modules
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/mods-available
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/mods-enabled
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/policy.d
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
-	for i in $(FILES) `find sites-available/ modules/ -type f -print | sed 's/.*CVS.*//;s/.*~//;s/.*#.*//' `; do \
+	for i in $(FILES) `find sites-available/ mods-available/ policy.d/ -type f -print | sed 's/.*~//;s/.*#.*//' `; do \
 		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 640 $$i $(R)$(raddbdir)/$$i; \
 		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
 			echo "** $(R)$(raddbdir)/$$i"; \
@@ -79,28 +99,22 @@ install:
 		    fi; \
 		  done; \
 	fi
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/default ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/default; \
-	fi
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/inner-tunnel ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/inner-tunnel; \
-	fi
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/control-socket ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/control-socket; \
-	fi
-ifneq "${OPENSSL_INCLUDE}" ""
-	if [ ! -f $(R)$(raddbdir)/sites-enabled/control-socket ]; then \
-		cd $(R)$(raddbdir)/sites-enabled/; \
-		ln -s ../sites-available/control-socket; \
-	fi
-endif
+	@cd $(R)$(raddbdir)/sites-enabled/; \
+	 for x in $(DEFAULT_SITES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../sites-available/$$x; \
+	    fi; \
+	done
+	@cd $(R)$(raddbdir)/mods-enabled/; \
+	 for x in $(DEFAULT_MODULES); do \
+	    if [ ! -f $$x ]; then \
+		ln -s ../mods-available/$$x; \
+	    fi; \
+	done
 
 clean:
-	@rm -rf sites-enabled/inner-tunnel sites-enabled/default \
-		sites-enabled/tls
+	@rm -rf *~ $(addprefix sites-enabled/,$(DEFAULT_SITES)) \
+		$(addprefix mods-enabled/,$(DEFAULT_MODULES))
 
 triggers:
 	@grep exec_trigger `find ../src -name "*.c" -print` | grep '"' | sed -e 's/.*,//' -e 's/ *"//' -e 's/");.*//'

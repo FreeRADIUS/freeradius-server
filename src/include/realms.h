@@ -30,6 +30,16 @@ extern "C" {
 #define HOME_STATE_ALIVE		(0)
 #define HOME_STATE_ZOMBIE		(1)
 #define HOME_STATE_IS_DEAD		(2)
+#define HOME_STATE_UNKNOWN		(3)
+
+typedef struct fr_socket_limit_t {
+	int		max_connections;
+	int		num_connections;
+	int		max_requests;
+	int		num_requests;
+	int		lifetime;
+	int		idle_timeout;
+} fr_socket_limit_t;
 
 typedef struct home_server {
 	const char	*name;
@@ -44,15 +54,9 @@ typedef struct home_server {
 	int		type;		/* auth/acct */
 
 	int		proto;
-	int		max_connections;
-	int		num_connections; /* protected by proxy mutex */
-	int		max_requests;	 /* for one connection */
-	int		lifetime;
-	int		idle_timeout;
+	fr_socket_limit_t limit;
 
-	/*
-	 *	Maybe also have list of source IP/ports, && socket?
-	 */
+	fr_ipaddr_t	src_ipaddr; /* preferred source IP address */
 
 	const char	*secret;
 
@@ -60,12 +64,12 @@ typedef struct home_server {
 	struct timeval	when;
 
 	int		response_window;
-	int		no_response_fail;
 	int		max_outstanding; /* don't overload it */
 	int		currently_outstanding;
 	int		message_authenticator;
 
-	time_t		last_packet;
+	time_t		last_packet_sent;
+	time_t		last_packet_recv;
 	struct timeval	revive_time;
 	struct timeval	zombie_period_start;
 	int		zombie_period; /* unresponsive for T, mark it dead */
@@ -93,10 +97,9 @@ typedef struct home_server {
 #ifdef WITH_TLS
 	fr_tls_server_conf_t	*tls;
 #endif
+
 #ifdef WITH_STATS
 	int		number;
-
-	fr_ipaddr_t	src_ipaddr; /* preferred source IP address */
 
 	fr_stats_t	stats;
 
@@ -140,6 +143,9 @@ typedef struct _realm {
 
 	home_pool_t		*auth_pool;
 	home_pool_t		*acct_pool;
+#ifdef WITH_COA
+	home_pool_t		*coa_pool;
+#endif
 } REALM;
 
 int realms_init(CONF_SECTION *config);

@@ -57,14 +57,18 @@ LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la
 
 LIBLTDL		= @LIBLTDL@
 INCLTDL		= @INCLTDL@
-LTDL_SUBDIRS	= @LTDL_SUBDIRS@
+CFLAGS		+= $(INCLTDL)
 
-USE_SHARED_LIBS	= @USE_SHARED_LIBS@
-USE_STATIC_LIBS = @USE_STATIC_LIBS@
+#USE_SHARED_LIBS	= @USE_SHARED_LIBS@
+#USE_STATIC_LIBS = @USE_STATIC_LIBS@
+
+USE_SHARED_LIBS = yes
+USE_STATIC_LIBS = yes
 STATIC_MODULES	= @STATIC_MODULES@
 
 OPENSSL_LIBS	= @OPENSSL_LIBS@
 OPENSSL_INCLUDE = @OPENSSL_INCLUDE@
+CFLAGS		+= $(OPENSSL_INCLUDE)
 
 LIBREADLINE	= @LIBREADLINE@
 
@@ -76,7 +80,10 @@ SQL_ODBC_INCLUDE = @ODBC_INCLUDE@
 
 RADIUSD_MAJOR_VERSION	= @RADIUSD_MAJOR_VERSION@
 RADIUSD_MINOR_VERSION	= @RADIUSD_MINOR_VERSION@
+RADIUSD_INCRM_VERSION	= @RADIUSD_INCRM_VERSION@
 RADIUSD_VERSION		= @RADIUSD_VERSION@
+RADIUSD_VERSION_STRING  = @RADIUSD_VERSION_STRING@
+RADIUSD_VERSION_COMMIT  = @RADIUSD_VERSION_COMMIT@
 
 MODULES			= @MODULES@
 HOSTINFO		= @HOSTINFO@
@@ -121,7 +128,7 @@ endif
 
 ifneq "$(LIBTOOL)" ""
 COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC)
-LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) -rpath $(libdir) -o
+LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) -rpath $(libdir) -o
 LO		:= lo
 LA		:= la
 else
@@ -142,4 +149,17 @@ ifeq "$(LA)" "so"
 ifneq "$(findstring Darwin,$(shell uname -a))" ""
 LA		:= dylib
 endif
+endif
+
+all: $(top_srcdir)/scripts/jlibtool
+
+$(top_srcdir)/scripts/jlibtool: $(top_srcdir)/scripts/jlibtool.c
+	$(CC) $^ -o $@
+
+# Add -module for normal libtool.  It doesn't like building "foo.la"
+# as a library unless you tell it to shut up, yes, I KNOW this is a module
+ifeq "$(findstring jlibtool,$(LIBTOOL))" ""
+  RLM_MOD = -module
+else
+  MOD_RPATH = -rpath $(libdir)
 endif

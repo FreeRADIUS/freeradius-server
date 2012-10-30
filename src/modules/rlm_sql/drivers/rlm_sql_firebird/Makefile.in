@@ -7,7 +7,7 @@ include ../../../../../Make.inc
 TARGET		= @targetname@
 SRCS		= sql_firebird.c sql_fbapi.c
 HEADERS		= sql_fbapi.h
-RLM_SQL_CFLAGS	= @sql_firebird_cflags@ $(INCLTDL)
+RLM_SQL_CFLAGS	= @sql_firebird_cflags@
 RLM_SQL_LIBS	= @sql_firebird_ldflags@
 
 # this uses the RLM_SQL_CFLAGS and RLM_SQL_LIBS and SRCS defs to make TARGET.

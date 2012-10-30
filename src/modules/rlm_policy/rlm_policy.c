@@ -100,7 +100,9 @@ static int policy_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	inst->policies = rbtree_create(policyname_cmp, rlm_policy_free_item, 0);
+	inst->policies = rbtree_create(policyname_cmp,
+				       (void (*)(void *)) rlm_policy_free_item,
+				       0);
 	if (!inst->policies) {
 		policy_detach(inst);
 		return -1;
@@ -285,7 +287,7 @@ void rlm_policy_free_item(policy_item_t *item)
 				policy_call_t *this;
 
 				this = (policy_call_t *) item;
-				if (this->name) free(this->name);
+				free(this->name);
 			}
 			break;
 

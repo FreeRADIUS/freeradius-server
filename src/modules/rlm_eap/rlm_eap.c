@@ -160,6 +160,8 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 		if (!auth_type)  continue;
 
+		if (!strcmp(auth_type, TLS_CONFIG_SECTION))  continue;
+
 		eap_type = eaptype_name2type(auth_type);
 		if (eap_type < 0) {
 			radlog(L_ERR, "rlm_eap: Unknown EAP type %s",
@@ -188,18 +190,6 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 			continue;
 		}
 #endif
-
-		/*
-		 *	If we're asked to load TTLS or PEAP, ensure
-		 *	that we've first loaded TLS.
-		 */
-		if (((eap_type == PW_EAP_TTLS) ||
-		     (eap_type == PW_EAP_PEAP)) &&
-		    (inst->types[PW_EAP_TLS] == NULL)) {
-			radlog(L_ERR, "rlm_eap: Unable to load EAP-Type/%s, as EAP-Type/TLS is required first.",
-			       auth_type);
-			return -1;
-		}
 
 		/*
 		 *	Load the type.
@@ -400,7 +390,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	set to 127.0.0.1 for tunneled requests, and
 		 *	we don't want to tell the world that...
 		 */
-		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS);
+		pairdelete(&request->proxy->vps, PW_FREERADIUS_PROXIED_TO, VENDORPEC_FREERADIUS, -1);
 
 		RDEBUG2("  Tunneled session will be proxied.  Not doing EAP.");
 		return RLM_MODULE_HANDLED;
@@ -444,6 +434,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		 *	to accidentally failing it.
 		 */
 		if (!eaplist_add(inst, handler)) {
+			RDEBUG("Failed adding handler to the list");
 			eap_fail(handler);
 			eap_handler_free(inst, handler);
 			return RLM_MODULE_FAIL;

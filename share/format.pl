@@ -106,7 +106,7 @@ while (@ARGV) {
 	#
 	#  Get attribute.
 	#
-	if (/^ATTRIBUTE\s+([\w-]+)\s+(\w+)\s+(\w+)(.*)/) {
+	if (/^ATTRIBUTE\s+([\w-]+)\s+([\w.]+)\s+(\w+)(.*)/) {
 	    $name=$1;
 	    $len = length $name;
 	    if ($len < 40) {

@@ -1,0 +1,38 @@
+# -*- text -*-
+#
+#  $Id$
+
+#
+#  Write Chargeable-User-Identity to the database.
+#
+#  Schema	raddb/sql/DB/cui.sql
+#  Queries	raddb/sql/DB/cui.conf
+#
+sql cuisql {
+	#
+	#  Set the database to one of:
+	#
+	#	mysql, postgresql
+	#
+	database = "mysql"
+	driver = "rlm_sql_${database}"
+	server = "localhost"
+	login = "db_login_name"
+	password = "db_password"
+	radius_db = "db_name"
+#	sqltrace = yes
+#	sqltracefile = ${logdir}/cuitrace.sql
+        pool {
+                start = 5
+                min = 4
+                max = 10
+                spare = 3
+                uses = 0
+                lifetime = 0
+                idle_timeout = 60
+        }
+	cui_table = "cui"
+	sql_user_name = "%{User-Name}"
+	
+	$INCLUDE sql/${database}/cui.conf
+}

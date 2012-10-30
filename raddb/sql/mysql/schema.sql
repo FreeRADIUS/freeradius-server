@@ -25,7 +25,9 @@ CREATE TABLE radacct (
   nasportid varchar(15) default NULL,
   nasporttype varchar(32) default NULL,
   acctstarttime datetime NULL default NULL,
+  acctupdatetime datetime NULL default NULL,
   acctstoptime datetime NULL default NULL,
+  acctinterval int(12) default NULL,
   acctsessiontime int(12) default NULL,
   acctauthentic varchar(32) default NULL,
   connectinfo_start varchar(50) default NULL,
@@ -38,16 +40,14 @@ CREATE TABLE radacct (
   servicetype varchar(32) default NULL,
   framedprotocol varchar(32) default NULL,
   framedipaddress varchar(15) NOT NULL default '',
-  acctstartdelay int(12) default NULL,
-  acctstopdelay int(12) default NULL,
-  xascendsessionsvrkey varchar(10) default NULL,
-  PRIMARY KEY  (radacctid),
+  PRIMARY KEY (radacctid),
+  UNIQUE KEY acctuniqueid (acctuniqueid),
   KEY username (username),
   KEY framedipaddress (framedipaddress),
   KEY acctsessionid (acctsessionid),
   KEY acctsessiontime (acctsessiontime),
-  KEY acctuniqueid (acctuniqueid),
   KEY acctstarttime (acctstarttime),
+  KEY acctinterval (acctinterval),
   KEY acctstoptime (acctstoptime),
   KEY nasipaddress (nasipaddress)
 ) ENGINE = INNODB;
@@ -64,7 +64,7 @@ CREATE TABLE radcheck (
   value varchar(253) NOT NULL default '',
   PRIMARY KEY  (id),
   KEY username (username(32))
-) ;
+);
 
 #
 # Table structure for table 'radgroupcheck'
@@ -78,7 +78,7 @@ CREATE TABLE radgroupcheck (
   value varchar(253)  NOT NULL default '',
   PRIMARY KEY  (id),
   KEY groupname (groupname(32))
-) ;
+);
 
 #
 # Table structure for table 'radgroupreply'
@@ -92,7 +92,7 @@ CREATE TABLE radgroupreply (
   value varchar(253)  NOT NULL default '',
   PRIMARY KEY  (id),
   KEY groupname (groupname(32))
-) ;
+);
 
 #
 # Table structure for table 'radreply'
@@ -106,7 +106,7 @@ CREATE TABLE radreply (
   value varchar(253) NOT NULL default '',
   PRIMARY KEY  (id),
   KEY username (username(32))
-) ;
+);
 
 
 #
@@ -118,7 +118,7 @@ CREATE TABLE radusergroup (
   groupname varchar(64) NOT NULL default '',
   priority int(11) NOT NULL default '1',
   KEY username (username(32))
-) ;
+);
 
 #
 # Table structure for table 'radpostauth'

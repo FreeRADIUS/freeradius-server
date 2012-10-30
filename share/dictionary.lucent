@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 ##############################################################################
 #
 #	Lucent VSAs, in their own "magic" 16-bit format.

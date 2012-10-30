@@ -30,6 +30,12 @@ RCSID("$Id$")
 
 typedef struct rlm_eap_ttls_t {
 	/*
+	 *	TLS configuration
+	 */
+	char	*tls_conf_name;
+	fr_tls_server_conf_t *tls_conf;
+
+	/*
 	 *	Default tunneled EAP type
 	 */
 	char	*default_eap_type_name;
@@ -62,10 +68,18 @@ typedef struct rlm_eap_ttls_t {
 	 *	Virtual server for inner tunnel session.
 	 */
 	char	*virtual_server;
+
+	/*
+	 * 	Do we do require a client cert?
+	 */
+	int	req_client_cert;
 } rlm_eap_ttls_t;
 
 
 static CONF_PARSER module_config[] = {
+	{ "tls", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_ttls_t, tls_conf_name), NULL, NULL },
+
 	{ "default_eap_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_ttls_t, default_eap_type_name), NULL, "md5" },
 
@@ -81,6 +95,9 @@ static CONF_PARSER module_config[] = {
 	{ "include_length", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_ttls_t, include_length), NULL, "yes" },
 
+	{ "require_client_cert", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_ttls_t, req_client_cert), NULL, "no" },
+
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
@@ -90,7 +107,6 @@ static CONF_PARSER module_config[] = {
 static int eapttls_detach(void *arg)
 {
 	rlm_eap_ttls_t *inst = (rlm_eap_ttls_t *) arg;
-
 
 	free(inst);
 
@@ -102,7 +118,7 @@ static int eapttls_detach(void *arg)
  */
 static int eapttls_attach(CONF_SECTION *cs, void **instance)
 {
-	rlm_eap_ttls_t *inst;
+	rlm_eap_ttls_t		*inst;
 
 	inst = malloc(sizeof(*inst));
 	if (!inst) {
@@ -127,6 +143,18 @@ static int eapttls_attach(CONF_SECTION *cs, void **instance)
 	if (inst->default_eap_type < 0) {
 		radlog(L_ERR, "rlm_eap_ttls: Unknown EAP type %s",
 		       inst->default_eap_type_name);
+		eapttls_detach(inst);
+		return -1;
+	}
+
+	/*
+	 *	Read tls configuration, either from group given by 'tls'
+	 *	option, or from the eap-tls configuration.
+	 */
+	inst->tls_conf = eaptls_conf_parse(cs, "tls");
+
+	if (!inst->tls_conf) {
+		radlog(L_ERR, "rlm_eap_ttls: Failed initializing SSL context");
 		eapttls_detach(inst);
 		return -1;
 	}
@@ -172,6 +200,70 @@ static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst)
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->virtual_server = inst->virtual_server;
 	return t;
+}
+
+
+/*
+ *	Send an initial eap-tls request to the peer, using the libeap functions.
+ */
+static int eapttls_initiate(void *type_arg, EAP_HANDLER *handler)
+{
+	int		status;
+	tls_session_t	*ssn;
+	rlm_eap_ttls_t	*inst;
+	VALUE_PAIR	*vp;
+	int		client_cert = FALSE;
+	REQUEST		*request = handler->request;
+
+	inst = type_arg;
+
+	handler->tls = TRUE;
+	handler->finished = FALSE;
+
+	/*
+	 *	Check if we need a client certificate.
+	 */
+	client_cert = inst->req_client_cert;
+
+	/*
+	 * EAP-TLS-Require-Client-Cert attribute will override
+	 * the require_client_cert configuration option.
+	 */
+	vp = pairfind(handler->request->config_items,
+		      PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0);
+	if (vp) {
+		client_cert = vp->vp_integer;
+	}
+
+	ssn = eaptls_session(inst->tls_conf, handler, client_cert);
+	if (!ssn) {
+		return 0;
+	}
+
+	handler->opaque = ((void *)ssn);
+	handler->free_opaque = session_free;
+
+	/*
+	 *	Set up type-specific information.
+	 */
+	ssn->prf_label = "ttls keying material";
+
+	/*
+	 *	TLS session initialization is over.  Now handle TLS
+	 *	related handshaking or application data.
+	 */
+	status = eaptls_start(handler->eap_ds, ssn->peap_flag);
+	RDEBUG2("Start returned %d", status);
+	if (status == 0) {
+		return 0;
+	}
+
+	/*
+	 *	The next stage to process the packet.
+	 */
+	handler->stage = AUTHENTICATE;
+
+	return 1;
 }
 
 
@@ -316,16 +408,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
 EAP_TYPE rlm_eap_ttls = {
 	"eap_ttls",
 	eapttls_attach,			/* attach */
-	/*
-	 *	Note! There is NO eapttls_initate() function, as the
-	 *	main EAP module takes care of calling
-	 *	eaptls_initiate().
-	 *
-	 *	This is because TTLS is a protocol on top of TLS, so
-	 *	before we need to do TTLS, we've got to initiate a TLS
-	 *	session.
-	 */
-	NULL,				/* Start the initial request */
+	eapttls_initiate,		/* Start the initial request */
 	NULL,				/* authorization */
 	eapttls_authenticate,		/* authentication */
 	eapttls_detach			/* detach */

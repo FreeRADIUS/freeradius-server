@@ -276,8 +276,15 @@ static void safe_unlock(module_instance_t *instance)
 static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 {
 	int myresult;
+	int blocked;
 
 	rad_assert(request != NULL);
+
+	/*
+	 *	If the request should stop, refuse to do anything.
+	 */
+	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
+	if (blocked) return RLM_MODULE_NOOP;
 
 	RDEBUG3("  modsingle[%s]: calling %s (%s) for request %d",
 	       comp2str[component], sp->modinst->name,
@@ -300,6 +307,15 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 
 	request->module = "";
 	safe_unlock(sp->modinst);
+
+	/*
+	 *	Wasn't blocked, and now is.  Complain!
+	 */
+	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
+	if (blocked) {
+		radlog(L_INFO, "WARNING: Module %s became unblocked for request %u",
+		       sp->modinst->entry->name, request->number);
+	}
 
  fail:
 	RDEBUG3("  modsingle[%s]: returned from %s (%s) for request %d",
@@ -561,7 +577,6 @@ int modcall(int component, modcallable *c, REQUEST *request)
 							   g->children,
 							   request);
 					if (myresult == MOD_ACTION_RETURN) {
-						myresult = RLM_MODULE_OK;
 						break;
 					}
 					vp = pairfind(vp->next,
@@ -612,7 +627,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			if (!mx->exec) {
 				radius_xlat(buffer, sizeof(buffer),
-					    mx->xlat_name, request, NULL);
+					    mx->xlat_name, request, NULL, NULL);
 			} else {
 				RDEBUG("`%s`", mx->xlat_name);
 				radius_exec_program(mx->xlat_name, request,
@@ -715,7 +730,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					}
 				} else {
 					radius_xlat(buffer, sizeof(buffer),
-						    child->name, request, NULL);
+						    child->name, request, NULL, NULL);
 				}
 				null_case = q = NULL;
 				for(p = g->children; p; p = p->next) {
@@ -2140,7 +2155,16 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			return do_compile_modserver(parent, component, ci,
 						    modrefname, cs, buffer);
 		}
-		
+
+		/*
+		 *	We tried to load the module, but it doesn't exist.
+		 *	Give a silent error.
+		 */
+		if (modrefname[0] == '-') {
+			*modname = modrefname;
+			return NULL;
+		}
+
 		*modname = NULL;
 		cf_log_err(ci, "Failed to find \"%s\" in the \"modules\" section.", modrefname);
 		return NULL;
@@ -2174,21 +2198,22 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	 *	maybe a csingle as a ref?
 	 */
 	if (cf_item_is_section(ci)) {
+		CONF_ITEM *csi;
+		
 		cs = cf_itemtosection(ci);
+		for (csi=cf_item_find_next(cs, NULL);
+		     csi != NULL;
+		     csi=cf_item_find_next(cs, csi)) {
 
-		for (ci=cf_item_find_next(cs, NULL);
-		     ci != NULL;
-		     ci=cf_item_find_next(cs, ci)) {
-
-			if (cf_item_is_section(ci)) {
-				cf_log_err(ci, "Subsection of module instance call not allowed");
+			if (cf_item_is_section(csi)) {
+				cf_log_err(csi, "Subsection of module instance call not allowed");
 				modcallable_free(&csingle);
 				return NULL;
 			}
 
-			if (!cf_item_is_pair(ci)) continue;
+			if (!cf_item_is_pair(csi)) continue;
 
-			if (!compile_action(csingle, cf_itemtopair(ci))) {
+			if (!compile_action(csingle, cf_itemtopair(csi))) {
 				modcallable_free(&csingle);
 				return NULL;
 			}

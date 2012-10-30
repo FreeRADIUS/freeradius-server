@@ -322,8 +322,6 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	CS_RETCODE	ret, results_ret;
 	CS_INT		result_type;
 
-	if (config->sqltrace)
-		DEBUG(querystr);
 	 if (sybase_sock->connection == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return -1;
@@ -486,8 +484,6 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	int		colcount,i;
 	char		**rowdata;
 
-	if (config->sqltrace)
-		DEBUG(querystr);
 	 if (sybase_sock->connection == NULL) {
 		radlog(L_ERR, "Socket not connected");
 		return -1;

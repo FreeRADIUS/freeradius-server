@@ -299,7 +299,6 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 tls_session_t	*tls_new_client_session(fr_tls_server_conf_t *conf, int fd);
 fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs);
 fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs);
-void tls_server_conf_free(fr_tls_server_conf_t *conf);
 int 		tls_handshake_recv(REQUEST *, tls_session_t *ssn);
 int 		tls_handshake_send(REQUEST *, tls_session_t *ssn);
 void 		tls_session_information(tls_session_t *ssn);
@@ -360,6 +359,7 @@ struct fr_tls_server_conf_t {
         int     	session_timeout;
         int     	session_cache_size;
 	char		*session_id_name;
+	char		*session_cache_path;
 	char		session_context_id[SSL_MAX_SSL_SESSION_ID_LENGTH];
 	time_t		session_last_flushed;
 
@@ -374,7 +374,10 @@ struct fr_tls_server_conf_t {
 	int		ocsp_enable;
 	int		ocsp_override_url;
 	char		*ocsp_url;
+	int		ocsp_use_nonce;
 	X509_STORE	*ocsp_store;
+	int		ocsp_timeout;
+	int		ocsp_softfail;
 #endif
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
@@ -382,6 +385,12 @@ struct fr_tls_server_conf_t {
 	char		*ecdh_curve;
 #endif
 #endif
+
+#ifdef PSK_MAX_IDENTITY_LEN
+	char		*psk_identity;
+	char		*psk_password;
+#endif
+
 };
 
 #ifdef __cplusplus

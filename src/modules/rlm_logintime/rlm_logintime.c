@@ -197,7 +197,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 				char msg[MAX_STRING_LEN];
 				VALUE_PAIR *tmp;
 
-				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL)) {
+				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL, NULL)) {
 					radlog(L_ERR, "rlm_logintime: xlat failed.");
 					return RLM_MODULE_FAIL;
 				}

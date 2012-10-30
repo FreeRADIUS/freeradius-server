@@ -118,8 +118,7 @@ static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
  *	Do xlat of strings.
  */
 static size_t exec_xlat(void *instance, REQUEST *request,
-		     char *fmt, char *out, size_t outlen,
-		     UNUSED RADIUS_ESCAPE_STRING func)
+		     const char *fmt, char *out, size_t outlen)
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
@@ -162,7 +161,7 @@ static int exec_detach(void *instance)
 	rlm_exec_t	*inst = instance;
 
 	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, exec_xlat);
+		xlat_unregister(inst->xlat_name, exec_xlat, instance);
 		free(inst->xlat_name);
 	}
 

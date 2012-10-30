@@ -100,7 +100,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "tlv",	PW_TYPE_TLV },
 	{ "signed",	PW_TYPE_SIGNED },
 	{ "extended",	PW_TYPE_EXTENDED },
-	{ "extended-flags",	PW_TYPE_EXTENDED_FLAGS },
+	{ "long-extended",	PW_TYPE_LONG_EXTENDED },
 	{ "evs",	PW_TYPE_EVS },
 	{ "uint8",	PW_TYPE_BYTE },
 	{ "uint16",	PW_TYPE_SHORT },
@@ -590,7 +590,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	/*
 	 *	Additional checks for extended attributes.
 	 */
-	if (flags.extended || flags.extended_flags || flags.evs) {
+	if (flags.extended || flags.long_extended || flags.evs) {
 		if (vendor && (vendor < FR_MAX_VENDOR)) {
 			fr_strerror_printf("dict_addattr: VSAs cannot use the \"extended\" or \"evs\" attribute formats.");
 			return -1;
@@ -608,7 +608,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	}
 
 	if (flags.evs) {
-		if (!(flags.extended || flags.extended_flags)) {
+		if (!(flags.extended || flags.long_extended)) {
 			fr_strerror_printf("dict_addattr: Attributes of type \"evs\" MUST have a parent of type \"extended\"");
 			return -1;
 		}
@@ -698,7 +698,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 				return -1;
 			}
 			flags.extended = da->flags.extended;
-			flags.extended_flags = da->flags.extended_flags;
+			flags.long_extended = da->flags.long_extended;
 			flags.evs = da->flags.evs;
 		}
 
@@ -993,7 +993,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
 			return 0;
 		}
 	
-		if (!(da->flags.has_tlv || da->flags.extended || da->flags.extended_flags)) {
+		if (!(da->flags.has_tlv || da->flags.extended || da->flags.long_extended)) {
 			fr_strerror_printf("Parent attribute %s cannot have sub-tlvs",
 					   da->name);
 			return 0;
@@ -1126,7 +1126,7 @@ static int process_attribute(const char* fn, const int line,
 		 *	241.1 means 241 is of type "extended".
 		 *	Otherwise, die.
 		 */
-		if (!(da->flags.has_tlv || da->flags.extended || da->flags.extended_flags)) {
+		if (!(da->flags.has_tlv || da->flags.extended || da->flags.long_extended)) {
 			fr_strerror_printf("dict_init: %s[%d]: Parent attribute %s cannot contain sub-attributes", fn, line, da->name);
 			return -1;
 		}
@@ -1160,7 +1160,7 @@ static int process_attribute(const char* fn, const int line,
 		 *	Set which type of attribute this is.
 		 */
 		flags.extended = da->flags.extended;
-		flags.extended_flags = da->flags.extended_flags;
+		flags.long_extended = da->flags.long_extended;
 		flags.evs = da->flags.evs;
 		if (da->flags.has_tlv) flags.is_tlv = 1;
 	}
@@ -1247,13 +1247,13 @@ static int process_attribute(const char* fn, const int line,
 			flags.extended = 1;
 			break;
 
-		case PW_TYPE_EXTENDED_FLAGS:
+		case PW_TYPE_LONG_EXTENDED:
 			if ((vendor != 0) || (value < 241)) {
-				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended-flags\" MUST be RFC attributes with value >= 241.", fn, line);
+				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"long-extended\" MUST be RFC attributes with value >= 241.", fn, line);
 				return -1;
 			}
 			type = PW_TYPE_OCTETS;
-			flags.extended_flags = 1;
+			flags.long_extended = 1;
 			break;
 
 		case PW_TYPE_EVS:
@@ -1277,7 +1277,7 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	Keep it real.
 		 */
-		if (flags.extended || flags.extended_flags || flags.evs) {
+		if (flags.extended || flags.long_extended || flags.evs) {
 			fr_strerror_printf("dict_init: %s[%d]: Extended attributes cannot use flags", fn, line);
 			return -1;
 		}
@@ -1312,7 +1312,7 @@ static int process_attribute(const char* fn, const int line,
 
 				if ((flags.encrypt == FLAG_ENCRYPT_ASCEND_SECRET) &&
 				    (type != PW_TYPE_STRING)) {
-					fr_strerror_printf( "dict_init: %s[%d] Only \"string\" types can have the \"encrypt=2\" flag set.",
+					fr_strerror_printf( "dict_init: %s[%d] Only \"string\" types can have the \"encrypt=3\" flag set.",
 							    fn, line);
 					return -1;
 				}
@@ -1413,7 +1413,7 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	TLV's can be only one octet.
 		 */
-		if ((value <= 0) || ((value & ~fr_attr_mask[tlv_depth]) != 0)) {
+		if ((value == 0) || ((value & ~fr_attr_mask[tlv_depth]) != 0)) {
 			fr_strerror_printf( "dict_init: %s[%d]: sub-tlv has invalid attribute number",
 					    fn, line);
 			return -1;
@@ -1661,6 +1661,12 @@ static int process_vendor(const char* fn, const int line, char **argv,
 		length = (int) (p[2] - '0');
 
 		if (p[3] == ',') {
+			if (!p[4]) {
+				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
+				   fn, line, p);
+				return -1;
+			}
+
 			if ((p[4] != 'c') ||
 			    (p[5] != '\0')) {
 				fr_strerror_printf("dict_init: %s[%d]: Invalid format for VENDOR.  Expected text like \"1,1\", got \"%s\"",
@@ -1708,7 +1714,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
  *	String split routine.  Splits an input string IN PLACE
  *	into pieces, based on spaces.
  */
-static int str2argv(char *str, char **argv, int max_argc)
+int str2argv(char *str, char **argv, int max_argc)
 {
 	int argc = 0;
 
@@ -1796,7 +1802,7 @@ static int my_dict_init(const char *dir, const char *fn,
 			fr_strerror_printf("dict_init: %s[%d]: Couldn't open dictionary \"%s\": %s",
 				   src_file, src_line, fn, strerror(errno));
 		}
-		return -1;
+		return -2;
 	}
 
 	stat(fn, &statbuf); /* fopen() guarantees this will succeed */
@@ -1888,6 +1894,21 @@ static int my_dict_init(const char *dir, const char *fn,
 			}
 			continue;
 		} /* $INCLUDE */
+
+		/*
+		 *	Optionally include a dictionary
+		 */
+		if (strcasecmp(argv[0], "$INCLUDE-") == 0) {
+			int rcode = my_dict_init(dir, argv[1], fn, line);
+
+			if (rcode == -2) continue;
+
+			if (rcode < 0) {
+				fclose(fp);
+				return -1;
+			}
+			continue;
+		} /* $INCLUDE- */
 
 		if (strcasecmp(argv[0], "VALUE-ALIAS") == 0) {
 			if (process_value_alias(fn, line,
@@ -2298,6 +2319,19 @@ DICT_VALUE *dict_valbyattr(unsigned int attr, unsigned int vendor, int value)
 	dval.value = value;
 
 	return fr_hash_table_finddata(values_byvalue, &dval);
+}
+
+/*
+ *	Associate a value with an attribute and return it.
+ */
+const char *dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value)
+{
+	DICT_VALUE *dv;
+
+	dv = dict_valbyattr(attr, vendor, value);
+	if (!dv) return "";
+
+	return dv->name;
 }
 
 /*

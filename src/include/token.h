@@ -71,6 +71,8 @@ typedef struct FR_NAME_NUMBER {
 	int		number;
 } FR_NAME_NUMBER;
 
+extern const FR_NAME_NUMBER fr_tokens[];
+
 int fr_str2int(const FR_NAME_NUMBER *table, const char *name, int def);
 int fr_substr2int(const FR_NAME_NUMBER *table, const char *name, int def, int len);
 const char *fr_int2str(const FR_NAME_NUMBER *table, int number,

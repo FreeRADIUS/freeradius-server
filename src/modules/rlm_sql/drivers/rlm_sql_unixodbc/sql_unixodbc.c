@@ -143,9 +143,6 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     long err_handle;
     int state;
 
-    if (config->sqltrace)
-        radlog(L_DBG, "query:  %s", querystr);
-
     /* Executing query */
     err_handle = SQLExecDirect(unixodbc_sock->stmt_handle, (SQLCHAR *)querystr, strlen(querystr));
     if ((state = sql_state(err_handle, sqlsocket, config))) {

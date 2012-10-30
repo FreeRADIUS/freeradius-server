@@ -1,0 +1,43 @@
+AC_PREREQ([2.53])
+AC_INIT(rlm_rest.c) # change 'rest'
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_rest]) # change 'rest'
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	dnl put configuration checks here.
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+	AC_CHECK_HEADERS(curl/curl.h json/json.h)
+
+	if test "$ac_cv_header_curl_curl_h" != "yes"; then
+	  fail="$fail curl/curl.h"
+	fi
+
+	targetname=modname     # keep this!  Don't change!
+else
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+		targetname=""
+	fi
+fi
+
+
+AC_SUBST(rest_cflags)  # change 'rest'
+AC_SUBST(rest_ldflags)  # change 'rest'
+
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(Makefile)  # keep this!  Don't change!
+AC_OUTPUT(all.mk)  # keep this!  Don't change!

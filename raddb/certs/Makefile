@@ -98,8 +98,8 @@ client.pem: client.p12
 	openssl pkcs12 -in client.p12 -out client.pem -passin pass:$(PASSWORD_CLIENT) -passout pass:$(PASSWORD_CLIENT)
 	cp client.pem $(USER_NAME).pem
 
-.PHONY: server.vrfy
-client.vrfy: server.pem client.pem 
+.PHONY: client.vrfy
+client.vrfy: ca.pem client.pem 
 	c_rehash .
 	openssl verify -CApath . client.pem
 

@@ -292,7 +292,7 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 		case PW_TYPE_ABINARY:
 #ifdef ASCEND_BINARY
 			a = buf;
-			print_abinary(vp, buf, sizeof(buf));
+			print_abinary(vp, buf, sizeof(buf), delimitst);
 			break;
 #else
 		  /* FALL THROUGH */
@@ -312,7 +312,7 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 
 		case PW_TYPE_IPV6ADDR:
 			a = inet_ntop(AF_INET6,
-				      (const struct in6_addr *) vp->vp_strvalue,
+				      &vp->vp_ipv6addr,
 				      buf, sizeof(buf));
 			break;
 
@@ -323,7 +323,7 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 			/*
 			 *	Alignment issues.
 			 */
-			memcpy(&addr, vp->vp_strvalue + 2, sizeof(addr));
+			memcpy(&addr, &(vp->vp_ipv6prefix[2]), sizeof(addr));
 
 			a = inet_ntop(AF_INET6, &addr, buf, sizeof(buf));
 			if (a) {

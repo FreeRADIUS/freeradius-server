@@ -32,4 +32,25 @@ RCSIDH(rlm_eap_tls_h, "$Id$")
 
 #include "eap_tls.h"
 
+typedef struct rlm_eap_tls_t {
+	/*
+	 *	TLS configuration
+	 */
+	char	*tls_conf_name;
+	fr_tls_server_conf_t *tls_conf;
+
+	/*
+	 *	Virtual server for checking certificates
+	 */
+  	char	*virtual_server;
+} rlm_eap_tls_t;
+
+static CONF_PARSER module_config[] = {
+	{ "tls", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_tls_t, tls_conf_name), NULL, NULL },
+
+	{ "virtual_server", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_tls_t, virtual_server), NULL, NULL },
+};
+
 #endif /* _RLM_EAP_TLS_H */

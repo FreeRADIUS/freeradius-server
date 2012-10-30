@@ -33,6 +33,7 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/event.h>
+#include <freeradius-devel/connection.h>
 
 typedef struct auth_req REQUEST;
 
@@ -121,6 +122,10 @@ typedef struct auth_req REQUEST;
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 
+#ifdef WITH_COMMAND_SOCKET
+#define PW_RADMIN_PORT 18120
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -156,8 +161,7 @@ typedef struct radclient {
 
 	int			proto;
 #ifdef WITH_TCP
-	int			max_connections;
-	int			num_connections;
+	fr_socket_limit_t	limit;
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -274,6 +278,7 @@ struct auth_req {
 	int			child_state;
 	RAD_LISTEN_TYPE		priority;
 
+	int			timer_action;
 	fr_event_t		*ev;
 
 	int			in_request_hash;
@@ -317,6 +322,25 @@ struct auth_req {
 
 typedef struct radclient_list RADCLIENT_LIST;
 
+typedef enum pair_lists {
+	PAIR_LIST_UNKNOWN = 0,
+	PAIR_LIST_REQUEST,
+	PAIR_LIST_REPLY,
+	PAIR_LIST_CONTROL,
+#ifdef WITH_PROXY
+	PAIR_LIST_PROXY_REQUEST,
+	PAIR_LIST_PROXY_REPLY,
+#endif
+#ifdef WITH_COA
+	PAIR_LIST_COA,
+	PAIR_LIST_COA_REPLY,
+	PAIR_LIST_DM,
+	PAIR_LIST_DM_REPLY
+#endif
+} pair_lists_t;
+
+extern const FR_NAME_NUMBER pair_lists[];
+
 typedef struct pair_list {
 	const char		*name;
 	VALUE_PAIR		*check;
@@ -326,7 +350,6 @@ typedef struct pair_list {
 	struct pair_list	*next;
 	struct pair_list	*lastdefault;
 } PAIR_LIST;
-
 
 typedef int (*rad_listen_recv_t)(rad_listen_t *);
 typedef int (*rad_listen_send_t)(rad_listen_t *, REQUEST *);
@@ -380,6 +403,10 @@ typedef struct listen_socket_t {
 #ifdef SO_BROADCAST
 	int		broadcast;
 #endif
+	time_t		rate_time;
+	int		rate_pps_old;
+	int		rate_pps_now;
+	int		max_rate;
 	
 	/* for outgoing sockets */
 	home_server	*home;
@@ -394,9 +421,8 @@ typedef struct listen_socket_t {
 	time_t		opened;
 	fr_event_t	*ev;
 
-	/* for clients connecting to the server */
-	int		max_connections;
-	int		num_connections;
+	fr_socket_limit_t limit;
+
 	struct listen_socket_t *parent;
 	RADCLIENT	*client;
 
@@ -408,6 +434,7 @@ typedef struct listen_socket_t {
 	REQUEST		*request; /* horrible hacks */
 	VALUE_PAIR	*certs;
 	pthread_mutex_t mutex;
+	uint8_t		*data;
 #endif
 
 	RADCLIENT_LIST	*clients;
@@ -495,18 +522,6 @@ typedef struct main_config_t {
 #define L_ACCT			6
 #define L_CONS			128
 
-#ifndef FALSE
-#define FALSE 0
-#endif
-#ifndef TRUE
-/*
- *	This definition of true as NOT false is definitive. :) Making
- *	it '1' can cause problems on stupid platforms.  See articles
- *	on C portability for more information.
- */
-#define TRUE (!FALSE)
-#endif
-
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
@@ -578,6 +593,7 @@ void		request_free(REQUEST **request);
 int		rad_mkdir(char *directory, int mode);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
+void		*rad_calloc(size_t size); /* calls exit(1) on error! */
 REQUEST		*request_alloc(void);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);
 REQUEST		*request_alloc_coa(REQUEST *request);
@@ -590,6 +606,8 @@ void		*request_data_reference(REQUEST *request,
 				  void *unique_ptr, int unique_int);
 int		rad_copy_string(char *dst, const char *src);
 int		rad_copy_variable(char *dst, const char *from);
+int		rad_pps(int *past, int *present, time_t *then,
+			struct timeval *now);
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(void);
@@ -642,6 +660,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);
 int		rad_postauth(REQUEST *);
+int		rad_virtual_server(REQUEST *);
 
 /* exec.c */
 pid_t radius_start_program(const char *cmd, REQUEST *request,
@@ -656,7 +675,7 @@ int		radius_exec_program(const char *,  REQUEST *, int,
 				    VALUE_PAIR *input_pairs,
 				    VALUE_PAIR **output_pairs,
 					int shell_escape);
-void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name);
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name, int quench);
 
 /* timestr.c */
 int		timestr_match(char *, time_t);
@@ -681,25 +700,27 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    int operator);
 
 /* xlat.c */
-typedef size_t (*RADIUS_ESCAPE_STRING)(char *out, size_t outlen, const char *in);
+typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
 int            radius_xlat(char * out, int outlen, const char *fmt,
-			   REQUEST * request, RADIUS_ESCAPE_STRING func);
-typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char *, char *, size_t, RADIUS_ESCAPE_STRING func);
+			   REQUEST * request, RADIUS_ESCAPE_STRING func, void *funcarg);
+typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t);
 int		xlat_register(const char *module, RAD_XLAT_FUNC func,
 			      void *instance);
-void		xlat_unregister(const char *module, RAD_XLAT_FUNC func);
+void		xlat_unregister(const char *module, RAD_XLAT_FUNC func,
+				void *instance);
 void		xlat_free(void);
 
 /* threads.c */
 extern		int thread_pool_init(CONF_SECTION *cs, int *spawn_flag);
+extern		void thread_pool_stop(void);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
 extern		pid_t rad_waitpid(pid_t pid, int *status);
 extern          int total_active_threads(void);
 extern          void thread_pool_lock(void);
 extern          void thread_pool_unlock(void);
-extern		void thread_pool_queue_stats(int *array);
+extern		void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 
 #ifndef HAVE_PTHREAD_H
 #define rad_fork(n) fork()
@@ -746,6 +767,10 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
+
+VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);
+pair_lists_t radius_list_name(const char **name, pair_lists_t unknown);
+int radius_ref_request(REQUEST **request, const char **name);
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
 
 #ifdef WITH_TLS

@@ -72,7 +72,6 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }	/* end the list */
 };
 
-static char *allowed_chars = NULL;
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -108,7 +107,6 @@ static int sql_log_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	inst->conf_section = conf;
-	allowed_chars = inst->allowed_chars;
 	*instance = inst;
 	return 0;
 }
@@ -143,7 +141,6 @@ static int sql_log_detach(void *instance)
 		free(*p);
 		*p = NULL;
 	}
-	allowed_chars = NULL;
 	free(inst);
 	return 0;
 }
@@ -151,8 +148,9 @@ static int sql_log_detach(void *instance)
 /*
  *	Translate the SQL queries.
  */
-static size_t sql_escape_func(char *out, size_t outlen, const char *in)
+static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, void *arg)
 {
+	rlm_sql_log_t	*inst = (rlm_sql_log_t *)arg;
 	int len = 0;
 
 	while (in[0]) {
@@ -161,7 +159,7 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr(allowed_chars, *in) == NULL) {
+		    strchr(inst->allowed_chars, *in) == NULL) {
 			/*
 			 *	Only 3 or less bytes available.
 			 */
@@ -197,16 +195,17 @@ static size_t sql_escape_func(char *out, size_t outlen, const char *in)
 	return len;
 }
 
-static size_t sql_utf8_escape_func(char *out, size_t outlen, const char *in)
+static size_t sql_utf8_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, void *arg)
 {
-	int len = 0;
-	int utf8 = 0;
+	rlm_sql_log_t	*inst = (rlm_sql_log_t *)arg;
+	size_t len = 0;
+	size_t utf8 = 0;
 
 	while (in[0]) {
 		/* 
 		 * Skip over UTF8 characters
 		 */
-		utf8 = fr_utf8_char((uint8_t *)in);
+		utf8 = fr_utf8_char((const uint8_t *)in);
 		if (utf8) {
 			if (outlen <= utf8) {
 				break;
@@ -226,7 +225,7 @@ static size_t sql_utf8_escape_func(char *out, size_t outlen, const char *in)
 		 *	mime-encoded equivalents.
 		 */
 		if ((in[0] < 32) ||
-		    strchr(allowed_chars, *in) == NULL) {
+		    strchr(inst->allowed_chars, *in) == NULL) {
 			/*
 			 *	Only 3 or less bytes available.
 			 */
@@ -277,13 +276,13 @@ static int sql_set_user(rlm_sql_log_t *inst, REQUEST *request, char *sqlusername
 	rad_assert(request->packet != NULL);
 
 	/* Remove any user attr we added previously */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0);
+	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 
 	if (username != NULL) {
 		strlcpy(tmpuser, username, MAX_STRING_LEN);
 	} else if (inst->sql_user_name[0] != '\0') {
 		radius_xlat(tmpuser, sizeof(tmpuser), inst->sql_user_name,
-			    request, NULL);
+			    request, NULL, NULL);
 	} else {
 		return 0;
 	}
@@ -324,7 +323,7 @@ static int sql_xlat_query(rlm_sql_log_t *inst, REQUEST *request, const char *que
 	/* Expand variables in the query */
 	xlat_query[0] = '\0';
 	radius_xlat(xlat_query, len, query, request,
-		    inst->utf8 ? sql_utf8_escape_func : sql_escape_func);
+		    inst->utf8 ? sql_utf8_escape_func : sql_escape_func, inst);
 	if (xlat_query[0] == '\0') {
 		radlog_request(L_ERR, 0, request, "Couldn't xlat the query %s",
 		       query);
@@ -361,12 +360,19 @@ static int sql_log_write(rlm_sql_log_t *inst, REQUEST *request, const char *line
 	FILE *fp;
 	int locked = 0;
 	struct stat st;
-	char path[MAX_STRING_LEN];
+	char *p, path[1024];
 
 	path[0] = '\0';
-	radius_xlat(path, sizeof(path), inst->path, request, NULL);
+	radius_xlat(path, sizeof(path), inst->path, request, NULL, NULL);
 	if (path[0] == '\0') {
 		return RLM_MODULE_FAIL;
+	}
+
+	p = strrchr(path, '/');
+	if (p) {
+		*p = '\0';
+		rad_mkdir(path, 0755);
+		*p = '/';
 	}
 
 	while (!locked) {

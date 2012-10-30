@@ -1,0 +1,141 @@
+# -*- text -*-
+##
+## sql.conf -- SQL modules
+##
+##	$Id$
+
+######################################################################
+#
+#  Configuration for the SQL module
+#
+#  The database schemas and queries are located in subdirectories:
+#
+#	sql/DB/schema.sql	Schema
+#	sql/DB/dialup.conf	Basic dialup (including policy) queries
+#	sql/DB/counter.conf	counter
+#	sql/DB/ippool.conf	IP Pools in SQL
+#	sql/DB/ippool.sql	schema for IP pools.
+#
+#  Where "DB" is mysql, mssql, oracle, or postgresql.
+#
+
+sql {
+	#
+	#  Set the database to one of:
+	#
+	#	mysql, mssql, oracle, postgresql
+	#
+	database = "mysql"
+
+	#
+	#  Which FreeRADIUS driver to use.
+	#
+	driver = "rlm_sql_${database}"
+
+	# Connection info:
+	server = "localhost"
+	#port = 3306
+	login = "radius"
+	password = "radpass"
+
+	# Database table configuration for everything except Oracle
+	radius_db = "radius"
+	# If you are using Oracle then use this instead
+	# radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
+
+	# If you want both stop and start records logged to the
+	# same SQL table, leave this as is.  If you want them in
+	# different tables, put the start table in acct_table1
+	# and stop table in acct_table2
+	acct_table1 = "radacct"
+	acct_table2 = "radacct"
+
+	# Allow for storing data after authentication
+	postauth_table = "radpostauth"
+
+	authcheck_table = "radcheck"
+	authreply_table = "radreply"
+
+	groupcheck_table = "radgroupcheck"
+	groupreply_table = "radgroupreply"
+
+	# Table to keep group info
+	usergroup_table = "radusergroup"
+
+	# If set to 'yes' (default) we read the group tables
+	# If set to 'no' the user MUST have Fall-Through = Yes in the radreply table
+	# read_groups = yes
+
+	# Remove stale session if checkrad does not see a double login
+	deletestalesessions = yes
+
+	# Print all SQL statements when in debug mode (-x)
+	sqltrace = no
+	sqltracefile = ${logdir}/sqltrace.sql
+
+	#  As of version 3.0, the "pool" section has replaced the
+	#  following configuration items:
+	#
+	#  num_sql_socks
+	#  connect_failure_retry_delay
+	#  lifetime
+	#  max_queries
+
+	#  The connection pool is new for 3.0, and will be used in many
+	#  modules, for all kinds of connection-related activity.
+	#
+	pool {
+		# Number of connections to start
+		start = 5
+
+		# Minimum number of connections to keep open
+		min = 4
+
+		# Maximum number of connections
+		#
+		# If these connections are all in use and a new one
+		# is requested, the request will NOT get a connection.
+		max = 10
+
+		# Spare connections to be left idle
+		#
+		# NOTE: Idle connections WILL be closed if "idle_timeout"
+		# is set.
+		spare = 3
+
+		# Number of uses before the connection is closed
+		#
+		# 0 means "infinite"
+		uses = 0
+
+		# The lifetime (in seconds) of the connection
+		lifetime = 0
+
+		# idle timeout (in seconds).  A connection which is
+		# unused for this length of time will be closed.
+		idle_timeout = 60
+
+		# NOTE: All configuration settings are enforced.  If a
+		# connection is closed because of "idle_timeout",
+		# "uses", or "lifetime", then the total number of
+		# connections MAY fall below "min".  When that
+		# happens, it will open a new connection.  It will
+		# also log a WARNING message.
+		#
+		# The solution is to either lower the "min" connections,
+		# or increase lifetime/idle_timeout.
+	}
+
+	# Set to 'yes' to read radius clients from the database ('nas' table)
+	# Clients will ONLY be read on server startup.  For performance
+	# and security reasons, finding clients via SQL queries CANNOT
+	# be done "live" while the server is running.
+	# 
+	#readclients = yes
+
+	# Table to keep radius client info
+	nas_table = "nas"
+
+	# Read driver-specific configuration
+	$INCLUDE sql/${database}/dialup.conf
+}

@@ -34,6 +34,19 @@ RCSID("$Id$")
 #undef WITH_UDPFROMTO
 
 #ifdef WITH_DHCP
+
+#include <sys/ioctl.h>
+
+#ifdef HAVE_SYS_SOCKET_H
+#include <sys/socket.h>
+#endif
+#ifdef HAVE_SYS_TYPES_H
+#include <sys/types.h>
+#endif
+
+#include <net/if_arp.h>
+
+
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
 #define DHCP_FILE_LEN	(128)
@@ -244,7 +257,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 
 	if (packet->data_len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%d < %d)",
-		      packet->data_len, MIN_PACKET_SIZE);
+				   (int) packet->data_len, MIN_PACKET_SIZE);
 		rad_free(&packet);
 		return NULL;
 	}
@@ -746,7 +759,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		 *	DHCP Opcode is request
 		 */
 		vp = pairfind(head, 256, DHCP_MAGIC_VENDOR);
-		if (vp && vp->lvalue == 3) {
+		if (vp && vp->vp_integer == 3) {
 			/*
 			 *	Vendor is "MSFT 98"
 			 */
@@ -757,7 +770,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				/*
 				 *	Reply should be broadcast.
 				 */
-				if (vp) vp->lvalue |= 0x8000;
+				if (vp) vp->vp_integer |= 0x8000;
 				packet->data[10] |= 0x80;			
 			}
 		}
@@ -1533,4 +1546,46 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	return 0;
 }
+
+int fr_dhcp_add_arp_entry(int fd, const char *interface,
+			  VALUE_PAIR *macaddr, VALUE_PAIR *ip)
+{
+#ifdef SIOCSARP
+	struct sockaddr_in *sin;
+	struct arpreq req;
+
+	if (macaddr->length > sizeof (req.arp_ha.sa_data)) {
+		fr_strerror_printf("ERROR: DHCP only supports up to %u octets for "
+				   "Client Hardware Address (got %zu octets)\n",
+				   sizeof(req.arp_ha.sa_data),
+				   macaddr->length);
+		return -1;
+	}
+
+	memset(&req, 0, sizeof(req));
+	sin = (struct sockaddr_in *) &req.arp_pa;
+	sin->sin_family = AF_INET;
+	sin->sin_addr.s_addr = ip->vp_ipaddr;
+	strlcpy(req.arp_dev, interface, sizeof(req.arp_dev));
+	memcpy(&req.arp_ha.sa_data, macaddr->vp_octets, macaddr->length);
+
+	req.arp_flags = ATF_COM;
+	if (ioctl(fd, SIOCSARP, &req) < 0) {
+		fr_strerror_printf("DHCP: Failed to add entry in ARP cache: %s (%d)",
+				   strerror(errno), errno);
+		return -1;
+	}
+
+	return 0;
+#else
+	fd = fd;		/* -Wunused */
+	interface = interface;	/* -Wunused */
+	macaddr = macaddr;	/* -Wunused */
+	ip = ip;		/* -Wunused */
+
+	fr_strerror_printf("Adding ARP entry is unsupported on this system");
+	return -1;
+#endif
+}
+
 #endif /* WITH_DHCP */

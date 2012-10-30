@@ -8,18 +8,31 @@
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:     2 3 4 5
 # Default-Stop:      0 1 6
-# Short-Description: Radius Daemon 
+# Short-Description: Radius Daemon
 # Description:       Extensible, configurable radius daemon
 ### END INIT INFO
-
-set -e
-
-. /lib/lsb/init-functions
 
 PROG="freeradius"
 PROGRAM="/usr/sbin/freeradius"
 PIDFILE="/var/run/freeradius/freeradius.pid"
 DESCR="FreeRADIUS daemon"
+
+set -e
+
+. /lib/lsb/init-functions
+
+test_freeradius_config() {
+  log_action_begin_msg "Checking $DESCR configuration"
+
+  out=`$PROGRAM -Cxl stdout $FREERADIUS_OPTIONS`; ret=$?
+  out=`echo "${out}" | tail -n 1 | sed 's/^\s*ERROR:\s*\(.*\)\s*$/\1/'`
+  log_action_end_msg $ret "$out"
+  return $ret
+}
+
+if [ -r /etc/default/$PROG ]; then
+  . /etc/default/$PROG
+fi
 
 test -f $PROGRAM || exit 0
 
@@ -36,27 +49,47 @@ ret=0
 case "$1" in
         start)
                 log_daemon_msg "Starting $DESCR" "$PROG"
-                start-stop-daemon --start --quiet --pidfile $PIDFILE --exec $PROGRAM || ret=$?
+
+                start_daemon -p "$PIDFILE" "$PROGRAM" $FREERADIUS_OPTIONS || ret=$?
                 log_end_msg $ret
-                exit $ret
                 ;;
+
         stop)
                 log_daemon_msg "Stopping $DESCR" "$PROG"
-                if [ -f "$PIDFILE" ] ; then
-                  start-stop-daemon --stop --retry=TERM/30/KILL/5 --quiet --pidfile $PIDFILE || ret=$?
-                  log_end_msg $ret
-                else 
-                  log_action_cont_msg "$PIDFILE not found"
-                  log_end_msg 0
-                fi
+
+                killproc -p "$PIDFILE" || ret=$?
+                log_end_msg $ret
                 ;;
+
         restart|force-reload)
+                test_freeradius_config || exit $?
+
                 $0 stop
                 $0 start
                 ;;
+
+        reload)
+                test_freeradius_config || exit $?
+
+                if status_of_proc -p "$PIDFILE" "$PROG" "$DESCR"; then
+                  log_daemon_msg "Reloading $DESCR" "$PROG"
+
+                  start-stop-daemon --stop --signal HUP --quiet --pidfile $PIDFILE || ret=$?
+                  log_end_msg $ret
+                fi
+                ;;
+
+        configtest|testconfig)
+                test_freeradius_config || exit $?
+                ;;
+
+        debug)
+                $PROGRAM -X $FREERADIUS_OPTIONS
+                ;;
+
         *)
-                echo "Usage: $0 start|stop|restart|force-reload"
-                exit 1 
+                echo "Usage: $0 start|stop|restart|force-reload|reload|configtest|debug"
+                exit 1
                 ;;
 esac
 

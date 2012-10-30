@@ -48,6 +48,18 @@ RCSIDH(libradius_h, "$Id$")
 #endif
 #endif
 
+#ifndef FALSE
+#define FALSE 0
+#endif
+#ifndef TRUE
+/*
+ *	This definition of true as NOT false is definitive. :) Making
+ *	it '1' can cause problems on stupid platforms.  See articles
+ *	on C portability for more information.
+ */
+#define TRUE (!FALSE)
+#endif
+
 /*
  *  Include for modules.
  */
@@ -97,7 +109,6 @@ extern "C" {
 #endif
 
 typedef struct attr_flags {
-	unsigned int		addport : 1;  /* add NAS-Port to IP address */
 	unsigned int		has_tag : 1;  /* tagged attribute */
 	unsigned int		do_xlat : 1;  /* strvalue is dynamic */
 	unsigned int		unknown_attr : 1; /* not in dictionary */
@@ -107,7 +118,7 @@ typedef struct attr_flags {
 	unsigned int		has_tlv : 1; /* has sub attributes */
 	unsigned int		is_tlv : 1; /* is a sub attribute */
 	unsigned int		extended : 1; /* extended attribute */
-	unsigned int		extended_flags : 1; /* with flag */
+	unsigned int		long_extended : 1; /* long format */
 	unsigned int		evs : 1;	    /* extended VSA */
 	unsigned int		wimax: 1;	    /* WiMAX format=1,1,c */
 
@@ -167,10 +178,15 @@ typedef union value_pair_data {
 
 typedef struct value_pair {
 	const char	        *name;
+	struct value_pair	*next;
+
+	/*
+	 *	Pack 4 32-bit fields together.  Saves ~8 bytes per struct
+	 *	on 64-bit machines.
+	 */
 	unsigned int		attribute;
 	unsigned int	       	vendor;
 	int			type;
-	size_t			length; /* of data */
 #ifdef __cplusplus
 	/*
 	 *	C++ hackery.  The server and modules are all C, so
@@ -181,9 +197,10 @@ typedef struct value_pair {
 #else
 	FR_TOKEN		operator;
 #endif
+
         ATTR_FLAGS              flags;
-	struct value_pair	*next;
-	uint32_t		lvalue;
+
+	size_t			length; /* of data field */
 	VALUE_PAIR_DATA		data;
 } VALUE_PAIR;
 #define vp_strvalue   data.strvalue
@@ -196,21 +213,9 @@ typedef struct value_pair {
 #define vp_signed     data.sinteger
 #define vp_tlv	      data.tlv
 #define vp_integer64  data.integer64
-
-#if 0
 #define vp_ipaddr     data.ipaddr.s_addr
 #define vp_date       data.date
 #define vp_integer    data.integer
-#else
-/*
- *	These are left as lvalue until we audit the source for code
- *	that prints to vp_strvalue for integer/ipaddr/date types.
- */
-#define vp_ipaddr     lvalue
-#define vp_date       lvalue
-#define vp_integer    lvalue
-#endif
-
 
 typedef struct fr_ipaddr_t {
 	int		af;	/* address family */
@@ -238,15 +243,14 @@ typedef struct radius_packet {
 	uint16_t		dst_port;
 	int			id;
 	unsigned int		code;
-	uint32_t		hash;
 	uint8_t			vector[AUTH_VECTOR_LEN];
 	struct timeval		timestamp;
 	uint8_t			*data;
-	ssize_t			data_len;
+	size_t			data_len;
 	VALUE_PAIR		*vps;
 	ssize_t			offset;
 #ifdef WITH_TCP
-	ssize_t			partial;
+	size_t			partial;
 #endif
 } RADIUS_PACKET;
 
@@ -259,9 +263,9 @@ size_t		fr_print_string(const char *in, size_t inlen,
 int     	vp_prints_value(char *out, size_t outlen,
 				const VALUE_PAIR *vp, int delimitst);
 int     	vp_prints_value_json(char *out, size_t outlen,
-				const VALUE_PAIR *vp);
+				     const VALUE_PAIR *vp);
 size_t		vp_print_name(char *buffer, size_t bufsize,
-			       unsigned int attr, unsigned int vendor);
+			      unsigned int attr, unsigned int vendor);
 int     	vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp);
 void		vp_print(FILE *, const VALUE_PAIR *);
 void		vp_printlist(FILE *, const VALUE_PAIR *);
@@ -270,6 +274,7 @@ void		vp_printlist(FILE *, const VALUE_PAIR *);
 /*
  *	Dictionary functions.
  */
+int		str2argv(char *str, char **argv, int max_argc);
 int		dict_str2oid(const char *ptr, unsigned int *pattr,
 			     int vendor, int tlv_depth);
 int		dict_addvendor(const char *name, unsigned int value);
@@ -281,6 +286,7 @@ DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
 DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, const char *val);
+const char	*dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value);
 int		dict_vendorbyname(const char *name);
 DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
@@ -381,10 +387,12 @@ ssize_t rad_attr2vp_rfc(const RADIUS_PACKET *packet,
 			const uint8_t *data, size_t length,
 			VALUE_PAIR **pvp);
 
-ssize_t		rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-			    const char *secret,
-			    const uint8_t *data, size_t length,
-			    VALUE_PAIR **pvp);
+ssize_t	rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+		    const char *secret,
+		    const uint8_t *data, size_t length,
+		    VALUE_PAIR **pvp);
+
+ssize_t rad_vp2data(const VALUE_PAIR *vp, uint8_t *out, size_t outlen);
 
 int rad_vp2extended(const RADIUS_PACKET *packet,
 		    const RADIUS_PACKET *original,
@@ -402,9 +410,9 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 	       const char *secret, const VALUE_PAIR **pvp,
 	       uint8_t *ptr, size_t room);
 
-int		rad_vp2attr(const RADIUS_PACKET *packet,
-			    const RADIUS_PACKET *original, const char *secret,
-			    const VALUE_PAIR **pvp, uint8_t *ptr, size_t room);
+int rad_vp2attr(const RADIUS_PACKET *packet,
+		const RADIUS_PACKET *original, const char *secret,
+		const VALUE_PAIR **pvp, uint8_t *ptr, size_t room);
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(DICT_ATTR *da);
@@ -413,17 +421,18 @@ VALUE_PAIR	*paircreate(int attr, int vendor, int type);
 void		pairfree(VALUE_PAIR **);
 void            pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor);
-void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor);
+void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void            pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
 VALUE_PAIR	*paircopyvp(const VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
-VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor);
+VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
+VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
 FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);
 VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
@@ -460,7 +469,7 @@ void		fr_printf_log(const char *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
-const char *	ip_ntoa(char *, uint32_t);
+const char 	*ip_ntoa(char *, uint32_t);
 char		*ifid_ntoa(char *buffer, size_t size, const uint8_t *ifid);
 uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
@@ -490,7 +499,7 @@ int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 #ifdef ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len);
+void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimitst);
 #endif /*ASCEND_BINARY*/
 
 /* random numbers in isaac.c */
@@ -518,8 +527,8 @@ typedef struct rbtree_t rbtree_t;
 typedef struct rbnode_t rbnode_t;
 
 rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
-			       void (*freeNode)(void *),
-			       int replace_flag);
+			      void (*freeNode)(void *),
+			      int replace_flag);
 void		rbtree_free(rbtree_t *tree);
 int		rbtree_insert(rbtree_t *tree, void *Data);
 rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);

@@ -51,9 +51,11 @@ static void *sql_conn_create(void *ctx)
 
 	rcode = (inst->module->sql_init_socket)(sqlsocket, inst->config);
 	if (rcode == 0) {
-		exec_trigger(NULL, inst->cs, "modules.sql.open");
+	  exec_trigger(NULL, inst->cs, "modules.sql.open", FALSE);
 		return sqlsocket;
 	}
+
+	exec_trigger(NULL, inst->cs, "modules.sql.fail", TRUE);
 
 	free(sqlsocket);
 	return NULL;
@@ -65,7 +67,7 @@ static int sql_conn_delete(void *ctx, void *connection)
 	SQL_INST *inst = ctx;
 	SQLSOCK *sqlsocket = connection;
 
-	exec_trigger(NULL, inst->cs, "modules.sql.close");
+	exec_trigger(NULL, inst->cs, "modules.sql.close", FALSE);
 
 	if (sqlsocket->conn) {
 		(inst->module->sql_close)(sqlsocket, inst->config);
@@ -222,15 +224,14 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 	/*
 	 *	Create the pair
 	 */
-	pair = pairmake(row[2], value, operator);
+	if (do_xlat) {
+		pair = pairmake_xlat(row[2], value, operator);
+	} else {
+		pair = pairmake(row[2], value, operator);
+	}
 	if (pair == NULL) {
 		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s", fr_strerror());
 		return -1;
-	}
-	if (do_xlat) {
-		pair->flags.do_xlat = 1;
-		strlcpy(pair->vp_strvalue, buf, sizeof(pair->vp_strvalue));
-		pair->length = 0;
 	}
 
 	/*
@@ -248,28 +249,24 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
  *	Purpose: call the module's sql_fetch_row and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst)
+int rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst)
 {
 	int ret;
 
-	if (sqlsocket->conn) {
-		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		return -1;
 	}
-
-	if (ret == SQL_DOWN) {
-		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
-		if (!sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
-		ret = (inst->module->sql_fetch_row)(sqlsocket, inst->config);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
-		}
+	
+	/* 
+	 * We can't implement reconnect logic here, because the caller may require
+	 * the original connection to free up queries or result sets associated with
+	 * that connection.
+	 */
+	ret = (inst->module->sql_fetch_row)(*sqlsocket, inst->config);
+	
+	if (ret < 0) {
+		radlog(L_ERR, "rlm_sql (%s): Error fetching row: %s", inst->config->xlat_name,
+			   (inst->module->sql_error)(*sqlsocket, inst->config));
 	}
 
 	return ret;
@@ -282,7 +279,7 @@ int rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst)
  *	Purpose: call the module's sql_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
+int rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 {
 	int ret;
 
@@ -293,27 +290,37 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 		return -1;
 	}
 
-	if (sqlsocket->conn) {
-		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		ret = -1;
+		goto sql_down;
 	}
+	
+	while (1) {
+		DEBUG("rlm_sql (%s): Executing query: '%s'",
+		      inst->config->xlat_name, query);
 
-	if (ret == SQL_DOWN) {
-		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
-		if (!sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
-		ret = (inst->module->sql_query)(sqlsocket, inst->config, query);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
+		ret = (inst->module->sql_query)(*sqlsocket, inst->config, query);
+		/*
+		 * Run through all available sockets until we exhaust all existing
+		 * sockets in the pool and fail to establish a *new* connection.
+		 */
+		if (ret == SQL_DOWN) {
+			sql_down:
+			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
+			if (!*sqlsocket) return SQL_DOWN;
+			
+			continue;
 		}
+		
+		if (ret < 0) {
+			radlog(L_ERR,
+				   "rlm_sql (%s): Database query error: '%s'",
+				   inst->config->xlat_name,
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
+		}
+		
+		return ret;
 	}
-
-	return ret;
 }
 
 /*************************************************************************
@@ -323,7 +330,7 @@ int rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
  *	Purpose: call the module's sql_select_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
+int rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query)
 {
 	int ret;
 
@@ -334,28 +341,37 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
 		return -1;
 	}
 
-	if (sqlsocket->conn) {
-		ret = (inst->module->sql_select_query)(sqlsocket, inst->config,
-						       query);
-	} else {
-		ret = SQL_DOWN;
+	if (!*sqlsocket || !(*sqlsocket)->conn) {
+		ret = -1;
+		goto sql_down;
 	}
+	
+	while (1) {
+		DEBUG("rlm_sql (%s): Executing query: '%s'",
+		      inst->config->xlat_name, query);
 
-	if (ret == SQL_DOWN) {
-		sqlsocket = fr_connection_reconnect(inst->pool, sqlsocket);
-		if (!sqlsocket) return -1;
-
-		/* retry the query on the newly connected socket */
-		ret = (inst->module->sql_select_query)(sqlsocket, inst->config, query);
-
-		if (ret) {
-			radlog(L_ERR, "rlm_sql (%s): failed after re-connect",
-			       inst->config->xlat_name);
-			return -1;
+		ret = (inst->module->sql_select_query)(*sqlsocket, inst->config, query);
+		/*
+		 * Run through all available sockets until we exhaust all existing
+		 * sockets in the pool and fail to establish a *new* connection.
+		 */
+		if (ret == SQL_DOWN) {
+			sql_down:
+			*sqlsocket = fr_connection_reconnect(inst->pool, *sqlsocket);
+			if (!*sqlsocket) return SQL_DOWN;
+			
+			continue;
 		}
+		
+		if (ret < 0) {
+			radlog(L_ERR,
+				   "rlm_sql (%s): Database query error '%s'",
+				   inst->config->xlat_name,
+				   (inst->module->sql_error)(*sqlsocket, inst->config));
+		}
+		
+		return ret;
 	}
-
-	return ret;
 }
 
 
@@ -366,56 +382,65 @@ int rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query)
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query)
+int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char *query)
 {
 	SQL_ROW row;
 	int     rows = 0;
 
-	if (rlm_sql_select_query(sqlsocket, inst, query)) {
-		radlog(L_ERR, "rlm_sql_getvpdata: database query error");
+	if (rlm_sql_select_query(sqlsocket, inst, query))
 		return -1;
-	}
-	while (rlm_sql_fetch_row(sqlsocket, inst)==0) {
-		row = sqlsocket->row;
+
+	while (rlm_sql_fetch_row(sqlsocket, inst) == 0) {
+		row = (*sqlsocket)->row;
 		if (!row)
 			break;
 		if (sql_userparse(pair, row) != 0) {
 			radlog(L_ERR | L_CONS, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			
+			(inst->module->sql_finish_select_query)(*sqlsocket, inst->config);
+			
 			return -1;
 		}
 		rows++;
 	}
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	(inst->module->sql_finish_select_query)(*sqlsocket, inst->config);
 
 	return rows;
 }
 
-void query_log(REQUEST *request, SQL_INST *inst, char *querystr)
+/*
+ *	Log the query to a file.
+ */
+void rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
+		       rlm_sql_config_section_t *section, char *query)
 {
-	FILE   *sqlfile = NULL;
+	int fd;
+	const char *filename = NULL;
+	char buffer[8192];
 
-	if (inst->config->sqltrace) {
-		char buffer[8192];
+	if (section) filename = section->logfile;
 
-		if (!radius_xlat(buffer, sizeof(buffer),
-				 inst->config->tracefile, request, NULL)) {
-		  radlog(L_ERR, "rlm_sql (%s): xlat failed.",
-			 inst->config->xlat_name);
-		  return;
-		}
+	if (!filename) filename = inst->config->logfile;
 
-		if ((sqlfile = fopen(buffer, "a")) == (FILE *) NULL) {
-			radlog(L_ERR, "rlm_sql (%s): Couldn't open file %s",
-			       inst->config->xlat_name,
-			       buffer);
-		} else {
-			int fd = fileno(sqlfile);
+	if (!filename) return;
 
-			rad_lockfd(fd, MAX_QUERY_LEN);
-			fputs(querystr, sqlfile);
-			fputs(";\n", sqlfile);
-			fclose(sqlfile); /* and release the lock */
-		}
+	if (!radius_xlat(buffer, sizeof(buffer), filename, request, NULL, NULL)) {
+		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
+		       inst->config->xlat_name);
+		return;
 	}
+
+	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
+	if (fd < 0) {
+		radlog(L_ERR, "rlm_sql (%s): Couldn't open logfile '%s': %s",
+		       inst->config->xlat_name, buffer, strerror(errno));
+		return;
+	}
+
+	rad_lockfd(fd, MAX_QUERY_LEN);
+	if ((write(fd, query, strlen(query) < 0) || (write(fd, ";\n", 2) < 0)))
+		radlog(L_ERR, "rlm_sql (%s): Failed writing to logfile '%s': %s",
+		       inst->config->xlat_name, buffer, strerror(errno));
+
+	close(fd);		/* and release the lock */
 }

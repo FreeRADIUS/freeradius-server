@@ -57,11 +57,6 @@ const char *progname = "radeapclient";
 
 #ifdef WITH_TLS
 #include <freeradius-devel/tls.h>
-
-int tls_success(UNUSED tls_session_t *ssn, UNUSED REQUEST *request){return 0;}
-void tls_fail(UNUSED tls_session_t *ssn){_exit(1);}
-fr_tls_status_t tls_ack_handler(UNUSED tls_session_t *tls_session, UNUSED REQUEST *request){return FR_TLS_INVALID;}
-fr_tls_status_t tls_application_data(UNUSED tls_session_t *ssn, UNUSED REQUEST *request){return FR_TLS_INVALID;}
 #endif
 
 radlog_dest_t radlog_dest = RADLOG_STDERR;
@@ -98,6 +93,8 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
 	fprintf(stderr, "  -v          Show program version information.\n");
 	fprintf(stderr, "  -x          Debugging mode.\n");
+	fprintf(stderr, "  -4          Use IPv4 address of server\n");
+	fprintf(stderr, "  -6          Use IPv6 address of server.\n");
 
 	exit(1);
 }
@@ -177,7 +174,7 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 		ip = &packet->dst_ipaddr;
 		port = packet->dst_port;
 	}
-	
+
 	/*
 	 *	Client-specific debugging re-prints the input
 	 *	packet into the client log.
@@ -303,8 +300,8 @@ static void cleanresp(RADIUS_PACKET *resp)
 	 * maybe should just copy things we care about, or keep
 	 * a copy of the original input and start from there again?
 	 */
-	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0);
-	pairdelete(&resp->vps, ATTRIBUTE_EAP_BASE+PW_EAP_IDENTITY, 0);
+	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, -1);
+	pairdelete(&resp->vps, ATTRIBUTE_EAP_BASE+PW_EAP_IDENTITY, 0, -1);
 
 	last = &resp->vps;
 	for(vp = *last; vp != NULL; vp = vpnext)
@@ -676,12 +673,12 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
 
-	if ((radstate = paircopy2(req->vps, PW_STATE, 0)) == NULL)
+	if ((radstate = paircopy2(req->vps, PW_STATE, 0, -1)) == NULL)
 	{
 		return 0;
 	}
 
-	if ((eapid = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0)) == NULL)
+	if ((eapid = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, -1)) == NULL)
 	{
 		return 0;
 	}
@@ -785,13 +782,13 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 
 	cleanresp(rep);
 
-	if ((state = paircopy2(req->vps, PW_STATE, 0)) == NULL)
+	if ((state = paircopy2(req->vps, PW_STATE, 0, -1)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no state attribute found\n");
 		return 0;
 	}
 
-	if ((id = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0)) == NULL)
+	if ((id = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, -1)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no EAP-ID attribute found\n");
 		return 0;
@@ -983,15 +980,22 @@ int main(int argc, char **argv)
 	FILE *fp;
 	int count = 1;
 	int id;
+	int force_af = AF_UNSPEC;
 
 	id = ((int)getpid() & 0xff);
 	fr_debug_flag = 0;
 
 	radlog_dest = RADLOG_STDERR;
 
-	while ((c = getopt(argc, argv, "c:d:f:hi:qst:r:S:xXv")) != EOF)
+	while ((c = getopt(argc, argv, "46c:d:f:hi:qst:r:S:xXv")) != EOF)
 	{
 		switch(c) {
+		case '4':
+			force_af = AF_INET;
+			break;
+		case '6':
+			force_af = AF_INET6;
+			break;
 		case 'c':
 			if (!isdigit((int) *optarg))
 				usage();
@@ -1116,11 +1120,45 @@ int main(int argc, char **argv)
 	req->id = id;
 
 	/*
-	 *	Strip port from hostname if needed.
+	 *	Resolve hostname.
 	 */
-	if ((p = strchr(argv[1], ':')) != NULL) {
-		*p++ = 0;
-		port = atoi(p);
+	if (force_af == AF_UNSPEC) force_af = AF_INET;
+	req->dst_ipaddr.af = force_af;
+	if (strcmp(argv[1], "-") != 0) {
+		const char *hostname = argv[1];
+		const char *portname = argv[1];
+		char buffer[256];
+
+		if (*argv[1] == '[') { /* IPv6 URL encoded */
+			p = strchr(argv[1], ']');
+			if ((size_t) (p - argv[1]) >= sizeof(buffer)) {
+				usage();
+			}
+
+			memcpy(buffer, argv[1] + 1, p - argv[1] - 1);
+			buffer[p - argv[1] - 1] = '\0';
+
+			hostname = buffer;
+			portname = p + 1;
+
+		}
+		p = strchr(portname, ':');
+		if (p && (strchr(p + 1, ':') == NULL)) {
+			*p = '\0';
+			portname = p + 1;
+		} else {
+			portname = NULL;
+		}
+
+		if (ip_hton(hostname, force_af, &req->dst_ipaddr) < 0) {
+			fprintf(stderr, "radclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			exit(1);
+		}
+
+		/*
+		 *	Strip port from hostname if needed.
+		 */
+		if (portname) port = atoi(portname);
 	}
 
 	/*
@@ -1153,15 +1191,7 @@ int main(int argc, char **argv)
 	} else {
 		usage();
 	}
-
-	/*
-	 *	Resolve hostname.
-	 */
 	req->dst_port = port;
-	if (ip_hton(argv[1], AF_INET, &req->dst_ipaddr) < 0) {
-		fprintf(stderr, "radclient: Failed to find IP address for host %s\n", argv[1]);
-		exit(1);
-	}
 
 	/*
 	 *	Add the secret.
@@ -1279,7 +1309,7 @@ static void map_eap_types(RADIUS_PACKET *req)
 		 */
 
 		/* nuke any existing EAP-Messages */
-		pairdelete(&req->vps, PW_EAP_MESSAGE, 0);
+		pairdelete(&req->vps, PW_EAP_MESSAGE, 0, -1);
 
 		memset(&ep, 0, sizeof(ep));
 		ep.code = eapcode;
@@ -1463,7 +1493,7 @@ main(int argc, char *argv[])
 		}
 
 		/* find the EAP-Message, copy it to req2 */
-		vp = paircopy2(req->vps, PW_EAP_MESSAGE);
+		vp = paircopy2(req->vps, PW_EAP_MESSAGE, 0, -1);
 
 		if(vp == NULL) continue;
 

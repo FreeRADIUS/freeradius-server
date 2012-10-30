@@ -17,8 +17,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 1999-2008  The FreeRADIUS server project
- * Copyright 2000  Alan DeKok <aland@ox.org>
+ * Copyright 1999-2012  The FreeRADIUS server project
+ * Copyright 2012  Alan DeKok <aland@ox.org>
  * Copyright 2000  Chris Parker <cparker@starnetusa.com>
  */
 
@@ -30,61 +30,70 @@ RCSID("$Id$")
 /*
  *	Display the revision number for this program
  */
-void NEVER_RETURNS version(void)
+void version(void)
 {
+	radlog(L_INFO, "%s: %s", progname, radiusd_version);
+	DEBUG3("Functionality: ");
+		
+#ifdef WITH_ACCOUNTING
+	DEBUG3(" accounting");
+#endif
+	DEBUG3(" authentication"); /* always enabled */
 
-	printf("%s: %s\n", progname, radiusd_version);
-#if 0
-	printf("Compilation flags: ");
+#ifdef WITH_COA
+	DEBUG3(" coa");
+#endif
+#ifdef WITH_COMMAND_SOCKET
+	DEBUG3(" control-socket");
+#endif
+#ifdef WITH_DETAIL
+	DEBUG3(" detail");
+#endif
+#ifdef WITH_DHCP
+	DEBUG3(" dhcp");
+#endif
+#ifdef WITH_DYNAMIC_CLIENTS
+	DEBUG3(" dynamic clients");
+#endif
+#ifdef OSFC2
+	DEBUG3(" OSFC2");
+#endif
+#ifdef WITH_PROXY
+	DEBUG3(" proxy");
+#endif
+#ifdef HAVE_PCREPOSIX_H
+	DEBUG3(" regex-PCRE");
+#else
+#ifdef HAVE_REGEX_H
+	DEBUG3(" regex-posix");
+#endif
+#endif
 
-	/* here are all the conditional feature flags */
-#if defined(WITH_DHCP)
-	printf(" WITH_DHCP");
+#ifdef WITH_SESSION_MGMT
+	DEBUG3(" session-management");
 #endif
-#if defined(WITH_VMPS)
-	printf(" WITH_VMPS");
+#ifdef WITH_STATS
+	DEBUG3(" stats");
 #endif
-#if defined(OSFC2)
-	printf(" OSFC2");
+#ifdef WITH_TCP
+	DEBUG3(" tcp");
 #endif
-#if defined(WITHOUT_PROXY)
-	printf(" WITHOUT_PROXY");
+#ifdef WITH_TLS
+	DEBUG3(" TLS");
 #endif
-#if defined(WITHOUT_DETAIL)
-	printf(" WITHOUT_DETAIL");
+#ifdef WITH_UNLANG
+	DEBUG3(" unlang");
 #endif
-#if defined(WITHOUT_SESSION_MGMT)
-	printf(" WITHOUT_SESSION_MGMT");
+#ifdef WITH_VMPS
+	DEBUG3(" vmps");
 #endif
-#if defined(WITHOUT_UNLANG)
-	printf(" WITHOUT_UNLANG");
-#endif
-#if defined(WITHOUT_ACCOUNTING)
-	printf(" WITHOUT_ACCOUNTING");
-#endif
-#if defined(WITHOUT_DYNAMIC_CLIENTS)
-	printf(" WITHOUT_DYNAMIC_CLIENTS");
-#endif
-#if defined(WITHOUT_STATS)
-	printf(" WITHOUT_STATS");
-#endif
-#if defined(WITHOUT_COMMAND_SOCKET)
-	printf(" WITHOUT_COMMAND_SOCKET");
-#endif
-#if defined(WITHOUT_COA)
-	printf(" WITHOUT_COA");
-#endif
-#if defined(WITHOUT_TLS)
-	printf(" WITHOUT_TLS");
-#endif
-	printf("\n");
-#endif
-	printf("Copyright (C) 1999-2011 The FreeRADIUS server project and contributors.\n");
-	printf("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
-	printf("PARTICULAR PURPOSE.\n");
-	printf("You may redistribute copies of FreeRADIUS under the terms of the\n");
-	printf("GNU General Public License.\n");
-	printf("For more information about these matters, see the file named COPYRIGHT.\n");
-	exit (0);
+	radlog(L_INFO, "Copyright (C) 1999-2012 The FreeRADIUS server project and contributors.");
+	radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
+	radlog(L_INFO, "PARTICULAR PURPOSE.");
+	radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the");
+	radlog(L_INFO, "GNU General Public License.");
+	radlog(L_INFO, "For more information about these matters, see the file named COPYRIGHT.");
+	
+	fflush(NULL);
 }
 

@@ -178,7 +178,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 
 	if (data->new_attr){
 		/* new_attribute = yes */
-		if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL)) {
+		if (!radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL, NULL)) {
 			DEBUG2("%s: xlat on replace string failed.", data->name);
 			return ret;
 		}
@@ -274,7 +274,7 @@ do_again:
 		if (data->nocase)
 			cflags |= REG_ICASE;
 
-		if (!radius_xlat(search_STR, sizeof(search_STR), data->search, request, NULL) && data->search_len != 0) {
+		if (!radius_xlat(search_STR, sizeof(search_STR), data->search, request, NULL, NULL) && data->search_len != 0) {
 			DEBUG2("%s: xlat on search string failed.", data->name);
 			return ret;
 		}
@@ -367,7 +367,7 @@ do_again:
 
 			if (!done_xlat){
 				if (data->replace_len != 0 &&
-				radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL) == 0) {
+				radius_xlat(replace_STR, sizeof(replace_STR), data->replace, request, NULL, NULL) == 0) {
 					DEBUG2("%s: xlat on replace string failed.", data->name);
 					return ret;
 				}

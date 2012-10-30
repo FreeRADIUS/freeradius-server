@@ -6,7 +6,7 @@ TARGET		= @targetname@
 SRCS		= rlm_sql.c sql.c
 HEADERS		= rlm_sql.h conf.h
 RLM_INSTALL	= install-drivers
-RLM_CFLAGS	= $(INCLTDL) -I$(top_builddir)/src/modules/rlm_sql
+RLM_CFLAGS	= -I$(top_builddir)/src/modules/rlm_sql
 RLM_LIBS	= $(LIBLTDL)
 RLM_SUBDIRS	= drivers
 

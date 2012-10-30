@@ -17,7 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000-2004,2006  The FreeRADIUS server project
+ * Copyright 2000-2012  The FreeRADIUS server project
  * Copyright 1999,2000  Miquel van Smoorenburg <miquels@cistron.nl>
  * Copyright 2000  Alan DeKok <aland@ox.org>
  * Copyright 2000  Alan Curry <pacman-radius@cqc.com>
@@ -65,7 +65,11 @@ int log_stripped_names;
 int debug_flag = 0;
 int check_config = FALSE;
 
-const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION ", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
+const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" RADIUSD_VERSION_COMMIT ")"
+#endif
+", for host " HOSTINFO ", built on " __DATE__ " at " __TIME__;
 
 pid_t radius_pid;
 
@@ -113,7 +117,7 @@ int main(int argc, char *argv[])
 	{
 		WSADATA wsaData;
 		if (WSAStartup(MAKEWORD(2, 0), &wsaData)) {
-			fprintf(stderr, "%s: Unable to initialize socket library.\n");
+		  fprintf(stderr, "%s: Unable to initialize socket library.\n", progname);
 			return 1;
 		}
 	}
@@ -180,6 +184,7 @@ int main(int argc, char *argv[])
 					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
 					exit(1);
 				}
+				fr_log_fp = fdopen(mainconfig.radlog_fd, "a");
 				break;		  
 
 			case 'i':
@@ -218,9 +223,14 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'v':
+				/* Don't print timestamps */
+				debug_flag += 2;
+				fr_log_fp = stdout;
+				mainconfig.radlog_dest = RADLOG_STDOUT;
+				mainconfig.radlog_fd = STDOUT_FILENO;
+				
 				version();
-				break;
-
+				exit(0);
 			case 'X':
 				spawn_flag = FALSE;
 				dont_fork = TRUE;
@@ -228,8 +238,8 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth = TRUE;
 				mainconfig.log_auth_badpass = TRUE;
 				mainconfig.log_auth_goodpass = TRUE;
-				fr_log_fp = stdout;
 		do_stdout:
+				fr_log_fp = stdout;
 				mainconfig.radlog_dest = RADLOG_STDOUT;
 				mainconfig.radlog_fd = STDOUT_FILENO;
 				break;
@@ -249,27 +259,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (debug_flag) {
-		radlog(L_INFO, "%s", radiusd_version);
-		radlog(L_INFO, "Copyright (C) 1999-2009 The FreeRADIUS server project and contributors.\n");
-		radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A\n");
-		radlog(L_INFO, "PARTICULAR PURPOSE.\n");
-		radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the\n");
-		radlog(L_INFO, "GNU General Public License v2.\n");
-		radlog(L_INFO, "\n");
-		radlog(L_INFO, "Compilation options:\n");
-#ifdef HAVE_PCREPOSIX_H
-		radlog(L_INFO, "Regex flavour: PCRE\n");
-#else
-#ifdef HAVE_REGEX_H
-		radlog(L_INFO, "Regex flavour: Posix\n");
-#else
-		radlog(L_INFO, "Regex flavour: none\n");
-#endif
-#endif
-
-		fflush(NULL);
-	}
+	if (debug_flag)
+		version();
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
@@ -416,7 +407,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	exec_trigger(NULL, NULL, "server.start");
+	exec_trigger(NULL, NULL, "server.start", FALSE);
 
 	/*
 	 *	Process requests until HUP or exit.
@@ -436,7 +427,7 @@ int main(int argc, char *argv[])
 		radlog(L_INFO, "Exiting normally.");
 	}
 
-	exec_trigger(NULL, NULL, "server.stop");
+	exec_trigger(NULL, NULL, "server.stop", FALSE);
 
 	/*
 	 *	Ignore the TERM signal: we're

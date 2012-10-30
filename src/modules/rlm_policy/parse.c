@@ -1532,7 +1532,7 @@ static int parse_named_policy(policy_lex_file_t *lexer)
 	}
 
 	if ((lexer->debug & POLICY_DEBUG_PRINT_POLICY) != 0) {
-		rlm_policy_print(this);
+		rlm_policy_print((policy_item_t *) this);
 	}
 
        	return 1;

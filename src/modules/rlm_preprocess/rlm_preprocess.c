@@ -43,15 +43,14 @@ typedef struct rlm_preprocess_t {
 	int		with_specialix_jetstream_hack;
 	int		with_cisco_vsa_hack;
 	int		with_alvarion_vsa_hack;
+	int		with_cablelabs_vsa_hack;
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {
 	{ "huntgroups",			PW_TYPE_FILENAME,
-	  offsetof(rlm_preprocess_t,huntgroup_file), NULL,
-	  "${raddbdir}/huntgroups" },
+	  offsetof(rlm_preprocess_t,huntgroup_file), NULL, NULL },
 	{ "hints",			PW_TYPE_FILENAME,
-	  offsetof(rlm_preprocess_t,hints_file), NULL,
-	  "${raddbdir}/hints" },
+	  offsetof(rlm_preprocess_t,hints_file), NULL, NULL },
 	{ "with_ascend_hack",		PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_ascend_hack), NULL, "no" },
 	{ "ascend_channels_per_line",   PW_TYPE_INTEGER,
@@ -66,6 +65,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_preprocess_t,with_cisco_vsa_hack), NULL, "no" },
 	{ "with_alvarion_vsa_hack",        PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_alvarion_vsa_hack), NULL, "no" },
+	{ "with_cablelabs_vsa_hack",        PW_TYPE_BOOLEAN,
+	  offsetof(rlm_preprocess_t,with_cablelabs_vsa_hack), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -78,7 +79,7 @@ static int fallthrough(VALUE_PAIR *vp)
 	VALUE_PAIR *tmp;
 	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
 
-	return tmp ? tmp->lvalue : 0;
+	return tmp ? tmp->vp_integer : 0;
 }
 
 /*
@@ -199,6 +200,66 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 		number++;
 	}
 }
+
+/*
+ *	Cablelabs magic, taken from:
+ *
+ * http://www.cablelabs.com/packetcable/downloads/specs/PKT-SP-EM-I12-05812.pdf
+ *
+ *	Sample data is:
+ *
+ *	0x0001d2d2026d30310000000000003030
+ *	  3130303030000e812333000100033031
+ *	  00000000000030303130303030000000
+ *	  00063230313230313331303630323231
+ *	  2e3633390000000081000500
+ */
+
+typedef struct cl_timezone_t {
+	uint8_t		dst;
+	uint8_t		sign;
+	uint8_t		hh[2];
+	uint8_t		mm[2];
+	uint8_t		ss[2];
+} cl_timezone_t;
+
+typedef struct cl_bcid_t {
+	uint32_t	timestamp;
+	uint8_t		element_id[8];
+	cl_timezone_t	timezone;
+	uint32_t	event_counter;
+} cl_bcid_t;
+
+typedef struct cl_em_hdr_t {
+	uint16_t	version;
+	cl_bcid_t	bcid;
+	uint16_t        message_type;
+	uint16_t	element_type;
+	uint8_t		element_id[8];
+	cl_timezone_t	time_zone;
+	uint32_t	sequence_number;
+	uint8_t		event_time[18];
+	uint8_t		status[4];
+	uint8_t		priority;
+	uint16_t	attr_count; /* of normal Cablelabs VSAs */
+	uint8_t		event_object;
+} cl_em_hdr_t;
+
+
+static void cablelabs_vsa_hack(VALUE_PAIR **list)
+{
+	VALUE_PAIR *ev;
+
+	ev = pairfind(*list, 1, 4491); /* Cablelabs-Event-Message */
+	if (!ev) return;
+
+	/*
+	 *	FIXME: write 100's of lines of code to decode
+	 *	each data structure above.
+	 */
+}
+
+
 
 /*
  *	Mangle username if needed, IN PLACE.
@@ -361,8 +422,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 */
 			add = paircopy(i->reply);
 			ft = fallthrough(add);
-			pairdelete(&add, PW_STRIP_USER_NAME, 0);
-			pairdelete(&add, PW_FALL_THROUGH, 0);
+			pairdelete(&add, PW_STRIP_USER_NAME, 0, -1);
+			pairdelete(&add, PW_FALL_THROUGH, 0, -1);
 			pairxlatmove(request, &request->packet->vps, &add);
 			pairfree(&add);
 			updated = 1;
@@ -566,6 +627,14 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		alvarion_vsa_hack(request->packet->vps);
 	}
 
+	if (data->with_cablelabs_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the Cablelabs
+		 *	people are crazy.
+		 */
+		cablelabs_vsa_hack(&request->packet->vps);
+	}
+
 	/*
 	 *	Note that we add the Request-Src-IP-Address to the request
 	 *	structure BEFORE checking huntgroup access.  This allows
@@ -611,6 +680,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 static int preprocess_preaccounting(void *instance, REQUEST *request)
 {
 	int r;
+	VALUE_PAIR *vp;
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
 	/*
@@ -635,6 +705,14 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 		alvarion_vsa_hack(request->packet->vps);
 	}
 
+	if (data->with_cablelabs_vsa_hack) {
+	 	/*
+		 *	We need to run this hack because the Cablelabs
+		 *	people are crazy.
+		 */
+		cablelabs_vsa_hack(&request->packet->vps);
+	}
+
 	/*
 	 *  Ensure that we log the NAS IP Address in the packet.
 	 */
@@ -643,6 +721,23 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	}
 
 	hints_setup(data->hints, request);
+
+	/*
+	 *	Add an event timestamp.  This means that the rest of
+	 *	the server can use it, rather than various error-prone
+	 *	manual calculations.
+	 */
+	vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+	if (!vp) {
+		VALUE_PAIR *delay;
+
+		vp = radius_paircreate(request, &request->packet->vps,
+				       PW_EVENT_TIMESTAMP, 0,
+				       PW_TYPE_DATE);
+		vp->vp_date = request->packet->timestamp.tv_sec;
+		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0);
+		if (delay) vp->vp_date -= delay->vp_integer;
+	}
 
 	if ((r = huntgroup_access(request,
 				  data->huntgroups)) != RLM_MODULE_OK) {

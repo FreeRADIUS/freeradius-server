@@ -38,7 +38,6 @@ struct hashtable {
 	int ignorenis;
 	char * filename;
 	struct mypasswd **table;
-	struct mypasswd *last_found;
 	char buffer[1024];
 	FILE *fp;
 	char delimiter;
@@ -156,8 +155,6 @@ static void release_ht(struct hashtable * ht){
 static struct hashtable * build_hash_table (const char * file, int nfields,
 	int keyfield, int islist, int tablesize, int ignorenis, char delimiter)
 {
-#define passwd ((struct mypasswd *) ht->buffer)
-	char buffer[1024];
 	struct hashtable* ht;
 	size_t len;
 	unsigned int h;
@@ -165,6 +162,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	char *list;
 	char *nextlist=0;
 	int i;
+	char buffer[1024];
 
 	ht = (struct hashtable *) rad_malloc(sizeof(struct hashtable));
 	if(!ht) {
@@ -245,21 +243,24 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 #undef passwd
 }
 
-static struct mypasswd * get_next(char *name, struct hashtable *ht)
+static struct mypasswd * get_next(char *name, struct hashtable *ht,
+				  struct mypasswd **last_found)
 {
-#define passwd ((struct mypasswd *) ht->buffer)
+	struct mypasswd * passwd;
 	struct mypasswd * hashentry;
 	char buffer[1024];
 	int len;
 	char *list, *nextlist;
 
+	passwd = (struct mypasswd *) ht->buffer;
+
 	if (ht->tablesize > 0) {
 		/* get saved address of next item to check from buffer */
-		hashentry = ht->last_found;
+		hashentry = *last_found;
 		for (; hashentry; hashentry = hashentry->next) {
 			if (!strcmp(hashentry->field[ht->keyfield], name)) {
 				/* save new address */
-				ht->last_found = hashentry->next;
+				*last_found = hashentry->next;
 				return hashentry;
 			}
 		}
@@ -267,6 +268,9 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 	}
 	/*	printf("try to find in file\n"); */
 	if (!ht->fp) return NULL;
+
+	passwd = (struct mypasswd *) ht->buffer;
+
 	while (fgets(buffer, 1024,ht->fp)) {
 		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
 			(!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
@@ -288,22 +292,22 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht)
 	fclose(ht->fp);
 	ht->fp = NULL;
 	return NULL;
-#undef passwd
 }
 
-static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
+static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
+				    struct mypasswd **last_found)
 {
 	int h;
 	struct mypasswd * hashentry;
 
 	if (!ht || !name || *name == '\0') return NULL;
-	ht->last_found = NULL;
+	*last_found = NULL;
 	if (ht->tablesize > 0) {
 		h = hash (name, ht->tablesize);
 		for (hashentry = ht->table[h]; hashentry; hashentry = hashentry->next)
 			if (!strcmp(hashentry->field[ht->keyfield], name)){
 				/* save address of next item to check into buffer */
-				ht->last_found=hashentry->next;
+				*last_found=hashentry->next;
 				return hashentry;
 			}
 		return NULL;
@@ -313,7 +317,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 		ht->fp = NULL;
 	}
 	if (!(ht->fp=fopen(ht->filename, "r"))) return NULL;
-	return get_next(name, ht);
+	return get_next(name, ht, last_found);
 }
 
 #ifdef TEST
@@ -323,7 +327,7 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht)
 int main(void){
  struct hashtable *ht;
  char *buffer;
- struct mypasswd* pw;
+ struct mypasswd* pw, *last_found;
  int i;
 
  ht = build_hash_table("/etc/group", 4, 3, 1, 100, 0, ":");
@@ -338,9 +342,9 @@ int main(void){
 
  while(fgets(buffer, 1024, stdin)){
   buffer[strlen(buffer)-1] = 0;
-  pw = get_pw_nam(buffer, ht);
+  pw = get_pw_nam(buffer, ht, &last_found);
   printpw(pw,4);
-  while (pw = get_next(buffer, ht)) printpw(pw,4);
+  while (pw = get_next(buffer, ht, &last_found)) printpw(pw,4);
  }
  release_ht(ht);
 }
@@ -402,12 +406,21 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	if(!inst->filename || *inst->filename == '\0' || !inst->format || *inst->format == '\0') {
-		radlog(L_ERR, "rlm_passwd: cann't find passwd file and/or format in configuration");
+		radlog(L_ERR, "rlm_passwd: can't find passwd file and/or format in configuration");
+		free(inst);
 		return -1;
 	}
+
+	if (inst->hashsize == 0) {
+		radlog(L_ERR, "rlm_passwd: hashsize=0 is no longer permitted as it will break the server.");
+		free(inst);
+		return -1;
+	}
+
 	lf=strdup(inst->format);
 	if ( lf == NULL) {
 		radlog(L_ERR, "rlm_passwd: memory allocation failed for lf");
+		free(inst);
 		return -1;
 	}
 	memset(lf, 0, strlen(inst->format));
@@ -519,7 +532,7 @@ static int passwd_map(void *instance, REQUEST *request)
 #define inst ((struct passwd_instance *)instance)
 	char buffer[1024];
 	VALUE_PAIR * key;
-	struct mypasswd * pw;
+	struct mypasswd * pw, *last_found;
 	int found = 0;
 
 	for (key = request->packet->vps;
@@ -529,14 +542,14 @@ static int passwd_map(void *instance, REQUEST *request)
 		 *	Ensure we have the string form of the attribute
 		 */
 		vp_prints_value(buffer, sizeof(buffer), key, 0);
-		if (! (pw = get_pw_nam(buffer, inst->ht)) ) {
+		if (! (pw = get_pw_nam(buffer, inst->ht, &last_found)) ) {
 			continue;
 		}
 		do {
 			addresult(inst, request, &request->config_items, pw, 0, "config_items");
 			addresult(inst, request, &request->reply->vps, pw, 1, "reply_items");
 			addresult(inst, request, &request->packet->vps, 	pw, 2, "request_items");
-		} while ( (pw = get_next(buffer, inst->ht)) );
+		} while ( (pw = get_next(buffer, inst->ht, &last_found)) );
 		found++;
 		if (!inst->allowmultiple) break;
 	}

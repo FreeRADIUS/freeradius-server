@@ -34,7 +34,7 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-char *radius_dir = RADDBDIR;
+const char *raddb_dir = RADDBDIR;
 const char *progname = "radconf2xml";
 
 /*
@@ -47,7 +47,8 @@ struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_log_file = NULL;
 int radius_xlat(UNUSED char *out, UNUSED int outlen, UNUSED const char *fmt,
-		UNUSED REQUEST *request, UNUSED RADIUS_ESCAPE_STRING func)
+		UNUSED REQUEST *request,
+		UNUSED RADIUS_ESCAPE_STRING func, UNUSED void *arg)
 {
 	return -1;
 }
@@ -84,7 +85,7 @@ int main(int argc, char **argv)
 				fprintf(stderr, "%s: -d and -f cannot be used together.\n", progname);
 				exit(1);
 			}
-			radius_dir = optarg;
+			raddb_dir = optarg;
 			break;
 
 		default:
@@ -102,10 +103,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	snprintf(buffer, sizeof(buffer), "%s/%s.conf", radius_dir, name);
+	snprintf(buffer, sizeof(buffer), "%s/%s.conf", raddb_dir, name);
 	cs = cf_file_read(buffer);
 	if (!cs) {
-		fprintf(stderr, "%s: Errors reading %s\n",
+		fprintf(stderr, "%s: Errors reading or parsing %s\n",
 			progname, buffer);
 		exit(1);
 	}

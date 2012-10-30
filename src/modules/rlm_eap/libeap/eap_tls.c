@@ -81,6 +81,74 @@ void eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr)
 }
 
 /*
+ *	Send an initial eap-tls request to the peer.
+ *
+ *	Frame eap reply packet.
+ *	len = header + type + tls_typedata
+ *	tls_typedata = flags(Start (S) bit set, and no data)
+ *
+ *	Once having received the peer's Identity, the EAP server MUST
+ *	respond with an EAP-TLS/Start packet, which is an
+ *	EAP-Request packet with EAP-Type=EAP-TLS, the Start (S) bit
+ *	set, and no data.  The EAP-TLS conversation will then begin,
+ *	with the peer sending an EAP-Response packet with
+ *	EAP-Type = EAP-TLS.  The data field of that packet will
+ *	be the TLS data.
+ *
+ *	Fragment length is Framed-MTU - 4.
+ */
+tls_session_t *eaptls_session(fr_tls_server_conf_t *tls_conf, EAP_HANDLER *handler, int client_cert)
+{
+	tls_session_t	*ssn;
+	int		verify_mode = 0;
+	REQUEST		*request = handler->request;
+
+	handler->tls = TRUE;
+	handler->finished = FALSE;
+
+	/*
+	 *	Every new session is started only from EAP-TLS-START.
+	 *	Before Sending EAP-TLS-START, open a new SSL session.
+	 *	Create all the required data structures & store them
+	 *	in Opaque.  So that we can use these data structures
+	 *	when we get the response
+	 */
+	ssn = tls_new_session(tls_conf, request, client_cert);
+	if (!ssn) {
+		return NULL;
+	}
+
+	/*
+	 *	Verify the peer certificate, if asked.
+	 */
+	if (client_cert) {
+		RDEBUG2("Requiring client certificate");
+		verify_mode = SSL_VERIFY_PEER;
+		verify_mode |= SSL_VERIFY_FAIL_IF_NO_PEER_CERT;
+		verify_mode |= SSL_VERIFY_CLIENT_ONCE;
+	}
+	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
+
+	/*
+	 *	Create a structure for all the items required to be
+	 *	verified for each client and set that as opaque data
+	 *	structure.
+	 *
+	 *	NOTE: If we want to set each item sepearately then
+	 *	this index should be global.
+	 */
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_HANDLER, (void *)handler);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)tls_conf);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&(handler->certs));
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_IDENTITY, (void *)&(handler->identity));
+#ifdef HAVE_OPENSSL_OCSP_H
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
+#endif
+
+	return ssn;
+}
+
+/*
    The S flag is set only within the EAP-TLS start message
    sent from the EAP server to the peer.
 */
@@ -877,3 +945,87 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 
 	return 1;
 }
+
+/*
+ *	Parse TLS configuration
+ *
+ *	If the option given by 'attr' is set, we find the config section
+ *	of that name and use that for the TLS configuration. If not, we
+ *	fall back to compatibility mode and read the TLS options from
+ *	the 'tls' section.
+ */
+fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *attr)
+{
+	const char 		*tls_conf_name;
+	CONF_PAIR		*cp;
+	CONF_SECTION		*parent;
+	CONF_SECTION		*tls_cs;
+	fr_tls_server_conf_t	*tls_conf;
+
+	if (!cs)
+		return NULL;
+
+	rad_assert(attr != NULL);
+
+	parent = cf_item_parent(cf_sectiontoitem(cs));
+
+	cp = cf_pair_find(cs, attr);
+	if (cp) {
+		tls_conf_name = cf_pair_value(cp);
+
+		tls_cs = cf_section_sub_find_name2(parent, TLS_CONFIG_SECTION, tls_conf_name);
+
+		if (!tls_cs) {
+			radlog(L_ERR, "error: cannot find tls config '%s'", tls_conf_name);
+			return NULL;
+		}
+	} else {
+		/*
+		 *	If we can't find the section given by the 'attr', we
+		 *	fall-back to looking for the "tls" section, as in
+		 *	previous versions.
+		 *
+		 *	We don't fall back if the 'attr' is specified, but we can't
+		 *	find the section - that is just a config error.
+		 */
+		radlog(L_INFO, "debug: '%s' option missing, trying to use legacy configuration", attr);
+		tls_cs = cf_section_sub_find(parent, "tls");
+	}
+
+	if (!tls_cs)
+		return NULL;
+
+	tls_conf = tls_server_conf_parse(tls_cs);
+
+	if (!tls_conf)
+		return NULL;
+
+	/*
+	 *	The EAP RFC's say 1020, but we're less picky.
+	 */
+	if (tls_conf->fragment_size < 100) {
+		radlog(L_ERR, "error: Fragment size is too small.");
+		return NULL;
+	}
+
+	/*
+	 *	The maximum size for a RADIUS packet is 4096,
+	 *	minus the header (20), Message-Authenticator (18),
+	 *	and State (18), etc. results in about 4000 bytes of data
+	 *	that can be devoted *solely* to EAP.
+	 */
+	if (tls_conf->fragment_size > 4000) {
+		radlog(L_ERR, "error: Fragment size is too large.");
+		return NULL;
+	}
+
+	/*
+	 *	Account for the EAP header (4), and the EAP-TLS header
+	 *	(6), as per Section 4.2 of RFC 2716.  What's left is
+	 *	the maximum amount of data we read from a TLS buffer.
+	 */
+	tls_conf->fragment_size -= 10;
+
+	return tls_conf;
+}
+

@@ -88,32 +88,34 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
     if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL) {
         acctstatustype = pair->vp_integer;
     } else {
-        radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL);
+        radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL, NULL);
         radlog(L_ERR, "rlm_acctlog (%s)", logstr);
         return RLM_MODULE_INVALID;
     }
 
 	switch (acctstatustype) {
 		case PW_STATUS_START:
-			radius_xlat(logstr, sizeof(logstr), inst->acctstart, request, NULL);
+			radius_xlat(logstr, sizeof(logstr), inst->acctstart, request, NULL, NULL);
 		break;
 		case PW_STATUS_STOP:
-			radius_xlat(logstr, sizeof(logstr), inst->acctstop, request, NULL);
+			radius_xlat(logstr, sizeof(logstr), inst->acctstop, request, NULL, NULL);
 		break;
 		case PW_STATUS_ALIVE:
-			radius_xlat(logstr, sizeof(logstr), inst->acctupdate, request, NULL);
+			radius_xlat(logstr, sizeof(logstr), inst->acctupdate, request, NULL, NULL);
 		break;
 		case PW_STATUS_ACCOUNTING_ON:
-			radius_xlat(logstr, sizeof(logstr), inst->accton, request, NULL);
+			radius_xlat(logstr, sizeof(logstr), inst->accton, request, NULL, NULL);
 		break;
 		case PW_STATUS_ACCOUNTING_OFF:
-			radius_xlat(logstr, sizeof(logstr), inst->acctoff, request, NULL);
+			radius_xlat(logstr, sizeof(logstr), inst->acctoff, request, NULL, NULL);
 		break;
+
+	default:
+		*logstr = 0;
 
 	}
 
-	if (strlen(logstr))
-		radlog(L_ACCT,"%s", logstr);
+	if (*logstr) radlog(L_ACCT,"%s", logstr);
 
 	return RLM_MODULE_OK;
 }

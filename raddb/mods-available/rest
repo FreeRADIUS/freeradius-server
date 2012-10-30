@@ -1,0 +1,39 @@
+rest {
+	# rlm_rest will open a connection to the server specified in connect_uri
+	# to populate the connection cache, ready for the first request.
+	# The server will not start if the server specified is unreachable.
+	#
+	# If you wish to disable this pre-caching and reachability check,
+	# comment out the configuration item below.
+	connect_uri = "http://127.0.0.1/"
+	
+	pool {
+	     start = 5
+	     max = 10
+	     spare = 3
+	     uses = 0
+	     idle_timeout = 100
+	     lifetime = 0
+	}
+
+	authorize {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authorize"
+		method = "get"
+	}
+	authenticate {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=authenticate"
+		method = "get"
+	}
+	accounting {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=accounting"
+		method = "post"
+	}
+	session {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=checksimul"
+		method = "post"
+	}
+	post-auth {
+		uri = "${..connect_uri}/user/%{User-Name}/mac/%{Called-Station-ID}?section=post-auth"
+		method = "post"
+	}
+}

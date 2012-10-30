@@ -51,6 +51,7 @@ RCSID("$Id$")
 #endif
 
 
+#ifdef DEBUG_PRINT_PACKET
 static void print_packet(RADIUS_PACKET *packet)
 {
 	char src[256], dst[256];
@@ -62,7 +63,7 @@ static void print_packet(RADIUS_PACKET *packet)
 		src, packet->src_port, dst, packet->dst_port);
 
 }
-
+#endif
 
 /*
  *	We'll use this below.
@@ -82,13 +83,18 @@ typedef struct rad_listen_master_t {
 
 static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
 
+#ifdef WITH_COMMAND_SOCKET
+static int command_tcp_recv(rad_listen_t *listener);
+static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
+static int command_write_magic(int newfd, listen_socket_t *sock);
+#endif
+
 /*
  *	Xlat for %{listen:foo}
  */
 static size_t xlat_listen(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out,
-		       size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
+		       const char *fmt, char *out,
+		       size_t outlen)
 {
 	const char *value = NULL;
 	CONF_PAIR *cp;
@@ -300,7 +306,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	}
 
 	request->server = client->server;
-	exec_trigger(request, NULL, "server.client.add");
+	exec_trigger(request, NULL, "server.client.add", FALSE);
 
 	request_free(&request);
 
@@ -471,11 +477,11 @@ static int dual_tcp_recv(rad_listen_t *listener)
 		/*
 		 *	Decrement the number of connections.
 		 */
-		if (sock->parent->num_connections > 0) {
-			sock->parent->num_connections--;
+		if (sock->parent->limit.num_connections > 0) {
+			sock->parent->limit.num_connections--;
 		}
-		if (sock->client->num_connections > 0) {
-			sock->client->num_connections--;
+		if (sock->client->limit.num_connections > 0) {
+			sock->client->limit.num_connections--;
 		}
 
 		/*
@@ -561,9 +567,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	Non-blocking sockets must handle this.
 		 */
+#ifdef EWOULDBLOCK
 		if (errno == EWOULDBLOCK) {
 			return 0;
 		}
+#endif
 
 		DEBUG2(" ... failed to accept connection.");
 		return -1;
@@ -586,21 +594,21 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	}
 
 	/*
-	 *	Enforce max_connectionsx on client && listen section.
+	 *	Enforce max_connections on client && listen section.
 	 */
-	if ((client->max_connections != 0) &&
-	    (client->max_connections == client->num_connections)) {
+	if ((client->limit.max_connections != 0) &&
+	    (client->limit.max_connections == client->limit.num_connections)) {
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		radlog(L_INFO, "Ignoring new connection due to client max_connections (%d)", client->max_connections);
+		radlog(L_INFO, "Ignoring new connection due to client max_connections (%d)", client->limit.max_connections);
 		close(newfd);
 		return 0;
 	}
 
 	sock = listener->data;
-	if ((sock->max_connections != 0) &&
-	    (sock->max_connections == sock->num_connections)) {
+	if ((sock->limit.max_connections != 0) &&
+	    (sock->limit.max_connections == sock->limit.num_connections)) {
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
@@ -608,8 +616,8 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		close(newfd);
 		return 0;
 	}
-	client->num_connections++;
-	sock->num_connections++;
+	client->limit.num_connections++;
+	sock->limit.num_connections++;
 
 	/*
 	 *	Add the new listener.
@@ -633,16 +641,47 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	sock->client = client;
 	sock->opened = sock->last_packet = time(NULL);
 
+	/*
+	 *	Set the limits.  The defaults are the parent limits.
+	 *	Client limits on max_connections are enforced dynamically.
+	 *	Set the MINIMUM of client/socket idle timeout or lifetime.
+	 */
+	memcpy(&sock->limit, &sock->parent->limit, sizeof(sock->limit));
+
+	if (client->limit.idle_timeout &&
+	    ((sock->limit.idle_timeout == 0) ||
+	     (client->limit.idle_timeout < sock->limit.idle_timeout))) {
+		sock->limit.idle_timeout = client->limit.idle_timeout;
+	}
+
+	if (client->limit.lifetime &&
+	    ((sock->limit.lifetime == 0) ||
+	     (client->limit.lifetime < sock->limit.lifetime))) {
+		sock->limit.lifetime = client->limit.lifetime;
+	}
+
 	this->fd = newfd;
 	this->status = RAD_LISTEN_STATUS_INIT;
-	this->recv = dual_tcp_recv;
 
-#ifdef WITH_TLS
-	if (this->tls) {
-		this->recv = dual_tls_recv;
-		this->send = dual_tls_send;
-	}
+
+#ifdef WITH_COMMAND_SOCKET
+	if (this->type == RAD_LISTEN_COMMAND) {
+		this->recv = command_tcp_recv;
+		this->send = command_tcp_send;
+		command_write_magic(this->fd, sock);
+	} else
 #endif
+	{
+
+		this->recv = dual_tcp_recv;
+		
+#ifdef WITH_TLS
+		if (this->tls) {
+			this->recv = dual_tls_recv;
+		this->send = dual_tls_send;
+		}
+#endif
+	}
 
 	/*
 	 *	FIXME: set O_NONBLOCK on the accept'd fd.
@@ -707,6 +746,12 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 #ifdef WITH_COA
 	case RAD_LISTEN_COA:
 		name = "coa";
+		break;
+#endif
+
+#ifdef WITH_COMMAND_SOCKET
+	case RAD_LISTEN_COMMAND:
+		name = "control";
 		break;
 #endif
 
@@ -836,6 +881,20 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 
 extern int check_config;	/* radiusd.c */
 
+#ifdef WITH_TCP
+static CONF_PARSER limit_config[] = {
+	{ "max_connections", PW_TYPE_INTEGER,
+	  offsetof(listen_socket_t, limit.max_connections), NULL,   "16" },
+
+	{ "lifetime", PW_TYPE_INTEGER,
+	  offsetof(listen_socket_t, limit.lifetime), NULL,   "0" },
+
+	{ "idle_timeout", PW_TYPE_INTEGER,
+	  offsetof(listen_socket_t, limit.idle_timeout), NULL,   "30" },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+#endif
 
 /*
  *	Parse an authentication or accounting socket.
@@ -843,7 +902,7 @@ extern int check_config;	/* radiusd.c */
 static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
-	int		listen_port;
+	int		listen_port, max_pps;
 	fr_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
 	char		*section_name = NULL;
@@ -886,6 +945,16 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 	}
 
+	rcode = cf_item_parse(cs, "max_pps", PW_TYPE_INTEGER,
+			      &max_pps, "0");
+	if (rcode < 0) return -1;
+
+	if (max_pps && ((max_pps < 10) || (max_pps > 1000000))) {
+			cf_log_err(cf_sectiontoitem(cs),
+				   "Invalid value for \"max_pps\"");
+			return -1;
+	}
+
 	sock->proto = IPPROTO_UDP;
 
 	if (cf_pair_find(cs, "proto")) {
@@ -908,11 +977,25 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
+			CONF_SECTION *limit;
+			
+			limit = cf_section_sub_find(cs, "limit");
+			if (limit) {
+				rcode = cf_section_parse(limit, sock,
+							 limit_config);
+				if (rcode < 0) return -1;
+			} else {
+				sock->limit.max_connections = 60;
+				sock->limit.idle_timeout = 30;
+				sock->limit.lifetime = 0;
+			}
 
-			rcode = cf_item_parse(cs, "max_connections", PW_TYPE_INTEGER,
-					      &sock->max_connections, "64");
-			if (rcode < 0) return -1;
-
+			if ((sock->limit.idle_timeout > 0) && (sock->limit.idle_timeout < 5))
+				sock->limit.idle_timeout = 5;
+			if ((sock->limit.lifetime > 0) && (sock->limit.lifetime < 5))
+				sock->limit.lifetime = 5;
+			if ((sock->limit.lifetime > 0) && (sock->limit.idle_timeout > sock->limit.lifetime))
+				sock->limit.idle_timeout = 0;
 		} else {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Unknown proto name \"%s\"", proto);
@@ -990,6 +1073,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
+	sock->max_rate = max_pps;
 
 #ifdef WITH_PROXY
 	if (check_config) {
@@ -1565,7 +1649,7 @@ static int rad_coa_recv(REQUEST *request)
 	 *	Copy State from the request to the reply.
 	 *	See RFC 5176 Section 3.3.
 	 */
-	vp = paircopy2(request->packet->vps, PW_STATE, 0);
+	vp = paircopy2(request->packet->vps, PW_STATE, 0, -1);
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	/*
@@ -2022,6 +2106,12 @@ static int listen_bind(rad_listen_t *this)
 			break;
 #endif
 
+#ifdef WITH_COMMAND_SOCKET
+		case RAD_LISTEN_COMMAND:
+			sock->my_port = PW_RADMIN_PORT;
+			break;
+#endif
+
 #ifdef WITH_COA
 		case RAD_LISTEN_COA:
 			svp = getservbyname ("radius-dynauth", "udp");
@@ -2059,6 +2149,21 @@ static int listen_bind(rad_listen_t *this)
 		radlog(L_ERR, "Failed opening %s: %s", buffer, strerror(errno));
 		return -1;
 	}
+
+#ifdef FD_CLOEXEC
+	/*
+	 *	We don't want child processes inheriting these
+	 *	file descriptors.
+	 */
+	rcode = fcntl(this->fd, F_GETFD);
+	if (rcode >= 0) {
+		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
+			close(this->fd);
+			radlog(L_ERR, "Failed setting close on exec: %s", strerror(errno));
+			return -1;
+		}
+	}
+#endif
 		
 	/*
 	 *	Bind to a device BEFORE touching IP addresses.
@@ -2066,7 +2171,9 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->interface) {
 #ifdef SO_BINDTODEVICE
 		struct ifreq ifreq;
-		strcpy(ifreq.ifr_name, sock->interface);
+
+		memset(&ifreq, 0, sizeof(ifreq));
+		strlcpy(ifreq.ifr_name, sock->interface, sizeof(ifreq.ifr_name));
 
 		fr_suid_up();
 		rcode = setsockopt(this->fd, SOL_SOCKET, SO_BINDTODEVICE,
@@ -2371,16 +2478,14 @@ int proxy_new_listener(home_server *home, int src_port)
 {
 	rad_listen_t *this;
 	listen_socket_t *sock;
-#ifndef NDEBUG
 	char buffer[256];
-#endif
 
 	if (!home) return 0;
 
-	if ((home->max_connections > 0) &&
-	    (home->num_connections >= home->max_connections)) {
+	if ((home->limit.max_connections > 0) &&
+	    (home->limit.num_connections >= home->limit.max_connections)) {
 		DEBUG("WARNING: Home server has too many open connections (%d)",
-		      home->max_connections);
+		      home->limit.max_connections);
 		return 0;
 	}
 
@@ -2663,6 +2768,8 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 
 	if (rcode == 0) { /* successfully parsed IPv4 */
 		listen_socket_t *sock;
+
+		memset(&server_ipaddr, 0, sizeof(server_ipaddr));
 		server_ipaddr.af = AF_INET;
 
 		radlog(L_INFO, "WARNING: The directive 'bind_address' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
@@ -2964,10 +3071,6 @@ void listen_free(rad_listen_t **head)
 		if (master_listen[this->type].free) {
 			master_listen[this->type].free(this);
 		}
-
-#ifdef WITH_TLS
-		if (this->tls) tls_server_conf_free(this->tls);		
-#endif
 
 #ifdef WITH_TCP
 		if ((this->type == RAD_LISTEN_AUTH)

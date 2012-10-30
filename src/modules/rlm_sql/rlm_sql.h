@@ -16,13 +16,59 @@ RCSIDH(rlm_sql_h, "$Id$")
 
 #include "conf.h"
 
-#define SQLSOCK_LOCKED		0
-#define SQLSOCK_UNLOCKED	1
-
-#define PW_ITEM_CHECK			0
-#define PW_ITEM_REPLY			1
+#define PW_ITEM_CHECK		0
+#define PW_ITEM_REPLY		1
 
 typedef char** SQL_ROW;
+
+/*
+ *  Sections where we dynamically resolve the config entry to use,
+ *  by xlating reference.
+ */
+typedef struct rlm_sql_config_section {
+	CONF_SECTION	*cs;
+	
+	char	*reference;
+	
+	char	*logfile;
+} rlm_sql_config_section_t;
+
+typedef struct sql_config {
+	char   *sql_driver;
+	char   *sql_server;
+	char   *sql_port;
+	char   *sql_login;
+	char   *sql_password;
+	char   *sql_db;
+	char   *sql_file;	/* for sqlite */
+	char   *query_user;
+	char   *default_profile;
+	char   *nas_query;
+	char   *authorize_check_query;
+	char   *authorize_reply_query;
+	char   *authorize_group_check_query;
+	char   *authorize_group_reply_query;
+	char   *simul_count_query;
+	char   *simul_verify_query;
+	char   *groupmemb_query;
+	int     do_clients;
+	int	read_groups;
+	char   *logfile;
+	char   *xlat_name;
+	int     deletestalesessions;
+	char   *allowed_chars;
+	int	query_timeout;
+	void	*localcfg;			 /* individual driver config */
+	
+	/* 
+	 * TODO: The rest of the queries should also be moved into their own
+	 * sections.
+	 */
+	
+	/* Section configurations */
+	rlm_sql_config_section_t	postauth;
+	rlm_sql_config_section_t	accounting;
+} SQL_CONFIG;
 
 typedef struct sql_socket {
 	void	*conn;
@@ -60,10 +106,10 @@ struct sql_inst {
 	int (*sql_set_user)(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
 	SQLSOCK *(*sql_get_socket)(SQL_INST * inst);
 	int (*sql_release_socket)(SQL_INST * inst, SQLSOCK * sqlsocket);
-	size_t (*sql_escape_func)(char *out, size_t outlen, const char *in);
-	int (*sql_query)(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-	int (*sql_select_query)(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-	int (*sql_fetch_row)(SQLSOCK *sqlsocket, SQL_INST *inst);
+	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
+	int (*sql_query)(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+	int (*sql_select_query)(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+	int (*sql_fetch_row)(SQLSOCK **sqlsocket, SQL_INST *inst);
 };
 
 typedef struct sql_grouplist {
@@ -79,13 +125,14 @@ SQLSOCK *sql_get_socket(SQL_INST * inst);
 int     sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket);
 int     sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row);
 int     sql_read_realms(SQLSOCK * sqlsocket);
-int     sql_getvpdata(SQL_INST * inst, SQLSOCK * sqlsocket, VALUE_PAIR **pair, char *query);
+int     sql_getvpdata(SQL_INST * inst, SQLSOCK ** sqlsocket, VALUE_PAIR **pair, char *query);
 int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
-void    query_log(REQUEST *request, SQL_INST * inst, char *querystr);
-int	rlm_sql_select_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-int	rlm_sql_query(SQLSOCK *sqlsocket, SQL_INST *inst, char *query);
-int	rlm_sql_fetch_row(SQLSOCK *sqlsocket, SQL_INST *inst);
+void 	rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
+	       		  rlm_sql_config_section_t *section, char *querystr);
+int	rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+int	rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
+int	rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst);
 int	sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username);
 #endif

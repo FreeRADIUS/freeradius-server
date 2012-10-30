@@ -116,9 +116,6 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 
 	sock = sqlsocket->conn;
 
-	if (config->sqltrace)
-		radlog(L_DBG,"query:\n%s", querystr);
-
 	/* allocate handle for statement */
 	SQLAllocHandle(SQL_HANDLE_STMT, sock->hdbc,
 			&(sock->stmt));

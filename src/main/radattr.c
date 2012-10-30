@@ -374,7 +374,7 @@ static int encode_extended(char *buffer,
 	return length + 1;
 }
 
-static int encode_extended_flags(char *buffer,
+static int encode_long_extended(char *buffer,
 				 uint8_t *output, size_t outlen)
 {
 	int attr;
@@ -460,7 +460,7 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 			/*
 			 *	Not like the others!
 			 */
-			return encode_extended_flags(p + 1, output, outlen);
+			return encode_long_extended(p + 1, output, outlen);
 		}
 	}
 	if (sublen == 0) return 0;

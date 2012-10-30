@@ -1,9 +1,16 @@
-ATTRIBUTE	Extended-Attribute-1	241	extended
-ATTRIBUTE	Extended-Attribute-2	242	extended
-ATTRIBUTE	Extended-Attribute-3	243	extended
-ATTRIBUTE	Extended-Attribute-4	244	extended
-ATTRIBUTE	Extended-Attribute-5	245	extended-flags
-ATTRIBUTE	Extended-Attribute-6	246	extended-flags
+# -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
+#
+#  These attributes are "place-holder".  They should NEVER be used
+#  by name.  The "extended" and "long-extended" and "evs" data types
+#  should NEVER be used in any other dictionary.
+#
+ATTRIBUTE	Extended-Type-1				241	extended
+ATTRIBUTE	Extended-Type-2				242	extended
+ATTRIBUTE	Extended-Type-3				243	extended
+ATTRIBUTE	Extended-Type-4				244	extended
+ATTRIBUTE	Long-Extended-Type-1			245	long-extended
+ATTRIBUTE	Long-Extended-Type-2			246	long-extended
 
 ATTRIBUTE	Extended-Vendor-Specific-1	241.26	evs
 ATTRIBUTE	Extended-Vendor-Specific-2	242.26	evs

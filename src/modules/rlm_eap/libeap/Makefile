@@ -12,7 +12,7 @@ SRCS		+= eap_tls.c mppe_keys.c
 endif
 LT_OBJS		= $(SRCS:.c=.lo)
 INCLUDES	= eap_types.h eap_tls.h
-CFLAGS		+= -DEAPLIB -I. -I.. -I$(top_builddir)/src $(OPENSSL_INCLUDE)
+CFLAGS		+= -DEAPLIB -I. -I.. -I$(top_builddir)/src
 ifeq ($(USE_SHARED_LIBS),yes)
 LINK_MODE	= -export-dynamic
 else
@@ -29,8 +29,8 @@ all: $(TARGET).la
 
 $(TARGET).la: $(LT_OBJS)
 	@echo LINK $@ $<
-	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION) \
-	    $(LDFLAGS) $(LINK_MODE) -o $@ -rpath $(libdir) $^ \
+	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
+	    $(LDFLAGS) $(LINK_MODE) -o $@ $(MOD_RPATH)$^ \
 	    $(LIBRADIUS) $(LIBS)
 	@for x in .libs/* $^; do \
 		rm -f $(top_builddir)/src/modules/lib/$$x; \
@@ -44,7 +44,7 @@ clean:
 	@rm -rf .libs
 
 install: all
-	$(LIBTOOL) --mode=install $(INSTALL) -c $(TARGET).la \
+	$(LIBTOOL) --mode=install $(INSTALL) -c $(MOD_RPATH) $(TARGET).la \
 		$(R)$(libdir)/$(TARGET).la
-	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la;
-	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION).la
+	rm -f $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la;
+	ln -s $(TARGET).la $(R)$(libdir)/$(TARGET)-$(RADIUSD_VERSION_STRING).la

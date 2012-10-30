@@ -208,7 +208,7 @@ GO
  CREATE  INDEX [AcctSessionId] ON [radacct]([AcctSessionId]) ON [PRIMARY]
 GO
 
- CREATE  INDEX [AcctUniqueId] ON [radacct]([AcctUniqueId]) ON [PRIMARY]
+ CREATE  UNIQUE INDEX [AcctUniqueId] ON [radacct]([AcctUniqueId]) ON [PRIMARY]
 GO
 
  CREATE  INDEX [AcctStartTime] ON [radacct]([AcctStartTime]) ON [PRIMARY]

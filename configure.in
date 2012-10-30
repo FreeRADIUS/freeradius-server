@@ -27,9 +27,18 @@ AC_CONFIG_HEADER(src/include/autoconf.h)
 AC_REVISION($Revision$)dnl
 
 dnl # The version of the software
-RADIUSD_VERSION=`cat VERSION`
+
 RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
-RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^2\.//'`
+RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^[^\.]*\.//' | sed 's/\..*$//'`
+RADIUSD_INCRM_VERSION=`cat VERSION | sed 's/^.*\..*\.//' | sed 's/-.*$//'`
+
+RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
+-v minor="$RADIUSD_MINOR_VERSION" \
+-v incrm="$RADIUSD_INCRM_VERSION" \
+'{ printf "%02i%02i%02i", major, minor, incrm }'`
+
+dnl # Still useful for custom builds
+RADIUSD_VERSION_STRING=`cat VERSION`
 PACKAGE=freeradius
 
 dnl #############################################################
@@ -79,39 +88,32 @@ if test -z "$makever"; then
 		from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing.)
 fi
 
-AC_ARG_WITH(system-libltdl,
-[  --with-system-libltdl   Use the libltdl installed in your system (default=use our own)],
-[
-LIBLTDL="-lltdl"
-INCLTDL=-DWITH_SYSTEM_LTDL
-LTDL_SUBDIRS=
-enable_ltdl_install=no
-],
-[
-dnl If libltdl isn't installable, set it to be installable.
-[test x"$enable_ltdl_install" = x && enable_ltdl_install=yes]
-AC_LIBLTDL_INSTALLABLE
+dnl See if we have Git.
+AC_CHECK_PROG(GIT, git, yes, no)
 
-dnl tell Makefile to build ltdl if needed
-if test x"$enable_ltdl_install" = x"yes"; then
-  LTDL_SUBDIRS=libltdl
-fi
-])
-AC_SUBST(LTDL_SUBDIRS)
+AC_ARG_WITH(system-libltdl,
+[  --with-system-libltdl   Use the libltdl installed in your system (default=use dlopen)],
+[],
+[with_system_libltdl=no])
+
+AS_IF([test "x$with_system_libltdl" = "xyes" ],
+[ LIBLTDL="-lltdl"
+INCLTDL=-DWITH_SYSTEM_LTDL])
 
 dnl use system-wide libtool, if it exists
 AC_ARG_WITH(system-libtool,
 [  --with-system-libtool   Use the libtool installed in your system (default=use our own)],
+[],
+[with_system_libtool=no])
+
+AS_IF([test "x$with_system_libtool" = "xyes" ],
 [ AC_PATH_PROG(LIBTOOL, libtool,,$PATH:/usr/local/bin) AC_LIBTOOL_DLOPEN
  AC_PROG_LIBTOOL],
 [
-  LIBTOOL="`pwd`/libtool"
+  LIBTOOL='${top_srcdir}/scripts/jlibtool'
   AC_SUBST(LIBTOOL)
   dnl ensure that we're looking for dlopen
   AC_LIBTOOL_DLOPEN
-
-  dnl Figure out how to build shared libraries
-  AC_PROG_LIBTOOL
 ])
 
 
@@ -259,16 +261,19 @@ if test "x$WITH_VMPS" = "xyes"; then
 fi
 
 dnl extra argument: --with-dhcp
+WITH_DHCP=yes
 AC_ARG_WITH(dhcp,
-[  --with-dhcp             Compile in DHCP support. (default=no)],
+[  --with-dhcp             Compile in DHCP support. (default=yes)],
 [ case "$withval" in
     yes)
-        AC_DEFINE(WITH_DHCP, [1], [Include experimental support for DHCP])
-	;;
+        ;;
     *)
-	;;
+	WITH_DHCP=no
   esac ]
 )
+if test "x$WITH_DHCP" = "xyes"; then
+	AC_DEFINE(WITH_DHCP, [1], [define if you want DHCP support])
+fi
 
 
 dnl #
@@ -305,14 +310,16 @@ AC_ARG_ENABLE(developer,
   esac ]
 )
 
-if test "x$developer" != "xno" -a -d $srcdir/CVS; then
-  dnl turn on the developer flag when taken from a CVS checkout (not a release)
-  developer="yes"
-fi
-
-if test "x$developer" != "xno" -a -d $srcdir/.git; then
-  dnl turn on the developer flag when taken from a git checkout (not a release)
-  developer="yes"
+if test -d $srcdir/.git; then
+  if test "x$developer" != "xno"; then
+    dnl turn on the developer flag when taken from a git checkout (not a release)
+    developer="yes"
+  fi  
+  
+  dnl append the current git hash onto the version string
+  if test $GIT = yes; then
+  	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+  fi
 fi
 
 dnl extra argument: --with-experimental-modules
@@ -485,7 +492,7 @@ dnl # to do the threading properly.
 dnl #
   AC_CHECK_LIB(pthread, pthread_create,
 		[ CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-                  LIBS="$LIBS -lpthread" ],
+                  LIBS="-lpthread $LIBS" ],
 		AC_CHECK_LIB(c_r, pthread_create,
 			    [ CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE" ],
 			    [ WITH_THREADS="no" ]
@@ -515,6 +522,9 @@ else
 	[AC_MSG_ERROR(-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz)]
    )
 fi
+
+dnl Check if we need -lsocket
+AC_CHECK_LIB(dl, dlopen)
 
 dnl Check if we need -lsocket
 AC_CHECK_LIB(socket, getsockname)
@@ -616,6 +626,7 @@ AC_CHECK_HEADERS( \
 	sys/types.h \
 	sys/socket.h \
 	winsock.h \
+	utime.h \
 	sys/time.h \
 	sys/wait.h \
 	sys/security.h \
@@ -643,7 +654,7 @@ AC_CHECK_HEADERS(net/if.h, [], [],
 REGEX=no
 AC_CHECK_HEADER(pcreposix.h, AC_DEFINE(HAVE_PCREPOSIX_H, [], [define this if we have the <pcreposix.h> header file]))
 if test "x$ac_cv_header_pcreposix_h" = "xyes"; then
-  AC_DEFINE(HAVE_REGEX_H [], [define if we have any regex])
+  AC_DEFINE(HAVE_REGEX_H, [], [define if we have any regex])
   REGEX_EXTENDED=yes
   REGEX_PCRE=yes
   REGEX=yes
@@ -945,7 +956,7 @@ AC_SUBST(LIBPREFIX)
 
 AC_MSG_CHECKING(for developer gcc flags)
 if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef"
+  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
   CFLAGS="$CFLAGS $devflags"
   INSTALLSTRIP=""
   AC_MSG_RESULT(yes.  Using $devflags)
@@ -1151,7 +1162,7 @@ dnl #  Configure in any module directories.
 dnl #
 dnl #############################################################
 
-mysubdirs="$LIBLTDLPATH"
+mysubdirs=""
 if test "x$EXPERIMENTAL" = "xyes"; then
   bar=`ls -1 "${srcdir}"/src/modules/rlm_*/configure | sed 's%/configure%%'`
   dnl # get rid of LF's.
@@ -1187,7 +1198,7 @@ dnl #
 dnl #  Don't change the variable name here.  Autoconf goes bonkers
 dnl #  if you do.
 dnl #
-AC_CONFIG_SUBDIRS($LTDL_SUBDIRS $mysubdirs)
+AC_CONFIG_SUBDIRS($mysubdirs)
 AC_SUBST(MODULES)
 
 dnl #############################################################
@@ -1199,7 +1210,7 @@ dnl #############################################################
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
 AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
-AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts    && chmod +x rc.radiusd radwatch radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
+AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts    && chmod +x rc.radiusd radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
 
 dnl #
 dnl #  Substitute whatever libraries we found to be necessary
@@ -1214,17 +1225,20 @@ AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
 AC_SUBST(RADIUSD_MAJOR_VERSION)
 AC_SUBST(RADIUSD_MINOR_VERSION)
+AC_SUBST(RADIUSD_INCRM_VERSION)
 AC_SUBST(RADIUSD_VERSION)
+AC_SUBST(RADIUSD_VERSION_STRING)
+AC_SUBST(RADIUSD_VERSION_COMMIT)
 
 AC_OUTPUT(\
 	./Make.inc \
 	./src/include/build-radpaths-h \
 	./src/main/Makefile \
+	./src/main/radsniff.mk \
 	./src/main/checkrad.pl \
 	./src/main/radlast \
 	./src/main/radtest \
 	./scripts/rc.radiusd \
-	./scripts/radwatch \
 	./scripts/radiusd.cron.daily \
 	./scripts/radiusd.cron.monthly \
 	./scripts/cryptpasswd \

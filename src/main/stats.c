@@ -38,7 +38,7 @@ RCSID("$Id$")
 static struct timeval	start_time;
 static struct timeval	hup_time;
 
-#define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, \
+#define FR_STATS_INIT { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 	\
 				 { 0, 0, 0, 0, 0, 0, 0, 0 }}
 
 fr_stats_t radius_auth_stats = FR_STATS_INIT;
@@ -431,6 +431,7 @@ static void request_stats_addvp(REQUEST *request,
 				fr_stats2vp *table, fr_stats_t *stats)
 {
 	int i;
+	fr_uint_t counter;
 	VALUE_PAIR *vp;
 
 	for (i = 0; table[i].attribute != 0; i++) {
@@ -439,7 +440,8 @@ static void request_stats_addvp(REQUEST *request,
 				       PW_TYPE_INTEGER);
 		if (!vp) continue;
 
-		vp->vp_integer = *(int *)(((char *) stats) + table[i].offset);
+		counter = *(fr_uint_t *) (((uint8_t *) stats) + table[i].offset);
+		vp->vp_integer = counter;
 	}
 }
 
@@ -507,12 +509,11 @@ void request_stats_reply(REQUEST *request)
 		if (vp) vp->vp_date = hup_time.tv_sec;
 		
 #ifdef HAVE_PTHREAD_H
-		int i, array[RAD_LISTEN_MAX];
+		int i, array[RAD_LISTEN_MAX], pps[2];
 
-		thread_pool_queue_stats(array);
+		thread_pool_queue_stats(array, pps);
 
-#ifdef WITH_DETAIL
-		for (i = 0; i <= RAD_LISTEN_DETAIL; i++) {
+		for (i = 0; i <= 4; i++) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       162 + i, VENDORPEC_FREERADIUS,
 					       PW_TYPE_INTEGER);
@@ -520,7 +521,15 @@ void request_stats_reply(REQUEST *request)
 			if (!vp) continue;
 			vp->vp_integer = array[i];
 		}
-#endif
+
+		for (i = 0; i < 2; i++) {
+			vp = radius_paircreate(request, &request->reply->vps,
+					       181 + i, VENDORPEC_FREERADIUS,
+					       PW_TYPE_INTEGER);
+			
+			if (!vp) continue;
+			vp->vp_integer = pps[i];
+		}
 #endif
 	}
 

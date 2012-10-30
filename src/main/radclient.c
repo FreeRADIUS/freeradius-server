@@ -37,6 +37,8 @@ RCSID("$Id$")
 
 #include <assert.h>
 
+typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
+
 #include "smbdes.h"
 #include "mschap.h"
 
@@ -90,6 +92,11 @@ typedef struct radclient_t {
 static radclient_t *radclient_head = NULL;
 static radclient_t *radclient_tail = NULL;
 
+const char *radclient_version = "radclient version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" RADIUSD_VERSION_COMMIT ")"
+#endif
+", built on " __DATE__ " at " __TIME__;
 
 static void NEVER_RETURNS usage(void)
 {
@@ -605,20 +612,37 @@ static int send_one_packet(radclient_t *radclient)
 				vp->length = strlen(vp->vp_strvalue);
 
 			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
-			  /*
-			   *	FIXME: AND there's no CHAP-Challenge,
-			   *	       AND vp->length != 17
-			   *	       AND rad_chap_encode() != vp->vp_octets
-			   */
-				strlcpy(vp->vp_strvalue, radclient->password,
-					sizeof(vp->vp_strvalue));
-				vp->length = strlen(vp->vp_strvalue);
+				int already_hex = 0;
 
-				rad_chap_encode(radclient->request,
-						vp->vp_octets,
-						radclient->request->id, vp);
-				vp->length = 17;
+				/*
+				 *	If it's 17 octets, it *might* be already encoded.
+				 *	Or, it might just be a 17-character password (maybe UTF-8)
+				 *	Check it for non-printable characters.  The odds of ALL
+				 *	of the characters being 32..255 is (1-7/8)^17, or (1/8)^17,
+				 *	or 1/(2^51), which is pretty much zero.
+				 */
+				if (vp->length == 17) {
+					for (i = 0; i < 17; i++) {
+						if (vp->vp_octets[i] < 32) {
+							already_hex = 1;
+							break;
+						}
+					}
+				}
 
+				/*
+				 *	Allow the user to specify ASCII or hex CHAP-Password
+				 */
+				if (!already_hex) {
+					strlcpy(vp->vp_strvalue, radclient->password,
+						sizeof(vp->vp_strvalue));
+					vp->length = strlen(vp->vp_strvalue);
+					
+					rad_chap_encode(radclient->request,
+							vp->vp_octets,
+							fr_rand() & 0xff, vp);
+					vp->length = 17;
+				}
 			} else if (pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0) != NULL) {
 				mschapv1_encode(&radclient->request->vps,
 						radclient->password);
@@ -823,7 +847,7 @@ static int recv_one_packet(int wait_time)
 
 	/* libradius debug already prints out the value pairs for us */
 	if (!fr_debug_flag && do_output) {
-		printf("Received response ID %d, code %d, length = %ld\n",
+		printf("Received response ID %d, code %d, length = %zd\n",
 		       radclient->reply->id, radclient->reply->code,
 		       radclient->reply->data_len);
 		vp_printlist(stdout, radclient->reply->vps);
@@ -998,7 +1022,7 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("radclient: " RADIUSD_VERSION " built on " __DATE__ " at " __TIME__ "\n");
+			printf("%s", radclient_version);
 			exit(0);
 			break;
 		case 'x':
@@ -1117,7 +1141,7 @@ int main(int argc, char **argv)
 	 *	If no '-f' is specified, we're reading from stdin.
 	 */
 	if (rbtree_num_elements(filename_tree) == 0) {
-		rbtree_insert(filename_tree, "-");
+		if (!radclient_init("-")) exit(1);
 	}
 
 	/*

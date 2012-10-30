@@ -198,10 +198,11 @@ static void python_error(void)
 static int python_init(void)
 {
 	int i;
+	static char name[] = "radiusd";
 
 	if (radiusd_module) return 0;
 	
-	Py_SetProgramName("radiusd");
+	Py_SetProgramName(name);
 	Py_Initialize();
 	PyEval_InitThreads(); /* This also grabs a lock */
 	
@@ -250,57 +251,70 @@ static int python_destroy(void)
 static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
 			   const char *funcname)
 {
-        int             i;
-        int             tuplesize;
-        VALUE_PAIR      *vp;
+	int	     i;
+	int	     tuplesize;
+	VALUE_PAIR      *vp;
 
-        /*
+	/*
 	 *	If the Python function gave us None for the tuple,
 	 *	then just return.
 	 */
-        if (pValue == Py_None)
-                return;
+	if (pValue == Py_None)
+		return;
 
-        if (!PyTuple_CheckExact(pValue)) {
-                radlog(L_ERR, "rlm_python:%s: non-tuple passed", funcname);
-                return;
-        }
-        /* Get the tuple tuplesize. */
-        tuplesize = PyTuple_GET_SIZE(pValue);
-        for (i = 0; i < tuplesize; i++) {
-                PyObject *pTupleElement = PyTuple_GET_ITEM(pValue, i);
-                PyObject *pStr1;
-                PyObject *pStr2;
-                int pairsize;
-                const char *s1;
-                const char *s2;
+	if (!PyTuple_CheckExact(pValue)) {
+		radlog(L_ERR, "rlm_python:%s: non-tuple passed", funcname);
+		return;
+	}
+	/* Get the tuple tuplesize. */
+	tuplesize = PyTuple_GET_SIZE(pValue);
+	for (i = 0; i < tuplesize; i++) {
+		PyObject *pTupleElement = PyTuple_GET_ITEM(pValue, i);
+		PyObject *pStr1;
+		PyObject *pStr2;
+		PyObject *pOp;
+		int pairsize;
+		const char *s1;
+		const char *s2;
+		long op;
 
-                if (!PyTuple_CheckExact(pTupleElement)) {
-                        radlog(L_ERR, "rlm_python:%s: tuple element %d is not a tuple", funcname, i);
-                        continue;
-                }
-                /* Check if it's a pair */
-                if ((pairsize = PyTuple_GET_SIZE(pTupleElement)) != 2) {
-                        radlog(L_ERR, "rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2", funcname, i, pairsize);
-                        continue;
-                }
-                pStr1 = PyTuple_GET_ITEM(pTupleElement, 0);
-                pStr2 = PyTuple_GET_ITEM(pTupleElement, 1);
-                if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
-                        radlog(L_ERR, "rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
-                        continue;
-                }
-                s1 = PyString_AsString(pStr1);
-                s2 = PyString_AsString(pStr2);
-                /* xxx Might need to support other T_OP */
-                vp = pairmake(s1, s2, T_OP_EQ);
-                if (vp != NULL) {
-                        pairadd(vpp, vp);
-                        radlog(L_DBG, "rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
-                } else {
-                        radlog(L_DBG, "rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
-                }
-        }
+		if (!PyTuple_CheckExact(pTupleElement)) {
+			radlog(L_ERR, "rlm_python:%s: tuple element %d is not a tuple", funcname, i);
+			continue;
+		}
+		/* Check if it's a pair */
+
+		pairsize = PyTuple_GET_SIZE(pTupleElement);
+		if ((pairsize < 2) || (pairsize > 3)) {
+			radlog(L_ERR, "rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2 or 3.", funcname, i, pairsize);
+			continue;
+		}
+
+		if (pairsize == 2) {
+			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
+			pStr2	= PyTuple_GET_ITEM(pTupleElement, 1);
+			op	= T_OP_EQ;
+		} else {
+			pStr1	= PyTuple_GET_ITEM(pTupleElement, 0);
+			pStr2	= PyTuple_GET_ITEM(pTupleElement, 2);
+			pOp	= PyTuple_GET_ITEM(pTupleElement, 1);
+			op	= PyInt_AsLong(pOp);
+		}
+
+		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
+			radlog(L_ERR, "rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
+			continue;
+		}
+		s1 = PyString_AsString(pStr1);
+		s2 = PyString_AsString(pStr2);
+		vp = pairmake(s1, s2, op);
+		if (vp != NULL) {
+			pairadd(vpp, vp);
+			radlog(L_DBG, "rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
+		} else {
+			radlog(L_DBG, "rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
+		}
+	}
 }
 
 
@@ -344,10 +358,10 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 			   const char *funcname)
 {
 	VALUE_PAIR      *vp;
-	PyObject        *pRet = NULL;
-	PyObject        *pArgs = NULL;
-	int             tuplelen;
-	int             ret;
+	PyObject	*pRet = NULL;
+	PyObject	*pArgs = NULL;
+	int		tuplelen;
+	int		ret;
 	
 	PyGILState_STATE gstate;
 	
@@ -522,7 +536,7 @@ static void python_objclear(PyObject **ob)
 		Pyx_BLOCK_THREADS
 		Py_DECREF(*ob);
 		Pyx_UNBLOCK_THREADS
-	        *ob = NULL;
+		*ob = NULL;
 	}
 }
 
@@ -570,74 +584,74 @@ static void python_instance_clear(struct rlm_python_t *data)
  */
 static int python_instantiate(CONF_SECTION *conf, void **instance)
 {
-        struct rlm_python_t    *data = NULL;
+	struct rlm_python_t    *data = NULL;
 
-        /*
-         *      Set up a storage area for instance data
-         */
-        if ((data = malloc(sizeof(*data))) == NULL)
-                return -1;
-        memset(data, 0, sizeof(*data));
+	/*
+	 *      Set up a storage area for instance data
+	 */
+	if ((data = malloc(sizeof(*data))) == NULL)
+		return -1;
+	memset(data, 0, sizeof(*data));
 
-        if (python_init() != 0) {
+	if (python_init() != 0) {
 		free(data);
 		return -1;
-        }
+	}
 
-        /*
-         *      If the configuration parameters can't be parsed, then
-         *      fail.
-         */
-        if (cf_section_parse(conf, data, module_config) < 0) {
-                free(data);
-                return -1;
-        }
+	/*
+	 *      If the configuration parameters can't be parsed, then
+	 *      fail.
+	 */
+	if (cf_section_parse(conf, data, module_config) < 0) {
+		free(data);
+		return -1;
+	}
 
 #define A(x) if (python_load_function(&data->x) < 0) goto failed
 
-        A(instantiate);
-        A(authenticate);
-        A(authorize);
-        A(preacct);
-        A(accounting);
-        A(checksimul);
-        A(pre_proxy);
-        A(post_proxy);
-        A(post_auth);
+	A(instantiate);
+	A(authenticate);
+	A(authorize);
+	A(preacct);
+	A(accounting);
+	A(checksimul);
+	A(pre_proxy);
+	A(post_proxy);
+	A(post_auth);
 #ifdef WITH_COA
-        A(recv_coa);
-        A(send_coa);
+	A(recv_coa);
+	A(send_coa);
 #endif
-        A(detach);
+	A(detach);
 
 #undef A
 
-        *instance = data;
+	*instance = data;
 
-        /*
+	/*
 	 *	Call the instantiate function.  No request.  Use the
 	 *	return value.
 	 */
 	return python_function(NULL, data->instantiate.function,
 			       "instantiate");
  failed:
-        python_error();
-        python_instance_clear(data);
-        free(data);
-        return -1;
+	python_error();
+	python_instance_clear(data);
+	free(data);
+	return -1;
 }
 
 static int python_detach(void *instance)
 {
-        struct rlm_python_t    *data = (struct rlm_python_t *) instance;
-        int             ret;
+	struct rlm_python_t    *data = (struct rlm_python_t *) instance;
+	int	     ret;
 	
-        ret = python_function(NULL, data->detach.function, "detach");
+	ret = python_function(NULL, data->detach.function, "detach");
 	
-        python_instance_clear(data);
+	python_instance_clear(data);
 	
-        free(data);
-        return ret;
+	free(data);
+	return ret;
 }
 
 #define A(x) static int python_##x(void *instance, REQUEST *request) { \
@@ -673,7 +687,7 @@ module_t rlm_python = {
 	"python",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	python_instantiate,		/* instantiation */
-        python_detach,
+	python_detach,
 	{
 		python_authenticate,	/* authentication */
 		python_authorize,	/* authorization */

@@ -10,7 +10,7 @@ SERVER_SRCS	= acct.c auth.c client.c conffile.c crypt.c exec.c files.c \
 		  session.c threads.c util.c valuepair.c version.c  \
 		  xlat.c process.c realms.c evaluate.c vmps.c detail.c
 ifneq ($(OPENSSL_LIBS),)
-SERVER_SRCS    += cb.c tls.c
+SERVER_SRCS    += cb.c tls.c tls_listen.c
 endif
 
 SERVER_OBJS	+= $(SERVER_SRCS:.c=.lo)
@@ -22,19 +22,23 @@ INCLUDES	= ../include/autoconf.h ../include/conf.h    \
 CFLAGS		+= -I$(top_builddir)/src
 CFLAGS		+= -DHOSTINFO=\"${HOSTINFO}\"
 CFLAGS		+= -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
+CFLAGS		+= -DRADIUSD_VERSION_STRING=\"${RADIUSD_VERSION_STRING}\"
+ifdef RADIUSD_VERSION_COMMIT
+CFLAGS		+= -DRADIUSD_VERSION_COMMIT=\"${RADIUSD_VERSION_COMMIT}\"
+endif
 CFLAGS		+= $(SNMP_INCLUDE)
-CFLAGS		+= $(OPENSSL_INCLUDE)
 VFLAGS		= -DRADIUSD_MAJOR_VERSION=$(RADIUSD_MAJOR_VERSION)
 VFLAGS		+= -DRADIUSD_MINOR_VERSION=$(RADIUSD_MINOR_VERSION)
+VFLAGS		+= -DRADIUSD_INCRM_VERSION=$(RADIUSD_INCRM_VERSION)
 MODULE_LIBS	= $(STATIC_MODULES)
-BINARIES	= radiusd radwho radclient radmin radconf2xml radattr
+BINARIES	= radiusd$(EXEEXT) radwho$(EXEEXT) radclient$(EXEEXT) radmin$(EXEEXT) radconf2xml$(EXEEXT) radattr$(EXEEXT)
 
 #
 #  The RADIUS sniffer
 #
 PCAP_LIBS	= @PCAP_LIBS@
 ifneq ($(PCAP_LIBS),)
-BINARIES	+= radsniff
+BINARIES	+= radsniff$(EXEEXT)
 endif
 
 #
@@ -66,8 +70,8 @@ all: $(BINARIES)
 
 $(SERVER_OBJS): $(INCLUDES)
 
-radiusd: $(SERVER_OBJS) $(MODULE_OBJS) $(LIBRADIUS)
-	$(LIBTOOL) --quiet --mode=link $(CC) -export-dynamic -dlopen self \
+radiusd$(EXEEXT): $(SERVER_OBJS) $(MODULE_OBJS) $(LIBRADIUS)
+	$(LIBTOOL) --quiet --mode=link $(CC) -export-dynamic \
 		$(LDFLAGS) $(LINK_MODE) -o $@ $(SERVER_OBJS)      \
 		$(MODULE_LIBS) $(LIBRADIUS) $(LIBS) $(SNMP_LIBS) \
 		$(LCRYPT) $(PTHREADLIB) $(LIBLTDL) $(OPENSSL_LIBS)
@@ -96,8 +100,6 @@ session.lo: session.c ../include/modules.h
 
 # It's #include'd for simplicity.  This should be fixed...
 listen.lo: listen.c dhcpd.c command.c
-	@echo CC $<
-	@$(LIBTOOL) --quiet --mode=compile $(CC) $(CFLAGS) $(INCLTDL) -c listen.c
 
 #
 # Helper programs
@@ -109,7 +111,7 @@ radclient.lo: radclient.c $(INCLUDES)
 
 MSCHAP_OBJS := ../modules/rlm_mschap/smbdes.lo ../modules/rlm_mschap/mschap.lo 
 
-radclient: radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS)
+radclient$(EXEEXT): radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS)
 	@echo LINK $< ...
 	@$(LIBTOOL) --quiet --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radclient radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS) $(LIBS)
 
@@ -123,30 +125,30 @@ radclient: radclient.lo $(MSCHAP_OBJS) $(LIBRADIUS)
 
 radsniff.lo: radsniff.c $(INCLUDES) ../include/radsniff.h
 
-radsniff: radsniff.lo $(LIBRADIUS)
+radsniff$(EXEEXT): radsniff.lo $(LIBRADIUS)
 	@echo LINK $@ $<
 	@$(LIBTOOL) --quiet --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radsniff radsniff.lo $(LIBRADIUS) $(LIBS) $(PCAP_LIBS)
 
 radwho.lo: radwho.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c radwho.c
 
-radwho: radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS)
+radwho$(EXEEXT): radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radwho radwho.lo util.lo log.lo conffile.lo $(LIBRADIUS) $(LIBS)
 
-radmin: radmin.lo $(LIBRADIUS) util.lo log.lo conffile.lo
+radmin$(EXEEXT): radmin.lo $(LIBRADIUS) util.lo log.lo conffile.lo
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^ $(LIBREADLINE) $(LIBS)
 
-radconf2xml: radconf2xml.lo $(LIBRADIUS) util.lo log.lo conffile.lo
+radconf2xml$(EXEEXT): radconf2xml.lo $(LIBRADIUS) util.lo log.lo conffile.lo
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^ $(LIBS)
 
-radattr: radattr.lo $(LIBRADIUS)
+radattr$(EXEEXT): radattr.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o radattr radattr.lo $(LIBRADIUS) $(LIBS)
 
 dhclient.lo: dhclient.c $(INCLUDES)
 	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c dhclient.c
 
 # Don't install this for now.
-dhclient: dhclient.lo $(LIBRADIUS)
+dhclient$(EXEEXT): dhclient.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o dhclient dhclient.lo $(LIBRADIUS) $(LIBS)
 
 clean:

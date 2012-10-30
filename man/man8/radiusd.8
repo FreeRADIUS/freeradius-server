@@ -1,4 +1,4 @@
-.TH RADIUSD 8 "08 Mar 2009" "" "FreeRADIUS Daemon"
+.TH RADIUSD 8 "26 Apr 2012" "" "FreeRADIUS Daemon"
 .SH NAME
 radiusd - Authentication, Authorization and Accounting server
 .SH SYNOPSIS
@@ -29,20 +29,20 @@ SQL, LDAP, Perl, Python, etc.  It also supports many authentication
 protocols such as PAP, CHAP, MS-CHAP(v2), HTTP Digest, and EAP
 (EAP-MD5, EAP-TLS, PEAP, EAP-TTLS, EAP-SIM, etc.).
 
-It also has experimental support for Cisco's VLAN Query Protocol
-(VMPS) and DHCP.
+It also has fullsupport for Cisco's VLAN Query Protocol (VMPS) and
+DHCP.
 
 Please read the DEBUGGING section below.  It contains instructions
 for quickly configuring the server for your local system.
 .SH OPTIONS
-The following command-line options are accepted by the server.
+The following command-line options are accepted by the server:
 .IP \-C
 Check the configuration and exit immediately.  If there is a problem
 reading the configuration, then the server will exit with a non-zero
 status code.  If the configuration appears to be acceptable, then the
 server will exit with a zero status code.
 
-Note that there are many limitations to this check.  Due to the
+Note that there are limitations to this check.  Due to the
 complexities involved in \fIalmost\fP starting a RADIUS server, these
 checks are necessarily incomplete.  The server can return a zero
 status code when run with -C, but may still exit with an error when
@@ -55,6 +55,10 @@ configuration, and which modules are skipped, and therefore not checked.
 .IP "\-d \fIconfig directory\fP"
 Defaults to \fI/etc/raddb\fP. \fBRadiusd\fP looks here for its configuration
 files such as the \fIdictionary\fP and the \fIusers\fP files.
+.IP \-f
+Do not fork, stay running as a foreground process.
+.IP \-h
+Print usage help information.
 .IP "\-i \fIip-address\fP"
 Defines which IP address that the server uses for sending and
 receiving packets.
@@ -63,26 +67,21 @@ If this command-line option is given, then the "bind_address" and all
 "listen{}" entries in \fIradiusd.conf\fP are ignored.
 
 This option MUST be used in conjunction with "-p".
-.IP \-f
-Do not fork, stay running as a foreground process.
-.IP \-h
-Print usage help information.
 .IP "\-l \fIlog_file\fP"
 Defaults to \fI${logdir}/radius.log\fP. \fBRadiusd\fP writes it's logging
 information to this file. If log_file is the string "stdout" logging will
 be written to stdout.
 .IP \-m
 On SIGINT or SIGQUIT exit cleanly instead of immediately.
+This is most useful for when running the server with "valgrind".
 .IP "\-n \fIname\fP"
 Read \fIraddb/name.conf\fP instead of \fIraddb/radiusd.conf\fP.
 .IP "\-p \fIport\fP"
-Normally radiusd listens on the ports specified in \fI/etc/services\fP
-(radius and radacct). When this option is given, radiusd listens on
-the specified port for authentication requests and on the specified
-port +1 for accounting requests.
+Defines which port is used for receiving authentication packets.
+Accounting packets are received on "port + 1".
 
-If this command-line option is given, then the "port" directive in
-\fIradiusd.conf\fP is ignored.
+When this command-line option is given, all "listen" sections in
+\fIradiusd.conf\fP are ignored.
 
 This option MUST be used in conjunction with "-i".
 .IP \-s
@@ -99,33 +98,43 @@ Print server version information and exit.
 .IP \-X
 Debugging mode.  Equivalent to "-sfxx -l stdout".  When trying to
 understand how the server works, ALWAYS run it with "radiusd -X".
+For production servers, use "raddebug"
 .IP \-x
 Finer-grained debug mode. In this mode the server will print details
 of every request on it's \fBstdout\fP output. You can specify this
 option multiple times (-x -x or -xx) to get more detailed output.
 .SH DEBUGGING
-The server can be difficult to configure correctly in systems with
-complex requirements.  We STRONGLY RECOMMEND proceeding via the
-following steps:
+The default configuration is set to work in the widest possible
+circumstances.  It requires minimal changes for your system.
+
+However, your needs may be complex, and may require significant
+changes to the server configuration.  Making random changes is a
+guaranteed method of failure.  Instead, we STRONGLY RECOMMEND
+proceeding via the following steps:
 .PP
 1) Always run the server in debugging mode (
 .B radiusd -X
-).  We cannot emphasize this enough.  If you are not running the
-server in debugging mode, you \fIwill not\fP be able to see what is
-doing, and you \fIwill not\fP be able to correct any problems.
+) after making a configuration change.  We cannot emphasize this
+enough.  If you are not running the server in debugging mode, you
+\fIwill not\fP be able to see what is doing, and you \fIwill not\fP be
+able to correct any problems.
+
+If you ask questions on the mailing list, the first response will be
+to tell you "run the server in debugging mode".  Please, follow these
+instructions.
 .PP
 2) Change as little as possible in the default configuration files.
 The server contains a decade of experience with protocols, databases,
 and different systems.  Its default configuration is designed to work
-almost everywhere, and to do almost everything.
+almost everywhere, and to do almost everything you need.
 .PP
-3) Make small changes to the configuration files, while testing each
-change as you make it.  If the change works, save a copy of the
-configuration, and make another change.  If the change doesn't work,
-debug it, and try to understand why it doesn't work.
+3) When you make a small change, testing it before changing anything
+else.  If the change works, save a copy of the configuration, and make
+another change.  If the change doesn't work, debug it, and try to
+understand why it doesn't work.
 .PP
 If you begin by making large changes to the server configuration, it
-will never work, and you will never be able to debug it.
+will never work, and you will never be able to debug the problem.
 .PP
 4) If you need to add a connection to a database FOO (e.g. LDAP or
 SQL), then:
@@ -212,8 +221,8 @@ from the hints file. Authentication is then based on the contents of
 the UNIX \fI/etc/passwd\fP file. However it is also possible to define all
 users, and their passwords, in this file.
 .SH SEE ALSO
-radiusd.conf(5), users(5), huntgroups(5), hints(5),
-dictionary(5).
+rradiusd.conf(5), users(5), huntgroups(5), hints(5),
+dictionary(5), raddebug(8)
 .SH AUTHOR
 The FreeRADIUS Server Project (http://www.freeradius.org)
 

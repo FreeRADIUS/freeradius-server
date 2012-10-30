@@ -34,7 +34,6 @@ RCSID("$Id$")
 #ifdef INADDR_ANY
 #undef INADDR_ANY
 #endif
-
 #include <EXTERN.h>
 #include <perl.h>
 #include <XSUB.h>
@@ -79,6 +78,8 @@ typedef struct perl_inst {
 	char	*perl_flags;
 	PerlInterpreter *perl;
 	pthread_key_t	*thread_key;
+
+	pthread_mutex_t clone_mutex;
 } PERL_INST;
 /*
  *	A mapping of configuration file names to internal variables.
@@ -247,7 +248,7 @@ static void rlm_destroy_perl(PerlInterpreter *perl)
 /* Create Key */
 static void rlm_perl_make_key(pthread_key_t *key)
 {
-	pthread_key_create(key, rlm_destroy_perl);
+	pthread_key_create(key, (void*)rlm_destroy_perl);
 }
 
 static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key)
@@ -281,7 +282,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 static void xs_init(pTHX)
 {
-	char *file = __FILE__;
+	const char *file = __FILE__;
 
 	/* DynaLoader is a special case */
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
@@ -318,8 +319,8 @@ static XS(XS_radiusd_radlog)
 /*
  * The xlat function
  */
-static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
-			size_t freespace, RADIUS_ESCAPE_STRING func)
+static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
+			char *out, size_t freespace)
 {
 
 	PERL_INST	*inst= (PERL_INST *) instance;
@@ -332,7 +333,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	*/
-	if (!radius_xlat(params, sizeof(params), fmt, request, func)) {
+	if (!radius_xlat(params, sizeof(params), fmt, request, NULL, NULL)) {
 		radlog(L_ERR, "rlm_perl: xlat failed.");
 		return 0;
 	}
@@ -367,14 +368,14 @@ static size_t perl_xlat(void *instance, REQUEST *request, char *fmt, char *out,
 	if (SvTRUE(ERRSV)) {
 		radlog(L_ERR, "rlm_perl: perl_xlat exit %s\n",
 		       SvPV(ERRSV,n_a));
-		POPs ;
+		(void)POPs;
 	} else if (count > 0) {
 		tmp = POPp;
 		strlcpy(out, tmp, freespace);
 		ret = strlen(out);
 
-		radlog(L_DBG,"rlm_perl: Len is %d , out is %s freespace is %d",
-		       ret, out,freespace);
+		radlog(L_DBG,"rlm_perl: Len is %zu , out is %s freespace is %zu",
+		       ret, out, freespace);
 	}
 
 	PUTBACK ;
@@ -440,20 +441,25 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 
 #ifdef USE_ITHREADS
+	pthread_mutex_init(&inst->clone_mutex, NULL);
+
 	inst->thread_key = rad_malloc(sizeof(*inst->thread_key));
 	memset(inst->thread_key,0,sizeof(*inst->thread_key));
 	
 	rlm_perl_make_key(inst->thread_key);
 #endif
+
+	char arg[] = "0";
+	
 	embed[0] = NULL;
 	if (inst->perl_flags) {
 		embed[1] = inst->perl_flags;
 		embed[2] = inst->module;
-		embed[3] = "0";
+		embed[3] = arg;
 		argc = 4;
 	} else {
 		embed[1] = inst->module;
-		embed[2] = "0";
+		embed[2] = arg;
 		argc = 3;
 	}
 
@@ -545,51 +551,41 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
  */
 static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 {
-        VALUE_PAIR	*nvp, *vpa, *vpn;
-	AV		*av;
-	char		namebuf[256], *name;
-	char            buffer[1024];
-	int		attr, vendor, len;
+	VALUE_PAIR *nvp, *vpa, *vpn;
+	AV *av;
+	const char *name;
+	char namebuf[256];
+	char buffer[1024];
+	int len;
 
 	hv_undef(rad_hv);
 	nvp = paircopy(vp);
 
 	while (nvp != NULL) {
-		name = nvp->name;
-		attr = nvp->attribute;
-		vendor = nvp->vendor;
-		vpa = paircopy2(nvp, attr, vendor);
+		if (nvp->flags.has_tag && (nvp->flags.tag != 0)) {
+			snprintf(namebuf, sizeof(namebuf), "%s:%d",
+			         nvp->name, nvp->flags.tag);
+			name = namebuf;
+		} else {
+			name = nvp->name;
+		}
+
+		vpa = paircopy2(nvp, nvp->attribute, nvp->vendor, nvp->flags.tag);
 
 		if (vpa->next) {
 			av = newAV();
-			vpn = vpa;
-			while (vpn) {
-				len = vp_prints_value(buffer, sizeof(buffer),
-						vpn, FALSE);
+			for (vpn = vpa; vpn; vpn = vpn->next) {
+				len = vp_prints_value(buffer, sizeof(buffer), vpn, FALSE);
 				av_push(av, newSVpv(buffer, len));
-				vpn = vpn->next;
 			}
-			hv_store(rad_hv, nvp->name, strlen(nvp->name),
-					newRV_noinc((SV *) av), 0);
+			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
 		} else {
-			if ((vpa->flags.has_tag) &&
-			    (vpa->flags.tag != 0)) {
-				snprintf(namebuf, sizeof(namebuf), "%s:%d",
-					 nvp->name, nvp->flags.tag);
-				name = namebuf;
-			}
-
-			len = vp_prints_value(buffer, sizeof(buffer),
-					      vpa, FALSE);
-			hv_store(rad_hv, name, strlen(name),
-				 newSVpv(buffer, len), 0);
+			len = vp_prints_value(buffer, sizeof(buffer), vpa, FALSE);
+			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 
 		pairfree(&vpa);
-		vpa = nvp; while ((vpa != NULL) && (vpa->attribute == attr) && (vpa->vendor == vendor))
-			vpa = vpa->next;
-		pairdelete(&nvp, attr, vendor);
-		nvp = vpa;
+		pairdelete(&nvp, nvp->attribute, nvp->vendor, nvp->flags.tag);
 	}
 }
 
@@ -669,8 +665,10 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	HV		*rad_request_proxy_hv;
 	HV		*rad_request_proxy_reply_hv;
 #endif
-
+	
 #ifdef USE_ITHREADS
+	pthread_mutex_lock(&inst->clone_mutex);
+
 	PerlInterpreter *interp;
 
 	interp = rlm_perl_clone(inst->perl,inst->thread_key);
@@ -678,9 +676,12 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	  dTHXa(interp);
 	  PERL_SET_CONTEXT(interp);
 	}
+	
+	pthread_mutex_unlock(&inst->clone_mutex);
 #else
 	PERL_SET_CONTEXT(inst->perl);
 #endif
+
 	{
 	dSP;
 
@@ -741,7 +742,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		radlog(L_ERR, "rlm_perl: perl_embed:: module = %s , func = %s exit status= %s\n",
 		       inst->module,
 		       function_name, SvPV(ERRSV,n_a));
-		POPs;
+		(void)POPs;
 	}
 
 	if (count == 1) {
@@ -991,11 +992,12 @@ static int perl_detach(void *instance)
 	}
 	}
 
-	xlat_unregister(inst->xlat_name, perl_xlat);
+	xlat_unregister(inst->xlat_name, perl_xlat, instance);
 	free(inst->xlat_name);
 
 #ifdef USE_ITHREADS
 	rlm_perl_destruct(inst->perl);
+	pthread_mutex_destroy(&inst->clone_mutex);
 #else
 	perl_destruct(inst->perl);
 	perl_free(inst->perl);

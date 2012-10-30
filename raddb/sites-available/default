@@ -87,6 +87,17 @@ authorize {
 	#  'raddb/huntgroups' files.
 	preprocess
 
+        #  If you intend to use CUI and you require that the Operator-Name
+        #  be set for CUI generation and you want to generate CUI also
+        #  for your local clients then uncomment the operator-name
+        #  below and set the operator-name for your clients in clients.conf
+#       operator-name
+        #
+        #  If you want to generate CUI for some clients that do not
+        #  send proper CUI requiests, then uncomment the
+        #  cui below and set "add-cui = yes" for these clients in clients.conf
+#       cui
+
 	#
 	#  If you want to have a log of authentication requests,
 	#  un-comment the following line, and the 'detail auth_log'
@@ -341,7 +352,9 @@ preacct {
 	#  was "Acct-Delay-Time" seconds in the past.
 	#
 	#  The code below creates an explicit start time, which can
-	#  then be used in other modules.
+	#  then be used in other modules.  It will be *mostly* correct.
+	#  Any errors are due to the 1-second resolution of RADIUS,
+	#  and the possibility that the time on the NAS may be off.
 	#
 	#  The start time is: NOW - delay - session_length
 	#
@@ -376,6 +389,10 @@ preacct {
 #  Accounting.  Log the accounting data.
 #
 accounting {
+        #  Update accounting packet by adding the CUI attribute
+        #  recorded from the corresponding Access-Accept
+        #  use it only if your NAS boxes do not support CUI themselves
+#       cui
 	#
 	#  Create a 'detail'ed log of the packets.
 	#  Note that accounting requests which are proxied
@@ -515,6 +532,10 @@ post-auth {
 	#
 #	wimax
 
+        #  Create the CUI value and add the attribute to Access-Accept.
+        #  Uncomment the line below if *returning* the CUI.
+#       cui
+
 	#  If there is a client certificate (EAP-TLS, sometimes PEAP
 	#  and TTLS), then some attributes are filled out after the
 	#  certificate verification has been performed.  These fields
@@ -532,24 +553,15 @@ post-auth {
 #	       Reply-Message += "%{TLS-Cert-Subject}"
 #	       Reply-Message += "%{TLS-Cert-Issuer}"
 #	       Reply-Message += "%{TLS-Cert-Common-Name}"
+#	       Reply-Message += "%{TLS-Cert-Subject-Alt-Name-Email}"
 #
 #	       Reply-Message += "%{TLS-Client-Cert-Serial}"
 #	       Reply-Message += "%{TLS-Client-Cert-Expiration}"
 #	       Reply-Message += "%{TLS-Client-Cert-Subject}"
 #	       Reply-Message += "%{TLS-Client-Cert-Issuer}"
 #	       Reply-Message += "%{TLS-Client-Cert-Common-Name}"
+#	       Reply-Message += "%{TLS-Client-Cert-Subject-Alt-Name-Email}"
 #	}
-
-
-	#  If the WiMAX module did it's work, you may want to do more
-	#  things here, like delete the MS-MPPE-*-Key attributes.
-	#
-	#	if (updated) {
-	#		update reply {
-	#			MS-MPPE-Recv-Key !* 0x00
-	#			MS-MPPE-Send-Key !* 0x00
-	#		}
-	#	}
 
 	#  Insert class attribute (with unique value) into response,
 	#  aids matching auth and acct records, and protects against duplicate
@@ -575,8 +587,9 @@ post-auth {
 #		sql
 		attr_filter.access_reject
 
-		# Insert EAP-Failure message if the request was rejected by policy
-		# instead of because of an authentication failure
+		# Insert EAP-Failure message if the request was
+		# rejected by policy instead of because of an
+		# authentication failure
 		eap
 
 		#  Remove reply message if the response contains an EAP-Message
@@ -594,6 +607,17 @@ post-auth {
 #
 pre-proxy {
 #	attr_rewrite
+
+        # Before proxing the request add an Operator-Name attribute identifying
+        # if the operator-name is found for this client.
+        # No need to uncomment this if you have already enabled this in
+        # the authorize section.
+#       operator-name
+
+        #  The client requests the CUI by sending a CUI attribute
+        #  containing one zero byte.
+        #  Uncomment the line below if *requesting* the CUI.
+#       cui
 
 	#  Uncomment the following line if you want to change attributes
 	#  as defined in the preproxy_users file.

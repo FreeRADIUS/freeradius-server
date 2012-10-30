@@ -33,6 +33,9 @@ RCSIDH(eap_h, "$Id$")
 
 #include "eap_types.h"
 
+/* TLS configuration name */
+#define TLS_CONFIG_SECTION "tls-config"
+
 /*
  * EAP_DS contains all the received/sending information
  * response = Received EAP packet

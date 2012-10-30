@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #
 # Version $Id$
 #
@@ -84,6 +85,7 @@ $INCLUDE dictionary.rfc4679
 $INCLUDE dictionary.rfc4818
 $INCLUDE dictionary.rfc4849
 $INCLUDE dictionary.rfc5176
+$INCLUDE dictionary.rfc5447
 $INCLUDE dictionary.rfc5580
 $INCLUDE dictionary.rfc5607
 $INCLUDE dictionary.rfc5904
@@ -108,8 +110,11 @@ $INCLUDE dictionary.azaire
 $INCLUDE dictionary.ascend
 $INCLUDE dictionary.bay
 $INCLUDE dictionary.bintec
+$INCLUDE dictionary.bskyb
+$INCLUDE dictionary.bt
 $INCLUDE dictionary.cablelabs
 $INCLUDE dictionary.cabletron
+$INCLUDE dictionary.camiant
 $INCLUDE dictionary.chillispot
 $INCLUDE dictionary.cisco
 #
@@ -173,9 +178,12 @@ $INCLUDE dictionary.nortel
 #
 #$INCLUDE dictionary.openser
 $INCLUDE dictionary.packeteer
+$INCLUDE dictionary.paloalto
 $INCLUDE dictionary.patton
 $INCLUDE dictionary.propel
 $INCLUDE dictionary.prosoft
+$INCLUDE dictionary.proxim
+$INCLUDE dictionary.purewave
 $INCLUDE dictionary.quiconnect
 $INCLUDE dictionary.quintum
 $INCLUDE dictionary.redback
@@ -191,6 +199,7 @@ $INCLUDE dictionary.springtide
 $INCLUDE dictionary.starent
 $INCLUDE dictionary.symbol
 $INCLUDE dictionary.telebit
+$INCLUDE dictionary.terena
 $INCLUDE dictionary.trapeze
 $INCLUDE dictionary.tropos
 $INCLUDE dictionary.t_systems_nova

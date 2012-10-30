@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #
 #	Attributes and values defined in RFC 2865.
 #	http://www.ietf.org/rfc/rfc2865.txt

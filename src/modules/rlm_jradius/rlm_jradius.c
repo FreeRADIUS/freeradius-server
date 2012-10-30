@@ -647,14 +647,16 @@ static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
 
     switch (vp->type) {
       case PW_TYPE_BYTE:
-	if (pack_uint8(ba, vp->lvalue) == -1) return -1;
+	if (pack_uint8(ba, vp->vp_integer) == -1) return -1;
 	break;
       case PW_TYPE_SHORT:
-	if (pack_uint16(ba, vp->lvalue) == -1) return -1;
+	if (pack_uint16(ba, vp->vp_integer) == -1) return -1;
 	break;
       case PW_TYPE_INTEGER:
+	if (pack_uint32(ba, vp->vp_integer) == -1) return -1;
+	break;
       case PW_TYPE_DATE:
-	if (pack_uint32(ba, vp->lvalue) == -1) return -1;
+	if (pack_uint32(ba, vp->vp_date) == -1) return -1;
 	break;
       case PW_TYPE_IPADDR:
 	if (pack_bytes(ba, (void *)&vp->vp_ipaddr, vp->length) == -1) return -1;
@@ -817,18 +819,22 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
      */
     switch (vp->type) {
       case PW_TYPE_BYTE:
-	vp->lvalue = unpack_uint8(buff);
+	vp->vp_integer = unpack_uint8(buff);
 	vp->length = 1;
 	break;
 
       case PW_TYPE_SHORT:
-	vp->lvalue = unpack_uint16(buff);
+	vp->vp_integer = unpack_uint16(buff);
 	vp->length = 2;
 	break;
 
       case PW_TYPE_INTEGER:
+	vp->vp_integer = unpack_uint32(buff);
+	vp->length = 4;
+	break;
+
       case PW_TYPE_DATE:
-	vp->lvalue = unpack_uint32(buff);
+	vp->vp_date = unpack_uint32(buff);
 	vp->length = 4;
 	break;
 

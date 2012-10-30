@@ -3388,7 +3388,7 @@ fi
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files Makefile"
+  ac_config_files="$ac_config_files Makefile all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure

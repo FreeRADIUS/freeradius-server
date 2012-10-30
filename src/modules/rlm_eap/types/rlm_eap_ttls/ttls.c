@@ -48,64 +48,30 @@ static int diameter_verify(REQUEST *request,
 {
 	uint32_t attr;
 	uint32_t length;
-	unsigned int offset;
-	unsigned int data_left = data_len;
+	unsigned int hdr_len;
+	unsigned int remaining = data_len;
 
-	while (data_left > 0) {
-		if (data_len < 12) {
-			RDEBUG2(" Diameter attribute is too small to contain a Diameter header");
+	while (remaining > 0) {
+		hdr_len = 12;
+
+		if (remaining < hdr_len) {
+		  RDEBUG2(" Diameter attribute is too small (%u) to contain a Diameter header", remaining);
 			return 0;
 		}
 
-		rad_assert(data_left <= data_len);
 		memcpy(&attr, data, sizeof(attr));
-		data += 4;
 		attr = ntohl(attr);
-		if (attr > 255) {
-			RDEBUG2(" Non-RADIUS attribute in tunneled authentication is not supported");
-			return 0;
-		}
-
-		memcpy(&length, data , sizeof(length));
-		data += 4;
+		memcpy(&length, data + 4, sizeof(length));
 		length = ntohl(length);
 
-		/*
-		 *	A "vendor" flag, with a vendor ID of zero,
-		 *	is equivalent to no vendor.  This is stupid.
-		 */
-		offset = 8;
-		if ((length & (1 << 31)) != 0) {
-			uint32_t vendor;
-			DICT_ATTR *da;
-
-			memcpy(&vendor, data, sizeof(vendor));
-			vendor = ntohl(vendor);
-
-			if (vendor > FR_MAX_VENDOR) {
-				RDEBUG2("Vendor codes larger than 2^24 are not supported");
+		if ((data[4] & 0x80) != 0) {
+			if (remaining < 16) {
+				RDEBUG2(" Diameter attribute is too small to contain a Diameter header with Vendor-Id");
 				return 0;
 			}
 
-			da = dict_attrbyvalue(attr, vendor);
-
-			/*
-			 *	SHOULD check ((length & (1 << 30)) != 0)
-			 *	for the mandatory bit.
-			 */
-			if (!da) {
-				RDEBUG2("Fatal! Vendor %u, Attribute %u was not found in our dictionary. ",
-				       vendor, attr);
-				return 0;
-			}
-
-			data += 4; /* skip the vendor field */
-			offset += 4; /* offset to value field */
+			hdr_len = 16;
 		}
-
-		/*
-		 *	Ignore the M bit.  We support all RADIUS attributes...
-		 */
 
 		/*
 		 *	Get the length.  If it's too big, die.
@@ -115,23 +81,13 @@ static int diameter_verify(REQUEST *request,
 		/*
 		 *	Too short or too long is bad.
 		 */
-		if (length < offset) {
-			RDEBUG2("Tunneled attribute %d is too short (%d)to contain anything useful.", attr, length);
+		if (length <= (hdr_len - 4)) {
+			RDEBUG2("Tunneled attribute %u is too short (%u < %u) to contain anything useful.", attr, length, hdr_len);
 			return 0;
 		}
 
-		/*
-		 *	EAP Messages cane be longer than MAX_STRING_LEN.
-		 *	Other attributes cannot be.
-		 */
-		if ((attr != PW_EAP_MESSAGE) &&
-		    (length > (MAX_STRING_LEN + 8))) {
-			RDEBUG2("Tunneled attribute %d is too long (%d) to pack into a RADIUS attribute.", attr, length);
-			return 0;
-		}
-
-		if (length > data_left) {
-			RDEBUG2("Tunneled attribute %d is longer than room left in the packet (%d > %d).", attr, length, data_left);
+		if (length > remaining) {
+			RDEBUG2("Tunneled attribute %u is longer than room remaining in the packet (%u > %u).", attr, length, remaining);
 			return 0;
 		}
 
@@ -139,7 +95,7 @@ static int diameter_verify(REQUEST *request,
 		 *	Check for broken implementations, which don't
 		 *	pad the AVP to a 4-octet boundary.
 		 */
-		if (data_left == length) break;
+		if (remaining == length) break;
 
 		/*
 		 *	The length does NOT include the padding, so
@@ -156,22 +112,16 @@ static int diameter_verify(REQUEST *request,
 		 *	Otherwise, if the attribute over-flows the end
 		 *	of the packet, die.
 		 */
-		if (data_left < length) {
+		if (remaining < length) {
 			RDEBUG2("ERROR! Diameter attribute overflows packet!");
 			return 0;
 		}
 
 		/*
-		 *	Check again for equality, now that we're padded
-		 *	length to a multiple of 4 octets.
+		 *	remaining > length, continue.
 		 */
-		if (data_left == length) break;
-
-		/*
-		 *	data_left > length, continue.
-		 */
-		data_left -= length;
-		data += length - offset;
+		remaining -= length;
+		data += length;
 	}
 
 	/*
@@ -217,24 +167,11 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			memcpy(&vendor, data, sizeof(vendor));
 			vendor = ntohl(vendor);
 
-			if (vendor > FR_MAX_VENDOR) {
-				RDEBUG2("Cannot handle vendor Id greater than 2^&24");
-				pairfree(&first);
-				return NULL;
-			}
-
 			data += 4; /* skip the vendor field, it's zero */
 			offset += 4; /* offset to value field */
-		}
 
-		/*
-		 *	Vendor attributes can be larger than 255.
-		 *	Normal attributes cannot be.
-		 */
-		if ((attr > 255) && (vendor == 0)) {
-			RDEBUG2("Cannot handle Diameter attributes");
-			pairfree(&first);
-			return NULL;
+			if (attr > 65535) goto next_attr;
+			if (vendor > FR_MAX_VENDOR) goto next_attr;
 		}
 
 		/*
@@ -255,8 +192,63 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		size = length - offset;
 
 		/*
-		 *	Create it.
+		 *	Vendor attributes can be larger than 255.
+		 *	Normal attributes cannot be.
 		 */
+		if ((attr > 255) && (vendor == 0)) {
+			RDEBUG2("WARNING: Skipping Diameter attribute %u",
+				attr);
+			goto next_attr;
+		}
+
+		if (size > 253) {
+			RDEBUG2("WARNING: diameter2vp skipping long attribute %u, attr");
+			goto next_attr;
+		}
+
+		/*
+		 *	RADIUS VSAs are handled as Diameter attributes
+		 *	with Vendor-Id == 0, and the VSA data packed
+		 *	into the "String" field as per normal.
+		 *
+		 *	EXCEPT for the MS-CHAP attributes.
+		 */
+		if ((vendor == 0) && (attr == PW_VENDOR_SPECIFIC)) {
+			ssize_t decoded;
+			uint8_t buffer[256];
+
+			buffer[0] = PW_VENDOR_SPECIFIC;
+			buffer[1] = size + 2;
+			memcpy(buffer + 2, data, size);
+
+			vp = NULL;
+			decoded = rad_attr2vp_vsa(NULL, NULL, NULL,
+						  buffer, size + 2, &vp);
+			if (decoded < 0) {
+				RDEBUG2("ERROR: diameter2vp failed decoding attr: %s",
+					fr_strerror());
+				goto do_octets;
+			}
+
+			if ((size_t) decoded != size + 2) {
+				RDEBUG2("ERROR: diameter2vp failed to entirely decode VSA");
+				pairfree(&vp);
+				goto do_octets;
+			}
+
+			*last = vp;
+			do {
+				last = &(vp->next);
+				vp = vp->next;
+			} while (vp != NULL);
+
+			goto next_attr;
+		}
+
+		/*
+		 *	Create it.  If this fails, it's because we're OOM.
+		 */
+	do_octets:
 		vp = paircreate(attr, vendor, PW_TYPE_OCTETS);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
@@ -272,11 +264,16 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		case PW_TYPE_INTEGER:
 		case PW_TYPE_DATE:
 			if (size != vp->length) {
-				RDEBUG2("Invalid length attribute %d",
-				       attr);
-				pairfree(&first);
-				pairfree(&vp);
-				return NULL;
+				/*
+				 *	Bad format.  Create a "raw"
+				 *	attribute.
+				 */
+		raw:
+				vp = paircreate_raw(vp->attribute, vp->vendor,
+						    PW_TYPE_OCTETS, vp);
+				vp->length = size;
+				memcpy(vp->vp_octets, data, vp->length);
+				break;
 			}
 			memcpy(&vp->vp_integer, data, vp->length);
 
@@ -287,13 +284,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			break;
 
 		case PW_TYPE_INTEGER64:
-			if (size != vp->length) {
-				RDEBUG2("Invalid length attribute %d",
-				       attr);
-				pairfree(&first);
-				pairfree(&vp);
-				return NULL;
-			}
+			if (size != vp->length) goto raw;
 			memcpy(&vp->vp_integer64, data, vp->length);
 
 			/*
@@ -317,13 +308,36 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		   */
 		  break;
 
-		  /*
-		   *	String, octet, etc.  Copy the data from the
-		   *	value field over verbatim.
-		   *
-		   *	FIXME: Ipv6 attributes ?
-		   *
-		   */
+		case PW_TYPE_BYTE:
+			if (size != vp->length) goto raw;
+			vp->vp_integer = data[0];
+			break;
+
+		case PW_TYPE_SHORT:
+			if (size != vp->length) goto raw;
+			vp->vp_integer = (data[0] * 256) + data[1];
+			break;
+
+		case PW_TYPE_SIGNED:
+			if (size != vp->length) goto raw;
+			memcpy(&vp->vp_signed, data, vp->length);
+			vp->vp_signed = ntohl(vp->vp_signed);
+			break;
+
+		case PW_TYPE_IPV6ADDR:
+			if (size != vp->length) goto raw;
+			memcpy(&vp->vp_ipv6addr, data, vp->length);
+			break;
+
+		case PW_TYPE_IPV6PREFIX:
+			if (size != vp->length) goto raw;
+			memcpy(&vp->vp_ipv6prefix, data, vp->length);
+			break;
+
+			/*
+			 *	String, octet, etc.  Copy the data from the
+			 *	value field over verbatim.
+			 */
 		case PW_TYPE_OCTETS:
 			if (attr == PW_EAP_MESSAGE) {
 				const uint8_t *eap_message = data;
@@ -371,66 +385,60 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	NOTE: This means that the User-Password
 		 *	attribute CANNOT EVER have embedded zeros in it!
 		 */
-		switch (vp->attribute) {
-		case PW_USER_PASSWORD:
+		if ((vp->vendor == 0) && (vp->attribute == PW_USER_PASSWORD)) {
 			/*
 			 *	If the password is exactly 16 octets,
 			 *	it won't be zero-terminated.
 			 */
 			vp->vp_strvalue[vp->length] = '\0';
 			vp->length = strlen(vp->vp_strvalue);
-			break;
+		}
 
-			/*
-			 *	Ensure that the client is using the
-			 *	correct challenge.  This weirdness is
-			 *	to protect against against replay
-			 *	attacks, where anyone observing the
-			 *	CHAP exchange could pose as that user,
-			 *	by simply choosing to use the same
-			 *	challenge.
-			 *
-			 *	By using a challenge based on
-			 *	information from the current session,
-			 *	we can guarantee that the client is
-			 *	not *choosing* a challenge.
-			 *
-			 *	We're a little forgiving in that we
-			 *	have loose checks on the length, and
-			 *	we do NOT check the Id (first octet of
-			 *	the response to the challenge)
-			 *
-			 *	But if the client gets the challenge correct,
-			 *	we're not too worried about the Id.
-			 */
-		case PW_CHAP_CHALLENGE:
-		case PW_MSCHAP_CHALLENGE:
+		/*
+		 *	Ensure that the client is using the
+		 *	correct challenge.  This weirdness is
+		 *	to protect against against replay
+		 *	attacks, where anyone observing the
+		 *	CHAP exchange could pose as that user,
+		 *	by simply choosing to use the same
+		 *	challenge.
+		 *
+		 *	By using a challenge based on
+		 *	information from the current session,
+		 *	we can guarantee that the client is
+		 *	not *choosing* a challenge.
+		 *
+		 *	We're a little forgiving in that we
+		 *	have loose checks on the length, and
+		 *	we do NOT check the Id (first octet of
+		 *	the response to the challenge)
+		 *
+		 *	But if the client gets the challenge correct,
+		 *	we're not too worried about the Id.
+		 */
+		if (((vp->vendor == 0) && (vp->attribute == PW_CHAP_CHALLENGE)) ||
+		    ((vp->vendor == VENDORPEC_MICROSOFT) && (vp->attribute == PW_MSCHAP_CHALLENGE))) {
+			uint8_t	challenge[16];
+
 			if ((vp->length < 8) ||
 			    (vp->length > 16)) {
 				RDEBUG("Tunneled challenge has invalid length");
 				pairfree(&first);
 				pairfree(&vp);
 				return NULL;
-
-			} else {
-				uint8_t	challenge[16];
-
-				eapttls_gen_challenge(ssl, challenge,
-						      sizeof(challenge));
-
-				if (memcmp(challenge, vp->vp_octets,
-					   vp->length) != 0) {
-					RDEBUG("Tunneled challenge is incorrect");
-					pairfree(&first);
-					pairfree(&vp);
-					return NULL;
-				}
 			}
-			break;
 
-		default:
-			break;
-		} /* switch over checking/re-writing of attributes. */
+			eapttls_gen_challenge(ssl, challenge,
+					      sizeof(challenge));
+			
+			if (memcmp(challenge, vp->vp_octets,
+				   vp->length) != 0) {
+				RDEBUG("Tunneled challenge is incorrect");
+				pairfree(&first);
+				pairfree(&vp);
+				return NULL;
+			}
+		}
 
 		/*
 		 *	Update the list.
@@ -690,10 +698,10 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT);
-			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT);
+			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, -1);
 
 			/*
 			 *	Use the tunneled reply, but not now.
@@ -734,7 +742,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
-			pairdelete(&reply->vps, PW_PROXY_STATE, 0);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0, -1);
 			pairadd(&request->reply->vps, reply->vps);
 			reply->vps = NULL;
 		}
@@ -828,7 +836,9 @@ static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
 	/*
 	 *	Do the callback, if it exists, and if it was a success.
 	 */
-	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
+	if (fake &&
+	    handler->request->proxy_reply &&
+	    (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
 		/*
 		 *	Terrible hacks.
 		 */
@@ -1171,7 +1181,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute, vp->vendor);
+			copy = paircopy2(vp, vp->attribute, vp->vendor, -1);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}
@@ -1198,7 +1208,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_authenticate(fake);
+	rad_virtual_server(fake);
 
 	/*
 	 *	Note that we don't do *anything* with the reply

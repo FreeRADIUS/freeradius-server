@@ -101,7 +101,7 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 	case T_DOUBLE_QUOTED_STRING:
 		if (!strchr(value, '%')) return value;
 
-		radius_xlat(buffer, sizeof_buffer, value, request, NULL);
+		radius_xlat(buffer, sizeof_buffer, value, request, NULL, NULL);
 		return buffer;
 	}
 
@@ -1122,87 +1122,36 @@ struct conf_pair {
 int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			   VALUE_PAIR *input_vps, const char *name)
 {
+	int list;
 	CONF_ITEM *ci;
 	VALUE_PAIR *newlist, *vp;
-	VALUE_PAIR **output_vps = NULL;
-	REQUEST *myrequest = request;
+	VALUE_PAIR **output_vps;
+	REQUEST *update_request = request;
 
 	if (!request || !cs) return RLM_MODULE_INVALID;
 
-	/*
-	 *	If we are an inner tunnel session, permit the
-	 *	policy to update the outer lists directly.
+	/* 
+	 *	Qualifiers not valid for this request
 	 */
-	if (strncmp(name, "outer.", 6) == 0) {
-		if (!request->parent) return RLM_MODULE_NOOP;
-
-		myrequest = request->parent;
-		name += 6;
+	if(!radius_ref_request(&update_request, &name)){
+		RDEBUG("WARNING: List name refers to outer request"
+		       " but not in a tunnel.");
+		return RLM_MODULE_NOOP; 
 	}
-
-	if (strcmp(name, "request") == 0) {
-		output_vps = &myrequest->packet->vps;
-
-	} else if (strcmp(name, "reply") == 0) {
-		output_vps = &myrequest->reply->vps;
-
-#ifdef WITH_PROXY
-	} else if (strcmp(name, "proxy-request") == 0) {
-		if (request->proxy) output_vps = &myrequest->proxy->vps;
-
-	} else if (strcmp(name, "proxy-reply") == 0) {
-		if (request->proxy_reply) output_vps = &request->proxy_reply->vps;
-#endif
-
-	} else if (strcmp(name, "config") == 0) {
-		output_vps = &myrequest->config_items;
-
-	} else if (strcmp(name, "control") == 0) {
-		output_vps = &myrequest->config_items;
-
-#ifdef WITH_COA
-	} else if (strcmp(name, "coa") == 0) {
-		if (!myrequest->coa) {
-			request_alloc_coa(myrequest);
-			myrequest->coa->proxy->code = PW_COA_REQUEST;
-		}
-		  
-		if (myrequest->coa &&
-		    (myrequest->coa->proxy->code == PW_COA_REQUEST)) {
-			output_vps = &myrequest->coa->proxy->vps;
-		}
-
-	} else if (strcmp(name, "coa-reply") == 0) {
-		if (myrequest->coa && /* match reply with request */
-		    (myrequest->coa->proxy->code == PW_COA_REQUEST) &&
-		     (myrequest->coa->proxy_reply)) {
-		      output_vps = &myrequest->coa->proxy_reply->vps;
-		}
-
-	} else if (strcmp(name, "disconnect") == 0) {
-		if (!myrequest->coa) {
-			request_alloc_coa(myrequest);
-			if (myrequest->coa) myrequest->coa->proxy->code = PW_DISCONNECT_REQUEST;
-		}
-
-		if (myrequest->coa &&
-		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST)) {
-			output_vps = &myrequest->coa->proxy->vps;
-		}
-
-	} else if (strcmp(name, "disconnect-reply") == 0) {
-		if (myrequest->coa && /* match reply with request */
-		    (myrequest->coa->proxy->code == PW_DISCONNECT_REQUEST) &&
-		    (myrequest->coa->proxy_reply)) {
-			output_vps = &myrequest->coa->proxy_reply->vps;
-		}
-#endif
-
-	} else {
+	
+ 	list = fr_str2int(pair_lists, name, PAIR_LIST_UNKNOWN);
+ 
+ 	/* 
+	 *	Bad list name name
+	 */
+	if (list == PAIR_LIST_UNKNOWN) {
+		RDEBUG("ERROR: Invalid list name '%s'", name);
 		return RLM_MODULE_INVALID;
 	}
-
-	if (!output_vps) return RLM_MODULE_NOOP; /* didn't update the list */
+	
+	output_vps = radius_list(update_request, list);
+	
+	rad_assert(output_vps);
 
 	newlist = paircopy(input_vps);
 	if (!newlist) {
@@ -1259,7 +1208,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		vp = vp->next;
 	}
 
-	radius_pairmove(request, output_vps, newlist);
+	radius_pairmove(update_request, output_vps, newlist);
 
 	return RLM_MODULE_UPDATED;
 }

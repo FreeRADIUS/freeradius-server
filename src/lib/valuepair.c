@@ -32,9 +32,11 @@ RCSID("$Id$")
 #endif
 
 #ifdef HAVE_PCREPOSIX_H
+#define WITH_REGEX
 #  include	<pcreposix.h>
 #else
 #ifdef HAVE_REGEX_H
+#define WITH_REGEX
 #  include	<regex.h>
 #endif
 #endif
@@ -245,17 +247,26 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor)
 }
 
 
-/*
- *	Delete the pair(s) with the matching attribute
+/** Delete matching pairs
+ *
+ * Delete matching pairs from the attribute list.
+ * 
+ * @param[in+out] vp which is head of the list.
+ * @param[in] attr to match.
+ * @param[in] vendor to match.
+ * @param[in] tag to match, only used if > 0.
  */
-void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor)
+void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
+		int8_t tag)
 {
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **last = first;
 
 	for(i = *first; i; i = next) {
 		next = i->next;
-		if ((i->attribute == attr) && (i->vendor == vendor)) {
+		if ((i->attribute == attr) && (i->vendor == vendor) &&
+		    ((tag < 0) ||
+		     (i->flags.has_tag && (i->flags.tag == tag)))) {
 			*last = next;
 			pairbasicfree(i);
 		} else {
@@ -373,10 +384,20 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 }
 
 
-/*
- *	Copy just a certain type of pairs.
+/** Copy matching pairs
+ *
+ * Copy pairs of a matching attribute number, vendor number and tag from the
+ * the input list to a new list, and return the head of this list.
+ * 
+ * @param[in] vp which is head of the input list.
+ * @param[in] attr to match, if 0 input list will not be filtered by attr.
+ * @param[in] vendor to match
+ * @param[in] tag to match, if < 0 input list will not be filtered by vendor,
+ *	      if >= 0 only attributes with that tag value will be copied.
+ * @return the head of the new VALUE_PAIR list.
  */
-VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor)
+VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
+		      int8_t tag)
 {
 	VALUE_PAIR	*first, *n, **last;
 
@@ -385,17 +406,25 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor)
 
 	while (vp) {
 		if ((attr > 0) &&
-		    !((vp->attribute == attr) && (vp->vendor == vendor))) {
-			vp = vp->next;
-			continue;
-		}
+		    ((vp->attribute != attr) || (vp->vendor != vendor)))
+			goto skip;
+			
+		if ((tag >= 0) && vp->flags.has_tag && (vp->flags.tag != tag))
+			goto skip;
 
 		n = paircopyvp(vp);
 		if (!n) return first;
+		
 		*last = n;
 		last = &n->next;
 		vp = vp->next;
+		
+		continue;
+		
+		skip:
+		vp = vp->next;
 	}
+	
 	return first;
 }
 
@@ -405,7 +434,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor)
  */
 VALUE_PAIR *paircopy(VALUE_PAIR *vp)
 {
-	return paircopy2(vp, 0, 0);
+	return paircopy2(vp, 0, 0, -1);
 }
 
 
@@ -464,6 +493,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			case T_OP_CMP_TRUE:
 			case T_OP_CMP_FALSE:
 			case T_OP_CMP_EQ:
+			case T_OP_REG_EQ:
+			case T_OP_REG_NE:
 				tailfrom = i;
 				continue;
 
@@ -492,7 +523,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					if (!i->vp_strvalue[0] ||
 					    (strcmp((char *)found->vp_strvalue,
 						    (char *)i->vp_strvalue) == 0)){
-						pairdelete(to, found->attribute, found->vendor);
+						pairdelete(to, found->attribute, found->vendor, found->flags.tag);
 
 						/*
 						 *	'tailto' may have been
@@ -508,50 +539,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 				continue;
 				break;
 
-/* really HAVE_REGEX_H */
-#if 0
-				/*
-				 *  Attr-Name =~ "s/find/replace/"
-				 *
-				 *  Very bad code.  Barely working,
-				 *  if at all.
-				 */
-
-			case T_OP_REG_EQ:
-			  if (found &&
-			      (i->vp_strvalue[0] == 's')) {
-			    regex_t		reg;
-			    regmatch_t		match[1];
-
-			    char *str;
-			    char *p, *q;
-
-			    p = i->vp_strvalue + 1;
-			    q = strchr(p + 1, *p);
-			    if (!q || (q[strlen(q) - 1] != *p)) {
-			      tailfrom = i;
-			      continue;
-			    }
-			    str = strdup(i->vp_strvalue + 2);
-			    q = strchr(str, *p);
-			    *(q++) = '\0';
-			    q[strlen(q) - 1] = '\0';
-
-			    regcomp(&reg, str, 0);
-			    if (regexec(&reg, found->vp_strvalue,
-					1, match, 0) == 0) {
-			      fprintf(stderr, "\"%s\" will have %d to %d replaced with %s\n",
-				      found->vp_strvalue, match[0].rm_so,
-				      match[0].rm_eo, q);
-
-			    }
-			    regfree(&reg);
-			    free(str);
-			  }
-			  tailfrom = i;	/* don't copy it over */
-			  continue;
-			  break;
-#endif
 			case T_OP_EQ:		/* = */
 				/*
 				 *  FIXME: Tunnel attributes with
@@ -587,7 +574,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					memcpy(found, i, sizeof(*found));
 					found->next = mynext;
 
-					pairdelete(&found->next, found->attribute, found->vendor);
+					pairdelete(&found->next, found->attribute, found->vendor, found->flags.tag);
 
 					/*
 					 *	'tailto' may have been
@@ -991,23 +978,15 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			 *	cannot be resolved, or resolve later!
 			 */
 			s = NULL;
-			if ((p = strrchr(value, '+')) != NULL && !p[1]) {
-				cs = s = strdup(value);
-				if (!s) return NULL;
-				p = strrchr(s, '+');
-				*p = 0;
-				vp->flags.addport = 1;
-			} else {
-				p = NULL;
-				cs = value;
-			}
+			p = NULL;
+			cs = value;
 
 			{
 				fr_ipaddr_t ipaddr;
 
 				if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
-					free(s);
 					fr_strerror_printf("Failed to find IP address for %s", cs);
+					free(s);
 					return NULL;
 				}
 
@@ -1339,6 +1318,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	char		*q;
 	VALUE_PAIR	*vp;
 	DICT_VENDOR	*dv;
+	const DICT_ATTR *da;
 
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
@@ -1442,8 +1422,6 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	extended attribute of the "evs" data type.
 	 */
 	if (*p == '.') {
-		DICT_ATTR *da;
-
 		da = dict_attrbyvalue(attr, 0);
 		if (!da) {
 			fr_strerror_printf("Cannot parse attributes without dictionaries");
@@ -1451,7 +1429,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		}		
 		
 		if ((attr != PW_VENDOR_SPECIFIC) &&
-		    !(da->flags.extended || da->flags.extended_flags)) {
+		    !(da->flags.extended || da->flags.long_extended)) {
 			fr_strerror_printf("Standard attributes cannot use OIDs");
 			return NULL;
 		}
@@ -1514,6 +1492,23 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 			return NULL;
 		}
 	}
+
+	/*
+	 *	Maybe we're reading an old detail/config file, where
+	 *	it didn't know about a particular attribute and dumped
+	 *	it as hex.  Now the dictionaries have been updated,
+	 *	and we know about it.  So... convert it to the
+	 *	appropriate type.
+	 *
+	 *	FIXME: call data2vp_any.
+	 */
+	da = dict_attrbyvalue(attr, vendor);
+	if (da) {
+		/*
+		 *	FIXME: convert hex to the data type.
+		 */
+		return NULL;
+	}
 	
 	/*
 	 *	We've now parsed the attribute properly, Let's create
@@ -1531,46 +1526,16 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	size = strlen(value + 2);
 	data = vp->vp_octets;
 
-	/*
-	 *	We may be reading something like Attr-5.  i.e.
-	 *	who-ever wrote the text didn't understand it, but we
-	 *	do.
-	 */
-	switch (vp->type) {
-	default:
-		if (size == (vp->length * 2)) break;
-		vp->type = PW_TYPE_OCTETS;
-		/* FALL-THROUGH */
-		
-	case PW_TYPE_OCTETS:
-	case PW_TYPE_ABINARY:
-		vp->length = size >> 1;
-		if (vp->length > sizeof(vp->vp_octets)) {
-			vp->vp_tlv = malloc(vp->length);
-			if (!vp->vp_tlv) {
-				fr_strerror_printf("Out of memory");
-				free(vp);
-				return NULL;
-			}
-			data = vp->vp_tlv;
-			vp->type |= PW_FLAG_LONG;
+	vp->length = size >> 1;
+	if (vp->length > sizeof(vp->vp_octets)) {
+		vp->vp_tlv = malloc(vp->length);
+		if (!vp->vp_tlv) {
+			fr_strerror_printf("Out of memory");
+			free(vp);
+			return NULL;
 		}
-		break;
-
-	case PW_TYPE_STRING:
-		vp->length = size >> 1;
-		memset(&vp->vp_strvalue, 0, sizeof(vp->vp_strvalue));
-		if (vp->length >= sizeof(vp->vp_strvalue)) {
-			vp->vp_tlv = malloc(vp->length);
-			if (!vp->vp_tlv) {
-				fr_strerror_printf("Out of memory");
-				free(vp);
-				return NULL;
-			}
-			data = vp->vp_tlv;
-			vp->type |= PW_FLAG_LONG;
-		}
-		break;
+		data = vp->vp_tlv;
+		vp->type |= PW_FLAG_LONG;
 	}
 
 	if (fr_hex2bin(value + 2, data, size) != vp->length) {
@@ -1579,22 +1544,6 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		return NULL;
 	}
 
-	/*
-	 *	Move contents around based on type.  This is
-	 *	to work around the historical use of "lvalue".
-	 */
-	switch (vp->type) {
-	case PW_TYPE_DATE:
-	case PW_TYPE_IPADDR:
-	case PW_TYPE_INTEGER:
-		memcpy(&vp->lvalue, vp->vp_octets, sizeof(vp->lvalue));
-		vp->vp_strvalue[0] = '\0';
-		break;
-		
-	default:
-		break;
-	}
-       
 	return vp;
 }
 
@@ -1609,7 +1558,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	char            *tc, *ts;
 	signed char     tag;
 	int             found_tag;
-	char		buffer[64];
+	char		buffer[256];
 	const char	*attrname = attribute;
 
 	/*
@@ -1717,21 +1666,35 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 		 */
 	case T_OP_REG_EQ:	/* =~ */
 	case T_OP_REG_NE:	/* !~ */
-		if (!value) {
-			fr_strerror_printf("No regular expression found in %s",
-					   vp->name);
-		        pairbasicfree(vp);
-			return NULL;
-		}
-	  
-		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-		vp->length = strlen(vp->vp_strvalue);
-		/*
-		 *	If anything goes wrong, this is a run-time error,
-		 *	not a compile-time error.
-		 */
-		return vp;
+#ifndef WITH_REGEX
+		fr_strerror_printf("Regular expressions are not supported");
+		return NULL;
 
+#else
+		if (!value) {
+			/* just return the vp - we've probably been called
+			 * by pairmake_xlat who will fill in the value for us
+			 */
+			return vp;
+		}
+
+		pairbasicfree(vp);
+		
+		if (1) {
+			int compare;
+			regex_t reg;
+			
+			compare = regcomp(&reg, value, REG_EXTENDED);
+			if (compare != 0) {
+				regerror(compare, &reg, buffer, sizeof(buffer));
+				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
+					   attribute, buffer);
+				return NULL;
+			}
+		}
+
+		return pairmake_xlat(attribute, value, operator);
+#endif
 	}
 
 	/*
@@ -1750,6 +1713,24 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	return vp;
 }
 
+VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value, int operator)
+{
+	VALUE_PAIR *vp;
+
+	if (!value) {
+		fr_strerror_printf("Empty value passed to pairmake_xlat()");
+		return NULL;
+	}
+
+	vp = pairmake(attribute, NULL, operator);
+	if (!vp) return vp;
+
+	strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
+	vp->flags.do_xlat = 1;
+	vp->length = 0;
+
+	return vp;
+}
 
 /*
  *	[a-zA-Z0-9_-:.]+
@@ -1878,15 +1859,12 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 				fr_strerror_printf("Value too long");
 				return NULL;
 			}
-			vp = pairmake(attr, NULL, token);
+			vp = pairmake_xlat(attr, value, token);
 			if (!vp) {
 				*eol = T_OP_INVALID;
 				return NULL;
 			}
 
-			strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-			vp->flags.do_xlat = 1;
-			vp->length = 0;
 		} else {
 			/*
 			 *	Parse && escape it, as defined by the
@@ -1936,15 +1914,11 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 			return NULL;
 		}
 
-		vp = pairmake(attr, NULL, token);
+		vp = pairmake_xlat(attr, value, token);
 		if (!vp) {
 			*eol = T_OP_INVALID;
 			return NULL;
 		}
-
-		vp->flags.do_xlat = 1;
-		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-		vp->length = 0;
 		break;
 	}
 
@@ -2087,7 +2061,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		 */
 	case T_OP_REG_EQ:
 	case T_OP_REG_NE:
-#ifndef HAVE_REGEX_H
+#ifndef WITH_REGEX
 		return -1;
 #else
 		{

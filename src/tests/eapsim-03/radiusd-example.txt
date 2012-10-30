@@ -709,7 +709,7 @@ modules {
 		# to the LDAP database by using the StartTLS extended
 		# operation.
 		# The StartTLS operation is supposed to be used with normal
-		# ldap connections instead of using ldaps (port 689) connections
+		# ldap connections instead of using ldaps (port 636) connections
 		start_tls = no
 
 		# default_profile = "cn=radprofile,ou=dialup,o=My Org,c=UA"
@@ -945,20 +945,6 @@ modules {
 		#  people from seeing that information.
 		detailperm = 0600
 	}
-
-	# Create a unique accounting session Id.  Many NASes re-use or
-	# repeat values for Acct-Session-Id, causing no end of
-	# confusion.
-	#
-	#  This module will add a (probably) unique session id 
-	#  to an accounting packet based on the attributes listed
-	#  below found in the packet.  See doc/rlm_acct_unique for
-	#  more information.
-	#
-	acct_unique {
-		key = "User-Name, Acct-Session-Id, NAS-IP-Address, Client-IP-Address, NAS-Port-Id"
-	}
-
 
 	#  Include another file that has the SQL-related configuration.
 	#  This is another file only because it tends to be big.

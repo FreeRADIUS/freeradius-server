@@ -80,6 +80,27 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 
 	mysql_init(&(mysql_sock->conn));
 	mysql_options(&(mysql_sock->conn), MYSQL_READ_DEFAULT_GROUP, "freeradius");
+
+#if (MYSQL_VERSION_ID >= 50000)
+	if (config->query_timeout) {
+		unsigned int timeout = config->query_timeout;
+
+		/*
+		 *	3 retries are hard-coded into the MySQL library.
+		 *	We ensure that the REAL timeout is what the user
+		 *	set by accounting for that.
+		 */
+		if (timeout > 3) timeout /= 3;
+
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_CONNECT_TIMEOUT,
+			      &timeout);
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_READ_TIMEOUT,
+			      &timeout);
+		mysql_options(&(mysql_sock->conn), MYSQL_OPT_WRITE_TIMEOUT,
+			      &timeout);
+	}
+#endif
+
 #if (MYSQL_VERSION_ID >= 40100)
 	sql_flags = CLIENT_MULTI_RESULTS | CLIENT_FOUND_ROWS;
 #else
@@ -165,8 +186,6 @@ static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 
-	if (config->sqltrace)
-		radlog(L_DBG,"rlm_sql_mysql: query:  %s", querystr);
 	if (mysql_sock->sock == NULL) {
 		radlog(L_ERR, "rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;

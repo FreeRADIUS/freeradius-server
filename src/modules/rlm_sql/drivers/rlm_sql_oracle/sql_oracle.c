@@ -241,8 +241,6 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	int	x;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
-	if (config->sqltrace)
-		DEBUG(querystr);
 	if (oracle_sock->conn == NULL) {
 		radlog(L_ERR, "rlm_sql_oracle: Socket not connected");
 		return SQL_DOWN;
@@ -299,8 +297,6 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	sb2		*indicators;
 	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
 
-	if (config->sqltrace)
-		DEBUG(querystr);
 	if (oracle_sock->conn == NULL) {
 		radlog(L_ERR, "rlm_sql_oracle: Socket not connected");
 		return SQL_DOWN;

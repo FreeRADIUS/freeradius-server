@@ -351,31 +351,6 @@ static const FR_NAME_NUMBER filterCompare[] = {
 
 
 /*
- *	String split routine.  Splits an input string IN PLACE
- *	into pieces, based on spaces.
- */
-static int str2argv(char *str, char **argv, int max_argc)
-{
-	int argc = 0;
-
-	while (*str) {
-		if (argc >= max_argc) return argc;
-
-		while (*str == ' ') *(str++) = '\0';
-
-		if (!*str) return argc;
-
-		argv[argc] = str;
-		argc++;
-
-		while (*str && (*str != ' ')) str++;
-	}
-
-	return argc;
-}
-
-
-/*
  *	ascend_parse_ipx_net
  *
  *	srcipxnet nnnn srcipxnode mmmmm [srcipxsoc cmd value ]
@@ -1142,7 +1117,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
  *	Note we don't bother checking 'len' after the snprintf's.
  *	This function should ONLY be called with a large (~1k) buffer.
  */
-void print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len)
+void print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimitst)
 {
   size_t 		i;
   char			*p;
@@ -1168,8 +1143,10 @@ void print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len)
 	  return;
   }
 
-  *(p++) = '"';
-  len -= 3;			/* account for leading & trailing quotes */
+  if (delimitst) {
+  	*(p++) = '"';
+  	len -= 3;			/* account for leading & trailing quotes */
+  }
 
   filter = (ascend_filter_t *) &(vp->vp_filter);
   i = snprintf(p, len, "%s %s %s",
@@ -1313,7 +1290,7 @@ void print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len)
     }
   }
 
-  *(p++) = '"';
+  if (delimitst) *(p++) = '"';
   *p = '\0';
 }
 #endif

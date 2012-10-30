@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #
 #	Non Protocol Attributes used by FreeRADIUS
 #
@@ -119,8 +120,6 @@ ATTRIBUTE	Packet-Dst-Port				1087	integer
 ATTRIBUTE	Packet-Authentication-Vector		1088	octets
 ATTRIBUTE	Time-Of-Day				1089	string
 ATTRIBUTE	Request-Processing-Stage		1090	string
-ATTRIBUTE	Cache-No-Caching			1091	string
-ATTRIBUTE	Cache-Delete-Cache			1092	string
 ATTRIBUTE	SHA-Password				1093	octets
 ATTRIBUTE	SSHA-Password				1094	octets
 ATTRIBUTE	SHA1-Password				1093	octets
@@ -222,6 +221,12 @@ ATTRIBUTE	MS-CHAP-New-NT-Password			1137	octets
 
 ATTRIBUTE	Stripped-User-Domain			1138	string
 ATTRIBUTE	Called-Station-SSID			1139	string
+ATTRIBUTE	Cache-TTL				1140	integer
+ATTRIBUTE	Cache-Status-Only			1141	integer
+ATTRIBUTE	Cache-Entry-Hits			1142	integer
+
+VALUE	Cache-Status-Only		no			0
+VALUE	Cache-Status-Only		yes			1
 
 #
 #	Range:	1200-1279
@@ -260,20 +265,59 @@ ATTRIBUTE	EAP-Sim-KC3				1214	octets
 #	Range:	1280 - 1535
 #		EAP-type specific attributes
 #
-
-# these are PW_EAP_X  + 1280
-ATTRIBUTE	EAP-Type-Identity			1281	string
-ATTRIBUTE	EAP-Type-Notification			1282	string
-ATTRIBUTE	EAP-Type-NAK				1283	string
-ATTRIBUTE	EAP-Type-MD5				1284	octets
-ATTRIBUTE	EAP-Type-OTP				1285	string
-ATTRIBUTE	EAP-Type-GTC				1286	string
-ATTRIBUTE	EAP-Type-TLS				1297	octets
+#		These are used mostly for radeapclient, and aren't
+#		that useful for anyone else.
+#
+#  egrep VALUE dictionary.freeradius.internal  | grep EAP-Type | awk '{print "ATTRIBUTE EAP-Type-" $3 " " 1280+$4 " octets"}' > foo;./format.pl foo
+#
+ATTRIBUTE	EAP-Type-VALUE				1280	octets
+ATTRIBUTE	EAP-Type-None				1280	octets
+ATTRIBUTE	EAP-Type-Identity			1281	octets
+ATTRIBUTE	EAP-Type-Notification			1282	octets
+ATTRIBUTE	EAP-Type-NAK				1283	octets
+ATTRIBUTE	EAP-Type-MD5-Challenge			1284	octets
+ATTRIBUTE	EAP-Type-One-Time-Password		1285	octets
+ATTRIBUTE	EAP-Type-Generic-Token-Card		1286	octets
+ATTRIBUTE	EAP-Type-RSA-Public-Key			1289	octets
+ATTRIBUTE	EAP-Type-DSS-Unilateral			1290	octets
+ATTRIBUTE	EAP-Type-KEA				1291	octets
+ATTRIBUTE	EAP-Type-KEA-Validate			1292	octets
+ATTRIBUTE	EAP-Type-EAP-TLS			1293	octets
+ATTRIBUTE	EAP-Type-Defender-Token			1294	octets
+ATTRIBUTE	EAP-Type-RSA-SecurID-EAP		1295	octets
+ATTRIBUTE	EAP-Type-Arcot-Systems-EAP		1296	octets
+ATTRIBUTE	EAP-Type-Cisco-LEAP			1297	octets
+ATTRIBUTE	EAP-Type-Nokia-IP-Smart-Card		1298	octets
 ATTRIBUTE	EAP-Type-SIM				1298	octets
-ATTRIBUTE	EAP-Type-LEAP				1301	octets
-ATTRIBUTE	EAP-Type-SIM2				1302	octets
-ATTRIBUTE	EAP-Type-TTLS				1305	octets
-ATTRIBUTE	EAP-Type-PEAP				1309	octets
+ATTRIBUTE	EAP-Type-SRP-SHA1-Part-1		1299	octets
+ATTRIBUTE	EAP-Type-SRP-SHA1-Part-2		1300	octets
+ATTRIBUTE	EAP-Type-EAP-TTLS			1301	octets
+ATTRIBUTE	EAP-Type-Remote-Access-Service		1302	octets
+ATTRIBUTE	EAP-Type-UMTS				1303	octets
+ATTRIBUTE	EAP-Type-EAP-3Com-Wireless		1304	octets
+ATTRIBUTE	EAP-Type-PEAP				1305	octets
+ATTRIBUTE	EAP-Type-MS-EAP-Authentication		1306	octets
+ATTRIBUTE	EAP-Type-MAKE				1307	octets
+ATTRIBUTE	EAP-Type-CRYPTOCard			1308	octets
+ATTRIBUTE	EAP-Type-EAP-MSCHAP-V2			1309	octets
+ATTRIBUTE	EAP-Type-DynamID			1310	octets
+ATTRIBUTE	EAP-Type-Rob-EAP			1311	octets
+ATTRIBUTE	EAP-Type-SecurID-EAP			1312	octets
+ATTRIBUTE	EAP-Type-MS-Authentication-TLV		1313	octets
+ATTRIBUTE	EAP-Type-SentriNET			1314	octets
+ATTRIBUTE	EAP-Type-EAP-Actiontec-Wireless		1315	octets
+ATTRIBUTE	EAP-Type-Cogent-Biomentric-EAP		1316	octets
+ATTRIBUTE	EAP-Type-AirFortress-EAP		1317	octets
+ATTRIBUTE	EAP-Type-EAP-HTTP-Digest		1318	octets
+ATTRIBUTE	EAP-Type-SecuriSuite-EAP		1319	octets
+ATTRIBUTE	EAP-Type-DeviceConnect-EAP		1320	octets
+ATTRIBUTE	EAP-Type-EAP-SPEKE			1321	octets
+ATTRIBUTE	EAP-Type-EAP-MOBAC			1322	octets
+
+ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets
+ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets
+ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets
+
 
 #
 #	Range:	1536 - 1791
@@ -353,16 +397,20 @@ ATTRIBUTE	TLS-Cert-Expiration			1911	string
 ATTRIBUTE	TLS-Cert-Issuer				1912	string
 ATTRIBUTE	TLS-Cert-Subject			1913	string
 ATTRIBUTE	TLS-Cert-Common-Name			1914	string
-# 1915 - 1919: reserved for future cert attributes
+ATTRIBUTE	TLS-Cert-Subject-Alt-Name-Email		1915	string
+# 1916 - 1919: reserved for future cert attributes
 ATTRIBUTE	TLS-Client-Cert-Serial			1920	string
 ATTRIBUTE	TLS-Client-Cert-Expiration		1921	string
 ATTRIBUTE	TLS-Client-Cert-Issuer			1922	string
 ATTRIBUTE	TLS-Client-Cert-Subject			1923	string
 ATTRIBUTE	TLS-Client-Cert-Common-Name		1924	string
 ATTRIBUTE	TLS-Client-Cert-Filename		1925	string
+ATTRIBUTE	TLS-Client-Cert-Subject-Alt-Name-Email	1926	string
+
+# 1927 - 1939: reserved for future cert attributes
 
 #
-#	Range:	1910-2099
+#	Range:	1940-2099
 #		Free
 #
 #	Range:	2100-2199

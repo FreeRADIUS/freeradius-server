@@ -26,8 +26,8 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
-#include	<freeradius-devel/md5.h>
 #include	<freeradius-devel/rad_assert.h>
+#include	<freeradius-devel/base64.h>
 
 #include	<ctype.h>
 
@@ -72,18 +72,14 @@ static const char * const xlat_foreach_names[] = {"Foreach-Variable-0",
 #endif
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
-
 /**
  * @brief Convert the value on a VALUE_PAIR to string
  */
-static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
-			 int type, RADIUS_ESCAPE_STRING func)
+static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 {
-	char buffer[MAX_STRING_LEN * 4];
-
 	if (pair != NULL) {
-		vp_prints_value(buffer, sizeof(buffer), pair, -1);
-		return func(out, outlen, buffer);
+		vp_prints_value(out, outlen, pair, -1);
+		return strlen(out);
 	}
 
 	switch (type) {
@@ -110,13 +106,29 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair,
 	return strlen(out);
 }
 
+static VALUE_PAIR *pairfind_tag(VALUE_PAIR *vps, const DICT_ATTR *da, int tag)
+{
+	VALUE_PAIR *vp = vps;
 
-/**
- * @brief Dynamically translate for check:, request:, reply:, etc.
+redo:
+	vp = pairfind(vp, da->attr, da->vendor);
+	if (!tag) return vp;
+
+	if (!vp) return NULL;
+
+	if (!vp->flags.has_tag) return NULL;
+
+	if (vp->flags.tag == tag) return vp;
+	
+	vp = vp->next;
+	goto redo;
+}
+
+/*
+ *	Dynamically translate for check:, request:, reply:, etc.
  */
 static size_t xlat_packet(void *instance, REQUEST *request,
-			  char *fmt, char *out, size_t outlen,
-			  RADIUS_ESCAPE_STRING func)
+			  const char *fmt, char *out, size_t outlen)
 {
 	DICT_ATTR	*da;
 	VALUE_PAIR	*vp;
@@ -182,64 +194,95 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	da = dict_attrbyname(fmt);
 	if (!da) {
 		int do_number = FALSE;
-		size_t count;
-		const char *p;
+		int do_array = FALSE;
+		int do_count = FALSE;
+		int do_all = FALSE;
+		int tag = 0;
+		size_t count = 0, total;
+		char *p;
 		char buffer[256];
 
 		if (strlen(fmt) > sizeof(buffer)) return 0;
 
-		p = strchr(fmt, '[');
-		if (!p) {
-			p = strchr(fmt, '#');
-			if (!p) return 0;
+		strlcpy(buffer, fmt, sizeof(buffer));
+
+		/*
+		 *	%{Attribute-name#} - print integer version of it.
+		 */
+		p = buffer + strlen(buffer) - 1;
+		if (*p == '#') {
+			*p = '\0';
 			do_number = TRUE;
 		}
 
-		strlcpy(buffer, fmt, p - fmt + 1);
+		/*
+		 *	%{Attribute-Name:tag} - get the name with the specified
+		 *	value of the tag.
+		 */
+		p = strchr(buffer, ':');
+		if (p) {
+			tag = atoi(p + 1);
+			*p = '\0';
+			p++;
+
+		} else {
+			/*
+			 *	Allow %{Attribute-Name:tag[...]}
+			 */
+			p = buffer;
+		}
+
+		/*
+		 *	%{Attribute-Name[...] does more stuff
+		 */
+		p = strchr(p, '[');
+		if (p) {
+			*p = '\0';
+			do_array = TRUE;
+			if (p[1] == '#') {
+				do_count = TRUE;
+			} else if (p[1] == '*') {
+				do_all = TRUE;
+			} else {
+				count = atoi(p + 1);
+				p += 1 + strspn(p + 1, "0123456789");
+				if (*p != ']') {
+					RDEBUG2("xlat: Invalid array reference in string at %s %s",
+						fmt, p);
+					return 0;
+				}
+			}
+		}
+
+		/*
+		 *	We COULD argue about %{Attribute-Name[#]#} etc.
+		 *	But that looks like more work than it's worth.
+		 */
 
 		da = dict_attrbyname(buffer);
 		if (!da) return 0;
 
-		if (do_number) {
-			vp = pairfind(vps, da->attr, 0);
-			if (!vp) return 0;
-
-			switch (da->type) {
-			default:
-				break;
-
-			case PW_TYPE_INTEGER:
-			case PW_TYPE_DATE:
-			case PW_TYPE_SHORT:
-			case PW_TYPE_BYTE:
-				snprintf(out, outlen, "%u", vp->lvalue);
-				return strlen(out);
-
-			case PW_TYPE_SIGNED:
-				snprintf(out, outlen, "%d", vp->vp_signed);
-				return strlen(out);
-
-			case PW_TYPE_INTEGER64:
-				snprintf(out, outlen, "%llu", vp->vp_integer64);
-				return strlen(out);
-			}
-
+		/*
+		 *	No array, print the tagged attribute.
+		 */
+		if (!do_array) {
+			vp = pairfind_tag(vps, da, tag);
 			goto just_print;
 		}
 
-		/*
-		 *	%{Attribute-Name[#]} returns the count of
-		 *	attributes of that name in the list.
-		 */
-		if ((p[1] == '#') && (p[2] == ']')) {
-			count = 0;
+		total = 0;
 
-			for (vp = pairfind(vps, da->attr, da->vendor);
+		/*
+		 *	Array[#] - return the total
+		 */
+		if (do_count) {
+			for (vp = pairfind_tag(vps, da, tag);
 			     vp != NULL;
-			     vp = pairfind(vp->next, da->attr, da->vendor)) {
-				count++;
+			     vp = pairfind_tag(vp->next, da, tag)) {
+				total++;
 			}
-			snprintf(out, outlen, "%d", (int) count);
+
+			snprintf(out, outlen, "%d", (int) total);
 			return strlen(out);
 		}
 
@@ -247,13 +290,11 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	%{Attribute-Name[*]} returns ALL of the
 		 *	the attributes, separated by a newline.
 		 */
-		if ((p[1] == '*') && (p[2] == ']')) {
-			int total = 0;
-
-			for (vp = pairfind(vps, da->attr, da->vendor);
+		if (do_all) {
+			for (vp = pairfind_tag(vps, da, tag);
 			     vp != NULL;
-			     vp = pairfind(vp->next, da->attr, da->vendor)) {
-				count = valuepair2str(out, outlen - 1, vp, da->type, func);
+			     vp = pairfind_tag(vp->next, da, tag)) {
+				count = valuepair2str(out, outlen - 1, vp, da->type);
 				rad_assert(count <= outlen);
 				total += count + 1;
 				outlen -= (count + 1);
@@ -268,34 +309,40 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			return total;
 		}
 
-		count = atoi(p + 1);
-
-		/*
-		 *	Skip the numbers.
-		 */
-		p += 1 + strspn(p + 1, "0123456789");
-		if (*p != ']') {
-			RDEBUG2("xlat: Invalid array reference in string at %s %s",
-			       fmt, p);
-			return 0;
-		}
-
 		/*
 		 *	Find the N'th value.
 		 */
-		for (vp = pairfind(vps, da->attr, da->vendor);
+		for (vp = pairfind_tag(vps, da, tag);
 		     vp != NULL;
-		     vp = pairfind(vp->next, da->attr, da->vendor)) {
-			if (count == 0) break;
-			count--;
+		     vp = pairfind_tag(vp->next, da, tag)) {
+			if (total == count) break;
+			total++;
+			if (total > count) {
+				vp = NULL;
+				break;
+			}
 		}
 
 		/*
 		 *	Non-existent array reference.
 		 */
-		if (!vp) return 0;
 	just_print:
-		return valuepair2str(out, outlen, vp, da->type, func);
+		if (!vp) return 0;
+
+		if (do_number) {
+			if ((vp->type != PW_TYPE_IPADDR) &&
+			    (vp->type != PW_TYPE_INTEGER) &&
+			    (vp->type != PW_TYPE_SHORT) &&
+			    (vp->type != PW_TYPE_BYTE) &&
+			    (vp->type != PW_TYPE_DATE)) {
+				*out = '\0';
+				return 0;
+			}
+			
+			return snprintf(out, outlen, "%u", vp->vp_integer);
+		}
+
+		return valuepair2str(out, outlen, vp, da->type);
 	}
 
 	vp = pairfind(vps, da->attr, da->vendor);
@@ -422,8 +469,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 			}
 
 			localvp.type = da->type;
-			return valuepair2str(out, outlen, &localvp,
-					     da->type, func);
+			return valuepair2str(out, outlen, &localvp, da->type);
 		}
 
 		/*
@@ -437,15 +483,14 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	/*
 	 *	Convert the VP to a string, and return it.
 	 */
-	return valuepair2str(out, outlen, vp, da->type, func);
+	return valuepair2str(out, outlen, vp, da->type);
 }
 
 /**
  * @brief Print data as integer, not as VALUE.
  */
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
-			   char *fmt, char *out, size_t outlen,
-			   UNUSED RADIUS_ESCAPE_STRING func)
+			   const char *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
@@ -473,6 +518,95 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	return snprintf(out, outlen, "%u", vp->vp_integer);
 }
 
+/**
+ * @brief Print data as hex, not as VALUE.
+ */
+static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
+		       const char *fmt, char *out, size_t outlen)
+{
+	size_t i;
+	VALUE_PAIR *vp;
+	uint8_t	buffer[MAX_STRING_LEN];
+	ssize_t	ret;
+	size_t	len;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+	
+	ret = rad_vp2data(vp, buffer, sizeof(buffer));
+	len = (size_t) ret;
+	
+	/*
+	 *	Don't truncate the data.
+	 */
+	if ((ret < 0 ) || (outlen < (len * 2))) {
+		*out = 0;
+		return 0;
+	}
+
+	for (i = 0; i < len; i++) {
+		snprintf(out + 2*i, 3, "%02x", buffer[i]);
+	}
+
+	return len * 2;
+}
+
+/**
+ * @brief Print data as base64, not as VALUE
+ */
+static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
+			  const char *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+	uint8_t buffer[MAX_STRING_LEN];
+	ssize_t	ret;
+	size_t	len;
+	size_t	enc;
+	
+	while (isspace((int) *fmt)) fmt++;
+
+	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+		*out = '\0';
+		return 0;
+	}
+	
+	ret = rad_vp2data(vp, buffer, sizeof(buffer));
+	if (ret < 0) {
+		*out = 0;
+		return 0;
+	}
+	
+	len = (size_t) ret;
+	
+	enc = FR_BASE64_ENC_LENGTH(len);
+	
+	/*
+	 *	Don't truncate the data.
+	 */
+	if (outlen < (enc + 1)) {
+		*out = 0;
+		return 0;
+	}
+	
+	fr_base64_encode(buffer, len, out, outlen);
+
+	return enc;
+}
+
+/**
+ * @brief Prints the current module processing the request
+ */
+static size_t xlat_module(UNUSED void *instance, REQUEST *request,
+			  UNUSED const char *fmt, char *out, size_t outlen)
+{
+	strlcpy(out, request->module, outlen);
+
+	return strlen(out);
+}
 
 #ifdef WITH_UNLANG
 /**
@@ -481,8 +615,7 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
  * @see modcall()
  */
 static size_t xlat_foreach(void *instance, REQUEST *request,
-			   UNUSED char *fmt, char *out, size_t outlen,
-			   RADIUS_ESCAPE_STRING func)
+			   UNUSED const char *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR	**pvp;
 
@@ -496,7 +629,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	return valuepair2str(out, outlen, (*pvp), (*pvp)->type, func);	
+	return valuepair2str(out, outlen, (*pvp), (*pvp)->type);
 }
 #endif
 
@@ -508,8 +641,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
  * expand to "\n\n\n"
  */
 static size_t xlat_string(UNUSED void *instance, REQUEST *request,
-			  char *fmt, char *out, size_t outlen,
-			  UNUSED RADIUS_ESCAPE_STRING func)
+			  const char *fmt, char *out, size_t outlen)
 {
 	int len;
 	VALUE_PAIR *vp;
@@ -539,8 +671,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
  * @brief Expand regexp matches %{0} to %{8}
  */
 static size_t xlat_regex(void *instance, REQUEST *request,
-			 char *fmt, char *out, size_t outlen,
-			 RADIUS_ESCAPE_STRING func)
+			 const char *fmt, char *out, size_t outlen)
 {
 	char *regex;
 
@@ -549,7 +680,6 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 	 *	are already in the "instance".
 	 */
 	fmt = fmt;		/* -Wunused */
-	func = func;		/* -Wunused FIXME: do escaping? */
 
 	regex = request_data_reference(request, request,
 				 REQUEST_DATA_REGEX | *(int *)instance);
@@ -564,20 +694,28 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 }
 #endif				/* HAVE_REGEX_H */
 
-
 /**
  * @brief Dynamically change the debugging level for the current request
  *
  * Example %{debug:3}
  */
 static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
-			  char *fmt, char *out, size_t outlen,
-			  UNUSED RADIUS_ESCAPE_STRING func)
+			 const char *fmt, char *out, size_t outlen)
 {
 	int level = 0;
+	
+	/* 
+	 *  Expand to previous (or current) level
+	 */
+	snprintf(out, outlen, "%d", request->options & RAD_REQUEST_OPTION_DEBUG4);
 
-	if (*fmt) level = atoi(fmt);
-
+	/* 
+	 *  Assume we just want to get the current value and NOT set it to 0
+	 */
+	if (!*fmt)
+		goto done;
+		
+	level = atoi(fmt);
 	if (level == 0) {
 		request->options = RAD_REQUEST_OPTION_NONE;
 		request->radlog = NULL;
@@ -587,113 +725,10 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 		request->options = level;
 		request->radlog = radlog_request;
 	}
-
-	snprintf(out, outlen, "%d", level);
+	
+	done:
 	return strlen(out);
 }
-
-
-/**
- * @brief Calculate the MD5 hash of a string.
- *
- * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
- */
-static size_t xlat_md5(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
-{
-	int i;
-	uint8_t digest[16];
-	FR_MD5_CTX ctx;
-	char buffer[1024];
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		*out = '\0';
-		return 0;
-	}
-
-	fr_MD5Init(&ctx);
-	fr_MD5Update(&ctx, (void *) buffer, strlen(buffer));
-	fr_MD5Final(digest, &ctx);
-
-	if (outlen < 33) {
-		snprintf(out, outlen, "md5_overflow");
-		return strlen(out);
-	}
-
-	for (i = 0; i < 16; i++) {
-		snprintf(out + i * 2, 3, "%02x", digest[i]);
-	}
-
-	return strlen(out);
-}
-
-
-/**
- * @brief Convert a string to lowercase
- *
- * Example "%{lc:Bar}" == "bar"
- *
- * Probably only works for ASCII
- */
-static size_t xlat_lc(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
-{
-	char *p, *q;
-	char buffer[1024];
-
-	if (outlen <= 1) return 0;
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		*out = '\0';
-		return 0;
-	}
-
-	for (p = buffer, q = out; *p != '\0'; p++, outlen--) {
-		if (outlen <= 1) break;
-
-		*(q++) = tolower((int) *p);
-	}
-
-	*q = '\0';
-
-	return strlen(out);
-}
-
-
-/**
- * @brief Convert a string to uppercase
- *
- * Example: "%{uc:Foo}" == "FOO"
- *
- * Probably only works for ASCII
- */
-static size_t xlat_uc(UNUSED void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
-		       UNUSED RADIUS_ESCAPE_STRING func)
-{
-	char *p, *q;
-	char buffer[1024];
-
-	if (outlen <= 1) return 0;
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
-		*out = '\0';
-		return 0;
-	}
-
-	for (p = buffer, q = out; *p != '\0'; p++, outlen--) {
-		if (outlen <= 1) break;
-
-		*(q++) = toupper((int) *p);
-	}
-
-	*q = '\0';
-
-	return strlen(out);
-}
-
 
 /*
  *	Compare two xlat_t structs, based ONLY on the module name.
@@ -709,21 +744,13 @@ static int xlat_cmp(const void *a, const void *b)
 		      ((const xlat_t *)a)->length);
 }
 
+
 /*
  *	find the appropriate registered xlat function.
  */
 static xlat_t *xlat_find(const char *module)
 {
 	xlat_t my_xlat;
-
-	/*
-	 *	Look for dictionary attributes first.
-	 */
-	if ((dict_attrbyname(module) != NULL) ||
-	    (strchr(module, '[') != NULL) ||
-	    (strchr(module, '#') != NULL)) {
-		module = "request";
-	}
 
 	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
 	my_xlat.length = strlen(my_xlat.module);
@@ -745,7 +772,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	xlat_t	*c;
 	xlat_t	my_xlat;
 
-	if ((module == NULL) || (strlen(module) == 0)) {
+	if (!module || !*module) {
 		DEBUG("xlat_register: Invalid module name");
 		return -1;
 	}
@@ -776,15 +803,17 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 			c = xlat_find(internal_xlat[i]);
 			rad_assert(c != NULL);
 			c->internal = TRUE;
+		}
 
 #ifdef WITH_UNLANG
+		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
 			xlat_register(xlat_foreach_names[i],
 				      xlat_foreach, &xlat_inst[i]);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = TRUE;
-#endif
 		}
+#endif
 
 		/*
 		 *	New name: "control"
@@ -794,15 +823,16 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 
-		xlat_register("integer", xlat_integer, "");
-		c = xlat_find("integer");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
+#define XLAT_REGISTER(_x) xlat_register(Stringify(_x), xlat_ ## _x, NULL); \
+		c = xlat_find(Stringify(_x)); \
+		rad_assert(c != NULL); \
+		c->internal = TRUE
 
-		xlat_register("string", xlat_string, "");
-		c = xlat_find("string");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
+		XLAT_REGISTER(integer);
+		XLAT_REGISTER(hex);
+		XLAT_REGISTER(base64);
+		XLAT_REGISTER(string);
+		XLAT_REGISTER(module);
 
 #ifdef HAVE_REGEX_H
 		/*
@@ -821,21 +851,6 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 
 		xlat_register("debug", xlat_debug, &xlat_inst[0]);
 		c = xlat_find("debug");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
-
-		xlat_register("md5", xlat_md5, &xlat_inst[0]);
-		c = xlat_find("md5");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
-
-		xlat_register("tolower", xlat_lc, &xlat_inst[0]);
-		c = xlat_find("tolower");
-		rad_assert(c != NULL);
-		c->internal = TRUE;
-
-		xlat_register("toupper", xlat_uc, &xlat_inst[0]);
-		c = xlat_find("toupper");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 	}
@@ -883,9 +898,9 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
  * @param func Unused
  * @return Void.
  */
-void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
+void xlat_unregister(const char *module, RAD_XLAT_FUNC func, void *instance)
 {
-	rbnode_t	*node;
+	xlat_t	*c;
 	xlat_t		my_xlat;
 
 	func = func;		/* -Wunused */
@@ -895,10 +910,12 @@ void xlat_unregister(const char *module, RAD_XLAT_FUNC func)
 	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
 	my_xlat.length = strlen(my_xlat.module);
 
-	node = rbtree_find(xlat_root, &my_xlat);
-	if (!node) return;
+	c = rbtree_finddata(xlat_root, &my_xlat);
+	if (!c) return;
 
-	rbtree_delete(xlat_root, node);
+	if (c->instance != instance) return;
+
+	rbtree_deletebydata(xlat_root, c);
 }
 
 /**
@@ -929,10 +946,10 @@ void xlat_free(void)
  */
 static int decode_attribute(const char **from, char **to, int freespace,
 			     REQUEST *request,
-			     RADIUS_ESCAPE_STRING func)
+			     RADIUS_ESCAPE_STRING func, void *funcarg)
 {
 	int	do_length = 0;
-	char	*xlat_name, *xlat_str;
+	const char *module_name, *xlat_str;
 	char *p, *q, *l, *next = NULL;
 	int retlen=0;
 	const xlat_t *c;
@@ -1030,7 +1047,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 *	Expand the first one.  If we did, exit the
 		 *	conditional.
 		 */
-		retlen = radius_xlat(q, freespace, buffer, request, func);
+		retlen = radius_xlat(q, freespace, buffer, request, func, funcarg);
 		if (retlen) {
 			q += retlen;
 			goto done;
@@ -1042,7 +1059,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 */
 		if (expand2) {
 			retlen = radius_xlat(q, freespace, l,
-					    request, func);
+					    request, func, funcarg);
 			if (retlen) {
 				q += retlen;
 			}
@@ -1060,15 +1077,13 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	/*
 	 *	See if we're supposed to expand a module name.
 	 */
-	xlat_name = NULL;
+	module_name = NULL;
 	for (l = p; *l != '\0'; l++) {
-		if (*l == '\\') {
-			l++;
-			continue;
-		}
-
+		/*
+		 *	module:string
+		 */
 		if (*l == ':') {
-			xlat_name = p; /* start of name */
+			module_name = p; /* start of name */
 			*l = '\0';
 			p = l + 1;
 			break;
@@ -1084,8 +1099,12 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 *	%{name} is a simple attribute reference,
 	 *	or regex reference.
 	 */
-	if (!xlat_name) {
-		xlat_name = xlat_str = p;
+	if (!module_name) {
+		if (isdigit(*p) && !p[1]) { /* regex 0..8 */
+			module_name = xlat_str = p;
+		} else {
+			xlat_str = p;
+		}
 		goto do_xlat;
 	}
 
@@ -1096,7 +1115,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		RDEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
 		p++;
 
-		xlat_str = xlat_name;
+		xlat_str = module_name;
 		next = p;
 		goto do_xlat;
 	}
@@ -1110,63 +1129,65 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	xlat_str = p;
 	
 do_xlat:
-	if ((c = xlat_find(xlat_name)) != NULL) {
-		if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
-					  c->module, xlat_str);
-		retlen = c->do_xlat(c->instance, request, xlat_str,
-				    q, freespace, func);
-		if (retlen > 0) {
-			if (do_length) {
-				snprintf(q, freespace, "%d", retlen);
-				retlen = strlen(q);
-			}
-
-		} else if (next) {
-			/*
-			 *	Expand the second bit.
-			 */
-			RDEBUG2("\t... expanding second conditional");
-			retlen = radius_xlat(q, freespace, next, request, func);
-		}
-		q += retlen;
-
+	/*
+	 *	Just "foo".  Maybe it's a magic attr, which doesn't
+	 *	really exist.
+	 *
+	 *	If we can't find that, then assume it's a dictionary
+	 *	attribute in the request.
+	 *
+	 *	Else if it's module:foo, look for module, and pass it "foo".
+	 */
+	if (!module_name) {
+		c = xlat_find(xlat_str);
+		if (!c) c = xlat_find("request");
 	} else {
-		/*
-		 *	No attribute by that name, return an error.
-		 */
-		RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", xlat_name, *from);
+		c = xlat_find(module_name);
+	}
+	if (!c) {
+		if (!module_name) {
+			RDEBUG2("WARNING: Unknown Attribute \"%s\" in string expansion \"%%%s\"", xlat_str, *from);
+		} else {
+			RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", module_name, *from);
+		}
 		return -1;
 	}
+
+	if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
+				  c->module, xlat_str);
+	if (func) {
+		/* xlat to a temporary buffer, then escape */
+		char tmpbuf[8192];
+		retlen = c->do_xlat(c->instance, request, xlat_str, tmpbuf, sizeof(tmpbuf));
+		if (retlen > 0) {
+			retlen = func(request, q, freespace, tmpbuf, funcarg);
+			if (retlen > 0) {
+				RDEBUG2("string escaped from \'%s\' to \'%s\'", tmpbuf, q);
+			} else if (retlen < 0) {
+				RDEBUG2("string escape failed");
+			}
+		}
+	} else {
+		retlen = c->do_xlat(c->instance, request, xlat_str, q, freespace);
+	}
+	if (retlen > 0) {
+		if (do_length) {
+			snprintf(q, freespace, "%d", retlen);
+			retlen = strlen(q);
+		}
+		
+	} else if (next) {
+		/*
+		 *	Expand the second bit.
+		 */
+		RDEBUG2("\t... expanding second conditional");
+		retlen = radius_xlat(q, freespace, next, request, func, funcarg);
+	}
+	q += retlen;
 
 done:
 	*to = q;
 	return 0;
-}
-
-/*
- *  If the caller doesn't pass xlat an escape function, then
- *  we use this one.  It simplifies the coding, as the check for
- *  func == NULL only happens once.
- */
-static size_t xlat_copy(char *out, size_t outlen, const char *in)
-{
-	int freespace = outlen;
-
-	if (outlen < 1) return 0;
-
-	while ((*in) && (freespace > 1)) {
-		/*
-		 *  Copy data.
-		 *
-		 *  FIXME: Do escaping of bad stuff!
-		 */
-		*(out++) = *(in++);
-
-		freespace--;
-	}
-	*out = '\0';
-
-	return (outlen - freespace); /* count does not include NUL */
 }
 
 /**
@@ -1182,7 +1203,8 @@ static size_t xlat_copy(char *out, size_t outlen, const char *in)
  * @return length of string written @bug should really have -1 for failure
  */
 int radius_xlat(char *out, int outlen, const char *fmt,
-		REQUEST *request, RADIUS_ESCAPE_STRING func)
+		REQUEST *request,
+		RADIUS_ESCAPE_STRING func, void *funcarg)
 {
 	int c, len, freespace;
 	const char *p;
@@ -1191,19 +1213,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 	VALUE_PAIR *tmp;
 	struct tm *TM, s_TM;
 	char tmpdt[40]; /* For temporary storing of dates */
-	int openbraces=0;
 
 	/*
 	 *	Catch bad modules.
 	 */
 	if (!fmt || !out || !request) return 0;
-
-	/*
-	 *  Ensure that we always have an escaping function.
-	 */
-	if (func == NULL) {
-		func = xlat_copy;
-	}
 
        	q = out;
 	p = fmt;
@@ -1220,11 +1234,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 			 * then we assume this brace is NOT literal, but is
 			 * a closing brace and apply it
 			 */
-			if ((c == '}') && openbraces) {
-				openbraces--;
-				p++; /* skip it */
-				continue;
-			}
 			*q++ = *p++;
 			continue;
 		}
@@ -1260,19 +1269,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 		} else if (c == '%') switch(*p) {
 			case '{':
 				p--;
-				if (decode_attribute(&p, &q, freespace, request, func) < 0) return 0;
+				if (decode_attribute(&p, &q, freespace, request, func, funcarg) < 0) return 0;
 				break;
 
 			case '%':
 				*q++ = *p++;
-				break;
-			case 'a': /* Protocol: */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_PROTOCOL, 0),PW_TYPE_INTEGER, func);
-				p++;
-				break;
-			case 'c': /* Callback-Number */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_CALLBACK_NUMBER, 0),PW_TYPE_STRING, func);
-				p++;
 				break;
 			case 'd': /* request day */
 				TM = localtime_r(&request->timestamp, &s_TM);
@@ -1281,14 +1282,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
-				p++;
-				break;
-			case 'f': /* Framed IP address */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_IP_ADDRESS, 0),PW_TYPE_IPADDR, func);
-				p++;
-				break;
-			case 'i': /* Calling station ID */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CALLING_STATION_ID, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'l': /* request timestamp */
@@ -1307,32 +1300,11 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				}
 				p++;
 				break;
-			case 'n': /* NAS IP address */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_IP_ADDRESS, 0),PW_TYPE_IPADDR, func);
-				p++;
-				break;
-			case 'p': /* Port number */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_NAS_PORT, 0),PW_TYPE_INTEGER, func);
-				p++;
-				break;
-			case 's': /* Speed */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_CONNECT_INFO, 0),PW_TYPE_STRING, func);
-				p++;
-				break;
 			case 't': /* request timestamp */
 				CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
 				nl = strchr(tmpdt, '\n');
 				if (nl) *nl = '\0';
 				strlcpy(q, tmpdt, freespace);
-				q += strlen(q);
-				p++;
-				break;
-			case 'u': /* User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_USER_NAME, 0),PW_TYPE_STRING, func);
-				p++;
-				break;
-			case 'A': /* radacct_dir */
-				strlcpy(q,radacct_dir,freespace);
 				q += strlen(q);
 				p++;
 				break;
@@ -1374,20 +1346,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				q += strlen(q);
 				p++;
 				break;
-			case 'L': /* radlog_dir */
-				strlcpy(q,radlog_dir,freespace);
-				q += strlen(q);
-				p++;
-				break;
-			case 'M': /* MTU */
-				q += valuepair2str(q,freespace,pairfind(request->reply->vps,PW_FRAMED_MTU, 0),PW_TYPE_INTEGER, func);
-				p++;
-				break;
-			case 'R': /* radius_dir */
-				strlcpy(q,radius_dir,freespace);
-				q += strlen(q);
-				p++;
-				break;
 			case 'S': /* request timestamp in SQL format*/
 				TM = localtime_r(&request->timestamp, &s_TM);
 				len = strftime(tmpdt, sizeof(tmpdt), "%Y-%m-%d %H:%M:%S", TM);
@@ -1404,10 +1362,6 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 					strlcpy(q, tmpdt, freespace);
 					q += strlen(q);
 				}
-				p++;
-				break;
-			case 'U': /* Stripped User name */
-				q += valuepair2str(q,freespace,pairfind(request->packet->vps,PW_STRIPPED_USER_NAME, 0),PW_TYPE_STRING, func);
 				p++;
 				break;
 			case 'V': /* Request-Authenticator */

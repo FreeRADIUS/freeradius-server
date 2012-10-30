@@ -3,6 +3,8 @@
 radeapclient - send EAP packets to a RADIUS server, calculate responses
 .SH SYNOPSIS
 .B radeapclient
+.RB [ \-4 ]
+.RB [ \-6 ]
 .RB [ \-c
 .IR count ]
 .RB [ \-d
@@ -27,7 +29,7 @@ radeapclient - send EAP packets to a RADIUS server, calculate responses
 \fBradeapclient\fP is a radius client program. It can send arbitrary radius
 packets to a radius server, then shows the reply. Radeapclient differs from
 radclient in that if there is an EAP-MD5 challenge, then it will be responded
-to. 
+to.
 .PP
 \fBradeapclient\fP is otherwise identical to \fBradclient\fP.
 .PP
@@ -36,11 +38,15 @@ EAP Identity message.
 .PP
 .PP
 The \fIEAP-MD5-Password\fP attribute, if present is used to respond to an
-MD5 challenge. 
+MD5 challenge.
 .PP
 No other EAP types are currently supported.
 
 .SH OPTIONS
+.IP \-4
+Use IPv4 (default)
+.IP \-6
+Use IPv6
 .IP \-c\ \fIcount\fP
 Send each packet \fIcount\fP times.
 .IP \-d\ \fIraddb\fP
@@ -82,7 +88,7 @@ challenge.
   echo 'EAP-Type-Identity = "bob";
   echo 'Message-Authenticator = 0x00';
   echo 'NAS-Port = 0' ) >req.txt
-  
+
 radeapclient -x localhost auth testing123 <req.txt
 .fi
 .sp

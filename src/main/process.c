@@ -18,8 +18,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2011  The FreeRADIUS server project
- * Copyright 2011  Alan DeKok <aland@deployingradius.com>
+ * Copyright 2012  The FreeRADIUS server project
+ * Copyright 2012  Alan DeKok <aland@deployingradius.com>
  */
 
 #include <freeradius-devel/ident.h>
@@ -73,6 +73,18 @@ static const char *action_codes[] = {
 #else
 #define TRACE_STATE_MACHINE {}
 #endif
+
+/*
+ *	Declare a state in the state machine.
+ *
+ */
+#define STATE_MACHINE_DECL(_x) static void _x(REQUEST *request, int action)
+
+#define STATE_MACHINE_TIMER(_x) request->timer_action = _x; \
+		fr_event_insert(el, request_timer, request, \
+				&when, &request->ev);
+
+
 
 /**
  * @section request_timeline
@@ -195,13 +207,15 @@ static int request_num_counter = 0;
 #ifdef WITH_PROXY
 static int request_will_proxy(REQUEST *request);
 static int request_proxy(REQUEST *request, int retransmit);
-static void request_proxied(UNUSED REQUEST *request, int action);
-static void request_post_proxy(REQUEST *request, int action);
+STATE_MACHINE_DECL(proxy_wait_for_reply);
+STATE_MACHINE_DECL(proxy_running);
 static int process_proxy_reply(REQUEST *request);
 static void remove_from_proxy_hash(REQUEST *request);
+static void remove_from_proxy_hash_nl(REQUEST *request);
 static int insert_into_proxy_hash(REQUEST *request);
 #endif
-static void request_common(UNUSED REQUEST *request, int action);
+
+STATE_MACHINE_DECL(request_common);
 
 #if  defined(HAVE_PTHREAD_H) && !defined (NDEBUG)
 static int we_are_master(void)
@@ -220,13 +234,13 @@ static int we_are_master(void)
 #define ASSERT_MASTER
 #endif
 
-static void request_reject_delay(REQUEST *request, int action);
-static void request_cleanup_delay(REQUEST *request, int action);
-static void request_running(REQUEST *request, int action);
+STATE_MACHINE_DECL(request_reject_delay);
+STATE_MACHINE_DECL(request_cleanup_delay);
+STATE_MACHINE_DECL(request_running);
 #ifdef WITH_COA
 static void request_coa_timer(REQUEST *request);
 static void request_coa_originate(REQUEST *request);
-static void request_coa_process(REQUEST *request, int action);
+STATE_MACHINE_DECL(request_coa_process);
 static void request_coa_separate(REQUEST *coa);
 #endif
 
@@ -326,13 +340,11 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 static void request_timer(void *ctx)
 {
 	REQUEST *request = ctx;
-#ifdef DEBUG_STATE_MACHINE
-	int action = FR_ACTION_TIMER;
-#endif
+	int action = request->timer_action;
 
 	TRACE_STATE_MACHINE;
 
-	request->process(request, FR_ACTION_TIMER);
+	request->process(request, action);
 }
 
 #define USEC (1000000)
@@ -340,9 +352,9 @@ static void request_timer(void *ctx)
 /*
  *	Only ever called from the master thread.
  */
-static void request_done(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_done)
 {
-	struct timeval now;
+	struct timeval now, when;
 
 	TRACE_STATE_MACHINE;
 
@@ -429,11 +441,18 @@ static void request_done(REQUEST *request, int action)
 		 *	under us.
 		 */
 	case FR_ACTION_DONE:
+#ifdef HAVE_PTHREAD_H
+		/*
+		 *	If we have child threads and we're NOT the
+		 *	thread handling the request, don't do anything.
+		 */
+		if (spawn_flag &&
+		    !pthread_equal(pthread_self(), request->child_pid)) {
+			break;
+		}
+#endif
 #ifdef DEBUG_STATE_MACHINE
 		if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
-#endif
-#ifdef HAVE_PTHREAD_H
-		rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
 #endif
 		request->child_state = REQUEST_DONE;
 		break;
@@ -481,8 +500,6 @@ static void request_done(REQUEST *request, int action)
 	 *	avoid re-use of proxy IDs for a while.
 	 */
 	if (request->in_proxy_hash) {
-		struct timeval when;
-		
 		rad_assert(request->proxy != NULL);
 
 		fr_event_now(el, &now);
@@ -538,11 +555,13 @@ static void request_done(REQUEST *request, int action)
 			RDEBUG("Waiting for child thread to stop");
 		}
 #endif
-		tv_add(&now, request->delay);
+
+		when = now;
+		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
 		if (request->delay > (10 * USEC)) request->delay = 10 * USEC;
-		fr_event_insert(el, request_timer, request, &now,
-				&request->ev);
+
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
 
@@ -560,6 +579,48 @@ static void request_done(REQUEST *request, int action)
 
 	request_free(&request);
 }
+
+
+static void request_cleanup_delay_init(REQUEST *request, const struct timeval *pnow)
+{
+	struct timeval now, when;
+
+	if (request->packet->code == PW_ACCOUNTING_REQUEST) goto done;
+	if (!request->root->cleanup_delay) goto done;
+
+	if (pnow) {
+		now = *pnow;
+	} else {
+		gettimeofday(&now, NULL);
+	}
+
+	if (request->reply->timestamp.tv_sec == 0) {
+		when = now;
+	} else {
+		when = request->reply->timestamp;
+	}
+	request->delay = request->root->cleanup_delay;
+	when.tv_sec += request->delay;
+
+	/*
+	 *	Set timer for when we need to clean it up.
+	 */
+	if (timercmp(&when, &now, >)) {
+#ifdef DEBUG_STATE_MACHINE
+		if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
+#endif
+		request->process = request_cleanup_delay;
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
+		return;
+	}
+
+	/*
+	 *	Otherwise just clean it up.
+	 */
+done:
+	request_done(request, FR_ACTION_DONE);
+}
+
 
 /*
  *	Function to do all time-related events.
@@ -605,7 +666,8 @@ static void request_process_timer(REQUEST *request)
 
 	/*
 	 *	A child thread is still working on the request,
-	 *	OR it was proxied, and there was no response.
+	 *	OR it was proxied, and there was no response,
+	 *	OR it was sitting in the queue for too long.
 	 */
 	if ((request->child_state != REQUEST_DONE) &&
 	    (request->master_state != REQUEST_STOP_PROCESSING)) {
@@ -627,7 +689,7 @@ static void request_process_timer(REQUEST *request)
 				       request->number,
 				       request->component ? request->component : "<server core>",
 			       request->module ? request->module : "<server core>");
-				exec_trigger(request, NULL, "server.thread.unresponsive");
+				exec_trigger(request, NULL, "server.thread.unresponsive", TRUE);
 			}
 #endif
 
@@ -644,7 +706,7 @@ static void request_process_timer(REQUEST *request)
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_proxied");
 #endif
-			request->process = request_proxied;
+			request->process = proxy_wait_for_reply;
 		}
 #endif
 
@@ -655,14 +717,16 @@ static void request_process_timer(REQUEST *request)
 		when = now;
 		tv_add(&when, request->delay);
 		request->delay += request->delay >> 1;
-		fr_event_insert(el, request_timer, request,
-				&when, &request->ev);
+
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 	}
 
 #ifdef WITH_ACCOUNTING
 	if (request->reply->code == PW_ACCOUNTING_RESPONSE) {
-		goto done;
+	done:
+		request_done(request, FR_ACTION_DONE);
+		return;
 	}
 #endif
 
@@ -684,8 +748,7 @@ static void request_process_timer(REQUEST *request)
 #endif
 			request->process = request_reject_delay;
 
-			fr_event_insert(el, request_timer, request,
-					&when, &request->ev);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
 
@@ -709,35 +772,14 @@ static void request_process_timer(REQUEST *request)
 	 *	cleanup_delay even if we don't respond to the NAS, so
 	 *	that any retransmit is *not* processed as a new packet.
 	 */
-	if ((request->packet->code != PW_ACCOUNTING_REQUEST) &&
-	    (request->root->cleanup_delay)) {
-		when = request->reply->timestamp;
-		request->delay = request->root->cleanup_delay;
-		when.tv_sec += request->delay;
-
-		/*
-		 *	Set timer for when we need to clean it up.
-		 */
-		if (timercmp(&when, &now, >)) {
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tNEXT-STATE %s -> %s\n", request->number, __FUNCTION__, "request_cleanup_delay");
-#endif
-			request->process = request_cleanup_delay;
-
-			fr_event_insert(el, request_timer, request,
-					&when, &request->ev);
-			return;
-		}
-	}
-
-done:
-	request_done(request, FR_ACTION_DONE);
+	request_cleanup_delay_init(request, &now);
+	return;
 }
 
 static void request_queue_or_run(UNUSED REQUEST *request,
 				 fr_request_process_t process)
 {
-	struct timeval now;
+	struct timeval when;
 #ifdef DEBUG_STATE_MACHINE
 	int action = FR_ACTION_TIMER;
 #endif
@@ -753,11 +795,11 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	 *	(re) set the initial delay.
 	 */
 	request->delay = USEC / 3;
-	gettimeofday(&now, NULL);
-	tv_add(&now, request->delay);
+	gettimeofday(&when, NULL);
+	tv_add(&when, request->delay);
 	request->delay += request->delay >> 1;
-	fr_event_insert(el, request_timer, request, &now,
-				&request->ev);
+
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
 	/*
 	 *	Do this here so that fewer other functions need to do
@@ -796,7 +838,7 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	}
 }
 
-static void request_common(UNUSED REQUEST *request, int action)
+STATE_MACHINE_DECL(request_common)
 {
 #ifdef WITH_PROXY
 	char buffer[128];
@@ -812,7 +854,7 @@ static void request_common(UNUSED REQUEST *request, int action)
 			/*
 			 *	TODO: deal with this in a better way?
 			 */
-			request_proxied(request, action);
+			proxy_wait_for_reply(request, action);
 			return;
 		}
 #endif
@@ -852,7 +894,7 @@ static void request_common(UNUSED REQUEST *request, int action)
 	}
 }
 
-static void request_cleanup_delay(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_cleanup_delay)
 {
 	struct timeval when;
 
@@ -863,6 +905,8 @@ static void request_cleanup_delay(REQUEST *request, int action)
 	case FR_ACTION_DUP:
 		if (request->reply->code != 0) {
 			request->listener->send(request->listener, request);
+		} else {
+			RDEBUG("No reply.  Ignoring retransmit.");
 		}
 
 		/*
@@ -871,8 +915,8 @@ static void request_cleanup_delay(REQUEST *request, int action)
 		when = request->reply->timestamp;
 		request->delay += request->delay ;
 		when.tv_sec += request->delay;
-		fr_event_insert(el, request_timer, request,
-				&when, &request->ev);
+
+		STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 		return;
 
 #ifdef WITH_PROXY
@@ -889,7 +933,7 @@ static void request_cleanup_delay(REQUEST *request, int action)
 	}
 }
 
-static void request_reject_delay(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_reject_delay)
 {
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
@@ -1006,11 +1050,13 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 	return 1;
 }
 
-static void request_finish(REQUEST *request, UNUSED int action)
+STATE_MACHINE_DECL(request_finish)
 {
+	VALUE_PAIR *vp;
+
 	TRACE_STATE_MACHINE;
 
-	VALUE_PAIR *vp;
+	action = action;	/* -Wunused */
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return;
 
@@ -1051,7 +1097,7 @@ static void request_finish(REQUEST *request, UNUSED int action)
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
-	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0);
+	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0, -1);
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	/*
@@ -1060,11 +1106,15 @@ static void request_finish(REQUEST *request, UNUSED int action)
 	 *	Post-Auth-Type = Reject
 	 */
 	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
-		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0);
+		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, -1);
 		vp = radius_pairmake(request, &request->config_items,
 				     "Post-Auth-Type", "Reject",
 				     T_OP_SET);
 		if (vp) rad_postauth(request);
+	}
+
+	if (request->reply->code == PW_AUTHENTICATION_ACK) {
+		rad_postauth(request);
 	}
 
 	/*
@@ -1105,7 +1155,7 @@ static void request_finish(REQUEST *request, UNUSED int action)
 	RDEBUG2("Finished request %u.", request->number);
 }
 
-static void request_running(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_running)
 {
 	TRACE_STATE_MACHINE;
 
@@ -1124,8 +1174,8 @@ static void request_running(REQUEST *request, int action)
 		 *	from the main worker thread.
 		 */
 		if (we_are_master() &&
-		    (request->process != request_post_proxy)) {
-			request_queue_or_run(request, request_post_proxy);
+		    (request->process != proxy_running)) {
+			request_queue_or_run(request, proxy_running);
 			return;
 		}
 		/* FALL-THROUGH */
@@ -1153,7 +1203,7 @@ static void request_running(REQUEST *request, int action)
 			 *	up the post proxy fail
 			 *	handler.
 			 */
-			if (request_proxy(request, 0) < 0) goto done;
+			if (request_proxy(request, 0) < 0) goto finished;
 		} else
 #endif
 		{
@@ -1170,9 +1220,10 @@ static void request_running(REQUEST *request, int action)
 			}
 #endif
 
-		done:
+		finished:
 			request_finish(request, action);
 
+		done:
 #ifdef DEBUG_STATE_MACHINE
 			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
 #endif
@@ -1261,23 +1312,30 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	if (mainconfig.max_requests &&
 	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
-		static time_t last_complained = 0;
-
 		radlog(L_ERR, "Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 		       client->shortname,
 		       packet->src_port, packet->id);
 		radlog(L_INFO, "WARNING: Please check the configuration file.\n"
 		       "\tThe value for 'max_requests' is probably set too low.\n");
 
-		/*
-		 *	Complain once every 10 seconds.
-		 */
-		if ((last_complained + 10) < now.tv_sec) {
-			last_complained = now.tv_sec;
-			exec_trigger(NULL, NULL, "server.max_requests");
-		}
-
+		exec_trigger(NULL, NULL, "server.max_requests", TRUE);
 		return 0;
+	}
+
+	/*
+	 *	Rate-limit the incoming packets
+	 */
+	if (sock->max_rate) {
+		int pps;
+
+		pps = rad_pps(&sock->rate_pps_old, &sock->rate_pps_now,
+			      &sock->rate_time, &now);
+
+		if (pps > sock->max_rate) {
+			DEBUG("Dropping request due to rate limiting");
+			return 0;
+		}
+		sock->rate_pps_now++;
 	}
 
 	return request_insert(listener, packet, client, fun, &now);
@@ -1408,14 +1466,29 @@ static void tcp_socket_timer(void *ctx)
 	listen_socket_t *sock = listener->data;
 	struct timeval end, now;
 	char buffer[256];
+	fr_socket_limit_t *limit;
 
 	fr_event_now(el, &now);
+
+	switch (listener->type) {
+	case RAD_LISTEN_PROXY:
+		limit = &sock->home->limit;
+		break;
+
+	case RAD_LISTEN_AUTH:
+	case RAD_LISTEN_ACCT:
+		limit = &sock->limit;
+		break;
+
+	default:
+		return;
+	}
 
 	/*
 	 *	If we enforce a lifetime, do it now.
 	 */
-	if (sock->home->lifetime) {
-		end.tv_sec = sock->opened + sock->home->lifetime;
+	if (limit->lifetime > 0) {
+		end.tv_sec = sock->opened + limit->lifetime;
 		end.tv_usec = 0;
 
 		if (timercmp(&end, &now, <=)) {
@@ -1436,10 +1509,11 @@ static void tcp_socket_timer(void *ctx)
 	/*
 	 *	Enforce an idle timeout.
 	 */
-	if (sock->home->idle_timeout > 0) {
+	if (limit->idle_timeout > 0) {
 		struct timeval idle;
 
-		idle.tv_sec = sock->last_packet + sock->home->idle_timeout;
+		rad_assert(sock->last_packet != 0);
+		idle.tv_sec = sock->last_packet + limit->idle_timeout;
 		idle.tv_usec = 0;
 
 		if (timercmp(&idle, &now, <=)) {
@@ -1489,7 +1563,7 @@ static void add_jitter(struct timeval *when)
 }
 
 
-static int remove_all_proxied_requests(void *ctx, void *data)
+static int disconnect_all_proxied_requests(void *ctx, void *data)
 {
 	rad_listen_t *this = ctx;
 	RADIUS_PACKET **proxy_p = data;
@@ -1499,11 +1573,20 @@ static int remove_all_proxied_requests(void *ctx, void *data)
 	if (request->proxy->sockfd != this->fd) return 0;
 
 	/*
-	 *	FIXME: Force replies==requests, so that we can delete
-	 *	the packet immediately.
+	 *	The normal "remove_from_proxy_hash" tries to grab the
+	 *	proxy mutex.  We already have it held, so grabbing it
+	 *	again will cause a deadlock.  Instead, call the "no
+	 *	lock" version of the function.
 	 */
+	if (request->in_proxy_hash) {
+		remove_from_proxy_hash_nl(request);
+	}
+	request->proxy_listener = NULL;
 
-	request_done(request, FR_ACTION_DONE);
+	/*
+	 *	Don't mark it as DONE.  The client can retransmit, and
+	 *	the packet SHOULD be re-proxied somewhere else.
+	 */
 	return 0;
 }
 #endif	/* WITH_PROXY */
@@ -1529,6 +1612,46 @@ static int remove_all_requests(void *ctx, void *data)
  *
  ***********************************************************************/
 
+static void remove_from_proxy_hash_nl(REQUEST *request)
+{
+	fr_packet_list_yank(proxy_list, request->proxy);
+	fr_packet_list_id_free(proxy_list, request->proxy);
+
+	/*
+	 *	On the FIRST reply, decrement the count of outstanding
+	 *	requests.  Note that this is NOT the count of sent
+	 *	packets, but whether or not the home server has
+	 *	responded at all.
+	 */
+	if (request->home_server &&
+	    request->home_server->currently_outstanding) {
+		request->home_server->currently_outstanding--;
+
+		/*
+		 *	If we're NOT sending it packets, then we don't know
+		 *	if it's alive or dead.
+		 */
+		if ((request->home_server->currently_outstanding == 0) &&
+		    (request->home_server->state == HOME_STATE_ALIVE)) {
+			request->home_server->state = HOME_STATE_UNKNOWN;
+			request->home_server->last_packet_sent = 0;
+			request->home_server->last_packet_recv = 0;
+		}
+	}
+
+#ifdef WITH_TCP
+	request->proxy_listener->count--;
+#endif
+	request->proxy_listener = NULL;
+
+	/*
+	 *	Got from YES in hash, to NO, not in hash while we hold
+	 *	the mutex.  This guarantees that when another thread
+	 *	grabs the mutex, the "not in hash" flag is correct.
+	 */
+	request->in_proxy_hash = FALSE;
+}
+
 static void remove_from_proxy_hash(REQUEST *request)
 {
 	/*
@@ -1549,32 +1672,7 @@ static void remove_from_proxy_hash(REQUEST *request)
 		return;
 	}
 
-	fr_packet_list_yank(proxy_list, request->proxy);
-	fr_packet_list_id_free(proxy_list, request->proxy);
-
-	/*
-	 *	On the FIRST reply, decrement the count of outstanding
-	 *	requests.  Note that this is NOT the count of sent
-	 *	packets, but whether or not the home server has
-	 *	responded at all.
-	 */
-	if (!request->proxy_reply &&
-	    request->home_server &&
-	    request->home_server->currently_outstanding) {
-		request->home_server->currently_outstanding--;
-	}
-
-#ifdef WITH_TCP
-	request->proxy_listener->count--;
-#endif
-	request->proxy_listener = NULL;
-
-	/*
-	 *	Got from YES in hash, to NO, not in hash while we hold
-	 *	the mutex.  This guarantees that when another thread
-	 *	grabs the mutex, the "not in hash" flag is correct.
-	 */
-	request->in_proxy_hash = FALSE;
+	remove_from_proxy_hash_nl(request);
 
   	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 }
@@ -1599,7 +1697,9 @@ retry:
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 	
 	if (!rcode) {
+#ifdef HAVE_PTHREAD_H
 		if (proxy_no_new_sockets) return 0;
+#endif
 
 		/*
 		 *	Also locks the proxy mutex, so we have to call
@@ -1709,7 +1809,7 @@ static int process_proxy_reply(REQUEST *request)
 		 *	the reply.  These include Proxy-State
 		 *	attributes from us and remote server.
 		 */
-		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE, 0);
+		pairdelete(&request->proxy_reply->vps, PW_PROXY_STATE, 0, -1);
 		
 		/*
 		 *	Add the attributes left in the proxy
@@ -1795,7 +1895,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	if (request->proxy->code != PW_STATUS_SERVER) {
 		listen_socket_t *sock = request->proxy_listener->data;
 
-		request->home_server->last_packet = now.tv_sec;
+		request->home_server->last_packet_recv = now.tv_sec;
 		sock->last_packet = now.tv_sec;
 	}
 
@@ -1819,6 +1919,14 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 	request->proxy_reply = packet;
 	packet->timestamp = now;
 	request->priority = RAD_LISTEN_PROXY;
+
+	/*
+	 *	We've received a reply.  If we hadn't been sending it
+	 *	packets for a while, just mark it alive.
+	 */
+	if (request->home_server->state == HOME_STATE_UNKNOWN) {
+		request->home_server->state = HOME_STATE_ALIVE;
+	}
 
 #ifdef WITH_STATS
 	request->home_server->stats.last_packet = packet->timestamp.tv_sec;
@@ -1875,6 +1983,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 #endif
 	} else {
 		DEBUG("WARNING: Unknown packet type in Post-Proxy-Type Fail: ignoring");
+		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
 	
@@ -1882,7 +1991,8 @@ static int setup_post_proxy_fail(REQUEST *request)
 	
 	if (!dval) {
 		DEBUG("No Post-Proxy-Type Fail: ignoring");
-		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0);
+		pairdelete(&request->config_items, PW_POST_PROXY_TYPE, 0, -1);
+		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
 	
@@ -1894,7 +2004,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	return 1;
 }
 
-static void request_post_proxy(REQUEST *request, int action)
+STATE_MACHINE_DECL(proxy_running)
 {
 	TRACE_STATE_MACHINE;
 
@@ -1916,7 +2026,7 @@ static void request_post_proxy(REQUEST *request, int action)
 	}
 }
 
-static void request_virtual_server(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_virtual_server)
 {
 	TRACE_STATE_MACHINE;
 
@@ -1983,13 +2093,7 @@ static int request_will_proxy(REQUEST *request)
 #ifdef WITH_COA
 		} else if ((request->packet->code == PW_COA_REQUEST) ||
 			   (request->packet->code == PW_DISCONNECT_REQUEST)) {
-			/*
-			 *	FIXME: This is likely wrong.  We don't
-			 *	want to set Proxy-To-Realm for CoA
-			 *	packets.  OR, we have a CoA pool
-			 *	specifically for them.
-			 */
-			pool = realm->acct_pool;
+			pool = realm->coa_pool;
 #endif
 
 		} else {
@@ -2213,12 +2317,10 @@ static int request_proxy(REQUEST *request, int retransmit)
 	/*
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
-	if (!insert_into_proxy_hash(request)) {
+	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
 		radlog_request(L_PROXY, 0, request, "Failed to insert initial packet into the proxy list.");
 		return -1;
 	}
-
-	request->proxy_listener->encode(request->proxy_listener, request);
 
 	RDEBUG2("Proxying request to home server %s port %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
@@ -2229,11 +2331,15 @@ static int request_proxy(REQUEST *request, int retransmit)
 	DEBUG_PACKET(request, request->proxy, 1);
 
 	gettimeofday(&request->proxy_retransmit, NULL);
-	if (!retransmit) request->proxy->timestamp = request->proxy_retransmit;
+	if (!retransmit) {
+		request->proxy->timestamp = request->proxy_retransmit;
+		request->home_server->last_packet_sent = request->proxy_retransmit.tv_sec;
+	}
 
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
+	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 	return 1;
@@ -2247,9 +2353,13 @@ static int request_proxy_anew(REQUEST *request)
 	/*
 	 *	Keep a copy of the old Id so that the
 	 *	re-transmitted request doesn't re-use the old
-	 *	Id.
+	 *	Id.  Note that in certain cases (socket crash)
+	 *	there is no Id as they have been purged from
+	 *	proxy_list, but there should still be a leftover
+	 *	packet hung off this request.
 	 */
 	RADIUS_PACKET old = *request->proxy;
+	int old_hash = request->in_proxy_hash;
 	home_server *home;
 	home_server *old_home = request->home_server;
 #ifdef WITH_TCP
@@ -2271,12 +2381,12 @@ static int request_proxy_anew(REQUEST *request)
 			return 0;
 		}
 		
-		request_queue_or_run(request, request_post_proxy);
+		request_queue_or_run(request, proxy_running);
 		return 0;
 	}
 
 	/*
-	 *	Don't free the old Id on error.
+	 *	Don't free the old Id (if any) on error.
 	 */
 	if (!insert_into_proxy_hash(request)) {
 		radlog_request(L_PROXY, 0, request, "Failed to insert retransmission into the proxy list.");
@@ -2284,16 +2394,18 @@ static int request_proxy_anew(REQUEST *request)
 	}
 
 	/*
-	 *	Now that we have a new Id, free the old one
+	 *	Now that we have a new Id, free the old one (if any)
 	 *	and update the various statistics.
 	 */
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	fr_packet_list_yank(proxy_list, &old);
-	fr_packet_list_id_free(proxy_list, &old);
-	old_home->currently_outstanding--;
+	if (old_hash) {
+		fr_packet_list_yank(proxy_list, &old);
+		fr_packet_list_id_free(proxy_list, &old);
+		old_home->currently_outstanding--;
 #ifdef WITH_TCP
-	if (listener) listener->count--;
+		if (listener) listener->count--;
 #endif
+	}
 	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 	/*
@@ -2329,7 +2441,7 @@ static int request_proxy_anew(REQUEST *request)
 	return 1;
 }
 
-static void request_ping(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_ping)
 {
 	home_server *home = request->home_server;
 	char buffer[128];
@@ -2381,7 +2493,7 @@ static void request_ping(REQUEST *request, int action)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
-		exec_trigger(request, request->home_server->cs, "home_server.alive");
+		exec_trigger(request, request->home_server->cs, "home_server.alive", FALSE);
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;
@@ -2493,6 +2605,7 @@ static void ping_home_server(void *ctx)
 		vp->length = strlen(vp->vp_strvalue);
 	}
 
+	request->proxy->src_ipaddr = home->src_ipaddr;
 	request->proxy->dst_ipaddr = home->ipaddr;
 	request->proxy->dst_port = home->port;
 	request->home_server = home;
@@ -2527,8 +2640,8 @@ static void ping_home_server(void *ctx)
 
 	DEBUG("PING: Waiting %u seconds for response to ping",
 	      home->ping_timeout);
-	fr_event_insert(el, request_timer, request, &when,
-			&request->ev);
+
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 	home->num_sent_pings++;
 
 	rad_assert(request->proxy_listener != NULL);
@@ -2559,7 +2672,7 @@ static void home_trigger(home_server *home, const char *trigger)
 	my_packet.dst_ipaddr = home->ipaddr;
 	my_packet.src_ipaddr = home->src_ipaddr;
 
-	exec_trigger(&my_request, home->cs, trigger);
+	exec_trigger(&my_request, home->cs, trigger, FALSE);
 }
 
 static void mark_home_server_zombie(home_server *home)
@@ -2568,7 +2681,8 @@ static void mark_home_server_zombie(home_server *home)
 
 	ASSERT_MASTER;
 
-	rad_assert(home->state == HOME_STATE_ALIVE);
+	rad_assert((home->state == HOME_STATE_ALIVE) ||
+		   (home->state == HOME_STATE_UNKNOWN));
 
 #ifdef WITH_TCP
 	if (home->proto == IPPROTO_TCP) {
@@ -2580,17 +2694,25 @@ static void mark_home_server_zombie(home_server *home)
 	home->state = HOME_STATE_ZOMBIE;
 	home_trigger(home, "home_server.zombie");
 
-	home->zombie_period_start.tv_sec = home->last_packet;
-	home->zombie_period_start.tv_usec = USEC / 2;
+	/*
+	 *	Back-date the zombie period to when we last expected
+	 *	to see a response.  i.e. when we last sent a request.
+	 */
+	if (home->last_packet_sent == 0) {
+		gettimeofday(&home->zombie_period_start, NULL);
+	} else {
+		home->zombie_period_start.tv_sec = home->last_packet_sent;
+		home->zombie_period_start.tv_usec = 0;
+	}
 	
 	fr_event_delete(el, &home->ev);
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
 	
-	radlog(L_PROXY, "Marking home server %s port %d as zombie (it looks like it is dead).",
+	radlog(L_PROXY, "Marking home server %s port %d as zombie (it has not responded in %d seconds).",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
-	       home->port);
+	       home->port, home->response_window);
 
 	ping_home_server(home);
 }
@@ -2668,7 +2790,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 	}
 }
 
-static void request_proxied(REQUEST *request, int action)
+STATE_MACHINE_DECL(proxy_wait_for_reply)
 {
 	struct timeval now, when;
 	home_server *home = request->home_server;
@@ -2690,9 +2812,10 @@ static void request_proxied(REQUEST *request, int action)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		if (!request->proxy_listener) return;
+		if (request->proxy_reply) return;
 
 		if ((home->state == HOME_STATE_IS_DEAD) ||
+		    !request->proxy_listener ||
 		    (request->proxy_listener->status != RAD_LISTEN_STATUS_KNOWN)) {
 			request_proxy_anew(request);
 			return;
@@ -2730,26 +2853,23 @@ static void request_proxied(REQUEST *request, int action)
 			request->proxy->id);
 		request->num_proxied_requests++;
 
+		rad_assert(request->proxy_listener != NULL);;
 		DEBUG_PACKET(request, request->proxy, 1);
+		FR_STATS_TYPE_INC(home->stats.total_requests);
+		home->last_packet_sent = now.tv_sec;
 		request->proxy_listener->send(request->proxy_listener,
 					      request);
-		/* FALL-THROUGH */
+		break;
 
 	case FR_ACTION_TIMER:
 		/*
-		 *	If we haven't received a packet for a while,
-		 *	mark it as zombie.  If the connection is TCP,
-		 *	then another "watchdog timer" function takes
-		 *	care of pings, etc.
+		 *	Wake up "response_window" time in the future.
+		 *	i.e. when MY packet hasn't received a response.
+		 *
+		 *	Note that we DO NOT mark the home server as
+		 *	zombie if it doesn't respond to us.  It may be
+		 *	responding to other (better looking) packets.
 		 */
-		if ((home->state == HOME_STATE_ALIVE) &&
-#ifdef WITH_TCP
-		    (home->proto != IPPROTO_TCP) &&
-#endif
-		    ((home->last_packet + ((home->zombie_period + 3) / 4)) < now.tv_sec)) {
-			mark_home_server_zombie(home);
-		}
-
 		when = request->proxy->timestamp;
 		when.tv_sec += home->response_window;
 
@@ -2758,40 +2878,53 @@ static void request_proxied(REQUEST *request, int action)
 		 *	that.
 		 */
 		if (timercmp(&when, &now, >)) {
-			fr_event_insert(el, request_timer, request,
-					&when, &request->ev);
+			RDEBUG("Expecting proxy response no later than %d seconds from now", home->response_window);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
 
-		/*
-		 *	FIXME: debug log no response to proxied request
-		 */
+		RDEBUG("No proxy response, giving up on request and marking it done");
 
 		/*
-		 *	No response, but we're supposed to do nothing
-		 *	when there's no response.  The request is finished.
+		 *	If we haven't received any packets for
+		 *	"response_window", then mark the home server
+		 *	as zombie.
+		 *
+		 *	If the connection is TCP, then another
+		 *	"watchdog timer" function takes care of pings,
+		 *	etc.  So we don't need to do it here.
+		 *
+		 *	This check should really be part of a home
+		 *	server state machine.
 		 */
-		if (!home->no_response_fail) {
-#ifdef HAVE_PTHREAD_H
-			request->child_pid = NO_SUCH_CHILD_PID;
+		if (((home->state == HOME_STATE_ALIVE) ||
+		     (home->state == HOME_STATE_UNKNOWN)) &&
+#ifdef WITH_TCP
+		    (home->proto != IPPROTO_TCP) &&
 #endif
-			gettimeofday(&request->reply->timestamp, NULL);
-#ifdef DEBUG_STATE_MACHINE
-			if (debug_flag) printf("(%u) ********\tSTATE %s C%u -> C%u\t********\n", request->number, __FUNCTION__, request->child_state, REQUEST_DONE);
-#endif
-#ifdef HAVE_PTHREAD_H
-			rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-#endif
-			request->child_state = REQUEST_DONE;
-			request_process_timer(request);
-			return;
+		    ((home->last_packet_recv + home->response_window) <= now.tv_sec)) {
+			mark_home_server_zombie(home);
 		}
 
+		FR_STATS_TYPE_INC(home->stats.total_timeouts);
+		if (home->type == HOME_TYPE_AUTH) {
+			if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+			FR_STATS_TYPE_INC(proxy_auth_stats.total_timeouts);
+		}
+#ifdef WITH_ACCT
+		else if (home->type == HOME_TYPE_ACCT) {
+			if (request->proxy_listener) FR_STATS_TYPE_INC(request->proxy_listener->stats.total_timeouts);
+			FR_STATS_TYPE_INC(proxy_acct_stats.total_timeouts);
+		}
+#endif
+
 		/*
-		 *	Do "fail on no response".
+		 *	There was no response within the window.  Stop
+		 *	the request.  If the client retransmitted, it
+		 *	may have failed over to another home server.
+		 *	But that one may be dead, too.
 		 */
-		radlog_request(L_ERR, 0, request, "Rejecting request (proxy Id %d) due to lack of any response from home server %s port %d",
-			       request->proxy->id,
+		radlog_request(L_ERR, 0, request, "Failing request due to lack of any response from home server %s port %d",
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
@@ -2808,7 +2941,7 @@ static void request_proxied(REQUEST *request, int action)
 		 *	receive a new reply from the home server.
 		 */
 	case FR_ACTION_PROXY_REPLY:
-		request_queue_or_run(request, request_post_proxy);
+		request_queue_or_run(request, proxy_running);
 		break;
 
 	case FR_ACTION_CONFLICTING:
@@ -3037,6 +3170,8 @@ static void request_coa_originate(REQUEST *request)
 #endif
 	coa->child_state = REQUEST_ACTIVE;
 	rad_assert(coa->proxy_reply == NULL);
+	FR_STATS_TYPE_INC(coa->home_server->stats.total_requests);
+	coa->home_server->last_packet_sent = coa->proxy->timestamp.tv_sec;
 	coa->proxy_listener->send(coa->proxy_listener, coa);
 }
 
@@ -3096,8 +3231,7 @@ static void request_coa_timer(REQUEST *request)
 		tv_add(&when, delay);
 
 		if (timercmp(&when, &now, >)) {
-			fr_event_insert(el, request_timer, request, &when,
-					&request->ev);
+			STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 			return;
 		}
 	}
@@ -3115,7 +3249,7 @@ static void request_coa_timer(REQUEST *request)
 			return;
 		}
 		
-		request_queue_or_run(request, request_post_proxy);
+		request_queue_or_run(request, proxy_running);
 		return;
 	}
 
@@ -3164,16 +3298,22 @@ static void request_coa_timer(REQUEST *request)
 	if (timercmp(&mrd, &when, <)) {
 		when = mrd;
 	}
-	fr_event_insert(el, request_timer, request, &when, &request->ev);
+	STATE_MACHINE_TIMER(FR_ACTION_TIMER);
 
 	request->num_coa_requests++; /* is NOT reset by code 3 lines above! */
 
+	FR_STATS_TYPE_INC(request->home_server->stats.total_requests);
+
+	/*
+	 *	Status servers don't count as real packets sent.
+	 */
 	request->proxy_listener->send(request->proxy_listener,
 				      request);
 }
 
 
-static void request_coa_post_proxy(REQUEST *request, int action)
+#ifdef HAVE_PTHREAD_H
+STATE_MACHINE_DECL(coa_running)
 {
 	TRACE_STATE_MACHINE;
 
@@ -3195,12 +3335,13 @@ static void request_coa_post_proxy(REQUEST *request, int action)
 		break;
 	}
 }
+#endif	/* HAVE_PTHREAD_H */
 
 
 /*
  *	Process CoA requests that we originated.
  */
-static void request_coa_process(REQUEST *request, int action)
+STATE_MACHINE_DECL(request_coa_process)
 {
 	TRACE_STATE_MACHINE;
 
@@ -3217,8 +3358,8 @@ static void request_coa_process(REQUEST *request, int action)
 		 *	from the main worker thread.
 		 */
 		if (we_are_master() &&
-		    (request->process != request_coa_post_proxy)) {
-			request_queue_or_run(request, request_coa_post_proxy);
+		    (request->process != coa_running)) {
+			request_queue_or_run(request, coa_running);
 			return;
 		}
 		/* FALL-THROUGH */
@@ -3287,6 +3428,7 @@ static void event_poll_detail(void *ctx)
 
 	rad_assert(this->type == RAD_LISTEN_DETAIL);
 
+ redo:
 	event_socket_handler(el, this->fd, this);
 
 	fr_event_now(el, &now);
@@ -3297,6 +3439,8 @@ static void event_poll_detail(void *ctx)
 	 *	time.
 	 */
 	delay = this->encode(this, NULL);
+	if (delay == 0) goto redo;
+
 	tv_add(&when, delay);
 
 	if (!fr_event_insert(el, event_poll_detail, this,
@@ -3360,6 +3504,8 @@ int event_new_fd(rad_listen_t *this)
 	this->print(this, buffer, sizeof(buffer));
 
 	if (this->status == RAD_LISTEN_STATUS_INIT) {
+		listen_socket_t *sock = this->data;
+
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
 		} else {
@@ -3373,15 +3519,15 @@ int event_new_fd(rad_listen_t *this)
 		 *	added to the packet list.
 		 */
 		if (this->type == RAD_LISTEN_PROXY) {
-			listen_socket_t *sock = this->data;
-
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_add(proxy_list, this->fd,
 						       sock->proto,
 						       &sock->other_ipaddr, sock->other_port,
 						       this)) {
 
+#ifdef HAVE_PTHREAD_H
 				proxy_no_new_sockets = TRUE;
+#endif
 				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
 				/*
@@ -3396,16 +3542,18 @@ int event_new_fd(rad_listen_t *this)
 			}
 
 			if (sock->home) {
-				sock->home->num_connections++;
+				sock->home->limit.num_connections++;
 				
+#ifdef HAVE_PTHREAD_H
 				/*
 				 *	If necessary, add it to the list of
 				 *	new proxy listeners.
 				 */
-				if (sock->home->lifetime || sock->home->idle_timeout) {
+				if (sock->home->limit.lifetime || sock->home->limit.idle_timeout) {
 					this->next = proxy_listener_list;
 					proxy_listener_list = this;
 				}
+#endif
 			}
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
@@ -3417,7 +3565,7 @@ int event_new_fd(rad_listen_t *this)
 			 *	contention.
 			 */
 			if (sock->home) {
-				if (sock->home->lifetime || sock->home->idle_timeout) {
+				if (sock->home->limit.lifetime || sock->home->limit.idle_timeout) {
 					radius_signal_self(RADIUS_SIGNAL_SELF_NEW_FD);
 				}
 			}
@@ -3440,10 +3588,30 @@ int event_new_fd(rad_listen_t *this)
 		}
 #endif
 
+#ifdef WITH_TCP
+		/*
+		 *	Add timers to child sockets, if necessary.
+		 */
+		if (sock->proto == IPPROTO_TCP && sock->opened &&
+		    (sock->limit.lifetime || sock->limit.idle_timeout)) {
+			struct timeval when;
+
+			ASSERT_MASTER;
+
+			when.tv_sec = sock->opened + 1;
+			when.tv_usec = 0;
+
+			if (!fr_event_insert(el, tcp_socket_timer, this, &when,
+					     &(sock->ev))) {
+				rad_panic("Failed to insert event");
+			}
+		}
+#endif
+
 		FD_MUTEX_LOCK(&fd_mutex);
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
-			radlog(L_ERR, "Failed adding event handler for proxy socket!");
+			radlog(L_ERR, "Failed adding event handler for socket!");
 			exit(1);
 		}
 		FD_MUTEX_UNLOCK(&fd_mutex);
@@ -3508,7 +3676,7 @@ int event_new_fd(rad_listen_t *this)
 			count = this->count;
 			if (count > 0) {
 				fr_packet_list_walk(proxy_list, this,
-						    remove_all_proxied_requests);
+						    disconnect_all_proxied_requests);
 			}
 			count = this->count; /* protected by mutex */
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
@@ -3655,7 +3823,7 @@ finish:
 				       fr_strerror());
 				exit(1);
 			}
-			if (sock->home) sock->home->num_connections--;
+			if (sock->home) sock->home->limit.num_connections--;
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		}
 #endif
@@ -3689,7 +3857,7 @@ static void handle_signal_self(int flag)
 			fr_event_loop_exit(el, 1);
 		} else {
 			radlog(L_INFO, "Signalled to terminate");
-			exec_trigger(NULL, NULL, "server.signal.term");
+			exec_trigger(NULL, NULL, "server.signal.term", TRUE);
 			fr_event_loop_exit(el, 2);
 		}
 
@@ -3713,7 +3881,7 @@ static void handle_signal_self(int flag)
 
 		last_hup = when;
 
-		exec_trigger(NULL, NULL, "server.signal.hup");
+		exec_trigger(NULL, NULL, "server.signal.hup", TRUE);
 		fr_event_loop_exit(el, 0x80);
 	}
 
@@ -3745,6 +3913,7 @@ static void handle_signal_self(int flag)
 
 #ifdef WITH_TCP
 #ifdef WITH_PROXY
+#ifdef HAVE_PTHREAD_H
 	/*
 	 *	Add event handlers for idle timeouts && maximum lifetime.
 	 */
@@ -3767,6 +3936,13 @@ static void handle_signal_self(int flag)
 
 			when = now;
 
+			/*
+			 *	Sockets should only be added to the
+			 *	proxy_listener_list if they have limits.
+			 *	
+			 */
+			rad_assert(sock->home->limit.lifetime || sock->home->limit.idle_timeout);
+
 			if (!fr_event_insert(el, tcp_socket_timer, this, &when,
 					     &(sock->ev))) {
 				rad_panic("Failed to insert event");
@@ -3775,6 +3951,7 @@ static void handle_signal_self(int flag)
 
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 	}
+#endif	/* HAVE_PTHREAD_H */
 #endif	/* WITH_PROXY */
 #endif	/* WITH_TCP */
 }
@@ -3991,10 +4168,11 @@ static int proxy_hash_cb(UNUSED void *ctx, void *data)
 void radius_event_free(void)
 {
 	/*
-	 *	FIXME: Stop all threads, or at least check that
-	 *	they're all waiting on the semaphore, and the queues
-	 *	are empty.
+	 *	Stop and join all threads.
 	 */
+#ifdef HAVE_PTHREAD_H
+	thread_pool_stop();
+#endif
 
 #ifdef WITH_PROXY
 	/*

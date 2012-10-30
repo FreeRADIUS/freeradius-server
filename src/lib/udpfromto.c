@@ -49,6 +49,14 @@ RCSID("$Id$")
 #include <fcntl.h>
 
 /*
+ *	More portability idiocy
+ *	Mac OSX Lion doesn't define SOL_IP.  But IPPROTO_IP works.
+ */
+#ifndef SOL_IP
+#define SOL_IP IPPROTO_IP
+#endif
+
+/*
  * glibc 2.4 and uClibc 0.9.29 introduce IPV6_RECVPKTINFO etc. and
  * change IPV6_PKTINFO This is only supported in Linux kernel >=
  * 2.6.14

@@ -28,5 +28,5 @@ GRANT SELECT ON radusergroup TO radius;
 /*
  * The server can write to the accounting and post-auth logging table.
  */
-GRANT ALL on radius.radacct TO radius;
-GRANT ALL on radius.radpostauth TO radius;
+GRANT SELECT, INSERT, UPDATE on radacct TO radius;
+GRANT SELECT, INSERT, UPDATE on radpostauth TO radius;

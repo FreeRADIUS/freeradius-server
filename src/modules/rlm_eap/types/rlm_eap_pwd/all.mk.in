@@ -1,0 +1,10 @@
+TARGETNAME	= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		= $(TARGETNAME).a
+endif
+
+SOURCES     := rlm_eap_pwd.c eap_pwd.c
+HEADERS     = eap_pwd.h rlm_eap_pwd.h
+
+SRC_INCDIRS := ../.. ../../libeap

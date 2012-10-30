@@ -115,7 +115,7 @@ static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
 	EAP_DS *eap_ds = handler->eap_ds;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) type_data;
 
-	if (!radius_xlat(challenge_str, sizeof(challenge_str), inst->challenge, handler->request, NULL)) {
+	if (!radius_xlat(challenge_str, sizeof(challenge_str), inst->challenge, handler->request, NULL, NULL)) {
 		radlog(L_ERR, "rlm_eap_gtc: xlat of \"%s\" failed", inst->challenge);
 		return 0;
 	}
@@ -226,7 +226,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		 *	If there was a User-Password in the request,
 		 *	why the heck are they using EAP-GTC?
 		 */
-		pairdelete(&handler->request->packet->vps, PW_USER_PASSWORD, 0);
+		pairdelete(&handler->request->packet->vps, PW_USER_PASSWORD, 0, -1);
 
 		vp = pairmake("User-Password", "", T_OP_EQ);
 		if (!vp) {

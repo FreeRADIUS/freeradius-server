@@ -76,10 +76,10 @@ file for a complete list of variables.
 One-character variables
 -----------------------
 
-The following one-character variables are also defined.  However, they
-are duplicates of the previous general cases, and are only provided
-for backwards compatibility.  They WILL BE removed in a future
-release.  They also do NOT permit the use of conditional syntax
+The following one-character variables were defined.  They were duplicates of the
+previous general cases, and were only provided for backwards compatibility.
+They are in the process of being removed, this table documents the old variables
+and their new equivalents.
 (i.e. ``:-``, as described above.
 
 +-----------+---------------------------+-----------------------+
@@ -94,8 +94,6 @@ release.  They also do NOT permit the use of conditional syntax
 |%f         |Framed IP address	  	|%{Framed-IP-Address}	|
 +-----------+---------------------------+-----------------------+
 |%i         |Calling Station ID	  	|%{Calling-Station-Id}	|
-+-----------+---------------------------+-----------------------+
-|%I         |request ID		  	|			|
 +-----------+---------------------------+-----------------------+
 |%l         |request timestamp          |		        |
 +-----------+---------------------------+-----------------------+
@@ -117,7 +115,11 @@ release.  They also do NOT permit the use of conditional syntax
 +-----------+---------------------------+-----------------------+
 |%D         |request date (YYYYMMDD)	|	                |
 +-----------+---------------------------+-----------------------+
+|%G         |request minute	        |                       |
++-----------+---------------------------+-----------------------+
 |%H         |request hour	        |                       |
++-----------+---------------------------+-----------------------+
+|%I         |request ID		  	|			|
 +-----------+---------------------------+-----------------------+
 |%L         |radlog_dir		  	|%{config:logdir}	|
 +-----------+---------------------------+-----------------------+

@@ -66,17 +66,10 @@ struct fr_module_hup_t {
 	fr_module_hup_t		*next;
 };
 
-
-typedef struct section_type_value_t {
-	const char	*section;
-	const char	*typename;
-	int		attr;
-} section_type_value_t;
-
 /*
  *	Ordered by component
  */
-static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
+const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 	{ "authenticate", "Auth-Type",       PW_AUTH_TYPE },
 	{ "authorize",    "Autz-Type",       PW_AUTZ_TYPE },
 	{ "preacct",      "Pre-Acct-Type",   PW_PRE_ACCT_TYPE },
@@ -93,8 +86,8 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 };
 
 
-#ifdef WITHOUT_LIBLTDL
-#ifdef WITH_DLOPEN
+#ifndef WITH_LIBLTDL
+#ifdef HAVE_DLFCN_H
 #include <dlfcn.h>
 
 #ifndef RTLD_NOW
@@ -119,7 +112,8 @@ static const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 
 int lt_dlinit(void)
 {
-	char *p, *val;
+	char *p;
+	const char *val;
 	char buffer[1024];
 
 	/*
@@ -243,8 +237,8 @@ const char *lt_dlerror(void)
 	return "Unspecified error";
 }
 
-#endif	/* WITH_DLOPEN */
-#else	/* WITHOUT_LIBLTDL */
+#endif	/* HAVE_DLFCN_H */
+#else	/* WIT_LIBLTDL */
 
 /*
  *	Solve the issues of libraries linking to other libraries
@@ -269,7 +263,7 @@ static lt_dlhandle fr_dlopenext(const char *filename)
 	return handle;
 }
 #endif	/* HAVE_LT_DLADVISE_INIT */
-#endif /* WITHOUT_LIBLTDL */
+#endif /* WITH_LIBLTDL */
 
 static int virtual_server_idx(const char *name)
 {
@@ -399,7 +393,10 @@ static void module_instance_free_old(CONF_SECTION *cs, module_instance_t *node,
 		cf_section_parse_free(cs, mh->insthandle);
 		
 		if (node->entry->module->detach) {
-			(node->entry->module->detach)(mh->insthandle);
+			if ((node->entry->module->detach)(mh->insthandle) < 0) {
+				DEBUG("WARNING: Failed detaching module %s cleanly.  Doing forcible shutdown", node->name);
+
+			}
 		} else {
 			free(mh->insthandle);
 		}
@@ -504,7 +501,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	p = strrchr(module_struct, '-');
 	if (p) *p = '\0';
 
-#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	module = lt_dlsym(RTLD_SELF, module_struct);
 	if (module) goto open_self;
 #endif
@@ -535,7 +532,7 @@ static module_entry_t *linkto_module(const char *module_name,
 		return NULL;
 	}
 
-#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+#if !defined(WIT_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
  open_self:
 #endif
 	/*
@@ -577,15 +574,23 @@ static module_entry_t *linkto_module(const char *module_name,
  *	Find a module instance.
  */
 module_instance_t *find_module_instance(CONF_SECTION *modules,
-					const char *instname, int do_link)
+					const char *askedname, int do_link)
 {
 	int check_config_safe = FALSE;
 	CONF_SECTION *cs;
-	const char *name1;
+	const char *name1, *instname;
 	module_instance_t *node, myNode;
 	char module_name[256];
 
 	if (!modules) return NULL;
+
+	/*
+	 *	Look for the real name.  Ignore the first character,
+	 *	which tells the server "it's OK for this module to not
+	 *	exist."
+	 */
+	instname = askedname;
+	if (instname[0] == '-') instname++;
 
 	/*
 	 *	Module instances are declared in the modules{} block
@@ -797,7 +802,8 @@ int indexed_modcall(int comp, int idx, REQUEST *request)
  *	block
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
-				     rbtree_t *components, int attr, int comp)
+				     rbtree_t *components,
+				     const DICT_ATTR *dattr, int comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
@@ -831,7 +837,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	automatically.  If it isn't found, it's a serious
 	 *	error.
 	 */
-	dval = dict_valbyname(attr, 0, name2);
+	dval = dict_valbyname(dattr->attr, dattr->vendor, name2);
 	if (!dval) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "%s %s Not previously configured",
@@ -924,7 +930,7 @@ static int load_component_section(CONF_SECTION *cs,
 				   section_type_value[comp].typename) == 0) {
 				if (!load_subcomponent_section(NULL, scs,
 							       components,
-							       dattr->attr,
+							       dattr,
 							       comp)) {
 					return -1; /* FIXME: memleak? */
 				}
@@ -944,6 +950,15 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	Try to compile one entry.
 		 */
 		this = compile_modsingle(NULL, comp, modref, &modname);
+
+		/*
+		 *	It's OK for the module to not exist.
+		 */
+		if (!this && modname && (modname[0] == '-')) {
+			DEBUG("WARNING: Not loading module \"%s\" as it is not enabled", modname + 1);
+			continue;
+		}
+
 		if (!this) {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Errors parsing %s section.\n",
@@ -1209,7 +1224,7 @@ static int load_byserver(CONF_SECTION *cs)
 				DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
 				if (!load_subcomponent_section(NULL, subcs,
 							       components,
-							       dattr->attr,
+							       dattr,
 							       RLM_COMPONENT_POST_AUTH)) {
 					goto error; /* FIXME: memleak? */
 				}
@@ -1581,7 +1596,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 			cp = cf_itemtopair(ci);
 			name = cf_pair_attr(cp);
 			module = find_module_instance(modules, name, 1);
-			if (!module) {
+			if (!module && (name[0] != '-')) {
 				return -1;
 			}
 		} /* loop over items in the subsection */

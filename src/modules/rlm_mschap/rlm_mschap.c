@@ -143,7 +143,7 @@ typedef struct rlm_mschap_t {
         int require_strong;
         int with_ntdomain_hack;	/* this should be in another module */
 	char *passwd_file;
-	const char *xlat_name;
+	char *xlat_name;
 	char *ntlm_auth;
 	char *ntlm_cpw;
 	char *ntlm_cpw_username;
@@ -165,8 +165,7 @@ typedef struct rlm_mschap_t {
  *	attributes.
  */
 static size_t mschap_xlat(void *instance, REQUEST *request,
-		       char *fmt, char *out, size_t outlen,
-		       RADIUS_ESCAPE_STRING func)
+		       const char *fmt, char *out, size_t outlen)
 {
 	size_t		i, data_len;
 	uint8_t		*data = NULL;
@@ -176,8 +175,6 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	rlm_mschap_t	*inst = instance;
 
 	response = NULL;
-
-	func = func;		/* -Wunused */
 
 	/*
 	 *	Challenge means MS-CHAPv1 challenge, or
@@ -454,7 +451,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 * Return the NT-Hash of the passed string
 		 */
 	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
-		char *p;
+		const char *p;
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
@@ -463,7 +460,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL)) {
+		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL,NULL)) {
 			RDEBUG("xlat failed");
 			*buffer = '\0';
 			return 0;
@@ -480,7 +477,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 * Return the LM-Hash of the passed string
 		 */
 	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
-		char *p;
+		const char *p;
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
@@ -489,7 +486,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL)) {
+		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL,NULL)) {
 			RDEBUG("xlat failed");
 			*buffer = '\0';
 			return 0;
@@ -582,7 +579,7 @@ static const CONF_PARSER module_config[] = {
 static int mschap_detach(void *instance){
 #define inst ((rlm_mschap_t *)instance)
 	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, mschap_xlat);
+		xlat_unregister(inst->xlat_name, mschap_xlat, instance);
 		free(inst->xlat_name);
 	}
 	free(instance);
@@ -596,6 +593,7 @@ static int mschap_detach(void *instance){
  */
 static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 {
+	const char *name;
 	rlm_mschap_t *inst;
 
 	inst = *instance = rad_malloc(sizeof(*inst));
@@ -624,9 +622,9 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Create the dynamic translation.
 	 */
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-	inst->xlat_name = strdup(inst->xlat_name);
+	name = cf_section_name2(conf);
+	if (!name) name = cf_section_name1(conf);
+	inst->xlat_name = strdup(name);
 	xlat_register(inst->xlat_name, mschap_xlat, inst);
 
 	/*
@@ -729,7 +727,8 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		pid_t pid, child_pid;
 		int status, len;
 		char buf[2048];
-		char *emsg;
+		char *pmsg;
+		const char *emsg;
 
 		RDEBUG("Doing MS-CHAPv2 password change via ntlm_auth helper");
 
@@ -748,7 +747,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		 */
 
 		if (inst->ntlm_cpw_username) {
-			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_username, request, NULL);
+			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_username, request, NULL, NULL);
 			strcat(buf, "\n");
 			len++;
 
@@ -761,7 +760,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		}
 
 		if (inst->ntlm_cpw_domain) {
-			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_domain, request, NULL);
+			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_domain, request, NULL, NULL);
 			strcat(buf, "\n");
 			len++;
 
@@ -845,9 +844,9 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 			return 0;
 		}
 
-		emsg = strstr(buf, "Password-Change-Error: ");
-		if (emsg) {
-			emsg = strsep(&emsg, "\n");
+		pmsg = strstr(buf, "Password-Change-Error: ");
+		if (pmsg) {
+			emsg = strsep(&pmsg, "\n");
 		} else {
 			emsg = "could not find error";
 		}
@@ -878,8 +877,8 @@ ntlm_auth_err:
 
 		VALUE_PAIR *new_pass, *new_hash;
 		uint8_t *p;
-		int i, result_len;
-		uint32_t passlen;
+		size_t i, result_len;
+		size_t passlen;
 		char result[253];
 		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[16];
 		RC4_KEY key;
@@ -1003,7 +1002,7 @@ ntlm_auth_err:
 		/*
 		 * perform the xlat
 		 */
-		result_len = radius_xlat(result, sizeof(result), inst->local_cpw, request, NULL);
+		result_len = radius_xlat(result, sizeof(result), inst->local_cpw, request, NULL, NULL);
 		if (!result_len) {
 			RDEBUG("Local MS-CHAPv2 password change - xlat didn't give any result, assuming failure");
 			return -1;
@@ -1094,10 +1093,12 @@ static int do_mschap(rlm_mschap_t *inst,
 			VALUE_PAIR *vp = NULL;
 
 			/*
-			 * look for "Password expired"
+			 * look for "Password expired", or "Must
+			 * change password".
 			 */
-			if (strstr(buffer, "Password expired")) {
-				RDEBUG2("ntlm_auth says password has expired");
+			if (strstr(buffer, "Password expired") ||
+			    strstr(buffer, "Must change password")) {
+			  	RDEBUG2("ntlm_auth says %s", buffer);
 				return -648;
 			}
 
@@ -1508,6 +1509,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 				if (nt_enc->attribute != PW_MSCHAP_NT_ENC_PW)
 					continue;
 
+				if (nt_enc->vendor != VENDORPEC_MICROSOFT)
+					continue;
+
 				if (nt_enc->vp_octets[0] != 6) {
 					RDEBUG2("MS-CHAP-NT-Enc-PW with invalid format");
 					return RLM_MODULE_INVALID;
@@ -1638,11 +1642,11 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	response
 		 */
 		if (response->vp_octets[1] & 0x01) {
-			RDEBUG2("Told to do MS-CHAPv1 with NT-Password");
+			RDEBUG2("Client is using MS-CHAPv1 with NT-Password");
 			password = nt_password;
 			offset = 26;
 		} else {
-			RDEBUG2("Told to do MS-CHAPv1 with LM-Password");
+			RDEBUG2("Client is using MS-CHAPv1 with LM-Password");
 			password = lm_password;
 			offset = 2;
 		}
@@ -1759,7 +1763,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			       username_string,	/* user name */
 			       mschapv1_challenge); /* resulting challenge */
 
-		RDEBUG2("Told to do MS-CHAPv2 for %s with NT-Password",
+		RDEBUG2("Client is using MS-CHAPv2 for %s, we need NT-Password",
 		       username_string);
 
 		mschap_result = do_mschap(inst, request, nt_password, mschapv1_challenge,
@@ -1785,7 +1789,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 						 sizeof(buffer) - 12 - i*2, "%02x",
 						 fr_rand() & 0xff);
 				}
-				snprintf(buffer + 12 + 32, sizeof(buffer) - 45,
+				snprintf(buffer + 45, sizeof(buffer) - 45,
 					 " V=3 M=%s", inst->retry_msg);
 			}
 			mschap_add_reply(request, &request->reply->vps,

@@ -71,16 +71,14 @@ static const CONF_PARSER module_config[] = {
 /*
  *	The Group = handler.
  */
-static int groupcmp(void *instance, REQUEST *req, VALUE_PAIR *request,
+static int groupcmp(void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
 		    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
 		    VALUE_PAIR **reply_pairs)
 {
 	struct passwd	*pwd;
 	struct group	*grp;
 	char		**member;
-	char		*username;
 	int		retval;
-	VALUE_PAIR	*vp;
 
 	instance = instance;
 	check_pairs = check_pairs;
@@ -274,9 +272,17 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
 	/*
 	 *      Check if password has expired.
 	 */
+	if (spwd && spwd->sp_lstchg > 0 && spwd->sp_max >= 0 &&
+	    (request->timestamp / 86400) > (spwd->sp_lstchg + spwd->sp_max)) {
+		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
+		return RLM_MODULE_REJECT;
+	}
+	/*
+	 *      Check if account has expired.
+	 */
 	if (spwd && spwd->sp_expire > 0 &&
 	    (request->timestamp / 86400) > spwd->sp_expire) {
-		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
+		radlog_request(L_AUTH, 0, request, "[%s]: account has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -363,7 +369,7 @@ static int unix_authenticate(void *instance, REQUEST *request)
 	if (fr_crypt_check((char *) request->password->vp_strvalue,
 			     (char *) vp->vp_strvalue) != 0) {
 		radlog_request(L_AUTH, 0, request, "invalid password \"%s\"",
-			       request->username->vp_strvalue);
+			       request->password->vp_strvalue);
 		return RLM_MODULE_REJECT;
 	}
 #endif /* OSFFIA */

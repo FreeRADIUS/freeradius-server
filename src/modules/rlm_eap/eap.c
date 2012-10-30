@@ -103,15 +103,9 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	node->typename = eaptype_name;
 	node->type_data = NULL;
 
-#ifdef WITHOUT_LIBLTDL
-#ifdef WITH_DLOPEN
-#include <dlfcn.h>
-
-#ifdef RTLD_SELF
+#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 	node->type = (EAP_TYPE *)lt_dlsym(RTLD_SELF, buffer);
 	if (node->type) goto open_self;
-#endif
-#endif
 #endif
 
 	/* Link the loaded EAP-Type */
@@ -132,7 +126,7 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 		return -1;
 	}
 
-#if defined(WITHOUT_LIBLTDL) && defined (WITH_DLOPEN) && defined(RTLD_SELF)
+#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 open_self:
 #endif
 	cf_log_module(cs, "Linked to sub-module %s", buffer);
@@ -265,19 +259,6 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 		handler->stage = INITIATE;
 		handler->eap_type = default_eap_type;
-
-		/*
-		 *	Wild & crazy stuff!  For TTLS & PEAP, we
-		 *	initiate a TLS session, and then pass that
-		 *	session data to TTLS or PEAP for the
-		 *	authenticate stage.
-		 *
-		 *	Handler->eap_type holds the TRUE type.
-		 */
-		if ((default_eap_type == PW_EAP_TTLS) ||
-		    (default_eap_type == PW_EAP_PEAP)) {
-			default_eap_type = PW_EAP_TLS;
-		}
 
 		if ((default_eap_type == PW_EAP_TNC) &&
 		    !handler->request->parent) {
@@ -845,8 +826,8 @@ void eap_fail(EAP_HANDLER *handler)
 	/*
 	 *	Delete any previous replies.
 	 */
-	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0);
-	pairdelete(&handler->request->reply->vps, PW_STATE, 0);
+	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0, -1);
+	pairdelete(&handler->request->reply->vps, PW_STATE, 0, -1);
 
 	eap_packet_free(&handler->eap_ds->request);
 	handler->eap_ds->request = eap_packet_alloc();

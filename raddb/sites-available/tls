@@ -61,15 +61,14 @@ listen {
 		random_file = ${certdir}/random
 
 		#
-		#  This can never exceed the size of a RADIUS
-		#  packet (4096 bytes), and is preferably half
-		#  that, to accomodate other attributes in
-		#  RADIUS packet.  On most APs the MAX packet
-		#  length is configured between 1500 - 1600
-		#  In these cases, fragment size should be
-		#  1024 or less.
+		#  The default fragment size is 1K.
+		#  However, it's possible to send much more data than
+		#  that over a TCP connection.  The upper limit is 64K.
+		#  Setting the fragment size to more than 1K means that
+		#  there are fewer round trips when setting up a TLS
+		#  connection.  But only if the certificates are large.
 		#
-	#	fragment_size = 1024
+	#	fragment_size = 65536
 
 		#  include_length is a flag which is
 		#  by default set to yes If set to
@@ -199,6 +198,37 @@ listen {
 		      #  who are logged in... which can be a LOT.
 		      #
 		      max_entries = 255
+
+		      #
+		      #  Internal "name" of the session cache.
+		      #  Used to distinguish which TLS context
+		      #  sessions belong to.
+		      #
+		      #  The server will generate a random value
+		      #  if unset. This will change across server
+		      #  restart so you MUST set the "name" if you
+		      #  want to persist sessions (see below).
+		      #
+		      #  If you use IPv6, change the "ipaddr" below
+		      #  to "ipv6addr"
+		      #
+		      #name = "TLS ${..ipaddr} ${..port} ${..proto}"
+
+		      #
+		      #  Simple directory-based storage of sessions.
+		      #  Two files per session will be written, the SSL
+		      #  state and the cached VPs. This will persist session
+		      #  across server restarts.
+		      #
+		      #  The server will need write perms, and the directory
+		      #  should be secured from anyone else. You might want
+		      #  a script to remove old files from here periodically:
+		      #
+		      #    find ${logdir}/tlscache -mtime +2 -exec rm -f {} \;
+		      #
+		      #  This feature REQUIRES "name" option be set above.
+		      #
+		      #persist_dir = "${logdir}/tlscache"
 		}
 
 		#
@@ -311,15 +341,11 @@ home_server tls {
 		random_file = ${certdir}/random
 
 		#
-		#  This can never exceed the size of a RADIUS
-		#  packet (4096 bytes), and is preferably half
-		#  that, to accomodate other attributes in
-		#  RADIUS packet.  On most APs the MAX packet
-		#  length is configured between 1500 - 1600
-		#  In these cases, fragment size should be
-		#  1024 or less.
+		#  The default fragment size is 1K.
+		#  However, TLS can send 64K of data at once.
+		#  It can be useful to set it higher.
 		#
-	#	fragment_size = 1024
+	#	fragment_size = 65536
 
 		#  include_length is a flag which is
 		#  by default set to yes If set to

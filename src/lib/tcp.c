@@ -329,7 +329,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 			DEBUG("rad_recv: Packet from %s code=%d",
 			      buffer, packet->code);
 		}
-		DEBUG(", id=%d, length=%ld\n", packet->id, packet->data_len);
+		DEBUG(", id=%d, length=%zu\n", packet->id, packet->data_len);
 	}
 
 	return 1;		/* done reading the packet */

@@ -2,7 +2,7 @@ TARGET      = @targetname@
 SRCS        = logging_impl.c \
 	      rlm_eap_ikev2.c \
 	      ike_conf.c
-RLM_CFLAGS  = $(INCLTDL) -I../.. -I../../libeap $(OPENSSL_INCLUDE) @eap_ikev2_cflags@
+RLM_CFLAGS  = -I../.. -I../../libeap @eap_ikev2_cflags@
 RLM_LDFLAGS = @LDFLAGS@  @LIBS@ $(OPENSSL_LIBS)
 HEADERS     = eap_ikev2.h logging_impl.h ike_conf.h
 RLM_INSTALL = 

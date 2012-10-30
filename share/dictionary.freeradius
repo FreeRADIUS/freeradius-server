@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #
 #	The FreeRADIUS Vendor-Specific dictionary.
 #
@@ -134,5 +135,9 @@ ATTRIBUTE	FreeRADIUS-Stats-HUP-Time		177	date
 ATTRIBUTE	FreeRADIUS-Server-EMA-Window		178	integer
 ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-1	179	integer
 ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-10	180	integer
+
+ATTRIBUTE	FreeRADIUS-Queue-PPS-In			181	integer
+ATTRIBUTE	FreeRADIUS-Queue-PPS-Out		182	integer
+ATTRIBUTE	FreeRADIUS-Queue-Use-Percentage		183	integer
 
 END-VENDOR FreeRADIUS

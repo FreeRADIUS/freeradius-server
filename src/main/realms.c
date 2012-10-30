@@ -132,11 +132,6 @@ static void home_server_free(void *data)
 {
 	home_server *home = data;
 
-#ifdef WITH_TLS
-	tls_server_conf_free(home->tls);
-	home->tls = NULL;
-#endif
-
 	free(home);
 }
 
@@ -201,7 +196,7 @@ static int home_pool_name_cmp(const void *one, const void *two)
 }
 
 
-static size_t xlat_cs(CONF_SECTION *cs, char *fmt, char *out, size_t outlen)
+static size_t xlat_cs(CONF_SECTION *cs, const char *fmt, char *out, size_t outlen)
 
 {
 	const char *value = NULL;
@@ -235,8 +230,7 @@ static size_t xlat_cs(CONF_SECTION *cs, char *fmt, char *out, size_t outlen)
  *	Xlat for %{home_server:foo}
  */
 static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
-			       char *fmt, char *out, size_t outlen,
-			       UNUSED RADIUS_ESCAPE_STRING func)
+			       const char *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
@@ -253,8 +247,7 @@ static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
  *	Xlat for %{home_server_pool:foo}
  */
 static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
-			       char *fmt, char *out, size_t outlen,
-			       UNUSED RADIUS_ESCAPE_STRING func)
+			       const char *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
@@ -309,16 +302,16 @@ void realms_free(void)
 #ifdef WITH_PROXY
 static CONF_PARSER limit_config[] = {
 	{ "max_connections", PW_TYPE_INTEGER,
-	  offsetof(home_server, max_connections), NULL,   "16" },
+	  offsetof(home_server, limit.max_connections), NULL,   "16" },
 
 	{ "max_requests", PW_TYPE_INTEGER,
-	  offsetof(home_server,max_requests), NULL,   "0" },
+	  offsetof(home_server, limit.max_requests), NULL,   "0" },
 
 	{ "lifetime", PW_TYPE_INTEGER,
-	  offsetof(home_server,lifetime), NULL,   "0" },
+	  offsetof(home_server, limit.lifetime), NULL,   "0" },
 
 	{ "idle_timeout", PW_TYPE_INTEGER,
-	  offsetof(home_server,idle_timeout), NULL,   "0" },
+	  offsetof(home_server, limit.idle_timeout), NULL,   "0" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -375,8 +368,6 @@ static CONF_PARSER home_server_config[] = {
 
 	{ "response_window", PW_TYPE_INTEGER,
 	  offsetof(home_server,response_window), NULL,   "30" },
-	{ "no_response_fail", PW_TYPE_BOOLEAN,
-	  offsetof(home_server,no_response_fail), NULL,   NULL },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server,max_outstanding), NULL,   "65536" },
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
@@ -449,24 +440,11 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	home->name = name2;
 	home->cs = cs;
-
-        /*
-	 *      For zombie period calculations.  We want to count
-	 *      zombies from the time when the server starts, instead
-	 *      of from 1970.
-	 */
-	home->last_packet = time(NULL);
+	home->state = HOME_STATE_UNKNOWN;
 
 	/*
-	 *	Authentication servers have a default "no_response_fail = 0".
-	 *	Accounting servers have a default "no_response_fail = 1".
-	 *
-	 *	This is because authentication packets are retried, so
-	 *	they can fail over to another home server.  Accounting
-	 *	packets are not retried, so they cannot fail over, and
-	 *	instead should be rejected immediately.
+	 *	Last packet sent / received are zero.
 	 */
-	home->no_response_fail = 2;
 
 	memset(&hs_ip4addr, 0, sizeof(hs_ip4addr));
 	memset(&hs_ip6addr, 0, sizeof(hs_ip6addr));
@@ -557,11 +535,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
-		if (home->no_response_fail == 2) home->no_response_fail = 0;
 
 	} else if (strcasecmp(hs_type, "acct") == 0) {
 		home->type = HOME_TYPE_ACCT;
-		if (home->no_response_fail == 2) home->no_response_fail = 1;
 
 	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
 		home->type = HOME_TYPE_AUTH;
@@ -597,9 +573,22 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	} else if (strcasecmp(hs_check, "request") == 0) {
 		home->ping_check = HOME_PING_CHECK_REQUEST;
 
+		if (!home->ping_user_name ||
+		    !*home->ping_user_name) {
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a 'username' to enable status_check=request");
+			goto error;
+		}
+
+		if ((home->type == HOME_TYPE_AUTH) &&
+		    (!home->ping_user_password ||
+		     !*home->ping_user_password)) {
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable status_check=request");
+			goto error;
+		}
+
 	} else {
 		cf_log_err(cf_sectiontoitem(cs),
-			   "Invalid ping_check \"%s\" for home server %s.",
+			   "Invalid status__check \"%s\" for home server %s.",
 			   hs_check, name2);
 		goto error;
 	}
@@ -609,13 +598,13 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	if ((home->ping_check != HOME_PING_CHECK_NONE) &&
 	    (home->ping_check != HOME_PING_CHECK_STATUS_SERVER)) {
 		if (!home->ping_user_name) {
-			cf_log_err(cf_sectiontoitem(cs), "You must supply a user name to enable ping checks");
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a user name to enable status_check=request");
 			goto error;
 		}
 
 		if ((home->type == HOME_TYPE_AUTH) &&
 		    !home->ping_user_password) {
-			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable ping checks");
+			cf_log_err(cf_sectiontoitem(cs), "You must supply a password to enable status_check=request");
 			goto error;
 		}
 	}
@@ -803,21 +792,21 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	if (home->coa_mrd > 60 ) home->coa_mrd = 60;
 #endif
 
-	if (home->max_connections > 1024) home->max_connections = 1024;
+	if (home->limit.max_connections > 1024) home->limit.max_connections = 1024;
 
 #ifdef WITH_TCP
 	/*
 	 *	UDP sockets can't be connection limited.
 	 */
-	if (home->proto != IPPROTO_TCP) home->max_connections = 0;
+	if (home->proto != IPPROTO_TCP) home->limit.max_connections = 0;
 #endif
 
-	if ((home->idle_timeout > 0) && (home->idle_timeout < 5))
-		home->idle_timeout = 5;
-	if ((home->lifetime > 0) && (home->lifetime < 5))
-		home->lifetime = 5;
-	if ((home->lifetime > 0) && (home->idle_timeout > home->lifetime))
-		home->idle_timeout = 0;
+	if ((home->limit.idle_timeout > 0) && (home->limit.idle_timeout < 5))
+		home->limit.idle_timeout = 5;
+	if ((home->limit.lifetime > 0) && (home->limit.lifetime < 5))
+		home->limit.lifetime = 5;
+	if ((home->limit.lifetime > 0) && (home->limit.idle_timeout > home->limit.lifetime))
+		home->limit.idle_timeout = 0;
 
 	tls = cf_item_parent(cf_sectiontoitem(cs));
 	if (strcmp(cf_section_name1(tls), "server") == 0) {
@@ -834,9 +823,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		home2->ping_user_password = NULL;
 		home2->cs = cs;
 		home2->parent_server = home->parent_server;
-
-		if (home->no_response_fail == 2) home->no_response_fail = 0;
-		if (home2->no_response_fail == 2) home2->no_response_fail = 1;
 
 		if (!rbtree_insert(home_servers_byname, home2)) {
 			cf_log_err(cf_sectiontoitem(cs),
@@ -1568,6 +1554,10 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 #ifdef WITH_PROXY
 	home_pool_t *auth_pool, *acct_pool;
 	const char *auth_pool_name, *acct_pool_name;
+#ifdef WITH_COA
+	const char *coa_pool_name;
+	home_pool_t *coa_pool;
+#endif
 #endif
 
 	name2 = cf_section_name1(cs);
@@ -1585,6 +1575,10 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 #ifdef WITH_PROXY
 	auth_pool = acct_pool = NULL;
 	auth_pool_name = acct_pool_name = NULL;
+#ifdef WITH_COA
+	coa_pool = NULL;
+	coa_pool_name = NULL;
+#endif
 
 	/*
 	 *	Prefer new configuration to old one.
@@ -1630,8 +1624,9 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			return 0;
 		}
 
-		if (!auth_pool || auth_pool_name &&
-		    (strcmp(auth_pool_name, acct_pool_name) != 0)) {
+		if (!auth_pool ||
+		    (auth_pool_name &&
+		     (strcmp(auth_pool_name, acct_pool_name) != 0))) {
 			do_print = TRUE;
 		}
 
@@ -1641,6 +1636,20 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 			return 0;
 		}
 	}
+
+#ifdef WITH_COA
+	cp = cf_pair_find(cs, "coa_pool");
+	if (cp) coa_pool_name = cf_pair_value(cp);
+	if (cp && coa_pool_name) {
+		int do_print = TRUE;
+
+		if (!add_pool_to_realm(rc, cs,
+				       coa_pool_name, &coa_pool,
+				       HOME_TYPE_COA, do_print)) {
+			return 0;
+		}
+	}
+#endif
 #endif
 
 	cf_log_info(cs, " realm %s {", name2);
@@ -1699,13 +1708,19 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 #ifdef WITH_PROXY
 	r->auth_pool = auth_pool;
 	r->acct_pool = acct_pool;
-	
+#ifdef WITH_COA
+	r->coa_pool = coa_pool;
+#endif
+
 	if (auth_pool_name &&
 	    (auth_pool_name == acct_pool_name)) { /* yes, ptr comparison */
 		cf_log_info(cs, "\tpool = %s", auth_pool_name);
 	} else {
 		if (auth_pool_name) cf_log_info(cs, "\tauth_pool = %s", auth_pool_name);
 		if (acct_pool_name) cf_log_info(cs, "\tacct_pool = %s", acct_pool_name);
+#ifdef WITH_COA
+		if (coa_pool_name) cf_log_info(cs, "\tcoa_pool = %s", coa_pool_name);
+#endif
 	}
 #endif
 
@@ -1932,7 +1947,7 @@ int realms_init(CONF_SECTION *config)
 
 #ifdef WITH_COA
 	/*
-	 *	CoA pools aren't tied to realms.
+	 *	CoA pools aren't necessarily tied to realms.
 	 */
 	for (cs = cf_subsection_find_next(config, NULL, "home_server_pool");
 	     cs != NULL;
@@ -2148,6 +2163,9 @@ home_server *home_server_ldb(const char *realmname,
 
 		/*
 		 *	Skip dead home servers.
+		 *
+		 *	Home servers that are unknown, alive, or zombie
+		 *	are used for proxying.
 		 */
 		if (home->state == HOME_STATE_IS_DEAD) {
 			continue;
@@ -2285,7 +2303,7 @@ home_server *home_server_ldb(const char *realmname,
 		 */
 		if ((pool->time_all_dead + 3600) < request->timestamp) {
 			pool->time_all_dead = request->timestamp;
-			exec_trigger(request, pool->cs, "home_server_pool.fallback");
+			exec_trigger(request, pool->cs, "home_server_pool.fallback", FALSE);
 		}
 	}
 
@@ -2293,7 +2311,7 @@ home_server *home_server_ldb(const char *realmname,
 	update_and_return:
 		if ((found != pool->fallback) && pool->in_fallback) {
 			pool->in_fallback = FALSE;
-			exec_trigger(request, pool->cs, "home_server_pool.normal");
+			exec_trigger(request, pool->cs, "home_server_pool.normal", FALSE);
 		}
 
 		/*

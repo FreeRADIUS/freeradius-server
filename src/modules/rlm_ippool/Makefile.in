@@ -14,7 +14,7 @@ include ../rules.mak
 
 $(LT_OBJS): $(HEADERS)
 
-rlm_ippool_tool: rlm_ippool_tool.lo $(LIBRADIUS)
+rlm_ippool_tool$(EXEEXT): rlm_ippool_tool.lo $(LIBRADIUS)
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(RLM_LDFLAGS) \
 		-o $@ $^ $(RLM_LIBS) $(LIBS)
 

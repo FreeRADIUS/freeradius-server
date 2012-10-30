@@ -36,6 +36,14 @@ RCSID("$Id$")
 #include	<fnmatch.h>
 #endif
 
+#ifdef HAVE_UNISTD_H
+#include <unistd.h>
+#endif
+
+#ifdef HAVE_GRP_H
+#include <grp.h>
+#endif
+
 #define 	DIRLEN	8192
 
 struct detail_instance {
@@ -44,6 +52,9 @@ struct detail_instance {
 
 	/* detail file permissions */
 	int detailperm;
+
+	/* detail file group */
+	char *group;
 
 	/* directory permissions */
 	int dirperm;
@@ -67,6 +78,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct detail_instance,header), NULL, "%t" },
 	{ "detailperm",    PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,detailperm), NULL, "0600" },
+	{ "group",         PW_TYPE_STRING_PTR,
+	  offsetof(struct detail_instance,group), NULL,  NULL},
 	{ "dirperm",       PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,dirperm),    NULL, "0755" },
 	{ "locking",       PW_TYPE_BOOLEAN,
@@ -185,6 +198,12 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	off_t		fsize;
 	FILE		*fp;
 
+#ifdef HAVE_GRP_H
+	gid_t		gid;
+	struct group	*grp;
+	char		*endptr;
+#endif
+
 	struct detail_instance *inst = instance;
 
 	rad_assert(request != NULL);
@@ -204,7 +223,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL) == 0) {
+	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL, NULL) == 0) {
 		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to expand detail file %s",
 		    inst->detailfile);
 	    return RLM_MODULE_FAIL;
@@ -317,6 +336,27 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		return RLM_MODULE_FAIL;
 	}
 
+
+#ifdef HAVE_GRP_H
+	if (inst->group != NULL) {
+		gid = strtol(inst->group, &endptr, 10);
+		if (*endptr != '\0') {
+			grp = getgrnam(inst->group);
+			if (grp == NULL) {
+				RDEBUG2("rlm_detail: Unable to find system group \"%s\"", inst->group);
+				goto skip_group;
+			}
+			gid = grp->gr_gid;
+		}
+
+		if (chown(buffer, -1, gid) == -1) {
+			RDEBUG2("rlm_detail: Unable to change system group of \"%s\"", buffer);
+		}
+	}
+
+ skip_group:
+#endif
+
 	/*
 	 *	Post a timestamp
 	 */
@@ -328,7 +368,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 		return RLM_MODULE_FAIL;
 	}
 
-	if (radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL) == 0) {
+	if (radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL, NULL) == 0) {
 		radlog_request(L_ERR, 0, request, "rlm_detail: Unable to expand detail header format %s",
 			inst->header);
 		close(outfd);

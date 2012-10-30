@@ -40,6 +40,7 @@ RCSID("$Id$")
 #include 	<ctype.h>
 
 #include	"smbdes.h"
+#include	"mschap.h"
 
 /*
  *	ntpwdhash converts Unicode password to 16-byte NT hash

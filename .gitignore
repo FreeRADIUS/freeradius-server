@@ -1,12 +1,16 @@
 *~
 *.o
 *.a
-*.d
 *.lo
 *.loT
 *.la
 *.so
 *.lai
+*.bz2
+*.gz
+*.sig
+*.orig
+*.rej
 .libs
 .depends
 *.log
@@ -21,6 +25,14 @@
 *.dSYM
 *.patch
 .pc
+
+# Certificates and signing requests
+*.pem
+*.der
+*.csr
+*.key
+
+# Autoconf and libtool output
 config.status
 *confdefs.h
 *conftest*

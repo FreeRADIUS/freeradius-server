@@ -404,7 +404,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	/*
 	 *	Sanity check the response.
 	 */
-	if (eap_ds->response->length <= 4) {
+	if (eap_ds->response->length <= 5) {
 		radlog(L_ERR, "rlm_eap_mschapv2: corrupted data");
 		return 0;
 	}
@@ -476,8 +476,6 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 				 * jump to "authentication"
 				 */
 				goto packet_ready;
-
-
 			}
 
 			/*
@@ -488,6 +486,7 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 				return 0;
 			}
 
+	failure:
 			handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 			eap_ds->request->code = PW_EAP_FAILURE;
 	                return 1;
@@ -521,6 +520,8 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 			return 0;
 
 		case PW_EAP_MSCHAPV2_CHALLENGE:
+			if (ccode == PW_EAP_MSCHAPV2_FAILURE) goto failure;
+
 			/*
 			 * we sent a challenge, expecting a response
 			 */
@@ -682,7 +683,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the handler & request back into the tunnel.
 		 */
-		pairdelete(&handler->request->packet->vps, PW_STATE, 0);
+		pairdelete(&handler->request->packet->vps, PW_STATE, 0, -1);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
@@ -738,7 +739,7 @@ packet_ready:
 
 	} else if (inst->send_error) {
 		pairmove2(&response, &handler->request->reply->vps,
-			  PW_MSCHAP_ERROR, 0);
+			  PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT);
 		if (response) {
 			int n,err,retry;
 			char buf[34];
@@ -751,7 +752,7 @@ packet_ready:
 			 *	issues a re-try, we will know which
 			 *	challenge value that they used.
 			 */
-			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf);
+			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
 			if (n == 3) {
 				DEBUG2("  Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s", err, retry, buf);
 				fr_hex2bin(buf, data->challenge, 16);

@@ -1,4 +1,5 @@
 # -*- text -*-
+# Copyright (C) 2011 The FreeRADIUS Server project and contributors
 #	http://www.mikrotik.com
 #
 #	http://www.mikrotik.com/documentation//manual_2.9/dictionary
@@ -33,6 +34,14 @@ ATTRIBUTE	Mikrotik-Advertise-URL			12	string
 ATTRIBUTE	Mikrotik-Advertise-Interval		13	integer
 ATTRIBUTE	Mikrotik-Recv-Limit-Gigawords		14	integer
 ATTRIBUTE	Mikrotik-Xmit-Limit-Gigawords		15	integer
+ATTRIBUTE	Mikrotik-Wireless-PSK			16	string
+ATTRIBUTE	Mikrotik-Total-Limit			17	integer
+ATTRIBUTE	Mikrotik-Total-Limit-Gigawords		18	integer
+ATTRIBUTE	Mikrotik-Address-List			19	string
+ATTRIBUTE	Mikrotik-Wireless-MPKey			20	string
+ATTRIBUTE	Mikrotik-Wireless-Comment		21	string
+ATTRIBUTE	Mikrotik-Delegated-IPv6-Pool		22	string
+
 # MikroTik Values
 
 VALUE	Mikrotik-Wireless-Enc-Algo	No-encryption		0
