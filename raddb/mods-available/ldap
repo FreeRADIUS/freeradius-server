@@ -2,6 +2,7 @@
 #
 #  $Id$
 
+#
 # Lightweight Directory Access Protocol (LDAP)
 #
 ldap {
@@ -27,6 +28,11 @@ ldap {
 	# directory attributes.
 #	dictionary_mapping = ${confdir}/ldap.attrmap
 
+	# Set to "no" to disable the "no \"known good\" password" warning,
+	# if you're not using LDAP to retrieve password values.
+#	expect_password = "yes" 
+
+	#
 	#  Profile related attributes.
 	#
 	profiles {

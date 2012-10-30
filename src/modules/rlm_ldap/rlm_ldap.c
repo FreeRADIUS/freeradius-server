@@ -54,6 +54,7 @@ typedef struct {
 	const char	*xlat_name; /* name used to xlat */
 
 	const char	*map_file;
+	int		expect_password;
 	TLDAP_RADIUS	*check_map;
 	TLDAP_RADIUS	*reply_map;
 	char		**attrs;
@@ -247,7 +248,11 @@ static const CONF_PARSER module_config[] = {
 	/* file with mapping between LDAP and RADIUS attributes */
 	{"dictionary_mapping", PW_TYPE_FILENAME,
 	 offsetof(ldap_instance, map_file), NULL, NULL},
-
+	
+	/* turn off the annoying warning if we don't expect a password */
+	{"expect_password", PW_TYPE_BOOLEAN,
+	 offsetof(ldap_instance,expect_password), NULL, "yes"},
+	 
 	/*
 	 *	Terrible things which should be deleted.
 	 */
@@ -1423,7 +1428,7 @@ static void do_check_reply(ldap_instance *inst, LDAP *ld, REQUEST *request,
 	*	More warning messages for people who can't be bothered
 	*	to read the documentation.
 	*/
-       if (debug_flag > 1) {
+       if (inst->expect_password && (debug_flag > 1)) {
 	       if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0) &&
 		   !pairfind(request->config_items, PW_NT_PASSWORD, 0) &&
 		   !pairfind(request->config_items, PW_USER_PASSWORD, 0) &&
