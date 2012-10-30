@@ -2,6 +2,7 @@ AC_PREREQ([2.53])
 AC_INIT(rlm_rest.c) # change 'rest'
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_rest]) # change 'rest'
+AC_CONFIG_HEADER(config.h)
 
 if test x$with_[]modname != xno; then
 

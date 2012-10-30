@@ -29,9 +29,6 @@ RCSID("$Id$")
 #include <string.h>
 #include <time.h>
 
-#include <curl/curl.h>
-#include <json/json.h>
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/connection.h>
@@ -50,7 +47,11 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_UNSUPPORTED
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_INVALID
 	HTTP_BODY_POST,		// HTTP_BODY_POST
+#ifdef WITH_JSON
 	HTTP_BODY_JSON,		// HTTP_BODY_JSON
+#else
+	HTTP_BODY_UNAVAILABLE,
+#endif
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_XML
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_YAML
 	HTTP_BODY_INVALID,	// HTTP_BODY_HTML
@@ -128,6 +129,7 @@ const FR_NAME_NUMBER http_method_table[] = {
 const FR_NAME_NUMBER http_body_type_table[] = {
 	{ "unknown",		HTTP_BODY_UNKNOWN	},
 	{ "unsupported",	HTTP_BODY_UNSUPPORTED	},
+	{ "unavailable",	HTTP_BODY_UNAVAILABLE	},
 	{ "invalid",		HTTP_BODY_INVALID	},
 	{ "post",		HTTP_BODY_POST		},
 	{ "json",		HTTP_BODY_JSON		},
@@ -190,13 +192,15 @@ const FR_NAME_NUMBER http_content_type_table[] = {
  * @see json_pairmake
  * @see json_pairmake_leaf
  */
+#ifdef WITH_JSON
 typedef struct json_flags {
-	boolean  do_xlat;	//!< If TRUE value will be expanded with xlat.
+	boolean do_xlat;	//!< If TRUE value will be expanded with xlat.
 	boolean  is_json;	//!< If TRUE value will be inserted as raw JSON
 				// (multiple values not supported).
 	FR_TOKEN operator;	//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens
 } json_flags_t;
+#endif
 
 /** Initialises libcurl.
  *
@@ -850,7 +854,7 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func,
  */
 static void rest_read_ctx_init(REQUEST *request,
 			       rlm_rest_read_t *ctx,
-			       boolean sort)
+			       int sort)
 {
 	unsigned short count = 0, i;
 	unsigned short swap;
@@ -1151,6 +1155,7 @@ static int rest_decode_post(rlm_rest_t *instance,
  * @param[in] leaf object containing the VALUE_PAIR value.
  * @return The VALUE_PAIR just created, or NULL on error.
  */
+#ifdef WITH_JSON
 static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 				      UNUSED rlm_rest_section_t *section,
 				      REQUEST *request, const DICT_ATTR *da,
@@ -1507,6 +1512,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 
 	return (REST_BODY_MAX_ATTRS - max);
 }
+#endif
 
 /** Processes incoming HTTP header data from libcurl.
  *
@@ -1653,6 +1659,14 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 				} else if (supp == HTTP_BODY_UNSUPPORTED) {
 					RDEBUG("Type \"%s\" is currently"
 					       " unsupported",
+					       fr_int2str(http_body_type_table,
+					       		  type, "¿Unknown?"));
+					ctx->type = HTTP_BODY_UNSUPPORTED;
+				} else if (supp == HTTP_BODY_UNAVAILABLE) {
+					RDEBUG("Type \"%s\" is currently"
+					       " unavailable, please rebuild"
+					       " this module with the required"
+					       " headers",
 					       fr_int2str(http_body_type_table,
 					       		  type, "¿Unknown?"));
 					ctx->type = HTTP_BODY_UNSUPPORTED;
@@ -2133,6 +2147,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 			switch (type)
 			{
+#ifdef WITH_JSON
 				case HTTP_BODY_JSON:
 					rest_read_ctx_init(request,
 							   &ctx->read, 1);
@@ -2144,6 +2159,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 					if (!ret) return -1;
 
 					break;
+#endif
 
 				case HTTP_BODY_POST:
 					rest_read_ctx_init(request,
@@ -2246,14 +2262,15 @@ int rest_request_decode(rlm_rest_t *instance,
 					       handle, ctx->write.buffer,
 					       ctx->write.used);
 			break;
-
+#ifdef WITH_JSON
 		case HTTP_BODY_JSON:
 			ret = rest_decode_json(instance, section, request,
 					       handle, ctx->write.buffer,
 					       ctx->write.used);
 			break;
-
+#endif
 		case HTTP_BODY_UNSUPPORTED:
+		case HTTP_BODY_UNAVAILABLE:
 		case HTTP_BODY_INVALID:
 			return -1;
 

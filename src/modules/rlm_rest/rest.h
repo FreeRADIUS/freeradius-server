@@ -25,6 +25,17 @@
 
 RCSIDH(other_h, "$Id$")
 
+#include "config.h"
+
+#ifdef HAVE_JSON_JSONH
+#define WITH_JSON
+#endif
+
+#include <curl/curl.h>
+
+#ifdef WITH_JSON
+#include <json/json.h>
+#endif
 
 #define REST_URI_MAX_LEN		2048
 #define REST_BODY_MAX_LEN		8192
@@ -42,6 +53,7 @@ typedef enum {
 typedef enum {
 	HTTP_BODY_UNKNOWN = 0,
 	HTTP_BODY_UNSUPPORTED,
+	HTTP_BODY_UNAVAILABLE,
 	HTTP_BODY_INVALID,
 	HTTP_BODY_POST,
 	HTTP_BODY_JSON,
