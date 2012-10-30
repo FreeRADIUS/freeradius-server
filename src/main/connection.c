@@ -693,12 +693,6 @@ void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 	rad_assert(fc->active > 0);
 	fc->active--;
 
-        if (this!=NULL) {
-	   DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
-        } else {
-	   radlog(L_ERR, "%s: Attempt to release connection not from pool", fc->log_prefix);
-        }
-
 	/*
 	 *	We mirror the "spawn on get" functionality by having
 	 *	"delete on release".  If there are too many spare
