@@ -1,0 +1,115 @@
+AC_PREREQ([2.53])
+AC_INIT(rlm_protobuf.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_protobuf])
+
+if test x$with_[]modname != xno; then
+
+	AC_PROG_CC
+	AC_PROG_CPP
+
+	dnl put configuration checks here.
+	dnl set $fail to what's missing, on fatal errors.
+	dnl use AC_MSG_WARN() on important messages.
+
+        dnl curl:
+        dnl  based on ac-check-curl from autoconf archive
+        succeeded=no
+        if test -z "$CURL_CONFIG"; then
+            AC_PATH_PROG(CURL_CONFIG, curl-config, no)
+        fi
+        if test "$CURL_CONFIG" = "no" ; then
+         echo "*** The curl-config script could not be found. Make sure it is"
+         echo "*** in your path, and that curl is properly installed."
+         echo "*** Or see http://curl.haxx.se/"
+         fail=$fail" curl"
+        else
+         dnl curl-config --version returns "libcurl <version>", thus cut the number
+         succeeded=yes
+         CURL_VERSION=`$CURL_CONFIG --version | cut -d" " -f2`
+         CURL_CFLAGS=`$CURL_CONFIG --cflags`
+         CURL_LIBS=`$CURL_CONFIG --libs`
+
+         old_CFLAGS=$CFLAGS
+         CFLAGS="$CURL_CFLAGS $CFLAGS"
+	 old_LIBS="$LIBS"
+	 LIBS="$LIBS $CURL_LIBS"
+        fi
+
+        dnl  protobuf
+        AC_ARG_WITH(protobuf, protobuf: prefix to installed protobuf-c library, PROTOBUF_PREFIX=${with_protobuf}, PROTOBUG_PREFIX="")
+
+        if test "x$PROTOBUF_PREFIX" = "x"
+        then
+            if test -f /usr/include/google/protobuf-c/protobuf-c.h
+            then
+              PROTOBUF_INCLUDE_DIR=/usr/include
+              PROTOBUF_PREFIX=/usr
+              succeeded=yes
+            elif test -f /usr/local/include/google/protobuf-c/protobuf-c.h
+            then
+              PROTOBUF_PREFIX=/usr/local
+              PROTOBUF_INCLUDE_DIR=/usr/local/include
+              succeeded=yes
+            else
+              succeeded=no
+              fail=$fail" protobuf-c"
+            fi
+        else
+            PROTOBUF_INCLUDE_DIR=$PROTOBUF_PREFIX/include
+        fi
+
+        CFLAGS="$CFLAGS -I$PROTOBUF_INCLUDE_DIR"
+
+        if test "$succeeded" = "yes" 
+        then
+          AC_CHECK_HEADER(google/protobuf-c/protobuf-c.h, found=yes, found=no)
+          if test "x$found" = "xno" 
+          then
+            fail=$fail" protobuf-c"
+            succeeded=no
+          fi
+
+          LIBS="$LIBS -lprotobuf-c"
+          AC_CHECK_LIB(protobuf-c, protobuf_c_message_get_packed_size, found=yes, found=no)
+          if test "x$found" = "xno" 
+          then
+            fail=$fail" protobuf-c"
+            succeeded=no
+          fi
+        fi
+
+        if test "$succeeded" = "yes"; then
+	   targetname=modname
+           protobuf_cflags=$CFLAGS
+           protobuf_ldflags=$LIBS
+        else
+	   targetname=
+           CFLAGS=$old_CFLAGS
+           LIBS=$old_LIBS
+        fi
+
+else
+	targetname=
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+		targetname=""
+		protobuf_cflags=""
+		protobuf_ldflags=""
+	fi
+fi
+
+
+AC_SUBST(protobuf_cflags)
+AC_SUBST(protobuf_ldflags)
+
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)

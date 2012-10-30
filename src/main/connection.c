@@ -693,8 +693,6 @@ void fr_connection_release(fr_connection_pool_t *fc, void *conn)
 	rad_assert(fc->active > 0);
 	fc->active--;
 
-	DEBUG("%s: Released connection (%i)", fc->log_prefix, this->number);
-
 	/*
 	 *	We mirror the "spawn on get" functionality by having
 	 *	"delete on release".  If there are too many spare
@@ -715,7 +713,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 	this = fr_connection_find(fc, conn);
 	if (!this) return NULL;
 	
-	conn_number = this->number;
+        conn_number = this->number;
 
 	rad_assert(this->used == TRUE);
 	
