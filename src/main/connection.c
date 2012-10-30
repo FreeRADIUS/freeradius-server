@@ -713,7 +713,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 	this = fr_connection_find(fc, conn);
 	if (!this) return NULL;
 	
-	conn_number = this->number;
+        conn_number = this->number;
 
 	rad_assert(this->used == TRUE);
 	
