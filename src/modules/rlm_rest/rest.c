@@ -2030,62 +2030,62 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	}
 	
 	/*
-	 *	Set SSL authentication parameters
+	 *	Set SSL/TLS authentication parameters
 	 */
-	if (section->certificate_file) {
+	if (section->tls_certfile) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_SSLCERT,
-				       section->certificate_file);
+				       section->tls_certfile);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->file_type == FALSE) {
+	if (section->tls_keyfile) {
 		ret = curl_easy_setopt(candle,
-			       	       CURLOPT_SSLCERT,
-				       "DER");
-		if (ret != CURLE_OK) goto error;
-	}
-	
-	if (section->private_key_file) {
-		ret = curl_easy_setopt(candle,
-			       	       CURLOPT_SSLCERT,
-				       section->private_key_file);
+			       	       CURLOPT_SSLKEY,
+				       section->tls_keyfile);
 		if (ret != CURLE_OK) goto error;
 	}
 
-	if (section->private_key_password) {
+	if (section->tls_keypassword) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_KEYPASSWD,
-				       section->private_key_password);
+				       section->tls_keypassword);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->ca_file) {
+	if (section->tls_cacertfile) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_ISSUERCERT,
-				       section->ca_file);
+				       section->tls_cacertfile);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->ca_path) {
+	if (section->tls_cacertdir) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_CAPATH,
-				       section->ca_path);
+				       section->tls_cacertdir);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->random_file) {
+	if (section->tls_randfile) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_RANDOM_FILE,
-				       section->random_file);
+				       section->tls_randfile);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	ret = curl_easy_setopt(candle,
-			       CURLOPT_SSL_VERIFYHOST,
-			       (section->check_cert_cn == TRUE) ?
-				2 : 0);
-	if (ret != CURLE_OK) goto error;
+	if (section->tls_verify_cert) {
+		ret = curl_easy_setopt(candle,
+				       CURLOPT_SSL_VERIFYHOST,
+				       (section->tls_verify_cert_cn == TRUE) ?
+					2 : 0);
+		if (ret != CURLE_OK) goto error;
+	} else {
+		ret = curl_easy_setopt(candle,
+		       CURLOPT_SSL_VERIFYPEER,
+		       0);
+		if (ret != CURLE_OK) goto error;
+	}
 		
 	/*
 	 *	Tell CURL how to get HTTP body content, and how to process

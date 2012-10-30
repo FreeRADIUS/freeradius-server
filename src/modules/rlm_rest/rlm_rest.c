@@ -30,6 +30,30 @@ RCSID("$Id$")
 #include "rest.h"
 
 /*
+ *	TLS Configuration
+ */
+static CONF_PARSER tls_config[] = {
+	{ "cacertfile", PW_TYPE_FILENAME,
+	  offsetof(rlm_rest_section_t,tls_cacertfile), NULL, NULL},
+	{ "cacertdir", PW_TYPE_FILENAME,
+	  offsetof(rlm_rest_section_t,tls_cacertdir), NULL, NULL},
+	{ "certfile", PW_TYPE_FILENAME,
+	  offsetof(rlm_rest_section_t,tls_certfile), NULL, NULL},
+	{ "keyfile", PW_TYPE_FILENAME,
+	  offsetof(rlm_rest_section_t,tls_keyfile), NULL, NULL },
+	{ "keypassword", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_rest_section_t, tls_keypassword), NULL, NULL },
+	{ "randfile", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
+	  offsetof(rlm_rest_section_t,tls_randfile), NULL, NULL },
+	{ "verify_cert", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_rest_section_t, tls_verify_cert), NULL, "yes" },
+	{ "verify_cert_cn", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_rest_section_t, tls_verify_cert_cn), NULL, "yes" },
+	
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+/*
  *	A mapping of configuration file names to internal variables.
  *
  *	Note that the string is dynamically allocated, so it MUST
@@ -56,29 +80,14 @@ static const CONF_PARSER section_config[] = {
 	{ "require_auth", PW_TYPE_BOOLEAN,
 	 offsetof(rlm_rest_section_t, require_auth), NULL, "no"},
 
-	/* SSL authentication */
-	{ "certificate_file", PW_TYPE_FILENAME,
-	  offsetof(rlm_rest_section_t, certificate_file), NULL, NULL },
-	{ "pem_file_type", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_rest_section_t, file_type), NULL, "yes" },
-	{ "private_key_file", PW_TYPE_FILENAME,
-	  offsetof(rlm_rest_section_t, private_key_file), NULL, NULL },
-	{ "private_key_password", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rest_section_t, private_key_password), NULL, NULL },  
-	{ "CA_file", PW_TYPE_FILENAME,
-	  offsetof(rlm_rest_section_t, ca_file), NULL, NULL },
-	{ "CA_path", PW_TYPE_FILENAME,
-	  offsetof(rlm_rest_section_t, ca_path), NULL, NULL },
-	{ "random_file", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rest_section_t, random_file), NULL, NULL },
-	{ "check_cert_cn", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_rest_section_t, check_cert_cn), NULL, "yes"},
-	  
 	/* Transfer configuration */
 	{ "timeout", PW_TYPE_INTEGER, 
 	 offsetof(rlm_rest_section_t, timeout),    NULL, "0" },
 	{ "chunk", PW_TYPE_INTEGER,
 	 offsetof(rlm_rest_section_t, chunk), 	   NULL, "0" },
+
+	/* TLS Parameters */
+	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
 
 	{ NULL, -1, 0, NULL, NULL }
 };

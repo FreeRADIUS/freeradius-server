@@ -102,15 +102,15 @@ typedef struct rlm_rest_section_t {
 	http_auth_type_t auth;
 	int require_auth;
 	
-	char *certificate_file;
-	int file_type;
-	char *private_key_file;
-	char *private_key_password;
-	char *ca_file;
-	char *ca_path;
-	char *random_file;
-	int check_cert_cn;
-
+	char *tls_certfile;
+	char *tls_keyfile;
+	char *tls_keypassword;
+	char *tls_cacertfile;
+	char *tls_cacertdir;
+	char *tls_randfile;
+	int tls_verify_cert;
+	int tls_verify_cert_cn;
+	
 	int timeout;
 	unsigned int chunk;
 } rlm_rest_section_t;
