@@ -190,7 +190,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	config->method = fr_str2int(http_method_table, config->method_str,
 				    HTTP_METHOD_CUSTOM);
 
-	config->body = fr_str2int(http_body_table, config->body_str,
+	config->body = fr_str2int(http_body_type_table, config->body_str,
 				  HTTP_BODY_UNKNOWN);
 
 	if (config->body == HTTP_BODY_UNKNOWN) {

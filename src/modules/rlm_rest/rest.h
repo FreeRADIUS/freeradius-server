@@ -91,7 +91,7 @@ extern const FR_NAME_NUMBER http_auth_table[];
 
 extern const FR_NAME_NUMBER http_method_table[];
 
-extern const FR_NAME_NUMBER http_body_table[];
+extern const FR_NAME_NUMBER http_body_type_table[];
 
 extern const FR_NAME_NUMBER http_content_header_table[];
 
