@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/rad_assert.h>
 #include	<freeradius-devel/base64.h>
+#include	<freeradius-devel/dhcp.h>
 
 #include	<ctype.h>
 
@@ -597,6 +598,42 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 	return enc;
 }
 
+static size_t xlat_dhcp_options(UNUSED void *instance, REQUEST *request,
+			       const char *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp, *head = NULL, *next;
+	int decoded = 0;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+		*out = '\0';
+		
+		return 0;
+	}
+	
+	if ((fr_dhcp_decode_options(vp->vp_octets, vp->length, &head) < 0) ||
+	    (head == NULL)) {
+		RDEBUG("WARNING: DHCP option decoding failed");
+		goto fail;
+	}
+
+	next = head;
+	
+	do {
+		next = next->next;
+		decoded++;
+	} while (next);
+	
+	pairmove(&(request->packet->vps), &head);
+
+	fail:
+	
+	snprintf(out, outlen, "%i", decoded);
+		  	
+	return strlen(out);
+}
+
 /**
  * @brief Prints the current module processing the request
  */
@@ -831,6 +868,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		XLAT_REGISTER(integer);
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(base64);
+		XLAT_REGISTER(dhcp_options);
 		XLAT_REGISTER(string);
 		XLAT_REGISTER(module);
 

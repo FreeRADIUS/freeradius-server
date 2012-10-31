@@ -542,10 +542,121 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 	return 0;
 }
 
-int fr_dhcp_decode(RADIUS_PACKET *packet)
+ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 {
 	int i;
+	VALUE_PAIR *vp, **tail;
 	uint8_t *p, *next;
+	next = data;
+
+	*head = NULL;
+	tail = head;
+	/*
+	 *	FIXME: This should also check sname && file fields.
+	 *	See the dhcp_get_option() function above.
+	 */
+	while (next < (data + len)) {
+		int num_entries, alen;
+		DICT_ATTR *da;
+		
+		p = next;
+
+		if (*p == 0) break;
+		if (*p == 255) break; /* end of options signifier */
+		if ((p + 2) > (data + len)) break;
+
+		next = p + 2 + p[1];
+
+		if (p[1] >= 253) {
+			fr_strerror_printf("Attribute too long %u %u",
+					   p[0], p[1]);
+			continue;
+		}
+				
+		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
+		if (!da) {
+			fr_strerror_printf("Attribute not in our dictionary: %u",
+					   p[0]);
+			continue;
+		}
+
+		vp = NULL;
+		num_entries = 1;
+		alen = p[1];
+		p += 2;
+
+		/*
+		 *	Could be an array of bytes, integers, etc.
+		 */
+		if (da->flags.array) {
+			switch (da->type) {
+			case PW_TYPE_BYTE:
+				num_entries = alen;
+				alen = 1;
+				break;
+
+			case PW_TYPE_SHORT: /* ignore any trailing data */
+				num_entries = alen >> 1;
+				alen = 2;
+				break;
+
+			case PW_TYPE_IPADDR:
+			case PW_TYPE_INTEGER:
+			case PW_TYPE_DATE: /* ignore any trailing data */
+				num_entries = alen >> 2;
+				alen = 4;
+				break;
+
+			default:
+
+				break; /* really an internal sanity failure */
+			}
+		}
+
+		/*
+		 *	Loop over all of the entries, building VPs
+		 */
+		for (i = 0; i < num_entries; i++) {
+			vp = pairmake(da->name, NULL, T_OP_ADD);
+			if (!vp) {
+				fr_strerror_printf("Cannot build attribute %s",
+					fr_strerror());
+				pairfree(head);
+				return -1;
+			}
+
+			/*
+			 *	Hack for ease of use.
+			 */
+			if ((da->attr == 0x3d) &&
+			    !da->flags.array &&
+			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
+				vp->type = PW_TYPE_ETHERNET;
+				memcpy(vp->vp_octets, p + 1, 6);
+				vp->length = alen;
+
+			} else if (fr_dhcp_attr2vp(vp, p, alen) < 0) {
+				pairfree(&vp);
+				pairfree(head);
+				return -1;
+			}
+
+			*tail = vp;
+			while (*tail) {
+				debug_pair(*tail);
+				tail = &(*tail)->next;
+			}
+			p += alen;
+		} /* loop over array entries */
+	} /* loop over the entire packet */
+	
+	return next - data;
+}
+
+int fr_dhcp_decode(RADIUS_PACKET *packet)
+{
+	unsigned int i;
+	uint8_t *p;
 	uint32_t giaddr;
 	VALUE_PAIR *head, *vp, **tail;
 	VALUE_PAIR *maxms, *mtu;
@@ -644,106 +755,15 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	/*
 	 *	Loop over the options.
 	 */
-	next = packet->data + 240;
-
+	 
 	/*
-	 *	FIXME: This should also check sname && file fields.
-	 *	See the dhcp_get_option() function above.
+	 *  Nothing uses tail after this call, if it does in the future 
+	 *  it'll need to find the new tail...
 	 */
-	while (next < (packet->data + packet->data_len)) {
-		int num_entries, alen;
-		DICT_ATTR *da;
-		
-		p = next;
-
-		if (*p == 0) break;
-		if (*p == 255) break; /* end of options signifier */
-		if ((p + 2) > (packet->data + packet->data_len)) break;
-
-		next = p + 2 + p[1];
-
-		if (p[1] >= 253) {
-			fr_strerror_printf("Attribute too long %u %u",
-			      p[0], p[1]);
-			continue;
-		}
-				
-		da = dict_attrbyvalue(p[0], DHCP_MAGIC_VENDOR);
-		if (!da) {
-			fr_strerror_printf("Attribute not in our dictionary: %u",
-			      p[0]);
-			continue;
-		}
-
-		vp = NULL;
-		num_entries = 1;
-		alen = p[1];
-		p += 2;
-
-		/*
-		 *	Could be an array of bytes, integers, etc.
-		 */
-		if (da->flags.array) {
-			switch (da->type) {
-			case PW_TYPE_BYTE:
-				num_entries = alen;
-				alen = 1;
-				break;
-
-			case PW_TYPE_SHORT: /* ignore any trailing data */
-				num_entries = alen >> 1;
-				alen = 2;
-				break;
-
-			case PW_TYPE_IPADDR:
-			case PW_TYPE_INTEGER:
-			case PW_TYPE_DATE: /* ignore any trailing data */
-				num_entries = alen >> 2;
-				alen = 4;
-				break;
-
-			default:
-
-				break; /* really an internal sanity failure */
-			}
-		}
-
-		/*
-		 *	Loop over all of the entries, building VPs
-		 */
-		for (i = 0; i < num_entries; i++) {
-			vp = pairmake(da->name, NULL, T_OP_EQ);
-			if (!vp) {
-				fr_strerror_printf("Cannot build attribute %s",
-					fr_strerror());
-				pairfree(&head);
-				return -1;
-			}
-
-			/*
-			 *	Hack for ease of use.
-			 */
-			if ((da->attr == 0x3d) &&
-			    !da->flags.array &&
-			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
-				vp->type = PW_TYPE_ETHERNET;
-				memcpy(vp->vp_octets, p + 1, 6);
-				vp->length = alen;
-
-			} else if (fr_dhcp_attr2vp(vp, p, alen) < 0) {
-					pairfree(&vp);
-					pairfree(&head);
-					return -1;
-			}
-
-			*tail = vp;
-			while (*tail) {
-				debug_pair(*tail);
-				tail = &(*tail)->next;
-			}
-			p += alen;
-		} /* loop over array entries */
-	} /* loop over the entire packet */
+	if (fr_dhcp_decode_options(packet->data + 240, packet->data_len - 240,
+				   tail) < 0) { 
+		return -1;
+	}
 
 	/*
 	 *	If DHCP request, set ciaddr to zero.
@@ -970,7 +990,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 {
-	int i, num_vps;
+	unsigned int i, num_vps;
 	uint8_t *p;
 	VALUE_PAIR *vp;
 	uint32_t lvalue, mms;
