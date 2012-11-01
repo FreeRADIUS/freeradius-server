@@ -22,9 +22,12 @@ dnl #############################################################
 
 AC_PREREQ([2.59])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
-AC_INIT(src/main/radiusd.c)
+
+m4_define(PACKAGE_MAIN, freeradius)
+
+AC_INIT(PACKAGE_MAIN,[$]Id[$],http://bugs.freeradius.org,,http://www.freeradius.org)
+AC_CONFIG_SRCDIR(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
-AC_REVISION($Revision$)dnl
 
 dnl # The version of the software
 
@@ -39,7 +42,7 @@ RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
 
 dnl # Still useful for custom builds
 RADIUSD_VERSION_STRING=`cat VERSION`
-PACKAGE=freeradius
+PACKAGE=PACKAGE_MAIN
 
 dnl #############################################################
 dnl #
