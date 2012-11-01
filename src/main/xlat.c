@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/rad_assert.h>
 #include	<freeradius-devel/base64.h>
+#include	<freeradius-devel/dhcp.h>
 
 #include	<ctype.h>
 
@@ -614,6 +615,45 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 	return enc;
 }
 
+#ifdef WITH_DHCP
+static size_t xlat_dhcp_options(UNUSED void *instance, REQUEST *request,
+			       char *fmt, char *out, size_t outlen,
+			       UNUSED RADIUS_ESCAPE_STRING func)
+{
+	VALUE_PAIR *vp, *head = NULL, *next;
+	int decoded = 0;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+		*out = '\0';
+		
+		return 0;
+	}
+	
+	if ((fr_dhcp_decode_options(vp->vp_octets, vp->length, &head) < 0) ||
+	    (head == NULL)) {
+		RDEBUG("WARNING: DHCP option decoding failed");
+		goto fail;
+	}
+
+	next = head;
+	
+	do {
+		next = next->next;
+		decoded++;
+	} while (next);
+	
+	pairmove(&(request->packet->vps), &head);
+
+	fail:
+	
+	snprintf(out, outlen, "%i", decoded);
+		  	
+	return strlen(out);
+}
+#endif
+
 #ifdef HAVE_REGEX_H
 /*
  *	Pull %{0} to %{8} out of the packet.
@@ -779,6 +819,13 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		c = xlat_find("string");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
+
+#ifdef WITH_DHCP
+		xlat_register("dhcp_options", xlat_dhcp_options, "");
+		c = xlat_find("dhcp_options");
+		rad_assert(c != NULL);
+		c->internal = TRUE;
+#endif
 
 #ifdef HAVE_REGEX_H
 		/*
