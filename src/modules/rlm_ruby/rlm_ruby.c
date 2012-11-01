@@ -21,7 +21,7 @@
 
 #include <freeradius-devel/ident.h>
 
-RCSID("$Id: rlm_ruby.c,v 0.1 2008/10/22 12:54:00 antti Exp $")
+RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>

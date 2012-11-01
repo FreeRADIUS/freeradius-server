@@ -4,7 +4,7 @@
 #  You MUST edit this file by hand to make it work.
 #  There is NO "configure" script available.
 #
-# Version:	$Id: $
+# Version:	$Id$
 #
 
 #
