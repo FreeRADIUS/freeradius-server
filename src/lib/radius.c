@@ -3846,6 +3846,22 @@ ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
 	return rad_attr2vp_rfc(packet, original, secret, data, length, pvp);
 }
 
+
+/**
+ * @brief Converts data in network byte order to a VP
+ * @return -1 on error, or the length of the data read
+ */
+ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
+		     const uint8_t *data, size_t length,
+		     VALUE_PAIR **pvp)
+{
+	if (!data || (length == 0) || !pvp) return -1;
+
+	return data2vp_any(NULL, NULL, NULL, 0,
+			   attribute, vendor, data, length, pvp);
+}
+
+
 /**
  * @brief Converts vp_data to network byte order
  * @return -1 on error, or the length of the value
