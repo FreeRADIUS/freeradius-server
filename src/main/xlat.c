@@ -577,7 +577,8 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
  * @brief Print data as base64, not as VALUE
  */
 static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen)
+			  char *fmt, char *out, size_t outlen,
+			  UNUSED RADIUS_ESCAPE_STRING func)
 {
 	VALUE_PAIR *vp;
 	uint8_t buffer[MAX_STRING_LEN];
