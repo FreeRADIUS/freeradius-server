@@ -256,7 +256,7 @@ int fr_connection_add(fr_connection_pool_t *fc, void *conn)
 	/*
 	 *	Too many connections: can't add it.
 	 */
-        if (fc->num >= fc->max) {
+	if (fc->num >= fc->max) {
 		pthread_mutex_unlock(&fc->mutex);
 		return 0;
 	}
