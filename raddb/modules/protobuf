@@ -1,0 +1,26 @@
+
+# example of protobuf module config
+#
+
+protobuf {
+
+  # url where application server is situated.
+  url = "http://127.0.0.1:8080/rlm/",
+
+  # extra debug output.
+  verbose = no ,
+
+  # phases to handle.
+  authorize = no ,
+  authenticate = yes ,
+  postauth = yes ,
+
+  # parameters of http connection pool
+  pool {
+    start = 2 ,
+    min = 2 ,
+    max = 100 ,
+    spare = 2
+  }
+
+}
