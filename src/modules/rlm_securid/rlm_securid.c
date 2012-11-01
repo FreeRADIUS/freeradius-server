@@ -1,7 +1,7 @@
 /*
  * rlm_securid.c
  *
- * Version:  $Id: $
+ * Version:  $Id$
  *
  * supports "next-token code" and "new-pin" modes
  *
