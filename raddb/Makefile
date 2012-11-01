@@ -18,7 +18,7 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 DEFAULT_SITES = default inner-tunnel
 
 DEFAULT_MODULES = acct_unique always attr_filter attr_rewrite chap checkval \
-		counter cui detail detail.log digest dynamic_clients eap \
+		counter cui detail detail.log digest dhcp dynamic_clients eap \
 		echo exec expiration expr files inner-eap linelog logintime \
 		mschap ntlm_auth pap passwd preprocess radutmp realm \
 		replicate soh sradutmp unix utf8 wimax

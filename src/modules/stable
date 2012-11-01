@@ -9,6 +9,7 @@ rlm_copy_packet
 rlm_counter
 rlm_dbm
 rlm_detail
+rlm_dhcp
 rlm_digest
 rlm_dynamic_clients
 rlm_eap

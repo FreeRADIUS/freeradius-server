@@ -798,6 +798,14 @@ instantiate {
 	expr
 
 	#
+	#  The DHCP module currently just registers some DHCP related
+	#  expansions, but will eventually contain all the code necessary
+	#  for encoding and decoding DHCP packets.
+	#
+	dhcp	
+	
+
+	#
 	# We add the counter module here so that it registers
 	# the check-name attribute before any module which sets
 	# it
