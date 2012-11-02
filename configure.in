@@ -29,7 +29,11 @@ AC_INIT(PACKAGE_MAIN,[$]Id[$],http://bugs.freeradius.org,,http://www.freeradius.
 AC_CONFIG_SRCDIR(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 
-dnl # The version of the software
+dnl #############################################################
+dnl #
+dnl #  Custom hackery to discover version at configure time
+dnl #
+dnl #############################################################
 
 RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
 RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^[[^\.]]*\.//' | sed 's/\..*$//'`
@@ -43,6 +47,46 @@ RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
 dnl # Still useful for custom builds
 RADIUSD_VERSION_STRING=`cat VERSION`
 PACKAGE=PACKAGE_MAIN
+
+dnl #############################################################
+dnl #
+dnl #  Override some of the default autoconf variables such as
+dnl #  CFLAGS if were building in developer mode
+dnl #
+dnl #############################################################
+
+dnl #
+dnl #  Enable developer features like debugging symbols.
+dnl #  These checks must be done before expanding the AC_PROG_CC
+dnl #  and AC_PROG_CXX macros.
+dnl #
+AC_ARG_ENABLE(developer,
+[  --enable-developer               Enables features of interest to developers.],
+[ case "$enableval" in
+    no)
+	developer=no
+	;;
+    *)
+	developer=yes
+  esac ]
+)
+
+if test -d $srcdir/.git; then
+  if test "x$developer" != "xno"; then
+    dnl turn on the developer flag when taken from a git checkout (not a release)
+    developer="yes"
+  fi  
+fi
+
+dnl #
+dnl #  Autoconf sets -O2 and -g by default, but this is a PITA for debugging
+dnl #  so we remove the defaults if were building in developer mode, and set
+dnl #  -g3 so nice things like macro values are included. Other arguments are
+dnl #  added later when we know what compiler were using.
+dnl #
+if test "x$developer" = "xyes"; then
+  : ${CFLAGS=-g3}
+fi
 
 dnl #############################################################
 dnl #
@@ -299,32 +343,6 @@ AC_ARG_WITH(modules,
  done
 ])
 
-dnl #
-dnl #  Enable developer C compiler warnings
-dnl #
-AC_ARG_ENABLE(developer,
-[  --enable-developer               Enables features of interest to developers.],
-[ case "$enableval" in
-    no)
-	developer=no
-	;;
-    *)
-	developer=yes
-  esac ]
-)
-
-if test -d $srcdir/.git; then
-  if test "x$developer" != "xno"; then
-    dnl turn on the developer flag when taken from a git checkout (not a release)
-    developer="yes"
-  fi  
-  
-  dnl append the current git hash onto the version string
-  if test $GIT = yes; then
-  	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  fi
-fi
-
 dnl extra argument: --with-experimental-modules
 EXPERIMENTAL=
 AC_ARG_WITH(experimental-modules,
@@ -578,7 +596,7 @@ AC_CHECK_LIB(pcap, pcap_open_live,
 	],
 	[ AC_MSG_WARN([pcap library not found, silently disabling the RADIUS sniffer.]) ])
 
-AC_LIB_READLINE
+VL_LIB_READLINE
 
 dnl #############################################################
 dnl #
@@ -958,11 +976,20 @@ fi
 AC_SUBST(LIBPREFIX)
 
 AC_MSG_CHECKING(for developer gcc flags)
-if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
-  CFLAGS="$CFLAGS $devflags"
-  INSTALLSTRIP=""
-  AC_MSG_RESULT(yes.  Using $devflags)
+
+
+if test "x$developer" = "xyes"; then
+  if test "x$GCC" = "xyes"; then
+    devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
+    CFLAGS="$CFLAGS $devflags"
+    INSTALLSTRIP=""
+    AC_MSG_RESULT(yes.  Using $devflags)
+  fi
+  
+  dnl append the current git hash onto the version string
+  if test $GIT = yes; then
+	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+  fi
 else
   devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"

@@ -658,7 +658,6 @@ OPENSSL_INCLUDE
 REGEX_EXTENDED
 REGEX_PCRE
 REGEX
-LIBREADLINE
 DIRNAME
 LOCATE
 AUTOHEADER
@@ -758,6 +757,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+enable_developer
 enable_largefile
 with_system_libltdl
 with_system_libtool
@@ -779,7 +779,6 @@ with_vmps
 with_dhcp
 with_static_modules
 with_modules
-enable_developer
 with_experimental_modules
 with_openssl
 with_openssl_includes
@@ -1414,6 +1413,7 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
+  --enable-developer               Enables features of interest to developers.
   --disable-largefile     omit support for large files
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
@@ -1421,7 +1421,6 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-strict-dependencies  Fail configure on lack of module dependancy.
-  --enable-developer               Enables features of interest to developers.
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -2485,6 +2484,30 @@ RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
 
 RADIUSD_VERSION_STRING=`cat VERSION`
 PACKAGE=freeradius
+
+
+# Check whether --enable-developer was given.
+if test "${enable_developer+set}" = set; then :
+  enableval=$enable_developer;  case "$enableval" in
+    no)
+	developer=no
+	;;
+    *)
+	developer=yes
+  esac
+
+fi
+
+
+if test -d $srcdir/.git; then
+  if test "x$developer" != "xno"; then
+        developer="yes"
+  fi
+fi
+
+if test "x$developer" = "xyes"; then
+  : ${CFLAGS=-g3}
+fi
 
 
 ac_ext=c
@@ -15429,29 +15452,6 @@ if test "${with_modules+set}" = set; then :
 fi
 
 
-# Check whether --enable-developer was given.
-if test "${enable_developer+set}" = set; then :
-  enableval=$enable_developer;  case "$enableval" in
-    no)
-	developer=no
-	;;
-    *)
-	developer=yes
-  esac
-
-fi
-
-
-if test -d $srcdir/.git; then
-  if test "x$developer" != "xno"; then
-        developer="yes"
-  fi
-
-    if test $GIT = yes; then
-  	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  fi
-fi
-
 EXPERIMENTAL=
 
 # Check whether --with-experimental-modules was given.
@@ -16445,11 +16445,11 @@ fi
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for a readline compatible library" >&5
 $as_echo_n "checking for a readline compatible library... " >&6; }
-if ${ac_cv_lib_readline+:} false; then :
+if ${vl_cv_lib_readline+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-    ORIG_LIBS=$LIBS
+    ORIG_LIBS="$LIBS"
     for readline_lib in readline edit editline; do
       for termcap_lib in "" termcap curses ncurses; do
         if test -z "$termcap_lib"; then
@@ -16477,30 +16477,28 @@ return readline ();
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_readline="$TRY_LIB"
+  vl_cv_lib_readline="$TRY_LIB"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-        if test -n "$ac_cv_lib_readline"; then
-          LIBREADLINE="$TRY_LIB"
-
+        if test -n "$vl_cv_lib_readline"; then
           break
         fi
       done
-      if test -n "$ac_cv_lib_readline"; then
+      if test -n "$vl_cv_lib_readline"; then
         break
       fi
     done
-    if test -z "$ac_cv_lib_readline"; then
-      ac_cv_lib_readline="no"
+    if test -z "$vl_cv_lib_readline"; then
+      vl_cv_lib_readline="no"
+      LIBS="$ORIG_LIBS"
     fi
-    LIBS=$ORIG_LIBS
 
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_readline" >&5
-$as_echo "$ac_cv_lib_readline" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $vl_cv_lib_readline" >&5
+$as_echo "$vl_cv_lib_readline" >&6; }
 
-  if test "$ac_cv_lib_readline" != "no"; then
+  if test "$vl_cv_lib_readline" != "no"; then
 
 $as_echo "#define HAVE_LIBREADLINE 1" >>confdefs.h
 
@@ -16519,11 +16517,11 @@ done
 
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether readline supports history" >&5
 $as_echo_n "checking whether readline supports history... " >&6; }
-if ${ac_cv_lib_readline_history+:} false; then :
+if ${vl_cv_lib_readline_history+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
-      ac_cv_lib_readline_history="no"
+      vl_cv_lib_readline_history="no"
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -16543,15 +16541,15 @@ return add_history ();
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ac_cv_lib_readline_history="yes"
+  vl_cv_lib_readline_history="yes"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_readline_history" >&5
-$as_echo "$ac_cv_lib_readline_history" >&6; }
-    if test "$ac_cv_lib_readline_history" = "yes"; then
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $vl_cv_lib_readline_history" >&5
+$as_echo "$vl_cv_lib_readline_history" >&6; }
+    if test "$vl_cv_lib_readline_history" = "yes"; then
 
 $as_echo "#define HAVE_READLINE_HISTORY 1" >>confdefs.h
 
@@ -17963,12 +17961,20 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for developer gcc flags" >&5
 $as_echo_n "checking for developer gcc flags... " >&6; }
-if test "x$developer" = "xyes" -a "x$GCC" = "xyes"; then
-  devflags="-g -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
-  CFLAGS="$CFLAGS $devflags"
-  INSTALLSTRIP=""
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes.  Using $devflags" >&5
+
+
+if test "x$developer" = "xyes"; then
+  if test "x$GCC" = "xyes"; then
+    devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
+    CFLAGS="$CFLAGS $devflags"
+    INSTALLSTRIP=""
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes.  Using $devflags" >&5
 $as_echo "yes.  Using $devflags" >&6; }
+  fi
+
+    if test $GIT = yes; then
+	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+  fi
 else
   devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
