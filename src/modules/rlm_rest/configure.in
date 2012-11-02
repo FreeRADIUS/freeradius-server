@@ -1,8 +1,9 @@
 AC_PREREQ([2.53])
-AC_INIT(rlm_rest.c) # change 'rest'
+AC_INIT(rlm_rest.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_rest]) # change 'rest'
+AC_DEFUN(modname,[rlm_rest])
 AC_CONFIG_HEADER(config.h)
+m4_include([curl.m4])
 
 if test x$with_[]modname != xno; then
 
@@ -12,11 +13,14 @@ if test x$with_[]modname != xno; then
 	dnl put configuration checks here.
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
-	AC_CHECK_HEADERS(curl/curl.h json/json.h)
+	
+	LIBCURL_CHECK_CONFIG
 
-	if test "$ac_cv_header_curl_curl_h" != "yes"; then
-	  fail="$fail curl/curl.h"
+	if test x$_libcurl_with = xno || test x$libcurl_cv_lib_curl_usable != xyes ; then
+	  fail="$fail libcurl"
 	fi
+	
+	AC_CHECK_HEADERS(json/json.h)
 
 	targetname=modname     # keep this!  Don't change!
 else
@@ -36,9 +40,9 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(rest_cflags)  # change 'rest'
-AC_SUBST(rest_ldflags)  # change 'rest'
+AC_SUBST(rest_cflags)
+AC_SUBST(rest_ldflags)
 
-AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(Makefile)  # keep this!  Don't change!
-AC_OUTPUT(all.mk)  # keep this!  Don't change!
+AC_SUBST(targetname)
+AC_OUTPUT(Makefile)
+AC_OUTPUT(all.mk)
