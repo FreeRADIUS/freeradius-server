@@ -658,6 +658,7 @@ OPENSSL_INCLUDE
 REGEX_EXTENDED
 REGEX_PCRE
 REGEX
+LIBREADLINE
 DIRNAME
 LOCATE
 AUTOHEADER
@@ -16482,6 +16483,7 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
         if test -n "$vl_cv_lib_readline"; then
+          LIBREADLINE="$TRY_LIB"
           break
         fi
       done
@@ -16568,6 +16570,7 @@ done
 
     fi
   fi
+
 
 
 

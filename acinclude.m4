@@ -408,6 +408,7 @@ AC_DEFUN([VL_LIB_READLINE], [
         LIBS="$ORIG_LIBS $TRY_LIB"
         AC_TRY_LINK_FUNC(readline, vl_cv_lib_readline="$TRY_LIB")
         if test -n "$vl_cv_lib_readline"; then
+          LIBREADLINE="$TRY_LIB"
           break
         fi
       done
@@ -436,6 +437,7 @@ AC_DEFUN([VL_LIB_READLINE], [
       AC_CHECK_HEADERS(history.h readline/history.h)
     fi
   fi
+  AC_SUBST(LIBREADLINE)
 ])dnl
 
 AC_INCLUDE(aclocal.m4)
