@@ -3448,8 +3448,17 @@ _ACEOF
   unset _libcurl_with
 
 
-	if test x$_libcurl_with = xno || test x$libcurl_cv_lib_curl_usable != xyes ; then
-	  fail="$fail libcurl"
+	if test x$libcurl_cv_lib_curl_usable != xyes; then
+		fail="$fail libcurl"
+	else
+		if test x$libcurl_protocol_HTTP != xyes; then
+			fail="$fail libcurl_protocol_http"
+		fi
+
+		if test x$libcurl_protocol_HTTPS != xyes || test x$libcurl_feature_SSL != xyes; then
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without HTTPS support. Requires: libcurl_protocol_https." >&5
+$as_echo "$as_me: WARNING: silently building without HTTPS support. Requires: libcurl_protocol_https." >&2;}
+		fi
 	fi
 
 
@@ -3725,6 +3734,11 @@ fi
 done
 
 
+	if test "$ac_cv_header_json_json_h" != "yes"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without JSON support. Requires: json-c." >&5
+$as_echo "$as_me: WARNING: silently building without JSON support. Requires: json-c." >&2;}
+	fi
+
 	targetname=rlm_rest     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
@@ -3743,6 +3757,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_rest requires: $fail." >&2;};
 	fi
 fi
 
+rest_ldflags="${LIBCURL} ${rest_ldflags}"
 
 
 

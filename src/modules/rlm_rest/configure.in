@@ -16,11 +16,23 @@ if test x$with_[]modname != xno; then
 	
 	LIBCURL_CHECK_CONFIG
 
-	if test x$_libcurl_with = xno || test x$libcurl_cv_lib_curl_usable != xyes ; then
-	  fail="$fail libcurl"
+	if test x$libcurl_cv_lib_curl_usable != xyes; then
+		fail="$fail libcurl"
+	else	
+		if test x$libcurl_protocol_HTTP != xyes; then
+			fail="$fail libcurl_protocol_http"
+		fi
+	
+		if test x$libcurl_protocol_HTTPS != xyes || test x$libcurl_feature_SSL != xyes; then
+			AC_MSG_WARN([silently building without HTTPS support. Requires: libcurl_protocol_https.])
+		fi
 	fi
 	
 	AC_CHECK_HEADERS(json/json.h)
+	
+	if test "$ac_cv_header_json_json_h" != "yes"; then
+		AC_MSG_WARN([silently building without JSON support. Requires: json-c.])
+	fi
 
 	targetname=modname     # keep this!  Don't change!
 else
@@ -39,6 +51,7 @@ if test x"$fail" != x""; then
 	fi
 fi
 
+rest_ldflags="${LIBCURL} ${rest_ldflags}"
 
 AC_SUBST(rest_cflags)
 AC_SUBST(rest_ldflags)
