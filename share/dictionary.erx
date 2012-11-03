@@ -106,7 +106,7 @@ ATTRIBUTE	Sdx-Tunnel-Disconnect-Cause-Info	51	string
 ATTRIBUTE	ERX-Radius-Client-Address		52	ipaddr
 ATTRIBUTE	ERX-Service-Description			53	string
 ATTRIBUTE	ERX-L2tp-Recv-Window-Size		54	integer
-ATTRIBUTE	ERX-Dhcp-Options			55	string
+ATTRIBUTE	ERX-Dhcp-Options			55	octets
 ATTRIBUTE	ERX-Dhcp-Mac-Addr			56	string
 ATTRIBUTE	ERX-Dhcp-Gi-Address			57	ipaddr
 ATTRIBUTE	ERX-LI-Action				58	integer	encrypt=2
