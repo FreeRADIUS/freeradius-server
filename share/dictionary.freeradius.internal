@@ -382,6 +382,17 @@ ATTRIBUTE	Tmp-IP-Address-7			1827	ipaddr
 ATTRIBUTE	Tmp-IP-Address-8			1828	ipaddr
 ATTRIBUTE	Tmp-IP-Address-9			1829	ipaddr
 
+ATTRIBUTE	Tmp-Octets-0				1830	octets
+ATTRIBUTE	Tmp-Octets-1				1831	octets
+ATTRIBUTE	Tmp-Octets-2				1832	octets
+ATTRIBUTE	Tmp-Octets-3				1833	octets
+ATTRIBUTE	Tmp-Octets-4				1834	octets
+ATTRIBUTE	Tmp-Octets-5				1835	octets
+ATTRIBUTE	Tmp-Octets-6				1836	octets
+ATTRIBUTE	Tmp-Octets-7				1837	octets
+ATTRIBUTE	Tmp-Octets-8				1838	octets
+ATTRIBUTE	Tmp-Octets-9				1839	octets
+
 #	Range:	1900-1909
 #	WiMAX server-side attributes.
 #
