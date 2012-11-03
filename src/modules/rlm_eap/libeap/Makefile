@@ -30,7 +30,7 @@ all: $(TARGET).la
 $(TARGET).la: $(LT_OBJS)
 	@echo LINK $@ $<
 	@$(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) \
-	    $(LDFLAGS) $(LINK_MODE) -o $@ $(MOD_RPATH)$^ \
+	    $(LDFLAGS) $(LINK_MODE) -o $@ $(MOD_RPATH) $^ \
 	    $(LIBRADIUS) $(LIBS)
 	@for x in .libs/* $^; do \
 		rm -f $(top_builddir)/src/modules/lib/$$x; \
