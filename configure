@@ -17975,7 +17975,7 @@ if test "x$developer" = "xyes"; then
 $as_echo "yes.  Using $devflags" >&6; }
   fi
 
-    if test $GIT = yes; then
+    if test "x$GIT" = "xyes"; then
 	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
   fi
 else

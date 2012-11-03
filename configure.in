@@ -987,7 +987,7 @@ if test "x$developer" = "xyes"; then
   fi
   
   dnl append the current git hash onto the version string
-  if test $GIT = yes; then
+  if test "x$GIT" = "xyes"; then
 	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
   fi
 else
