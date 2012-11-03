@@ -1443,7 +1443,7 @@ Optional Packages:
   --with-dhcp             Compile in DHCP support. (default=yes)
   --with-static-modules=QUOTED-MODULE-LIST
  --with-modules=QUOTED-MODULE-LIST
-  --with-experimental-modules      Use experimental and unstable modules. (default=no)
+  --with-experimental-modules      Use experimental and unstable modules. (default=no, unless --enable-developer=yes)
   --with-openssl                   Use OpenSSL. (default=yes)
   --with-openssl-includes=DIR      Directory to look for OpenSSL include files
   --with-openssl-libraries=DIR     Directory to look for OpenSSL library files
@@ -15461,6 +15461,9 @@ if test "${with_experimental_modules+set}" = set; then :
     yes)
 	EXPERIMENTAL=yes
 	;;
+    no)
+        EXPERIMENTAL=no
+	;;
     *)
   esac
 
@@ -17973,6 +17976,10 @@ if test "x$developer" = "xyes"; then
     INSTALLSTRIP=""
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes.  Using $devflags" >&5
 $as_echo "yes.  Using $devflags" >&6; }
+  fi
+
+  if test "x$EXPERIMENTAL" != "xno"; then
+    EXPERIMENTAL = yes
   fi
 
     if test "x$GIT" = "xyes"; then

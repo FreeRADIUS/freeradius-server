@@ -346,10 +346,13 @@ AC_ARG_WITH(modules,
 dnl extra argument: --with-experimental-modules
 EXPERIMENTAL=
 AC_ARG_WITH(experimental-modules,
-[  --with-experimental-modules      Use experimental and unstable modules. (default=no) ],
+[  --with-experimental-modules      Use experimental and unstable modules. (default=no, unless --enable-developer=yes) ],
 [ case "$withval" in
     yes)
 	EXPERIMENTAL=yes
+	;;
+    no)
+        EXPERIMENTAL=no
 	;;
     *)
   esac ]
@@ -984,6 +987,10 @@ if test "x$developer" = "xyes"; then
     CFLAGS="$CFLAGS $devflags"
     INSTALLSTRIP=""
     AC_MSG_RESULT(yes.  Using $devflags)
+  fi
+
+  if test "x$EXPERIMENTAL" != "xno"; then
+    EXPERIMENTAL = yes
   fi
   
   dnl append the current git hash onto the version string
