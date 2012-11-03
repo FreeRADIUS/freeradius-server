@@ -17,7 +17,7 @@ FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 
 DEFAULT_SITES = default inner-tunnel
 
-DEFAULT_MODULES = acct_unique always attr_filter attr_rewrite chap checkval \
+DEFAULT_MODULES = always attr_filter attr_rewrite chap checkval \
 		counter cui detail detail.log digest dhcp dynamic_clients eap \
 		echo exec expiration expr files inner-eap linelog logintime \
 		mschap ntlm_auth pap passwd preprocess radutmp realm \
