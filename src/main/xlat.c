@@ -646,6 +646,9 @@ static size_t xlat_dhcp_options(UNUSED void *instance, REQUEST *request,
 	} while (next);
 	
 	pairmove(&(request->packet->vps), &head);
+	
+	/* Free any unmoved pairs */
+	pairfree(&head);
 
 	fail:
 	
