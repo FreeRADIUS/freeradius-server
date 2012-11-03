@@ -341,6 +341,10 @@ define INCLUDE_SUBMAKEFILE
     # Push the current target onto the target stack.
     TGT_STACK := $$(call PUSH,$${TGT_STACK},$${TGT})
 
+    # If there's no target, don't build the sources.
+    ifneq "$$(strip $${TARGET})" ""
+
+    # if there's no sources, don't do the automatic object build
     ifneq "$$(strip $${SOURCES})" ""
         # This makefile builds one or more objects from source. Validate the
         # specified sources against the supported source file types.
@@ -377,6 +381,7 @@ define INCLUDE_SUBMAKEFILE
         $${OBJS}: SRC_CXXFLAGS := $${SRC_CXXFLAGS}
         $${OBJS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
         $${OBJS}: SRC_INCDIRS := $$(addprefix -I,$${SRC_INCDIRS})
+    endif
     endif
 
     ifneq "$$(strip $${SUBMAKEFILES})" ""
