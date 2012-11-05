@@ -15357,7 +15357,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $raddbdir" >&5
 $as_echo "$raddbdir" >&6; }
 
-ASCEND_BINARY=yes
+WITH_ASCEND_BINARY=yes
 
 # Check whether --with-ascend-binary was given.
 if test "${with_ascend_binary+set}" = set; then :
@@ -15365,14 +15365,14 @@ if test "${with_ascend_binary+set}" = set; then :
     yes)
 	;;
     *)
-	ASCEND_BINARY=""
+	WITH_ASCEND_BINARY=""
   esac
 
 fi
 
-if test "X$ASCEND_BINARY" = "Xyes"; then
+if test "X$WITH_ASCEND_BINARY" = "Xyes"; then
 
-$as_echo "#define ASCEND_BINARY /**/" >>confdefs.h
+$as_echo "#define WITH_ASCEND_BINARY /**/" >>confdefs.h
 
 fi
 

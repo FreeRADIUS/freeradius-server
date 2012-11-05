@@ -266,18 +266,18 @@ AC_SUBST(raddbdir)
 AC_MSG_RESULT($raddbdir)
 
 dnl extra argument: --with-ascend-binary
-ASCEND_BINARY=yes
+WITH_ASCEND_BINARY=yes
 AC_ARG_WITH(ascend-binary,
 [  --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)],
 [ case "$withval" in
     yes)
 	;;
     *)
-	ASCEND_BINARY=""
+	WITH_ASCEND_BINARY=""
   esac ]
 )
-if test "X$ASCEND_BINARY" = "Xyes"; then
-  AC_DEFINE(ASCEND_BINARY, [], [Include support for Ascend binary filter attributes])
+if test "X$WITH_ASCEND_BINARY" = "Xyes"; then
+  AC_DEFINE(WITH_ASCEND_BINARY, [], [Include support for Ascend binary filter attributes])
 fi
 
 dnl extra argument: --with-threads

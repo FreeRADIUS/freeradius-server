@@ -25,7 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
-#ifdef ASCEND_BINARY
+#ifdef WITH_ASCEND_BINARY
 #include <ctype.h>
 
 /*

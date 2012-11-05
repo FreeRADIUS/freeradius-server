@@ -220,7 +220,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 *	Not a regular expression, compare the types.
 	 */
 	switch(check->type) {
-#ifdef ASCEND_BINARY
+#ifdef WITH_ASCEND_BINARY
 		/*
 		 *	Ascend binary attributes can be treated
 		 *	as opaque objects, I guess...
