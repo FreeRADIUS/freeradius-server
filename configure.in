@@ -1199,6 +1199,12 @@ dnl #  Configure in any module directories.
 dnl #
 dnl #############################################################
 
+dnl ############################################################
+dnl # Remove any conflicting definitions if autoconf.h
+dnl # is being included by a module.
+dnl #############################################################
+AH_BOTTOM([#include <freeradius-devel/automask.h>])
+
 mysubdirs=""
 if test "x$EXPERIMENTAL" = "xyes"; then
   bar=`ls -1 "${srcdir}"/src/modules/rlm_*/configure | sed 's%/configure%%'`
