@@ -530,3 +530,5 @@
 
 /* define to something if you don't have ut_xtime in struct utmpx */
 #undef ut_xtime
+
+#include <freeradius-devel/automask.h>

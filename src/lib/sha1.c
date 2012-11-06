@@ -9,7 +9,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/libradius.h>
 
 #include "../include/sha1.h"

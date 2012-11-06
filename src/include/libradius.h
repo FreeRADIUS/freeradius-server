@@ -30,9 +30,11 @@ RCSIDH(libradius_h, "$Id$")
 
 #include <freeradius-devel/missing.h>
 
-#ifdef HAVE_ERRNO_H
-#include <errno.h>
-#endif
+/*
+ *  Let any external program building against the library know what
+ *  features the library was built with.
+ */
+#include <freeradius-devel/features.h>
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -65,10 +67,6 @@ RCSIDH(libradius_h, "$Id$")
  */
 #include <freeradius-devel/sha1.h>
 #include <freeradius-devel/md4.h>
-
-#ifndef WITHOUT_TCP
-#define WITH_TCP (1)
-#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -297,17 +295,6 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 /*#define dict_valget	dict_valbyattr almost but not quite*/
 #endif
 
-/* get around diffrent ctime_r styles */
-#ifdef CTIMERSTYLE
-#if CTIMERSTYLE == SOLARISSTYLE
-#define CTIME_R(a,b,c) ctime_r(a,b,c)
-#else
-#define CTIME_R(a,b,c) ctime_r(a,b)
-#endif
-#else
-#define CTIME_R(a,b,c) ctime_r(a,b)
-#endif
-
 /* md5.c */
 
 void		fr_md5_calc(uint8_t *, const uint8_t *, unsigned int);
@@ -481,15 +468,6 @@ int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
 void		fr_bin2hex(const uint8_t *bin, char *hex, size_t len);
 size_t		fr_hex2bin(const char *hex, uint8_t *bin, size_t len);
-#ifndef HAVE_INET_PTON
-int		inet_pton(int af, const char *src, void *dst);
-#endif
-#ifndef HAVE_INET_NTOP
-const char	*inet_ntop(int af, const void *src, char *dst, size_t cnt);
-#endif
-#ifndef HAVE_CLOSEFROM
-int		closefrom(int fd);
-#endif
 int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b);
 
 int		ip_hton(const char *src, int af, fr_ipaddr_t *dst);
@@ -500,11 +478,11 @@ int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, int * port);
 
 
-#ifdef ASCEND_BINARY
+#ifdef WITH_ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
 void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimitst);
-#endif /*ASCEND_BINARY*/
+#endif /*WITH_ASCEND_BINARY*/
 
 /* random numbers in isaac.c */
 /* context of random number generator */

@@ -26,8 +26,6 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(sql_fbapi_h, "$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
 #include <stdlib.h>
 #include <string.h>
 #include <ibase.h>

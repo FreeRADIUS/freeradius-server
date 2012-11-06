@@ -10,7 +10,6 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(udpfromtoh, "$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/libradius.h>
 
 #ifdef __cplusplus

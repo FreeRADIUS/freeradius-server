@@ -26,8 +26,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
 #ifndef HAVE_STRLCAT
 
 #include <freeradius-devel/missing.h>
