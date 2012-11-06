@@ -24,8 +24,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 

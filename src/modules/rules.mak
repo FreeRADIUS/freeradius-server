@@ -44,6 +44,8 @@ LT_OBJS		:= $(patsubst %.c,%.lo,$(filter %.c,$(SRCS)))
 LT_OBJS		+= $(patsubst %.cxx,%.lo,$(filter %.cxx,$(SRCS)))
 LT_OBJS		+= $(patsubst %.cpp,%.lo,$(filter %.cpp,$(SRCS)))
 CFLAGS		+= -I$(top_builddir)/src $(INCLTDL)
+CFLAGS		+= -DIS_MODULE=1
+
 
 #######################################################################
 #

@@ -1,7 +1,7 @@
 #ifndef FR_TLS_H
 #define FR_TLS_H
 
-#ifdef WITH_TLS
+#if WITH_TLS
 
 /*
  * @file tls.h
@@ -28,18 +28,17 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(tls_h, "$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/conffile.h>
 
 /*
  *	For RH 9, which apparently needs this.
  */
 #ifndef OPENSSL_NO_KRB5
-#define OPENSSL_NO_KRB5
+#  define OPENSSL_NO_KRB5
 #endif
 #include <openssl/err.h>
 #ifdef HAVE_OPENSSL_ENGINE_H
-#include <openssl/engine.h>
+#  include <openssl/engine.h>
 #endif
 #include <openssl/ssl.h>
 

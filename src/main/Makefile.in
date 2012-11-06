@@ -15,8 +15,7 @@ endif
 
 SERVER_OBJS	+= $(SERVER_SRCS:.c=.lo)
 
-INCLUDES	= ../include/autoconf.h ../include/conf.h    \
-		  ../include/libradius.h ../include/radius.h \
+INCLUDES	= ../include/conf.h ../include/libradius.h ../include/radius.h \
 		  ../include/radiusd.h ../include/ident.h ../include/stats.h
 
 CFLAGS		+= -I$(top_builddir)/src

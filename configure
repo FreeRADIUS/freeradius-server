@@ -776,6 +776,7 @@ with_radacctdir
 with_raddbdir
 with_ascend_binary
 with_threads
+with_tcp
 with_vmps
 with_dhcp
 with_static_modules
@@ -1439,6 +1440,7 @@ Optional Packages:
   --with-raddbdir=DIR     Directory for config files SYSCONFDIR/raddb
   --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)
   --with-threads          Use threads, if available.  (default=yes)
+  --with-tcp             Compile in TCP support. (default=yes)
   --with-vmps             Compile in VMPS support. (default=yes)
   --with-dhcp             Compile in DHCP support. (default=yes)
   --with-static-modules=QUOTED-MODULE-LIST
@@ -15357,7 +15359,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $raddbdir" >&5
 $as_echo "$raddbdir" >&6; }
 
-ASCEND_BINARY=yes
+WITH_ASCEND_BINARY=yes
 
 # Check whether --with-ascend-binary was given.
 if test "${with_ascend_binary+set}" = set; then :
@@ -15365,14 +15367,14 @@ if test "${with_ascend_binary+set}" = set; then :
     yes)
 	;;
     *)
-	ASCEND_BINARY=""
+	WITH_ASCEND_BINARY=no
   esac
 
 fi
 
-if test "X$ASCEND_BINARY" = "Xyes"; then
+if test "x$WITH_ASCEND_BINARY" = "xyes"; then
 
-$as_echo "#define ASCEND_BINARY /**/" >>confdefs.h
+$as_echo "#define WITH_ASCEND_BINARY 1" >>confdefs.h
 
 fi
 
@@ -15384,11 +15386,30 @@ if test "${with_threads+set}" = set; then :
     yes)
 	;;
     *)
-	WITH_THREADS=""
+	WITH_THREADS=no
   esac
 
 fi
 
+
+WITH_TCP=yes
+
+# Check whether --with-tcp was given.
+if test "${with_tcp+set}" = set; then :
+  withval=$with_tcp;  case "$withval" in
+    yes)
+        ;;
+    *)
+	WITH_TCP=no
+  esac
+
+fi
+
+if test "x$WITH_TCP" = "xyes"; then
+
+$as_echo "#define WITH_TCP 1" >>confdefs.h
+
+fi
 
 WITH_VMPS=yes
 
@@ -15427,7 +15448,6 @@ if test "x$WITH_DHCP" = "xyes"; then
 $as_echo "#define WITH_DHCP 1" >>confdefs.h
 
 fi
-
 
 STATIC_MODULES=
 
@@ -16060,6 +16080,12 @@ else
   as_fn_error $? "-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz" "$LINENO" 5
 
 fi
+
+fi
+
+if test "x$WITH_THEADS" = "xyes"; then
+
+$as_echo "#define WITH_THREADS 1" >>confdefs.h
 
 fi
 
@@ -18434,6 +18460,8 @@ top_builddir=`pwd`
 export top_builddir
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: top_builddir=$top_builddir" >&5
 $as_echo "top_builddir=$top_builddir" >&6; }
+
+
 
 
 

@@ -15,8 +15,8 @@ SRCS		= dict.c filters.c hash.c hmac.c hmacsha1.c isaac.c log.c \
 LT_OBJS		= $(SRCS:.c=.$(LO))
 
 INCLUDES	= ../include/radius.h ../include/libradius.h \
-		  ../include/missing.h ../include/autoconf.h \
-		  ../include/ident.h
+		  ../include/missing.h ../include/ident.h
+
 
 CFLAGS		+= -D_LIBRADIUS -I$(top_builddir)/src
 

@@ -28,8 +28,9 @@ datarootdir	= @datarootdir@
 MAKE		= @MAKE@
 CC		= @CC@
 RANLIB		= @RANLIB@
+IMACROS		= -imacros ${top_srcdir}/src/freeradius-devel/autoconf.h
 INCLUDE		= -I${top_srcdir} -I${top_srcdir}/src
-CFLAGS		= $(INCLUDE) @CFLAGS@
+CFLAGS		= $(IMACROS) $(INCLUDE) @CFLAGS@
 CPPFLAGS	= @CPPFLAGS@
 LIBPREFIX	= @LIBPREFIX@
 EXEEXT		= @EXEEXT@
@@ -59,7 +60,7 @@ LIBLTDL		= @LIBLTDL@
 INCLTDL		= @INCLTDL@
 CFLAGS		+= $(INCLTDL)
 
-#USE_SHARED_LIBS	= @USE_SHARED_LIBS@
+#USE_SHARED_LIBS = @USE_SHARED_LIBS@
 #USE_STATIC_LIBS = @USE_STATIC_LIBS@
 
 USE_SHARED_LIBS = yes

@@ -10,8 +10,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
 /*
  *  FORCE MD4 TO USE OUR MD4 HEADER FILE!
  *  If we don't do this, it might pick up the systems broken MD4.

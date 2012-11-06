@@ -109,7 +109,7 @@ typedef struct auth_req REQUEST;
 #endif
 
 /*
- *	WITH_VMPS is handled by src/include/autoconf.h
+ *	WITH_VMPS is handled by src/include/features.h
  */
 #ifdef WITHOUT_VMPS
 #undef WITH_VMPS

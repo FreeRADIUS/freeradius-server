@@ -37,7 +37,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>

@@ -24,7 +24,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include "eap_peap.h"
 
 typedef struct rlm_eap_peap_t {

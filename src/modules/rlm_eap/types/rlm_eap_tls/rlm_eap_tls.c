@@ -26,8 +26,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
-
 #ifdef HAVE_OPENSSL_RAND_H
 #include <openssl/rand.h>
 #endif

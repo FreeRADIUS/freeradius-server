@@ -290,7 +290,7 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 				      buf, sizeof(buf));
 			break;
 		case PW_TYPE_ABINARY:
-#ifdef ASCEND_BINARY
+#ifdef WITH_ASCEND_BINARY
 			a = buf;
 			print_abinary(vp, buf, sizeof(buf), delimitst);
 			break;
