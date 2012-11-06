@@ -41,7 +41,6 @@
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include <assert.h>
 #include "eap_tls.h"
 

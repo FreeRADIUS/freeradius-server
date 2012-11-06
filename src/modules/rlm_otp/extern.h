@@ -25,7 +25,6 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(extern_h, "$Id$")
 
-#include <freeradius-devel/autoconf.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
