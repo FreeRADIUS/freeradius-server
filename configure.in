@@ -273,11 +273,11 @@ AC_ARG_WITH(ascend-binary,
     yes)
 	;;
     *)
-	WITH_ASCEND_BINARY=""
+	WITH_ASCEND_BINARY=no
   esac ]
 )
-if test "X$WITH_ASCEND_BINARY" = "Xyes"; then
-  AC_DEFINE(WITH_ASCEND_BINARY, [], [Include support for Ascend binary filter attributes])
+if test "x$WITH_ASCEND_BINARY" = "xyes"; then
+  AC_DEFINE(WITH_ASCEND_BINARY, [1], [Include support for Ascend binary filter attributes])
 fi
 
 dnl extra argument: --with-threads
@@ -288,9 +288,24 @@ AC_ARG_WITH(threads,
     yes)
 	;;
     *)
-	WITH_THREADS=""
+	WITH_THREADS=no
   esac ]
 )
+
+dnl extra argument: --with-tcp
+WITH_TCP=yes
+AC_ARG_WITH(tcp,
+[  --with-tcp             Compile in TCP support. (default=yes)],
+[ case "$withval" in
+    yes)
+        ;;
+    *)
+	WITH_TCP=no
+  esac ]
+)
+if test "x$WITH_TCP" = "xyes"; then
+	AC_DEFINE(WITH_TCP, [1], [define if you want TCP support (For RADSec et al)])
+fi
 
 dnl extra argument: --with-vmps
 WITH_VMPS=yes
@@ -321,7 +336,6 @@ AC_ARG_WITH(dhcp,
 if test "x$WITH_DHCP" = "xyes"; then
 	AC_DEFINE(WITH_DHCP, [1], [define if you want DHCP support])
 fi
-
 
 dnl #
 dnl #  Allow the user to specify a list of modules to be linked
@@ -545,6 +559,10 @@ else
 	[],
 	[AC_MSG_ERROR(-lsem not found.  You may want to download it from ftp://ftp.to.gd-es.com/pub/BSDI/libsem.tar.bz2 or ftp://ftp.freeradius.org/pub/radius/contrib/libsem.tar.gz)]
    )
+fi
+
+if test "x$WITH_THEADS" = "xyes"; then
+	AC_DEFINE(WITH_THREADS, [1], [define if you want thread support])
 fi
 
 dnl Check if we need -lsocket
