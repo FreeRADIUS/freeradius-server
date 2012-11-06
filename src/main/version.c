@@ -33,59 +33,65 @@ RCSID("$Id$")
 void version(void)
 {
 	radlog(L_INFO, "%s: %s", progname, radiusd_version);
-	DEBUG3("Functionality: ");
+	DEBUG3("Server was built with: ");
 		
 #ifdef WITH_ACCOUNTING
-	DEBUG3(" accounting");
+	DEBUG3("  accounting");
 #endif
-	DEBUG3(" authentication"); /* always enabled */
+	DEBUG3("  authentication"); /* always enabled */
 
+#ifdef WITH_ASCEND_BINARY
+	DEBUG3("  ascend binary attributes");
+#endif
 #ifdef WITH_COA
-	DEBUG3(" coa");
+	DEBUG3("  coa");
 #endif
 #ifdef WITH_COMMAND_SOCKET
-	DEBUG3(" control-socket");
+	DEBUG3("  control-socket");
 #endif
 #ifdef WITH_DETAIL
-	DEBUG3(" detail");
+	DEBUG3("  detail");
 #endif
 #ifdef WITH_DHCP
-	DEBUG3(" dhcp");
+	DEBUG3("  dhcp");
 #endif
 #ifdef WITH_DYNAMIC_CLIENTS
-	DEBUG3(" dynamic clients");
+	DEBUG3("  dynamic clients");
 #endif
 #ifdef OSFC2
-	DEBUG3(" OSFC2");
+	DEBUG3("  OSFC2");
 #endif
 #ifdef WITH_PROXY
-	DEBUG3(" proxy");
+	DEBUG3("  proxy");
 #endif
 #ifdef HAVE_PCREPOSIX_H
-	DEBUG3(" regex-PCRE");
+	DEBUG3("  regex-pcre");
 #else
 #ifdef HAVE_REGEX_H
-	DEBUG3(" regex-posix");
+	DEBUG3("  regex-posix");
 #endif
 #endif
 
 #ifdef WITH_SESSION_MGMT
-	DEBUG3(" session-management");
+	DEBUG3("  session-management");
 #endif
 #ifdef WITH_STATS
-	DEBUG3(" stats");
+	DEBUG3("  stats");
 #endif
 #ifdef WITH_TCP
-	DEBUG3(" tcp");
+	DEBUG3("  tcp");
+#endif
+#ifdef WITH_THREADS
+	DEBUG3("  threads");
 #endif
 #ifdef WITH_TLS
-	DEBUG3(" TLS");
+	DEBUG3("  tls");
 #endif
 #ifdef WITH_UNLANG
-	DEBUG3(" unlang");
+	DEBUG3("  unlang");
 #endif
 #ifdef WITH_VMPS
-	DEBUG3(" vmps");
+	DEBUG3("  vmps");
 #endif
 	radlog(L_INFO, "Copyright (C) 1999-2012 The FreeRADIUS server project and contributors.");
 	radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
