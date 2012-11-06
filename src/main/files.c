@@ -157,7 +157,7 @@ parse_again:
 						*p = FR_DIR_SEP;
 					}
 					getword(&ptr, p + 1,
-						sizeof(newfile) - 1 - (p - buffer));
+						sizeof(newfile) - 1 - (p - newfile));
 				} else {
 					getword(&ptr, newfile,
 						sizeof(newfile));
