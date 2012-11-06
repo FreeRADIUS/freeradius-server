@@ -16083,7 +16083,7 @@ fi
 
 fi
 
-if test "x$WITH_THEADS" = "xyes"; then
+if test "x$WITH_THREADS" = "xyes"; then
 
 $as_echo "#define WITH_THREADS 1" >>confdefs.h
 

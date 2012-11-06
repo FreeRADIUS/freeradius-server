@@ -24,8 +24,12 @@ all: radpaths.h features.h $(PREPROC)
 radpaths.h: build-radpaths-h
 	@/bin/sh ./build-radpaths-h
 
+#
+# This is hacky, feature defines should go away or be set with configure.in
+#
 features.h:
-	@grep -o "^\#define\s*WITH_.*" autoconf.h > features.h
+	@cp features-h features.h
+	@grep -o "^\#define\s*WITH_.*" autoconf.h >> features.h
 	
 autoconf.sed:
 	@grep ^#define autoconf.h | sed 's,/\*\*/,1,;' | awk '{print "\

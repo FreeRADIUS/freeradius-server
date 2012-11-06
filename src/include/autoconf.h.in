@@ -3,9 +3,6 @@
 /* Define if building universal (internal helper macro) */
 #undef AC_APPLE_UNIVERSAL_BUILD
 
-/* Include support for Ascend binary filter attributes */
-#undef ASCEND_BINARY
-
 /* BSD-Style get*byaddr_r */
 #undef BSDSTYLE
 
@@ -456,8 +453,17 @@
 #endif
 
 
+/* Include support for Ascend binary filter attributes */
+#undef WITH_ASCEND_BINARY
+
 /* define if you want DHCP support */
 #undef WITH_DHCP
+
+/* define if you want TCP support (For RADSec et al) */
+#undef WITH_TCP
+
+/* define if you want thread support */
+#undef WITH_THREADS
 
 /* define if you want udpfromto */
 #undef WITH_UDPFROMTO
