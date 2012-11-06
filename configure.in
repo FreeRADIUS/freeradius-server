@@ -25,8 +25,7 @@ export CFLAGS LIBS LDFLAGS CPPFLAGS
 
 m4_define(PACKAGE_MAIN, freeradius)
 
-AC_INIT(PACKAGE_MAIN,[$]Id[$],http://bugs.freeradius.org,,http://www.freeradius.org)
-AC_CONFIG_SRCDIR(src/main/radiusd.c)
+AC_INIT(src/main/radiusd.c)
 AC_CONFIG_HEADER(src/include/autoconf.h)
 
 dnl # The version of the software
