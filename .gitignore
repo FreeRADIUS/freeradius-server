@@ -26,6 +26,9 @@
 *.patch
 .pc
 
+# OS specific cruft
+.DS_Store
+
 # Certificates and signing requests
 *.pem
 *.der
@@ -33,16 +36,13 @@
 *.key
 
 # Autoconf and libtool output
+build
 config.status
 *confdefs.h
 *conftest*
 *confcache
 Make.inc
 libtool
-src/include/autoconf.h
-src/include/build-radpaths-h
-src/include/radpaths.h
-src/include/stamp-h
 autom4te.cache
 config.guess
 config.sub

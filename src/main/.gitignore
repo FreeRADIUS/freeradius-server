@@ -1,4 +1,5 @@
 Makefile
+radsniff.mk
 checkrad.pl
 radclient
 radiusd

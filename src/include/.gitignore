@@ -1,5 +1,13 @@
+# Autoconf headers
+autoconf.h
 autoconf.sed
+
+# Dynamically generated headers
 missing.h
 tls.h
 features.h
+radpaths.h
 
+# Build scripts
+build-radpaths-h
+stamp-h

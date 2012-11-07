@@ -5,3 +5,4 @@ radiusd.cron.monthly
 radwatch
 rc.radiusd
 radcrypt
+jlibtool

@@ -1,4 +1,5 @@
 dictionary
 radiusd.conf
 sites-enabled
+mods-enabled
 radrelay.conf
