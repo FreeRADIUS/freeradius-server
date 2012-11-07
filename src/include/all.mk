@@ -35,7 +35,7 @@ all: $(HEADERS_DY)
 src/include/features.h:
 	@cp src/include/features-h src/include/features.h
 	@grep -o "^\#define\s*WITH_.*" src/include/autoconf.h >> src/include/features.h
-	
+
 src/include/autoconf.sed:
 	@grep ^#define src/include/autoconf.h | sed 's,/\*\*/,1,;' | awk '{print "\
 	s,#[[:blank:]]*ifdef[[:blank:]]*" $$2 ",#if "$$3 ",g;\
@@ -59,16 +59,9 @@ SRC_INCLUDE_DIR := ${R}${includedir}/freeradius
 # the local rule depends on the installed headers
 install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
 
-# the installed headers require a directory
-$(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS}): ${SRC_INCLUDE_DIR}/
-
-# make the directory
-.PHONY: 
-${SRC_INCLUDE_DIR}/:
-	$(INSTALL) -d -m 755 $@
-
 # install the headers by re-writing the local files
 ${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h
 	@echo INSTALL $(notdir $<)
+	@$(INSTALL) -d -m 755 $(dir $@)
 	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
 	@chmod 644 $@
