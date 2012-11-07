@@ -1150,8 +1150,10 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	}
 	
 	output_vps = radius_list(update_request, list);
-	
-	rad_assert(output_vps);
+	if (!output_vps) {
+		RDEBUG("WARNING: List '%s' doesn't exist for this packet", name);
+		return RLM_MODULE_INVALID;
+	}
 
 	newlist = paircopy(input_vps);
 	if (!newlist) {
