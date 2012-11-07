@@ -1162,6 +1162,8 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		} else {
 			update_request->coa->proxy->code = PW_DISCONNECT_REQUEST;
 		}
+
+		output_vps = radius_list(update_request, list);
 	}
 
 	newlist = paircopy(input_vps);
