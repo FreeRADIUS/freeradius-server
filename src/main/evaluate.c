@@ -1151,8 +1151,17 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	
 	output_vps = radius_list(update_request, list);
 	if (!output_vps) {
-		RDEBUG("WARNING: List '%s' doesn't exist for this packet", name);
-		return RLM_MODULE_INVALID;
+		if (!((list == PAIR_LIST_COA) || (list == PAIR_LIST_DM))) {
+			RDEBUG("WARNING: List '%s' doesn't exist for this packet", name);
+			return RLM_MODULE_INVALID;
+		}
+
+		request_alloc_coa(update_request);
+		if (list == PAIR_LIST_COA) {
+			update_request->coa->proxy->code = PW_COA_REQUEST;
+		} else {
+			update_request->coa->proxy->code = PW_DISCONNECT_REQUEST;
+		}
 	}
 
 	newlist = paircopy(input_vps);
