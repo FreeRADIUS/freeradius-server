@@ -17,12 +17,12 @@ if test x$with_[]modname != xno; then
            fail=$fail" perl"
 	else
           old_CFLAGS=$CFLAGS
-          CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts`"
+          CFLAGS=["$CFLAGS `perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'`"]
 
 	  smart_try_dir=
 	  FR_SMART_CHECK_INCLUDE(EXTERN.h)
 	  if test "x$ac_cv_header_EXTERN_h" = "xyes"; then
-		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+		perl_cflags=["\`perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'\`"]
 	  else
 		fail="$fail EXTERN.h"
 		targetname=
@@ -30,21 +30,21 @@ if test x$with_[]modname != xno; then
 
 	  FR_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
 	  if test "x$ac_cv_header_perl_h" = "xyes"; then
-		perl_cflags='`perl -MExtUtils::Embed -e ccopts`'
+		perl_cflags=["\`perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'\`"]
 	  else
 		fail="$fail perl.h"
 		targetname=
 	  fi
 
 	  old_LIBS="$LIBS"
-	  LIBS="$old_LIBS `perl -MExtUtils::Embed -e ldopts`"
+	  LIBS=["$old_LIBS `perl -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g'`"]
 	  AC_TRY_LINK([extern char boot_DynaLoader();],
 		      [ boot_DynaLoader()],
 		      BROKEN=,
 		      BROKEN="yes")
 
 	  if test "x$BROKEN" = "x"; then
-        	perl_ldflags='`perl -MExtUtils::Embed -e ldopts`'
+        	perl_ldflags=["\`perl -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g'\`"]
 	  else
 		fail="$fail libperl.so"
 		targetname=
