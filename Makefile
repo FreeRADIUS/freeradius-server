@@ -122,16 +122,16 @@ $(SUBDIRS):
 	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 distclean: clean
-	rm -f config.cache config.log config.status libtool \
+	@rm -f config.cache config.log config.status libtool \
 		src/include/radpaths.h src/include/stamp-h \
 		libltdl/config.log libltdl/config.status \
 		libltdl/libtool
-	-find . ! -name configure.in -name \*.in -print | \
+	@-find . ! -name configure.in -name \*.in -print | \
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
-	-find src/modules -name config.mak | \
+	@-find src/modules -name config.mak | \
 		while read file; do rm -f $$file; done
-	-find src/modules -name config.h | \
+	@-find src/modules -name config.h | \
 		while read file; do rm -f $$file; done
 
 ######################################################################
