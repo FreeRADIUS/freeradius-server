@@ -6,7 +6,7 @@ CFLAGS		+= -DRADIUSD_VERSION_COMMIT=\"${RADIUSD_VERSION_COMMIT}\"
 endif
 TGT_LDLIBS := $(LIBS) $(LIBREADLINE)
 
-SOURCES	:= radmin.c
+SOURCES	:= radmin.c conffile.c log.c util.c
 
 ifneq ($(LIBREADLINE),)
 TARGET	:= radmin
