@@ -13,7 +13,7 @@ HEADERS	= conf.h conffile.h detail.h dhcp.h event.h features.h hash.h heap.h \
 TARGET := src/include/radpaths.h
 
 src/include/radpaths.h: src/include/build-radpaths-h
-	cd src/include && /bin/sh build-radpaths-h
+	@cd src/include && /bin/sh build-radpaths-h
 
 #
 #  Build dynamic headers by substituting various values from autoconf.h, these
@@ -22,7 +22,7 @@ src/include/radpaths.h: src/include/build-radpaths-h
 #
 
 HEADERS_AC = src/include/missing.h src/include/tls.h
-HEADERS_DY = src/include/autoconf.sed src/include/features.h $(HEADERS_AC)
+HEADERS_DY = src/include/features.h $(HEADERS_AC)
 
 define clean_others
 @rm -f $(HEADERS_DY)
@@ -30,21 +30,24 @@ endef
 
 TGT_POSTCLEAN := ${clean_others}
 
-all: $(HEADERS_DY)
-
-src/include/features.h:
-	@cp src/include/features-h src/include/features.h
-	@grep -o "^\#define\s*WITH_.*" src/include/autoconf.h >> src/include/features.h
-
-src/include/autoconf.sed:
+src/include/autoconf.sed: src/include/autoconf.h
 	@grep ^#define src/include/autoconf.h | sed 's,/\*\*/,1,;' | awk '{print "\
 	s,#[[:blank:]]*ifdef[[:blank:]]*" $$2 ",#if "$$3 ",g;\
 	s,#[[:blank:]]*ifndef[[:blank:]]*" $$2 ",#if !"$$3 ",g;\
 	s,defined(" $$2 ")," $$3 ",g;\
-	s," $$2 ","$$3 ",g;"}' > src/include/autoconf.sed
+	s," $$2 ","$$3 ",g;"}' > $@
 
-$(HEADERS_AC): src/include/autoconf.sed
-	@sed -f src/include/autoconf.sed < `echo $@ | sed 's/\\./-/'` > $@
+src/include/features.h: src/include/features-h src/include/autoconf.h
+	@cp $< $@
+	@grep "^\#define *WITH_.*" src/include/autoconf.h >> $@
+
+src/include/missing.h: src/include/missing-h src/include/autoconf.sed
+	@sed -f src/include/autoconf.sed < $< > $@
+
+src/include/tls.h: src/include/tls-h src/include/autoconf.sed
+	@sed -f src/include/autoconf.sed < $< > $@
+
+all: $(HEADERS_DY)
 
 #
 #  Installation
