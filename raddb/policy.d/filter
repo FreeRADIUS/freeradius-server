@@ -114,22 +114,22 @@ filter_username {
 	#  Realm ends with a dot
 	#  e.g. "user@site.com."
 	#
-			if (User-Name =~ /\\.$/)  {
-					update reply {
-							Reply-Message += "Rejected: Realm ends with a dot"
-					}
-					reject
-			}
+	if (User-Name =~ /\\.$/)  {
+		update reply {
+			Reply-Message += "Rejected: Realm ends with a dot"
+		}
+		reject
+	}
 
 	#
-			#  Realm begins with a dot
+	#  Realm begins with a dot
 	#  e.g. "user@.site.com"
-			#
-			if (User-Name =~ /@\\./)  {
-					update reply {
-							Reply-Message += "Rejected: Realm begins with a dot"
-					}
-					reject
-			}
+	#
+	if (User-Name =~ /@\\./)  {
+		update reply {
+			Reply-Message += "Rejected: Realm begins with a dot"
+		}
+		reject
+	}
 }
 
