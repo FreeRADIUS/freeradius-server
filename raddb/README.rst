@@ -106,7 +106,11 @@ The SQL module will now expand the 'reference' configuration item
 in the appropriate sub-section, and resolve this to a configuration
 item. This behaviour is similar to rlm_linelog.
 
-The queries can manually be moved to copy of the v3.0.x ``dialup.conf`` file.
+Queries from v2.x.x should be manually copied to the new v3.x.x
+``dialup.conf`` file. When doing this you may also need to update
+references to the accounting tables, as their definitions will 
+now be outside of the subsection containing the query.
+
 The mapping is as follows::
 
   accounting_onoff_query		-> accounting.type.accounting-on.query
@@ -118,10 +122,10 @@ The mapping is as follows::
   accounting_stop_query_alt		+> accounting.type.stop.query
   postauth_query			-> post-auth.query
 
-References to to the accounting tables may also need to be updated.
 
-Alternitavely a v2.1.x may be patched to work with the v3.0.x module.
-Add the following at the bottom of your ``dialup.conf`` file::
+
+Alternatively a v2.x.x config may be patched to work with the
+v3.x.x module by adding the following::
 
   accounting {
   	reference = "%{tolower:type.%{Acct-Status-Type}.query}"
