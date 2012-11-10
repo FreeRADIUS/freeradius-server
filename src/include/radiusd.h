@@ -74,6 +74,7 @@ typedef struct request_data_t request_data_t;
 
 typedef struct radclient {
 	fr_ipaddr_t		ipaddr;
+	fr_ipaddr_t		src_ipaddr;
 	int			prefix;
 	char			*longname;
 	char			*secret;
