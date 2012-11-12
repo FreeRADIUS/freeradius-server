@@ -671,6 +671,7 @@ PERL
 raddbdir
 radacctdir
 logdir
+boilermake
 CXXCPP
 OTOOL64
 OTOOL
@@ -770,6 +771,7 @@ with_gnu_ld
 with_sysroot
 enable_libtool_lock
 enable_strict_dependencies
+enable_boilermake
 with_docdir
 with_logdir
 with_radacctdir
@@ -1415,7 +1417,7 @@ Optional Features:
   --disable-option-checking  ignore unrecognized --enable/--with options
   --disable-FEATURE       do not include FEATURE (same as --enable-FEATURE=no)
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
-  --enable-developer               Enables features of interest to developers.
+  --enable-developer      enables features of interest to developers.
   --disable-largefile     omit support for large files
   --enable-shared[=PKGS]  build shared libraries [default=yes]
   --enable-static[=PKGS]  build static libraries [default=yes]
@@ -1423,6 +1425,7 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-strict-dependencies  Fail configure on lack of module dependancy.
+  --enable-boilermake     use the boilermake build system (experimental default=no).
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -1440,11 +1443,11 @@ Optional Packages:
   --with-raddbdir=DIR     Directory for config files SYSCONFDIR/raddb
   --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)
   --with-threads          Use threads, if available.  (default=yes)
-  --with-tcp             Compile in TCP support. (default=yes)
+  --with-tcp              Compile in TCP support. (default=yes)
   --with-vmps             Compile in VMPS support. (default=yes)
   --with-dhcp             Compile in DHCP support. (default=yes)
   --with-static-modules=QUOTED-MODULE-LIST
- --with-modules=QUOTED-MODULE-LIST
+  --with-modules=QUOTED-MODULE-LIST
   --with-experimental-modules      Use experimental and unstable modules. (default=no, unless --enable-developer=yes)
   --with-openssl                   Use OpenSSL. (default=yes)
   --with-openssl-includes=DIR      Directory to look for OpenSSL include files
@@ -15249,6 +15252,22 @@ fi
 if test "${enable_strict_dependencies+set}" = set; then :
   enableval=$enable_strict_dependencies;
 fi
+
+
+boilermake = no
+# Check whether --enable-boilermake was given.
+if test "${enable_boilermake+set}" = set; then :
+  enableval=$enable_boilermake;  case "$enableval" in
+    yes)
+        boilermake=yes
+        ;;
+    *)
+        boilermake=no
+  esac
+
+fi
+
+
 
 
 docdir='${datadir}/doc/freeradius'

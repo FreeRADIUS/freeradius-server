@@ -61,7 +61,7 @@ dnl #  These checks must be done before expanding the AC_PROG_CC
 dnl #  and AC_PROG_CXX macros.
 dnl #
 AC_ARG_ENABLE(developer,
-[  --enable-developer               Enables features of interest to developers.],
+[  --enable-developer      enables features of interest to developers.],
 [ case "$enableval" in
     no)
 	developer=no
@@ -166,13 +166,28 @@ AS_IF([test "x$with_system_libtool" = "xyes" ],
 
 dnl Put this in later, when all distributed modules use autoconf.
 dnl AC_ARG_WITH(disablemodulefoo,
-dnl [  --without-rlm_foo       Disables module compilation.  Module list:]
+dnl [  --without-rlm_foo         Disables module compilation.  Module list:]
 dnl esyscmd([find src/modules -type d -name rlm_\* -print |\
 dnl 	sed -e 's%src/modules/.*/% (sub)- %; s%.*/%- %' |\
 dnl 	awk '{print "                            "$0}']))
 
 AC_ARG_ENABLE(strict-dependencies,
 [  --enable-strict-dependencies  Fail configure on lack of module dependancy.])
+
+dnl # Build using the new boilermake system
+boilermake = no
+AC_ARG_ENABLE(boilermake,
+[  --enable-boilermake     use the boilermake build system (experimental default=no).],
+[ case "$enableval" in
+    yes)
+        boilermake=yes
+        ;;
+    *)
+        boilermake=no
+  esac ]
+)
+
+AC_SUBST(boilermake)
 
 dnl extra argument: --with-docdir
 docdir='${datadir}/doc/freeradius'
@@ -295,7 +310,7 @@ AC_ARG_WITH(threads,
 dnl extra argument: --with-tcp
 WITH_TCP=yes
 AC_ARG_WITH(tcp,
-[  --with-tcp             Compile in TCP support. (default=yes)],
+[  --with-tcp              Compile in TCP support. (default=yes)],
 [ case "$withval" in
     yes)
         ;;
@@ -351,7 +366,7 @@ AC_ARG_WITH(static_modules,
 
 MODULES=
 AC_ARG_WITH(modules,
-[ --with-modules=QUOTED-MODULE-LIST],[
+[  --with-modules=QUOTED-MODULE-LIST],[
  for i in $withval; do
    MODULES="$MODULES $i"
  done

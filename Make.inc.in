@@ -168,3 +168,5 @@ endif
 ifeq "$(LIBTOOL)" ""
 $(error Building FreeRADIUS requires libtool)
 endif
+
+BOILER = @boilermake@
