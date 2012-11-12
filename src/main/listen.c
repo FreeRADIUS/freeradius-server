@@ -1240,6 +1240,18 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	rad_assert(request->listener == listener);
 	rad_assert(listener->send == auth_socket_send);
 
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Overwrite the src ip address on the outbound packet
+	 *	with the one specified by the client.
+	 *	This is useful to work around broken DSR implementations
+	 *	and other routing issues.
+	 */
+	if (request->client->src_ipaddr.af != AF_UNSPEC) {
+		request->reply->src_ipaddr = request->client->src_ipaddr;
+	}
+#endif
+	
 	if (rad_send(request->reply, request->packet,
 		     request->client->secret) < 0) {
 		radlog_request(L_ERR, 0, request, "Failed sending reply: %s",
@@ -1268,6 +1280,18 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	if (request->reply->code == 0) return 0;
 
+#ifdef WITH_UDPFROMTO
+	/*
+	 *	Overwrite the src ip address on the outbound packet
+	 *	with the one specified by the client.
+	 *	This is useful to work around broken DSR implementations
+	 *	and other routing issues.
+	 */
+	if (request->client->src_ipaddr.af != AF_UNSPEC) {
+		request->reply->src_ipaddr = request->client->src_ipaddr;
+	}
+#endif
+	
 	if (rad_send(request->reply, request->packet,
 		     request->client->secret) < 0) {
 		radlog_request(L_ERR, 0, request, "Failed sending reply: %s",
