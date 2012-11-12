@@ -164,3 +164,7 @@ ifeq "$(findstring jlibtool,$(LIBTOOL))" ""
 else
   MOD_RPATH = -rpath $(libdir)
 endif
+
+ifeq "$(LIBTOOL)" ""
+$(error Building FreeRADIUS requires libtool)
+endif
