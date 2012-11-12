@@ -111,3 +111,7 @@ ifneq ($(SCAN),)
 CC		:= $(SCAN)/scan-build gcc -DFR_SCAN_BUILD
 LIBTOOL		:= 
 endif
+
+ifeq "$(LIBTOOL)" ""
+$(error Building FreeRADIUS requires libtool)
+endif
