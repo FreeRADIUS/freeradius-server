@@ -500,6 +500,7 @@ RADCLIENT *client_find_old(const fr_ipaddr_t *ipaddr)
 
 static struct in_addr cl_ip4addr;
 static struct in6_addr cl_ip6addr;
+static char *cl_srcipaddr = NULL;
 #ifdef WITH_TCP
 static char *hs_proto = NULL;
 #endif
@@ -527,6 +528,9 @@ static const CONF_PARSER client_config[] = {
 	{ "netmask",  PW_TYPE_INTEGER,
 	  offsetof(RADCLIENT, prefix), 0, NULL },
 
+	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
+	  0, &cl_srcipaddr,  NULL },
+	  
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
 
@@ -601,6 +605,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 #ifdef WITH_TCP
 		free(hs_proto);
 		hs_proto = NULL;
+		free(cl_srcipaddr);
+		cl_srcipaddr = NULL;
 #endif
 
 		return NULL;
@@ -721,6 +727,25 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 #endif
 	}
 
+	/*
+	 *	If a src_ipaddr is specified, when we send the return packet
+	 *	we will use this address instead of the src from the
+	 *	request.
+	 */
+	if (cl_srcipaddr) {
+#ifdef WITH_UDPFROMTO
+		if (ip_hton(cl_srcipaddr, c->ipaddr.af, &c->src_ipaddr) < 0) {
+			cf_log_err(cf_sectiontoitem(cs), "Failed parsing src_ipaddr");
+			goto error;
+		}
+#else
+		DEBUG("WARNING: Server not build with udpfromto, ignoring client src_ipaddr");
+#endif
+		
+		free(cl_srcipaddr);
+		cl_srcipaddr = NULL;
+	}
+	
 	if (c->prefix < 0) switch (c->ipaddr.af) {
 	case AF_INET:
 		c->prefix = 32;
@@ -970,6 +995,10 @@ static const CONF_PARSER dynamic_config[] = {
 	  offsetof(RADCLIENT, ipaddr), 0, NULL },
 	{ "FreeRADIUS-Client-IPv6-Address",  PW_TYPE_IPV6ADDR,
 	  offsetof(RADCLIENT, ipaddr), 0, NULL },
+	{ "FreeRADIUS-Client-Src-IP-Address",  PW_TYPE_IPADDR,
+	  offsetof(RADCLIENT, src_ipaddr), 0, NULL },
+	{ "FreeRADIUS-Client-Src-IPv6-Address",  PW_TYPE_IPV6ADDR,
+	  offsetof(RADCLIENT, src_ipaddr), 0, NULL },
 
 	{ "FreeRADIUS-Client-Require-MA",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), NULL, NULL },
@@ -1055,7 +1084,8 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 	memset(c, 0, sizeof(*c));
 	c->cs = request->client->cs;
 	c->ipaddr.af = AF_UNSPEC;
-
+	c->src_ipaddr.af = AF_UNSPEC;
+	
 	for (i = 0; dynamic_config[i].name != NULL; i++) {
 		DICT_ATTR *da;
 		VALUE_PAIR *vp;
@@ -1087,15 +1117,35 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPADDR:
-			c->ipaddr.af = AF_INET;
-			c->ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-			c->prefix = 32;
+			if (da->type == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
+				c->ipaddr.af = AF_INET;
+				c->ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+				c->prefix = 32;
+			} else if (da->type == PW_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
+#ifdef WITH_UDPFROMTO
+				c->src_ipaddr.af = AF_INET;
+				c->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+#else
+				DEBUG("WARNING: Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address.");
+#endif
+			}
+			
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			c->ipaddr.af = AF_INET6;
-			c->ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
-			c->prefix = 128;
+			if (da->type == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
+				c->ipaddr.af = AF_INET6;
+				c->ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+				c->prefix = 128;
+			} else if (da->type == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
+#ifdef WITH_UDPFROMTO
+				c->src_ipaddr.af = AF_INET6;
+				c->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
+#else
+				DEBUG("WARNING: Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address.");
+#endif
+			}
+			
 			break;
 
 		case PW_TYPE_STRING_PTR:
@@ -1146,6 +1196,14 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 
 	if (!client_validate(clients, request->client, c)) {
 		return NULL;
+	}
+	
+	if ((c->src_ipaddr.af != AF_UNSPEC) && (c->src_ipaddr.af != c->ipaddr.af)) {
+		DEBUG("- Cannot add client %s: Client IP and src address are different IP version.",
+		      ip_ntoh(&request->packet->src_ipaddr,
+			      buffer, sizeof(buffer)));
+		
+		goto error;
 	}
 
 	return c;

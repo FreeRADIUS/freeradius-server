@@ -178,6 +178,7 @@ ATTRIBUTE	Home-Server-Pool			1111	string
 
 ATTRIBUTE	FreeRADIUS-Client-IP-Address		1120	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-IPv6-Address		1121	ipv6addr
+
 ATTRIBUTE	FreeRADIUS-Client-Require-MA		1122	integer
 
 VALUE	FreeRADIUS-Client-Require-MA	no			0
@@ -227,6 +228,11 @@ ATTRIBUTE	Cache-Entry-Hits			1142	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
+
+#	More dynamic client attributes
+
+ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1143	ipaddr
+ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1144	ipv6addr
 
 #
 #	Range:	1200-1279

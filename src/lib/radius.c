@@ -1595,7 +1595,8 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	int		len;
 	const VALUE_PAIR	*reply;
 	const char	*what;
-	char		ip_buffer[128];
+	char		ip_src_buffer[128];
+	char		ip_dst_buffer[128];
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1608,11 +1609,15 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		what = "Reply";
 	}
 
-	DEBUG("Sending %s of id %d to %s port %d\n",
+	DEBUG("Sending %s of id %d from %s port %u to %s port %u\n",
 	      what, packet->id,
+	      inet_ntop(packet->src_ipaddr.af,
+			&packet->src_ipaddr.ipaddr,
+			ip_src_buffer, sizeof(ip_src_buffer)),
+	      packet->src_port,
 	      inet_ntop(packet->dst_ipaddr.af,
 			&packet->dst_ipaddr.ipaddr,
-			ip_buffer, sizeof(ip_buffer)),
+			ip_dst_buffer, sizeof(ip_dst_buffer)),
 	      packet->dst_port);
 
 	/*
@@ -1894,7 +1899,8 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 {
 	VALUE_PAIR		*reply;
 	const char		*what;
-	char			ip_buffer[128];
+	char			ip_src_buffer[128];
+	char			ip_dst_buffer[128];
 
 	/*
 	 *	Maybe it's a fake packet.  Don't send it.
@@ -1933,10 +1939,15 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	the VP list again only for debugging.
 		 */
 	} else if (fr_debug_flag) {
-	  	DEBUG("Sending %s of id %d to %s port %d\n", what, packet->id,
+	  	DEBUG("Sending %s of id %d from %s port %u to %s port %u\n", what,
+	  	      packet->id,
+	  	      inet_ntop(packet->src_ipaddr.af,
+				&packet->src_ipaddr.ipaddr,
+				ip_src_buffer, sizeof(ip_src_buffer)),
+		      packet->src_port,
 		      inet_ntop(packet->dst_ipaddr.af,
 				&packet->dst_ipaddr.ipaddr,
-				ip_buffer, sizeof(ip_buffer)),
+				ip_dst_buffer, sizeof(ip_dst_buffer)),
 		      packet->dst_port);
 
 		for (reply = packet->vps; reply; reply = reply->next) {
