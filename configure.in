@@ -175,7 +175,7 @@ AC_ARG_ENABLE(strict-dependencies,
 [  --enable-strict-dependencies  Fail configure on lack of module dependancy.])
 
 dnl # Build using the new boilermake system
-boilermake = no
+boilermake=no
 AC_ARG_ENABLE(boilermake,
 [  --enable-boilermake     use the boilermake build system (experimental default=no).],
 [ case "$enableval" in
@@ -1023,7 +1023,7 @@ if test "x$developer" = "xyes"; then
   fi
 
   if test "x$EXPERIMENTAL" != "xno"; then
-    EXPERIMENTAL = yes
+    EXPERIMENTAL=yes
   fi
   
   dnl append the current git hash onto the version string

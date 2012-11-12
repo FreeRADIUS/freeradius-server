@@ -15254,7 +15254,7 @@ if test "${enable_strict_dependencies+set}" = set; then :
 fi
 
 
-boilermake = no
+boilermake=no
 # Check whether --enable-boilermake was given.
 if test "${enable_boilermake+set}" = set; then :
   enableval=$enable_boilermake;  case "$enableval" in
@@ -18024,7 +18024,7 @@ $as_echo "yes.  Using $devflags" >&6; }
   fi
 
   if test "x$EXPERIMENTAL" != "xno"; then
-    EXPERIMENTAL = yes
+    EXPERIMENTAL=yes
   fi
 
     if test "x$GIT" = "xyes"; then
