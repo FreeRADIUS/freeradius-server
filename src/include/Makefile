@@ -10,16 +10,11 @@ HEADERS	= conf.h conffile.h detail.h dhcp.h event.h features.h hash.h heap.h \
 	radutmp.h realms.h sha1.h stats.h sysutmp.h token.h \
 	udpfromto.h vmps.h vqp.h base64.h
 
-#
-# Files which would need to #include <autoconf.h>
-#	
-PREPROC = missing.h tls.h
-
 include ../../Make.inc
 .PHONY: all clean distclean install
 
 .PHONY: all clean distclean install reconfig
-all: radpaths.h features.h $(PREPROC)
+all: radpaths.h features.h missing.h tls.h
 
 radpaths.h: build-radpaths-h
 	@/bin/sh ./build-radpaths-h
@@ -27,27 +22,29 @@ radpaths.h: build-radpaths-h
 #
 # This is hacky, feature defines should go away or be set with configure.in
 #
-features.h:
-	@cp features-h features.h
-	@grep -o "^\#define\s*WITH_.*" autoconf.h >> features.h
-	
-autoconf.sed:
-	@grep ^#define autoconf.h | sed 's,/\*\*/,1,;' | awk '{print "\
+autoconf.sed: autoconf.h
+	@grep ^#define $< | sed 's,/\*\*/,1,;' | awk '{print "\
 	s,#[[:blank:]]*ifdef[[:blank:]]*" $$2 ",#if "$$3 ",g;\
 	s,#[[:blank:]]*ifndef[[:blank:]]*" $$2 ",#if !"$$3 ",g;\
 	s,defined(" $$2 ")," $$3 ",g;\
-	s," $$2 ","$$3 ",g;"}' > ./autoconf.sed
+	s," $$2 ","$$3 ",g;"}' > $@
 
-$(PREPROC): autoconf.sed
-	@sed -f autoconf.sed < `echo $@ | sed 's/\\./-/'` > $@
+features.h: features-h autoconf.h
+	@cp $< $@
+	@grep -o "^\#define\s*WITH_.*" autoconf.h >> features.h
+	
+missing.h: missing-h autoconf.sed
+	 @sed -f autoconf.sed < $< > $@
+
+tls.h: tls-h autoconf.sed
+	@sed -f autoconf.sed < $< > $@
 
 distclean: clean
 	@rm -f radpaths.h
 	
 reconfig clean:
-	@rm -f features.h
+	@rm -f features.h missing.h tls.h
 	@rm -f autoconf.sed
-	@rm -f $(PREPROC)
 
 install:
 	$(INSTALL) -d -m 755 $(R)$(includedir)/freeradius
