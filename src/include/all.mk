@@ -67,7 +67,7 @@ ${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h
 #
 #  Cleaning
 #
-.PHONY clean.src.include distclean.src.include
+.PHONY: clean.src.include distclean.src.include
 clean.src.include:
 	@rm -f $(HEADERS_DY)
 
