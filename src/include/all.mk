@@ -21,17 +21,10 @@ src/include/radpaths.h: src/include/build-radpaths-h
 #  the server library was built with.
 #
 
-HEADERS_AC = src/include/missing.h src/include/tls.h
-HEADERS_DY = src/include/features.h $(HEADERS_AC)
-
-define clean_others
-@rm -f $(HEADERS_DY)
-endef
-
-TGT_POSTCLEAN := ${clean_others}
+HEADERS_DY = src/include/features.h src/include/missing.h src/include/tls.h
 
 src/include/autoconf.sed: src/include/autoconf.h
-	@grep ^#define src/include/autoconf.h | sed 's,/\*\*/,1,;' | awk '{print "\
+	@grep ^#define $< | sed 's,/\*\*/,1,;' | awk '{print "\
 	s,#[[:blank:]]*ifdef[[:blank:]]*" $$2 ",#if "$$3 ",g;\
 	s,#[[:blank:]]*ifndef[[:blank:]]*" $$2 ",#if !"$$3 ",g;\
 	s,defined(" $$2 ")," $$3 ",g;\
@@ -53,8 +46,10 @@ all: $(HEADERS_DY)
 #  Installation
 #
 
-# global install depends on the local rule
+# Add additional dependecies to the global targets
 install: install.src.include
+clean: clean.src.include
+distclean: distclean.src.include
 
 # define the installation directory
 SRC_INCLUDE_DIR := ${R}${includedir}/freeradius
@@ -68,3 +63,13 @@ ${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h
 	@$(INSTALL) -d -m 755 $(dir $@)
 	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
 	@chmod 644 $@
+
+#
+#  Cleaning
+#
+clean.src.include:
+	@rm -f $(HEADERS_DY)
+
+distclean.src.include: clean.src.include
+	@rm -f autoconf.sed
+
