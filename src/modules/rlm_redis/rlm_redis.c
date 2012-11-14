@@ -313,10 +313,6 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst, char *query)
 	if (dissocket->reply->type == REDIS_REPLY_ERROR) {
 		radlog(L_ERR, "rlm_redis (%s): query failed, %s",
 		       inst->xlat_name, query);
-
-		/* Free the reply just in case */
-		rlm_redis_finish_query(dissocket);
-
 		return -1;
 	}
 
