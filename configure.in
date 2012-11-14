@@ -1238,22 +1238,6 @@ dnl # is being included by a module.
 dnl #############################################################
 AH_BOTTOM([#include <freeradius-devel/automask.h>])
 
-mysubdirs=""
-if test "x$EXPERIMENTAL" = "xyes"; then
-  bar=`ls -1 "${srcdir}"/src/modules/rlm_*/configure | sed 's%/configure%%'`
-  dnl # get rid of LF's.
-  mysubdirs=`echo $mysubdirs $bar`
-else
-  dnl #
-  dnl # Find 'configure' in ONLY the stable modules
-  dnl #
-  for bar in `cat "${srcdir}"/src/modules/stable`; do
-    if test -f "${srcdir}"/src/modules/$bar/configure; then
-      mysubdirs="$mysubdirs src/modules/$bar"
-    fi
-  done
-fi
-
 dnl ############################################################
 dnl # make modules by list
 dnl #############################################################
@@ -1269,6 +1253,17 @@ else
     MODULES="$MODULES $foo"
    done
 fi
+
+dnl ############################################################
+dnl # Add autoconf subdirs, based on the module list we
+dnl # previously created.
+dnl #############################################################
+mysubdirs=""
+for bar in $MODULES; do
+  if test -f "${srcdir}"/src/modules/$bar/configure; then
+    mysubdirs="$mysubdirs src/modules/$bar"
+  fi
+done
 
 dnl #
 dnl #  Don't change the variable name here.  Autoconf goes bonkers

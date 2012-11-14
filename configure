@@ -18486,18 +18486,6 @@ $as_echo "top_builddir=$top_builddir" >&6; }
 
 
 
-mysubdirs=""
-if test "x$EXPERIMENTAL" = "xyes"; then
-  bar=`ls -1 "${srcdir}"/src/modules/rlm_*/configure | sed 's%/configure%%'`
-    mysubdirs=`echo $mysubdirs $bar`
-else
-        for bar in `cat "${srcdir}"/src/modules/stable`; do
-    if test -f "${srcdir}"/src/modules/$bar/configure; then
-      mysubdirs="$mysubdirs src/modules/$bar"
-    fi
-  done
-fi
-
 if test "x$EXPERIMENTAL" = "xyes"; then
   for foo in `ls -1 "${srcdir}"/src/modules | grep rlm_`; do
     MODULES="$MODULES $foo"
@@ -18507,6 +18495,13 @@ else
     MODULES="$MODULES $foo"
    done
 fi
+
+mysubdirs=""
+for bar in $MODULES; do
+  if test -f "${srcdir}"/src/modules/$bar/configure; then
+    mysubdirs="$mysubdirs src/modules/$bar"
+  fi
+done
 
 
 
