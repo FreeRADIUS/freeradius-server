@@ -40,6 +40,10 @@ static int do_sort = 0;
 static int to_stdout = 0;
 static FILE *log_dst;
 
+#ifndef PCAP_NETMASK_UNKNOWN
+#  define PCAP_NETMASK_UNKNOWN 0xffffffff
+#endif
+
 #undef DEBUG1
 #define DEBUG1 if (fr_debug_flag > 2) fprintf
 #undef DEBUG
