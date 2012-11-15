@@ -40,7 +40,7 @@ CREATE TABLE radacct (
 );
 
 CREATE UNIUQE INDEX radacct_idx0
-	ON radacct(accuniqueid);
+	ON radacct(acctuniqueid);
 CREATE UNIQUE INDEX radacct_idx1
 	ON radacct(acctsessionid,username,acctstarttime,
 		acctstoptime,nasipaddress,framedipaddress);
