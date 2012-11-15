@@ -405,7 +405,11 @@ int main(int argc, char *argv[])
 	int port = 1812;
 	
 	struct bpf_program fp;				/* Holds compiled filter */
+#ifdef PCAP_NETMASK_UNKNOWN
 	bpf_u_int32 ip_mask = PCAP_NETMASK_UNKNOWN;	/* Device Subnet mask */
+#else
+	bpf_u_int32 ip_mask = 0;
+#endif
 	bpf_u_int32 ip_addr = 0;			/* Device IP */
 	
 	char buffer[1024];
