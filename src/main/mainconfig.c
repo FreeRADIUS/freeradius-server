@@ -61,7 +61,10 @@ RCSID("$Id$")
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_condition = NULL;
+
+#ifdef HAVE_GMTIME_R
 extern int log_dates_utc;
+#endif
 
 typedef struct cached_config_t {
 	struct cached_config_t *next;
@@ -190,7 +193,9 @@ static const CONF_PARSER serverdest_config[] = {
 	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) logdest_config },
 	{ "log_file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, NULL },
 	{ "log_destination", PW_TYPE_STRING_PTR, 0, &radlog_dest, NULL },
+#ifdef HAVE_GMTIME_R
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
+#endif
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -204,7 +209,9 @@ static const CONF_PARSER log_config_nodest[] = {
 	{ "msg_badpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_badpass_msg, NULL},
 	{ "msg_goodpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_goodpass_msg, NULL},
 
+#ifdef HAVE_GMTIME_R
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
+#endif
 
 	{ NULL, -1, 0, NULL, NULL }
 };

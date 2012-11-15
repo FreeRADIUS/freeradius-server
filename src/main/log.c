@@ -96,7 +96,14 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		time_t timeval;
 
 		timeval = time(NULL);
-		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+#ifdef HAVE_GMTIME_R
+		if (log_dates_utc) {
+			struct tm utc;
+			gmtime_r(&timeval, &utc);
+			asctime_r(&utc, buffer + len);
+		} else
+#endif
+		  CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
 
 		s = fr_int2str(levels, (lvl & ~L_CONS), ": ");
 
