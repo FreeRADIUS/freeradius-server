@@ -69,8 +69,8 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	 */
 	if (request) {
 		if (!radius_xlat(query, sizeof (query), fmt, request,
-				 data->redis_inst->redis_escape_func,
-				 data->redis_inst)) {
+				 inst->redis_inst->redis_escape_func,
+				 inst->redis_inst)) {
 			radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
 			return 0;
 		}
@@ -215,7 +215,7 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	dv = dict_valbyattr(vp->attr, vp->vendor, vp->vp_integer);
+	dv = dict_valbyattr(vp->attribute, vp->vendor, vp->vp_integer);
 	if (!dv) {
 		RDEBUG("Unknown Acct-Status-Type %u", vp->vp_integer);
 		return RLM_MODULE_NOOP;
@@ -233,14 +233,14 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 		return RLM_MODULE_FAIL;
 	}
 
-	insert = cf_pair_value(cf_pair_find(cs, "insert");
-	trim = cf_pair_value(cf_pair_find(cs, "trim");
-	expire = cf_pair_value(cf_pair_find(cs, "expire");
+	insert = cf_pair_value(cf_pair_find(cs, "insert"));
+	trim = cf_pair_value(cf_pair_find(cs, "trim"));
+	expire = cf_pair_value(cf_pair_find(cs, "expire"));
 
 	rcode = rediswho_accounting_all(&dissocket, inst, request,
-					inst->start_insert,
-					inst->start_trim,
-					inst->start_expire);
+					insert,
+					trim,
+					expire);
 
 	if (dissocket) fr_connection_release(inst->redis_inst->pool, dissocket);
 
