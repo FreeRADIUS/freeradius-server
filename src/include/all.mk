@@ -32,7 +32,7 @@ src/include/autoconf.sed: src/include/autoconf.h
 
 src/include/features.h: src/include/features-h src/include/autoconf.h
 	@cp $< $@
-	@grep "^\#define *WITH_.*" src/include/autoconf.h >> $@
+	@grep "^#define[[:blank:]]\{1,\}WITH_" src/include/autoconf.h >> $@
 
 src/include/missing.h: src/include/missing-h src/include/autoconf.sed
 	@sed -f src/include/autoconf.sed < $< > $@

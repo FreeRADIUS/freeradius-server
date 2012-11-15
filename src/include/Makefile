@@ -31,8 +31,8 @@ autoconf.sed: autoconf.h
 
 features.h: features-h autoconf.h
 	@cp $< $@
-	@grep "^\#define\s*WITH_.*" autoconf.h >> features.h
-
+	@grep "^#define[[:blank:]]\{1,\}WITH_" autoconf.h >> features.h
+	
 missing.h: missing-h autoconf.sed
 	 @sed -f autoconf.sed < $< > $@
 
