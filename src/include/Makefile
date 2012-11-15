@@ -31,8 +31,8 @@ autoconf.sed: autoconf.h
 
 features.h: features-h autoconf.h
 	@cp $< $@
-	@grep -o "^\#define\s*WITH_.*" autoconf.h >> features.h
-	
+	@grep "^\#define\s*WITH_.*" autoconf.h >> features.h
+
 missing.h: missing-h autoconf.sed
 	 @sed -f autoconf.sed < $< > $@
 
@@ -41,7 +41,7 @@ tls.h: tls-h autoconf.sed
 
 distclean: clean
 	@rm -f radpaths.h
-	
+
 reconfig clean:
 	@rm -f features.h missing.h tls.h
 	@rm -f autoconf.sed
