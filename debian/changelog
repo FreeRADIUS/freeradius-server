@@ -1,4 +1,4 @@
-freeradius (2.2git+dfsg-1) unstable; urgency=medium
+freeradius (3.0.0git+dfsg-1) unstable; urgency=medium
 
   * New upstream version.
     + git version
