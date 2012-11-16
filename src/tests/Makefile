@@ -8,6 +8,17 @@
 #
 include ../../Make.inc
 
+ifeq "$(BOILER)" "yes"
+	BUILD_PATH := ../../build
+	BIN_PATH := $(BUILD_PATH)/bin
+	DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(BUILD_PATH)/lib/.libs/
+else
+	BIN_PATH := ../main
+	DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):../lib/.libs/:../modules/lib/.libs/
+endif
+
+RADDB_PATH := ../../raddb
+
 TESTS	= user_password chap mschapv1 digest-01/digest* test.example.com \
 	wimax
 
@@ -31,7 +42,7 @@ SECRET	= testing123
 all: tests
 
 clean:
-	@rm -f ../../raddb/test.conf test.conf dictionary
+	@rm -f $(RADDB_PATH)/test.conf test.conf dictionary
 
 dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary
@@ -49,8 +60,8 @@ test.conf: dictionary
 	@echo '$$INCLUDE radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
-radiusd.pid: ../../raddb/test.conf test.conf
-	@../main/radiusd -txxl `pwd`/radius.log -md ../../raddb/ -n test -i 127.0.0.1 -p $(PORT)
+radiusd.pid: $(RADDB_PATH)/test.conf test.conf raddb
+	@$(BIN_PATH)/radiusd -txxl `pwd`/radius.log -md $(RADDB_PATH)/ -n test -i 127.0.0.1 -p $(PORT)
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
@@ -61,30 +72,37 @@ radiusd.kill:
 	fi
 	@rm -f radiusd.pid
 
+# As test.conf includes radiusd.conf and as radiusd.conf includes everything in
+# mods-enabled and sites-enable we need to ensure those directories have been
+# created and are up to date.
+.PHONY: raddb
+raddb:
+	@$(MAKE) -C $(RADDB_PATH) mods-enabled sites-enabled
+
 #  Link from the main database directory to here
-../../raddb/test.conf: test.conf
-	@[ -f ../../raddb/test.conf ] || ln -s ../src/tests/test.conf ../../raddb/
+$(RADDB_PATH)/test.conf: test.conf
+	@[ -f $(RADDB_PATH)/test.conf ] || ln -s ../src/tests/test.conf $(RADDB_PATH)/
 
 # kill the server (if it's running)
 # start the server
 # run the tests (ignoring any failures)
 # kill the server
 # remove the changes to raddb/
-tests: ../../raddb/test.conf radiusd.kill
+tests: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
-	@./runtests.sh $(TESTS)
+	@BIN_PATH="$(BIN_PATH)" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill
-	@rm -f ../../raddb/test.conf
+	@rm -f $(RADDB_PATH)/test.conf
 
-tests.eap: ../../raddb/test.conf radiusd.kill
+tests.eap: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
 	@$(MAKE) eap
 	@$(MAKE) radiusd.kill
-	@rm -f ../../raddb/test.conf
+	@rm -f $(RADDB_PATH)/test.conf
 
 eap: $(EAP_TLS_TESTS)
 	for x in $(EAP_TLS_TESTS); do \
@@ -108,11 +126,11 @@ leap:
 
 ATTRS	:= rfc.txt errors.txt extended.txt lucent.txt wimax.txt
 
-attrs:	${ATTRS} ../main/radattr
+attrs:	$(ATTRS) ../main/radattr
 	../main/radattr -d ../../share rfc.txt
 
 ${LIBRADIUS}: $(wildcard ../include/*.h) $(wildcard ../lib/*.c)
-	${MAKE} -C ../lib all
+	$(MAKE) -C ../lib all
 
 ../main/radattr: ${LIBRADIUS} ../main/radattr.c
-	${MAKE} -C ../main radattr
+	$(MAKE) -C ../main radattr

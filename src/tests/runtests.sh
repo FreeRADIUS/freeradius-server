@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# BIN_PATH should be specified by the caller
+#BIN_PATH=../main/
+
 PORT=12340
 HOME_PORT=12350
 SECRET=testing123
@@ -44,7 +47,7 @@ do
    echo "-f .cache/$x" >> .bar
 done
 
-../main/radclient `cat .bar` -xFd . 127.0.0.1:$PORT auth $SECRET > radclient.log 2>&1
+$BIN_PATH/radclient `cat .bar` -xFd . 127.0.0.1:$PORT auth $SECRET > radclient.log 2>&1
 
 for x in `cat .foo`
 do
