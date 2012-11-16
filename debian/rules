@@ -79,6 +79,7 @@ endif
 		--with-raddbdir=$(raddbdir) \
 		--with-logdir=/var/log/$(package) \
 		--enable-ltdl-install=no --enable-strict-dependencies \
+		--with-experimental-modules=no \
 		--with-large-files --with-udpfromto --with-edir \
 		--config-cache \
 		--without-rlm_eap_tnc \
