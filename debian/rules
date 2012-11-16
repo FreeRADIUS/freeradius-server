@@ -80,6 +80,7 @@ endif
 		--with-logdir=/var/log/$(package) \
 		--enable-ltdl-install=no --enable-strict-dependencies \
 		--with-experimental-modules=no \
+		--enable-boilermake \
 		--with-large-files --with-udpfromto --with-edir \
 		--config-cache \
 		--without-rlm_eap_tnc \
@@ -87,9 +88,7 @@ endif
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
 		--without-rlm_eap_ikev2 \
 		--without-rlm_sql_oracle \
-		--without-rlm_sql_unixodbc \
-		--with-system-libtool \
-		--with-system-libltdl
+		--without-rlm_sql_unixodbc
 
 #Architecture 
 build: patch build-arch build-indep
