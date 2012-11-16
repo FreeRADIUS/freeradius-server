@@ -41,7 +41,7 @@ static int to_stdout = 0;
 static FILE *log_dst;
 
 #ifndef PCAP_NETMASK_UNKNOWN
-#  define PCAP_NETMASK_UNKNOWN 0xffffffff
+#  define PCAP_NETMASK_UNKNOWN 0
 #endif
 
 #undef DEBUG1
