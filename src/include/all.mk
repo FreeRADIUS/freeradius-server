@@ -1,5 +1,4 @@
 #
-#
 # Version:	$Id$
 #
 
@@ -59,7 +58,10 @@ install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
 # install the headers by re-writing the local files
 ${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h
 	@echo INSTALL $(notdir $<)
-	@$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$/'`
+	# install-sh function for creating directories gets confused
+	# if there's a trailing slash, tries to create a directory
+	# it already created, and fails...
+	@$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
 	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
 	@chmod 644 $@
 
