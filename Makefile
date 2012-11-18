@@ -31,6 +31,9 @@ export DESTDIR := $(R)
 # And over-ride all of the other magic.
 include scripts/boiler.mk
 
+# These are not yet converted to the new system
+SUBDIRS		= $(wildcard raddb scripts doc)
+
 else
 .PHONY: all clean install
 
@@ -94,13 +97,10 @@ $(R)$(mandir)/%: man/%
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -m 644 $< $@
 
-ifneq "$(BOILERMAKE)" ""
 install: install.dirs install.share install.man
 
-else
-install: install.dirs install.man install.share
+install:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-endif
 
 ifneq ($(RADMIN),)
 ifneq ($(RGROUP),)
