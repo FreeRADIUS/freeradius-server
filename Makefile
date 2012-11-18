@@ -67,17 +67,31 @@ tests:
 # we make sure DESTDIR is defined.
 #
 export DESTDIR := $(R)
-ifeq "$(BOILERMAKE)" ""
-install:
-	$(INSTALL) -d -m 755	$(R)$(sbindir)
-	$(INSTALL) -d -m 755	$(R)$(bindir)
-	$(INSTALL) -d -m 755	$(R)$(raddbdir)
-	$(INSTALL) -d -m 755	$(R)$(mandir)
-	$(INSTALL) -d -m 755	$(R)$(RUNDIR)
-	$(INSTALL) -d -m 700	$(R)$(logdir)
-	$(INSTALL) -d -m 700	$(R)$(radacctdir)
-	$(INSTALL) -d -m 755	$(R)$(datadir)
-	$(INSTALL) -d -m 755	$(R)$(dictdir)
+
+.PHONY: install.dirs
+install.dirs:
+	@$(INSTALL) -d -m 755	$(R)$(sbindir)
+	@$(INSTALL) -d -m 755	$(R)$(bindir)
+	@$(INSTALL) -d -m 755	$(R)$(raddbdir)
+	@$(INSTALL) -d -m 755	$(R)$(mandir)
+	@$(INSTALL) -d -m 755	$(R)$(RUNDIR)
+	@$(INSTALL) -d -m 700	$(R)$(logdir)
+	@$(INSTALL) -d -m 700	$(R)$(radacctdir)
+	@$(INSTALL) -d -m 755	$(R)$(datadir)
+	@$(INSTALL) -d -m 755	$(R)$(dictdir)
+
+DICTIONARIES := $(wildcard share/dictionary*)
+install.share: $(addprefix $(R)$(dictdir)/,$(notdir $(DICTIONARIES)))
+
+$(R)$(dictdir)/%: share/%
+	@echo INSTALL $(notdir $<)
+	@$(INSTALL) -m 644 $< $@
+
+ifneq "$(BOILERMAKE)" ""
+install: install.dirs install.share
+
+else
+install: install.dirs
 	for i in 1 5 8; do \
 		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
 		for p in man/man$$i/*.$$i; do \
@@ -85,11 +99,6 @@ install:
 		done \
 	done
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@echo "Installing dictionary files in $(R)$(dictdir)"; \
-	cd share; \
-	for i in dictionary*; do \
-		$(INSTALL) -m 644 $$i $(R)$(dictdir); \
-	done
 endif
 
 ifneq ($(RADMIN),)
