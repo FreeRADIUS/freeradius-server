@@ -87,17 +87,18 @@ $(R)$(dictdir)/%: share/%
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -m 644 $< $@
 
+MANFILES := $(wildcard man/man*/*.?)
+install.man: $(subst man/,$(R)$(mandir)/,$(MANFILES))
+
+$(R)$(mandir)/%: man/%
+	@echo INSTALL $(notdir $<)
+	@$(INSTALL) -m 644 $< $@
+
 ifneq "$(BOILERMAKE)" ""
-install: install.dirs install.share
+install: install.dirs install.share install.man
 
 else
-install: install.dirs
-	for i in 1 5 8; do \
-		$(INSTALL) -d -m 755	$(R)$(mandir)/man$$i; \
-		for p in man/man$$i/*.$$i; do \
-			$(INSTALL) -m 644 $$p $(R)$(mandir)/man$$i; \
-		done \
-	done
+install: install.dirs install.man install.share
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 endif
 
