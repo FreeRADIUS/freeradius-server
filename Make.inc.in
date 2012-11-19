@@ -79,6 +79,9 @@ LIBREADLINE	= @LIBREADLINE@
 SQL_ODBC_LIBS = @ODBC_LIBS@
 SQL_ODBC_INCLUDE = @ODBC_INCLUDE@
 
+#
+#  Make version info available to the build targets and linker
+#
 RADIUSD_MAJOR_VERSION	= @RADIUSD_MAJOR_VERSION@
 RADIUSD_MINOR_VERSION	= @RADIUSD_MINOR_VERSION@
 RADIUSD_INCRM_VERSION	= @RADIUSD_INCRM_VERSION@
@@ -86,8 +89,25 @@ RADIUSD_VERSION		= @RADIUSD_VERSION@
 RADIUSD_VERSION_STRING  = @RADIUSD_VERSION_STRING@
 RADIUSD_VERSION_COMMIT  = @RADIUSD_VERSION_COMMIT@
 
-MODULES			= @MODULES@
-HOSTINFO		= @HOSTINFO@
+CFLAGS += -DRADIUSD_MAJOR_VERSION=\"${RADIUSD_MAJOR_VERSION}\"
+CFLAGS += -DRADIUSD_MINOR_VERSION=\"${RADIUSD_MINOR_VERSION}\"
+CFLAGS += -DRADIUSD_INCRM_VERSION=\"${RADIUSD_INCRM_VERSION}\"
+CFLAGS += -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
+CFLAGS += -DRADIUSD_VERSION_STRING=\"${RADIUSD_VERSION_STRING}\"
+
+ifdef RADIUSD_VERSION_COMMIT
+CFLAGS += -DRADIUSD_VERSION_COMMIT=\"${RADIUSD_VERSION_COMMIT}\"
+endif
+
+#
+#  This allows dlopen to do runtime checks for version mistmatches
+#  between what it was originally linked with the the library it's
+#  actually loading.
+#
+LDFLAGS += -release=$(RADIUSD_VERSION_STRING)
+
+MODULES		= @MODULES@
+HOSTINFO	= @HOSTINFO@
 
 ifneq ($(WITH_OPENSSL_MD5),)
 LIBRADIUS_WITH_OPENSSL = 1
@@ -128,8 +148,8 @@ LINK_MODE.exe	= -static
 endif
 
 ifneq "$(LIBTOOL)" ""
-COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC)
-LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -release $(RADIUSD_VERSION_STRING) -rpath $(libdir) -o
+COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC) 
+LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) $(LDFLAGS) -rpath $(libdir) -o
 LO		:= lo
 LA		:= la
 else

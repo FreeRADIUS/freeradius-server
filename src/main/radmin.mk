@@ -1,15 +1,11 @@
-TGT_PREREQS := libfreeradius-radius.a
-SRC_CFLAGS	+= -DRADIUSD_VERSION=\"${RADIUSD_VERSION}\"
-SRC_CFLAGS	+= -DRADIUSD_VERSION_STRING=\"${RADIUSD_VERSION_STRING}\"
-ifdef RADIUSD_VERSION_COMMIT
-CFLAGS		+= -DRADIUSD_VERSION_COMMIT=\"${RADIUSD_VERSION_COMMIT}\"
-endif
-TGT_LDLIBS := $(LIBS) $(LIBREADLINE)
-
-SOURCES	:= radmin.c conffile.c log.c util.c
-
 ifneq ($(LIBREADLINE),)
-TARGET	:= radmin
+TARGET		:= radmin
 else
-TARGET  :=
+TARGET 		:=
 endif
+
+SOURCES		:= radmin.c conffile.c log.c util.c
+
+TGT_PREREQS	:= libfreeradius-radius.a
+TGT_LDLIBS	:= $(LIBS) $(LIBREADLINE)
+
