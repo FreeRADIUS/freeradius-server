@@ -17,8 +17,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  your name <your address>
+ * Copyright 2011,2012  The FreeRADIUS server project
  */
 
 #include <freeradius-devel/ident.h>
@@ -35,13 +34,28 @@ static void cleanup(RADIUS_PACKET *packet)
 	rad_free(&packet);
 }
 
-/*
- *	Write accounting information to this modules database.
+/** Copy packet to multiple servers
+ *
+ * Create a duplicate of the packet and send it to a list of realms
+ * defined by the presence of the Replicate-To-Realm VP in the control
+ * list of the current request.
+ * 
+ * This is pretty hacky and is 100% fire and forget. If you're looking
+ * to forward authentication requests to multiple realms and process
+ * the responses, this function will not allow you to do that.
+ *
+ * @param[in] instance 	of this module.
+ * @param[in] request 	The current request.
+ * @param[in] list	of attributes to copy to the duplicate packet.
+ * @param[in] code	to write into the code field of the duplicate packet.
+ * @return RCODE fail on error, invalid if list does not exist, noop if no
+ * 	   replications succeeded, else ok.
  */
-static int replicate_packet(void *instance, REQUEST *request)
+static int replicate_packet(void *instance, REQUEST *request,
+			    pair_lists_t list, unsigned int code)
 {
 	int rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR *vp, *last;
+	VALUE_PAIR *vp, **vps, *last;
 	home_server *home;
 	REALM *realm;
 	home_pool_t *pool;
@@ -107,32 +121,45 @@ static int replicate_packet(void *instance, REQUEST *request)
 			continue;
 		}
 		
+		/*
+		 *	For replication to multiple servers we re-use the packet
+		 *	we built here.
+		 */
 		if (!packet) {
 			packet = rad_alloc(1);
 			if (!packet) return RLM_MODULE_FAIL;
 			packet->sockfd = -1;
-			packet->code = request->packet->code;
+			packet->code = code;
 			packet->id = fr_rand() & 0xff;
 
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
 				RDEBUG("ERROR: Failed opening socket: %s", fr_strerror());
-				cleanup(packet);
-				return RLM_MODULE_FAIL;
+				rcode = RLM_MODULE_FAIL;
+				goto done;
 			}
-
-			packet->vps = paircopy(request->packet->vps);
+			
+			vps = radius_list(request, list);
+			if (!vps) {
+				RDEBUG("WARNING: List '%s' doesn't exist for "
+				       "this packet", fr_int2str(pair_lists,
+				       list, "¿unknown?"));
+				rcode = RLM_MODULE_INVALID;
+				goto done;
+			}
+			
+			packet->vps = paircopy(*vps);
 			if (!packet->vps) {
 				RDEBUG("ERROR: Out of memory!");
-				cleanup(packet);
-				return RLM_MODULE_FAIL;
+				rcode = RLM_MODULE_FAIL;
+				goto done;
 			}
 
 			/*
 			 *	For CHAP, create the CHAP-Challenge if
 			 *	it doesn't exist.
 			 */
-			if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+			if ((code == PW_AUTHENTICATION_REQUEST) &&
 			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0) != NULL) &&
 			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0) == NULL)) {
 				vp = radius_paircreate(request, &packet->vps,
@@ -170,8 +197,8 @@ static int replicate_packet(void *instance, REQUEST *request)
 		if (rad_send(packet, NULL, home->secret) < 0) {
 			RDEBUG("ERROR: Failed replicating packet: %s",
 			       fr_strerror());
-			cleanup(packet);
-			return RLM_MODULE_FAIL;
+			rcode = RLM_MODULE_FAIL;
+			goto done;
 		}
 
 		/*
@@ -179,17 +206,62 @@ static int replicate_packet(void *instance, REQUEST *request)
 		 */
 		rcode = RLM_MODULE_OK;
 	}
-
+	
+	done:
+	
 	cleanup(packet);
 	return rcode;
 }
 #else
-static int replicate_packet(void *instance, REQUEST *request)
+static int replicate_packet(void *instance, REQUEST *request,
+			    pair_lists_t list, unsigned int code)
 {
 	RDEBUG("Replication is unsupported in this build.");
 	return RLM_MODULE_FAIL;
 }
 #endif
+
+static int replicate_authorize(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
+				request->packet->code);
+}
+
+static int replicate_preaccounting(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
+				request->packet->code);
+}
+
+static int replicate_accounting(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_REPLY,
+				request->reply->code);
+}
+
+static int replicate_preproxy(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST,
+				request->proxy->code);
+}
+
+static int replicate_postproxy(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_PROXY_REPLY,
+				request->proxy_reply->code);
+}
+
+static int replicate_postauth(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_REPLY,
+				request->reply->code);
+}
+
+static int replicate_coarequest(void *instance, REQUEST *request)
+{
+	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
+				request->packet->code);
+}
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -208,15 +280,15 @@ module_t rlm_replicate = {
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		replicate_packet,	/* authorization */
-		NULL,			/* preaccounting */
-		replicate_packet,	/* accounting */
+		replicate_authorize,	/* authorization */
+		replicate_preaccounting,/* preaccounting */
+		replicate_accounting,	/* accounting */
 		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		replicate_preproxy,	/* pre-proxy */
+		replicate_postproxy,	/* post-proxy */
+		replicate_postauth	/* post-auth */
 #ifdef WITH_COA
-		, replicate_packet,
+		, replicate_coarequest, /* coa-request */
 		NULL
 #endif
 	},
