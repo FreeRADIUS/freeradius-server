@@ -13,10 +13,7 @@ scripts/radiusd.cron.monthly
 scripts/radiusd.cron.monthly.in
 scripts/radiusd.sh
 scripts/radsqlrelay
-scripts/radwatch
-scripts/radwatch.in
 scripts/rc.radiusd
 scripts/rc.radiusd.in
 scripts/users2mysql.pl
-debian/tmp/etc/freeradius/example.pl
 debian/tmp/etc/freeradius/certs

@@ -10,7 +10,7 @@ etc/freeradius/hints
 etc/freeradius/huntgroups
 etc/freeradius/ldap.attrmap
 etc/freeradius/mods-available/*
-etc/freeradius/policy.conf
+etc/freeradius/policy.d/*
 etc/freeradius/policy.txt
 etc/freeradius/preproxy_users
 etc/freeradius/proxy.conf
@@ -20,6 +20,5 @@ etc/freeradius/users
 usr/lib/freeradius/rlm*.so
 usr/sbin/checkrad
 usr/sbin/freeradius
-usr/sbin/radwatch
 usr/sbin/raddebug
 usr/sbin/radmin
