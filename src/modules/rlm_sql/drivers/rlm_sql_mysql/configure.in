@@ -88,12 +88,12 @@ if test x$with_[]modname != xno; then
     dnl pthread stuff is usually in -lpthread
     dnl or in -lc_r, on *BSD
     if test "x$mysql_with_threads" = "xyes"; then
-	AC_CHECK_LIB(pthread, pthread_create,
+	AC_CHECK_LIB([pthread], [pthread_create],
 		     [ LIBS="-lpthread $LIBS" ],
-		     AC_CHECK_LIB(c_r, pthread_create,
+		     [ AC_CHECK_LIB(c_r, pthread_create,
 				  [ LIBS="-lc_r $LIBS" ],
 				  [ mysql_with_threads=no ]
-				  )
+				  ) ]
 		     )
     fi
 
@@ -103,8 +103,10 @@ if test x$with_[]modname != xno; then
 	    mysql_libs="$(mysql_config --libs_r)"
 	    old_LIBS="$LIBS"
 	    LIBS="$mysql_libs $LIBS"
+	    
 	    AC_MSG_CHECKING([for mysql_init in -lmysqlclient_r (using mysql_config)])
-	    AC_TRY_LINK_FUNC(mysql_init, have_libmysqlclient_r=yes)
+	    AC_TRY_LINK_FUNC([mysql_init], [have_libmysqlclient_r=yes])
+	    
 	    LIBS="$old_LIBS"
 	    if test "x$have_libmysqlclient_r" = "xyes"; then
 		AC_MSG_RESULT(yes)
@@ -131,8 +133,10 @@ if test x$with_[]modname != xno; then
 	    mysql_libs="$(mysql_config --libs)"
 	    old_LIBS="$LIBS"
 	    LIBS="$mysql_libs $LIBS"
+	    
 	    AC_MSG_CHECKING([for mysql_init in -lmysqlclient (using mysql_config)])
-	    AC_TRY_LINK_FUNC(mysql_init, have_libmysqlclient=yes)
+	    AC_TRY_LINK_FUNC([mysql_init],[have_libmysqlclient=yes])
+	    
 	    LIBS="$old_LIBS"
 	    if test "x$have_libmysqlclient" = "xyes"; then
 		AC_MSG_RESULT(yes)
