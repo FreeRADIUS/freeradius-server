@@ -100,7 +100,8 @@ define ADD_INSTALL_RULE.man
 
     # Install manual page ${1}
     ${2}/$(notdir ${1}): ${1} ${2}
-	@$(ECHO) INSTALL ${1}
+	@$(ECHO) INSTALL ${notdir ${1}}
+	@[ -d ${2} ] || $${PROGRAM_INSTALL} -d -m 755 ${2}
 	@$${PROGRAM_INSTALL} -c -m 644 ${1} ${2}/
 
 endef
