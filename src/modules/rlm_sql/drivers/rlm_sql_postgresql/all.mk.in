@@ -1,0 +1,10 @@
+TARGETNAME	= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		= $(TARGETNAME).a
+endif
+
+SOURCES		= sql_postgresql.c
+
+SRC_CFLAGS	= @postgresql_cflags@ -I${top_srcdir}/src/modules/rlm_sql
+TGT_LDLIBS	= @postgresql_ldflags@
