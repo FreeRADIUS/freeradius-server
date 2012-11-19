@@ -20,9 +20,8 @@
  * Copyright 2001 Koulik Andrei, Sandy Service
  */
 
-
-char sccsid[] =
-"$Id$ sandy module project\n Copyright 2001 Sandy Service\nCopyright 2001 Koulik Andrei";
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <fcntl.h>

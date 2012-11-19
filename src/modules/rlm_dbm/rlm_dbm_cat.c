@@ -20,6 +20,9 @@
  * Copyright 2001 Koulik Andrei, Sandy Service
  */
 
+#include <freeradius-devel/ident.h>
+RCSID("$Id$")
+
 #include <freeradius-devel/libradius.h>
 #include <fcntl.h>
 
