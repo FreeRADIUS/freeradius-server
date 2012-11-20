@@ -8,18 +8,14 @@ HEADERS	= conf.h conffile.h detail.h dhcp.h event.h features.h hash.h heap.h \
 	radutmp.h realms.h sha1.h stats.h sysutmp.h token.h \
 	udpfromto.h vmps.h vqp.h base64.h
 
-TARGET := src/include/radpaths.h
-
-src/include/radpaths.h: src/include/build-radpaths-h
-	@cd src/include && /bin/sh build-radpaths-h
-
 #
 #  Build dynamic headers by substituting various values from autoconf.h, these
 #  get installed with the library files, so external programs can tell what
 #  the server library was built with.
 #
 
-HEADERS_DY = src/include/features.h src/include/missing.h src/include/tls.h
+HEADERS_DY = src/include/features.h src/include/missing.h src/include/tls.h \
+	src/include/radpaths.h
 
 src/include/autoconf.sed: src/include/autoconf.h
 	@grep ^#define $< | sed 's,/\*\*/,1,;' | awk '{print "\
@@ -29,14 +25,21 @@ src/include/autoconf.sed: src/include/autoconf.h
 	s," $$2 ","$$3 ",g;"}' > $@
 
 src/include/features.h: src/include/features-h src/include/autoconf.h
+	@$(ECHO) HEADER $@
 	@cp $< $@
 	@grep "^#define[[:blank:]]\{1,\}WITH_" src/include/autoconf.h >> $@
 
 src/include/missing.h: src/include/missing-h src/include/autoconf.sed
+	@$(ECHO) HEADER $@
 	@sed -f src/include/autoconf.sed < $< > $@
 
 src/include/tls.h: src/include/tls-h src/include/autoconf.sed
+	@$(ECHO) HEADER $@
 	@sed -f src/include/autoconf.sed < $< > $@
+	
+src/include/radpaths.h: src/include/build-radpaths-h
+	@$(ECHO) HEADER $@
+	@cd src/include && /bin/sh build-radpaths-h
 
 all: $(HEADERS_DY)
 
