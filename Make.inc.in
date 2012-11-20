@@ -101,7 +101,7 @@ endif
 
 #
 #  This allows dlopen to do runtime checks for version mistmatches
-#  between what it was originally linked with the the library it's
+#  between what it was originally linked with, and the library it's
 #  actually loading.
 #
 LDFLAGS += -release=$(RADIUSD_VERSION_STRING)
