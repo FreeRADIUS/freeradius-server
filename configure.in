@@ -494,19 +494,19 @@ dnl #  1. Checks for programs
 dnl #
 dnl #############################################################
 
-CHECKRAD=checkrad.pl
+CHECKRAD=checkrad
 AC_PATH_PROG(PERL, perl, /usr/local/bin/perl)
 if test "x$ac_cv_path_PERL" = "x"; then
-  AC_MSG_WARN(perl not found - Simultaneous-Use and checkrad.pl may not work)
+  AC_MSG_WARN(perl not found - Simultaneous-Use and checkrad may not work)
 fi
 AC_PATH_PROG(SNMPGET, snmpget)
 if test "x$ac_cv_path_SNMPGET" = "x"; then
-  AC_MSG_WARN(snmpget not found - Simultaneous-Use and checkrad.pl may not work)
+  AC_MSG_WARN(snmpget not found - Simultaneous-Use and checkrad may not work)
 fi
 
 AC_PATH_PROG(SNMPWALK, snmpwalk)
 if test "x$ac_cv_path_SNMPWALK" = "x"; then
-  AC_MSG_WARN(snmpwalk not found - Simultaneous-Use and checkrad.pl may not work)
+  AC_MSG_WARN(snmpwalk not found - Simultaneous-Use and checkrad may not work)
 fi
 
 AC_PATH_PROG(RUSERS, rusers, /usr/bin/rusers)
@@ -1280,7 +1280,7 @@ dnl #############################################################
 
 AC_CONFIG_COMMANDS([stamp-h], [echo timestamp > src/include/stamp-h])
 AC_CONFIG_COMMANDS([build-radpaths-h], [(cd ./src/include && /bin/sh ./build-radpaths-h)])
-AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/main   && chmod +x checkrad.pl radlast radtest)])
+AC_CONFIG_COMMANDS([main-chmod], [(cd ./src/main   && chmod +x checkrad radlast radtest)])
 AC_CONFIG_COMMANDS([scripts-chmod], [(cd ./scripts    && chmod +x rc.radiusd radiusd.cron.daily radiusd.cron.monthly cryptpasswd)])
 
 dnl #
@@ -1306,7 +1306,7 @@ AC_OUTPUT(\
 	./src/include/build-radpaths-h \
 	./src/main/Makefile \
 	./src/main/radsniff.mk \
-	./src/main/checkrad.pl \
+	./src/main/checkrad \
 	./src/main/radlast \
 	./src/main/radtest \
 	./scripts/rc.radiusd \

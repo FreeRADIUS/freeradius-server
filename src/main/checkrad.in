@@ -1,6 +1,6 @@
 #!@PERL@
 #
-# checkrad.pl	See if a user is (still) logged in on a certain port.
+# checkrad	See if a user is (still) logged in on a certain port.
 #
 #		This is used by the FreeRADIUS server to check
 #		if its idea of a user logged in on a certain port/nas

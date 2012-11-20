@@ -1,2 +1,3 @@
-SUBMAKEFILES := radclient.mk radiusd.mk radsniff.mk radmin.mk radwho.mk
+SUBMAKEFILES := radclient.mk radiusd.mk radsniff.mk radmin.mk radattr.mk \
+radconf2xml.mk radwho.mk radlast.mk radtest.mk radzap.mk checkrad.mk dhclient.mk
 

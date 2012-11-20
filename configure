@@ -15595,7 +15595,7 @@ $as_echo "#define WITH_UDPFROMTO /**/" >>confdefs.h
 fi
 
 
-CHECKRAD=checkrad.pl
+CHECKRAD=checkrad
 # Extract the first word of "perl", so it can be a program name with args.
 set dummy perl; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -15638,8 +15638,8 @@ fi
 
 
 if test "x$ac_cv_path_PERL" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: perl not found - Simultaneous-Use and checkrad.pl may not work" >&5
-$as_echo "$as_me: WARNING: perl not found - Simultaneous-Use and checkrad.pl may not work" >&2;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: perl not found - Simultaneous-Use and checkrad may not work" >&5
+$as_echo "$as_me: WARNING: perl not found - Simultaneous-Use and checkrad may not work" >&2;}
 fi
 # Extract the first word of "snmpget", so it can be a program name with args.
 set dummy snmpget; ac_word=$2
@@ -15682,8 +15682,8 @@ fi
 
 
 if test "x$ac_cv_path_SNMPGET" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: snmpget not found - Simultaneous-Use and checkrad.pl may not work" >&5
-$as_echo "$as_me: WARNING: snmpget not found - Simultaneous-Use and checkrad.pl may not work" >&2;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: snmpget not found - Simultaneous-Use and checkrad may not work" >&5
+$as_echo "$as_me: WARNING: snmpget not found - Simultaneous-Use and checkrad may not work" >&2;}
 fi
 
 # Extract the first word of "snmpwalk", so it can be a program name with args.
@@ -15727,8 +15727,8 @@ fi
 
 
 if test "x$ac_cv_path_SNMPWALK" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: snmpwalk not found - Simultaneous-Use and checkrad.pl may not work" >&5
-$as_echo "$as_me: WARNING: snmpwalk not found - Simultaneous-Use and checkrad.pl may not work" >&2;}
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: snmpwalk not found - Simultaneous-Use and checkrad may not work" >&5
+$as_echo "$as_me: WARNING: snmpwalk not found - Simultaneous-Use and checkrad may not work" >&2;}
 fi
 
 # Extract the first word of "rusers", so it can be a program name with args.
@@ -18538,7 +18538,7 @@ USE_STATIC_LIBS=$enable_static
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/Makefile ./src/main/radsniff.mk ./src/main/checkrad.pl ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/radiusd.cron.daily ./scripts/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
+  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/Makefile ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/radiusd.cron.daily ./scripts/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -19626,7 +19626,7 @@ do
     "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
     "./src/main/Makefile") CONFIG_FILES="$CONFIG_FILES ./src/main/Makefile" ;;
     "./src/main/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/main/radsniff.mk" ;;
-    "./src/main/checkrad.pl") CONFIG_FILES="$CONFIG_FILES ./src/main/checkrad.pl" ;;
+    "./src/main/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/main/checkrad" ;;
     "./src/main/radlast") CONFIG_FILES="$CONFIG_FILES ./src/main/radlast" ;;
     "./src/main/radtest") CONFIG_FILES="$CONFIG_FILES ./src/main/radtest" ;;
     "./scripts/rc.radiusd") CONFIG_FILES="$CONFIG_FILES ./scripts/rc.radiusd" ;;
@@ -20988,7 +20988,7 @@ _LT_EOF
  ;;
     "stamp-h":C) echo timestamp > src/include/stamp-h ;;
     "build-radpaths-h":C) (cd ./src/include && /bin/sh ./build-radpaths-h) ;;
-    "main-chmod":C) (cd ./src/main   && chmod +x checkrad.pl radlast radtest) ;;
+    "main-chmod":C) (cd ./src/main   && chmod +x checkrad radlast radtest) ;;
     "scripts-chmod":C) (cd ./scripts    && chmod +x rc.radiusd radiusd.cron.daily radiusd.cron.monthly cryptpasswd) ;;
 
   esac
