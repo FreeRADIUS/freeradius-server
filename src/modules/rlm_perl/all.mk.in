@@ -12,5 +12,5 @@ TGT_LDLIBS	= @perl_ldflags@
 install: install.rlm_perl.scripts
 
 .PHONY: install.rlm_perl.scripts
-install.rlm_perl.scripts:
-	@$(INSTALL) -m 755 src/modules/rlm_perl/example.pl $(R)$(raddbdir)
+install.rlm_perl.scripts: install.raddbdir
+	@$(INSTALL) -m 755 src/modules/rlm_perl/example.pl $(R)$(raddbdir)/
