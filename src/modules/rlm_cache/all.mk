@@ -1,3 +1,5 @@
-SOURCES := rlm_cache.c
+TARGET		:= rlm_cache.a
+SOURCES		:= rlm_cache.c
 
-TARGET := rlm_cache.a
+TGT_LDLIBS	:= $(LIBS)
+
