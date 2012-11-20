@@ -82,7 +82,7 @@ define ADD_TARGET_RULE.la
     ${1}: $${${1}_BUILD}/${1}
 
     # Create libtool library ${1}
-    $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PREREQS}
+    $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRLIBS}
 	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    @$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
@@ -123,7 +123,7 @@ define ADD_RELINK_RULE.la
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_BUILD}/${1}
 
     # used to fix up RPATH for ${1} on install.
-    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PREREQS}
+    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRLIBS}
 	    @$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
 	    @$${${1}_LINKER} -o $${${1}_BUILD}/$${${1}_RELINK} $${RELINK_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS}

@@ -195,7 +195,7 @@ define ADD_TARGET_RULE.a
     ${1}: $${${1}_BUILD}/${1}
 
     # Create static library ${1}
-    $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PREREQS}
+    $${${1}_BUILD}/${1}: $${${1}_OBJS} $${${1}_PRLIBS}
 	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    @$${AR} $${ARFLAGS} $${${1}_BUILD}/${1} $${${1}_OBJS}
