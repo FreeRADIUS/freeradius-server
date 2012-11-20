@@ -78,10 +78,13 @@ install.bindir:
 .PHONY: install.sbindir
 install.sbindir:
 	@[ -d $(R)$(sbindir) ] || $(INSTALL) -d -m 755 $(R)$(sbindir)
+	
+.PHONY: install.raddbdir
+install.raddbdir:
+	@[ -d $(R)$(raddbdir) ] || $(INSTALL) -d -m 755 $(R)$(raddbdir)
 
 .PHONY: install.dirs
 install.dirs: install.bindir install.sbindir
-	@$(INSTALL) -d -m 755	$(R)$(raddbdir)
 	@$(INSTALL) -d -m 755	$(R)$(mandir)
 	@$(INSTALL) -d -m 755	$(R)$(RUNDIR)
 	@$(INSTALL) -d -m 700	$(R)$(logdir)
