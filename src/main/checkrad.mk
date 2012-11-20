@@ -1,7 +1,5 @@
-install: install.checkrad
+install: $(R)$(bindir)/checkrad
 
-.PHONY: install.checkrad
-
-install.checkrad:
-	@echo INSTALL checkrad
-	@$(INSTALL) -m 755 src/main/checkrad $(R)$(sbindir)
+$(R)$(bindir)/checkrad: install.bindir src/main/checkrad
+	@echo INSTALL $(notdir $<)
+	@$(INSTALL) -m 755 $< $(R)$(bindir)

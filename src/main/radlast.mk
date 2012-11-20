@@ -1,7 +1,5 @@
-install: install.radlast
+install: $(R)$(bindir)/radlast
 
-.PHONY: install.radlast
-
-install.radlast:
-	@echo INSTALL radlast
-	@$(INSTALL) -m 755 src/main/radlast $(R)$(bindir)
+$(R)$(bindir)/radlast: install.bindir src/main/radlast
+	@echo INSTALL $(notdir $<)
+	@$(INSTALL) -m 755 $< $(R)$(bindir)

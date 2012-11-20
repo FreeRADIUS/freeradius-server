@@ -1,7 +1,5 @@
-install: install.radzap
+install: $(R)$(bindir)/radzap
 
-.PHONY: install.radzap
-
-install.radzap:
-	@echo INSTALL radzap
-	@$(INSTALL) -m 755 src/main/radzap $(R)$(bindir)
+$(R)$(bindir)/radzap: install.bindir src/main/radzap
+	@echo INSTALL $(notdir $<)
+	@$(INSTALL) -m 755 $< $(R)$(bindir)

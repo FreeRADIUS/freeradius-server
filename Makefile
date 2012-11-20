@@ -71,10 +71,13 @@ tests:
 #
 export DESTDIR := $(R)
 
+.PHONY: install.bindir
+install.bindir:
+	@[ -d $(R)$(bindir) ] || $(INSTALL) -d -m 755 $(R)$(bindir)
+
 .PHONY: install.dirs
-install.dirs:
+install.dirs: install.bindir
 	@$(INSTALL) -d -m 755	$(R)$(sbindir)
-	@$(INSTALL) -d -m 755	$(R)$(bindir)
 	@$(INSTALL) -d -m 755	$(R)$(raddbdir)
 	@$(INSTALL) -d -m 755	$(R)$(mandir)
 	@$(INSTALL) -d -m 755	$(R)$(RUNDIR)
