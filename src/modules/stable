@@ -40,7 +40,6 @@ rlm_soh
 rlm_sql
 rlm_sqlcounter
 rlm_sqlippool
-rlm_sql_log
 rlm_unix
 rlm_sometimes
 rlm_wimax
