@@ -104,7 +104,7 @@ endif
 #  between what it was originally linked with, and the library it's
 #  actually loading.
 #
-LDFLAGS += -release=$(RADIUSD_VERSION_STRING)
+#LDFLAGS += -release=$(RADIUSD_VERSION_STRING)
 
 MODULES		= @MODULES@
 HOSTINFO	= @HOSTINFO@
@@ -149,7 +149,7 @@ endif
 
 ifneq "$(LIBTOOL)" ""
 COMPILE.c	:= $(LIBTOOL) --quiet --mode=compile $(CC) 
-LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) $(LDFLAGS) -rpath $(libdir) -o
+LINK.lib	:= $(LIBTOOL) --quiet --mode=link $(CC) -release=$(RADIUSD_VERSION_STRING) -rpath $(libdir) -o
 LO		:= lo
 LA		:= la
 else

@@ -3,6 +3,7 @@
 #
 # Version:      $Id$
 #
+TARGET		:= libfreeradius-radius.a
 
 SOURCES		:= dict.c filters.c hash.c hmac.c hmacsha1.c isaac.c log.c \
 		  misc.c missing.c md4.c md5.c print.c radius.c rbtree.c \
@@ -16,4 +17,8 @@ INCLUDES	= ../include/radius.h ../include/libradius.h \
 
 SRC_CFLAGS	:= -D_LIBRADIUS -I$(top_builddir)/src
 
-TARGET		:= libfreeradius-radius.a
+# System libraries discovered by our top level configure script, links things
+# like pthread and the regexp libraries.
+TGT_LDLIBS	:= $(LIBS)
+
+
