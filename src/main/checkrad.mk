@@ -1,5 +1,5 @@
-install: $(R)$(bindir)/checkrad
+install: $(R)$(sbindir)/checkrad
 
-$(R)$(bindir)/checkrad: src/main/checkrad install.bindir
+$(R)$(sbindir)/checkrad: src/main/checkrad install.sbindir
 	@echo INSTALL $(notdir $<)
-	@$(INSTALL) -m 755 $< $(R)$(bindir)
+	@$(INSTALL) -m 755 $< $(R)$(sbindir)

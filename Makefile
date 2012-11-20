@@ -75,9 +75,12 @@ export DESTDIR := $(R)
 install.bindir:
 	@[ -d $(R)$(bindir) ] || $(INSTALL) -d -m 755 $(R)$(bindir)
 
+.PHONY: install.sbindir
+install.sbindir:
+	@[ -d $(R)$(sbindir) ] || $(INSTALL) -d -m 755 $(R)$(sbindir)
+
 .PHONY: install.dirs
-install.dirs: install.bindir
-	@$(INSTALL) -d -m 755	$(R)$(sbindir)
+install.dirs: install.bindir install.sbindir
 	@$(INSTALL) -d -m 755	$(R)$(raddbdir)
 	@$(INSTALL) -d -m 755	$(R)$(mandir)
 	@$(INSTALL) -d -m 755	$(R)$(RUNDIR)
