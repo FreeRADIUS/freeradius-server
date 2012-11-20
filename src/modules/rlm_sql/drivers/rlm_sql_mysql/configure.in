@@ -1,5 +1,5 @@
 AC_PREREQ([2.59])
-AC_INIT(sql_mysql.c)
+AC_INIT(rlm_sql_mysql.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_mysql])
 AC_CONFIG_HEADER(config.h)

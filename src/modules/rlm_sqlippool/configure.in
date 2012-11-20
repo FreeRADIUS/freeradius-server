@@ -20,5 +20,10 @@ else
 	echo \*\*\* module modname is disabled.
 fi
 
+sqlippool_ldflags=$SMART_LIBS
+sqlippool_cflags=$SMART_CFLAGS
+AC_SUBST(sqlippool_ldflags)
+AC_SUBST(sqlippool_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)
+AC_OUTPUT(all.mk)

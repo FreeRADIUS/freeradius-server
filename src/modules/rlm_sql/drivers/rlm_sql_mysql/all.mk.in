@@ -1,10 +1,11 @@
-TARGETNAME	= @targetname@
+TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		= sql_mysql.c
+SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	= @sql_mysql_cflags@ -I${top_srcdir}/src/modules/rlm_sql
-TGT_LDLIBS	= @sql_mysql_ldflags@
+SRC_CFLAGS	:= @sql_mysql_cflags@
+SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
+TGT_LDLIBS	:= @sql_mysql_ldflags@

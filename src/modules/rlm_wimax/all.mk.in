@@ -1,0 +1,10 @@
+TARGETNAME	:= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		:= $(TARGETNAME).a
+endif
+
+SOURCES		:= $(TARGETNAME).c
+
+SRC_CFLAGS	:= @wimax_cflags@
+TGT_LDLIBS	:= @wimax_ldflags@

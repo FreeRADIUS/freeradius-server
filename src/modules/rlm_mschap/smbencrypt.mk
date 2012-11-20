@@ -1,6 +1,9 @@
-TGT_PREREQS := libfreeradius-radius.a
-SOURCES := smbencrypt.c smbdes.c
+TARGET		:= smbencrypt
+SOURCES		:= smbencrypt.c smbdes.c
 
-TGT_LDLIBS := $(LIBS)
+TGT_PREREQS	:= libfreeradius-radius.a
+TGT_PRLIBS	:= ${LIBS}
 
-TARGET := smbencrypt
+TGT_LDLIBS	:= $(LIBS)
+
+

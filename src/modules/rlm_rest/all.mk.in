@@ -1,11 +1,14 @@
-SOURCES := rlm_rest.c rest.c
-
-SRC_CFLAGS	= @rest_cflags@
-TGT_LDLIBS	= @rest_ldflags@
-
-TARGETNAME := @targetname@
+TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME).a
 endif
+
+SOURCES		:= $(TARGETNAME).c rest.c
+
+SRC_CFLAGS	:= @rest_cflags@
+TGT_LDLIBS	:= @rest_ldflags@
+
+
+
 

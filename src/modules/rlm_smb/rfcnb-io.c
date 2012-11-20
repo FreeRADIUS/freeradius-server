@@ -45,18 +45,14 @@ RCSID("$Id$")
 
 int RFCNB_Timeout = 0;    /* Timeout in seconds ... */
 
-void rfcnb_alarm(int sig)
-
+static void rfcnb_alarm(int sig)
 {
-
   fprintf(stderr, "IO Timed out ...\n");
-
 }
 
 /* Set timeout value and setup signal handling */
 
 int RFCNB_Set_Timeout(int seconds)
-
 {
   /* If we are on a Bezerkeley system, use sigvec, else sigaction */
 #ifndef SA_RESTART
@@ -95,8 +91,7 @@ int RFCNB_Set_Timeout(int seconds)
 /* Discard the rest of an incoming packet as we do not have space for it
    in the buffer we allocated or were passed ...                         */
 
-int RFCNB_Discard_Rest(struct RFCNB_Con *con, int len)
-
+static int RFCNB_Discard_Rest(struct RFCNB_Con *con, int len)
 { char temp[100];   /* Read into here */
   int rest, this_read, bytes_read;
 
@@ -144,7 +139,6 @@ int RFCNB_Discard_Rest(struct RFCNB_Con *con, int len)
 */
 
 int RFCNB_Put_Pkt(struct RFCNB_Con *con, struct RFCNB_Pkt *pkt, int len)
-
 { int len_sent, tot_sent, this_len;
   struct RFCNB_Pkt *pkt_ptr;
   char *this_data;

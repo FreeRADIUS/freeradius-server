@@ -1,10 +1,11 @@
-TARGETNAME	= @targetname@
+TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		= sql_iodbc.c
+SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	= @sql_iodbc_cflags@ -I${top_srcdir}/src/modules/rlm_sql
-TGT_LDLIBS	= @sql_iodbc_ldflags@
+SRC_CFLAGS	:= @sql_iodbc_cflags@
+SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
+TGT_LDLIBS	:= @sql_iodbc_ldflags@

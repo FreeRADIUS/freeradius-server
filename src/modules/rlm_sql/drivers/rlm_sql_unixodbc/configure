@@ -582,7 +582,7 @@ PACKAGE_STRING=
 PACKAGE_BUGREPORT=
 PACKAGE_URL=
 
-ac_unique_file="sql_unixodbc.c"
+ac_unique_file="rlm_sql_unixodbc.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname

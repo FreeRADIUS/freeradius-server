@@ -1,2 +1,2 @@
-TARGET	= rlm_preprocess.a
-SOURCES	= rlm_preprocess.c
+TARGET		:= rlm_preprocess.a
+SOURCES		:= rlm_preprocess.c

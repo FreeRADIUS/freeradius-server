@@ -1,3 +1,2 @@
-SOURCES := rlm_pap.c
-
-TARGET := rlm_pap.a
+SOURCES		:= rlm_pap.c
+TARGET		:= rlm_pap.a

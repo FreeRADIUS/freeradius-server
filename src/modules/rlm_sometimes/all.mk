@@ -1,3 +1,2 @@
-TARGET		:= rlm_sometimess.a
-
+TARGET		:= rlm_sometimes.a
 SOURCES		:= rlm_sometimes.c

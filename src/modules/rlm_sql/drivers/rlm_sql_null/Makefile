@@ -1,7 +1,7 @@
 include ../../../../../Make.inc
 
 TARGET         =
-SRCS           = sql_null.c
+SRCS           = rlm_sql_null.c
 RLM_SQL_CFLAGS =
 RLM_SQL_LIBS   =
 

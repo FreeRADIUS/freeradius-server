@@ -3735,8 +3735,8 @@ done
 
 
 	if test "$ac_cv_header_json_json_h" != "yes"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without JSON support. Requires: json-c." >&5
-$as_echo "$as_me: WARNING: silently building without JSON support. Requires: json-c." >&2;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without JSON support. requires: json-c." >&5
+$as_echo "$as_me: WARNING: silently building without JSON support. requires: json-c." >&2;}
 	fi
 
 	targetname=rlm_rest     # keep this!  Don't change!
@@ -3763,7 +3763,11 @@ rest_ldflags="${LIBCURL} ${rest_ldflags}"
 
 
 
-ac_config_files="$ac_config_files Makefile"
+
+  unset ac_cv_env_LIBS_set
+  unset ac_cv_env_LIBS_value
+
+  ac_config_files="$ac_config_files Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -5037,6 +5041,7 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
+
 
 ac_config_files="$ac_config_files all.mk"
 

@@ -1,7 +1,7 @@
 include ../../../../../Make.inc
 
 TARGET		= @targetname@
-SRCS		= sql_postgresql.c
+SRCS		= rlm_sql_postgresql.c
 RLM_SQL_CFLAGS	= @postgresql_cflags@
 RLM_SQL_LIBS	= @postgresql_ldflags@
 

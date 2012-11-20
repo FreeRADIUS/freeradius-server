@@ -1,0 +1,13 @@
+TARGETNAME	:= @targetname@
+
+ifneq "$(TARGETNAME)" ""
+TARGET		:= $(TARGETNAME).a
+endif
+
+SOURCES		:= $(TARGETNAME).c
+
+SRC_CFLAGS	:= @ruby_cflags@
+TGT_LDLIBS	:= @ruby_ldflags@
+
+$(R)$(raddbdir)/example.rb: src/modules/rlm_ruby/example.rb
+	@$(INSTALL) -m 755 src/modules/rlm_ruby/example.rb $(R)$(raddbdir)/

@@ -7,7 +7,7 @@ include ../../../../../Make.inc
 
 TARGET		=
 #TARGET         = rlm_sql_sybase
-SRCS           = sql_sybase.c
+SRCS           = rlm_sql_sybase.c
 RLM_SQL_CFLAGS =   -I/opt/sybase/OCS-12_0/include
 RLM_SQL_LIBS   =  -L/opt/sybase/OCS-12_0/lib -ltcl -lcomn -lintl -lnsl -ldl -lm -lcs -lct
 

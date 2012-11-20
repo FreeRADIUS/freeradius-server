@@ -1,7 +1,7 @@
 include ../../../../../Make.inc
 
 TARGET         = @targetname@
-SRCS           = sql_sqlite.c
+SRCS           = rlm_sql_sqlite.c
 RLM_SQL_CFLAGS = @sql_sqlite_cflags@
 RLM_SQL_LIBS   = @sql_sqlite_ldflags@
 

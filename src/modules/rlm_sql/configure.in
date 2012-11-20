@@ -92,3 +92,4 @@ AC_OUTPUT(\
         ./Makefile \
         ./drivers/Makefile
 )
+AC_OUTPUT(all.mk)

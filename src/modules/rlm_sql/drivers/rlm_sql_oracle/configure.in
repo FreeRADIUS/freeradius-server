@@ -1,4 +1,4 @@
-AC_INIT(sql_oracle.c)
+AC_INIT(rlm_sql_oracle.c)
 AC_REVISION($Revision: 1.10 $)
 AC_DEFUN(modname,[rlm_sql_oracle])
 
@@ -162,3 +162,4 @@ AC_SUBST(sql_oracle_ldflags)
 AC_SUBST(sql_oracle_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)
+AC_OUTPUT(all.mk)

@@ -1,10 +1,13 @@
-TARGETNAME	= @targetname@
+TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		= rlm_python.c
+SOURCES		:= $(TARGETNAME).c
 
-TGT_LDLIBS	= @python_ldflags@
-SRC_CFLAGS	= @python_cflags@
+TGT_LDLIBS	:= @python_ldflags@
+SRC_CFLAGS	:= @python_cflags@
+
+$(R)$(raddbdir)/example.py: src/modules/rlm_python/example.py
+	@$(INSTALL) -m 755 src/modules/rlm_python/example.py $(R)$(raddbdir)/

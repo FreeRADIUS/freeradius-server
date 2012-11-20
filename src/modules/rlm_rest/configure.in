@@ -31,7 +31,7 @@ if test x$with_[]modname != xno; then
 	AC_CHECK_HEADERS(json/json.h)
 	
 	if test "$ac_cv_header_json_json_h" != "yes"; then
-		AC_MSG_WARN([silently building without JSON support. Requires: json-c.])
+		AC_MSG_WARN([silently building without JSON support. requires: json-c.])
 	fi
 
 	targetname=modname     # keep this!  Don't change!

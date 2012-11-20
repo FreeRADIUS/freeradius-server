@@ -1,5 +1,5 @@
 AC_PREREQ([2.59])
-AC_INIT(sql_db2.c)
+AC_INIT(rlm_sql_db2.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_db2])
 
@@ -93,3 +93,4 @@ AC_SUBST(sql_ibmdb2_ldflags)
 AC_SUBST(sql_ibmdb2_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)
+AC_OUTPUT(all.mk)

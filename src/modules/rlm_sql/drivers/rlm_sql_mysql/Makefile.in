@@ -1,7 +1,7 @@
 include ../../../../../Make.inc
 
 TARGET         = @targetname@
-SRCS           = sql_mysql.c
+SRCS           = rlm_sql_mysql.c
 RLM_SQL_CFLAGS = @sql_mysql_cflags@
 RLM_SQL_LIBS   = @sql_mysql_ldflags@
 

@@ -1,5 +1,5 @@
 AC_PREREQ([2.53])
-AC_INIT(otp_rlm.c)
+AC_INIT(rlm_otp.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_otp])
 
@@ -87,3 +87,4 @@ AC_SUBST(otp_ldflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(Makefile)  # keep this!  Don't change!
+AC_OUTPUT(all.mk)

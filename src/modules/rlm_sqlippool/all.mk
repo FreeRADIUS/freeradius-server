@@ -1,4 +1,11 @@
-TARGET      = rlm_sqlippool.a
-SOURCES        = rlm_sqlippool.c
+TARGETNAME	:= rlm_sqlippool
 
-SRC_INCDIRS := $(top_builddir)/src/modules/rlm_sql
+ifneq "$(TARGETNAME)" ""
+TARGET		:= $(TARGETNAME).a
+endif
+
+SOURCES		:= $(TARGETNAME).c
+
+SRC_CFLAGS	:= 
+SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_sql
+TGT_LDLIBS	:= 

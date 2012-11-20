@@ -1,12 +1,11 @@
-TARGETNAME	= @targetname@
+TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		= rlm_krb5.c
+SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	= @krb5_cflags@
-TGT_LDLIBS	= @krb5_ldflags@
-
+SRC_CFLAGS	:= @krb5_cflags@
 SRC_CFLAGS	+= -I/usr/include/et -DKRB5_DEPRECATED
+TGT_LDLIBS	:= @krb5_ldflags@

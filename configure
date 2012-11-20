@@ -18026,16 +18026,16 @@ $as_echo "yes.  Using $devflags" >&6; }
   if test "x$EXPERIMENTAL" != "xno"; then
     EXPERIMENTAL=yes
   fi
-
-    if test "x$GIT" = "xyes"; then
-	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  fi
 else
   devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no." >&5
 $as_echo "no." >&6; }
+fi
+
+if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
+  RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
 fi
 
 

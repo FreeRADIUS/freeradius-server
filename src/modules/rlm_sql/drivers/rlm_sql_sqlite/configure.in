@@ -1,5 +1,5 @@
 AC_PREREQ([2.59])
-AC_INIT(sql_sqlite.c)
+AC_INIT(rlm_sql_sqlite.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_sql_sqlite])
 
@@ -113,3 +113,4 @@ AC_SUBST(sql_sqlite_ldflags)
 AC_SUBST(sql_sqlite_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)
+AC_OUTPUT(all.mk)

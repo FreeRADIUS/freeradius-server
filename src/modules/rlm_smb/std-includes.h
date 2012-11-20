@@ -60,8 +60,10 @@ typedef short int16;
 #include <unistd.h>
 #endif
 
+#ifndef TRUE
 #define TRUE 1
 #define FALSE 0
+#endif
 
 /* Pick up define for INADDR_NONE */
 

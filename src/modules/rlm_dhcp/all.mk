@@ -1,2 +1,2 @@
-TARGET	= rlm_dhcp.a
-SOURCES	= rlm_dhcp.c
+TARGET		:= rlm_dhcp.a
+SOURCES		:= rlm_dhcp.c

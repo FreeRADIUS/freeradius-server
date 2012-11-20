@@ -1,3 +1,4 @@
-SOURCES := rlm_chap.c
+TARGET		:= rlm_chap.a
+SOURCES		:= rlm_chap.c
 
-TARGET := rlm_chap.a
+

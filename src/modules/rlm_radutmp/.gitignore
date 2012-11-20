@@ -1,2 +1,3 @@
 Makefile
 config.h
+all.mk

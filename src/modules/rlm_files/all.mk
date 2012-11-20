@@ -1,2 +1,2 @@
-TARGET	= rlm_files.a
-SOURCES	= rlm_files.c
+TARGET		:= rlm_files.a
+SOURCES		:= rlm_files.c

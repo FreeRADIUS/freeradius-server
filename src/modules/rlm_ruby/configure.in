@@ -47,19 +47,15 @@ if test x$with_[]modname != xno; then
 	)
 
 	if test x$fail = x; then
-		#We use fetch, cause [] are disapearing somewere
-		RB_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('prefix')"`
-		RB_EXEC_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('exec_prefix')"`
-		changequote(<<, >>)dnl
-		RB_VERSION=`${RUBYBIN} -e 'puts RUBY_VERSION'`
-		changequote([, ])dnl
-#		RB_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBRUBY')"`
-#		RB_LIB_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('libdir')"`
-#		RB_EXTRA_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBS')"`
-		RB_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBRUBYARG_SHARED')"`
-		RB_INC_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('includedir')"`
-		RB_CFLAGS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('CFLAGS')"`
-		RB_ARCH_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('archdir')"`
+		RB_PREFIX=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('prefix')"`]
+		RB_EXEC_PREFIX=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('exec_prefix')"`]
+		RB_VERSION=[`${RUBYBIN} -e 'puts RUBY_VERSION'`]
+#		RB_LIB_DIR=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('libdir')"`]
+#		RB_EXTRA_LIBS=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBS')"`]
+		RB_LIBS=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBRUBYARG_SHARED')" | sed 's/\s*-arch [^ ]*//g'`]
+		RB_INC_DIR=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('includedir')"`]
+		RB_CFLAGS=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('CFLAGS')" | sed 's/\s*-arch [^ ]*//g'`]
+		RB_ARCH_DIR=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('archdir')"`]
 
 		old_CFLAGS=$CFLAGS
 		CFLAGS="$CFLAGS $RB_CFLAGS -I${RB_ARCH_DIR} -I${RB_INC_DIR}"
@@ -102,3 +98,4 @@ AC_SUBST(ruby_cflags)
 AC_SUBST(ruby_headers)
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)
+AC_OUTPUT(all.mk)
