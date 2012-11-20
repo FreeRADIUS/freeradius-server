@@ -182,7 +182,6 @@ binary-common:
 	dh_installchangelogs doc/ChangeLog
 	dh_installdocs
 	dh_installexamples
-	chmod -x debian/freeradius/usr/share/doc/freeradius/examples/example.pl
 	dh_installlogrotate	
 	dh_installpam --name=radiusd 
 	dh_installinit --noscripts
