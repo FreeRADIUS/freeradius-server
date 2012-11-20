@@ -15,4 +15,4 @@ include ../rules.mak
 $(LT_OBJS): $(HEADERS)
 
 install-scripts:
-	$(INSTALL) -m 755 example.pl $(R)$(raddbdir)
+	@$(INSTALL) -m 755 src/modules/rlm_perl/example.pl $(R)$(raddbdir)

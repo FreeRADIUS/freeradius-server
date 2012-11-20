@@ -4,4 +4,4 @@ install: install.radlast
 
 install.radlast:
 	@echo INSTALL radlast
-	$(INSTALL) -m 755 src/main/radlast $(R)$(bindir)
+	@$(INSTALL) -m 755 src/main/radlast $(R)$(bindir)

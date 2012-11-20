@@ -2,8 +2,8 @@
 # $Id$
 #
 
-SOURCES		:= rlm_dbm_parser.c
 TARGET		:= rlm_dbm_parser
+SOURCES		:= rlm_dbm_parser.c
 TGT_PREREQS	:= libfreeradius-radius.a
 
 SRC_CFLAGS 	:= $(rlm_dbm_CFLAGS)

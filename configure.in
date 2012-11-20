@@ -1025,16 +1025,16 @@ if test "x$developer" = "xyes"; then
   if test "x$EXPERIMENTAL" != "xno"; then
     EXPERIMENTAL=yes
   fi
-  
-  dnl append the current git hash onto the version string
-  if test "x$GIT" = "xyes"; then
-	RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
-  fi
 else
   devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
   AC_MSG_RESULT(no.)
+fi
+
+dnl append the current git hash onto the version string
+if test "x$GIT" = "xyes"; then
+  RADIUSD_VERSION_COMMIT=`test -f .git && git log --pretty=format:'%h' -n 1`
 fi
 
 FR_TLS

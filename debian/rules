@@ -15,10 +15,10 @@ export DH_VERBOSE=1
 
 .NOTPARALLEL:
 
-SHELL           =/bin/bash
+SHELL           = /bin/bash
 
 package         = freeradius
-freeradius_dir  = $(CURDIR)/debian/tmp/
+freeradius_dir  = $(CURDIR)/debian/tmp
 
 mandir          = /usr/share/man
 libdir          = /usr/lib/$(package)
