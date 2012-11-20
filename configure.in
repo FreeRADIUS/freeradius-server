@@ -546,10 +546,10 @@ dnl #
   AC_CHECK_LIB(pthread, pthread_create,
 		[ CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
                   LIBS="-lpthread $LIBS" ],
-		AC_CHECK_LIB(c_r, pthread_create,
+		[ AC_CHECK_LIB(c_r, pthread_create,
 			    [ CFLAGS="$CFLAGS -pthread -D_THREAD_SAFE" ],
 			    [ WITH_THREADS="no" ]
-			    )
+			    ) ]
 		)
 fi
 

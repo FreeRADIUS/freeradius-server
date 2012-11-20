@@ -15987,7 +15987,7 @@ if test "x$ac_cv_lib_pthread_pthread_create" = xyes; then :
    CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
                   LIBS="-lpthread $LIBS"
 else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc_r" >&5
+   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc_r" >&5
 $as_echo_n "checking for pthread_create in -lc_r... " >&6; }
 if ${ac_cv_lib_c_r_pthread_create+:} false; then :
   $as_echo_n "(cached) " >&6
