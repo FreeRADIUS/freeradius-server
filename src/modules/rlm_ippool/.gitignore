@@ -1,3 +1,4 @@
 Makefile
+all.mk
 config.h
 rlm_ippool_tool
