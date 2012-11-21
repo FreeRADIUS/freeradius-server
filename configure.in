@@ -189,6 +189,10 @@ AC_ARG_ENABLE(boilermake,
 
 AC_SUBST(boilermake)
 
+if test "x$boilermake" == "xyes"; then
+	LIBTOOL=[JLIBTOOL]
+fi
+
 dnl extra argument: --with-docdir
 docdir='${datadir}/doc/freeradius'
 AC_MSG_CHECKING(docdir)

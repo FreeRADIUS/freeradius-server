@@ -172,6 +172,10 @@ LA		:= dylib
 endif
 endif
 
+
+BOILER = @boilermake@
+
+ifneq "$(BOILER)" "yes"
 all: $(top_srcdir)/scripts/jlibtool
 
 $(top_srcdir)/scripts/jlibtool: $(top_srcdir)/scripts/jlibtool.c
@@ -188,5 +192,4 @@ endif
 ifeq "$(LIBTOOL)" ""
 $(error Building FreeRADIUS requires libtool)
 endif
-
-BOILER = @boilermake@
+endif

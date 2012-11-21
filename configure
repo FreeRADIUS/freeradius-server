@@ -15270,6 +15270,10 @@ fi
 
 
 
+if test "x$boilermake" == "xyes"; then
+	LIBTOOL=JLIBTOOL
+fi
+
 docdir='${datadir}/doc/freeradius'
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking docdir" >&5
 $as_echo_n "checking docdir... " >&6; }
