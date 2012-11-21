@@ -117,7 +117,7 @@ endef
 #
 ifeq "${CPP_MAKEDEPEND}" "yes"
 define ADD_OBJECT_RULE
-$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1}
+$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1} ${JLIBTOOL}
 	${2}
 	$${CPP} $${CPPFLAGS} $${SRC_INCDIRS} $${SRC_DEFS} $$< | sed \
 	  -n 's,^\# *[0-9][0-9]* *"\([^"]*\)".*,$$@: \1,p' > $${BUILD_DIR}/objs/$$*.d
@@ -126,7 +126,7 @@ endef
 
 else
 define ADD_OBJECT_RULE
-$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1}
+$${BUILD_DIR}/objs/%.${OBJ_EXT} $${BUILD_DIR}/objs/%.d: ${1} ${JLIBTOOL}
 	${2}
 ${FILTER_DEPENDS}
 endef
