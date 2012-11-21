@@ -86,7 +86,8 @@ define ADD_TARGET_RULE.la
 	    @$(strip mkdir -p $(dir $${${1}_BUILD}/${1}))
 	    @$(ECHO) LINK $${${1}_BUILD}/${1}
 	    @$${${1}_LINKER} -o $${${1}_BUILD}/${1} $${RPATH_FLAGS} $${LDFLAGS} \
-                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS}
+                $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS} \
+		$${${1}_PRLIBS}
 	    @$${${1}_POSTMAKE}
 
 endef
