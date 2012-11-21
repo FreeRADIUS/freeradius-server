@@ -36,12 +36,12 @@ src/include/missing.h: src/include/missing-h src/include/autoconf.sed
 src/include/tls.h: src/include/tls-h src/include/autoconf.sed
 	@$(ECHO) HEADER $@
 	@sed -f src/include/autoconf.sed < $< > $@
-	
+
 src/include/radpaths.h: src/include/build-radpaths-h
 	@$(ECHO) HEADER $@
 	@cd src/include && /bin/sh build-radpaths-h
 
-all: $(HEADERS_DY)
+${BUILD_DIR}/make/jlibtool: $(HEADERS_DY)
 
 #
 #  Installation
