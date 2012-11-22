@@ -35,10 +35,10 @@ define ADD_INSTALL_RULE.exe
     install: $${${1}_INSTALLDIR}/$(notdir ${1})
 
     # Install executable ${1}
-    $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/$${RELINK}${1}
+    $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/${1}
 	@$(ECHO) INSTALL ${1}
 	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
-	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/bin/$${RELINK}${1} $${${1}_INSTALLDIR}/
+	@$${PROGRAM_INSTALL} -c -m 755 $${BUILD_DIR}/bin/${1} $${${1}_INSTALLDIR}/
 	@$${${1}_POSTINSTALL}
 
 endef
@@ -78,10 +78,10 @@ define ADD_INSTALL_RULE.la
     install: $${${1}_INSTALLDIR}/$(notdir ${1})
 
     # Install libtool library ${1}
-    $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/$${RELINK}${1}
+    $${${1}_INSTALLDIR}/$(notdir ${1}): $${${1}_BUILD}/${1}
 	@$(ECHO) INSTALL ${1}
 	@$${PROGRAM_INSTALL} -d -m 755 $${${1}_INSTALLDIR}
-	@$${PROGRAM_INSTALL} -c -m 755 $${RELINK_FLAGS_MIN} $${BUILD_DIR}/lib/$${RELINK}${1} $${${1}_INSTALLDIR}/
+	@$${PROGRAM_INSTALL} -c -m 755 $${RELINK_FLAGS_MIN} $${BUILD_DIR}/lib/${1} $${${1}_INSTALLDIR}/
 	@$${${1}_POSTINSTALL}
 
 endef

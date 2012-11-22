@@ -98,15 +98,12 @@ endef
 #   USE WITH EVAL
 #
 define ADD_RELINK_RULE.exe
-    ${1}: $${${1}_BUILD}/$${${1}_RELINK}
-
-    # force the in-source file to be re-built, too
-    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_BUILD}/${1}
+    ${1}: $${${1}_BUILD}/$${RELINK}${1}
 
     # used to fix up RPATH for ${1} on install.
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRBIN} $${${1}_R_PRLIBS}
 	    @$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
-	    @$${${1}_LINKER} -o $${${1}_BUILD}/$${${1}_RELINK} $${RELINK_FLAGS} $${LDFLAGS} \
+	    @$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${${1}_R_PRLIBS} \
                 $${LDLIBS} $${${1}_LDLIBS}
 	    @$${${1}_POSTMAKE}
@@ -118,15 +115,12 @@ endef
 #   USE WITH EVAL
 #
 define ADD_RELINK_RULE.la
-    ${1}: $${${1}_BUILD}/$${${1}_RELINK}
-
-    # force the in-source file to be re-built, too
-    $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_BUILD}/${1}
+    ${1}: $${${1}_BUILD}/$${RELINK}${1}
 
     # used to fix up RPATH for ${1} on install.
     $${${1}_BUILD}/$${${1}_RELINK}: $${${1}_OBJS} $${${1}_PRLIBS}
 	    @$(strip mkdir -p $${${1}_BUILD}/${RELINK}/)
-	    @$${${1}_LINKER} -o $${${1}_BUILD}/$${${1}_RELINK} $${RELINK_FLAGS} $${LDFLAGS} \
+	    @$${${1}_LINKER} -o $${${1}_BUILD}/$${RELINK}${1} $${RELINK_FLAGS} $${LDFLAGS} \
                 $${${1}_LDFLAGS} $${${1}_OBJS} $${LDLIBS} $${${1}_LDLIBS}
 	    @$${${1}_POSTMAKE}
 
@@ -147,14 +141,15 @@ endif
 
 # Check if we build shared libraries.
 ifeq "${bm_shared_libs}" "yes"
-    # RPATH  : flags use to build executables that can be run
-    #          from the build directory / source tree.
-    # RELINK : flags use to build executables that are installed,
+    RELINK := local/
+
+    # RPATH  : flags use to build executables that are installed,
     #          with no dependency on the source. 
-    RPATH_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/.libs -rdynamic
-    RELINK_FLAGS := -rpath ${libdir} -rdynamic
+    # RELINL : flags use to build executables that can be run
+    #          from the build directory / source tree.
+    RPATH_FLAGS := -rpath ${libdir} -rdynamic
+    RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs -rdynamic
     RELINK_FLAGS_MIN := -rpath ${libdir}
-    RELINK := relink/
 
     ifneq "${bm_static_libs}" "yes"
         RPATH_FLAGS += --shared
@@ -210,7 +205,7 @@ define ADD_LIBTOOL_TARGET
     ifneq "$${$${TGT}_RELINK}" ""
         # add rules to relink the target
 
-        $${TGT}_R_PRLIBS := $$(subst /lib/,/lib/relink/,$${$${TGT}_PRLIBS})
+        $${TGT}_R_PRLIBS := $$(subst /lib/,/lib/${RELINK},$${$${TGT}_PRLIBS})
 
         $$(eval $$(call ADD_RELINK_RULE$${$${TGT}_SUFFIX},$${TGT}))
     endif
