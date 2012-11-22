@@ -481,12 +481,12 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 #endif
 
-        newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
-
 	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
 
 	end_AV = PL_endav;
 	PL_endav = Nullav;
+
+        newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
 
 	if(!exitstatus) {
 		exitstatus = perl_run(inst->perl);
