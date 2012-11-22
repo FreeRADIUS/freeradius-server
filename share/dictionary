@@ -133,6 +133,7 @@ $INCLUDE dictionary.erx
 $INCLUDE dictionary.ericsson
 $INCLUDE dictionary.extreme
 $INCLUDE dictionary.f5
+$INCLUDE dictionary.fdxtended
 $INCLUDE dictionary.freeradius
 $INCLUDE dictionary.freeswitch
 $INCLUDE dictionary.fortinet
