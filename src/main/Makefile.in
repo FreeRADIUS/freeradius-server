@@ -156,7 +156,7 @@ install:
 ifneq ($(PCAP_LIBS),)
 	$(LIBTOOL) --mode=install $(INSTALL) -m 755 $(INSTALLSTRIP) radsniff$(EXEEXT)	$(R)$(bindir)
 endif
-	$(INSTALL) -m 755    checkrad.pl		$(R)$(sbindir)/checkrad
+	$(INSTALL) -m 755    checkrad			$(R)$(sbindir)/checkrad
 	$(INSTALL) -m 755    radlast			$(R)$(bindir)
 	$(INSTALL) -m 755    radtest 			$(R)$(bindir)
 	$(INSTALL) -m 755    radzap			$(R)$(bindir)
