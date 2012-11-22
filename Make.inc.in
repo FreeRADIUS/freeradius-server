@@ -26,6 +26,11 @@ top_srcdir	= @abs_top_srcdir@
 datarootdir	= @datarootdir@
 
 MAKE		= @MAKE@
+
+# Makeflags set within the makefile appear to be additive and override
+# flags set on the command line and the environmental variables
+MAKEFLAGS	= @MAKEFLAGS@
+
 CC		= @CC@
 RANLIB		= @RANLIB@
 IMACROS		= -imacros ${top_srcdir}/src/freeradius-devel/autoconf.h -imacros ${top_srcdir}/src/freeradius-devel/features.h

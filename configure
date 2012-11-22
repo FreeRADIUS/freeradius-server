@@ -718,6 +718,7 @@ CPPFLAGS
 LDFLAGS
 CFLAGS
 CC
+MAKEFLAGS
 target_alias
 host_alias
 build_alias
@@ -2513,7 +2514,10 @@ fi
 
 if test "x$developer" = "xyes"; then
   : ${CFLAGS=-g3}
+  : ${MAKEFLAGS=-j8}
 fi
+
+
 
 
 ac_ext=c

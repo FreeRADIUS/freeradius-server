@@ -86,7 +86,10 @@ dnl #  added later when we know what compiler were using.
 dnl #
 if test "x$developer" = "xyes"; then
   : ${CFLAGS=-g3}
+  : ${MAKEFLAGS=-j8}
 fi
+
+AC_SUBST(MAKEFLAGS)
 
 dnl #############################################################
 dnl #
