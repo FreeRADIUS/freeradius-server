@@ -559,9 +559,19 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 	int len;
 
 	hv_undef(rad_hv);
+	
+	/*
+	 *	Copy the valuepair list so we can remove attributes we've
+	 *	already processed.
+	 */
 	nvp = paircopy(vp);
 
 	while (nvp != NULL) {
+		/*
+		 *	Tagged attributes are added to the hash with name 
+		 *	<attribute>:<tag>, others just use the normal attribute
+		 *	name as the key.
+		 */
 		if (nvp->flags.has_tag && (nvp->flags.tag != 0)) {
 			snprintf(namebuf, sizeof(namebuf), "%s:%d",
 			         nvp->name, nvp->flags.tag);
@@ -570,8 +580,15 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 			name = nvp->name;
 		}
 
+		/*
+		 *	Create a new list with all the attributes like this one
+		 *	which are in the same tag group.
+		 */
 		vpa = paircopy2(nvp, nvp->attribute, nvp->vendor, nvp->flags.tag);
 
+		/*
+		 *	Attribute has multiple values
+		 */
 		if (vpa->next) {
 			av = newAV();
 			for (vpn = vpa; vpn; vpn = vpn->next) {
@@ -579,13 +596,39 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 				av_push(av, newSVpv(buffer, len));
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
+		
+		/*
+		 *	Attribute has a single value, so its value just gets
+		 *	added to the hash.
+		 */
 		} else {
 			len = vp_prints_value(buffer, sizeof(buffer), vpa, FALSE);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 
 		pairfree(&vpa);
+		
+		/*
+		 *	Find the next attribute which we won't have processed,
+		 *	we need to do this so we know it won't be freed on
+		 *	pairdelete.
+		 */		
+		vpa = nvp->next;
+		
+		while ((vpa != NULL) &&
+		       (vpa->attribute == nvp->attribute) &&
+		       (vpa->vendor == nvp->vendor) &&
+		       (vpa->flags.tag == nvp->flags.tag)) {
+			vpa = vpa->next;
+		}
+		
+		/*
+		 *	Finally remove all the VPs we processed from our copy
+		 *	of the list.
+		 */
 		pairdelete(&nvp, nvp->attribute, nvp->vendor, nvp->flags.tag);
+		
+		nvp = vpa;
 	}
 }
 
