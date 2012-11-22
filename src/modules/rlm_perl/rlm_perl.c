@@ -151,12 +151,7 @@ static void **rlm_perl_get_handles(pTHX)
 	AV *modules = get_av(dl_modules, FALSE);
 	void **handles;
 
-	if (!librefs) {
-		radlog(L_ERR,
-		   "Could not get @%s for unloading.\n",
-		   dl_librefs);
-		return NULL;
-	}
+	if (!librefs) return NULL;
 
 	if (!(AvFILL(librefs) >= 0)) {
 		return NULL;
@@ -238,8 +233,8 @@ static void rlm_destroy_perl(PerlInterpreter *perl)
 	PERL_SET_CONTEXT(perl);
 
 	handles = rlm_perl_get_handles(aTHX);
+	if (handles) rlm_perl_close_handles(handles);
 	rlm_perl_destruct(perl);
-	rlm_perl_close_handles(handles);
 }
 
 /* Create Key */
@@ -486,6 +481,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	PL_exit_flags |= PERL_EXIT_DESTRUCT_END;
 #endif
 
+        newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
+
 	exitstatus = perl_parse(inst->perl, xs_init, argc, embed, NULL);
 
 	end_AV = PL_endav;
@@ -501,8 +498,6 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	PL_endav = end_AV;
-
-        newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl.c");
 
 	rad_reply_hv = newHV();
 	rad_check_hv = newHV();
