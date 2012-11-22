@@ -40,3 +40,4 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	Bug fixes
 	* All known bug fixes from 2.1.x are included.
 	* Removed "addport" functionality.
+	* Removed "rlm_smb" module.
