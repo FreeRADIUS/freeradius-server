@@ -16,4 +16,4 @@ $(LT_OBJS): $(HEADERS)
 
 install-scripts:
 	@[ -d $(R)$(raddbdir) ] || $(INSTALL) -d -m 750 $(R)$(raddbdir)
-	@$(INSTALL) -m 755 src/modules/rlm_perl/example.pl $(R)$(raddbdir)
+	@$(INSTALL) -m 755 example.pl $(R)$(raddbdir)
