@@ -10,12 +10,15 @@ include ../../Make.inc
 
 ifeq "$(BOILER)" "yes"
 	BUILD_PATH := ../../build
-	BIN_PATH := $(BUILD_PATH)/bin
-	DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(BUILD_PATH)/lib/.libs/
+	BIN_PATH := $(BUILD_PATH)/bin/local
+	LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
+	DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
 else
 	BIN_PATH := ../main
 	DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):../lib/.libs/:../modules/lib/.libs/
 endif
+
+export DYLD_LIBRARY_PATH
 
 RADDB_PATH := ../../raddb
 
