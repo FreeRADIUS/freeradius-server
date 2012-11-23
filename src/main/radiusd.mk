@@ -1,3 +1,4 @@
+TARGET	:= radiusd
 SOURCES := acct.c auth.c client.c conffile.c crypt.c exec.c files.c \
 		  listen.c log.c mainconfig.c modules.c modcall.c \
 		  radiusd.c stats.c soh.c connection.c \
@@ -9,15 +10,20 @@ endif
 
 SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"
 TGT_INSTALLDIR  := ${sbindir}
-TGT_LDLIBS	:= $(OPENSSL_LIBS)
-TGT_LDFLAGS     := $(LIBS) $(LCRYPT)
+TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(OPENSSL_LIBS)
 
 TGT_PREREQS	:= libfreeradius-radius.a $(filter rlm_%,${ALL_TGTS})
+
+# Libraries can't depend on libraries (oops), so make the binary
+# depend on the EAP code...
+ifneq "$(filter rlm_eap_%,${ALL_TGTS})" ""
+TGT_PREREQS	+= libfreeradius-eap.a
+endif
 
 ifneq "${LIBTOOL}" ""
 SRC_FLAGS	+= -DWITH_DLOPEN
 else
-${DIR}/modules.c:	${BUILD_DIR}/make/include/lt_dlmodules.c
+${DIR}/modules.c: ${BUILD_DIR}/make/include/lt_dlmodules.c
 
 # Find the modules
 ALL_MODULES	:= $(patsubst %.a,%,$(filter rlm_%,${ALL_TGTS}))
@@ -56,11 +62,3 @@ ${BUILD_DIR}/make/include/lt_dlmodules.c: $(addprefix ${BUILD_DIR}/lib/,$(filter
 	@echo "{ NULL, NULL }" >> $@
 	@echo "};" >> $@
 endif
-
-# Libraries can't depend on libraries (oops), so make the binary
-# depend on the EAP code...
-ifneq "$(filter rlm_eap_%,${ALL_TGTS})" ""
-TGT_PREREQS	+= libfreeradius-eap.a
-endif
-
-TARGET		:= radiusd
