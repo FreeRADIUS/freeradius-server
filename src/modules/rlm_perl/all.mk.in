@@ -12,4 +12,5 @@ TGT_LDLIBS	= @perl_ldflags@
 install: install.raddbdir $(R)$(raddbdir)/example.pl
 
 $(R)$(raddbdir)/example.pl: src/modules/rlm_perl/example.pl
-	@$(INSTALL) -m 755 src/modules/rlm_perl/example.pl $(R)$(raddbdir)/
+	@$(ECHO) INSTALL $(notdir $<)
+	@$(INSTALL) -m 755 $< $(R)$(raddbdir)/

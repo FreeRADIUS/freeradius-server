@@ -3737,6 +3737,8 @@ done
 	if test "$ac_cv_header_json_json_h" != "yes"; then
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without JSON support. requires: json-c." >&5
 $as_echo "$as_me: WARNING: silently building without JSON support. requires: json-c." >&2;}
+	else
+		rest_ldflags+=-ljson-c
 	fi
 
 	targetname=rlm_rest     # keep this!  Don't change!

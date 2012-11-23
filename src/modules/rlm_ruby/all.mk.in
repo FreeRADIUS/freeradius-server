@@ -9,5 +9,8 @@ SOURCES		:= $(TARGETNAME).c
 SRC_CFLAGS	:= @ruby_cflags@
 TGT_LDLIBS	:= @ruby_ldflags@
 
+install: install.raddbdir $(R)$(raddbdir)/example.rb
+
 $(R)$(raddbdir)/example.rb: src/modules/rlm_ruby/example.rb
-	@$(INSTALL) -m 755 src/modules/rlm_ruby/example.rb $(R)$(raddbdir)/
+	@$(ECHO) INSTALL $(notdir $<)
+	@$(INSTALL) -m 755 $< $(R)$(raddbdir)/

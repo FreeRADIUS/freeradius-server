@@ -422,7 +422,7 @@
 /* Commit HEAD at time of configuring */
 #undef RADIUSD_VERSION_COMMIT
 
-/* Raw version string from VERSION */
+/* Raw version string from VERSION file */
 #undef RADIUSD_VERSION_STRING
 
 /* Define as the return type of signal handlers (`int' or `void'). */
