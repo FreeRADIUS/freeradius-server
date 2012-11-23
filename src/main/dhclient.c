@@ -65,6 +65,12 @@ static RADIUS_PACKET *reply = NULL;
 #define DHCP_VEND_LEN	(308)
 #define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
 
+const char *dhclient_version = "dhclient version " RADIUSD_VERSION_STRING
+#ifdef RADIUSD_VERSION_COMMIT
+" (git #" RADIUSD_VERSION_COMMIT ")"
+#endif
+", built on " __DATE__ " at " __TIME__;
+
 static void NEVER_RETURNS usage(void)
 {
 	fprintf(stderr, "Usage: dhclient [options] server[:port] <command>\n");
@@ -285,7 +291,7 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("dhclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
+			printf("%s\n", dhclient_version);
 			exit(0);
 			break;
 		case 'x':

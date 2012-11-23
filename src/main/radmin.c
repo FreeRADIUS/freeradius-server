@@ -82,7 +82,7 @@ const char *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
-;
+", built on " __DATE__ " at " __TIME__;
 
 
 /*

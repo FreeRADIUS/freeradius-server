@@ -16,13 +16,9 @@ MFLAGS += --no-print-directory
 #
 ifeq "$(BOILER)" "yes"
 
-# Require at least GNU Make 3.81 for the new build system
-# Don't allow 3.80.  Allow any 3.8x.  This will need to be changed
-# in a decade or two when GNU Make 3.90 is released.
-BOILERMAKE=$(subst 3.8,yes,$(subst 3.80,,$(MAKE_VERSION)))
-
-# The version of GNU Make is too old, don't use it.
-ifeq "" "$(findstring yes,$(BOILERMAKE))"
+# The version of GNU Make is too old, don't use it (.FEATURES variable was
+# wad added in 3.81)
+ifndef .FEATURES
 $(error The build system requires GNU Make 3.81 or later.)
 endif
 

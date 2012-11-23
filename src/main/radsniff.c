@@ -63,7 +63,7 @@ static const char *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
-;
+", built on " __DATE__ " at " __TIME__;
 
 static int filter_packet(RADIUS_PACKET *packet)
 {

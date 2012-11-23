@@ -28,6 +28,7 @@ src/include/features.h: src/include/features-h src/include/autoconf.h
 	@$(ECHO) HEADER $@
 	@cp $< $@
 	@grep "^#define[[:blank:]]\{1,\}WITH_" src/include/autoconf.h >> $@
+	@grep "^#define[[:blank:]]\{1,\}RADIUSD_VERSION" src/include/autoconf.h >> $@
 
 src/include/missing.h: src/include/missing-h src/include/autoconf.sed
 	@$(ECHO) HEADER $@

@@ -23,11 +23,9 @@ dnl #############################################################
 AC_PREREQ([2.59])
 export CFLAGS LIBS LDFLAGS CPPFLAGS
 
-m4_define(PACKAGE_MAIN, freeradius)
-
-AC_INIT(PACKAGE_MAIN,[$]Id[$],http://bugs.freeradius.org,,http://www.freeradius.org)
-AC_CONFIG_SRCDIR(src/main/radiusd.c)
-AC_CONFIG_HEADER(src/include/autoconf.h)
+AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
+AC_CONFIG_SRCDIR([src/main/radiusd.c])
+AC_CONFIG_HEADER([src/include/autoconf.h])
 
 dnl #############################################################
 dnl #
@@ -46,7 +44,18 @@ RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
 
 dnl # Still useful for custom builds
 RADIUSD_VERSION_STRING=`cat VERSION`
-PACKAGE=PACKAGE_MAIN
+
+dnl #
+dnl # Add definitions to Make.inc as it's used by various build targets
+dnl #
+AC_SUBST([RADIUSD_VERSION_STRING])
+
+dnl #
+dnl # Add definitions to autoconf.h, so that the headers that we install
+dnl # contain the version number of the server.
+dnl #
+AC_DEFINE_UNQUOTED([RADIUSD_VERSION], [${RADIUSD_VERSION}], [Version integer in format <ma><ma><mi><mi><in><in>])
+AC_DEFINE_UNQUOTED([RADIUSD_VERSION_STRING], ["${RADIUSD_VERSION_STRING}"], [Raw version string from VERSION file])
 
 dnl #############################################################
 dnl #
@@ -1042,6 +1051,7 @@ fi
 dnl append the current git hash onto the version string
 if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
   RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+  AC_DEFINE_UNQUOTED([RADIUSD_VERSION_COMMIT],["${RADIUSD_VERSION_COMMIT}"],[Commit HEAD at time of configuring])
 fi
 
 FR_TLS
@@ -1301,12 +1311,6 @@ AC_SUBST(USE_SHARED_LIBS)
 USE_STATIC_LIBS=$enable_static
 AC_SUBST(USE_STATIC_LIBS)
 AC_SUBST(STATIC_MODULES)
-AC_SUBST(RADIUSD_MAJOR_VERSION)
-AC_SUBST(RADIUSD_MINOR_VERSION)
-AC_SUBST(RADIUSD_INCRM_VERSION)
-AC_SUBST(RADIUSD_VERSION)
-AC_SUBST(RADIUSD_VERSION_STRING)
-AC_SUBST(RADIUSD_VERSION_COMMIT)
 
 AC_OUTPUT(\
 	./Make.inc \

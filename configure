@@ -635,12 +635,6 @@ ac_includes_default="\
 enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
-RADIUSD_VERSION_COMMIT
-RADIUSD_VERSION_STRING
-RADIUSD_VERSION
-RADIUSD_INCRM_VERSION
-RADIUSD_MINOR_VERSION
-RADIUSD_MAJOR_VERSION
 STATIC_MODULES
 USE_STATIC_LIBS
 USE_SHARED_LIBS
@@ -719,6 +713,7 @@ LDFLAGS
 CFLAGS
 CC
 MAKEFLAGS
+RADIUSD_VERSION_STRING
 target_alias
 host_alias
 build_alias
@@ -2490,7 +2485,19 @@ RADIUSD_VERSION=`echo | awk -v major="$RADIUSD_MAJOR_VERSION" \
 '{ printf "%02i%02i%02i", major, minor, incrm }'`
 
 RADIUSD_VERSION_STRING=`cat VERSION`
-PACKAGE=freeradius
+
+
+
+
+cat >>confdefs.h <<_ACEOF
+#define RADIUSD_VERSION ${RADIUSD_VERSION}
+_ACEOF
+
+
+cat >>confdefs.h <<_ACEOF
+#define RADIUSD_VERSION_STRING "${RADIUSD_VERSION_STRING}"
+_ACEOF
+
 
 
 # Check whether --enable-developer was given.
@@ -18044,6 +18051,11 @@ fi
 
 if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
   RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
+
+cat >>confdefs.h <<_ACEOF
+#define RADIUSD_VERSION_COMMIT "${RADIUSD_VERSION_COMMIT}"
+_ACEOF
+
 fi
 
 
@@ -18533,12 +18545,6 @@ ac_config_commands="$ac_config_commands scripts-chmod"
 USE_SHARED_LIBS=$enable_shared
 
 USE_STATIC_LIBS=$enable_static
-
-
-
-
-
-
 
 
 

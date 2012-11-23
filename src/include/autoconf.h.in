@@ -416,6 +416,15 @@
 /* Posix-Style ctime_r */
 #undef POSIXSTYLE
 
+/* Version integer in format <ma><ma><mi><mi><in><in> */
+#undef RADIUSD_VERSION
+
+/* Commit HEAD at time of configuring */
+#undef RADIUSD_VERSION_COMMIT
+
+/* Raw version string from VERSION */
+#undef RADIUSD_VERSION_STRING
+
 /* Define as the return type of signal handlers (`int' or `void'). */
 #undef RETSIGTYPE
 

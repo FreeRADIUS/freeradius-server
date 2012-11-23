@@ -1022,7 +1022,7 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("%s", radclient_version);
+			printf("%s\n", radclient_version);
 			exit(0);
 			break;
 		case 'x':
