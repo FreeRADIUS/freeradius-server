@@ -9,7 +9,7 @@
 # DESCRIPTION
 #
 #   This macro checks for Ruby and tries to get the include path to
-#   'ruby.h'. It provides the $(RUBY_CPPFLAGS) and $(RUBY_LDFLAGS) output
+#   'ruby.h'. It provides the $(RUBY_CFLAGS) and $(RUBY_LDFLAGS) output
 #   variables. It also exports $(RUBY_EXTRA_LIBS) for embedding Ruby in your
 #   code.
 #
@@ -73,22 +73,22 @@ $ac_distutils_result])
     # Check for Ruby include path
     #
     AC_MSG_CHECKING([for Ruby include path])
-    if test -z "$RUBY_CPPFLAGS"; then
-        ruby_path=`$RUBY -rmkmf -e 'print Config::CONFIG[["archdir"]]'`
+    if test -z "$RUBY_CFLAGS"; then
+        ruby_path=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(archdir))'`
         if test -n "${ruby_path}"; then
                 ruby_path="-I$ruby_path"
         fi
-        RUBY_CPPFLAGS=$ruby_path
+        RUBY_CFLAGS=$ruby_path
     fi
-    AC_MSG_RESULT([$RUBY_CPPFLAGS])
-    AC_SUBST([RUBY_CPPFLAGS])
+    AC_MSG_RESULT([$RUBY_CFLAGS])
+    AC_SUBST([RUBY_CFLAGS])
 
     #
     # Check for Ruby library path
     #
     AC_MSG_CHECKING([for Ruby library path])
     if test -z "$RUBY_LDFLAGS"; then
-        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print Config::CONFIG[["LIBRUBYARG_SHARED"]]'`
+        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
     fi
     AC_MSG_RESULT([$RUBY_LDFLAGS])
     AC_SUBST([RUBY_LDFLAGS])
@@ -98,7 +98,7 @@ $ac_distutils_result])
     #
     AC_MSG_CHECKING([for Ruby site-packages path])
     if test -z "$RUBY_SITE_PKG"; then
-        RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print Config::CONFIG[["sitearchdir"]]'`
+        RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(sitearchdir))'`
     fi
     AC_MSG_RESULT([$RUBY_SITE_PKG])
     AC_SUBST([RUBY_SITE_PKG])
@@ -108,7 +108,7 @@ $ac_distutils_result])
     #
     AC_MSG_CHECKING(ruby extra libraries)
     if test -z "$RUBY_EXTRA_LIBS"; then
-       RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print Config::CONFIG[["SOLIBS"]]'`
+       RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(SOLIBS))'`
     fi
     AC_MSG_RESULT([$RUBY_EXTRA_LIBS])
     AC_SUBST(RUBY_EXTRA_LIBS)
@@ -117,12 +117,12 @@ $ac_distutils_result])
     # linking flags needed when embedding
     # (is it even needed for Ruby?)
     #
-    # AC_MSG_CHECKING(ruby extra linking flags)
-    # if test -z "$RUBY_EXTRA_LDFLAGS"; then
-    # RUBY_EXTRA_LDFLAGS=`$RUBY -rmkmf -e 'print Config::CONFIG[["LINKFORSHARED"]]'`
-    # fi
-    # AC_MSG_RESULT([$RUBY_EXTRA_LDFLAGS])
-    # AC_SUBST(RUBY_EXTRA_LDFLAGS)
+    AC_MSG_CHECKING(ruby extra linking flags)
+    if test -z "$RUBY_EXTRA_LDFLAGS"; then
+      RUBY_EXTRA_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LINKFORSHARED))'`
+    fi
+    AC_MSG_RESULT([$RUBY_EXTRA_LDFLAGS])
+    AC_SUBST(RUBY_EXTRA_LDFLAGS)
 
     # this flags breaks ruby.h, and is sometimes defined by KDE m4 macros
     CFLAGS="`echo "$CFLAGS" | sed -e 's/-std=iso9899:1990//g;'`"
@@ -134,8 +134,8 @@ $ac_distutils_result])
     # save current global flags
     ac_save_LIBS="$LIBS"
     LIBS="$ac_save_LIBS $RUBY_LDFLAGS"
-    ac_save_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$ac_save_CPPFLAGS $RUBY_CPPFLAGS"
+    ac_save_CFLAGS="$CFLAGS"
+    CFLAGS="$ac_save_CFLAGS $RUBY_CFLAGS"
     AC_LINK_IFELSE(
 		[AC_LANG_PROGRAM([#include <ruby.h>],[ruby_init()])],
 		[rubyexists=yes],
@@ -159,7 +159,7 @@ $ac_distutils_result])
     fi
     AC_LANG_POP
     # turn back to default flags
-    CPPFLAGS="$ac_save_CPPFLAGS"
+    CFLAGS="$ac_save_CFLAGS"
     LIBS="$ac_save_LIBS"
 
     #

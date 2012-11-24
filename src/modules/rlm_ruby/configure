@@ -590,10 +590,11 @@ targetname
 ruby_headers
 ruby_cflags
 ruby_ldflags
+RUBY_EXTRA_LDFLAGS
 RUBY_EXTRA_LIBS
 RUBY_SITE_PKG
 RUBY_LDFLAGS
-RUBY_CPPFLAGS
+RUBY_CFLAGS
 AWK
 RUBY_VERSION
 GREP
@@ -2011,7 +2012,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 # DESCRIPTION
 #
 #   This macro checks for Ruby and tries to get the include path to
-#   'ruby.h'. It provides the $(RUBY_CPPFLAGS) and $(RUBY_LDFLAGS) output
+#   'ruby.h'. It provides the $(RUBY_CFLAGS) and $(RUBY_LDFLAGS) output
 #   variables. It also exports $(RUBY_EXTRA_LIBS) for embedding Ruby in your
 #   code.
 #
@@ -3394,15 +3395,15 @@ $ac_distutils_result" "$LINENO" 5
     #
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby include path" >&5
 $as_echo_n "checking for Ruby include path... " >&6; }
-    if test -z "$RUBY_CPPFLAGS"; then
-        ruby_path=`$RUBY -rmkmf -e 'print Config::CONFIG["archdir"]'`
+    if test -z "$RUBY_CFLAGS"; then
+        ruby_path=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(archdir))'`
         if test -n "${ruby_path}"; then
                 ruby_path="-I$ruby_path"
         fi
-        RUBY_CPPFLAGS=$ruby_path
+        RUBY_CFLAGS=$ruby_path
     fi
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CPPFLAGS" >&5
-$as_echo "$RUBY_CPPFLAGS" >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CFLAGS" >&5
+$as_echo "$RUBY_CFLAGS" >&6; }
 
 
     #
@@ -3411,7 +3412,7 @@ $as_echo "$RUBY_CPPFLAGS" >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby library path" >&5
 $as_echo_n "checking for Ruby library path... " >&6; }
     if test -z "$RUBY_LDFLAGS"; then
-        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print Config::CONFIG["LIBRUBYARG_SHARED"]'`
+        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
     fi
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LDFLAGS" >&5
 $as_echo "$RUBY_LDFLAGS" >&6; }
@@ -3423,7 +3424,7 @@ $as_echo "$RUBY_LDFLAGS" >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby site-packages path" >&5
 $as_echo_n "checking for Ruby site-packages path... " >&6; }
     if test -z "$RUBY_SITE_PKG"; then
-        RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print Config::CONFIG["sitearchdir"]'`
+        RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(sitearchdir))'`
     fi
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_SITE_PKG" >&5
 $as_echo "$RUBY_SITE_PKG" >&6; }
@@ -3435,7 +3436,7 @@ $as_echo "$RUBY_SITE_PKG" >&6; }
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking ruby extra libraries" >&5
 $as_echo_n "checking ruby extra libraries... " >&6; }
     if test -z "$RUBY_EXTRA_LIBS"; then
-       RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print Config::CONFIG["SOLIBS"]'`
+       RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(SOLIBS))'`
     fi
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_EXTRA_LIBS" >&5
 $as_echo "$RUBY_EXTRA_LIBS" >&6; }
@@ -3445,12 +3446,14 @@ $as_echo "$RUBY_EXTRA_LIBS" >&6; }
     # linking flags needed when embedding
     # (is it even needed for Ruby?)
     #
-    # AC_MSG_CHECKING(ruby extra linking flags)
-    # if test -z "$RUBY_EXTRA_LDFLAGS"; then
-    # RUBY_EXTRA_LDFLAGS=`$RUBY -rmkmf -e 'print Config::CONFIG[["LINKFORSHARED"]]'`
-    # fi
-    # AC_MSG_RESULT([$RUBY_EXTRA_LDFLAGS])
-    # AC_SUBST(RUBY_EXTRA_LDFLAGS)
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking ruby extra linking flags" >&5
+$as_echo_n "checking ruby extra linking flags... " >&6; }
+    if test -z "$RUBY_EXTRA_LDFLAGS"; then
+      RUBY_EXTRA_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LINKFORSHARED))'`
+    fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_EXTRA_LDFLAGS" >&5
+$as_echo "$RUBY_EXTRA_LDFLAGS" >&6; }
+
 
     # this flags breaks ruby.h, and is sometimes defined by KDE m4 macros
     CFLAGS="`echo "$CFLAGS" | sed -e 's/-std=iso9899:1990//g;'`"
@@ -3468,8 +3471,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     # save current global flags
     ac_save_LIBS="$LIBS"
     LIBS="$ac_save_LIBS $RUBY_LDFLAGS"
-    ac_save_CPPFLAGS="$CPPFLAGS"
-    CPPFLAGS="$ac_save_CPPFLAGS $RUBY_CPPFLAGS"
+    ac_save_CFLAGS="$CFLAGS"
+    CFLAGS="$ac_save_CFLAGS $RUBY_CFLAGS"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <ruby.h>
@@ -3513,7 +3516,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
     # turn back to default flags
-    CPPFLAGS="$ac_save_CPPFLAGS"
+    CFLAGS="$ac_save_CFLAGS"
     LIBS="$ac_save_LIBS"
 
     #
@@ -3522,145 +3525,9 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 	if test x$RUBY_VERSION != x""; then
-		ruby_cflags+="$RUBY_CPPFLAGS"
+		ruby_cflags+="$RUBY_CFLAGS"
 		ruby_ldflags+="$RUBY_LDFLAGS"
 		ruby_ldflags+="$RUBY_EXTRA_LIBS"
-
-		old_CFLAGS="$CFLAGS"
-		CFLAGS="$ruby_cflags"
-
-
-
-ac_safe=`echo "ruby.h" | sed 'y%./+-%__pm%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for ruby.h" >&5
-$as_echo_n "checking for ruby.h... " >&6; }
-
-old_CFLAGS="$CFLAGS"
-smart_include=
-smart_include_dir=
-
-if test "x$smart_try_dir" != "x"; then
-  for try in $smart_try_dir; do
-    CFLAGS="$old_CFLAGS -I$try"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <ruby.h>
-int
-main ()
-{
- int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
-else
-  smart_include=
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
-  done
-  CFLAGS="$old_CFLAGS"
-fi
-
-if test "x$smart_include" = "x"; then
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		  #include <ruby.h>
-int
-main ()
-{
- int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include=" "
-else
-  smart_include=
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-fi
-
-if test "x$smart_include" = "x"; then
-
-
-if test "x$LOCATE" != "x"; then
-        DIRS=
-  file=ruby.h
-
-  for x in `${LOCATE} $file 2>/dev/null`; do
-                                        base=`echo $x | sed "s%/${file}%%"`
-    if test "x$x" = "x$base"; then
-      continue;
-    fi
-
-    dir=`${DIRNAME} $x 2>/dev/null`
-                exclude=`echo ${dir} | ${GREP} /home`
-    if test "x$exclude" != "x"; then
-      continue
-    fi
-
-                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
-    if test "x$already" = "x"; then
-      DIRS="$DIRS $dir"
-    fi
-  done
-fi
-
-eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
-
-
-  for try in $smart_include_dir /usr/local/include /opt/include; do
-    CFLAGS="$old_CFLAGS -I$try"
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
-/* end confdefs.h.  */
-
-		    #include <ruby.h>
-int
-main ()
-{
- int a = 1;
-  ;
-  return 0;
-}
-_ACEOF
-if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
-else
-  smart_include=
-fi
-rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
-  done
-  CFLAGS="$old_CFLAGS"
-fi
-
-if test "x$smart_include" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-  eval "ac_cv_header_$ac_safe=yes"
-  CFLAGS="$old_CFLAGS $smart_include"
-  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-		if test "x$ac_cv_header_ruby_h" != "xyes"; then
-			fail="$fail ruby.h"
-			targetname=
-		fi
-
-		CFLAGS="$old_CFLAGS"
 	else
 		fail="ruby"
 		targetname=

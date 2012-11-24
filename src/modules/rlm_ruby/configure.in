@@ -21,20 +21,9 @@ if test x$with_[]modname != xno; then
 	AX_RUBY_DEVEL([1.8])
 	
 	if test x$RUBY_VERSION != x""; then
-		ruby_cflags+="$RUBY_CPPFLAGS"
+		ruby_cflags+="$RUBY_CFLAGS"
 		ruby_ldflags+="$RUBY_LDFLAGS"
 		ruby_ldflags+="$RUBY_EXTRA_LIBS"
-		
-		old_CFLAGS="$CFLAGS"
-		CFLAGS="$ruby_cflags"
-		
-		FR_SMART_CHECK_INCLUDE(ruby.h)
-		if test "x$ac_cv_header_ruby_h" != "xyes"; then
-			fail="$fail ruby.h"
-			targetname=
-		fi
-		
-		CFLAGS="$old_CFLAGS"
 	else
 		fail="ruby"
 		targetname=
