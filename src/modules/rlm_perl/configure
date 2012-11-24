@@ -2935,7 +2935,7 @@ fi
 
 	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Perl ccopts" >&5
 $as_echo_n "checking for Perl ccopts... " >&6; }
-	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g' | sed 's/^ *//')
+	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed 's/-arch [^ ]*[ ]*//g')
           CFLAGS+=" $perl_cflags"
           { $as_echo "$as_me:${as_lineno-$LINENO}: result: $perl_cflags" >&5
 $as_echo "$perl_cflags" >&6; }
@@ -3208,7 +3208,7 @@ fi
 
 	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Perl ldopts" >&5
 $as_echo_n "checking for Perl ldopts... " >&6; }
-	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g' | sed 's/^ *//')
+	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed 's/-arch [^ ]*[ ]*//g')
 	  LIBS+=" $perl_ldflags"
           { $as_echo "$as_me:${as_lineno-$LINENO}: result: $perl_ldflags" >&5
 $as_echo "$perl_ldflags" >&6; }

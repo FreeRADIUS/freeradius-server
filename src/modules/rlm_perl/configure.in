@@ -21,7 +21,7 @@ if test x$with_[]modname != xno; then
 	  old_CFLAGS="$CFLAGS"
 	  
 	  AC_MSG_CHECKING([for Perl ccopts])
-	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [[^ ]]*//g' | sed 's/^[ ]*//')
+	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed ['s/-arch [^ ]*[ ]*//g'])
           CFLAGS+=" $perl_cflags"
           AC_MSG_RESULT([$perl_cflags])
 
@@ -41,7 +41,7 @@ if test x$with_[]modname != xno; then
 	  old_LIBS="$LIBS"
 	  
 	  AC_MSG_CHECKING([for Perl ldopts])
-	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [[^ ]]*//g' | sed 's/^[ ]*//')
+	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed ['s/-arch [^ ]*[ ]*//g'])
 	  LIBS+=" $perl_ldflags"
           AC_MSG_RESULT([$perl_ldflags])
 	  
