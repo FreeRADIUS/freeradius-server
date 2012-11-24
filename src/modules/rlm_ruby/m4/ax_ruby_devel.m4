@@ -190,7 +190,7 @@ $ac_distutils_result])
     AC_MSG_RESULT([$rubyexists])
 
     if test ! "$rubyexists" = "yes"; then
-       AC_MSG_ERROR([
+       AC_MSG_WARN([
   Could not link test program to Ruby. Maybe the main Ruby library has been
   installed in some non-standard library path. If so, pass it to configure,
   via the LDFLAGS environment variable.

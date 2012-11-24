@@ -3544,7 +3544,7 @@ rm -f core conftest.err conftest.$ac_objext \
 $as_echo "$rubyexists" >&6; }
 
     if test ! "$rubyexists" = "yes"; then
-       as_fn_error $? "
+       { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:
   Could not link test program to Ruby. Maybe the main Ruby library has been
   installed in some non-standard library path. If so, pass it to configure,
   via the LDFLAGS environment variable.
@@ -3554,7 +3554,18 @@ $as_echo "$rubyexists" >&6; }
    You probably have to install the development version of the Ruby package
    for your distribution.  The exact name of this package varies among them.
   ============================================================================
-       " "$LINENO" 5
+       " >&5
+$as_echo "$as_me: WARNING:
+  Could not link test program to Ruby. Maybe the main Ruby library has been
+  installed in some non-standard library path. If so, pass it to configure,
+  via the LDFLAGS environment variable.
+  Example: ./configure LDFLAGS=\"-L/usr/non-standard-path/ruby/lib\"
+  ============================================================================
+   ERROR!
+   You probably have to install the development version of the Ruby package
+   for your distribution.  The exact name of this package varies among them.
+  ============================================================================
+       " >&2;}
       RUBY_VERSION=""
     fi
     ac_ext=c
@@ -3571,8 +3582,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     # all done!
     #
 
-
-	if test ! -n "$RUBY_VERSION"; then
+	if test -n "$RUBY_VERSION"; then
 		ruby_cflags+="$RUBY_CFLAGS"
 		ruby_ldflags+="$RUBY_LDFLAGS"
 		ruby_ldflags+="$RUBY_EXTRA_LIBS"
