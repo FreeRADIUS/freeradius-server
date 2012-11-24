@@ -72,25 +72,71 @@ $ac_distutils_result])
     #
     # Check for Ruby include path
     #
-    AC_MSG_CHECKING([for Ruby include path])
     if test -z "$RUBY_CFLAGS"; then
-        ruby_path=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(archdir))'`
-        if test -n "${ruby_path}"; then
-                ruby_path="-I$ruby_path"
+        #
+        # Check for Ruby cflags
+        #
+        AC_MSG_CHECKING([for Ruby cflags])
+        if test -z "$RUBY_CFLAGS"; then
+            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))' | sed ['s/-arch [^ ]*[ ]*//g']`
         fi
-        RUBY_CFLAGS=$ruby_path
+        AC_MSG_RESULT([$RUBY_CFLAGS])
+    
+        #
+        # Check for Ruby include path
+        #
+        AC_MSG_CHECKING([for Ruby include path])
+        ruby_path=`$RUBY -rmkmf -e 'c = RbConfig::CONFIG; print c.has_key?(%q(rubyhdrdir)) ? \
+            c.fetch(%q(rubyhdrdir)) : c.fetch(%q(archdir))'`
+            
+        ruby_arch=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(arch))'`
+            
+        if test -n "${ruby_path}"; then
+            #
+            #  For some reason ruby 1.9.1 on linux seems to put its
+            #  config.h file in ${ruby_path}/${ruby_arch}/ruby/config.h
+            #  Aside from the fact that it is WRONG to include your own
+            #  config.h file it means we can't use the headers unless we
+            #  add both paths
+            #
+            if test -d "${ruby_path}/${arch}"; then
+            	 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
+            else
+                 ruby_path=" -I${ruby_path}"
+            fi
+        fi
+        
+        RUBY_CFLAGS+="$ruby_path"
+        AC_MSG_RESULT([$ruby_path])
     fi
-    AC_MSG_RESULT([$RUBY_CFLAGS])
+    
     AC_SUBST([RUBY_CFLAGS])
 
-    #
-    # Check for Ruby library path
-    #
-    AC_MSG_CHECKING([for Ruby library path])
     if test -z "$RUBY_LDFLAGS"; then
+        #
+        # Check for Ruby library path
+        #
+        AC_MSG_CHECKING([for Ruby library path])
+        if test -z "$RUBY_LIBRARY_PATH"; then
+            RUBY_LIBRARY_PATH=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(libdir))'`
+            if test -n "${RUBY_LIBRARY_PATH}"; then
+                RUBY_LIBRARY_PATH=" -L$RUBY_LIBRARY_PATH"
+            fi
+        fi
+        
+        AC_MSG_RESULT([$RUBY_LIBRARY_PATH])  
+        
+        #
+        # Check for Ruby linking flags
+        #
+        AC_MSG_CHECKING([for Ruby linking flags])
+    
         RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
+        AC_MSG_RESULT([$RUBY_LDFLAGS])
+
+        RUBY_LDFLAGS="${RUBY_LIBRARY_PATH} ${RUBY_LDFLAGS}"
     fi
-    AC_MSG_RESULT([$RUBY_LDFLAGS])
+
     AC_SUBST([RUBY_LDFLAGS])
 
     #
@@ -106,7 +152,7 @@ $ac_distutils_result])
     #
     # libraries which must be linked in when embedding
     #
-    AC_MSG_CHECKING(ruby extra libraries)
+    AC_MSG_CHECKING([for Ruby extra libraries])
     if test -z "$RUBY_EXTRA_LIBS"; then
        RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(SOLIBS))'`
     fi
@@ -117,12 +163,12 @@ $ac_distutils_result])
     # linking flags needed when embedding
     # (is it even needed for Ruby?)
     #
-    AC_MSG_CHECKING(ruby extra linking flags)
-    if test -z "$RUBY_EXTRA_LDFLAGS"; then
-      RUBY_EXTRA_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LINKFORSHARED))'`
-    fi
-    AC_MSG_RESULT([$RUBY_EXTRA_LDFLAGS])
-    AC_SUBST(RUBY_EXTRA_LDFLAGS)
+    # AC_MSG_CHECKING([for Ruby extra linking flags])
+    # if test -z "$RUBY_EXTRA_LIBS"; then
+    # RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print RubyConfig::CONFIG.fetch(%q(LINKFORSHARED))'`
+    # fi
+    # AC_MSG_RESULT([$RUBY_EXTRA_LIBS])
+    # AC_SUBST(RUBY_EXTRA_LIBS)
 
     # this flags breaks ruby.h, and is sometimes defined by KDE m4 macros
     CFLAGS="`echo "$CFLAGS" | sed -e 's/-std=iso9899:1990//g;'`"
@@ -137,9 +183,9 @@ $ac_distutils_result])
     ac_save_CFLAGS="$CFLAGS"
     CFLAGS="$ac_save_CFLAGS $RUBY_CFLAGS"
     AC_LINK_IFELSE(
-		[AC_LANG_PROGRAM([#include <ruby.h>],[ruby_init()])],
-		[rubyexists=yes],
-		[rubyexists=no])
+        [AC_LANG_PROGRAM([#include <ruby.h>],[ruby_init()])],
+        [rubyexists=yes],
+        [rubyexists=no])
 
     AC_MSG_RESULT([$rubyexists])
 
@@ -160,9 +206,10 @@ $ac_distutils_result])
     AC_LANG_POP
     # turn back to default flags
     CFLAGS="$ac_save_CFLAGS"
-    LIBS="$ac_save_LIBS"
+    LIBS="$ac_save_LDFLAGS"
 
     #
     # all done!
     #
 ])
+

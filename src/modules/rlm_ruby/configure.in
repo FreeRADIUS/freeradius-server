@@ -20,7 +20,7 @@ if test x$with_[]modname != xno; then
 
 	AX_RUBY_DEVEL([1.8])
 	
-	if test x$RUBY_VERSION != x""; then
+	if test ! -n "$RUBY_VERSION"; then
 		ruby_cflags+="$RUBY_CFLAGS"
 		ruby_ldflags+="$RUBY_LDFLAGS"
 		ruby_ldflags+="$RUBY_EXTRA_LIBS"

@@ -590,7 +590,6 @@ targetname
 ruby_headers
 ruby_cflags
 ruby_ldflags
-RUBY_EXTRA_LDFLAGS
 RUBY_EXTRA_LIBS
 RUBY_SITE_PKG
 RUBY_LDFLAGS
@@ -2057,6 +2056,7 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
+
 targetname=rlm_ruby
 if test x$with_rlm_ruby != xno; then
 	ac_ext=c
@@ -3393,29 +3393,79 @@ $ac_distutils_result" "$LINENO" 5
     #
     # Check for Ruby include path
     #
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby include path" >&5
-$as_echo_n "checking for Ruby include path... " >&6; }
     if test -z "$RUBY_CFLAGS"; then
-        ruby_path=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(archdir))'`
-        if test -n "${ruby_path}"; then
-                ruby_path="-I$ruby_path"
+        #
+        # Check for Ruby cflags
+        #
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby cflags" >&5
+$as_echo_n "checking for Ruby cflags... " >&6; }
+        if test -z "$RUBY_CFLAGS"; then
+            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))' | sed 's/-arch [^ ]*[ ]*//g'`
         fi
-        RUBY_CFLAGS=$ruby_path
-    fi
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CFLAGS" >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CFLAGS" >&5
 $as_echo "$RUBY_CFLAGS" >&6; }
 
+        #
+        # Check for Ruby include path
+        #
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby include path" >&5
+$as_echo_n "checking for Ruby include path... " >&6; }
+        ruby_path=`$RUBY -rmkmf -e 'c = RbConfig::CONFIG; print c.has_key?(%q(rubyhdrdir)) ? \
+            c.fetch(%q(rubyhdrdir)) : c.fetch(%q(archdir))'`
 
-    #
-    # Check for Ruby library path
-    #
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby library path" >&5
-$as_echo_n "checking for Ruby library path... " >&6; }
-    if test -z "$RUBY_LDFLAGS"; then
-        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
+        ruby_arch=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(arch))'`
+
+        if test -n "${ruby_path}"; then
+            #
+            #  For some reason ruby 1.9.1 on linux seems to put its
+            #  config.h file in ${ruby_path}/${ruby_arch}/ruby/config.h
+            #  Aside from the fact that it is WRONG to include your own
+            #  config.h file it means we can't use the headers unless we
+            #  add both paths
+            #
+            if test -d "${ruby_path}/${arch}"; then
+            	 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
+            else
+                 ruby_path=" -I${ruby_path}"
+            fi
+        fi
+
+        RUBY_CFLAGS+="$ruby_path"
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ruby_path" >&5
+$as_echo "$ruby_path" >&6; }
     fi
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LDFLAGS" >&5
+
+
+
+    if test -z "$RUBY_LDFLAGS"; then
+        #
+        # Check for Ruby library path
+        #
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby library path" >&5
+$as_echo_n "checking for Ruby library path... " >&6; }
+        if test -z "$RUBY_LIBRARY_PATH"; then
+            RUBY_LIBRARY_PATH=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(libdir))'`
+            if test -n "${RUBY_LIBRARY_PATH}"; then
+                RUBY_LIBRARY_PATH=" -L$RUBY_LIBRARY_PATH"
+            fi
+        fi
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LIBRARY_PATH" >&5
+$as_echo "$RUBY_LIBRARY_PATH" >&6; }
+
+        #
+        # Check for Ruby linking flags
+        #
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby linking flags" >&5
+$as_echo_n "checking for Ruby linking flags... " >&6; }
+
+        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LIBRUBYARG_SHARED))'`
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LDFLAGS" >&5
 $as_echo "$RUBY_LDFLAGS" >&6; }
+
+        RUBY_LDFLAGS="${RUBY_LIBRARY_PATH} ${RUBY_LDFLAGS}"
+    fi
+
 
 
     #
@@ -3433,8 +3483,8 @@ $as_echo "$RUBY_SITE_PKG" >&6; }
     #
     # libraries which must be linked in when embedding
     #
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking ruby extra libraries" >&5
-$as_echo_n "checking ruby extra libraries... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby extra libraries" >&5
+$as_echo_n "checking for Ruby extra libraries... " >&6; }
     if test -z "$RUBY_EXTRA_LIBS"; then
        RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(SOLIBS))'`
     fi
@@ -3446,14 +3496,12 @@ $as_echo "$RUBY_EXTRA_LIBS" >&6; }
     # linking flags needed when embedding
     # (is it even needed for Ruby?)
     #
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking ruby extra linking flags" >&5
-$as_echo_n "checking ruby extra linking flags... " >&6; }
-    if test -z "$RUBY_EXTRA_LDFLAGS"; then
-      RUBY_EXTRA_LDFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(LINKFORSHARED))'`
-    fi
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_EXTRA_LDFLAGS" >&5
-$as_echo "$RUBY_EXTRA_LDFLAGS" >&6; }
-
+    # AC_MSG_CHECKING([for Ruby extra linking flags])
+    # if test -z "$RUBY_EXTRA_LIBS"; then
+    # RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print RubyConfig::CONFIG.fetch(%q(LINKFORSHARED))'`
+    # fi
+    # AC_MSG_RESULT([$RUBY_EXTRA_LIBS])
+    # AC_SUBST(RUBY_EXTRA_LIBS)
 
     # this flags breaks ruby.h, and is sometimes defined by KDE m4 macros
     CFLAGS="`echo "$CFLAGS" | sed -e 's/-std=iso9899:1990//g;'`"
@@ -3517,14 +3565,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
     # turn back to default flags
     CFLAGS="$ac_save_CFLAGS"
-    LIBS="$ac_save_LIBS"
+    LIBS="$ac_save_LDFLAGS"
 
     #
     # all done!
     #
 
 
-	if test x$RUBY_VERSION != x""; then
+	if test ! -n "$RUBY_VERSION"; then
 		ruby_cflags+="$RUBY_CFLAGS"
 		ruby_ldflags+="$RUBY_LDFLAGS"
 		ruby_ldflags+="$RUBY_EXTRA_LIBS"
