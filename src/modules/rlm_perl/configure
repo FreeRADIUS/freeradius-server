@@ -638,6 +638,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
+with_perl
 '
       ac_precious_vars='build_alias
 host_alias
@@ -647,7 +648,8 @@ CFLAGS
 LDFLAGS
 LIBS
 CPPFLAGS
-CPP'
+CPP
+PERL'
 
 
 # Initialize some variables set by options.
@@ -1251,6 +1253,11 @@ if test -n "$ac_init_help"; then
 
   cat <<\_ACEOF
 
+Optional Packages:
+  --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
+  --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
+  --with-perl=[PATH]    absolute path to perl executable
+
 Some influential environment variables:
   CC          C compiler command
   CFLAGS      C compiler flags
@@ -1260,6 +1267,7 @@ Some influential environment variables:
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
   CPP         C preprocessor
+  PERL        Absolute path to perl executable
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -1812,6 +1820,45 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
+
+
+
+
+# ===========================================================================
+#       http://www.gnu.org/software/autoconf-archive/ax_with_prog.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_WITH_PROG([VARIABLE],[program],[VALUE-IF-NOT-FOUND],[PATH])
+#
+# DESCRIPTION
+#
+#   Locates an installed program binary, placing the result in the precious
+#   variable VARIABLE. Accepts a present VARIABLE, then --with-program, and
+#   failing that searches for program in the given path (which defaults to
+#   the system path). If program is found, VARIABLE is set to the full path
+#   of the binary; if it is not found VARIABLE is set to VALUE-IF-NOT-FOUND
+#   if provided, unchanged otherwise.
+#
+#   A typical example could be the following one:
+#
+#     AX_WITH_PROG(PERL,perl)
+#
+#   NOTE: This macro is based upon the original AX_WITH_PYTHON macro from
+#   Dustin J. Mitchell <dustin@cs.uchicago.edu>.
+#
+# LICENSE
+#
+#   Copyright (c) 2008 Francesco Salvestrini <salvestrini@users.sourceforge.net>
+#   Copyright (c) 2008 Dustin J. Mitchell <dustin@cs.uchicago.edu>
+#
+#   Copying and distribution of this file, with or without modification, are
+#   permitted in any medium without royalty provided the copyright notice
+#   and this notice are preserved. This file is offered as-is, without any
+#   warranty.
+
+#serial 16
 
 
 
@@ -2746,24 +2793,58 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-	# Extract the first word of "perl", so it can be a program name with args.
+
+
+
+
+
+
+
+
+
+
+    if test -z "$PERL"; then :
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether perl executable path has been provided" >&5
+$as_echo_n "checking whether perl executable path has been provided... " >&6; }
+
+# Check whether --with-perl was given.
+if test "${with_perl+set}" = set; then :
+  withval=$with_perl;
+            if test "$withval" != yes && test "$withval" != no; then :
+
+                PERL="$withval"
+                { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PERL" >&5
+$as_echo "$PERL" >&6; }
+
+else
+
+                PERL=""
+                { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+                if test "$withval" != no; then :
+
+                  # Extract the first word of "perl", so it can be a program name with args.
 set dummy perl; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_prog_PERL+:} false; then :
+if ${ac_cv_path_PERL+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  if test -n "$PERL"; then
-  ac_cv_prog_PERL="$PERL" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
+  case $PERL in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PERL="$PERL" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="${PATH}:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
 do
   IFS=$as_save_IFS
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_prog_PERL="yes"
+    ac_cv_path_PERL="$as_dir/$ac_word$ac_exec_ext"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -2771,10 +2852,11 @@ done
   done
 IFS=$as_save_IFS
 
-  test -z "$ac_cv_prog_PERL" && ac_cv_prog_PERL="no"
+  test -z "$ac_cv_path_PERL" && ac_cv_path_PERL="not-found"
+  ;;
+esac
 fi
-fi
-PERL=$ac_cv_prog_PERL
+PERL=$ac_cv_path_PERL
 if test -n "$PERL"; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PERL" >&5
 $as_echo "$PERL" >&6; }
@@ -2784,11 +2866,79 @@ $as_echo "no" >&6; }
 fi
 
 
-	if test "$PERL" = "no"; then
+
+fi
+
+fi
+
+else
+
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+            # Extract the first word of "perl", so it can be a program name with args.
+set dummy perl; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_PERL+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $PERL in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_PERL="$PERL" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="${PATH}:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_PERL="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_PERL" && ac_cv_path_PERL="not-found"
+  ;;
+esac
+fi
+PERL=$ac_cv_path_PERL
+if test -n "$PERL"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $PERL" >&5
+$as_echo "$PERL" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+fi
+
+
+fi
+
+
+
+
+
+
+	if test "$PERL" = "not-found" -o ! -x "$PERL"; then
            fail=$fail" perl"
 	else
-          old_CFLAGS=$CFLAGS
-          CFLAGS="$CFLAGS `perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'`"
+	  old_CFLAGS="$CFLAGS"
+
+	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Perl ccopts" >&5
+$as_echo_n "checking for Perl ccopts... " >&6; }
+	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g' | sed 's/^ *//')
+          CFLAGS+=" $perl_cflags"
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: $perl_cflags" >&5
+$as_echo "$perl_cflags" >&6; }
 
 	  smart_try_dir=
 
@@ -2918,9 +3068,7 @@ else
 $as_echo "no" >&6; }
 fi
 
-	  if test "x$ac_cv_header_EXTERN_h" = "xyes"; then
-		perl_cflags="\`perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'\`"
-	  else
+	  if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
 		fail="$fail EXTERN.h"
 		targetname=
 	  fi
@@ -3051,15 +3199,20 @@ else
 $as_echo "no" >&6; }
 fi
 
-	  if test "x$ac_cv_header_perl_h" = "xyes"; then
-		perl_cflags="\`perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'\`"
-	  else
-		fail="$fail perl.h"
+	  if test "x$ac_cv_header_perl_h" != "xyes"; then
+		fail="$fail EXTERN.h"
 		targetname=
 	  fi
 
 	  old_LIBS="$LIBS"
-	  LIBS="$old_LIBS `perl -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g'`"
+
+	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Perl ldopts" >&5
+$as_echo_n "checking for Perl ldopts... " >&6; }
+	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g' | sed 's/^ *//')
+	  LIBS+=" $perl_ldflags"
+          { $as_echo "$as_me:${as_lineno-$LINENO}: result: $perl_ldflags" >&5
+$as_echo "$perl_ldflags" >&6; }
+
 	  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char boot_DynaLoader();
@@ -3079,9 +3232,7 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-	  if test "x$BROKEN" = "x"; then
-        	perl_ldflags="\`perl -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g'\`"
-	  else
+	  if test "x$BROKEN" != "x"; then
 		fail="$fail libperl.so"
 		targetname=
           fi
@@ -3111,6 +3262,7 @@ rm -f core conftest.err conftest.$ac_objext \
 	  fi
 
           CFLAGS=$old_CFLAGS
+          LIBS=$old_libs
         fi
 	targetname=rlm_perl
 
@@ -3127,9 +3279,8 @@ if test x"$fail" != x""; then
 $as_echo "$as_me: WARNING: silently not building rlm_perl." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_perl requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_perl requires: $fail." >&2;};
-		targetname=""
-		perl_cflags=""
-		perl_ldflags=""
+
+		targetname=
 	fi
 fi
 

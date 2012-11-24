@@ -1,13 +1,13 @@
-TARGETNAME	= @targetname@
+TARGETNAME	:= @targetname@
 
 ifneq "$(TARGETNAME)" ""
-TARGET		= $(TARGETNAME).a
+TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		= rlm_perl.c
+SOURCES		:= rlm_perl.c
 
-SRC_CFLAGS	= @perl_cflags@
-TGT_LDLIBS	= @perl_ldflags@
+SRC_CFLAGS	:= @perl_cflags@
+TGT_LDLIBS	:= @perl_ldflags@
 
 install: install.raddbdir $(R)$(raddbdir)/example.pl
 

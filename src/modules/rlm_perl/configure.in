@@ -3,6 +3,8 @@ AC_INIT(rlm_perl.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_perl])
 
+m4_include([ax_with_prog.m4])
+
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
@@ -12,40 +14,43 @@ if test x$with_[]modname != xno; then
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
 
-	AC_CHECK_PROG(PERL, perl, yes, no)
-	if test "$PERL" = "no"; then
+    	AX_WITH_PROG([PERL],[perl],[not-found],[${PATH}:/usr/bin:/usr/local/bin])
+	if test "$PERL" = "not-found" -o ! -x "$PERL"; then
            fail=$fail" perl"
 	else
-          old_CFLAGS=$CFLAGS
-          CFLAGS=["$CFLAGS `perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'`"]
+	  old_CFLAGS="$CFLAGS"
+	  
+	  AC_MSG_CHECKING([for Perl ccopts])
+	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [[^ ]]*//g' | sed 's/^[ ]*//')
+          CFLAGS+=" $perl_cflags"
+          AC_MSG_RESULT([$perl_cflags])
 
 	  smart_try_dir=
 	  FR_SMART_CHECK_INCLUDE(EXTERN.h)
-	  if test "x$ac_cv_header_EXTERN_h" = "xyes"; then
-		perl_cflags=["\`perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'\`"]
-	  else
+	  if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
 		fail="$fail EXTERN.h"
 		targetname=
 	  fi
 
 	  FR_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
-	  if test "x$ac_cv_header_perl_h" = "xyes"; then
-		perl_cflags=["\`perl -MExtUtils::Embed -e ccopts | sed 's/\s*-arch [^ ]*//g'\`"]
-	  else
-		fail="$fail perl.h"
+	  if test "x$ac_cv_header_perl_h" != "xyes"; then
+		fail="$fail EXTERN.h"
 		targetname=
 	  fi
 
 	  old_LIBS="$LIBS"
-	  LIBS=["$old_LIBS `perl -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g'`"]
+	  
+	  AC_MSG_CHECKING([for Perl ldopts])
+	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [[^ ]]*//g' | sed 's/^[ ]*//')
+	  LIBS+=" $perl_ldflags"
+          AC_MSG_RESULT([$perl_ldflags])
+	  
 	  AC_TRY_LINK([extern char boot_DynaLoader();],
 		      [ boot_DynaLoader()],
 		      BROKEN=,
 		      BROKEN="yes")
 
-	  if test "x$BROKEN" = "x"; then
-        	perl_ldflags=["\`perl -MExtUtils::Embed -e ldopts | sed 's/\s*-arch [^ ]*//g'\`"]
-	  else
+	  if test "x$BROKEN" != "x"; then
 		fail="$fail libperl.so"
 		targetname=
           fi
@@ -61,6 +66,7 @@ if test x$with_[]modname != xno; then
 	  fi
 
           CFLAGS=$old_CFLAGS
+          LIBS=$old_libs
         fi
 	targetname=modname
 
@@ -76,9 +82,8 @@ if test x"$fail" != x""; then
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
 		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
-		targetname=""
-		perl_cflags=""
-		perl_ldflags=""
+		
+		targetname=
 	fi
 fi
 
