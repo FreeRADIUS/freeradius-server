@@ -90,7 +90,7 @@ static const CONF_PARSER module_config[] = {
   { "check-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,check_name), NULL, NULL },
   { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reply_name), NULL, "Session-Timeout" },
   { "key", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,key_name), NULL, NULL },
-  { "sqlmod-inst", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
+  { "sql-module-instance", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,sqlmod_inst), NULL, NULL },
   { "query", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,query), NULL, NULL },
   { "reset", PW_TYPE_STRING_PTR, offsetof(rlm_sqlcounter_t,reset), NULL,  NULL },
   { NULL, -1, 0, NULL, NULL }

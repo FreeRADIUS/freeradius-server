@@ -5,23 +5,34 @@
 #
 #  Write Chargeable-User-Identity to the database.
 #
-#  Schema	raddb/sql/DB/cui.sql
-#  Queries	raddb/sql/DB/cui.conf
+#  Schema	raddb/sql/cui/<DB>/schema.sql
+#  Queries	raddb/sql/cui/<DB>/queries.conf
 #
 sql cuisql {
+	# The submodule to use to execute queries. This should match
+	# the database you're attempting to connect to.
 	#
-	#  Set the database to one of:
+	# There are CUI queries available for:
+	#    * rlm_sql_mysql
+	#    * rlm_sql_postgresql
+	#    * rlm_sql_null (log queries to disk)
 	#
-	#	mysql, postgresql
+	driver = "rlm_sql_null"
+
+	# The dialect of SQL you want to use, this should usually match
+	# the driver you selected above.
 	#
-	database = "mysql"
-	driver = "rlm_sql_${database}"
+	# If you're using rlm_sql_null, then it should be the type of
+	# database the logged queries are going to be exected against.
+	dialect = "mysql"
+	
 	server = "localhost"
 	login = "db_login_name"
 	password = "db_password"
 	radius_db = "db_name"
 #	sqltrace = yes
 #	sqltracefile = ${logdir}/cuitrace.sql
+
         pool {
                 start = 5
                 min = 4
@@ -31,8 +42,9 @@ sql cuisql {
                 lifetime = 0
                 idle_timeout = 60
         }
+        
 	cui_table = "cui"
 	sql_user_name = "%{User-Name}"
 	
-	$INCLUDE sql/${database}/cui.conf
+	$INCLUDE sql/cui/${dialect}/queries.conf
 }

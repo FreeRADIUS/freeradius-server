@@ -1,67 +1,63 @@
-##  Configuration for the SQL based IP Pool module (rlm_sqlippool)
-##
-##  The database schemas are available at:
-##
-##       raddb/sql/DB/ippool.sql
-##
-##  $Id$
+#  Configuration for the SQL based IP Pool module (rlm_sqlippool)
+#
+#  The database schemas are available at:
+#
+#       raddb/sql/ippool/<DB>/schema.sql
+#
+#  $Id$
 
 sqlippool {
+	# SQL instance to use (from sql.conf)
+	#
+	#  If you have multiple sql instances, such as "sql sql1 {...}",
+	#  use the *instance* name here: sql1.
+	sql-instance-name = "sql"
 
- #########################################
- ## SQL instance to use (from sql.conf) ##
- ##
- ##  If you have multiple sql instances, such as "sql sql1 {...}",
- ##  use the *instance* name here: sql1.
- #########################################
- sql-instance-name = "sql"
-
- ## SQL table to use for ippool range and lease info
- ippool_table = "radippool"
-
- ## IP lease duration. (Leases expire even if Acct Stop packet is lost)
- lease-duration = 3600
-
- ## Attribute which should be considered unique per NAS
- ## Using NAS-Port gives behaviour similar to rlm_ippool. (And ACS)
- ## Using Calling-Station-Id works for NAS that send fixed NAS-Port
- ## ONLY change this if you know what you are doing!
- pool-key = "%{NAS-Port}"
- # pool-key = "%{Calling-Station-Id}"
-
- ################################################################
- #
- #  WARNING: MySQL has certain limitations that means it can
- #           hand out the same IP address to 2 different users.
- #
- #           We suggest using an SQL DB with proper transaction
- #           support, such as PostgreSQL, or using MySQL
- #	     with InnoDB.
- #
- ################################################################
-
- #
- #  Use the same database as configured in the "sql" module, "database"
- #  configuration item.  Change the "postgresql" name below to be the
- #  same as the "database" field of the SQL module referred to in the
- #  "sql-instance-name", above.
- #
-$INCLUDE sql/postgresql/ippool.conf
- 
- ## Logging configuration. (Comment out to disable logging)
- sqlippool_log_exists = "Existing IP: %{reply:Framed-IP-Address} \
-  (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
- sqlippool_log_success = "Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} \
-  (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
- sqlippool_log_clear = "Released IP %{Framed-IP-Address}\
- (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
-
- sqlippool_log_failed = "IP Allocation FAILED from %{control:Pool-Name} \
-  (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
- sqlippool_log_nopool = "No Pool-Name defined \
-  (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
-
+	# SQL table to use for ippool range and lease info
+	ippool_table = "radippool"
+	
+	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
+	lease-duration = 3600
+	
+	# Attribute which should be considered unique per NAS
+	#
+	#  Using NAS-Port gives behaviour similar to rlm_ippool. (And ACS)
+	#  Using Calling-Station-Id works for NAS that send fixed NAS-Port
+	#  ONLY change this if you know what you are doing!
+	pool-key = "%{NAS-Port}"
+	# pool-key = "%{Calling-Station-Id}"
+	
+	################################################################
+	#
+	#  WARNING: MySQL (MyISAM) has certain limitations that means it can
+	#           hand out the same IP address to 2 different users.
+	#
+	#           We suggest using an SQL DB with proper transaction
+	#           support, such as PostgreSQL, or using MySQL
+	#	     with InnoDB.
+	#
+	################################################################
+	
+	# Logging configuration. (Comment out to disable logging)
+	sqlippool_log_exists = "Existing IP: %{reply:Framed-IP-Address} \
+	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	
+	sqlippool_log_success = "Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} \
+	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	
+	sqlippool_log_clear = "Released IP %{Framed-IP-Address}\
+	(did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+	
+	sqlippool_log_failed = "IP Allocation FAILED from %{control:Pool-Name} \
+	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	
+	sqlippool_log_nopool = "No Pool-Name defined \
+	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	
+	#  Use the same database as configured in the "sql" module, "database"
+	#  configuration item.  Change the "postgresql" name below to be the
+	#  same as the "database" field of the SQL module referred to in the
+	#  "sql-instance-name", above.
+	#
+	$INCLUDE sql/ippool/${modules.${sql-instance-name}.dialect}/queries.conf
 }

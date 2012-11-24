@@ -10,36 +10,41 @@
 #
 #  The database schemas and queries are located in subdirectories:
 #
-#	sql/DB/schema.sql	Schema
-#	sql/DB/dialup.conf	Basic dialup (including policy) queries
-#	sql/DB/counter.conf	counter
-#	sql/DB/ippool.conf	IP Pools in SQL
-#	sql/DB/ippool.sql	schema for IP pools.
+#	sql/<DB>/main/schema.sql	Schema
+#	sql/<DB>/main/queries.conf	Authorisation and Accounting queries
 #
 #  Where "DB" is mysql, mssql, oracle, or postgresql.
 #
 
 sql {
+	# The submodule to use to execute queries. This should match
+	# the database you're attempting to connect to.
 	#
-	#  Set the database to one of:
-	#
-	#	mysql, mssql, oracle, postgresql
-	#
-	database = "mysql"
+	#    * rlm_sql_mysql
+	#    * rlm_sql_mssql
+	#    * rlm_sql_oracle
+	#    * rlm_sql_postgresql
+	#    * rlm_sql_null (log queries to disk)
+	#	
+	driver = "rlm_sql_null"
 
+	# The dialect of SQL you want to use, this should usually match
+	# the driver you selected above.
 	#
-	#  Which FreeRADIUS driver to use.
-	#
-	driver = "rlm_sql_${database}"
-
+	# If you're using rlm_sql_null, then it should be the type of
+	# database the logged queries are going to be exected against.
+	dialect = "mysql"
+	
 	# Connection info:
-	server = "localhost"
-	#port = 3306
-	login = "radius"
-	password = "radpass"
+	#
+	# server = "localhost"
+	# port = 3306
+	# login = "radius"
+	# password = "radpass"
 
 	# Database table configuration for everything except Oracle
 	radius_db = "radius"
+
 	# If you are using Oracle then use this instead
 	# radius_db = "(DESCRIPTION=(ADDRESS=(PROTOCOL=TCP)(HOST=localhost)(PORT=1521))(CONNECT_DATA=(SID=your_sid)))"
 
@@ -53,10 +58,12 @@ sql {
 	# Allow for storing data after authentication
 	postauth_table = "radpostauth"
 
+	# Tables containing 'check' items
 	authcheck_table = "radcheck"
-	authreply_table = "radreply"
-
 	groupcheck_table = "radgroupcheck"
+
+	# Tables containing 'reply' items
+	authreply_table = "radreply"
 	groupreply_table = "radgroupreply"
 
 	# Table to keep group info
@@ -81,6 +88,7 @@ sql {
 	#  lifetime
 	#  max_queries
 
+	#
 	#  The connection pool is new for 3.0, and will be used in many
 	#  modules, for all kinds of connection-related activity.
 	#
@@ -136,6 +144,6 @@ sql {
 	# Table to keep radius client info
 	nas_table = "nas"
 
-	# Read driver-specific configuration
-	$INCLUDE sql/${database}/dialup.conf
+	# Read database-specific queries
+	$INCLUDE sql/main/${dialect}/queries.conf
 }

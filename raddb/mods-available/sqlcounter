@@ -1,0 +1,10 @@
+#  Configuration for the SQL based IP Pool module (rlm_sqlippool)
+#
+#  Database queries and main configuration are available at:
+#
+#       raddb/sql/counter/<DB>/schema.sql
+#       raddb/sql/counter/<DB>/queries.conf
+#
+#  $Id$
+
+$INCLUDE sql/counter/mysql/queries.conf
