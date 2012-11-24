@@ -26,6 +26,13 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
+/*
+ *	Undefine any HAVE_* flags which may conflict
+ *	ruby.h *REALLY* shouldn't #include its config.h file,
+ *	but it does *sigh*.
+ */
+#undef HAVE_CRYPT
+
 #include <ruby.h>
 
 /*
@@ -58,7 +65,6 @@ typedef struct rlm_ruby_t {
     VALUE pModule_builtin;
 
 } rlm_ruby_t;
-
 
 /*
  *	A mapping of configuration file names to internal variables.

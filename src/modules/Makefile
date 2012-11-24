@@ -63,7 +63,7 @@ endif
 # The modules may not have a Makefile
 $(CONFIG_FILES):
 	@echo "Making reconfig in $(dir $@)..."
-	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir)
+	@cd $(dir $@) && $(AUTOCONF) -I ./m4 -I $(top_builddir) -I $(top_builddir)/m4
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
 		cd $(dir $@) && $(AUTOHEADER); \
 	 fi

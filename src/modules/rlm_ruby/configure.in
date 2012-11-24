@@ -3,83 +3,43 @@ AC_INIT(rlm_ruby.c)
 AC_REVISION($Revision: 1.9 $)
 AC_DEFUN(modname,[rlm_ruby])
 
-if test x$with_[]modname != xno; then
+m4_include([ax_with_prog.m4])
 
+AC_DEFUN([AX_WITH_RUBY],[
+    AX_WITH_PROG([RUBY],[ruby],[not-found],[${PATH}:/usr/bin:/usr/local/bin])
+])
+
+m4_include([ax_compare_version.m4])
+m4_include([ax_prog_ruby_version.m4])
+m4_include([ax_ruby_devel.m4])
+
+targetname=modname
+if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_CHECK_PROGS(RUBYBIN, [ ruby ruby1.8 ], not-found, [${PATH}:/usr/bin:/usr/local/bin])
-
-	if test x$RUBYBIN = xnot-found; then
-		fail="ruby-binary"
-	fi
-
-	dnl extra argument: --with-rlm-ruby-lib-dir
-	RB_LIB_DIR=
-	AC_ARG_WITH(rlm-ruby-lib-dir,
-	[  --with-rlm-ruby-lib-dir=DIR       Directory for Ruby library files []],
-	[ case "$withval" in
-	    no)
-		AC_MSG_ERROR(Need rlm-ruby-lib-dir)
-		;;
-	    yes)
-		;;
-	    *)
-		RB_LIB_DIR="$withval"
-		;;
-	  esac ]
-	)
-
-	dnl extra argument: --with-rlm-ruby-include-dir
-	RB_INC_DIR=
-	AC_ARG_WITH(rlm-ruby-include-dir,
-	[  --with-rlm-ruby-include-dir=DIR   Directory for Ruby include files []],
-	[ case "$withval" in
-	    no)
-		AC_MSG_ERROR(Need rlm-ruby-include-dir)
-		;;
-	    yes)
-		;;
-	    *)
-		RB_INC_DIR="$withval"
-		;;
-	  esac ]
-	)
-
-	if test x$fail = x; then
-		RB_PREFIX=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('prefix')"`]
-		RB_EXEC_PREFIX=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('exec_prefix')"`]
-		RB_VERSION=[`${RUBYBIN} -e 'puts RUBY_VERSION'`]
-#		RB_LIB_DIR=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('libdir')"`]
-#		RB_EXTRA_LIBS=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBS')"`]
-		RB_LIBS=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBRUBYARG_SHARED')" | sed 's/\s*-arch [^ ]*//g'`]
-		RB_INC_DIR=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('includedir')"`]
-		RB_CFLAGS=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('CFLAGS')" | sed 's/\s*-arch [^ ]*//g'`]
-		RB_ARCH_DIR=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('archdir')"`]
-
-		old_CFLAGS=$CFLAGS
-		CFLAGS="$CFLAGS $RB_CFLAGS -I${RB_ARCH_DIR} -I${RB_INC_DIR}"
-#		smart_try_dir=$RB_INC_DIR
+	AX_RUBY_DEVEL([1.8])
+	
+	if test x$RUBY_VERSION != x""; then
+		ruby_cflags+="$RUBY_CPPFLAGS"
+		ruby_ldflags+="$RUBY_LDFLAGS"
+		ruby_ldflags+="$RUBY_EXTRA_LIBS"
+		
+		old_CFLAGS="$CFLAGS"
+		CFLAGS="$ruby_cflags"
+		
 		FR_SMART_CHECK_INCLUDE(ruby.h)
 		if test "x$ac_cv_header_ruby_h" != "xyes"; then
 			fail="$fail ruby.h"
 			targetname=
 		fi
-		ruby_cflags=$CFLAGS
-		CFLAGS=$old_CFLAGS
-
-		old_LIBS=$LIBS
-#		LIBS="$RB_LIBS $RB_LIB_DIR $RB_EXTRA_LIBS -lm"
-		LIBS="$RB_LIBS"
-#		smart_try_dir=$RB_LIB_DIR
-		ruby_ldflags=$LIBS
-		LIBS=$old_LIBS
-		targetname=modname
-#		ruby_headers="${RB_INC_DIR} ${RB_ARCH_DIR}"
+		
+		CFLAGS="$old_CFLAGS"
+	else
+		fail="ruby"
+		targetname=
 	fi
-
 else
-	targetname=
 	echo \*\*\* module modname is disabled.
 fi
 

@@ -196,7 +196,8 @@ test -x / || exit 1"
   as_suggested="  as_lineno_1=";as_suggested=$as_suggested$LINENO;as_suggested=$as_suggested" as_lineno_1a=\$LINENO
   as_lineno_2=";as_suggested=$as_suggested$LINENO;as_suggested=$as_suggested" as_lineno_2a=\$LINENO
   eval 'test \"x\$as_lineno_1'\$as_run'\" != \"x\$as_lineno_2'\$as_run'\" &&
-  test \"x\`expr \$as_lineno_1'\$as_run' + 1\`\" = \"x\$as_lineno_2'\$as_run'\"' || exit 1"
+  test \"x\`expr \$as_lineno_1'\$as_run' + 1\`\" = \"x\$as_lineno_2'\$as_run'\"' || exit 1
+test \$(( 1 + 1 )) = 2 || exit 1"
   if (eval "$as_required") 2>/dev/null; then :
   as_have_required=yes
 else
@@ -589,7 +590,15 @@ targetname
 ruby_headers
 ruby_cflags
 ruby_ldflags
-RUBYBIN
+RUBY_EXTRA_LIBS
+RUBY_SITE_PKG
+RUBY_LDFLAGS
+RUBY_CPPFLAGS
+AWK
+RUBY_VERSION
+GREP
+SED
+RUBY
 CPP
 OBJEXT
 EXEEXT
@@ -639,8 +648,7 @@ SHELL'
 ac_subst_files=''
 ac_user_opts='
 enable_option_checking
-with_rlm_ruby_lib_dir
-with_rlm_ruby_include_dir
+with_ruby
 '
       ac_precious_vars='build_alias
 host_alias
@@ -650,7 +658,8 @@ CFLAGS
 LDFLAGS
 LIBS
 CPPFLAGS
-CPP'
+CPP
+RUBY'
 
 
 # Initialize some variables set by options.
@@ -1257,8 +1266,7 @@ if test -n "$ac_init_help"; then
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-rlm-ruby-lib-dir=DIR       Directory for Ruby library files
-  --with-rlm-ruby-include-dir=DIR   Directory for Ruby include files
+  --with-ruby=[PATH]    absolute path to ruby executable
 
 Some influential environment variables:
   CC          C compiler command
@@ -1269,6 +1277,7 @@ Some influential environment variables:
   CPPFLAGS    (Objective) C/C++ preprocessor flags, e.g. -I<include dir> if
               you have headers in a nonstandard directory <include dir>
   CPP         C preprocessor
+  RUBY        Absolute path to ruby executable
 
 Use these variables to override the choices made by `configure' or to help
 it to find libraries and programs with nonstandard names/locations.
@@ -1424,6 +1433,52 @@ fi
   as_fn_set_status $ac_retval
 
 } # ac_fn_c_try_cpp
+
+# ac_fn_c_try_link LINENO
+# -----------------------
+# Try to link conftest.$ac_ext, and return whether this succeeded.
+ac_fn_c_try_link ()
+{
+  as_lineno=${as_lineno-"$1"} as_lineno_stack=as_lineno_stack=$as_lineno_stack
+  rm -f conftest.$ac_objext conftest$ac_exeext
+  if { { ac_try="$ac_link"
+case "(($ac_try" in
+  *\"* | *\`* | *\\*) ac_try_echo=\$ac_try;;
+  *) ac_try_echo=$ac_try;;
+esac
+eval ac_try_echo="\"\$as_me:${as_lineno-$LINENO}: $ac_try_echo\""
+$as_echo "$ac_try_echo"; } >&5
+  (eval "$ac_link") 2>conftest.err
+  ac_status=$?
+  if test -s conftest.err; then
+    grep -v '^ *+' conftest.err >conftest.er1
+    cat conftest.er1 >&5
+    mv -f conftest.er1 conftest.err
+  fi
+  $as_echo "$as_me:${as_lineno-$LINENO}: \$? = $ac_status" >&5
+  test $ac_status = 0; } && {
+	 test -z "$ac_c_werror_flag" ||
+	 test ! -s conftest.err
+       } && test -s conftest$ac_exeext && {
+	 test "$cross_compiling" = yes ||
+	 test -x conftest$ac_exeext
+       }; then :
+  ac_retval=0
+else
+  $as_echo "$as_me: failed program was:" >&5
+sed 's/^/| /' conftest.$ac_ext >&5
+
+	ac_retval=1
+fi
+  # Delete the IPA/IPO (Inter Procedural Analysis/Optimization) information
+  # created by the PGI compiler (conftest_ipa8_conftest.oo), as it would
+  # interfere with the next link command; also delete a directory that is
+  # left behind by Apple's compiler.  We do this before executing the actions.
+  rm -rf conftest.dSYM conftest_ipa8_conftest.oo
+  eval $as_lineno_stack; ${as_lineno_stack:+:} unset as_lineno
+  as_fn_set_status $ac_retval
+
+} # ac_fn_c_try_link
 cat >config.log <<_ACEOF
 This file contains any messages produced by compilers while
 running configure, to aid debugging if configure makes a mistake.
@@ -1779,8 +1834,230 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-if test x$with_rlm_ruby != xno; then
+# ===========================================================================
+#       http://www.gnu.org/software/autoconf-archive/ax_with_prog.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_WITH_PROG([VARIABLE],[program],[VALUE-IF-NOT-FOUND],[PATH])
+#
+# DESCRIPTION
+#
+#   Locates an installed program binary, placing the result in the precious
+#   variable VARIABLE. Accepts a present VARIABLE, then --with-program, and
+#   failing that searches for program in the given path (which defaults to
+#   the system path). If program is found, VARIABLE is set to the full path
+#   of the binary; if it is not found VARIABLE is set to VALUE-IF-NOT-FOUND
+#   if provided, unchanged otherwise.
+#
+#   A typical example could be the following one:
+#
+#     AX_WITH_PROG(PERL,perl)
+#
+#   NOTE: This macro is based upon the original AX_WITH_PYTHON macro from
+#   Dustin J. Mitchell <dustin@cs.uchicago.edu>.
+#
+# LICENSE
+#
+#   Copyright (c) 2008 Francesco Salvestrini <salvestrini@users.sourceforge.net>
+#   Copyright (c) 2008 Dustin J. Mitchell <dustin@cs.uchicago.edu>
+#
+#   Copying and distribution of this file, with or without modification, are
+#   permitted in any medium without royalty provided the copyright notice
+#   and this notice are preserved. This file is offered as-is, without any
+#   warranty.
 
+#serial 16
+
+
+
+
+
+
+# ===========================================================================
+#    http://www.gnu.org/software/autoconf-archive/ax_compare_version.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_COMPARE_VERSION(VERSION_A, OP, VERSION_B, [ACTION-IF-TRUE], [ACTION-IF-FALSE])
+#
+# DESCRIPTION
+#
+#   This macro compares two version strings. Due to the various number of
+#   minor-version numbers that can exist, and the fact that string
+#   comparisons are not compatible with numeric comparisons, this is not
+#   necessarily trivial to do in a autoconf script. This macro makes doing
+#   these comparisons easy.
+#
+#   The six basic comparisons are available, as well as checking equality
+#   limited to a certain number of minor-version levels.
+#
+#   The operator OP determines what type of comparison to do, and can be one
+#   of:
+#
+#    eq  - equal (test A == B)
+#    ne  - not equal (test A != B)
+#    le  - less than or equal (test A <= B)
+#    ge  - greater than or equal (test A >= B)
+#    lt  - less than (test A < B)
+#    gt  - greater than (test A > B)
+#
+#   Additionally, the eq and ne operator can have a number after it to limit
+#   the test to that number of minor versions.
+#
+#    eq0 - equal up to the length of the shorter version
+#    ne0 - not equal up to the length of the shorter version
+#    eqN - equal up to N sub-version levels
+#    neN - not equal up to N sub-version levels
+#
+#   When the condition is true, shell commands ACTION-IF-TRUE are run,
+#   otherwise shell commands ACTION-IF-FALSE are run. The environment
+#   variable 'ax_compare_version' is always set to either 'true' or 'false'
+#   as well.
+#
+#   Examples:
+#
+#     AX_COMPARE_VERSION([3.15.7],[lt],[3.15.8])
+#     AX_COMPARE_VERSION([3.15],[lt],[3.15.8])
+#
+#   would both be true.
+#
+#     AX_COMPARE_VERSION([3.15.7],[eq],[3.15.8])
+#     AX_COMPARE_VERSION([3.15],[gt],[3.15.8])
+#
+#   would both be false.
+#
+#     AX_COMPARE_VERSION([3.15.7],[eq2],[3.15.8])
+#
+#   would be true because it is only comparing two minor versions.
+#
+#     AX_COMPARE_VERSION([3.15.7],[eq0],[3.15])
+#
+#   would be true because it is only comparing the lesser number of minor
+#   versions of the two values.
+#
+#   Note: The characters that separate the version numbers do not matter. An
+#   empty string is the same as version 0. OP is evaluated by autoconf, not
+#   configure, so must be a string, not a variable.
+#
+#   The author would like to acknowledge Guido Draheim whose advice about
+#   the m4_case and m4_ifvaln functions make this macro only include the
+#   portions necessary to perform the specific comparison specified by the
+#   OP argument in the final configure script.
+#
+# LICENSE
+#
+#   Copyright (c) 2008 Tim Toolan <toolan@ele.uri.edu>
+#
+#   Copying and distribution of this file, with or without modification, are
+#   permitted in any medium without royalty provided the copyright notice
+#   and this notice are preserved. This file is offered as-is, without any
+#   warranty.
+
+#serial 11
+
+
+# ===========================================================================
+#   http://www.gnu.org/software/autoconf-archive/ax_prog_ruby_version.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_PROG_RUBY_VERSION([VERSION],[ACTION-IF-TRUE],[ACTION-IF-FALSE])
+#
+# DESCRIPTION
+#
+#   Makes sure that ruby supports the version indicated. If true the shell
+#   commands in ACTION-IF-TRUE are executed. If not the shell commands in
+#   ACTION-IF-FALSE are run. Note if $RUBY is not set (for example by
+#   running AC_CHECK_PROG or AC_PATH_PROG) the macro will fail.
+#
+#   Example:
+#
+#     AC_PATH_PROG([RUBY],[ruby])
+#     AC_PROG_RUBY_VERSION([1.8.0],[ ... ],[ ... ])
+#
+#   This will check to make sure that the ruby you have supports at least
+#   version 1.6.0.
+#
+#   NOTE: This macro uses the $RUBY variable to perform the check.
+#   AX_WITH_PROG([RUBY],[ruby],[VALUE-IF-NOT-FOUND],[PATH]) can be used to
+#   set that variable prior to running this macro. The $RUBY_VERSION
+#   variable will be valorized with the detected version.
+#
+# LICENSE
+#
+#   Copyright (c) 2009 Francesco Salvestrini <salvestrini@users.sourceforge.net>
+#
+#   Copying and distribution of this file, with or without modification, are
+#   permitted in any medium without royalty provided the copyright notice
+#   and this notice are preserved. This file is offered as-is, without any
+#   warranty.
+
+#serial 11
+
+
+
+# ===========================================================================
+#             http://autoconf-archive.cryp.to/ax_ruby_devel.html
+# ===========================================================================
+#
+# SYNOPSIS
+#
+#   AX_RUBY_DEVEL([version])
+#
+# DESCRIPTION
+#
+#   This macro checks for Ruby and tries to get the include path to
+#   'ruby.h'. It provides the $(RUBY_CPPFLAGS) and $(RUBY_LDFLAGS) output
+#   variables. It also exports $(RUBY_EXTRA_LIBS) for embedding Ruby in your
+#   code.
+#
+#   You can search for some particular version of Ruby by passing a
+#   parameter to this macro, for example "1.8.6".
+#
+# LICENSE
+#
+#   Copyright (c) 2008 Rafal Rzepecki <divided.mind@gmail.com>
+#   Copyright (c) 2008 Sebastian Huber <sebastian-huber@web.de>
+#   Copyright (c) 2008 Alan W. Irwin <irwin@beluga.phys.uvic.ca>
+#   Copyright (c) 2008 Rafael Laboissiere <rafael@laboissiere.net>
+#   Copyright (c) 2008 Andrew Collier <colliera@ukzn.ac.za>
+#   Copyright (c) 2008 Matteo Settenvini <matteo@member.fsf.org>
+#   Copyright (c) 2008 Horst Knorr <hk_classes@knoda.org>
+#
+#   This program is free software: you can redistribute it and/or modify it
+#   under the terms of the GNU General Public License as published by the
+#   Free Software Foundation, either version 3 of the License, or (at your
+#   option) any later version.
+#
+#   This program is distributed in the hope that it will be useful, but
+#   WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General
+#   Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License along
+#   with this program. If not, see <http://www.gnu.org/licenses/>.
+#
+#   As a special exception, the respective Autoconf Macro's copyright owner
+#   gives unlimited permission to copy, distribute and modify the configure
+#   scripts that are the output of Autoconf when processing the Macro. You
+#   need not follow the terms of the GNU General Public License when using
+#   or distributing such scripts, even though portions of the text of the
+#   Macro appear in them. The GNU General Public License (GPL) does govern
+#   all other use of the material that constitutes the Autoconf Macro.
+#
+#   This special exception to the GPL applies to versions of the Autoconf
+#   Macro released by the Autoconf Archive. When you make and distribute a
+#   modified version of the Autoconf Macro, you may extend this special
+#   exception to the GPL to apply to your modified version as well.
+
+
+
+targetname=rlm_ruby
+if test x$with_rlm_ruby != xno; then
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -2708,19 +2985,51 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	for ac_prog in  ruby ruby1.8
-do
-  # Extract the first word of "$ac_prog", so it can be a program name with args.
-set dummy $ac_prog; ac_word=$2
+
+
+
+
+
+
+
+
+
+
+
+    if test -z "$RUBY"; then :
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ruby executable path has been provided" >&5
+$as_echo_n "checking whether ruby executable path has been provided... " >&6; }
+
+# Check whether --with-ruby was given.
+if test "${with_ruby+set}" = set; then :
+  withval=$with_ruby;
+            if test "$withval" != yes && test "$withval" != no; then :
+
+                RUBY="$withval"
+                { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY" >&5
+$as_echo "$RUBY" >&6; }
+
+else
+
+                RUBY=""
+                { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+                if test "$withval" != no; then :
+
+                  # Extract the first word of "ruby", so it can be a program name with args.
+set dummy ruby; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
 $as_echo_n "checking for $ac_word... " >&6; }
-if ${ac_cv_prog_RUBYBIN+:} false; then :
+if ${ac_cv_path_RUBY+:} false; then :
   $as_echo_n "(cached) " >&6
 else
-  if test -n "$RUBYBIN"; then
-  ac_cv_prog_RUBYBIN="$RUBYBIN" # Let the user override the test.
-else
-as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+  case $RUBY in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_RUBY="$RUBY" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
 as_dummy="${PATH}:/usr/bin:/usr/local/bin"
 for as_dir in $as_dummy
 do
@@ -2728,7 +3037,243 @@ do
   test -z "$as_dir" && as_dir=.
     for ac_exec_ext in '' $ac_executable_extensions; do
   if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
-    ac_cv_prog_RUBYBIN="$ac_prog"
+    ac_cv_path_RUBY="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_RUBY" && ac_cv_path_RUBY="not-found"
+  ;;
+esac
+fi
+RUBY=$ac_cv_path_RUBY
+if test -n "$RUBY"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY" >&5
+$as_echo "$RUBY" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+fi
+
+fi
+
+else
+
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+            # Extract the first word of "ruby", so it can be a program name with args.
+set dummy ruby; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_path_RUBY+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $RUBY in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_RUBY="$RUBY" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+as_dummy="${PATH}:/usr/bin:/usr/local/bin"
+for as_dir in $as_dummy
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_path_RUBY="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  test -z "$ac_cv_path_RUBY" && ac_cv_path_RUBY="not-found"
+  ;;
+esac
+fi
+RUBY=$ac_cv_path_RUBY
+if test -n "$RUBY"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY" >&5
+$as_echo "$RUBY" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+
+fi
+
+
+fi
+
+
+
+
+
+
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a sed that does not truncate output" >&5
+$as_echo_n "checking for a sed that does not truncate output... " >&6; }
+if ${ac_cv_path_SED+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+            ac_script=s/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/
+     for ac_i in 1 2 3 4 5 6 7; do
+       ac_script="$ac_script$as_nl$ac_script"
+     done
+     echo "$ac_script" 2>/dev/null | sed 99q >conftest.sed
+     { ac_script=; unset ac_script;}
+     if test -z "$SED"; then
+  ac_path_SED_found=false
+  # Loop through the user's path and test for each of PROGNAME-LIST
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_prog in sed gsed; do
+    for ac_exec_ext in '' $ac_executable_extensions; do
+      ac_path_SED="$as_dir/$ac_prog$ac_exec_ext"
+      as_fn_executable_p "$ac_path_SED" || continue
+# Check for GNU ac_path_SED and select it if it is found.
+  # Check for GNU $ac_path_SED
+case `"$ac_path_SED" --version 2>&1` in
+*GNU*)
+  ac_cv_path_SED="$ac_path_SED" ac_path_SED_found=:;;
+*)
+  ac_count=0
+  $as_echo_n 0123456789 >"conftest.in"
+  while :
+  do
+    cat "conftest.in" "conftest.in" >"conftest.tmp"
+    mv "conftest.tmp" "conftest.in"
+    cp "conftest.in" "conftest.nl"
+    $as_echo '' >> "conftest.nl"
+    "$ac_path_SED" -f conftest.sed < "conftest.nl" >"conftest.out" 2>/dev/null || break
+    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+    as_fn_arith $ac_count + 1 && ac_count=$as_val
+    if test $ac_count -gt ${ac_path_SED_max-0}; then
+      # Best one so far, save it but keep looking for a better one
+      ac_cv_path_SED="$ac_path_SED"
+      ac_path_SED_max=$ac_count
+    fi
+    # 10*(2^10) chars as input seems more than enough
+    test $ac_count -gt 10 && break
+  done
+  rm -f conftest.in conftest.tmp conftest.nl conftest.out;;
+esac
+
+      $ac_path_SED_found && break 3
+    done
+  done
+  done
+IFS=$as_save_IFS
+  if test -z "$ac_cv_path_SED"; then
+    as_fn_error $? "no acceptable sed could be found in \$PATH" "$LINENO" 5
+  fi
+else
+  ac_cv_path_SED=$SED
+fi
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_path_SED" >&5
+$as_echo "$ac_cv_path_SED" >&6; }
+ SED="$ac_cv_path_SED"
+  rm -f conftest.sed
+
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
+$as_echo_n "checking for grep that handles long lines and -e... " >&6; }
+if ${ac_cv_path_GREP+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -z "$GREP"; then
+  ac_path_GREP_found=false
+  # Loop through the user's path and test for each of PROGNAME-LIST
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH$PATH_SEPARATOR/usr/xpg4/bin
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_prog in grep ggrep; do
+    for ac_exec_ext in '' $ac_executable_extensions; do
+      ac_path_GREP="$as_dir/$ac_prog$ac_exec_ext"
+      as_fn_executable_p "$ac_path_GREP" || continue
+# Check for GNU ac_path_GREP and select it if it is found.
+  # Check for GNU $ac_path_GREP
+case `"$ac_path_GREP" --version 2>&1` in
+*GNU*)
+  ac_cv_path_GREP="$ac_path_GREP" ac_path_GREP_found=:;;
+*)
+  ac_count=0
+  $as_echo_n 0123456789 >"conftest.in"
+  while :
+  do
+    cat "conftest.in" "conftest.in" >"conftest.tmp"
+    mv "conftest.tmp" "conftest.in"
+    cp "conftest.in" "conftest.nl"
+    $as_echo 'GREP' >> "conftest.nl"
+    "$ac_path_GREP" -e 'GREP$' -e '-(cannot match)-' < "conftest.nl" >"conftest.out" 2>/dev/null || break
+    diff "conftest.out" "conftest.nl" >/dev/null 2>&1 || break
+    as_fn_arith $ac_count + 1 && ac_count=$as_val
+    if test $ac_count -gt ${ac_path_GREP_max-0}; then
+      # Best one so far, save it but keep looking for a better one
+      ac_cv_path_GREP="$ac_path_GREP"
+      ac_path_GREP_max=$ac_count
+    fi
+    # 10*(2^10) chars as input seems more than enough
+    test $ac_count -gt 10 && break
+  done
+  rm -f conftest.in conftest.tmp conftest.nl conftest.out;;
+esac
+
+      $ac_path_GREP_found && break 3
+    done
+  done
+  done
+IFS=$as_save_IFS
+  if test -z "$ac_cv_path_GREP"; then
+    as_fn_error $? "no acceptable grep could be found in $PATH$PATH_SEPARATOR/usr/xpg4/bin" "$LINENO" 5
+  fi
+else
+  ac_cv_path_GREP=$GREP
+fi
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_path_GREP" >&5
+$as_echo "$ac_cv_path_GREP" >&6; }
+ GREP="$ac_cv_path_GREP"
+
+
+for ac_prog in gawk mawk nawk awk
+do
+  # Extract the first word of "$ac_prog", so it can be a program name with args.
+set dummy $ac_prog; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if ${ac_cv_prog_AWK+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  if test -n "$AWK"; then
+  ac_cv_prog_AWK="$AWK" # Let the user override the test.
+else
+as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if as_fn_executable_p "$as_dir/$ac_word$ac_exec_ext"; then
+    ac_cv_prog_AWK="$ac_prog"
     $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
     break 2
   fi
@@ -2738,75 +3283,251 @@ IFS=$as_save_IFS
 
 fi
 fi
-RUBYBIN=$ac_cv_prog_RUBYBIN
-if test -n "$RUBYBIN"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBYBIN" >&5
-$as_echo "$RUBYBIN" >&6; }
+AWK=$ac_cv_prog_AWK
+if test -n "$AWK"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $AWK" >&5
+$as_echo "$AWK" >&6; }
 else
   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 fi
 
 
-  test -n "$RUBYBIN" && break
+  test -n "$AWK" && break
 done
-test -n "$RUBYBIN" || RUBYBIN="not-found"
 
 
-	if test x$RUBYBIN = xnot-found; then
-		fail="ruby-binary"
-	fi
 
-		RB_LIB_DIR=
 
-# Check whether --with-rlm-ruby-lib-dir was given.
-if test "${with_rlm_ruby_lib_dir+set}" = set; then :
-  withval=$with_rlm_ruby_lib_dir;  case "$withval" in
-	    no)
-		as_fn_error $? "Need rlm-ruby-lib-dir" "$LINENO" 5
-		;;
-	    yes)
-		;;
-	    *)
-		RB_LIB_DIR="$withval"
-		;;
-	  esac
+    if test -n "1.8"; then :
+
+
+
+
+    if test -n "$RUBY"; then :
+
+        ax_ruby_version="1.8"
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ruby version" >&5
+$as_echo_n "checking for ruby version... " >&6; }
+
+        ruby_version=`$RUBY --version 2>&1 | $GREP "^ruby " | $SED -e 's/^.* \([0-9]*\.[0-9]*\.[0-9]*\) .*/\1/'`
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ruby_version" >&5
+$as_echo "$ruby_version" >&6; }
+
+	RUBY_VERSION=$ruby_version
+
+
+
+
+
+  # Used to indicate true or false condition
+  ax_compare_version=false
+
+  # Convert the two version strings to be compared into a format that
+  # allows a simple string comparison.  The end result is that a version
+  # string of the form 1.12.5-r617 will be converted to the form
+  # 0001001200050617.  In other words, each number is zero padded to four
+  # digits, and non digits are removed.
+
+  ax_compare_version_A=`echo "$ax_ruby_version" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
+                     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/[^0-9]//g'`
+
+
+  ax_compare_version_B=`echo "$ruby_version" | sed -e 's/\([0-9]*\)/Z\1Z/g' \
+                     -e 's/Z\([0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/Z\([0-9][0-9][0-9]\)Z/Z0\1Z/g' \
+                     -e 's/[^0-9]//g'`
+
+
+    ax_compare_version=`echo "x$ax_compare_version_A
+x$ax_compare_version_B" | sed 's/^ *//' | sort | sed "s/x${ax_compare_version_A}/true/;s/x${ax_compare_version_B}/false/;1q"`
+
+
+
+    if test "$ax_compare_version" = "true" ; then
+
+	    :
+
+
+    else
+	    :
+
+
+  fi
+
+
+else
+
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: could not find the ruby interpreter" >&5
+$as_echo "$as_me: WARNING: could not find the ruby interpreter" >&2;}
+
 
 fi
 
-
-		RB_INC_DIR=
-
-# Check whether --with-rlm-ruby-include-dir was given.
-if test "${with_rlm_ruby_include_dir+set}" = set; then :
-  withval=$with_rlm_ruby_include_dir;  case "$withval" in
-	    no)
-		as_fn_error $? "Need rlm-ruby-include-dir" "$LINENO" 5
-		;;
-	    yes)
-		;;
-	    *)
-		RB_INC_DIR="$withval"
-		;;
-	  esac
-
 fi
 
+    #
+    # Check if you have mkmf, else fail
+    #
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the mkmf Ruby package" >&5
+$as_echo_n "checking for the mkmf Ruby package... " >&6; }
+    ac_mkmf_result=`$RUBY -rmkmf -e ";" 2>&1`
+    if test -z "$ac_mkmf_result"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+    else
+        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+        as_fn_error $? "cannot import Ruby module \"mkmf\".
+Please check your Ruby installation. The error was:
+$ac_distutils_result" "$LINENO" 5
+    fi
 
-	if test x$fail = x; then
-		RB_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('prefix')"`
-		RB_EXEC_PREFIX=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('exec_prefix')"`
-		RB_VERSION=`${RUBYBIN} -e 'puts RUBY_VERSION'`
-#		RB_LIB_DIR=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('libdir')"`]
-#		RB_EXTRA_LIBS=[`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBS')"`]
-		RB_LIBS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('LIBRUBYARG_SHARED')" | sed 's/\s*-arch [^ ]*//g'`
-		RB_INC_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('includedir')"`
-		RB_CFLAGS=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('CFLAGS')" | sed 's/\s*-arch [^ ]*//g'`
-		RB_ARCH_DIR=`${RUBYBIN} -e "require 'rbconfig'; puts Config::CONFIG.fetch('archdir')"`
+    #
+    # Check for Ruby include path
+    #
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby include path" >&5
+$as_echo_n "checking for Ruby include path... " >&6; }
+    if test -z "$RUBY_CPPFLAGS"; then
+        ruby_path=`$RUBY -rmkmf -e 'print Config::CONFIG["archdir"]'`
+        if test -n "${ruby_path}"; then
+                ruby_path="-I$ruby_path"
+        fi
+        RUBY_CPPFLAGS=$ruby_path
+    fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CPPFLAGS" >&5
+$as_echo "$RUBY_CPPFLAGS" >&6; }
 
-		old_CFLAGS=$CFLAGS
-		CFLAGS="$CFLAGS $RB_CFLAGS -I${RB_ARCH_DIR} -I${RB_INC_DIR}"
-#		smart_try_dir=$RB_INC_DIR
+
+    #
+    # Check for Ruby library path
+    #
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby library path" >&5
+$as_echo_n "checking for Ruby library path... " >&6; }
+    if test -z "$RUBY_LDFLAGS"; then
+        RUBY_LDFLAGS=`$RUBY -rmkmf -e 'print Config::CONFIG["LIBRUBYARG_SHARED"]'`
+    fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_LDFLAGS" >&5
+$as_echo "$RUBY_LDFLAGS" >&6; }
+
+
+    #
+    # Check for site packages
+    #
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby site-packages path" >&5
+$as_echo_n "checking for Ruby site-packages path... " >&6; }
+    if test -z "$RUBY_SITE_PKG"; then
+        RUBY_SITE_PKG=`$RUBY -rmkmf -e 'print Config::CONFIG["sitearchdir"]'`
+    fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_SITE_PKG" >&5
+$as_echo "$RUBY_SITE_PKG" >&6; }
+
+
+    #
+    # libraries which must be linked in when embedding
+    #
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking ruby extra libraries" >&5
+$as_echo_n "checking ruby extra libraries... " >&6; }
+    if test -z "$RUBY_EXTRA_LIBS"; then
+       RUBY_EXTRA_LIBS=`$RUBY -rmkmf -e 'print Config::CONFIG["SOLIBS"]'`
+    fi
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_EXTRA_LIBS" >&5
+$as_echo "$RUBY_EXTRA_LIBS" >&6; }
+
+
+    #
+    # linking flags needed when embedding
+    # (is it even needed for Ruby?)
+    #
+    # AC_MSG_CHECKING(ruby extra linking flags)
+    # if test -z "$RUBY_EXTRA_LDFLAGS"; then
+    # RUBY_EXTRA_LDFLAGS=`$RUBY -rmkmf -e 'print Config::CONFIG[["LINKFORSHARED"]]'`
+    # fi
+    # AC_MSG_RESULT([$RUBY_EXTRA_LDFLAGS])
+    # AC_SUBST(RUBY_EXTRA_LDFLAGS)
+
+    # this flags breaks ruby.h, and is sometimes defined by KDE m4 macros
+    CFLAGS="`echo "$CFLAGS" | sed -e 's/-std=iso9899:1990//g;'`"
+    #
+    # final check to see if everything compiles alright
+    #
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking consistency of all components of ruby development environment" >&5
+$as_echo_n "checking consistency of all components of ruby development environment... " >&6; }
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    # save current global flags
+    ac_save_LIBS="$LIBS"
+    LIBS="$ac_save_LIBS $RUBY_LDFLAGS"
+    ac_save_CPPFLAGS="$CPPFLAGS"
+    CPPFLAGS="$ac_save_CPPFLAGS $RUBY_CPPFLAGS"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+#include <ruby.h>
+int
+main ()
+{
+ruby_init()
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  rubyexists=yes
+else
+  rubyexists=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: result: $rubyexists" >&5
+$as_echo "$rubyexists" >&6; }
+
+    if test ! "$rubyexists" = "yes"; then
+       as_fn_error $? "
+  Could not link test program to Ruby. Maybe the main Ruby library has been
+  installed in some non-standard library path. If so, pass it to configure,
+  via the LDFLAGS environment variable.
+  Example: ./configure LDFLAGS=\"-L/usr/non-standard-path/ruby/lib\"
+  ============================================================================
+   ERROR!
+   You probably have to install the development version of the Ruby package
+   for your distribution.  The exact name of this package varies among them.
+  ============================================================================
+       " "$LINENO" 5
+      RUBY_VERSION=""
+    fi
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    # turn back to default flags
+    CPPFLAGS="$ac_save_CPPFLAGS"
+    LIBS="$ac_save_LIBS"
+
+    #
+    # all done!
+    #
+
+
+	if test x$RUBY_VERSION != x""; then
+		ruby_cflags+="$RUBY_CPPFLAGS"
+		ruby_ldflags+="$RUBY_LDFLAGS"
+		ruby_ldflags+="$RUBY_EXTRA_LIBS"
+
+		old_CFLAGS="$CFLAGS"
+		CFLAGS="$ruby_cflags"
 
 
 
@@ -2938,21 +3659,13 @@ fi
 			fail="$fail ruby.h"
 			targetname=
 		fi
-		ruby_cflags=$CFLAGS
-		CFLAGS=$old_CFLAGS
 
-		old_LIBS=$LIBS
-#		LIBS="$RB_LIBS $RB_LIB_DIR $RB_EXTRA_LIBS -lm"
-		LIBS="$RB_LIBS"
-#		smart_try_dir=$RB_LIB_DIR
-		ruby_ldflags=$LIBS
-		LIBS=$old_LIBS
-		targetname=rlm_ruby
-#		ruby_headers="${RB_INC_DIR} ${RB_ARCH_DIR}"
+		CFLAGS="$old_CFLAGS"
+	else
+		fail="ruby"
+		targetname=
 	fi
-
 else
-	targetname=
 	echo \*\*\* module rlm_ruby is disabled.
 fi
 
@@ -3583,6 +4296,7 @@ gives unlimited permission to copy, distribute and modify it."
 
 ac_pwd='$ac_pwd'
 srcdir='$srcdir'
+AWK='$AWK'
 test -n "\$AWK" || AWK=awk
 _ACEOF
 
@@ -4741,6 +5455,7 @@ gives unlimited permission to copy, distribute and modify it."
 
 ac_pwd='$ac_pwd'
 srcdir='$srcdir'
+AWK='$AWK'
 test -n "\$AWK" || AWK=awk
 _ACEOF
 

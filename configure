@@ -2475,6 +2475,7 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
 RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
 RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^[^\.]*\.//' | sed 's/\..*$//'`
 RADIUSD_INCRM_VERSION=`cat VERSION | sed 's/^.*\..*\.//' | sed 's/[\.-].*$//'`
