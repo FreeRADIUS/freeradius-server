@@ -3456,8 +3456,8 @@ _ACEOF
 		fi
 
 		if test x$libcurl_protocol_HTTPS != xyes || test x$libcurl_feature_SSL != xyes; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without HTTPS support. Requires: libcurl_protocol_https." >&5
-$as_echo "$as_me: WARNING: silently building without HTTPS support. Requires: libcurl_protocol_https." >&2;}
+			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without HTTPS support. requires: libcurl_protocol_https." >&5
+$as_echo "$as_me: WARNING: silently building without HTTPS support. requires: libcurl_protocol_https." >&2;}
 		fi
 	fi
 

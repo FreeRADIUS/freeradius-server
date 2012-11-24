@@ -3,7 +3,7 @@ AC_INIT(rlm_rest.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_rest])
 AC_CONFIG_HEADER(config.h)
-m4_include([curl.m4])
+m4_include([libcurl_check_config.m4])
 
 if test x$with_[]modname != xno; then
 
@@ -24,7 +24,7 @@ if test x$with_[]modname != xno; then
 		fi
 	
 		if test x$libcurl_protocol_HTTPS != xyes || test x$libcurl_feature_SSL != xyes; then
-			AC_MSG_WARN([silently building without HTTPS support. Requires: libcurl_protocol_https.])
+			AC_MSG_WARN([silently building without HTTPS support. requires: libcurl_protocol_https.])
 		fi
 	fi
 	
