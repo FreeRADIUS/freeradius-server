@@ -96,11 +96,11 @@ $ac_distutils_result])
             #  For some reason ruby 1.9.1 on linux seems to put its
             #  config.h file in ${ruby_path}/${ruby_arch}/ruby/config.h
             #  Aside from the fact that it is WRONG to include your own
-            #  config.h file it means we can't use the headers unless we
-            #  add both paths
+            #  config.h file, it means we can't use the headers unless we
+            #  add both paths.
             #
-            if test -d "${ruby_path}/${arch}"; then
-            	 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
+            if test -d "${ruby_path}/${ruby_arch}"; then
+                 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
             else
                  ruby_path=" -I${ruby_path}"
             fi
@@ -196,7 +196,6 @@ $ac_distutils_result])
   via the LDFLAGS environment variable.
   Example: ./configure LDFLAGS="-L/usr/non-standard-path/ruby/lib"
   ============================================================================
-   ERROR!
    You probably have to install the development version of the Ruby package
    for your distribution.  The exact name of this package varies among them.
   ============================================================================
@@ -206,7 +205,7 @@ $ac_distutils_result])
     AC_LANG_POP
     # turn back to default flags
     CFLAGS="$ac_save_CFLAGS"
-    LIBS="$ac_save_LDFLAGS"
+    LIBS="$ac_save_LIBS"
 
     #
     # all done!
