@@ -1439,7 +1439,6 @@ static void do_check_reply(ldap_instance *inst, LDAP *ld, REQUEST *request,
        }
 }
 
-
 /******************************************************************************
  *
  *      Function: ldap_authorize
@@ -1449,8 +1448,8 @@ static void do_check_reply(ldap_instance *inst, LDAP *ld, REQUEST *request,
  ******************************************************************************/
 static int ldap_authorize(void *instance, REQUEST * request)
 {
-	int rcode, did_work;
-	int module_rcode = RLM_MODULE_NOOP;
+	int rcode;
+	int module_rcode = RLM_MODULE_OK;
 	ldap_instance	*inst = instance;
 	char		*user_dn;
 	char		**vals;
@@ -1460,10 +1459,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 
-	did_work = FALSE;	/* for debugging user problems */
-
 	if (!request->username) {
-		RDEBUG2("Attribute \"User-Name\" is required for authorization.\n");
+		RDEBUG2("attribute \"User-Name\" is required for authorization.\n");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1516,7 +1513,8 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		RDEBUG2("ldap_get_dn() failed");
 		goto free_result;
 	}
-
+	
+	RDEBUG2("User found, dn is \"%s\"", user_dn);
 	/*
 	 *	Adding attribute containing the Users' DN.
 	 */
@@ -1527,8 +1525,6 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 *	Check for access.
 	 */
 	if (inst->access_attr) {
-		did_work = TRUE;
-
 		if (check_access(inst, conn, msg) < 0) {
 			module_rcode = RLM_MODULE_USERLOCK;
 			goto free_result;
@@ -1544,7 +1540,6 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 		if (vp) profile = vp->vp_strvalue;
 
-		did_work = TRUE;
 		apply_profile(inst, &conn, request, profile);
 	}
 
@@ -1560,21 +1555,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 			apply_profile(inst, &conn, request, vals[i]);
 		}
 
-		did_work = TRUE;
 		ldap_value_free(vals);
 	}
 
 	if (inst->map_file) {
-		did_work = TRUE;
 		do_check_reply(inst, conn->ld, request, msg);
 	}
-
-	if (!did_work) {
-		RDEBUG("WARNING: The module did NOTHING in the 'authorize' section.  Why is it listed?");
-		RDEBUG("WARNING: You can probably delete '%s' from 'authorize'",
-		       inst->xlat_name);
-	}	
-
+	
 free_result:
 	ldap_msgfree(result);
 free_socket:
