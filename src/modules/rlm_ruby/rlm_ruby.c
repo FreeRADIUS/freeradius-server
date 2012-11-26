@@ -97,7 +97,7 @@ static VALUE radlog_rb(VALUE self, VALUE msg_type, VALUE rb_msg) {
     char *msg;
     status = FIX2INT(msg_type);
     msg = STR2CSTR(rb_msg);
-    radlog(status, msg);
+    radlog(status, "%s", msg);
     return Qnil;
 }
 
