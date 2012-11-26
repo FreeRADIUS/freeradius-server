@@ -24,19 +24,27 @@ src/include/autoconf.sed: src/include/autoconf.h
 	s,defined(" $$2 ")," $$3 ",g;\
 	s," $$2 ","$$3 ",g;"}' > $@
 
+src/freeradius-devel/features.h: src/include/features.h src/freeradius-devel
+
 src/include/features.h: src/include/features-h src/include/autoconf.h
 	@$(ECHO) HEADER $@
 	@cp $< $@
 	@grep "^#define[[:blank:]]\{1,\}WITH_" src/include/autoconf.h >> $@
 	@grep "^#define[[:blank:]]\{1,\}RADIUSD_VERSION" src/include/autoconf.h >> $@
 
+src/freeradius-devel/missing.h: src/include/missing.h src/freeradius-devel
+
 src/include/missing.h: src/include/missing-h src/include/autoconf.sed
 	@$(ECHO) HEADER $@
 	@sed -f src/include/autoconf.sed < $< > $@
 
+src/freeradius-devel/tls.h: src/include/tls.h src/freeradius-devel
+
 src/include/tls.h: src/include/tls-h src/include/autoconf.sed
 	@$(ECHO) HEADER $@
 	@sed -f src/include/autoconf.sed < $< > $@
+
+src/freeradius-devel/radpaths.h: src/include/radpaths.h src/freeradius-devel
 
 src/include/radpaths.h: src/include/build-radpaths-h
 	@$(ECHO) HEADER $@
