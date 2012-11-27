@@ -4,23 +4,15 @@ set -e
 
 case "$1" in
   remove)
-        for file in /etc/freeradius/sql/postgresql/cisco_h323_db_schema.sql \
-          /etc/freeradius/sql/postgresql/counter.conf \
-          /etc/freeradius/sql/postgresql/dialup.conf \
-          /etc/freeradius/sql/postgresql/ippool.conf \
-          /etc/freeradius/sql/postgresql/ippool.sql \
-          /etc/freeradius/sql/postgresql/nas.sql \
-          /etc/freeradius/sql/postgresql/schema.sql \
-          /etc/freeradius/sql/postgresql/update_radacct_group_trigger.sql \
-          /etc/freeradius/sql/postgresql/voip-postpaid.conf
+        for file in `find /etc/freeradius/sql/main/postgresql/ -print`
         do
           if dpkg-statoverride --list | grep -qw $file$; then
             dpkg-statoverride --remove $file
           fi
         done
 
-        for dir in /etc/freeradius/sql \
-          /etc/freeradius/sql/postgresql
+        for dir in /etc/freeradius/sql/main \
+          /etc/freeradius/sql/main/postgresql
         do
           if dpkg-statoverride --list | grep -qw $dir$; then
             dpkg-statoverride --remove $dir

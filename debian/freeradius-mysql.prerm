@@ -4,12 +4,7 @@ set -e
 
 case "$1" in
   remove)
-        for file in /etc/freeradius/sql/mysql/counter.conf \
-          /etc/freeradius/sql/mysql/dialup.conf \
-          /etc/freeradius/sql/mysql/ippool.conf \
-          /etc/freeradius/sql/mysql/ippool.sql \
-          /etc/freeradius/sql/mysql/nas.sql \
-          /etc/freeradius/sql/mysql/schema.sql
+        for file in `find /etc/freeradius/sql/main/mysql/ -print`
         do
           if dpkg-statoverride --list | grep -qw $file$; then
             dpkg-statoverride --remove $file

@@ -18,6 +18,7 @@ etc/freeradius/proxy.conf
 etc/freeradius/sites-available/*
 etc/freeradius/templates.conf
 etc/freeradius/users
+etc/freeradius/sql/*
 usr/lib/freeradius/rlm*.so
 usr/sbin/checkrad
 usr/sbin/freeradius
