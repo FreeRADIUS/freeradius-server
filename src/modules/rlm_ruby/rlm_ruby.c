@@ -119,7 +119,7 @@ static void add_vp_tuple(VALUE_PAIR **vpp, VALUE rb_value,
     }
 
     /* Get the array size. */
-    outertuplesize = RARRAY(rb_value)->len;
+    outertuplesize = RARRAY_LEN(rb_value);
 
     for (i = 0; i < outertuplesize; i++) {
         VALUE pTupleElement = rb_ary_entry(rb_value, i);
@@ -130,7 +130,7 @@ static void add_vp_tuple(VALUE_PAIR **vpp, VALUE rb_value,
             /* Check if it's a pair */
             int tuplesize;
 
-            if ((tuplesize = RARRAY(pTupleElement)->len) != 2) {
+            if ((tuplesize = RARRAY_LEN(pTupleElement)) != 2) {
                 radlog(L_ERR, "%s: tuple element %d is a tuple "
                         " of size %d. must be 2\n", function_name,
                         i, tuplesize);
