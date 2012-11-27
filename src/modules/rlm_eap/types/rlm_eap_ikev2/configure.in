@@ -64,3 +64,4 @@ dnl AC_CONFIG_HEADER(config.h)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(Makefile)  # keep this!  Don't change!
+AC_OUTPUT(all.mk)  # keep this!  Don't change!

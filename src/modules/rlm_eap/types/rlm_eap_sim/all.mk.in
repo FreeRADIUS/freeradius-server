@@ -4,12 +4,9 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= $(TARGETNAME).c eap_pwd.c
+SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @eap_pwd_cflags@
-TGT_LDLIBS	:= @eap_pwd_ldflags@
-TGT_LDLIBS	+= $(OPENSSL_LIBS)
-
+SRC_CFLAGS	:= @eap_sim_cflags@
+TGT_LDLIBS	:= @eap_sim_ldflags@
 SRC_INCDIRS	:= ../../ ../../libeap/
 TGT_PREREQS	:= libfreeradius-eap.a
-
