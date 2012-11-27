@@ -1,7 +1,7 @@
 #ifndef FR_TLS_H
 #define FR_TLS_H
 
-#if WITH_TLS
+#ifdef WITH_TLS
 
 /*
  * @file tls.h
