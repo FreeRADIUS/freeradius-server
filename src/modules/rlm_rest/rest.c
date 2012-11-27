@@ -195,7 +195,7 @@ const FR_NAME_NUMBER http_content_type_table[] = {
 #ifdef WITH_JSON
 typedef struct json_flags {
 	boolean do_xlat;	//!< If TRUE value will be expanded with xlat.
-	boolean  is_json;	//!< If TRUE value will be inserted as raw JSON
+	boolean is_json;	//!< If TRUE value will be inserted as raw JSON
 				// (multiple values not supported).
 	FR_TOKEN operator;	//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens
