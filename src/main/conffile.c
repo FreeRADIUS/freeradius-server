@@ -1538,6 +1538,23 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				struct stat stat_buf;
 
 				DEBUG2("including files in directory %s", value );
+#ifdef S_IWOTH
+				/*
+				 *	Security checks.
+				 */
+				if (stat(value, &stat_buf) < 0) {
+					radlog(L_ERR, "%s[%d]: Failed reading directory %s: %s",
+					       filename, *lineno, 
+					       value, strerror(errno));
+					return -1;
+				}
+
+				if ((stat_buf.st_mode & S_IWOTH) != 0) {
+					radlog(L_ERR|L_CONS, "%s[%d]: Directory %s is globally writable.  Refusing to start due to insecure configuration.",
+					       filename, *lineno, value);
+					return -1;
+				}
+#endif
 				dir = opendir(value);
 				if (!dir) {
 					radlog(L_ERR, "%s[%d]: Error reading directory %s: %s",
