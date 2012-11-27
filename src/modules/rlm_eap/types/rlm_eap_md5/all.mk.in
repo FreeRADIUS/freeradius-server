@@ -4,7 +4,7 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= $(TARGETNAME).c
+SOURCES		:= $(TARGETNAME).c eap_md5.c
 
 SRC_CFLAGS	:= @eap_md5_cflags@
 TGT_LDLIBS	:= @eap_md5_ldflags@
