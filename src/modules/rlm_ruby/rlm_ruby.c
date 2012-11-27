@@ -96,7 +96,7 @@ static VALUE radlog_rb(VALUE self, VALUE msg_type, VALUE rb_msg) {
     int status;
     char *msg;
     status = FIX2INT(msg_type);
-    msg = STR2CSTR(rb_msg);
+    msg = StringValuePtr(rb_msg);
     radlog(status, "%s", msg);
     return Qnil;
 }
@@ -150,8 +150,8 @@ static void add_vp_tuple(VALUE_PAIR **vpp, VALUE rb_value,
                      * errors in the pair.
                      */
 
-                    s1 = STR2CSTR(pString1);
-                    s2 = STR2CSTR(pString2);
+                    s1 = StringValuePtr(pString1);
+                    s2 = StringValuePtr(pString2);
 
                     if ((s1 != NULL) && (s2 != NULL)) {
                         radlog(L_DBG, "%s: %s = %s ",
