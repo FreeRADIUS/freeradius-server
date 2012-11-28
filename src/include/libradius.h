@@ -508,9 +508,12 @@ int fr_crypt_check(const char *key, const char *salt);
 typedef struct rbtree_t rbtree_t;
 typedef struct rbnode_t rbnode_t;
 
+#define RBTREE_FLAG_NONE    (0)
+#define RBTREE_FLAG_REPLACE (1 << 0)
+#define RBTREE_FLAG_LOCK    (1 << 1)
 rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
 			      void (*freeNode)(void *),
-			      int replace_flag);
+			      int flags);
 void		rbtree_free(rbtree_t *tree);
 int		rbtree_insert(rbtree_t *tree, void *Data);
 rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);

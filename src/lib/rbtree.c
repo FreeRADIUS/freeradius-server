@@ -25,6 +25,13 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
+#ifdef HAVE_PTHREAD_H
+#include <pthread.h>
+
+#define PTHREAD_MUTEX_LOCK(_x) if (_x->lock) pthread_mutex_lock(&((_x)->mutex))
+#define PTHREAD_MUTEX_UNLOCK(_x) if (_x->lock) pthread_mutex_unlock(&((_x)->mutex))
+#endif
+
 /* red-black tree description */
 typedef enum { Black, Red } NodeColor;
 
@@ -48,6 +55,10 @@ struct rbtree_t {
 	int (*Compare)(const void *, const void *);
 	int replace_flag;
 	void (*freeNode)(void *);
+#ifdef HAVE_PTHREAD_H
+	int lock;
+	pthread_mutex_t mutex;
+#endif
 };
 #define RBTREE_MAGIC (0x5ad09c42)
 
@@ -68,6 +79,8 @@ void rbtree_free(rbtree_t *tree)
 {
 	if (!tree) return;
 
+	PTHREAD_MUTEX_LOCK(tree);
+
 	/*
 	 *	Walk the tree, deleting the nodes...
 	 */
@@ -77,6 +90,11 @@ void rbtree_free(rbtree_t *tree)
 	tree->magic = 0;
 #endif
 	tree->Root = NULL;
+
+#ifdef HAVE_PTHREAD_H
+	if (tree->lock) pthread_mutex_destroy(&tree->mutex);
+#endif
+
 	free(tree);
 }
 
@@ -85,7 +103,7 @@ void rbtree_free(rbtree_t *tree)
  */
 rbtree_t *rbtree_create(int (*Compare)(const void *, const void *),
 			void (*freeNode)(void *),
-			int replace_flag)
+			int flags)
 {
 	rbtree_t	*tree;
 
@@ -100,7 +118,13 @@ rbtree_t *rbtree_create(int (*Compare)(const void *, const void *),
 #endif
 	tree->Root = NIL;
 	tree->Compare = Compare;
-	tree->replace_flag = replace_flag;
+	tree->replace_flag = flags & RBTREE_FLAG_REPLACE;
+#ifdef HAVE_PTHREAD_H
+	tree->lock = flags & RBTREE_FLAG_LOCK;
+	if (tree->lock) {
+		pthread_mutex_init(&tree->mutex, NULL);
+	}
+#endif
 	tree->freeNode = freeNode;
 
 	return tree;
@@ -236,6 +260,8 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 	 *  allocate node for Data and insert in tree  *
 	 ***********************************************/
 
+	PTHREAD_MUTEX_LOCK(tree);
+
 	/* find where node belongs */
 	Current = tree->Root;
 	Parent = NULL;
@@ -251,6 +277,7 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 			 *	Don't replace the entry.
 			 */
 			if (tree->replace_flag == 0) {
+				PTHREAD_MUTEX_UNLOCK(tree);
 				return NULL;
 			}
 
@@ -259,6 +286,7 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 			 */
 			if (tree->freeNode) tree->freeNode(Current->Data);
 			Current->Data = Data;
+			PTHREAD_MUTEX_UNLOCK(tree);
 			return Current;
 		}
 
@@ -291,6 +319,7 @@ rbnode_t *rbtree_insertnode(rbtree_t *tree, void *Data)
 
 	tree->num_elements++;
 
+	PTHREAD_MUTEX_UNLOCK(tree);
 	return X;
 }
 
@@ -381,6 +410,8 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 
 	if (!Z || Z == NIL) return;
 
+	PTHREAD_MUTEX_LOCK(tree);
+
 	if (Z->Left == NIL || Z->Right == NIL) {
 		/* Y has a NIL node as a child */
 		Y = Z;
@@ -446,6 +477,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 	}
 
 	tree->num_elements--;
+	PTHREAD_MUTEX_UNLOCK(tree);
 }
 
 /*
@@ -473,18 +505,25 @@ rbnode_t *rbtree_find(rbtree_t *tree, const void *Data)
 	 *  find node containing Data  *
 	 *******************************/
 
-	rbnode_t *Current = tree->Root;
+	rbnode_t *Current;
+
+
+	PTHREAD_MUTEX_LOCK(tree);
+	Current = tree->Root;
 
 	while (Current != NIL) {
 		int result = tree->Compare(Data, Current->Data);
 
 		if (result == 0) {
+			PTHREAD_MUTEX_UNLOCK(tree);
 			return Current;
 		} else {
 			Current = (result < 0) ?
 				Current->Left : Current->Right;
 		}
 	}
+
+	PTHREAD_MUTEX_UNLOCK(tree);
 	return NULL;
 }
 
@@ -594,21 +633,25 @@ static int WalkNodePostOrder(rbnode_t *X,
 int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order,
 		int (*callback)(void *, void *), void *context)
 {
+	int rcode;
+
 	if (tree->Root == NIL) return 0;
 
+	PTHREAD_MUTEX_LOCK(tree);
 	switch (order) {
 	case PreOrder:
-		return WalkNodePreOrder(tree->Root, callback, context);
+		rcode = WalkNodePreOrder(tree->Root, callback, context);
 	case InOrder:
-		return WalkNodeInOrder(tree->Root, callback, context);
+		rcode = WalkNodeInOrder(tree->Root, callback, context);
 	case PostOrder:
-		return WalkNodePostOrder(tree->Root, callback, context);
+		rcode = WalkNodePostOrder(tree->Root, callback, context);
 
 	default:
-		break;
+		rcode = -1;
 	}
 
-	return -1;
+	PTHREAD_MUTEX_UNLOCK(tree);
+	return rcode;
 }
 
 int rbtree_num_elements(rbtree_t *tree)
@@ -636,12 +679,16 @@ void *rbtree_node2data(rbtree_t *tree, rbnode_t *node)
  */
 void *rbtree_min(rbtree_t *tree)
 {
+	void *data;
 	rbnode_t *Current;
 
 	if (!tree || !tree->Root) return NULL;
 
+	PTHREAD_MUTEX_LOCK(tree);
 	Current = tree->Root;
 	while (Current->Left != NIL) Current = Current->Left;
 
-	return Current->Data;
+	data = Current->Data;
+	PTHREAD_MUTEX_UNLOCK(tree);
+	return data;
 }
