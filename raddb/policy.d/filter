@@ -81,7 +81,7 @@ filter_username {
 	#  reject Multiple @'s
 	#  e.g. "user@site.com@site.com"
 	#
-	if(User-Name =~ /@(.+)?@/i ) {
+	if(User-Name =~ /@.*@/ ) {
 		update reply {
 			Reply-Message += "Rejected: Multiple @ in username"
 		}
