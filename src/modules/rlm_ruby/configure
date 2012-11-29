@@ -2058,6 +2058,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 targetname=rlm_ruby
+ruby_cflags=
+ruby_ldflags=
 if test x$with_rlm_ruby != xno; then
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -2996,7 +2998,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-
     if test -z "$RUBY"; then :
 
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether ruby executable path has been provided" >&5
@@ -3123,7 +3124,9 @@ fi
 
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a sed that does not truncate output" >&5
+
+	if test -n "$RUBY"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for a sed that does not truncate output" >&5
 $as_echo_n "checking for a sed that does not truncate output... " >&6; }
 if ${ac_cv_path_SED+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -3385,9 +3388,12 @@ $as_echo "yes" >&6; }
     else
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-        as_fn_error $? "cannot import Ruby module \"mkmf\".
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: cannot import Ruby module \"mkmf\".
 Please check your Ruby installation. The error was:
-$ac_distutils_result" "$LINENO" 5
+$ac_distutils_result" >&5
+$as_echo "$as_me: WARNING: cannot import Ruby module \"mkmf\".
+Please check your Ruby installation. The error was:
+$ac_distutils_result" >&2;}
     fi
 
     #
@@ -3580,10 +3586,13 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     # all done!
     #
 
-	if test -n "$RUBY_VERSION"; then
-		ruby_cflags+="$RUBY_CFLAGS"
-		ruby_ldflags+="$RUBY_LDFLAGS"
-		ruby_ldflags+="$RUBY_EXTRA_LIBS"
+		if test -n "$RUBY_VERSION"; then
+			ruby_cflags="${RUBY_CFLAGS}"
+			ruby_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
+		else
+			fail="ruby"
+			targetname=
+		fi
 	else
 		fail="ruby"
 		targetname=

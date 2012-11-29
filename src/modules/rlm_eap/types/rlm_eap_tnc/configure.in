@@ -32,3 +32,4 @@ AC_SUBST(eap_tnc_ldflags)
 
 AC_SUBST(targetname)
 AC_OUTPUT(Makefile)
+AC_OUTPUT(all.mk)

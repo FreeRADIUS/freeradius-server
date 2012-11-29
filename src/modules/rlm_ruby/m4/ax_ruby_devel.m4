@@ -64,7 +64,7 @@ AC_DEFUN([AX_RUBY_DEVEL],[
         AC_MSG_RESULT([yes])
     else
         AC_MSG_RESULT([no])
-        AC_MSG_ERROR([cannot import Ruby module "mkmf".
+        AC_MSG_WARN([cannot import Ruby module "mkmf".
 Please check your Ruby installation. The error was:
 $ac_distutils_result])
     fi

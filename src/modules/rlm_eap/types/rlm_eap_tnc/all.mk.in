@@ -4,10 +4,10 @@ ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= $(TARGETNAME).c eap_pwd.c
+SOURCES		:= $(TARGETNAME).c eap_tnc.c tncs_connect.c 
 
-SRC_CFLAGS	:= @eap_pwd_cflags@
-TGT_LDLIBS	:= @eap_pwd_ldflags@
+SRC_CFLAGS	:= @eap_tnc_cflags@
+TGT_LDLIBS	:= @eap_tnc_ldflags@
 TGT_LDLIBS	+= $(OPENSSL_LIBS)
 
 SRC_INCDIRS	:= ../../ ../../libeap/
