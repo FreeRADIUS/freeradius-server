@@ -41,7 +41,7 @@ RCSID("$Id$")
 typedef struct {
 	CONF_SECTION	*cs;
 	fr_connection_pool_t *pool;
-	
+
 	char		*server;
 	int		port;
 
@@ -85,7 +85,7 @@ typedef struct {
 	 */
 	char	       *groupname_attr;
 	char	       *groupmemb_filt;
-	char           *groupmemb_attr;
+	char		*groupmemb_attr;
 
 	/*
 	 *	TLS items.  We should really normalize these with the
@@ -491,7 +491,7 @@ static void *ldap_conn_create(void *ctx)
 	/*
 	 *	Set all of the TLS options
 	 */
-        if (inst->tls_mode) {
+	if (inst->tls_mode) {
 		do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
 	}
 
@@ -933,8 +933,8 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 	static char	firstattr[] = "uid";
 	char		*user_dn;
 	const char	*attrs[] = {firstattr, NULL};
-        char            filter[MAX_FILTER_STR_LEN];	
-        char            basedn[MAX_FILTER_STR_LEN];	
+	char	    filter[MAX_FILTER_STR_LEN];	
+	char	    basedn[MAX_FILTER_STR_LEN];	
 
 	*module_rcode = RLM_MODULE_FAIL;
 
@@ -1000,10 +1000,10 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 			 UNUSED VALUE_PAIR *check_pairs,
 			 UNUSED VALUE_PAIR **reply_pairs)
 {
-        ldap_instance   *inst = instance;
-        int             i, rcode, found;
-        LDAPMessage     *result = NULL;
-        LDAPMessage     *entry = NULL;
+	ldap_instance   *inst = instance;
+	int	     i, rcode, found;
+	LDAPMessage     *result = NULL;
+	LDAPMessage     *entry = NULL;
 	static char	firstattr[] = "dn";
 	const char	*attrs[] = {firstattr, NULL};
 	char		**vals;
@@ -1014,11 +1014,11 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 	char		gr_filter[MAX_FILTER_STR_LEN];
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
-	
+
 	if (check->length == 0) {
-                RDEBUG("Cannot do comparison: group name is empty");
-                return 1;
-        }
+		RDEBUG("Cannot do comparison: group name is empty");
+		return 1;
+	}
 
 	conn = ldap_get_socket(inst);
 	if (!conn) return 1;
@@ -1069,7 +1069,7 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 		RDEBUG("User found in group %s", check->vp_strvalue);
-        	return 0;
+		return 0;
 	}
 
 	if (rcode == -1) {
@@ -1165,7 +1165,7 @@ check_attr:
 		return 1;
 	}
 
-        return 0;
+	return 0;
 }
 
 /*
