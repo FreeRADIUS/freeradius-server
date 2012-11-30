@@ -78,6 +78,7 @@ int cf_data_add(CONF_SECTION *, const char *, void *, void (*)(void *));
 const char *cf_pair_attr(const CONF_PAIR *pair);
 const char *cf_pair_value(const CONF_PAIR *pair);
 FR_TOKEN cf_pair_operator(const CONF_PAIR *pair);
+FR_TOKEN cf_pair_value_type(const CONF_PAIR *pair);
 VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair);
 const char *cf_section_name1(const CONF_SECTION *);
 const char *cf_section_name2(const CONF_SECTION *);

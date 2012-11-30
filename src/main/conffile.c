@@ -2042,6 +2042,16 @@ FR_TOKEN cf_pair_operator(const CONF_PAIR *pair)
 }
 
 /*
+ * Return the value type, should be one of the following:
+ * T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
+ * T_DOUBLE_QUOTED_STRING or T_OP_INVALID if the pair is NULL.
+ */
+FR_TOKEN cf_pair_value_type(const CONF_PAIR *pair)
+{
+	return (pair ? pair->value_type : T_OP_INVALID);
+}
+
+/*
  *	Copied here for error reporting.
  */
 extern void fr_strerror_printf(const char *, ...);
