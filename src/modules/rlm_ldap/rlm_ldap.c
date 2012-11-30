@@ -41,6 +41,7 @@ RCSID("$Id$")
 typedef struct {
 	CONF_SECTION	*cs;
 	fr_connection_pool_t *pool;
+<<<<<<< HEAD
 	
 	char		*server;
 	int		port;
@@ -50,11 +51,25 @@ typedef struct {
 
 	char		*filter;
 	char		*basedn;
+=======
+	char	   *server;
+	int	     port;
+
+	char	   *login;
+	char	   *password;
+
+	char	   *filter;
+	char	   *basedn;
+>>>>>>> 1e5cd62... Convert spaces to tabs
 
 	int		chase_referrals;
 	int		rebind;
 
+<<<<<<< HEAD
 	int		ldap_debug; /* Debug flag for LDAP SDK */
+=======
+	int	     ldap_debug; /* Debug flag for LDAP SDK */
+>>>>>>> 1e5cd62... Convert spaces to tabs
 	const char	*xlat_name; /* name used to xlat */
 
 	int		expect_password;
@@ -69,28 +84,42 @@ typedef struct {
 	/*
 	 *	Access related configuration
 	 */
+<<<<<<< HEAD
 	char		*access_attr;
+=======
+	char	   *access_attr;
+>>>>>>> 1e5cd62... Convert spaces to tabs
 	int		positive_access_attr;
 
 	/*
 	 *	Profiles
 	 */
+<<<<<<< HEAD
 	char		*base_filter;
 	char		*default_profile;
 	char		*profile_attr;
+=======
+	char	       *base_filter;
+	char	   *default_profile;
+	char	   *profile_attr;
+>>>>>>> 1e5cd62... Convert spaces to tabs
 
 	/*
 	 *	Group checking.
 	 */
 	char	       *groupname_attr;
 	char	       *groupmemb_filt;
-	char           *groupmemb_attr;
+	char	   *groupmemb_attr;
 
 	/*
 	 *	TLS items.  We should really normalize these with the
 	 *	TLS code in 3.0.
 	 */
+<<<<<<< HEAD
 	int		tls_mode;
+=======
+	int	     tls_mode;
+>>>>>>> 1e5cd62... Convert spaces to tabs
 	int		start_tls;
 	char		*tls_cacertfile;
 	char		*tls_cacertdir;
@@ -102,7 +131,11 @@ typedef struct {
 	/*
 	 *	Options
 	 */
+<<<<<<< HEAD
 	int		timelimit;
+=======
+	int	     timelimit;
+>>>>>>> 1e5cd62... Convert spaces to tabs
 	int  		net_timeout;
 	int		timeout;
 	int		is_url;
@@ -490,7 +523,7 @@ static void *ldap_conn_create(void *ctx)
 	/*
 	 *	Set all of the TLS options
 	 */
-        if (inst->tls_mode) {
+	if (inst->tls_mode) {
 		do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
 	}
 
@@ -932,8 +965,8 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 	static char	firstattr[] = "uid";
 	char		*user_dn;
 	const char	*attrs[] = {firstattr, NULL};
-        char            filter[MAX_FILTER_STR_LEN];	
-        char            basedn[MAX_FILTER_STR_LEN];	
+	char	    filter[MAX_FILTER_STR_LEN];	
+	char	    basedn[MAX_FILTER_STR_LEN];	
 
 	*module_rcode = RLM_MODULE_FAIL;
 
@@ -999,10 +1032,10 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 			 UNUSED VALUE_PAIR *check_pairs,
 			 UNUSED VALUE_PAIR **reply_pairs)
 {
-        ldap_instance   *inst = instance;
-        int             i, rcode, found;
-        LDAPMessage     *result = NULL;
-        LDAPMessage     *entry = NULL;
+	ldap_instance   *inst = instance;
+	int	     i, rcode, found;
+	LDAPMessage     *result = NULL;
+	LDAPMessage     *entry = NULL;
 	static char	firstattr[] = "dn";
 	const char	*attrs[] = {firstattr, NULL};
 	char		**vals;
@@ -1010,14 +1043,20 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 	LDAP_CONN	*conn;
 	char		*user_dn;
 	int		module_rcode;
+<<<<<<< HEAD
 	char		gr_filter[MAX_FILTER_STR_LEN];
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
+=======
+	char	    gr_filter[MAX_FILTER_STR_LEN];
+	char	    filter[MAX_FILTER_STR_LEN];
+	char	    basedn[MAX_FILTER_STR_LEN];
+>>>>>>> 1e5cd62... Convert spaces to tabs
 	
 	if (check->length == 0) {
-                RDEBUG("Cannot do comparison: group name is empty");
-                return 1;
-        }
+		RDEBUG("Cannot do comparison: group name is empty");
+		return 1;
+	}
 
 	conn = ldap_get_socket(inst);
 	if (!conn) return 1;
@@ -1068,7 +1107,7 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 		RDEBUG("User found in group %s", check->vp_strvalue);
-        	return 0;
+		return 0;
 	}
 
 	if (rcode == -1) {
@@ -1164,7 +1203,7 @@ check_attr:
 		return 1;
 	}
 
-        return 0;
+	return 0;
 }
 
 /*
