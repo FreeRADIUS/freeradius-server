@@ -64,7 +64,7 @@ static const char *months[] = {
 #define FR_VP_NAME_PAD (32)
 #define FR_VP_NAME_LEN (30)
 
-VALUE_PAIR *pairalloc(DICT_ATTR *da)
+VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 {
 	size_t name_len = 0;
 	VALUE_PAIR *vp;
