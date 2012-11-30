@@ -242,7 +242,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		/*
 		 *	Bare words on the left can be attribute names.
 		 */
-		if (radius_get_vp(request, pleft, &vp)) {
+		if (!(radius_get_vp(request, pleft, &vp) < 0)) {
 			VALUE_PAIR myvp;
 
 			/*
@@ -1126,14 +1126,22 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	CONF_ITEM *ci;
 	VALUE_PAIR *newlist, *vp;
 	VALUE_PAIR **output_vps;
+	request_refs_t request_name;
 	REQUEST *update_request = request;
 
 	if (!request || !cs) return RLM_MODULE_INVALID;
 
+	request_name = radius_request_name(&name, REQUEST_CURRENT);
+	if (request_name == REQUEST_UNKNOWN) {
+		RDEBUG("ERROR: Invalid request name");
+		
+		return RLM_MODULE_INVALID;
+	}
+	
 	/* 
 	 *	Qualifiers not valid for this request
 	 */
-	if(!radius_ref_request(&update_request, &name)){
+	if (!radius_request(&update_request, request_name)){
 		RDEBUG("WARNING: List name refers to outer request"
 		       " but not in a tunnel.");
 		return RLM_MODULE_NOOP; 
