@@ -72,6 +72,13 @@ const FR_NAME_NUMBER pair_lists[] = {
 	{  NULL , -1 }
 };
 
+const FR_NAME_NUMBER request_refs[] = {
+	{ "outer",		REQUEST_OUTER },
+	{ "current",		REQUEST_CURRENT },
+	{ "parent",		REQUEST_PARENT },
+	{  NULL , -1 }
+};
+
 struct cmp {
 	unsigned int attribute;
 	unsigned int otherattr;
@@ -937,7 +944,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
  *
  * @see dict_attrbyname
  *
- * @param[in,out] name of attribute.
+ * @param[in+out] name of attribute.
  * @param[in] unknown the list to return if no qualifiers were found.
  * @return PAIR_LIST_UNKOWN if qualifiers couldn't be resolved to a list.
  */
@@ -976,6 +983,42 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
 	return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
 }
 
+/** Resolve request to a request.
+ * 
+ * Resolve name to a current request.
+ *
+ * @see radius_list
+ * @param[in+out] request to use as context, and to write result to.
+ * @param[in] name (request) to resolve to.
+ * @return TRUE if request is valid in this context, else FALSE.
+ */
+int radius_request(REQUEST **request, request_refs_t name)
+{
+	rad_assert(request && *request);
+	
+	switch (name) {
+		case REQUEST_CURRENT:
+			return TRUE;
+		
+		case REQUEST_PARENT:	/* for future use in request chaining */
+		case REQUEST_OUTER:
+			if (!(*request)->parent) {
+				return FALSE;
+			}
+			
+			*request = (*request)->parent;
+			
+			break;
+	
+		case REQUEST_UNKNOWN:
+		default:
+			rad_assert(0);
+			return FALSE;
+	}
+	
+	return TRUE;
+}
+
 /** Resolve attribute name to a request.
  * 
  * Check the name string for qualifiers that reference a parent request and
@@ -987,24 +1030,257 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  * radius_ref_request should be called before radius_list_name.
  *
  * @see radius_list_name
- * @param[in,out] request current request.
  * @param[in,out] name of attribute.
- * @return FALSE if qualifiers found but not in a tunnel, else TRUE.
+ * @return one of the REQUEST_* definitions or REQUEST_UNKOWN
  */
-int radius_ref_request(REQUEST **request, const char **name)
+request_refs_t radius_request_name(const char **name, request_refs_t unknown)
 {
-	rad_assert(name && *name);
-	rad_assert(request && *request);
+	char *p;
+	int request;
 	
-	if (strncmp(*name, "outer.", 6) == 0) {
-		if (!(*request)->parent) {
-			return FALSE;
-		}
-		*request = (*request)->parent;
-		*name += 6;
+	p = strchr(*name, '.');
+	if (!p) {
+		return REQUEST_CURRENT;
 	}
 	
-	return TRUE;
+	request = fr_substr2int(request_refs, *name, unknown,
+				p - *name);
+	
+	if (request != REQUEST_UNKNOWN) {
+		*name = p + 1;
+	}
+	
+	return request;
+}
+
+/** Parse qualifiers to convert attrname into a VALUE_PAIR_TMPL.
+ *
+ * VPTs are used in various places where we need to pre-parse configuration 
+ * sections into attribute mappings.
+ *
+ * @param[in] name attribute name including qualifiers.
+ * @param[out] vpt to modify.
+ * @param[in] request_def The default request to insert unqualified 
+ *	attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
+ * @return -1 if either the attribute or qualifier were invalid, else 0
+ */
+int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
+		     request_refs_t request_def, pair_lists_t list_def)
+{
+	char buffer[128];
+	const char *p;
+	size_t len;
+	
+	vpt->name = strdup(name);
+	
+	p = vpt->name;
+	
+	vpt->request = radius_request_name(&p, request_def);
+	len = p - name;
+	if (vpt->request == REQUEST_UNKNOWN) {
+		strlcpy(buffer, name, len < sizeof(buffer) ?
+			len + 1 : sizeof(buffer));
+		
+		radlog(L_ERR, "Invalid request qualifier \"%s\"", buffer);
+		return -1;	
+	}
+	name += len;
+	
+	vpt->list = radius_list_name(&p, list_def);
+	if (vpt->list == PAIR_LIST_UNKNOWN) {
+		len = p - name;
+		strlcpy(buffer, name, len < sizeof(buffer) ?
+			len + 1 : sizeof(buffer));
+				
+		radlog(L_ERR, "Invalid list qualifier \"%s\"", buffer);
+		return -1;
+	}
+	
+	vpt->da = dict_attrbyname(p);
+	if (!vpt->da) {
+		radlog(L_ERR, "Attribute \"%s\" unknown", p);
+		return -1;
+	}
+	
+	return 0;
+}
+
+/** Convert module specific attribute id to VALUE_PAIR_TMPL.
+ *
+ * @param[in] name string to convert.
+ * @param[out] vpt to modify.
+ * @return 0
+ */
+int radius_str2tmpl(const char *name, VALUE_PAIR_TMPL *vpt)
+{
+	vpt->name = strdup(name);
+	
+	return 0;
+}
+
+/** Release memory used by a map linked list.
+ *
+ * @param map Head of the map linked list.
+ */
+void radius_mapfree(VALUE_PAIR_MAP **map)
+{
+	VALUE_PAIR_MAP *next, *vpm;
+	
+	if (!map) return;
+	
+	vpm = *map; 
+	 
+	while (vpm != NULL) {
+		next = vpm->next;
+		
+		if (vpm->src.name) free(vpm->src.name);
+		if (vpm->dst.name) free(vpm->dst.name);
+		
+		free(vpm);
+		vpm = next;
+	}
+	
+	*map = NULL;
+}
+
+/** Convert CONFIG_PAIR to VALUE_PAIR_MAP.
+ *
+ * Treats the left operand as a <request>.<list>.<attribute> reference
+ * and the right operand as a module specific value.
+ *
+ * The left operand will be pre-parsed into request ref, dst list, and da,
+ * the right operand will be left as a string.
+ *
+ * Return must be freed with radius_mapfree.
+ *
+ * @param[in] cp to convert to map.
+ * @param[in] request_def The default request to insert unqualified
+ *	attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
+ * @return VALUE_PAIR_MAP if successful or NULL on error.
+ */
+VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
+			      pair_lists_t list_def)
+{
+	VALUE_PAIR_MAP *map;
+	const char *attr;
+	const char *value;
+	
+	map = rad_malloc(sizeof(VALUE_PAIR_MAP));
+	memset(map, 0, sizeof(VALUE_PAIR_MAP));
+     
+	attr = cf_pair_attr(cp);
+	
+	if (radius_attr2tmpl(attr, &map->dst, list_def, request_def) < 0){
+		goto error;
+	}
+
+	value = cf_pair_value(cp);
+	if (!value) {
+		radlog(L_ERR, "Missing attribute name");
+		
+		goto error;
+	}
+	
+	if (radius_str2tmpl(value, &map->src) < 0) {
+		goto error;
+	}
+	
+	map->op_token = cf_pair_operator(cp);
+	
+	/*
+	 *	Infer whether we need to expand the mapping values
+	 *	The old style attribute map allowed the user to specify
+	 *	whether the LDAP value should be expanded. 
+	 *	We can't really support that easily, but equivalent
+	 *	functionality should be available with %{eval:}
+	 */
+	switch (cf_pair_value_type(cp))
+	{
+		case T_BARE_WORD:
+		case T_SINGLE_QUOTED_STRING:
+			map->src.do_xlat = FALSE;
+		break;
+		case T_BACK_QUOTED_STRING:
+		case T_DOUBLE_QUOTED_STRING:
+			map->src.do_xlat = TRUE;		
+		break;
+		default:
+			rad_assert(0);
+			goto error;
+	}
+	
+	return map;
+	
+	error:
+		radius_mapfree(&map);
+		return NULL;
+}
+
+/** Convert VALUE_PAIR_MAP to VALUE_PAIR(s) and add them to a REQUEST.
+ *
+ * Takes a single VALUE_PAIR_MAP, resolves request and list identifiers
+ * to pointers in the current request, the attempts to retrieve module
+ * specific value(s) using callback, and adds the resulting values to the
+ * correct request/list.
+ *
+ * @param request The current request.
+ * @param map specifying destination attribute and location and src identifier.
+ * @param func to retrieve module specific values and convert them to
+ *	VLAUE_PAIRS.
+ * @param ctx to be passed to func.
+ * @param src name to be used in debugging if different from map value.
+ * @return -1 if either attribute or qualifier weren't valid in this context
+ *	or callback returned NULL pointer, else 0.
+ */
+int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
+		       const char *src, radius_tmpl_getvalue_t func, void *ctx)
+{
+	VALUE_PAIR **list, *vp, *head;
+	char buffer[MAX_STRING_LEN];
+	
+	if (!radius_request(&request, map->dst.request)) {
+		RDEBUG("WARNING: Request in mapping \"%s\" -> \"%s\" "
+		       "invalid in this context, skipping!",
+		       map->src.name, map->dst.name);
+		
+		return -1;
+	}
+	
+	list = radius_list(request, map->dst.list);
+	if (!list) {
+		RDEBUG("WARNING: List in mapping \"%s\" -> \"%s\" "
+		       "invalid in this context, skipping!",
+		       map->src.name, map->dst.name);
+		       
+		return -1;
+	}
+	
+	head = func(request, &map->dst, ctx);
+	if (head == NULL) {
+		return -1;
+	}
+	
+	for (vp = head; vp != NULL; vp = vp->next) {
+		vp->operator = map->op_token;
+		
+		if (debug_flag) {
+			vp_prints_value(buffer, sizeof(buffer), vp, 1);
+			
+			RDEBUG("\t%s %s %s (%s)", map->dst.name,
+			       fr_int2str(fr_tokens, vp->operator, "¿unknown?"), 
+			       buffer, src ? src : map->src.name);
+		}
+	}
+	
+	/*
+	 *	Use pairmove so the operator is respected
+	 */
+	pairmove(list, &vp);
+	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
+	
+	return 0;
 }
 
 /** Return a VP from the specified request.
@@ -1013,42 +1289,40 @@ int radius_ref_request(REQUEST **request, const char **name)
  * @param name attribute name including qualifiers.
  * @param vp_p where to write the pointer to the resolved VP. 
  *	Will be NULL if the attribute couldn't be resolved.
- * @return False if either the attribute or qualifier were invalid, else true
+ * @return -1 if either the attribute or qualifier were invalid, else 0
  */
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 {
+	VALUE_PAIR_TMPL vpt;
 	VALUE_PAIR **vps;
-	pair_lists_t list;
-	
-	const DICT_ATTR *da;
-	
+
 	*vp_p = NULL;
 	
-	if (!radius_ref_request(&request, &name)) {
-		RDEBUG("WARNING: Attribute name refers to outer request"
-		       " but not in a tunnel.");
-		return TRUE;	/* Discuss, we don't actually know if
-				   the attrname was valid... */
+	if (radius_attr2tmpl(name, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+		return -1;
 	}
 	
-	list = radius_list_name(&name, PAIR_LIST_REQUEST);
-	if (list == PAIR_LIST_UNKNOWN) {
-		RDEBUG("ERROR: Invalid list qualifier");
-		return FALSE;
+	if (radius_request(&request, vpt.request) < 0) {
+		RDEBUG("WARNING: Specified request \"%s\" is not available in "
+		       "this context", fr_int2str(request_refs, vpt.request,
+		       				  "¿unknown?"));
+		       
+		return 0;
 	}
 	
-	da = dict_attrbyname(name);
-	if (!da) {
-		RDEBUG("ERROR: Attribute \"%s\" unknown", name);
-		return FALSE;
+	vps = radius_list(request, vpt.list);
+	if (!vps) {
+		RDEBUG("WARNING: Specified list \"%s\" is not available in "
+		       "this context", fr_int2str(pair_lists, vpt.list,
+		       				  "¿unknown?"));
+	       	       
+		return 0;
 	}
-
-	vps = radius_list(request, list);
-	rad_assert(vps);
 	
 	/*
 	 *	May not may not be found, but it *is* a known name.
 	 */
-	*vp_p = pairfind(*vps, da->attr, da->vendor);
-	return TRUE;
+	*vp_p = pairfind(*vps, vpt.da->attr, vpt.da->vendor);
+	
+	return -1;
 }

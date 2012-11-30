@@ -496,7 +496,7 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
 		*out = '\0';
 		return 0;
 	}
@@ -532,7 +532,7 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 
 	while (isspace((int) *fmt)) fmt++;
 
-	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
 		*out = '\0';
 		return 0;
 	}
@@ -569,7 +569,7 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 	
 	while (isspace((int) *fmt)) fmt++;
 
-	if (!radius_get_vp(request, fmt, &vp) || !vp) {
+	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
 		*out = '\0';
 		return 0;
 	}
@@ -654,7 +654,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	if (!radius_get_vp(request, fmt, &vp)) goto nothing;
+	if (radius_get_vp(request, fmt, &vp) < 0) goto nothing;
 
 	if (!vp) goto nothing;
 

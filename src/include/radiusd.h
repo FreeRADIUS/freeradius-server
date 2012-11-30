@@ -279,6 +279,15 @@ typedef enum pair_lists {
 
 extern const FR_NAME_NUMBER pair_lists[];
 
+typedef enum requests {
+	REQUEST_UNKNOWN = 0,
+	REQUEST_OUTER,
+	REQUEST_CURRENT,
+	REQUEST_PARENT	/* For future use */
+} request_refs_t;
+
+extern const FR_NAME_NUMBER request_refs[];
+
 typedef struct pair_list {
 	const char		*name;
 	VALUE_PAIR		*check;
@@ -640,8 +649,8 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 /* xlat.c */
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
-int            radius_xlat(char * out, int outlen, const char *fmt,
-			   REQUEST * request, RADIUS_ESCAPE_STRING func, void *funcarg);
+size_t          radius_xlat(char * out, int outlen, const char *fmt,
+			    REQUEST * request, RADIUS_ESCAPE_STRING func, void *funcarg);
 typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t);
 int		xlat_register(const char *module, RAD_XLAT_FUNC func,
 			      void *instance);
@@ -708,7 +717,49 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
 
 VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);
 pair_lists_t radius_list_name(const char **name, pair_lists_t unknown);
-int radius_ref_request(REQUEST **request, const char **name);
+int radius_request(REQUEST **request, request_refs_t name);
+request_refs_t radius_request_name(const char **name, request_refs_t unknown);
+
+/*
+ *  See main/valuepair.c
+ *
+ *  Value pair template, used when processing various mappings sections
+ *  to create a real valuepair later.
+ */
+typedef struct value_pair_tmpl {
+	const char	        *name;
+	const DICT_ATTR		*da;
+	
+	int			do_xlat;
+	
+	request_refs_t		request;
+	pair_lists_t		list;
+} VALUE_PAIR_TMPL;
+
+/*
+ *  Value pair map
+ */
+typedef struct value_pair_map {
+	VALUE_PAIR_TMPL		dst;
+	VALUE_PAIR_TMPL		src;
+	
+	FR_TOKEN		op_token;
+	
+	struct value_pair_map	*next;
+} VALUE_PAIR_MAP;
+
+typedef VALUE_PAIR *(*radius_tmpl_getvalue_t)(REQUEST *request,
+					      VALUE_PAIR_TMPL *src, void *ctx);
+
+int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
+		     request_refs_t request_def, pair_lists_t list_def);
+int radius_str2tmpl(const char *name, VALUE_PAIR_TMPL *vpt);
+VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
+			      pair_lists_t list_def);
+int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
+		       const char *src, radius_tmpl_getvalue_t func, void *ctx);
+void radius_mapfree(VALUE_PAIR_MAP **map);
+
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
 
 #ifdef WITH_TLS

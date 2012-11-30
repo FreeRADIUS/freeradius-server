@@ -550,7 +550,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				goto handle_result;
 			}
 
-			if (radius_get_vp(request, child->name, &vp)) {
+			if (!(radius_get_vp(request, child->name, &vp) < 0)) {
 				RDEBUG2("%.*sforeach %s {",
 					stack.pointer + 1, modcall_spaces,
 					child->name);
