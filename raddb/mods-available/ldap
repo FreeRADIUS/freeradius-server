@@ -24,9 +24,34 @@ ldap {
 #	basedn = "ou=people,dc=example,dc=org"
 #	filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
 
-	# Mapping of RADIUS dictionary attributes to LDAP
-	# directory attributes.
-#	dictionary_mapping = ${confdir}/ldap.attrmap
+	#
+	#  Mapping of RADIUS dictionary attributes to LDAP directory attributes.
+	#
+	#  WARNING: Although this format is almost identical to the unlang 
+	#  update section format, it does *NOT* mean that you can use other
+	#  unlang constructs in module configuration files.
+	#
+	#  Configuration items are in the format:
+	# 	<radius attribute> <op> <ldap attribute>
+	# 
+	#  Where:
+	#  	<radius attribute>:	The destination RADIUS attribute
+	# 			with any valid list and request qualifiers.
+	#  	<op>: 		Is any assignment attribute (=, :=, +=, -=).
+	#  	<ldap attribute>:	The attribute in the associated 
+	# 			with user or profile objects in the LDAP 
+	# 			directory. If the attribute name is wrapped in 
+	# 			double quotes it will be xlat expanded.
+	# 
+	#  Request and list qualifiers may also be placed after the section
+	#  name to set defaults for unqualified RADIUS attributes.
+	update reply {
+#		control:NT-Password 	:= ntPassword
+#		Reply-Message		:= radiusReplyMessage
+#		Tunnel-Type		:= radiusTunnelType
+#		Tunnel-Medium-Type	:= radiusTunnelMediumType
+#		Tunnel-Private-Group-ID := radiusTunnelPrivategroupId
+	}
 
 	# Set to "no" to disable the "no \"known good\" password" warning,
 	# if you're not using LDAP to retrieve password values.

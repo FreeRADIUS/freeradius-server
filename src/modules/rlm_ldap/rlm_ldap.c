@@ -31,8 +31,11 @@ RCSID("$Id$")
 #include	<stdarg.h>
 #include	<ctype.h>
 
-#include	"mapping.h"
+#include	<lber.h>
+#include	<ldap.h>
 
+#define MAX_ATTRMAP		128
+#define MAX_ATTR_STR_LEN	256
 #define MAX_FILTER_STR_LEN	1024
 
 typedef struct {
@@ -53,11 +56,12 @@ typedef struct {
 	int             ldap_debug; /* Debug flag for LDAP SDK */
 	const char	*xlat_name; /* name used to xlat */
 
-	const char	*map_file;
 	int		expect_password;
-	TLDAP_RADIUS	*check_map;
-	TLDAP_RADIUS	*reply_map;
-	char		**attrs;
+	
+	/*
+	 *	RADIUS attribute to LDAP attribute maps
+	 */
+	VALUE_PAIR_MAP	*user_map;	/* Applied to user object, and profiles */
 
 	int		do_xlat;
 
@@ -245,10 +249,6 @@ static const CONF_PARSER module_config[] = {
 	{"filter", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,filter), NULL, "(uid=%u)"},
 
-	/* file with mapping between LDAP and RADIUS attributes */
-	{"dictionary_mapping", PW_TYPE_FILENAME,
-	 offsetof(ldap_instance, map_file), NULL, NULL},
-	
 	/* turn off the annoying warning if we don't expect a password */
 	{"expect_password", PW_TYPE_BOOLEAN,
 	 offsetof(ldap_instance,expect_password), NULL, "yes"},
@@ -278,6 +278,16 @@ typedef struct ldap_conn {
 	int	referred;
 	ldap_instance *inst;
 } LDAP_CONN;
+
+typedef struct xlat_attrs {
+	const VALUE_PAIR_MAP *maps;
+	const char *attrs[MAX_ATTRMAP];
+} xlat_attrs_t;
+
+typedef struct rlm_ldap_result {
+	char	**values;
+	int	count;
+} rlm_ldap_result_t;
 
 
 #if LDAP_SET_REBIND_PROC_ARGS == 3
@@ -683,13 +693,21 @@ static size_t ldap_escape_func(UNUSED REQUEST *request, char *out,
  *
  *************************************************************************/
 static int perform_search(ldap_instance *inst, LDAP_CONN **pconn,
-			  char *search_basedn, int scope, char *filter,
-			  char **attrs, LDAPMessage **presult)
+			  const char *search_basedn, int scope,
+			  const char *filter, const char **attrs,
+			  LDAPMessage **presult)
 {
 	int		ldap_errno;
 	int		reconnect = FALSE;
 	LDAP_CONN	*conn = *pconn;
 	struct timeval  tv;
+
+	/*
+	 *	OpenLDAP library doesn't declare attrs array as const, but
+	 *	it really should be *sigh*.
+	 */
+	char **search_attrs;
+	memcpy(&search_attrs, &attrs, sizeof(attrs));
 
 	*presult = NULL;
 
@@ -715,8 +733,9 @@ static int perform_search(ldap_instance *inst, LDAP_CONN **pconn,
 	       search_basedn ? search_basedn : "(null)" , filter);
 
 retry:
-	ldap_errno = ldap_search_st(conn->ld, search_basedn, scope, filter,
-				    attrs, 0, &tv, presult);
+	ldap_errno = ldap_search_ext_s(conn->ld, search_basedn, scope, filter,
+				       search_attrs, 0, NULL, NULL, &tv, 0,
+				       presult);
 	switch (ldap_errno) {
 	case LDAP_SUCCESS:
 	case LDAP_NO_SUCH_OBJECT:
@@ -804,10 +823,11 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	ldap_instance *inst = instance;
 	LDAPURLDesc *ldap_url;
 	LDAPMessage *result = NULL;
-	LDAPMessage *msg = NULL;
+	LDAPMessage *entry = NULL;
 	char **vals;
 	LDAP_CONN *conn;
 	const char *url;
+	const char **attrs;
 	char buffer[MAX_FILTER_STR_LEN];
 
 	if (strchr(fmt, '%') != NULL) {
@@ -852,8 +872,10 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	conn = ldap_get_socket(inst);
 	if (!conn) goto free_urldesc;
 
+	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
+	
 	rcode = perform_search(inst, &conn, ldap_url->lud_dn, ldap_url->lud_scope,
-			       ldap_url->lud_filter, ldap_url->lud_attrs, &result);
+			       ldap_url->lud_filter, attrs, &result);
 	if (rcode < 0) {
 		if (rcode == -2) {
 			DEBUG("  [%s] Search returned not found", inst->xlat_name);
@@ -863,13 +885,13 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 		goto free_socket;
 	}
 
-	msg = ldap_first_entry(conn->ld, result);
-	if (!msg) {
+	entry = ldap_first_entry(conn->ld, result);
+	if (!entry) {
 		DEBUG("  [%s] ldap_first_entry() failed", inst->xlat_name);
 		goto free_result;
 	}
 
-	vals = ldap_get_values(conn->ld, msg, ldap_url->lud_attrs[0]);
+	vals = ldap_get_values(conn->ld, entry, ldap_url->lud_attrs[0]);
 	if (!vals) {
 		DEBUG("  [%s] ldap_get_values failed", inst->xlat_name);
 		goto free_result;
@@ -901,9 +923,10 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 	int		rcode;
 	VALUE_PAIR	*vp;
 	ldap_instance   *inst = (*pconn)->inst;
-	LDAPMessage    *result, *msg;
+	LDAPMessage    *result, *entry;
 	static char	firstattr[] = "uid";
-	char           *user_dn, *attrs[] = {firstattr, NULL};
+	char		*user_dn;
+	const char	*attrs[] = {firstattr, NULL};
         char            filter[MAX_FILTER_STR_LEN];	
         char            basedn[MAX_FILTER_STR_LEN];	
 
@@ -936,12 +959,12 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 		return NULL;
 	}
 
-	if ((msg = ldap_first_entry((*pconn)->ld, result)) == NULL) {
+	if ((entry = ldap_first_entry((*pconn)->ld, result)) == NULL) {
 		ldap_msgfree(result);
 		return NULL;
 	}
 
-	if ((user_dn = ldap_get_dn((*pconn)->ld, msg)) == NULL) {
+	if ((user_dn = ldap_get_dn((*pconn)->ld, entry)) == NULL) {
 		ldap_msgfree(result);
 		return NULL;
 	}
@@ -974,11 +997,11 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
         ldap_instance   *inst = instance;
         int             i, rcode, found;
         LDAPMessage     *result = NULL;
-        LDAPMessage     *msg = NULL;
+        LDAPMessage     *entry = NULL;
 	static char	firstattr[] = "dn";
-	char		*attrs[] = {firstattr,NULL};
+	const char	*attrs[] = {firstattr, NULL};
 	char		**vals;
-	char		*group_attrs[] = {inst->groupmemb_attr,NULL};
+	const char	*group_attrs[] = {inst->groupmemb_attr, NULL};
 	LDAP_CONN	*conn;
 	char		*user_dn;
 	int		module_rcode;
@@ -1074,15 +1097,15 @@ check_attr:
 		return 1;
 	}
 
-	msg = ldap_first_entry(conn->ld, result);
-	if (!msg) {
+	entry = ldap_first_entry(conn->ld, result);
+	if (!entry) {
 		RDEBUG("First entry failed for group attrs");
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 		return 1;
 	}
 
-	vals = ldap_get_values(conn->ld, msg, inst->groupmemb_attr);
+	vals = ldap_get_values(conn->ld, entry, inst->groupmemb_attr);
 	if (!vals) {
 		RDEBUG("Get values failed for group attrs");
 		ldap_release_socket(inst, conn);
@@ -1139,6 +1162,74 @@ check_attr:
         return 0;
 }
 
+/*
+ *	Verify that the ldap update section makes sense, and add attribute names
+ *	to array of attributes for efficient querying later.
+ */
+static VALUE_PAIR_MAP *build_attrmap(CONF_SECTION *cs)
+{
+	const char *cs_list, *p;
+
+	request_refs_t request_def = REQUEST_CURRENT;
+	pair_lists_t list_def = PAIR_LIST_REQUEST;
+
+	CONF_ITEM *ci = cf_sectiontoitem(cs);
+	CONF_PAIR *cp;
+
+	unsigned int total = 0;
+	VALUE_PAIR_MAP **tail, *map, *head;
+	head = NULL;
+	tail = &head;
+	
+	if (!cs) return NULL;
+	
+	cs_list = p = cf_section_name2(cs);
+	if (cs_list) {
+		request_def = radius_request_name(&p, REQUEST_UNKNOWN);
+		if (request_def == REQUEST_UNKNOWN) {
+			cf_log_err(ci, "rlm_ldap: Default request specified "
+				   "in mapping section is invalid");
+			return NULL;
+		}
+		
+		list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
+		if (list_def == PAIR_LIST_UNKNOWN) {
+			cf_log_err(ci, "rlm_ldap: Default list specified "
+				   "in mapping section is invalid");
+			return NULL;
+		}
+	}
+
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+	     	if (total++ == MAX_ATTRMAP) {
+	     		cf_log_err(ci, "rlm_ldap: Attribute map size exceeded");
+	     		goto error;
+	     	}
+	     	
+		if (!cf_item_is_pair(ci)) {
+			cf_log_err(ci, "rlm_ldap: Entry is not in \"attribute ="
+				       " ldap-attribute\" format");
+			goto error;
+		}
+	
+		cp = cf_itemtopair(ci);
+		map = radius_cp2map(cp, REQUEST_CURRENT, list_def);
+		if (!map) {
+			goto error;
+		}
+		
+		*tail = map;
+		tail = &(map->next);
+	}
+
+	return head;
+	
+	error:
+		radius_mapfree(&head);
+		return NULL;
+}
 
 /*****************************************************************************
  *
@@ -1150,11 +1241,9 @@ static int ldap_detach(void *instance)
 	ldap_instance *inst = instance;
 
 	fr_connection_pool_delete(inst->pool);
-
-	if (inst->map_file) {
-		rlm_ldap_map_free(&inst->check_map);
-		rlm_ldap_map_free(&inst->reply_map);
-		free(inst->attrs);
+	
+	if (inst->user_map) {
+		radius_mapfree(&inst->user_map);
 	}
 
 	free(inst);
@@ -1173,6 +1262,7 @@ static int ldap_detach(void *instance)
 static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 {
 	ldap_instance *inst;
+	CONF_SECTION *cs;
 
 	inst = rad_malloc(sizeof *inst);
 	if (!inst) {
@@ -1205,7 +1295,8 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		inst->is_url = 1;
 		inst->port = 0;
 #else
-		radlog(L_ERR, "rlm_ldap: 'server' directive is in URL form but ldap_initialize() is not available.");
+		radlog(L_ERR, "rlm_ldap: 'server' directive is in URL form but "
+		       "ldap_initialize() is not available.");
 		ldap_detach(inst);
 		return -1;
 #endif
@@ -1228,39 +1319,21 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	variable for the username, password, etc.
 	 */
 	if (inst->rebind == 1) {
-		radlog(L_ERR, "%s: Cannot use 'rebind' directive as this version of libldap does not support the API that we need.", inst->xlat-name);
+		radlog(L_ERR, "%s: Cannot use 'rebind' directive as this "
+		       "version of libldap does not support the API that "
+		       "we need.", inst->xlat-name);
 		ldap_detach(inst);
 		return -1;
 	}
 #endif
 
-	if (inst->map_file) {
-		int offset = 0;
-
-		inst->attrs = rad_malloc(sizeof(inst->attrs[0]) * MAX_ATTRMAP);
-		inst->attrs[0] = NULL;
-
-		if (inst->profile_attr) inst->attrs[offset++] = inst->profile_attr;
-		if (inst->access_attr) inst->attrs[offset++] = inst->access_attr;
-
-		if (rlm_ldap_map_read(inst->xlat_name, inst->map_file,
-				      &inst->check_map, &inst->reply_map,
-				      offset,
-				      inst->attrs) < 0) {
-			ldap_detach(inst);
-			return -1;
-		}
-
-		if (!inst->check_map || !inst->reply_map) {
-			radlog(L_ERR, "%s: Empty file: %s",
-			       inst->xlat_name, inst->map_file);
-			ldap_detach(inst);
-			return -1;
-		}
-
-	} else {
-		if (inst->default_profile || inst->profile_attr) {
-			radlog(L_ERR, "%s: You MUST specify \"dictionary_mapping\" to use the profile attributes", inst->xlat_name);
+	/*
+	 *	Build the attribute map
+	 */
+	cs = cf_section_sub_find(conf, "update");
+	if (cs) {	
+		inst->user_map = build_attrmap(cs);
+		if (!inst->user_map) {
 			ldap_detach(inst);
 			return -1;
 		}
@@ -1327,12 +1400,12 @@ static void module_failure_msg(VALUE_PAIR **vps, const char *fmt, ...)
 }
 
 
-static int check_access(ldap_instance *inst, LDAP_CONN *conn, LDAPMessage *msg)
+static int check_access(ldap_instance *inst, LDAP_CONN *conn, LDAPMessage *entry)
 {
 	int rcode = -1;
 	char **vals = NULL;
 
-	vals = ldap_get_values(conn->ld, msg, inst->access_attr);
+	vals = ldap_get_values(conn->ld, entry, inst->access_attr);
 	if (vals) {
 		if (inst->positive_access_attr) {
 			if (strncmp(vals[0], "FALSE", 5) == 0) {
@@ -1360,70 +1433,155 @@ static int check_access(ldap_instance *inst, LDAP_CONN *conn, LDAPMessage *msg)
 }
 
 
-static void apply_profile(ldap_instance *inst, LDAP_CONN **pconn,
-			  REQUEST *request, char *profile)
+static VALUE_PAIR *ldap_getvalue(REQUEST *request, VALUE_PAIR_TMPL *dst,
+				 void *ctx)
 {
-	int rcode;
-	LDAPMessage	*result, *msg;
-	VALUE_PAIR	*check_tmp, *reply_tmp;
-	char		filter[MAX_FILTER_STR_LEN];
+	rlm_ldap_result_t *self = ctx;
+	VALUE_PAIR *head, **tail, *vp;
+	int i;
+	
+	request = request;
+	
+	head = NULL;
+	tail = &head;
+	
+	/*
+	 *	Iterate over all the retrieved values,
+	 *	don't try and be clever about changing operators
+	 *	just use whatever was set in the attribute map.	
+	 */
+	for (i = 0; i < self->count; i++) {
+		vp = pairalloc(dst->da);
+		rad_assert(vp);
 
-	if (!profile || !*profile) return;
-
-	strlcpy(filter,inst->base_filter,sizeof(filter));
-
-	rcode = perform_search(inst, pconn, profile, LDAP_SCOPE_BASE, filter,
-			       inst->attrs, &result);
-	if (rcode < 0) {
-		RDEBUG("FAILED Searching profile %s", profile);
-		return;
+		pairparsevalue(vp, self->values[i]);
+		
+		*tail = vp;
+		tail = &(vp->next);
 	}
-
-	msg = ldap_first_entry((*pconn)->ld, result);
-	if (!msg) goto free_result;
-
-	check_tmp = rlm_ldap_pairget(inst->xlat_name, (*pconn)->ld, msg,
-				     inst->check_map, &request->config_items, 1);
-	if (check_tmp) {
-		pairfree(&check_tmp);
-	}
-
-	reply_tmp = rlm_ldap_pairget(inst->xlat_name, (*pconn)->ld, msg,
-				     inst->reply_map, &request->packet->vps, 0);
-	if (reply_tmp) {
-		pairfree(&reply_tmp);
-	}
-
-free_result:
-	ldap_msgfree(result);
+	
+	return head;		
 }
 
 
-static void do_one_map(ldap_instance *inst, LDAP *ld, REQUEST *request,
-		       LDAPMessage *msg, TLDAP_RADIUS *map, VALUE_PAIR **vps,
-		       int is_check)
+static void xlat_attrsfree(const xlat_attrs_t *expanded)
 {
-	VALUE_PAIR *vp;
-
-	vp = rlm_ldap_pairget(inst->xlat_name, ld, msg, map, vps, is_check);
-	if (vp) {
-		if (inst->do_xlat) {
-			pairxlatmove(request, vps, &vp);
-			pairfree(&vp);
-
-		} else {
-			pairadd(vps, vp);
+	const VALUE_PAIR_MAP *map;
+	unsigned int total = 0;
+	
+	char *name;
+	
+	for (map = expanded->maps; map != NULL; map = map->next)
+	{
+		memcpy(&name, &(expanded->attrs[total++]), sizeof(name));
+		
+		if (!name) return;
+		
+		if (map->src.do_xlat) {
+			free(name);
 		}
 	}
-
 }
 
-static void do_check_reply(ldap_instance *inst, LDAP *ld, REQUEST *request,
-			   LDAPMessage *msg)
-{
-	do_one_map(inst, ld, request, msg, inst->check_map, &request->config_items, 1);
-	do_one_map(inst, ld, request, msg, inst->reply_map, &request->reply->vps, 0);
 
+static int xlat_attrs(REQUEST *request, const VALUE_PAIR_MAP *maps,
+		      xlat_attrs_t *expanded)
+{
+	const VALUE_PAIR_MAP *map;
+	unsigned int total = 0;
+	
+	size_t len;
+	char *buffer;
+
+	for (map = maps; map != NULL; map = map->next)
+	{
+		if (map->src.do_xlat) {
+			buffer = rad_malloc(MAX_ATTR_STR_LEN);
+			len = radius_xlat(buffer, MAX_ATTR_STR_LEN,
+					  map->src.name, request, NULL, NULL);
+					  
+			if (!len) {
+				DEBUG2("WARNING: Expansion of LDAP attribute "
+				       "\"%s\" failed", map->src.name);
+				       
+				expanded->attrs[total] = NULL;
+				
+				xlat_attrsfree(expanded);
+				
+				return -1;
+			}
+			
+			expanded->attrs[total++] = buffer;
+		} else {
+			expanded->attrs[total++] = map->src.name;
+		}
+	}
+	
+	expanded->attrs[total] = NULL;
+	expanded->maps = maps;
+	
+	return 0;
+}
+
+
+/** Convert attribute map into valuepairs
+ *
+ * Use the attribute map built earlier to convert LDAP values into valuepairs
+ * and insert them into whichever list they need to go into.
+ *
+ * This is *NOT* atomic, but there's no condition in which we should error
+ * out...
+ */
+static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request, LDAP *ld, 
+		       const xlat_attrs_t *expanded, LDAPMessage *entry)
+{
+	const VALUE_PAIR_MAP 	*map;
+	unsigned int		total = 0;
+	
+	rlm_ldap_result_t	result;
+
+	REQUEST			*update_request;
+	const char		*name;
+
+	for (map = expanded->maps; map != NULL; map = map->next)
+	{
+		update_request = request;
+		
+		name = expanded->attrs[total++];
+		
+		result.values = ldap_get_values(ld, entry, name);
+		if (!result.values) {
+			DEBUG2("WARNING: Attribute \"%s\" not found in LDAP "
+			       "object", name);
+				
+			goto next;
+		}
+		
+		/*
+		 *	Find out how many values there are for the
+		 *	attribute and extract all of them.
+		 */
+		result.count = ldap_count_values(result.values);
+		
+		/*
+		 *	If something bad happened, just skip, this is probably
+		 *	a case of the dst being incorrect for the current
+		 *	request context
+		 */
+		if (radius_map2request(request, map, name, ldap_getvalue,
+				       &result) < 0) {
+			goto next;
+		}
+		
+		next:
+		
+		ldap_value_free(result.values);
+	}
+}
+
+
+static void do_check_reply(ldap_instance *inst, REQUEST *request)
+{
        /*
 	*	More warning messages for people who can't be bothered
 	*	to read the documentation.
@@ -1438,6 +1596,37 @@ static void do_check_reply(ldap_instance *inst, LDAP *ld, REQUEST *request,
 	       }
        }
 }
+
+
+static void apply_profile(ldap_instance *inst, REQUEST *request,
+			  LDAP_CONN **pconn, const char *profile,
+			  const xlat_attrs_t *expanded)
+{
+	int rcode;
+	LDAPMessage	*result, *entry;
+	char		filter[MAX_FILTER_STR_LEN];
+
+	if (!profile || !*profile) return;
+
+	strlcpy(filter, inst->base_filter, sizeof(filter));
+
+	rcode = perform_search(inst, pconn, profile, LDAP_SCOPE_BASE,
+			       filter, expanded->attrs, &result);
+		
+	if (rcode < 0) {
+		RDEBUG("FAILED Searching profile %s", profile);
+		goto free_result;
+	}
+
+	entry = ldap_first_entry((*pconn)->ld, result);
+	if (!entry) goto free_result;
+
+	do_attrmap(inst, request, (*pconn)->ld, expanded, entry);
+
+free_result:
+	ldap_msgfree(result);
+}
+
 
 /******************************************************************************
  *
@@ -1455,10 +1644,11 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	char		**vals;
 	VALUE_PAIR	*vp;
 	LDAP_CONN	*conn;
-	LDAPMessage	*result, *msg;
+	LDAPMessage	*result, *entry;
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
-
+	xlat_attrs_t	expanded; /* faster that mallocing every time */
+	
 	if (!request->username) {
 		RDEBUG2("attribute \"User-Name\" is required for authorization.\n");
 		return RLM_MODULE_NOOP;
@@ -1486,9 +1676,14 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 	conn = ldap_get_socket(inst);
 	if (!conn) return RLM_MODULE_FAIL;
-
+	
+	if (xlat_attrs(request, inst->user_map, &expanded) < 0) {
+		return RLM_MODULE_FAIL;
+	}
+	
 	rcode = perform_search(inst, &conn, basedn, LDAP_SCOPE_SUBTREE, filter,
-			       inst->attrs, &result);
+			       expanded.attrs, &result);
+	
 	if (rcode < 0) {
 		if (rcode == -2) {
 			module_failure_msg(&request->packet->vps,
@@ -1502,13 +1697,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		goto free_socket;
 	}
 
-	msg = ldap_first_entry(conn->ld, result);
-	if (!msg) {
+	entry = ldap_first_entry(conn->ld, result);
+	if (!entry) {
 		RDEBUG2("ldap_first_entry() failed");
 		goto free_result;
 	}
 
-	user_dn = ldap_get_dn(conn->ld, msg);
+	user_dn = ldap_get_dn(conn->ld, entry);
 	if (!user_dn) {
 		RDEBUG2("ldap_get_dn() failed");
 		goto free_result;
@@ -1525,7 +1720,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 *	Check for access.
 	 */
 	if (inst->access_attr) {
-		if (check_access(inst, conn, msg) < 0) {
+		if (check_access(inst, conn, entry) < 0) {
 			module_rcode = RLM_MODULE_USERLOCK;
 			goto free_result;
 		}
@@ -1540,29 +1735,31 @@ static int ldap_authorize(void *instance, REQUEST * request)
 
 		if (vp) profile = vp->vp_strvalue;
 
-		apply_profile(inst, &conn, request, profile);
+		apply_profile(inst, request, &conn, profile, &expanded);
 	}
 
 	/*
 	 *	Apply a SET of user profiles.
 	 */
 	if (inst->profile_attr &&
-	    (vals = ldap_get_values(conn->ld, msg, inst->profile_attr)) != NULL) {
+	    (vals = ldap_get_values(conn->ld, entry, inst->profile_attr)) != NULL) {
 
 		int i;
 
 		for (i = 0; (vals[i] != NULL) && (*vals[i] != '\0'); i++) {
-			apply_profile(inst, &conn, request, vals[i]);
+			apply_profile(inst, request, &conn, vals[i], &expanded);
 		}
 
 		ldap_value_free(vals);
 	}
 
-	if (inst->map_file) {
-		do_check_reply(inst, conn->ld, request, msg);
+	if (inst->user_map) {
+		do_attrmap(inst, request, conn->ld, &expanded, entry);
+		do_check_reply(inst, request);
 	}
 	
 free_result:
+	xlat_attrsfree(&expanded);
 	ldap_msgfree(result);
 free_socket:
 	ldap_release_socket(inst, conn);
