@@ -1202,7 +1202,7 @@ done:
  * @param func function to escape final value e.g. SQL quoting
  * @return length of string written @bug should really have -1 for failure
  */
-int radius_xlat(char *out, int outlen, const char *fmt,
+size_t radius_xlat(char *out, int outlen, const char *fmt,
 		REQUEST *request,
 		RADIUS_ESCAPE_STRING func, void *funcarg)
 {
