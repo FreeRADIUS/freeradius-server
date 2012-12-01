@@ -1081,12 +1081,10 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 
-	RDEBUG("rlm_ldap (%s): Searching for user in group \"%s\"",
-	       inst->xlat_name, check->vp_strvalue);
+	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
 	if (check->length == 0) {
-		RDEBUG("rlm_ldap (%s): Cannot do comparison "
-		       "(group name is empty)", inst->xlat_name);
+		RDEBUG("Cannot do comparison (group name is empty)");
 		return 1;
 	}
 
@@ -1107,7 +1105,7 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 	if (!radius_xlat(gr_filter, sizeof(gr_filter),
 			 inst->groupmemb_filter, request, ldap_escape_func,
 			 NULL)) {
-		RDEBUG("rlm_ldap (%s): Failed creating group filter",
+		radlog(L_ERR, "rlm_ldap (%s): Failed creating group filter",
 		       inst->xlat_name);
 		return 1;
 	}
@@ -1142,8 +1140,7 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 			
-		RDEBUG("rlm_ldap (%s): User found in group object",
-		       inst->xlat_name);
+		RDEBUG("User found in group object");
 		
 		return 0;
 	}
@@ -1162,17 +1159,15 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 	 */
 	if (!inst->groupmemb_attr) {
 		ldap_release_socket(inst, conn);
-		RDEBUG("rlm_ldap (%s): Group object \"%s\" not found, or "
-		       "user is not a member", inst->xlat_name,
+		RDEBUG("Group object \"%s\" not found, or user is not a member",
 		       check->vp_strvalue);
 		return 1;
 	}
 	
-	RDEBUG2("rlm_ldap (%s): No results searching by group object",
-	       inst->xlat_name);
+	RDEBUG2("No results searching by group object");
 check_attr:
-	RDEBUG2("rlm_ldap (%s): Checking user object membership (%s) "
-		"attributes", inst->xlat_name, inst->groupmemb_attr);
+	RDEBUG2("Checking user object membership (%s) attributes",
+		inst->groupmemb_attr);
 
 	snprintf(filter ,sizeof(filter), "(objectclass=*)");
 
@@ -1180,9 +1175,8 @@ check_attr:
 			       filter, group_attrs, &result);
 	if (rcode < 0) {
 		if (rcode == -2) {
-			RDEBUG("rlm_ldap (%s): Can't check membership "
-			       "attributes, user object not found",
-			       inst->xlat_name);
+			RDEBUG("Can't check membership attributes, user object "
+			       "not found");
 		}
 		ldap_release_socket(inst, conn);
 		return 1;
@@ -1203,8 +1197,7 @@ check_attr:
 
 	vals = ldap_get_values(conn->handle, entry, inst->groupmemb_attr);
 	if (!vals) {
-		RDEBUG("rlm_ldap (%s): No group membership attribute(s) "
-		       "found in user object", inst->xlat_name);
+		RDEBUG("No group membership attribute(s) found in user object");
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 		return 1;
@@ -1220,17 +1213,15 @@ check_attr:
 		
 		value_is_dn = strchr(vals[i], ',') == NULL ? FALSE : TRUE;
 		
-		RDEBUG2("rlm_ldap (%s): Processing group membership "
-			"value \"%s\"", vals[i]);
+		RDEBUG2("Processing group membership value \"%s\"", vals[i]);
 
 		/*
 		 *	Both literal group names, do case sensitive comparison
 		 */
 		if (!check_is_dn && !value_is_dn) {
 			if (strcmp(vals[i], check->vp_strvalue) == 0){
-				RDEBUG("rlm_ldap (%s): User found (membership "
-				       "value matches check value)",
-				       inst->xlat_name);
+				RDEBUG("User found (membership value matches "
+				       "check value)");
 			       
 				found = TRUE;
 				break;
@@ -1244,8 +1235,8 @@ check_attr:
 		 */
 		if (check_is_dn && value_is_dn) {
 			if (strcasecmp(vals[i], check->vp_strvalue) == 0){
-				RDEBUG("rlm_ldap (%s): User found (membership "
-				       "DN matches check DN)", inst->xlat_name);
+				RDEBUG("User found (membership DN matches "
+				       "check DN)");
 			       
 				found = TRUE;
 				break;
@@ -1266,8 +1257,7 @@ check_attr:
 		 *	DN for the group, and see if it has a groupname_attr
 		 *	which matches our check val.
 		 */
-		RDEBUG2("rlm_ldap (%s): Searching with membership DN and group "
-			"name", inst->xlat_name);
+		RDEBUG2("Searching with membership DN and group name");
 
 		snprintf(filter,sizeof(filter), "(%s=%s)",
 			 inst->groupname_attr, check->vp_strvalue);
@@ -1297,8 +1287,8 @@ check_attr:
 
 		found = TRUE;
 
-		RDEBUG("rlm_ldap (%s): User found (group name in membership "
-		       "DN matches check value)", inst->xlat_name);
+		RDEBUG("User found (group name in membership DN matches check "
+		       "value)");
 
 		break;
 	}
@@ -1308,8 +1298,7 @@ check_attr:
 	ldap_release_socket(inst, conn);
 
 	if (!found){
-		RDEBUG("rlm_ldap (%s): User is not a member of specified group",
-		       check->vp_strvalue);
+		RDEBUG("User is not a member of specified group");
 		return 1;
 	}
 
