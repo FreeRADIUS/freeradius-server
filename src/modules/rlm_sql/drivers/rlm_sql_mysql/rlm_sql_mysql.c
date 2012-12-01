@@ -182,7 +182,8 @@ static int sql_check_error(int error)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
+static int sql_query(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config,
+		     char *querystr)
 {
 	rlm_sql_mysql_sock *mysql_sock = sqlsocket->conn;
 

@@ -1232,8 +1232,8 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	if (section->reference[0] != '.')
 		*p++ = '.';
 	
-	if (radius_xlat(p, (sizeof(path) - (p - path)) - 1,
-			section->reference, request, NULL, NULL) < 0)
+	if (!radius_xlat(p, (sizeof(path) - (p - path)) - 1,
+			section->reference, request, NULL, NULL))
 		return RLM_MODULE_FAIL;
 
 	item = cf_reference_item(NULL, section->cs, path);
