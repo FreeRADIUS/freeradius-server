@@ -989,7 +989,8 @@ static int rest_decode_post(rlm_rest_t *instance,
 	const DICT_ATTR **current, *processed[REST_BODY_MAX_ATTRS + 1];
 	VALUE_PAIR *tmp;
 
-	pair_lists_t list;
+	pair_lists_t list_name;
+	request_refs_t request_name;
 	REQUEST *reference = request;
 	VALUE_PAIR **vps;
 
@@ -1016,8 +1017,17 @@ static int rest_decode_post(rlm_rest_t *instance,
 		p = (q + 1);
 
 		RDEBUG("Decoding attribute \"%s\"", name);
+		
+		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
+		if (request_name == REQUEST_UNKNOWN) {
+			RDEBUG("WARNING: Invalid request qualifier, skipping");
 
-		if (!radius_ref_request(&reference, &attribute)) {
+			curl_free(name);
+
+			continue;
+		}
+
+		if (!radius_request(&reference, request_name)) {
 			RDEBUG("WARNING: Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 
@@ -1026,8 +1036,8 @@ static int rest_decode_post(rlm_rest_t *instance,
 			continue;
 		}
 
-		list = radius_list_name(&attribute, PAIR_LIST_REPLY);
-		if (list == PAIR_LIST_UNKNOWN) {
+		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
+		if (list_name == PAIR_LIST_UNKNOWN) {
 			RDEBUG("WARNING: Invalid list qualifier, skipping");
 
 			curl_free(name);
@@ -1045,7 +1055,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 			continue;
 		}
 
-		vps = radius_list(reference, list);
+		vps = radius_list(reference, list_name);
 
 		assert(vps);
 
@@ -1267,7 +1277,8 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 	const DICT_ATTR *da;
 	VALUE_PAIR *vp;
 	
-	pair_lists_t list;
+	request_refs_t request_name;
+	pair_lists_t list_name;
 	REQUEST *reference = request;
 	VALUE_PAIR **vps;
 
@@ -1313,16 +1324,23 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		 *	pairlist.
 		 */
 		RDEBUG2("Decoding attribute \"%s\"", name);
+		
+		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
+		if (request_name == REQUEST_UNKNOWN) {
+			RDEBUG("WARNING: Request qualifier, skipping");
 
-		if (!radius_ref_request(&reference, &attribute)) {
+			continue;
+		}
+
+		if (!radius_request(&reference, request_name)) {
 			RDEBUG("WARNING: Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 
 			continue;
 		}
 
-		list = radius_list_name(&attribute, PAIR_LIST_REPLY);
-		if (list == PAIR_LIST_UNKNOWN) {
+		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
+		if (list_name == PAIR_LIST_UNKNOWN) {
 			RDEBUG("WARNING: Invalid list qualifier, skipping");
 
 			continue;
@@ -1336,7 +1354,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			continue;
 		}
 
-		vps = radius_list(reference, list);
+		vps = radius_list(reference, list_name);
 
 		assert(vps);
 

@@ -3,8 +3,7 @@
 #
 
 TARGET     = @targetname@
-SRCS       = rlm_ldap.c mapping.c
-HEADERS    = mapping.h
+SRCS       = rlm_ldap.c
 RLM_CFLAGS = @ldap_cflags@
 RLM_LIBS   = @ldap_ldflags@
 
