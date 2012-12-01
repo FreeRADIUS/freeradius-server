@@ -749,7 +749,8 @@ typedef struct value_pair_map {
 } VALUE_PAIR_MAP;
 
 typedef VALUE_PAIR *(*radius_tmpl_getvalue_t)(REQUEST *request,
-					      VALUE_PAIR_TMPL *src, void *ctx);
+					      const VALUE_PAIR_TMPL *src,
+					      void *ctx);
 
 int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
 		     request_refs_t request_def, pair_lists_t list_def);
