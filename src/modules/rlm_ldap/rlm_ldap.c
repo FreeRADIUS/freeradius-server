@@ -1172,7 +1172,7 @@ check_attr:
  *	Verify that the ldap update section makes sense, and add attribute names
  *	to array of attributes for efficient querying later.
  */
-static VALUE_PAIR_MAP *build_attrmap(CONF_SECTION *cs)
+static int build_attrmap(CONF_SECTION *cs, VALUE_PAIR_MAP **head)
 {
 	const char *cs_list, *p;
 
@@ -1183,11 +1183,11 @@ static VALUE_PAIR_MAP *build_attrmap(CONF_SECTION *cs)
 	CONF_PAIR *cp;
 
 	unsigned int total = 0;
-	VALUE_PAIR_MAP **tail, *map, *head;
-	head = NULL;
-	tail = &head;
+	VALUE_PAIR_MAP **tail, *map;
+	*head = NULL;
+	tail = head;
 	
-	if (!cs) return NULL;
+	if (!cs) return 0;
 	
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list) {
@@ -1195,14 +1195,14 @@ static VALUE_PAIR_MAP *build_attrmap(CONF_SECTION *cs)
 		if (request_def == REQUEST_UNKNOWN) {
 			cf_log_err(ci, "rlm_ldap: Default request specified "
 				   "in mapping section is invalid");
-			return NULL;
+			return -1;
 		}
 		
 		list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
 		if (list_def == PAIR_LIST_UNKNOWN) {
 			cf_log_err(ci, "rlm_ldap: Default list specified "
 				   "in mapping section is invalid");
-			return NULL;
+			return -1;
 		}
 	}
 
@@ -1230,11 +1230,11 @@ static VALUE_PAIR_MAP *build_attrmap(CONF_SECTION *cs)
 		tail = &(map->next);
 	}
 
-	return head;
+	return 0;
 	
 	error:
-		radius_mapfree(&head);
-		return NULL;
+		radius_mapfree(head);
+		return -1;
 }
 
 /*****************************************************************************
@@ -1338,8 +1338,7 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 */
 	cs = cf_section_sub_find(conf, "update");
 	if (cs) {	
-		inst->user_map = build_attrmap(cs);
-		if (!inst->user_map) {
+		if (build_attrmap(cs, &(inst->user_map)) < 0) {
 			ldap_detach(inst);
 			return -1;
 		}
