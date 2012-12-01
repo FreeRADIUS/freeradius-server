@@ -47,7 +47,7 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_UNSUPPORTED
 	HTTP_BODY_UNSUPPORTED,	// HTTP_BODY_INVALID
 	HTTP_BODY_POST,		// HTTP_BODY_POST
-#ifdef WITH_JSON
+#ifdef HAVE_JSON
 	HTTP_BODY_JSON,		// HTTP_BODY_JSON
 #else
 	HTTP_BODY_UNAVAILABLE,
@@ -192,7 +192,7 @@ const FR_NAME_NUMBER http_content_type_table[] = {
  * @see json_pairmake
  * @see json_pairmake_leaf
  */
-#ifdef WITH_JSON
+#ifdef HAVE_JSON
 typedef struct json_flags {
 	boolean do_xlat;	//!< If TRUE value will be expanded with xlat.
 	boolean is_json;	//!< If TRUE value will be inserted as raw JSON
@@ -1165,7 +1165,7 @@ static int rest_decode_post(rlm_rest_t *instance,
  * @param[in] leaf object containing the VALUE_PAIR value.
  * @return The VALUE_PAIR just created, or NULL on error.
  */
-#ifdef WITH_JSON
+#ifdef HAVE_JSON
 static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 				      UNUSED rlm_rest_section_t *section,
 				      REQUEST *request, const DICT_ATTR *da,
@@ -2165,7 +2165,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 			switch (type)
 			{
-#ifdef WITH_JSON
+#ifdef HAVE_JSON
 				case HTTP_BODY_JSON:
 					rest_read_ctx_init(request,
 							   &ctx->read, 1);
@@ -2280,7 +2280,7 @@ int rest_request_decode(rlm_rest_t *instance,
 					       handle, ctx->write.buffer,
 					       ctx->write.used);
 			break;
-#ifdef WITH_JSON
+#ifdef HAVE_JSON
 		case HTTP_BODY_JSON:
 			ret = rest_decode_json(instance, section, request,
 					       handle, ctx->write.buffer,

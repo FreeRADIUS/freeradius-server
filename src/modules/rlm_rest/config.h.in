@@ -3,6 +3,9 @@
 /* Define to 1 if you have the <inttypes.h> header file. */
 #undef HAVE_INTTYPES_H
 
+/* Build with JSON support from json-c */
+#undef HAVE_JSON
+
 /* Define to 1 if you have the <json/json.h> header file. */
 #undef HAVE_JSON_JSON_H
 

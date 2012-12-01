@@ -16,7 +16,7 @@ if test x$with_[]modname != xno; then
 	
 	LIBCURL_CHECK_CONFIG
 
-	if test x$libcurl_cv_lib_curl_usable != xyes; then
+	if test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
 		fail="$fail libcurl"
 	else	
 		if test x$libcurl_protocol_HTTP != xyes; then
@@ -28,12 +28,18 @@ if test x$with_[]modname != xno; then
 		fi
 	fi
 	
+	have_json=
 	AC_CHECK_HEADERS(json/json.h)
 	
-	if test "$ac_cv_header_json_json_h" != "yes"; then
-		AC_MSG_WARN([silently building without JSON support. requires: json-c.])
+	if test "x$ac_cv_header_json_json_h" == "xyes"; then
+		AC_CHECK_LIB([json-c], [json_object_init], [have_json="yes"], [])		
+	fi
+	
+	if test "x$have_json" == "xyes"; then
+		rest_ldflags+=" -ljson-c"
+		AC_DEFINE([HAVE_JSON],[1],[Build with JSON support from json-c])
 	else
-		rest_ldflags+=-ljson-c
+		AC_MSG_WARN([silently building without JSON support. requires: json-c.])
 	fi
 
 	targetname=modname     # keep this!  Don't change!

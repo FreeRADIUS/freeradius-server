@@ -3448,7 +3448,7 @@ _ACEOF
   unset _libcurl_with
 
 
-	if test x$libcurl_cv_lib_curl_usable != xyes; then
+	if test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
 		fail="$fail libcurl"
 	else
 		if test x$libcurl_protocol_HTTP != xyes; then
@@ -3461,6 +3461,7 @@ $as_echo "$as_me: WARNING: silently building without HTTPS support. requires: li
 		fi
 	fi
 
+	have_json=
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for grep that handles long lines and -e" >&5
 $as_echo_n "checking for grep that handles long lines and -e... " >&6; }
@@ -3734,11 +3735,56 @@ fi
 done
 
 
-	if test "$ac_cv_header_json_json_h" != "yes"; then
+	if test "x$ac_cv_header_json_json_h" == "xyes"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for json_object_init in -ljson-c" >&5
+$as_echo_n "checking for json_object_init in -ljson-c... " >&6; }
+if ${ac_cv_lib_json_c_json_object_init+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+  ac_check_lib_save_LIBS=$LIBS
+LIBS="-ljson-c  $LIBS"
+cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+/* Override any GCC internal prototype to avoid an error.
+   Use char because int might match the return type of a GCC
+   builtin and then its argument prototype would still apply.  */
+#ifdef __cplusplus
+extern "C"
+#endif
+char json_object_init ();
+int
+main ()
+{
+return json_object_init ();
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_link "$LINENO"; then :
+  ac_cv_lib_json_c_json_object_init=yes
+else
+  ac_cv_lib_json_c_json_object_init=no
+fi
+rm -f core conftest.err conftest.$ac_objext \
+    conftest$ac_exeext conftest.$ac_ext
+LIBS=$ac_check_lib_save_LIBS
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_json_c_json_object_init" >&5
+$as_echo "$ac_cv_lib_json_c_json_object_init" >&6; }
+if test "x$ac_cv_lib_json_c_json_object_init" = xyes; then :
+  have_json="yes"
+fi
+
+	fi
+
+	if test "x$have_json" == "xyes"; then
+		rest_ldflags+=" -ljson-c"
+		$as_echo "#define HAVE_JSON 1" >>confdefs.h
+
+	else
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without JSON support. requires: json-c." >&5
 $as_echo "$as_me: WARNING: silently building without JSON support. requires: json-c." >&2;}
-	else
-		rest_ldflags+=-ljson-c
 	fi
 
 	targetname=rlm_rest     # keep this!  Don't change!

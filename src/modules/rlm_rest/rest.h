@@ -28,12 +28,12 @@ RCSIDH(other_h, "$Id$")
 #include "config.h"
 
 #ifdef HAVE_JSON_JSONH
-#define WITH_JSON
+#define HAVE_JSON
 #endif
 
 #include <curl/curl.h>
 
-#ifdef WITH_JSON
+#ifdef HAVE_JSON
 #include <json/json.h>
 #endif
 
