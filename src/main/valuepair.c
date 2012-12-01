@@ -1277,7 +1277,7 @@ int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
 	/*
 	 *	Use pairmove so the operator is respected
 	 */
-	pairmove(list, &vp);
+	radius_pairmove(request, list, vp);
 	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
 	
 	return 0;
@@ -1324,5 +1324,5 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	 */
 	*vp_p = pairfind(*vps, vpt.da->attr, vpt.da->vendor);
 	
-	return -1;
+	return 0;
 }
