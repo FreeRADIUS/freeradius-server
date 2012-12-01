@@ -39,21 +39,22 @@ RCSID("$Id$")
 #define MAX_FILTER_STR_LEN	1024
 
 typedef struct {
-	CONF_SECTION   *cs;
+	CONF_SECTION	*cs;
 	fr_connection_pool_t *pool;
-	char           *server;
-	int             port;
+	
+	char		*server;
+	int		port;
 
-	char           *login;
-	char           *password;
+	char		*login;
+	char		*password;
 
-	char           *filter;
-	char           *basedn;
+	char		*filter;
+	char		*basedn;
 
 	int		chase_referrals;
 	int		rebind;
 
-	int             ldap_debug; /* Debug flag for LDAP SDK */
+	int		ldap_debug; /* Debug flag for LDAP SDK */
 	const char	*xlat_name; /* name used to xlat */
 
 	int		expect_password;
@@ -68,15 +69,15 @@ typedef struct {
 	/*
 	 *	Access related configuration
 	 */
-	char           *access_attr;
+	char		*access_attr;
 	int		positive_access_attr;
 
 	/*
 	 *	Profiles
 	 */
-	char	       *base_filter;
-	char           *default_profile;
-	char           *profile_attr;
+	char		*base_filter;
+	char		*default_profile;
+	char		*profile_attr;
 
 	/*
 	 *	Group checking.
@@ -89,7 +90,7 @@ typedef struct {
 	 *	TLS items.  We should really normalize these with the
 	 *	TLS code in 3.0.
 	 */
-	int             tls_mode;
+	int		tls_mode;
 	int		start_tls;
 	char		*tls_cacertfile;
 	char		*tls_cacertdir;
@@ -101,7 +102,7 @@ typedef struct {
 	/*
 	 *	Options
 	 */
-	int             timelimit;
+	int		timelimit;
 	int  		net_timeout;
 	int		timeout;
 	int		is_url;
@@ -273,7 +274,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 typedef struct ldap_conn {
-	LDAP	*ld;
+	LDAP	*handle;
 	int	rebound;
 	int	referred;
 	ldap_instance *inst;
@@ -294,7 +295,7 @@ typedef struct rlm_ldap_result {
 /*
  *	Rebind && chase referral stuff
  */
-static int ldap_rebind(LDAP *ld, LDAP_CONST char *url,
+static int ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 		       UNUSED ber_tag_t request, UNUSED ber_int_t msgid,
 		       void *ctx )
 {
@@ -302,10 +303,10 @@ static int ldap_rebind(LDAP *ld, LDAP_CONST char *url,
 
 	conn->referred = TRUE;
 	conn->rebound = TRUE;	/* not really, but oh well... */
-	rad_assert(ld == conn->ld);
+	rad_assert(handle == conn->handle);
 
 	DEBUG("  [%s] rebind to URL %s", conn->inst->xlat_name, url);
-	return ldap_bind_s(ld, conn->inst->login, conn->inst->password,
+	return ldap_bind_s(handle, conn->inst->login, conn->inst->password,
 			   LDAP_AUTH_SIMPLE);
 }
 #endif
@@ -324,10 +325,11 @@ static int ldap_bind_wrapper(LDAP_CONN **pconn, const char *user,
 	struct timeval tv;
 
 redo:
-	ldap_errno = ldap_bind(conn->ld, user, password, LDAP_AUTH_SIMPLE);
+	ldap_errno = ldap_bind(conn->handle, user, password, LDAP_AUTH_SIMPLE);
 	if (ldap_errno < 0) {
 	get_error:
-		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
+				&ldap_errno);
 		error_string = ldap_err2string(ldap_errno);
 
 		if (do_rebind && !reconnect) {
@@ -361,7 +363,7 @@ redo:
 
 	tv.tv_sec = inst->timeout;
 	tv.tv_usec = 0;
-	rcode = ldap_result(conn->ld, ldap_errno, 1, &tv, &result);
+	rcode = ldap_result(conn->handle, ldap_errno, 1, &tv, &result);
 	if (rcode < 0) goto get_error;
 
 	if (rcode == 0) {
@@ -369,7 +371,7 @@ redo:
 		goto print_error;
 	}
 
-	ldap_errno = ldap_result2error(conn->ld, result, 1);
+	ldap_errno = ldap_result2error(conn->handle, result, 1);
 	switch (ldap_errno) {
 	case LDAP_SUCCESS:
 		break;
@@ -400,7 +402,7 @@ static void *ldap_conn_create(void *ctx)
 	int ldap_errno, ldap_version;
 	struct timeval tv;
 	ldap_instance *inst = ctx;
-	LDAP *ld = NULL;
+	LDAP *handle = NULL;
 	LDAP_CONN *conn = NULL;
 	const char *error;
 
@@ -408,7 +410,7 @@ static void *ldap_conn_create(void *ctx)
 	if (inst->is_url) {
 		DEBUG("  [%s] Connect to %s", inst->xlat_name, inst->server);
 
-		ldap_errno = ldap_initialize(&ld, inst->server);
+		ldap_errno = ldap_initialize(&handle, inst->server);
 
 		if (ldap_errno != LDAP_SUCCESS) {
 			radlog(L_ERR, "  [%s] ldap_initialize() failed: %s",
@@ -421,11 +423,11 @@ static void *ldap_conn_create(void *ctx)
 		DEBUG("  [%s] Connect to %s:%d", inst->xlat_name,
 		      inst->server, inst->port);
 
-		ld = ldap_init(inst->server, inst->port);
-		if (!ld) {
+		handle = ldap_init(inst->server, inst->port);
+		if (!handle) {
 			radlog(L_ERR, "  [%s] ldap_init() failed", inst->xlat_name);
 		conn_fail:
-			if (ld) ldap_unbind_s(ld);
+			if (handle) ldap_unbind_s(handle);
 			return NULL;
 		}
 	}
@@ -436,8 +438,8 @@ static void *ldap_conn_create(void *ctx)
 	 *	Set a bunch of LDAP options, using common code.
 	 */
 
-#define do_ldap_option(_option, _name, _value) if (ldap_set_option(ld, _option, _value) != LDAP_OPT_SUCCESS) { \
-		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
+#define do_ldap_option(_option, _name, _value) if (ldap_set_option(handle, _option, _value) != LDAP_OPT_SUCCESS) { \
+		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
 		radlog(L_ERR, "  [%s] Could not set %s: %s", inst->xlat_name, _name, ldap_err2string(ldap_errno)); \
 	}
 		
@@ -455,7 +457,7 @@ static void *ldap_conn_create(void *ctx)
 			
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 			if (inst->rebind == 1) {
-				ldap_set_rebind_proc(ld, ldap_rebind, inst);
+				ldap_set_rebind_proc(handle, ldap_rebind, inst);
 			}
 #endif
 		} else {
@@ -502,7 +504,7 @@ static void *ldap_conn_create(void *ctx)
 #ifdef HAVE_LDAP_INT_TLS_CONFIG
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 				(inst->tls_require_cert)) != LDAP_OPT_SUCCESS) {
-		ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "  [%s] could not set ", 
 		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s",
 		       inst->xlat_name, 
@@ -522,9 +524,9 @@ static void *ldap_conn_create(void *ctx)
 	 *	And finally start the TLS code.
 	 */
 	if (inst->start_tls && (inst->port != 636)) {
-		ldap_errno = ldap_start_tls_s(ld, NULL, NULL);
+		ldap_errno = ldap_start_tls_s(handle, NULL, NULL);
 		if (ldap_errno != LDAP_SUCCESS) {
-			ldap_get_option(ld, LDAP_OPT_ERROR_NUMBER,
+			ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER,
 					&ldap_errno);
 			radlog(L_ERR, "  [%s] could not start TLS: %s",
 			       inst->xlat_name,
@@ -536,7 +538,7 @@ static void *ldap_conn_create(void *ctx)
 
 	conn = rad_malloc(sizeof(*conn));
 	conn->inst = inst;
-	conn->ld = ld;
+	conn->handle = handle;
 	conn->rebound = FALSE;
 	conn->referred = FALSE;
 
@@ -567,7 +569,7 @@ static int ldap_conn_delete(UNUSED void *ctx, void *connection)
 {
 	LDAP_CONN *conn = connection;
 
-	ldap_unbind_s(conn->ld);
+	ldap_unbind_s(conn->handle);
 	free(conn);
 
 	return 0;
@@ -694,7 +696,7 @@ static size_t ldap_escape_func(UNUSED REQUEST *request, char *out,
  *************************************************************************/
 static int perform_search(ldap_instance *inst, LDAP_CONN **pconn,
 			  const char *search_basedn, int scope,
-			  const char *filter, const char **attrs,
+			  const char *filter, const char *attrs[],
 			  LDAPMessage **presult)
 {
 	int		ldap_errno;
@@ -733,9 +735,9 @@ static int perform_search(ldap_instance *inst, LDAP_CONN **pconn,
 	       search_basedn ? search_basedn : "(null)" , filter);
 
 retry:
-	ldap_errno = ldap_search_ext_s(conn->ld, search_basedn, scope, filter,
-				       search_attrs, 0, NULL, NULL, &tv, 0,
-				       presult);
+	ldap_errno = ldap_search_ext_s(conn->handle, search_basedn, scope,
+				       filter, search_attrs, 0, NULL, NULL,
+				       &tv, 0, presult);
 	switch (ldap_errno) {
 	case LDAP_SUCCESS:
 	case LDAP_NO_SUCH_OBJECT:
@@ -778,20 +780,22 @@ retry:
 		 *	Reconnect.  There's an issue with the socket
 		 *	or LDAP server.
 		 */
-		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "  [%s] ldap_search() failed: %s", inst->xlat_name,
-		       ldap_err2string(ldap_errno));
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
+				&ldap_errno);
+		radlog(L_ERR, "  [%s] ldap_search() failed: %s",
+		       inst->xlat_name, ldap_err2string(ldap_errno));
 		goto do_reconnect;
 
 	default:
-		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "  [%s] ldap_search() failed: %s", inst->xlat_name,
-		       ldap_err2string(ldap_errno));
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
+				&ldap_errno);
+		radlog(L_ERR, "  [%s] ldap_search() failed: %s",
+		       inst->xlat_name, ldap_err2string(ldap_errno));
 		ldap_msgfree(*presult);
 		return -1;
 	}
 
-	ldap_errno = ldap_count_entries(conn->ld, *presult);
+	ldap_errno = ldap_count_entries(conn->handle, *presult);
 	if (ldap_errno == 0) {
 		ldap_msgfree(*presult);
 		DEBUG("  [%s] object not found", inst->xlat_name);
@@ -800,7 +804,8 @@ retry:
 
 	if (ldap_errno != 1) {
 		ldap_msgfree(*presult);
-		DEBUG("  [%s] got ambiguous search result (%d results)", inst->xlat_name, ldap_errno);
+		DEBUG("  [%s] got ambiguous search result (%d results)",
+		      inst->xlat_name, ldap_errno);
 		return -2;
 	}
 
@@ -885,13 +890,13 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 		goto free_socket;
 	}
 
-	entry = ldap_first_entry(conn->ld, result);
+	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		DEBUG("  [%s] ldap_first_entry() failed", inst->xlat_name);
 		goto free_result;
 	}
 
-	vals = ldap_get_values(conn->ld, entry, ldap_url->lud_attrs[0]);
+	vals = ldap_get_values(conn->handle, entry, ldap_url->lud_attrs[0]);
 	if (!vals) {
 		DEBUG("  [%s] ldap_get_values failed", inst->xlat_name);
 		goto free_result;
@@ -922,8 +927,8 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 {
 	int		rcode;
 	VALUE_PAIR	*vp;
-	ldap_instance   *inst = (*pconn)->inst;
-	LDAPMessage    *result, *entry;
+	ldap_instance	*inst = (*pconn)->inst;
+	LDAPMessage	*result, *entry;
 	static char	firstattr[] = "uid";
 	char		*user_dn;
 	const char	*attrs[] = {firstattr, NULL};
@@ -959,12 +964,12 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 		return NULL;
 	}
 
-	if ((entry = ldap_first_entry((*pconn)->ld, result)) == NULL) {
+	if ((entry = ldap_first_entry((*pconn)->handle, result)) == NULL) {
 		ldap_msgfree(result);
 		return NULL;
 	}
 
-	if ((user_dn = ldap_get_dn((*pconn)->ld, entry)) == NULL) {
+	if ((user_dn = ldap_get_dn((*pconn)->handle, entry)) == NULL) {
 		ldap_msgfree(result);
 		return NULL;
 	}
@@ -1005,9 +1010,9 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 	LDAP_CONN	*conn;
 	char		*user_dn;
 	int		module_rcode;
-        char            gr_filter[MAX_FILTER_STR_LEN];
-        char            filter[MAX_FILTER_STR_LEN];
-        char            basedn[MAX_FILTER_STR_LEN];
+	char		gr_filter[MAX_FILTER_STR_LEN];
+	char		filter[MAX_FILTER_STR_LEN];
+	char		basedn[MAX_FILTER_STR_LEN];
 	
 	if (check->length == 0) {
                 RDEBUG("Cannot do comparison: group name is empty");
@@ -1097,7 +1102,7 @@ check_attr:
 		return 1;
 	}
 
-	entry = ldap_first_entry(conn->ld, result);
+	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		RDEBUG("First entry failed for group attrs");
 		ldap_release_socket(inst, conn);
@@ -1105,7 +1110,7 @@ check_attr:
 		return 1;
 	}
 
-	vals = ldap_get_values(conn->ld, entry, inst->groupmemb_attr);
+	vals = ldap_get_values(conn->handle, entry, inst->groupmemb_attr);
 	if (!vals) {
 		RDEBUG("Get values failed for group attrs");
 		ldap_release_socket(inst, conn);
@@ -1405,7 +1410,7 @@ static int check_access(ldap_instance *inst, LDAP_CONN *conn, LDAPMessage *entry
 	int rcode = -1;
 	char **vals = NULL;
 
-	vals = ldap_get_values(conn->ld, entry, inst->access_attr);
+	vals = ldap_get_values(conn->handle, entry, inst->access_attr);
 	if (vals) {
 		if (inst->positive_access_attr) {
 			if (strncmp(vals[0], "FALSE", 5) == 0) {
@@ -1532,8 +1537,9 @@ static int xlat_attrs(REQUEST *request, const VALUE_PAIR_MAP *maps,
  * This is *NOT* atomic, but there's no condition in which we should error
  * out...
  */
-static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request, LDAP *ld, 
-		       const xlat_attrs_t *expanded, LDAPMessage *entry)
+static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request,
+		       LDAP *handle, const xlat_attrs_t *expanded,
+		       LDAPMessage *entry)
 {
 	const VALUE_PAIR_MAP 	*map;
 	unsigned int		total = 0;
@@ -1549,7 +1555,7 @@ static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request, LDAP *ld,
 		
 		name = expanded->attrs[total++];
 		
-		result.values = ldap_get_values(ld, entry, name);
+		result.values = ldap_get_values(handle, entry, name);
 		if (!result.values) {
 			DEBUG2("WARNING: Attribute \"%s\" not found in LDAP "
 			       "object", name);
@@ -1618,10 +1624,10 @@ static void apply_profile(ldap_instance *inst, REQUEST *request,
 		goto free_result;
 	}
 
-	entry = ldap_first_entry((*pconn)->ld, result);
+	entry = ldap_first_entry((*pconn)->handle, result);
 	if (!entry) goto free_result;
 
-	do_attrmap(inst, request, (*pconn)->ld, expanded, entry);
+	do_attrmap(inst, request, (*pconn)->handle, expanded, entry);
 
 free_result:
 	ldap_msgfree(result);
@@ -1697,13 +1703,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		goto free_socket;
 	}
 
-	entry = ldap_first_entry(conn->ld, result);
+	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		RDEBUG2("ldap_first_entry() failed");
 		goto free_result;
 	}
 
-	user_dn = ldap_get_dn(conn->ld, entry);
+	user_dn = ldap_get_dn(conn->handle, entry);
 	if (!user_dn) {
 		RDEBUG2("ldap_get_dn() failed");
 		goto free_result;
@@ -1742,7 +1748,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 *	Apply a SET of user profiles.
 	 */
 	if (inst->profile_attr &&
-	    (vals = ldap_get_values(conn->ld, entry, inst->profile_attr)) != NULL) {
+	    (vals = ldap_get_values(conn->handle, entry, inst->profile_attr)) != NULL) {
 
 		int i;
 
@@ -1754,7 +1760,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	}
 
 	if (inst->user_map) {
-		do_attrmap(inst, request, conn->ld, &expanded, entry);
+		do_attrmap(inst, request, conn->handle, &expanded, entry);
 		do_check_reply(inst, request);
 	}
 	

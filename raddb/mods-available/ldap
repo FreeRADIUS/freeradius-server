@@ -95,14 +95,14 @@ ldap {
 	#  When doing checks for LDAP-Group = foo"
 	#
 	group {
-	      # Check for "cn=foo"
-#	      name_attribute = cn
+		# Check for "cn=foo"
+#		name_attribute = cn
 
-	      # Filter to get the list of groups that a user belongs to.
-#	      membership_filter = "(|(&(objectClass=GroupOfNames)(member=%{control:Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{control:Ldap-UserDn})))"
+		# Filter to get the list of groups that a user belongs to.
+#		membership_filter = "(|(&(objectClass=GroupOfNames)(member=%{control:Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{control:Ldap-UserDn})))"
 
-	      # If the filter returns nothing
-	      membership_attribute = radiusGroupName
+		# If the filter returns nothing
+		membership_attribute = radiusGroupName
 	}
 
 	#  LDAP connection-specific options.
