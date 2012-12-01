@@ -84,7 +84,7 @@ typedef struct {
 	 *	Group checking.
 	 */
 	char	       *groupname_attr;
-	char	       *groupmemb_filt;
+	char	       *groupmemb_filter;
 	char		*groupmemb_attr;
 
 	/*
@@ -180,7 +180,7 @@ static CONF_PARSER group_config[] = {
 	{"name_attribute", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,groupname_attr), NULL, "cn"},
 	{"membership_filter", PW_TYPE_STRING_PTR,
-	 offsetof(ldap_instance,groupmemb_filt), NULL, "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"},
+	 offsetof(ldap_instance,groupmemb_filter), NULL, "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{Ldap-UserDn})))"},
 	{"membership_attribute", PW_TYPE_STRING_PTR,
 	 offsetof(ldap_instance,groupmemb_attr), NULL, NULL},
 
@@ -1032,10 +1032,10 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 		return 1;
 	}
 
-	if (!inst->groupmemb_filt) goto check_attr;
+	if (!inst->groupmemb_filter) goto check_attr;
 
 	if (!radius_xlat(gr_filter, sizeof(gr_filter),
-			 inst->groupmemb_filt, request, ldap_escape_func, NULL)) {
+			 inst->groupmemb_filter, request, ldap_escape_func, NULL)) {
 		RDEBUG("Failed creating group filter");
 		return 1;
 	}
