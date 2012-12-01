@@ -4,3 +4,4 @@
 dictionary
 test.conf
 radius.log
+radiusd.pid
