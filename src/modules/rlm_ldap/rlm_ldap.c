@@ -313,7 +313,8 @@ static int ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 	conn->rebound = TRUE;	/* not really, but oh well... */
 	rad_assert(handle == conn->handle);
 
-	DEBUG("  [%s] rebind to URL %s", conn->inst->xlat_name, url);
+	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->xlat_name, url);
+	
 	return ldap_bind_s(handle, conn->inst->login, conn->inst->password,
 			   LDAP_AUTH_SIMPLE);
 }
@@ -352,13 +353,14 @@ redo:
 
 #ifdef HAVE_LDAP_INITIALIZE
 		if (inst->is_url) {
-			radlog(L_ERR, "  [%s] %s bind to %s failed: %s",
+			radlog(L_ERR, "rlm_ldap (%s): %s bind to %s failed: %s",
 			       inst->xlat_name, user,
 			       inst->server, error_string);
 		} else
 #endif
 		{
-			radlog(L_ERR, "  [%s] %s bind to %s:%d failed: %s",
+			radlog(L_ERR, "rlm_ldap (%s): %s bind to %s:%d "
+				      "failed: %s",
 			       inst->xlat_name, user,
 			       inst->server, inst->port,
 			       error_string);
@@ -367,7 +369,7 @@ redo:
 		return module_rcode; /* caller closes the connection */
 	}
 
-	DEBUG3("  [%s] waiting for bind result ...", inst->xlat_name);
+	DEBUG3("rlm_ldap (%s): Waiting for bind result...", inst->xlat_name);
 
 	tv.tv_sec = inst->timeout;
 	tv.tv_usec = 0;
@@ -416,24 +418,26 @@ static void *ldap_conn_create(void *ctx)
 
 #ifdef HAVE_LDAP_INITIALIZE
 	if (inst->is_url) {
-		DEBUG("  [%s] Connect to %s", inst->xlat_name, inst->server);
+		DEBUG("rlm_ldap (%s): Connect to %s", inst->xlat_name,
+		      inst->server);
 
 		ldap_errno = ldap_initialize(&handle, inst->server);
 
 		if (ldap_errno != LDAP_SUCCESS) {
-			radlog(L_ERR, "  [%s] ldap_initialize() failed: %s",
+			radlog(L_ERR, "rlm_ldap (%s): ldap_initialize() "
+			       "failed: %s",
 			       inst->xlat_name, ldap_err2string(ldap_errno));
 			goto conn_fail;
 		}
 	} else
 #endif
 	{
-		DEBUG("  [%s] Connect to %s:%d", inst->xlat_name,
+		DEBUG("rlm_ldap (%s): Connect to %s:%d", inst->xlat_name,
 		      inst->server, inst->port);
 
 		handle = ldap_init(inst->server, inst->port);
 		if (!handle) {
-			radlog(L_ERR, "  [%s] ldap_init() failed",
+			radlog(L_ERR, "rlm_ldap (%s): ldap_init() failed",
 			       inst->xlat_name);
 		conn_fail:
 			if (handle) ldap_unbind_s(handle);
@@ -449,8 +453,8 @@ static void *ldap_conn_create(void *ctx)
 #define do_ldap_option(_option, _name, _value) \
 	if (ldap_set_option(handle, _option, _value) != LDAP_OPT_SUCCESS) { \
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno); \
-		radlog(L_ERR, "  [%s] Could not set %s: %s", inst->xlat_name, \
-		       _name, ldap_err2string(ldap_errno)); \
+		radlog(L_ERR, "rlm_ldap (%s): Could not set %s: %s", \
+		       inst->xlat_name, _name, ldap_err2string(ldap_errno)); \
 	}
 		
 	if (inst->ldap_debug) {
@@ -524,7 +528,7 @@ static void *ldap_conn_create(void *ctx)
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 				(inst->tls_require_cert)) != LDAP_OPT_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "  [%s] could not set ", 
+		radlog(L_ERR, "rlm_ldap (%s): could not set ", 
 		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s",
 		       inst->xlat_name, 
 		       inst->tls_require_cert,
@@ -547,7 +551,7 @@ static void *ldap_conn_create(void *ctx)
 		if (ldap_errno != LDAP_SUCCESS) {
 			ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER,
 					&ldap_errno);
-			radlog(L_ERR, "  [%s] could not start TLS: %s",
+			radlog(L_ERR, "rlm_ldap (%s): could not start TLS: %s",
 			       inst->xlat_name,
 			       ldap_err2string(ldap_errno));
 			goto conn_fail;
@@ -564,7 +568,8 @@ static void *ldap_conn_create(void *ctx)
 	module_rcode = ldap_bind_wrapper(&conn, inst->login, inst->password,
 					 &error, FALSE);
 	if (module_rcode != RLM_MODULE_OK) {
-		radlog(L_ERR, "  [%s] Failed binding to LDAP server: %s",
+		radlog(L_ERR, "rlm_ldap (%s): failed binding to LDAP "
+		       "server: %s",
 		       inst->xlat_name, error);
 
 		/*
@@ -608,7 +613,7 @@ static LDAP_CONN *ldap_get_socket(ldap_instance *inst)
 
 	conn = fr_connection_get(inst->pool);
 	if (!conn) {
-		radlog(L_ERR, "  [%s] All ldap connections are in use",
+		radlog(L_ERR, "rlm_ldap (%s): all ldap connections are in use",
 		       inst->xlat_name);
 		return NULL;
 	}
@@ -713,12 +718,13 @@ static size_t ldap_escape_func(UNUSED REQUEST *request, char *out,
  *	Purpose: Do a search and get a response
  *
  *************************************************************************/
-static int perform_search(ldap_instance *inst, LDAP_CONN **pconn,
-			  const char *search_basedn, int scope,
-			  const char *filter, const char * const *attrs,
-			  LDAPMessage **presult)
+static int perform_search(ldap_instance *inst, REQUEST *request,
+			  LDAP_CONN **pconn, const char *search_basedn,
+			  int scope, const char *filter, 
+			  const char * const *attrs, LDAPMessage **presult)
 {
 	int		ldap_errno;
+	int		count = 0;
 	int		reconnect = FALSE;
 	LDAP_CONN	*conn = *pconn;
 	struct timeval  tv;
@@ -750,9 +756,9 @@ static int perform_search(ldap_instance *inst, LDAP_CONN **pconn,
 
 	tv.tv_sec = inst->timeout;
 	tv.tv_usec = 0;
-	DEBUG2("  [%s] Performing search in '%s' with filter '%s'",
-	       inst->xlat_name, search_basedn ? search_basedn : "(null)" ,
-	       filter);
+	RDEBUG2("Performing search in '%s' with filter '%s'",
+	        search_basedn ? search_basedn : "(null)" ,
+	        filter);
 
 retry:
 	ldap_errno = ldap_search_ext_s(conn->handle, search_basedn, scope,
@@ -776,23 +782,23 @@ retry:
 		goto retry;
 
 	case LDAP_INSUFFICIENT_ACCESS:
-		radlog(L_ERR, "  [%s] ldap_search() failed: Insufficient "
-		       "access. Check the identity and password configuration "
-		       "directives.", inst->xlat_name);
+		radlog(L_ERR, "rlm_ldap (%s): Search failed: "
+		       "Insufficient access. Check the identity and password "
+		       "configuration directives", inst->xlat_name);
 		ldap_msgfree(*presult);
 		return -1;
 
 	case LDAP_TIMEOUT:
 		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
-		radlog(L_ERR, "  [%s] ldap_search() failed: Timed out while "
-		       "waiting for server to respond. Please increase the "
-		       "timeout.", inst->xlat_name);
+		radlog(L_ERR, "rlm_ldap (%s): Search failed: Timed out "
+		       "while waiting for server to respond"
+		       "Please increase the timeout", inst->xlat_name);
 		ldap_msgfree(*presult);
 		return -1;
 
 	case LDAP_FILTER_ERROR:
-		radlog(L_ERR, "  [%s] ldap_search() failed: Bad search filter: "
-		       "%s", inst->xlat_name,filter);
+		radlog(L_ERR, "rlm_ldap (%s): Search failed: Bad search "
+		       "filter: %s", inst->xlat_name,filter);
 		ldap_msgfree(*presult);
 		return -1;
 
@@ -807,30 +813,31 @@ retry:
 		 */
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
 				&ldap_errno);
-		radlog(L_ERR, "  [%s] ldap_search() failed: %s",
+		radlog(L_ERR, "rlm_ldap (%s): Search failed: %s",
 		       inst->xlat_name, ldap_err2string(ldap_errno));
 		goto do_reconnect;
 
 	default:
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
 				&ldap_errno);
-		radlog(L_ERR, "  [%s] ldap_search() failed: %s",
+		radlog(L_ERR, "rlm_ldap (%s): Search failed: %s",
 		       inst->xlat_name, ldap_err2string(ldap_errno));
 		ldap_msgfree(*presult);
 		return -1;
 	}
 
-	ldap_errno = ldap_count_entries(conn->handle, *presult);
-	if (ldap_errno == 0) {
+	count = ldap_count_entries(conn->handle, *presult);
+	if (count == 0) {
 		ldap_msgfree(*presult);
-		DEBUG("  [%s] object not found", inst->xlat_name);
+		RDEBUG("Object not found");
+		
 		return -2;
 	}
 
-	if (ldap_errno != 1) {
+	if (count != 1) {
 		ldap_msgfree(*presult);
-		DEBUG("  [%s] got ambiguous search result (%d results)",
-		      inst->xlat_name, ldap_errno);
+		RDEBUG("Got ambiguous search result (%d results)", count);
+		      
 		return -2;
 	}
 
@@ -856,6 +863,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	LDAPMessage *entry = NULL;
 	char **vals;
 	LDAP_CONN *conn;
+	int ldap_errno;
 	const char *url;
 	const char **attrs;
 	char buffer[MAX_FILTER_STR_LEN];
@@ -863,7 +871,8 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	if (strchr(fmt, '%') != NULL) {
 		if (!radius_xlat(buffer, sizeof(buffer), fmt, request,
 				 ldap_escape_func, NULL)) {
-			radlog(L_ERR, "  [%s] Unable to create LDAP URL.",
+			radlog(L_ERR,
+			       "rlm_ldap (%s): Unable to create LDAP URL", 
 			       inst->xlat_name);
 			return 0;
 		}
@@ -873,13 +882,13 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	}
 
 	if (!ldap_is_ldap_url(url)) {
-		radlog(L_ERR, "  [%s] String passed does not look like an "
-		       "LDAP URL.", inst->xlat_name);
+		radlog(L_ERR, "rlm_ldap (%s): String passed does not look "
+		       "like an LDAP URL", inst->xlat_name);
 		return 0;
 	}
 
 	if (ldap_url_parse(url, &ldap_url)){
-		radlog(L_ERR, "  [%s] LDAP URL parse failed.",
+		radlog(L_ERR, "rlm_ldap (%s): Parsing LDAP URL failed",
 		       inst->xlat_name);
 		return 0;
 	}
@@ -891,8 +900,11 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	    !*ldap_url->lud_attrs[0] ||
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) ||
 	    ldap_url->lud_attrs[1]) {
-		radlog (L_ERR, "  [%s] Invalid Attribute(s) request.",
-			inst->xlat_name);
+		radlog(L_ERR, "rlm_ldap (%s): Bad attributes list in LDAP "
+		       "URL. URL must specify exactly one attribute to "
+		       "retrieve",
+		       inst->xlat_name);
+		       
 		goto free_urldesc;
 	}
 
@@ -900,7 +912,9 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	    ((strncmp(inst->server, ldap_url->lud_host,
 		      strlen(inst->server)) != 0) ||
 	     (ldap_url->lud_port != inst->port))) {
-		DEBUG("  [%s] Requested server/port is .", inst->xlat_name);
+		RDEBUG("Requested server/port is \"%s:%i\"", ldap_url->lud_host,
+		       inst->port);
+		
 		goto free_urldesc;
 	}
 
@@ -909,28 +923,32 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 
 	memcpy(&attrs, &ldap_url->lud_attrs, sizeof(attrs));
 	
-	rcode = perform_search(inst, &conn, ldap_url->lud_dn, 
+	rcode = perform_search(inst, request, &conn, ldap_url->lud_dn, 
 			       ldap_url->lud_scope, ldap_url->lud_filter, attrs,
 			       &result);
 	if (rcode < 0) {
 		if (rcode == -2) {
-			DEBUG("  [%s] Search returned not found",
-			      inst->xlat_name);
+			RDEBUG("Search returned not found", inst->xlat_name);
 			goto free_socket;
 		}
-		DEBUG("  [%s] Search returned error", inst->xlat_name);
+
 		goto free_socket;
 	}
 
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
-		DEBUG("  [%s] ldap_first_entry() failed", inst->xlat_name);
+		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE,
+				&ldap_errno);
+		radlog(L_ERR, "rlm_ldap (%s): Failed retrieving entry: %s", 
+		       inst->xlat_name,
+		       ldap_err2string(ldap_errno));
 		goto free_result;
 	}
 
 	vals = ldap_get_values(conn->handle, entry, ldap_url->lud_attrs[0]);
 	if (!vals) {
-		DEBUG("  [%s] ldap_get_values failed", inst->xlat_name);
+		RDEBUG("No \"%s\" attributes found in specified object",
+		       inst->xlat_name, ldap_url->lud_attrs[0]);
 		goto free_result;
 	}
 
@@ -960,12 +978,14 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 	int		rcode;
 	VALUE_PAIR	*vp;
 	ldap_instance	*inst = (*pconn)->inst;
+	LDAP		*handle = (*pconn)->handle;
 	LDAPMessage	*result, *entry;
+	int		ldap_errno;
 	static char	firstattr[] = "uid";
 	char		*user_dn;
 	const char	*attrs[] = {firstattr, NULL};
-	char	    filter[MAX_FILTER_STR_LEN];	
-	char	    basedn[MAX_FILTER_STR_LEN];	
+	char	    	filter[MAX_FILTER_STR_LEN];	
+	char	    	basedn[MAX_FILTER_STR_LEN];	
 
 	*module_rcode = RLM_MODULE_FAIL;
 
@@ -974,7 +994,7 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 
 	if (!radius_xlat(filter, sizeof(filter), inst->filter,
 			 request, ldap_escape_func, NULL)) {
-		radlog(L_ERR, "  [%s] unable to create filter.",
+		radlog(L_ERR, "rlm_ldap (%s): Unable to create filter",
 		       inst->xlat_name);
 		*module_rcode = RLM_MODULE_INVALID;
 		return NULL;
@@ -982,13 +1002,13 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 
 	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
 			 request, ldap_escape_func, NULL)) {
-		radlog(L_ERR, "  [%s] unable to create basedn.",
+		radlog(L_ERR, "rlm_ldap (%s): Unable to create basedn",
 		       inst->xlat_name);
 		*module_rcode = RLM_MODULE_INVALID;
 		return NULL;
 	}
 
-	rcode = perform_search(inst, pconn, basedn, LDAP_SCOPE_SUBTREE,
+	rcode = perform_search(inst, request, pconn, basedn, LDAP_SCOPE_SUBTREE,
 			       filter, attrs, &result);
 	if (rcode < 0) {
 		if (rcode == -2) {
@@ -998,12 +1018,23 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 		return NULL;
 	}
 
-	if ((entry = ldap_first_entry((*pconn)->handle, result)) == NULL) {
+	if ((entry = ldap_first_entry(handle, result)) == NULL) {
+		ldap_get_option(handle, LDAP_OPT_RESULT_CODE,
+				&ldap_errno);
+		radlog(L_ERR, "rlm_ldap (%s): Failed retrieving entry: %s", 
+		       inst->xlat_name,
+		       ldap_err2string(ldap_errno));
 		ldap_msgfree(result);
 		return NULL;
 	}
 
-	if ((user_dn = ldap_get_dn((*pconn)->handle, entry)) == NULL) {
+	if ((user_dn = ldap_get_dn(handle, entry)) == NULL) {
+		ldap_get_option(handle, LDAP_OPT_RESULT_CODE,
+				&ldap_errno);
+		radlog(L_ERR, "rlm_ldap (%s): ldap_get_dn() failed: %s",
+		       inst->xlat_name,
+		       ldap_err2string(ldap_errno));
+		       
 		ldap_msgfree(result);
 		return NULL;
 	}
@@ -1034,22 +1065,23 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 			 UNUSED VALUE_PAIR **reply_pairs)
 {
 	ldap_instance   *inst = instance;
-	int	     i, rcode, found;
+	int		i, rcode, found, module_rcode;
 	LDAPMessage     *result = NULL;
 	LDAPMessage     *entry = NULL;
+	int		ldap_errno;
 	static char	firstattr[] = "dn";
 	const char	*attrs[] = {firstattr, NULL};
 	char		**vals;
 	const char	*group_attrs[] = {inst->groupmemb_attr, NULL};
 	LDAP_CONN	*conn;
 	char		*user_dn;
-	int		module_rcode;
+
 	char		gr_filter[MAX_FILTER_STR_LEN];
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 
 	if (check->length == 0) {
-		RDEBUG("Cannot do comparison: group name is empty");
+		RDEBUG("Cannot do comparison: Group name is empty");
 		return 1;
 	}
 
@@ -1091,24 +1123,23 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 		 */
 		if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
 				 request, ldap_escape_func, NULL)) {
-			radlog(L_ERR, "  [%s] unable to create basedn.\n",
+			radlog(L_ERR, "rlm_ldap (%s): Unable to create basedn",
 			       inst->xlat_name);
 			return 1;
 		}
 	}
 
-	rcode = perform_search(inst, &conn, basedn, LDAP_SCOPE_SUBTREE,
+	rcode = perform_search(inst, request, &conn, basedn, LDAP_SCOPE_SUBTREE,
 			       filter, attrs, &result);
 	if (rcode == 0) {
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
-		RDEBUG("User found in group %s", check->vp_strvalue);
+		RDEBUG("User found in group \"%s\"", check->vp_strvalue);
 		return 0;
 	}
 
 	if (rcode == -1) {
 		ldap_release_socket(inst, conn);
-		RDEBUG("Failed performing search");
 		return 1;
 	}
 
@@ -1121,7 +1152,7 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 	 */
 	if (!inst->groupmemb_attr) {
 		ldap_release_socket(inst, conn);
-		RDEBUG("Group %s was not found, or user is not a member",
+		RDEBUG("Group \"%s\" not found, or user is not a member",
 		       check->vp_strvalue);
 		return 1;
 	}
@@ -1129,17 +1160,25 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 check_attr:
 	snprintf(filter ,sizeof(filter), "(objectclass=*)");
 
-	rcode = perform_search(inst, &conn, user_dn, LDAP_SCOPE_BASE,
+	rcode = perform_search(inst, request, &conn, user_dn, LDAP_SCOPE_BASE,
 			       filter, group_attrs, &result);
 	if (rcode < 0) {
-		RDEBUG("Search failed for group attrs");
+		if (rcode == -2) {
+			RDEBUG("Can't check membership attributes, "
+			       "user object not found");
+		}
 		ldap_release_socket(inst, conn);
 		return 1;
 	}
 
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
-		RDEBUG("First entry failed for group attrs");
+		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE,
+				&ldap_errno);
+		radlog(L_ERR, "rlm_ldap (%s): Failed retrieving entry: %s", 
+		       inst->xlat_name,
+		       ldap_err2string(ldap_errno));
+			       
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 		return 1;
@@ -1147,7 +1186,8 @@ check_attr:
 
 	vals = ldap_get_values(conn->handle, entry, inst->groupmemb_attr);
 	if (!vals) {
-		RDEBUG("Get values failed for group attrs");
+		RDEBUG("No \"%s\" attributes found in user object",
+		       inst->groupmemb_attr);
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 		return 1;
@@ -1175,10 +1215,10 @@ check_attr:
 		snprintf(filter,sizeof(filter), "(%s=%s)",
 			 inst->groupname_attr, check->vp_strvalue);
 
-		rcode = perform_search(inst, &conn, vals[i], LDAP_SCOPE_BASE,
-				       filter, attrs, &gr_result);
+		rcode = perform_search(inst, request, &conn, vals[i],
+				       LDAP_SCOPE_BASE, filter, attrs,
+				       &gr_result);
 		if (rcode == -1) {
-			RDEBUG("Failed doing group search");
 			ldap_value_free(vals);
 			ldap_msgfree(result);
 			ldap_release_socket(inst, conn);
@@ -1194,7 +1234,7 @@ check_attr:
 	ldap_release_socket(inst, conn);
 
 	if (!found){
-		RDEBUG("groupcmp: Group %s not found, or user is not a member",
+		RDEBUG("User is not a member of specified group",
 		       check->vp_strvalue);
 		return 1;
 	}
@@ -1318,9 +1358,13 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		free(inst);
 		return -1;
 	}
+	
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
 
 	if (inst->server == NULL) {
-		radlog(L_ERR, "rlm_ldap: missing 'server' directive.");
+		radlog(L_ERR, "rlm_ldap (%s): missing 'server' directive",
+		       inst->xlat_name);
 		ldap_detach(inst);
 		return -1;
 	}
@@ -1335,8 +1379,9 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		inst->is_url = 1;
 		inst->port = 0;
 #else
-		radlog(L_ERR, "rlm_ldap: 'server' directive is in URL form but "
-		       "ldap_initialize() is not available.");
+		radlog(L_ERR, "rlm_ldap (%s): 'server' directive is in URL "
+		       "form but ldap_initialize() is not available",
+		       inst->xlat_name);
 		ldap_detach(inst);
 		return -1;
 #endif
@@ -1349,9 +1394,6 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		inst->tls_mode = 0;
 	}
 
-	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
-
 #if LDAP_SET_REBIND_PROC_ARGS != 3
 	/*
 	 *	The 2-argument rebind doesn't take an instance
@@ -1359,9 +1401,9 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 *	variable for the username, password, etc.
 	 */
 	if (inst->rebind == 1) {
-		radlog(L_ERR, "%s: Cannot use 'rebind' directive as this "
-		       "version of libldap does not support the API that "
-		       "we need.", inst->xlat-name);
+		radlog(L_ERR, "rlm_ldap (%s): Cannot use 'rebind' directive "
+		       "as this version of libldap does not support the API "
+		       "that we need", inst->xlat-name);
 		ldap_detach(inst);
 		return -1;
 	}
@@ -1394,8 +1436,8 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		dict_addattr(buffer, -1, 0, PW_TYPE_STRING, flags);
 		da = dict_attrbyname(buffer);
 		if (!da) {
-			radlog(L_ERR, "%s: Failed creating attribute %s",
-			       inst->xlat_name, buffer);
+			radlog(L_ERR, "rlm_ldap (%s): Failed creating "
+			       "attribute %s", inst->xlat_name, buffer);
 			ldap_detach(inst);
 			return -1;
 		}
@@ -1441,7 +1483,7 @@ static void module_failure_msg(VALUE_PAIR **vps, const char *fmt, ...)
 }
 
 
-static int check_access(ldap_instance *inst, LDAP_CONN *conn,
+static int check_access(ldap_instance *inst, REQUEST* request, LDAP_CONN *conn,
 			LDAPMessage *entry)
 {
 	int rcode = -1;
@@ -1451,22 +1493,22 @@ static int check_access(ldap_instance *inst, LDAP_CONN *conn,
 	if (vals) {
 		if (inst->positive_access_attr) {
 			if (strncmp(vals[0], "FALSE", 5) == 0) {
-				DEBUG("dialup access disabled");
+				RDEBUG("Dialup access disabled");
 
 			} else {
 				rcode = 0;
 			}
 
 		} else {
-			DEBUG("%s attribute exists - access denied by default",
-				inst->access_attr);
+			RDEBUG("\"%s\" attribute exists - access denied by"
+			       " default", inst->access_attr);
 		}
 
 		ldap_value_free(vals);
 
 	} else if (inst->positive_access_attr) {
-		DEBUG("No %s attribute - access denied by default",
-		      inst->access_attr);
+		RDEBUG("No %s attribute - access denied by default",
+		       inst->access_attr);
 
 	} else {
 		rcode = 0;
@@ -1544,7 +1586,7 @@ static int xlat_attrs(REQUEST *request, const VALUE_PAIR_MAP *maps,
 					  map->src.name, request, NULL, NULL);
 					  
 			if (!len) {
-				DEBUG2("WARNING: Expansion of LDAP attribute "
+				RDEBUG("Expansion of LDAP attribute "
 				       "\"%s\" failed", map->src.name);
 				       
 				expanded->attrs[total] = NULL;
@@ -1591,8 +1633,8 @@ static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request,
 		
 		result.values = ldap_get_values(handle, entry, name);
 		if (!result.values) {
-			DEBUG2("WARNING: Attribute \"%s\" not found in LDAP "
-			       "object", name);
+			DEBUG2("Attribute \"%s\" not found in LDAP object",
+			       name);
 				
 			goto next;
 		}
@@ -1636,9 +1678,9 @@ static void do_check_reply(ldap_instance *inst, REQUEST *request)
 				  PW_PASSWORD_WITH_HEADER, 0) &&
 			!pairfind(request->config_items,
 				  PW_CRYPT_PASSWORD, 0)) {
-				DEBUG("WARNING: No \"known good\" password was "
-				      "found in LDAP.  Are you sure that the "
-				      "user is configured correctly?");
+				RDEBUG("WARNING: No \"known good\" password "
+				       "was found in LDAP.  Are you sure that "
+				       "the user is configured correctly?");
 	       }
        }
 }
@@ -1650,24 +1692,36 @@ static void apply_profile(ldap_instance *inst, REQUEST *request,
 {
 	int rcode;
 	LDAPMessage	*result, *entry;
+	int		ldap_errno;
+	LDAP		*handle = (*pconn)->handle;
 	char		filter[MAX_FILTER_STR_LEN];
 
 	if (!profile || !*profile) return;
 
 	strlcpy(filter, inst->base_filter, sizeof(filter));
 
-	rcode = perform_search(inst, pconn, profile, LDAP_SCOPE_BASE,
+	rcode = perform_search(inst, request, pconn, profile, LDAP_SCOPE_BASE,
 			       filter, expanded->attrs, &result);
 		
 	if (rcode < 0) {
-		RDEBUG("FAILED Searching profile %s", profile);
+		if (rcode == -2) {
+			RDEBUG("Profile \"%s\" not found", profile);
+		}
 		goto free_result;
 	}
 
-	entry = ldap_first_entry((*pconn)->handle, result);
-	if (!entry) goto free_result;
-
-	do_attrmap(inst, request, (*pconn)->handle, expanded, entry);
+	entry = ldap_first_entry(handle, result);
+	if (!entry) {
+		ldap_get_option(handle, LDAP_OPT_RESULT_CODE,
+				&ldap_errno);
+		radlog(L_ERR, "rlm_ldap (%s): Failed retrieving entry: %s", 
+		       inst->xlat_name,
+		       ldap_err2string(ldap_errno));
+		       
+	 	goto free_result;
+	}
+	
+	do_attrmap(inst, request, handle, expanded, entry);
 
 free_result:
 	ldap_msgfree(result);
@@ -1691,12 +1745,13 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	VALUE_PAIR	*vp;
 	LDAP_CONN	*conn;
 	LDAPMessage	*result, *entry;
+	int		ldap_errno;
 	char		filter[MAX_FILTER_STR_LEN];
 	char		basedn[MAX_FILTER_STR_LEN];
 	xlat_attrs_t	expanded; /* faster that mallocing every time */
 	
 	if (!request->username) {
-		RDEBUG2("attribute \"User-Name\" is required for "
+		RDEBUG2("Attribute \"User-Name\" is required for "
 			"authorization.");
 		return RLM_MODULE_NOOP;
 	}
@@ -1705,20 +1760,20 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 *	Check for valid input, zero length names not permitted
 	 */
 	if (request->username->length == 0) {
-		RDEBUG2("zero length username not permitted\n");
+		RDEBUG2("Zero length username not permitted");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!radius_xlat(filter, sizeof(filter), inst->filter,
 			 request, ldap_escape_func, NULL)) {
-		radlog(L_ERR, "  [%s] Failed creating filter.\n",
+		radlog(L_ERR, "rlm_ldap (%s): Failed creating filter",
 		       inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn,
 			 request, ldap_escape_func, NULL)) {
-		radlog(L_ERR, "  [%s] Failed creating basedn.\n",
+		radlog(L_ERR, "rlm_ldap (%s): Failed creating basedn",
 		       inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
@@ -1730,36 +1785,48 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		return RLM_MODULE_FAIL;
 	}
 	
-	rcode = perform_search(inst, &conn, basedn, LDAP_SCOPE_SUBTREE, filter,
-			       expanded.attrs, &result);
+	rcode = perform_search(inst, request, &conn, basedn,
+			       LDAP_SCOPE_SUBTREE, filter, expanded.attrs,
+			       &result);
 	
 	if (rcode < 0) {
 		if (rcode == -2) {
 			module_failure_msg(&request->packet->vps,
-					   "[%s] Search returned not found",
+					   "rlm_ldap (%s): User object not "
+					   " found",
 					   inst->xlat_name);
-			DEBUG("  [%s] Search returned not found",
-			      inst->xlat_name);
+					   
+			RDEBUG("User object not found", inst->xlat_name);
+			       
 			module_rcode = RLM_MODULE_NOTFOUND;
 			goto free_socket;
 		}
-		DEBUG("  [%s] Search returned error", inst->xlat_name);
+
 		goto free_socket;
 	}
 
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
-		RDEBUG2("ldap_first_entry() failed");
+		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE,
+				&ldap_errno);
+		radlog(L_ERR, "rlm_ldap (%s): Failed retrieving entry: %s", 
+		       inst->xlat_name,
+		       ldap_err2string(ldap_errno));
+		       
 		goto free_result;
 	}
 
 	user_dn = ldap_get_dn(conn->handle, entry);
 	if (!user_dn) {
-		RDEBUG2("ldap_get_dn() failed");
+		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE,
+				&ldap_errno);
+		radlog(L_ERR, "rlm_ldap (%s): ldap_get_dn() failed: %s",
+		       inst->xlat_name,
+		       ldap_err2string(ldap_errno));
 		goto free_result;
 	}
 	
-	RDEBUG2("User found, dn is \"%s\"", user_dn);
+	RDEBUG2("User found at DN \"%s\"", user_dn);
 	/*
 	 *	Adding attribute containing the Users' DN.
 	 */
@@ -1771,7 +1838,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 *	Check for access.
 	 */
 	if (inst->access_attr) {
-		if (check_access(inst, conn, entry) < 0) {
+		if (check_access(inst, request, conn, entry) < 0) {
 			module_rcode = RLM_MODULE_USERLOCK;
 			goto free_result;
 		}
@@ -1842,14 +1909,14 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	 */
 
 	if (!request->username) {
-		radlog(L_AUTH, "  [%s] Attribute \"User-Name\" is required for "
-		       "authentication.", inst->xlat_name);
+		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"User-Name\" is "
+		       "required for authentication", inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!request->password) {
-		radlog(L_AUTH, "  [%s] Attribute \"User-Password\" is required "
-		       "for authentication.", inst->xlat_name);
+		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"User-Password\" "
+		       "is required for authentication.", inst->xlat_name);
 		RDEBUG2("  You have set \"Auth-Type := LDAP\" somewhere.");
 		RDEBUG2("  *********************************************");
 		RDEBUG2("  * THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
@@ -1859,15 +1926,15 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 	if (request->password->attribute != PW_USER_PASSWORD) {
-		radlog(L_AUTH, "  [%s] Attribute \"User-Password\" is required "
-		       "for authentication. Cannot use \"%s\".",
+		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"User-Password\" "
+		       "is required for authentication. Cannot use \"%s\".",
 		       inst->xlat_name, request->password->name);
 		return RLM_MODULE_INVALID;
 	}
 
 	if (request->password->length == 0) {
 		module_failure_msg(&request->packet->vps,
-				   "[%s] empty password supplied",
+				   "rlm_ldap (%s): Empty password supplied",
 				   inst->xlat_name);
 		return RLM_MODULE_INVALID;
 	}
@@ -1875,7 +1942,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	conn = ldap_get_socket(inst);
 	if (!conn) return RLM_MODULE_FAIL;
 
-	RDEBUG("login attempt by \"%s\" with password \"%s\"",
+	RDEBUG("Login attempt by \"%s\" with password \"%s\"",
 	       request->username->vp_strvalue, request->password->vp_strvalue);
 
 	/*
@@ -1895,8 +1962,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 					 request->password->vp_strvalue,
 					 NULL, TRUE);
 	if (module_rcode == RLM_MODULE_OK) {
-		RDEBUG("  [%s] Bind as user '%s' was successful",
-		       inst->xlat_name, user_dn);
+		RDEBUG("Bind as user \"%s\" was successful", user_dn);
 	}
 
 	ldap_release_socket(inst, conn);
