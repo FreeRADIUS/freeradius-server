@@ -438,9 +438,10 @@ void rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
 	}
 
 	rad_lockfd(fd, MAX_QUERY_LEN);
-	if ((write(fd, query, strlen(query) < 0) || (write(fd, ";\n", 2) < 0)))
+	if ((write(fd, query, strlen(query)) < 0) ||
+	    (write(fd, ";\n", 2) < 0)) {
 		radlog(L_ERR, "rlm_sql (%s): Failed writing to logfile '%s': %s",
 		       inst->config->xlat_name, buffer, strerror(errno));
-
+	}
 	close(fd);		/* and release the lock */
 }
