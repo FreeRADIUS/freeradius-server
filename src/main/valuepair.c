@@ -990,7 +990,7 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  * @see radius_list
  * @param[in+out] request to use as context, and to write result to.
  * @param[in] name (request) to resolve to.
- * @return TRUE if request is valid in this context, else FALSE.
+ * @return 0 if request is valid in this context, else -1.
  */
 int radius_request(REQUEST **request, request_refs_t name)
 {
@@ -998,7 +998,7 @@ int radius_request(REQUEST **request, request_refs_t name)
 	
 	switch (name) {
 		case REQUEST_CURRENT:
-			return TRUE;
+			return 0;
 		
 		case REQUEST_PARENT:	/* for future use in request chaining */
 		case REQUEST_OUTER:
@@ -1013,10 +1013,10 @@ int radius_request(REQUEST **request, request_refs_t name)
 		case REQUEST_UNKNOWN:
 		default:
 			rad_assert(0);
-			return FALSE;
+			return -1;
 	}
 	
-	return TRUE;
+	return 0;
 }
 
 /** Resolve attribute name to a request.
