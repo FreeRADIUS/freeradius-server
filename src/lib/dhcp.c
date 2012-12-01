@@ -1424,7 +1424,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 */
 	vp = packet->vps;
 	while (vp) {
-		int num_entries = 1;
+		unsigned int num_entries = 1;
 		VALUE_PAIR *same;
 		uint8_t *plength, *pattr;
 
