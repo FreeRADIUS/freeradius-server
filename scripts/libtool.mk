@@ -30,10 +30,10 @@ ifeq "${LIBTOOL}" "JLIBTOOL"
     # Note that we need to use a compilation rule that does NOT
     # include referencing ${LIBTOOL}, as we don't have a jlibtool
     # binary!
-    jlibtool ${JLIBTOOL}: ${top_makedir}/jlibtool.c
-	@mkdir -p $(dir ${JLIBTOOL})
+    ${JLIBTOOL}: ${top_makedir}/jlibtool.c
+	@mkdir -p $(dir $@)
 	@echo CC jlibtool.c
-	@${CC} $< -o ${JLIBTOOL}
+	@${CC} $< -o $@
 
     clean: jlibtool_clean
 
