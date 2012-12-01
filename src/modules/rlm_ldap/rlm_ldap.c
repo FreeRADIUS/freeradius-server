@@ -697,7 +697,7 @@ static size_t ldap_escape_func(UNUSED REQUEST *request, char *out,
  *************************************************************************/
 static int perform_search(ldap_instance *inst, LDAP_CONN **pconn,
 			  const char *search_basedn, int scope,
-			  const char *filter, const char *attrs[],
+			  const char *filter, const char * const *attrs,
 			  LDAPMessage **presult)
 {
 	int		ldap_errno;
