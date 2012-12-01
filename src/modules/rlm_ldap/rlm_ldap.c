@@ -1546,14 +1546,10 @@ static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request,
 	unsigned int		total = 0;
 	
 	rlm_ldap_result_t	result;
-
-	REQUEST			*update_request;
 	const char		*name;
 
 	for (map = expanded->maps; map != NULL; map = map->next)
 	{
-		update_request = request;
-		
 		name = expanded->attrs[total++];
 		
 		result.values = ldap_get_values(handle, entry, name);

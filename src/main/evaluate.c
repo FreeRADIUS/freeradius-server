@@ -1141,7 +1141,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	/* 
 	 *	Qualifiers not valid for this request
 	 */
-	if (radius_request(&update_request, request_name) < 0){
+	if (radius_request(&update_request, request_name) < 0) {
 		RDEBUG("WARNING: List name refers to outer request"
 		       " but not in a tunnel.");
 		return RLM_MODULE_NOOP; 
