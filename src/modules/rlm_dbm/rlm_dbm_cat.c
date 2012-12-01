@@ -44,12 +44,12 @@ RCSID("$Id$")
 #define WRAPLEN 40
 
 
-int wraplen = WRAPLEN, needwrap = 0, lotstup = LOTSTUP;
-char const * progname;
+static size_t wraplen = WRAPLEN, needwrap = 0, lotstup = LOTSTUP;
+static char const * progname;
 
 static void dump_record(datum key,datum data)
 {
-	int i,j;
+	size_t i,j;
 	char *p;
 	for(i = 0, p = key.dptr; i < key.dsize; i++, p++)
 	  putchar(*p);
