@@ -47,14 +47,11 @@ static float timeout = 5;
 static int server_port = 0;
 static int packet_code = 0;
 static fr_ipaddr_t server_ipaddr;
-static int resend_count = 1;
 
 static fr_ipaddr_t client_ipaddr;
 static int client_port = 0;
 
 static int sockfd;
-
-static int sleep_time = -1;
 
 static RADIUS_PACKET *request = NULL;
 static RADIUS_PACKET *reply = NULL;
