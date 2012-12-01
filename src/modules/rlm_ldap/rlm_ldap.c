@@ -1034,7 +1034,7 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 
 	if (!inst->groupmemb_filt) goto check_attr;
 
-	if (!radius_xlat(filter, sizeof(filter),
+	if (!radius_xlat(gr_filter, sizeof(gr_filter),
 			 inst->groupmemb_filt, request, ldap_escape_func, NULL)) {
 		RDEBUG("Failed creating group filter");
 		return 1;
