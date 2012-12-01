@@ -829,7 +829,7 @@ retry:
 	count = ldap_count_entries(conn->handle, *presult);
 	if (count == 0) {
 		ldap_msgfree(*presult);
-		RDEBUG("Object not found");
+		RDEBUG("Search returned no results");
 		
 		return -2;
 	}
@@ -1186,8 +1186,8 @@ check_attr:
 
 	vals = ldap_get_values(conn->handle, entry, inst->groupmemb_attr);
 	if (!vals) {
-		RDEBUG("No \"%s\" attributes found in user object",
-		       inst->groupmemb_attr);
+		RDEBUG("No group membership (%s) attributes found in "
+		       "user object", inst->groupmemb_attr);
 		ldap_release_socket(inst, conn);
 		ldap_msgfree(result);
 		return 1;
