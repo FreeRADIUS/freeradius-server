@@ -148,12 +148,20 @@ static int replicate_packet(void *instance, REQUEST *request,
 				goto done;
 			}
 			
-			packet->vps = paircopy(*vps);
-			if (!packet->vps) {
-				RDEBUG("ERROR: Out of memory!");
-				rcode = RLM_MODULE_FAIL;
-				goto done;
+			/*
+			 *	Don't assume the list actually contains any
+			 *	attributes.
+			 */
+			if (*vps) {
+				packet->vps = paircopy(*vps);
+				if (!packet->vps) {
+					RDEBUG("ERROR: Out of memory!");
+					rcode = RLM_MODULE_FAIL;
+					goto done;
+				}
 			}
+			
+
 
 			/*
 			 *	For CHAP, create the CHAP-Challenge if
@@ -193,7 +201,8 @@ static int replicate_packet(void *instance, REQUEST *request,
 		/*
 		 *	Encode, sign and then send the packet.
 		 */
-		RDEBUG("Replicating packet to Realm %s", realm->name);
+		RDEBUG("Replicating list '%s' to Realm '%s'",
+		       fr_int2str(pair_lists, list, "¿unknown?"),realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
 			RDEBUG("ERROR: Failed replicating packet: %s",
 			       fr_strerror());
