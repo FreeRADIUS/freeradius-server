@@ -2996,6 +2996,7 @@ static void request_coa_originate(REQUEST *request)
 	if (vp) {
 		if (vp->vp_integer == 0) {
 		fail:
+			request->coa->child_state = REQUEST_DONE;
 			request_done(request->coa, FR_ACTION_DONE);
 			return;
 		}
