@@ -1163,8 +1163,7 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 		       check->vp_strvalue);
 		return 1;
 	}
-	
-	RDEBUG2("No results searching by group object");
+
 check_attr:
 	RDEBUG2("Checking user object membership (%s) attributes",
 		inst->groupmemb_attr);

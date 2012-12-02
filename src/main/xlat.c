@@ -1162,7 +1162,7 @@ do_xlat:
 		if (retlen > 0) {
 			retlen = func(request, q, freespace, tmpbuf, funcarg);
 			if (retlen > 0) {
-				RDEBUG2("String escaped from \'%s\' to \'%s\'", tmpbuf, q);
+				RDEBUG2("\tescape: \'%s\' -> \'%s\'", tmpbuf, q);
 			} else if (retlen < 0) {
 				RDEBUG2("String escape failed");
 			}
