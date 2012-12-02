@@ -933,7 +933,7 @@ dnl #
 dnl #############################################################
 AC_CHECK_FUNCS( \
 	getopt_long \
-	lockf \
+	fcntl \
 	strsignal \
 	sigaction \
 	sigprocmask \

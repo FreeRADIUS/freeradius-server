@@ -17605,7 +17605,7 @@ fi
 
 for ac_func in \
 	getopt_long \
-	lockf \
+	fcntl \
 	strsignal \
 	sigaction \
 	sigprocmask \
