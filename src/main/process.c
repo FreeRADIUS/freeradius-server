@@ -364,11 +364,9 @@ STATE_MACHINE_DECL(request_done)
 	 *	but ONLY if they aren't tied into anything.
 	 */
 	if (request->parent && (request->parent->coa == request)) {
-		rad_assert(request->child_state == REQUEST_DONE);
 		rad_assert(!request->in_request_hash);
 		rad_assert(!request->in_proxy_hash);
 		rad_assert(action == FR_ACTION_DONE);
-		rad_assert(request->packet == NULL);
 		rad_assert(request->ev == NULL);
 	} else
 #endif
@@ -2996,7 +2994,6 @@ static void request_coa_originate(REQUEST *request)
 	if (vp) {
 		if (vp->vp_integer == 0) {
 		fail:
-			request->coa->child_state = REQUEST_DONE;
 			request_done(request->coa, FR_ACTION_DONE);
 			return;
 		}
