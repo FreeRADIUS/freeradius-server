@@ -44,16 +44,159 @@
 #
 ######################################################################
 
+server default {
 #
-#	In 1.x, the "authorize", etc. sections were global in
-#	radiusd.conf.  As of 2.0, they SHOULD be in a server section.
+#  If you want the server to listen on additional addresses, or on
+#  additionnal ports, you can use multiple "listen" sections.
 #
-#	The server section with no virtual server name is the "default"
-#	section.  It is used when no server name is specified.
+#  Each section make the server listen for only one type of packet,
+#  therefore authentication and accounting have to be configured in
+#  different sections.
 #
-#	We don't indent the rest of this file, because doing so
-#	would make it harder to read.
+#  The server ignore all "listen" section if you are using '-i' and '-p'
+#  on the command line.
 #
+listen {
+	#  Type of packets to listen for.
+	#  Allowed values are:
+	#	auth	listen for authentication packets
+	#	acct	listen for accounting packets
+	#	proxy   IP to use for sending proxied packets
+	#	detail  Read from the detail file.  For examples, see
+	#               raddb/sites-available/copy-acct-to-home-server
+	#	status  listen for Status-Server packets.  For examples,
+	#		see raddb/sites-available/status
+	#	coa     listen for CoA-Request and Disconnect-Request
+	#		packets.  For examples, see the file
+	#		raddb/sites-available/coa-server
+	#
+	type = auth
+
+	#  Note: "type = proxy" lets you control the source IP used for
+	#        proxying packets, with some limitations:
+	#
+	#    * A proxy listener CANNOT be used in a virtual server section.
+	#    * You should probably set "port = 0".
+	#    * Any "clients" configuration will be ignored.
+	#
+	#  See also proxy.conf, and the "src_ipaddr" configuration entry
+	#  in the sample "home_server" section.  When you specify the
+	#  source IP address for packets sent to a home server, the
+	#  proxy listeners are automatically created.
+
+	#  IP address on which to listen.
+	#  Allowed values are:
+	#	dotted quad (1.2.3.4)
+	#       hostname    (radius.example.com)
+	#       wildcard    (*)
+	ipaddr = *
+
+	#  OR, you can use an IPv6 address, but not both
+	#  at the same time.
+#	ipv6addr = ::	# any.  ::1 == localhost
+
+	#  Port on which to listen.
+	#  Allowed values are:
+	#	integer port number (1812)
+	#	0 means "use /etc/services for the proper port"
+	port = 0
+
+	#  Some systems support binding to an interface, in addition
+	#  to the IP address.  This feature isn't strictly necessary,
+	#  but for sites with many IP addresses on one interface,
+	#  it's useful to say "listen on all addresses for eth0".
+	#
+	#  If your system does not support this feature, you will
+	#  get an error if you try to use it.
+	#
+#	interface = eth0
+
+	#  Per-socket lists of clients.  This is a very useful feature.
+	#
+	#  The name here is a reference to a section elsewhere in
+	#  radiusd.conf, or clients.conf.  Having the name as
+	#  a reference allows multiple sockets to use the same
+	#  set of clients.
+	#
+	#  If this configuration is used, then the global list of clients
+	#  is IGNORED for this "listen" section.  Take care configuring
+	#  this feature, to ensure you don't accidentally disable a
+	#  client you need.
+	#
+	#  See clients.conf for the configuration of "per_socket_clients".
+	#
+#	clients = per_socket_clients
+
+	#
+	#  Connection limiting for sockets with "proto = tcp".
+	#
+	#  This section is ignored for other kinds of sockets.
+	#
+	limit {
+	      #
+	      #  Limit the number of simultaneous TCP connections to the socket
+	      #
+	      #  The default is 16.
+	      #  Setting this to 0 means "no limit"
+	      max_connections = 16
+
+	      #  The per-socket "max_requests" option does not exist.
+
+	      #
+	      #  The lifetime, in seconds, of a TCP connection.  After
+	      #  this lifetime, the connection will be closed.
+	      #
+	      #  Setting this to 0 means "forever".
+	      lifetime = 0
+
+	      #
+	      #  The idle timeout, in seconds, of a TCP connection.
+	      #  If no packets have been received over the connection for
+	      #  this time, the connection will be closed.
+	      #
+	      #  Setting this to 0 means "no timeout".
+	      #
+	      #  We STRONGLY RECOMMEND that you set an idle timeout.
+	      #
+	      idle_timeout = 30
+	}
+}
+
+#
+#  This second "listen" section is for listening on the accounting
+#  port, too.
+#
+listen {
+	ipaddr = *
+#	ipv6addr = ::
+	port = 0
+	type = acct
+#	interface = eth0
+#	clients = per_socket_clients
+
+	#  The number of packets received can be rate limited via the
+	#  "max_pps" configuration item.  When it is set, the server
+	#  tracks the total number of packets received in the previous
+	#  second.  If the count is greater than "max_pps", then the
+	#  new packet is silently discarded.  This helps the server
+	#  deal with overload situations.
+	#
+	#  The packets/s counter is tracked in a sliding window.  This
+	#  means that the pps calculation is done for the second
+	#  before the current packet was received.  NOT for the current
+	#  wall-clock second, and NOT for the previous wall-clock second.
+	#
+	#  Useful values are 0 (no limit), or 100 to 10000.
+	#  Values lower than 100 will likely cause the server to ignore
+	#  normal traffic.  Few systems are capable of handling more than
+	#  10K packets/s.
+	#
+	#  It is most useful for accounting systems.  Set it to 50%
+	#  more than the normal accounting load, and you can be sure that
+	#  the server will never get overloaded
+	#  
+#	max_pps = 0
+}
 
 #  Authorization. First preprocess (hints and huntgroups files),
 #  then realms, and finally look in the "users" file.
@@ -68,15 +211,13 @@
 #  need to setup hints for the remote radius server
 authorize {
 	#
-	#  Security settings.  Take a User-Name, and do some simple
-	#  checks on it, for spaces and other invalid characters.  If
-	#  it looks like the user is trying to play games, reject it.
+	#  Take a User-Name, and perform some checks on it, for spaces and other
+	#  invalid characters.  If the User-Name appears invalid, reject the 
+	#  request.
 	#
-	#  This should probably be enabled by default.
+	#  See policy.d/filter for the definition of the filter_username policy.
 	#
-	#  See policy.conf for the definition of the filter_username policy.
-	#
-#	filter_username
+	filter_username
 
 	#
 	#  The preprocess module takes care of sanitizing some bizarre
@@ -92,6 +233,7 @@ authorize {
         #  for your local clients then uncomment the operator-name
         #  below and set the operator-name for your clients in clients.conf
 #       operator-name
+
         #
         #  If you want to generate CUI for some clients that do not
         #  send proper CUI requiests, then uncomment the
@@ -359,7 +501,7 @@ preacct {
 	#  The start time is: NOW - delay - session_length
 	#
 
-#	  update request {
+#	update request {
 #	  	FreeRADIUS-Acct-Session-Start-Time = "%{expr: %l - %{%{Acct-Session-Time}:-0} - %{%{Acct-Delay-Time}:-0}}"
 #	}
 
@@ -410,7 +552,7 @@ accounting {
 	#
 	#  Due to packet losses in the network, the data here
 	#  may be incorrect.  There is little we can do about it.
-	radutmp
+#	radutmp
 #	sradutmp
 
 	#  Return an address to the IP Pool when we see a stop record.
@@ -464,7 +606,7 @@ accounting {
 #  or rlm_sql module can handle this.
 #  The rlm_sql module is *much* faster
 session {
-	radutmp
+#	radutmp
 
 	#
 	#  See "Simultaneous Use Checking Queries" in sql.conf
@@ -686,4 +828,4 @@ post-proxy {
 #			detail
 #	}
 }
-
+}
