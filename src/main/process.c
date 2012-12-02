@@ -2143,6 +2143,7 @@ static int request_will_proxy(REQUEST *request)
 		RDEBUG2("ERROR: Failed to find live home server: Cancelling proxy");
 		return 0;
 	}
+	home_server_update_request(home, request);
 
 #ifdef WITH_COA
 	/*
@@ -2384,6 +2385,7 @@ static int request_proxy_anew(REQUEST *request)
 		request_queue_or_run(request, proxy_running);
 		return 0;
 	}
+	home_server_update_request(home, request);
 
 	/*
 	 *	Don't free the old Id (if any) on error.
@@ -3051,6 +3053,7 @@ static void request_coa_originate(REQUEST *request)
 			RDEBUG("WARNING: No live home server for home_server_pool %s", vp->vp_strvalue);
 			goto fail;
 		}
+		home_server_update_request(coa->home_server, coa);
 
 	} else if (!coa->home_server) {
 		int port = PW_COA_UDP_PORT;

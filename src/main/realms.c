@@ -2071,6 +2071,80 @@ REALM *realm_find(const char *name)
 
 
 #ifdef WITH_PROXY
+
+/*
+ *	Allocate the proxy list if it doesn't already exist, and copy request
+ *	VPs into it. Setup src/dst IP addresses based on home server, and
+ *	calculate and add the message-authenticator.
+ *
+ *	This is a distinct function from home_server_ldb, as not all home_server
+ *	lookups result in the *CURRENT* request being proxied,
+ *	as in rlm_replicate, and this may trigger asserts elsewhere in the
+ *	server.
+ */
+void home_server_update_request(home_server *home, REQUEST *request)
+{
+
+	/*
+	 *	Allocate the proxy packet, only if it wasn't
+	 *	already allocated by a module.  This check is
+	 *	mainly to support the proxying of EAP-TTLS and
+	 *	EAP-PEAP tunneled requests.
+	 *
+	 *	In those cases, the EAP module creates a
+	 *	"fake" request, and recursively passes it
+	 *	through the authentication stage of the
+	 *	server.  The module then checks if the request
+	 *	was supposed to be proxied, and if so, creates
+	 *	a proxy packet from the TUNNELED request, and
+	 *	not from the EAP request outside of the
+	 *	tunnel.
+	 *
+	 *	The proxy then works like normal, except that
+	 *	the response packet is "eaten" by the EAP
+	 *	module, and encapsulated into an EAP packet.
+	 */
+	if (!request->proxy) {
+		if ((request->proxy = rad_alloc(TRUE)) == NULL) {
+			radlog(L_ERR|L_CONS, "no memory");
+			exit(1);
+		}
+		
+		/*
+		 *	Copy the request, then look up name
+		 *	and plain-text password in the copy.
+		 *
+		 *	Note that the User-Name attribute is
+		 *	the *original* as sent over by the
+		 *	client.  The Stripped-User-Name
+		 *	attribute is the one hacked through
+		 *	the 'hints' file.
+		 */
+		request->proxy->vps =  paircopy(request->packet->vps);
+	}
+
+	/*
+	 *	Update the various fields as appropriate.
+	 */
+	request->proxy->src_ipaddr = home->src_ipaddr;
+	request->proxy->src_port = 0;
+	request->proxy->dst_ipaddr = home->ipaddr;
+	request->proxy->dst_port = home->port;
+	request->home_server = home;
+
+	/*
+	 *	We're supposed to add a Message-Authenticator
+	 *	if it doesn't exist, and it doesn't exist.
+	 */
+	if (home->message_authenticator &&
+	    (request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0)) {
+		radius_pairmake(request, &request->proxy->vps,
+				"Message-Authenticator", "0x00",
+				T_OP_SET);
+	}
+}
+
 home_server *home_server_ldb(const char *realmname,
 			     home_pool_t *pool, REQUEST *request)
 {
@@ -2312,65 +2386,6 @@ home_server *home_server_ldb(const char *realmname,
 		if ((found != pool->fallback) && pool->in_fallback) {
 			pool->in_fallback = FALSE;
 			exec_trigger(request, pool->cs, "home_server_pool.normal", FALSE);
-		}
-
-		/*
-		 *	Allocate the proxy packet, only if it wasn't
-		 *	already allocated by a module.  This check is
-		 *	mainly to support the proxying of EAP-TTLS and
-		 *	EAP-PEAP tunneled requests.
-		 *
-		 *	In those cases, the EAP module creates a
-		 *	"fake" request, and recursively passes it
-		 *	through the authentication stage of the
-		 *	server.  The module then checks if the request
-		 *	was supposed to be proxied, and if so, creates
-		 *	a proxy packet from the TUNNELED request, and
-		 *	not from the EAP request outside of the
-		 *	tunnel.
-		 *
-		 *	The proxy then works like normal, except that
-		 *	the response packet is "eaten" by the EAP
-		 *	module, and encapsulated into an EAP packet.
-		 */
-		if (!request->proxy) {
-			if ((request->proxy = rad_alloc(TRUE)) == NULL) {
-				radlog(L_ERR|L_CONS, "no memory");
-				exit(1);
-			}
-			
-			/*
-			 *	Copy the request, then look up name
-			 *	and plain-text password in the copy.
-			 *
-			 *	Note that the User-Name attribute is
-			 *	the *original* as sent over by the
-			 *	client.  The Stripped-User-Name
-			 *	attribute is the one hacked through
-			 *	the 'hints' file.
-			 */
-			request->proxy->vps =  paircopy(request->packet->vps);
-		}
-
-		/*
-		 *	Update the various fields as appropriate.
-		 */
-		request->proxy->src_ipaddr = found->src_ipaddr;
-		request->proxy->src_port = 0;
-		request->proxy->dst_ipaddr = found->ipaddr;
-		request->proxy->dst_port = found->port;
-		request->home_server = found;
-
-		/*
-		 *	We're supposed to add a Message-Authenticator
-		 *	if it doesn't exist, and it doesn't exist.
-		 */
-		if (found->message_authenticator &&
-		    (request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-		    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0)) {
-			radius_pairmake(request, &request->proxy->vps,
-					"Message-Authenticator", "0x00",
-					T_OP_SET);
 		}
 
 		return found;
