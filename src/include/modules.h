@@ -91,6 +91,9 @@ int module_send_coa(int type, REQUEST *request);
 #else
 #define MODULE_NULL_COA_FUNCS
 #endif
+
+char *module_failure_msg(REQUEST *request, const char *fmt, ...);
+
 int indexed_modcall(int comp, int idx, REQUEST *request);
 
 /*

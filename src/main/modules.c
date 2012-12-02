@@ -1732,3 +1732,22 @@ int module_send_coa(int send_coa_type, REQUEST *request)
 	return indexed_modcall(RLM_COMPONENT_SEND_COA, send_coa_type, request);
 }
 #endif
+
+char *module_failure_msg(REQUEST *request, const char *fmt, ...)
+{
+	va_list ap;
+	VALUE_PAIR *vp;
+
+	va_start(ap, fmt);
+	vp = paircreate(PW_MODULE_FAILURE_MESSAGE, 0, PW_TYPE_STRING);
+	if (!vp) {
+		va_end(ap);
+		return NULL;
+	}
+
+	vsnprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), fmt, ap);
+
+	pairadd(&request->packet->vps, vp);
+	
+	return vp->vp_strvalue;
+}

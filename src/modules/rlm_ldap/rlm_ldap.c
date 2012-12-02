@@ -1526,25 +1526,6 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	return 0;
 }
 
-
-static void module_failure_msg(VALUE_PAIR **vps, const char *fmt, ...)
-{
-	va_list ap;
-	VALUE_PAIR *vp;
-
-	va_start(ap, fmt);
-	vp = paircreate(PW_MODULE_FAILURE_MESSAGE, 0, PW_TYPE_STRING);
-	if (!vp) {
-		va_end(ap);
-		return;
-	}
-
-	vsnprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), fmt, ap);
-
-	pairadd(vps, vp);
-}
-
-
 static int check_access(ldap_instance *inst, REQUEST* request, LDAP_CONN *conn,
 			LDAPMessage *entry)
 {
@@ -1853,7 +1834,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	
 	if (rcode < 0) {
 		if (rcode == -2) {
-			module_failure_msg(&request->packet->vps,
+			module_failure_msg(request,
 					   "rlm_ldap (%s): User object not "
 					   " found",
 					   inst->xlat_name);
@@ -1995,7 +1976,7 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 	if (request->password->length == 0) {
-		module_failure_msg(&request->packet->vps,
+		module_failure_msg(request,
 				   "rlm_ldap (%s): Empty password supplied",
 				   inst->xlat_name);
 		return RLM_MODULE_INVALID;

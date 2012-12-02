@@ -31,12 +31,12 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_exec_t {
-	char	*xlat_name;
-	int	bare;
-	int	wait;
-	char	*program;
-	char	*input;
-	char	*output;
+	char		*xlat_name;
+	int		bare;
+	int		wait;
+	char		*program;
+	char		*input;
+	char		*output;
 	char	*packet_type;
 	unsigned int	packet_code;
 	int	shell_escape;
@@ -125,10 +125,11 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	VALUE_PAIR	**input_pairs;
 	char *p;
 
+	
 	input_pairs = decode_string(request, inst->input);
 	if (!input_pairs) {
-		radlog(L_ERR, "rlm_exec (%s): Failed to find input pairs for xlat",
-		       inst->xlat_name);
+		radlog(L_ERR, "rlm_exec (%s): Failed to find input pairs"
+		       " for xlat", inst->xlat_name);
 		out[0] = '\0';
 		return 0;
 	}
@@ -193,13 +194,24 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst)
 		return -1;
 	memset(inst, 0, sizeof(rlm_exec_t));
+	
+	xlat_name = cf_section_name2(conf);
+	if (xlat_name == NULL) {
+		xlat_name = cf_section_name1(conf);
+		inst->bare = 1;
+	}
+	if (xlat_name){
+		inst->xlat_name = strdup(xlat_name);
+		xlat_register(xlat_name, exec_xlat, inst);
+	}
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		radlog(L_ERR, "rlm_exec: Failed parsing the configuration");
+		radlog(L_ERR, "rlm_exec (%s): Failed parsing the "
+		       "configuration", xlat_name);
 		exec_detach(inst);
 		return -1;
 	}
@@ -208,7 +220,8 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	 *	No input pairs defined.  Why are we executing a program?
 	 */
 	if (!inst->input) {
-		radlog(L_ERR, "rlm_exec: Must define input pairs for external program.");
+		radlog(L_ERR, "rlm_exec (%s): Must define input pairs for "
+		       "external program", xlat_name);
 		exec_detach(inst);
 		return -1;
 	}
@@ -219,7 +232,8 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (!inst->wait &&
 	    (inst->output != NULL)) {
-		radlog(L_ERR, "rlm_exec: Cannot read output pairs if wait=no");
+		radlog(L_ERR, "rlm_exec (%s): Cannot read output pairs if "
+			      "wait=no", xlat_name);
 		exec_detach(inst);
 		return -1;
 	}
@@ -234,21 +248,14 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 
 		dval = dict_valbyname(PW_PACKET_TYPE, 0, inst->packet_type);
 		if (!dval) {
-			radlog(L_ERR, "rlm_exec: Unknown packet type %s: See list of VALUEs for Packet-Type in share/dictionary", inst->packet_type);
+			radlog(L_ERR, "rlm_exec (%s): Unknown packet type %s: "
+			       "See list of VALUEs for Packet-Type in "
+			       "share/dictionary", xlat_name,
+			       inst->packet_type);
 			exec_detach(inst);
 			return -1;
 		}
 		inst->packet_code = dval->value;
-	}
-
-	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) {
-		xlat_name = cf_section_name1(conf);
-		inst->bare = 1;
-	}
-	if (xlat_name){
-		inst->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, exec_xlat, inst);
 	}
 
 	*instance = inst;
@@ -262,10 +269,11 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
  */
 static int exec_dispatch(void *instance, REQUEST *request)
 {
-	int result;
-	VALUE_PAIR **input_pairs, **output_pairs;
-	VALUE_PAIR *answer = NULL;
 	rlm_exec_t *inst = (rlm_exec_t *) instance;
+	int result;
+	VALUE_PAIR	**input_pairs, **output_pairs;
+	VALUE_PAIR	*answer = NULL;
+	char		msg[1024];
 
 	/*
 	 *	We need a program to execute.
@@ -326,7 +334,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 *	into something else.
 	 */
 	result = radius_exec_program(inst->program, request,
-				     inst->wait, NULL, 0,
+				     inst->wait, msg, sizeof(msg),
 				     *input_pairs, &answer, inst->shell_escape);
 	if (result < 0) {
 		radlog(L_ERR, "rlm_exec (%s): External script failed",
@@ -349,6 +357,15 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	if (result > RLM_MODULE_NUMCODES) {
 		return RLM_MODULE_FAIL;
 	}
+	
+	/*
+	 *	Write any exec output to module failure message
+	 */
+	if (*msg) {
+		module_failure_msg(request, "rlm_exec (%s): %s",
+				   inst->xlat_name, msg);
+	}
+	
 	return result-1;
 }
 
@@ -390,14 +407,10 @@ static int exec_postauth(void *instance, REQUEST *request)
 	pairfree(&tmp);
 
 	if (result < 0) {
-		/*
-		 *	Error. radius_exec_program() returns -1 on
-		 *	fork/exec errors.
-		 */
-		tmp = pairmake("Reply-Message", "Access denied (external check failed)", T_OP_SET);
-		pairadd(&request->reply->vps, tmp);
-
-		RDEBUG2("Login incorrect (external check failed)");
+		RDEBUG2("%s", module_failure_msg(request, "rlm_exec (%s): "
+						 "Login incorrect (external "
+						 "check failed)",
+						 inst->xlat_name));
 
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		return RLM_MODULE_REJECT;
@@ -409,7 +422,11 @@ static int exec_postauth(void *instance, REQUEST *request)
 		 *	exit status.
 		 */
 		request->reply->code = PW_AUTHENTICATION_REJECT;
-		RDEBUG2("Login incorrect (external check said so)");
+		
+		RDEBUG2("%s", module_failure_msg(request, "rlm_exec (%s): "
+						 "Login incorrect (external "
+						 "check said so)",
+						 inst->xlat_name));
 		return RLM_MODULE_REJECT;
 	}
 
