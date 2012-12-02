@@ -274,6 +274,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	VALUE_PAIR	**input_pairs, **output_pairs;
 	VALUE_PAIR	*answer = NULL;
 	char		msg[1024];
+	size_t		len;
 
 	/*
 	 *	We need a program to execute.
@@ -362,6 +363,12 @@ static int exec_dispatch(void *instance, REQUEST *request)
 	 *	Write any exec output to module failure message
 	 */
 	if (*msg) {
+		/* Trim off returns and newlines */
+		len = strlen(msg);
+		if (msg[len - 1] == '\n' || msg[len - 1] == '\r') {
+			msg[len - 1] = '\0';
+		}
+		
 		module_failure_msg(request, "rlm_exec (%s): %s",
 				   inst->xlat_name, msg);
 	}
