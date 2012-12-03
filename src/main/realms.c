@@ -386,8 +386,6 @@ static CONF_PARSER home_server_config[] = {
 	  offsetof(home_server,ping_interval), NULL,   "30" },
 	{ "num_answers_to_alive", PW_TYPE_INTEGER,
 	  offsetof(home_server,num_pings_to_alive), NULL,   "3" },
-	{ "num_pings_to_alive", PW_TYPE_INTEGER,
-	  offsetof(home_server,num_pings_to_alive), NULL,   "3" },
 	{ "revive_interval", PW_TYPE_INTEGER,
 	  offsetof(home_server,revive_interval), NULL,   "300" },
 	{ "status_check_timeout", PW_TYPE_INTEGER,
