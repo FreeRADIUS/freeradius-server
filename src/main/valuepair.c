@@ -1053,28 +1053,49 @@ request_refs_t radius_request_name(const char **name, request_refs_t unknown)
 	return request;
 }
 
+/** Release memory allocated to value pair template.
+ *
+ * @param[in+out] tmpl to free.
+ */
+void radius_tmplfree(VALUE_PAIR_TMPL **tmpl)
+{
+	if (*tmpl == NULL) return;
+	
+	if ((*tmpl)->name) {
+		free((*tmpl)->name);
+	}
+	
+	free(*tmpl);
+	
+	*tmpl = NULL;
+}
+
 /** Parse qualifiers to convert attrname into a VALUE_PAIR_TMPL.
  *
  * VPTs are used in various places where we need to pre-parse configuration 
  * sections into attribute mappings.
  *
+ * Note: name field is just a copy of the input pointer, if you know that
+ * string might be freed before you're done with the vpt use radius_attr2tmpl
+ * instead.
+ * 
  * @param[in] name attribute name including qualifiers.
  * @param[out] vpt to modify.
  * @param[in] request_def The default request to insert unqualified 
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return -1 if either the attribute or qualifier were invalid, else 0
+ * @return -1 on error or 0 on success.
  */
-int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
-		     request_refs_t request_def, pair_lists_t list_def)
+int radius_parse_attr(const char *name, VALUE_PAIR_TMPL *vpt,
+		      request_refs_t request_def,
+		      pair_lists_t list_def)
 {
 	char buffer[128];
 	const char *p;
 	size_t len;
-	
-	vpt->name = strdup(name);
-	
-	p = vpt->name;
+
+	vpt->name = name;
+	p = name;
 	
 	vpt->request = radius_request_name(&p, request_def);
 	len = p - name;
@@ -1083,7 +1104,8 @@ int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
 			len + 1 : sizeof(buffer));
 		
 		radlog(L_ERR, "Invalid request qualifier \"%s\"", buffer);
-		return -1;	
+		
+		return -1;
 	}
 	name += len;
 	
@@ -1094,16 +1116,48 @@ int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
 			len + 1 : sizeof(buffer));
 				
 		radlog(L_ERR, "Invalid list qualifier \"%s\"", buffer);
+		
 		return -1;
 	}
 	
 	vpt->da = dict_attrbyname(p);
 	if (!vpt->da) {
 		radlog(L_ERR, "Attribute \"%s\" unknown", p);
+		
 		return -1;
 	}
 	
 	return 0;
+}
+
+/** Parse qualifiers to convert attrname into a VALUE_PAIR_TMPL.
+ *
+ * VPTs are used in various places where we need to pre-parse configuration 
+ * sections into attribute mappings.
+ *
+ * @param[in] name attribute name including qualifiers.
+ * @param[in] request_def The default request to insert unqualified 
+ *	attributes into.
+ * @param[in] list_def The default list to insert unqualified attributes into.
+ * @return pointer to a VALUE_PAIR_TMPL struct (must be freed with 
+ *	radius_tmplfree) or NULL on error.
+ */
+VALUE_PAIR_TMPL *radius_attr2tmpl(const char *name,
+				  request_refs_t request_def,
+		     		  pair_lists_t list_def)
+{
+	VALUE_PAIR_TMPL *vpt;
+	const char *copy = strdup(name);
+	
+	vpt = rad_malloc(sizeof(VALUE_PAIR_TMPL));
+	memset(vpt, 0, sizeof(VALUE_PAIR_TMPL));
+	
+	if (radius_parse_attr(copy, vpt, request_def, list_def) < 0) {
+		radius_tmplfree(&vpt);
+		return NULL;
+	}
+	
+	return vpt;
 }
 
 /** Convert module specific attribute id to VALUE_PAIR_TMPL.
@@ -1112,11 +1166,16 @@ int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
  * @param[out] vpt to modify.
  * @return 0
  */
-int radius_str2tmpl(const char *name, VALUE_PAIR_TMPL *vpt)
+VALUE_PAIR_TMPL *radius_str2tmpl(const char *name)
 {
+	VALUE_PAIR_TMPL *vpt;
+	
+	vpt = rad_malloc(sizeof(VALUE_PAIR_TMPL));
+	memset(vpt, 0, sizeof(VALUE_PAIR_TMPL));
+
 	vpt->name = strdup(name);
 	
-	return 0;
+	return vpt;
 }
 
 /** Release memory used by a map linked list.
@@ -1134,8 +1193,8 @@ void radius_mapfree(VALUE_PAIR_MAP **map)
 	while (vpm != NULL) {
 		next = vpm->next;
 		
-		if (vpm->src.name) free(vpm->src.name);
-		if (vpm->dst.name) free(vpm->dst.name);
+		radius_tmplfree(&((*map)->dst));
+		radius_tmplfree(&((*map)->src));
 		
 		free(vpm);
 		vpm = next;
@@ -1172,7 +1231,8 @@ VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
      
 	attr = cf_pair_attr(cp);
 	
-	if (radius_attr2tmpl(attr, &map->dst, list_def, request_def) < 0){
+	map->dst = radius_attr2tmpl(attr, request_def, list_def);
+	if (!map->dst){
 		goto error;
 	}
 
@@ -1183,7 +1243,8 @@ VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
 		goto error;
 	}
 	
-	if (radius_str2tmpl(value, &map->src) < 0) {
+	map->src = radius_str2tmpl(value);
+	if (!map->src) {
 		goto error;
 	}
 	
@@ -1200,11 +1261,11 @@ VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
 	{
 		case T_BARE_WORD:
 		case T_SINGLE_QUOTED_STRING:
-			map->src.do_xlat = FALSE;
+			map->src->do_xlat = FALSE;
 		break;
 		case T_BACK_QUOTED_STRING:
 		case T_DOUBLE_QUOTED_STRING:
-			map->src.do_xlat = TRUE;		
+			map->src->do_xlat = TRUE;		
 		break;
 		default:
 			rad_assert(0);
@@ -1240,24 +1301,24 @@ int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
 	VALUE_PAIR **list, *vp, *head;
 	char buffer[MAX_STRING_LEN];
 	
-	if (!radius_request(&request, map->dst.request)) {
+	if (radius_request(&request, map->dst->request) < 0) {
 		RDEBUG("WARNING: Request in mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
-		       map->src.name, map->dst.name);
+		       map->src->name, map->dst->name);
 		
 		return -1;
 	}
 	
-	list = radius_list(request, map->dst.list);
+	list = radius_list(request, map->dst->list);
 	if (!list) {
 		RDEBUG("WARNING: List in mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
-		       map->src.name, map->dst.name);
+		       map->src->name, map->dst->name);
 		       
 		return -1;
 	}
 	
-	head = func(request, &map->dst, ctx);
+	head = func(request, map->dst, ctx);
 	if (head == NULL) {
 		return -1;
 	}
@@ -1268,16 +1329,16 @@ int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
 		if (debug_flag) {
 			vp_prints_value(buffer, sizeof(buffer), vp, 1);
 			
-			RDEBUG("\t%s %s %s (%s)", map->dst.name,
+			RDEBUG("\t%s %s %s (%s)", map->dst->name,
 			       fr_int2str(fr_tokens, vp->operator, "¿unknown?"), 
-			       buffer, src ? src : map->src.name);
+			       buffer, src ? src : map->src->name);
 		}
 	}
 	
 	/*
 	 *	Use pairmove so the operator is respected
 	 */
-	radius_pairmove(request, list, vp);
+	radius_pairmove(request, list, head);
 	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
 	
 	return 0;
@@ -1298,7 +1359,8 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 
 	*vp_p = NULL;
 	
-	if (radius_attr2tmpl(name, &vpt, REQUEST_CURRENT, PAIR_LIST_REQUEST) < 0) {
+	if (radius_parse_attr(name, &vpt, REQUEST_CURRENT,
+	    PAIR_LIST_REQUEST) < 0) {
 		return -1;
 	}
 	

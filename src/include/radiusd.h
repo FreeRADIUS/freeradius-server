@@ -740,8 +740,8 @@ typedef struct value_pair_tmpl {
  *  Value pair map
  */
 typedef struct value_pair_map {
-	VALUE_PAIR_TMPL		dst;
-	VALUE_PAIR_TMPL		src;
+	VALUE_PAIR_TMPL		*dst;
+	VALUE_PAIR_TMPL		*src;
 	
 	FR_TOKEN		op_token;
 	
@@ -751,10 +751,13 @@ typedef struct value_pair_map {
 typedef VALUE_PAIR *(*radius_tmpl_getvalue_t)(REQUEST *request,
 					      const VALUE_PAIR_TMPL *src,
 					      void *ctx);
-
-int radius_attr2tmpl(const char *name, VALUE_PAIR_TMPL *vpt,
-		     request_refs_t request_def, pair_lists_t list_def);
-int radius_str2tmpl(const char *name, VALUE_PAIR_TMPL *vpt);
+void radius_tmplfree(VALUE_PAIR_TMPL **tmpl);
+int radius_parse_attr(const char *name, VALUE_PAIR_TMPL *vpt,
+		      request_refs_t request_def,
+		      pair_lists_t list_def);
+VALUE_PAIR_TMPL *radius_attr2tmpl(const char *name, request_refs_t request_def,
+				  pair_lists_t list_def);
+VALUE_PAIR_TMPL *radius_str2tmpl(const char *name);
 VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
 			      pair_lists_t list_def);
 int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,

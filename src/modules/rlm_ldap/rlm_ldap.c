@@ -1605,7 +1605,7 @@ static void xlat_attrsfree(const xlat_attrs_t *expanded)
 		
 		if (!name) return;
 		
-		if (map->src.do_xlat) {
+		if (map->src->do_xlat) {
 			free(name);
 		}
 	}
@@ -1623,14 +1623,14 @@ static int xlat_attrs(REQUEST *request, const VALUE_PAIR_MAP *maps,
 
 	for (map = maps; map != NULL; map = map->next)
 	{
-		if (map->src.do_xlat) {
+		if (map->src->do_xlat) {
 			buffer = rad_malloc(MAX_ATTR_STR_LEN);
 			len = radius_xlat(buffer, MAX_ATTR_STR_LEN,
-					  map->src.name, request, NULL, NULL);
+					  map->src->name, request, NULL, NULL);
 					  
 			if (!len) {
 				RDEBUG("Expansion of LDAP attribute "
-				       "\"%s\" failed", map->src.name);
+				       "\"%s\" failed", map->src->name);
 				       
 				expanded->attrs[total] = NULL;
 				
@@ -1641,7 +1641,7 @@ static int xlat_attrs(REQUEST *request, const VALUE_PAIR_MAP *maps,
 			
 			expanded->attrs[total++] = buffer;
 		} else {
-			expanded->attrs[total++] = map->src.name;
+			expanded->attrs[total++] = map->src->name;
 		}
 	}
 	
@@ -1676,8 +1676,8 @@ static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request,
 		
 		result.values = ldap_get_values(handle, entry, name);
 		if (!result.values) {
-			DEBUG2("Attribute \"%s\" not found in LDAP object",
-			       name);
+			RDEBUG2("Attribute \"%s\" not found in LDAP object",
+				name);
 				
 			goto next;
 		}
