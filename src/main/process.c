@@ -785,10 +785,6 @@ static void request_queue_or_run(UNUSED REQUEST *request,
 	TRACE_STATE_MACHINE;
 	ASSERT_MASTER;
 
-#ifdef HAVE_PTHREAD_H
-	rad_assert(request->child_pid == NO_SUCH_CHILD_PID);
-#endif
-
 	/*
 	 *	(re) set the initial delay.
 	 */
