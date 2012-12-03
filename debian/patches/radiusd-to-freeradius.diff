@@ -1,8 +1,5 @@
-## 01-radiusd-to-freeradius.dpatch by Mark Hymers <mark@hymers.org.uk>
-## DP: change debian binary name from radiusd -> freeradius
-
---- old/Make.inc.in	(revision 1496)
-+++ new/Make.inc.in	(working copy)
+--- old/Make.inc.in
++++ new/Make.inc.in
 @@ -48,7 +48,7 @@
  
  LOGDIR		= ${logdir}
@@ -12,8 +9,8 @@
  SBINDIR		= ${sbindir}
  RADIR		= ${radacctdir}
  
---- old/raddb/radiusd.conf.in   2009-02-19 15:25:59.723240012 +0000
-+++ new/raddb/radiusd.conf.in   2009-02-19 15:32:18.215568132 +0000
+--- old/raddb/radiusd.conf.in
++++ new/raddb/radiusd.conf.in
 @@ -62,7 +62,7 @@
 
  #
@@ -34,3 +31,20 @@
 
  #  max_request_time: The maximum time (in seconds) to handle a request.
  #
+--- a/scripts/freeradius.monitrc
++++ b/scripts/freeradius.monitrc
+@@ -8,9 +8,9 @@
+ #  Totalmem limit should be lowered to 200.0 if none of the 
+ #  interpreted language modules or rlm_cache are being used.
+ #
+-check process radiusd with pidfile /var/run/radiusd/radiusd.pid
+-   start program = "/etc/init.d/radiusd start"
+-   stop program = "/etc/init.d/radiusd stop"
++check process freeradius with pidfile /var/run/freeradius/freeradius.pid
++   start program = "/etc/init.d/freeradius start"
++   stop program = "/etc/init.d/freeradius stop"
+    if failed host 127.0.0.1 port 1812 type udp protocol radius secret testing123 then alert
+    if failed host 127.0.0.1 port 1813 type udp protocol radius secret testing123 then alert
+    if cpu > 95% for 2 cycles then alert
+
+
