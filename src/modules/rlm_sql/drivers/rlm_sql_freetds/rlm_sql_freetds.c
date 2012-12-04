@@ -92,7 +92,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	freetds_sock = sqlsocket->conn;
 	memset(freetds_sock, 0, sizeof(*freetds_sock));
 	
-	radlog(L_INFO, "rlm_sql_freetds (%s): Starting connect to FreeTDS/MSSQL server", config->xlat_name);
+	DEBUG("rlm_sql_freetds (%s): Starting connect to FreeTDS/MSSQL server", config->xlat_name);
 	
 	if (!(login = dblogin())) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to allocate login record", config->xlat_name);

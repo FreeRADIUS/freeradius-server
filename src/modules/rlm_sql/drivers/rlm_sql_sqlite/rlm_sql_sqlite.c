@@ -67,7 +67,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 			 radius_dir);
 		filename = buffer;
 	}
-	radlog(L_INFO, "rlm_sql_sqlite: Opening sqlite database %s",
+	DEBUG("rlm_sql_sqlite: Opening sqlite database %s",
 	       filename);
 	
 	status = sqlite3_open(filename, &sqlite_sock->pDb);
@@ -107,7 +107,8 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr)
+static int sql_query(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config,
+		     char *querystr)
 {
 	int status;
 	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;

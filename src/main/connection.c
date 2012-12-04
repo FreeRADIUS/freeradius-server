@@ -193,8 +193,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	 */
 	pthread_mutex_unlock(&fc->mutex);
 
-	DEBUG("%s: Opening additional connection (%i)",
-	      fc->log_prefix, fc->count);
+	radlog(L_INFO, "%s: Opening additional connection (%i)",
+	       fc->log_prefix, fc->count);
 	
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
@@ -287,7 +287,7 @@ static void fr_connection_close(fr_connection_pool_t *fc,
 
 	rad_assert(this->used == FALSE);
 
-	DEBUG("%s: Closing connection (%i)", fc->log_prefix, this->number);
+	radlog(L_INFO, "%s: Closing connection (%i)", fc->log_prefix, this->number);
 
 	fr_connection_unlink(fc, this);
 	fc->delete(fc->ctx, this->connection);
@@ -499,12 +499,12 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 
 	if ((fc->max_uses > 0) &&
 	    (this->num_uses >= fc->max_uses)) {
-		DEBUG("%s: Closing expired connection (%i): Hit max_uses limit",
+		radlog(L_INFO, "%s: Closing expired connection (%i): Hit max_uses limit",
 			fc->log_prefix, this->number);
 	do_delete:
 		if ((fc->num <= fc->min) &&
 		    (fc->last_complained < now)) {
-			radlog(L_INFO, "WARNING in %s: You probably need to lower \"min\"", fc->log_prefix);
+			radlog(L_INFO, "%s: WARNING: You probably need to lower \"min\"", fc->log_prefix);
 			fc->last_complained = now;
 		}
 		fr_connection_close(fc, this);
@@ -513,14 +513,14 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 
 	if ((fc->lifetime > 0) &&
 	    ((this->start + fc->lifetime) < now)) {
-		DEBUG("%s: Closing expired connection (%i) ",
+		radlog(L_INFO, "%s: Closing expired connection (%i) ",
 			fc->log_prefix, this->number);
 		goto do_delete;
 	}
 
 	if ((fc->idle_timeout > 0) &&
 	    ((this->last_used + fc->idle_timeout) < now)) {
-		DEBUG("%s: Closing idle connection (%i)",
+		radlog(L_INFO, "%s: Closing idle connection (%i)",
 			fc->log_prefix, this->number);
 		goto do_delete;
 	}
@@ -581,7 +581,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 
 		rad_assert(idle != NULL);
 		
-		DEBUG("%s: Closing idle connection (%i): Too many free connections (%d > %d)",
+		radlog(L_INFO, "%s: Closing idle connection (%i): Too many free connections (%d > %d)",
 		      fc->log_prefix, idle->number, spare, fc->spare);
 		fr_connection_close(fc, idle);
 	}
@@ -725,7 +725,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 
 	rad_assert(this->used == TRUE);
 	
-	DEBUG("%s: Reconnecting (%i)", fc->log_prefix, conn_number);
+	radlog(L_INFO, "%s: Reconnecting (%i)", fc->log_prefix, conn_number);
 	
 	new_conn = fc->create(fc->ctx);
 	if (!new_conn) {

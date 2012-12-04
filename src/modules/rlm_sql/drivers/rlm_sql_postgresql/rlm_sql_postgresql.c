@@ -204,7 +204,8 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(SQLSOCK * sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config,
+		     char *querystr) {
 
 	rlm_sql_postgres_sock *pg_sock = sqlsocket->conn;
 	int numfields = 0;

@@ -262,7 +262,6 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *************************************************************************/
 static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-//    radlog(L_INFO,"Closing sql\n");
     fb_destroy_socket((rlm_sql_firebird_sock *) sqlsocket->conn);
     return 0;
 }

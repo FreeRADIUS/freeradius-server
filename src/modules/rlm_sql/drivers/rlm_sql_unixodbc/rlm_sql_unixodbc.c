@@ -147,7 +147,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
     err_handle = SQLExecDirect(unixodbc_sock->stmt_handle, (SQLCHAR *)querystr, strlen(querystr));
     if ((state = sql_state(err_handle, sqlsocket, config))) {
 	if(state == SQL_DOWN)
-	    radlog(L_INFO, "rlm_sql_unixodbc: rlm_sql will attempt to reconnect\n");
+	    DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect\n");
 	return state;
     }
     return 0;
@@ -258,7 +258,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return 0;
     if ((state = sql_state(err_handle, sqlsocket, config))) {
 	if(state == SQL_DOWN)
-	    radlog(L_INFO, "rlm_sql_unixodbc: rlm_sql will attempt to reconnect\n");
+	    DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
 	return state;
     }
     sqlsocket->row = unixodbc_sock->row;
