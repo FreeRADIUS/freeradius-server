@@ -538,8 +538,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	VALUE_PAIR * vp;
 	SQLSOCK * sqlsocket;
 	fr_ipaddr_t ipaddr;
-	char    logstr[MAX_STRING_LEN];
-	char sqlusername[MAX_STRING_LEN];
+	char logstr[MAX_STRING_LEN];
 
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply do nothing
@@ -567,7 +566,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return RLM_MODULE_FAIL;
 	}
 
-	if (data->sql_inst->sql_set_user(data->sql_inst, request, sqlusername, NULL) < 0) {
+	if (data->sql_inst->sql_set_user(data->sql_inst, request, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -831,7 +830,6 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 	int acct_status_type;
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
-	char sqlusername[MAX_STRING_LEN];
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0);
 	if (!vp) {
@@ -859,7 +857,7 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	if (data->sql_inst->sql_set_user(data->sql_inst, request, sqlusername, NULL) < 0) {
+	if (data->sql_inst->sql_set_user(data->sql_inst, request, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 

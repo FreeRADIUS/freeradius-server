@@ -40,7 +40,7 @@ RCSID("$Id$")
 #include "rlm_sql.h"
 
 static const CONF_PARSER section_config[] = {
-	{ "reference",  PW_TYPE_STRING_PTR,
+	{"reference", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_sql_config_section_t, reference), NULL, ".query"},
 	  
 	{"logfile", PW_TYPE_STRING_PTR,
@@ -49,11 +49,11 @@ static const CONF_PARSER section_config[] = {
 };
 
 static const CONF_PARSER module_config[] = {
-	{"driver",PW_TYPE_STRING_PTR,
+	{"driver", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
-	{"server",PW_TYPE_STRING_PTR,
+	{"server", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_server), NULL, "localhost"},
-	{"port",PW_TYPE_STRING_PTR,
+	{"port", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_port), NULL, ""},
 	{"login", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,sql_login), NULL, ""},
@@ -76,7 +76,8 @@ static const CONF_PARSER module_config[] = {
 	{"default_user_profile", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,default_profile), NULL, ""},
 	{"nas_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,nas_query), NULL, "SELECT id,nasname,shortname,type,secret FROM nas"},
+	 offsetof(SQL_CONFIG,nas_query), NULL,
+	 "SELECT id,nasname,shortname,type,secret FROM nas"},
 	{"authorize_check_query", PW_TYPE_STRING_PTR,
 	 offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR,
@@ -139,7 +140,6 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 	SQL_ROW row;
 	SQL_INST *inst = instance;
 	char querystr[MAX_QUERY_LEN];
-	char sqlusername[MAX_STRING_LEN];
 	size_t ret = 0;
 
 	RDEBUG("sql_xlat");
@@ -149,7 +149,7 @@ static size_t sql_xlat(void *instance, REQUEST *request,
          *  We could search the string fmt for SQL-User-Name to see if this is
          *  needed or not
          */
-	sql_set_user(inst, request, sqlusername, NULL);
+	sql_set_user(inst, request, NULL);
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
@@ -401,7 +401,8 @@ static int generate_sql_clients(SQL_INST *inst)
 /*
  *	Translate the SQL queries.
  */
-static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, void *arg)
+static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
+			      const char *in, void *arg)
 {
 	SQL_INST *inst = arg;
 	size_t len = 0;
@@ -456,39 +457,30 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-int sql_set_user(SQL_INST *inst, REQUEST *request, char *sqlusername, const char *username)
+int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
 {
-	VALUE_PAIR *vp=NULL;
-	char tmpuser[MAX_STRING_LEN];
-
-	tmpuser[0] = '\0';
-	sqlusername[0]= '\0';
-
-	/* Remove any user attr we added previously */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
+	VALUE_PAIR *vp = NULL;
+	const char *sqluser;
 
 	if (username != NULL) {
-		strlcpy(tmpuser, username, sizeof(tmpuser));
-	} else if (strlen(inst->config->query_user)) {
-		radius_xlat(tmpuser, sizeof(tmpuser), inst->config->query_user, request, NULL, NULL);
+		sqluser = username;
+	} else if (*inst->config->query_user) {
+		sqluser = inst->config->query_user;
 	} else {
 		return 0;
 	}
 
-	strlcpy(sqlusername, tmpuser, MAX_STRING_LEN);
-	RDEBUG2("sql_set_user escaped user --> '%s'", sqlusername);
-	vp = radius_pairmake(request, &request->packet->vps,
-			     "SQL-User-Name", NULL, 0);
+	vp = pairmake_xlat("SQL-User-Name", sqluser, T_OP_SET);
 	if (!vp) {
-		radlog(L_ERR, "%s", fr_strerror());
 		return -1;
 	}
 
-	strlcpy(vp->vp_strvalue, tmpuser, sizeof(vp->vp_strvalue));
-	vp->length = strlen(vp->vp_strvalue);
+	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
+	
+	pairxlatmove(request, &(request->packet->vps), &vp);
+	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
 
 	return 0;
-
 }
 
 
@@ -568,7 +560,6 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 {
 	SQLSOCK *sqlsocket;
 	SQL_INST *inst = instance;
-	char sqlusername[MAX_STRING_LEN];
 	SQL_GROUPLIST *group_list, *group_list_tmp;
 
 	check_pairs = check_pairs;
@@ -585,9 +576,9 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 		return 1;
 	}
 	/*
-	 * Set, escape, and check the user attr here
+	 *	Set, escape, and check the user attr here
 	 */
-	if (sql_set_user(inst, request, sqlusername, NULL) < 0)
+	if (sql_set_user(inst, request, NULL) < 0)
 		return 1;
 
 	/*
@@ -595,8 +586,6 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	 */
 	sqlsocket = sql_get_socket(inst);
 	if (sqlsocket == NULL) {
-		/* Remove the username we (maybe) added above */
-		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 		return 1;
 	}
 
@@ -606,8 +595,6 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	if (sql_get_grouplist(inst, sqlsocket, request, &group_list) < 0) {
 		radlog_request(L_ERR, 0, request,
 			       "Error getting group membership");
-		/* Remove the username we (maybe) added above */
-		pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 		sql_release_socket(inst, sqlsocket);
 		return 1;
 	}
@@ -618,8 +605,6 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 			       check->vp_strvalue);
 			/* Free the grouplist */
 			sql_grouplist_free(&group_list);
-			/* Remove the username we (maybe) added above */
-			pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 			sql_release_socket(inst, sqlsocket);
 			return 0;
 		}
@@ -627,8 +612,6 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 
 	/* Free the grouplist */
 	sql_grouplist_free(&group_list);
-	/* Remove the username we (maybe) added above */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 	sql_release_socket(inst,sqlsocket);
 
 	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s",
@@ -1023,19 +1006,11 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	int	rows;
 
 	char	querystr[MAX_QUERY_LEN];
-	char	sqlusername[MAX_STRING_LEN];
 
 	/*
-	 * the profile username is used as the sqlusername during
-	 * profile checking so that we don't overwrite the orignal
-	 * sqlusername string
+	 *  Set, escape, and check the user attr here
 	 */
-	char   profileusername[MAX_STRING_LEN];
-
-	/*
-	 * Set, escape, and check the user attr here
-	 */
-	if (sql_set_user(inst, request, sqlusername, NULL) < 0)
+	if (sql_set_user(inst, request, NULL) < 0)
 		return RLM_MODULE_FAIL;
 
 	/*
@@ -1159,7 +1134,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 			
 		RDEBUG("Checking profile %s", profile);
 		
-		if (sql_set_user(inst, request, profileusername, profile) < 0) {
+		if (sql_set_user(inst, request, profile) < 0) {
 			radlog_request(L_ERR, 0, request, "Error setting profile; rejecting user");
 
 			goto error;
@@ -1183,9 +1158,6 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 	
 	release:
 	sql_release_socket(inst, sqlsocket);
-
-	/* Remove the username we (maybe) added above */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
 		
 	pairfree(&check_tmp);
 	pairfree(&reply_tmp);
@@ -1219,7 +1191,6 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 
 	char	path[MAX_STRING_LEN];
 	char	querystr[MAX_QUERY_LEN];
-	char	sqlusername[MAX_STRING_LEN];
 	
 	char	*p = path;
 
@@ -1255,7 +1226,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	if (sqlsocket == NULL)
 		return RLM_MODULE_FAIL;
 		
-	sql_set_user(inst, request, sqlusername, NULL);
+	sql_set_user(inst, request, NULL);
 
 	while (TRUE) {
 		value = cf_pair_value(pair);
@@ -1327,10 +1298,6 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	(inst->module->sql_finish_query)(sqlsocket, inst->config);
 
 	release:
-		
-	/* Remove the username we (maybe) added above */
-	pairdelete(&request->packet->vps, PW_SQL_USER_NAME, 0, -1);
-	
 	sql_release_socket(inst, sqlsocket);
 
 	return ret;
@@ -1364,7 +1331,6 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	SQL_INST	*inst = instance;
 	SQL_ROW		row;
 	char		querystr[MAX_QUERY_LEN];
-	char		sqlusername[MAX_STRING_LEN];
 	int		check = 0;
         uint32_t        ipno = 0;
         char            *call_num = NULL;
@@ -1386,7 +1352,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 	}
 
 
-	if(sql_set_user(inst, request, sqlusername, NULL) < 0)
+	if(sql_set_user(inst, request, NULL) < 0)
 		return RLM_MODULE_FAIL;
 
 	radius_xlat(querystr, sizeof(querystr), inst->config->simul_count_query, request, sql_escape_func, inst);
