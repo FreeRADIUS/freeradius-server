@@ -64,9 +64,7 @@ typedef struct {
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
 	VALUE_PAIR_MAP	*user_map;	/* Applied to users and profiles */
-
-	int		do_xlat;
-
+	
 	/*
 	 *	Access related configuration
 	 */
@@ -264,9 +262,6 @@ static const CONF_PARSER module_config[] = {
 	/*
 	 *	Terrible things which should be deleted.
 	 */
-	{"do_xlat", PW_TYPE_BOOLEAN,
-	 offsetof(ldap_instance,do_xlat), NULL, "yes"},
-
 	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (const void *) attr_config },
 
 	{ "group", PW_TYPE_SUBSECTION, 0, NULL, (const void *) group_config },

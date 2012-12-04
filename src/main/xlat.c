@@ -666,6 +666,29 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 	return len;
 }
 
+/**
+ * @brief xlat expand string attribute value
+ */
+static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
+			const char *fmt, char *out, size_t outlen)
+{
+	VALUE_PAIR *vp;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (outlen < 3) {
+	nothing:
+		*out = '\0';
+		return 0;
+	}
+
+	if (radius_get_vp(request, fmt, &vp) < 0) goto nothing;
+
+	if (!vp) goto nothing;
+
+	return radius_xlat(out, outlen, vp->vp_strvalue, request, NULL, NULL);
+}
+
 #ifdef HAVE_REGEX_H
 /*
  * @brief Expand regexp matches %{0} to %{8}
@@ -832,6 +855,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		XLAT_REGISTER(hex);
 		XLAT_REGISTER(base64);
 		XLAT_REGISTER(string);
+		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
 
 #ifdef HAVE_REGEX_H
