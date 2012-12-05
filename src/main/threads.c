@@ -198,7 +198,7 @@ static const CONF_PARSER thread_config[] = {
 	{ "max_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.max_spare_threads,       "10" },
 	{ "max_requests_per_server", PW_TYPE_INTEGER, 0, &thread_pool.max_requests_per_thread, "0" },
 	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" },
-	{ "max_queue_size",          PW_TYPE_INTEGER, 0, &thread_pool.max_queue_size,           "65536" },
+	{ "max_queue_size",          PW_TYPE_INTEGER, 0, &thread_pool.max_queue_size,          "65536" },
 #ifdef WITH_STATS
 #ifdef WITH_ACCOUNTING
 	{ "auto_limit_acct",	     PW_TYPE_BOOLEAN, 0, &thread_pool.auto_limit_acct, NULL },
@@ -537,8 +537,8 @@ static int request_dequeue(REQUEST **prequest)
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	if (blocked) {
-		radlog(L_ERR, "%s %u has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		       fr_packet_codes[request->packet->code], request->number, (int) blocked);
+		radlog(L_ERR, "(%u) %s has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
+		       request->number, fr_packet_codes[request->packet->code], (int) blocked);
 	}
 
 	return 1;

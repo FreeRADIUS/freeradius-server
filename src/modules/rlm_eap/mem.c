@@ -168,7 +168,8 @@ void eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler)
 		handler->opaque = NULL;
 	}
 	else if ((handler->opaque) && (handler->free_opaque == NULL))
-                radlog(L_ERR, "Possible memory leak ...");
+                radlog(L_ERR, "rlm_eap (%s): Possible memory leak ...", 
+                       inst->xlat_name);
 
 	handler->opaque = NULL;
 	handler->free_opaque = NULL;
@@ -236,15 +237,15 @@ done:
 	free(check);
 
 	if (do_warning) {
-		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		DEBUG("WARNING: !! EAP session for state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!",
+		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("WARNING: !! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!  !!",
 		      state[0], state[1],
 		      state[2], state[3],
 		      state[4], state[5],
 		      state[6], state[7]);
 
-		DEBUG("WARNING: !! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility");
-		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUG("WARNING: !! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
+		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 }
 
@@ -286,7 +287,8 @@ static uint32_t eap_rand(fr_randctx *ctx)
 }
 
 
-static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, EAP_HANDLER *handler)
+static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
+				   EAP_HANDLER *handler)
 {
 	rbnode_t *node;
 
@@ -295,6 +297,12 @@ static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 	handler = rbtree_node2data(inst->session_tree, node);
 
+	RDEBUG("Finished EAP session with state "
+	       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
+	       handler->state[0], handler->state[1],
+	       handler->state[2], handler->state[3],
+	       handler->state[4], handler->state[5],
+	       handler->state[6], handler->state[7]);
 	/*
 	 *	Delete old handler from the tree.
 	 */
@@ -319,7 +327,7 @@ static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, EAP_HANDLER *handler)
 }
 
 
-static void eaplist_expire(rlm_eap_t *inst, time_t timestamp)
+static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 {
 	int i;
 	EAP_HANDLER *handler;
@@ -334,6 +342,13 @@ static void eaplist_expire(rlm_eap_t *inst, time_t timestamp)
 	for (i = 0; i < 3; i++) {
 		handler = inst->session_head;
 		if (!handler) break;
+		
+		RDEBUG("Expiring EAP session with state"
+		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
+		       handler->state[0], handler->state[1],
+		       handler->state[2], handler->state[3],
+		       handler->state[4], handler->state[5],
+		       handler->state[6], handler->state[7]);
 
 		/*
 		 *	Expire entries from the start of the list.
@@ -403,7 +418,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 */
 	if (rbtree_num_elements(inst->session_tree) >= inst->max_sessions) {
 		status = -1;
-		eaplist_expire(inst, handler->timestamp);
+		eaplist_expire(inst, request, handler->timestamp);
 		goto done;
 	}
 
@@ -493,14 +508,25 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 			if (last_logged < handler->timestamp) {
 				last_logged = handler->timestamp;
-				radlog(L_ERR, "rlm_eap: Too many open sessions.  Try increasing \"max_sessions\" in the EAP module configuration");
+				radlog(L_ERR, "rlm_eap (%s): Too many open "
+				       "sessions.  Try increasing "
+				       "\"max_sessions\" in the EAP module "
+				       "configuration", inst->xlat_name);
 			}				       
 		} else {
-			radlog(L_ERR, "rlm_eap: Internal error: failed to store handler");
+			radlog(L_ERR, "rlm_eap (%s): Internal error: "
+			       "failed to store handler", inst->xlat_name);
 		}
 		return 0;
 	}
 
+	RDEBUG("New EAP session, adding 'State' attribute to reply "
+	       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
+	       state->vp_octets[0], state->vp_octets[1],
+	       state->vp_octets[2], state->vp_octets[3],
+	       state->vp_octets[4], state->vp_octets[5],
+	       state->vp_octets[6], state->vp_octets[7]);
+	       
 	pairadd(&(request->reply->vps), state);
 
 	return 1;
@@ -542,27 +568,47 @@ EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 */
 	PTHREAD_MUTEX_LOCK(&(inst->session_mutex));
 
-	eaplist_expire(inst, request->timestamp);
+	eaplist_expire(inst, request, request->timestamp);
 
-	handler = eaplist_delete(inst, &myHandler);
+	handler = eaplist_delete(inst, request, &myHandler);
 	PTHREAD_MUTEX_UNLOCK(&(inst->session_mutex));
 
 	/*
 	 *	Might not have been there.
 	 */
 	if (!handler) {
-		radlog(L_ERR, "rlm_eap: No EAP session matching the State variable.");
+		radlog(L_ERR, "rlm_eap (%s): No EAP session matching state "
+		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
+		       inst->xlat_name,
+		       state->vp_octets[0], state->vp_octets[1],
+		       state->vp_octets[2], state->vp_octets[3],
+		       state->vp_octets[4], state->vp_octets[5],
+		       state->vp_octets[6], state->vp_octets[7]);
 		return NULL;
 	}
 
 	if (handler->trips >= 50) {
-		RDEBUG2("More than 50 authentication packets for this EAP session.  Aborted.");
+		radlog(L_ERR, "rlm_eap (%s): Aborting! More than 50 roundtrips "
+		       "made in session with state "
+		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
+		       inst->xlat_name,
+		       state->vp_octets[0], state->vp_octets[1],
+		       state->vp_octets[2], state->vp_octets[3],
+		       state->vp_octets[4], state->vp_octets[5],
+		       state->vp_octets[6], state->vp_octets[7]);
+		       
+		
 		eap_handler_free(inst, handler);
 		return NULL;
 	}
 	handler->trips++;
 
-	RDEBUG2("Request found, released from the list");
+	RDEBUG("Previous EAP request found for state "
+	       "0x%02x%02x%02x%02x%02x%02x%02x%02x, released from the list",
+		state->vp_octets[0], state->vp_octets[1],
+		state->vp_octets[2], state->vp_octets[3],
+		state->vp_octets[4], state->vp_octets[5],
+		state->vp_octets[6], state->vp_octets[7]);
 
 	/*
 	 *	Remember what the previous request was.

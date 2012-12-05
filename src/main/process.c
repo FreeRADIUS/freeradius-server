@@ -852,11 +852,10 @@ STATE_MACHINE_DECL(request_common)
 			return;
 		}
 #endif
-		radlog(L_ERR, "Discarding duplicate request from "
+		radlog(L_ERR, "(%u) Discarding duplicate request from "
 		       "client %s port %d - ID: %u due to unfinished request %u",
-		       request->client->shortname,
-		       request->packet->src_port,request->packet->id,
-		       request->number);
+		       request->number, request->client->shortname,
+		       request->packet->src_port,request->packet->id);
 		break;
 
 	case FR_ACTION_CONFLICTING:
@@ -934,11 +933,10 @@ STATE_MACHINE_DECL(request_reject_delay)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		radlog(L_ERR, "Discarding duplicate request from "
+		radlog(L_ERR, "(%u) Discarding duplicate request from "
 		       "client %s port %d - ID: %u due to delayed reject %u",
-		       request->client->shortname,
-		       request->packet->src_port,request->packet->id,
-		       request->number);
+		       request->number, request->client->shortname,
+		       request->packet->src_port,request->packet->id);
 		return;
 
 #ifdef WITH_PROXY
