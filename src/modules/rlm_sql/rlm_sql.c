@@ -474,11 +474,11 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
 	if (!vp) {
 		return -1;
 	}
-
-	RDEBUG2("SQL-User-Name set to '%s'", vp->vp_strvalue);
 	
 	pairxlatmove(request, &(request->packet->vps), &vp);
 	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
+
+	RDEBUG2("SQL-User-Name updated");
 
 	return 0;
 }
