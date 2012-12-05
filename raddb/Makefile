@@ -11,7 +11,7 @@ include ../Make.inc
 #
 FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
 	attrs.pre-proxy clients.conf dictionary templates.conf	\
-	experimental.conf hints huntgroups ldap.attrmap			\
+	experimental.conf hints huntgroups \
 	policy.txt preproxy_users proxy.conf radiusd.conf trigger.conf	\
 	users attrs.access_challenge README.rst
 

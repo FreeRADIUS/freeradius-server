@@ -30,7 +30,6 @@ case "$1" in
             /etc/freeradius/proxy.conf \
             /etc/freeradius/attrs.pre-proxy \
             /etc/freeradius/hints \
-            /etc/freeradius/ldap.attrmap \
             /etc/freeradius/attrs \
             /etc/freeradius/policy.txt \
             /etc/freeradius/attrs.accounting_response \

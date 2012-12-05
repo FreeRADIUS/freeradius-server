@@ -318,7 +318,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
 %config(noreplace) %{_sysconfdir}/raddb/hints
 %config(noreplace) %{_sysconfdir}/raddb/huntgroups
-%config(noreplace) %{_sysconfdir}/raddb/ldap.attrmap
 %attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sqlippool.conf
 %attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/preproxy_users
 %attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/proxy.conf

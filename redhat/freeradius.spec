@@ -507,7 +507,6 @@ fi
 
 %files ldap
 %defattr(-,root,root)
-%attr(640,root,radiusd) %config(noreplace) /etc/raddb/ldap.attrmap
 %{_libdir}/freeradius/rlm_ldap.so
 %{_libdir}/freeradius/rlm_ldap-%{version}.so
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/ldap
