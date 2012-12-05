@@ -492,8 +492,10 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 			   const char *fmt, char *out, size_t outlen)
 {
-	VALUE_PAIR *vp;
+	VALUE_PAIR 	*vp;
 
+	uint64_t 	integer;
+	
 	while (isspace((int) *fmt)) fmt++;
 
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
@@ -501,21 +503,31 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	if ((vp->type != PW_TYPE_IPADDR) &&
-	    (vp->type != PW_TYPE_INTEGER) &&
-	    (vp->type != PW_TYPE_INTEGER64) &&
-	    (vp->type != PW_TYPE_SHORT) &&
-	    (vp->type != PW_TYPE_BYTE) &&
-	    (vp->type != PW_TYPE_DATE)) {
-		*out = '\0';
-		return 0;
-	}
+	switch (vp->type)
+	{		
+		case PW_TYPE_OCTETS:
+		case PW_TYPE_STRING:
+			if (vp->length > 8) {
+				break;
+			} 
 
-	if (vp->type == PW_TYPE_INTEGER64) {
-		return snprintf(out, outlen, "%llu", vp->vp_integer64);
+			memcpy(&integer, &(vp->vp_octets), vp->length);
+			
+			return snprintf(out, outlen, "%llu", ntohll(integer));	
+			
+		case PW_TYPE_INTEGER64:
+			return snprintf(out, outlen, "%llu", vp->vp_integer64);
+			
+		case PW_TYPE_IPADDR:
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_SHORT:
+		case PW_TYPE_BYTE:
+		case PW_TYPE_DATE:
+			return snprintf(out, outlen, "%u", vp->vp_integer);
 	}
-
-	return snprintf(out, outlen, "%u", vp->vp_integer);
+	
+	*out = '\0';
+	return 0;
 }
 
 /**
