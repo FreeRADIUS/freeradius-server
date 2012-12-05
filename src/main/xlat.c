@@ -1439,7 +1439,7 @@ size_t radius_xlat(char *out, int outlen, const char *fmt,
 	}
 	*q = '\0';
 
-	RDEBUG2("\texpand: %s -> %s", fmt, out);
+	RDEBUG2("\texpand: '%s' -> '%s'", fmt, out);
 
 	return strlen(out);
 }

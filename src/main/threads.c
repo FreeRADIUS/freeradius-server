@@ -536,8 +536,8 @@ static int request_dequeue(REQUEST **prequest)
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	if (blocked) {
-		radlog(L_ERR, "Request %u has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
-		       request->number, (int) blocked);
+		radlog(L_ERR, "%s %u has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
+		       fr_packet_codes[request->packet->code], request->number, (int) blocked);
 	}
 
 	return 1;
