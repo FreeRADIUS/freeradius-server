@@ -424,7 +424,7 @@ int request_enqueue(REQUEST *request)
 static int request_dequeue(REQUEST **prequest)
 {
 	time_t blocked;
-	static time_t last_complained;
+	static time_t last_complained = 0;
 	RAD_LISTEN_TYPE i, start;
 	REQUEST *request;
 	reap_children();
@@ -525,6 +525,7 @@ static int request_dequeue(REQUEST **prequest)
 	blocked = time(NULL);
 	if ((blocked - request->timestamp) > 5) {
 		if (last_complained < blocked) {
+			last_complained = blocked;
 			blocked -= request->timestamp;
 		} else {
 			blocked = 0;
