@@ -201,8 +201,11 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			goto next_attr;
 		}
 
-		if (size > 253) {
-			RDEBUG2("WARNING: diameter2vp skipping long attribute %u, attr");
+		/*
+		 * EAP-Message AVPs can be larger than 253 octets.
+		 */
+		if ((size > 253) && !((VENDOR(attr) == 0) && (attr == PW_EAP_MESSAGE))) {
+			RDEBUG2("WARNING: diameter2vp skipping long attribute %u", attr);
 			goto next_attr;
 		}
 
