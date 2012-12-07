@@ -81,6 +81,7 @@ endif
 		--enable-ltdl-install=no --enable-strict-dependencies \
 		--with-experimental-modules=no \
 		--enable-boilermake \
+		--disable-developer \
 		--with-large-files --with-udpfromto --with-edir \
 		--config-cache \
 		--without-rlm_eap_tnc \
