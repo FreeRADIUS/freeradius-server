@@ -3917,8 +3917,8 @@ WITH_EDIRECTORY=no
 if test "${with_edir+set}" = set; then
   withval=$with_edir;  case "$withval" in
     yes)
-	SMART_CFLAGS="$SMART_CFLAGS -DNOVELL_UNIVERSAL_PASSWORD -DNOVELL"
-	edir="edir_ldapext.c"
+	SMART_CFLAGS="$SMART_CFLAGS -DWITH_EDIR"
+	edir="edir.c"
         ;;
     *)
         ;;
