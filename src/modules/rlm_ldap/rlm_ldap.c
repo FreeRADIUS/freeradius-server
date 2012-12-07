@@ -38,6 +38,11 @@ RCSID("$Id$")
 #define MAX_ATTR_STR_LEN	256
 #define MAX_FILTER_STR_LEN	1024
 
+#ifdef WITH_EDIR
+extern int nmasldap_get_password(LDAP *ld,char *objectDN, char *pwd, size_t *pwdSize);
+
+#endif
+
 typedef struct {
 	CONF_SECTION	*cs;
 	fr_connection_pool_t *pool;
@@ -106,6 +111,12 @@ typedef struct {
 	int		timeout;
 	int		is_url;
 
+#ifdef WITH_EDIR
+ 	/*
+	 *	eDir support
+	 */
+	int		edir;
+#endif
 	/*
 	 *	For keep-alives.
 	 */
@@ -259,6 +270,12 @@ static const CONF_PARSER module_config[] = {
 	{"expect_password", PW_TYPE_BOOLEAN,
 	 offsetof(ldap_instance,expect_password), NULL, "yes"},
 	 
+#ifdef WITH_EDIR
+	/* support for eDirectory Universal Password */
+	{"edir", PW_TYPE_BOOLEAN,
+	 offsetof(ldap_instance,edir), NULL, NULL}, /* NULL defaults to "no" */
+#endif
+
 	/*
 	 *	Terrible things which should be deleted.
 	 */
@@ -1870,6 +1887,48 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	 */
 	pairadd(&request->config_items,
 		pairmake("Ldap-UserDn", user_dn, T_OP_EQ));
+
+#ifdef WITH_EDIR
+	/*
+	 *	We already have a Cleartext-Password.  Skip edir.
+	 */
+	if (inst->edir && pairfind(request->config_items,
+				   PW_CLEARTEXT_PASSWORD, 0)) {
+		goto skip_edir;
+	}
+
+	/*
+	 *      Retrieve Universal Password if we use eDirectory
+	 */
+	if (inst->edir) {
+		int res = 0;
+		size_t bufsize;
+		char buffer[256];
+
+		bufsize = sizeof(buffer);
+
+		/* retrive universal password */
+		res = nmasldap_get_password(conn->handle, user_dn,
+					    buffer, &bufsize);
+		if (res != 0) {
+			RDEBUG2("Failed to retrieve eDirectory password. Check your configuration !");
+			module_rcode = RLM_MODULE_NOOP;
+			goto free_result;
+		}
+
+		/* add Cleartext-Password attribute to the request */
+		vp = radius_paircreate(request, &request->config_items,
+				       PW_CLEARTEXT_PASSWORD, 0, PW_TYPE_STRING);
+		strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));
+		vp->length = strlen(vp->vp_strvalue);
+		
+		RDEBUG2("Added eDirectory password in check items as %s = %s",
+			vp->name, vp->vp_strvalue);
+	}
+
+skip_edir:
+#endif
+
 	ldap_memfree(user_dn);
 
 	/*

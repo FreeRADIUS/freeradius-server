@@ -3,7 +3,7 @@
 #
 
 TARGET     = @targetname@
-SRCS       = rlm_ldap.c
+SRCS       = rlm_ldap.c @edir@
 RLM_CFLAGS = @ldap_cflags@
 RLM_LIBS   = @ldap_ldflags@
 
