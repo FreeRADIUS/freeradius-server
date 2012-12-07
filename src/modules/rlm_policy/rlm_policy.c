@@ -277,7 +277,7 @@ void rlm_policy_free_item(policy_item_t *item)
 
 				this = (policy_named_t *) item;
 				rad_assert(this->name != NULL);
-				free(this->name);
+				free((void *) this->name);
 				rlm_policy_free_item(this->policy);
 			}
 			break;
@@ -287,7 +287,7 @@ void rlm_policy_free_item(policy_item_t *item)
 				policy_call_t *this;
 
 				this = (policy_call_t *) item;
-				free(this->name);
+				free((void *) this->name);
 			}
 			break;
 
