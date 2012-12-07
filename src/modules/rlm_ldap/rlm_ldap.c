@@ -2067,6 +2067,76 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 }
 
 
+#ifdef WITH_EDIR
+/*****************************************************************************
+ *
+ *	Function: ldap_postauth
+ *
+ *	Purpose: Check the user's password against ldap database
+ *
+ *****************************************************************************/
+static int ldap_postauth(void *instance, REQUEST * request)
+{
+	int		module_rcode;
+	const char	*user_dn;
+	ldap_instance	*inst = instance;
+	LDAP_CONN	*conn;
+	VALUE_PAIR	*vp;
+
+	/*
+	 *	Ensure that we have a username and a
+	 *	Cleartext-Password in the request
+	 */
+	if (!request->username) {
+		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"User-Name\" is "
+		       "required for authentication", inst->xlat_name);
+		return RLM_MODULE_INVALID;
+	}
+
+	vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+	if (!vp) {
+		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"Cleartext-Password\" "
+		       "is required for authentication.", inst->xlat_name);
+		return RLM_MODULE_INVALID;
+	}
+
+	if (!*vp->vp_strvalue) {
+		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"Cleartext-Password\" "
+		       "is empty.", inst->xlat_name);
+		return RLM_MODULE_INVALID;
+	}
+
+	conn = ldap_get_socket(inst);
+	if (!conn) return RLM_MODULE_FAIL;
+
+	RDEBUG("Login attempt by \"%s\" with password \"%s\"",
+	       request->username->vp_strvalue, vp->vp_strvalue);
+
+	/*
+	 *	Get the DN by doing a search.
+	 */
+	user_dn = get_userdn(&conn, request, &module_rcode);
+	if (!user_dn) {
+		ldap_release_socket(inst, conn);
+		return module_rcode;
+	}
+
+	/*
+	 *	Bind as the user
+	 */
+	conn->rebound = TRUE;
+	module_rcode = ldap_bind_wrapper(&conn, user_dn,
+					 vp->vp_strvalue,
+					 NULL, TRUE);
+	if (module_rcode == RLM_MODULE_OK) {
+		RDEBUG("Bind as user \"%s\" was successful", user_dn);
+	}
+
+	ldap_release_socket(inst, conn);
+	return module_rcode;
+}
+#endif
+
 /* globally exported name */
 module_t rlm_ldap = {
 	RLM_MODULE_INIT,
@@ -2082,6 +2152,10 @@ module_t rlm_ldap = {
 		NULL,			/* checksimul 		 */
 		NULL,			/* pre-proxy 		 */
 		NULL,			/* post-proxy 		 */
-		NULL
+#ifdef WITH_EDIR
+		ldap_postauth		/* post-auth */
+#else
+		NULL			/* post-auth */
+#endif
 	},
 };
