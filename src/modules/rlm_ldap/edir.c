@@ -141,7 +141,7 @@ static int berDecodeLoginData(struct berval *replyBV,int *serverVersion,
 	}
 
 	rc = ber_scanf(replyBer, "{iis}", serverVersion, &err,
-		       output, &outlen);
+		       output, outlen);
 	if (rc == -1) {
 		err = NMAS_E_FRAG_FAILURE;
 		goto cleanup;
