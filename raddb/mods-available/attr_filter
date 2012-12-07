@@ -10,13 +10,13 @@
 # proxied servers, to make sure we send back to our RADIUS client
 # only allowed attributes.
 attr_filter attr_filter.post-proxy {
-	attrsfile = ${confdir}/attrs
+	file = ${confdir}/filter/post-proxy
 }
 
 # attr_filter - filters the attributes in the packets we send to
 # the RADIUS home servers.
 attr_filter attr_filter.pre-proxy {
-	attrsfile = ${confdir}/attrs.pre-proxy
+	file = ${confdir}/filter/pre-proxy
 }
 
 # Enforce RFC requirements on the contents of Access-Reject
@@ -25,7 +25,7 @@ attr_filter attr_filter.pre-proxy {
 #
 attr_filter attr_filter.access_reject {
 	key = %{User-Name}
-	attrsfile = ${confdir}/attrs.access_reject
+	file = ${confdir}/filter/access_reject
 }
 
 # Enforce RFC requirements on the contents of Access-Challenge
@@ -34,7 +34,7 @@ attr_filter attr_filter.access_reject {
 #
 attr_filter attr_filter.access_challenge {
 	key = %{User-Name}
-	attrsfile = ${confdir}/attrs.access_challenge
+	file = ${confdir}/filter/access_challenge
 }
 
 
@@ -44,5 +44,5 @@ attr_filter attr_filter.access_challenge {
 #
 attr_filter attr_filter.accounting_response {
 	key = %{User-Name}
-	attrsfile = ${confdir}/attrs.accounting_response
+	file = ${confdir}/filter/accounting_response
 }

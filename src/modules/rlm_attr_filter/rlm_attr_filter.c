@@ -41,15 +41,15 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 struct attr_filter_instance {
-	char *attrsfile;
+	char *file;
 	char *key;
 	int relaxed;
 	PAIR_LIST *attrs;
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "attrsfile",     PW_TYPE_FILENAME,
-	  offsetof(struct attr_filter_instance,attrsfile), NULL, "${raddbdir}/attrs" },
+	{ "file",     PW_TYPE_FILENAME,
+	  offsetof(struct attr_filter_instance,file), NULL, "${raddbdir}/attrs" },
 	{ "key",     PW_TYPE_STRING_PTR,
 	  offsetof(struct attr_filter_instance,key), NULL, "%{Realm}" },
 	{ "relaxed",    PW_TYPE_BOOLEAN,
@@ -75,7 +75,7 @@ static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 }
 
 
-static int getattrsfile(const char *filename, PAIR_LIST **pair_list)
+static int attr_filter_getfile(const char *filename, PAIR_LIST **pair_list)
 {
 	int rcode;
 	PAIR_LIST *attrs = NULL;
@@ -154,9 +154,9 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	rcode = getattrsfile(inst->attrsfile, &inst->attrs);
+	rcode = attr_filter_getfile(inst->file, &inst->attrs);
         if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading %s", inst->attrsfile);
+		radlog(L_ERR|L_CONS, "Errors reading %s", inst->file);
 		attr_filter_detach(inst);
 		return -1;
 	}
