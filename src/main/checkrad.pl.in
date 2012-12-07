@@ -24,7 +24,7 @@
 #		digitro_rusers	 1.1	Author: accdias@sst.com.br
 #		cyclades_snmp	 1.0	Author: accdias@sst.com.br
 #		usrhiper_snmp    1.0    Author: igor@ipass.net
-#		juniper_e_snmp   1.0    Author: guilhermefranco@gmail.com
+#		juniper_e_snmp   1.1    Author: guilhermefranco@gmail.com
 #		multitech_snmp   1.0    Author: ehonzay@willmar.com
 #		netserver_telnet 1.0	Author: mts@interplanet.es
 #		versanet_snmp    1.0    Author: support@versanetcomm.com
@@ -467,12 +467,17 @@ sub cisco_snmp {
 }
 
 #
-#       Check the subscriber name on a Juniper JunosE E-Series BRAS (ERX, E120, E320 )
+#       Check the subscriber name on a Juniper JunosE E-Series BRAS (ERX, E120, E320). Requires "radius acct-session-id-format decimal" configuration in the BRAS.
 #
 #       Author: Guilherme Franco <guilhermefranco@gmail.com>
 #
 sub juniper_e_snmp {
-                $out=snmpwalk($ARGV[1],$cmmty_string,".1.3.6.1.4.1.4874.2.2.20.1.8.4.1.2");
+		#receives acct_session
+                my $temp = $ARGV[4];
+                #removes the leading 0s
+                my $clean_temp = int $temp;
+
+                $out=snmpget($ARGV[1], $cmmty_string, ".1.3.6.1.4.1.4874.2.2.20.1.8.4.1.2.$clean_temp");
                 if($out=~/\"$ARGV[3]\"/){
                         return 1;
                 }else{
