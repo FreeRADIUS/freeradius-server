@@ -1062,7 +1062,7 @@ void radius_tmplfree(VALUE_PAIR_TMPL **tmpl)
 	if (*tmpl == NULL) return;
 	
 	if ((*tmpl)->name) {
-		free((*tmpl)->name);
+		free((void *) (*tmpl)->name);
 	}
 	
 	free(*tmpl);

@@ -540,7 +540,7 @@ static void *ldap_conn_create(void *ctx)
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT,
 				(inst->tls_require_cert)) != LDAP_OPT_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		radlog(L_ERR, "rlm_ldap (%s): could not set ", 
+		radlog(L_ERR, "rlm_ldap (%s): could not set "
 		       "LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s",
 		       inst->xlat_name, 
 		       inst->tls_require_cert,
