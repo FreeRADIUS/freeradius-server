@@ -28,13 +28,8 @@ case "$1" in
             /etc/freeradius/experimental.conf \
             /etc/freeradius/huntgroups \
             /etc/freeradius/proxy.conf \
-            /etc/freeradius/attrs.pre-proxy \
             /etc/freeradius/hints \
-            /etc/freeradius/attrs \
             /etc/freeradius/policy.txt \
-            /etc/freeradius/attrs.accounting_response \
-            /etc/freeradius/attrs.access_reject \
-            /etc/freeradius/attrs.access_challenge \
             /etc/freeradius/clients.conf \
             /etc/freeradius/acct_users
           do
@@ -43,10 +38,11 @@ case "$1" in
             fi
           done
 
-          for dir in /etc/freeradius/certs/ \
-            /etc/freeradius/sites-available/ \
-            /etc/freeradius/sites-enabled/ \
-            /etc/freeradius/policy.d/
+          for dir in /etc/freeradius/certs \
+            /etc/freeradius/sites-available \
+            /etc/freeradius/sites-enabled \
+            /etc/freeradius/filter \
+            /etc/freeradius/policy.d
           do
             if ! dpkg-statoverride --list | grep -qw $dir$; then
               dpkg-statoverride --add --update freerad freerad 2751 $dir
