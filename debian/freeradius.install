@@ -1,9 +1,5 @@
 etc/freeradius/acct_users
-etc/freeradius/attrs
-etc/freeradius/attrs.access_reject
-etc/freeradius/attrs.access_challenge
-etc/freeradius/attrs.accounting_response
-etc/freeradius/attrs.pre-proxy
+etc/freeradius/filter/*
 etc/freeradius/clients.conf
 etc/freeradius/experimental.conf
 etc/freeradius/hints

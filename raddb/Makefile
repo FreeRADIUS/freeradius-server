@@ -9,11 +9,10 @@ include ../Make.inc
 #
 #  The list of files to install.
 #
-FILES = acct_users attrs attrs.access_reject attrs.accounting_response	\
-	attrs.pre-proxy clients.conf dictionary templates.conf	\
-	experimental.conf hints huntgroups \
-	policy.txt preproxy_users proxy.conf radiusd.conf trigger.conf	\
-	users attrs.access_challenge README.rst
+FILES = acct_users clients.conf dictionary templates.conf \
+	experimental.conf hints huntgroups policy.txt \
+	preproxy_users proxy.conf radiusd.conf trigger.conf \
+	users README.rst
 
 DEFAULT_SITES = default inner-tunnel
 
@@ -59,8 +58,9 @@ install:
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/mods-available
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/mods-enabled
 	$(INSTALL) -d -m 750	$(R)$(raddbdir)/policy.d
+	$(INSTALL) -d -m 750	$(R)$(raddbdir)/filter
 	@echo "Creating/updating files in $(R)$(raddbdir)"; \
-	for i in $(FILES) `find sites-available/ mods-available/ policy.d/ -type f -print | sed 's/.*~//;s/.*#.*//' `; do \
+	for i in $(FILES) `find sites-available/ mods-available/ policy.d/ filter/ -type f -print | sed 's/.*~//;s/.*#.*//' `; do \
 		[ ! -f $(R)$(raddbdir)/$$i ] && $(INSTALL) -m 640 $$i $(R)$(raddbdir)/$$i; \
 		if [ "`find $$i -newer $(R)$(raddbdir)/$$i`" ]; then \
 			echo "** $(R)$(raddbdir)/$$i"; \
