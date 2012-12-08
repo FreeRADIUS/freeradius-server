@@ -60,8 +60,6 @@ int nmasldap_get_password(LDAP *ld,char *objectDN, char *pwd, size_t *pwdSize);
  *	RequestBer contents:
  *		clientVersion				INTEGER
  *		targetObjectDN				OCTET STRING
- *		password1				OCTET STRING
- *		password2				OCTET STRING
  *
  *	Description:
  *		This function takes the request BER value and input
