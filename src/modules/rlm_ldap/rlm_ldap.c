@@ -15,8 +15,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
- *   Copyright 1999,2000,2001,2002,2003,2004,2005,2006,2007,2008,
- *	       2009,2010,2011,1012 The FreeRADIUS Server Project.
+ *   Copyright 1999-2012 The FreeRADIUS Server Project.
  *
  *   Copyright 2012 Alan DeKok <aland@freeradius.org>
  */
@@ -287,8 +286,6 @@ static const CONF_PARSER module_config[] = {
 	 (const void *) option_config },
 
 	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
-
-	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (const void *) attr_config },
 
 	{NULL, -1, 0, NULL, NULL}
 };
