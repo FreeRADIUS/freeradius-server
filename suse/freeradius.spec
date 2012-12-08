@@ -307,14 +307,10 @@ rm -rf $RPM_BUILD_ROOT
 %dir %attr(755,radiusd,radiusd) /var/lib/radiusd
 # configs
 %dir %attr(750,-,radiusd) %{_sysconfdir}/raddb
+%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/filter/*
 %defattr(-,root,radiusd)
 %config(noreplace) %{_sysconfdir}/raddb/dictionary
 %config(noreplace) %{_sysconfdir}/raddb/acct_users
-%config(noreplace) %{_sysconfdir}/raddb/attrs
-%config(noreplace) %{_sysconfdir}/raddb/attrs.access_reject
-%config(noreplace) %{_sysconfdir}/raddb/attrs.access_challenge
-%config(noreplace) %{_sysconfdir}/raddb/attrs.accounting_response
-%config(noreplace) %{_sysconfdir}/raddb/attrs.pre-proxy
 %attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
 %config(noreplace) %{_sysconfdir}/raddb/hints
 %config(noreplace) %{_sysconfdir}/raddb/huntgroups

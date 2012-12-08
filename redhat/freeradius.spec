@@ -279,13 +279,9 @@ fi
 # configs
 %dir %attr(755,root,radiusd) /etc/raddb
 %defattr(-,root,radiusd)
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/filter/*
 %attr(644,root,radiusd) %config(noreplace) /etc/raddb/dictionary
 %config(noreplace) /etc/raddb/acct_users
-%config(noreplace) /etc/raddb/attrs
-%config(noreplace) /etc/raddb/attrs.access_challenge
-%config(noreplace) /etc/raddb/attrs.access_reject
-%config(noreplace) /etc/raddb/attrs.accounting_response
-%config(noreplace) /etc/raddb/attrs.pre-proxy
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/clients.conf
 %config(noreplace) /etc/raddb/hints
 %config(noreplace) /etc/raddb/huntgroups

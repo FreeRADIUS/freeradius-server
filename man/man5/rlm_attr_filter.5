@@ -102,7 +102,7 @@ sample rule ordering and how to use the different operators.
 .DE
 .PP
 The configuration items are:
-.IP attrsfile
+.IP file
 This specifies the location of the file used to load the filter rules.
 This file is used to filter the accounting response, packet before it
 is proxied, proxy response from the home server, or our response to
@@ -135,7 +135,7 @@ Filters Access-Accept or Access-Reject packets.
 .PP
 .SH FILES
 .I /etc/raddb/radiusd.conf
-.I /etc/raddb/attrs
+.I /etc/raddb/filter/*
 .PP
 .SH "SEE ALSO"
 .BR radiusd (8),
