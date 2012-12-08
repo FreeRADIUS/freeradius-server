@@ -57,6 +57,11 @@ ldap {
 	# if you're not using LDAP to retrieve password values.
 #	expect_password = "yes" 
 
+        # Set to yes if you have eDirectory and want to use the universal
+        # password mechanism. Add ldap in post-auth to perform account
+        # policy checking
+#       edir = "no"
+
 	#
 	#  Profile related attributes.
 	#
