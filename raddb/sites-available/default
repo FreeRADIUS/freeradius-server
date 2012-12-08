@@ -640,9 +640,8 @@ post-auth {
 #	sql_log
 
 	#
-	#  Un-comment the following if you have set
-	#  'edir_account_policy_check = yes' in the ldap module sub-section of
-	#  the 'modules' section.
+	#  Un-comment the following if you have set 'edir = yes'
+	#  in the ldap module sub-section of the 'modules' section.
 	#
 #	ldap
 
