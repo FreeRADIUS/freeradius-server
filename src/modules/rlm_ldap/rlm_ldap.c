@@ -1606,16 +1606,15 @@ static void xlat_attrsfree(const xlat_attrs_t *expanded)
 	const VALUE_PAIR_MAP *map;
 	unsigned int total = 0;
 	
-	char *name;
+	const char *name;
 	
 	for (map = expanded->maps; map != NULL; map = map->next)
 	{
-		memcpy(&name, &(expanded->attrs[total++]), sizeof(name));
-		
+		name = expanded->attrs[total++];
 		if (!name) return;
 		
 		if (map->src->do_xlat) {
-			free(name);
+			cfree(name);
 		}
 	}
 }

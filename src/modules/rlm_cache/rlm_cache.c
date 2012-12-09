@@ -84,13 +84,12 @@ static void cache_entry_free(void *data)
 {
 	rlm_cache_entry_t *c = data;
 
-	free((void *) c->key);
+	cfree(c->key);
 	pairfree(&c->control);
 	pairfree(&c->request);
 	pairfree(&c->reply);
 	free(c);
 }
-
 
 /*
  *	Compare two entries by expiry time.  There may be multiple
@@ -436,7 +435,6 @@ done:
 	return ret;
 }
 
-
 /*
  *	A mapping of configuration file names to internal variables.
  *
@@ -469,7 +467,7 @@ static int cache_detach(void *instance)
 	rlm_cache_t *inst = instance;
 
 	free(inst->key);
-	free((void *) inst->xlat_name);
+	cfree(inst->xlat_name);
 
 	fr_heap_delete(inst->heap);
 	rbtree_free(inst->cache);
