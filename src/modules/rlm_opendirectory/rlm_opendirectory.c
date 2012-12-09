@@ -41,7 +41,7 @@
 #include <DirectoryService/DirectoryService.h>
 #include <membership.h>
 
-#if HAVE_APPLE_SPI
+#ifdef HAVE_APPLE_SPI
 #include <membershipPriv.h>
 #else
 int mbr_check_service_membership(const uuid_t user, const char *servicename, int *ismember);
@@ -52,7 +52,7 @@ int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember)
 #define kRadiusSACLName		"com.apple.access_radius"
 #define kRadiusServiceName	"radius"
 
-#define kAuthType           "opendirectory"
+#define kAuthType		   "opendirectory"
 
 /*
  *	od_check_passwd
@@ -62,34 +62,34 @@ int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember)
 
 static long od_check_passwd(const char *uname, const char *password)
 {
-	long						result				= eDSAuthFailed;
-	tDirReference				dsRef				= 0;
-    tDataBuffer				   *tDataBuff			= NULL;
-    tDirNodeReference			nodeRef				= 0;
-    long						status				= eDSNoErr;
-    tContextData				context				= 0;
-	unsigned long				nodeCount			= 0;
-	uint32_t			    	attrIndex			= 0;
-	tDataList				   *nodeName			= NULL;
-    tAttributeEntryPtr			pAttrEntry			= NULL;
-	tDataList				   *pRecName			= NULL;
-	tDataList				   *pRecType			= NULL;
-	tDataList				   *pAttrType			= NULL;
-	unsigned long				recCount			= 0;
-	tRecordEntry		  	 	*pRecEntry			= NULL;
-	tAttributeListRef			attrListRef			= 0;
-	char					   *pUserLocation		= NULL;
-	char					   *pUserName			= NULL;
-	tAttributeValueListRef		valueRef			= 0;
-	tAttributeValueEntry  	 	*pValueEntry		= NULL;
-	tDataList				   *pUserNode			= NULL;
-	tDirNodeReference			userNodeRef			= 0;
-	tDataBuffer					*pStepBuff			= NULL;
-	tDataNode				   *pAuthType			= NULL;
-	tAttributeValueEntry	   *pRecordType			= NULL;
-	uint32_t    				uiCurr				= 0;
-	uint32_t    				uiLen				= 0;
-	uint32_t    				pwLen				= 0;
+	long			result = eDSAuthFailed;
+	tDirReference		dsRef = 0;
+	tDataBuffer		*tDataBuff;
+	tDirNodeReference	nodeRef = 0;
+	long			status = eDSNoErr;
+	tContextData		context	= 0;
+	unsigned long		nodeCount = 0;
+	uint32_t		attrIndex = 0;
+	tDataList		*nodeName;
+	tAttributeEntryPtr	pAttrEntry;
+	tDataList		*pRecName;
+	tDataList		*pRecType;
+	tDataList		*pAttrType;
+	unsigned long		recCount = 0;
+	tRecordEntry		*pRecEntry;
+	tAttributeListRef	attrListRef = 0;
+	char			*pUserLocation;
+	char			*pUserName;
+	tAttributeValueListRef	valueRef = 0;
+	tAttributeValueEntry	*pValueEntry;
+	tDataList		*pUserNode;
+	tDirNodeReference	userNodeRef = 0;
+	tDataBuffer		*pStepBuff;
+	tDataNode		*pAuthType;
+	tAttributeValueEntry	*pRecordType;
+	uint32_t		uiCurr = 0;
+	uint32_t		uiLen = 0;
+	uint32_t		pwLen = 0;
 	
 	if (uname == NULL || password == NULL)
 		return result;
@@ -288,7 +288,7 @@ static int od_authenticate(UNUSED void *instance, REQUEST *request)
 	 *	Can't do OpenDirectory if there's no password.
 	 */
 	if (!request->password ||
-	    (request->password->attribute != PW_PASSWORD)) {
+		(request->password->attribute != PW_PASSWORD)) {
 		RDEBUG("ERROR: You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
@@ -407,8 +407,8 @@ static int od_authorize(UNUSED void *instance, REQUEST *request)
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		RDEBUG("no access control groups, all users allowed.");
 		if (pairfind(request->config_items, PW_AUTH_TYPE, 0) == NULL) {
-    		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
-    		RDEBUG("Setting Auth-Type = %s", kAuthType);
+			pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
+			RDEBUG("Setting Auth-Type = %s", kAuthType);
 		}
 		return RLM_MODULE_OK;
 	}
@@ -476,7 +476,7 @@ module_t rlm_opendirectory = {
 	"opendirectory",
 	RLM_TYPE_THREAD_SAFE,	/* type */
 	NULL,			/* instantiation */
-	NULL,               	/* detach */
+	NULL,			   	/* detach */
 	{
 		od_authenticate, /* authentication */
 		od_authorize,	/* authorization */
