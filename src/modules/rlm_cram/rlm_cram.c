@@ -59,78 +59,86 @@ RCSID("$Id$")
 
 
 
-static void calc_apop_digest(char * buffer, const char * challenge, int challen, const char * password){
-	FR_MD5_CTX Context;
+static void calc_apop_digest(uint8_t *buffer, const uint8_t *challenge,
+			     size_t challen, const char *password)
+{
+	FR_MD5_CTX context;
 
-	fr_MD5Init(&Context);
-	fr_MD5Update(&Context,challenge,challen);
-	fr_MD5Update(&Context,password,strlen(password));
-        fr_MD5Final(buffer,&Context);
+	fr_MD5Init(&context);
+	fr_MD5Update(&context, challenge, challen);
+	fr_MD5Update(&context, (const uint8_t *) password, strlen(password));
+        fr_MD5Final(buffer, &context);
 }
 
 
-static void calc_md5_digest(char * buffer, const char * challenge, int challen, const char * password){
-	char buf[1024];
+static void calc_md5_digest(uint8_t *buffer, const uint8_t *challenge,
+			    size_t challen, const char *password)
+{
+	uint8_t buf[1024];
 	int i;
-	FR_MD5_CTX Context;
+	FR_MD5_CTX context;
 
 	memset(buf, 0, 1024);
 	memset(buf, 0x36, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
-	fr_MD5Init(&Context);
-	fr_MD5Update(&Context,buf,64+challen);
+	fr_MD5Init(&context);
+	fr_MD5Update(&context, buf, 64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        fr_MD5Final(buf+64,&Context);
-	fr_MD5Init(&Context);
-	fr_MD5Update(&Context,buf,64+16);
-        fr_MD5Final(buffer,&Context);
+        fr_MD5Final(buf+64,&context);
+	fr_MD5Init(&context);
+	fr_MD5Update(&context,buf,64+16);
+        fr_MD5Final(buffer,&context);
 }
 
-static void calc_md4_digest(char * buffer, const char * challenge, int challen, const char * password){
-	char buf[1024];
+static void calc_md4_digest(uint8_t *buffer, const uint8_t *challenge,
+			    size_t challen, const char *password)
+{
+	uint8_t buf[1024];
 	int i;
-	FR_MD4_CTX Context;
+	FR_MD4_CTX context;
 
 	memset(buf, 0, 1024);
 	memset(buf, 0x36, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
-	fr_MD4Init(&Context);
-	fr_MD4Update(&Context,buf,64+challen);
+	fr_MD4Init(&context);
+	fr_MD4Update(&context,buf,64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        fr_MD4Final(buf+64,&Context);
-	fr_MD4Init(&Context);
-	fr_MD4Update(&Context,buf,64+16);
-        fr_MD4Final(buffer,&Context);
+        fr_MD4Final(buf+64,&context);
+	fr_MD4Init(&context);
+	fr_MD4Update(&context,buf,64+16);
+        fr_MD4Final(buffer,&context);
 }
 
-static void calc_sha1_digest(char * buffer, const char * challenge, int challen, const char * password){
-	char buf[1024];
+static void calc_sha1_digest(uint8_t *buffer, const uint8_t *challenge,
+			     size_t challen, const char *password)
+{
+	uint8_t buf[1024];
 	int i;
-	fr_SHA1_CTX Context;
+	fr_SHA1_CTX context;
 
 	memset(buf, 0, 1024);
 	memset(buf, 0x36, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
 	memcpy(buf+64, challenge, challen);
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context,buf,64+challen);
+	fr_SHA1Init(&context);
+	fr_SHA1Update(&context,buf,64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        fr_SHA1Final(buf+64,&Context);
-	fr_SHA1Init(&Context);
-	fr_SHA1Update(&Context,buf,64+20);
-        fr_SHA1Final(buffer,&Context);
+        fr_SHA1Final(buf+64,&context);
+	fr_SHA1Init(&context);
+	fr_SHA1Update(&context,buf,64+20);
+        fr_SHA1Final(buffer,&context);
 }
 
 
 static int cram_authenticate(UNUSED void * instance, REQUEST *request)
 {
 	VALUE_PAIR *authtype, *challenge, *response, *password;
-	char buffer[64];
+	uint8_t buffer[64];
 
 	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 	if(!password) {
@@ -158,32 +166,32 @@ static int cram_authenticate(UNUSED void * instance, REQUEST *request)
 				radlog(L_AUTH, "rlm_cram: invalid MD5 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_md5_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_strvalue, 16)) return RLM_MODULE_OK;
+			calc_md5_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 3:				/*	APOP	*/
 			if(challenge->length < 5 || response->length != 16) {
 				radlog(L_AUTH, "rlm_cram: invalid APOP challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_apop_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_strvalue, 16)) return RLM_MODULE_OK;
+			calc_apop_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 8:				/*	CRAM-MD4	*/
 			if(challenge->length < 5 || response->length != 16) {
 				radlog(L_AUTH, "rlm_cram: invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_md4_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_strvalue, 16)) return RLM_MODULE_OK;
+			calc_md4_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_octets, 16)) return RLM_MODULE_OK;
 			break;
 		case 9:				/*	CRAM-SHA1	*/
 			if(challenge->length < 5 || response->length != 20) {
 				radlog(L_AUTH, "rlm_cram: invalid MD4 challenge/response length");
 				return RLM_MODULE_INVALID;
 			}
-			calc_sha1_digest(buffer, challenge->vp_strvalue, challenge->length, password->vp_strvalue);
-			if(!memcmp(buffer, response->vp_strvalue, 20)) return RLM_MODULE_OK;
+			calc_sha1_digest(buffer, challenge->vp_octets, challenge->length, password->vp_strvalue);
+			if(!memcmp(buffer, response->vp_octets, 20)) return RLM_MODULE_OK;
 			break;
 		default:
 			radlog(L_AUTH, "rlm_cram: unsupported Sandy-Mail-Authtype");
