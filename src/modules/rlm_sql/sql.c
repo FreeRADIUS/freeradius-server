@@ -46,8 +46,7 @@ static void *sql_conn_create(void *ctx)
 	SQL_INST *inst = ctx;
 	SQLSOCK *sqlsocket;
 
-	sqlsocket = rad_malloc(sizeof(*sqlsocket));
-	memset(sqlsocket, 0, sizeof(*sqlsocket));
+	sqlsocket = rad_calloc(sizeof(*sqlsocket));
 
 	rcode = (inst->module->sql_init_socket)(sqlsocket, inst->config);
 	if (rcode == 0) {
@@ -412,7 +411,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char 
  *	Log the query to a file.
  */
 void rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
-		       rlm_sql_config_section_t *section, char *query)
+		       sql_acct_section_t *section, char *query)
 {
 	int fd;
 	const char *filename = NULL;

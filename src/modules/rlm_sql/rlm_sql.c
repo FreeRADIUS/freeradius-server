@@ -41,10 +41,10 @@ RCSID("$Id$")
 
 static const CONF_PARSER section_config[] = {
 	{"reference", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_sql_config_section_t, reference), NULL, ".query"},
+	  offsetof(sql_acct_section_t, reference), NULL, ".query"},
 	  
 	{"logfile", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_sql_config_section_t, logfile), NULL, NULL},
+	 offsetof(sql_acct_section_t, logfile), NULL, NULL},
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -758,7 +758,10 @@ static int rlm_sql_detach(void *instance)
 	SQL_INST *inst = instance;
 
 	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
-
+	
+	if (inst->config->postauth) free(inst->config->postauth);
+	if (inst->config->accounting) free(inst->config->accounting);
+	
 	if (inst->config) {
 		int i;
 
@@ -766,7 +769,7 @@ static int rlm_sql_detach(void *instance)
 
 		if (inst->config->xlat_name) {
 			xlat_unregister(inst->config->xlat_name, sql_xlat, instance);
-			free(inst->config->xlat_name);
+			cfree(inst->config->xlat_name);
 		}
 
 		/*
@@ -810,7 +813,7 @@ static int rlm_sql_detach(void *instance)
 
 static int parse_sub_section(CONF_SECTION *parent, 
 	 		     UNUSED SQL_INST *instance,
-	 		     rlm_sql_config_section_t *config,
+	 		     sql_acct_section_t **config,
 	 		     rlm_components_t comp)
 {
 	CONF_SECTION *cs;
@@ -819,21 +822,26 @@ static int parse_sub_section(CONF_SECTION *parent,
 	
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
-		radlog(L_INFO, "Couldn't find configuration for %s. Will return NOOP for calls from this section.", name);
+		radlog(L_INFO, "Couldn't find configuration for %s. "
+		       "Will return NOOP for calls from this section.", name);
 		
-		 return 1;
+		return 0;
 	}
 	
-	if (cf_section_parse(cs, config, section_config) < 0) {
+	*config = rad_calloc(sizeof(**config));
+	if (cf_section_parse(cs, *config, section_config) < 0) {
 		radlog(L_ERR, "Failed parsing configuration for section %s",
 		       name);
+		
+		free(*config);
+		*config = NULL;
 		
 		return -1;
 	}
 		
-	config->cs = cs;
+	(*config)->cs = cs;
 
-	return 1;
+	return 0;
 }
 
 static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
@@ -841,8 +849,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	SQL_INST *inst;
 	const char *xlat_name;
 
-	inst = rad_malloc(sizeof(SQL_INST));
-	memset(inst, 0, sizeof(SQL_INST));
+	inst = rad_calloc(sizeof(SQL_INST));
 
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
@@ -855,8 +862,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
 	
-	inst->config = rad_malloc(sizeof(SQL_CONFIG));
-	memset(inst->config, 0, sizeof(SQL_CONFIG));
+	inst->config = rad_calloc(sizeof(SQL_CONFIG));
 	inst->cs = conf;
 		
 	/*
@@ -1125,9 +1131,9 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		 */
 		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0);
 		
-		char *profile = user_profile ?
-				user_profile->vp_strvalue :
-				inst->config->default_profile;
+		const char *profile = user_profile ?
+				      user_profile->vp_strvalue :
+				      inst->config->default_profile;
 			
 		if (!profile || !*profile)
 			goto release;
@@ -1176,7 +1182,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
  *  
  */
 static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request, 
-			     rlm_sql_config_section_t *section)
+			     sql_acct_section_t *section)
 {
 	int	ret = RLM_MODULE_OK;
 
@@ -1311,7 +1317,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	SQL_INST *inst = instance;		
 
-	return rlm_sql_redundant(inst, request, &inst->config->accounting); 
+	return rlm_sql_redundant(inst, request, inst->config->accounting); 
 }
 
 #endif
@@ -1508,7 +1514,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 static int rlm_sql_postauth(void *instance, REQUEST * request) {
 	SQL_INST *inst = instance;
 	
-	return rlm_sql_redundant(inst, request, &inst->config->postauth); 
+	return rlm_sql_redundant(inst, request, inst->config->postauth); 
 }
 
 /*

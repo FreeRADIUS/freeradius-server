@@ -42,7 +42,7 @@ static const void *fake = "fake";
  *************************************************************************/
 static int sql_init_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
 {
-	sqlsocket->conn = fake;
+	memcpy(&sqlsocket->conn, &fake, sizeof(sqlsocket->conn));
 	return 0;
 }
 

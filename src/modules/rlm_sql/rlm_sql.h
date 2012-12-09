@@ -25,39 +25,44 @@ typedef char** SQL_ROW;
  *  Sections where we dynamically resolve the config entry to use,
  *  by xlating reference.
  */
-typedef struct rlm_sql_config_section {
+typedef struct sql_acct_section {
 	CONF_SECTION	*cs;
 	
-	char	*reference;
+	const char *reference;
 	
-	char	*logfile;
-} rlm_sql_config_section_t;
+	const char *logfile;
+} sql_acct_section_t;
 
 typedef struct sql_config {
-	char   *sql_driver;
-	char   *sql_server;
-	char   *sql_port;
-	char   *sql_login;
-	char   *sql_password;
-	char   *sql_db;
-	char   *sql_file;	/* for sqlite */
-	char   *query_user;
-	char   *default_profile;
-	char   *nas_query;
-	char   *authorize_check_query;
-	char   *authorize_reply_query;
-	char   *authorize_group_check_query;
-	char   *authorize_group_reply_query;
-	char   *simul_count_query;
-	char   *simul_verify_query;
-	char   *groupmemb_query;
-	int     do_clients;
-	int	read_groups;
-	char   *logfile;
-	char   *xlat_name;
-	int     deletestalesessions;
-	char   *allowed_chars;
-	int	query_timeout;
+	const char *xlat_name;
+	
+	const char *sql_driver;
+	const char *sql_server;
+	const char *sql_port;
+	const char *sql_login;
+	const char *sql_password;
+	const char *sql_db;
+	const char *sql_file;	/* for sqlite */
+	
+	const char *query_user;
+	const char *default_profile;
+	
+	const char *nas_query;
+	const char *authorize_check_query;
+	const char *authorize_reply_query;
+	const char *authorize_group_check_query;
+	const char *authorize_group_reply_query;
+	const char *simul_count_query;
+	const char *simul_verify_query;
+	const char *groupmemb_query;
+	
+	int const do_clients;
+	int const read_groups;
+	const char *logfile;
+
+	int const deletestalesessions;
+	const char *allowed_chars;
+	int const query_timeout;
 	void	*localcfg;			 /* individual driver config */
 	
 	/* 
@@ -66,8 +71,8 @@ typedef struct sql_config {
 	 */
 	
 	/* Section configurations */
-	rlm_sql_config_section_t	postauth;
-	rlm_sql_config_section_t	accounting;
+	sql_acct_section_t	*postauth;
+	sql_acct_section_t	*accounting;
 } SQL_CONFIG;
 
 typedef struct sql_socket {
@@ -130,7 +135,7 @@ int     sql_read_naslist(SQLSOCK * sqlsocket);
 int     sql_read_clients(SQLSOCK * sqlsocket);
 int     sql_dict_init(SQLSOCK * sqlsocket);
 void 	rlm_sql_query_log(SQL_INST *inst, REQUEST *request,
-	       		  rlm_sql_config_section_t *section, char *querystr);
+	       		  sql_acct_section_t *section, char *querystr);
 int	rlm_sql_select_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
 int	rlm_sql_query(SQLSOCK **sqlsocket, SQL_INST *inst, char *query);
 int	rlm_sql_fetch_row(SQLSOCK **sqlsocket, SQL_INST *inst);
