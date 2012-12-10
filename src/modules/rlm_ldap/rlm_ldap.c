@@ -1826,7 +1826,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	int rcode;
 	int module_rcode = RLM_MODULE_OK;
 	ldap_instance	*inst = instance;
-	char		*user_dn;
+	char		*user_dn = NULL;
 	char		**vals;
 	VALUE_PAIR	*vp;
 	LDAP_CONN	*conn;
@@ -2245,7 +2245,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			
 			passed[last_pass] = p;
 		} else {
-			passed[last_pass] = value;
+			memcpy(&(passed[last_pass]), value, sizeof(passed[last_pass]));
 		}
 		
 		passed[last_pass + 1] = NULL;
