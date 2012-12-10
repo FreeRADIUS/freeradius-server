@@ -32,14 +32,14 @@ ldap {
 	#  unlang constructs in module configuration files.
 	#
 	#  Configuration items are in the format:
-	# 	<radius attribute> <op> <ldap attribute>
+	# 	<radius attr> <op> <ldap attr>
 	# 
 	#  Where:
-	#  	<radius attribute>:	The destination RADIUS attribute
+	#  	<radius attr>:	The destination RADIUS attribute
 	# 			with any valid list and request qualifiers.
 	#  	<op>: 		Is any assignment attribute (=, :=, +=, -=).
-	#  	<ldap attribute>:	The attribute in the associated 
-	# 			with user or profile objects in the LDAP 
+	#  	<ldap attr>:	The attribute in the associated with user or
+	#			profile objects in the LDAP. 
 	# 			directory. If the attribute name is wrapped in 
 	# 			double quotes it will be xlat expanded.
 	# 
@@ -108,6 +108,56 @@ ldap {
 
 		# If the filter returns nothing
 		membership_attribute = radiusGroupName
+	}
+	
+	#
+	#  Modify user object on receiving Accounting-Request
+	#
+	#  Useful for recording things like the last time the user logged
+	#  in, or the Acct-Session-ID for CoA/DM.
+	#
+	#  LDAP modification items are in the format:
+	# 	<ldap attr> <op> <value>
+	# 
+	#  Where:
+	#  	<ldap attr>:	The LDAP attribute to add modify or delete.
+	#  	<op>: 		One of the assignment operators (:=, +=, -=).
+	#			Note: '=' is *not* supported.
+	#  	<value>:	The value to add modify or delete.
+	# 
+	accounting {
+		reference = "%{tolower:type.%{Acct-Status-Type}}"
+		
+		type {
+			start {
+				update {
+					description := "Online at %S"
+				}
+			}
+			
+			interim-update {
+				update {
+					description := "Online at %S"
+				}
+			}
+			
+			stop {
+				update {
+					description := "Offline at %S"
+				}
+			}
+		}
+	}
+	
+	#
+	#  Post-Auth can modify LDAP objects too
+	#
+	#  For eDir users this is performed *after* the post-auth login checks
+	#
+	post-auth {
+		update {
+			description := "Authenticated at %S"
+		}
 	}
 
 	#  LDAP connection-specific options.

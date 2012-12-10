@@ -18,6 +18,7 @@
  *   Copyright 1999-2012 The FreeRADIUS Server Project.
  *
  *   Copyright 2012 Alan DeKok <aland@freeradius.org>
+ *   Copyright 2012 Arran Cudbard-Bell <a.cudbardb@freeradius.org>
  */
 
 #include <freeradius-devel/ident.h>
@@ -41,6 +42,13 @@ RCSID("$Id$")
 extern int nmasldap_get_password(LDAP *ld,char *objectDN, char *pwd, size_t *pwdSize);
 
 #endif
+
+typedef struct ldap_acct_section {
+	CONF_SECTION	*cs;
+	
+	const char *reference;
+} ldap_acct_section_t;
+
 
 typedef struct {
 	CONF_SECTION	*cs;
@@ -88,6 +96,12 @@ typedef struct {
 	char		*groupname_attr;
 	char		*groupmemb_filter;
 	char		*groupmemb_attr;
+	
+	/*
+	 *	Accounting
+	 */
+	ldap_acct_section_t *postauth;
+	ldap_acct_section_t *accounting;
 
 	/*
 	 *	TLS items.  We should really normalize these with the
@@ -197,6 +211,15 @@ static CONF_PARSER group_config[] = {
 
 
 	{ NULL, -1, 0, NULL, NULL }
+};
+
+/*
+ *	Reference for accounting updates
+ */
+static const CONF_PARSER acct_section_config[] = {
+	{"reference", PW_TYPE_STRING_PTR,
+	  offsetof(ldap_acct_section_t, reference), NULL, "."},
+	{NULL, -1, 0, NULL, NULL}
 };
 
 /*
@@ -407,14 +430,9 @@ redo:
 	return RLM_MODULE_OK;
 }
 
-/*************************************************************************
- *
- *	Function: ldap_conn_create
- *
- *	Purpose: Create and return a new connection
- *	This function is probably too big.
- *
- *************************************************************************/
+/** Create and return a new connection
+ * This function is probably too big.
+ */
 static void *ldap_conn_create(void *ctx)
 {
 	int module_rcode;
@@ -591,13 +609,9 @@ static void *ldap_conn_create(void *ctx)
 }
 
 
-/*************************************************************************
+/** Close and delete a connection
  *
- *	Function: ldap_conn_delete
- *
- *	Purpose: Close and delete a connection
- *
- *************************************************************************/
+ */
 static int ldap_conn_delete(UNUSED void *ctx, void *connection)
 {
 	LDAP_CONN *conn = connection;
@@ -609,13 +623,9 @@ static int ldap_conn_delete(UNUSED void *ctx, void *connection)
 }
 
 
-/*************************************************************************
+/** Gets an LDAP socket from the connection pool
  *
- *	Function: ldap_get_socket
- *
- *	Purpose: Gets an LDAP socket from the connection pool
- *
- *************************************************************************/
+ */
 static LDAP_CONN *ldap_get_socket(ldap_instance *inst)
 {
 	LDAP_CONN *conn;
@@ -630,13 +640,9 @@ static LDAP_CONN *ldap_get_socket(ldap_instance *inst)
 	return conn;
 }
 
-/*************************************************************************
+/** Frees an LDAP socket back to the connection pool
  *
- *	Function: ldap_release_socket
- *
- *	Purpose: Frees an LDAP socket back to the connection pool
- *
- *************************************************************************/
+ */
 static void ldap_release_socket(ldap_instance *inst, LDAP_CONN *conn)
 {
 	/*
@@ -665,13 +671,9 @@ static void ldap_release_socket(ldap_instance *inst, LDAP_CONN *conn)
 }
 
 
-/*************************************************************************
+/* Converts "bad" strings into ones which are safe for LDAP
  *
- *	Function: ldap_escape_func
- *
- *	Purpose: Converts "bad" strings into ones which are safe for LDAP
- *
- *************************************************************************/
+ */
 static size_t ldap_escape_func(UNUSED REQUEST *request, char *out,
 			       size_t outlen, const char *in, UNUSED void *arg)
 {
@@ -720,13 +722,9 @@ static size_t ldap_escape_func(UNUSED REQUEST *request, char *out,
 	return len;
 }
 
-/*************************************************************************
+/** Do a search and get a response
  *
- *	Function: perform_search
- *
- *	Purpose: Do a search and get a response
- *
- *************************************************************************/
+ */
 static int perform_search(ldap_instance *inst, REQUEST *request,
 			  LDAP_CONN **pconn, const char *search_basedn,
 			  int scope, const char *filter, 
@@ -853,14 +851,9 @@ retry:
 	return 0;
 }
 
-/*************************************************************************
+/** Expand an LDAP URL into a query, and return a string result from that query.
  *
- *	Function: ldap_xlat
- *
- *	Purpose: Expand an LDAP URL into a query, and return a string
- *		result from that query.
- *
- *************************************************************************/
+ */
 static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 			char *out, size_t freespace)
 {
@@ -1063,11 +1056,9 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 }
 
 
-/*****************************************************************************
+/** Perform LDAP-Group comparison checking
  *
- *	Perform LDAP-Group comparison checking
- *
- *****************************************************************************/
+ */
 static int ldap_groupcmp(void *instance, REQUEST *request,
 			 UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			 UNUSED VALUE_PAIR *check_pairs,
@@ -1313,9 +1304,10 @@ check_attr:
 	return 0;
 }
 
-/*
- *	Verify that the ldap update section makes sense, and add attribute names
- *	to array of attributes for efficient querying later.
+/** Parse update section
+ *
+ * Verify that the ldap update section makes sense, and add attribute names
+ * to array of attributes for efficient querying later.
  */
 static int build_attrmap(CONF_SECTION *cs, VALUE_PAIR_MAP **head)
 {
@@ -1382,15 +1374,16 @@ static int build_attrmap(CONF_SECTION *cs, VALUE_PAIR_MAP **head)
 		return -1;
 }
 
-/*****************************************************************************
+/** Detach from the LDAP server and cleanup internal state.
  *
- *	Detach from the LDAP server and cleanup internal state.
- *
- *****************************************************************************/
+ */
 static int ldap_detach(void *instance)
 {
 	ldap_instance *inst = instance;
 
+	if (inst->postauth) free(inst->postauth);
+	if (inst->accounting) free(inst->accounting);
+	
 	fr_connection_pool_delete(inst->pool);
 	
 	if (inst->user_map) {
@@ -1402,42 +1395,80 @@ static int ldap_detach(void *instance)
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: rlm_ldap_instantiate
- *
- *	Purpose: Uses section of radiusd config file passed as parameter
- *		 to create an instance of the module.
- *
- *************************************************************************/
+static int parse_sub_section(CONF_SECTION *parent, 
+	 		     UNUSED ldap_instance *inst,
+	 		     ldap_acct_section_t **config,
+	 		     rlm_components_t comp)
+{
+	CONF_SECTION *cs;
+
+	const char *name = section_type_value[comp].section;
+	
+	cs = cf_section_sub_find(parent, name);
+	if (!cs) {
+		radlog(L_INFO, "Couldn't find configuration for %s. "
+		       "Will return NOOP for calls from this section.", name);
+		
+		return 0;
+	}
+	
+	*config = rad_calloc(sizeof(**config));
+	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
+		radlog(L_ERR, "Failed parsing configuration for section %s",
+		       name);
+		
+		free(*config);
+		*config = NULL;
+		
+		return -1;
+	}
+		
+	(*config)->cs = cs;
+
+	return 0;
+}
+
+/** Parses config
+ * Uses section of radiusd config file passed as parameter to create an
+ * instance of the module.
+ */
 static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 {
 	ldap_instance *inst;
 	CONF_SECTION *cs;
 
-	inst = rad_malloc(sizeof *inst);
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	inst = rad_calloc(sizeof *inst);
 	inst->cs = conf;
 
 	inst->chase_referrals = 2; /* use OpenLDAP defaults */
 	inst->rebind = 2;
-
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
-		return -1;
-	}
 	
 	inst->xlat_name = cf_section_name2(conf);
-	if (!inst->xlat_name) inst->xlat_name = cf_section_name1(conf);
+	if (!inst->xlat_name) {
+		inst->xlat_name = cf_section_name1(conf);
+	}
+		
+	rad_assert(inst->xlat_name);
+
+	/*
+	 *	If the configuration parameters can't be parsed, then fail.
+	 */
+	if ((cf_section_parse(conf, inst, module_config) < 0) ||
+	    (parse_sub_section(conf, inst,
+			       &inst->accounting,
+			       RLM_COMPONENT_ACCT) < 0) ||
+	    (parse_sub_section(conf, inst,
+			       &inst->postauth,
+			       RLM_COMPONENT_POST_AUTH) < 0)) {
+		radlog(L_ERR, "rlm_ldap (%s): Failed parsing configuration",
+		       inst->xlat_name);
+		goto error;
+	}
 
 	if (inst->server == NULL) {
-		radlog(L_ERR, "rlm_ldap (%s): missing 'server' directive",
+		radlog(L_ERR, "rlm_ldap (%s): Missing 'server' directive",
 		       inst->xlat_name);
-		ldap_detach(inst);
-		return -1;
+		goto error;
 	}
 
 	/*
@@ -1453,8 +1484,7 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		radlog(L_ERR, "rlm_ldap (%s): 'server' directive is in URL "
 		       "form but ldap_initialize() is not available",
 		       inst->xlat_name);
-		ldap_detach(inst);
-		return -1;
+		goto error;
 #endif
 	}
 
@@ -1475,8 +1505,7 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		radlog(L_ERR, "rlm_ldap (%s): Cannot use 'rebind' directive "
 		       "as this version of libldap does not support the API "
 		       "that we need", inst->xlat-name);
-		ldap_detach(inst);
-		return -1;
+		goto error;
 	}
 #endif
 
@@ -1486,8 +1515,7 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	cs = cf_section_sub_find(conf, "update");
 	if (cs) {	
 		if (build_attrmap(cs, &(inst->user_map)) < 0) {
-			ldap_detach(inst);
-			return -1;
+			goto error;
 		}
 	}
 
@@ -1509,8 +1537,7 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		if (!da) {
 			radlog(L_ERR, "rlm_ldap (%s): Failed creating "
 			       "attribute %s", inst->xlat_name, buffer);
-			ldap_detach(inst);
-			return -1;
+			goto error;
 		}
 
 		paircompare_register(da->attr, PW_USER_NAME, ldap_groupcmp,
@@ -1533,6 +1560,10 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	
 	*instance = inst;
 	return 0;
+	
+	error:
+	ldap_detach(inst);
+	return -1;
 }
 
 static int check_access(ldap_instance *inst, REQUEST* request, LDAP_CONN *conn,
@@ -1779,13 +1810,9 @@ free_result:
 }
 
 
-/******************************************************************************
+/** Check if user is authorized for remote access
  *
- *      Function: ldap_authorize
- *
- *      Purpose: Check if user is authorized for remote access
- *
- ******************************************************************************/
+ */
 static int ldap_authorize(void *instance, REQUEST * request)
 {
 	int rcode;
@@ -1982,13 +2009,9 @@ free_socket:
 }
 
 
-/*****************************************************************************
+/** Check the user's password against ldap database
  *
- *	Function: ldap_authenticate
- *
- *	Purpose: Check the user's password against ldap database
- *
- *****************************************************************************/
+ */
 static int ldap_authenticate(void *instance, REQUEST * request)
 {
 	int		module_rcode;
@@ -2062,23 +2085,276 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 	return module_rcode;
 }
 
+/** Modify user's object in LDAP
+ *
+ */
+static int user_modify(ldap_instance *inst, REQUEST *request,
+		       ldap_acct_section_t *section)
+{
+	int		module_rcode = RLM_MODULE_OK;
+	int		ldap_errno;
+	const char	*error_string;
+	
+	LDAP_CONN	*conn;
+	LDAPMod 	*modify[MAX_ATTRMAP];
+	LDAPMod		**mod_p = modify;
+	
+	char		*passed[MAX_ATTRMAP * 2];
+	int		i, last_pass = 0;
+	
+	char 		*expanded[MAX_ATTRMAP];
+	int		last_exp = 0;
+	
+	const char	*attr;
+	const char	*value;
+	
+	int		presult = 0;
+	
+	const char	*user_dn;
 
-#ifdef WITH_EDIR
-/*****************************************************************************
+	conn = ldap_get_socket(inst);
+	if (!conn) return RLM_MODULE_FAIL;
+
+	/*
+	 *	Build our set of modifications using the update sections in
+	 *	the config.
+	 */
+	CONF_ITEM  	*ci;
+	CONF_PAIR	*cp;
+	CONF_SECTION 	*cs;
+	FR_TOKEN	op;
+	char		path[MAX_STRING_LEN];
+	
+	char	*p = path;
+
+	rad_assert(section);
+	
+	/*
+	 *	Locate the update section were going to be using
+	 */
+	if (section->reference[0] != '.')
+		*p++ = '.';
+	
+	if (!radius_xlat(p, (sizeof(path) - (p - path)) - 1,
+			 section->reference, request, NULL, NULL)) {
+		goto error;	
+	}
+
+	ci = cf_reference_item(NULL, section->cs, path);
+	if (!ci) {
+		goto error;	
+	}
+	
+	if (!cf_item_is_section(ci)){
+		radlog(L_ERR, "rlm_ldap (%s): Reference must resolve to a "
+		       "section", inst->xlat_name);
+		
+		goto error;	
+	}
+	
+	cs = cf_section_sub_find(cf_itemtosection(ci), "update");
+	if (!cs) {
+		radlog(L_ERR, "rlm_ldap (%s): Section must contain 'update' "
+		       "subsection",
+		       inst->xlat_name);
+		
+		goto error;
+	}
+	
+	/*
+	 *	Iterate over all the pairs, building our mods array
+	 */
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+	     	int do_xlat = FALSE;
+	     	
+	     	if ((modify - mod_p) == MAX_ATTRMAP) {
+	     		radlog(L_ERR, "rlm_ldap (%s): Modify map size exceeded",
+	     		       inst->xlat_name);
+	
+	     		goto error;
+	     	}
+	     	
+		if (!cf_item_is_pair(ci)) {
+			radlog(L_ERR, "rlm_ldap (%s): Entry is not in "
+			       "\"ldap-attribute = value\" format",
+			       inst->xlat_name);
+			       
+			goto error;
+		}
+	
+		cp = cf_itemtopair(ci);
+		
+		switch (cf_pair_value_type(cp))
+		{
+			case T_BARE_WORD:
+			case T_SINGLE_QUOTED_STRING:
+			break;
+			case T_BACK_QUOTED_STRING:
+			case T_DOUBLE_QUOTED_STRING:
+				do_xlat = TRUE;		
+			break;
+			default:
+				rad_assert(0);
+				goto error;
+		}
+		
+		attr = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+		
+		if (do_xlat) {
+			p = rad_malloc(1024);	
+			
+			if (radius_xlat(p, 1024, value, request,
+					NULL, NULL) == 0) {
+				RDEBUG("xlat failed or expanded to empty "
+				       "string, skipping attribute \"%s\"",
+				       attr);
+			
+				free(p);
+				
+				continue;				
+			}
+			
+			expanded[last_exp++] = p;
+			
+			passed[last_pass] = p;
+		} else {
+			passed[last_pass] = value;
+		}
+		
+		passed[last_pass + 1] = NULL;
+		
+		(*mod_p)->mod_values = &passed[last_pass];
+					
+		last_pass += 2;
+		
+		/*
+		 *	Now we know the value is ok, copy the pointers into
+		 *	the ldapmod struct.
+		 */
+		memcpy(&((*mod_p)->mod_type), &(attr),
+		       sizeof((*mod_p)->mod_type));
+
+		op = cf_pair_operator(cp);
+		switch (op)
+		{
+			/*
+			 *  T_OP_EQ is *NOT* supported, it is impossible to
+			 *  support because of the lack of transactions in LDAP
+			 */
+			case T_OP_ADD:
+				(*mod_p)->mod_op = LDAP_MOD_ADD;
+			break;
+			case T_OP_SET:
+				(*mod_p)->mod_op = LDAP_MOD_REPLACE;
+			break;
+			case T_OP_SUB:
+				(*mod_p)->mod_op = LDAP_MOD_DELETE;
+			break;
+			default:
+				radlog(L_ERR, "rlm_ldap (%s): Operator '%s' "
+				       "is not supported for LDAP modify "
+				       "operations", inst->xlat_name,
+				       fr_int2str(fr_tokens, op, "¿unknown?"));
+				       
+				goto error;
+		}
+		
+		mod_p++;
+	}
+	
+	*mod_p = NULL;
+	
+	/*
+	 *	Perform all modifications as the default admin user.
+	 */
+	if (conn->rebound) {
+		ldap_errno = ldap_bind_wrapper(&conn,
+					       inst->login, inst->password,
+					       NULL, TRUE);
+		if (ldap_errno != RLM_MODULE_OK) {
+			radlog(L_AUTH, "rlm_ldap (%s): Bind error",
+			       inst->xlat_name);
+
+			goto error;
+		}
+
+		rad_assert(conn != NULL);
+		conn->rebound = FALSE;
+	}
+
+	user_dn = get_userdn(&conn, request, &module_rcode);
+	if (!user_dn) {
+		module_rcode = RLM_MODULE_NOTFOUND;
+		goto release;
+	}
+	
+	RDEBUG2("Modifying user object with DN \"%s\"", user_dn);
+	
+	ldap_errno = ldap_modify_ext(conn->handle, user_dn, modify, NULL, NULL,
+				     &presult);
+			     
+	if (ldap_errno < 0) {
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
+				&ldap_errno);
+				
+		error_string = ldap_err2string(ldap_errno);
+
+		radlog(L_ERR, "rlm_ldap (%s): Modifying DN \"%s\" failed: %s",
+		       inst->xlat_name, user_dn, error_string);
+		
+	error:
+		module_rcode = RLM_MODULE_FAIL;
+		
+		goto release;
+	}
+	
+	RDEBUG2("Modification successful!");
+	
+	release:
+	
+	/*
+	 *	Free up any buffers we allocated for xlat expansion
+	 */	
+	for (i = 0; i < last_exp; i++) {
+		free(expanded[i]);
+	}
+	
+	ldap_release_socket(inst, conn);
+	
+	return module_rcode;
+}
+
+
+static int ldap_accounting(void *instance, REQUEST * request) {
+	ldap_instance *inst = instance;		
+
+	if (inst->accounting) {
+		return user_modify(inst, request, inst->accounting); 
+	}
+	
+	return RLM_MODULE_NOOP;
+}
+
+
+/** Check the user's password against ldap database
  *
- *	Function: ldap_postauth
- *
- *	Purpose: Check the user's password against ldap database
- *
- *****************************************************************************/
+ */
 static int ldap_postauth(void *instance, REQUEST * request)
 {
+	ldap_instance	*inst = instance;
+#ifdef WITH_EDIR
 	int		module_rcode;
 	const char	*user_dn;
-	ldap_instance	*inst = instance;
 	LDAP_CONN	*conn;
 	VALUE_PAIR	*vp;
 
+
+	conn = ldap_get_socket(inst);
+	if (!conn) return RLM_MODULE_FAIL;
+	
 	/*
 	 *	Ensure that we have a username and a
 	 *	Cleartext-Password in the request
@@ -2102,9 +2378,6 @@ static int ldap_postauth(void *instance, REQUEST * request)
 		return RLM_MODULE_INVALID;
 	}
 
-	conn = ldap_get_socket(inst);
-	if (!conn) return RLM_MODULE_FAIL;
-
 	RDEBUG("Login attempt by \"%s\" with password \"%s\"",
 	       request->username->vp_strvalue, vp->vp_strvalue);
 
@@ -2127,11 +2400,18 @@ static int ldap_postauth(void *instance, REQUEST * request)
 	if (module_rcode == RLM_MODULE_OK) {
 		RDEBUG("Bind as user \"%s\" was successful", user_dn);
 	}
-
+	
 	ldap_release_socket(inst, conn);
 	return module_rcode;
-}
 #endif
+
+	if (inst->postauth) {
+		return user_modify(inst, request, inst->postauth); 
+	}
+
+	return RLM_MODULE_NOOP;
+}
+
 
 /* globally exported name */
 module_t rlm_ldap = {
@@ -2144,14 +2424,10 @@ module_t rlm_ldap = {
 		ldap_authenticate,	/* authentication 	 */
 		ldap_authorize,		/* authorization 	 */
 		NULL,			/* preaccounting 	 */
-		NULL,			/* accounting 		 */
+		ldap_accounting,	/* accounting 		 */
 		NULL,			/* checksimul 		 */
 		NULL,			/* pre-proxy 		 */
 		NULL,			/* post-proxy 		 */
-#ifdef WITH_EDIR
 		ldap_postauth		/* post-auth */
-#else
-		NULL			/* post-auth */
-#endif
 	},
 };
