@@ -134,12 +134,24 @@ lt_dlhandle lt_dlopenext(const char *name)
 {
 	void *handle;
 	char buffer[2048];
+	int len;
 
 	/*
 	 *	Prefer loading our libraries by absolute path.
 	 */
 	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
-	handle = dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
+
+	/* check we cant have overflow */
+	len = strlen(buffer);
+
+	/* if all is okay, check module name...we are now PATH agnostic */
+	if((len > 11) && strcmp(buffer + len - 11, "rlm_perl.so")){
+		handle = dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
+	} else {
+		/* PERL library needs to be GLOBAL */
+		handle = dlopen(buffer, RTLD_NOW | RTLD_GLOBAL);
+	}
+
 	if (handle) return handle;
 
 	strlcpy(buffer, name, sizeof(buffer));
