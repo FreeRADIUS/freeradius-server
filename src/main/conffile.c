@@ -623,7 +623,7 @@ CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 		/*
 		 *	Just '.' means the current section
 		 */
-		if (*p == NULL) {
+		if (*p == '\0') {
 			return cf_sectiontoitem(cs);
 		}
 		
