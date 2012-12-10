@@ -2266,7 +2266,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 		 *	Now we know the value is ok, copy the pointers into
 		 *	the ldapmod struct.
 		 */
-		memcpy(&(mod_s[total].mod_type), &(attr),
+		memcpy(&(mod_s[total].mod_type), &(attr), 
 		       sizeof(mod_s[total].mod_type));
 
 		op = cf_pair_operator(cp);
@@ -2285,6 +2285,11 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			case T_OP_SUB:
 				mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
+#ifdef LDAP_MOD_INCREMENT
+			case T_OP_INCRM:
+				mod_s[total].mod_op = LDAP_MOD_INCREMENT;
+			break;
+#endif
 			default:
 				radlog(L_ERR, "rlm_ldap (%s): Operator '%s' "
 				       "is not supported for LDAP modify "

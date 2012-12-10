@@ -126,7 +126,8 @@ ldap {
 	# 
 	#  Where:
 	#  	<ldap attr>:	The LDAP attribute to add modify or delete.
-	#  	<op>: 		One of the assignment operators (:=, +=, -=).
+	#  	<op>: 		One of the assignment operators
+	#			(:=, +=, -=, ++).
 	#			Note: '=' is *not* supported.
 	#  	<value>:	The value to add modify or delete.
 	# 

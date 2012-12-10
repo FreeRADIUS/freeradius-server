@@ -37,6 +37,7 @@ const FR_NAME_NUMBER fr_tokens[] = {
 	{ "(",	T_LBRACE,	},
 	{ ")",	T_RBRACE,	},
 	{ ",",	T_COMMA,	},
+	{ "++",	T_OP_INCRM,	},
 	{ "+=",	T_OP_ADD,	},
 	{ "-=",	T_OP_SUB,	},
 	{ ":=",	T_OP_SET,	},

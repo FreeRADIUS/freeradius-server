@@ -1703,6 +1703,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			value = NULL;
 			goto do_set;
 
+		case T_OP_INCRM:
 		case T_OP_ADD:
 		case T_OP_CMP_EQ:
 		case T_OP_SUB:
