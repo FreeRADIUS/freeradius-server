@@ -2108,8 +2108,6 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	const char	*attr;
 	const char	*value;
 	
-	int		presult = 0;
-	
 	const char	*user_dn;
 
 	conn = ldap_get_socket(inst);
@@ -2291,7 +2289,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	RDEBUG2("Modifying user object with DN \"%s\"", user_dn);
 	
 	ldap_errno = ldap_modify_ext_s(conn->handle, user_dn, modify, NULL,
-				       NULL, &presult);
+				       NULL);
 			     
 	if (ldap_errno < 0) {
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
