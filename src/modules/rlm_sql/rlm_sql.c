@@ -769,7 +769,7 @@ static int rlm_sql_detach(void *instance)
 
 		if (inst->config->xlat_name) {
 			xlat_unregister(inst->config->xlat_name, sql_xlat, instance);
-			cfree(inst->config->xlat_name);
+			rad_cfree(inst->config->xlat_name);
 		}
 
 		/*

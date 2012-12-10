@@ -1645,7 +1645,7 @@ static void xlat_attrsfree(const xlat_attrs_t *expanded)
 		if (!name) return;
 		
 		if (map->src->do_xlat) {
-			cfree(name);
+			rad_cfree(name);
 		}
 	}
 }

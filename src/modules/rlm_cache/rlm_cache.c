@@ -84,7 +84,7 @@ static void cache_entry_free(void *data)
 {
 	rlm_cache_entry_t *c = data;
 
-	cfree(c->key);
+	rad_cfree(c->key);
 	pairfree(&c->control);
 	pairfree(&c->request);
 	pairfree(&c->reply);
@@ -467,7 +467,7 @@ static int cache_detach(void *instance)
 	rlm_cache_t *inst = instance;
 
 	free(inst->key);
-	cfree(inst->xlat_name);
+	rad_cfree(inst->xlat_name);
 
 	fr_heap_delete(inst->heap);
 	rbtree_free(inst->cache);
