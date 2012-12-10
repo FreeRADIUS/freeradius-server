@@ -1000,8 +1000,11 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 	*module_rcode = RLM_MODULE_FAIL;
 
 	vp = pairfind(request->config_items, PW_LDAP_USERDN, 0);
-	if (vp) return vp->vp_strvalue;
-
+	if (vp) {
+		*module_rcode = RLM_MODULE_OK;
+		return vp->vp_strvalue;
+	}
+	
 	if (!radius_xlat(filter, sizeof(filter), inst->filter,
 			 request, ldap_escape_func, NULL)) {
 		radlog(L_ERR, "rlm_ldap (%s): Unable to create filter",
@@ -1055,6 +1058,8 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 		ldap_msgfree(result);
 		return NULL;
 	}
+	
+	*module_rcode = RLM_MODULE_OK;
 	
 	pairadd(&request->config_items, vp);
 	ldap_memfree(user_dn);
@@ -2122,11 +2127,12 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	const char	*error_string;
 	
 	LDAP_CONN	*conn;
-	LDAPMod 	*modify[MAX_ATTRMAP];
-	LDAPMod		**mod_p = modify;
+	
+	LDAPMod		*mod_p[MAX_ATTRMAP], mod_s[MAX_ATTRMAP];
+	LDAPMod		**modify = mod_p;
 	
 	char		*passed[MAX_ATTRMAP * 2];
-	int		i, last_pass = 0;
+	int		i, total = 0, last_pass = 0;
 	
 	char 		*expanded[MAX_ATTRMAP];
 	int		last_exp = 0;
@@ -2149,15 +2155,16 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	FR_TOKEN	op;
 	char		path[MAX_STRING_LEN];
 	
-	char	*p = path;
+	char		*p = path;
 
 	rad_assert(section);
 	
 	/*
 	 *	Locate the update section were going to be using
 	 */
-	if (section->reference[0] != '.')
+	if (section->reference[0] != '.') {
 		*p++ = '.';
+	}
 	
 	if (!radius_xlat(p, (sizeof(path) - (p - path)) - 1,
 			 section->reference, request, NULL, NULL)) {
@@ -2193,7 +2200,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	     ci = cf_item_find_next(cs, ci)) {
 	     	int do_xlat = FALSE;
 	     	
-	     	if ((modify - mod_p) == MAX_ATTRMAP) {
+	     	if (total == MAX_ATTRMAP) {
 	     		radlog(L_ERR, "rlm_ldap (%s): Modify map size exceeded",
 	     		       inst->xlat_name);
 	
@@ -2245,12 +2252,13 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			
 			passed[last_pass] = p;
 		} else {
-			memcpy(&(passed[last_pass]), value, sizeof(passed[last_pass]));
+			memcpy(&(passed[last_pass]), value,
+			       sizeof(passed[last_pass]));
 		}
 		
 		passed[last_pass + 1] = NULL;
 		
-		(*mod_p)->mod_values = &passed[last_pass];
+		mod_s[total].mod_values = &(passed[last_pass]);
 					
 		last_pass += 2;
 		
@@ -2258,8 +2266,8 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 		 *	Now we know the value is ok, copy the pointers into
 		 *	the ldapmod struct.
 		 */
-		memcpy(&((*mod_p)->mod_type), &(attr),
-		       sizeof((*mod_p)->mod_type));
+		memcpy(&(mod_s[total].mod_type), &(attr),
+		       sizeof(mod_s[total].mod_type));
 
 		op = cf_pair_operator(cp);
 		switch (op)
@@ -2269,13 +2277,13 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			 *  support because of the lack of transactions in LDAP
 			 */
 			case T_OP_ADD:
-				(*mod_p)->mod_op = LDAP_MOD_ADD;
+				mod_s[total].mod_op = LDAP_MOD_ADD;
 			break;
 			case T_OP_SET:
-				(*mod_p)->mod_op = LDAP_MOD_REPLACE;
+				mod_s[total].mod_op = LDAP_MOD_REPLACE;
 			break;
 			case T_OP_SUB:
-				(*mod_p)->mod_op = LDAP_MOD_DELETE;
+				mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
 			default:
 				radlog(L_ERR, "rlm_ldap (%s): Operator '%s' "
@@ -2286,10 +2294,11 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 				goto error;
 		}
 		
-		mod_p++;
+		mod_p[total] = &(mod_s[total]);
+		total++;
 	}
 	
-	*mod_p = NULL;
+	mod_p[total] = NULL;
 	
 	/*
 	 *	Perform all modifications as the default admin user.

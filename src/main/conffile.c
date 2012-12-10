@@ -621,6 +621,13 @@ CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 		p++;
 		
 		/*
+		 *	Just '.' means the current section
+		 */
+		if (*p == NULL) {
+			return cf_sectiontoitem(cs);
+		}
+		
+		/*
 		 *	..foo means "foo from the section
 		 *	enclosing this section" (etc.)
 		 */
