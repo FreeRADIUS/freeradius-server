@@ -171,8 +171,7 @@ static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
    	}
 
    	/* retrieve user content */
-
-   	k.dptr  = username;
+   	memcpy(&k.dptr, &username, sizeof(k.dptr));
    	k.dsize = strlen(username) + 1 ; /* username stored with '\0' */
 
    	d = dbm_fetch(pdb, k);

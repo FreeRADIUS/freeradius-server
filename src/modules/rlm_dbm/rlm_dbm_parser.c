@@ -153,7 +153,7 @@ static int storecontent (const char * username) {
 	d.dptr = content;
 	d.dsize = concntr + 1;
 
-	k.dptr = username;
+	memcpy(&k.dptr, &username, sizeof(k.dptr));
 	k.dsize = strlen(username) + 1;
 
 	res = dbm_store(pdb, k, d, DBM_INSERT);
