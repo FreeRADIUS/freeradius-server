@@ -2290,8 +2290,8 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	
 	RDEBUG2("Modifying user object with DN \"%s\"", user_dn);
 	
-	ldap_errno = ldap_modify_ext(conn->handle, user_dn, modify, NULL, NULL,
-				     &presult);
+	ldap_errno = ldap_modify_ext_s(conn->handle, user_dn, modify, NULL,
+				       NULL, &presult);
 			     
 	if (ldap_errno < 0) {
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
