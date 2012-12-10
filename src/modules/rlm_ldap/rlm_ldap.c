@@ -129,6 +129,7 @@ typedef struct {
 	 *	eDir support
 	 */
 	int		edir;
+	int		edir_autz;
 #endif
 	/*
 	 *	For keep-alives.
@@ -296,6 +297,13 @@ static const CONF_PARSER module_config[] = {
 	/* support for eDirectory Universal Password */
 	{"edir", PW_TYPE_BOOLEAN,
 	 offsetof(ldap_instance,edir), NULL, NULL}, /* NULL defaults to "no" */
+
+	/*
+	 * Attempt to bind with the Cleartext password we got from eDirectory
+	 * Universal password for additional authorization checks.
+	 */
+	{"edir_autz", PW_TYPE_BOOLEAN,
+	 offsetof(ldap_instance,edir_autz), NULL, NULL}, /* NULL defaults to "no" */
 #endif
 
 	/*
@@ -1934,25 +1942,42 @@ static int ldap_authorize(void *instance, REQUEST * request)
 		res = nmasldap_get_password(conn->handle, user_dn,
 					    buffer, &bufsize);
 		if (res != 0) {
-			RDEBUG2("Failed to retrieve eDirectory password. Check your configuration !");
+			RDEBUG2("Failed to retrieve eDirectory password. Check "
+				"your configuration !");
 			module_rcode = RLM_MODULE_NOOP;
 			goto free_result;
 		}
 
-		/* add Cleartext-Password attribute to the request */
+		/* Add Cleartext-Password attribute to the request */
 		vp = radius_paircreate(request, &request->config_items,
-				       PW_CLEARTEXT_PASSWORD, 0, PW_TYPE_STRING);
+				       PW_CLEARTEXT_PASSWORD, 0,
+				       PW_TYPE_STRING);
 		strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));
 		vp->length = strlen(vp->vp_strvalue);
 		
 		RDEBUG2("Added eDirectory password in check items as %s = %s",
 			vp->name, vp->vp_strvalue);
+			
+		if (inst->edir_autz) {
+			RDEBUG2("Binding as user for eDirectory authorization "
+				"checks");
+			/*
+			 *	Bind as the user
+			 */
+			conn->rebound = TRUE;
+			module_rcode = ldap_bind_wrapper(&conn, user_dn,
+							 vp->vp_strvalue,
+							 NULL, TRUE);
+			if (module_rcode != RLM_MODULE_OK) {
+				goto free_result;
+			}
+			
+			RDEBUG("Bind as user \"%s\" was successful", user_dn);
+		}
 	}
 
 skip_edir:
 #endif
-
-	ldap_memfree(user_dn);
 
 	/*
 	 *	Check for access.
@@ -2000,6 +2025,7 @@ skip_edir:
 	}
 	
 free_result:
+	if (user_dn) ldap_memfree(user_dn);
 	xlat_attrsfree(&expanded);
 	ldap_msgfree(result);
 free_socket:
@@ -2340,65 +2366,6 @@ static int ldap_accounting(void *instance, REQUEST * request) {
 static int ldap_postauth(void *instance, REQUEST * request)
 {
 	ldap_instance	*inst = instance;
-#ifdef WITH_EDIR
-	int		module_rcode;
-	const char	*user_dn;
-	LDAP_CONN	*conn;
-	VALUE_PAIR	*vp;
-
-
-	conn = ldap_get_socket(inst);
-	if (!conn) return RLM_MODULE_FAIL;
-	
-	/*
-	 *	Ensure that we have a username and a
-	 *	Cleartext-Password in the request
-	 */
-	if (!request->username) {
-		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"User-Name\" is "
-		       "required for authentication", inst->xlat_name);
-		return RLM_MODULE_INVALID;
-	}
-
-	vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
-	if (!vp) {
-		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"Cleartext-Password\" "
-		       "is required for authentication.", inst->xlat_name);
-		return RLM_MODULE_INVALID;
-	}
-
-	if (!*vp->vp_strvalue) {
-		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"Cleartext-Password\" "
-		       "is empty.", inst->xlat_name);
-		return RLM_MODULE_INVALID;
-	}
-
-	RDEBUG("Login attempt by \"%s\" with password \"%s\"",
-	       request->username->vp_strvalue, vp->vp_strvalue);
-
-	/*
-	 *	Get the DN by doing a search.
-	 */
-	user_dn = get_userdn(&conn, request, &module_rcode);
-	if (!user_dn) {
-		ldap_release_socket(inst, conn);
-		return module_rcode;
-	}
-
-	/*
-	 *	Bind as the user
-	 */
-	conn->rebound = TRUE;
-	module_rcode = ldap_bind_wrapper(&conn, user_dn,
-					 vp->vp_strvalue,
-					 NULL, TRUE);
-	if (module_rcode == RLM_MODULE_OK) {
-		RDEBUG("Bind as user \"%s\" was successful", user_dn);
-	}
-	
-	ldap_release_socket(inst, conn);
-	return module_rcode;
-#endif
 
 	if (inst->postauth) {
 		return user_modify(inst, request, inst->postauth); 

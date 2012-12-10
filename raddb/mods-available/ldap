@@ -62,6 +62,11 @@ ldap {
 	# policy checking
 #	edir = "no"
 
+	# Set to yes if you want to bind as the user after retrieving the
+	# Cleartext-Password to consume the login grace, and verify user
+	# authorization.
+#	edir_autz = "no"
+
 	#
 	#  Profile related attributes.
 	#
@@ -137,7 +142,7 @@ ldap {
 			
 			interim-update {
 				update {
-					description := "Online at %S"
+					description := "Last seen at %S"
 				}
 			}
 			

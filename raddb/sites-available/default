@@ -640,8 +640,8 @@ post-auth {
 #	sql_log
 
 	#
-	#  Un-comment the following if you have set 'edir = yes'
-	#  in the ldap module sub-section of the 'modules' section.
+	#  Un-comment the following if you want to modify the user's object
+	#  in LDAP after a successful login.
 	#
 #	ldap
 
