@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-static const CONF_PARSER section_config[] = {
+static const CONF_PARSER acct_section_config[] = {
 	{"reference", PW_TYPE_STRING_PTR,
 	  offsetof(sql_acct_section_t, reference), NULL, ".query"},
 	  
@@ -812,7 +812,7 @@ static int rlm_sql_detach(void *instance)
 }
 
 static int parse_sub_section(CONF_SECTION *parent, 
-	 		     UNUSED SQL_INST *instance,
+	 		     UNUSED SQL_INST *inst,
 	 		     sql_acct_section_t **config,
 	 		     rlm_components_t comp)
 {
@@ -829,7 +829,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	}
 	
 	*config = rad_calloc(sizeof(**config));
-	if (cf_section_parse(cs, *config, section_config) < 0) {
+	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
 		radlog(L_ERR, "Failed parsing configuration for section %s",
 		       name);
 		
@@ -864,20 +864,6 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	
 	inst->config = rad_calloc(sizeof(SQL_CONFIG));
 	inst->cs = conf;
-		
-	/*
-	 *	If the configuration parameters can't be parsed, then fail.
-	 */
-	if ((cf_section_parse(conf, inst->config, module_config) < 0) ||
-	    (parse_sub_section(conf, inst,
-			       &inst->config->accounting,
-			       RLM_COMPONENT_ACCT) < 0) ||
-	    (parse_sub_section(conf, inst,
-			       &inst->config->postauth,
-			       RLM_COMPONENT_POST_AUTH) < 0)) {
-		radlog(L_ERR, "Failed parsing configuration");
-		goto error;
-	}
 
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL) {
@@ -892,14 +878,15 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		 */
 		group_name = rad_malloc((strlen(xlat_name) + 1 + 11) * sizeof(char));
 		sprintf(group_name,"%s-SQL-Group", xlat_name);
-		DEBUG("rlm_sql Creating new attribute %s",group_name);
+		DEBUG("rlm_sql (%s): Creating new attribute %s",
+		      xlat_name, group_name);
 
 		memset(&flags, 0, sizeof(flags));
 		dict_addattr(group_name, 0, PW_TYPE_STRING, -1, flags);
 		dattr = dict_attrbyname(group_name);
 		if (dattr == NULL){
-			radlog(L_ERR, "rlm_sql: Failed to create attribute %s",
-			       group_name);
+			radlog(L_ERR, "rlm_sql (%s): Failed to create "
+			       "attribute %s", xlat_name, group_name);
 			       
 			free(group_name);
 
@@ -908,8 +895,8 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 
 		if (inst->config->groupmemb_query && 
 		    inst->config->groupmemb_query[0]) {
-			DEBUG("rlm_sql: Registering sql_groupcmp for %s",
-			      group_name);
+			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
+			      xlat_name, group_name);
 			paircompare_register(dattr->attr, PW_USER_NAME,
 					     sql_groupcmp, inst);
 		}
@@ -918,19 +905,35 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	}
 	
 	rad_assert(xlat_name);
+	
 
 	/*
 	 *	Register the SQL xlat function
 	 */
 	inst->config->xlat_name = strdup(xlat_name);
 	xlat_register(xlat_name, sql_xlat, inst);
+
+	/*
+	 *	If the configuration parameters can't be parsed, then fail.
+	 */
+	if ((cf_section_parse(conf, inst->config, module_config) < 0) ||
+	    (parse_sub_section(conf, inst,
+			       &inst->config->accounting,
+			       RLM_COMPONENT_ACCT) < 0) ||
+	    (parse_sub_section(conf, inst,
+			       &inst->config->postauth,
+			       RLM_COMPONENT_POST_AUTH) < 0)) {
+		radlog(L_ERR, "rlm_sql (%s): Failed parsing configuration",
+		       inst->config->xlat_name);
+		goto error;
+	}
 		
 	/*
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config->sql_driver, "rlm_sql_", 8) != 0) {
-		radlog(L_ERR, "\"%s\" is NOT an SQL driver!",
-		       inst->config->sql_driver);
+		radlog(L_ERR, "rlm_sql (%s): \"%s\" is NOT an SQL driver!",
+		       inst->config->xlat_name, inst->config->sql_driver);
 		goto error;
 	}
 
@@ -1181,8 +1184,8 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
  *	doesn't update any rows, the next matching config item is used.
  *  
  */
-static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request, 
-			     sql_acct_section_t *section)
+static int acct_redundant(SQL_INST *inst, REQUEST *request, 
+			  sql_acct_section_t *section)
 {
 	int	ret = RLM_MODULE_OK;
 
@@ -1200,11 +1203,7 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 	
 	char	*p = path;
 
-	if (!section || !section->reference) {
-		RDEBUG("No configuration provided for this section");
-		
-		return RLM_MODULE_NOOP;	
-	}
+	rad_assert(section);
 	
 	if (section->reference[0] != '.')
 		*p++ = '.';
@@ -1317,7 +1316,11 @@ static int rlm_sql_redundant(SQL_INST *inst, REQUEST *request,
 static int rlm_sql_accounting(void *instance, REQUEST * request) {
 	SQL_INST *inst = instance;		
 
-	return rlm_sql_redundant(inst, request, inst->config->accounting); 
+	if (inst->config->accounting) {
+		return acct_redundant(inst, request, inst->config->accounting); 
+	}
+	
+	return RLM_MODULE_NOOP;
 }
 
 #endif
@@ -1514,7 +1517,11 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 static int rlm_sql_postauth(void *instance, REQUEST * request) {
 	SQL_INST *inst = instance;
 	
-	return rlm_sql_redundant(inst, request, inst->config->postauth); 
+	if (inst->config->postauth) {
+		return acct_redundant(inst, request, inst->config->postauth);
+	}
+	
+	return RLM_MODULE_NOOP; 
 }
 
 /*
