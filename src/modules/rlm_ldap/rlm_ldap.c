@@ -2128,7 +2128,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	
 	LDAP_CONN	*conn;
 	
-	LDAPMod		*mod_p[MAX_ATTRMAP], mod_s[MAX_ATTRMAP];
+	LDAPMod		*mod_p[MAX_ATTRMAP + 1], mod_s[MAX_ATTRMAP];
 	LDAPMod		**modify = mod_p;
 	
 	char		*passed[MAX_ATTRMAP * 2];
