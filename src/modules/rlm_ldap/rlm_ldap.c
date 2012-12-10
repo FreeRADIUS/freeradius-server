@@ -2275,9 +2275,6 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 					       inst->login, inst->password,
 					       NULL, TRUE);
 		if (ldap_errno != RLM_MODULE_OK) {
-			radlog(L_AUTH, "rlm_ldap (%s): Bind error",
-			       inst->xlat_name);
-
 			goto error;
 		}
 
