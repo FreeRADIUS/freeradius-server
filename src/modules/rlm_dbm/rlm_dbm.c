@@ -148,7 +148,7 @@ static int isfallthrough(VALUE_PAIR *vp) {
  */
 
 static int sm_parse_user(DBM *pdb, const char * username, REQUEST *req,
-			 VALUE_PAIR const* request, VALUE_PAIR **config,
+			 VALUE_PAIR * request, VALUE_PAIR **config,
 			 VALUE_PAIR **reply, SM_USER_ENTRY **ulist)
 {
    	datum 	k,d;
