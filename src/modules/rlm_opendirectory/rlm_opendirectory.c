@@ -62,34 +62,34 @@ int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember)
 
 static long od_check_passwd(const char *uname, const char *password)
 {
-	long			result = eDSAuthFailed;
-	tDirReference		dsRef = 0;
+	long			result 		= eDSAuthFailed;
+	tDirReference		dsRef 		= 0;
 	tDataBuffer		*tDataBuff;
-	tDirNodeReference	nodeRef = 0;
-	long			status = eDSNoErr;
-	tContextData		context	= 0;
-	unsigned long		nodeCount = 0;
-	uint32_t		attrIndex = 0;
-	tDataList		*nodeName;
-	tAttributeEntryPtr	pAttrEntry;
-	tDataList		*pRecName;
-	tDataList		*pRecType;
-	tDataList		*pAttrType;
-	unsigned long		recCount = 0;
-	tRecordEntry		*pRecEntry;
-	tAttributeListRef	attrListRef = 0;
-	char			*pUserLocation;
-	char			*pUserName;
-	tAttributeValueListRef	valueRef = 0;
-	tAttributeValueEntry	*pValueEntry;
-	tDataList		*pUserNode;
-	tDirNodeReference	userNodeRef = 0;
-	tDataBuffer		*pStepBuff;
-	tDataNode		*pAuthType;
-	tAttributeValueEntry	*pRecordType;
-	uint32_t		uiCurr = 0;
-	uint32_t		uiLen = 0;
-	uint32_t		pwLen = 0;
+	tDirNodeReference	nodeRef 	= 0;
+	long			status 		= eDSNoErr;
+	tContextData		context		= 0;
+	unsigned long		nodeCount 	= 0;
+	uint32_t		attrIndex 	= 0;
+	tDataList		*nodeName 	= NULL;
+	tAttributeEntryPtr	pAttrEntry 	= NULL;
+	tDataList		*pRecName 	= NULL;
+	tDataList		*pRecType 	= NULL;
+	tDataList		*pAttrType 	= NULL;
+	unsigned long		recCount 	= 0;
+	tRecordEntry		*pRecEntry 	= NULL;
+	tAttributeListRef	attrListRef 	= 0;
+	char			*pUserLocation 	= NULL;
+	char			*pUserName 	= NULL;
+	tAttributeValueListRef	valueRef 	= 0;
+	tAttributeValueEntry	*pValueEntry 	= NULL;
+	tDataList		*pUserNode 	= NULL;
+	tDirNodeReference	userNodeRef 	= 0;
+	tDataBuffer		*pStepBuff 	= NULL;
+	tDataNode		*pAuthType 	= NULL;
+	tAttributeValueEntry	*pRecordType 	= NULL;
+	uint32_t		uiCurr 		= 0;
+	uint32_t		uiLen 		= 0;
+	uint32_t		pwLen 		= 0;
 	
 	if (uname == NULL || password == NULL)
 		return result;
