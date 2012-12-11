@@ -1410,7 +1410,7 @@ static int ldap_detach(void *instance)
 }
 
 static int parse_sub_section(CONF_SECTION *parent, 
-	 		     UNUSED ldap_instance *inst,
+	 		     ldap_instance *inst,
 	 		     ldap_acct_section_t **config,
 	 		     rlm_components_t comp)
 {
@@ -1420,16 +1420,17 @@ static int parse_sub_section(CONF_SECTION *parent,
 	
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
-		radlog(L_INFO, "Couldn't find configuration for %s. "
-		       "Will return NOOP for calls from this section.", name);
+		radlog(L_INFO, "rlm_ldap (%s): Couldn't find configuration for "
+		       "%s, will return NOOP for calls from this section",
+		       inst->xlat_name, name);
 		
 		return 0;
 	}
 	
 	*config = rad_calloc(sizeof(**config));
 	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
-		radlog(L_ERR, "Failed parsing configuration for section %s",
-		       name);
+		radlog(L_ERR, "rlm_ldap (%s): Failed parsing configuration for "
+		       "section %s", inst->xlat_name, name);
 		
 		free(*config);
 		*config = NULL;
