@@ -2253,7 +2253,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			
 			passed[last_pass] = p;
 		} else {
-			memcpy(&(passed[last_pass]), value,
+			memcpy(&(passed[last_pass]), &value,
 			       sizeof(passed[last_pass]));
 		}
 		
