@@ -93,12 +93,18 @@ typedef struct ippool_key {
 #define MATCH_IP(ip1, ip2) ((ip1) == NULL || strcmp((ip1), (ip2)) == 0)
 #define MATCH_ACTIVE(info) ((info).active == 1 || !aflag)
 
-void addip(char *sessiondbname, char *indexdbname, char *ipaddress, char* NASname, char*NASport, int old);
+void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
+	   char *NASname, char *NASport, int old);
+	   
 void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old);
+
 void tonewformat(char *sessiondbname, char *newsessiondbname);
+
 void usage(char *argv0);
 
-void addip(char *sessiondbname, char *indexdbname, char *ipaddress, char* NASname, char*NASport, int old) {
+void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
+	   char *NASname, char *NASport, int old)
+{
 	GDBM_FILE sessiondb;
 	GDBM_FILE indexdb;
 	datum key_datum, data_datum, save_datum;
