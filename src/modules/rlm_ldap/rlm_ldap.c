@@ -374,11 +374,13 @@ static int ldap_bind_wrapper(LDAP_CONN **pconn, const char *user,
 	struct timeval tv;
 
 redo:
+	/*
+	 *	man ldap_bind says this returns and ldap_error on failure
+	 *	when using LDAP_AUTH_SIMPLE.
+	 */
 	ldap_errno = ldap_bind(conn->handle, user, password, LDAP_AUTH_SIMPLE);
-	if (ldap_errno < 0) {
+	if (ldap_errno != LDAP_SUCCESS) {
 	get_error:
-		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
-				&ldap_errno);
 		error_string = ldap_err2string(ldap_errno);
 
 		if (do_rebind && !reconnect) {
@@ -457,7 +459,6 @@ static void *ldap_conn_create(void *ctx)
 		      inst->server);
 
 		ldap_errno = ldap_initialize(&handle, inst->server);
-
 		if (ldap_errno != LDAP_SUCCESS) {
 			radlog(L_ERR, "rlm_ldap (%s): ldap_initialize() "
 			       "failed: %s",
@@ -2331,7 +2332,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	ldap_errno = ldap_modify_ext_s(conn->handle, user_dn, modify, NULL,
 				       NULL);
 			     
-	if (ldap_errno < 0) {
+	if (ldap_errno != LDAP_SUCCESS) {
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
 				&ldap_errno);
 				
