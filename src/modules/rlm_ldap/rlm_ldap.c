@@ -2366,9 +2366,6 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 				       NULL);
 			     
 	if (ldap_errno != LDAP_SUCCESS) {
-		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
-				&ldap_errno);
-				
 		error_string = ldap_err2string(ldap_errno);
 
 		radlog(L_ERR, "rlm_ldap (%s): Modifying DN \"%s\" failed: %s",
