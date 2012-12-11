@@ -2201,7 +2201,6 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	     ci != NULL;
 	     ci = cf_item_find_next(cs, ci)) {
 	     	int do_xlat = FALSE;
-	     	int is_wildcard = FALSE;
 	     	
 	     	if (total == MAX_ATTRMAP) {
 	     		radlog(L_ERR, "rlm_ldap (%s): Modify map size exceeded",
@@ -2232,22 +2231,10 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			
 			continue;
 		}
-		
+
 		switch (cf_pair_value_type(cp))
 		{
 			case T_BARE_WORD:
-				if (strcmp(value, "ANY") == 0) {
-					if (op != T_OP_CMP_FALSE) {
-						radlog(L_ERR, "rlm_ldap (%s): "
-						       "ANY is only supported "
-						       "for !* operators",
-						       inst->xlat_name);
-						
-						goto error;	
-					}
-					
-					is_wildcard = TRUE;
-				}
 			case T_SINGLE_QUOTED_STRING:
 			break;
 			case T_BACK_QUOTED_STRING:
@@ -2259,10 +2246,9 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 				goto error;
 		}
 		
-		/* 
-		 *	Will be xlat expanded
-		 */
-		if (do_xlat) {
+		if (op == T_OP_CMP_FALSE) {
+			passed[last_pass] = NULL;
+		} else if (do_xlat) {
 			p = rad_malloc(1024);
 			radius_xlat(p, 1024, value, request, NULL, NULL);
 			
@@ -2278,12 +2264,6 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			
 			expanded[last_exp++] = p;
 			passed[last_pass] = p;
-		/* 
-		 *	The ANY keyword used as a wildcard
-		 */
-		} else if (is_wildcard) {
-			passed[last_pass] = NULL;
-			
 		/* 
 		 *	Static strings
 		 */
@@ -2311,8 +2291,6 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 				mod_s[total].mod_op = LDAP_MOD_REPLACE;
 			break;
 			case T_OP_SUB:
-				mod_s[total].mod_op = LDAP_MOD_DELETE;
-			break;
 			case T_OP_CMP_FALSE:
 				mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
