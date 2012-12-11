@@ -379,7 +379,7 @@ redo:
 	if (msg_id < 0) {
 	get_error:
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
-				&ldap_errno);
+				&msg_id);
 				
 		error_string = ldap_err2string(ldap_errno);
 
