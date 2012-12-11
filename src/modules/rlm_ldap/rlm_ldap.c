@@ -2331,7 +2331,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	ldap_errno = ldap_modify_ext_s(conn->handle, user_dn, modify, NULL,
 				       NULL);
 			     
-	if (ldap_errno < 0) {
+	if (ldap_errno > 0) {
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
 				&ldap_errno);
 				
