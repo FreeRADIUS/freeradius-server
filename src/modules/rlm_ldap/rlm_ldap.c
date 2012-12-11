@@ -364,7 +364,7 @@ static int ldap_bind_wrapper(LDAP_CONN **pconn, const char *user,
 			     const char *password,
 			     const char **perror_str, int do_rebind)
 {
-	int		rcode, ldap_errno;
+	int		rcode, ldap_errno, msg_id;
 	int		module_rcode = RLM_MODULE_FAIL;
 	int		reconnect = FALSE;
 	const char	*error_string;
@@ -374,13 +374,13 @@ static int ldap_bind_wrapper(LDAP_CONN **pconn, const char *user,
 	struct timeval tv;
 
 redo:
-	/*
-	 *	man ldap_bind says this returns and ldap_error on failure
-	 *	when using LDAP_AUTH_SIMPLE.
-	 */
-	ldap_errno = ldap_bind(conn->handle, user, password, LDAP_AUTH_SIMPLE);
-	if (ldap_errno != LDAP_SUCCESS) {
+	msg_id = ldap_bind(conn->handle, user, password,
+			       LDAP_AUTH_SIMPLE);
+	if (msg_id < 0) {
 	get_error:
+		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
+				&ldap_errno);
+				
 		error_string = ldap_err2string(ldap_errno);
 
 		if (do_rebind && !reconnect) {
