@@ -375,7 +375,7 @@ static int ldap_bind_wrapper(LDAP_CONN **pconn, const char *user,
 
 redo:
 	msg_id = ldap_bind(conn->handle, user, password,
-			       LDAP_AUTH_SIMPLE);
+			   LDAP_AUTH_SIMPLE);
 	if (msg_id < 0) {
 	get_error:
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
@@ -415,7 +415,7 @@ redo:
 
 	tv.tv_sec = inst->timeout;
 	tv.tv_usec = 0;
-	rcode = ldap_result(conn->handle, ldap_errno, 1, &tv, &result);
+	rcode = ldap_result(conn->handle, msg_id, 1, &tv, &result);
 	if (rcode < 0) goto get_error;
 
 	if (rcode == 0) {
