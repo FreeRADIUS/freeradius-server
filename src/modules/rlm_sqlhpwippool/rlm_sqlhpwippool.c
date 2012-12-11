@@ -351,7 +351,7 @@ static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
 static int sqlhpwippool_postauth(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
-	unsigned char *pname;       /* name of requested IP pool */
+	char *pname;       /* name of requested IP pool */
 	uint32_t nasip;             /* NAS IP in host byte order */
 	struct in_addr ip = {0};    /* reserved IP for client (net. byte order) */
 	SQLSOCK *sqlsock;
@@ -672,7 +672,7 @@ static int sqlhpwippool_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	SQLSOCK *sqlsock;
 	struct in_addr nasip;      /* NAS IP */
-	unsigned char *sessid;     /* unique session id */
+	char *sessid;     /* unique session id */
 	char nasipstr[16];         /* NAS IP in string format */
 	uint32_t framedip = 0;     /* client's IP, host byte order */
 	uint32_t acct_type;
