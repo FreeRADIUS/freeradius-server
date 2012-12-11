@@ -2200,6 +2200,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	     ci != NULL;
 	     ci = cf_item_find_next(cs, ci)) {
 	     	int do_xlat = FALSE;
+	     	int is_wildcard = FALSE;
 	     	
 	     	if (total == MAX_ATTRMAP) {
 	     		radlog(L_ERR, "rlm_ldap (%s): Modify map size exceeded",
@@ -2216,11 +2217,36 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 			goto error;
 		}
 	
+		/*
+		 *	Retrieve all the information we need about the pair
+		 */
 		cp = cf_itemtopair(ci);
+		value = cf_pair_value(cp);
+		attr = cf_pair_attr(cp);
+		op = cf_pair_operator(cp);
+		
+		if ((value == NULL) || (*value == '\0')) {
+			RDEBUG("empty value string, "
+			       "skipping attribute \"%s\"", attr);
+			
+			continue;
+		}
 		
 		switch (cf_pair_value_type(cp))
 		{
 			case T_BARE_WORD:
+				if (strcmp(value, "ANY") == 0) {
+					if (op != T_OP_SUB) {
+						radlog(L_ERR, "rlm_ldap (%s): "
+						       "ANY is only supported "
+						       "for delete operations ",
+						       inst->xlat_name);
+						
+						goto error;	
+					}
+					
+					is_wildcard = TRUE;
+				}
 			case T_SINGLE_QUOTED_STRING:
 			break;
 			case T_BACK_QUOTED_STRING:
@@ -2232,26 +2258,34 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 				goto error;
 		}
 		
-		attr = cf_pair_attr(cp);
-		value = cf_pair_value(cp);
-		
+		/* 
+		 *	Will be xlat expanded
+		 */
 		if (do_xlat) {
-			p = rad_malloc(1024);	
+			p = rad_malloc(1024);
+			radius_xlat(p, 1024, value, request, NULL, NULL);
 			
-			if (radius_xlat(p, 1024, value, request,
-					NULL, NULL) == 0) {
-				RDEBUG("xlat failed or expanded to empty "
-				       "string, skipping attribute \"%s\"",
-				       attr);
+			if (*p == '\0') {
 			
+				RDEBUG("xlat failed or empty value string, "
+			       	       "skipping attribute \"%s\"", attr);
+			       	       
 				free(p);
 				
-				continue;				
+				continue;
 			}
 			
 			expanded[last_exp++] = p;
-			
 			passed[last_pass] = p;
+		/* 
+		 *	The ANY keyword used as a wildcard
+		 */
+		} else if (is_wildcard) {
+			passed[last_pass] = NULL;
+			
+		/* 
+		 *	Static strings
+		 */
 		} else {
 			memcpy(&(passed[last_pass]), &value,
 			       sizeof(passed[last_pass]));
@@ -2263,14 +2297,6 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 					
 		last_pass += 2;
 		
-		/*
-		 *	Now we know the value is ok, copy the pointers into
-		 *	the ldapmod struct.
-		 */
-		memcpy(&(mod_s[total].mod_type), &(attr), 
-		       sizeof(mod_s[total].mod_type));
-
-		op = cf_pair_operator(cp);
 		switch (op)
 		{
 			/*
@@ -2299,6 +2325,13 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 				       
 				goto error;
 		}
+		
+		/*
+		 *	Now we know the value is ok, copy the pointers into
+		 *	the ldapmod struct.
+		 */
+		memcpy(&(mod_s[total].mod_type), &(attr), 
+		       sizeof(mod_s[total].mod_type));
 		
 		mod_p[total] = &(mod_s[total]);
 		total++;

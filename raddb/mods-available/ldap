@@ -126,10 +126,14 @@ ldap {
 	# 
 	#  Where:
 	#  	<ldap attr>:	The LDAP attribute to add modify or delete.
-	#  	<op>: 		One of the assignment operators
+	#  	<op>: 		One of the assignment operators:
 	#			(:=, +=, -=, ++).
 	#			Note: '=' is *not* supported.
 	#  	<value>:	The value to add modify or delete.
+	#
+	#  WARNING: If using the ':=' operator with a multivalued attribute
+	#  all instances of the attribute will be removed and replaced with
+	#  a single attribute.
 	# 
 	accounting {
 		reference = "%{tolower:type.%{Acct-Status-Type}}"
