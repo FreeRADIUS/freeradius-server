@@ -2341,6 +2341,11 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 		total++;
 	}
 	
+	if (total == 0) {
+		module_rcode = RLM_MODULE_NOOP;
+		goto release;
+	}
+	
 	mod_p[total] = NULL;
 	
 	/*
