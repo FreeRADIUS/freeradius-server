@@ -2236,10 +2236,10 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 		{
 			case T_BARE_WORD:
 				if (strcmp(value, "ANY") == 0) {
-					if (op != T_OP_SUB) {
+					if (op != T_OP_CMP_FALSE) {
 						radlog(L_ERR, "rlm_ldap (%s): "
 						       "ANY is only supported "
-						       "for delete operations ",
+						       "for !* operators",
 						       inst->xlat_name);
 						
 						goto error;	
@@ -2310,6 +2310,9 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 				mod_s[total].mod_op = LDAP_MOD_REPLACE;
 			break;
 			case T_OP_SUB:
+				mod_s[total].mod_op = LDAP_MOD_DELETE;
+			break;
+			case T_OP_CMP_FALSE:
 				mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
 #ifdef LDAP_MOD_INCREMENT
