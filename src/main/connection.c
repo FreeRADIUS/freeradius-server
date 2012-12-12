@@ -62,6 +62,7 @@ struct fr_connection_pool_t {
 	time_t		last_spawned;
 	time_t		last_failed;
 	time_t		last_complained;
+	time_t		last_throttled;
 
 	int		max_uses;
 	int		lifetime;
@@ -111,10 +112,10 @@ static const CONF_PARSER connection_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
+
 static void fr_connection_unlink(fr_connection_pool_t *fc,
 				 fr_connection_t *this)
 {
-
 	if (this->prev) {
 		rad_assert(fc->head != this);
 		this->prev->next = this->next;
@@ -178,17 +179,26 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	rad_assert(fc->num <= fc->max);
 
 	if (fc->last_failed == now) {
-		radlog(L_ERR, "%s: Last connection failed, throttling "
-		       "connection spawn", fc->log_prefix);
-
+		if (fc->last_throttled < now) {
+			radlog(L_ERR, "%s: Last connection failed, throttling "
+			       "connection spawn", fc->log_prefix);
+	
+			fc->last_throttled = now;
+		}
+		
 		pthread_mutex_unlock(&fc->mutex);
 		return NULL;
 	}
 
 	if (fc->spawning) {
-		radlog(L_ERR, "%s: Cannot open new connection, connection "
-		       "spawning already in progress", fc->log_prefix);
-
+		if (fc->last_throttled < now) {
+			radlog(L_ERR, "%s: Cannot open new connection, "
+			       "connection spawning already in progress",
+			       fc->log_prefix);
+	
+			fc->last_throttled = now;
+		}
+				
 		pthread_mutex_unlock(&fc->mutex);
 		return NULL;
 	}
@@ -217,12 +227,19 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	 *	already have no free connections.
 	 */
 	conn = fc->create(fc->ctx);
+	
 	if (!conn) {
+		radlog(L_ERR, "%s: Opening connection failed (%i)",
+		       fc->log_prefix, fc->count);
+		       
 		fc->last_failed = now;
 		free(this);
 		fc->spawning = FALSE; /* atomic, so no lock is needed */
 		return NULL;
 	}
+	
+	radlog(L_INFO, "%s: Opening connection successful (%i)",
+	       fc->log_prefix, fc->count);
 
 	this->start = now;
 	this->connection = conn;	
@@ -331,6 +348,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *fc, void *conn)
 	pthread_mutex_unlock(&fc->mutex);
 	return NULL;
 }
+
 
 int fr_connection_del(fr_connection_pool_t *fc, void *conn)
 {
@@ -538,8 +556,10 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 
 	if ((fc->idle_timeout > 0) &&
 	    ((this->last_used + fc->idle_timeout) < now)) {
-		radlog(L_INFO, "%s: Closing idle connection (%i)",
-			fc->log_prefix, this->number);
+		int64_t idle = now - this->last_used;
+		radlog(L_INFO, "%s: Closing connection (%i): Hit idle_timeout, "
+		       "was idle for %lli seconds", fc->log_prefix,
+		       this->number, idle);
 		goto do_delete;
 	}
 	
@@ -599,7 +619,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 
 		rad_assert(idle != NULL);
 		
-		radlog(L_INFO, "%s: Closing idle connection (%i): Too many "
+		radlog(L_INFO, "%s: Closing connection (%i): Too many "
 		       "free connections (%d > %d)", fc->log_prefix,
 		       idle->number, spare, fc->spare);
 		fr_connection_close(fc, idle);
@@ -619,6 +639,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 
 	return 1;
 }
+
 
 int fr_connection_check(fr_connection_pool_t *fc, void *conn)
 {
