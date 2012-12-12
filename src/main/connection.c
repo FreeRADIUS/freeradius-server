@@ -167,8 +167,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	rad_assert(fc != NULL);
 
 	/*
-	 *  Prevent all threads from blocking if the resource
-	 *  were managing connections for appears to be unavailable.
+	 *	Prevent all threads from blocking if the resource
+	 *	were managing connections for appears to be unavailable.
 	 */
 	if ((fc->num == 0) && fc->spawning) {
 		return NULL;
@@ -177,7 +177,18 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *fc,
 	pthread_mutex_lock(&fc->mutex);
 	rad_assert(fc->num <= fc->max);
 
-	if ((fc->last_failed == now) || fc->spawning) {
+	if (fc->last_failed == now) {
+		radlog(L_ERR, "%s: Last connection failed, throttling "
+		       "connection spawn", fc->log_prefix);
+
+		pthread_mutex_unlock(&fc->mutex);
+		return NULL;
+	}
+
+	if (fc->spawning) {
+		radlog(L_ERR, "%s: Cannot open new connection, connection "
+		       "spawning already in progress", fc->log_prefix);
+
 		pthread_mutex_unlock(&fc->mutex);
 		return NULL;
 	}
@@ -756,6 +767,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 		
 		radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
 		       fc->log_prefix, conn_number);
+		       
 		return NULL;
 	}
 	
