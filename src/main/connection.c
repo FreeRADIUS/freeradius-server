@@ -298,8 +298,6 @@ static void fr_connection_close(fr_connection_pool_t *fc,
 
 	rad_assert(this->used == FALSE);
 
-	radlog(L_INFO, "%s: Closing connection (%i)", fc->log_prefix, this->number);
-
 	fr_connection_unlink(fc, this);
 	fc->delete(fc->ctx, this->connection);
 	rad_assert(fc->num > 0);
@@ -352,6 +350,9 @@ int fr_connection_del(fr_connection_pool_t *fc, void *conn)
 		fc->active--;
 	}
 
+	radlog(L_INFO, "%s: Deleting connection (%i)", fc->log_prefix,
+	       this->number);
+
 	fr_connection_close(fc, this);
 	fr_connection_pool_check(fc);
 	return 1;
@@ -370,6 +371,10 @@ void fr_connection_pool_delete(fr_connection_pool_t *fc)
 
 	for (this = fc->head; this != NULL; this = next) {
 		next = this->next;
+		
+		radlog(L_INFO, "%s: Closing connection (%i)", fc->log_prefix,
+		       this->number);
+		
 		fr_connection_close(fc, this);
 	}
 
@@ -437,7 +442,8 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 
 			lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
 			fc->log_prefix = rad_malloc(lp_len);
-			snprintf(fc->log_prefix, lp_len, LOG_PREFIX, cs_name1, cs_name2);
+			snprintf(fc->log_prefix, lp_len, LOG_PREFIX, cs_name1,
+				 cs_name2);
 		}
 	} else {		/* not a module configuration */
 		cs_name1 = cf_section_name1(parent);
@@ -510,12 +516,13 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 
 	if ((fc->max_uses > 0) &&
 	    (this->num_uses >= fc->max_uses)) {
-		radlog(L_INFO, "%s: Closing expired connection (%i): Hit max_uses limit",
-			fc->log_prefix, this->number);
+		radlog(L_INFO, "%s: Closing expired connection (%i): Hit "
+		       "max_uses limit", fc->log_prefix, this->number);
 	do_delete:
 		if ((fc->num <= fc->min) &&
 		    (fc->last_complained < now)) {
-			radlog(L_INFO, "%s: WARNING: You probably need to lower \"min\"", fc->log_prefix);
+			radlog(L_INFO, "%s: WARNING: You probably need to "
+			       "lower \"min\"", fc->log_prefix);
 			fc->last_complained = now;
 		}
 		fr_connection_close(fc, this);
@@ -592,8 +599,9 @@ static int fr_connection_pool_check(fr_connection_pool_t *fc)
 
 		rad_assert(idle != NULL);
 		
-		radlog(L_INFO, "%s: Closing idle connection (%i): Too many free connections (%d > %d)",
-		      fc->log_prefix, idle->number, spare, fc->spare);
+		radlog(L_INFO, "%s: Closing idle connection (%i): Too many "
+		       "free connections (%d > %d)", fc->log_prefix,
+		       idle->number, spare, fc->spare);
 		fr_connection_close(fc, idle);
 	}
 
@@ -665,8 +673,8 @@ void *fr_connection_get(fr_connection_pool_t *fc)
 		}
 		pthread_mutex_unlock(&fc->mutex);
 
-		radlog(L_ERR, "%s: No connections available and at max connection limit",
-		       fc->log_prefix);
+		radlog(L_ERR, "%s: No connections available and at max "
+		       "connection limit", fc->log_prefix);
 		return NULL;
 	}
 
@@ -765,8 +773,8 @@ void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn)
 		
 		if (!now) return NULL;
 		
-		radlog(L_ERR, "%s: Failed to reconnect (%i), and no other connections available",
-		       fc->log_prefix, conn_number);
+		radlog(L_ERR, "%s: Failed to reconnect (%i), and no other "
+		       "connections available", fc->log_prefix, conn_number);
 		       
 		return NULL;
 	}
