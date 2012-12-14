@@ -74,7 +74,7 @@ install.bindir:
 .PHONY: install.sbindir
 install.sbindir:
 	@[ -d $(R)$(sbindir) ] || $(INSTALL) -d -m 755 $(R)$(sbindir)
-	
+
 .PHONY: install.raddbdir
 install.raddbdir:
 	@[ -d $(R)$(raddbdir) ] || $(INSTALL) -d -m 755 $(R)$(raddbdir)
@@ -247,3 +247,9 @@ dist-tag: freeradius-server-$(RADIUSD_VERSION_STRING).tar.gz freeradius-server-$
 .PHONY: deb
 deb:
 	fakeroot dpkg-buildpackage -b -uc
+
+# Developer checks
+.PHONY: warnings
+warnings:
+	@(make clean all 2>&1) | egrep -v '^/|deprecated|^In file included|: In function|   from |^HEADER|^CC|^LINK' > warnings.txt
+	@wc -l warnings.txt
