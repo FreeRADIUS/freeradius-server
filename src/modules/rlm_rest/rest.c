@@ -2393,7 +2393,16 @@ ssize_t rest_uri_build(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	p = section->uri;
 
-	while ((q = strchr(p, '/')) && (count++ < 3)) p = (q + 1);
+	/*
+	 *	All URLs must contain at least <scheme>://<server>/
+	 */
+	while (q = strchr(p, '/')) {
+		p = q + 1;
+		
+		if (++count == 3) {
+			break;
+		}
+	}
 
 	if (count != 3) {
 		radlog(L_ERR, "rlm_rest (%s): Error URI is malformed,"
