@@ -35,6 +35,11 @@ use POSIX qw(:unistd_h :errno_h);
 use warnings;
 use strict;
 
+my $maxcollect = 100;    # tunable, works for MySQL!
+
+my $lastinsert;
+my @values;
+
 my $need_exit = 0;
 
 sub got_signal()
@@ -96,9 +101,36 @@ sub connect_wait($)
     $dbinfo->{handle} = $dbh;
 }
 
+
+
 sub process_file($$)
 {
     my ($dbinfo, $path) = @_;
+
+    sub do_inserts($) {
+        my $dbinfo = shift;
+        if (scalar(@values) > 0) {
+            my $query = $lastinsert . " ";
+            $query .= join(" ), ( ",@values);
+            $query .= " );";
+            do_query($dbinfo,$query);
+        }
+        @values = ();
+    }
+
+    sub do_query($$) {
+        my ($dbinfo,$query) = @_;
+        until ($dbinfo->{handle}->do($query)) {
+            print $dbinfo->{handle}->errstr."\n";
+            if ($dbinfo->{handle}->ping) {
+		sleep (1);
+            } else {
+		print "error: Lost connection to database\n";
+		$dbinfo->{handle}->disconnect;
+		connect_wait($dbinfo);
+            }
+        }
+    }
 
     unless (-e $path.'.work') {
 	until (rename($path, $path.'.work')) {
@@ -115,19 +147,45 @@ sub process_file($$)
     open(FILE, "+< $path.work") or die "error: Couldn't open $path.work: $!\n";
     setlock(\*FILE) or die "error: Couldn't lock $path.work: $!\n";
 
+    $lastinsert = "";
+    @values = ();
+
     while (<FILE>) {
-	chomp(my $query = $_);
-	until ($dbinfo->{handle}->do($query)) {
-	    print $dbinfo->{handle}->errstr."\n";
-	    if ($dbinfo->{handle}->ping) {
-		sleep (1);
-	    } else {
-		print "error: Lost connection to database\n";
-		$dbinfo->{handle}->disconnect;
-		connect_wait($dbinfo);
+        chomp (my $line = $_);
+
+        if (!($line =~ /^\s*insert\s+into\s+`?\w+`?\s+(?:\(.*?\)\s+)?
+                            values\s*\(.*\)\s*;\s*$/ix)) {
+            # This is no INSERT, so start new collection
+            do_inserts($dbinfo);
+            $lastinsert = "";
+            # must output this line
+            do_query($dbinfo, "$line");
+
+	} else {
+            # This is an INSERT, so collect it
+            my $insert = $line;
+            my $values = $line;
+            $insert =~ s/^\s*(insert\s+into\s+`?\w+`?\s+(?:\(.*?\)\s+)?
+                              values\s*\().*\)\s*;\s*$/$1/ix;
+            $values =~ s/^\s*insert\s+into\s+`?\w+`?\s+(?:\(.*?\)\s+)?
+                             values\s*\((.*)\)\s*;\s*$/$1/ix;
+
+            if (($lastinsert ne "") && ($insert ne $lastinsert)) {
+                # This is different from the last one
+                do_inserts($dbinfo);
 	    }
+            push(@values, $values);
+            $lastinsert = $insert; # start new collection
 	}
+
+        # limit to $maxcollect collected lines
+        if (scalar(@values) >= $maxcollect) {
+            do_inserts($dbinfo);
+        }
     }
+
+    # Cleanup
+    do_inserts($dbinfo);
 
     unlink($path.'.work');
     close(FILE); # and unlock
@@ -159,6 +217,8 @@ if (lc($args{d}) eq 'mysql') {
     $data_source = "DBI:Pg:dbname=$args{b};host=$args{h}";
 } elsif (lc($args{d}) eq 'oracle') {
     $data_source = "DBI:Oracle:$args{b}";
+    # Oracle does not conform to the SQL standard for multirow INSERTs
+    $maxcollect = 1;
 } else {
     print STDERR "error: SQL driver not supported yet: $args{d}\n";
     exit 1;
@@ -195,3 +255,4 @@ until ($need_exit) {
 }
 
 $dbinfo{handle}->disconnect;
+
