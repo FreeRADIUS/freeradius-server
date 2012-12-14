@@ -331,8 +331,10 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
     ruby_init();
     ruby_init_loadpath();
     ruby_script("radiusd");
-#warning FIXME: Disabling GC, it will eat your memory, but at least it will be stable.
+    /* disabling GC, it will eat your memory, but at least it will be stable. */
     rb_gc_disable();
+
+
     int status;
     /*
      *	Set up a storage area for instance data
