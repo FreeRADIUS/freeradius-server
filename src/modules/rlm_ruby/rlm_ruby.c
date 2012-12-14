@@ -92,7 +92,7 @@ static const CONF_PARSER module_config[] = {
 
 /* radlog wrapper */
 
-static VALUE radlog_rb(VALUE self, VALUE msg_type, VALUE rb_msg) {
+static VALUE radlog_rb(UNUSED VALUE self, VALUE msg_type, VALUE rb_msg) {
     int status;
     char *msg;
     status = FIX2INT(msg_type);
