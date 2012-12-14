@@ -183,7 +183,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 		radlog(L_ERR, "rlm_rest (%s): Unsupported HTTP auth type \"%s\""
 		       ", check libcurl version, OpenSSL build configuration," 
 		       " then recompile this module",
-		       instance->xlat_name, config->body_str);
+		       instance->xlat_name, config->auth_str);
 		return -1;
 	}
 				    
