@@ -41,12 +41,11 @@
 #include <DirectoryService/DirectoryService.h>
 #include <membership.h>
 
-#ifdef HAVE_APPLE_SPI
-#include <membershipPriv.h>
-#else
-int mbr_check_service_membership(const uuid_t user, const char *servicename, int *ismember);
-int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember);
-#endif
+/*
+ *	FIXME: The configure script should check for these...
+ */
+extern int mbr_check_service_membership(const uuid_t user, const char *servicename, int *ismember);
+extern int mbr_check_membership_refresh(const uuid_t user, uuid_t group, int *ismember);
 
 /* RADIUS service ACL constants */
 #define kRadiusSACLName		"com.apple.access_radius"
@@ -68,14 +67,14 @@ static long od_check_passwd(const char *uname, const char *password)
 	tDirNodeReference	nodeRef 	= 0;
 	long			status 		= eDSNoErr;
 	tContextData		context		= 0;
-	unsigned long		nodeCount 	= 0;
+	uint32_t		nodeCount 	= 0;
 	uint32_t		attrIndex 	= 0;
 	tDataList		*nodeName 	= NULL;
 	tAttributeEntryPtr	pAttrEntry 	= NULL;
 	tDataList		*pRecName 	= NULL;
 	tDataList		*pRecType 	= NULL;
 	tDataList		*pAttrType 	= NULL;
-	unsigned long		recCount 	= 0;
+	uint32_t		recCount 	= 0;
 	tRecordEntry		*pRecEntry 	= NULL;
 	tAttributeListRef	attrListRef 	= 0;
 	char			*pUserLocation 	= NULL;
