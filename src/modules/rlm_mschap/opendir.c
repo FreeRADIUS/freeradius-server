@@ -34,6 +34,19 @@ RCSID("$Id$")
 
 #define kActiveDirLoc "/Active Directory/"
 
+/*
+ *	In rlm_mschap.c
+ */
+extern void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
+			     const char* name, const char* value, int len);
+
+/*
+ *	Only used by rlm_mschap.c
+ */
+int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
+		   VALUE_PAIR * usernamepair);
+
+
 static int getUserNodeRef(char* inUserName, char **outUserName,
 			  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
@@ -41,14 +54,14 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 	tDirNodeReference       nodeRef		= 0;
 	long                    status		= eDSNoErr;
 	tContextData            context		= 0;
-	unsigned long           nodeCount	= 0;
+	uint32_t           	nodeCount	= 0;
 	uint32_t                attrIndex	= 0;
 	tDataList               *nodeName	= NULL;
 	tAttributeEntryPtr      pAttrEntry	= NULL;
 	tDataList               *pRecName	= NULL;
 	tDataList               *pRecType	= NULL;
 	tDataList               *pAttrType	= NULL;
-	unsigned long           recCount	= 0;
+	uint32_t           	recCount	= 0;
 	tRecordEntry            *pRecEntry	= NULL;
 	tAttributeListRef       attrListRef	= 0;
 	char                    *pUserLocation	= NULL;
@@ -114,7 +127,7 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 					 eDSExact, pRecType, pAttrType, 0,
 					 &recCount, &context);
 		if (status != eDSNoErr || recCount == 0) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordList() status = %ld, recCount=%lu", status, recCount);  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordList() status = %ld, recCount=%u", status, recCount);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -215,7 +228,6 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 	return  result;
 }
 
-
 int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 		   VALUE_PAIR * usernamepair)
 {
@@ -231,7 +243,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	char			*shortUserName	 = NULL;
 	VALUE_PAIR		*response	 = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT);
 #ifndef NDEBUG
-	int t;
+	unsigned int t;
 #endif
 	
 	username_string = (char *) malloc(usernamepair->length + 1);
