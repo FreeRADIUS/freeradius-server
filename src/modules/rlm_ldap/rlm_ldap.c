@@ -2125,7 +2125,8 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 		       ldap_acct_section_t *section)
 {
 	int		module_rcode = RLM_MODULE_OK;
-	int		ldap_errno;
+	int		ldap_errno, rcode, msg_id;
+	LDAPMessage	*result = NULL;
 	const char	*error_string;
 	
 	LDAP_CONN	*conn;
@@ -2138,6 +2139,8 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	
 	char 		*expanded[MAX_ATTRMAP];
 	int		last_exp = 0;
+	
+	struct timeval  tv;
 	
 	const char	*attr;
 	const char	*value;
@@ -2348,26 +2351,42 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 	}
 	
 	RDEBUG2("Modifying user object with DN \"%s\"", user_dn);
-	
-	ldap_errno = ldap_modify_ext_s(conn->handle, user_dn, modify, NULL,
-				       NULL);
-			     
+	ldap_errno = ldap_modify_ext(conn->handle, user_dn, modify, NULL, NULL,
+				     &msg_id);
 	if (ldap_errno != LDAP_SUCCESS) {
-		error_string = ldap_err2string(ldap_errno);
+		goto get_error;
+	}
+			     		     
+	DEBUG3("rlm_ldap (%s): Waiting for modify result...", inst->xlat_name);
 
+	tv.tv_sec = inst->timeout;
+	tv.tv_usec = 0;
+	rcode = ldap_result(conn->handle, msg_id, 1, &tv, &result);
+	if (rcode == 0) {
+		error_string = "timeout";
+		
+		goto print_error;
+	}
+	
+	if (rcode < 0) {	
+		ldap_errno = ldap_result2error(conn->handle, result, 1);
+		
+		get_error:
+		error_string = ldap_err2string(ldap_errno);
+		
+		print_error:
 		radlog(L_ERR, "rlm_ldap (%s): Modifying DN \"%s\" failed: %s",
 		       inst->xlat_name, user_dn, error_string);
 		
-	error:
+		error:
 		module_rcode = RLM_MODULE_FAIL;
 		
 		goto release;
 	}
-	
+		
 	RDEBUG2("Modification successful!");
 	
 	release:
-	
 	/*
 	 *	Free up any buffers we allocated for xlat expansion
 	 */	
@@ -2375,6 +2394,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 		free(expanded[i]);
 	}
 	
+	if (result) ldap_msgfree(result);
 	ldap_release_socket(inst, conn);
 	
 	return module_rcode;
