@@ -3089,6 +3089,23 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		if ((buffer[1] & 0x3f) > 32) goto raw;
 
 		memcpy(&vp->vp_ipv4prefix, buffer, sizeof(vp->vp_ipv4prefix));
+
+		/*
+		 *	/32 means "keep all bits".  Otherwise, mask
+		 *	them out.
+		 */
+		if ((buffer[1] & 0x3f) > 32) {
+			uint32_t addr, mask;
+			
+			memcpy(&addr, vp->vp_octets + 2, sizeof(addr));
+			mask = 1;
+			mask <<= (32 - (buffer[1] & 0x3f));
+			mask--;
+			mask = ~mask;
+			mask = htonl(mask);
+			addr &= mask;
+			memcpy(vp->vp_octets + 2, &addr, sizeof(addr));
+		}
 		break;
 
 	case PW_TYPE_SIGNED:
