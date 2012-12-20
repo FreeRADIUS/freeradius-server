@@ -1251,7 +1251,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 			}
 			vp->vp_octets[0] = 0;
-			vp->length = 8;
+			vp->length = sizeof(vp->vp_ipv4prefix);
 			break;
 
 		case PW_TYPE_ETHERNET:
