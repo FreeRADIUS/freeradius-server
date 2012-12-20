@@ -641,13 +641,16 @@ int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order,
 	switch (order) {
 	case PreOrder:
 		rcode = WalkNodePreOrder(tree->Root, callback, context);
+		break;
 	case InOrder:
 		rcode = WalkNodeInOrder(tree->Root, callback, context);
+		break;
 	case PostOrder:
 		rcode = WalkNodePostOrder(tree->Root, callback, context);
-
+		break;
 	default:
 		rcode = -1;
+		break;
 	}
 
 	PTHREAD_MUTEX_UNLOCK(tree);
