@@ -25,6 +25,7 @@
 #define PW_TYPE_LONG_EXTENDED		16
 #define PW_TYPE_EVS			17
 #define PW_TYPE_INTEGER64		18
+#define PW_TYPE_IPV4PREFIX		19
 
 #define PW_FLAG_LONG			(1 << 8)
 

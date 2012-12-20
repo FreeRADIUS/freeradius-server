@@ -17,10 +17,8 @@ ATTRIBUTE	PMIP6-Home-HN-Prefix			151	ipv6prefix
 ATTRIBUTE	PMIP6-Visited-HN-Prefix			152	ipv6prefix
 ATTRIBUTE	PMIP6-Home-Interface-ID			153	ifid
 ATTRIBUTE	PMIP6-Visited-Interface-ID		154	ifid
-# ipv4 prefix?
-ATTRIBUTE	PMIP6-Home-IPv4-HoA			155	octets
-# ipv4 prefix?
-ATTRIBUTE	PMIP6-Visited-IPv4-HoA			156	octets
+ATTRIBUTE	PMIP6-Home-IPv4-HoA			155	ipv4prefix
+ATTRIBUTE	PMIP6-Visited-IPv4-HoA			156	ipv4prefix
 ATTRIBUTE	PMIP6-Home-DHCP4-Server-Address		157	ipaddr
 ATTRIBUTE	PMIP6-Visited-DHCP4-Server-Address	158	ipaddr
 ATTRIBUTE	PMIP6-Home-DHCP6-Server-Address		159	ipv6addr

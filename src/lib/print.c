@@ -334,6 +334,24 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 		}
 			break;
 
+		case PW_TYPE_IPV4PREFIX:
+		{
+			struct in_addr addr;
+
+			/*
+			 *	Alignment issues.
+			 */
+			memcpy(&addr, &(vp->vp_ipv4prefix[2]), sizeof(addr));
+
+			a = inet_ntop(AF_INET, &addr, buf, sizeof(buf));
+			if (a) {
+				char *p = buf + strlen(buf);
+				snprintf(p, buf + sizeof(buf) - p - 1, "/%u",
+					 (unsigned int) (vp->vp_octets[1] & 0x3f));
+			}
+		}
+			break;
+
 		case PW_TYPE_ETHERNET:
 			snprintf(buf, sizeof(buf), "%02x:%02x:%02x:%02x:%02x:%02x",
 				 vp->vp_ether[0], vp->vp_ether[1],

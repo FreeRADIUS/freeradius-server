@@ -848,6 +848,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	case PW_TYPE_IFID:
 	case PW_TYPE_IPV6ADDR:
 	case PW_TYPE_IPV6PREFIX:
+	case PW_TYPE_IPV4PREFIX:
 	case PW_TYPE_ABINARY:
 		/* nothing more to do */
 		break;
@@ -3082,6 +3083,14 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 		}
 		break;
 
+	case PW_TYPE_IPV4PREFIX:
+		if (vp->length != sizeof(vp->vp_ipv4prefix)) goto raw;
+
+		if ((buffer[1] & 0x3f) > 32) goto raw;
+
+		memcpy(&vp->vp_ipv4prefix, buffer, sizeof(vp->vp_ipv4prefix));
+		break;
+
 	case PW_TYPE_SIGNED:
 		if (vp->length != 4) goto raw;
 
@@ -3901,6 +3910,7 @@ ssize_t rad_vp2data(const VALUE_PAIR *vp, uint8_t *out, size_t outlen)
 		case PW_TYPE_IPADDR:
 		case PW_TYPE_IPV6ADDR:
 		case PW_TYPE_IPV6PREFIX:
+		case PW_TYPE_IPV4PREFIX:
 		case PW_TYPE_ABINARY:
 		case PW_TYPE_TLV:
 			do_raw:

@@ -170,6 +170,7 @@ typedef union value_pair_data {
 	uint8_t			filter[32];
 	uint8_t			ifid[8]; /* struct? */
 	uint8_t			ipv6prefix[18]; /* struct? */
+	uint8_t			ipv4prefix[6]; /* struct? */
      	uint8_t			ether[6];
 	uint8_t			*tlv;
 } VALUE_PAIR_DATA;
@@ -206,6 +207,7 @@ typedef struct value_pair {
 #define vp_ipv6addr   data.ipv6addr
 #define vp_ifid       data.ifid
 #define vp_ipv6prefix data.ipv6prefix
+#define vp_ipv4prefix data.ipv4prefix
 #define vp_filter     data.filter
 #define vp_ether      data.ether
 #define vp_signed     data.sinteger

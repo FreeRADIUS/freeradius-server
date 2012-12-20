@@ -108,6 +108,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "int32",	PW_TYPE_SIGNED },
 	{ "integer64",	PW_TYPE_INTEGER64 },
 	{ "uint64",	PW_TYPE_INTEGER64 },
+	{ "ipv4prefix", PW_TYPE_IPV4PREFIX },
 	{ NULL, 0 }
 };
 

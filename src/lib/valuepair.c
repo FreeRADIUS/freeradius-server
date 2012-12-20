@@ -130,6 +130,10 @@ VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 			vp->length = sizeof(vp->vp_ipv6prefix);
 			break;
 
+		case PW_TYPE_IPV4PREFIX:
+			vp->length = sizeof(vp->vp_ipv4prefix);
+			break;
+
 		case PW_TYPE_ETHERNET:
 			vp->length = sizeof(vp->vp_ether);
 			break;
@@ -1202,8 +1206,52 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				}
 				vp->vp_octets[1] = prefix;
 			}
-			vp->vp_octets[0] = '\0';
+			vp->vp_octets[0] = 0;
 			vp->length = 16 + 2;
+			break;
+
+		case PW_TYPE_IPV4PREFIX:
+			p = strchr(value, '/');
+			if (!p || ((p - value) >= 256)) {
+				fr_strerror_printf("invalid IPv4 prefix "
+					   "string \"%s\"", value);
+				return NULL;
+			} else {
+				unsigned int prefix;
+				char buffer[256], *eptr;
+
+				memcpy(buffer, value, p - value);
+				buffer[p - value] = '\0';
+
+				if (inet_pton(AF_INET, buffer, vp->vp_octets + 2) <= 0) {
+					fr_strerror_printf("failed to parse IPv6 address "
+						   "string \"%s\"", value);
+					return NULL;
+				}
+
+				prefix = strtoul(p + 1, &eptr, 10);
+				if ((prefix > 32) || *eptr) {
+					fr_strerror_printf("failed to parse IPv6 address "
+						   "string \"%s\"", value);
+					return NULL;
+				}
+				vp->vp_octets[1] = prefix;
+
+				if (prefix < 32) {
+					uint32_t addr, mask;
+
+					memcpy(&addr, vp->vp_octets + 2, sizeof(addr));
+					mask = 1;
+					mask <<= (32 - prefix);
+					mask--;
+					mask = ~mask;
+					mask = htonl(mask);
+					addr &= mask;
+					memcpy(vp->vp_octets + 2, &addr, sizeof(addr));
+				}
+			}
+			vp->vp_octets[0] = 0;
+			vp->length = 8;
 			break;
 
 		case PW_TYPE_ETHERNET:
@@ -2162,6 +2210,14 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	case PW_TYPE_IPV6PREFIX:
 		compare = memcmp(&two->vp_ipv6prefix, &one->vp_ipv6prefix,
 				 sizeof(two->vp_ipv6prefix));
+		break;
+
+		/*
+		 *	FIXME: do a smarter comparison...
+		 */
+	case PW_TYPE_IPV4PREFIX:
+		compare = memcmp(&two->vp_ipv4prefix, &one->vp_ipv4prefix,
+				 sizeof(two->vp_ipv4prefix));
 		break;
 
 	case PW_TYPE_IFID:
