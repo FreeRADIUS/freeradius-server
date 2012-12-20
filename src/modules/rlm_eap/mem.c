@@ -343,7 +343,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 		handler = inst->session_head;
 		if (!handler) break;
 		
-		RDEBUG("Expiring EAP session with state"
+		RDEBUG("Expiring EAP session with state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
 		       handler->state[0], handler->state[1],
 		       handler->state[2], handler->state[3],
