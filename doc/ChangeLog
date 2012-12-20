@@ -13,6 +13,8 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Added keytab support to Heimdal Kerberos. Patch from Ryan Steinmetz.
 	* radsqlrelay does multiple INSERTs in one transaction.
 	  Patch from Uwe Meyer-Gruhl.
+	* Run Post-Proxy-Type Reject {} if the upstream server rejected the 
+	  request.
 
 	Bug fixes
 	* Skip OCSP if there's no host / port / url, with soft_fail
