@@ -235,7 +235,7 @@ static int radclient_init(const char *filename)
 		 */
 		radclient = malloc(sizeof(*radclient));
 		if (!radclient) {
-			perror("radclient: X");
+			fprintf(stderr, "radclient: Out of memory\n");
 			if (fp != stdin) fclose(fp);
 			return 0;
 		}
@@ -243,7 +243,7 @@ static int radclient_init(const char *filename)
 
 		radclient->request = rad_alloc(1);
 		if (!radclient->request) {
-			fr_perror("radclient: Y");
+			fprintf(stderr, "radclient: Out of memory\n");
 			free(radclient);
 			if (fp != stdin) fclose(fp);
 			return 0;
@@ -1148,6 +1148,7 @@ int main(int argc, char **argv)
 	 *	Walk over the list of filenames, creating the requests.
 	 */
 	if (rbtree_walk(filename_tree, InOrder, filename_walk, NULL) != 0) {
+		fprintf(stderr, "Failed walking over filenames\n");
 		exit(1);
 	}
 
