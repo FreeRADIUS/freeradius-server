@@ -103,7 +103,7 @@ filter_username {
 	#  must have at least 1 string-dot-string after @ 
 	#  e.g. "user@site.com"
 	#
-	if (User-Name !~ /@(.+)\\.(.+)$/)  {
+	if ((User-Name =~ /@/) && (User-Name !~ /@(.+)\\.(.+)$/))  {
 		update reply {
 			Reply-Message += "Rejected: Realm does not have at least one dot seperator"
 		}
