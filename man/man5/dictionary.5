@@ -69,6 +69,7 @@ The \fItype\fP field can be one of the standard types:
      ipv6addr     IPv6 Address
      ipv6prefix   IPV6 prefix, with mask
      ifid         Interface Id (hex:hex:hex:hex)
+     integer64	  64-bit unsigned integer
 
 The \fItype\fP field can be one of the following non-standard types:
 
@@ -78,6 +79,7 @@ The \fItype\fP field can be one of the following non-standard types:
      short        16-bit unsigned integer
      signed       31-bit signed integer (packed into 32-bit field)
      tlv          Type-Length-Value (allows nested attributes)
+     ipv4prefix   IPv4 Prefix as given in RFC 6572.
 
 The last (optional) field of an attribute definition are additional
 flags for that attribute, in a comma-separated list.  Previous
