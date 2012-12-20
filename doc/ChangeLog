@@ -1,6 +1,6 @@
 FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
-	* Updated dictionary.alcatel, dictionary.bskyb
+	* Updated dictionary.alcatel, dictionary.bskyb, dictionary.proxim
 	* Added %{randstr:..} support. Creates random strings in a
 	  controllable format.
 	* Added operator support to rlm_python
@@ -8,10 +8,11 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Added %{base64:...} for raw attribute data (e.g. 32-bit IP addr),
 	  and %{tobase64:...} for the printable string form (e.g. 1.2.3.4),
 	  and %{base64tohex:...} to convert a base64 string to a hex string.
-	* Added dictionary.proxim.
 	* Use correct terminology when printing errors regarding request/
 	  response/message authenticators.
 	* Added keytab support to Heimdal Kerberos. Patch from Ryan Steinmetz.
+	* radsqlrelay does multiple INSERTs in one transaction.
+	  Patch from Uwe Meyer-Gruhl.
 
 	Bug fixes
 	* Skip OCSP if there's no host / port / url, with soft_fail
@@ -29,6 +30,7 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	  Patch from Iliya Peregoudov.
 	* Wrap rbtree calls in mutexes in rlm_cache to prevent memory
 	  corruption. Patch from Phil Mayers.
+	* Port fix for %{3GPP-*} expansion from master branch.
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
