@@ -4107,12 +4107,14 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 		       strerror(errno));
 		exit(1);
 	}
-	if (fcntl(self_pipe[0], F_SETFL, O_NONBLOCK | FD_CLOEXEC) < 0) {
+	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
+	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
 		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
 		       strerror(errno));
 		exit(1);
 	}
-	if (fcntl(self_pipe[1], F_SETFL, O_NONBLOCK | FD_CLOEXEC) < 0) {
+	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
+	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
 		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
 		       strerror(errno));
 		exit(1);
