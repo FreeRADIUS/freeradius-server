@@ -1521,6 +1521,26 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 		return 2;
 	}
 
+	/*
+	 *	Message-Authenticator is hard-coded.
+	 */
+	if (vp->attribute == PW_MESSAGE_AUTHENTICATOR) {
+		if (room < 18) return -1;
+		
+		debug_pair(vp);
+		ptr[0] = PW_MESSAGE_AUTHENTICATOR;
+		ptr[1] = 18;
+		memset(ptr + 2, 0, 16);
+#ifndef NDEBUG
+		if ((fr_debug_flag > 3) && fr_log_fp) {
+			fprintf(fr_log_fp, "\t\t50 12 ...\n");
+		}
+#endif
+		
+		*pvp = (*pvp)->next;
+		return 18;
+	}
+
 	return vp2attr_rfc(packet, original, secret, pvp, vp->attribute,
 			   ptr, room);
 }
@@ -1544,26 +1564,6 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 */
 	if (vp->vendor == 0) {
 		if (vp->attribute > 255) return 0;
-
-		/*
-		 *	Message-Authenticator is hard-coded.
-		 */
-		if (vp->attribute == PW_MESSAGE_AUTHENTICATOR) {
-			if (room < 18) return -1;
-			
-			debug_pair(vp);
-			start[0] = PW_MESSAGE_AUTHENTICATOR;
-			start[1] = 18;
-			memset(start + 2, 0, 16);
-#ifndef NDEBUG
-			if ((fr_debug_flag > 3) && fr_log_fp) {
-				fprintf(fr_log_fp, "\t\t50 12 ...\n");
-			}
-#endif
-
-			*pvp = (*pvp)->next;
-			return 18;
-		}
 
 		return rad_vp2rfc(packet, original, secret, pvp,
 				  start, room);
