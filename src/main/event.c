@@ -2399,6 +2399,8 @@ static void request_post_handler(REQUEST *request)
 	if (vp) pairadd(&request->reply->vps, vp);
 #endif
 
+
+	
 	/*
 	 *	Access-Requests get delayed or cached.
 	 */
@@ -2406,34 +2408,37 @@ static void request_post_handler(REQUEST *request)
 	case PW_AUTHENTICATION_REQUEST:
 		gettimeofday(&request->next_when, NULL);
 
-		if (request->reply->code == 0) {
-			/*
-			 *	Check if the lack of response is intentional.
-			 */
-			vp = pairfind(request->config_items,
-				      PW_RESPONSE_PACKET_TYPE);
-			if (!vp) {
-				RDEBUG2("There was no response configured: rejecting request %u",
-				       request->number);
-				request->reply->code = PW_AUTHENTICATION_REJECT;
-
-			} else if (vp->vp_integer == 256) {
+		/*
+		 *	Override the response code if a 
+		 *	control:Response-Packet-Type attribute is present.
+		 */
+		vp = pairfind(request->config_items,
+			      PW_RESPONSE_PACKET_TYPE);
+			      
+		if (vp) {
+			if (vp->vp_integer == 256) {
 				RDEBUG2("Not responding to request %u",
-				       request->number);
+					request->number);
 
 				/*
 				 *	Force cleanup after a long
 				 *	time, so that we don't
 				 *	re-process the packet.
 				 */
+				request->reply->code = 0;
 				request->next_when.tv_sec += request->root->max_request_time;
 				request->next_callback = cleanup_delay;
 				child_state = REQUEST_CLEANUP_DELAY;
-				break;
-			} else {
-				request->reply->code = vp->vp_integer;
-
+				
+				break;	
 			}
+			
+			request->reply->code = vp->vp_integer;
+		} else if (request->reply->code == 0) {
+			RDEBUG2("There was no response configured: rejecting "
+				"request %u", request->number);
+				
+			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
 
 		/*
