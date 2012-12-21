@@ -2144,6 +2144,11 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	}
 
 	/*
+	 *	Can't compare two attributes of differing types
+	 */
+	if (one->type != two->type) return one->type - two->type;
+
+	/*
 	 *	After doing the previous check for special comparisons,
 	 *	do the per-type comparison here.
 	 */
