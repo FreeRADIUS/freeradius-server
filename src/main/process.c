@@ -1060,32 +1060,32 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Catch Auth-Type := Reject BEFORE proxying the packet.
 	 */
-	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	    (request->reply->code == 0)) {
-		if (((vp = pairfind(request->config_items, PW_AUTH_TYPE, 0)) != NULL) &&
-		    (vp->vp_integer == PW_AUTHTYPE_REJECT)) {
-			request->reply->code = PW_AUTHENTICATION_REJECT;
-
-		} else {
-			/*
-			 *	Check if the lack of response is
-			 *	intentional.
-			 */
-			vp = pairfind(request->config_items,
-				      PW_RESPONSE_PACKET_TYPE, 0);
-			if (!vp) {
-				RDEBUG2("There was no response configured: rejecting request");
-				request->reply->code = PW_AUTHENTICATION_REJECT;
-
-			} else if (vp->vp_integer == 256) {
+	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
+		/*
+		 *	Override the response code if a 
+		 *	control:Response-Packet-Type attribute is present.
+		 */
+		vp = pairfind(request->config_items, PW_RESPONSE_PACKET_TYPE, 0);
+		if (vp) {
+			if (vp->vp_integer == 256) {
 				RDEBUG2("Not responding to request");
 
+				request->reply->code = 0;
 			} else {
 				request->reply->code = vp->vp_integer;
 			}
+		} else if (request->reply->code == 0) {
+			vp = pairfind(request->config_items, PW_AUTH_TYPE, 0);
+			
+			if (!vp || (vp->vp_integer != PW_AUTHENTICATION_REJECT)) {
+				RDEBUG2("There was no response configured: "
+					"rejecting request");
+			}
+			
+			request->reply->code = PW_AUTHENTICATION_REJECT;
 		}
 	}
-
+	
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
