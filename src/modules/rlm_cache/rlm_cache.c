@@ -222,10 +222,11 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				    const char *key)
 {
 	int ttl;
-	const char *attr, *p;
-	VALUE_PAIR *vp, **vps;
+	const char *attr, *p, *value;
+	VALUE_PAIR *vp, *vp_req, **vps;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
+	FR_TOKEN op;
 	rlm_cache_entry_t *c;
 	char buffer[1024];
 
@@ -253,7 +254,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 	/*
 	 *	Walk over the attributes to cache, dynamically
-	 *	expanding them, and adding them to the correct list.
+	 *	expanding them (if needed), and adding them to the correct list.
 	 */
 	for (ci = cf_item_find_next(inst->cs, NULL);
 	     ci != NULL;
@@ -262,38 +263,82 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 		cp = cf_itemtopair(ci);
 		attr = p = cf_pair_attr(cp);
+		value = cf_pair_value(cp);
+		op = cf_pair_operator(cp);
 		
-		switch (radius_list_name(&p, PAIR_LIST_REQUEST))
-		{
-			case PAIR_LIST_REQUEST:
-				vps = &c->request;
-				break;
-				
-			case PAIR_LIST_REPLY:
-				vps = &c->reply;
-				break;
-				
-			case PAIR_LIST_CONTROL:
-				vps = &c->control;
-				break;
+		switch (radius_list_name(&p, PAIR_LIST_REQUEST)) {
+		case PAIR_LIST_REQUEST:
+			vps = &c->request;
+			break;
+			
+		case PAIR_LIST_REPLY:
+			vps = &c->reply;
+			break;
+			
+		case PAIR_LIST_CONTROL:
+			vps = &c->control;
+			break;
 
-			default:
-				rad_assert(0); 
-				return NULL;		
+		default:
+			rad_assert(0); 
+			return NULL;		
 		}
+		
+		switch (cf_pair_value_type(cp)) {
+		case T_BARE_WORD:
+			if ((radius_get_vp(request, value, &vp_req) < 0)) {
+				continue;
+			}
+			
+			switch (op) {
+			case T_OP_SET:
+			case T_OP_EQ:
+			case T_OP_SUB:
+				vp = paircopyvp(vp_req);
+				vp->operator = op;
+				pairadd(vps, vp);
+				
+				break;
+			case T_OP_ADD:
+				do {
+					vp = paircopyvp(vp_req);
+					vp->operator = op;
+					pairadd(vps, vp);
+					
+					vp_req = pairfind(vp_req->next,
+							  vp_req->attribute,
+							  vp_req->vendor,
+							  TAG_ANY);
+				} while (vp_req);
+								
+				break;
+				
+			default:
+				rad_assert(0);
+				return NULL;
+			}
+			
+			break;
+		case T_SINGLE_QUOTED_STRING:
+			vp = pairmake(p, value, op);
+			pairadd(vps, vp);
+			
+			break;
+		case T_DOUBLE_QUOTED_STRING:
+			radius_xlat(buffer, sizeof(buffer), value,
+				    request, NULL, NULL);
 
-		/*
-		 *	Repeat much of cf_pairtovp here...
-		 *	but we take list prefixes, and it doesn't.
-		 *	I don't want to make that change for 2.0.
-		 */
-		radius_xlat(buffer, sizeof(buffer), cf_pair_value(cp),
-			    request, NULL, NULL);
-
-		vp = pairmake(p, buffer, cf_pair_operator(cp));
-		pairadd(vps, vp);
+			vp = pairmake(p, buffer, op);
+			pairadd(vps, vp);
+			
+			break;
+		default:
+			rad_assert(0);
+			return NULL;
+		}
+				
 	}
-
+	
 	if (!rbtree_insert(inst->cache, c)) {
 		DEBUG("rlm_cache: FAILED adding entry for key %s", key);
 		cache_entry_free(c);
@@ -321,6 +366,7 @@ static int cache_verify(rlm_cache_t *inst)
 	pair_lists_t list;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
+	FR_TOKEN op;
 
 	for (ci = cf_item_find_next(inst->cs, NULL);
 	     ci != NULL;
@@ -335,19 +381,19 @@ static int cache_verify(rlm_cache_t *inst)
 		
 		list = radius_list_name(&p, PAIR_LIST_REQUEST);
 		
-		switch (list)
-		{
-			case PAIR_LIST_REQUEST:
-			case PAIR_LIST_REPLY:
-			case PAIR_LIST_CONTROL:
-				break;
-				
-			case PAIR_LIST_UNKNOWN:
-				cf_log_err(ci, "rlm_cache: Unknown list qualifier in \"%s\"", attr);
-				return 0;
-			default:
-				cf_log_err(ci, "rlm_cache: Unsupported list \"%s\"", fr_int2str(pair_lists, list, "¿Unknown?"));
-				return 0;
+		switch (list) {
+		case PAIR_LIST_REQUEST:
+		case PAIR_LIST_REPLY:
+		case PAIR_LIST_CONTROL:
+			break;
+			
+		case PAIR_LIST_UNKNOWN:
+			cf_log_err(ci, "rlm_cache: Unknown list qualifier in \"%s\"", attr);
+			return 0;
+		default:
+			cf_log_err(ci, "rlm_cache: Unsupported list \"%s\"",
+				   fr_int2str(pair_lists, list, "¿Unknown?"));
+			return 0;
 		}
 
 		/*
@@ -360,6 +406,33 @@ static int cache_verify(rlm_cache_t *inst)
 
 		if (!cf_pair_value(cp)) {
 			cf_log_err(ci, "rlm_cache: Attribute has no value");
+			return 0;
+		}
+		
+		switch (cf_pair_value_type(cp)) {
+		case T_BARE_WORD:
+			switch (op) {
+			case T_OP_SET:
+			case T_OP_EQ:
+			case T_OP_SUB:
+			case T_OP_ADD:
+				break;
+				
+			default:
+				cf_log_err(ci, "rlm_cache: Operator \"%s\" not "
+					   "allowed for attribute references",
+					   fr_int2str(fr_tokens, op,
+					   	      "¿unknown?"));
+				return 0;
+			}
+			
+			break;
+		case T_SINGLE_QUOTED_STRING:
+		case T_DOUBLE_QUOTED_STRING:
+			break;
+			
+		default:
+			cf_log_err(ci, "rlm_cache: Unsupported value type");
 			return 0;
 		}
 	}
@@ -393,27 +466,27 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	}
 	
 	list = radius_list_name(&p, PAIR_LIST_REQUEST);
-	switch (list)
-	{
-		case PAIR_LIST_REQUEST:
-			vps = c->request;
-			break;
-			
-		case PAIR_LIST_REPLY:
-			vps = c->reply;
-			break;
-			
-		case PAIR_LIST_CONTROL:
-			vps = c->control;
-			break;
-			
-		case PAIR_LIST_UNKNOWN:
-			radlog(L_ERR, "rlm_cache: Unknown list qualifier in \"%s\"", fmt);
-			return 0;
-			
-		default:
-			radlog(L_ERR, "rlm_cache: Unsupported list \"%s\"", fr_int2str(pair_lists, list, "¿Unknown?"));
-			return 0;
+	switch (list) {
+	case PAIR_LIST_REQUEST:
+		vps = c->request;
+		break;
+		
+	case PAIR_LIST_REPLY:
+		vps = c->reply;
+		break;
+		
+	case PAIR_LIST_CONTROL:
+		vps = c->control;
+		break;
+		
+	case PAIR_LIST_UNKNOWN:
+		radlog(L_ERR, "rlm_cache: Unknown list qualifier in \"%s\"", fmt);
+		return 0;
+		
+	default:
+		radlog(L_ERR, "rlm_cache: Unsupported list \"%s\"",
+		       fr_int2str(pair_lists, list, "¿Unknown?"));
+		return 0;
 	}
 	
 	target = dict_attrbyname(p);
