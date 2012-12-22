@@ -102,6 +102,7 @@ $INCLUDE dictionary.acme
 $INCLUDE dictionary.airespace
 $INCLUDE dictionary.alcatel
 $INCLUDE dictionary.alcatel.sr
+$INCLUDE dictionary.alcatel-lucent.xylan
 $INCLUDE dictionary.alteon
 $INCLUDE dictionary.alvarion
 $INCLUDE dictionary.apc
@@ -210,7 +211,6 @@ $INCLUDE dictionary.wichorus
 $INCLUDE dictionary.wimax
 $INCLUDE dictionary.wispr
 $INCLUDE dictionary.xedia
-$INCLUDE dictionary.xylan
 $INCLUDE dictionary.zyxel
 
 #
