@@ -812,10 +812,11 @@ autz_redo:
 	 *	Set the reply to Access-Accept, if it hasn't already
 	 *	been set to something.  (i.e. Access-Challenge)
 	 */
-	if (request->reply->code == 0)
-	  request->reply->code = PW_AUTHENTICATION_ACK;
-
-	if ((module_msg = pairfind(request->packet->vps,PW_MODULE_SUCCESS_MESSAGE)) != NULL){
+	if (request->reply->code == 0) {
+		request->reply->code = PW_AUTHENTICATION_ACK;
+	}
+	
+	if ((module_msg = pairfind(request->packet->vps, PW_MODULE_SUCCESS_MESSAGE)) != NULL){
 		char msg[MAX_STRING_LEN+12];
 
 		snprintf(msg, sizeof(msg), "Login OK (%s)",
@@ -824,11 +825,6 @@ autz_redo:
 	} else {
 		rad_authlog("Login OK", request, 1);
 	}
-
-	/*
-	 *	Run the modules in the 'post-auth' section.
-	 */
-	result = rad_postauth(request);
 
 	return result;
 }

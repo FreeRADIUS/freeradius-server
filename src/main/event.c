@@ -2413,8 +2413,7 @@ static void request_post_handler(REQUEST *request)
 		 *	control:Response-Packet-Type attribute is present.
 		 */
 		vp = pairfind(request->config_items,
-			      PW_RESPONSE_PACKET_TYPE);
-			      
+			      PW_RESPONSE_PACKET_TYPE);      
 		if (vp) {
 			if (vp->vp_integer == 256) {
 				RDEBUG2("Not responding to request %u",
@@ -2475,6 +2474,11 @@ static void request_post_handler(REQUEST *request)
 				return;
 			}
 		}
+		
+		if (request->reply->code == PW_AUTHENTICATION_ACK) {
+			rad_postauth(request);
+		}
+		
 		/* FALL-THROUGH */
 
 #ifdef WITH_COA
