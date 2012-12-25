@@ -111,27 +111,6 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
       /* second md4 */
       (void) MD4(password_md, MD4_DIGEST_LENGTH, &mppe_keys[8]);
 
-#if 0 /* encoding now handled in lib/radius.c:rad_pwencode() */
-      {
-        unsigned char md5_md[MD5_DIGEST_LENGTH];
-        unsigned char encode_buf[AUTH_VECTOR_LEN + MAX_STRING_LEN];
-        int secretlen;
-
-        /* Now we must encode the key as User-Password is encoded. */
-        secretlen = strlen(request->secret);
-        (void) memcpy(encode_buf, request->secret, secretlen);
-        (void) memcpy(encode_buf + secretlen, request->packet->vector,
-                      AUTH_VECTOR_LEN);
-        (void) MD5(encode_buf, secretlen + AUTH_VECTOR_LEN, md5_md);
-        for (i = 0; i < 16; ++i)
-          mppe_keys[i] ^= md5_md[i];
-        (void) memcpy(encode_buf + secretlen, mppe_keys, MD5_DIGEST_LENGTH);
-        (void) MD5(encode_buf, secretlen + MD5_DIGEST_LENGTH, md5_md);
-        for (i = 0; i < 16; ++i)
-          mppe_keys[i + 16] ^= md5_md[i];
-      }
-#endif /* 0 */
-
       /* Whew.  Now stringify it for pairmake(). */
       mppe_keys_string[0] = '0';
       mppe_keys_string[1] = 'x';
@@ -335,24 +314,9 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
 
       SHA_CTX ctx;
       unsigned char sha_md[SHA_DIGEST_LENGTH];
-#if 0 /* salting/encoding now handled in lib/radius.c:tunnel_pwencode() */
-      unsigned char md5_md[MD5_DIGEST_LENGTH];
 
-      /*   From RFC 2548:           S                 R           A */
-      unsigned char encode_buf[MAX_STRING_LEN + AUTH_VECTOR_LEN + 2];
-      int secretlen;
-
-      /* A useless value required by RFC 2548. */
-      unsigned char salt[2];
-      unsigned char mppe_key[32]; /* 1 + 16 + padding */
-      /*                           0x   (   ASCII(salt)  ) */
-      unsigned char mppe_key_string[2 + (2 * sizeof(salt)) +
-      /*                            (   ASCII(mppe_key)  )  \0 */
-                                    (2 * sizeof(mppe_key)) + 1];
-#else /* 0 */
       /*                           0x   (   ASCII(mppe_key)   )  \0 */
       char mppe_key_string[2 + (2 * sizeof(MasterKey)) + 1];
-#endif /* else !0 */
 
       /* Generate the master session key. */
       SHA1_Init(&ctx);
@@ -383,41 +347,10 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
       /*
        * Now, generate the MS-MPPE-Send-Key attribute.
        */
-#if 0
-      /* Setup the salt value. */
-      salt[0] = 0x80;
-      salt[1] = 0x01;
-
-      /* Encode the key. */
-      (void) memset(mppe_key, 0, sizeof(mppe_key));
-      mppe_key[0] = 16; /* length */
-      (void) memcpy(&mppe_key[1], MasterSendKey, 16);
-      secretlen = strlen(request->secret);
-      (void) memcpy(encode_buf, request->secret, secretlen);
-      (void) memcpy(encode_buf + secretlen, request->packet->vector,
-                    AUTH_VECTOR_LEN);
-      (void) memcpy(encode_buf + secretlen + 16, salt, 2);
-      (void) MD5(encode_buf, secretlen + AUTH_VECTOR_LEN + 2, md5_md);
-      for (i = 0; i < 16; ++i)
-        mppe_key[i] ^= md5_md[i];
-      (void) memcpy(encode_buf + secretlen, mppe_key, 16);
-      (void) MD5(encode_buf, secretlen + 16, md5_md);
-      for (i = 0; i < 16; ++i)
-        mppe_key[i + 16] ^= md5_md[i];
-
-      /* Whew.  Now stringify it for pairmake(). */
-      mppe_key_string[0] = '0';
-      mppe_key_string[1] = 'x';
-      (void) sprintf(&mppe_key_string[2], "%02X", salt[0]);
-      (void) sprintf(&mppe_key_string[4], "%02X", salt[1]);
-      for (i = 0; i < sizeof(mppe_key); ++i)
-        (void) sprintf(&mppe_key_string[i*2+6], "%02X", mppe_key[i]);
-#else /* 0 */
       mppe_key_string[0] = '0';
       mppe_key_string[1] = 'x';
       for (i = 0; i < sizeof(MasterSendKey); ++i)
         (void) sprintf(&mppe_key_string[i*2+2], "%02X", MasterSendKey[i]);
-#endif /* else !0 */
       vp = pairmake("MS-MPPE-Send-Key", mppe_key_string, T_OP_EQ);
       rad_assert(vp != NULL);
       pairadd(avp, vp);
@@ -425,41 +358,10 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
       /*
        * Generate the MS-MPPE-Recv-Key attribute.
        */
-#if 0
-      /* Setup the salt value. */
-      salt[0] = 0x80;
-      salt[1] = 0x02;
-
-      /* Encode the key. */
-      (void) memset(mppe_key, 0, sizeof(mppe_key));
-      mppe_key[0] = 16; /* length */
-      (void) memcpy(&mppe_key[1], MasterReceiveKey, 16);
-      secretlen = strlen(request->secret);
-      (void) memcpy(encode_buf, request->secret, secretlen);
-      (void) memcpy(encode_buf + secretlen, request->packet->vector,
-                    AUTH_VECTOR_LEN);
-      (void) memcpy(encode_buf + secretlen + 16, salt, 2);
-      (void) MD5(encode_buf, secretlen + AUTH_VECTOR_LEN + 2, md5_md);
-      for (i = 0; i < 16; ++i)
-        mppe_key[i] ^= md5_md[i];
-      (void) memcpy(encode_buf + secretlen, mppe_key, 16);
-      (void) MD5(encode_buf, secretlen + 16, md5_md);
-      for (i = 0; i < 16; ++i)
-        mppe_key[i + 16] ^= md5_md[i];
-
-      /* Whew.  Now stringify it for pairmake(). */
-      mppe_key_string[0] = '0';
-      mppe_key_string[1] = 'x';
-      (void) sprintf(&mppe_key_string[2], "%02X", salt[0]);
-      (void) sprintf(&mppe_key_string[4], "%02X", salt[1]);
-      for (i = 0; i < sizeof(mppe_key); ++i)
-        (void) sprintf(&mppe_key_string[i*2+6], "%02X", mppe_key[i]);
-#else /* 0 */
       mppe_key_string[0] = '0';
       mppe_key_string[1] = 'x';
       for (i = 0; i < sizeof(MasterReceiveKey); ++i)
         (void) sprintf(&mppe_key_string[i*2+2], "%02X", MasterReceiveKey[i]);
-#endif /* else !0 */
       vp = pairmake("MS-MPPE-Recv-Key", mppe_key_string, T_OP_EQ);
       rad_assert(vp != NULL);
       pairadd(avp, vp);
