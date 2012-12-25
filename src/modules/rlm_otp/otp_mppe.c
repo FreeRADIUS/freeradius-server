@@ -351,7 +351,7 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
                                     (2 * sizeof(mppe_key)) + 1];
 #else /* 0 */
       /*                           0x   (   ASCII(mppe_key)   )  \0 */
-      unsigned char mppe_key_string[2 + (2 * sizeof(MasterKey)) + 1];
+      char mppe_key_string[2 + (2 * sizeof(MasterKey)) + 1];
 #endif /* else !0 */
 
       /* Generate the master session key. */
