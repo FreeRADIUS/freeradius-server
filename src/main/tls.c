@@ -1146,7 +1146,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 
 		sess_data = malloc(st.st_size);
 		if (!sess_data) {
-			DEBUG2("  SSL: could not alloc buffer for persisted session len=%d", st.st_size);
+		  DEBUG2("  SSL: could not alloc buffer for persisted session len=%d", (int) st.st_size);
 			close(fd);
 			goto err;
 		}
@@ -1167,7 +1167,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 
 		/* openssl mutates &p */
 		p = sess_data;
-		sess = d2i_SSL_SESSION(NULL, &p, st.st_size);
+		sess = d2i_SSL_SESSION(NULL, (const unsigned char **) &p, st.st_size);
 
 		if (!sess) {
 			DEBUG2("  SSL: OpenSSL failed to load persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
@@ -1558,7 +1558,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	buf[0] = '\0';
 	asn_time = X509_get_notAfter(client_cert);
 	if (identity && (lookup <= 1) && asn_time &&
-	    (asn_time->length < sizeof(buf))) {
+	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
 		pairadd(certs,
