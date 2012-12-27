@@ -596,8 +596,6 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 			fr_strerror_printf("dict_addattr: VSAs cannot use the \"extended\" or \"evs\" attribute formats.");
 			return -1;
 		}
-		if (!vendor) vendor = VENDORPEC_EXTENDED;
-
 		if (flags.has_tag
 #ifdef WITH_DHCP
 		    || flags.array
@@ -614,7 +612,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 			return -1;
 		}
 
-		if (vendor <= FR_MAX_VENDOR) {
+		if (vendor) {	/* VSAs cannot be of format EVS */
 			fr_strerror_printf("dict_addattr: Attribute of type \"evs\" fails internal sanity check");
 			return -1;
 		}
@@ -630,7 +628,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		return -1;
 	}
 
-	if (vendor && (vendor != VENDORPEC_EXTENDED)) {
+	if (vendor) {
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
 
@@ -711,6 +709,15 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		 *	Alvarion dictionaries.
 		 */
 		flags.wimax = dv->flags;
+	}
+
+	/*
+	 *	If it's an attribute in the standard space, with the
+	 *	"extended" format flag set, then set the vendor ID to
+	 *	"extended".
+	 */
+	if (!vendor && flags.extended) {
+		vendor = VENDORPEC_EXTENDED;
 	}
 
 	/*
@@ -1254,11 +1261,13 @@ static int process_attribute(const char* fn, const int line,
 				return -1;
 			}
 			type = PW_TYPE_OCTETS;
+			flags.extended = 1;
 			flags.long_extended = 1;
 			break;
 
 		case PW_TYPE_EVS:
 			type = PW_TYPE_OCTETS;
+			flags.extended = 1;
 			flags.evs = 1;
 			if (((value >> fr_attr_shift[1]) & fr_attr_mask[1]) != PW_VENDOR_SPECIFIC) {
 				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"evs\" MUST have attribute code 26.", fn, line);
