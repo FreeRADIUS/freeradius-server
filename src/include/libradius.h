@@ -276,7 +276,7 @@ void		vp_printlist(FILE *, const VALUE_PAIR *);
  */
 int		str2argv(char *str, char **argv, int max_argc);
 int		dict_str2oid(const char *ptr, unsigned int *pattr,
-			     int vendor, int tlv_depth);
+			     unsigned int *pvendor, int tlv_depth);
 int		dict_addvendor(const char *name, unsigned int value);
 int		dict_addattr(const char *name, int attr, unsigned int vendor, int type, ATTR_FLAGS flags);
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);

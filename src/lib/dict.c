@@ -114,12 +114,24 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 
 
 /*
- *	WiMAX craziness.
+ *	For packing multiple TLV numbers into one 32-bit integer.  The
+ *	first 3 bytes are just the 8-bit number.  The next two are
+ *	more limited.  We only allow 31 attributes nested 3 layers
+ *	deep, and only 7 nested 4 layers deep.  This should be
+ *	sufficient for most purposes.
+ *
+ *	For TLVs and extended attributes, we packet the base attribute
+ *	number into the upper 8 bits of the "vendor" field.
+ *
+ *	e.g.	OID		attribute	vendor
+ *		241.1		1		(241 << 8)
+ *		241.26.9.1	1		(241 << 8) | (9)
+ *		241.1.2		1 | (2 << 8)	(241 << 8)
  */
 #define MAX_TLV_NEST (4)
 /*
  *	Bit packing:
- *	8 bits of base VSA
+ *	8 bits of base attribute
  *	8 bits for nested TLV 1
  *	8 bits for nested TLV 2
  *	5 bits for nested TLV 3
@@ -468,7 +480,7 @@ int dict_addvendor(const char *name, unsigned int value)
 	size_t length;
 	DICT_VENDOR *dv;
 
-	if (value > FR_MAX_VENDOR) {
+	if (value >= FR_MAX_VENDOR) {
 		fr_strerror_printf("dict_addvendor: Cannot handle vendor ID larger than 2^24");
 		return -1;
 	}
@@ -612,7 +624,8 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 			return -1;
 		}
 
-		if (vendor) {	/* VSAs cannot be of format EVS */
+		/* VSAs cannot be of format EVS */
+		if ((vendor & (FR_MAX_VENDOR - 1)) != 0) {
 			fr_strerror_printf("dict_addattr: Attribute of type \"evs\" fails internal sanity check");
 			return -1;
 		}
@@ -628,7 +641,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		return -1;
 	}
 
-	if (vendor) {
+	if ((vendor & (FR_MAX_VENDOR -1)) != 0) {
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
 
@@ -669,7 +682,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		 */
 		if (!dv) {
 			fr_strerror_printf("dict_addattr: Unknown vendor %u",
-					   vendor);
+					   vendor & (FR_MAX_VENDOR - 1));
 			return -1;
 		}
 
@@ -683,22 +696,46 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		} /* else 256..65535 are allowed */
 
 		/*
-		 *	Set the extended flags as appropriate.
+		 *	If the attribute is in the standard space, AND
+		 *	has a sub-type (e.g. 241.1 or 255.3), then its
+		 *	number is placed into the upper 8 bits of the
+		 *	vendor field.
+		 *
+		 *	This also happens for the new VSAs.
+		 *
+		 *	If we find it, then set the various flags
+		 *	based on what we see.
 		 */
-		if (vendor > FR_MAX_VENDOR) {
-			unsigned int myattr;
+		if (vendor >= FR_MAX_VENDOR) {
+			unsigned int parent;
 
-			myattr = (vendor >> 24) & 0xff;
-			myattr |= PW_VENDOR_SPECIFIC << 8;
+			parent = (vendor / FR_MAX_VENDOR) & 0xff;
 
-			da = dict_attrbyvalue(myattr, VENDORPEC_EXTENDED);
+			da = dict_attrbyvalue(parent, 0);
 			if (!da) {
-				fr_strerror_printf("dict_addattr: ATTRIBUTE refers to unknown \"evs\" type.");
+				fr_strerror_printf("dict_addattr: ATTRIBUTE refers to unknown parent attribute %u.", parent);
 				return -1;
 			}
+
+			/*
+			 *	These flags are inhereited inherited
+			 *	from the parent.
+			 */
 			flags.extended = da->flags.extended;
 			flags.long_extended = da->flags.long_extended;
-			flags.evs = da->flags.evs;
+
+			/*
+			 *	Non-extended attributes can't have VSAs.
+			 */
+			if (!flags.extended &&
+			    ((vendor & (FR_MAX_VENDOR - 1)) != 0)) {
+				fr_strerror_printf("dict_addattr: ATTRIBUTE cannot be a VSA");
+				return -1;
+			}
+
+			if ((vendor & (FR_MAX_VENDOR - 1)) != 0) {
+				flags.evs = 1;
+			}
 		}
 
 		/*
@@ -709,15 +746,6 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		 *	Alvarion dictionaries.
 		 */
 		flags.wimax = dv->flags;
-	}
-
-	/*
-	 *	If it's an attribute in the standard space, with the
-	 *	"extended" format flag set, then set the vendor ID to
-	 *	"extended".
-	 */
-	if (!vendor && flags.extended) {
-		vendor = VENDORPEC_EXTENDED;
 	}
 
 	/*
@@ -979,43 +1007,119 @@ static int sscanf_i(const char *str, unsigned int *pvalue)
 }
 
 
-int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_depth)
+/*
+ *	Get the OID based on various pieces of information.
+ *
+ *	Remember, the packing format is weird.
+ *
+ *	00VID	000000AA	normal VSA for vendor VID
+ *	00VID	AABBCCDD	normal VSAs with TLVs
+ *	EE000   000000AA	extended attr (241.1)
+ *	EE000	AABBCCDD	extended attr with TLVs
+ *	EEVID	000000AA	EVS with vendor VID, attr AAA
+ *	EEVID	AABBCCDD	EVS with TLVs
+ *
+ *	<whew>!  Are we crazy, or what?
+ */
+int dict_str2oid(const char *ptr, unsigned int *pvalue, unsigned int *pvendor,
+		 int tlv_depth)
 {
 	const char *p;
 	unsigned int value;
 	DICT_ATTR *da;
 
 	if (tlv_depth > fr_attr_max_tlv) {
-		fr_strerror_printf("Attribute has too long OID");
-		return 0;
+		fr_strerror_printf("Too many sub-attributes");
+		return -1;
 	}
 
+	/*
+	 *	If *pvalue is set, check if the attribute exists.
+	 *	Otherwise, check that the vendor exists.
+	 */
 	if (*pvalue) {
-		if (vendor) {
-			da = dict_attrbyvalue(*pvalue, vendor);
-		} else {
-			da = dict_attrbyvalue(*pvalue, VENDORPEC_EXTENDED);
-		}
+		da = dict_attrbyvalue(*pvalue, *pvendor);
 		if (!da) {
 			fr_strerror_printf("Parent attribute is undefined.");
-			return 0;
+			return -1;
 		}
-	
-		if (!(da->flags.has_tlv || da->flags.extended || da->flags.long_extended)) {
-			fr_strerror_printf("Parent attribute %s cannot have sub-tlvs",
+		
+		if (!da->flags.has_tlv && !da->flags.extended) {
+			fr_strerror_printf("Parent attribute %s cannot have sub-attributes",
 					   da->name);
-			return 0;
+			return -1;
+		}
+
+	} else if ((*pvendor & (FR_MAX_VENDOR - 1)) != 0) {
+		if (!dict_vendorbyvalue(*pvendor & (FR_MAX_VENDOR - 1))) {
+			fr_strerror_printf("Unknown vendor %u",
+					   *pvendor & (FR_MAX_VENDOR - 1));
+			return -1;
 		}
 	}
 
 	p = strchr(ptr, '.');
 
-	if (!sscanf_i(ptr, &value)) {
-		fr_strerror_printf("Failed parsing attribute identifier %s",
-				   ptr);
-		return 0;
+	/*
+	 *	Look for 26.VID.x.y
+	 *
+	 *	If we find it, re-write the parameters, and recurse.
+	 */
+	if (!*pvendor && (tlv_depth == 0) && (*pvalue == PW_VENDOR_SPECIFIC)) {
+		const DICT_VENDOR *dv;
+
+		if (!p) {
+			fr_strerror_printf("VSA needs to have sub-attribute");
+			return -1;
+		}
+
+		if (!sscanf_i(ptr, pvendor)) {
+			fr_strerror_printf("Invalid number in attribute");
+			return -1;
+		}
+
+		if (*pvendor >= FR_MAX_VENDOR) {
+			fr_strerror_printf("Cannot handle vendor ID larger than 2^24");
+			
+			return -1;
+		}
+
+		dv = dict_vendorbyvalue(*pvendor & (FR_MAX_VENDOR - 1));
+		if (!dv) {
+			fr_strerror_printf("Unknown vendor \"%u\" ",
+					   *pvendor  & (FR_MAX_VENDOR - 1));
+			return -1;
+		}
+
+		/*
+		 *	Start off with (attr=0, vendor=VID), and
+		 *	recurse.  This causes the various checks above
+		 *	to be done.
+		 */
+		*pvalue = 0;
+		return dict_str2oid(p + 1, pvalue, pvendor, 0);
 	}
 
+	if (!sscanf_i(ptr, &value)) {
+		fr_strerror_printf("Invalid number in attribute");
+		return -1;
+	}
+
+	if (!*pvendor && (tlv_depth == 1) &&
+	    (da->flags.has_tlv || da->flags.extended)) {
+
+
+		*pvendor = *pvalue * FR_MAX_VENDOR;
+		*pvalue = value;
+
+		if (!p) return 0;
+		return dict_str2oid(p + 1, pvalue, pvendor, 1);
+	}
+
+	/*
+	 *	And pack the data according to the scheme described in
+	 *	the comments at the start of this function.
+	 */
 	if (*pvalue) {
 		*pvalue |= (value & fr_attr_mask[tlv_depth]) << fr_attr_shift[tlv_depth];
 	} else {
@@ -1023,10 +1127,26 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
 	}
 
 	if (p) {
-		return dict_str2oid(p + 1, pvalue, vendor, tlv_depth + 1);
+		return dict_str2oid(p + 1, pvalue, pvendor, tlv_depth + 1);
 	}
 
 	return tlv_depth;
+}
+
+/*
+ *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
+ */
+static DICT_ATTR *dict_parent(unsigned int attr, unsigned int vendor)
+{
+	if (vendor < FR_MAX_VENDOR) {
+		return dict_attrbyvalue(attr & 0xff, vendor);
+	}
+
+	if (attr < 256) {
+		return dict_attrbyvalue((vendor / FR_MAX_VENDOR) & 0xff, 0);
+	}
+
+	return dict_attrbyvalue(attr & 0xff, vendor);
 }
 
 
@@ -1034,7 +1154,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, int vendor, int tlv_dept
  *	Process the ATTRIBUTE command
  */
 static int process_attribute(const char* fn, const int line,
-			     const unsigned int block_vendor, DICT_ATTR *block_tlv,
+			     unsigned int block_vendor, DICT_ATTR *block_tlv,
 			     int tlv_depth, char **argv, int argc)
 {
 	int		oid = 0;
@@ -1051,6 +1171,9 @@ static int process_attribute(const char* fn, const int line,
 		return -1;
 	}
 
+	/*
+	 *	Dictionaries need to have real names, not shitty ones.
+	 */
 	if (strncmp(argv[1], "Attr-", 5) == 0) {
 		fr_strerror_printf("dict_init: %s[%d]: Invalid attribute name",
 				   fn, line);
@@ -1060,13 +1183,10 @@ static int process_attribute(const char* fn, const int line,
 	memset(&flags, 0, sizeof(flags));
 
 	/*
-	 *	Look for extended attributes before doing anything else.
+	 *	Look for OIDs before doing anything else.
 	 */
 	p = strchr(argv[1], '.');
-	if (p) {
-		*p = '\0';
-		oid = 1;
-	}
+	if (p) oid = 1;
 
 	/*
 	 *	Validate all entries
@@ -1076,71 +1196,15 @@ static int process_attribute(const char* fn, const int line,
 		return -1;
 	}
 
-	if (!p) {
-		if (value > (1 << 24)) {
-			fr_strerror_printf("dict_init: %s[%d]: Attribute number is too large", fn, line);
-			return -1;
-		}
-
-		
-		/*
-		 *	Parse NUM.NUM.NUM.NUM
-		 */
-	} else {
-		int my_depth;
+	if (oid) {
 		DICT_ATTR *da;
 
-		*p = '.';	/* reset for later printing */
-
-		if (block_vendor) {
-			da = dict_attrbyvalue(value, block_vendor);
-		} else if (value == PW_VENDOR_SPECIFIC) {
-			char *q;
-			const DICT_VENDOR *dv;
-
-			p++;
-			q = strchr(p, '.');
-			if (!q) {
-			invalid:
-				fr_strerror_printf("dict_init: %s[%d]: Invalid attribute identifier", fn, line);
-				return -1;
-			}
-			*q = '\0';
-
-			if (!sscanf_i(p, &vendor)) {
-				*q = '.';
-				goto invalid;
-			}
-			*(q++) = '.';
-			p = q;
-			dv = dict_vendorbyvalue(vendor);
-			if (!dv) {
-				fr_strerror_printf("dict_init: %s[%d]: Unknown vendor \"%u\" in attribute identifier", fn, line, vendor);
-				return -1;
-			}
-
-			argv[1] = p;
-			return process_attribute(fn, line, vendor, NULL, 0,
-						 argv, argc);
-		} else {
-			da = dict_attrbyvalue(value, VENDORPEC_EXTENDED);
-		}
-		if (!da) {
-			fr_strerror_printf("dict_init: %s[%d]: Entry refers to unknown attribute %d", fn, line, value);
-			return -1;
-		}
+		vendor = block_vendor;
 
 		/*
-		 *	241.1 means 241 is of type "extended".
-		 *	Otherwise, die.
+		 *	Parse the rest of the OID.
 		 */
-		if (!(da->flags.has_tlv || da->flags.extended || da->flags.long_extended)) {
-			fr_strerror_printf("dict_init: %s[%d]: Parent attribute %s cannot contain sub-attributes", fn, line, da->name);
-			return -1;
-		}
-
-		my_depth = dict_str2oid(p + 1, &value, block_vendor, tlv_depth + 1);
-		if (!my_depth) {
+		if (dict_str2oid(p + 1, &value, &vendor, tlv_depth + 1) < 0) {
 			char buffer[256];
 
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1148,25 +1212,17 @@ static int process_attribute(const char* fn, const int line,
 			fr_strerror_printf("dict_init: %s[%d]: Invalid attribute identifier: %s", fn, line, buffer);
 			return -1;
 		}
+		block_vendor = vendor;
 
 		/*
-		 *	Look up the REAL parent TLV.
+		 *	Set the flags based on the parents flags.
 		 */
-		if (my_depth > 1) {
-			unsigned int parent = value;
-
-			parent &= ~(fr_attr_mask[my_depth] << fr_attr_shift[my_depth]);
-
-			da = dict_attrbyvalue(parent, da->vendor);
-			if (!da) {
-				fr_strerror_printf("dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
-				return -1;
-			}
+		da = dict_parent(value, vendor);
+		if (!da) {
+			fr_strerror_printf("dict_init: %s[%d]: Parent attribute is undefined.", fn, line);
+			return -1;
 		}
-		
-		/*
-		 *	Set which type of attribute this is.
-		 */
+
 		flags.extended = da->flags.extended;
 		flags.long_extended = da->flags.long_extended;
 		flags.evs = da->flags.evs;
@@ -1269,7 +1325,7 @@ static int process_attribute(const char* fn, const int line,
 			type = PW_TYPE_OCTETS;
 			flags.extended = 1;
 			flags.evs = 1;
-			if (((value >> fr_attr_shift[1]) & fr_attr_mask[1]) != PW_VENDOR_SPECIFIC) {
+			if (value != PW_VENDOR_SPECIFIC) {
 				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"evs\" MUST have attribute code 26.", fn, line);
 				return -1;
 			}
@@ -1287,7 +1343,7 @@ static int process_attribute(const char* fn, const int line,
 		/*
 		 *	Keep it real.
 		 */
-		if (flags.extended || flags.long_extended || flags.evs) {
+		if (flags.extended) {
 			fr_strerror_printf("dict_init: %s[%d]: Extended attributes cannot use flags", fn, line);
 			return -1;
 		}
@@ -2031,6 +2087,8 @@ static int my_dict_init(const char *dir, const char *fn,
 
 			/*
 			 *	Check for extended attr VSAs
+			 *
+			 *	BEGIN-VENDOR foo format=Foo-Encapsulation-Attr
 			 */
 			if (argc > 2) {
 				if (strncmp(argv[2], "format=", 7) != 0) {
@@ -2058,11 +2116,11 @@ static int my_dict_init(const char *dir, const char *fn,
 				}
 				
 				/*
-				 *	Pack the encapsulating attribute
-				 *	into the vendor Id.  This attribute
-				 *	MUST be >= 241.
+				 *	Pack the encapsulating
+				 *	attribute into the upper 8
+				 *	bits of the vendor ID
 				 */
-				block_vendor |= (da->attr & fr_attr_mask[1]) * FR_MAX_VENDOR;
+				block_vendor |= (da->attr & fr_attr_mask[0]) * FR_MAX_VENDOR;
 			}
 
 			continue;

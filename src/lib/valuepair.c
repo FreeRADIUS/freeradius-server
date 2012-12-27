@@ -1536,7 +1536,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	if (attr >= (unsigned) (1 << (dv_type << 3))) goto invalid;
 
 	if (*p == '.') {
-		if (!dict_str2oid(p + 1, &attr, vendor, 1)) {
+		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {
 			return NULL;
 		}
 	}

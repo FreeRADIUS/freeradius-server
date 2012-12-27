@@ -545,6 +545,9 @@ static size_t vp_print_attr_oid(char *buffer, size_t size, unsigned int attr,
 	return outlen;
 }
 
+/*
+ *	Handle attributes which are not in the dictionaries.
+ */
 size_t vp_print_name(char *buffer, size_t bufsize,
 		     unsigned int attr, unsigned int vendor)
 {
@@ -558,23 +561,23 @@ size_t vp_print_name(char *buffer, size_t bufsize,
 	p += len;
 	bufsize -= len;
 
-	if (vendor && (vendor != VENDORPEC_EXTENDED)) {
-		DICT_VENDOR *dv;
+	if (vendor > FR_MAX_VENDOR) {
+		len = snprintf(p, bufsize, "%u.",
+			       vendor / FR_MAX_VENDOR);
+		p += len;
+		bufsize -= len;
+		vendor &= (FR_MAX_VENDOR) - 1;
+	}
 
-		if (vendor >= FR_MAX_VENDOR) {
-			len = snprintf(p, bufsize, "%u.",
-				       vendor / FR_MAX_VENDOR);
-			p += len;
-			bufsize -= len;
-			vendor &= (FR_MAX_VENDOR) - 1;
-		}
+	if (vendor) {
+		DICT_VENDOR *dv;
 
 		dv = dict_vendorbyvalue(vendor);
 		if (dv) {
 			dv_type = dv->type;
 		}
 		len = snprintf(p, bufsize, "26.%u.", vendor);
-
+		
 		p += len;
 		bufsize -= len;
 	}

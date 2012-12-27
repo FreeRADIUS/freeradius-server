@@ -1078,28 +1078,31 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 {
 	int len;
 	int hdr_len;
-	int nest = 1;
 	uint8_t *start = ptr;
 	const VALUE_PAIR *vp = *pvp;
 
-	if (vp->vendor < VENDORPEC_EXTENDED) {
+	if (!vp->flags.extended) {
 		fr_strerror_printf("rad_vp2extended called for non-extended attribute");
 		return -1;
 	}
 
-	if (room < 3) return 0;
+	/*
+	 *	The attribute number is encoded into the upper 8 bits
+	 *	of the vendor ID.
+	 */
+	ptr[0] = (vp->vendor / FR_MAX_VENDOR) & 0xff;
 
-	ptr[0] = vp->attribute & 0xff;
-	ptr[1] = 3;
+	if (!vp->flags.long_extended) {
+		if (room < 3) return 0;
+	
+		ptr[1] = 3;
+		ptr[2] = vp->attribute & fr_attr_mask[0];
 
-	if (vp->flags.extended) {
-		ptr[2] = (vp->attribute & 0xff00) >> 8;
-
-	} else if (vp->flags.long_extended) {
+	} else {
 		if (room < 4) return 0;
 
 		ptr[1] = 4;
-		ptr[2] = (vp->attribute & 0xff00) >> 8;
+		ptr[2] = vp->attribute & fr_attr_mask[0];
 		ptr[3] = 0;
 	}
 
@@ -1119,27 +1122,19 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 
 		if (room < (size_t) (ptr[1] + 5)) return 0;
 
-		/*
-		 *	RADIUS Attribute Type is packed into the high byte
-		 *	of the Vendor Id.  So over-write it in the packet.
-		 *
-		 *	And hard-code Extended-Type to Vendor-Specific.
-		 */
-		ptr[0] = (vp->vendor >> 24) & 0xff;
 		ptr[2] = 26;
 
 		evs[0] = 0;	/* always zero */
 		evs[1] = (vp->vendor >> 16) & 0xff;
 		evs[2] = (vp->vendor >> 8) & 0xff;
 		evs[3] = vp->vendor & 0xff;
-		evs[4] = vp->attribute & 0xff;		
+		evs[4] = vp->attribute & fr_attr_mask[0];		
 
 		ptr[1] += 5;
-		nest = 0;
 	}
 	hdr_len = ptr[1];
 
-	len = vp2data_any(packet, original, secret, nest,
+	len = vp2data_any(packet, original, secret, 0,
 			  pvp, ptr + ptr[1], room - hdr_len);
 	if (len <= 0) return len;
 
@@ -3704,9 +3699,8 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 			     VALUE_PAIR **pvp)
 {
 	unsigned int attribute;
-	int shift = 1;
 	int continued = 0;
-	unsigned int vendor = VENDORPEC_EXTENDED;
+	unsigned int vendor = 0;
 	size_t data_len = length;
 	const uint8_t *data;
 	DICT_ATTR *da;
@@ -3718,9 +3712,8 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 		return -1;
 	}
 
-	da = dict_attrbyvalue(data[0], vendor);
-	if (!da ||
-	    (!da->flags.extended && !da->flags.long_extended)) {
+	da = dict_attrbyvalue(data[0], 0);
+	if (!da || !da->flags.extended) {
 		fr_strerror_printf("rad_attr2vp_extended: Attribute is not extended format");
 		return -1;
 	}
@@ -3742,13 +3735,11 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 	 *	The attribute is "241.1", for example.  Go look that
 	 *	up to see what type it is.
 	 */
-	attribute = data[0];
-	attribute |= (data[2] << fr_attr_shift[1]);
+	vendor = data[0] * FR_MAX_VENDOR;
+	attribute = data[2];
 
 	da = dict_attrbyvalue(attribute, vendor);
 	if (!da) goto raw;
-
-	vendor = VENDORPEC_EXTENDED;
 
 	data_len = length;
 	if (data[1] < length) data_len = data[1];
@@ -3782,16 +3773,9 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 		 */
 		if (data[0] != 0) goto raw;
 		
-		vendor = ((data[1] << 16) |
-			  (data[2] << 8) |
-			  data[3]);
-		
-		/*
-		 *	Pack the *encapsulating* attribute number into
-		 *	the vendor id.  This number should be >= 241.
-		 */
-		vendor |= start[0] * FR_MAX_VENDOR;
-		shift = 0;
+		vendor |= ((data[1] << 16) |
+			   (data[2] << 8) |
+			   data[3]);
 		
 		/*
 		 *	Over-write the attribute with the
@@ -3806,20 +3790,20 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 		int first_offset = 4;
 		ssize_t my_len;
 
-		if (vendor != VENDORPEC_EXTENDED) first_offset += 5;
+		if (da->flags.evs) first_offset += 5;
 
 		my_len = extended_attrlen(start, start + length);
 		if (my_len < 0) goto raw;
 
-		if (vendor != VENDORPEC_EXTENDED) my_len -= 5;
+		if (da->flags.evs) my_len -= 5;
 
 		return data2vp_continued(packet, original, secret,
-					 start, length, pvp, shift,
+					 start, length, pvp, 0,
 					 attribute, vendor,
 					 first_offset, 4, my_len);
 	}
 
-	if (data2vp_any(packet, original, secret, shift,
+	if (data2vp_any(packet, original, secret, 0,
 			attribute, vendor, data, data_len, pvp) < 0) {
 		return -1;
 	}
@@ -3859,6 +3843,8 @@ ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
 		    const uint8_t *data, size_t length,
 		    VALUE_PAIR **pvp)
 {
+	DICT_ATTR *da;
+
 	if ((length < 2) || (data[1] < 2) || (data[1] > length)) {
 		fr_strerror_printf("rad_attr2vp: Insufficient data");
 		return -1;
@@ -3875,7 +3861,8 @@ ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
 	/*
 	 *	Extended attribute format gets their own handler.
 	 */
-	if (dict_attrbyvalue(data[0], VENDORPEC_EXTENDED) != NULL) {
+	da = dict_attrbyvalue(data[0], 0);
+	if (da && da->flags.extended) {
 		return rad_attr2vp_extended(packet, original, secret,
 					    data, length, pvp);
 	}
