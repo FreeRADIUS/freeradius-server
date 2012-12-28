@@ -48,6 +48,10 @@ do
 done
 
 $BIN_PATH/radclient `cat .bar` -xFd . 127.0.0.1:$PORT auth $SECRET > radclient.log 2>&1
+if [ "$?" != "0" ]; then
+  echo "Failed running $BIN_PATH/radclient"
+  exit 1
+fi
 
 for x in `cat .foo`
 do
