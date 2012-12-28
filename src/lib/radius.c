@@ -1540,6 +1540,50 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 			   ptr, room);
 }
 
+static ssize_t rad_vp2rfctlv(const RADIUS_PACKET *packet,
+			     const RADIUS_PACKET *original,
+			     const char *secret, const VALUE_PAIR **pvp,
+			     uint8_t *start, size_t room)
+{
+	ssize_t len;
+	const VALUE_PAIR *vp = *pvp;
+
+	if (!vp->flags.is_tlv) {
+		fr_strerror_printf("rad_vp2rfctlv: attr is not a TLV");
+		return -1;
+	}
+
+	if ((vp->vendor & (FR_MAX_VENDOR - 1)) != 0) {
+		fr_strerror_printf("rad_vp2rfctlv: attr is not an RFC TLV");
+		return -1;
+	}
+
+	if (room < 5) return 0;
+
+	/*
+	 *	Encode the first level of TLVs
+	 */
+	start[0] = (vp->vendor / FR_MAX_VENDOR) & 0xff;
+	start[1] = 4;
+	start[2] = vp->attribute & fr_attr_mask[0];
+	start[3] = 2;
+
+
+
+	len = vp2data_any(packet, original, secret, 0, pvp,
+			  start + 4, room - 4);
+	if (len <= 0) return len;
+
+	if (len > 253) {
+		fprintf(stderr, "SHIT!\n");
+		return -1;
+	}
+
+	start[1] += len;
+	start[3] += len;
+
+	return start[1];
+}
 
 /**
  * @brief Parse a data structure into a RADIUS attribute.
@@ -1557,14 +1601,23 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	/*
 	 *	RFC format attributes take the fast path.
 	 */
-	if (vp->vendor == 0) {
+	if (!vp->vendor) {
 		if (vp->attribute > 255) return 0;
 
 		return rad_vp2rfc(packet, original, secret, pvp,
 				  start, room);
 	}
 
-	if (vp->vendor > FR_MAX_VENDOR) {
+	/*
+	 *	The upper 8 bits of the vendor number are the standard
+	 *	space attribute which is a TLV.
+	 */
+	if ((vp->vendor & (FR_MAX_VENDOR - 1)) == 0) {
+		return rad_vp2rfctlv(packet, original, secret, pvp,
+				     start, room);
+	}
+
+	if (vp->flags.extended) {
 		return rad_vp2extended(packet, original, secret, pvp,
 				       start, room);
 	}
@@ -3259,7 +3312,18 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 	 *	Top-level TLVs can be of a weird format.  TLVs
 	 *	encapsulated in a TLV can only be in the RFC format.
 	 */
-	if (nest == 1) {
+	if (nest == 0) {
+		/*
+		 *	This is a horrible hack.  The real solution
+		 *	would be to encapsulate this idiocy into
+		 *	attr2vp_rfc.  But doing it here avoids another
+		 *	dictionary lookup.  So...
+		 */
+		vendor = attribute * FR_MAX_VENDOR;
+		attribute = 0;
+		nest = -1;
+
+	} else if (nest == 1) {
 		DICT_VENDOR *dv;
 		dv = dict_vendorbyvalue(vendor);	
 		if (dv) {
