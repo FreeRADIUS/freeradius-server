@@ -110,8 +110,8 @@ otp_pwe_present(const REQUEST *request)
   unsigned i;
 
   for (i = 0; i < SIZEOF_PWATTR; i += 2) {
-    if (pairfind(request->packet->vps, pwattr[i]->attr, pwattr[i]->vendor) &&
-        pairfind(request->packet->vps, pwattr[i + 1]->attr,  pwattr[i + 1]->vendor)) {
+    if (pairfind(request->packet->vps, pwattr[i]->attr, pwattr[i]->vendor, TAG_ANY) &&
+        pairfind(request->packet->vps, pwattr[i + 1]->attr,  pwattr[i + 1]->vendor, TAG_ANY)) {
       DEBUG("rlm_otp: %s: password attributes %s, %s", __func__,
              pwattr[i]->name, pwattr[i + 1]->name);
       return i + 1; /* Can't return 0 (indicates failure) */

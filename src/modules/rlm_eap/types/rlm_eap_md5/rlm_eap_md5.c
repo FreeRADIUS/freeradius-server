@@ -117,7 +117,7 @@ static int md5_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
 
-	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (password == NULL) {
 		DEBUG2("rlm_eap_md5: Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;

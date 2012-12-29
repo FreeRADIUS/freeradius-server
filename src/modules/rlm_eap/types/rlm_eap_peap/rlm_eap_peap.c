@@ -241,8 +241,7 @@ static int eappeap_initiate(void *type_arg, EAP_HANDLER *handler)
 	 * EAP-TLS-Require-Client-Cert attribute will override
 	 * the require_client_cert configuration option.
 	 */
-	vp = pairfind(handler->request->config_items,
-		      PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0);
+	vp = pairfind(handler->request->config_items, PW_EAP_TLS_REQUIRE_CLIENT_CERT, 0, TAG_ANY);
 	if (vp) {
 		client_cert = vp->vp_integer;
 	}

@@ -209,7 +209,7 @@ static int rediswho_accounting(void * instance, REQUEST * request)
 	rlm_rediswho_t *inst = (rlm_rediswho_t *) instance;
 	REDISSOCK *dissocket;
 
-	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0);
+	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet.");
 		return RLM_MODULE_NOOP;

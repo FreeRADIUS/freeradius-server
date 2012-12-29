@@ -274,7 +274,7 @@ eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
      * figure out the MTU (basically do what eap-tls does)
      */
     pwd_session->mtu = inst->conf->fragment_size;
-    vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0);
+    vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
     if (vp && ((int)(vp->vp_integer - 9) < pwd_session->mtu)) {
         /*
          * 9 = 4 (EAPOL header) + 4 (EAP header) + 1 (EAP type)
@@ -470,7 +470,7 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
             fake->username->length = pwd_session->peer_id_len;
             fake->username->vp_strvalue[fake->username->length] = 0;
 
-	    if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0)) != NULL) {
+	    if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		    fake->server = vp->vp_strvalue;
 		    
 	    } else if (inst->conf->virtual_server) {
@@ -506,7 +506,7 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
 		    debug_pair_list(fake->reply->vps);
 	    }
 
-            if ((pw = pairfind(fake->config_items, PW_CLEARTEXT_PASSWORD, 0)) == NULL) {
+            if ((pw = pairfind(fake->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL) {
                 DEBUG2("failed to find password for %s to do pwd authentication",
                        pwd_session->peer_id);
                 request_free(&fake);

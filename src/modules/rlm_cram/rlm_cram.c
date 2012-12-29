@@ -140,22 +140,22 @@ static int cram_authenticate(UNUSED void * instance, REQUEST *request)
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	uint8_t buffer[64];
 
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if(!password) {
 		radlog(L_AUTH, "rlm_cram: Cleartext-Password is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
-	authtype = pairfind(request->packet->vps, SM_AUTHTYPE, VENDORPEC_SM);
+	authtype = pairfind(request->packet->vps, SM_AUTHTYPE, VENDORPEC_SM, TAG_ANY);
 	if(!authtype) {
 		radlog(L_AUTH, "rlm_cram: Required attribute Sandy-Mail-Authtype missed");
 		return RLM_MODULE_INVALID;
 	}
-	challenge = pairfind(request->packet->vps, SM_CHALLENGE, VENDORPEC_SM);
+	challenge = pairfind(request->packet->vps, SM_CHALLENGE, VENDORPEC_SM, TAG_ANY);
 	if(!challenge) {
 		radlog(L_AUTH, "rlm_cram: Required attribute Sandy-Mail-Challenge missed");
 		return RLM_MODULE_INVALID;
 	}
-	response = pairfind(request->packet->vps, SM_RESPONSE, VENDORPEC_SM);
+	response = pairfind(request->packet->vps, SM_RESPONSE, VENDORPEC_SM, TAG_ANY);
 	if(!response) {
 		radlog(L_AUTH, "rlm_cram: Required attribute Sandy-Mail-Response missed");
 		return RLM_MODULE_INVALID;

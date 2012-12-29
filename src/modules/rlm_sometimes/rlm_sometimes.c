@@ -162,7 +162,7 @@ static int sometimes_return(void *instance, RADIUS_PACKET *packet,
 	/*
 	 *	Hash based on the given key.  Usually User-Name.
 	 */
-	vp = pairfind(packet->vps, inst->da->attr, inst->da->vendor);
+	vp = pairfind(packet->vps, inst->da->attr, inst->da->vendor, TAG_ANY);
 	if (!vp) return RLM_MODULE_NOOP;
 
 	hash = fr_hash(&vp->data, vp->length);

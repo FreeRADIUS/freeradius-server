@@ -550,7 +550,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	 *      The REAL username, after stripping.
 	 */
 	DEBUG2("rlm_sqlcounter: Entering module authorize code");
-	key_vp = ((data->key_attr->vendor == 0) && (data->key_attr->attr == PW_USER_NAME)) ? request->username : pairfind(request->packet->vps, data->key_attr->attr, data->key_attr->vendor);
+	key_vp = ((data->key_attr->vendor == 0) && (data->key_attr->attr == PW_USER_NAME)) ? request->username : pairfind(request->packet->vps, data->key_attr->attr, data->key_attr->vendor, TAG_ANY);
 	if (key_vp == NULL) {
 		DEBUG2("rlm_sqlcounter: Could not find Key value pair");
 		return ret;
@@ -563,7 +563,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		return ret;
 	}
 	/* DEBUG2("rlm_sqlcounter: Found Check item attribute %d", dattr->attr); */
-	if ((check_vp= pairfind(request->config_items, dattr->attr, dattr->vendor)) == NULL) {
+	if ((check_vp= pairfind(request->config_items, dattr->attr, dattr->vendor, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_sqlcounter: Could not find Check item value pair");
 		return ret;
 	}
@@ -613,7 +613,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		 *	Limit the reply attribute to the minimum of
 		 *	the existing value, or this new one.
 		 */
-		reply_item = pairfind(request->reply->vps, data->reply_attr->attr, data->reply_attr->vendor);
+		reply_item = pairfind(request->reply->vps, data->reply_attr->attr, data->reply_attr->vendor, TAG_ANY);
 		if (reply_item) {
 			if (reply_item->vp_integer > res)
 				reply_item->vp_integer = res;

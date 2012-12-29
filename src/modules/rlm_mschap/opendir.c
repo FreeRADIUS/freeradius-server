@@ -241,7 +241,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	uint32_t		uiLen		 = 0;
 	char			*username_string = NULL;
 	char			*shortUserName	 = NULL;
-	VALUE_PAIR		*response	 = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT);
+	VALUE_PAIR		*response	 = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 #ifndef NDEBUG
 	unsigned int t;
 #endif

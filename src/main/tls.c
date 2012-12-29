@@ -253,7 +253,7 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	 *	just too much.
 	 */
 	state->offset = conf->fragment_size;
-	vp = pairfind(request->packet->vps, PW_FRAMED_MTU, 0);
+	vp = pairfind(request->packet->vps, PW_FRAMED_MTU, 0, TAG_ANY);
 	if (vp && (vp->vp_integer > 100) && (vp->vp_integer < state->offset)) {
 		state->offset = vp->vp_integer;
 	}
@@ -2438,7 +2438,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 	 *	user.
 	 */
 	if ((!ssn->allow_session_resumption) ||
-	    (((vp = pairfind(request->config_items, 1127, 0)) != NULL) &&
+	    (((vp = pairfind(request->config_items, 1127, 0, TAG_ANY)) != NULL) &&
 	     (vp->vp_integer == 0))) {
 		SSL_CTX_remove_session(ssn->ctx,
 				       ssn->ssl->session);
@@ -2467,13 +2467,13 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
-		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0, -1);
+		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0, -1);
+		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0, -1);
+		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
 		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS);

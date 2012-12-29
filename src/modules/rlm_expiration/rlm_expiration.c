@@ -64,7 +64,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR *vp, *check_item = NULL;
 	char msg[MAX_STRING_LEN];
 
-	if ((check_item = pairfind(request->config_items, PW_EXPIRATION, 0)) != NULL){
+	if ((check_item = pairfind(request->config_items, PW_EXPIRATION, 0, TAG_ANY)) != NULL){
 		/*
 		*      Has this user's password expired?
 		*
@@ -99,7 +99,7 @@ static int expiration_authorize(void *instance, REQUEST *request)
 		 *	Else the account hasn't expired, but it may do so
 		 *	in the future.  Set Session-Timeout.
 		 */
-		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0);
+		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       PW_SESSION_TIMEOUT, 0,

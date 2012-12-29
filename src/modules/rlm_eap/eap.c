@@ -240,8 +240,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		/*
 		 *	Allow per-user configuration of EAP types.
 		 */
-		vp = pairfind(handler->request->config_items,
-			      PW_EAP_TYPE, 0);
+		vp = pairfind(handler->request->config_items, PW_EAP_TYPE, 0, TAG_ANY);
 		if (vp) default_eap_type = vp->vp_integer;
 
 	do_initiate:
@@ -305,8 +304,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	as they may have asked for many.
 		 */
 		default_eap_type = 0;
-		vp = pairfind(handler->request->config_items,
-			      PW_EAP_TYPE, 0);
+		vp = pairfind(handler->request->config_items, PW_EAP_TYPE, 0, TAG_ANY);
 		for (i = 0; i < eaptype->length; i++) {
 			/*
 			 *	It is invalid to request identity,
@@ -519,7 +517,7 @@ int eap_compose(EAP_HANDLER *handler)
 	 *	Don't add a Message-Authenticator if it's already
 	 *	there.
 	 */
-	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
+	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
 		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0, PW_TYPE_OCTETS);
 		memset(vp->vp_octets, 0, AUTH_VECTOR_LEN);
@@ -576,7 +574,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	VALUE_PAIR *vp, *proxy;
 	VALUE_PAIR *eap_msg;
 
-	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE, 0);
+	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (eap_msg == NULL) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return EAP_NOOP;
@@ -586,7 +584,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Look for EAP-Type = None (FreeRADIUS specific attribute)
 	 *	this allows you to NOT do EAP for some users.
 	 */
-	vp = pairfind(request->packet->vps, PW_EAP_TYPE, 0);
+	vp = pairfind(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
 	if (vp && vp->vp_integer == 0) {
 		RDEBUG2("Found EAP-Message, but EAP-Type = None, so we're not doing EAP.");
 		return EAP_NOOP;
@@ -602,7 +600,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Check for a Proxy-To-Realm.  Don't get excited over LOCAL
 	 *	realms (sigh).
 	 */
-	proxy = pairfind(request->config_items, PW_PROXY_TO_REALM, 0);
+	proxy = pairfind(request->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
 	if (proxy) {
 		REALM *realm;
 
@@ -826,8 +824,8 @@ void eap_fail(EAP_HANDLER *handler)
 	/*
 	 *	Delete any previous replies.
 	 */
-	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0, -1);
-	pairdelete(&handler->request->reply->vps, PW_STATE, 0, -1);
+	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	pairdelete(&handler->request->reply->vps, PW_STATE, 0, TAG_ANY);
 
 	eap_packet_free(&handler->eap_ds->request);
 	handler->eap_ds->request = eap_packet_alloc();
@@ -1019,7 +1017,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			return NULL;
 		}
 
-               vp = pairfind(request->packet->vps, PW_USER_NAME, 0);
+               vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
                if (!vp) {
                        /*
                         *	NAS did not set the User-Name
@@ -1078,7 +1076,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
 			return NULL;
 		}
 
-               vp = pairfind(request->packet->vps, PW_USER_NAME, 0);
+               vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
                if (!vp) {
                        /*
                         *	NAS did not set the User-Name

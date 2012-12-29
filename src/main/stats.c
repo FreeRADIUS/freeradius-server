@@ -456,7 +456,7 @@ void request_stats_reply(REQUEST *request)
 	rad_assert(request->packet->code == PW_STATUS_SERVER);
 	rad_assert(request->listener->type == RAD_LISTEN_NONE);
 		
-	flag = pairfind(request->packet->vps, 127, VENDORPEC_FREERADIUS);
+	flag = pairfind(request->packet->vps, 127, VENDORPEC_FREERADIUS, TAG_ANY);
 	if (!flag || (flag->vp_integer == 0)) return;
 
 	/*
@@ -546,10 +546,9 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the client by server
 		 *	socket.
 		 */
-		server_ip = pairfind(request->packet->vps, 170, VENDORPEC_FREERADIUS);
+		server_ip = pairfind(request->packet->vps, 170, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (server_ip) {
-			server_port = pairfind(request->packet->vps,
-					       171, VENDORPEC_FREERADIUS);
+			server_port = pairfind(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
 
 			if (server_port) {
 				ipaddr.af = AF_INET;
@@ -564,7 +563,7 @@ void request_stats_reply(REQUEST *request)
 		}
 
 
-		vp = pairfind(request->packet->vps, 167, VENDORPEC_FREERADIUS);
+		vp = pairfind(request->packet->vps, 167, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
 			ipaddr.af = AF_INET;
 			ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
@@ -578,8 +577,7 @@ void request_stats_reply(REQUEST *request)
 			/*
 			 *	Else look it up by number.
 			 */
-		} else if ((vp = pairfind(request->packet->vps,
-					   168, VENDORPEC_FREERADIUS)) != NULL) {
+		} else if ((vp = pairfind(request->packet->vps, 168, VENDORPEC_FREERADIUS, TAG_ANY)) != NULL) {
 			client = client_findbynumber(cl, vp->vp_integer);
 		}
 
@@ -650,11 +648,10 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the server by socket
 		 *	socket.
 		 */
-		server_ip = pairfind(request->packet->vps, 170, VENDORPEC_FREERADIUS);
+		server_ip = pairfind(request->packet->vps, 170, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_ip) return;
 
-		server_port = pairfind(request->packet->vps,
-				       171, VENDORPEC_FREERADIUS);
+		server_port = pairfind(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
 		
 		ipaddr.af = AF_INET;
@@ -702,11 +699,10 @@ void request_stats_reply(REQUEST *request)
 		 *	See if we need to look up the server by socket
 		 *	socket.
 		 */
-		server_ip = pairfind(request->packet->vps, 170, VENDORPEC_FREERADIUS);
+		server_ip = pairfind(request->packet->vps, 170, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_ip) return;
 
-		server_port = pairfind(request->packet->vps,
-				       171, VENDORPEC_FREERADIUS);
+		server_port = pairfind(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
 		
 		ipaddr.af = AF_INET;

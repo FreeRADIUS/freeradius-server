@@ -133,14 +133,14 @@ static void setVlanAttribute(rlm_eap_tnc_t *inst, EAP_HANDLER *handler,
     switch(mode){
         case VLAN_ISOLATE:
             vlanNumber = inst->vlan_isolate;
-	    vp = pairfind(handler->request->config_items,
-			  PW_TNC_VLAN_ISOLATE);
+	    vp = pairfind(handler->request->config_items, PW_TNC_VLAN_ISOLATE,
+	    		  TAG_ANY);
 	    if (vp) vlanNumber = vp->vp_strvalue;
             break;
         case VLAN_ACCESS:
             vlanNumber = inst->vlan_access;
-	    vp = pairfind(handler->request->config_items,
-			  PW_TNC_VLAN_ACCESS);
+	    vp = pairfind(handler->request->config_items, PW_TNC_VLAN_ACCESS,
+	    		  TAG_ANY);
 	    if (vp) vlanNumber = vp->vp_strvalue;
             break;
 

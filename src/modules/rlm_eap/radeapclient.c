@@ -300,8 +300,8 @@ static void cleanresp(RADIUS_PACKET *resp)
 	 * maybe should just copy things we care about, or keep
 	 * a copy of the original input and start from there again?
 	 */
-	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, -1);
-	pairdelete(&resp->vps, ATTRIBUTE_EAP_BASE+PW_EAP_IDENTITY, 0, -1);
+	pairdelete(&resp->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+	pairdelete(&resp->vps, ATTRIBUTE_EAP_BASE+PW_EAP_IDENTITY, 0, TAG_ANY);
 
 	last = &resp->vps;
 	for(vp = *last; vp != NULL; vp = vpnext)
@@ -337,7 +337,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	/* form new response clear of any EAP stuff */
 	cleanresp(rep);
 
-	if((vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0)) == NULL) {
+	if((vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0, TAG_ANY)) == NULL) {
 		fprintf(stderr, "illegal start message has no VERSION_LIST\n");
 		return 0;
 	}
@@ -396,9 +396,9 @@ static int process_eap_start(RADIUS_PACKET *req,
 	 * anyway we like, but it is illegal to have more than one
 	 * present.
 	 */
-	anyidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_ANY_ID_REQ, 0);
-	fullauthidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
-	permanentidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_PERMANENT_ID_REQ, 0);
+	anyidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_ANY_ID_REQ, 0, TAG_ANY);
+	fullauthidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ, 0, TAG_ANY);
+	permanentidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_PERMANENT_ID_REQ, 0, TAG_ANY);
 
 	if(fullauthidreq_vp == NULL ||
 	   anyidreq_vp != NULL ||
@@ -458,7 +458,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		/*
 		 * insert the identity here.
 		 */
-		vp = pairfind(rep->vps, PW_USER_NAME, 0);
+		vp = pairfind(rep->vps, PW_USER_NAME, 0, TAG_ANY);
 		if(vp == NULL)
 		{
 			fprintf(stderr, "eap-sim: We need to have a User-Name attribute!\n");
@@ -502,8 +502,8 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	uint8_t calcmac[20];
 
 	/* look for the AT_MAC and the challenge data */
-	mac   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
-	randvp= pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND, 0);
+	mac   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
+	randvp= pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND, 0, TAG_ANY);
 	if(mac == NULL || randvp == NULL) {
 		fprintf(stderr, "radeapclient: challenge message needs to contain RAND and MAC\n");
 		return 0;
@@ -521,9 +521,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	  randcfg[1] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE];
 	  randcfg[2] = &randvp->vp_octets[2+EAPSIM_RAND_SIZE*2];
 
-	  randcfgvp[0] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND1, 0);
-	  randcfgvp[1] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND2, 0);
-	  randcfgvp[2] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND3, 0);
+	  randcfgvp[0] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND1, 0, TAG_ANY);
+	  randcfgvp[1] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND2, 0, TAG_ANY);
+	  randcfgvp[2] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND3, 0, TAG_ANY);
 
 	  if(randcfgvp[0] == NULL ||
 	     randcfgvp[1] == NULL ||
@@ -574,9 +574,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	 * Really, they should be calculated from the RAND!
 	 *
 	 */
-	sres1 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES1, 0);
-	sres2 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES2, 0);
-	sres3 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES3, 0);
+	sres1 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES1, 0, TAG_ANY);
+	sres2 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES2, 0, TAG_ANY);
+	sres3 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES3, 0, TAG_ANY);
 
 	if(sres1 == NULL ||
 	   sres2 == NULL ||
@@ -588,9 +588,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	memcpy(eapsim_mk.sres[1], sres2->vp_strvalue, sizeof(eapsim_mk.sres[1]));
 	memcpy(eapsim_mk.sres[2], sres3->vp_strvalue, sizeof(eapsim_mk.sres[2]));
 
-	Kc1 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC1, 0);
-	Kc2 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC2, 0);
-	Kc3 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC3, 0);
+	Kc1 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC1, 0, TAG_ANY);
+	Kc2 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC2, 0, TAG_ANY);
+	Kc3 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC3, 0, TAG_ANY);
 
 	if(Kc1 == NULL ||
 	   Kc2 == NULL ||
@@ -673,12 +673,12 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
 
-	if ((radstate = paircopy2(req->vps, PW_STATE, 0, -1)) == NULL)
+	if ((radstate = paircopy2(req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
 
-	if ((eapid = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, -1)) == NULL)
+	if ((eapid = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
@@ -687,7 +687,7 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	 * outselves to be in EAP-SIM-Start state if there is none.
 	 */
 
-	if((statevp = pairfind(resp->vps, ATTRIBUTE_EAP_SIM_STATE, 0)) == NULL)
+	if((statevp = pairfind(resp->vps, ATTRIBUTE_EAP_SIM_STATE, 0, TAG_ANY)) == NULL)
 	{
 		/* must be initial request */
 		statevp = paircreate(ATTRIBUTE_EAP_SIM_STATE, 0, PW_TYPE_INTEGER);
@@ -701,7 +701,7 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	 */
 	unmap_eapsim_types(req);
 
-	if((vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0)) == NULL)
+	if((vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
@@ -782,20 +782,20 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 
 	cleanresp(rep);
 
-	if ((state = paircopy2(req->vps, PW_STATE, 0, -1)) == NULL)
+	if ((state = paircopy2(req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no state attribute found\n");
 		return 0;
 	}
 
-	if ((id = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, -1)) == NULL)
+	if ((id = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no EAP-ID attribute found\n");
 		return 0;
 	}
 	identifier = id->vp_integer;
 
-	if ((vp = pairfind(req->vps, ATTRIBUTE_EAP_BASE+PW_EAP_MD5, 0)) == NULL)
+	if ((vp = pairfind(req->vps, ATTRIBUTE_EAP_BASE+PW_EAP_MD5, 0, TAG_ANY)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no EAP-MD5 attribute found\n");
 		return 0;
@@ -851,15 +851,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	/*
 	 *	Keep a copy of the the User-Password attribute.
 	 */
-	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0)) != NULL) {
+	if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
 		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 
-	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0)) != NULL) {
+	} else 	if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
 		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 		/*
 		 *	Otherwise keep a copy of the CHAP-Password attribute.
 		 */
-	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
+	} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 		strlcpy(password, (char *)vp->vp_strvalue, sizeof(vp->vp_strvalue));
 	} else {
 		*password = '\0';
@@ -916,15 +916,15 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 			sizeof(rep->vector));
 
 	if (*password != '\0') {
-		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0)) != NULL) {
+		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
 			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
 			vp->length = strlen(password);
 
-		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0)) != NULL) {
+		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
 			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
 			vp->length = strlen(password);
 
-		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
+		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
 			vp->length = strlen(password);
 
@@ -1260,14 +1260,14 @@ static void map_eap_types(RADIUS_PACKET *req)
 	EAP_PACKET ep;
 	int eap_type;
 
-	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID, 0);
+	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY);
 	if(vp == NULL) {
 		id = ((int)getpid() & 0xff);
 	} else {
 		id = vp->vp_integer;
 	}
 
-	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE, 0);
+	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE, 0, TAG_ANY);
 	if(vp == NULL) {
 		eapcode = PW_EAP_REQUEST;
 	} else {
@@ -1309,7 +1309,7 @@ static void map_eap_types(RADIUS_PACKET *req)
 		 */
 
 		/* nuke any existing EAP-Messages */
-		pairdelete(&req->vps, PW_EAP_MESSAGE, 0, -1);
+		pairdelete(&req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		memset(&ep, 0, sizeof(ep));
 		ep.code = eapcode;
@@ -1413,7 +1413,7 @@ static int unmap_eapsim_types(RADIUS_PACKET *r)
 {
 	VALUE_PAIR             *esvp;
 
-	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM, 0);
+	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM, 0, TAG_ANY);
 	if (esvp == NULL) {
 		radlog(L_ERR, "eap: EAP-Sim attribute not found");
 		return 0;
@@ -1493,7 +1493,7 @@ main(int argc, char *argv[])
 		}
 
 		/* find the EAP-Message, copy it to req2 */
-		vp = paircopy2(req->vps, PW_EAP_MESSAGE, 0, -1);
+		vp = paircopy2(req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		if(vp == NULL) continue;
 
@@ -1508,10 +1508,9 @@ main(int argc, char *argv[])
 			vp_printlist(stdout, req2->vps);
 		}
 
-		vp = pairfind(req2->vps,
-			      ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
-		vpkey   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_KEY, 0);
-		vpextra = pairfind(req->vps, ATTRIBUTE_EAP_SIM_EXTRA, 0);
+		vp = pairfind(req2->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
+		vpkey   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_KEY, 0, TAG_ANY);
+		vpextra = pairfind(req->vps, ATTRIBUTE_EAP_SIM_EXTRA, 0, TAG_ANY);
 
 		if(vp != NULL && vpkey != NULL && vpextra!=NULL) {
 			uint8_t calcmac[16];

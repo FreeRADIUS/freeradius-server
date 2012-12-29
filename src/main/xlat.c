@@ -106,24 +106,6 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 	return strlen(out);
 }
 
-static VALUE_PAIR *pairfind_tag(VALUE_PAIR *vps, const DICT_ATTR *da, int tag)
-{
-	VALUE_PAIR *vp = vps;
-
-redo:
-	vp = pairfind(vp, da->attr, da->vendor);
-	if (!tag) return vp;
-
-	if (!vp) return NULL;
-
-	if (!vp->flags.has_tag) return NULL;
-
-	if (vp->flags.tag == tag) return vp;
-	
-	vp = vp->next;
-	goto redo;
-}
-
 /*
  *	Dynamically translate for check:, request:, reply:, etc.
  */
@@ -266,7 +248,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	No array, print the tagged attribute.
 		 */
 		if (!do_array) {
-			vp = pairfind_tag(vps, da, tag);
+			vp = pairfind(vps, da->attr, da->vendor, tag);
 			goto just_print;
 		}
 
@@ -276,9 +258,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	Array[#] - return the total
 		 */
 		if (do_count) {
-			for (vp = pairfind_tag(vps, da, tag);
+			for (vp = pairfind(vps, da->attr, da->vendor, tag);
 			     vp != NULL;
-			     vp = pairfind_tag(vp->next, da, tag)) {
+			     vp = pairfind(vp->next, da->attr, da->vendor, tag)) {
 				total++;
 			}
 
@@ -291,9 +273,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	the attributes, separated by a newline.
 		 */
 		if (do_all) {
-			for (vp = pairfind_tag(vps, da, tag);
+			for (vp = pairfind(vps, da->attr, da->vendor, tag);
 			     vp != NULL;
-			     vp = pairfind_tag(vp->next, da, tag)) {
+			     vp = pairfind(vp->next, da->attr, da->vendor, tag)) {
 				count = valuepair2str(out, outlen - 1, vp, da->type);
 				rad_assert(count <= outlen);
 				total += count + 1;
@@ -312,9 +294,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		/*
 		 *	Find the N'th value.
 		 */
-		for (vp = pairfind_tag(vps, da, tag);
+		for (vp = pairfind(vps, da->attr, da->vendor, tag);
 		     vp != NULL;
-		     vp = pairfind_tag(vp->next, da, tag)) {
+		     vp = pairfind(vp->next, da->attr, da->vendor, tag)) {
 			if (total == count) break;
 			total++;
 			if (total > count) {
@@ -345,7 +327,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		return valuepair2str(out, outlen, vp, da->type);
 	}
 
-	vp = pairfind(vps, da->attr, da->vendor);
+	vp = pairfind(vps, da->attr, da->vendor, TAG_ANY);
 	if (!vp) {
 		/*
 		 *	Some "magic" handlers, which are never in VP's, but

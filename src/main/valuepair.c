@@ -512,7 +512,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 					DEBUG("WARNING: Are you sure you don't mean Cleartext-Password?");
 					DEBUG("WARNING: See \"man rlm_pap\" for more information.");
 				}
-				if (pairfind(request, PW_USER_PASSWORD, 0) == NULL) {
+				if (pairfind(request, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
 					continue;
 				}
 				break;
@@ -691,7 +691,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			pairparsevalue(i, buffer);
 		}
 
-		found = pairfind(*to, i->attribute, i->vendor);
+		found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
 		switch (i->operator) {
 
 			/*
@@ -1384,7 +1384,7 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	/*
 	 *	May not may not be found, but it *is* a known name.
 	 */
-	*vp_p = pairfind(*vps, vpt.da->attr, vpt.da->vendor);
+	*vp_p = pairfind(*vps, vpt.da->attr, vpt.da->vendor, TAG_ANY);
 	
 	return 0;
 }

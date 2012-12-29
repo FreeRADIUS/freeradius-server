@@ -71,7 +71,7 @@ struct file_instance {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
+	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : 0;
 }
@@ -494,7 +494,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
 	/*
 	 *	Remove server internal parameters.
 	 */
-	pairdelete(reply_pairs, PW_FALL_THROUGH, 0, -1);
+	pairdelete(reply_pairs, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	/*
 	 *	See if we succeeded.

@@ -80,7 +80,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	 * it might be too big for putting into an EAP-Type-SIM
 	 *
 	 */
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0, TAG_ANY);
 	if(vp == NULL)
 	{
 		subtype = eapsim_start;
@@ -90,7 +90,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		subtype = vp->vp_integer;
 	}
 
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID, 0);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY);
 	if(vp == NULL)
 	{
 		id = ((int)getpid() & 0xff);
@@ -100,7 +100,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		id = vp->vp_integer;
 	}
 
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE, 0);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE, 0, TAG_ANY);
 	if(vp == NULL)
 	{
 		eapcode = PW_EAP_REQUEST;
@@ -250,7 +250,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	 * then we should calculate the HMAC-SHA1 of the resulting EAP-SIM
 	 * packet, appended with the value of append.
 	 */
-	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_KEY, 0);
+	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_KEY, 0, TAG_ANY);
 	if(macspace != NULL && vp != NULL)
 	{
 		unsigned char   *buffer;
@@ -396,7 +396,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	int elen,len;
 	VALUE_PAIR *mac;
 
-	mac = pairfind(rvps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
+	mac = pairfind(rvps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
 
 	if(mac == NULL
 	   || mac->length != 18) {

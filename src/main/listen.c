@@ -1570,7 +1570,7 @@ static int do_proxy(REQUEST *request)
 		return 0;
 	}
 
-	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0);
+	vp = pairfind(request->config_items, PW_HOME_SERVER_POOL, 0, TAG_ANY);
 	if (!vp) return 0;
 	
 	if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
@@ -1621,10 +1621,10 @@ static int rad_coa_recv(REQUEST *request)
 		 *	with Service-Type = Authorize-Only, it MUST
 		 *	have a State attribute in it.
 		 */
-		vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0);
+		vp = pairfind(request->packet->vps, PW_SERVICE_TYPE, 0, TAG_ANY);
 		if (request->packet->code == PW_COA_REQUEST) {
 			if (vp && (vp->vp_integer == 17)) {
-				vp = pairfind(request->packet->vps, PW_STATE, 0);
+				vp = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 				if (!vp || (vp->length == 0)) {
 					RDEBUG("ERROR: CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 					request->reply->code = PW_COA_NAK;
@@ -1673,7 +1673,7 @@ static int rad_coa_recv(REQUEST *request)
 	 *	Copy State from the request to the reply.
 	 *	See RFC 5176 Section 3.3.
 	 */
-	vp = paircopy2(request->packet->vps, PW_STATE, 0, -1);
+	vp = paircopy2(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	/*

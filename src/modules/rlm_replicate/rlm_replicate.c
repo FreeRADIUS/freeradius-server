@@ -69,7 +69,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 	 *	destinations.
 	 */
 	while (1) {
-		vp = pairfind(last, PW_REPLICATE_TO_REALM, 0);
+		vp = pairfind(last, PW_REPLICATE_TO_REALM, 0, TAG_ANY);
 		if (!vp) break;
 
 		last = vp->next;
@@ -168,8 +168,8 @@ static int replicate_packet(void *instance, REQUEST *request,
 			 *	it doesn't exist.
 			 */
 			if ((code == PW_AUTHENTICATION_REQUEST) &&
-			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0) != NULL) &&
-			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0) == NULL)) {
+			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
+			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
 				vp = radius_paircreate(request, &packet->vps,
 						       PW_CHAP_CHALLENGE, 0,
 						       PW_TYPE_OCTETS);

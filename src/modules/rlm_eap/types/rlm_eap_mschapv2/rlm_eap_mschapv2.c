@@ -48,10 +48,10 @@ static CONF_PARSER module_config[] = {
 
 static void fix_mppe_keys(EAP_HANDLER *handler, mschapv2_opaque_t *data)
 {
-	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT);
-	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT);
-	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT);
-	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT);
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 }
 
 static void free_data(void *ptr)
@@ -334,7 +334,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 		 */
 		pairmove2(&response,
 			  &handler->request->reply->vps,
-			  PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
+			  PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		break;
 
 	default:
@@ -681,7 +681,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the handler & request back into the tunnel.
 		 */
-		pairdelete(&handler->request->packet->vps, PW_STATE, 0, -1);
+		pairdelete(&handler->request->packet->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
@@ -690,8 +690,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((challenge = pairfind(handler->request->packet->vps,
-					   PW_USER_NAME, 0)) != NULL) &&
+		    ((challenge = pairfind(handler->request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) != NULL) &&
 		    ((username = strchr(challenge->vp_strvalue, '\\')) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -732,12 +731,12 @@ packet_ready:
 	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
 		pairmove2(&response, &handler->request->reply->vps,
-			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
+			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	} else if (inst->send_error) {
 		pairmove2(&response, &handler->request->reply->vps,
-			  PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT);
+			  PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (response) {
 			int n,err,retry;
 			char buf[34];

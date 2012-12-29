@@ -95,7 +95,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *      it already ( via another rlm_realm instance ) and should return.
 	 */
 
-	if (pairfind(request->packet->vps, PW_REALM, 0) != NULL ) {
+	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
 	        RDEBUG2("Request already proxied.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
@@ -266,7 +266,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *      that has already proxied the request, we don't need to do
 	 *      it again.
 	 */
-	vp = pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO, 0);
+	vp = pairfind(request->packet->vps, PW_FREERADIUS_PROXIED_TO, 0, TAG_ANY);
 	if (vp && (request->packet->src_ipaddr.af == AF_INET)) {
 		int i;
 		fr_ipaddr_t my_ipaddr;
@@ -467,12 +467,12 @@ static int realm_coa(UNUSED void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	REALM *realm;
 
-	if (pairfind(request->packet->vps, PW_REALM, 0) != NULL) {
+	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
 	        RDEBUG2("Request already proxied.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
 
-	vp = pairfind(request->packet->vps, PW_OPERATOR_NAME, 0);
+	vp = pairfind(request->packet->vps, PW_OPERATOR_NAME, 0, TAG_ANY);
 
 	/*
 	 *	Catch the case of broken dictionaries.

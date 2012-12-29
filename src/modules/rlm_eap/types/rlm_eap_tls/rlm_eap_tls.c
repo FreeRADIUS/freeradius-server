@@ -175,8 +175,7 @@ static int eaptls_authenticate(void *type_arg, EAP_HANDLER *handler)
 			fake->packet->vps = paircopy(request->packet->vps);
 
 			/* set the virtual server to use */
-			if ((vp = pairfind(request->config_items,
-					   PW_VIRTUAL_SERVER, 0)) != NULL) {
+			if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 				fake->server = vp->vp_strvalue;
 			} else {
 				fake->server = inst->virtual_server;

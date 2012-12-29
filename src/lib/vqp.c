@@ -556,7 +556,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	if (packet->data) return 0;
 
-	vp = pairfind(packet->vps, PW_VQP_PACKET_TYPE, 0);
+	vp = pairfind(packet->vps, PW_VQP_PACKET_TYPE, 0, TAG_ANY);
 	if (!vp) {
 		fr_strerror_printf("Failed to find VQP-Packet-Type in response packet");
 		return -1;
@@ -571,7 +571,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	length = VQP_HDR_LEN;
 	memset(vps, 0, sizeof(vps));
 
-	vp = pairfind(packet->vps, PW_VQP_ERROR_CODE, 0);
+	vp = pairfind(packet->vps, PW_VQP_ERROR_CODE, 0, TAG_ANY);
 
 	/*
 	 *	FIXME: Map attributes from calling-station-Id, etc.
@@ -586,7 +586,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	if (!vp) for (i = 0; i < VQP_MAX_ATTRIBUTES; i++) {
 		if (!contents[code][i]) break;
 
-		vps[i] = pairfind(packet->vps, contents[code][i] | 0x2000, 0);
+		vps[i] = pairfind(packet->vps, contents[code][i] | 0x2000, 0, TAG_ANY);
 
 		/*
 		 *	FIXME: Print the name...

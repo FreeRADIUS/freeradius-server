@@ -181,9 +181,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	 *	hash of MS-CHAPv2 challenge, and peer challenge.
 	 */
 	if (strncasecmp(fmt, "Challenge", 9) == 0) {
-		chap_challenge = pairfind(request->packet->vps,
-					  PW_MSCHAP_CHALLENGE,
-					  VENDORPEC_MICROSOFT);
+		chap_challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!chap_challenge) {
 			RDEBUG2("No MS-CHAP-Challenge in the request.");
 			return 0;
@@ -207,9 +205,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			VALUE_PAIR *name_attr, *response_name;
 			char *username_string;
 
-			response = pairfind(request->packet->vps,
-					    PW_MSCHAP2_RESPONSE,
-					    VENDORPEC_MICROSOFT);
+			response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 			if (!response) {
 				RDEBUG2("MS-CHAP2-Response is required to calculate MS-CHAPv1 challenge.");
 				return 0;
@@ -229,8 +225,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 				return 0;
 			}
 
-			user_name = pairfind(request->packet->vps,
-					     PW_USER_NAME, 0);
+			user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 			if (!user_name) {
 				RDEBUG2("User-Name is required to calculate MS-CHAPv1 Challenge.");
 				return 0;
@@ -245,7 +240,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 *	We prefer this to the User-Name in the
 			 *	packet.
 			 */
-			response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME, 0);
+			response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME, 0, TAG_ANY);
 			if (response_name) {
 				name_attr = response_name;
 			} else {
@@ -294,11 +289,8 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 *	response.
 		 */
 	} else if (strncasecmp(fmt, "NT-Response", 11) == 0) {
-		response = pairfind(request->packet->vps,
-				    PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
-		if (!response) response = pairfind(request->packet->vps,
-						   PW_MSCHAP2_RESPONSE,
-						   VENDORPEC_MICROSOFT);
+		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
+		if (!response) response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!response) {
 			RDEBUG2("No MS-CHAP-Response or MS-CHAP2-Response was found in the request.");
 			return 0;
@@ -327,8 +319,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 *	in MS-CHAPv1, and not often there.
 		 */
 	} else if (strncasecmp(fmt, "LM-Response", 11) == 0) {
-		response = pairfind(request->packet->vps,
-				    PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
+		response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (!response) {
 			RDEBUG2("No MS-CHAP-Response was found in the request.");
 			return 0;
@@ -351,7 +342,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	} else if (strncasecmp(fmt, "NT-Domain", 9) == 0) {
 		char *p, *q;
 
-		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0);
+		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!user_name) {
 			RDEBUG2("No User-Name was found in the request.");
 			return 0;
@@ -406,7 +397,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
 		char *p;
 
-		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0);
+		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!user_name) {
 			RDEBUG2("No User-Name was found in the request.");
 			return 0;
@@ -1281,24 +1272,19 @@ static int mschap_authorize(void * instance, REQUEST *request)
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL;
 
-	challenge = pairfind(request->packet->vps,
-			     PW_MSCHAP_CHALLENGE,
-			     VENDORPEC_MICROSOFT);
+	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (!challenge) {
 		return RLM_MODULE_NOOP;
 	}
 
-	if (!pairfind(request->packet->vps, PW_MSCHAP_RESPONSE,
-		      VENDORPEC_MICROSOFT) &&
-	    !pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE,
-		      VENDORPEC_MICROSOFT) &&
-	    !pairfind(request->packet->vps, PW_MSCHAP2_CPW,
-		      VENDORPEC_MICROSOFT)) {
+	if (!pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY) &&
+	    !pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY) &&
+	    !pairfind(request->packet->vps, PW_MSCHAP2_CPW, VENDORPEC_MICROSOFT, TAG_ANY)) {
 		RDEBUG2("Found MS-CHAP-Challenge, but no MS-CHAP response or change-password");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config_items, PW_AUTH_TYPE, 0)) {
+	if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY)) {
 		RDEBUG2("WARNING: Auth-Type already set.  Not setting to MS-CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -1362,8 +1348,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 *	want to suppress it.
 	 */
 	if (do_ntlm_auth) {
-		VALUE_PAIR *vp = pairfind(request->config_items,
-					  PW_MS_CHAP_USE_NTLM_AUTH, 0);
+		VALUE_PAIR *vp = pairfind(request->config_items, PW_MS_CHAP_USE_NTLM_AUTH, 0, TAG_ANY);
 		if (vp) do_ntlm_auth = vp->vp_integer;
 	}
 
@@ -1371,10 +1356,9 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	 *	Find the SMB-Account-Ctrl attribute, or the
 	 *	SMB-Account-Ctrl-Text attribute.
 	 */
-	smb_ctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL, 0);
+	smb_ctrl = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL, 0, TAG_ANY);
 	if (!smb_ctrl) {
-		password = pairfind(request->config_items,
-				    PW_SMB_ACCOUNT_CTRL_TEXT, 0);
+		password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL_TEXT, 0, TAG_ANY);
 		if (password) {
 			smb_ctrl = radius_pairmake(request,
 						   &request->config_items,
@@ -1403,12 +1387,12 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	Decide how to get the passwords.
 	 */
-	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 
 	/*
 	 *	We need an LM-Password.
 	 */
-	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0);
+	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0, TAG_ANY);
 	if (lm_password) {
 		/*
 		 *	Allow raw octets.
@@ -1443,7 +1427,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	We need an NT-Password.
 	 */
-	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0);
+	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (nt_password) {
 		if ((nt_password->length == 16) ||
 		    ((nt_password->length == 32) &&
@@ -1472,8 +1456,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		}
 	}
 
-	cpw = pairfind(request->packet->vps, PW_MSCHAP2_CPW,
-		       VENDORPEC_MICROSOFT);
+	cpw = pairfind(request->packet->vps, PW_MSCHAP2_CPW, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (cpw) {
 		/*
 		 * mschap2 password change request
@@ -1600,9 +1583,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		memcpy(response->vp_octets+2, cpw->vp_octets + 18, 48);
 	}
 
-	challenge = pairfind(request->packet->vps,
-			     PW_MSCHAP_CHALLENGE,
-			     VENDORPEC_MICROSOFT);
+	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (!challenge) {
 		RDEBUG("ERROR: You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_REJECT;
@@ -1611,9 +1592,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 	/*
 	 *	We also require an MS-CHAP-Response.
 	 */
-	response = pairfind(request->packet->vps,
-			    PW_MSCHAP_RESPONSE,
-			    VENDORPEC_MICROSOFT);
+	response = pairfind(request->packet->vps, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 
 	/*
 	 *	MS-CHAP-Response, means MS-CHAPv1
@@ -1663,9 +1642,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 
 		chap = 1;
 
-	} else if ((response = pairfind(request->packet->vps,
-					PW_MSCHAP2_RESPONSE,
-					VENDORPEC_MICROSOFT)) != NULL) {
+	} else if ((response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY)) != NULL) {
 		int mschap_result;
 		uint8_t	mschapv1_challenge[16];
 		VALUE_PAIR *name_attr, *response_name;
@@ -1689,7 +1666,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		/*
 		 *	We also require a User-Name
 		 */
-		username = pairfind(request->packet->vps, PW_USER_NAME, 0);
+		username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!username) {
 			radlog_request(L_AUTH, 0, request, "We require a User-Name for MS-CHAPv2");
 			return RLM_MODULE_INVALID;
@@ -1704,7 +1681,7 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 		 *	We prefer this to the User-Name in the
 		 *	packet.
 		 */
-		response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME, 0);
+		response_name = pairfind(request->packet->vps, PW_MS_CHAP_USER_NAME, 0, TAG_ANY);
 		if (response_name) {
 			name_attr = response_name;
 		} else {

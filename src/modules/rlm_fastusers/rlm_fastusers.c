@@ -90,7 +90,7 @@ static const CONF_PARSER module_config[] = {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
+	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 	return tmp ? tmp->vp_integer : 0;
 }
 
@@ -106,7 +106,7 @@ static int rad_check_return(VALUE_PAIR *list)
        * We check for Auth-Type = Reject here
        */
 
-      authtype = pairfind(list, PW_AUTHTYPE, 0);
+      authtype = pairfind(list, PW_AUTHTYPE, 0, TAG_ANY);
       if((authtype) && authtype->vp_integer == PW_AUTHTYPE_REJECT)  {
               DEBUG2("rad_check_return:  Auth-Type is Reject");
               return RLM_MODULE_REJECT;
@@ -595,7 +595,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 		pairfree(&reply_tmp);
 
 		if(!fallthrough(user->reply)) {
-			pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0, -1);
+			pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0, TAG_ANY);
 			return(rad_check_return(user->check));
 		} else {
 			user=user->next;
@@ -659,7 +659,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 			pairfree(&reply_tmp);
 
 			if(!fallthrough(user->reply)) {
-				pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0, -1);
+				pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0, TAG_ANY);
 				return(rad_check_return(user->check));
 			}
 
@@ -675,7 +675,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 	}
 
 	if(userfound || defaultfound) {
-		pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0, -1);
+		pairdelete(&request->reply->vps, PW_FALL_THROUGH, 0, TAG_ANY);
 		return(rad_check_return(request->config_items));
 	} else {
 		DEBUG2("rlm_fastusers:  user not found");

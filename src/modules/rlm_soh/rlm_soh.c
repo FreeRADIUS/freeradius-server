@@ -48,19 +48,19 @@ static size_t soh_xlat(UNUSED void *instance, REQUEST *request, const char *fmt,
 	 * FIXME: should have a #define for the attribute...
 	 * SoH-Supported == 2119 in dictionary.freeradius.internal
 	 */
-	vp[0] = pairfind(request->packet->vps, 2119, 0);
+	vp[0] = pairfind(request->packet->vps, 2119, 0, TAG_ANY);
 	if (!vp[0])
 		return 0;
 
 
 	if (strncasecmp(fmt, "OS", 2) == 0) {
 		/* OS vendor */
-		vp[0] = pairfind(request->packet->vps, 2100, 0);
-		vp[1] = pairfind(request->packet->vps, 2101, 0);
-		vp[2] = pairfind(request->packet->vps, 2102, 0);
-		vp[3] = pairfind(request->packet->vps, 2103, 0);
-		vp[4] = pairfind(request->packet->vps, 2104, 0);
-		vp[5] = pairfind(request->packet->vps, 2105, 0);
+		vp[0] = pairfind(request->packet->vps, 2100, 0, TAG_ANY);
+		vp[1] = pairfind(request->packet->vps, 2101, 0, TAG_ANY);
+		vp[2] = pairfind(request->packet->vps, 2102, 0, TAG_ANY);
+		vp[3] = pairfind(request->packet->vps, 2103, 0, TAG_ANY);
+		vp[4] = pairfind(request->packet->vps, 2104, 0, TAG_ANY);
+		vp[5] = pairfind(request->packet->vps, 2105, 0, TAG_ANY);
 
 		if (vp[0] && vp[0]->vp_integer == VENDORPEC_MICROSOFT) {
 			if (!vp[1]) {
@@ -144,7 +144,7 @@ static int soh_postauth(UNUSED void * instance, REQUEST *request)
 	int rcode;
 	VALUE_PAIR *vp;
 
-	vp = pairfind(request->packet->vps, 43, DHCP_MAGIC_VENDOR);
+	vp = pairfind(request->packet->vps, 43, DHCP_MAGIC_VENDOR, TAG_ANY);
 	if (vp) {
 		/*
 		 * vendor-specific options contain
@@ -202,7 +202,7 @@ static int soh_authorize(UNUSED void * instance, REQUEST *request)
 	int rv;
 
 	/* try to find the MS-SoH payload */
-	vp = pairfind(request->packet->vps, 55, VENDORPEC_MICROSOFT);
+	vp = pairfind(request->packet->vps, 55, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (!vp) {
 		RDEBUG("SoH radius VP not found");
 		return RLM_MODULE_NOOP;

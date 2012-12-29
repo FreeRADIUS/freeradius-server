@@ -636,12 +636,12 @@ int detail_recv(rad_listen_t *listener)
 		packet->src_ipaddr = data->client_ip;
 	}
 
-	vp = pairfind(packet->vps, PW_PACKET_SRC_IP_ADDRESS, 0);
+	vp = pairfind(packet->vps, PW_PACKET_SRC_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
 		packet->src_ipaddr.af = AF_INET;
 		packet->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	} else {
-		vp = pairfind(packet->vps, PW_PACKET_SRC_IPV6_ADDRESS, 0);
+		vp = pairfind(packet->vps, PW_PACKET_SRC_IPV6_ADDRESS, 0, TAG_ANY);
 		if (vp) {
 			packet->src_ipaddr.af = AF_INET6;
 			memcpy(&packet->src_ipaddr.ipaddr.ip6addr,
@@ -649,12 +649,12 @@ int detail_recv(rad_listen_t *listener)
 		}
 	}
 
-	vp = pairfind(packet->vps, PW_PACKET_DST_IP_ADDRESS, 0);
+	vp = pairfind(packet->vps, PW_PACKET_DST_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
 		packet->dst_ipaddr.af = AF_INET;
 		packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	} else {
-		vp = pairfind(packet->vps, PW_PACKET_DST_IPV6_ADDRESS, 0);
+		vp = pairfind(packet->vps, PW_PACKET_DST_IPV6_ADDRESS, 0, TAG_ANY);
 		if (vp) {
 			packet->dst_ipaddr.af = AF_INET6;
 			memcpy(&packet->dst_ipaddr.ipaddr.ip6addr,
@@ -685,7 +685,7 @@ int detail_recv(rad_listen_t *listener)
 	 *	"Timestamp" field is when we wrote the packet to the
 	 *	detail file, which could have been much later.
 	 */
-	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP, 0);
+	vp = pairfind(packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
 	if (vp) {
 		data->timestamp = vp->vp_integer;
 	}
@@ -694,7 +694,7 @@ int detail_recv(rad_listen_t *listener)
 	 *	Look for Acct-Delay-Time, and update
 	 *	based on Acct-Delay-Time += (time(NULL) - timestamp)
 	 */
-	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME, 0);
+	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 	if (!vp) {
 		vp = paircreate(PW_ACCT_DELAY_TIME, 0, PW_TYPE_INTEGER);
 		rad_assert(vp != NULL);
@@ -707,7 +707,7 @@ int detail_recv(rad_listen_t *listener)
 	/*
 	 *	Set the transmission count.
 	 */
-	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER, 0);
+	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER, 0, TAG_ANY);
 	if (!vp) {
 		vp = paircreate(PW_PACKET_TRANSMIT_COUNTER, 0, PW_TYPE_INTEGER);
 		rad_assert(vp != NULL);

@@ -38,11 +38,11 @@ static int chap_authorize(void *instance, REQUEST *request)
 	instance = instance;
 	request = request;
 
-	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0)) {
+	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
 	}
 
-	if (pairfind(request->config_items, PW_AUTHTYPE, 0) != NULL) {
+	if (pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY) != NULL) {
 		RDEBUG2("WARNING: Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
@@ -76,7 +76,7 @@ static int chap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0);
+	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	if (!chap) {
 		RDEBUG("ERROR: You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
 		return RLM_MODULE_INVALID;
@@ -98,8 +98,8 @@ static int chap_authenticate(void *instance, REQUEST *request)
 	RDEBUG("login attempt by \"%s\" with CHAP password",
 		request->username->vp_strvalue);
 
-	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) == NULL){
-		if ((passwd_item = pairfind(request->config_items, PW_USER_PASSWORD, 0)) != NULL){
+	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
+		if ((passwd_item = pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL){
 			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RDEBUG("!!! Please update your configuration so that the \"known !!!");
 			RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
