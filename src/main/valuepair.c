@@ -944,7 +944,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
  *
  * @see dict_attrbyname
  *
- * @param[in+out] name of attribute.
+ * @param[in,out] name of attribute.
  * @param[in] unknown the list to return if no qualifiers were found.
  * @return PAIR_LIST_UNKOWN if qualifiers couldn't be resolved to a list.
  */
@@ -988,7 +988,7 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  * Resolve name to a current request.
  *
  * @see radius_list
- * @param[in+out] request to use as context, and to write result to.
+ * @param[in,out] request to use as context, and to write result to.
  * @param[in] name (request) to resolve to.
  * @return 0 if request is valid in this context, else -1.
  */
@@ -1031,6 +1031,7 @@ int radius_request(REQUEST **request, request_refs_t name)
  *
  * @see radius_list_name
  * @param[in,out] name of attribute.
+ * @param[in] unknown Request ref to return if no request qualifier is present.
  * @return one of the REQUEST_* definitions or REQUEST_UNKOWN
  */
 request_refs_t radius_request_name(const char **name, request_refs_t unknown)
@@ -1055,7 +1056,7 @@ request_refs_t radius_request_name(const char **name, request_refs_t unknown)
 
 /** Release memory allocated to value pair template.
  *
- * @param[in+out] tmpl to free.
+ * @param[in,out] tmpl to free.
  */
 void radius_tmplfree(VALUE_PAIR_TMPL **tmpl)
 {
@@ -1163,8 +1164,7 @@ VALUE_PAIR_TMPL *radius_attr2tmpl(const char *name,
 /** Convert module specific attribute id to VALUE_PAIR_TMPL.
  *
  * @param[in] name string to convert.
- * @param[out] vpt to modify.
- * @return 0
+ * @return pointer to new VPT.
  */
 VALUE_PAIR_TMPL *radius_str2tmpl(const char *name)
 {
@@ -1205,8 +1205,9 @@ void radius_mapfree(VALUE_PAIR_MAP **map)
 
 /** Convert CONFIG_PAIR to VALUE_PAIR_MAP.
  *
- * Treats the left operand as a <request>.<list>.<attribute> reference
- * and the right operand as a module specific value.
+ * Treats the left operand as a
+ * @verbatim<request>.<list>.<attribute>@endverbatim reference and the right
+ * operand as a module specific value.
  *
  * The left operand will be pre-parsed into request ref, dst list, and da,
  * the right operand will be left as a string.

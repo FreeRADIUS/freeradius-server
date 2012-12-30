@@ -258,7 +258,7 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
  *
  * Delete matching pairs from the attribute list.
  * 
- * @param[in+out] first VP in list.
+ * @param[in,out] first VP in list.
  * @param[in] attr to match.
  * @param[in] vendor to match.
  * @param[in] tag to match. TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
@@ -311,7 +311,7 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
  * 
  * @note Memory used by the VP being replaced will be freed.
  * 
- * @param[in+out] first VP in linked list. Will search and replace in this list.
+ * @param[in,out] first VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
  * @return a copy of the input vp
  */
@@ -473,8 +473,8 @@ VALUE_PAIR *paircopy(VALUE_PAIR *vp)
  *
  * @note Does not respect tags when matching.
  * 
- * @param[in+out] to destination list.
- * @param[in+out] from source list.
+ * @param[in,out] to destination list.
+ * @param[in,out] from source list.
  *
  * @see radius_pairmove
  */
@@ -662,8 +662,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
  * @note pairfree should be called on the head of the old list to free unmoved
  	 attributes (if they're no longer needed). 
  * 
- * @param[in+out] to destination list.
- * @param[in+out] from source list.
+ * @param[in,out] to destination list.
+ * @param[in,out] from source list.
  * @param[in] attr to match, if PW_VENDOR_SPECIFIC and vendor 0, only VSAs will
  *	      be copied.
  * @param[in] vendor to match.

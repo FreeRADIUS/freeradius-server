@@ -848,7 +848,7 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func,
  * @see rest_read_ctx_free
  *
  * @param[in] request Current request.
- * @param[in] read to initialise.
+ * @param[in] ctx to initialise.
  * @param[in] sort If TRUE VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
@@ -916,7 +916,7 @@ static void rest_read_ctx_init(REQUEST *request,
  *
  * @see rest_read_ctx_init
  *
- * @param[in] read to free.
+ * @param[in] ctx to free.
  */
 static void rest_read_ctx_free(rlm_rest_read_t *ctx)
 {
@@ -931,6 +931,7 @@ static void rest_read_ctx_free(rlm_rest_read_t *ctx)
  * for example 64bit integers converted to 32bit integers. Warn the user
  * when this happens.
  * 
+ * @param[in] request Current request.
  * @param[in] raw string from decoder.
  * @param[in] vp containing parsed value.
  */
@@ -1490,7 +1491,6 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
- * @param[in] g to use.
  * @param[in] request Current request.
  * @param[in] raw buffer containing JSON data.
  * @param[in] rawlen Length of data in raw buffer.
@@ -1811,7 +1811,7 @@ static void rest_write_ctx_init(REQUEST *request, rlm_rest_write_t *ctx,
 
 /** Frees the intermediary buffer created by rest_write.
  *
- * @param[in] data to be freed.
+ * @param[in] ctx data to be freed.
  */
 static void rest_write_free(rlm_rest_write_t *ctx)
 {
@@ -2351,6 +2351,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance,
  * @param[out] out Where to write escaped string.
  * @param[in] outlen Size of out buffer.
  * @param[in] raw string to be urlencoded.
+ * @param[in] arg pointer, gives context for escaping.
  * @return length of data written to out (excluding NULL).
  */
 static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
