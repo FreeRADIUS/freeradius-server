@@ -116,8 +116,8 @@ static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 	 *	The password is never sent over the wire.
 	 *	Always get the configured password, for each user.
 	 */
-	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0);
-	if (!password) password = pairfind(handler->request->config_items, PW_NT_PASSWORD, 0);
+	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	if (!password) password = pairfind(handler->request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
 		DEBUG2("rlm_eap_leap: No Cleartext-Password or NT-Password configured for this user");
 		eapleap_free(&packet);

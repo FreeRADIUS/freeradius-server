@@ -34,7 +34,7 @@ static int digest_fix(REQUEST *request)
 	/*
 	 *	We need both of these attributes to do the authentication.
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0, TAG_ANY);
 	if (vp == NULL) {
 		return RLM_MODULE_NOOP;
 	}
@@ -49,7 +49,7 @@ static int digest_fix(REQUEST *request)
 	/*
 	 *	We need these, too.
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	if (vp == NULL) {
 		return RLM_MODULE_NOOP;
 	}
@@ -100,14 +100,14 @@ static int digest_fix(REQUEST *request)
 		/*
 		 *	Find the next one, if it exists.
 		 */
-		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0);
+		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	}
 
 	/*
 	 *	Convert them to something sane.
 	 */
 	RDEBUG("Digest-Attributes look OK.  Converting them to something more usful.");
-	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	while (vp) {
 		int length = vp->length;
 		int attrlen;
@@ -173,7 +173,7 @@ static int digest_fix(REQUEST *request)
 		/*
 		 *	Find the next one, if it exists.
 		 */
-		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0);
+		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	}
 
 	return RLM_MODULE_OK;
@@ -193,7 +193,7 @@ static int digest_authorize(void *instance, REQUEST *request)
 	if (rcode != RLM_MODULE_OK) return rcode;
 
 
-	if (pairfind(request->config_items, PW_AUTHTYPE, 0)) {
+	if (pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY)) {
 		RDEBUG2("WARNING: Auth-Type already set.  Not setting to DIGEST");
 		return RLM_MODULE_NOOP;
 	}
@@ -228,14 +228,14 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *	We require access to the plain-text password, or to the
 	 *	Digest-HA1 parameter.
 	 */
-	passwd = pairfind(request->config_items, PW_DIGEST_HA1, 0);
+	passwd = pairfind(request->config_items, PW_DIGEST_HA1, 0, TAG_ANY);
 	if (passwd) {
 		if (passwd->length != 32) {
 			radlog_request(L_AUTH, 0, request, "Digest-HA1 has invalid length, authentication failed.");
 			return RLM_MODULE_INVALID;
 		}
 	} else {
-		passwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+		passwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	}
 	if (!passwd) {
 		radlog_request(L_AUTH, 0, request, "Cleartext-Password or Digest-HA1 is required for authentication.");
@@ -245,7 +245,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	We need these, too.
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	if (vp == NULL) {
 	error:
 		RDEBUG("ERROR: You set 'Auth-Type = Digest' for a request that does not contain any digest attributes!");
@@ -259,7 +259,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *	"authorize" section.  In that case, try to decode the
 	 *	attributes here.
 	 */
-	if (!pairfind(request->packet->vps, PW_DIGEST_NONCE, 0)) {
+	if (!pairfind(request->packet->vps, PW_DIGEST_NONCE, 0, TAG_ANY)) {
 		int rcode;
 
 		rcode = digest_fix(request);
@@ -276,7 +276,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	We require access to the Digest-Nonce-Value
 	 */
-	nonce = pairfind(request->packet->vps, PW_DIGEST_NONCE, 0);
+	nonce = pairfind(request->packet->vps, PW_DIGEST_NONCE, 0, TAG_ANY);
 	if (!nonce) {
 		RDEBUG("ERROR: No Digest-Nonce: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -285,7 +285,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	A1 = Digest-User-Name ":" Realm ":" Password
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_USER_NAME, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_USER_NAME, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("ERROR: No Digest-User-Name: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -296,7 +296,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	a1[a1_len] = ':';
 	a1_len++;
 
-	vp = pairfind(request->packet->vps, PW_DIGEST_REALM, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_REALM, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("ERROR: No Digest-Realm: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -322,7 +322,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	 *	See which variant we calculate.
 	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
-	algo = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM, 0);
+	algo = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM, 0, TAG_ANY);
 	if ((algo == NULL) ||
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*
@@ -366,7 +366,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		a1[a1_len] = ':';
 		a1_len++;
 
-		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE, 0);
+		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE, 0, TAG_ANY);
 		if (!vp) {
 			RDEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
@@ -395,7 +395,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	A2 = Digest-Method ":" Digest-URI
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_METHOD, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_METHOD, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("ERROR: No Digest-Method: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -406,7 +406,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	a2[a2_len] = ':';
 	a2_len++;
 
-	vp = pairfind(request->packet->vps, PW_DIGEST_URI, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_URI, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("ERROR: No Digest-URI: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
@@ -417,7 +417,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *  QOP is "auth-int", tack on ": Digest-Body-Digest"
 	 */
-	qop = pairfind(request->packet->vps, PW_DIGEST_QOP, 0);
+	qop = pairfind(request->packet->vps, PW_DIGEST_QOP, 0, TAG_ANY);
 	if ((qop != NULL) &&
 	    (strcasecmp(qop->vp_strvalue, "auth-int") == 0)) {
 		VALUE_PAIR *body;
@@ -431,7 +431,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		/*
 		 *  Must be a hex representation of an MD5 digest.
 		 */
-		body = pairfind(request->packet->vps, PW_DIGEST_BODY_DIGEST, 0);
+		body = pairfind(request->packet->vps, PW_DIGEST_BODY_DIGEST, 0, TAG_ANY);
 		if (!body) {
 			RDEBUG("ERROR: No Digest-Body-Digest: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
@@ -502,7 +502,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		kd[kd_len] = ':';
 		kd_len++;
 
-		vp = pairfind(request->packet->vps, PW_DIGEST_NONCE_COUNT, 0);
+		vp = pairfind(request->packet->vps, PW_DIGEST_NONCE_COUNT, 0, TAG_ANY);
 		if (!vp) {
 			RDEBUG("ERROR: No Digest-Nonce-Count: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
@@ -513,7 +513,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 		kd[kd_len] = ':';
 		kd_len++;
 
-		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE, 0);
+		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE, 0, TAG_ANY);
 		if (!vp) {
 			RDEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
@@ -562,7 +562,7 @@ static int digest_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Get the binary value of Digest-Response
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0);
+	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("ERROR: No Digest-Response attribute in the request.  Cannot perform digest authentication");
 		return RLM_MODULE_INVALID;

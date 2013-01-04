@@ -448,18 +448,18 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			pairdelete(&reply->vps, PW_PROXY_STATE, 0, -1);
-			pairdelete(&reply->vps, PW_EAP_MESSAGE, 0, -1);
-			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, -1);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
+			pairdelete(&reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 
 			/*
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT, -1);
-			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT, -1);
-			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, -1);
-			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
@@ -482,7 +482,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairmove2(&t->state, &(reply->vps), PW_STATE, 0);
+		pairmove2(&t->state, &(reply->vps), PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
@@ -490,7 +490,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE, 0);
+		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
@@ -505,8 +505,8 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			/*
 			 *	Clean up the tunneled reply.
 			 */
-			pairdelete(&reply->vps, PW_PROXY_STATE, 0, -1);
-			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, -1);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
+			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 
 			t->accept_vps = reply->vps;
 			reply->vps = NULL;
@@ -1009,7 +1009,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 	setup_fake_request(request, fake, t);
 
-	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0)) != NULL) {
+	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		fake->server = vp->vp_strvalue;
 
 	} else if (t->virtual_server) {
@@ -1051,7 +1051,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0);
+		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
@@ -1114,7 +1114,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	of attributes.
 				 */
 				pairdelete(&fake->packet->vps,
-					   PW_EAP_MESSAGE, 0, -1);
+					   PW_EAP_MESSAGE, 0, TAG_ANY);
 			}
 
 			DEBUG2("  PEAP: Tunneled authentication will be proxied to %s", vp->vp_strvalue);
@@ -1124,8 +1124,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	to be proxied.
 			 */
 			pairmove2(&(request->config_items),
-				  &(fake->config_items),
-				  PW_PROXY_TO_REALM, 0);
+				   &(fake->config_items),
+				   PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 			/*
 			 *	Seed the proxy packet with the
@@ -1228,7 +1228,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 	if (t->username) {
 		vp = paircopy(t->username);
 		pairadd(&fake->packet->vps, vp);
-		fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0);
+		fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		RDEBUG2("Setting User-Name to %s", fake->username->vp_strvalue);
 	} else {
 		RDEBUG2("No tunnel username (SSL resumption?)");
@@ -1274,7 +1274,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor)) {
+			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor, TAG_ANY)) {
 				continue;
 			}
 
@@ -1309,7 +1309,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute, vp->vendor, -1);
+			copy = paircopy2(vp, vp->attribute, vp->vendor, TAG_ANY);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}

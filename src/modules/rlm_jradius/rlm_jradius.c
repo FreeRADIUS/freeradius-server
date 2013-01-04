@@ -1023,11 +1023,11 @@ static int rlm_jradius_call(char func, void *instance, REQUEST *req, int isproxy
    *    we need to reconfigure a few pointers in the REQUEST object
    */
   if (req->username) {
-    req->username = pairfind(request->vps, PW_USER_NAME, 0);
+    req->username = pairfind(request->vps, PW_USER_NAME, 0, TAG_ANY);
   }
   if (req->password) {
-    req->password = pairfind(request->vps, PW_PASSWORD, 0);
-    if (!req->password) req->password = pairfind(request->vps, PW_CHAP_PASSWORD, 0);
+    req->password = pairfind(request->vps, PW_PASSWORD, 0, TAG_ANY);
+    if (!req->password) req->password = pairfind(request->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
   }
 
   /*

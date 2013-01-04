@@ -171,7 +171,7 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 	char search_STR[MAX_STRING_LEN];
 	char replace_STR[MAX_STRING_LEN];
 
-	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE, 0)) != NULL){
+	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE, 0, TAG_ANY)) != NULL){
 		if (data->name == NULL || strcmp(data->name,attr_vp->vp_strvalue))
 			return RLM_MODULE_NOOP;
 	}
@@ -256,12 +256,12 @@ static int do_attr_rewrite(void *instance, REQUEST *request)
 			default:
 				radlog(L_ERR, "%s: Illegal value for searchin. Changing to packet.", data->name);
 				data->searchin = RLM_REGEX_INPACKET;
-				attr_vp = pairfind(request->packet->vps, data->da->attr, data->da->vendor);
+				attr_vp = pairfind(request->packet->vps, data->da->attr, data->da->vendor, TAG_ANY);
 				break;
 		}
 do_again:
 		if (tmp != NULL)
-			attr_vp = pairfind(tmp, data->da->attr, data->da->vendor);
+			attr_vp = pairfind(tmp, data->da->attr, data->da->vendor, TAG_ANY);
 		if (attr_vp == NULL) {
 			DEBUG2("%s: Could not find value pair for attribute %s", data->name,data->attribute);
 			return ret;

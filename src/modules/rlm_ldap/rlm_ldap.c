@@ -1000,7 +1000,7 @@ static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
 
 	*module_rcode = RLM_MODULE_FAIL;
 
-	vp = pairfind(request->config_items, PW_LDAP_USERDN, 0);
+	vp = pairfind(request->config_items, PW_LDAP_USERDN, 0, TAG_ANY);
 	if (vp) {
 		*module_rcode = RLM_MODULE_OK;
 		return vp->vp_strvalue;
@@ -1766,15 +1766,11 @@ static void do_check_reply(ldap_instance *inst, REQUEST *request)
 	*	to read the documentation.
 	*/
 	if (inst->expect_password && (debug_flag > 1)) {
-		if (!pairfind(request->config_items,PW_CLEARTEXT_PASSWORD, 0) &&
-			!pairfind(request->config_items,
-				  PW_NT_PASSWORD, 0) &&
-			!pairfind(request->config_items,
-				  PW_USER_PASSWORD, 0) &&
-			!pairfind(request->config_items,
-				  PW_PASSWORD_WITH_HEADER, 0) &&
-			!pairfind(request->config_items,
-				  PW_CRYPT_PASSWORD, 0)) {
+		if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
+			!pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY) &&
+			!pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
+			!pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
+			!pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
 				RDEBUG("WARNING: No \"known good\" password "
 				       "was found in LDAP.  Are you sure that "
 				       "the user is configured correctly?");
@@ -1931,8 +1927,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (inst->edir && pairfind(request->config_items,
-				   PW_CLEARTEXT_PASSWORD, 0)) {
+	if (inst->edir && pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
 		goto skip_edir;
 	}
 
@@ -2000,7 +1995,7 @@ skip_edir:
 	/*
 	 *	Apply ONE user profile, or a default user profile.
 	 */
-	vp = pairfind(request->config_items, PW_USER_PROFILE, 0);
+	vp = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
 	if (vp || inst->default_profile) {
 		char *profile = inst->default_profile;
 

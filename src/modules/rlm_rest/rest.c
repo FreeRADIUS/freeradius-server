@@ -183,6 +183,7 @@ const FR_NAME_NUMBER http_content_type_table[] = {
 	{  NULL , -1 }
 };
 
+#ifdef HAVE_JSON
 /** Flags to control the conversion of JSON values to VALUE_PAIRs.
  *
  * These fields are set when parsing the expanded format for value pairs in
@@ -192,7 +193,6 @@ const FR_NAME_NUMBER http_content_type_table[] = {
  * @see json_pairmake
  * @see json_pairmake_leaf
  */
-#ifdef HAVE_JSON
 typedef struct json_flags {
 	boolean do_xlat;	//!< If TRUE value will be expanded with xlat.
 	boolean is_json;	//!< If TRUE value will be inserted as raw JSON
@@ -579,7 +579,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
  * successive calls will return additional encoded VALUE_PAIRs.
  *
  * Only complete attribute headers
- * @verbatim "<name>":{"type":"<type>","value":['</pre> @endverbatim
+ * @verbatim "<name>":{"type":"<type>","value":[' @endverbatim
  * and complete attribute values will be written to ptr.
  *
  * If an attribute occurs multiple times in the request the attribute values
@@ -848,7 +848,7 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func,
  * @see rest_read_ctx_free
  *
  * @param[in] request Current request.
- * @param[in] read to initialise.
+ * @param[in] ctx to initialise.
  * @param[in] sort If TRUE VALUE_PAIRs will be sorted within the VALUE_PAIR
  *	pointer array.
  */
@@ -916,7 +916,7 @@ static void rest_read_ctx_init(REQUEST *request,
  *
  * @see rest_read_ctx_init
  *
- * @param[in] read to free.
+ * @param[in] ctx to free.
  */
 static void rest_read_ctx_free(rlm_rest_read_t *ctx)
 {
@@ -931,6 +931,7 @@ static void rest_read_ctx_free(rlm_rest_read_t *ctx)
  * for example 64bit integers converted to 32bit integers. Warn the user
  * when this happens.
  * 
+ * @param[in] request Current request.
  * @param[in] raw string from decoder.
  * @param[in] vp containing parsed value.
  */
@@ -1005,8 +1006,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 	 * Empty response?
 	 */
 	while (isspace(*p)) p++;
-
-	if (p == NULL) return FALSE;
+	if (*p == '\0') return FALSE;
 
 	while (((q = strchr(p, '=')) != NULL) &&
 	       (count < REST_BODY_MAX_ATTRS)) {
@@ -1257,7 +1257,7 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
  * @param[in] object containing root node, or parent node.
  * @param[in] level Current nesting level.
  * @param[in] max_attrs counter, decremented after each VALUE_PAIR is created,
- * when 0 no more attributes will be processed.
+ * 	      when 0 no more attributes will be processed.
  * @return VALUE_PAIR or NULL on error.
  */
 static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
@@ -1482,7 +1482,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
  * 
  * Converts the raw JSON string into a json-c object tree and passes it to
  * json_pairmake. After the tree has been parsed json_object_put is called
- * which decrements the reference, count to the root node by one, and frees
+ * which decrements the reference count of the root node by one, and frees
  * the entire tree.
  *
  * @see rest_encode_json
@@ -1490,7 +1490,6 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
- * @param[in] g to use.
  * @param[in] request Current request.
  * @param[in] raw buffer containing JSON data.
  * @param[in] rawlen Length of data in raw buffer.
@@ -1511,7 +1510,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 	 *	Empty response?
 	 */
 	while (isspace(*p)) p++;
-	if (p == NULL) return FALSE;
+	if (*p == '\0') return FALSE;
 
 	json = json_tokener_parse(p);
 	if (!json) {
@@ -1794,7 +1793,7 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb,
  * @see rest_write_header
  * 
  * @param[in] request Current request.
- * @param[in] data to initialise.
+ * @param[in] ctx data to initialise.
  * @param[in] type Default http_body_type to use when decoding raw data, may be
  * overwritten by rest_write_header.
  */
@@ -1811,7 +1810,7 @@ static void rest_write_ctx_init(REQUEST *request, rlm_rest_write_t *ctx,
 
 /** Frees the intermediary buffer created by rest_write.
  *
- * @param[in] data to be freed.
+ * @param[in] ctx data to be freed.
  */
 static void rest_write_free(rlm_rest_write_t *ctx)
 {
@@ -1830,7 +1829,7 @@ static void rest_write_free(rlm_rest_write_t *ctx)
  * @param[in] section configuration data.
  * @param[in] handle rlm_rest_handle_t to configure.
  * @param[in] func to pass to libcurl for chunked.
- * 	transfers (NULL if not using chunked mode).
+ *	      transfers (NULL if not using chunked mode).
  * @return TRUE on success FALSE on error.
  */
 static int rest_request_config_body(rlm_rest_t *instance,
@@ -2348,9 +2347,11 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance,
  * 
  * Encode special chars as per RFC 3986 section 4.
  *
+ * @param[in] request Current request.
  * @param[out] out Where to write escaped string.
  * @param[in] outlen Size of out buffer.
  * @param[in] raw string to be urlencoded.
+ * @param[in] arg pointer, gives context for escaping.
  * @return length of data written to out (excluding NULL).
  */
 static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
@@ -2396,7 +2397,7 @@ ssize_t rest_uri_build(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *	All URLs must contain at least <scheme>://<server>/
 	 */
-	while (q = strchr(p, '/')) {
+	while ((q = strchr(p, '/'))) {
 		p = q + 1;
 		
 		if (++count == 3) {

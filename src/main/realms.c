@@ -2136,7 +2136,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	 */
 	if (home->message_authenticator &&
 	    (request->packet->code == PW_AUTHENTICATION_REQUEST) &&
-	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0)) {
+	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
 		radius_pairmake(request, &request->proxy->vps,
 				"Message-Authenticator", "0x00",
 				T_OP_SET);
@@ -2203,7 +2203,7 @@ home_server *home_server_ldb(const char *realmname,
 		break;
 
 	case HOME_POOL_KEYED_BALANCE:
-		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY, 0)) != NULL) {
+		if ((vp = pairfind(request->config_items, PW_LOAD_BALANCE_KEY, 0, TAG_ANY)) != NULL) {
 			hash = fr_hash(vp->vp_strvalue, vp->length);
 			start = hash % pool->num_home_servers;
 			break;

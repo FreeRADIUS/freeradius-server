@@ -190,7 +190,7 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
 
-		namepair = pairfind(request->packet->vps, PW_REALM, 0);
+		namepair = pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY);
 		if (!namepair) {
 			return (RLM_MODULE_NOOP);
 		}
@@ -330,13 +330,10 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	*input = output;
 
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
-		request->username = pairfind(request->packet->vps,
-					     PW_STRIPPED_USER_NAME, 0);
+		request->username = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (!request->username) 
-			request->username = pairfind(request->packet->vps,
-						     PW_USER_NAME, 0);
-		request->password = pairfind(request->packet->vps,
-					     PW_USER_PASSWORD, 0);
+			request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 	}
 
 	return RLM_MODULE_UPDATED;

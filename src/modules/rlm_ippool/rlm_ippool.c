@@ -329,7 +329,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	FR_MD5_CTX md5_context;
 
 
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL)
 		acctstatustype = vp->vp_integer;
 	else {
 		RDEBUG("Could not find account status type in packet. Return NOOP.");
@@ -471,7 +471,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	/* Check if Pool-Name attribute exists. If it exists check our name and
 	 * run only if they match
 	 */
-	if ((vp = pairfind(request->config_items, PW_POOL_NAME, 0)) != NULL){
+	if ((vp = pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY)) != NULL){
 		if (data->name == NULL || (strcmp(data->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
@@ -483,7 +483,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	/*
 	 * Find the caller id
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL)
 		cli = vp->vp_strvalue;
 
 #ifdef WITH_DHCP
@@ -583,12 +583,12 @@ static int ippool_postauth(void *instance, REQUEST *request)
 	 * If there is a Framed-IP-Address (or Dhcp-Your-IP-Address)
 	 * attribute in the reply, check for override
 	 */
-	if (pairfind(request->reply->vps, attr_ipaddr, vendor_ipaddr) != NULL) {
+	if (pairfind(request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY) != NULL) {
 		RDEBUG("Found IP address attribute in reply attribute list.");
 		if (data->override)
 		{
 			RDEBUG("Override supplied IP address");
-			pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, -1);
+			pairdelete(&request->reply->vps, attr_ipaddr, vendor_ipaddr, TAG_ANY);
 		} else {
 			/* Abort */
 			RDEBUG("override is set to no. Return NOOP.");
@@ -748,14 +748,14 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		free(key_datum.dptr);
 		entry.active = 1;
 		entry.timestamp = request->timestamp;
-		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0)) != NULL) {
+		if ((vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
 			entry.timeout = (time_t) vp->vp_integer;
 #ifdef WITH_DHCP
 			if (dhcp) {
 		                vp = radius_paircreate(request, &request->reply->vps,
 						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR, PW_TYPE_INTEGER);
 				vp->vp_integer = entry.timeout;
-				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0, -1);
+				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
                         }
 #endif
 		} else {
@@ -810,7 +810,7 @@ static int ippool_postauth(void *instance, REQUEST *request)
 		 *	If there is no Framed-Netmask attribute in the
 		 *	reply, add one
 		 */
-		if (pairfind(request->reply->vps, attr_ipmask, vendor_ipaddr) == NULL) {
+		if (pairfind(request->reply->vps, attr_ipmask, vendor_ipaddr, TAG_ANY) == NULL) {
 			vp = radius_paircreate(request, &request->reply->vps,
 					       attr_ipmask, vendor_ipaddr,
 					       PW_TYPE_IPADDR);

@@ -445,7 +445,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Which type is this.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0))==NULL) {
+	if ((vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY))==NULL) {
 		RDEBUG("no Accounting-Status-Type attribute in request.");
 		return RLM_MODULE_NOOP;
 	}
@@ -462,7 +462,7 @@ static int unix_accounting(void *instance, REQUEST *request)
 	 *	We're only interested in accounting messages
 	 *	with a username in it.
 	 */
-	if (pairfind(request->packet->vps, PW_USER_NAME, 0) == NULL)
+	if (pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY) == NULL)
 		return RLM_MODULE_NOOP;
 
 	t = request->timestamp;

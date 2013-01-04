@@ -536,7 +536,7 @@ static int passwd_map(void *instance, REQUEST *request)
 	int found = 0;
 
 	for (key = request->packet->vps;
-	     key && (key = pairfind (key, inst->keyattr->attr, inst->keyattr->vendor));
+	     key && (key = pairfind(key, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY));
 	  key = key->next ){
 		/*
 		 *	Ensure we have the string form of the attribute

@@ -77,7 +77,7 @@ static const CONF_PARSER module_config[] = {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
+	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : 0;
 }
@@ -250,7 +250,7 @@ static void cablelabs_vsa_hack(VALUE_PAIR **list)
 {
 	VALUE_PAIR *ev;
 
-	ev = pairfind(*list, 1, 4491); /* Cablelabs-Event-Message */
+	ev = pairfind(*list, 1, 4491, TAG_ANY); /* Cablelabs-Event-Message */
 	if (!ev) return;
 
 	/*
@@ -276,7 +276,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	 *	If it isn't there, then we can't mangle the request.
 	 */
 	request_pairs = request->packet->vps;
-	namepair = pairfind(request_pairs, PW_USER_NAME, 0);
+	namepair = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY);
 	if ((namepair == NULL) ||
 	    (namepair->length <= 0)) {
 	  return;
@@ -324,8 +324,8 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	 *	Small check: if Framed-Protocol present but Service-Type
 	 *	is missing, add Service-Type = Framed-User.
 	 */
-	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL, 0) != NULL &&
-	    pairfind(request_pairs, PW_SERVICE_TYPE, 0) == NULL) {
+	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL, 0, TAG_ANY) != NULL &&
+	    pairfind(request_pairs, PW_SERVICE_TYPE, 0, TAG_ANY) == NULL) {
 		tmp = radius_paircreate(request, &request->packet->vps,
 					PW_SERVICE_TYPE, 0, PW_TYPE_INTEGER);
 		tmp->vp_integer = PW_FRAMED_USER;
@@ -395,7 +395,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	/*
 	 *	Check for valid input, zero length names not permitted
 	 */
-	if ((tmp = pairfind(request_pairs, PW_USER_NAME, 0)) == NULL)
+	if ((tmp = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY)) == NULL)
 		name = NULL;
 	else
 		name = (char *)tmp->vp_strvalue;
@@ -422,8 +422,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 */
 			add = paircopy(i->reply);
 			ft = fallthrough(add);
-			pairdelete(&add, PW_STRIP_USER_NAME, 0, -1);
-			pairdelete(&add, PW_FALL_THROUGH, 0, -1);
+			pairdelete(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
+			pairdelete(&add, PW_FALL_THROUGH, 0, TAG_ANY);
 			pairxlatmove(request, &request->packet->vps, &add);
 			pairfree(&add);
 			updated = 1;
@@ -470,7 +470,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			 *  We've matched the huntgroup, so add it in
 			 *  to the list of request pairs.
 			 */
-			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME, 0);
+			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME, 0, TAG_ANY);
 			if (!vp) {
 				vp = radius_paircreate(request,
 						       &request->packet->vps,
@@ -498,7 +498,7 @@ static int add_nas_attr(REQUEST *request)
 
 	switch (request->packet->src_ipaddr.af) {
 	case AF_INET:
-		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0);
+		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
 			nas = radius_paircreate(request, &request->packet->vps,
 						PW_NAS_IP_ADDRESS, 0,
@@ -508,7 +508,7 @@ static int add_nas_attr(REQUEST *request)
 		break;
 
 	case AF_INET6:
-		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
+		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
 			nas = radius_paircreate(request, &request->packet->vps,
 						PW_NAS_IPV6_ADDRESS, 0,
@@ -606,8 +606,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 		 *	in place, to go from Ascend's weird values to something
 		 *	approaching rationality.
 		 */
-		ascend_nasport_hack(pairfind(request->packet->vps,
-					     PW_NAS_PORT, 0),
+		ascend_nasport_hack(pairfind(request->packet->vps, PW_NAS_PORT, 0, TAG_ANY),
 				    data->ascend_channels_per_line);
 	}
 
@@ -652,8 +651,8 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 	 *      is PW_CHAP_CHALLENGE we need to add it so that other
 	 *	modules can use it as a normal attribute.
 	 */
-	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0) &&
-	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0) == NULL) {
+	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
+	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		VALUE_PAIR *vp;
 
 		vp = radius_paircreate(request, &request->packet->vps,
@@ -727,7 +726,7 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 	 *	the server can use it, rather than various error-prone
 	 *	manual calculations.
 	 */
-	vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0);
+	vp = pairfind(request->packet->vps, PW_EVENT_TIMESTAMP, 0, TAG_ANY);
 	if (!vp) {
 		VALUE_PAIR *delay;
 
@@ -735,7 +734,7 @@ static int preprocess_preaccounting(void *instance, REQUEST *request)
 				       PW_EVENT_TIMESTAMP, 0,
 				       PW_TYPE_DATE);
 		vp->vp_date = request->packet->timestamp.tv_sec;
-		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0);
+		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 		if (delay) vp->vp_date -= delay->vp_integer;
 	}
 

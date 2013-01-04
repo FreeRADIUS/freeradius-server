@@ -274,17 +274,17 @@ static int radclient_init(const char *filename)
 		/*
 		 *	Keep a copy of the the User-Password attribute.
 		 */
-		if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0)) != NULL) {
+		if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
 			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 			/*
 			 *	Otherwise keep a copy of the CHAP-Password attribute.
 			 */
-		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
+		} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 
-		} else if ((vp = pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0)) != NULL) {
+		} else if ((vp = pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 			strlcpy(radclient->password, vp->vp_strvalue,
 				sizeof(radclient->password));
 		} else {
@@ -606,12 +606,12 @@ static int send_one_packet(radclient_t *radclient)
 		if (radclient->password[0] != '\0') {
 			VALUE_PAIR *vp;
 
-			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0)) != NULL) {
+			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
 				strlcpy(vp->vp_strvalue, radclient->password,
 					sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
 
-			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0)) != NULL) {
+			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 				int already_hex = 0;
 
 				/*
@@ -643,7 +643,7 @@ static int send_one_packet(radclient_t *radclient)
 							fr_rand() & 0xff, vp);
 					vp->length = 17;
 				}
-			} else if (pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0) != NULL) {
+			} else if (pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0, TAG_ANY) != NULL) {
 				mschapv1_encode(&radclient->request->vps,
 						radclient->password);
 			} else if (fr_debug_flag) {

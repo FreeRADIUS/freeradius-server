@@ -561,7 +561,7 @@ static int fr_connection_manage(fr_connection_pool_t *fc,
 	    ((this->last_used + fc->idle_timeout) < now)) {
 		radlog(L_INFO, "%s: Closing connection (%i): Hit idle_timeout, "
 		       "was idle for %u seconds", fc->log_prefix, this->number,
-		       (int) now - this->last_used);
+		       (int) (now - this->last_used));
 		goto do_delete;
 	}
 	

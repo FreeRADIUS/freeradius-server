@@ -89,10 +89,12 @@ extern "C" {
 					vp_print(fr_log_fp, vp); \
 				     } \
 				} while(0)
-#  define TAG_VALID(x)          ((x) > 0 && (x) < 0x20)
-#  define TAG_VALID_ZERO(x)     ((x) < 0x20)
-#  define TAG_ANY               -128   /* minimum signed char */
 #endif
+
+#define TAG_VALID(x)		((x) > 0 && (x) < 0x20)
+#define TAG_VALID_ZERO(x)	((x) < 0x20)
+#define TAG_ANY			-128	/* minimum signed char */
+#define TAG_UNUSED		0
 
 #if defined(__GNUC__)
 # define PRINTF_LIKE(n) __attribute__ ((format(printf, n, n+1)))
@@ -413,7 +415,7 @@ VALUE_PAIR	*paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *);
 VALUE_PAIR	*paircreate(int attr, int vendor, int type);
 void		pairfree(VALUE_PAIR **);
 void            pairbasicfree(VALUE_PAIR *pair);
-VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor);
+VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void            pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
@@ -422,13 +424,13 @@ VALUE_PAIR	*paircopyvp(const VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
-void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor);
+void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, int operator);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
 FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);
-VALUE_PAIR     *readvp2(FILE *fp, int *pfiledone, const char *errprefix);
+VALUE_PAIR	*readvp2(FILE *fp, int *pfiledone, const char *errprefix);
 
 /*
  *	Error functions.

@@ -259,7 +259,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
-	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0, -1);
+	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
 
 	vp = eap_packet2vp(eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
@@ -272,7 +272,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	 *	Don't add a Message-Authenticator if it's already
 	 *	there.
 	 */
-	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0);
+	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
 		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0, PW_TYPE_OCTETS);
 		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
@@ -360,7 +360,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	first = pairfind(vps, PW_EAP_MESSAGE, 0);
+	first = pairfind(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (first == NULL) {
 		DEBUG("rlm_eap: EAP-Message not found");
 		return NULL;
@@ -393,7 +393,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	 *	Sanity check the length, BEFORE malloc'ing memory.
 	 */
 	total_len = 0;
-	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0)) {
+	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		total_len += vp->length;
 
 		if (total_len > len) {
@@ -425,7 +425,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	ptr = (unsigned char *)eap_packet;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0)) {
+	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		memcpy(ptr, vp->vp_strvalue, vp->length);
 		ptr += vp->length;
 	}

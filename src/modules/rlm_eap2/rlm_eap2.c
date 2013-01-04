@@ -237,7 +237,7 @@ static EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request)
 	 *	We key the sessions off of the 'state' attribute, so it
 	 *	must exist.
 	 */
-	state = pairfind(request->packet->vps, PW_STATE, 0);
+	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (!state ||
 	    (state->length != EAP_STATE_LEN)) {
 		return NULL;
@@ -390,12 +390,12 @@ static int server_get_eap_user(void *ctx, const u8 *identity,
 	/*
 	 *	Do this always, just in case.
 	 */
-	vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0);
+	vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	if (vp) {
 		user->password = (u8 *) os_strdup(vp->vp_strvalue);
 		user->password_len = vp->length;
 	}
-	if (!vp) vp = pairfind(request->config_items, PW_NT_PASSWORD, 0);
+	if (!vp) vp = pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (vp) {
 		user->password = (u8 *) malloc(vp->length);
 		memcpy(user->password, vp->vp_octets, vp->length);
@@ -683,7 +683,7 @@ static int eap_req2vp(EAP_HANDLER *handler)
 		total -= size;
 	} while (total > 0);
 
-	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, -1);
+	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, TAG_ANY);
 	pairadd(&handler->request->reply->vps, head);
 
 	return encoded;
@@ -774,7 +774,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	/*
 	 *	Get only EAP-Message attribute list
 	 */
-	first = pairfind(vps, PW_EAP_MESSAGE, 0);
+	first = pairfind(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (first == NULL) {
 		radlog(L_ERR, "rlm_eap2: EAP-Message not found");
 		return -1;
@@ -807,7 +807,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	Sanity check the length, BEFORE malloc'ing memory.
 	 */
 	total_len = 0;
-	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0)) {
+	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		total_len += vp->length;
 
 		if (total_len > len) {
@@ -840,7 +840,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	ptr = *data;
 
 	/* RADIUS ensures order of attrs, so just concatenate all */
-	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0)) {
+	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0, TAG_ANY)) {
 		memcpy(ptr, vp->vp_strvalue, vp->length);
 		ptr += vp->length;
 	}
@@ -868,7 +868,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 
 	inst = (rlm_eap_t *) instance;
 
-	vp = pairfind(request->packet->vps, PW_EAP_MESSAGE, 0);
+	vp = pairfind(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("No EAP-Message.  Not doing EAP.");
 		return RLM_MODULE_FAIL;
@@ -884,7 +884,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	vp = pairfind(request->packet->vps, PW_STATE, 0);
+	vp = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (vp) {
 		handler = eaplist_find(inst, request);
 		if (!handler) {
@@ -977,7 +977,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Doesn't exist, add it in.
 		 */
-		vp = pairfind(request->reply->vps, PW_USER_NAME, 0);
+		vp = pairfind(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
 			vp = pairmake("User-Name", request->username->vp_strvalue,
 				      T_OP_EQ);
@@ -996,7 +996,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
 		}
 	}
 
-	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0);
+	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
 		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
 		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);

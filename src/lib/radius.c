@@ -4489,7 +4489,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
 	 *	Use Chap-Challenge pair if present,
 	 *	Request Authenticator otherwise.
 	 */
-	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE, 0);
+	challenge = pairfind(packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY);
 	if (challenge) {
 		memcpy(ptr, challenge->vp_strvalue, challenge->length);
 		i += challenge->length;

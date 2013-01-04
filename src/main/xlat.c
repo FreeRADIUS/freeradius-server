@@ -72,8 +72,8 @@ static const char * const xlat_foreach_names[] = {"Foreach-Variable-0",
 #endif
 static int xlat_inst[] = { 0, 1, 2, 3, 4, 5, 6, 7, 8 };	/* up to 8 for regex */
 
-/**
- * @brief Convert the value on a VALUE_PAIR to string
+/** Convert the value on a VALUE_PAIR to string
+ *
  */
 static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 {
@@ -104,24 +104,6 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 		strlcpy(out,"unknown_type",outlen);
 	}
 	return strlen(out);
-}
-
-static VALUE_PAIR *pairfind_tag(VALUE_PAIR *vps, const DICT_ATTR *da, int tag)
-{
-	VALUE_PAIR *vp = vps;
-
-redo:
-	vp = pairfind(vp, da->attr, da->vendor);
-	if (!tag) return vp;
-
-	if (!vp) return NULL;
-
-	if (!vp->flags.has_tag) return NULL;
-
-	if (vp->flags.tag == tag) return vp;
-	
-	vp = vp->next;
-	goto redo;
 }
 
 /*
@@ -266,7 +248,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	No array, print the tagged attribute.
 		 */
 		if (!do_array) {
-			vp = pairfind_tag(vps, da, tag);
+			vp = pairfind(vps, da->attr, da->vendor, tag);
 			goto just_print;
 		}
 
@@ -276,9 +258,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	Array[#] - return the total
 		 */
 		if (do_count) {
-			for (vp = pairfind_tag(vps, da, tag);
+			for (vp = pairfind(vps, da->attr, da->vendor, tag);
 			     vp != NULL;
-			     vp = pairfind_tag(vp->next, da, tag)) {
+			     vp = pairfind(vp->next, da->attr, da->vendor, tag)) {
 				total++;
 			}
 
@@ -291,9 +273,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		 *	the attributes, separated by a newline.
 		 */
 		if (do_all) {
-			for (vp = pairfind_tag(vps, da, tag);
+			for (vp = pairfind(vps, da->attr, da->vendor, tag);
 			     vp != NULL;
-			     vp = pairfind_tag(vp->next, da, tag)) {
+			     vp = pairfind(vp->next, da->attr, da->vendor, tag)) {
 				count = valuepair2str(out, outlen - 1, vp, da->type);
 				rad_assert(count <= outlen);
 				total += count + 1;
@@ -312,9 +294,9 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		/*
 		 *	Find the N'th value.
 		 */
-		for (vp = pairfind_tag(vps, da, tag);
+		for (vp = pairfind(vps, da->attr, da->vendor, tag);
 		     vp != NULL;
-		     vp = pairfind_tag(vp->next, da, tag)) {
+		     vp = pairfind(vp->next, da->attr, da->vendor, tag)) {
 			if (total == count) break;
 			total++;
 			if (total > count) {
@@ -345,7 +327,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		return valuepair2str(out, outlen, vp, da->type);
 	}
 
-	vp = pairfind(vps, da->attr, da->vendor);
+	vp = pairfind(vps, da->attr, da->vendor, TAG_ANY);
 	if (!vp) {
 		/*
 		 *	Some "magic" handlers, which are never in VP's, but
@@ -486,8 +468,8 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 	return valuepair2str(out, outlen, vp, da->type);
 }
 
-/**
- * @brief Print data as integer, not as VALUE.
+/** Print data as integer, not as VALUE.
+ *
  */
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 			   const char *fmt, char *out, size_t outlen)
@@ -530,8 +512,8 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 	return 0;
 }
 
-/**
- * @brief Print data as hex, not as VALUE.
+/** Print data as hex, not as VALUE.
+ *
  */
 static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 		       const char *fmt, char *out, size_t outlen)
@@ -567,8 +549,8 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 	return len * 2;
 }
 
-/**
- * @brief Print data as base64, not as VALUE
+/** Print data as base64, not as VALUE
+ *
  */
 static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 			  const char *fmt, char *out, size_t outlen)
@@ -609,8 +591,8 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 	return enc;
 }
 
-/**
- * @brief Prints the current module processing the request
+/** Prints the current module processing the request
+ *
  */
 static size_t xlat_module(UNUSED void *instance, REQUEST *request,
 			  UNUSED const char *fmt, char *out, size_t outlen)
@@ -621,8 +603,7 @@ static size_t xlat_module(UNUSED void *instance, REQUEST *request,
 }
 
 #ifdef WITH_UNLANG
-/**
- * @brief Implements the Foreach-Variable-X
+/** Implements the Foreach-Variable-X
  *
  * @see modcall()
  */
@@ -645,8 +626,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
 }
 #endif
 
-/**
- * @brief Print data as string, if possible.
+/** Print data as string, if possible.
  *
  * If attribute "Foo" is defined as "octets" it will normally
  * be printed as 0x0a0a0a. The xlat "%{string:Foo}" will instead
@@ -678,8 +658,8 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 	return len;
 }
 
-/**
- * @brief xlat expand string attribute value
+/** xlat expand string attribute value
+ *
  */
 static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 			const char *fmt, char *out, size_t outlen)
@@ -702,8 +682,8 @@ static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 }
 
 #ifdef HAVE_REGEX_H
-/*
- * @brief Expand regexp matches %{0} to %{8}
+/** Expand regexp matches %{0} to %{8}
+ *
  */
 static size_t xlat_regex(void *instance, REQUEST *request,
 			 const char *fmt, char *out, size_t outlen)
@@ -729,8 +709,7 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 }
 #endif				/* HAVE_REGEX_H */
 
-/**
- * @brief Dynamically change the debugging level for the current request
+/** Dynamically change the debugging level for the current request
  *
  * Example %{debug:3}
  */
@@ -794,8 +773,7 @@ static xlat_t *xlat_find(const char *module)
 }
 
 
-/**
- * @brief Register an xlat function.
+/** Register an xlat function.
  *
  * @param module xlat name
  * @param func xlat function to be called
@@ -924,15 +902,14 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	return 0;
 }
 
-/**
- * @brief Unregister an xlat function.
+/** Unregister an xlat function
  *
- *	We can only have one function to call per name, so the
- *	passing of "func" here is extraneous.
+ * We can only have one function to call per name, so the passing of "func"
+ * here is extraneous.
  *
- * @param module xlat to unregister
- * @param func Unused
- * @return Void.
+ * @param [in] module xlat to unregister.
+ * @param [in] func
+ * @param [in] instance
  */
 void xlat_unregister(const char *module, RAD_XLAT_FUNC func, void *instance)
 {
@@ -954,8 +931,8 @@ void xlat_unregister(const char *module, RAD_XLAT_FUNC func, void *instance)
 	rbtree_deletebydata(xlat_root, c);
 }
 
-/**
- * @brief De-register all xlat functions, used mainly for debugging.
+/** De-register all xlat functions, used mainly for debugging.
+ *
  */
 void xlat_free(void)
 {
@@ -963,22 +940,22 @@ void xlat_free(void)
 }
 
 
-/**
- * @brief Decode an attribute name into a string.
+/** Decode an attribute name into a string
  *
  * This expands the various formats:
  * - %{Name}
  * - %{xlat:name}
  * - %{Name:-Other}
  *
- * calls radius_xlat() to do most of the work
+ * Calls radius_xlat() to do most of the work.
  *
- * @param from string to expand
- * @param to buffer for output
- * @param freespace space remaining in output buffer
- * @param request current server request
- * @param func optional function to escape output; passed to radius_xlat()
- * @return 0 on success, -1 on failure
+ * @param [in] from string to expand.
+ * @param [in,out] to buffer for output.
+ * @param [in] freespace remaining in output buffer.
+ * @param [in] request Current server request.
+ * @param [in] func Optional function to escape output; passed to radius_xlat().
+ * @param [in] funcarg pointer to pass to escape function.
+ * @return 0 on success, -1 on failure.
  */
 static int decode_attribute(const char **from, char **to, int freespace,
 			     REQUEST *request,
@@ -1226,21 +1203,21 @@ done:
 	return 0;
 }
 
-/**
- * @brief Replace %whatever in a string.
+/** Replace %whatever in a string.
  *
- *	See 'doc/variables.txt' for more information.
+ * See 'doc/variables.txt' for more information.
  *
- * @param out output buffer
- * @param outlen size of output buffer
- * @param fmt string to expand
- * @param request current request
- * @param func function to escape final value e.g. SQL quoting
+ * @param [out] out output buffer.
+ * @param [in] outlen size of output buffer.
+ * @param [in] fmt string to expand.
+ * @param [in] request current request.
+ * @param [in] func function to escape final value e.g. SQL quoting.
+ * @param [in] funcarg pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure
  */
 size_t radius_xlat(char *out, int outlen, const char *fmt,
-		REQUEST *request,
-		RADIUS_ESCAPE_STRING func, void *funcarg)
+		   REQUEST *request,
+		   RADIUS_ESCAPE_STRING func, void *funcarg)
 {
 	int c, len, freespace;
 	const char *p;

@@ -206,7 +206,7 @@ static int do_checkval(void *instance, REQUEST *request)
 	*      Look for the check item
 	*/
 
-	if (!(item_vp = pairfind(request->packet->vps, data->item_attr->attr, data->item_attr->vendor))){
+	if (!(item_vp = pairfind(request->packet->vps, data->item_attr->attr, data->item_attr->vendor, TAG_ANY))){
 		DEBUG2("rlm_checkval: Could not find item named %s in request", data->item_name);
 		if (data->notfound_reject)
 			ret = RLM_MODULE_REJECT;
@@ -217,7 +217,7 @@ static int do_checkval(void *instance, REQUEST *request)
 		DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->vp_strvalue);
 	tmp = request->config_items;
 	do{
-		if (!(chk_vp = pairfind(tmp, data->chk_attr->attr, data->chk_attr->vendor))){
+		if (!(chk_vp = pairfind(tmp, data->chk_attr->attr, data->chk_attr->vendor, TAG_ANY))){
 			if (!found){
 				DEBUG2("rlm_checkval: Could not find attribute named %s in check pairs",data->check_name);
 				ret = RLM_MODULE_NOTFOUND;

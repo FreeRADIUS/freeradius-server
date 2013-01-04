@@ -30,17 +30,17 @@ of modules in each stage.
 @code
 git://git.freeradius.org/freeradius-server.git
 @endcode
-- Web: http://github.com/alandekok/freeradius-server/tree/master
+- Web: http://github.com/FreeRADIUS/freeradius-server/tree/master
 
-@subsection tree_21x 2.1.x stable tree
+@subsection tree_2xx 2.x.x stable tree
 
 @code
 git clone git://git.freeradius.org/freeradius-server.git
 cd freeradius-server
-git fetch origin v2.1.x:v2.1.x
-git checkout v2.1.x
+git fetch origin v2.x.x:v2.x.x
+git checkout v2.x.x
 @endcode
-- Web: http://github.com/alandekok/freeradius-server/tree/v2.1.x
+- Web: http://github.com/FreeRADIUS/freeradius-server/tree/v2.x.x
 
 @section main_website Website
 
@@ -60,11 +60,10 @@ freeradius-users@lists.freeradius.org
 
 @subsection dev_list FreeRADIUS-devel
 
-This list is for development of the server, including patches, new
-features and blah blah. PLEASE DO NOT post questions related to the
-operation of the server here - use the "users" list. All of the
-developers read both, and will answer your questions there if they
-have the time.
+This list is for development of the server, including patches, and 
+new features. PLEASE DO NOT post questions related to the operation
+of the server here - use the "users" list. Most of the developers
+read both, and will answer your questions there if they have the time.
 
 @code
 freeradius-devel@lists.freeradius.org

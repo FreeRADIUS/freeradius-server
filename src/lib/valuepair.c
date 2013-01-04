@@ -238,10 +238,13 @@ void pairfree(VALUE_PAIR **pair_ptr)
 /*
  *	Find the pair with the matching attribute
  */
-VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor)
+VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
+		      int8_t tag)
 {
 	while (first) {
-		if ((first->attribute == attr) && (first->vendor == vendor)) {
+		if ((first->attribute == attr) && (first->vendor == vendor)
+		    && ((tag == TAG_ANY) ||
+		        (first->flags.has_tag && (first->flags.tag == tag)))) {
 			return first;
 		}
 		first = first->next;
@@ -255,10 +258,10 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor)
  *
  * Delete matching pairs from the attribute list.
  * 
- * @param[in+out] vp which is head of the list.
+ * @param[in,out] first VP in list.
  * @param[in] attr to match.
  * @param[in] vendor to match.
- * @param[in] tag to match, only used if > 0.
+ * @param[in] tag to match. TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
  */
 void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 		int8_t tag)
@@ -269,7 +272,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 	for(i = *first; i; i = next) {
 		next = i->next;
 		if ((i->attribute == attr) && (i->vendor == vendor) &&
-		    ((tag < 0) ||
+		    ((tag == TAG_ANY) ||
 		     (i->flags.has_tag && (i->flags.tag == tag)))) {
 			*last = next;
 			pairbasicfree(i);
@@ -279,8 +282,13 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 	}
 }
 
-/*
- *	Add a pair at the end of a VALUE_PAIR list.
+/** Add a VP to the end of the list.
+ *
+ * Locates the end of 'first', and links an additional VP 'add' at the end.
+ * 
+ * @param[in] first VP in linked list. Will add new VP to the end of this list.
+ * @param[in] add VP to add to list.
+ * @return a copy of the input VP
  */
 void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 {
@@ -297,8 +305,15 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 	i->next = add;
 }
 
-/*
- *	Add or replace a pair at the end of a VALUE_PAIR list.
+/** Replace all matching VPs
+ *
+ * Walks over 'first', and replaces the first VP that matches 'replace'.
+ * 
+ * @note Memory used by the VP being replaced will be freed.
+ * 
+ * @param[in,out] first VP in linked list. Will search and replace in this list.
+ * @param[in] replace VP to replace.
+ * @return a copy of the input vp
  */
 void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 {
@@ -323,7 +338,9 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 		 *	and return.
 		 */
 		if ((i->attribute == replace->attribute) &&
-		    (i->vendor == replace->vendor)) {
+		    (i->vendor == replace->vendor) &&
+		    (!i->flags.has_tag || (i->flags.tag == replace->flags.tag))
+		) {
 			*prev = replace;
 
 			/*
@@ -348,8 +365,12 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 }
 
 
-/*
- *	Copy just one VP.
+/** Copy a single valuepair
+ *
+ * Copy the head of the vp list.
+ * 
+ * @param[in] vp to copy.
+ * @return a copy of the input VP
  */
 VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 {
@@ -395,15 +416,14 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
  * 
  * @param[in] vp which is head of the input list.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
- * @param[in] vendor to match
- * @param[in] tag to match, if < 0 input list will not be filtered by vendor,
- *	      if >= 0 only attributes with that tag value will be copied.
+ * @param[in] vendor to match.
+ * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
  * @return the head of the new VALUE_PAIR list.
  */
 VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 		      int8_t tag)
 {
-	VALUE_PAIR	*first, *n, **last;
+	VALUE_PAIR *first, *n, **last;
 
 	first = NULL;
 	last = &first;
@@ -413,8 +433,10 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 		    ((vp->attribute != attr) || (vp->vendor != vendor)))
 			goto skip;
 			
-		if ((tag >= 0) && vp->flags.has_tag && (vp->flags.tag != tag))
+		if ((tag != TAG_ANY) && vp->flags.has_tag &&
+		    (vp->flags.tag != tag)) {
 			goto skip;
+		}
 
 		n = paircopyvp(vp);
 		if (!n) return first;
@@ -438,13 +460,23 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
  */
 VALUE_PAIR *paircopy(VALUE_PAIR *vp)
 {
-	return paircopy2(vp, 0, 0, -1);
+	return paircopy2(vp, 0, 0, TAG_ANY);
 }
 
-
-/*
- *	Move attributes from one list to the other
- *	if not already present.
+/** Move pairs from source list to destination list respecting operator
+ *
+ * @note This function does some additional magic that's probably not needed
+ *	 in most places. Consider using radius_pairmove in server code.
+ *
+ * @note pairfree should be called on the head of the source list to free
+ *	 unmoved attributes (if they're no longer needed). 
+ *
+ * @note Does not respect tags when matching.
+ * 
+ * @param[in,out] to destination list.
+ * @param[in,out] from source list.
+ *
+ * @see radius_pairmove
  */
 void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 {
@@ -515,19 +547,20 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		if (i->attribute == PW_FALL_THROUGH ||
 		    (i->attribute != PW_HINT && i->attribute != PW_FRAMED_ROUTE)) {
 
-			found = pairfind(*to, i->attribute, i->vendor);
+
+			found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
 			switch (i->operator) {
 
-			  /*
-			   *	If matching attributes are found,
-			   *	delete them.
-			   */
+			/*
+			 *	If matching attributes are found,
+			 *	delete them.
+			 */
 			case T_OP_SUB:		/* -= */
 				if (found) {
 					if (!i->vp_strvalue[0] ||
 					    (strcmp((char *)found->vp_strvalue,
 						    (char *)i->vp_strvalue) == 0)){
-						pairdelete(to, found->attribute, found->vendor, found->flags.tag);
+						pairdelete(to, found->attribute, found->vendor, TAG_ANY);
 
 						/*
 						 *	'tailto' may have been
@@ -578,7 +611,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					memcpy(found, i, sizeof(*found));
 					found->next = mynext;
 
-					pairdelete(&found->next, found->attribute, found->vendor, found->flags.tag);
+					pairdelete(&found->next, found->attribute, found->vendor, TAG_ANY);
 
 					/*
 					 *	'tailto' may have been
@@ -621,10 +654,23 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	}
 }
 
-/*
- *	Move one kind of attributes from one list to the other
+/** Move matching pairs
+ *
+ * Move pairs of a matching attribute number, vendor number and tag from the
+ * the input list to the output list.
+ *
+ * @note pairfree should be called on the head of the old list to free unmoved
+ 	 attributes (if they're no longer needed). 
+ * 
+ * @param[in,out] to destination list.
+ * @param[in,out] from source list.
+ * @param[in] attr to match, if PW_VENDOR_SPECIFIC and vendor 0, only VSAs will
+ *	      be copied.
+ * @param[in] vendor to match.
+ * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
  */
-void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor)
+void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
+	       unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *to_tail, *i, *next;
 	VALUE_PAIR *iprev = NULL;
@@ -642,6 +688,11 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned i
 	for(i = *from; i; i = next) {
 		next = i->next;
 
+		if ((tag != TAG_ANY) && i->flags.has_tag &&
+		    (i->flags.tag != tag)) {
+			continue;
+		}
+		
 		/*
 		 *	vendor=0, attr = PW_VENDOR_SPECIFIC means
 		 *	"match any vendor attribute".
@@ -2077,8 +2128,6 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 	return error ? NULL: list;
 }
 
-
-
 /*
  *	Compare two pairs, using the operator from "one".
  *
@@ -2089,8 +2138,6 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
  *	e.g. "foo" != "bar"
  *
  *	Returns true (comparison is true), or false (comparison is not true);
- *
- *	FIXME: Ignores tags!
  */
 int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 {

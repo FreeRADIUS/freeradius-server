@@ -286,7 +286,7 @@ static int pap_authorize(void *instance, REQUEST *request)
 				 *	Password already exists: use
 				 *	that instead of this one.
 				 */
-				if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0)) {
+				if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
 					RDEBUG("Config already contains \"known good\" password.  Ignoring Password-With-Header");
 					break;
 				}
@@ -394,15 +394,15 @@ static int pap_authorize(void *instance, REQUEST *request)
 		 *	Likely going to be proxied.  Avoid printing
 		 *	warning message.
 		 */
-		if (pairfind(request->config_items, PW_REALM, 0) ||
-		    (pairfind(request->config_items, PW_PROXY_TO_REALM, 0))) {
+		if (pairfind(request->config_items, PW_REALM, 0, TAG_ANY) ||
+		    (pairfind(request->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY))) {
 			return RLM_MODULE_NOOP;
 		}
 
 		/*
 		 *	The TLS types don't need passwords.
 		 */
-		vp = pairfind(request->packet->vps, PW_EAP_TYPE, 0);
+		vp = pairfind(request->packet->vps, PW_EAP_TYPE, 0, TAG_ANY);
 		if (vp &&
 		    ((vp->vp_integer == 13) || /* EAP-TLS */
 		     (vp->vp_integer == 21) || /* EAP-TTLS */

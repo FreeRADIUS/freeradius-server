@@ -543,7 +543,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 	/*
 	 * If there is a Framed-IP-Address attribute in the reply do nothing
 	 */
-	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0) != NULL) {
+	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY) != NULL) {
 		/* We already have a Framed-IP-Address */
 		radius_xlat(logstr, sizeof(logstr), data->log_exists,
 			    request, NULL, NULL);
@@ -552,7 +552,7 @@ static int sqlippool_postauth(void *instance, REQUEST * request)
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
-	if (pairfind(request->config_items, PW_POOL_NAME, 0) == NULL) {
+	if (pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined.");
 		radius_xlat(logstr, sizeof(logstr), data->log_nopool,
 			    request, NULL, NULL);
@@ -831,7 +831,7 @@ static int sqlippool_accounting(void * instance, REQUEST * request)
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
-	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0);
+	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
 	if (!vp) {
 		RDEBUG("Could not find account status type in packet.");
 		return RLM_MODULE_NOOP;

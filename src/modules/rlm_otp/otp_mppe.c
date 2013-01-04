@@ -49,8 +49,8 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
   VALUE_PAIR **avp = &request->reply->vps;
   VALUE_PAIR *cvp, *rvp, *vp;
 
-  cvp = pairfind(request->packet->vps, pwattr[pwe - 1]->attr, pwattr[pwe - 1]->vendor);
-  rvp = pairfind(request->packet->vps, pwattr[pwe]->attr, pwattr[pwe]->vendor);
+  cvp = pairfind(request->packet->vps, pwattr[pwe - 1]->attr, pwattr[pwe - 1]->vendor, TAG_ANY);
+  rvp = pairfind(request->packet->vps, pwattr[pwe]->attr, pwattr[pwe]->vendor, TAG_ANY);
 
   switch (pwe) {
   case PWE_PAP:

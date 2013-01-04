@@ -804,13 +804,10 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 		/*
 		 *	Update cached copies
 		 */
-		request->username = pairfind(request->packet->vps,
-					     PW_USER_NAME, 0);
-		request->password = pairfind(request->packet->vps,
-					     PW_USER_PASSWORD, 0);
+		request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 		if (!request->password)
-			request->password = pairfind(request->packet->vps,
-						     PW_CHAP_PASSWORD, 0);
+			request->password = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	}
 
 	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
@@ -881,7 +878,7 @@ static int perl_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR	*pair;
 	int 		acctstatustype=0;
 
-	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0)) != NULL) {
+	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
 		acctstatustype = pair->vp_integer;
         } else {
                 radlog(L_ERR, "Invalid Accounting Packet");

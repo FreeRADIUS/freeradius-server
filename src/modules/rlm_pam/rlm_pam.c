@@ -266,7 +266,7 @@ static int pam_auth(void *instance, REQUEST *request)
 	 *	Let the 'users' file over-ride the PAM auth name string,
 	 *	for backwards compatibility.
 	 */
-	pair = pairfind(request->config_items, PAM_AUTH_ATTR, 0);
+	pair = pairfind(request->config_items, PAM_AUTH_ATTR, 0, TAG_ANY);
 	if (pair) pam_auth_string = (char *)pair->vp_strvalue;
 
 	r = pam_pass((char *)request->username->vp_strvalue,

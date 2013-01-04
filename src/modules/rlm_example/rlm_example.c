@@ -115,7 +115,7 @@ static int example_authorize(void *instance, REQUEST *request)
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state =  pairfind(request->packet->vps, PW_STATE, 0);
+	state =  pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
 		RDEBUG("Found reply to access challenge");
 		return RLM_MODULE_OK;

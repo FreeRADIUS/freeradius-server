@@ -164,7 +164,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR *check_item = NULL;
 	int r;
 
-	if ((check_item = pairfind(request->config_items, PW_LOGIN_TIME, 0)) != NULL) {
+	if ((check_item = pairfind(request->config_items, PW_LOGIN_TIME, 0, TAG_ANY)) != NULL) {
 
 		/*
 	 	 *      Authentication is OK. Now see if this
@@ -220,7 +220,7 @@ static int logintime_authorize(void *instance, REQUEST *request)
 		 	 *      User is allowed, but set Session-Timeout.
 		 	 */
 			DEBUG("rlm_logintime: timestr returned accept");
-			if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0)) != NULL) {
+			if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
 				if (reply_item->vp_integer > (unsigned) r)
 					reply_item->vp_integer = r;
 			} else {

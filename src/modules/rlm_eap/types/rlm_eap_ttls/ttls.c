@@ -691,7 +691,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	packet, and we will send EAP-Success.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT);
+		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (vp) {
 			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
@@ -701,10 +701,10 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	Delete MPPE keys & encryption policy.  We don't
 			 *	want these here.
 			 */
-			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT, -1);
-			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT, -1);
-			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, -1);
-			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, -1);
+			pairdelete(&reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+			pairdelete(&reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
 			/*
 			 *	Use the tunneled reply, but not now.
@@ -724,7 +724,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 			 *	can figure it out, from the non-tunneled
 			 *	EAP-Success packet.
 			 */
-			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0);
+			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 			pairfree(&vp);
 		}
 
@@ -745,7 +745,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	tunneled user!
 		 */
 		if (t->use_tunneled_reply) {
-			pairdelete(&reply->vps, PW_PROXY_STATE, 0, -1);
+			pairdelete(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
 			pairadd(&request->reply->vps, reply->vps);
 			reply->vps = NULL;
 		}
@@ -772,7 +772,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairmove2(&t->state, &reply->vps, PW_STATE, 0);
+		pairmove2(&t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	We should really be a bit smarter about this,
@@ -782,7 +782,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	method works in 99.9% of the situations.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0);
+		pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	There MUST be a Reply-Message in the challenge,
@@ -792,7 +792,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 		 *	we MUST create one, with an empty string as
 		 *	it's value.
 		 */
-		pairmove2(&vp, &reply->vps, PW_REPLY_MESSAGE, 0);
+		pairmove2(&vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -1050,8 +1050,8 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	Update other items in the REQUEST data structure.
 	 */
-	fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0);
-	fake->password = pairfind(fake->packet->vps, PW_USER_PASSWORD, 0);
+	fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	fake->password = pairfind(fake->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
 	/*
 	 *	No User-Name, try to create one from stored data.
@@ -1062,7 +1062,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		 *	an EAP-Identity, and pull it out of there.
 		 */
 		if (!t->username) {
-			vp = pairfind(fake->packet->vps, PW_EAP_MESSAGE, 0);
+			vp = pairfind(fake->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 			if (vp &&
 			    (vp->length >= EAP_HEADER_LEN + 2) &&
 			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
@@ -1108,7 +1108,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		if (t->username) {
 			vp = paircopy(t->username);
 			pairadd(&fake->packet->vps, vp);
-			fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0);
+			fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		}
 	} /* else the request ALREADY had a User-Name */
 
@@ -1149,7 +1149,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor)) {
+			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor, TAG_ANY)) {
 				continue;
 			}
 
@@ -1184,12 +1184,12 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute, vp->vendor, -1);
+			copy = paircopy2(vp, vp->attribute, vp->vendor, TAG_ANY);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}
 
-	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0)) != NULL) {
+	if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		fake->server = vp->vp_strvalue;
 
 	} else if (t->virtual_server) {
@@ -1232,7 +1232,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-	  vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0);
+	  vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
 			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);
@@ -1243,7 +1243,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 */
 			pairmove2(&(request->config_items),
 				  &(fake->config_items),
-				  PW_PROXY_TO_REALM, 0);
+				  PW_PROXY_TO_REALM, 0, TAG_ANY);
 
 			/*
 			 *	Seed the proxy packet with the

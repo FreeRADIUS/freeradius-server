@@ -122,7 +122,7 @@ static int smsotp_authenticate(void *instance, REQUEST *request)
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state = pairfind(request->packet->vps, PW_STATE, 0);
+	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
 		DEBUG("rlm_smsotp: Found reply to access challenge");
 		
@@ -216,11 +216,11 @@ static int smsotp_authorize(void *instance, REQUEST *request)
 	/*
 	 *  Look for the 'state' attribute.
 	 */
-	state = pairfind(request->packet->vps, PW_STATE, 0);
+	state = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (state != NULL) {
 		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",opt->smsotp_authtype);
 		
-		pairdelete(&request->config_items, PW_AUTH_TYPE, 0, -1); /* delete old auth-type */
+		pairdelete(&request->config_items, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
 		pairadd(&request->config_items, pairmake("Auth-Type", opt->smsotp_authtype, T_OP_SET));
 	}
 

@@ -113,7 +113,7 @@ static const CONF_PARSER module_config[] = {
 static int fallthrough(VALUE_PAIR *vp)
 {
 	VALUE_PAIR *tmp;
-	tmp = pairfind(vp, PW_FALL_THROUGH, 0);
+	tmp = pairfind(vp, PW_FALL_THROUGH, 0, TAG_ANY);
 
 	return tmp ? tmp->vp_integer : 0;
 }
@@ -657,7 +657,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			radlog_request(L_ERR, 0, request,
 				       "Error generating query; rejecting user");
 			/* Remove the grouup we added above */
-			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
+			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 			sql_grouplist_free(&group_list);
 			return -1;
 		}
@@ -666,7 +666,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
 			       group_list_tmp->groupname);
 			/* Remove the grouup we added above */
-			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
+			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 			pairfree(&check_tmp);
 			sql_grouplist_free(&group_list);
 			return -1;
@@ -684,7 +684,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func, inst)) {
 					radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 					/* Remove the grouup we added above */
-					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
+					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 					pairfree(&check_tmp);
 					sql_grouplist_free(&group_list);
 					return -1;
@@ -693,7 +693,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 					       group_list_tmp->groupname);
 					/* Remove the grouup we added above */
-					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
+					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 					pairfree(&check_tmp);
 					pairfree(&reply_tmp);
 					sql_grouplist_free(&group_list);
@@ -719,7 +719,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_reply_query, request, sql_escape_func, inst)) {
 				radlog_request(L_ERR, 0, request, "Error generating query; rejecting user");
 				/* Remove the grouup we added above */
-				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
+				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 				pairfree(&check_tmp);
 				sql_grouplist_free(&group_list);
 				return -1;
@@ -728,7 +728,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 				       group_list_tmp->groupname);
 				/* Remove the grouup we added above */
-				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
+				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 				pairfree(&check_tmp);
 				pairfree(&reply_tmp);
 				sql_grouplist_free(&group_list);
@@ -743,7 +743,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 		 * Delete the Sql-Group we added above
 		 * And clear out the pairlists
 		 */
-		pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, -1);
+		pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 		pairfree(&check_tmp);
 		pairfree(&reply_tmp);
 	}
@@ -1134,7 +1134,7 @@ static int rlm_sql_authorize(void *instance, REQUEST * request)
 		/*
 	 	 *  Check for a default_profile or for a User-Profile.
 		 */
-		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0);
+		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
 		
 		const char *profile = user_profile ?
 				      user_profile->vp_strvalue :
@@ -1421,9 +1421,9 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
          */
 	request->simul_count = 0;
 
-        if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0)) != NULL)
+        if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL)
                 ipno = vp->vp_ipaddr;
-        if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0)) != NULL)
+        if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL)
                 call_num = vp->vp_strvalue;
 
 
