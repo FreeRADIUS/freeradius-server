@@ -154,6 +154,7 @@ $INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.juniper
 $INCLUDE dictionary.jradius
 $INCLUDE dictionary.karlnet
+$INCLUDE dictionary.kineto
 $INCLUDE dictionary.lancom
 $INCLUDE dictionary.livingston
 $INCLUDE dictionary.localweb
