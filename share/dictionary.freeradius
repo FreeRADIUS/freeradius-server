@@ -110,6 +110,7 @@ ATTRIBUTE	FreeRADIUS-Stats-Server-State		173	integer
 VALUE	FreeRADIUS-Stats-Server-State	Alive	0
 VALUE	FreeRADIUS-Stats-Server-State	Zombie	1
 VALUE	FreeRADIUS-Stats-Server-State	Dead	2
+VALUE	FreeRADIUS-Stats-Server-State	Unknown	3
 
 #
 #  When a home server is marked "dead" or "alive"
