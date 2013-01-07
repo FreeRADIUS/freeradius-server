@@ -45,14 +45,14 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *cs,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
 					      fr_connection_delete_t d);
-void fr_connection_pool_delete(fr_connection_pool_t *fc);
+void fr_connection_pool_delete(fr_connection_pool_t *pool);
 
-int fr_connection_check(fr_connection_pool_t *fc, void *conn);
-void *fr_connection_get(fr_connection_pool_t *fc);
-void fr_connection_release(fr_connection_pool_t *fc, void *conn);
-void *fr_connection_reconnect(fr_connection_pool_t *fc, void *conn);
-int fr_connection_add(fr_connection_pool_t *fc, void *conn);
-int fr_connection_del(fr_connection_pool_t *fc, void *conn);
+int fr_connection_check(fr_connection_pool_t *pool, void *conn);
+void *fr_connection_get(fr_connection_pool_t *pool);
+void fr_connection_release(fr_connection_pool_t *pool, void *conn);
+void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn);
+int fr_connection_add(fr_connection_pool_t *pool, void *conn);
+int fr_connection_del(fr_connection_pool_t *pool, void *conn);
 
 #ifdef __cplusplus
 }
