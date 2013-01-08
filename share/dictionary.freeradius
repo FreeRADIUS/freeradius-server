@@ -110,7 +110,7 @@ ATTRIBUTE	FreeRADIUS-Stats-Server-State		173	integer
 VALUE	FreeRADIUS-Stats-Server-State	Alive	0
 VALUE	FreeRADIUS-Stats-Server-State	Zombie	1
 VALUE	FreeRADIUS-Stats-Server-State	Dead	2
-VALUE	FreeRADIUS-Stats-Server-State	Unknown	3
+VALUE	FreeRADIUS-Stats-Server-State	Idle	3
 
 #
 #  When a home server is marked "dead" or "alive"
@@ -140,5 +140,8 @@ ATTRIBUTE	FreeRADIUS-Server-EMA-USEC-Window-10	180	integer
 ATTRIBUTE	FreeRADIUS-Queue-PPS-In			181	integer
 ATTRIBUTE	FreeRADIUS-Queue-PPS-Out		182	integer
 ATTRIBUTE	FreeRADIUS-Queue-Use-Percentage		183	integer
+
+ATTRIBUTE	FreeRADIUS-Stats-Last-Packet-Recv	184	date
+ATTRIBUTE	FreeRADIUS-Stats-Last-Packet-Sent	185	date
 
 END-VENDOR FreeRADIUS

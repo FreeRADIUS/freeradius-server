@@ -761,6 +761,19 @@ void request_stats_reply(REQUEST *request)
 			if (vp) vp->vp_date = home->zombie_period_start.tv_sec + home->zombie_period;
 		}
 
+		/*
+		 *	Show more information...
+		 *
+		 *	FIXME: do this for clients, too!
+		 */
+		vp = radius_paircreate(request, &request->reply->vps,
+				       184, VENDORPEC_FREERADIUS, PW_TYPE_DATE);
+		if (vp) vp->vp_date = home->last_packet_recv;
+
+		vp = radius_paircreate(request, &request->reply->vps,
+				       185, VENDORPEC_FREERADIUS, PW_TYPE_DATE);
+		if (vp) vp->vp_date = home->last_packet_sent;
+
 		if (((flag->vp_integer & 0x01) != 0) &&
 		    (home->type == HOME_TYPE_AUTH)) {
 			request_stats_addvp(request, proxy_authvp,
