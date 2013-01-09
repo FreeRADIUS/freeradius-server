@@ -24,6 +24,7 @@ ATTRIBUTE	F5-LTM-User-Info-2			13	string
 VALUE	F5-LTM-User-Role		Administrator		0
 VALUE	F5-LTM-User-Role		Resource-Admin		20
 VALUE	F5-LTM-User-Role		User-Manager		40
+VALUE	F5-LTM-User-Role		Auditor			80
 VALUE	F5-LTM-User-Role		Manager			100
 VALUE	F5-LTM-User-Role		App-Editor		300
 VALUE	F5-LTM-User-Role		Operator		400
