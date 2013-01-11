@@ -1151,6 +1151,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 }
 
+#ifdef HAVE_JSON
 /** Converts JSON "value" key into VALUE_PAIR.
  *
  * If leaf is not in fact a leaf node, but contains JSON data, the data will
@@ -1165,7 +1166,6 @@ static int rest_decode_post(rlm_rest_t *instance,
  * @param[in] leaf object containing the VALUE_PAIR value.
  * @return The VALUE_PAIR just created, or NULL on error.
  */
-#ifdef HAVE_JSON
 static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 				      UNUSED rlm_rest_section_t *section,
 				      REQUEST *request, const DICT_ATTR *da,

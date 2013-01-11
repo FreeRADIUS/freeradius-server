@@ -1486,6 +1486,7 @@ PREDEFINED            += WITH_TCP
 PREDEFINED            += WITH_DHCP
 PREDEFINED            += WITH_VMPS
 PREDEFINED            += WITH_THREADS
+PREDEFINED            += HAVE_JSON
 
 
 # If the MACRO_EXPANSION and EXPAND_ONLY_PREDEF tags are set to YES then 
