@@ -1,9 +1,4 @@
 /*
- * @file xlat.c
- * @brief String expansion ("translation"). Implements %Attribute -> value
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -17,9 +12,15 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/*
+ * @file xlat.c
+ * @brief String expansion ("translation"). Implements %Attribute -> value
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Alan DeKok <aland@ox.org>
+ * @version $Id$
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Alan DeKok <aland@ox.org>
  */
 
 #include <freeradius-devel/ident.h>
@@ -907,9 +908,9 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
  * We can only have one function to call per name, so the passing of "func"
  * here is extraneous.
  *
- * @param [in] module xlat to unregister.
- * @param [in] func
- * @param [in] instance
+ * @param[in] module xlat to unregister.
+ * @param[in] func
+ * @param[in] instance
  */
 void xlat_unregister(const char *module, RAD_XLAT_FUNC func, void *instance)
 {
@@ -949,12 +950,12 @@ void xlat_free(void)
  *
  * Calls radius_xlat() to do most of the work.
  *
- * @param [in] from string to expand.
- * @param [in,out] to buffer for output.
- * @param [in] freespace remaining in output buffer.
- * @param [in] request Current server request.
- * @param [in] func Optional function to escape output; passed to radius_xlat().
- * @param [in] funcarg pointer to pass to escape function.
+ * @param[in] from string to expand.
+ * @param[in,out] to buffer for output.
+ * @param[in] freespace remaining in output buffer.
+ * @param[in] request Current server request.
+ * @param[in] func Optional function to escape output; passed to radius_xlat().
+ * @param[in] funcarg pointer to pass to escape function.
  * @return 0 on success, -1 on failure.
  */
 static int decode_attribute(const char **from, char **to, int freespace,
@@ -1207,12 +1208,12 @@ done:
  *
  * See 'doc/variables.txt' for more information.
  *
- * @param [out] out output buffer.
- * @param [in] outlen size of output buffer.
- * @param [in] fmt string to expand.
- * @param [in] request current request.
- * @param [in] func function to escape final value e.g. SQL quoting.
- * @param [in] funcarg pointer to pass to escape function.
+ * @param[out] out output buffer.
+ * @param[in] outlen size of output buffer.
+ * @param[in] fmt string to expand.
+ * @param[in] request current request.
+ * @param[in] func function to escape final value e.g. SQL quoting.
+ * @param[in] funcarg pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure
  */
 size_t radius_xlat(char *out, int outlen, const char *fmt,

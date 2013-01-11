@@ -175,8 +175,8 @@ static const CONF_PARSER connection_config[] = {
  *
  * @note Must be called with the mutex held.
  *
- * @param [in,out] pool to modify.
- * @param [in] this Connection to delete.
+ * @param[in,out] pool to modify.
+ * @param[in] this Connection to delete.
  */
 static void fr_connection_unlink(fr_connection_pool_t *pool,
 				 fr_connection_t *this)
@@ -203,8 +203,8 @@ static void fr_connection_unlink(fr_connection_pool_t *pool,
  *
  * @note Must be called with the mutex held.
  *
- * @param [in,out] pool to modify.
- * @param [in] this Connection to add.
+ * @param[in,out] pool to modify.
+ * @param[in] this Connection to add.
  */
 static void fr_connection_link(fr_connection_pool_t *pool,
 			       fr_connection_t *this)
@@ -235,8 +235,8 @@ static void fr_connection_link(fr_connection_pool_t *pool,
  * @note Will call the 'open' trigger.
  * @note Must be called with the mutex free.
  *
- * @param [in] pool
- * @param [in] now Current time.
+ * @param[in] pool
+ * @param[in] now Current time.
  * @return the new connection struct or NULL on error.
  */
 static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
@@ -352,8 +352,8 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
  *
  * @note Will call the 'open' trigger.
  *
- * @param [in,out] pool to add connection to.
- * @param [in] conn to add.
+ * @param[in,out] pool to add connection to.
+ * @param[in] conn to add.
  * @return 0 if the connection wasn't added else 1.
  */
 int fr_connection_add(fr_connection_pool_t *pool, void *conn)
@@ -409,8 +409,8 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
  * @note Will call the 'close' trigger.
  * @note Must be called with the mutex held.
  *
- * @param [in,out] pool to modify.
- * @param [in,out] this Connection to delete.
+ * @param[in,out] pool to modify.
+ * @param[in,out] this Connection to delete.
 
  */
 static void fr_connection_close(fr_connection_pool_t *pool,
@@ -436,8 +436,8 @@ static void fr_connection_close(fr_connection_pool_t *pool,
  * is not found, so will usually return will mutex held.
  * @note Must be called with the mutex free.
  *
- * @param [in] pool to search in.
- * @param [in] conn handle to search for.
+ * @param[in] pool to search in.
+ * @param[in] conn handle to search for.
  * @return the connection containing the specified handle, or NULL if non is 
  * found.
  */
@@ -469,8 +469,8 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
  * 
  * @note Must be called with the mutex free.
  *
- * @param [in,out] pool Connection pool to modify.
- * @param [in] conn to delete.
+ * @param[in,out] pool Connection pool to modify.
+ * @param[in] conn to delete.
  * @return 0 if the connection could not be found, else 1.
  */
 int fr_connection_del(fr_connection_pool_t *pool, void *conn)
@@ -507,7 +507,7 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
  * @note Will call the 'stop' trigger.
  * @note Must be called with the mutex free.
  *
- * @param [in,out] pool to delete.
+ * @param[in,out] pool to delete.
  */
 void fr_connection_pool_delete(fr_connection_pool_t *pool)
 {
@@ -556,11 +556,11 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  *
  * @note Will call the 'start' trigger.
  *
- * @param [in] parent configuration section containing a 'pool' subsection.
- * @param [in] ctx pointer to pass to callbacks.
- * @param [in] c Callback to create new connections.
- * @param [in] a Callback to check the status of connections.
- * @param [in] d Callback to delete connections.
+ * @param[in] parent configuration section containing a 'pool' subsection.
+ * @param[in] ctx pointer to pass to callbacks.
+ * @param[in] c Callback to create new connections.
+ * @param[in] a Callback to check the status of connections.
+ * @param[in] d Callback to delete connections.
  * @return A new connection pool or NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
@@ -674,9 +674,9 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
  * @note Will only close connections not in use.
  * @note Must be called with the mutex held.
  *
- * @param [in,out] pool
- * @param [in,out] this Connection to manage.
- * @param [in] now Current time.
+ * @param[in,out] pool
+ * @param[in,out] this Connection to manage.
+ * @param[in] now Current time.
  * @return 0 if the connection was closed, otherwise 1.
  */
 static int fr_connection_manage(fr_connection_pool_t *pool,
@@ -737,7 +737,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
  * @note Must be called with the mutex held, will release mutex before
  * returning.
  *
- * @param [in,out] pool to manage.
+ * @param[in,out] pool to manage.
  * @return 1
  */
 static int fr_connection_pool_check(fr_connection_pool_t *pool)
@@ -819,8 +819,8 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
  *
  * @see fr_connection_manage
  * @see fr_connection_pool_check
- * @param [in,out] pool to manage.
- * @param [in,out] conn to check.
+ * @param[in,out] pool to manage.
+ * @param[in,out] conn to check.
  * @return 0 if the connection was closed, else 1.
  */
 int fr_connection_check(fr_connection_pool_t *pool, void *conn)
@@ -862,7 +862,7 @@ int fr_connection_check(fr_connection_pool_t *pool, void *conn)
  * using the connection.
  *
  * @see fr_connection_release
- * @param [in,out] pool to reserve the connection from.
+ * @param[in,out] pool to reserve the connection from.
  * @return a pointer to the connection handle, or NULL on error.
  */
 void *fr_connection_get(fr_connection_pool_t *pool)
@@ -926,8 +926,8 @@ do_return:
  * connections.
  *
  * @see fr_connection_get
- * @param [in,out] pool to release the connection in.
- * @param [in,out] conn to release.
+ * @param[in,out] pool to release the connection in.
+ * @param[in,out] conn to release.
  */
 void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 {
@@ -982,8 +982,8 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
  * the old handle in any other operations, as its memory will have been freed.
  *
  * @see fr_connection_get
- * @param [in,out] pool to reconnect the connection in.
- * @param [in,out] conn to reconnect.
+ * @param[in,out] pool to reconnect the connection in.
+ * @param[in,out] conn to reconnect.
  * @return ew connection handle if successful else NULL.
  */
 void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)

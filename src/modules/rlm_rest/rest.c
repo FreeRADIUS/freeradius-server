@@ -1,9 +1,4 @@
-/** Functions and datatypes for the REST (HTTP) transport.
- *
- * @file rest.c
- *
- * Version:	$Id$
- *
+/*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -17,8 +12,14 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+ 
+/** 
+ * @brief Functions and datatypes for the REST (HTTP) transport.
+ * @file rest.c
  *
- * Copyright 2012  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
+ * @version $Id$
+ * @copyright 2012-2013  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
  */
 
 #include <freeradius-devel/ident.h>
@@ -1160,7 +1161,7 @@ static int rest_decode_post(rlm_rest_t *instance,
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
  * @param[in] request Current request.
- * @param[in] attribute name without qualifiers.
+ * @param[in] da Attribute to create.
  * @param[in] flags containing the operator other flags controlling value
  *	expansion.
  * @param[in] leaf object containing the VALUE_PAIR value.
@@ -1490,14 +1491,15 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
- * @param[in] request Current request.
+ * @param[in,out] request Current request.
+ * @param[in] handle REST handle.
  * @param[in] raw buffer containing JSON data.
  * @param[in] rawlen Length of data in raw buffer.
  * @return the number of VALUE_PAIRs processed or -1 on unrecoverable error.
  */
 static int rest_decode_json(rlm_rest_t *instance,
 			    UNUSED rlm_rest_section_t *section,
-			    UNUSED REQUEST *request, UNUSED void *handle,
+			    REQUEST *request, UNUSED void *handle,
 			    char *raw, UNUSED size_t rawlen)
 {
 	const char *p = raw;
@@ -1606,7 +1608,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 			ctx->code = atoi(p);
 
 			/*
-			 * Process reason_phrase (if present).
+			 *	Process reason_phrase (if present).
 			 */
 			if (p[3] == ' ') {
 				p += 4;

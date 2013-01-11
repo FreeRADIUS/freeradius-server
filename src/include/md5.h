@@ -2,9 +2,8 @@
  * @file md5.h
  * @brief Structures and prototypes for md5.
  *
- * Version:     $Id$
- * License:		LGPL, but largely derived from a public domain source.
- *
+ * @version $Id$
+ * @license LGPL, but largely derived from a public domain source.
  */
 
 #ifndef _FR_MD5_H

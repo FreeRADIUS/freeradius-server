@@ -1,7 +1,9 @@
 /*
  * @file modules.h
  * @brief Interface to the RADIUS module system.
+ *
  * @version $Id$
+ * @copyright 2013 The FreeRADIUS server project
  */
 
 #ifndef RADIUS_MODULES_H
@@ -95,8 +97,8 @@ extern const section_type_value_t section_type_value[];
  * Is called when the module is listed in a particular section of a virtual
  * server, and the request has reached the module call.
  *
- * @param [in] instance created in instantiated, holds module config.
- * @param [in,out] request being processed.
+ * @param[in] instance created in instantiated, holds module config.
+ * @param[in,out] request being processed.
  * @return the appropriate rcode.
  */
 typedef rlm_rcode_t (*packetmethod)(void *instance, REQUEST *request);
@@ -107,8 +109,8 @@ typedef rlm_rcode_t (*packetmethod)(void *instance, REQUEST *request);
  * spawned. Modules that require separate thread contexts should use the
  * connection pool API.
  *
- * @param [in] mod_cs Module instance's configuration section.
- * @param [out] instance Module instance's configuration structure, should be
+ * @param[in] mod_cs Module instance's configuration section.
+ * @param[out] instance Module instance's configuration structure, should be
  *		alloced by by callback and freed by detach.
  * @return -1 if instantiation failed, else 0.
  */
@@ -122,7 +124,7 @@ typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void **instance);
  * Detach should close all handles associated with the module instance, and
  * free any memory allocated during instantiate.
  *
- * @param [in] instance to free.
+ * @param[in] instance to free.
  * @return -1 if detach failed, else 0.
  */
 typedef int (*detach_t)(void *instance);

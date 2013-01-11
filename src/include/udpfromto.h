@@ -3,8 +3,8 @@
 /*
  * @file udpfromto.h
  *
- * Version:	$Id$
- *
+ * @version $Id$
+ * @copyright 2013  The FreeRADIUS server project
  */
 
 #include <freeradius-devel/ident.h>

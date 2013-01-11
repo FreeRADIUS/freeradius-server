@@ -1,9 +1,4 @@
 /*
- * @file exec.c
- * @brief Execute external programs.
- *
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -17,8 +12,14 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+ 
+/*
+ * @file exec.c
+ * @brief Execute external programs.
  *
- * Copyright 2000-2004,2006  The FreeRADIUS server project
+ * @version $Id$
+ * @copyright 2000-2004,2006  The FreeRADIUS server project
  */
 
 #include <freeradius-devel/ident.h>

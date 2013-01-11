@@ -1,12 +1,4 @@
-/** Valuepair functions that are radiusd-specific and as such do not belong in
- * the library.
- *
- * @file main/valuepair.c
- *
- * @ingroup AVP
- *
- * Version:	$Id$
- *
+/*
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -20,9 +12,18 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/*
+ * @brief Valuepair functions that are radiusd-specific and as such do not
+ * 	  belong in the library.
+ * @file main/valuepair.c
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Alan DeKok <aland@ox.org>
+ * @ingroup AVP
+ *
+ * @version $Id$
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Alan DeKok <aland@ox.org>
  */
 
 #include <freeradius-devel/ident.h>
