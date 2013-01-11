@@ -663,7 +663,7 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
  *	If you want to cache something different in different sections,
  *	configure another cache module.
  */
-static int cache_it(void *instance, REQUEST *request)
+static rlm_rcode_t cache_it(void *instance, REQUEST *request)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;

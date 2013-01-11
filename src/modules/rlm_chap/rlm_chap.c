@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-static int chap_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t chap_authorize(void *instance, REQUEST *request)
 {
 
 	/* quiet the compiler */
@@ -60,7 +60,7 @@ static int chap_authorize(void *instance, REQUEST *request)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int chap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t chap_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *passwd_item, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];

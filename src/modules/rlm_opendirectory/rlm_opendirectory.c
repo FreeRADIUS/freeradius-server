@@ -268,7 +268,7 @@ static long od_check_passwd(const char *uname, const char *password)
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static int od_authenticate(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t od_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	char *name, *passwd;
 	int		ret;
@@ -331,7 +331,7 @@ static int od_authenticate(UNUSED void *instance, REQUEST *request)
 /*
  *	member of the radius group?
  */
-static int od_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t od_authorize(UNUSED void *instance, REQUEST *request)
 {
 	char *name = NULL;
 	struct passwd *userdata = NULL;

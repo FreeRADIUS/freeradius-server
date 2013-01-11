@@ -278,7 +278,7 @@ static int virtual_server_idx(const char *name)
 
 static virtual_server_t *virtual_server_find(const char *name)
 {
-	int rcode;
+	rlm_rcode_t rcode;
 	virtual_server_t *server;
 
 	rcode = virtual_server_idx(name);
@@ -747,9 +747,9 @@ static indexed_modcallable *new_sublist(rbtree_t *components, int comp, int idx)
 	return c;
 }
 
-int indexed_modcall(int comp, int idx, REQUEST *request)
+rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
 {
-	int rcode;
+	rlm_rcode_t rcode;
 	modcallable *list = NULL;
 	virtual_server_t *server;
 
@@ -1636,7 +1636,7 @@ int setup_modules(int reload, CONF_SECTION *config)
  *	Call all authorization modules until one returns
  *	somethings else than RLM_MODULE_OK
  */
-int module_authorize(int autz_type, REQUEST *request)
+rlm_rcode_t module_authorize(int autz_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
 }
@@ -1644,7 +1644,7 @@ int module_authorize(int autz_type, REQUEST *request)
 /*
  *	Authenticate a user/password with various methods.
  */
-int module_authenticate(int auth_type, REQUEST *request)
+rlm_rcode_t module_authenticate(int auth_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_AUTH, auth_type, request);
 }
@@ -1653,7 +1653,7 @@ int module_authenticate(int auth_type, REQUEST *request)
 /*
  *	Do pre-accounting for ALL configured sessions
  */
-int module_preacct(REQUEST *request)
+rlm_rcode_t module_preacct(REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_PREACCT, 0, request);
 }
@@ -1661,7 +1661,7 @@ int module_preacct(REQUEST *request)
 /*
  *	Do accounting for ALL configured sessions
  */
-int module_accounting(int acct_type, REQUEST *request)
+rlm_rcode_t module_accounting(int acct_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
 }
@@ -1675,7 +1675,7 @@ int module_accounting(int acct_type, REQUEST *request)
  */
 int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 {
-	int rcode;
+	rlm_rcode_t rcode;
 
 	if(!request->username)
 		return 0;
@@ -1699,7 +1699,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 /*
  *	Do pre-proxying for ALL configured sessions
  */
-int module_pre_proxy(int type, REQUEST *request)
+rlm_rcode_t module_pre_proxy(int type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, type, request);
 }
@@ -1707,7 +1707,7 @@ int module_pre_proxy(int type, REQUEST *request)
 /*
  *	Do post-proxying for ALL configured sessions
  */
-int module_post_proxy(int type, REQUEST *request)
+rlm_rcode_t module_post_proxy(int type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_POST_PROXY, type, request);
 }
@@ -1716,18 +1716,18 @@ int module_post_proxy(int type, REQUEST *request)
 /*
  *	Do post-authentication for ALL configured sessions
  */
-int module_post_auth(int postauth_type, REQUEST *request)
+rlm_rcode_t module_post_auth(int postauth_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
 
 #ifdef WITH_COA
-int module_recv_coa(int recv_coa_type, REQUEST *request)
+rlm_rcode_t module_recv_coa(int recv_coa_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_RECV_COA, recv_coa_type, request);
 }
 
-int module_send_coa(int send_coa_type, REQUEST *request)
+rlm_rcode_t module_send_coa(int send_coa_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_SEND_COA, send_coa_type, request);
 }

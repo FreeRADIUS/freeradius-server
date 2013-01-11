@@ -168,8 +168,8 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Common attr_filter checks
  */
-static int attr_filter_common(void *instance, REQUEST *request,
-			      RADIUS_PACKET *packet)
+static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
+			      	      RADIUS_PACKET *packet)
 {
 	struct attr_filter_instance *inst = instance;
 	VALUE_PAIR	*vp;
@@ -339,34 +339,34 @@ static int attr_filter_common(void *instance, REQUEST *request,
 	return RLM_MODULE_UPDATED;
 }
 
-static int attr_filter_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t attr_filter_preacct(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->packet);
 }
 
-static int attr_filter_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t attr_filter_accounting(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->reply);
 }
 
 #ifdef WITH_PROXY
-static int attr_filter_preproxy(void *instance, REQUEST *request)
+static rlm_rcode_t attr_filter_preproxy(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->proxy);
 }
 
-static int attr_filter_postproxy(void *instance, REQUEST *request)
+static rlm_rcode_t attr_filter_postproxy(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->proxy_reply);
 }
 #endif
 
-static int attr_filter_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t attr_filter_postauth(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->reply);
 }
 
-static int attr_filter_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t attr_filter_authorize(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->packet);
 }

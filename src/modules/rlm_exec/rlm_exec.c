@@ -267,7 +267,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *  Dispatch an exec method
  */
-static int exec_dispatch(void *instance, REQUEST *request)
+static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 {
 	rlm_exec_t *inst = (rlm_exec_t *) instance;
 	int result;
@@ -382,7 +382,7 @@ static int exec_dispatch(void *instance, REQUEST *request)
  *
  *	Then, call exec_dispatch.
  */
-static int exec_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t exec_postauth(void *instance, REQUEST *request)
 {
 	int result;
 	int exec_wait = 0;
@@ -445,7 +445,7 @@ static int exec_postauth(void *instance, REQUEST *request)
  *
  *	Then, call exec_dispatch.
  */
-static int exec_accounting(void *instance, REQUEST *request)
+static  rlm_rcode_t exec_accounting(void *instance, REQUEST *request)
 {
 	int result;
 	int exec_wait = 0;

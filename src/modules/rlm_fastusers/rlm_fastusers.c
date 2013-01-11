@@ -526,7 +526,7 @@ static int fastuser_instantiate(CONF_SECTION *conf, void **instance)
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static int fastuser_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t fastuser_authorize(void *instance, REQUEST *request)
 {
 
 	VALUE_PAIR	*namepair;
@@ -686,7 +686,7 @@ static int fastuser_authorize(void *instance, REQUEST *request)
 /*
  *	Authentication - unused.
  */
-static int fastuser_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t fastuser_authenticate(void *instance, REQUEST *request)
 {
 	instance = instance;
 	request = request;
@@ -700,7 +700,7 @@ static int fastuser_authenticate(void *instance, REQUEST *request)
  *
  *	This function is mostly a copy of file_authorize
  */
-static int fastuser_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t fastuser_preacct(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
 	const char	*name;
@@ -795,7 +795,7 @@ static int fastuser_detach(void *instance)
 /*
  *	This function is unused
  */
-static int fastuser_accounting(void *instance UNUSED, REQUEST *request UNUSED)
+static rlm_rcode_t fastuser_accounting(void *instance UNUSED, REQUEST *request UNUSED)
 {
 	/*
 	 * FIXME: should re rather return RLM_MODULE_NOOP here?

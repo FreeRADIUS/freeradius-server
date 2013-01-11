@@ -103,7 +103,7 @@ static int wimax_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int wimax_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t wimax_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
@@ -145,7 +145,7 @@ static int wimax_authorize(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static int wimax_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t wimax_preacct(void *instance, REQUEST *request)
 {
 	return wimax_authorize(instance, request);
 }
@@ -153,7 +153,7 @@ static int wimax_preacct(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static int wimax_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t wimax_accounting(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -165,7 +165,7 @@ static int wimax_accounting(void *instance, REQUEST *request)
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static int wimax_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 {
 	rlm_wimax_t *inst = instance;
 	VALUE_PAIR *msk, *emsk, *vp;

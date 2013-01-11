@@ -98,7 +98,7 @@ static int smsotp_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Authenticate the user with the given password.
  */
-static int smsotp_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t smsotp_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
 	VALUE_PAIR *reply;
@@ -204,7 +204,7 @@ static int smsotp_authenticate(void *instance, REQUEST *request)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int smsotp_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t smsotp_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
 	rlm_smsotp_t *opt = instance;

@@ -400,9 +400,9 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
  *
  *  This should very nearly duplicate the old proxy_send() code
  */
-static int realm_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t realm_authorize(void *instance, REQUEST *request)
 {
-	int rcode;
+	rlm_rcode_t rcode;
 	REALM *realm;
 
 	/*
@@ -428,7 +428,7 @@ static int realm_authorize(void *instance, REQUEST *request)
  * This does the exact same thing as the realm_authorize, it's just called
  * differently.
  */
-static int realm_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t realm_preacct(void *instance, REQUEST *request)
 {
 	int rcode;
 	const char *name = (char *)request->username->vp_strvalue;
@@ -462,7 +462,7 @@ static int realm_preacct(void *instance, REQUEST *request)
  *	CoA realms via Operator-Name.  Because the realm isn't in a
  *	User-Name, concepts like "prefix" and "suffix' don't matter.
  */
-static int realm_coa(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t realm_coa(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -524,7 +524,7 @@ module_t rlm_realm = {
 	{
 		NULL,			/* authentication */
 		realm_authorize,	/* authorization */
-		realm_preacct,	/* preaccounting */
+		realm_preacct,		/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */

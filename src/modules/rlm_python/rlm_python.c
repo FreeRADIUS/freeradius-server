@@ -654,7 +654,7 @@ static int python_detach(void *instance)
 	return ret;
 }
 
-#define A(x) static int python_##x(void *instance, REQUEST *request) { \
+#define A(x) static rlm_rcode_t python_##x(void *instance, REQUEST *request) { \
   return python_function(request, ((struct rlm_python_t *)instance)->x.function, #x); \
 }
 

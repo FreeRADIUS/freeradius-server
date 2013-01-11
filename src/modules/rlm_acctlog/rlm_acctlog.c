@@ -29,11 +29,11 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 
 typedef struct rlm_acctlog_t {
-    char        *acctstart;
-    char        *acctstop;
-	char		*acctupdate;
-    char        *accton;
-	char		*acctoff;
+	char	*acctstart;
+	char	*acctstop;
+	char	*acctupdate;
+	char	*accton;
+	char	*acctoff;
 
 } rlm_acctlog_t;
 
@@ -74,7 +74,7 @@ static int acctlog_instantiate(CONF_SECTION *conf, void **instance)
 
 }
 
-static int do_acctlog_acct(void *instance, REQUEST *request)
+static rlm_rcode_t do_acctlog_acct(void *instance, REQUEST *request)
 {
 	rlm_acctlog_t *inst;
 	VALUE_PAIR *pair;
@@ -85,13 +85,13 @@ static int do_acctlog_acct(void *instance, REQUEST *request)
 
 	inst = (rlm_acctlog_t*) instance;
 
-    if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
-        acctstatustype = pair->vp_integer;
-    } else {
-        radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL, NULL);
-        radlog(L_ERR, "rlm_acctlog (%s)", logstr);
-        return RLM_MODULE_INVALID;
-    }
+	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
+		acctstatustype = pair->vp_integer;
+	} else {
+		radius_xlat(logstr, sizeof(logstr), "packet has no accounting status type. [user '%{User-Name}', nas '%{NAS-IP-Address}']", request, NULL, NULL);
+		radlog(L_ERR, "rlm_acctlog (%s)", logstr);
+		return RLM_MODULE_INVALID;
+	}
 
 	switch (acctstatustype) {
 		case PW_STATUS_START:

@@ -158,7 +158,7 @@ static int time_of_day(void *instance,
 /*
  *      Check if account has expired, and if user may login now.
  */
-static int logintime_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t logintime_authorize(void *instance, REQUEST *request)
 {
 	rlm_logintime_t *data = (rlm_logintime_t *)instance;
 	VALUE_PAIR *check_item = NULL;

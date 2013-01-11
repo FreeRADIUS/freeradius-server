@@ -1002,7 +1002,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 }
 
 
-static int rlm_sql_authorize(void *instance, REQUEST * request)
+static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 {
 	int ret = RLM_MODULE_NOTFOUND;
 	
@@ -1315,7 +1315,7 @@ static int acct_redundant(SQL_INST *inst, REQUEST *request,
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static int rlm_sql_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t rlm_sql_accounting(void *instance, REQUEST * request) {
 	SQL_INST *inst = instance;		
 
 	if (inst->config->accounting) {
@@ -1337,7 +1337,7 @@ static int rlm_sql_accounting(void *instance, REQUEST * request) {
  *        logins by querying the terminal server (using eg. SNMP).
  */
 
-static int rlm_sql_checksimul(void *instance, REQUEST * request) {
+static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
 	SQLSOCK 	*sqlsocket;
 	SQL_INST	*inst = instance;
 	SQL_ROW		row;
@@ -1516,7 +1516,7 @@ static int rlm_sql_checksimul(void *instance, REQUEST * request) {
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static int rlm_sql_postauth(void *instance, REQUEST * request) {
+static rlm_rcode_t rlm_sql_postauth(void *instance, REQUEST * request) {
 	SQL_INST *inst = instance;
 	
 	if (inst->config->postauth) {

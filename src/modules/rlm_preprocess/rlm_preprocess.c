@@ -589,7 +589,7 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Preprocess a request.
  */
-static int preprocess_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t preprocess_authorize(void *instance, REQUEST *request)
 {
 	int r;
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
@@ -676,7 +676,7 @@ static int preprocess_authorize(void *instance, REQUEST *request)
 /*
  *	Preprocess a request before accounting
  */
-static int preprocess_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 {
 	int r;
 	VALUE_PAIR *vp;

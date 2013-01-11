@@ -515,10 +515,10 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int sqlcounter_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t sqlcounter_authorize(void *instance, REQUEST *request)
 {
 	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
-	int ret=RLM_MODULE_NOOP;
+	int rcode = RLM_MODULE_NOOP;
 	unsigned int counter;
 	DICT_ATTR *dattr;
 	VALUE_PAIR *key_vp, *check_vp;
@@ -553,19 +553,19 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 	key_vp = ((data->key_attr->vendor == 0) && (data->key_attr->attr == PW_USER_NAME)) ? request->username : pairfind(request->packet->vps, data->key_attr->attr, data->key_attr->vendor, TAG_ANY);
 	if (key_vp == NULL) {
 		DEBUG2("rlm_sqlcounter: Could not find Key value pair");
-		return ret;
+		return rcode;
 	}
 
 	/*
 	 *      Look for the check item
 	 */
 	if ((dattr = dict_attrbyname(data->check_name)) == NULL) {
-		return ret;
+		return rcode;
 	}
 	/* DEBUG2("rlm_sqlcounter: Found Check item attribute %d", dattr->attr); */
 	if ((check_vp= pairfind(request->config_items, dattr->attr, dattr->vendor, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_sqlcounter: Could not find Check item value pair");
-		return ret;
+		return rcode;
 	}
 
 	/* first, expand %k, %b and %e in query */
@@ -627,7 +627,7 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 			reply_item->vp_integer = res;
 		}
 
-		ret=RLM_MODULE_OK;
+		rcode = RLM_MODULE_OK;
 
 		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%u, counter=%u",
 				key_vp->vp_strvalue,check_vp->vp_integer,counter);
@@ -651,13 +651,13 @@ static int sqlcounter_authorize(void *instance, REQUEST *request)
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
 
-		ret=RLM_MODULE_REJECT;
+		rcode = RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_sqlcounter: Rejected user %s, check_item=%u, counter=%u",
 				key_vp->vp_strvalue,check_vp->vp_integer,counter);
 	}
 
-	return ret;
+	return rcode;
 }
 
 static int sqlcounter_detach(void *instance)

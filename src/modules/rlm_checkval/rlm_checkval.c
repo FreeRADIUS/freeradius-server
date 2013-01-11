@@ -189,10 +189,10 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-static int do_checkval(void *instance, REQUEST *request)
+static rlm_rcode_t do_checkval(void *instance, REQUEST *request)
 {
 	rlm_checkval_t *data = (rlm_checkval_t *) instance;
-	int ret=RLM_MODULE_NOOP;
+	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR *chk_vp, *item_vp;
 	VALUE_PAIR *tmp;
 	char found = 0;
@@ -209,9 +209,9 @@ static int do_checkval(void *instance, REQUEST *request)
 	if (!(item_vp = pairfind(request->packet->vps, data->item_attr->attr, data->item_attr->vendor, TAG_ANY))){
 		DEBUG2("rlm_checkval: Could not find item named %s in request", data->item_name);
 		if (data->notfound_reject)
-			ret = RLM_MODULE_REJECT;
+			rcode = RLM_MODULE_REJECT;
 		else
-			ret = RLM_MODULE_NOTFOUND;
+			rcode = RLM_MODULE_NOTFOUND;
 	}
 	if (item_vp)
 		DEBUG2("rlm_checkval: Item Name: %s, Value: %s",data->item_name, item_vp->vp_strvalue);
@@ -220,7 +220,7 @@ static int do_checkval(void *instance, REQUEST *request)
 		if (!(chk_vp = pairfind(tmp, data->chk_attr->attr, data->chk_attr->vendor, TAG_ANY))){
 			if (!found){
 				DEBUG2("rlm_checkval: Could not find attribute named %s in check pairs",data->check_name);
-				ret = RLM_MODULE_NOTFOUND;
+				rcode = RLM_MODULE_NOTFOUND;
 			}
 			break;
 		}
@@ -237,28 +237,28 @@ static int do_checkval(void *instance, REQUEST *request)
 		if (data->dat_type == PW_TYPE_STRING ||
 		    data->dat_type == PW_TYPE_OCTETS) {
 			if (item_vp->length != chk_vp->length)
-				ret = RLM_MODULE_REJECT;
+				rcode = RLM_MODULE_REJECT;
 			else{
 				if (!memcmp(item_vp->vp_strvalue,
 					    chk_vp->vp_strvalue,
 					    (size_t) chk_vp->length))
-					ret = RLM_MODULE_OK;
+					rcode = RLM_MODULE_OK;
 				else
-					ret = RLM_MODULE_REJECT;
+					rcode = RLM_MODULE_REJECT;
 			}
 		} else if (data->dat_type == PW_TYPE_DATE) {
 			if (item_vp->vp_date == chk_vp->vp_date)
-				ret = RLM_MODULE_OK;
+				rcode = RLM_MODULE_OK;
 			else
-				ret = RLM_MODULE_REJECT;
+				rcode = RLM_MODULE_REJECT;
 		} else if (data->dat_type == PW_TYPE_INTEGER) {
 			if (item_vp->vp_integer == chk_vp->vp_integer)
-				ret = RLM_MODULE_OK;
+				rcode = RLM_MODULE_OK;
 			else
-				ret = RLM_MODULE_REJECT;
+				rcode = RLM_MODULE_REJECT;
 		}
 #ifdef HAVE_REGEX_H
-		if (ret == RLM_MODULE_REJECT &&
+		if (rcode == RLM_MODULE_REJECT &&
 		    chk_vp->operator == T_OP_REG_EQ) {
 			regex_t reg;
 			int err;
@@ -272,17 +272,17 @@ static int do_checkval(void *instance, REQUEST *request)
 				return RLM_MODULE_FAIL;
 			}
 			if (regexec(&reg, (char *)item_vp->vp_strvalue,0, NULL, 0) == 0)
-				ret = RLM_MODULE_OK;
+				rcode = RLM_MODULE_OK;
 			else
-				ret = RLM_MODULE_REJECT;
+				rcode = RLM_MODULE_REJECT;
 			regfree(&reg);
 		}
 #endif
 		tmp = chk_vp->next;
-	} while (ret == RLM_MODULE_REJECT &&
+	} while (rcode == RLM_MODULE_REJECT &&
 		 tmp != NULL);
 
-	if (ret == RLM_MODULE_REJECT) {
+	if (rcode == RLM_MODULE_REJECT) {
 		if (!item_vp && data->notfound_reject){
 			char module_fmsg[MAX_STRING_LEN];
 			VALUE_PAIR *module_fmsg_vp;
@@ -304,17 +304,17 @@ static int do_checkval(void *instance, REQUEST *request)
 	}
 
 
-	return ret;
+	return rcode;
 }
 
 /*
  */
-static int checkval_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t checkval_authorize(void *instance, REQUEST *request)
 {
 	return do_checkval(instance,request);
 }
 
-static int checkval_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t checkval_accounting(void *instance, REQUEST *request)
 {
 	return do_checkval(instance,request);
 }

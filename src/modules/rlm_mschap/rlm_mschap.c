@@ -1267,7 +1267,7 @@ static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
  *	it later. Add Auth-Type attribute if present in module
  *	configuration (usually Auth-Type must be "MS-CHAP")
  */
-static int mschap_authorize(void * instance, REQUEST *request)
+static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL;
@@ -1322,7 +1322,7 @@ static int mschap_authorize(void * instance, REQUEST *request)
  *	If MS-CHAP2 succeeds we MUST return
  *	PW_MSCHAP2_SUCCESS
  */
-static int mschap_authenticate(void * instance, REQUEST *request)
+static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL;

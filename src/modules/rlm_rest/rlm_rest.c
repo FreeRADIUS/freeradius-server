@@ -294,7 +294,7 @@ static int rlm_rest_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int rlm_rest_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t rlm_rest_authorize(void *instance, REQUEST *request)
 {
 	rlm_rest_t *my_instance = instance;
 	rlm_rest_section_t *section = &my_instance->authorize;
@@ -369,7 +369,7 @@ static int rlm_rest_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static int rlm_rest_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t rlm_rest_authenticate(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -381,12 +381,9 @@ static int rlm_rest_authenticate(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static int rlm_rest_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t rlm_rest_accounting(UNUSED void *instance,
+				       UNUSED REQUEST *request)
 {
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
-
 	return RLM_MODULE_OK;
 }
 
@@ -400,7 +397,7 @@ static int rlm_rest_accounting(void *instance, REQUEST *request)
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static int rlm_rest_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t rlm_rest_checksimul(void *instance, REQUEST *request)
 {
 	instance = instance;
 

@@ -527,7 +527,7 @@ static void addresult (struct passwd_instance * inst, REQUEST *request, VALUE_PA
 	}
 }
 
-static int passwd_map(void *instance, REQUEST *request)
+static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
 {
 #define inst ((struct passwd_instance *)instance)
 	char buffer[1024];

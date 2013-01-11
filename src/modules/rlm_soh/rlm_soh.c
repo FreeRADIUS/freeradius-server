@@ -138,7 +138,7 @@ static int soh_instantiate(CONF_SECTION *conf, void **instance) {
 	return 0;
 }
 
-static int soh_postauth(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t soh_postauth(UNUSED void * instance, REQUEST *request)
 {
 #ifdef WITH_DHCP
 	int rcode;
@@ -196,7 +196,7 @@ static int soh_postauth(UNUSED void * instance, REQUEST *request)
 	return RLM_MODULE_NOOP;
 }
 
-static int soh_authorize(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t soh_authorize(UNUSED void * instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	int rv;

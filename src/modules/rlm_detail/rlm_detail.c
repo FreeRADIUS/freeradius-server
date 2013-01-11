@@ -183,8 +183,8 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Do detail, compatible with old accounting
  */
-static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
-		     int compat)
+static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
+			     int compat)
 {
 	int		outfd;
 	char		timestamp[256];
@@ -520,7 +520,7 @@ static int do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
 /*
  *	Accounting - write the detail files.
  */
-static int detail_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t detail_accounting(void *instance, REQUEST *request)
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
@@ -537,7 +537,7 @@ static int detail_accounting(void *instance, REQUEST *request)
 /*
  *	Incoming Access Request - write the detail files.
  */
-static int detail_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t detail_authorize(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->packet, FALSE);
 }
@@ -545,7 +545,7 @@ static int detail_authorize(void *instance, REQUEST *request)
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static int detail_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t detail_postauth(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->reply, FALSE);
 }
@@ -554,7 +554,7 @@ static int detail_postauth(void *instance, REQUEST *request)
 /*
  *	Incoming CoA - write the detail files.
  */
-static int detail_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t detail_recv_coa(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->packet, FALSE);
 }
@@ -562,7 +562,7 @@ static int detail_recv_coa(void *instance, REQUEST *request)
 /*
  *	Outgoing CoA - write the detail files.
  */
-static int detail_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t detail_send_coa(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->reply, FALSE);
 }
@@ -572,7 +572,7 @@ static int detail_send_coa(void *instance, REQUEST *request)
  *	Outgoing Access-Request to home server - write the detail files.
  */
 #ifdef WITH_PROXY
-static int detail_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t detail_pre_proxy(void *instance, REQUEST *request)
 {
 	if (request->proxy &&
 	    request->proxy->vps) {
@@ -586,7 +586,7 @@ static int detail_pre_proxy(void *instance, REQUEST *request)
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static int detail_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t detail_post_proxy(void *instance, REQUEST *request)
 {
 	if (request->proxy_reply &&
 	    request->proxy_reply->vps) {
@@ -601,7 +601,7 @@ static int detail_post_proxy(void *instance, REQUEST *request)
 	 *	it's doing normal accounting.
 	 */
 	if (!request->proxy_reply) {
-		int rcode;
+		rlm_rcode_t rcode;
 
 		rcode = detail_accounting(instance, request);
 		if (rcode == RLM_MODULE_OK) {

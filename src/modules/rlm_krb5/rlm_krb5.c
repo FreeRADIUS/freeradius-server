@@ -79,8 +79,8 @@ static int krb5_build_auth_context(rlm_krb5_t *inst,
 	return 0;
 }
 
-static int verify_krb5_tgt(krb5_context context, rlm_krb5_t *inst,
-			   const char *user, krb5_ccache ccache)
+static rlm_rcode_t verify_krb5_tgt(krb5_context context, rlm_krb5_t *inst,
+			   	   const char *user, krb5_ccache ccache)
 {
 	int rcode;
 	int ret;
@@ -274,7 +274,7 @@ static int krb5_detach(void *instance)
  *  Validate userid/passwd (MIT)
  */
 #ifndef HEIMDAL_KRB5
-static int krb5_auth(void *instance, REQUEST *request)
+static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
 	int ret;
@@ -407,7 +407,7 @@ static int krb5_auth(void *instance, REQUEST *request)
 /*
  *  validate user/pass (Heimdal)
  */
-static int krb5_auth(void *instance, REQUEST *request)
+static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 {
 	rlm_krb5_t *inst = instance;
 

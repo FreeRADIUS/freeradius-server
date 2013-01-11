@@ -227,7 +227,7 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
 }
 
 /* translate between function declarations */
-static int pam_auth(void *instance, REQUEST *request)
+static rlm_rcode_t pam_auth(void *instance, REQUEST *request)
 {
 	int	r;
 	VALUE_PAIR *pair;

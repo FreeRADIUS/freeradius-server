@@ -409,7 +409,7 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Common code called by everything below.
  */
-static int file_common(struct file_instance *inst, REQUEST *request,
+static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
 		       const char *filename, fr_hash_table_t *ht,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
@@ -513,7 +513,7 @@ static int file_common(struct file_instance *inst, REQUEST *request,
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static int file_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t file_authorize(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -527,7 +527,7 @@ static int file_authorize(void *instance, REQUEST *request)
  *	config_items. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static int file_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t file_preacct(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -536,7 +536,7 @@ static int file_preacct(void *instance, REQUEST *request)
 }
 
 #ifdef WITH_PROXY
-static int file_preproxy(void *instance, REQUEST *request)
+static rlm_rcode_t file_preproxy(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -545,7 +545,7 @@ static int file_preproxy(void *instance, REQUEST *request)
 			   request->packet->vps, &request->proxy->vps);
 }
 
-static int file_postproxy(void *instance, REQUEST *request)
+static rlm_rcode_t file_postproxy(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -555,7 +555,7 @@ static int file_postproxy(void *instance, REQUEST *request)
 }
 #endif
 
-static int file_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t file_authenticate(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -564,7 +564,7 @@ static int file_authenticate(void *instance, REQUEST *request)
 			   request->packet->vps, &request->reply->vps);
 }
 
-static int file_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t file_postauth(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 

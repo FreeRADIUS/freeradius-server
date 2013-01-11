@@ -310,7 +310,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
  *	Check for an Accounting-Stop
  *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.
  */
-static int ippool_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t ippool_accounting(void *instance, REQUEST *request)
 {
 	rlm_ippool_t *data = (rlm_ippool_t *)instance;
 	datum key_datum;
@@ -434,7 +434,7 @@ static int ippool_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static int ippool_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 {
 	rlm_ippool_t *data = (rlm_ippool_t *) instance;
 	int delete = 0;

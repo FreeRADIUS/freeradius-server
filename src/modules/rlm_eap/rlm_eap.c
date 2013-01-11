@@ -276,12 +276,12 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 /*
  *	For backwards compatibility.
  */
-static int eap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	EAP_HANDLER	*handler;
 	eap_packet_t	*eap_packet;
-	int		rcode;
+	rlm_rcode_t	rcode;
 
 	inst = (rlm_eap_t *) instance;
 
@@ -488,7 +488,7 @@ static int eap_authenticate(void *instance, REQUEST *request)
  * to check for user existance & get their configured values.
  * It Handles EAP-START Messages, User-Name initilization.
  */
-static int eap_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t eap_authorize(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	int		status;
@@ -563,7 +563,7 @@ static int eap_authorize(void *instance, REQUEST *request)
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static int eap_post_proxy(void *inst, REQUEST *request)
+static rlm_rcode_t eap_post_proxy(void *inst, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
@@ -581,7 +581,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 	 */
 	handler = request_data_get(request, inst, REQUEST_DATA_EAP_HANDLER);
 	if (handler != NULL) {
-		int		rcode;
+		rlm_rcode_t rcode;
 		eap_tunnel_data_t *data;
 
 		/*
@@ -722,7 +722,7 @@ static int eap_post_proxy(void *inst, REQUEST *request)
 }
 #endif
 
-static int eap_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t eap_post_auth(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst = instance;
 	VALUE_PAIR	*vp;

@@ -412,7 +412,7 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
     return ruby_function(NULL, data->func_instantiate, data->pModule_builtin, "instantiate");
 }
 
-#define RLM_RUBY_FUNC(foo) static int ruby_##foo(void *instance, REQUEST *request) \
+#define RLM_RUBY_FUNC(foo) static rlm_rcode_t ruby_##foo(void *instance, REQUEST *request) \
 { \
     return ruby_function(request, \
 			   ((struct rlm_ruby_t *)instance)->func_##foo,((struct rlm_ruby_t *)instance)->pModule_builtin, \

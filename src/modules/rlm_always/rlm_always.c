@@ -29,10 +29,10 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct rlm_always_t {
-	char	*rcode_str;
-	int	rcode;
-	int	simulcount;
-	int	mpp;
+	char		*rcode_str;
+	rlm_rcode_t	rcode;
+	int		simulcount;
+	int		mpp;
 } rlm_always_t;
 
 /*
@@ -55,7 +55,7 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static int str2rcode(const char *s)
+static rlm_rcode_t str2rcode(const char *s)
 {
 	if(!strcasecmp(s, "reject"))
 		return RLM_MODULE_REJECT;
@@ -78,7 +78,7 @@ static int str2rcode(const char *s)
 	else {
 		radlog(L_ERR|L_CONS,
 			"rlm_always: Unknown module rcode '%s'.\n", s);
-		return -1;
+		return RLM_MODULE_UNKNOWN;
 	}
 }
 
@@ -108,7 +108,7 @@ static int always_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
 	data->rcode = str2rcode(data->rcode_str);
-	if (data->rcode == -1) {
+	if (data->rcode == RLM_MODULE_UNKNOWN) {
 		free(data);
 		return -1;
 	}
@@ -122,11 +122,8 @@ static int always_instantiate(CONF_SECTION *conf, void **instance)
  *	Just return the rcode ... this function is autz, auth, acct, and
  *	preacct!
  */
-static int always_return(void *instance, REQUEST *request)
+static rlm_rcode_t always_return(void *instance, UNUSED REQUEST *request)
 {
-	/* quiet the compiler */
-	request = request;
-
 	return ((struct rlm_always_t *)instance)->rcode;
 }
 
@@ -134,7 +131,7 @@ static int always_return(void *instance, REQUEST *request)
 /*
  *	checksimul fakes some other variables besides the rcode...
  */
-static int always_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t always_checksimul(void *instance, REQUEST *request)
 {
 	struct rlm_always_t *inst = instance;
 

@@ -348,7 +348,7 @@ static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 /* assign new IP address, if required */
-static int sqlhpwippool_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	char *pname;       /* name of requested IP pool */
@@ -667,7 +667,7 @@ end_gid:
 	return RLM_MODULE_OK;
 }
 
-static int sqlhpwippool_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	SQLSOCK *sqlsock;

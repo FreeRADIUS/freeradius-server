@@ -58,7 +58,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *      Check if account has expired, and if user may login now.
  */
-static int expiration_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t expiration_authorize(void *instance, REQUEST *request)
 {
 	rlm_expiration_t *data = (rlm_expiration_t *)instance;
 	VALUE_PAIR *vp, *check_item = NULL;

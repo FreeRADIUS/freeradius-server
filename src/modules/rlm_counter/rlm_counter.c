@@ -169,7 +169,7 @@ static int counter_cmp(void *instance,
 }
 
 
-static int add_defaults(rlm_counter_t *inst)
+static rlm_rcode_t add_defaults(rlm_counter_t *inst)
 {
 	datum key_datum;
 	datum time_datum;
@@ -207,10 +207,10 @@ static int add_defaults(rlm_counter_t *inst)
 	return RLM_MODULE_OK;
 }
 
-static int reset_db(rlm_counter_t *inst)
+static rlm_rcode_t reset_db(rlm_counter_t *inst)
 {
 	int cache_size = inst->cache_size;
-	int ret;
+	rlm_rcode_t rcode;
 
 	DEBUG2("rlm_counter: reset_db: Closing database");
 	gdbm_close(inst->gdbm);
@@ -235,9 +235,9 @@ static int reset_db(rlm_counter_t *inst)
 	/*
 	 * Add defaults
 	 */
-	ret = add_defaults(inst);
-	if (ret != RLM_MODULE_OK)
-		return ret;
+	rcode = add_defaults(inst);
+	if (rcode != RLM_MODULE_OK)
+		return rcode;
 
 	DEBUG2("rlm_counter: reset_db ended");
 
@@ -574,14 +574,15 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Write accounting information to this modules database.
  */
-static int counter_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t counter_accounting(void *instance, REQUEST *request)
 {
 	rlm_counter_t *inst = instance;
 	datum key_datum;
 	datum count_datum;
 	VALUE_PAIR *key_vp, *count_vp, *proto_vp, *uniqueid_vp;
 	rad_counter counter;
-	int rcode;
+	rlm_rcode_t rcode;
+	int ret;
 	int acctstatustype = 0;
 	time_t diff;
 
@@ -604,16 +605,14 @@ static int counter_accounting(void *instance, REQUEST *request)
 	 *	the counters.
 	 */
 	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
-		int ret;
-
 		DEBUG("rlm_counter: Time to reset the database.");
 		inst->last_reset = inst->reset_time;
 		find_next_reset(inst,request->timestamp);
 		pthread_mutex_lock(&inst->mutex);
-		ret = reset_db(inst);
+		rcode = reset_db(inst);
 		pthread_mutex_unlock(&inst->mutex);
-		if (ret != RLM_MODULE_OK)
-			return ret;
+		if (rcode != RLM_MODULE_OK)
+			return rcode;
 	}
 	/*
 	 * Check if we need to watch out for a specific service-type. If yes then check it
@@ -731,9 +730,9 @@ static int counter_accounting(void *instance, REQUEST *request)
 
 	DEBUG("rlm_counter: Storing new value in database.");
 	pthread_mutex_lock(&inst->mutex);
-	rcode = gdbm_store(inst->gdbm, key_datum, count_datum, GDBM_REPLACE);
+	ret = gdbm_store(inst->gdbm, key_datum, count_datum, GDBM_REPLACE);
 	pthread_mutex_unlock(&inst->mutex);
-	if (rcode < 0) {
+	if (ret < 0) {
 		radlog(L_ERR, "rlm_counter: Failed storing data to %s: %s",
 				inst->filename, gdbm_strerror(gdbm_errno));
 		return RLM_MODULE_FAIL;
@@ -749,10 +748,10 @@ static int counter_accounting(void *instance, REQUEST *request)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int counter_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t counter_authorize(void *instance, REQUEST *request)
 {
 	rlm_counter_t *inst = instance;
-	int ret=RLM_MODULE_NOOP;
+	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 	datum key_datum;
 	datum count_datum;
 	rad_counter counter;
@@ -770,15 +769,15 @@ static int counter_authorize(void *instance, REQUEST *request)
 	 *	the counters.
 	 */
 	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
-		int ret2;
+		rlm_rcode_t rcode2;
 
 		inst->last_reset = inst->reset_time;
 		find_next_reset(inst,request->timestamp);
 		pthread_mutex_lock(&inst->mutex);
-		ret2 = reset_db(inst);
+		rcode2 = reset_db(inst);
 		pthread_mutex_unlock(&inst->mutex);
-		if (ret2 != RLM_MODULE_OK)
-			return ret2;
+		if (rcode2 != RLM_MODULE_OK)
+			return rcode2;
 	}
 
 
@@ -790,7 +789,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	key_vp = (inst->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, inst->key_attr, 0, TAG_ANY);
 	if (key_vp == NULL) {
 		DEBUG2("rlm_counter: Could not find Key value pair");
-		return ret;
+		return rcode;
 	}
 
 	/*
@@ -798,7 +797,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 	 */
 	if ((check_vp= pairfind(request->config_items, inst->check_attr, 0, TAG_ANY)) == NULL) {
 		DEBUG2("rlm_counter: Could not find Check item value pair");
-		return ret;
+		return rcode;
 	}
 
 	key_datum.dptr = key_vp->vp_strvalue;
@@ -879,7 +878,7 @@ static int counter_authorize(void *instance, REQUEST *request)
 			}
 		}
 
-		ret=RLM_MODULE_OK;
+		rcode = RLM_MODULE_OK;
 
 		DEBUG2("rlm_counter: (Check item - counter) is greater than zero");
 		DEBUG2("rlm_counter: Authorized user %s, check_item=%d, counter=%d",
@@ -902,13 +901,13 @@ static int counter_authorize(void *instance, REQUEST *request)
 		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
 		pairadd(&request->packet->vps, module_fmsg_vp);
 
-		ret=RLM_MODULE_REJECT;
+		rcode = RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_counter: Rejected user %s, check_item=%d, counter=%d",
 				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
 	}
 
-	return ret;
+	return rcode;
 }
 
 static int counter_detach(void *instance)

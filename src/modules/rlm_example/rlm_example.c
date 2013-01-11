@@ -103,7 +103,7 @@ static int example_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int example_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t example_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
 	VALUE_PAIR *reply;
@@ -143,7 +143,7 @@ static int example_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static int example_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t example_authenticate(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -155,7 +155,7 @@ static int example_authenticate(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static int example_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t example_preacct(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -167,7 +167,7 @@ static int example_preacct(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static int example_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t example_accounting(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -186,7 +186,7 @@ static int example_accounting(void *instance, REQUEST *request)
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static int example_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t example_checksimul(void *instance, REQUEST *request)
 {
   instance = instance;
 

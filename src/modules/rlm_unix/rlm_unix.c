@@ -320,7 +320,7 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static int unix_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t unix_authorize(void *instance, REQUEST *request)
 {
 	return unix_getpw(instance, request, &request->config_items);
 }
@@ -329,7 +329,7 @@ static int unix_authorize(void *instance, REQUEST *request)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static int unix_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t unix_authenticate(void *instance, REQUEST *request)
 {
 #ifdef OSFSIA
 	char		*info[2];
@@ -410,7 +410,7 @@ static char *uue(void *in)
 /*
  *	Unix accounting - write a wtmp file.
  */
-static int unix_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t unix_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
 	FILE		*fp;

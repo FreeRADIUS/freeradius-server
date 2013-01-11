@@ -848,7 +848,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int perl_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t perl_authorize(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			    ((PERL_INST *)instance)->func_authorize);
@@ -857,7 +857,7 @@ static int perl_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static int perl_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t perl_authenticate(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			    ((PERL_INST *)instance)->func_authenticate);
@@ -865,7 +865,7 @@ static int perl_authenticate(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static int perl_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t perl_preacct(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			    ((PERL_INST *)instance)->func_preacct);
@@ -873,7 +873,7 @@ static int perl_preacct(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static int perl_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t perl_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*pair;
 	int 		acctstatustype=0;
@@ -917,7 +917,7 @@ static int perl_accounting(void *instance, REQUEST *request)
 /*
  *	Check for simultaneouse-use
  */
-static int perl_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t perl_checksimul(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_checksimul);
@@ -927,7 +927,7 @@ static int perl_checksimul(void *instance, REQUEST *request)
 /*
  *	Pre-Proxy request
  */
-static int perl_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t perl_pre_proxy(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_pre_proxy);
@@ -935,7 +935,7 @@ static int perl_pre_proxy(void *instance, REQUEST *request)
 /*
  *	Post-Proxy request
  */
-static int perl_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t perl_post_proxy(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_post_proxy);
@@ -945,7 +945,7 @@ static int perl_post_proxy(void *instance, REQUEST *request)
 /*
  *	Pre-Auth request
  */
-static int perl_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t perl_post_auth(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_post_auth);
@@ -954,7 +954,7 @@ static int perl_post_auth(void *instance, REQUEST *request)
 /*
  *	Recv CoA request
  */
-static int perl_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t perl_recv_coa(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_recv_coa);
@@ -962,7 +962,7 @@ static int perl_recv_coa(void *instance, REQUEST *request)
 /*
  *	Send CoA request
  */
-static int perl_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t perl_send_coa(void *instance, REQUEST *request)
 {
 	return rlmperl_call(instance, request,
 			((PERL_INST *)instance)->func_send_coa);

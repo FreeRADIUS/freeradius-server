@@ -222,7 +222,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 	return rcode;
 }
 #else
-static int replicate_packet(void *instance, REQUEST *request,
+static rlm_rcode_t replicate_packet(void *instance, REQUEST *request,
 			    pair_lists_t list, unsigned int code)
 {
 	RDEBUG("Replication is unsupported in this build.");
@@ -230,43 +230,43 @@ static int replicate_packet(void *instance, REQUEST *request,
 }
 #endif
 
-static int replicate_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t replicate_authorize(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
 				request->packet->code);
 }
 
-static int replicate_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t replicate_preaccounting(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
 				request->packet->code);
 }
 
-static int replicate_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t replicate_accounting(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REPLY,
 				request->reply->code);
 }
 
-static int replicate_preproxy(void *instance, REQUEST *request)
+static rlm_rcode_t replicate_preproxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST,
 				request->proxy->code);
 }
 
-static int replicate_postproxy(void *instance, REQUEST *request)
+static rlm_rcode_t replicate_postproxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REPLY,
 				request->proxy_reply->code);
 }
 
-static int replicate_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t replicate_postauth(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REPLY,
 				request->reply->code);
 }
 
-static int replicate_coarequest(void *instance, REQUEST *request)
+static rlm_rcode_t replicate_coarequest(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
 				request->packet->code);

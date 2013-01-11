@@ -985,7 +985,8 @@ free_urldesc:
 }
 
 
-static char *get_userdn(LDAP_CONN **pconn, REQUEST *request, int *module_rcode)
+static char *get_userdn(LDAP_CONN **pconn, REQUEST *request,
+			rlm_rcode_t *module_rcode)
 {
 	int		rcode;
 	VALUE_PAIR	*vp;
@@ -1079,7 +1080,8 @@ static int ldap_groupcmp(void *instance, REQUEST *request,
 			 UNUSED VALUE_PAIR **reply_pairs)
 {
 	ldap_instance   *inst = instance;
-	int		i, rcode, found, module_rcode;
+	int		i, rcode, found;
+	rlm_rcode_t	module_rcode;
 	LDAPMessage     *result = NULL;
 	LDAPMessage     *entry = NULL;
 	int		ldap_errno;
@@ -1824,7 +1826,7 @@ free_result:
 /** Check if user is authorized for remote access
  *
  */
-static int ldap_authorize(void *instance, REQUEST * request)
+static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
 {
 	int rcode;
 	int module_rcode = RLM_MODULE_OK;
@@ -2041,9 +2043,9 @@ free_socket:
 /** Check the user's password against ldap database
  *
  */
-static int ldap_authenticate(void *instance, REQUEST * request)
+static rlm_rcode_t ldap_authenticate(void *instance, REQUEST * request)
 {
-	int		module_rcode;
+	rlm_rcode_t	module_rcode;
 	const char	*user_dn;
 	ldap_instance	*inst = instance;
 	LDAP_CONN	*conn;
@@ -2117,10 +2119,10 @@ static int ldap_authenticate(void *instance, REQUEST * request)
 /** Modify user's object in LDAP
  *
  */
-static int user_modify(ldap_instance *inst, REQUEST *request,
-		       ldap_acct_section_t *section)
+static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
+			       ldap_acct_section_t *section)
 {
-	int		module_rcode = RLM_MODULE_OK;
+	rlm_rcode_t	module_rcode = RLM_MODULE_OK;
 	int		ldap_errno, rcode, msg_id;
 	LDAPMessage	*result = NULL;
 	
@@ -2406,7 +2408,7 @@ static int user_modify(ldap_instance *inst, REQUEST *request,
 }
 
 
-static int ldap_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t ldap_accounting(void *instance, REQUEST * request) {
 	ldap_instance *inst = instance;		
 
 	if (inst->accounting) {
@@ -2420,7 +2422,7 @@ static int ldap_accounting(void *instance, REQUEST * request) {
 /** Check the user's password against ldap database
  *
  */
-static int ldap_postauth(void *instance, REQUEST * request)
+static rlm_rcode_t ldap_postauth(void *instance, REQUEST * request)
 {
 	ldap_instance	*inst = instance;
 

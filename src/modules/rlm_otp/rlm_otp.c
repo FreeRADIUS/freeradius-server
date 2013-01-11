@@ -168,8 +168,7 @@ otp_instantiate(CONF_SECTION *conf, void **instance)
 
 
 /* Generate a challenge to be presented to the user. */
-static int
-otp_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 {
   otp_option_t *inst = (otp_option_t *) instance;
 
@@ -276,8 +275,7 @@ otp_authorize(void *instance, REQUEST *request)
 
 
 /* Verify the response entered by the user. */
-static int
-otp_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 {
   otp_option_t *inst = (otp_option_t *) instance;
 

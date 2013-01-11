@@ -225,7 +225,7 @@ static size_t linelog_escape_func(UNUSED REQUEST *request,
 	return len;
 }
 
-static int do_linelog(void *instance, REQUEST *request)
+static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 {
 	int fd = -1;
 	char buffer[4096];

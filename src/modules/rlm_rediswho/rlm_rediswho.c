@@ -199,9 +199,9 @@ static int rediswho_accounting_all(REDISSOCK **dissocket_p,
 	return RLM_MODULE_OK;
 }
 
-static int rediswho_accounting(void * instance, REQUEST * request)
+static rlm_rcode_t rediswho_accounting(void * instance, REQUEST * request)
 {
-	int rcode;
+	rlm_rcode_t rcode;
 	VALUE_PAIR * vp;
 	DICT_VALUE *dv;
 	CONF_SECTION *cs;

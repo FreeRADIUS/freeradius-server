@@ -298,7 +298,7 @@ static int rlm_dbm_instantiate(CONF_SECTION *conf, void **instance) {
 	*instance = inst;
 	return 0;
 }
-static int rlm_dbm_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t rlm_dbm_authorize(void *instance, REQUEST *request)
 {
         VALUE_PAIR      *namepair;
         VALUE_PAIR      *request_pairs;

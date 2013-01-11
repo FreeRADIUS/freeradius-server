@@ -154,50 +154,50 @@ policy_named_t *rlm_policy_find(rbtree_t *head, const char *name)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static int policy_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t policy_authorize(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "authorize");
 }
 
 
-static int policy_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t policy_preacct(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "preacct");
 }
 
-static int policy_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t policy_accounting(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "accounting");
 }
 
-static int policy_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t policy_post_auth(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "post-auth");
 }
 
-static int policy_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t policy_pre_proxy(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "pre-proxy");
 }
 
-static int policy_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t policy_post_proxy(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "post-proxy");
 }
 
 #ifdef WITH_COA
-static int policy_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t policy_recv_coa(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "recv-coa");
 }
-static int policy_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t policy_send_coa(void *instance, REQUEST *request)
 {
 	return rlm_policy_evaluate((rlm_policy_t *) instance, request,
 				   "send-coa");

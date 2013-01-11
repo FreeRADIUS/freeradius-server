@@ -109,7 +109,7 @@ static int sim_file_instantiate(CONF_SECTION *conf, void **instance)
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static int sim_file_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*reply_tmp;

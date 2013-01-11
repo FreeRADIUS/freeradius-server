@@ -529,7 +529,7 @@ static int do_logging(char *str, int retcode)
 /*
  *	Allocate an IP number from the pool.
  */
-static int sqlippool_postauth(void *instance, REQUEST * request)
+static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 {
 	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
 	char allocation[MAX_STRING_LEN];
@@ -823,7 +823,7 @@ static int sqlippool_accounting_off(SQLSOCK * sqlsocket,
  *	If we find one and we have allocated an IP to this nas/port
  *	combination, then deallocate it.
  */
-static int sqlippool_accounting(void * instance, REQUEST * request)
+static rlm_rcode_t sqlippool_accounting(void * instance, REQUEST * request)
 {
 	int rcode;
 	VALUE_PAIR * vp;

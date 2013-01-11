@@ -146,8 +146,8 @@ static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	A lie!  It always returns!
  */
-static int sometimes_return(void *instance, RADIUS_PACKET *packet,
-			    RADIUS_PACKET *reply)
+static rlm_rcode_t sometimes_return(void *instance, RADIUS_PACKET *packet,
+				    RADIUS_PACKET *reply)
 {
 	uint32_t hash;
 	int value;
@@ -207,24 +207,24 @@ static int sometimes_return(void *instance, RADIUS_PACKET *packet,
 	return inst->rcode;
 }
 
-static int sometimes_packet(void *instance, REQUEST *request)
+static rlm_rcode_t sometimes_packet(void *instance, REQUEST *request)
 {
 	return sometimes_return(instance, request->packet, request->reply);
 }
 
-static int sometimes_reply(void *instance, REQUEST *request)
+static rlm_rcode_t sometimes_reply(void *instance, REQUEST *request)
 {
 	return sometimes_return(instance, request->reply, NULL);
 }
 
-static int sometimes_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t sometimes_pre_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy) return RLM_MODULE_NOOP;
 
 	return sometimes_return(instance, request->proxy, request->proxy_reply);
 }
 
-static int sometimes_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t sometimes_post_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 

@@ -248,7 +248,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
  *	This isn't strictly necessary, but it does make the
  *	server simpler to configure.
  */
-static int pap_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 {
 	rlm_pap_t *inst = instance;
 	int auth_type = FALSE;
@@ -452,12 +452,12 @@ static int pap_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static int pap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t pap_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
-	int rc = RLM_MODULE_INVALID;
+	rlm_rcode_t rc = RLM_MODULE_INVALID;
 	int (*auth_func)(REQUEST *, VALUE_PAIR *, char *) = NULL;
 
 	/* Shut the compiler up */

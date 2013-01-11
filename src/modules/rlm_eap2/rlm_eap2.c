@@ -857,13 +857,13 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 /*
  *	Do EAP.
  */
-static int eap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	EAP_HANDLER	*handler;
 	void		*data;
 	int		data_len;
-	int		rcode;
+	rlm_rcode_t	rcode;
 	VALUE_PAIR	*vp;
 
 	inst = (rlm_eap_t *) instance;

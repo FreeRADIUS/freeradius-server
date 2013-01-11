@@ -30,7 +30,7 @@ RCSID("$Id$")
 /*
  *	Reject any non-UTF8 data.
  */
-static int utf8_clean(void *instance, REQUEST *request)
+static rlm_rcode_t utf8_clean(void *instance, REQUEST *request)
 {
 	size_t i, len;
 	VALUE_PAIR *vp, *next;

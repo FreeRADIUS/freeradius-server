@@ -708,7 +708,7 @@ static int cache_file(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static int radutmp_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
 {
 	rlm_radutmp_t	*inst = instance;
 	struct radutmp	utmp, u;
@@ -1292,7 +1292,7 @@ static int radutmp_accounting(void *instance, REQUEST *request)
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static int radutmp_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t radutmp_checksimul(void *instance, REQUEST *request)
 {
 	struct radutmp	u;
 	int		fd;

@@ -433,7 +433,7 @@ static int securid_detach(void *instance)
 }
 
 
-static int securid_instantiate(CONF_SECTION *conf, void **instance)
+static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_securid_t *inst;
 

@@ -926,7 +926,8 @@ static int read_request(JRADIUS *inst, JRSOCK *jrsock, REQUEST *p)
   return 0;
 }
 
-static int rlm_jradius_call(char func, void *instance, REQUEST *req, int isproxy)
+static rlm_rcode_t rlm_jradius_call(char func, void *instance, REQUEST *req,
+				    int isproxy)
 {
   JRADIUS        * inst    = instance;
   RADIUS_PACKET  * request = req->packet;
@@ -1054,52 +1055,52 @@ static int rlm_jradius_call(char func, void *instance, REQUEST *req, int isproxy
   return exitstatus;
 }
 
-static int jradius_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_authenticate(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_authenticate, instance, request, 0);
 }
 
-static int jradius_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_authorize(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_authorize, instance, request, 0);
 }
 
-static int jradius_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_preacct(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_preacct, instance, request, 0);
 }
 
-static int jradius_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_accounting(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_accounting, instance, request, 0);
 }
 
-static int jradius_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_checksimul(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_checksimul, instance, request, 0);
 }
 
-static int jradius_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_pre_proxy(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_pre_proxy, instance, request, 1);
 }
 
-static int jradius_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_post_proxy(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_post_proxy, instance, request, 1);
 }
 
-static int jradius_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_post_auth(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_post_auth, instance, request, 0);
 }
 
 #ifdef WITH_COA
-static int jradius_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_recv_coa(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_recv_coa, instance, request, 0);
 }
-static int jradius_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t jradius_send_coa(void *instance, REQUEST *request)
 {
   return rlm_jradius_call(JRADIUS_send_coa, instance, request, 0);
 }
