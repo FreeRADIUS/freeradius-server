@@ -62,9 +62,9 @@ typedef enum rlm_components {
  * attributes.
  */
 typedef struct section_type_value_t {
-        const char      *section;
-        const char      *typename;
-        int             attr;
+        const char      *section;	//!< Section name e.g. "Authorize".
+        const char      *typename;	//!< Type name e.g. "Auth-Type".
+        int             attr;		//!< Attribute number.
 } section_type_value_t;
 
 /** Mappings between section names, typenames and control attributes
@@ -73,15 +73,19 @@ typedef struct section_type_value_t {
  */
 extern const section_type_value_t section_type_value[];
 
-#define RLM_TYPE_THREAD_SAFE		(0 << 0) //!< Module is threadsafe.
-#define RLM_TYPE_THREAD_UNSAFE		(1 << 0) //!< Module is not threadsafe,
-						 //!< server will protect calls
-						 //!< with mutex.
-#define RLM_TYPE_CHECK_CONFIG_SAFE	(1 << 1) //!< Is ok to instantiate 
-						 //!< module when server is
-						 //!< started with -C.
-#define RLM_TYPE_HUP_SAFE		(1 << 2) //!< Module can be
-						 //!< re-instantiated on HUP.
+#define RLM_TYPE_THREAD_SAFE	(0 << 0) 	//!< Module is threadsafe.
+#define RLM_TYPE_THREAD_UNSAFE	(1 << 0) 	//!< Module is not threadsafe. 
+						//!< Server will protect calls 
+						//!< with mutex.
+#define RLM_TYPE_CHECK_CONFIG_SAFE (1 << 1) 	//!< Instantiate module on -C.
+						//!< Module will be
+						//!< instantiated if the server
+						//!< is started in config
+						//!< check mode.
+#define RLM_TYPE_HUP_SAFE	(1 << 2) 	//!< Will be restarted on HUP.
+						//!< Server will instantiated
+						//!< new instance, and then 
+						//!< destroy old instance.
 
 #define RLM_MODULE_MAGIC_NUMBER ((uint32_t) (0xf4ee4ad3))
 #define RLM_MODULE_INIT RLM_MODULE_MAGIC_NUMBER
@@ -137,7 +141,7 @@ typedef struct module_t {
 	detach_t	detach;	//!< Function to use to free module instance.
 	packetmethod	methods[RLM_COMPONENT_COUNT]; //!< Pointers to the
 				//!< various section functions, ordering
-				//!< determined which function is mapped to
+				//!< determines which function is mapped to
 				//!< which section.
 						      
 } module_t;
