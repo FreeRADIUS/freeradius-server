@@ -378,6 +378,7 @@ static int cache_verify(rlm_cache_t *inst)
 
 		cp = cf_itemtopair(ci);
 		attr = p = cf_pair_attr(cp);
+		op = cf_pair_operator(cp);
 		
 		list = radius_list_name(&p, PAIR_LIST_REQUEST);
 		
