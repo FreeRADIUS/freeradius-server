@@ -647,9 +647,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	if (radius_get_vp(request, fmt, &vp) < 0) goto nothing;
-
-	if (!vp) goto nothing;
+	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) goto nothing;
 
 	if (vp->type != PW_TYPE_OCTETS) goto nothing;
 
@@ -675,9 +673,7 @@ static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	if (radius_get_vp(request, fmt, &vp) < 0) goto nothing;
-
-	if (!vp) goto nothing;
+	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) goto nothing;
 
 	return radius_xlat(out, outlen, vp->vp_strvalue, request, NULL, NULL);
 }
