@@ -946,6 +946,9 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 #endif
 	}
 	
+	RDEBUG("WARNING: Specified list \"%s\" is not available in "
+	       "this context", fr_int2str(pair_lists, list, "¿unknown?"));
+	
 	return NULL;
 }
 
@@ -1008,13 +1011,13 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  * Resolve name to a current request.
  *
  * @see radius_list
- * @param[in,out] request to use as context, and to write result to.
+ * @param[in,out] context Base context to use, and to write the result back to.
  * @param[in] name (request) to resolve to.
  * @return 0 if request is valid in this context, else -1.
  */
-int radius_request(REQUEST **request, request_refs_t name)
+int radius_request(REQUEST **context, request_refs_t name)
 {
-	rad_assert(request && *request);
+	REQUEST *request = *context;
 	
 	switch (name) {
 		case REQUEST_CURRENT:
@@ -1022,11 +1025,15 @@ int radius_request(REQUEST **request, request_refs_t name)
 		
 		case REQUEST_PARENT:	/* for future use in request chaining */
 		case REQUEST_OUTER:
-			if (!(*request)->parent) {
+			if (!request->parent) {
+				RDEBUG("WARNING: Specified request \"%s\" is "
+				       "not available in this context",
+				       fr_int2str(request_refs, name,
+		       				  "¿unknown?"));
 				return FALSE;
 			}
 			
-			*request = (*request)->parent;
+			*context = request->parent;
 			
 			break;
 	
@@ -1078,7 +1085,7 @@ request_refs_t radius_request_name(const char **name, request_refs_t unknown)
  *
  * @param[in,out] tmpl to free.
  */
-void radius_tmplfree(VALUE_PAIR_TMPL **tmpl)
+void radius_tmplfree(value_pair_tmpl_t **tmpl)
 {
 	if (*tmpl == NULL) return;
 	
@@ -1091,7 +1098,7 @@ void radius_tmplfree(VALUE_PAIR_TMPL **tmpl)
 	*tmpl = NULL;
 }
 
-/** Parse qualifiers to convert attrname into a VALUE_PAIR_TMPL.
+/** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
  *
  * VPTs are used in various places where we need to pre-parse configuration 
  * sections into attribute mappings.
@@ -1107,7 +1114,7 @@ void radius_tmplfree(VALUE_PAIR_TMPL **tmpl)
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return -1 on error or 0 on success.
  */
-int radius_parse_attr(const char *name, VALUE_PAIR_TMPL *vpt,
+int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 		      request_refs_t request_def,
 		      pair_lists_t list_def)
 {
@@ -1151,7 +1158,7 @@ int radius_parse_attr(const char *name, VALUE_PAIR_TMPL *vpt,
 	return 0;
 }
 
-/** Parse qualifiers to convert attrname into a VALUE_PAIR_TMPL.
+/** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
  *
  * VPTs are used in various places where we need to pre-parse configuration 
  * sections into attribute mappings.
@@ -1160,18 +1167,17 @@ int radius_parse_attr(const char *name, VALUE_PAIR_TMPL *vpt,
  * @param[in] request_def The default request to insert unqualified 
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return pointer to a VALUE_PAIR_TMPL struct (must be freed with 
+ * @return pointer to a value_pair_tmpl_t struct (must be freed with 
  *	radius_tmplfree) or NULL on error.
  */
-VALUE_PAIR_TMPL *radius_attr2tmpl(const char *name,
-				  request_refs_t request_def,
-		     		  pair_lists_t list_def)
+value_pair_tmpl_t *radius_attr2tmpl(const char *name,
+				    request_refs_t request_def,
+				    pair_lists_t list_def)
 {
-	VALUE_PAIR_TMPL *vpt;
+	value_pair_tmpl_t *vpt;
 	const char *copy = strdup(name);
 	
-	vpt = rad_malloc(sizeof(VALUE_PAIR_TMPL));
-	memset(vpt, 0, sizeof(VALUE_PAIR_TMPL));
+	vpt = rad_calloc(sizeof(value_pair_tmpl_t));
 	
 	if (radius_parse_attr(copy, vpt, request_def, list_def) < 0) {
 		radius_tmplfree(&vpt);
@@ -1181,19 +1187,32 @@ VALUE_PAIR_TMPL *radius_attr2tmpl(const char *name,
 	return vpt;
 }
 
-/** Convert module specific attribute id to VALUE_PAIR_TMPL.
+/** Convert module specific attribute id to value_pair_tmpl_t.
  *
  * @param[in] name string to convert.
  * @return pointer to new VPT.
  */
-VALUE_PAIR_TMPL *radius_str2tmpl(const char *name)
+value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type)
 {
-	VALUE_PAIR_TMPL *vpt;
+	value_pair_tmpl_t *vpt;
 	
-	vpt = rad_malloc(sizeof(VALUE_PAIR_TMPL));
-	memset(vpt, 0, sizeof(VALUE_PAIR_TMPL));
-
+	vpt = rad_calloc(sizeof(value_pair_tmpl_t));
 	vpt->name = strdup(name);
+	
+	switch (type)
+	{
+		case T_BARE_WORD:
+		case T_SINGLE_QUOTED_STRING:
+			vpt->do_xlat = FALSE;
+		break;
+		case T_BACK_QUOTED_STRING:
+		case T_DOUBLE_QUOTED_STRING:
+			vpt->do_xlat = TRUE;		
+		break;
+		default:
+			rad_assert(0);
+			return NULL;
+	}
 	
 	return vpt;
 }
@@ -1202,9 +1221,9 @@ VALUE_PAIR_TMPL *radius_str2tmpl(const char *name)
  *
  * @param map Head of the map linked list.
  */
-void radius_mapfree(VALUE_PAIR_MAP **map)
+void radius_mapfree(value_pair_map_t **map)
 {
-	VALUE_PAIR_MAP *next, *vpm;
+	value_pair_map_t *next, *vpm;
 	
 	if (!map) return;
 	
@@ -1223,14 +1242,14 @@ void radius_mapfree(VALUE_PAIR_MAP **map)
 	*map = NULL;
 }
 
-/** Convert CONFIG_PAIR to VALUE_PAIR_MAP.
+/** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
  *
- * Treats the left operand as a
- * @verbatim<request>.<list>.<attribute>@endverbatim reference and the right
- * operand as a module specific value.
+ * Treats the left operand as an attribute reference
+ * @verbatim<request>.<list>.<attribute>@endverbatim 
  *
- * The left operand will be pre-parsed into request ref, dst list, and da,
- * the right operand will be left as a string.
+ * Treatment of left operand depends on quotation, barewords are treated as
+ * attribute references, double quoted values are treated as expandable strings,
+ * single quoted values are treated as literal strings.
  *
  * Return must be freed with radius_mapfree.
  *
@@ -1238,60 +1257,47 @@ void radius_mapfree(VALUE_PAIR_MAP **map)
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return VALUE_PAIR_MAP if successful or NULL on error.
+ * @return value_pair_map_t if successful or NULL on error.
  */
-VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
-			      pair_lists_t list_def)
+value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
+				request_refs_t dst_request_def,
+				pair_lists_t dst_list_def,
+				request_refs_t src_request_def,
+				pair_lists_t src_list_def)
 {
-	VALUE_PAIR_MAP *map;
+	value_pair_map_t *map;
 	const char *attr;
 	const char *value;
+	FR_TOKEN type;
 	
-	map = rad_malloc(sizeof(VALUE_PAIR_MAP));
-	memset(map, 0, sizeof(VALUE_PAIR_MAP));
-     
-	attr = cf_pair_attr(cp);
-	
-	map->dst = radius_attr2tmpl(attr, request_def, list_def);
-	if (!map->dst){
-		goto error;
-	}
+	map = rad_calloc(sizeof(value_pair_map_t));
 
+	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
 	if (!value) {
-		radlog(L_ERR, "Missing attribute name");
+		cf_log_err(cf_pairtoitem(cp), "Missing attribute value");
 		
 		goto error;
 	}
 	
-	map->src = radius_str2tmpl(value);
+	map->dst = radius_attr2tmpl(attr, dst_request_def, dst_list_def);
+	if (!map->dst){
+		goto error;
+	}
+
+	/*
+	 *	Bare words always mean attribute references.
+	 */
+	type = cf_pair_value_type(cp);
+	map->src = type == T_BARE_WORD ?
+		   radius_attr2tmpl(value, src_request_def, src_list_def) :
+		   radius_str2tmpl(value, type);
+
 	if (!map->src) {
 		goto error;
 	}
-	
-	map->op_token = cf_pair_operator(cp);
-	
-	/*
-	 *	Infer whether we need to expand the mapping values
-	 *	The old style attribute map allowed the user to specify
-	 *	whether the LDAP value should be expanded. 
-	 *	We can't really support that easily, but equivalent
-	 *	functionality should be available with %{eval:}
-	 */
-	switch (cf_pair_value_type(cp))
-	{
-		case T_BARE_WORD:
-		case T_SINGLE_QUOTED_STRING:
-			map->src->do_xlat = FALSE;
-		break;
-		case T_BACK_QUOTED_STRING:
-		case T_DOUBLE_QUOTED_STRING:
-			map->src->do_xlat = TRUE;		
-		break;
-		default:
-			rad_assert(0);
-			goto error;
-	}
+
+	map->op = cf_pair_operator(cp);
 	
 	return map;
 	
@@ -1300,9 +1306,89 @@ VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
 		return NULL;
 }
 
-/** Convert VALUE_PAIR_MAP to VALUE_PAIR(s) and add them to a REQUEST.
+/** Convert an 'update' config section into an attribute map.
  *
- * Takes a single VALUE_PAIR_MAP, resolves request and list identifiers
+ * Uses 'name2' of section to set default request and lists.
+ *
+ * @param[in] cs to convert to map.
+ * @param[out] head Where to store the head of the map.
+ * @param[in] dst_list_def The default destination list, usually dictated by 
+ * 	the section the module is being called in.
+ * @param[in] src_list_def The default source list, usually dictated by the
+ *	section the module is being called in.
+ * @return -1 on error, else 0.
+ */
+int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
+		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
+		   unsigned int max)
+{
+	const char *cs_list, *p;
+
+	request_refs_t request_def = REQUEST_CURRENT;
+
+	CONF_ITEM *ci = cf_sectiontoitem(cs);
+	CONF_PAIR *cp;
+
+	unsigned int total = 0;
+	value_pair_map_t **tail, *map;
+	*head = NULL;
+	tail = head;
+	
+	if (!cs) return 0;
+	
+	cs_list = p = cf_section_name2(cs);
+	if (cs_list) {
+		request_def = radius_request_name(&p, REQUEST_UNKNOWN);
+		if (request_def == REQUEST_UNKNOWN) {
+			cf_log_err(ci, "Default request specified "
+				   "in mapping section is invalid");
+			return -1;
+		}
+		
+		dst_list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
+		if (dst_list_def == PAIR_LIST_UNKNOWN) {
+			cf_log_err(ci, "Default list \"%s\" specified "
+				   "in mapping section is invalid", p);
+			return -1;
+		}
+	}
+
+	for (ci = cf_item_find_next(cs, NULL);
+	     ci != NULL;
+	     ci = cf_item_find_next(cs, ci)) {
+	     	if (total++ == max) {
+	     		cf_log_err(ci, "Map size exceeded");
+	     		goto error;
+	     	}
+	     	
+		if (!cf_item_is_pair(ci)) {
+			cf_log_err(ci, "Entry is not in \"attribute = "
+				       "value\" format");
+			goto error;
+		}
+	
+		cp = cf_itemtopair(ci);
+		map = radius_cp2map(cp, request_def, dst_list_def,
+				    REQUEST_CURRENT, src_list_def);
+		if (!map) {
+			goto error;
+		}
+		
+		*tail = map;
+		tail = &(map->next);
+	}
+
+	return 0;
+	
+	error:
+		radius_mapfree(head);
+		return -1;
+}
+
+
+/** Convert value_pair_map_t to VALUE_PAIR(s) and add them to a REQUEST.
+ *
+ * Takes a single value_pair_map_t, resolves request and list identifiers
  * to pointers in the current request, the attempts to retrieve module
  * specific value(s) using callback, and adds the resulting values to the
  * correct request/list.
@@ -1316,14 +1402,14 @@ VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
  * @return -1 if either attribute or qualifier weren't valid in this context
  *	or callback returned NULL pointer, else 0.
  */
-int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
+int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 		       const char *src, radius_tmpl_getvalue_t func, void *ctx)
 {
 	VALUE_PAIR **list, *vp, *head;
 	char buffer[MAX_STRING_LEN];
 	
 	if (radius_request(&request, map->dst->request) < 0) {
-		RDEBUG("WARNING: Request in mapping \"%s\" -> \"%s\" "
+		RDEBUG("WARNING: Mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
 		       map->src->name, map->dst->name);
 		
@@ -1332,20 +1418,20 @@ int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
 	
 	list = radius_list(request, map->dst->list);
 	if (!list) {
-		RDEBUG("WARNING: List in mapping \"%s\" -> \"%s\" "
+		RDEBUG("WARNING: Mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
 		       map->src->name, map->dst->name);
 		       
 		return -1;
 	}
 	
-	head = func(request, map->dst, ctx);
+	head = func(request, map, ctx);
 	if (head == NULL) {
 		return -1;
 	}
 	
 	for (vp = head; vp != NULL; vp = vp->next) {
-		vp->operator = map->op_token;
+		vp->operator = map->op;
 		
 		if (debug_flag) {
 			vp_prints_value(buffer, sizeof(buffer), vp, 1);
@@ -1375,7 +1461,7 @@ int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
  */
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 {
-	VALUE_PAIR_TMPL vpt;
+	value_pair_tmpl_t vpt;
 	VALUE_PAIR **vps;
 
 	*vp_p = NULL;
@@ -1386,19 +1472,11 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	}
 	
 	if (radius_request(&request, vpt.request) < 0) {
-		RDEBUG("WARNING: Specified request \"%s\" is not available in "
-		       "this context", fr_int2str(request_refs, vpt.request,
-		       				  "¿unknown?"));
-		       
 		return 0;
 	}
 	
 	vps = radius_list(request, vpt.list);
-	if (!vps) {
-		RDEBUG("WARNING: Specified list \"%s\" is not available in "
-		       "this context", fr_int2str(pair_lists, vpt.list,
-		       				  "¿unknown?"));
-	       	       
+	if (!vps) {    
 		return 0;
 	}
 	

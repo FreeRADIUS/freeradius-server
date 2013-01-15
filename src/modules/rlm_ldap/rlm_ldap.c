@@ -66,16 +66,17 @@ typedef struct {
 	int		chase_referrals;
 	int		rebind;
 
-	int		ldap_debug; /* Debug flag for LDAP SDK */
+	int		ldap_debug; //!< Debug flag for the SDK.
 
-	const char	*xlat_name; /* name used to xlat */
+	const char	*xlat_name; //!< Instance name.
 
 	int		expect_password;
 	
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	VALUE_PAIR_MAP	*user_map;	/* Applied to users and profiles */
+	value_pair_map_t *user_map; //!< Attribute map applied to users and
+				    //!< profiles.
 	
 	/*
 	 *	Access related configuration
@@ -329,7 +330,7 @@ typedef struct ldap_conn {
 } LDAP_CONN;
 
 typedef struct xlat_attrs {
-	const VALUE_PAIR_MAP *maps;
+	const value_pair_map_t *maps;
 	const char *attrs[MAX_ATTRMAP];
 } xlat_attrs_t;
 
@@ -1320,76 +1321,6 @@ check_attr:
 	return 0;
 }
 
-/** Parse update section
- *
- * Verify that the ldap update section makes sense, and add attribute names
- * to array of attributes for efficient querying later.
- */
-static int build_attrmap(CONF_SECTION *cs, VALUE_PAIR_MAP **head)
-{
-	const char *cs_list, *p;
-
-	request_refs_t request_def = REQUEST_CURRENT;
-	pair_lists_t list_def = PAIR_LIST_REQUEST;
-
-	CONF_ITEM *ci = cf_sectiontoitem(cs);
-	CONF_PAIR *cp;
-
-	unsigned int total = 0;
-	VALUE_PAIR_MAP **tail, *map;
-	*head = NULL;
-	tail = head;
-	
-	if (!cs) return 0;
-	
-	cs_list = p = cf_section_name2(cs);
-	if (cs_list) {
-		request_def = radius_request_name(&p, REQUEST_UNKNOWN);
-		if (request_def == REQUEST_UNKNOWN) {
-			cf_log_err(ci, "rlm_ldap: Default request specified "
-				   "in mapping section is invalid");
-			return -1;
-		}
-		
-		list_def = fr_str2int(pair_lists, p, PAIR_LIST_UNKNOWN);
-		if (list_def == PAIR_LIST_UNKNOWN) {
-			cf_log_err(ci, "rlm_ldap: Default list specified "
-				   "in mapping section is invalid");
-			return -1;
-		}
-	}
-
-	for (ci = cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(cs, ci)) {
-	     	if (total++ == MAX_ATTRMAP) {
-	     		cf_log_err(ci, "rlm_ldap: Attribute map size exceeded");
-	     		goto error;
-	     	}
-	     	
-		if (!cf_item_is_pair(ci)) {
-			cf_log_err(ci, "rlm_ldap: Entry is not in \"attribute ="
-				       " ldap-attribute\" format");
-			goto error;
-		}
-	
-		cp = cf_itemtopair(ci);
-		map = radius_cp2map(cp, REQUEST_CURRENT, list_def);
-		if (!map) {
-			goto error;
-		}
-		
-		*tail = map;
-		tail = &(map->next);
-	}
-
-	return 0;
-	
-	error:
-		radius_mapfree(head);
-		return -1;
-}
-
 /** Detach from the LDAP server and cleanup internal state.
  *
  */
@@ -1531,7 +1462,8 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 */
 	cs = cf_section_sub_find(conf, "update");
 	if (cs) {	
-		if (build_attrmap(cs, &(inst->user_map)) < 0) {
+		if (radius_attrmap(cs, &(inst->user_map), PAIR_LIST_REPLY,
+				   PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
 			goto error;
 		}
 	}
@@ -1618,7 +1550,7 @@ static int check_access(ldap_instance *inst, REQUEST* request, LDAP_CONN *conn,
 }
 
 
-static VALUE_PAIR *ldap_getvalue(REQUEST *request, const VALUE_PAIR_TMPL *dst,
+static VALUE_PAIR *ldap_getvalue(REQUEST *request, const value_pair_map_t *map,
 				 void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
@@ -1636,7 +1568,7 @@ static VALUE_PAIR *ldap_getvalue(REQUEST *request, const VALUE_PAIR_TMPL *dst,
 	 *	just use whatever was set in the attribute map.	
 	 */
 	for (i = 0; i < self->count; i++) {
-		vp = pairalloc(dst->da);
+		vp = pairalloc(map->dst->da);
 		rad_assert(vp);
 
 		pairparsevalue(vp, self->values[i]);
@@ -1651,7 +1583,7 @@ static VALUE_PAIR *ldap_getvalue(REQUEST *request, const VALUE_PAIR_TMPL *dst,
 
 static void xlat_attrsfree(const xlat_attrs_t *expanded)
 {
-	const VALUE_PAIR_MAP *map;
+	const value_pair_map_t *map;
 	unsigned int total = 0;
 	
 	const char *name;
@@ -1668,10 +1600,10 @@ static void xlat_attrsfree(const xlat_attrs_t *expanded)
 }
 
 
-static int xlat_attrs(REQUEST *request, const VALUE_PAIR_MAP *maps,
+static int xlat_attrs(REQUEST *request, const value_pair_map_t *maps,
 		      xlat_attrs_t *expanded)
 {
-	const VALUE_PAIR_MAP *map;
+	const value_pair_map_t *map;
 	unsigned int total = 0;
 	
 	size_t len;
@@ -1720,7 +1652,7 @@ static void do_attrmap(UNUSED ldap_instance *inst, REQUEST *request,
 		       LDAP *handle, const xlat_attrs_t *expanded,
 		       LDAPMessage *entry)
 {
-	const VALUE_PAIR_MAP 	*map;
+	const value_pair_map_t 	*map;
 	unsigned int		total = 0;
 	
 	rlm_ldap_result_t	result;

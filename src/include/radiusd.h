@@ -720,49 +720,74 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown);
 int radius_request(REQUEST **request, request_refs_t name);
 request_refs_t radius_request_name(const char **name, request_refs_t unknown);
 
-/*
- *  See main/valuepair.c
- *
+/** A pre-parsed template attribute
+ *  
  *  Value pair template, used when processing various mappings sections
  *  to create a real valuepair later.
+ *
+ * @see value_pair_map_t
  */
-typedef struct value_pair_tmpl {
-	const char	        *name;
-	const DICT_ATTR		*da;
-	
-	int			do_xlat;
-	
-	request_refs_t		request;
-	pair_lists_t		list;
-} VALUE_PAIR_TMPL;
+typedef struct value_pair_tmpl_t {
+	const char	        *name;   //!< Original attribute ref string, or
+					 //!< where this refers to a none FR
+					 //!< attribute, just the string id for
+					 //!< the attribute.
 
-/*
- *  Value pair map
+	request_refs_t		request; //!< Request to search or insert in.
+	pair_lists_t		list;	 //!< List to search or insert in.
+				       
+	const DICT_ATTR		*da;	 //!< Resolved dictionary attribute.
+	int			do_xlat; //!< Controls whether the VP value
+					 //!< (when it's created), is also 
+					 //!< xlat expanded.
+} value_pair_tmpl_t;
+
+/** Value pair map
+ *
+ * Value pair maps contain a pair of templates, that describe a src attribute
+ * or value, and a destination attribute.
+ *
+ * Neither src or dst need to be an FR attribute, and their type can be inferred
+ * from whether map->da is NULL (not FR).
+ *
+ * @see value_pair_tmpl_t
  */
 typedef struct value_pair_map {
-	VALUE_PAIR_TMPL		*dst;
-	VALUE_PAIR_TMPL		*src;
+	value_pair_tmpl_t	*dst;	//!< Typically describes the attribute
+					//!< to add or modify.
+	value_pair_tmpl_t	*src;   //!< Typically describes a value or a
+					//!< src attribute to copy.
 	
-	FR_TOKEN		op_token;
+	FR_TOKEN		op; 	//!< The operator that controls
+					//!< insertion of the dst attribute.
 	
-	struct value_pair_map	*next;
-} VALUE_PAIR_MAP;
+	struct value_pair_map	*next;	//!< The next valuepair map.
+} value_pair_map_t;
 
 typedef VALUE_PAIR *(*radius_tmpl_getvalue_t)(REQUEST *request,
-					      const VALUE_PAIR_TMPL *src,
+					      const value_pair_map_t *map,
 					      void *ctx);
-void radius_tmplfree(VALUE_PAIR_TMPL **tmpl);
-int radius_parse_attr(const char *name, VALUE_PAIR_TMPL *vpt,
+void radius_tmplfree(value_pair_tmpl_t **tmpl);
+int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 		      request_refs_t request_def,
 		      pair_lists_t list_def);
-VALUE_PAIR_TMPL *radius_attr2tmpl(const char *name, request_refs_t request_def,
-				  pair_lists_t list_def);
-VALUE_PAIR_TMPL *radius_str2tmpl(const char *name);
-VALUE_PAIR_MAP *radius_cp2map(CONF_PAIR *cp, request_refs_t request_def,
-			      pair_lists_t list_def);
-int radius_map2request(REQUEST *request, const VALUE_PAIR_MAP *map,
+value_pair_tmpl_t *radius_attr2tmpl(const char *name,
+				    request_refs_t request_def,
+				    pair_lists_t list_def);
+				    
+value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type);
+int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
+		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
+		   unsigned int max);
+value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
+				request_refs_t dst_request_def,
+				pair_lists_t dst_list_def,
+				request_refs_t src_request_def,
+				pair_lists_t src_list_def);
+				
+int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 		       const char *src, radius_tmpl_getvalue_t func, void *ctx);
-void radius_mapfree(VALUE_PAIR_MAP **map);
+void radius_mapfree(value_pair_map_t **map);
 
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
 
