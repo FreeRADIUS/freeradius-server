@@ -36,14 +36,17 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_cache_t {
-	const char	*xlat_name;
-	char		*key;
-	int		ttl;
-	int		epoch;
-	int		stats;
-	CONF_SECTION	*cs;
-	rbtree_t	*cache;
-	fr_heap_t	*heap;
+	const char		*xlat_name;
+	char			*key;
+	int			ttl;
+	int			epoch;
+	int			stats;
+	CONF_SECTION		*cs;
+	rbtree_t		*cache;
+	fr_heap_t		*heap;
+	
+	value_pair_map_t	*maps;	//!< Attribute map applied to users 
+					//!< and profiles.
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	cache_mutex;
 #endif
@@ -67,6 +70,8 @@ typedef struct rlm_cache_entry_t {
 #define PTHREAD_MUTEX_LOCK(_x)
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
+
+#define MAX_ATTRMAP	128
 
 /*
  *	Compare two entries by key.  There may only be one entry with
@@ -118,18 +123,27 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 	rad_assert(c != NULL);
 
 	if (c->control) {
+		RDEBUG2("Merging cached control list:");
+		rdebug_pair_list(2, request, c->control);
+		
 		vp = paircopy(c->control);
 		pairmove(&request->config_items, &vp);
 		pairfree(&vp);
 	}
 
 	if (c->request && request->packet) {
+		RDEBUG2("Merging cached request list:");
+		rdebug_pair_list(2, request, c->control);
+		
 		vp = paircopy(c->request);
 		pairmove(&request->packet->vps, &vp);
 		pairfree(&vp);
 	}
 
 	if (c->reply && request->reply) {
+		RDEBUG2("Merging cached reply list:");
+		rdebug_pair_list(2, request, c->control);
+		
 		vp = paircopy(c->reply);
 		pairmove(&request->reply->vps, &vp);
 		pairfree(&vp);
@@ -187,7 +201,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	if ((c->expires < request->timestamp) ||
 	    (c->created < inst->epoch)) {
 	delete:
-		DEBUG("rlm_cache: Entry has expired, removing");
+		RDEBUG("Entry has expired, removing");
 
 		fr_heap_extract(inst->heap, c);
 		rbtree_deletebydata(inst->cache, c);
@@ -195,7 +209,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 		return NULL;
 	}
 
-	DEBUG("rlm_cache: Found entry for \"%s\"", key);
+	RDEBUG("Found entry for \"%s\"", key);
 
 	/*
 	 *	Update the expiry time based on the TTL.
@@ -207,7 +221,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 		
 		ttl = vp->vp_integer;
 		c->expires = request->timestamp + ttl;
-		DEBUG("rlm_cache: Adding %d to the TTL", ttl);
+		RDEBUG("Adding %d to the TTL", ttl);
 	}
 	c->hits++;
 
@@ -222,11 +236,13 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				    const char *key)
 {
 	int ttl;
-	const char *attr, *p, *value;
-	VALUE_PAIR *vp, *vp_req, **vps;
-	CONF_ITEM *ci;
-	CONF_PAIR *cp;
-	FR_TOKEN op;
+	VALUE_PAIR *vp, *found, **to_req, **to_cache, **from;
+	const DICT_ATTR *da;
+
+	REQUEST *context;
+
+	const value_pair_map_t *map;
+
 	rlm_cache_entry_t *c;
 	char buffer[1024];
 
@@ -252,64 +268,112 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	}
 	c->expires += ttl;
 
-	/*
-	 *	Walk over the attributes to cache, dynamically
-	 *	expanding them (if needed), and adding them to the correct list.
-	 */
-	for (ci = cf_item_find_next(inst->cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(inst->cs, ci)) {
-		rad_assert(cf_item_is_pair(ci));
+	RDEBUG("Creating entry for \"%s\"", key);
+	
+	for (map = inst->maps; map != NULL; map = map->next)
+	{
+		rad_assert(map->dst && map->src);
+		rad_assert(map->dst->da);
 
-		cp = cf_itemtopair(ci);
-		attr = p = cf_pair_attr(cp);
-		value = cf_pair_value(cp);
-		op = cf_pair_operator(cp);
-		
-		switch (radius_list_name(&p, PAIR_LIST_REQUEST)) {
+		/* 
+		 *	Specifying inner/outer request doesn't work here
+		 *	but there's no easy fix...
+		 */
+		switch (map->dst->list) {
 		case PAIR_LIST_REQUEST:
-			vps = &c->request;
+			to_cache = &c->request;
 			break;
 			
 		case PAIR_LIST_REPLY:
-			vps = &c->reply;
+			to_cache = &c->reply;
 			break;
 			
 		case PAIR_LIST_CONTROL:
-			vps = &c->control;
+			to_cache = &c->control;
 			break;
 
 		default:
 			rad_assert(0); 
 			return NULL;		
 		}
-		
-		switch (cf_pair_value_type(cp)) {
-		case T_BARE_WORD:
-			if ((radius_get_vp(request, value, &vp_req) < 0)) {
+	
+		/*
+		 *	Resolve the destination in the current request.
+		 *	We need to add the to_cache there too if any of these are
+		 *	true :
+		 *	  - Map specifies an xlat'd string.
+		 *	  - Map specifies a literal string.
+		 *	  - Map src and dst lists differ.
+		 */
+		from = NULL;
+		if (!map->src->da || (map->src->list != map->dst->list))
+		{
+			context = request;
+			/*
+			 *	It's ok if the list isn't valid here...
+			 *	It might be valid later when we merge 
+			 *	the cache entry.
+			 */
+			if (radius_request(&context, map->dst->request) == 0) {
+				to_req = radius_list(context, map->dst->list);
+			}
+		}
+	
+		/*
+		 *	We infer that src was an attribute ref from the fact
+		 *	it contains a da.
+		 */
+		da = map->src->da;
+		if (da) {
+			context = request;
+			if (radius_request(&context, map->src->request) == 0) {
+				from = radius_list(context, map->src->list);
+			}
+			
+			/*
+			 *	Can't add this attribute if the list isn't
+			 *	valid.
+			 */
+			if (!from) continue;
+
+			found = pairfind(*from, da->attr, da->vendor, TAG_ANY);
+			if (!found) {
+				RDEBUG("WARNING: \"%s\" not found, skipping",
+				       map->src->name);
 				continue;
 			}
 			
-			switch (op) {
+			RDEBUG("\t%s %s %s", map->dst->name,
+			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+			       map->src->name);
+			
+			switch (map->op) {
 			case T_OP_SET:
 			case T_OP_EQ:
 			case T_OP_SUB:
-				vp = paircopyvp(vp_req);
-				vp->operator = op;
-				pairadd(vps, vp);
+				vp = paircopyvp(found);
+				vp->operator = map->op;
+				pairadd(to_cache, vp);
 				
 				break;
 			case T_OP_ADD:
 				do {
-					vp = paircopyvp(vp_req);
-					vp->operator = op;
-					pairadd(vps, vp);
+					vp = paircopyvp(found);
+					vp->operator = map->op;
+					pairadd(to_cache, vp);
 					
-					vp_req = pairfind(vp_req->next,
-							  vp_req->attribute,
-							  vp_req->vendor,
-							  TAG_ANY);
-				} while (vp_req);
+					if (to_req) {
+						vp = paircopyvp(vp);
+						radius_pairmove(request, to_req,
+								vp);
+								
+					}
+					
+					found = pairfind(found->next,
+							 da->attr,
+							 da->vendor,
+							 TAG_ANY);
+				} while (found);
 								
 				break;
 				
@@ -317,42 +381,74 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				rad_assert(0);
 				return NULL;
 			}
-			
-			break;
-		case T_SINGLE_QUOTED_STRING:
-			vp = pairmake(p, value, op);
-			pairadd(vps, vp);
-			
-			break;
-		case T_DOUBLE_QUOTED_STRING:
-			radius_xlat(buffer, sizeof(buffer), value,
-				    request, NULL, NULL);
+		/*
+		 *	It was most likely a double quoted string that now
+		 *	needs to be expanded.
+		 */
+		} else if (map->src->do_xlat) {
+			if (radius_xlat(buffer, sizeof(buffer), map->src->name,
+					request, NULL, NULL) <= 0) {
+				continue;		
+			}
 
-			vp = pairmake(p, buffer, op);
-			pairadd(vps, vp);
+			RDEBUG("\t%s %s \"%s\"", map->dst->name,
+			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+			       buffer);
+
+			vp = pairalloc(map->dst->da);
+			if (!vp) continue;
+			
+			vp->operator = map->op;
+			vp = pairparsevalue(vp, buffer);
+			if (!vp) continue;
+			
+			pairadd(to_cache, vp);
+			
+			if (to_req) {
+				vp = paircopyvp(vp);
+				radius_pairmove(request, to_req, vp);			
+			}
 			
 			break;
-		default:
-			rad_assert(0);
-			return NULL;
+		/*
+		 *	Literal string.
+		 */
+		} else {
+			RDEBUG("\t%s %s '%s'", map->dst->name,
+			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+			       map->src->name);
+			       
+			vp = pairalloc(map->dst->da);
+			if (!vp) continue;
+			
+			vp->operator = map->op;
+			vp = pairparsevalue(vp, map->src->name);
+			if (!vp) continue;
+			
+			pairadd(to_cache, vp);
+			
+			if (to_req) {
+				vp = paircopyvp(vp);
+				radius_pairmove(request, to_req, vp);	
+			}
+			
+			break;
 		}
-				
 	}
 	
 	if (!rbtree_insert(inst->cache, c)) {
-		DEBUG("rlm_cache: FAILED adding entry for key %s", key);
+		radlog(L_ERR, "rlm_cache: FAILED adding entry for key %s", key);
 		cache_entry_free(c);
 		return NULL;
 	}
 
 	if (!fr_heap_insert(inst->heap, c)) {
-		DEBUG("rlm_cache: FAILED adding entry for key %s", key);
+		radlog(L_ERR, "rlm_cache: FAILED adding entry for key %s", key);
 		rbtree_deletebydata(inst->cache, c);
 		return NULL;
 	}
 
-	DEBUG("rlm_cache: Adding entry for \"%s\", with TTL of %d",
-	      key, ttl);
+	RDEBUG("Inserted entry, TTL %d seconds", ttl);
 
 	return c;
 }
@@ -360,57 +456,21 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 /*
  *	Verify that the cache section makes sense.
  */
-static int cache_verify(rlm_cache_t *inst)
+static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 {
-	const char *attr, *p;
-	pair_lists_t list;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 	FR_TOKEN op;
+	FR_TOKEN type;
 
 	for (ci = cf_item_find_next(inst->cs, NULL);
 	     ci != NULL;
 	     ci = cf_item_find_next(inst->cs, ci)) {
-		if (!cf_item_is_pair(ci)) {
-			cf_log_err(ci, "rlm_cache: Entry is not in \"attribute = value\" format");
-			return 0;
-		}
-
-		cp = cf_itemtopair(ci);
-		attr = p = cf_pair_attr(cp);
-		op = cf_pair_operator(cp);
-		
-		list = radius_list_name(&p, PAIR_LIST_REQUEST);
-		
-		switch (list) {
-		case PAIR_LIST_REQUEST:
-		case PAIR_LIST_REPLY:
-		case PAIR_LIST_CONTROL:
-			break;
-			
-		case PAIR_LIST_UNKNOWN:
-			cf_log_err(ci, "rlm_cache: Unknown list qualifier in \"%s\"", attr);
-			return 0;
-		default:
-			cf_log_err(ci, "rlm_cache: Unsupported list \"%s\"",
-				   fr_int2str(pair_lists, list, "¿Unknown?"));
-			return 0;
-		}
-
-		/*
-		 *	FIXME: Can't do tags for now...
-		 */
-		if (!dict_attrbyname(p)) {
-			cf_log_err(ci, "rlm_cache: Unknown attribute \"%s\"", p);
-			return 0;
-		}
-
-		if (!cf_pair_value(cp)) {
-			cf_log_err(ci, "rlm_cache: Attribute has no value");
-			return 0;
-		}
-		
-		switch (cf_pair_value_type(cp)) {
+	     	cp = cf_itemtopair(ci);
+	     	type = cf_pair_value_type(cp);
+	     	op = cf_pair_operator(cp);
+	     	
+		switch (type) {
 		case T_BARE_WORD:
 			switch (op) {
 			case T_OP_SET:
@@ -420,11 +480,11 @@ static int cache_verify(rlm_cache_t *inst)
 				break;
 				
 			default:
-				cf_log_err(ci, "rlm_cache: Operator \"%s\" not "
+				cf_log_err(ci, "Operator \"%s\" not "
 					   "allowed for attribute references",
 					   fr_int2str(fr_tokens, op,
 					   	      "¿unknown?"));
-				return 0;
+				return -1;
 			}
 			
 			break;
@@ -433,12 +493,19 @@ static int cache_verify(rlm_cache_t *inst)
 			break;
 			
 		default:
-			cf_log_err(ci, "rlm_cache: Unsupported value type");
-			return 0;
+			cf_log_err(ci, "Unsupported value type \"%s\"",
+				   fr_int2str(fr_tokens, type, "¿unknown?"));
+			return -1;
 		}
 	}
-
-	return 1;
+	
+	/*
+	 *	We end up iterating over the entire section twice, but this
+	 *	is only done on instantiate so it's not really that much of an
+	 *	issue.
+	 */
+	return radius_attrmap(inst->cs, head, PAIR_LIST_REQUEST,
+			      PAIR_LIST_REQUEST, MAX_ATTRMAP);
 }
 
 /*
@@ -527,7 +594,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_cache_t, epoch), NULL, "0" },
 	{ "add_stats", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_cache_t, stats), NULL, "no" },
-
+  
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -542,6 +609,8 @@ static int cache_detach(void *instance)
 
 	free(inst->key);
 	rad_cfree(inst->xlat_name);
+	
+	radius_mapfree(&inst->maps);
 
 	fr_heap_delete(inst->heap);
 	rbtree_free(inst->cache);
@@ -647,7 +716,7 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Make sure the users don't screw up too badly.
 	 */
-	if (!cache_verify(inst)) {
+	if (cache_verify(inst, &inst->maps) < 0) {
 		cache_detach(inst);
 		return -1;
 	}
@@ -700,7 +769,6 @@ static rlm_rcode_t cache_it(void *instance, REQUEST *request)
 		goto done;
 	}
 
-	cache_merge(inst, request, c);
 	rcode = RLM_MODULE_UPDATED;
 	
 done:
