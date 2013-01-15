@@ -864,7 +864,7 @@ void debug_pair_list(VALUE_PAIR *vp)
 /** Print a list of valuepairs to the request list.
  * 
  * @param[in] level Debug level (1-4).
- * @param[in] request.
+ * @param[in] request to read logging params from.
  * @param[in] vp to print.
  */
 void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
@@ -1190,6 +1190,7 @@ value_pair_tmpl_t *radius_attr2tmpl(const char *name,
 /** Convert module specific attribute id to value_pair_tmpl_t.
  *
  * @param[in] name string to convert.
+ * @param[in] type Type of quoting around value.
  * @return pointer to new VPT.
  */
 value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type)
@@ -1254,9 +1255,14 @@ void radius_mapfree(value_pair_map_t **map)
  * Return must be freed with radius_mapfree.
  *
  * @param[in] cp to convert to map.
- * @param[in] request_def The default request to insert unqualified
+ * @param[in] dst_request_def The default request to insert unqualified
  *	attributes into.
- * @param[in] list_def The default list to insert unqualified attributes into.
+ * @param[in] dst_list_def The default list to insert unqualified attributes
+ *	into.
+ * @param[in] src_request_def The default request to resolve attribute
+ *	references in.
+ * @param[in] src_list_def The default list to resolve unqualified attributes
+ *	in.
  * @return value_pair_map_t if successful or NULL on error.
  */
 value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
@@ -1316,6 +1322,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
  * 	the section the module is being called in.
  * @param[in] src_list_def The default source list, usually dictated by the
  *	section the module is being called in.
+ * @param[in] max number of mappings to process.
  * @return -1 on error, else 0.
  */
 int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
