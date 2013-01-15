@@ -861,6 +861,25 @@ void debug_pair_list(VALUE_PAIR *vp)
 	fflush(fr_log_fp);
 }
 
+/** Print a list of valuepairs to the request list.
+ * 
+ * @param[in] level Debug level (1-4).
+ * @param[in] request.
+ * @param[in] vp to print.
+ */
+void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
+{
+	char buffer[256];
+	if (!vp || !request || !request->radlog) return;
+	
+	while (vp) {
+		vp_prints(buffer, sizeof(buffer), vp);
+		
+		request->radlog(L_DBG, level, request, "\t%s", buffer);
+		vp = vp->next;
+	}	
+}
+
 /** Resolve attribute pair_lists_t value to an attribute list.
  * 
  * The value returned is a pointer to the pointer of the HEAD of the list
