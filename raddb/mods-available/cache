@@ -57,7 +57,7 @@ cache {
 	#  If yes the following attributes will be added to the request list:
 	#  	* Cache-Entry-Hits - The number of times this entry has been
 	#			     retrieved.
-	add-stats = no
+	add_stats = no
 
 	#  The list of attributes to cache for a particular key.
 	#  Each key gets the same set of cached attributes.

@@ -525,7 +525,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_cache_t, ttl), NULL, "500" },
 	{ "epoch", PW_TYPE_INTEGER,
 	  offsetof(rlm_cache_t, epoch), NULL, "0" },
-	{ "add-stats", PW_TYPE_BOOLEAN,
+	{ "add_stats", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_cache_t, stats), NULL, "no" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
