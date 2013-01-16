@@ -1386,7 +1386,7 @@ static int ldap_map_verify(ldap_instance *inst, value_pair_map_t **head)
 	}
 	/*
 	 *	Attrmap only performs some basic validation checks, we need
-	 *	to do rlm_cache specific checks here.
+	 *	to do rlm_ldap specific checks here.
 	 */
 	for (map = *head; map != NULL; map = map->next) {
 		if (map->dst->type != VPT_TYPE_ATTR) {

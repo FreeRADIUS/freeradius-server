@@ -45,26 +45,30 @@ ldap {
 	# 
 	#  Request and list qualifiers may also be placed after the section
 	#  name to set defaults for unqualified RADIUS attributes.
+	#
+	#  Note: LDAP attribute names should be single quoted unless you want
+	#  the name value to be derived from an xlat expansion, or an
+	#  attribute ref.
+	#
 	update reply {
-#		control:NT-Password 	:= ntPassword
-#		Reply-Message		:= radiusReplyMessage
-#		Tunnel-Type		:= radiusTunnelType
-#		Tunnel-Medium-Type	:= radiusTunnelMediumType
-#		Tunnel-Private-Group-ID := radiusTunnelPrivategroupId
+#		control:NT-Password 	:= 'ntPassword'
+#		Reply-Message		:= 'radiusReplyMessage'
+#		Tunnel-Type		:= 'radiusTunnelType'
+#		Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+#		Tunnel-Private-Group-ID := 'radiusTunnelPrivategroupId'
 	}
 
-	# Set to "no" to disable the "no \"known good\" password" warning,
+	# Set to "no" to disable the 'no "known good" password' warning,
 	# if you're not using LDAP to retrieve password values.
 #	expect_password = "yes" 
 
 	# Set to yes if you have eDirectory and want to use the universal
-	# password mechanism. Add ldap in post-auth to perform account
-	# policy checking
+	# password mechanism.
 #	edir = "no"
 
 	# Set to yes if you want to bind as the user after retrieving the
-	# Cleartext-Password to consume the login grace, and verify user
-	# authorization.
+	# Cleartext-Password. This will consume the login grace, and
+	# verify user authorization.
 #	edir_autz = "no"
 
 	#
@@ -131,9 +135,9 @@ ldap {
 	#			Note: '=' is *not* supported.
 	#  	<value>:	The value to add modify or delete.
 	#
-	#  WARNING: If using the ':=' operator with a multivalued attribute
-	#  all instances of the attribute will be removed and replaced with
-	#  a single attribute.
+	#  WARNING: If using the ':=' operator with a multivalued LDAP 
+	#  attribute, all instances of the attribute will be removed and
+	#  replaced with a single attribute.
 	# 
 	accounting {
 		reference = "%{tolower:type.%{Acct-Status-Type}}"

@@ -419,7 +419,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			if (!found) continue;
 			
 			for (vp = found; vp != NULL; vp = vp->next) {
-				RDEBUG("\t%s%s %s %s%s", map->dst->name,
+				RDEBUG("\t%s:%s %s %s:%s", map->dst->name,
 				       vp->name,
 			       	       fr_int2str(fr_tokens, map->op, "¿unknown?"),
 			       	       map->src->name,
@@ -532,7 +532,6 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 	}
 
 	for (map = *head; map != NULL; map = map->next) {
-
 		if ((map->dst->type != VPT_TYPE_ATTR) &&
 		    (map->dst->type != VPT_TYPE_LIST)) {
 			cf_log_err(map->ci, "Left operand must be an attribute "
