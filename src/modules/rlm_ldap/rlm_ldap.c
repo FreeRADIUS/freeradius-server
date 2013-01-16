@@ -1376,6 +1376,65 @@ static int parse_sub_section(CONF_SECTION *parent,
 	return 0;
 }
 
+static int ldap_map_verify(ldap_instance *inst, value_pair_map_t **head)
+{
+	value_pair_map_t *map;
+	
+	if (radius_attrmap(inst->cs, head, PAIR_LIST_REPLY,
+			   PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
+		return -1;
+	}
+	/*
+	 *	Attrmap only performs some basic validation checks, we need
+	 *	to do rlm_cache specific checks here.
+	 */
+	for (map = *head; map != NULL; map = map->next) {
+		if (map->dst->type != VPT_TYPE_ATTR) {
+			cf_log_err(map->ci, "Left operand must be an "
+				     "attribute ref");
+			
+			return -1;
+		}
+		
+		if (map->src->type == VPT_TYPE_LIST) {
+			cf_log_err(map->ci, "Right operand must not be "
+				     "a list");
+			
+			return -1;
+		}
+		
+		switch (map->src->type) 
+		{
+		/*
+		 *	Only =, :=, += and -= operators are supported for
+		 *	cache entries.
+		 */
+		case VPT_TYPE_LITERAL:
+		case VPT_TYPE_XLAT:
+		case VPT_TYPE_ATTR:
+			switch (map->op) {
+			case T_OP_SET:
+			case T_OP_EQ:
+			case T_OP_SUB:
+			case T_OP_ADD:
+				break;
+		
+			default:
+				cf_log_err(map->ci, "Operator \"%s\" not "
+					   "allowed for %s values",
+					   fr_int2str(fr_tokens, map->op,
+						      "¿unknown?"),
+					   fr_int2str(vpt_types, map->src->type,
+						      "¿unknown?"));
+				return -1;
+			}
+		default:
+			break;
+		}
+	}
+	return 0;
+}
+
 /** Parses config
  * Uses section of radiusd config file passed as parameter to create an
  * instance of the module.
@@ -1383,7 +1442,6 @@ static int parse_sub_section(CONF_SECTION *parent,
 static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 {
 	ldap_instance *inst;
-	CONF_SECTION *cs;
 
 	inst = rad_calloc(sizeof *inst);
 	inst->cs = conf;
@@ -1460,12 +1518,8 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	/*
 	 *	Build the attribute map
 	 */
-	cs = cf_section_sub_find(conf, "update");
-	if (cs) {	
-		if (radius_attrmap(cs, &(inst->user_map), PAIR_LIST_REPLY,
-				   PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
-			goto error;
-		}
+	if (ldap_map_verify(inst, &(inst->user_map)) < 0) {
+		goto error;
 	}
 
 	/*
@@ -1593,8 +1647,14 @@ static void xlat_attrsfree(const xlat_attrs_t *expanded)
 		name = expanded->attrs[total++];
 		if (!name) return;
 		
-		if (map->src->do_xlat) {
+		switch (map->src->type)
+		{
+		case VPT_TYPE_XLAT:		
+		case VPT_TYPE_ATTR:
 			rad_cfree(name);
+			break;
+		default:
+			break;
 		}
 	}
 }
@@ -1609,28 +1669,59 @@ static int xlat_attrs(REQUEST *request, const value_pair_map_t *maps,
 	size_t len;
 	char *buffer;
 
+	VALUE_PAIR *found, **from = NULL;
+	REQUEST *context;
+
 	for (map = maps; map != NULL; map = map->next)
 	{
-		if (map->src->do_xlat) {
+		switch (map->src->type)
+		{
+		case VPT_TYPE_XLAT:
 			buffer = rad_malloc(MAX_ATTR_STR_LEN);
 			len = radius_xlat(buffer, MAX_ATTR_STR_LEN,
 					  map->src->name, request, NULL, NULL);
 					  
-			if (!len) {
+			if (len <= 0) {
 				RDEBUG("Expansion of LDAP attribute "
 				       "\"%s\" failed", map->src->name);
 				       
-				expanded->attrs[total] = NULL;
-				
-				xlat_attrsfree(expanded);
-				
-				return -1;
+				goto error;
 			}
 			
 			expanded->attrs[total++] = buffer;
-		} else {
+			break;
+
+		case VPT_TYPE_ATTR:
+			context = request;
+			
+			if (radius_request(&context, map->src->request) == 0) {
+				from = radius_list(context, map->src->list);
+			}
+			if (!from) continue;
+			
+			found = pairfind(*from, map->src->da->attr,
+					 map->src->da->vendor, TAG_ANY);
+			if (!found) continue;
+			
+			buffer = rad_malloc(MAX_ATTR_STR_LEN);
+			strlcpy(buffer, found->vp_strvalue, MAX_ATTR_STR_LEN);
+			
+			expanded->attrs[total++] = buffer;
+			break;
+			
+		case VPT_TYPE_LITERAL:
 			expanded->attrs[total++] = map->src->name;
+			break;
+		default:
+			rad_assert(0);
+		error:
+			expanded->attrs[total] = NULL;
+			
+			xlat_attrsfree(expanded);
+			
+			return -1;
 		}
+			
 	}
 	
 	expanded->attrs[total] = NULL;
@@ -1701,14 +1792,14 @@ static void do_check_reply(ldap_instance *inst, REQUEST *request)
 	*/
 	if (inst->expect_password && (debug_flag > 1)) {
 		if (!pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) &&
-			!pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY) &&
-			!pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
-			!pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
-			!pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
-				RDEBUG("WARNING: No \"known good\" password "
-				       "was found in LDAP.  Are you sure that "
-				       "the user is configured correctly?");
-	       }
+		    !pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY) &&
+		    !pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
+		    !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
+		    !pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
+			RDEBUG("WARNING: No \"known good\" password "
+			       "was found in LDAP.  Are you sure that "
+			        "the user is configured correctly?");
+		}
        }
 }
 
@@ -2179,10 +2270,7 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 			passed[last_pass] = NULL;
 		} else if (do_xlat) {
 			p = rad_malloc(1024);
-			radius_xlat(p, 1024, value, request, NULL, NULL);
-			
-			if (*p == '\0') {
-			
+			if (radius_xlat(p, 1024, value, request, NULL, NULL) <= 0) {
 				RDEBUG("xlat failed or empty value string, "
 			       	       "skipping attribute \"%s\"", attr);
 			       	       
@@ -2209,32 +2297,35 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 		
 		switch (op)
 		{
-			/*
-			 *  T_OP_EQ is *NOT* supported, it is impossible to
-			 *  support because of the lack of transactions in LDAP
-			 */
-			case T_OP_ADD:
-				mod_s[total].mod_op = LDAP_MOD_ADD;
+		/*
+		 *  T_OP_EQ is *NOT* supported, it is impossible to
+		 *  support because of the lack of transactions in LDAP
+		 */
+		case T_OP_ADD:
+			mod_s[total].mod_op = LDAP_MOD_ADD;
 			break;
-			case T_OP_SET:
-				mod_s[total].mod_op = LDAP_MOD_REPLACE;
+
+		case T_OP_SET:
+			mod_s[total].mod_op = LDAP_MOD_REPLACE;
 			break;
-			case T_OP_SUB:
-			case T_OP_CMP_FALSE:
-				mod_s[total].mod_op = LDAP_MOD_DELETE;
+
+		case T_OP_SUB:
+		case T_OP_CMP_FALSE:
+			mod_s[total].mod_op = LDAP_MOD_DELETE;
 			break;
+
 #ifdef LDAP_MOD_INCREMENT
-			case T_OP_INCRM:
-				mod_s[total].mod_op = LDAP_MOD_INCREMENT;
+		case T_OP_INCRM:
+			mod_s[total].mod_op = LDAP_MOD_INCREMENT;
 			break;
 #endif
-			default:
-				radlog(L_ERR, "rlm_ldap (%s): Operator '%s' "
-				       "is not supported for LDAP modify "
-				       "operations", inst->xlat_name,
-				       fr_int2str(fr_tokens, op, "¿unknown?"));
-				       
-				goto error;
+		default:
+			radlog(L_ERR, "rlm_ldap (%s): Operator '%s' "
+			       "is not supported for LDAP modify "
+			       "operations", inst->xlat_name,
+			       fr_int2str(fr_tokens, op, "¿unknown?"));
+			       
+			goto error;
 		}
 		
 		/*
@@ -2262,9 +2353,8 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 	 *	Perform all modifications as the default admin user.
 	 */
 	if (conn->rebound) {
-		ldap_errno = ldap_bind_wrapper(&conn,
-					       inst->login, inst->password,
-					       TRUE);
+		ldap_errno = ldap_bind_wrapper(&conn, inst->login,
+					       inst->password, TRUE);
 		if (ldap_errno != RLM_MODULE_OK) {
 			goto error;
 		}

@@ -80,6 +80,15 @@ const FR_NAME_NUMBER request_refs[] = {
 	{  NULL , -1 }
 };
 
+const FR_NAME_NUMBER vpt_types[] = {
+	{"unknown",		VPT_TYPE_UNKNOWN },
+	{"literal",		VPT_TYPE_LITERAL },
+	{"expanded",		VPT_TYPE_XLAT },
+	{"attribute ref",	VPT_TYPE_ATTR },
+	{"list",		VPT_TYPE_LIST },
+	{"exec",		VPT_TYPE_EXEC }
+};
+
 struct cmp {
 	unsigned int attribute;
 	unsigned int otherattr;
@@ -988,7 +997,6 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
 	 *	No colon was found and the first char was upper case 
 	 *	indicating an attribute.
 	 *
-	 *	This allows the function to be used to resolve list names too.
 	 */
 	q = strchr(p, ':');
 	if (((q && (q[1] >= '0') && (q[1] <= '9'))) ||
@@ -1148,12 +1156,20 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 		return -1;
 	}
 	
+	if (*p == '\0') {
+		vpt->type = VPT_TYPE_LIST;
+		
+		return 0;
+	}
+	
 	vpt->da = dict_attrbyname(p);
 	if (!vpt->da) {
 		radlog(L_ERR, "Attribute \"%s\" unknown", p);
-		
+	
 		return -1;
 	}
+	
+	vpt->type = VPT_TYPE_ATTR;
 	
 	return 0;
 }
@@ -1204,12 +1220,14 @@ value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type)
 	{
 		case T_BARE_WORD:
 		case T_SINGLE_QUOTED_STRING:
-			vpt->do_xlat = FALSE;
-		break;
-		case T_BACK_QUOTED_STRING:
+			vpt->type = VPT_TYPE_LITERAL;
+			break;
 		case T_DOUBLE_QUOTED_STRING:
-			vpt->do_xlat = TRUE;		
-		break;
+			vpt->type = VPT_TYPE_XLAT;	
+			break;
+		case T_BACK_QUOTED_STRING:
+			vpt->type = VPT_TYPE_EXEC;
+			break;
 		default:
 			rad_assert(0);
 			return NULL;
@@ -1275,13 +1293,16 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	const char *attr;
 	const char *value;
 	FR_TOKEN type;
+	CONF_ITEM *ci = cf_pairtoitem(cp); 
+	
+	if (!cp) return NULL;
 	
 	map = rad_calloc(sizeof(value_pair_map_t));
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
 	if (!value) {
-		cf_log_err(cf_pairtoitem(cp), "Missing attribute value");
+		cf_log_err(ci, "Missing attribute value");
 		
 		goto error;
 	}
@@ -1304,6 +1325,61 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	}
 
 	map->op = cf_pair_operator(cp);
+	map->ci = ci;
+	
+	/*
+	 *	Lots of sanity checks for insane people...
+	 */
+	 
+	/*
+	 *	We don't support implicit type conversion
+	 */
+	if (map->dst->da && map->src->da &&
+	    (map->src->da->type != map->dst->da->type)) {
+		cf_log_err(ci, "Attribute type mismatch");
+		
+		goto error;
+	}
+	
+	/*
+	 *	What exactly where you expecting to happen here?
+	 */
+	if ((map->dst->type == VPT_TYPE_ATTR) &&
+	    (map->src->type == VPT_TYPE_LIST)) {
+		cf_log_err(ci, "Can't copy list into an attribute");
+		
+		goto error;
+	}
+
+	switch (map->src->type) 
+	{
+	
+		/*
+		 *	Only += and -= operators are supported for list copy.
+		 */
+		case VPT_TYPE_LIST:
+			switch (map->op) {
+			case T_OP_SUB:
+			case T_OP_ADD:
+				break;
+			
+			default:
+				cf_log_err(ci, "Operator \"%s\" not allowed "
+					   "for list copy",
+					   fr_int2str(fr_tokens, map->op,
+						      "¿unknown?"));
+				goto error;
+			}
+		break;
+		/*
+		 *	@todo add support for exec expansion.
+		 */
+		case VPT_TYPE_EXEC:
+			cf_log_err(ci, "Exec values are not allowed");
+			break;
+		default:
+			break;
+	}
 	
 	return map;
 	
@@ -1316,7 +1392,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
  *
  * Uses 'name2' of section to set default request and lists.
  *
- * @param[in] cs to convert to map.
+ * @param[in] parent to convert to map.
  * @param[out] head Where to store the head of the map.
  * @param[in] dst_list_def The default destination list, usually dictated by 
  * 	the section the module is being called in.
@@ -1325,7 +1401,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
  * @param[in] max number of mappings to process.
  * @return -1 on error, else 0.
  */
-int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
+int radius_attrmap(CONF_SECTION *parent, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		   unsigned int max)
 {
@@ -1333,6 +1409,7 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 
 	request_refs_t request_def = REQUEST_CURRENT;
 
+	CONF_SECTION *cs;
 	CONF_ITEM *ci = cf_sectiontoitem(cs);
 	CONF_PAIR *cp;
 
@@ -1341,6 +1418,9 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 	*head = NULL;
 	tail = head;
 	
+	if (!parent) return 0;
+	
+	cs = cf_section_sub_find(parent, "update");
 	if (!cs) return 0;
 	
 	cs_list = p = cf_section_name2(cs);
@@ -1396,7 +1476,7 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 /** Convert value_pair_map_t to VALUE_PAIR(s) and add them to a REQUEST.
  *
  * Takes a single value_pair_map_t, resolves request and list identifiers
- * to pointers in the current request, the attempts to retrieve module
+ * to pointers in the current request, then attempts to retrieve module
  * specific value(s) using callback, and adds the resulting values to the
  * correct request/list.
  *
@@ -1487,10 +1567,24 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 		return 0;
 	}
 	
+	switch (vpt.type)
+	{
 	/*
 	 *	May not may not be found, but it *is* a known name.
 	 */
-	*vp_p = pairfind(*vps, vpt.da->attr, vpt.da->vendor, TAG_ANY);
-	
+	case VPT_TYPE_ATTR:
+		*vp_p = pairfind(*vps, vpt.da->attr, vpt.da->vendor, TAG_ANY);
+		break;
+		
+	case VPT_TYPE_LIST:
+		*vp_p = *vps;
+		break;
+		
+	default:
+		rad_assert(0);
+		return -1;
+		break;
+	}
+
 	return 0;
 }

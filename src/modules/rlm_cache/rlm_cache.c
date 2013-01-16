@@ -133,7 +133,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 
 	if (c->request && request->packet) {
 		RDEBUG2("Merging cached request list:");
-		rdebug_pair_list(2, request, c->control);
+		rdebug_pair_list(2, request, c->request);
 		
 		vp = paircopy(c->request);
 		pairmove(&request->packet->vps, &vp);
@@ -142,7 +142,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 
 	if (c->reply && request->reply) {
 		RDEBUG2("Merging cached reply list:");
-		rdebug_pair_list(2, request, c->control);
+		rdebug_pair_list(2, request, c->reply);
 		
 		vp = paircopy(c->reply);
 		pairmove(&request->reply->vps, &vp);
@@ -273,7 +273,6 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	for (map = inst->maps; map != NULL; map = map->next)
 	{
 		rad_assert(map->dst && map->src);
-		rad_assert(map->dst->da);
 
 		/* 
 		 *	Specifying inner/outer request doesn't work here
@@ -299,14 +298,17 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	
 		/*
 		 *	Resolve the destination in the current request.
-		 *	We need to add the to_cache there too if any of these are
+		 *	We need to add the to_cache there too if any of these
+		 *	are.
 		 *	true :
 		 *	  - Map specifies an xlat'd string.
 		 *	  - Map specifies a literal string.
 		 *	  - Map src and dst lists differ.
+		 *	  - Map src and dst attributes differ
 		 */
-		from = NULL;
-		if (!map->src->da || (map->src->list != map->dst->list))
+		to_req = NULL;
+		if (!map->src->da || (map->src->list != map->dst->list) ||
+		    (map->src->da != map->dst->da))
 		{
 			context = request;
 			/*
@@ -323,15 +325,22 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	We infer that src was an attribute ref from the fact
 		 *	it contains a da.
 		 */
-		da = map->src->da;
-		if (da) {
+		RDEBUG4(":: dst is \"%s\" src is \"%s\"", 
+			fr_int2str(vpt_types, map->dst->type, "¿unknown?"),
+			fr_int2str(vpt_types, map->src->type, "¿unknown?"));
+			
+		switch (map->src->type)
+		{
+		case VPT_TYPE_ATTR:
+			from = NULL;
+			da = map->src->da;
 			context = request;
 			if (radius_request(&context, map->src->request) == 0) {
 				from = radius_list(context, map->src->list);
 			}
 			
 			/*
-			 *	Can't add this attribute if the list isn't
+			 *	Can't add the attribute if the list isn't
 			 *	valid.
 			 */
 			if (!from) continue;
@@ -351,14 +360,28 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			case T_OP_SET:
 			case T_OP_EQ:
 			case T_OP_SUB:
-				vp = paircopyvp(found);
-				vp->operator = map->op;
+				vp = map->dst->type == VPT_TYPE_LIST ?
+					paircopyvp(found) :
+					paircopyvpdata(map->dst->da, found);
+				
+				if (!vp) continue;
+				
 				pairadd(to_cache, vp);
+
+				if (to_req) {
+					vp = paircopyvp(vp);
+					radius_pairmove(request, to_req, vp);			
+				}
 				
 				break;
 			case T_OP_ADD:
 				do {
-					vp = paircopyvp(found);
+					vp = map->dst->type == VPT_TYPE_LIST ?
+						paircopyvp(found) :
+						paircopyvpdata(map->dst->da,
+						               found);
+					if (!vp) continue;
+					
 					vp->operator = map->op;
 					pairadd(to_cache, vp);
 					
@@ -381,11 +404,42 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				rad_assert(0);
 				return NULL;
 			}
+			break;
+		case VPT_TYPE_LIST:
+			rad_assert(map->src->type == VPT_TYPE_LIST);
+			
+			from = NULL;
+			context = request;
+			if (radius_request(&context, map->src->request) == 0) {
+				from = radius_list(context, map->src->list);
+			}
+			if (!from) continue;
+			
+			found = paircopy(*from);
+			if (!found) continue;
+			
+			for (vp = found; vp != NULL; vp = vp->next) {
+				RDEBUG("\t%s%s %s %s%s", map->dst->name,
+				       vp->name,
+			       	       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+			       	       map->src->name,
+			       	       vp->name);
+				vp->operator = map->op;
+			}
+			
+			pairadd(to_cache, found);
+			
+			if (to_req) {
+				vp = paircopy(found);
+				radius_pairmove(request, to_req, vp);
+			}
+			
+			break;
 		/*
 		 *	It was most likely a double quoted string that now
 		 *	needs to be expanded.
 		 */
-		} else if (map->src->do_xlat) {
+		case VPT_TYPE_XLAT:
 			if (radius_xlat(buffer, sizeof(buffer), map->src->name,
 					request, NULL, NULL) <= 0) {
 				continue;		
@@ -413,7 +467,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		/*
 		 *	Literal string.
 		 */
-		} else {
+		case VPT_TYPE_LITERAL:
 			RDEBUG("\t%s %s '%s'", map->dst->name,
 			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
 			       map->src->name);
@@ -433,6 +487,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			}
 			
 			break;
+			
+		default:
+			rad_assert(0);
+			return NULL;
 		}
 	}
 	
@@ -458,54 +516,61 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
  */
 static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 {
-	CONF_ITEM *ci;
-	CONF_PAIR *cp;
-	FR_TOKEN op;
-	FR_TOKEN type;
+	value_pair_map_t *map;
 
-	for (ci = cf_item_find_next(inst->cs, NULL);
-	     ci != NULL;
-	     ci = cf_item_find_next(inst->cs, ci)) {
-	     	cp = cf_itemtopair(ci);
-	     	type = cf_pair_value_type(cp);
-	     	op = cf_pair_operator(cp);
-	     	
-		switch (type) {
-		case T_BARE_WORD:
-			switch (op) {
+	if (radius_attrmap(inst->cs, head, PAIR_LIST_REQUEST,
+			   PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
+		return -1;		   
+	}
+	
+	if (!*head) {
+		cf_log_err(cf_sectiontoitem(inst->cs),
+			   "Cache config must contain an update section, and "
+			   "that section must not be empty");
+
+		return -1;
+	}
+
+	for (map = *head; map != NULL; map = map->next) {
+
+		if ((map->dst->type != VPT_TYPE_ATTR) &&
+		    (map->dst->type != VPT_TYPE_LIST)) {
+			cf_log_err(map->ci, "Left operand must be an attribute "
+				   "ref or a list");
+			   
+			return -1;
+		}
+	
+		switch (map->src->type) 
+		{
+		/*
+		 *	Only =, :=, += and -= operators are supported for
+		 *	cache entries.
+		 */
+		case VPT_TYPE_LITERAL:
+		case VPT_TYPE_XLAT:
+		case VPT_TYPE_ATTR:
+			switch (map->op) {
 			case T_OP_SET:
 			case T_OP_EQ:
 			case T_OP_SUB:
 			case T_OP_ADD:
 				break;
-				
+		
 			default:
-				cf_log_err(ci, "Operator \"%s\" not "
-					   "allowed for attribute references",
-					   fr_int2str(fr_tokens, op,
-					   	      "¿unknown?"));
+				cf_log_err(map->ci, "Operator \"%s\" not "
+					   "allowed for %s values",
+					   fr_int2str(fr_tokens, map->op,
+						      "¿unknown?"),
+					   fr_int2str(vpt_types, map->src->type,
+						      "¿unknown?"));
 				return -1;
 			}
-			
-			break;
-		case T_SINGLE_QUOTED_STRING:
-		case T_DOUBLE_QUOTED_STRING:
-			break;
-			
 		default:
-			cf_log_err(ci, "Unsupported value type \"%s\"",
-				   fr_int2str(fr_tokens, type, "¿unknown?"));
-			return -1;
+			break;
 		}
 	}
-	
-	/*
-	 *	We end up iterating over the entire section twice, but this
-	 *	is only done on instantiate so it's not really that much of an
-	 *	issue.
-	 */
-	return radius_attrmap(inst->cs, head, PAIR_LIST_REQUEST,
-			      PAIR_LIST_REQUEST, MAX_ATTRMAP);
+	return 0;
 }
 
 /*
@@ -525,6 +590,14 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 
 	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
 
+	list = radius_list_name(&p, PAIR_LIST_REQUEST);
+	
+	target = dict_attrbyname(p);
+	if (!target) {
+		radlog(L_ERR, "rlm_cache: Unknown attribute \"%s\"", p);
+		return -1;
+	}
+	
 	PTHREAD_MUTEX_LOCK(&inst->cache_mutex);
 	c = cache_find(inst, request, buffer);
 	
@@ -532,8 +605,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 		RDEBUG("No cache entry for key \"%s\"", buffer);
 		goto done;
 	}
-	
-	list = radius_list_name(&p, PAIR_LIST_REQUEST);
+
 	switch (list) {
 	case PAIR_LIST_REQUEST:
 		vps = c->request;
@@ -556,13 +628,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 		       fr_int2str(pair_lists, list, "¿Unknown?"));
 		return 0;
 	}
-	
-	target = dict_attrbyname(p);
-	if (!target) {
-		radlog(L_ERR, "rlm_cache: Unknown attribute \"%s\"", p);
-		goto done;
-	}
-	
+
 	vp = pairfind(vps, target->attr, target->vendor, TAG_ANY);
 	if (!vp) {
 		RDEBUG("No instance of this attribute has been cached");
@@ -630,12 +696,8 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	const char *xlat_name;
 	rlm_cache_t *inst;
 
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
-
+	inst = rad_calloc(sizeof(*inst));
+	inst->cs = conf;	
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
@@ -701,14 +763,6 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 				    offsetof(rlm_cache_entry_t, offset));
 	if (!inst->heap) {
 		radlog(L_ERR, "rlm_cache: Failed to create cache");
-		cache_detach(inst);
-		return -1;
-	}
-	
-
-	inst->cs = cf_section_sub_find(conf, "update");
-	if (!inst->cs) {
-		radlog(L_ERR, "rlm_cache: Failed to find \"update\" subsection");
 		cache_detach(inst);
 		return -1;
 	}

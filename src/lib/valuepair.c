@@ -408,6 +408,43 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	return n;
 }
 
+/** Copy data from one VP to another
+ *
+ * Allocate a new pair using da, and copy over the value from the specified
+ * vp.
+ *
+ * @todo Should be able to do type conversions.
+ * 
+ * @param[in] da of new attribute to alloc.
+ * @param[in] vp to copy data from.
+ * @return the new valuepair.
+ */
+VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
+{
+	VALUE_PAIR *n;
+
+	if (!vp) return NULL;
+
+	if (da->type != vp->type) return NULL;
+	
+	n = pairalloc(da);
+	if (!n) {
+		return NULL;	
+	}
+	
+	memcpy(&(n->data), &(vp->data), sizeof(n->data));
+	
+	n->length = vp->length;
+	
+	if ((n->type == PW_TYPE_TLV) &&
+	    (n->vp_tlv != NULL)) {
+		n->vp_tlv = malloc(n->length);
+		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
+	}
+	
+	return n;
+}
+
 
 /** Copy matching pairs
  *

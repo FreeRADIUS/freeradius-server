@@ -470,18 +470,20 @@ typedef struct main_config_t {
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
-typedef enum request_fail_t {
-  REQUEST_FAIL_UNKNOWN = 0,
-  REQUEST_FAIL_NO_THREADS,	/* no threads to handle it */
-  REQUEST_FAIL_DECODE,		/* rad_decode didn't like it */
-  REQUEST_FAIL_PROXY,		/* call to proxy modules failed */
-  REQUEST_FAIL_PROXY_SEND,	/* proxy_send didn't like it */
-  REQUEST_FAIL_NO_RESPONSE,	/* we weren't told to respond, so we reject */
-  REQUEST_FAIL_HOME_SERVER,	/* the home server didn't respond */
-  REQUEST_FAIL_HOME_SERVER2,	/* another case of the above */
-  REQUEST_FAIL_HOME_SERVER3,	/* another case of the above */
-  REQUEST_FAIL_NORMAL_REJECT,	/* authentication failure */
-  REQUEST_FAIL_SERVER_TIMEOUT	/* the server took too long to process the request */
+typedef enum request_fail {
+	REQUEST_FAIL_UNKNOWN = 0,
+	REQUEST_FAIL_NO_THREADS,	//!< No threads to handle it.
+	REQUEST_FAIL_DECODE,		//!< Rad_decode didn't like it.
+	REQUEST_FAIL_PROXY,		//!< Call to proxy modules failed.
+	REQUEST_FAIL_PROXY_SEND,	//!< Proxy_send didn't like it.
+	REQUEST_FAIL_NO_RESPONSE,	//!< We weren't told to respond, 
+					//!< so we reject.
+	REQUEST_FAIL_HOME_SERVER,	//!< The home server didn't respond.
+	REQUEST_FAIL_HOME_SERVER2,	//!< Another case of the above.
+	REQUEST_FAIL_HOME_SERVER3,	//!< Another case of the above.
+	REQUEST_FAIL_NORMAL_REJECT,	//!< Authentication failure.
+	REQUEST_FAIL_SERVER_TIMEOUT	//!< The server took too long to 
+					//!< process the request.
 } request_fail_t;
 
 /*
@@ -720,6 +722,18 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown);
 int radius_request(REQUEST **request, request_refs_t name);
 request_refs_t radius_request_name(const char **name, request_refs_t unknown);
 
+
+typedef enum vpt_type {
+	VPT_TYPE_UNKNOWN = 0,
+  	VPT_TYPE_LITERAL,		//!< Is a literal string.
+    	VPT_TYPE_XLAT,			//!< Needs to be expanded.
+        VPT_TYPE_ATTR,			//!< Is an attribute.
+	VPT_TYPE_LIST,			//!< Is a list.
+	VPT_TYPE_EXEC			//!< Needs to be executed.
+} vpt_type_t;
+
+extern const FR_NAME_NUMBER vpt_types[];
+
 /** A pre-parsed template attribute
  *  
  *  Value pair template, used when processing various mappings sections
@@ -737,9 +751,7 @@ typedef struct value_pair_tmpl_t {
 	pair_lists_t		list;	 //!< List to search or insert in.
 				       
 	const DICT_ATTR		*da;	 //!< Resolved dictionary attribute.
-	int			do_xlat; //!< Controls whether the VP value
-					 //!< (when it's created), is also 
-					 //!< xlat expanded.
+	vpt_type_t		type;	 //!< What type of value tmpl refers to.
 } value_pair_tmpl_t;
 
 /** Value pair map
@@ -760,6 +772,10 @@ typedef struct value_pair_map {
 	
 	FR_TOKEN		op; 	//!< The operator that controls
 					//!< insertion of the dst attribute.
+	
+	CONF_ITEM		*ci;	//!< Config item that the map was 
+					//!< created from. Mainly used for 
+					//!< logging validation errors.
 	
 	struct value_pair_map	*next;	//!< The next valuepair map.
 } value_pair_map_t;
