@@ -419,9 +419,9 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			if (!found) continue;
 			
 			for (vp = found; vp != NULL; vp = vp->next) {
-				RDEBUG("\t%s:%s %s %s:%s", map->dst->name,
-				       vp->name,
-			       	       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+				RDEBUG("\t%s %s %s (%s)", map->dst->name,
+			       	       fr_int2str(fr_tokens, map->op,
+			       	       		  "¿unknown?"),
 			       	       map->src->name,
 			       	       vp->name);
 				vp->operator = map->op;
