@@ -224,10 +224,14 @@ ATTRIBUTE	Stripped-User-Domain			1138	string
 ATTRIBUTE	Called-Station-SSID			1139	string
 ATTRIBUTE	Cache-TTL				1140	integer
 ATTRIBUTE	Cache-Status-Only			1141	integer
-ATTRIBUTE	Cache-Entry-Hits			1142	integer
+ATTRIBUTE	Cache-Merge				1142	integer
+ATTRIBUTE	Cache-Entry-Hits			1143	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
+
+VALUE	Cache-Merge			no			0
+VALUE	Cache-Merge			yes			1
 
 #	More dynamic client attributes
 
