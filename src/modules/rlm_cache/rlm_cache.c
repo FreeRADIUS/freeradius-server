@@ -346,9 +346,9 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	  - Map src and dst attributes differ
 		 */
 		to_req = NULL;
-		if (!merge || !map->src->da || 
+		if (merge && ( !map->src->da || 
 		    (map->src->list != map->dst->list) ||
-		    (map->src->da != map->dst->da)) {
+		    (map->src->da != map->dst->da))) {
 			context = request;
 			/*
 			 *	It's ok if the list isn't valid here...
