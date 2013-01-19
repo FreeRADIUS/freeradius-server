@@ -3315,14 +3315,29 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 	 */
 	if (nest == 0) {
 		/*
-		 *	This is a horrible hack.  The real solution
-		 *	would be to encapsulate this idiocy into
-		 *	attr2vp_rfc.  But doing it here avoids another
-		 *	dictionary lookup.  So...
+		 *	Remember, the packing format is weird.
+		 *
+		 *	00VID	000000AA	normal VSA for vendor VID
+		 *	00VID	AABBCCDD	normal VSAs with TLVs
+		 *	EE000   000000AA	extended attr (241.1)
+		 *	EE000	AABBCCDD	extended attr with TLVs
+		 *	EEVID	000000AA	EVS with vendor VID, attr AAA
+		 *	EEVID	AABBCCDD	EVS with TLVs
+		 *
+		 *	see dict.c
 		 */
-		vendor = attribute * FR_MAX_VENDOR;
-		attribute = 0;
-		nest = -1;
+		if (!vendor) {
+			/*
+			 *	This is a horrible hack.  The real
+			 *	solution would be to encapsulate this
+			 *	idiocy into attr2vp_rfc.  But doing it
+			 *	here avoids another dictionary lookup.
+			 *	So...
+			 */
+			vendor = attribute * FR_MAX_VENDOR;
+			attribute = 0;
+			nest = -1;
+		}
 
 	} else if (nest == 1) {
 		DICT_VENDOR *dv;
