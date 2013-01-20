@@ -1,10 +1,9 @@
 #ifndef UDPFROMTO_H
 #define UDPFROMTO_H
 /*
- * @file udpfromto.h
+ * $Id$
  *
- * @version $Id$
- * @copyright 2013  The FreeRADIUS server project
+ * @file udpfromto.h
  */
 
 #include <freeradius-devel/ident.h>

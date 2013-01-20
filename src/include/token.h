@@ -17,10 +17,11 @@
 #define FR_TOKEN_H
 
 /*
+ * $Id$
+ *
  * @file token.h
  * @brief Tokenisation code and constants.
  *
- * @version $Id$
  * @copyright 2001,2006  The FreeRADIUS server project
  */
 

@@ -15,10 +15,11 @@
  */
  
 /*
+ * $Id$
+ *
  * @file exec.c
  * @brief Execute external programs.
  *
- * @version $Id$
  * @copyright 2000-2004,2006  The FreeRADIUS server project
  */
 

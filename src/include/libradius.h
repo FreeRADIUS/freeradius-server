@@ -16,11 +16,12 @@
 #ifndef LIBRADIUS_H
 #define LIBRADIUS_H
 /*
+ * $Id$
+ *
  * @file libradius.h
  * @brief Structures and prototypes for the radius library.
  *
- * @version $Id$
- * @copyright 1999,2000,2001,2002,2003,2004,2005,2006,2007,2008  The FreeRADIUS server project
+ * @copyright 1999-2008 The FreeRADIUS server project
  */
 
 #include <freeradius-devel/ident.h>

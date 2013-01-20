@@ -15,17 +15,18 @@
  */
  
 /*
- * @brief Function prototypes datatypes for the REST (HTTP) transport.
+ * $Id$
+ *
+ * @brief Function prototypes and datatypes for the REST (HTTP) transport.
  * @file rest.h
  *
- * @version $Id$
  * @copyright 2012-2013  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
  */
+ 
 #include <freeradius-devel/ident.h>
-#include <freeradius-devel/connection.h>
-
 RCSIDH(other_h, "$Id$")
 
+#include <freeradius-devel/connection.h>
 #include "config.h"
 
 #ifdef HAVE_JSON_JSONH

@@ -15,10 +15,11 @@
  */
 
 /*
+ * $Id$
+ *
  * @file radius.c
  * @brief Functions to send/receive radius packets.
  *
- * @version $Id$
  * @copyright 2000-2003,2006  The FreeRADIUS server project
  */
 

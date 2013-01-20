@@ -16,10 +16,11 @@
 #ifndef FR_SOH_H
 #define FR_SOH_H
 /*
+ * $Id$
+ *
  * @file soh.h
  * @brief Microsoft SoH support
  *
- * @version $Id$
  * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>
  */
 

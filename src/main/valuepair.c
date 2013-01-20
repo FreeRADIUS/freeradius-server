@@ -15,13 +15,14 @@
  */
 
 /*
+ * $Id$
+ *
  * @brief Valuepair functions that are radiusd-specific and as such do not
  * 	  belong in the library.
  * @file main/valuepair.c
  *
  * @ingroup AVP
  *
- * @version $Id$
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2000  Alan DeKok <aland@ox.org>
  */

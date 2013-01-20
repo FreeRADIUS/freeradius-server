@@ -16,10 +16,11 @@
 #ifndef FR_TCP_H
 #define FR_TCP_H
 /*
+ * $Id$
+ *
  * @file tcp.h
  * @brief RADIUS over TCP
  *
- * @version $Id$
  * @copyright 2009 Dante http://dante.net
  */
 

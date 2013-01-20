@@ -17,10 +17,11 @@
 #define FR_VQP_H
 
 /*
+ * $Id$
+ *
  * @file vqp.h
  * @brief Structures and prototypes for Cisco's VLAN Query Protocol
  *
- * @version $Id$
  * @copyright 2007  The FreeRADIUS server project
  * @copyright 2007  Alan DeKok <aland@deployingradius.com>
  */

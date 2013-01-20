@@ -82,7 +82,7 @@ struct fr_connection_pool_t {
 					//!< and maintain.
 	int		cleanup_delay;	//!< How long a connection can go unused
 					//!< for before it's closed
-					//!< (0 is infinite)
+					//!< (0 is infinite).
 	int		max_uses;	//!< Maximum number of times a
 					//!< connection can be used before being
 					//!< closed.
@@ -105,9 +105,10 @@ struct fr_connection_pool_t {
 					//!< configuration parameters.
 	time_t		last_throttled; //!< Last time we refused to spawn a 
 					//!< connection because the last
-					//!< connection failed.
+					//!< connection failed, or we were 
+					//!< already spawning a connection.
 	time_t		last_at_max;	//!< Last time we hit the maximum number
-					//!< of allowed connections
+					//!< of allowed connections.
 					
 	unsigned int    count;		//!< Number of connections spawned over
 					//!< the lifetime of the pool.
@@ -430,7 +431,7 @@ static void fr_connection_close(fr_connection_pool_t *pool,
 /** Find a connection handle in the connection list
  *
  * Walks over the list of connections searching for a specified connection
- * handle, and returns the first connection that contains that pointer.
+ * handle and returns the first connection that contains that pointer.
  * 
  * @note Will lock mutex and only release mutex if connection handle
  * is not found, so will usually return will mutex held.

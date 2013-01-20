@@ -18,10 +18,11 @@
 
 #ifdef WITH_TLS
 /*
+ * $Id$
+ *
  * @file tls.h
  * @brief Structures and prototypes for TLS wrappers
  *
- * @version $Id$
  * @copyright 2010 Network RADIUS SARL <info@networkradius.com>
  */
 

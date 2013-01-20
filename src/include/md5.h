@@ -1,8 +1,9 @@
 /*
+ * $Id$
+ *
  * @file md5.h
  * @brief Structures and prototypes for md5.
  *
- * @version $Id$
  * @license LGPL, but largely derived from a public domain source.
  */
 

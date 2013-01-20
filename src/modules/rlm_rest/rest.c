@@ -14,11 +14,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
  
-/** 
+/*
+ * $Id$
+ *
  * @brief Functions and datatypes for the REST (HTTP) transport.
  * @file rest.c
  *
- * @version $Id$
  * @copyright 2012-2013  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
  */
 

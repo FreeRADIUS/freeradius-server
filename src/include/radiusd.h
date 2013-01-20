@@ -16,11 +16,12 @@
 #ifndef RADIUSD_H
 #define RADIUSD_H
 /*
+ * $Id$
+ *
  * @file radiusd.h
  * @brief Structures, prototypes and global variables for the FreeRADIUS server.
  *
- * @version $Id$
- * @copyright 1999,2000,2002,2003,2004,2005,2006,2007,2008  The FreeRADIUS server project
+ * @copyright 1999-2000,2002-2008  The FreeRADIUS server project
  */
 
 #include <freeradius-devel/ident.h>

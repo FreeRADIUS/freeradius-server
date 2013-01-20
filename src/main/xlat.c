@@ -15,10 +15,11 @@
  */
 
 /*
+ * $Id$
+ *
  * @file xlat.c
  * @brief String expansion ("translation"). Implements %Attribute -> value
  *
- * @version $Id$
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2000  Alan DeKok <aland@ox.org>
  */

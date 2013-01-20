@@ -14,11 +14,12 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
 
-/**
+/*
+ * $Id$
+ *
  * @file process.c
  * @brief Defines the state machines that control how requests are processed.
  *
- * @version $Id$
  * @copyright 2012  The FreeRADIUS server project
  * @copyright 2012  Alan DeKok <aland@deployingradius.com>
  */
