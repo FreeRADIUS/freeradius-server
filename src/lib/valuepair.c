@@ -96,7 +96,7 @@ VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 		memset(&vp->flags, 0, sizeof(vp->flags));
 		vp->flags.unknown_attr = 1;
 	}
-	vp->operator = T_OP_EQ;
+	vp->op = T_OP_EQ;
 
 	switch (vp->type) {
 		case PW_TYPE_BYTE:
@@ -166,7 +166,7 @@ VALUE_PAIR *paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *vp)
 
 	vp->vendor = vendor;
 	vp->attribute = attr;
-	vp->operator = T_OP_EQ;
+	vp->op = T_OP_EQ;
 	vp->name = p;
 	vp->type = type;
 	vp->length = 0;
@@ -552,7 +552,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 			continue;
 		}
 
-		switch (i->operator) {
+		switch (i->op) {
 			/*
 			 *	These are COMPARISON attributes
 			 *	from a check list, and are not
@@ -586,7 +586,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 
 
 			found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
-			switch (i->operator) {
+			switch (i->op) {
 
 			/*
 			 *	If matching attributes are found,
@@ -1060,8 +1060,8 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			/*
 			 *	It's a comparison, not a real IP.
 			 */
-			if ((vp->operator == T_OP_REG_EQ) ||
-			    (vp->operator == T_OP_REG_NE)) {
+			if ((vp->op == T_OP_REG_EQ) ||
+			    (vp->op == T_OP_REG_NE)) {
 				break;
 			}
 
@@ -1444,7 +1444,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
  *
  */
 static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
-				int operator)
+				FR_TOKEN op)
 {
 	unsigned int   	attr, vendor;
 	unsigned int    dv_type = 1;
@@ -1656,7 +1656,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 		return NULL;
 	}
 
-	vp->operator = (operator == 0) ? T_OP_EQ : operator;
+	vp->op = (op == 0) ? T_OP_EQ : op;
 	if (!value) return vp;
 
 	size = strlen(value + 2);
@@ -1687,7 +1687,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 /*
  *	Create a VALUE_PAIR from an ASCII attribute and value.
  */
-VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
+VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 {
 	DICT_ATTR	*da;
 	VALUE_PAIR	*vp;
@@ -1737,14 +1737,14 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	 *	another method to create the attribute.
 	 */
 	if ((da = dict_attrbyname(attrname)) == NULL) {
-		return pairmake_any(attrname, value, operator);
+		return pairmake_any(attrname, value, op);
 	}
 
 	if ((vp = pairalloc(da)) == NULL) {
 		return NULL;
 	}
 
-	vp->operator = (operator == 0) ? T_OP_EQ : operator;
+	vp->op = (op == 0) ? T_OP_EQ : op;
 
 	/*      Check for a tag in the 'Merit' format of:
 	 *      :Tag:Value.  Print an error if we already found
@@ -1780,7 +1780,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	  vp->flags.tag = tag;
 	}
 
-	switch (vp->operator) {
+	switch (vp->op) {
 	default:
 		break;
 
@@ -1829,7 +1829,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 			}
 		}
 
-		return pairmake_xlat(attribute, value, operator);
+		return pairmake_xlat(attribute, value, op);
 #endif
 	}
 
@@ -1849,7 +1849,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, int operator)
 	return vp;
 }
 
-VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value, int operator)
+VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value,
+			  FR_TOKEN op)
 {
 	VALUE_PAIR *vp;
 
@@ -1858,7 +1859,7 @@ VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value, int operator
 		return NULL;
 	}
 
-	vp = pairmake(attribute, NULL, operator);
+	vp = pairmake(attribute, NULL, op);
 	if (!vp) return vp;
 
 	strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
@@ -2180,7 +2181,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 {
 	int compare;
 
-	switch (one->operator) {
+	switch (one->op) {
 	case T_OP_CMP_TRUE:
 		return (two != NULL);
 
@@ -2218,7 +2219,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 			compare = regexec(&reg, buffer, 0, NULL, 0);
 
 			regfree(&reg);
-			if (one->operator == T_OP_REG_EQ) return (compare == 0);
+			if (one->op == T_OP_REG_EQ) return (compare == 0);
 			return (compare != 0);
 		}
 #endif
@@ -2321,7 +2322,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	/*
 	 *	Now do the operator comparison.
 	 */
-	switch (one->operator) {
+	switch (one->op) {
 	case T_OP_CMP_EQ:
 		return (compare == 0);
 

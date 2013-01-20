@@ -199,7 +199,7 @@ typedef struct json_flags {
 	boolean do_xlat;	//!< If TRUE value will be expanded with xlat.
 	boolean is_json;	//!< If TRUE value will be inserted as raw JSON
 				// (multiple values not supported).
-	FR_TOKEN operator;	//!< The operator that determines how the new VP
+	FR_TOKEN op;		//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens
 } json_flags_t;
 #endif
@@ -1087,7 +1087,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 			goto error;
 		}
 
-		vp->operator = T_OP_SET;
+		vp->op = T_OP_SET;
  
 		/*
 		 * 	Check to see if we've already processed an
@@ -1098,12 +1098,12 @@ static int rest_decode_post(rlm_rest_t *instance,
 		while (*current++) {
 			if ((current[0]->attr == da->attr) &&
 			    (current[0]->vendor == da->vendor)) {
-				vp->operator = T_OP_ADD;
+				vp->op = T_OP_ADD;
 				break;
 			}
 		}
 		
-		if (vp->operator != T_OP_ADD) {
+		if (vp->op != T_OP_ADD) {
 			current[0] = da;
 			current[1] = NULL;
 		}
@@ -1195,7 +1195,7 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 		return NULL;
 	}
 
-	vp->operator = flags->operator;
+	vp->op = flags->op;
 
 	tmp = pairparsevalue(vp, value);
 	if (tmp == NULL) {
@@ -1298,7 +1298,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 	 */
 	entry = json_object_get_object(object)->head;
 	while (entry) {
-		flags.operator = T_OP_SET;
+		flags.op = T_OP_SET;
 		flags.do_xlat  = 1;
 		flags.is_json  = 0;
 
@@ -1382,10 +1382,10 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			 */
 			tmp = json_object_object_get(value, "op");
 			if (tmp) {
-				flags.operator = fr_str2int(fr_tokens,
-							    json_object_get_string(tmp), 0);
+				flags.op = fr_str2int(fr_tokens,
+						      json_object_get_string(tmp), 0);
 
-				if (!flags.operator) {
+				if (!flags.op) {
 					RDEBUG("Invalid operator value \"%s\","
 					       " skipping", tmp);
 					continue;
@@ -1447,9 +1447,9 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
    		 *	Automagically switch the op for multivalued
    		 *	attributes.
    		 */
-   		if (((flags.operator == T_OP_SET) ||
-   		     (flags.operator == T_OP_EQ)) && (len > 1)) {
-   			flags.operator = T_OP_ADD;
+   		if (((flags.op == T_OP_SET) ||
+   		     (flags.op == T_OP_EQ)) && (len > 1)) {
+   			flags.op = T_OP_ADD;
    		}
 
    		if (!flags.is_json &&

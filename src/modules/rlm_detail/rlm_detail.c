@@ -409,7 +409,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 
 		memset(&src_vp, 0, sizeof(src_vp));
 		memset(&dst_vp, 0, sizeof(dst_vp));
-		src_vp.operator = dst_vp.operator = T_OP_EQ;
+		src_vp.op = dst_vp.op = T_OP_EQ;
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:

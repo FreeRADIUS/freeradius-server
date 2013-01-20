@@ -253,7 +253,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 			 *	Ignore attributes which are set
 			 *	properly.
 			 */
-			if (vp->operator != T_OP_EQ)
+			if (vp->op != T_OP_EQ)
 				continue;
 
 
@@ -271,7 +271,7 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 					DEBUG("\tChanging '%s =' to '%s =='",
 						vp->name, vp->name);
 				}
-				vp->operator = T_OP_CMP_EQ;
+				vp->op = T_OP_CMP_EQ;
 				continue;
 			}
 
@@ -296,11 +296,11 @@ static int fastuser_getfile(struct fastuser_instance *inst, const char *filename
 					(vp->attribute != PW_HUNTGROUP_NAME)) {
 					DEBUG("\tChanging '%s =' to '%s +='",
 						vp->name, vp->name);
-						vp->operator = T_OP_ADD;
+						vp->op = T_OP_ADD;
 				} else {
 					DEBUG("\tChanging '%s =' to '%s =='",
 						vp->name, vp->name);
-					vp->operator = T_OP_CMP_EQ;
+					vp->op = T_OP_CMP_EQ;
 				}
 			}
 

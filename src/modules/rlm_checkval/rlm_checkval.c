@@ -259,7 +259,7 @@ static rlm_rcode_t do_checkval(void *instance, REQUEST *request)
 		}
 #ifdef HAVE_REGEX_H
 		if (rcode == RLM_MODULE_REJECT &&
-		    chk_vp->operator == T_OP_REG_EQ) {
+		    chk_vp->op == T_OP_REG_EQ) {
 			regex_t reg;
 			int err;
 			char err_msg[MAX_STRING_LEN];

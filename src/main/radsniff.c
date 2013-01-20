@@ -78,7 +78,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 		     check_item != NULL;
 		     check_item = check_item->next)
 			if ((check_item->attribute == vp->attribute)
-			 && (check_item->operator != T_OP_SET)) {
+			 && (check_item->op != T_OP_SET)) {
 				compare = paircmp(check_item, vp);
 				if (compare == 1)
 					pass++;

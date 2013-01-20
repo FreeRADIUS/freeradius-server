@@ -421,7 +421,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 						               found);
 					if (!vp) continue;
 					
-					vp->operator = map->op;
+					vp->op = map->op;
 					pairadd(to_cache, vp);
 					
 					if (to_req) {
@@ -463,7 +463,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       	       		  "¿unknown?"),
 			       	       map->src->name,
 			       	       vp->name);
-				vp->operator = map->op;
+				vp->op = map->op;
 			}
 			
 			pairadd(to_cache, found);
@@ -491,7 +491,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			vp = pairalloc(map->dst->da);
 			if (!vp) continue;
 			
-			vp->operator = map->op;
+			vp->op = map->op;
 			vp = pairparsevalue(vp, buffer);
 			if (!vp) continue;
 			
@@ -514,7 +514,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			vp = pairalloc(map->dst->da);
 			if (!vp) continue;
 			
-			vp->operator = map->op;
+			vp->op = map->op;
 			vp = pairparsevalue(vp, map->src->name);
 			if (!vp) continue;
 			

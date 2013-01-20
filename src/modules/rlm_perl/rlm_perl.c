@@ -633,13 +633,13 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
  *     Value Pair Format
  *
  */
-static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv, int operator) {
+static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv, FR_TOKEN op) {
        char            *val;
        VALUE_PAIR      *vpp;
 
        if (SvOK(sv)) {
                val = SvPV_nolen(sv);
-               vpp = pairmake(key, val, operator);
+               vpp = pairmake(key, val, op);
                if (vpp != NULL) {
                        pairadd(vp, vpp);
                        radlog(L_DBG,

@@ -219,8 +219,8 @@ static int genericcmp(void *instance UNUSED,
 		      VALUE_PAIR *check_pairs UNUSED,
 		      VALUE_PAIR **reply_pairs UNUSED)
 {
-	if ((check->operator != T_OP_REG_EQ) &&
-	    (check->operator != T_OP_REG_EQ)) {
+	if ((check->op != T_OP_REG_EQ) &&
+	    (check->op != T_OP_REG_EQ)) {
 		int rcode;
 		char name[1024];
 		char value[1024];
@@ -229,7 +229,7 @@ static int genericcmp(void *instance UNUSED,
 		snprintf(name, sizeof(name), "%%{%s}", check->name);
 
 		radius_xlat(value, sizeof(value), name, req, NULL, NULL);
-		vp = pairmake(check->name, value, check->operator);
+		vp = pairmake(check->name, value, check->op);
 
 		/*
 		 *	Paircmp returns 0 for failed comparison,

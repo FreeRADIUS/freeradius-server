@@ -647,7 +647,7 @@ VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 				   unsigned int attribute, unsigned int vendor, int type);
 VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    const char *attribute, const char *value,
-			    int operator);
+			    FR_TOKEN op);
 
 /* xlat.c */
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);

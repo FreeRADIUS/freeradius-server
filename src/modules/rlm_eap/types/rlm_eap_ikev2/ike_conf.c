@@ -115,7 +115,7 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 				 *	Ignore attributes which are set
 				 *	properly.
 				 */
-				if (vp->operator != T_OP_EQ) {
+				if (vp->op != T_OP_EQ) {
 					continue;
 				}
 
@@ -135,7 +135,7 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 						DEBUG("\tChanging '%s =' to '%s =='",
 								vp->name, vp->name);
 					}
-					vp->operator = T_OP_CMP_EQ;
+					vp->op = T_OP_CMP_EQ;
 					continue;
 				}
 
@@ -160,11 +160,11 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 							(vp->attribute != PW_HUNTGROUP_NAME)) {
 						DEBUG("\tChanging '%s =' to '%s +='",
 								vp->name, vp->name);
-						vp->operator = T_OP_ADD;
+						vp->op = T_OP_ADD;
 					} else {
 						DEBUG("\tChanging '%s =' to '%s =='",
 								vp->name, vp->name);
-						vp->operator = T_OP_CMP_EQ;
+						vp->op = T_OP_CMP_EQ;
 					}
 				}
 

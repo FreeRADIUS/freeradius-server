@@ -641,7 +641,7 @@ static int pack_vps(byte_array * ba, VALUE_PAIR * vps)
     if (pack_uint32(ba, i) == -1) return -1;
     i = vp->length;
     if (pack_uint32(ba, i) == -1) return -1;
-    i = vp->operator;
+    i = vp->op;
     if (pack_uint32(ba, i) == -1) return -1;
 
     switch (vp->type) {
@@ -786,7 +786,7 @@ static int read_vps(JRADIUS *inst, JRSOCK *jrsock, VALUE_PAIR **pl, int plen)
      *     Create new attribute
      */
     vp = paircreate(atype, 0, -1);
-    vp->operator = aop;
+    vp->op = aop;
 
     if (vp->type == -1) {
       /*

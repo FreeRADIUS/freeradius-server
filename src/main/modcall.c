@@ -1494,14 +1494,14 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 			return NULL;
 		}
 
-		if ((vp->operator != T_OP_EQ) &&
-		    (vp->operator != T_OP_CMP_EQ) &&
-		    (vp->operator != T_OP_ADD) &&
-		    (vp->operator != T_OP_SUB) &&
-		    (vp->operator != T_OP_LE) &&
-		    (vp->operator != T_OP_GE) &&
-		    (vp->operator != T_OP_CMP_FALSE) &&
-		    (vp->operator != T_OP_SET)) {
+		if ((vp->op != T_OP_EQ) &&
+		    (vp->op != T_OP_CMP_EQ) &&
+		    (vp->op != T_OP_ADD) &&
+		    (vp->op != T_OP_SUB) &&
+		    (vp->op != T_OP_LE) &&
+		    (vp->op != T_OP_GE) &&
+		    (vp->op != T_OP_CMP_FALSE) &&
+		    (vp->op != T_OP_SET)) {
 			pairfree(&head);
 			pairfree(&vp);
 			cf_log_err(ci, "Invalid operator for attribute");
@@ -1513,8 +1513,8 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		 *	<= or >= can only happen for integer
 		 *	attributes.
 		 */
-		if ((vp->operator == T_OP_LE) ||
-		    (vp->operator == T_OP_GE)) {
+		if ((vp->op == T_OP_LE) ||
+		    (vp->op == T_OP_GE)) {
 			if ((vp->type != PW_TYPE_BYTE) &&
 			    (vp->type != PW_TYPE_SHORT) &&
 			    (vp->type != PW_TYPE_INTEGER) &&

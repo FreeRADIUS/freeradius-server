@@ -817,7 +817,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 			     const policy_assignment_t *assign)
 {
 	VALUE_PAIR *vp;
-	FR_TOKEN operator = T_OP_EQ;
+	FR_TOKEN op = T_OP_EQ;
 	const char *value = assign->rhs;
 	char buffer[2048];
 
@@ -833,15 +833,15 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 	 */
 	switch (assign->assign) {
 	case POLICY_LEX_ASSIGN:
-		operator = T_OP_EQ;
+		op = T_OP_EQ;
 		break;
 
 	case POLICY_LEX_SET_EQUALS:
-		operator = T_OP_SET;
+		op = T_OP_SET;
 		break;
 
 	case POLICY_LEX_PLUS_EQUALS:
-		operator = T_OP_ADD;
+		op = T_OP_ADD;
 		break;
 
 	default:
@@ -852,7 +852,7 @@ static VALUE_PAIR *assign2vp(REQUEST *request,
 		return NULL;
 	}
 
-	vp = pairmake(assign->lhs, value, operator);
+	vp = pairmake(assign->lhs, value, op);
 	if (!vp) {
 		fprintf(stderr, "Failed creating pair: %s %s\n", value, fr_strerror());
 	}

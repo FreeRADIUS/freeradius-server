@@ -62,7 +62,7 @@ static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 {
 	int compare;
 
-	if (check_item->operator == T_OP_SET) return;
+	if (check_item->op == T_OP_SET) return;
 
 	compare = paircmp(check_item, reply_item);
 	if (compare == 1) {
@@ -247,7 +247,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 			 *    If it is a SET operator, add the attribute to
 			 *    the output list without checking it.
 			 */
-			if (check_item->operator == T_OP_SET ) {
+			if (check_item->op == T_OP_SET ) {
 				vp = paircopyvp(check_item);
 				if (!vp) {
 					pairfree(&output);
@@ -284,7 +284,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 				 */
 				if ((check_item->attribute == PW_VENDOR_SPECIFIC) &&
 					(vp->vendor != 0) &&
-					(check_item->operator == T_OP_CMP_TRUE)) {
+					(check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
 				}

@@ -108,22 +108,23 @@ extern "C" {
 #endif
 
 typedef struct attr_flags {
-	unsigned int		has_tag : 1;  /* tagged attribute */
-	unsigned int		do_xlat : 1;  /* strvalue is dynamic */
-	unsigned int		unknown_attr : 1; /* not in dictionary */
-	unsigned int		array : 1; /* pack multiples into 1 attr */
-	unsigned int		has_value : 1; /* has a value */
-	unsigned int		has_value_alias : 1; /* has a value alias */
-	unsigned int		has_tlv : 1; /* has sub attributes */
-	unsigned int		is_tlv : 1; /* is a sub attribute */
-	unsigned int		extended : 1; /* extended attribute */
-	unsigned int		long_extended : 1; /* long format */
-	unsigned int		evs : 1;	    /* extended VSA */
-	unsigned int		wimax: 1;	    /* WiMAX format=1,1,c */
+	unsigned int	has_tag : 1;		//!< Tagged attribute.
+	unsigned int	do_xlat : 1; 		//!< Strvalue is dynamic.
+	unsigned int	unknown_attr : 1;	//!< Not in dictionary.
+	unsigned int	array : 1; 		//!< Pack multiples into 1 attr.
+	unsigned int	has_value : 1;		//!< Has a value.
+	unsigned int	has_value_alias : 1; 	//!< Has a value alias.
+	unsigned int	has_tlv : 1; 		//!< Has sub attributes.
+	unsigned int	is_tlv : 1;		//!< Is a sub attribute.
+	unsigned int	extended : 1; 		//!< Extended attribute.
+	unsigned int	long_extended : 1; 	//!< Long format.
+	unsigned int	evs : 1;		//!< Extended VSA.
+	unsigned int	wimax: 1;		//!< WiMAX format=1,1,c.
 
-	int8_t			tag;	      /* tag for tunneled attributes */
-	uint8_t		        encrypt;      /* encryption method */
-	uint8_t			length;
+	int8_t		tag;			//!< Tag for tunneled.
+						//!< Attributes.
+	uint8_t		encrypt;      		//!< Ecryption method.
+	uint8_t		length;
 } ATTR_FLAGS;
 
 /*
@@ -187,17 +188,11 @@ typedef struct value_pair {
 	unsigned int		attribute;
 	unsigned int	       	vendor;
 	int			type;
-#ifdef __cplusplus
-	/*
-	 *	C++ hackery.  The server and modules are all C, so
-	 *	the defs here don't affect them.  But any C++ code
-	 *	gets excited over "operator", so we change the name.
-	 */
-	FR_TOKEN		op_token;
-#else
-	FR_TOKEN		operator;
-#endif
 
+	FR_TOKEN		op;		//!< Operator to use when 
+						//!< moving or inserting 
+						//!< valuepair into a list.
+						
         ATTR_FLAGS              flags;
 
 	size_t			length; /* of data field */
@@ -426,8 +421,8 @@ VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, in
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag);
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
-VALUE_PAIR	*pairmake(const char *attribute, const char *value, int operator);
-VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, int operator);
+VALUE_PAIR	*pairmake(const char *attribute, const char *value, FR_TOKEN op);
+VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, FR_TOKEN op);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
 FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);
 VALUE_PAIR	*readvp2(FILE *fp, int *pfiledone, const char *errprefix);
@@ -491,12 +486,12 @@ void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimits
 /* random numbers in isaac.c */
 /* context of random number generator */
 typedef struct fr_randctx {
-  uint32_t randcnt;
-  uint32_t randrsl[256];
-  uint32_t randmem[256];
-  uint32_t randa;
-  uint32_t randb;
-  uint32_t randc;
+	uint32_t randcnt;
+	uint32_t randrsl[256];
+  	uint32_t randmem[256];
+	uint32_t randa;
+	uint32_t randb;
+	uint32_t randc;
 } fr_randctx;
 
 void fr_isaac(fr_randctx *ctx);

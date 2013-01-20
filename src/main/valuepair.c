@@ -115,11 +115,11 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	/*
 	 *      Check for =* and !* and return appropriately
 	 */
-	if (check->operator == T_OP_CMP_TRUE)  return 0;
-	if (check->operator == T_OP_CMP_FALSE) return 1;
+	if (check->op == T_OP_CMP_TRUE)  return 0;
+	if (check->op == T_OP_CMP_FALSE) return 1;
 
 #ifdef HAVE_REGEX_H
-	if (check->operator == T_OP_REG_EQ) {
+	if (check->op == T_OP_REG_EQ) {
 		int i, compare;
 		regex_t reg;
 		char value[1024];
@@ -194,7 +194,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		return -1;
 	}
 
-	if (check->operator == T_OP_REG_NE) {
+	if (check->op == T_OP_REG_NE) {
 		int compare;
 		regex_t reg;
 		char value[1024];
@@ -340,8 +340,8 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 	/*
 	 *      Check for =* and !* and return appropriately
 	 */
-	if (check->operator == T_OP_CMP_TRUE)  return 0;
-	if (check->operator == T_OP_CMP_FALSE) return 1;
+	if (check->op == T_OP_CMP_TRUE)  return 0;
+	if (check->op == T_OP_CMP_FALSE) return 1;
 
 	/*
 	 *	See if there is a special compare function.
@@ -489,8 +489,8 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		 *	then don't bother comparing it to any attributes
 		 *	sent to us by the user.  It ALWAYS matches.
 		 */
-		if ((check_item->operator == T_OP_SET) ||
-		    (check_item->operator == T_OP_ADD)) {
+		if ((check_item->op == T_OP_SET) ||
+		    (check_item->op == T_OP_ADD)) {
 			continue;
 		}
 
@@ -518,7 +518,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			 *	This hack makes CHAP-Password work..
 			 */
 			case PW_USER_PASSWORD:
-				if (check_item->operator == T_OP_CMP_EQ) {
+				if (check_item->op == T_OP_CMP_EQ) {
 					DEBUG("WARNING: Found User-Password == \"...\".");
 					DEBUG("WARNING: Are you sure you don't mean Cleartext-Password?");
 					DEBUG("WARNING: See \"man rlm_pap\" for more information.");
@@ -555,7 +555,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			 *	Didn't find it.  If we were *trying*
 			 *	to not find it, then we succeeded.
 			 */
-			if (check_item->operator == T_OP_CMP_FALSE) {
+			if (check_item->op == T_OP_CMP_FALSE) {
 				continue;
 			} else {
 				return -1;
@@ -566,7 +566,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		 *	Else we found it, but we were trying to not
 		 *	find it, so we failed.
 		 */
-		if (check_item->operator == T_OP_CMP_FALSE) {
+		if (check_item->op == T_OP_CMP_FALSE) {
 			return -1;
 		}
 
@@ -596,7 +596,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		compare = radius_callback_compare(req, auth_item, check_item,
 						  check, reply);
 
-		switch (check_item->operator) {
+		switch (check_item->op) {
 			case T_OP_EQ:
 			default:
 				radlog(L_INFO,  "Invalid operator for item %s: "
@@ -703,7 +703,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 		}
 
 		found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
-		switch (i->operator) {
+		switch (i->op) {
 
 			/*
 			 *	If a similar attribute is found,
@@ -828,16 +828,16 @@ VALUE_PAIR *radius_paircreate(UNUSED REQUEST *request, VALUE_PAIR **vps,
  * @param[in] vps to modify.
  * @param[in] attribute name.
  * @param[in] value attribute value.
- * @param[in] operator fr_tokens value.
+ * @param[in] op fr_tokens value.
  * @return a new VALUE_PAIR.
  */
 VALUE_PAIR *radius_pairmake(UNUSED REQUEST *request, VALUE_PAIR **vps,
 			    const char *attribute, const char *value,
-			    int operator)
+			    FR_TOKEN op)
 {
 	VALUE_PAIR *vp;
 
-	vp = pairmake(attribute, value, operator);
+	vp = pairmake(attribute, value, op);
 	if (!vp) return NULL;
 
 	if (vps) pairadd(vps, vp);
@@ -1519,13 +1519,13 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 	}
 	
 	for (vp = head; vp != NULL; vp = vp->next) {
-		vp->operator = map->op;
+		vp->op = map->op;
 		
 		if (debug_flag) {
 			vp_prints_value(buffer, sizeof(buffer), vp, 1);
 			
 			RDEBUG("\t%s %s %s (%s)", map->dst->name,
-			       fr_int2str(fr_tokens, vp->operator, "¿unknown?"), 
+			       fr_int2str(fr_tokens, vp->op, "¿unknown?"), 
 			       buffer, src ? src : map->src->name);
 		}
 	}

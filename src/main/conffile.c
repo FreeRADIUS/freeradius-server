@@ -60,7 +60,7 @@ struct conf_pair {
 	CONF_ITEM item;
 	const char *attr;
 	const char *value;
-	FR_TOKEN operator;
+	FR_TOKEN op;
 	FR_TOKEN value_type;
 };
 struct conf_part {
@@ -155,7 +155,7 @@ static CONF_ITEM *cf_datatoitem(CONF_DATA *cd)
  *	Create a new CONF_PAIR
  */
 static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
-				FR_TOKEN operator, FR_TOKEN value_type,
+				FR_TOKEN op, FR_TOKEN value_type,
 				CONF_SECTION *parent)
 {
 	char *p;
@@ -183,7 +183,7 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 		cp->value = p;
 	}
 	cp->value_type = value_type;
-	cp->operator = operator;
+	cp->op = op;
 
 	return cp;
 }
@@ -486,7 +486,7 @@ int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, const char *value)
 	CONF_PAIR *newp;
 	CONF_ITEM *ci, *cn, **last;
 
-	newp = cf_pair_alloc(cp->attr, value, cp->operator, cp->value_type,
+	newp = cf_pair_alloc(cp->attr, value, cp->op, cp->value_type,
 			     cs);
 	if (!newp) return -1;
 
@@ -2046,7 +2046,7 @@ const char *cf_pair_value(const CONF_PAIR *pair)
 
 FR_TOKEN cf_pair_operator(const CONF_PAIR *pair)
 {
-	return (pair ? pair->operator : T_OP_INVALID);
+	return (pair ? pair->op : T_OP_INVALID);
 }
 
 /*
@@ -2084,13 +2084,13 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	 *	FALSE comparisons never match.  BUT if it's a "string"
 	 *	or `string`, then remember to expand it later.
 	 */
-	if ((pair->operator != T_OP_CMP_FALSE) &&
+	if ((pair->op != T_OP_CMP_FALSE) &&
 	    ((pair->value_type == T_DOUBLE_QUOTED_STRING) ||
 	     (pair->value_type == T_BACK_QUOTED_STRING))) {
-		return pairmake_xlat(pair->attr, pair->value, pair->operator);
+		return pairmake_xlat(pair->attr, pair->value, pair->op);
 	}
 
-	return pairmake(pair->attr, pair->value, pair->operator);
+	return pairmake(pair->attr, pair->value, pair->op);
 }
 
 /*

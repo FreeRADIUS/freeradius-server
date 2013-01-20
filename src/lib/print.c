@@ -599,9 +599,9 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 	out[0] = 0;
 	if (!vp) return 0;
 
-	if ((vp->operator > T_OP_INVALID) &&
-	    (vp->operator < T_TOKEN_LAST)) {
-		token = vp_tokens[vp->operator];
+	if ((vp->op > T_OP_INVALID) &&
+	    (vp->op < T_TOKEN_LAST)) {
+		token = vp_tokens[vp->op];
 	} else {
 		token = "<INVALID-TOKEN>";
 	}

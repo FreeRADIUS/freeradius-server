@@ -299,7 +299,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				return FALSE;
 			}
 
-			myvp.operator = token;
+			myvp.op = token;
 			*presult = paircmp(&myvp, vp);
 			RDEBUG3("  paircmp -> %d", *presult);
 			return TRUE;
@@ -866,7 +866,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		 *	is empty, and we're supposed to replace or
 		 *	"add if not existing".
 		 */
-		if (from_list[i]->operator == T_OP_ADD) goto append;
+		if (from_list[i]->op == T_OP_ADD) goto append;
 
 		found = FALSE;
 		for (j = 0; j < to_count; j++) {
@@ -892,7 +892,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	one in the "to" list, and move over
 			 *	the one in the "from" list.
 			 */
-			if (from_list[i]->operator == T_OP_SET) {
+			if (from_list[i]->op == T_OP_SET) {
 				RDEBUG4("::: OVERWRITING %s FROM %d TO %d",
 				       to_list[j]->name, i, j);
 				pairfree(&to_list[j]);
@@ -907,7 +907,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	exist... but it exists, so we stop
 			 *	looking.
 			 */
-			if (from_list[i]->operator == T_OP_EQ) {
+			if (from_list[i]->op == T_OP_EQ) {
 				found = TRUE;
 				break;
 			}
@@ -916,7 +916,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	Delete every attribute, independent
 			 *	of its value.
 			 */
-			if (from_list[i]->operator == T_OP_CMP_FALSE) {
+			if (from_list[i]->op == T_OP_CMP_FALSE) {
 				goto delete;
 			}
 
@@ -924,17 +924,17 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	Delete all matching attributes from
 			 *	"to"
 			 */
-			if ((from_list[i]->operator == T_OP_SUB) ||
-			    (from_list[i]->operator == T_OP_CMP_EQ) ||
-			    (from_list[i]->operator == T_OP_LE) ||
-			    (from_list[i]->operator == T_OP_GE)) {
+			if ((from_list[i]->op == T_OP_SUB) ||
+			    (from_list[i]->op == T_OP_CMP_EQ) ||
+			    (from_list[i]->op == T_OP_LE) ||
+			    (from_list[i]->op == T_OP_GE)) {
 				int rcode;
-				int old_op = from_list[i]->operator;
+				int old_op = from_list[i]->op;
 
 				/*
 				 *	Check for equality.
 				 */
-				from_list[i]->operator = T_OP_CMP_EQ;
+				from_list[i]->op = T_OP_CMP_EQ;
 
 				/*
 				 *	If equal, delete the one in
@@ -948,7 +948,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 				 *	operator back to it's original
 				 *	value.
 				 */
-				from_list[i]->operator = old_op;
+				from_list[i]->op = old_op;
 
 				switch (old_op) {
 				case T_OP_CMP_EQ:
@@ -1005,10 +1005,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		 *	moved by another operator.
 		 */
 		if (!found && from_list[i]) {
-			if ((from_list[i]->operator == T_OP_EQ) ||
-			    (from_list[i]->operator == T_OP_LE) ||
-			    (from_list[i]->operator == T_OP_GE) ||
-			    (from_list[i]->operator == T_OP_SET)) {
+			if ((from_list[i]->op == T_OP_EQ) ||
+			    (from_list[i]->op == T_OP_LE) ||
+			    (from_list[i]->op == T_OP_GE) ||
+			    (from_list[i]->op == T_OP_SET)) {
 			append:
 				RDEBUG4("::: APPENDING %s FROM %d TO %d",
 				       from_list[i]->name, i, tailto);
@@ -1059,7 +1059,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		 *	file and debug output, where we don't want to
 		 *	see the operators.
 		 */
-		vp->operator = T_OP_EQ;
+		vp->op = T_OP_EQ;
 
 		/*
 		 *	Fix dumb cache issues
@@ -1112,7 +1112,7 @@ struct conf_pair {
 	CONF_ITEM item;
 	char *attr;
 	char *value;
-	FR_TOKEN operator;
+	FR_TOKEN op;
 	FR_TOKEN value_type;
 };
 
