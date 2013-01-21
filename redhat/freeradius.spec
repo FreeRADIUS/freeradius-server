@@ -359,9 +359,6 @@ fi
 # RADIUS Loadable Modules
 %dir %attr(755,root,root) %{_libdir}/freeradius
 #%attr(755,root,root) %{_libdir}/freeradius/rlm_*.so*
-#%{_libdir}/freeradius/rlm_acctlog*.so
-%{_libdir}/freeradius/rlm_acctlog.so
-%{_libdir}/freeradius/rlm_acctlog-%{version}.so
 %{_libdir}/freeradius/rlm_always.so
 %{_libdir}/freeradius/rlm_always-%{version}.so
 %{_libdir}/freeradius/rlm_attr_filter.so
