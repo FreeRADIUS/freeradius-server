@@ -206,9 +206,6 @@
 
   debian/	Files to build a "freeradius" Debian Linux package.
 
-  dialup_admin/	A PHP web front-end to manage an SQL database associated
-		with the server.
-
   doc/		Various snippets of documentation
   doc/rfc/	Copies of the RFC's.  If you have Perl, do a 'make' in
 		that directory, and look at the HTML output.

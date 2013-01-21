@@ -206,9 +206,6 @@ rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.a
 rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/sql/mssql
 rm -rf $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/sql/oracle
-rm -rf $RPM_BUILD_ROOT/%{_datadir}/dialup_admin/sql/oracle
-rm -rf $RPM_BUILD_ROOT/%{_datadir}/dialup_admin/lib/sql/oracle
-rm -rf $RPM_BUILD_ROOT/%{_datadir}/dialup_admin/lib/sql/drivers/oracle
 
 # remove header files, we don't ship a devel package and the 
 # headers have multilib conflicts

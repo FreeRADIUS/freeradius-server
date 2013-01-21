@@ -130,33 +130,6 @@ of the server, and let you decide if they satisfy your needs.
 Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 
-%package dialupadmin
-Group:		Productivity/Networking/Radius/Servers
-Summary:	Web management for FreeRADIUS
-Requires:	http_daemon
-Requires:	perl-DateManip
-%if 0%{?suse_version} > 1000
-Requires:	apache2-mod_php5
-Requires:	php5
-Requires:	php5-ldap
-Requires:	php5-mysql
-Requires:	php5-pgsql
-%else
-Requires:	apache2-mod_php4
-Requires:	php4
-Requires:	php4-ldap
-Requires:	php4-mysql
-Requires:	php4-pgsql
-Requires:	php4-session
-%endif
-Autoreqprov:	off
-
-%description dialupadmin
-Dialup Admin supports users either in SQL (MySQL or PostgreSQL are
-supported) or in LDAP. Apart from the web pages, it also includes a
-number of scripts to make the administrator's life a lot easier.
-
-
 %package devel
 Group:        Development/Libraries/C and C++
 Summary:      FreeRADIUS Development Files (static libs)
@@ -246,17 +219,6 @@ cp $RPM_BUILD_ROOT/usr/sbin/radiusd $RPM_BUILD_ROOT/usr/sbin/radrelay
 install    -m 744 suse/rcradius-relayd $RPM_BUILD_ROOT%{_sysconfdir}/init.d/freeradius-relay
 ln -sf ../../etc/init.d/freeradius-relay $RPM_BUILD_ROOT/usr/sbin/rcfreeradius-relay
 mv -v doc/README doc/README.doc
-# install dialup_admin
-DIALUPADMIN=$RPM_BUILD_ROOT%{_datadir}/dialup_admin
-mkdir -p $DIALUPADMIN
-cp -r dialup_admin/* $RPM_BUILD_ROOT%{_datadir}/dialup_admin
-perl -i -pe 's/^#general_base_dir\:.*$/general_base_dir\: \/usr\/share\/freeradius-dialupadmin/'   $DIALUPADMIN/conf/admin.conf
-perl -i -pe 's/^#general_radiusd_base_dir\:.*$/general_radiusd_base_dir\: \//'   $DIALUPADMIN/conf/admin.conf
-perl -i -pe 's/^#general_snmpwalk_command\:.*$/general_snmpwalk_command\: \/usr\/bin\/snmpwalk/'   $DIALUPADMIN/conf/admin.conf
-perl -i -pe 's/^#general_snmpget_command\:.*$/general_snmpget_command\: \/usr\/bin\/snmpget/'   $DIALUPADMIN/conf/admin.conf
-# apache2 config
-install -d -m 755 $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d
-install -m 644 suse/admin-httpd.conf $RPM_BUILD_ROOT%{apache2_sysconfdir}/conf.d/radius.conf
 # remove unneeded stuff
 rm -rf doc/00-OLD
 rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
@@ -374,22 +336,6 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) %dir %{_libdir}/freeradius
 %attr(755,root,root) %{_libdir}/freeradius/rlm_sql_oracle*.so*
 %endif
-
-%files dialupadmin
-%defattr(-,root,root)
-%dir %{_datadir}/dialup_admin/
-%{_datadir}/dialup_admin/Makefile
-%{_datadir}/dialup_admin/bin/
-%{_datadir}/dialup_admin/doc/
-%{_datadir}/dialup_admin/htdocs/
-%{_datadir}/dialup_admin/html/
-%{_datadir}/dialup_admin/lib/
-%{_datadir}/dialup_admin/sql/
-%dir %{_datadir}/dialup_admin/conf/
-%config(noreplace) %{_datadir}/dialup_admin/conf/*
-%config(noreplace) %{apache2_sysconfdir}/conf.d/radius.conf
-%{_datadir}/dialup_admin/Changelog
-%{_datadir}/dialup_admin/README
 
 %files devel
 %defattr(-,root,root)

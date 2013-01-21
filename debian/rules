@@ -127,26 +127,7 @@ ifeq (config.guess.dist,$(wildcard config.guess.dist))
 endif
 	dh_clean 
 
-install: install-indep install-arch
-install-indep: build-indep-stamp
-	dh_testdir
-	dh_testroot
-	dh_installdirs -i
-
-	$(MAKE) -C dialup_admin DIALUP_PREFIX=/usr/share/freeradius-dialupadmin \
-	                        DIALUP_DOCDIR=/usr/share/doc/freeradius-dialupadmin \
-	                        DIALUP_CONFDIR=/etc/freeradius-dialupadmin \
-	                        R=$(freeradius_dir) install
-
-	mv $(freeradius_dir)/usr/share/freeradius-dialupadmin/bin/dialup_admin.cron \
-	       $(freeradius_dir)/usr/share/freeradius-dialupadmin/bin/freeradius-dialupadmin.cron
-	mv $(freeradius_dir)/usr/share/doc/freeradius-dialupadmin/Changelog \
-	       $(freeradius_dir)/usr/share/doc/freeradius-dialupadmin/changelog
-
-	install -m0644 debian/apache2.conf $(freeradius_dir)/etc/freeradius-dialupadmin/
-
-	dh_install -i --sourcedir=$(freeradius_dir)
-	dh_installdocs -p freeradius-dialupadmin dialup_admin/README
+install: install-arch
 
 install-arch: build-arch-stamp
 	dh_testdir

@@ -1,5 +1,0 @@
-#
-# Extra attributes that the test user/check server pages will send to
-# the RADIUS server
-#
-Service-Type = Framed-User

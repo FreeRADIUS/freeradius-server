@@ -124,14 +124,6 @@ Description: iODBC module for FreeRADIUS server
  The FreeRADIUS server can use iODBC to access databases to authenticate users
  and do accounting, and this module is necessary for that.
 
-Package: freeradius-dialupadmin
-Architecture: all
-Depends: php5 | libapache2-mod-php5 | php5-cgi, apache2-mpm-prefork | httpd, ${perl:Depends}
-Suggests: php5-mysql | php5-pgsql, php5-ldap, libdate-manip-perl
-Description: set of PHP scripts for administering a FreeRADIUS server
- These scripts provide a web-based interface for administering a FreeRADIUS
- server which stores authentication information in either SQL or LDAP.
-
 Package: freeradius-dbg
 Architecture: any
 Section: debug
