@@ -60,16 +60,16 @@ ldap {
 
 	# Set to "no" to disable the 'no "known good" password' warning,
 	# if you're not using LDAP to retrieve password values.
-#	expect_password = "yes" 
+#	expect_password = yes
 
 	# Set to yes if you have eDirectory and want to use the universal
 	# password mechanism.
-#	edir = "no"
+#	edir = no
 
 	# Set to yes if you want to bind as the user after retrieving the
 	# Cleartext-Password. This will consume the login grace, and
 	# verify user authorization.
-#	edir_autz = "no"
+#	edir_autz = no
 
 	#
 	#  Profile related attributes.
