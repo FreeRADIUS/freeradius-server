@@ -93,7 +93,7 @@ void version(void)
 #ifdef WITH_VMPS
 	DEBUG3("  vmps");
 #endif
-	radlog(L_INFO, "Copyright (C) 1999-2012 The FreeRADIUS server project and contributors.");
+	radlog(L_INFO, "Copyright (C) 1999-2013 The FreeRADIUS server project and contributors.");
 	radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	radlog(L_INFO, "PARTICULAR PURPOSE.");
 	radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the");
