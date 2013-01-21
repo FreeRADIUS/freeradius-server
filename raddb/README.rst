@@ -171,12 +171,9 @@ You will need to read your old LDAP configuration, and migrate it
 manually to the new configuration.  Simply copying the old
 configuration WILL NOT WORK.
 
-The eDirectory support has been removed.  It was written by
-duplicating large amounts of code in the module.  As a result, it was
-incomprehensible, and unmaintainable.  It's probably easy to add the
-code back, but doing so requires access to an eDirectory server.
-
-As always, patches are welcome.
+Users upgrading from 2.0.0 who used to call the ldap module in
+post-auth should now set ``edir_autz = yes``, and remove the ``ldap``
+module from the post-auth section.
 
 
 EAP
