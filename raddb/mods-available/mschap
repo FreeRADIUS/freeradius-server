@@ -28,13 +28,6 @@ mschap {
 	#
 #	require_strong = yes
 
-	# Windows sends us a username in the form of
-	# DOMAIN\user, but sends the challenge response
-	# based on only the user portion.  This hack
-	# corrects for that incorrect behavior.
-	#
-#	with_ntdomain_hack = no
-
 	# The module can perform authentication itself, OR
 	# use a Windows Domain Controller.  This configuration
 	# directive tells the module to call the ntlm_auth

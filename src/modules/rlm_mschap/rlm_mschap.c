@@ -545,7 +545,7 @@ static const CONF_PARSER module_config[] = {
 	{ "require_strong",    PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t,require_strong), NULL, "no" },
 	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
-	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "no" },
+	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "yes" },
 	{ "passwd",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
