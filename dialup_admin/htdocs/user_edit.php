@@ -144,7 +144,6 @@ EOM;
 		if ($name == 'none')
 			continue;
 		unset($vals);
-		unset($selected);
 		unset($ops);
 		$def_added = 0;
 		if ($item_vals["$key"][count]){
@@ -179,6 +178,7 @@ EOM;
 
 		$i = 0;
 		foreach($vals as $val){
+			unset($selected);
 			$name1 = $name . $i;
 			$val = preg_replace('/"/','&quot;',$val);
 			$oper_name = $name1 . '_op';
