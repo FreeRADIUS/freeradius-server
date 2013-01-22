@@ -16,7 +16,7 @@
 /**
  * $Id$
  * @file rlm_ippool.c
- * @brief Assign IP addresses from a GDBM database.
+ * @brief Allocates an IPv4 address from a pool stored in a GDBM database.
  *
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>

@@ -15,7 +15,7 @@
  
 /**
  * $Id$
- * @file rlm_redis_who.c
+ * @file rlm_rediswho.c
  * @brief Session tracking using redis.
  *
  * @copyright 2000,2006  The FreeRADIUS server project
