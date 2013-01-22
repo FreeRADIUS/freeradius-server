@@ -1,12 +1,7 @@
 /*
- * rlm_cram.c
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,31 +11,27 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2002,2006  The FreeRADIUS server project
  */
-
-/*
- *   CRAM mail authentication (APOP, CRAM-MD5)
- *   by 3APA3A
- *
- *   rlm_cram module is a part of Mail authorization/authentication
- *   support.
- *
- *   Attributes used (Vendor Code/PEN: 11406, you may change it to your own)
- *	101 (Sandy-Mail-Authtype), selects CRAM protocol, possible values:
- *		2: CRAM-MD5
- *		3: APOP
- *		8: CRAM-MD4
- *		9: CRAM-SHA1
- *	102 (Sandy-Mail-Challenge), contains server's challenge (usually
- *	text banner)
- *	103 (Sandy-Mail-Response), contains client's response, 16 octets
- *	for APOP/CRAM-MD5/CRAM-MD4, 20 octets for CRAM-SHA1
- *
- *   (c) 2002 by SANDY (http://www.sandy.ru/) under GPL
+ 
+/**
+ * $Id$
+ * @file rlm_cram.c
+ * @brief CRAM mail authentication (APOP, CRAM-MD5)
+   @verbatim
+	Attributes used (Vendor Code/PEN: 11406, you may change it to your own)
+	101 (Sandy-Mail-Authtype), selects CRAM protocol, possible values:
+		2: CRAM-MD5
+		3: APOP
+		8: CRAM-MD4
+		9: CRAM-SHA1
+	102 (Sandy-Mail-Challenge), contains server's challenge (usually
+	text banner)
+	103 (Sandy-Mail-Response), contains client's response, 16 octets
+	for APOP/CRAM-MD5/CRAM-MD4, 20 octets for CRAM-SHA1
+   @endverbatim
+ * @copyright 2001,2006  The FreeRADIUS server project
+ * @copyright 2002 SANDY (http://www.sandy.ru/) under GPLr
  */
-
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 

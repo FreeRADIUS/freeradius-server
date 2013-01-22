@@ -1,13 +1,7 @@
 /*
- * rlm_sim_files.c	authorization: Find a SIM user in the "simtriplets"
- *                                     file.
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -17,43 +11,37 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2004  Michael Richardson <mcr@sandelman.ottawa.on.ca>
- * Copyright 2006  The FreeRADIUS server project
- *
- * (Adapted from rlm_files/rlm_files.c )
  */
-
-/*
- * this is an authorization-only module that walks the file every time.
+ 
+/**
+ * $Id$
  *
- * this is an example of getting data for rlm_eap_sim from an external
+ * @file rlm_sim_files.c
+ * @brief Parses simtriplets files to provide a data src for eap_sim.
+ *
+ * This is an authorization-only module that walks the file every time.
+ *
+ * This is an example of getting data for rlm_eap_sim from an external
  * place.
  *
- * in a real system, this would be replaced with a lookup to the SS7
+ * In a real system, this would be replaced with a lookup to the SS7
  * network, but those interfaces are distinctly non-standard, and might
- * even be totally proprietary
- *
- */
-
-/* FILE FORMAT
- *
+ * even be totally proprietary.
  *
  * The triplets file contains records of the form:
+@verbatim
+IMSI            RAND                             SRES     Kc
+232420100000015,30000000000000000000000000000000,30112233,445566778899AABB
+@endverbatim
  *
- * IMSI            RAND                             SRES     Kc
- * 232420100000015,30000000000000000000000000000000,30112233,445566778899AABB
- *
- * there must be *three* entries for every IMSI for it to be considered valid.
- *
+ * There must be *three* entries for every IMSI for it to be considered valid.
  * Lines starting with # are ignored.
  *
  * Conveniently, this file format is produced by XXXX.
-
  *
+ * @copyright 2004  Michael Richardson <mcr@sandelman.ottawa.on.ca>
+ * @copyright 2006  The FreeRADIUS server project
  */
-
-
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 

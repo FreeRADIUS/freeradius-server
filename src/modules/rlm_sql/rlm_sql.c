@@ -1,14 +1,7 @@
-
 /*
- * rlm_sql.c		SQL Module
- * 		Main SQL module file. Most ICRADIUS code is located in sql.c
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,13 +11,18 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2012  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Mike Machado <mike@innercite.com>
- * Copyright 2000  Alan DeKok <aland@ox.org>
  */
-
+ 
+/**
+ * $Id$
+ * @file rlm_sql.c
+ * @brief Implements SQL 'users' file, and SQL accounting.
+ *
+ * @copyright 2012  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Mike Machado <mike@innercite.com>
+ * @copyright 2000  Alan DeKok <aland@ox.org>
+ */
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 

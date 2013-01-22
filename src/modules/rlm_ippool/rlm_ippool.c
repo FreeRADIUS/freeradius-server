@@ -1,12 +1,7 @@
 /*
- * rlm_ippool.c
- *
- * Version:  $Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,45 +11,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2001,2006  The FreeRADIUS server project
- * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
- *
- * March 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Initial release
- * April 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Add support for the Pool-Name attribute
- * May 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Check the return value of a gdbm_fetch() we didn't check
- * - Change the nas entry in the ippool_key structure from uint32 to string[64]
- *   That should allow us to also use the NAS-Identifier attribute
- * Sep 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Move from authorize to post-auth
- * - Use mutex locks when accessing the gdbm files
- * - Fail if we don't find nas port information
- * Oct 2002, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Do a memset(0) on the key.nas before doing searches. Nusty bug
- * Jul 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Make Multilink work this time
- * - Instead of locking file operations, lock transactions. That means we only keep
- *   one big transaction lock instead of per file locks (mutexes).
- * Sep 2003, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Fix postauth to not leak ip's
- *   Add an extra attribute in each entry <char extra> signifying if we need to delete this
- *   entry in the accounting phase. This is only true in case we are doing MPPP
- *   Various other code changes. Code comments should explain things
- *   Highly experimental at this phase.
- * Mar 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Add a timestamp and a timeout attribute in ippool_info. When we assign an ip we set timestamp
- *   to request->timestamp and timeout to %{Session-Timeout:-0}. When we search for a free entry
- *   we check if timeout has expired. If it has then we free the entry. We also add a maximum
- *   timeout configuration directive. If it is non zero then we also use that one to free entries.
- * Jul 2004, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - If Pool-Name is set to DEFAULT then always run.
- * Mar 2005, Kostas Kalevras <kkalev@noc.ntua.gr>
- * - Make the key an MD5 of a configurable xlated string. This closes Bug #42
  */
-
+ 
+/**
+ * $Id$
+ * @file rlm_ippool.c
+ * @brief Assign IP addresses from a GDBM database.
+ *
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
+ */
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 

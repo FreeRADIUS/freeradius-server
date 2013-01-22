@@ -1,12 +1,7 @@
 /*
- * rlm_policy.c		Implements a policy language
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,11 +11,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2004  Alan DeKok <aland@ox.org>
- * Copyright 2006  The FreeRADIUS server project
  */
-
+ 
+/**
+ * $Id$
+ * @file rlm_policy.c
+ * @brief Implements a policy language (which is defunct as should not be used).
+ *
+ * @copyright 2004  Alan DeKok <aland@ox.org>
+ * @copyright 2006  The FreeRADIUS server project
+ */
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 

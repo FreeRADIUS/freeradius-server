@@ -1,12 +1,7 @@
 /*
- * rlm_attr_rewrite.c
- *
- * Version:  $Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,11 +11,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2002,2006  The FreeRADIUS server project
- * Copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
-
+ 
+/**
+ * $Id$
+ * @file rlm_attr_rewrite.c
+ * @brief Rewrite attribute values.
+ * 
+ * @copyright 2001,2006 The FreeRADIUS server project
+ * @copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
+ */
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
@@ -38,19 +38,24 @@ RCSID("$Id$")
 #define RLM_REGEX_INPROXYREPLY 4
 
 typedef struct rlm_attr_rewrite_t {
-	char *attribute;	/* The attribute to search for */
-	DICT_ATTR *da;		/* The attribute definition */
-	char *search;		/* The pattern to search for */
-	int search_len;		/* The length of the search pattern */
-	char *searchin_str;	/* The VALUE_PAIR list to search in. Can be either packet,reply,proxy,proxy_reply or control (plus it's alias 'config') */
-	char searchin;		/* The same as above just coded as a number for speed */
-	char *replace;		/* The replacement */
-	int replace_len;	/* The length of the replacement string */
-	int  append;		/* Switch to control append mode (1,0) */
-	int  nocase;		/* Ignore case */
-	int  new_attr;		/* Boolean. Do we create a new attribute or not? */
-	int  num_matches;	/* Maximum number of matches */
-	const char *name;	/* The module name */
+	char *attribute;	//!< The attribute to search for.
+	DICT_ATTR *da;		//!< The attribute definition.
+	char *search;		//!< The pattern to search for.
+	int search_len;		//!< The length of the search pattern.
+	char *searchin_str;	//!< The VALUE_PAIR list to search in. 
+				//!< Can be either packet, reply, proxy, 
+				//!< proxy_reply or control (plus it's alias 
+				//!< 'config').
+	char searchin;		//!< The same as above just coded as a number 
+				//!< for speed.
+	char *replace;		//!< The replacement.
+	int replace_len;	//!< The length of the replacement string.
+	int  append;		//!< Switch to control append mode (1,0).
+	int  nocase;		//!< Ignore case.
+	int  new_attr;		//!< Boolean. Whether we need to create a new 
+				//!< attr.
+	int  num_matches;	//!< Maximum number of matches.
+	const char *name;	//!< The module name.
 } rlm_attr_rewrite_t;
 
 static const CONF_PARSER module_config[] = {

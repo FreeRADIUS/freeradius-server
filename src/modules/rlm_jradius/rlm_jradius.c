@@ -1,31 +1,32 @@
-/**
- * rlm_jradius - The FreeRADIUS JRadius Server Module
- * Copyright (C) 2004-2006 PicoPoint, B.V.
- * Copyright (c) 2007-2008 David Bird
- * 
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.
+/*
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License 
- * for more details.
- * 
- * You should have received a copy of the GNU General Public License along
- * with this program; if not, write to the Free Software Foundation, Inc.,
- * 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
+ *
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+ 
+/**
+ * $Id$
+ * @file rlm_jradius.c
+ * @brief Connect to the JRadius policy server.
  *
  *  This module is used to connect FreeRADIUS to the JRadius server. 
  *  JRadius is a Java RADIUS client and server framework, see doc/rlm_jradius
  *  and http://jradius.net/ for more information. 
  *
- *  Author(s): David Bird <dbird@acm.org>
- *
- *  Connection pooling code based on rlm_sql, see rlm_sql/sql.c for copyright and license.
+ * @todo should integrate with connection API.
+ * @author David Bird <dbird@acm.org>
+ * @copyright 2004-2006 PicoPoint, B.V.
+ * @copyright 2007-2008 David Bird
  */
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

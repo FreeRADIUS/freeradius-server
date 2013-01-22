@@ -1,31 +1,33 @@
 /*
- * rlm_opendirectory.c
- *		authentication: Apple Open Directory authentication
- *		authorization:  enforces ACLs
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License version 2 only, as published by
- *   the Free Software Foundation.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License version 2
+ *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+ 
+/**
+ * $Id$
+ * @file rlm_opendirectory.c
+ * @brief Allows authentication against OpenDirectory and enforces ACLS.
  *
- * Copyright 2007 Apple Inc.
+ * authentication: Apple Open Directory authentication
+ * authorization:  enforces ACLs
+ *
+ * @copyright 2007 Apple Inc.
  */
 
 /*
  * 	For a typical Makefile, add linker flag like this:
  *	LDFLAGS = -framework DirectoryService
  */
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>

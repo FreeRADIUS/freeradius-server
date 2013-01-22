@@ -1,10 +1,4 @@
 /*
- * rlm_attr_filter.c  - Filter A/V Pairs received back from proxy reqs
- *                      before sending reply to the NAS/Server that sent
- *                      it to us.
- *
- * Version:      $Id$
- *
  *   This program is is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License, version 2 if the
  *   License as published by the Free Software Foundation.
@@ -17,11 +11,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright (C) 2001,2006 The FreeRADIUS server project
- * Copyright (C) 2001 Chris Parker <cparker@starnetusa.net>
  */
-
+ 
+/**
+ * $Id$
+ * @file rlm_attr_filter.c
+ * @brief Filter the contents of a list, allowing only certain attributes.
+ * 
+ * @copyright (C) 2001,2006 The FreeRADIUS server project
+ * @copyright (C) 2001 Chris Parker <cparker@starnetusa.net>
+ */
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 

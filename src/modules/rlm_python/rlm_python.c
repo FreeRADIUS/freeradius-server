@@ -1,11 +1,7 @@
 /*
- * rlm_python.c
- *
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,13 +11,19 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2002  Miguel A.L. Paraz <mparaz@mparaz.com>
- * Copyright 2002  Imperium Technology, Inc.
- * - rewritten by Paul P. Komkoff Jr <i@stingr.net>
  */
-
+ 
+/**
+ * $Id$
+ * @file rlm_python.c
+ * @brief Translates requests between the server an a python interpreter.
+ *
+ * @note Rewritten by Paul P. Komkoff Jr <i@stingr.net>.
+ *
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2002  Miguel A.L. Paraz <mparaz@mparaz.com>
+ * @copyright 2002  Imperium Technology, Inc.
+ */
 #include <freeradius-devel/ident.h>
 RCSID("$Id$")
 

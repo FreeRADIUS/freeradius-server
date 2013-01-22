@@ -1,14 +1,7 @@
 /*
- * rlm_unix.c	authentication: Unix user authentication
- *		accounting:     Functions to write radwtmp file.
- *		Also contains handler for "Group".
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,12 +11,21 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Jeff Carneal <jeff@apex.net>
- * Copyright 2000  Alan Curry <pacman@world.std.com>
  */
-
+ 
+/**
+ * $Id$
+ * @file rlm_unix.c
+ * @brief Unixy things
+ *
+ * authentication: Unix user authentication
+ * accounting:     Functions to write radwtmp file.
+ * Also contains handler for "Group".
+ *
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Jeff Carneal <jeff@apex.net>
+ * @copyright 2000  Alan Curry <pacman@world.std.com>
+ */
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 

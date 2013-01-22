@@ -1,25 +1,22 @@
 /*
- * rlm_sqlhpwippool.c
- * Chooses an IPv4 address from pools defined in ASN Netvim
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
- * Version:	$Id$
+ *   This program is distributed in the hope that it will be useful,
+ *   but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *   GNU General Public License for more details.
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the Free
- * Software Foundation; either version 2 of the License, or (at your option)
- * any later version.
- *
- * This program is distributed in the hope that it will be useful, but WITHOUT
- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
- * more details.
- *
- * You should have received a copy of the GNU General Public License along with
- * this program; if not, write to the Free Software Foundation, Inc., 59 Temple
- * Place, Suite 330, Boston, MA 02111-1307 USA
- *
- * Copyright (c) 2005-2006 Pawel Foremski <pjf@asn.pl>,
- *               2000-2006 The FreeRADIUS server project
+ *   You should have received a copy of the GNU General Public License
+ *   along with this program; if not, write to the Free Software
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+ 
+/**
+ * $Id$
+ * @file rlm_sqlhpwippool.c
+ * @brief Allocates an IPv4 address from pools defined in ASN Netvim.
  *
  * Current bugs/limits:
  * - probably works only with newer versions of MySQL (subqueries)
@@ -31,8 +28,10 @@
  * - pool names (fetched from database) are not "escaped"
  * - you have to set encoding of radius.acctuniqueid to same as
  *   netvim.ips.rsv_by
+ *
+ * @copyright 2005-2006 Pawel Foremski <pjf@asn.pl>,
+ * @copyright 2000-2006 The FreeRADIUS server project
  */
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/modpriv.h>

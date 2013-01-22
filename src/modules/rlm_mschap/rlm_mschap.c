@@ -1,12 +1,7 @@
 /*
- * rlm_mschap.c
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -16,12 +11,17 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+ 
+/**
+ * $Id$
+ * @file rlm_mschap.c
+ * @brief Implemented mschap authentication.
  *
- * Copyright 2000,2001,2006  The FreeRADIUS server project
+ * @copyright 2000,2001,2006  The FreeRADIUS server project
  */
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
-
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
@@ -45,18 +45,18 @@ extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * 
 #endif
 
 /* Allowable account control bits */
-#define ACB_DISABLED   0x0001  /* 1 = User account disabled */
-#define ACB_HOMDIRREQ  0x0002  /* 1 = Home directory required */
-#define ACB_PWNOTREQ   0x0004  /* 1 = User password not required */
-#define ACB_TEMPDUP    0x0008  /* 1 = Temporary duplicate account */
-#define ACB_NORMAL     0x0010  /* 1 = Normal user account */
-#define ACB_MNS        0x0020  /* 1 = MNS logon user account */
-#define ACB_DOMTRUST   0x0040  /* 1 = Interdomain trust account */
-#define ACB_WSTRUST    0x0080  /* 1 = Workstation trust account */
-#define ACB_SVRTRUST   0x0100  /* 1 = Server trust account */
-#define ACB_PWNOEXP    0x0200  /* 1 = User password does not expire */
-#define ACB_AUTOLOCK   0x0400  /* 1 = Account auto locked */
-#define ACB_PW_EXPIRED 0x00020000   /* 1 = Password Expired */
+#define ACB_DISABLED   0x00010000	//!< User account disabled.
+#define ACB_HOMDIRREQ  0x00020000	//!< Home directory required.
+#define ACB_PWNOTREQ   0x00040000	//!< User password not required.
+#define ACB_TEMPDUP    0x00080000	//!< Temporary duplicate account.
+#define ACB_NORMAL     0x00100000	//!< Normal user account.
+#define ACB_MNS        0x00200000	//!< MNS logon user account.
+#define ACB_DOMTRUST   0x00400000	//!< Interdomain trust account.
+#define ACB_WSTRUST    0x00800000	//!< Workstation trust account.
+#define ACB_SVRTRUST   0x01000000	//!< Server trust account.
+#define ACB_PWNOEXP    0x02000000	//!< User password does not expire.
+#define ACB_AUTOLOCK   0x04000000	//!< Account auto locked.
+#define ACB_PW_EXPIRED 0x00020000	//!< Password Expired.
 
 static int pdb_decode_acct_ctrl(const char *p)
 {
