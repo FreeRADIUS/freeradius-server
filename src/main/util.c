@@ -290,7 +290,7 @@ int rad_checkfilename(const char *filename)
  *	This is so that IF an error is returned, the 'directory' ptr
  *	points to the name of the file which caused the error.
  */
-int rad_mkdir(char *directory, int mode)
+int rad_mkdir(char *directory, mode_t mode)
 {
 	int rcode;
 	char *p;
@@ -333,7 +333,20 @@ int rad_mkdir(char *directory, int mode)
 	 *	Having done everything successfully, we do the
 	 *	system call to actually go create the directory.
 	 */
-	return mkdir(directory, mode);
+	rcode = mkdir(directory, mode & 0777);
+	if (rcode < 0) {
+		return rcode;
+	}
+	
+	/*
+	 *	Set things like sticky bits that aren't supported by
+	 *	mkdir.
+	 */
+	if (mode & ~0777) {
+		rcode = chmod(directory, mode);
+	}
+	
+	return rcode;
 }
 
 
