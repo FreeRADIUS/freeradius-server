@@ -51,7 +51,9 @@ dh:
 #  Create a new self-signed CA certificate
 #
 ######################################################################
-ca.key ca.pem: ca.cnf index.txt serial
+ca.key ca.pem: ca.cnf
+	@[ -f index.txt ] || $(MAKE) index.txt
+	@[ -f serial ] || $(MAKE) serial
 	openssl req -new -x509 -keyout ca.key -out ca.pem \
 		-days $(CA_DEFAULT_DAYS) -config ./ca.cnf
 
