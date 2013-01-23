@@ -796,7 +796,10 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 		 */
 		memcpy(ptr, data, len);
 		break;
-	} /* switch over encryption flags */
+
+        } else { 		/* no packet */
+		memcpy(ptr, data, len);
+	}
 
 	return ptr + len;
 }
