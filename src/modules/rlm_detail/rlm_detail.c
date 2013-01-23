@@ -44,32 +44,26 @@ RCSID("$Id$")
 #include <grp.h>
 #endif
 
-#define 	DIRLEN	8192
+#define DIRLEN	8192		//!< Maximum path length.
 
-struct detail_instance {
-	/* detail file */
-	char *detailfile;
+/** Instance configuration for rlm_detail
+ *
+ * Holds the configuration and preparsed data for a instance of rlm_detail.
+ */
+typedef struct detail_instance {
+	char	*detailfile;	//!< File/path to write to.
+	int	detailperm;	//!< Permissions to use for new files.
+	char	*group;		//!< Group to use for new files.
+	
+	int	dirperm;	//!< Directory permissions to use for new files.
+	
+	char	*header;	//!< Header format.
+	int	locking;	//!< Whether the file should be locked.
+	
+	int	log_srcdst;	//!< Add IP src/dst attributes to entries.
 
-	/* detail file permissions */
-	int detailperm;
-
-	/* detail file group */
-	char *group;
-
-	/* directory permissions */
-	int dirperm;
-
-	/* timestamp & stuff */
-	char *header;
-
-	/* if we want file locking */
-	int locking;
-
-	/* log src/dst information */
-	int log_srcdst;
-
-	fr_hash_table_t *ht;
-};
+	fr_hash_table_t *ht;	//!< Holds suppressed attributes.
+} detail_instance_t;
 
 static const CONF_PARSER module_config[] = {
 	{ "detailfile",    PW_TYPE_STRING_PTR,
@@ -120,7 +114,7 @@ static int detail_cmp(const void *a, const void *b)
  */
 static int detail_instantiate(CONF_SECTION *conf, void **instance)
 {
-	struct detail_instance *inst;
+	detail_instance_t *inst;
 	CONF_SECTION	*cs;
 
 	inst = rad_malloc(sizeof(*inst));
