@@ -539,7 +539,7 @@ int		log_err (char *);
 /* util.c */
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST **request);
-int		rad_mkdir(char *directory, int mode);
+int		rad_mkdir(char *directory, mode_t mode);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		*rad_calloc(size_t size); /* calls exit(1) on error! */
