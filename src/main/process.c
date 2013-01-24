@@ -1361,7 +1361,6 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 #endif
 	request->child_state = REQUEST_ACTIVE;
 	request->handle = fun;
-	request->options = RAD_REQUEST_OPTION_DEBUG2;
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif

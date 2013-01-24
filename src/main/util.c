@@ -424,7 +424,7 @@ REQUEST *request_alloc(void)
 	request->username = NULL;
 	request->password = NULL;
 	request->timestamp = time(NULL);
-	request->options = RAD_REQUEST_OPTION_NONE;
+	request->options = debug_flag; /* Default to global debug level */
 
 	request->module = "";
 	request->component = "<core>";
