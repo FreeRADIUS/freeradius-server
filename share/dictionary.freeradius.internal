@@ -536,6 +536,10 @@ VALUE	Post-Auth-Type			Local			0
 VALUE	Post-Auth-Type			Reject			1
 
 #
+#	And Post-Proxy
+VALUE	Post-Proxy-Type			Reject			0
+
+#
 #	Experimental Non-Protocol Integer Translations for FreeRADIUS
 #
 VALUE	Fall-Through			No			0

@@ -1782,7 +1782,8 @@ static int process_proxy_reply(REQUEST *request)
 	}
 	
 	if (vp) {
-		RDEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
+		RDEBUG2("  Found Post-Proxy-Type %s", 
+		  dict_valnamebyattr(PW_POST_PROXY_TYPE, 0, vp->vp_integer));
 		post_proxy_type = vp->vp_integer;
 	}
 	
