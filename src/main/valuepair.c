@@ -902,6 +902,8 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
  */
 VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 {	
+	if (!request) return NULL;
+
 	switch (list) {
 		case PAIR_LIST_UNKNOWN:
 		default:
@@ -918,9 +920,11 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 
 #ifdef WITH_PROXY
 		case PAIR_LIST_PROXY_REQUEST:
+			if (!request->proxy) break;
 			return &request->proxy->vps;
 
 		case PAIR_LIST_PROXY_REPLY:
+			if (!request->proxy) break;
 			return &request->proxy_reply->vps;
 #endif
 #ifdef WITH_COA
@@ -956,8 +960,8 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 #endif
 	}
 	
-	RDEBUG("WARNING: Specified list \"%s\" is not available in "
-	       "this context", fr_int2str(pair_lists, list, "¿unknown?"));
+	RDEBUG2("WARNING: List \"%s\" is not available",
+		fr_int2str(pair_lists, list, "<INVALID>"));
 	
 	return NULL;
 }
