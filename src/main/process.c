@@ -1771,14 +1771,15 @@ static int process_proxy_reply(REQUEST *request)
 	if (!vp && request->proxy_reply &&
 	    request->proxy_reply->code == PW_AUTHENTICATION_REJECT) {
 	    	DICT_VALUE	*dval;
-	
-		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
-		if (!dval) return 0;
-			
-		vp = radius_paircreate(request, &request->config_items,
-				       PW_POST_PROXY_TYPE, 0, PW_TYPE_INTEGER);
 
-		vp->vp_integer = dval->value;
+		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
+		if (dval) {
+			vp = radius_paircreate(request, &request->config_items,
+					       PW_POST_PROXY_TYPE, 0,
+					       PW_TYPE_INTEGER);
+
+			vp->vp_integer = dval->value;
+		}
 	}
 	
 	if (vp) {
