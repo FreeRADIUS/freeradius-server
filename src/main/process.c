@@ -1783,8 +1783,11 @@ static int process_proxy_reply(REQUEST *request)
 	}
 	
 	if (vp) {
-		RDEBUG2("  Found Post-Proxy-Type %s", vp->vp_strvalue);
 		post_proxy_type = vp->vp_integer;
+		
+		RDEBUG2("  Found Post-Proxy-Type %s",
+			dict_valnamebyattr(PW_POST_PROXY_TYPE, 0,
+					   post_proxy_type));
 	}
 	
 	if (request->home_pool && request->home_pool->virtual_server) {
