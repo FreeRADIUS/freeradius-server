@@ -13,7 +13,7 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Added keytab support to Heimdal Kerberos. Patch from Ryan Steinmetz.
 	* radsqlrelay does multiple INSERTs in one transaction.
 	  Patch from Uwe Meyer-Gruhl.
-	* Run Post-Proxy-Type Reject {} if the upstream server rejected the 
+	* Run Post-Proxy-Type Reject {} if the upstream server rejected the
 	  request.
 
 	Bug fixes
@@ -33,6 +33,8 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Wrap rbtree calls in mutexes in rlm_cache to prevent memory
 	  corruption. Patch from Phil Mayers.
 	* Port fix for %{3GPP-*} expansion from master branch.
+	* Fix sample certificate scripts when multiple client certs are
+	  made
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
