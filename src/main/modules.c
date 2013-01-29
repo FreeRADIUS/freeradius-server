@@ -132,14 +132,22 @@ int lt_dlinit(void)
 
 lt_dlhandle lt_dlopenext(const char *name)
 {
+	int flags = RTLD_NOW;
 	void *handle;
 	char buffer[2048];
+
+#ifdef RTLD_GLOBAL
+	if (strcmp(name, "rlm_perl") == 0) {
+		flags |= RTLD_GLOBAL;
+	} else
+#endif
+		flags |= RTLD_LOCAL;
 
 	/*
 	 *	Prefer loading our libraries by absolute path.
 	 */
 	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
-	handle = dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
+	handle = dlopen(buffer, flags);
 	if (handle) return handle;
 
 	strlcpy(buffer, name, sizeof(buffer));
@@ -149,7 +157,7 @@ lt_dlhandle lt_dlopenext(const char *name)
 	 */
 	strlcat(buffer, LT_SHREXT, sizeof(buffer));
 
-	return dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
+	return dlopen(buffer, flags);
 }
 
 void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
