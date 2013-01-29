@@ -134,13 +134,26 @@ lt_dlhandle lt_dlopenext(const char *name)
 {
 	void *handle;
 	char buffer[2048];
+        char *stringmatch = "rlm_perl";
+        char *result;
 
-	/*
-	 *	Prefer loading our libraries by absolute path.
-	 */
-	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
-	handle = dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
-	if (handle) return handle;
+        /*
+         *      Prefer loading our libraries by absolute path.
+         */
+        snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
+
+        result = strstr(buffer,stringmatch);
+        /* rlm_perl needs to be loaded as a global */
+        if(result){
+                handle = dlopen(buffer, RTLD_NOW | RTLD_GLOBAL);
+                DEBUG2("dlopen loaded module %s as GLOBAL", buffer);
+        }
+        else {
+                handle = dlopen(buffer, RTLD_NOW | RTLD_LOCAL);
+                DEBUG2("dlopen loaded module %s as LOCAL", buffer);
+                }
+
+        if (handle) return handle;
 
 	strlcpy(buffer, name, sizeof(buffer));
 
