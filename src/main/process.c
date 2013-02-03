@@ -1091,10 +1091,31 @@ STATE_MACHINE_DECL(request_finish)
 	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0, TAG_ANY);
 	if (vp) pairadd(&request->reply->vps, vp);
 
+	switch (request->reply->code)
+	{
+	case PW_AUTHENTICATION_ACK:
+		rad_postauth(request);
+		break;
+	case PW_ACCESS_CHALLENGE:
+		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0,
+			   TAG_ANY);
+		vp = radius_pairmake(request, &request->config_items,
+			     	     "Post-Auth-Type", "Challenge",
+			     	     T_OP_SET);
+				     
+		if (vp) rad_postauth(request);
+		break;
+	default:
+		break;
+	}
+
 	/*
 	 *	Run rejected packets through
 	 *
 	 *	Post-Auth-Type = Reject
+	 *
+	 *	We do this separately so ACK and challenge can change the code
+	 *	to reject if a module returns reject.
 	 */
 	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
@@ -1102,10 +1123,6 @@ STATE_MACHINE_DECL(request_finish)
 				     "Post-Auth-Type", "Reject",
 				     T_OP_SET);
 		if (vp) rad_postauth(request);
-	}
-
-	if (request->reply->code == PW_AUTHENTICATION_ACK) {
-		rad_postauth(request);
 	}
 
 	/*
