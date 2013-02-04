@@ -286,11 +286,10 @@ ATTRIBUTE	EAP-Type-Arcot-Systems-EAP		1296	octets
 ATTRIBUTE	EAP-Type-Cisco-LEAP			1297	octets
 ATTRIBUTE	EAP-Type-Nokia-IP-Smart-Card		1298	octets
 ATTRIBUTE	EAP-Type-SIM				1298	octets
-ATTRIBUTE	EAP-Type-SRP-SHA1-Part-1		1299	octets
-ATTRIBUTE	EAP-Type-SRP-SHA1-Part-2		1300	octets
+ATTRIBUTE	EAP-Type-SRP-SHA1			1299	octets
 ATTRIBUTE	EAP-Type-EAP-TTLS			1301	octets
 ATTRIBUTE	EAP-Type-Remote-Access-Service		1302	octets
-ATTRIBUTE	EAP-Type-UMTS				1303	octets
+ATTRIBUTE	EAP-Type-AKA				1303	octets
 ATTRIBUTE	EAP-Type-EAP-3Com-Wireless		1304	octets
 ATTRIBUTE	EAP-Type-PEAP				1305	octets
 ATTRIBUTE	EAP-Type-MS-EAP-Authentication		1306	octets
@@ -310,11 +309,21 @@ ATTRIBUTE	EAP-Type-SecuriSuite-EAP		1319	octets
 ATTRIBUTE	EAP-Type-DeviceConnect-EAP		1320	octets
 ATTRIBUTE	EAP-Type-EAP-SPEKE			1321	octets
 ATTRIBUTE	EAP-Type-EAP-MOBAC			1322	octets
+ATTRIBUTE	EAP-Type-EAP-FAST			1323	octets
+ATTRIBUTE	EAP-Type-Zonelabs			1324	octets
+ATTRIBUTE	EAP-Type-EAP-Link			1325	octets
+ATTRIBUTE	EAP-Type-EAP-PAX			1326	octets
+ATTRIBUTE	EAP-Type-EAP-PSK			1327	octets
+ATTRIBUTE	EAP-Type-EAP-SAKE			1328	octets
+ATTRIBUTE	EAP-Type-EAP-IKEv2			1329	octets
+ATTRIBUTE	EAP-Type-EAP-AKA2			1330	octets
+ATTRIBUTE	EAP-Type-EAP-GPSK			1331	octets
+ATTRIBUTE	EAP-Type-EAP-PWD			1332	octets
+ATTRIBUTE	EAP-Type-EAP-EVEv1			1333	octets
 
 ATTRIBUTE	EAP-Type-Microsoft-MS-CHAPv2		1306	octets
 ATTRIBUTE	EAP-Type-Cisco-MS-CHAPv2		1309	octets
 ATTRIBUTE	EAP-Type-MS-CHAP-V2			1306	octets
-
 
 #
 #	Range:	1536 - 1791
