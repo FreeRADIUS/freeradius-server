@@ -633,11 +633,11 @@ VALUE	EAP-Type			Arcot-Systems-EAP	16
 VALUE	EAP-Type			Cisco-LEAP		17
 VALUE	EAP-Type			Nokia-IP-Smart-Card	18
 VALUE	EAP-Type			SIM			18
-VALUE	EAP-Type			SRP-SHA1-Part-1		19
-VALUE	EAP-Type			SRP-SHA1-Part-2		20
+VALUE	EAP-Type			SRP-SHA1		19
+# 20 is unassigned
 VALUE	EAP-Type			EAP-TTLS		21
 VALUE	EAP-Type			Remote-Access-Service	22
-VALUE	EAP-Type			UMTS			23
+VALUE	EAP-Type			AKA			23
 VALUE	EAP-Type			EAP-3Com-Wireless	24
 VALUE	EAP-Type			PEAP			25
 VALUE	EAP-Type			MS-EAP-Authentication	26
@@ -657,6 +657,17 @@ VALUE	EAP-Type			SecuriSuite-EAP		39
 VALUE	EAP-Type			DeviceConnect-EAP	40
 VALUE	EAP-Type			EAP-SPEKE		41
 VALUE	EAP-Type			EAP-MOBAC		42
+VALUE	EAP-Type			EAP-FAST		43
+VALUE	EAP-Type			Zonelabs		44
+VALUE	EAP-Type			EAP-Link		45
+VALUE	EAP-Type			EAP-PAX			46
+VALUE	EAP-Type			EAP-PSK			47
+VALUE	EAP-Type			EAP-SAKE		48
+VALUE	EAP-Type			EAP-IKEv2		49
+VALUE	EAP-Type			EAP-AKA2		50
+VALUE	EAP-Type			EAP-GPSK		51
+VALUE	EAP-Type			EAP-PWD			52
+VALUE	EAP-Type			EAP-EVEv1		53
 
 #
 #	These are duplicate values, to get around the problem of
