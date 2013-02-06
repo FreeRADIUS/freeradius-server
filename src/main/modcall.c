@@ -383,7 +383,7 @@ typedef struct modcall_stack {
  */
 int modcall(int component, modcallable *c, REQUEST *request)
 {
-	int myresult;
+	int myresult, mypriority;
 	modcall_stack stack;
 	modcallable *parent, *child;
 	modsingle *sp;
@@ -483,15 +483,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						       g->vps, child->name);
 			if (rcode != RLM_MODULE_UPDATED) {
 				myresult = rcode;
-			} else {
-				/*
-				 *	FIXME: Set priority based on
-				 *	previous priority, so that we
-				 *	don't stop on reject when the
-				 *	default priority was to
-				 *	continue...
-				 *	
-				 */
+				mypriority = stack.priority[stack.pointer];
 			}
 			goto handle_result;
 		}
@@ -504,7 +496,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			if (server == mr->ref_name) {
 				RDEBUG("WARNING: Suppressing recursive call to server %s", server);
 				myresult = RLM_MODULE_NOOP;
-				goto handle_result;
+				goto handle_priority;
 			}
 			
 			request->server = mr->ref_name;
@@ -512,7 +504,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			myresult = indexed_modcall(component, 0, request);
 			RDEBUG("} # server %s with nested call", mr->ref_name);
 			request->server = server;
-			goto handle_result;
+			goto handle_priority;
 		}
 
 		if (child->type == MOD_XLAT) {
@@ -530,7 +522,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						    NULL, 1);
 			}
 					    
-			goto handle_result;
+			goto handle_priority;
 		}
 
 		/*
@@ -684,6 +676,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		sp = mod_callabletosingle(child);
 
 		myresult = call_modsingle(child->method, sp, request);
+
+	handle_priority:
+		mypriority = child->actions[myresult];
+
 	handle_result:
 		RDEBUG2("%.*s[%s] returns %s",
 		       stack.pointer + 1, modcall_spaces,
@@ -744,9 +740,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	higher preference has been seen yet, remember
 		 *	this one.
 		 */
-		if (child->actions[myresult] >= stack.priority[stack.pointer]) {
+		if (mypriority >= stack.priority[stack.pointer]) {
 			stack.result[stack.pointer] = myresult;
-			stack.priority[stack.pointer] = child->actions[myresult];
+			stack.priority[stack.pointer] = mypriority;
 		}
 
 
