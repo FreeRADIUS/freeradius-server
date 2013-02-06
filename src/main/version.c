@@ -27,12 +27,64 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
+
+#ifdef HAVE_OPENSSL_CRYPTO_H
+#include <openssl/crypto.h>
+#include <openssl/opensslv.h>
+
+static long ssl_built = OPENSSL_VERSION_NUMBER;
+
+/** Check build and linked versions of OpenSSL match
+ *
+ * Startup check for whether the linked version of OpenSSL matches the
+ * version the server was built against.
+ *
+ * @return 0 if ok, else -1
+ */
+int ssl_check_version(void)
+{
+	long ssl_linked;
+	
+	ssl_linked = SSLeay();
+	
+	if (ssl_linked != ssl_built) {
+		radlog(L_ERR, "libssl version mismatch."
+		       "  Built with: %lx\n  Linked: %lx",
+		       (unsigned long) ssl_built,
+		       (unsigned long) ssl_linked);
+	
+		return -1;
+	};
+	
+	return 0;
+}
+
+/** Print the current linked version of Openssl
+ *
+ * Print the currently linked version of the OpenSSL library.
+ */
+const char *ssl_version(void)
+{
+	return SSLeay_version(SSLEAY_VERSION); 
+}
+#else
+int ssl_version_check(void) {
+	return 0;
+}
+
+const char *ssl_version()
+{
+	return "not linked"
+}
+#endif
+
 /*
  *	Display the revision number for this program
  */
 void version(void)
 {
 	radlog(L_INFO, "%s: %s", progname, radiusd_version);
+	
 	DEBUG3("Server was built with: ");
 		
 #ifdef WITH_ACCOUNTING
@@ -93,6 +145,10 @@ void version(void)
 #ifdef WITH_VMPS
 	DEBUG3("  vmps");
 #endif
+
+	DEBUG3("Server core libs:");
+	DEBUG3("  ssl: %s", ssl_version());
+
 	radlog(L_INFO, "Copyright (C) 1999-2013 The FreeRADIUS server project and contributors.");
 	radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
 	radlog(L_INFO, "PARTICULAR PURPOSE.");

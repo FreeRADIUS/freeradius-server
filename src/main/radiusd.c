@@ -254,6 +254,14 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	/*
+	 *	Mismatch between build time OpenSSL and linked SSL,
+	 *	better to die here than segfault later.
+	 */
+	if (ssl_check_version() < 0) {
+		exit(1);
+	}
+
 	if (flag && (flag != 0x03)) {
 		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
 		exit(1);
@@ -261,6 +269,7 @@ int main(int argc, char *argv[])
 
 	if (debug_flag)
 		version();
+		
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
@@ -328,6 +337,10 @@ int main(int argc, char *argv[])
 	} else {
 		setlinebuf(stdout); /* unbuffered output */
 	}
+	
+	/*
+	 *	Now we have logging check that the OpenSSL 
+	 */
 
 	/*
 	 *	Initialize the event pool, including threads.
