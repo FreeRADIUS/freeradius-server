@@ -483,6 +483,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						       g->vps, child->name);
 			if (rcode != RLM_MODULE_UPDATED) {
 				myresult = rcode;
+			} else {
 				mypriority = stack.priority[stack.pointer];
 			}
 			goto handle_result;
