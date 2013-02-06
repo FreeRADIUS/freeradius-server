@@ -39,6 +39,7 @@ typedef struct rlm_cache_t {
 	const char		*xlat_name;
 	char			*key;
 	int			ttl;
+	int			max_entries;
 	int			epoch;
 	int			stats;
 	CONF_SECTION		*cs;
@@ -271,6 +272,11 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 	rlm_cache_entry_t *c;
 	char buffer[1024];
+
+	if (rbtree_num_elements(inst->cache) >= inst->max_entries) {
+		RDEBUG("Cache is full: %d entries", inst->max_entries);
+		return NULL;
+	}
 
 	/*
 	 *	TTL of 0 means "don't cache this entry"
@@ -694,6 +700,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_cache_t, key), NULL, NULL},
 	{ "ttl", PW_TYPE_INTEGER,
 	  offsetof(rlm_cache_t, ttl), NULL, "500" },
+	{ "max_entries", PW_TYPE_INTEGER,
+	  offsetof(rlm_cache_t, max_entries), NULL, "16384" },
 	{ "epoch", PW_TYPE_INTEGER,
 	  offsetof(rlm_cache_t, epoch), NULL, "0" },
 	{ "add_stats", PW_TYPE_BOOLEAN,
