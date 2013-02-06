@@ -218,7 +218,13 @@ ATTRIBUTE	ERX-PppoE-Padn				158	string
 ATTRIBUTE	ERX-Dhcp-Option-82			159	octets
 ATTRIBUTE	ERX-Vlan-Map-Id				160	integer
 ATTRIBUTE	ERX-IPv6-Delegated-Pool-Name		161	string
+ATTRIBUTE	Juniper-Tx-Connect-Speed		162	integer
+ATTRIBUTE	Juniper-Rx-Connect-Speed		163	integer
 
+# ATTRIBUTE 164 - 173 RESERVED
+ATTRIBUTE	Unisphere-Client-Profile-Name		174	string
+ATTRIBUTE	Juniper-Redirect-GW-Address		175	ipaddr
+ATTRIBUTE	Juniper-APN-Name			176	string
 
 #
 #  Values	Attribute		Name			Number
@@ -290,7 +296,7 @@ VALUE	ERX-Service-Statistics		time-volume		2
 VALUE	ERX-L2TP-Resynch-Method		disable			0
 VALUE	ERX-L2TP-Resynch-Method		failover		1
 VALUE	ERX-L2TP-Resynch-Method		silent-failover		2
-VALUE	ERX-L2TP-Resynch-Method		failover-with-silent-backup	3
+VALUE	ERX-L2TP-Resynch-Method		failover-with-silent-backup 3
 
 VALUE	ERX-Tunnel-Tx-Speed-Method	static-layer2		1
 VALUE	ERX-Tunnel-Tx-Speed-Method	dynamic-layer2		2
