@@ -1251,16 +1251,13 @@ void radius_mapfree(value_pair_map_t **map)
 	
 	if (!map) return;
 	
-	vpm = *map; 
-	 
-	while (vpm != NULL) {
+	for (vpm = *map; vpm != NULL; vpm = next) {
 		next = vpm->next;
 		
-		radius_tmplfree(&((*map)->dst));
-		radius_tmplfree(&((*map)->src));
+		radius_tmplfree(&(vpm->dst));
+		radius_tmplfree(&(vpm->src));
 		
 		free(vpm);
-		vpm = next;
 	}
 	
 	*map = NULL;
