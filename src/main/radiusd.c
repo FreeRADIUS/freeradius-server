@@ -470,14 +470,14 @@ int main(int argc, char *argv[])
 	radius_event_free();
 	
 	/*
-	 *	Free the configuration items.
-	 */
-	free_mainconfig();
-	
-	/*
 	 *	Detach any modules.
 	 */
 	detach_modules();
+	
+	/*
+	 *	Free the configuration items.
+	 */
+	free_mainconfig();
 	
 	xlat_free();		/* modules may have xlat's */
 
