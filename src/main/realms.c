@@ -370,8 +370,6 @@ static CONF_PARSER home_server_config[] = {
 	  offsetof(home_server,response_window), NULL,   "30" },
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server,max_outstanding), NULL,   "65536" },
-	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
-	  offsetof(home_server, message_authenticator), 0, NULL },
 
 	{ "zombie_period", PW_TYPE_INTEGER,
 	  offsetof(home_server,zombie_period), NULL,   "40" },
@@ -2131,11 +2129,10 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	request->home_server = home;
 
 	/*
-	 *	We're supposed to add a Message-Authenticator
-	 *	if it doesn't exist, and it doesn't exist.
+	 *	Access-Requests have a Message-Authenticator added,
+	 *	unless one already exists.
 	 */
-	if (home->message_authenticator &&
-	    (request->packet->code == PW_AUTHENTICATION_REQUEST) &&
+	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
 	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
 		radius_pairmake(request, &request->proxy->vps,
 				"Message-Authenticator", "0x00",

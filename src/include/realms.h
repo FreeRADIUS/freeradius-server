@@ -66,7 +66,6 @@ typedef struct home_server {
 	int		response_window;
 	int		max_outstanding; /* don't overload it */
 	int		currently_outstanding;
-	int		message_authenticator;
 
 	time_t		last_packet_sent;
 	time_t		last_packet_recv;
