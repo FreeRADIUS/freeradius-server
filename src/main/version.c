@@ -68,13 +68,13 @@ const char *ssl_version(void)
 	return SSLeay_version(SSLEAY_VERSION); 
 }
 #else
-int ssl_version_check(void) {
+int ssl_check_Version(void) {
 	return 0;
 }
 
 const char *ssl_version()
 {
-	return "not linked"
+	return "not linked";
 }
 #endif
 
