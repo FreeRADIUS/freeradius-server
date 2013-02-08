@@ -663,7 +663,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				       child->name ? child->name : "",
 				       fr_int2str(rcode_table,
 						    stack.result[stack.pointer],
-						    "??"));
+						  "??"));
 				goto do_return;
 			}
 
@@ -690,7 +690,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		RDEBUG2("%.*s[%s] returns %s",
 		       stack.pointer + 1, modcall_spaces,
 		       child->name ? child->name : "",
-		       fr_int2str(rcode_table, myresult, "??"));
+			fr_int2str(rcode_table, myresult, "??"));
 
 		/*
 		 *	This is a bit of a hack...
@@ -724,7 +724,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		/*
 		 *	The child's action says return.  Do so.
 		 */
-		if (child->actions[myresult] == MOD_ACTION_RETURN) {
+		if ((child->actions[myresult] == MOD_ACTION_RETURN) &&
+		    (mypriority == 0)) {
 			stack.result[stack.pointer] = myresult;
 			stack.children[stack.pointer] = NULL;
 			goto do_return;
@@ -822,7 +823,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       stack.pointer + 1, modcall_spaces,
 			       group_name[parent->type],
 			       parent->name ? parent->name : "",
-			       fr_int2str(rcode_table, myresult, "??"));
+				fr_int2str(rcode_table, myresult, "??"));
 
 #ifdef WITH_UNLANG
 			if ((parent->type == MOD_IF) ||
