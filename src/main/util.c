@@ -583,6 +583,33 @@ int rad_copy_string(char *to, const char *from)
 	return length;
 }
 
+/*
+ *	Copy a quoted string but without the quotes. The length
+ *	returned is the number of chars written; the number of
+ *	characters consumed is 2 more than this.
+ */
+int rad_copy_string_bare(char *to, const char *from)
+{
+	int length = 0;
+	char quote = *from;
+
+	from++;
+	while (*from && (*from != quote)) {
+		if (*from == '\\') {
+			*(to++) = *(from++);
+			length++;
+		}
+		*(to++) = *(from++);
+		length++;
+	}
+
+	if (*from != quote) return -1; /* not properly quoted */
+
+	*to = '\0';
+
+	return length;
+}
+
 
 /*
  *	Copy a %{} string.
@@ -751,12 +778,12 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 			switch (*from) {
 			case '"':
 			case '\'':
-				length = rad_copy_string(to, from);
+				length = rad_copy_string_bare(to, from);
 				if (length < 0) {
 					radlog(L_ERR, "rad_expand_xlat: Invalid string passed as argument");
 					return -1;
 				}
-				from += length;
+				from += length+2;
 				to += length;
 				break;
 
