@@ -686,3 +686,159 @@ int rad_pps(int *past, int *present, time_t *then, struct timeval *now)
 
 	return pps;
 }
+
+/*
+ * Split a string into words, xlat each one and write into argv array.
+ * Return argc or -1 on failure.
+ */
+
+int rad_expand_xlat(REQUEST *request, const char *cmd,
+		    int max_argc, const char *argv[], int can_fail,
+		    size_t argv_buflen, char *argv_buf)
+{
+	const char *from;
+	char *to;
+	int argc = -1;
+	int i;
+	int left;
+
+	if (strlen(cmd) > (argv_buflen - 1)) {
+		radlog(L_ERR, "rad_expand_xlat: Command line is too long");
+		return -1;
+	}
+
+	/*
+	 *	Check for bad escapes.
+	 */
+	if (cmd[strlen(cmd) - 1] == '\\') {
+		radlog(L_ERR, "rad_expand_xlat: Command line has final backslash, without a following character");
+		return -1;
+	}
+
+	strlcpy(argv_buf, cmd, argv_buflen);
+
+	/*
+	 *	Split the string into argv's BEFORE doing radius_xlat...
+	 */
+	from = cmd;
+	to = argv_buf;
+	argc = 0;
+	while (*from) {
+		int length;
+
+		/*
+		 *	Skip spaces.
+		 */
+		if ((*from == ' ') || (*from == '\t')) {
+			from++;
+			continue;
+		}
+
+		argv[argc] = to;
+		argc++;
+
+		if (argc >= (max_argc - 1)) break;
+
+		/*
+		 *	Copy the argv over to our buffer.
+		 */
+		while (*from && (*from != ' ') && (*from != '\t')) {
+			if (to >= argv_buf + argv_buflen - 1) {
+				radlog(L_ERR, "rad_expand_xlat: Ran out of space in command line");
+				return -1;
+			}
+
+			switch (*from) {
+			case '"':
+			case '\'':
+				length = rad_copy_string(to, from);
+				if (length < 0) {
+					radlog(L_ERR, "rad_expand_xlat: Invalid string passed as argument");
+					return -1;
+				}
+				from += length;
+				to += length;
+				break;
+
+			case '%':
+				if (from[1] == '{') {
+					*(to++) = *(from++);
+
+					length = rad_copy_variable(to, from);
+					if (length < 0) {
+						radlog(L_ERR, "rad_expand_xlat: Invalid variable expansion passed as argument");
+						return -1;
+					}
+					from += length;
+					to += length;
+				} else { /* FIXME: catch %%{ ? */
+					*(to++) = *(from++);
+				}
+				break;
+
+			case '\\':
+				if (from[1] == ' ') from++;
+				/* FALL-THROUGH */
+
+			default:
+				*(to++) = *(from++);
+			}
+		} /* end of string, or found a space */
+
+		*(to++) = '\0';	/* terminate the string */
+	}
+
+	/*
+	 *	We have to have SOMETHING, at least.
+	 */
+	if (argc <= 0) {
+		radlog(L_ERR, "rad_expand_xlat: Empty command line.");
+		return -1;
+	}
+
+	/*
+	 *	Expand each string, as appropriate.
+	 */
+	left = argv_buf + argv_buflen - to;
+	for (i = 0; i < argc; i++) {
+		int sublen;
+
+		/*
+		 *	Don't touch argv's which won't be translated.
+		 */
+		if (strchr(argv[i], '%') == NULL) continue;
+
+		if (!request) continue;
+
+		sublen = radius_xlat(to, left - 1, argv[i], request, NULL, NULL);
+		if (sublen <= 0) {
+			if (can_fail) {
+				/*
+				 *	Fail to be backwards compatible.
+				 *
+				 *	It's yucky, but it won't break anything,
+				 *	and it won't cause security problems.
+				 */
+				sublen = 0;
+			} else {
+				radlog(L_ERR, "rad_expand_xlat: xlat failed");
+				return -1;
+			}
+		}
+
+		argv[i] = to;
+		to += sublen;
+		*(to++) = '\0';
+		left -= sublen;
+		left--;
+
+		if (left <= 0) {
+			radlog(L_ERR, "rad_expand_xlat: Ran out of space while expanding arguments.");
+			return -1;
+		}
+	}
+	argv[argc] = NULL;
+
+	return argc;
+}
+
