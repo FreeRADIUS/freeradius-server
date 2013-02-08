@@ -398,6 +398,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	stack.children[0] = c;
 	stack.start[0] = NULL;
 	myresult = stack.result[0] = default_component_results[component];
+	mypriority = 0;
 	was_if = if_taken = FALSE;
 
 	while (1) {
@@ -466,9 +467,12 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				condition = FALSE;
 			}
 
+			/*
+			 *	If the condition fails to match, go
+			 *	immediately to the next entry in the
+			 *	list.
+			 */
 			if (!condition) {
-				stack.result[stack.pointer] = myresult;
-				stack.children[stack.pointer] = NULL;
 				was_if = TRUE;
 				if_taken = FALSE;
 				goto next_section;
@@ -483,9 +487,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						       g->vps, child->name);
 			if (rcode != RLM_MODULE_UPDATED) {
 				myresult = rcode;
-			} else {
-				mypriority = stack.priority[stack.pointer];
+				goto handle_priority;
 			}
+
+			/* else leave myresult && mypriority alone */
 			goto handle_result;
 		}
 #endif
@@ -523,7 +528,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						    NULL, 1);
 			}
 					    
-			goto handle_priority;
+			goto skip; /* don't change anything on the stack */
 		}
 
 		/*
@@ -551,8 +556,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				exit(1);
 			}
 
-			stack.priority[stack.pointer] = 0;
-			stack.result[stack.pointer] = default_component_results[component];
+			stack.priority[stack.pointer] = stack.priority[stack.pointer - 1];
+			stack.result[stack.pointer] = stack.result[stack.pointer - 1];
 			switch (child->type) {
 #ifdef WITH_UNLANG
 				char buffer[1024];
@@ -742,17 +747,17 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	this one.
 		 */
 		if (mypriority >= stack.priority[stack.pointer]) {
+#ifdef WITH_UNLANG
+		next_section:
+#endif
 			stack.result[stack.pointer] = myresult;
 			stack.priority[stack.pointer] = mypriority;
 		}
 
-
-#ifdef WITH_UNLANG
-	next_section:
-#endif
 		/*
 		 *	No parent, we must be done.
 		 */
+	skip:
 		if (!parent) {
  			rad_assert(stack.pointer == 0);
 			myresult = stack.result[0];
