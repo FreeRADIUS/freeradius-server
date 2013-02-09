@@ -311,7 +311,7 @@ static int rediswho_accounting_stop(REDISSOCK *dissocket,
 
 static int rediswho_accounting(void * instance, REQUEST * request)
 {
-	int rcode;
+	int rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR * vp;
 	int acct_status_type;
 	rlm_rediswho_t * data = (rlm_rediswho_t *) instance;
