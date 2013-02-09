@@ -50,15 +50,17 @@ typedef struct rlm_redis_t {
 	char		*password;
 	fr_connection_pool_t *pool;
 
-        int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, char *query);
+        int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, const char *query, REQUEST *request);
         int (*redis_finish_query)(REDISSOCK *dissocket);
         size_t (*redis_escape_func)(REQUEST *request, char *out, size_t outlen, const char *in, void *);
 
 } rlm_redis_t;
 
 #define MAX_QUERY_LEN			4096
+#define MAX_REDIS_ARGS			16
 
-int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst, char *query);
+int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
+                    const char *query, REQUEST *request);
 int rlm_redis_finish_query(REDISSOCK *dissocket);
 
 #endif	/* RLM_REDIS_H */

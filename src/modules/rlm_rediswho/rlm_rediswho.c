@@ -64,31 +64,16 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 			    rlm_rediswho_t *inst, REQUEST *request)
 {
 	REDISSOCK *dissocket;
-	char query[MAX_STRING_LEN * 4];
 	int result = 0;
 
 	if (!fmt) {
 		return 0;
 	}
 
-	/*
-	 *	Do an xlat on the provided string
-	 */
-	if (request) {
-		if (!radius_xlat(query, sizeof (query), fmt, request,
-				 inst->redis_inst->redis_escape_func,
-				 inst->redis_inst)) {
-			radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
-			return 0;
-		}
+	if (inst->redis_inst->redis_query(dissocket_p, inst->redis_inst,
+					  fmt, request) < 0) {
 
-	} else {
-		strcpy(query, fmt);
-	}
-
-	if (inst->redis_inst->redis_query(dissocket_p, inst->redis_inst, query) < 0) {
-
-		radlog(L_ERR, "rediswho_command: database query error in: '%s'", query);
+		radlog(L_ERR, "rediswho_command: database query error in: '%s'", fmt);
 		return -1;
 
 	}
