@@ -2239,19 +2239,6 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 		return 0;
 	}
 
-	/*
-	 *	RFC 2865, Section 3., subsection 'length' says:
-	 *
-	 *	" ... and maximum length is 4096."
-	 */
-	if (packet->data_len > MAX_PACKET_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (received %zu > maximum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-				     packet->data_len, MAX_PACKET_LEN);
-		return 0;
-	}
 
 	/*
 	 *	Check for packets with mismatched size.
@@ -2312,15 +2299,14 @@ int rad_packet_ok(RADIUS_PACKET *packet, int flags)
 	 *	RFC 2865, Section 3., subsection 'length' says:
 	 *
 	 *	" ... and maximum length is 4096."
+	 *
+	 *	HOWEVER.  This requirement is for the network layer.
+	 *	If the code gets here, we assume that a well-formed
+	 *	packet is an OK packet.
+	 *
+	 *	We allow both the UDP data length, and the RADIUS
+	 *	"length" field to contain up to 64K of data.
 	 */
-	if (totallen > MAX_PACKET_LEN) {
-		fr_strerror_printf("WARNING: Malformed RADIUS packet from host %s: too long (length %zu > maximum %d)",
-			   inet_ntop(packet->src_ipaddr.af,
-				     &packet->src_ipaddr.ipaddr,
-				     host_ipaddr, sizeof(host_ipaddr)),
-			             totallen, MAX_PACKET_LEN);
-		return 0;
-	}
 
 	/*
 	 *	RFC 2865, Section 3., subsection 'length' says:
