@@ -51,6 +51,24 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL} /* end the list */
 };
 
+static char *mystrtok(char **ptr, const char *sep)
+{
+        char    *res;
+
+        if (**ptr == 0)
+                return NULL;
+        while (**ptr && strchr(sep, **ptr))
+                (*ptr)++;
+        if (**ptr == 0)
+                return NULL;
+        res = *ptr;
+        while (**ptr && strchr(sep, **ptr) == NULL)
+                (*ptr)++;
+        if (**ptr != 0)
+                *(*ptr)++ = 0;
+        return res;
+}
+
 static int redis_close_socket(REDIS_INST *inst, REDISSOCK *dissocket)
 {
 	radlog(L_INFO, "rlm_redis (%s): Closing socket %d",
@@ -229,15 +247,6 @@ static int redis_xlat(void *instance, REQUEST *request,
 	size_t ret = 0;
 	char *buffer_ptr;
 	char buffer[21];
-	char querystr[MAX_QUERY_LEN];
-
-	if (!radius_xlat(querystr, sizeof(querystr), fmt, request,
-		    redis_escape_func)) {
-		radlog(L_ERR, "rlm_redis (%s): xlat failed.",
-		       inst->xlat_name);
-
-		return 0;
-	}
 
 	if ((dissocket = redis_get_socket(inst)) == NULL) {
 		radlog(L_ERR, "rlm_redis (%s): redis_get_socket() failed",
@@ -247,7 +256,7 @@ static int redis_xlat(void *instance, REQUEST *request,
 	}
 
 	/* Query failed for some reason, release socket and return */
-	if (rlm_redis_query(dissocket, inst, querystr) < 0) {
+	if (rlm_redis_query(dissocket, inst, fmt, request) < 0) {
 		rlm_redis_finish_query(dissocket);
 		redis_release_socket(inst,dissocket);
         
@@ -371,16 +380,53 @@ static int redis_init_socketpool(REDIS_INST *inst)
 }
 
 /*
- *	Free the redis database
+ *	Perform a redis query. Each argument is passed separately through
+ *	radius_xlat (unless request is NULL)
  */
-int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query)
+int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, const char *query,
+		    REQUEST *request)
 {
+	int argc = 0;
+	const char *argv[MAX_REDIS_ARGS];
+	char tokbuf[MAX_QUERY_LEN];
+	char *tokptr = tokbuf;
+	char *arg;
+	char dstbuf[MAX_QUERY_LEN];
+	char *dstptr = dstbuf;
+
 	if (!query || !*query) {
 		return -1;
 	}
 
-	DEBUG2("executing query %s", query);
-	dissocket->reply = redisCommand(dissocket->conn, query);
+	strlcpy(tokbuf, query, sizeof(tokbuf));
+	while ((arg = mystrtok(&tokptr, " "))) {
+		int freespace = dstbuf + sizeof(dstbuf) - dstptr;
+		if (argc >= MAX_REDIS_ARGS) {
+			radlog(L_ERR, "rlm_redis (%s): xlat too many args.",
+			       inst->xlat_name);
+			return -1;
+		}
+		else if (request) {
+			if (!radius_xlat(dstptr, freespace, arg, request, NULL)) {
+				radlog(L_ERR, "rlm_redis (%s): xlat failed.",
+				       inst->xlat_name);
+				return -1;
+			}
+		}
+		else {
+			if ((int)strlen(arg) + 1 > freespace) {
+				radlog(L_ERR, "rlm_redis (%s): xlat too long.",
+				       inst->xlat_name);
+				return -1;
+			}
+			strlcpy(dstptr, arg, freespace);
+		}
+		argv[argc++] = dstptr;
+		dstptr += strlen(dstptr) + 1;
+	}
+
+	DEBUG2("executing %s ...", argv[0]);
+	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
 
 	if (dissocket->reply == NULL) {
 		radlog(L_ERR, "rlm_redis: (%s) REDIS error: %s",
@@ -399,9 +445,10 @@ int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query)
 			return -1;
 		}
 
-		DEBUG2("executing query %s", query);
+		DEBUG2("executing %s ...", argv[0]);
 		/* retry the query on the newly connected socket */
-		dissocket->reply = redisCommand(dissocket->conn, query);
+		dissocket->reply = redisCommandArgv(dissocket->conn, argc,
+						    argv, NULL);
 
 		if (dissocket->reply == NULL) {
 			radlog(L_ERR, "rlm_redis (%s): failed after re-connect",
