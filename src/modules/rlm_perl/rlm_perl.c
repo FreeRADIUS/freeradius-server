@@ -546,7 +546,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
  */
 static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 {
-	VALUE_PAIR *nvp, *vpa, *vpn;
+	VALUE_PAIR *nvp, *vpa;
 	AV *av;
 	const char *name;
 	char namebuf[256];
@@ -561,7 +561,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 	 */
 	nvp = paircopy(vp);
 
-	while (nvp != NULL) {
+	while (nvp) {
 		/*
 		 *	Tagged attributes are added to the hash with name 
 		 *	<attribute>:<tag>, others just use the normal attribute
@@ -585,6 +585,8 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		 *	Attribute has multiple values
 		 */
 		if (vpa->next) {
+			VALUE_PAIR *vpn;
+
 			av = newAV();
 			for (vpn = vpa; vpn; vpn = vpn->next) {
 				len = vp_prints_value(buffer, sizeof(buffer), vpn, FALSE);
@@ -604,27 +606,13 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		pairfree(&vpa);
 		
 		/*
-		 *	Find the next attribute which we won't have processed,
-		 *	we need to do this so we know it won't be freed on
-		 *	pairdelete.
-		 */		
-		vpa = nvp->next;
-		
-		while ((vpa != NULL) &&
-		       (vpa->attribute == nvp->attribute) &&
-		       (vpa->vendor == nvp->vendor) &&
-		       (vpa->flags.tag == nvp->flags.tag)) {
-			vpa = vpa->next;
-		}
-		
-		/*
 		 *	Finally remove all the VPs we processed from our copy
 		 *	of the list.
 		 */
 		pairdelete(&nvp, nvp->attribute, nvp->vendor, nvp->flags.tag);
-		
-		nvp = vpa;
 	}
+
+	pairfree(&nvp);		/* shouldn't be necessary, but hey... */
 }
 
 /*
