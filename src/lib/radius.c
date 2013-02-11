@@ -2888,7 +2888,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	 *	Unknown attribute.  Create it as a "raw" attribute.
 	 */
 	if (!da) {
-		VP_TRACE("Not found %u.%u\n", vendor, attribute);
+		VP_TRACE("Not found %08x.%08x\n", vendor, attribute);
 	raw:
 		if (vp) pairfree(&vp);
 		return data2vp_raw(packet, original, secret,
@@ -2900,7 +2900,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 	 *	they can't be encrypted.
 	 */
 	if (da->type == PW_TYPE_TLV) {
-		VP_TRACE("Found TLV %u.%u\n", vendor, attribute);
+		VP_TRACE("Found TLV %08x.%08x\n", vendor, attribute);
 		return data2vp_tlvs(packet, original, secret,
 				    attribute, vendor, nest,
 				    data, length, pvp);
