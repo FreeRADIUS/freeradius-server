@@ -16,7 +16,7 @@ FILES = acct_users clients.conf dictionary templates.conf \
 
 DEFAULT_SITES = default inner-tunnel
 
-DEFAULT_MODULES = always attr_filter attr_rewrite chap checkval \
+DEFAULT_MODULES = always attr_filter attr_rewrite cache_eap chap checkval \
 		counter cui detail detail.log digest dhcp dynamic_clients eap \
 		echo exec expiration expr files inner-eap linelog logintime \
 		mschap ntlm_auth pap passwd preprocess radutmp realm \
