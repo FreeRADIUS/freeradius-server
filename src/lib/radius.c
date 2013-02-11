@@ -3283,7 +3283,9 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 {
 	size_t dv_type, dv_length;
 	const uint8_t *data, *end;
+	const DICT_ATTR *parent, *da;
 	VALUE_PAIR *head, **last, *vp;
+	DICT_VENDOR *dv;
 
 	data = start;
 
@@ -3294,49 +3296,22 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 	dv_type = 1;
 	dv_length = 1;
 
-	/*
-	 *	Top-level TLVs can be of a weird format.  TLVs
-	 *	encapsulated in a TLV can only be in the RFC format.
-	 */
-	if (nest == 0) {
-		/*
-		 *	Remember, the packing format is weird.
-		 *
-		 *	00VID	000000AA	normal VSA for vendor VID
-		 *	00VID	AABBCCDD	normal VSAs with TLVs
-		 *	EE000   000000AA	extended attr (241.1)
-		 *	EE000	AABBCCDD	extended attr with TLVs
-		 *	EEVID	000000AA	EVS with vendor VID, attr AAA
-		 *	EEVID	AABBCCDD	EVS with TLVs
-		 *
-		 *	see dict.c
-		 */
-		if (!vendor) {
-			/*
-			 *	This is a horrible hack.  The real
-			 *	solution would be to encapsulate this
-			 *	idiocy into attr2vp_rfc.  But doing it
-			 *	here avoids another dictionary lookup.
-			 *	So...
-			 */
-			vendor = attribute * FR_MAX_VENDOR;
-			attribute = 0;
-			nest = -1;
-		}
-
-	} else if (nest == 1) {
-		DICT_VENDOR *dv;
-		dv = dict_vendorbyvalue(vendor);	
-		if (dv) {
-			dv_type = dv->type;
-			dv_length = dv->length;
-			/* dict.c enforces sane values on the above fields */
-		}
+	parent = dict_attrbyvalue(attribute, vendor);
+	if (!parent) {
+	raw:
+		return data2vp_raw(packet, original, secret,
+				   attribute, vendor, data, length, pvp);
 	}
 
-	if (nest >= fr_attr_max_tlv) {
-		fr_strerror_printf("data2vp_tlvs: Internal sanity check failed in recursion");
-		return -1;
+	/*
+	 *	This works because vendors with non-standard VSA
+	 *	format don't have sub-TLVs.
+	 */
+	dv = dict_vendorbyvalue(vendor);
+	if (dv) {
+		dv_type = dv->type;
+		dv_length = dv->length;
+		/* dict.c enforces sane values on the above fields */
 	}
 
 	/*
@@ -3344,9 +3319,8 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 	 *	The *entire* TLV is malformed.
 	 */
 	if (rad_tlv_ok(data, length, dv_type, dv_length) < 0) {
-		VP_TRACE("TLV malformed %u.%u\n", vendor, attribute);
-		return data2vp_raw(packet, original, secret,
-				   attribute, vendor, data, length, pvp);
+		VP_TRACE("TLV malformed %08x.%08x\n", vendor, attribute);
+		goto raw;
 	}
 
 	end = data + length;
@@ -3367,9 +3341,12 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 
 		switch (dv_type) {
 		case 1:
-			my_attr = attribute;
-			my_attr |= ((data[0] & fr_attr_mask[nest + 1])
-				    << fr_attr_shift[nest + 1]);
+			da = dict_attrbyparent(parent, data[0]);
+			if (!da) {
+				VP_TRACE("No parent for %u\n", data[0]);
+				goto raw;
+			}
+			my_attr = da->attr;
 			break;
 		case 2:
 			my_attr = (data[0] << 8) | data[1];
