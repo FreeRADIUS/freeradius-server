@@ -1570,8 +1570,6 @@ static ssize_t rad_vp2rfctlv(const RADIUS_PACKET *packet,
 	start[2] = vp->attribute & fr_attr_mask[0];
 	start[3] = 2;
 
-
-
 	len = vp2data_any(packet, original, secret, 0, pvp,
 			  start + 4, room - 4);
 	if (len <= 0) return len;
@@ -1610,6 +1608,11 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 				  start, room);
 	}
 
+	if (vp->flags.extended) {
+		return rad_vp2extended(packet, original, secret, pvp,
+				       start, room);
+	}
+
 	/*
 	 *	The upper 8 bits of the vendor number are the standard
 	 *	space attribute which is a TLV.
@@ -1617,11 +1620,6 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	if ((vp->vendor & (FR_MAX_VENDOR - 1)) == 0) {
 		return rad_vp2rfctlv(packet, original, secret, pvp,
 				     start, room);
-	}
-
-	if (vp->flags.extended) {
-		return rad_vp2extended(packet, original, secret, pvp,
-				       start, room);
 	}
 
 	if (vp->flags.wimax) {
