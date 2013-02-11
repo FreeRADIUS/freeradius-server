@@ -2348,6 +2348,65 @@ DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 }
 
 /*
+ *	Get an attribute by it's numerical value, and the parent
+ */
+DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr)
+{
+	DICT_ATTR dattr;
+
+	if (!parent) return NULL;
+
+	/*
+	 *	Only TLVs can have children
+	 */
+	if (!parent->flags.has_tlv) return NULL;
+
+	/*
+	 *	Bootstrap by starting off with the parents values.
+	 */
+	dattr.attr = parent->attr;
+	dattr.vendor = parent->vendor;
+
+	/*
+	 *	Do various butchery to insert the "attr" value.
+	 *
+	 *	00VID	000000AA	normal VSA for vendor VID
+	 *	00VID	DDCCBBAA	normal VSAs with TLVs
+	 *	EE000   000000AA	extended attr (241.1)
+	 *	EE000	DDCCBBAA	extended attr with TLVs
+	 *	EEVID	000000AA	EVS with vendor VID, attr AAA
+	 *	EEVID	DDCCBBAA	EVS with TLVs
+	 */
+	if (!dattr.vendor) {
+		dattr.vendor = parent->attr * FR_MAX_VENDOR;
+		dattr.attr = attr;
+
+	} else {
+		int i;
+
+		/*
+		 *	Trying to nest too deep.  It's an error
+		 */
+		if (parent->attr & (fr_attr_mask[MAX_TLV_NEST] << fr_attr_shift[MAX_TLV_NEST])) {
+			return NULL;
+		}
+
+		for (i = MAX_TLV_NEST - 1; i >= 0; i--) {
+			if ((parent->attr & (fr_attr_mask[i] << fr_attr_shift[i]))) {
+				dattr.attr |= (attr & fr_attr_mask[i + 1]) << fr_attr_shift[i + 1];
+				goto find;
+			}
+		}
+
+		return NULL;
+	}
+
+find:
+	return fr_hash_table_finddata(attributes_byvalue, &dattr);
+}
+
+
+/*
  *	Get an attribute by its name.
  */
 DICT_ATTR *dict_attrbyname(const char *name)
