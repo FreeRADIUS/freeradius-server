@@ -34,12 +34,12 @@ eap.authenticate {
 		handled = 1
 	}
 	if (handled) {
-		cache_eap
+		cache_eap.authorize
 
 		handled
 	}
 
-	cache_eap	
+	cache_eap.authorize
 }
 
 #
