@@ -655,7 +655,7 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 
 int fr_dhcp_decode(RADIUS_PACKET *packet)
 {
-	unsigned int i;
+	ssize_t i;
 	uint8_t *p;
 	uint32_t giaddr;
 	VALUE_PAIR *head, *vp, **tail;
@@ -667,7 +667,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	
 	if ((fr_debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < packet->data_len; i++) {
-			if ((i & 0x0f) == 0x00) fr_strerror_printf("%d: ", i);
+			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", (int) i);
 			fprintf(fr_log_fp, "%02x ", packet->data[i]);
 			if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
 		}
@@ -990,13 +990,12 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 {
-	unsigned int i, num_vps;
+	int i, num_vps;
 	uint8_t *p;
 	VALUE_PAIR *vp;
 	uint32_t lvalue, mms;
 	size_t dhcp_size, length;
 	dhcp_packet_t *dhcp;
-	char buffer[1024];
 
 	if (packet->data) return 0;
 
@@ -1367,9 +1366,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			}
 			
 			p += dhcp_header_sizes[i];
-			
-			vp_prints(buffer, sizeof(buffer), vp);
-			fr_strerror_printf("\t%s", buffer);
+
+			debug_pair(vp);
 			pairfree(&vp);
 		}
 
@@ -1459,10 +1457,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		*(p++) = 0;	/* header isn't included in attr length */
 
 		for (i = 0; i < num_entries; i++) {
-			if (fr_debug_flag > 1) {
-				vp_prints(buffer, sizeof(buffer), vp);
-				fr_strerror_printf("\t%s", buffer);
-			}
+			debug_pair(vp);
 
 			if (vp->flags.is_tlv) {
 				VALUE_PAIR *tlv;
