@@ -282,7 +282,8 @@ int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
 void 		dict_attr_free(const DICT_ATTR *da);
 const DICT_ATTR	*dict_attr_copy(const DICT_ATTR *da);
-DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor);
+const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor);
+const DICT_ATTR	*dict_attrunknownbyname(const char *attribute);
 DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,

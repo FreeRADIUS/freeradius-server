@@ -2508,7 +2508,7 @@ const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da)
  * @param[in] vendor number.
  * @return new dictionary attribute.
  */
-DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
+const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
 {
 	DICT_ATTR *da;
 	char *p;
@@ -2562,6 +2562,216 @@ DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
 	p += print_attr_oid(p, bufsize , attr, dv_type);
 	
 	return da;
+}
+
+/** Create a DICT_ATTR from an ASCII attribute and value
+ *
+ * Where the attribute name is in the form:
+ *  - Attr-%d
+ *  - Attr-%d.%d.%d...
+ *  - Vendor-%d-Attr-%d
+ *  - VendorName-Attr-%d
+ *
+ * @todo should check attr/vendor against dictionary and return the real da.
+ *
+ * @param attribute name to parse.
+ * @return new da or NULL on error.
+ */
+const DICT_ATTR *dict_attrunknownbyname(const char *attribute)
+{
+	unsigned int   	attr, vendor = 0;
+	unsigned int    dv_type = 1;	/* The type of vendor field */
+
+	const char	*p = attribute;
+	char		*q;
+	
+	DICT_VENDOR	*dv;
+	DICT_ATTR	*da;
+
+	/*
+	 *	Pull off vendor prefix first.
+	 */
+	if (strncasecmp(p, "Attr-", 5) != 0) {
+		if (strncasecmp(p, "Vendor-", 7) == 0) {
+			vendor = (int) strtol(p + 7, &q, 10);
+			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
+				fr_strerror_printf("Invalid vendor value in "
+						   "attribute name \"%s\"", 
+						   attribute);
+				return NULL;
+			}
+
+			p = q;
+
+		/* must be vendor name */
+		} else {
+			char buffer[256];
+
+			q = strchr(p, '-');
+
+			if (!q) {
+				fr_strerror_printf("Invalid vendor name in "
+						   "attribute name \"%s\"",
+						   attribute);
+				return NULL;
+			}
+
+			if ((size_t) (q - p) >= sizeof(buffer)) {
+				fr_strerror_printf("Vendor name too long "
+						   "in attribute name \"%s\"",
+						   attribute);
+				return NULL;
+			}
+
+			memcpy(buffer, p, (q - p));
+			buffer[q - p] = '\0';
+
+			vendor = dict_vendorbyname(buffer);
+			if (!vendor) {
+				fr_strerror_printf("Unknown vendor name in "
+						   "attribute name \"%s\"",
+						   attribute);
+				return NULL;
+			}
+
+			p = q;
+		}
+
+		if (*p != '-') {
+			fr_strerror_printf("Invalid text following vendor "
+					   "definition in attribute name "
+					   "\"%s\"", attribute);
+			return NULL;
+		}
+		p++;
+	}
+	
+	/*
+	 *	Attr-%d
+	 */
+	if (strncasecmp(p, "Attr-", 5) != 0) {
+		fr_strerror_printf("Invalid format in attribute name \"%s\"",
+				   attribute);
+		return NULL;
+	}
+
+	attr = strtol(p + 5, &q, 10);
+
+	/*
+	 *	Invalid attribute.
+	 */
+	if (attr == 0) {
+		fr_strerror_printf("Invalid value in attribute name \"%s\"",
+				   attribute);
+		return NULL;
+	}
+
+	p = q;
+	
+	/*
+	 *	Vendor-%d-Attr-%d
+	 *	VendorName-Attr-%d
+	 *	Attr-%d
+	 *	Attr-%d.
+	 *
+	 *	Anything else is invalid.
+	 */
+	if (((vendor != 0) && (*p != '\0')) ||
+	    ((vendor == 0) && *p && (*p != '.'))) {
+	invalid:
+		fr_strerror_printf("Invalid OID");
+		return NULL;
+	}
+	
+	/*
+	 *	Look for OIDs.  Require the "Attr-26.Vendor-Id.type"
+	 *	format, and disallow "Vendor-%d-Attr-%d" and
+	 *	"VendorName-Attr-%d"
+	 *
+	 *	This section parses the Vendor-Id portion of
+	 *	Attr-%d.%d.  where the first number is 26, *or* an
+	 *	extended attribute of the "evs" data type.
+	 */
+	if (*p == '.') {
+		da = dict_attrbyvalue(attr, 0);
+		if (!da) {
+			fr_strerror_printf("Cannot parse attributes without "
+					   "dictionaries");
+			return NULL;
+		}		
+		
+		if ((attr != PW_VENDOR_SPECIFIC) &&
+		    !(da->flags.extended || da->flags.long_extended)) {
+			fr_strerror_printf("Standard attributes cannot use "
+					   "OIDs");
+			return NULL;
+		}
+
+		if ((attr == PW_VENDOR_SPECIFIC) || da->flags.evs) {
+			vendor = strtol(p + 1, &q, 10);
+			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
+				fr_strerror_printf("Invalid vendor");
+				return NULL;
+			}
+
+			if (*q != '.') goto invalid;
+
+			p = q;
+
+			if (da->flags.evs) {
+				vendor |= attr * FR_MAX_VENDOR;
+			}
+			attr = 0;
+		} /* else the second number is a TLV number */
+	}
+
+	/*
+	 *	Get the expected maximum size of the attribute.
+	 */
+	if (vendor) {
+		dv = dict_vendorbyvalue(vendor & (FR_MAX_VENDOR - 1));
+		if (dv) {
+			dv_type = dv->type;
+			if (dv_type > 3) dv_type = 3; /* hack */
+		}
+	}
+	
+	/*
+	 *	Parse the next number.  It could be a Vendor-Type
+	 *	of 1..2^24, or it could be a TLV.
+	 */
+	if (*p == '.') {
+		attr = strtol(p + 1, &q, 10);
+		if (attr == 0) {
+			fr_strerror_printf("Invalid attribute number");
+			return NULL;
+		}
+
+		if (*q) {
+			if (*q != '.') {
+				goto invalid;
+			}
+			
+			if (dv_type != 1) {
+				goto invalid;
+			}
+		}
+
+		p = q;
+	}
+
+	/*
+	 *	Enforce a maximum value on the attribute number.
+	 */
+	if (attr >= (unsigned) (1 << (dv_type << 3))) goto invalid;
+
+	if (*p == '.') {
+		if (dict_str2oid(p + 1, &attr, &vendor, 1) < 0) {
+			return NULL;
+		}
+	}
+
+	return dict_attrunknown(attr, vendor);
 }
 
 /*
