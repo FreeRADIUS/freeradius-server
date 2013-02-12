@@ -1016,6 +1016,29 @@ int free_mainconfig(void)
 	return 0;
 }
 
+void hup_logfile(void)
+{
+		int fd, old_fd;
+		
+		if (mainconfig.radlog_dest != RADLOG_FILES) return;
+
+ 		fd = open(mainconfig.log_file,
+			  O_WRONLY | O_APPEND | O_CREAT, 0640);
+		if (fd >= 0) {
+			/*
+			 *	Atomic swap. We'd like to keep the old
+			 *	FD around so that callers don't
+			 *	suddenly find the FD closed, and the
+			 *	writes go nowhere.  But that's hard to
+			 *	do.  So... we have the case where a
+			 *	log message *might* be lost on HUP.
+			 */
+			old_fd = mainconfig.radlog_fd;
+			mainconfig.radlog_fd = fd;
+			close(old_fd);
+		}
+}
+
 void hup_mainconfig(void)
 {
 	cached_config_t *cc;
@@ -1056,25 +1079,7 @@ void hup_mainconfig(void)
 	 *	The "open log file" code is here rather than in log.c,
 	 *	because it makes that function MUCH simpler.
 	 */
-	if (mainconfig.radlog_dest == RADLOG_FILES) {
-		int fd, old_fd;
-		
-		fd = open(mainconfig.log_file,
-			  O_WRONLY | O_APPEND | O_CREAT, 0640);
-		if (fd >= 0) {
-			/*
-			 *	Atomic swap. We'd like to keep the old
-			 *	FD around so that callers don't
-			 *	suddenly find the FD closed, and the
-			 *	writes go nowhere.  But that's hard to
-			 *	do.  So... we have the case where a
-			 *	log message *might* be lost on HUP.
-			 */
-			old_fd = mainconfig.radlog_fd;
-			mainconfig.radlog_fd = fd;
-			close(old_fd);
-		}
-	}
+	hup_logfile();
 
 	radlog(L_INFO, "HUP - loading modules");
 
