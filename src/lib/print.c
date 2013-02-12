@@ -403,9 +403,13 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 				
 				len = snprintf(buffer, bufsize, "%u", vp->vp_integer);
 				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;
+
 			case PW_TYPE_SIGNED:
 				len = snprintf(buffer, bufsize, "%d", vp->vp_signed);
 				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;
+
+			default:
+				break;
 		}
 	}
 
