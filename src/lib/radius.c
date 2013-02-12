@@ -3900,11 +3900,14 @@ ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
 				       data, length, pvp);
 	}
 
-	/*
-	 *	Extended attribute format gets their own handler.
-	 */
 	da = dict_attrbyvalue(data[0], 0);
-	if (da && da->flags.extended) {
+
+	if (!da) {
+		return rad_attr2vp_raw(packet, original, secret,
+				       data, length, pvp);
+	}
+
+	if (da->flags.extended) {
 		return rad_attr2vp_extended(packet, original, secret,
 					    data, length, pvp);
 	}
