@@ -28,6 +28,11 @@ RCSID("$Id$")
 #include <freeradius-devel/heap.h>
 #include <freeradius-devel/rad_assert.h>
 
+#define PW_CACHE_TTL		1140
+#define PW_CACHE_STATUS_ONLY	1141
+#define PW_CACHE_MERGE		1142
+#define PW_CACHE_ENTRY_HITS	1143
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -48,19 +53,6 @@ typedef struct rlm_cache_t {
 	
 	value_pair_map_t	*maps;	//!< Attribute map applied to users 
 					//!< and profiles.
-					
-	DICT_ATTR		*cache_ttl;	    //!< Control attribute,
-						    //!< modifies cache TTL at
-						    //!< runtime.
-	DICT_ATTR		*cache_status_only; //!< Control attribute,
-						    //!< modifies cache 
-						    //!< behaviour at runtime.
-	DICT_ATTR		*cache_merge;	    //!< Control attribute,
-						    //!< modifies cache
-						    //!< behaviour at runtime.
-	DICT_ATTR		*cache_entry_hits;  //!< Attribute showing the
-						    //!< number of hits on the
-						    //!< cache entry.
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	cache_mutex;
 #endif
@@ -136,10 +128,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 	rad_assert(request != NULL);
 	rad_assert(c != NULL);
 	
-	vp = pairfind(request->config_items,
-		      inst->cache_merge->attr, 
-		      inst->cache_merge->vendor,
-		      TAG_ANY);
+	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) {
 		RDEBUG2("Told not to merge entry into request");
 		return;
@@ -173,7 +162,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 	}
 	
 	if (inst->stats) {
-		vp = pairalloc(inst->cache_entry_hits);
+		vp = paircreate(PW_CACHE_ENTRY_HITS, 0, PW_TYPE_INTEGER);
 		rad_assert(vp != NULL);
 		
 		vp->vp_integer = c->hits;
@@ -238,10 +227,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
 	 *	Update the expiry time based on the TTL.
 	 *	A TTL of 0 means "delete from the cache".
 	 */
-	vp = pairfind(request->config_items,
-		      inst->cache_ttl->attr,
-		      inst->cache_ttl->vendor,
-		      TAG_ANY);
+	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp) {
 		if (vp->vp_integer == 0) goto delete;
 		
@@ -281,11 +267,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	/*
 	 *	TTL of 0 means "don't cache this entry"
 	 */
-	vp = pairfind(request->config_items,
-		      inst->cache_ttl->attr,
-		      inst->cache_ttl->vendor,
-		      TAG_ANY);
-		      
+	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) return NULL;
 
 	c = rad_calloc(sizeof(*c));
@@ -307,10 +289,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	/*
 	 *	Check to see if we need to merge the entry into the request
 	 */
-	vp = pairfind(request->config_items,
-		      inst->cache_merge->attr, 
-		      inst->cache_merge->vendor,
-		      TAG_ANY);
+	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) {
 		merge = FALSE;
 		RDEBUG2("Told not to merge new entry into request");
@@ -746,18 +725,6 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	inst->cs = conf;
 	
 	/*
-	 *	The right way to resolve attribute numbers
-	 */
-	if (!(
-	     (inst->cache_ttl = dict_attrbyname("Cache-TTL")) &&
-	     (inst->cache_status_only = dict_attrbyname("Cache-Status-Only")) &&
-	     (inst->cache_merge = dict_attrbyname("Cache-Merge")) &&
-	     (inst->cache_entry_hits = dict_attrbyname("Cache-Entry-Hits")))) {
-		radlog(L_ERR, "rlm_cache: Failed resolving dictionary "
-		       "attributes, check dictionaries are up to date");  
-	}
-	
-	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
@@ -862,10 +829,7 @@ static rlm_rcode_t cache_it(void *instance, REQUEST *request)
 	/*
 	 *	If yes, only return whether we found a valid cache entry
 	 */
-	vp = pairfind(request->config_items,
-		      inst->cache_status_only->attr, 
-		      inst->cache_status_only->vendor,
-		      TAG_ANY);
+	vp = pairfind(request->config_items, PW_CACHE_STATUS_ONLY, 0, TAG_ANY);
 	if (vp && vp->vp_integer) {
 		rcode = c ? RLM_MODULE_OK:
 			    RLM_MODULE_NOTFOUND;
