@@ -882,7 +882,14 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		      xlat_name, group_name);
 
 		memset(&flags, 0, sizeof(flags));
-		dict_addattr(group_name, 0, PW_TYPE_STRING, -1, flags);
+		if (dict_addattr(group_name, -1, 0, PW_TYPE_STRING, flags) < 0) {
+			radlog(L_ERR, "rlm_sql (%s): Failed to create "
+			       "attribute %s: %s", xlat_name, group_name,
+			       fr_strerror());
+			free(group_name);
+			goto error;
+		}
+
 		dattr = dict_attrbyname(group_name);
 		if (dattr == NULL){
 			radlog(L_ERR, "rlm_sql (%s): Failed to create "
