@@ -50,3 +50,4 @@ config.h
 debian/*
 src/main/radattr
 src/modules/lib/
+warnings.txt
