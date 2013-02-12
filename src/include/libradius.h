@@ -283,6 +283,8 @@ void		dict_free(void);
 DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor);
 DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR	*dict_attrbyname(const char *attr);
+DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,
+				 PW_TYPE type);
 DICT_ATTR	*dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
 DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, const char *val);

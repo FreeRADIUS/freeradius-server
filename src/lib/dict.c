@@ -50,6 +50,8 @@ static fr_hash_table_t *vendors_byvalue = NULL;
 static fr_hash_table_t *attributes_byname = NULL;
 static fr_hash_table_t *attributes_byvalue = NULL;
 
+static fr_hash_table_t *attributes_combo = NULL;
+
 static fr_hash_table_t *values_byvalue = NULL;
 static fr_hash_table_t *values_byname = NULL;
 
@@ -201,6 +203,30 @@ static int dict_attr_value_cmp(const void *one, const void *two)
 {
 	const DICT_ATTR *a = one;
 	const DICT_ATTR *b = two;
+
+	if (a->vendor < b->vendor) return -1;
+	if (a->vendor > b->vendor) return +1;
+
+	return a->attr - b->attr;
+}
+
+static uint32_t dict_attr_combo_hash(const void *data)
+{
+	uint32_t hash;
+	const DICT_ATTR *attr = data;
+
+	hash = fr_hash(&attr->vendor, sizeof(attr->vendor));
+	hash = fr_hash_update(&attr->type, sizeof(attr->type), hash);
+	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
+}
+
+static int dict_attr_combo_cmp(const void *one, const void *two)
+{
+	const DICT_ATTR *a = one;
+	const DICT_ATTR *b = two;
+
+	if (a->type < b->type) return -1;
+	if (a->type > b->type) return +1;
 
 	if (a->vendor < b->vendor) return -1;
 	if (a->vendor > b->vendor) return +1;
@@ -456,8 +482,10 @@ void dict_free(void)
 
 	fr_hash_table_free(attributes_byname);
 	fr_hash_table_free(attributes_byvalue);
+	fr_hash_table_free(attributes_combo);
 	attributes_byname = NULL;
 	attributes_byvalue = NULL;
+	attributes_combo = NULL;
 
 	fr_hash_table_free(values_byname);
 	fr_hash_table_free(values_byvalue);
@@ -751,6 +779,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	 *	Create a new attribute for the list
 	 */
 	if ((da = fr_pool_alloc(sizeof(*da) + namelen)) == NULL) {
+	oom:
 		fr_strerror_printf("dict_addattr: out of memory");
 		return -1;
 	}
@@ -810,6 +839,41 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	if (!fr_hash_table_replace(attributes_byvalue, da)) {
 		fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
 		return -1;
+	}
+
+	/*
+	 *	Hacks for combo-IP
+	 */
+	if (da->type == PW_TYPE_COMBO_IP) {
+		DICT_ATTR *v4, *v6;
+
+		v4 = malloc(sizeof(*v4));
+		if (!v4) goto oom;
+
+		v6 = malloc(sizeof(*v6));
+		if (!v6) {
+			free(v4);
+			goto oom;
+		}
+
+		memcpy(v4, da, sizeof(*v4));
+		v4->type = PW_TYPE_IPADDR;
+
+		memcpy(v6, da, sizeof(*v6));
+		v6->type = PW_TYPE_IPV6ADDR;
+
+		if (fr_hash_table_insert(attributes_combo, v4)) {
+			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
+			free(v4);
+			free(v6);
+			return -1;
+		}
+
+		if (fr_hash_table_insert(attributes_combo, v6)) {
+			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
+			free(v6);
+			return -1;
+		}
 	}
 
 	if (!vendor && (attr > 0) && (attr < 256)) {
@@ -2250,6 +2314,16 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 	}
 
+	/*
+	 *	Horrible hacks for combo-IP.
+	 */
+	attributes_combo = fr_hash_table_create(dict_attr_combo_hash,
+						dict_attr_combo_cmp,
+						fr_pool_free);
+	if (!attributes_combo) {
+		return -1;
+	}
+
 	values_byname = fr_hash_table_create(dict_value_name_hash,
 					       dict_value_name_cmp,
 					       fr_pool_free);
@@ -2452,6 +2526,27 @@ DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 
 	return fr_hash_table_finddata(attributes_byvalue, &dattr);
 }
+
+
+/**
+ * @brief Get an attribute by its numerical value. and data type
+ *
+ *	Used only for COMBO_IP
+ *
+ * @return The attribute, or NULL if not found
+ */
+DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
+			   PW_TYPE type)
+{
+	DICT_ATTR dattr;
+
+	dattr.attr = attr;
+	dattr.vendor = vendor;
+	dattr.type = type;
+
+	return fr_hash_table_finddata(attributes_combo, &dattr);
+}
+
 
 /*
  *	Get an attribute by it's numerical value, and the parent
