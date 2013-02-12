@@ -145,7 +145,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 */
 		if (vp->attribute == 1) {
 			const char *p;
-			DICT_ATTR	*dattr;
+			const DICT_ATTR	*dattr;
 
 			p = vp->vp_strvalue;
 			gettoken(&p, newattr, sizeof(newattr));
@@ -184,7 +184,7 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 	int		number = 1;
 
 	for ( ; vp != NULL; vp = vp->next) {
-		DICT_ATTR *da;
+		const DICT_ATTR *da;
 
 		if (vp->vendor != 12394) continue;
 		if (vp->type != PW_TYPE_STRING) continue;

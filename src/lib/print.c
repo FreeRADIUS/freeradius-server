@@ -380,12 +380,14 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 	return strlen(out);
 }
 
-/*
+/**
  *  Almost identical to vp_prints_value, but escapes certain chars so the string
  *  may be used as a JSON value.
  *
  *  Returns < 0 if the buffer may be (or have been) too small to write the encoded
  *  JSON value to.
+ *
+ * @todo must check to see if the attribute has a dictionary value
  */
 int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 {
@@ -399,7 +401,10 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 			case PW_TYPE_INTEGER:
 			case PW_TYPE_BYTE:
 			case PW_TYPE_SHORT:
-				if (vp->flags.has_value) break;
+				if (dict_valbyattr(vp->attribute, vp->vendor,
+				    vp->vp_integer)) {
+					break;
+				}
 				
 				len = snprintf(buffer, bufsize, "%u", vp->vp_integer);
 				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;

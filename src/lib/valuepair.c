@@ -187,7 +187,7 @@ VALUE_PAIR *paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *vp)
 VALUE_PAIR *paircreate(int attr, int vendor, int type)
 {
 	VALUE_PAIR	*vp;
-	DICT_ATTR	*da;
+	const DICT_ATTR	*da;
 
 	da = dict_attrbyvalue(attr, vendor);
 	if ((vp = pairalloc(da)) == NULL) {
@@ -1689,7 +1689,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
  */
 VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 {
-	DICT_ATTR	*da;
+	const DICT_ATTR	*da;
 	VALUE_PAIR	*vp;
 	char            *tc, *ts;
 	signed char     tag;

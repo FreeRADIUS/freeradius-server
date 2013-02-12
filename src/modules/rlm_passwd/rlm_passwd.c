@@ -353,19 +353,19 @@ int main(void){
 
 #else  /* TEST */
 struct passwd_instance {
-	struct hashtable *ht;
-	struct mypasswd *pwdfmt;
-	char *filename;
-	char *format;
-	char * delimiter;
-	int allowmultiple;
-	int ignorenislike;
-	int hashsize;
-	int nfields;
-	int keyfield;
-	int listable;
-	DICT_ATTR *keyattr;
-	int ignoreempty;
+	struct hashtable	*ht;
+	struct mypasswd		*pwdfmt;
+	char			*filename;
+	char			*format;
+	char			*delimiter;
+	int			allowmultiple;
+	int			ignorenislike;
+	int			hashsize;
+	int			nfields;
+	int			keyfield;
+	int			listable;
+	const DICT_ATTR		*keyattr;
+	int			ignoreempty;
 };
 
 static const CONF_PARSER module_config[] = {
@@ -394,7 +394,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	char *lf=NULL; /* destination list flags temporary */
 	size_t len;
 	int i;
-	DICT_ATTR * da;
+	const DICT_ATTR * da;
 
 	*instance = rad_malloc(sizeof(struct passwd_instance));
 	if ( !*instance) {

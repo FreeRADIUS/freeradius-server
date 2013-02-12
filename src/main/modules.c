@@ -1074,7 +1074,7 @@ static int load_byserver(CONF_SECTION *cs)
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 		CONF_ITEM *modref;
-		DICT_ATTR *dattr;
+		const DICT_ATTR *dattr;
 
 		subcs = cf_section_sub_find(cs,
 					    section_type_value[comp].section);

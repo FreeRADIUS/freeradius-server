@@ -254,7 +254,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			}
 
 			if (!vp) {
-				DICT_ATTR *da;
+				const DICT_ATTR *da;
 				
 				/*
 				 *	The attribute on the LHS may

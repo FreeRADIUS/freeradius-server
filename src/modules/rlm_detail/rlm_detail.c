@@ -142,7 +142,8 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 		     ci != NULL;
 		     ci = cf_item_find_next(cs, ci)) {
 			const char	*attr;
-			DICT_ATTR	*da;
+			const DICT_ATTR	*da;
+			DICT_ATTR *tmp;
 
 			if (!cf_item_is_pair(ci)) continue;
 
@@ -161,7 +162,8 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 			 *	since the suppression list will usually
 			 *	be small, it doesn't matter.
 			 */
-			if (!fr_hash_table_insert(inst->ht, da)) {
+			memcpy(&tmp, &da, sizeof(tmp));
+			if (!fr_hash_table_insert(inst->ht, tmp)) {
 				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
 				detail_detach(inst);
 				return -1;

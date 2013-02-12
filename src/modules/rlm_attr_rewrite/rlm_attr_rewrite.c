@@ -39,7 +39,7 @@ RCSID("$Id$")
 
 typedef struct rlm_attr_rewrite_t {
 	char *attribute;	//!< The attribute to search for.
-	DICT_ATTR *da;		//!< The attribute definition.
+	const DICT_ATTR *da;	//!< The attribute definition.
 	char *search;		//!< The pattern to search for.
 	int search_len;		//!< The length of the search pattern.
 	char *searchin_str;	//!< The VALUE_PAIR list to search in. 
@@ -73,7 +73,7 @@ static const CONF_PARSER module_config[] = {
 static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_attr_rewrite_t *data;
-	DICT_ATTR *dattr;
+	const DICT_ATTR *dattr;
 
 	/*
 	 *	Set up a storage area for instance data

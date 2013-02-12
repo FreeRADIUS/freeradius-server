@@ -575,8 +575,9 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	size_t namelen;
 	static int      max_attr = 0;
 	const char	*p;
-	DICT_ATTR	*da;
-
+	const DICT_ATTR	*da;
+	DICT_ATTR *n;
+	
 	namelen = strlen(name);
 	if (namelen >= DICT_ATTR_MAX_NAME_LEN) {
 		fr_strerror_printf("dict_addattr: attribute name too long");
@@ -780,34 +781,34 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	/*
 	 *	Create a new attribute for the list
 	 */
-	if ((da = fr_pool_alloc(sizeof(*da) + namelen)) == NULL) {
+	if ((n = fr_pool_alloc(sizeof(*n) + namelen)) == NULL) {
 	oom:
-		fr_strerror_printf("dict_addattr: out of memory");
+		fr_strerror_printf("dict_adnttr: out of memory");
 		return -1;
 	}
 
-	memcpy(da->name, name, namelen);
-	da->name[namelen] = '\0';
-	da->attr = attr;
-	da->vendor = vendor;
-	da->type = type;
-	da->flags = flags;
+	memcpy(n->name, name, namelen);
+	n->name[namelen] = '\0';
+	n->attr = attr;
+	n->vendor = vendor;
+	n->type = type;
+	n->flags = flags;
 
 	/*
 	 *	Insert the attribute, only if it's not a duplicate.
 	 */
-	if (!fr_hash_table_insert(attributes_byname, da)) {
+	if (!fr_hash_table_insert(attributes_byname, n)) {
 		DICT_ATTR	*a;
 
 		/*
 		 *	If the attribute has identical number, then
 		 *	ignore the duplicate.
 		 */
-		a = fr_hash_table_finddata(attributes_byname, da);
-		if (a && (strcasecmp(a->name, da->name) == 0)) {
-			if (a->attr != da->attr) {
-				fr_strerror_printf("dict_addattr: Duplicate attribute name %s", name);
-				fr_pool_free(da);
+		a = fr_hash_table_finddata(attributes_byname, n);
+		if (a && (strcasecmp(a->name, n->name) == 0)) {
+			if (a->attr != n->attr) {
+				fr_strerror_printf("dict_adnttr: Duplicate attribute name %s", name);
+				fr_pool_free(n);
 				return -1;
 			}
 
@@ -822,9 +823,9 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 
 		fr_hash_table_delete(attributes_byvalue, a);
 
-		if (!fr_hash_table_replace(attributes_byname, da)) {
-			fr_strerror_printf("dict_addattr: Internal error storing attribute %s", name);
-			fr_pool_free(da);
+		if (!fr_hash_table_replace(attributes_byname, n)) {
+			fr_strerror_printf("dict_adnttr: Internal error storing attribute %s", name);
+			fr_pool_free(n);
 			return -1;
 		}
 	}
@@ -838,15 +839,15 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	 *	files, but when we're printing them, (and looking up
 	 *	by value) we want to use the NEW name.
 	 */
-	if (!fr_hash_table_replace(attributes_byvalue, da)) {
-		fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
+	if (!fr_hash_table_replace(attributes_byvalue, n)) {
+		fr_strerror_printf("dict_adnttr: Failed inserting attribute name %s", name);
 		return -1;
 	}
 
 	/*
 	 *	Hacks for combo-IP
 	 */
-	if (da->type == PW_TYPE_COMBO_IP) {
+	if (n->type == PW_TYPE_COMBO_IP) {
 		DICT_ATTR *v4, *v6;
 
 		v4 = malloc(sizeof(*v4));
@@ -858,28 +859,28 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 			goto oom;
 		}
 
-		memcpy(v4, da, sizeof(*v4));
+		memcpy(v4, n, sizeof(*v4));
 		v4->type = PW_TYPE_IPADDR;
 
-		memcpy(v6, da, sizeof(*v6));
+		memcpy(v6, n, sizeof(*v6));
 		v6->type = PW_TYPE_IPV6ADDR;
 
 		if (fr_hash_table_insert(attributes_combo, v4)) {
-			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
+			fr_strerror_printf("dict_adnttr: Failed inserting attribute name %s", name);
 			free(v4);
 			free(v6);
 			return -1;
 		}
 
 		if (fr_hash_table_insert(attributes_combo, v6)) {
-			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s", name);
+			fr_strerror_printf("dict_adnttr: Failed inserting attribute name %s", name);
 			free(v6);
 			return -1;
 		}
 	}
 
 	if (!vendor && (attr > 0) && (attr < 256)) {
-		 dict_base_attrs[attr] = da;
+		 dict_base_attrs[attr] = n;
 	}
 
 	return 0;
@@ -892,10 +893,10 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 int dict_addvalue(const char *namestr, const char *attrstr, int value)
 {
 	size_t		length;
-	DICT_ATTR	*dattr;
+	const DICT_ATTR	*dattr;
 	DICT_VALUE	*dval;
 
-	static DICT_ATTR *last_attr = NULL;
+	static const DICT_ATTR *last_attr = NULL;
 
 	if (!*namestr) {
 		fr_strerror_printf("dict_addvalue: empty names are not permitted");
@@ -978,8 +979,6 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 					   fr_int2str(dict_attr_types, dattr->type, "?Unknown?"));
 				return -1;
 		}
-
-		dattr->flags.has_value = 1;
 	} else {
 		value_fixup_t *fixup;
 
@@ -1006,25 +1005,30 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	/*
 	 *	Add the value into the dictionary.
 	 */
-	if (!fr_hash_table_insert(values_byname, dval)) {
-		if (dattr) {
-			DICT_VALUE *old;
+	{
+		DICT_ATTR *tmp;
+		memcpy(&tmp, &dval, sizeof(tmp));
+		
+		if (!fr_hash_table_insert(values_byname, tmp)) {
+			if (dattr) {
+				DICT_VALUE *old;
 
-			/*
-			 *	Suppress duplicates with the same
-			 *	name and value.  There are lots in
-			 *	dictionary.ascend.
-			 */
-			old = dict_valbyname(dattr->attr, dattr->vendor, namestr);
-			if (old && (old->value == dval->value)) {
-				fr_pool_free(dval);
-				return 0;
+				/*
+				 *	Suppress duplicates with the same
+				 *	name and value.  There are lots in
+				 *	dictionary.ascend.
+				 */
+				old = dict_valbyname(dattr->attr, dattr->vendor, namestr);
+				if (old && (old->value == dval->value)) {
+					fr_pool_free(dval);
+					return 0;
+				}
 			}
-		}
 
-		fr_pool_free(dval);
-		fr_strerror_printf("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
-		return -1;
+			fr_pool_free(dval);
+			fr_strerror_printf("dict_addvalue: Duplicate value name %s for attribute %s", namestr, attrstr);
+			return -1;
+		}
 	}
 
 	/*
@@ -1091,7 +1095,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, unsigned int *pvendor,
 {
 	const char *p;
 	unsigned int value;
-	DICT_ATTR *da;
+	const DICT_ATTR *da;
 
 	if (tlv_depth > fr_attr_max_tlv) {
 		fr_strerror_printf("Too many sub-attributes");
@@ -1201,7 +1205,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, unsigned int *pvendor,
 /*
  *	Bamboo skewers under the fingernails in 5, 4, 3, 2, ...
  */
-static DICT_ATTR *dict_parent(unsigned int attr, unsigned int vendor)
+static const DICT_ATTR *dict_parent(unsigned int attr, unsigned int vendor)
 {
 	if (vendor < FR_MAX_VENDOR) {
 		return dict_attrbyvalue(attr & 0xff, vendor);
@@ -1219,8 +1223,9 @@ static DICT_ATTR *dict_parent(unsigned int attr, unsigned int vendor)
  *	Process the ATTRIBUTE command
  */
 static int process_attribute(const char* fn, const int line,
-			     unsigned int block_vendor, DICT_ATTR *block_tlv,
-			     int tlv_depth, char **argv, int argc)
+			     unsigned int block_vendor,
+			     const DICT_ATTR *block_tlv, int tlv_depth,
+			     char **argv, int argc)
 {
 	int		oid = 0;
 	unsigned int    vendor = 0;
@@ -1262,7 +1267,7 @@ static int process_attribute(const char* fn, const int line,
 	}
 
 	if (oid) {
-		DICT_ATTR *da;
+		const DICT_ATTR *da;
 
 		vendor = block_vendor;
 
@@ -1638,7 +1643,7 @@ static int process_value(const char* fn, const int line, char **argv,
 static int process_value_alias(const char* fn, const int line, char **argv,
 			       int argc)
 {
-	DICT_ATTR *my_da, *da;
+	const DICT_ATTR *my_da, *da;
 	DICT_VALUE *dval;
 
 	if (argc != 2) {
@@ -1654,12 +1659,6 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 		return -1;
 	}
 
-	if (my_da->flags.has_value) {
-		fr_strerror_printf("dict_init: %s[%d]: Cannot add VALUE-ALIAS to ATTRIBUTE \"%s\" with pre-existing VALUE",
-			   fn, line, argv[0]);
-		return -1;
-	}
-
 	if (my_da->flags.has_value_alias) {
 		fr_strerror_printf("dict_init: %s[%d]: Cannot add VALUE-ALIAS to ATTRIBUTE \"%s\" with pre-existing VALUE-ALIAS",
 			   fn, line, argv[0]);
@@ -1669,12 +1668,6 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 	da = dict_attrbyname(argv[1]);
 	if (!da) {
 		fr_strerror_printf("dict_init: %s[%d]: Cannot find ATTRIBUTE \"%s\" for alias",
-			   fn, line, argv[1]);
-		return -1;
-	}
-
-	if (!da->flags.has_value) {
-		fr_strerror_printf("dict_init: %s[%d]: VALUE-ALIAS cannot refer to ATTRIBUTE %s: It has no values",
 			   fn, line, argv[1]);
 		return -1;
 	}
@@ -1898,7 +1891,7 @@ static int my_dict_init(const char *dir, const char *fn,
 	struct stat statbuf;
 	char	*argv[MAX_ARGV];
 	int	argc;
-	DICT_ATTR *da, *block_tlv[MAX_TLV_NEST + 1];
+	const DICT_ATTR *da, *block_tlv[MAX_TLV_NEST + 1];
 	int	which_block_tlv = 0;
 
 	block_tlv[0] = NULL;
@@ -2346,7 +2339,7 @@ int dict_init(const char *dir, const char *fn)
 		return -1;
 
 	if (value_fixup) {
-		DICT_ATTR *a;
+		const DICT_ATTR *a;
 		value_fixup_t *this, *next;
 
 		for (this = value_fixup; this != NULL; this = next) {
@@ -2588,7 +2581,7 @@ const DICT_ATTR *dict_attrunknownbyname(const char *attribute)
 	char		*q;
 	
 	DICT_VENDOR	*dv;
-	DICT_ATTR	*da;
+	const DICT_ATTR	*da;
 
 	/*
 	 *	Pull off vendor prefix first.
@@ -2779,7 +2772,7 @@ const DICT_ATTR *dict_attrunknownbyname(const char *attribute)
 /*
  *	Get an attribute by its numerical value.
  */
-DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
+const DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
 {
 	DICT_ATTR dattr;
 
@@ -2799,7 +2792,7 @@ DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
  *
  * @return The attribute, or NULL if not found
  */
-DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
+const DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
 			   PW_TYPE type)
 {
 	DICT_ATTR dattr;
@@ -2815,7 +2808,7 @@ DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
 /*
  *	Get an attribute by it's numerical value, and the parent
  */
-DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr)
+const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr)
 {
 	DICT_ATTR dattr;
 
@@ -2874,7 +2867,7 @@ find:
 /*
  *	Get an attribute by its name.
  */
-DICT_ATTR *dict_attrbyname(const char *name)
+const DICT_ATTR *dict_attrbyname(const char *name)
 {
 	DICT_ATTR *da;
 	uint32_t buffer[(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN + 3)/4];

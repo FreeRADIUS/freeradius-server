@@ -870,7 +870,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		xlat_name = cf_section_name1(conf);
 	} else {
 		char *group_name;
-		DICT_ATTR *dattr;
+		const DICT_ATTR *dattr;
 		ATTR_FLAGS flags;
 
 		/*

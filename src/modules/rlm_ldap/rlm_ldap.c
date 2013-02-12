@@ -1528,7 +1528,7 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	 */
 	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, ldap_groupcmp, inst);	
 	if (cf_section_name2(conf)) {
-		DICT_ATTR *da;
+		const DICT_ATTR *da;
 		ATTR_FLAGS flags;
 		char buffer[256];
 

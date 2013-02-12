@@ -606,7 +606,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	rlm_cache_t *inst = instance;
 	VALUE_PAIR *vp, *vps;
 	pair_lists_t list;
-	DICT_ATTR *target;
+	const DICT_ATTR *target;
 	const char *p = fmt;
 	char buffer[1024];
 	int ret = 0;

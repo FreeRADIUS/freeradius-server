@@ -1486,7 +1486,7 @@ static int parse_named_policy(policy_lex_file_t *lexer)
 	policy_lex_t token;
 	char mystring[256];
 	policy_named_t *this;
-	DICT_ATTR *dattr;
+	const DICT_ATTR *dattr;
 
 	debug_tokens("[POLICY] ");
 

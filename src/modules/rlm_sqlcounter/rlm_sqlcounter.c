@@ -59,18 +59,21 @@ static int sqlcounter_detach(void *instance);
  *	be used as the instance handle.
  */
 typedef struct rlm_sqlcounter_t {
-	char *counter_name;  	/* Daily-Session-Time */
-	char *check_name;  	/* Max-Daily-Session */
-	char *reply_name;  	/* Session-Timeout */
-	char *key_name;  	/* User-Name */
-	char *sqlmod_inst;	/* instance of SQL module to use, usually just 'sql' */
-	char *query;		/* SQL query to retrieve current session time */
-	char *reset;  		/* daily, weekly, monthly, never or user defined */
-	time_t reset_time;
-	time_t last_reset;
-	DICT_ATTR *key_attr;		/* attribute number for key field */
-	DICT_ATTR *dict_attr;		/* attribute number for the counter. */
-	DICT_ATTR *reply_attr;	/* attribute number for the reply */
+	char		*counter_name;  //!< Daily-Session-Time.
+	char		*check_name;  	//!< Max-Daily-Session.
+	char		*reply_name;  	//!< Session-Timeout.
+	char		*key_name;  	//!< User-Name.
+	char		*sqlmod_inst;	//!< Instance of SQL module to use, 
+					//!< usually just 'sql'.
+	char		*query;		//!< SQL query to retrieve current 
+					//!< session time.
+	char		*reset;  	//!< Daily, weekly, monthly,
+					//!< never or user defined.
+	time_t		reset_time;
+	time_t		last_reset;
+	const DICT_ATTR	*key_attr;	//!< Attribute number for key field.
+	const DICT_ATTR	*dict_attr;	//!< Attribute number for the counter.
+	const DICT_ATTR	*reply_attr;	//!< Attribute number for the reply.
 } rlm_sqlcounter_t;
 
 /*
@@ -354,7 +357,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *req,
 static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_sqlcounter_t *data;
-	DICT_ATTR *dattr;
+	const DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
 	time_t now;
 
@@ -517,7 +520,7 @@ static rlm_rcode_t sqlcounter_authorize(void *instance, REQUEST *request)
 	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
 	int rcode = RLM_MODULE_NOOP;
 	unsigned int counter;
-	DICT_ATTR *dattr;
+	const DICT_ATTR *dattr;
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];

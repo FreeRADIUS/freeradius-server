@@ -45,13 +45,19 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_checkval_t {
-	char	*item_name;	/* The attribute inside Access-Request ie Calling-Station-Id */
-	char 	*check_name;	/* The attribute to check it with ie Allowed-Calling-Station-Id */
-	char	*data_type;	/* string,integer,ipaddr,date,abinary,octets */
-	int	dat_type;
-	DICT_ATTR *item_attr;
-	DICT_ATTR *chk_attr;
-	int	notfound_reject;	/* If we don't find the item_name in the request send back a reject */
+	char		*item_name;	//!< The attribute inside  
+					//!< Access-Request ie 
+					//!< Calling-Station-Id.
+	char		*check_name;	//!< The attribute to check it with ie 
+					//!< Allowed-Calling-Station-Id.
+	char		*data_type;	//!< String, integer, ipaddr, date,  
+					//!< abinary,octets.
+	int		dat_type;
+	const DICT_ATTR	*item_attr;
+	const DICT_ATTR	*chk_attr;
+	int		notfound_reject;	//!< If we don't find the 
+						//!< item_name in the request 
+						//!< send back a reject.
 } rlm_checkval_t;
 
 /*
@@ -91,7 +97,7 @@ static int checkval_detach(void *instance)
 static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_checkval_t *data;
-	DICT_ATTR *dattr;
+	const DICT_ATTR *dattr;
 	ATTR_FLAGS flags;
 
 	static const FR_NAME_NUMBER names[] = {

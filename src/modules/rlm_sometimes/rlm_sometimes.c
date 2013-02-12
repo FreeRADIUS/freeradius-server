@@ -31,12 +31,12 @@ RCSID("$Id$")
  *	going to return.
  */
 typedef struct rlm_sometimes_t {
-	char	*rcode_str;
-	int	rcode;
-	int	start;
-	int	end;
-	char	*key;
-	DICT_ATTR *da;
+	char			*rcode_str;
+	int			rcode;
+	int			start;
+	int			end;
+	char			*key;
+	const DICT_ATTR		*da;
 } rlm_sometimes_t;
 
 /*

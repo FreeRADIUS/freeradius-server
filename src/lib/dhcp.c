@@ -557,7 +557,7 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 	 */
 	while (next < (data + len)) {
 		int num_entries, alen;
-		DICT_ATTR *da;
+		const DICT_ATTR *da;
 		
 		p = next;
 

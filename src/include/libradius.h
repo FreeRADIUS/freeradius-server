@@ -189,7 +189,7 @@ typedef struct value_pair {
 	 */
 	unsigned int		attribute;
 	unsigned int	       	vendor;
-	int			type;
+	PW_TYPE			type;
 
 	FR_TOKEN		op;		//!< Operator to use when 
 						//!< moving or inserting 
@@ -284,11 +284,11 @@ void 		dict_attr_free(DICT_ATTR * const *da);
 const DICT_ATTR	*dict_attr_copy(const DICT_ATTR *da);
 const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor);
 const DICT_ATTR	*dict_attrunknownbyname(const char *attribute);
-DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
-DICT_ATTR	*dict_attrbyname(const char *attr);
-DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,
+const DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
+const DICT_ATTR	*dict_attrbyname(const char *attr);
+const DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
-DICT_ATTR	*dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr);
+const DICT_ATTR	*dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
 DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, const char *val);
 const char	*dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value);

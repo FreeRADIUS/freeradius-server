@@ -788,7 +788,7 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
 
 #ifndef NDEBUG
 	if ((fr_debug_flag > 3) && fr_log_fp) {
-		DICT_ATTR *da;
+		const DICT_ATTR *da;
 		
 		da = dict_attrbyvalue(svp->attribute & ((1 << fr_attr_shift[nest ]) - 1), svp->vendor);
 		if (da) fprintf(fr_log_fp, "\t%s = ...\n", da->name);
@@ -2861,7 +2861,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 			   VALUE_PAIR **pvp)
 {
 	int data_offset = 0;
-	DICT_ATTR *da;
+	const DICT_ATTR *da;
 	VALUE_PAIR *vp = NULL;
 	uint8_t buffer[256];
 
@@ -3745,7 +3745,7 @@ ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
 	unsigned int vendor = 0;
 	size_t data_len = length;
 	const uint8_t *data;
-	DICT_ATTR *da;
+	const DICT_ATTR *da;
 
 	data = start;
 
@@ -3885,7 +3885,7 @@ ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
 		    const uint8_t *data, size_t length,
 		    VALUE_PAIR **pvp)
 {
-	DICT_ATTR *da;
+	const DICT_ATTR *da;
 
 	if ((length < 2) || (data[1] < 2) || (data[1] > length)) {
 		fr_strerror_printf("rad_attr2vp: Insufficient data");

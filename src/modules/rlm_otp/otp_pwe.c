@@ -45,14 +45,14 @@ RCSID("$Id$")
 
 /* Attribute IDs for supported password encodings. */
 #define SIZEOF_PWATTR (4 * 2)
-DICT_ATTR *pwattr[SIZEOF_PWATTR];
+const DICT_ATTR *pwattr[SIZEOF_PWATTR];
 
 
 /* Initialize the pwattr array for supported password encodings. */
 void
 otp_pwe_init(void)
 {
-  DICT_ATTR *da;
+  const DICT_ATTR *da;
 
   /*
    * Setup known password types.  These are pairs.

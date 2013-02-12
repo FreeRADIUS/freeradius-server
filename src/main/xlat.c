@@ -114,7 +114,7 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 static size_t xlat_packet(void *instance, REQUEST *request,
 			  const char *fmt, char *out, size_t outlen)
 {
-	DICT_ATTR	*da;
+	const DICT_ATTR	*da;
 	VALUE_PAIR	*vp;
 	VALUE_PAIR	*vps = NULL;
 	RADIUS_PACKET	*packet = NULL;
@@ -508,6 +508,8 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		case PW_TYPE_BYTE:
 		case PW_TYPE_DATE:
 			return snprintf(out, outlen, "%u", vp->vp_integer);
+		default:
+			break;
 	}
 	
 	*out = '\0';
