@@ -471,7 +471,6 @@ void dict_free(void)
 	dict_stat_free();
 }
 
-
 /*
  *	Add vendor to the list.
  */
@@ -2330,6 +2329,112 @@ int dict_init(const char *dir, const char *fn)
 	fr_hash_table_walk(values_byname, null_callback, NULL);
 
 	return 0;
+}
+
+static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
+			     int dv_type)
+{
+	int nest;
+	size_t outlen;
+	size_t len;
+
+	switch (dv_type) {
+	case 4:
+		return snprintf(buffer, size, "%u", attr);
+
+	case 2:
+		return snprintf(buffer, size, "%u", attr & 0xffff);
+
+	default:
+	case 1:
+		len = snprintf(buffer, size, "%u", attr & 0xff);
+		break;
+	}
+
+	if ((attr >> 8) == 0) return len;
+
+	outlen = len;
+	buffer += len;
+	size -= len;
+
+	for (nest = 1; nest <= fr_attr_max_tlv; nest++) {
+		if (((attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]) == 0) break;
+
+		len = snprintf(buffer, size, ".%u",
+			       (attr >> fr_attr_shift[nest]) & fr_attr_mask[nest]);
+
+		outlen = len;
+		buffer += len;
+		size -= len;
+	}
+
+	return outlen;
+}
+
+/** Allocs an dictionary struct for unknown attributes
+ *
+ * Allocates a dict entry for an unknown attribute/vendor type
+ * without adding it to dictionary pools/hashes.
+ *
+ * @note Dictionary attribute must be freed manually once it's no longer in use.
+ *
+ * @param[in] attr number.
+ * @param[in] vendor number.
+ * @return new dictionary attribute.
+ */
+DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
+{
+	DICT_ATTR *da;
+	char *p;
+	int dv_type = 1;
+	size_t len = 0;
+	size_t bufsize = DICT_ATTR_MAX_NAME_LEN;
+	
+	da = malloc(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN);
+	if (!da) {
+		return NULL;
+	}
+	memset(da, 0, sizeof(*da) + DICT_ATTR_MAX_NAME_LEN);
+	
+	da->attr = attr;
+	da->vendor = vendor;
+	da->type = PW_TYPE_OCTETS;
+	da->flags.is_unknown = TRUE;
+	
+	p = da->name;
+	
+	len = snprintf(p, bufsize, "Attr-");
+	p += len;
+	bufsize -= len;
+
+	if (vendor > FR_MAX_VENDOR) {
+		len = snprintf(p, bufsize, "%u.", vendor / FR_MAX_VENDOR);
+		p += len;
+		bufsize -= len;
+		vendor &= (FR_MAX_VENDOR) - 1;
+	}
+
+	if (vendor) {
+		DICT_VENDOR *dv;
+
+		/*
+		 *	dv_type is the length of the vendor's type field
+		 *	RFC 2865 never defined a mandatory length, so
+		 *	different vendors have different length type fields.
+		 */
+		dv = dict_vendorbyvalue(vendor);
+		if (dv) {
+			dv_type = dv->type;
+		}
+		len = snprintf(p, bufsize, "26.%u.", vendor);
+		
+		p += len;
+		bufsize -= len;
+	}
+
+	p += print_attr_oid(p, bufsize , attr, dv_type);
+	
+	return da;
 }
 
 /*

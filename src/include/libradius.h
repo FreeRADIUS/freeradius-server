@@ -108,6 +108,8 @@ extern "C" {
 #endif
 
 typedef struct attr_flags {
+	unsigned int 	is_unknown : 1;		//!< Attribute number or  
+						//!< vendor is unknown.
 	unsigned int	has_tag : 1;		//!< Tagged attribute.
 	unsigned int	do_xlat : 1; 		//!< Strvalue is dynamic.
 	unsigned int	unknown_attr : 1;	//!< Not in dictionary.
@@ -278,6 +280,7 @@ int		dict_addattr(const char *name, int attr, unsigned int vendor, int type, ATT
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
+DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor);
 DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 DICT_ATTR	*dict_attrbyname(const char *attr);
 DICT_ATTR	*dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr);
