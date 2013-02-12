@@ -44,6 +44,8 @@ RCSID("$Id$")
 #define DICT_VENDOR_MAX_NAME_LEN (128)
 #define DICT_ATTR_MAX_NAME_LEN (128)
 
+#define DICT_ATTR_SIZE sizeof(DICT_ATTR) + DICT_ATTR_MAX_NAME_LEN
+
 static fr_hash_table_t *vendors_byname = NULL;
 static fr_hash_table_t *vendors_byvalue = NULL;
 
@@ -2445,12 +2447,62 @@ static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
 	return outlen;
 }
 
-/** Allocs an dictionary struct for unknown attributes
+/** Free dynamically allocated (unknown attributes)
+ * 
+ * If the da was dynamically allocated it will be freed, else the function
+ * will return without doing anything.
  *
- * Allocates a dict entry for an unknown attribute/vendor type
+ * @param da to free.
+ */
+void dict_attr_free(const DICT_ATTR *da)
+{
+	DICT_ATTR *tmp;
+	
+	/* Don't free real DAs */
+	if (!da->flags.is_unknown) {
+		return;
+	}
+	
+	memcpy(&tmp, &da, sizeof(tmp));
+	free(tmp);	
+}
+
+/** Copies a dictionary attr
+ *
+ * If the attr is dynamically allocated (unknown attribute), then it will be
+ * copied to a new attr.
+ *
+ * If the attr is known, a pointer to the da will be returned.
+ *
+ * @param da to copy.
+ * @param return a copy of the da.
+ */
+const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da)
+{
+	DICT_ATTR *copy;
+	
+	if (!da->flags.is_unknown) {
+		return da;
+	}
+	
+	copy = malloc(DICT_ATTR_SIZE);
+	if (!copy) {
+		fr_strerror_printf("Out of memory");
+		return NULL;
+	}
+	
+	memcpy(copy, da, DICT_ATTR_SIZE);
+	
+	return copy;
+}
+
+
+/** Allocs an dictionary attr for unknown attributes
+ *
+ * Allocates a dict attr for an unknown attribute/vendor/type
  * without adding it to dictionary pools/hashes.
  *
- * @note Dictionary attribute must be freed manually once it's no longer in use.
+ * @note Must be freed with dict_attr_free if not used as part of a valuepair.
  *
  * @param[in] attr number.
  * @param[in] vendor number.
@@ -2464,12 +2516,12 @@ DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
 	size_t len = 0;
 	size_t bufsize = DICT_ATTR_MAX_NAME_LEN;
 	
-	da = malloc(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN);
+	da = malloc(DICT_ATTR_SIZE);
 	if (!da) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
-	memset(da, 0, sizeof(*da) + DICT_ATTR_MAX_NAME_LEN);
+	memset(da, 0, DICT_ATTR_SIZE);
 	
 	da->attr = attr;
 	da->vendor = vendor;
