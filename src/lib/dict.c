@@ -2454,17 +2454,19 @@ static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
  *
  * @param da to free.
  */
-void dict_attr_free(const DICT_ATTR *da)
+void dict_attr_free(DICT_ATTR * const *da)
 {
-	DICT_ATTR *tmp;
+	DICT_ATTR **tmp;
 	
 	/* Don't free real DAs */
-	if (!da->flags.is_unknown) {
+	if (!(*da)->flags.is_unknown) {
 		return;
 	}
 	
-	memcpy(&tmp, &da, sizeof(tmp));
-	free(tmp);	
+	memcpy(&tmp, &da, sizeof(*tmp));
+	free(*tmp);
+	
+	*tmp = NULL;	
 }
 
 /** Copies a dictionary attr
