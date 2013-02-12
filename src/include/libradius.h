@@ -139,7 +139,7 @@ extern const FR_NAME_NUMBER dict_attr_types[];
 
 typedef struct dict_attr {
 	unsigned int		attr;
-	int			type;
+	PW_TYPE			type;
 	unsigned int		vendor;
         ATTR_FLAGS              flags;
 	char			name[1];
