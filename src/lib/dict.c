@@ -2392,6 +2392,7 @@ DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
 	
 	da = malloc(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN);
 	if (!da) {
+		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
 	memset(da, 0, sizeof(*da) + DICT_ATTR_MAX_NAME_LEN);

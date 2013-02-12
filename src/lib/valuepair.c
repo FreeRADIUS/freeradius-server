@@ -94,7 +94,7 @@ VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 		vp->type = PW_TYPE_OCTETS;
 		vp->name = NULL;
 		memset(&vp->flags, 0, sizeof(vp->flags));
-		vp->flags.unknown_attr = 1;
+		vp->flags.is_unknown = 1;
 	}
 	vp->op = T_OP_EQ;
 
@@ -159,7 +159,7 @@ VALUE_PAIR *paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *vp)
 {
 	char *p = (char *) (vp + 1);
 
-	if (!vp->flags.unknown_attr) {
+	if (!vp->flags.is_unknown) {
 		pairfree(&vp);
 		return NULL;
 	}
@@ -171,7 +171,7 @@ VALUE_PAIR *paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *vp)
 	vp->type = type;
 	vp->length = 0;
 	memset(&vp->flags, 0, sizeof(vp->flags));
-	vp->flags.unknown_attr = 1;
+	vp->flags.is_unknown = 1;
 	
 	if (!vp_print_name(p, FR_VP_NAME_LEN, vp->attribute, vp->vendor)) {
 		free(vp);
@@ -379,7 +379,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 
 	if (!vp) return NULL;
 	
-	if (!vp->flags.unknown_attr) {
+	if (!vp->flags.is_unknown) {
 		name_len = 0;
 	} else {
 		name_len = FR_VP_NAME_PAD;
@@ -395,7 +395,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	 *	Reset the name field to point to the NEW attribute,
 	 *	rather than to the OLD one.
 	 */
-	if (vp->flags.unknown_attr) n->name = (char *) (n + 1);
+	if (vp->flags.is_unknown) n->name = (char *) (n + 1);
 
 	n->next = NULL;
 
