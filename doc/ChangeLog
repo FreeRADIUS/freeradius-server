@@ -1,6 +1,7 @@
 FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
-	* Updated dictionary.alcatel, dictionary.bskyb, dictionary.proxim
+	* Updated dictionary.alcatel, dictionary.bskyb, dictionary.proxim,
+	  dictionary.zeus
 	* Added %{randstr:..} support. Creates random strings in a
 	  controllable format.
 	* Added operator support to rlm_python
@@ -15,6 +16,11 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	  Patch from Uwe Meyer-Gruhl.
 	* Run Post-Proxy-Type Reject {} if the upstream server rejected the
 	  request.
+	* On startup, the server checks if it was linked with the correct
+	  OpenSSL libraries.  if not, it errors out.  This prevents later
+	  crashes in OpenSSL, due to library incompatibilities.
+	* Added radmin command "hup main.log", to re-open the log files,
+	  without HUPing any other part of the server.
 
 	Bug fixes
 	* Skip OCSP if there's no host / port / url, with soft_fail
@@ -35,6 +41,9 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Port fix for %{3GPP-*} expansion from master branch.
 	* Fix sample certificate scripts when multiple client certs are
 	  made
+	* Track return code priorities across if/else/elsif in unlang.
+	  Closes #107
+	* In debug mode, print out DHCP options when sending a DHCP packet.
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
