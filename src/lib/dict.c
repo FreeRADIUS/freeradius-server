@@ -865,15 +865,15 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		memcpy(v6, n, sizeof(*v6));
 		v6->type = PW_TYPE_IPV6ADDR;
 
-		if (fr_hash_table_insert(attributes_combo, v4)) {
-			fr_strerror_printf("dict_adnttr: Failed inserting attribute name %s", name);
+		if (!fr_hash_table_insert(attributes_combo, v4)) {
+			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv4", name);
 			free(v4);
 			free(v6);
 			return -1;
 		}
 
-		if (fr_hash_table_insert(attributes_combo, v6)) {
-			fr_strerror_printf("dict_adnttr: Failed inserting attribute name %s", name);
+		if (!fr_hash_table_insert(attributes_combo, v6)) {
+			fr_strerror_printf("dict_addattr: Failed inserting attribute name %s - IPv6", name);
 			free(v6);
 			return -1;
 		}
