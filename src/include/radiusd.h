@@ -686,6 +686,7 @@ extern struct main_config_t mainconfig;
 int read_mainconfig(int reload);
 int free_mainconfig(void);
 void hup_mainconfig(void);
+void hup_logfile(void);
 void fr_suid_down(void);
 void fr_suid_up(void);
 void fr_suid_down_permanent(void);

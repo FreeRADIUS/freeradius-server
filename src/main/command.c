@@ -312,6 +312,14 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 		return 1;
 	}
 
+	/*
+	 *	Hack a "main" HUP thingy
+	 */
+	if (strcmp(argv[0], "main.log") == 0) {
+		hup_logfile();
+		return 1;
+	}
+
 	cs = cf_section_find("modules");
 	if (!cs) return 0;
 
