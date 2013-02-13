@@ -238,6 +238,8 @@ VALUE	Cache-Merge			yes			1
 ATTRIBUTE	FreeRADIUS-Client-Src-IP-Address	1143	ipaddr
 ATTRIBUTE	FreeRADIUS-Client-Src-IPv6-Address	1144	ipv6addr
 
+ATTRIBUTE	OTP-Challenge				1145	string
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

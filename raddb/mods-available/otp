@@ -19,11 +19,10 @@ otp {
 	# (default: /var/run/otpd/socket)
 	#otpd_rp = /var/run/otpd/socket
 
-	# Text to use for the challenge.  The '%' character is
-	# disallowed, except that you MUST have a single "%s"
-	# sequence in the string; the challenge itself is
-	# inserted there.  (default "Challenge: %s\n Response: ")
-	#challenge_prompt = "Challenge: %s\n Response: "
+	# Text to use for the challenge.
+	# Default "Challenge: %{reply:OTP-Challenge}\n Response: "
+	
+	challenge_prompt = "Challenge: %{reply:OTP-Challenge} \n Response: "
 
 	# Length of the challenge.  Most tokens probably support a
 	# max of 8 digits.  (range: 5-32 digits, default 6)

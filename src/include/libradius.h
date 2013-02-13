@@ -474,7 +474,7 @@ uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
-void		fr_bin2hex(const uint8_t *bin, char *hex, size_t len);
+size_t		fr_bin2hex(const uint8_t *bin, char *hex, size_t len);
 size_t		fr_hex2bin(const char *hex, uint8_t *bin, size_t len);
 int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b);
 

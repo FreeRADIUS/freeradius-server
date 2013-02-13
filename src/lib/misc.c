@@ -466,10 +466,12 @@ const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 
 static const char *hextab = "0123456789abcdef";
 
-/*
- *	hex2bin
+/** Convert hex strings to binary data
  *
- *	We allow: hex == bin
+ * @param hex input string.
+ * @param bin Buffer to write output to.
+ * @param len length of input string.
+ * @return length of data written to buffer.
  */
 size_t fr_hex2bin(const char *hex, uint8_t *bin, size_t len)
 {
@@ -487,12 +489,18 @@ size_t fr_hex2bin(const char *hex, uint8_t *bin, size_t len)
 }
 
 
-/*
- *	bin2hex
+/** Convert binary data to a hex string
  *
- *	If the output buffer isn't long enough, we have a buffer overflow.
+ * Ascii encoded hex string will not be prefixed with '0x'
+ *
+ * @warning If the output buffer isn't long enough, we have a buffer overflow.
+ *
+ * @param[in] bin input.
+ * @param[out] hex Buffer to write hex output.
+ * @param[in] len of bin input.
+ * @return length of data written to buffer.
  */
-void fr_bin2hex(const uint8_t *bin, char *hex, size_t len)
+size_t fr_bin2hex(const uint8_t *bin, char *hex, size_t len)
 {
 	size_t i;
 
@@ -502,8 +510,9 @@ void fr_bin2hex(const uint8_t *bin, char *hex, size_t len)
 		hex += 2;
 		bin++;
 	}
+	
 	*hex = '\0';
-	return;
+	return len * 2;
 }
 
 

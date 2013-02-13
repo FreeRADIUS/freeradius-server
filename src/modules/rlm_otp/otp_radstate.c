@@ -80,73 +80,68 @@ RCSID("$Id$")
  * as an ASCII string (they only return data up to the first NUL byte).
  * So we must handle state as an ASCII string (0x00 -> 0x3030).
  */
-int
-otp_gen_state(char rad_state[OTP_MAX_RADSTATE_LEN],
-              unsigned char raw_state[OTP_MAX_RADSTATE_LEN],
-              const unsigned char challenge[OTP_MAX_CHALLENGE_LEN],
-              size_t clen,
-              int32_t flags, int32_t when, const unsigned char key[16])
+ 
+/*
+ * OTP_MAX_RADSTATE_LEN is composed of:
+ *
+ *   clen * 2 +			challenge
+ *   8 +			flags
+ *   8 +			time
+ *   sizeof(hmac) * 2 +		hmac
+ *   1				\0'
+ */
+  
+/** Generate an OTP state value
+ *
+ * Generates an OTP state value (an string of ASCII hexits in an opaque binary
+ * string).
+ *
+ * @param[out] state buffer in which to write the generated state value. 
+ * @param[in] challenge The challenge value.
+ * @param[in] clen The length of the challenge data.
+ * @param[in] flags.
+ * @param[in] when.
+ * @param[in] key HMAC key.
+ * @return the amount of data written into the state buffer.
+ */
+size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
+		     const char challenge[OTP_MAX_CHALLENGE_LEN],
+		     size_t clen,
+		     int32_t flags, int32_t when, const uint8_t key[16])
 {
-  HMAC_CTX hmac_ctx;
-  unsigned char hmac[MD5_DIGEST_LENGTH];
-  char *p;
-  char state[OTP_MAX_RADSTATE_LEN];
+	HMAC_CTX hmac_ctx;
+	uint8_t hmac[MD5_DIGEST_LENGTH];
+	char *p;
 
-  /*
-   * Generate the hmac.  We already have a dependency on openssl for
-   * DES, so we'll use it's hmac functionality also -- saves us from
-   * having to collect the data to be signed into one contiguous piece.
-   */
-  HMAC_Init(&hmac_ctx, key, sizeof(key[0] * 16), EVP_md5());
-  HMAC_Update(&hmac_ctx, challenge, clen);
-  HMAC_Update(&hmac_ctx, (unsigned char *) &flags, 4);
-  HMAC_Update(&hmac_ctx, (unsigned char *) &when, 4);
-  HMAC_Final(&hmac_ctx, hmac, NULL);
-  HMAC_cleanup(&hmac_ctx);
+	/*
+	 *	Generate the hmac.  We already have a dependency on openssl for
+	 *	DES, so we'll use it's hmac functionality also -- saves us from
+	 *	having to collect the data to be signed into one
+	 *	contiguous piece.
+	 */
+	HMAC_Init(&hmac_ctx, key, sizeof(key[0] * 16), EVP_md5());
+	HMAC_Update(&hmac_ctx, challenge, clen);
+	HMAC_Update(&hmac_ctx, (uint8_t *) &flags, 4);
+	HMAC_Update(&hmac_ctx, (uint8_t *) &when, 4);
+	HMAC_Final(&hmac_ctx, hmac, NULL);
+	HMAC_cleanup(&hmac_ctx);
 
-  /*
-   * Generate the state.  Note that it is in ASCII.  The challenge
-   * value doesn't have to be ASCII encoded, as it is already
-   * ASCII, but we do it anyway, for consistency.
-   */
-#if 0
-  /*
-   * We used to malloc() state (here and in callers).  We leave this
-   * here to show how OTP_MAX_RADSTATE_LEN is composed.  Note that
-   * it has to be double all the values below to account for an
-   * extra ASCII expansion (see Cisco notes, below).
-   */
-  state = rad_malloc(clen * 2 +			/* challenge */
-                     8 +			/* flags     */
-                     8 +			/* time      */
-                     sizeof(hmac) * 2 +		/* hmac      */
-                     1);			/* '\0'      */
-#endif
-  p = state;
-  /* Add the challenge. */
-  otp_x2a(challenge, clen, p);
-  p += clen * 2;
-  /* Add the flags and time. */
-  otp_x2a((unsigned char *) &flags, 4, p);
-  p += 8;
-  otp_x2a((unsigned char *) &when, 4, p);
-  p += 8;
-  /* Add the hmac. */
-  otp_x2a(hmac, 16, p);
+	/*
+	 *	Generate the state.
+	 */
+	p = state;
+	
+	/* 
+	 *	Add the challenge (which is already ASCII encoded)
+	 */
+	p += fr_bin2hex((const uint8_t *) challenge, p, clen);
+	
+	/* Add the flags and time. */
+	p += fr_bin2hex((uint8_t *) &flags, p, 4);
+	p += fr_bin2hex((uint8_t *) &when, p, 4);
+	
+	/* Add the hmac. */
+	p += fr_bin2hex(hmac, p, 16);
 
-  /*
-   * Expand state (already ASCII) into ASCII again (0x31 -> 0x3331).
-   * pairmake() forces us to do this (it will reduce it back to binary),
-   * and to include a leading "0x".
-   */
-  if (rad_state) {
-    (void) sprintf(rad_state, "0x");
-    p = rad_state + 2;
-    otp_x2a(state, strlen(state), p);
-  }
-
-  if (raw_state)
-    (void) memcpy(raw_state, state, sizeof(state));
-
-  return 0;
+	return p - state;
 }
