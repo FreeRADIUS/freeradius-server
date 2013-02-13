@@ -678,9 +678,12 @@ int main(int argc, char *argv[])
 	int c;
 	const char *radius_dir = RADDBDIR;
 
-	while ((c = getopt(argc, argv, "d:")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:x")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
+			break;
+	  	case 'x':
+			fr_debug_flag++;
 			break;
 		default:
 			fprintf(stderr, "usage: radattr [OPTS] filename\n");
