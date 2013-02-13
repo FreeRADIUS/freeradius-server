@@ -2470,7 +2470,7 @@ void dict_attr_free(DICT_ATTR * const *da)
  * If the attr is known, a pointer to the da will be returned.
  *
  * @param da to copy.
- * @param return a copy of the da.
+ * @return return a copy of the da.
  */
 const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da)
 {
