@@ -34,7 +34,7 @@ RCSID("$Id$")
 
 /* Global data */
 static uint8_t hmac_key[16];	//!< to protect State attribute.
-static int ninstance = 0;	//!< #instances, for global init.
+static int ninstance = 0;	//!< Number of instances, for global init.
 
 /* A mapping of configuration file names to internal variables. */
 static const CONF_PARSER module_config[] = {

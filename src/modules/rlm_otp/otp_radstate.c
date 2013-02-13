@@ -99,8 +99,8 @@ RCSID("$Id$")
  * @param[out] state buffer in which to write the generated state value. 
  * @param[in] challenge The challenge value.
  * @param[in] clen The length of the challenge data.
- * @param[in] flags.
- * @param[in] when.
+ * @param[in] flags to remember.
+ * @param[in] when the challenge was originally generated.
  * @param[in] key HMAC key.
  * @return the amount of data written into the state buffer.
  */
