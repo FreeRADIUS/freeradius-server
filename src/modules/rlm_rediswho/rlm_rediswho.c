@@ -187,18 +187,20 @@ static int rediswho_accounting_all(REDISSOCK **dissocket_p,
 
 	result = rediswho_command(insert, dissocket_p, inst, request);
 	if (result < 0) {
-		return -1;
+		return RLM_MODULE_FAIL;
 	}
 
 	/* Only trim if necessary */
 	if (inst->trim_count >= 0 && result > inst->trim_count) {
 		if (rediswho_command(trim, dissocket_p,
 				     inst, request) < 0) {
-			return -1;
+			return RLM_MODULE_FAIL;
 		}
 	}
 
-	rediswho_command(expire, dissocket_p, inst, request);
+	if (rediswho_command(expire, dissocket_p, inst, request) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	return RLM_MODULE_OK;
 }
