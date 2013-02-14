@@ -74,7 +74,6 @@ typedef struct rlm_redis_t {
         int (*redis_query)(REDISSOCK *dissocket, REDIS_INST *inst,
                            const char *query, REQUEST *request);
         int (*redis_finish_query)(REDISSOCK *dissocket);
-        size_t (*redis_escape_func)(char *out, size_t outlen, const char *in);
 
 } rlm_redis_t;
 
