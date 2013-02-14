@@ -67,6 +67,10 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	char query[MAX_STRING_LEN * 4];
 	int result = 0;
 
+	if (!fmt) {
+		return 0;
+	}
+
 	/*
 	 *	Do an xlat on the provided string
 	 */
@@ -182,8 +186,6 @@ static int rediswho_accounting_all(REDISSOCK **dissocket_p,
 {
 	REDISSOCK *dissocket;
 	int result;
-
-	if (!insert || !trim || !expire) return 0;
 
 	result = rediswho_command(insert, dissocket_p, inst, request);
 	if (result < 0) {
