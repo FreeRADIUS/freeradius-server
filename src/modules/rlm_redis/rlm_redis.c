@@ -137,54 +137,6 @@ static void *redis_create_conn(void *ctx)
 	return dissocket;
 }
 
-static size_t redis_escape_func(UNUSED REQUEST *request,
-	char *out, size_t outlen, const char *in, UNUSED void *arg)
-{
-
-	size_t len = 0;
-
-	while (*in) {
-		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
-		 */
-		if ((*in <= 32) || (*in == '\\')) {
-			/*
-			 *	Only 3 or less bytes available.
-			 */
-			if (outlen <= 3) {
-				break;
-			}
-
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
-			in++;
-			out += 3;
-			outlen -= 3;
-			len += 3;
-			continue;
-		}
-
-		/*
-		 *	Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
-		 *	Allowed character.
-		 */
-		*out = *in;
-		out++;
-		in++;
-		outlen--;
-		len++;
-	}
-	*out = '\0';
-	return len;
-
-}
-
 static size_t redis_xlat(void *instance, REQUEST *request,
 		      const char *fmt, char *out, size_t freespace)
 {
@@ -365,7 +317,6 @@ static int redis_instantiate(CONF_SECTION *conf, void **instance)
 
 	inst->redis_query = rlm_redis_query;
 	inst->redis_finish_query = rlm_redis_finish_query;
-	inst->redis_escape_func = redis_escape_func;
 
 	return 0;
 }
