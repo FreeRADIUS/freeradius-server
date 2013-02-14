@@ -66,14 +66,14 @@ static void *redis_create_conn(void *ctx)
 	char buffer[1024];
 
 	conn = redisConnect(inst->hostname, inst->port);
-	if (dissocket->conn->err) return NULL;
+	if (conn->err) return NULL;
 
 	if (inst->password) {
 		redisReply *reply = NULL;
 
 		snprintf(buffer, sizeof(buffer), "AUTH %s", inst->password);
 
-		reply = redisCommand(dissocket->conn, buffer);
+		reply = redisCommand(conn, buffer);
 		if (!reply) {
 			radlog(L_ERR, "rlm_redis (%s): Failed to run AUTH",
 			       inst->xlat_name);
@@ -88,7 +88,7 @@ static void *redis_create_conn(void *ctx)
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
 				radlog(L_ERR, "rlm_redis (%s): Failed authentication: reply %s",
-				       inst->xlat_name, dissocket->reply->str);
+				       inst->xlat_name, reply->str);
 				goto do_close;
 			}
 			break;	/* else it's OK */
@@ -105,7 +105,7 @@ static void *redis_create_conn(void *ctx)
 
 		snprintf(buffer, sizeof(buffer), "SELECT %d", inst->database);
 
-		reply = redisCommand(dissocket->conn, buffer);
+		reply = redisCommand(conn, buffer);
 		if (!reply) {
 			radlog(L_ERR, "rlm_redis (%s): Failed to run SELECT",
 			       inst->xlat_name);
@@ -118,7 +118,7 @@ static void *redis_create_conn(void *ctx)
 			if (strcmp(reply->str, "OK") != 0) {
 				radlog(L_ERR, "rlm_redis (%s): Failed SELECT %d: reply %s",
 				       inst->xlat_name, inst->database,
-				       dissocket->reply->str);
+				       reply->str);
 				goto do_close;
 			}
 			break;	/* else it's OK */
