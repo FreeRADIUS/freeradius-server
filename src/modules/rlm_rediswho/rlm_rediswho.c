@@ -184,7 +184,6 @@ static int rediswho_accounting_all(REDISSOCK **dissocket_p,
 				   const char *trim,
 				   const char *expire)
 {
-	REDISSOCK *dissocket;
 	int result;
 
 	result = rediswho_command(insert, dissocket_p, inst, request);
