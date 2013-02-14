@@ -223,6 +223,8 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 		RDEBUG("WARNING: Not adding MPPE keys because there is no PRF label");
 	}
 
+	eaptls_gen_eap_key(tls_session->ssl->session,
+			   handler->eap_type, request);
 	return 1;
 }
 

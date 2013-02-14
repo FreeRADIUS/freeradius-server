@@ -225,6 +225,9 @@ ATTRIBUTE	Cache-Entry-Hits			1142	integer
 
 VALUE	Cache-Status-Only		no			0
 VALUE	Cache-Status-Only		yes			1
+
+ATTRIBUTE	EAP-Session-Id				1146	octets
+
 #
 #	Range:	1200-1279
 #		EAP-SIM (and other EAP type) weirdness.

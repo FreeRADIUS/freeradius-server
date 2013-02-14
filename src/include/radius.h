@@ -237,6 +237,8 @@
 #define PW_CACHE_STATUS_ONLY		1141
 #define PW_CACHE_ENTRY_HITS		1142
 
+#define PW_EAP_SESSION_ID		1146
+
 /*
  *	Integer Translations
  */
