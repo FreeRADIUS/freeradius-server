@@ -497,7 +497,11 @@ void		*request_data_get(REQUEST *request,
 void		*request_data_reference(REQUEST *request,
 				  void *unique_ptr, int unique_int);
 int		rad_copy_string(char *dst, const char *src);
+int		rad_copy_string_bare(char *dst, const char *src);
 int		rad_copy_variable(char *dst, const char *from);
+int		rad_expand_xlat(REQUEST *request, const char *cmd,
+				int max_argc, const char *argv[], int can_fail,
+				size_t argv_buflen, char *argv_buf);
 
 /* client.c */
 RADCLIENT_LIST	*clients_init(void);

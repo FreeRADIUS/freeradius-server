@@ -173,53 +173,6 @@ static void redis_poolfree(REDIS_INST * inst)
 	inst->redispool = NULL;
 }
 
-static size_t redis_escape_func(char *out, size_t outlen, const char *in)
-{
-
-	size_t len = 0;
-
-	while (*in) {
-		/*
-		 *	Non-printable characters get replaced with their
-		 *	mime-encoded equivalents.
-		 */
-		if ((*in <= 32) || (*in == '\\')) {
-			/*
-			 *	Only 3 or less bytes available.
-			 */
-			if (outlen <= 3) {
-				break;
-			}
-
-			snprintf(out, outlen, "=%02X", (unsigned char) in[0]);
-			in++;
-			out += 3;
-			outlen -= 3;
-			len += 3;
-			continue;
-		}
-
-		/*
-		 *	Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
-
-		/*
-		 *	Allowed character.
-		 */
-		*out = *in;
-		out++;
-		in++;
-		outlen--;
-		len++;
-	}
-	*out = '\0';
-	return len;
-
-}
-
 static int redis_xlat(void *instance, REQUEST *request,
 		      char *fmt, char *out, size_t freespace,
 		      UNUSED RADIUS_ESCAPE_STRING func)
@@ -229,15 +182,6 @@ static int redis_xlat(void *instance, REQUEST *request,
 	size_t ret = 0;
 	char *buffer_ptr;
 	char buffer[21];
-	char querystr[MAX_QUERY_LEN];
-
-	if (!radius_xlat(querystr, sizeof(querystr), fmt, request,
-		    redis_escape_func)) {
-		radlog(L_ERR, "rlm_redis (%s): xlat failed.",
-		       inst->xlat_name);
-
-		return 0;
-	}
 
 	if ((dissocket = redis_get_socket(inst)) == NULL) {
 		radlog(L_ERR, "rlm_redis (%s): redis_get_socket() failed",
@@ -247,7 +191,7 @@ static int redis_xlat(void *instance, REQUEST *request,
 	}
 
 	/* Query failed for some reason, release socket and return */
-	if (rlm_redis_query(dissocket, inst, querystr) < 0) {
+	if (rlm_redis_query(dissocket, inst, fmt, request) < 0) {
 		rlm_redis_finish_query(dissocket);
 		redis_release_socket(inst,dissocket);
         
@@ -371,16 +315,26 @@ static int redis_init_socketpool(REDIS_INST *inst)
 }
 
 /*
- *	Free the redis database
+ *	Peform a redis query. Split into args and pass each one through xlat.
  */
-int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query)
+int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, const char *query,
+		    REQUEST *request)
 {
+	int argc;
+	const char *argv[MAX_REDIS_ARGS];
+	char argv_buf[MAX_QUERY_LEN];
+
 	if (!query || !*query) {
 		return -1;
 	}
 
-	DEBUG2("executing query %s", query);
-	dissocket->reply = redisCommand(dissocket->conn, query);
+	argc = rad_expand_xlat(request, query, MAX_REDIS_ARGS, argv, 0,
+				sizeof(argv_buf), argv_buf);
+	if (argc <= 0)
+		return -1;
+
+	DEBUG2("executing %s ...", argv[0]);
+	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
 
 	if (dissocket->reply == NULL) {
 		radlog(L_ERR, "rlm_redis: (%s) REDIS error: %s",
@@ -646,7 +600,6 @@ static int redis_instantiate(CONF_SECTION *conf, void **instance)
 	inst->redis_finish_query = rlm_redis_finish_query;
 	inst->redis_get_socket = redis_get_socket;
 	inst->redis_release_socket = redis_release_socket;
-	inst->redis_escape_func = redis_escape_func;
 
 	*instance = inst;
 
