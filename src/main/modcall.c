@@ -725,7 +725,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	The child's action says return.  Do so.
 		 */
 		if ((child->actions[myresult] == MOD_ACTION_RETURN) &&
-		    (mypriority == 0)) {
+		    (mypriority <= 0)) {
 			stack.result[stack.pointer] = myresult;
 			stack.children[stack.pointer] = NULL;
 			goto do_return;
