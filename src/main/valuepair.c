@@ -1412,7 +1412,7 @@ int radius_attrmap(CONF_SECTION *parent, value_pair_map_t **head,
 	request_refs_t request_def = REQUEST_CURRENT;
 
 	CONF_SECTION *cs;
-	CONF_ITEM *ci = cf_sectiontoitem(cs);
+	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
 	unsigned int total = 0;
@@ -1424,6 +1424,8 @@ int radius_attrmap(CONF_SECTION *parent, value_pair_map_t **head,
 	
 	cs = cf_section_sub_find(parent, "update");
 	if (!cs) return 0;
+	
+ 	ci = cf_sectiontoitem(cs)
 	
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list) {
