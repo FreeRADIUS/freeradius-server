@@ -1,7 +1,7 @@
 #
 #	Response caching to handle proxy failovers
 #
-eap.authorize {
+Xeap.authorize {
 	cache_eap
 	if (ok) {
 		#
@@ -29,7 +29,7 @@ eap.authorize {
 #
 #	Populate cache with responses from the EAP module
 #
-eap.authenticate {
+Xeap.authenticate {
 	eap {
 		handled = 1
 	}
