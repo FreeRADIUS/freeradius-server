@@ -52,6 +52,8 @@ typedef struct rlm_rediswho_t {
 static CONF_PARSER module_config[] = {
 	{ "redis-instance-name", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_rediswho_t, redis_instance_name), NULL, "redis"},
+	{ "trim-count", PW_TYPE_INTEGER,
+	  offsetof(rlm_rediswho_t, trim_count), NULL, "-1"},
 	{ NULL, -1, 0, NULL, NULL}
 };
 
@@ -63,6 +65,11 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 {
 	REDISSOCK *dissocket;
 	char query[MAX_STRING_LEN * 4];
+	int result = 0;
+
+	if (!fmt) {
+		return 0;
+	}
 
 	/*
 	 *	Do an xlat on the provided string
@@ -91,6 +98,8 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	case REDIS_REPLY_INTEGER:
 		DEBUG("rediswho_command: query response %lld\n",
 		      dissocket->reply->integer);
+		if (dissocket->reply->integer > 0)
+			result = dissocket->reply->integer;
 		break;
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
@@ -103,7 +112,7 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 
 	(inst->redis_inst->redis_finish_query)(dissocket);
 
-	return 0;
+	return result;
 }
 
 static int rediswho_detach(void *instance)
@@ -175,26 +184,24 @@ static int rediswho_accounting_all(REDISSOCK **dissocket_p,
 				   const char *trim,
 				   const char *expire)
 {
-	REDISSOCK *dissocket;
+	int result;
 
-	if (!insert || !trim || !expire) return 0;
-
-	if (rediswho_command(insert, dissocket_p, inst, request) < 0) {
-		return -1;
+	result = rediswho_command(insert, dissocket_p, inst, request);
+	if (result < 0) {
+		return RLM_MODULE_FAIL;
 	}
 
 	/* Only trim if necessary */
-	dissocket = *dissocket_p;
-	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
-		if (dissocket->reply->integer > inst->trim_count) {
-			if (rediswho_command(trim, dissocket_p,
-					     inst, request) < 0) {
-				return -1;
-			}
+	if (inst->trim_count >= 0 && result > inst->trim_count) {
+		if (rediswho_command(trim, dissocket_p,
+				     inst, request) < 0) {
+			return RLM_MODULE_FAIL;
 		}
 	}
 
-	rediswho_command(expire, dissocket_p, inst, request);
+	if (rediswho_command(expire, dissocket_p, inst, request) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	return RLM_MODULE_OK;
 }
