@@ -122,6 +122,10 @@ otp_pwe_t otp_pwe_present(const REQUEST *request)
 	unsigned i;
 
 	for (i = 0; i < SIZEOF_PWATTR; i += 2) {
+		if (!pwattr[i]) {
+			continue;
+		}
+		
 		if (pairfind(request->packet->vps, pwattr[i]->attr,
 			     pwattr[i]->vendor, TAG_ANY) && 
 		    pairfind(request->packet->vps, pwattr[i + 1]->attr, 
