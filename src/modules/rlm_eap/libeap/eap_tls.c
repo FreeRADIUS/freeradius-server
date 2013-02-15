@@ -224,7 +224,7 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	}
 
 	eaptls_gen_eap_key(tls_session->ssl->session,
-			   handler->eap_type, request);
+			   handler->eap_type, &request->reply->vps);
 	return 1;
 }
 
