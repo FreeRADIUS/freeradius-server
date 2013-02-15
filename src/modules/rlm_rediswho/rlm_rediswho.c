@@ -94,12 +94,14 @@ static CONF_PARSER module_config[] = {
 };
 
 /*
- *	Query the database executing a command with no result rows
+ *	Query the database executing a command.
+ *	If the result is a positive integer, return that value.
  */
 static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 			    rlm_rediswho_t *data, REQUEST *request)
 {
 	char query[MAX_STRING_LEN * 4];
+	int result = 0;
 
 	/*
 	 *	Do an xlat on the provided string
@@ -125,6 +127,8 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 	case REDIS_REPLY_INTEGER:
 		DEBUG("rediswho_command: query response %lld\n",
 		      dissocket->reply->integer);
+		if (dissocket->reply->integer > 0)
+		      result = dissocket->reply->integer;
 		break;
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
@@ -137,7 +141,7 @@ static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 
 	(data->redis_inst->redis_finish_query)(dissocket);
 
-	return 0;
+	return result;
 }
 
 static int rediswho_detach(void *instance)
@@ -255,19 +259,18 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 	return 0;
 }
 
-#define REDISWHO_COMMAND(_a, _b, _c, _d) if (rediswho_command(_a, _b, _c, _d) < 0) return RLM_MODULE_FAIL
+#define REDISWHO_COMMAND(_a, _b, _c, _d) rc = rediswho_command(_a, _b, _c, _d); if (rc < 0) return RLM_MODULE_FAIL
 
 static int rediswho_accounting_start(REDISSOCK *dissocket,
 				     rlm_rediswho_t *data, REQUEST *request)
 {
+	int rc;
 	REDISWHO_COMMAND(data->start_insert, dissocket, data, request);
     
 	/* Only trim if necessary */
-	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
-		if (dissocket->reply->integer > data->trim_count) {
-			rediswho_command(data->start_trim, dissocket, data, request);
-		}
-	}
+        if (rc > data->trim_count) {
+                rediswho_command(data->start_trim, dissocket, data, request);
+        }
 
 	REDISWHO_COMMAND(data->start_expire, dissocket, data, request);
 
@@ -277,14 +280,13 @@ static int rediswho_accounting_start(REDISSOCK *dissocket,
 static int rediswho_accounting_alive(REDISSOCK *dissocket,
 				     rlm_rediswho_t *data, REQUEST *request)
 {
+	int rc;
 	REDISWHO_COMMAND(data->alive_insert, dissocket, data, request);
 
 	/* Only trim if necessary */
-	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
-		if (dissocket->reply->integer > data->trim_count) {
-			rediswho_command(data->alive_trim, dissocket, data, request);
-		}
-	}
+        if (rc > data->trim_count) {
+                rediswho_command(data->alive_trim, dissocket, data, request);
+        }
 
 	REDISWHO_COMMAND(data->alive_expire, dissocket, data, request);
 
@@ -294,15 +296,13 @@ static int rediswho_accounting_alive(REDISSOCK *dissocket,
 static int rediswho_accounting_stop(REDISSOCK *dissocket,
 				    rlm_rediswho_t *data, REQUEST *request)
 {
-
+	int rc;
 	REDISWHO_COMMAND(data->stop_insert, dissocket, data, request);
 
 	/* Only trim if necessary */
-	if (dissocket->reply->type == REDIS_REPLY_INTEGER) {
-		if (dissocket->reply->integer > data->trim_count) {
-			rediswho_command(data->stop_trim, dissocket, data, request);
-		}
-	}
+        if (rc > data->trim_count) {
+                rediswho_command(data->stop_trim, dissocket, data, request);
+        }
 
 	REDISWHO_COMMAND(data->stop_expire, dissocket, data, request);
 
@@ -311,7 +311,7 @@ static int rediswho_accounting_stop(REDISSOCK *dissocket,
 
 static int rediswho_accounting(void * instance, REQUEST * request)
 {
-	int rcode;
+	int rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR * vp;
 	int acct_status_type;
 	rlm_rediswho_t * data = (rlm_rediswho_t *) instance;
