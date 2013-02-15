@@ -7,4 +7,4 @@
 #	$Id$
 #
 
-ATTRIBUTE	EAP-Key-Name				102	string
+ATTRIBUTE	EAP-Key-Name				102	octets
