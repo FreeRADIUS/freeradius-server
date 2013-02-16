@@ -180,6 +180,10 @@ typedef union value_pair_data {
 } VALUE_PAIR_DATA;
 
 typedef struct value_pair {
+	const DICT_ATTR	        *da;		//!< Dictionary attribute
+						//!< defines the attribute
+						//!< number, vendor and type
+						//!< of the attribute.
 	const char	        *name;
 	struct value_pair	*next;
 
