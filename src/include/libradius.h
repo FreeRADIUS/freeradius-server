@@ -115,7 +115,6 @@ typedef struct attr_flags {
 						//!< VALUE_PAIR is freed.
 						
 	unsigned int	has_tag : 1;		//!< Tagged attribute.
-	unsigned int	do_xlat : 1; 		//!< Strvalue is dynamic.
 	unsigned int	array : 1; 		//!< Pack multiples into 1 attr.
 	unsigned int	has_value : 1;		//!< Has a value.
 	unsigned int	has_value_alias : 1; 	//!< Has a value alias.
@@ -197,24 +196,15 @@ typedef struct value_pair {
 						//!< defines the attribute
 						//!< number, vendor and type
 						//!< of the attribute.
-	const char	        *name;
-	struct value_pair	*next;
 
-	/*
-	 *	Pack 4 32-bit fields together.  Saves ~8 bytes per struct
-	 *	on 64-bit machines.
-	 */
-	unsigned int		attribute;
-	unsigned int	       	vendor;
+	struct value_pair	*next;
 
 	FR_TOKEN		op;		//!< Operator to use when 
 						//!< moving or inserting 
 						//!< valuepair into a list.
-						
-	int8_t			tag;	       	//!< Tag for tunneled.
-						//!< Attributes.
 
-        ATTR_FLAGS              flags;
+	int8_t			tag;		//!< Tag value used to group
+						//!< valuepairs.
 
 	union {
 	//	VALUE_SET	*set;		//!< Set of child attributes.
@@ -328,7 +318,7 @@ int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
 void 		dict_attr_free(DICT_ATTR const **da);
-const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da, int vp_free);
+const DICT_ATTR	*dict_attr_copy(const DICT_ATTR *da, int vp_free);
 const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor, int vp_free);
 const DICT_ATTR	*dict_attrunknownbyname(const char *attribute, int vp_free);
 const DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
