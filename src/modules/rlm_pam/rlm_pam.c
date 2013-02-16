@@ -256,8 +256,8 @@ static rlm_rcode_t pam_auth(void *instance, REQUEST *request)
 	 *  Ensure that we're being passed a plain-text password,
 	 *  and not anything else.
 	 */
-	if (request->password->attribute != PW_USER_PASSWORD) {
-		radlog(L_AUTH, "rlm_pam: Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->name);
+	if (request->password->da->attr != PW_USER_PASSWORD) {
+		radlog(L_AUTH, "rlm_pam: Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".", request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 

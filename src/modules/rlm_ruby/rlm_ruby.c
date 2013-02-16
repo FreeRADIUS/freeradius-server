@@ -230,10 +230,10 @@ static int ruby_function(REQUEST *request, int func, VALUE module, const char *f
             VALUE tmp = rb_ary_new2(2);
 
             /* The name. logic from vp_prints, lib/print.c */
-            if (vp->flags.has_tag) {
-                snprintf(buf, BUF_SIZE, "%s:%d", vp->name, vp->flags.tag);
+            if (vp->da->flags.has_tag) {
+                snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->flags.tag);
             } else {
-                strcpy(buf, vp->name);
+                strcpy(buf, vp->da->name);
             }
             VALUE rbString1 = rb_str_new2(buf);
             /* The value. Use delimiter - don't know what that means */

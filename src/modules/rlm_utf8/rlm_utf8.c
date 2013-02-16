@@ -40,7 +40,7 @@ static rlm_rcode_t utf8_clean(void *instance, REQUEST *request)
 	for (vp = request->packet->vps; vp != NULL; vp = next) {
 		next = vp->next;
 
-		if (vp->type != PW_TYPE_STRING) continue;
+		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->length; i += len) {
 			len = fr_utf8_char(&vp->vp_octets[i]);

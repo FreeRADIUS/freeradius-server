@@ -496,8 +496,8 @@ static int securid_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Clear-text passwords are the only ones we support.
 	 */
-	if (request->password->attribute != PW_USER_PASSWORD) {
-		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->name);
+	if (request->password->da->attr != PW_USER_PASSWORD) {
+		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 

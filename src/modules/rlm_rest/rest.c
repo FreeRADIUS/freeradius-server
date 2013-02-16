@@ -478,11 +478,11 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 			goto end_chunk;
 		}
 
-		RDEBUG2("Encoding attribute \"%s\"", current[0]->name);
+		RDEBUG2("Encoding attribute \"%s\"", current[0]->da->name);
 
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			escaped = curl_escape(current[0]->name,
-					      strlen(current[0]->name));
+			escaped = curl_escape(current[0]->da->name,
+					      strlen(current[0]->da->name));
 			len = strlen(escaped);
 
 			if (s < (1 + len)) {
@@ -657,18 +657,18 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 		 *	New attribute, write name, type, and beginning of
 		 *	value array.
 		 */
-		RDEBUG2("Encoding attribute \"%s\"", current[0]->name);
+		RDEBUG2("Encoding attribute \"%s\"", current[0]->da->name);
 		if (ctx->state == READ_STATE_ATTR_BEGIN) {
-			type = fr_int2str(dict_attr_types, current[0]->type,
+			type = fr_int2str(dict_attr_types, current[0]->da->type,
 					  "¿Unknown?");
 
 			len  = strlen(type);
-			len += strlen(current[0]->name);
+			len += strlen(current[0]->da->name);
 
 			if (s < (23 + len)) goto no_space;
 
 			len = sprintf(p, "\"%s\":{\"type\":\"%s\",\"value\":[" ,
-				      current[0]->name, type);
+				      current[0]->da->name, type);
 			p += len;
 			s -= len;
 
@@ -703,9 +703,8 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			/* 
 			 *	Multivalued attribute
 			 */
-			if (current[1] && 
-			    ((current[0]->attribute == current[1]->attribute) &&
-			     (current[0]->vendor == current[1]->vendor))) {
+			if (current[1] &&
+			    (current[0]->da == current[1]->da)) {
 				*p++ = ',';
 				current++;
 
@@ -894,14 +893,8 @@ static void rest_read_ctx_init(REQUEST *request,
 	/* TODO: Quicksort would be faster... */
 	do {
 		for(i = 1; i < count; i++) {
-			assert(current[i-1]->attribute &&
-			       current[i]->attribute);
-
 			swap = 0;
-			if ((current[i-1]->vendor > current[i]->vendor) ||
-			    ((current[i-1]->vendor == current[i]->vendor) &&
-			     (current[i-1]->attribute > current[i]->attribute)
-			    )) {
+			if (current[i-1]->da > current[i]->da) {
 				tmp	     = current[i];
 				current[i]   = current[i-1];
 				current[i-1] = tmp;
@@ -1096,8 +1089,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		 */
 		current = processed;
 		while (*current++) {
-			if ((current[0]->attr == da->attr) &&
-			    (current[0]->vendor == da->vendor)) {
+			if (current[0] == da) {
 				vp->op = T_OP_ADD;
 				break;
 			}

@@ -100,12 +100,15 @@ static int detail_detach(void *instance)
 static uint32_t detail_hash(const void *data)
 {
 	const DICT_ATTR *da = data;
-	return fr_hash(&(da->attr), sizeof(da->attr));
+	return fr_hash(&da, sizeof(da));
 }
 
 static int detail_cmp(const void *a, const void *b)
 {
-	return ((const DICT_ATTR *)a)->attr - ((const DICT_ATTR *)b)->attr;
+	const DICT_ATTR *one = a;
+	const DICT_ATTR *two = b;
+
+	return one - two;
 }
 
 
@@ -143,7 +146,6 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 		     ci = cf_item_find_next(cs, ci)) {
 			const char	*attr;
 			const DICT_ATTR	*da;
-			DICT_ATTR *tmp;
 
 			if (!cf_item_is_pair(ci)) continue;
 
@@ -156,14 +158,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 				continue;
 			}
 
-			/*
-			 *	For better distribution we should really
-			 *	hash the attribute number or name.  But
-			 *	since the suppression list will usually
-			 *	be small, it doesn't matter.
-			 */
-			memcpy(&tmp, &da, sizeof(tmp));
-			if (!fr_hash_table_insert(inst->ht, tmp)) {
+			if (!fr_hash_table_insert(inst->ht, da)) {
 				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
 				detail_detach(inst);
 				return -1;
@@ -190,7 +185,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	int		locked;
 	int		lock_count;
 	struct timeval	tv;
-	VALUE_PAIR	*pair;
+	VALUE_PAIR	*vp;
 	off_t		fsize;
 	FILE		*fp;
 
@@ -409,25 +404,18 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 
 		switch (packet->src_ipaddr.af) {
 		case AF_INET:
-			src_vp.name = "Packet-Src-IP-Address";
-			src_vp.type = PW_TYPE_IPADDR;
-			src_vp.attribute = PW_PACKET_SRC_IP_ADDRESS;
+			src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_IP_ADDRESS, 0);
 			src_vp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
-			dst_vp.name = "Packet-Dst-IP-Address";
-			dst_vp.type = PW_TYPE_IPADDR;
-			dst_vp.attribute = PW_PACKET_DST_IP_ADDRESS;
+
+			dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_IP_ADDRESS, 0);
 			dst_vp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 			break;
 		case AF_INET6:
-			src_vp.name = "Packet-Src-IPv6-Address";
-			src_vp.type = PW_TYPE_IPV6ADDR;
-			src_vp.attribute = PW_PACKET_SRC_IPV6_ADDRESS;
+			src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_IPV6_ADDRESS, 0);
 			memcpy(src_vp.vp_strvalue,
 			       &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
-			dst_vp.name = "Packet-Dst-IPv6-Address";
-			dst_vp.type = PW_TYPE_IPV6ADDR;
-			dst_vp.attribute = PW_PACKET_DST_IPV6_ADDRESS;
+			dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_IPV6_ADDRESS, 0);
 			memcpy(dst_vp.vp_strvalue,
 			       &packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
@@ -439,13 +427,9 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		vp_print(fp, &src_vp);
 		vp_print(fp, &dst_vp);
 
-		src_vp.name = "Packet-Src-IP-Port";
-		src_vp.attribute = PW_PACKET_SRC_PORT;
-		src_vp.type = PW_TYPE_INTEGER;
+		src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_PORT, 0);
 		src_vp.vp_integer = packet->src_port;
-		dst_vp.name = "Packet-Dst-IP-Port";
-		dst_vp.attribute = PW_PACKET_DST_PORT;
-		dst_vp.type = PW_TYPE_INTEGER;
+		dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_PORT, 0);
 		dst_vp.vp_integer = packet->dst_port;
 
 		vp_print(fp, &src_vp);
@@ -453,22 +437,19 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	}
 
 	/* Write each attribute/value to the log file */
-	for (pair = packet->vps; pair != NULL; pair = pair->next) {
-		DICT_ATTR da;
-		da.attr = pair->attribute;
-
+	for (vp = packet->vps; vp != NULL; vp = vp->next) {
 		if (inst->ht &&
-		    fr_hash_table_finddata(inst->ht, &da)) continue;
+		    fr_hash_table_finddata(inst->ht, &vp->da)) continue;
 
 		/*
 		 *	Don't print passwords in old format...
 		 */
-		if (compat && (pair->attribute == PW_USER_PASSWORD)) continue;
+		if (compat && !vp->da->vendor && (vp->da->attr == PW_USER_PASSWORD)) continue;
 
 		/*
 		 *	Print all of the attributes.
 		 */
-		vp_print(fp, pair);
+		vp_print(fp, vp);
 	}
 
 	/*

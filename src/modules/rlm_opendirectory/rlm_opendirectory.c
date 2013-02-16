@@ -289,7 +289,7 @@ static rlm_rcode_t od_authenticate(UNUSED void *instance, REQUEST *request)
 	 *	Can't do OpenDirectory if there's no password.
 	 */
 	if (!request->password ||
-		(request->password->attribute != PW_PASSWORD)) {
+		(request->password->da->attr != PW_PASSWORD)) {
 		RDEBUG("ERROR: You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}

@@ -300,7 +300,8 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 *	For MS-CHAPv1, the NT-Response exists only
 		 *	if the second octet says so.
 		 */
-		if ((response->attribute == PW_MSCHAP_RESPONSE) &&
+		if ((response->da->vendor == VENDORPEC_MICROSOFT) &&
+		    (response->da->attr == PW_MSCHAP_RESPONSE) &&
 		    ((response->vp_octets[1] & 0x01) == 0)) {
 			RDEBUG2("No NT-Response in MS-CHAP-Response");
 			return 0;
@@ -1061,7 +1062,8 @@ static int do_mschap(rlm_mschap_t *inst,
 		 *	then calculate the hash of the NT hash.  Doing this
 		 *	here minimizes work for later.
 		 */
-		if (password && (password->attribute == PW_NT_PASSWORD)) {
+		if (password && !password->da->vendor &&
+		    (password->da->attr == PW_NT_PASSWORD)) {
 			fr_md4_calc(nthashhash, password->vp_octets, 16);
 		} else {
 			memset(nthashhash, 0, 16);
@@ -1489,10 +1491,10 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 		for (seq=1;seq<4;seq++) {
 			int found=0;
 			for (nt_enc=request->packet->vps; nt_enc; nt_enc=nt_enc->next) {
-				if (nt_enc->attribute != PW_MSCHAP_NT_ENC_PW)
+				if (nt_enc->da->vendor != VENDORPEC_MICROSOFT)
 					continue;
 
-				if (nt_enc->vendor != VENDORPEC_MICROSOFT)
+				if (nt_enc->da->attr != PW_MSCHAP_NT_ENC_PW)
 					continue;
 
 				if (nt_enc->vp_octets[0] != 6) {

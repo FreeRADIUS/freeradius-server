@@ -308,10 +308,10 @@ static void cleanresp(RADIUS_PACKET *resp)
 	{
 		vpnext = vp->next;
 
-		if((vp->attribute > ATTRIBUTE_EAP_BASE &&
-		    vp->attribute <= ATTRIBUTE_EAP_BASE+256) ||
-		   (vp->attribute > ATTRIBUTE_EAP_SIM_BASE &&
-		    vp->attribute <= ATTRIBUTE_EAP_SIM_BASE+256))
+		if((vp->da->attribute > ATTRIBUTE_EAP_BASE &&
+		    vp->da->attribute <= ATTRIBUTE_EAP_BASE+256) ||
+		   (vp->da->attribute > ATTRIBUTE_EAP_SIM_BASE &&
+		    vp->da->attribute <= ATTRIBUTE_EAP_SIM_BASE+256))
 		{
 			*last = vpnext;
 			pairbasicfree(vp);
@@ -878,7 +878,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 *  Fix up Digest-Attributes issues
 	 */
 	for (vp = rep->vps; vp != NULL; vp = vp->next) {
-		switch (vp->attribute) {
+		switch (vp->da->attribute) {
 		default:
 			break;
 
@@ -894,10 +894,10 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 		case PW_DIGEST_USER_NAME:
 			/* overlapping! */
 			memmove(&vp->vp_strvalue[2], &vp->vp_octets[0], vp->length);
-			vp->vp_octets[0] = vp->attribute - PW_DIGEST_REALM + 1;
+			vp->vp_octets[0] = vp->da->attribute - PW_DIGEST_REALM + 1;
 			vp->length += 2;
 			vp->vp_octets[1] = vp->length;
-			vp->attribute = PW_DIGEST_ATTRIBUTES;
+			vp->da->attribute = PW_DIGEST_ATTRIBUTES;
 			break;
 		}
 	}
@@ -945,7 +945,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	for (vp = req->vps; vp != NULL; vp = vpnext) {
 		vpnext = vp->next;
 
-		switch (vp->attribute) {
+		switch (vp->da->attribute) {
 		default:
 			break;
 
@@ -1279,8 +1279,8 @@ static void map_eap_types(RADIUS_PACKET *req)
 		/* save it in case it changes! */
 		vpnext = vp->next;
 
-		if(vp->attribute >= ATTRIBUTE_EAP_BASE &&
-		   vp->attribute < ATTRIBUTE_EAP_BASE+256) {
+		if(vp->da->attribute >= ATTRIBUTE_EAP_BASE &&
+		   vp->da->attribute < ATTRIBUTE_EAP_BASE+256) {
 			break;
 		}
 	}
@@ -1289,7 +1289,7 @@ static void map_eap_types(RADIUS_PACKET *req)
 		return;
 	}
 
-	eap_type = vp->attribute - ATTRIBUTE_EAP_BASE;
+	eap_type = vp->da->attribute - ATTRIBUTE_EAP_BASE;
 
 	switch(eap_type) {
 	case PW_EAP_IDENTITY:

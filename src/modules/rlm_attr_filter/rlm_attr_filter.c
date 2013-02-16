@@ -104,12 +104,12 @@ static int attr_filter_getfile(const char *filename, PAIR_LIST **pair_list)
 		     * and we ignore Fall-Through,
 		     * then bitch about it, giving a good warning message.
 		     */
-		     if ((vp->vendor == 0) &&
-			 (vp->attribute > 0xff) &&
-			 (vp->attribute > 1000)) {
+		     if ((vp->da->vendor == 0) &&
+			 (vp->da->attr > 0xff) &&
+			 (vp->da->attr > 1000)) {
 			log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
 				  "\tfound in filter list for realm \"%s\".\n",
-				  filename, entry->lineno, vp->name,
+				  filename, entry->lineno, vp->da->name,
 				  entry->name);
 		    }
 		}
@@ -232,12 +232,14 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 		for (check_item = pl->check;
 			check_item != NULL;
 			check_item = check_item->next) {
-			if ((check_item->attribute == PW_FALL_THROUGH) &&
+			if (!check_item->da->vendor &&
+			    (check_item->da->attr == PW_FALL_THROUGH) &&
 				(check_item->vp_integer == 1)) {
 				fall_through = 1;
 				continue;
 			}
-			else if (check_item->attribute == PW_RELAX_FILTER) {
+			else if (!check_item->da->vendor &&
+				 check_item->da->attr == PW_RELAX_FILTER) {
 				relax_filter = check_item->vp_integer;
 				continue;
 			}
@@ -281,14 +283,14 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 				 *	matches any VSA if the comparison
 				 *	is always true.
 				 */
-				if ((check_item->attribute == PW_VENDOR_SPECIFIC) &&
-					(vp->vendor != 0) &&
+				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) &&
+					(vp->da->vendor != 0) &&
 					(check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
 				}
 
-				if (vp->attribute == check_item->attribute) {
+				if (vp->da->attr == check_item->da->attr) {
 					check_pair(check_item, vp,
 						   &pass, &fail);
 				}
@@ -301,7 +303,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
 				if (!pass) {
-					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->name);
+					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->da->name);
 				}
 				*output_tail = paircopyvp(vp);
 				if (!*output_tail) {

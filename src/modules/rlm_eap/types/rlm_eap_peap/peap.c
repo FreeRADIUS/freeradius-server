@@ -1260,8 +1260,8 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	The attribute is a server-side thingy,
 			 *	don't copy it.
 			 */
-			if ((vp->attribute > 255) &&
-			    (((vp->attribute >> 16) & 0xffff) == 0)) {
+			if ((vp->da->attr > 255) &&
+			    (((vp->da->attr >> 16) & 0xffff) == 0)) {
 				continue;
 			}
 
@@ -1274,14 +1274,14 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	AND attributes which are copied there
 			 *	from below.
 			 */
-			if (pairfind(fake->packet->vps, vp->attribute, vp->vendor, TAG_ANY)) {
+			if (pairfind(fake->packet->vps, vp->da->attr, vp->da->vendor, TAG_ANY)) {
 				continue;
 			}
 
 			/*
 			 *	Some attributes are handled specially.
 			 */
-			switch (vp->attribute) {
+			switch (vp->da->attr) {
 				/*
 				 *	NEVER copy Message-Authenticator,
 				 *	EAP-Message, or State.  They're
@@ -1309,7 +1309,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->attribute, vp->vendor, TAG_ANY);
+			copy = paircopy2(vp, vp->da->attr, vp->da->vendor, TAG_ANY);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}

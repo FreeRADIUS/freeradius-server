@@ -121,8 +121,8 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		int roundedlen;
 		int vplen;
 
-		if(vp->attribute < ATTRIBUTE_EAP_SIM_BASE ||
-		   vp->attribute >= ATTRIBUTE_EAP_SIM_BASE+256)
+		if(vp->da->attr < ATTRIBUTE_EAP_SIM_BASE ||
+		   vp->da->attr >= ATTRIBUTE_EAP_SIM_BASE+256)
 		{
 			continue;
 		}
@@ -136,7 +136,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 		 *
  		 * At this point, we only care about the size.
 		 */
-		if(vp->attribute == ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC) {
+		if(vp->da->attr == ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC) {
 			vplen = 18;
 		}
 
@@ -208,8 +208,8 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	{
 		int roundedlen;
 
-		if(vp->attribute < ATTRIBUTE_EAP_SIM_BASE ||
-		   vp->attribute >= ATTRIBUTE_EAP_SIM_BASE+256)
+		if(vp->da->attr < ATTRIBUTE_EAP_SIM_BASE ||
+		   vp->da->attr >= ATTRIBUTE_EAP_SIM_BASE+256)
 		{
 			continue;
 		}
@@ -222,7 +222,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
  		 * At this point, we put in zeros, and remember where the
 		 * sixteen bytes go.
 		 */
-		if(vp->attribute == ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC) {
+		if(vp->da->attr == ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC) {
 			roundedlen = 20;
 			memset(&attr[2], 0, 18);
 			macspace = &attr[4];
@@ -234,7 +234,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 			memset(attr, 0, roundedlen);
 			memcpy(&attr[2], vp->vp_strvalue, vp->length);
 		}
-		attr[0] = vp->attribute - ATTRIBUTE_EAP_SIM_BASE;
+		attr[0] = vp->da->attr - ATTRIBUTE_EAP_SIM_BASE;
 		attr[1] = roundedlen >> 2;
 
 		attr += roundedlen;

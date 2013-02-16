@@ -709,7 +709,7 @@ static rlm_rcode_t counter_accounting(void *instance, REQUEST *request)
 		diff = request->timestamp - inst->last_reset;
 		counter.user_counter += (count_vp->vp_integer < diff) ? count_vp->vp_integer : diff;
 
-	} else if (count_vp->type == PW_TYPE_INTEGER) {
+	} else if (count_vp->da->type == PW_TYPE_INTEGER) {
 		/*
 		 *	Integers get counted, without worrying about
 		 *	reset dates.

@@ -357,7 +357,7 @@ static rlm_rcode_t unix_authenticate(void *instance, REQUEST *request)
 	VALUE_PAIR *vp = NULL;
 
 	if (!request->password ||
-	    (request->password->attribute != PW_USER_PASSWORD)) {
+	    (request->password->da->attr != PW_USER_PASSWORD)) {
 		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
@@ -474,7 +474,7 @@ static rlm_rcode_t unix_accounting(void *instance, REQUEST *request)
 	 *	First, find the interesting attributes.
 	 */
 	for (vp = request->packet->vps; vp; vp = vp->next) {
-		switch (vp->attribute) {
+		if (!vp->da->vendor) switch (vp->da->attr) {
 			case PW_USER_NAME:
 				if (vp->length >= sizeof(ut.ut_name)) {
 					memcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));

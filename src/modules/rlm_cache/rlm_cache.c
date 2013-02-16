@@ -447,7 +447,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       	       fr_int2str(fr_tokens, map->op,
 			       	       		  "¿unknown?"),
 			       	       map->src->name,
-			       	       vp->name);
+			       	       vp->da->name);
 				vp->op = map->op;
 			}
 			

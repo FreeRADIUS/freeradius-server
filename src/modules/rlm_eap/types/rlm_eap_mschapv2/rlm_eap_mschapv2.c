@@ -117,7 +117,10 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 	eap_ds->request->code = PW_EAP_REQUEST;
 	eap_ds->request->type.type = PW_EAP_MSCHAPV2;
 
-	switch (reply->attribute) {
+	/*
+	 *	Always called with vendor Microsoft
+	 */
+	switch (reply->da->attr) {
 	case PW_MSCHAP_CHALLENGE:
 		/*
 		 *   0                   1                   2                   3

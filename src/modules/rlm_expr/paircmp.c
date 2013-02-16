@@ -128,7 +128,7 @@ static int presufcmp(UNUSED void *instance,
 #endif
 
 	len = strlen((char *)check->vp_strvalue);
-	switch (check->attribute) {
+	if (check->da->vendor == 0) switch (check->da->attr) {
 		case PW_PREFIX:
 			ret = strncmp(name, check->vp_strvalue, len);
 			if (ret == 0)
@@ -226,10 +226,10 @@ static int genericcmp(void *instance UNUSED,
 		char value[1024];
 		VALUE_PAIR *vp;
 
-		snprintf(name, sizeof(name), "%%{%s}", check->name);
+		snprintf(name, sizeof(name), "%%{%s}", check->da->name);
 
 		radius_xlat(value, sizeof(value), name, req, NULL, NULL);
-		vp = pairmake(check->name, value, check->op);
+		vp = pairmake(check->da->name, value, check->op);
 
 		/*
 		 *	Paircmp returns 0 for failed comparison,

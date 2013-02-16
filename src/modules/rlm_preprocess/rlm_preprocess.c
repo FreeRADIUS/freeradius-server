@@ -121,10 +121,10 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 	char		newattr[MAX_STRING_LEN];
 
 	for ( ; vp != NULL; vp = vp->next) {
-		vendorcode = vp->vendor;
+		vendorcode = vp->da->vendor;
 		if (!((vendorcode == 9) || (vendorcode == 6618))) continue; /* not a Cisco or Quintum VSA, continue */
 
-		if (vp->type != PW_TYPE_STRING) continue;
+		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		/*
 		 *  No weird packing.  Ignore it.
@@ -143,7 +143,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 *	of the string, and if it exists, adds it as a new
 		 *	attribute.
 		 */
-		if (vp->attribute == 1) {
+		if (vp->da->attr == 1) {
 			const char *p;
 			const DICT_ATTR	*dattr;
 
@@ -186,14 +186,13 @@ static void alvarion_vsa_hack(VALUE_PAIR *vp)
 	for ( ; vp != NULL; vp = vp->next) {
 		const DICT_ATTR *da;
 
-		if (vp->vendor != 12394) continue;
-		if (vp->type != PW_TYPE_STRING) continue;
+		if (vp->da->vendor != 12394) continue;
+		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		da = dict_attrbyvalue(number, 12394);
 		if (!da) continue;
 
-		vp->attribute = da->attr;
-		vp->name = da->name;
+		vp->da = da;
 
 		number++;
 	}
@@ -331,8 +330,8 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 
 	num_proxy_state = 0;
 	for (tmp = request->packet->vps; tmp != NULL; tmp = tmp->next) {
-		if (tmp->vendor != 0) continue;
-		if (tmp->attribute != PW_PROXY_STATE) continue;
+		if (tmp->da->vendor != 0) continue;
+		if (tmp->da->attr != PW_PROXY_STATE) continue;
 
 		num_proxy_state++;
 	}

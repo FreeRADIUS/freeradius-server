@@ -258,7 +258,7 @@ static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
 	 *	First, find the interesting attributes.
 	 */
 	for (vp = request->packet->vps; vp; vp = vp->next) {
-		switch (vp->attribute) {
+		if (!vp->da->vendor) switch (vp->da->attr) {
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:
 				ut.framed_address = vp->vp_ipaddr;

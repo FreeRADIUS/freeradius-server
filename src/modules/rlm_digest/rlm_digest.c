@@ -307,7 +307,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 	a1[a1_len] = ':';
 	a1_len++;
 
-	if (passwd->attribute == PW_CLEARTEXT_PASSWORD) {
+	if (passwd->da->attr == PW_CLEARTEXT_PASSWORD) {
 		memcpy(&a1[a1_len], &passwd->vp_octets[0], passwd->length);
 		a1_len += passwd->length;
 		a1[a1_len] = '\0';
@@ -328,7 +328,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Set A1 to Digest-HA1 if no User-Password found
 		 */
-		if (passwd->attribute == PW_DIGEST_HA1) {
+		if (passwd->da->attr == PW_DIGEST_HA1) {
 			if (fr_hex2bin(passwd->vp_strvalue, &a1[0], 16) != 16) {
 				RDEBUG2("Invalid text in Digest-HA1");
 				return RLM_MODULE_INVALID;
@@ -342,7 +342,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 		 *	If we find Digest-HA1, we assume it contains
 		 *	H(A1).
 		 */
-		if (passwd->attribute == PW_CLEARTEXT_PASSWORD) {
+		if (passwd->da->attr == PW_CLEARTEXT_PASSWORD) {
 			fr_md5_calc(hash, &a1[0], a1_len);
 			fr_bin2hex(hash, (char *) &a1[0], 16);
 		} else {	/* MUST be Digest-HA1 */
@@ -461,7 +461,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 	 */
 	if (((algo != NULL) &&
 	     (strcasecmp(algo->vp_strvalue, "MD5-Sess") == 0)) ||
-	    (passwd->attribute == PW_CLEARTEXT_PASSWORD)) {
+	    (passwd->da->attr == PW_CLEARTEXT_PASSWORD)) {
 		a1[a1_len] = '\0';
 		fr_md5_calc(&hash[0], &a1[0], a1_len);
 	} else {

@@ -2096,10 +2096,10 @@ static rlm_rcode_t ldap_authenticate(void *instance, REQUEST * request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (request->password->attribute != PW_USER_PASSWORD) {
+	if (request->password->da->attr != PW_USER_PASSWORD) {
 		radlog(L_AUTH, "rlm_ldap (%s): Attribute \"User-Password\" "
 		       "is required for authentication. Cannot use \"%s\".",
-		       inst->xlat_name, request->password->name);
+		       inst->xlat_name, request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 
