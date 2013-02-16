@@ -34,36 +34,37 @@ typedef struct sql_acct_section {
 } sql_acct_section_t;
 
 typedef struct sql_config {
-	const char *xlat_name;
-	
-	const char *sql_driver;
-	const char *sql_server;
-	const char *sql_port;
-	const char *sql_login;
-	const char *sql_password;
-	const char *sql_db;
-	const char *sql_file;	/* for sqlite */
-	
-	const char *query_user;
-	const char *default_profile;
-	
-	const char *nas_query;
-	const char *authorize_check_query;
-	const char *authorize_reply_query;
-	const char *authorize_group_check_query;
-	const char *authorize_group_reply_query;
-	const char *simul_count_query;
-	const char *simul_verify_query;
-	const char *groupmemb_query;
-	
-	int const do_clients;
-	int const read_groups;
-	const char *logfile;
+	const char 	*xlat_name;
 
-	int const deletestalesessions;
-	const char *allowed_chars;
-	int const query_timeout;
-	void	*localcfg;			 /* individual driver config */
+	const char 	*sql_driver;
+	const char 	*sql_server;
+	const char 	*sql_port;
+	const char 	*sql_login;
+	const char 	*sql_password;
+	const char 	*sql_db;
+	const char 	*sql_file;	/* for sqlite */
+
+	
+	const char	*query_user;
+	const char	*default_profile;
+	
+	const char	*nas_query;
+	const char	*authorize_check_query;
+	const char 	*authorize_reply_query;
+	const char	*authorize_group_check_query;
+	const char	*authorize_group_reply_query;
+	const char	*simul_count_query;
+	const char	*simul_verify_query;
+	const char 	*groupmemb_query;
+	
+	int const	do_clients;
+	int const	read_groups;
+	const char	*logfile;
+
+	int const	deletestalesessions;
+	const char	*allowed_chars;
+	int const	query_timeout;
+	void		*localcfg;	/* individual driver config */
 	
 	/* 
 	 * TODO: The rest of the queries should also be moved into their own

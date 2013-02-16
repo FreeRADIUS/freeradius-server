@@ -116,8 +116,6 @@ static int fallthrough(VALUE_PAIR *vp)
 	return tmp ? tmp->vp_integer : 0;
 }
 
-
-
 /*
  *	Yucky prototype.
  */
