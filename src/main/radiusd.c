@@ -258,9 +258,11 @@ int main(int argc, char *argv[])
 	 *	Mismatch between build time OpenSSL and linked SSL,
 	 *	better to die here than segfault later.
 	 */
+#ifdef HAVE_OPENSSL_CRYPTO_H
 	if (ssl_check_version() < 0) {
 		exit(1);
 	}
+#endif
 
 	if (flag && (flag != 0x03)) {
 		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
