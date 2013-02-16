@@ -954,12 +954,13 @@ static int rest_decode_post(rlm_rest_t *instance,
 	const char *attribute;
 	char *name  = NULL;
 	char *value = NULL;
+	
+	char buffer[1024];
 
 	const DICT_ATTR *da;
 	VALUE_PAIR *vp;
 
 	const DICT_ATTR **current, *processed[REST_BODY_MAX_ATTRS + 1];
-	VALUE_PAIR *tmp;
 
 	pair_lists_t list_name;
 	request_refs_t request_name;
@@ -1047,11 +1048,18 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		RDEBUG2("\tLength : %i", curl_len);
 		RDEBUG2("\tValue  : \"%s\"", value);
+		
+		RDEBUG("Performing xlat expansion of response value");
+		
+		if (!radius_xlat(buffer, sizeof(buffer),
+				 value, request, NULL, NULL)) {
+			goto skip;
+		}
 
 		vp = pairalloc(da);
 		if (!vp) {
 			radlog(L_ERR, "rlm_rest (%s): Failed creating"
-			       " value-pair", instance->xlat_name);
+			       " valuepair", instance->xlat_name);
 
 			goto error;
 		}
@@ -1076,19 +1084,11 @@ static int rest_decode_post(rlm_rest_t *instance,
 			current[1] = NULL;
 		}
 
-		tmp = pairparsevalue(vp, value);
-		if (tmp == NULL) {
+		if (!pairparsevalue(vp, buffer)) {
 			RDEBUG("Incompatible value assignment, skipping");
 			pairbasicfree(vp);
 			goto skip;
 		}
-		vp = tmp;
-
-
-		vp->flags.do_xlat = 1;
-
-		RDEBUG("Performing xlat expansion of response value", value);
-		pairxlatmove(request, vps, &vp);
 
 		if (++count == REST_BODY_MAX_ATTRS) {
 			radlog(L_ERR, "rlm_rest (%s): At maximum"
@@ -1140,8 +1140,10 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 				      REQUEST *request, const DICT_ATTR *da,
 				      json_flags_t *flags, json_object *leaf)
 {
-	const char *value;
-	VALUE_PAIR *vp, *tmp;
+	const char *value, *to_parse;
+	char buffer[1024];
+	
+	VALUE_PAIR *vp;
 
 	/*
 	 *	Should encode any nested JSON structures into JSON strings.
@@ -1155,25 +1157,31 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 	RDEBUG2("\tLength : %i", strlen(value));
 	RDEBUG2("\tValue  : \"%s\"", value);
 
-	vp = paircreate(da->attr, da->vendor, da->type);
+	if (flags->do_xlat) {
+		if (!radius_xlat(buffer, sizeof(buffer), value,
+			         request, NULL, NULL)) {
+			return NULL;
+		}
+		
+		to_parse = buffer;
+	} else {
+		to_parse = value;
+	}
+
+	vp = paircreate(da->attr, da->vendor);
 	if (!vp) {
-		radlog(L_ERR, "rlm_rest (%s): Failed creating value-pair",
+		radlog(L_ERR, "rlm_rest (%s): Failed creating valuepair",
 		       instance->xlat_name);
 		return NULL;
 	}
 
 	vp->op = flags->op;
-
-	tmp = pairparsevalue(vp, value);
-	if (tmp == NULL) {
+	
+	if (!pairparsevalue(vp, to_parse)) {
 		RDEBUG("Incompatible value assignment, skipping");
 		pairbasicfree(vp);
 		return NULL;
 	}
-	vp = tmp;
-
-
-	if (flags->do_xlat) vp->flags.do_xlat = 1;
 
 	return vp;
 }
@@ -1295,7 +1303,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
-			RDEBUG("WARNING: Request qualifier, skipping");
+			RDEBUG("WARNING: Request qualifier unknown, skipping");
 
 			continue;
 		}
@@ -1348,9 +1356,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			 */
 			tmp = json_object_object_get(value, "op");
 			if (tmp) {
-				flags.op = fr_str2int(fr_tokens,
-						      json_object_get_string(tmp), 0);
-
+				flags.op = fr_str2int(fr_tokens, json_object_get_string(tmp), 0);
 				if (!flags.op) {
 					RDEBUG("Invalid operator value \"%s\","
 					       " skipping", tmp);
@@ -1385,62 +1391,55 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 			}
    		}
 
-	/*
-	 *	Setup pairmake / recursion loop.
-	 */
-   	if (!flags.is_json &&
-   	    json_object_is_type(value, json_type_array)) {
-   		len = json_object_array_length(value);
-   		if (!len) {
-   			RDEBUG("Zero length value array, skipping", value);
-   			continue;
-   		}
-   		idx = json_object_array_get_idx(value, 0);
-   	} else {
-   		len = 1;
-   		idx = value;
-   	}
-
-   	i = 0;
-   	do {
-   		if (!(*max_attrs)--) {
-				radlog(L_ERR, "rlm_rest (%s): At maximum"
-				       " attribute limit", instance->xlat_name);
-				return NULL;
-   		}
-
-   		/*
-   		 *	Automagically switch the op for multivalued
-   		 *	attributes.
-   		 */
-   		if (((flags.op == T_OP_SET) ||
-   		     (flags.op == T_OP_EQ)) && (len > 1)) {
-   			flags.op = T_OP_ADD;
-   		}
-
-   		if (!flags.is_json &&
-   		    json_object_is_type(value, json_type_object)) {
-			/* TODO: Insert nested VP into VP structure...*/
-			RDEBUG("Found nested VP", value);
-			vp = json_pairmake(instance, section,
-					   request, value,
-					   level + 1, max_attrs);
-		} else {
-			vp = json_pairmake_leaf(instance, section,
-						request, da, &flags,
-						idx);
-
-			if (vp != NULL) {
-				if (vp->flags.do_xlat) {
-					RDEBUG("Performing xlat"
-					       " expansion of response"
-					       " value", value);
-				}
-
-				pairxlatmove(request, vps, &vp);
+		/*
+		 *	Setup pairmake / recursion loop.
+		 */
+		if (!flags.is_json &&
+		    json_object_is_type(value, json_type_array)) {
+			len = json_object_array_length(value);
+			if (!len) {
+				RDEBUG("Zero length value array, skipping",
+				       value);
+				continue;
 			}
+			idx = json_object_array_get_idx(value, 0);
+		} else {
+			len = 1;
+			idx = value;
 		}
-   	} while ((++i < len) && (idx = json_object_array_get_idx(value, i)));
+
+		i = 0;
+		do {
+			if (!(*max_attrs)--) {
+					radlog(L_ERR, "rlm_rest (%s): At "
+					       "maximum attribute limit",
+					       instance->xlat_name);
+					return NULL;
+			}
+
+			/*
+			 *	Automagically switch the op for multivalued
+			 *	attributes.
+			 */
+			if (((flags.op == T_OP_SET) ||
+			     (flags.op == T_OP_EQ)) && (len > 1)) {
+				flags.op = T_OP_ADD;
+			}
+
+			if (!flags.is_json &&
+			    json_object_is_type(value, json_type_object)) {
+				/* TODO: Insert nested VP into VP structure...*/
+				RDEBUG("Found nested VP", value);
+				vp = json_pairmake(instance, section,
+						   request, value,
+						   level + 1, max_attrs);
+			} else {
+				vp = json_pairmake_leaf(instance, section,
+							request, da, &flags,
+							idx);
+			}
+		} while ((++i < len) &&
+			 (idx = json_object_array_get_idx(value, i)));
    }
 
    return vp;
