@@ -45,114 +45,35 @@ static const char *months[] = {
         "jan", "feb", "mar", "apr", "may", "jun",
         "jul", "aug", "sep", "oct", "nov", "dec" };
 
-/*
- *	This padding is necessary only for attributes that are NOT
- *	in the dictionary, and then only because the rest of the
- *	code accesses vp->name directly, rather than through an
- *	accessor function.
+/** Dynamically allocate a new attribute
  *
- *	The name padding has to be large enough for:
+ * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
- *		Attr-{3}.{8}.{3}.{3}.{3}.{3}
- *
- *	i.e. 28 characters, plus a zero.  We add some more bytes for
- *	padding, because the VALUE_PAIR structure may be un-aligned.
- *
- *	The result is that for the normal case, the server uses a less
- *	memory (36 bytes * number of VALUE_PAIRs).
+ * @param[in] da Specifies the dictionary attribute to build the VP from.
+ * @return a new value pair or NULL if an error occurred.
  */
-#define FR_VP_NAME_PAD (32)
-#define FR_VP_NAME_LEN (30)
-
 VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 {
-	size_t name_len = 0;
 	VALUE_PAIR *vp;
 
 	/*
-	 *	Not in the dictionary: the name is allocated AFTER
-	 *	the VALUE_PAIR struct.
+	 *	Caller must specify a da else we don't know what the attribute
+	 *	type is.
 	 */
-	if (!da) name_len = FR_VP_NAME_PAD;
+	if (!da) return NULL;
 
-	vp = malloc(sizeof(*vp) + name_len);
+	vp = malloc(sizeof(*vp));
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
 	memset(vp, 0, sizeof(*vp));
-
-	if (da) {
-		vp->attribute = da->attr;
-		vp->vendor = da->vendor;
-		vp->type = da->type;
-		vp->name = da->name;
-		vp->flags = da->flags;
-	} else {
-		vp->attribute = 0;
-		vp->vendor = 0;
-		vp->type = PW_TYPE_OCTETS;
-		vp->name = NULL;
-		memset(&vp->flags, 0, sizeof(vp->flags));
-		vp->flags.is_unknown = 1;
-	}
+	
 	vp->da = da;
 	vp->op = T_OP_EQ;
 
-	switch (vp->type) {
-		case PW_TYPE_BYTE:
-			vp->length = 1;
-			break;
-
-		case PW_TYPE_SHORT:
-			vp->length = 2;
-			break;
-
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_IPADDR:
-		case PW_TYPE_DATE:
-		case PW_TYPE_SIGNED:
-			vp->length = 4;
-			break;
-
-		case PW_TYPE_INTEGER64:
-			vp->length = 8;
-			break;
-
-		case PW_TYPE_IFID:
-			vp->length = sizeof(vp->vp_ifid);
-			break;
-
-		case PW_TYPE_IPV6ADDR:
-			vp->length = sizeof(vp->vp_ipv6addr);
-			break;
-
-		case PW_TYPE_IPV6PREFIX:
-			vp->length = sizeof(vp->vp_ipv6prefix);
-			break;
-
-		case PW_TYPE_IPV4PREFIX:
-			vp->length = sizeof(vp->vp_ipv4prefix);
-			break;
-
-		case PW_TYPE_ETHERNET:
-			vp->length = sizeof(vp->vp_ether);
-			break;
-
-		case PW_TYPE_TLV:
-			vp->vp_tlv = NULL;
-			vp->length = 0;
-			break;
-
-		case PW_TYPE_COMBO_IP:
-		default:
-			vp->length = 0;
-			break;
-	}
-
 	return vp;
 }
-
 
 /** Create a new valuepair
  * 
@@ -291,6 +212,8 @@ VALUE_PAIR *pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
  * @param[in] attr to match.
  * @param[in] vendor to match.
  * @param[in] tag to match. TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
+ *
+ * @todo should take DAs and do a point comparison.
  */
 void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 		int8_t tag)
@@ -339,6 +262,7 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
  * Walks over 'first', and replaces the first VP that matches 'replace'.
  * 
  * @note Memory used by the VP being replaced will be freed.
+ * @note Will not work with unknown attributes.
  * 
  * @param[in,out] first VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
@@ -395,36 +319,29 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 
 /** Copy a single valuepair
  *
- * Copy the head of the vp list.
- * 
+ * Allocate a new valuepair and copy the da from the old vp.
+ *
  * @param[in] vp to copy.
- * @return a copy of the input VP
+ * @return a copy of the input VP or NULL on error.
  */
 VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 {
-	size_t name_len;
 	VALUE_PAIR *n;
 
 	if (!vp) return NULL;
 	
-	if (!vp->flags.is_unknown) {
-		name_len = 0;
-	} else {
-		name_len = FR_VP_NAME_PAD;
-	}
-	
-	if ((n = malloc(sizeof(*n) + name_len)) == NULL) {
+	n = malloc(sizeof(*n));
+	if (!n) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
-	memcpy(n, vp, sizeof(*n) + name_len);
-
+	
+	memcpy(n, vp, sizeof(*n));
+	
+	
 	/*
-	 *	Reset the name field to point to the NEW attribute,
-	 *	rather than to the OLD one.
+	 *	Now copy the value
 	 */
-	if (vp->flags.is_unknown) n->name = (char *) (n + 1);
-
 	switch (vp->type)
 	{
 		case VT_XLAT:
@@ -438,6 +355,14 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 		default:
 			break;
 	}
+	
+	n->da = dict_attr_copy(vp->da, TRUE);
+	if (!n->da) {
+		free(n);
+		
+		return NULL;
+	}
+	
 	n->next = NULL;
 
 	if ((n->da->type == PW_TYPE_TLV) &&
@@ -507,7 +432,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 /** Copy matching pairs
  *
  * Copy pairs of a matching attribute number, vendor number and tag from the
- * the input list to a new list, and return the head of this list.
+ * the input list to a new list, and returns the head of this list.
  * 
  * @param[in] vp which is head of the input list.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
@@ -1580,15 +1505,24 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 }
 
 
-/*
- *	Create a VALUE_PAIR from an ASCII attribute and value.
+/** Create a VALUE_PAIR from ASCII strings
+ *
+ * Converts an attribute string identifier (with an optional tag qualifier)
+ * and value string into a VALUE_PAIR.
+ *
+ * The string value is parsed according to the type of VALUE_PAIR being created.
+ *
+ * @param[in] attribute name.
+ * @param[in] value attribute value.
+ * @param[in] op to assign to new VALUE_PAIR.
+ * @return a new VALUE_PAIR.
  */
 VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 {
-	const DICT_ATTR	*da;
+	const DICT_ATTR *da;
 	VALUE_PAIR	*vp;
 	char            *tc, *ts;
-	signed char     tag;
+	int8_t		tag;
 	int             found_tag;
 	char		buffer[256];
 	const char	*attrname = attribute;
@@ -1632,7 +1566,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	 *	It's not found in the dictionary, so we use
 	 *	another method to create the attribute.
 	 */
-	if ((da = dict_attrbyname(attrname)) == NULL) {
+	da = dict_attrbyname(attrname);
+	if (!da) {
 		return pairmake_any(attrname, value, op);
 	}
 
@@ -1673,7 +1608,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	}
 
 	if (found_tag) {
-	  vp->tag = tag;
+		vp->tag = tag;
 	}
 
 	switch (vp->op) {
@@ -2101,7 +2036,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 			if (compare != 0) {
 				regerror(compare, &reg, buffer, sizeof(buffer));
 				fr_strerror_printf("Illegal regular expression in attribute: %s: %s",
-					   one->name, buffer);
+					   one->da->name, buffer);
 				return -1;
 			}
 
