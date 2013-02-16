@@ -96,6 +96,7 @@ VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 		memset(&vp->flags, 0, sizeof(vp->flags));
 		vp->flags.is_unknown = 1;
 	}
+	vp->da = da;
 	vp->op = T_OP_EQ;
 
 	switch (vp->type) {

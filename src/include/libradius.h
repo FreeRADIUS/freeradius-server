@@ -111,6 +111,9 @@ typedef struct attr_flags {
 	unsigned int 	is_unknown : 1;		//!< Attribute number or  
 						//!< vendor is unknown.					
 	unsigned int	is_tlv : 1;		//!< Is a sub attribute.
+	unsigned int	vp_free : 1;		//!< Should be freed when 
+						//!< VALUE_PAIR is freed.
+
 	unsigned int	has_tag : 1;		//!< Tagged attribute.
 	unsigned int	do_xlat : 1; 		//!< Strvalue is dynamic.
 	unsigned int	array : 1; 		//!< Pack multiples into 1 attr.
@@ -284,10 +287,10 @@ int		dict_addattr(const char *name, int attr, unsigned int vendor, int type, ATT
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
-void 		dict_attr_free(DICT_ATTR * const *da);
-const DICT_ATTR	*dict_attr_copy(const DICT_ATTR *da);
-const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor);
-const DICT_ATTR	*dict_attrunknownbyname(const char *attribute);
+void 		dict_attr_free(DICT_ATTR const **da);
+const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da, int vp_free);
+const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor, int vp_free);
+const DICT_ATTR	*dict_attrunknownbyname(const char *attribute, int vp_free);
 const DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 const DICT_ATTR	*dict_attrbyname(const char *attr);
 const DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,

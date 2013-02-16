@@ -2448,7 +2448,7 @@ static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
  *
  * @param da to free.
  */
-void dict_attr_free(DICT_ATTR * const *da)
+void dict_attr_free(DICT_ATTR const **da)
 {
 	DICT_ATTR **tmp;
 	
@@ -2473,9 +2473,11 @@ void dict_attr_free(DICT_ATTR * const *da)
  * @param da to copy.
  * @return return a copy of the da.
  */
-const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da)
+const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da, int vp_free)
 {
 	DICT_ATTR *copy;
+	
+	if (!da) return NULL;
 	
 	if (!da->flags.is_unknown) {
 		return da;
@@ -2488,6 +2490,7 @@ const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da)
 	}
 	
 	memcpy(copy, da, DICT_ATTR_SIZE);
+	copy->flags.vp_free = (vp_free != 0);
 	
 	return copy;
 }
@@ -2502,9 +2505,11 @@ const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da)
  *
  * @param[in] attr number.
  * @param[in] vendor number.
+ * @param[in] vp_free if > 0 DICT_ATTR will be freed on VALUE_PAIR free.
  * @return new dictionary attribute.
  */
-const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
+const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor,
+				  int vp_free)
 {
 	DICT_ATTR *da;
 	char *p;
@@ -2523,6 +2528,7 @@ const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
 	da->vendor = vendor;
 	da->type = PW_TYPE_OCTETS;
 	da->flags.is_unknown = TRUE;
+	da->flags.vp_free = (vp_free != 0);
 	
 	p = da->name;
 	
@@ -2570,10 +2576,11 @@ const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor)
  *
  * @todo should check attr/vendor against dictionary and return the real da.
  *
- * @param attribute name to parse.
+ * @param[in] attribute name.
+ * @param[in] vp_free if > 0 DICT_ATTR will be freed on VALUE_PAIR free.
  * @return new da or NULL on error.
  */
-const DICT_ATTR *dict_attrunknownbyname(const char *attribute)
+const DICT_ATTR *dict_attrunknownbyname(const char *attribute, int vp_free)
 {
 	unsigned int   	attr, vendor = 0;
 	unsigned int    dv_type = 1;	/* The type of vendor field */
@@ -2767,7 +2774,7 @@ const DICT_ATTR *dict_attrunknownbyname(const char *attribute)
 		}
 	}
 
-	return dict_attrunknown(attr, vendor);
+	return dict_attrunknown(attr, vendor, vp_free);
 }
 
 /*
