@@ -254,7 +254,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
 				}
-				pairxlatmove(request, output_tail, &vp);
+				radius_xlat_move(request, output_tail, &vp);
 				output_tail = &((*output_tail)->next);
 			}
 		}

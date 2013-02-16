@@ -639,7 +639,8 @@ int		paircompare_register(unsigned int attr, int otherattr,
 void		paircompare_unregister(unsigned int attr, RAD_COMPARE_FUNC func);
 int		paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			    VALUE_PAIR **reply);
-void		pairxlatmove(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);
+int		radius_xlat_do(REQUEST *request, VALUE_PAIR *vp);
+void		radius_xlat_move(REQUEST *, VALUE_PAIR **to, VALUE_PAIR **from);
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp);
 int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,

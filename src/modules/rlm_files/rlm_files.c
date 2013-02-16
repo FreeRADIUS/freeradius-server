@@ -478,7 +478,7 @@ static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
 			found = 1;
 			check_tmp = paircopy(pl->check);
 			reply_tmp = paircopy(pl->reply);
-			pairxlatmove(request, reply_pairs, &reply_tmp);
+			radius_xlat_move(request, reply_pairs, &reply_tmp);
 			pairmove(config_pairs, &check_tmp);
 			pairfree(&reply_tmp);
 			pairfree(&check_tmp);

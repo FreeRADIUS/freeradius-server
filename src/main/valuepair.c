@@ -650,11 +650,50 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 	return result;
 }
 
+/** Expands an attribute marked with pairmark_xlat
+ *
+ * Writes the new value to the vp.
+ *
+ * @param request Current request.
+ * @param vp to expand.
+ * @return 0 if successful else -1 (on xlat failure) or -2 (on parse failure).
+ *	On failure pair will still no longer be marked for xlat expansion.
+ */
+int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
+{
+	size_t len;
+	
+	char buffer[1024];
+	
+	if (vp->type != VT_XLAT) return 0;
+	
+	vp->type = VT_DATA;
+	
+	len = radius_xlat(buffer, sizeof(buffer), vp->value.xlat, request,
+			    NULL, NULL);
+
+	rad_cfree(vp->value.xlat);
+	vp->value.xlat = NULL;
+	
+	if (!len) {
+		return -1;
+	}
+	
+	/*
+	 *	Parse the string into a new value.
+	 */
+	if (!pairparsevalue(vp, buffer)){
+		return -2;
+	}
+	
+	return 0;
+}
+
 /** Move pairs, replacing/over-writing them, and doing xlat.
  *
  * Move attributes from one list to the other if not already present.
  */
-void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
+void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
 {
 	VALUE_PAIR **tailto, *i, *j, *next;
 	VALUE_PAIR *tailfrom = NULL;
@@ -693,7 +732,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 			i->flags.do_xlat = 0;
 			rcode = radius_xlat(buffer, sizeof(buffer),
 					    i->vp_strvalue,
-					    req, NULL, NULL);
+					    request, NULL, NULL);
 
 			/*
 			 *	Parse the string into a new value.
