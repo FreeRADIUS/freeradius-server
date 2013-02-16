@@ -2805,19 +2805,34 @@ const DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
 }
 
 
-/*
- *	Get an attribute by it's numerical value, and the parent
+/**
+ * @brief Using a parent and attr/vendor, find a child attr/vendor
  */
-const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr)
+int dict_attr_child(const DICT_ATTR *parent,
+		    unsigned int *pattr, unsigned int *pvendor)
 {
+	unsigned int attr, vendor;
 	DICT_ATTR dattr;
 
-	if (!parent) return NULL;
+	if (!parent || !pattr || !pvendor) return FALSE;
+
+	attr = *pattr;
+	vendor = *pvendor;
 
 	/*
-	 *	Only TLVs can have children
+	 *	Only some types can have children
 	 */
-	if (!parent->flags.has_tlv) return NULL;
+	switch (parent->type) {
+	default: return FALSE;
+
+	case PW_TYPE_TLV:
+	case PW_TYPE_EVS:
+	case PW_TYPE_EXTENDED:
+	case PW_TYPE_LONG_EXTENDED:
+	  break;
+	}
+
+	if ((vendor == 0) && (parent->vendor != 0)) return FALSE;
 
 	/*
 	 *	Bootstrap by starting off with the parents values.
@@ -2837,6 +2852,7 @@ const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr)
 	 */
 	if (!dattr.vendor) {
 		dattr.vendor = parent->attr * FR_MAX_VENDOR;
+		dattr.vendor |= vendor;
 		dattr.attr = attr;
 
 	} else {
@@ -2846,7 +2862,7 @@ const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr)
 		 *	Trying to nest too deep.  It's an error
 		 */
 		if (parent->attr & (fr_attr_mask[MAX_TLV_NEST] << fr_attr_shift[MAX_TLV_NEST])) {
-			return NULL;
+			return FALSE;
 		}
 
 		for (i = MAX_TLV_NEST - 1; i >= 0; i--) {
@@ -2856,10 +2872,38 @@ const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr)
 			}
 		}
 
-		return NULL;
+		return FALSE;
 	}
 
 find:
+#if 0
+	fprintf(stderr, "LOOKING FOR %08x %08x + %08x %08x --> %08x %08x\n",
+		parent->vendor, parent->attr, attr, vendor,
+		dattr.vendor, dattr.attr);
+#endif
+
+	*pattr = dattr.attr;
+	*pvendor = dattr.vendor;
+	return TRUE;
+}
+
+/*
+ *	Get an attribute by it's numerical value, and the parent
+ */
+const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent,
+			     unsigned int attr, unsigned int vendor)
+{
+	unsigned int my_attr, my_vendor;
+	DICT_ATTR dattr;
+
+	my_attr = attr;
+	my_vendor = vendor;
+
+	if (!dict_attr_child(parent, &my_attr, &my_vendor)) return NULL;
+
+	dattr.attr = my_attr;
+	dattr.vendor = my_vendor;
+
 	return fr_hash_table_finddata(attributes_byvalue, &dattr);
 }
 

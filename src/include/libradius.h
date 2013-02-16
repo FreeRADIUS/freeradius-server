@@ -292,7 +292,10 @@ const DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
 const DICT_ATTR	*dict_attrbyname(const char *attr);
 const DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
-const DICT_ATTR	*dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr);
+const DICT_ATTR	*dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr,
+					   unsigned int vendor);
+int		dict_attr_child(const DICT_ATTR *parent,
+				unsigned int *pattr, unsigned int *pvendor);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
 DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, const char *val);
 const char	*dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value);

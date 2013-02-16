@@ -3341,7 +3341,7 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
 
 		switch (dv_type) {
 		case 1:
-			da = dict_attrbyparent(parent, data[0]);
+			da = dict_attrbyparent(parent, data[0], 0);
 			if (!da) {
 				VP_TRACE("No parent for %u\n", data[0]);
 				goto raw;
