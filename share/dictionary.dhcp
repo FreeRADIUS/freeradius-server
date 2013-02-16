@@ -172,7 +172,7 @@ ATTRIBUTE	DHCP-Vendor-Class-Identifier		60	string
 # Client Identifier
 # First octets is DHCP-Hardware-Type, rest are type-specific data,
 # e.g. MAC address.
-ATTRIBUTE	DHCP-Client-Identifier			61	octets
+ATTRIBUTE	DHCP-Client-Identifier			61	ether
 ATTRIBUTE	DHCP-Netware-Domain-Name		62	octets
 ATTRIBUTE	DHCP-Netware-Sub-Options		63	octets
 ATTRIBUTE	DHCP-NIS-Client-Domain-Name		64	octets
