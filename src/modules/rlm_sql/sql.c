@@ -144,9 +144,9 @@ int sql_release_socket(SQL_INST * inst, SQLSOCK * sqlsocket)
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
+int sql_userparse(VALUE_PAIR **head, SQL_ROW row)
 {
-	VALUE_PAIR *pair;
+	VALUE_PAIR *vp;
 	const char *ptr, *value;
 	char buf[MAX_STRING_LEN];
 	char do_xlat = 0;
@@ -223,20 +223,21 @@ int sql_userparse(VALUE_PAIR ** first_pair, SQL_ROW row)
 	/*
 	 *	Create the pair
 	 */
-	if (do_xlat) {
-		pair = pairmake_xlat(row[2], value, operator);
-	} else {
-		pair = pairmake(row[2], value, operator);
-	}
-	if (pair == NULL) {
-		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s", fr_strerror());
+	vp = pairmake(row[2], NULL, operator);
+	if (!vp) {
+		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s",
+		       fr_strerror());
 		return -1;
+	}
+	
+	if (do_xlat) {
+		pairmark_xlat(vp, value);
 	}
 
 	/*
 	 *	Add the pair into the packet
 	 */
-	pairadd(first_pair, pair);
+	pairadd(head, vp);
 	return 0;
 }
 

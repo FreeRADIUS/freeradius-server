@@ -83,6 +83,7 @@ typedef struct sql_socket {
 
 typedef struct rlm_sql_module_t {
 	const char *name;
+	
 	int (*sql_init_socket)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_destroy_socket)(SQLSOCK *sqlsocket, SQL_CONFIG *config);
 	int (*sql_query)(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *query);
@@ -106,6 +107,9 @@ struct sql_inst {
 	SQL_CONFIG	*config;
 	CONF_SECTION	*cs;
 
+	const DICT_ATTR	*sql_user;	//!< Cached pointer to SQL-User-Name
+					//!< dictionary attribute.
+					
 	lt_dlhandle handle;
 	rlm_sql_module_t *module;
 

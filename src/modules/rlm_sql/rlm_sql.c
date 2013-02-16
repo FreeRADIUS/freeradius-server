@@ -455,8 +455,10 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
  */
 int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
 {
+	char buffer[254];
 	VALUE_PAIR *vp = NULL;
 	const char *sqluser;
+	size_t len;
 
 	if (username != NULL) {
 		sqluser = username;
@@ -465,14 +467,17 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
 	} else {
 		return 0;
 	}
-
-	vp = pairmake_xlat("SQL-User-Name", sqluser, T_OP_SET);
-	if (!vp) {
+	
+	len = radius_xlat(buffer, sizeof(buffer), sqluser, request, NULL, NULL);
+	if (!len) {
 		return -1;
 	}
 	
-	pairxlatmove(request, &(request->packet->vps), &vp);
-	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
+	vp = pairalloc(inst->sql_user);
+	vp->op = T_OP_SET;
+	
+	strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));
+	vp->length = strlen(vp->vp_strvalue);
 
 	RDEBUG2("SQL-User-Name updated");
 
@@ -696,8 +701,8 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					return -1;
 				}
 				*dofallthrough = fallthrough(reply_tmp);
-				pairxlatmove(request, &request->reply->vps, &reply_tmp);
-				pairxlatmove(request, &request->config_items, &check_tmp);
+				radius_xlat_move(request, &request->reply->vps, &reply_tmp);
+				radius_xlat_move(request, &request->config_items, &check_tmp);
 			}
 		} else {
 			/*
@@ -731,8 +736,8 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				return -1;
 			}
 			*dofallthrough = fallthrough(reply_tmp);
-			pairxlatmove(request, &request->reply->vps, &reply_tmp);
-			pairxlatmove(request, &request->config_items, &check_tmp);
+			radius_xlat_move(request, &request->reply->vps, &reply_tmp);
+			radius_xlat_move(request, &request->config_items, &check_tmp);
 		}
 
 		/*
@@ -848,6 +853,15 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	const char *xlat_name;
 
 	inst = rad_calloc(sizeof(SQL_INST));
+	
+	/*
+	 *	Cache the SQL-User-Name DICT_ATTR, so we can be slightly
+	 *	more efficient about creating SQL-User-Name attributes.
+	 */
+	inst->sql_user = dict_attrbyname("SQL-User-Name");
+	if (!inst->sql_user) {
+		goto error;
+	}
 
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
@@ -1063,7 +1077,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 		    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0)) {	
 			RDEBUG2("User found in radcheck table");
 			
-			pairxlatmove(request, &request->config_items, &check_tmp);
+			radius_xlat_move(request, &request->config_items, &check_tmp);
 			
 			ret = RLM_MODULE_OK;
 		}
@@ -1098,7 +1112,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 			if (!inst->config->read_groups)
 				dofallthrough = fallthrough(reply_tmp);
 				
-			pairxlatmove(request, &request->reply->vps, &reply_tmp);
+			radius_xlat_move(request, &request->reply->vps, &reply_tmp);
 			
 			ret = RLM_MODULE_OK;
 		}
