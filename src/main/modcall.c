@@ -577,7 +577,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					if (myresult == MOD_ACTION_RETURN) {
 						break;
 					}
-					vp = pairfind(vp->next, vp->attribute, vp->vendor, TAG_ANY);
+					vp = pairfind(vp->next, vp->da->attr,
+						      vp->da->vendor, TAG_ANY);
 
 					/*
 					 *	Delete the cached attribute,
@@ -1517,11 +1518,11 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		 */
 		if ((vp->op == T_OP_LE) ||
 		    (vp->op == T_OP_GE)) {
-			if ((vp->type != PW_TYPE_BYTE) &&
-			    (vp->type != PW_TYPE_SHORT) &&
-			    (vp->type != PW_TYPE_INTEGER) &&
-			    (vp->type != PW_TYPE_SIGNED) &&
-			    (vp->type != PW_TYPE_INTEGER64)) {
+			if ((vp->da->type != PW_TYPE_BYTE) &&
+			    (vp->da->type != PW_TYPE_SHORT) &&
+			    (vp->da->type != PW_TYPE_INTEGER) &&
+			    (vp->da->type != PW_TYPE_SIGNED) &&
+			    (vp->da->type != PW_TYPE_INTEGER64)) {
 				pairfree(&head);
 				pairfree(&vp);
 				cf_log_err(ci, "Enforcment of <= or >= is possible only for integer attributes");

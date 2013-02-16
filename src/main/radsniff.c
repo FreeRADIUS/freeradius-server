@@ -77,7 +77,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 		for (check_item = filter_vps;
 		     check_item != NULL;
 		     check_item = check_item->next)
-			if ((check_item->attribute == vp->attribute)
+			if ((check_item->da == vp->da)
 			 && (check_item->op != T_OP_SET)) {
 				compare = paircmp(check_item, vp);
 				if (compare == 1)
@@ -161,7 +161,7 @@ static void sort(RADIUS_PACKET *packet)
 
 	for (i = 0; i < size - 1; i++)  {
 		for (j = 0; j < size - 1 - i; j++) {
-			if (array[j + 1]->attribute < array[j]->attribute)  {
+			if (array[j + 1]->da->attr < array[j]->da->attr)  {
 				tmp = array[j];         
 				array[j] = array[j + 1];
 				array[j + 1] = tmp;

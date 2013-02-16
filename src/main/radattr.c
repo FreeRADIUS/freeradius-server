@@ -579,7 +579,7 @@ static void process_file(const char *filename)
 						  attr, sizeof(data) - (attr - data));
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
-						vp->name, fr_strerror());
+						vp->da->name, fr_strerror());
 					exit(1);
 				}
 

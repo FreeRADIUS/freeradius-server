@@ -285,7 +285,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 			 *	user's password in an environment
 			 *	variable...
 			 */
-			snprintf(buffer, sizeof(buffer), "%s=", vp->name);
+			snprintf(buffer, sizeof(buffer), "%s=", vp->da->name);
 			if (shell_escape) {
 				for (p = buffer; *p != '='; p++) {
 					if (*p == '-') {

@@ -235,18 +235,13 @@ static int radclient_init(const char *filename)
 		 */
 		radclient = malloc(sizeof(*radclient));
 		if (!radclient) {
-			fprintf(stderr, "radclient: Out of memory\n");
-			if (fp != stdin) fclose(fp);
-			return 0;
+			goto oom;
 		}
 		memset(radclient, 0, sizeof(*radclient));
 
 		radclient->request = rad_alloc(1);
 		if (!radclient->request) {
-			fprintf(stderr, "radclient: Out of memory\n");
-			free(radclient);
-			if (fp != stdin) fclose(fp);
-			return 0;
+			goto oom;
 		}
 
 #ifdef WITH_TCP
@@ -292,10 +287,10 @@ static int radclient_init(const char *filename)
 		}
 
 		/*
-		 *  Fix up Digest-Attributes issues
+		 *	Fix up Digest-Attributes issues
 		 */
 		for (vp = radclient->request->vps; vp != NULL; vp = vp->next) {
-			switch (vp->attribute) {
+			if (!vp->da->vendor) switch (vp->da->attr) {
 			default:
 				break;
 
@@ -346,12 +341,24 @@ static int radclient_init(const char *filename)
 			case PW_DIGEST_NONCE_COUNT:
 			case PW_DIGEST_USER_NAME:
 				/* overlapping! */
-				memmove(&vp->vp_octets[2], &vp->vp_octets[0],
-					vp->length);
-				vp->vp_octets[0] = vp->attribute - PW_DIGEST_REALM + 1;
-				vp->length += 2;
-				vp->vp_octets[1] = vp->length;
-				vp->attribute = PW_DIGEST_ATTRIBUTES;
+				{
+					const DICT_ATTR *da;
+				
+					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
+					if (!da) {
+						goto oom;
+					}
+				
+					vp->da = da;
+					memmove(&vp->vp_octets[2],
+						&vp->vp_octets[0],
+						vp->length);
+
+					vp->vp_octets[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+					vp->length += 2;
+					vp->vp_octets[1] = vp->length;
+				}
+				
 				break;
 			}
 		} /* loop over the VP's we read in */
@@ -379,6 +386,12 @@ static int radclient_init(const char *filename)
 	 *	And we're done.
 	 */
 	return 1;
+	
+	oom:
+	fprintf(stderr, "radclient: Out of memory\n");
+	free(radclient);
+	if (fp != stdin) fclose(fp);
+	return 0;	
 }
 
 

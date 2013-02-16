@@ -123,7 +123,7 @@ static int request_init(const char *filename)
 	 *	Fix / set various options
 	 */
 	for (vp = request->vps; vp != NULL; vp = vp->next) {
-		switch (vp->attribute) {
+		switch (vp->da->attr) {
 		default:
 			break;
 			

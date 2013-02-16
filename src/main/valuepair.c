@@ -229,7 +229,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 *	Tagged attributes are equal if and only if both the
 	 *	tag AND value match.
 	 */
-	if (check->flags.has_tag) {
+	if (check->da->flags.has_tag) {
 		ret = ((int) vp->flags.tag) - ((int) check->flags.tag);
 		if (ret != 0) return ret;
 	}
@@ -237,7 +237,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	/*
 	 *	Not a regular expression, compare the types.
 	 */
-	switch(check->type) {
+	switch(check->da->type) {
 #ifdef WITH_ASCEND_BINARY
 		/*
 		 *	Ascend binary attributes can be treated
@@ -349,8 +349,7 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 	 *	FIXME: use new RB-Tree code.
 	 */
 	for (c = cmp; c; c = c->next) {
-		if ((c->attribute == check->attribute) &&
-		    (check->vendor == 0)) {
+		if (!check->da->vendor && (c->attribute == check->da->attr)) {
 			return (c->compare)(c->instance, req, request, check,
 				check_pairs, reply_pairs);
 		}
@@ -494,7 +493,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			continue;
 		}
 
-		switch (check_item->attribute) {
+		if (!check_item->da->vendor) switch (check_item->da->attr) {
 			/*
 			 *	Attributes we skip during comparison.
 			 *	These are "server" check items.
@@ -532,13 +531,13 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		/*
 		 *	See if this item is present in the request.
 		 */
-		other = otherattr(check_item->attribute);
+		other = otherattr(check_item->da->attr);
 
 		auth_item = request;
 	try_again:
 		if (other >= 0) {
 			while (auth_item != NULL) {
-				if ((auth_item->attribute == 
+				if ((auth_item->da->attr == 
 				    (unsigned int) other) ||
 				    (other == 0)) {
 					break;
@@ -678,7 +677,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 		/*
 		 *	Don't move 'fallthrough' over.
 		 */
-		if (i->attribute == PW_FALL_THROUGH) {
+		if (!i->da->vendor && i->da->attr == PW_FALL_THROUGH) {
 			tailfrom = i;
 			continue;
 		}
@@ -714,8 +713,8 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 					if (!i->vp_strvalue[0] ||
 				    	    (strcmp((char *)found->vp_strvalue,
 					    	    (char *)i->vp_strvalue) == 0)) {
-				  		pairdelete(to, found->attribute,
-				  			found->vendor,
+				  		pairdelete(to, found->da->attr,
+				  			found->da->vendor,
 				  			found->flags.tag);
 
 					/*
@@ -1106,6 +1105,8 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
 		rad_cfree((*tmpl)->name);
 	}
 	
+	dict_attr_free((*tmpl)->da);
+	
 	free(*tmpl);
 	
 	*tmpl = NULL;
@@ -1131,10 +1132,12 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 		      request_refs_t request_def,
 		      pair_lists_t list_def)
 {
+	const DICT_ATTR *da;
 	char buffer[128];
 	const char *p;
 	size_t len;
 
+	memset(vpt, 0, sizeof(*vpt));
 	vpt->name = name;
 	p = name;
 	
@@ -1167,12 +1170,15 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 		return 0;
 	}
 	
-	vpt->da = dict_attrbyname(p);
-	if (!vpt->da) {
-		radlog(L_ERR, "Attribute \"%s\" unknown", p);
-	
-		return -1;
+	da = dict_attrbyname(p);
+	if (!da) {
+		da = dict_attrunknownbyname(p, FALSE);
+		if (!da) {
+			radlog(L_ERR, "Attribute \"%s\" unknown", p);
+			return -1;
+		}
 	}
+	vpt->da = da;
 	
 	vpt->type = VPT_TYPE_ATTR;
 	

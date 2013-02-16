@@ -2547,9 +2547,9 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				 *	TLS-* attrs get added back to
 				 *	the request list.
 				 */
-				if ((vp->vendor == 0) &&
-				    (vp->attribute >= 1910) &&
-				    (vp->attribute < 1929)) {
+				if ((vp->da->vendor == 0) &&
+				    (vp->da->attr >= 1910) &&
+				    (vp->da->attr < 1929)) {
 					pairadd(&request->packet->vps,
 						paircopyvp(vp));
 				} else {
