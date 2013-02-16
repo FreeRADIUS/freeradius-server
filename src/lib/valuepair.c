@@ -1204,6 +1204,13 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	do_octets:
 #endif
 	/* raw octets: 0x01020304... */
+	case PW_TYPE_VSA:
+		if (strcmp(value, "ANY") == 0) {
+			vp->vp_octets[0] = 0;
+			vp->length = 0;
+			break;
+		} /* else it's hex */
+
 	case PW_TYPE_OCTETS:
 		if (strncasecmp(value, "0x", 2) == 0) {
 			size_t size;

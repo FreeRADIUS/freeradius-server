@@ -113,6 +113,7 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ "integer64",	PW_TYPE_INTEGER64 },
 	{ "uint64",	PW_TYPE_INTEGER64 },
 	{ "ipv4prefix", PW_TYPE_IPV4PREFIX },
+	{ "vsa",	PW_TYPE_VSA },
 	{ NULL, 0 }
 };
 
@@ -2825,6 +2826,7 @@ int dict_attr_child(const DICT_ATTR *parent,
 	switch (parent->type) {
 	default: return FALSE;
 
+	case PW_TYPE_VSA:
 	case PW_TYPE_TLV:
 	case PW_TYPE_EVS:
 	case PW_TYPE_EXTENDED:
