@@ -741,6 +741,8 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
 		}
 
 		found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
+		
+		found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
 		switch (i->op) {
 
 			/*
