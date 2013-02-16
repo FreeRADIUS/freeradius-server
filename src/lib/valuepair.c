@@ -245,7 +245,7 @@ VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
 	while (first) {
 		if ((first->attribute == attr) && (first->vendor == vendor)
 		    && ((tag == TAG_ANY) ||
-		        (first->flags.has_tag && (first->flags.tag == tag)))) {
+		        (first->flags.has_tag && (first->tag == tag)))) {
 			return first;
 		}
 		first = first->next;
@@ -274,7 +274,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 		next = i->next;
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
 		    ((tag == TAG_ANY) ||
-		     (i->da->flags.has_tag && (i->flags.tag == tag)))) {
+		     (i->da->flags.has_tag && (i->tag == tag)))) {
 			*last = next;
 			pairbasicfree(i);
 		} else {
@@ -339,7 +339,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 		 *	and return.
 		 */
 		if ((i->da == replace->da) &&
-		    (!i->da->flags.has_tag || (i->flags.tag == replace->flags.tag))
+		    (!i->da->flags.has_tag || (i->tag == replace->tag))
 		) {
 			*prev = replace;
 
@@ -471,7 +471,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 			goto skip;
 			
 		if ((tag != TAG_ANY) && vp->da->flags.has_tag &&
-		    (vp->flags.tag != tag)) {
+		    (vp->tag != tag)) {
 			goto skip;
 		}
 
@@ -733,7 +733,7 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 		next = i->next;
 
 		if ((tag != TAG_ANY) && i->da->flags.has_tag &&
-		    (i->flags.tag != tag)) {
+		    (i->tag != tag)) {
 			continue;
 		}
 		
@@ -1791,7 +1791,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	}
 
 	if (found_tag) {
-	  vp->flags.tag = tag;
+	  vp->tag = tag;
 	}
 
 	switch (vp->op) {

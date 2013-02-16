@@ -983,7 +983,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 				return -1;
 			}
 
-			if (lvalue) ptr[0] = vp->flags.tag;
+			if (lvalue) ptr[0] = vp->tag;
 			make_tunnel_passwd(ptr + lvalue, &len, data, len,
 					   room - lvalue,
 					   secret, original->vector);
@@ -991,7 +991,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	        case PW_ACCOUNTING_REQUEST:
         	case PW_DISCONNECT_REQUEST:
 	        case PW_COA_REQUEST:
-			ptr[0] = vp->flags.tag;
+			ptr[0] = vp->tag;
 			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
 					   secret, packet->vector);
 	                break;
@@ -1009,13 +1009,13 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 
 
 	default:
-		if (vp->da->flags.has_tag && TAG_VALID(vp->flags.tag)) {
+		if (vp->da->flags.has_tag && TAG_VALID(vp->tag)) {
 			if (vp->da->type == PW_TYPE_STRING) {
 				if (len > ((ssize_t) (room - 1))) len = room - 1;
-				ptr[0] = vp->flags.tag;
+				ptr[0] = vp->tag;
 				ptr++;
 			} else if (vp->da->type == PW_TYPE_INTEGER) {
-				array[0] = vp->flags.tag;
+				array[0] = vp->tag;
 			} /* else it can't be any other type */
 		}
 		memcpy(ptr, data, len);
@@ -2965,7 +2965,7 @@ static ssize_t data2vp_any(const RADIUS_PACKET *packet,
 			 *	Tunnel passwords REQUIRE a tag, even
 			 *	if don't have a valid tag.
 			 */
-			vp->flags.tag = data[0];
+			vp->tag = data[0];
 
 			if ((vp->type == PW_TYPE_STRING) ||
 			    (vp->type == PW_TYPE_OCTETS)) {

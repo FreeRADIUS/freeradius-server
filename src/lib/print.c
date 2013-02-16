@@ -615,7 +615,7 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 
 	if(vp->da->flags.has_tag) {
 		snprintf(out, outlen, "%s:%d %s ",
-			 vp->da->name, vp->flags.tag, token);
+			 vp->da->name, vp->tag, token);
 
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);

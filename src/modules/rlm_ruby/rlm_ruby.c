@@ -231,7 +231,7 @@ static int ruby_function(REQUEST *request, int func, VALUE module, const char *f
 
             /* The name. logic from vp_prints, lib/print.c */
             if (vp->da->flags.has_tag) {
-                snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->flags.tag);
+                snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->tag);
             } else {
                 strcpy(buf, vp->da->name);
             }

@@ -567,9 +567,9 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		 *	<attribute>:<tag>, others just use the normal attribute
 		 *	name as the key.
 		 */
-		if (nvp->da->flags.has_tag && (nvp->flags.tag != 0)) {
+		if (nvp->da->flags.has_tag && (nvp->tag != 0)) {
 			snprintf(namebuf, sizeof(namebuf), "%s:%d",
-			         nvp->da->name, nvp->flags.tag);
+			         nvp->da->name, nvp->tag);
 			name = namebuf;
 		} else {
 			name = nvp->da->name;
@@ -579,7 +579,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		 *	Create a new list with all the attributes like this one
 		 *	which are in the same tag group.
 		 */
-		vpa = paircopy2(nvp, nvp->da->attr, nvp->da->vendor, nvp->flags.tag);
+		vpa = paircopy2(nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
 
 		/*
 		 *	Attribute has multiple values
@@ -609,7 +609,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		 *	Finally remove all the VPs we processed from our copy
 		 *	of the list.
 		 */
-		pairdelete(&nvp, nvp->da->attr, nvp->da->vendor, nvp->flags.tag);
+		pairdelete(&nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
 	}
 
 	pairfree(&nvp);		/* shouldn't be necessary, but hey... */

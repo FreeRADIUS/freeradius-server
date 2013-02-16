@@ -230,7 +230,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 	 *	tag AND value match.
 	 */
 	if (check->da->flags.has_tag) {
-		ret = ((int) vp->flags.tag) - ((int) check->flags.tag);
+		ret = ((int) vp->tag) - ((int) check->tag);
 		if (ret != 0) return ret;
 	}
 
@@ -715,7 +715,7 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 					    	    (char *)i->vp_strvalue) == 0)) {
 				  		pairdelete(to, found->da->attr,
 				  			found->da->vendor,
-				  			found->flags.tag);
+				  			found->tag);
 
 					/*
 					 *	'tailto' may have been
