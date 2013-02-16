@@ -1421,7 +1421,7 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-strict-dependencies  Fail configure on lack of module dependancy.
-  --enable-boilermake     use the boilermake build system (experimental default=no).
+  --enable-boilermake     use the boilermake build system (default=yes).
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -15265,7 +15265,7 @@ if test "${enable_strict_dependencies+set}" = set; then :
 fi
 
 
-boilermake=no
+boilermake=yes
 # Check whether --enable-boilermake was given.
 if test "${enable_boilermake+set}" = set; then :
   enableval=$enable_boilermake;  case "$enableval" in
