@@ -184,24 +184,45 @@ VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
 	return pairalloc(da);
 }
 
-
-/*
- *      release the memory used by a single attribute-value pair
- *      just a wrapper around free() for now.
+/** Free memory used by a single valuepair.
+ * 
+ * @todo TLV: needs to die in fire.
  */
 void pairbasicfree(VALUE_PAIR *pair)
 {
 	if (pair->da->type == PW_TYPE_TLV) {
 		free(pair->vp_tlv);
 	}
+	
+	/*
+	 *	Only free the DICT_ATTR if it was dynamically allocated
+	 *	and was marked for free when the VALUE_PAIR is freed.
+	 */
+	if (pair->da->flags.vp_free) {
+		dict_attr_free(&(pair->da));
+	}
+	
+	switch (pair->type)
+	{
+	case VT_XLAT:
+		{
+			char *tmp;
+		
+			memcpy(&tmp, pair->value.xlat, sizeof(tmp));
+			free(tmp);
+		}
+	default:
+		break;
+	}
+	
 	/* clear the memory here */
 	memset(pair, 0, sizeof(*pair));
 	free(pair);
 }
 
-/*
- *	Release the memory used by a list of attribute-value
- *	pairs, and sets the pair pointer to NULL.
+/** Free memory used by a valuepair list.
+ * 
+ * @todo TLV: needs to free all dependents of each VP freed.
  */
 void pairfree(VALUE_PAIR **pair_ptr)
 {
@@ -404,6 +425,19 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	 */
 	if (vp->flags.is_unknown) n->name = (char *) (n + 1);
 
+	switch (vp->type)
+	{
+		case VT_XLAT:
+			n->type = VT_NONE;
+			
+			if (pairmark_xlat(n, vp->value.xlat) < 0) {
+				pairbasicfree(n);
+				return NULL;
+			}
+			break;
+		default:
+			break;
+	}
 	n->next = NULL;
 
 	if ((n->da->type == PW_TYPE_TLV) &&
@@ -437,6 +471,23 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 	n = pairalloc(da);
 	if (!n) {
 		return NULL;	
+	}
+
+	/*
+	 *	Now copy the value
+	 */
+	switch (n->type)
+	{
+		case VT_XLAT:
+			n->type = VT_NONE;
+			
+			if (pairmark_xlat(n, vp->value.xlat) < 0) {
+				pairbasicfree(n);
+				return NULL;
+			}
+			break;
+		default:
+			break;
 	}
 	
 	memcpy(&(n->data), &(vp->data), sizeof(n->data));
