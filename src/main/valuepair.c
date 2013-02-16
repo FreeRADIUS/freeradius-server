@@ -463,10 +463,10 @@ void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
  * For every element in "check" at least one matching copy must be present
  * in "reply".
  *
- * @param[in] request Current request
- * @param[in] req valuepairs
- * @param[in] check check/control valuepairs
- * @param[in,out] reply reply value pairs
+ * @param[in] request Current request.
+ * @param[in] req_list request valuepairs.
+ * @param[in] check Check/control valuepairs.
+ * @param[in,out] rep_list Reply value pairs.
  *
  * @return 0 on match.
  */

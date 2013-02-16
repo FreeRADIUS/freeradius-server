@@ -2468,6 +2468,8 @@ void dict_attr_free(DICT_ATTR const **da)
  * If the attr is known, a pointer to the da will be returned.
  *
  * @param da to copy.
+ * @param vp_free if TRUE, da will be freed at the same time as the
+ *	VALUE_PAIR which contains it.
  * @return return a copy of the da.
  */
 const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da, int vp_free)

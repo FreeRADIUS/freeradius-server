@@ -1751,7 +1751,7 @@ int pairmark_xlat(VALUE_PAIR *vp, const char *value)
  * Sets *eol to T_EOL if end of line was encountered.
  *
  * @param[in,out] ptr to read from and update.
- * @param[out] raw_pair
+ * @param[out] raw The struct to write the raw VALUE_PAIR to.
  * @return the last token read.
  */
 FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
