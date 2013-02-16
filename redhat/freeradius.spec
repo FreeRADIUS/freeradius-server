@@ -334,7 +334,6 @@ fi
 %doc %{_mandir}/man5/rlm_mschap.5.gz
 %doc %{_mandir}/man5/rlm_pap.5.gz
 %doc %{_mandir}/man5/rlm_passwd.5.gz
-%doc %{_mandir}/man5/rlm_policy.5.gz
 %doc %{_mandir}/man5/rlm_realm.5.gz
 %doc %{_mandir}/man5/rlm_sql.5.gz
 %doc %{_mandir}/man5/rlm_sql_log.5.gz
@@ -425,8 +424,6 @@ fi
 %{_libdir}/freeradius/rlm_pap-%{version}.so
 %{_libdir}/freeradius/rlm_passwd.so
 %{_libdir}/freeradius/rlm_passwd-%{version}.so
-%{_libdir}/freeradius/rlm_policy.so
-%{_libdir}/freeradius/rlm_policy-%{version}.so
 %{_libdir}/freeradius/rlm_preprocess.so
 %{_libdir}/freeradius/rlm_preprocess-%{version}.so
 %{_libdir}/freeradius/rlm_radutmp.so
