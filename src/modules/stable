@@ -15,7 +15,6 @@ rlm_eap
 rlm_exec
 rlm_expiration
 rlm_expr
-rlm_fastusers
 rlm_files
 rlm_ippool
 rlm_krb5
@@ -29,7 +28,6 @@ rlm_pam
 rlm_pap
 rlm_passwd
 rlm_perl
-rlm_policy
 rlm_preprocess
 rlm_python
 rlm_radutmp
