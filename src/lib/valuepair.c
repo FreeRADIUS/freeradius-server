@@ -1766,39 +1766,43 @@ int pairmark_xlat(VALUE_PAIR *vp, const char *value)
 
 	return 0;	 
 }
-/*
- *	Read a valuepair from a buffer, and advance pointer.
- *	Sets *eol to T_EOL if end of line was encountered.
- */
-VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
-{
-	char		buf[64];
-	char		attr[64];
-	char		value[1024], *q;
-	const char	*p;
-	FR_TOKEN	token, t, xlat;
-	VALUE_PAIR	*vp;
-	size_t		len;
 
-	*eol = T_OP_INVALID;
+/** Read a single valuepair from a buffer, and advance the pointer
+ *
+ * Sets *eol to T_EOL if end of line was encountered.
+ *
+ * @param[in,out] ptr to read from and update.
+ * @param[out] raw_pair
+ * @return the last token read.
+ */
+FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
+{
+	char		*q;
+	char		buf[64];
+	const char	*p;
+	size_t		len;
+	FR_TOKEN	ret = T_OP_INVALID, next, quote;
 
 	p = *ptr;
 	while ((*p == ' ') || (*p == '\t')) p++;
 
 	if (!*p) {
-		*eol = T_OP_INVALID;
-		fr_strerror_printf("No token read where we expected an attribute name");
-		return NULL;
+		fr_strerror_printf("No token read where we expected "
+				   "an attribute name");
+		return T_OP_INVALID;
 	}
 
 	if (*p == '#') {
-		*eol = T_HASH;
 		fr_strerror_printf("Read a comment instead of a token");
-		return NULL;
+		
+		return T_HASH;
 	}
 
-	q = attr;
-	for (len = 0; len < sizeof(attr); len++) {
+	/*
+	 *	Restrict chars that may be used in attribute names.
+	 */
+	q = raw->l_opand;
+	for (len = 0; len < sizeof(raw->l_opand); len++) {
 		if (valid_attr_name[(int)*p]) {
 			*q++ = *p++;
 			continue;
@@ -1806,155 +1810,108 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 		break;
 	}
 
-	if (len == sizeof(attr)) {
-		*eol = T_OP_INVALID;
-		fr_strerror_printf("Attribute name is too long");
-		return NULL;
+	if (len == sizeof(raw->l_opand)) {
+		fr_strerror_printf("Attribute name is too long, "
+				   "maximum size is %zu", sizeof(raw->l_opand));
+
+		return T_OP_INVALID;
 	}
 
 	/*
 	 *	We may have Foo-Bar:= stuff, so back up.
 	 */
-	if ((len > 0) && (attr[len - 1] == ':')) {
+	if ((len > 0) && (raw->l_opand[len - 1] == ':')) {
 		p--;
 		len--;
 	}
 
-	attr[len] = '\0';
+	raw->l_opand[len] = '\0';
 	*ptr = p;
 
 	/* Now we should have an operator here. */
-	token = gettoken(ptr, buf, sizeof(buf));
-	if (token < T_EQSTART || token > T_EQEND) {
-		fr_strerror_printf("expecting operator");
-		return NULL;
+	raw->op = gettoken(ptr, buf, sizeof(buf));
+	if (raw->op  < T_EQSTART || raw->op  > T_EQEND) {
+		fr_strerror_printf("Expecting operator");
+		
+		return T_OP_INVALID;
 	}
 
-	/* Read value.  Note that empty string values are allowed */
-	xlat = gettoken(ptr, value, sizeof(value));
-	if (xlat == T_EOL) {
-		fr_strerror_printf("failed to get value");
-		return NULL;
+	/* 
+	 *	Read value.  Note that empty string values are allowed
+	 */
+	quote = gettoken(ptr, raw->r_opand, sizeof(raw->r_opand));
+	if (quote == T_EOL) {
+		fr_strerror_printf("Failed to get value");
+		
+		return T_OP_INVALID;
 	}
 
 	/*
 	 *	Peek at the next token. Must be T_EOL, T_COMMA, or T_HASH
 	 */
 	p = *ptr;
-	t = gettoken(&p, buf, sizeof(buf));
-	if (t != T_EOL && t != T_COMMA && t != T_HASH) {
-		fr_strerror_printf("Expected end of line or comma");
-		return NULL;
-	}
-
-	*eol = t;
-	if (t == T_COMMA) {
+	
+	next = gettoken(&p, buf, sizeof(buf));
+	switch (next)
+	{
+	case T_EOL:
+	case T_HASH:
+		break;
+		
+	case T_COMMA:
 		*ptr = p;
-	}
-
-	vp = NULL;
-	switch (xlat) {
-		/*
-		 *	Make the full pair now.
-		 */
+		break;
+		
 	default:
-		vp = pairmake(attr, value, token);
-		break;
-
-		/*
-		 *	Perhaps do xlat's
-		 */
-	case T_DOUBLE_QUOTED_STRING:
-		p = strchr(value, '%');
-		if (p && (p[1] == '{')) {
-			if (strlen(value) >= sizeof(vp->vp_strvalue)) {
-				fr_strerror_printf("Value too long");
-				return NULL;
-			}
-			vp = pairmake_xlat(attr, value, token);
-			if (!vp) {
-				*eol = T_OP_INVALID;
-				return NULL;
-			}
-
-		} else {
-			/*
-			 *	Parse && escape it, as defined by the
-			 *	data type.
-			 */
-			vp = pairmake(attr, value, token);
-			if (!vp) {
-				*eol = T_OP_INVALID;
-				return NULL;
-			}
-		}
-		break;
-
-	case T_SINGLE_QUOTED_STRING:
-		vp = pairmake(attr, NULL, token);
-		if (!vp) {
-			*eol = T_OP_INVALID;
-			return NULL;
-		}
-
-		/*
-		 *	String and octet types get copied verbatim.
-		 */
-		if ((vp->type == PW_TYPE_STRING) ||
-		    (vp->type == PW_TYPE_OCTETS)) {
-			strlcpy(vp->vp_strvalue, value,
-				sizeof(vp->vp_strvalue));
-			vp->length = strlen(vp->vp_strvalue);
-
-			/*
-			 *	Everything else gets parsed: it's
-			 *	DATA, not a string!
-			 */
-		} else if (!pairparsevalue(vp, value)) {
-			pairfree(&vp);
-			*eol = T_OP_INVALID;
-			return NULL;
-		}
-		break;
-
-		/*
-		 *	Mark the pair to be allocated later.
-		 */
-	case T_BACK_QUOTED_STRING:
-		if (strlen(value) >= sizeof(vp->vp_strvalue)) {
-			fr_strerror_printf("Value too long");
-			return NULL;
-		}
-
-		vp = pairmake_xlat(attr, value, token);
-		if (!vp) {
-			*eol = T_OP_INVALID;
-			return NULL;
-		}
-		break;
+		fr_strerror_printf("Expected end of line or comma");
+		return T_OP_INVALID;			
 	}
+	ret = next;
 
+	switch (quote) {
 	/*
-	 *	If we didn't make a pair, return an error.
+	 *	Perhaps do xlat's
 	 */
-	if (!vp) {
-		*eol = T_OP_INVALID;
-		return NULL;
+	case T_DOUBLE_QUOTED_STRING:
+		/*
+		 *	Only report as double quoted if it contained valid
+		 *	a valid xlat expansion.
+		 */
+		p = strchr(raw->r_opand, '%');
+		if (p && (p[1] == '{')) {
+			raw->quote = quote;
+		} else {
+			raw->quote = T_SINGLE_QUOTED_STRING;
+		}
+		
+		break;
+	default:
+		raw->quote = quote;
+		
+		break;
 	}
 
-	return vp;
+	return ret;
 }
 
-/*
- *	Read one line of attribute/value pairs. This might contain
- *	multiple pairs seperated by comma's.
+/** Read one line of attribute/value pairs into a list.
+ *
+ * The line may specify multiple attributes separated by commas.
+ *
+ * @note If the function returns T_OP_INVALID, an error has occurred and
+ * @note the valuepair list should probably be freed.
+ *
+ * @param buffer to read valuepairs from.
+ * @param head of the list.
+ * @return the last token parsed, or T_OP_INVALID
  */
-FR_TOKEN userparse(const char *buffer, VALUE_PAIR **first_pair)
+FR_TOKEN userparse(const char *buffer, VALUE_PAIR **head)
 {
 	VALUE_PAIR	*vp;
 	const char	*p;
 	FR_TOKEN	last_token = T_OP_INVALID;
 	FR_TOKEN	previous_token;
+	VALUE_PAIR_RAW	raw;
 
 	/*
 	 *	We allow an empty line.
@@ -1964,11 +1921,30 @@ FR_TOKEN userparse(const char *buffer, VALUE_PAIR **first_pair)
 
 	p = buffer;
 	do {
+		raw.l_opand[0] = '\0';
+		raw.r_opand[0] = '\0';
+		
 		previous_token = last_token;
-		if ((vp = pairread(&p, &last_token)) == NULL) {
-			return last_token;
+		
+		last_token = pairread(&p, &raw);
+		if (last_token == T_OP_INVALID) {
+			return T_OP_INVALID;
 		}
-		pairadd(first_pair, vp);
+		
+		vp = pairmake(raw.l_opand, raw.r_opand, raw.op);
+		if (!vp) {
+			return T_OP_INVALID;
+		}
+		
+		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
+			if (pairmark_xlat(vp, raw.r_opand) < 0) {
+				pairbasicfree(vp);
+				
+				return T_OP_INVALID;
+			}
+		}
+		
+		pairadd(head, vp);
 	} while (*p && (last_token == T_COMMA));
 
 	/*

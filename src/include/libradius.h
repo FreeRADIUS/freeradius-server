@@ -233,6 +233,20 @@ typedef struct value_pair {
 	size_t			length;		//!< of Data field.
 	VALUE_PAIR_DATA		data;
 } VALUE_PAIR;
+
+
+typedef struct value_pair_raw {
+	char l_opand[64];			//!< Left hand side of the 
+						//!< pair.
+	char r_opand[1024];			//!< Right hand side of the 
+						//!< pair.
+	
+	FR_TOKEN quote;				//!< Type of quoting around 
+						//!< the r_opand.
+	
+	FR_TOKEN op;				//!< Operator.
+} VALUE_PAIR_RAW;
+
 #define vp_strvalue   data.strvalue
 #define vp_octets     data.octets
 #define vp_ipv6addr   data.ipv6addr
@@ -441,9 +455,9 @@ void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned 
 VALUE_PAIR	*pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(const char *attribute, const char *value, FR_TOKEN op);
 VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, FR_TOKEN op);
-VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
-FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);
 int 		pairmark_xlat(VALUE_PAIR *vp, const char *value);
+FR_TOKEN 	pairread(const char **ptr, VALUE_PAIR_RAW *raw);
+FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **head);
 VALUE_PAIR	*readvp2(FILE *fp, int *pfiledone, const char *errprefix);
 
 /*
