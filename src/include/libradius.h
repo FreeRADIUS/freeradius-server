@@ -365,33 +365,6 @@ int rad_attr_ok(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 int rad_tlv_ok(const uint8_t *data, size_t length,
 	       size_t dv_type, size_t dv_length);
 
-ssize_t rad_attr2vp_raw(const RADIUS_PACKET *packet,
-			const RADIUS_PACKET *original,
-			const char *secret,
-			const uint8_t *data, size_t length,
-			VALUE_PAIR **pvp);
-ssize_t rad_attr2vp_extended(const RADIUS_PACKET *packet,
-			     const RADIUS_PACKET *original,
-			     const char *secret,
-			     const uint8_t *start, size_t length,
-			     VALUE_PAIR **pvp);
-ssize_t rad_attr2vp_wimax(const RADIUS_PACKET *packet,
-			  const RADIUS_PACKET *original,
-			  const char *secret,
-			  const uint8_t *data, size_t length,
-			  VALUE_PAIR **pvp);
-
-ssize_t rad_attr2vp_vsa(const RADIUS_PACKET *packet,
-			const RADIUS_PACKET *original,
-			const char *secret,
-			const uint8_t *data, size_t length,
-			VALUE_PAIR **pvp);
-ssize_t rad_attr2vp_rfc(const RADIUS_PACKET *packet,
-			const RADIUS_PACKET *original,
-			const char *secret,
-			const uint8_t *data, size_t length,
-			VALUE_PAIR **pvp);
-
 ssize_t	rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		    const char *secret,
 		    const uint8_t *data, size_t length,
