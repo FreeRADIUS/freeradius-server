@@ -314,11 +314,11 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		if (!vp) return 0;
 
 		if (do_number) {
-			if ((vp->type != PW_TYPE_IPADDR) &&
-			    (vp->type != PW_TYPE_INTEGER) &&
-			    (vp->type != PW_TYPE_SHORT) &&
-			    (vp->type != PW_TYPE_BYTE) &&
-			    (vp->type != PW_TYPE_DATE)) {
+			if ((vp->da->type != PW_TYPE_IPADDR) &&
+			    (vp->da->type != PW_TYPE_INTEGER) &&
+			    (vp->da->type != PW_TYPE_SHORT) &&
+			    (vp->da->type != PW_TYPE_BYTE) &&
+			    (vp->da->type != PW_TYPE_DATE)) {
 				*out = '\0';
 				return 0;
 			}
@@ -371,7 +371,8 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 				if (packet->src_ipaddr.af != AF_INET) {
 					return 0;
 				}
-				localvp.attribute = da->attr;
+
+				localvp.da = da;
 				localvp.vp_ipaddr = packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 
@@ -379,22 +380,24 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 				if (packet->dst_ipaddr.af != AF_INET) {
 					return 0;
 				}
-				localvp.attribute = da->attr;
+
+				localvp.da = da;
 				localvp.vp_ipaddr = packet->dst_ipaddr.ipaddr.ip4addr.s_addr;
 				break;
 
 			case PW_PACKET_SRC_PORT:
-				localvp.attribute = da->attr;
+
+				localvp.da = da;
 				localvp.vp_integer = packet->src_port;
 				break;
 
 			case PW_PACKET_DST_PORT:
-				localvp.attribute = da->attr;
+				localvp.da = da;
 				localvp.vp_integer = packet->dst_port;
 				break;
 
 			case PW_PACKET_AUTHENTICATION_VECTOR:
-				localvp.attribute = da->attr;
+				localvp.da = da;
 				memcpy(localvp.vp_strvalue, packet->vector,
 				       sizeof(packet->vector));
 				localvp.length = sizeof(packet->vector);
@@ -415,7 +418,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 				if (packet->src_ipaddr.af != AF_INET6) {
 					return 0;
 				}
-				localvp.attribute = da->attr;
+				localvp.da = da;
 				memcpy(localvp.vp_strvalue,
 				       &packet->src_ipaddr.ipaddr.ip6addr,
 				       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
@@ -425,7 +428,8 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 				if (packet->dst_ipaddr.af != AF_INET6) {
 					return 0;
 				}
-				localvp.attribute = da->attr;
+				
+				localvp.da = da;
 				memcpy(localvp.vp_strvalue,
 				       &packet->dst_ipaddr.ipaddr.ip6addr,
 				       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
@@ -439,8 +443,8 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 				break;
 
 			case PW_MODULE_RETURN_CODE:
-				localvp.attribute = da->attr;
-
+				localvp.da = da;
+				
 				/*
 				 *	See modcall.c for a bit of a hack.
 				 */
@@ -452,7 +456,6 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 				break;
 			}
 
-			localvp.type = da->type;
 			return valuepair2str(out, outlen, &localvp, da->type);
 		}
 
@@ -487,7 +490,7 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	switch (vp->type)
+	switch (vp->da->type)
 	{		
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_STRING:
@@ -626,7 +629,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	return valuepair2str(out, outlen, (*pvp), (*pvp)->type);
+	return valuepair2str(out, outlen, (*pvp), (*pvp)->da->type);
 }
 #endif
 
@@ -652,7 +655,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) goto nothing;
 
-	if (vp->type != PW_TYPE_OCTETS) goto nothing;
+	if (vp->da->type != PW_TYPE_OCTETS) goto nothing;
 
 	len = fr_print_string(vp->vp_strvalue, vp->length, out, outlen);
 	out[len] = '\0';
@@ -1394,7 +1397,8 @@ size_t radius_xlat(char *out, int outlen, const char *fmt,
 			case 'Z': /* Full request pairs except password */
 				tmp = request->packet->vps;
 				while (tmp && (freespace > 3)) {
-					if (tmp->attribute != PW_USER_PASSWORD) {
+					if (!(!tmp->da->vendor &&
+					    (tmp->da->attr == PW_USER_PASSWORD))) {
 						*q++ = '\t';
 						len = vp_prints(q, freespace - 2, tmp);
 						q += len;
