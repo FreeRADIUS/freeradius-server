@@ -180,6 +180,18 @@ typedef union value_pair_data {
 	uint8_t			*tlv;
 } VALUE_PAIR_DATA;
 
+typedef enum value_type {
+	VT_NONE = 0,				//!< VALUE_PAIR has no value.
+	VT_SET,					//!< VALUE_PAIR has children.
+	VT_LIST,				//!< VALUE_PAIR has multiple 
+						//!< values.
+	VT_DATA,				//!< VALUE_PAIR has a single
+						//!< value.
+	VT_XLAT					//!< valuepair value must be 
+						//!< xlat expanded when it's 
+						//!< added to VALUE_PAIR tree.
+} value_type_t;
+
 typedef struct value_pair {
 	const DICT_ATTR	        *da;		//!< Dictionary attribute
 						//!< defines the attribute
@@ -194,7 +206,6 @@ typedef struct value_pair {
 	 */
 	unsigned int		attribute;
 	unsigned int	       	vendor;
-	PW_TYPE			type;
 
 	FR_TOKEN		op;		//!< Operator to use when 
 						//!< moving or inserting 
@@ -205,7 +216,21 @@ typedef struct value_pair {
 
         ATTR_FLAGS              flags;
 
-	size_t			length; /* of data field */
+	union {
+	//	VALUE_SET	*set;		//!< Set of child attributes.
+	//	VLAUE_LIST	*list;		//!< List of values for 
+						//!< multivalued attribute.
+	//	VALUE_DATA 	*data;		//!< Value data for this 
+						//!< attribute.
+	
+		const char 	*xlat;		//!< Source string for xlat
+						//!< expansion.
+	} value;
+	
+	value_type_t		type;		//!< Type of pointer in value
+						//!< union.
+						
+	size_t			length;		//!< of Data field.
 	VALUE_PAIR_DATA		data;
 } VALUE_PAIR;
 #define vp_strvalue   data.strvalue
@@ -418,6 +443,7 @@ VALUE_PAIR	*pairmake(const char *attribute, const char *value, FR_TOKEN op);
 VALUE_PAIR	*pairmake_xlat(const char *attribute, const char *value, FR_TOKEN op);
 VALUE_PAIR	*pairread(const char **ptr, FR_TOKEN *eol);
 FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **first_pair);
+int 		pairmark_xlat(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*readvp2(FILE *fp, int *pfiledone, const char *errprefix);
 
 /*

@@ -191,7 +191,9 @@ VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
  */
 void pairbasicfree(VALUE_PAIR *pair)
 {
-	if (pair->type == PW_TYPE_TLV) free(pair->vp_tlv);
+	if (pair->da->type == PW_TYPE_TLV) {
+		free(pair->vp_tlv);
+	}
 	/* clear the memory here */
 	memset(pair, 0, sizeof(*pair));
 	free(pair);
@@ -404,7 +406,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 
 	n->next = NULL;
 
-	if ((n->type == PW_TYPE_TLV) &&
+	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
 		n->vp_tlv = malloc(n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
@@ -430,7 +432,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 
 	if (!vp) return NULL;
 
-	if (da->type != vp->type) return NULL;
+	if (da->type != vp->da->type) return NULL;
 	
 	n = pairalloc(da);
 	if (!n) {
@@ -441,7 +443,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 	
 	n->length = vp->length;
 	
-	if ((n->type == PW_TYPE_TLV) &&
+	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
 		n->vp_tlv = malloc(n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
@@ -1911,6 +1913,36 @@ static const int valid_attr_name[256] = {
 	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
+/** Mark a valuepair for xlat expansion
+ *
+ * Copies xlat source (unprocessed) string to valuepair value,
+ * and sets value type.
+ *
+ * @param vp to mark for expansion.
+ * @param value to expand.
+ * @return 0 if marking succeeded or -1 if vp already had a value, or OOM.
+ */
+int pairmark_xlat(VALUE_PAIR *vp, const char *value)
+{
+	char *raw;
+	
+	/*
+	 *	valuepair should not already have a value.
+	 */
+	if (vp->type != VT_NONE) {
+		return -1;
+	}
+	
+	raw = strdup(value);
+	if (!raw) {
+		return -1;
+	}
+	
+	vp->type = VT_XLAT;
+	vp->value.xlat = raw;
+
+	return 0;	 
+}
 /*
  *	Read a valuepair from a buffer, and advance pointer.
  *	Sets *eol to T_EOL if end of line was encountered.
