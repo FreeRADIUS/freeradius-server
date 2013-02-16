@@ -463,9 +463,9 @@ void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
  * For every element in "check" at least one matching copy must be present
  * in "reply".
  *
- * @param req Current request
- * @param request request valuepairs
- * @param check check/control valuepairs
+ * @param[in] request Current request
+ * @param[in] req valuepairs
+ * @param[in] check check/control valuepairs
  * @param[in,out] reply reply value pairs
  *
  * @return 0 on match.
@@ -796,10 +796,17 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
 	} /* loop over the 'from' list */
 }
 
-/** Create a pair and add it to a particular list of VPs
+/** Create a VALUE_PAIR and add it to a list of VALUE_PAIR s
  *
- * Note that this function ALWAYS returns. If we're OOM, then it causes the
- * server to exit!
+ * @note This function ALWAYS returns. If we're OOM, then it causes the
+ * @note server to exit, so you don't need to check the return value.
+ *
+ * @param[in] request Current request.
+ * @param[out] vps List to add new VALUE_PAIR to, if NULL will just
+ *	return VALUE_PAIR.
+ * @param[in] attribute number.
+ * @param[in] vendor number.
+ * @return a new VLAUE_PAIR or causes server to exit on error.
  */
 VALUE_PAIR *radius_paircreate(UNUSED REQUEST *request, VALUE_PAIR **vps,
 			      unsigned int attribute, unsigned int vendor)
@@ -818,13 +825,16 @@ VALUE_PAIR *radius_paircreate(UNUSED REQUEST *request, VALUE_PAIR **vps,
 	return vp;
 }
 
-/** Create a pair, and add it to a particular list of VPs
+/** Create a VALUE_PAIR from ASCII strings and add it to a list of VALUE_PAIR s
  *
- * Note that this function ALWAYS returns.  If we're OOM, then it causes the
- * server to exit!
+ * Converts an attribute string identifier (with an optional tag qualifier)
+ * and value string into a VALUE_PAIR.
+ *
+ * The string value is parsed according to the type of VALUE_PAIR being created.
  *
  * @param[in] request current request.
- * @param[in] vps to modify.
+ * @param[out] vps List to add new VALUE_PAIR to, if NULL will just
+ *	return VALUE_PAIR.
  * @param[in] attribute name.
  * @param[in] value attribute value.
  * @param[in] op fr_tokens value.
