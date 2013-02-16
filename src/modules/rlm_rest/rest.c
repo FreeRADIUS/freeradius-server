@@ -920,30 +920,6 @@ static void rest_read_ctx_free(rlm_rest_read_t *ctx)
 	}
 }
 
-/** Verify that value wasn't truncated when it was converted to a VALUE_PAIR
- *
- * Certain values may be truncated when they're converted into VALUE_PAIRs
- * for example 64bit integers converted to 32bit integers. Warn the user
- * when this happens.
- * 
- * @param[in] request Current request.
- * @param[in] raw string from decoder.
- * @param[in] vp containing parsed value.
- */
-static void rest_check_truncation(REQUEST *request, const char *raw,
-				  VALUE_PAIR *vp)
-{
-	char cooked[1024];
-
-	vp_prints_value(cooked, sizeof(cooked), vp, 0);
-	if (strcmp(raw, cooked) != 0) {
-		RDEBUG("WARNING: Value-Pair does not match POST value, "
-		       "truncation may have occurred");
-		RDEBUG("\tValue (pair) : \"%s\"", cooked);
-		RDEBUG("\tValue (post) : \"%s\"", raw);
-	}
-}
-
 /** Converts POST response into VALUE_PAIRs and adds them to the request
  *
  * Accepts VALUE_PAIRS in the same format as rest_encode_post, but with the
@@ -1108,7 +1084,6 @@ static int rest_decode_post(rlm_rest_t *instance,
 		}
 		vp = tmp;
 
-		rest_check_truncation(request, value, vp);
 
 		vp->flags.do_xlat = 1;
 
@@ -1197,7 +1172,6 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 	}
 	vp = tmp;
 
-	rest_check_truncation(request, value, vp);
 
 	if (flags->do_xlat) vp->flags.do_xlat = 1;
 
