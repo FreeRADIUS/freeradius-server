@@ -196,8 +196,8 @@ const FR_NAME_NUMBER http_content_type_table[] = {
  * @see json_pairmake_leaf
  */
 typedef struct json_flags {
-	boolean do_xlat;	//!< If TRUE value will be expanded with xlat.
-	boolean is_json;	//!< If TRUE value will be inserted as raw JSON
+	int do_xlat;		//!< If TRUE value will be expanded with xlat.
+	int is_json;		//!< If TRUE value will be inserted as raw JSON
 				// (multiple values not supported).
 	FR_TOKEN op;		//!< The operator that determines how the new VP
 				// is processed. @see fr_tokens
