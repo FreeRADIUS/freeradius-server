@@ -622,8 +622,7 @@ static rlm_rcode_t sqlcounter_authorize(void *instance, REQUEST *request)
 			reply_item = radius_paircreate(request,
 						       &request->reply->vps,
 						       data->reply_attr->attr,
-						       data->reply_attr->vendor,
-						       PW_TYPE_INTEGER);
+						       data->reply_attr->vendor);
 			reply_item->vp_integer = res;
 		}
 

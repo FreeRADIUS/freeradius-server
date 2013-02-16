@@ -253,7 +253,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 		len = otp_gen_state(gen_state, challenge, inst->challenge_len,
 				    0, now, hmac_key);
 		
-		vp = paircreate(PW_STATE, 0, PW_TYPE_OCTETS);	
+		vp = paircreate(PW_STATE, 0);	
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
@@ -276,7 +276,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 		 *	First add the internal OTP challenge attribute to
 		 *	the reply list.
 		 */
-		vp = paircreate(PW_OTP_CHALLENGE, 0, PW_TYPE_STRING);
+		vp = paircreate(PW_OTP_CHALLENGE, 0);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}
@@ -298,7 +298,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		
-		vp = paircreate(PW_REPLY_MESSAGE, 0, PW_TYPE_STRING);
+		vp = paircreate(PW_REPLY_MESSAGE, 0);
 		if (!vp) {
 			return RLM_MODULE_FAIL;
 		}

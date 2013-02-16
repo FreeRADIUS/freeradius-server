@@ -153,55 +153,37 @@ VALUE_PAIR *pairalloc(const DICT_ATTR *da)
 	return vp;
 }
 
-/*
- *	Create a new valuepair.
+
+/** Create a new valuepair
+ * 
+ * If attr and vendor match a dictionary entry then a VP with that DICT_ATTR
+ * will be returned.
+ *
+ * If attr or vendor are uknown will call dict_attruknown to create a dynamic
+ * DICT_ATTR of PW_TYPE_OCTETS.
+ *
+ * Which type of DICT_ATTR the VALUE_PAIR was created with can be determined by
+ * checking @verbatim vp->da->flags.is_unknown @endverbatim.
+ * 
+ * @param[in] attr number.
+ * @param[in] vendor number.
+ * @return the new valuepair or NULL on error.
  */
-VALUE_PAIR *paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *vp)
+VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
 {
-	char *p = (char *) (vp + 1);
-
-	if (!vp->flags.is_unknown) {
-		pairfree(&vp);
-		return NULL;
-	}
-
-	vp->vendor = vendor;
-	vp->attribute = attr;
-	vp->op = T_OP_EQ;
-	vp->name = p;
-	vp->type = type;
-	vp->length = 0;
-	memset(&vp->flags, 0, sizeof(vp->flags));
-	vp->flags.is_unknown = 1;
-	
-	if (!vp_print_name(p, FR_VP_NAME_LEN, vp->attribute, vp->vendor)) {
-		free(vp);
-		return NULL;
-	}
-
-	return vp;
-}
-
-/*
- *	Create a new valuepair.
- */
-VALUE_PAIR *paircreate(int attr, int vendor, int type)
-{
-	VALUE_PAIR	*vp;
-	const DICT_ATTR	*da;
+	const DICT_ATTR *da;
 
 	da = dict_attrbyvalue(attr, vendor);
-	if ((vp = pairalloc(da)) == NULL) {
-		return NULL;
+	if (!da) {
+		da = dict_attrunknown(attr, vendor, TRUE);
+		if (!da) {
+			return NULL;
+		}
 	}
 
-	/*
-	 *	It isn't in the dictionary: update the name.
-	 */
-	if (!da) return paircreate_raw(attr, vendor, type, vp);
-
-	return vp;
+	return pairalloc(da);
 }
+
 
 /*
  *      release the memory used by a single attribute-value pair
@@ -235,17 +217,40 @@ void pairfree(VALUE_PAIR **pair_ptr)
 	*pair_ptr = NULL;
 }
 
-
-/*
- *	Find the pair with the matching attribute
+/** Mark malformed or unrecognised attributed as unknown
+ *
+ * @param vp to change DICT_ATTR of.
+ * @return 0 on success (or if already unknown) else -1 on error.
  */
-VALUE_PAIR * pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
+int pair2unknown(VALUE_PAIR *vp)
+{
+	const DICT_ATTR *da;
+	
+	if (vp->da->flags.is_unknown) {
+		return 0;
+	}
+	
+	da = dict_attrunknown(vp->da->attr, vp->da->vendor, TRUE);
+	if (!da) {
+		return -1;
+	}
+	
+	vp->da = da;
+	
+	return 0;
+}
+
+/** Find the pair with the matching attribute
+ *
+ * @todo should take DAs and do a pointer comparison.
+ */
+VALUE_PAIR *pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
 		      int8_t tag)
 {
 	while (first) {
-		if ((first->attribute == attr) && (first->vendor == vendor)
-		    && ((tag == TAG_ANY) ||
-		        (first->flags.has_tag && (first->tag == tag)))) {
+		if ((first->da->attr == attr) && (first->da->vendor == vendor)
+		    && ((tag == TAG_ANY) || (first->da->flags.has_tag &&
+		        (first->tag == tag)))) {
 			return first;
 		}
 		first = first->next;
@@ -528,8 +533,9 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tailto = to;
 	for(i = *to; i; i = i->next) {
-		if (i->da->attr == PW_USER_PASSWORD ||
-		    i->da->attr == PW_CRYPT_PASSWORD)
+		if (!i->da->vendor &&
+		    (i->da->attr == PW_USER_PASSWORD ||
+		     i->da->attr == PW_CRYPT_PASSWORD))
 			has_password = 1;
 		tailto = &i->next;
 	}
@@ -545,7 +551,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	do not move any other password from the
 		 *	"from" to the "to" list.
 		 */
-		if (has_password &&
+		if (has_password && !i->da->vendor &&
 		    (i->da->attr == PW_USER_PASSWORD ||
 		     i->da->attr == PW_CRYPT_PASSWORD)) {
 			tailfrom = i;
@@ -1665,7 +1671,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	it.  This next stop also looks the attribute up in the
 	 *	dictionary, and creates the appropriate type for it.
 	 */
-	if ((vp = paircreate(attr, vendor, PW_TYPE_OCTETS)) == NULL) {
+	if ((vp = paircreate(attr, vendor)) == NULL) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}

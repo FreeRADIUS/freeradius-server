@@ -275,7 +275,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
-	vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
+	vp = paircreate(PW_EAP_MESSAGE, 0);
 	if (!vp) {
 		RDEBUG2("Failure in creating VP");
 		return NULL;
@@ -301,7 +301,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 		int vp_len;
 
 
-		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&head);
@@ -930,7 +930,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0);
 
 		vp->vp_octets[0] = PW_EAP_RESPONSE;
 		vp->vp_octets[1] = eap_ds->response->id;

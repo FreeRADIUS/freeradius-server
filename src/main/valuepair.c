@@ -802,11 +802,11 @@ void pairxlatmove(REQUEST *req, VALUE_PAIR **to, VALUE_PAIR **from)
  * server to exit!
  */
 VALUE_PAIR *radius_paircreate(UNUSED REQUEST *request, VALUE_PAIR **vps,
-			      unsigned int attribute, unsigned int vendor, int type)
+			      unsigned int attribute, unsigned int vendor)
 {
 	VALUE_PAIR *vp;
 
-	vp = paircreate(attribute, vendor, type);
+	vp = paircreate(attribute, vendor);
 	if (!vp) {
 		radlog(L_ERR, "No memory!");
 		rad_assert("No memory" == NULL);

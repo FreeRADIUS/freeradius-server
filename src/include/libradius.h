@@ -425,8 +425,8 @@ int rad_vp2attr(const RADIUS_PACKET *packet,
 
 /* valuepair.c */
 VALUE_PAIR	*pairalloc(const DICT_ATTR *da);
-VALUE_PAIR	*paircreate_raw(int attr, int vendor, int type, VALUE_PAIR *);
-VALUE_PAIR	*paircreate(int attr, int vendor, int type);
+VALUE_PAIR	*paircreate(unsigned int attr, unsigned int vendor);
+int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
 void            pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);

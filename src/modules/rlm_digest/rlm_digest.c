@@ -151,8 +151,7 @@ static int digest_fix(REQUEST *request)
 			 *	Didn't they know that VSA's exist?
 			 */
 			sub = radius_paircreate(request, &request->packet->vps,
-						PW_DIGEST_REALM - 1 + p[0], 0,
-						PW_TYPE_STRING);
+						PW_DIGEST_REALM - 1 + p[0], 0);
 			memcpy(&sub->vp_octets[0], &p[2], attrlen - 2);
 			sub->vp_octets[attrlen - 2] = '\0';
 			sub->length = attrlen - 2;

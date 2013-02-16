@@ -1575,8 +1575,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 
 		response = radius_paircreate(request, &request->packet->vps,
 					     PW_MSCHAP2_RESPONSE,
-					     VENDORPEC_MICROSOFT,
-					     PW_TYPE_OCTETS);
+					     VENDORPEC_MICROSOFT);
 		response->length = 50;
 		/* ident & flags */
 		response->vp_octets[0] = cpw->vp_octets[1];

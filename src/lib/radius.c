@@ -2821,13 +2821,14 @@ static ssize_t data2vp_raw(UNUSED const RADIUS_PACKET *packet,
 			   const uint8_t *data, size_t length,
 			   VALUE_PAIR **pvp)
 {
+	const DICT_ATTR *da;
 	VALUE_PAIR *vp;
 
 	/*
 	 *	Keep the next function happy.
 	 */
-	vp = pairalloc(NULL);
-	vp = paircreate_raw(attribute, vendor, PW_TYPE_OCTETS, vp);
+	da = dict_attrunknown(attribute, vendor, TRUE);
+	vp = pairalloc(da);
 	if (!vp) {
 		fr_strerror_printf("data2vp_raw: Failed creating attribute");
 		return -1;

@@ -668,7 +668,7 @@ static int eap_req2vp(EAP_HANDLER *handler)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = paircreate(PW_EAP_MESSAGE, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			pairfree(&head);
 			return -1;
@@ -998,7 +998,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, PW_TYPE_OCTETS);
+		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0);
 		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(request->reply->vps), vp);

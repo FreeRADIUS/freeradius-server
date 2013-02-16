@@ -658,7 +658,7 @@ end_gid:
 
 	/* add IP address to reply packet */
 	vp = radius_paircreate(request, &request->reply->vps,
-			       PW_FRAMED_IP_ADDRESS, 0, PW_TYPE_IPADDR);
+			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip.s_addr;
 
 	nvp_log(__LINE__, data, L_DBG, "sqlhpwippool_postauth(): returning %s",

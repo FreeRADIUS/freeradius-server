@@ -719,7 +719,7 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 #ifdef WITH_DHCP
 			if (dhcp) {
 		                vp = radius_paircreate(request, &request->reply->vps,
-						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR, PW_TYPE_INTEGER);
+						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR);
 				vp->vp_integer = entry.timeout;
 				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
                         }
@@ -769,7 +769,7 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 
 		RDEBUG("Allocated ip %s to client key: %s",ip_ntoa(str,entry.ipaddr),hex_str);
 		vp = radius_paircreate(request, &request->reply->vps,
-				       attr_ipaddr, vendor_ipaddr, PW_TYPE_IPADDR);
+				       attr_ipaddr, vendor_ipaddr);
 		vp->vp_ipaddr = entry.ipaddr;
 
 		/*
@@ -778,8 +778,7 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 		 */
 		if (pairfind(request->reply->vps, attr_ipmask, vendor_ipaddr, TAG_ANY) == NULL) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       attr_ipmask, vendor_ipaddr,
-					       PW_TYPE_IPADDR);
+					       attr_ipmask, vendor_ipaddr);
 			vp->vp_ipaddr = ntohl(data->netmask);
 		}
 

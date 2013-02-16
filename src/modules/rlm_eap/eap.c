@@ -519,7 +519,7 @@ int eap_compose(EAP_HANDLER *handler)
 	 */
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0, PW_TYPE_OCTETS);
+		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0);
 		memset(vp->vp_octets, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(request->reply->vps), vp);
@@ -684,7 +684,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	vp = paircreate(PW_EAP_TYPE, 0, PW_TYPE_INTEGER);
+	vp = paircreate(PW_EAP_TYPE, 0);
 	if (vp) {
 		vp->vp_integer = eap_msg->vp_octets[4];
 		pairadd(&(request->packet->vps), vp);

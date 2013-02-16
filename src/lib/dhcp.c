@@ -447,7 +447,7 @@ static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
 
 	p = data;
 	while (p < (data + data_len)) {
-		vp = paircreate(tlv->attribute | (p[0] << 8), DHCP_MAGIC_VENDOR, PW_TYPE_OCTETS);
+		vp = paircreate(tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
 		if (!vp) {
 			pairfree(&head);
 			goto make_tlv;
@@ -521,10 +521,14 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 		memcpy(vp->vp_strvalue, p , alen);
 		vp->vp_strvalue[alen] = '\0';
 		break;
-		
+	
+	/*
+	 *	Value doesn't match up with attribute type, overwrite the
+	 *	vp's original DICT_ATTR with an unknown one.
+	 */
 	raw:
-		vp->type = PW_TYPE_OCTETS;
-
+		if (pair2unknown(vp) < 0) return -1;
+		
 	case PW_TYPE_OCTETS:
 		if (alen > 253) return -1;
 		memcpy(vp->vp_octets, p, alen);
@@ -926,7 +930,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 	attribute = vps->da->attr & 0xffff00ff;
 
-	tlv = paircreate(attribute, DHCP_MAGIC_VENDOR, PW_TYPE_TLV);
+	tlv = paircreate(attribute, DHCP_MAGIC_VENDOR);
 	if (!tlv) return NULL;
 
 	tlv->length = 0;

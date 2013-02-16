@@ -435,7 +435,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 	tail = &packet->vps;
 
-	vp = paircreate(PW_VQP_PACKET_TYPE, 0, PW_TYPE_INTEGER);
+	vp = paircreate(PW_VQP_PACKET_TYPE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -446,7 +446,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_ERROR_CODE, 0, PW_TYPE_INTEGER);
+	vp = paircreate(PW_VQP_ERROR_CODE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -457,7 +457,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	*tail = vp;
 	tail = &(vp->next);
 
-	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, 0, PW_TYPE_INTEGER);
+	vp = paircreate(PW_VQP_SEQUENCE_NUMBER, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -485,7 +485,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		 *	Hack to get the dictionaries to work correctly.
 		 */
 		attribute |= 0x2000;
-		vp = paircreate(attribute, 0, PW_TYPE_OCTETS);
+		vp = paircreate(attribute, 0);
 		if (!vp) {
 			pairfree(&packet->vps);
 

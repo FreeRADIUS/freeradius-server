@@ -1979,13 +1979,12 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
 
 		/* Add Cleartext-Password attribute to the request */
 		vp = radius_paircreate(request, &request->config_items,
-				       PW_CLEARTEXT_PASSWORD, 0,
-				       PW_TYPE_STRING);
+				       PW_CLEARTEXT_PASSWORD, 0);
 		strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));
 		vp->length = strlen(vp->vp_strvalue);
 		
 		RDEBUG2("Added eDirectory password in check items as %s = %s",
-			vp->name, vp->vp_strvalue);
+			vp->da->name, vp->vp_strvalue);
 			
 		if (inst->edir_autz) {
 			RDEBUG2("Binding as user for eDirectory authorization "

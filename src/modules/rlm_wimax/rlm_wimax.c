@@ -314,7 +314,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, 10, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       10, VENDORPEC_WIMAX, PW_TYPE_OCTETS);
+					       10, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-Key");
@@ -329,7 +329,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, 11, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       11, VENDORPEC_WIMAX, PW_TYPE_INTEGER);
+					       11, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-SPI");
@@ -365,7 +365,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, 10, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       10, VENDORPEC_WIMAX, PW_TYPE_OCTETS);
+					       10, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-Key");
@@ -380,7 +380,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, 11, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       11, VENDORPEC_WIMAX, PW_TYPE_INTEGER);
+					       11, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-SPI");
@@ -416,7 +416,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, 12, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       12, VENDORPEC_WIMAX, PW_TYPE_OCTETS);
+					       12, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP6-Key");
@@ -431,7 +431,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, 13, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       13, VENDORPEC_WIMAX, PW_TYPE_INTEGER);
+					       13, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP6-SPI");
@@ -469,7 +469,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		vp = pairfind(request->reply->vps, 61, VENDORPEC_WIMAX, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, &request->reply->vps,
-					       61, VENDORPEC_WIMAX, PW_TYPE_INTEGER);
+					       61, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
 			RDEBUG("WARNING: Failed creating WiMAX-FA-RK-SPI");

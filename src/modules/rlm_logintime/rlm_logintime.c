@@ -226,8 +226,7 @@ static rlm_rcode_t logintime_authorize(void *instance, REQUEST *request)
 			} else {
 				reply_item = radius_paircreate(request,
 							       &request->reply->vps,
-							       PW_SESSION_TIMEOUT, 0,
-							       PW_TYPE_INTEGER);
+							       PW_SESSION_TIMEOUT, 0);
 				reply_item->vp_integer = r;
 			}
 			DEBUG("rlm_logintime: Session-Timeout set to: %d",r);

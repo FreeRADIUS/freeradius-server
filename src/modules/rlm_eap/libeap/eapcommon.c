@@ -274,7 +274,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	 */
 	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0, PW_TYPE_OCTETS);
+		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0);
 		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(packet->vps), vp);
@@ -323,7 +323,7 @@ VALUE_PAIR *eap_packet2vp(const eap_packet_t *packet)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = paircreate(PW_EAP_MESSAGE, 0, PW_TYPE_OCTETS);
+		vp = paircreate(PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			pairfree(&head);
 			return NULL;

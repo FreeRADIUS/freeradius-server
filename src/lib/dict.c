@@ -1378,7 +1378,6 @@ static int process_attribute(const char* fn, const int line,
 				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"extended\" MUST be RFC attributes with value >= 241.", fn, line);
 				return -1;
 			}
-			type = PW_TYPE_OCTETS;
 			flags.extended = 1;
 			break;
 
@@ -1387,13 +1386,11 @@ static int process_attribute(const char* fn, const int line,
 				fr_strerror_printf("dict_init: %s[%d]: Attributes of type \"long-extended\" MUST be RFC attributes with value >= 241.", fn, line);
 				return -1;
 			}
-			type = PW_TYPE_OCTETS;
 			flags.extended = 1;
 			flags.long_extended = 1;
 			break;
 
 		case PW_TYPE_EVS:
-			type = PW_TYPE_OCTETS;
 			flags.extended = 1;
 			flags.evs = 1;
 			if (value != PW_VENDOR_SPECIFIC) {
@@ -2801,7 +2798,7 @@ const DICT_ATTR *dict_attrbyvalue(unsigned int attr, unsigned int vendor)
  * @return The attribute, or NULL if not found
  */
 const DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
-			   PW_TYPE type)
+				 PW_TYPE type)
 {
 	DICT_ATTR dattr;
 
@@ -2811,7 +2808,6 @@ const DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
 
 	return fr_hash_table_finddata(attributes_combo, &dattr);
 }
-
 
 /**
  * @brief Using a parent and attr/vendor, find a child attr/vendor

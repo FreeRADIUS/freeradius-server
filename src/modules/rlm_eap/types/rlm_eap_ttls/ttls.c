@@ -252,7 +252,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	Create it.  If this fails, it's because we're OOM.
 		 */
 	do_octets:
-		vp = paircreate(attr, vendor, PW_TYPE_OCTETS);
+		vp = paircreate(attr, vendor);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&first);
@@ -368,7 +368,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 
 					if (size == 0) break;
 
-					vp = paircreate(attr, vendor, PW_TYPE_OCTETS);
+					vp = paircreate(attr, vendor);
 					if (!vp) {
 						RDEBUG2("Failure in creating VP");
 						pairfree(&first);
@@ -1094,8 +1094,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 */
 				if (t->default_eap_type != 0) {
 					RDEBUG("Setting default EAP type for tunneled EAP session.");
-					vp = paircreate(PW_EAP_TYPE, 0,
-							PW_TYPE_INTEGER);
+					vp = paircreate(PW_EAP_TYPE, 0);
 					rad_assert(vp != NULL);
 					vp->vp_integer = t->default_eap_type;
 					pairadd(&fake->config_items, vp);

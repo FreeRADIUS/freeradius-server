@@ -1792,8 +1792,7 @@ static int process_proxy_reply(REQUEST *request)
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Reject");
 		if (dval) {
 			vp = radius_paircreate(request, &request->config_items,
-					       PW_POST_PROXY_TYPE, 0,
-					       PW_TYPE_INTEGER);
+					       PW_POST_PROXY_TYPE, 0);
 
 			vp->vp_integer = dval->value;
 		}
@@ -2027,7 +2026,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 	
 	vp = pairfind(request->config_items, PW_POST_PROXY_TYPE, 0, TAG_ANY);
 	if (!vp) vp = radius_paircreate(request, &request->config_items,
-					PW_POST_PROXY_TYPE, 0, PW_TYPE_INTEGER);
+					PW_POST_PROXY_TYPE, 0);
 	vp->vp_integer = dval->value;
 
 	return 1;
@@ -2212,7 +2211,7 @@ static int request_will_proxy(REQUEST *request)
 		vp = pairfind(request->proxy->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
 			vp = radius_paircreate(request, NULL,
-					       PW_USER_NAME, 0, PW_TYPE_STRING);
+					       PW_USER_NAME, 0);
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
 			vp->next = request->proxy->vps;
@@ -2237,7 +2236,7 @@ static int request_will_proxy(REQUEST *request)
 	    pairfind(request->proxy->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->proxy->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		vp = radius_paircreate(request, &request->proxy->vps,
-				       PW_CHAP_CHALLENGE, 0, PW_TYPE_OCTETS);
+				       PW_CHAP_CHALLENGE, 0);
 		memcpy(vp->vp_strvalue, request->packet->vector,
 		       sizeof(request->packet->vector));
 		vp->length = sizeof(request->packet->vector);
@@ -2248,7 +2247,7 @@ static int request_will_proxy(REQUEST *request)
 	 *	doesn't need it.
 	 */
 	vp = radius_paircreate(request, &request->proxy->vps,
-			       PW_PROXY_STATE, 0, PW_TYPE_OCTETS);
+			       PW_PROXY_STATE, 0);
 	snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%d",
 		 request->packet->id);
 	vp->length = strlen(vp->vp_strvalue);
@@ -2456,8 +2455,7 @@ static int request_proxy_anew(REQUEST *request)
 		vp = pairfind(request->proxy->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 		if (!vp) vp = radius_paircreate(request,
 						&request->proxy->vps,
-						PW_ACCT_DELAY_TIME, 0,
-						PW_TYPE_INTEGER);
+						PW_ACCT_DELAY_TIME, 0);
 		if (vp) {
 			struct timeval now;
 			

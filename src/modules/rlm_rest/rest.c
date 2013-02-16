@@ -1072,7 +1072,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		RDEBUG2("\tLength : %i", curl_len);
 		RDEBUG2("\tValue  : \"%s\"", value);
 
-		vp = paircreate(da->attr, da->vendor, da->type);
+		vp = pairalloc(da);
 		if (!vp) {
 			radlog(L_ERR, "rlm_rest (%s): Failed creating"
 			       " value-pair", instance->xlat_name);

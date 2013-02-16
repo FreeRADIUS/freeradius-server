@@ -367,7 +367,7 @@ int rad_authenticate(REQUEST *request)
 		case PW_AUTHENTICATION_ACK:
 			tmp = radius_paircreate(request,
 						&request->config_items,
-						PW_AUTH_TYPE, 0, PW_TYPE_INTEGER);
+						PW_AUTH_TYPE, 0);
 			if (tmp) tmp->vp_integer = PW_AUTHTYPE_ACCEPT;
 			goto authenticate;
 
@@ -557,7 +557,7 @@ autz_redo:
 
 		/* double check: maybe the secret is wrong? */
 		if ((debug_flag > 1) && (auth_item != NULL) &&
-				(auth_item->attribute == PW_USER_PASSWORD)) {
+				(auth_item->da->attr == PW_USER_PASSWORD)) {
 			uint8_t *p;
 
 			p = (uint8_t *) auth_item->vp_strvalue;

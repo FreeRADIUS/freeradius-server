@@ -165,7 +165,7 @@ static rlm_rcode_t soh_postauth(UNUSED void * instance, REQUEST *request)
 					if (vlen <= 1) {
 						RDEBUG("SoH adding NAP marker to DHCP reply");
 						/* client probe; send "NAP" in the reply */
-						vp = paircreate(43, DHCP_MAGIC_VENDOR, PW_TYPE_OCTETS);
+						vp = paircreate(43, DHCP_MAGIC_VENDOR);
 						vp->vp_octets[0] = 220;
 						vp->vp_octets[1] = 3;
 						vp->vp_octets[4] = 'N';

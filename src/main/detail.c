@@ -549,8 +549,7 @@ int detail_recv(rad_listen_t *listener)
 		if (!strcasecmp(key, "Timestamp")) {
 			data->timestamp = atoi(value);
 
-			vp = paircreate(PW_PACKET_ORIGINAL_TIMESTAMP, 0,
-					PW_TYPE_DATE);
+			vp = paircreate(PW_PACKET_ORIGINAL_TIMESTAMP, 0);
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
 				*tail = vp;
@@ -696,7 +695,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(PW_ACCT_DELAY_TIME, 0, PW_TYPE_INTEGER);
+		vp = paircreate(PW_ACCT_DELAY_TIME, 0);
 		rad_assert(vp != NULL);
 		pairadd(&packet->vps, vp);
 	}
@@ -709,7 +708,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(PW_PACKET_TRANSMIT_COUNTER, 0, PW_TYPE_INTEGER);
+		vp = paircreate(PW_PACKET_TRANSMIT_COUNTER, 0);
 		rad_assert(vp != NULL);
 		pairadd(&packet->vps, vp);
 	}

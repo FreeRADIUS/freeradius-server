@@ -166,7 +166,7 @@ static int mschapv1_encode(VALUE_PAIR **request, const char *password)
 	VALUE_PAIR *challenge, *response;
 	uint8_t nthash[16];
 
-	challenge = paircreate(PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, PW_TYPE_OCTETS);
+	challenge = paircreate(PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 	if (!challenge) {
 		fprintf(stderr, "GOT IT %d!\n", __LINE__);
 		return 0;
@@ -178,7 +178,7 @@ static int mschapv1_encode(VALUE_PAIR **request, const char *password)
 		challenge->vp_octets[i] = fr_rand();
 	}
 
-	response = paircreate(PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT, PW_TYPE_OCTETS);
+	response = paircreate(PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
 	if (!response) {
 		fprintf(stderr, "GOT IT %d!\n", __LINE__);
 		return 0;

@@ -679,7 +679,7 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 	RDEBUG("Allocated IP %s [%08x]", allocation, ip_allocation);
 
 	vp = radius_paircreate(request, &request->reply->vps,
-			       PW_FRAMED_IP_ADDRESS, 0, PW_TYPE_IPADDR);
+			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip_allocation;
 
 	/*

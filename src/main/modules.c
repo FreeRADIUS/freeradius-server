@@ -1747,7 +1747,7 @@ char *module_failure_msg(REQUEST *request, const char *fmt, ...)
 	VALUE_PAIR *vp;
 
 	va_start(ap, fmt);
-	vp = paircreate(PW_MODULE_FAILURE_MESSAGE, 0, PW_TYPE_STRING);
+	vp = paircreate(PW_MODULE_FAILURE_MESSAGE, 0);
 	if (!vp) {
 		va_end(ap);
 		return NULL;

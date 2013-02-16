@@ -322,7 +322,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 
 			new_vp = radius_paircreate(request,
 						   &request->config_items,
-						   attr, 0, PW_TYPE_STRING);
+						   attr, 0);
 			
 			/*
 			 *	The data after the '}' may be binary,
@@ -441,7 +441,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 
 	if (inst->auth_type) {
 		vp = radius_paircreate(request, &request->config_items,
-				       PW_AUTH_TYPE, 0, PW_TYPE_INTEGER);
+				       PW_AUTH_TYPE, 0);
 		vp->vp_integer = inst->auth_type;
 	}
 

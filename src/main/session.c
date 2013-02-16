@@ -50,8 +50,8 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 	rad_assert(stopreq != NULL);
 
 	/* Hold your breath */
-#define PAIR(n,v,t,e) do { \
-		if(!(vp = paircreate(n, 0, t))) {	\
+#define PAIR(n,v,e) do { \
+		if(!(vp = paircreate(n, 0))) {	\
 			request_free(&stopreq); \
 			radlog(L_ERR|L_CONS, "no memory"); \
 			pairfree(&(stopreq->packet->vps)); \
@@ -60,10 +60,10 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 		vp->e = v; \
 		pairadd(&(stopreq->packet->vps), vp); \
 	} while(0)
-#define INTPAIR(n,v) PAIR(n,v,PW_TYPE_INTEGER,vp_integer)
-#define IPPAIR(n,v) PAIR(n,v,PW_TYPE_IPADDR,vp_ipaddr)
+#define INTPAIR(n,v) PAIR(n,v,vp_integer)
+#define IPPAIR(n,v) PAIR(n,v,vp_ipaddr)
 #define STRINGPAIR(n,v) do { \
-	if(!(vp = paircreate(n, 0, PW_TYPE_STRING))) {	\
+	if(!(vp = paircreate(n, 0))) {	\
 		request_free(&stopreq); \
 		radlog(L_ERR|L_CONS, "no memory"); \
 		pairfree(&(stopreq->packet->vps)); \
