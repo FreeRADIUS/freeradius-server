@@ -470,8 +470,8 @@ void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
  *
  * @return 0 on match.
  */
-int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
-		VALUE_PAIR **reply)
+int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
+		VALUE_PAIR **rep_list)
 {
 	VALUE_PAIR *check_item;
 	VALUE_PAIR *auth_item;
@@ -522,7 +522,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 					DEBUG("WARNING: Are you sure you don't mean Cleartext-Password?");
 					DEBUG("WARNING: See \"man rlm_pap\" for more information.");
 				}
-				if (pairfind(request, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
+				if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
 					continue;
 				}
 				break;
@@ -533,7 +533,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		 */
 		other = otherattr(check_item->da->attr);
 
-		auth_item = request;
+		auth_item = req_list;
 	try_again:
 		if (other >= 0) {
 			while (auth_item != NULL) {
@@ -581,7 +581,7 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 			check_item->flags.do_xlat = 0;
 			rcode = radius_xlat(buffer, sizeof(buffer),
 					    check_item->vp_strvalue,
-					    req, NULL, NULL);
+					    request, NULL, NULL);
 
 			/*
 			 *	Parse the string into a new value.
@@ -592,8 +592,8 @@ int paircompare(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
 		/*
 		 *	OK it is present now compare them.
 		 */
-		compare = radius_callback_compare(req, auth_item, check_item,
-						  check, reply);
+		compare = radius_callback_compare(request, auth_item,
+						  check_item, check, rep_list);
 
 		switch (check_item->op) {
 			case T_OP_EQ:
