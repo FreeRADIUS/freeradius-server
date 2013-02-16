@@ -2087,7 +2087,20 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	if ((pair->op != T_OP_CMP_FALSE) &&
 	    ((pair->value_type == T_DOUBLE_QUOTED_STRING) ||
 	     (pair->value_type == T_BACK_QUOTED_STRING))) {
-		return pairmake_xlat(pair->attr, pair->value, pair->op);
+	     	VALUE_PAIR *vp;
+	     
+		vp = pairmake(pair->attr, NULL, pair->op);
+		if (!vp) {
+			return NULL;
+		}
+		
+		if (pairmark_xlat(vp, pair->value) < 0) {
+			pairbasicfree(vp);
+
+			return NULL;
+		}
+		
+		return vp;
 	}
 
 	return pairmake(pair->attr, pair->value, pair->op);

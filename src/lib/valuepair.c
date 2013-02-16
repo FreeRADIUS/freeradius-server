@@ -1653,8 +1653,11 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 
 #else
 		if (!value) {
-			/* just return the vp - we've probably been called
-			 * by pairmake_xlat who will fill in the value for us
+			/*
+			 *	Just return the vp.
+			 *
+			 *	The value will likely be provided later by 
+			 *	an xlat expansion.
 			 */
 			return vp;
 		}
@@ -1674,12 +1677,22 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 			}
 		}
 
-		return pairmake_xlat(attribute, value, op);
+		vp = pairmake(attribute, NULL, op);
+		if (!vp) {
+			return NULL;
+		}
+		
+		if (pairmark_xlat(vp, value) < 0) {
+			pairbasicfree(vp);
+			return NULL;
+		}
+		
+		return vp;
 #endif
 	}
 
 	/*
-	 *	FIXME: if (strcasecmp(attribute, vp->name) != 0)
+	 *	FIXME: if (strcasecmp(attribute, vp->da->name) != 0)
 	 *	then the user MAY have typed in the attribute name
 	 *	as Vendor-%d-Attr-%d, and the value MAY be octets.
 	 *
@@ -1690,26 +1703,6 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 		pairbasicfree(vp);
 		return NULL;
 	}
-
-	return vp;
-}
-
-VALUE_PAIR *pairmake_xlat(const char *attribute, const char *value,
-			  FR_TOKEN op)
-{
-	VALUE_PAIR *vp;
-
-	if (!value) {
-		fr_strerror_printf("Empty value passed to pairmake_xlat()");
-		return NULL;
-	}
-
-	vp = pairmake(attribute, NULL, op);
-	if (!vp) return vp;
-
-	strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-	vp->flags.do_xlat = 1;
-	vp->length = 0;
 
 	return vp;
 }
