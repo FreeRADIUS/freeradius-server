@@ -215,15 +215,16 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 	out[0] = '\0';
 	if (!vp) return 0;
 
-	if ((vp->type & PW_FLAG_LONG) != 0) goto do_tlv;
+	if ((vp->da->type & PW_FLAG_LONG) != 0) goto do_tlv;
 
-	switch (vp->type) {
+	switch (vp->da->type) {
 		case PW_TYPE_STRING:
-			if ((delimitst == 1) && vp->flags.has_tag) {
+			if ((delimitst == 1) && vp->da->flags.has_tag) {
 				/* Tagged attribute: print delimter and ignore tag */
 				buf[0] = '"';
 				fr_print_string(vp->vp_strvalue,
-						 vp->length, buf + 1, sizeof(buf) - 2);
+						vp->length, buf + 1,
+						sizeof(buf) - 2);
 				strcat(buf, "\"");
 			} else if (delimitst == 1) {
 				/* Non-tagged attribute: print delimter */
@@ -244,9 +245,9 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 			a = buf;
 			break;
 		case PW_TYPE_INTEGER:
-		        if ( vp->flags.has_tag ) {
+		        if (vp->da->flags.has_tag) {
 			        /* Attribute value has a tag, need to ignore it */
-				if ((v = dict_valbyattr(vp->attribute, vp->vendor, (vp->vp_integer & 0xffffff)))
+				if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, (vp->vp_integer & 0xffffff)))
 				    != NULL)
 				        a = v->name;
 				else {
@@ -257,7 +258,7 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 		case PW_TYPE_BYTE:
 		case PW_TYPE_SHORT:
 			        /* Normal, non-tagged attribute */
-				if ((v = dict_valbyattr(vp->attribute, vp->vendor, vp->vp_integer))
+				if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer))
 				    != NULL)
 				        a = v->name;
 				else {
@@ -396,16 +397,13 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 	char *p = buffer;
 	const char *q;
  
-	if (!vp->flags.has_tag) {
-		switch (vp->type) {
+	if (!vp->da->flags.has_tag) {
+		switch (vp->da->type) {
 			case PW_TYPE_INTEGER:
 			case PW_TYPE_BYTE:
 			case PW_TYPE_SHORT:
-				if (dict_valbyattr(vp->attribute, vp->vendor,
-				    vp->vp_integer)) {
-					break;
-				}
-				
+				if (vp->da->flags.has_value) break;
+
 				len = snprintf(buffer, bufsize, "%u", vp->vp_integer);
 				return ((unsigned) len >= (bufsize - 1)) ? -1 : len;
 
@@ -421,7 +419,7 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 	if(bufsize < 3) return -1;
 	*p++ = '"';
 
-	switch (vp->type) {
+	switch (vp->da->type) {
 		case PW_TYPE_STRING:
 			for (q = vp->vp_strvalue; q < vp->vp_strvalue + vp->length; q++) {
 				s = bufsize - (p - buffer);
@@ -615,15 +613,15 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 		token = "<INVALID-TOKEN>";
 	}
 
-	if( vp->flags.has_tag ) {
+	if(vp->da->flags.has_tag) {
 		snprintf(out, outlen, "%s:%d %s ",
-			 vp->name, vp->flags.tag, token);
+			 vp->da->name, vp->flags.tag, token);
 
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
 	} else {
-	        snprintf(out, outlen, "%s %s ", vp->name, token);
+	        snprintf(out, outlen, "%s %s ", vp->da->name, token);
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 

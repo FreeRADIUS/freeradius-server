@@ -272,9 +272,9 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 
 	for(i = *first; i; i = next) {
 		next = i->next;
-		if ((i->attribute == attr) && (i->vendor == vendor) &&
+		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
 		    ((tag == TAG_ANY) ||
-		     (i->flags.has_tag && (i->flags.tag == tag)))) {
+		     (i->da->flags.has_tag && (i->flags.tag == tag)))) {
 			*last = next;
 			pairbasicfree(i);
 		} else {
@@ -338,9 +338,8 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 		 *	Found the first attribute, replace it,
 		 *	and return.
 		 */
-		if ((i->attribute == replace->attribute) &&
-		    (i->vendor == replace->vendor) &&
-		    (!i->flags.has_tag || (i->flags.tag == replace->flags.tag))
+		if ((i->da == replace->da) &&
+		    (!i->da->flags.has_tag || (i->flags.tag == replace->flags.tag))
 		) {
 			*prev = replace;
 
@@ -468,10 +467,10 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 
 	while (vp) {
 		if ((attr > 0) &&
-		    ((vp->attribute != attr) || (vp->vendor != vendor)))
+		    ((vp->da->attr != attr) || (vp->da->vendor != vendor)))
 			goto skip;
 			
-		if ((tag != TAG_ANY) && vp->flags.has_tag &&
+		if ((tag != TAG_ANY) && vp->da->flags.has_tag &&
 		    (vp->flags.tag != tag)) {
 			goto skip;
 		}
@@ -529,8 +528,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tailto = to;
 	for(i = *to; i; i = i->next) {
-		if (i->attribute == PW_USER_PASSWORD ||
-		    i->attribute == PW_CRYPT_PASSWORD)
+		if (i->da->attr == PW_USER_PASSWORD ||
+		    i->da->attr == PW_CRYPT_PASSWORD)
 			has_password = 1;
 		tailto = &i->next;
 	}
@@ -547,8 +546,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	"from" to the "to" list.
 		 */
 		if (has_password &&
-		    (i->attribute == PW_USER_PASSWORD ||
-		     i->attribute == PW_CRYPT_PASSWORD)) {
+		    (i->da->attr == PW_USER_PASSWORD ||
+		     i->da->attr == PW_CRYPT_PASSWORD)) {
 			tailfrom = i;
 			continue;
 		}
@@ -582,11 +581,13 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	an exception for "Hint" which can appear multiple
 		 *	times, and we never move "Fall-Through".
 		 */
-		if (i->attribute == PW_FALL_THROUGH ||
-		    (i->attribute != PW_HINT && i->attribute != PW_FRAMED_ROUTE)) {
+		if (i->da->attr == PW_FALL_THROUGH ||
+		    (i->da->attr != PW_HINT && i->da->attr != PW_FRAMED_ROUTE)) {
 
 
-			found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
+			found = pairfind(*to, i->da->attr, i->da->vendor,
+					 TAG_ANY);
+					 
 			switch (i->op) {
 
 			/*
@@ -598,7 +599,10 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					if (!i->vp_strvalue[0] ||
 					    (strcmp((char *)found->vp_strvalue,
 						    (char *)i->vp_strvalue) == 0)){
-						pairdelete(to, found->attribute, found->vendor, TAG_ANY);
+						pairdelete(to,
+							   found->da->attr,
+							   found->da->vendor,
+							   TAG_ANY);
 
 						/*
 						 *	'tailto' may have been
@@ -649,7 +653,9 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 					memcpy(found, i, sizeof(*found));
 					found->next = mynext;
 
-					pairdelete(&found->next, found->attribute, found->vendor, TAG_ANY);
+					pairdelete(&found->next,
+						   found->da->attr,
+						   found->da->vendor, TAG_ANY);
 
 					/*
 					 *	'tailto' may have been
@@ -726,7 +732,7 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 	for(i = *from; i; i = next) {
 		next = i->next;
 
-		if ((tag != TAG_ANY) && i->flags.has_tag &&
+		if ((tag != TAG_ANY) && i->da->flags.has_tag &&
 		    (i->flags.tag != tag)) {
 			continue;
 		}
@@ -739,12 +745,12 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 			/*
 			 *	It's a VSA: move it over.
 			 */
-			if (i->vendor != 0) goto move;
+			if (i->da->vendor != 0) goto move;
 
 			/*
 			 *	It's Vendor-Specific: move it over.
 			 */
-			if (i->attribute == attr) goto move;
+			if (i->da->attr == attr) goto move;
 
 			/*
 			 *	It's not a VSA: ignore it.
@@ -756,7 +762,7 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 		/*
 		 *	If it isn't an exact match, ignore it.
 		 */
-		if (!((i->vendor == vendor) && (i->attribute == attr))) {
+		if (!((i->da->vendor == vendor) && (i->da->attr == attr))) {
 			iprev = i;
 			continue;
 		}
@@ -987,12 +993,12 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	 *	Even for integers, dates and ip addresses we
 	 *	keep the original string in vp->vp_strvalue.
 	 */
-	if (vp->type != PW_TYPE_TLV) {
+	if (vp->da->type != PW_TYPE_TLV) {
 		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
 		vp->length = strlen(vp->vp_strvalue);
 	}
 
-	switch(vp->type) {
+	switch(vp->da->type) {
 	case PW_TYPE_STRING:
 		/*
 		 *	Do escaping here
@@ -1151,7 +1157,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		p = vp->vp_strvalue;
 		if (sscanf(p, "%llu", &y) != 1) {
 			fr_strerror_printf("Invalid value %s for attribute %s",
-					   value, vp->name);
+					   value, vp->da->name);
 			return NULL;
 		}
 		vp->vp_integer64 = y;
@@ -1763,9 +1769,9 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	        /* If we already found a tag, this is invalid */
 	        if(found_tag) {
 			fr_strerror_printf("Duplicate tag %s for attribute %s",
-				   value, vp->name);
+				   value, vp->da->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
-				   value, vp->name);
+				   value, vp->da->name);
 		        pairbasicfree(vp);
 			return NULL;
 		}
@@ -2239,13 +2245,15 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	/*
 	 *	Can't compare two attributes of differing types
 	 */
-	if (one->type != two->type) return one->type - two->type;
-
+	if (one->da->type != two->da->type) {
+		return one->da->type - two->da->type;
+	}
+	
 	/*
 	 *	After doing the previous check for special comparisons,
 	 *	do the per-type comparison here.
 	 */
-	switch (one->type) {
+	switch (one->da->type) {
 	case PW_TYPE_ABINARY:
 	case PW_TYPE_OCTETS:
 	{
