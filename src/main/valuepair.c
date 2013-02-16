@@ -574,20 +574,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		 *	We've got to xlat the string before doing
 		 *	the comparison.
 		 */
-		if (check_item->flags.do_xlat) {
-			int rcode;
-			char buffer[sizeof(check_item->vp_strvalue)];
-
-			check_item->flags.do_xlat = 0;
-			rcode = radius_xlat(buffer, sizeof(buffer),
-					    check_item->vp_strvalue,
-					    request, NULL, NULL);
-
-			/*
-			 *	Parse the string into a new value.
-			 */
-			pairparsevalue(check_item, buffer);
-		}
+		radius_xlat_do(request, check_item);
 
 		/*
 		 *	OK it is present now compare them.
@@ -725,22 +712,7 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
 		 *	We've got to xlat the string before moving
 		 *	it over.
 		 */
-		if (i->flags.do_xlat) {
-			int rcode;
-			char buffer[sizeof(i->vp_strvalue)];
-
-			i->flags.do_xlat = 0;
-			rcode = radius_xlat(buffer, sizeof(buffer),
-					    i->vp_strvalue,
-					    request, NULL, NULL);
-
-			/*
-			 *	Parse the string into a new value.
-			 */
-			pairparsevalue(i, buffer);
-		}
-
-		found = pairfind(*to, i->attribute, i->vendor, TAG_ANY);
+		radius_xlat_do(request, i);
 		
 		found = pairfind(*to, i->da->attr, i->da->vendor, TAG_ANY);
 		switch (i->op) {

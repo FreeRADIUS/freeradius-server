@@ -1206,7 +1206,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		 *	The VP && CF lists should be in sync.  If they're
 		 *	not, panic.
 		 */
-		if (vp->flags.do_xlat) {
+		if (vp->type == VT_XLAT) {
 			const char *value;
 			char buffer[2048];
 
@@ -1223,7 +1223,9 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 				pairfree(&newlist);
 				return RLM_MODULE_FAIL;
 			}
-			vp->flags.do_xlat = 0;
+			
+			rad_cfree(vp->value.xlat);
+			vp->type = VT_DATA;
 		}
 		vp = vp->next;
 	}
