@@ -174,7 +174,6 @@ $INCLUDE dictionary.issanni
 $INCLUDE dictionary.itk
 $INCLUDE dictionary.ipunplugged
 $INCLUDE dictionary.juniper
-$INCLUDE dictionary.jradius
 $INCLUDE dictionary.karlnet
 $INCLUDE dictionary.kineto
 $INCLUDE dictionary.lancom
