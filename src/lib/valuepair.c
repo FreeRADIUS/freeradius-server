@@ -1846,7 +1846,7 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
 	/*
 	 *	ASCII, but not a valid attribute name.
 	 */
-	if (!raw->l_opand) goto invalid;
+	if (!*raw->l_opand) goto invalid;
 
 	/*
 	 *	Look for tag (:#).  This is different from :=, which
