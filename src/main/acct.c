@@ -161,11 +161,7 @@ int rad_accounting(REQUEST *request)
 		case RLM_MODULE_UPDATED:
 			request->reply->code = PW_ACCOUNTING_RESPONSE;
 			break;
-		/*
-		 *	The module handled the request, don't reply.
-		 */
-		case RLM_MODULE_HANDLED:
-			break;
+
 		/*
 		 *	Failed to log or to proxy the accounting data,
 		 *	therefore don't reply to the NAS.
