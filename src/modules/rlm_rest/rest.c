@@ -381,7 +381,7 @@ int rest_socket_alive(void *instance, void *handle)
 	long last_socket;
 	CURLcode ret;
 
-	curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &last_socket);
+	ret = curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &last_socket);
 	if (ret != CURLE_OK) {
 		radlog(L_ERR,
 		       "rlm_rest (%s): Couldn't determine socket"
@@ -2238,7 +2238,7 @@ int rest_request_decode(rlm_rest_t *instance,
 		return FALSE;
 	}
 
-	RDEBUG("Processing body", ret);
+	RDEBUG("Processing body");
 
 	switch (ctx->write.type)
 	{
