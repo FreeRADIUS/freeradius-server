@@ -543,7 +543,9 @@ static int external_spawn(command_t *cmd, const char *file, const char **argv)
 
 static int run_command(command_t *cmd_data, count_chars *cc)
 {
+    int ret;
     char *command;
+    char *raw;
     const char *spawn_args[4];
     count_chars tmpcc;
 
@@ -557,13 +559,19 @@ static int run_command(command_t *cmd_data, count_chars *cc)
 
     append_count_chars(&tmpcc, cc);
 
-    command = shell_esc(flatten_count_chars(&tmpcc, 1));
+    raw = flatten_count_chars(&tmpcc, 1);
+    command = shell_esc(raw);
+    free(raw);
 
     spawn_args[0] = SHELL_CMD;
     spawn_args[1] = "-c";
     spawn_args[2] = command;
     spawn_args[3] = NULL;
-    return external_spawn(cmd_data, spawn_args[0], spawn_args);
+    ret = external_spawn(cmd_data, spawn_args[0], spawn_args);
+    
+    free(command);
+    
+    return ret;
 }
 
 /*
