@@ -2149,7 +2149,7 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 	int		ldap_errno, rcode, msg_id;
 	LDAPMessage	*result = NULL;
 	
-	LDAP_CONN	*conn;
+	LDAP_CONN	*conn = NULL;
 	
 	LDAPMod		*mod_p[MAX_ATTRMAP + 1], mod_s[MAX_ATTRMAP];
 	LDAPMod		**modify = mod_p;
