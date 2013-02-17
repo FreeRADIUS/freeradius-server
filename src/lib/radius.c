@@ -433,8 +433,8 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
-		recvfrom(sockfd, header, sizeof(header), flags,
-			 (struct sockaddr *)&src, &sizeof_src);
+		rad_recv_discard(sockfd);
+
 		return 0;
 
 	} else {		/* we got 4 bytes of data. */
