@@ -248,6 +248,8 @@ static void rlm_perl_make_key(pthread_key_t *key)
 
 static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key)
 {
+	int ret;
+	
 	PerlInterpreter *interp;
 	UV clone_flags = 0;
 
@@ -269,7 +271,14 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 	PERL_SET_CONTEXT(aTHX);
     	rlm_perl_clear_handles(aTHX);
 
-	pthread_setspecific(*key, interp);
+	ret = pthread_setspecific(*key, interp);
+	if (ret != 0) {
+		radlog(L_DBG,"rlm_perl: Failed associating interpretor "
+		       "with thread %s", strerror(ret));
+		       
+		rlm_perl_destruct(interp);
+		return NULL;
+	}
 
 	return interp;
 }
