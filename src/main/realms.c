@@ -1893,7 +1893,13 @@ int realms_init(CONF_SECTION *config)
 #ifdef WITH_PROXY
 	cs = cf_subsection_find_next(config, NULL, "proxy");
 	if (cs) {
-		cf_section_parse(cs, rc, proxy_config);
+		if (cf_section_parse(cs, rc, proxy_config) < 0) {
+			radlog(L_ERR, "Failed parsing proxy section");
+			
+			free(rc);
+			realms_free();
+			return 0;
+		}
 	} else {
 		rc->dead_time = DEAD_TIME;
 		rc->retry_count = RETRY_COUNT;
