@@ -173,7 +173,6 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 	VALUE_PAIR *mn_nai, *ip, *fa_rk;
 	HMAC_CTX hmac;
 	unsigned int rk1_len, rk2_len, rk_len;
-	int rk_lifetime = 3600;	/* ? */
 	uint32_t mip_spi;
 	uint8_t usage_data[24];
 	uint8_t mip_rk_1[EVP_MAX_MD_SIZE], mip_rk_2[EVP_MAX_MD_SIZE];
@@ -226,9 +225,6 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 	HMAC_Update(&hmac, (const uint8_t *) &mip_rk_1, rk1_len);
 	HMAC_Update(&hmac, &usage_data[0], sizeof(usage_data));
 	HMAC_Final(&hmac, &mip_rk_2[0], &rk2_len);
-
-	vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
-	if (vp) rk_lifetime = vp->vp_integer;
 
 	memcpy(mip_rk, mip_rk_1, rk1_len);
 	memcpy(mip_rk + rk1_len, mip_rk_2, rk2_len);
