@@ -1968,6 +1968,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 					       CURLOPT_CUSTOMREQUEST,
 					       section->method);
 			if (ret != CURLE_OK) goto error;
+			break;
 
 		default:
 			assert(0);
