@@ -569,7 +569,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	request_vp = request_vp;
 
 	RDEBUG("sql_groupcmp");
-	if (!check || !check->vp_strvalue || !check->length){
+	if (!check || !check->length){
 		RDEBUG("sql_groupcmp: Illegal group name");
 		return 1;
 	}
