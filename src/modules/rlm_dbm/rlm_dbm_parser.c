@@ -320,6 +320,7 @@ int main(int n,char **argv) {
 				break;
 			case 'x':
 				fr_debug_flag++;
+				break;
 			case 'o':
 				ofile = optarg;
 				break;
