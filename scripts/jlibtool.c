@@ -818,16 +818,20 @@ static long safe_strtol(const char *nptr, const char **endptr, int base)
 
 static void safe_mkdir(const char *path)
 {
+    int status;
     mode_t old_umask;
 
     old_umask = umask(0);
     umask(old_umask);
 
 #ifdef MKDIR_NO_UMASK
-    mkdir(path);
+    status = mkdir(path);
 #else
-    mkdir(path, ~old_umask);
+    status = mkdir(path, ~old_umask);
 #endif
+    if (status < 0) {
+        printf("Warning: mkdir of %s failed\n", path);
+    }
 }
 
 /* returns just a file's name without the path */
