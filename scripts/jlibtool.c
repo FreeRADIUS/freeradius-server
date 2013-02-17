@@ -1047,9 +1047,6 @@ static const char *check_object_exists(command_t *cmd, const char *arg, int argl
     while (rv != 0 && ++pass < 1);
 
     if (rv == 0) {
-        if (pass == 1) {
-            cmd->options.pic_mode = pic_AVOID;
-        }
         return newarg;
     }
     
