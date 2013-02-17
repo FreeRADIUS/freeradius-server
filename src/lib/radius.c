@@ -3540,6 +3540,7 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 		break;
 
 	default:
+		pairfree(&vp);
 		fr_strerror_printf("Internal sanity check %d", __LINE__);
 		return -1;
 	}
