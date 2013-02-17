@@ -761,12 +761,12 @@ static int rlm_sql_detach(void *instance)
 
 	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
 	
-	if (inst->config->postauth) free(inst->config->postauth);
-	if (inst->config->accounting) free(inst->config->accounting);
-	
 	if (inst->config) {
 		int i;
 
+		if (inst->config->postauth) free(inst->config->postauth);
+		if (inst->config->accounting) free(inst->config->accounting);
+	
 		if (inst->pool) sql_poolfree(inst);
 
 		if (inst->config->xlat_name) {
