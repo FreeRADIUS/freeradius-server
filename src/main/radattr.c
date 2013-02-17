@@ -524,7 +524,7 @@ static void process_file(const char *filename)
 		while (isspace((int) *p)) p++;
 		if (!*p) continue;
 
-		strcpy(input, p);
+		strlcpy(input, p, sizeof(input));
 
 		if (strncmp(p, "raw ", 4) == 0) {
 			outlen = encode_rfc(p + 4, data, sizeof(data));
@@ -567,7 +567,7 @@ static void process_file(const char *filename)
 			}
 
 			if (userparse(p, &head) != T_EOL) {
-				strcpy(output, fr_strerror());
+				strlcpy(output, fr_strerror(), sizeof(output));
 				continue;
 			}
 
@@ -649,7 +649,7 @@ static void process_file(const char *filename)
 				
 				pairfree(&head);
 			} else if (my_len < 0) {
-				strcpy(output, fr_strerror());
+				strlcpy(output, fr_strerror(), sizeof(output));
 
 			} else { /* zero-length attribute */
 				*output = '\0';
