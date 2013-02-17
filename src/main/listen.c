@@ -2297,8 +2297,14 @@ static int listen_bind(rad_listen_t *this)
 		if (IN6_IS_ADDR_UNSPECIFIED(&sock->my_ipaddr.ipaddr.ip6addr)) {
 			int on = 1;
 			
-			setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
-				   (char *)&on, sizeof(on));
+			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
+				       (char *)&on, sizeof(on)) < 0) {
+				radlog(L_ERR, "Failed setting socket to IPv6 "
+				       "only: %s", strerror(errno));	
+		       		       
+		       		close(this->fd);
+				return -1;       
+			}
 		}
 #endif /* IPV6_V6ONLY */
 	}
@@ -2314,8 +2320,14 @@ static int listen_bind(rad_listen_t *this)
 		 *	flag is zero.
 		 */
 		flag = IP_PMTUDISC_DONT;
-		setsockopt(this->fd, IPPROTO_IP, IP_MTU_DISCOVER,
-			   &flag, sizeof(flag));
+		if (setsockopt(this->fd, IPPROTO_IP, IP_MTU_DISCOVER,
+			       &flag, sizeof(flag)) < 0) {
+			radlog(L_ERR, "Failed disabling PMTU discovery: %s",
+			       strerror(errno));
+			       
+			close(this->fd);
+			return -1;    		       
+		}
 #endif
 
 #if defined(IP_DONTFRAG)
@@ -2323,8 +2335,14 @@ static int listen_bind(rad_listen_t *this)
 		 *	Ensure that the "don't fragment" flag is zero.
 		 */
 		flag = 0;
-		setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG,
-			   &flag, sizeof(flag));
+		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG,
+			       &flag, sizeof(flag)) < 0) {
+			radlog(L_ERR, "Failed setting don't fragment flag: %s",
+			       strerror(errno));	  
+			       
+			close(this->fd);
+			return -1;      
+		}
 #endif
 	}
 
@@ -2334,7 +2352,7 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 		
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			radlog(L_ERR, "Can't set broadcast option: %s\n",
+			radlog(L_ERR, "Can't set broadcast option: %s",
 			       strerror(errno));
 			return -1;
 		}
@@ -2350,7 +2368,7 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			radlog(L_ERR, "Can't set re-use address option: %s\n",
+			radlog(L_ERR, "Can't set re-use address option: %s",
 			       strerror(errno));
 			return -1;
 		}
