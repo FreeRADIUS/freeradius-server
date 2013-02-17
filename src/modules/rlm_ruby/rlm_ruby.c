@@ -192,40 +192,42 @@ static void add_vp_tuple(VALUE_PAIR **vpp, VALUE rb_value,
  * xxx We're not checking the errors. If we have errors, what do we do?
  */
 
-static int ruby_function(REQUEST *request, int func, VALUE module, const char *function_name) {
-#define BUF_SIZE 1024
-
+#define BUF_SIZE 1024    
+static rlm_rcode_t ruby_function(REQUEST *request, int func,
+				 VALUE module, const char *function_name) {
+				 
+    rlm_rcode_t rcode = RLM_MODULE_OK;
+    
     char buf[BUF_SIZE]; /* same size as vp_print buffer */
 
     VALUE_PAIR *vp;
     VALUE rb_request, rb_result, rb_reply_items, rb_config_items;
 
-    int n_tuple, return_value;
+    int n_tuple;
     radlog(L_DBG, "Calling ruby function %s which has id: %d\n", function_name, func);
 
     /* Return with "OK, continue" if the function is not defined. 
      * TODO: Should check with rb_respond_to each time, just because ruby can define function dynamicly?
      */
     if (func == 0) {
-        return RLM_MODULE_OK;
+        return rcode;
     }
-
-    /* Default return value is "OK, continue" */
-    return_value = RLM_MODULE_OK;
-
+    
     n_tuple = 0;
 
-    if (request != NULL) {
+    if (request) {
         for (vp = request->packet->vps; vp; vp = vp->next) {
             n_tuple++;
         }
     }
+    
+    
     /*
         Creating ruby array, that contains arrays of [name,value]
         Maybe we should use hash instead? Can this names repeat?
      */
     rb_request = rb_ary_new2(n_tuple);
-    if (request != NULL) {
+    if (request) {
         for (vp = request->packet->vps; vp; vp = vp->next) {
             VALUE tmp = rb_ary_new2(2);
 
@@ -249,22 +251,40 @@ static int ruby_function(REQUEST *request, int func, VALUE module, const char *f
     /* Calling corresponding ruby function, passing request and catching result */
     rb_result = rb_funcall(module, func, 1, rb_request);
 
-    /* Checking result, it can be array of type [result, [array of reply pairs],[array of config pairs]],
-     * It can also be just a fixnum, which is a result itself.
+    /* 
+     *	Checking result, it can be array of type [result, 
+     *	[array of reply pairs],[array of config pairs]],
+     *	It can also be just a fixnum, which is a result itself.
      */
     if (TYPE(rb_result) == T_ARRAY) {
         if (!FIXNUM_P(rb_ary_entry(rb_result, 0))) {
-            radlog(L_ERR, "First element of an array was not a FIXNUM(Which has to be a return_value)");
-        } else
-            return_value = FIX2INT(rb_ary_entry(rb_result, 0));
-        rb_reply_items = rb_ary_entry(rb_result, 1);
-        rb_config_items = rb_ary_entry(rb_result, 2);
-        add_vp_tuple(&request->reply->vps, rb_reply_items, function_name);
-        add_vp_tuple(&request->config_items, rb_config_items, function_name);
+            radlog(L_ERR, "rlm_ruby: First element of an array was not a "
+            	   "FIXNUM (Which has to be a return_value)");
+            
+            rcode = RLM_MODULE_FAIL;
+            goto finish;
+        }
+        
+        rcode = FIX2INT(rb_ary_entry(rb_result, 0));
+        
+        /*
+         *	Only process the results if we were passed a request.
+         */
+	if (request) {
+		rb_reply_items = rb_ary_entry(rb_result, 1);
+		rb_config_items = rb_ary_entry(rb_result, 2);
+	
+		add_vp_tuple(&request->reply->vps, rb_reply_items,
+		             function_name);
+		add_vp_tuple(&request->config_items, rb_config_items,
+		             function_name);
+        }
     } else if (FIXNUM_P(rb_result)) {
-        return_value = FIX2INT(rb_result);
+        rcode = FIX2INT(rb_result);
     }
-    return return_value;
+    
+    finish:
+    return rcode;
 }
 
 static struct varlookup {
