@@ -383,6 +383,7 @@ static int process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
 
 	case LDAP_TIMELIMIT_EXCEEDED:
 		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
+		/* FALL-THROUGH */
 
 	case LDAP_BUSY:
 	case LDAP_UNAVAILABLE:
