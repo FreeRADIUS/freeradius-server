@@ -1126,9 +1126,9 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		 *	Look for the named value for the given
 		 *	attribute.
 		 */
-		if ((dval = dict_valbyname(vp->attribute, vp->vendor, value)) == NULL) {
+		if ((dval = dict_valbyname(vp->da->attr, vp->da->vendor, value)) == NULL) {
 			fr_strerror_printf("Unknown value %s for attribute %s",
-				   value, vp->name);
+				   value, vp->da->name);
 			return NULL;
 		}
 		vp->vp_integer = dval->value;
