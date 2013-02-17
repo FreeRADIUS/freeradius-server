@@ -545,7 +545,8 @@ static int run_command(command_t *cmd_data, count_chars *cc)
 {
     int ret;
     char *command;
-    char *raw;
+    char *tmp;
+    const char *raw;
     const char *spawn_args[4];
     count_chars tmpcc;
 
@@ -561,7 +562,9 @@ static int run_command(command_t *cmd_data, count_chars *cc)
 
     raw = flatten_count_chars(&tmpcc, 1);
     command = shell_esc(raw);
-    free(raw);
+    
+    memcpy(&tmp, &raw, sizeof(tmp));
+    free(tmp);
 
     spawn_args[0] = SHELL_CMD;
     spawn_args[1] = "-c";
