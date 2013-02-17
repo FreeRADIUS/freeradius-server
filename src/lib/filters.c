@@ -1060,9 +1060,6 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	case RAD_FILTER_IPX:
 		rcode = ascend_parse_ipx(argc - 3, &argv[3], &filter.u.ipx);
 		break;
-
-	default:		/* should never reach here. */
-		break;
 	}
 
 	/*
