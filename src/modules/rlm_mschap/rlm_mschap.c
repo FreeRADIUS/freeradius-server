@@ -897,8 +897,11 @@ ntlm_auth_err:
 
 		passlen = nt_pass_decrypted[512];
 		passlen += nt_pass_decrypted[513] << 8;
-		passlen += nt_pass_decrypted[514] << 16;
-		passlen += nt_pass_decrypted[515] << 24;
+		if ((nt_pass_decrypted[514] != 0) ||
+		    (nt_pass_decrypted[515] != 0)) {
+			RDEBUG2("Decrypted new password blob claims length > 65536 - probably an invalid NT-Password");
+			return -1;
+		}
 
 		/*
 		 * sanity check - passlen positive and <= 512
