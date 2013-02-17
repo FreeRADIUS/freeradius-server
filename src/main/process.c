@@ -1007,9 +1007,9 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 			/*
 			 *	Ignore parse errors.
 			 */
-			radius_evaluate_condition(request, RLM_MODULE_OK, 0,
-						  &my_debug, 1,
-						  &result);
+			(void) radius_evaluate_condition(request, RLM_MODULE_OK,
+							 0, &my_debug, 1,
+							 &result);
 			if (result) {
 				request->options = 2;
 				request->radlog = radlog_request;
