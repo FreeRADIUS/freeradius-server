@@ -3170,7 +3170,8 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 	const uint8_t *data = start;
 	uint8_t buffer[256];
 
-	if (!da || (attrlen > 253) || (attrlen > packetlen)) {
+	if (!da || (attrlen > 253) || (attrlen > packetlen) ||
+	    (attrlen > 128*1024)) {
 		fr_strerror_printf("data2vp: invalid arguments");
 		return -1;
 	}
