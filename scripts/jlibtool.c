@@ -2313,6 +2313,13 @@ static int run_mode(command_t *cmd_data)
     case mExecute:
     {
         char *l, libpath[PATH_MAX];
+        
+        if (strlen(cmd_data->arglist->vals[0]) >= PATH_MAX) {
+        	fprintf(stderr, "Libpath too long no buffer space");
+        	rv = 1;
+        	
+        	goto finish;
+        }
 
         strcpy(libpath, cmd_data->arglist->vals[0]);
         add_dotlibs(libpath);
