@@ -487,7 +487,7 @@ int main(int argc, char **argv)
 	 */
 	while (fread(&rt, sizeof(rt), 1, fp) == 1) {
 		if (rt.type != P_LOGIN) continue; /* hide logout sessions */
-
+		
 		/*
 		 *	We don't show shell users if we are
 		 *	fingerd, as we have done that above.
@@ -600,8 +600,11 @@ int main(int argc, char **argv)
 		 *	Show the fill name, or not.
 		 */
 		if (showname) {
+			char login[sizeof(rt.login) + 1];
+			strncpy(login, rt.login, sizeof(rt.login));
+			
 			printf((rawoutput == 0? rfmt1: rfmt1r),
-			       rt.login,
+			       login,
 			       showcid ? rt.caller_id :
 			       (showsid? session_id : fullname(rt.login)),
 			       proto(rt.proto, rt.porttype),
