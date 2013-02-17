@@ -1,8 +1,6 @@
 /*@-skipposixheaders@*/
 /*
  * radwho.c	Show who is logged in on the terminal servers.
- *		Can also be installed as fingerd on the UNIX
- *		machine RADIUS runs on.
  *
  * Version:	$Id$
  *
@@ -38,12 +36,6 @@ RCSID("$Id$")
 #include <sys/stat.h>
 
 #include <ctype.h>
-
-/*
- *	FIXME: put in header file.
- */
-#define SYS_FINGER "/usr/bin/finger"
-#define FINGER_DIR "/usr/local/lib/finger"
 
 /*
  *	Header above output and format.
@@ -96,92 +88,6 @@ static const CONF_PARSER module_config[] = {
   { "filename", PW_TYPE_STRING_PTR, 0, &radutmpconfig.radutmp_fn,  RADUTMP },
   { NULL, -1, 0, NULL, NULL }
 };
-
-/*
- *	Safe popen. Ugh.
- */
-static FILE *safe_popen(const char *cmd, const char *mode)
-{
-	char		*p;
-	char		buf[1024];
-
-	/*
-	 *	Change all suspect characters into a space.
-	 */
-	strlcpy(buf, cmd, sizeof(buf));
-	buf[sizeof(buf) - 1] = 0;
-	for (p = buf; *p; p++) {
-		if (isalnum((int) *p))
-			continue;
-		if (strchr("@%-_ \t+:,./", *p) == NULL)
-			*p = ' ';
-	}
-
-	return popen(buf, mode);
-}
-
-/*
- *	Print a file from FINGER_DIR. If the file is executable,
- *	execute it instead. Return 0 if successful.
- */
-static int ffile(const char *arg)
-{
-	FILE *fp;
-	char fn[1024];
-	int p = 0;
-	char *s;
-
-	snprintf(fn, sizeof(fn), "%s/%.32s", FINGER_DIR, arg);
-	if (access(fn, X_OK) == 0) {
-		p = 1;
-		snprintf(fn, sizeof(fn), "exec %s/%.32s 2>&1", FINGER_DIR, arg);
-		fp = safe_popen(fn, "r");
-	} else fp = fopen(fn, "r");
-
-	if (fp == NULL)
-		return -1;
-
-	while(fgets(fn, 1024, fp)) {
-		if ((s = strchr(fn, '\n')) != NULL)
-			*s = 0;
-		fprintf(stdout, "%s\r\n", fn);
-	}
-	if (p)
-		pclose(fp);
-	else
-		fclose(fp);
-	fflush(stdout);
-	return 0;
-}
-
-
-/*
- *	Execute the system finger and translate LF to CRLF.
- */
-static void sys_finger(const char *l)
-{
-	FILE *fp;
-	char fn[1024];
-	char *p;
-
-	if (ffile(l) == 0)
-		exit(0);
-
-	snprintf(fn, sizeof(fn), "exec %s %s", SYS_FINGER, l);
-	if ((fp = safe_popen(fn, "r")) == NULL) {
-		printf("popen: %s\r\n", strerror(errno));
-		exit(1);
-	}
-
-	while(fgets(fn, 1024, fp)) {
-		if ((p = strchr(fn, '\n')) != NULL)
-			*p = 0;
-		fprintf(stdout, "%s\r\n", fn);
-	}
-	pclose(fp);
-	exit(0);
-}
-
 
 /*
  *	Get fullname of a user.
@@ -270,7 +176,6 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "       -c: show caller ID, if available\n");
 	fprintf(output, "       -d: set the raddb directory (default is %s)\n",
 		RADIUS_DIR);
-	fprintf(output, "       -f: give fingerd output\n");
 	fprintf(output, "       -F <file>: Use radutmp <file>\n");
 	fprintf(output, "       -i: show session ID\n");
 	fprintf(output, "       -n: no full name\n");
@@ -290,23 +195,20 @@ static void NEVER_RETURNS usage(int status)
 
 
 /*
- *	Main program, either pmwho or fingerd.
+ *	Main program
  */
 int main(int argc, char **argv)
 {
 	CONF_SECTION *maincs, *cs;
 	FILE *fp;
 	struct radutmp rt;
-	char inbuf[128];
 	char othername[256];
 	char nasname[1024];
 	char session_id[sizeof(rt.session_id)+1];
-	int fingerd = 0;
 	int hideshell = 0;
 	int showsid = 0;
 	int rawoutput = 0;
 	int radiusoutput = 0;	/* Radius attributes */
-	char *p, *q;
 	const char *portind;
 	int c;
 	unsigned int portno;
@@ -323,10 +225,6 @@ int main(int argc, char **argv)
 	while((c = getopt(argc, argv, "d:fF:nN:sSipP:crRu:U:Z")) != EOF) switch(c) {
 		case 'd':
 			raddb_dir = optarg;
-			break;
-		case 'f':
-			fingerd++;
-			showname = 0;
 			break;
 		case 'F':
 			radutmp_file = optarg;
@@ -435,35 +333,7 @@ int main(int argc, char **argv)
 	radutmp_file = radutmpconfig.radutmp_fn;
 
  have_radutmp:
-	/*
-	 *	See if we are "fingerd".
-	 */
-	if (strstr(argv[0], "fingerd")) {
-		fingerd++;
-		eol = "\r\n";
-		if (showname < 0) showname = 0;
-	}
 	if (showname < 0) showname = 1;
-
-	if (fingerd) {
-		/*
-		 *	Read first line of the input.
-		 */
-		fgets(inbuf, 128, stdin);
-		p = inbuf;
-		while(*p == ' ' || *p == '\t') p++;
-		if (*p == '/' && *(p + 1)) p += 2;
-		while(*p == ' ' || *p == '\t') p++;
-		for(q = p; *q && *q != '\r' && *q != '\n'; q++)
-			;
-		*q = 0;
-
-		/*
-		 *	See if we fingered a specific user.
-		 */
-		ffile("header");
-		if (*p) sys_finger(p);
-	}
 
 	/*
 	 *	Show the users logged in on the terminal server(s).
