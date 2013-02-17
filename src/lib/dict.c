@@ -1096,7 +1096,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, unsigned int *pvendor,
 {
 	const char *p;
 	unsigned int value;
-	const DICT_ATTR *da;
+	const DICT_ATTR *da = NULL;
 
 	if (tlv_depth > fr_attr_max_tlv) {
 		fr_strerror_printf("Too many sub-attributes");
@@ -1175,7 +1175,7 @@ int dict_str2oid(const char *ptr, unsigned int *pvalue, unsigned int *pvendor,
 		return -1;
 	}
 
-	if (!*pvendor && (tlv_depth == 1) &&
+	if (!*pvendor && (tlv_depth == 1) && da &&
 	    (da->flags.has_tlv || da->flags.extended)) {
 
 
