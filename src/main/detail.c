@@ -544,7 +544,13 @@ int detail_recv(rad_listen_t *listener)
 		 */
 		if (!strcasecmp(key, "Client-IP-Address")) {
 			data->client_ip.af = AF_INET;
-			ip_hton(value, AF_INET, &data->client_ip);
+			if (ip_hton(value, AF_INET, &data->client_ip) < 0) {
+				radlog(L_ERR,
+				       "Failed parsing Client-IP-Address");
+				       
+				pairfree(&data->vps);
+				goto cleanup;
+			}
 			continue;
 		}
 
