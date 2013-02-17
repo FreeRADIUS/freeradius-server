@@ -478,6 +478,7 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
 	
 	strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));
 	vp->length = strlen(vp->vp_strvalue);
+	pairadd(&request->packet->vps, vp);
 
 	RDEBUG2("SQL-User-Name updated");
 
