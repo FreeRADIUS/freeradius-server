@@ -167,8 +167,14 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.ip6addr)) {
 			int on = 1;
 
-			setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
-				   (char *)&on, sizeof(on));
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
+				       (char *)&on, sizeof(on)) < 0) {
+				close(sockfd);
+				fr_strerror_printf("Failed setting sockopt "
+						   "IPPROTO_IPV6 - IPV6_V6ONLY"
+						   ": %s", strerror(errno));
+				return -1;       
+			}
 		}
 #endif /* IPV6_V6ONLY */
 	}
@@ -184,8 +190,14 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		 *	flag is zero.
 		 */
 		flag = IP_PMTUDISC_DONT;
-		setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER,
-			   &flag, sizeof(flag));
+		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER,
+			       &flag, sizeof(flag) < 0) {
+			close(sockfd);
+			fr_strerror_printf("Failed setting sockopt "
+					   "IPPROTO_IP - IP_MTU_DISCOVER: %s",
+					   strerror(errno));
+			return -1;   	       
+		}
 #endif
 
 #if defined(IP_DONTFRAG)
@@ -193,8 +205,14 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		 *	Ensure that the "don't fragment" flag is zero.
 		 */
 		flag = 0;
-		setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG,
-			   &flag, sizeof(flag));
+		if (setsockopt(sockfd, IPPROTO_IP, IP_DONTFRAG,
+			   &flag, sizeof(flag)) < 0) {
+			close(sockfd);
+			fr_strerror_printf("Failed setting sockopt "
+					   "IPPROTO_IP - IP_DONTFRAG: %s",
+					   strerror(errno));
+			return -1;   
+		}
 #endif
 	}
 
