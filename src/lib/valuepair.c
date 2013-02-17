@@ -967,7 +967,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 				cs = s = strdup(value);
 				if (!s) return NULL;
 				p = strrchr(s, '+');
-				*p = 0;
+				if (p) *p = 0;
 				vp->flags.addport = 1;
 			} else {
 				p = NULL;
