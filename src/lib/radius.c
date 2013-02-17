@@ -2170,7 +2170,7 @@ int rad_tlv_ok(const uint8_t *data, size_t length,
 			break;
 
 		case 2:
-			if ((data[1] == 0) && (data[1] == 0)) goto zero;
+			if ((data[0] == 0) && (data[1] == 0)) goto zero;
 			break;
 
 		case 1:
