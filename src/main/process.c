@@ -1691,6 +1691,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	void *proxy_listener;
 
 	rad_assert(request->proxy != NULL);
+	rad_assert(request->home_server != NULL);
 	rad_assert(proxy_list != NULL);
 
 	tries = 1;
@@ -1745,9 +1746,7 @@ retry:
 	 *	particular home server.  'max_outstanding' is
 	 *	enforced in home_server_ldb(), in realms.c.
 	 */
-	if (request->home_server) {
-		request->home_server->currently_outstanding++;
-	}
+	request->home_server->currently_outstanding++;
 
 #ifdef WITH_TCP
 	request->proxy_listener->count++;
