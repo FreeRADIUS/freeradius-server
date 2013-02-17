@@ -2717,7 +2717,10 @@ void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 	vsnprintf(buffer, sizeof(buffer), fmt, ap);
 	va_end(ap);
 
-	radlog(L_ERR, "%s[%d]: %s", ci->filename, ci->lineno, buffer);
+	radlog(L_ERR, "%s[%d]: %s",
+	       ci ? ci->filename : "unknown",
+	       ci ? ci->lineno : 0,
+	       buffer);
 }
 
 
