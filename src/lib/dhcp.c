@@ -228,7 +228,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		fr_strerror_printf("Failed allocating packet");
 		return NULL;
 	}
-	memset(packet, 0, sizeof(packet));
+	memset(packet, 0, sizeof(*packet));
 
 	packet->data = malloc(MAX_PACKET_SIZE);
 	if (!packet->data) {
