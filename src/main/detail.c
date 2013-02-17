@@ -382,7 +382,14 @@ int detail_recv(rad_listen_t *listener)
 			{
 				struct stat buf;
 				
-				fstat(listener->fd, &buf);
+				if (fstat(listener->fd, &buf) < 0) {
+					radlog(L_ERR, "Failed to stat "
+					       "detail file %s: %s",
+				       		data->filename,
+				       		strerror(errno));
+				       		
+				       	goto cleanup;
+				}
 				if (((off_t) ftell(data->fp)) == buf.st_size) {
 					goto cleanup;
 				}
