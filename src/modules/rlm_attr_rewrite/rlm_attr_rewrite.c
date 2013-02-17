@@ -271,7 +271,7 @@ do_again:
 			DEBUG2("%s: Could not find value pair for attribute %s", data->name,data->attribute);
 			return rcode;
 		}
-		if (attr_vp->vp_strvalue == NULL || attr_vp->length == 0){
+		if (attr_vp->length == 0){
 			DEBUG2("%s: Attribute %s string value NULL or of zero length", data->name,data->attribute);
 			return rcode;
 		}
@@ -406,7 +406,7 @@ do_again:
 
 		DEBUG2("%s: Changed value for attribute %s from '%s' to '%s'", data->name,
 				data->attribute, attr_vp->vp_strvalue, new_str);
-		if (pairparsevalue(attr_vp, new_str) == NULL) {
+		if (!pairparsevalue(attr_vp, new_str)) {
 			DEBUG2("%s: Could not write value '%s' into attribute %s: %s", data->name, new_str, data->attribute, fr_strerror());
 			return rcode;
 		}
