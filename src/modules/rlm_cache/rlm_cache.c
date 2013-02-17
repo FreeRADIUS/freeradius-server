@@ -137,7 +137,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		pairfree(&vp);
 	}
 	
-	if (inst->stats) {
+	if (inst->stats && request->packet) {
 		vp = paircreate(PW_CACHE_ENTRY_HITS, PW_TYPE_INTEGER);
 		rad_assert(vp != NULL);
 		
