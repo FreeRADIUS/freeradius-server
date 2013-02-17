@@ -159,7 +159,12 @@ static int parse_sub_section(CONF_SECTION *parent,
 		/* TODO: Should really setup section with default values */
 		return 0;
 	}
-	cf_section_parse(cs, config, section_config);
+	
+	if (cf_section_parse(cs, config, section_config) < 0) {
+		radlog(L_ERR, "rlm_rest (%s): Parsing config section failed",
+		       instance->xlat_name);
+		return -1;
+	}
 
 	/*
 	 *	Add section name (Maybe add to headers later?).
