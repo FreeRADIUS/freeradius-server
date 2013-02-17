@@ -386,6 +386,7 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 #endif
 	} else {
 		rad_free(&packet);
+		close(newfd);
 		return NULL;
 	}
 
