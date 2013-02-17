@@ -471,7 +471,8 @@ static rlm_rcode_t realm_coa(UNUSED void *instance, REQUEST *request)
 	}
 
 	vp = pairfind(request->packet->vps, PW_OPERATOR_NAME, 0, TAG_ANY);
-
+	if (!vp) return RLM_MODULE_NOOP;
+	
 	/*
 	 *	Catch the case of broken dictionaries.
 	 */
