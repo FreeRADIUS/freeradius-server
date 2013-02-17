@@ -233,7 +233,7 @@ static int ruby_function(REQUEST *request, int func, VALUE module, const char *f
             if (vp->da->flags.has_tag) {
                 snprintf(buf, BUF_SIZE, "%s:%d", vp->da->name, vp->tag);
             } else {
-                strcpy(buf, vp->da->name);
+	        strlcpy(buf, vp->da->name, sizeof(buf));
             }
             VALUE rbString1 = rb_str_new2(buf);
             /* The value. Use delimiter - don't know what that means */
