@@ -1780,12 +1780,19 @@ int pairmark_xlat(VALUE_PAIR *vp, const char *value)
  */
 FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
 {
-	char		*q;
-	char		buf[64];
 	const char	*p;
-	size_t		len;
+	char *q;
 	FR_TOKEN	ret = T_OP_INVALID, next, quote;
+	char		buf[8];
 
+	if (!ptr || !*ptr || !raw) {
+		fr_strerror_printf("Invalid arguments");
+		return T_OP_INVALID;
+	}
+
+	/*
+	 *	Skip leading spaces
+	 */
 	p = *ptr;
 	while ((*p == ' ') || (*p == '\t')) p++;
 
@@ -1802,33 +1809,64 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
 	}
 
 	/*
-	 *	Restrict chars that may be used in attribute names.
+	 *	Try to get the attribute name.
 	 */
 	q = raw->l_opand;
-	for (len = 0; len < sizeof(raw->l_opand); len++) {
-		if (valid_attr_name[(int)*p]) {
-			*q++ = *p++;
-			continue;
+	*q = '\0';
+	while (*p) {
+		const uint8_t *t = (const uint8_t *) p;
+
+		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
+		too_long:
+			fr_strerror_printf("Attribute name too long");
+			return T_OP_INVALID;
 		}
-		break;
-	}
 
-	if (len == sizeof(raw->l_opand)) {
-		fr_strerror_printf("Attribute name is too long, "
-				   "maximum size is %zu", sizeof(raw->l_opand));
+		/*
+		 *	Only ASCII is allowed, and only a subset of that.
+		 */
+		if ((*t < 32) || (*t >= 128)) {
+		invalid:
+			fr_strerror_printf("Invalid attribute name");
+			return T_OP_INVALID;
+		}
 
-		return T_OP_INVALID;
+		/*
+		 *	This is arguably easier than trying to figure
+		 *	out which operators come after the attribute
+		 *	name.  Yes, our "lexer" is bad.
+		 */
+		if (!valid_attr_name[(int) *t]) {
+			break;
+		}
+
+		*(q++) = *(p++);
 	}
 
 	/*
-	 *	We may have Foo-Bar:= stuff, so back up.
+	 *	ASCII, but not a valid attribute name.
 	 */
-	if ((len > 0) && (raw->l_opand[len - 1] == ':')) {
-		p--;
-		len--;
+	if (!raw->l_opand) goto invalid;
+
+	/*
+	 *	Look for tag (:#).  This is different from :=, which
+	 *	is an operator.
+	 */
+	if ((*p == ':') && (isdigit((int) p[1]))) {
+		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
+			goto too_long;
+		}
+		*(q++) = *(p++);
+
+		while (isdigit((int) *p)) {
+			if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
+				goto too_long;
+			}
+			*(q++) = *(p++);
+		}
 	}
 
-	raw->l_opand[len] = '\0';
+	*q = '\0';
 	*ptr = p;
 
 	/* Now we should have an operator here. */
