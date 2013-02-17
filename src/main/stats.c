@@ -700,6 +700,9 @@ void request_stats_reply(REQUEST *request)
 		server_port = pairfind(request->packet->vps, 171, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (!server_port) return;
 		
+#ifndef NDEBUG
+		memset(&ipaddr, 0, sizeof(ipaddr));
+#endif
 		ipaddr.af = AF_INET;
 		ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 		home = home_server_find(&ipaddr, server_port->vp_integer,
