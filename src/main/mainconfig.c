@@ -385,10 +385,13 @@ static size_t xlat_config(void *instance, REQUEST *request,
 	 *  If 'outlen' is too small, then the output is chopped to fit.
 	 */
 	value = cf_pair_value(cp);
-	if (value) {
-		if (outlen > strlen(value)) {
-			outlen = strlen(value) + 1;
-		}
+	if (!value) {
+		out[0] = '\0';
+		return 0;
+	}
+
+	if (outlen > strlen(value)) {
+		outlen = strlen(value) + 1;
 	}
 
 	strlcpy(out, value, outlen);
