@@ -81,11 +81,12 @@ int main (int argc, char *argv[])
 	fprintf(stderr, "--------------------------------\t--------------------------------\n");
 	fflush(stderr);
 	for (i = 1; i < argc; i++ ) {
+		strcpy(password, argv[i]);
 		l = strlen(password);
 		if (l && password[l-1] == '\n') password [l-1] = 0;
-		smbdes_lmpwdhash(argv[i], hash);
+		smbdes_lmpwdhash(password, hash);
 		tohex (hash, 16, lmpass);
-		ntpwdhash (hash, argv[i]);
+		ntpwdhash (hash, password);
 		tohex (hash, 16, ntpass);
 		printf("%s\t%s\n", lmpass, ntpass);
 	}
