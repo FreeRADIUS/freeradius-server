@@ -3258,7 +3258,9 @@ _ACEOF
   unset _libcurl_with
 
 
-	if test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
+	if test "x$libcurl_cv_lib_version_ok" != "xyes"; then
+		fail="$fail libcurl too old"
+	elif test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
 		fail="$fail libcurl"
 	else
 		if test x$libcurl_protocol_HTTP != xyes; then
