@@ -107,6 +107,8 @@ static int fr_domain_socket(const char *path)
 	socklen_t socklen;
         struct sockaddr_un saremote;
 
+	if (!path) return -1;
+
 	len = strlen(path);
 	if (len >= sizeof(saremote.sun_path)) {
 		fprintf(stderr, "%s: Path too long in filename\n", progname);
