@@ -214,6 +214,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
  */
 RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 {
+	ssize_t			len;
 	uint32_t		magic;
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
@@ -241,23 +242,23 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	sizeof_src = sizeof(src);
 #ifdef WITH_UDPFROMTO
 	sizeof_dst = sizeof(dst);
-	packet->data_len = recvfromto(sockfd, packet->data, MAX_PACKET_SIZE, 0,
-				      (struct sockaddr *)&src, &sizeof_src,
-				      (struct sockaddr *)&dst, &sizeof_dst);
+	len = recvfromto(sockfd, packet->data, MAX_PACKET_SIZE, 0,
+			 (struct sockaddr *)&src, &sizeof_src,
+			 (struct sockaddr *)&dst, &sizeof_dst);
 #else
-	packet->data_len = recvfrom(sockfd, packet->data, MAX_PACKET_SIZE, 0,
-				    (struct sockaddr *)&src, &sizeof_src);
+	len = recvfrom(sockfd, packet->data, MAX_PACKET_SIZE, 0,
+		       (struct sockaddr *)&src, &sizeof_src);
 #endif
 
-	if (packet->data_len <= 0) {
+	if (len <= 0) {
 		fr_strerror_printf("Failed reading DHCP socket: %s", strerror(errno));
 		rad_free(&packet);
 		return NULL;
 	}
 
-	if (packet->data_len < MIN_PACKET_SIZE) {
+	if (len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%d < %d)",
-				   (int) packet->data_len, MIN_PACKET_SIZE);
+				   (int) len, MIN_PACKET_SIZE);
 		rad_free(&packet);
 		return NULL;
 	}
@@ -275,6 +276,8 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		rad_free(&packet);
 		return NULL;
 	}
+
+	packet->data_len = len;
 
 	memcpy(&magic, packet->data + 236, 4);
 	magic = ntohl(magic);
