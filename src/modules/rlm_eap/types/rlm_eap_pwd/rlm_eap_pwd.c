@@ -226,6 +226,11 @@ eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
     eap_pwd_t *inst = (eap_pwd_t *)type_data;
     VALUE_PAIR *vp;
     pwd_id_packet *pack;
+    
+    if (!inst || !handler) {
+        radlog(L_ERR, "rlm_eap_pwd: initiate, NULL data provided");
+        return -1;
+    }
 
     /*
      * make sure the server's been configured properly
@@ -246,11 +251,6 @@ eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
             return -1;
     }
 
-    if ((inst == NULL) ||
-        (handler == NULL)) {
-        radlog(L_ERR, "rlm_eap_pwd: initiate, NULL data provided");
-        return -1;
-    }
     if ((pwd_session = (pwd_session_t *)malloc(sizeof(*pwd_session))) == NULL) {
         radlog(L_ERR, "rlm_eap_pwd: initiate, out of memory (1)");
         return -1;
