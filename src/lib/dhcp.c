@@ -340,7 +340,11 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	/*
 	 *	This should never fail...
 	 */
-	getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst);
+	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
+		fr_strerror_printf("getsockname failed: %s", strerror(errno));
+		rad_free(&packet);
+		return NULL;	
+	}
 #endif
 	
 	fr_sockaddr2ipaddr(&dst, sizeof_dst, &packet->dst_ipaddr, &port);
