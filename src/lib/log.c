@@ -93,7 +93,11 @@ void fr_strerror_printf(const char *fmt, ...)
 		buffer = malloc(FR_STRERROR_BUFSIZE);
 		if (!buffer) return; /* panic and die! */
 
-		pthread_setspecific(fr_strerror_key, buffer);
+		if (pthread_setspecific(fr_strerror_key, buffer) != 0) {
+			fr_perror("Failed recording thread error");
+			
+			return;
+		}
 	}
 
 	va_start(ap, fmt);
