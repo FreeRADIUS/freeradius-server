@@ -2353,7 +2353,7 @@ static void cleanup_tmp_dir(const char *dirname)
     if (dir == NULL)
         return;
 
-    if ((strlen(dirname) + 1 + entry->d_namlen) >= sizeof(fullname)) {
+    if ((strlen(dirname) + 1 + strlen(entry->d_name)) >= sizeof(fullname)) {
           fprintf(stderr, "Dirname too long out of buffer space");
           return;
     }
