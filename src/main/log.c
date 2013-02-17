@@ -61,7 +61,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	struct main_config_t *myconfig = &mainconfig;
 	unsigned char *p;
 	char buffer[8192];
-	int len;
+	size_t len;
 
 	/*
 	 *	NOT debugging, and trying to log debug messages.
@@ -92,20 +92,23 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	 */
 	if ((myconfig->radlog_dest != RADLOG_SYSLOG) &&
 	    (debug_flag != 1) && (debug_flag != 2)) {
-		const char *s;
 		time_t timeval;
 
 		timeval = time(NULL);
 		CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
-
-		s = fr_int2str(levels, (lvl & ~L_CONS), ": ");
-
-		strcat(buffer, s);
+		
 		len = strlen(buffer);
+
+		len += strlcpy(buffer + len,
+			       fr_int2str(levels, (lvl & ~L_CONS), ": "),
+			       sizeof(buffer) - len);
 	}
 
-	vsnprintf(buffer + len, sizeof(buffer) - len - 1, fmt, ap);
-
+	if (len < sizeof(buffer)) {
+		len += vsnprintf(buffer + len,
+			         sizeof(buffer) - len - 1, fmt, ap);
+	}
+	
 	/*
 	 *	Filter out characters not in Latin-1.
 	 */
@@ -116,8 +119,14 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		else if (*p < 32 || (*p >= 128 && *p <= 160))
 			*p = '?';
 	}
-	strcat(buffer, "\n");
-
+	
+	if (len < (sizeof(buffer) - 1)) {
+		buffer[len]	= '\n';
+		buffer[len + 1] = '\0';
+	} else {
+		buffer[sizeof(buffer) - 1] = '\0';
+	}
+	
 	switch (myconfig->radlog_dest) {
 
 #ifdef HAVE_SYSLOG_H
@@ -209,6 +218,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	FILE *fp = NULL;
 	va_list ap;
 	char buffer[8192];
+	char *p;
 
 	va_start(ap, msg);
 
@@ -246,7 +256,6 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	}
 
 	if (request && filename) {
-		char *p;
 		radlog_func_t rl = request->radlog;
 
 		request->radlog = NULL;
@@ -279,7 +288,6 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	 *	Print timestamps to the file.
 	 */
 	if (fp) {
-		char *s;
 		time_t timeval;
 		timeval = time(NULL);
 
@@ -287,27 +295,35 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		if (log_dates_utc) {
 			struct tm utc;
 			gmtime_r(&timeval, &utc);
-			asctime_r(&utc, buffer + len);
+			asctime_r(&utc, buffer);
 		} else
 #endif
-			CTIME_R(&timeval, buffer + len, sizeof(buffer) - len - 1);
+			CTIME_R(&timeval, buffer, sizeof(buffer) - 1);
 		
-		s = strrchr(buffer, '\n');
-		if (s) {
-			s[0] = ' ';
-			s[1] = '\0';
+		len = strlen(buffer);
+		p = strrchr(buffer, '\n');
+		if (p) {
+			p[0] = ' ';
+			p[1] = '\0';
 		}
 		
-		strcat(buffer, fr_int2str(levels, (lvl & ~L_CONS), ": "));
-		len = strlen(buffer);
+		len += strlcpy(buffer + len, 
+		 	       fr_int2str(levels, (lvl & ~L_CONS), ": "), 
+		 	       sizeof(buffer) - len);
+		 	       
+		if (len >= sizeof(buffer)) goto finish;
 	}
 	
 	if (request && request->module[0]) {
-		snprintf(buffer + len, sizeof(buffer) + len, "%s : ", request->module);
-		len = strlen(buffer);
+		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ",
+			       request->module);
+			       
+		if (len >= sizeof(buffer)) goto finish;
 	}
+	
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
 	
+	finish:
 	if (!fp) {
 		if (request) {
 			radlog(lvl, "(%u) %s", request->number, buffer);
