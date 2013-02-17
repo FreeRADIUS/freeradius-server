@@ -881,10 +881,6 @@ static rlm_rcode_t sqlippool_accounting(void * instance, REQUEST * request)
 	case PW_STATUS_ACCOUNTING_OFF:
 		rcode = sqlippool_accounting_off(sqlsocket, data, request);
 		break;
-
-	default:
-		/* We don't care about any other accounting packet */
-		return RLM_MODULE_NOOP;
 	}
 
 	data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
