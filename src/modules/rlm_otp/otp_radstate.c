@@ -119,7 +119,7 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	 *	having to collect the data to be signed into one
 	 *	contiguous piece.
 	 */
-	HMAC_Init(&hmac_ctx, key, sizeof(key[0] * 16), EVP_md5());
+	HMAC_Init(&hmac_ctx, key, sizeof(key[0]) * 16, EVP_md5());
 	HMAC_Update(&hmac_ctx, (const uint8_t *) challenge, clen);
 	HMAC_Update(&hmac_ctx, (uint8_t *) &flags, 4);
 	HMAC_Update(&hmac_ctx, (uint8_t *) &when, 4);
