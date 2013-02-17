@@ -317,6 +317,7 @@ int rad_mkdir(char *directory, mode_t mode)
 		 *	one which caused the error.
 		 */
 		if (rcode < 0) {
+			if (errno == EEXIST) return 0;
 			return rcode;
 		}
 
