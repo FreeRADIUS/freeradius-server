@@ -157,7 +157,12 @@ static int fr_server_domain_socket(const char *path)
 	socklen_t socklen;
         struct sockaddr_un salocal;
 	struct stat buf;
-
+	
+	if (!path) {
+		radlog(L_ERR, "No path provided, was NULL.");
+		return -1;
+	}
+	
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
 		radlog(L_ERR, "Path too long in socket filename.");
