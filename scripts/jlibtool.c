@@ -2159,7 +2159,7 @@ static void post_parse_fixup(command_t *cmd_data)
 
 static int run_mode(command_t *cmd_data)
 {
-    int rv;
+    int rv = 0;
     count_chars *cctemp;
 
     cctemp = (count_chars*)malloc(sizeof(count_chars));
@@ -2169,9 +2169,7 @@ static int run_mode(command_t *cmd_data)
     {
     case mCompile:
         rv = run_command(cmd_data, cmd_data->arglist);
-        if (rv) {
-            return rv;
-        }
+        if (rv) goto finish;
         break;
     case mInstall:
         /* Well, we'll assume it's a file going to a directory... */
@@ -2180,9 +2178,7 @@ static int run_mode(command_t *cmd_data)
          */
         if (!cmd_data->output_name) {
             rv = run_command(cmd_data, cmd_data->arglist);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
         }
         if (cmd_data->output_name) {
             append_count_chars(cctemp, cmd_data->arglist);
@@ -2190,9 +2186,7 @@ static int run_mode(command_t *cmd_data)
                                cmd_data->output_name,
                                cctemp->num - 1);
             rv = run_command(cmd_data, cctemp);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
             clear_count_chars(cctemp);
         }
         if (cmd_data->static_name.install) {
@@ -2201,9 +2195,7 @@ static int run_mode(command_t *cmd_data)
                                cmd_data->static_name.install,
                                cctemp->num - 1);
             rv = run_command(cmd_data, cctemp);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
 #if defined(__APPLE__) && defined(RANLIB)
             /* From the Apple libtool(1) manpage on Tiger/10.4:
              * ----
@@ -2247,9 +2239,7 @@ static int run_mode(command_t *cmd_data)
                                cmd_data->shared_name.install,
                                cctemp->num - 1);
             rv = run_command(cmd_data, cctemp);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
             clear_count_chars(cctemp);
         }
         if (cmd_data->module_name.install) {
@@ -2258,9 +2248,7 @@ static int run_mode(command_t *cmd_data)
                                cmd_data->module_name.install,
                                cctemp->num - 1);
             rv = run_command(cmd_data, cctemp);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
             clear_count_chars(cctemp);
         }
         break;
@@ -2277,9 +2265,7 @@ static int run_mode(command_t *cmd_data)
                              cmd_data->static_name.normal);
 
             rv = run_command(cmd_data, cmd_data->obj_files);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
 
 #ifdef RANLIB
             lib_args[0] = RANLIB;
@@ -2312,15 +2298,11 @@ static int run_mode(command_t *cmd_data)
             add_dynamic_link_opts(cmd_data, cmd_data->program_opts);
 
             rv = run_command(cmd_data, cmd_data->shared_opts.normal);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
         }
         if (cmd_data->output == otProgram) {
             rv = run_command(cmd_data, cmd_data->arglist);
-            if (rv) {
-                return rv;
-            }
+            if (rv) goto finish;
         }
         break;
     case mExecute:
@@ -2341,9 +2323,7 @@ static int run_mode(command_t *cmd_data)
 	l = "./build/lib/.libs";
 	setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
 	rv = run_command(cmd_data, cmd_data->arglist);
-	if (rv) {
-	    return rv;
-	}
+        if (rv) goto finish;
     }
       break;
 
@@ -2351,7 +2331,10 @@ static int run_mode(command_t *cmd_data)
         break;
     }
 
-    return 0;
+    finish:
+    
+    free(cctemp);
+    return rv;
 }
 
 static void cleanup_tmp_dir(const char *dirname)
