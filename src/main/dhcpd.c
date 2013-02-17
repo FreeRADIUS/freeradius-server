@@ -540,7 +540,10 @@ static int dhcp_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	DEBUG2("NO ENCODE!");
 	return 0;
+	
+#if 0
 	return fr_dhcp_encode(request->reply, request->packet);
+#endif
 }
 
 
