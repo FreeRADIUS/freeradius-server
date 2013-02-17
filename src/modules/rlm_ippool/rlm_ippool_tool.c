@@ -175,7 +175,6 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 	if (data_datum.dptr != NULL){
 		found = 1;
 		memcpy(&entry, data_datum.dptr, sizeof(ippool_info));
-		free(data_datum.dptr);
 		
 		if (entry.active){
 			if (old) {
@@ -205,7 +204,6 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 			
 			if (data_datum.dptr != NULL) {
 				memcpy(&num, data_datum.dptr, sizeof(int));
-				free(data_datum.dptr);
 				
 				if (num > 0) {
 					num--;
@@ -327,7 +325,6 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 		data_datum = gdbm_fetch(indexdb, key_datum);
 		if (data_datum.dptr) {
 			memcpy(&num, data_datum.dptr, sizeof(int));
-			free(data_datum.dptr);
 		} else {
 			num = 0;
 		}
