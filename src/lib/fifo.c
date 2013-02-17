@@ -77,7 +77,7 @@ void fr_fifo_free(fr_fifo_t *fi)
 		}
 	}
 
-	memset(fi, 0, sizeof(fi));
+	memset(fi, 0, sizeof(*fi));
 	free(fi);
 }
 
