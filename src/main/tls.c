@@ -2633,9 +2633,8 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 		code = SSL_get_error(ssn->ssl, err);
 		switch (code) {
 		case SSL_ERROR_WANT_READ:
-			return FR_TLS_MORE_FRAGMENTS;
 			DEBUG("Error in fragmentation logic: SSL_WANT_READ");
-			break;
+			return FR_TLS_MORE_FRAGMENTS;
 
 		case SSL_ERROR_WANT_WRITE:
 			DEBUG("Error in fragmentation logic: SSL_WANT_WRITE");
