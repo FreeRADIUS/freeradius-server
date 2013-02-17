@@ -970,10 +970,6 @@ static char *gen_library_name(const char *name, enum lib_type genlib)
     }
 
     newext = strrchr(newarg, '.') + 1;
-    if (!newext) {
-        free(newarg);
-	return NULL;
-    }
 
     switch (genlib) {
     case type_STATIC_LIB:
