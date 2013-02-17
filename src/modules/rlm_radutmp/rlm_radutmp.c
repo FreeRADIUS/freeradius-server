@@ -134,7 +134,15 @@ static int radutmp_zap(UNUSED rlm_radutmp_t *inst,
 	/*
 	 *	Lock the utmp file, prefer lockf() over flock().
 	 */
-	rad_lockfd(fd, LOCK_LEN);
+	if (rad_lockfd(fd, LOCK_LEN) < 0)
+	{
+		radlog(L_ERR, "rlm_radutmp: Failed to acquire lock on file %s:"
+		       " %s", filename, strerror(errno));
+		
+		close(fd);
+		
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	Find the entry for this NAS / portno combination.
