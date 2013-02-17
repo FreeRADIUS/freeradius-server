@@ -400,9 +400,11 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
  
 	cleanup:
 
-	krb5_free_cred_contents(*context, &init_creds);
-	krb5_free_context(*context);
-	krb5_kt_close(*context, keytab);
+	if (context) {
+		krb5_free_cred_contents(*context, &init_creds);
+		krb5_free_context(*context);
+		krb5_kt_close(*context, keytab);
+	}
 	
 	return rcode;
 }
