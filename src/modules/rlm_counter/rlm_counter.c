@@ -684,8 +684,7 @@ static rlm_rcode_t counter_accounting(void *instance, REQUEST *request)
 		if (counter.uniqueid)
 			DEBUG("rlm_counter: Counter Unique ID = '%s'",counter.uniqueid);
 		if (uniqueid_vp != NULL){
-			if (counter.uniqueid != NULL &&
-				strncmp(uniqueid_vp->vp_strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0){
+			if (strncmp(uniqueid_vp->vp_strvalue,counter.uniqueid, UNIQUEID_MAX_LEN - 1) == 0){
 				DEBUG("rlm_counter: Unique IDs for user match. Droping the request.");
 				return RLM_MODULE_NOOP;
 			}
