@@ -1911,7 +1911,7 @@ static int my_dict_init(const char *dir, const char *fn,
 		strcpy(dirtmp, fn);
 		dirtmp[p - fn] = 0;
 		dir = dirtmp;
-	} else if (dir && dir[0] && strcmp(dir, ".") != 0) {
+	} else if (dir[0] && strcmp(dir, ".") != 0) {
 		snprintf(dirtmp, sizeof(dirtmp), "%s/%s", dir, fn);
 		fn = dirtmp;
 	}
