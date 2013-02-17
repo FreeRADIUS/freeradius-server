@@ -647,6 +647,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 		break;
 		
 	case PAIR_LIST_UNKNOWN:
+		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
 		radlog(L_ERR, "rlm_cache: Unknown list qualifier in \"%s\"", fmt);
 		return 0;
 		
