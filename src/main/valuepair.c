@@ -1128,7 +1128,7 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
 		rad_cfree((*tmpl)->name);
 	}
 	
-	dict_attr_free((*tmpl)->da);
+	dict_attr_free(&((*tmpl)->da));
 	
 	free(*tmpl);
 	
