@@ -243,7 +243,7 @@ static int dhcp_process(REQUEST *request)
 	if (vp) {
 		DICT_VALUE *dv = dict_valbyattr(53, DHCP_MAGIC_VENDOR, vp->vp_integer);
 		DEBUG("Trying sub-section dhcp %s {...}",
-		      dv->name ? dv->name : "<unknown>");
+		      dv->name[0] != '\0' ? dv->name : "<unknown>");
 		rcode = module_post_auth(vp->vp_integer, request);
 	} else {
 		DEBUG("DHCP: Failed to find DHCP-Message-Type in packet!");
