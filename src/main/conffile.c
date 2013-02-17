@@ -200,7 +200,7 @@ void cf_pair_free(CONF_PAIR **cp)
 	 */
 
 #ifndef NDEBUG
-	memset(*cp, 0, sizeof(*cp));
+	memset(*cp, 0, sizeof(cp));
 #endif
 	free(*cp);
 
@@ -219,7 +219,7 @@ static void cf_data_free(CONF_DATA **cd)
 		((*cd)->free)((*cd)->data);
 	}
 #ifndef NDEBUG
-	memset(*cd, 0, sizeof(*cd));
+	memset(*cd, 0, sizeof(cd));
 #endif
 	free(*cd);
 	*cd = NULL;
@@ -404,7 +404,7 @@ void cf_section_free(CONF_SECTION **cs)
 	 * And free the section
 	 */
 #ifndef NDEBUG
-	memset(*cs, 0, sizeof(*cs));
+	memset(*cs, 0, sizeof(cs));
 #endif
 	free(*cs);
 
