@@ -72,8 +72,12 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 #ifdef IPV6_V6ONLY
 
 		if (IN6_IS_ADDR_UNSPECIFIED(&ipaddr->ipaddr.ip6addr)) {
-			setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
-				   (char *)&on, sizeof(on));
+			if (setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY,
+				       (char *)&on, sizeof(on)) < 0) {
+				fr_strerror_printf("Failed in setsockopt(): %s",
+						   strerror(errno));
+				close(sockfd);       
+			} 
 		}
 #endif /* IPV6_V6ONLY */
 	}
