@@ -969,7 +969,14 @@ static char *gen_library_name(const char *name, enum lib_type genlib)
         strcpy(newarg, name);
     }
 
-    newext = strrchr(newarg, '.') + 1;
+    newext = strrchr(newarg, '.');
+    if (!newext) {
+        printf("Error: Library path does not have an extension");
+	free(newarg);
+	
+	return NULL;
+    }
+    newext++;
 
     switch (genlib) {
     case type_STATIC_LIB:
@@ -1076,13 +1083,14 @@ static char *check_library_exists(command_t *cmd, const char *arg, int pathlen,
     }
 
     strcpy(newarg + newpathlen, arg + pathlen);
-    ext = strrchr(newarg, '.') + 1;
+    ext = strrchr(newarg, '.');
     if (!ext) {
     	printf("Error: Library path does not have an extension");
 	free(newarg);
 	
 	return NULL;
     }
+    ext++;
 
     pass = 0;
 
