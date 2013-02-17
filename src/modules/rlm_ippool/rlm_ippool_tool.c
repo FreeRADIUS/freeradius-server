@@ -292,21 +292,11 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 		} else {
 			if (delete) {
 				gdbm_delete(sessiondb, key_datum);
-			} else {
-				if (mppp)
-					extra = 1;
-#if 0
-				if (!mppp)
-					printf("Error in if statements!!!\n");
-#endif
 			}
 		}
 		
 		free(key_datum.dptr);
 		entry.active = 1;
-		if (extra) {
-			entry.extra = 1;
-		}
 		
 		data_datum.dptr = (char *) &entry;
 		data_datum.dsize = sizeof(ippool_info);
