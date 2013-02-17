@@ -498,6 +498,12 @@ static module_entry_t *linkto_module(const char *module_name,
 	strlcpy(myentry.name, module_name, sizeof(myentry.name));
 	node = rbtree_finddata(module_tree, &myentry);
 	if (node) return node;
+	if (strlen(module_name) >= sizeof(module_struct)) {
+		cf_log_err(cf_sectiontoitem(cs),
+			   "Failed to link to module '%s': Name is too long\n",
+			   module_name);
+		return NULL;
+	}
 
 	/*
 	 *	Link to the module's rlm_FOO{} module structure.
@@ -505,7 +511,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 *	The module_name variable has the version number
 	 *	embedded in it, and we don't want that here.
 	 */
-	strcpy(module_struct, module_name);
+	strlcpy(module_struct, module_name, sizeof(module_struct));
 	p = strrchr(module_struct, '-');
 	if (p) *p = '\0';
 
