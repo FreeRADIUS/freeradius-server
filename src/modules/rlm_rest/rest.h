@@ -33,6 +33,7 @@ RCSIDH(other_h, "$Id$")
 #define HAVE_JSON
 #endif
 
+#define CURL_NO_OLDIES 1
 #include <curl/curl.h>
 
 #ifdef HAVE_JSON

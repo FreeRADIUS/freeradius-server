@@ -3053,11 +3053,11 @@ fi
 $as_echo "$libcurl_cv_lib_curl_version" >&6; }
 
         _libcurl_version=`echo $libcurl_cv_lib_curl_version | $_libcurl_version_parse`
-        _libcurl_wanted=`echo 0 | $_libcurl_version_parse`
+        _libcurl_wanted=`echo 7.19.1 | $_libcurl_version_parse`
 
         if test $_libcurl_wanted -gt 0 ; then
-           { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libcurl >= version " >&5
-$as_echo_n "checking for libcurl >= version ... " >&6; }
+           { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libcurl >= version 7.19.1" >&5
+$as_echo_n "checking for libcurl >= version 7.19.1... " >&6; }
 if ${libcurl_cv_lib_version_ok+:} false; then :
   $as_echo_n "(cached) " >&6
 else
