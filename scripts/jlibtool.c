@@ -829,7 +829,7 @@ static void safe_mkdir(const char *path)
 #else
     status = mkdir(path, ~old_umask);
 #endif
-    if (status < 0) {
+    if ((status < 0) && (errno != EEXIST)) {
         printf("Warning: mkdir of %s failed\n", path);
     }
 }
