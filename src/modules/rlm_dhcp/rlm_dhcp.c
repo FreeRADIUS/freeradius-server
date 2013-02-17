@@ -124,7 +124,7 @@ static int dhcp_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst) {
 		return -1;
 	}
-	memset(inst, 0, sizeof(inst));
+	memset(inst, 0, sizeof(*inst));
 	
 	xlat_register("dhcp_options", dhcp_options_xlat, inst);
 
