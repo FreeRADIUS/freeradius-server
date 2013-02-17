@@ -3328,15 +3328,16 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 
 	case PW_TYPE_COMBO_IP:
 		if (datalen == 4) {
-			da = dict_attrbytype(da->attr, da->vendor,
-					     PW_TYPE_IPADDR);
+			child = dict_attrbytype(da->attr, da->vendor,
+						PW_TYPE_IPADDR);
 		} else if (datalen == 16) {
-			da = dict_attrbytype(da->attr, da->vendor,
+			child = dict_attrbytype(da->attr, da->vendor,
 					     PW_TYPE_IPV6ADDR);
 		} else {
 			goto raw;
 		}
-		if (!da) goto raw;
+		if (!child) goto raw;
+		da = child;	/* re-write it */
 		break;
 
 	case PW_TYPE_IPV4PREFIX:
