@@ -1003,6 +1003,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 		 *	always fits.
 		 */
 	case FLAG_ENCRYPT_ASCEND_SECRET:
+		if (len != 16) return 0;
 		make_secret(ptr, packet->vector, secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
