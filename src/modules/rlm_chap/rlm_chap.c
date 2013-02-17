@@ -95,7 +95,7 @@ static rlm_rcode_t chap_authenticate(void *instance, REQUEST *request)
 		request->username->vp_strvalue);
 
 	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
-		if ((passwd_item = pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL){
+		if (pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
 			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RDEBUG("!!! Please update your configuration so that the \"known !!!");
 			RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
