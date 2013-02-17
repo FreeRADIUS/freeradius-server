@@ -73,6 +73,7 @@ static int replicate_packet(void *instance, REQUEST *request)
 		 */
 		switch (request->packet->code) {
 		default:
+			pool = NULL;
 			RDEBUG2("ERROR: Cannot replicate unknown packet code %d",
 				request->packet->code);
 			cleanup(packet);
