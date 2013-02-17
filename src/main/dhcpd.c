@@ -242,6 +242,8 @@ static int dhcp_process(REQUEST *request)
 	vp = pairfind(request->packet->vps, 53, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Message-Type */
 	if (vp) {
 		DICT_VALUE *dv = dict_valbyattr(53, DHCP_MAGIC_VENDOR, vp->vp_integer);
+		if (!dv) return RLM_MODULE_FAIL;
+
 		DEBUG("Trying sub-section dhcp %s {...}",
 		      dv->name[0] != '\0' ? dv->name : "<unknown>");
 		rcode = module_post_auth(vp->vp_integer, request);
