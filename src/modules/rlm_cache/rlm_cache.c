@@ -477,8 +477,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			if (!vp) continue;
 			
 			vp->op = map->op;
-			vp = pairparsevalue(vp, buffer);
-			if (!vp) continue;
+			if (!pairparsevalue(vp, buffer)) {
+				pairfree(&vp);
+				continue;
+			}
 			
 			pairadd(to_cache, vp);
 			
@@ -500,8 +502,10 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			if (!vp) continue;
 			
 			vp->op = map->op;
-			vp = pairparsevalue(vp, map->src->name);
-			if (!vp) continue;
+			if (!pairparsevalue(vp, map->src->name)) {
+				pairfree(&vp);
+				continue;
+			}
 			
 			pairadd(to_cache, vp);
 			
