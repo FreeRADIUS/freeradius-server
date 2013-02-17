@@ -86,7 +86,9 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src;
 
-	fr_ipaddr2sockaddr(src_ipaddr, 0, &src, &sizeof_src);
+	if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &src, &sizeof_src)) {
+		return -1;   /* Unknown address family, Die Die Die! */	
+	}
 #else
 	src_ipaddr = src_ipaddr; /* -Wunused */
 #endif

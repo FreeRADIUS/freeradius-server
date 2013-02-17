@@ -394,8 +394,10 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 	socklen_t		sizeof_src;
 #endif
 
-	fr_ipaddr2sockaddr(&packet->dst_ipaddr, packet->dst_port,
-			   &dst, &sizeof_dst);
+	if (!fr_ipaddr2sockaddr(&packet->dst_ipaddr, packet->dst_port,
+				&dst, &sizeof_dst)) {
+		return -1;			
+	}
 
 	/*
 	 *	The client doesn't yet have an IP address, but is
@@ -415,8 +417,10 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 	return sendto(packet->sockfd, packet->data, packet->data_len, 0,
 		      (struct sockaddr *)&dst, sizeof_dst);
 #else
-	fr_ipaddr2sockaddr(&packet->src_ipaddr, packet->src_port,
-			   &src, &sizeof_src);
+	if (!fr_ipaddr2sockaddr(&packet->src_ipaddr, packet->src_port,
+				&src, &sizeof_src)) {
+		return -1;			
+	}
 
 	return sendfromto(packet->sockfd,
 			  packet->data, packet->data_len, 0,
