@@ -355,7 +355,6 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			RDEBUG("Provided password was incorrect: %s",
 			       error_message(ret));
 			rcode = RLM_MODULE_REJECT;
-		
 			break;
 			
 		case KRB5KDC_ERR_KEY_EXP:
@@ -364,19 +363,18 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			RDEBUG("Account has been locked out: %s",
 			       error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
-		
 			break;
 			
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
 			RDEBUG("User not found: %s", error_message(ret));
 			rcode = RLM_MODULE_NOTFOUND;
+			break;
 			
 		default:
 			radlog(L_ERR, "rlm_krb5 (%s): Failed getting/verifying "
 			       "credentials: %s", inst->xlat_name,
 			       error_message(ret));
 			rcode = RLM_MODULE_FAIL;
-		
 			break;
 		}
 
