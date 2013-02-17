@@ -1372,23 +1372,47 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		vp->length = 6;
 		break;
 
+	/* 
+	 *	Crazy polymorphic (IPv4/IPv6) attribute type for WiMAX.
+	 *
+	 *	We try and make is saner by replacing the original
+	 *	da, with either an IPv4 or IPv6 da type.
+	 *
+	 *	These are not dynamic da, and will have the same vendor
+	 *	and attribute as the original.
+	 */
 	case PW_TYPE_COMBO_IP:
-		if (inet_pton(AF_INET6, value, vp->vp_strvalue) > 0) {
-			vp->type = PW_TYPE_IPV6ADDR;
-			vp->length = 16; /* length of IPv6 address */
-			vp->vp_strvalue[vp->length] = '\0';
+		{
+			const DICT_ATTR *da;
+		
+			if (inet_pton(AF_INET6, value, vp->vp_strvalue) > 0) {
+				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
+						     PW_TYPE_IPV6ADDR);
+				if (!da) {
+					return NULL;
+				}
+			
+				vp->length = 16; /* length of IPv6 address */
+				vp->vp_strvalue[vp->length] = '\0';
+			} else {
+				fr_ipaddr_t ipaddr;
+			
+				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
+						     PW_TYPE_IPADDR);
+				if (!da) {
+					return NULL;
+				}
 
-		} else {
-			fr_ipaddr_t ipaddr;
+				if (ip_hton(value, AF_INET, &ipaddr) < 0) {
+					fr_strerror_printf("Failed to find IPv4 address for %s", value);
+					return NULL;
+				}
 
-			if (ip_hton(value, AF_INET, &ipaddr) < 0) {
-				fr_strerror_printf("Failed to find IPv4 address for %s", value);
-				return NULL;
+				vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
+				vp->length = 4;
 			}
-
-			vp->type = PW_TYPE_IPADDR;
-			vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
-			vp->length = 4;
+		
+			vp->da = da;
 		}
 		break;
 
