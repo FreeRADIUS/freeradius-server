@@ -407,14 +407,6 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 static int perl_instantiate(CONF_SECTION *conf, void **instance)
 {
 	PERL_INST       *inst = (PERL_INST *) instance;
-	HV		*rad_reply_hv;
-	HV		*rad_check_hv;
-	HV		*rad_config_hv;
-	HV		*rad_request_hv;
-#ifdef WITH_PROXY
-	HV		*rad_request_proxy_hv;
-	HV		*rad_request_proxy_reply_hv;
-#endif
 	AV		*end_AV;
 
 	char **embed;
@@ -515,24 +507,6 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	PL_endav = end_AV;
-
-	rad_reply_hv = newHV();
-	rad_check_hv = newHV();
-	rad_config_hv = newHV();
-	rad_request_hv = newHV();
-#ifdef WITH_PROXY
-	rad_request_proxy_hv = newHV();
-	rad_request_proxy_reply_hv = newHV();
-#endif
-
-	rad_reply_hv = get_hv("RAD_REPLY",1);
-        rad_check_hv = get_hv("RAD_CHECK",1);
-	rad_config_hv = get_hv("RAD_CONFIG",1);
-        rad_request_hv = get_hv("RAD_REQUEST",1);
-#ifdef WITH_PROXY
-	rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
-	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
-#endif
 
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL)
