@@ -1888,8 +1888,12 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
-	sock->copy = NULL;
-	if (sock->path) sock->copy = strdup(sock->path);
+	if (!sock->path) {
+		radlog(L_ERR, "Socket name is requird");
+		return -1;
+	}
+
+	sock->copy = strdup(sock->path);
 
 #if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {
