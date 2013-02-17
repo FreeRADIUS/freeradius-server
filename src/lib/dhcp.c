@@ -977,7 +977,10 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 		length = fr_dhcp_vp2attr(vp, ptr + 2,
 					 tlv->vp_tlv + tlv->length - ptr);
-		if (length > 255) return NULL;
+		if (length > 255) {
+			pairfree(&vp);
+			return NULL;
+		}
 
 		/*
 		 *	Pack the attribute.
