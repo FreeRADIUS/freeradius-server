@@ -275,9 +275,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 				 */
 		raw:
 				if (vp) pairfree(&vp);
-				da = dict_attrunknown(da->attr, da->vendor,
-						      TRUE);
-
+				da = dict_attrunknown(attr, vendor, TRUE);
 				if (!da) return NULL;
 				vp = pairalloc(da);
 				vp->length = size;
