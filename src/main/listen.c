@@ -578,6 +578,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	}
 
 	if (!fr_sockaddr2ipaddr(&src, salen, &src_ipaddr, &src_port)) {
+		close(newfd);
 		DEBUG2(" ... unknown address family.");
 		return 0;
 	}
