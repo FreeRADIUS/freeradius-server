@@ -1032,7 +1032,7 @@ static int ldap_groupcmp(void *instance, REQUEST *req,
 
 	DEBUG("  [%s] Entering ldap_groupcmp()", inst->xlat_name);
 
-	if (check->vp_strvalue == NULL || check->length == 0){
+	if (check->length == 0){
                 DEBUG("rlm_ldap::ldap_groupcmp: Illegal group name");
                 return 1;
         }
@@ -1368,7 +1368,7 @@ static int ldap_authorize(void *instance, REQUEST * request)
 	/*
 	 * Check for valid input, zero length names not permitted
 	 */
-	if (request->username->vp_strvalue == 0) {
+	if (request->username->length == 0) {
 		DEBUG2("zero length username not permitted\n");
 		return RLM_MODULE_INVALID;
 	}
