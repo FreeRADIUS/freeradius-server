@@ -77,6 +77,7 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 				fr_strerror_printf("Failed in setsockopt(): %s",
 						   strerror(errno));
 				close(sockfd);       
+				return -1;
 			} 
 		}
 #endif /* IPV6_V6ONLY */
