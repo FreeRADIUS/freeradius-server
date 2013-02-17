@@ -1674,7 +1674,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 
 	q = attr;
 	for (len = 0; len < sizeof(attr); len++) {
-		if (valid_attr_name[(int)*p]) {
+	  if (valid_attr_name[(int)*((const uint8_t *)p)]) {
 			*q++ = *p++;
 			continue;
 		}
