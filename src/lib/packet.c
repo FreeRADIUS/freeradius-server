@@ -191,7 +191,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 		 */
 		flag = IP_PMTUDISC_DONT;
 		if (setsockopt(sockfd, IPPROTO_IP, IP_MTU_DISCOVER,
-			       &flag, sizeof(flag) < 0) {
+			       &flag, sizeof(flag)) < 0) {
 			close(sockfd);
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_MTU_DISCOVER: %s",
