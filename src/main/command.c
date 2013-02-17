@@ -714,9 +714,13 @@ static int command_show_clients(rad_listen_t *listener, UNUSED int argc, UNUSED 
 
 static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char *argv[])
 {
+	int fd;
 	CONF_ITEM *ci;
-	FILE *fp = fdopen(dup(listener->fd), "a");
+	FILE *fp;
 
+	fd = dup(listener->fd);
+	if (!fd) return 0;
+	fp = fdopen(fd, "a");
 	if (!fp) {
 		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
 		return 0;
@@ -910,6 +914,7 @@ static RADCLIENT *get_client(rad_listen_t *listener, int argc, char *argv[])
 
 static int command_show_client_config(rad_listen_t *listener, int argc, char *argv[])
 {
+	int fd;
 	RADCLIENT *client;
 	FILE *fp;
 
@@ -919,8 +924,10 @@ static int command_show_client_config(rad_listen_t *listener, int argc, char *ar
 	}
 
 	if (!client->cs) return 1;
+	fd = dup(listener->fd);
+	if (fd < 0) return 0;
 
-	fp = fdopen(dup(listener->fd), "a");
+	fp = fdopen(fd, "a");
 	if (!fp) {
 		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
 		return 0;
@@ -979,6 +986,7 @@ static home_server *get_home_server(rad_listen_t *listener, int argc,
 
 static int command_show_home_server_config(rad_listen_t *listener, int argc, char *argv[])
 {
+	int fd;
 	home_server *home;
 	FILE *fp;
 
@@ -988,8 +996,10 @@ static int command_show_home_server_config(rad_listen_t *listener, int argc, cha
 	}
 
 	if (!home->cs) return 1;
+	fd = dup(listener->fd);
+	if (fd < 0) return 0;
 
-	fp = fdopen(dup(listener->fd), "a");
+	fp = fdopen(fd, "a");
 	if (!fp) {
 		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
 		return 0;
