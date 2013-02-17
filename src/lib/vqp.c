@@ -167,20 +167,20 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
-		recvfrom(sockfd, header, sizeof(header), flags, 
-			 (struct sockaddr *)&src, &sizeof_src);
+		rad_recv_discard(sockfd);
+		
 		return 0;
 
-		/*
-		 *	Invalid version, packet type, or too many
-		 *	attributes.  Die.
-		 */
+	/*
+	 *	Invalid version, packet type, or too many
+	 *	attributes.  Die.
+	 */
 	} else if ((header[0] != VQP_VERSION) ||
 		   (header[1] < 1) ||
 		   (header[1] > 4) ||
 		   (header[3] > VQP_MAX_ATTRIBUTES)) {
-		recvfrom(sockfd, header, sizeof(header), flags,
-			 (struct sockaddr *)&src, &sizeof_src);
+		rad_recv_discard(sockfd);
+			 
 		return 0;
 
 	} else {		/* we got 4 bytes of data. */
@@ -195,8 +195,8 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 
 		if ((header[1] == 1) || (header[1] == 3)) {
 			if (len != VQP_MAX_ATTRIBUTES) {
-				recvfrom(sockfd, header, sizeof(header), 0,
-					 (struct sockaddr *)&src, &sizeof_src);
+				rad_recv_discard(sockfd);
+				
 				return 0;
 			}
 			/*
@@ -206,8 +206,8 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 
 		} else {
 			if (len != 2) {
-				recvfrom(sockfd, header, sizeof(header), 0, 
-				 (struct sockaddr *)&src, &sizeof_src);
+				rad_recv_discard(sockfd);
+				
 				return 0;
 			}
 			/*
