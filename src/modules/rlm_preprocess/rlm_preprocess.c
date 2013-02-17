@@ -145,12 +145,11 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 		 */
 		if (vp->da->attr == 1) {
 			const char *p;
-			const DICT_ATTR	*dattr;
 
 			p = vp->vp_strvalue;
 			gettoken(&p, newattr, sizeof(newattr));
 
-			if ((dattr = dict_attrbyname(newattr)) != NULL) {
+			if (dict_attrbyname(newattr) != NULL) {
 				VALUE_PAIR *newvp;
 
 				/*
