@@ -313,8 +313,8 @@ void rad_recv_discard(int sockfd)
 	struct sockaddr_storage	src;
 	socklen_t		sizeof_src = sizeof(src);
 
-	recvfrom(sockfd, header, sizeof(header), 0,
-		 (struct sockaddr *)&src, &sizeof_src);
+	(void) recvfrom(sockfd, header, sizeof(header), 0,
+		        (struct sockaddr *)&src, &sizeof_src);
 }
 
 
@@ -337,8 +337,8 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 	 *	Too little data is available, discard the packet.
 	 */
 	if (data_len < 4) {
-		recvfrom(sockfd, header, sizeof(header), 0,
-			 (struct sockaddr *)&src, &sizeof_src);
+		rad_recv_discard(sockfd);
+		
 		return 1;
 
 	} else {		/* we got 4 bytes of data. */
@@ -352,8 +352,8 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 		 *	a RADIUS header length: discard it.
 		 */
 		if (packet_len < AUTH_HDR_LEN) {
-			recvfrom(sockfd, header, sizeof(header), 0,
-				 (struct sockaddr *)&src, &sizeof_src);
+			rad_recv_discard(sockfd);
+			
 			return 1;
 
 			/*
@@ -361,8 +361,8 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 			 *	Anything after 4k will be discarded.
 			 */
 		} else if (packet_len > MAX_PACKET_LEN) {
-			recvfrom(sockfd, header, sizeof(header), 0,
-				 (struct sockaddr *)&src, &sizeof_src);
+			rad_recv_discard(sockfd);
+			
 			return 1;
 		}
 	}
@@ -371,8 +371,8 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 	 *	Convert AF.  If unknown, discard packet.
 	 */
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, src_port)) {
-		recvfrom(sockfd, header, sizeof(header), 0,
-			 (struct sockaddr *)&src, &sizeof_src);
+		rad_recv_discard(sockfd);
+		
 		return 1;
 	}
 
