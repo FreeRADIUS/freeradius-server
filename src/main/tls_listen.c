@@ -223,8 +223,6 @@ static int tls_socket_recv(rad_listen_t *listener)
 	if (rcode == 0) goto do_close;
 	
 	sock->ssn->dirty_in.used = rcode;
-	memset(sock->ssn->dirty_in.data + sock->ssn->dirty_in.used,
-	       0, 16);
 
 	dump_hex("READ FROM SSL", sock->ssn->dirty_in.data, sock->ssn->dirty_in.used);
 
