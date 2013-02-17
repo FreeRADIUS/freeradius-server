@@ -220,7 +220,7 @@ static int genericcmp(void *instance UNUSED,
 		      VALUE_PAIR **reply_pairs UNUSED)
 {
 	if ((check->operator != T_OP_REG_EQ) &&
-	    (check->operator != T_OP_REG_EQ)) {
+	    (check->operator != T_OP_REG_NE)) {
 		int rcode;
 		char name[1024];
 		char value[1024];
