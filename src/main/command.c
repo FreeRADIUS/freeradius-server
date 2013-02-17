@@ -556,8 +556,8 @@ static int command_show_module_flags(rad_listen_t *listener, int argc, char *arg
 
 	mod = mi->entry->module;
 
-	if ((mod->type & RLM_TYPE_THREAD_SAFE) != 0)
-		cprintf(listener, "\tthread-safe\n");
+	if ((mod->type & RLM_TYPE_THREAD_UNSAFE) != 0)
+		cprintf(listener, "\tthread-unsafe\n");
 
 
 	if ((mod->type & RLM_TYPE_CHECK_CONFIG_SAFE) != 0)
