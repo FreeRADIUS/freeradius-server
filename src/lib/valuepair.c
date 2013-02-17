@@ -1174,7 +1174,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 	case PW_TYPE_ABINARY:
 #ifdef WITH_ASCEND_BINARY
 		if (strncasecmp(value, "0x", 2) == 0) {
-			vp->type = PW_TYPE_OCTETS;
 			goto do_octets;
 		}
 
@@ -1192,7 +1191,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		 *	then fall through to raw octets, so that
 		 *	the user can at least make them by hand...
 		 */
-	do_octets:
 #endif
 	/* raw octets: 0x01020304... */
 	case PW_TYPE_VSA:
@@ -1207,6 +1205,9 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 			size_t size;
 			uint8_t *us;
 
+#ifdef WITH_ASCEND_BINARY
+		do_octets:
+#endif
 			cp = value + 2;
 			us = vp->vp_octets;
 			vp->length = 0;
@@ -1222,7 +1223,6 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 			vp->length = size >> 1;
 			if (size > 2*sizeof(vp->vp_octets)) {
-				vp->type |= PW_FLAG_LONG;
 				us = vp->vp_tlv = malloc(vp->length);
 				if (!us) {
 					fr_strerror_printf("Out of memory.");
@@ -1448,7 +1448,7 @@ VALUE_PAIR *pairparsevalue(VALUE_PAIR *vp, const char *value)
 		 *  Anything else.
 		 */
 	default:
-		fr_strerror_printf("unknown attribute type %d", vp->type);
+		fr_strerror_printf("unknown attribute type %d", vp->da->type);
 		return NULL;
 	}
 
