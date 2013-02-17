@@ -1032,7 +1032,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 
-		cf_log_info(cs, "\t%s = \"%s\"", name, value ? value : "(null)");
+		cf_log_info(cs, "\t%s = \"%s\"", name, value);
 		*q = value ? strdup(value) : NULL;
 
 		/*
