@@ -336,7 +336,7 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 	 */
 	vp = pairmake("Proxy-To-Realm", realm->name, T_OP_EQ);
 	if (!vp) {
-		radlog(L_ERR|L_CONS, "no memory");
+		radlog(L_ERR, "no memory");
 		exit(1);
 	}
 

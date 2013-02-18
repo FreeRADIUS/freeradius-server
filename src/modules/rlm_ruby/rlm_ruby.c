@@ -296,7 +296,6 @@ static struct varlookup {
     { "L_INFO", L_INFO},
     { "L_ERR", L_ERR},
     { "L_PROXY", L_PROXY},
-    { "L_CONS", L_CONS},
     { "RLM_MODULE_REJECT", RLM_MODULE_REJECT},
     { "RLM_MODULE_FAIL", RLM_MODULE_FAIL},
     { "RLM_MODULE_OK", RLM_MODULE_OK},

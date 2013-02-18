@@ -72,7 +72,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	rcode = SQLAllocEnv(&iodbc_sock->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s",
+		radlog(L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -80,7 +80,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	rcode = SQLAllocConnect(iodbc_sock->env_handle,
 				&iodbc_sock->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocConnect failed:  %s",
+		radlog(L_ERR, "sql_create_socket: SQLAllocConnect failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -89,7 +89,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			   SQL_NTS, config->sql_login, SQL_NTS,
 			   config->sql_password, SQL_NTS);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLConnectfailed:  %s",
+		radlog(L_ERR, "sql_create_socket: SQLConnectfailed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -127,7 +127,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	rcode = SQLAllocStmt(iodbc_sock->dbc_handle,
 			     &iodbc_sock->stmt_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_CONS|L_ERR, "sql_create_socket: SQLAllocStmt failed:  %s",
+		radlog(L_ERR, "sql_create_socket: SQLAllocStmt failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}
@@ -139,7 +139,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	rcode = SQLExecDirect(iodbc_sock->stmt_handle, querystr, SQL_NTS);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_CONS|L_ERR, "sql_query: failed:  %s",
+		radlog(L_ERR, "sql_query: failed:  %s",
 				sql_error(sqlsocket, config));
 		return -1;
 	}

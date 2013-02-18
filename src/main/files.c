@@ -83,7 +83,7 @@ int pairlist_read(const char *file, PAIR_LIST **list, int complain)
 	if ((fp = fopen(file, "r")) == NULL) {
 		if (!complain)
 			return -1;
-		radlog(L_CONS|L_ERR, "Couldn't open %s for reading: %s",
+		radlog(L_ERR, "Couldn't open %s for reading: %s",
 				file, strerror(errno));
 		return -1;
 	}
@@ -118,7 +118,7 @@ parse_again:
 			 */
 			if (isspace((int) buffer[0]))  {
 				if (parsecode != T_EOL) {
-					radlog(L_ERR|L_CONS,
+					radlog(L_ERR,
 					       "%s[%d]: Unexpected trailing comma for entry %s",
 					       file, lineno, entry);
 					fclose(fp);
@@ -167,7 +167,7 @@ parse_again:
 				
 				if (pairlist_read(newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
-					radlog(L_ERR|L_CONS,
+					radlog(L_ERR,
 					       "%s[%d]: Could not open included file %s: %s",
 					       file, lineno, newfile, strerror(errno));
 					fclose(fp);
@@ -195,13 +195,13 @@ parse_again:
 			parsecode = userparse(ptr, &check_tmp);
 			if (parsecode == T_OP_INVALID) {
 				pairlist_free(&pl);
-				radlog(L_ERR|L_CONS,
+				radlog(L_ERR,
 				"%s[%d]: Parse error (check) for entry %s: %s",
 					file, lineno, entry, fr_strerror());
 				fclose(fp);
 				return -1;
 			} else if (parsecode == T_COMMA) {
-				radlog(L_ERR|L_CONS,
+				radlog(L_ERR,
 				       "%s[%d]: Unexpected trailing comma in check item list for entry %s",
 				       file, lineno, entry);
 				fclose(fp);
@@ -213,7 +213,7 @@ parse_again:
 		else {
 			if(*buffer == ' ' || *buffer == '\t') {
 				if (parsecode != T_COMMA) {
-					radlog(L_ERR|L_CONS,
+					radlog(L_ERR,
 					       "%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
 					       file, lineno, entry);
 					fclose(fp);
@@ -227,7 +227,7 @@ parse_again:
 				/* valid tokens are 1 or greater */
 				if (parsecode < 1) {
 					pairlist_free(&pl);
-					radlog(L_ERR|L_CONS,
+					radlog(L_ERR,
 					       "%s[%d]: Parse error (reply) for entry %s: %s",
 					       file, lineno, entry, fr_strerror());
 					fclose(fp);

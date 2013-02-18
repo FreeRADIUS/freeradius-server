@@ -409,7 +409,7 @@ static void _smsotp_pthread_mutex_init(pthread_mutex_t *mutexp, const pthread_mu
   int rc;
 
   if ((rc = pthread_mutex_init(mutexp, attr))) {
-    (void) radlog(L_ERR|L_CONS, "rlm_smsotp: %s: pthread_mutex_init: %s", caller, strerror(rc));
+    (void) radlog(L_ERR, "rlm_smsotp: %s: pthread_mutex_init: %s", caller, strerror(rc));
     exit(1);
   }
 }
@@ -420,7 +420,7 @@ static void _smsotp_pthread_mutex_lock(pthread_mutex_t *mutexp, const char *call
   int rc;
 
   if ((rc = pthread_mutex_lock(mutexp))) {
-    (void) radlog(L_ERR|L_CONS, "rlm_smsotp: %s: pthread_mutex_lock: %s", caller, strerror(rc));
+    (void) radlog(L_ERR, "rlm_smsotp: %s: pthread_mutex_lock: %s", caller, strerror(rc));
     exit(1);
   }
 }
@@ -432,7 +432,7 @@ static int _smsotp_pthread_mutex_trylock(pthread_mutex_t *mutexp, const char *ca
 
   rc = pthread_mutex_trylock(mutexp);
   if (rc && rc != EBUSY) {
-    (void) radlog(L_ERR|L_CONS, "rlm_smsotp: %s: pthread_mutex_trylock: %s", caller, strerror(rc));
+    (void) radlog(L_ERR, "rlm_smsotp: %s: pthread_mutex_trylock: %s", caller, strerror(rc));
     exit(1);
   }
 
@@ -445,7 +445,7 @@ static void _smsotp_pthread_mutex_unlock(pthread_mutex_t *mutexp, const char *ca
   int rc;
 
   if ((rc = pthread_mutex_unlock(mutexp))) {
-    (void) radlog(L_ERR|L_CONS, "rlm_smsotp: %s: pthread_mutex_unlock: %s", caller, strerror(rc));
+    (void) radlog(L_ERR, "rlm_smsotp: %s: pthread_mutex_unlock: %s", caller, strerror(rc));
     exit(1);
   }
 }

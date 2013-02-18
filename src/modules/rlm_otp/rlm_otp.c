@@ -147,7 +147,7 @@ static int otp_instantiate(CONF_SECTION *conf, void **instance)
     	}
     	
   	if (!opt->name) {
-		radlog(L_ERR|L_CONS, "rlm_otp: %s: no instance name "
+		radlog(L_ERR, "rlm_otp: %s: no instance name "
 		       "(this can't happen)", __func__);
     		free(opt);
     		return -1;

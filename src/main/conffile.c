@@ -1580,7 +1580,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				}
 
 				if ((stat_buf.st_mode & S_IWOTH) != 0) {
-					radlog(L_ERR|L_CONS, "%s[%d]: Directory %s is globally writable.  Refusing to start due to insecure configuration.",
+					radlog(L_ERR, "%s[%d]: Directory %s is globally writable.  Refusing to start due to insecure configuration.",
 					       filename, *lineno, value);
 					return -1;
 				}
@@ -1893,7 +1893,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 
 	fp = fopen(filename, "r");
 	if (!fp) {
-		radlog(L_ERR|L_CONS, "Unable to open file \"%s\": %s",
+		radlog(L_ERR, "Unable to open file \"%s\": %s",
 		       filename, strerror(errno));
 		return -1;
 	}
@@ -1902,7 +1902,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 #ifdef S_IWOTH
 		if ((statbuf.st_mode & S_IWOTH) != 0) {
 			fclose(fp);
-			radlog(L_ERR|L_CONS, "Configuration file %s is globally writable.  Refusing to start due to insecure configuration.",
+			radlog(L_ERR, "Configuration file %s is globally writable.  Refusing to start due to insecure configuration.",
 			       filename);
 			return -1;
 		}
@@ -1911,7 +1911,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 #ifdef S_IROTH
 		if (0 && (statbuf.st_mode & S_IROTH) != 0) {
 			fclose(fp);
-			radlog(L_ERR|L_CONS, "Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
+			radlog(L_ERR, "Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
 			       filename);
 			return -1;
 		}
@@ -1934,7 +1934,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 	if (cf_data_add_internal(cs, filename, mtime, free,
 				 PW_TYPE_FILENAME) < 0) {
 		fclose(fp);
-		radlog(L_ERR|L_CONS, "Internal error opening file \"%s\"",
+		radlog(L_ERR, "Internal error opening file \"%s\"",
 		       filename);
 		return -1;
 	}
@@ -1942,7 +1942,7 @@ int cf_file_include(const char *filename, CONF_SECTION *cs)
 	cd = cf_data_find_internal(cs, filename, PW_TYPE_FILENAME);
 	if (!cd) {
 		fclose(fp);
-		radlog(L_ERR|L_CONS, "Internal error opening file \"%s\"",
+		radlog(L_ERR, "Internal error opening file \"%s\"",
 		       filename);
 		return -1;
 	}

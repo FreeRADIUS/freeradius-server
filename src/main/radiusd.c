@@ -317,7 +317,7 @@ int main(int argc, char *argv[])
 
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n",
+			radlog(L_ERR, "Failed opening /dev/null: %s\n",
 			       strerror(errno));
 			exit(1);
 		}
@@ -416,7 +416,7 @@ int main(int argc, char *argv[])
 			fprintf(fp, "%d\n", (int) radius_pid);
 			fclose(fp);
 		} else {
-			radlog(L_ERR|L_CONS, "Failed creating PID file %s: %s\n",
+			radlog(L_ERR, "Failed creating PID file %s: %s\n",
 			       mainconfig.pid_file, strerror(errno));
 			exit(1);
 		}

@@ -80,7 +80,7 @@ static rlm_rcode_t str2rcode(const char *s)
 	else if(!strcasecmp(s, "updated"))
 		return RLM_MODULE_UPDATED;
 	else {
-		radlog(L_ERR|L_CONS,
+		radlog(L_ERR,
 			"rlm_always: Unknown module rcode '%s'.\n", s);
 		return RLM_MODULE_UNKNOWN;
 	}

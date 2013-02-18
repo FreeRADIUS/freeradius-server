@@ -203,7 +203,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (num_types == 0) {
-		radlog(L_ERR|L_CONS, "rlm_eap: No EAP type configured, module cannot do anything.");
+		radlog(L_ERR, "rlm_eap: No EAP type configured, module cannot do anything.");
 		eap_detach(inst);
 		return -1;
 	}
@@ -213,14 +213,14 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	eap_type = eaptype_name2type(inst->default_eap_type_name);
 	if (eap_type < 0) {
-		radlog(L_ERR|L_CONS, "rlm_eap: Unknown default EAP type %s",
+		radlog(L_ERR, "rlm_eap: Unknown default EAP type %s",
 		       inst->default_eap_type_name);
 		eap_detach(inst);
 		return -1;
 	}
 
 	if (inst->types[eap_type] == NULL) {
-		radlog(L_ERR|L_CONS, "rlm_eap: No such sub-type for default EAP type %s",
+		radlog(L_ERR, "rlm_eap: No such sub-type for default EAP type %s",
 		       inst->default_eap_type_name);
 		eap_detach(inst);
 		return -1;
@@ -238,7 +238,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		radlog(L_ERR|L_CONS, "rlm_eap: Cannot initialize tree");
+		radlog(L_ERR, "rlm_eap: Cannot initialize tree");
 		eap_detach(inst);
 		return -1;
 	}
@@ -246,14 +246,14 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	if (fr_debug_flag) {
 		inst->handler_tree = rbtree_create(eap_handler_ptr_cmp, NULL, 0);
 		if (!inst->handler_tree) {
-			radlog(L_ERR|L_CONS, "rlm_eap: Cannot initialize tree");
+			radlog(L_ERR, "rlm_eap: Cannot initialize tree");
 			eap_detach(inst);
 			return -1;
 		}
 
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
-			radlog(L_ERR|L_CONS, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
+			radlog(L_ERR, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
 			eap_detach(inst);
 			return -1;
 		}
@@ -262,7 +262,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
-		radlog(L_ERR|L_CONS, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
+		radlog(L_ERR, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
 		eap_detach(inst);
 		return -1;
 	}

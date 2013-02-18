@@ -125,7 +125,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		len = strlen(buffer);
 
 		len += strlcpy(buffer + len,
-			       fr_int2str(levels, (lvl & ~L_CONS), ": "),
+			       fr_int2str(levels, lvl, ": "),
 			       sizeof(buffer) - len);
 	}
 
@@ -161,7 +161,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 
 #ifdef HAVE_SYSLOG_H
 	case RADLOG_SYSLOG:
-		switch(lvl & ~L_CONS) {
+		switch(lvl) {
 			case L_DBG:
 				lvl = LOG_DEBUG;
 				break;
@@ -334,7 +334,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 		}
 		
 		len += strlcpy(buffer + len, 
-		 	       fr_int2str(levels, (lvl & ~L_CONS), ": "), 
+			       fr_int2str(levels, lvl, ": "),
 		 	       sizeof(buffer) - len);
 		 	       
 		if (len >= sizeof(buffer)) goto finish;

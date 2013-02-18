@@ -469,7 +469,6 @@ typedef struct main_config_t {
 #define L_ERR			4
 #define L_PROXY			5
 #define L_ACCT			6
-#define L_CONS			128
 
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);

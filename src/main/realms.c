@@ -2108,7 +2108,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	 */
 	if (!request->proxy) {
 		if ((request->proxy = rad_alloc(TRUE)) == NULL) {
-			radlog(L_ERR|L_CONS, "no memory");
+			radlog(L_ERR, "no memory");
 			exit(1);
 		}
 		

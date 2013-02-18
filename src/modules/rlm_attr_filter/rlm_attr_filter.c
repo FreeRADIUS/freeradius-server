@@ -155,7 +155,7 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 
 	rcode = attr_filter_getfile(inst->file, &inst->attrs);
         if (rcode != 0) {
-		radlog(L_ERR|L_CONS, "Errors reading %s", inst->file);
+		radlog(L_ERR, "Errors reading %s", inst->file);
 		attr_filter_detach(inst);
 		return -1;
 	}

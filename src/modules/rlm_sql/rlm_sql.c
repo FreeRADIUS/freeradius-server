@@ -342,7 +342,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		 *	Always get the numeric representation of IP
 		 */
 		if (ip_hton(row[1], AF_UNSPEC, &c->ipaddr) < 0) {
-			radlog(L_CONS|L_ERR, "rlm_sql (%s): Failed to look up hostname %s: %s",
+			radlog(L_ERR, "rlm_sql (%s): Failed to look up hostname %s: %s",
 			       inst->config->xlat_name,
 			       row[1], fr_strerror());
 			free(c);

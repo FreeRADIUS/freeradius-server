@@ -395,7 +395,7 @@ int sql_getvpdata(SQL_INST * inst, SQLSOCK **sqlsocket, VALUE_PAIR **pair, char 
 		if (!row)
 			break;
 		if (sql_userparse(pair, row) != 0) {
-			radlog(L_ERR | L_CONS, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
+			radlog(L_ERR, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
 			
 			(inst->module->sql_finish_select_query)(*sqlsocket, inst->config);
 			

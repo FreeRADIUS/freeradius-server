@@ -2429,6 +2429,9 @@ void modcallable_free(modcallable **pc)
 {
 	modcallable *c, *loop, *next;
 	c = *pc;
+
+	DEBUG3("Freeing module %s", c->name);
+
 	if (c->type != MOD_SINGLE) {
 		modgroup *g = mod_callabletogroup(c);
 

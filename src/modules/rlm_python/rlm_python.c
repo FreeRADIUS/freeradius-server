@@ -112,7 +112,6 @@ static struct {
   A(L_INFO)
   A(L_ERR)
   A(L_PROXY)
-  A(L_CONS)
   A(RLM_MODULE_REJECT)
   A(RLM_MODULE_FAIL)
   A(RLM_MODULE_OK)
@@ -161,7 +160,7 @@ static PyMethodDef radiusd_methods[] = {
 	{ "radlog", &python_radlog, METH_VARARGS, 
 	  "radiusd.radlog(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
-	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY, L_CONS\n"
+	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
 	},
 	{ NULL, NULL, 0, NULL },
 };

@@ -403,7 +403,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			return rc;
 				
 		default:
-			radlog(L_ERR|L_CONS, "rlm_securid: Invalid session state %d for user [%s]",
+			radlog(L_ERR, "rlm_securid: Invalid session state %d for user [%s]",
 			       pSecurid_session->securidSessionState,
 			       username);
 			break;	
@@ -443,7 +443,7 @@ static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 
         /* If the configuration parameters can't be parsed, then fail. */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		radlog(L_ERR|L_CONS, "rlm_securid: Unable to parse configuration section.");
+		radlog(L_ERR, "rlm_securid: Unable to parse configuration section.");
 		securid_detach(inst);
 		return -1;
         }
@@ -454,7 +454,7 @@ static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->session_tree = rbtree_create(securid_session_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		radlog(L_ERR|L_CONS, "rlm_securid: Cannot initialize session tree.");
+		radlog(L_ERR, "rlm_securid: Cannot initialize session tree.");
 		securid_detach(inst);
 		return -1;
 	}

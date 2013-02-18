@@ -110,7 +110,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	char mycmd[1024];
 
 	if (strlen(cmd) > (sizeof(mycmd) - 1)) {
-		radlog(L_ERR|L_CONS, "Command line is too long");
+		radlog(L_ERR, "Command line is too long");
 		return -1;
 	}
 
@@ -118,7 +118,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	 *	Check for bad escapes.
 	 */
 	if (cmd[strlen(cmd) - 1] == '\\') {
-		radlog(L_ERR|L_CONS, "Command line has final backslash, without a following character");
+		radlog(L_ERR, "Command line has final backslash, without a following character");
 		return -1;
 	}
 
@@ -159,7 +159,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 			case '\'':
 				length = rad_copy_string(to, from);
 				if (length < 0) {
-					radlog(L_ERR|L_CONS, "Invalid string passed as argument for external program");
+					radlog(L_ERR, "Invalid string passed as argument for external program");
 					return -1;
 				}
 				from += length;
@@ -172,7 +172,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 
 					length = rad_copy_variable(to, from);
 					if (length < 0) {
-						radlog(L_ERR|L_CONS, "Invalid variable expansion passed as argument for external program");
+						radlog(L_ERR, "Invalid variable expansion passed as argument for external program");
 						return -1;
 					}
 					from += length;
@@ -248,14 +248,14 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	if (exec_wait) {
 		if (input_fd) {
 			if (pipe(to_child) != 0) {
-				radlog(L_ERR|L_CONS, "Couldn't open pipe to child: %s",
+				radlog(L_ERR, "Couldn't open pipe to child: %s",
 				       strerror(errno));
 				return -1;
 			}
 		}
 		if (output_fd) {
 			if (pipe(from_child) != 0) {
-				radlog(L_ERR|L_CONS, "Couldn't open pipe from child: %s",
+				radlog(L_ERR, "Couldn't open pipe from child: %s",
 				       strerror(errno));
 				/* safe because these either need closing or are == -1 */
 				close(to_child[0]);
@@ -330,7 +330,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n",
+			radlog(L_ERR, "Failed opening /dev/null: %s\n",
 			       strerror(errno));
 			exit(1);
 		}
@@ -397,7 +397,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	 *	Parent process.
 	 */
 	if (pid < 0) {
-		radlog(L_ERR|L_CONS, "Couldn't fork %s: %s",
+		radlog(L_ERR, "Couldn't fork %s: %s",
 		       argv[0], strerror(errno));
 		if (exec_wait) {
 			/* safe because these either need closing or are == -1 */
@@ -736,7 +736,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		}
 	}
 
-	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit: %s",
+	radlog(L_ERR, "Exec-Program: Abnormal child exit: %s",
 	       strerror(errno));
 #endif	/* __MINGW32__ */
 

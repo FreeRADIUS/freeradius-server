@@ -553,7 +553,7 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 		rcode = pairlist_read(data->huntgroup_file,
 				      &(data->huntgroups), 0);
 		if (rcode < 0) {
-			radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
+			radlog(L_ERR, "rlm_preprocess: Error reading %s",
 			       data->huntgroup_file);
 			return -1;
 		}
@@ -565,7 +565,7 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	if (data->hints_file) {
 		rcode = pairlist_read(data->hints_file, &(data->hints), 0);
 		if (rcode < 0) {
-			radlog(L_ERR|L_CONS, "rlm_preprocess: Error reading %s",
+			radlog(L_ERR, "rlm_preprocess: Error reading %s",
 			       data->hints_file);
 			return -1;
 		}
