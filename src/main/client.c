@@ -96,19 +96,7 @@ void client_free(RADCLIENT *client)
 	}
 #endif
 
-	free(client->longname);
-	free(client->secret);
-	free(client->shortname);
-	free(client->nastype);
-	free(client->login);
-	free(client->password);
-	free(client->server);
-
-#ifdef WITH_DYNAMIC_CLIENTS
-	free(client->client_server);
-#endif
-
-	free(client);
+	talloc_free(client);
 }
 
 /*
@@ -176,7 +164,7 @@ void clients_free(RADCLIENT_LIST *clients)
 	 */
 #endif
 
-	free(clients);
+	talloc_free(clients);
 }
 
 /*
@@ -184,7 +172,7 @@ void clients_free(RADCLIENT_LIST *clients)
  */
 RADCLIENT_LIST *clients_init(void)
 {
-	RADCLIENT_LIST *clients = calloc(1, sizeof(RADCLIENT_LIST));
+	RADCLIENT_LIST *clients = talloc_zero(NULL, RADCLIENT_LIST);
 
 	if (!clients) return NULL;
 
@@ -589,8 +577,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	/*
 	 * The size is fine.. Let's create the buffer
 	 */
-	c = rad_malloc(sizeof(*c));
-	memset(c, 0, sizeof(*c));
+	c = talloc_zero(cs, RADCLIENT);
 	c->cs = cs;
 
 	memset(&cl_ip4addr, 0, sizeof(cl_ip4addr));
@@ -603,9 +590,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	error:
 		client_free(c);
 #ifdef WITH_TCP
-		free(hs_proto);
 		hs_proto = NULL;
-		free(cl_srcipaddr);
 		cl_srcipaddr = NULL;
 #endif
 
@@ -705,16 +690,13 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 #ifdef WITH_TCP
 		if (hs_proto) {
 			if (strcmp(hs_proto, "udp") == 0) {
-				free(hs_proto);
 				hs_proto = NULL;
 				
 			} else if (strcmp(hs_proto, "tcp") == 0) {
-				free(hs_proto);
 				hs_proto = NULL;
 				c->proto = IPPROTO_TCP;
 				
 			} else if (strcmp(hs_proto, "*") == 0) {
-				free(hs_proto);
 				hs_proto = NULL;
 				c->proto = IPPROTO_IP; /* fake for dual */
 				
@@ -742,7 +724,6 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		DEBUGW("Server not build with udpfromto, ignoring client src_ipaddr");
 #endif
 		
-		free(cl_srcipaddr);
 		cl_srcipaddr = NULL;
 	}
 	
@@ -852,18 +833,6 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	if (cf_top_section(section) == section) global = TRUE;
 
 	if (strcmp("server", cf_section_name1(section)) == 0) in_server = TRUE;
-
-	/*
-	 *	Associate the clients structure with the section, where
-	 *	it will be freed once the section is freed.
-	 */
-	if (cf_data_add(section, "clients", clients, (void *) clients_free) < 0) {
-		cf_log_err(cf_sectiontoitem(section),
-			   "Failed to associate clients with section %s",
-		       cf_section_name1(section));
-		clients_free(clients);
-		return NULL;
-	}
 
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
@@ -1080,8 +1049,7 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 
 	if (!clients || !request) return NULL;
 
-	c = rad_malloc(sizeof(*c));
-	memset(c, 0, sizeof(*c));
+	c = talloc_zero(clients, RADCLIENT);
 	c->cs = request->client->cs;
 	c->ipaddr.af = AF_UNSPEC;
 	c->src_ipaddr.af = AF_UNSPEC;
@@ -1150,9 +1118,9 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 
 		case PW_TYPE_STRING_PTR:
 			p = (char **) ((char *) c + dynamic_config[i].offset);
-			if (*p) free(*p);
+			if (*p) talloc_free(*p);
 			if (vp->vp_strvalue[0]) {
-				*p = strdup(vp->vp_strvalue);
+				*p = talloc_strdup(c->cs, vp->vp_strvalue);
 			} else {
 				*p = NULL;
 			}

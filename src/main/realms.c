@@ -421,7 +421,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	CONF_PAIR *cp;
 	CONF_SECTION *tls;
 
-	free(hs_virtual_server); /* used only for printing during parsing */
 	hs_virtual_server = NULL;
 
 	name2 = cf_section_name2(cs);
@@ -488,15 +487,10 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			   "No ipaddr, ipv6addr, or virtual_server defined for home server \"%s\".",
 			   name2);
 	error:
-		free(home);
-		free(hs_type);
 		hs_type = NULL;
-		free(hs_check);
 		hs_check = NULL;
-		free(hs_srcipaddr);
 		hs_srcipaddr = NULL;
 #ifdef WITH_TCP
-		free(hs_proto);
 		hs_proto = NULL;
 #endif
 		return 0;
@@ -557,7 +551,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			   hs_type, name2);
 		goto error;
 	}
-	free(hs_type);
 	hs_type = NULL;
 
 	if (!hs_check || (strcasecmp(hs_check, "none") == 0)) {
@@ -588,7 +581,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			   hs_check, name2);
 		goto error;
 	}
-	free(hs_check);
 	hs_check = NULL;
 
 	if ((home->ping_check != HOME_PING_CHECK_NONE) &&
@@ -609,11 +601,9 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 #ifdef WITH_TCP
 	if (hs_proto) {
 		if (strcmp(hs_proto, "udp") == 0) {
-			free(hs_proto);
 			hs_proto = NULL;
 			
 		} else if (strcmp(hs_proto, "tcp") == 0) {
-			free(hs_proto);
 			hs_proto = NULL;
 			home->proto = IPPROTO_TCP;
 			
@@ -702,7 +692,6 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		home->src_ipaddr.af = home->ipaddr.af;
 	}
 
-	free(hs_srcipaddr);
 	hs_srcipaddr = NULL;
 
 	if (rbtree_finddata(home_servers_byname, home) != NULL) {

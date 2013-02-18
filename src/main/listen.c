@@ -1000,10 +1000,8 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		} else {
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Unknown proto name \"%s\"", proto);
-			free(proto);
 			return -1;
 		}
-		free(proto);
 
 		/*
 		 *	TCP requires a destination IP for sockets.
@@ -1186,10 +1184,8 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			cf_log_err(cf_sectiontoitem(cs),
 				   "Failed to find clients %s {...}",
 				   section_name);
-			free(section_name);
 			return -1;
 		}
-		free(section_name);
 	} /* else there was no "clients = " entry. */
 
 	if (!client_cs) {
@@ -2669,7 +2665,6 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 			      &listen_type, "");
 	if (rcode < 0) return NULL;
 	if (rcode == 1) {
-		free(listen_type);
 		cf_log_err(cf_sectiontoitem(cs),
 			   "No type specified in listen section");
 		return NULL;
@@ -2680,10 +2675,8 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Invalid type \"%s\" in listen section.",
 			   listen_type);
-		free(listen_type);
 		return NULL;
 	}
-	free(listen_type);
 
 	/*
 	 *	Allow listen sections in the default config to

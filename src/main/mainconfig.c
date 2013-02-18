@@ -806,13 +806,13 @@ int read_mainconfig(int reload)
 	if (mainconfig.radlog_dest == RADLOG_NULL) {
 		if (cf_section_parse(cs, NULL, serverdest_config) < 0) {
 			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
-			cf_section_free(&cs);
+			cf_file_free(cs);
 			return -1;
 		}
 		
 		if (!radlog_dest) {
 			fprintf(stderr, "radiusd: Error: No log destination specified.\n");
-			cf_section_free(&cs);
+			cf_file_free(cs);
 			return -1;
 		}
 		
@@ -821,7 +821,7 @@ int read_mainconfig(int reload)
 		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
-			cf_section_free(&cs);
+			cf_file_free(cs);
 			return -1;
 		}
 		
@@ -832,14 +832,14 @@ int read_mainconfig(int reload)
 			 */
 			if (!syslog_facility) {
 				fprintf(stderr, "radiusd: Error: Syslog chosen but no facility was specified\n");
-				cf_section_free(&cs);
+				cf_file_free(cs);
 				return -1;
 			}
 			mainconfig.syslog_facility = fr_str2int(syslog_str2fac, syslog_facility, -1);
 			if (mainconfig.syslog_facility < 0) {
 				fprintf(stderr, "radiusd: Error: Unknown syslog_facility %s\n",
 					syslog_facility);
-				cf_section_free(&cs);
+				cf_file_free(cs);
 				return -1;
 			}
 
@@ -854,7 +854,7 @@ int read_mainconfig(int reload)
 		} else if (mainconfig.radlog_dest == RADLOG_FILES) {
 			if (!mainconfig.log_file) {
 				fprintf(stderr, "radiusd: Error: Specified \"files\" as a log destination, but no log filename was given!\n");
-				cf_section_free(&cs);
+				cf_file_free(cs);
 				return -1;
 			}
 		}
@@ -878,7 +878,7 @@ int read_mainconfig(int reload)
 					    O_WRONLY | O_APPEND | O_CREAT, 0640);
 		if (mainconfig.radlog_fd < 0) {
 			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
-			cf_section_free(&cs);
+			cf_file_free(cs);
 			return -1;
 		}
 	}
@@ -1003,7 +1003,7 @@ int free_mainconfig(void)
 	 */
 	for (cc = cs_cache; cc != NULL; cc = next) {
 		next = cc->next;
-		cf_section_free(&cc->cs);
+		cf_file_free(cc->cs);
 		free(cc);
 	}
 

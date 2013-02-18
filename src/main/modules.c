@@ -378,7 +378,7 @@ static int module_instance_cmp(const void *one, const void *two)
 }
 
 
-static void module_instance_free_old(CONF_SECTION *cs, module_instance_t *node,
+static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t *node,
 				     time_t when)
 {
 	fr_module_hup_t *mh, **last;

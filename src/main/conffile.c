@@ -137,13 +137,6 @@ CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs)
 	return (CONF_ITEM *)cs;
 }
 
-static CONF_DATA *cf_itemtodata(CONF_ITEM *ci)
-{
-	if (ci == NULL)
-		return NULL;
-	rad_assert(ci->type == CONF_ITEM_DATA);
-	return (CONF_DATA *)ci;
-}
 static CONF_ITEM *cf_datatoitem(CONF_DATA *cd)
 {
 	if (cd == NULL)
@@ -158,72 +151,44 @@ static CONF_PAIR *cf_pair_alloc(const char *attr, const char *value,
 				FR_TOKEN op, FR_TOKEN value_type,
 				CONF_SECTION *parent)
 {
-	char *p;
-	size_t attr_len, value_len = 0;
 	CONF_PAIR *cp;
 
 	if (!attr) return NULL;
-	attr_len = strlen(attr) + 1;
-	if (value) value_len = strlen(value) + 1;
 
-	p = rad_malloc(sizeof(*cp) + attr_len + value_len);
+	cp = talloc_zero(parent, CONF_PAIR);
+	if (!cp) return NULL;
 
-	cp = (CONF_PAIR *) p;
-	memset(cp, 0, sizeof(*cp));
 	cp->item.type = CONF_ITEM_PAIR;
 	cp->item.parent = parent;
-
-	p += sizeof(*cp);
-	memcpy(p, attr, attr_len);
-	cp->attr = p;
-
-	if (value) {
-		p += attr_len;
-		memcpy(p, value, value_len);
-		cp->value = p;
-	}
 	cp->value_type = value_type;
 	cp->op = op;
+
+	cp->attr = talloc_strdup(cp, attr);
+	if (!cp->attr) {
+	error:
+		talloc_free(cp);
+		return NULL;
+	}
+
+	if (value) {
+		cp->value = talloc_strdup(cp, value);
+		if (!cp->value) goto error;
+	}
 
 	return cp;
 }
 
-/*
- *	Free a CONF_PAIR
- */
-void cf_pair_free(CONF_PAIR **cp)
+static int cf_data_free(void *ctx)
 {
-	if (!cp || !*cp) return;
+	CONF_DATA *cd;
 
-	/*
-	 *	attr && value are allocated contiguous with cp.
-	 */
+	cd = talloc_get_type_abort(ctx, CONF_DATA);
+	cd->free(cd->data);
 
-#ifndef NDEBUG
-	memset(*cp, 0, sizeof(cp));
-#endif
-	free(*cp);
-
-	*cp = NULL;
+	return 0;
 }
 
 
-static void cf_data_free(CONF_DATA **cd)
-{
-	if (!cd || !*cd) return;
-
-	/* name is allocated contiguous with cd */
-	if (!(*cd)->free) {
-		free((*cd)->data);
-	} else {
-		((*cd)->free)((*cd)->data);
-	}
-#ifndef NDEBUG
-	memset(*cd, 0, sizeof(cd));
-#endif
-	free(*cd);
-	*cd = NULL;
-}
 
 /*
  *	rbtree callback function
@@ -283,146 +248,34 @@ static int data_cmp(const void *a, const void *b)
 	return strcmp(one->name, two->name);
 }
 
-
-/*
- *	Free strings we've parsed into data structures.
- */
-void cf_section_parse_free(CONF_SECTION *cs, void *base)
+static int cf_section_free(void *ctx)
 {
-	int i;
-	const CONF_PARSER *variables = cs->variables;
+	CONF_SECTION *cs;
 
-	/*
-	 *	Don't automatically free the strings if we're being
-	 *	called from a module.  This is also for clients.c,
-	 *	where client_free() expects to be able to free the
-	 *	client structure.  If we moved everything to key off
-	 *	of the config files, we might solve some problems...
-	 */
-	if (!variables) return;
-
-	/*
-	 *	Free up dynamically allocated string pointers.
-	 */
-	for (i = 0; variables[i].name != NULL; i++) {
-		int type;
-		char **p;
-
-		type = variables[i].type & ~PW_TYPE_DEPRECATED;
-
-		if (type == PW_TYPE_SUBSECTION) {
-			CONF_SECTION *subcs;
-			subcs = cf_section_sub_find(cs, variables[i].name);
-
-			if (!subcs) continue;
-
-			if (!variables[i].dflt) continue;
-
-			cf_section_parse_free(subcs, base);
-			continue;
-		}
-
-		if ((type != PW_TYPE_STRING_PTR) &&
-		    (type != PW_TYPE_FILENAME)) {
-			continue;
-		}
-
-		/*
-		 *	No base struct offset, data must be the pointer.
-		 *	If data doesn't exist, ignore the entry, there
-		 *	must be something wrong.
-		 */
-		if (!base) {
-			if (!variables[i].data) {
-				continue;
-			}
-
-			p = (char **) variables[i].data;;
-
-		} else if (variables[i].data) {
-			p = (char **) variables[i].data;;
-
-		} else {
-			p = (char **) (((char *)base) + variables[i].offset);
-		}
-
-		free(*p);
-		*p = NULL;
-	}
-
-	cs->variables = NULL;
-}
-
-
-/*
- *	Free a CONF_SECTION
- */
-void cf_section_free(CONF_SECTION **cs)
-{
-	CONF_ITEM	*ci, *next;
-
-	if (!cs || !*cs) return;
-
-	cf_section_parse_free(*cs, (*cs)->base);
-
-	for (ci = (*cs)->children; ci; ci = next) {
-		next = ci->next;
-
-		switch (ci->type) {
-		case CONF_ITEM_PAIR: {
-				CONF_PAIR *pair = cf_itemtopair(ci);
-				cf_pair_free(&pair);
-			}
-			break;
-
-		case CONF_ITEM_SECTION: {
-				CONF_SECTION *section = cf_itemtosection(ci);
-				cf_section_free(&section);
-			}
-			break;
-
-		case CONF_ITEM_DATA: {
-				CONF_DATA *data = cf_itemtodata(ci);
-				cf_data_free(&data);
-			}
-			break;
-
-		default:	/* should really be an error. */
-			break;
-		}
-	}
-	(*cs)->children = NULL;
+	cs = talloc_get_type_abort(ctx, CONF_SECTION);
 
 	/*
 	 *	Name1 and name2 are allocated contiguous with
 	 *	cs.
 	 */
-	if ((*cs)->pair_tree) {
-		rbtree_free((*cs)->pair_tree);
-		(*cs)->pair_tree = NULL;
+	if (cs->pair_tree) {
+		rbtree_free(cs->pair_tree);
+		cs->pair_tree = NULL;
 	}
-	if ((*cs)->section_tree) {
-		rbtree_free((*cs)->section_tree);
-		(*cs)->section_tree = NULL;
+	if (cs->section_tree) {
+		rbtree_free(cs->section_tree);
+		cs->section_tree = NULL;
 	}
-	if ((*cs)->name2_tree) {
-		rbtree_free((*cs)->name2_tree);
-		(*cs)->name2_tree = NULL;
+	if (cs->name2_tree) {
+		rbtree_free(cs->name2_tree);
+		cs->name2_tree = NULL;
 	}
-	if ((*cs)->data_tree) {
-		rbtree_free((*cs)->data_tree);
-		(*cs)->data_tree = NULL;
+	if (cs->data_tree) {
+		rbtree_free(cs->data_tree);
+		cs->data_tree = NULL;
 	}
 
-	/*
-	 * And free the section
-	 */
-#ifndef NDEBUG
-	memset(*cs, 0, sizeof(cs));
-#endif
-	free(*cs);
-
-	*cs = NULL;
+	return 0;
 }
 
 
@@ -432,14 +285,11 @@ void cf_section_free(CONF_SECTION **cs)
 static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 				      CONF_SECTION *parent)
 {
-	size_t name1_len, name2_len = 0;
-	char *p;
 	CONF_SECTION	*cs;
 	char buffer[1024];
 
 	if (!name1) return NULL;
 
-	name1_len = strlen(name1) + 1;
 	if (name2) {
 		if (strchr(name2, '$')) {
 			name2 = cf_expand_variables(parent->item.filename,
@@ -451,31 +301,30 @@ static CONF_SECTION *cf_section_alloc(const char *name1, const char *name2,
 				return NULL;
 			}
 		}
-		name2_len = strlen(name2) + 1;
 	}
 
-	p = rad_malloc(sizeof(*cs) + name1_len + name2_len);
+	cs = talloc_zero(parent, CONF_SECTION);
+	if (!cs) return NULL;
 
-	cs = (CONF_SECTION *) p;
-	memset(cs, 0, sizeof(*cs));
 	cs->item.type = CONF_ITEM_SECTION;
 	cs->item.parent = parent;
 
-	p += sizeof(*cs);
-	memcpy(p, name1, name1_len);
-	cs->name1 = p;
+	cs->name1 = talloc_strdup(cs, name1);
+	if (!cs->name1) {
+	error:
+		talloc_free(cs);
+		return NULL;
+	}
 
 	if (name2 && *name2) {
-		p += name1_len;
-		memcpy(p, name2, name2_len);
-		cs->name2 = p;
+		cs->name2 = talloc_strdup(cs, name2);
+		if (!cs->name2) goto error;
 	}
 
 	cs->pair_tree = rbtree_create(pair_cmp, NULL, 0);
-	if (!cs->pair_tree) {
-		cf_section_free(&cs);
-		return NULL;
-	}
+	if (!cs->pair_tree) goto error;
+
+	talloc_set_destructor((void *) cs, cf_section_free);
 
 	/*
 	 *	Don't create a data tree, it may not be needed.
@@ -1012,7 +861,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		}
 
 		cf_log_info(cs, "\t%s = \"%s\"", name, value ? value : "(null)");
-		*q = value ? strdup(value) : NULL;
+		*q = value ? talloc_strdup(cs, value) : NULL;
 		break;
 
 		/*
@@ -1047,7 +896,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		}
 
 		cf_log_info(cs, "\t%s = \"%s\"", name, value);
-		*q = value ? strdup(value) : NULL;
+		*q = value ? talloc_strdup(cs, value) : NULL;
 
 		/*
 		 *	And now we "stat" the file.
@@ -1999,12 +1848,19 @@ CONF_SECTION *cf_file_read(const char *filename)
 	cf_item_add(cs, &(cp->item));
 
 	if (cf_file_include(filename, cs) < 0) {
-		cf_section_free(&cs);
+		talloc_free(cs);
 		return NULL;
 	}
 
 	return cs;
 }
+
+
+void cf_file_free(CONF_SECTION *cs)
+{
+	talloc_free(cs);
+}
+
 
 /*
  * Return a CONF_PAIR within a CONF_SECTION.
@@ -2417,24 +2273,26 @@ int cf_item_is_pair(const CONF_ITEM *item)
 static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
 				void *data, void (*data_free)(void *))
 {
-	char *p;
-	size_t name_len;
 	CONF_DATA *cd;
 
-	name_len = strlen(name) + 1;
-
-	p = rad_malloc(sizeof(*cd) + name_len);
-	cd = (CONF_DATA *) p;
-	memset(cd, 0, sizeof(*cd));
+	cd = talloc_zero(parent, CONF_DATA);
+	if (!cd) return NULL;
 
 	cd->item.type = CONF_ITEM_DATA;
 	cd->item.parent = parent;
+	cd->name = talloc_strdup(cd, name);
+	if (!cd) {
+		talloc_free(cd);
+		return NULL;
+	}
+
 	cd->data = data;
 	cd->free = data_free;
 
-	p += sizeof(*cd);
-	memcpy(p, name, name_len);
-	cd->name = p;
+	if (cd->free) {
+		talloc_set_destructor((void *) cd, cf_data_free);
+	}
+
 	return cd;
 }
 

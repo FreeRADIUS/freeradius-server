@@ -251,8 +251,6 @@ done:
 
 void eaptype_free(EAP_TYPES *i)
 {
-	cf_section_parse_free(i->cs, i->type_data);
-
 	if (i->type->detach) (i->type->detach)(i->type_data);
 	i->type_data = NULL;
 	if (i->handle) lt_dlclose(i->handle);

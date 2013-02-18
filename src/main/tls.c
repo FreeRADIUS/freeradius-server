@@ -2249,8 +2249,6 @@ static void tls_server_conf_free(fr_tls_server_conf_t *conf)
 {
 	if (!conf) return;
 
-	if (conf->cs) cf_section_parse_free(conf->cs, conf);
-
 	if (conf->ctx) SSL_CTX_free(conf->ctx);
 
 #ifdef HAVE_OPENSSL_OCSP_H

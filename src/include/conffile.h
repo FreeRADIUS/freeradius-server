@@ -49,10 +49,8 @@ typedef struct CONF_PARSER {
 #define XStringify(x) #x
 #define Stringify(x) XStringify(x)
 
-void		cf_pair_free(CONF_PAIR **cp);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp,
 				const char *value);
-void		cf_section_free(CONF_SECTION **cp);
 int		cf_item_parse(CONF_SECTION *cs, const char *name,
 			      int type, void *data, const char *dflt);
 int		cf_section_parse(CONF_SECTION *, void *base,
@@ -60,6 +58,7 @@ int		cf_section_parse(CONF_SECTION *, void *base,
 void		cf_section_parse_free(CONF_SECTION *cs, void *base);
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 CONF_SECTION	*cf_file_read(const char *file);
+void		cf_file_free(CONF_SECTION *cs);
 int		cf_file_include(const char *file, CONF_SECTION *cs);
 
 CONF_PAIR	*cf_pair_find(const CONF_SECTION *, const char *name);

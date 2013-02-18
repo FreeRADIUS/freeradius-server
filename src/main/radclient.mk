@@ -5,4 +5,4 @@ SOURCES		:= radclient.c ${top_srcdir}/src/modules/rlm_mschap/smbdes.c \
 TGT_PREREQS	:= libfreeradius-radius.a
 
 SRC_CFLAGS	:= -I${top_srcdir}/src/modules/rlm_mschap
-TGT_LDLIBS	:= $(LIBS)
+TGT_LDLIBS	:= $(LIBS) -ltalloc

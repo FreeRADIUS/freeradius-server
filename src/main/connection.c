@@ -538,14 +538,6 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 	rad_assert(pool->tail == NULL);
 	rad_assert(pool->num == 0);
 	
-	/*
-	 *	In legacy configurations we don't always have a configuration
-	 *	section and may initialise the pool struct with defaults
-	 */
-	if (pool->cs) {
-		cf_section_parse_free(pool->cs, pool);
-	}
-	
 	free(pool->log_prefix);
 	free(pool);
 }
