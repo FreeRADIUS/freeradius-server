@@ -29,6 +29,8 @@ RCSIDH(libradius_h, "$Id$")
 
 #include <freeradius-devel/missing.h>
 
+#include <talloc.h>
+
 /*
  *  Let any external program building against the library know what
  *  features the library was built with.
