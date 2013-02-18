@@ -310,6 +310,18 @@ void cf_section_parse_free(CONF_SECTION *cs, void *base)
 
 		type = variables[i].type & ~PW_TYPE_DEPRECATED;
 
+		if (type == PW_TYPE_SUBSECTION) {
+			CONF_SECTION *subcs;
+			subcs = cf_section_sub_find(cs, variables[i].name);
+
+			if (!subcs) continue;
+
+			if (!variables[i].dflt) continue;
+
+			cf_section_parse_free(subcs, base);
+			continue;
+		}
+
 		if ((type != PW_TYPE_STRING_PTR) &&
 		    (type != PW_TYPE_FILENAME)) {
 			continue;
@@ -337,6 +349,8 @@ void cf_section_parse_free(CONF_SECTION *cs, void *base)
 		free(*p);
 		*p = NULL;
 	}
+
+	cs->variables = NULL;
 }
 
 
