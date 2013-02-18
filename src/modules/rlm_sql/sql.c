@@ -231,7 +231,12 @@ int sql_userparse(VALUE_PAIR **head, SQL_ROW row)
 	}
 	
 	if (do_xlat) {
-		pairmark_xlat(vp, value);
+		if (pairmark_xlat(vp, value) < 0) {
+			radlog(L_ERR, "rlm_sql: Error marking pair for xlat");
+			
+			pairbasicfree(vp);
+			return -1;
+		}
 	}
 
 	/*
