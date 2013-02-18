@@ -661,33 +661,10 @@ static rlm_rcode_t sqlcounter_authorize(void *instance, REQUEST *request)
 
 static int sqlcounter_detach(void *instance)
 {
-	int i;
-	char **p;
 	rlm_sqlcounter_t *inst = (rlm_sqlcounter_t *)instance;
 
 	paircompare_unregister(inst->dict_attr->attr, sqlcounter_cmp);
 
-	/*
-	 *	Free up dynamically allocated string pointers.
-	 */
-	for (i = 0; module_config[i].name != NULL; i++) {
-		if (module_config[i].type != PW_TYPE_STRING_PTR) {
-			continue;
-		}
-
-		/*
-		 *	Treat 'config' as an opaque array of bytes,
-		 *	and take the offset into it.  There's a
-		 *      (char*) pointer at that offset, and we want
-		 *	to point to it.
-		 */
-		p = (char **) (((char *)inst) + module_config[i].offset);
-		if (!*p) { /* nothing allocated */
-			continue;
-		}
-		free(*p);
-		*p = NULL;
-	}
 	free(inst);
 	return 0;
 }
