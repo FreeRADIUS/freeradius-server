@@ -129,7 +129,7 @@ void pairbasicfree(VALUE_PAIR *pair)
 		{
 			char *tmp;
 		
-			memcpy(&tmp, pair->value.xlat, sizeof(tmp));
+			memcpy(&tmp, &pair->value.xlat, sizeof(tmp));
 			free(tmp);
 		}
 	default:
@@ -342,23 +342,13 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	/*
 	 *	Now copy the value
 	 */
-	switch (vp->type)
-	{
-		case VT_XLAT:
-			n->type = VT_NONE;
-			
-			if (pairmark_xlat(n, vp->value.xlat) < 0) {
-				pairbasicfree(n);
-				return NULL;
-			}
-			break;
-		default:
-			break;
+	if (vp->type == VT_XLAT) {
+		n->value.xlat = strdup(n->value.xlat);
 	}
 	
 	n->da = dict_attr_copy(vp->da, TRUE);
 	if (!n->da) {
-		free(n);
+		pairbasicfree(n);
 		
 		return NULL;
 	}
@@ -398,26 +388,12 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 		return NULL;	
 	}
 
-	/*
-	 *	Now copy the value
-	 */
-	switch (n->type)
-	{
-		case VT_XLAT:
-			n->type = VT_NONE;
-			
-			if (pairmark_xlat(n, vp->value.xlat) < 0) {
-				pairbasicfree(n);
-				return NULL;
-			}
-			break;
-		default:
-			break;
+	memcpy(n, vp, sizeof(*n));
+	n->da = da;
+
+	if (n->type == VT_XLAT) {
+		n->value.xlat = strdup(n->value.xlat);
 	}
-	
-	memcpy(&(n->data), &(vp->data), sizeof(n->data));
-	
-	n->length = vp->length;
 	
 	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
