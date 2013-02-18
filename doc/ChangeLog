@@ -21,6 +21,8 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	  crashes in OpenSSL, due to library incompatibilities.
 	* Added radmin command "hup main.log", to re-open the log files,
 	  without HUPing any other part of the server.
+	* Added support for EAP-Key-Name.  See raddb/sites-available/default,
+	  and look for comments mentioning EAP-Key-Name.
 
 	Bug fixes
 	* Skip OCSP if there's no host / port / url, with soft_fail
@@ -44,6 +46,9 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* Track return code priorities across if/else/elsif in unlang.
 	  Closes #107
 	* In debug mode, print out DHCP options when sending a DHCP packet.
+	* Fixes to the redis modules from Brian Candler
+	* Fix a number of minor issues as found by Coverity
+	* Frees module config in order to prevent occasional crash on exit
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
