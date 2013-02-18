@@ -445,13 +445,13 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
             *ptr = EAP_PWD_DEF_PRF;
             
             pwd_session->peer_id_len = len - sizeof(pwd_id_packet);
-            if (pwd_session->peer_id_len > MAX_STRING_LEN) {
+            if (pwd_session->peer_id_len >= sizeof(pwd_session->peer_id)) {
                 RDEBUG2("pwd id response is malformed");
                 return 0;
             }
-            memset(pwd_session->peer_id, 0, MAX_STRING_LEN);
-            strncpy(pwd_session->peer_id, id->identity,
+	    memcpy(pwd_session->peer_id, id->identity,
                     pwd_session->peer_id_len);
+            pwd_session->peer_id[pwd_session->peer_id_len] = '\0';
 
             /*
              * make fake request to get the password for the usable ID
