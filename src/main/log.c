@@ -80,7 +80,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		return 0;
 	}
 
-	*buffer = '\0';
+	buffer[0] = '\0';
 	len = 0;
 
 	/*
@@ -124,7 +124,8 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		buffer[len]	= '\n';
 		buffer[len + 1] = '\0';
 	} else {
-		buffer[sizeof(buffer) - 1] = '\0';
+		buffer[len - 1] = '\n';
+		buffer[len]	= '\0';
 	}
 	
 	switch (myconfig->radlog_dest) {
