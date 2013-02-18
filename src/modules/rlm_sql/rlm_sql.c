@@ -762,8 +762,6 @@ static int rlm_sql_detach(void *instance)
 	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
 	
 	if (inst->config) {
-		int i;
-
 		if (inst->config->postauth) free(inst->config->postauth);
 		if (inst->config->accounting) free(inst->config->accounting);
 	
@@ -774,28 +772,6 @@ static int rlm_sql_detach(void *instance)
 			rad_cfree(inst->config->xlat_name);
 		}
 
-		/*
-		 *	Free up dynamically allocated string pointers.
-		 */
-		for (i = 0; module_config[i].name != NULL; i++) {
-			char **p;
-			if (module_config[i].type != PW_TYPE_STRING_PTR) {
-				continue;
-			}
-
-			/*
-			 *	Treat 'config' as an opaque array of bytes,
-			 *	and take the offset into it.  There's a
-			 *      (char*) pointer at that offset, and we want
-			 *	to point to it.
-			 */
-			p = (char **) (((char *)inst->config) + module_config[i].offset);
-			if (!*p) { /* nothing allocated */
-				continue;
-			}
-			free(*p);
-			*p = NULL;
-		}
 		free(inst->config);
 		inst->config = NULL;
 	}
