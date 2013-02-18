@@ -473,7 +473,7 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
 		return -1;
 	}
 	
-	vp = pairalloc(inst->sql_user);
+	vp = pairalloc(NULL, inst->sql_user);
 	vp->op = T_OP_SET;
 	
 	strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));

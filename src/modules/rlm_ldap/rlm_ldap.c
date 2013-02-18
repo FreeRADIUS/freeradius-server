@@ -1629,7 +1629,7 @@ static VALUE_PAIR *ldap_getvalue(REQUEST *request, const value_pair_map_t *map,
 	 *	just use whatever was set in the attribute map.	
 	 */
 	for (i = 0; i < self->count; i++) {
-		vp = pairalloc(map->dst->da);
+		vp = pairalloc(NULL, map->dst->da);
 		rad_assert(vp);
 
 		pairparsevalue(vp, self->values[i]);

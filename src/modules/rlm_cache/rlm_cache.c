@@ -473,7 +473,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
 			       buffer);
 
-			vp = pairalloc(map->dst->da);
+			vp = pairalloc(NULL, map->dst->da);
 			if (!vp) continue;
 			
 			vp->op = map->op;
@@ -498,7 +498,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
 			       map->src->name);
 			       
-			vp = pairalloc(map->dst->da);
+			vp = pairalloc(NULL, map->dst->da);
 			if (!vp) continue;
 			
 			vp->op = map->op;

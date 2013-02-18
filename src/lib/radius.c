@@ -3449,7 +3449,7 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 	 *	And now that we've verified the basic type
 	 *	information, decode the actual data.
 	 */
-	vp = pairalloc(da);
+	vp = pairalloc(NULL, da);
 	if (!vp) return -1;
 
 	vp->length = datalen;

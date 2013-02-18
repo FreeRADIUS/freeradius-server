@@ -49,10 +49,11 @@ static const char *months[] = {
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
+ * @param[in] ctx for allocated memory, usually a pointer to the request.
  * @param[in] da Specifies the dictionary attribute to build the VP from.
  * @return a new value pair or NULL if an error occurred.
  */
-VALUE_PAIR *pairalloc(const DICT_ATTR *da)
+VALUE_PAIR *pairalloc(UNUSED void *ctx, const DICT_ATTR *da)
 {
 	VALUE_PAIR *vp;
 
@@ -102,7 +103,7 @@ VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
 		}
 	}
 
-	return pairalloc(da);
+	return pairalloc(NULL, da);
 }
 
 /** Free memory used by a single valuepair.
@@ -383,7 +384,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 
 	if (da->type != vp->da->type) return NULL;
 	
-	n = pairalloc(da);
+	n = pairalloc(NULL, da);
 	if (!n) {
 		return NULL;	
 	}
@@ -1474,7 +1475,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	it.  This next stop also looks the attribute up in the
 	 *	dictionary, and creates the appropriate type for it.
 	 */
-	vp = pairalloc(da);
+	vp = pairalloc(NULL, da);
 	if (!vp) {
 		return NULL;
 	}
@@ -1573,7 +1574,8 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 		return pairmake_any(attrname, value, op);
 	}
 
-	if ((vp = pairalloc(da)) == NULL) {
+	vp = pairalloc(NULL, da);
+	if (!vp) {
 		return NULL;
 	}
 
