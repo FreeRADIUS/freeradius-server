@@ -41,6 +41,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_dhcp_t {
+	int nothing;
 } rlm_dhcp_t;
 
 
