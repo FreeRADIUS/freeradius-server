@@ -851,10 +851,10 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	if (n->type == PW_TYPE_COMBO_IP) {
 		DICT_ATTR *v4, *v6;
 
-		v4 = malloc(sizeof(*v4));
+		v4 = fr_pool_alloc(sizeof(*v4));
 		if (!v4) goto oom;
 
-		v6 = malloc(sizeof(*v6));
+		v6 = fr_pool_alloc(sizeof(*v6));
 		if (!v6) {
 			free(v4);
 			goto oom;
