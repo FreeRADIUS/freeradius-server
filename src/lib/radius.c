@@ -785,6 +785,7 @@ static uint8_t *vp2data(const RADIUS_PACKET *packet,
 #ifndef NDEBUG
 		if (data == array) return NULL;
 #endif
+		if (len != AUTH_VECTOR_LEN) return NULL;
 		make_secret(ptr, packet->vector, secret, data);
 		len = AUTH_VECTOR_LEN;
 		break;
