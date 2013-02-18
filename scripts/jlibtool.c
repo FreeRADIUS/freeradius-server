@@ -651,7 +651,8 @@ static int parse_long_opt(char *arg, command_t *cmd_data)
     if (equal_pos) {
         strncpy(var, arg, equal_pos - arg);
         var[equal_pos - arg] = 0;
-        strlcpy(value, equal_pos + 1, sizeof(var));
+	if (strlen(equal_pos + 1) >= sizeof(var)) return 0;
+        strcpy(value, equal_pos + 1);
     } else {
         strncpy(var, arg, sizeof(var) - 1);
         var[sizeof(var) - 1] = '\0';
