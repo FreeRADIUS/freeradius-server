@@ -1225,6 +1225,8 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			}
 			
 			rad_cfree(vp->value.xlat);
+			
+			vp->value.xlat = NULL;
 			vp->type = VT_DATA;
 		}
 		vp = vp->next;
