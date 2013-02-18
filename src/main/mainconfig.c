@@ -883,6 +883,15 @@ int read_mainconfig(int reload)
 		}
 	}
 
+	/* Check whether it's appropriate to colourise log output */
+	p = getenv("TERM");
+	if (!(((mainconfig.radlog_dest == RADLOG_STDOUT) ||
+	      (mainconfig.radlog_dest == RADLOG_STDERR)) &&
+	      isatty(mainconfig.radlog_fd) && p && strstr(p, "xterm"))) {
+		mainconfig.colourise = FALSE;
+	}
+	p = NULL;
+	
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
 	if (cp) p = cf_pair_value(cp);

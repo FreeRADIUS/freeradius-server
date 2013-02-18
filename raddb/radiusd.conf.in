@@ -213,6 +213,9 @@ log {
 	#
 	#  Highlight important messages sent to stderr and stdout.
 	#
+	#  Option will be ignored (disabled) if output if TERM is not
+	#  an xterm or output is not to a TTY.
+	#
 	colourise = yes
 
 	#
