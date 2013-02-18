@@ -376,6 +376,16 @@ void *rad_calloc(size_t size)
 	return ptr;
 }
 
+void rad_const_free(const void *ptr)
+{
+	void *tmp;
+	if (!ptr) return;
+
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	talloc_free(tmp);
+}
+
+
 /*
  *	Signature for free is dumb, and raises errors when we try
  *	to free const ptrs.

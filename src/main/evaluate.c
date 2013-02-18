@@ -1207,8 +1207,14 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		 *	not, panic.
 		 */
 		if (vp->type == VT_XLAT) {
+			char *tmp;
 			const char *value;
 			char buffer[2048];
+
+			rad_const_free(vp->value.xlat);
+			vp->value.xlat = NULL;
+
+			vp->type = VT_DATA;
 
 			value = expand_string(buffer, sizeof(buffer), request,
 					      cp->value_type, cp->value);
@@ -1223,11 +1229,6 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 				pairfree(&newlist);
 				return RLM_MODULE_FAIL;
 			}
-			
-			rad_cfree(vp->value.xlat);
-			vp->value.xlat = NULL;
-			
-			vp->type = VT_DATA;
 		}
 		vp = vp->next;
 	}

@@ -27,10 +27,6 @@ RCSID("$Id$")
 
 #include	<ctype.h>
 
-#ifdef HAVE_MALLOC_H
-#  include	<malloc.h>
-#endif
-
 #ifdef HAVE_PCREPOSIX_H
 #define WITH_REGEX
 #  include	<pcreposix.h>
@@ -111,29 +107,12 @@ VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
  */
 void pairbasicfree(VALUE_PAIR *pair)
 {
-	if (pair->da->type == PW_TYPE_TLV) {
-		free(pair->vp_tlv);
-	}
-	
 	/*
 	 *	Only free the DICT_ATTR if it was dynamically allocated
 	 *	and was marked for free when the VALUE_PAIR is freed.
 	 */
 	if (pair->da->flags.vp_free) {
 		dict_attr_free(&(pair->da));
-	}
-	
-	switch (pair->type)
-	{
-	case VT_XLAT:
-		{
-			char *tmp;
-		
-			memcpy(&tmp, &pair->value.xlat, sizeof(tmp));
-			free(tmp);
-		}
-	default:
-		break;
 	}
 	
 	/* clear the memory here */
@@ -330,7 +309,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 
 	if (!vp) return NULL;
 	
-	n = malloc(sizeof(*n));
+	n = pairalloc(NULL, vp->da);
 	if (!n) {
 		fr_strerror_printf("out of memory");
 		return NULL;
@@ -343,7 +322,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	 *	Now copy the value
 	 */
 	if (vp->type == VT_XLAT) {
-		n->value.xlat = strdup(n->value.xlat);
+		n->value.xlat = talloc_strdup(n, n->value.xlat);
 	}
 	
 	n->da = dict_attr_copy(vp->da, TRUE);
@@ -357,7 +336,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 
 	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
-		n->vp_tlv = malloc(n->length);
+		n->vp_tlv = talloc_size(n, n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
 	}
 
@@ -392,12 +371,12 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 	n->da = da;
 
 	if (n->type == VT_XLAT) {
-		n->value.xlat = strdup(n->value.xlat);
+		n->value.xlat = talloc_strdup(n, n->value.xlat);
 	}
 	
 	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
-		n->vp_tlv = malloc(n->length);
+		n->vp_tlv = talloc_size(n, n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
 	}
 	
@@ -942,7 +921,7 @@ static int check_for_whitespace(const char *value)
 
 int pairparsevalue(VALUE_PAIR *vp, const char *value)
 {
-	char		*p, *s=0;
+	char		*p;
 	const char	*cp, *cs;
 	int		x;
 	unsigned long long y;
@@ -1038,7 +1017,6 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 		 *	FIXME: complain if hostname
 		 *	cannot be resolved, or resolve later!
 		 */
-		s = NULL;
 		p = NULL;
 		cs = value;
 
@@ -1047,13 +1025,11 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 			if (ip_hton(cs, AF_INET, &ipaddr) < 0) {
 				fr_strerror_printf("Failed to find IP address for %s", cs);
-				free(s);
 				return FALSE;
 			}
 
 			vp->vp_ipaddr = ipaddr.ipaddr.ip4addr.s_addr;
 		}
-		free(s);
 		vp->length = 4;
 		break;
 
@@ -1201,7 +1177,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 			vp->length = size >> 1;
 			if (size > 2*sizeof(vp->vp_octets)) {
-				us = vp->vp_tlv = malloc(vp->length);
+				us = vp->vp_tlv = talloc_size(vp, vp->length);
 				if (!us) {
 					fr_strerror_printf("Out of memory.");
 					return FALSE;
@@ -1406,10 +1382,9 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 		}
 		length = strlen(value + 2) / 2;
 		if (vp->length < length) {
-			free(vp->vp_tlv);
-			vp->vp_tlv = NULL;
+			TALLOC_FREE(vp->vp_tlv);
 		}
-		vp->vp_tlv = malloc(length);
+		vp->vp_tlv = talloc_size(vp, length);
 		if (!vp->vp_tlv) {
 			fr_strerror_printf("No memory");
 			return FALSE;
@@ -1488,10 +1463,10 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 
 	vp->length = size >> 1;
 	if (vp->length > sizeof(vp->vp_octets)) {
-		vp->vp_tlv = malloc(vp->length);
+		vp->vp_tlv = talloc_size(vp, vp->length);
 		if (!vp->vp_tlv) {
 			fr_strerror_printf("Out of memory");
-			free(vp);
+			talloc_free(vp);
 			return NULL;
 		}
 		data = vp->vp_tlv;
@@ -1499,7 +1474,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 
 	if (fr_hex2bin(value + 2, data, size) != vp->length) {
 		fr_strerror_printf("Invalid hex string");
-		free(vp);
+		talloc_free(vp);
 		return NULL;
 	}
 
@@ -1738,7 +1713,7 @@ int pairmark_xlat(VALUE_PAIR *vp, const char *value)
 		return -1;
 	}
 	
-	raw = strdup(value);
+	raw = talloc_strdup(vp, value);
 	if (!raw) {
 		return -1;
 	}

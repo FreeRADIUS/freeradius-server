@@ -570,6 +570,7 @@ int		rad_mkdir(char *directory, mode_t mode);
 int		rad_checkfilename(const char *filename);
 void		*rad_malloc(size_t size); /* calls exit(1) on error! */
 void		*rad_calloc(size_t size); /* calls exit(1) on error! */
+void		rad_const_free(const void *ptr);
 void		rad_cfree(const void *ptr);
 REQUEST		*request_alloc(void);
 REQUEST		*request_alloc_fake(REQUEST *oldreq);

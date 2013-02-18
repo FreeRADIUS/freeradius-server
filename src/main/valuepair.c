@@ -659,9 +659,8 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	len = radius_xlat(buffer, sizeof(buffer), vp->value.xlat, request,
 			  NULL, NULL);
 
-	rad_cfree(vp->value.xlat);
+	rad_const_free(vp->value.xlat);
 	vp->value.xlat = NULL;
-	
 	if (!len) {
 		return -1;
 	}
