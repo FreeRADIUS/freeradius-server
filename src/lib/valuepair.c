@@ -1742,6 +1742,9 @@ int pairmark_xlat(VALUE_PAIR *vp, const char *value)
 	
 	vp->type = VT_XLAT;
 	vp->value.xlat = raw;
+	
+	vp->vp_strvalue[0] = '\0';
+	vp->length = 0;
 
 	return 0;	 
 }
