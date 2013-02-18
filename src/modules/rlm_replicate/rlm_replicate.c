@@ -126,7 +126,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 		 *	we built here.
 		 */
 		if (!packet) {
-			packet = rad_alloc(1);
+			packet = rad_alloc(NULL, 1);
 			if (!packet) return RLM_MODULE_FAIL;
 			packet->sockfd = -1;
 			packet->code = code;

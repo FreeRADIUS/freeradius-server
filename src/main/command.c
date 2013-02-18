@@ -1294,7 +1294,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	fake->decode = null_socket_dencode;
 	fake->send = null_socket_send;
 
-	packet = rad_alloc(0);
+	packet = rad_alloc(NULL, 0);
 	packet->src_ipaddr = sock->src_ipaddr;
 	packet->src_port = 0;
 

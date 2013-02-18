@@ -2531,11 +2531,11 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	if ((packet = malloc(sizeof(*packet))) == NULL) {
+	packet = rad_alloc(NULL, 0);
+	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
-	memset(packet, 0, sizeof(*packet));
 
 	if (flags & 0x02) {
 		sock_flags = MSG_PEEK;
@@ -2552,7 +2552,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	if (data_len < 0) {
 		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
 		/* packet->data is NULL */
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 	packet->data_len = data_len; /* unsigned vs signed */
@@ -2565,7 +2565,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	if (packet->data_len > MAX_PACKET_LEN) {
 		fr_strerror_printf("Discarding packet: Larger than RFC limitation of 4096 bytes.");
 		/* packet->data is NULL */
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -2577,7 +2577,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 	 */
 	if ((packet->data_len == 0) || !packet->data) {
 		fr_strerror_printf("Empty packet: Socket is not ready.");
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 
@@ -4242,18 +4242,22 @@ uint32_t fr_rand(void)
 }
 
 
-/**
- * @brief Allocate a new RADIUS_PACKET
+/** Allocate a new RADIUS_PACKET
+ *
+ * @param ctx the context in which the packet is allocated. May be NULL if
+ *	the packet is not associated with a REQUEST.
+ * @param newvector if TRUE a new request authenticator will be generated.
+ * @return a new RADIUS_PACKET or NULL on error.
  */
-RADIUS_PACKET *rad_alloc(int newvector)
+RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, int newvector)
 {
 	RADIUS_PACKET	*rp;
 
-	if ((rp = malloc(sizeof(RADIUS_PACKET))) == NULL) {
+	rp = talloc_zero(ctx, RADIUS_PACKET);
+	if (!rp) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
-	memset(rp, 0, sizeof(*rp));
 	rp->id = -1;
 	rp->offset = -1;
 
@@ -4276,13 +4280,20 @@ RADIUS_PACKET *rad_alloc(int newvector)
 	return rp;
 }
 
-RADIUS_PACKET *rad_alloc_reply(RADIUS_PACKET *packet)
+/** Allocate a new RADIUS_PACKET response
+ *
+ * @param ctx the context in which the packet is allocated. May be NULL if
+ *	the packet is not associated with a REQUEST.
+ * @param newvector if TRUE a new request authenticator will be generated.
+ * @return a new RADIUS_PACKET or NULL on error.
+ */
+RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
 {
 	RADIUS_PACKET *reply;
 
 	if (!packet) return NULL;
 
-	reply = rad_alloc(0);
+	reply = rad_alloc(ctx, 0);
 	if (!reply) return NULL;
 
 	/*
@@ -4319,7 +4330,6 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 
 	pairfree(&radius_packet->vps);
 
-	free(radius_packet);
-
+	talloc_free(radius_packet);
 	*radius_packet_ptr = NULL;
 }

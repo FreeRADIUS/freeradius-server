@@ -1359,8 +1359,8 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 *	Create and initialize the new request.
 	 */
 	request = request_alloc(); /* never fails */
-	
-	if ((request->reply = rad_alloc(0)) == NULL) {
+	request->reply = rad_alloc(request, 0);
+	if (!request->reply) {
 		radlog(L_ERR, "No memory");
 		request_free(&request);
 		return 1;
@@ -2585,7 +2585,7 @@ static void ping_home_server(void *ctx)
 	request->child_pid = NO_SUCH_CHILD_PID;
 #endif
 
-	request->proxy = rad_alloc(1);
+	request->proxy = rad_alloc(request, 1);
 	rad_assert(request->proxy != NULL);
 
 	if (home->ping_check == HOME_PING_CHECK_STATUS_SERVER) {

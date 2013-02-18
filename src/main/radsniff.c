@@ -128,7 +128,7 @@ static int filter_packet(RADIUS_PACKET *packet)
 		/*
 		 *	This swaps the various fields.
 		 */
-		reply = rad_alloc_reply(packet);
+		reply = rad_alloc_reply(NULL, packet);
 		if (!reply) goto oom;
 		
 		compare = 1;
@@ -242,13 +242,12 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 	udp = (const struct udp_header*)(((const uint8_t *) ip) + size_ip);
 	payload = (const uint8_t *)(((const uint8_t *) udp) + size_udp);
 
-	packet = malloc(sizeof(*packet));
+	packet = rad_alloc(NULL, 0);
 	if (!packet) {
 		fprintf(stderr, "Out of memory\n");
 		return;
 	}
 
-	memset(packet, 0, sizeof(*packet));
 	packet->src_ipaddr.af = AF_INET;
 	packet->src_ipaddr.ipaddr.ip4addr.s_addr = ip->ip_src.s_addr;
 	packet->src_port = ntohs(udp->udp_sport);
@@ -266,7 +265,7 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 		DEBUG(log_dst, "  To:      %s:%d\n", inet_ntoa(ip->ip_dst), ntohs(udp->udp_dport));
 		DEBUG(log_dst, "  Type:    %s\n", fr_packet_codes[packet->code]);
 
-		free(packet);
+		rad_free(&packet);
 		return;
 	}
 	
@@ -281,7 +280,7 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 		break;
 	case PW_AUTHENTICATION_REQUEST:
 		/* save the request for later matching */
-		original = rad_alloc_reply(packet);
+		original = rad_alloc_reply(NULL, packet);
 		if (original) { /* just ignore allocation failures */
 			rbtree_deletebydata(request_tree, original);
 			rbtree_insert(request_tree, original);
@@ -296,7 +295,7 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 	 *  Decode the data without bothering to check the signatures.
 	 */
 	if (rad_decode(packet, original, radius_secret) != 0) {
-		free(packet);
+		rad_free(&packet);
 		fr_perror("decode");
 		return;
 	}
@@ -308,7 +307,7 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 		rbtree_deletebydata(request_tree, original);
 
 	if (filter_vps && filter_packet(packet)) {
-		free(packet);
+		rad_free(&packet);
 		DEBUG(log_dst, "Packet number %d doesn't match\n", count++);
 		return;
 	}
@@ -363,7 +362,7 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 	if (!filter_vps ||
 	    ((packet->code != PW_AUTHENTICATION_REQUEST) &&
 	     (packet->code != PW_ACCOUNTING_REQUEST))) {
-		free(packet);
+		rad_free(&packet);
 	}
 }
 
@@ -566,7 +565,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Allocate a null packet for decrypting attributes in CoA requests
 	 */
-	nullpacket = rad_alloc(0);
+	nullpacket = rad_alloc(NULL, 0);
 	if (!nullpacket) {
 		fprintf(stderr, "radsniff: Out of memory\n");
 		exit(1);

@@ -282,11 +282,11 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	/*
 	 *	Allocate the new request data structure
 	 */
-	if ((packet = malloc(sizeof(*packet))) == NULL) {
+	packet = rad_alloc(NULL, 0);
+	if (!packet) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
-	memset(packet, 0, sizeof(*packet));
 
 	length = vqp_recvfrom(sockfd, &packet->data, 0,
 					&packet->src_ipaddr, &packet->src_port,
@@ -298,7 +298,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 	if (length < 0) {
 		fr_strerror_printf("Error receiving packet: %s", strerror(errno));
 		/* packet->data is NULL */
-		free(packet);
+		rad_free(&packet);
 		return NULL;
 	}
 	packet->data_len = length; /* unsigned vs signed */

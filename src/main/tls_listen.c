@@ -140,7 +140,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	RADCLIENT *client = sock->client;
 
 	if (!sock->packet) {
-		sock->packet = rad_alloc(0);
+		sock->packet = rad_alloc(NULL, 0);
 		if (!sock->packet) return 0;
 
 		sock->packet->sockfd = listener->fd;
@@ -149,7 +149,10 @@ static int tls_socket_recv(rad_listen_t *listener)
 		sock->packet->dst_ipaddr = sock->my_ipaddr;
 		sock->packet->dst_port = sock->my_port;
 
-		if (sock->request) sock->request->packet = sock->packet;
+		if (sock->request) {
+			talloc_steal(sock->request, sock->packet);
+			sock->request->packet = sock->packet;
+		}
 	}
 
 	/*
@@ -172,7 +175,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		/*
 		 *	Not sure if we should do this on every packet...
 		 */
-		request->reply = rad_alloc(0);
+		request->reply = rad_alloc(request, 0);
 		if (!request->reply) return 0;
 
 		request->options = RAD_REQUEST_OPTION_DEBUG2;
@@ -533,7 +536,7 @@ redo:
 	}
 	PTHREAD_MUTEX_UNLOCK(&sock->mutex);
 
-	packet = rad_alloc(0);
+	packet = rad_alloc(NULL, 0);
 	packet->sockfd = listener->fd;
 	packet->src_ipaddr = sock->other_ipaddr;
 	packet->src_port = sock->other_port;

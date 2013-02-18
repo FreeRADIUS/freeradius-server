@@ -239,7 +239,7 @@ static int radclient_init(const char *filename)
 		}
 		memset(radclient, 0, sizeof(*radclient));
 
-		radclient->request = rad_alloc(1);
+		radclient->request = rad_alloc(NULL, 1);
 		if (!radclient->request) {
 			goto oom;
 		}

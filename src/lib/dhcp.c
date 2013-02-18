@@ -224,7 +224,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	int port;
 	uint8_t			*code;
 
-	packet = rad_alloc(0);
+	packet = rad_alloc(NULL, 0);
 	if (!packet) {
 		fr_strerror_printf("Failed allocating packet");
 		return NULL;

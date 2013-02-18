@@ -627,7 +627,7 @@ int detail_recv(rad_listen_t *listener)
 	 *	Allocate the packet.  If we fail, it's a serious
 	 *	problem.
 	 */
-	packet = rad_alloc(1);
+	packet = rad_alloc(NULL, 1);
 	if (!packet) {
 		radlog(L_ERR, "FATAL: Failed allocating memory for detail");
 		exit(1);

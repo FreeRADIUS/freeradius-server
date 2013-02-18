@@ -260,7 +260,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 		request_free(&request);
 		goto unknown;
 	}
-	request->reply = rad_alloc_reply(request->packet);
+	request->reply = rad_alloc_reply(request, request->packet);
 	if (!request->reply) {
 		request_free(&request);
 		goto unknown;
@@ -438,7 +438,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	 *	Allocate a packet for partial reads.
 	 */
 	if (!sock->packet) {
-		sock->packet = rad_alloc(0);
+		sock->packet = rad_alloc(NULL, 0);
 		if (!sock->packet) return 0;
 
 		sock->packet->sockfd = listener->fd;

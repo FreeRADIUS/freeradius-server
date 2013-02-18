@@ -1097,7 +1097,8 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	if ((req = rad_alloc(1)) == NULL) {
+	req = rad_alloc(NULL, 1);
+	if (!req) {
 		fr_perror("radclient");
 		exit(1);
 	}
@@ -1461,12 +1462,14 @@ main(int argc, char *argv[])
 		return 1;
 	}
 
-	if ((req = rad_alloc(1)) == NULL) {
+	req = rad_alloc(NULL, 1)
+	if (!req) {
 		fr_perror("radclient");
 		exit(1);
 	}
 
-	if ((req2 = rad_alloc(1)) == NULL) {
+	req2 = rad_alloc(NULL, 1);
+	if (!req2) {
 		fr_perror("radclient");
 		exit(1);
 	}

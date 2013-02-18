@@ -190,7 +190,7 @@ int fr_tcp_client_socket(fr_ipaddr_t *src_ipaddr,
 
 RADIUS_PACKET *fr_tcp_recv(int sockfd, int flags)
 {
-	RADIUS_PACKET *packet = rad_alloc(0);
+	RADIUS_PACKET *packet = rad_alloc(NULL, 0);
 
 	if (!packet) return NULL;
 
@@ -356,7 +356,7 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 		 */
 #ifdef EWOULDBLOCK
 		if (errno == EWOULDBLOCK) {
-			packet = rad_alloc(0);
+			packet = rad_alloc(NULL, 0);
 			if (!packet) return NULL;
 
 			packet->sockfd = sockfd;
@@ -368,7 +368,7 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 		return NULL;
 	}
 		
-	packet = rad_alloc(0);
+	packet = rad_alloc(NULL, 0);
 	if (!packet) {
 		close(newfd);
 		return NULL;
