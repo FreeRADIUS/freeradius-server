@@ -379,6 +379,8 @@ static void module_instance_free(void *data)
 
 	module_instance_free_old(this->cs, this, time(NULL) + 100);
 
+	cf_section_parse_free(this->cs, this->insthandle);
+
 	if (this->entry->module->detach) {
 		(this->entry->module->detach)(this->insthandle);
 	}
