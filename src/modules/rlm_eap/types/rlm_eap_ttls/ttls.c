@@ -323,6 +323,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			/* FALL-THROUGH */
 
 		default:
+			if (size >= 253) size = 253;
 			vp->length = size;
 			memcpy(vp->vp_octets, data, vp->length);
 			break;
