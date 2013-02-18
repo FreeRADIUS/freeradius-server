@@ -461,17 +461,17 @@ int main(int argc, char *argv[])
 	radius_event_free();
 	
 	/*
-	 *	Free the configuration items.
-	 */
-	free_mainconfig();
-	
-	/*
 	 *	Detach any modules.
 	 */
 	detach_modules();
 	
 	xlat_free();		/* modules may have xlat's */
 
+	/*
+	 *	Free the configuration items.
+	 */
+	free_mainconfig();
+	
 	free(radius_dir);
 		
 #ifdef WIN32
