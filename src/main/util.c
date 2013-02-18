@@ -193,8 +193,9 @@ void request_free(REQUEST **request_ptr)
 {
 	REQUEST *request;
 
-	if ((request_ptr == NULL) || !*request_ptr)
+	if (!request_ptr || !*request_ptr) {
 		return;
+	}
 
 	request = *request_ptr;
 
@@ -264,8 +265,7 @@ void request_free(REQUEST **request_ptr)
 #ifdef WITH_PROXY
 	request->home_server = NULL;
 #endif
-	free(request);
-
+	talloc_free(request);
 	*request_ptr = NULL;
 }
 
@@ -419,8 +419,7 @@ REQUEST *request_alloc(void)
 {
 	REQUEST *request;
 
-	request = rad_malloc(sizeof(REQUEST));
-	memset(request, 0, sizeof(REQUEST));
+	request = talloc_zero(NULL, REQUEST);
 #ifndef NDEBUG
 	request->magic = REQUEST_MAGIC;
 #endif
