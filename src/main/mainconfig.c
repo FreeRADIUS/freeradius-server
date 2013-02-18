@@ -885,7 +885,8 @@ int read_mainconfig(int reload)
 
 	/* Check whether it's appropriate to colourise log output */
 	p = getenv("TERM");
-	if (!(((mainconfig.radlog_dest == RADLOG_STDOUT) ||
+	if (mainconfig.colourise &&
+	    !(((mainconfig.radlog_dest == RADLOG_STDOUT) ||
 	      (mainconfig.radlog_dest == RADLOG_STDERR)) &&
 	      isatty(mainconfig.radlog_fd) && p && strstr(p, "xterm"))) {
 		mainconfig.colourise = FALSE;
