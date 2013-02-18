@@ -53,7 +53,7 @@ static const char *months[] = {
  * @param[in] da Specifies the dictionary attribute to build the VP from.
  * @return a new value pair or NULL if an error occurred.
  */
-VALUE_PAIR *pairalloc(UNUSED void *ctx, const DICT_ATTR *da)
+VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da)
 {
 	VALUE_PAIR *vp;
 
@@ -63,12 +63,11 @@ VALUE_PAIR *pairalloc(UNUSED void *ctx, const DICT_ATTR *da)
 	 */
 	if (!da) return NULL;
 
-	vp = malloc(sizeof(*vp));
+	vp = talloc_zero(ctx, VALUE_PAIR);
 	if (!vp) {
 		fr_strerror_printf("Out of memory");
 		return NULL;
 	}
-	memset(vp, 0, sizeof(*vp));
 	
 	vp->da = da;
 	vp->op = T_OP_EQ;
@@ -139,7 +138,7 @@ void pairbasicfree(VALUE_PAIR *pair)
 	
 	/* clear the memory here */
 	memset(pair, 0, sizeof(*pair));
-	free(pair);
+	talloc_free(pair);
 }
 
 /** Free memory used by a valuepair list.
