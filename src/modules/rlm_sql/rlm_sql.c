@@ -815,28 +815,6 @@ static int rlm_sql_detach(void *instance)
 		}
 
 		/*
-		 *	Free up dynamically allocated string pointers.
-		 */
-		for (i = 0; module_config[i].name != NULL; i++) {
-			char **p;
-			if (module_config[i].type != PW_TYPE_STRING_PTR) {
-				continue;
-			}
-
-			/*
-			 *	Treat 'config' as an opaque array of bytes,
-			 *	and take the offset into it.  There's a
-			 *      (char*) pointer at that offset, and we want
-			 *	to point to it.
-			 */
-			p = (char **) (((char *)inst->config) + module_config[i].offset);
-			if (!*p) { /* nothing allocated */
-				continue;
-			}
-			free(*p);
-			*p = NULL;
-		}
-		/*
 		 *	Catch multiple instances of the module.
 		 */
 		if (allowed_chars == inst->config->allowed_chars) {
