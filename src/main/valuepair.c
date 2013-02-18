@@ -657,7 +657,7 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	vp->type = VT_DATA;
 	
 	len = radius_xlat(buffer, sizeof(buffer), vp->value.xlat, request,
-			    NULL, NULL);
+			  NULL, NULL);
 
 	rad_cfree(vp->value.xlat);
 	vp->value.xlat = NULL;
