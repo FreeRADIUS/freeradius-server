@@ -98,9 +98,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	buffer[0] = '\0';
 	len = 0;
 
-	if (myconfig->colourise &&
-	    ((myconfig->radlog_dest == RADLOG_STDOUT) ||
-	     (myconfig->radlog_dest == RADLOG_STDERR))) {
+	if (myconfig->colourise) {
 		len += strlcpy(buffer + len, fr_int2str(colours, lvl, ""),
 			       sizeof(buffer) - len) ;
 	}
@@ -147,9 +145,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			*p = '?';
 	}
 
-	if (myconfig->colourise && (len < sizeof(buffer)) &&
-	    ((myconfig->radlog_dest == RADLOG_STDOUT) ||
-	     (myconfig->radlog_dest == RADLOG_STDERR))) {
+	if (myconfig->colourise && (len < sizeof(buffer))) {
 		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
 	} 
 	
