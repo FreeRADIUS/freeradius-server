@@ -39,7 +39,7 @@ static rlm_rcode_t chap_authorize(void *instance, REQUEST *request)
 	}
 
 	if (pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY) != NULL) {
-		RDEBUG2("WARNING: Auth-Type already set.  Not setting to CHAP");
+		RDEBUG2W("Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -74,17 +74,17 @@ static rlm_rcode_t chap_authenticate(void *instance, REQUEST *request)
 
 	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	if (!chap) {
-		RDEBUG("ERROR: You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
+		RDEBUGE("You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length == 0) {
-		RDEBUG("ERROR: CHAP-Password is empty");
+		RDEBUGE("CHAP-Password is empty");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length != CHAP_VALUE_LENGTH + 1) {
-		RDEBUG("ERROR: CHAP-Password has invalid length");
+		RDEBUGE("CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
 

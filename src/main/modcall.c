@@ -543,7 +543,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			}
 
 			if (depth < 0) {
-				RDEBUG("ERROR: foreach Nesting too deep!");
+				RDEBUGE("foreach Nesting too deep!");
 				myresult = RLM_MODULE_FAIL;
 				goto handle_result;
 			}
@@ -605,7 +605,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			const char *server = request->server;
 
 			if (server == mr->ref_name) {
-				RDEBUG("WARNING: Suppressing recursive call to server %s", server);
+				RDEBUGW("Suppressing recursive call to server %s", server);
 				myresult = RLM_MODULE_NOOP;
 				goto handle_priority;
 			}
@@ -2429,8 +2429,6 @@ void modcallable_free(modcallable **pc)
 {
 	modcallable *c, *loop, *next;
 	c = *pc;
-
-	DEBUG3("Freeing module %s", c->name);
 
 	if (c->type != MOD_SINGLE) {
 		modgroup *g = mod_callabletogroup(c);

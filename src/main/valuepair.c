@@ -518,9 +518,9 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 			 */
 			case PW_USER_PASSWORD:
 				if (check_item->op == T_OP_CMP_EQ) {
-					DEBUG("WARNING: Found User-Password == \"...\".");
-					DEBUG("WARNING: Are you sure you don't mean Cleartext-Password?");
-					DEBUG("WARNING: See \"man rlm_pap\" for more information.");
+					DEBUGW("Found User-Password == \"...\".");
+					DEBUGW("Are you sure you don't mean Cleartext-Password?");
+					DEBUGW("See \"man rlm_pap\" for more information.");
 				}
 				if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
 					continue;
@@ -982,7 +982,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 #endif
 	}
 	
-	RDEBUG2("WARNING: List \"%s\" is not available",
+	RDEBUG2W("List \"%s\" is not available",
 		fr_int2str(pair_lists, list, "<INVALID>"));
 	
 	return NULL;
@@ -1061,7 +1061,7 @@ int radius_request(REQUEST **context, request_refs_t name)
 		case REQUEST_PARENT:	/* for future use in request chaining */
 		case REQUEST_OUTER:
 			if (!request->parent) {
-				RDEBUG("WARNING: Specified request \"%s\" is "
+				RDEBUGW("Specified request \"%s\" is "
 				       "not available in this context",
 				       fr_int2str(request_refs, name,
 		       				  "¿unknown?"));
@@ -1529,7 +1529,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 	char buffer[MAX_STRING_LEN];
 	
 	if (radius_request(&request, map->dst->request) < 0) {
-		RDEBUG("WARNING: Mapping \"%s\" -> \"%s\" "
+		RDEBUGW("Mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
 		       map->src->name, map->dst->name);
 		
@@ -1538,7 +1538,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 	
 	list = radius_list(request, map->dst->list);
 	if (!list) {
-		RDEBUG("WARNING: Mapping \"%s\" -> \"%s\" "
+		RDEBUGW("Mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
 		       map->src->name, map->dst->name);
 		       

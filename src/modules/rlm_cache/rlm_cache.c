@@ -371,7 +371,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 			found = pairfind(*from, da->attr, da->vendor, TAG_ANY);
 			if (!found) {
-				RDEBUG("WARNING: \"%s\" not found, skipping",
+				RDEBUGW("\"%s\" not found, skipping",
 				       map->src->name);
 				continue;
 			}

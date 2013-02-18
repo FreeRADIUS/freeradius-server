@@ -261,7 +261,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 		if ((default_eap_type == PW_EAP_TNC) &&
 		    !handler->request->parent) {
-			RDEBUG2("ERROR: EAP-TNC must be run inside of a TLS method.");
+			RDEBUG2E("EAP-TNC must be run inside of a TLS method.");
 			return EAP_INVALID;
 		}
 
@@ -342,7 +342,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			 *	Prevent a firestorm if the client is confused.
 			 */
 			if (handler->eap_type == eaptype->data[i]) {
-				RDEBUG2("ERROR! Our request for %s was NAK'd with a request for %s.  Skipping the requested type.",
+				RDEBUG2E("Our request for %s was NAK'd with a request for %s.  Skipping the requested type.",
 				       eaptype_name, eaptype_name);
 				continue;
 			}
@@ -1085,7 +1085,7 @@ EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
                         *	request vps so that autz's work
                         *	correctly
 			*/
-		       RDEBUG2("WARNING NAS did not set User-Name.  Setting it locally from EAP Identity");
+		       RDEBUG2W("NAS did not set User-Name.  Setting it locally from EAP Identity");
                        vp = pairmake("User-Name", handler->identity, T_OP_EQ);
                        if (vp == NULL) {
                                RDEBUG("Out of memory");

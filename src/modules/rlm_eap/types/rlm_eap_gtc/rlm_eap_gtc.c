@@ -155,6 +155,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 	VALUE_PAIR *vp;
 	EAP_DS *eap_ds = handler->eap_ds;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) type_data;
+	REQUEST *request = handler->request;
 
 	/*
 	 *	Get the Cleartext-Password for this user.
@@ -195,20 +196,20 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		 */
 		vp = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
-			DEBUG2("  rlm_eap_gtc: ERROR: Cleartext-Password is required for authentication.");
+			RDEBUG2E("Cleartext-Password is required for authentication.");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
 		if (eap_ds->response->type.length != vp->length) {
-		  DEBUG2("  rlm_eap_gtc: ERROR: Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->length);
+			RDEBUG2E("Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->length);
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
 		if (memcmp(eap_ds->response->type.data,
 			   vp->vp_strvalue, vp->length) != 0) {
-			DEBUG2("  rlm_eap_gtc: ERROR: Passwords are different");
+			RDEBUG2E("Passwords are different");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
@@ -257,8 +258,6 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
 		return 0;
 
 	}
-
-	DEBUG2("  rlm_eap_gtc: Everything is OK.");
 
 	eap_ds->request->code = PW_EAP_SUCCESS;
 

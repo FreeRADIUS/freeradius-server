@@ -719,7 +719,7 @@ CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
 	}
 
 no_such_item:
-	DEBUG2("WARNING: No such configuration item %s", ptr);
+	DEBUG2W("No such configuration item %s", ptr);
 	return NULL;
 }
 
@@ -1635,7 +1635,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 					struct stat statbuf;
 
 					if (stat(value, &statbuf) < 0) {
-						DEBUG("WARNING: Not including file %s: %s", value, strerror(errno));
+						DEBUGW("Not including file %s: %s", value, strerror(errno));
 						continue;
 					}
 				}

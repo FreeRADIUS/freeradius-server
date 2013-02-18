@@ -113,7 +113,7 @@ static int diameter_verify(REQUEST *request,
 		 *	of the packet, die.
 		 */
 		if (remaining < length) {
-			RDEBUG2("ERROR! Diameter attribute overflows packet!");
+			RDEBUG2E("Diameter attribute overflows packet!");
 			return 0;
 		}
 
@@ -196,7 +196,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	Normal attributes cannot be.
 		 */
 		if ((attr > 255) && (vendor == 0)) {
-			RDEBUG2("WARNING: Skipping Diameter attribute %u",
+			RDEBUG2W("Skipping Diameter attribute %u",
 				attr);
 			goto next_attr;
 		}
@@ -205,7 +205,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 * EAP-Message AVPs can be larger than 253 octets.
 		 */
 		if ((size > 253) && !((vendor == 0) && (attr == PW_EAP_MESSAGE))) {
-			RDEBUG2("WARNING: diameter2vp skipping long attribute %u", attr);
+			RDEBUG2W("diameter2vp skipping long attribute %u", attr);
 			goto next_attr;
 		}
 
@@ -228,13 +228,13 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 			decoded = rad_attr2vp(NULL, NULL, NULL,
 					      buffer, size + 2, &vp);
 			if (decoded < 0) {
-				RDEBUG2("ERROR: diameter2vp failed decoding attr: %s",
+				RDEBUG2E("diameter2vp failed decoding attr: %s",
 					fr_strerror());
 				goto do_octets;
 			}
 
 			if ((size_t) decoded != size + 2) {
-				RDEBUG2("ERROR: diameter2vp failed to entirely decode VSA");
+				RDEBUG2E("diameter2vp failed to entirely decode VSA");
 				pairfree(&vp);
 				goto do_octets;
 			}
@@ -1105,7 +1105,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	as it's permitted to do EAP without
 				 *	user-name.
 				 */
-				RDEBUG2("WARNING! No EAP-Identity found to start EAP conversation.");
+				RDEBUG2W("No EAP-Identity found to start EAP conversation.");
 			}
 		} /* else there WAS a t->username */
 

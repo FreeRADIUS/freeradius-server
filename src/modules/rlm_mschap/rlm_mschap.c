@@ -264,7 +264,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			if (response_name &&
 			    ((user_name->length != response_name->length) ||
 			     (strncasecmp(user_name->vp_strvalue, response_name->vp_strvalue, user_name->length) != 0))) {
-				RDEBUG("WARNING: User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", user_name->vp_strvalue, response_name->vp_strvalue);
+				RDEBUGW("User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", user_name->vp_strvalue, response_name->vp_strvalue);
 			}
 
 			/*
@@ -1290,7 +1290,7 @@ static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
 	}
 
 	if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY)) {
-		RDEBUG2("WARNING: Auth-Type already set.  Not setting to MS-CHAP");
+		RDEBUG2W("Auth-Type already set.  Not setting to MS-CHAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -1589,7 +1589,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
 	if (!challenge) {
-		RDEBUG("ERROR: You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
+		RDEBUGE("You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -1709,7 +1709,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 		if (response_name &&
 		    ((username->length != response_name->length) ||
 		     (strncasecmp(username->vp_strvalue, response_name->vp_strvalue, username->length) != 0))) {
-			RDEBUG("ERROR: User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", username->vp_strvalue, response_name->vp_strvalue);
+			RDEBUGE("User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", username->vp_strvalue, response_name->vp_strvalue);
 			return RLM_MODULE_REJECT;
 		}
 
@@ -1810,7 +1810,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 		chap = 2;
 
 	} else {		/* Neither CHAPv1 or CHAPv2 response: die */
-		RDEBUG("ERROR: You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
+		RDEBUGE("You set 'Auth-Type = MS-CHAP' for a request that does not contain any MS-CHAP attributes!");
 		return RLM_MODULE_INVALID;
 	}
 

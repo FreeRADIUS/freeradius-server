@@ -967,7 +967,7 @@ static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
 	 */
 	if (!port_seen) {
 		DEBUG2("  rlm_radutmp: No NAS-Port in the packet.  Cannot do anything.");
-		DEBUG2("  rlm_radumtp: WARNING: checkrad will probably not work!");
+		DEBUG2W("checkrad will probably not work!");
 		return RLM_MODULE_NOOP;
 	}
 

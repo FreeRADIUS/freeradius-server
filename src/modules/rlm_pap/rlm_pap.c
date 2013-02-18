@@ -410,7 +410,8 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUG("WARNING! No \"known good\" password found for the user.  Authentication may fail because of this.");
+		RDEBUGW("No \"known good\" password found for the user.  Not setting Auth-Type.");
+		RDEBUGW("Configure a \"known good\" password to get an Access-Accept.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -418,7 +419,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 	 *	Don't touch existing Auth-Types.
 	 */
 	if (auth_type) {
-		RDEBUG2("WARNING: Auth-Type already set.  Not setting to PAP");
+		RDEBUG2W("Auth-Type already set.  Not setting to PAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -465,7 +466,7 @@ static rlm_rcode_t pap_authenticate(void *instance, REQUEST *request)
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		RDEBUG("ERROR: You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
+		RDEBUGE("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 

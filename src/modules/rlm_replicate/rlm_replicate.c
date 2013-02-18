@@ -76,7 +76,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
-			RDEBUG2("ERROR: Cannot Replicate to unknown realm %s", realm);
+			RDEBUG2E("Cannot Replicate to unknown realm %s", realm);
 			continue;
 		}
 		
@@ -85,7 +85,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 		 */
 		switch (request->packet->code) {
 		default:
-			RDEBUG2("ERROR: Cannot replicate unknown packet code %d",
+			RDEBUG2E("Cannot replicate unknown packet code %d",
 				request->packet->code);
 			cleanup(packet);
 			return RLM_MODULE_FAIL;
@@ -110,13 +110,13 @@ static int replicate_packet(void *instance, REQUEST *request,
 		}
 		
 		if (!pool) {
-			RDEBUG2(" WARNING: Cancelling replication to Realm %s, as the realm is local.", realm->name);
+			RDEBUG2W("Cancelling replication to Realm %s, as the realm is local.", realm->name);
 			continue;
 		}
 		
 		home = home_server_ldb(realm->name, pool, request);
 		if (!home) {
-			RDEBUG2("ERROR: Failed to find live home server for realm %s",
+			RDEBUG2E("Failed to find live home server for realm %s",
 				realm->name);
 			continue;
 		}
@@ -134,14 +134,14 @@ static int replicate_packet(void *instance, REQUEST *request,
 
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
-				RDEBUG("ERROR: Failed opening socket: %s", fr_strerror());
+				RDEBUGE("Failed opening socket: %s", fr_strerror());
 				rcode = RLM_MODULE_FAIL;
 				goto done;
 			}
 			
 			vps = radius_list(request, list);
 			if (!vps) {
-				RDEBUG("WARNING: List '%s' doesn't exist for "
+				RDEBUGW("List '%s' doesn't exist for "
 				       "this packet", fr_int2str(pair_lists,
 				       list, "¿unknown?"));
 				rcode = RLM_MODULE_INVALID;
@@ -155,7 +155,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 			if (*vps) {
 				packet->vps = paircopy(*vps);
 				if (!packet->vps) {
-					RDEBUG("ERROR: Out of memory!");
+					RDEBUGE("Out of memory!");
 					rcode = RLM_MODULE_FAIL;
 					goto done;
 				}
@@ -203,7 +203,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 		RDEBUG("Replicating list '%s' to Realm '%s'",
 		       fr_int2str(pair_lists, list, "¿unknown?"),realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
-			RDEBUG("ERROR: Failed replicating packet: %s",
+			RDEBUGE("Failed replicating packet: %s",
 			       fr_strerror());
 			rcode = RLM_MODULE_FAIL;
 			goto done;

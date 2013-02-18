@@ -281,7 +281,7 @@ static rlm_rcode_t od_authenticate(UNUSED void *instance, REQUEST *request)
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		RDEBUG("ERROR: You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Name attribute!");
+		RDEBUGE("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Name attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -290,7 +290,7 @@ static rlm_rcode_t od_authenticate(UNUSED void *instance, REQUEST *request)
 	 */
 	if (!request->password ||
 		(request->password->da->attr != PW_PASSWORD)) {
-		RDEBUG("ERROR: You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
+		RDEBUGE("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 	

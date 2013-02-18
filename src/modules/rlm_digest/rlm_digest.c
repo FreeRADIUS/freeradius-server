@@ -122,7 +122,7 @@ static int digest_fix(REQUEST *request)
 			 *	The attribute type must be valid
 			 */
 			if ((p[0] == 0) || (p[0] > 10)) {
-				RDEBUG("ERROR: Received Digest-Attributes with invalid sub-attribute %d", p[0]);
+				RDEBUGE("Received Digest-Attributes with invalid sub-attribute %d", p[0]);
 				return RLM_MODULE_INVALID;
 			}
 
@@ -132,7 +132,7 @@ static int digest_fix(REQUEST *request)
 			 *	Too short.
 			 */
 			if (attrlen < 3) {
-				RDEBUG("ERROR: Received Digest-Attributes with short sub-attribute %d, of length %d", p[0], attrlen);
+				RDEBUGE("Received Digest-Attributes with short sub-attribute %d, of length %d", p[0], attrlen);
 				return RLM_MODULE_INVALID;
 			}
 
@@ -140,7 +140,7 @@ static int digest_fix(REQUEST *request)
 			 *	Too long.
 			 */
 			if (attrlen > length) {
-				RDEBUG("ERROR: Received Digest-Attributes with long sub-attribute %d, of length %d", p[0], attrlen);
+				RDEBUGE("Received Digest-Attributes with long sub-attribute %d, of length %d", p[0], attrlen);
 				return RLM_MODULE_INVALID;
 			}
 
@@ -193,7 +193,7 @@ static rlm_rcode_t digest_authorize(void *instance, REQUEST *request)
 
 
 	if (pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY)) {
-		RDEBUG2("WARNING: Auth-Type already set.  Not setting to DIGEST");
+		RDEBUG2W("Auth-Type already set.  Not setting to DIGEST");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -247,7 +247,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	if (vp == NULL) {
 	error:
-		RDEBUG("ERROR: You set 'Auth-Type = Digest' for a request that does not contain any digest attributes!");
+		RDEBUGE("You set 'Auth-Type = Digest' for a request that does not contain any digest attributes!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -277,7 +277,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 	 */
 	nonce = pairfind(request->packet->vps, PW_DIGEST_NONCE, 0, TAG_ANY);
 	if (!nonce) {
-		RDEBUG("ERROR: No Digest-Nonce: Cannot perform Digest authentication");
+		RDEBUGE("No Digest-Nonce: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -286,7 +286,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_USER_NAME, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("ERROR: No Digest-User-Name: Cannot perform Digest authentication");
+		RDEBUGE("No Digest-User-Name: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
 	memcpy(&a1[0], &vp->vp_octets[0], vp->length);
@@ -297,7 +297,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 
 	vp = pairfind(request->packet->vps, PW_DIGEST_REALM, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("ERROR: No Digest-Realm: Cannot perform Digest authentication");
+		RDEBUGE("No Digest-Realm: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
 	memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
@@ -356,7 +356,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 		 *	Tack on the Digest-Nonce. Length must be even
 		 */
 		if ((nonce->length & 1) != 0) {
-			RDEBUG("ERROR: Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
+			RDEBUGE("Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
 		memcpy(&a1[a1_len], &nonce->vp_octets[0], nonce->length);
@@ -367,7 +367,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 
 		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE, 0, TAG_ANY);
 		if (!vp) {
-			RDEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
+			RDEBUGE("No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -375,7 +375,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 		 *      Digest-CNonce length must be even
 		 */
 		if ((vp->length & 1) != 0) {
-			RDEBUG("ERROR: Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
+			RDEBUGE("Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
 		memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
@@ -387,7 +387,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 		 *	We check for "MD5-sess" and "MD5".
 		 *	Anything else is an error.
 		 */
-		RDEBUG("ERROR: Unknown Digest-Algorithm \"%s\": Cannot perform Digest authentication", vp->vp_strvalue);
+		RDEBUGE("Unknown Digest-Algorithm \"%s\": Cannot perform Digest authentication", vp->vp_strvalue);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -396,7 +396,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_METHOD, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("ERROR: No Digest-Method: Cannot perform Digest authentication");
+		RDEBUGE("No Digest-Method: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
 	memcpy(&a2[0], &vp->vp_octets[0], vp->length);
@@ -407,7 +407,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 
 	vp = pairfind(request->packet->vps, PW_DIGEST_URI, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("ERROR: No Digest-URI: Cannot perform Digest authentication");
+		RDEBUGE("No Digest-URI: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
 	memcpy(&a2[a2_len], &vp->vp_octets[0], vp->length);
@@ -432,12 +432,12 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 		 */
 		body = pairfind(request->packet->vps, PW_DIGEST_BODY_DIGEST, 0, TAG_ANY);
 		if (!body) {
-			RDEBUG("ERROR: No Digest-Body-Digest: Cannot perform Digest authentication");
+			RDEBUGE("No Digest-Body-Digest: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
 
 		if ((a2_len + body->length) > sizeof(a2)) {
-			RDEBUG("ERROR: Digest-Body-Digest is too long");
+			RDEBUGE("Digest-Body-Digest is too long");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -446,7 +446,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 
 	} else if ((qop != NULL) &&
 		   (strcasecmp(qop->vp_strvalue, "auth") != 0)) {
-		RDEBUG("ERROR: Unknown Digest-QOP \"%s\": Cannot perform Digest authentication", qop->vp_strvalue);
+		RDEBUGE("Unknown Digest-QOP \"%s\": Cannot perform Digest authentication", qop->vp_strvalue);
 		return RLM_MODULE_INVALID;
 	}
 
@@ -503,7 +503,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 
 		vp = pairfind(request->packet->vps, PW_DIGEST_NONCE_COUNT, 0, TAG_ANY);
 		if (!vp) {
-			RDEBUG("ERROR: No Digest-Nonce-Count: Cannot perform Digest authentication");
+			RDEBUGE("No Digest-Nonce-Count: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
 		memcpy(&kd[kd_len], &vp->vp_octets[0], vp->length);
@@ -514,7 +514,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 
 		vp = pairfind(request->packet->vps, PW_DIGEST_CNONCE, 0, TAG_ANY);
 		if (!vp) {
-			RDEBUG("ERROR: No Digest-CNonce: Cannot perform Digest authentication");
+			RDEBUGE("No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
 		memcpy(&kd[kd_len], &vp->vp_octets[0], vp->length);
@@ -563,7 +563,7 @@ static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0, TAG_ANY);
 	if (!vp) {
-		RDEBUG("ERROR: No Digest-Response attribute in the request.  Cannot perform digest authentication");
+		RDEBUGE("No Digest-Response attribute in the request.  Cannot perform digest authentication");
 		return RLM_MODULE_INVALID;
 	}
 

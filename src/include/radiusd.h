@@ -438,17 +438,33 @@ typedef struct main_config_t {
 					//!< VT100 escape sequences.
 } MAIN_CONFIG_T;
 
-#define DEBUG	if(debug_flag)log_debug
-#define DEBUG2  if (debug_flag > 1)log_debug
-#define DEBUG3  if (debug_flag > 2)log_debug
-#define DEBUG4  if (debug_flag > 3)log_debug
+/* DEBUG is defined below */
+#define DEBUG3  if (debug_flag > 2) log_debug
+#define DEBUG4  if (debug_flag > 3) log_debug
 
 #if __GNUC__ >= 3
 #define RDEBUG(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG, 1, request, fmt, ## __VA_ARGS__)
+#define RDEBUGW(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_WARN, 1, request, fmt, ## __VA_ARGS__)
+#define RDEBUGE(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_ERR, 1, request, fmt, ## __VA_ARGS__)
+
 #define RDEBUG2(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2W(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_WARN, 2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2E(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_ERR, 2, request, fmt, ## __VA_ARGS__)
+
 #define RDEBUG3(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 3, request, fmt, ## __VA_ARGS__)
 #define RDEBUG4(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 4, request, fmt, ## __VA_ARGS__)
+
+#define DEBUG(...)	if (debug_flag) radlog(L_DBG, ## __VA_ARGS__)
+#define DEBUGW(...)	if (debug_flag) radlog(L_DBG_WARN, ## __VA_ARGS__)
+#define DEBUGE(...)	if (debug_flag) radlog(L_DBG_ERR, ## __VA_ARGS__)
+
+#define DEBUG2  if (debug_flag > 1) log_debug
+#define DEBUG2W(...)  if (debug_flag > 1) radlog(L_DBG_WARN, ## __VA_ARGS__)
+
 #else
+#define DEBUG	if (debug_flag) log_debug
+#define DEBUG2  if (debug_flag > 1) log_debug
+
 #define RDEBUG  DEBUG
 #define RDEBUG2 DEBUG2
 #define RDEBUG3 DEBUG3
@@ -463,12 +479,18 @@ typedef struct main_config_t {
 #define RETRY_COUNT             3
 #define DEAD_TIME               120
 
-#define L_DBG			1
 #define L_AUTH			2
 #define L_INFO			3
 #define L_ERR			4
 #define L_PROXY			5
 #define L_ACCT			6
+
+#define L_DBG			16
+#define L_DBG_WARN		17
+#define L_DBG_ERR	        18
+#define L_DBG_WARN2		19
+#define L_DBG_ERR2	        20
+
 
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);

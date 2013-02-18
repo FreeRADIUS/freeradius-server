@@ -1798,7 +1798,7 @@ static void do_check_reply(ldap_instance *inst, REQUEST *request)
 		    !pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
-			RDEBUG("WARNING: No \"known good\" password "
+			RDEBUGW("No \"known good\" password "
 			       "was found in LDAP.  Are you sure that "
 			        "the user is configured correctly?");
 		}

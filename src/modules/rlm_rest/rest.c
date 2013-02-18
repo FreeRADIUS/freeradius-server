@@ -992,7 +992,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
-			RDEBUG("WARNING: Invalid request qualifier, skipping");
+			RDEBUGW("Invalid request qualifier, skipping");
 
 			curl_free(name);
 
@@ -1000,7 +1000,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		}
 
 		if (!radius_request(&reference, request_name)) {
-			RDEBUG("WARNING: Attribute name refers to outer request"
+			RDEBUGW("Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 
 			curl_free(name);
@@ -1010,7 +1010,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
 		if (list_name == PAIR_LIST_UNKNOWN) {
-			RDEBUG("WARNING: Invalid list qualifier, skipping");
+			RDEBUGW("Invalid list qualifier, skipping");
 
 			curl_free(name);
 
@@ -1019,7 +1019,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		da = dict_attrbyname(attribute);
 		if (!da) {
-			RDEBUG("WARNING: Attribute \"%s\" unknown, skipping",
+			RDEBUGW("Attribute \"%s\" unknown, skipping",
 			       attribute);
 
 			curl_free(name);
@@ -1303,13 +1303,13 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
-			RDEBUG("WARNING: Request qualifier unknown, skipping");
+			RDEBUGW("Request qualifier unknown, skipping");
 
 			continue;
 		}
 
 		if (!radius_request(&reference, request_name)) {
-			RDEBUG("WARNING: Attribute name refers to outer request"
+			RDEBUGW("Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 
 			continue;
@@ -1317,14 +1317,14 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 
 		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
 		if (list_name == PAIR_LIST_UNKNOWN) {
-			RDEBUG("WARNING: Invalid list qualifier, skipping");
+			RDEBUGW("Invalid list qualifier, skipping");
 
 			continue;
 		}
 
 		da = dict_attrbyname(attribute);
 		if (!da) {
-			RDEBUG("WARNING: Attribute \"%s\" unknown, skipping",
+			RDEBUGW("Attribute \"%s\" unknown, skipping",
 			       attribute);
 
 			continue;

@@ -336,7 +336,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		    (old->coa_pool == client->coa_pool) &&
 #endif
 		    (old->message_authenticator == client->message_authenticator)) {
-			DEBUG("WARNING: Ignoring duplicate client %s", client->longname);
+			DEBUGW("Ignoring duplicate client %s", client->longname);
 			client_free(client);
 			return 1;
 		}
@@ -739,7 +739,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			goto error;
 		}
 #else
-		DEBUG("WARNING: Server not build with udpfromto, ignoring client src_ipaddr");
+		DEBUGW("Server not build with udpfromto, ignoring client src_ipaddr");
 #endif
 		
 		free(cl_srcipaddr);
@@ -1126,7 +1126,7 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 				c->src_ipaddr.af = AF_INET;
 				c->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 #else
-				DEBUG("WARNING: Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address.");
+				DEBUGW("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IP-Address.");
 #endif
 			}
 			
@@ -1142,7 +1142,7 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 				c->src_ipaddr.af = AF_INET6;
 				c->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 #else
-				DEBUG("WARNING: Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address.");
+				DEBUGW("Server not build with udpfromto, ignoring FreeRADIUS-Client-Src-IPv6-Address.");
 #endif
 			}
 			

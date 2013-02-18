@@ -982,7 +982,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 */
 	varlen = rad_copy_variable(buffer, *from);
 	if (varlen < 0) {
-		RDEBUG2("ERROR: Badly formatted variable: %s", *from);
+		RDEBUG2E("Badly formatted variable: %s", *from);
 		return -1;
 	}
 	*from += varlen;
@@ -1013,7 +1013,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 */
 		len1 = rad_copy_variable(buffer, p);
 		if (len1 < 0) {
-			RDEBUG2("ERROR: Badly formatted variable: %s", p);
+			RDEBUG2E("Badly formatted variable: %s", p);
 			return -1;
 		}
 
@@ -1046,7 +1046,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 			len2 = rad_copy_variable(l, p);
 
 			if (len2 < 0) {
-				RDEBUG2("ERROR: Invalid text after :- at %s", p);
+				RDEBUG2E("Invalid text after :- at %s", p);
 				return -1;
 			}
 			p += len2;
@@ -1128,7 +1128,7 @@ static int decode_attribute(const char **from, char **to, int freespace,
 	 *	Maybe it's the old-style %{foo:-bar}
 	 */
 	if (*p == '-') {
-		RDEBUG2("WARNING: Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
+		RDEBUG2W("Deprecated conditional expansion \":-\".  See \"man unlang\" for details");
 		p++;
 
 		xlat_str = module_name;
@@ -1162,9 +1162,9 @@ do_xlat:
 	}
 	if (!c) {
 		if (!module_name) {
-			RDEBUG2("WARNING: Unknown Attribute \"%s\" in string expansion \"%%%s\"", xlat_str, *from);
+			RDEBUG2W("Unknown Attribute \"%s\" in string expansion \"%%%s\"", xlat_str, *from);
 		} else {
-			RDEBUG2("WARNING: Unknown module \"%s\" in string expansion \"%%%s\"", module_name, *from);
+			RDEBUG2W("Unknown module \"%s\" in string expansion \"%%%s\"", module_name, *from);
 		}
 		return -1;
 	}
@@ -1410,7 +1410,7 @@ size_t radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			default:
-				RDEBUG2("WARNING: Unknown variable '%%%c': See 'doc/variables.txt'", *p);
+				RDEBUG2W("Unknown variable '%%%c': See 'doc/variables.txt'", *p);
 				if (freespace > 2) {
 					*q++ = '%';
 					*q++ = *p++;

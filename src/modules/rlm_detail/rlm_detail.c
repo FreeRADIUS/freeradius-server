@@ -232,7 +232,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	if ((request->listener->type == RAD_LISTEN_DETAIL) &&
 	    (fnmatch(((listen_detail_t *)request->listener->data)->filename,
 		     buffer, FNM_FILE_NAME | FNM_PERIOD ) == 0)) {
-		RDEBUG2("WARNING: Suppressing infinite loop.");
+		RDEBUG2W("Suppressing infinite loop.");
 		return RLM_MODULE_NOOP;
 	}
 #endif

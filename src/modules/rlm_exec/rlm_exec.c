@@ -310,7 +310,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	output_pairs = decode_string(request, inst->output);
 
 	if (!input_pairs) {
-		RDEBUG2("WARNING: Possible parse error in %s",
+		RDEBUG2W("Possible parse error in %s",
 			inst->input);
 		return RLM_MODULE_NOOP;
 	}
@@ -320,7 +320,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	list is empty.
 	 */
 	if (!*input_pairs) {
-		RDEBUG2("WARNING! Input pairs are empty.  No attributes will be passed to the script");
+		RDEBUG2W("Input pairs are empty.  No attributes will be passed to the script");
 	}
 
 	/*

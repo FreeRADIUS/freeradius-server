@@ -1735,7 +1735,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		    ((cp = cf_pair_find(cs, "accthost")) != NULL) ||
 		    ((cp = cf_pair_find(cs, "secret")) != NULL) ||
 		    ((cp = cf_pair_find(cs, "ldflag")) != NULL)) {
-			DEBUG2("WARNING: Ignoring old-style configuration entry \"%s\" in realm \"%s\"", cf_pair_attr(cp), r->name);
+			DEBUG2W("Ignoring old-style configuration entry \"%s\" in realm \"%s\"", cf_pair_attr(cp), r->name);
 		}
 
 
@@ -2366,7 +2366,7 @@ home_server *home_server_ldb(const char *realmname,
 	if (!found && pool->fallback) {
 		found = pool->fallback;
 
-		DEBUG("WARNING: Home server pool %s failing over to fallback %s",
+		DEBUGW("Home server pool %s failing over to fallback %s",
 		      pool->name, found->server);
 		if (pool->in_fallback) goto update_and_return;
 

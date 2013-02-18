@@ -268,8 +268,8 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 	mn_nai = pairfind(request->packet->vps, 1900, 0, TAG_ANY);
 	if (!mn_nai) mn_nai = pairfind(request->reply->vps, 1900, 0, TAG_ANY);
 	if (!mn_nai) {
-		RDEBUG("WARNING: WiMAX-MN-NAI was not found in the request or in the reply.");
-		RDEBUG("WARNING: We cannot calculate MN-HA keys.");
+		RDEBUGW("WiMAX-MN-NAI was not found in the request or in the reply.");
+		RDEBUGW("We cannot calculate MN-HA keys.");
 	}
 
 	/*
@@ -278,8 +278,8 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 	vp = NULL;
 	if (mn_nai) vp = pairfind(request->reply->vps, 23, VENDORPEC_WIMAX, TAG_ANY);
 	if (!vp) {
-		RDEBUG("WARNING: WiMAX-IP-Technology not found in reply.");
-		RDEBUG("WARNING: Not calculating MN-HA keys");
+		RDEBUGW("WiMAX-IP-Technology not found in reply.");
+		RDEBUGW("Not calculating MN-HA keys");
 	}
 
 	if (vp) switch (vp->vp_integer) {
@@ -289,7 +289,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		 */
 		ip = pairfind(request->reply->vps, 6, VENDORPEC_WIMAX, TAG_ANY);
 		if (!ip) {
-			RDEBUG("WARNING: WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-PMIP4 key");
+			RDEBUGW("WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-PMIP4 key");
 			break;
 		}
 
@@ -313,7 +313,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 					       10, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-Key");
+			RDEBUGW("Failed creating WiMAX-MN-hHA-MIP4-Key");
 			break;
 		}
 		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
@@ -328,7 +328,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 					       11, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-SPI");
+			RDEBUGW("Failed creating WiMAX-MN-hHA-MIP4-SPI");
 			break;
 		}
 		vp->vp_integer = mip_spi + 1;
@@ -340,7 +340,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		 */
 		ip = pairfind(request->reply->vps, 6, VENDORPEC_WIMAX, TAG_ANY);
 		if (!ip) {
-			RDEBUG("WARNING: WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-CMIP4 key");
+			RDEBUGW("WiMAX-hHA-IP-MIP4 not found.  Cannot calculate MN-HA-CMIP4 key");
 			break;
 		}
 
@@ -364,7 +364,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 					       10, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-Key");
+			RDEBUGW("Failed creating WiMAX-MN-hHA-MIP4-Key");
 			break;
 		}
 		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
@@ -379,7 +379,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 					       11, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP4-SPI");
+			RDEBUGW("Failed creating WiMAX-MN-hHA-MIP4-SPI");
 			break;
 		}
 		vp->vp_integer = mip_spi;
@@ -391,7 +391,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		 */
 		ip = pairfind(request->reply->vps, 7, VENDORPEC_WIMAX, TAG_ANY);
 		if (!ip) {
-			RDEBUG("WARNING: WiMAX-hHA-IP-MIP6 not found.  Cannot calculate MN-HA-CMIP6 key");
+			RDEBUGW("WiMAX-hHA-IP-MIP6 not found.  Cannot calculate MN-HA-CMIP6 key");
 			break;
 		}
 
@@ -415,7 +415,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 					       12, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP6-Key");
+			RDEBUGW("Failed creating WiMAX-MN-hHA-MIP6-Key");
 			break;
 		}
 		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
@@ -430,7 +430,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 					       13, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-MN-hHA-MIP6-SPI");
+			RDEBUGW("Failed creating WiMAX-MN-hHA-MIP6-SPI");
 			break;
 		}
 		vp->vp_integer = mip_spi + 2;
@@ -468,7 +468,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 					       61, VENDORPEC_WIMAX);
 		}
 		if (!vp) {
-			RDEBUG("WARNING: Failed creating WiMAX-FA-RK-SPI");
+			RDEBUGW("Failed creating WiMAX-FA-RK-SPI");
 		} else {
 			vp->vp_integer = mip_spi;
 		}
@@ -483,14 +483,14 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 	if (vp) {
 		RDEBUG("Client requested MN-HA key: Should use SPI to look up key from storage.");
 		if (!mn_nai) {
-			RDEBUG("WARNING: MN-NAI was not found!");
+			RDEBUGW("MN-NAI was not found!");
 		}
 
 		/*
 		 *	WiMAX-RRQ-HA-IP
 		 */
 		if (!pairfind(request->packet->vps, 18, VENDORPEC_WIMAX, TAG_ANY)) {
-			RDEBUG("WARNING: HA-IP was not found!");
+			RDEBUGW("HA-IP was not found!");
 		}
 
 

@@ -98,7 +98,7 @@ static int eap_handler_cmp(const void *a, const void *b)
 	 *	EAP work.
 	 */
 	if (fr_ipaddr_cmp(&one->src_ipaddr, &two->src_ipaddr) != 0) {
-		DEBUG("WARNING: EAP packets are arriving from two different upstream servers.  Has there been a proxy fail-over?");
+		DEBUGW("EAP packets are arriving from two different upstream servers.  Has there been a proxy fail-over?");
 	}
 
 	return 0;
@@ -286,7 +286,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 	inst = (rlm_eap_t *) instance;
 
 	if (!pairfind(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY)) {
-		RDEBUG("ERROR: You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
+		RDEBUGE("You set 'Auth-Type = EAP' for a request that does not contain an EAP-Message attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -549,7 +549,7 @@ static rlm_rcode_t eap_authorize(void *instance, REQUEST *request)
 		}
 		pairadd(&request->config_items, vp);
 	} else {
-		RDEBUG2("WARNING: Auth-Type already set.  Not setting to EAP");
+		RDEBUG2W("Auth-Type already set.  Not setting to EAP");
 	}
 
 	if (status == EAP_OK) return RLM_MODULE_OK;

@@ -521,7 +521,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	case PW_STATUS_SERVER:
 		if (!mainconfig.status_server) {
 			FR_STATS_INC(auth, total_unknown_types);
-			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+			DEBUGW("Ignoring Status-Server request due to security configuration");
 			rad_free(&sock->packet);
 			return 0;
 		}
@@ -1081,7 +1081,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (home_server_find(&sock->my_ipaddr, sock->my_port, sock->proto)) {
 				char buffer[128];
 				
-				DEBUG("ERROR: We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
+				DEBUGE("We have been asked to listen on %s port %d, which is also listed as a home server.  This can create a proxy loop.",
 				      ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
 				      sock->my_port);
 				return -1;
@@ -1439,7 +1439,7 @@ static int auth_socket_recv(rad_listen_t *listener)
 		if (!mainconfig.status_server) {
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(auth, total_unknown_types);
-			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+			DEBUGW("Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
 		fun = rad_status_server;
@@ -1521,7 +1521,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 			rad_recv_discard(listener->fd);
 			FR_STATS_INC(acct, total_unknown_types);
 
-			DEBUG("WARNING: Ignoring Status-Server request due to security configuration");
+			DEBUGW("Ignoring Status-Server request due to security configuration");
 			return 0;
 		}
 		fun = rad_status_server;
@@ -1575,7 +1575,7 @@ static int do_proxy(REQUEST *request)
 	if (!vp) return 0;
 	
 	if (!home_pool_byname(vp->vp_strvalue, HOME_TYPE_COA)) {
-		RDEBUG2("ERROR: Cannot proxy to unknown pool %s",
+		RDEBUG2E("Cannot proxy to unknown pool %s",
 			vp->vp_strvalue);
 		return 0;
 	}
@@ -1627,7 +1627,7 @@ static int rad_coa_recv(REQUEST *request)
 			if (vp && (vp->vp_integer == 17)) {
 				vp = pairfind(request->packet->vps, PW_STATE, 0, TAG_ANY);
 				if (!vp || (vp->length == 0)) {
-					RDEBUG("ERROR: CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
+					RDEBUGE("CoA-Request with Service-Type = Authorize-Only MUST contain a State attribute");
 					request->reply->code = PW_COA_NAK;
 					return RLM_MODULE_FAIL;
 				}
@@ -1636,7 +1636,7 @@ static int rad_coa_recv(REQUEST *request)
 			/*
 			 *	RFC 5176, Section 3.2.
 			 */
-			RDEBUG("ERROR: Disconnect-Request MUST NOT contain a Service-Type attribute");
+			RDEBUGE("Disconnect-Request MUST NOT contain a Service-Type attribute");
 			request->reply->code = PW_DISCONNECT_NAK;
 			return RLM_MODULE_FAIL;
 		}
@@ -2149,7 +2149,7 @@ static int listen_bind(rad_listen_t *this)
 #endif
 
 		default:
-			DEBUG("WARNING: Internal sanity check failed in binding to socket.  Ignoring problem.");
+			DEBUGW("Internal sanity check failed in binding to socket.  Ignoring problem.");
 			return -1;
 		}
 	}
@@ -2527,7 +2527,7 @@ int proxy_new_listener(home_server *home, int src_port)
 
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {
-		DEBUG("WARNING: Home server has too many open connections (%d)",
+		DEBUGW("Home server has too many open connections (%d)",
 		      home->limit.max_connections);
 		return 0;
 	}

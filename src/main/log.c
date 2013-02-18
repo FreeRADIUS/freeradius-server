@@ -46,10 +46,15 @@ static const FR_NAME_NUMBER levels[] = {
 	{ ": Info: ",           L_INFO  },
 	{ ": Acct: ",           L_ACCT  },
 	{ ": Error: ",          L_ERR   },
+	{ ": WARNING: ",        L_DBG_WARN   },
+	{ ": ERROR: ",          L_DBG_ERR   },
+	{ ": WARNING: ",        L_DBG_WARN2   },
+	{ ": ERROR: ",          L_DBG_ERR2   },
 	{ NULL, 0 }
 };
 
 #define VTC_RED		"\x1b[31m"
+#define VTC_YELLOW      "\x1b[33m"
 #define VTC_BOLD	"\x1b[1m"
 #define VTC_RESET	"\x1b[0m"
 
@@ -60,6 +65,10 @@ static const FR_NAME_NUMBER colours[] = {
 	{ VTC_BOLD,		L_INFO  },
 	{ VTC_BOLD,		L_ACCT  },
 	{ VTC_RED,		L_ERR   },
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR   },
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN  },
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR2  },
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN2 },
 	{ NULL, 0 }
 };
 
@@ -83,7 +92,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	 *
 	 *	Throw the message away.
 	 */
-	if (!debug_flag && (lvl == L_DBG)) {
+	if (!debug_flag && ((lvl & L_DBG) != 0)) {
 		return 0;
 	}
 
@@ -129,6 +138,19 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			       sizeof(buffer) - len);
 	}
 
+	switch (lvl) {
+	case L_DBG_WARN:
+		len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
+		break;
+
+	case L_DBG_ERR:
+		len += strlcpy(buffer + len, "ERROR: ", sizeof(buffer) - len);
+		break;
+
+	default:
+		break;
+	}
+
 	if (len < sizeof(buffer)) {
 		len += vsnprintf(buffer + len,
 			         sizeof(buffer) - len - 1, fmt, ap);
@@ -163,6 +185,8 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	case RADLOG_SYSLOG:
 		switch(lvl) {
 			case L_DBG:
+			case L_DBG_WARN:
+			case L_DBG_ERR:
 				lvl = LOG_DEBUG;
 				break;
 			case L_AUTH:
@@ -249,13 +273,14 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	va_list ap;
 	char buffer[8192];
 	char *p;
+	const char *extra = "";
 
 	va_start(ap, msg);
 
 	/*
 	 *	Debug messages get treated specially.
 	 */
-	if (lvl == L_DBG) {
+	if ((lvl & L_DBG) != 0) {
 		/*
 		 *	There is log function, but the debug level
 		 *	isn't high enough.  OR, we're in debug mode,
@@ -350,11 +375,25 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
 	
 	finish:
+	switch (lvl) {
+	case L_DBG_WARN:
+		extra = "WARNING: ";
+		lvl = L_DBG_WARN2;
+		break;
+
+	case L_DBG_ERR:
+		extra = "ERROR: ";
+		lvl = L_DBG_ERR2;
+		break;
+
+		break;
+	}
+
 	if (!fp) {
 		if (request) {
-			radlog(lvl, "(%u) %s", request->number, buffer);
+			radlog(lvl, "(%u) %s%s", request->number, extra, buffer);
 		} else {
-			radlog(lvl, "%s", buffer);
+			radlog(lvl, "%s%s", extra, buffer);
 		}
 	} else {
 		if (request) fprintf(fp, "(%u) ", request->number);

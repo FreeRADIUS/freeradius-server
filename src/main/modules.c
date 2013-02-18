@@ -402,7 +402,7 @@ static void module_instance_free_old(CONF_SECTION *cs, module_instance_t *node,
 		
 		if (node->entry->module->detach) {
 			if ((node->entry->module->detach)(mh->insthandle) < 0) {
-				DEBUG("WARNING: Failed detaching module %s cleanly.  Doing forcible shutdown", node->name);
+				DEBUGW("Failed detaching module %s cleanly.  Doing forcible shutdown", node->name);
 
 			}
 		} else {
@@ -778,7 +778,7 @@ rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
 
 	if (idx == 0) {
 		list = server->mc[comp];
-		if (!list) RDEBUG2("  WARNING: Empty %s section.  Using default return values.", section_type_value[comp].section);
+		if (!list) RDEBUG2W("Empty %s section.  Using default return values.", section_type_value[comp].section);
 
 	} else {
 		indexed_modcallable *this;
@@ -787,7 +787,7 @@ rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
 		if (this) {
 			list = this->modulelist;
 		} else {
-			RDEBUG2("  WARNING: Unknown value specified for %s.  Cannot perform requested action.",
+			RDEBUG2W("Unknown value specified for %s.  Cannot perform requested action.",
 				section_type_value[comp].typename);
 		}
 	}
@@ -969,7 +969,7 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	It's OK for the module to not exist.
 		 */
 		if (!this && modname && (modname[0] == '-')) {
-			DEBUG("WARNING: Not loading module \"%s\" as it is not enabled", modname + 1);
+			DEBUGW("Not loading module \"%s\" as it is not enabled", modname + 1);
 			continue;
 		}
 
@@ -1255,7 +1255,7 @@ static int load_byserver(CONF_SECTION *cs)
 	cf_log_info(cs, "} # server");
 
 	if (!flag && name) {
-		DEBUG("WARNING: Server %s is empty, and will do nothing!",
+		DEBUGW("Server %s is empty, and will do nothing!",
 		      name);
 	}
 

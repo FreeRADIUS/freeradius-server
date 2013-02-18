@@ -127,7 +127,7 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 				if ((vp->da->vendor!= 0) ||
 						(vp->da->attr < 0x100)) {
 					if (!compat_mode) {
-						DEBUG("[%s]:%d WARNING! Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+						DEBUGW("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
 								filename, entry->lineno,
 								vp->da->name, vp->da->name,
 								entry->name);

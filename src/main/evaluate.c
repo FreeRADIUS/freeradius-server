@@ -385,7 +385,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				char errbuf[128];
 
 				regerror(compare, &reg, errbuf, sizeof(errbuf));
-				DEBUG("ERROR: Failed compiling regular expression: %s", errbuf);
+				DEBUGE("Failed compiling regular expression: %s", errbuf);
 			}
 			return FALSE;
 		}
@@ -440,7 +440,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				char errbuf[128];
 
 				regerror(compare, &reg, errbuf, sizeof(errbuf));
-				DEBUG("ERROR: Failed compiling regular expression: %s", errbuf);
+				DEBUGE("Failed compiling regular expression: %s", errbuf);
 			}
 			return FALSE;
 		}
@@ -456,7 +456,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 #endif
 		
 	default:
-		DEBUG("ERROR: Comparison operator %s is not supported",
+		DEBUGE("Comparison operator %s is not supported",
 		      fr_token_name(token));
 		result = FALSE;
 		break;
@@ -1132,7 +1132,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 
 	request_name = radius_request_name(&name, REQUEST_CURRENT);
 	if (request_name == REQUEST_UNKNOWN) {
-		RDEBUG("ERROR: Invalid request name");
+		RDEBUGE("Invalid request name");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -1141,7 +1141,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	 *	Qualifiers not valid for this request
 	 */
 	if (radius_request(&update_request, request_name) < 0) {
-		RDEBUG("WARNING: List name refers to outer request"
+		RDEBUGW("List name refers to outer request"
 		       " but not in a tunnel.");
 		return RLM_MODULE_NOOP; 
 	}
@@ -1152,14 +1152,14 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 	 *	Bad list name name
 	 */
 	if (list == PAIR_LIST_UNKNOWN) {
-		RDEBUG("ERROR: Invalid list name '%s'", name);
+		RDEBUGE("Invalid list name '%s'", name);
 		return RLM_MODULE_INVALID;
 	}
 	
 	output_vps = radius_list(update_request, list);
 	if (!output_vps) {
 		if (!((list == PAIR_LIST_COA) || (list == PAIR_LIST_DM))) {
-			RDEBUG("WARNING: List '%s' doesn't exist for this packet", name);
+			RDEBUGW("List '%s' doesn't exist for this packet", name);
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1198,7 +1198,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 #ifndef NDEBUG
 		if (debug_flag && (vp->da->vendor == 0) &&
 		    radius_find_compare(vp->da->attr)) {
-			DEBUG("WARNING: You are modifying the value of virtual attribute %s.  This is not supported.", vp->da->name);
+			DEBUGW("You are modifying the value of virtual attribute %s.  This is not supported.", vp->da->name);
 		}
 #endif
 
@@ -1218,7 +1218,7 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 			}
 
 			if (!pairparsevalue(vp, value)) {
-				RDEBUG2("ERROR: Failed parsing value \"%s\" for attribute %s: %s",
+				RDEBUG2E("Failed parsing value \"%s\" for attribute %s: %s",
 				       value, vp->da->name, fr_strerror());
 				pairfree(&newlist);
 				return RLM_MODULE_FAIL;

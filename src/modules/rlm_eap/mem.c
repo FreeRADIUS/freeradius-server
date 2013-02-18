@@ -237,15 +237,15 @@ done:
 	free(check);
 
 	if (do_warning) {
-		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-		DEBUG("WARNING: !! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!  !!",
+		DEBUGW("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUGW("!! EAP session with state 0x%02x%02x%02x%02x%02x%02x%02x%02x did not finish!  !!",
 		      state[0], state[1],
 		      state[2], state[3],
 		      state[4], state[5],
 		      state[6], state[7]);
 
-		DEBUG("WARNING: !! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
-		DEBUG("WARNING: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+		DEBUGW("!! Please read http://wiki.freeradius.org/guide/Certificate_Compatibility     !!");
+		DEBUGW("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 	}
 }
 

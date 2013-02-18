@@ -225,12 +225,12 @@ static int rad_check_password(REQUEST *request)
 	 */
 	if (auth_type < 0) {
 		if (pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY) != NULL) {
-			RDEBUG2("WARNING: Please update your configuration, and remove 'Auth-Type = Crypt'");
-			RDEBUG2("WARNING: Use the PAP module instead.");
+			RDEBUG2W("Please update your configuration, and remove 'Auth-Type = Crypt'");
+			RDEBUG2W("Use the PAP module instead.");
 		}
 		else if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY) != NULL) {
-			RDEBUG2("WARNING: Please update your configuration, and remove 'Auth-Type = Local'");
-			RDEBUG2("WARNING: Use the PAP or CHAP modules instead.");
+			RDEBUG2W("Please update your configuration, and remove 'Auth-Type = Local'");
+			RDEBUG2W("Use the PAP or CHAP modules instead.");
 		}
 
 		/*
@@ -240,7 +240,7 @@ static int rad_check_password(REQUEST *request)
 	 	 *	This is fail-safe.
 	 	 */
 
-		RDEBUG2("ERROR: No authenticate method (Auth-Type) found for the request: Rejecting the user");
+		RDEBUG2E("No Auth-Type found: rejecting the user via Post-Auth-Type = Reject");
 		return -2;
 	}
 
@@ -506,11 +506,11 @@ autz_redo:
 		 *	*the* LOCAL realm.
 		 */
 		if (realm &&(strcmp(realm->name, "LOCAL") != 0)) {
-			RDEBUG2("WARNING: You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling proxy request.", realm->name);
+			RDEBUG2W("You set Proxy-To-Realm = %s, but it is a LOCAL realm!  Cancelling proxy request.", realm->name);
 		}
 
 		if (!realm) {
-			RDEBUG2("WARNING: You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
+			RDEBUG2W("You set Proxy-To-Realm = %s, but the realm does not exist!  Cancelling invalid proxy request.", tmp->vp_strvalue);
 		}
 	}
 

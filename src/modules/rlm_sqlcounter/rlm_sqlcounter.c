@@ -296,7 +296,7 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, void *insta
 				q += strlen(q);
 				break;
 			case 'k': /* Key Name */
-				DEBUG2("WARNING: Please replace '%%k' with '${key}'");
+				DEBUG2W("Please replace '%%k' with '${key}'");
 				strlcpy(q, data->key_name, freespace);
 				q += strlen(q);
 				break;
