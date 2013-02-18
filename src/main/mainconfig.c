@@ -203,7 +203,9 @@ static const CONF_PARSER log_config_nodest[] = {
 	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 	{ "msg_badpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_badpass_msg, NULL},
 	{ "msg_goodpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_goodpass_msg, NULL},
-
+	
+	{ "colourise", PW_TYPE_BOOLEAN, 0, &mainconfig.colourise, "yes" },
+	
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }

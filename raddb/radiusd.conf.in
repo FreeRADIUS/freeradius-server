@@ -211,6 +211,11 @@ log {
 	destination = files
 
 	#
+	#  Highlight important messages sent to stderr and stdout.
+	#
+	colourise = yes
+
+	#
 	#  The logging messages for the server are appended to the
 	#  tail of this file if destination == "files"
 	#

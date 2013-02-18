@@ -49,6 +49,20 @@ static const FR_NAME_NUMBER levels[] = {
 	{ NULL, 0 }
 };
 
+#define VTC_RED		"\x1b[31m"
+#define VTC_BOLD	"\x1b[1m"
+#define VTC_RESET	"\x1b[0m"
+
+static const FR_NAME_NUMBER colours[] = {
+	{ "",			L_DBG   },
+	{ VTC_BOLD,		L_AUTH  },
+	{ VTC_BOLD,		L_PROXY },
+	{ VTC_BOLD,		L_INFO  },
+	{ VTC_BOLD,		L_ACCT  },
+	{ VTC_RED,		L_ERR   },
+	{ NULL, 0 }
+};
+
 int log_dates_utc = 0;
 
 
@@ -61,6 +75,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	struct main_config_t *myconfig = &mainconfig;
 	unsigned char *p;
 	char buffer[8192];
+	char *unsan;
 	size_t len;
 
 	/*
@@ -82,6 +97,18 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 
 	buffer[0] = '\0';
 	len = 0;
+
+	if (myconfig->colourise &&
+	    ((myconfig->radlog_dest == RADLOG_STDOUT) ||
+	     (myconfig->radlog_dest == RADLOG_STDERR))) {
+		len += strlcpy(buffer + len, fr_int2str(colours, lvl, ""),
+			       sizeof(buffer) - len) ;
+	}
+	
+	/*
+	 *	Mark the point where we treat the buffer as unsanitized.
+	 */
+	unsan = buffer + len;
 
 	/*
 	 *	Don't print timestamps to syslog, it does that for us.
@@ -112,13 +139,19 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	/*
 	 *	Filter out characters not in Latin-1.
 	 */
-	for (p = (unsigned char *)buffer; *p != '\0'; p++) {
+	for (p = (unsigned char *)unsan; *p != '\0'; p++) {
 		if (*p == '\r' || *p == '\n')
 			*p = ' ';
 		else if (*p == '\t') continue;
 		else if (*p < 32 || (*p >= 128 && *p <= 160))
 			*p = '?';
 	}
+
+	if (myconfig->colourise && (len < sizeof(buffer)) &&
+	    ((myconfig->radlog_dest == RADLOG_STDOUT) ||
+	     (myconfig->radlog_dest == RADLOG_STDERR))) {
+		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
+	} 
 	
 	if (len < (sizeof(buffer) - 1)) {
 		buffer[len]	= '\n';
@@ -249,11 +282,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 #endif
 		  filename = request_log_file;
 
-		/*
-		 *	Debug messages get mashed to L_INFO for
-		 *	radius.log.
-		 */
-		if (!filename) lvl = L_INFO;
+		filename = request_log_file;
 	}
 
 	if (request && filename) {

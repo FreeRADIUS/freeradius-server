@@ -433,6 +433,9 @@ typedef struct main_config_t {
 	const char	*name;
 	const char	*auth_badpass_msg;
 	const char	*auth_goodpass_msg;
+	int		colourise;	//!< Messages output to stderr and
+					//!< stdout may be formatted using 
+					//!< VT100 escape sequences.
 } MAIN_CONFIG_T;
 
 #define DEBUG	if(debug_flag)log_debug
