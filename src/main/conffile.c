@@ -300,10 +300,25 @@ void cf_section_parse_free(CONF_SECTION *cs, void *base)
 	 *	Free up dynamically allocated string pointers.
 	 */
 	for (i = 0; variables[i].name != NULL; i++) {
+		int type;
 		char **p;
 
-		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
-		    (variables[i].type != PW_TYPE_FILENAME)) {
+		type = variables[i].type;
+
+		if (type == PW_TYPE_SUBSECTION) {
+			CONF_SECTION *subcs;
+			subcs = cf_section_sub_find(cs, variables[i].name);
+
+			if (!subcs) continue;
+
+			if (!variables[i].dflt) continue;
+
+			cf_section_parse_free(subcs, base);
+			continue;
+		}
+
+		if ((type != PW_TYPE_STRING_PTR) &&
+		    (type != PW_TYPE_FILENAME)) {
 			continue;
 		}
 
@@ -329,6 +344,8 @@ void cf_section_parse_free(CONF_SECTION *cs, void *base)
 		free(*p);
 		*p = NULL;
 	}
+
+	cs->variables = NULL;
 }
 
 
