@@ -652,6 +652,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 		return 0;
 		
 	default:
+		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
 		radlog(L_ERR, "rlm_cache: Unsupported list \"%s\"",
 		       fr_int2str(pair_lists, list, "¿Unknown?"));
 		return 0;
