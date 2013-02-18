@@ -309,7 +309,7 @@ static void virtual_server_free(virtual_server_t *server)
 	if (server->components) rbtree_free(server->components);
 	server->components = NULL;
 
-	free(server);
+	talloc_free(server);
 }
 
 void virtual_servers_free(time_t when)
@@ -351,7 +351,7 @@ static void indexed_modcallable_free(void *data)
 	indexed_modcallable *c = data;
 
 	modcallable_free(&c->modulelist);
-	free(c);
+	talloc_free(c);
 }
 
 static int indexed_modcallable_cmp(const void *one, const void *two)
@@ -406,11 +406,11 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
 
 			}
 		} else {
-			free(mh->insthandle);
+			talloc_free(mh->insthandle);
 		}
 
 		*last = mh->next;
-		free(mh);
+		talloc_free(mh);
 	}
 }
 
@@ -438,11 +438,11 @@ static void module_instance_free(void *data)
 		 *	we'll check for that later, I guess.
 		 */
 		pthread_mutex_destroy(this->mutex);
-		free(this->mutex);
+		talloc_free(this->mutex);
 	}
 #endif
 	memset(this, 0, sizeof(*this));
-	free(this);
+	talloc_free(this);
 }
 
 
@@ -466,7 +466,7 @@ static void module_entry_free(void *data)
 
 	lt_dlclose(this->handle);	/* ignore any errors */
 	memset(this, 0, sizeof(*this));
-	free(this);
+	talloc_free(this);
 }
 
 
@@ -564,8 +564,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	}
 
 	/* make room for the module type */
-	node = rad_malloc(sizeof(*node));
-	memset(node, 0, sizeof(*node));
+	node = talloc_zero(cs, module_entry_t);
 	strlcpy(node->name, module_name, sizeof(node->name));
 	node->module = module;
 	node->handle = handle;
@@ -579,7 +578,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	if (!rbtree_insert(module_tree, node)) {
 		radlog(L_ERR, "Failed to cache module %s", module_name);
 		lt_dlclose(handle);
-		free(node);
+		talloc_free(node);
 		return NULL;
 	}
 
@@ -634,8 +633,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	/*
 	 *	Found the configuration entry.
 	 */
-	node = rad_malloc(sizeof(*node));
-	memset(node, 0, sizeof(*node));
+	node = talloc_zero(cs, module_instance_t);
 
 	node->insthandle = NULL;
 	node->cs = cs;
@@ -648,7 +646,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 
 	node->entry = linkto_module(module_name, cs);
 	if (!node->entry) {
-		free(node);
+		talloc_free(node);
 		/* linkto_module logs any errors */
 		return NULL;
 	}
@@ -680,7 +678,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Instantiation failed for module \"%s\"",
 			   instname);
-		free(node);
+		talloc_free(node);
 		return NULL;
 	}
 
@@ -697,7 +695,8 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	If it isn't, we create a mutex.
 	 */
 	if ((node->entry->module->type & RLM_TYPE_THREAD_UNSAFE) != 0) {
-		node->mutex = (pthread_mutex_t *) rad_malloc(sizeof(pthread_mutex_t));
+		node->mutex = talloc_zero(node, pthread_mutex_t);
+
 		/*
 		 *	Initialize the mutex.
 		 */
@@ -729,7 +728,8 @@ static indexed_modcallable *lookup_by_index(rbtree_t *components,
 /*
  *	Create a new sublist.
  */
-static indexed_modcallable *new_sublist(rbtree_t *components, int comp, int idx)
+static indexed_modcallable *new_sublist(CONF_SECTION *cs,
+					rbtree_t *components, int comp, int idx)
 {
 	indexed_modcallable *c;
 
@@ -750,13 +750,13 @@ static indexed_modcallable *new_sublist(rbtree_t *components, int comp, int idx)
 		return NULL;
 	}
 
-	c = rad_malloc(sizeof(*c));
+	c = talloc_zero(cs, indexed_modcallable);
 	c->modulelist = NULL;
 	c->comp = comp;
 	c->idx = idx;
 
 	if (!rbtree_insert(components, c)) {
-		free(c);
+		talloc_free(c);
 		return NULL;
 	}
 
@@ -862,7 +862,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 		return 0;
 	}
 
-	subcomp = new_sublist(components, comp, dval->value);
+	subcomp = new_sublist(cs, components, comp, dval->value);
 	if (!subcomp) {
 		modcallable_free(&ml);
 		return 1;
@@ -1025,7 +1025,7 @@ static int load_component_section(CONF_SECTION *cs,
 			idx = 0;
 		}
 
-		subcomp = new_sublist(components, comp, idx);
+		subcomp = new_sublist(cs, components, comp, idx);
 		if (subcomp == NULL) {
 			modcallable_free(&this);
 			continue;
@@ -1068,9 +1068,7 @@ static int load_byserver(CONF_SECTION *cs)
 		goto error;
 	}
 
-	server = rad_malloc(sizeof(*server));
-	memset(server, 0, sizeof(*server));
-
+	server = talloc(cs, virtual_server_t);
 	server->name = name;
 	server->created = time(NULL);
 	server->cs = cs;
@@ -1394,7 +1392,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	/*
 	 *	Save the old instance handle for later deletion.
 	 */
-	mh = rad_malloc(sizeof(*mh));
+	mh = talloc_zero(cs, fr_module_hup_t);
 	mh->mi = node;
 	mh->when = when;
 	mh->insthandle = node->insthandle;
