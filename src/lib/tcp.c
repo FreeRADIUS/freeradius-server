@@ -369,7 +369,10 @@ RADIUS_PACKET *fr_tcp_accept(int sockfd)
 	}
 		
 	packet = rad_alloc(0);
-	if (!packet) return NULL;
+	if (!packet) {
+		close(newfd);
+		return NULL;
+	}
 
 	if (src.ss_family == AF_INET) {
 		struct sockaddr_in	s4;
