@@ -4284,7 +4284,7 @@ RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, int newvector)
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a REQUEST.
- * @param newvector if TRUE a new request authenticator will be generated.
+ * @param packet The request packet.
  * @return a new RADIUS_PACKET or NULL on error.
  */
 RADIUS_PACKET *rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *packet)
