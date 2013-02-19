@@ -923,7 +923,7 @@ int read_mainconfig(int reload)
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	cf_section_free(&mainconfig.config);
+	rad_assert(mainconfig.config == NULL);
 	mainconfig.config = cs;
 
 	DEBUG2("%s: #### Loading Realms and Home Servers ####", mainconfig.name);
