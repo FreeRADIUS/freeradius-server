@@ -401,6 +401,8 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
 	}
 	
+	n->next = NULL;
+
 	return n;
 }
 
