@@ -302,14 +302,13 @@ static virtual_server_t *virtual_server_find(const char *name)
 	return server;
 }
 
-static void virtual_server_free(virtual_server_t *server)
+static int virtual_server_free(void *ctx)
 {
-	if (!server) return;
+	virtual_server_t *server;
 
+	server = talloc_get_type_abort(ctx, virtual_server_t);
 	if (server->components) rbtree_free(server->components);
-	server->components = NULL;
-
-	talloc_free(server);
+	return 0;
 }
 
 void virtual_servers_free(time_t when)
@@ -338,7 +337,7 @@ void virtual_servers_free(time_t when)
 			if ((when == 0) ||
 			    ((server->created < when) && server->can_free)) {
 				*last = server->next;
-				virtual_server_free(server);
+				talloc_free(server);
 			} else {
 				last = &(server->next);
 			}
@@ -1068,11 +1067,12 @@ static int load_byserver(CONF_SECTION *cs)
 		goto error;
 	}
 
-	server = talloc(cs, virtual_server_t);
+	server = talloc_zero(cs, virtual_server_t);
 	server->name = name;
 	server->created = time(NULL);
 	server->cs = cs;
 	server->components = components;
+	talloc_set_destructor((void *) server, virtual_server_free);
 
 	/*
 	 *	Define types first.
@@ -1101,7 +1101,7 @@ static int load_byserver(CONF_SECTION *cs)
 				radlog(L_ERR, "Failed to load virtual server %s",
 				       (name != NULL) ? name : "<default>");
 			}
-			virtual_server_free(server);
+			talloc_free(server);
 			return -1;
 		}
 
