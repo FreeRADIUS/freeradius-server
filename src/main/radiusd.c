@@ -206,6 +206,7 @@ int main(int argc, char *argv[])
 
 			case 'M':
 				memory_report = 1;
+				debug_memory = 1;
 				break;
 
 			case 'p':
