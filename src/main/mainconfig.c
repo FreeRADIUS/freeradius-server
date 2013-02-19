@@ -999,6 +999,14 @@ int free_mainconfig(void)
 	virtual_servers_free(0);
 
 	/*
+	 *	Clean up the configuration data
+	 *	structures.
+	 */
+	clients_free(NULL);
+	realms_free();
+	listen_free(&mainconfig.listen);
+
+	/*
 	 *	Free all of the cached configurations.
 	 */
 	for (cc = cs_cache; cc != NULL; cc = next) {
@@ -1007,12 +1015,6 @@ int free_mainconfig(void)
 		free(cc);
 	}
 
-	/*
-	 *	Clean up the configuration data
-	 *	structures.
-	 */
-	realms_free();
-	listen_free(&mainconfig.listen);
 	dict_free();
 
 	return 0;
