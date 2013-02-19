@@ -588,7 +588,7 @@ int		rad_pps(int *past, int *present, time_t *then,
 			struct timeval *now);
 
 /* client.c */
-RADCLIENT_LIST	*clients_init(void);
+RADCLIENT_LIST	*clients_init(CONF_SECTION *cs);
 void		clients_free(RADCLIENT_LIST *clients);
 RADCLIENT_LIST	*clients_parse_section(CONF_SECTION *section);
 void		client_free(RADCLIENT *client);

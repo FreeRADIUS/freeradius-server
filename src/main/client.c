@@ -170,9 +170,9 @@ void clients_free(RADCLIENT_LIST *clients)
 /*
  *	Return a new, initialized, set of clients.
  */
-RADCLIENT_LIST *clients_init(void)
+RADCLIENT_LIST *clients_init(CONF_SECTION *cs)
 {
-	RADCLIENT_LIST *clients = talloc_zero(NULL, RADCLIENT_LIST);
+	RADCLIENT_LIST *clients = talloc_zero(cs, RADCLIENT_LIST);
 
 	if (!clients) return NULL;
 
@@ -275,7 +275,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		 *	Initialize it, if not done already.
 		 */
 		if (!root_clients) {
-			root_clients = clients_init();
+			root_clients = clients_init(NULL);
 			if (!root_clients) return 0;
 		}
 		clients = root_clients;
@@ -828,7 +828,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	clients = cf_data_find(section, "clients");
 	if (clients) return clients;
 
-	clients = clients_init();
+	clients = clients_init(section);
 	if (!clients) return NULL;
 
 	if (cf_top_section(section) == section) global = TRUE;
