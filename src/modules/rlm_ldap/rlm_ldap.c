@@ -932,6 +932,11 @@ retry:
 		       ldap_err2string(ldap_errno));
 		ldap_msgfree(*result);
 		return (RLM_MODULE_FAIL);
+	case LDAP_OPERATIONS_ERROR:
+		DEBUG("WARNING: Please set 'chase_referrals=yes' and 'rebind=yes'");
+		DEBUG("WARNING: See the ldap module configuration for details");
+		/* FALL-THROUGH */
+
 	default:
 		ldap_get_option(conn->ld, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		radlog(L_ERR, "  [%s] ldap_search() failed: %s", inst->xlat_name,
