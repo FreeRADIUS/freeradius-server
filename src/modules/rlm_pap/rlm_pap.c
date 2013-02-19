@@ -85,16 +85,6 @@ static const FR_NAME_NUMBER header_names[] = {
 };
 
 
-static int pap_detach(void *instance)
-{
-	rlm_pap_t *inst = (rlm_pap_t *) instance;
-
-	free(inst);
-
-	return 0;
-}
-
-
 static int pap_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_pap_t *inst;
@@ -103,18 +93,14 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_pap_t);
+	if (!inst) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		pap_detach(inst);
 		return -1;
 	}
 
@@ -129,8 +115,6 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 	} else {
 		inst->auth_type = 0;
 	}
-
-	*instance = inst;
 
 	return 0;
 }
@@ -864,7 +848,7 @@ module_t rlm_pap = {
 	"PAP",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	pap_instantiate,		/* instantiation */
-	pap_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		pap_authenticate,	/* authentication */
 		pap_authorize,		/* authorization */

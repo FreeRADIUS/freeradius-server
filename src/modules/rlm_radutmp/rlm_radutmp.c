@@ -78,36 +78,14 @@ static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_radutmp_t *inst;
 
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_radutmp_t);
+	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config)) {
-		free(inst);
 		return -1;
 	}
 
 	inst->nas_port_list = NULL;
-	*instance = inst;
-	return 0;
-}
-
-
-/*
- *	Detach.
- */
-static int radutmp_detach(void *instance)
-{
-	NAS_PORT *p, *next;
-	rlm_radutmp_t *inst = instance;
-
-	for (p = inst->nas_port_list ; p ; p=next) {
-		next = p->next;
-		free(p);
-	}
-	free(inst);
 	return 0;
 }
 
@@ -521,13 +499,15 @@ static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
 		 *	Remember where the entry was, because it's
 		 *	easier than searching through the entire file.
 		 */
-		if (cache == NULL) {
-			cache = rad_malloc(sizeof(NAS_PORT));
-			cache->nasaddr = ut.nas_address;
-			cache->port = ut.nas_port;
-			cache->offset = off;
-			cache->next = inst->nas_port_list;
-			inst->nas_port_list = cache;
+		if (!cache) {
+			cache = talloc_zero(inst, NAS_PORT);
+			if (cache) {
+				cache->nasaddr = ut.nas_address;
+				cache->port = ut.nas_port;
+				cache->offset = off;
+				cache->next = inst->nas_port_list;
+				inst->nas_port_list = cache;
+			}
 		}
 
 		ut.type = P_LOGIN;
@@ -742,9 +722,9 @@ static rlm_rcode_t radutmp_checksimul(void *instance, REQUEST *request)
 module_t rlm_radutmp = {
 	RLM_MODULE_INIT,
 	"radutmp",
-	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	radutmp_instantiate,          /* instantiation */
-	radutmp_detach,               /* detach */
+	NULL,		               /* detach */
 	{
 		NULL,                 /* authentication */
 		NULL,                 /* authorization */

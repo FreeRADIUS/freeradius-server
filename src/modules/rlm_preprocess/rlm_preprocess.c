@@ -532,14 +532,13 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Allocate room to put the module's instantiation data.
 	 */
-	data = (rlm_preprocess_t *) rad_malloc(sizeof(*data));
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, rlm_preprocess_t);
+	if (!data) return -1;
 
 	/*
 	 *	Read this modules configuration data.
 	 */
         if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
                 return -1;
         }
 
@@ -570,11 +569,6 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 			return -1;
 		}
 	}
-
-	/*
-	 *	Save the instantiation data for later.
-	 */
-	*instance = data;
 
 	return 0;
 }
@@ -751,8 +745,6 @@ static int preprocess_detach(void *instance)
 
 	pairlist_free(&(data->huntgroups));
 	pairlist_free(&(data->hints));
-
-	free(data);
 
 	return 0;
 }

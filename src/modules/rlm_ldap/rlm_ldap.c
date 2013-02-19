@@ -1320,7 +1320,7 @@ check_attr:
 	ldap_msgfree(result);
 	ldap_release_socket(inst, conn);
 
-	if (!found){
+	if (!found) {
 		RDEBUG("User is not a member of specified group");
 		return 1;
 	}
@@ -1334,17 +1334,12 @@ check_attr:
 static int ldap_detach(void *instance)
 {
 	ldap_instance *inst = instance;
-
-	if (inst->postauth) free(inst->postauth);
-	if (inst->accounting) free(inst->accounting);
 	
 	fr_connection_pool_delete(inst->pool);
-	
+
 	if (inst->user_map) {
 		radius_mapfree(&inst->user_map);
 	}
-
-	free(inst);
 
 	return 0;
 }
@@ -1367,14 +1362,10 @@ static int parse_sub_section(CONF_SECTION *parent,
 		return 0;
 	}
 	
-	*config = rad_calloc(sizeof(**config));
+	*config = talloc_zero(inst, ldap_acct_section_t);
 	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
 		radlog(L_ERR, "rlm_ldap (%s): Failed parsing configuration for "
 		       "section %s", inst->xlat_name, name);
-		
-		free(*config);
-		*config = NULL;
-		
 		return -1;
 	}
 		
@@ -1450,7 +1441,9 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 {
 	ldap_instance *inst;
 
-	inst = rad_calloc(sizeof *inst);
+	*instance = inst = talloc_zero(conf, ldap_instance);
+	if (!inst) return -1;
+
 	inst->cs = conf;
 
 	inst->chase_referrals = 2; /* use OpenLDAP defaults */
@@ -1460,8 +1453,6 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
-		
-	rad_assert(inst->xlat_name);
 
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
@@ -1568,10 +1559,9 @@ static int ldap_instantiate(CONF_SECTION * conf, void **instance)
 		return -1;
 	}
 	
-	*instance = inst;
 	return 0;
-	
-	error:
+
+error:
 	ldap_detach(inst);
 	return -1;
 }

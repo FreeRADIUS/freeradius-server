@@ -39,20 +39,20 @@ RCSID("$Id$")
  *	Define a structure with the module configuration, so it can
  *	be used as the instance handle.
  */
-struct attr_filter_instance {
-	char *file;
-	char *key;
-	int relaxed;
-	PAIR_LIST *attrs;
-};
+typedef struct rlm_attr_filter {
+	char		*file;
+	char		*key;
+	int		relaxed;
+	PAIR_LIST	*attrs;
+} rlm_attr_filter_t;
 
 static const CONF_PARSER module_config[] = {
 	{ "file",     PW_TYPE_FILENAME,
-	  offsetof(struct attr_filter_instance,file), NULL, "${raddbdir}/attrs" },
+	  offsetof(rlm_attr_filter_t, file), NULL, "${raddbdir}/attrs" },
 	{ "key",     PW_TYPE_STRING_PTR,
-	  offsetof(struct attr_filter_instance,key), NULL, "%{Realm}" },
+	  offsetof(rlm_attr_filter_t, key), NULL, "%{Realm}" },
 	{ "relaxed",    PW_TYPE_BOOLEAN,
-		offsetof(struct attr_filter_instance,relaxed), NULL, "no" },
+	  offsetof(rlm_attr_filter_t, relaxed), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -127,9 +127,9 @@ static int attr_filter_getfile(const char *filename, PAIR_LIST **pair_list)
  */
 static int attr_filter_detach(void *instance)
 {
-	struct attr_filter_instance *inst = instance;
+	rlm_attr_filter_t *inst = instance;
 	pairlist_free(&inst->attrs);
-	free(inst);
+
 	return 0;
 }
 
@@ -139,27 +139,25 @@ static int attr_filter_detach(void *instance)
  */
 static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 {
-	struct attr_filter_instance *inst;
+	rlm_attr_filter_t *inst;
 	int rcode;
 
-	inst = rad_malloc(sizeof *inst);
+	*instance = inst = talloc_zero(conf, rlm_attr_filter_t);
 	if (!inst) {
 		return -1;
 	}
-	memset(inst, 0, sizeof(*inst));
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		attr_filter_detach(inst);
 		return -1;
 	}
 
 	rcode = attr_filter_getfile(inst->file, &inst->attrs);
         if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->file);
-		attr_filter_detach(inst);
+
 		return -1;
 	}
-	*instance = inst;
+
 	return 0;
 }
 
@@ -170,7 +168,7 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 			      	      RADIUS_PACKET *packet)
 {
-	struct attr_filter_instance *inst = instance;
+	rlm_attr_filter_t *inst = instance;
 	VALUE_PAIR	*vp;
 	VALUE_PAIR	*output;
 	VALUE_PAIR	**output_tail;

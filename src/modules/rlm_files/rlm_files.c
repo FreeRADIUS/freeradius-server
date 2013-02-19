@@ -330,7 +330,6 @@ static int file_detach(void *instance)
 #endif
 	fr_hash_table_free(inst->auth_users);
 	fr_hash_table_free(inst->postauth_users);
-	free(inst);
 	return 0;
 }
 
@@ -344,14 +343,10 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 	struct file_instance *inst;
 	int rcode;
 
-	inst = rad_malloc(sizeof *inst);
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, struct file_instance);
+	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 

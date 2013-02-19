@@ -339,19 +339,13 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		radlog(L_ERR, "rlm_counter: rad_malloc() failed.");
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_counter_t);
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 	cache_size = inst->cache_size;
@@ -416,7 +410,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->counter_name == NULL) {
 		radlog(L_ERR, "rlm_counter: 'counter-name' must be set.");
-		counter_detach(inst);
 		return -1;
 	}
 
@@ -426,7 +419,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to create counter attribute %s",
 				inst->counter_name);
-		counter_detach(inst);
 		return -1;
 	}
 	inst->dict_attr = dattr->attr;
@@ -438,7 +430,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->check_name == NULL) {
 		radlog(L_ERR, "rlm_counter: 'check-name' must be set.");
-		counter_detach(inst);
 		return -1;
 	}
 	dict_addattr(inst->check_name, 0, PW_TYPE_INTEGER, -1, flags);
@@ -446,7 +437,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to create check attribute %s",
 				inst->counter_name);
-		counter_detach(inst);
 		return -1;
 	}
 	inst->check_attr = dattr->attr;
@@ -458,7 +448,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		if ((dval = dict_valbyname(PW_SERVICE_TYPE, 0, inst->service_type)) == NULL) {
 			radlog(L_ERR, "rlm_counter: Failed to find attribute number for %s",
 					inst->service_type);
-			counter_detach(inst);
 			return -1;
 		}
 		inst->service_val = dval->value;
@@ -469,7 +458,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->reset == NULL) {
 		radlog(L_ERR, "rlm_counter: 'reset' must be set.");
-		counter_detach(inst);
 		return -1;
 	}
 	now = time(NULL);
@@ -478,13 +466,11 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 
 	if (find_next_reset(inst,now) == -1){
 		radlog(L_ERR, "rlm_counter: find_next_reset() returned -1. Exiting.");
-		counter_detach(inst);
 		return -1;
 	}
 
 	if (inst->filename == NULL) {
 		radlog(L_ERR, "rlm_counter: 'filename' must be set.");
-		counter_detach(inst);
 		return -1;
 	}
 	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
@@ -493,7 +479,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	if (inst->gdbm == NULL) {
 		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 				inst->filename, strerror(errno));
-		counter_detach(inst);
 		return -1;
 	}
 	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size,
@@ -530,7 +515,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 			ret = reset_db(inst);
 			if (ret != RLM_MODULE_OK){
 				radlog(L_ERR, "rlm_counter: reset_db() failed");
-				counter_detach(inst);
 				return -1;
 			}
 		} else {
@@ -550,7 +534,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		ret = add_defaults(inst);
 		if (ret != RLM_MODULE_OK){
 			radlog(L_ERR, "rlm_counter: add_defaults() failed");
-			counter_detach(inst);
 			return -1;
 		}
 	}
@@ -565,8 +548,6 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 * Init the mutex
 	 */
 	pthread_mutex_init(&inst->mutex, NULL);
-
-	*instance = inst;
 
 	return 0;
 }
@@ -920,7 +901,6 @@ static int counter_detach(void *instance)
 	
 	pthread_mutex_destroy(&inst->mutex);
 
-	free(instance);
 	return 0;
 }
 

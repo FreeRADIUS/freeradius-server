@@ -104,35 +104,32 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static int soh_detach(void *instance) {
+static int soh_detach(void *instance)
+{
 	rlm_soh_t	*inst = instance;
 
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, soh_xlat, instance);
-		free(inst->xlat_name);
 	}
-	free(instance);
 	return 0;
 }
 
-static int soh_instantiate(CONF_SECTION *conf, void **instance) {
+static int soh_instantiate(CONF_SECTION *conf, void **instance)
+{
 	const char *name;
 	rlm_soh_t *inst;
 
-	inst = *instance = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_soh_t);
+	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
-	inst->xlat_name = strdup(name);
+	inst->xlat_name = name;
+	if (!inst->xlat_name) return -1;
 	xlat_register(inst->xlat_name, soh_xlat, inst);
 
 	return 0;
@@ -223,7 +220,7 @@ module_t rlm_soh = {
 	"SoH",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	soh_instantiate,		/* instantiation */
-	soh_detach,		/* detach */
+	soh_detach,			/* detach */
 	{
 		NULL,			/* authenticate */
 		soh_authorize,		/* authorize */

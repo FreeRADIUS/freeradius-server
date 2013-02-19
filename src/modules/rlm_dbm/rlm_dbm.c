@@ -282,20 +282,17 @@ static int sm_postprocessor(VALUE_PAIR **reply UNUSED) {
 	return 0;
 }
 
-static int rlm_dbm_instantiate(CONF_SECTION *conf, void **instance) {
+static int rlm_dbm_instantiate(CONF_SECTION *conf, void **instance)
+{
 	struct rlm_dbm_t *inst;
 
-	inst = rad_malloc(sizeof(rlm_dbm_t));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, struct rlm_dbm_t);
+	if (!inst) return -1;
 
         if (cf_section_parse(conf, inst, module_config) < 0) {
-                free(inst);
                 return -1;
         }
-	*instance = inst;
+
 	return 0;
 }
 static rlm_rcode_t rlm_dbm_authorize(void *instance, REQUEST *request)
@@ -355,21 +352,13 @@ static rlm_rcode_t rlm_dbm_authorize(void *instance, REQUEST *request)
 	return found;
 }
 
-static int rlm_dbm_detach(void *instance)
-{
-	struct rlm_dbm_t *inst = instance;
-	free(inst);
-	return 0;
-}
-
-
 /* globally exported name */
 module_t rlm_dbm = {
 	RLM_MODULE_INIT,
         "dbm",
         0,                              /* type: reserved */
         rlm_dbm_instantiate,            /* instantiation */
-        rlm_dbm_detach,                 /* detach */
+        NULL,		                 /* detach */
         {
                 NULL,                   /* authentication */
                 rlm_dbm_authorize,      /* authorization */

@@ -397,16 +397,7 @@ static void module_instance_free_old(UNUSED CONF_SECTION *cs, module_instance_t 
 			continue;
 		}
 
-		cf_section_parse_free(cs, mh->insthandle);
-		
-		if (node->entry->module->detach) {
-			if ((node->entry->module->detach)(mh->insthandle) < 0) {
-				DEBUGW("Failed detaching module %s cleanly.  Doing forcible shutdown", node->name);
-
-			}
-		} else {
-			talloc_free(mh->insthandle);
-		}
+		talloc_free(mh->insthandle);
 
 		*last = mh->next;
 		talloc_free(mh);
@@ -422,12 +413,6 @@ static void module_instance_free(void *data)
 	module_instance_t *this = data;
 
 	module_instance_free_old(this->cs, this, time(NULL) + 100);
-
-	cf_section_parse_free(this->cs, this->insthandle);
-
-	if (this->entry->module->detach) {
-		(this->entry->module->detach)(this->insthandle);
-	}
 
 #ifdef HAVE_PTHREAD_H
 	if (this->mutex) {
@@ -459,13 +444,14 @@ static int module_entry_cmp(const void *one, const void *two)
 /*
  *	Free a module entry.
  */
-static void module_entry_free(void *data)
+static int module_entry_free(void *ctx)
 {
-	module_entry_t *this = data;
+	module_entry_t *this;
+
+	this = talloc_get_type_abort(ctx, module_entry_t);
 
 	lt_dlclose(this->handle);	/* ignore any errors */
-	memset(this, 0, sizeof(*this));
-	talloc_free(this);
+	return 0;
 }
 
 
@@ -564,6 +550,7 @@ static module_entry_t *linkto_module(const char *module_name,
 
 	/* make room for the module type */
 	node = talloc_zero(cs, module_entry_t);
+	talloc_set_destructor((void *) node, module_entry_free);
 	strlcpy(node->name, module_name, sizeof(node->name));
 	node->module = module;
 	node->handle = handle;
@@ -677,8 +664,19 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Instantiation failed for module \"%s\"",
 			   instname);
+		if (node->entry->module->detach) {
+			talloc_set_destructor((void *) node->insthandle,
+					      node->entry->module->detach);
+		}
+		talloc_free(node->insthandle);
 		talloc_free(node);
 		return NULL;
+	}
+
+	if (node->insthandle) {
+		talloc_set_destructor((void *) node->insthandle,
+				      node->entry->module->detach);
+		talloc_steal(node, node->insthandle);
 	}
 
 	/*
@@ -1513,8 +1511,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		/*
 		 *	Set up the internal module struct.
 		 */
-		module_tree = rbtree_create(module_entry_cmp,
-					    module_entry_free, 0);
+		module_tree = rbtree_create(module_entry_cmp, NULL, 0);
 		if (!module_tree) {
 			radlog(L_ERR, "Failed to initialize modules\n");
 			return -1;

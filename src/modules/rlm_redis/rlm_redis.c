@@ -264,10 +264,7 @@ static int redis_detach(void *instance)
 
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, redis_xlat, instance);
-		free(inst->xlat_name);
 	}
-	free(inst->xlat_name);
-	free(inst);
 
 	return 0;
 }
@@ -341,18 +338,14 @@ static int redis_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof (REDIS_INST));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof (*inst));
+	*instance = inst = talloc_zero(conf, REDIS_INST);
+	if (!inst) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 
@@ -361,22 +354,18 @@ static int redis_instantiate(CONF_SECTION *conf, void **instance)
 	if (!xlat_name)
 		xlat_name = cf_section_name1(conf);
 
-	inst->xlat_name = strdup(xlat_name);
 	xlat_register(inst->xlat_name, redis_xlat, inst);
 
 	inst->pool = fr_connection_pool_init(conf, inst,
 					     redis_create_conn, NULL,
 					     redis_delete_conn);
 	if (!inst->pool) {
-		redis_detach(inst);
 		return -1;
 	}
 
 	inst->redis_query = rlm_redis_query;
 	inst->redis_finish_query = rlm_redis_finish_query;
 	inst->redis_escape_func = redis_escape_func;
-
-	*instance = inst;
 
 	return 0;
 }

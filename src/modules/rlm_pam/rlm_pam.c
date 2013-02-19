@@ -65,29 +65,13 @@ static int pam_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_pam_t *data;
 
-	data = rad_malloc(sizeof(*data));
-	if (!data) {
-		return -1;
-	}
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, rlm_pam_t);
+	if (!data) return -1;
 
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
 		return -1;
 	}
 
-	*instance = data;
-	return 0;
-}
-
-/*
- *	Clean up.
- */
-static int pam_detach(void *instance)
-{
-	rlm_pam_t *data = (rlm_pam_t *) instance;
-
-        free((char *) data);
 	return 0;
 }
 
@@ -283,7 +267,7 @@ module_t rlm_pam = {
 	"pam",
 	RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
 	pam_instantiate,		/* instantiation */
-	pam_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		pam_auth,		/* authenticate */
 		NULL,			/* authorize */

@@ -427,7 +427,6 @@ static int securid_detach(void *instance)
 
 	pthread_mutex_destroy(&(inst->session_mutex));
 
-	free(inst);
 	return 0;
 }
 
@@ -437,14 +436,12 @@ static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_securid_t *inst;
 
 	/* Set up a storage area for instance data */
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst)  return -1;
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_securid_t);
+	if (!inst) return -1;
 
         /* If the configuration parameters can't be parsed, then fail. */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		radlog(L_ERR, "rlm_securid: Unable to parse configuration section.");
-		securid_detach(inst);
 		return -1;
         }
 
@@ -455,13 +452,10 @@ static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 	inst->session_tree = rbtree_create(securid_session_cmp, NULL, 0);
 	if (!inst->session_tree) {
 		radlog(L_ERR, "rlm_securid: Cannot initialize session tree.");
-		securid_detach(inst);
 		return -1;
 	}
 
 	pthread_mutex_init(&(inst->session_mutex), NULL);
-
-        *instance = inst;
         return 0;
 }
 

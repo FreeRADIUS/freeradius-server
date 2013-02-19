@@ -314,8 +314,7 @@ static int generate_sql_clients(SQL_INST *inst)
 		DEBUG("rlm_sql (%s): Read entry nasname=%s,shortname=%s,secret=%s",inst->config->xlat_name,
 			row[1],row[2],row[4]);
 
-		c = rad_malloc(sizeof(*c));
-		memset(c, 0, sizeof(*c));
+		c = talloc_zero(inst, RADCLIENT);
 
 #ifdef WITH_DYNAMIC_CLIENTS
 		c->dynamic = 1;
@@ -331,7 +330,7 @@ static int generate_sql_clients(SQL_INST *inst)
 			if ((c->prefix < 0) || (c->prefix > 128)) {
 				radlog(L_ERR, "rlm_sql (%s): Invalid Prefix value '%s' for IP.",
 				       inst->config->xlat_name, prefix_ptr + 1);
-				free(c);
+				talloc_free(c);
 				continue;
 			}
 			/* Replace '/' with '\0' */
@@ -345,12 +344,12 @@ static int generate_sql_clients(SQL_INST *inst)
 			radlog(L_ERR, "rlm_sql (%s): Failed to look up hostname %s: %s",
 			       inst->config->xlat_name,
 			       row[1], fr_strerror());
-			free(c);
+			talloc_free(c);
 			continue;
 		} else {
 			char buffer[256];
 			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-			c->longname = strdup(buffer);
+			c->longname = talloc_strdup(c, buffer);
 		}
 
 		if (c->prefix < 0) switch (c->ipaddr.af) {
@@ -367,8 +366,8 @@ static int generate_sql_clients(SQL_INST *inst)
 		/*
 		 *	Other values (secret, shortname, nastype, virtual_server)
 		 */
-		c->secret = strdup(row[4]);
-		c->shortname = strdup(row[2]);
+		c->secret = talloc_strdup(c, row[4]);
+		c->shortname = talloc_strdup(c, row[2]);
 		if(row[3] != NULL)
 			c->nastype = strdup(row[3]);
 
@@ -762,18 +761,11 @@ static int rlm_sql_detach(void *instance)
 	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
 	
 	if (inst->config) {
-		if (inst->config->postauth) free(inst->config->postauth);
-		if (inst->config->accounting) free(inst->config->accounting);
-	
 		if (inst->pool) sql_poolfree(inst);
 
 		if (inst->config->xlat_name) {
 			xlat_unregister(inst->config->xlat_name, sql_xlat, instance);
-			rad_cfree(inst->config->xlat_name);
 		}
-
-		free(inst->config);
-		inst->config = NULL;
 	}
 
 	if (inst->handle) {
@@ -784,7 +776,6 @@ static int rlm_sql_detach(void *instance)
 		lt_dlclose(inst->handle);	/* ignore any errors */
 #endif
 	}
-	free(inst);
 
 	return 0;
 }
@@ -807,15 +798,11 @@ static int parse_sub_section(CONF_SECTION *parent,
 		return 0;
 	}
 	
-	*config = rad_calloc(sizeof(**config));
+	*config = talloc_zero(parent, sql_acct_section_t);
 	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
 		radlog(L_ERR, "rlm_sql (%s): Couldn't find configuration for "
 		       "%s, will return NOOP for calls from this section",
 		       inst->config->xlat_name, name);
-		
-		free(*config);
-		*config = NULL;
-		
 		return -1;
 	}
 		
@@ -824,21 +811,20 @@ static int parse_sub_section(CONF_SECTION *parent,
 	return 0;
 }
 
-static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
+static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 {
 	SQL_INST *inst;
 	const char *xlat_name;
 
-	inst = rad_calloc(sizeof(SQL_INST));
+	*instance = inst = talloc_zero(conf, SQL_INST);
+	if (!inst) return -1;
 	
 	/*
 	 *	Cache the SQL-User-Name DICT_ATTR, so we can be slightly
 	 *	more efficient about creating SQL-User-Name attributes.
 	 */
 	inst->sql_user = dict_attrbyname("SQL-User-Name");
-	if (!inst->sql_user) {
-		goto error;
-	}
+	if (!inst->sql_user) return -1;
 
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
@@ -851,7 +837,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
 	
-	inst->config = rad_calloc(sizeof(SQL_CONFIG));
+	inst->config = talloc_zero(inst, SQL_CONFIG);
 	inst->cs = conf;
 
 	xlat_name = cf_section_name2(conf);
@@ -865,8 +851,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		/*
 		 *	Allocate room for <instance>-SQL-Group
 		 */
-		group_name = rad_malloc((strlen(xlat_name) + 1 + 11) * sizeof(char));
-		sprintf(group_name,"%s-SQL-Group", xlat_name);
+		group_name = talloc_asprintf(inst, "%s-SQL-Group", xlat_name);
 		DEBUG("rlm_sql (%s): Creating new attribute %s",
 		      xlat_name, group_name);
 
@@ -875,18 +860,14 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 			radlog(L_ERR, "rlm_sql (%s): Failed to create "
 			       "attribute %s: %s", xlat_name, group_name,
 			       fr_strerror());
-			free(group_name);
-			goto error;
+			return -1;
 		}
 
 		dattr = dict_attrbyname(group_name);
-		if (dattr == NULL){
+		if (!dattr) {
 			radlog(L_ERR, "rlm_sql (%s): Failed to create "
 			       "attribute %s", xlat_name, group_name);
-			       
-			free(group_name);
-
-			goto error;
+			return -1;
 		}
 
 		if (inst->config->groupmemb_query && 
@@ -896,17 +877,14 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 			paircompare_register(dattr->attr, PW_USER_NAME,
 					     sql_groupcmp, inst);
 		}
-
-		free(group_name);
 	}
 	
 	rad_assert(xlat_name);
-	
 
 	/*
 	 *	Register the SQL xlat function
 	 */
-	inst->config->xlat_name = strdup(xlat_name);
+	inst->config->xlat_name = talloc_strdup(inst->config, xlat_name);
 	xlat_register(xlat_name, sql_xlat, inst);
 
 	/*
@@ -921,7 +899,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 			       RLM_COMPONENT_POST_AUTH) < 0)) {
 		radlog(L_ERR, "rlm_sql (%s): Failed parsing configuration",
 		       inst->config->xlat_name);
-		goto error;
+		return -1;
 	}
 		
 	/*
@@ -930,7 +908,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	if (strncmp(inst->config->sql_driver, "rlm_sql_", 8) != 0) {
 		radlog(L_ERR, "rlm_sql (%s): \"%s\" is NOT an SQL driver!",
 		       inst->config->xlat_name, inst->config->sql_driver);
-		goto error;
+		return -1;
 	}
 
 	/*
@@ -943,8 +921,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		       lt_dlerror());
 		radlog(L_ERR, "Make sure it (and all its dependent libraries!)"
 		       "are in the search path of your system's ld.");
-
-		goto error;
+		return -1;
 	}
 
 	inst->module = (rlm_sql_module_t *) lt_dlsym(inst->handle,
@@ -953,8 +930,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 		radlog(L_ERR, "Could not link symbol %s: %s",
 		       inst->config->sql_driver,
 		       lt_dlerror());
-
-		goto error;
+		return -1;
 	}
 
 	radlog(L_INFO, "rlm_sql (%s): Driver %s (module %s) loaded and linked",
@@ -969,8 +945,7 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	       inst->config->sql_server, inst->config->sql_port,
 	       inst->config->sql_db);
 	       
-	if (sql_init_socketpool(inst) < 0)
-		goto error;
+	if (sql_init_socketpool(inst) < 0) return -1;
 
 	if (inst->config->groupmemb_query && 
 	    inst->config->groupmemb_query[0]) {
@@ -980,19 +955,11 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	if (inst->config->do_clients) {
 		if (generate_sql_clients(inst) == -1){
 			radlog(L_ERR, "Failed to load clients from SQL.");
-			
-			goto error;
+			return -1;
 		}
 	}
 
-	*instance = inst;
-
 	return RLM_MODULE_OK;
-	
-	error:
-	rlm_sql_detach(inst);
-	
-	return -1;
 }
 
 

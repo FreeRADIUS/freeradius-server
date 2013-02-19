@@ -281,69 +281,52 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 	return 1;
 }
 
-static int sqlhpwippool_detach(void *instance)
-{
-	rlm_sqlhpwippool_t *data = (rlm_sqlhpwippool_t *) instance;
-
-	/* (*data) is zeroed on instantiation */
-	if (data->sqlinst_name) free(data->sqlinst_name);
-	if (data->db_name)      free(data->db_name);
-	free(data);
-
-	return 0;
-}
-
 /* standard foobar code */
 static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
 {
-	rlm_sqlhpwippool_t *data;
-	module_instance_t *modinst;
+	rlm_sqlhpwippool_t *inst;
+	module_instance_t *sqlinst;
 
 	/* set up a storage area for instance data */
-	data = rad_malloc(sizeof(*data));
-	if (!data) return -1;
-	memset(data, 0, sizeof(*data)); /* so _detach will know what to free */
+	*instance = inst = talloc_zero(conf, rlm_sqlhpwippool_t);
+	if (!inst) return -1;
 
 	/* fail if the configuration parameters can't be parsed */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		sqlhpwippool_detach(*instance);
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
 
 	/* save my name */
-	data->myname = cf_section_name2(conf);
-	if (!data->myname) {
-		data->myname = "(no name)";
+	inst->myname = cf_section_name2(conf);
+	if (!inst->myname) {
+		inst->myname = "(no name)";
 	}
 
-	data->sincesync = 0;
+	inst->sincesync = 0;
 
-	modinst = find_module_instance(cf_section_find("modules"), (data->sqlinst_name), 1 );
-	if (!modinst) {
-		nvp_log(__LINE__, data, L_ERR,
+	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sqlinst_name), 1 );
+	if (!sqlinst) {
+		nvp_log(__LINE__, inst, L_ERR,
 		        "sqlhpwippool_instantiate(): cannot find module instance "
 		        "named \"%s\"",
-		        data->sqlinst_name);
+		        inst->sqlinst_name);
 		return -1;
 	}
 
 	/* check if the given instance is really a rlm_sql instance */
-	if (strcmp(modinst->entry->name, "rlm_sql") != 0) {
-		nvp_log(__LINE__, data, L_ERR,
+	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
+		nvp_log(__LINE__, inst, L_ERR,
 		        "sqlhpwippool_instantiate(): given instance (%s) is not "
 		        "an instance of the rlm_sql module",
-		        data->sqlinst_name);
+		        inst->sqlinst_name);
 		return -1;
 	}
 
 	/* save pointers to useful "objects" */
-	data->sqlinst = (SQL_INST *) modinst->insthandle;
-	data->db = (rlm_sql_module_t *) data->sqlinst->module;
+	inst->sqlinst = (SQL_INST *) sqlinst->insthandle;
+	inst->db = (rlm_sql_module_t *) inst->sqlinst->module;
 
-	/* everything went ok, cleanup pool */
-	*instance = data;
-
-	return ((nvp_cleanup(data)) ? 0 : -1);
+	return ((nvp_cleanup(inst)) ? 0 : -1);
 }
 
 /* assign new IP address, if required */
@@ -362,12 +345,12 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	              weights_sum, used_sum, ip_start, ip_stop, connid;
 	long prio;
 
-	rlm_sqlhpwippool_t *data = (rlm_sqlhpwippool_t *) instance;
+	rlm_sqlhpwippool_t *inst = (rlm_sqlhpwippool_t *) instance;
 
 	/* if IP is already there, then nothing to do */
 	vp = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
-		nvp_log(__LINE__, data, L_DBG,
+		nvp_log(__LINE__, inst, L_DBG,
 		        "sqlhpwippool_postauth(): IP address "
 		        "already in the reply packet - exiting");
 		return RLM_MODULE_NOOP;
@@ -377,12 +360,12 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	vp = pairfind(request->reply->vps, ASN_IP_POOL_NAME, VENDORPEC_ASN, TAG_ANY);
 	if (vp) {
 		pname = vp->vp_strvalue;
-		nvp_log(__LINE__, data, L_DBG,
+		nvp_log(__LINE__, inst, L_DBG,
 		        "sqlhpwippool_postauth(): pool name = '%s'",
 		        pname);
 	}
 	else {
-		nvp_log(__LINE__, data, L_DBG,
+		nvp_log(__LINE__, inst, L_DBG,
 		        "sqlhpwippool_postauth(): no IP pool name - exiting");
 		return RLM_MODULE_NOOP;
 	}
@@ -394,64 +377,64 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	}
 	else {
 		nasip = 0;
-		nvp_log(__LINE__, data, L_DBG,
+		nvp_log(__LINE__, inst, L_DBG,
 		        "sqlhpwippool_postauth(): no NAS IP address in "
 		        "the request packet - using \"0.0.0.0/0\" (any)");
 	}
 
 	/* get our database connection */
-	sqlsock = sql_get_socket(data->sqlinst);
+	sqlsock = sql_get_socket(inst->sqlinst);
 	if (!sqlsock) {
-		nvp_log(__LINE__, data, L_ERR,
+		nvp_log(__LINE__, inst, L_ERR,
 		        "sqlhpwippool_postauth(): error while requesting an SQL socket");
 		return RLM_MODULE_FAIL;
 	}
 
 	/* get connection id as temporary unique integer */
-	if (nvp_select(__LINE__, data, sqlsock, "SELECT CONNECTION_ID()") < 1) {
-		nvp_log(__LINE__, data, L_ERR, "sqlhpwippool_postauth(): WTF ;-)!");
-		nvp_select_finish(data, sqlsock);
-		sql_release_socket(data->sqlinst, sqlsock);
+	if (nvp_select(__LINE__, inst, sqlsock, "SELECT CONNECTION_ID()") < 1) {
+		nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_postauth(): WTF ;-)!");
+		nvp_select_finish(inst, sqlsock);
+		sql_release_socket(inst->sqlinst, sqlsock);
 		return RLM_MODULE_FAIL;
 	}
 
 	connid = strtoul(sqlsock->row[0], (char **) NULL, 10);
-	nvp_select_finish(data, sqlsock);
+	nvp_select_finish(inst, sqlsock);
 
 	/* synchronize with radacct db, if needed */
-	if (++data->sincesync >= data->syncafter
+	if (++inst->sincesync >= inst->syncafter
 #ifdef HAVE_PTHREAD_D
-	    && (pthread_mutex_trylock(&data->mutex)) == 0
+	    && (pthread_mutex_trylock(&inst->mutex)) == 0
 #endif
 	   ) {
 		int r;
 
-		data->sincesync = 0;
+		inst->sincesync = 0;
 
-		nvp_log(__LINE__, data, L_DBG,
+		nvp_log(__LINE__, inst, L_DBG,
 		        "sqlhpwippool_postauth(): syncing with radacct table");
 
-		r = (nvp_freeclosed(data, sqlsock) && nvp_syncfree(data, sqlsock));
+		r = (nvp_freeclosed(inst, sqlsock) && nvp_syncfree(inst, sqlsock));
 
 #ifdef HAVE_PTHREAD_D
-		pthread_mutex_unlock(&data->mutex);
+		pthread_mutex_unlock(&inst->mutex);
 #endif
 
 		if (!r) {
-			nvp_log(__LINE__, data, L_ERR,
+			nvp_log(__LINE__, inst, L_ERR,
 			        "sqlhpwippool_postauth(): synchronization failed");
-			sql_release_socket(data->sqlinst, sqlsock);
+			sql_release_socket(inst->sqlinst, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
 	}
 
 	for (s_gid = 0; s_gid < RLM_NETVIM_MAX_ROWS && !(ip.s_addr); s_gid++) {
-		nvp_log(__LINE__, data, L_DBG,
+		nvp_log(__LINE__, inst, L_DBG,
 		        "sqlhpwippool_postauth(): selecting gid on position %lu",
 		        s_gid);
 
 		/* find the most specific group which NAS belongs to */
-		switch (nvp_select(__LINE__, data, sqlsock,
+		switch (nvp_select(__LINE__, inst, sqlsock,
 		       "SELECT `host_groups`.`gid` "
 		       	"FROM "
 		       		"`%s`.`host_groups`, "
@@ -464,28 +447,28 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 		       		"%lu BETWEEN `gid_ip`.`ip_start` AND `gid_ip`.`ip_stop` "
 		       	"ORDER BY (`gid_ip`.`ip_stop` - `gid_ip`.`ip_start`) ASC "
 		       	"LIMIT %lu, 1",
-		       data->db_name, nasip, s_gid)) {
+		       inst->db_name, nasip, s_gid)) {
 			case -1:
-				nvp_log(__LINE__, data, L_ERR,
+				nvp_log(__LINE__, inst, L_ERR,
 				        "sqlhpwippool_postauth(): couldn't find "
 				        "any more matching host groups");
 				goto end_gid;                  /* exit the main loop */
 			case 0:
-				sql_release_socket(data->sqlinst, sqlsock);
+				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 		}
 
 		/* store the group ID and free memory occupied by results */
 		gid = strtoul(sqlsock->row[0], (char **) NULL, 10);
-		nvp_select_finish(data, sqlsock);
+		nvp_select_finish(inst, sqlsock);
 
 		for (s_prio = 0; s_prio < RLM_NETVIM_MAX_ROWS && !(ip.s_addr); s_prio++) {
-			nvp_log(__LINE__, data, L_DBG,
+			nvp_log(__LINE__, inst, L_DBG,
 			        "sqlhpwippool_postauth(): selecting prio on position %lu",
 			        s_prio);
 
 			/* prepare to search for best fit pool */
-			switch (nvp_select(__LINE__, data, sqlsock,
+			switch (nvp_select(__LINE__, inst, sqlsock,
 			        "SELECT "
 			        	"`ip_pools`.`prio`, "
 			        	"SUM(`ip_pools`.`weight`) AS `weights_sum`, "
@@ -505,15 +488,15 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 			        	"GROUP BY `prio` "
 			        	"ORDER BY `prio` ASC "
 			        	"LIMIT %lu, 1",
-			        data->db_name, gid, pname, s_prio)) {
+			        inst->db_name, gid, pname, s_prio)) {
 				case -1:
-					nvp_log(__LINE__, data, L_DBG,
+					nvp_log(__LINE__, inst, L_DBG,
 					        "sqlhpwippool_postauth(): couldn't find "
 					        "any more matching pools for gid = %u",
 					        gid);
 					goto end_prio;               /* select next gid */
 				case 0:
-					sql_release_socket(data->sqlinst, sqlsock);
+					sql_release_socket(inst->sqlinst, sqlsock);
 					return RLM_MODULE_FAIL;
 			}
 
@@ -523,15 +506,15 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 			used_sum = strtoul(sqlsock->row[2], (char **) NULL, 10);
 
 			/* free memory */
-			nvp_select_finish(data, sqlsock);
+			nvp_select_finish(inst, sqlsock);
 
 			for (s_pid = 0; s_pid < RLM_NETVIM_MAX_ROWS && !(ip.s_addr); s_pid++) {
-				nvp_log(__LINE__, data, L_DBG,
+				nvp_log(__LINE__, inst, L_DBG,
 				        "sqlhpwippool_postauth(): selecting PID on position %lu",
 				        s_pid);
 
 				/* search for best fit pool */
-				switch (nvp_select(__LINE__, data, sqlsock,
+				switch (nvp_select(__LINE__, inst, sqlsock,
 				        "SELECT "
 				        	"`ip_pools`.`pid`, "
 				        	"`ip_pools`.`ip_start`, "
@@ -550,27 +533,27 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 				        		"`prio` = %ld "
 				        	"ORDER BY (`weight`/%lu.0000 - (`total` - `free`)/%lu) DESC "
 				        	"LIMIT %lu, 1",
-				        data->db_name, gid, pname, prio,
+				        inst->db_name, gid, pname, prio,
 				        weights_sum, used_sum, s_pid)) {
 					case -1:
-						nvp_log(__LINE__, data, L_DBG,
+						nvp_log(__LINE__, inst, L_DBG,
 						        "sqlhpwippool_postauth(): couldn't find any more "
 						        "matching pools of prio = %ld for gid = %lu",
 						        prio, gid);
 						goto end_pid;              /* select next prio */
 					case 0:
-						sql_release_socket(data->sqlinst, sqlsock);
+						sql_release_socket(inst->sqlinst, sqlsock);
 						return RLM_MODULE_FAIL;
 				}
 
-				/* store the data and free memory occupied by results */
+				/* store the inst and free memory occupied by results */
 				pid = strtoul(sqlsock->row[0], (char **) NULL, 10);
 				ip_start = strtoul(sqlsock->row[1], (char **) NULL, 10);
 				ip_stop = strtoul(sqlsock->row[2], (char **) NULL, 10);
-				nvp_select_finish(data, sqlsock);
+				nvp_select_finish(inst, sqlsock);
 
 				/* reserve an IP address */
-				if (!nvp_query(__LINE__, data, sqlsock,
+				if (!nvp_query(__LINE__, inst, sqlsock,
 				    "UPDATE `%s`.`ips` "
 				    	"SET "
 				    		"`pid` = %lu, "
@@ -585,52 +568,52 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 				    		") "
 				    	"ORDER BY RAND() "
 				    	"LIMIT 1",
-				    data->db_name, pid, connid, data->freeafter, ip_start, ip_stop)) {
-					sql_release_socket(data->sqlinst, sqlsock);
+				    inst->db_name, pid, connid, inst->freeafter, ip_start, ip_stop)) {
+					sql_release_socket(inst->sqlinst, sqlsock);
 					return RLM_MODULE_FAIL;
 				}
 				else {
-					nvp_finish(data, sqlsock);
+					nvp_finish(inst, sqlsock);
 				}
 
 				/* select assigned IP address */
-				switch (nvp_select(__LINE__, data, sqlsock,
+				switch (nvp_select(__LINE__, inst, sqlsock,
 				        "SELECT `ip` "
 				        	"FROM `%s`.`ips` "
 				        	"WHERE `rsv_by` = '" RLM_NETVIM_TMP_PREFIX "%lu' "
 				        	"ORDER BY `rsv_since` DESC "
 				        	"LIMIT 1",
-				        data->db_name, connid)) {
+				        inst->db_name, connid)) {
 					case -1:
-						nvp_log(__LINE__, data, L_ERR,
+						nvp_log(__LINE__, inst, L_ERR,
 						        "sqlhpwippool_postauth(): couldn't reserve an IP address "
 						        "from pool of pid = %lu (prio = %ld, gid = %lu)",
 						        pid, prio, gid);
 						continue;                            /* select next pid */
 					case 0:
-						sql_release_socket(data->sqlinst, sqlsock);
+						sql_release_socket(inst->sqlinst, sqlsock);
 						return RLM_MODULE_FAIL;
 				}
 
 				/* update free IPs count */
-				if (!nvp_query(__LINE__, data, sqlsock,
+				if (!nvp_query(__LINE__, inst, sqlsock,
 				    "UPDATE `%s`.`ip_pools` "
 				    	"SET "
 				    		"`free` = `free` - 1 "
 				    	"WHERE "
 				    		"`pid` = %lu "
 			    	"LIMIT 1",
-				    data->db_name, pid)) {
-					sql_release_socket(data->sqlinst, sqlsock);
+				    inst->db_name, pid)) {
+					sql_release_socket(inst->sqlinst, sqlsock);
 					return RLM_MODULE_FAIL;
 				}
 				else {
-					nvp_finish(data, sqlsock);
+					nvp_finish(inst, sqlsock);
 				}
 
 				/* get assigned IP and free memory */
 				ip.s_addr = htonl(strtoul(sqlsock->row[0], (char **) NULL, 10));
-				nvp_select_finish(data, sqlsock);
+				nvp_select_finish(inst, sqlsock);
 			} /* pid */
 end_pid: continue;           /* stupid */
 		} /* prio */
@@ -639,19 +622,19 @@ end_prio: continue;          /* stupid */
 end_gid:
 
 	/* release SQL socket */
-	sql_release_socket(data->sqlinst, sqlsock);
+	sql_release_socket(inst->sqlinst, sqlsock);
 
 	/* no free IP address found */
 	if (!ip.s_addr) {
-		nvp_log(__LINE__, data, L_INFO,
+		nvp_log(__LINE__, inst, L_INFO,
 		        "sqlhpwippool_postauth(): no free IP address found!");
 
-		if (data->nofreefail) {
-			nvp_log(__LINE__, data, L_DBG, "sqlhpwippool_postauth(): rejecting user");
+		if (inst->nofreefail) {
+			nvp_log(__LINE__, inst, L_DBG, "sqlhpwippool_postauth(): rejecting user");
 			return RLM_MODULE_REJECT;
 		}
 		else {
-			nvp_log(__LINE__, data, L_DBG, "sqlhpwippool_postauth(): exiting");
+			nvp_log(__LINE__, inst, L_DBG, "sqlhpwippool_postauth(): exiting");
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -661,7 +644,7 @@ end_gid:
 			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip.s_addr;
 
-	nvp_log(__LINE__, data, L_DBG, "sqlhpwippool_postauth(): returning %s",
+	nvp_log(__LINE__, inst, L_DBG, "sqlhpwippool_postauth(): returning %s",
 	        inet_ntoa(ip));
 	return RLM_MODULE_OK;
 }
@@ -676,7 +659,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 	uint32_t framedip = 0;     /* client's IP, host byte order */
 	uint32_t acct_type;
 
-	rlm_sqlhpwippool_t *data = (rlm_sqlhpwippool_t *) instance;
+	rlm_sqlhpwippool_t *inst = (rlm_sqlhpwippool_t *) instance;
 
 	/* if no unique session ID, don't even try */
 	vp = pairfind(request->packet->vps, PW_ACCT_UNIQUE_SESSION_ID, 0, TAG_ANY);
@@ -684,7 +667,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 		sessid = vp->vp_strvalue;
 	}
 	else {
-		nvp_log(__LINE__, data, L_ERR,
+		nvp_log(__LINE__, inst, L_ERR,
 		        "sqlhpwippool_accounting(): unique session ID not found");
 		return RLM_MODULE_FAIL;
 	}
@@ -694,7 +677,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 		acct_type = vp->vp_integer;
 	}
 	else {
-		nvp_log(__LINE__, data, L_ERR, "sqlhpwippool_accounting(): "
+		nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_accounting(): "
 		                               "couldn't find type of accounting packet");
 		return RLM_MODULE_FAIL;
 	}
@@ -708,9 +691,9 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 	}
 
 	/* connect to database */
-	sqlsock = sql_get_socket(data->sqlinst);
+	sqlsock = sql_get_socket(inst->sqlinst);
 	if (!sqlsock) {
-		nvp_log(__LINE__, data, L_ERR,
+		nvp_log(__LINE__, inst, L_ERR,
 		        "sqlhpwippool_accounting(): couldn't connect to database");
 		return RLM_MODULE_FAIL;
 	}
@@ -721,28 +704,28 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 		case PW_STATUS_ALIVE:
 			vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
 			if (!vp) {
-				nvp_log(__LINE__, data, L_ERR, "sqlhpwippool_accounting(): no framed IP");
-				sql_release_socket(data->sqlinst, sqlsock);
+				nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_accounting(): no framed IP");
+				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
 
 			framedip = ntohl(vp->vp_ipaddr);
 
-			if (!nvp_query(__LINE__, data, sqlsock,
+			if (!nvp_query(__LINE__, inst, sqlsock,
 			    "UPDATE `%s`.`ips` "
 			    	"SET "
 			    		"`rsv_until` = 0, "
 			    		"`rsv_by` = '%s' "
 			    	"WHERE `ip` = %lu",
-			    data->db_name, sessid, framedip)) {
-				sql_release_socket(data->sqlinst, sqlsock);
+			    inst->db_name, sessid, framedip)) {
+				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
-			nvp_finish(data, sqlsock);
+			nvp_finish(inst, sqlsock);
 			break;
 
 		case PW_STATUS_STOP:
-			if (!nvp_query(__LINE__, data, sqlsock,
+			if (!nvp_query(__LINE__, inst, sqlsock,
 			    "UPDATE `%s`.`ips`, `%1$s`.`ip_pools` "
 			    	"SET "
 			    		"`ips`.`rsv_until` = NOW() + INTERVAL %u SECOND, "
@@ -750,41 +733,41 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 			    	"WHERE "
 			    		"`ips`.`rsv_by` = '%s' AND "
 			    		"`ips`.`ip` BETWEEN `ip_pools`.`ip_start` AND `ip_pools`.`ip_stop`",
-			    data->db_name, data->freeafter, sessid)) {
-				sql_release_socket(data->sqlinst, sqlsock);
+			    inst->db_name, inst->freeafter, sessid)) {
+				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
-			nvp_finish(data, sqlsock);
+			nvp_finish(inst, sqlsock);
 		break;
 
 		case PW_STATUS_ACCOUNTING_OFF:
 		case PW_STATUS_ACCOUNTING_ON:
 			vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 			if (!vp) {
-				nvp_log(__LINE__, data, L_ERR, "sqlhpwippool_accounting(): no NAS IP");
-				sql_release_socket(data->sqlinst, sqlsock);
+				nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_accounting(): no NAS IP");
+				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
 
 			nasip.s_addr = vp->vp_ipaddr;
 			strlcpy(nasipstr, inet_ntoa(nasip), sizeof(nasipstr));
 
-			if (!nvp_query(__LINE__, data, sqlsock,
+			if (!nvp_query(__LINE__, inst, sqlsock,
 			    "UPDATE `%s`.`ips`, `radacct` "
 			    	"SET `ips`.`rsv_until` = NOW() + INTERVAL %u SECOND "
 			    	"WHERE "
 			    		"`radacct`.`nasipaddress` = '%s' AND "
 			    		"`ips`.`rsv_by` = `radacct`.`acctuniqueid`",
-			    data->db_name, data->freeafter, nasipstr)) {
-				sql_release_socket(data->sqlinst, sqlsock);
+			    inst->db_name, inst->freeafter, nasipstr)) {
+				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
-			nvp_finish(data, sqlsock);
+			nvp_finish(inst, sqlsock);
 
 			break;
 	}
 
-	sql_release_socket(data->sqlinst, sqlsock);
+	sql_release_socket(inst->sqlinst, sqlsock);
 	return RLM_MODULE_OK;
 }
 
@@ -793,7 +776,7 @@ module_t rlm_sqlhpwippool = {
 	"sqlhpwippool",			/* name */
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	sqlhpwippool_instantiate,	/* instantiation */
-	sqlhpwippool_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */

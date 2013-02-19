@@ -83,13 +83,6 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-
-static int checkval_detach(void *instance)
-{
-	free(instance);
-	return 0;
-}
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -109,18 +102,16 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_checkval_t);
 	if (!inst) {
 		return -1;
 	}
-	memset(inst, 0, sizeof(*inst));
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		checkval_detach(inst);
 		return -1;
 	}
 
@@ -129,19 +120,16 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (!inst->data_type || !*inst->data_type){
 		radlog(L_ERR, "rlm_checkval: Data type not defined");
-		checkval_detach(inst);
 		return -1;
 	}
 
 	if (!inst->item_name || !*inst->item_name){
 		radlog(L_ERR, "rlm_checkval: Item name not defined");
-		checkval_detach(inst);
 		return -1;
 	}
 
 	if (!inst->check_name || !*inst->check_name){
 		radlog(L_ERR, "rlm_checkval: Check item name not defined");
-		checkval_detach(inst);
 		return -1;
 	}
 
@@ -152,7 +140,6 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	if (!da) {
 		radlog(L_ERR, "rlm_checkval: No such attribute %s",
 		       inst->item_name);
-		checkval_detach(inst);
 		return -1;
 	}
 	inst->item = da;
@@ -168,7 +155,6 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	if (!da){
 		radlog(L_ERR, "rlm_checkval: No such attribute %s",
 		       inst->check_name);
-		checkval_detach(inst);
 		return -1;
 	}
 	inst->check = da;
@@ -184,11 +170,8 @@ static int checkval_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst->type) {
 		radlog(L_ERR, "rlm_checkval: Data type %s in not known",
 		       inst->data_type);
-		checkval_detach(inst);
 		return -1;
 	}
-
-	*instance = inst;
 
 	return 0;
 }
@@ -329,9 +312,9 @@ static rlm_rcode_t checkval_accounting(void *instance, REQUEST *request)
 module_t rlm_checkval = {
 	 RLM_MODULE_INIT,
 	"checkval",
-	0,		/* type */
+	0,				/* type */
 	checkval_instantiate,		/* instantiation */
-	checkval_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		checkval_authorize, 	/* authorization */

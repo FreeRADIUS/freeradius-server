@@ -77,22 +77,16 @@ static int example_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = rad_malloc(sizeof(*data));
-	if (!data) {
-		return -1;
-	}
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, rlm_example_t);
+	if (!data) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
 		return -1;
 	}
-
-	*instance = data;
 
 	return 0;
 }
@@ -202,7 +196,7 @@ static rlm_rcode_t example_checksimul(void *instance, REQUEST *request)
  */
 static int example_detach(void *instance)
 {
-	free(instance);
+	/* free things here */
 	return 0;
 }
 

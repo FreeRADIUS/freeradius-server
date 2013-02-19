@@ -115,17 +115,7 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	return result;
 }
 
-static int rediswho_detach(void *instance)
-{
-	rlm_rediswho_t *inst;
-
-	inst = instance;
-	free(inst);
-
-	return 0;
-}
-
-static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
+static int rediswho_instantiate(CONF_SECTION *conf, void ** instance)
 {
 	module_instance_t *modinst;
 	rlm_rediswho_t *inst;
@@ -133,15 +123,14 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = *instance = rad_malloc(sizeof (*inst));
-	memset(inst, 0, sizeof (*inst));
+	*instance = inst = talloc_zero(conf, rlm_rediswho_t);
+	if (!inst) return -1;
     
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 
@@ -150,7 +139,6 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 	if (!inst->xlat_name) 
 		inst->xlat_name = cf_section_name1(conf);
 
-	inst->xlat_name = strdup(inst->xlat_name);
 	inst->cs = conf;
 
 	modinst = find_module_instance(cf_section_find("modules"),
@@ -159,8 +147,6 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 		radlog(L_ERR,
 		       "rediswho: failed to find module instance \"%s\"",
 		       inst->redis_instance_name);
-
-		rediswho_detach(inst);
 		return -1;
 	}
 
@@ -168,8 +154,6 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 		radlog(L_ERR, "rediswho: Module \"%s\""
 		       " is not an instance of the redis module",
 		       inst->redis_instance_name);
-
-		rediswho_detach(inst);
 		return -1;
 	}
 
@@ -258,9 +242,9 @@ static rlm_rcode_t rediswho_accounting(void * instance, REQUEST * request)
 module_t rlm_rediswho = {
 	RLM_MODULE_INIT,
 	"rediswho",
-	RLM_TYPE_THREAD_SAFE, /* type */
-	rediswho_instantiate, /* instantiation */
-	rediswho_detach, /* detach */
+	RLM_TYPE_THREAD_SAFE,	/* type */
+	rediswho_instantiate,	/* instantiation */
+	NULL, 			/* detach */
 	{
 		NULL, /* authentication */
 		NULL, /* authorization */

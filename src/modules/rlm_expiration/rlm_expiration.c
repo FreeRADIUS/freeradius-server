@@ -139,7 +139,6 @@ static int expirecmp(void *instance, REQUEST *req,
 static int expiration_detach(void *instance)
 {
 	paircompare_unregister(PW_EXPIRATION, expirecmp);
-	free(instance);
 	return 0;
 }
 
@@ -160,19 +159,14 @@ static int expiration_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = rad_malloc(sizeof(*data));
-	if (!data) {
-		radlog(L_ERR, "rlm_expiration: rad_malloc() failed.");
-		return -1;
-	}
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, rlm_expiration_t);
+	if (!data) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
 		radlog(L_ERR, "rlm_expiration: Configuration parsing failed.");
 		return -1;
 	}
@@ -181,9 +175,6 @@ static int expiration_instantiate(CONF_SECTION *conf, void **instance)
 	 * Register the expiration comparison operation.
 	 */
 	paircompare_register(PW_EXPIRATION, 0, expirecmp, data);
-
-	*instance = data;
-
 	return 0;
 }
 

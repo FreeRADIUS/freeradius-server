@@ -91,17 +91,6 @@ static int str2rcode(const char *s)
 	}
 }
 
-static int sometimes_detach(void *instance)
-{
-	rlm_sometimes_t *inst = instance;
-
-	free(inst->rcode_str);
-	free(inst->key);
-	free(inst);
-
-	return 0;
-}
-
 static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_sometimes_t *inst;
@@ -109,18 +98,14 @@ static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_sometimes_t);
+	if (!inst) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		sometimes_detach(inst);
 		return -1;
 	}
 
@@ -129,14 +114,12 @@ static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->rcode = str2rcode(inst->rcode_str);
 	if (inst->rcode == -1) {
-		sometimes_detach(inst);
 		return -1;
 	}
 
 	inst->da = dict_attrbyname(inst->key);
 	if (!inst->da) {
 		radlog(L_ERR, "rlm_sometimes; Unknown attributes %s", inst->key);
-		return -1;
 		return -1;
 	}
 
@@ -238,7 +221,7 @@ module_t rlm_sometimes = {
 	"sometimes",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	sometimes_instantiate,		/* instantiation */
-	sometimes_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		sometimes_packet,	/* authentication */
 		sometimes_packet,	/* authorization */

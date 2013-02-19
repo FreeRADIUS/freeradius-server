@@ -388,12 +388,6 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 	return retval;
 }
 
-static int sqlippool_detach(void *instance)
-{
-	free(instance);
-	return 0;
-}
-
 #define IS_EMPTY(_x) (!_x ||!*_x)
 
 /*
@@ -406,30 +400,27 @@ static int sqlippool_detach(void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
+static int sqlippool_instantiate(CONF_SECTION *conf, void **instance)
 {
-	module_instance_t *modinst;
-	rlm_sqlippool_t * data;
+	module_instance_t *sqlinst;
+	rlm_sqlippool_t *inst;
 	const char * pool_name = NULL;
 
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = rad_malloc(sizeof(*data));
-	memset(data, 0, sizeof(*data));
+	*instance = inst = talloc_zero(conf, rlm_sqlippool_t);
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
 
-	if (IS_EMPTY(data->sql_instance_name)) {
+	if (IS_EMPTY(inst->sql_instance_name)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'sql-instance-name' variable must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
@@ -437,79 +428,67 @@ static int sqlippool_instantiate(CONF_SECTION * conf, void ** instance)
 	 *	Check that all the queries are in place
 	 */
 
-	if (IS_EMPTY(data->allocate_clear)) {
+	if (IS_EMPTY(inst->allocate_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate-clear' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
-	if (IS_EMPTY(data->allocate_find)) {
+	if (IS_EMPTY(inst->allocate_find)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate-find' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
-	if (IS_EMPTY(data->allocate_update)) {
+	if (IS_EMPTY(inst->allocate_update)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'allocate-update' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
-	if (IS_EMPTY(data->start_update)) {
+	if (IS_EMPTY(inst->start_update)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'start-update' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
-	if (IS_EMPTY(data->alive_update)) {
+	if (IS_EMPTY(inst->alive_update)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'alive-update' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
-	if (IS_EMPTY(data->stop_clear)) {
+	if (IS_EMPTY(inst->stop_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'stop-clear' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
-	if (IS_EMPTY(data->on_clear)) {
+	if (IS_EMPTY(inst->on_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'on-clear' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
-	if (IS_EMPTY(data->off_clear)) {
+	if (IS_EMPTY(inst->off_clear)) {
 		radlog(L_ERR, "rlm_sqlippool: the 'off-clear' statement must be set.");
-		sqlippool_detach(data);
 		return -1;
 	}
 
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL)
-		data->pool_name = strdup(pool_name);
+		inst->pool_name = talloc_strdup(inst, pool_name);
 	else
-		data->pool_name = strdup("ippool");
+		inst->pool_name = talloc_strdup(inst, "ippool");
 
-	modinst = find_module_instance(cf_section_find("modules"),
-				       data->sql_instance_name, 1);
-	if (!modinst) {
-		radlog(L_ERR, "sqlippool_instantiate: failed to find sql instance named %s", data->sql_instance_name);
-		sqlippool_detach(data);
+	sqlinst = find_module_instance(cf_section_find("modules"),
+				       inst->sql_instance_name, 1);
+	if (!sqlinst) {
+		radlog(L_ERR, "sqlippool_instantiate: failed to find sql instance named %s", inst->sql_instance_name);
 		return -1;
 	}
 
-	if (strcmp(modinst->entry->name, "rlm_sql") != 0) {
+	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
 		radlog(L_ERR, "sqlippool_instantiate: Module \"%s\""
 		       " is not an instance of the rlm_sql module",
-		       data->sql_instance_name);
-		sqlippool_detach(data);
+		       inst->sql_instance_name);
 		return -1;
 	}
 
-	data->sql_inst = (SQL_INST *) modinst->insthandle;
-
-	*instance = data;
+	inst->sql_inst = (SQL_INST *) sqlinst->insthandle;
 	return 0;
 }
 
@@ -531,7 +510,7 @@ static int do_logging(char *str, int retcode)
  */
 static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 {
-	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
+	rlm_sqlippool_t * inst = (rlm_sqlippool_t *) instance;
 	char allocation[MAX_STRING_LEN];
 	int allocation_len;
 	uint32_t ip_allocation;
@@ -545,7 +524,7 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 	 */
 	if (pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY) != NULL) {
 		/* We already have a Framed-IP-Address */
-		radius_xlat(logstr, sizeof(logstr), data->log_exists,
+		radius_xlat(logstr, sizeof(logstr), inst->log_exists,
 			    request, NULL, NULL);
 		RDEBUG("Framed-IP-Address already exists");
 
@@ -554,40 +533,40 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 
 	if (pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY) == NULL) {
 		RDEBUG("No Pool-Name defined.");
-		radius_xlat(logstr, sizeof(logstr), data->log_nopool,
+		radius_xlat(logstr, sizeof(logstr), inst->log_nopool,
 			    request, NULL, NULL);
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
 	}
 
-	sqlsocket = data->sql_inst->sql_get_socket(data->sql_inst);
+	sqlsocket = inst->sql_inst->sql_get_socket(inst->sql_inst);
 	if (sqlsocket == NULL) {
 		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_FAIL;
 	}
 
-	if (data->sql_inst->sql_set_user(data->sql_inst, request, NULL) < 0) {
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
 	/*
 	 * BEGIN
 	 */
-	sqlippool_command(data->allocate_begin, sqlsocket, data, request,
+	sqlippool_command(inst->allocate_begin, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * CLEAR
 	 */
-	sqlippool_command(data->allocate_clear, sqlsocket, data, request,
+	sqlippool_command(inst->allocate_clear, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * FIND
 	 */
 	allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-					  data->allocate_find, sqlsocket,
-					  data, request, (char *) NULL, 0);
+					  inst->allocate_find, sqlsocket,
+					  inst, request, (char *) NULL, 0);
 
 	/*
 	 *	Nothing found...
@@ -596,23 +575,23 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 		/*
 		 * COMMIT
 		 */
-		sqlippool_command(data->allocate_commit, sqlsocket, instance,
+		sqlippool_command(inst->allocate_commit, sqlsocket, instance,
 				  request, (char *) NULL, 0);
 
 		/*
 		 * Should we perform pool-check ?
 		 */
-		if (data->pool_check && *data->pool_check) {
+		if (inst->pool_check && *inst->pool_check) {
 
 			/*
 			 * Ok, so the allocate-find query found nothing ...
 			 * Let's check if the pool exists at all
 			 */
 			allocation_len = sqlippool_query1(allocation, sizeof(allocation),
-						 data->pool_check, sqlsocket, data, request,
+						 inst->pool_check, sqlsocket, inst, request,
 						(char *) NULL, 0);
 
-			data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
+			inst->sql_inst->sql_release_socket(inst->sql_inst, sqlsocket);
 
 			if (allocation_len) {
 
@@ -625,7 +604,7 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 				 *	NOTFOUND
 				 */
 				RDEBUG("pool appears to be full");
-				radius_xlat(logstr, sizeof(logstr), data->log_failed, request, NULL, NULL);
+				radius_xlat(logstr, sizeof(logstr), inst->log_failed, request, NULL, NULL);
 				return do_logging(logstr, RLM_MODULE_NOTFOUND);
 
 			}
@@ -641,10 +620,10 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 
 		}
 
-		data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
+		inst->sql_inst->sql_release_socket(inst->sql_inst, sqlsocket);
 
 		RDEBUG("IP address could not be allocated.");
-		radius_xlat(logstr, sizeof(logstr), data->log_failed,
+		radius_xlat(logstr, sizeof(logstr), inst->log_failed,
 			    request, NULL, NULL);
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
@@ -659,12 +638,12 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 		/*
 		 * COMMIT
 		 */
-		sqlippool_command(data->allocate_commit, sqlsocket, instance,
+		sqlippool_command(inst->allocate_commit, sqlsocket, instance,
 				  request, (char *) NULL, 0);
 
-		RDEBUG("Invalid IP number [%s] returned from database query.", allocation);
-		data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
-		radius_xlat(logstr, sizeof(logstr), data->log_failed,
+		RDEBUG("Invalid IP number [%s] returned from instbase query.", allocation);
+		inst->sql_inst->sql_release_socket(inst->sql_inst, sqlsocket);
+		radius_xlat(logstr, sizeof(logstr), inst->log_failed,
 			    request, NULL, NULL);
 
 		return do_logging(logstr, RLM_MODULE_NOOP);
@@ -673,7 +652,7 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 	/*
 	 * UPDATE
 	 */
-	sqlippool_command(data->allocate_update, sqlsocket, data, request,
+	sqlippool_command(inst->allocate_update, sqlsocket, inst, request,
 			  allocation, allocation_len);
 
 	RDEBUG("Allocated IP %s [%08x]", allocation, ip_allocation);
@@ -685,134 +664,134 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 	/*
 	 * COMMIT
 	 */
-	sqlippool_command(data->allocate_commit, sqlsocket, data, request,
+	sqlippool_command(inst->allocate_commit, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
-	data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
-	radius_xlat(logstr, sizeof(logstr), data->log_success, request, NULL, NULL);
+	inst->sql_inst->sql_release_socket(inst->sql_inst, sqlsocket);
+	radius_xlat(logstr, sizeof(logstr), inst->log_success, request, NULL, NULL);
 
 	return do_logging(logstr, RLM_MODULE_OK);
 }
 
 static int sqlippool_accounting_start(SQLSOCK * sqlsocket,
-				      rlm_sqlippool_t *data, REQUEST *request)
+				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
 	 * BEGIN
 	 */
-	sqlippool_command(data->start_begin, sqlsocket, data, request,
+	sqlippool_command(inst->start_begin, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * UPDATE
 	 */
-	sqlippool_command(data->start_update, sqlsocket, data, request,
+	sqlippool_command(inst->start_update, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * COMMIT
 	 */
-	sqlippool_command(data->start_commit, sqlsocket, data, request,
+	sqlippool_command(inst->start_commit, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	return RLM_MODULE_OK;
 }
 
 static int sqlippool_accounting_alive(SQLSOCK * sqlsocket,
-				      rlm_sqlippool_t *data, REQUEST *request)
+				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
 	 * BEGIN
 	 */
-	sqlippool_command(data->alive_begin, sqlsocket, data, request,
+	sqlippool_command(inst->alive_begin, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * UPDATE
 	 */
-	sqlippool_command(data->alive_update, sqlsocket, data, request,
+	sqlippool_command(inst->alive_update, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * COMMIT
 	 */
-	sqlippool_command(data->alive_commit, sqlsocket, data, request,
+	sqlippool_command(inst->alive_commit, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	return RLM_MODULE_OK;
 }
 
 static int sqlippool_accounting_stop(SQLSOCK * sqlsocket,
-				      rlm_sqlippool_t *data, REQUEST *request)
+				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	char    logstr[MAX_STRING_LEN];
 
 	/*
 	 * BEGIN
 	 */
-	sqlippool_command(data->stop_begin, sqlsocket, data, request,
+	sqlippool_command(inst->stop_begin, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * CLEAR
 	 */
-	sqlippool_command(data->stop_clear, sqlsocket, data, request,
+	sqlippool_command(inst->stop_clear, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * COMMIT
 	 */
-	sqlippool_command(data->stop_commit, sqlsocket, data, request,
+	sqlippool_command(inst->stop_commit, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
-	radius_xlat(logstr, sizeof(logstr), data->log_clear, request, NULL, NULL);
+	radius_xlat(logstr, sizeof(logstr), inst->log_clear, request, NULL, NULL);
 
 	return do_logging(logstr, RLM_MODULE_OK);
 }
 
 static int sqlippool_accounting_on(SQLSOCK * sqlsocket,
-				      rlm_sqlippool_t *data, REQUEST *request)
+				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
 	 * BEGIN
 	 */
-	sqlippool_command(data->on_begin, sqlsocket, data, request,
+	sqlippool_command(inst->on_begin, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * CLEAR
 	 */
-	sqlippool_command(data->on_clear, sqlsocket, data, request,
+	sqlippool_command(inst->on_clear, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * COMMIT
 	 */
-	sqlippool_command(data->on_commit, sqlsocket, data, request,
+	sqlippool_command(inst->on_commit, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	return RLM_MODULE_OK;
 }
 
 static int sqlippool_accounting_off(SQLSOCK * sqlsocket,
-				      rlm_sqlippool_t *data, REQUEST *request)
+				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
 	 * BEGIN
 	 */
-	sqlippool_command(data->off_begin, sqlsocket, data, request,
+	sqlippool_command(inst->off_begin, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * CLEAR
 	 */
-	sqlippool_command(data->off_clear, sqlsocket, data, request,
+	sqlippool_command(inst->off_clear, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	/*
 	 * COMMIT
 	 */
-	sqlippool_command(data->off_commit, sqlsocket, data, request,
+	sqlippool_command(inst->off_commit, sqlsocket, inst, request,
 			  (char *) NULL, 0);
 
 	return RLM_MODULE_OK;
@@ -828,7 +807,7 @@ static rlm_rcode_t sqlippool_accounting(void * instance, REQUEST * request)
 	int rcode;
 	VALUE_PAIR * vp;
 	int acct_status_type;
-	rlm_sqlippool_t * data = (rlm_sqlippool_t *) instance;
+	rlm_sqlippool_t * inst = (rlm_sqlippool_t *) instance;
 	SQLSOCK * sqlsocket;
 
 	vp = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY);
@@ -851,39 +830,39 @@ static rlm_rcode_t sqlippool_accounting(void * instance, REQUEST * request)
 		return RLM_MODULE_NOOP;
 	}
 
-	sqlsocket = data->sql_inst->sql_get_socket(data->sql_inst);
+	sqlsocket = inst->sql_inst->sql_get_socket(inst->sql_inst);
 	if (sqlsocket == NULL) {
 		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}
 
-	if (data->sql_inst->sql_set_user(data->sql_inst, request, NULL) < 0) {
+	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
 	switch (acct_status_type) {
 	case PW_STATUS_START:
-		rcode = sqlippool_accounting_start(sqlsocket, data, request);
+		rcode = sqlippool_accounting_start(sqlsocket, inst, request);
 		break;
 
 	case PW_STATUS_ALIVE:
-		rcode = sqlippool_accounting_alive(sqlsocket, data, request);
+		rcode = sqlippool_accounting_alive(sqlsocket, inst, request);
 		break;
 
 	case PW_STATUS_STOP:
-		rcode = sqlippool_accounting_stop(sqlsocket, data, request);
+		rcode = sqlippool_accounting_stop(sqlsocket, inst, request);
 		break;
 
 	case PW_STATUS_ACCOUNTING_ON:
-		rcode = sqlippool_accounting_on(sqlsocket, data, request);
+		rcode = sqlippool_accounting_on(sqlsocket, inst, request);
 		break;
 
 	case PW_STATUS_ACCOUNTING_OFF:
-		rcode = sqlippool_accounting_off(sqlsocket, data, request);
+		rcode = sqlippool_accounting_off(sqlsocket, inst, request);
 		break;
 	}
 
-	data->sql_inst->sql_release_socket(data->sql_inst, sqlsocket);
+	inst->sql_inst->sql_release_socket(inst->sql_inst, sqlsocket);
 
 	return rcode;
 }
@@ -902,7 +881,7 @@ module_t rlm_sqlippool = {
 	"SQL IP Pool",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	sqlippool_instantiate,		/* instantiation */
-	sqlippool_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */

@@ -590,12 +590,10 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *      Set up a storage area for instance data
 	 */
-	if ((data = malloc(sizeof(*data))) == NULL)
-		return -1;
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, struct rlm_python_t);
+	if (!data) return -1;
 
 	if (python_init() != 0) {
-		free(data);
 		return -1;
 	}
 
@@ -604,7 +602,6 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	 *      fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
 		return -1;
 	}
 
@@ -627,8 +624,6 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 
 #undef A
 
-	*instance = data;
-
 	/*
 	 *	Call the instantiate function.  No request.  Use the
 	 *	return value.
@@ -638,7 +633,6 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
  failed:
 	python_error();
 	python_instance_clear(data);
-	free(data);
 	return -1;
 }
 
@@ -650,8 +644,6 @@ static int python_detach(void *instance)
 	ret = python_function(NULL, data->detach.function, "detach");
 	
 	python_instance_clear(data);
-	
-	free(data);
 	return ret;
 }
 

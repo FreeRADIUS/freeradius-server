@@ -115,7 +115,7 @@ static int groupcmp(void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
 /*
  *	Detach.
  */
-static int unix_detach(void *instance)
+static int unix_detach(UNUSED void *instance)
 {
 #define inst ((struct unix_instance *)instance)
 
@@ -124,7 +124,6 @@ static int unix_detach(void *instance)
 	paircompare_unregister(PW_GROUP_NAME, groupcmp);
 #endif
 #undef inst
-	free(instance);
 	return 0;
 }
 
@@ -138,17 +137,13 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Allocate room for the instance.
 	 */
-	inst = *instance = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, struct unix_instance);
+	if (!inst) return -1;
 
 	/*
 	 *	Parse the configuration, failing if we can't do so.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		unix_detach(inst);
 		return -1;
 	}
 
@@ -158,8 +153,6 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
 #ifdef PW_GROUP_NAME /* compat */
 	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp, NULL);
 #endif
-
-#undef inst
 
 	return 0;
 }

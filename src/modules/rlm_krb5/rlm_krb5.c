@@ -126,9 +126,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	inst = rad_calloc(sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_krb5_t);
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 	
@@ -136,8 +135,6 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
-
-	rad_assert(inst->xlat_name);
 	
 	context = inst->context = rad_calloc(sizeof(*context));
 	ret = krb5_init_context(context);
@@ -234,7 +231,6 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	}
 #endif
 	 
-	*instance = inst;
 	return 0;
 	
 	error:

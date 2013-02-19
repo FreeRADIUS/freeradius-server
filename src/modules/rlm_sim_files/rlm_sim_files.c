@@ -76,18 +76,13 @@ static int sim_file_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct sim_file_instance *inst;
 
-	inst = rad_malloc(sizeof *inst);
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, struct sim_file_instance);
+	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 
-	*instance = inst;
 	return 0;
 }
 
@@ -242,25 +237,13 @@ static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 }
 
 
-/*
- *	Clean up.
- */
-static int sim_file_detach(void *instance)
-{
-	struct sim_file_instance *inst = instance;
-
-	free(inst);
-	return 0;
-}
-
-
 /* globally exported name */
 module_t rlm_sim_files = {
 	RLM_MODULE_INIT,
 	"sim_files",
 	0,				/* type: reserved */
 	sim_file_instantiate,		/* instantiation */
-	sim_file_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		sim_file_authorize, 	/* authorization */

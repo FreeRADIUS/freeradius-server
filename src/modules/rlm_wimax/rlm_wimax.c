@@ -50,17 +50,6 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
-static int wimax_detach(void *instance)
-{
-	free(instance);
-	return 0;
-}
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -78,22 +67,16 @@ static int wimax_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_wimax_t);
+	if (!inst) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		wimax_detach(inst);
 		return -1;
 	}
-
-	*instance = inst;
 
 	return 0;
 }
@@ -526,7 +509,7 @@ module_t rlm_wimax = {
 	"wimax",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	wimax_instantiate,	        /* instantiation */
-	wimax_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		wimax_authorize,	/* authorization */

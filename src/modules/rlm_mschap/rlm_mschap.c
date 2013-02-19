@@ -568,15 +568,13 @@ static const CONF_PARSER module_config[] = {
  *	deinstantiate module, free all memory allocated during
  *	mschap_instantiate()
  */
-static int mschap_detach(void *instance){
-#define inst ((rlm_mschap_t *)instance)
+static int mschap_detach(void *instance)
+{
+	rlm_mschap_t *inst = instance;
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat, instance);
-		free(inst->xlat_name);
 	}
-	free(instance);
 	return 0;
-#undef inst
 }
 
 /*
@@ -588,14 +586,10 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	const char *name;
 	rlm_mschap_t *inst;
 
-	inst = *instance = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_mschap_t);
+	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 
@@ -607,7 +601,6 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->passwd_file) {
 		radlog(L_ERR, "rlm_mschap: SMB password file is no longer supported in this module.  Use rlm_passwd module instead");
-		mschap_detach(inst);
 		return -1;
 	}
 
@@ -616,7 +609,7 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
-	inst->xlat_name = strdup(name);
+	inst->xlat_name = name;
 	xlat_register(inst->xlat_name, mschap_xlat, inst);
 
 	/*
@@ -1274,7 +1267,7 @@ static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
  */
 static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
 {
-#define inst ((rlm_mschap_t *)instance)
+	rlm_mschap_t *inst = instance;
 	VALUE_PAIR *challenge = NULL;
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);
@@ -1307,7 +1300,6 @@ static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
 	}
 
 	return RLM_MODULE_OK;
-#undef inst
 }
 
 /*

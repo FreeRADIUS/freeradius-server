@@ -347,8 +347,6 @@ static int eap_detach(void *instance)
 
 	pthread_mutex_destroy(&(inst->session_mutex));
 
-	free(inst);
-
 	return 0;
 }
 
@@ -527,11 +525,9 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	rlm_eap_t	*inst;
 	CONF_SECTION	*scs;
 
-	inst = (rlm_eap_t *) malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_eap_t);
+	if (!inst) return -1;
+
 	if (cf_section_parse(cs, inst, module_config) < 0) {
 		eap_detach(inst);
 		return -1;
@@ -647,8 +643,6 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	pthread_mutex_init(&(inst->session_mutex), NULL);
-
-	*instance = inst;
 	return 0;
 }
 

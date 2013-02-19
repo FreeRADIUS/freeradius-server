@@ -189,6 +189,12 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 		free(ht);
 		               return NULL;
 	}
+
+	/*
+	 *	@todo: This code is SHIT.  It's badly formatted.  It's
+	 *	hard to understand.  It re-implements tons of things
+	 *	which are already in the server core.
+	 */
 	memset(ht->buffer, 0, 1024);
 	ht->table = (struct mypasswd **) rad_malloc (tablesize * sizeof(struct mypasswd *));
 	if (!ht->table) {
@@ -388,41 +394,34 @@ static const CONF_PARSER module_config[] = {
 
 static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 {
-#define inst ((struct passwd_instance *)*instance)
 	int nfields=0, keyfield=-1, listable=0;
 	char *s;
 	char *lf=NULL; /* destination list flags temporary */
 	size_t len;
 	int i;
 	const DICT_ATTR * da;
+	struct passwd_instance *inst;
 
-	*instance = rad_malloc(sizeof(struct passwd_instance));
-	if ( !*instance) {
-		radlog(L_ERR, "rlm_passwd: cann't alloc instance");
-		return -1;
-	}
-	memset(*instance, 0, sizeof(struct passwd_instance));
+	*instance = inst = talloc_zero(conf, struct passwd_instance);
+	if (inst) return -1;
+
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		radlog(L_ERR, "rlm_passwd: cann't parse configuration");
 		return -1;
 	}
 	if(!inst->filename || *inst->filename == '\0' || !inst->format || *inst->format == '\0') {
 		radlog(L_ERR, "rlm_passwd: can't find passwd file and/or format in configuration");
-		free(inst);
 		return -1;
 	}
 
 	if (inst->hashsize == 0) {
 		radlog(L_ERR, "rlm_passwd: hashsize=0 is no longer permitted as it will break the server.");
-		free(inst);
 		return -1;
 	}
 
-	lf=strdup(inst->format);
+	lf = talloc_strdup(inst, inst->format);
 	if ( lf == NULL) {
 		radlog(L_ERR, "rlm_passwd: memory allocation failed for lf");
-		free(inst);
 		return -1;
 	}
 	memset(lf, 0, strlen(inst->format));
@@ -451,30 +450,26 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	}while(*s);
 	if(keyfield < 0) {
 		radlog(L_ERR, "rlm_passwd: no field market as key in format: %s", inst->format);
-		free(lf);
 		return -1;
 	}
 	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, *inst->delimiter)) ){
 		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
-		free(lf);
 		return -1;
 	}
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
 		radlog(L_ERR, "rlm_passwd: memory allocation failed");
 		release_ht(inst->ht);
-		free(lf);
 		return -1;
 	}
 	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
 		radlog(L_ERR, "rlm_passwd: unable to convert format entry");
 		release_ht(inst->ht);
-		free(lf);
 		return -1;
 	}
 
 	memcpy(inst->pwdfmt->listflag, lf, nfields);
 
-	free(lf);
+	talloc_free(lf);
 	for (i=0; i<nfields; i++) {
 		if (*inst->pwdfmt->field[i] == '*') inst->pwdfmt->field[i]++;
 		if (*inst->pwdfmt->field[i] == ',') inst->pwdfmt->field[i]++;
@@ -504,7 +499,6 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 static int passwd_detach (void *instance) {
 #define inst ((struct passwd_instance *)instance)
 	if(inst->ht) release_ht(inst->ht);
-	free(instance);
 	return 0;
 #undef inst
 }

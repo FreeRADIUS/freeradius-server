@@ -146,30 +146,24 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = rad_malloc(sizeof(*data));
-	if (!data) {
-		return -1;
-	}
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, rlm_ippool_t);
+	if (!data) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
 		return -1;
 	}
 	cache_size = data->cache_size;
 
 	if (data->session_db == NULL) {
 		radlog(L_ERR, "rlm_ippool: 'session-db' must be set.");
-		free(data);
 		return -1;
 	}
 	if (data->ip_index == NULL) {
 		radlog(L_ERR, "rlm_ippool: 'ip-index' must be set.");
-		free(data);
 		return -1;
 	}
 	data->range_start = htonl(data->range_start);
@@ -178,7 +172,6 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 	if (data->range_start == 0 || data->range_stop == 0 || \
 			 data->range_start >= data->range_stop ) {
 		radlog(L_ERR, "rlm_ippool: Invalid configuration data given.");
-		free(data);
 		return -1;
 	}
 
@@ -251,7 +244,6 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 						data->session_db, gdbm_strerror(gdbm_errno));
 				gdbm_close(data->gdbm);
 				gdbm_close(data->ip);
-				free(data);
 				return -1;
 			}
 		}
@@ -266,7 +258,6 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
 		data->name = strdup(pool_name);
 
 	pthread_mutex_init(&data->op_mutex, NULL);
-	*instance = data;
 
 	return 0;
 }
@@ -799,8 +790,6 @@ static int ippool_detach(void *instance)
 	gdbm_close(data->gdbm);
 	gdbm_close(data->ip);
 	pthread_mutex_destroy(&data->op_mutex);
-
-	free(instance);
 	return 0;
 }
 

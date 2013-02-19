@@ -95,11 +95,11 @@ static void cache_entry_free(void *data)
 {
 	rlm_cache_entry_t *c = data;
 
-	rad_cfree(c->key);
 	pairfree(&c->control);
 	pairfree(&c->request);
 	pairfree(&c->reply);
-	free(c);
+
+	talloc_free(c);
 }
 
 /*
@@ -270,8 +270,8 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	vp = pairfind(request->config_items, PW_CACHE_TTL, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) return NULL;
 
-	c = rad_calloc(sizeof(*c));
-	c->key = strdup(key);
+	c = talloc_zero(NULL, rlm_cache_entry_t);
+	c->key = talloc_strdup(c, key);
 	c->created = c->expires = request->timestamp;
 
 	/*
@@ -703,17 +703,15 @@ static const CONF_PARSER module_config[] = {
 static int cache_detach(void *instance)
 {
 	rlm_cache_t *inst = instance;
-
-	rad_cfree(inst->xlat_name);
 	
 	radius_mapfree(&inst->maps);
 
 	fr_heap_delete(inst->heap);
 	rbtree_free(inst->cache);
+
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_destroy(&inst->cache_mutex);
 #endif
-	free(instance);
 	return 0;
 }
 
@@ -723,10 +721,9 @@ static int cache_detach(void *instance)
  */
 static int cache_instantiate(CONF_SECTION *conf, void **instance)
 {
-	const char *xlat_name;
 	rlm_cache_t *inst;
 
-	inst = rad_calloc(sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_cache_t);
 	inst->cs = conf;
 	
 	/*
@@ -734,45 +731,38 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
 		return -1;
 	}
 
-	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) {
-		xlat_name = cf_section_name1(conf);
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) {
+		inst->xlat_name = cf_section_name1(conf);
 	}
-	
-	rad_assert(xlat_name);
 
 	/*
 	 *	Register the cache xlat function
 	 */
-	inst->xlat_name = strdup(xlat_name);
-	xlat_register(xlat_name, cache_xlat, inst);
+	xlat_register(inst->xlat_name, cache_xlat, inst);
 
 	if (!inst->key || !*inst->key) {
 		radlog(L_ERR, "rlm_cache: You must specify a key");
-		cache_detach(inst);
 		return -1;
 	}
 
 	if (inst->ttl == 0) {
 		radlog(L_ERR, "rlm_cache: TTL must be greater than zero");
-		cache_detach(inst);
 		return -1;
 	}
 	
 	if (inst->epoch != 0){
 		radlog(L_ERR, "rlm_cache: Epoch should only be set dynamically");
-		cache_detach(inst);
 		return -1;
 	}
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&inst->cache_mutex, NULL) < 0) {
-		radlog(L_ERR, "rlm_cache: Failed initializing mutex: %s", strerror(errno));
-		cache_detach(inst);
+		radlog(L_ERR, "rlm_cache: Failed initializing mutex: %s",
+		       strerror(errno));
 		return -1;
 	}
 #endif
@@ -783,7 +773,6 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	inst->cache = rbtree_create(cache_entry_cmp, cache_entry_free, 0);
 	if (!inst->cache) {
 		radlog(L_ERR, "rlm_cache: Failed to create cache");
-		cache_detach(inst);
 		return -1;
 	}
 
@@ -794,7 +783,6 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 				    offsetof(rlm_cache_entry_t, offset));
 	if (!inst->heap) {
 		radlog(L_ERR, "rlm_cache: Failed to create cache");
-		cache_detach(inst);
 		return -1;
 	}
 
@@ -802,11 +790,8 @@ static int cache_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Make sure the users don't screw up too badly.
 	 */
 	if (cache_verify(inst, &inst->maps) < 0) {
-		cache_detach(inst);
 		return -1;
 	}
-
-	*instance = inst;
 
 	return 0;
 }

@@ -90,26 +90,12 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 
 
 /*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
-static const CONF_PARSER module_config[] = {
-	{ NULL, -1, 0, NULL, NULL }		/* end the list */
-};
-
-
-/*
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
 static int dhcp_detach(void *instance)
 {
-	free(instance);
+	xlat_unregister("dhcp_options", dhcp_options_xlat, instance);
 	return 0;
 }
 
@@ -121,24 +107,10 @@ static int dhcp_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_dhcp_t *inst;
 
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_dhcp_t);
+	if (!inst) return -1;
 	
 	xlat_register("dhcp_options", dhcp_options_xlat, inst);
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(inst);
-		return -1;
-	}
-
-	*instance = inst;
 
 	return 0;
 }

@@ -41,12 +41,6 @@ typedef struct rlm_always_t {
 
 /*
  *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
   { "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_always_t,rcode_str),
@@ -88,36 +82,31 @@ static rlm_rcode_t str2rcode(const char *s)
 
 static int always_instantiate(CONF_SECTION *conf, void **instance)
 {
-	rlm_always_t *data;
+	rlm_always_t *inst;
 
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = rad_malloc(sizeof(*data));
-	if (!data) {
+	*instance = inst = talloc_zero(conf, rlm_always_t);
+	if (!inst) {
 		return -1;
 	}
-	memset(data, 0, sizeof(*data));
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
 
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
-	data->rcode = str2rcode(data->rcode_str);
-	if (data->rcode == RLM_MODULE_UNKNOWN) {
-		free(data);
+	inst->rcode = str2rcode(inst->rcode_str);
+	if (inst->rcode == RLM_MODULE_UNKNOWN) {
 		return -1;
 	}
-
-	*instance = data;
 
 	return 0;
 }
@@ -148,18 +137,12 @@ static rlm_rcode_t always_checksimul(void *instance, REQUEST *request)
 }
 #endif
 
-static int always_detach(void *instance)
-{
-	free(instance);
-	return 0;
-}
-
 module_t rlm_always = {
 	RLM_MODULE_INIT,
 	"always",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	always_instantiate,		/* instantiation */
-	always_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		always_return,		/* authentication */
 		always_return,		/* authorization */

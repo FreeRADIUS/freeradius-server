@@ -163,10 +163,8 @@ static int exec_detach(void *instance)
 
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, exec_xlat, instance);
-		free(inst->xlat_name);
 	}
 
-	free(inst);
 	return 0;
 }
 
@@ -189,19 +187,16 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-
-	inst = rad_malloc(sizeof(rlm_exec_t));
-	if (!inst)
-		return -1;
-	memset(inst, 0, sizeof(rlm_exec_t));
+	*instance = inst = talloc_zero(conf, rlm_exec_t);
+	if (!inst) return -1;
 	
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) {
+	if (!xlat_name) {
 		xlat_name = cf_section_name1(conf);
 		inst->bare = 1;
 	}
-	if (xlat_name){
-		inst->xlat_name = strdup(xlat_name);
+	if (xlat_name) {
+		inst->xlat_name = xlat_name;
 		xlat_register(xlat_name, exec_xlat, inst);
 	}
 
@@ -257,8 +252,6 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 		}
 		inst->packet_code = dval->value;
 	}
-
-	*instance = inst;
 
 	return 0;
 }

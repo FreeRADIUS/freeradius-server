@@ -92,14 +92,6 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static int linelog_detach(void *instance)
-{
-	rlm_linelog_t *inst = instance;
-
-	free(inst);
-	return 0;
-}
-
 /*
  *	Instantiate the module.
  */
@@ -110,28 +102,25 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof(*inst));
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, rlm_linelog_t);
+	if (!inst) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		linelog_detach(inst);
 		return -1;
 	}
 
 	if (!inst->filename) {
 		radlog(L_ERR, "rlm_linelog: Must specify an output filename");
-		linelog_detach(inst);
 		return -1;
 	}
 
 #ifndef HAVE_SYSLOG_H
 	if (strcmp(inst->filename, "syslog") == 0) {
 		radlog(L_ERR, "rlm_linelog: Syslog output is not supported");
-		linelog_detach(inst);
 		return -1;
 	}
 #else
@@ -141,7 +130,6 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 		inst->facility = fr_str2int(syslog_str2fac, inst->syslog_facility, -1);
 		if (inst->facility < 0) {
 			radlog(L_ERR, "rlm_linelog: Bad syslog facility '%s'", inst->syslog_facility);
-			linelog_detach(inst);
 			return -1;
 		}
 	}
@@ -151,13 +139,10 @@ static int linelog_instantiate(CONF_SECTION *conf, void **instance)
 
 	if (!inst->line) {
 		radlog(L_ERR, "rlm_linelog: Must specify a log format");
-		linelog_detach(inst);
 		return -1;
 	}
 
 	inst->cs = conf;
-	*instance = inst;
-
 	return 0;
 }
 
@@ -354,7 +339,7 @@ module_t rlm_linelog = {
 	"linelog",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
 	linelog_instantiate,		/* instantiation */
-	linelog_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		do_linelog,	/* authentication */
 		do_linelog,	/* authorization */

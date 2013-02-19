@@ -232,18 +232,14 @@ static int rlm_rest_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Allocate memory for instance data.
 	 */
-	data = rad_malloc(sizeof(*data));
-	if (!data) {
-		return -1;
-	}
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, rlm_rest_t);
+	if (!data) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
 		return -1;
 	}
 
@@ -287,8 +283,6 @@ static int rlm_rest_instantiate(CONF_SECTION *conf, void **instance)
 	if (!data->conn_pool) {
 		return -1;
 	}
-
-	*instance = data;
 
 	return 0;
 }
@@ -420,8 +414,6 @@ static int rlm_rest_detach(void *instance)
 	rlm_rest_t *my_instance = instance;
 
 	fr_connection_pool_delete(my_instance->conn_pool);
-
-	free(my_instance);
 
 	/* Free any memory used by libcurl */
 	rest_cleanup();

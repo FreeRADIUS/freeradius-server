@@ -72,11 +72,11 @@ static int otp_instantiate(CONF_SECTION *conf, void **instance)
 	otp_option_t *opt;
 
 	/* Set up a storage area for instance data. */
-	opt = rad_calloc(sizeof(*opt));
+	*instance = opt = talloc_zero(conf, otp_option_t);
+	if (!opt) return -1;
 
 	/* If the configuration parameters can't be parsed, then fail. */
 	if (cf_section_parse(conf, opt, module_config) < 0) {
-		free(opt);
 		return -1;
 	}
 
@@ -109,8 +109,6 @@ static int otp_instantiate(CONF_SECTION *conf, void **instance)
 	if (!opt->allow_sync && !opt->allow_async) {
 		radlog(L_ERR, "rlm_otp: %s: at least one of {allow_async, "
 		       "allow_sync} must be set", __func__);
-		free(opt);
-		
 		return -1;
 	}
 
@@ -149,12 +147,9 @@ static int otp_instantiate(CONF_SECTION *conf, void **instance)
   	if (!opt->name) {
 		radlog(L_ERR, "rlm_otp: %s: no instance name "
 		       "(this can't happen)", __func__);
-    		free(opt);
     		return -1;
 	}
 
-	*instance = opt;
-	
 	return 0;
 }
 
@@ -462,24 +457,6 @@ static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 	return rc;
 }
 
-
-/*
- *	Per-instance destruction
- */
-static int otp_detach(void *instance)
-{
-	free(instance);
-	/*
-	* Only the main thread instantiates and detaches instances,
-	* so this does not need mutex protection.
-	*/
-	if (--ninstance == 0) {
-		(void) memset(hmac_key, 0, sizeof(hmac_key));
-	}
-	
-	return 0;
-}
-
 /*
  *	If the module needs to temporarily modify it's instantiation
  *	data, the type should be changed to RLM_TYPE_THREAD_UNSAFE.
@@ -491,7 +468,7 @@ module_t rlm_otp = {
 	"otp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	otp_instantiate,		/* instantiation */
-	otp_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		otp_authenticate,	/* authentication */
 		otp_authorize,		/* authorization */

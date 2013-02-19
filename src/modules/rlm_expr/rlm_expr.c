@@ -701,9 +701,6 @@ static int expr_detach(void *instance)
 
 	xlat_unregister(inst->xlat_name, expr_xlat, instance);
 	pair_builtincompare_detach();
-	free(inst->xlat_name);
-
-	free(inst);
 	return 0;
 }
 
@@ -720,29 +717,23 @@ static int expr_detach(void *instance)
 static int expr_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_expr_t	*inst;
-	const char	*xlat_name;
 
 	/*
 	 *	Set up a storage area for instance data
 	 */
-
-	inst = rad_malloc(sizeof(rlm_expr_t));
-	if (!inst)
-		return -1;
-	memset(inst, 0, sizeof(rlm_expr_t));
+	*instance = inst = talloc_zero(conf, rlm_expr_t);
+	if (!inst) return -1;
 	
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		expr_detach(inst);
 		return -1;
 	}
 
-	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL)
-		xlat_name = cf_section_name1(conf);
-	if (xlat_name){
-		inst->xlat_name = strdup(xlat_name);
-		xlat_register(xlat_name, expr_xlat, inst);
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) {
+		inst->xlat_name = cf_section_name1(conf);
 	}
+	xlat_register(inst->xlat_name, expr_xlat, inst);
 
 	xlat_register("rand", rand_xlat, inst);
 	xlat_register("randstr", randstr_xlat, inst);
@@ -755,11 +746,9 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register("base64tohex", base64_to_hex_xlat, inst);
 
 	/*
-	 * Initialize various paircompare functions
+	 *	Initialize various paircompare functions
 	 */
 	pair_builtincompare_init();
-	*instance = inst;
-
 	return 0;
 }
 

@@ -414,21 +414,20 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	const char *xlat_name;
 	int exitstatus = 0, argc=0;
 
-        embed = rad_malloc(4 * sizeof(char *));
-        memset(embed, 0, 4 *sizeof(char *));
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	inst = rad_malloc(sizeof(PERL_INST));
-	memset(inst, 0, sizeof(PERL_INST));
+	*instance = inst = talloc_zero(conf, PERL_INST);
+	if (!inst) return -1;
+
+        embed = talloc_size(inst, 4 * sizeof(char *));
+        memset(embed, 0, 4 *sizeof(char *));
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		free(embed);
-		free(inst);
 		return -1;
 	}
 	
@@ -463,8 +462,6 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 #ifdef USE_ITHREADS
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
-		free(embed);
-		free(inst);
 		return (-1);
 	}
 
@@ -478,8 +475,6 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 #else
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_ERR, "rlm_perl: No memory for allocating new perl !");
-		free(embed);
-		free(inst);
 		return -1;
 	}
 
@@ -501,8 +496,6 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		exitstatus = perl_run(inst->perl);
 	} else {
 		radlog(L_ERR,"rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
-		free(embed);
-		free(inst);
 		return (-1);
 	}
 
@@ -511,12 +504,9 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_name = cf_section_name2(conf);
 	if (xlat_name == NULL)
 		xlat_name = cf_section_name1(conf);
-	if (xlat_name){
-		inst->xlat_name = strdup(xlat_name);
+	if (xlat_name) {
 		xlat_register(xlat_name, perl_xlat, inst);
 	}
-
-	*instance = inst;
 
 	return 0;
 }
@@ -999,7 +989,6 @@ static int perl_detach(void *instance)
 	}
 
 	xlat_unregister(inst->xlat_name, perl_xlat, instance);
-	free(inst->xlat_name);
 
 #ifdef USE_ITHREADS
 	rlm_perl_destruct(inst->perl);
@@ -1010,7 +999,6 @@ static int perl_detach(void *instance)
 #endif
 
         PERL_SYS_TERM();
-	free(inst);
 	return exitstatus;
 }
 

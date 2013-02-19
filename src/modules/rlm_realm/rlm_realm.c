@@ -356,39 +356,30 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
         struct realm_config_t *inst;
 
         /* setup a storage area for instance data */
-        inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+        *instance = inst = talloc_zero(conf, struct realm_config_t);
+	if (!inst) return -1;
 
 	if(cf_section_parse(conf, inst, module_config) < 0) {
-	       free(inst);
                return -1;
 	}
 
 	if(strcasecmp(inst->formatstring, "suffix") == 0) {
 	     inst->format = REALM_FORMAT_SUFFIX;
+
 	} else if(strcasecmp(inst->formatstring, "prefix") == 0) {
 	     inst->format = REALM_FORMAT_PREFIX;
+
         } else {
 	     radlog(L_ERR, "Bad value \"%s\" for realm format value", inst->formatstring);
-	     free(inst);
 	     return -1;
 	}
 	if(strlen(inst->delim) != 1) {
 	     radlog(L_ERR, "Bad value \"%s\" for realm delimiter value", inst->delim);
-	     free(inst);
 	     return -1;
 	}
 
-	*instance = inst;
 	return 0;
-
 }
-
-
-
 
 
 /*
@@ -507,19 +498,13 @@ static rlm_rcode_t realm_coa(UNUSED void *instance, REQUEST *request)
 }
 #endif
 
-static int realm_detach(void *instance)
-{
-	free(instance);
-	return 0;
-}
-
 /* globally exported name */
 module_t rlm_realm = {
 	RLM_MODULE_INIT,
 	"realm",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
 	realm_instantiate,	       	/* instantiation */
-	realm_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		realm_authorize,	/* authorization */

@@ -58,7 +58,6 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
-static int logintime_detach(void *instance);
 
 /*
  *      Compare the current time to a range.
@@ -256,26 +255,20 @@ static int logintime_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	data = rad_malloc(sizeof(*data));
-	if (!data) {
-		radlog(L_ERR, "rlm_logintime: rad_malloc() failed.");
-		return -1;
-	}
-	memset(data, 0, sizeof(*data));
+	*instance = data = talloc_zero(conf, rlm_logintime_t);
+	if (!data) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		free(data);
 		radlog(L_ERR, "rlm_logintime: Configuration parsing failed.");
 		return -1;
 	}
 
 	if (data->min_time == 0){
 		radlog(L_ERR, "rlm_logintime: Minimum timeout should be non zero.");
-		free(data);
 		return -1;
 	}
 
@@ -285,16 +278,13 @@ static int logintime_instantiate(CONF_SECTION *conf, void **instance)
 	paircompare_register(PW_CURRENT_TIME, 0, timecmp, data);
 	paircompare_register(PW_TIME_OF_DAY, 0, time_of_day, data);
 
-	*instance = data;
-
 	return 0;
 }
 
-static int logintime_detach(void *instance)
+static int logintime_detach(UNUSED void *instance)
 {
 	paircompare_unregister(PW_CURRENT_TIME, timecmp);
 	paircompare_unregister(PW_TIME_OF_DAY, time_of_day);
-	free(instance);
 	return 0;
 }
 

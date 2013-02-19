@@ -77,8 +77,6 @@ typedef struct rlm_ruby_t {
  *	to the strdup'd string into 'config.string'.  This gets around
  *	buffer over-flows.
  */
-
-
 static const CONF_PARSER module_config[] = {
     { "scriptfile", PW_TYPE_FILENAME,
         offsetof(struct rlm_ruby_t, scriptFile), NULL, NULL},
@@ -339,7 +337,8 @@ static int load_ruby_function(const char *f_name, int *func, VALUE module) {
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
+static int ruby_instantiate(CONF_SECTION *conf, void **instance)
+{
     rlm_ruby_t *data;
     VALUE module;
     int idx;
@@ -348,7 +347,6 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
      * Initialize Ruby interpreter. Fatal error if this fails.
      */
 
-    radlog(L_DBG, "[rlm_ruby]: ruby_instantiate");
     ruby_init();
     ruby_init_loadpath();
     ruby_script("radiusd");
@@ -360,18 +358,14 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
     /*
      *	Set up a storage area for instance data
      */
-    data = rad_malloc(sizeof (*data));
-    if (!data) {
-        return -1;
-    }
-    memset(data, 0, sizeof (*data));
+    *instance = data = talloc_zero(conf, rlm_ruby_t);
+    if (!data) return -1;
 
     /*
      *	If the configuration parameters can't be parsed, then
      *	fail.
      */
     if (cf_section_parse(conf, data, module_config) < 0) {
-        free(data);
         return -1;
     }
 
@@ -381,7 +375,6 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
 
     if ((module = data->pModule_builtin = rb_define_module(data->moduleName)) == 0) {
         radlog(L_ERR, "Ruby rb_define_module failed");
-        free(data);
         return -1;
     }
     /*
@@ -408,7 +401,6 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
      * Import user modules.
      */
 #define RLM_RUBY_LOAD(foo) if (load_ruby_function(#foo, &data->func_##foo, data->pModule_builtin)==-1) { \
-	/* TODO: check if we need to cleanup data */ \
 	return -1; \
     }
 
@@ -426,8 +418,6 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance) {
     RLM_RUBY_LOAD(sendcoa);
 #endif
     RLM_RUBY_LOAD(detach);
-
-    *instance = data;
 
     /* Call the instantiate function.  No request.  Use the return value. */
     return ruby_function(NULL, data->func_instantiate, data->pModule_builtin, "instantiate");
@@ -453,23 +443,13 @@ RLM_RUBY_FUNC(recvcoa)
 RLM_RUBY_FUNC(sendcoa)
 #endif
 
-static int ruby_detach(void *instance) {
-    int return_value;
-
-    /* Default return value is failure */
-    return_value = -1;
-    free(instance);
+static int ruby_detach(UNUSED void *instance)
+{
     ruby_finalize();
     ruby_cleanup(0);
-    radlog(L_DBG, "ruby_detach done");
 
-    //Ok, we cheat, and returon ok value for now :)
-    return_value = RLM_MODULE_OK;
-
-    /* Return the specified by the Ruby module */
-    return return_value;
+    return 0;
 }
-
 
 /*
  *	The module name should be the only globally exported symbol.

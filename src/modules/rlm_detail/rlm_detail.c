@@ -91,8 +91,6 @@ static int detail_detach(void *instance)
 {
         struct detail_instance *inst = instance;
 	if (inst->ht) fr_hash_table_free(inst->ht);
-
-        free(inst);
 	return 0;
 }
 
@@ -120,11 +118,8 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	detail_instance_t *inst;
 	CONF_SECTION	*cs;
 
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(conf, detail_instance_t);
+	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		detail_detach(inst);
@@ -166,8 +161,6 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 		}
 	}
 
-
-	*instance = inst;
 	return 0;
 }
 
