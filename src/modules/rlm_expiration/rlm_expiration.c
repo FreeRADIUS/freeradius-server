@@ -136,7 +136,7 @@ static int expirecmp(void *instance, REQUEST *req,
 }
 
 
-static int expiration_detach(void *instance)
+static int expiration_detach(UNUSED void *instance)
 {
 	paircompare_unregister(PW_EXPIRATION, expirecmp);
 	return 0;

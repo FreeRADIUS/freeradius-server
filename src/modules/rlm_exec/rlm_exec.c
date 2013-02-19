@@ -31,7 +31,7 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_exec_t {
-	char		*xlat_name;
+	const char		*xlat_name;
 	int		bare;
 	int		wait;
 	char		*program;

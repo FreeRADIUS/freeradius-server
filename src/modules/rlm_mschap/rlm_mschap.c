@@ -143,7 +143,7 @@ typedef struct rlm_mschap_t {
         int require_strong;
         int with_ntdomain_hack;	/* this should be in another module */
 	char *passwd_file;
-	char *xlat_name;
+	const char *xlat_name;
 	char *ntlm_auth;
 	char *ntlm_cpw;
 	char *ntlm_cpw_username;
