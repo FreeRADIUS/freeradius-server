@@ -27,13 +27,9 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-static rlm_rcode_t chap_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t chap_authorize(UNUSED void *instance,
+				  UNUSED REQUEST *request)
 {
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
-
 	if (!pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 		return RLM_MODULE_NOOP;
 	}
@@ -46,6 +42,7 @@ static rlm_rcode_t chap_authorize(void *instance, REQUEST *request)
 	RDEBUG("Setting 'Auth-Type := CHAP'");
 	pairadd(&request->config_items,
 		pairmake("Auth-Type", "CHAP", T_OP_EQ));
+
 	return RLM_MODULE_OK;
 }
 
@@ -56,16 +53,13 @@ static rlm_rcode_t chap_authorize(void *instance, REQUEST *request)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t chap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t chap_authenticate(UNUSED void *instance,
+				     UNUSED REQUEST *request)
 {
 	VALUE_PAIR *passwd_item, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];
 	VALUE_PAIR *module_fmsg_vp;
 	char module_fmsg[MAX_STRING_LEN];
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
 
 	if (!request->username) {
 		radlog_request(L_AUTH, 0, request, "rlm_chap: Attribute \"User-Name\" is required for authentication.\n");
@@ -96,13 +90,13 @@ static rlm_rcode_t chap_authenticate(void *instance, REQUEST *request)
 
 	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
 		if (pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
-			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			RDEBUG("!!! Please update your configuration so that the \"known !!!");
-			RDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
-			RDEBUG("!!! and NOT in User-Password.                           !!!");
-			RDEBUG("!!!                                                     !!!");
-			RDEBUG("!!! Authentication will fail because of this.           !!!");
-			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RDEBUGE("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			RDEBUGE("!!! Please update your configuration so that the \"known !!!");
+			RDEBUGE("!!! good\" clear text password is in Cleartext-Password, !!!");
+			RDEBUGE("!!! and NOT in User-Password.                           !!!");
+			RDEBUGE("!!!                                                     !!!");
+			RDEBUGE("!!! Authentication will fail because of this.           !!!");
+			RDEBUGE("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 		RDEBUG("Cleartext-Password is required for authentication");
 		snprintf(module_fmsg, sizeof(module_fmsg),
