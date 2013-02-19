@@ -295,7 +295,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		}
 
 		if (eaptype->data == NULL) {
-			RDEBUG2("Empty NAK packet, cannot decide what EAP type the client wants.");
+			RDEBUG2E("Client sent empty NAK packet, cannot decide what EAP type it wants.");
 			return EAP_INVALID;
 		}
 
@@ -314,8 +314,8 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			 *	common choices.
 			 */
 			if (eaptype->data[i] < PW_EAP_MD5) {
-				RDEBUG2("NAK asked for bad type %d",
-				       eaptype->data[i]);
+				RDEBUG2E("Client sent NAK asking for bad type %d",
+					 eaptype->data[i]);
 				return EAP_INVALID;
 			}
 
@@ -325,10 +325,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 				dv = dict_valbyattr(PW_EAP_TYPE, 0, eaptype->data[i]);
 				if (dv) {
-					RDEBUG2("NAK asked for unsupported type %s",
+					RDEBUG2E("Client NAK asked for unsupported type %s",
 						dv->name);
 				} else {
-					RDEBUG2("NAK asked for unsupported type %d",
+					RDEBUG2E("Client NAK asked for unsupported type %d",
 						eaptype->data[i]);
 				}
 				continue;
@@ -342,7 +342,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			 *	Prevent a firestorm if the client is confused.
 			 */
 			if (handler->eap_type == eaptype->data[i]) {
-				RDEBUG2E("Our request for %s was NAK'd with a request for %s.  Skipping the requested type.",
+				RDEBUG2E("Client NAK'd our request for %s with a request for %s.  Ignoring it.",
 				       eaptype_name, eaptype_name);
 				continue;
 			}
@@ -393,7 +393,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			 *	We haven't configured it, it doesn't exit.
 			 */
 			if (!inst->types[eaptype->type]) {
-				RDEBUG2("EAP type %d is unsupported",
+				RDEBUG2E("Client ask for unsupported EAP type %d",
 				       eaptype->type);
 				return EAP_INVALID;
 			}
