@@ -142,7 +142,7 @@ void clients_free(RADCLIENT_LIST *clients)
 {
 	int i;
 
-	if (!clients) return;
+	if (!clients) clients = root_clients;
 
 	for (i = 0; i <= 128; i++) {
 		if (clients->trees[i]) rbtree_free(clients->trees[i]);
@@ -292,7 +292,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 */
 	if (!clients->trees[client->prefix]) {
 		clients->trees[client->prefix] = rbtree_create(client_ipaddr_cmp,
-							       (void *) client_free, 0);
+							       NULL, 0);
 		if (!clients->trees[client->prefix]) {
 			return 0;
 		}
@@ -377,6 +377,8 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	if (client->prefix < clients->min_prefix) {
 		clients->min_prefix = client->prefix;
 	}
+
+	talloc_steal(clients, client); /* reparent it */
 
 	return 1;
 }
@@ -643,9 +645,9 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		}
 
 		if (prefix_ptr) *prefix_ptr = '/';
-		c->longname = strdup(name2);
+		c->longname = talloc_strdup(c, name2);
 
-		if (!c->shortname) c->shortname = strdup(c->longname);
+		if (!c->shortname) c->shortname = talloc_strdup(c, c->longname);
 
 	} else {
 		char buffer[1024];
@@ -679,12 +681,12 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		}
 
 		ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-		c->longname = strdup(buffer);
+		c->longname = talloc_strdup(c, buffer);
 
 		/*
 		 *	Set the short name to the name2
 		 */
-		if (!c->shortname) c->shortname = strdup(name2);
+		if (!c->shortname) c->shortname = talloc_strdup(c, name2);
 
 		c->proto = IPPROTO_UDP;
 #ifdef WITH_TCP
@@ -740,8 +742,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 #ifdef WITH_DYNAMIC_CLIENTS
 	if (c->client_server) {
-		free(c->secret);
-		c->secret = strdup("testing123");
+		c->secret = talloc_strdup(c, "testing123");
 
 		if (((c->ipaddr.af == AF_INET) &&
 		     (c->prefix == 32)) ||
@@ -994,7 +995,7 @@ int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	 *	definition.
 	 */
 	if (master->server && !c->server) {
-		c->server = strdup(master->server);
+		c->server = talloc_strdup(c, master->server);
 	}
 
 	/*
@@ -1026,7 +1027,7 @@ int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	c->dynamic = TRUE;
 	c->lifetime = master->lifetime;
 	c->created = time(NULL);
-	c->longname = strdup(c->shortname);
+	c->longname = talloc_strdup(c, c->shortname);
 
 	DEBUG("- Added client %s with shared secret %s",
 	      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)),
