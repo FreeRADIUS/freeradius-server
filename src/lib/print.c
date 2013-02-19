@@ -603,8 +603,8 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 	size_t		len;
 	const char	*token = NULL;
 
-	out[0] = 0;
-	if (!vp) return 0;
+	out[0] = '\0';
+	if (!vp || !vp->da) return 0;
 
 	if ((vp->op > T_OP_INVALID) &&
 	    (vp->op < T_TOKEN_LAST)) {
