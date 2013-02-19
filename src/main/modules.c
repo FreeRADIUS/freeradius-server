@@ -345,12 +345,14 @@ void virtual_servers_free(time_t when)
 	}
 }
 
-static void indexed_modcallable_free(void *data)
+static int indexed_modcallable_free(void *ctx)
 {
-	indexed_modcallable *c = data;
+	indexed_modcallable *this;
 
-	modcallable_free(&c->modulelist);
-	talloc_free(c);
+	this = talloc_get_type_abort(ctx, indexed_modcallable);
+
+	modcallable_free(&this->modulelist);
+	return 0;
 }
 
 static int indexed_modcallable_cmp(const void *one, const void *two)
@@ -757,6 +759,8 @@ static indexed_modcallable *new_sublist(CONF_SECTION *cs,
 		return NULL;
 	}
 
+	talloc_set_destructor((void *) c, indexed_modcallable_free);
+
 	return c;
 }
 
@@ -1058,8 +1062,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 	cf_log_info(cs, " modules {");
 
-	components = rbtree_create(indexed_modcallable_cmp,
-				   indexed_modcallable_free, 0);
+	components = rbtree_create(indexed_modcallable_cmp, NULL, 0);
 	if (!components) {
 		radlog(L_ERR, "Failed to initialize components\n");
 		goto error;
