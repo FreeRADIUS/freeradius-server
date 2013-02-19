@@ -59,7 +59,7 @@ RADDBDIR	= ${raddbdir}
 RUNDIR		= ${localstatedir}/run/radiusd
 SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
-LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la
+LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la -l talloc
 
 #USE_SHARED_LIBS = @USE_SHARED_LIBS@
 #USE_STATIC_LIBS = @USE_STATIC_LIBS@

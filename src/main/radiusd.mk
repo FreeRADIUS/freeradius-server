@@ -12,8 +12,6 @@ SRC_CFLAGS	:= -DHOSTINFO=\"${HOSTINFO}\"
 TGT_INSTALLDIR  := ${sbindir}
 TGT_LDLIBS	:= $(LIBS) $(LCRYPT) $(OPENSSL_LIBS)
 
-TGT_PREREQS	:= libfreeradius-radius.a
-
 # Libraries can't depend on libraries (oops), so make the binary
 # depend on the EAP code...
 ifneq "$(filter rlm_eap_%,${ALL_TGTS})" ""

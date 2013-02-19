@@ -1067,6 +1067,35 @@ LIBS="$LIBS $LIBLTDL"
 AC_CHECK_FUNC(lt_dladvise_init, AC_DEFINE(HAVE_LT_DLADVISE_INIT, [], [Do we have the lt_dladvise_init function]))
 LIBS="$old_LIBS"
 
+dnl Check for talloc
+dnl extra argument: --with-talloc-include-dir=DIR
+talloc_include_dir=
+AC_ARG_WITH(talloc-include-dir,
+	[AS_HELP_STRING([--with-talloc-include-dir=DIR],
+	[Directory where the talloc includes may be found])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need talloc-include-dir)
+	    ;;
+		yes)
+	    ;;
+	    *)
+		talloc_include_dir="$withval"
+	    ;;
+	esac])
+
+dnl Check for talloc header files
+
+smart_try_dir="$talloc_include_dir"
+FR_SMART_CHECK_INCLUDE([talloc.h])
+if test "x$ac_cv_header_talloc_h" != "xyes"; then
+	AC_MSG_WARN([talloc headers not found. Use --with-talloc-include-dir=<path>.])
+	AC_MSG_ERROR([FreeRADIUS requires libtalloc])
+else
+	INCLUDE="${SMART_CFLAGS} ${INCLUDE}"
+	LIBS="-ltalloc ${LIBS}"
+fi
+
 dnl Check for libcrypt
 dnl We use crypt(3) which may be in libc, or in libcrypt (eg FreeBSD)
 AC_CHECK_LIB(crypt, crypt,
