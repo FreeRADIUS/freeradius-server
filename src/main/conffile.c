@@ -1093,7 +1093,6 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 
  error:
 	cf_log_info(cs, "%.*s}", cs->depth, parse_spaces);
-	cf_section_parse_free(cs, base);
 	return -1;
 }
 
