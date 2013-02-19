@@ -704,7 +704,6 @@ static int cache_detach(void *instance)
 {
 	rlm_cache_t *inst = instance;
 
-	free(inst->key);
 	rad_cfree(inst->xlat_name);
 	
 	radius_mapfree(&inst->maps);
