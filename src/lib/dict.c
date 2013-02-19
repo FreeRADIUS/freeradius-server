@@ -2449,6 +2449,8 @@ void dict_attr_free(DICT_ATTR const **da)
 {
 	DICT_ATTR **tmp;
 	
+	if (!da || !*da) return;
+	
 	/* Don't free real DAs */
 	if (!(*da)->flags.is_unknown) {
 		return;
