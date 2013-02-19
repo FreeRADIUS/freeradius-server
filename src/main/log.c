@@ -404,3 +404,26 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 
 	va_end(ap);
 }
+
+void log_talloc(const char *msg)
+{
+	radlog(L_INFO, "%s", msg);
+}
+
+void log_talloc_report(TALLOC_CTX *ctx)
+{
+	struct main_config_t *myconfig = &mainconfig;
+	FILE *fd;
+
+	fd = fdopen(myconfig->radlog_fd, "w");
+	if (!fd) {
+		radlog(L_ERR, "Couldn't write memory report, fdopen failed: %s",
+		       strerror(errno));
+
+		return;
+	}
+	radlog(L_INFO, "Allocated memory at time of report:");
+	talloc_report_full(ctx, fd);
+
+	fclose(fd);
+}

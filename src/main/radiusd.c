@@ -64,6 +64,7 @@ const char *radlib_dir = NULL;
 int log_stripped_names;
 int debug_flag = 0;
 int check_config = FALSE;
+int memory_report = FALSE;
 
 const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -150,7 +151,7 @@ int main(int argc, char *argv[])
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:fhi:l:mn:p:stvxX")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:fhi:l:mMn:p:stvxX")) != EOF) {
 
 		switch(argval) {
 			case 'C':
@@ -203,6 +204,10 @@ int main(int argc, char *argv[])
 				debug_memory = 1;
 				break;
 
+			case 'M':
+				memory_report = 1;
+				break;
+
 			case 'p':
 				mainconfig.port = atoi(optarg);
 				if ((mainconfig.port <= 0) ||
@@ -252,6 +257,11 @@ int main(int argc, char *argv[])
 				usage(1);
 				break;
 		}
+	}
+
+	if (memory_report) {
+		talloc_enable_null_tracking();
+		talloc_set_log_fn(log_talloc);
 	}
 
 	/*
@@ -489,6 +499,10 @@ int main(int argc, char *argv[])
 	WSACleanup();
 #endif
 
+	if (memory_report) {
+		log_talloc_report(NULL);
+	}
+
 	return (rcode - 1);
 }
 
@@ -537,7 +551,7 @@ static void sig_fatal(int sig)
 #ifdef SIGQUIT
 		case SIGQUIT:
 #endif
-			if (debug_memory) {
+			if (debug_memory || memory_report) {
 				radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 				break;
 			}
