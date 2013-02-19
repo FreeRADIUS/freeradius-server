@@ -61,10 +61,6 @@ SBINDIR		= ${sbindir}
 RADIR		= ${radacctdir}
 LIBRADIUS	= $(top_builddir)/src/lib/$(LIBPREFIX)freeradius-radius.la
 
-LIBLTDL		= @LIBLTDL@
-INCLTDL		= @INCLTDL@
-CFLAGS		+= $(INCLTDL)
-
 #USE_SHARED_LIBS = @USE_SHARED_LIBS@
 #USE_STATIC_LIBS = @USE_STATIC_LIBS@
 
@@ -77,12 +73,6 @@ OPENSSL_INCLUDE = @OPENSSL_INCLUDE@
 CFLAGS		+= $(OPENSSL_INCLUDE)
 
 LIBREADLINE	= @LIBREADLINE@
-
-#
-#  SQL driver defines
-#
-SQL_ODBC_LIBS = @ODBC_LIBS@
-SQL_ODBC_INCLUDE = @ODBC_INCLUDE@
 
 #
 #  Version to use for packaging and other Make related things
