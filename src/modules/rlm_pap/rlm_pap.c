@@ -411,7 +411,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 		}
 
 		RDEBUGW("No \"known good\" password found for the user.  Not setting Auth-Type.");
-		RDEBUGW("Configure a \"known good\" password to get an Access-Accept.");
+		RDEBUGW("PAP authentication will fail unless a \"known good\" password is available.");
 		return RLM_MODULE_NOOP;
 	}
 
