@@ -399,6 +399,11 @@ static int process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
 	case LDAP_CONSTRAINT_VIOLATION:
 		return LDAP_PROC_REJECT;
 
+	case LDAP_OPERATIONS_ERROR:
+		DEBUGW("Please set 'chase_referrals=yes' and 'rebind=yes'");
+		DEBUGW("See the ldap module configuration for details");
+		/* FALL-THROUGH */
+
 	default:
 		radlog(L_ERR, "rlm_ldap (%s): %s failed: %s",
 		       inst->xlat_name, operation, ldap_err2string(ldap_errno));
