@@ -904,11 +904,13 @@ int read_mainconfig(int reload)
 	 *	We ignore colourization of output until after the
 	 *	configuration files have been parsed.
 	 */
-	if (mainconfig.colourise) {
+	if (do_colourise) {
 		p = getenv("TERM");
 		if (!p || !isatty(mainconfig.radlog_fd) ||
 		    (strstr(p, "xterm") == 0)) {
 			mainconfig.colourise = FALSE;
+		} else {
+			mainconfig.colourise = TRUE;
 		}
 		p = NULL;
 	}
