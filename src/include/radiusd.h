@@ -34,7 +34,7 @@ RCSIDH(radiusd_h, "$Id$")
 #include <freeradius-devel/event.h>
 #include <freeradius-devel/connection.h>
 
-typedef struct auth_req REQUEST;
+typedef struct request REQUEST;
 
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
@@ -165,7 +165,7 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 #define REQUEST_DATA_REGEX (0xadbeef00)
 #define REQUEST_MAX_REGEX (8)
 
-struct auth_req {
+struct request {
 #ifndef NDEBUG
 	uint32_t		magic; 		//!< Magic number used to 
 						//!< detect memory corruption,
@@ -268,10 +268,15 @@ struct auth_req {
 
 	const char		*server;
 	REQUEST			*parent;
-	radlog_func_t		radlog;	/* logging function, if set */
+	radlog_func_t		radlog;		//!< Function to call to output 
+						//!< log messages about this
+						//!< request.
 #ifdef WITH_COA
-	REQUEST			*coa;
-	int			num_coa_requests;
+	REQUEST			*coa;		//!< CoA request originated
+						//!< by this request.
+	int			num_coa_requests;//!< Counter for number of
+						//!< requests sent including
+						//!< retransmits.
 #endif
 };				/* REQUEST typedef */
 
