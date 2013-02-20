@@ -340,15 +340,17 @@ typedef struct rlm_ldap_result {
 	int	count;
 } rlm_ldap_result_t;
 
-#define LDAP_PROC_SUCCESS 0
-#define LDAP_PROC_ERROR	-1
-#define LDAP_PROC_RETRY	-2
-#define LDAP_PROC_REJECT -3
+typedef enum {
+	LDAP_PROC_SUCCESS = 0,
+	LDAP_PROC_ERROR	= -1,
+	LDAP_PROC_RETRY	= -2,
+	LDAP_PROC_REJECT = -3
+} ldap_rcode_t;
 
-static int process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
+static ldap_rcode_t process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
 			      const char *operation)
 {
-	int	ldap_errno;
+	int ldap_errno;
 	
 	ldap_get_option((*pconn)->handle, LDAP_OPT_ERROR_NUMBER,
 			&ldap_errno);
@@ -356,12 +358,6 @@ static int process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
 	case LDAP_SUCCESS:
 	case LDAP_NO_SUCH_OBJECT:
 		return LDAP_PROC_SUCCESS;
-
-	case LDAP_SERVER_DOWN:
-	do_reconnect:
-		*pconn = fr_connection_reconnect(inst->pool, *pconn);
-		if (!*pconn) return -1;
-		return LDAP_PROC_RETRY;
 
 	case LDAP_INSUFFICIENT_ACCESS:
 		radlog(L_ERR, "rlm_ldap (%s): %s failed: Insufficient access. "
@@ -393,7 +389,8 @@ static int process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
 		 */
 		radlog(L_ERR, "rlm_ldap (%s): %s failed: %s",
 		       inst->xlat_name, operation, ldap_err2string(ldap_errno));
-		goto do_reconnect;
+	case LDAP_SERVER_DOWN:
+		return LDAP_PROC_RETRY;
 		
 	case LDAP_INVALID_CREDENTIALS:
 	case LDAP_CONSTRAINT_VIOLATION:
@@ -422,7 +419,7 @@ static int ldap_bind_wrapper(LDAP_CONN **pconn, const char *user,
 	LDAPMessage	*result = NULL;
 	struct timeval tv;
 
-bind:
+retry:
 	msg_id = ldap_bind(conn->handle, user, password, LDAP_AUTH_SIMPLE);
 	if (msg_id < 0) goto get_error;
 
@@ -462,7 +459,10 @@ error:
 	
 				break;
 			case LDAP_PROC_RETRY:
-				if (retry) goto bind;
+				if (retry) {
+					*pconn = fr_connection_reconnect(inst->pool, *pconn);
+					if (*pconn) goto retry;
+				}
 				
 				module_rcode = RLM_MODULE_FAIL;
 				break;
@@ -844,7 +844,9 @@ retry:
 			case LDAP_PROC_ERROR:
 				return -1;
 			case LDAP_PROC_RETRY:
-				conn = *pconn;
+				conn = fr_connection_reconnect(inst->pool,
+							       *pconn);
+				if (conn) goto retry;
 				goto retry;
 			default:
 				rad_assert(0);
