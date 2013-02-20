@@ -955,7 +955,16 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		break;
 
 	default:
-		radlog(L_ERR, "type %d not supported yet", type);
+		/*
+		 *	If we get here, it's a sanity check error.
+		 *	It's not an error parsing the configuration
+		 *	file.
+		 */
+		rad_assert(type > PW_TYPE_INVALID);
+		rad_assert(type < PW_TYPE_MAX);
+
+		radlog(L_ERR, "type '%s' is not supported in the configuration files",
+		       fr_int2str(dict_attr_types, type, "?Unknown?"));
 		return -1;
 	} /* switch over variable type */
 
