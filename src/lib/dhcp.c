@@ -498,7 +498,7 @@ static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
 	return 0;
 
 make_tlv:
-	tlv->vp_tlv = malloc(data_len);
+	tlv->vp_tlv = talloc_array(tlv, uint8_t, data_len);
 	if (!tlv->vp_tlv) {
 		fr_strerror_printf("No memory");
 		return -1;
@@ -988,7 +988,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 		return NULL;
 	}
 
-	tlv->vp_tlv = malloc(tlv->length);
+	tlv->vp_tlv = talloc_array(tlv, uint8_t, tlv->length);
 	if (!tlv->vp_tlv) {
 		pairfree(&tlv);
 		return NULL;
