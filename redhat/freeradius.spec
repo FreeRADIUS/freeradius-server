@@ -300,7 +300,8 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/sites-enabled/*
 %config(noreplace) %attr(640,root,radiusd) /etc/raddb/example.pl
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/policy.conf
-%config(noreplace) /etc/raddb/policy.txt
+%dir %attr(750,root,radiusd) /etc/raddb/policy.d
+%attr(640,root,radiusd) %config(noreplace) /etc/raddb/policy.d/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/templates.conf
 %dir %attr(750,root,radiusd) /etc/raddb/modules
 %dir %attr(750,root,radiusd) /etc/raddb/mods-available

@@ -10,7 +10,7 @@ include ../Make.inc
 #  The list of files to install.
 #
 FILES = acct_users clients.conf dictionary templates.conf \
-	experimental.conf hints huntgroups policy.txt \
+	experimental.conf hints huntgroups \
 	preproxy_users proxy.conf radiusd.conf trigger.conf \
 	users README.rst
 
