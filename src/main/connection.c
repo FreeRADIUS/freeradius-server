@@ -456,13 +456,10 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
 	 *	order to find top of the parent structure.
 	 */
 	for (this = pool->head; this != NULL; this = this->next) {
-		if (this->connection == conn) {
-			pthread_mutex_unlock(&pool->mutex);
-			return this;
-		}
+		if (this->connection == conn) return this;
 	}
 
-
+	pthread_mutex_unlock(&pool->mutex);
 	return NULL;
 }
 
