@@ -665,7 +665,6 @@ PERL
 raddbdir
 radacctdir
 logdir
-boilermake
 CXXCPP
 OTOOL64
 OTOOL
@@ -767,7 +766,6 @@ with_gnu_ld
 with_sysroot
 enable_libtool_lock
 enable_strict_dependencies
-enable_boilermake
 with_docdir
 with_logdir
 with_radacctdir
@@ -1422,7 +1420,6 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --enable-strict-dependencies  Fail configure on lack of module dependancy.
-  --enable-boilermake     use the boilermake build system (default=yes).
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -15268,26 +15265,6 @@ if test "${enable_strict_dependencies+set}" = set; then :
 fi
 
 
-boilermake=yes
-# Check whether --enable-boilermake was given.
-if test "${enable_boilermake+set}" = set; then :
-  enableval=$enable_boilermake;  case "$enableval" in
-    yes)
-        boilermake=yes
-        ;;
-    *)
-        boilermake=no
-  esac
-
-fi
-
-
-
-
-if test "x$boilermake" == "xyes"; then
-	LIBTOOL=JLIBTOOL
-fi
-
 docdir='${datadir}/doc/freeradius'
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking docdir" >&5
 $as_echo_n "checking docdir... " >&6; }
@@ -18247,13 +18224,12 @@ $as_echo "no" >&6; }
 fi
 
 if test "x$ac_cv_header_talloc_h" != "xyes"; then
-	have_taloc="no"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: talloc headers not found. Use --with-talloc-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: talloc headers not found. Use --with-talloc-include-dir=<path>." >&2;}
 	as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
 else
-	INCLUDE+="${SMART_CFLAGS}"
-	LIBS+=" -ltalloc"
+	INCLUDE="${SMART_CFLAGS} ${INCLUDE}"
+	LIBS="-ltalloc ${LIBS}"
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5
@@ -18710,7 +18686,7 @@ USE_STATIC_LIBS=$enable_static
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
 
-  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/Makefile ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/radiusd.cron.daily ./scripts/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
+  ac_config_files="$ac_config_files ./Make.inc ./src/include/build-radpaths-h ./src/main/radsniff.mk ./src/main/checkrad ./src/main/radlast ./src/main/radtest ./scripts/rc.radiusd ./scripts/radiusd.cron.daily ./scripts/radiusd.cron.monthly ./scripts/cryptpasswd ./raddb/dictionary ./raddb/radrelay.conf ./raddb/radiusd.conf"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -19796,7 +19772,6 @@ do
     "scripts-chmod") CONFIG_COMMANDS="$CONFIG_COMMANDS scripts-chmod" ;;
     "./Make.inc") CONFIG_FILES="$CONFIG_FILES ./Make.inc" ;;
     "./src/include/build-radpaths-h") CONFIG_FILES="$CONFIG_FILES ./src/include/build-radpaths-h" ;;
-    "./src/main/Makefile") CONFIG_FILES="$CONFIG_FILES ./src/main/Makefile" ;;
     "./src/main/radsniff.mk") CONFIG_FILES="$CONFIG_FILES ./src/main/radsniff.mk" ;;
     "./src/main/checkrad") CONFIG_FILES="$CONFIG_FILES ./src/main/checkrad" ;;
     "./src/main/radlast") CONFIG_FILES="$CONFIG_FILES ./src/main/radlast" ;;
