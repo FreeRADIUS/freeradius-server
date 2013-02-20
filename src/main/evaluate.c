@@ -1207,7 +1207,6 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		 *	not, panic.
 		 */
 		if (vp->type == VT_XLAT) {
-			char *tmp;
 			const char *value;
 			char buffer[2048];
 
