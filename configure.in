@@ -150,32 +150,6 @@ fi
 dnl See if we have Git.
 AC_CHECK_PROG(GIT, git, yes, no)
 
-AC_ARG_WITH(system-libltdl,
-[  --with-system-libltdl   Use the libltdl installed in your system (default=use dlopen)],
-[],
-[with_system_libltdl=no])
-
-AS_IF([test "x$with_system_libltdl" = "xyes" ],
-[ LIBLTDL="-lltdl"
-INCLTDL=-DWITH_SYSTEM_LTDL])
-
-dnl use system-wide libtool, if it exists
-AC_ARG_WITH(system-libtool,
-[  --with-system-libtool   Use the libtool installed in your system (default=use our own)],
-[],
-[with_system_libtool=no])
-
-AS_IF([test "x$with_system_libtool" = "xyes" ],
-[ AC_PATH_PROG(LIBTOOL, libtool,,$PATH:/usr/local/bin) AC_LIBTOOL_DLOPEN
- AC_PROG_LIBTOOL],
-[
-  LIBTOOL='${top_srcdir}/scripts/jlibtool'
-  AC_SUBST(LIBTOOL)
-  dnl ensure that we're looking for dlopen
-  AC_LIBTOOL_DLOPEN
-])
-
-
 dnl Put this in later, when all distributed modules use autoconf.
 dnl AC_ARG_WITH(disablemodulefoo,
 dnl [  --without-rlm_foo         Disables module compilation.  Module list:]
@@ -658,6 +632,7 @@ AC_HEADER_TIME
 AC_HEADER_SYS_WAIT
 
 AC_CHECK_HEADERS( \
+	dlfcn.h \
 	unistd.h \
 	crypt.h \
 	errno.h \
