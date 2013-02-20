@@ -97,6 +97,7 @@ static const char *my_name = NULL;
 static const char *sbindir = NULL;
 static const char *run_dir = NULL;
 static char *syslog_facility = NULL;
+static int do_colourise = FALSE;
 
 /*
  *	Syslog facility table.
@@ -197,15 +198,12 @@ static const CONF_PARSER serverdest_config[] = {
 
 static const CONF_PARSER log_config_nodest[] = {
 	{ "stripped_names", PW_TYPE_BOOLEAN, 0, &log_stripped_names,"no" },
-
 	{ "auth", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth, "no" },
 	{ "auth_badpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_badpass, "no" },
 	{ "auth_goodpass", PW_TYPE_BOOLEAN, 0, &mainconfig.log_auth_goodpass, "no" },
 	{ "msg_badpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_badpass_msg, NULL},
 	{ "msg_goodpass", PW_TYPE_STRING_PTR, 0, &mainconfig.auth_goodpass_msg, NULL},
-	
-	{ "colourise", PW_TYPE_BOOLEAN, 0, &mainconfig.colourise, "yes" },
-	
+	{ "colourise", PW_TYPE_BOOLEAN, 0, &do_colourise, NULL },
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -883,16 +881,6 @@ int read_mainconfig(int reload)
 		}
 	}
 
-	/* Check whether it's appropriate to colourise log output */
-	p = getenv("TERM");
-	if (mainconfig.colourise &&
-	    !(((mainconfig.radlog_dest == RADLOG_STDOUT) ||
-	      (mainconfig.radlog_dest == RADLOG_STDERR)) &&
-	      isatty(mainconfig.radlog_fd) && p && strstr(p, "xterm"))) {
-		mainconfig.colourise = FALSE;
-	}
-	p = NULL;
-	
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
 	if (cp) p = cf_pair_value(cp);
@@ -912,6 +900,19 @@ int read_mainconfig(int reload)
 		return -1;
 	}
 
+	/*
+	 *	We ignore colourization of output until after the
+	 *	configuration files have been parsed.
+	 */
+	if (mainconfig.colourise) {
+		p = getenv("TERM");
+		if (!p || !isatty(mainconfig.radlog_fd) ||
+		    (strstr(p, "xterm") == 0)) {
+			mainconfig.colourise = FALSE;
+		}
+		p = NULL;
+	}
+	
 	if (mainconfig.max_request_time == 0) mainconfig.max_request_time = 100;
 	if (mainconfig.reject_delay > 5) mainconfig.reject_delay = 5;
 	if (mainconfig.cleanup_delay > 5) mainconfig.cleanup_delay =5;
