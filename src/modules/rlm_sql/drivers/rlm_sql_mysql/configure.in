@@ -230,5 +230,4 @@ sql_mysql_cflags="$SMART_CFLAGS"
 AC_SUBST(sql_mysql_ldflags)
 AC_SUBST(sql_mysql_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
 AC_OUTPUT(all.mk)

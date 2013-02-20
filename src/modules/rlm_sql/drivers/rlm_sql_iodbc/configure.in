@@ -92,5 +92,4 @@ sql_iodbc_cflags="$SMART_CFLAGS"
 AC_SUBST(sql_iodbc_ldflags)
 AC_SUBST(sql_iodbc_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
 AC_OUTPUT(all.mk)

@@ -1,9 +1,0 @@
-TARGET      = @targetname@
-SRCS        = rlm_redis.c
-HEADERS     = rlm_redis.h
-RLM_CFLAGS  = @redis_cflags@
-RLM_LIBS    = @redis_ldflags@
-
-include ../rules.mak
-
-$(LT_OBJS): $(HEADERS)

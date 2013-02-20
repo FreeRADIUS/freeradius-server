@@ -32,6 +32,5 @@ fi
 AC_SUBST(od_ldflags)
 AC_SUBST(od_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
 AC_OUTPUT(all.mk)
 

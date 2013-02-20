@@ -1,8 +1,0 @@
-include ../../../../../Make.inc
-
-TARGET         = @targetname@
-SRCS           = rlm_sql_db2.c
-RLM_SQL_CFLAGS = @sql_ibmdb2_cflags@
-RLM_SQL_LIBS   = @sql_ibmdb2_ldflags@
-
-include ../rules.mak

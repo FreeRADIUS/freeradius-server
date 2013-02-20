@@ -161,5 +161,4 @@ fi
 AC_SUBST(sql_oracle_ldflags)
 AC_SUBST(sql_oracle_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
 AC_OUTPUT(all.mk)

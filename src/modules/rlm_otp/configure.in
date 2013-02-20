@@ -86,5 +86,4 @@ AC_SUBST(otp_cflags)
 AC_SUBST(otp_ldflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(Makefile)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)

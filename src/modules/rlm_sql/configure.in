@@ -88,8 +88,4 @@ AC_SUBST(sql_ldflags)
 AC_SUBST(sql_cflags)
 AC_SUBST(targetname)
 AC_SUBST(SQL_MODULES)
-AC_OUTPUT(\
-        ./Makefile \
-        ./drivers/Makefile
-)
 AC_OUTPUT(all.mk)

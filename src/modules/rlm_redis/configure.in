@@ -111,5 +111,4 @@ redis_cflags="$SMART_CFLAGS"
 AC_SUBST(redis_ldflags)
 AC_SUBST(redis_cflags)
 AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
 AC_OUTPUT(all.mk)

@@ -94,5 +94,4 @@ AC_SUBST(perl_ldflags)
 AC_CONFIG_HEADER(config.h)
 
 AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
 AC_OUTPUT(all.mk)

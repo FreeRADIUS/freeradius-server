@@ -30,5 +30,4 @@ AC_SUBST(checkval_cflags)
 AC_SUBST(checkval_ldflags)
 
 AC_SUBST(targetname)
-AC_OUTPUT(Makefile)
 AC_OUTPUT(all.mk)
