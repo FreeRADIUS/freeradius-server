@@ -797,7 +797,6 @@ static int perform_search(ldap_instance *inst, REQUEST *request,
 {
 	int		ldap_errno;
 	int		count = 0;
-	LDAP_CONN	*conn = *pconn;
 	struct timeval  tv;
 
 	/*
@@ -812,16 +811,15 @@ static int perform_search(ldap_instance *inst, REQUEST *request,
 	/*
 	 *	Do all searches as the default admin user.
 	 */
-	if (conn->rebound) {
+	if ((*pconn)->rebound) {
 		ldap_errno = ldap_bind_wrapper(pconn, inst->login,
 					       inst->password, TRUE);
 		if (ldap_errno != RLM_MODULE_OK) {
 			return -1;
 		}
 
-		rad_assert(*pconn != NULL);
-		conn = *pconn;
-		conn->rebound = FALSE;
+		rad_assert(*pconn);
+		(*pconn)->rebound = FALSE;
 	}
 
 	tv.tv_sec = inst->timeout;
@@ -831,7 +829,7 @@ static int perform_search(ldap_instance *inst, REQUEST *request,
 	        filter);
 
 retry:
-	ldap_errno = ldap_search_ext_s(conn->handle, search_basedn, scope,
+	ldap_errno = ldap_search_ext_s((*pconn)->handle, search_basedn, scope,
 				       filter, search_attrs, 0, NULL, NULL,
 				       &tv, 0, presult);
 	if (ldap_errno != LDAP_SUCCESS) {
@@ -844,16 +842,15 @@ retry:
 			case LDAP_PROC_ERROR:
 				return -1;
 			case LDAP_PROC_RETRY:
-				conn = fr_connection_reconnect(inst->pool,
-							       *pconn);
-				if (conn) goto retry;
+				*pconn = fr_connection_reconnect(inst->pool, *pconn);
+				if (*pconn) goto retry;
 				goto retry;
 			default:
 				rad_assert(0);
 		}
 	}
 		
-	count = ldap_count_entries(conn->handle, *presult);
+	count = ldap_count_entries((*pconn)->handle, *presult);
 	if (count == 0) {
 		ldap_msgfree(*presult);
 		RDEBUG("Search returned no results");
