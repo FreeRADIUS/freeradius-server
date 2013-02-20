@@ -132,6 +132,11 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 	unsigned char *p = seed;
 	size_t prf_size;
 
+	if (!s->s3) {
+		DEBUG("ERROR: No SSLv3 information");
+		return;
+	}
+
 	prf_size = strlen(prf_label);
 
 	memcpy(p, prf_label, prf_size);
@@ -171,8 +176,13 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 	uint8_t seed[sizeof(FR_TLS_PRF_CHALLENGE)-1 + 2*SSL3_RANDOM_SIZE];
 	uint8_t *p = seed;
 
-	memcpy(p, FR_TLS_PRF_CHALLENGE, sizeof(FR_TLS_PRF_CHALLENGE)-1);
-	p += sizeof(FR_TLS_PRF_CHALLENGE)-1;
+	if (!s->s3) {
+		DEBUG("ERROR: No SSLv3 information");
+		return;
+	}
+
+	memcpy(p, EAPTLS_PRF_CHALLENGE, sizeof(EAPTLS_PRF_CHALLENGE)-1);
+	p += sizeof(EAPTLS_PRF_CHALLENGE)-1;
 	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
@@ -181,4 +191,28 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 	    seed, sizeof(seed), out, buf, sizeof(out));
 
 	memcpy(buffer, out, size);
+}
+
+/*
+ *	Actually generates EAP-Session-Id, which is an internal server
+ *	attribute.  Not all systems want to send EAP-Key-Nam
+ */
+void eaptls_gen_eap_key(SSL *s, uint32_t header, VALUE_PAIR **vps)
+{
+	VALUE_PAIR *vp;
+
+	if (!s->s3) {
+		DEBUG("ERROR: No SSLv3 information");
+		return;
+	}
+
+	vp = paircreate(PW_EAP_SESSION_ID, PW_TYPE_OCTETS);
+	if (!vp) return;
+
+	vp->vp_octets[0] = header & 0xff;
+	memcpy(vp->vp_octets + 1, s->s3->client_random, SSL3_RANDOM_SIZE);
+	memcpy(vp->vp_octets + 1 + SSL3_RANDOM_SIZE,
+	       s->s3->server_random, SSL3_RANDOM_SIZE);
+	vp->length = 1 + 2 * SSL3_RANDOM_SIZE;
+	pairadd(vps, vp);
 }

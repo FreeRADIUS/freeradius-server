@@ -710,8 +710,20 @@ post-auth {
 	#  RFC 2865 behaviour for the class attribute, AND if the NAS
 	#  supports long Class attributes.  Many older or cheap NASes
 	#  only support 16-octet Class attributes.
-	#
 #	insert_acct_class
+
+	#  MacSEC requires the use of EAP-Key-Name.  However, we don't
+	#  want to send it for all EAP sessions.  Therefore, the EAP
+	#  modules put required data into the EAP-Session-Id attribute.
+	#  This attribute is never put into a request or reply packet.
+	#
+	#  Uncomment the next few lines to copy the required data into
+	#  the EAP-Key-Name attribute
+#	if (reply:EAP-Session-Id) {
+#		update reply {
+#			EAP-Key-Name := "%{reply:EAP-Session-Id}"
+#		}
+#	}
 
 	#  Remove reply message if the response contains an EAP-Message
 	remove_reply_message_if_eap
