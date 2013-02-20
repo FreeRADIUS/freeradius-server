@@ -133,7 +133,7 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 	size_t prf_size;
 
 	if (!s->s3) {
-		radlog(L_ERR, "ERROR: OpenSSL build / link incompatibility detected");
+		DEBUG("ERROR: No SSLv3 information");
 		return;
 	}
 
@@ -177,7 +177,7 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 	uint8_t *p = seed;
 
 	if (!s->s3) {
-		radlog(L_ERR, "ERROR: OpenSSL build / link incompatibility detected");
+		DEBUG("ERROR: No SSLv3 information");
 		return;
 	}
 
@@ -201,6 +201,11 @@ void eaptls_gen_eap_key(SSL *s, uint32_t header, VALUE_PAIR **vps)
 {
 	VALUE_PAIR *vp;
 
+	if (!s->s3) {
+		DEBUG("ERROR: No SSLv3 information");
+		return;
+	}
+
 	vp = paircreate(PW_EAP_SESSION_ID, PW_TYPE_OCTETS);
 	if (!vp) return;
 
@@ -208,5 +213,6 @@ void eaptls_gen_eap_key(SSL *s, uint32_t header, VALUE_PAIR **vps)
 	memcpy(vp->vp_octets + 1, s->s3->client_random, SSL3_RANDOM_SIZE);
 	memcpy(vp->vp_octets + 1 + SSL3_RANDOM_SIZE,
 	       s->s3->server_random, SSL3_RANDOM_SIZE);
+	vp->length = 1 + 2 * SSL3_RANDOM_SIZE;
 	pairadd(vps, vp);
 }

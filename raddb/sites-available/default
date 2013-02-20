@@ -545,12 +545,14 @@ post-auth {
 	#  MacSEC requires the use of EAP-Key-Name.  However, we don't
 	#  want to send it for all EAP sessions.  Therefore, the EAP
 	#  modules put required data into the EAP-Session-Id attribute.
-	#  This attribute is never put into a packet.
+	#  This attribute is never put into a request or reply packet.
 	#
 	#  Uncomment the next few lines to copy the required data into
 	#  the EAP-Key-Name attribute
-#	update reply {
-#		EAP-Key-Name := "%{reply:EAP-Session-Id}"
+#	if (reply:EAP-Session-Id) {
+#		update reply {
+#			EAP-Key-Name := "%{reply:EAP-Session-Id}"
+#		}
 #	}
 
 	#  If the WiMAX module did it's work, you may want to do more
