@@ -10,12 +10,6 @@
 include Make.inc
 MFLAGS += --no-print-directory
 
-# Speed up the build for developers.  This means editing Make.inc,
-# and adding "BOILER = yes" to the bottom.  Once that's done, the
-#
-#
-ifeq "$(BOILER)" "yes"
-
 # The version of GNU Make is too old, don't use it (.FEATURES variable was
 # wad added in 3.81)
 ifndef .FEATURES
@@ -29,20 +23,6 @@ include scripts/boiler.mk
 
 # These are not yet converted to the new system
 SUBDIRS		= $(wildcard raddb scripts doc)
-
-else
-.PHONY: all clean install
-
-SUBDIRS		= $(wildcard src raddb scripts doc)
-WHAT_TO_MAKE	= all
-
-all:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
-clean:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-	@rm -f *~
-endif
 
 .PHONY: tests
 tests:

@@ -186,25 +186,6 @@ dnl 	awk '{print "                            "$0}']))
 AC_ARG_ENABLE(strict-dependencies,
 [  --enable-strict-dependencies  Fail configure on lack of module dependancy.])
 
-dnl # Build using the new boilermake system
-boilermake=yes
-AC_ARG_ENABLE(boilermake,
-[  --enable-boilermake     use the boilermake build system (default=yes).],
-[ case "$enableval" in
-    yes)
-        boilermake=yes
-        ;;
-    *)
-        boilermake=no
-  esac ]
-)
-
-AC_SUBST(boilermake)
-
-if test "x$boilermake" == "xyes"; then
-	LIBTOOL=[JLIBTOOL]
-fi
-
 dnl extra argument: --with-docdir
 docdir='${datadir}/doc/freeradius'
 AC_MSG_CHECKING(docdir)
@@ -1344,7 +1325,6 @@ AC_SUBST(STATIC_MODULES)
 AC_OUTPUT(\
 	./Make.inc \
 	./src/include/build-radpaths-h \
-	./src/main/Makefile \
 	./src/main/radsniff.mk \
 	./src/main/checkrad \
 	./src/main/radlast \
