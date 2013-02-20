@@ -385,10 +385,6 @@
 /* Define to 1 if you have the <winsock.h> header file. */
 #undef HAVE_WINSOCK_H
 
-/* Define to the sub-directory in which libtool stores uninstalled libraries.
-   */
-#undef LT_OBJDIR
-
 /* define if you have OSFC2 authentication */
 #undef OSFC2
 
