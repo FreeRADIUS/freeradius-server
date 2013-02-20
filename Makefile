@@ -110,6 +110,12 @@ endif
 
 .PHONY: common $(SUBDIRS)
 
+#
+#  We need to convert these directories to boilermake!
+#
+all:
+	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
+
 common: $(SUBDIRS)
 
 $(SUBDIRS):
