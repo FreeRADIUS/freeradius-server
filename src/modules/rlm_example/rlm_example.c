@@ -194,7 +194,7 @@ static rlm_rcode_t example_checksimul(void *instance, REQUEST *request)
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int example_detach(void *instance)
+static int example_detach(UNUSED void *instance)
 {
 	/* free things here */
 	return 0;
