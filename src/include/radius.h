@@ -251,6 +251,8 @@ typedef enum {
 #define PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS	1144
 
 #define PW_OTP_CHALLENGE		1145
+#define PW_EAP_SESSION_ID		1146
+
 /*
  *	Integer Translations
  */

@@ -181,8 +181,8 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 		return;
 	}
 
-	memcpy(p, EAPTLS_PRF_CHALLENGE, sizeof(EAPTLS_PRF_CHALLENGE)-1);
-	p += sizeof(EAPTLS_PRF_CHALLENGE)-1;
+	memcpy(p, FR_TLS_PRF_CHALLENGE, sizeof(FR_TLS_PRF_CHALLENGE)-1);
+	p += sizeof(FR_TLS_PRF_CHALLENGE)-1;
 	memcpy(p, s->s3->client_random, SSL3_RANDOM_SIZE);
 	p += SSL3_RANDOM_SIZE;
 	memcpy(p, s->s3->server_random, SSL3_RANDOM_SIZE);
