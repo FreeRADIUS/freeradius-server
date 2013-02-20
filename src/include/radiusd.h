@@ -167,47 +167,82 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 
 struct auth_req {
 #ifndef NDEBUG
-	uint32_t		magic; /* for debugging only */
+	uint32_t		magic; 		//!< Magic number used to 
+						//!< detect memory corruption,
+						//!< or request structs that
+						//!< have not been properly
+						//!< initialised.
 #endif
-	RADIUS_PACKET		*packet;
+	RADIUS_PACKET		*packet;	//!< Incoming request.
 #ifdef WITH_PROXY
-	RADIUS_PACKET		*proxy;
+	RADIUS_PACKET		*proxy;		//!< Outgoing request.
 #endif
-	RADIUS_PACKET		*reply;
+	RADIUS_PACKET		*reply;		//!< Outgoing response.
 #ifdef WITH_PROXY
-	RADIUS_PACKET		*proxy_reply;
+	RADIUS_PACKET		*proxy_reply;	//!< Incoming response.
 #endif
-	VALUE_PAIR		*config_items;
-	VALUE_PAIR		*username;
-	VALUE_PAIR		*password;
+	VALUE_PAIR		*config_items;	//!< VALUE_PAIR s used to set
+						//!< per request parameters for
+						//!< modules and the server 
+						//!< core at runtime.
+	VALUE_PAIR		*username;	//!< Cached username VALUE_PAIR.
+	VALUE_PAIR		*password;	//!< Cached password VALUE_PAIR.
 
-	fr_request_process_t	process;
-	RAD_REQUEST_FUNP	handle;
-	struct main_config_t	*root;
+	fr_request_process_t	process;	//!< The function to call to
+						//!< move the request through
+						//!< the state machine.
+						
+	RAD_REQUEST_FUNP	handle;		//!< The function to call to
+						//!< move the request through
+						//!< the various server
+						//!< configuration sections.
+						
+	struct main_config_t	*root;		//!< Pointer to the main config
+						//!< hack to try and deal with
+						//!< hup. 
 
-	request_data_t		*data;
-	RADCLIENT		*client;
+	request_data_t		*data;		//!< Request metadata.
+	
+	RADCLIENT		*client;	//!< The client that originally
+						//!< sent us the request.
+						
 #ifdef HAVE_PTHREAD_H
-	pthread_t    		child_pid;
+	pthread_t    		child_pid;	//!< Current thread handling
+						//!< the request.
 #endif
-	time_t			timestamp;
-	unsigned int	       	number; /* internal server number */
+	time_t			timestamp;	//!< When the request was 
+						//!< received.
+	unsigned int	       	number; 	//!< Monotonically increasing
+						//!< request number. Reset on 
+						//!< server restart.
 
-	rad_listen_t		*listener;
+	rad_listen_t		*listener;	//!< The listener that received
+						//!< the request.
 #ifdef WITH_PROXY
-	rad_listen_t		*proxy_listener;
+	rad_listen_t		*proxy_listener;//!< Listener for outgoing 
+						//!< requests.
 #endif
 
 
-	int                     simul_max; /* see modcall.c && xlat.c */
+	int                     simul_max;	//!< Maximum number of 
+						//!< concurrent sessions for
+						//!< this user.
 #ifdef WITH_SESSION_MGMT
-	int                     simul_count;
-	int                     simul_mpp; /* WEIRD: 1 is false, 2 is true */
+	int                     simul_count;	//!< The current number of
+						//!< sessions for this user.
+	int                     simul_mpp; 	//!< WEIRD: 1 is false,
+						//!< 2 is true.
 #endif
 
-	int			options; /* miscellanous options */
-	const char		*module; /* for debugging unresponsive children */
-	const char		*component; /* ditto */
+	int			options;	//!< Request options, currently
+						//!< just holds the debug level 
+						//!< for the request.
+						
+	const char		*module;	//!< Module the request is
+						//!< currently being processed
+						//!< by.	
+	const char		*component; 	//!< Section the request is
+						//!< in.
 
 	int			delay;
 
