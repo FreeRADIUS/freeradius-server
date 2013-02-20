@@ -86,6 +86,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	char buffer[8192];
 	char *unsan;
 	size_t len;
+	int colourise = myconfig->colourise;
 
 	/*
 	 *	NOT debugging, and trying to log debug messages.
@@ -107,9 +108,10 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	buffer[0] = '\0';
 	len = 0;
 
-	if (myconfig->colourise) {
+	if (colourise) {
 		len += strlcpy(buffer + len, fr_int2str(colours, lvl, ""),
 			       sizeof(buffer) - len) ;
+		if (len == 0) colourise = FALSE;
 	}
 	
 	/*
@@ -167,7 +169,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 			*p = '?';
 	}
 
-	if (myconfig->colourise && (len < sizeof(buffer))) {
+	if (colourise && (len < sizeof(buffer))) {
 		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
 	} 
 	
