@@ -658,7 +658,7 @@ static void *ldap_conn_create(void *ctx)
 	}
 #endif /* HAVE_LDAP_START_TLS */
 
-	conn = rad_malloc(sizeof(*conn));
+	conn = talloc(NULL, LDAP_CONN);
 	conn->inst = inst;
 	conn->handle = handle;
 	conn->rebound = FALSE;
@@ -682,7 +682,7 @@ static int ldap_conn_delete(UNUSED void *ctx, void *connection)
 	LDAP_CONN *conn = connection;
 
 	ldap_unbind_s(conn->handle);
-	free(conn);
+	talloc_free(conn);
 
 	return 0;
 }
