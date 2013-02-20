@@ -336,7 +336,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 
 	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
-		n->vp_tlv = talloc_size(n, n->length);
+		n->vp_tlv = talloc_array(n, uint8_t, n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
 	}
 
@@ -376,7 +376,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 	
 	if ((n->da->type == PW_TYPE_TLV) &&
 	    (n->vp_tlv != NULL)) {
-		n->vp_tlv = talloc_size(n, n->length);
+		n->vp_tlv = talloc_array(n, uint8_t, n->length);
 		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
 	}
 	
@@ -1177,7 +1177,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 			vp->length = size >> 1;
 			if (size > 2*sizeof(vp->vp_octets)) {
-				us = vp->vp_tlv = talloc_size(vp, vp->length);
+				us = vp->vp_tlv = talloc_array(vp, uint8_t, vp->length);
 				if (!us) {
 					fr_strerror_printf("Out of memory.");
 					return FALSE;
@@ -1384,7 +1384,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 		if (vp->length < length) {
 			TALLOC_FREE(vp->vp_tlv);
 		}
-		vp->vp_tlv = talloc_size(vp, length);
+		vp->vp_tlv = talloc_array(vp, uint8_t, length);
 		if (!vp->vp_tlv) {
 			fr_strerror_printf("No memory");
 			return FALSE;
@@ -1463,7 +1463,7 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 
 	vp->length = size >> 1;
 	if (vp->length > sizeof(vp->vp_octets)) {
-		vp->vp_tlv = talloc_size(vp, vp->length);
+		vp->vp_tlv = talloc_array(vp, uint8_t, vp->length);
 		if (!vp->vp_tlv) {
 			fr_strerror_printf("Out of memory");
 			talloc_free(vp);
