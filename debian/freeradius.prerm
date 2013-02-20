@@ -15,7 +15,6 @@ case "$1" in
           /etc/freeradius/huntgroups \
           /etc/freeradius/proxy.conf \
           /etc/freeradius/hints \
-          /etc/freeradius/policy.txt \
           /etc/freeradius/clients.conf \
           /etc/freeradius/acct_users
         do
