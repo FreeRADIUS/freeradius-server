@@ -1520,6 +1520,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 		strlcpy(buffer, attribute, sizeof(buffer));
 		attrname = buffer;
 		ts = strrchr(attrname, ':');
+		if (!ts) return NULL;
 
 	         /* Colon found with something behind it */
 	         if (ts[1] == '*' && ts[2] == 0) {
