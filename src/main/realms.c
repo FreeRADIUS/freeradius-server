@@ -487,6 +487,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			   "No ipaddr, ipv6addr, or virtual_server defined for home server \"%s\".",
 			   name2);
 	error:
+		free(hs_type);
 		hs_type = NULL;
 		hs_check = NULL;
 		hs_srcipaddr = NULL;
