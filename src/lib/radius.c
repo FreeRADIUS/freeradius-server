@@ -3197,6 +3197,7 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 
 		data = (const uint8_t *) "";
 		datalen = 1;
+		goto alloc_cui;	/* skip everything */
 	}
 
 	/*
@@ -3449,6 +3450,7 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 	 *	And now that we've verified the basic type
 	 *	information, decode the actual data.
 	 */
+ alloc_cui:
 	vp = pairalloc(NULL, da);
 	if (!vp) return -1;
 
