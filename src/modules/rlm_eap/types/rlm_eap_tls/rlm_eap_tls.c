@@ -54,6 +54,17 @@ static int eaptls_detach(void *arg)
 }
 
 
+static CONF_PARSER module_config[] = {
+	{ "tls", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_tls_t, tls_conf_name), NULL, NULL },
+
+	{ "virtual_server", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_tls_t, virtual_server), NULL, NULL },
+
+ 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+};
+
+
 /*
  *	Attach the EAP-TLS module.
  */

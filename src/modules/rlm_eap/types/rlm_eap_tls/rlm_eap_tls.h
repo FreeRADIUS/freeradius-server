@@ -45,12 +45,4 @@ typedef struct rlm_eap_tls_t {
   	char	*virtual_server;
 } rlm_eap_tls_t;
 
-static CONF_PARSER module_config[] = {
-	{ "tls", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_eap_tls_t, tls_conf_name), NULL, NULL },
-
-	{ "virtual_server", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_eap_tls_t, virtual_server), NULL, NULL },
-};
-
 #endif /* _RLM_EAP_TLS_H */
