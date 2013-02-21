@@ -719,7 +719,8 @@ static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char
 	FILE *fp;
 
 	fd = dup(listener->fd);
-	if (!fd) return 0;
+	if (fd < 0) return 0;
+
 	fp = fdopen(fd, "a");
 	if (!fp) {
 		cprintf(listener, "ERROR: Can't dup %s\n", strerror(errno));
