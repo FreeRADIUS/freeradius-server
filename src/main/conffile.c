@@ -840,12 +840,12 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		 *	expanded automagically when the configuration
 		 *	file was read.
 		 */
-		if (value == dflt) {
+		if (cs && (value == dflt)) {
 			char buffer[8192];
 
 			int lineno = 0;
 
-			if (cs) lineno = cs->item.lineno;
+			lineno = cs->item.lineno;
 
 			/*
 			 *	FIXME: sizeof(buffer)?
