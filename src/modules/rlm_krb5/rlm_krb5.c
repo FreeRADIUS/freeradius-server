@@ -327,6 +327,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		
 		return RLM_MODULE_FAIL;
 	}
+	rad_assert(context != NULL); /* tell coverity copy context copies it */
 
 	/*
 	 *	Check we have all the required VPs, and convert the username
