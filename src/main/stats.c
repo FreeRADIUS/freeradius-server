@@ -562,6 +562,7 @@ void request_stats_reply(REQUEST *request)
 
 		vp = pairfind(request->packet->vps, 167, VENDORPEC_FREERADIUS, TAG_ANY);
 		if (vp) {
+			memset(&ipaddr, 0, sizeof(ipaddr));
 			ipaddr.af = AF_INET;
 			ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 			client = client_find(cl, &ipaddr, IPPROTO_UDP);
