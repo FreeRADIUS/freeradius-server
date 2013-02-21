@@ -701,7 +701,9 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	for (i = 0; i < 14; i++) {
 		vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
-			fr_strerror_printf("Parse error %s", fr_strerror());
+			char buffer[256];
+			strlcpy(buffer, fr_strerror(), sizeof(buffer));
+			fr_strerror_printf("Cannot decode packet due to internal error: %s", buffer);
 			pairfree(&head);
 			return -1;
 		}
@@ -1232,7 +1234,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		for (i = 0; i < 14; i++) {
 			vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
 			if (!vp) {
-				fr_strerror_printf("Parse error %s", fr_strerror());
+				char buffer[256];
+				strlcpy(buffer, fr_strerror(), sizeof(buffer));
+				fr_strerror_printf("Cannot decode packet due to internal error: %s", buffer);
 				return -1;
 			}
 
