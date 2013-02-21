@@ -173,12 +173,12 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
 	} 
 	
-	if (len < (sizeof(buffer) - 1)) {
+	if (len < (sizeof(buffer) - 2)) {
 		buffer[len]	= '\n';
 		buffer[len + 1] = '\0';
 	} else {
-		buffer[len - 1] = '\n';
-		buffer[len]	= '\0';
+		buffer[sizeof(buffer) - 2] = '\n';
+		buffer[sizeof(buffer) - 1] = '\0';
 	}
 	
 	switch (myconfig->radlog_dest) {
