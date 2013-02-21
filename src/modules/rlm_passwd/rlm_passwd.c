@@ -403,7 +403,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 	struct passwd_instance *inst;
 
 	*instance = inst = talloc_zero(conf, struct passwd_instance);
-	if (inst) return -1;
+	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		radlog(L_ERR, "rlm_passwd: cann't parse configuration");
