@@ -169,26 +169,26 @@
 #endif
 
 #ifndef CC
-#define CC		"gcc"
+#define CC				"gcc"
 #endif
 
 #ifndef CXX
-#define CXX		"g++"
+#define CXX				"g++"
 #endif
 
 #ifndef LINK_c
-#define LINK_c		"gcc"
+#define LINK_c				"gcc"
 #endif
 
 #ifndef LINK_cxx
-#define LINK_cxx	"g++"
+#define LINK_cxx			"g++"
 #endif
 
 #ifndef LIBDIR
-#define LIBDIR		"/usr/local/lib"
+#define LIBDIR				"/usr/local/lib"
 #endif
 
-#define OBJDIR		".libs"
+#define OBJDIR				".libs"
 
 #ifndef SHELL_CMD
 #error Unsupported platform: Please add defines for SHELL_CMD etc. for your platform.
@@ -1090,9 +1090,9 @@ static char *check_library_exists(command_t *cmd, const char *arg, int pathlen,
 	ext = strrchr(newarg, '.');
 	if (!ext) {
 		printf("Error: Library path does not have an extension");
-	free(newarg);
+		free(newarg);
 	
-	return NULL;
+		return NULL;
 	}
 	ext++;
 
@@ -1479,6 +1479,22 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
 	name = jlibtool_basename(arg);
 
 	pathlen = name - arg;
+
+	/*
+	 *	If we have an external static lib not associated with 
+	 *	an argument and were linking, add it to the list of input
+	 *	files for GCC so it gets statically linked into the library
+	 *	were building.
+	 *
+	 *	@fixme not sure if this is correct, but it lets us build shared
+	 *	libraries that are linked against static .a files.
+	 */
+	if ((strcmp(ext, STATIC_LIB_EXT) == 0) && (cmd_data->mode == mLink)) {
+		struct stat sb;
+		if (!stat(arg, &sb)) {
+			push_count_chars(cmd_data->obj_files, arg);
+		}
+	}
 
 	if (strcmp(ext, "lo") == 0) {
 		newarg = check_object_exists(cmd_data, arg, ext - arg);
