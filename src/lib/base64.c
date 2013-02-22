@@ -267,12 +267,6 @@ static const signed char b64[0x100] = {
   B64 (252), B64 (253), B64 (254), B64 (255)
 };
 
-#if UCHAR_MAX == 255
-# define uchar_in_range(c) TRUE
-#else
-# define uchar_in_range(c) ((c) <= 255)
-#endif
-
 /** Check if char is in Base64 alphabet
  *
  * Note that '=' is padding and not considered to be part of the alphabet.
@@ -283,7 +277,7 @@ static const signed char b64[0x100] = {
  */
 int fr_isbase64(char c)
 {
-	return uchar_in_range(us(c)) && 0 <= b64[us(c)];
+	return b64[us(c)] > 0;
 }
 
 /* Decode base64 encoded input array.
