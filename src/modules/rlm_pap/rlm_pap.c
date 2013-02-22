@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/base64.h>
 
 #include <ctype.h>
 
@@ -119,76 +120,12 @@ static int pap_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-
-/*
- *	Decode one base64 chunk
- */
-static int decode_it(const char *src, uint8_t *dst)
-{
-	int i;
-	unsigned int x = 0;
-
-	for(i = 0; i < 4; i++) {
-		if (src[i] >= 'A' && src[i] <= 'Z')
-			x = (x << 6) + (unsigned int)(src[i] - 'A' + 0);
-		else if (src[i] >= 'a' && src[i] <= 'z')
-			 x = (x << 6) + (unsigned int)(src[i] - 'a' + 26);
-		else if(src[i] >= '0' && src[i] <= '9')
-			 x = (x << 6) + (unsigned int)(src[i] - '0' + 52);
-		else if(src[i] == '+')
-			x = (x << 6) + 62;
-		else if (src[i] == '/')
-			x = (x << 6) + 63;
-		else if (src[i] == '=')
-			x = (x << 6);
-		else return 0;
-	}
-
-	dst[2] = (unsigned char)(x & 255); x >>= 8;
-	dst[1] = (unsigned char)(x & 255); x >>= 8;
-	dst[0] = (unsigned char)(x & 255);
-
-	return 1;
-}
-
-
-/*
- *	Base64 decoding.
- */
-static int base64_decode (const char *src, uint8_t *dst)
-{
-	int length, equals;
-	int i, num;
-	uint8_t last[3];
-
-	length = equals = 0;
-	while (src[length] && src[length] != '=') length++;
-
-	while (src[length + equals] == '=') equals++;
-
-	num = (length + equals) / 4;
-
-	for (i = 0; i < num - 1; i++) {
-		if (!decode_it(src, dst)) return 0;
-		src += 4;
-		dst += 3;
-	}
-
-	decode_it(src, last);
-	for (i = 0; i < (3 - equals); i++) {
-		dst[i] = last[i];
-	}
-
-	return (num * 3) - equals;
-}
-
-
 /*
  *	Hex or base64 or bin auto-discovery.
  */
 static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 {
-	size_t decoded;
+
 	uint8_t buffer[64];
 
 	if (min_length >= sizeof(buffer)) return; /* paranoia */
@@ -197,7 +134,9 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	Hex encoding.
 	 */
 	if (vp->length >= (2 * min_length)) {
-		decoded = fr_hex2bin(vp->vp_strvalue, buffer, vp->length >> 1);
+		size_t decoded;
+		decoded = fr_hex2bin(vp->vp_strvalue, buffer,
+				     vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
 			RDEBUG2("Normalizing %s from hex encoding", vp->da->name);
 			memcpy(vp->vp_octets, buffer, decoded);
@@ -211,8 +150,11 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 	 *	and we want to avoid division...
 	 */
 	if ((vp->length * 3) >= ((min_length * 4))) {
-		decoded = base64_decode(vp->vp_strvalue, buffer);
-		if (decoded >= min_length) {
+		ssize_t decoded;
+		decoded = fr_base64_decode(vp->vp_strvalue, vp->length, buffer,
+					   sizeof(buffer));
+		if (decoded < 0) return;
+		if (decoded >= (ssize_t) min_length) {
 			RDEBUG2("Normalizing %s from base64 encoding", vp->da->name);
 			memcpy(vp->vp_octets, buffer, decoded);
 			vp->length = decoded;
@@ -264,7 +206,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 			q = vp->vp_strvalue;
 			p = strchr(q + 1, '}');
 			if (!p) {
-				int decoded;
+				ssize_t decoded;
 
 				/*
 				 *	Password already exists: use
@@ -281,9 +223,12 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 				 *	and re-write the attribute to
 				 *	have the decoded value.
 				 */
-				decoded = base64_decode(vp->vp_strvalue, binbuf);
+				decoded = fr_base64_decode(vp->vp_strvalue,
+							   vp->length,
+							   binbuf,
+							   sizeof(binbuf));
 				if ((decoded > 0) && (binbuf[0] == '{') &&
-				    (memchr(binbuf, '}', decoded) != NULL)) {
+				     memchr(binbuf, '}', decoded)) {
 					memcpy(vp->vp_octets, binbuf, decoded);
 					vp->length = decoded;
 					goto redo;

@@ -640,9 +640,7 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 	
-	fr_base64_encode((uint8_t *) buffer, len, out, outlen);
-
-	return strlen(out);
+	return	fr_base64_encode((uint8_t *) buffer, len, out, outlen);
 }
 
 /**
@@ -653,12 +651,10 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 				 const char *fmt, char *out, size_t outlen)
 {	
-	char *p;
-	
 	char buffer[1024];
-	char decbuf[1024];
+	uint8_t decbuf[1024], *p;
 	
-	size_t declen = sizeof(decbuf);
+	ssize_t declen;
 	size_t freespace = outlen;
 	size_t len;
 
@@ -670,7 +666,8 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 	
-	if (!fr_base64_decode(buffer, len, decbuf, &declen)) {
+	declen = fr_base64_decode(buffer, len, decbuf, sizeof(decbuf));
+	if (declen < 0) {
 		radlog(L_ERR, "rlm_expr: base64 string invalid");
 		*out = '\0';
 		return 0;

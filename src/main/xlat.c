@@ -565,8 +565,6 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 	VALUE_PAIR *vp;
 	uint8_t buffer[MAX_STRING_LEN];
 	ssize_t	ret;
-	size_t	len;
-	size_t	enc;
 	
 	while (isspace((int) *fmt)) fmt++;
 
@@ -580,22 +578,8 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 		*out = 0;
 		return 0;
 	}
-	
-	len = (size_t) ret;
-	
-	enc = FR_BASE64_ENC_LENGTH(len);
-	
-	/*
-	 *	Don't truncate the data.
-	 */
-	if (outlen < (enc + 1)) {
-		*out = 0;
-		return 0;
-	}
-	
-	fr_base64_encode(buffer, len, out, outlen);
 
-	return enc;
+	return fr_base64_encode(buffer, (size_t) ret, out, outlen);
 }
 
 /** Prints the current module processing the request
