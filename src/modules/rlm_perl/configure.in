@@ -6,7 +6,6 @@ AC_DEFUN(modname,[rlm_perl])
 m4_include([ax_with_prog.m4])
 
 if test x$with_[]modname != xno; then
-
 	AC_PROG_CC
 	AC_PROG_CPP
 
@@ -14,65 +13,96 @@ if test x$with_[]modname != xno; then
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
 
-    	AX_WITH_PROG([PERL],[perl],[not-found],[${PATH}:/usr/bin:/usr/local/bin])
+	AX_WITH_PROG([PERL],[perl],[not-found],[${PATH}:/usr/bin:/usr/local/bin])
 	if test "$PERL" = "not-found" -o ! -x "$PERL"; then
-           fail=$fail" perl"
+		fail=$fail" perl"
 	else
-	  old_CFLAGS="$CFLAGS"
-	  
-	  AC_MSG_CHECKING([for Perl ccopts])
-	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed ['s/-arch [^ ]*[ ]*//g'])
-          CFLAGS+=" $perl_cflags"
-          AC_MSG_RESULT([$perl_cflags])
+		old_CFLAGS="${CFLAGS}"
+		old_LIBS="${LIBS}"
+		
+		dnl ############################################################
+		dnl # Call ExtUtils::Embed to get compiler flags
+		dnl ############################################################
+		AC_MSG_NOTICE([Calling ExtUtils::Embed to get 'ccopts'])
+		perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
+		
+		AC_MSG_NOTICE([ExtUtil's ccopts were \"${perl_cflags}\"])
+		
+		perl_cflags=[$(echo "$perl_cflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')]
+		
+		AC_MSG_NOTICE([Sanitized ccopts are \"${perl_cflags}\"])
+		
+		CFLAGS="${perl_cflags} ${CFLAGS}"
+		
+		dnl ############################################################
+		dnl #  Call ExtUtils::Embed to get linker flags
+		dnl ############################################################
+		AC_MSG_NOTICE([Calling ExtUtils::Embed to get 'ldflags'])
+		perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
+		
+		AC_MSG_NOTICE([ExtUtil's ldopts were \"${perl_ldflags}\"])
+		
+		perl_ldflags=[$(echo "$perl_ldflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')]
+		
+		AC_MSG_NOTICE([Sanitized ldopts are \"${perl_ldflags}\"])
 
-	  smart_try_dir=
-	  FR_SMART_CHECK_INCLUDE(EXTERN.h)
-	  if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
-		fail="$fail EXTERN.h"
-		targetname=
-	  fi
+		LIBS="${perl_ldflags} ${LIBS}"
 
-	  FR_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
-	  if test "x$ac_cv_header_perl_h" != "xyes"; then
-		fail="$fail EXTERN.h"
-		targetname=
-	  fi
+		dnl ############################################################
+		dnl #  Check required headers are available
+		dnl ############################################################
+		smart_try_dir=
+		FR_SMART_CHECK_INCLUDE(EXTERN.h)
+		if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
+			fail="$fail EXTERN.h"
+			targetname=
+		fi
 
-	  old_LIBS="$LIBS"
-	  
-	  AC_MSG_CHECKING([for Perl ldopts])
-	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed ['s/-arch [^ ]*[ ]*//g'])
-	  LIBS+=" $perl_ldflags"
-          AC_MSG_RESULT([$perl_ldflags])
-	  
-	  AC_TRY_LINK([extern char boot_DynaLoader();],
-		      [ boot_DynaLoader()],
-		      BROKEN=,
-		      BROKEN="yes")
+		FR_SMART_CHECK_INCLUDE(perl.h, [#include <EXTERN.h>])
+		if test "x$ac_cv_header_perl_h" != "xyes"; then
+			fail="$fail EXTERN.h"
+			targetname=
+		fi
+	
+		dnl ############################################################
+		dnl #  Link test functions
+		dnl ############################################################
+		AC_MSG_CHECKING([we can link to boot_DynaLoader])	
+		AC_TRY_LINK([],
+		[
+			extern char boot_DynaLoader();
+			boot_DynaLoader();
+		],
+		[LINKS="yes"], [LINKS="no"])
 
-	  if test "x$BROKEN" != "x"; then
-		fail="$fail libperl.so"
-		targetname=
-          fi
+		AC_MSG_RESULT($LINKS)
+		if test "x$LINKS" == "xno"; then
+			fail="$fail libperl.so"
+			targetname=
+		fi
 
-	  AC_TRY_LINK([extern char Perl_hv_store();],
-		      [ Perl_hv_store()],
-		      BROKEN=,
-		      BROKEN="yes")
+		AC_MSG_CHECKING([we can link to Perl_hv_store()])
+		AC_TRY_LINK([],
+		[
+			extern char Perl_hv_store();
+			Perl_hv_store();
+		],
+		[LINKS="yes"], [LINKS="no"])
 
-	 if test "x$BROKEN" != "x"; then
-	 	fail="$fail libperl.so"
-		targetname=
-	  fi
+		AC_MSG_RESULT($LINKS)
+		if test "x$LINKS" == "xno"; then
+			fail="$fail libperl.so"
+			targetname=
+		fi
 
-          CFLAGS=$old_CFLAGS
-          LIBS=$old_libs
-        fi
-	targetname=modname
-
+		CFLAGS="$old_CFLAGS"
+		LIBS="$old_LIBS"
+		
+		targetname=modname
+	fi
 else
-	targetname=
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+		targetname=
+		echo \*\*\* module modname is disabled.  # keep this!  Don't change!
 fi
 
 dnl  Don't change this section.

@@ -1864,7 +1864,6 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 if test x$with_rlm_perl != xno; then
-
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -2929,18 +2928,40 @@ fi
 
 
 	if test "$PERL" = "not-found" -o ! -x "$PERL"; then
-           fail=$fail" perl"
+		fail=$fail" perl"
 	else
-	  old_CFLAGS="$CFLAGS"
+		old_CFLAGS="${CFLAGS}"
+		old_LIBS="${LIBS}"
 
-	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Perl ccopts" >&5
-$as_echo_n "checking for Perl ccopts... " >&6; }
-	  perl_cflags=$($PERL -MExtUtils::Embed -e ccopts | sed 's/-arch [^ ]*[ ]*//g')
-          CFLAGS+=" $perl_cflags"
-          { $as_echo "$as_me:${as_lineno-$LINENO}: result: $perl_cflags" >&5
-$as_echo "$perl_cflags" >&6; }
+								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ccopts'" >&5
+$as_echo "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
+		perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
 
-	  smart_try_dir=
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${perl_cflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ccopts were \"${perl_cflags}\"" >&6;}
+
+		perl_cflags=$(echo "$perl_cflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${perl_cflags}\"" >&5
+$as_echo "$as_me: Sanitized ccopts are \"${perl_cflags}\"" >&6;}
+
+		CFLAGS="${perl_cflags} ${CFLAGS}"
+
+								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ldflags'" >&5
+$as_echo "$as_me: Calling ExtUtils::Embed to get 'ldflags'" >&6;}
+		perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${perl_ldflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ldopts were \"${perl_ldflags}\"" >&6;}
+
+		perl_ldflags=$(echo "$perl_ldflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldopts are \"${perl_ldflags}\"" >&5
+$as_echo "$as_me: Sanitized ldopts are \"${perl_ldflags}\"" >&6;}
+
+		LIBS="${perl_ldflags} ${LIBS}"
+
+								smart_try_dir=
 
 
 
@@ -3068,10 +3089,10 @@ else
 $as_echo "no" >&6; }
 fi
 
-	  if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
-		fail="$fail EXTERN.h"
-		targetname=
-	  fi
+		if test "x$ac_cv_header_EXTERN_h" != "xyes"; then
+			fail="$fail EXTERN.h"
+			targetname=
+		fi
 
 
 
@@ -3199,76 +3220,81 @@ else
 $as_echo "no" >&6; }
 fi
 
-	  if test "x$ac_cv_header_perl_h" != "xyes"; then
-		fail="$fail EXTERN.h"
-		targetname=
-	  fi
+		if test "x$ac_cv_header_perl_h" != "xyes"; then
+			fail="$fail EXTERN.h"
+			targetname=
+		fi
 
-	  old_LIBS="$LIBS"
-
-	  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Perl ldopts" >&5
-$as_echo_n "checking for Perl ldopts... " >&6; }
-	  perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts | sed 's/-arch [^ ]*[ ]*//g')
-	  LIBS+=" $perl_ldflags"
-          { $as_echo "$as_me:${as_lineno-$LINENO}: result: $perl_ldflags" >&5
-$as_echo "$perl_ldflags" >&6; }
-
-	  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+								{ $as_echo "$as_me:${as_lineno-$LINENO}: checking we can link to boot_DynaLoader" >&5
+$as_echo_n "checking we can link to boot_DynaLoader... " >&6; }
+		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char boot_DynaLoader();
+
 int
 main ()
 {
- boot_DynaLoader()
+
+			extern char boot_DynaLoader();
+			boot_DynaLoader();
+
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  BROKEN=
+  LINKS="yes"
 else
-  BROKEN="yes"
+  LINKS="no"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-	  if test "x$BROKEN" != "x"; then
-		fail="$fail libperl.so"
-		targetname=
-          fi
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
+$as_echo "$LINKS" >&6; }
+		if test "x$LINKS" == "xno"; then
+			fail="$fail libperl.so"
+			targetname=
+		fi
 
-	  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: checking we can link to Perl_hv_store()" >&5
+$as_echo_n "checking we can link to Perl_hv_store()... " >&6; }
+		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char Perl_hv_store();
+
 int
 main ()
 {
- Perl_hv_store()
+
+			extern char Perl_hv_store();
+			Perl_hv_store();
+
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  BROKEN=
+  LINKS="yes"
 else
-  BROKEN="yes"
+  LINKS="no"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 
-	 if test "x$BROKEN" != "x"; then
-	 	fail="$fail libperl.so"
-		targetname=
-	  fi
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $LINKS" >&5
+$as_echo "$LINKS" >&6; }
+		if test "x$LINKS" == "xno"; then
+			fail="$fail libperl.so"
+			targetname=
+		fi
 
-          CFLAGS=$old_CFLAGS
-          LIBS=$old_libs
-        fi
-	targetname=rlm_perl
+		CFLAGS="$old_CFLAGS"
+		LIBS="$old_LIBS"
 
+		targetname=rlm_perl
+	fi
 else
-	targetname=
-	echo \*\*\* module rlm_perl is disabled.  # keep this!  Don't change!
+		targetname=
+		echo \*\*\* module rlm_perl is disabled.  # keep this!  Don't change!
 fi
 
 if test x"$fail" != x""; then
