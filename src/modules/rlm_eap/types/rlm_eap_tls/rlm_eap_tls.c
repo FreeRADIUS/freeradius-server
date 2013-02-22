@@ -41,19 +41,6 @@ RCSID("$Id$")
 #include <sys/stat.h>
 #endif
 
-/*
- *	Detach the EAP-TLS module.
- */
-static int eaptls_detach(void *arg)
-{
-	rlm_eap_tls_t *inst = (rlm_eap_tls_t *) arg;
-
-	free(inst);
-
-	return 0;
-}
-
-
 static CONF_PARSER module_config[] = {
 	{ "tls", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_tls_t, tls_conf_name), NULL, NULL },
@@ -75,15 +62,10 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	/*
 	 *	Parse the config file & get all the configured values
 	 */
-	inst = rad_malloc(sizeof(*inst));
-	if (!inst) {
-		radlog(L_ERR, "rlm_eap_tls: out of memory");
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(cs, rlm_eap_tls_t);
+	if (!inst) return -1;
 
 	if (cf_section_parse(cs, inst, module_config) < 0) {
-		eaptls_detach(inst);
 		return -1;
 	}
 
@@ -91,11 +73,8 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 
 	if (!inst->tls_conf) {
 		radlog(L_ERR, "rlm_eap_tls: Failed initializing SSL context");
-		eaptls_detach(inst);
 		return -1;
 	}
-
-	*instance = inst;
 
 	return 0;
 }
@@ -283,5 +262,5 @@ EAP_TYPE rlm_eap_tls = {
 	eaptls_initiate,		/* Start the initial request */
 	NULL,				/* authorization */
 	eaptls_authenticate,		/* authentication */
-	eaptls_detach			/* detach */
+	NULL				/* detach */
 };

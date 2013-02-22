@@ -79,20 +79,11 @@ eap_pwd_detach (void *arg)
     EAP_PWD_CONF *conf;
     eap_pwd_t *inst;
 
-    inst = (eap_pwd_t *)arg;
-    if (inst == NULL) {
-        return -1;
-    }
-    conf = inst->conf;
-    if (conf != NULL) {
-        memset(conf, 0, sizeof(*conf));
-        free(inst->conf);
-        inst->conf = NULL;
-    }
-    if (inst->bnctx != NULL) {
+    inst = (eap_pwd_t *) arg;
+
+    if (inst->bnctx) {
         BN_CTX_free(inst->bnctx);
     }
-    free(inst);
 
     return 0;
 }
@@ -103,28 +94,20 @@ eap_pwd_attach (CONF_SECTION *cs, void **instance)
     EAP_PWD_CONF *conf;
     eap_pwd_t *inst;
 
-    if ((inst = (eap_pwd_t *)malloc(sizeof(*inst))) == NULL) {
-        radlog(L_ERR, "rlm_eap_pwd: attach, out of memory (1)");
-        return -1;
-    }
-    if ((conf = (EAP_PWD_CONF *)malloc(sizeof(*conf))) == NULL) {
-        radlog(L_ERR, "rlm_eap_pwd: attach, out of memory (2)");
-        free(inst);
-        return -1;
-    }
-    memset(conf, 0, sizeof(*conf));
-    inst->conf = conf;
+    *instance = inst = talloc_zero(cs, eap_pwd_t);
+    if (!inst) return -1;
+
+    inst->conf = talloc_zero(inst, EAP_PWD_CONF);
+    if (!inst->conf) return -1;
+
     if (cf_section_parse(cs, conf, pwd_module_config) < 0) {
-        radlog(L_ERR, "rlm_eap_pwd: failed to initialize module");
-        eap_pwd_detach(inst);
         return -1;
     }
+
     if ((inst->bnctx = BN_CTX_new()) == NULL) {
         radlog(L_ERR, "rlm_eap_pwd: failed to get BN context!");
-        eap_pwd_detach(inst);
         return -1;
     }
-    *instance = inst;
 
     return 0;
 }

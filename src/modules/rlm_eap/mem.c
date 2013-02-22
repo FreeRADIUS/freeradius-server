@@ -249,15 +249,6 @@ done:
 	}
 }
 
-void eaptype_free(EAP_TYPES *i)
-{
-	if (i->type->detach) (i->type->detach)(i->type_data);
-	i->type_data = NULL;
-	if (i->handle) lt_dlclose(i->handle);
-	free(i);
-}
-
-
 void eaplist_free(rlm_eap_t *inst)
 {
 	EAP_HANDLER *node, *next;
@@ -371,6 +362,8 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 				inst->session_tail = NULL;
 			}
 			eap_handler_free(inst, handler);
+		} else {
+			break;
 		}
 	}
 }

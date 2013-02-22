@@ -122,11 +122,10 @@ static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
 
 static int ikev2_detach(void *type_data)
 {
-    radlog(L_DBG,IKEv2_LOG_PREFIX "dettach");
-    struct ikev2_ctx *data=(struct ikev2_ctx*)type_data;
-    if(data) {
-	Free_ikev2_ctx(data);
-	data=NULL;
+    struct ikev2_ctx *data = (struct ikev2_ctx *) type_data;
+    if (data) {
+	    Free_ikev2_ctx(data);
+	    data=NULL;
     }
     return 0;
 }
@@ -164,7 +163,6 @@ static void ikev2_free_opaque(void *opaque)
 
 static int ikev2_attach(CONF_SECTION *conf, void **type_data)
 {
-    radlog(L_DBG,IKEv2_LOG_PREFIX "attach");
     char *default_authtype=NULL;
     char *usersfilename=NULL;
     char *server_authtype=NULL;
@@ -215,22 +213,17 @@ static int ikev2_attach(CONF_SECTION *conf, void **type_data)
 
     i2 = Create_ikev2_ctx();
     if (i2 == NULL) {
-        radlog(L_ERR,IKEv2_LOG_PREFIX "Error: Can't allocate mem for i2.");
 	return -1;
     }
-    *type_data=i2;
+    *type_data =i2;
 
     if (cf_section_parse(conf,i2, module_config) < 0) {
-	ikev2_detach(i2);
 	return -1;
     }
     hexalize(&i2->id,&i2->idlen);
-    //hexalize(&i2->pwd,&i2->pwdlen);
-    
 
     i2->authtype=rad_get_authtype(server_authtype);
     if(!i2->id) {
-        ikev2_detach(i2);
         radlog(L_ERR,IKEv2_LOG_PREFIX "'id' configuration option is required!!!");
         return -1;
     }
@@ -239,18 +232,15 @@ static int ikev2_attach(CONF_SECTION *conf, void **type_data)
 	    break;
 	case IKEv2_AUTH_CERT:
 	    if(!i2->certfile || !i2->pkfile) {
-		ikev2_detach(i2);
 		radlog(L_ERR,IKEv2_LOG_PREFIX "'certificate_file' and 'private_key_file' items are required for 'cert' auth type");
 		return -1;
 	    }
 	    if(!file_exists(i2->certfile)) {
 		radlog(L_ERR,IKEv2_LOG_PREFIX "Can not open 'certificate_file' %s",i2->certfile);
-		ikev2_detach(i2);
 		return -1;
 	    }
 	    if(!file_exists(i2->pkfile)) {
 		radlog(L_ERR,IKEv2_LOG_PREFIX "Can not open 'private_key_file' %s",i2->pkfile);
-		ikev2_detach(i2);
 		return -1;
 	    }
 	    
@@ -261,54 +251,35 @@ static int ikev2_attach(CONF_SECTION *conf, void **type_data)
     } else {
 	if(!file_exists(i2->trusted)) {
 	    radlog(L_ERR,IKEv2_LOG_PREFIX "Can not open 'CA_file' %s",i2->trusted);
-	    ikev2_detach(i2);
 	    return -1;
 	}
     }
     if(i2->crl_file) {
 	if(!file_exists(i2->crl_file)) {
 	    radlog(L_ERR,IKEv2_LOG_PREFIX "Can not open 'crl_file' %s",i2->crl_file);
-	    ikev2_detach(i2);
 	    return -1;
 	}
-	radlog(L_DBG,IKEv2_LOG_PREFIX "Using CRL file: %s",i2->crl_file);
     }
     
     i2->idtype=IdTypeFromName(server_idtype);
     if(i2->idtype<=0) {
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Unsupported 'idtype': %s",server_idtype);
-	free(server_idtype);
-	server_idtype=NULL;
-	ikev2_detach(i2);
 	return -1;
     }
 
-    free(server_idtype);
-    server_idtype=NULL;
-    
-    radlog(L_DBG,IKEv2_LOG_PREFIX "Reading proposals ...");
     if(rad_load_proposals(i2,conf)) {
-	ikev2_detach(i2);
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Failed to load proposals");
 	return -1;
     }
 
     int res=rad_load_credentials(i2,usersfilename,default_authtype);
-    free(default_authtype);
-    default_authtype=NULL;
-    free(usersfilename);
-    usersfilename=NULL;
-    free(server_authtype);
-    server_authtype=NULL;
     if(res==-1) {
-	ikev2_detach(i2);
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading users credentials");
 	return -1;
     }
     
     i2->x509_store = NULL;
     if(CertInit(i2)){
-        ikev2_detach(i2);
         radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading certs/crl");
         return -1;
     }

@@ -110,17 +110,6 @@ static CONF_PARSER module_config[] = {
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
-/*
- *	Detach the module.
- */
-static int eappeap_detach(void *arg)
-{
-	rlm_eap_peap_t *inst = (rlm_eap_peap_t *) arg;
-
-	free(inst);
-
-	return 0;
-}
 
 /*
  *	Attach the module.
@@ -129,18 +118,13 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_peap_t		*inst;
 
-	inst = malloc(sizeof(*inst));
-	if (!inst) {
-		radlog(L_ERR, "rlm_eap_peap: out of memory");
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(cs, rlm_eap_peap_t);
+	if (!inst) return -1;
 
 	/*
 	 *	Parse the configuration attributes.
 	 */
 	if (cf_section_parse(cs, inst, module_config) < 0) {
-		eappeap_detach(inst);
 		return -1;
 	}
 
@@ -152,7 +136,6 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 	if (inst->default_eap_type < 0) {
 		radlog(L_ERR, "rlm_eap_peap: Unknown EAP type %s",
 		       inst->default_eap_type_name);
-		eappeap_detach(inst);
 		return -1;
 	}
 
@@ -164,11 +147,8 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 
 	if (!inst->tls_conf) {
 		radlog(L_ERR, "rlm_eap_peap: Failed initializing SSL context");
-		eappeap_detach(inst);
 		return -1;
 	}
-
-	*instance = inst;
 
 	return 0;
 }
@@ -445,5 +425,5 @@ EAP_TYPE rlm_eap_peap = {
 	eappeap_initiate,		/* Start the initial request */
 	NULL,				/* authorization */
 	eappeap_authenticate,		/* authentication */
-	eappeap_detach			/* detach */
+	NULL				/* detach */
 };

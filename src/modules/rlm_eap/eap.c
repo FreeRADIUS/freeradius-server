@@ -68,6 +68,18 @@ static const char *eap_codes[] = {
   "failure"
 };
 
+static int eaptype_free(void *ctx)
+{
+	EAP_TYPES *node;
+
+	node = talloc_get_type_abort(ctx, EAP_TYPES);
+
+	if (node->type->detach) (node->type->detach)(node->type_data);
+	if (node->handle) lt_dlclose(node->handle);
+
+	return 0;
+}
+
 /*
  * Load all the required eap authentication types.
  * Get all the supported EAP-types from config file.
@@ -83,12 +95,10 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eaptype_name);
 
 	/* Make room for the EAP-Type */
-	node = (EAP_TYPES *)malloc(sizeof(EAP_TYPES));
-	if (node == NULL) {
-		radlog(L_ERR, "rlm_eap: out of memory");
-		return -1;
-	}
-	memset(node, 0, sizeof(*node));
+	*type = node = talloc_zero(cs, EAP_TYPES);
+	if (!node) return -1;
+
+	talloc_set_destructor((void *) node, eaptype_free);
 
 	/* fill in the structure */
 	node->cs = cs;
@@ -111,7 +121,6 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	/* Link the loaded EAP-Type */
 	node->handle = lt_dlopenext(buffer);
 	if (node->handle == NULL) {
-		free(node);
 		radlog(L_ERR, "rlm_eap: Failed to link EAP-Type/%s: %s",
 		       eaptype_name, lt_dlerror());
 		return -1;
@@ -121,8 +130,6 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	if (!node->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to %s structure in %s: %s",
 				buffer, eaptype_name, lt_dlerror());
-		lt_dlclose(node->handle);	/* ignore any errors */
-		free(node);
 		return -1;
 	}
 
@@ -138,11 +145,13 @@ open_self:
 
 		radlog(L_ERR, "rlm_eap: Failed to initialize type %s",
 		       eaptype_name);
-		lt_dlclose(node->handle);
-		free(node);
+		talloc_steal(node, node->type_data);
 		return -1;
 	}
 
+	if (node->type_data) {
+		talloc_steal(node, node->type_data);
+	}
 	*type = node;
 	return 0;
 }

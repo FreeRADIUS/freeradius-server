@@ -315,15 +315,6 @@ static int tnc_authenticate(void *type_arg, EAP_HANDLER *handler)
 	return 1;
 }
 
-/*
- *	Detach the EAP-TNC module.
- */
-static int tnc_detach(void *arg)
-{
-	free(arg);
-	return 0;
-}
-
 
 static CONF_PARSER module_config[] = {
 	{ "vlan_access", PW_TYPE_STRING_PTR,
@@ -344,23 +335,19 @@ static int tnc_attach(CONF_SECTION *cs, void **instance)
 {
 	rlm_eap_tnc_t *inst;
 
-	inst = malloc(sizeof(*inst));
+	*instance = inst = talloc_zero(cs, rlm_eap_tnc_t);
 	if (!inst) return -1;
-	memset(inst, 0, sizeof(*inst));
 
 	if (cf_section_parse(cs, inst, module_config) < 0) {
-		tnc_detach(inst);
 		return -1;
 	}
 
 	
 	if (!inst->vlan_access || !inst->vlan_isolate) {
 		radlog(L_ERR, "rlm_eap_tnc: Must set both vlan_access and vlan_isolate");
-		tnc_detach(inst);
 		return -1;
 	}
 
-	*instance = inst;
 	return 0;
 }
 
@@ -374,5 +361,5 @@ EAP_TYPE rlm_eap_tnc = {
 	tnc_initiate,			/* Start the initial request */
 	NULL,				/* authorization */
 	tnc_authenticate,		/* authentication */
-	tnc_detach		      	/* detach */
+	NULL			      	/* detach */
 };

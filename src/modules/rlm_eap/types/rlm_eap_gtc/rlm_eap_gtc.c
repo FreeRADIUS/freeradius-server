@@ -52,18 +52,6 @@ static CONF_PARSER module_config[] = {
 };
 
 
-/*
- *	Detach the module.
- */
-static int gtc_detach(void *arg)
-{
-	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) arg;
-
-
-	free(inst);
-
-	return 0;
-}
 
 /*
  *	Attach the module.
@@ -73,18 +61,13 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 	rlm_eap_gtc_t	*inst;
 	DICT_VALUE	*dval;
 
-	inst = malloc(sizeof(*inst));
-	if (!inst) {
-		radlog(L_ERR, "rlm_eap_gtc: out of memory");
-		return -1;
-	}
-	memset(inst, 0, sizeof(*inst));
+	*instance = inst = talloc_zero(cs, rlm_eap_gtc_t);
+	if (!inst) return -1;
 
 	/*
 	 *	Parse the configuration attributes.
 	 */
 	if (cf_section_parse(cs, inst, module_config) < 0) {
-		gtc_detach(inst);
 		return -1;
 	}
 
@@ -92,13 +75,10 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 	if (!dval) {
 		radlog(L_ERR, "rlm_eap_gtc: Unknown Auth-Type %s",
 		       inst->auth_type_name);
-		gtc_detach(inst);
 		return -1;
 	}
 
 	inst->auth_type = dval->value;
-
-	*instance = inst;
 
 	return 0;
 }
@@ -274,5 +254,5 @@ EAP_TYPE rlm_eap_gtc = {
 	gtc_initiate,			/* Start the initial request */
 	NULL,				/* authorization */
 	gtc_authenticate,		/* authentication */
-	gtc_detach     			/* detach */
+	NULL     			/* detach */
 };

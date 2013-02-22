@@ -90,7 +90,6 @@ typedef struct rlm_eap_t {
 /* EAP-Type */
 int      	eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs);
 int       	eaptype_select(rlm_eap_t *inst, EAP_HANDLER *h);
-void		eaptype_free(EAP_TYPES *tl);
 
 /* EAP */
 int  		eap_start(rlm_eap_t *inst, REQUEST *request);

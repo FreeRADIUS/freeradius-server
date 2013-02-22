@@ -51,7 +51,6 @@ static const CONF_PARSER module_config[] = {
 static int eap_detach(void *instance)
 {
 	rlm_eap_t *inst;
-	int i;
 
 	inst = (rlm_eap_t *)instance;
 
@@ -64,11 +63,6 @@ static int eap_detach(void *instance)
 	if (inst->handler_tree) rbtree_free(inst->handler_tree);
 	inst->session_tree = NULL;
 	eaplist_free(inst);
-
-	for (i = 0; i < PW_EAP_MAX_TYPES; i++) {
-		if (inst->types[i]) eaptype_free(inst->types[i]);
-		inst->types[i] = NULL;
-	}
 
 	return 0;
 }
@@ -191,10 +185,12 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		 *	Load the type.
 		 */
 		if (eaptype_load(&inst->types[eap_type], eap_type, scs) < 0) {
+			talloc_steal(inst, inst->types[eap_type]);
 			eap_detach(inst);
 			return -1;
 		}
 
+		talloc_steal(inst, inst->types[eap_type]);
 		num_types++;	/* successfully loaded one more types */
 	}
 
