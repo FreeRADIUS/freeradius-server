@@ -414,6 +414,14 @@ static void *lt_malloc(size_t size)
 	return out;
 }
 
+static void lt_const_free(const void *ptr)
+{
+	void *tmp;
+	
+	memcpy(&tmp, &ptr, sizeof(tmp));
+	free(tmp);
+}
+
 static void init_count_chars(count_chars *cc)
 {
 	cc->vals = (const char**) lt_malloc(PATH_MAX*sizeof(char*));
@@ -1307,7 +1315,7 @@ static void add_rpath_file(count_chars *cc, const char *arg)
 	path = load_install_path(arg);
 	if (path) {
 		add_rpath(cc, path);
-	free(path);
+		lt_const_free(path);
 	}
 }
 
@@ -1318,7 +1326,7 @@ static void add_rpath_noinstall(count_chars *cc, const char *arg, int pathlen)
 	path = load_noinstall_path(arg, pathlen);
 	if (path) {
 		add_rpath(cc, path);
-		free(path);
+		lt_const_free(path);
 	}
 }
 #endif
