@@ -19,9 +19,11 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #if !defined(__MINGW32__)
-#include <sys/wait.h>
+#  include <sys/wait.h>
 #endif
+
 #include <unistd.h>
 #include <dirent.h>
 #include <errno.h>
@@ -36,15 +38,15 @@
 #  define TRUNCATE_DLL_NAME
 #  define DYNAMIC_LIB_EXT		"dll"
 #  define EXE_EX			".exe"
-
+/* OMF is the native format under OS/2 */
 #  if USE_OMF
-	 /* OMF is the native format under OS/2 */
+
 #    define STATIC_LIB_EXT		"lib"
 #    define OBJECT_EXT			"obj"
 #    define LIBRARIAN			"emxomfar"
 #    define LIBRARIAN_OPTS		"cr"
 #  else
-	 /* but the alternative, a.out, can fork() which is sometimes necessary */
+/* but the alternative, a.out, can fork() which is sometimes necessary */
 #    define STATIC_LIB_EXT		"a"
 #    define OBJECT_EXT			"o"
 #    define LIBRARIAN			"ar"
@@ -176,12 +178,12 @@
 #define CXX				"g++"
 #endif
 
-#ifndef LINK_c
-#define LINK_c				"gcc"
+#ifndef LINK_C
+#define LINK_C				"gcc"
 #endif
 
-#ifndef LINK_cxx
-#define LINK_cxx			"g++"
+#ifndef LINK_CXX
+#define LINK_CXX			"g++"
 #endif
 
 #ifndef LIBDIR
@@ -210,42 +212,46 @@
 /* We want to say we are libtool 1.4 for shlibtool compatibility. */
 #define VERSION "1.4"
 
-enum tool_mode_t {
-	mUnknown,
-	mCompile,
-	mLink,
-	mExecute,
-	mInstall,
+#define DEBUG(fmt, ...) if(cmd->options.debug) printf(fmt, ## __VA_ARGS__)
+#define NOTICE(fmt, ...) if(!cmd->options.silent) printf(fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...) fprintf(stderr, fmt, ## __VA_ARGS__)
+
+enum tool_mode {
+	MODE_UNKNOWN,
+	MODE_COMPILE,
+	MODE_LINK,
+	MODE_EXECUTE,
+	MODE_INSTALL,
 };
 
-enum output_t {
-	otGeneral,
-	otObject,
-	otProgram,
-	otLibrary,
-	otStaticLibraryOnly,
-	otDynamicLibraryOnly,
-	otModule,
+enum output_type {
+	OUT_GENERAL,
+	OUT_OBJECT,
+	OUT_PROGRAM,
+	OUT_LIB,
+	OUT_STATIC_LIB_ONLY,
+	OUT_DYNAMIC_LIB_ONLY,
+	OUT_MODULE,
 };
 
-enum pic_mode_e {
-	pic_UNKNOWN,
-	pic_PREFER,
-	pic_AVOID,
+enum pic_mode {
+	PIC_UNKNOWN,
+	PIC_PREFER,
+	PIC_AVOID,
 };
 
-enum shared_mode_e {
-	share_UNSET,
-	share_STATIC,
-	share_SHARED,
+enum shared_mode {
+	SHARE_UNSET,
+	SHARE_STATIC,
+	SHARE_SHARED,
 };
 
 enum lib_type {
-	type_UNKNOWN,
-	type_STATIC_LIB,
-	type_DYNAMIC_LIB,
-	type_MODULE_LIB,
-	type_OBJECT,
+	TYPE_UKNOWN,
+	TYPE_STATIC_LIB,
+	TYPE_DYNAMIC_LIB,
+	TYPE_MODULE_LIB,
+	TYPE_OBJECT,
 };
 
 typedef struct {
@@ -267,22 +273,22 @@ typedef struct {
 typedef struct {
 	int silent;
 	int debug;
-	enum shared_mode_e shared;
+	enum shared_mode shared;
 	int export_all;
 	int dry_run;
-	enum pic_mode_e pic_mode;
+	enum pic_mode pic_mode;
 	int export_dynamic;
 	int no_install;
 } options_t;
 
 typedef struct {
-	enum tool_mode_t mode;
-	enum output_t output;
+	enum tool_mode mode;
+	enum output_type output;
 	options_t options;
 
-	char *output_name;
-	char *fake_output_name;
-	char *basename;
+	const char *output_name;
+	const char *fake_output_name;
+	const char *basename;
 
 	const char *install_path;
 	const char *compiler;
@@ -360,30 +366,30 @@ static void usage(int code)
  *
  * This is portable to any POSIX-compliant system has /dev/null
  */
-static FILE *f=NULL;
-static int vsnprintf( char *str, size_t n, const char *fmt, va_list ap )
+static FILE *f = NULL;
+static int vsnprintf(char *str, size_t n, const char *fmt, va_list ap)
 {
 	int res;
 
-	if (f == NULL) {
+	if (!f) {
 		f = fopen("/dev/null","w");
 	}
 
-	if (f == NULL) {
+	if (!f) {
 		return -1;
 	}
 
-	setvbuf( f, str, _IOFBF, n );
+	setvbuf(f, str, _IOFBF, n);
 
-	res = vfprintf( f, fmt, ap );
+	res = vfprintf(f, fmt, ap);
 
-	if ( res > 0 && res < n ) {
+	if ((res > 0) && (res < n)) {
 		res = vsprintf( str, fmt, ap );
 	}
 	return res;
 }
 
-static int snprintf( char *str, size_t n, const char *fmt, ... )
+static int snprintf(char *str, size_t n, const char *fmt, ...)
 {
 	va_list ap;
 	int res;
@@ -395,17 +401,42 @@ static int snprintf( char *str, size_t n, const char *fmt, ... )
 }
 #endif
 
+static void *lt_malloc(size_t size)
+{
+	void *out;
+	
+	out = malloc(size);
+	if (!out) {
+		ERROR("Failed allocating %zu bytes, OOM", size);
+		exit(1);
+	}
+	
+	return out;
+}
+
 static void init_count_chars(count_chars *cc)
 {
-	cc->vals = (const char**)malloc(PATH_MAX*sizeof(char*));
+	cc->vals = (const char**) lt_malloc(PATH_MAX*sizeof(char*));
 	cc->num = 0;
+}
+
+static count_chars *alloc_countchars()
+{
+	count_chars *out;
+	out = lt_malloc(sizeof(count_chars));
+	if (!out) {
+		exit(1);
+	}
+	init_count_chars(out);
+	
+	return out;
 }
 
 static void clear_count_chars(count_chars *cc)
 {
 	int i;
 	for (i = 0; i < cc->num; i++) {
-		cc->vals[i] = 0;
+		cc->vals[i] = NULL;
 	}
 
 	cc->num = 0;
@@ -458,7 +489,7 @@ static const char *flatten_count_chars(count_chars *cc, int space)
 		}
 	}
 
-	newval = (char*)malloc(size + 1);
+	newval = (char*)lt_malloc(size + 1);
 	newval[0] = 0;
 
 	for (i = 0; i < cc->num; i++) {
@@ -480,7 +511,7 @@ static char *shell_esc(const char *str)
 	unsigned char *d;
 	const unsigned char *s;
 
-	cmd = (char *)malloc(2 * strlen(str) + 3);
+	cmd = (char *)lt_malloc(2 * strlen(str) + 3);
 	d = (unsigned char *)cmd;
 	s = (const unsigned char *)str;
 
@@ -513,9 +544,9 @@ static int external_spawn(command_t *cmd, const char *file, const char **argv)
 
 	if (!cmd->options.silent) {
 		const char **argument = argv;
-		printf("Executing: ");
+		NOTICE("Executing: ");
 		while (*argument) {
-			printf("%s ", *argument);
+			NOTICE("%s ", *argument);
 			argument++;
 		}
 		puts("");
@@ -545,7 +576,7 @@ static int external_spawn(command_t *cmd, const char *file, const char **argv)
 #endif
 }
 
-static int run_command(command_t *cmd_data, count_chars *cc)
+static int run_command(command_t *cmd, count_chars *cc)
 {
 	int ret;
 	char *command;
@@ -556,11 +587,11 @@ static int run_command(command_t *cmd_data, count_chars *cc)
 
 	init_count_chars(&tmpcc);
 
-	if (cmd_data->program) {
-		push_count_chars(&tmpcc, cmd_data->program);
+	if (cmd->program) {
+		push_count_chars(&tmpcc, cmd->program);
 	}
 
-	append_count_chars(&tmpcc, cmd_data->program_opts);
+	append_count_chars(&tmpcc, cmd->program_opts);
 
 	append_count_chars(&tmpcc, cc);
 
@@ -574,7 +605,7 @@ static int run_command(command_t *cmd_data, count_chars *cc)
 	spawn_args[1] = "-c";
 	spawn_args[2] = command;
 	spawn_args[3] = NULL;
-	ret = external_spawn(cmd_data, spawn_args[0], spawn_args);
+	ret = external_spawn(cmd, spawn_args[0], spawn_args);
 	
 	free(command);
 	
@@ -636,17 +667,17 @@ static void print_config(const char *value)
 /*
  * Add a directory to the runtime library search path.
  */
-static void add_runtimedirlib(char *arg, command_t *cmd_data)
+static void add_runtime_dir_lib(const char *arg, command_t *cmd)
 {
 #ifdef RPATH
-	add_rpath(cmd_data->shared_opts.dependencies, arg);
+	add_rpath(cmd->shared_opts.dependencies, arg);
 #else
 	arg = arg;			/* -Wunused */
-	cmd_data = cmd_data;
+	cmd = cmd;
 #endif
 }
 
-static int parse_long_opt(char *arg, command_t *cmd_data)
+static int parse_long_opt(const char *arg, command_t *cmd)
 {
 	char *equal_pos = strchr(arg, '=');
 	char var[50];
@@ -665,58 +696,59 @@ static int parse_long_opt(char *arg, command_t *cmd_data)
 	}
 
 	if (strcmp(var, "silent") == 0) {
-		cmd_data->options.silent = 1;
+		cmd->options.silent = 1;
 	} else if (strcmp(var, "quiet") == 0) {
-		cmd_data->options.silent = 1;
+		cmd->options.silent = 1;
 	} else if (strcmp(var, "debug") == 0) {
-		cmd_data->options.debug = 1;
+		cmd->options.debug = 1;
 	} else if (strcmp(var, "mode") == 0) {
-		if (cmd_data->mode != mUnknown) {
-			fprintf(stderr, "Cannot set --mode twice\n");
+		if (cmd->mode != MODE_UNKNOWN) {
+			ERROR("Cannot set --mode twice\n");
 			exit(1);
 		}
 
 		if (strcmp(value, "compile") == 0) {
-			cmd_data->mode = mCompile;
-			cmd_data->output = otObject;
+			cmd->mode = MODE_COMPILE;
+			cmd->output = OUT_OBJECT;
 
 		} else if (strcmp(value, "link") == 0) {
-			cmd_data->mode = mLink;
-			cmd_data->output = otLibrary;
+			cmd->mode = MODE_LINK;
+			cmd->output = OUT_LIB;
 
 		} else if (strcmp(value, "install") == 0) {
-			cmd_data->mode = mInstall;
+			cmd->mode = MODE_INSTALL;
 
 		} else if (strcmp(value, "execute") == 0) {
-			cmd_data->mode = mExecute;
+			cmd->mode = MODE_EXECUTE;
 
 		} else {
-			printf("Unknown mode \"%s\"\n", value);
+			ERROR("Unknown mode \"%s\"\n", value);
+			exit(1);
 		}
+		
 	} else if (strcmp(var, "shared") == 0) {
-		if ((cmd_data->mode == mLink) && (cmd_data->output == otGeneral)) {
-			cmd_data->output = otDynamicLibraryOnly;
+		if ((cmd->mode == MODE_LINK) && (cmd->output == OUT_GENERAL)) {
+			cmd->output = OUT_DYNAMIC_LIB_ONLY;
 		}
-		cmd_data->options.shared = share_SHARED;
+		cmd->options.shared = SHARE_SHARED;
+		
 	} else if (strcmp(var, "export-all") == 0) {
-		cmd_data->options.export_all = 1;
+		cmd->options.export_all = 1;
+		
 	} else if (strcmp(var, "dry-run") == 0) {
-		printf("Dry-run mode on!\n");
-		cmd_data->options.dry_run = 1;
+		NOTICE("Dry-run mode on!\n");
+		cmd->options.dry_run = 1;
+		
 	} else if (strcmp(var, "version") == 0) {
-		printf("Version " VERSION "\n");
+		NOTICE("Version " VERSION "\n");
+		
 	} else if (strcmp(var, "help") == 0) {
 		usage(0);
+		
 	} else if (strcmp(var, "config") == 0) {
 		print_config(value);
+		
 		exit(0);
-	} else if (strcmp(var, "tag") == 0) {
-		if (strcmp(value, "CC") == 0) {
-			/* Do nothing. */
-		}
-		if (strcmp(value, "CXX") == 0) {
-			/* Do nothing. */
-		}
 	} else {
 		return 0;
 	}
@@ -725,23 +757,23 @@ static int parse_long_opt(char *arg, command_t *cmd_data)
 }
 
 /* Return 1 if we eat it. */
-static int parse_short_opt(char *arg, command_t *cmd_data)
+static int parse_short_opt(const char *arg, command_t *cmd)
 {
 	if (strcmp(arg, "export-dynamic") == 0) {
-		cmd_data->options.export_dynamic = 1;
+		cmd->options.export_dynamic = 1;
 		return 1;
 	}
 
 	if (strcmp(arg, "module") == 0) {
-		cmd_data->output = otModule;
+		cmd->output = OUT_MODULE;
 		return 1;
 	}
 
 	if (strcmp(arg, "shared") == 0) {
-		if (cmd_data->mode == mLink) {
-			cmd_data->output = otDynamicLibraryOnly;
+		if (cmd->mode == MODE_LINK) {
+			cmd->output = OUT_DYNAMIC_LIB_ONLY;
 		}
-		cmd_data->options.shared = share_SHARED;
+		cmd->options.shared = SHARE_SHARED;
 		return 1;
 	}
 
@@ -754,36 +786,36 @@ static int parse_short_opt(char *arg, command_t *cmd_data)
 	}
 
 	if (strcmp(arg, "prefer-pic") == 0) {
-		cmd_data->options.pic_mode = pic_PREFER;
+		cmd->options.pic_mode = PIC_PREFER;
 		return 1;
 	}
 
 	if (strcmp(arg, "prefer-non-pic") == 0) {
-		cmd_data->options.pic_mode = pic_AVOID;
+		cmd->options.pic_mode = PIC_AVOID;
 		return 1;
 	}
 
 	if (strcmp(arg, "static") == 0) {
-		if ((cmd_data->mode == mLink) && (cmd_data->output == otLibrary)) {
-			cmd_data->output = otStaticLibraryOnly;
+		if ((cmd->mode == MODE_LINK) && (cmd->output == OUT_LIB)) {
+			cmd->output = OUT_STATIC_LIB_ONLY;
 		}
-		cmd_data->options.shared = share_STATIC;
+		cmd->options.shared = SHARE_STATIC;
 		return 1;
 	}
 
-	if (cmd_data->mode == mLink) {
+	if (cmd->mode == MODE_LINK) {
 		if (strcmp(arg, "no-install") == 0) {
-			cmd_data->options.no_install = 1;
+			cmd->options.no_install = 1;
 			return 1;
 		}
 		if (arg[0] == 'L' || arg[0] == 'l') {
 			/* Hack... */
 			arg--;
-			push_count_chars(cmd_data->shared_opts.dependencies, arg);
+			push_count_chars(cmd->shared_opts.dependencies, arg);
 			return 1;
 		} else if (arg[0] == 'R' && arg[1]) {
 			/* -Rdir Add dir to runtime library search path. */
-			add_runtimedirlib(&arg[1], cmd_data);
+			add_runtime_dir_lib(&arg[1], cmd);
 			return 1;
 		}
 	}
@@ -833,7 +865,7 @@ static long safe_strtol(const char *nptr, const char **endptr, int base)
 	return rv;
 }
 
-static void safe_mkdir(const char *path)
+static void safe_mkdir(command_t *cmd, const char *path)
 {
 	int status;
 	mode_t old_umask;
@@ -847,21 +879,25 @@ static void safe_mkdir(const char *path)
 	status = mkdir(path, ~old_umask);
 #endif
 	if ((status < 0) && (errno != EEXIST)) {
-		printf("Warning: mkdir of %s failed\n", path);
+		NOTICE("Warning: mkdir of %s failed\n", path);
 	}
 }
 
-/* returns just a file's name without the path */
-static const char *jlibtool_basename(const char *fullpath)
+/** Returns a file's name without the path
+ *
+ * @param path to break apart.
+ * @return pointer in path.
+ */
+static const char *file_name(const char *path)
 {
-	const char *name = strrchr(fullpath, '/');
-
-	if (name == NULL) {
-		name = strrchr(fullpath, '\\');
+	const char *name;
+	
+	name = strrchr(path, '/');
+	if (!name) {
+		name = strrchr(path, '\\'); 	/* eww windows? */
 	}
-
-	if (name == NULL) {
-		name = fullpath;
+	if (!name) {
+		name = path;
 	} else {
 		name++;
 	}
@@ -870,20 +906,27 @@ static const char *jlibtool_basename(const char *fullpath)
 }
 
 #ifdef GEN_EXPORTS
-/* returns just a file's name without path or extension */
-static const char *nameof(const char *fullpath)
+
+/** Returns a file's name without path or extension 
+ *
+ * @param path to check
+ * @return pointer in path.
+ */
+static const char *file_name_stripped(const char *path)
 {
 	const char *name;
 	const char *ext;
 
-	name = jlibtool_basename(fullpath);
+	name = file_name(path);
 	ext = strrchr(name, '.');
 
 	if (ext) {
 		char *trimmed;
-		trimmed = malloc(ext - name + 1);
+		
+		trimmed = lt_malloc(ext - name + 1);
 		strncpy(trimmed, name, ext - name);
 		trimmed[ext-name] = 0;
+		
 		return trimmed;
 	}
 
@@ -926,7 +969,7 @@ static const char *darwin_dynamic_link_function(const char *version_info)
 	if (major == 0) {
 		major = 1;
 	}
-	newarg = (char*)malloc(100);
+	newarg = (char*)lt_malloc(100);
 	snprintf(newarg, 99,
 			 "-compatibility_version %ld -current_version %ld.%ld",
 			 major, major, minor);
@@ -962,12 +1005,12 @@ static char *gen_library_name(const char *name, enum lib_type genlib)
 
 	newarg = (char *)calloc(strlen(name) + 11, 1);
 
-	if (genlib == type_MODULE_LIB && strncmp(name, "lib", 3) == 0) {
+	if (genlib == TYPE_MODULE_LIB && strncmp(name, "lib", 3) == 0) {
 		name += 3;
 	}
 
-	if (genlib == type_MODULE_LIB) {
-		strcpy(newarg, jlibtool_basename(name));
+	if (genlib == TYPE_MODULE_LIB) {
+		strcpy(newarg, file_name(name));
 	}
 	else {
 		strcpy(newarg, name);
@@ -975,7 +1018,7 @@ static char *gen_library_name(const char *name, enum lib_type genlib)
 
 	newext = strrchr(newarg, '.');
 	if (!newext) {
-		printf("Error: Library path does not have an extension");
+		ERROR("Library path does not have an extension");
 	free(newarg);
 	
 	return NULL;
@@ -983,13 +1026,13 @@ static char *gen_library_name(const char *name, enum lib_type genlib)
 	newext++;
 
 	switch (genlib) {
-	case type_STATIC_LIB:
+	case TYPE_STATIC_LIB:
 		strcpy(newext, STATIC_LIB_EXT);
 		break;
-	case type_DYNAMIC_LIB:
+	case TYPE_DYNAMIC_LIB:
 		strcpy(newext, DYNAMIC_LIB_EXT);
 		break;
-	case type_MODULE_LIB:
+	case TYPE_MODULE_LIB:
 		strcpy(newext, MODULE_LIB_EXT);
 		break;
 
@@ -1027,7 +1070,7 @@ static const char *check_object_exists(command_t *cmd, const char *arg, int argl
 	char *newarg, *ext;
 	int pass, rv;
 
-	newarg = (char *)malloc(arglen + 10);
+	newarg = (char *)lt_malloc(arglen + 10);
 	memcpy(newarg, arg, arglen);
 	newarg[arglen] = 0;
 	ext = newarg + arglen;
@@ -1050,9 +1093,7 @@ static const char *check_object_exists(command_t *cmd, const char *arg, int argl
 			break;
 		}
 
-		if (cmd->options.debug) {
-			printf("Checking (obj): %s\n", newarg);
-		}
+		DEBUG("Checking (obj): %s\n", newarg);
 		rv = stat(newarg, &sb);
 	}
 	while (rv != 0 && ++pass < 1);
@@ -1071,12 +1112,12 @@ static const char *check_object_exists(command_t *cmd, const char *arg, int argl
  * 1 - .libs suffix
  */
 static char *check_library_exists(command_t *cmd, const char *arg, int pathlen,
-				  int libdircheck, enum lib_type *libtype)
+				  int libdircheck, enum lib_type*libtype)
 {
 	char *newarg, *ext;
 	int pass, rv, newpathlen;
 
-	newarg = (char *)malloc(strlen(arg) + 10);
+	newarg = (char *)lt_malloc(strlen(arg) + 10);
 	strcpy(newarg, arg);
 	newarg[pathlen] = '\0';
 
@@ -1089,7 +1130,7 @@ static char *check_library_exists(command_t *cmd, const char *arg, int pathlen,
 	strcpy(newarg + newpathlen, arg + pathlen);
 	ext = strrchr(newarg, '.');
 	if (!ext) {
-		printf("Error: Library path does not have an extension");
+		ERROR("Error: Library path does not have an extension");
 		free(newarg);
 	
 		return NULL;
@@ -1103,34 +1144,32 @@ static char *check_library_exists(command_t *cmd, const char *arg, int pathlen,
 
 		switch (pass) {
 		case 0:
-			if (cmd->options.pic_mode != pic_AVOID &&
-				cmd->options.shared != share_STATIC) {
+			if (cmd->options.pic_mode != PIC_AVOID &&
+				cmd->options.shared != SHARE_STATIC) {
 				strcpy(ext, DYNAMIC_LIB_EXT);
-				*libtype = type_DYNAMIC_LIB;
+				*libtype = TYPE_DYNAMIC_LIB;
 				break;
 			}
 			pass = 1;
 			/* Fall through */
 		case 1:
 			strcpy(ext, STATIC_LIB_EXT);
-			*libtype = type_STATIC_LIB;
+			*libtype = TYPE_STATIC_LIB;
 			break;
 		case 2:
 			strcpy(ext, MODULE_LIB_EXT);
-			*libtype = type_MODULE_LIB;
+			*libtype = TYPE_MODULE_LIB;
 			break;
 		case 3:
 			strcpy(ext, OBJECT_EXT);
-			*libtype = type_OBJECT;
+			*libtype = TYPE_OBJECT;
 			break;
 		default:
-			*libtype = type_UNKNOWN;
+			*libtype = TYPE_UKNOWN;
 			break;
 		}
 
-		if (cmd->options.debug) {
-			printf("Checking (lib): %s\n", newarg);
-		}
+		DEBUG("Checking (lib): %s\n", newarg);
 		rv = stat(newarg, &sb);
 	}
 	while (rv != 0 && ++pass < 4);
@@ -1154,7 +1193,7 @@ static char * load_install_path(const char *arg)
 		return NULL;
 	}
 	
-	path = malloc(PATH_MAX);
+	path = lt_malloc(PATH_MAX);
 
 	fgets(path, PATH_MAX, f);
 	fclose(f);
@@ -1179,7 +1218,7 @@ static char * load_noinstall_path(const char *arg, int pathlen)
 	char *newarg, *expanded_path;
 	int newpathlen;
 
-	newarg = (char *)malloc(strlen(arg) + 10);
+	newarg = (char *)lt_malloc(strlen(arg) + 10);
 	strcpy(newarg, arg);
 	newarg[pathlen] = 0;
 
@@ -1189,7 +1228,7 @@ static char * load_noinstall_path(const char *arg, int pathlen)
 	newarg[newpathlen] = 0;
 
 #ifdef HAS_REALPATH
-	expanded_path = malloc(PATH_MAX);
+	expanded_path = lt_malloc(PATH_MAX);
 	expanded_path = realpath(newarg, expanded_path);
 	/* Uh, oh.  There was an error.  Fall back on our first guess. */
 	if (!expanded_path) {
@@ -1203,32 +1242,30 @@ static char * load_noinstall_path(const char *arg, int pathlen)
 	return expanded_path;
 }
 
-static void add_dynamic_link_opts(command_t *cmd_data, count_chars *args)
+static void add_dynamic_link_opts(command_t *cmd, count_chars *args)
 {
 #ifdef DYNAMIC_LINK_OPTS
-	if (cmd_data->options.pic_mode != pic_AVOID) {
-		if (cmd_data->options.debug) {
-			printf("Adding linker opt: %s\n", DYNAMIC_LINK_OPTS);
-		}
+	if (cmd->options.pic_mode != PIC_AVOID) {
+		DEBUG("Adding linker opt: %s\n", DYNAMIC_LINK_OPTS);
+		
 		push_count_chars(args, DYNAMIC_LINK_OPTS);
-		if (cmd_data->undefined_flag) {
+		if (cmd->undefined_flag) {
 			push_count_chars(args, "-undefined");
 #if defined(__APPLE__)
 			/* -undefined dynamic_lookup is used by the bundled Python in
 			 * 10.4, but if we don't set MACOSX_DEPLOYMENT_TARGET to 10.3+,
 			 * we'll get a linker error if we pass this flag.
 			 */
-			if (strcasecmp(cmd_data->undefined_flag, "dynamic_lookup") == 0) {
-				insert_count_chars(cmd_data->program_opts, "MACOSX_DEPLOYMENT_TARGET=10.3", 0);
+			if (strcasecmp(cmd->undefined_flag, "dynamic_lookup") == 0) {
+				insert_count_chars(cmd->program_opts, "MACOSX_DEPLOYMENT_TARGET=10.3", 0);
 			}
 #endif
-			push_count_chars(args, cmd_data->undefined_flag);
+			push_count_chars(args, cmd->undefined_flag);
 		}
 		else {
 #ifdef DYNAMIC_LINK_UNDEFINED
-			if (cmd_data->options.debug) {
-				printf("Adding linker opt: %s\n", DYNAMIC_LINK_UNDEFINED);
-			}
+			DEBUG("Adding linker opt: %s\n", DYNAMIC_LINK_UNDEFINED);
+			
 			push_count_chars(args, DYNAMIC_LINK_UNDEFINED);
 #endif
 		}
@@ -1247,10 +1284,8 @@ static void add_rpath(count_chars *cc, const char *path)
 	size = strlen(LINKER_FLAG_PREFIX);
 #endif
 	size = size + strlen(path) + strlen(RPATH) + 2;
-	tmp = malloc(size);
-	if (tmp == NULL) {
-		return;
-	}
+	tmp = lt_malloc(size);
+
 #ifdef LINKER_FLAG_PREFIX
 	strcpy(tmp, LINKER_FLAG_PREFIX);
 	strcat(tmp, RPATH);
@@ -1313,7 +1348,7 @@ static void add_dylink_noinstall(count_chars *cc, const char *arg, int pathlen,
 	dyext_len = sizeof(DYNAMIC_LIB_EXT) - 1;
 
 	/* No, we need to replace the extension. */
-	exp_argument = (char *)malloc(i_p_len + c_p_len + (name_len*2) +
+	exp_argument = (char *)lt_malloc(i_p_len + c_p_len + (name_len*2) +
 								  (dyext_len*2) + 2);
 
 	cur_len = 0;
@@ -1354,7 +1389,7 @@ static void add_minus_l(count_chars *cc, const char *arg)
 		push_count_chars(cc, "-L");
 		push_count_chars(cc, arg);
 		/* we need one argument like -lapr-1 */
-		newarg = malloc(strlen(file) + 3);
+		newarg = lt_malloc(strlen(file) + 3);
 		strcpy(newarg, "-l");
 		strcat(newarg, file);
 		push_count_chars(cc, newarg);
@@ -1371,7 +1406,7 @@ static void add_linker_flag_prefix(count_chars *cc, const char *arg)
 	push_count_chars(cc, arg);
 #else
 	char *newarg;
-	newarg = (char*)malloc(strlen(arg) + sizeof(LINKER_FLAG_PREFIX) + 1);
+	newarg = (char*)lt_malloc(strlen(arg) + sizeof(LINKER_FLAG_PREFIX) + 1);
 	strcpy(newarg, LINKER_FLAG_PREFIX);
 	strcat(newarg, arg);
 	push_count_chars(cc, newarg);
@@ -1379,7 +1414,7 @@ static void add_linker_flag_prefix(count_chars *cc, const char *arg)
 }
 #endif
 
-static int explode_static_lib(command_t *cmd_data, const char *lib)
+static int explode_static_lib(command_t *cmd, const char *lib)
 {
 	count_chars tmpdir_cc, libname_cc;
 	const char *tmpdir, *libname;
@@ -1390,11 +1425,11 @@ static int explode_static_lib(command_t *cmd_data, const char *lib)
 	const char *lib_args[4];
 
 	/* Bah! */
-	if (cmd_data->options.dry_run) {
+	if (cmd->options.dry_run) {
 		return 0;
 	}
 
-	name = jlibtool_basename(lib);
+	name = file_name(lib);
 
 	init_count_chars(&tmpdir_cc);
 	push_count_chars(&tmpdir_cc, ".libs/");
@@ -1402,19 +1437,17 @@ static int explode_static_lib(command_t *cmd_data, const char *lib)
 	push_count_chars(&tmpdir_cc, ".exploded/");
 	tmpdir = flatten_count_chars(&tmpdir_cc, 0);
 
-	if (!cmd_data->options.silent) {
-		printf("Making: %s\n", tmpdir);
-	}
-	safe_mkdir(tmpdir);
+	NOTICE("Making: %s\n", tmpdir);
+	
+	safe_mkdir(cmd, tmpdir);
 
-	push_count_chars(cmd_data->tmp_dirs, tmpdir);
+	push_count_chars(cmd->tmp_dirs, tmpdir);
 
 	getcwd(savewd, sizeof(savewd));
 
 	if (chdir(tmpdir) != 0) {
-		if (!cmd_data->options.silent) {
-			printf("Warning: could not explode %s\n", lib);
-		}
+		NOTICE("Warning: could not explode %s\n", lib);
+		
 		return 1;
 	}
 
@@ -1433,7 +1466,7 @@ static int explode_static_lib(command_t *cmd_data, const char *lib)
 	lib_args[2] = libname;
 	lib_args[3] = NULL;
 
-	external_spawn(cmd_data, LIBRARIAN, lib_args);
+	external_spawn(cmd, LIBRARIAN, lib_args);
 
 	chdir(savewd);
 	dir = opendir(tmpdir);
@@ -1451,10 +1484,9 @@ static int explode_static_lib(command_t *cmd_data, const char *lib)
 		if (entry->d_name[0] != '.') {
 			push_count_chars(&tmpdir_cc, entry->d_name);
 			name = flatten_count_chars(&tmpdir_cc, 0);
-			if (cmd_data->options.debug) {
-				printf("Adding: %s\n", name);
-			}
-			push_count_chars(cmd_data->obj_files, name);
+
+			DEBUG("Adding object: %s\n", name);
+			push_count_chars(cmd->obj_files, name);
 			pop_count_chars(&tmpdir_cc);
 		}
 	}
@@ -1463,7 +1495,7 @@ static int explode_static_lib(command_t *cmd_data, const char *lib)
 	return 0;
 }
 
-static int parse_input_file_name(char *arg, command_t *cmd_data)
+static int parse_input_file_name(const char *arg, command_t *cmd)
 {
 	const char *ext = strrchr(arg, '.');
 	const char *name;
@@ -1471,56 +1503,68 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
 	enum lib_type libtype;
 	const char *newarg;
 
+	/* Can't guess the extension */
 	if (!ext) {
 		return 0;
 	}
 
 	ext++;
-	name = jlibtool_basename(arg);
-
+	name = file_name(arg);
 	pathlen = name - arg;
 
 	/*
-	 *	If we have an external static lib not associated with 
-	 *	an argument and were linking, add it to the list of input
-	 *	files for GCC so it gets statically linked into the library
-	 *	were building.
-	 *
-	 *	@fixme not sure if this is correct, but it lets us build shared
-	 *	libraries that are linked against static .a files.
+	 *	Were linking and have an archived object or object file
+	 *	push it onto the list of object files which'll get used
+	 *	to create the input files list for the linker.
+	 *	
+	 *	We assume that these are outside of the project were building,
+	 *	as there's no reason to create .a files as part of the build
+	 *	process.
 	 */
-	if ((strcmp(ext, STATIC_LIB_EXT) == 0) && (cmd_data->mode == mLink)) {
+	if (!strcmp(ext, STATIC_LIB_EXT) && (cmd->mode == MODE_LINK)) {
 		struct stat sb;
+		
 		if (!stat(arg, &sb)) {
-			push_count_chars(cmd_data->obj_files, arg);
+			DEBUG("Adding object: %s\n", newarg);
+			
+			push_count_chars(cmd->obj_files, arg);
+			
+			return 1;
 		}
 	}
 
-	if (strcmp(ext, "lo") == 0) {
-		newarg = check_object_exists(cmd_data, arg, ext - arg);
+	/*
+	 *	More object files, if were linking they get set as input
+	 *	files.
+	 */
+	if (!strcmp(ext, "lo") || !strcmp(ext, OBJECT_EXT)) {
+		newarg = check_object_exists(cmd, arg, ext - arg);
 		if (!newarg) {
-			fprintf(stderr, "Can not find suitable object file for %s\n", arg);
+			ERROR("Can not find suitable object file for %s\n", arg);
 			exit(1);
 		}
-		if (cmd_data->mode != mLink) {
-			push_count_chars(cmd_data->arglist, newarg);
+		
+		if (cmd->mode == MODE_LINK) {
+			DEBUG("Adding object: %s\n", newarg);
+			
+			push_count_chars(cmd->obj_files, newarg);
+		} else {
+			push_count_chars(cmd->arglist, newarg);
 		}
-		else {
-			push_count_chars(cmd_data->obj_files, newarg);
-		}
+		
 		return 1;
 	}
 
-	if (strcmp(ext, "la") == 0) {
-		switch (cmd_data->mode) {
-		case mLink:
+	if (!strcmp(ext, "la")) {
+		switch (cmd->mode) {
+		case MODE_LINK:
 			/* Try the .libs dir first! */
-			newarg = check_library_exists(cmd_data, arg, pathlen, 1, &libtype);
+			newarg = check_library_exists(cmd, arg, pathlen, 1, &libtype);
 			if (!newarg) {
 				/* Try the normal dir next. */
-				newarg = check_library_exists(cmd_data, arg, pathlen, 0, &libtype);
+				newarg = check_library_exists(cmd, arg, pathlen, 0, &libtype);
 				if (!newarg) {
-					fprintf(stderr, "Can not find suitable library for %s\n", arg);
+					ERROR("Can not find suitable library for %s\n", arg);
 					exit(1);
 				}
 			}
@@ -1530,57 +1574,64 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
 			   2 - library_name.
 			 */
 #ifdef ADD_MINUS_L
-			if (libtype == type_DYNAMIC_LIB) {
-				add_minus_l(cmd_data->shared_opts.dependencies, newarg);
-			} else if (cmd_data->output == otLibrary &&
-					   libtype == type_STATIC_LIB) {
-				explode_static_lib(cmd_data, newarg);
+			if (libtype == TYPE_DYNAMIC_LIB) {
+				add_minus_l(cmd->shared_opts.dependencies, newarg);
+			} else if (cmd->output == OUT_LIB &&
+					   libtype == TYPE_STATIC_LIB) {
+				explode_static_lib(cmd, newarg);
 			} else {
-				push_count_chars(cmd_data->shared_opts.dependencies, newarg);
+				push_count_chars(cmd->shared_opts.dependencies, newarg);
 			}
 #else
-			if (cmd_data->output == otLibrary && libtype == type_STATIC_LIB) {
-				explode_static_lib(cmd_data, newarg);
+			if (cmd->output == OUT_LIB && libtype == TYPE_STATIC_LIB) {
+				explode_static_lib(cmd, newarg);
 			}
 			else {
-				push_count_chars(cmd_data->shared_opts.dependencies, newarg);
+				push_count_chars(cmd->shared_opts.dependencies, newarg);
 			}
 #endif
-			if (libtype == type_DYNAMIC_LIB) {
-				if (cmd_data->options.no_install) {
+			if (libtype == TYPE_DYNAMIC_LIB) {
+				if (cmd->options.no_install) {
 #ifdef RPATH
-					add_rpath_noinstall(cmd_data->shared_opts.dependencies,
+					add_rpath_noinstall(cmd->shared_opts.dependencies,
 										arg, pathlen);
 #endif
 				}
 				else {
 #ifdef RPATH
-					add_rpath_file(cmd_data->shared_opts.dependencies, arg);
+					add_rpath_file(cmd->shared_opts.dependencies, arg);
 #endif
 				}
 			}
 			break;
-		case mInstall:
-			/* If we've already recorded a library to install, we're most
-			 * likely getting the .la file that we want to install as.
-			 * The problem is that we need to add it as the directory,
-			 * not the .la file itself.  Otherwise, we'll do odd things.
+		case MODE_INSTALL:
+			/*
+			 *	If we've already recorded a library to
+			 *	install, we're most likely getting the .la
+			 *	file that we want to install as.
+			 *
+			 *	The problem is that we need to add it as the 
+			 *	directory, not the .la file itself.
+			 *	Otherwise, we'll do odd things.
 			 */
-			if (cmd_data->output == otLibrary) {
-				arg[pathlen] = '\0';
-				push_count_chars(cmd_data->arglist, arg);
-			}
-			else {
-				cmd_data->output = otLibrary;
-				cmd_data->output_name = arg;
-				cmd_data->static_name.install = gen_install_name(arg, 0);
-				cmd_data->shared_name.install = gen_install_name(arg, 1);
-				cmd_data->module_name.install = gen_install_name(arg, 2);
+			if (cmd->output == OUT_LIB) {
+				char *tmp;
+				
+				tmp = strdup(arg);
+				tmp[pathlen] = '\0';
+				push_count_chars(cmd->arglist, tmp);
+				
+			} else {
+				cmd->output = OUT_LIB;
+				cmd->output_name = arg;
+				cmd->static_name.install = gen_install_name(arg, 0);
+				cmd->shared_name.install = gen_install_name(arg, 1);
+				cmd->module_name.install = gen_install_name(arg, 2);
 
-				if (!cmd_data->static_name.install &&
-					!cmd_data->shared_name.install &&
-					!cmd_data->module_name.install) {
-					fprintf(stderr, "Files to install do not exist\n");
+				if (!cmd->static_name.install &&
+					!cmd->shared_name.install &&
+					!cmd->module_name.install) {
+					ERROR("Files to install do not exist\n");
 					exit(1);
 				}
 
@@ -1589,22 +1640,24 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
 		default:
 			break;
 		}
+	
 		return 1;
 	}
 
-	if (strcmp(ext, "c") == 0) {
+	if (!strcmp(ext, "c")) {
 		/* If we don't already have an idea what our output name will be. */
-		if (cmd_data->basename == NULL) {
-			cmd_data->basename = (char *)malloc(strlen(arg) + 4);
-			strcpy(cmd_data->basename, arg);
-			strcpy(strrchr(cmd_data->basename, '.') + 1, "lo");
+		if (!cmd->basename) {
+			char *tmp = lt_malloc(strlen(arg) + 4);
+			strcpy(tmp, arg);
+			strcpy(strrchr(tmp, '.') + 1, "lo");
+			
+			cmd->basename = tmp;
 
-			cmd_data->fake_output_name = strrchr(cmd_data->basename, '/');
-			if (cmd_data->fake_output_name) {
-				cmd_data->fake_output_name++;
-			}
-			else {
-				cmd_data->fake_output_name = cmd_data->basename;
+			cmd->fake_output_name = strrchr(cmd->basename, '/');
+			if (cmd->fake_output_name) {
+				cmd->fake_output_name++;
+			} else {
+				cmd->fake_output_name = cmd->basename;
 			}
 		}
 	}
@@ -1612,16 +1665,16 @@ static int parse_input_file_name(char *arg, command_t *cmd_data)
 	return 0;
 }
 
-static int parse_output_file_name(char *arg, command_t *cmd_data)
+static int parse_output_file_name(const char *arg, command_t *cmd)
 {
 	const char *name;
 	const char *ext;
 	char *newarg = NULL;
 	int pathlen;
 
-	cmd_data->fake_output_name = arg;
+	cmd->fake_output_name = arg;
 
-	name = jlibtool_basename(arg);
+	name = file_name(arg);
 	ext = strrchr(name, '.');
 
 #ifdef EXE_EXT
@@ -1629,19 +1682,19 @@ static int parse_output_file_name(char *arg, command_t *cmd_data)
 #else
 	if (!ext) {
 #endif
-		cmd_data->basename = arg;
-		cmd_data->output = otProgram;
+		cmd->basename = arg;
+		cmd->output = OUT_PROGRAM;
 #if defined(_OSD_POSIX)
-		cmd_data->options.pic_mode = pic_AVOID;
+		cmd->options.pic_mode = PIC_AVOID;
 #endif
-		newarg = (char *)malloc(strlen(arg) + 5);
+		newarg = (char *)lt_malloc(strlen(arg) + 5);
 		strcpy(newarg, arg);
 #ifdef EXE_EXT
 	if (!ext) {
 	  strcat(newarg, EXE_EXT);
 	}
 #endif
-		cmd_data->output_name = newarg;
+		cmd->output_name = newarg;
 		return 1;
 	}
 
@@ -1649,29 +1702,29 @@ static int parse_output_file_name(char *arg, command_t *cmd_data)
 	pathlen = name - arg;
 
 	if (strcmp(ext, "la") == 0) {
-		assert(cmd_data->mode == mLink);
+		assert(cmd->mode == MODE_LINK);
 
-		cmd_data->basename = arg;
-		cmd_data->static_name.normal = gen_library_name(arg, type_STATIC_LIB);
-		cmd_data->shared_name.normal = gen_library_name(arg, type_DYNAMIC_LIB);
-		cmd_data->module_name.normal = gen_library_name(arg, type_MODULE_LIB);
-		cmd_data->static_name.install = gen_install_name(arg, type_STATIC_LIB);
-		cmd_data->shared_name.install = gen_install_name(arg, type_DYNAMIC_LIB);
-		cmd_data->module_name.install = gen_install_name(arg, type_MODULE_LIB);
+		cmd->basename = arg;
+		cmd->static_name.normal = gen_library_name(arg, TYPE_STATIC_LIB);
+		cmd->shared_name.normal = gen_library_name(arg, TYPE_DYNAMIC_LIB);
+		cmd->module_name.normal = gen_library_name(arg, TYPE_MODULE_LIB);
+		cmd->static_name.install = gen_install_name(arg, TYPE_STATIC_LIB);
+		cmd->shared_name.install = gen_install_name(arg, TYPE_DYNAMIC_LIB);
+		cmd->module_name.install = gen_install_name(arg, TYPE_MODULE_LIB);
 
-		if (!cmd_data->options.dry_run) {
+		if (!cmd->options.dry_run) {
 		char *newname;
 		char *newext;
-		newname = malloc(strlen(cmd_data->static_name.normal) + 1);
+		newname = lt_malloc(strlen(cmd->static_name.normal) + 1);
 
-		strcpy(newname, cmd_data->static_name.normal);
+		strcpy(newname, cmd->static_name.normal);
 		newext = strrchr(newname, '/');
 		if (!newext) {
 			/* Check first to see if the dir already exists! */
-			safe_mkdir(".libs");
+			safe_mkdir(cmd, ".libs");
 		} else {
 			*newext = '\0';
-			safe_mkdir(newname);
+			safe_mkdir(cmd, newname);
 		}
 		free(newname);
 		}
@@ -1682,94 +1735,94 @@ static int parse_output_file_name(char *arg, command_t *cmd_data)
 		}
 #endif
 
-		cmd_data->output_name = arg;
+		cmd->output_name = arg;
 		return 1;
 	}
 
 	if (strcmp(ext, STATIC_LIB_EXT) == 0) {
-		assert(cmd_data->mode == mLink);
+		assert(cmd->mode == MODE_LINK);
 
-		cmd_data->basename = arg;
-		cmd_data->options.shared = share_STATIC;
-		cmd_data->output = otStaticLibraryOnly;
-		cmd_data->static_name.normal = gen_library_name(arg, type_STATIC_LIB);
-		cmd_data->static_name.install = gen_install_name(arg, type_STATIC_LIB);
+		cmd->basename = arg;
+		cmd->options.shared = SHARE_STATIC;
+		cmd->output = OUT_STATIC_LIB_ONLY;
+		cmd->static_name.normal = gen_library_name(arg, TYPE_STATIC_LIB);
+		cmd->static_name.install = gen_install_name(arg, TYPE_STATIC_LIB);
 
-		if (!cmd_data->options.dry_run) {
+		if (!cmd->options.dry_run) {
 		char *newname;
 		char *newext;
-		newname = malloc(strlen(cmd_data->static_name.normal) + 1);
+		newname = lt_malloc(strlen(cmd->static_name.normal) + 1);
 
-		strcpy(newname, cmd_data->static_name.normal);
+		strcpy(newname, cmd->static_name.normal);
 		newext = strrchr(newname, '/');
 		if (!newext) {
 			/* Check first to see if the dir already exists! */
-			safe_mkdir(".libs");
+			safe_mkdir(cmd, ".libs");
 		} else {
 			*newext = '\0';
-			safe_mkdir(newname);
+			safe_mkdir(cmd, newname);
 		}
 		free(newname);
 		}
 
-		cmd_data->output_name = arg;
+		cmd->output_name = arg;
 		return 1;
 	}
 
 	if (strcmp(ext, DYNAMIC_LIB_EXT) == 0) {
-		assert(cmd_data->mode == mLink);
+		assert(cmd->mode == MODE_LINK);
 
-		cmd_data->basename = arg;
-		cmd_data->options.shared = share_SHARED;
-		cmd_data->output = otDynamicLibraryOnly;
-		cmd_data->shared_name.normal = gen_library_name(arg, type_DYNAMIC_LIB);
-		cmd_data->module_name.normal = gen_library_name(arg, type_MODULE_LIB);
-		cmd_data->shared_name.install = gen_install_name(arg, type_DYNAMIC_LIB);
-		cmd_data->module_name.install = gen_install_name(arg, type_MODULE_LIB);
+		cmd->basename = arg;
+		cmd->options.shared = SHARE_SHARED;
+		cmd->output = OUT_DYNAMIC_LIB_ONLY;
+		cmd->shared_name.normal = gen_library_name(arg, TYPE_DYNAMIC_LIB);
+		cmd->module_name.normal = gen_library_name(arg, TYPE_MODULE_LIB);
+		cmd->shared_name.install = gen_install_name(arg, TYPE_DYNAMIC_LIB);
+		cmd->module_name.install = gen_install_name(arg, TYPE_MODULE_LIB);
 
-		if (!cmd_data->options.dry_run) {
+		if (!cmd->options.dry_run) {
 			char *newname;
 			char *newext;
-			newname = malloc(strlen(cmd_data->shared_name.normal) + 1);
+			newname = lt_malloc(strlen(cmd->shared_name.normal) + 1);
 
-			strcpy(newname, cmd_data->shared_name.normal);
+			strcpy(newname, cmd->shared_name.normal);
 			newext = strrchr(newname, '/');
 			if (!newext) {
 				/* Check first to see if the dir already exists! */
-				safe_mkdir(".libs");
+				safe_mkdir(cmd, ".libs");
 			} else {
 				*newext = '\0';
-				safe_mkdir(newname);
+				safe_mkdir(cmd, newname);
 			}
 			free(newname);
 		}
 
-		cmd_data->output_name = arg;
+		cmd->output_name = arg;
 		return 1;
 	}
 
 	if (strcmp(ext, "lo") == 0) {
 		char *newext;
-		cmd_data->basename = arg;
-		cmd_data->output = otObject;
-		newarg = (char *)malloc(strlen(arg) + 2);
+		cmd->basename = arg;
+		cmd->output = OUT_OBJECT;
+		newarg = (char *)lt_malloc(strlen(arg) + 2);
 		strcpy(newarg, arg);
 		newext = strrchr(newarg, '.') + 1;
 		strcpy(newext, OBJECT_EXT);
-		cmd_data->output_name = newarg;
+		cmd->output_name = newarg;
 		return 1;
 	}
 
 	if (strcmp(ext, DYNAMIC_LIB_EXT) == 0) {
-		fprintf(stderr, "Please build libraries with .la target, not ."
-			DYNAMIC_LIB_EXT "\n");
+		ERROR("Please build libraries with .la target, not ."
+		      DYNAMIC_LIB_EXT "\n");
 			
 		exit(1);
 	}
 
 	if (strcmp(ext, STATIC_LIB_EXT) == 0) {
-		fprintf(stderr, "Please build libraries with .la target, not ."
-			STATIC_LIB_EXT "\n");
+		ERROR("Please build libraries with .la target, not ."
+		      STATIC_LIB_EXT "\n");
 			
 		exit(1);
 	}
@@ -1777,204 +1830,30 @@ static int parse_output_file_name(char *arg, command_t *cmd_data)
 	return 0;
 }
 
-static char *automode(char *arg, command_t *cmd_data)
+static const char *automode(const char *arg, command_t *cmd)
 {
-	if (cmd_data->mode != mUnknown) return arg;
+	if (cmd->mode != MODE_UNKNOWN) return arg;
 
-	if (strcmp(arg, "CC") == 0) {
+	if (!strcmp(arg, "CC") ||
+	    !strcmp(arg, "CXX")) {
+		DEBUG("Now in compile mode, guessed from: %s\n", arg);
 		arg = CC;
-		cmd_data->mode = mCompile;
+		cmd->mode = MODE_COMPILE;
 
-	} else if (strcmp(arg, "CXX") == 0) {
-		arg = CXX;
-		cmd_data->mode = mCompile;
-
-	} else if (strcmp(arg, "LINK") == 0) {
-		arg = LINK_c;
-		cmd_data->mode = mLink;
-
-	} else if (strcmp(arg, "LINK.c") == 0) {
-		arg = LINK_c;
-		cmd_data->mode = mLink;
-
-	} else if (strcmp(arg, "LINK.cxx") == 0) {
-		arg = LINK_cxx;
-		cmd_data->mode = mLink;
+	} else if (!strcmp(arg, "LINK") ||
+		   !strcmp(arg, "LINK.c") ||
+		   !strcmp(arg, "LINK.cxx")) {
+		DEBUG("Now in linker mode, guessed from: %s\n", arg);
+		arg = LINK_C;
+		cmd->mode = MODE_LINK;
 	}
 	
 	return arg;
 }
 
-static void parse_args(int argc, char *argv[], command_t *cmd_data)
-{
-	int a;
-	char *arg, *base;
-	int argused;
-
-	/*
-	 *  We now take a major step past libtool.
-	 *
-	 *  IF there's no "--mode=...", AND we recognise
-	 *  the binary as a "special" name, THEN replace it
-	 *  with the correct one, and set the correct mode.
-	 */
-	base = jlibtool_basename(argv[0]);
-	arg = automode(base, cmd_data);
-	
-	if (arg != base) {
-		if (cmd_data->options.debug) {
-			printf("Adding mode: %s\n", arg);
-		}
-		push_count_chars(cmd_data->arglist, arg);
-		assert(cmd_data->mode != mUnknown);
-	}
-
-	/*
-	 *	We first pass over the command-line arguments looking for
-	 *  "--mode", etc.  If so, then use the libtool compatibility
-	 *  method for building the software.  Otherwise, auto-detect it
-	 *  via "-o" and the extensions.
-	 */
-	base = NULL;
-	if (cmd_data->mode == mUnknown) for (a = 1; a < argc; a++) {
-		arg = argv[a];
-
-	if (strncmp(arg, "--mode=", 7) == 0) {
-	  base = NULL;
-	  break;
-	}
-
-	/*
-	 *	Stop if we get another magic method
-	 */
-	if ((a == 1) &&
-		((strncmp(arg, "LINK", 4) == 0) ||
-		 (strcmp(arg, "CC") == 0) ||
-		 (strcmp(arg, "CXX") == 0))) {
-	  base = NULL;
-	  break;
-	}
-
-	if (strncmp(arg, "-o", 2) == 0) {
-	  base = argv[++a];
-	}
-	}
-
-	if (base) {
-		arg = strrchr(base, '.');
-		if (!arg) {
-			cmd_data->mode = mLink;
-			push_count_chars(cmd_data->arglist, LINK_c);
-		}
-#ifdef EXE_EXT
-		else if (strcmp(arg, EXE_EXT) == 0) {
-			cmd_data->mode = mLink;
-			push_count_chars(cmd_data->arglist, LINK_c);
-		}
-#endif
-		else if (strcmp(arg + 1, DYNAMIC_LIB_EXT) == 0) {
-			cmd_data->mode = mLink;
-			push_count_chars(cmd_data->arglist, LINK_c);
-		}
-		else if (strcmp(arg + 1, STATIC_LIB_EXT) == 0) {
-			cmd_data->mode = mLink;
-			push_count_chars(cmd_data->arglist, LINK_c);
-		}
-		else if (strcmp(arg + 1, "la") == 0) {
-			cmd_data->mode = mLink;
-			push_count_chars(cmd_data->arglist, LINK_c);
-		}
-		else if ((strcmp(arg + 1, "lo") == 0) ||
-			 (strcmp(arg + 1, "o") == 0)) {
-			cmd_data->mode = mCompile;
-			push_count_chars(cmd_data->arglist, CC);
-		}
-	}
-
-	for (a = 1; a < argc; a++) {
-		arg = argv[a];
-		argused = 1;
-
-		if (arg[0] == '-') {
-			if (arg[1] == '-') {
-				argused = parse_long_opt(arg + 2, cmd_data);
-			}
-			else {
-				argused = parse_short_opt(arg + 1, cmd_data);
-			}
-
-			/* We haven't done anything with it yet, try some of the
-			 * more complicated short opts... */
-			if (argused == 0 && a + 1 < argc) {
-				if (arg[1] == 'o' && !arg[2]) {
-					arg = argv[++a];
-					argused = parse_output_file_name(arg, cmd_data);
-				} else if (strcmp(arg+1, "MT") == 0) {
-					if (cmd_data->options.debug) {
-						printf("Adding: %s\n", arg);
-					}
-					push_count_chars(cmd_data->arglist, arg);
-					arg = argv[++a];
-					if (!cmd_data->options.silent) {
-						printf(" %s\n", arg);
-					}
-					push_count_chars(cmd_data->arglist, arg);
-					argused = 1;
-				} else if (strcmp(arg+1, "rpath") == 0) {
-					/* Aha, we should try to link both! */
-					cmd_data->install_path = argv[++a];
-					argused = 1;
-				} else if (strcmp(arg+1, "release") == 0) {
-					/* Store for later deciphering */
-					cmd_data->version_info = argv[++a];
-					argused = 1;
-				} else if (strcmp(arg+1, "version-info") == 0) {
-					/* Store for later deciphering */
-					cmd_data->version_info = argv[++a];
-					argused = 1;
-				} else if (strcmp(arg+1, "export-symbols-regex") == 0) {
-					/* Skip the argument. */
-					++a;
-					argused = 1;
-				} else if (strcmp(arg+1, "release") == 0) {
-					/* Skip the argument. */
-					++a;
-					argused = 1;
-				} else if (strcmp(arg+1, "undefined") == 0) {
-					cmd_data->undefined_flag = argv[++a];
-					argused = 1;
-				} else if (arg[1] == 'R' && !arg[2]) {
-					/* -R dir Add dir to runtime library search path. */
-					add_runtimedirlib(argv[++a], cmd_data);
-					argused = 1;
-				}
-			}
-		} else {
-			argused = parse_input_file_name(arg, cmd_data);
-		}
-
-		if (!argused) {
-			/*
-			 *  If we still don't have a run mode, look for a magic
-			 *  program name CC, LINK, or whatever.  Then replace that
-			 *  with the name of the real program we want to run.
-			 */
-			if ((cmd_data->arglist->num == 0) &&
-				(cmd_data->mode == mUnknown)) {
-				arg = automode(arg, cmd_data);
-			}
-
-			if (cmd_data->options.debug) {
-				printf("Adding mode: %s\n", arg);
-			}
-			push_count_chars(cmd_data->arglist, arg);
-		}
-	}
-
-}
 
 #ifdef GEN_EXPORTS
-static void generate_def_file(command_t *cmd_data)
+static void generate_def_file(command_t *cmd)
 {
 	char def_file[1024];
 	char implib_file[1024];
@@ -1986,28 +1865,28 @@ static void generate_def_file(command_t *cmd_data)
 	int cmd_size = 0;
 	int a;
 
-	if (cmd_data->output_name) {
-		strcpy(def_file, cmd_data->output_name);
+	if (cmd->output_name) {
+		strcpy(def_file, cmd->output_name);
 		strcat(def_file, ".def");
 		hDef = fopen(def_file, "w");
 
 		if (hDef != NULL) {
-			fprintf(hDef, "LIBRARY '%s' INITINSTANCE\n", nameof(cmd_data->output_name));
+			fprintf(hDef, "LIBRARY '%s' INITINSTANCE\n", file_name_stripped(cmd->output_name));
 			fprintf(hDef, "DATA NONSHARED\n");
 			fprintf(hDef, "EXPORTS\n");
 			fclose(hDef);
 
-			for (a = 0; a < cmd_data->num_obj_files; a++) {
-				cmd_size += strlen(cmd_data->obj_files[a]) + 1;
+			for (a = 0; a < cmd->num_obj_files; a++) {
+				cmd_size += strlen(cmd->obj_files[a]) + 1;
 			}
 
 			cmd_size += strlen(GEN_EXPORTS) + strlen(def_file) + 3;
-			cmd = (char *)malloc(cmd_size);
+			cmd = (char *)lt_malloc(cmd_size);
 			strcpy(cmd, GEN_EXPORTS);
 
-			for (a=0; a < cmd_data->num_obj_files; a++) {
+			for (a=0; a < cmd->num_obj_files; a++) {
 				strcat(cmd, " ");
-				strcat(cmd, cmd_data->obj_files[a] );
+				strcat(cmd, cmd->obj_files[a] );
 			}
 
 			strcat(cmd, ">>");
@@ -2017,8 +1896,8 @@ static void generate_def_file(command_t *cmd_data)
 			export_args[num_export_args++] = "-c";
 			export_args[num_export_args++] = cmd;
 			export_args[num_export_args++] = NULL;
-			external_spawn(cmd_data, export_args[0], (const char**)export_args);
-			cmd_data->arglist[cmd_data->num_args++] = strdup(def_file);
+			external_spawn(cmd, export_args[0], (const char**)export_args);
+			cmd->arglist[cmd->num_args++] = strdup(def_file);
 
 			/* Now make an import library for the dll */
 			num_export_args = 0;
@@ -2026,19 +1905,20 @@ static void generate_def_file(command_t *cmd_data)
 			export_args[num_export_args++] = "-o";
 
 			strcpy(implib_file, ".libs/");
-			strcat(implib_file, cmd_data->basename);
+			strcat(implib_file, cmd->basename);
 			ext = strrchr(implib_file, '.');
 
-			if (ext)
+			if (ext) {
 				*ext = 0;
-
+			}
+			
 			strcat(implib_file, ".");
 			strcat(implib_file, STATIC_LIB_EXT);
 
 			export_args[num_export_args++] = implib_file;
 			export_args[num_export_args++] = def_file;
 			export_args[num_export_args++] = NULL;
-			external_spawn(cmd_data, export_args[0], (const char**)export_args);
+			external_spawn(cmd, export_args[0], (const char**)export_args);
 
 		}
 	}
@@ -2051,7 +1931,7 @@ static const char* expand_path(const char *relpath)
 	char foo[PATH_MAX], *newpath;
 
 	getcwd(foo, PATH_MAX-1);
-	newpath = (char*)malloc(strlen(foo)+strlen(relpath)+2);
+	newpath = (char*)lt_malloc(strlen(foo)+strlen(relpath)+2);
 	strcpy(newpath, foo);
 	strcat(newpath, "/");
 	strcat(newpath, relpath);
@@ -2059,158 +1939,160 @@ static const char* expand_path(const char *relpath)
 }
 #endif
 
-static void link_fixup(command_t *c)
+static void link_fixup(command_t *cmd)
 {
 	/* If we were passed an -rpath directive, we need to build
 	 * shared objects too.  Otherwise, we should only create static
 	 * libraries.
 	 */
-	if (!c->install_path && (c->output == otDynamicLibraryOnly ||
-		c->output == otModule || c->output == otLibrary)) {
-		if (c->options.shared == share_SHARED) {
-			c->install_path = LIBDIR;
+	if (!cmd->install_path && (cmd->output == OUT_DYNAMIC_LIB_ONLY ||
+		cmd->output == OUT_MODULE || cmd->output == OUT_LIB)) {
+		if (cmd->options.shared == SHARE_SHARED) {
+			cmd->install_path = LIBDIR;
 		}
 	}
 
-	if (c->output == otDynamicLibraryOnly ||
-		c->output == otModule ||
-		c->output == otLibrary) {
+	if (cmd->output == OUT_DYNAMIC_LIB_ONLY ||
+		cmd->output == OUT_MODULE ||
+		cmd->output == OUT_LIB) {
 
-		push_count_chars(c->shared_opts.normal, "-o");
-		if (c->output == otModule) {
-			push_count_chars(c->shared_opts.normal, c->module_name.normal);
-		}
-		else {
-			char *tmp;
-			push_count_chars(c->shared_opts.normal, c->shared_name.normal);
-#ifdef DYNAMIC_INSTALL_NAME
-			push_count_chars(c->shared_opts.normal, DYNAMIC_INSTALL_NAME);
-
-		if (!c->install_path) {
-			fprintf(stderr, "Installation mode requires -rpath\n");
-			exit(1);
-		}
-
-			tmp = (char*)malloc(PATH_MAX);
-			strcpy(tmp, c->install_path);
-		if (c->shared_name.install) {
-			strcat(tmp, strrchr(c->shared_name.install, '/'));
+		push_count_chars(cmd->shared_opts.normal, "-o");
+		if (cmd->output == OUT_MODULE) {
+			push_count_chars(cmd->shared_opts.normal, cmd->module_name.normal);
 		} else {
-			strcat(tmp, strrchr(c->shared_name.normal, '/'));
-		}
-			push_count_chars(c->shared_opts.normal, tmp);
+			push_count_chars(cmd->shared_opts.normal, cmd->shared_name.normal);
+#ifdef DYNAMIC_INSTALL_NAME
+			push_count_chars(cmd->shared_opts.normal, DYNAMIC_INSTALL_NAME);
+
+			if (!cmd->install_path) {
+				ERROR("Installation mode requires -rpath\n");
+				exit(1);
+			}
+			
+			{
+				char *tmp = lt_malloc(PATH_MAX);
+				strcpy(tmp, cmd->install_path);
+			
+				if (cmd->shared_name.install) {
+					strcat(tmp, strrchr(cmd->shared_name.install, '/'));
+				} else {
+					strcat(tmp, strrchr(cmd->shared_name.normal, '/'));
+				}
+			
+				push_count_chars(cmd->shared_opts.normal, tmp);
+			}
 #endif
 		}
 
-		append_count_chars(c->shared_opts.normal, c->obj_files);
-		append_count_chars(c->shared_opts.normal, c->shared_opts.dependencies);
+		append_count_chars(cmd->shared_opts.normal, cmd->obj_files);
+		append_count_chars(cmd->shared_opts.normal, cmd->shared_opts.dependencies);
 
-		if (c->options.export_all) {
+		if (cmd->options.export_all) {
 #ifdef GEN_EXPORTS
-			generate_def_file(c);
+			generate_def_file(cmd);
 #endif
 		}
 	}
 
-	if (c->output == otLibrary || c->output == otStaticLibraryOnly) {
-		push_count_chars(c->static_opts.normal, "-o");
-		push_count_chars(c->static_opts.normal, c->output_name);
+	if (cmd->output == OUT_LIB || cmd->output == OUT_STATIC_LIB_ONLY) {
+		push_count_chars(cmd->static_opts.normal, "-o");
+		push_count_chars(cmd->static_opts.normal, cmd->output_name);
 	}
 
-	if (c->output == otProgram) {
-		if (c->output_name) {
-			push_count_chars(c->arglist, "-o");
-			push_count_chars(c->arglist, c->output_name);
-			append_count_chars(c->arglist, c->obj_files);
-			append_count_chars(c->arglist, c->shared_opts.dependencies);
-			add_dynamic_link_opts(c, c->arglist);
+	if (cmd->output == OUT_PROGRAM) {
+		if (cmd->output_name) {
+			push_count_chars(cmd->arglist, "-o");
+			push_count_chars(cmd->arglist, cmd->output_name);
+			append_count_chars(cmd->arglist, cmd->obj_files);
+			append_count_chars(cmd->arglist, cmd->shared_opts.dependencies);
+			add_dynamic_link_opts(cmd, cmd->arglist);
 		}
 	}
 }
 
-static void post_parse_fixup(command_t *cmd_data)
+static void post_parse_fixup(command_t *cmd)
 {
-	switch (cmd_data->mode)
+	switch (cmd->mode)
 	{
-	case mCompile:
+	case MODE_COMPILE:
 #ifdef PIC_FLAG
-		if (cmd_data->options.pic_mode != pic_AVOID) {
-			push_count_chars(cmd_data->arglist, PIC_FLAG);
+		if (cmd->options.pic_mode != PIC_AVOID) {
+			push_count_chars(cmd->arglist, PIC_FLAG);
 		}
 #endif
-		if (cmd_data->output_name) {
-			push_count_chars(cmd_data->arglist, "-o");
-			push_count_chars(cmd_data->arglist, cmd_data->output_name);
+		if (cmd->output_name) {
+			push_count_chars(cmd->arglist, "-o");
+			push_count_chars(cmd->arglist, cmd->output_name);
 		}
 		break;
-	case mLink:
-		link_fixup(cmd_data);
+	case MODE_LINK:
+		link_fixup(cmd);
 		break;
-	case mInstall:
-		if (cmd_data->output == otLibrary) {
-			link_fixup(cmd_data);
+	case MODE_INSTALL:
+		if (cmd->output == OUT_LIB) {
+			link_fixup(cmd);
 		}
 	default:
 		break;
 	}
 
 #ifdef USE_OMF
-	if (cmd_data->output == otObject ||
-		cmd_data->output == otProgram ||
-		cmd_data->output == otLibrary ||
-		cmd_data->output == otDynamicLibraryOnly) {
-		push_count_chars(cmd_data->arglist, "-Zomf");
+	if (cmd->output == OUT_OBJECT ||
+		cmd->output == OUT_PROGRAM ||
+		cmd->output == OUT_LIB ||
+		cmd->output == OUT_DYNAMIC_LIB_ONLY) {
+		push_count_chars(cmd->arglist, "-Zomf");
 	}
 #endif
 
-	if (cmd_data->options.shared &&
-			(cmd_data->output == otObject ||
-			 cmd_data->output == otLibrary ||
-			 cmd_data->output == otDynamicLibraryOnly)) {
+	if (cmd->options.shared &&
+			(cmd->output == OUT_OBJECT ||
+			 cmd->output == OUT_LIB ||
+			 cmd->output == OUT_DYNAMIC_LIB_ONLY)) {
 #ifdef SHARE_SW
-		push_count_chars(cmd_data->arglist, SHARE_SW);
+		push_count_chars(cmd->arglist, SHARE_SW);
 #endif
 	}
 }
 
-static int run_mode(command_t *cmd_data)
+static int run_mode(command_t *cmd)
 {
 	int rv = 0;
 	count_chars *cctemp;
 
-	cctemp = (count_chars*)malloc(sizeof(count_chars));
+	cctemp = (count_chars*)lt_malloc(sizeof(count_chars));
 	init_count_chars(cctemp);
 
-	switch (cmd_data->mode)
+	switch (cmd->mode)
 	{
-	case mCompile:
-		rv = run_command(cmd_data, cmd_data->arglist);
+	case MODE_COMPILE:
+		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 		break;
-	case mInstall:
+	case MODE_INSTALL:
 		/* Well, we'll assume it's a file going to a directory... */
 		/* For brain-dead install-sh based scripts, we have to repeat
 		 * the command N-times.  install-sh should die.
 		 */
-		if (!cmd_data->output_name) {
-			rv = run_command(cmd_data, cmd_data->arglist);
+		if (!cmd->output_name) {
+			rv = run_command(cmd, cmd->arglist);
 			if (rv) goto finish;
 		}
-		if (cmd_data->output_name) {
-			append_count_chars(cctemp, cmd_data->arglist);
+		if (cmd->output_name) {
+			append_count_chars(cctemp, cmd->arglist);
 			insert_count_chars(cctemp,
-							   cmd_data->output_name,
+							   cmd->output_name,
 							   cctemp->num - 1);
-			rv = run_command(cmd_data, cctemp);
+			rv = run_command(cmd, cctemp);
 			if (rv) goto finish;
 			clear_count_chars(cctemp);
 		}
-		if (cmd_data->static_name.install) {
-			append_count_chars(cctemp, cmd_data->arglist);
+		if (cmd->static_name.install) {
+			append_count_chars(cctemp, cmd->arglist);
 			insert_count_chars(cctemp,
-							   cmd_data->static_name.install,
+							   cmd->static_name.install,
 							   cctemp->num - 1);
-			rv = run_command(cmd_data, cctemp);
+			rv = run_command(cmd, cctemp);
 			if (rv) goto finish;
 #if defined(__APPLE__) && defined(RANLIB)
 			/* From the Apple libtool(1) manpage on Tiger/10.4:
@@ -2228,110 +2110,114 @@ static int run_mode(command_t *cmd_data)
 			 * rerun ranlib afterwards.
 			 */
 			const char *lib_args[3], *static_lib_name;
-			char *tmp;
-			size_t len1, len2;
-			len1 = strlen(cmd_data->arglist->vals[cmd_data->arglist->num - 1]);
+			
+			{
+				char *tmp;
+				size_t len1, len2;
+				
+				len1 = strlen(cmd->arglist->vals[cmd->arglist->num - 1]);
 
-			static_lib_name = jlibtool_basename(cmd_data->static_name.install);
-			len2 = strlen(static_lib_name);
+				static_lib_name = file_name(cmd->static_name.install);
+				len2 = strlen(static_lib_name);
 
-			tmp = malloc(len1 + len2 + 2);
+				tmp = lt_malloc(len1 + len2 + 2);
 
-			snprintf(tmp, len1 + len2 + 2, "%s/%s",
-					cmd_data->arglist->vals[cmd_data->arglist->num - 1],
-					static_lib_name);
+				snprintf(tmp, len1 + len2 + 2, "%s/%s",
+						cmd->arglist->vals[cmd->arglist->num - 1],
+						static_lib_name);
 
-			lib_args[0] = RANLIB;
-			lib_args[1] = tmp;
-			lib_args[2] = NULL;
-			external_spawn(cmd_data, RANLIB, lib_args);
-			free(tmp);
+				lib_args[0] = RANLIB;
+				lib_args[1] = tmp;
+				lib_args[2] = NULL;
+				
+				external_spawn(cmd, RANLIB, lib_args);
+				
+				free(tmp);
+			}
 #endif
 			clear_count_chars(cctemp);
 		}
-		if (cmd_data->shared_name.install) {
-			append_count_chars(cctemp, cmd_data->arglist);
-			insert_count_chars(cctemp,
-							   cmd_data->shared_name.install,
-							   cctemp->num - 1);
-			rv = run_command(cmd_data, cctemp);
+		if (cmd->shared_name.install) {
+			append_count_chars(cctemp, cmd->arglist);
+			insert_count_chars(cctemp, cmd->shared_name.install,
+					   cctemp->num - 1);
+			rv = run_command(cmd, cctemp);
 			if (rv) goto finish;
 			clear_count_chars(cctemp);
 		}
-		if (cmd_data->module_name.install) {
-			append_count_chars(cctemp, cmd_data->arglist);
-			insert_count_chars(cctemp,
-							   cmd_data->module_name.install,
-							   cctemp->num - 1);
-			rv = run_command(cmd_data, cctemp);
+		if (cmd->module_name.install) {
+			append_count_chars(cctemp, cmd->arglist);
+			insert_count_chars(cctemp, cmd->module_name.install,
+					   cctemp->num - 1);
+			rv = run_command(cmd, cctemp);
 			if (rv) goto finish;
 			clear_count_chars(cctemp);
 		}
 		break;
-	case mLink:
-		if (cmd_data->output == otStaticLibraryOnly ||
-			cmd_data->output == otLibrary) {
+	case MODE_LINK:
+		if (cmd->output == OUT_STATIC_LIB_ONLY ||
+			cmd->output == OUT_LIB) {
 #ifdef RANLIB
 			const char *lib_args[3];
 #endif
 			/* Removes compiler! */
-			cmd_data->program = LIBRARIAN;
-			push_count_chars(cmd_data->program_opts, LIBRARIAN_OPTS);
-			push_count_chars(cmd_data->program_opts, cmd_data->static_name.normal);
+			cmd->program = LIBRARIAN;
+			push_count_chars(cmd->program_opts, LIBRARIAN_OPTS);
+			push_count_chars(cmd->program_opts, cmd->static_name.normal);
 
-			rv = run_command(cmd_data, cmd_data->obj_files);
+			rv = run_command(cmd, cmd->obj_files);
 			if (rv) goto finish;
 
 #ifdef RANLIB
 			lib_args[0] = RANLIB;
-			lib_args[1] = cmd_data->static_name.normal;
+			lib_args[1] = cmd->static_name.normal;
 			lib_args[2] = NULL;
-			external_spawn(cmd_data, RANLIB, lib_args);
+			external_spawn(cmd, RANLIB, lib_args);
 #endif
 		}
 
-		if (cmd_data->output == otDynamicLibraryOnly ||
-			cmd_data->output == otModule ||
-			cmd_data->output == otLibrary) {
-			cmd_data->program = NULL;
-			clear_count_chars(cmd_data->program_opts);
+		if (cmd->output == OUT_DYNAMIC_LIB_ONLY ||
+			cmd->output == OUT_MODULE ||
+			cmd->output == OUT_LIB) {
+			cmd->program = NULL;
+			clear_count_chars(cmd->program_opts);
 
-			append_count_chars(cmd_data->program_opts, cmd_data->arglist);
-			if (cmd_data->output == otModule) {
+			append_count_chars(cmd->program_opts, cmd->arglist);
+			if (cmd->output == OUT_MODULE) {
 #ifdef MODULE_OPTS
-				push_count_chars(cmd_data->program_opts, MODULE_OPTS);
+				push_count_chars(cmd->program_opts, MODULE_OPTS);
 #endif
 			} else {
 #ifdef SHARED_OPTS
-				push_count_chars(cmd_data->program_opts, SHARED_OPTS);
+				push_count_chars(cmd->program_opts, SHARED_OPTS);
 #endif
 #ifdef dynamic_link_version_func
-				push_count_chars(cmd_data->program_opts,
-							 dynamic_link_version_func(cmd_data->version_info));
+				push_count_chars(cmd->program_opts,
+						 dynamic_link_version_func(cmd->version_info));
 #endif
 			}
-			add_dynamic_link_opts(cmd_data, cmd_data->program_opts);
+			add_dynamic_link_opts(cmd, cmd->program_opts);
 
-			rv = run_command(cmd_data, cmd_data->shared_opts.normal);
+			rv = run_command(cmd, cmd->shared_opts.normal);
 			if (rv) goto finish;
 		}
-		if (cmd_data->output == otProgram) {
-			rv = run_command(cmd_data, cmd_data->arglist);
+		if (cmd->output == OUT_PROGRAM) {
+			rv = run_command(cmd, cmd->arglist);
 			if (rv) goto finish;
 		}
 		break;
-	case mExecute:
+	case MODE_EXECUTE:
 	{
 		char *l, libpath[PATH_MAX];
 		
-		if (strlen(cmd_data->arglist->vals[0]) >= PATH_MAX) {
-			fprintf(stderr, "Libpath too long no buffer space");
+		if (strlen(cmd->arglist->vals[0]) >= PATH_MAX) {
+			ERROR("Libpath too long no buffer space");
 			rv = 1;
 			
 			goto finish;
 		}
 
-		strcpy(libpath, cmd_data->arglist->vals[0]);
+		strcpy(libpath, cmd->arglist->vals[0]);
 		add_dotlibs(libpath);
 	l = strrchr(libpath, '/');
 	if (!l) l = strrchr(libpath, '\\');
@@ -2344,7 +2230,7 @@ static int run_mode(command_t *cmd_data)
 
 	l = "./build/lib/.libs";
 	setenv(LD_LIBRARY_PATH_LOCAL, l, 1);
-	rv = run_command(cmd_data, cmd_data->arglist);
+	rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;
 	}
 	  break;
@@ -2366,14 +2252,15 @@ static void cleanup_tmp_dir(const char *dirname)
 	char fullname[1024];
 
 	dir = opendir(dirname);
-
-	if (dir == NULL)
+	if (!dir) {
 		return;
-
+	}
+	
 	if ((strlen(dirname) + 1 + sizeof(entry->d_name)) >= sizeof(fullname)) {
-		  fprintf(stderr, "Dirname too long out of buffer space");
-	  (void) closedir(dir);
-		  return;
+		ERROR("Dirname too long, out of buffer space");
+
+		(void) closedir(dir);
+		return;
 	}
 
 	while ((entry = readdir(dir)) != NULL) {
@@ -2390,97 +2277,294 @@ static void cleanup_tmp_dir(const char *dirname)
 	(void) closedir(dir);
 }
 
-static void cleanup_tmp_dirs(command_t *cmd_data)
+static void cleanup_tmp_dirs(command_t *cmd)
 {
 	int d;
 
-	for (d = 0; d < cmd_data->tmp_dirs->num; d++) {
-		cleanup_tmp_dir(cmd_data->tmp_dirs->vals[d]);
+	for (d = 0; d < cmd->tmp_dirs->num; d++) {
+		cleanup_tmp_dir(cmd->tmp_dirs->vals[d]);
 	}
 }
 
-static int ensure_fake_uptodate(command_t *cmd_data)
+static int ensure_fake_uptodate(command_t *cmd)
 {
 	/* FIXME: could do the stat/touch here, but nah... */
 	const char *touch_args[3];
 
-	if (cmd_data->mode == mInstall) {
+	if (cmd->mode == MODE_INSTALL) {
 		return 0;
 	}
-	if (!cmd_data->fake_output_name) {
+	if (!cmd->fake_output_name) {
 		return 0;
 	}
 
 	touch_args[0] = "touch";
-	touch_args[1] = cmd_data->fake_output_name;
+	touch_args[1] = cmd->fake_output_name;
 	touch_args[2] = NULL;
-	return external_spawn(cmd_data, "touch", touch_args);
+	return external_spawn(cmd, "touch", touch_args);
 }
 
 /* Store the install path in the *.la file */
-static int add_for_runtime(command_t *cmd_data)
+static int add_for_runtime(command_t *cmd)
 {
-	if (cmd_data->mode == mInstall) {
+	if (cmd->mode == MODE_INSTALL) {
 		return 0;
 	}
-	if (cmd_data->output == otDynamicLibraryOnly ||
-		cmd_data->output == otLibrary) {
-		FILE *f=fopen(cmd_data->fake_output_name,"w");
+	if (cmd->output == OUT_DYNAMIC_LIB_ONLY ||
+		cmd->output == OUT_LIB) {
+		FILE *f=fopen(cmd->fake_output_name,"w");
 		if (f == NULL) {
 			return -1;
 		}
-		fprintf(f,"%s\n", cmd_data->install_path);
+		fprintf(f,"%s\n", cmd->install_path);
 		fclose(f);
 		return(0);
 	} else {
-		return(ensure_fake_uptodate(cmd_data));
+		return(ensure_fake_uptodate(cmd));
 	}
+}
+
+static void parse_args(int argc, char *argv[], command_t *cmd)
+{
+	int a;
+	const char *arg, *base;
+	int arg_used;
+
+	/*
+	 *	We now take a major step past libtool.
+	 *
+	 *	IF there's no "--mode=...", AND we recognise
+	 *	the binary as a "special" name, THEN replace it
+	 * 	with the correct one, and set the correct mode.
+	 *
+	 *	For example if were called 'CC' then we know we should
+	 *	probably be compiling stuff.
+	 */
+	base = file_name(argv[0]);
+	arg = automode(base, cmd);
+	if (arg != base) {
+		push_count_chars(cmd->arglist, arg);
+		
+		assert(cmd->mode != MODE_UNKNOWN);
+	}
+
+	/*
+	 *	We first pass over the command-line arguments looking for
+	 *	"--mode", etc.  If so, then use the libtool compatibility
+	 *	method for building the software.  Otherwise, auto-detect it
+	 * 	via "-o" and the extensions.
+	 */
+	base = NULL;
+	if (cmd->mode == MODE_UNKNOWN) for (a = 1; a < argc; a++) {
+		arg = argv[a];
+
+		if (strncmp(arg, "--mode=", 7) == 0) {
+			base = NULL;
+			break;
+		}
+
+		/*
+		 *	Stop if we get another magic method
+		 */
+		if ((a == 1) && 
+		    ((strncmp(arg, "LINK", 4) == 0) ||
+		     (strcmp(arg, "CC") == 0) ||
+		     (strcmp(arg, "CXX") == 0))) {
+			base = NULL;
+			break;
+		}
+
+		if (strncmp(arg, "-o", 2) == 0) {
+			base = argv[++a];
+		}
+	}
+
+	/*
+	 *	There were no magic args or an explicit --mode= but we did
+	 *	find an output file, so guess what mode were meant to be in
+	 *	from its extension.
+	 */
+	if (base) {
+		arg = strrchr(base, '.');
+		if (!arg) {
+			cmd->mode = MODE_LINK;
+			push_count_chars(cmd->arglist, LINK_C);
+		}
+#ifdef EXE_EXT
+		else if (strcmp(arg, EXE_EXT) == 0) {
+			cmd->mode = MODE_LINK;
+			push_count_chars(cmd->arglist, LINK_C);
+		}
+#endif
+		else if (strcmp(arg + 1, DYNAMIC_LIB_EXT) == 0) {
+			cmd->mode = MODE_LINK;
+			push_count_chars(cmd->arglist, LINK_C);
+		}
+		else if (strcmp(arg + 1, STATIC_LIB_EXT) == 0) {
+			cmd->mode = MODE_LINK;
+			push_count_chars(cmd->arglist, LINK_C);
+		}
+		else if (strcmp(arg + 1, "la") == 0) {
+			cmd->mode = MODE_LINK;
+			push_count_chars(cmd->arglist, LINK_C);
+		}
+		else if ((strcmp(arg + 1, "lo") == 0) ||
+			 (strcmp(arg + 1, "o") == 0)) {
+			cmd->mode = MODE_COMPILE;
+			push_count_chars(cmd->arglist, CC);
+		}
+	}
+
+	for (a = 1; a < argc; a++) {
+		arg = argv[a];
+		arg_used = 1;
+
+		if (arg[0] == '-') {
+			/*
+			 *	Double dashed (long) single dash (short)
+			 */
+			arg_used = (arg[1] == '-') ?
+				parse_long_opt(arg + 2, cmd) :
+				parse_short_opt(arg + 1, cmd);
+
+			if (arg_used) continue;
+			
+			/*
+			 *	We haven't done anything with it yet, but
+			 *	there are still some arg/value pairs.
+			 *
+			 *	Try some of the more complicated short opts...
+			 */
+			if (a + 1 < argc) {
+				/*
+				 *	We found an output file!
+				 */
+				if ((arg[1] == 'o') && (arg[2] == '\0')) {
+					arg = argv[++a];
+					arg_used = parse_output_file_name(arg,
+									  cmd);
+				/*
+				 *	-MT literal dependency
+				 */
+				} else if (!strcmp(arg + 1, "MT")) {
+					DEBUG("Adding: %s\n", arg);
+
+					push_count_chars(cmd->arglist, arg);
+					arg = argv[++a];
+					
+					NOTICE(" %s\n", arg);
+
+					push_count_chars(cmd->arglist, arg);
+					arg_used = 1;
+				/*
+				 *	Runtime library search path
+				 */
+				} else if (!strcmp(arg + 1, "rpath")) {
+					/* Aha, we should try to link both! */
+					cmd->install_path = argv[++a];
+					arg_used = 1;
+				
+				} else if (!strcmp(arg + 1, "release")) {
+					/* Store for later deciphering */
+					cmd->version_info = argv[++a];
+					arg_used = 1;
+					
+				} else if (!strcmp(arg + 1, "version-info")) {
+					/* Store for later deciphering */
+					cmd->version_info = argv[++a];
+					arg_used = 1;
+					
+				} else if (!strcmp(arg + 1,
+						   "export-symbols-regex")) {
+					/* Skip the argument. */
+					++a;
+					arg_used = 1;
+					
+				} else if (!strcmp(arg + 1, "undefined")) {
+					cmd->undefined_flag = argv[++a];
+					arg_used = 1;
+				/* 
+				 *	Add dir to runtime library search path.
+				 */
+				} else if ((arg[1] == 'R') && !arg[2]) {
+					
+					add_runtime_dir_lib(argv[++a], cmd);
+					arg_used = 1;
+				}
+			}
+		/*
+		 *	Ok.. the argument doesn't begin with a dash
+		 *	maybe it's an input file.
+		 *
+		 *	Check its extension to see if it's a known input 
+		 *	file and verify it exists.
+		 */
+		} else {
+			arg_used = parse_input_file_name(arg, cmd);
+		}
+
+		/*
+		 *	If we still don't have a run mode, look for a magic
+		 *	program name CC, LINK, or whatever.  Then replace that
+		 *	with the name of the real program we want to run.
+		 */
+		if (!arg_used) {
+			if ((cmd->arglist->num == 0) &&
+				(cmd->mode == MODE_UNKNOWN)) {
+				arg = automode(arg, cmd);
+			}
+
+			DEBUG("Adding: %s\n", arg);
+			
+			push_count_chars(cmd->arglist, arg);
+		}
+	}
+
 }
 
 int main(int argc, char *argv[])
 {
 	int rc;
-	command_t cmd_data;
+	command_t cmd;
 
-	memset(&cmd_data, 0, sizeof(cmd_data));
+	memset(&cmd, 0, sizeof(cmd));
 
-	cmd_data.options.pic_mode = pic_UNKNOWN;
+	cmd.options.pic_mode = PIC_UNKNOWN;
+	cmd.mode = MODE_UNKNOWN;
+	cmd.output = OUT_GENERAL;
 
-	cmd_data.program_opts = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.program_opts);
-	cmd_data.arglist = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.arglist);
-	cmd_data.tmp_dirs = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.tmp_dirs);
-	cmd_data.obj_files = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.obj_files);
-	cmd_data.dep_rpaths = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.dep_rpaths);
-	cmd_data.rpaths = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.rpaths);
-	cmd_data.static_opts.normal = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.static_opts.normal);
-	cmd_data.shared_opts.normal = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.shared_opts.normal);
-	cmd_data.shared_opts.dependencies = (count_chars*)malloc(sizeof(count_chars));
-	init_count_chars(cmd_data.shared_opts.dependencies);
+	/*
+	 *	Initialise the various argument lists
+	 */
+	cmd.program_opts		= alloc_countchars();
+	cmd.arglist			= alloc_countchars();
+	cmd.tmp_dirs 			= alloc_countchars();
+	cmd.obj_files			= alloc_countchars();
+	cmd.dep_rpaths 			= alloc_countchars();
+	cmd.rpaths			= alloc_countchars();
+	cmd.static_opts.normal		= alloc_countchars();
+	cmd.shared_opts.normal		= alloc_countchars();
+	cmd.shared_opts.dependencies	= alloc_countchars();
 
-	cmd_data.mode = mUnknown;
-	cmd_data.output = otGeneral;
+	/*
+	 *	Fill up the various argument lists
+	 */
+	parse_args(argc, argv, &cmd);
+	post_parse_fixup(&cmd);
 
-	parse_args(argc, argv, &cmd_data);
-	post_parse_fixup(&cmd_data);
-
-	if (cmd_data.mode == mUnknown) {
-	   usage(1);
+	/*
+	 *	We couldn't figure out which mode to operate in
+	 */
+	if (cmd.mode == MODE_UNKNOWN) {
+		usage(1);
 	}
 
-	rc = run_mode(&cmd_data);
-
+	rc = run_mode(&cmd);
 	if (!rc) {
-	   add_for_runtime(&cmd_data);
+		add_for_runtime(&cmd);
 	}
 
-	cleanup_tmp_dirs(&cmd_data);
+	cleanup_tmp_dirs(&cmd);
+	
 	return rc;
 }
