@@ -1721,25 +1721,25 @@ static int parse_output_file_name(const char *arg, command_t *cmd)
 		cmd->module_name.install = gen_install_name(arg, TYPE_MODULE_LIB);
 
 		if (!cmd->options.dry_run) {
-		char *newname;
-		char *newext;
-		newname = lt_malloc(strlen(cmd->static_name.normal) + 1);
+			char *newname;
+			char *newext;
+			newname = lt_malloc(strlen(cmd->static_name.normal) + 1);
 
-		strcpy(newname, cmd->static_name.normal);
-		newext = strrchr(newname, '/');
-		if (!newext) {
-			/* Check first to see if the dir already exists! */
-			safe_mkdir(cmd, ".libs");
-		} else {
-			*newext = '\0';
-			safe_mkdir(cmd, newname);
-		}
-		free(newname);
+			strcpy(newname, cmd->static_name.normal);
+			newext = strrchr(newname, '/');
+			if (!newext) {
+				/* Check first to see if the dir already exists! */
+				safe_mkdir(cmd, ".libs");
+			} else {
+				*newext = '\0';
+				safe_mkdir(cmd, newname);
+			}
+			free(newname);
 		}
 
 #ifdef TRUNCATE_DLL_NAME
 		if (shared) {
-		  arg = truncate_dll_name(arg);
+			arg = truncate_dll_name(arg);
 		}
 #endif
 
@@ -1757,20 +1757,20 @@ static int parse_output_file_name(const char *arg, command_t *cmd)
 		cmd->static_name.install = gen_install_name(arg, TYPE_STATIC_LIB);
 
 		if (!cmd->options.dry_run) {
-		char *newname;
-		char *newext;
-		newname = lt_malloc(strlen(cmd->static_name.normal) + 1);
+			char *newname;
+			char *newext;
+			newname = lt_malloc(strlen(cmd->static_name.normal) + 1);
 
-		strcpy(newname, cmd->static_name.normal);
-		newext = strrchr(newname, '/');
-		if (!newext) {
-			/* Check first to see if the dir already exists! */
-			safe_mkdir(cmd, ".libs");
-		} else {
-			*newext = '\0';
-			safe_mkdir(cmd, newname);
-		}
-		free(newname);
+			strcpy(newname, cmd->static_name.normal);
+			newext = strrchr(newname, '/');
+			if (!newext) {
+				/* Check first to see if the dir already exists! */
+				safe_mkdir(cmd, ".libs");
+			} else {
+				*newext = '\0';
+				safe_mkdir(cmd, newname);
+			}
+			free(newname);
 		}
 
 		cmd->output_name = arg;
@@ -1917,7 +1917,7 @@ static void generate_def_file(command_t *cmd)
 			ext = strrchr(implib_file, '.');
 
 			if (ext) {
-				*ext = 0;
+				*ext = '\0';
 			}
 			
 			strcat(implib_file, ".");
