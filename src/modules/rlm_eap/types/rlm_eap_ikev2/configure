@@ -1255,7 +1255,7 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-eap-ikev2-include-dir=DIR
-                          Directory where the json-c includes may be found
+                          Directory where the eap-ikev2 includes may be found
   --with-eap-ikev2-lib-dir=DIR
                           Directory where the eap-ikev2 libraries may be found
   --with-eap-ikev2-dir=DIR
@@ -2949,8 +2949,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_eap_ikev2 requires: $fail." >&2;};
 fi
 
 eap_ikev2_cflags="${SMART_CFLAGS}"
-eap_ikev2_ldflags="${OPENSSL_LIBS} ${SMART_LIBS}"
-
+eap_ikev2_ldflags="${SMART_LIBS}"
 
 
 

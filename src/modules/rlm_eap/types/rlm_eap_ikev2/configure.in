@@ -7,7 +7,7 @@ if test x$with_[]modname != xno; then
 	eap_ikev2_include_dir=
 	AC_ARG_WITH(eap-ikev2-include-dir,
 		[AS_HELP_STRING([--with-eap-ikev2-include-dir=DIR],
-		[Directory where the json-c includes may be found])],
+		[Directory where the eap-ikev2 includes may be found])],
 		[case "$withval" in
 		    no)
 			AC_MSG_ERROR(Need eap-ikev2-include-dir)
@@ -101,12 +101,10 @@ if test x"$fail" != x""; then
 fi
 
 eap_ikev2_cflags="${SMART_CFLAGS}"
-eap_ikev2_ldflags="${OPENSSL_LIBS} ${SMART_LIBS}"
+eap_ikev2_ldflags="${SMART_LIBS}"
 
 AC_SUBST(eap_ikev2_cflags)
 AC_SUBST(eap_ikev2_ldflags)
-
-dnl AC_CONFIG_HEADER(config.h)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)  # keep this!  Don't change!
