@@ -22,7 +22,7 @@ export DESTDIR := $(R)
 include scripts/boiler.mk
 
 # These are not yet converted to the new system
-SUBDIRS		= $(wildcard raddb doc)
+SUBDIRS		= $(wildcard raddb)
 
 .PHONY: tests
 tests:
