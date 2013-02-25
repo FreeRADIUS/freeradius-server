@@ -80,7 +80,7 @@ if test x$with_[]modname != xno; then
 	smart_try_dir="$eap_tnc_lib_dir"
 	FR_SMART_CHECK_LIB([tnc],[exchangeTNCCSMessages])
 	if test "x$ac_cv_lib_tnc_exchangetnccsmessages" != "xyes"; then
-		fail="$fail libeap-tnc"
+		fail="$fail libtnc"
 	fi
 	
 	targetname=modname     # keep this!  Don't change!

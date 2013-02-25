@@ -2926,7 +2926,7 @@ $as_echo "no" >&6; }
 fi
 
 	if test "x$ac_cv_lib_tnc_exchangetnccsmessages" != "xyes"; then
-		fail="$fail libeap-tnc"
+		fail="$fail libtnc"
 	fi
 
 	targetname=rlm_eap_tnc     # keep this!  Don't change!
