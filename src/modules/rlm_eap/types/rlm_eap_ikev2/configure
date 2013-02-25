@@ -2762,9 +2762,7 @@ fi
 	fi
 
 
-	old_LDFLAGS="${LDFLAGS}"
-
-	LDFLAGS="${OPENSSL_LIBS}"
+	LIBS="${OPENSSL_LIBS}"
 	smart_try_dir="$eap_ikev2_lib_dir"
 
 
@@ -2919,7 +2917,6 @@ fi
 	if test "x$ac_cv_lib_eap_ikev2_ikev2_set_log_callback" != "xyes"; then
 		fail="$fail libeap-ikev2"
 	fi
-	LDFLAGS="${old_LDFLAGS}"
 
 	targetname=rlm_eap_ikev2     # keep this!  Don't change!
 else
