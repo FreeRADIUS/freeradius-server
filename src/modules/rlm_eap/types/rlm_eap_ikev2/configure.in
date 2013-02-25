@@ -3,41 +3,72 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_ikev2])
 
 if test x$with_[]modname != xno; then
+	dnl extra argument: --with-eap-ikev2-include-dir=DIR
+	eap_ikev2_include_dir=
+	AC_ARG_WITH(eap-ikev2-include-dir,
+		[AS_HELP_STRING([--with-eap-ikev2-include-dir=DIR],
+		[Directory where the json-c includes may be found])],
+		[case "$withval" in
+		    no)
+			AC_MSG_ERROR(Need eap-ikev2-include-dir)
+		    ;;
+		        yes)
+		    ;;
+		    *)
+		        eap_ikev2_include_dir="$withval"
+		    ;;
+		esac])
 
-	## We may need more complex checking here.  Assume for now that 
-	## everyone has it.
-	AC_CHECK_HEADERS(malloc.h)
+	dnl extra argument: --with-eap-ikev2-lib-dir=DIR
+	eap_ikev2_lib_dir=
+	AC_ARG_WITH(eap-ikev2-lib-dir,
+	[AS_HELP_STRING([--with-eap-ikev2-lib-dir=DIR],
+		[Directory where the eap-ikev2 libraries may be found])],
+		[case "$withval" in
+		    no)
+			AC_MSG_ERROR(Need eap-ikev2-lib-dir)
+			;;
+		    yes)
+			;;
+		    *)
+			eap_ikev2_lib_dir="$withval"
+			;;
+		esac])
 
-	AC_ARG_WITH(eap-ikev2-includes,
-	  AS_HELP_STRING([--with-eap-ikev2-includes],
-			 [Diectory to look for EAPIKEv2 include files]),
-		   eap_ikev2_includes=-I$with_eap_ikev2_includes)
-		   
+	dnl extra argument: --with-eap-ikev2-dir=DIR
+	AC_ARG_WITH(eap-ikev2-dir,
+	[AS_HELP_STRING([--with-eap-ikev2-dir=DIR],
+		[Base directory where eap-ikev2 is installed])],
+		[case "$withval" in
+		    no)
+			AC_MSG_ERROR(Need eap-ikev2-dir)
+			;;
+		    yes)
+			;;
+		    *)
+			eap_ikev2_lib_dir="$withval/lib"
+			eap_ikev2_include_dir="$withval/include"
+			;;
+		esac])
 
-	AC_ARG_WITH(eap-ikev2-libraries,
-	  AS_HELP_STRING([--with-eap-ikev2-libraries],
-			 [Diectory to look for EAPIKEv2 library file]),
-		    eap_ikev2_libraries=-L$with_eap_ikev2_libraries)
+	dnl ############################################################
+	dnl # Check for eap-ikev2 includes
+	dnl ############################################################
+	smart_try_dir="$eap_ikev2_include_dir"
+	FR_SMART_CHECK_INCLUDE([EAPIKEv2/connector.h])
+	if test "x$ac_cv_header_EAPIKEv2_connector_h" != "xyes"; then
+		fail="$fail EAPIKEv2/connector.h"
+	fi
 	
-	LDFLAGS="$eap_ikev2_libraries $OPENSSL_LIBS"
-	AC_CHECK_LIB([eap-ikev2],[ikev2_set_log_callback])
+	dnl ############################################################
+	dnl # Check for eap-ikev2 library
+	dnl ############################################################
+	smart_try_dir="$eap_ikev2_lib_dir"
+	FR_SMART_CHECK_LIB([eap-ikev2],[ikev2_set_log_callback])
 	if test "x$ac_cv_lib_eap_ikev2_ikev2_set_log_callback" != "xyes"; then
 		fail="$fail libeap-ikev2"
 	fi
 
-	LDFLAGS=$old_LDFLAG
-	
-	old_CPPFLAGS=$CPPFLAGS
-	CPPFLAGS=$eap_ikev2_includes
-	AC_CHECK_HEADER(EAPIKEv2/connector.h)
-	if test "x$ac_cv_header_EAPIKEv2_connector_h" != "xyes"; then
-		fail="$fail EAPIKEv2/connector.h"
-	fi
-	CPPFLAGS=$old_CPPFLAGS
-
-	eap_ikev2_cflags="$eap_ikev2_includes"
-	LDFLAGS="$LDFLAGS $openssl_libraries $eap_ikev2_libraries"
-	    
 	targetname=modname     # keep this!  Don't change!
 else
 	targetname=            # keep this!  Don't change!
@@ -55,7 +86,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-
+eap_ikev2_cflags="${SMART_CFLAGS}"
+eap_ikev2_ldflags="${OPENSSL_LIBS} ${SMART_LIBS}"
 
 AC_SUBST(eap_ikev2_cflags)
 AC_SUBST(eap_ikev2_ldflags)
