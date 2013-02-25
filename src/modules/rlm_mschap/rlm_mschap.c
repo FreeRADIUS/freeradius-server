@@ -37,10 +37,10 @@ RCSID("$Id$")
 #include	"smbdes.h"
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
-#include	<openssl/rc4.h>
+#  include	<openssl/rc4.h>
 #endif
 
-#ifdef __APPLE__
+#ifdef WITH_OPEN_DIRECTORY
 extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
 #endif
 
@@ -152,7 +152,7 @@ typedef struct rlm_mschap_t {
 	const char *auth_type;
 	int allow_retry;
 	char *retry_msg;
-#ifdef __APPLE__
+#ifdef WITH_OPEN_DIRECTORY
 	int  open_directory;
 #endif  
 } rlm_mschap_t;
@@ -556,7 +556,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
 	{ "retry_msg",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, retry_msg), NULL,  NULL },
-#ifdef __APPLE__
+#ifdef WITH_OPEN_DIRECTORY
 	{ "use_open_directory",    PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t,open_directory), NULL, "yes" },
 #endif
@@ -1705,7 +1705,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 			return RLM_MODULE_REJECT;
 		}
 
-#ifdef __APPLE__
+#ifdef WITH_OPEN_DIRECTORY
 		/*
 		 *  No "known good" NT-Password attribute.  Try to do
 		 *  OpenDirectory authentication.
