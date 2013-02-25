@@ -63,11 +63,16 @@ if test x$with_[]modname != xno; then
 	dnl ############################################################
 	dnl # Check for eap-ikev2 library
 	dnl ############################################################
+	
+	old_LDFLAGS="${LDFLAGS}"
+	
+	LDFLAGS="${OPENSSL_LIBS}"
 	smart_try_dir="$eap_ikev2_lib_dir"
 	FR_SMART_CHECK_LIB([eap-ikev2],[ikev2_set_log_callback])
 	if test "x$ac_cv_lib_eap_ikev2_ikev2_set_log_callback" != "xyes"; then
 		fail="$fail libeap-ikev2"
 	fi
+	LDFLAGS="${old_LDFLAGS}"
 
 	targetname=modname     # keep this!  Don't change!
 else
