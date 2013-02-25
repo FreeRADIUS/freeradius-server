@@ -3259,7 +3259,7 @@ _ACEOF
 
 
 	if test "x$libcurl_cv_lib_version_ok" != "xyes"; then
-		fail="$fail libcurl too old"
+		fail="$fail libcurl >= 7.19.2"
 	elif test "x$libcurl_cv_lib_curl_usable" != "xyes"; then
 		fail="$fail libcurl"
 	else
