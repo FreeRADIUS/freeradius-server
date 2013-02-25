@@ -8,15 +8,10 @@
 #
 include ../../Make.inc
 
-ifeq "$(BOILER)" "yes"
-	BUILD_PATH := ../../build
-	BIN_PATH := $(BUILD_PATH)/bin/local
-	LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
-	DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
-else
-	BIN_PATH := ../main
-	DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):../lib/.libs/:../modules/lib/.libs/
-endif
+BUILD_PATH := ../../build
+BIN_PATH := $(BUILD_PATH)/bin/local
+LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
+DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
 
 export DYLD_LIBRARY_PATH
 
