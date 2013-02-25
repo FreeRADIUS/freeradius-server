@@ -3,17 +3,90 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_tnc])
 
 if test x$with_[]modname != xno; then
+	dnl extra argument: --with-eap-tnc-include-dir=DIR
+	eap_tnc_include_dir=
+	AC_ARG_WITH(eap-tnc-include-dir,
+		[AS_HELP_STRING([--with-eap-tnc-include-dir=DIR],
+		[Directory where the libtnc includes may be found])],
+		[case "$withval" in
+		    no)
+			AC_MSG_ERROR(Need eap-tnc-include-dir)
+		    ;;
+		        yes)
+		    ;;
+		    *)
+		        eap_tnc_include_dir="$withval"
+		    ;;
+		esac])
 
-	AC_CHECK_LIB(TNCS, exchangeTNCCSMessages)
-	if test "x$ac_cv_lib_tncs_exchangetnccsmessages" != xyes; then
-		AC_MSG_WARN([the TNCS library isn't found!])
-		fail="$fail -lTNCS"
+	dnl extra argument: --with-eap-tnc-lib-dir=DIR
+	eap_tnc_lib_dir=
+	AC_ARG_WITH(eap-tnc-lib-dir,
+	[AS_HELP_STRING([--with-eap-tnc-lib-dir=DIR],
+		[Directory where the libtnc libraries may be found])],
+		[case "$withval" in
+		    no)
+			AC_MSG_ERROR(Need eap-tnc-lib-dir)
+			;;
+		    yes)
+			;;
+		    *)
+			eap_tnc_lib_dir="$withval"
+			;;
+		esac])
+
+	dnl extra argument: --with-eap-tnc-dir=DIR
+	AC_ARG_WITH(eap-tnc-dir,
+	[AS_HELP_STRING([--with-eap-tnc-dir=DIR],
+		[Base directory where libtnc is installed])],
+		[case "$withval" in
+		    no)
+			AC_MSG_ERROR(Need eap-tnc-dir)
+			;;
+		    yes)
+			;;
+		    *)
+			eap_tnc_lib_dir="$withval/lib"
+			eap_tnc_include_dir="$withval/include"
+			;;
+		esac])
+		
+	dnl ############################################################
+	dnl # Check for OpenSSL support
+	dnl ############################################################
+
+	AC_MSG_CHECKING(for OpenSSL support)
+	if test "x$OPENSSL_LIBS" != "x"; then
+		AC_MSG_RESULT(yes)
+	else
+		AC_MSG_RESULT(no)
+		fail="OpenSSL"
 	fi
 
-	targetname=modname
+	dnl ############################################################
+	dnl # Check for eap-tnc includes
+	dnl ############################################################
+	smart_try_dir="$eap_tnc_include_dir"
+	FR_SMART_CHECK_INCLUDE([libtnc.h])
+	if test "x$ac_cv_header_libtnc_h" != "xyes"; then
+		fail="$fail libtnc.h"
+	fi
+	
+	dnl ############################################################
+	dnl # Check for eap-tnc library
+	dnl ############################################################
+	
+	LIBS="${OPENSSL_LIBS}"
+	smart_try_dir="$eap_tnc_lib_dir"
+	FR_SMART_CHECK_LIB([tnc],[exchangeTNCCSMessages])
+	if test "x$ac_cv_lib_tnc_exchangetnccsmessages" != "xyes"; then
+		fail="$fail libeap-tnc"
+	fi
+	
+	targetname=modname     # keep this!  Don't change!
 else
-	targetname=
-	echo \*\*\* module modname is disabled.
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
 fi
 
 dnl  Don't change this section.
@@ -27,8 +100,11 @@ if test x"$fail" != x""; then
 	fi
 fi
 
+eap_tnc_cflags="${SMART_CFLAGS}"
+eap_tnc_ldflags="${SMART_LIBS}"
+
 AC_SUBST(eap_tnc_cflags)
 AC_SUBST(eap_tnc_ldflags)
 
-AC_SUBST(targetname)
-AC_OUTPUT(all.mk)
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(all.mk)  # keep this!  Don't change!
