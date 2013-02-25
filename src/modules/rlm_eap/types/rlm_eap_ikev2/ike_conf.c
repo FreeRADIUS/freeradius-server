@@ -304,7 +304,8 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
 	if(!vp) {
 	    radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Id type not set",id);
 	} else {
-	    if(!(id_type=vp->lvalue)) {
+            id_type = vp->vp_integer;
+	    if(!id_type) {
 		radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Not valid id type",id);
 	    }
 	}
