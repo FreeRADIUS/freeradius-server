@@ -8,14 +8,14 @@
 #
 include ../../Make.inc
 
-BUILD_PATH := ../../build
+BUILD_PATH := $(top_builddir)/build
 BIN_PATH := $(BUILD_PATH)/bin/local
 LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
 DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
 
 export DYLD_LIBRARY_PATH
 
-RADDB_PATH := ../../raddb
+RADDB_PATH := $(top_builddir)/raddb
 
 TESTS	= user_password chap mschapv1 digest-01/digest* test.example.com \
 	wimax
@@ -49,7 +49,7 @@ dictionary:
 
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > test.conf
-	@echo "libdir =" $(top_builddir)/src/modules/lib >> test.conf
+	@echo "libdir =" $(LIB_PATH) >> test.conf
 	@echo "testdir =" $(top_builddir)/src/tests/ >> test.conf
 	@echo 'dictionary = $${testdir}' >> test.conf
 	@echo 'logdir = $${testdir}' >> test.conf
