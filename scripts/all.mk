@@ -9,10 +9,11 @@ $(R)$(sbindir)/raddebug: scripts/raddebug
 	@mkdir -p $(dir $@)
 	@$(INSTALL) -m 755 $< $@
 
-$(R)$(bindir)/radsqlrelay scripts/radsqlrelay
+$(R)$(bindir)/radsqlrelay: scripts/radsqlrelay
 	@mkdir -p $(dir $@)
 	@$(INSTALL) -m 755 $< $@
 
-$(R)$(bindir)/radcrypt scripts/cryptpasswd
+$(R)$(bindir)/radcrypt: scripts/cryptpasswd
 	@mkdir -p $(dir $@)
 	@$(INSTALL) -m 755 $< $@
+
