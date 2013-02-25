@@ -1840,6 +1840,18 @@ if test "${with_eap_ikev2_dir+set}" = set; then :
 fi
 
 
+
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL support" >&5
+$as_echo_n "checking for OpenSSL support... " >&6; }
+	if test "x$OPENSSL_LIBS" != "x"; then
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+	else
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+		fail="OpenSSL"
+	fi
+
 				smart_try_dir="$eap_ikev2_include_dir"
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'

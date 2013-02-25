@@ -50,6 +50,18 @@ if test x$with_[]modname != xno; then
 			eap_ikev2_include_dir="$withval/include"
 			;;
 		esac])
+		
+	dnl ############################################################
+	dnl # Check for OpenSSL support
+	dnl ############################################################
+
+	AC_MSG_CHECKING(for OpenSSL support)
+	if test "x$OPENSSL_LIBS" != "x"; then
+		AC_MSG_RESULT(yes)
+	else
+		AC_MSG_RESULT(no)
+		fail="OpenSSL"
+	fi
 
 	dnl ############################################################
 	dnl # Check for eap-ikev2 includes
