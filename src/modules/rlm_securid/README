@@ -1,11 +1,11 @@
   This module implements SecurID token checking.  It should be listed
-in the "aythenticate" section.
+in the "authenticate" section.
 
   The module configuration is in the "securid" file.  You will need to
 copy it by hand to the raddb/modules/directory.
 
-  There is no "configure" script.  Instead, you MUST edit the
-"Makefile" by hand in order to build the module.  See the Makefile for
+  There is no "configure" script.  Instead, you MUST edit the "all.mk"
+file by hand in order to build the module.  See the "all.mk" file for
 instructions.
 
   Many people will wonder about the license issues involved in
