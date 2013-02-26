@@ -71,7 +71,7 @@ static int digest_fix(REQUEST *request)
 			 *	The attribute type must be valid
 			 */
 			if ((p[0] == 0) || (p[0] > 10)) {
-				RDEBUG("Not formatted as Digest-Attributes");
+				RDEBUG("Not formatted as Digest-Attributes: TLV type (%u) invalid", (unsigned int) p[0]);
 				return RLM_MODULE_NOOP;
 			}
 
@@ -81,7 +81,7 @@ static int digest_fix(REQUEST *request)
 			 *	Too short.
 			 */
 			if (attrlen < 3) {
-				RDEBUG("Not formatted as Digest-Attributes");
+				RDEBUG("Not formatted as Digest-Attributes: TLV too short");
 				return RLM_MODULE_NOOP;
 			}
 
@@ -89,7 +89,7 @@ static int digest_fix(REQUEST *request)
 			 *	Too long.
 			 */
 			if (attrlen > length) {
-				RDEBUG("Not formatted as Digest-Attributes");
+				RDEBUG("Not formatted as Digest-Attributes: TLV too long)");
 				return RLM_MODULE_NOOP;
 			}
 
