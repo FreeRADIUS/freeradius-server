@@ -9,6 +9,7 @@
 include ../../Make.inc
 
 BUILD_PATH := $(top_builddir)/build
+TEST_PATH := $(top_builddir)/src/tests
 BIN_PATH := $(BUILD_PATH)/bin/local
 LIB_PATH := $(BUILD_PATH)/lib/local/.libs/
 DYLD_LIBRARY_PATH := $(DYLD_LIBRARY_PATH):$(LIB_PATH)
@@ -51,7 +52,7 @@ dictionary:
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > test.conf
 	@echo "libdir =" $(LIB_PATH) >> test.conf
-	@echo "testdir =" $(top_builddir)/src/tests/ >> test.conf
+	@echo "testdir =" $(TEST_PATH) >> test.conf
 	@echo 'dictionary = $${testdir}' >> test.conf
 	@echo 'logdir = $${testdir}' >> test.conf
 	@echo 'radacctdir = $${testdir}' >> test.conf
@@ -60,7 +61,7 @@ test.conf: dictionary
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf raddb
-	$(BIN_PATH)/radiusd -txxl `pwd`/radius.log -md $(RADDB_PATH)/ -n test -i 127.0.0.1 -p $(PORT)
+	@$(BIN_PATH)/radiusd -txxl $(TEST_PATH)/radius.log -md $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) || tail -n 20 $(TEST_PATH)/radius.log
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
