@@ -22,7 +22,7 @@ clean:
 	@rm -f *~
 
 .PHONY: test
-tests:
+test:
 	@$(MAKE) -C src/tests tests
 
 #
