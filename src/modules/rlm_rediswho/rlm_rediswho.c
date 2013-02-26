@@ -58,6 +58,10 @@ typedef struct rlm_rediswho_t {
 	char *stop_insert;
 	char *stop_trim;
 	char *stop_expire;
+
+	char *postauth_insert;
+	char *postauth_trim;
+	char *postauth_expire;
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
@@ -89,6 +93,13 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_rediswho_t, stop_trim), NULL, ""},
 	{ "stop-expire", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_rediswho_t, stop_expire), NULL, ""},
+
+        { "postauth-insert", PW_TYPE_STRING_PTR,
+          offsetof(rlm_rediswho_t, postauth_insert), NULL, ""},
+        { "postauth-trim", PW_TYPE_STRING_PTR,
+          offsetof(rlm_rediswho_t, postauth_trim), NULL, ""},
+        { "postauth-expire", PW_TYPE_STRING_PTR,
+          offsetof(rlm_rediswho_t, postauth_expire), NULL, ""},
 
 	{ NULL, -1, 0, NULL, NULL}
 };
@@ -234,6 +245,22 @@ static int rediswho_instantiate(CONF_SECTION * conf, void ** instance)
 		return -1;
 	}
 
+	if ((inst->postauth_insert == NULL) || !*inst->postauth_insert) {
+		radlog(L_ERR, "rlm_rediswho: the 'posthauth_insert' statement must be set.");
+		rediswho_detach(inst);
+		return -1;
+	}
+	if ((inst->postauth_trim == NULL) || !*inst->postauth_trim) {
+		radlog(L_ERR, "rlm_rediswho: the 'postauth_trim' statement must be set.");
+		rediswho_detach(inst);
+		return -1;
+	}
+	if ((inst->postauth_expire == NULL) || !*inst->postauth_expire) {
+		radlog(L_ERR, "rlm_rediswho: the 'postauth_expire' statement must be set.");
+		rediswho_detach(inst);
+		return -1;
+	}
+
 	modinst = find_module_instance(cf_section_find("modules"),
 				       inst->redis_instance_name, 1);
 	if (!modinst) {
@@ -307,6 +334,32 @@ static int rediswho_accounting_stop(REDISSOCK *dissocket,
 	REDISWHO_COMMAND(data->stop_expire, dissocket, data, request);
 
 	return RLM_MODULE_OK;
+}
+
+static int rediswho_postauth(void * instance, REQUEST * request)
+{
+	int rc = RLM_MODULE_NOOP;
+	rlm_rediswho_t *data = (rlm_rediswho_t *) instance;
+	REDISSOCK *dissocket;
+
+	dissocket = data->redis_inst->redis_get_socket(data->redis_inst);
+	if (dissocket == NULL) {
+		RDEBUG("cannot allocate redis connection");
+		return RLM_MODULE_FAIL;
+	}	
+
+	REDISWHO_COMMAND(data->postauth_insert, dissocket, data, request);
+
+	/* Only trim if necessary */
+        if (rc > data->trim_count) {
+                rediswho_command(data->postauth_trim, dissocket, data, request);
+        }
+
+	REDISWHO_COMMAND(data->postauth_expire, dissocket, data, request);
+
+	data->redis_inst->redis_release_socket(data->redis_inst, dissocket);
+
+	return rc;
 }
 
 static int rediswho_accounting(void * instance, REQUEST * request)
@@ -391,6 +444,6 @@ module_t rlm_rediswho = {
 		NULL, /* checksimul */
 		NULL, /* pre-proxy */
 		NULL, /* post-proxy */
-		NULL /* post-auth */
+		rediswho_postauth /* post-auth */
 	},
 };
