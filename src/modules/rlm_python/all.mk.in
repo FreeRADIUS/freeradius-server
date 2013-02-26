@@ -9,8 +9,8 @@ SOURCES		:= $(TARGETNAME).c
 TGT_LDLIBS	:= @python_ldflags@
 SRC_CFLAGS	:= @python_cflags@
 
-install: install.raddbdir $(R)$(raddbdir)/example.py
+install: $(R)$(raddbdir)/example.py
 
-$(R)$(raddbdir)/example.py: src/modules/rlm_python/example.py
+$(R)$(raddbdir)/example.py: src/modules/rlm_python/example.py | $(R)$(raddbdir)/
 	@$(ECHO) INSTALL $(notdir $<)
 	@$(INSTALL) -m 755 $< $(R)$(raddbdir)/

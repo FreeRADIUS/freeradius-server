@@ -21,13 +21,9 @@ export DESTDIR := $(R)
 # And over-ride all of the other magic.
 include scripts/boiler.mk
 
-# These are not yet converted to the new system
-SUBDIRS		= $(wildcard raddb)
-
 .PHONY: test
 test:
 	@$(MAKE) -C raddb/certs
-	@$(MAKE) -C src/tests tests
 
 #
 # The $(R) is a magic variable not defined anywhere in this source.
@@ -56,10 +52,6 @@ install.bindir:
 install.sbindir:
 	@[ -d $(R)$(sbindir) ] || $(INSTALL) -d -m 755 $(R)$(sbindir)
 
-.PHONY: install.raddbdir
-install.raddbdir:
-	@[ -d $(R)$(raddbdir) ] || $(INSTALL) -d -m 755 $(R)$(raddbdir)
-
 .PHONY: install.dirs
 install.dirs: install.bindir install.sbindir
 	@$(INSTALL) -d -m 755	$(R)$(mandir)
@@ -85,9 +77,6 @@ $(R)$(mandir)/%: man/%
 
 install: install.dirs install.share install.man
 
-install:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
 ifneq ($(RADMIN),)
 ifneq ($(RGROUP),)
 .PHONY: install-chown
@@ -108,20 +97,6 @@ install-chown:
 	find $(R)$(RUNDIR) -type f -exec chmod u=rw,g=rw,o= {} \;
 endif
 endif
-
-.PHONY: common $(SUBDIRS)
-
-#
-#  We need to convert these directories to boilermake!
-#
-all:
-	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
-
-common: $(SUBDIRS)
-
-$(SUBDIRS):
-	@echo "Making $(WHAT_TO_MAKE) in $@..."
-	@$(MAKE) $(MFLAGS) -C $@ $(WHAT_TO_MAKE)
 
 distclean: clean
 	@rm -f config.cache config.log config.status libtool \
