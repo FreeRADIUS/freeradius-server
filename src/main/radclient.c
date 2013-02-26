@@ -343,13 +343,7 @@ static int radclient_init(const char *filename)
 				/* overlapping! */
 				{
 					const DICT_ATTR *da;
-				
-					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
-					if (!da) {
-						goto oom;
-					}
-				
-					vp->da = da;
+					
 					memmove(&vp->vp_octets[2],
 						&vp->vp_octets[0],
 						vp->length);
@@ -357,6 +351,13 @@ static int radclient_init(const char *filename)
 					vp->vp_octets[0] = vp->da->attr - PW_DIGEST_REALM + 1;
 					vp->length += 2;
 					vp->vp_octets[1] = vp->length;
+					
+					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
+					if (!da) {
+						goto oom;
+					}
+					
+					vp->da = da;
 				}
 				
 				break;
