@@ -1,10 +1,15 @@
+The FreeRADIUS server
+=====================
+
+0. BRANCH STATE
+---------------
 |BuildStatus|_
 
-.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png?branch=master
+.. |BuildStatus| image:: https://travis-ci.org/FreeRADIUS/freeradius-server.png
 .. _BuildStatus: https://travis-ci.org/FreeRADIUS/freeradius-server
 
 1. INTRODUCTION
-===============
+---------------
 
 The FreeRADIUS Server Project is a high performance and highly
 configurable RADIUS server that is available under the terms of the
@@ -71,13 +76,13 @@ more information.
 
 
 2. INSTALLATION
-===============
+---------------
 
 To install the server, please see the INSTALL file in this directory.
 
 
 3. DEBUGGING THE SERVER
-=======================
+-----------------------
 
 Run the server in debugging mode, (``radiusd -X``) and READ the output.
 We cannot emphasize this point strongly enough.  The vast majority of
@@ -102,7 +107,7 @@ discussions about common problems and solution.
 
 
 4. ADDITIONAL INFORMATION
-=========================
+-------------------------
 
 See 'doc/README' for more information about FreeRADIUS.
 
@@ -125,7 +130,7 @@ Especially worth reading is the "RADIUS for Unix administrators guide"
 
 
 5. PROBLEMS AND CONCERNS
-========================
+------------------------
 
 We understand that the server may be difficult to configure,
 install, or administer.  It is, after all, a complex system with many
@@ -157,7 +162,7 @@ frustrating than quickly making forward progress!
 
 
 6. FEEDBACK
-===========
+-----------
 
 If you have any comments, bug reports, problems, or concerns, please
 send them to the 'freeradius-users' list (see the URL above).  We will
