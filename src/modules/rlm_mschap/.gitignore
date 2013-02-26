@@ -1,4 +1,3 @@
-configure
 config.h
 rlm_mschap.mk
 smbencrypt
