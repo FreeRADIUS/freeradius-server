@@ -21,6 +21,7 @@ TESTS	= user_password chap mschapv1 digest-01/digest* test.example.com \
 	wimax
 
 PORT	 = 12340
+#PORT	 = 1812
 ACCTPORT = $(shell expr $(PORT) + 1)
 
 #	example.com stripped.example.com
@@ -59,7 +60,7 @@ test.conf: dictionary
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf raddb
-	@$(BIN_PATH)/radiusd -txxl `pwd`/radius.log -md $(RADDB_PATH)/ -n test -i 127.0.0.1 -p $(PORT)
+	$(BIN_PATH)/radiusd -txxl `pwd`/radius.log -md $(RADDB_PATH)/ -n test -i 127.0.0.1 -p $(PORT)
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
@@ -90,7 +91,7 @@ tests: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
-	@BIN_PATH="$(BIN_PATH)" ./runtests.sh $(TESTS)
+	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill
 	@rm -f $(RADDB_PATH)/test.conf
 

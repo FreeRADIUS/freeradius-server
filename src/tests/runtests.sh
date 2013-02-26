@@ -1,11 +1,9 @@
 #!/bin/bash
 
-# BIN_PATH should be specified by the caller
-#BIN_PATH=../main/
-
-PORT=12340
-HOME_PORT=12350
-SECRET=testing123
+: ${BIN_PATH=./}
+: ${PORT=12340}
+: ${HOME_PORT=12350}
+: ${SECRET=testing123}
 
 rm -f verbose.log
 RCODE=0
