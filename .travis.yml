@@ -5,3 +5,4 @@ compiler:
 before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq libtalloc-dev libssl-dev
+  - sudo apt-get install -qq libkrb5-dev libgdbm-dev libhiredis-dev libldap2-dev libmysqlclient-dev libpcap-dev libperl-dev libpq-dev libreadline-dev python-dev ruby-dev unixodbc-dev
