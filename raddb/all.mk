@@ -47,7 +47,7 @@ clean: clean.raddb
 install: install.raddb
 
 # Local build rules
-raddb/sites-enabled mods-enabled:
+raddb/sites-enabled raddb/mods-enabled:
 	@echo MKDIR $@
 	@mkdir -p $@
 
