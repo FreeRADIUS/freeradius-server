@@ -67,6 +67,17 @@ if test x$with_[]modname != xno; then
     AC_PROG_CC
 
     dnl ############################################################
+    dnl # Check for header files
+    dnl ############################################################
+
+    smart_try_dir="${redis_include_dir}"
+    FR_SMART_CHECK_INCLUDE([hiredis/hiredis.h])
+    if test "x$ac_cv_header_hiredis_hiredis_h" != "xyes"; then
+      AC_MSG_WARN([hiredis headers not found. Use --with-redis-include-dir=<path>.])
+      fail="$fail hiredis.h"
+    fi
+
+    dnl ############################################################
     dnl # Check for libraries
     dnl ############################################################
 
@@ -76,17 +87,6 @@ if test x$with_[]modname != xno; then
     then
       AC_MSG_WARN([hiredis libraries not found. Use --with-redis-lib-dir=<path>.])
       fail="$fail libhiredis"
-    fi
-
-    dnl ############################################################
-    dnl # Check for header files
-    dnl ############################################################
-
-    smart_try_dir="$redis_include_dir"
-    FR_SMART_CHECK_INCLUDE(hiredis.h)
-    if test "x$ac_cv_header_hiredis_h" != "xyes"; then
-      AC_MSG_WARN([hiredis headers not found. Use --with-redis-include-dir=<path>.])
-      fail="$fail hiredis.h"
     fi
 
     targetname=modname
