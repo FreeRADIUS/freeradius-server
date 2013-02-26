@@ -1018,11 +1018,6 @@ dnl #  7. Checks for library functions
 dnl #
 dnl #############################################################
 
-old_LIBS="$LIBS"
-LIBS="$LIBS $LIBLTDL"
-AC_CHECK_FUNC(lt_dladvise_init, AC_DEFINE(HAVE_LT_DLADVISE_INIT, [], [Do we have the lt_dladvise_init function]))
-LIBS="$old_LIBS"
-
 dnl Check for talloc
 dnl extra argument: --with-talloc-include-dir=DIR
 talloc_include_dir=
@@ -1223,8 +1218,6 @@ top_builddir=`pwd`
 export top_builddir
 AC_MSG_RESULT([top_builddir=$top_builddir])
 dnl # AC_SUBST(top_builddir)
-AC_SUBST(LIBLTDL)
-AC_SUBST(INCLTDL)
 
 dnl import libtool stuff
 
