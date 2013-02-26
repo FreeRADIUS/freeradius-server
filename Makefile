@@ -21,7 +21,7 @@ clean:
 	@$(MAKE) $(MFLAGS) WHAT_TO_MAKE=$@ common
 	@rm -f *~
 
-.PHONY: tests
+.PHONY: test
 tests:
 	@$(MAKE) -C src/tests tests
 

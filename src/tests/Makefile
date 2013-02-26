@@ -31,7 +31,7 @@ SECRET	= testing123
 all: tests
 
 clean:
-	@rm -f ../../raddb/test.conf test.conf dictionary
+	@rm -f $(top_builddir)/raddb/test.conf test.conf dictionary
 
 dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary
@@ -40,7 +40,7 @@ dictionary:
 
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > test.conf
-	@echo "libdir =" $(top_builddir)/src/modules/lib >> test.conf
+	@echo "libdir =" $(top_builddir)/src/modules/lib/.libs/ >> test.conf
 	@echo "testdir =" $(top_builddir)/src/tests/ >> test.conf
 	@echo 'dictionary = $${testdir}' >> test.conf
 	@echo 'logdir = $${testdir}' >> test.conf
@@ -50,7 +50,7 @@ test.conf: dictionary
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: ../../raddb/test.conf test.conf
-	@../main/radiusd -txxl `pwd`/radius.log -md ../../raddb/ -n test -i 127.0.0.1 -p $(PORT)
+	@$(top_builddir)/src/main/radiusd -txxl `pwd`/radius.log -md $(top_builddir)/raddb/ -n test -i 127.0.0.1 -p $(PORT)
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
@@ -62,29 +62,29 @@ radiusd.kill:
 	@rm -f radiusd.pid
 
 #  Link from the main database directory to here
-../../raddb/test.conf: test.conf
-	@[ -f ../../raddb/test.conf ] || ln -s ../src/tests/test.conf ../../raddb/
+$(top_builddir)/raddb/test.conf: test.conf
+	@[ -f $(top_builddir)/raddb/test.conf ] || ln -s $(top_builddir)/src/tests/test.conf $(top_builddir)/raddb/
 
 # kill the server (if it's running)
 # start the server
 # run the tests (ignoring any failures)
 # kill the server
 # remove the changes to raddb/
-tests: ../../raddb/test.conf radiusd.kill
+tests: $(top_builddir)/raddb/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
 	@./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill
-	@rm -f ../../raddb/test.conf
+	@rm -f $(top_builddir)/raddb/test.conf
 
-tests.eap: ../../raddb/test.conf radiusd.kill
+tests.eap: $(top_builddir)/raddb/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
 	@$(MAKE) eap
 	@$(MAKE) radiusd.kill
-	@rm -f ../../raddb/test.conf
+	@rm -f $(top_buildir)/raddb/test.conf
 
 eap: $(EAP_TLS_TESTS)
 	for x in $(EAP_TLS_TESTS); do \
