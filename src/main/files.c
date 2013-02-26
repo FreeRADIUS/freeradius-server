@@ -243,9 +243,7 @@ parse_again:
 				/*
 				 *	Done with this entry...
 				 */
-				q = rad_malloc(sizeof(*t) + entry_len);
-				t = (PAIR_LIST *) q;
-
+				t = rad_malloc(sizeof(*t) + entry_len);
 				memset(t, 0, sizeof(*t));
 				t->check = check_tmp;
 				t->reply = reply_tmp;
@@ -253,7 +251,7 @@ parse_again:
 				check_tmp = NULL;
 				reply_tmp = NULL;
 
-				q += sizeof(*t);
+				q = (void *) &t[1];
 				memcpy(q, entry, entry_len);
 				t->name = q;
 
