@@ -100,26 +100,12 @@ static CONF_PARSER module_config[] = {
 static int rediswho_command(const char *fmt, REDISSOCK *dissocket,
 			    rlm_rediswho_t *data, REQUEST *request)
 {
-	char query[MAX_STRING_LEN * 4];
 	int result = 0;
 
-	/*
-	 *	Do an xlat on the provided string
-	 */
-	if (request) {
-		if (!radius_xlat(query, sizeof (query), fmt, request,
-				 data->redis_inst->redis_escape_func)) {
-			radlog(L_ERR, "rediswho_command: xlat failed on: '%s'", query);
-			return -1;
-		}
+	if (data->redis_inst->redis_query(dissocket, data->redis_inst,
+	                                  fmt, request) < 0) {
 
-	} else {
-		strcpy(query, fmt);
-	}
-
-	if (data->redis_inst->redis_query(dissocket, data->redis_inst, query) < 0) {
-
-		radlog(L_ERR, "rediswho_command: database query error in: '%s'", query);
+		radlog(L_ERR, "rediswho_command: database query error in: '%s'", fmt);
 		return -1;
 	}
 

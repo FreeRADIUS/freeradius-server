@@ -71,15 +71,17 @@ typedef struct rlm_redis_t {
 
 	REDISSOCK *(*redis_get_socket)(REDIS_INST * inst);
 	int (*redis_release_socket)(REDIS_INST * inst, REDISSOCK *dissocket);
-        int (*redis_query)(REDISSOCK *dissocket, REDIS_INST *inst, char *query);
+        int (*redis_query)(REDISSOCK *dissocket, REDIS_INST *inst,
+                           const char *query, REQUEST *request);
         int (*redis_finish_query)(REDISSOCK *dissocket);
-        size_t (*redis_escape_func)(char *out, size_t outlen, const char *in);
 
 } rlm_redis_t;
 
 #define MAX_QUERY_LEN			4096
+#define MAX_REDIS_ARGS			16
 
-int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, char *query);
+int rlm_redis_query(REDISSOCK *dissocket, REDIS_INST *inst, const char *query,
+                    REQUEST *request);
 int rlm_redis_finish_query(REDISSOCK *dissocket);
 
 REDISSOCK * redis_get_socket(REDIS_INST * inst);

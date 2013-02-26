@@ -79,17 +79,15 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			int shell_escape)
 {
 	VALUE_PAIR *vp;
-	char mycmd[1024];
-	const char *from;
-	char *p, *to;
+	char *p;
 	int pd[2];
 	pid_t pid, child_pid;
-	int argc = -1;
+	int argc;
 	int comma = 0;
 	int status;
 	int i;
 	int n, left, done;
-	char *argv[MAX_ARGV];
+	const char *argv[MAX_ARGV];
 	char answer[4096];
 	char argv_buf[4096];
 #define MAX_ENVP 1024
@@ -102,137 +100,12 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	if (user_msg) *user_msg = '\0';
 	if (output_pairs) *output_pairs = NULL;
 
-	if (strlen(cmd) > (sizeof(mycmd) - 1)) {
-		radlog(L_ERR|L_CONS, "Command line is too long");
-		return -1;
-	}
-
-	/*
-	 *	Check for bad escapes.
-	 */
-	if (cmd[strlen(cmd) - 1] == '\\') {
-		radlog(L_ERR|L_CONS, "Command line has final backslash, without a following character");
-		return -1;
-	}
-
-	strlcpy(mycmd, cmd, sizeof(mycmd));
-
-	/*
-	 *	Split the string into argv's BEFORE doing radius_xlat...
-	 */
-	from = cmd;
-	to = mycmd;
-	argc = 0;
-	while (*from) {
-		int length;
-
-		/*
-		 *	Skip spaces.
-		 */
-		if ((*from == ' ') || (*from == '\t')) {
-			from++;
-			continue;
-		}
-
-		argv[argc] = to;
-		argc++;
-
-		if (argc >= (MAX_ARGV - 1)) break;
-
-		/*
-		 *	Copy the argv over to our buffer.
-		 */
-		while (*from && (*from != ' ') && (*from != '\t')) {
-			if (to >= mycmd + sizeof(mycmd) - 1) {
-				return -1; /* ran out of space */
-			}
-
-			switch (*from) {
-			case '"':
-			case '\'':
-				length = rad_copy_string(to, from);
-				if (length < 0) {
-					radlog(L_ERR|L_CONS, "Invalid string passed as argument for external program");
-					return -1;
-				}
-				from += length;
-				to += length;
-				break;
-
-			case '%':
-				if (from[1] == '{') {
-					*(to++) = *(from++);
-
-					length = rad_copy_variable(to, from);
-					if (length < 0) {
-						radlog(L_ERR|L_CONS, "Invalid variable expansion passed as argument for external program");
-						return -1;
-					}
-					from += length;
-					to += length;
-				} else { /* FIXME: catch %%{ ? */
-					*(to++) = *(from++);
-				}
-				break;
-
-			case '\\':
-				if (from[1] == ' ') from++;
-				/* FALL-THROUGH */
-
-			default:
-				*(to++) = *(from++);
-			}
-		} /* end of string, or found a space */
-
-		*(to++) = '\0';	/* terminate the string */
-	}
-
-	/*
-	 *	We have to have SOMETHING, at least.
-	 */
+	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, 1,
+				sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		radlog(L_ERR, "Exec-Program: empty command line.");
+		radlog(L_ERR, "Exec-Program: invalid command line.");
 		return -1;
 	}
-
-	/*
-	 *	Expand each string, as appropriate.
-	 */
-	to = argv_buf;
-	left = sizeof(argv_buf);
-	for (i = 0; i < argc; i++) {
-		int sublen;
-
-		/*
-		 *	Don't touch argv's which won't be translated.
-		 */
-		if (strchr(argv[i], '%') == NULL) continue;
-
-		if (!request) continue;
-
-		sublen = radius_xlat(to, left - 1, argv[i], request, NULL);
-		if (sublen <= 0) {
-			/*
-			 *	Fail to be backwards compatible.
-			 *
-			 *	It's yucky, but it won't break anything,
-			 *	and it won't cause security problems.
-			 */
-			sublen = 0;
-		}
-
-		argv[i] = to;
-		to += sublen;
-		*(to++) = '\0';
-		left -= sublen;
-		left--;
-
-		if (left <= 0) {
-			radlog(L_ERR, "Exec-Program: Ran out of space while expanding arguments.");
-			return -1;
-		}
-	}
-	argv[argc] = NULL;
 
 #ifndef __MINGW32__
 	/*
