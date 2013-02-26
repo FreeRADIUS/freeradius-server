@@ -80,10 +80,10 @@ if test x$with_[]modname != xno; then
 	if test "x$rlm_ldap_with_threads" = "xyes"; then
 	    AC_CHECK_LIB(pthread, pthread_create,
 			 [ LIBS="-lpthread $LIBS" ],
-			 AC_CHECK_LIB(c_r, pthread_create,
+			 [ AC_CHECK_LIB(c_r, pthread_create,
 				      [ LIBS="-lc_r $LIBS" ],
 				      [ rlm_ldap_with_threads="no" ]
-				      )
+				      ) ]
 			 )
 	fi
 
