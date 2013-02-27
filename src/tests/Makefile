@@ -60,7 +60,7 @@ test.conf: dictionary
 	@echo '$$INCLUDE radiusd.conf' >> test.conf
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
-radiusd.pid: $(RADDB_PATH)/test.conf test.conf raddb
+radiusd.pid: $(RADDB_PATH)/test.conf test.conf
 	@$(BIN_PATH)/radiusd -txxl $(TEST_PATH)/radius.log -md $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) || tail -n 20 $(TEST_PATH)/radius.log
 
 # We can't make this depend on radiusd.pid, because then make will create
@@ -71,13 +71,6 @@ radiusd.kill:
 		(kill -TERM `cat radiusd.pid` >/dev/null 2>&1) || exit 0; \
 	fi
 	@rm -f radiusd.pid
-
-# As test.conf includes radiusd.conf and as radiusd.conf includes everything in
-# mods-enabled and sites-enable we need to ensure those directories have been
-# created and are up to date.
-.PHONY: raddb
-raddb:
-	@$(MAKE) -C $(RADDB_PATH) mods-enabled sites-enabled
 
 #  Link from the main database directory to here
 $(RADDB_PATH)/test.conf: test.conf
@@ -125,12 +118,3 @@ leap:
 	$(EAPOL_TEST) -c leap.conf -s $(SECRET)
 
 ATTRS	:= rfc.txt errors.txt extended.txt lucent.txt wimax.txt
-
-attrs:	$(ATTRS) ../main/radattr
-	../main/radattr -d ../../share rfc.txt
-
-${LIBRADIUS}: $(wildcard ../include/*.h) $(wildcard ../lib/*.c)
-	$(MAKE) -C ../lib all
-
-../main/radattr: ${LIBRADIUS} ../main/radattr.c
-	$(MAKE) -C ../main radattr

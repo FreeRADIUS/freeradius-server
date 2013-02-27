@@ -21,8 +21,7 @@ export DESTDIR := $(R)
 # And over-ride all of the other magic.
 include scripts/boiler.mk
 
-.PHONY: test
-test:
+test: build.raddb
 	@$(MAKE) -C raddb/certs
 	@$(MAKE) -C src/tests tests
 
@@ -117,6 +116,16 @@ distclean: clean
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
 #
 ######################################################################
+CONFIG_FILES := $(wildcard src/modules/rlm_*/configure.in src/modules/rlm_*/*/*/configure.in)
+
+$(CONFIG_FILES):
+	@echo "Making reconfig in $(dir $@)..."
+	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir)
+	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
+		cd $(dir $@) && $(AUTOHEADER); \
+	 fi
+
+
 .PHONY: reconfig
 reconfig:
 	@$(MAKE) $(MFLAGS) -C src reconfig

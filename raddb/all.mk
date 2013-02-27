@@ -40,7 +40,9 @@ INSTALL_FILES := $(wildcard raddb/sites-available/* raddb/mods-available/*) \
 INSTALL_RADDB := $(patsubst raddb/%,$(R)$(raddbdir)/%,\
 			$(filter-out %~,$(INSTALL_FILES)))
 
-all: $(LOCAL_SITES) $(LOCAL_MODULES)
+all: build.raddb
+
+build.raddb: $(LOCAL_SITES) $(LOCAL_MODULES)
 
 clean: clean.raddb
 
