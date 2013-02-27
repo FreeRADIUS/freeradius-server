@@ -36,8 +36,7 @@ typedef enum {
 	RC_SECURID_AUTH_ACCESS_DENIED_FAILURE = -4,
 	RC_SECURID_AUTH_INVALID_SERVER_FAILURE = -5,
 	RC_SECURID_AUTH_CHALLENGE = -17
-}
-	SECURID_AUTH_RC;
+} SECURID_AUTH_RC;
 
 
 static const CONF_PARSER module_config[] = {
@@ -526,7 +525,7 @@ static int securid_authenticate(void *instance, REQUEST *request)
 		/* reply with Access-challenge message code (11) */
 
 		/* Generate Prompt attribute */
-		vp = paircreate(PW_PROMPT, 0, PW_TYPE_INTEGER);
+		vp = paircreate(PW_PROMPT, 0);
 				
 		rad_assert(vp != NULL);
 		vp->vp_integer = 0; /* no echo */
