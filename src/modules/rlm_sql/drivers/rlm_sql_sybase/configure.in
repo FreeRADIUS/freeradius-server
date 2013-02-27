@@ -1,0 +1,109 @@
+AC_PREREQ([2.59])
+AC_INIT(rlm_sql_sybase.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_sql_sybase])
+
+fail=
+SMART_LIBS=
+SMART_CLFAGS=
+if test x$with_[]modname != xno; then
+
+    dnl ############################################################
+    dnl # Check for command line options
+    dnl ############################################################
+
+    dnl extra argument: --with-sybase-include-dir=DIR
+    sybase_include_dir=
+    AC_ARG_WITH(sybase-include-dir,
+	[AS_HELP_STRING([--with-sybase-include-dir=DIR],
+		[Directory where the sybase includes may be found])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need sybase-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		sybase_include_dir="$withval"
+		;;
+	esac])
+
+    dnl extra argument: --with-sybase-lib-dir=DIR
+    sybase_lib_dir=
+    AC_ARG_WITH(sybase-lib-dir,
+	[AS_HELP_STRING([--with-sybase-lib-dir=DIR],
+		[Directory where the sybase libraries may be found])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need sybase-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		sybase_lib_dir="$withval"
+		;;
+	esac])
+
+    dnl extra argument: --with-sybase-dir=DIR
+    AC_ARG_WITH(sybase-dir,
+	[AS_HELP_STRING([--with-sybase-dir=DIR],
+		[Base directory where sybase is installed])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need sybase-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		sybase_lib_dir="$withval/lib"
+		sybase_include_dir="$withval/include"
+		;;
+	esac])
+
+    dnl ############################################################
+    dnl # Check for header files
+    dnl ############################################################
+
+    smart_try_dir="$sybase_include_dir"
+    FR_SMART_CHECK_INCLUDE(ctpublic.h)
+    if test "x$ac_cv_header_ctpublic_h" != "xyes"; then
+      AC_MSG_WARN([sybase headers not found. Use --with-sybase-include-dir=<path>.])
+      fail="$fail ctpublic.h"
+    fi
+
+    dnl ############################################################
+    dnl # Check for libraries
+    dnl ############################################################
+
+    dnl try to link to sybase
+    smart_try_dir="$sybase_lib_dir"
+    FR_SMART_CHECK_LIB(ct, ct_command)
+    if test "x$ac_cv_lib_ct_ct_command" != "xyes"
+    then
+      AC_MSG_WARN([sybase libraries not found. Use --with-sybase-lib-dir=<path>.])
+      fail="$fail libct"
+    fi
+
+    targetname=modname
+else
+    targetname=
+    echo \*\*\* module modname is disabled.
+fi
+
+dnl Don't change this section.
+if test "x$fail" != x; then
+	if test "x${enable_strict_dependencies}" = xyes; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires:$fail.]);
+		targetname=
+	fi
+fi
+
+sql_sybase_ldflags="$SMART_LIBS"
+sql_sybase_cflags="$SMART_CFLAGS"
+AC_SUBST(sql_sybase_ldflags)
+AC_SUBST(sql_sybase_cflags)
+AC_SUBST(targetname)
+AC_OUTPUT(all.mk)
