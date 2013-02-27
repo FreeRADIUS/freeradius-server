@@ -4,9 +4,13 @@ in the "authenticate" section.
   The module configuration is in the "securid" file.  You will need to
 copy it by hand to the raddb/modules/directory.
 
-  There is no "configure" script.  Instead, you MUST edit the "all.mk"
-file by hand in order to build the module.  See the "all.mk" file for
-instructions.
+  There is a configure script, but you will most likely need to pass
+--with-securid-dir=<securid_path> argument.
+
+  The files it requires are acexport.h and libaceclnt.so which should be
+located in the include and lib folders beneath <secured_path>. EMC/RSA
+do not distribute these files on their public website. You will need to 
+request the AuthSDK from your EMC/RSA representative.
 
   Many people will wonder about the license issues involved in
 distributing this module.  The short answer is that the source can be
