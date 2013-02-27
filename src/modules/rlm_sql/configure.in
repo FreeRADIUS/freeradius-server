@@ -10,18 +10,6 @@ if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 
-	dnl extra argument: --with-experimental-modules
-	EXPERIMENTAL=
-	AC_ARG_WITH(experimental-modules,
-	[  --with-experimental-modules      Use experimental and unstable modules. (default=no) ],
-	[ case "$withval" in
-    		yes)
-        		EXPERIMENTAL=yes
-        		;;
-    		*)
-  	esac ]
-	)
-
 	mysubdirs=
 	if test "x$EXPERIMENTAL" = "xyes"; then
 	  for foo in `find ./drivers -name configure -print`; do
@@ -31,17 +19,6 @@ if test x$with_[]modname != xno; then
 	else
 	  for foo in `cat stable`; do
 	    mysubdirs="$mysubdirs ./drivers/$foo"
-	  done
-	fi
-
-	SQL_MODULES=
-	if test "x$EXPERIMENTAL" = "xyes"; then
-	  for foo in `ls ./drivers/rlm_*/Makefile* | sed 's/.*rlm/rlm/;s,/Make.*,,' | sort -u`; do
-	    SQL_MODULES="$SQL_MODULES $foo"
-	  done
-	else
-	  for foo in `cat stable`; do
-	    SQL_MODULES="$SQL_MODULES $foo"
 	  done
 	fi
 
@@ -87,5 +64,4 @@ sql_cflags=$SMART_CFLAGS
 AC_SUBST(sql_ldflags)
 AC_SUBST(sql_cflags)
 AC_SUBST(targetname)
-AC_SUBST(SQL_MODULES)
 AC_OUTPUT(all.mk)

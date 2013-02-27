@@ -1004,6 +1004,8 @@ else
   AC_MSG_RESULT(no.)
 fi
 
+export EXPERIMENTAL
+
 dnl append the current git hash onto the version string
 if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
   RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`

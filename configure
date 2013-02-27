@@ -631,8 +631,6 @@ USE_SHARED_LIBS
 INSTALLSTRIP
 MODULES
 subdirs
-INCLTDL
-LIBLTDL
 HOSTINFO
 CRYPTLIB
 LIBPREFIX
@@ -7414,6 +7412,8 @@ else
 $as_echo "no." >&6; }
 fi
 
+export EXPERIMENTAL
+
 if test -d $srcdir/.git -a "x$GIT" = "xyes"; then
   RADIUSD_VERSION_COMMIT=`git log --pretty=format:'%h' -n 1`
 
@@ -7451,17 +7451,6 @@ $as_echo "#define HAVE_THREAD_TLS 1" >>confdefs.h
     fi
 
 
-
-old_LIBS="$LIBS"
-LIBS="$LIBS $LIBLTDL"
-ac_fn_c_check_func "$LINENO" "lt_dladvise_init" "ac_cv_func_lt_dladvise_init"
-if test "x$ac_cv_func_lt_dladvise_init" = xyes; then :
-
-$as_echo "#define HAVE_LT_DLADVISE_INIT /**/" >>confdefs.h
-
-fi
-
-LIBS="$old_LIBS"
 
 talloc_include_dir=
 
@@ -8018,8 +8007,6 @@ top_builddir=`pwd`
 export top_builddir
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: top_builddir=$top_builddir" >&5
 $as_echo "top_builddir=$top_builddir" >&6; }
-
-
 
 
 
