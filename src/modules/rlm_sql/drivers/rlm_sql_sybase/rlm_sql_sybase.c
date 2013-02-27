@@ -28,6 +28,7 @@ RCSID("$Id$")
 #include <sys/stat.h>
 
 #include <ctpublic.h>
+
 #include "rlm_sql.h"
 
 
@@ -43,45 +44,6 @@ typedef struct rlm_sql_sybase_sock {
 
 
 #define	MAX_DATASTR_LEN	256
-
-/************************************************************************
-* Handler for server messages. Client-Library will call this
-* routine when it receives a message from the server.
-************************************************************************/
-
-static CS_RETCODE CS_PUBLIC
-servermsg_callback(cp, chp, msgp)
-CS_CONTEXT         *cp;
-CS_CONNECTION      *chp;
-CS_SERVERMSG       *msgp;
-{
-
-        /*
-        ** Print the message info.
-        */
-        radlog(L_ERR,
-                "Sybase Server message:\n");
-        radlog(L_ERR,
-                "number(%ld) severity(%ld) state(%ld) line(%ld)\n",
-                (long)msgp->msgnumber, (long)msgp->severity,
-                (long)msgp->state, (long)msgp->line);
-
-        /*
-        ** Print the server and procedure names if supplied.
-        */
-        if (msgp->svrnlen > 0 && msgp->proclen > 0)
-                radlog(L_ERR, "Server name: %s   Procedure name: %s", msgp->svrname, msgp->proc);
-
-        /*
-        ** Print the null terminated message.
-        */
-        radlog(L_ERR, "%s\n", msgp->text);
-
-        /*
-        ** Server message callbacks must return CS_SUCCEED.
-        */
-        return (CS_SUCCEED);
-}
 
 /************************************************************************
 *  Client-Library error handler.
@@ -158,6 +120,118 @@ CS_CLIENTMSG       *emsgp;
         }
 
         return (CS_SUCCEED);
+}
+
+/************************************************************************
+* Handler for server messages. Client-Library will call this
+* routine when it receives a message from the server.
+************************************************************************/
+
+static CS_RETCODE CS_PUBLIC
+servermsg_callback(cp, chp, msgp)
+CS_CONTEXT         *cp;
+CS_CONNECTION      *chp;
+CS_SERVERMSG       *msgp;
+{
+
+        /*
+        ** Print the message info.
+        */
+        radlog(L_ERR,
+                "Sybase Server message:\n");
+        radlog(L_ERR,
+                "number(%ld) severity(%ld) state(%ld) line(%ld)\n",
+                (long)msgp->msgnumber, (long)msgp->severity,
+                (long)msgp->state, (long)msgp->line);
+
+        /*
+        ** Print the server and procedure names if supplied.
+        */
+        if (msgp->svrnlen > 0 && msgp->proclen > 0)
+                radlog(L_ERR, "Server name: %s   Procedure name: %s", msgp->svrname, msgp->proc);
+
+        /*
+        ** Print the null terminated message.
+        */
+        radlog(L_ERR, "%s\n", msgp->text);
+
+        /*
+        ** Server message callbacks must return CS_SUCCEED.
+        */
+        return (CS_SUCCEED);
+}
+
+/*************************************************************************
+ *
+ *	Function: sql_error
+ *
+ *	Purpose: database specific error. Returns error associated with
+ *               connection
+ *
+ *************************************************************************/
+static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+	static char	msg='\0';
+/*
+	static char	msgbuf[2048];
+
+	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	CS_INT		msgcount;
+	CS_CLIENTMSG	cmsg;
+	CS_SERVERMSG	smsg;
+
+	int		i;
+	char		ctempbuf[2][512];
+	char		stempbuf[2][512];
+
+	msgbuf[0]=(char)NULL;
+	ctempbuf[0][0]=(char)NULL;
+	ctempbuf[1][0]=(char)NULL;
+	stempbuf[0][0]=(char)NULL;
+	stempbuf[1][0]=(char)NULL;
+
+	if (ct_diag(sybase_sock->connection, CS_STATUS, CS_CLIENTMSG_TYPE, CS_UNUSED, &msgcount) != CS_SUCCEED) {
+		radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to get number of pending Client messages");
+		return msgbuf;
+	}
+	radlog(L_ERR,"rlm_sql_sybase(sql_error): Number of pending Client messages: %d", (int)msgcount);
+
+	for (i=1; i<=msgcount; i++) {
+		if (ct_diag(sybase_sock->connection, CS_GET, CS_CLIENTMSG_TYPE, (CS_INT)i, &cmsg) != CS_SUCCEED) {
+			radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to retrieve pending Client message");
+			return msgbuf;
+		}
+		sprintf(ctempbuf[i-1],"rlm_sql_sybase: Client Library Error: severity(%ld) number(%ld) origin(%ld) layer(%ld):\n%s",
+				(long)CS_SEVERITY(cmsg.severity),
+				(long)CS_NUMBER(cmsg.msgnumber),
+				(long)CS_ORIGIN(cmsg.msgnumber),
+				(long)CS_LAYER(cmsg.msgnumber),
+				cmsg.msgstring);
+	}
+
+
+	if (ct_diag(sybase_sock->connection, CS_STATUS, CS_SERVERMSG_TYPE, CS_UNUSED, &msgcount) != CS_SUCCEED) {
+		radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to get number of pending Server messages");
+		return msgbuf;
+	}
+	radlog(L_ERR,"rlm_sql_sybase(sql_error): Number of pending Server messages: %d", (int)msgcount);
+
+	for (i=1; i<=msgcount; i++) {
+		if (ct_diag(sybase_sock->connection, CS_GET, CS_SERVERMSG_TYPE, (CS_INT)i, &smsg) != CS_SUCCEED) {
+			radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to retrieve pending Server message");
+			return msgbuf;
+		}
+		sprintf(stempbuf[i-1],"rlm_sql_sybase: Server message: severity(%ld) number(%ld) origin(%ld) layer(%ld):\n%s",
+				(long)CS_SEVERITY(cmsg.severity),
+				(long)CS_NUMBER(cmsg.msgnumber),
+				(long)CS_ORIGIN(cmsg.msgnumber),
+				(long)CS_LAYER(cmsg.msgnumber),
+				cmsg.msgstring);
+	}
+	sprintf(msgbuf,"%s || %s || %s || %s", ctempbuf[1], ctempbuf[2], stempbuf[1], stempbuf[2]);
+
+	return msgbuf;
+*/
+	return &msg;
 }
 
 /*************************************************************************
@@ -304,6 +378,18 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 {
 	free(sqlsocket->conn);
 	sqlsocket->conn = NULL;
+	return 0;
+}
+
+/*************************************************************************
+ *
+ *	Function: sql_close
+ *
+ *	Purpose: database specific close. Closes an open database
+ *               connection and cleans up any open handles.
+ *
+ *************************************************************************/
+static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	return 0;
 }
 
@@ -459,8 +545,55 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	return 0;
 }
 
+/*************************************************************************
+ *
+ *	Function: sql_num_fields
+ *
+ *	Purpose: database specific num_fields function. Returns number
+ *               of columns from query
+ *
+ *************************************************************************/
+static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
+	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	int	num;
 
+	if (ct_res_info(sybase_sock->command, CS_NUMDATA, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
+		radlog(L_ERR,"rlm_sql_sybase(sql_num_fields): error retrieving column count: %s",
+			sql_error(sqlsocket, config));
+		return -1;
+	}
+	return num;
+}
+
+/*************************************************************************
+ *
+ *	Function: sql_finish_select_query
+ *
+ *	Purpose: End the select query, such as freeing memory or result
+ *
+ *************************************************************************/
+static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+
+	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	int	i=0;
+
+	ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL);
+
+	if (ct_cmd_drop(sybase_sock->command) != CS_SUCCEED) {
+		radlog(L_ERR,"rlm_sql_sybase(sql_finish_select_query): Freeing command structure failed.");
+		return -1;
+	}
+
+        if (sybase_sock->results) {
+                while(sybase_sock->results[i]) free(sybase_sock->results[i++]);
+                free(sybase_sock->results);
+                sybase_sock->results=NULL;
+        }
+
+	return 0;
+
+}
 
 /*************************************************************************
  *
@@ -623,26 +756,7 @@ static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 }
 
 
-/*************************************************************************
- *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *               of columns from query
- *
- *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
-	int	num;
-
-	if (ct_res_info(sybase_sock->command, CS_NUMDATA, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_num_fields): error retrieving column count: %s",
-			sql_error(sqlsocket, config));
-		return -1;
-	}
-	return num;
-}
 
 /*************************************************************************
  *
@@ -750,114 +864,6 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 }
 
-
-
-/*************************************************************************
- *
- *	Function: sql_error
- *
- *	Purpose: database specific error. Returns error associated with
- *               connection
- *
- *************************************************************************/
-static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-	static char	msg='\0';
-/*
-	static char	msgbuf[2048];
-
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
-	CS_INT		msgcount;
-	CS_CLIENTMSG	cmsg;
-	CS_SERVERMSG	smsg;
-
-	int		i;
-	char		ctempbuf[2][512];
-	char		stempbuf[2][512];
-
-	msgbuf[0]=(char)NULL;
-	ctempbuf[0][0]=(char)NULL;
-	ctempbuf[1][0]=(char)NULL;
-	stempbuf[0][0]=(char)NULL;
-	stempbuf[1][0]=(char)NULL;
-
-	if (ct_diag(sybase_sock->connection, CS_STATUS, CS_CLIENTMSG_TYPE, CS_UNUSED, &msgcount) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to get number of pending Client messages");
-		return msgbuf;
-	}
-	radlog(L_ERR,"rlm_sql_sybase(sql_error): Number of pending Client messages: %d", (int)msgcount);
-
-	for (i=1; i<=msgcount; i++) {
-		if (ct_diag(sybase_sock->connection, CS_GET, CS_CLIENTMSG_TYPE, (CS_INT)i, &cmsg) != CS_SUCCEED) {
-			radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to retrieve pending Client message");
-			return msgbuf;
-		}
-		sprintf(ctempbuf[i-1],"rlm_sql_sybase: Client Library Error: severity(%ld) number(%ld) origin(%ld) layer(%ld):\n%s",
-				(long)CS_SEVERITY(cmsg.severity),
-				(long)CS_NUMBER(cmsg.msgnumber),
-				(long)CS_ORIGIN(cmsg.msgnumber),
-				(long)CS_LAYER(cmsg.msgnumber),
-				cmsg.msgstring);
-	}
-
-
-	if (ct_diag(sybase_sock->connection, CS_STATUS, CS_SERVERMSG_TYPE, CS_UNUSED, &msgcount) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to get number of pending Server messages");
-		return msgbuf;
-	}
-	radlog(L_ERR,"rlm_sql_sybase(sql_error): Number of pending Server messages: %d", (int)msgcount);
-
-	for (i=1; i<=msgcount; i++) {
-		if (ct_diag(sybase_sock->connection, CS_GET, CS_SERVERMSG_TYPE, (CS_INT)i, &smsg) != CS_SUCCEED) {
-			radlog(L_ERR,"rlm_sql_sybase(sql_error): Failed to retrieve pending Server message");
-			return msgbuf;
-		}
-		sprintf(stempbuf[i-1],"rlm_sql_sybase: Server message: severity(%ld) number(%ld) origin(%ld) layer(%ld):\n%s",
-				(long)CS_SEVERITY(cmsg.severity),
-				(long)CS_NUMBER(cmsg.msgnumber),
-				(long)CS_ORIGIN(cmsg.msgnumber),
-				(long)CS_LAYER(cmsg.msgnumber),
-				cmsg.msgstring);
-	}
-	sprintf(msgbuf,"%s || %s || %s || %s", ctempbuf[1], ctempbuf[2], stempbuf[1], stempbuf[2]);
-
-	return msgbuf;
-*/
-	return &msg;
-}
-
-
-/*************************************************************************
- *
- *	Function: sql_close
- *
- *	Purpose: database specific close. Closes an open database
- *               connection and cleans up any open handles.
- *
- *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-/*
-	rlm_sql_oracle_sock *oracle_sock = sqlsocket->conn;
-
-	if (oracle_sock->conn) {
-		OCILogoff (oracle_sock->conn, oracle_sock->errHandle);
-	}
-
-	if (oracle_sock->queryHandle) {
-		OCIHandleFree((dvoid *)oracle_sock->queryHandle, (ub4) OCI_HTYPE_STMT);
-	}
-	if (oracle_sock->errHandle) {
-		OCIHandleFree((dvoid *)oracle_sock->errHandle, (ub4) OCI_HTYPE_ERROR);
-	}
-	if (oracle_sock->env) {
-		OCIHandleFree((dvoid *)oracle_sock->env, (ub4) OCI_HTYPE_ENV);
-	}
-
-	oracle_sock->conn = NULL;
-*/
-	return 0;
-}
-
-
 /*************************************************************************
  *
  *	Function: sql_finish_query
@@ -878,38 +884,6 @@ static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 
 	return 0;
 }
-
-
-
-/*************************************************************************
- *
- *	Function: sql_finish_select_query
- *
- *	Purpose: End the select query, such as freeing memory or result
- *
- *************************************************************************/
-static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
-	int	i=0;
-
-	ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL);
-
-	if (ct_cmd_drop(sybase_sock->command) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_finish_select_query): Freeing command structure failed.");
-		return -1;
-	}
-
-        if (sybase_sock->results) {
-                while(sybase_sock->results[i]) free(sybase_sock->results[i++]);
-                free(sybase_sock->results);
-                sybase_sock->results=NULL;
-        }
-
-	return 0;
-
-}
-
 
 /*************************************************************************
  *
