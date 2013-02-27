@@ -24,6 +24,7 @@ include scripts/boiler.mk
 .PHONY: test
 test:
 	@$(MAKE) -C raddb/certs
+	@$(MAKE) -C src/tests tests
 
 #
 # The $(R) is a magic variable not defined anywhere in this source.
