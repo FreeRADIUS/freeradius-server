@@ -23,6 +23,7 @@ clean:
 
 .PHONY: test
 test:
+	@$(MAKE) -C raddb/certs
 	@$(MAKE) -C src/tests tests
 
 #
