@@ -50,7 +50,7 @@ test.conf: dictionary
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: ../../raddb/test.conf test.conf
-	@$(top_builddir)/src/main/radiusd -txxl `pwd`/radius.log -md $(top_builddir)/raddb/ -n test -i 127.0.0.1 -p $(PORT)
+	@$(top_builddir)/src/main/radiusd -txxl `pwd`/radius.log -md $(top_builddir)/raddb/ -n test -i 127.0.0.1 -p $(PORT) || tail -n 20 `pwd`/radius.log
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
