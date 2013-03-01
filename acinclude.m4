@@ -200,10 +200,10 @@ dnl #  the wrong version.
 dnl #
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    LIBS="-L$try -l$1 $old_LIBS"
+    LIBS="-L$try -l$1 $old_LIBS -Wl,-rpath,$try"
     AC_TRY_LINK([extern char $2();],
 		[ $2()],
-		smart_lib="-L$try -l$1")
+		smart_lib="-L$try -l$1 -rpath$try")
     if test "x$smart_lib" != "x"; then
       break;
     fi
@@ -230,10 +230,10 @@ if test "x$smart_lib" = "x"; then
   FR_LOCATE_DIR(smart_lib_dir,[lib$1.a])
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    LIBS="-L$try -l$1 $old_LIBS"
+    LIBS="-L$try -rpath$try -l$1 $old_LIBS -Wl,-rpath,$try"
     AC_TRY_LINK([extern char $2();],
 		[ $2()],
-		smart_lib="-L$try -l$1")
+		smart_lib="-L$try -l$1,-rpath$try")
     if test "x$smart_lib" != "x"; then
       break;
     fi
