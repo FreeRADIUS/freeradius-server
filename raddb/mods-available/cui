@@ -46,5 +46,5 @@ sql cuisql {
 	cui_table = "cui"
 	sql_user_name = "%{User-Name}"
 	
-	$INCLUDE sql/cui/${dialect}/queries.conf
+	$INCLUDE ../sql/cui/${dialect}/queries.conf
 }

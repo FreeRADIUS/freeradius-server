@@ -1194,24 +1194,23 @@ static int condition_looks_ok(const char **ptr)
 }
 
 
-static const char *cf_local_file(CONF_SECTION *cs, const char *local,
+static const char *cf_local_file(const char *base, const char *filename,
 				 char *buffer, size_t bufsize)
 {
 	size_t dirsize;
 	const char *p;
-	CONF_SECTION *parentcs = cf_top_section(cs);
 
-	p = strrchr(parentcs->item.filename, FR_DIR_SEP);
-	if (!p) return local;
+	p = strrchr(base, FR_DIR_SEP);
+	if (!p) return filename;
 
-	dirsize = (p - parentcs->item.filename) + 1;
+	dirsize = (p - base) + 1;
 
-	if ((dirsize + strlen(local)) >= bufsize) {
+	if ((dirsize + strlen(filename)) >= bufsize) {
 		return NULL;
 	}
 
-	memcpy(buffer, parentcs->item.filename, dirsize);
-	strlcpy(buffer + dirsize, local, bufsize - dirsize);
+	memcpy(buffer, base, dirsize);
+	strlcpy(buffer + dirsize, filename, bufsize - dirsize);
 
 	return buffer;
 }
@@ -1416,7 +1415,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			if (!FR_DIR_IS_RELATIVE(value)) relative = 0;
 
 			if (relative) {
-				value = cf_local_file(current, value, buf3,
+				value = cf_local_file(filename, value, buf3,
 						      sizeof(buf3));
 				if (!value) {
 					radlog(L_ERR, "%s[%d]: Directories too deep.",
