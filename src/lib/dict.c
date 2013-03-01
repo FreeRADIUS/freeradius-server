@@ -1876,11 +1876,11 @@ int str2argv(char *str, char **argv, int max_argc)
 /*
  *	Initialize the dictionary.
  */
-static int my_dict_init(const char *dir, const char *fn,
+static int my_dict_init(const char *parent, const char *filename,
 			const char *src_file, int src_line)
 {
 	FILE	*fp;
-	char 	dirtmp[256];
+	char 	dir[256], fn[256];
 	char	buf[256];
 	char	*p;
 	int	line = 0;
@@ -1897,24 +1897,44 @@ static int my_dict_init(const char *dir, const char *fn,
 	block_tlv[2] = NULL;
 	block_tlv[3] = NULL;
 
-	if (strlen(fn) >= sizeof(dirtmp) / 2 ||
-	    strlen(dir) >= sizeof(dirtmp) / 2) {
+	if ((strlen(parent) + 3 + strlen(filename)) > sizeof(dir)) {
 		fr_strerror_printf("dict_init: filename name too long");
 		return -1;
 	}
 
 	/*
-	 *	First see if fn is relative to dir. If so, create
-	 *	new filename. If not, remember the absolute dir.
+	 *	If it's an absolute dir, forget the parent dir,
+	 *	and remember the new one.
+	 *
+	 *	If it's a relative dir, tack on the current filename
+	 *	to the parent dir.  And use that.
 	 */
-	if ((p = strrchr(fn, FR_DIR_SEP)) != NULL) {
-		strcpy(dirtmp, fn);
-		dirtmp[p - fn] = 0;
-		dir = dirtmp;
-	} else if (dir[0] && strcmp(dir, ".") != 0) {
-		snprintf(dirtmp, sizeof(dirtmp), "%s/%s", dir, fn);
-		fn = dirtmp;
+	if (!FR_DIR_IS_RELATIVE(filename)) {
+		strlcpy(dir, filename, sizeof(dir));
+		p = strrchr(dir, FR_DIR_SEP);
+		if (p) p[1] = '\0';
+
+		strlcpy(fn, filename, sizeof(fn));
+	} else {
+		strlcpy(dir, parent, sizeof(dir));
+		p = strrchr(dir, FR_DIR_SEP);
+		if (p && p[1]) strlcat(dir, "/", sizeof(dir));
+		strlcat(dir, filename, sizeof(dir));
+		p = strrchr(dir, FR_DIR_SEP);
+		if (p) p[1] = '\0';
+
+		p = strrchr(filename, FR_DIR_SEP);
+		if (p) {
+			snprintf(fn, sizeof(fn), "%s%s", dir, p);
+		} else {
+			snprintf(fn, sizeof(fn), "%s%s", dir, filename);
+		}
+
 	}
+
+	fprintf(stderr, "PARENT %s %s FINAL %s %s\n",
+		parent, filename, dir, fn);
+
 
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
