@@ -188,7 +188,6 @@ AC_DEFUN([FR_SMART_CHECK_LIB], [
 
 sm_lib_safe=`echo "$1" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "$2" | sed 'y%./+-%__p_%'`
-AC_MSG_CHECKING([for $2 in -l$1])
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -200,13 +199,16 @@ dnl #  the wrong version.
 dnl #
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
+    AC_MSG_CHECKING([for $2 in -l$1 in $try])
     LIBS="-L$try -l$1 $old_LIBS -Wl,-rpath,$try"
     AC_TRY_LINK([extern char $2();],
-		[ $2()],
-		smart_lib="-L$try -l$1 -rpath$try")
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
+		[$2()],
+		[
+		 smart_lib="-L$try -l$1 -rpath$try"
+		 AC_MSG_RESULT(yes)
+		 break
+		],
+		[AC_MSG_RESULT(no)])
   done
   LIBS="$old_LIBS"
 fi
@@ -215,10 +217,15 @@ dnl #
 dnl #  Try using the default library path
 dnl #
 if test "x$smart_lib" = "x"; then
+  AC_MSG_CHECKING([for $2 in -l$1])
   LIBS="-l$1 $old_LIBS"
   AC_TRY_LINK([extern char $2();],
-	      [ $2()],
-	      smart_lib="-l$1")
+	      [$2()],
+	      [
+	        smart_lib="-l$1"
+	        AC_MSG_RESULT(yes)
+	      ],
+	      [AC_MSG_RESULT(no)])
   LIBS="$old_LIBS"
 fi
 
@@ -230,13 +237,16 @@ if test "x$smart_lib" = "x"; then
   FR_LOCATE_DIR(smart_lib_dir,[lib$1.a])
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    AC_MSG_CHECKING([for $2 in -l$1 in $try])
     LIBS="-L$try -rpath$try -l$1 $old_LIBS -Wl,-rpath,$try"
     AC_TRY_LINK([extern char $2();],
-		[ $2()],
-		smart_lib="-L$try -l$1,-rpath$try")
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
+		[$2()],
+		[
+		  smart_lib="-L$try -l$1,-rpath$try"
+		  AC_MSG_RESULT(yes)
+		  break
+		],
+		[AC_MSG_RESULT(no)])
   done
   LIBS="$old_LIBS"
 fi
@@ -245,12 +255,9 @@ dnl #
 dnl #  Found it, set the appropriate variable.
 dnl #
 if test "x$smart_lib" != "x"; then
-  AC_MSG_RESULT(yes)
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
   LIBS="$smart_lib $old_LIBS"
   SMART_LIBS="$smart_lib $SMART_LIBS"
-else
-  AC_MSG_RESULT(no)
 fi
 ])
 
@@ -263,8 +270,6 @@ dnl #
 AC_DEFUN([FR_SMART_CHECK_INCLUDE], [
 
 ac_safe=`echo "$1" | sed 'y%./+-%__pm%'`
-AC_MSG_CHECKING([for $1])
-
 old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
@@ -275,15 +280,20 @@ dnl #  the wrong version.
 dnl #
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
+    AC_MSG_CHECKING([for $1 in $try])
     CFLAGS="$old_CFLAGS -I$try"
     AC_TRY_COMPILE([$2
 		    #include <$1>],
-		   [ int a = 1;],
-		   smart_include="-I$try",
-		   smart_include=)
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
+		   [int a = 1;],
+		   [
+		     smart_include="-I$try"
+		     AC_MSG_RESULT(yes)
+		     break
+		   ],
+		   [
+		     smart_include=
+		     AC_MSG_RESULT(no)
+		   ])
   done
   CFLAGS="$old_CFLAGS"
 fi
@@ -292,11 +302,19 @@ dnl #
 dnl #  Try using the default includes.
 dnl #
 if test "x$smart_include" = "x"; then
+  AC_MSG_CHECKING([for $1])
   AC_TRY_COMPILE([$2
 		  #include <$1>],
-		 [ int a = 1;],
-		 smart_include=" ",
-		 smart_include=)
+		 [int a = 1;],
+		 [
+		   smart_include=" "
+		   AC_MSG_RESULT(yes)
+		   break
+		 ],
+		 [
+		   smart_include=
+		   AC_MSG_RESULT(no)
+		 ])
 fi
 
 dnl #
@@ -304,17 +322,21 @@ dnl #  Try to guess possible locations.
 dnl #
 if test "x$smart_include" = "x"; then
   FR_LOCATE_DIR(smart_include_dir,$1)
-
   for try in $smart_include_dir /usr/local/include /opt/include; do
+    AC_MSG_CHECKING([for $1 in $try])
     CFLAGS="$old_CFLAGS -I$try"
     AC_TRY_COMPILE([$2
 		    #include <$1>],
-		   [ int a = 1;],
-		   smart_include="-I$try",
-		   smart_include=)
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
+		   [int a = 1;],
+		   [
+		     smart_include="-I$try"
+		     AC_MSG_RESULT(yes)
+		     break
+		   ],
+		   [
+		     smart_include=
+		     AC_MSG_RESULT(no)
+		   ])
   done
   CFLAGS="$old_CFLAGS"
 fi
@@ -323,12 +345,9 @@ dnl #
 dnl #  Found it, set the appropriate variable.
 dnl #
 if test "x$smart_include" != "x"; then
-  AC_MSG_RESULT(yes)
   eval "ac_cv_header_$ac_safe=yes"
   CFLAGS="$old_CFLAGS $smart_include"
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-else
-  AC_MSG_RESULT(no)
 fi
 ])
 
@@ -427,9 +446,9 @@ AC_DEFUN([VL_LIB_READLINE], [
               [Define if you have a readline compatible library])
     AC_CHECK_HEADERS(readline.h readline/readline.h)
     AC_CACHE_CHECK([whether readline supports history],
-                   vl_cv_lib_readline_history, [
+                   [vl_cv_lib_readline_history], [
       vl_cv_lib_readline_history="no"
-      AC_TRY_LINK_FUNC(add_history, vl_cv_lib_readline_history="yes")
+      AC_TRY_LINK_FUNC([add_history], [vl_cv_lib_readline_history="yes"])
     ])
     if test "$vl_cv_lib_readline_history" = "yes"; then
       AC_DEFINE(HAVE_READLINE_HISTORY, 1,
