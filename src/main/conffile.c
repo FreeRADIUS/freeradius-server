@@ -1202,6 +1202,11 @@ static const char *cf_local_file(const char *base, const char *filename,
 
 	p = strrchr(base, FR_DIR_SEP);
 	if (!p) return filename;
+	if (p[1]) {		/* ./foo */
+		strlcat(base, "/", sizeof(base));
+		p = strrchr(base, '/');
+		rad_assert(p != NULL);
+	}
 
 	dirsize = (p - base) + 1;
 
