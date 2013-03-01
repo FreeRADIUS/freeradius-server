@@ -1912,16 +1912,28 @@ static int my_dict_init(const char *parent, const char *filename,
 	if (!FR_DIR_IS_RELATIVE(filename)) {
 		strlcpy(dir, filename, sizeof(dir));
 		p = strrchr(dir, FR_DIR_SEP);
-		if (p) p[1] = '\0';
+		if (p) {
+			p[1] = '\0';
+		} else {
+			strlcat(dir, "/", sizeof(dir));
+		}
 
 		strlcpy(fn, filename, sizeof(fn));
 	} else {
 		strlcpy(dir, parent, sizeof(dir));
 		p = strrchr(dir, FR_DIR_SEP);
-		if (p && p[1]) strlcat(dir, "/", sizeof(dir));
+		if (p) {
+			if (p[1]) strlcat(dir, "/", sizeof(dir));
+		} else {
+			strlcat(dir, "/", sizeof(dir));
+		}
 		strlcat(dir, filename, sizeof(dir));
 		p = strrchr(dir, FR_DIR_SEP);
-		if (p) p[1] = '\0';
+		if (p) {
+			p[1] = '\0';
+		} else {
+			strlcat(dir, "/", sizeof(dir));
+		}
 
 		p = strrchr(filename, FR_DIR_SEP);
 		if (p) {
