@@ -1843,7 +1843,7 @@ if test "${with_ibmdb2_dir+set}" = set; then :
 fi
 
 
-		smart_try_dir="$ibmdb2_lib_dir /usr/IBMdb2/V7.1/lib"
+		smart_try_dir="$ibmdb2_lib_dir /usr/local/db2/lib /usr/IBMdb2/V7.1/lib"
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
@@ -2788,7 +2788,7 @@ fi
 		fail="$fail libdb2"
 	fi
 
-		smart_try_dir="$ibmdb2_include_dir /usr/IBMdb2/V7.1/include"
+		smart_try_dir="$ibmdb2_include_dir /usr/local/db2/include /usr/IBMdb2/V7.1/include"
 
 
 ac_safe=`echo "sqlcli.h" | sed 'y%./+-%__pm%'`
