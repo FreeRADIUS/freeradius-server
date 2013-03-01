@@ -119,9 +119,9 @@ distclean: clean
 CONFIGURE_IN_FILES := $(shell find . -name configure.in -print)
 CONFIGURE_FILES	   := $(patsubst %.in,%,$(CONFIGURE_IN_FILES))
 
-# Configure files depend on "in" files.
+# Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
-src/%configure: src/%configure.in
+src/%configure: src/%configure.in acinclude.m4 aclocal.m4
 	@echo AUTOCONF $@
 	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir)
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
