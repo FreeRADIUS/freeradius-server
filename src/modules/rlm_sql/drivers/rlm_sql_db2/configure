@@ -2661,7 +2661,7 @@ SQLConnect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -ldb2 -rpath$try"
+		 smart_lib="-L$try -ldb2 -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2779,7 +2779,7 @@ SQLConnect()
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -ldb2,-rpath$try"
+		  smart_lib="-L$try -ldb2 -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break

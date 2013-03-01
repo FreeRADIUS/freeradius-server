@@ -204,7 +204,7 @@ if test "x$smart_try_dir" != "x"; then
     AC_TRY_LINK([extern char $2();],
 		[$2()],
 		[
-		 smart_lib="-L$try -l$1 -rpath$try"
+		 smart_lib="-L$try -l$1 -Wl,-rpath,$try"
 		 AC_MSG_RESULT(yes)
 		 break
 		],
@@ -242,7 +242,7 @@ if test "x$smart_lib" = "x"; then
     AC_TRY_LINK([extern char $2();],
 		[$2()],
 		[
-		  smart_lib="-L$try -l$1,-rpath$try"
+		  smart_lib="-L$try -l$1 -Wl,-rpath,$try"
 		  AC_MSG_RESULT(yes)
 		  break
 		],
