@@ -123,7 +123,7 @@ CONFIGURE_FILES	   := $(patsubst %.in,%,$(CONFIGURE_IN_FILES))
 # If there are headers, run auto-header, too.
 src/%configure: src/%configure.in acinclude.m4 aclocal.m4
 	@echo AUTOCONF $@
-	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir)
+	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I ./m4
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
 		echo AUTOHEADER $@ \
 		cd $(dir $@) && $(AUTOHEADER); \
