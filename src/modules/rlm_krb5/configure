@@ -2811,15 +2811,14 @@ fi
 
 
 ac_safe=`echo "krb5.h" | sed 'y%./+-%__pm%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h" >&5
-$as_echo_n "checking for krb5.h... " >&6; }
-
 old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h in $try" >&5
+$as_echo_n "checking for krb5.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -2828,25 +2827,33 @@ if test "x$smart_try_dir" != "x"; then
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-  smart_include=
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h" >&5
+$as_echo_n "checking for krb5.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2854,15 +2861,24 @@ if test "x$smart_include" = "x"; then
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include=" "
+
+		   smart_include=" "
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		   break
+
 else
-  smart_include=
+
+		   smart_include=
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
@@ -2895,8 +2911,9 @@ fi
 
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
-
   for try in $smart_include_dir /usr/local/include /opt/include; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5.h in $try" >&5
+$as_echo_n "checking for krb5.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -2905,33 +2922,34 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-  smart_include=
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_header_$ac_safe=yes"
   CFLAGS="$old_CFLAGS $smart_include"
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 	if test "$ac_cv_header_krb5_h" != "yes"; then
@@ -2944,8 +2962,6 @@ fi
 
 sm_lib_safe=`echo "k5crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_encrypt_data" | sed 'y%./+-%__p_%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto" >&5
-$as_echo_n "checking for krb5_encrypt_data in -lk5crypto... " >&6; }
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -2953,31 +2969,40 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    LIBS="-L$try -lk5crypto $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto in $try" >&5
+$as_echo_n "checking for krb5_encrypt_data in -lk5crypto in $try... " >&6; }
+    LIBS="-L$try -lk5crypto $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_encrypt_data();
 int
 main ()
 {
- krb5_encrypt_data()
+krb5_encrypt_data()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lk5crypto"
+
+		 smart_lib="-L$try -lk5crypto -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto" >&5
+$as_echo_n "checking for krb5_encrypt_data in -lk5crypto... " >&6; }
   LIBS="-lk5crypto $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -2985,13 +3010,20 @@ extern char krb5_encrypt_data();
 int
 main ()
 {
- krb5_encrypt_data()
+krb5_encrypt_data()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-lk5crypto"
+
+	        smart_lib="-lk5crypto"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -3055,39 +3087,41 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    LIBS="-L$try -lk5crypto $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto in $try" >&5
+$as_echo_n "checking for krb5_encrypt_data in -lk5crypto in $try... " >&6; }
+    LIBS="-L$try -rpath$try -lk5crypto $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_encrypt_data();
 int
 main ()
 {
- krb5_encrypt_data()
+krb5_encrypt_data()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lk5crypto"
+
+		  smart_lib="-L$try -lk5crypto -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
   LIBS="$smart_lib $old_LIBS"
   SMART_LIBS="$smart_lib $SMART_LIBS"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 	if test "x$ac_cv_lib_k5crypto_krb5_encrypt_data" = xyes; then
@@ -3099,8 +3133,6 @@ fi
 
 sm_lib_safe=`echo "crypto" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "DH_new" | sed 'y%./+-%__p_%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
-$as_echo_n "checking for DH_new in -lcrypto... " >&6; }
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -3108,31 +3140,40 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    LIBS="-L$try -lcrypto $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
+$as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
+    LIBS="-L$try -lcrypto $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char DH_new();
 int
 main ()
 {
- DH_new()
+DH_new()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lcrypto"
+
+		 smart_lib="-L$try -lcrypto -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto" >&5
+$as_echo_n "checking for DH_new in -lcrypto... " >&6; }
   LIBS="-lcrypto $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3140,13 +3181,20 @@ extern char DH_new();
 int
 main ()
 {
- DH_new()
+DH_new()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-lcrypto"
+
+	        smart_lib="-lcrypto"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -3210,39 +3258,41 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    LIBS="-L$try -lcrypto $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
+$as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
+    LIBS="-L$try -rpath$try -lcrypto $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char DH_new();
 int
 main ()
 {
- DH_new()
+DH_new()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lcrypto"
+
+		  smart_lib="-L$try -lcrypto -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
   LIBS="$smart_lib $old_LIBS"
   SMART_LIBS="$smart_lib $SMART_LIBS"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 		if test "x$ac_cv_lib_crypto_DH_new" = xyes; then
@@ -3259,8 +3309,6 @@ $as_echo "$as_me: WARNING: neither krb5 'k5crypto' nor 'crypto' libraries are fo
 
 sm_lib_safe=`echo "com_err" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "set_com_err_hook" | sed 'y%./+-%__p_%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err" >&5
-$as_echo_n "checking for set_com_err_hook in -lcom_err... " >&6; }
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -3268,31 +3316,40 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    LIBS="-L$try -lcom_err $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err in $try" >&5
+$as_echo_n "checking for set_com_err_hook in -lcom_err in $try... " >&6; }
+    LIBS="-L$try -lcom_err $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char set_com_err_hook();
 int
 main ()
 {
- set_com_err_hook()
+set_com_err_hook()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lcom_err"
+
+		 smart_lib="-L$try -lcom_err -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err" >&5
+$as_echo_n "checking for set_com_err_hook in -lcom_err... " >&6; }
   LIBS="-lcom_err $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3300,13 +3357,20 @@ extern char set_com_err_hook();
 int
 main ()
 {
- set_com_err_hook()
+set_com_err_hook()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-lcom_err"
+
+	        smart_lib="-lcom_err"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -3370,39 +3434,41 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    LIBS="-L$try -lcom_err $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err in $try" >&5
+$as_echo_n "checking for set_com_err_hook in -lcom_err in $try... " >&6; }
+    LIBS="-L$try -rpath$try -lcom_err $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char set_com_err_hook();
 int
 main ()
 {
- set_com_err_hook()
+set_com_err_hook()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lcom_err"
+
+		  smart_lib="-L$try -lcom_err -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
   LIBS="$smart_lib $old_LIBS"
   SMART_LIBS="$smart_lib $SMART_LIBS"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 	if test "x$ac_cv_lib_com_err_set_com_err_hook" != xyes; then
@@ -3414,8 +3480,6 @@ $as_echo "$as_me: WARNING: the comm_err library isn't found!" >&2;}
 
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "krb5_init_context" | sed 'y%./+-%__p_%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5" >&5
-$as_echo_n "checking for krb5_init_context in -lkrb5... " >&6; }
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -3423,31 +3487,40 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    LIBS="-L$try -lkrb5 $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5 in $try" >&5
+$as_echo_n "checking for krb5_init_context in -lkrb5 in $try... " >&6; }
+    LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_init_context();
 int
 main ()
 {
- krb5_init_context()
+krb5_init_context()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lkrb5"
+
+		 smart_lib="-L$try -lkrb5 -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5" >&5
+$as_echo_n "checking for krb5_init_context in -lkrb5... " >&6; }
   LIBS="-lkrb5 $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3455,13 +3528,20 @@ extern char krb5_init_context();
 int
 main ()
 {
- krb5_init_context()
+krb5_init_context()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-lkrb5"
+
+	        smart_lib="-lkrb5"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -3525,39 +3605,41 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    LIBS="-L$try -lkrb5 $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5 in $try" >&5
+$as_echo_n "checking for krb5_init_context in -lkrb5 in $try... " >&6; }
+    LIBS="-L$try -rpath$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char krb5_init_context();
 int
 main ()
 {
- krb5_init_context()
+krb5_init_context()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lkrb5"
+
+		  smart_lib="-L$try -lkrb5 -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
   LIBS="$smart_lib $old_LIBS"
   SMART_LIBS="$smart_lib $SMART_LIBS"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 	if test "x$ac_cv_lib_krb5_krb5_init_context" != xyes; then

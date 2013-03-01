@@ -2820,15 +2820,14 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 ac_safe=`echo "gdbm.h" | sed 'y%./+-%__pm%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm.h" >&5
-$as_echo_n "checking for gdbm.h... " >&6; }
-
 old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm.h in $try" >&5
+$as_echo_n "checking for gdbm.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -2837,25 +2836,33 @@ if test "x$smart_try_dir" != "x"; then
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-  smart_include=
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm.h" >&5
+$as_echo_n "checking for gdbm.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2863,15 +2870,24 @@ if test "x$smart_include" = "x"; then
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include=" "
+
+		   smart_include=" "
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		   break
+
 else
-  smart_include=
+
+		   smart_include=
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
@@ -2904,8 +2920,9 @@ fi
 
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
-
   for try in $smart_include_dir /usr/local/include /opt/include; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm.h in $try" >&5
+$as_echo_n "checking for gdbm.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -2914,41 +2931,40 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-  smart_include=
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_header_$ac_safe=yes"
   CFLAGS="$old_CFLAGS $smart_include"
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 
 
 sm_lib_safe=`echo "gdbm" | sed 'y%./+-%__p_%'`
 sm_func_safe=`echo "gdbm_open" | sed 'y%./+-%__p_%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm_open in -lgdbm" >&5
-$as_echo_n "checking for gdbm_open in -lgdbm... " >&6; }
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -2956,31 +2972,40 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    LIBS="-L$try -lgdbm $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm_open in -lgdbm in $try" >&5
+$as_echo_n "checking for gdbm_open in -lgdbm in $try... " >&6; }
+    LIBS="-L$try -lgdbm $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char gdbm_open();
 int
 main ()
 {
- gdbm_open()
+gdbm_open()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lgdbm"
+
+		 smart_lib="-L$try -lgdbm -Wl,-rpath,$try"
+		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		 break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm_open in -lgdbm" >&5
+$as_echo_n "checking for gdbm_open in -lgdbm... " >&6; }
   LIBS="-lgdbm $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -2988,13 +3013,20 @@ extern char gdbm_open();
 int
 main ()
 {
- gdbm_open()
+gdbm_open()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-lgdbm"
+
+	        smart_lib="-lgdbm"
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
@@ -3058,39 +3090,41 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    LIBS="-L$try -lgdbm $old_LIBS"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for gdbm_open in -lgdbm in $try" >&5
+$as_echo_n "checking for gdbm_open in -lgdbm in $try... " >&6; }
+    LIBS="-L$try -rpath$try -lgdbm $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 extern char gdbm_open();
 int
 main ()
 {
- gdbm_open()
+gdbm_open()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  smart_lib="-L$try -lgdbm"
+
+		  smart_lib="-L$try -lgdbm -Wl,-rpath,$try"
+		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		  break
+
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-    if test "x$smart_lib" != "x"; then
-      break;
-    fi
   done
   LIBS="$old_LIBS"
 fi
 
 if test "x$smart_lib" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_lib_${sm_lib_safe}_${sm_func_safe}=yes"
   LIBS="$smart_lib $old_LIBS"
   SMART_LIBS="$smart_lib $SMART_LIBS"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 	if test "x$ac_cv_lib_gdbm_gdbm_open" != "xyes"; then

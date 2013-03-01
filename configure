@@ -7474,15 +7474,14 @@ smart_try_dir="$talloc_include_dir"
 
 
 ac_safe=`echo "talloc.h" | sed 'y%./+-%__pm%'`
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for talloc.h" >&5
-$as_echo_n "checking for talloc.h... " >&6; }
-
 old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for talloc.h in $try" >&5
+$as_echo_n "checking for talloc.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -7491,25 +7490,33 @@ if test "x$smart_try_dir" != "x"; then
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-  smart_include=
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
 if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for talloc.h" >&5
+$as_echo_n "checking for talloc.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -7517,15 +7524,24 @@ if test "x$smart_include" = "x"; then
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include=" "
+
+		   smart_include=" "
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		   break
+
 else
-  smart_include=
+
+		   smart_include=
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
@@ -7558,8 +7574,9 @@ fi
 
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
-
   for try in $smart_include_dir /usr/local/include /opt/include; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for talloc.h in $try" >&5
+$as_echo_n "checking for talloc.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -7568,33 +7585,34 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  smart_include="-I$try"
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-  smart_include=
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    if test "x$smart_include" != "x"; then
-      break;
-    fi
   done
   CFLAGS="$old_CFLAGS"
 fi
 
 if test "x$smart_include" != "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
   eval "ac_cv_header_$ac_safe=yes"
   CFLAGS="$old_CFLAGS $smart_include"
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
 fi
 
 if test "x$ac_cv_header_talloc_h" != "xyes"; then

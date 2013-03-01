@@ -143,9 +143,6 @@
 /* Define to 1 if you have the `localtime_r' function. */
 #undef HAVE_LOCALTIME_R
 
-/* Do we have the lt_dladvise_init function */
-#undef HAVE_LT_DLADVISE_INIT
-
 /* Define to 1 if you have the <malloc.h> header file. */
 #undef HAVE_MALLOC_H
 
