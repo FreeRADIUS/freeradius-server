@@ -116,33 +116,32 @@ distclean: clean
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
 #
 ######################################################################
-CONFIG_FILES := $(wildcard src/modules/rlm_*/configure.in src/modules/rlm_*/*/*/configure.in)
+CONFIGURE_IN_FILES := $(shell find . -name configure.in -print)
+CONFIGURE_FILES	   := $(patsubst %.in,%,$(CONFIGURE_IN_FILES))
 
-$(CONFIG_FILES):
-	@echo "Making reconfig in $(dir $@)..."
+# Configure files depend on "in" files.
+# If there are headers, run auto-header, too.
+src/%configure: src/%configure.in
+	@echo AUTOCONF $@
 	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir)
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
+		echo AUTOHEADER $@ \
 		cd $(dir $@) && $(AUTOHEADER); \
 	 fi
 
+# "%configure" doesn't match "configure"
+configure: configure.in $(wildcard ac*.m4)
+	@echo AUTOCONF $@
+	@$(AUTOCONF)
 
-.PHONY: reconfig
-reconfig:
-	@$(MAKE) $(MFLAGS) -C src reconfig
-	@$(MAKE) configure
-	@$(MAKE) src/include/autoconf.h.in
+src/include/autoconf.h.in: configure.in
+	@echo AUTOHEADER $@
+	@$(AUTOHEADER)
 
-configure: configure.in aclocal.m4
-	$(AUTOCONF)
-
-.PHONY: src/include/autoconf.h.in
-src/include/autoconf.h.in:
-	$(AUTOHEADER)
+reconfig: $(CONFIGURE_FILES) src/include/autoconf.h.in
 
 config.status: configure
 	./config.status --recheck
-
-configure.in:
 
 .PHONY: check-includes
 check-includes:
