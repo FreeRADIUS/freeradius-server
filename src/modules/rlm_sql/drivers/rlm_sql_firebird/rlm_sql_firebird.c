@@ -26,11 +26,11 @@ RCSID("$Id$")
 
 
 /* Forward declarations */
-static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 /*************************************************************************
  *
@@ -39,17 +39,17 @@ static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config);
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
     rlm_sql_firebird_sock *firebird_sock;
     long res;
 
 
-    if (!sqlsocket->conn) {
-	sqlsocket->conn = (rlm_sql_firebird_sock *)rad_malloc(sizeof(rlm_sql_firebird_sock));
-	if (!sqlsocket->conn) return -1;
+    if (!handle->conn) {
+	handle->conn = (rlm_sql_firebird_sock *)rad_malloc(sizeof(rlm_sql_firebird_sock));
+	if (!handle->conn) return -1;
     }
 
-    firebird_sock = sqlsocket->conn;
+    firebird_sock = handle->conn;
 
     res=fb_init_socket(firebird_sock);
     if (res)  return -1;
@@ -70,10 +70,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *      Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-    free(sqlsocket->conn);
-    sqlsocket->conn = NULL;
+    free(handle->conn);
+    handle->conn = NULL;
     return 0;
 }
 
@@ -87,8 +87,8 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *
  *************************************************************************/
 
-static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
-    rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+    rlm_sql_firebird_sock *firebird_sock = handle->conn;
     int deadlock=0;
 
 #ifdef _PTHREAD_H
@@ -138,9 +138,9 @@ TryAgain:
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
-//    rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
-    return (sql_query(sqlsocket, config, querystr));
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+//    rlm_sql_firebird_sock *firebird_sock = handle->conn;
+    return (sql_query(handle, config, querystr));
 
 }
 
@@ -153,7 +153,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
   /*   Not used   */
     return 0;
 }
@@ -167,8 +167,8 @@ static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    return  ((rlm_sql_firebird_sock *) sqlsocket->conn)->sqlda_out->sqld;
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    return  ((rlm_sql_firebird_sock *) handle->conn)->sqlda_out->sqld;
 }
 
 
@@ -180,8 +180,8 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    int res=sql_affected_rows(sqlsocket, config);
+static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    int res=sql_affected_rows(handle, config);
     return res;
 }
 
@@ -190,16 +190,16 @@ static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *	Function: sql_fetch_row
  *
- *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query in 'sqlsocket->row'. Returns
+ *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
+ *               with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
+static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    rlm_sql_firebird_sock *firebird_sock = handle->conn;
     int res;
 
-    sqlsocket->row = NULL;
+    handle->row = NULL;
     if (firebird_sock->statement_type!=isc_info_sql_stmt_exec_procedure) {
      res=fb_fetch(firebird_sock);
      if (res==100) return 0;
@@ -210,7 +210,7 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     } else firebird_sock->statement_type=0;
     fb_store_row(firebird_sock);
 
-    sqlsocket->row = firebird_sock->row;
+    handle->row = firebird_sock->row;
     return 0;
 }
 
@@ -222,8 +222,8 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_firebird_sock *sock=(rlm_sql_firebird_sock *) sqlsocket->conn;
+static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
+    rlm_sql_firebird_sock *sock=(rlm_sql_firebird_sock *) handle->conn;
     fb_commit(sock);
     fb_close_cursor(sock);
     return 0;
@@ -236,8 +236,8 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-//    sql_free_result(sqlsocket,config);
+static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+//    sql_free_result(handle,config);
     return 0;
 }
 
@@ -249,7 +249,7 @@ static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
     return 0;
 }
 
@@ -261,8 +261,8 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    fb_destroy_socket((rlm_sql_firebird_sock *) sqlsocket->conn);
+static int sql_close(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    fb_destroy_socket((rlm_sql_firebird_sock *) handle->conn);
     return 0;
 }
 
@@ -274,8 +274,8 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_firebird_sock *firebird_sock = sqlsocket->conn;
+static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    rlm_sql_firebird_sock *firebird_sock = handle->conn;
     return firebird_sock->lasterror;
 }
 /*************************************************************************
@@ -286,10 +286,10 @@ static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
- int affected_rows=fb_affected_rows(sqlsocket->conn);
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+ int affected_rows=fb_affected_rows(handle->conn);
  if (affected_rows<0)
-   radlog(L_ERR, "sql_affected_rows, rlm_sql_firebird. error:%s\n", sql_error(sqlsocket,config));
+   radlog(L_ERR, "sql_affected_rows, rlm_sql_firebird. error:%s\n", sql_error(handle,config));
  return affected_rows;
 }
 

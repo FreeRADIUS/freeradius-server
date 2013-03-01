@@ -45,20 +45,20 @@ typedef struct rlm_sql_sqlite_sock {
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int status;
 	rlm_sql_sqlite_sock *sqlite_sock;
 	char *filename;
 	char buffer[2048];
 	
-	if (!sqlsocket->conn) {
-		sqlsocket->conn = (rlm_sql_sqlite_sock *)rad_malloc(sizeof(rlm_sql_sqlite_sock));
-		if (!sqlsocket->conn) {
+	if (!handle->conn) {
+		handle->conn = (rlm_sql_sqlite_sock *)rad_malloc(sizeof(rlm_sql_sqlite_sock));
+		if (!handle->conn) {
 			return -1;
 		}
 	}
-	sqlite_sock = sqlsocket->conn;
+	sqlite_sock = handle->conn;
 	memset(sqlite_sock, 0, sizeof(rlm_sql_sqlite_sock));
 	
 	filename = config->sql_file;
@@ -83,10 +83,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *	Purpose: Free socket and any private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 
 	if (sqlite_sock && sqlite_sock->pDb) {
 		status = sqlite3_close(sqlite_sock->pDb);
@@ -107,11 +107,11 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config,
+static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		     char *querystr)
 {
 	int status;
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 	const char *zTail;
 	
 	if (sqlite_sock->pDb == NULL) {
@@ -134,10 +134,10 @@ static int sql_query(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config,
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
 			    char *querystr)
 {
-	return sql_query(sqlsocket, config, querystr);
+	return sql_query(handle, config, querystr);
 }
 
 
@@ -149,7 +149,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config,
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_store_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -163,9 +163,9 @@ static int sql_store_result(UNUSED SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *confi
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 	
 	if (sqlite_sock->pStmt)
 		return sqlite3_column_count(sqlite_sock->pStmt);
@@ -182,9 +182,9 @@ static int sql_num_fields(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_num_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 	
 	if (sqlite_sock->pStmt)
 		return sqlite3_data_count(sqlite_sock->pStmt);
@@ -196,9 +196,9 @@ static int sql_num_rows(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
 /*************************************************************************
  *	Function: sql_free_rowdata
  *************************************************************************/
-static void sql_free_rowdata(SQLSOCK * sqlsocket, int colcount)
+static void sql_free_rowdata(rlm_sql_handle_t * handle, int colcount)
 {
-	char **rowdata = sqlsocket->row;
+	char **rowdata = handle->row;
 	int colindex;
 	
 	if (rowdata != NULL) {
@@ -208,8 +208,8 @@ static void sql_free_rowdata(SQLSOCK * sqlsocket, int colcount)
 				rowdata[colindex] = NULL;
 			}
 		}
-		free(sqlsocket->row);
-		sqlsocket->row = NULL;
+		free(handle->row);
+		handle->row = NULL;
 	}
 }
 
@@ -218,15 +218,15 @@ static void sql_free_rowdata(SQLSOCK * sqlsocket, int colcount)
  *
  *	Function: sql_fetch_row
  *
- *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query in 'sqlsocket->row'. Returns
+ *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
+ *               with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_fetch_row(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
 {
 	int returnCode = -1;
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 	const char *blob;
 	int blobLen;
 	int status;
@@ -242,24 +242,24 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
 	status = sqlite3_step(sqlite_sock->pStmt);
 	radlog(L_DBG, "rlm_sql_sqlite: sqlite3_step = %d\n", status);
 	if (status == SQLITE_DONE) {
-		sql_free_rowdata(sqlsocket, sqlite_sock->columnCount);
+		sql_free_rowdata(handle, sqlite_sock->columnCount);
 		return 0;
 	}
 	else if (status == SQLITE_ROW) {
 		if (sqlite_sock->columnCount == 0) {
-			sqlite_sock->columnCount = sql_num_fields(sqlsocket, config);
+			sqlite_sock->columnCount = sql_num_fields(handle, config);
 		}
 		colcount = sqlite_sock->columnCount;
 		if (colcount == 0)
 			return -1;
 		
-		sql_free_rowdata(sqlsocket, colcount);
+		sql_free_rowdata(handle, colcount);
 		
 		ret_blob_size = sizeof(char *) * (colcount+1);
 		rowdata = (char **)rad_malloc(ret_blob_size);		/* Space for pointers */
 		if (rowdata != NULL) {
 			memset(rowdata, 0, ret_blob_size);				/* NULL-pad the pointers */
-			sqlsocket->row = rowdata;
+			handle->row = rowdata;
 		}
 		
 		for (colindex = 0; colindex < colcount; colindex++)
@@ -310,13 +310,13 @@ static int sql_fetch_row(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 	
 	if (sqlite_sock->pStmt != NULL) {
-		sql_free_rowdata(sqlsocket, sqlite_sock->columnCount);
+		sql_free_rowdata(handle, sqlite_sock->columnCount);
 		status = sqlite3_finalize(sqlite_sock->pStmt);
 		sqlite_sock->pStmt = NULL;
 		radlog(L_DBG, "rlm_sql_sqlite: sqlite3_finalize() = %d\n", status);
@@ -334,9 +334,9 @@ static int sql_free_result(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 
 	if (sqlite_sock->pDb != NULL) {
 		return sqlite3_errmsg(sqlite_sock->pDb);
@@ -355,10 +355,10 @@ static const char *sql_error(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static int sql_close(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_close(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 	
 	if (sqlite_sock && sqlite_sock->pDb) {
 		status = sqlite3_close(sqlite_sock->pDb);
@@ -376,10 +376,10 @@ static int sql_close(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_finish_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
 
 	if (sqlite_sock->pStmt) {
 		status = sqlite3_finalize(sqlite_sock->pStmt);
@@ -398,9 +398,9 @@ static int sql_finish_query(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
+static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
 {
-	return sql_finish_query(sqlsocket, config);
+	return sql_finish_query(handle, config);
 }
 
 
@@ -412,11 +412,11 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config)
  *		 statement 
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK * sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	int result = -1;
 
-	rlm_sql_sqlite_sock *sqlite_sock = sqlsocket->conn;
+	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
   
 	if (sqlite_sock->pDb != NULL) {
 		result = sqlite3_changes(sqlite_sock->pDb);	

@@ -48,59 +48,59 @@ static const CONF_PARSER acct_section_config[] = {
 
 static const CONF_PARSER module_config[] = {
 	{"driver", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_driver), NULL, "mysql"},
+	 offsetof(rlm_sql_config_t,sql_driver), NULL, "mysql"},
 	{"server", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_server), NULL, "localhost"},
+	 offsetof(rlm_sql_config_t,sql_server), NULL, "localhost"},
 	{"port", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_port), NULL, ""},
+	 offsetof(rlm_sql_config_t,sql_port), NULL, ""},
 	{"login", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_login), NULL, ""},
+	 offsetof(rlm_sql_config_t,sql_login), NULL, ""},
 	{"password", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_password), NULL, ""},
+	 offsetof(rlm_sql_config_t,sql_password), NULL, ""},
 	{"radius_db", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,sql_db), NULL, "radius"},
+	 offsetof(rlm_sql_config_t,sql_db), NULL, "radius"},
 	{"filename", PW_TYPE_FILENAME, /* for sqlite */
-	 offsetof(SQL_CONFIG,sql_file), NULL, NULL},
+	 offsetof(rlm_sql_config_t,sql_file), NULL, NULL},
 	{"read_groups", PW_TYPE_BOOLEAN,
-	 offsetof(SQL_CONFIG,read_groups), NULL, "yes"},
+	 offsetof(rlm_sql_config_t,read_groups), NULL, "yes"},
 	{"readclients", PW_TYPE_BOOLEAN,
-	 offsetof(SQL_CONFIG,do_clients), NULL, "no"},
+	 offsetof(rlm_sql_config_t,do_clients), NULL, "no"},
 	{"deletestalesessions", PW_TYPE_BOOLEAN,
-	 offsetof(SQL_CONFIG,deletestalesessions), NULL, "yes"},
+	 offsetof(rlm_sql_config_t,deletestalesessions), NULL, "yes"},
 	{"sql_user_name", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,query_user), NULL, ""},
+	 offsetof(rlm_sql_config_t,query_user), NULL, ""},
 	{"logfile", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,logfile), NULL, NULL},
+	 offsetof(rlm_sql_config_t,logfile), NULL, NULL},
 	{"default_user_profile", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,default_profile), NULL, ""},
+	 offsetof(rlm_sql_config_t,default_profile), NULL, ""},
 	{"nas_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,nas_query), NULL,
+	 offsetof(rlm_sql_config_t,nas_query), NULL,
 	 "SELECT id,nasname,shortname,type,secret FROM nas"},
 	{"authorize_check_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,authorize_check_query), NULL, ""},
+	 offsetof(rlm_sql_config_t,authorize_check_query), NULL, ""},
 	{"authorize_reply_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,authorize_reply_query), NULL, NULL},
+	 offsetof(rlm_sql_config_t,authorize_reply_query), NULL, NULL},
 	{"authorize_group_check_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,authorize_group_check_query), NULL, ""},
+	 offsetof(rlm_sql_config_t,authorize_group_check_query), NULL, ""},
 	{"authorize_group_reply_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,authorize_group_reply_query), NULL, ""},
+	 offsetof(rlm_sql_config_t,authorize_group_reply_query), NULL, ""},
 	{"group_membership_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,groupmemb_query), NULL, NULL},
+	 offsetof(rlm_sql_config_t,groupmemb_query), NULL, NULL},
 #ifdef WITH_SESSION_MGMT
 	{"simul_count_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,simul_count_query), NULL, ""},
+	 offsetof(rlm_sql_config_t,simul_count_query), NULL, ""},
 	{"simul_verify_query", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,simul_verify_query), NULL, ""},
+	 offsetof(rlm_sql_config_t,simul_verify_query), NULL, ""},
 #endif
 	{"safe-characters", PW_TYPE_STRING_PTR,
-	 offsetof(SQL_CONFIG,allowed_chars), NULL,
+	 offsetof(rlm_sql_config_t,allowed_chars), NULL,
 	"@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"},
 
 	/*
 	 *	This only works for a few drivers.
 	 */
 	{"query_timeout", PW_TYPE_INTEGER,
-	 offsetof(SQL_CONFIG,query_timeout), NULL, NULL},
+	 offsetof(rlm_sql_config_t,query_timeout), NULL, NULL},
 	 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -119,7 +119,7 @@ static int fallthrough(VALUE_PAIR *vp)
 /*
  *	Yucky prototype.
  */
-static int generate_sql_clients(SQL_INST *inst);
+static int generate_sql_clients(rlm_sql_t *inst);
 static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
 /*
@@ -132,9 +132,9 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, const char *i
 static size_t sql_xlat(void *instance, REQUEST *request,
 		    const char *fmt, char *out, size_t freespace)
 {
-	SQLSOCK *sqlsocket;
-	SQL_ROW row;
-	SQL_INST *inst = instance;
+	rlm_sql_handle_t *handle;
+	rlm_sql_row_t row;
+	rlm_sql_t *inst = instance;
 	char querystr[MAX_QUERY_LEN];
 	size_t ret = 0;
 
@@ -155,8 +155,8 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 		return 0;
 	}
 
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL)
+	handle = sql_get_socket(inst);
+	if (handle == NULL)
 		return 0;
 
 	rlm_sql_query_log(inst, request, NULL, querystr);
@@ -171,13 +171,13 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
-		if (rlm_sql_query(&sqlsocket,inst,querystr)) {
-			sql_release_socket(inst,sqlsocket);
+		if (rlm_sql_query(&handle,inst,querystr)) {
+			sql_release_socket(inst,handle);
 			
 			return 0;
 		}
 	       
-		numaffected = (inst->module->sql_affected_rows)(sqlsocket,
+		numaffected = (inst->module->sql_affected_rows)(handle,
 								inst->config);
 		if (numaffected < 1) {
 			RDEBUG("rlm_sql (%s): SQL query affected no rows",
@@ -197,51 +197,51 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 		if (ret >= freespace){
 			RDEBUG("rlm_sql (%s): Can't write result, insufficient string space",
 			       inst->config->xlat_name);
-			(inst->module->sql_finish_query)(sqlsocket,
+			(inst->module->sql_finish_query)(handle,
 							 inst->config);
-			sql_release_socket(inst,sqlsocket);
+			sql_release_socket(inst,handle);
 			return 0;
 		}
 		
 		memcpy(out, buffer, ret + 1); /* we did bounds checking above */
 
-		(inst->module->sql_finish_query)(sqlsocket, inst->config);
-		sql_release_socket(inst,sqlsocket);
+		(inst->module->sql_finish_query)(handle, inst->config);
+		sql_release_socket(inst,handle);
 		return ret;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(&sqlsocket,inst,querystr)){
-		sql_release_socket(inst,sqlsocket);
+	if (rlm_sql_select_query(&handle,inst,querystr)){
+		sql_release_socket(inst,handle);
 		return 0;
 	}
 
-	ret = rlm_sql_fetch_row(&sqlsocket, inst);
+	ret = rlm_sql_fetch_row(&handle, inst);
 	if (ret) {
 		RDEBUG("SQL query did not succeed");
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst,sqlsocket);
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		sql_release_socket(inst,handle);
 		return 0;
 	}
 
-	row = sqlsocket->row;
+	row = handle->row;
 	if (row == NULL) {
 		RDEBUG("SQL query did not return any results");
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst,sqlsocket);
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		sql_release_socket(inst,handle);
 		return 0;
 	}
 
 	if (row[0] == NULL){
 		RDEBUG("Null value in first column");
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst,sqlsocket);
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		sql_release_socket(inst,handle);
 		return 0;
 	}
 	ret = strlen(row[0]);
 	if (ret >= freespace){
 		RDEBUG("Insufficient string space");
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst,sqlsocket);
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		sql_release_socket(inst,handle);
 		return 0;
 	}
 
@@ -249,15 +249,15 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 
 	RDEBUG("sql_xlat finished");
 
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-	sql_release_socket(inst,sqlsocket);
+	(inst->module->sql_finish_select_query)(handle, inst->config);
+	sql_release_socket(inst,handle);
 	return ret;
 }
 
-static int generate_sql_clients(SQL_INST *inst)
+static int generate_sql_clients(rlm_sql_t *inst)
 {
-	SQLSOCK *sqlsocket;
-	SQL_ROW row;
+	rlm_sql_handle_t *handle;
+	rlm_sql_row_t row;
 	char querystr[MAX_QUERY_LEN];
 	RADCLIENT *c;
 	char *prefix_ptr = NULL;
@@ -272,16 +272,16 @@ static int generate_sql_clients(SQL_INST *inst)
 	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
 	      inst->config->xlat_name, querystr);
 
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL)
+	handle = sql_get_socket(inst);
+	if (handle == NULL)
 		return -1;
-	if (rlm_sql_select_query(&sqlsocket,inst,querystr)){
+	if (rlm_sql_select_query(&handle,inst,querystr)){
 		return -1;
 	}
 
-	while(rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
+	while(rlm_sql_fetch_row(&handle, inst) == 0) {
 		i++;
-		row = sqlsocket->row;
+		row = handle->row;
 		if (row == NULL)
 			break;
 		/*
@@ -371,14 +371,14 @@ static int generate_sql_clients(SQL_INST *inst)
 		if(row[3] != NULL)
 			c->nastype = strdup(row[3]);
 
-		numf = (inst->module->sql_num_fields)(sqlsocket, inst->config);
+		numf = (inst->module->sql_num_fields)(handle, inst->config);
 		if ((numf > 5) && (row[5] != NULL) && *row[5]) c->server = strdup(row[5]);
 
 		DEBUG("rlm_sql (%s): Adding client %s (%s, server=%s) to clients list",
 		      inst->config->xlat_name,
 		      c->longname,c->shortname, c->server ? c->server : "<none>");
 		if (!client_add(NULL, c)) {
-			sql_release_socket(inst, sqlsocket);
+			sql_release_socket(inst, handle);
 			DEBUG("rlm_sql (%s): Failed to add client %s (%s) to clients list.  Maybe there's a duplicate?",
 			      inst->config->xlat_name,
 			      c->longname,c->shortname);
@@ -386,8 +386,8 @@ static int generate_sql_clients(SQL_INST *inst)
 			return -1;
 		}
 	}
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-	sql_release_socket(inst, sqlsocket);
+	(inst->module->sql_finish_select_query)(handle, inst->config);
+	sql_release_socket(inst, handle);
 
 	return 0;
 }
@@ -399,7 +399,7 @@ static int generate_sql_clients(SQL_INST *inst)
 static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
 			      const char *in, void *arg)
 {
-	SQL_INST *inst = arg;
+	rlm_sql_t *inst = arg;
 	size_t len = 0;
 
 	while (in[0]) {
@@ -452,7 +452,7 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
+int sql_set_user(rlm_sql_t *inst, REQUEST *request, const char *username)
 {
 	char buffer[254];
 	VALUE_PAIR *vp = NULL;
@@ -485,9 +485,9 @@ int sql_set_user(SQL_INST *inst, REQUEST *request, const char *username)
 }
 
 
-static void sql_grouplist_free (SQL_GROUPLIST **group_list)
+static void sql_grouplist_free (rlm_sql_grouplist_t **group_list)
 {
-	SQL_GROUPLIST *last;
+	rlm_sql_grouplist_t *last;
 
 	while(*group_list) {
 		last = *group_list;
@@ -497,12 +497,12 @@ static void sql_grouplist_free (SQL_GROUPLIST **group_list)
 }
 
 
-static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *request, SQL_GROUPLIST **group_list)
+static int sql_get_grouplist (rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST *request, rlm_sql_grouplist_t **group_list)
 {
 	char    querystr[MAX_QUERY_LEN];
 	int     num_groups = 0;
-	SQL_ROW row;
-	SQL_GROUPLIST   *group_list_tmp;
+	rlm_sql_row_t row;
+	rlm_sql_grouplist_t   *group_list_tmp;
 
 	/* NOTE: sql_set_user should have been run before calling this function */
 
@@ -518,32 +518,32 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 		return -1;
 	}
 
-	if (rlm_sql_select_query(&sqlsocket, inst, querystr) < 0) {
+	if (rlm_sql_select_query(&handle, inst, querystr) < 0) {
 		return -1;
 	}
-	while (rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
-		row = sqlsocket->row;
+	while (rlm_sql_fetch_row(&handle, inst) == 0) {
+		row = handle->row;
 		if (row == NULL)
 			break;
 		if (row[0] == NULL){
 			RDEBUG("row[0] returned NULL");
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+			(inst->module->sql_finish_select_query)(handle, inst->config);
 			sql_grouplist_free(group_list);
 			return -1;
 		}
 		if (*group_list == NULL) {
-			*group_list = rad_malloc(sizeof(SQL_GROUPLIST));
+			*group_list = rad_malloc(sizeof(rlm_sql_grouplist_t));
 			group_list_tmp = *group_list;
 		} else {
 			rad_assert(group_list_tmp != NULL);
-			group_list_tmp->next = rad_malloc(sizeof(SQL_GROUPLIST));
+			group_list_tmp->next = rad_malloc(sizeof(rlm_sql_grouplist_t));
 			group_list_tmp = group_list_tmp->next;
 		}
 		group_list_tmp->next = NULL;
 		strlcpy(group_list_tmp->groupname, row[0], MAX_STRING_LEN);
 	}
 
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	(inst->module->sql_finish_select_query)(handle, inst->config);
 
 	return num_groups;
 }
@@ -559,9 +559,9 @@ static int sql_get_grouplist (SQL_INST *inst, SQLSOCK *sqlsocket, REQUEST *reque
 static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp, VALUE_PAIR *check,
 			VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
 {
-	SQLSOCK *sqlsocket;
-	SQL_INST *inst = instance;
-	SQL_GROUPLIST *group_list, *group_list_tmp;
+	rlm_sql_handle_t *handle;
+	rlm_sql_t *inst = instance;
+	rlm_sql_grouplist_t *group_list, *group_list_tmp;
 
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
@@ -585,18 +585,18 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	/*
 	 *	Get a socket for this lookup
 	 */
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL) {
+	handle = sql_get_socket(inst);
+	if (handle == NULL) {
 		return 1;
 	}
 
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, sqlsocket, request, &group_list) < 0) {
+	if (sql_get_grouplist(inst, handle, request, &group_list) < 0) {
 		radlog_request(L_ERR, 0, request,
 			       "Error getting group membership");
-		sql_release_socket(inst, sqlsocket);
+		sql_release_socket(inst, handle);
 		return 1;
 	}
 
@@ -606,14 +606,14 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 			       check->vp_strvalue);
 			/* Free the grouplist */
 			sql_grouplist_free(&group_list);
-			sql_release_socket(inst, sqlsocket);
+			sql_release_socket(inst, handle);
 			return 0;
 		}
 	}
 
 	/* Free the grouplist */
 	sql_grouplist_free(&group_list);
-	sql_release_socket(inst,sqlsocket);
+	sql_release_socket(inst,handle);
 
 	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s",
 	       check->vp_strvalue);
@@ -623,11 +623,11 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 
 
 
-static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sqlsocket, int *dofallthrough)
+static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_handle_t *handle, int *dofallthrough)
 {
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
-	SQL_GROUPLIST *group_list, *group_list_tmp;
+	rlm_sql_grouplist_t *group_list, *group_list_tmp;
 	VALUE_PAIR *sql_group = NULL;
 	char    querystr[MAX_QUERY_LEN];
 	int found = 0;
@@ -636,7 +636,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, sqlsocket, request, &group_list) < 0) {
+	if (sql_get_grouplist(inst, handle, request, &group_list) < 0) {
 		radlog_request(L_ERR, 0, request, "Error retrieving group list");
 		return -1;
 	}
@@ -662,7 +662,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 			sql_grouplist_free(&group_list);
 			return -1;
 		}
-		rows = sql_getvpdata(inst, &sqlsocket, &check_tmp, querystr);
+		rows = sql_getvpdata(inst, &handle, &check_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
 			       group_list_tmp->groupname);
@@ -690,7 +690,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 					sql_grouplist_free(&group_list);
 					return -1;
 				}
-				if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
+				if (sql_getvpdata(inst, &handle, &reply_tmp, querystr) < 0) {
 					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 					       group_list_tmp->groupname);
 					/* Remove the grouup we added above */
@@ -725,7 +725,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 				sql_grouplist_free(&group_list);
 				return -1;
 			}
-			if (sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr) < 0) {
+			if (sql_getvpdata(inst, &handle, &reply_tmp, querystr) < 0) {
 				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 				       group_list_tmp->groupname);
 				/* Remove the grouup we added above */
@@ -756,7 +756,7 @@ static int rlm_sql_process_groups(SQL_INST *inst, REQUEST *request, SQLSOCK *sql
 
 static int rlm_sql_detach(void *instance)
 {
-	SQL_INST *inst = instance;
+	rlm_sql_t *inst = instance;
 
 	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
 	
@@ -781,7 +781,7 @@ static int rlm_sql_detach(void *instance)
 }
 
 static int parse_sub_section(CONF_SECTION *parent, 
-	 		     SQL_INST *inst,
+	 		     rlm_sql_t *inst,
 	 		     sql_acct_section_t **config,
 	 		     rlm_components_t comp)
 {
@@ -813,10 +813,10 @@ static int parse_sub_section(CONF_SECTION *parent,
 
 static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 {
-	SQL_INST *inst;
+	rlm_sql_t *inst;
 	const char *xlat_name;
 
-	*instance = inst = talloc_zero(conf, SQL_INST);
+	*instance = inst = talloc_zero(conf, rlm_sql_t);
 	if (!inst) return -1;
 	
 	/*
@@ -837,7 +837,7 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
 	
-	inst->config = talloc_zero(inst, SQL_CONFIG);
+	inst->config = talloc_zero(inst, rlm_sql_config_t);
 	inst->cs = conf;
 
 	xlat_name = cf_section_name2(conf);
@@ -967,8 +967,8 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 {
 	int ret = RLM_MODULE_NOTFOUND;
 	
-	SQL_INST *inst = instance;
-	SQLSOCK  *sqlsocket;
+	rlm_sql_t *inst = instance;
+	rlm_sql_handle_t  *handle;
 	
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
@@ -991,8 +991,8 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 	 *  After this point use goto error or goto release to cleanup sockets
 	 *  temporary pairlists and temporary attributes.
 	 */
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL)
+	handle = sql_get_socket(inst);
+	if (handle == NULL)
 		goto error;
 
 	/*
@@ -1007,7 +1007,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 			goto error;
 		}
 		
-		rows = sql_getvpdata(inst, &sqlsocket, &check_tmp, querystr);
+		rows = sql_getvpdata(inst, &handle, &check_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 	
@@ -1045,7 +1045,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 			goto error;
 		}
 		
-		rows = sql_getvpdata(inst, &sqlsocket, &reply_tmp, querystr);
+		rows = sql_getvpdata(inst, &handle, &reply_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 
@@ -1077,7 +1077,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 	 *  the groups as well.
 	 */
 	if (dofallthrough) {
-		rows = rlm_sql_process_groups(inst, request, sqlsocket, &dofallthrough);
+		rows = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "Error processing groups; rejecting user");
 
@@ -1112,7 +1112,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 			goto error;
 		}
 		
-		rows = rlm_sql_process_groups(inst, request, sqlsocket, &dofallthrough);
+		rows = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "Error processing profile groups; rejecting user");
 
@@ -1129,7 +1129,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 	ret = RLM_MODULE_FAIL;
 	
 	release:
-	sql_release_socket(inst, sqlsocket);
+	sql_release_socket(inst, handle);
 		
 	pairfree(&check_tmp);
 	pairfree(&reply_tmp);
@@ -1147,12 +1147,12 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
  *	doesn't update any rows, the next matching config item is used.
  *  
  */
-static int acct_redundant(SQL_INST *inst, REQUEST *request, 
+static int acct_redundant(rlm_sql_t *inst, REQUEST *request, 
 			  sql_acct_section_t *section)
 {
 	int	ret = RLM_MODULE_OK;
 
-	SQLSOCK	*sqlsocket = NULL;
+	rlm_sql_handle_t	*handle = NULL;
 	int	sql_ret;
 	int	numaffected = 0;
 
@@ -1190,8 +1190,8 @@ static int acct_redundant(SQL_INST *inst, REQUEST *request,
 	
 	RDEBUG2("Using query template '%s'", attr);
 	
-	sqlsocket = sql_get_socket(inst);
-	if (sqlsocket == NULL)
+	handle = sql_get_socket(inst);
+	if (handle == NULL)
 		return RLM_MODULE_FAIL;
 		
 	sql_set_user(inst, request, NULL);
@@ -1225,11 +1225,11 @@ static int acct_redundant(SQL_INST *inst, REQUEST *request,
 		 *  were exhausted, and we couldn't create a new connection,
 		 *  so we do not need to call sql_release_socket.
 		 */
-		sql_ret = rlm_sql_query(&sqlsocket, inst, querystr);	
+		sql_ret = rlm_sql_query(&handle, inst, querystr);	
 		if (sql_ret == SQL_DOWN)
 			return RLM_MODULE_FAIL;
 		
-		rad_assert(sqlsocket);
+		rad_assert(handle);
 	
 		/* 
 		 *  Assume all other errors are incidental, and just meant our
@@ -1237,14 +1237,14 @@ static int acct_redundant(SQL_INST *inst, REQUEST *request,
 		 */
 		if (sql_ret == 0) {
 			numaffected = (inst->module->sql_affected_rows)
-					(sqlsocket, inst->config);
+					(handle, inst->config);
 			if (numaffected > 0)
 				break;
 				
 			RDEBUG("No records updated");
 		}
 
-		(inst->module->sql_finish_query)(sqlsocket, inst->config);
+		(inst->module->sql_finish_query)(handle, inst->config);
 		
 		/*
 		 *  We assume all entries with the same name form a redundant
@@ -1263,10 +1263,10 @@ static int acct_redundant(SQL_INST *inst, REQUEST *request,
 		RDEBUG("Trying next query...");
 	}
 	
-	(inst->module->sql_finish_query)(sqlsocket, inst->config);
+	(inst->module->sql_finish_query)(handle, inst->config);
 
 	release:
-	sql_release_socket(inst, sqlsocket);
+	sql_release_socket(inst, handle);
 
 	return ret;
 }
@@ -1277,7 +1277,7 @@ static int acct_redundant(SQL_INST *inst, REQUEST *request,
  *	Accounting: Insert or update session data in our sql table
  */
 static rlm_rcode_t rlm_sql_accounting(void *instance, REQUEST * request) {
-	SQL_INST *inst = instance;		
+	rlm_sql_t *inst = instance;		
 
 	if (inst->config->accounting) {
 		return acct_redundant(inst, request, inst->config->accounting); 
@@ -1299,9 +1299,9 @@ static rlm_rcode_t rlm_sql_accounting(void *instance, REQUEST * request) {
  */
 
 static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
-	SQLSOCK 	*sqlsocket;
-	SQL_INST	*inst = instance;
-	SQL_ROW		row;
+	rlm_sql_handle_t 	*handle;
+	rlm_sql_t	*inst = instance;
+	rlm_sql_row_t		row;
 	char		querystr[MAX_QUERY_LEN];
 	int		check = 0;
         uint32_t        ipno = 0;
@@ -1330,34 +1330,34 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
 	radius_xlat(querystr, sizeof(querystr), inst->config->simul_count_query, request, sql_escape_func, inst);
 
 	/* initialize the sql socket */
-	sqlsocket = sql_get_socket(inst);
-	if(sqlsocket == NULL)
+	handle = sql_get_socket(inst);
+	if(handle == NULL)
 		return RLM_MODULE_FAIL;
 
-	if(rlm_sql_select_query(&sqlsocket, inst, querystr)) {
-		sql_release_socket(inst, sqlsocket);
+	if(rlm_sql_select_query(&handle, inst, querystr)) {
+		sql_release_socket(inst, handle);
 		return RLM_MODULE_FAIL;
 	}
 
-	ret = rlm_sql_fetch_row(&sqlsocket, inst);
+	ret = rlm_sql_fetch_row(&handle, inst);
 	if (ret != 0) {
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst, sqlsocket);
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		sql_release_socket(inst, handle);
 		return RLM_MODULE_FAIL;
 	}
 
-	row = sqlsocket->row;
+	row = handle->row;
 	if (row == NULL) {
-		(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-		sql_release_socket(inst, sqlsocket);
+		(inst->module->sql_finish_select_query)(handle, inst->config);
+		sql_release_socket(inst, handle);
 		return RLM_MODULE_FAIL;
 	}
 
 	request->simul_count = atoi(row[0]);
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
+	(inst->module->sql_finish_select_query)(handle, inst->config);
 
 	if(request->simul_count < request->simul_max) {
-		sql_release_socket(inst, sqlsocket);
+		sql_release_socket(inst, handle);
 		return RLM_MODULE_OK;
 	}
 
@@ -1367,13 +1367,13 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
 	 */
 	if (!inst->config->simul_verify_query ||
 	    (inst->config->simul_verify_query[0] == '\0')) {
-		sql_release_socket(inst, sqlsocket);
+		sql_release_socket(inst, handle);
 		return RLM_MODULE_OK;
 	}
 
 	radius_xlat(querystr, sizeof(querystr), inst->config->simul_verify_query, request, sql_escape_func, inst);
-	if(rlm_sql_select_query(&sqlsocket, inst, querystr)) {
-		sql_release_socket(inst, sqlsocket);
+	if(rlm_sql_select_query(&handle, inst, querystr)) {
+		sql_release_socket(inst, handle);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -1388,19 +1388,19 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
                 call_num = vp->vp_strvalue;
 
 
-	while (rlm_sql_fetch_row(&sqlsocket, inst) == 0) {
-		row = sqlsocket->row;
+	while (rlm_sql_fetch_row(&handle, inst) == 0) {
+		row = handle->row;
 		if (row == NULL)
 			break;
 		if (!row[2]){
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
+			(inst->module->sql_finish_select_query)(handle, inst->config);
+			sql_release_socket(inst, handle);
 			RDEBUG("Cannot zap stale entry. No username present in entry.", inst->config->xlat_name);
 			return RLM_MODULE_FAIL;
 		}
 		if (!row[1]){
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
+			(inst->module->sql_finish_select_query)(handle, inst->config);
+			sql_release_socket(inst, handle);
 			RDEBUG("Cannot zap stale entry. No session id in entry.", inst->config->xlat_name);
 			return RLM_MODULE_FAIL;
 		}
@@ -1455,15 +1455,15 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
 			 *      Failed to check the terminal server for
 			 *      duplicate logins: return an error.
 			 */
-			(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-			sql_release_socket(inst, sqlsocket);
+			(inst->module->sql_finish_select_query)(handle, inst->config);
+			sql_release_socket(inst, handle);
 			radlog_request(L_ERR, 0, request, "Failed to check the terminal server for user '%s'.", row[2]);
 			return RLM_MODULE_FAIL;
 		}
 	}
 
-	(inst->module->sql_finish_select_query)(sqlsocket, inst->config);
-	sql_release_socket(inst, sqlsocket);
+	(inst->module->sql_finish_select_query)(handle, inst->config);
+	sql_release_socket(inst, handle);
 
 	/*
 	 *	The Auth module apparently looks at request->simul_count,
@@ -1478,7 +1478,7 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
  *	Postauth: Write a record of the authentication attempt
  */
 static rlm_rcode_t rlm_sql_postauth(void *instance, REQUEST * request) {
-	SQL_INST *inst = instance;
+	rlm_sql_t *inst = instance;
 	
 	if (inst->config->postauth) {
 		return acct_redundant(inst, request, inst->config->postauth);

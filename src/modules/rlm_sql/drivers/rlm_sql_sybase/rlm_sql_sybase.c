@@ -169,12 +169,12 @@ CS_SERVERMSG       *msgp;
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	static char	msg='\0';
 /*
 	static char	msgbuf[2048];
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 	CS_INT		msgcount;
 	CS_CLIENTMSG	cmsg;
 	CS_SERVERMSG	smsg;
@@ -241,18 +241,18 @@ static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_sybase_sock *sybase_sock;
 
 
-	if (!sqlsocket->conn) {
-		sqlsocket->conn = (rlm_sql_sybase_sock *)rad_malloc(sizeof(rlm_sql_sybase_sock));
-		if (!sqlsocket->conn) {
+	if (!handle->conn) {
+		handle->conn = (rlm_sql_sybase_sock *)rad_malloc(sizeof(rlm_sql_sybase_sock));
+		if (!handle->conn) {
 			return -1;
 		}
 	}
-	sybase_sock = sqlsocket->conn;
+	sybase_sock = handle->conn;
 	memset(sybase_sock, 0, sizeof(*sybase_sock));
 
 	sybase_sock->results=NULL;
@@ -333,7 +333,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	if (ct_con_props(sybase_sock->connection, CS_SET, CS_USERNAME, config->sql_login,
 					 strlen(config->sql_login), NULL) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to set username for connection (ct_con_props())\n%s",
-		sql_error(sqlsocket, config));
+		sql_error(handle, config));
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			ct_exit(sybase_sock->context, CS_FORCE_EXIT);
 			cs_ctx_drop(sybase_sock->context);
@@ -344,7 +344,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	if (ct_con_props(sybase_sock->connection, CS_SET, CS_PASSWORD, config->sql_password,
 					strlen(config->sql_password), NULL) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to set password for connection (ct_con_props())\n%s",
-		sql_error(sqlsocket, config));
+		sql_error(handle, config));
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			ct_exit(sybase_sock->context, CS_FORCE_EXIT);
 			cs_ctx_drop(sybase_sock->context);
@@ -356,7 +356,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	if (ct_connect(sybase_sock->connection, config->sql_server, strlen(config->sql_server)) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to establish connection to symbolic servername %s\n%s",
-				config->sql_server, sql_error(sqlsocket, config));
+				config->sql_server, sql_error(handle, config));
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			ct_exit(sybase_sock->context, CS_FORCE_EXIT);
 			cs_ctx_drop(sybase_sock->context);
@@ -374,10 +374,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	free(sqlsocket->conn);
-	sqlsocket->conn = NULL;
+	free(handle->conn);
+	handle->conn = NULL;
 	return 0;
 }
 
@@ -389,7 +389,7 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_close(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	return 0;
 }
 
@@ -401,9 +401,9 @@ static int sql_close(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               the database.
  *
  *************************************************************************/
-static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 
 	CS_RETCODE	ret, results_ret;
 	CS_INT		result_type;
@@ -415,19 +415,19 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	if (ct_cmd_alloc(sybase_sock->connection, &sybase_sock->command) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_query): Unable to allocate command structure (ct_cmd_alloc())\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_command(sybase_sock->command, CS_LANG_CMD, querystr, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_query): Unable to initiate command structure (ct_command())\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_send(sybase_sock->command) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_query): Unable to send command (ct_send())\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
@@ -448,7 +448,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 				radlog(L_ERR,"rlm_sql_sybase(sql_query): sql_query processed a query returning rows. Use sql_select_query instead!");
 			}
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): Result failure or unexpected result type from query\n%s",
-					 sql_error(sqlsocket, config));
+					 sql_error(handle, config));
 			return -1;
 		}
 	}
@@ -458,18 +458,18 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 		case CS_FAIL: /* Serious failure, sybase requires us to cancel and maybe even close connection */
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
-					, sql_error(sqlsocket, config));
+					, sql_error(handle, config));
 			if ((ret = ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL)) == CS_FAIL) {
 				radlog(L_ERR,"rlm_sql_sybase(sql_query): cleaning up.");
 				ct_close(sybase_sock->connection, CS_FORCE_CLOSE);
-				sql_close(sqlsocket, config);
+				sql_close(handle, config);
 			}
 			return -1;
 			break;
 
 		default:
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
-					sql_error(sqlsocket, config));
+					sql_error(handle, config));
 			return -1;
 		}
 	}
@@ -484,7 +484,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	if ((results_ret = ct_results(sybase_sock->command, &result_type)) == CS_SUCCEED) {
 		if (result_type != CS_CMD_DONE) {
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): Result failure or unexpected result type from query\n%s",
-					 sql_error(sqlsocket, config));
+					 sql_error(handle, config));
 			return -1;
 		}
 	}
@@ -494,18 +494,18 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 		case CS_FAIL: /* Serious failure, sybase requires us to cancel and maybe even close connection */
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
-					, sql_error(sqlsocket, config));
+					, sql_error(handle, config));
 			if ((ret = ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL)) == CS_FAIL) {
 				radlog(L_ERR,"rlm_sql_sybase(sql_query): cleaning up.");
 				ct_close(sybase_sock->connection, CS_FORCE_CLOSE);
-				sql_close(sqlsocket, config);
+				sql_close(handle, config);
 			}
 			return -1;
 			break;
 
 		default:
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
-					sql_error(sqlsocket, config));
+					sql_error(handle, config));
 			return -1;
 		}
 	}
@@ -524,11 +524,11 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	case CS_FAIL: /* Serious failure, sybase requires us to cancel and maybe even close connection */
 		radlog(L_ERR,"rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
-				, sql_error(sqlsocket, config));
+				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): cleaning up.");
 			ct_close(sybase_sock->connection, CS_FORCE_CLOSE);
-			sql_close(sqlsocket, config);
+			sql_close(handle, config);
 		}
 		return -1;
 		break;
@@ -538,7 +538,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 
 	default:
 		radlog(L_ERR,"rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 		break;
 	}
@@ -553,14 +553,14 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 	int	num;
 
 	if (ct_res_info(sybase_sock->command, CS_NUMDATA, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_num_fields): error retrieving column count: %s",
-			sql_error(sqlsocket, config));
+			sql_error(handle, config));
 		return -1;
 	}
 	return num;
@@ -573,9 +573,9 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 	int	i=0;
 
 	ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL);
@@ -606,9 +606,9 @@ static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	      be discarded.
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 
 	CS_RETCODE	ret, results_ret;
 	CS_INT		result_type;
@@ -625,19 +625,19 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 
 	if (ct_cmd_alloc(sybase_sock->connection, &sybase_sock->command) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_select_query): Unable to allocate command structure (ct_cmd_alloc())\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_command(sybase_sock->command, CS_LANG_CMD, querystr, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_select_query): Unable to initiate command structure (ct_command())\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_send(sybase_sock->command) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_select_query): Unable to send command (ct_send())\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
@@ -673,7 +673,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 			descriptor.locale = NULL;		/* Don't do NLS stuff */
 
 
-			colcount = sql_num_fields(sqlsocket, config); /* Get number of elements in row result */
+			colcount = sql_num_fields(handle, config); /* Get number of elements in row result */
 
 
 			rowdata=(char **)rad_malloc(sizeof(char *) * (colcount+1));	/* Space for pointers */
@@ -686,7 +686,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 				/* Associate the target buffer with the data */
 				if (ct_bind(sybase_sock->command, i+1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
 					radlog(L_ERR,"rlm_sql_sybase(sql_select_query): ct_bind() failed)\n%s",
-							sql_error(sqlsocket, config));
+							sql_error(handle, config));
 					return -1;
 				}
 
@@ -704,8 +704,8 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		default:
 
 			radlog(L_ERR,"rlm_sql_sybase(sql_select_query): Unexpected result type from query\n%s",
-					 sql_error(sqlsocket, config));
-			sql_finish_select_query(sqlsocket, config);
+					 sql_error(handle, config));
+			sql_finish_select_query(handle, config);
 			return -1;
 			break;
 		}
@@ -719,11 +719,11 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 		*/
 
 		radlog(L_ERR,"rlm_sql_sybase(sql_select_query): Failure retrieving query results\n%s"
-				, sql_error(sqlsocket, config));
+				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			radlog(L_ERR,"rlm_sql_sybase(sql_select_query): cleaning up.");
 			ct_close(sybase_sock->connection, CS_FORCE_CLOSE);
-			sql_close(sqlsocket, config);
+			sql_close(handle, config);
 		}
 		return -1;
 		break;
@@ -731,7 +731,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
 	default:
 
 		radlog(L_ERR,"rlm_sql_sybase(sql_select_query): Unexpected return value from ct_results()\n%s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 		break;
 	}
@@ -747,7 +747,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_store_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/*
 	** Not needed for Sybase, code that may have gone here is
 	** in sql_select_query and sql_fetch_row
@@ -766,14 +766,14 @@ static int sql_store_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 	int	num;
 
 	if (ct_res_info(sybase_sock->command, CS_ROW_COUNT, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_num_rows): error retrieving row count: %s",
-			sql_error(sqlsocket, config));
+			sql_error(handle, config));
 		return -1;
 	}
 	return num;
@@ -784,17 +784,17 @@ static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *	Function: sql_fetch_row
  *
- *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query in 'sqlsocket->row'. Returns
+ *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
+ *               with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 	CS_INT		ret, count;
 
-	sqlsocket->row = NULL;
+	handle->row = NULL;
 
 
 	ret = ct_fetch(sybase_sock->command, CS_UNUSED, CS_UNUSED, CS_UNUSED, &count);
@@ -809,11 +809,11 @@ int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 		*/
 
 		radlog(L_ERR,"rlm_sql_sybase(sql_fetch_row): Failure fething row data\n%s"
-				, sql_error(sqlsocket, config));
+				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			radlog(L_ERR,"rlm_sql_sybase(sql_fetch_row): cleaning up.");
 			ct_close(sybase_sock->connection, CS_FORCE_CLOSE);
-			sql_close(sqlsocket, config);
+			sql_close(handle, config);
 		}
 		return SQL_DOWN;
 		break;
@@ -825,7 +825,7 @@ int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
 	case CS_SUCCEED:
 
-		sqlsocket->row = sybase_sock->results;
+		handle->row = sybase_sock->results;
 		return 0;
 		break;
 
@@ -853,7 +853,7 @@ int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	/*
 	** Not implemented, never called from rlm_sql anyway
@@ -871,9 +871,9 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	rlm_sql_sybase_sock *sybase_sock = sqlsocket->conn;
+	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 
 	ct_cancel(NULL, sybase_sock->command, CS_CANCEL_ALL);
 
@@ -893,9 +893,9 @@ static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *               or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
-	return sql_num_rows(sqlsocket, config);
+	return sql_num_rows(handle, config);
 
 }
 

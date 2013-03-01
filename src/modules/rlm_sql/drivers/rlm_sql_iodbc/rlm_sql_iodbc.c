@@ -39,15 +39,15 @@ typedef struct rlm_sql_iodbc_sock {
 	HDBC    dbc_handle;
 	HSTMT   stmt_handle;
 	int		id;
-	SQL_ROW row;
+	rlm_sql_row_t row;
 
 	struct sql_socket *next;
 
 	void	*conn;
 } rlm_sql_iodbc_sock;;
 
-static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 /*************************************************************************
  *
@@ -56,24 +56,24 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_iodbc_sock *iodbc_sock;
 	SQLRETURN rcode;
 
-	if (!sqlsocket->conn) {
-		sqlsocket->conn = (rlm_sql_iodbc_sock *)rad_malloc(sizeof(rlm_sql_iodbc_sock));
-		if (!sqlsocket->conn) {
+	if (!handle->conn) {
+		handle->conn = (rlm_sql_iodbc_sock *)rad_malloc(sizeof(rlm_sql_iodbc_sock));
+		if (!handle->conn) {
 			return -1;
 		}
 	}
-	iodbc_sock = sqlsocket->conn;
+	iodbc_sock = handle->conn;
 	memset(iodbc_sock, 0, sizeof(*iodbc_sock));
 
 	rcode = SQLAllocEnv(&iodbc_sock->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
@@ -81,7 +81,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 				&iodbc_sock->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_ERR, "sql_create_socket: SQLAllocConnect failed:  %s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
@@ -90,7 +90,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 			   config->sql_password, SQL_NTS);
 	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_ERR, "sql_create_socket: SQLConnectfailed:  %s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
@@ -104,10 +104,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	free(sqlsocket->conn);
-	sqlsocket->conn = NULL;
+	free(handle->conn);
+	handle->conn = NULL;
 	return 0;
 }
 
@@ -119,16 +119,16 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *               the database.
  *
  *************************************************************************/
-static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
 
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 	SQLRETURN rcode;
 
 	rcode = SQLAllocStmt(iodbc_sock->dbc_handle,
 			     &iodbc_sock->stmt_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_ERR, "sql_create_socket: SQLAllocStmt failed:  %s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
@@ -140,7 +140,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
 	rcode = SQLExecDirect(iodbc_sock->stmt_handle, querystr, SQL_NTS);
 	if (!SQL_SUCCEEDED(rcode)) {
 		radlog(L_ERR, "sql_query: failed:  %s",
-				sql_error(sqlsocket, config));
+				sql_error(handle, config));
 		return -1;
 	}
 
@@ -155,19 +155,19 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
 
 	int numfields = 0;
 	int i=0;
 	char **row=NULL;
 	SQLINTEGER len=0;
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 
-	if(sql_query(sqlsocket, config, querystr) < 0) {
+	if(sql_query(handle, config, querystr) < 0) {
 		return -1;
 	}
 
-	numfields = sql_num_fields(sqlsocket, config);
+	numfields = sql_num_fields(handle, config);
 
 	row = (char **) rad_malloc(sizeof(char *) * (numfields+1));
 	memset(row, 0, (sizeof(char *) * (numfields)));
@@ -207,7 +207,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	return 0;
 }
@@ -221,10 +221,10 @@ static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	SQLSMALLINT count=0;
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 
 	SQLNumResultCols(iodbc_sock->stmt_handle, &count);
 
@@ -239,7 +239,7 @@ static int sql_num_fields(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	/*
 	 * I presume this function is used to determine the number of
 	 * rows in a result set *before* fetching them.  I don't think
@@ -254,24 +254,24 @@ static int sql_num_rows(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *
  *	Function: sql_fetch_row
  *
- *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query in 'sqlsocket->row'. Returns
+ *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
+ *               with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	SQLRETURN rc;
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 
-	sqlsocket->row = NULL;
+	handle->row = NULL;
 
 	if((rc = SQLFetch(iodbc_sock->stmt_handle)) == SQL_NO_DATA_FOUND) {
 		return 0;
 	}
 	/* XXX Check rc for database down, if so, return SQL_DOWN */
 
-	sqlsocket->row = iodbc_sock->row;
+	handle->row = iodbc_sock->row;
 	return 0;
 }
 
@@ -285,12 +285,12 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	int i=0;
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 
-	for(i=0; i<sql_num_fields(sqlsocket, config); i++) {
+	for(i=0; i<sql_num_fields(handle, config); i++) {
 		free(iodbc_sock->row[i]);
 	}
 	free(iodbc_sock->row);
@@ -310,13 +310,13 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	SQLINTEGER errornum = 0;
 	SQLSMALLINT length = 0;
 	SQLCHAR state[256] = "";
 	static SQLCHAR error[256] = "";
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 
 	SQLError(iodbc_sock->env_handle, iodbc_sock->dbc_handle, iodbc_sock->stmt_handle,
 		state, &errornum, error, 256, &length);
@@ -332,9 +332,9 @@ static const char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_close(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 
 	SQLFreeStmt(iodbc_sock->stmt_handle, SQL_DROP);
 	SQLDisconnect(iodbc_sock->dbc_handle);
@@ -356,9 +356,9 @@ static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
-	return sql_free_result(sqlsocket, config);
+	return sql_free_result(handle, config);
 }
 
 
@@ -370,8 +370,8 @@ static int sql_finish_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-	return sql_free_result(sqlsocket, config);
+static int sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+	return sql_free_result(handle, config);
 }
 
 
@@ -383,10 +383,10 @@ static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	SQLINTEGER count;
-	rlm_sql_iodbc_sock *iodbc_sock = sqlsocket->conn;
+	rlm_sql_iodbc_sock *iodbc_sock = handle->conn;
 
 	SQLRowCount(iodbc_sock->stmt_handle, &count);
 	return (int)count;

@@ -303,7 +303,7 @@ int fb_init_socket(rlm_sql_firebird_sock *sock) {
     return 0;
 }
 
-int fb_connect(rlm_sql_firebird_sock * sock,SQL_CONFIG *config) {
+int fb_connect(rlm_sql_firebird_sock * sock,rlm_sql_config_t *config) {
  char *p;
  char * database;
 

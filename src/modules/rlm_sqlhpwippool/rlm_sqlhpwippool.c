@@ -51,7 +51,7 @@ static const char rcsid[] = "$Id$";
 
 typedef struct rlm_sqlhpwippool_t {
 	const char *myname;         /* name of this instance */
-	SQL_INST *sqlinst;          /* SQL_INST for requested instance */
+	rlm_sql_t *sqlinst;          /* rlm_sql_t for requested instance */
 	rlm_sql_module_t *db;       /* here the fun takes place ;-) */
 #ifdef HAVE_PTHREAD_D
 	pthread_mutex_t mutex;      /* used "with" syncafter */
@@ -103,7 +103,7 @@ static int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl,
 }
 /* handy SQL query tool */
 static int nvp_vquery(unsigned int line, rlm_sqlhpwippool_t *data,
-                      SQLSOCK *sqlsock, const char *fmt, va_list ap)
+                      rlm_sql_handle_t *sqlsock, const char *fmt, va_list ap)
 {
 	char query[MAX_QUERY_LEN];
 
@@ -120,7 +120,7 @@ static int nvp_vquery(unsigned int line, rlm_sqlhpwippool_t *data,
 
 /* wrapper around nvp_vquery */
 static int nvp_query(unsigned int line, rlm_sqlhpwippool_t *data,
-                    SQLSOCK *sqlsock, const char *fmt, ...)
+                    rlm_sql_handle_t *sqlsock, const char *fmt, ...)
 {
 	int r;
 	va_list ap;
@@ -133,7 +133,7 @@ static int nvp_query(unsigned int line, rlm_sqlhpwippool_t *data,
 }
 
 /* handy wrapper around data->db->sql_finish_query() */
-static int nvp_finish(rlm_sqlhpwippool_t *data, SQLSOCK *sqlsock)
+static int nvp_finish(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
 {
 	return (data->db->sql_finish_query)(sqlsock, data->sqlinst->config);
 }
@@ -143,7 +143,7 @@ static int nvp_finish(rlm_sqlhpwippool_t *data, SQLSOCK *sqlsock)
  *  0 on db error
  *  1 on success */
 static int nvp_select(unsigned int line, rlm_sqlhpwippool_t *data,
-                      SQLSOCK *sqlsock, const char *fmt, ...)
+                      rlm_sql_handle_t *sqlsock, const char *fmt, ...)
 {
 	va_list ap;
 
@@ -177,14 +177,14 @@ static int nvp_select(unsigned int line, rlm_sqlhpwippool_t *data,
 	return 1;
 }
 
-static int nvp_select_finish(rlm_sqlhpwippool_t *data, SQLSOCK *sqlsock)
+static int nvp_select_finish(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
 {
 	return ((data->db->sql_free_result)(sqlsock, data->sqlinst->config) ||
 	        nvp_finish(data, sqlsock));
 }
 
 /* frees IPs of closed sessions (eg. by external modifications to db) */
-static int nvp_freeclosed(rlm_sqlhpwippool_t *data, SQLSOCK *sqlsock)
+static int nvp_freeclosed(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
 {
 	if (!nvp_query(__LINE__, data, sqlsock,
 	    "UPDATE `%s`.`ips`, `radacct` "
@@ -206,7 +206,7 @@ static int nvp_freeclosed(rlm_sqlhpwippool_t *data, SQLSOCK *sqlsock)
 }
 
 /* updates number of free IP addresses in pools */
-static int nvp_syncfree(rlm_sqlhpwippool_t *data, SQLSOCK *sqlsock)
+static int nvp_syncfree(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
 {
 	if (!nvp_query(__LINE__, data, sqlsock,
 	    "UPDATE `%s`.`ip_pools` "
@@ -231,7 +231,7 @@ static int nvp_syncfree(rlm_sqlhpwippool_t *data, SQLSOCK *sqlsock)
 /* cleanup IP pools and sync them with radacct */
 static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 {
-	SQLSOCK *sqlsock;
+	rlm_sql_handle_t *sqlsock;
 
 	/* initialize the SQL socket */
 	sqlsock = sql_get_socket(data->sqlinst);
@@ -323,7 +323,7 @@ static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	/* save pointers to useful "objects" */
-	inst->sqlinst = (SQL_INST *) sqlinst->insthandle;
+	inst->sqlinst = (rlm_sql_t *) sqlinst->insthandle;
 	inst->db = (rlm_sql_module_t *) inst->sqlinst->module;
 
 	return ((nvp_cleanup(inst)) ? 0 : -1);
@@ -336,7 +336,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	char *pname;       /* name of requested IP pool */
 	uint32_t nasip;             /* NAS IP in host byte order */
 	struct in_addr ip = {0};    /* reserved IP for client (net. byte order) */
-	SQLSOCK *sqlsock;
+	rlm_sql_handle_t *sqlsock;
 	unsigned long s_gid,        /* _s_elected in sql result set */
 	              s_prio,       /* as above */
 	              s_pid,        /* as above */
@@ -652,7 +652,7 @@ end_gid:
 static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
-	SQLSOCK *sqlsock;
+	rlm_sql_handle_t *sqlsock;
 	struct in_addr nasip;      /* NAS IP */
 	char *sessid;     /* unique session id */
 	char nasipstr[16];         /* NAS IP in string format */

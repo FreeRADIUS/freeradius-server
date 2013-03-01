@@ -31,7 +31,7 @@ typedef struct rlm_sql_unixodbc_sock {
 	SQLHENV env_handle;
 	SQLHDBC dbc_handle;
 	SQLHSTMT stmt_handle;
-	SQL_ROW row;
+	rlm_sql_row_t row;
 	void *conn;
 } rlm_sql_unixodbc_sock;
 
@@ -40,11 +40,11 @@ typedef struct rlm_sql_unixodbc_sock {
 #include <sqlext.h>
 
 /* Forward declarations */
-static const char *sql_error(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_state(long err_handle, SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config);
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
+static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_state(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 
 /*************************************************************************
@@ -54,28 +54,28 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config);
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
+static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
     rlm_sql_unixodbc_sock *unixodbc_sock;
     long err_handle;
 
-	if (!sqlsocket->conn) {
-		sqlsocket->conn = (rlm_sql_unixodbc_sock *)rad_malloc(sizeof(rlm_sql_unixodbc_sock));
-		if (!sqlsocket->conn) {
+	if (!handle->conn) {
+		handle->conn = (rlm_sql_unixodbc_sock *)rad_malloc(sizeof(rlm_sql_unixodbc_sock));
+		if (!handle->conn) {
 			return -1;
 		}
 	}
-	unixodbc_sock = sqlsocket->conn;
+	unixodbc_sock = handle->conn;
 	memset(unixodbc_sock, 0, sizeof(*unixodbc_sock));
 
     /* 1. Allocate environment handle and register version */
     err_handle = SQLAllocHandle(SQL_HANDLE_ENV,SQL_NULL_HANDLE,&unixodbc_sock->env_handle);
-    if (sql_state(err_handle, sqlsocket, config))
+    if (sql_state(err_handle, handle, config))
     {
 	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate environment handle\n");
 	return -1;
     }
     err_handle = SQLSetEnvAttr(unixodbc_sock->env_handle, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
-    if (sql_state(err_handle, sqlsocket, config))
+    if (sql_state(err_handle, handle, config))
     {
 	radlog(L_ERR, "rlm_sql_unixodbc: Can't register ODBC version\n");
 	SQLFreeHandle(SQL_HANDLE_ENV, unixodbc_sock->env_handle);
@@ -83,7 +83,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
     }
     /* 2. Allocate connection handle */
     err_handle = SQLAllocHandle(SQL_HANDLE_DBC, unixodbc_sock->env_handle, &unixodbc_sock->dbc_handle);
-    if (sql_state(err_handle, sqlsocket, config))
+    if (sql_state(err_handle, handle, config))
     {
 	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate connection handle\n");
 	SQLFreeHandle(SQL_HANDLE_ENV, unixodbc_sock->env_handle);
@@ -95,7 +95,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 	(SQLCHAR*) config->sql_server, strlen(config->sql_server),
 	(SQLCHAR*) config->sql_login, strlen(config->sql_login),
 	(SQLCHAR*) config->sql_password, strlen(config->sql_password));
-    if (sql_state(err_handle, sqlsocket, config))
+    if (sql_state(err_handle, handle, config))
     {
 	radlog(L_ERR, "rlm_sql_unixodbc: Connection failed\n");
 	SQLFreeHandle(SQL_HANDLE_DBC, unixodbc_sock->dbc_handle);
@@ -105,7 +105,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
 
     /* 4. Allocate the statement */
     err_handle = SQLAllocStmt(unixodbc_sock->dbc_handle, &unixodbc_sock->stmt_handle);
-    if (sql_state(err_handle, sqlsocket, config))
+    if (sql_state(err_handle, handle, config))
     {
 	radlog(L_ERR, "rlm_sql_unixodbc: Can't allocate the statement\n");
 	return -1;
@@ -122,10 +122,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *      Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	free(sqlsocket->conn);
-	sqlsocket->conn = NULL;
+	free(handle->conn);
+	handle->conn = NULL;
 	return 0;
 }
 
@@ -138,14 +138,14 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *               the database.
  *
  *************************************************************************/
-static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
     long err_handle;
     int state;
 
     /* Executing query */
     err_handle = SQLExecDirect(unixodbc_sock->stmt_handle, (SQLCHAR *)querystr, strlen(querystr));
-    if ((state = sql_state(err_handle, sqlsocket, config))) {
+    if ((state = sql_state(err_handle, handle, config))) {
 	if(state == SQL_DOWN)
 	    DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect\n");
 	return state;
@@ -161,18 +161,18 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
     SQLINTEGER column;
     SQLLEN len;
     int numfields;
     int state;
 
     /* Only state = 0 means success */
-    if((state = sql_query(sqlsocket, config, querystr)))
+    if((state = sql_query(handle, config, querystr)))
 	return state;
 
-    numfields=sql_num_fields(sqlsocket, config);
+    numfields=sql_num_fields(handle, config);
     if(numfields < 0)
 	return -1;
 
@@ -197,7 +197,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
   /* Not used */
     return 0;
 }
@@ -211,13 +211,13 @@ static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
     long err_handle;
     SQLSMALLINT num_fields = 0;
 
     err_handle = SQLNumResultCols(unixodbc_sock->stmt_handle,&num_fields);
-    if (sql_state(err_handle, sqlsocket, config))
+    if (sql_state(err_handle, handle, config))
 	return -1;
 
     return num_fields;
@@ -232,8 +232,8 @@ static int sql_num_fields(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    return sql_affected_rows(sqlsocket, config);
+static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    return sql_affected_rows(handle, config);
 }
 
 
@@ -241,27 +241,27 @@ static int sql_num_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *
  *	Function: sql_fetch_row
  *
- *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query in 'sqlsocket->row'. Returns
+ *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
+ *               with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
     long err_handle;
     int state;
 
-    sqlsocket->row = NULL;
+    handle->row = NULL;
 
     err_handle = SQLFetch(unixodbc_sock->stmt_handle);
     if(err_handle == SQL_NO_DATA_FOUND)
 	return 0;
-    if ((state = sql_state(err_handle, sqlsocket, config))) {
+    if ((state = sql_state(err_handle, handle, config))) {
 	if(state == SQL_DOWN)
 	    DEBUG("rlm_sql_unixodbc: rlm_sql will attempt to reconnect");
 	return state;
     }
-    sqlsocket->row = unixodbc_sock->row;
+    handle->row = unixodbc_sock->row;
     return 0;
 }
 
@@ -273,10 +273,10 @@ static int sql_fetch_row(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
 
-    sql_free_result(sqlsocket, config);
+    sql_free_result(handle, config);
     SQLFreeStmt(unixodbc_sock->stmt_handle, SQL_CLOSE);
     return 0;
 }
@@ -288,8 +288,8 @@ static int sql_finish_select_query(SQLSOCK * sqlsocket, SQL_CONFIG *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
 
     SQLFreeStmt(unixodbc_sock->stmt_handle, SQL_CLOSE);
     return 0;
@@ -303,9 +303,9 @@ static int sql_finish_query(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
-    int column, numfileds=sql_num_fields(sqlsocket, config);
+static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
+    int column, numfileds=sql_num_fields(handle, config);
 
     /* Freeing reserved memory */
     if(unixodbc_sock->row != NULL) {
@@ -329,8 +329,8 @@ static int sql_free_result(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_close(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
 
     SQLFreeStmt(unixodbc_sock->stmt_handle, SQL_DROP);
     SQLDisconnect(unixodbc_sock->dbc_handle);
@@ -348,14 +348,14 @@ static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
     SQLCHAR state[256];
     SQLCHAR error[256];
     SQLINTEGER errornum = 0;
     SQLSMALLINT length = 255;
     static char result[1024];	/* NOT thread-safe! */
 
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
 
     error[0] = state[0] = '\0';
 
@@ -382,14 +382,14 @@ static const char *sql_error(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
  *               connection related or -1 for other errors
  *
  *************************************************************************/
-static int sql_state(long err_handle, SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config) {
+static int sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
     SQLCHAR state[256];
     SQLCHAR error[256];
     SQLINTEGER errornum = 0;
     SQLSMALLINT length = 255;
     int res = -1;
 
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
 
     if(SQL_SUCCEEDED(err_handle))
 	return 0;		/* on success, just return 0 */
@@ -435,13 +435,13 @@ static int sql_state(long err_handle, SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *con
  *               or insert)
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK *sqlsocket, SQL_CONFIG *config) {
-    rlm_sql_unixodbc_sock *unixodbc_sock = sqlsocket->conn;
+static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+    rlm_sql_unixodbc_sock *unixodbc_sock = handle->conn;
     long err_handle;
     SQLLEN affected_rows;
 
     err_handle = SQLRowCount(unixodbc_sock->stmt_handle, &affected_rows);
-    if (sql_state(err_handle, sqlsocket, config))
+    if (sql_state(err_handle, handle, config))
 	return -1;
 
     return affected_rows;

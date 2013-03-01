@@ -65,14 +65,14 @@ static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	LOGINREC *login;
 	rlm_sql_freetds_sock *freetds_sock;
 	
-	if (!sqlsocket->conn) {
-		sqlsocket->conn = (rlm_sql_freetds_sock *)rad_malloc(sizeof(struct rlm_sql_freetds_sock));
-		if (!sqlsocket->conn) {
+	if (!handle->conn) {
+		handle->conn = (rlm_sql_freetds_sock *)rad_malloc(sizeof(struct rlm_sql_freetds_sock));
+		if (!handle->conn) {
 			return -1;
 		}
 	}
@@ -89,7 +89,7 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
 	dbsetlogintime((unsigned long)config->query_timeout);
 	dbsettime((unsigned long)config->query_timeout);
 	
-	freetds_sock = sqlsocket->conn;
+	freetds_sock = handle->conn;
 	memset(freetds_sock, 0, sizeof(*freetds_sock));
 	
 	DEBUG("rlm_sql_freetds (%s): Starting connect to FreeTDS/MSSQL server", config->xlat_name);
@@ -134,10 +134,10 @@ static int sql_init_socket(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *	Purpose: Free socket and any private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	free(sqlsocket->conn);
-	sqlsocket->conn = NULL;
+	free(handle->conn);
+	handle->conn = NULL;
 	
 	return 0;
 }
@@ -150,9 +150,9 @@ static int sql_destroy_socket(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr)
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr)
 {
-	rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
+	rlm_sql_freetds_sock *freetds_sock = handle->conn;
 	
 	if (freetds_sock->dbproc == NULL || DBDEAD(freetds_sock->dbproc)) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Socket not connected", config->xlat_name);
@@ -180,7 +180,7 @@ static int sql_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr)
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querystr)
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr)
 {	
 	radlog(L_ERR, "rlm_sql_freetds sql_select_query(): unsupported");
 	return -1;
@@ -195,7 +195,7 @@ static int sql_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config, char *querys
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	radlog(L_ERR, "rlm_sql_freetds sql_store_result(): unsupported");
 	return -1;
@@ -210,9 +210,9 @@ static int sql_store_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
+	rlm_sql_freetds_sock *freetds_sock = handle->conn;
 	
 	return dbnumcols(freetds_sock->dbproc);
 }
@@ -226,7 +226,7 @@ static int sql_num_fields(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	
 	return 0;
@@ -236,12 +236,12 @@ static int sql_num_rows(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *
  *	Function: sql_fetch_row
  *
- *	Purpose: database specific fetch_row. Returns a SQL_ROW struct
- *               with all the data for the query in 'sqlsocket->row'. Returns
+ *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
+ *               with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-static int sql_fetch_row(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_fetch_row(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -255,7 +255,7 @@ static int sql_fetch_row(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 
 	return 0;
@@ -270,7 +270,7 @@ static int sql_free_result(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	return NULL;
 }
@@ -284,9 +284,9 @@ static const char *sql_error(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *confi
  *               connection
  *
  *************************************************************************/
-static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_close(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
+	rlm_sql_freetds_sock *freetds_sock = handle->conn;
 	
 	if (freetds_sock && freetds_sock->dbproc){
 		dbclose(freetds_sock->dbproc);
@@ -304,7 +304,7 @@ static int sql_close(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 
 	return 0;
@@ -318,9 +318,9 @@ static int sql_finish_query(UNUSED SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
+static int sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	return sql_finish_query(sqlsocket, config);
+	return sql_finish_query(handle, config);
 }
 
 
@@ -331,9 +331,9 @@ static int sql_finish_select_query(SQLSOCK *sqlsocket, SQL_CONFIG *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_affected_rows(SQLSOCK *sqlsocket, UNUSED SQL_CONFIG *config)
+static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_freetds_sock *freetds_sock = sqlsocket->conn;
+	rlm_sql_freetds_sock *freetds_sock = handle->conn;
 	
 	return dbcount(freetds_sock->dbproc);
 }

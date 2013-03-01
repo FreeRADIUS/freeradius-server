@@ -53,7 +53,7 @@ typedef struct rlm_sql_firebird_sock {
 	int dpb_len;
 	char *lasterror;
 
-	SQL_ROW row;
+	rlm_sql_row_t row;
 	int *row_sizes;
 	int row_fcount;
 
@@ -68,7 +68,7 @@ typedef struct rlm_sql_firebird_sock {
 int fb_free_result(rlm_sql_firebird_sock *sock);
 int fb_lasterror(rlm_sql_firebird_sock *);
 int fb_init_socket(rlm_sql_firebird_sock *sock);
-int fb_connect(rlm_sql_firebird_sock * sock,SQL_CONFIG *config);
+int fb_connect(rlm_sql_firebird_sock * sock,rlm_sql_config_t *config);
 int fb_disconnect(rlm_sql_firebird_sock * sock);
 int fb_sql_query(rlm_sql_firebird_sock * sock,char *sqlstr);
 int fb_affected_rows(rlm_sql_firebird_sock * sock);
