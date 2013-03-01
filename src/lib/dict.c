@@ -1932,10 +1932,6 @@ static int my_dict_init(const char *parent, const char *filename,
 
 	}
 
-	fprintf(stderr, "PARENT %s %s FINAL %s %s\n",
-		parent, filename, dir, fn);
-
-
 	if ((fp = fopen(fn, "r")) == NULL) {
 		if (!src_file) {
 			fr_strerror_printf("dict_init: Couldn't open dictionary \"%s\": %s",
