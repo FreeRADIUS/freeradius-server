@@ -3219,15 +3219,18 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 	    ((data[0] < 0x20) ||
 	     (da->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
 
-		if ((da->type == PW_TYPE_STRING) ||
-		    (da->type == PW_TYPE_OCTETS)) {
+		if (da->type == PW_TYPE_STRING) {
 			memcpy(buffer, data + 1, datalen - 1);
 			tag = data[0];
 			datalen -= 1;
-		} else {
+
+		} else if (da->type == PW_TYPE_INTEGER) {
 			memcpy(buffer, data, attrlen);
 			tag = buffer[0];
 			buffer[0] = 0;
+
+		} else {
+			return -1; /* only string and integer can have tags */
 		}
 
 		data = buffer;
