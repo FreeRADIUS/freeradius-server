@@ -1251,7 +1251,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 	json_flags_t flags;
 
 	const DICT_ATTR *da;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp = NULL;
 	
 	request_refs_t request_name;
 	pair_lists_t list_name;
