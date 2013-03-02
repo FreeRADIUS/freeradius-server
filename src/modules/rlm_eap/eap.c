@@ -429,7 +429,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
  *	Set the RADIUS reply codes based on EAP request codes.  Append
  *	any additonal VPs to RADIUS reply
  */
-int eap_compose(EAP_HANDLER *handler)
+rlm_rcode_t eap_compose(EAP_HANDLER *handler)
 {
 	VALUE_PAIR *vp;
 	eap_packet_t *eap_packet;

@@ -95,7 +95,7 @@ int       	eaptype_select(rlm_eap_t *inst, EAP_HANDLER *h);
 int  		eap_start(rlm_eap_t *inst, REQUEST *request);
 void 		eap_fail(EAP_HANDLER *handler);
 void 		eap_success(EAP_HANDLER *handler);
-int 		eap_compose(EAP_HANDLER *handler);
+rlm_rcode_t 	eap_compose(EAP_HANDLER *handler);
 EAP_HANDLER 	*eap_handler(rlm_eap_t *inst, eap_packet_t **eap_msg, REQUEST *request);
 
 /* Memory Management */

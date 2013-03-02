@@ -272,7 +272,8 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 	rlm_eap_t	*inst;
 	EAP_HANDLER	*handler;
 	eap_packet_t	*eap_packet;
-	rlm_rcode_t	rcode;
+	int		rcode;
+	rlm_rcode_t	module_rcode;
 
 	inst = (rlm_eap_t *) instance;
 
@@ -392,7 +393,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 	 *	We are done, wrap the EAP-request in RADIUS to send
 	 *	with all other required radius attributes
 	 */
-	rcode = eap_compose(handler);
+	module_rcode = eap_compose(handler);
 
 	/*
 	 *	Add to the list only if it is EAP-Request, OR if
@@ -471,7 +472,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 		}
 	}
 
-	return rcode;
+	return module_rcode;
 }
 
 /*
