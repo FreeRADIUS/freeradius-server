@@ -32,265 +32,243 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
-/*************************************************************************
+/** Establish connection to the db
  *
- *	Function: sql_init_socket
- *
- *	Purpose: Establish connection to the db
- *
- *************************************************************************/
+ */
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-    rlm_sql_firebird_sock *firebird_sock;
-    long res;
+	rlm_sql_firebird_sock	*firebird_sock;
+	
+	long res;
 
+	if (!handle->conn) {
+		handle->conn = rad_malloc(sizeof(rlm_sql_firebird_sock));
+		if (!handle->conn) {
+			return -1;
+		}
+	}
 
-    if (!handle->conn) {
-	handle->conn = (rlm_sql_firebird_sock *)rad_malloc(sizeof(rlm_sql_firebird_sock));
-	if (!handle->conn) return -1;
-    }
+	firebird_sock = handle->conn;
 
-    firebird_sock = handle->conn;
+	res = fb_init_socket(firebird_sock);
+	if (res) {
+		return -1;
+	}
+	
+	if (fb_connect(firebird_sock,config)) {
+		radlog(L_ERR, "rlm_sql_firebird: Connection failed %s\n",
+		       firebird_sock->lasterror);
+		       
+		return SQL_DOWN;
+	}
 
-    res=fb_init_socket(firebird_sock);
-    if (res)  return -1;
-
-    if (fb_connect(firebird_sock,config)) {
-     radlog(L_ERR, "rlm_sql_firebird: Connection failed %s\n", firebird_sock->lasterror);
-     return SQL_DOWN;
-    }
-
-    return 0;
+	return 0;
 }
 
-
-/*************************************************************************
+/** Free socket and private connection data
  *
- *      Function: sql_destroy_socket
- *
- *      Purpose: Free socket and private connection data
- *
- *************************************************************************/
-static int sql_destroy_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+ */
+static int sql_destroy_socket(rlm_sql_handle_t *handle,
+			      rlm_sql_config_t *config)
 {
-    free(handle->conn);
-    handle->conn = NULL;
-    return 0;
+	free(handle->conn);
+	
+	handle->conn = NULL;
+	
+	return 0;
 }
 
 
-/*************************************************************************
+/** Issue a non-SELECT query (ie: update/delete/insert) to the database.
  *
- *	Function: sql_query
- *
- *	Purpose: Issue a non-SELECT query (ie: update/delete/insert) to
- *               the database.
- *
- *************************************************************************/
-
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
-    rlm_sql_firebird_sock *firebird_sock = handle->conn;
-    int deadlock=0;
+ */
+static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
+		     char *querystr) {
+	rlm_sql_firebird_sock *firebird_sock = handle->conn;
+	
+	int deadlock = 0;
 
 #ifdef _PTHREAD_H
- pthread_mutex_lock(&firebird_sock->mut);
+	pthread_mutex_lock(&firebird_sock->mut);
 #endif
 
-TryAgain:
- if (fb_sql_query(firebird_sock,querystr)) {
-//Try again query when deadlock, beacuse in any case it will be retried.
-// but may be lost for short sessions
-   if ((firebird_sock->sql_code==DEADLOCK_SQL_CODE) && !deadlock) {
-      radlog(L_DBG,"sock_id deadlock. Retry query %s\n",querystr);
-//For non READ_COMMITED transactions put rollback here
-// fb_rollback(sock);
-      deadlock=1;
-      goto TryAgain;
-   }
-   radlog(L_ERR, "sock_id rlm_sql_firebird,sql_query error:sql_code=%li, error='%s', query=%s\n",
-     firebird_sock->sql_code,
-     firebird_sock->lasterror,
-     querystr);
+	try_again:
+	/* 
+	 *	Try again query when deadlock, beacuse in any case it
+	 *	will be retried.
+	 */
+ 	if (fb_sql_query(firebird_sock,querystr)) {
+		/* but may be lost for short sessions */
+   		if ((firebird_sock->sql_code == DEADLOCK_SQL_CODE) &&
+   		    !deadlock) {
+	  		radlog(L_DBG,"sock_id deadlock. Retry query %s",
+	  		       querystr);
+	  		
+			/*
+			 *	@todo For non READ_COMMITED transactions put 
+			 *	rollback here
+			 *	fb_rollback(sock);
+			 */
+	  		deadlock = 1;
+	  		goto try_again;
+	  	}
+  	
+		radlog(L_ERR, "sock_id rlm_sql_firebird,sql_query error: "
+		       "sql_code=%li, error='%s', query=%s",
+		       (long int) firebird_sock->sql_code,
+		       firebird_sock->lasterror,
+		       querystr);
 
-   if ((firebird_sock->sql_code==DOWN_SQL_CODE)) return SQL_DOWN;
-//free problem query
-   if (fb_rollback(firebird_sock)) {
-    //assume the network is down if rollback had failed
-    radlog(L_ERR,"Fail to rollback transaction after previous error. Error: %s\n",
-       firebird_sock->lasterror);
-    return SQL_DOWN;
-   }
-//   firebird_sock->in_use=0;
-   return -1;
- }
+		if (firebird_sock->sql_code == DOWN_SQL_CODE) {
+			return SQL_DOWN;
+		}
+	
+		/* Free problem query */
+		if (fb_rollback(firebird_sock)) {
+			//assume the network is down if rollback had failed
+			radlog(L_ERR,"Fail to rollback transaction after "
+			       "previous error. Error: %s",
+			       firebird_sock->lasterror);
+		
+			return SQL_DOWN;
+		}
+		//   firebird_sock->in_use=0;
+		return -1;
+   	}
 
- if (firebird_sock->statement_type!=isc_info_sql_stmt_select) {
-    if (fb_commit(firebird_sock)) return -1;
- }
+	if (firebird_sock->statement_type != isc_info_sql_stmt_select) {
+		if (fb_commit(firebird_sock)) {
+			return -1;
+		}
+	}
 
- return 0;
+	return 0;
 }
 
-
-/*************************************************************************
+/** Issue a select query to the database.
  *
- *	Function: sql_select_query
- *
- *	Purpose: Issue a select query to the database
- *
- *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
-//    rlm_sql_firebird_sock *firebird_sock = handle->conn;
-    return (sql_query(handle, config, querystr));
-
+ */
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
+			    char *querystr) {
+	return sql_query(handle, config, querystr);
 }
 
-
-/*************************************************************************
+/** Returns a result set for the query.
  *
- *	Function: sql_store_result
- *
- *	Purpose: database specific store_result function. Returns a result
- *               set for the query.
- *
- *************************************************************************/
-static int sql_store_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-  /*   Not used   */
-    return 0;
+ */
+static int sql_store_result(UNUSED rlm_sql_handle_t *handle,
+			    UNUSED rlm_sql_config_t *config) {
+	return 0;
 }
 
-
-/*************************************************************************
+/** Returns number of columns from query.
  *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *               of columns from query
- *
- *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-    return  ((rlm_sql_firebird_sock *) handle->conn)->sqlda_out->sqld;
+ */
+static int sql_num_fields(rlm_sql_handle_t *handle,
+			  UNUSED rlm_sql_config_t *config) {
+	return ((rlm_sql_firebird_sock *) handle->conn)->sqlda_out->sqld;
 }
 
-
-/*************************************************************************
+/** Returns number of rows in query.
  *
- *	Function: sql_num_rows
- *
- *	Purpose: database specific num_rows. Returns number of rows in
- *               query
- *
- *************************************************************************/
+ */
 static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-    int res=sql_affected_rows(handle, config);
-    return res;
+	return sql_affected_rows(handle, config);
 }
 
-
-/*************************************************************************
+/** Returns an individual row.
  *
- *	Function: sql_fetch_row
- *
- *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
- *               with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
- *
- *************************************************************************/
+ */
 static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-    rlm_sql_firebird_sock *firebird_sock = handle->conn;
-    int res;
+	rlm_sql_firebird_sock *firebird_sock = handle->conn;
+	int res;
+	
+	handle->row = NULL;
+	
+	if (firebird_sock->statement_type != isc_info_sql_stmt_exec_procedure) {
+		res = fb_fetch(firebird_sock);
+		if (res == 100) {
+			return 0;
+	 	}
+	 	
+	 	if (res) {
+	  		radlog(L_ERR, "rlm_sql_firebird. Fetch problem:'%s'",
+	  		       firebird_sock->lasterror);
+	  		       
+	   		return -1;
+	 	}
+	} else {
+		firebird_sock->statement_type=0;
+	}
+	
+	fb_store_row(firebird_sock);
 
-    handle->row = NULL;
-    if (firebird_sock->statement_type!=isc_info_sql_stmt_exec_procedure) {
-     res=fb_fetch(firebird_sock);
-     if (res==100) return 0;
-     if (res) {
-       radlog(L_ERR, "rlm_sql_firebird. Fetch problem:'%s'\n", firebird_sock->lasterror);
-       return -1;
-     }
-    } else firebird_sock->statement_type=0;
-    fb_store_row(firebird_sock);
-
-    handle->row = firebird_sock->row;
-    return 0;
+	handle->row = firebird_sock->row;
+	
+	return 0;
 }
 
-
-/*************************************************************************
+/** End the select query, such as freeing memory or result.
  *
- *	Function: sql_finish_select_query
- *
- *	Purpose: End the select query, such as freeing memory or result
- *
- *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
-    rlm_sql_firebird_sock *sock=(rlm_sql_firebird_sock *) handle->conn;
-    fb_commit(sock);
-    fb_close_cursor(sock);
-    return 0;
+ */
+static int sql_finish_select_query(rlm_sql_handle_t *handle,
+				   UNUSED rlm_sql_config_t *config) {
+				   
+	rlm_sql_firebird_sock *sock = (rlm_sql_firebird_sock *) handle->conn;
+	
+	fb_commit(sock);
+	fb_close_cursor(sock);
+	
+	return 0;
 }
 
-/*************************************************************************
+/** End the query
  *
- *	Function: sql_finish_query
- *
- *	Purpose: End the query, such as freeing memory
- *
- *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-//    sql_free_result(handle,config);
-    return 0;
+ */
+static int sql_finish_query(rlm_sql_handle_t *handle,
+			    rlm_sql_config_t *config) {
+	sql_free_result(handle, config);
+	
+	return 0;
 }
 
-/*************************************************************************
+/** Frees memory allocated for a result set.
  *
- *	Function: sql_free_result
- *
- *	Purpose: database specific free_result. Frees memory allocated
- *               for a result set
- *
- *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-    return 0;
+ */
+static int sql_free_result(UNUSED rlm_sql_handle_t *handle,
+			   UNUSED rlm_sql_config_t *config) {
+	return 0;
 }
 
-/*************************************************************************
+/** Closes an open database connection and cleans up any open handles.
  *
- *	Function: sql_close
- *
- *	Purpose: database specific close. Closes an open database
- *               connection and cleans up any open handles.
- *
- *************************************************************************/
+ */
 static int sql_close(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-    fb_destroy_socket((rlm_sql_firebird_sock *) handle->conn);
-    return 0;
+	fb_destroy_socket((rlm_sql_firebird_sock *) handle->conn);
+	return 0;
 }
 
-/*************************************************************************
+/** Returns error associated with connection.
  *
- *	Function: sql_error
- *
- *	Purpose: database specific error. Returns error associated with
- *               connection
- *
- *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
-    rlm_sql_firebird_sock *firebird_sock = handle->conn;
-    return firebird_sock->lasterror;
+ */
+static const char *sql_error(rlm_sql_handle_t *handle,
+			     UNUSED rlm_sql_config_t *config) {
+	rlm_sql_firebird_sock *firebird_sock = handle->conn;
+	
+	return firebird_sock->lasterror;
 }
-/*************************************************************************
+
+/** Return the number of rows affected by the query (update, or insert)
  *
- *	Function: sql_affected_rows
- *
- *	Purpose: Return the number of rows affected by the query (update,
- *               or insert)
- *
- *************************************************************************/
+ */
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
- int affected_rows=fb_affected_rows(handle->conn);
- if (affected_rows<0)
-   radlog(L_ERR, "sql_affected_rows, rlm_sql_firebird. error:%s\n", sql_error(handle,config));
- return affected_rows;
+	int affected_rows=fb_affected_rows(handle->conn);
+	
+	if (affected_rows < 0) {
+		radlog(L_ERR, "sql_affected_rows, rlm_sql_firebird. error:%s\n",
+		       sql_error(handle,config));
+	}
+	
+	return affected_rows;
 }
 
 /* Exported to rlm_sql */
