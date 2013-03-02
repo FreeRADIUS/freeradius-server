@@ -2795,9 +2795,9 @@ $as_echo "$as_me: WARNING: oracle headers not found. Use --with-oracle-include-d
     old_LIBS="$LIBS"
 
     if test "x$oracle_lib_dir" != "x" ; then
-        lib_path="-L${oracle_lib_dir} "
+        lib_path="${oracle_lib_dir} "
     elif test "x$ORACLE_HOME" != "x" ; then
-        lib_path="-L${ORACLE_HOME}/lib "
+        lib_path="${ORACLE_HOME}/lib "
     fi
 
     for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
@@ -2887,7 +2887,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_oracle requires:$fail." >&2;};
 	fi
 fi
 
-sql_oracle_cflags="$SMART_CFLAGS"
+sql_sybase_cflags="$SMART_CFLAGS"
 
 
 

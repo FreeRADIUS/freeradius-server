@@ -82,9 +82,9 @@ if test x$with_[]modname != xno; then
     old_LIBS="$LIBS"
     
     if test "x$oracle_lib_dir" != "x" ; then
-        lib_path="-L${oracle_lib_dir} "
+        lib_path="${oracle_lib_dir} "
     elif test "x$ORACLE_HOME" != "x" ; then
-        lib_path="-L${ORACLE_HOME}/lib "
+        lib_path="${ORACLE_HOME}/lib "
     fi
 
     for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
@@ -156,7 +156,7 @@ if test "x$fail" != x; then
 	fi
 fi
 
-sql_oracle_cflags="$SMART_CFLAGS"
+sql_sybase_cflags="$SMART_CFLAGS"
 AC_SUBST(sql_oracle_ldflags)
 AC_SUBST(sql_oracle_cflags)
 AC_SUBST(targetname)
