@@ -233,3 +233,60 @@ attribute::
   }
 
 However, this should only be seen as a temporary, not permanent, fix.
+
+Deleted Modules
+---------------
+
+The following modules have been deleted, and are no longer supported
+in Version 3.  If you are using one of these modules, your
+configuration can probably be changed to not need it.  Otherwise email
+the freeradius-devel list, and ask.
+
+rlm_acct_unique
+===============
+
+This module has been replaced by the "acct_unique" policy.  See
+raddb/policy.d/accounting.
+
+The method for calculating the value of acct_unique has changed.
+However, as this method was configurable, this change should not
+matter.  The only issue is in having a v2 and v3 server writing to the
+same database at the same time.  They will calculate different values
+for Acct-Unique-Id.
+
+rlm_acctlog
+===========
+
+You should use rlm_linelog instead.  That module has a superset of the
+acctlog functionality.
+
+rlm_dbm
+=======
+
+No one seems to use it.  There is no sample configuration for it.
+There is no speed advantage to using it over the "files" module.
+Modern systems are fast enough that 10K entries can be read from the
+"users" file in about 10ms.  If you need more users than that, use a
+real database such as SQL.
+
+rlm_fastusers
+=============
+
+No one seems to use it.  It has been deprecated since Version 2.0.0.
+The "files" module was rewritten so that the "fastusers" module was no
+longer necessary.
+
+rlm_policy
+==========
+
+No one seems to use it.  Almost all of its functionality is available
+via "unlang".
+
+rlm_sql_log
+===========
+
+This has been replaced with the "null" sql driver.  See
+raddb/mods-available/sql for an example configuration.
+
+The main SQL module has more functionality than rlm_sql_log, and
+results in less code in the server.
