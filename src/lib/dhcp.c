@@ -1437,7 +1437,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	while (vp) {
 		unsigned int num_entries = 1;
 		VALUE_PAIR *same;
-		uint8_t *plength, *pattr;
+		uint8_t *plength;
 
 		if (vp->da->vendor != DHCP_MAGIC_VENDOR) goto next;
 		if (vp->da->attr == 53) goto next; /* already done */
@@ -1467,7 +1467,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 			vp->vp_octets[0] = 1;
 		}
 #endif
-		pattr = p;
 		*(p++) = vp->da->attr & 0xff;
 		plength = p;
 		*(p++) = 0;	/* header isn't included in attr length */
