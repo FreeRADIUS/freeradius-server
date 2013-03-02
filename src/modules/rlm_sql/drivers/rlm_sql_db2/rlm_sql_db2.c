@@ -95,7 +95,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *      Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	free(handle->conn);
 	handle->conn = NULL;
@@ -109,7 +109,7 @@ static int sql_destroy_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char *querystr)
+static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char *querystr)
 {
 	SQLRETURN retval;
 	rlm_sql_db2_sock *sock;
@@ -147,27 +147,13 @@ static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config,
 
 /*************************************************************************
  *
- *	Function: sql_store_result
- *
- *	Purpose: database specific store_result function. Returns a result
- *               set for the query.
- *
- *************************************************************************/
-static int sql_store_result(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
-{
-	return 0;
-}
-
-
-/*************************************************************************
- *
  *	Function: sql_num_fields
  *
  *	Purpose: database specific num_fields function. Returns number
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	SQLSMALLINT c;
 	rlm_sql_db2_sock *sock;
@@ -238,7 +224,7 @@ error:
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_db2_sock *sock;
 	sock = handle->conn;
@@ -256,7 +242,7 @@ static int sql_free_result(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
  *               connection
  *
  *************************************************************************/
-static char *sql_error(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	/* this should really be enough, if not, you still got the sqlstate */
 #define MSGLEN 512
@@ -285,7 +271,7 @@ static char *sql_error(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
  *               connection
  *
  *************************************************************************/
-static int sql_close(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static int sql_close(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_db2_sock *sock;
 
@@ -304,7 +290,7 @@ static int sql_close(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static int sql_finish_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -331,7 +317,7 @@ static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *
  *	Purpose: Return the number of rows affected by the last query.
  *
  *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	SQLINTEGER c;
 	rlm_sql_db2_sock *sock;
@@ -344,7 +330,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, rlm_sql_config_t *config
 
 
 static int
-not_implemented(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+not_implemented(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	radlog(L_ERR, "sql_db2: calling unimplemented function");
 	exit(1);
