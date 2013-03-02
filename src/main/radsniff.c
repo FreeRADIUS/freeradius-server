@@ -208,7 +208,6 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 	/*
 	 *  Define pointers for packet's attributes
 	 */
-	const struct ethernet_header *ethernet;	/* The ethernet header */
 	const struct ip_header *ip;		/* The IP header */
 	const struct udp_header *udp;		/* The UDP header */
 	const uint8_t *payload;			/* Packet payload */
@@ -235,7 +234,6 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 		ip = (const struct ip_header*) (data + 4);
 
 	} else {
-		ethernet = (const struct ethernet_header*)(data);
 		ip = (const struct ip_header*)(data + size_ethernet);
 	}
 	
