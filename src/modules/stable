@@ -6,7 +6,6 @@ rlm_chap
 rlm_checkval
 rlm_copy_packet
 rlm_counter
-rlm_dbm
 rlm_detail
 rlm_dhcp
 rlm_digest
