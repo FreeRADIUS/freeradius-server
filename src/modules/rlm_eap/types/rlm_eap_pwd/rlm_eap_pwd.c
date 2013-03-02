@@ -76,7 +76,6 @@ static void add_reply(VALUE_PAIR** vp,
 static int
 eap_pwd_detach (void *arg)
 {
-    EAP_PWD_CONF *conf;
     eap_pwd_t *inst;
 
     inst = (eap_pwd_t *) arg;
