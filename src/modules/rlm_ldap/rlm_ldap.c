@@ -846,7 +846,7 @@ retry:
 			case LDAP_PROC_RETRY:
 				*pconn = fr_connection_reconnect(inst->pool, *pconn);
 				if (*pconn) goto retry;
-				break;
+				return -1;
 			default:
 				rad_assert(0);
 		}
