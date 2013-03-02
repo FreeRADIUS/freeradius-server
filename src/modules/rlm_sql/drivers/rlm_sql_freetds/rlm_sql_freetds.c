@@ -48,7 +48,7 @@ typedef struct rlm_sql_freetds_sock {
  * FreeTDS calls this handler when dbsqlexec() or dbsqlok() blocks every seconds
  * This ensures that FreeTDS doesn't stay stuck on the same query for ever.
  */
-static int query_timeout_handler(void *dbproc) {
+static int query_timeout_handler(UNUSED void *dbproc) {
 	return TDS_INT_CONTINUE;
 }
 
@@ -181,7 +181,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr)
+static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, UNUSED char *querystr)
 {	
 	radlog(L_ERR, "rlm_sql_freetds sql_select_query(): unsupported");
 	return -1;
