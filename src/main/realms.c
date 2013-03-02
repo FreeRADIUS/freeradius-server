@@ -487,7 +487,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			   "No ipaddr, ipv6addr, or virtual_server defined for home server \"%s\".",
 			   name2);
 	error:
-		free(hs_type);
+		talloc_free(hs_type);
 		hs_type = NULL;
 		hs_check = NULL;
 		hs_srcipaddr = NULL;
@@ -522,7 +522,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 	 *	Use a reasonable default.
 	 */
  skip_port:
-	if (!hs_type) hs_type = strdup("auth+acct");
+	if (!hs_type) hs_type = talloc_strdup(cs, "auth+acct");
 
 	if (strcasecmp(hs_type, "auth") == 0) {
 		home->type = HOME_TYPE_AUTH;
@@ -552,6 +552,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 			   hs_type, name2);
 		goto error;
 	}
+	if (hs_type) talloc_free(hs_type);
 	hs_type = NULL;
 
 	if (!hs_check || (strcasecmp(hs_check, "none") == 0)) {
