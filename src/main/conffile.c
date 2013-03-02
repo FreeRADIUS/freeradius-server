@@ -1198,24 +1198,23 @@ static const char *cf_local_file(const char *base, const char *filename,
 				 char *buffer, size_t bufsize)
 {
 	size_t dirsize;
-	const char *p;
+	char *p;
 
-	p = strrchr(base, FR_DIR_SEP);
+	strlcpy(buffer, base, bufsize);
+
+	p = strrchr(buffer, FR_DIR_SEP);
 	if (!p) return filename;
 	if (p[1]) {		/* ./foo */
-		strlcat(base, "/", sizeof(base));
-		p = strrchr(base, '/');
-		rad_assert(p != NULL);
+		p[1] = '\0';
 	}
 
-	dirsize = (p - base) + 1;
+	dirsize = (p - buffer) + 1;
 
 	if ((dirsize + strlen(filename)) >= bufsize) {
 		return NULL;
 	}
 
-	memcpy(buffer, base, dirsize);
-	strlcpy(buffer + dirsize, filename, bufsize - dirsize);
+	strlcpy(p + 1, filename, bufsize - dirsize);
 
 	return buffer;
 }
