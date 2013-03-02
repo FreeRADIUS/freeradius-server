@@ -685,6 +685,12 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 
 				/* Associate the target buffer with the data */
 				if (ct_bind(sybase_sock->command, i+1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
+					int j;
+
+					for (j = 0; j <= i; j++) {
+						free(rowdata[j]);
+					}
+					free(rowdata);
 					radlog(L_ERR,"rlm_sql_sybase(sql_select_query): ct_bind() failed)\n%s",
 							sql_error(handle, config));
 					return -1;
