@@ -50,10 +50,7 @@ typedef struct rlm_sql_sybase_sock {
 ************************************************************************/
 
 static CS_RETCODE CS_PUBLIC
-clientmsg_callback(context, conn, emsgp)
-CS_CONTEXT         *context;
-CS_CONNECTION      *conn;
-CS_CLIENTMSG       *emsgp;
+clientmsg_callback(UNUSED CS_CONTEXT *context, UNUSED CS_CONNECTION *conn, CS_CLIENTMSG *emsgp)
 {
 
         /*
@@ -91,9 +88,7 @@ CS_CLIENTMSG       *emsgp;
 ************************************************************************/
 
 static CS_RETCODE CS_PUBLIC
-csmsg_callback(context, emsgp)
-CS_CONTEXT         *context;
-CS_CLIENTMSG       *emsgp;
+csmsg_callback(UNUSED CS_CONTEXT *context, CS_CLIENTMSG *emsgp)
 {
 
         /*
@@ -128,10 +123,7 @@ CS_CLIENTMSG       *emsgp;
 ************************************************************************/
 
 static CS_RETCODE CS_PUBLIC
-servermsg_callback(cp, chp, msgp)
-CS_CONTEXT         *cp;
-CS_CONNECTION      *chp;
-CS_SERVERMSG       *msgp;
+servermsg_callback(UNUSED CS_CONTEXT *cp, UNUSED CS_CONNECTION *chp, CS_SERVERMSG *msgp)
 {
 
         /*
@@ -169,7 +161,8 @@ CS_SERVERMSG       *msgp;
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	static char	msg='\0';
 /*
 	static char	msgbuf[2048];
@@ -374,7 +367,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: Free socket and private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	free(handle->conn);
 	handle->conn = NULL;
@@ -389,7 +382,7 @@ static int sql_destroy_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config
  *               connection and cleans up any open handles.
  *
  *************************************************************************/
-static int sql_close(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_close(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	return 0;
 }
 
@@ -573,7 +566,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 	int	i=0;
@@ -753,7 +746,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	/*
 	** Not needed for Sybase, code that may have gone here is
 	** in sql_select_query and sql_fetch_row
@@ -795,7 +788,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
-int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 	CS_INT		ret, count;
@@ -859,7 +852,7 @@ int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	/*
 	** Not implemented, never called from rlm_sql anyway
@@ -877,7 +870,7 @@ static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sybase_sock *sybase_sock = handle->conn;
 
