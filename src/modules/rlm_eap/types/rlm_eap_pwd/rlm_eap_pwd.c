@@ -91,7 +91,6 @@ eap_pwd_detach (void *arg)
 static int
 eap_pwd_attach (CONF_SECTION *cs, void **instance)
 {
-    EAP_PWD_CONF *conf;
     eap_pwd_t *inst;
 
     *instance = inst = talloc_zero(cs, eap_pwd_t);
@@ -100,7 +99,7 @@ eap_pwd_attach (CONF_SECTION *cs, void **instance)
     inst->conf = talloc_zero(inst, EAP_PWD_CONF);
     if (!inst->conf) return -1;
 
-    if (cf_section_parse(cs, conf, pwd_module_config) < 0) {
+    if (cf_section_parse(cs, inst->conf, pwd_module_config) < 0) {
         return -1;
     }
 
