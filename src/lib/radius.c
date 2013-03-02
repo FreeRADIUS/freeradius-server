@@ -3195,6 +3195,15 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 			return 0;
 		}
 
+#ifndef NDEBUG
+		/*
+		 *	Hacks for Coverity.  Editing the dictionary
+		 *	will break assumptions about CUI.  We know
+		 *	this, but Coverity doesn't.
+		 */
+		if (da->type != PW_TYPE_STRING) return -1;
+#endif
+
 		data = (const uint8_t *) "";
 		datalen = 1;
 		goto alloc_cui;	/* skip everything */
