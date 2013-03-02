@@ -471,7 +471,8 @@ int main(int argc, char **argv)
 		 */
 		if (showname) {
 			char login[sizeof(rt.login) + 1];
-			strncpy(login, rt.login, sizeof(rt.login));
+			memcpy(login, rt.login, sizeof(rt.login));
+			login[sizeof(rt.login)] = '\0';
 			
 			printf((rawoutput == 0? rfmt1: rfmt1r),
 			       login,
