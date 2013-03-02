@@ -198,10 +198,12 @@ static int sql_fetch_row(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
 
 	c = sql_num_fields(handle, config);
 	retval = (rlm_sql_row_t)rad_malloc(c*sizeof(char*)+1);
+	memset(retval, 0, c*sizeof(char*)+1);
+
 	/* advance cursor */
 	if(SQLFetch(sock->stmt) == SQL_NO_DATA_FOUND) {
 		handle->row = NULL;
-		return 0;
+		goto error;
 	}
 
 	for(i = 0; i < c; i++) {
@@ -219,6 +221,13 @@ static int sql_fetch_row(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
 
 	handle->row = retval;
 	return 0;
+
+error:
+	for(i = 0; i < c; i++) {
+		free(retval[i]);
+	}
+	free(retval);
+	return -1;
 }
 
 /*************************************************************************
