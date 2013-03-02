@@ -571,11 +571,13 @@ static void *ldap_conn_create(void *ctx)
 			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals",
 				       LDAP_OPT_ON);
 			
-#if LDAP_SET_REBIND_PROC_ARGS == 3
 			if (inst->rebind == 1) {
+#if LDAP_SET_REBIND_PROC_ARGS == 3
 				ldap_set_rebind_proc(handle, ldap_rebind, inst);
-			}
+#else
+				DEBUGW("The flag 'rebind = yes' is not supported by the system LDAP library.  Ignoring.");
 #endif
+			}
 		} else {
 			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals",
 				       LDAP_OPT_OFF);

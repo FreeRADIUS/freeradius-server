@@ -181,12 +181,12 @@ ldap {
 	options {
 		#
 		#  The following two configuration items are for Active Directory
-		#  compatibility.  If you see the helpful "operations error"
-		#  being returned to the LDAP module, uncomment the next
-		#  two lines.
+		#  compatibility.  If you set these to "no", then searches
+		#  will likely return "operations error", instead of a
+		#  useful resuly.
 		#
-#		chase_referrals = yes
-#		rebind = yes
+		chase_referrals = yes
+		rebind = yes
 
 		# seconds to wait for LDAP query to finish. default: 20
 		timeout = 10
