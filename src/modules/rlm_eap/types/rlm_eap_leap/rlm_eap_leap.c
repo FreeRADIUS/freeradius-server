@@ -94,7 +94,6 @@ static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 	leap_session_t	*session;
 	LEAP_PACKET	*packet;
 	LEAP_PACKET	*reply;
-	char*		username;
 	VALUE_PAIR	*password;
 
 	if (!handler->opaque) {
@@ -109,8 +108,6 @@ static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 	 */
 	if (!(packet = eapleap_extract(handler->eap_ds)))
 		return 0;
-
-	username = (char *)handler->request->username->vp_strvalue;
 
 	/*
 	 *	The password is never sent over the wire.
