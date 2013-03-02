@@ -56,6 +56,7 @@ static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int
 {	
 		radlog(L_ERR, "rlm_sql_freetds: FreeTDS error: %s\n", dberrstr);
 		radlog(L_ERR, "rlm_sql_freetds: OS error: %s\n", oserrstr);
+		return 0;
 }
 	
 /*************************************************************************
