@@ -7,144 +7,142 @@ sql_oracle_ldflags=
 sql_oracle_cflags=
 if test x$with_[]modname != xno; then
 
-	AC_MSG_CHECKING([for oci.h])
+    dnl ############################################################
+    dnl # Check for command line options
+    dnl ############################################################
 
-	dnl #
-	dnl # See if the user passed in the oracle_home_dir option and
-	dnl # use that first.  If not, use $ORACLE_HOME.  If that's
-	dnl # not defined, give up.  There's no point in blindly
-	dnl # hunting around for Oracle - there's no standard place
-	dnl # for it.  Any sane Oracle user/developer should have $ORACLE_HOME
-	dnl # defined anyways.
-	dnl #
-
-	dnl ############################################################
-	dnl # Check for command line options
-	dnl ############################################################
-
-	dnl extra argument: --with-oracle-include-dir=DIR
-	oracle_include_dir=
-	AC_ARG_WITH(oracle-include-dir,
-		[AS_HELP_STRING([--with-oracle-include-dir=DIR],
-			    [Directory where the Oracle includes may be found. It should be located under ORACLE_HOME if you have client SDK installed. Use --with-oracle-include-dir=yes if you are sure that your compiler include path includes Oracle include dir. Hint: you might try to do: locate oci.h])],
-		[case "$withval" in
-			no)
-			    AC_MSG_ERROR(Need oracle-include-dir)
-			    ;;
-			yes)
-			    ;;
-			*)
-			    oracle_include_dir="$withval"
-			    ;;
-		esac])
-
-	dnl extra argument: --with-oracle-lib-dir=DIR
-	oracle_lib_dir=
-	AC_ARG_WITH(oracle-lib-dir,
-		[AS_HELP_STRING([--with-oracle-lib-dir=DIR],
-			    [Directory where the oracle libraries may be found. It should be located under ORACLE_HOME. iUse --with-oracle-lib-dir=yes if you are sure that your linker will find the necessary Oracle client libs. Hint: you might try to do: locate libclntsh.so])],
-		[case "$withval" in
-			no)
-			    AC_MSG_ERROR(Need oracle-lib-dir)
-			    ;;
-			yes)
-			    ;;
-			*)
-			    oracle_lib_dir="$withval"
-			    ;;
+    dnl extra argument: --with-oracle-include-dir=DIR
+    oracle_include_dir=
+    AC_ARG_WITH(oracle-include-dir,
+	[AS_HELP_STRING([--with-oracle-include-dir=DIR],
+		[Directory where the oracle includes may be found])],
+        [case "$withval" in
+            no)
+            AC_MSG_ERROR(Need oracle-include-dir)
+            ;;
+            yes)
+            ;;
+            *)
+            oracle_include_dir="$withval"
+            ;;
         esac])
 
+    dnl extra argument: --with-oracle-lib-dir=DIR
+    oracle_lib_dir=
+    AC_ARG_WITH(oracle-lib-dir,
+	[AS_HELP_STRING([--with-oracle-lib-dir=DIR],
+		[Directory where the oracle libraries may be found])],
+        [case "$withval" in
+            no)
+            AC_MSG_ERROR(Need oracle-lib-dir)
+            ;;
+            yes)
+            ;;
+            *)
+            oracle_lib_dir="$withval"
+            ;;
+        esac])
 
+    dnl extra argument: --with-oracle-dir=DIR
+    AC_ARG_WITH(oracle-dir,
+	[AS_HELP_STRING([--with-oracle-dir=DIR],
+		[Base directory where oracle is installed])],
+        [case "$withval" in
+            no)
+            AC_MSG_ERROR(Need oracle-dir)
+            ;;
+            yes)
+            ;;
+            *)
+            oracle_lib_dir="$withval/lib"
+            oracle_include_dir="$withval/include"
+            ;;
+        esac])
 
-	AC_TRY_COMPILE([#include <oci.h>],
-		[ int a = 1;],
-		ORACLE_INCLUDE=" ",
-		ORACLE_INCLUDE=
-	)
+    dnl ############################################################
+    dnl # Check for header files
+    dnl ############################################################
 
-	RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST=
-	if test "x$ORACLE_INCLUDE" = "x" ; then
-		old_CFLAGS="$CFLAGS"
-		CFLAGS="$old_CFLAGS -I$oracle_include_dir"
-		AC_TRY_COMPILE([#include <oci.h>],
-			[ int a = 1;],
-			ORACLE_INCLUDE="-I$oracle_include_dir",
-			ORACLE_INCLUDE=
-		)
+    smart_try_dir="$oracle_include_dir /usr/local/instaclient/include"
+    
+    if test "x$ORACLE_HOME" != "x"; then
+    	smart_try_dir+="${ORACLE_HOME}/include"
+    fi
+    
+    FR_SMART_CHECK_INCLUDE(oci.h)
+    if test "x$ac_cv_header_oci_h" != "xyes"; then
+        AC_MSG_WARN([oracle headers not found. Use --with-oracle-include-dir=<path> or set ORACLE_HOME.])
+        fail="$fail oci.h"
+    fi
 
-		RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST="$CFLAGS"
-		CFLAGS="$old_CFLAGS"
-	fi
+    dnl ############################################################
+    dnl # Check for libraries
+    dnl ############################################################
 
-	# Proceed to linking makes only sense if include dir is OK.
-	if test "x$ORACLE_INCLUDE" != "x" ; then
-		old_LIBS="$LIBS"
-		old_CFLAGS="$CFLAGS"
-		CFLAGS="$RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST"
+    old_LIBS="$LIBS"
+    
+    if test "x$oracle_lib_dir" != "x" ; then
+        lib_path="-L${oracle_lib_dir} "
+    elif test "x$ORACLE_HOME" != "x" ; then
+        lib_path="-L${ORACLE_HOME}/lib "
+    fi
 
-		ORACLE_LIBDIR_SWITCH=
-		if test "x$oracle_lib_dir" != "x" ; then
-			ORACLE_LIBDIR_SWITCH="-L${oracle_lib_dir} "
-		fi
-		for oracle_version in 10 11 9 ""; do
-			LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
-			AC_TRY_LINK([#include <oci.h>
-		
-					static OCIEnv           *p_env;
-					static OCIError         *p_err;
-					static OCISvcCtx        *p_svc;
-					static OCIStmt          *p_sql;
-					static OCIDefine        *p_dfn    = (OCIDefine *) 0;
-					static OCIBind          *p_bnd    = (OCIBind *) 0;
-				],
-				[
-					  int             p_bvi;
-					  char            p_sli[20];
-					  int             rc;
-					  char            errbuf[100];
-					  int             errcode;
-					
-					  rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
-							  (dvoid * (*)(dvoid *, size_t)) 0,
-							  (dvoid * (*)(dvoid *, dvoid *, size_t))0,
-							  (void (*)(dvoid *, dvoid *)) 0 );
+    for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
+        for oracle_version in 11 10 9 ""; do
+            if test "$path" != ""; then
+                AC_MSG_CHECKING([for OCIInitialize in nnz${oracle_version} in $path])
+            else
+                AC_MSG_CHECKING([for OCIInitialize in nnz${oracle_version}])
+            fi
+            
+            LIBS="$old_LIBS -L$path -lclntsh -lnnz${oracle_version}"
+            AC_TRY_LINK([#include <oci.h>
 
-				],
-				ORACLE_LIBS="$ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}",
-				ORACLE_LIBS=
-			)
-			if test "x$ORACLE_LIBS" != "x"; then
-				break
-			fi
-		done
+                static OCIEnv           *p_env;
+                static OCIError         *p_err;
+                static OCISvcCtx        *p_svc;
+                static OCIStmt          *p_sql;
+                static OCIDefine        *p_dfn    = (OCIDefine *) 0;
+                static OCIBind          *p_bnd    = (OCIBind *) 0;
+                ],
+                [
+                int             p_bvi;
+                char            p_sli[20];
+                int             rc;
+                char            errbuf[100];
+                int             errcode;
+            
+                rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
+                                   (dvoid * (*)(dvoid *, size_t)) 0,
+                                   (dvoid * (*)(dvoid *, dvoid *, size_t))0,
+                                   (void (*)(dvoid *, dvoid *)) 0 );
+    
+                ],
+                [sql_oracle_ldflags="$LIBS"],
+            )
+            if test "x$sql_oracle_ldflags" != "x"; then
+                    AC_MSG_RESULT(yes)
+                    break
+            fi
+            AC_MSG_RESULT(no)
+        done
+        
+        if test "x$sql_oracle_ldflags" != "x"; then
+                break
+        fi
+    done
 
-		LIBS="$old_LIBS"
-		CFLAGS="$old_CFLAGS"
-	fi
+    LIBS="$old_LIBS"
 
-
-	if test "x$ORACLE_INCLUDE" = "x"; then
-		AC_MSG_RESULT(no)
-		AC_MSG_WARN([oracle headers not found.  Use --with-oracle-include-dir=<path>.])
-		fail="$fail oci.h"
-	else
-		sql_oracle_cflags="${sql_oracle_cflags} ${ORACLE_INCLUDE}"
-		AC_MSG_RESULT(yes)
-
-
-		if test "x$ORACLE_LIBS" = "x"; then
-			AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path>.])
-			fail="$fail libclntsh libnnz${oracle_version}"
-		else
-			sql_oracle_ldflags="${sql_oracle_ldflags} $ORACLE_LIBS"
-			AC_MSG_RESULT(yes)
-		fi
-	fi
-
-	targetname=modname
+    if test "x$sql_oracle_ldflags" = "x"; then
+        AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME.])
+        fail=["$fail libclntsh libnnz[9-11]"]
+    fi
+    
+    targetname=modname
 else
-	targetname=
-	echo \*\*\* module modname is disabled.
+    targetname=
+    echo \*\*\* module modname is disabled.
 fi
 
 dnl Don't change this section.
@@ -158,6 +156,7 @@ if test "x$fail" != x; then
 	fi
 fi
 
+sql_oracle_cflags="$SMART_CFLAGS"
 AC_SUBST(sql_oracle_ldflags)
 AC_SUBST(sql_oracle_cflags)
 AC_SUBST(targetname)

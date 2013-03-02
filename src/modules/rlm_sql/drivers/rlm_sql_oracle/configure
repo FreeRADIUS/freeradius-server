@@ -638,6 +638,7 @@ ac_user_opts='
 enable_option_checking
 with_oracle_include_dir
 with_oracle_lib_dir
+with_oracle_dir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1254,18 +1255,10 @@ Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
   --with-oracle-include-dir=DIR
-                          Directory where the Oracle includes may be found. It
-                          should be located under ORACLE_HOME if you have
-                          client SDK installed. Use
-                          --with-oracle-include-dir=yes if you are sure that
-                          your compiler include path includes Oracle include
-                          dir. Hint: you might try to do: locate oci.h
+                          Directory where the oracle includes may be found
   --with-oracle-lib-dir=DIR
-                          Directory where the oracle libraries may be found.
-                          It should be located under ORACLE_HOME. iUse
-                          --with-oracle-lib-dir=yes if you are sure that your
-                          linker will find the necessary Oracle client libs.
-                          Hint: you might try to do: locate libclntsh.so
+                          Directory where the oracle libraries may be found
+  --with-oracle-dir=DIR   Base directory where oracle is installed
 
 Some influential environment variables:
   CC          C compiler command
@@ -1799,48 +1792,66 @@ sql_oracle_ldflags=
 sql_oracle_cflags=
 if test x$with_rlm_sql_oracle != xno; then
 
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for oci.h" >&5
-$as_echo_n "checking for oci.h... " >&6; }
 
-
-
-		oracle_include_dir=
+        oracle_include_dir=
 
 # Check whether --with-oracle-include-dir was given.
 if test "${with_oracle_include_dir+set}" = set; then :
   withval=$with_oracle_include_dir; case "$withval" in
-			no)
-			    as_fn_error $? "Need oracle-include-dir" "$LINENO" 5
-			    ;;
-			yes)
-			    ;;
-			*)
-			    oracle_include_dir="$withval"
-			    ;;
-		esac
+            no)
+            as_fn_error $? "Need oracle-include-dir" "$LINENO" 5
+            ;;
+            yes)
+            ;;
+            *)
+            oracle_include_dir="$withval"
+            ;;
+        esac
 fi
 
 
-		oracle_lib_dir=
+        oracle_lib_dir=
 
 # Check whether --with-oracle-lib-dir was given.
 if test "${with_oracle_lib_dir+set}" = set; then :
   withval=$with_oracle_lib_dir; case "$withval" in
-			no)
-			    as_fn_error $? "Need oracle-lib-dir" "$LINENO" 5
-			    ;;
-			yes)
-			    ;;
-			*)
-			    oracle_lib_dir="$withval"
-			    ;;
+            no)
+            as_fn_error $? "Need oracle-lib-dir" "$LINENO" 5
+            ;;
+            yes)
+            ;;
+            *)
+            oracle_lib_dir="$withval"
+            ;;
         esac
 fi
 
 
 
+# Check whether --with-oracle-dir was given.
+if test "${with_oracle_dir+set}" = set; then :
+  withval=$with_oracle_dir; case "$withval" in
+            no)
+            as_fn_error $? "Need oracle-dir" "$LINENO" 5
+            ;;
+            yes)
+            ;;
+            *)
+            oracle_lib_dir="$withval/lib"
+            oracle_include_dir="$withval/include"
+            ;;
+        esac
+fi
 
-	ac_ext=c
+
+
+    smart_try_dir="$oracle_include_dir /usr/local/instaclient/include"
+
+    if test "x$ORACLE_HOME" != "x"; then
+    	smart_try_dir+="${ORACLE_HOME}/include"
+    fi
+
+    ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
@@ -2630,89 +2641,201 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+
+
+ac_safe=`echo "oci.h" | sed 'y%./+-%__pm%'`
+old_CFLAGS="$CFLAGS"
+smart_include=
+smart_include_dir=
+
+if test "x$smart_try_dir" != "x"; then
+  for try in $smart_try_dir; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for oci.h in $try" >&5
+$as_echo_n "checking for oci.h in $try... " >&6; }
+    CFLAGS="$old_CFLAGS -I$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#include <oci.h>
+
+		    #include <oci.h>
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ORACLE_INCLUDE=" "
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
 else
-  ORACLE_INCLUDE=
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CFLAGS="$old_CFLAGS"
+fi
 
-	RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST=
-	if test "x$ORACLE_INCLUDE" = "x" ; then
-		old_CFLAGS="$CFLAGS"
-		CFLAGS="$old_CFLAGS -I$oracle_include_dir"
-		cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+if test "x$smart_include" = "x"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for oci.h" >&5
+$as_echo_n "checking for oci.h... " >&6; }
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#include <oci.h>
+
+		  #include <oci.h>
 int
 main ()
 {
- int a = 1;
+int a = 1;
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ORACLE_INCLUDE="-I$oracle_include_dir"
+
+		   smart_include=" "
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		   break
+
 else
-  ORACLE_INCLUDE=
+
+		   smart_include=
+		   { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
 
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+fi
 
-		RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST="$CFLAGS"
-		CFLAGS="$old_CFLAGS"
-	fi
+if test "x$smart_include" = "x"; then
 
-	# Proceed to linking makes only sense if include dir is OK.
-	if test "x$ORACLE_INCLUDE" != "x" ; then
-		old_LIBS="$LIBS"
-		old_CFLAGS="$CFLAGS"
-		CFLAGS="$RLM_SQL_ORA_WORKING_CFLAGS_FOR_LINKING_TEST"
 
-		ORACLE_LIBDIR_SWITCH=
-		if test "x$oracle_lib_dir" != "x" ; then
-			ORACLE_LIBDIR_SWITCH="-L${oracle_lib_dir} "
-		fi
-		for oracle_version in 10 11 9 ""; do
-			LIBS="$old_LIBS $ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
-			cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+if test "x$LOCATE" != "x"; then
+        DIRS=
+  file=oci.h
+
+  for x in `${LOCATE} $file 2>/dev/null`; do
+                                        base=`echo $x | sed "s%/${file}%%"`
+    if test "x$x" = "x$base"; then
+      continue;
+    fi
+
+    dir=`${DIRNAME} $x 2>/dev/null`
+                exclude=`echo ${dir} | ${GREP} /home`
+    if test "x$exclude" != "x"; then
+      continue
+    fi
+
+                    already=`echo \$smart_include_dir ${DIRS} | ${GREP} ${dir}`
+    if test "x$already" = "x"; then
+      DIRS="$DIRS $dir"
+    fi
+  done
+fi
+
+eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
+
+  for try in $smart_include_dir /usr/local/include /opt/include; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for oci.h in $try" >&5
+$as_echo_n "checking for oci.h in $try... " >&6; }
+    CFLAGS="$old_CFLAGS -I$try"
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+		    #include <oci.h>
+int
+main ()
+{
+int a = 1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+
+		     smart_include="-I$try"
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+		     break
+
+else
+
+		     smart_include=
+		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+  done
+  CFLAGS="$old_CFLAGS"
+fi
+
+if test "x$smart_include" != "x"; then
+  eval "ac_cv_header_$ac_safe=yes"
+  CFLAGS="$old_CFLAGS $smart_include"
+  SMART_CFLAGS="$SMART_CFLAGS $smart_include"
+fi
+
+    if test "x$ac_cv_header_oci_h" != "xyes"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: oracle headers not found. Use --with-oracle-include-dir=<path> or set ORACLE_HOME." >&5
+$as_echo "$as_me: WARNING: oracle headers not found. Use --with-oracle-include-dir=<path> or set ORACLE_HOME." >&2;}
+        fail="$fail oci.h"
+    fi
+
+
+    old_LIBS="$LIBS"
+
+    if test "x$oracle_lib_dir" != "x" ; then
+        lib_path="-L${oracle_lib_dir} "
+    elif test "x$ORACLE_HOME" != "x" ; then
+        lib_path="-L${ORACLE_HOME}/lib "
+    fi
+
+    for path in $lib_path "/usr/local/instaclient/lib" "" "/opt/lib"; do
+        for oracle_version in 11 10 9 ""; do
+            if test "$path" != ""; then
+                { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCIInitialize in nnz${oracle_version} in $path" >&5
+$as_echo_n "checking for OCIInitialize in nnz${oracle_version} in $path... " >&6; }
+            else
+                { $as_echo "$as_me:${as_lineno-$LINENO}: checking for OCIInitialize in nnz${oracle_version}" >&5
+$as_echo_n "checking for OCIInitialize in nnz${oracle_version}... " >&6; }
+            fi
+
+            LIBS="$old_LIBS -L$path -lclntsh -lnnz${oracle_version}"
+            cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #include <oci.h>
 
-					static OCIEnv           *p_env;
-					static OCIError         *p_err;
-					static OCISvcCtx        *p_svc;
-					static OCIStmt          *p_sql;
-					static OCIDefine        *p_dfn    = (OCIDefine *) 0;
-					static OCIBind          *p_bnd    = (OCIBind *) 0;
+                static OCIEnv           *p_env;
+                static OCIError         *p_err;
+                static OCISvcCtx        *p_svc;
+                static OCIStmt          *p_sql;
+                static OCIDefine        *p_dfn    = (OCIDefine *) 0;
+                static OCIBind          *p_bnd    = (OCIBind *) 0;
 
 int
 main ()
 {
 
-					  int             p_bvi;
-					  char            p_sli[20];
-					  int             rc;
-					  char            errbuf[100];
-					  int             errcode;
+                int             p_bvi;
+                char            p_sli[20];
+                int             rc;
+                char            errbuf[100];
+                int             errcode;
 
-					  rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
-							  (dvoid * (*)(dvoid *, size_t)) 0,
-							  (dvoid * (*)(dvoid *, dvoid *, size_t))0,
-							  (void (*)(dvoid *, dvoid *)) 0 );
+                rc = OCIInitialize((ub4) OCI_DEFAULT, (dvoid *)0,  /* Initialize OCI */
+                                   (dvoid * (*)(dvoid *, size_t)) 0,
+                                   (dvoid * (*)(dvoid *, dvoid *, size_t))0,
+                                   (void (*)(dvoid *, dvoid *)) 0 );
 
 
   ;
@@ -2720,50 +2843,36 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  ORACLE_LIBS="$ORACLE_LIBDIR_SWITCH -lclntsh -lnnz${oracle_version}"
-else
-  ORACLE_LIBS=
-
+  sql_oracle_ldflags="$LIBS"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-			if test "x$ORACLE_LIBS" != "x"; then
-				break
-			fi
-		done
-
-		LIBS="$old_LIBS"
-		CFLAGS="$old_CFLAGS"
-	fi
-
-
-	if test "x$ORACLE_INCLUDE" = "x"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+            if test "x$sql_oracle_ldflags" != "x"; then
+                    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
+$as_echo "yes" >&6; }
+                    break
+            fi
+            { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: oracle headers not found.  Use --with-oracle-include-dir=<path>." >&5
-$as_echo "$as_me: WARNING: oracle headers not found.  Use --with-oracle-include-dir=<path>." >&2;}
-		fail="$fail oci.h"
-	else
-		sql_oracle_cflags="${sql_oracle_cflags} ${ORACLE_INCLUDE}"
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
+        done
 
+        if test "x$sql_oracle_ldflags" != "x"; then
+                break
+        fi
+    done
 
-		if test "x$ORACLE_LIBS" = "x"; then
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path>." >&5
-$as_echo "$as_me: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path>." >&2;}
-			fail="$fail libclntsh libnnz${oracle_version}"
-		else
-			sql_oracle_ldflags="${sql_oracle_ldflags} $ORACLE_LIBS"
-			{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-		fi
-	fi
+    LIBS="$old_LIBS"
 
-	targetname=rlm_sql_oracle
+    if test "x$sql_oracle_ldflags" = "x"; then
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME." >&5
+$as_echo "$as_me: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME." >&2;}
+        fail="$fail libclntsh libnnz[9-11]"
+    fi
+
+    targetname=rlm_sql_oracle
 else
-	targetname=
-	echo \*\*\* module rlm_sql_oracle is disabled.
+    targetname=
+    echo \*\*\* module rlm_sql_oracle is disabled.
 fi
 
 if test "x$fail" != x; then
@@ -2778,6 +2887,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_oracle requires:$fail." >&2;};
 	fi
 fi
 
+sql_oracle_cflags="$SMART_CFLAGS"
 
 
 
