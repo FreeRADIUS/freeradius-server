@@ -358,7 +358,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		if (x != OCI_SUCCESS) {
 			radlog(L_ERR,"rlm_sql_oracle: OCIParamGet() failed in sql_select_query: %s",
 				sql_error(handle, config));
-			return -1;
+			goto error;
 		}
 
 		x=OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM,
@@ -367,7 +367,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		if (x != OCI_SUCCESS) {
 			radlog(L_ERR,"rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
 				sql_error(handle, config));
-			return -1;
+			goto error;
 		}
 
 		dsize=MAX_DATASTR_LEN;
@@ -393,7 +393,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 			if (x != OCI_SUCCESS) {
 				radlog(L_ERR,"rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
 					sql_error(handle, config));
-				return -1;
+				goto error;
 			}
 			rowdata[y-1]=rad_malloc(dsize+1);
 			memset(rowdata[y-1], 0, dsize+1);
@@ -427,13 +427,10 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 				(dvoid *) 0,
 				OCI_DEFAULT);
 
-		/*
-		 *	FIXME: memory leaks of indicators & rowdata?
-		 */
 		if (x != OCI_SUCCESS) {
 			radlog(L_ERR,"rlm_sql_oracle: OCIDefineByPos() failed in sql_select_query: %s",
 				sql_error(handle, config));
-			return -1;
+			goto error;
 		}
 	}
 
@@ -441,6 +438,16 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 	oracle_sock->indicators=indicators;
 
 	return 0;
+
+ error:
+	for (y=0; y < colcount; y++) {
+		free(rowdata[y]);
+	}
+
+	free(rowdata);
+	free(indicators);
+
+	return -1;
 }
 
 
