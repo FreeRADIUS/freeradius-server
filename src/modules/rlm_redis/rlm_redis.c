@@ -285,7 +285,6 @@ int rlm_redis_finish_query(REDISSOCK *dissocket)
 static int redis_instantiate(CONF_SECTION *conf, void **instance)
 {
 	REDIS_INST *inst;
-	const char *xlat_name;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -301,10 +300,10 @@ static int redis_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	xlat_name = cf_section_name2(conf);
+	inst->xlat_name = cf_section_name2(conf);
 
-	if (!xlat_name)
-		xlat_name = cf_section_name1(conf);
+	if (!inst->xlat_name)
+		inst->xlat_name = cf_section_name1(conf);
 
 	xlat_register(inst->xlat_name, redis_xlat, inst);
 
