@@ -1533,7 +1533,7 @@ static int parse_input_file_name(const char *arg, command_t *cmd)
 		struct stat sb;
 		
 		if (!stat(arg, &sb)) {
-			DEBUG("Adding object: %s\n", newarg);
+			DEBUG("Adding object: %s\n", arg);
 			
 			push_count_chars(cmd->obj_files, arg);
 			
