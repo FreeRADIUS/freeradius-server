@@ -1016,6 +1016,11 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	VALUE_PAIR *vp;
 	uint32_t lvalue, mms;
 	size_t dhcp_size, length;
+#ifndef NDEBUG
+	const char *name;
+	char src_ip_buf[256];
+	char dst_ip_buf[256];
+#endif
 
 	if (packet->data) free(packet->data);
 
@@ -1025,6 +1030,33 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/* XXX Ugly ... should be set by the caller */
 	if (packet->code == 0) packet->code = PW_DHCP_NAK;
+
+#ifndef NDEBUG
+	if ((packet->code >= PW_DHCP_DISCOVER) &&
+	    (packet->code <= PW_DHCP_INFORM)) {
+		name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
+	} else {
+		name = "?Unknown?";
+	}
+#endif
+
+	DEBUG(
+#ifdef WITH_UDPFROMTO
+	      "Encoding %s of id %08x from %s:%d to %s:%d\n",
+#else
+	      "Encoding %s of id %08x to %s:%d\n",
+#endif
+	      name, (unsigned int) packet->id,
+#ifdef WITH_UDPFROMTO
+	      inet_ntop(packet->src_ipaddr.af,
+			&packet->src_ipaddr.ipaddr,
+			src_ip_buf, sizeof(src_ip_buf)),
+	      packet->src_port,
+#endif
+	      inet_ntop(packet->dst_ipaddr.af,
+			&packet->dst_ipaddr.ipaddr,
+		     dst_ip_buf, sizeof(dst_ip_buf)),
+	      packet->dst_port);
 
 	p = packet->data;
 
