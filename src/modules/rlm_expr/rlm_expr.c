@@ -150,6 +150,15 @@ static int get_number(REQUEST *request, const char **string, int64_t *answer)
 			 *
 			 *  If it isn't, then we die.
 			 */
+			if ((*p == '0') && (p[1] == 'x')) {
+				char *end;
+
+				x = strtoul(p, &end, 16);
+				p = end;
+				goto calc;
+			}
+
+
 			if ((*p < '0') || (*p > '9')) {
 				RDEBUG2("Not a number at \"%s\"", p);
 				return -1;
@@ -167,6 +176,7 @@ static int get_number(REQUEST *request, const char **string, int64_t *answer)
 			}
 		}
 
+	calc:
 		switch (this) {
 		default:
 		case TOKEN_NONE:
