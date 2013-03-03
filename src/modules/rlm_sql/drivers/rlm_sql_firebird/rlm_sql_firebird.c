@@ -68,7 +68,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *
  */
 static int sql_destroy_socket(rlm_sql_handle_t *handle,
-			      rlm_sql_config_t *config)
+			      UNUSED rlm_sql_config_t *config)
 {
 	free(handle->conn);
 	
@@ -178,7 +178,8 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 /** Returns an individual row.
  *
  */
-static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	rlm_sql_firebird_sock *firebird_sock = handle->conn;
 	int res;
 	
@@ -242,7 +243,8 @@ static int sql_free_result(UNUSED rlm_sql_handle_t *handle,
 /** Closes an open database connection and cleans up any open handles.
  *
  */
-static int sql_close(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_close(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+{
 	fb_destroy_socket((rlm_sql_firebird_sock *) handle->conn);
 	return 0;
 }
