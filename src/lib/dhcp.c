@@ -1375,7 +1375,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		*(p++) = 0;	/* header isn't included in attr length */
 
 		for (i = 0; i < num_entries; i++) {
-			debug_pair(vp);
+			if (i != 0) debug_pair(vp);
 
 			if (vp->flags.is_tlv) {
 				VALUE_PAIR *tlv;
