@@ -1203,12 +1203,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	/*
 	 *	DHCP-Gateway-IP-Address
-	 *
-	 *	It's only sent in client messages.  For responses from
-	 *	the server, it is always zero.
 	 */
-	if ((packet->data[0] == 1) &&
-	    (vp = pairfind(packet->vps, DHCP2ATTR(266)))) {
+	if (vp = pairfind(packet->vps, DHCP2ATTR(266))) {
 		lvalue = vp->vp_ipaddr;
 	} else {
 		lvalue = htonl(INADDR_ANY);
