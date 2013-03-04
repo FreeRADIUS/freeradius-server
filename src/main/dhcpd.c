@@ -399,7 +399,7 @@ static int dhcp_process(REQUEST *request)
 	vp = pairfind(request->reply->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
 	if (vp && (vp->vp_ipaddr != htonl(INADDR_ANY))) {
 		/* Answer to client's nearest DHCP relay */
-		RDEBUG("DHCP: Reply will be unicast to giaddr from original packet");
+		RDEBUG("DHCP: Reply will be unicast to giaddr");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 
 	} else if ((request->reply->code == PW_DHCP_NAK) ||
