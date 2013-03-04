@@ -222,7 +222,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		fr_strerror_printf("Failed allocating packet");
 		return NULL;
 	}
-	memset(packet, 0, sizeof(packet));
+	memset(packet, 0, sizeof(*packet));
 
 	packet->data = malloc(MAX_PACKET_SIZE);
 	if (!packet->data) {
@@ -251,7 +251,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 
 	if (packet->data_len < MIN_PACKET_SIZE) {
 		fr_strerror_printf("DHCP packet is too small (%d < %d)",
-		      packet->data_len, MIN_PACKET_SIZE);
+		      		   packet->data_len, MIN_PACKET_SIZE);
 		rad_free(&packet);
 		return NULL;
 	}
@@ -334,7 +334,11 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	/*
 	 *	This should never fail...
 	 */
-	getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst);
+	if (getsockname(sockfd, (struct sockaddr *) &dst, &sizeof_dst) < 0) {
+		fr_strerror_printf("getsockname failed: %s", strerror(errno));
+		rad_free(&packet);
+		return NULL;	
+	}
 #endif
 
 	fr_sockaddr2ipaddr(&dst, sizeof_dst, &packet->dst_ipaddr, &port);
@@ -430,12 +434,12 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 	 *	Assume that the packet is encoded before sending it.
 	 */
 	return sendto(packet->sockfd, packet->data, packet->data_len, 0,
-	    (struct sockaddr *)&dst, sizeof_dst);
+		      (struct sockaddr *)&dst, sizeof_dst);
 #else
 
 	return sendfromto(packet->sockfd, packet->data, packet->data_len, 0,
-	    (struct sockaddr *)&src, sizeof_src,
-	    (struct sockaddr *)&dst, sizeof_dst);
+		          (struct sockaddr *)&src, sizeof_src,
+			  (struct sockaddr *)&dst, sizeof_dst);
 #endif
 }
 
@@ -531,7 +535,10 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 
 	case PW_TYPE_IPADDR:
 		if (alen != 4) goto raw;
-		memcpy(&vp->vp_ipaddr, p , 4); /* Keep value in Network Order!!! */
+		/*
+		 *	Keep value in Network Order!
+		 */
+		memcpy(&vp->vp_ipaddr, p , 4);
 		vp->length = 4;
 		break;
 
@@ -774,8 +781,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 */
 	 
 	/*
-	 *  Nothing uses tail after this call, if it does in the future 
-	 *  it'll need to find the new tail...
+	 * 	Nothing uses tail after this call, if it does in the future 
+	 *	it'll need to find the new tail...
 	 *	FIXME: This should also check sname && file fields.
 	 *	See the dhcp_get_option() function above.
 	 */
@@ -1326,7 +1333,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		}
 
 		/*
-		 * Jump over DHCP magic number, response, etc.
+		 *	Jump over DHCP magic number, response, etc.
 		 */
 		p = pp;
 	}
