@@ -48,6 +48,11 @@ ATTRIBUTE	DHCP-Server-Host-Name			268	string	  # 64 octets
 ATTRIBUTE	DHCP-Boot-Filename			269	string	  # 128 octets
 
 ATTRIBUTE	DHCP-Relay-To-IP-Address		270	ipaddr
+ATTRIBUTE	DHCP-Relay-Max-Hop-Count		271	integer
+
+# This is copied from the request packet, giaddr, and
+# added to the reply packet by the server core.
+ATTRIBUTE	DHCP-Relay-IP-Address			272	ipaddr
 
 VALUE	DHCP-Flags			Broadcast		0x8000
 
