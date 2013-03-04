@@ -271,6 +271,21 @@ static int dhcp_process(REQUEST *request)
 	VALUE_PAIR *vp;
 	dhcp_socket_t *sock;
 
+	/*
+	 *	If there's a giaddr, save it as the Relay-IP-Address
+	 *	in the response.  That way the later code knows where
+	 *	to send the reply.
+	 */
+	vp = pairfind(request->packet->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
+	if (vp && (vp->vp_ipaddr != htonl(INADDR_ANY))) {
+		VALUE_PAIR *relay;
+
+		/* DHCP-Relay-IP-Address */
+		relay = radius_paircreate(request, &request->reply->vps,
+					  DHCP2ATTR(272), PW_TYPE_IPADDR);
+		if (relay) relay->vp_ipaddr = vp->vp_ipaddr;
+	}
+
 	vp = pairfind(request->packet->vps, DHCP2ATTR(53)); /* DHCP-Message-Type */
 	if (vp) {
 		DICT_VALUE *dv = dict_valbyattr(DHCP2ATTR(53), vp->vp_integer);
@@ -396,17 +411,41 @@ static int dhcp_process(REQUEST *request)
 	request->reply->dst_port = request->packet->src_port;
 	request->reply->src_port = request->packet->dst_port;
 
+	/*
+	 *	Answer to client's nearest DHCP relay.
+	 *
+	 *	Which may be different than the giaddr given in the
+	 *	packet to the client.  i.e. the relay may have a
+	 *	public IP, but the gateway a private one.
+	 */
+	vp = pairfind(request->reply->vps, DHCP2ATTR(272)); /* DHCP-Relay-IP-Address */
+	if (vp) {
+		RDEBUG("DHCP: Reply will be unicast to giaddr from original packet");
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		return 1;
+	}
+
+	/*
+	 *	Answer to client's nearest DHCP gateway.  In this
+	 *	case, the client can reach the gateway, as can the
+	 *	server.
+	 */
 	vp = pairfind(request->reply->vps, DHCP2ATTR(266)); /* DHCP-Gateway-IP-Address */
 	if (vp && (vp->vp_ipaddr != htonl(INADDR_ANY))) {
-		/* Answer to client's nearest DHCP relay */
 		RDEBUG("DHCP: Reply will be unicast to giaddr");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		return 1;
+	}
 
-	} else if ((request->reply->code == PW_DHCP_NAK) ||
-	    ((vp = pairfind(request->reply->vps, DHCP2ATTR(262))) /* DHCP-Flags */ &&
-		(vp->vp_integer & 0x8000) &&
-		((vp = pairfind(request->reply->vps, DHCP2ATTR(263))) /* DHCP-Client-IP-Address */ &&
-		    (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
+	/*
+	 *	If it's a NAK, or the broadcast flag was set, ond
+	 *	there's no client-ip-address, send a broadcast.
+	 */
+	if ((request->reply->code == PW_DHCP_NAK) ||
+	    ((vp = pairfind(request->reply->vps, DHCP2ATTR(262))) && /* DHCP-Flags */
+		    (vp->vp_integer & 0x8000) &&
+	     ((vp = pairfind(request->reply->vps, DHCP2ATTR(263))) && /* DHCP-Client-IP-Address */
+	      (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
 		/*
 		 * RFC 2131, page 23
 		 *
@@ -417,43 +456,46 @@ static int dhcp_process(REQUEST *request)
 		 */
 		RDEBUG("DHCP: Reply will be broadcast");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_BROADCAST);
-	} else {
-		/*
-		 * RFC 2131, page 23
-		 *
-		 * Unicast to
-		 * - ciaddr if present
-		 * otherwise to yiaddr
-		 */
-		if ((vp = pairfind(request->reply->vps, DHCP2ATTR(263))) /* DHCP-Client-IP-Address */ &&
-		    (vp->vp_ipaddr != htonl(INADDR_ANY))) {
-			RDEBUG("DHCP: Reply will be sent unicast to client-ip-address");
-			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-		} else {
-			vp = pairfind(request->reply->vps, DHCP2ATTR(264)); /* DHCP-Your-IP-Address */
-			if (!vp) {
-				DEBUG("DHCP: Failed to find IP Address for request.");
-				return -1;
-			}
-			
-			RDEBUG("DHCP: Reply will be sent unicast to your-ip-address");
-			request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		return 1;
+	}
 
-			/*
-			 * When sending a DHCP_OFFER, make sure our ARP table
-			 * contains an entry for the client IP address, or else
-			 * packet may not be forwarded if it was the first time
-			 * the client was requesting an IP address.
-			 */
-			if (request->reply->code == PW_DHCP_OFFER) {
-				VALUE_PAIR *hwvp = pairfind(request->reply->vps, DHCP2ATTR(267)); /* DHCP-Client-Hardware-Address */
+	/*
+	 *	RFC 2131, page 23
+	 *
+	 *	Unicast to ciaddr if present, otherwise to yiaddr.
+	 */
+	if ((vp = pairfind(request->reply->vps, DHCP2ATTR(263))) && /* DHCP-Client-IP-Address */
+	    (vp->vp_ipaddr != htonl(INADDR_ANY))) {
+		RDEBUG("DHCP: Reply will be sent unicast to client-ip-address");
+		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+		return 1;
+	}
 
-				if (!hwvp) return -1;
-
-				if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
-					return -1;
-				}
-			}
+	vp = pairfind(request->reply->vps, DHCP2ATTR(264)); /* DHCP-Your-IP-Address */
+	if (!vp) {
+		DEBUG("DHCP: Failed to find DHCP-Your-IP-Address for request.");
+		return -1;
+	}
+	
+	RDEBUG("DHCP: Reply will be sent unicast to your-ip-address");
+	request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+	
+	/*
+	 *	When sending a DHCP_OFFER, make sure our ARP table
+	 *	contains an entry for the client IP address.
+	 *	Otherwise the packet may not be sent to the client, as
+	 *	the OS has no ARP entry for it.
+	 *
+	 *	This is a cute hack to avoid us having to create a raw
+	 *	socket to send DHCP packets.
+	 */
+	if (request->reply->code == PW_DHCP_OFFER) {
+		VALUE_PAIR *hwvp = pairfind(request->reply->vps, DHCP2ATTR(267)); /* DHCP-Client-Hardware-Address */
+		
+		if (!hwvp) return -1;
+		
+		if (fr_dhcp_add_arp_entry(request->reply->sockfd, sock->src_interface, hwvp, vp) < 0) {
+			return -1;
 		}
 	}
 
@@ -511,8 +553,6 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock->suppress_responses = FALSE;
 	cp = cf_pair_find(cs, "suppress_responses");
 	if (cp) {
-		const char *value;
-
 		cf_item_parse(cs, "suppress_responses", PW_TYPE_BOOLEAN,
 			      &sock->suppress_responses, NULL);
 	}
