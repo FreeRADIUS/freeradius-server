@@ -85,8 +85,8 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 * It's invalid to have giaddr=0 AND a relay option
 	 */
 	giaddrvp = vp = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
-	if ((vp && (vp->vp_ipaddr == htonl(INADDR_ANY))) &&
-	    pairfind(request->packet->vps, 82, TAG_ANY), DHCP_MAGIC_VENDOR) { /* DHCP-Relay-Agent-Information */
+	if ((vp && (vp->vp_ipaddr == htonl(INADDR_ANY)) &&
+	     pairfind(request->packet->vps, 82, TAG_ANY), DHCP_MAGIC_VENDOR)) { /* DHCP-Relay-Agent-Information */
 		DEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet\n");
 		return 1;
 	}
