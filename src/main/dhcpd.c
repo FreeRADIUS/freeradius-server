@@ -127,7 +127,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 	request->packet->dst_port = request->packet->dst_port;
 
-	if (fr_dhcp_encode(request->packet, NULL) < 0) {
+	if (fr_dhcp_encode(request->packet) < 0) {
 		DEBUG("dhcprelay_process_client_request: ERROR in fr_dhcp_encode\n");
 		return -1;
 	}
@@ -225,7 +225,7 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 		}
 	}
 
-	if (fr_dhcp_encode(request->packet, NULL) < 0) {
+	if (fr_dhcp_encode(request->packet) < 0) {
 		DEBUG("dhcprelay_process_server_reply: ERROR in fr_dhcp_encode\n");
 		return -1;
 	}
@@ -522,11 +522,11 @@ static int dhcp_socket_send(rad_listen_t *listener, REQUEST *request)
 	if (request->reply->code == 0) return 0; /* don't reply */
 
 	if (request->packet->code != request->reply->code) {
-		if (fr_dhcp_encode(request->reply, request->packet) < 0) {
+		if (fr_dhcp_encode(request->reply) < 0) {
 			return -1;
 		}
 	} else {
-		if (fr_dhcp_encode(request->reply, NULL) < 0) {
+		if (fr_dhcp_encode(request->reply) < 0) {
 			return -1;
 		}
 	}

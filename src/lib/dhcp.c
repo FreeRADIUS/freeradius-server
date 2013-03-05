@@ -1022,7 +1022,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 }
 
 
-int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
+int fr_dhcp_encode(RADIUS_PACKET *packet)
 {
 	unsigned int i, num_vps;
 	uint8_t *p;
@@ -1499,17 +1499,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 	 *	Yuck.  That sucks...
 	 */
 	packet->data_len = dhcp_size;
-
-	if (original) {
-		/*
-		 *	FIXME: This may set it to broadcast, which we don't
-		 *	want.  Instead, set it to the real address of the
-		 *	socket.
-		 */
-		packet->src_ipaddr = original->dst_ipaddr;
-	
-		packet->sockfd = original->sockfd;
-	}
 
 	if (packet->data_len < DEFAULT_PACKET_SIZE) {
 		memset(packet->data + packet->data_len, 0,

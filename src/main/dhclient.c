@@ -416,7 +416,7 @@ int main(int argc, char **argv)
 	/*
 	 *	Encode the packet
 	 */
-	if (fr_dhcp_encode(request, NULL) < 0) {
+	if (fr_dhcp_encode(request) < 0) {
 		fprintf(stderr, "dhclient: failed encoding: %s\n",
 			fr_strerror());
 		exit(1);
