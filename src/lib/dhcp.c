@@ -142,7 +142,6 @@ static int dhcp_header_sizes[] = {
 
 static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 				unsigned int option)
-				
 {
 	int overload = 0;
 	int field = DHCP_OPTION_FIELD;
@@ -349,7 +348,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		return NULL;	
 	}
 #endif
-	
+
 	fr_sockaddr2ipaddr(&dst, sizeof_dst, &packet->dst_ipaddr, &port);
 	packet->dst_port = port;
 
@@ -360,7 +359,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		char type_buf[64];
 		const char *name = type_buf;
 		char src_ip_buf[256], dst_ip_buf[256];
-		
+
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
 		    (packet->code <= PW_DHCP_INFORM)) {
 			name = dhcp_message_types[packet->code - PW_DHCP_OFFSET];
@@ -494,7 +493,7 @@ make_tlv:
 	}
 	memcpy(tlv->vp_tlv, data, data_len);
 	tlv->length = data_len;
-	
+
 	return 0;
 }
 
@@ -509,24 +508,28 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 		if (alen != 1) goto raw;
 		vp->vp_integer = p[0];
 		break;
-		
+
 	case PW_TYPE_SHORT:
 		if (alen != 2) goto raw;
-		vp->vp_integer = (p[0] << 8) | p[1];
+		memcpy(&vp->vp_integer, p, 2);
+		vp->vp_integer = ntohs(vp->vp_integer);
 		break;
-		
+
 	case PW_TYPE_INTEGER:
 		if (alen != 4) goto raw;
 		memcpy(&vp->vp_integer, p, 4);
 		vp->vp_integer = ntohl(vp->vp_integer);
 		break;
-		
+
 	case PW_TYPE_IPADDR:
 		if (alen != 4) goto raw;
+		/*
+		 *	Keep value in Network Order!
+		 */
 		memcpy(&vp->vp_ipaddr, p , 4);
 		vp->length = 4;
 		break;
-		
+
 	case PW_TYPE_STRING:
 		if (alen > 253) return -1;
 		memcpy(vp->vp_strvalue, p , alen);
@@ -544,10 +547,10 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 		if (alen > 253) return -1;
 		memcpy(vp->vp_octets, p, alen);
 		break;
-		
+
 	case PW_TYPE_TLV:
 		return decode_tlv(vp, p, alen);
-		
+
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
 		return -1;
@@ -639,7 +642,7 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 				pairfree(head);
 				return -1;
 			}
-
+			
 			/*
 			 *	Hack for ease of use.
 			 */
@@ -672,7 +675,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	head = NULL;
 	tail = &head;
 	p = packet->data;
-	
+
 	if ((fr_debug_flag > 2) && fr_log_fp) {
 		for (i = 0; i < packet->data_len; i++) {
 			if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "%d: ", (int) i);
@@ -712,23 +715,23 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			vp->vp_integer = p[0];
 			vp->length = 1;
 			break;
-			
+
 		case PW_TYPE_SHORT:
 			vp->vp_integer = (p[0] << 8) | p[1];
 			vp->length = 2;
 			break;
-			
+
 		case PW_TYPE_INTEGER:
 			memcpy(&vp->vp_integer, p, 4);
 			vp->vp_integer = ntohl(vp->vp_integer);
 			vp->length = 4;
 			break;
-			
+
 		case PW_TYPE_IPADDR:
 			memcpy(&vp->vp_ipaddr, p, 4);
 			vp->length = 4;
 			break;
-			
+
 		case PW_TYPE_STRING:
 			memcpy(vp->vp_strvalue, p, dhcp_header_sizes[i]);
 			vp->vp_strvalue[dhcp_header_sizes[i]] = '\0';
@@ -737,17 +740,17 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 				pairfree(&vp);
 			}
 			break;
-			
+
 		case PW_TYPE_OCTETS:
 			memcpy(vp->vp_octets, p, packet->data[2]);
 			vp->length = packet->data[2];
 			break;
-			
+
 		case PW_TYPE_ETHERNET:
 			memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
 			vp->length = sizeof(vp->vp_ether);
 			break;
-			
+
 		default:
 			fr_strerror_printf("BAD TYPE %d", vp->da->type);
 			pairfree(&vp);
@@ -756,12 +759,12 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		p += dhcp_header_sizes[i];
 
 		if (!vp) continue;
-		
+
 		debug_pair(vp);
 		*tail = vp;
 		tail = &vp->next;
 	}
-	
+
 	/*
 	 *	Loop over the options.
 	 */
@@ -836,7 +839,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 
 	if (fr_debug_flag > 0) {
 		for (vp = packet->vps; vp != NULL; vp = vp->next) {
-			
+			/* Print debug output here? */
 		}
 	}
 
@@ -887,34 +890,34 @@ static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, size_t room)
 		length = 1;
 		*p = vp->vp_integer & 0xff;
 		break;
-		
+
 	case PW_TYPE_SHORT:
 		length = 2;
 		p[0] = (vp->vp_integer >> 8) & 0xff;
 		p[1] = vp->vp_integer & 0xff;
 		break;
-		
+
 	case PW_TYPE_INTEGER:
 		length = 4;
 		lvalue = htonl(vp->vp_integer);
 		memcpy(p, &lvalue, 4);
 		break;
-		
+
 	case PW_TYPE_IPADDR:
 		length = 4;
 		memcpy(p, &vp->vp_ipaddr, 4);
 		break;
-		
+
 	case PW_TYPE_ETHERNET:
 		length = 6;
 		memcpy(p, &vp->vp_ether, 6);
 		break;
-		
+
 	case PW_TYPE_STRING:
 		memcpy(p, vp->vp_strvalue, vp->length);
 		length = vp->length;
 		break;
-		
+
 	case PW_TYPE_TLV:	/* FIXME: split it on 255? */
 		memcpy(p, vp->vp_tlv, vp->length);
 		length = vp->length;
@@ -924,7 +927,7 @@ static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, size_t room)
 		memcpy(p, vp->vp_octets, vp->length);
 		length = vp->length;
 		break;
-		
+
 	default:
 		fr_strerror_printf("BAD TYPE2 %d", vp->da->type);
 		length = 0;
@@ -1340,45 +1343,45 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				vp->vp_integer = p[0];
 				vp->length = 1;
 				break;
-				
+
 			case PW_TYPE_SHORT:
 				vp->vp_integer = (p[0] << 8) | p[1];
 				vp->length = 2;
 				break;
-				
+
 			case PW_TYPE_INTEGER:
 				memcpy(&vp->vp_integer, p, 4);
 				vp->vp_integer = ntohl(vp->vp_integer);
 				vp->length = 4;
 				break;
-				
+
 			case PW_TYPE_IPADDR:
 				memcpy(&vp->vp_ipaddr, p, 4);
 				vp->length = 4;
 				break;
-				
+
 			case PW_TYPE_STRING:
 				memcpy(vp->vp_strvalue, p, dhcp_header_sizes[i]);
 				vp->vp_strvalue[dhcp_header_sizes[i]] = '\0';
 				vp->length = strlen(vp->vp_strvalue);
 				break;
-				
+
 			case PW_TYPE_OCTETS: /* only for Client HW Address */
 				memcpy(vp->vp_octets, p, packet->data[2]);
 				vp->length = packet->data[2];
 				break;
-				
+
 			case PW_TYPE_ETHERNET: /* only for Client HW Address */
 				memcpy(vp->vp_ether, p, sizeof(vp->vp_ether));
 				vp->length = sizeof(vp->vp_ether);
 				break;
-				
+
 			default:
 				fr_strerror_printf("Internal sanity check failed %d %d", vp->da->type, __LINE__);
 				pairfree(&vp);
 				break;
 			}
-			
+
 			p += dhcp_header_sizes[i];
 
 			debug_pair(vp);
@@ -1404,18 +1407,18 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		VALUE_PAIR **array, **last;
 
 		array = malloc(num_vps * sizeof(VALUE_PAIR *));
-		
+
 		i = 0;
 		for (vp = packet->vps; vp != NULL; vp = vp->next) {
 			array[i++] = vp;
 		}
-		
+
 		/*
 		 *	Sort the attributes.
 		 */
 		qsort(array, (size_t) num_vps, sizeof(VALUE_PAIR *),
 		      attr_cmp);
-		
+
 		last = &packet->vps;
 		for (i = 0; i < num_vps; i++) {
 			*last = array[i];
@@ -1514,7 +1517,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 				fr_strerror_printf("WARNING Ignoring too long attribute %s!", vp->da->name);
 				break;
 			}
-			
+
 			*plength += length;
 			p += length;
 
