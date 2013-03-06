@@ -257,6 +257,13 @@ int sql_userparse(VALUE_PAIR **head, rlm_sql_row_t row)
 			pairbasicfree(vp);
 			return -1;
 		}
+	} else {
+		if (pairparsevalue(vp, value) < 0) {
+			radlog(L_ERR, "rlm_sql: Error parsing value");
+			
+			pairbasicfree(vp);
+			return -1;
+		}
 	}
 
 	/*
@@ -412,8 +419,9 @@ int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle, VALUE_PAIR **pair
 	rlm_sql_row_t row;
 	int     rows = 0;
 
-	if (rlm_sql_select_query(handle, inst, query))
+	if (rlm_sql_select_query(handle, inst, query)) {
 		return -1;
+	}
 
 	while (rlm_sql_fetch_row(handle, inst) == 0) {
 		row = (*handle)->row;
