@@ -1833,7 +1833,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
  */
 FR_TOKEN userparse(const char *buffer, VALUE_PAIR **first_pair)
 {
-	VALUE_PAIR	*vp;
+	VALUE_PAIR	*vp, *head, **tail;
 	const char	*p;
 	FR_TOKEN	last_token = T_OP_INVALID;
 	FR_TOKEN	previous_token;
@@ -1844,20 +1844,30 @@ FR_TOKEN userparse(const char *buffer, VALUE_PAIR **first_pair)
 	if (buffer[0] == 0)
 		return T_EOL;
 
+	head = NULL;
+	tail = &head;
+
 	p = buffer;
 	do {
 		previous_token = last_token;
 		if ((vp = pairread(&p, &last_token)) == NULL) {
-			return last_token;
+			break;
 		}
-		pairadd(first_pair, vp);
+		*tail = vp;
+		tail = &((*tail)->next);
 	} while (*p && (last_token == T_COMMA));
 
 	/*
 	 *	Don't tell the caller that there was a comment.
 	 */
 	if (last_token == T_HASH) {
-		return previous_token;
+		last_token = previous_token;
+	}
+
+	if (last_token == T_OP_INVALID) {
+		pairfree(&head);
+	} else {
+		pairadd(first_pair, head);
 	}
 
 	/*
