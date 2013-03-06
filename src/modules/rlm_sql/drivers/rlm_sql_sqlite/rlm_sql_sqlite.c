@@ -15,7 +15,7 @@
  
 /**
  * $Id$
- * @file sql_sqlite.c
+ * @file rlm_sql_sqlite.c
  * @brief SQLite driver.
  *
  * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
