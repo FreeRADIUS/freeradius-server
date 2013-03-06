@@ -142,8 +142,8 @@ static int sql_destroy_socket(rlm_sql_handle_t *handle,
 	return 0;
 }
 
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
-		     char *querystr)
+static int sql_select_query(rlm_sql_handle_t * handle,
+			   UNUSED rlm_sql_config_t *config, char *querystr)
 {
 	int status;
 	rlm_sql_conn_t *conn = handle->conn;
@@ -154,6 +154,23 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 				    &z_tail);
 				 
 	conn->col_count = 0;
+		
+	return sql_check_error(conn->db);
+}
+
+
+static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
+		     char *querystr)
+{
+	int status;
+	rlm_sql_conn_t *conn = handle->conn;
+	const char *z_tail;
+	
+	status = sqlite3_prepare_v2(conn->db, querystr,
+				    strlen(querystr), &conn->statement,
+				    &z_tail);
+				    
+	status = sqlite3_step(conn->statement);
 		
 	return sql_check_error(conn->db);
 }
@@ -362,7 +379,7 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	sql_init_socket,
 	sql_destroy_socket,
 	sql_query,
-	sql_query,
+	sql_select_query,
 	sql_store_result,
 	sql_num_fields,
 	sql_num_rows,
