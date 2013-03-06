@@ -249,7 +249,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	int status;
 	rlm_sql_conn *conn = handle->conn;
 	
-	int i = 0, col_type;
+	int i = 0;
 	
 	char **row;
 
@@ -295,8 +295,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	
 	for (i = 0; i < conn->col_count; i++)
 	{
-		col_type = sqlite3_column_type(conn->statement, i);
-		switch (col_type)
+		switch (sqlite3_column_type(conn->statement, i))
 		{
 		case SQLITE_INTEGER:	   
 			row[i] = talloc_asprintf(row, "%d",
