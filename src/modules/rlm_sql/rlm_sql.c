@@ -1078,9 +1078,12 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 		}
 		
 		if (rows > 0) {
-			if (!inst->config->read_groups)
+			if (!inst->config->read_groups) {
 				dofallthrough = fallthrough(reply_tmp);
-				
+			}
+			
+			RDEBUG2("User found in radreply table");
+			
 			radius_xlat_move(request, &request->reply->vps, &reply_tmp);
 			
 			ret = RLM_MODULE_OK;
