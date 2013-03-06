@@ -215,25 +215,25 @@ int sql_userparse(VALUE_PAIR **head, rlm_sql_row_t row)
 
 		token = gettoken(&value, buf, sizeof(buf));
 		switch (token) {
-			/*
-			 *	Take the unquoted string.
-			 */
+		/*
+		 *	Take the unquoted string.
+		 */
 		case T_SINGLE_QUOTED_STRING:
 		case T_DOUBLE_QUOTED_STRING:
 			value = buf;
 			break;
 
-			/*
-			 *	Mark the pair to be allocated later.
-			 */
+		/*
+		 *	Mark the pair to be allocated later.
+		 */
 		case T_BACK_QUOTED_STRING:
 			value = NULL;
 			do_xlat = 1;
 			break;
 
-			/*
-			 *	Keep the original string.
-			 */
+		/*
+		 *	Keep the original string.
+		 */
 		default:
 			value = row[3];
 			break;
