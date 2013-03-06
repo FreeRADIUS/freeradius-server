@@ -49,6 +49,8 @@ typedef struct CONF_PARSER {
 #define XStringify(x) #x
 #define Stringify(x) XStringify(x)
 
+CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, const char *name1,
+			          const char *name2);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp,
 				const char *value);
 int		cf_item_parse(CONF_SECTION *cs, const char *name,
@@ -58,7 +60,7 @@ int		cf_section_parse(CONF_SECTION *, void *base,
 const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs);
 CONF_SECTION	*cf_file_read(const char *file);
 void		cf_file_free(CONF_SECTION *cs);
-int		cf_file_include(const char *file, CONF_SECTION *cs);
+int		cf_file_include(CONF_SECTION *cs, const char *file);
 
 CONF_PAIR	*cf_pair_find(const CONF_SECTION *, const char *name);
 CONF_PAIR	*cf_pair_find_next(const CONF_SECTION *, const CONF_PAIR *, const char *name);
@@ -95,10 +97,10 @@ CONF_ITEM *cf_item_find_next(const CONF_SECTION *section, const CONF_ITEM *item)
 CONF_SECTION *cf_item_parent(const CONF_ITEM *ci);
 int cf_item_is_section(const CONF_ITEM *item);
 int cf_item_is_pair(const CONF_ITEM *item);
-CONF_PAIR *cf_itemtopair(CONF_ITEM *item);
-CONF_SECTION *cf_itemtosection(CONF_ITEM *item);
-CONF_ITEM *cf_pairtoitem(CONF_PAIR *cp);
-CONF_ITEM *cf_sectiontoitem(CONF_SECTION *cs);
+CONF_PAIR *cf_itemtopair(const CONF_ITEM *item);
+CONF_SECTION *cf_itemtosection(const CONF_ITEM *item);
+CONF_ITEM *cf_pairtoitem(const CONF_PAIR *cp);
+CONF_ITEM *cf_sectiontoitem(const CONF_SECTION *cs);
 int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template);
 void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 #ifdef __GNUC__
