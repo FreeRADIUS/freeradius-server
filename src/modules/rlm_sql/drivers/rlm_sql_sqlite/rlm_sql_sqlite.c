@@ -303,6 +303,11 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 						 sqlite3_column_int(conn->statement, i));
 			break;
 			
+		case SQLITE_FLOAT:
+			row[i] = talloc_asprintf(row, "%f",
+						 sqlite3_column_double(conn->statement, i));
+			break;
+			
 		case SQLITE_TEXT:
 			{
 				const char *p;
