@@ -76,9 +76,12 @@ typedef struct sql_config {
 	sql_acct_section_t	*accounting;
 } rlm_sql_config_t;
 
+typedef struct sql_inst rlm_sql_t;
+
 typedef struct rlm_sql_handle {
 	void	*conn;
 	rlm_sql_row_t row;
+	rlm_sql_t *inst;
 } rlm_sql_handle_t;
 
 typedef struct rlm_sql_module_t {
@@ -99,8 +102,6 @@ typedef struct rlm_sql_module_t {
 	int (*sql_finish_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_affected_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 } rlm_sql_module_t;
-
-typedef struct sql_inst rlm_sql_t;
 
 struct sql_inst {
 	fr_connection_pool_t	*pool;

@@ -28,6 +28,7 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/rad_assert.h>
 
 #include	<sys/file.h>
 #include	<sys/stat.h>
@@ -39,6 +40,25 @@ RCSID("$Id$")
 #ifdef HAVE_PTHREAD_H
 #endif
 
+static int sql_conn_destructor(void *conn)
+{
+	rlm_sql_handle_t *handle = conn;
+	rlm_sql_t *inst = handle->inst;
+	
+	rad_assert(inst);
+	
+	exec_trigger(NULL, inst->cs, "modules.sql.close", FALSE);
+
+	if (handle->conn) {
+		(inst->module->sql_close)(handle, inst->config);
+	}
+	
+	if (inst->module->sql_destroy_socket) {
+		(inst->module->sql_destroy_socket)(handle, inst->config);
+	}
+	
+	return 0;
+}
 
 static void *sql_conn_create(void *ctx)
 {
@@ -46,39 +66,35 @@ static void *sql_conn_create(void *ctx)
 	rlm_sql_t *inst = ctx;
 	rlm_sql_handle_t *handle;
 
-	handle = rad_calloc(sizeof(*handle));
+	handle = talloc_zero(ctx, rlm_sql_handle_t);
+	
+	/*
+	 *	Handle requires a pointer to the SQL inst so the
+	 *	destructor has access to the module configuration.
+	 */
+	handle->inst = inst;
+	talloc_set_destructor((void *) handle, sql_conn_destructor);
 
 	rcode = (inst->module->sql_init_socket)(handle, inst->config);
 	if (rcode == 0) {
-	  exec_trigger(NULL, inst->cs, "modules.sql.open", FALSE);
+		exec_trigger(NULL, inst->cs, "modules.sql.open", FALSE);
+		
 		return handle;
 	}
 
 	exec_trigger(NULL, inst->cs, "modules.sql.fail", TRUE);
 
-	free(handle);
+	talloc_free(handle);
 	return NULL;
 }
 
-
-static int sql_conn_delete(void *ctx, void *connection)
-{
-	rlm_sql_t *inst = ctx;
-	rlm_sql_handle_t *handle = connection;
-
-	exec_trigger(NULL, inst->cs, "modules.sql.close", FALSE);
-
-	if (handle->conn) {
-		(inst->module->sql_close)(handle, inst->config);
-	}
-	if (inst->module->sql_destroy_socket) {
-		(inst->module->sql_destroy_socket)(handle, inst->config);
-	}
-	free(handle);
-
-	return 0;
+/*
+ *	@todo Calls to this should eventually go away.
+ */
+static int sql_conn_delete(UNUSED void *ctx, void *conn)
+{	
+	return talloc_free(conn);
 }
-
 
 /*************************************************************************
  *
