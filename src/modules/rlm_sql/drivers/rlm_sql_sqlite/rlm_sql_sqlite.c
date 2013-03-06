@@ -37,6 +37,16 @@ typedef struct rlm_sql_conn {
 	int col_count;
 } rlm_sql_conn_t;
 
+typedef struct rlm_sql_sqlite_config {
+	const char *filename;
+} rlm_sql_sqlite_config_t;
+
+static const CONF_PARSER driver_config[] = {
+	{"filename", PW_TYPE_STRING_PTR,
+	 offsetof(rlm_sql_sqlite_config_t, filename), NULL, NULL},
+	
+	{NULL, -1, 0, NULL, NULL}
+};
 
 static int sql_check_error(sqlite3 *db)
 {
@@ -70,10 +80,29 @@ static int sql_check_error(sqlite3 *db)
 	 */
 	default:
 		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, SQLite "
-		       "error  (%d): %s", error, sqlite3_errmsg(db));
+		       "error (%d): %s", error, sqlite3_errmsg(db));
 		return SQL_DOWN;
 		break;
 	}
+}
+
+static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
+{
+	rlm_sql_sqlite_config_t *driver;
+	
+	MEM(driver = config->driver = talloc_zero(config, rlm_sql_sqlite_config_t));
+	
+	if (cf_section_parse(conf, driver, driver_config) < 0) {
+		return -1;
+	}
+	
+	if (!driver->filename) {
+		MEM(driver->filename = talloc_asprintf(driver, "%s/%s",
+						       radius_dir,
+						       config->sql_db));
+	}
+	
+	return 0;
 }
 
 /*************************************************************************
@@ -86,26 +115,19 @@ static int sql_check_error(sqlite3 *db)
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_conn_t *conn;
+	rlm_sql_sqlite_config_t *driver = config->driver;
+	
 	int status;
-	const char *filename;
-	char buffer[2048];
 
 	if (!conn) {
-		MEM(handle->conn = talloc_zero(NULL, rlm_sql_conn));
+		MEM(handle->conn = talloc_zero(NULL, rlm_sql_conn_t));
 	}
 	
 	conn = handle->conn;
+
+	DEBUG("rlm_sql_sqlite: Opening SQLite database %s", driver->filename);
 	
-	filename = config->sql_file;
-	if (!filename) {
-		snprintf(buffer, sizeof(buffer), "%s/sqlite_radius_client_database",
-			 radius_dir);
-		filename = buffer;
-	}
-	
-	DEBUG("rlm_sql_sqlite: Opening SQLite database %s", filename);
-	
-	status = sqlite3_open(filename, &(conn->db));
+	status = sqlite3_open(driver->filename, &(conn->db));
 	if (status != SQLITE_OK) {
 		return sql_check_error(conn->db);
 	}

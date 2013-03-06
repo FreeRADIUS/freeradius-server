@@ -36,7 +36,7 @@ typedef struct sql_acct_section {
 typedef struct sql_config {
 	const char 	*xlat_name;
 
-	const char 	*sql_driver;
+	const char 	*sql_driver_name;
 	const char 	*sql_server;
 	const char 	*sql_port;
 	const char 	*sql_login;
@@ -64,14 +64,18 @@ typedef struct sql_config {
 	int const	deletestalesessions;
 	const char	*allowed_chars;
 	int const	query_timeout;
-	void		*localcfg;	/*individual driver config */
+	
+	void		*driver;	//!< Where drivers should write a
+					//!< pointer to their configurations.
 	
 	/*
-	 *TODO: The rest of the queries should also be moved into their own
-	 *sections.
+	 *	@todo The rest of the queries should also be moved into
+	 *	their own sections.
 	 */
 	
-	/*Section configurations */
+	/*
+	 *	Section configurations
+	 */
 	sql_acct_section_t	*postauth;
 	sql_acct_section_t	*accounting;
 } rlm_sql_config_t;
@@ -86,7 +90,8 @@ typedef struct rlm_sql_handle {
 
 typedef struct rlm_sql_module_t {
 	const char *name;
-	
+
+	int (*sql_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);	
 	int (*sql_init_socket)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_destroy_socket)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query);

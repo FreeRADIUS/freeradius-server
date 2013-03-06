@@ -48,7 +48,7 @@ static const CONF_PARSER acct_section_config[] = {
 
 static const CONF_PARSER module_config[] = {
 	{"driver", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_sql_config_t,sql_driver), NULL, "mysql"},
+	 offsetof(rlm_sql_config_t,sql_driver_name), NULL, "mysql"},
 	{"server", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,sql_server), NULL, "localhost"},
 	{"port", PW_TYPE_STRING_PTR,
@@ -59,8 +59,6 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(rlm_sql_config_t,sql_password), NULL, ""},
 	{"radius_db", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,sql_db), NULL, "radius"},
-	{"filename", PW_TYPE_FILENAME, /* for sqlite */
-	 offsetof(rlm_sql_config_t,sql_file), NULL, NULL},
 	{"read_groups", PW_TYPE_BOOLEAN,
 	 offsetof(rlm_sql_config_t,read_groups), NULL, "yes"},
 	{"readclients", PW_TYPE_BOOLEAN,
@@ -824,8 +822,10 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	 *	more efficient about creating SQL-User-Name attributes.
 	 */
 	inst->sql_user = dict_attrbyname("SQL-User-Name");
-	if (!inst->sql_user) return -1;
-
+	if (!inst->sql_user) {
+		return -1;
+	}
+	
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */
@@ -905,19 +905,19 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Sanity check for crazy people.
 	 */
-	if (strncmp(inst->config->sql_driver, "rlm_sql_", 8) != 0) {
+	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
 		radlog(L_ERR, "rlm_sql (%s): \"%s\" is NOT an SQL driver!",
-		       inst->config->xlat_name, inst->config->sql_driver);
+		       inst->config->xlat_name, inst->config->sql_driver_name);
 		return -1;
 	}
 
 	/*
 	 *	Load the appropriate driver for our database
 	 */
-	inst->handle = lt_dlopenext(inst->config->sql_driver);
+	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
 	if (inst->handle == NULL) {
 		radlog(L_ERR, "Could not link driver %s: %s",
-		       inst->config->sql_driver,
+		       inst->config->sql_driver_name,
 		       lt_dlerror());
 		radlog(L_ERR, "Make sure it (and all its dependent libraries!)"
 		       "are in the search path of your system's ld.");
@@ -925,16 +925,25 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	inst->module = (rlm_sql_module_t *) lt_dlsym(inst->handle,
-						     inst->config->sql_driver);
+						     inst->config->sql_driver_name);
 	if (!inst->module) {
 		radlog(L_ERR, "Could not link symbol %s: %s",
-		       inst->config->sql_driver,
+		       inst->config->sql_driver_name,
 		       lt_dlerror());
 		return -1;
 	}
+	
+	if (inst->module->sql_instantiate) {	
+		/*
+		 *	It's up to the driver to register a destructor
+		 */
+		if (inst->module->sql_instantiate(cf_section_sub_find(conf, inst->config->sql_driver_name), inst->config) < 0) {
+			return -1;
+		}
+	}
 
 	radlog(L_INFO, "rlm_sql (%s): Driver %s (module %s) loaded and linked",
-	       inst->config->xlat_name, inst->config->sql_driver,
+	       inst->config->xlat_name, inst->config->sql_driver_name,
 	       inst->module->name);
 
 	/*

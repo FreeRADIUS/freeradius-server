@@ -395,6 +395,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_iodbc = {
 	"rlm_sql_iodbc",
+	NULL,
 	sql_init_socket,
 	sql_destroy_socket,
 	sql_query,

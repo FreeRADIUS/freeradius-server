@@ -904,6 +904,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_sybase = {
 	"rlm_sql_sybase",
+	NULL,
 	sql_init_socket,
 	sql_destroy_socket,
 	sql_query,

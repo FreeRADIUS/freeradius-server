@@ -340,6 +340,7 @@ not_implemented(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *confi
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_db2 = {
 	"rlm_sql_db2",
+	NULL,
 	sql_init_socket,
 	sql_destroy_socket, /* sql_destroy_socket*/
 	sql_query,

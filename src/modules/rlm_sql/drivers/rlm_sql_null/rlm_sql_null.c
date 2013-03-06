@@ -235,6 +235,7 @@ static int sql_affected_rows(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_co
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_null = {
 	"rlm_sql_null",
+	NULL,
 	sql_init_socket,
 	sql_destroy_socket,
 	sql_query,
