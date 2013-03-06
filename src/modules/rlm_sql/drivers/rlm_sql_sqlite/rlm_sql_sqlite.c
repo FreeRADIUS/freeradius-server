@@ -179,9 +179,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 				    strlen(querystr), &conn->statement,
 				    &z_tail);
 				 
-	if (status != SQLITE_OK) {
-		conn->col_count = 0;
-	}
+	conn->col_count = 0;
 		
 	return sql_check_error(conn->db);
 }
