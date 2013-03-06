@@ -82,6 +82,10 @@ static void *sql_conn_create(void *ctx)
 		return handle;
 	}
 
+	radlog(L_ERR, "rlm_sql (%s): Error opening connection: %s",
+	       inst->config->xlat_name,
+	       (inst->module->sql_error)(handle, inst->config));
+
 	exec_trigger(NULL, inst->cs, "modules.sql.fail", TRUE);
 
 	talloc_free(handle);
