@@ -946,10 +946,10 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 		
 		cs = cf_section_sub_find(conf, name);
 		if (!cs) {
-			radlog(L_ERR, "%s driver requires %s driver subsection",
-		       	       inst->config->sql_driver_name, name);
-		       	       
-		       	 return -1;
+			cs = cf_section_alloc(conf, name, NULL);
+			if (!cs) {
+				return -1;
+			}
 		}
 		
 		/*
