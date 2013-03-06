@@ -35,7 +35,7 @@ typedef struct rlm_sql_conn {
 	sqlite3 *db;
 	sqlite3_stmt *statement;
 	int col_count;
-} rlm_sql_conn;
+} rlm_sql_conn_t;
 
 
 static int sql_check_error(sqlite3 *db)
@@ -85,7 +85,7 @@ static int sql_check_error(sqlite3 *db)
  *************************************************************************/
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	rlm_sql_conn *conn;
+	rlm_sql_conn_t *conn;
 	int status;
 	const char *filename;
 	char buffer[2048];
@@ -150,7 +150,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		     char *querystr)
 {
 	int status;
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
 	const char *z_tail;
 	
 	status = sqlite3_prepare_v2(conn->db, querystr,
@@ -190,7 +190,7 @@ static int sql_store_result(UNUSED rlm_sql_handle_t * handle,
 static int sql_num_fields(rlm_sql_handle_t * handle,
 			  UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
 	
 	if (conn->statement) {
 		return sqlite3_column_count(conn->statement);
@@ -211,7 +211,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle,
 static int sql_num_rows(rlm_sql_handle_t * handle,
 			UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
 	
 	if (conn->statement) {
 		return sqlite3_data_count(conn->statement);
@@ -232,7 +232,7 @@ static int sql_num_rows(rlm_sql_handle_t * handle,
 static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int status;
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
 	
 	int i = 0;
 	
@@ -338,7 +338,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 static int sql_free_result(rlm_sql_handle_t *handle,
 			   UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
 	
 	if (conn->statement) {
 		TALLOC_FREE(handle->row);
@@ -370,7 +370,7 @@ static int sql_free_result(rlm_sql_handle_t *handle,
 static const char *sql_error(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
 
 	if (conn->db) {
 		return sqlite3_errmsg(conn->db);
@@ -392,7 +392,7 @@ static int sql_close(rlm_sql_handle_t *handle,
 		     UNUSED rlm_sql_config_t *config)
 {
 	int status = 0;
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
 	
 	if (conn && conn->db) {
 		status = sqlite3_close(conn->db);
@@ -427,7 +427,7 @@ static int sql_finish_query(rlm_sql_handle_t *handle,
 static int sql_affected_rows(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn *conn = handle->conn;
+	rlm_sql_conn_t *conn = handle->conn;
   
 	if (conn->db) {
 		return sqlite3_changes(conn->db);	
