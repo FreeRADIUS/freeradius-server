@@ -116,7 +116,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	       driver->filename);
 	
 	status = sqlite3_open_v2(driver->filename, &(conn->db),
-				 SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
+				 SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX,
 				 NULL);
 	if (status != SQLITE_OK) {
 		return sql_check_error(conn->db);
