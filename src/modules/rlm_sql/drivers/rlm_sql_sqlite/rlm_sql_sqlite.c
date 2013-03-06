@@ -291,9 +291,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	/*
 	 *	Free the previous result (also gets called on finish_query)
 	 */
-	if (handle->row) {
-		talloc_free(handle->row);	
-	}
+	talloc_free(handle->row);
 	
 	MEM(row = handle->row = talloc_zero_array(handle->conn, char *,
 					    	  conn->col_count + 1));
