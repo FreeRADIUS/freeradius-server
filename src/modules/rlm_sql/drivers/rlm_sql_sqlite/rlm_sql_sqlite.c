@@ -284,8 +284,12 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	}
 
 	/*
-	 *	Results should probably
+	 *	Free the previous result (also gets called on finish_query)
 	 */
+	if (handle->row) {
+		talloc_free(handle->row);	
+	}
+	
 	MEM(row = handle->row = talloc_zero_array(handle->conn, char *,
 					    	  conn->col_count + 1));
 	
@@ -431,9 +435,10 @@ static int sql_finish_query(rlm_sql_handle_t *handle,
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static int sql_finish_select_query(rlm_sql_handle_t *handle,
+				   rlm_sql_config_t *config)
 {
-	return sql_finish_query(handle, config);
+	return sql_free_result(handle, config);
 }
 
 
@@ -445,7 +450,8 @@ static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *
  *		 statement 
  *
  *************************************************************************/
-static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_affected_rows(rlm_sql_handle_t *handle,
+			     UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_conn *conn = handle->conn;
   
