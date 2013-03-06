@@ -1901,7 +1901,7 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
  * @note the valuepair list should probably be freed.
  *
  * @param buffer to read valuepairs from.
- * @param head of the list.
+ * @param list where the parsed VALUE_PAIRs will be appended.
  * @return the last token parsed, or T_OP_INVALID
  */
 FR_TOKEN userparse(const char *buffer, VALUE_PAIR **list)
