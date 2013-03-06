@@ -2,8 +2,9 @@ language: c
 compiler:
   - clang
   - gcc
-script: ./configure -C && make && make test
 before_install:
   - sudo apt-get update -qq
-  - sudo apt-get install -qq -y libtalloc-dev libssl-dev
-  - sudo apt-get install -qq -y libkrb5-dev libgdbm-dev libhiredis-dev libldap2-dev libmysqlclient-dev libpam0g-dev libpcap-dev libperl-dev libpq-dev libreadline-dev python-dev ruby-dev unixodbc-dev
+  - sudo apt-get install -qq libtalloc-dev libssl-dev
+  - sudo apt-get install -qq -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
+  - sudo apt-get install -qq libkrb5-dev libgdbm-dev libhiredis-dev libldap2-dev libpam0g-dev libpcap-dev libperl-dev libpq-dev libreadline-dev firebird-dev freetds-dev python-dev ruby-dev unixodbc-dev
+script: ./configure -C && make -j8 && make test
