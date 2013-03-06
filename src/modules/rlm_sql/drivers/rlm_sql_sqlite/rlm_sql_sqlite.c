@@ -31,12 +31,50 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-typedef struct rlm_sql_sqlite_sock {
-	sqlite3 *pDb;
-	sqlite3_stmt *pStmt;
-	int columnCount;
-} rlm_sql_sqlite_sock;
+typedef struct rlm_sql_conn {
+	sqlite3 *db;
+	sqlite3_stmt *statement;
+	int col_count;
+} rlm_sql_conn;
 
+
+static int sql_check_error(sqlite3 *db)
+{
+	int error = sqlite3_errcode(db);
+	/*
+	 *	Only check the first byte of error code, extended
+	 *	result codes occupy the second byte.
+	 */
+	switch(error) {
+	/*
+	 *	Not errors
+	 */
+	case SQLITE_OK:
+	case SQLITE_DONE:
+	case SQLITE_ROW:
+		return 0;
+	/*
+	 *	User/transient errors
+	 */
+	case SQLITE_FULL:
+	case SQLITE_CONSTRAINT:
+	case SQLITE_MISMATCH:
+		radlog(L_ERR, "rlm_sql_sqlite: SQLite error (%d): %s", error,
+		       sqlite3_errmsg(db));
+		
+		return -1;
+		break;
+		
+	/*
+	 *	Errors with the handle, that probably require reinitialisation
+	 */
+	default:
+		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, SQLite "
+		       "error  (%d): %s", error, sqlite3_errmsg(db));
+		return SQL_DOWN;
+		break;
+	}
+}
 
 /*************************************************************************
  *
@@ -47,19 +85,16 @@ typedef struct rlm_sql_sqlite_sock {
  *************************************************************************/
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
+	rlm_sql_conn *conn;
 	int status;
-	rlm_sql_sqlite_sock *sqlite_sock;
-	char *filename;
+	const char *filename;
 	char buffer[2048];
-	
-	if (!handle->conn) {
-		handle->conn = (rlm_sql_sqlite_sock *)rad_malloc(sizeof(rlm_sql_sqlite_sock));
-		if (!handle->conn) {
-			return -1;
-		}
+
+	if (!conn) {
+		MEM(handle->conn = talloc_zero(NULL, rlm_sql_conn));
 	}
-	sqlite_sock = handle->conn;
-	memset(sqlite_sock, 0, sizeof(rlm_sql_sqlite_sock));
+	
+	conn = handle->conn;
 	
 	filename = config->sql_file;
 	if (!filename) {
@@ -67,12 +102,20 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 			 radius_dir);
 		filename = buffer;
 	}
-	DEBUG("rlm_sql_sqlite: Opening sqlite database %s",
-	       filename);
 	
-	status = sqlite3_open(filename, &sqlite_sock->pDb);
-	radlog(L_INFO, "rlm_sql_sqlite: sqlite3_open() = %d\n", status);
-	return (status != SQLITE_OK) * -1;
+	DEBUG("rlm_sql_sqlite: Opening SQLite database %s", filename);
+	
+	status = sqlite3_open(filename, &(conn->db));
+	if (status != SQLITE_OK) {
+		return sql_check_error(conn->db);
+	}
+	
+	/*
+	 *	Enable extended return codes for extra debugging info.
+	 */
+	status = sqlite3_extended_result_codes(conn->db, 1);
+	
+	return sql_check_error(conn->db);
 }
 
 
@@ -83,18 +126,14 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *	Purpose: Free socket and any private connection data
  *
  *************************************************************************/
-static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static int sql_destroy_socket(rlm_sql_handle_t *handle,
+			      UNUSED rlm_sql_config_t *config)
 {
-	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
+	if (!handle->conn) {
+		return 0;
+	}
 
-	if (sqlite_sock && sqlite_sock->pDb) {
-		status = sqlite3_close(sqlite_sock->pDb);
-		radlog(L_INFO, "rlm_sql_sqlite: sqlite3_close() = %d\n", status);
-	}
-	else {
-		radlog(L_INFO, "rlm_sql_sqlite: sql_destroy_socket noop.\n");
-	}
+	TALLOC_FREE(handle->conn);
 	
 	return 0;
 }
@@ -104,26 +143,25 @@ static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t 
  *
  *	Function: sql_query
  *
- *	Purpose: Issue a query to the database
+ *	Purpose: Prepare a query for execution.
  *
  *************************************************************************/
 static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		     char *querystr)
 {
 	int status;
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
-	const char *zTail;
+	rlm_sql_conn *conn = handle->conn;
+	const char *z_tail;
 	
-	if (sqlite_sock->pDb == NULL) {
-		radlog(L_ERR, "rlm_sql_sqlite: Socket not connected");
-		return SQL_DOWN;
+	status = sqlite3_prepare_v2(conn->db, querystr,
+				    strlen(querystr), &conn->statement,
+				    &z_tail);
+				 
+	if (status != SQLITE_OK) {
+		conn->col_count = 0;
 	}
-	
-	status = sqlite3_prepare(sqlite_sock->pDb, querystr, strlen(querystr), &sqlite_sock->pStmt, &zTail);
-	radlog(L_DBG, "rlm_sql_sqlite: sqlite3_prepare() = %d\n", status);
-	sqlite_sock->columnCount = 0;
-	
-	return (status == SQLITE_OK) ? 0 : SQL_DOWN;
+		
+	return sql_check_error(conn->db);
 }
 
 
@@ -149,7 +187,8 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
  *               set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_store_result(UNUSED rlm_sql_handle_t * handle,
+			    UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -163,12 +202,14 @@ static int sql_store_result(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_con
  *               of columns from query
  *
  *************************************************************************/
-static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_fields(rlm_sql_handle_t * handle,
+			  UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
+	rlm_sql_conn *conn = handle->conn;
 	
-	if (sqlite_sock->pStmt)
-		return sqlite3_column_count(sqlite_sock->pStmt);
+	if (conn->statement) {
+		return sqlite3_column_count(conn->statement);
+	}
 	
 	return 0;
 }
@@ -182,37 +223,17 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
  *               query
  *
  *************************************************************************/
-static int sql_num_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_num_rows(rlm_sql_handle_t * handle,
+			UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
+	rlm_sql_conn *conn = handle->conn;
 	
-	if (sqlite_sock->pStmt)
-		return sqlite3_data_count(sqlite_sock->pStmt);
+	if (conn->statement) {
+		return sqlite3_data_count(conn->statement);
+	}
 	
 	return 0;
 }
-
-
-/*************************************************************************
- *	Function: sql_free_rowdata
- *************************************************************************/
-static void sql_free_rowdata(rlm_sql_handle_t * handle, int colcount)
-{
-	char **rowdata = handle->row;
-	int colindex;
-	
-	if (rowdata != NULL) {
-		for (colindex = 0; colindex < colcount; colindex++) {
-			if (rowdata[colindex] != NULL) {
-				free(rowdata[colindex]);
-				rowdata[colindex] = NULL;
-			}
-		}
-		free(handle->row);
-		handle->row = NULL;
-	}
-}
-
 
 /*************************************************************************
  *
@@ -223,82 +244,93 @@ static void sql_free_rowdata(rlm_sql_handle_t * handle, int colcount)
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
-static int sql_fetch_row(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	int returnCode = -1;
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
-	const char *blob;
-	int blobLen;
 	int status;
-	int colindex = 0;
-	int colcount = 0;
-	int coltype = 0;
-	int colintvalue = 0;
-	int ret_blob_size = 0;
-	char **rowdata = NULL;
-	const unsigned char *textStr;
-	char intStr[256];
+	rlm_sql_conn *conn = handle->conn;
 	
-	status = sqlite3_step(sqlite_sock->pStmt);
-	radlog(L_DBG, "rlm_sql_sqlite: sqlite3_step = %d\n", status);
+	int i = 0, col_type;
+	
+	char **row;
+
+	/*
+	 *	Executes the SQLite query and interates over the results
+	 */
+	status = sqlite3_step(conn->statement);
+	
+	/*
+	 *	Error getting next row
+	 */
+	if (sql_check_error(conn->db)) {
+		return -1;
+	}
+
+	/*
+	 *	No more rows to process (were done)
+	 */
 	if (status == SQLITE_DONE) {
-		sql_free_rowdata(handle, sqlite_sock->columnCount);
-		return 0;
-	}
-	else if (status == SQLITE_ROW) {
-		if (sqlite_sock->columnCount == 0) {
-			sqlite_sock->columnCount = sql_num_fields(handle, config);
-		}
-		colcount = sqlite_sock->columnCount;
-		if (colcount == 0)
-			return -1;
-		
-		sql_free_rowdata(handle, colcount);
-		
-		ret_blob_size = sizeof(char *) * (colcount+1);
-		rowdata = (char **)rad_malloc(ret_blob_size);		/* Space for pointers */
-		if (rowdata != NULL) {
-			memset(rowdata, 0, ret_blob_size);				/* NULL-pad the pointers */
-			handle->row = rowdata;
-		}
-		
-		for (colindex = 0; colindex < colcount; colindex++)
-		{
-			coltype = sqlite3_column_type(sqlite_sock->pStmt, colindex);
-			switch (coltype)
-			{
-				case SQLITE_INTEGER:
-					colintvalue = sqlite3_column_int(sqlite_sock->pStmt, colindex);
-					snprintf(intStr, sizeof(intStr), "%d", colintvalue);
-					rowdata[colindex] = strdup(intStr);
-					break;
-					
-				case SQLITE_TEXT:
-					textStr = sqlite3_column_text(sqlite_sock->pStmt, colindex);
-					if (textStr != NULL)
-						rowdata[colindex] = strdup((const char *)textStr);
-					break;
-					
-				case SQLITE_BLOB:
-					blob = sqlite3_column_blob(sqlite_sock->pStmt, colindex);
-					if (blob != NULL) {
-						blobLen = sqlite3_column_bytes(sqlite_sock->pStmt, colindex);
-						rowdata[colindex] = (char *)rad_malloc(blobLen + 1);
-						if (rowdata[colindex] != NULL) {
-							memcpy(rowdata[colindex], blob, blobLen);
-						}
-					}
-					break;
-					
-				default:
-					break;
-			}
-		}
-		
-		returnCode = 0;
+		return 1;
 	}
 	
-	return returnCode;
+	/*
+	 *	We only need to do this once per result set, because
+	 *	the number of columns won't change.
+	 */
+	if (conn->col_count == 0) {
+		conn->col_count = sql_num_fields(handle, config);
+		if (conn->col_count == 0) {
+			return -1;
+		}
+	}
+
+	/*
+	 *	Results should probably
+	 */
+	MEM(row = handle->row = talloc_zero_array(handle->conn, char *,
+					    	  conn->col_count + 1));
+	
+	for (i = 0; i < conn->col_count; i++)
+	{
+		col_type = sqlite3_column_type(conn->statement, i);
+		switch (col_type)
+		{
+		case SQLITE_INTEGER:	   
+			row[i] = talloc_asprintf(row, "%d",
+						 sqlite3_column_int(conn->statement, i));
+			break;
+			
+		case SQLITE_TEXT:
+			{
+				const char *p;
+				p = (const char *) sqlite3_column_text(conn->statement, i);
+				
+				if (p) {
+					row[i] = talloc_strdup(row, p);
+				}
+			}
+			break;
+			
+		case SQLITE_BLOB:
+			{
+				const uint8_t *p;
+				size_t len;
+
+				p = sqlite3_column_blob(conn->statement, i);
+				if (p) {
+					len = sqlite3_column_bytes(conn->statement, i);
+					
+					MEM(row[i] = talloc_zero_array(row, char, len + 1));
+					memcpy(row[i], p, len);		          
+				}
+			}
+			break;
+			
+		default:
+			break;
+		}
+	}
+	
+	return 0;
 }
 
 
@@ -310,19 +342,27 @@ static int sql_fetch_row(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
  *               for a result set
  *
  *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_free_result(rlm_sql_handle_t *handle,
+			   UNUSED rlm_sql_config_t *config)
 {
-	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
+	rlm_sql_conn *conn = handle->conn;
 	
-	if (sqlite_sock->pStmt != NULL) {
-		sql_free_rowdata(handle, sqlite_sock->columnCount);
-		status = sqlite3_finalize(sqlite_sock->pStmt);
-		sqlite_sock->pStmt = NULL;
-		radlog(L_DBG, "rlm_sql_sqlite: sqlite3_finalize() = %d\n", status);
+	if (conn->statement) {
+		TALLOC_FREE(handle->row);
+		
+		(void) sqlite3_finalize(conn->statement);
+		conn->statement = NULL;
+		conn->col_count = 0;
 	}
 	
-	return status;
+	/*
+	 *	There's no point in checking the code returned by finalize
+	 *	as it'll have already been encountered elsewhere in the code.
+	 *
+	 *	It's just the last error that occurred processing the
+	 *	statement.
+	 */
+	return 0;
 }
 
 
@@ -334,16 +374,16 @@ static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *c
  *               connection
  *
  *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static const char *sql_error(rlm_sql_handle_t *handle,
+			     UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
+	rlm_sql_conn *conn = handle->conn;
 
-	if (sqlite_sock->pDb != NULL) {
-		return sqlite3_errmsg(sqlite_sock->pDb);
+	if (conn->db) {
+		return sqlite3_errmsg(conn->db);
 	}
 
-	radlog(L_ERR, "rlm_sql_sqlite: Socket not connected");
-	return NULL;
+	return "Invalid handle";
 }
 
 
@@ -355,17 +395,18 @@ static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
  *               connection
  *
  *************************************************************************/
-static int sql_close(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_close(rlm_sql_handle_t *handle,
+		     UNUSED rlm_sql_config_t *config)
 {
 	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
+	rlm_sql_conn *conn = handle->conn;
 	
-	if (sqlite_sock && sqlite_sock->pDb) {
-		status = sqlite3_close(sqlite_sock->pDb);
-		sqlite_sock->pDb = NULL;
+	if (conn && conn->db) {
+		status = sqlite3_close(conn->db);
+		conn->db = NULL;
 	}
 	
-	return status;
+	return sql_check_error(conn->db);
 }
 
 
@@ -376,18 +417,10 @@ static int sql_close(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static int sql_finish_query(rlm_sql_handle_t *handle,
+			    UNUSED rlm_sql_config_t *config)
 {
-	int status = 0;
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
-
-	if (sqlite_sock->pStmt) {
-		status = sqlite3_finalize(sqlite_sock->pStmt);
-		sqlite_sock->pStmt = NULL;
-		radlog(L_DBG, "rlm_sql_sqlite: sqlite3_finalize() = %d\n", status);
-	}
-	
-	return status;
+	return sql_free_result(handle, config);
 }
 
 
@@ -414,16 +447,13 @@ static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *
  *************************************************************************/
 static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
-	int result = -1;
-
-	rlm_sql_sqlite_sock *sqlite_sock = handle->conn;
+	rlm_sql_conn *conn = handle->conn;
   
-	if (sqlite_sock->pDb != NULL) {
-		result = sqlite3_changes(sqlite_sock->pDb);	
-		DEBUG3("rlm_sql_sqlite: sql_affected_rows() = %i\n", result);
+	if (conn->db) {
+		return sqlite3_changes(conn->db);	
 	}  
 
-	return result;
+	return -1;
 }
 
 
