@@ -85,8 +85,8 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 * It's invalid to have giaddr=0 AND a relay option
 	 */
 	giaddrvp = vp = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
-	if ((vp && (vp->vp_ipaddr == htonl(INADDR_ANY)) &&
-	     pairfind(request->packet->vps, 82, TAG_ANY), DHCP_MAGIC_VENDOR)) { /* DHCP-Relay-Agent-Information */
+	if (vp && (vp->vp_ipaddr == htonl(INADDR_ANY)) &&
+	    pairfind(request->packet->vps, 82, TAG_ANY), DHCP_MAGIC_VENDOR) { /* DHCP-Relay-Agent-Information */
 		DEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet\n");
 		return 1;
 	}
@@ -96,7 +96,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 *
 	 * Drop requests if hop-count > 16 or admin specified another value
 	 */
-	if ((vp = pairfind(request->config_items, 271, DHCP_MAGIC_VENDOR, TAG_ANY))) { /* DHCP-Relay-Max-Hop-Count */
+	if (vp = pairfind(request->config_items, 271, DHCP_MAGIC_VENDOR, TAG_ANY)) { /* DHCP-Relay-Max-Hop-Count */
 	    maxhops = vp->vp_integer;
 	}
 	vp = pairfind(request->packet->vps, 259, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Hop-Count */
@@ -174,9 +174,9 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 
 	if ((request->packet->code == PW_DHCP_NAK) ||
 	    ((vp = pairfind(request->packet->vps, 262, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Flags */ &&
-		(vp->vp_integer & 0x8000) &&
-		((vp = pairfind(request->packet->vps, 263, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
-		 (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
+	     (vp->vp_integer & 0x8000) &&
+	     ((vp = pairfind(request->packet->vps, 263, DHCP_MAGIC_VENDOR, TAG_ANY)) /* DHCP-Client-IP-Address */ &&
+	      (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
 		/*
 		 * RFC 2131, page 23
 		 *
@@ -392,7 +392,7 @@ static int dhcp_process(REQUEST *request)
 		uint32_t attr = attrnums[i];
 
 		if (pairfind(request->reply->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY)) continue;
-		if ((vp = pairfind(request->packet->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY))) {
+		if (vp = pairfind(request->packet->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY)) {
 			pairadd(&request->reply->vps, paircopyvp(vp));
 		}
 	}
@@ -443,7 +443,7 @@ static int dhcp_process(REQUEST *request)
 	 */
 	if ((request->reply->code == PW_DHCP_NAK) ||
 	    ((vp = pairfind(request->reply->vps, 262, DHCP_MAGIC_VENDOR, TAG_ANY)) && /* DHCP-Flags */
-		    (vp->vp_integer & 0x8000) &&
+	     (vp->vp_integer & 0x8000) &&
 	     ((vp = pairfind(request->reply->vps, 263, DHCP_MAGIC_VENDOR, TAG_ANY)) && /* DHCP-Client-IP-Address */
 	      (vp->vp_ipaddr == htonl(INADDR_ANY))))) {
 		/*
