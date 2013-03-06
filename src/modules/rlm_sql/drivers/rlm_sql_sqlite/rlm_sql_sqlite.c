@@ -1,23 +1,25 @@
 /*
- *  sql_sqlite.c
- *  freeradius
- *
- * Version:	$Id$
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License version 2 only, as published by
- *   the Free Software Foundation.
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
  *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *   GNU General Public License for more details.
  *
- *   You should have received a copy of the GNU General Public License version 2
+ *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
- *   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+ *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+ 
+/**
+ * $Id$
+ * @file sql_sqlite.c
+ * @brief SQLite driver.
  *
- * Copyright 2007 Apple Inc.
+ * @copyright 2013 Network RADIUS SARL <info@networkradius.com>
+ * @copyright 2007 Apple Inc.
  */
 
 #include <freeradius-devel/ident.h>
@@ -51,10 +53,6 @@ static const CONF_PARSER driver_config[] = {
 static int sql_check_error(sqlite3 *db)
 {
 	int error = sqlite3_errcode(db);
-	/*
-	 *	Only check the first byte of error code, extended
-	 *	result codes occupy the second byte.
-	 */
 	switch(error) {
 	/*
 	 *	Not errors
@@ -105,13 +103,6 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: sql_create_socket
- *
- *	Purpose: Establish connection to the db
- *
- *************************************************************************/
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_conn_t *conn;
@@ -139,14 +130,6 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return sql_check_error(conn->db);
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_destroy_socket
- *
- *	Purpose: Free socket and any private connection data
- *
- *************************************************************************/
 static int sql_destroy_socket(rlm_sql_handle_t *handle,
 			      UNUSED rlm_sql_config_t *config)
 {
@@ -159,14 +142,6 @@ static int sql_destroy_socket(rlm_sql_handle_t *handle,
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_query
- *
- *	Purpose: Prepare a query for execution.
- *
- *************************************************************************/
 static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		     char *querystr)
 {
@@ -183,29 +158,12 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	return sql_check_error(conn->db);
 }
 
-/*************************************************************************
- *
- *	Function: sql_store_result
- *
- *	Purpose: database specific store_result function. Returns a result
- *               set for the query.
- *
- *************************************************************************/
 static int sql_store_result(UNUSED rlm_sql_handle_t * handle,
 			    UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_num_fields
- *
- *	Purpose: database specific num_fields function. Returns number
- *               of columns from query
- *
- *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t * handle,
 			  UNUSED rlm_sql_config_t *config)
 {
@@ -218,15 +176,6 @@ static int sql_num_fields(rlm_sql_handle_t * handle,
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_num_rows
- *
- *	Purpose: database specific num_rows. Returns number of rows in
- *               query
- *
- *************************************************************************/
 static int sql_num_rows(rlm_sql_handle_t * handle,
 			UNUSED rlm_sql_config_t *config)
 {
@@ -239,15 +188,6 @@ static int sql_num_rows(rlm_sql_handle_t * handle,
 	return 0;
 }
 
-/*************************************************************************
- *
- *	Function: sql_fetch_row
- *
- *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
- *               with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, SQL_DOWN if database is down.
- *
- *************************************************************************/
 static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int status;
@@ -343,15 +283,6 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_free_result
- *
- *	Purpose: database specific free_result. Frees memory allocated
- *               for a result set
- *
- *************************************************************************/
 static int sql_free_result(rlm_sql_handle_t *handle,
 			   UNUSED rlm_sql_config_t *config)
 {
@@ -375,15 +306,6 @@ static int sql_free_result(rlm_sql_handle_t *handle,
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_error
- *
- *	Purpose: database specific error. Returns error associated with
- *               connection
- *
- *************************************************************************/
 static const char *sql_error(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
@@ -396,15 +318,6 @@ static const char *sql_error(rlm_sql_handle_t *handle,
 	return "Invalid handle";
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_close
- *
- *	Purpose: database specific close. Closes an open database
- *               connection
- *
- *************************************************************************/
 static int sql_close(rlm_sql_handle_t *handle,
 		     UNUSED rlm_sql_config_t *config)
 {
@@ -423,28 +336,12 @@ static int sql_close(rlm_sql_handle_t *handle,
 	return 0;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_finish_query
- *
- *	Purpose: End the query, such as freeing memory
- *
- *************************************************************************/
 static int sql_finish_query(rlm_sql_handle_t *handle,
 			    UNUSED rlm_sql_config_t *config)
 {
 	return sql_free_result(handle, config);
 }
 
-/*************************************************************************
- *
- *	Function: sql_affected_rows
- *
- *	Purpose: Requests the number of rows affected by the last executed 
- *		 statement 
- *
- *************************************************************************/
 static int sql_affected_rows(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
