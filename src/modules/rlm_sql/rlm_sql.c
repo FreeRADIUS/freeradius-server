@@ -39,16 +39,16 @@ RCSID("$Id$")
 
 static const CONF_PARSER acct_section_config[] = {
 	{"reference", PW_TYPE_STRING_PTR,
-	  offsetof(sql_acct_section_t, reference), NULL, ".query"},
-	  
+	  offsetof(sql_acct_section_t, reference), NULL, ".query"},  
 	{"logfile", PW_TYPE_STRING_PTR,
 	 offsetof(sql_acct_section_t, logfile), NULL, NULL},
+	 
 	{NULL, -1, 0, NULL, NULL}
 };
 
 static const CONF_PARSER module_config[] = {
 	{"driver", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_sql_config_t,sql_driver_name), NULL, "mysql"},
+	 offsetof(rlm_sql_config_t,sql_driver_name), NULL, "rlm_sql_null"},
 	{"server", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,sql_server), NULL, "localhost"},
 	{"port", PW_TYPE_STRING_PTR,
@@ -933,11 +933,29 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	
-	if (inst->module->sql_instantiate) {	
+	if (inst->module->sql_instantiate) {
+		CONF_SECTION *cs;
+		const char *name;
+		
+		name = strrchr(inst->config->sql_driver_name, '_');
+		if (!name) {
+			name = inst->config->sql_driver_name;
+		} else {
+			name++;
+		}
+		
+		cs = cf_section_sub_find(conf, name);
+		if (!cs) {
+			radlog(L_ERR, "%s driver requires %s driver subsection",
+		       	       inst->config->sql_driver_name, name);
+		       	       
+		       	 return -1;
+		}
+		
 		/*
 		 *	It's up to the driver to register a destructor
 		 */
-		if (inst->module->sql_instantiate(cf_section_sub_find(conf, inst->config->sql_driver_name), inst->config) < 0) {
+		if (inst->module->sql_instantiate(cs, inst->config) < 0) {
 			return -1;
 		}
 	}
@@ -949,10 +967,8 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Initialise the connection pool for this instance
 	 */
-	radlog(L_INFO, "rlm_sql (%s): Attempting to connect to %s@%s:%s/%s",
-	       inst->config->xlat_name, inst->config->sql_login,
-	       inst->config->sql_server, inst->config->sql_port,
-	       inst->config->sql_db);
+	radlog(L_INFO, "rlm_sql (%s): Attempting to connect to database \"%s\"",
+	       inst->config->xlat_name, inst->config->sql_db);
 	       
 	if (sql_init_socketpool(inst) < 0) return -1;
 

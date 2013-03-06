@@ -66,11 +66,11 @@ static int sql_check_error(sqlite3 *db)
 	/*
 	 *	User/transient errors
 	 */
+	case SQLITE_ERROR:	/* SQL error or missing database */
 	case SQLITE_FULL:
 	case SQLITE_CONSTRAINT:
 	case SQLITE_MISMATCH:
-		radlog(L_ERR, "rlm_sql_sqlite: SQLite error (%d): %s", error,
-		       sqlite3_errmsg(db));
+		radlog(L_ERR, "rlm_sql_sqlite: Error (%d)", error);
 		
 		return -1;
 		break;
@@ -79,8 +79,8 @@ static int sql_check_error(sqlite3 *db)
 	 *	Errors with the handle, that probably require reinitialisation
 	 */
 	default:
-		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, SQLite "
-		       "error (%d): %s", error, sqlite3_errmsg(db));
+		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, "
+		       "error (%d)", error);
 		return SQL_DOWN;
 		break;
 	}
@@ -119,15 +119,14 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	
 	int status;
 
-	if (!conn) {
-		MEM(handle->conn = talloc_zero(NULL, rlm_sql_conn_t));
-	}
-	
-	conn = handle->conn;
+	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_conn_t));
 
-	DEBUG("rlm_sql_sqlite: Opening SQLite database %s", driver->filename);
+	radlog(L_INFO, "rlm_sql_sqlite: Opening SQLite database \"%s\"",
+	       driver->filename);
 	
-	status = sqlite3_open(driver->filename, &(conn->db));
+	status = sqlite3_open_v2(driver->filename, &(conn->db),
+				 SQLITE_OPEN_READWRITE | SQLITE_OPEN_FULLMUTEX,
+				 NULL);
 	if (status != SQLITE_OK) {
 		return sql_check_error(conn->db);
 	}
@@ -417,7 +416,11 @@ static int sql_close(rlm_sql_handle_t *handle,
 		conn->db = NULL;
 	}
 	
-	return sql_check_error(conn->db);
+	if (status != SQLITE_OK) {
+		return -1;
+	}
+	
+	return 0;
 }
 
 
