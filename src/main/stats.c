@@ -58,6 +58,10 @@ void request_stats_final(REQUEST *request)
 	    (request->listener->type != RAD_LISTEN_AUTH) &&
 	    (request->listener->type != RAD_LISTEN_ACCT)) return;
 
+	/* don't count statistic requests */
+	if (request->packet->code == PW_STATUS_SERVER)
+		return;
+
 #undef INC_AUTH
 #define INC_AUTH(_x) radius_auth_stats._x++;request->listener->stats._x++;if (request->client && request->client->auth) request->client->auth->_x++;
 
