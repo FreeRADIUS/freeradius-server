@@ -86,7 +86,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 */
 	giaddrvp = vp = pairfind(request->packet->vps, 266, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Gateway-IP-Address */
 	if (vp && (vp->vp_ipaddr == htonl(INADDR_ANY)) &&
-	    pairfind(request->packet->vps, 82, TAG_ANY), DHCP_MAGIC_VENDOR) { /* DHCP-Relay-Agent-Information */
+	    pairfind(request->packet->vps, 82, DHCP_MAGIC_VENDOR, TAG_ANY)) { /* DHCP-Relay-Agent-Information */
 		DEBUG("DHCP: Received packet with giaddr = 0 and containing relay option: Discarding packet\n");
 		return 1;
 	}
@@ -392,7 +392,9 @@ static int dhcp_process(REQUEST *request)
 		uint32_t attr = attrnums[i];
 
 		if (pairfind(request->reply->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY)) continue;
-		if (vp = pairfind(request->packet->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY)) {
+		
+		vp = pairfind(request->packet->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY);
+		if (vp) {
 			pairadd(&request->reply->vps, paircopyvp(vp));
 		}
 	}

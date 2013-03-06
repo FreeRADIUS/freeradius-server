@@ -75,9 +75,9 @@ typedef struct radclient {
 	fr_ipaddr_t		ipaddr;
 	fr_ipaddr_t		src_ipaddr;
 	int			prefix;
-	char			*longname;
-	char			*secret;
-	char			*shortname;
+	const char		*longname;
+	const char		*secret;
+	const char		*shortname;
 	int			message_authenticator;
 	char			*nastype;
 	char			*login;
