@@ -164,21 +164,6 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	return sql_check_error(conn->db);
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_select_query
- *
- *	Purpose: Issue a select query to the database
- *
- *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
-			    char *querystr)
-{
-	return sql_query(handle, config, querystr);
-}
-
-
 /*************************************************************************
  *
  *	Function: sql_store_result
@@ -431,21 +416,6 @@ static int sql_finish_query(rlm_sql_handle_t *handle,
 	return sql_free_result(handle, config);
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_finish_select_query
- *
- *	Purpose: End the select query, such as freeing memory or result
- *
- *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t *handle,
-				   rlm_sql_config_t *config)
-{
-	return sql_free_result(handle, config);
-}
-
-
 /*************************************************************************
  *
  *	Function: sql_affected_rows
@@ -470,10 +440,11 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_sqlite = {
 	"rlm_sql_sqlite",
+	sql_instantiate,
 	sql_init_socket,
 	sql_destroy_socket,
 	sql_query,
-	sql_select_query,
+	sql_query,
 	sql_store_result,
 	sql_num_fields,
 	sql_num_rows,
@@ -482,6 +453,6 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	sql_error,
 	sql_close,
 	sql_finish_query,
-	sql_finish_select_query,
+	sql_finish_query,
 	sql_affected_rows
 };
