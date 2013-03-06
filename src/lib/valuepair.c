@@ -1904,9 +1904,9 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
  * @param head of the list.
  * @return the last token parsed, or T_OP_INVALID
  */
-FR_TOKEN userparse(const char *buffer, VALUE_PAIR **head)
+FR_TOKEN userparse(const char *buffer, VALUE_PAIR **list)
 {
-	VALUE_PAIR	*vp;
+	VALUE_PAIR	*vp, *head, **tail;
 	const char	*p;
 	FR_TOKEN	last_token = T_OP_INVALID;
 	FR_TOKEN	previous_token;
@@ -1918,6 +1918,9 @@ FR_TOKEN userparse(const char *buffer, VALUE_PAIR **head)
 	if (buffer[0] == 0)
 		return T_EOL;
 
+	head = NULL;
+	tail = &head;
+
 	p = buffer;
 	do {
 		raw.l_opand[0] = '\0';
@@ -1926,31 +1929,34 @@ FR_TOKEN userparse(const char *buffer, VALUE_PAIR **head)
 		previous_token = last_token;
 		
 		last_token = pairread(&p, &raw);
-		if (last_token == T_OP_INVALID) {
-			return T_OP_INVALID;
-		}
+		if (last_token == T_OP_INVALID) break;
 		
 		vp = pairmake(raw.l_opand, raw.r_opand, raw.op);
-		if (!vp) {
-			return T_OP_INVALID;
-		}
+		if (!vp) break;
 		
 		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
 			if (pairmark_xlat(vp, raw.r_opand) < 0) {
 				pairbasicfree(vp);
 				
-				return T_OP_INVALID;
+				break;
 			}
 		}
 		
-		pairadd(head, vp);
+		*tail = vp;
+		tail = &((*tail)->next);
 	} while (*p && (last_token == T_COMMA));
 
 	/*
 	 *	Don't tell the caller that there was a comment.
 	 */
 	if (last_token == T_HASH) {
-		return previous_token;
+		last_token = previous_token;
+	}
+
+	if (last_token == T_OP_INVALID) {
+		pairfree(&head);
+	} else {
+		pairadd(list, head);
 	}
 
 	/*
