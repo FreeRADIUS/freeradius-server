@@ -26,26 +26,26 @@ RCSID("$Id$")
 
 #include <stdarg.h>
 
-int fb_lasterror(rlm_sql_firebird_sock *sock) {
+int fb_lasterror(rlm_sql_firebird_conn_t *conn) {
 	char msg[512+2];
 	int l;
 	ISC_LONG *pstatus;
 	char *p = 0;
 
-	sock->sql_code = 0;
+	conn->sql_code = 0;
 
-	if (IS_ISC_ERROR(sock->status)) {
+	if (IS_ISC_ERROR(conn->status)) {
 		/*
 		 *	If error occured, free the previous error's text
 		 *	and create a new one.
 		 */
-		pstatus = sock->status;
-		if (sock->lasterror) {
-			free(sock->lasterror);
+		pstatus = conn->status;
+		if (conn->lasterror) {
+			free(conn->lasterror);
 		}
 		
-		sock->lasterror = 0;
-		sock->sql_code = isc_sqlcode(sock->status);
+		conn->lasterror = 0;
+		conn->sql_code = isc_sqlcode(conn->status);
 		
 		isc_interprete(msg,&pstatus);
 		p = strdup(msg);
@@ -60,32 +60,32 @@ int fb_lasterror(rlm_sql_firebird_sock *sock) {
 			strcat(p, msg);
 		}
 		
-		sock->lasterror=p;
+		conn->lasterror=p;
 	} else {
 		//return empty (but not null) string if there are  no error
-		if (sock->lasterror) {
-			*(sock->lasterror) = '\0';
+		if (conn->lasterror) {
+			*(conn->lasterror) = '\0';
 		} else {
-			sock->lasterror = strdup("");
+			conn->lasterror = strdup("");
 		}
 	}
 	
-	return sock->sql_code;
+	return conn->sql_code;
 }
 
 
-void fb_set_tpb(rlm_sql_firebird_sock * sock, int count, ...) {
+void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...) {
 	int i;
 	va_list arg;
 	
 	va_start(arg, count);
-	sock->tpb = malloc(count);
+	conn->tpb = malloc(count);
 	
 	for (i = 0; i < count; i++) {
-		sock->tpb[i] = (char) va_arg(arg, int);
+		conn->tpb[i] = (char) va_arg(arg, int);
 	}
 	
-	sock->tpb_len=count;
+	conn->tpb_len = count;
 }
 
 
@@ -144,7 +144,7 @@ typedef struct vary_fb {
 } VARY;
 
 //function fb_store_row based on fiebird's apifull example
-void fb_store_row(rlm_sql_firebird_sock *sock) {
+void fb_store_row(rlm_sql_firebird_conn_t *conn) {
 	int dtype;
 	struct tm times;
 	ISC_QUAD bid;
@@ -153,29 +153,29 @@ void fb_store_row(rlm_sql_firebird_sock *sock) {
 	VARY * vary;
 
 	/* assumed: id,username,attribute,value,op */
-	if (sock->row_fcount<sock->sqlda_out->sqld)  {
-		i=sock->row_fcount;
-		sock->row_fcount=sock->sqlda_out->sqld;
-		sock->row = (char **) realloc(sock->row, sock->row_fcount * sizeof(char *));
-		sock->row_sizes = (int *) realloc(sock->row_sizes, sock->row_fcount * sizeof(int));
+	if (conn->row_fcount<conn->sqlda_out->sqld)  {
+		i=conn->row_fcount;
+		conn->row_fcount=conn->sqlda_out->sqld;
+		conn->row = (char **) realloc(conn->row, conn->row_fcount * sizeof(char *));
+		conn->row_sizes = (int *) realloc(conn->row_sizes, conn->row_fcount * sizeof(int));
 		
-		while( i <sock->row_fcount) {
-			sock->row[i] = 0;
-			sock->row_sizes[i++] = 0;
+		while( i <conn->row_fcount) {
+			conn->row[i] = 0;
+			conn->row_sizes[i++] = 0;
 		}
 	}
 
-	for (i=0, var=sock->sqlda_out->sqlvar; i<sock->sqlda_out->sqld; var++,i++) {
+	for (i=0, var=conn->sqlda_out->sqlvar; i<conn->sqlda_out->sqld; var++,i++) {
 		/*
 		 *	Initial buffer size to store field's data is 256 bytes
 		 */
-		if (sock->row_sizes[i]<256) {
-			sock->row[i]=(char *) realloc(sock->row[i],256);
-			sock->row_sizes[i]=256;
+		if (conn->row_sizes[i]<256) {
+			conn->row[i]=(char *) realloc(conn->row[i],256);
+			conn->row_sizes[i]=256;
 		}
 
 		if (IS_NULL(var)) {
-			strcpy(sock->row[i],"NULL");
+			strcpy(conn->row[i],"NULL");
 			continue;
 		}
 		
@@ -183,30 +183,30 @@ void fb_store_row(rlm_sql_firebird_sock *sock) {
 		
 		switch (dtype) {
 		case SQL_TEXT:
-			if (sock->row_sizes[i]<=var->sqllen) {
-				sock->row_sizes[i] = var->sqllen + 1;
-				sock->row[i] = realloc(sock->row[i],
-						       sock->row_sizes[i]);
+			if (conn->row_sizes[i]<=var->sqllen) {
+				conn->row_sizes[i] = var->sqllen + 1;
+				conn->row[i] = realloc(conn->row[i],
+						       conn->row_sizes[i]);
 			}
 			
-			memmove(sock->row[i], var->sqldata, var->sqllen);
-			sock->row[i][var->sqllen] = 0;
+			memmove(conn->row[i], var->sqldata, var->sqllen);
+			conn->row[i][var->sqllen] = 0;
 
 			break;
 		case SQL_VARYING:
 			vary = (VARY*) var->sqldata;
-			if (sock->row_sizes[i] <= vary->vary_length) {
-				sock->row_sizes[i] = vary->vary_length+1;
-				sock->row[i] = realloc(sock->row[i],
-						       sock->row_sizes[i]);
+			if (conn->row_sizes[i] <= vary->vary_length) {
+				conn->row_sizes[i] = vary->vary_length+1;
+				conn->row[i] = realloc(conn->row[i],
+						       conn->row_sizes[i]);
 		   	}
-			memmove(sock->row[i],vary->vary_string,vary->vary_length);
-			sock->row[i][vary->vary_length] = 0;
+			memmove(conn->row[i],vary->vary_string,vary->vary_length);
+			conn->row[i][vary->vary_length] = 0;
 			
 			break;
 
 		case SQL_FLOAT:
-			snprintf(sock->row[i], sock->row_sizes[i], "%15g",
+			snprintf(conn->row[i], conn->row_sizes[i], "%15g",
 				 *(float ISC_FAR *) (var->sqldata));
 			break;
 		case SQL_SHORT:
@@ -217,7 +217,7 @@ void fb_store_row(rlm_sql_firebird_sock *sock) {
 				short field_width = 0;
 				short dscale = 0;
 				char *p;
-				p=sock->row[i];
+				p=conn->row[i];
 				
 				switch (dtype)
 					{
@@ -273,13 +273,13 @@ void fb_store_row(rlm_sql_firebird_sock *sock) {
 
 		case SQL_D_FLOAT:
 		case SQL_DOUBLE:
-			snprintf(sock->row[i],sock->row_sizes[i], "%24f",
+			snprintf(conn->row[i],conn->row_sizes[i], "%24f",
 				 *(double ISC_FAR *) (var->sqldata));
 			break;
 
 		case SQL_TIMESTAMP:
 			isc_decode_timestamp((ISC_TIMESTAMP ISC_FAR *)var->sqldata, &times);
-			snprintf(sock->row[i],sock->row_sizes[i],"%04d-%02d-%02d %02d:%02d:%02d.%04d",
+			snprintf(conn->row[i],conn->row_sizes[i],"%04d-%02d-%02d %02d:%02d:%02d.%04d",
 				 times.tm_year + 1900,
 				 times.tm_mon+1,
 				 times.tm_mday,
@@ -291,7 +291,7 @@ void fb_store_row(rlm_sql_firebird_sock *sock) {
 
 		case SQL_TYPE_DATE:
 			isc_decode_sql_date((ISC_DATE ISC_FAR *)var->sqldata, &times);
-			snprintf(sock->row[i],sock->row_sizes[i], "%04d-%02d-%02d",
+			snprintf(conn->row[i],conn->row_sizes[i], "%04d-%02d-%02d",
 				 times.tm_year + 1900,
 				 times.tm_mon+1,
 				 times.tm_mday);
@@ -299,7 +299,7 @@ void fb_store_row(rlm_sql_firebird_sock *sock) {
 
 		case SQL_TYPE_TIME:
 			isc_decode_sql_time((ISC_TIME ISC_FAR *)var->sqldata, &times);
-			snprintf(sock->row[i],sock->row_sizes[i], "%02d:%02d:%02d.%04d",
+			snprintf(conn->row[i],conn->row_sizes[i], "%02d:%02d:%02d.%04d",
 				 times.tm_hour,
 				 times.tm_min,
 				 times.tm_sec,
@@ -310,61 +310,61 @@ void fb_store_row(rlm_sql_firebird_sock *sock) {
 		case SQL_ARRAY:
 			/* Print the blob id on blobs or arrays */
 			bid = *(ISC_QUAD ISC_FAR *) var->sqldata;
-			snprintf(sock->row[i],sock->row_sizes[i],"%08lx:%08lx", bid.gds_quad_high, bid.gds_quad_low);
+			snprintf(conn->row[i],conn->row_sizes[i],"%08lx:%08lx", bid.gds_quad_high, bid.gds_quad_low);
 			break;
 
 		}
 	}
 }
 
-int fb_init_socket(rlm_sql_firebird_sock *sock) {
-	memset(sock, 0, sizeof(*sock));
-	sock->sqlda_out = (XSQLDA ISC_FAR *) calloc(XSQLDA_LENGTH (5),1);
-	sock->sqlda_out->sqln = 5;
-	sock->sqlda_out->version =  SQLDA_VERSION1;
-	sock->sql_dialect = 3;
+int fb_init_socket(rlm_sql_firebird_conn_t *conn) {
+	memset(conn, 0, sizeof(*conn));
+	conn->sqlda_out = (XSQLDA ISC_FAR *) calloc(XSQLDA_LENGTH (5),1);
+	conn->sqlda_out->sqln = 5;
+	conn->sqlda_out->version =  SQLDA_VERSION1;
+	conn->sql_dialect = 3;
 #ifdef _PTHREAD_H
-	pthread_mutex_init (&sock->mut, NULL);
-	radlog(L_DBG,"Init mutex %p\n",&sock->mut);
+	pthread_mutex_init (&conn->mut, NULL);
+	radlog(L_DBG,"Init mutex %p\n",&conn->mut);
 #endif
 
 	/* 
 	 *	Set tpb to read_committed/wait/no_rec_version
 	 */
-	fb_set_tpb(sock, 5, isc_tpb_version3, isc_tpb_wait, isc_tpb_write,
+	fb_set_tpb(conn, 5, isc_tpb_version3, isc_tpb_wait, isc_tpb_write,
 		   isc_tpb_read_committed, isc_tpb_no_rec_version);
-	if (!sock->tpb) {
+	if (!conn->tpb) {
 		return -1;
 	}
 	
 	return 0;
 }
 
-int fb_connect(rlm_sql_firebird_sock * sock,rlm_sql_config_t *config) {
+int fb_connect(rlm_sql_firebird_conn_t * conn,rlm_sql_config_t *config) {
 	char *p;
 	char *database;
 
-	sock->dpb_len = 4;
+	conn->dpb_len = 4;
 	if (config->sql_login) {
-		sock->dpb_len+=strlen(config->sql_login) + 2;
+		conn->dpb_len+=strlen(config->sql_login) + 2;
 	}
 	
 	if (config->sql_password) {
-		sock->dpb_len += strlen(config->sql_password) + 2;
+		conn->dpb_len += strlen(config->sql_password) + 2;
 	}
 	
-	sock->dpb = (char *) malloc(sock->dpb_len);
-	p = sock->dpb;
+	conn->dpb = (char *) malloc(conn->dpb_len);
+	p = conn->dpb;
 
-	*sock->dpb++ = isc_dpb_version1;
-	*sock->dpb++ = isc_dpb_num_buffers;
-	*sock->dpb++ = 1;
-	*sock->dpb++ = 90;
+	*conn->dpb++ = isc_dpb_version1;
+	*conn->dpb++ = isc_dpb_num_buffers;
+	*conn->dpb++ = 1;
+	*conn->dpb++ = 90;
 
-	fb_dpb_add_str(&sock->dpb, isc_dpb_user_name, config->sql_login);
-	fb_dpb_add_str(&sock->dpb, isc_dpb_password, config->sql_password);
+	fb_dpb_add_str(&conn->dpb, isc_dpb_user_name, config->sql_login);
+	fb_dpb_add_str(&conn->dpb, isc_dpb_password, config->sql_password);
 
-	sock->dpb = p;
+	conn->dpb = p;
 	
 	/*
 	 *	Check if database and server in the form of server:database.
@@ -385,124 +385,124 @@ int fb_connect(rlm_sql_firebird_sock * sock,rlm_sql_config_t *config) {
 		database[ls]=':';
 		memmove(database+ls+1,config->sql_db,ld);
 	}
-	isc_attach_database(sock->status, 0, database, &sock->dbh,
-			    sock->dpb_len, sock->dpb);
+	isc_attach_database(conn->status, 0, database, &conn->dbh,
+			    conn->dpb_len, conn->dpb);
 	free(database);
 	
-	return fb_lasterror(sock);
+	return fb_lasterror(conn);
 }
 
 
-int fb_fetch(rlm_sql_firebird_sock *sock) {
+int fb_fetch(rlm_sql_firebird_conn_t *conn) {
 	long fetch_stat;
-	if (sock->statement_type!=isc_info_sql_stmt_select) {
+	if (conn->statement_type!=isc_info_sql_stmt_select) {
 		return 100;
 	}
 	
-	fetch_stat = isc_dsql_fetch(sock->status, &sock->stmt,
-				    SQL_DIALECT_V6, sock->sqlda_out);
+	fetch_stat = isc_dsql_fetch(conn->status, &conn->stmt,
+				    SQL_DIALECT_V6, conn->sqlda_out);
 	if (fetch_stat) {
 		if (fetch_stat!=100L) {
-			fb_lasterror(sock);
+			fb_lasterror(conn);
 		} else {
-			sock->sql_code=0;
+			conn->sql_code=0;
 		}
 	}
 	
 	return fetch_stat;
 }
 
-int fb_prepare(rlm_sql_firebird_sock *sock,char *sqlstr) {
+int fb_prepare(rlm_sql_firebird_conn_t *conn,char *sqlstr) {
 	static char stmt_info[] = { isc_info_sql_stmt_type };
 	char info_buffer[128];
 	short l;
 
-	if (!sock->trh) {
-		isc_start_transaction(sock->status, &sock->trh, 1, &sock->dbh, 
-				      sock->tpb_len,sock->tpb);
-		if (!sock->trh) {
+	if (!conn->trh) {
+		isc_start_transaction(conn->status, &conn->trh, 1, &conn->dbh, 
+				      conn->tpb_len,conn->tpb);
+		if (!conn->trh) {
 			return -4;
 		}
 	}
 
-	fb_free_statement(sock);
-	if (!sock->stmt) {
-		isc_dsql_allocate_statement(sock->status, &sock->dbh,
-					    &sock->stmt);
-		if (!sock->stmt) {
+	fb_free_statement(conn);
+	if (!conn->stmt) {
+		isc_dsql_allocate_statement(conn->status, &conn->dbh,
+					    &conn->stmt);
+		if (!conn->stmt) {
 			return -1;
 		}
 	}
 
-	fb_free_sqlda(sock->sqlda_out);
-	isc_dsql_prepare(sock->status, &sock->trh, &sock->stmt, 0, sqlstr,
-			 sock->sql_dialect, sock->sqlda_out);
-	if (IS_ISC_ERROR(sock->status)) {
+	fb_free_sqlda(conn->sqlda_out);
+	isc_dsql_prepare(conn->status, &conn->trh, &conn->stmt, 0, sqlstr,
+			 conn->sql_dialect, conn->sqlda_out);
+	if (IS_ISC_ERROR(conn->status)) {
 		return -2;
 	}
 	
-	if (sock->sqlda_out->sqln<sock->sqlda_out->sqld) {
-		sock->sqlda_out->sqln=sock->sqlda_out->sqld;
-		sock->sqlda_out = (XSQLDA ISC_FAR *) realloc(sock->sqlda_out,
-							     XSQLDA_LENGTH(sock->sqlda_out->sqld));
-		isc_dsql_describe(sock->status, &sock->stmt, SQL_DIALECT_V6,
-				  sock->sqlda_out);
+	if (conn->sqlda_out->sqln<conn->sqlda_out->sqld) {
+		conn->sqlda_out->sqln=conn->sqlda_out->sqld;
+		conn->sqlda_out = (XSQLDA ISC_FAR *) realloc(conn->sqlda_out,
+							     XSQLDA_LENGTH(conn->sqlda_out->sqld));
+		isc_dsql_describe(conn->status, &conn->stmt, SQL_DIALECT_V6,
+				  conn->sqlda_out);
 		
-		if (IS_ISC_ERROR(sock->status)) {
+		if (IS_ISC_ERROR(conn->status)) {
 			return -3;
 		}
 	}
 	/*
 	 *	Get statement type
 	 */
-	isc_dsql_sql_info(sock->status, &sock->stmt, sizeof(stmt_info),
+	isc_dsql_sql_info(conn->status, &conn->stmt, sizeof(stmt_info),
 			  stmt_info,sizeof(info_buffer), info_buffer);
-	if (IS_ISC_ERROR(sock->status)) return -4;
+	if (IS_ISC_ERROR(conn->status)) return -4;
 
 	l = (short) isc_vax_integer((char ISC_FAR *) info_buffer + 1, 2);
-	sock->statement_type = isc_vax_integer((char ISC_FAR *) info_buffer + 3,
+	conn->statement_type = isc_vax_integer((char ISC_FAR *) info_buffer + 3,
 					       l);
 
-	if (sock->sqlda_out->sqld) {
-		fb_set_sqlda(sock->sqlda_out); //set out sqlda
+	if (conn->sqlda_out->sqld) {
+		fb_set_sqlda(conn->sqlda_out); //set out sqlda
 	}
 	
 	return 0;
 }
 
 
-int fb_sql_query(rlm_sql_firebird_sock *sock,char *sqlstr) {
-	if (fb_prepare(sock,sqlstr)) {
-		return fb_lasterror(sock);
+int fb_sql_query(rlm_sql_firebird_conn_t *conn,char *sqlstr) {
+	if (fb_prepare(conn,sqlstr)) {
+		return fb_lasterror(conn);
 	}
 	
-	switch (sock->statement_type) {
+	switch (conn->statement_type) {
 		case isc_info_sql_stmt_exec_procedure:
-			isc_dsql_execute2(sock->status, &sock->trh, &sock->stmt,
-					  SQL_DIALECT_V6, 0, sock->sqlda_out);
+			isc_dsql_execute2(conn->status, &conn->trh, &conn->stmt,
+					  SQL_DIALECT_V6, 0, conn->sqlda_out);
 			break;
 		default:
-			isc_dsql_execute(sock->status, &sock->trh, &sock->stmt,
+			isc_dsql_execute(conn->status, &conn->trh, &conn->stmt,
 					 SQL_DIALECT_V6, 0);
 			break;
 	}
-	return fb_lasterror(sock);
+	return fb_lasterror(conn);
 }
 
-int fb_affected_rows(rlm_sql_firebird_sock *sock) {
+int fb_affected_rows(rlm_sql_firebird_conn_t *conn) {
 	static char count_info[] = {isc_info_sql_records};
 	char info_buffer[128];
 	char *p ;
 	int affected_rows = -1;
 
-	if (!sock->stmt) return -1;
+	if (!conn->stmt) return -1;
 
-	isc_dsql_sql_info(sock->status, &sock->stmt,
+	isc_dsql_sql_info(conn->status, &conn->stmt,
 			  sizeof (count_info), count_info,
 			  sizeof (info_buffer), info_buffer);
 			  
-	if (IS_ISC_ERROR(sock->status)) {
-		return fb_lasterror(sock);
+	if (IS_ISC_ERROR(conn->status)) {
+		return fb_lasterror(conn);
 	}
 	
 	p = info_buffer + 3;
@@ -520,88 +520,49 @@ int fb_affected_rows(rlm_sql_firebird_sock *sock) {
 	return affected_rows;
 }
 
-int fb_close_cursor(rlm_sql_firebird_sock *sock) {
-	isc_dsql_free_statement(sock->status, &sock->stmt, DSQL_close);
+int fb_close_cursor(rlm_sql_firebird_conn_t *conn) {
+	isc_dsql_free_statement(conn->status, &conn->stmt, DSQL_close);
 	
-	return fb_lasterror(sock);
+	return fb_lasterror(conn);
 }
 
-void fb_free_statement(rlm_sql_firebird_sock *sock) {
-	if (sock->stmt) {
-		isc_dsql_free_statement(sock->status, &sock->stmt, DSQL_drop);
-		sock->stmt = 0;
+void fb_free_statement(rlm_sql_firebird_conn_t *conn) {
+	if (conn->stmt) {
+		isc_dsql_free_statement(conn->status, &conn->stmt, DSQL_drop);
+		conn->stmt = 0;
 	}
 }
 
-int fb_rollback(rlm_sql_firebird_sock *sock) {
-	sock->sql_code = 0;
-	if (sock->trh)  {
-		isc_rollback_transaction(sock->status, &sock->trh);
-//		sock->in_use=0;
+int fb_rollback(rlm_sql_firebird_conn_t *conn) {
+	conn->sql_code = 0;
+	if (conn->trh)  {
+		isc_rollback_transaction(conn->status, &conn->trh);
+//		conn->in_use=0;
 #ifdef _PTHREAD_H
-		pthread_mutex_unlock(&sock->mut);
+		pthread_mutex_unlock(&conn->mut);
 #endif
 
-		if (IS_ISC_ERROR(sock->status)) {
-			return fb_lasterror(sock);
+		if (IS_ISC_ERROR(conn->status)) {
+			return fb_lasterror(conn);
 		}
 	}
-	return sock->sql_code;
+	return conn->sql_code;
 }
 
-int fb_commit(rlm_sql_firebird_sock *sock) {
-	sock->sql_code=0;
-	if (sock->trh)  {
-		isc_commit_transaction (sock->status,&sock->trh);
-		if (IS_ISC_ERROR(sock->status)) {
-			fb_lasterror(sock);
+int fb_commit(rlm_sql_firebird_conn_t *conn) {
+	conn->sql_code=0;
+	if (conn->trh)  {
+		isc_commit_transaction (conn->status,&conn->trh);
+		if (IS_ISC_ERROR(conn->status)) {
+			fb_lasterror(conn);
 			radlog(L_ERR, "Fail to commit. Error: %s. Try to rollback.",
-		       	       sock->lasterror);
-			return fb_rollback(sock);
+		       	       conn->lasterror);
+			return fb_rollback(conn);
 		}
 	}
-//	sock->in_use=0;
+//	conn->in_use=0;
 #ifdef _PTHREAD_H
-	pthread_mutex_unlock(&sock->mut);
+	pthread_mutex_unlock(&conn->mut);
 #endif
-	return sock->sql_code;
-}
-
-int fb_disconnect(rlm_sql_firebird_sock *sock) {
-	if (sock->dbh) {
-		fb_free_statement(sock);
-		isc_detach_database(sock->status,&sock->dbh);
-		return fb_lasterror(sock);
-	}
-	return 0;
-}
-
-void fb_destroy_socket(rlm_sql_firebird_sock *sock) {
-	int i;
-	fb_commit(sock);
-	
-	if (fb_disconnect(sock)) {
-		radlog(L_ERR, "Fatal. Fail to disconnect DB. Error :%s\n",
-		       sock->lasterror);
-	}
-	
-#ifdef _PTHREAD_H
-	pthread_mutex_destroy (&sock->mut);
-#endif
-	for (i=0; i<sock->row_fcount;i++) {
-		free(sock->row[i]);
-	}
-	
-	free(sock->row);free(sock->row_sizes);
-	fb_free_sqlda(sock->sqlda_out);
-	
-	free(sock->sqlda_out);
-	free(sock->tpb);
-	free(sock->dpb);
-	
-	if (sock->lasterror) {
-		free(sock->lasterror);
-	}
-	
-	memset(sock,0,sizeof(rlm_sql_firebird_sock));
+	return conn->sql_code;
 }
