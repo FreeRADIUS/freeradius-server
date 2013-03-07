@@ -74,8 +74,6 @@ const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 
 pid_t radius_pid;
 
-static int debug_memory = 0;
-
 /*
  *  Configuration items.
  */
@@ -201,12 +199,12 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'm':
-				debug_memory = 1;
+				mainconfig.debug_memory = 1;
 				break;
 
 			case 'M':
 				memory_report = 1;
-				debug_memory = 1;
+				mainconfig.debug_memory = 1;
 				break;
 
 			case 'p':
@@ -384,7 +382,7 @@ int main(int argc, char *argv[])
 	 *	server to die immediately.  Use SIGTERM to shut down
 	 *	the server cleanly in that case.
 	 */
-	if ((debug_memory == 1) || (debug_flag == 0)) {
+	if ((mainconfig.debug_memory == 1) || (debug_flag == 0)) {
 #ifdef HAVE_SIGACTION
 	        act.sa_handler = sig_fatal;
 		sigaction(SIGINT, &act, NULL);
@@ -552,7 +550,7 @@ static void sig_fatal(int sig)
 #ifdef SIGQUIT
 		case SIGQUIT:
 #endif
-			if (debug_memory || memory_report) {
+			if (mainconfig.debug_memory || memory_report) {
 				radius_signal_self(RADIUS_SIGNAL_SELF_TERM);
 				break;
 			}

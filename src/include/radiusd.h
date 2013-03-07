@@ -476,6 +476,7 @@ typedef struct main_config_t {
 	int		colourise;	//!< Messages output to stderr and
 					//!< stdout may be formatted using 
 					//!< VT100 escape sequences.
+	int		debug_memory;
 } MAIN_CONFIG_T;
 
 /* DEBUG is defined below */

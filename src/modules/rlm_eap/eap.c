@@ -75,7 +75,16 @@ static int eaptype_free(void *ctx)
 	node = talloc_get_type_abort(ctx, EAP_TYPES);
 
 	if (node->type->detach) (node->type->detach)(node->type_data);
-	if (node->handle) lt_dlclose(node->handle);
+
+#ifndef NDEBUG
+	/*
+	 *	Don't dlclose() modules if we're doing memory
+	 *	debugging.  This removes the symbols needed by
+	 *	valgrind.
+	 */
+	if (!mainconfig.debug_memory)
+#endif
+	  if (node->handle) lt_dlclose(node->handle);
 
 	return 0;
 }

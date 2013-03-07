@@ -452,7 +452,15 @@ static int module_entry_free(void *ctx)
 
 	this = talloc_get_type_abort(ctx, module_entry_t);
 
-	lt_dlclose(this->handle);	/* ignore any errors */
+#ifndef NDEBUG
+	/*
+	 *	Don't dlclose() modules if we're doing memory
+	 *	debugging.  This removes the symbols needed by
+	 *	valgrind.
+	 */
+	if (!mainconfig.debug_memory)
+#endif
+	  lt_dlclose(this->handle);	/* ignore any errors */
 	return 0;
 }
 
