@@ -36,11 +36,11 @@ RCSID("$Id$")
 
 #define BOOTSTRAP_MAX (1048576 * 10)
 
-typedef struct rlm_sql_conn {
+typedef struct rlm_sql_sqlite_conn {
 	sqlite3 *db;
 	sqlite3_stmt *statement;
 	int col_count;
-} rlm_sql_conn_t;
+} rlm_sql_sqlite_conn_t;
 
 typedef struct rlm_sql_sqlite_config {
 	const char *filename;
@@ -293,45 +293,33 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	return 0;
 }
 
-static int sql_close(rlm_sql_handle_t *handle,
-		     UNUSED rlm_sql_config_t *config)
+static int sql_socket_destructor(void *c)
 {
 	int status = 0;
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t * conn = c;
 	
-	if (conn && conn->db) {
-		sqlite3_close(conn->db);
-		conn->db = NULL;
-	}
+	DEBUG2("rlm_sql_sqlite: Socket destructor called, closing socket");
 	
-	if (status != SQLITE_OK) {
-		return -1;
+	if (conn->db) {
+		status = sqlite3_close(conn->db);
+		if (status != SQLITE_OK) {
+			DEBUGW("rlm_sql_sqlite: Got SQLite error "
+			       "code (%u) when closing socket", status);
+		}
 	}
-	
-	return 0;
-}
-
-
-static int sql_destroy_socket(rlm_sql_handle_t *handle,
-			      UNUSED rlm_sql_config_t *config)
-{
-	if (!handle->conn) {
-		return 0;
-	}
-
-	TALLOC_FREE(handle->conn);
 	
 	return 0;
 }
 
 static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
-	rlm_sql_conn_t *conn;
+	rlm_sql_sqlite_conn_t *conn;
 	rlm_sql_sqlite_config_t *driver = config->driver;
 	
 	int status;
 
-	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_conn_t));
+	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_sqlite_conn_t));
+	talloc_set_destructor((void *) conn, sql_socket_destructor);
 
 	radlog(L_INFO, "rlm_sql_sqlite: Opening SQLite database \"%s\"",
 	       driver->filename);
@@ -344,11 +332,11 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 		       "opening/creating SQLite database error "
 		       "code (%u)", status);
 		       
-		goto error;
+		return -1;
 	}
 	
 	if (sql_check_error(conn->db)) {
-		goto close;
+		return -1;
 	}
 	
 	/*
@@ -357,25 +345,17 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	status = sqlite3_extended_result_codes(conn->db, 1);
 	
 	if (sql_check_error(conn->db)) {
-		goto close;
+		return -1;
 	}
 	
 	return 0;
-	
-	close:
-	sql_close(handle, config);
-	
-	error:
-	sql_destroy_socket(handle, config);
-	
-	return -1;
 }
 
-static int sql_select_query(rlm_sql_handle_t * handle,
+static int sql_select_query(rlm_sql_handle_t *handle,
 			   UNUSED rlm_sql_config_t *config, char *querystr)
 {
 	int status;
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	const char *z_tail;
 	
 	status = sqlite3_prepare_v2(conn->db, querystr,
@@ -388,11 +368,11 @@ static int sql_select_query(rlm_sql_handle_t * handle,
 }
 
 
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
+static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 		     char *querystr)
 {
 	int status;
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	const char *z_tail;
 	
 	status = sqlite3_prepare_v2(conn->db, querystr,
@@ -404,7 +384,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	return sql_check_error(conn->db);
 }
 
-static int sql_store_result(UNUSED rlm_sql_handle_t * handle,
+static int sql_store_result(UNUSED rlm_sql_handle_t *handle,
 			    UNUSED rlm_sql_config_t *config)
 {
 	return 0;
@@ -413,7 +393,7 @@ static int sql_store_result(UNUSED rlm_sql_handle_t * handle,
 static int sql_num_fields(rlm_sql_handle_t * handle,
 			  UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	
 	if (conn->statement) {
 		return sqlite3_column_count(conn->statement);
@@ -422,10 +402,10 @@ static int sql_num_fields(rlm_sql_handle_t * handle,
 	return 0;
 }
 
-static int sql_num_rows(rlm_sql_handle_t * handle,
+static int sql_num_rows(rlm_sql_handle_t *handle,
 			UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	
 	if (conn->statement) {
 		return sqlite3_data_count(conn->statement);
@@ -437,7 +417,7 @@ static int sql_num_rows(rlm_sql_handle_t * handle,
 static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int status;
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	
 	int i = 0;
 	
@@ -532,7 +512,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 static int sql_free_result(rlm_sql_handle_t *handle,
 			   UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	
 	if (conn->statement) {
 		TALLOC_FREE(handle->row);
@@ -555,7 +535,7 @@ static int sql_free_result(rlm_sql_handle_t *handle,
 static const char *sql_error(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
 
 	if (conn->db) {
 		return sqlite3_errmsg(conn->db);
@@ -573,7 +553,7 @@ static int sql_finish_query(rlm_sql_handle_t *handle,
 static int sql_affected_rows(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_conn_t *conn = handle->conn;
+	rlm_sql_sqlite_conn_t *conn = handle->conn;
   
 	if (conn->db) {
 		return sqlite3_changes(conn->db);	
@@ -588,7 +568,7 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	"rlm_sql_sqlite",
 	sql_instantiate,
 	sql_socket_init,
-	sql_destroy_socket,
+	NULL,
 	sql_query,
 	sql_select_query,
 	sql_store_result,
@@ -597,7 +577,7 @@ rlm_sql_module_t rlm_sql_sqlite = {
 	sql_fetch_row,
 	sql_free_result,
 	sql_error,
-	sql_close,
+	NULL,
 	sql_finish_query,
 	sql_finish_query,
 	sql_affected_rows
