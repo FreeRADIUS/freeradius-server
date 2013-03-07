@@ -40,9 +40,9 @@ static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int
 #define TDS_INT_CANCEL 2
 #define TDS_INT_TIMEOUT 3
 
-typedef struct rlm_sql_freetds_sock {
+typedef struct rlm_sql_freetds_conn {
 	DBPROCESS *dbproc;
-} rlm_sql_freetds_sock;
+} rlm_sql_freetds_conn_t;
 
 /*
  * FreeTDS calls this handler when dbsqlexec() or dbsqlok() blocks every seconds
@@ -58,7 +58,21 @@ static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int
 		radlog(L_ERR, "rlm_sql_freetds: OS error: %s\n", oserrstr);
 		return 0;
 }
+
+static int sql_socket_destructor(void *c)
+{
+	rlm_sql_freetds_conn_t *conn = c;
 	
+	DEBUG2("rlm_sql_freetds: Socket destructor called, closing socket");
+	
+	if (conn->dbproc){
+		dbclose(conn->dbproc);
+	}
+	
+	return 0;
+}
+
+
 /*************************************************************************
  *
  *	Function: sql_create_socket
@@ -69,19 +83,15 @@ static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int
 static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	LOGINREC *login;
-	rlm_sql_freetds_sock *freetds_sock;
-	
-	if (!handle->conn) {
-		handle->conn = (rlm_sql_freetds_sock *)rad_malloc(sizeof(struct rlm_sql_freetds_sock));
-		if (!handle->conn) {
-			return -1;
-		}
-	}
+	rlm_sql_freetds_conn_t *conn;
 	
 	if (dbinit() == FAIL) {
 		radlog(L_ERR, "rlm_sql_freetds: Unable to init FreeTDS");
 		return -1;		
 	}
+	
+	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_freetds_conn_t));
+	talloc_set_destructor((void *) conn, sql_socket_destructor);
 	
 	dbsetversion(DBVERSION_80);
 	dberrhandle(err_handler);
@@ -89,9 +99,6 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	// Timeout so that FreeTDS doesn't wait for ever.
 	dbsetlogintime((unsigned long)config->query_timeout);
 	dbsettime((unsigned long)config->query_timeout);
-	
-	freetds_sock = handle->conn;
-	memset(freetds_sock, 0, sizeof(*freetds_sock));
 	
 	DEBUG("rlm_sql_freetds (%s): Starting connect to FreeTDS/MSSQL server", config->xlat_name);
 	
@@ -103,7 +110,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	DBSETLUSER(login, config->sql_login);
 	DBSETLPWD(login, config->sql_password);
 	
-	if ((freetds_sock->dbproc = dbopen(login, config->sql_server)) == FAIL) {
+	if ((conn->dbproc = dbopen(login, config->sql_server)) == FAIL) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to connect to FreeTDS/MSSQL server %s@%s", 
 			   config->xlat_name, config->sql_login, config->sql_server);
 		dbloginfree(login);
@@ -112,37 +119,20 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	
 	dbloginfree(login);
 	
-	if ((dbuse(freetds_sock->dbproc, config->sql_db)) == FAIL) {
+	if ((dbuse(conn->dbproc, config->sql_db)) == FAIL) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to select database on FreeTDS/MSSQL server %s@%s:%s", 
 			   config->xlat_name, config->sql_login, config->sql_server, config->sql_db);
 		return -1;
 	}
 	
 	/* I know this may look strange, but it sets a pointer to
-	 the freetds_sock struct so that it can be used within the
+	 the conn struct so that it can be used within the
 	 query_timeout_handler function to be able to timeout properly */
-	dbsetinterrupt(freetds_sock->dbproc, query_timeout_handler, query_timeout_handler);
-	dbsetuserdata(freetds_sock->dbproc, (BYTE *)freetds_sock);
+	dbsetinterrupt(conn->dbproc, query_timeout_handler, query_timeout_handler);
+	dbsetuserdata(conn->dbproc, (BYTE *)conn);
 	
 	return 0;
 }
-
-
-/*************************************************************************
- *
- *	Function: sql_destroy_socket
- *
- *	Purpose: Free socket and any private connection data
- *
- *************************************************************************/
-static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	free(handle->conn);
-	handle->conn = NULL;
-	
-	return 0;
-}
-
 
 /*************************************************************************
  *
@@ -153,19 +143,19 @@ static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t 
  *************************************************************************/
 static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr)
 {
-	rlm_sql_freetds_sock *freetds_sock = handle->conn;
+	rlm_sql_freetds_conn_t *conn = handle->conn;
 	
-	if (freetds_sock->dbproc == NULL || DBDEAD(freetds_sock->dbproc)) {
+	if (conn->dbproc == NULL || DBDEAD(conn->dbproc)) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Socket not connected", config->xlat_name);
 		return SQL_DOWN;
 	}
 	
-	if ((dbcmd(freetds_sock->dbproc, querystr)) == FAIL) {
+	if ((dbcmd(conn->dbproc, querystr)) == FAIL) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to allocate SQL query", config->xlat_name);
 		return -1;
 	}
 	
-	if ((dbsqlexec(freetds_sock->dbproc)) == FAIL) {
+	if ((dbsqlexec(conn->dbproc)) == FAIL) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): SQL query failed", config->xlat_name);
 		return -1;
 	}
@@ -213,9 +203,9 @@ static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_freetds_sock *freetds_sock = handle->conn;
+	rlm_sql_freetds_conn_t *conn = handle->conn;
 	
-	return dbnumcols(freetds_sock->dbproc);
+	return dbnumcols(conn->dbproc);
 }
 
 
@@ -276,28 +266,6 @@ static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	return NULL;
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_close
- *
- *	Purpose: database specific close. Closes an open database
- *               connection
- *
- *************************************************************************/
-static int sql_close(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	rlm_sql_freetds_sock *freetds_sock = handle->conn;
-	
-	if (freetds_sock && freetds_sock->dbproc){
-		dbclose(freetds_sock->dbproc);
-		freetds_sock->dbproc = NULL;
-	}
-	
-	return 0;
-}
-
-
 /*************************************************************************
  *
  *	Function: sql_finish_query
@@ -334,9 +302,9 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *************************************************************************/
 static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	rlm_sql_freetds_sock *freetds_sock = handle->conn;
+	rlm_sql_freetds_conn_t *conn = handle->conn;
 	
-	return dbcount(freetds_sock->dbproc);
+	return dbcount(conn->dbproc);
 }
 
 
@@ -345,7 +313,7 @@ rlm_sql_module_t rlm_sql_freetds = {
 	"rlm_sql_freetds",
 	NULL,
 	sql_socket_init,
-	sql_destroy_socket,
+	NULL,
 	sql_query,
 	sql_select_query,
 	sql_store_result,
@@ -354,7 +322,7 @@ rlm_sql_module_t rlm_sql_freetds = {
 	sql_fetch_row,
 	sql_free_result,
 	sql_error,
-	sql_close,
+	NULL,
 	sql_finish_query,
 	sql_finish_select_query,
 	sql_affected_rows
