@@ -419,7 +419,15 @@ static void module_entry_free(void *data)
 {
 	module_entry_t *this = data;
 
-	lt_dlclose(this->handle);	/* ignore any errors */
+#ifndef NDEBUG
+	/*
+	 *	Don't dlclose() modules if we're doing memory
+	 *	debugging.  This removes the symbols needed by
+	 *	valgrind.
+	 */
+	if (!mainconfig.debug_memory)
+#endif
+	  lt_dlclose(this->handle);	/* ignore any errors */
 	memset(this, 0, sizeof(*this));
 	free(this);
 }

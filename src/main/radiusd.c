@@ -199,7 +199,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'm':
-				debug_memory = 1;
+				mainconfig.debug_memory = 1;
 				break;
 
 			case 'p':

@@ -254,7 +254,15 @@ void eaptype_free(EAP_TYPES *i)
 
 	if (i->type->detach) (i->type->detach)(i->type_data);
 	i->type_data = NULL;
-	if (i->handle) lt_dlclose(i->handle);
+#ifndef NDEBUG
+	/*
+	 *	Don't dlclose() modules if we're doing memory
+	 *	debugging.  This removes the symbols needed by
+	 *	valgrind.
+	 */
+	if (!mainconfig.debug_memory)
+#endif
+	  if (i->handle) lt_dlclose(i->handle);
 	free(i);
 }
 
