@@ -177,18 +177,14 @@ permanently from the list.
 The decision to enforce etiquette came after over 10 years of having a
 more open policy.  Sadly, a small subset of users abused the help
 given by the volunteers on the list.  This behavior is unacceptable,
-and is not tolerated.
+and will not be tolerated.
 
 FreeRADIUS is the cumulative effort of many years of work by many
 people, and you've gotten it for free.  No one gets paid to work on
-FreeRADIUS, and no one is getting paid to answer your questions.  This
-is free software, and the only way it gets better is if you make a
-contribution back to the project ($$, code, or documentation).
+FreeRADIUS, and no one is getting paid to answer your questions.
 
-FreeRADIUS is largely a volunteer effort.  No one is getting paid to
-answer your questions or to fix any bugs you find.  If you want the
-community to help you, you must make it easy for the community to help
-you.
+If you want the community to help you, you need to make it easy for
+the community to help you.
 
 Support is available.  See http://networkradius.com/.
 
