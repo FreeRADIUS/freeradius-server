@@ -30,8 +30,11 @@ RCSID("$Id$")
 #include <sys/stat.h>
 
 #include <sqlite3.h>
+#include <fcntl.h>
 
 #include "rlm_sql.h"
+
+#define BOOTSTRAP_MAX (1048576 * 10)
 
 typedef struct rlm_sql_conn {
 	sqlite3 *db;
@@ -41,11 +44,14 @@ typedef struct rlm_sql_conn {
 
 typedef struct rlm_sql_sqlite_config {
 	const char *filename;
+	const char *bootstrap;
 } rlm_sql_sqlite_config_t;
 
 static const CONF_PARSER driver_config[] = {
 	{"filename", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_sqlite_config_t, filename), NULL, NULL},
+	{"bootstrap", PW_TYPE_STRING_PTR,
+	 offsetof(rlm_sql_sqlite_config_t, bootstrap), NULL, NULL},
 	
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -85,11 +91,123 @@ static int sql_check_error(sqlite3 *db)
 	}
 }
 
+static int sql_loadfile(sqlite3 *db, const char *filename)
+{
+	FILE *f;
+	struct stat finfo;
+	
+	ssize_t len;
+	char *buff;
+	char *p, *q, *s;
+
+	int status;
+	sqlite3_stmt *statement;
+	const char *z_tail;
+
+	radlog(L_INFO, "rlm_sql_sqlite: Executing SQL statements from "
+	       "file \"%s\"", filename);
+
+	f = fopen(filename, "r");
+	if (!f) {
+		radlog(L_ERR, "rlm_sql_sqlite: Failed opening SQL "
+		       "file \"%s\": %s", filename,
+		       strerror(errno));
+	
+		return -1;
+	}
+	
+	if (fstat(fileno(f), &finfo) < 0) {
+		radlog(L_ERR, "rlm_sql_sqlite: Failed stating SQL "
+		       "file \"%s\": %s", filename,
+		       strerror(errno));
+		       
+		fclose(f);
+
+		return -1; 
+	}
+	
+	if (finfo.st_size > BOOTSTRAP_MAX) {
+		too_big:
+		radlog(L_ERR, "rlm_sql_sqlite: Size of SQL "
+		       "(%zu) file exceeds limit (%uk)", (size_t) finfo.st_size / 1024,
+		       BOOTSTRAP_MAX / 1024);
+		       
+		fclose(f);
+
+		return -1;       
+	}
+	
+	MEM(buff = talloc_array(NULL, char, finfo.st_size + 1));
+	len = fread(buff, sizeof(char), finfo.st_size + 1, f);
+	if (len > finfo.st_size) {
+		talloc_free(buff);
+	
+		goto too_big;
+	} 
+	
+	if (!len) {
+		if (ferror(f)) {
+			radlog(L_ERR, "rlm_sql_sqlite: Error reading SQL "
+			       "file: %s", strerror(errno));
+			       
+			fclose(f);
+			talloc_free(buff);
+
+			return -1;
+		}
+		
+		radlog(L_DBG, "rlm_sql_sqlite: Ignoring empty SQL file");
+		
+		fclose(f);
+		talloc_free(buff);
+		
+		return 0;
+	}
+	
+	buff[len] = '\0';
+	
+	fclose(f);
+	
+	/*
+	 *	Statement delimiter is ;\n
+	 */
+	p = s = buff;
+	while ((q = strchr(p, ';'))) {
+		if (q[1] != '\n') {
+			p = q + 1;
+			continue;
+		}
+		
+		*q = '\0';
+		(void) sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
+		if (sql_check_error(db)) {
+			talloc_free(buff);
+			return -1;	    
+		}
+	
+		(void) sqlite3_step(statement);
+		status = sql_check_error(db);
+	
+		(void) sqlite3_finalize(statement);
+		if (status || sql_check_error(db)) {
+			talloc_free(buff);
+			return -1;	    
+		}
+		
+		p = s = q + 1;
+	}
+	
+	talloc_free(buff);
+	return 0;
+}
+
 static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_config_t *driver;
+	int exists;
 	
-	MEM(driver = config->driver = talloc_zero(config, rlm_sql_sqlite_config_t));
+	MEM(driver = config->driver = talloc_zero(config,
+						  rlm_sql_sqlite_config_t));
 	
 	if (cf_section_parse(conf, driver, driver_config) < 0) {
 		return -1;
@@ -101,6 +219,80 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 						       config->sql_db));
 	}
 	
+	exists = rad_file_exists(driver->filename);
+	if (exists < 0) {
+		radlog(L_ERR, "rlm_sql_sqlite: Database exists, but couldn't "
+		       "be opened: %s", strerror(errno));
+	
+		return -1;
+	}
+	
+	if (driver->bootstrap && !exists) {
+		int status;
+		int ret;
+		char *p;
+		char *buff;
+		sqlite3 *db = NULL;
+		
+		radlog(L_INFO, "rlm_sql_sqlite: Database doesn't exist, "
+		       "creating it and loading schema");
+		
+		p = strrchr(driver->filename, '/');
+		if (p) {
+			size_t len = (p - driver->filename) + 1;
+			
+			buff = talloc_array(NULL, char, len);
+			strlcpy(buff, driver->filename, len);
+		} else {
+			buff = talloc_strdup(NULL, driver->filename);
+		}
+		
+		if (rad_mkdir(buff, 0700) < 0) {
+			radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
+			       "directory for SQLite database");
+			
+			talloc_free(buff);
+			
+			return -1;
+		}
+
+		talloc_free(buff);
+
+		status = sqlite3_open_v2(driver->filename, &db,
+				         SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+				         NULL);
+		
+		if (!db) {
+			radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
+			       "opening/creating SQLite database, error "
+			       "code (%u)", status);
+			       
+			return -1;
+		}
+		
+		if (sql_check_error(db)) {
+			(void) sqlite3_close(db);
+			
+			return -1;
+		}
+		
+		ret = sql_loadfile(db, driver->bootstrap);
+		
+		status = sqlite3_close(db);
+		if (status != SQLITE_OK) {
+			radlog(L_ERR, "rlm_sql_sqlite: Error closing SQLite "
+			       "handle, error code (%u)", status); 
+			return -1;
+		}
+		
+		if (ret < 0) {	
+			return -1;
+		}
+	}
+	
+	return 0;
+}
+
 static int sql_close(rlm_sql_handle_t *handle,
 		     UNUSED rlm_sql_config_t *config)
 {
