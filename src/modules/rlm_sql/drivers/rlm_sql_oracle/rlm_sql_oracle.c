@@ -128,12 +128,12 @@ static int sql_close(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 /*************************************************************************
  *
- *	Function: sql_init_socket
+ *	Function: sql_socket_init
  *
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_oracle_sock *oracle_sock;
 
@@ -624,7 +624,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 rlm_sql_module_t rlm_sql_oracle = {
 	"rlm_sql_oracle",
 	NULL,
-	sql_init_socket,
+	sql_socket_init,
 	sql_destroy_socket,
 	sql_query,
 	sql_select_query,

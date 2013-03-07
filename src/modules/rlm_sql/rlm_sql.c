@@ -970,7 +970,7 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	radlog(L_INFO, "rlm_sql (%s): Attempting to connect to database \"%s\"",
 	       inst->config->xlat_name, inst->config->sql_db);
 	       
-	if (sql_init_socketpool(inst) < 0) return -1;
+	if (sql_socket_initpool(inst) < 0) return -1;
 
 	if (inst->config->groupmemb_query && 
 	    inst->config->groupmemb_query[0]) {

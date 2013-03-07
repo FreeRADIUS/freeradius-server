@@ -52,7 +52,7 @@ typedef struct rlm_sql_db2_sock {
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	SQLRETURN retval;
 	rlm_sql_db2_sock *sock;
@@ -341,7 +341,7 @@ not_implemented(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *confi
 rlm_sql_module_t rlm_sql_db2 = {
 	"rlm_sql_db2",
 	NULL,
-	sql_init_socket,
+	sql_socket_init,
 	sql_destroy_socket, /* sql_destroy_socket*/
 	sql_query,
 	sql_select_query,

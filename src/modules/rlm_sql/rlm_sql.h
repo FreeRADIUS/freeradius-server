@@ -92,7 +92,7 @@ typedef struct rlm_sql_module_t {
 	const char *name;
 
 	int (*sql_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);	
-	int (*sql_init_socket)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+	int (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_destroy_socket)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query);
 	int (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query);
@@ -133,7 +133,7 @@ typedef struct sql_grouplist {
 	struct sql_grouplist	*next;
 } rlm_sql_grouplist_t;
 
-int     sql_init_socketpool(rlm_sql_t *inst);
+int     sql_socket_initpool(rlm_sql_t *inst);
 void    sql_poolfree(rlm_sql_t *inst);
 int     sql_close_socket(rlm_sql_t *inst, rlm_sql_handle_t *handle);
 rlm_sql_handle_t *sql_get_socket(rlm_sql_t *inst);

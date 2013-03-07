@@ -229,12 +229,12 @@ static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 
 /*************************************************************************
  *
- *	Function: sql_init_socket
+ *	Function: sql_socket_init
  *
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_sybase_sock *sybase_sock;
 
@@ -254,14 +254,14 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	   the connection pooling design of rlm_sql, we'll have to go with one context per connection */
 
 	if (cs_ctx_alloc(CS_VERSION_100, &sybase_sock->context) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to allocate CS context structure (cs_ctx_alloc())");
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to allocate CS context structure (cs_ctx_alloc())");
 		return -1;
 	}
 
 	/* Initialize ctlib */
 
 	if (ct_init(sybase_sock->context, CS_VERSION_100) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to initialize Client-Library (ct_init())");
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to initialize Client-Library (ct_init())");
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			cs_ctx_drop(sybase_sock->context);
 		}
@@ -271,7 +271,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* Install callback functions for error-handling */
 
         if (cs_config(sybase_sock->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to install CS Library error callback");
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to install CS Library error callback");
                 if (sybase_sock->context != (CS_CONTEXT *)NULL) {
                         ct_exit(sybase_sock->context, CS_FORCE_EXIT);
                         cs_ctx_drop(sybase_sock->context);
@@ -280,7 +280,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	}
 
 	if (ct_callback(sybase_sock->context, NULL, CS_SET, CS_CLIENTMSG_CB, (CS_VOID *)clientmsg_callback) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to install client message callback");
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
                 if (sybase_sock->context != (CS_CONTEXT *)NULL) {
                         ct_exit(sybase_sock->context, CS_FORCE_EXIT);
                         cs_ctx_drop(sybase_sock->context);
@@ -289,7 +289,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	}
 
 	if (ct_callback(sybase_sock->context, NULL, CS_SET, CS_SERVERMSG_CB, (CS_VOID *)servermsg_callback) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to install client message callback");
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
                 if (sybase_sock->context != (CS_CONTEXT *)NULL) {
                         ct_exit(sybase_sock->context, CS_FORCE_EXIT);
                         cs_ctx_drop(sybase_sock->context);
@@ -300,7 +300,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* Allocate a ctlib connection structure */
 
 	if (ct_con_alloc(sybase_sock->context, &sybase_sock->connection) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to allocate connection structure (ct_con_alloc())");
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to allocate connection structure (ct_con_alloc())");
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			ct_exit(sybase_sock->context, CS_FORCE_EXIT);
 			cs_ctx_drop(sybase_sock->context);
@@ -311,7 +311,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* Initialize inline error handling for the connection */
 
 /*	if (ct_diag(sybase_sock->connection, CS_INIT, CS_UNUSED, CS_UNUSED, NULL) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to initialize error handling (ct_diag())");
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to initialize error handling (ct_diag())");
                 if (sybase_sock->context != (CS_CONTEXT *)NULL) {
                         ct_exit(sybase_sock->context, CS_FORCE_EXIT);
                         cs_ctx_drop(sybase_sock->context);
@@ -325,7 +325,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	if (ct_con_props(sybase_sock->connection, CS_SET, CS_USERNAME, config->sql_login,
 					 strlen(config->sql_login), NULL) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to set username for connection (ct_con_props())\n%s",
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to set username for connection (ct_con_props())\n%s",
 		sql_error(handle, config));
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			ct_exit(sybase_sock->context, CS_FORCE_EXIT);
@@ -336,7 +336,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	if (ct_con_props(sybase_sock->connection, CS_SET, CS_PASSWORD, config->sql_password,
 					strlen(config->sql_password), NULL) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to set password for connection (ct_con_props())\n%s",
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to set password for connection (ct_con_props())\n%s",
 		sql_error(handle, config));
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			ct_exit(sybase_sock->context, CS_FORCE_EXIT);
@@ -348,7 +348,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* Establish the connection */
 
 	if (ct_connect(sybase_sock->connection, config->sql_server, strlen(config->sql_server)) != CS_SUCCEED) {
-		radlog(L_ERR,"rlm_sql_sybase(sql_init_socket): Unable to establish connection to symbolic servername %s\n%s",
+		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to establish connection to symbolic servername %s\n%s",
 				config->sql_server, sql_error(handle, config));
 		if (sybase_sock->context != (CS_CONTEXT *)NULL) {
 			ct_exit(sybase_sock->context, CS_FORCE_EXIT);
@@ -905,7 +905,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 rlm_sql_module_t rlm_sql_sybase = {
 	"rlm_sql_sybase",
 	NULL,
-	sql_init_socket,
+	sql_socket_init,
 	sql_destroy_socket,
 	sql_query,
 	sql_select_query,

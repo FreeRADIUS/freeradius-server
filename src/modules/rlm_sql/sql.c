@@ -75,7 +75,7 @@ static void *sql_conn_create(void *ctx)
 	handle->inst = inst;
 	talloc_set_destructor((void *) handle, sql_conn_destructor);
 
-	rcode = (inst->module->sql_init_socket)(handle, inst->config);
+	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode == 0) {
 		exec_trigger(NULL, inst->cs, "modules.sql.open", FALSE);
 		
@@ -98,12 +98,12 @@ static int sql_conn_delete(UNUSED void *ctx, void *conn)
 
 /*************************************************************************
  *
- *	Function: sql_init_socketpool
+ *	Function: sql_socket_initpool
  *
  *	Purpose: Connect to the sql server, if possible
  *
  *************************************************************************/
-int sql_init_socketpool(rlm_sql_t * inst)
+int sql_socket_initpool(rlm_sql_t * inst)
 {
 	inst->pool = fr_connection_pool_init(inst->cs, inst,
 					     sql_conn_create,

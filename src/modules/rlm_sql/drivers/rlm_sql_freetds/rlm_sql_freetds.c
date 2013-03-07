@@ -66,7 +66,7 @@ static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	LOGINREC *login;
 	rlm_sql_freetds_sock *freetds_sock;
@@ -344,7 +344,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 rlm_sql_module_t rlm_sql_freetds = {
 	"rlm_sql_freetds",
 	NULL,
-	sql_init_socket,
+	sql_socket_init,
 	sql_destroy_socket,
 	sql_query,
 	sql_select_query,
