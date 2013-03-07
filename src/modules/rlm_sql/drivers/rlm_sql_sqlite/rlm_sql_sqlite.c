@@ -68,7 +68,8 @@ static int sql_check_error(sqlite3 *db)
 	case SQLITE_FULL:
 	case SQLITE_CONSTRAINT:
 	case SQLITE_MISMATCH:
-		radlog(L_ERR, "rlm_sql_sqlite: Error (%d)", error);
+		radlog(L_ERR, "rlm_sql_sqlite: Error (%d): %s", error,
+		       sqlite3_errmsg(db));
 		
 		return -1;
 		break;
@@ -78,7 +79,7 @@ static int sql_check_error(sqlite3 *db)
 	 */
 	default:
 		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, "
-		       "error (%d)", error);
+		       "error (%d): %s", error, sqlite3_errmsg(db));
 		return SQL_DOWN;
 		break;
 	}
@@ -100,6 +101,34 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 						       config->sql_db));
 	}
 	
+static int sql_close(rlm_sql_handle_t *handle,
+		     UNUSED rlm_sql_config_t *config)
+{
+	int status = 0;
+	rlm_sql_conn_t *conn = handle->conn;
+	
+	if (conn && conn->db) {
+		sqlite3_close(conn->db);
+		conn->db = NULL;
+	}
+	
+	if (status != SQLITE_OK) {
+		return -1;
+	}
+	
+	return 0;
+}
+
+
+static int sql_destroy_socket(rlm_sql_handle_t *handle,
+			      UNUSED rlm_sql_config_t *config)
+{
+	if (!handle->conn) {
+		return 0;
+	}
+
+	TALLOC_FREE(handle->conn);
+	
 	return 0;
 }
 
@@ -118,8 +147,16 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	status = sqlite3_open_v2(driver->filename, &(conn->db),
 				 SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX,
 				 NULL);
-	if (status != SQLITE_OK) {
-		return sql_check_error(conn->db);
+	if (!conn->db) {
+		radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
+		       "opening/creating SQLite database error "
+		       "code (%u)", status);
+		       
+		goto error;
+	}
+	
+	if (sql_check_error(conn->db)) {
+		goto close;
 	}
 	
 	/*
@@ -127,19 +164,19 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	 */
 	status = sqlite3_extended_result_codes(conn->db, 1);
 	
-	return sql_check_error(conn->db);
-}
-
-static int sql_destroy_socket(rlm_sql_handle_t *handle,
-			      UNUSED rlm_sql_config_t *config)
-{
-	if (!handle->conn) {
-		return 0;
+	if (sql_check_error(conn->db)) {
+		goto close;
 	}
-
-	TALLOC_FREE(handle->conn);
 	
 	return 0;
+	
+	close:
+	sql_close(handle, config);
+	
+	error:
+	sql_destroy_socket(handle, config);
+	
+	return -1;
 }
 
 static int sql_select_query(rlm_sql_handle_t * handle,
@@ -333,24 +370,6 @@ static const char *sql_error(rlm_sql_handle_t *handle,
 	}
 
 	return "Invalid handle";
-}
-
-static int sql_close(rlm_sql_handle_t *handle,
-		     UNUSED rlm_sql_config_t *config)
-{
-	int status = 0;
-	rlm_sql_conn_t *conn = handle->conn;
-	
-	if (conn && conn->db) {
-		status = sqlite3_close(conn->db);
-		conn->db = NULL;
-	}
-	
-	if (status != SQLITE_OK) {
-		return -1;
-	}
-	
-	return 0;
 }
 
 static int sql_finish_query(rlm_sql_handle_t *handle,
