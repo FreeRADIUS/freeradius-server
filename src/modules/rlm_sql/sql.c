@@ -49,10 +49,12 @@ static int sql_conn_destructor(void *conn)
 	
 	exec_trigger(NULL, inst->cs, "modules.sql.close", FALSE);
 
-	if (handle->conn) {
-		(inst->module->sql_close)(handle, inst->config);
+	if (inst->module->sql_close) {
+		if (handle->conn) {
+			(inst->module->sql_close)(handle, inst->config);
+		}
 	}
-	
+		
 	if (inst->module->sql_destroy_socket) {
 		(inst->module->sql_destroy_socket)(handle, inst->config);
 	}
@@ -73,6 +75,13 @@ static void *sql_conn_create(void *ctx)
 	 *	destructor has access to the module configuration.
 	 */
 	handle->inst = inst;
+	
+	/*
+	 *	When something frees this handle the destructor set by
+	 *	the driver will be called first, closing any open sockets.
+	 *	Then we call our destructor to trigger an modules.sql.close
+	 *	event, then all the memory is freed.
+	 */
 	talloc_set_destructor((void *) handle, sql_conn_destructor);
 
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
@@ -84,6 +93,9 @@ static void *sql_conn_create(void *ctx)
 
 	exec_trigger(NULL, inst->cs, "modules.sql.fail", TRUE);
 
+	/*
+	 *	Destroy any half opened connections.
+	 */
 	talloc_free(handle);
 	return NULL;
 }
