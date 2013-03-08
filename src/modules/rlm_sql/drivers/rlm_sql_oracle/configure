@@ -2887,7 +2887,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_oracle requires:$fail." >&2;};
 	fi
 fi
 
-sql_sybase_cflags="$SMART_CFLAGS"
+sql_oracle_cflags="$SMART_CFLAGS"
 
 
 

@@ -156,7 +156,7 @@ if test "x$fail" != x; then
 	fi
 fi
 
-sql_sybase_cflags="$SMART_CFLAGS"
+sql_oracle_cflags="$SMART_CFLAGS"
 AC_SUBST(sql_oracle_ldflags)
 AC_SUBST(sql_oracle_cflags)
 AC_SUBST(targetname)
