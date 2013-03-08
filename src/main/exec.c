@@ -103,7 +103,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, 1,
 				sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		radlog(L_ERR, "Exec-Program: invalid command line.");
+		RDEBUG("Exec: invalid command line '%s'.", cmd);
 		return -1;
 	}
 
@@ -113,8 +113,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	if (exec_wait) {
 		if (pipe(pd) != 0) {
-			radlog(L_ERR|L_CONS, "Couldn't open pipe: %s",
-			       strerror(errno));
+			RDEBUG("Exec: Couldn't open pipe: %s", strerror(errno));
 			return -1;
 		}
 	} else {
@@ -191,7 +190,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			radlog(L_ERR|L_CONS, "Failed opening /dev/null: %s\n",
+			RDEBUG("Exec: Failed opening /dev/null: %s\n",
 			       strerror(errno));
 			exit(1);
 		}
@@ -207,7 +206,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			 *	which we don't want.
 			 */
 			if (close(pd[0]) != 0) {
-				radlog(L_ERR|L_CONS, "Can't close pipe: %s",
+				RDEBUG("Exec: Can't close pipe: %s",
 				       strerror(errno));
 				exit(1);
 			}
@@ -217,7 +216,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			 *	so we make it STDOUT.
 			 */
 			if (dup2(pd[1], STDOUT_FILENO) != 1) {
-				radlog(L_ERR|L_CONS, "Can't dup stdout: %s",
+				RDEBUG("Exec: Can't dup stdout: %s",
 				       strerror(errno));
 				exit(1);
 			}
@@ -247,7 +246,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		closefrom(3);
 
 		execve(argv[0], argv, envp);
-		radlog(L_ERR, "Exec-Program: FAILED to execute %s: %s",
+		RDEBUG("Exec: FAILED to execute %s: %s",
 		       argv[0], strerror(errno));
 		exit(1);
 	}
@@ -263,8 +262,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	Parent process.
 	 */
 	if (pid < 0) {
-		radlog(L_ERR|L_CONS, "Couldn't fork %s: %s",
-		       argv[0], strerror(errno));
+		RDEBUG("Exec: Couldn't fork %s: %s", argv[0], strerror(errno));
 		if (exec_wait) {
 			close(pd[0]);
 			close(pd[1]);
@@ -286,7 +284,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 *	error.
 	 */
 	if (close(pd[1]) != 0) {
-		radlog(L_ERR|L_CONS, "Can't close pipe: %s", strerror(errno));
+		RDEBUG("Exec: Can't close pipe: %s", strerror(errno));
 		close(pd[0]);
 		return -1;
 	}
@@ -338,7 +336,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		rcode = select(pd[0] + 1, &fds, NULL, NULL, &wake);
 		if (rcode == 0) {
 		too_long:
-			radlog(L_ERR, "Child PID %u (%s) is taking too much time: forcing failure and killing child.", pid, argv[0]);
+			radlog(L_INFO, "Child PID %u (%s) is taking too much time: forcing failure and killing child.", pid, argv[0]);
 			kill(pid, SIGTERM);
 			close(pd[0]); /* should give SIGPIPE to child, too */
 
@@ -419,9 +417,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			 */
 			vp = NULL;
 			n = userparse(answer, &vp);
-			if (vp) {
-				pairfree(&vp);
-			}
+			if (vp) pairfree(&vp);
 		}
 
 		if (n == T_OP_INVALID) {
@@ -452,9 +448,12 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				answer[strlen(answer) - 1] = '\0';
 			}
 
-			radlog(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
+			RDEBUG("Exec outpyt: %s", answer);
+
+			vp = NULL;
 			if (userparse(answer, &vp) == T_OP_INVALID) {
-				radlog(L_ERR, "Exec-Program-Wait: %s: unparsable reply", cmd);
+				rad_assert(vp == NULL);
+				RDEBUG("Exec: %s: unparsable reply", cmd);
 
 			} else {
 				/*
@@ -472,26 +471,25 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
-		radlog(L_DBG, "Exec-Program: Timeout waiting for child");
+		RDEBUG("Exec: Timeout waiting for program");
 		return 2;
 	}
 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
-			radlog(L_DBG, "Exec-Program: returned: %d", status);
+			RDEBUG("Exec: program returned: %d", status);
 			return status;
 		}
 	}
 
-	radlog(L_ERR|L_CONS, "Exec-Program: Abnormal child exit: %s",
-	       strerror(errno));
+	RDEBUG("Exec: Abnormal child exit: %s", strerror(errno));
 	return 1;
 #else
 	msg_len = msg_len;	/* -Wunused */
 
 	if (exec_wait) {
-		radlog(L_ERR, "Exec-Program-Wait is not supported");
+		RDEBUG("Exec: Wait is not supported");
 		return -1;
 	}
 	
