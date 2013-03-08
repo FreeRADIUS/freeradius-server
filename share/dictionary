@@ -103,6 +103,7 @@ $INCLUDE dictionary.rfc5607
 $INCLUDE dictionary.rfc5904
 $INCLUDE dictionary.rfc6519
 $INCLUDE dictionary.rfc6572
+$INCLUDE dictionary.rfc6677
 
 #
 #	Mostly values which have been allocated by IANA under
