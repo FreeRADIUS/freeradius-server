@@ -37,8 +37,10 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	  must be updated.
 	* LADP now uses the connection pool.  The LDAP module has been
 	  completely re-written for performance and simplicity.
+	* Added full support for SQLite.
 
 	Bug fixes
 	* All known bug fixes from 2.1.x are included.
 	* Removed "addport" functionality.
-	* Removed "rlm_smb" module.
+	* Removed many unused or duplicate modules.  rlm_acct_unique, rlm_acctlog,
+	  rlm_dbm, rlm_fastusers, rlm_policy, rlm_smb, rlm_sql_log.
