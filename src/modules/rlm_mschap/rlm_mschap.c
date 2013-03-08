@@ -802,7 +802,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		/*
 		 * Read from the child
 		 */
-		len = radius_readfrom_program(from_child, pid, 10, buf, sizeof(buf));
+		len = radius_readfrom_program(request, from_child, pid, 10, buf, sizeof(buf));
 		if (len < 0) {
 			/* radius_readfrom_program will have closed from_child for us */
 			RDEBUG2("Failure reading from child");

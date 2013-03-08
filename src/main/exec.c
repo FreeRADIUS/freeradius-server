@@ -105,10 +105,10 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
 
-	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, 1,
+	argc = rad_expand_xlat(request, cmd, MAX_ARGV, (const char **) argv, 1,
 				sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		radlog(L_ERR, "Exec-Program: invalid command line.");
+		RDEBUG("Exec: invalid command line '%s'.", cmd);
 		return -1;
 	}
 
@@ -119,14 +119,14 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	if (exec_wait) {
 		if (input_fd) {
 			if (pipe(to_child) != 0) {
-				radlog(L_ERR, "Couldn't open pipe to child: %s",
+				RDEBUG("Exec: Couldn't open pipe to child: %s",
 				       strerror(errno));
 				return -1;
 			}
 		}
 		if (output_fd) {
 			if (pipe(from_child) != 0) {
-				radlog(L_ERR, "Couldn't open pipe from child: %s",
+				RDEBUG("Exec: Couldn't open pipe from child: %s",
 				       strerror(errno));
 				/* safe because these either need closing or are == -1 */
 				close(to_child[0]);
@@ -201,7 +201,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			radlog(L_ERR, "Failed opening /dev/null: %s\n",
+			RDEBUG("Exec: Failed opening /dev/null: %s\n",
 			       strerror(errno));
 			exit(1);
 		}
@@ -252,7 +252,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 		closefrom(3);
 
 		execve(argv[0], argv, envp);
-		radlog(L_ERR, "Exec-Program: FAILED to execute %s: %s",
+		RDEBUGW("Exec: failed to execute %s: %s",
 		       argv[0], strerror(errno));
 		exit(1);
 	}
@@ -268,7 +268,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	 *	Parent process.
 	 */
 	if (pid < 0) {
-		radlog(L_ERR, "Couldn't fork %s: %s",
+		RDEBUG("Exec: Couldn't fork %s: %s",
 		       argv[0], strerror(errno));
 		if (exec_wait) {
 			/* safe because these either need closing or are == -1 */
@@ -302,7 +302,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	return pid;
 #else
 	if (exec_wait) {
-		radlog(L_ERR, "Exec-Program-Wait is not supported");
+		RDEBUG("Exec: Wait is not supported");
 		return -1;
 	}
 	
@@ -347,8 +347,8 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
  * @param left length of buffer.
  * @return -1 on error, or length of output.
  */
-int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer,
-			    int left)
+int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
+			    char *answer, int left)
 {
 	int done = 0;
 #ifndef __MINGW32__
@@ -403,7 +403,7 @@ int radius_readfrom_program(int fd, pid_t pid, int timeout, char *answer,
 		rcode = select(fd + 1, &fds, NULL, NULL, &wake);
 		if (rcode == 0) {
 		too_long:
-			radlog(L_ERR, "Child PID %u is taking too much time: forcing failure and killing child.", pid);
+			RDEBUG("Exec: Child PID %u is taking too much time: forcing failure and killing child.", pid);
 			kill(pid, SIGTERM);
 			close(fd); /* should give SIGPIPE to child, too */
 
@@ -509,7 +509,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		return 0;
 
 #ifndef __MINGW32__
-	done = radius_readfrom_program(from_child, pid, 10, answer, sizeof(answer));
+	done = radius_readfrom_program(request, from_child, pid, 10, answer, sizeof(answer));
 	if (done < 0) {
 		/*
 		 * failure - radius_readfrom_program will
@@ -528,7 +528,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	close(from_child);
 
-	DEBUG2("Exec-Program output: %s", answer);
+	DEBUG2("Exec: Program output is %s", answer);
 
 	/*
 	 *	Parse the output, if any.
@@ -548,7 +548,6 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		}
 
 		if (n == T_OP_INVALID) {
-			DEBUG("Exec-Program-Wait: plaintext: %s", answer);
 			if (user_msg) {
 				strlcpy(user_msg, answer, msg_len);
 			}
@@ -575,9 +574,8 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				answer[strlen(answer) - 1] = '\0';
 			}
 
-			radlog(L_DBG,"Exec-Program-Wait: value-pairs: %s", answer);
 			if (userparse(answer, &vp) == T_OP_INVALID) {
-				radlog(L_ERR, "Exec-Program-Wait: %s: unparsable reply", cmd);
+				RDEBUGE("Exec: Unparsable reply from '%s'", cmd);
 
 			} else {
 				/*
@@ -595,19 +593,19 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
-		radlog(L_DBG, "Exec-Program: Timeout waiting for child");
+		RDEBUGE("Exec: Timeout waiting for child");
 		return 2;
 	}
 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
-			radlog(L_DBG, "Exec-Program: returned: %d", status);
+			RDEBUGE("Exec: child returned %d", status);
 			return status;
 		}
 	}
 
-	radlog(L_ERR, "Exec-Program: Abnormal child exit: %s",
+	RDEBUG("Exec:Abnormal child exit: %s",
 	       strerror(errno));
 #endif	/* __MINGW32__ */
 
