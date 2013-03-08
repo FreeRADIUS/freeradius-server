@@ -49,6 +49,9 @@ dnl #  0. Checks for compiler, libtool, and command line options.
 dnl #
 dnl #############################################################
 
+dnl Get system information
+AC_CANONICAL_SYSTEM
+
 dnl Check for GNU cc
 AC_PROG_CC
 AC_PROG_CXX
