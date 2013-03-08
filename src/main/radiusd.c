@@ -429,6 +429,7 @@ int main(int argc, char *argv[])
 		rcode = 2;
 	} else {
 		radlog(L_INFO, "Exiting normally.");
+		rcode = 1;
 	}
 
 	/*
