@@ -48,16 +48,6 @@ static int sql_conn_destructor(void *conn)
 	rad_assert(inst);
 	
 	exec_trigger(NULL, inst->cs, "modules.sql.close", FALSE);
-
-	if (inst->module->sql_close) {
-		if (handle->conn) {
-			(inst->module->sql_close)(handle, inst->config);
-		}
-	}
-		
-	if (inst->module->sql_destroy_socket) {
-		(inst->module->sql_destroy_socket)(handle, inst->config);
-	}
 	
 	return 0;
 }
@@ -110,12 +100,12 @@ static int sql_conn_delete(UNUSED void *ctx, void *conn)
 
 /*************************************************************************
  *
- *	Function: sql_socket_initpool
+ *	Function: sql_socket_pool_init
  *
  *	Purpose: Connect to the sql server, if possible
  *
  *************************************************************************/
-int sql_socket_initpool(rlm_sql_t * inst)
+int sql_socket_pool_init(rlm_sql_t * inst)
 {
 	inst->pool = fr_connection_pool_init(inst->cs, inst,
 					     sql_conn_create,
