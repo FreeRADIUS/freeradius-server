@@ -299,7 +299,6 @@ rlm_sql_module_t rlm_sql_firebird = {
 	"rlm_sql_firebird",
 	NULL,
 	sql_socket_init,
-	NULL,
 	sql_query,
 	sql_select_query,
 	sql_store_result,
@@ -308,7 +307,6 @@ rlm_sql_module_t rlm_sql_firebird = {
 	sql_fetch_row,
 	sql_free_result,
 	sql_error,
-	NULL,
 	sql_finish_query,
 	sql_finish_select_query,
 	sql_affected_rows

@@ -48,21 +48,6 @@ static int sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *co
 
 /*************************************************************************
  *
- *	Function: sql_destroy_socket
- *
- *	Purpose: Free socket and any private connection data
- *
- *************************************************************************/
-static int sql_destroy_socket(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	handle->conn = NULL;
-
-	return 0;
-}
-
-
-/*************************************************************************
- *
  *	Function: sql_query
  *
  *	Purpose: Issue a query to the database
@@ -174,22 +159,6 @@ static const char *sql_error(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_co
 	return "Unknown error";
 }
 
-
-/*************************************************************************
- *
- *	Function: sql_close
- *
- *	Purpose: database specific close. Closes an open database
- *               connection
- *
- *************************************************************************/
-static int sql_close(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
-{
-	handle->conn = NULL;
-	return 0;
-}
-
-
 /*************************************************************************
  *
  *	Function: sql_finish_query
@@ -237,7 +206,6 @@ rlm_sql_module_t rlm_sql_null = {
 	"rlm_sql_null",
 	NULL,
 	sql_socket_init,
-	sql_destroy_socket,
 	sql_query,
 	sql_select_query,
 	sql_store_result,
@@ -246,7 +214,6 @@ rlm_sql_module_t rlm_sql_null = {
 	sql_fetch_row,
 	sql_free_result,
 	sql_error,
-	sql_close,
 	sql_finish_query,
 	sql_finish_select_query,
 	sql_affected_rows

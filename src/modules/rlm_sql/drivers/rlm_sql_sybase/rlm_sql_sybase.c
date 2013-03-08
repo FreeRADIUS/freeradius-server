@@ -236,6 +236,10 @@ static int sql_socket_destructor(void *c)
 	
 	DEBUG2("rlm_sql_sybase: Socket destructor called, closing socket");
 	
+	if (conn->db) {
+		ct_close(conn->db, CS_FORCE_CLOSE);
+	}
+	
 	return 0;
 }
 
@@ -432,8 +436,8 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 					, sql_error(handle, config));
 			if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 				radlog(L_ERR,"rlm_sql_sybase(sql_query): cleaning up.");
-				ct_close(conn->db, CS_FORCE_CLOSE);
-				sql_close(handle, config);
+
+				return SQL_DOWN;
 			}
 			return -1;
 			break;
@@ -468,8 +472,8 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 					, sql_error(handle, config));
 			if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 				radlog(L_ERR,"rlm_sql_sybase(sql_query): cleaning up.");
-				ct_close(conn->db, CS_FORCE_CLOSE);
-				sql_close(handle, config);
+				
+				return SQL_DOWN;
 			}
 			return -1;
 			break;
@@ -498,8 +502,8 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			radlog(L_ERR,"rlm_sql_sybase(sql_query): cleaning up.");
-			ct_close(conn->db, CS_FORCE_CLOSE);
-			sql_close(handle, config);
+	
+			return SQL_DOWN;
 		}
 		return -1;
 		break;
@@ -699,8 +703,8 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			radlog(L_ERR,"rlm_sql_sybase(sql_select_query): cleaning up.");
-			ct_close(conn->db, CS_FORCE_CLOSE);
-			sql_close(handle, config);
+
+			return SQL_DOWN;
 		}
 		return -1;
 		break;
@@ -789,8 +793,8 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			radlog(L_ERR,"rlm_sql_sybase(sql_fetch_row): cleaning up.");
-			ct_close(conn->db, CS_FORCE_CLOSE);
-			sql_close(handle, config);
+
+			return SQL_DOWN;
 		}
 		return SQL_DOWN;
 		break;
@@ -884,7 +888,6 @@ rlm_sql_module_t rlm_sql_sybase = {
 	"rlm_sql_sybase",
 	NULL,
 	sql_socket_init,
-	NULL,
 	sql_query,
 	sql_select_query,
 	sql_store_result,
@@ -893,7 +896,6 @@ rlm_sql_module_t rlm_sql_sybase = {
 	sql_fetch_row,
 	sql_free_result,
 	sql_error,
-	NULL,
 	sql_finish_query,
 	sql_finish_select_query,
 	sql_affected_rows

@@ -489,7 +489,6 @@ rlm_sql_module_t rlm_sql_postgresql = {
 	"rlm_sql_postgresql",
 	NULL,
 	sql_init_socket,
-	NULL,
 	sql_query,
 	sql_select_query,
 	not_implemented, /* sql_store_result */
@@ -498,7 +497,6 @@ rlm_sql_module_t rlm_sql_postgresql = {
 	sql_fetch_row,
 	not_implemented, /* sql_free_result */
 	sql_error,
-	NULL,
 	sql_finish_query,
 	sql_finish_select_query,
 	sql_affected_rows,

@@ -163,7 +163,6 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 			config->sql_db, strlen(config->sql_db)))
 	{
 		radlog(L_ERR,"rlm_sql_oracle: Oracle logon failed: '%s'", sql_error(handle, config));
-		sql_close(handle,config);
 		return -1;
 	}
 
@@ -594,7 +593,6 @@ rlm_sql_module_t rlm_sql_oracle = {
 	"rlm_sql_oracle",
 	NULL,
 	sql_socket_init,
-	NULL,
 	sql_query,
 	sql_select_query,
 	sql_store_result,
@@ -603,7 +601,6 @@ rlm_sql_module_t rlm_sql_oracle = {
 	sql_fetch_row,
 	sql_free_result,
 	sql_error,
-	NULL,
 	sql_finish_query,
 	sql_finish_select_query,
 	sql_affected_rows
