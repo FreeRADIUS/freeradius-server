@@ -344,15 +344,19 @@ typedef enum {
 	LDAP_PROC_SUCCESS = 0,
 	LDAP_PROC_ERROR	= -1,
 	LDAP_PROC_RETRY	= -2,
-	LDAP_PROC_REJECT = -3
+	LDAP_PROC_NOTPERMITTED = -3,
+	LDAP_PROC_REJECT = -4
 } ldap_rcode_t;
 
-static ldap_rcode_t process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
-			      const char *operation)
+static ldap_rcode_t process_ldap_errno(ldap_instance *inst, 
+				       const LDAP_CONN *conn, 
+				       const char **error)
 {
 	int ldap_errno;
 	
-	ldap_get_option((*pconn)->handle, LDAP_OPT_ERROR_NUMBER,
+	*error = NULL;
+	
+	ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
 			&ldap_errno);
 	switch (ldap_errno) {
 	case LDAP_SUCCESS:
@@ -360,25 +364,32 @@ static ldap_rcode_t process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
 		return LDAP_PROC_SUCCESS;
 
 	case LDAP_INSUFFICIENT_ACCESS:
-		radlog(L_ERR, "rlm_ldap (%s): %s failed: Insufficient access. "
-		       "Check the identity and password configuration "
-		       "directives", inst->xlat_name, operation);
-		return LDAP_PROC_ERROR;
+		*error = "Insufficient access. Check the identity and password "
+			 "configuration directive";
+		
+		return LDAP_PROC_NOTPERMITTED;
+		
+	case LDAP_UNWILLING_TO_PERFORM:
+		*error = "Server was unwilling to perform";
+	
+		return LDAP_PROC_NOTPERMITTED;
 		
 	case LDAP_TIMEOUT:
 		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
-		radlog(L_ERR, "rlm_ldap (%s): %s failed: Timed out "
-		       "while waiting for server to respond", inst->xlat_name,
-		       operation);
+		
+		*error = "Timed out while waiting for server to respond";
+		       
 		return LDAP_PROC_ERROR;
 
 	case LDAP_FILTER_ERROR:
-		radlog(L_ERR, "rlm_ldap (%s): %s failed: Bad search "
-		       "filter", inst->xlat_name, operation);
+		*error = "Bad search filter";
+
 		return LDAP_PROC_ERROR;
 
 	case LDAP_TIMELIMIT_EXCEEDED:
 		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
+		
+		*error = "Time limit exceeded";
 		/* FALL-THROUGH */
 
 	case LDAP_BUSY:
@@ -387,36 +398,41 @@ static ldap_rcode_t process_ldap_errno(ldap_instance *inst, LDAP_CONN **pconn,
 		 *	Reconnect.  There's an issue with the socket
 		 *	or LDAP server.
 		 */
-		radlog(L_ERR, "rlm_ldap (%s): %s failed: %s",
-		       inst->xlat_name, operation, ldap_err2string(ldap_errno));
+		*error = ldap_err2string(ldap_errno);
+		
 	case LDAP_SERVER_DOWN:
 		return LDAP_PROC_RETRY;
 		
 	case LDAP_INVALID_CREDENTIALS:
 	case LDAP_CONSTRAINT_VIOLATION:
+		*error = ldap_err2string(ldap_errno);
+	
 		return LDAP_PROC_REJECT;
 
 	case LDAP_OPERATIONS_ERROR:
-		DEBUGW("Please set 'chase_referrals=yes' and 'rebind=yes'");
-		DEBUGW("See the ldap module configuration for details");
+		*error = "Please set 'chase_referrals=yes' and 'rebind=yes'. "
+		         "See the ldap module configuration for details.";
 		/* FALL-THROUGH */
 
 	default:
-		radlog(L_ERR, "rlm_ldap (%s): %s failed: %s",
-		       inst->xlat_name, operation, ldap_err2string(ldap_errno));
+		*error = ldap_err2string(ldap_errno);
+
 		return LDAP_PROC_ERROR;
 	}
 }
 
 
-static int ldap_bind_wrapper(LDAP_CONN **pconn, const char *user,
-			     const char *password, int retry)
+static int ldap_bind_wrapper(REQUEST *request, LDAP_CONN **pconn, 
+			     const char *user, const char *password,
+			     int retry)
 {
 	int		rcode, msg_id;
 	int		module_rcode = RLM_MODULE_OK;
 	LDAP_CONN	*conn = *pconn;
 	ldap_instance   *inst = conn->inst;
 	LDAPMessage	*result = NULL;
+	const char	*error;
+	char 		*ext_error = NULL;
 	struct timeval tv;
 
 retry:
@@ -430,47 +446,82 @@ retry:
 
 	rcode = ldap_result(conn->handle, msg_id, 1, &tv, &result);
 	if (rcode > 0) {
-		rcode = ldap_parse_result(conn->handle,result,NULL,NULL,
-					NULL,NULL,NULL,1);
+		rcode = ldap_parse_result(conn->handle, result, NULL, NULL,
+					  &ext_error, NULL, NULL, 1);
 	}
+
 get_error:
-	switch (process_ldap_errno(inst, &conn, "Bind"))
+	switch (process_ldap_errno(inst, conn, &error))
 	{
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_REJECT:
-			module_rcode = RLM_MODULE_REJECT;
-			goto error;
-		case LDAP_PROC_ERROR:
-			module_rcode = RLM_MODULE_FAIL;
+	case LDAP_PROC_SUCCESS:
+		break;
+	case LDAP_PROC_NOTPERMITTED:
+		if (request) {
+			RDEBUGE("Bind was not permitted (%s): %s", error,
+				ext_error ? ext_error : 
+				"no additional information");
+		} else {
+			radlog(L_ERR, "rlm_ldap (%s): Bind was not permitted "
+			       "(%s): %s", inst->xlat_name, 
+			       error, ext_error ? ext_error : 
+			       "no additional information");		
+		}
+		
+		module_rcode = RLM_MODULE_USERLOCK;
+		
+		break;
+	case LDAP_PROC_REJECT:	
+		if (request) {
+			RDEBUGE("Bind credentials incorrect (%s): %s", error,
+				ext_error ? ext_error : 
+				"no additional information");
+		} else {
+			radlog(L_ERR, "rlm_ldap (%s): Bind credentials "
+			       "incorrect (%s): %s", inst->xlat_name, 
+			       error, ext_error ? ext_error : 
+			       "no additional information");
+		}
+		       
+		module_rcode = RLM_MODULE_REJECT;
+		
+		break;
+	case LDAP_PROC_ERROR:
+		module_rcode = RLM_MODULE_FAIL;
 error:
 #ifdef HAVE_LDAP_INITIALIZE
-			if (inst->is_url) {
-				radlog(L_ERR, "rlm_ldap (%s): bind "
-				       "with %s to %s failed",
-				       inst->xlat_name, user,
-				       inst->server);
-			} else
+		if (inst->is_url) {
+			radlog(L_ERR, "rlm_ldap (%s): bind "
+			       "with %s to %s failed: %s",
+			       inst->xlat_name, user,
+			       inst->server, error);
+		} else
 #endif
-			{
-				radlog(L_ERR, "rlm_ldap (%s): bind "
-				       "with %s to %s:%d failed",
-				       inst->xlat_name, user,
-				       inst->server, inst->port);
-			}
+		{
+			radlog(L_ERR, "rlm_ldap (%s): bind "
+			       "with %s to %s:%d failed: %s",
+			       inst->xlat_name, user,
+			       inst->server, inst->port, error);
+		}
 
-			break;
-		case LDAP_PROC_RETRY:
-			if (retry) {
-				*pconn = fr_connection_reconnect(inst->pool, *pconn);
-				if (*pconn) goto retry;
-			}
+		break;
+	case LDAP_PROC_RETRY:
+		if (retry) {
+			radlog(L_ERR, "rlm_ldap (%s): bind "
+			       "with %s to %s:%d failed, reconnecting: %s",
+			       inst->xlat_name, user,
+			       inst->server, inst->port, error);
+			ldap_memfree(ext_error);
+			ext_error = NULL;
 			
-			module_rcode = RLM_MODULE_FAIL;
-			break;
-		default:
-			rad_assert(0);
+			*pconn = fr_connection_reconnect(inst->pool, *pconn);
+			if (*pconn) goto retry;
+		} else goto error;
+		
+		module_rcode = RLM_MODULE_FAIL;
+		break;
 	}	
+
+	ldap_memfree(ext_error);
 
 	return module_rcode; /* caller closes the connection */
 }
@@ -493,7 +544,7 @@ static int ldap_rebind(LDAP *handle, LDAP_CONST char *url,
 	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->xlat_name, url);
 	
 
-	rcode = ldap_bind_wrapper(&conn, conn->inst->login,
+	rcode = ldap_bind_wrapper(NULL, &conn, conn->inst->login,
 				  conn->inst->password, FALSE);
 	
 	if (rcode == RLM_MODULE_OK) {
@@ -667,8 +718,8 @@ static void *ldap_conn_create(void *ctx)
 	conn->rebound = FALSE;
 	conn->referred = FALSE;
 
-	module_rcode = ldap_bind_wrapper(&conn, inst->login, inst->password,
-					 FALSE);
+	module_rcode = ldap_bind_wrapper(NULL, &conn, inst->login,
+					 inst->password, FALSE);
 	if (module_rcode != RLM_MODULE_OK) {
 		goto conn_fail;
 	}
@@ -801,6 +852,7 @@ static int perform_search(ldap_instance *inst, REQUEST *request,
 	int		ldap_errno;
 	int		count = 0;
 	struct timeval  tv;
+	const char 	*error;
 
 	/*
 	 *	OpenLDAP library doesn't declare attrs array as const, but
@@ -815,7 +867,7 @@ static int perform_search(ldap_instance *inst, REQUEST *request,
 	 *	Do all searches as the default admin user.
 	 */
 	if ((*pconn)->rebound) {
-		ldap_errno = ldap_bind_wrapper(pconn, inst->login,
+		ldap_errno = ldap_bind_wrapper(request, pconn, inst->login,
 					       inst->password, TRUE);
 		if (ldap_errno != RLM_MODULE_OK) {
 			return -1;
@@ -837,33 +889,40 @@ retry:
 				       &tv, 0, presult);
 	if (ldap_errno != LDAP_SUCCESS) {
 		ldap_msgfree(*presult);
-		switch (process_ldap_errno(inst, pconn, "Search"))
+		switch (process_ldap_errno(inst, *pconn, &error))
 		{
 			case LDAP_PROC_SUCCESS:
 				break;
-			case LDAP_PROC_REJECT:
-			case LDAP_PROC_ERROR:
-				return -1;
 			case LDAP_PROC_RETRY:
-				*pconn = fr_connection_reconnect(inst->pool, *pconn);
+				radlog(L_ERR, "rlm_ldap (%s): Failed "
+				       "performing search, reconnecting: %s",
+				       inst->xlat_name, error);
+				       
+				*pconn = fr_connection_reconnect(inst->pool,
+								 *pconn);
 				if (*pconn) goto retry;
+				
 				return -1;
 			default:
-				rad_assert(0);
+				radlog(L_ERR, "rlm_ldap (%s): Failed "
+				       "performing search: %s",
+				       inst->xlat_name, error);
+
+				return -1;
 		}
 	}
 		
 	count = ldap_count_entries((*pconn)->handle, *presult);
 	if (count == 0) {
 		ldap_msgfree(*presult);
-		RDEBUG("Search returned no results");
+		RDEBUGE("Search returned no results");
 		
 		return -2;
 	}
 
 	if (count != 1) {
 		ldap_msgfree(*presult);
-		RDEBUG("Got ambiguous search result (%d results)", count);
+		RDEBUGE("Got ambiguous search result (%d results)", count);
 		      
 		return -2;
 	}
@@ -1848,7 +1907,7 @@ free_result:
 /** Check if user is authorized for remote access
  *
  */
-static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
+static rlm_rcode_t ldap_authorize(void *instance, REQUEST *request)
 {
 	int rcode;
 	int module_rcode = RLM_MODULE_OK;
@@ -1905,14 +1964,9 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
 	
 	if (rcode < 0) {
 		if (rcode == -2) {
-			module_failure_msg(request,
-					   "rlm_ldap (%s): User object not "
-					   " found",
-					   inst->xlat_name);
-					   
-			RDEBUG("User object not found", inst->xlat_name);
-			       
+			RDEBUGE("User object not found");
 			module_rcode = RLM_MODULE_NOTFOUND;
+			
 			goto free_socket;
 		}
 
@@ -1969,9 +2023,9 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
 		res = nmasldap_get_password(conn->handle, user_dn,
 					    buffer, &bufsize);
 		if (res != 0) {
-			RDEBUG2("Failed to retrieve eDirectory password. Check "
-				"your configuration !");
+			RDEBUGW("Failed to retrieve eDirectory password");
 			module_rcode = RLM_MODULE_NOOP;
+
 			goto free_result;
 		}
 
@@ -1991,14 +2045,11 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
 			 *	Bind as the user
 			 */
 			conn->rebound = TRUE;
-			module_rcode = ldap_bind_wrapper(&conn, user_dn,
+			module_rcode = ldap_bind_wrapper(request, &conn,
+							 user_dn,
 							 vp->vp_strvalue,
 							 TRUE);
 			if (module_rcode != RLM_MODULE_OK) {
-				module_failure_msg(request,
-				   "rlm_ldap (%s): eDirectory policy checking failed"
-					"for user %s", inst->xlat_name,request->username->vp_strvalue);
-				module_rcode = RLM_MODULE_USERLOCK;
 				goto free_result;
 			}
 			
@@ -2068,7 +2119,7 @@ free_socket:
 /** Check the user's password against ldap database
  *
  */
-static rlm_rcode_t ldap_authenticate(void *instance, REQUEST * request)
+static rlm_rcode_t ldap_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	module_rcode;
 	const char	*user_dn;
@@ -2105,9 +2156,8 @@ static rlm_rcode_t ldap_authenticate(void *instance, REQUEST * request)
 	}
 
 	if (request->password->length == 0) {
-		module_failure_msg(request,
-				   "rlm_ldap (%s): Empty password supplied",
-				   inst->xlat_name);
+		RDEBUGE("Empty password supplied");
+		
 		return RLM_MODULE_INVALID;
 	}
 
@@ -2130,7 +2180,7 @@ static rlm_rcode_t ldap_authenticate(void *instance, REQUEST * request)
 	 *	Bind as the user
 	 */
 	conn->rebound = TRUE;
-	module_rcode = ldap_bind_wrapper(&conn, user_dn,
+	module_rcode = ldap_bind_wrapper(request, &conn, user_dn,
 					 request->password->vp_strvalue,
 					 TRUE);
 	if (module_rcode == RLM_MODULE_OK) {
@@ -2168,6 +2218,8 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 	const char	*value;
 	
 	const char	*user_dn;
+	
+	const char	*error;
 
 	/*
 	 *	Build our set of modifications using the update sections in
@@ -2355,7 +2407,7 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 	 *	Perform all modifications as the default admin user.
 	 */
 	if (conn->rebound) {
-		ldap_errno = ldap_bind_wrapper(&conn, inst->login,
+		ldap_errno = ldap_bind_wrapper(request, &conn, inst->login,
 					       inst->password, TRUE);
 		if (ldap_errno != RLM_MODULE_OK) {
 			goto error;
@@ -2376,20 +2428,23 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 	ldap_errno = ldap_modify_ext(conn->handle, user_dn, modify, NULL, NULL,
 				     &msg_id);
 	if (ldap_errno != LDAP_SUCCESS) {
-		switch (process_ldap_errno(inst, &conn, "Modify"))
+		switch (process_ldap_errno(inst, conn, &error))
 		{
 			case LDAP_PROC_SUCCESS:
 				break;
-			case LDAP_PROC_REJECT:
-			case LDAP_PROC_ERROR:
-				goto error;
 			case LDAP_PROC_RETRY:
+				radlog(L_ERR, "rlm_ldap (%s): Failed "
+				       "modifying object, reconnecting: %s",
+				       inst->xlat_name, error);		
 				goto retry;
 			default:
-				rad_assert(0);
+				radlog(L_ERR, "rlm_ldap (%s): Failed "
+				       "modifying object: %s",
+				       inst->xlat_name, error);
+				goto error;
 		}
 	}
-			     		     
+	     		     
 	DEBUG3("rlm_ldap (%s): Waiting for modify result...", inst->xlat_name);
 
 	tv.tv_sec = inst->timeout;
@@ -2399,19 +2454,22 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 	rcode = ldap_result(conn->handle, msg_id, 1, &tv, &result);
 	ldap_msgfree(result);
 	if (rcode <= 0) {
-		switch (process_ldap_errno(inst, &conn, "Modify"))
+		switch (process_ldap_errno(inst, conn, &error))
 		{
 			case LDAP_PROC_SUCCESS:
 				break;
-			case LDAP_PROC_REJECT:
-			case LDAP_PROC_ERROR:
-				error:
-				module_rcode = RLM_MODULE_FAIL;
-				goto release;
 			case LDAP_PROC_RETRY:
+				radlog(L_ERR, "rlm_ldap (%s): Failed "
+				       "modifying object, reconnecting: %s",
+				       inst->xlat_name, error);
 				goto result;
 			default:
-				rad_assert(0);
+				error:
+				radlog(L_ERR, "rlm_ldap (%s): Failed "
+				       "modifying object: %s",
+				       inst->xlat_name, error);
+				module_rcode = RLM_MODULE_FAIL;
+				goto release;
 		}
 	}
 		
