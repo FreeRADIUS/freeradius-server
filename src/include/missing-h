@@ -129,15 +129,6 @@ struct tm *localtime_r(const time_t *l_clock, struct tm *result);
 char *ctime_r(const time_t *l_clock, char *l_buf);
 #endif
 
-#if !defined(HAVE_CRYPT) || defined(NEED_DECLARATION_CRYPT)
-char *crypt(char *key, char *salt);
-#endif
-
-#if !defined(HAVE_INET_ATON) || defined(NEED_DECLARATION_INET_ATON)
-struct in_addr;
-int inet_aton(const char *cp, struct in_addr *inp);
-#endif
-
 #ifndef HAVE_INET_PTON
 int		inet_pton(int af, const char *src, void *dst);
 #endif
@@ -154,26 +145,6 @@ int		closefrom(int fd);
 #  else
 #    define setlinebuf(x)     0
 #  endif
-#endif
-
-#ifdef NEED_DECLARATION_STRNCASECMP
-int strncasecmp(char *s1, char *s2, int n);
-#endif
-
-#ifdef NEED_DECLARATION_STRCASECMP
-int strcasecmp(char *s1, char *s2);
-#endif
-
-#ifdef NEED_DECLARATION_SETLINEBUF
-#  define setlinebuf(x)     0
-#endif
-
-#ifdef NEED_DECLARATION_GETUSERSHELL
-char *getusershell(void);
-#endif
-
-#ifdef NEED_DECLARATION_ENDUSERSHELL
-void endusershell(void);
 #endif
 
 #ifndef INADDR_ANY

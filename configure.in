@@ -924,15 +924,6 @@ AC_CHECK_FUNCS( \
 	strlcat \
 	strlcpy
 )
-RADIUSD_NEED_DECLARATIONS( \
-	crypt \
-	strncasecmp \
-	strcasecmp \
-	inet_aton \
-	setlinebuf \
-	getusershell \
-	endusershell
-)
 
 AC_TYPE_SIGNAL
 
