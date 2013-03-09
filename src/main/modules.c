@@ -1755,8 +1755,11 @@ rlm_rcode_t module_send_coa(int send_coa_type, REQUEST *request)
 }
 #endif
 
+/** Add a module failure message VALUE_PAIR to the request
+ */
 char *module_failure_msg(REQUEST *request, const char *fmt, ...)
 {
+	size_t len;
 	va_list ap;
 	VALUE_PAIR *vp;
 
@@ -1764,12 +1767,16 @@ char *module_failure_msg(REQUEST *request, const char *fmt, ...)
 	vp = paircreate(request->packet, PW_MODULE_FAILURE_MESSAGE, 0);
 	if (!vp) {
 		va_end(ap);
+		
 		return NULL;
 	}
 
-	vsnprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), fmt, ap);
+	len = snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s: ",
+		       request->module);
+	vsnprintf(vp->vp_strvalue + len, sizeof(vp->vp_strvalue) - len, fmt,
+		  ap);
 
 	pairadd(&request->packet->vps, vp);
 	
-	return vp->vp_strvalue;
+	return vp->vp_strvalue + len;
 }

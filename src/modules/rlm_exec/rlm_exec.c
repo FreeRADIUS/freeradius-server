@@ -362,8 +362,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 			msg[len - 1] = '\0';
 		}
 		
-		module_failure_msg(request, "rlm_exec (%s): %s",
-				   inst->xlat_name, msg);
+		RDEBUGE("%s", msg);
 	}
 	
 	return result-1;
@@ -407,10 +406,7 @@ static rlm_rcode_t exec_postauth(void *instance, REQUEST *request)
 	pairfree(&tmp);
 
 	if (result < 0) {
-		RDEBUG2("%s", module_failure_msg(request, "rlm_exec (%s): "
-						 "Login incorrect (external "
-						 "check failed)",
-						 inst->xlat_name));
+		RDEBUGE("Login incorrect (external check failed)");
 
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		return RLM_MODULE_REJECT;
@@ -423,10 +419,7 @@ static rlm_rcode_t exec_postauth(void *instance, REQUEST *request)
 		 */
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		
-		RDEBUG2("%s", module_failure_msg(request, "rlm_exec (%s): "
-						 "Login incorrect (external "
-						 "check said so)",
-						 inst->xlat_name));
+		RDEBUGE("Login incorrect (external check said so)");
 		return RLM_MODULE_REJECT;
 	}
 

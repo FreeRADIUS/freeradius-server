@@ -484,13 +484,21 @@ typedef struct main_config_t {
 #define DEBUG4  if (debug_flag > 3) log_debug
 
 #if __GNUC__ >= 3
-#define RDEBUG(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG, 1, request, fmt, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)    if(request && request->radlog) request->radlog(L_DBG, 1, request, fmt, ## __VA_ARGS__)
 #define RDEBUGW(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_WARN, 1, request, fmt, ## __VA_ARGS__)
-#define RDEBUGE(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_ERR, 1, request, fmt, ## __VA_ARGS__)
+#define RDEBUGE(fmt, ...)   do { if(request) { \
+					module_failure_msg(request, fmt, ## __VA_ARGS__); \
+					if (request->radlog) request->radlog(L_DBG_ERR, 1, request, fmt, ## __VA_ARGS__); \
+				 } \
+			    } while(0)
 
-#define RDEBUG2(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 2, request, fmt, ## __VA_ARGS__)
-#define RDEBUG2W(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_WARN, 2, request, fmt, ## __VA_ARGS__)
-#define RDEBUG2E(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_ERR, 2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG, 2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2W(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG_WARN, 2, request, fmt, ## __VA_ARGS__)
+#define RDEBUG2E(fmt, ...)  do { if(request) { \
+					module_failure_msg(request, fmt, ## __VA_ARGS__); \
+					if (request->radlog) request->radlog(L_DBG_ERR, 2, request, fmt, ## __VA_ARGS__); \
+				 } \
+			    } while(0)
 
 #define RDEBUG3(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 3, request, fmt, ## __VA_ARGS__)
 #define RDEBUG4(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 4, request, fmt, ## __VA_ARGS__)
