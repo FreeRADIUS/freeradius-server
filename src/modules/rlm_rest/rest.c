@@ -1168,7 +1168,7 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 		to_parse = value;
 	}
 
-	vp = paircreate(da->attr, da->vendor);
+	vp = paircreate(NULL, da->attr, da->vendor);
 	if (!vp) {
 		radlog(L_ERR, "rlm_rest (%s): Failed creating valuepair",
 		       instance->xlat_name);
