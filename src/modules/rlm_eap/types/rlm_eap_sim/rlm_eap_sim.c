@@ -89,6 +89,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	VALUE_PAIR **vps, *newvp;
 	uint16_t *words;
 	struct eap_sim_server_state *ess;
+	RADIUS_PACKET *packet;
 
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->request->reply);
@@ -96,16 +97,17 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	ess = (struct eap_sim_server_state *)handler->opaque;
 
 	/* these are the outgoing attributes */
-	vps = &handler->request->reply->vps;
-
+	packet = handler->request->reply;
+	vps = &packet->vps;
 	rad_assert(vps != NULL);
+
 
 	/*
 	 * add appropriate TLVs for the EAP things we wish to send.
 	 */
 
 	/* the version list. We support only version 1. */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0);
 	words = (uint16_t *)newvp->vp_strvalue;
 	newvp->length = 3*sizeof(uint16_t);
 	words[0] = htons(1*sizeof(uint16_t));
@@ -114,7 +116,7 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	pairadd(vps, newvp);
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(ATTRIBUTE_EAP_ID, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(vps, newvp);
 
@@ -123,14 +125,14 @@ static int eap_sim_sendstart(EAP_HANDLER *handler)
 	memcpy(ess->keys.versionlist, words+1, ess->keys.versionlistlen);
 
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
 	newvp->length = 2;
 	newvp->vp_strvalue[0]=0;
 	newvp->vp_strvalue[0]=1;
 	pairadd(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = eapsim_start;
 	pairreplace(vps, newvp);
 
@@ -208,6 +210,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR **invps, **outvps, *newvp;
+	RADIUS_PACKET *packet;
 
 	ess = (struct eap_sim_server_state *)handler->opaque;
 	rad_assert(handler->request != NULL);
@@ -220,7 +223,8 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	invps = &handler->request->packet->vps;
 
 	/* outvps is the data to the client. */
-	outvps= &handler->request->reply->vps;
+	packet = handler->request->reply;
+	outvps= &packet->vps;
 
 	if ((debug_flag > 0) && fr_log_fp) {
 		fprintf(fr_log_fp, "+++> EAP-sim decoded packet:\n");
@@ -228,7 +232,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	}
 
 	/* okay, we got the challenges! Put them into an attribute */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND, 0);
 	memset(newvp->vp_strvalue,    0, 2); /* clear reserved bytes */
 	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*0, ess->keys.rand[0], EAPSIM_RAND_SIZE);
 	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*1, ess->keys.rand[1], EAPSIM_RAND_SIZE);
@@ -237,7 +241,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	pairadd(outvps, newvp);
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(ATTRIBUTE_EAP_ID, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(outvps, newvp);
 
@@ -273,18 +277,18 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
 	 * will pull it out before it does the operation.
 	 */
 
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
 	memcpy(newvp->vp_strvalue, ess->keys.nonce_mt, 16);
 	newvp->length = 16;
 	pairreplace(outvps, newvp);
 
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_KEY, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_KEY, 0);
 	memcpy(newvp->vp_strvalue, ess->keys.K_aut, 16);
 	newvp->length = 16;
 	pairreplace(outvps, newvp);
 
 	/* the SUBTYPE, set to challenge. */
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
 	newvp->vp_integer = eapsim_challenge;
 	pairreplace(outvps, newvp);
 
@@ -308,13 +312,15 @@ static int eap_sim_sendsuccess(EAP_HANDLER *handler)
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR **outvps;
 	VALUE_PAIR *newvp;
+	RADIUS_PACKET *packet;
 
 	/* outvps is the data to the client. */
-	outvps= &handler->request->reply->vps;
+	packet = handler->request->reply;
+	outvps= &packet->vps;
 	ess = (struct eap_sim_server_state *)handler->opaque;
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(ATTRIBUTE_EAP_ID, 0);
+	newvp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
 	newvp->vp_integer = ess->sim_id++;
 	pairreplace(outvps, newvp);
 

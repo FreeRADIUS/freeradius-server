@@ -820,12 +820,15 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] vendor number.
  * @return a new VLAUE_PAIR or causes server to exit on error.
  */
-VALUE_PAIR *radius_paircreate(UNUSED REQUEST *request, VALUE_PAIR **vps,
+VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 			      unsigned int attribute, unsigned int vendor)
 {
 	VALUE_PAIR *vp;
 
-	vp = paircreate(attribute, vendor);
+	/*
+	 *	FIXME: the context should ideally be the packet...
+	 */
+	vp = paircreate(request, attribute, vendor);
 	if (!vp) {
 		radlog(L_ERR, "No memory!");
 		rad_assert("No memory" == NULL);

@@ -51,7 +51,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 
 	/* Hold your breath */
 #define PAIR(n,v,e) do { \
-		if(!(vp = paircreate(n, 0))) {	\
+		if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
 			request_free(&stopreq); \
 			radlog(L_ERR, "no memory"); \
 			pairfree(&(stopreq->packet->vps)); \
@@ -63,7 +63,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 #define INTPAIR(n,v) PAIR(n,v,vp_integer)
 #define IPPAIR(n,v) PAIR(n,v,vp_ipaddr)
 #define STRINGPAIR(n,v) do { \
-	if(!(vp = paircreate(n, 0))) {	\
+	  if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
 		request_free(&stopreq); \
 		radlog(L_ERR, "no memory"); \
 		pairfree(&(stopreq->packet->vps)); \

@@ -160,13 +160,14 @@ static void radclient_free(radclient_t *radclient)
 	free(radclient);
 }
 
-static int mschapv1_encode(VALUE_PAIR **request, const char *password)
+static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
+			   const char *password)
 {
 	unsigned int i;
 	VALUE_PAIR *challenge, *response;
 	uint8_t nthash[16];
 
-	challenge = paircreate(PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
+	challenge = paircreate(packet, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT);
 	if (!challenge) {
 		fprintf(stderr, "GOT IT %d!\n", __LINE__);
 		return 0;
@@ -178,7 +179,7 @@ static int mschapv1_encode(VALUE_PAIR **request, const char *password)
 		challenge->vp_octets[i] = fr_rand();
 	}
 
-	response = paircreate(PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
+	response = paircreate(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
 	if (!response) {
 		fprintf(stderr, "GOT IT %d!\n", __LINE__);
 		return 0;
@@ -658,7 +659,8 @@ static int send_one_packet(radclient_t *radclient)
 					vp->length = 17;
 				}
 			} else if (pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0, TAG_ANY) != NULL) {
-				mschapv1_encode(&radclient->request->vps,
+				mschapv1_encode(radclient->request,
+						&radclient->request->vps,
 						radclient->password);
 			} else if (fr_debug_flag) {
 				printf("WARNING: No password in the request\n");

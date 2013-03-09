@@ -186,16 +186,16 @@ static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 		}
 
 
-		r = paircreate(ATTRIBUTE_EAP_SIM_RAND1 + imsicount, 0);
+		r = paircreate(request->reply, ATTRIBUTE_EAP_SIM_RAND1 + imsicount, 0);
 		pairparsevalue(r, chal);
 		pairadd(reply_pairs, r);
 
-		k = paircreate(ATTRIBUTE_EAP_SIM_KC1 + imsicount, 0);
+		k = paircreate(request->reply, ATTRIBUTE_EAP_SIM_KC1 + imsicount, 0);
 		pairparsevalue(k, kc);
 		rad_assert(k != NULL);
 		pairadd(reply_pairs, k);
 
-		s = paircreate(ATTRIBUTE_EAP_SIM_SRES1 + imsicount, 0);
+		s = paircreate(request->reply, ATTRIBUTE_EAP_SIM_SRES1 + imsicount, 0);
 		pairparsevalue(s, sres);
 		pairadd(reply_pairs, s);
 

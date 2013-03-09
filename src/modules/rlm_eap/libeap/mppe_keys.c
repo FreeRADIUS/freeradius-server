@@ -197,7 +197,7 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
  *	Actually generates EAP-Session-Id, which is an internal server
  *	attribute.  Not all systems want to send EAP-Key-Nam
  */
-void eaptls_gen_eap_key(SSL *s, uint32_t header, VALUE_PAIR **vps)
+void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header, VALUE_PAIR **vps)
 {
 	VALUE_PAIR *vp;
 
@@ -206,7 +206,7 @@ void eaptls_gen_eap_key(SSL *s, uint32_t header, VALUE_PAIR **vps)
 		return;
 	}
 
-	vp = paircreate(PW_EAP_SESSION_ID, PW_TYPE_OCTETS);
+	vp = paircreate(packet, PW_EAP_SESSION_ID, PW_TYPE_OCTETS);
 	if (!vp) return;
 
 	vp->vp_octets[0] = header & 0xff;

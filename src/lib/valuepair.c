@@ -45,7 +45,7 @@ static const char *months[] = {
  *
  * Allocates a new attribute and a new dictionary attr if no DA is provided.
  *
- * @param[in] ctx for allocated memory, usually a pointer to the request.
+ * @param[in] ctx for allocated memory, usually a pointer to a RADIUS_PACKET
  * @param[in] da Specifies the dictionary attribute to build the VP from.
  * @return a new value pair or NULL if an error occurred.
  */
@@ -82,11 +82,12 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da)
  * Which type of DICT_ATTR the VALUE_PAIR was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
  * 
+ * @param[in] ctx for allocated memory, usually a pointer to a RADIUS_PACKET
  * @param[in] attr number.
  * @param[in] vendor number.
  * @return the new valuepair or NULL on error.
  */
-VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
+VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 {
 	const DICT_ATTR *da;
 
@@ -98,7 +99,7 @@ VALUE_PAIR *paircreate(unsigned int attr, unsigned int vendor)
 		}
 	}
 
-	return pairalloc(NULL, da);
+	return pairalloc(ctx, da);
 }
 
 /** Free memory used by a single valuepair.

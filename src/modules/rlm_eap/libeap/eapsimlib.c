@@ -328,7 +328,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		return 0;
 	}
 
-	newvp = paircreate(ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
+	newvp = paircreate(r, ATTRIBUTE_EAP_SIM_SUBTYPE, 0);
 	if (!newvp) return 0;
 	newvp->vp_integer = attr[0];
 	newvp->length = 1;
@@ -364,7 +364,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			       return 0;
 		}
 
-		newvp = paircreate(eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, 0);
+		newvp = paircreate(r, eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, 0);
 		memcpy(newvp->vp_strvalue, &attr[2], eapsim_len-2);
 		newvp->length = eapsim_len-2;
 		pairadd(&(r->vps), newvp);

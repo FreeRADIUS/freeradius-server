@@ -134,7 +134,7 @@ static int diameter_verify(REQUEST *request,
 /*
  *	Convert diameter attributes to our VALUE_PAIR's
  */
-static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
+static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			       const uint8_t *data, size_t data_len)
 {
 	uint32_t	attr;
@@ -146,6 +146,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 	VALUE_PAIR	*first = NULL;
 	VALUE_PAIR	**last = &first;
 	VALUE_PAIR	*vp;
+	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
 
 	while (data_left > 0) {
 		rad_assert(data_left <= data_len);
@@ -252,7 +253,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 		 *	Create it.  If this fails, it's because we're OOM.
 		 */
 	do_octets:
-		vp = paircreate(attr, vendor);
+		vp = paircreate(packet, attr, vendor);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&first);
@@ -309,12 +310,12 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 				pairfree(&vp);
 				return NULL;
 			}
-		  memcpy(&vp->vp_ipaddr, data, vp->length);
+			memcpy(&vp->vp_ipaddr, data, vp->length);
 
-		  /*
-		   *	Stored in network byte order: don't change it.
-		   */
-		  break;
+			/*
+			 *	Stored in network byte order: don't change it.
+			 */
+			break;
 
 		case PW_TYPE_BYTE:
 			if (size != vp->length) goto raw;
@@ -367,7 +368,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, SSL *ssl,
 
 					if (size == 0) break;
 
-					vp = paircreate(attr, vendor);
+					vp = paircreate(packet, attr, vendor);
 					if (!vp) {
 						RDEBUG2("Failure in creating VP");
 						pairfree(&first);
@@ -1033,7 +1034,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	/*
 	 *	Add the tunneled attributes to the fake request.
 	 */
-	fake->packet->vps = diameter2vp(request, tls_session->ssl, data, data_len);
+	fake->packet->vps = diameter2vp(request, fake, tls_session->ssl, data, data_len);
 	if (!fake->packet->vps) {
 		request_free(&fake);
 		return PW_AUTHENTICATION_REJECT;
@@ -1094,7 +1095,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 */
 				if (t->default_eap_type != 0) {
 					RDEBUG("Setting default EAP type for tunneled EAP session.");
-					vp = paircreate(PW_EAP_TYPE, 0);
+					vp = paircreate(request, PW_EAP_TYPE, 0);
 					rad_assert(vp != NULL);
 					vp->vp_integer = t->default_eap_type;
 					pairadd(&fake->config_items, vp);

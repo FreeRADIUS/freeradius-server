@@ -524,7 +524,7 @@ rlm_rcode_t eap_compose(EAP_HANDLER *handler)
 	}
 	eap_packet = (eap_packet_t *)reply->packet;
 
-	vp = eap_packet2vp(eap_packet);
+	vp = eap_packet2vp(request->reply, eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
 	pairadd(&(request->reply->vps), vp);
 
@@ -537,7 +537,7 @@ rlm_rcode_t eap_compose(EAP_HANDLER *handler)
 	 */
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0);
+		vp = paircreate(request->reply, PW_MESSAGE_AUTHENTICATOR, 0);
 		memset(vp->vp_octets, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(request->reply->vps), vp);
@@ -702,7 +702,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Create an EAP-Type containing the EAP-type
 	 *	from the packet.
 	 */
-	vp = paircreate(PW_EAP_TYPE, 0);
+	vp = paircreate(request->packet, PW_EAP_TYPE, 0);
 	if (vp) {
 		vp->vp_integer = eap_msg->vp_octets[4];
 		pairadd(&(request->packet->vps), vp);

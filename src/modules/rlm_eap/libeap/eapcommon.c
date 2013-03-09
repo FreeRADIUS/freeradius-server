@@ -261,7 +261,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 
 	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
 
-	vp = eap_packet2vp(eap_packet);
+	vp = eap_packet2vp(packet, eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
 	pairadd(&(packet->vps), vp);
 
@@ -274,7 +274,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 	 */
 	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(PW_MESSAGE_AUTHENTICATOR, 0);
+	  vp = paircreate(packet, PW_MESSAGE_AUTHENTICATOR, 0);
 		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
 		pairadd(&(packet->vps), vp);
@@ -307,7 +307,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 }
 
 
-VALUE_PAIR *eap_packet2vp(const eap_packet_t *packet)
+VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_t *eap)
 {
 	int		total, size;
 	const uint8_t	*ptr;
@@ -315,15 +315,15 @@ VALUE_PAIR *eap_packet2vp(const eap_packet_t *packet)
 	VALUE_PAIR	**tail = &head;
 	VALUE_PAIR	*vp;
 
-	total = packet->length[0] * 256 + packet->length[1];
+	total = eap->length[0] * 256 + eap->length[1];
 
-	ptr = (const uint8_t *) packet;
+	ptr = (const uint8_t *) eap;
 
 	do {
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = paircreate(PW_EAP_MESSAGE, 0);
+		vp = paircreate(packet, PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			pairfree(&head);
 			return NULL;

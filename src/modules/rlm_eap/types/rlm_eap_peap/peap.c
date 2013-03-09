@@ -267,7 +267,8 @@ static int eapmessage_verify(REQUEST *request,
 /*
  *	Convert a pseudo-EAP packet to a list of VALUE_PAIR's.
  */
-static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
+static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
+			  EAP_DS *eap_ds,
 			  const uint8_t *data, size_t data_len)
 {
 	size_t total;
@@ -275,7 +276,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
-	vp = paircreate(PW_EAP_MESSAGE, 0);
+	vp = paircreate(packet, PW_EAP_MESSAGE, 0);
 	if (!vp) {
 		RDEBUG2("Failure in creating VP");
 		return NULL;
@@ -301,7 +302,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, EAP_DS *eap_ds,
 		int vp_len;
 
 
-		vp = paircreate(PW_EAP_MESSAGE, 0);
+		vp = paircreate(packet, PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&head);
@@ -930,7 +931,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		t->status = PEAP_STATUS_PHASE2;
 
-		vp = paircreate(PW_EAP_MESSAGE, 0);
+		vp = paircreate(fake->packet, PW_EAP_MESSAGE, 0);
 
 		vp->vp_octets[0] = PW_EAP_RESPONSE;
 		vp->vp_octets[1] = eap_ds->response->id;
@@ -954,7 +955,8 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		break; }
 
 	case PEAP_STATUS_PHASE2:
-		fake->packet->vps = eap2vp(request, eap_ds, data, data_len);
+		fake->packet->vps = eap2vp(request, fake->packet,
+					   eap_ds, data, data_len);
 		if (!fake->packet->vps) {
 			request_free(&fake);
 			RDEBUG2("Unable to convert tunneled EAP packet to internal server data structures");

@@ -443,9 +443,11 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #endif
 }
 
-static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen);
+static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp,
+			   const uint8_t *p, size_t alen);
 
-static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
+static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv,
+		      const uint8_t *data, size_t data_len)
 {
 	const uint8_t *p;
 	VALUE_PAIR *head, **tail, *vp;
@@ -469,13 +471,13 @@ static int decode_tlv(VALUE_PAIR *tlv, const uint8_t *data, size_t data_len)
 
 	p = data;
 	while (p < (data + data_len)) {
-		vp = paircreate(tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
+		vp = paircreate(packet, tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
 		if (!vp) {
 			pairfree(&head);
 			goto make_tlv;
 		}
 
-		if (fr_dhcp_attr2vp(vp, p + 2, p[1]) < 0) {
+		if (fr_dhcp_attr2vp(packet, vp, p + 2, p[1]) < 0) {
 			pairfree(&head);
 			goto make_tlv;
 		}
@@ -513,7 +515,8 @@ make_tlv:
 /*
  *	Decode ONE value into a VP
  */
-static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
+static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp,
+			   const uint8_t *p, size_t alen)
 {
 	switch (vp->da->type) {
 	case PW_TYPE_BYTE:
@@ -561,7 +564,7 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 		break;
 
 	case PW_TYPE_TLV:
-		return decode_tlv(vp, p, alen);
+		return decode_tlv(packet, vp, p, alen);
 
 	default:
 		fr_strerror_printf("Internal sanity check %d %d", vp->da->type, __LINE__);
@@ -572,7 +575,8 @@ static int fr_dhcp_attr2vp(VALUE_PAIR *vp, const uint8_t *p, size_t alen)
 	return 0;
 }
 
-ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
+ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
+			       uint8_t *data, size_t len, VALUE_PAIR **head)
 {
 	int i;
 	VALUE_PAIR *vp, **tail;
@@ -665,7 +669,7 @@ ssize_t fr_dhcp_decode_options(uint8_t *data, size_t len, VALUE_PAIR **head)
 				memcpy(vp->vp_octets, p + 1, 6);
 				vp->length = alen;
 
-			} else if (fr_dhcp_attr2vp(vp, p, alen) < 0) {
+			} else if (fr_dhcp_attr2vp(packet, vp, p, alen) < 0) {
 				pairfree(&vp);
 				pairfree(head);
 				return -1;
@@ -792,7 +796,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 * 	Nothing uses tail after this call, if it does in the future 
 	 *	it'll need to find the new tail...
 	 */
-	if (fr_dhcp_decode_options(packet->data + 240, packet->data_len - 240,
+	if (fr_dhcp_decode_options(packet,
+				   packet->data + 240, packet->data_len - 240,
 				   tail) < 0) { 
 		return -1;
 	}
@@ -956,7 +961,7 @@ static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, size_t room)
 	return length;
 }
 
-static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
+static VALUE_PAIR *fr_dhcp_vp2suboption(RADIUS_PACKET *packet, VALUE_PAIR *vps)
 {
 	int length;
 	unsigned int attribute;
@@ -965,7 +970,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(VALUE_PAIR *vps)
 
 	attribute = vps->da->attr & 0xffff00ff;
 
-	tlv = paircreate(attribute, DHCP_MAGIC_VENDOR);
+	tlv = paircreate(packet, attribute, DHCP_MAGIC_VENDOR);
 	if (!tlv) return NULL;
 
 	tlv->length = 0;
@@ -1433,7 +1438,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 				/*
 				 *	Should NOT have been encoded yet!
 				 */
-				tlv = fr_dhcp_vp2suboption(vp);
+				tlv = fr_dhcp_vp2suboption(packet, vp);
 
 				/*
 				 *	Ignore it if there's an issue
