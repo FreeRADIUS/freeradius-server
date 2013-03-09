@@ -429,47 +429,48 @@ retry:
 	tv.tv_usec = 0;
 
 	rcode = ldap_result(conn->handle, msg_id, 1, &tv, &result);
-	ldap_msgfree(result);
-	if (rcode <= 0) {
+	if (rcode > 0) {
+		rcode = ldap_parse_result(conn->handle,result,NULL,NULL,
+					NULL,NULL,NULL,1);
+	}
 get_error:
-		switch (process_ldap_errno(inst, &conn, "Bind"))
-		{
-			case LDAP_PROC_SUCCESS:
-				break;
-			case LDAP_PROC_REJECT:
-				module_rcode = RLM_MODULE_REJECT;
-				goto error;
-			case LDAP_PROC_ERROR:
-				module_rcode = RLM_MODULE_FAIL;
+	switch (process_ldap_errno(inst, &conn, "Bind"))
+	{
+		case LDAP_PROC_SUCCESS:
+			break;
+		case LDAP_PROC_REJECT:
+			module_rcode = RLM_MODULE_REJECT;
+			goto error;
+		case LDAP_PROC_ERROR:
+			module_rcode = RLM_MODULE_FAIL;
 error:
 #ifdef HAVE_LDAP_INITIALIZE
-				if (inst->is_url) {
-					radlog(L_ERR, "rlm_ldap (%s): bind "
-					       "with %s to %s failed",
-					       inst->xlat_name, user,
-					       inst->server);
-				} else
+			if (inst->is_url) {
+				radlog(L_ERR, "rlm_ldap (%s): bind "
+				       "with %s to %s failed",
+				       inst->xlat_name, user,
+				       inst->server);
+			} else
 #endif
-				{
-					radlog(L_ERR, "rlm_ldap (%s): bind "
-					       "with %s to %s:%d failed",
-					       inst->xlat_name, user,
-					       inst->server, inst->port);
-				}
-	
-				break;
-			case LDAP_PROC_RETRY:
-				if (retry) {
-					*pconn = fr_connection_reconnect(inst->pool, *pconn);
-					if (*pconn) goto retry;
-				}
-				
-				module_rcode = RLM_MODULE_FAIL;
-				break;
-			default:
-				rad_assert(0);
-		}	
-	}
+			{
+				radlog(L_ERR, "rlm_ldap (%s): bind "
+				       "with %s to %s:%d failed",
+				       inst->xlat_name, user,
+				       inst->server, inst->port);
+			}
+
+			break;
+		case LDAP_PROC_RETRY:
+			if (retry) {
+				*pconn = fr_connection_reconnect(inst->pool, *pconn);
+				if (*pconn) goto retry;
+			}
+			
+			module_rcode = RLM_MODULE_FAIL;
+			break;
+		default:
+			rad_assert(0);
+	}	
 
 	return module_rcode; /* caller closes the connection */
 }
@@ -1994,6 +1995,10 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST * request)
 							 vp->vp_strvalue,
 							 TRUE);
 			if (module_rcode != RLM_MODULE_OK) {
+				module_failure_msg(request,
+				   "rlm_ldap (%s): eDirectory policy checking failed"
+					"for user %s", inst->xlat_name,request->username->vp_strvalue);
+				module_rcode = RLM_MODULE_USERLOCK;
 				goto free_result;
 			}
 			
