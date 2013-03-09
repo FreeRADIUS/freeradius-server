@@ -50,37 +50,24 @@ if test x$with_[]modname != xno; then
 			eap_tnc_include_dir="$withval/include"
 			;;
 		esac])
-		
-	dnl ############################################################
-	dnl # Check for OpenSSL support
-	dnl ############################################################
-
-	AC_MSG_CHECKING(for OpenSSL support)
-	if test "x$OPENSSL_LIBS" != "x"; then
-		AC_MSG_RESULT(yes)
-	else
-		AC_MSG_RESULT(no)
-		fail="OpenSSL"
-	fi
 
 	dnl ############################################################
 	dnl # Check for eap-tnc includes
 	dnl ############################################################
 	smart_try_dir="$eap_tnc_include_dir"
-	FR_SMART_CHECK_INCLUDE([libtnc.h])
-	if test "x$ac_cv_header_libtnc_h" != "xyes"; then
-		fail="$fail libtnc.h"
+	FR_SMART_CHECK_INCLUDE([naaeap/naaeap.h])
+	if test "x$ac_cv_header_naaeap_naaeap_h" != "xyes"; then
+		fail="$fail naaeap.h"
 	fi
 	
 	dnl ############################################################
 	dnl # Check for eap-tnc library
 	dnl ############################################################
 	
-	LIBS="${OPENSSL_LIBS}"
 	smart_try_dir="$eap_tnc_lib_dir"
-	FR_SMART_CHECK_LIB([tnc],[exchangeTNCCSMessages])
-	if test "x$ac_cv_lib_tnc_exchangetnccsmessages" != "xyes"; then
-		fail="$fail libtnc"
+	FR_SMART_CHECK_LIB([naaeap],[processEAPTNCData])
+	if test "x$ac_cv_lib_naaeap_processEAPTNCData" != "xyes"; then
+		fail="$fail libnaaeap"
 	fi
 	
 	targetname=modname     # keep this!  Don't change!
@@ -95,7 +82,8 @@ if test x"$fail" != x""; then
 		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
 	else
 		AC_MSG_WARN([silently not building ]modname[.])
-		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]); 
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+		AC_MSG_WARN([Required libraries are available from https://github.com/trustatfhh/tnc-fhh]); 
 		targetname=""
 	fi
 fi

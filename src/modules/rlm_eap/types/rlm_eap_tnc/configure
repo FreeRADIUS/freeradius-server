@@ -1839,18 +1839,6 @@ if test "${with_eap_tnc_dir+set}" = set; then :
 fi
 
 
-
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for OpenSSL support" >&5
-$as_echo_n "checking for OpenSSL support... " >&6; }
-	if test "x$OPENSSL_LIBS" != "x"; then
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
-$as_echo "yes" >&6; }
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-		fail="OpenSSL"
-	fi
-
 				smart_try_dir="$eap_tnc_include_dir"
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -2644,20 +2632,20 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-ac_safe=`echo "libtnc.h" | sed 'y%./+-%__pm%'`
+ac_safe=`echo "naaeap/naaeap.h" | sed 'y%./+-%__pm%'`
 old_CFLAGS="$CFLAGS"
 smart_include=
 smart_include_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libtnc.h in $try" >&5
-$as_echo_n "checking for libtnc.h in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for naaeap/naaeap.h in $try" >&5
+$as_echo_n "checking for naaeap/naaeap.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <libtnc.h>
+		    #include <naaeap/naaeap.h>
 int
 main ()
 {
@@ -2686,12 +2674,12 @@ rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 fi
 
 if test "x$smart_include" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libtnc.h" >&5
-$as_echo_n "checking for libtnc.h... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for naaeap/naaeap.h" >&5
+$as_echo_n "checking for naaeap/naaeap.h... " >&6; }
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		  #include <libtnc.h>
+		  #include <naaeap/naaeap.h>
 int
 main ()
 {
@@ -2722,7 +2710,7 @@ if test "x$smart_include" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libtnc.h
+  file=naaeap/naaeap.h
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -2746,13 +2734,13 @@ fi
 eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
 
   for try in $smart_include_dir /usr/local/include /opt/include; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for libtnc.h in $try" >&5
-$as_echo_n "checking for libtnc.h in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for naaeap/naaeap.h in $try" >&5
+$as_echo_n "checking for naaeap/naaeap.h in $try... " >&6; }
     CFLAGS="$old_CFLAGS -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-		    #include <libtnc.h>
+		    #include <naaeap/naaeap.h>
 int
 main ()
 {
@@ -2786,17 +2774,16 @@ if test "x$smart_include" != "x"; then
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
 fi
 
-	if test "x$ac_cv_header_libtnc_h" != "xyes"; then
-		fail="$fail libtnc.h"
+	if test "x$ac_cv_header_naaeap_naaeap_h" != "xyes"; then
+		fail="$fail naaeap.h"
 	fi
 
 
-	LIBS="${OPENSSL_LIBS}"
 	smart_try_dir="$eap_tnc_lib_dir"
 
 
-sm_lib_safe=`echo "tnc" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "exchangeTNCCSMessages" | sed 'y%./+-%__p_%'`
+sm_lib_safe=`echo "naaeap" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "processEAPTNCData" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -2804,23 +2791,23 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for exchangeTNCCSMessages in -ltnc in $try" >&5
-$as_echo_n "checking for exchangeTNCCSMessages in -ltnc in $try... " >&6; }
-    LIBS="-L$try -ltnc $old_LIBS -Wl,-rpath,$try"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for processEAPTNCData in -lnaaeap in $try" >&5
+$as_echo_n "checking for processEAPTNCData in -lnaaeap in $try... " >&6; }
+    LIBS="-L$try -lnaaeap $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char exchangeTNCCSMessages();
+extern char processEAPTNCData();
 int
 main ()
 {
-exchangeTNCCSMessages()
+processEAPTNCData()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		 smart_lib="-L$try -ltnc -Wl,-rpath,$try"
+		 smart_lib="-L$try -lnaaeap -Wl,-rpath,$try"
 		 { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		 break
@@ -2836,23 +2823,23 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for exchangeTNCCSMessages in -ltnc" >&5
-$as_echo_n "checking for exchangeTNCCSMessages in -ltnc... " >&6; }
-  LIBS="-ltnc $old_LIBS"
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for processEAPTNCData in -lnaaeap" >&5
+$as_echo_n "checking for processEAPTNCData in -lnaaeap... " >&6; }
+  LIBS="-lnaaeap $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char exchangeTNCCSMessages();
+extern char processEAPTNCData();
 int
 main ()
 {
-exchangeTNCCSMessages()
+processEAPTNCData()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-	        smart_lib="-ltnc"
+	        smart_lib="-lnaaeap"
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 
@@ -2870,7 +2857,7 @@ if test "x$smart_lib" = "x"; then
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libtnc${libltdl_cv_shlibext}
+  file=libnaaeap${libltdl_cv_shlibext}
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -2897,7 +2884,7 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 if test "x$LOCATE" != "x"; then
         DIRS=
-  file=libtnc.a
+  file=libnaaeap.a
 
   for x in `${LOCATE} $file 2>/dev/null`; do
                                         base=`echo $x | sed "s%/${file}%%"`
@@ -2922,23 +2909,23 @@ eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
   for try in $smart_lib_dir /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for exchangeTNCCSMessages in -ltnc in $try" >&5
-$as_echo_n "checking for exchangeTNCCSMessages in -ltnc in $try... " >&6; }
-    LIBS="-L$try -rpath$try -ltnc $old_LIBS -Wl,-rpath,$try"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for processEAPTNCData in -lnaaeap in $try" >&5
+$as_echo_n "checking for processEAPTNCData in -lnaaeap in $try... " >&6; }
+    LIBS="-L$try -rpath$try -lnaaeap $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char exchangeTNCCSMessages();
+extern char processEAPTNCData();
 int
 main ()
 {
-exchangeTNCCSMessages()
+processEAPTNCData()
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
 
-		  smart_lib="-L$try -ltnc -Wl,-rpath,$try"
+		  smart_lib="-L$try -lnaaeap -Wl,-rpath,$try"
 		  { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		  break
@@ -2959,8 +2946,8 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_tnc_exchangetnccsmessages" != "xyes"; then
-		fail="$fail libtnc"
+	if test "x$ac_cv_lib_naaeap_processEAPTNCData" != "xyes"; then
+		fail="$fail libnaaeap"
 	fi
 
 	targetname=rlm_eap_tnc     # keep this!  Don't change!
@@ -2977,6 +2964,8 @@ if test x"$fail" != x""; then
 $as_echo "$as_me: WARNING: silently not building rlm_eap_tnc." >&2;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_eap_tnc requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_eap_tnc requires: $fail." >&2;};
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Required libraries are available from https://github.com/trustatfhh/tnc-fhh" >&5
+$as_echo "$as_me: WARNING: Required libraries are available from https://github.com/trustatfhh/tnc-fhh" >&2;};
 		targetname=""
 	fi
 fi
