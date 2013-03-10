@@ -75,8 +75,14 @@ if test x$with_[]modname != xno; then
     FR_SMART_CHECK_LIB(sqlite3, sqlite3_open)
     if test "x$ac_cv_lib_sqlite3_sqlite3_open" != "xyes"
     then
-      AC_MSG_WARN([Sqlite libraries not found. Use --with-sqlite-lib-dir=<path>.])
-      fail="$fail libsqlite3"
+        AC_MSG_WARN([Sqlite libraries not found. Use --with-sqlite-lib-dir=<path>.])
+        fail="$fail libsqlite3"
+    else
+        FR_SMART_CHECK_LIB(sqlite3, sqlite3_open_v2)
+        if test "x$ac_cv_lib_sqlite3_sqlite3_open_v2" == "xyes"
+	then
+            AC_DEFINE(HAVE_SQLITE_V2_API, [1], [Define if the SQLite library has v2 API functions])   
+        fi
     fi
 
     dnl ############################################################
@@ -86,8 +92,8 @@ if test x$with_[]modname != xno; then
     smart_try_dir="$sqlite_include_dir"
     FR_SMART_CHECK_INCLUDE(sqlite3.h)
     if test "x$ac_cv_header_sqlite3_h" != "xyes"; then
-      AC_MSG_WARN([Sqlite headers not found. Use --with-sqlite-include-dir=<path>.])
-      fail="$fail sqlite.h"
+        AC_MSG_WARN([Sqlite headers not found. Use --with-sqlite-include-dir=<path>.])
+        fail="$fail sqlite.h"
     fi
 
     targetname=modname
@@ -111,5 +117,8 @@ sql_sqlite_ldflags="$SMART_LIBS"
 sql_sqlite_cflags="$SMART_CFLAGS"
 AC_SUBST(sql_sqlite_ldflags)
 AC_SUBST(sql_sqlite_cflags)
+
+AC_CONFIG_HEADER(config.h)
+
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

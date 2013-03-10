@@ -27,14 +27,22 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 
+#include <fcntl.h>
 #include <sys/stat.h>
 
 #include <sqlite3.h>
-#include <fcntl.h>
 
 #include "rlm_sql.h"
+#include "config.h"
 
 #define BOOTSTRAP_MAX (1048576 * 10)
+
+/*
+ *	Allow us to use versions < 3.6.0 beta0
+ */
+#ifndef SQLITE_OPEN_NOMUTEX
+#  define SQLITE_OPEN_NOMUTEX 0
+#endif
 
 typedef struct rlm_sql_sqlite_conn {
 	sqlite3 *db;
@@ -91,6 +99,7 @@ static int sql_check_error(sqlite3 *db)
 	}
 }
 
+#ifdef HAVE_SQLITE_V2_API
 static int sql_loadfile(sqlite3 *db, const char *filename)
 {
 	FILE *f;
@@ -200,11 +209,22 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 	talloc_free(buff);
 	return 0;
 }
+#endif
 
 static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_config_t *driver;
 	int exists;
+
+	radlog(L_DBG, "rlm_sql_sqlite: SQLite library version: %s",
+	       sqlite3_libversion());
+
+	if (sqlite3_libversion_number() != SQLITE_VERSION_NUMBER) {
+		DEBUG2("rlm_sql_sqlite: SQLite library version (%s) is "
+		       "different from the version the server was originally "
+		       "built against (%s), this may cause issues",
+		       sqlite3_libversion(), SQLITE_VERSION);
+	}
 	
 	MEM(driver = config->driver = talloc_zero(config,
 						  rlm_sql_sqlite_config_t));
@@ -226,8 +246,9 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	
 		return -1;
 	}
-	
+
 	if (driver->bootstrap && !exists) {
+#ifdef HAVE_SQLITE_V2_API
 		int status;
 		int ret;
 		char *p;
@@ -288,6 +309,11 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		if (ret < 0) {	
 			return -1;
 		}
+#else
+		DEBUGW("rlm_sql_sqlite: sqlite3_open_v2() not available, "
+		       "cannot bootstrap database. Upgrade to SQLite >= 3.5.1 "
+		       "if you want this functionality")
+#endif
 	}
 	
 	return 0;
@@ -323,10 +349,14 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 
 	radlog(L_INFO, "rlm_sql_sqlite: Opening SQLite database \"%s\"",
 	       driver->filename);
-	
+
+#ifdef HAVE_SQLITE_V2_API	
 	status = sqlite3_open_v2(driver->filename, &(conn->db),
 				 SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX,
 				 NULL);
+#else
+	status = sqlite3_open(driver->filename, &(conn->db));
+#endif
 	if (!conn->db) {
 		radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
 		       "opening/creating SQLite database error "
@@ -358,9 +388,15 @@ static int sql_select_query(rlm_sql_handle_t *handle,
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	const char *z_tail;
 	
+#ifdef HAVE_SQLITE_V2_API
 	status = sqlite3_prepare_v2(conn->db, querystr,
 				    strlen(querystr), &conn->statement,
 				    &z_tail);
+#else
+	status = sqlite3_prepare(conn->db, querystr,
+				 strlen(querystr), &conn->statement,
+				 &z_tail);
+#endif
 				 
 	conn->col_count = 0;
 		
@@ -374,11 +410,16 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	const char *z_tail;
-	
+
+#ifdef HAVE_SQLITE_V2_API
 	status = sqlite3_prepare_v2(conn->db, querystr,
 				    strlen(querystr), &conn->statement,
 				    &z_tail);
-				    
+#else
+	status = sqlite3_prepare(conn->db, querystr,
+				 strlen(querystr), &conn->statement,
+				 &z_tail);
+#endif				    
 	status = sqlite3_step(conn->statement);
 		
 	return sql_check_error(conn->db);
