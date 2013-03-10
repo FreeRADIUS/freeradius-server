@@ -81,7 +81,7 @@ $(R)$(raddbdir)/mods-enabled/%: | $(R)$(raddbdir)/mods-available/%
 
 # Installation rules for sites-enabled.  Note ORDER dependencies
 $(R)$(raddbdir)/sites-enabled/%: | $(R)$(raddbdir)/sites-available/%
-	@cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
+	@cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
 
 # Installation rules for plain modules.
 $(R)$(raddbdir)/%: | raddb/%
