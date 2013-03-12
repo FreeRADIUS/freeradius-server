@@ -340,6 +340,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 
 /** Read from the child process.
  *
+ * @param request The current request.
  * @param fd file descriptor to read from.
  * @param pid pid of child, will be reaped if it dies.
  * @param timeout amount of time to wait, in seconds.
