@@ -253,6 +253,15 @@ typedef enum {
 #define PW_OTP_CHALLENGE		1145
 #define PW_EAP_SESSION_ID		1146
 
+#define PW_YUBIKEY_KEY			1280
+#define PW_YUBIKEY_PUBLIC_ID		1281
+#define PW_YUBIKEY_PRIVATE_ID		1282
+#define PW_YUBIKEY_COUNTER		1283
+#define PW_YUBIKEY_TIMESTAMP		1284
+#define PW_YUBIKEY_RANDOM		1285
+#define PW_YUBIKEY_TRIGGER		1286
+
+
 /*
  *	Integer Translations
  */

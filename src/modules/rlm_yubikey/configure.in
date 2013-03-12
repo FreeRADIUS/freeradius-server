@@ -1,0 +1,107 @@
+AC_PREREQ([2.53])
+AC_INIT(rlm_yubikey.c)
+AC_REVISION($Revision$)
+AC_DEFUN(modname,[rlm_yubikey])
+
+if test x$with_[]modname != xno; then
+    dnl ############################################################
+    dnl # Check for command line options
+    dnl ############################################################
+
+    dnl extra argument: --with-yubikey-include-dir=DIR
+    yubikey_include_dir=
+    AC_ARG_WITH(yubikey-include-dir,
+	[AS_HELP_STRING([--with-yubikey-include-dir=DIR],
+		[Directory where the yubikey includes may be found])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need yubikey-include-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		yubikey_include_dir="$withval"
+		;;
+	esac])
+
+    dnl extra argument: --with-yubikey-lib-dir=DIR
+    yubikey_lib_dir=
+    AC_ARG_WITH(yubikey-lib-dir,
+	[AS_HELP_STRING([--with-yubikey-lib-dir=DIR],
+		[Directory where the yubikey libraries may be found])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need yubikey-lib-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		yubikey_lib_dir="$withval"
+		;;
+	esac])
+
+    dnl extra argument: --with-yubikey-dir=DIR
+    AC_ARG_WITH(yubikey-dir,
+	[AS_HELP_STRING([--with-yubikey-dir=DIR],
+		[Base directory where yubikey is installed])],
+	[case "$withval" in
+	    no)
+		AC_MSG_ERROR(Need yubikey-dir)
+		;;
+	    yes)
+		;;
+	    *)
+		yubikey_lib_dir="$withval/lib"
+		yubikey_include_dir="$withval/include"
+		;;
+	esac])
+
+    dnl ############################################################
+    dnl # Check for header files
+    dnl ############################################################
+
+    smart_try_dir="$yubikey_include_dir"
+    FR_SMART_CHECK_INCLUDE(yubikey.h)
+    if test "x$ac_cv_header_yubikey_h" != "xyes"; then
+      AC_MSG_WARN([yubikey headers not found. Use --with-yubikey-include-dir=<path>.])
+      fail="$fail yubikey.h"
+    fi
+
+    dnl ############################################################
+    dnl # Check for libraries
+    dnl ############################################################
+
+    dnl try to link to yubikey
+    smart_try_dir="$yubikey_lib_dir"
+    FR_SMART_CHECK_LIB(yubikey, yubikey_aes_decrypt)
+    if test "x$ac_cv_lib_yubikey_yubikey_aes_decrypt" != "xyes"
+    then
+      AC_MSG_WARN([yubikey libraries not found. Use --with-yubikey-lib-dir=<path>.])
+      fail="$fail libct"
+    fi
+
+	targetname=modname     # keep this!  Don't change!
+else
+	targetname=            # keep this!  Don't change!
+	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+fi
+
+dnl  Don't change this section.
+if test x"$fail" != x""; then
+	if test x"${enable_strict_dependencies}" = x"yes"; then
+		AC_MSG_ERROR([set --without-]modname[ to disable it explicitly.])
+	else
+		AC_MSG_WARN([silently not building ]modname[.])
+		AC_MSG_WARN([FAILURE: ]modname[ requires: $fail.]);
+		targetname=""
+	fi
+fi
+
+yubikey_ldflags="${SMART_LIBS}"
+yubikey_cflags="${SMART_CFLAGS}"
+
+AC_SUBST(yubikey_cflags)  # change 'yubikey'
+AC_SUBST(yubikey_ldflags)  # change 'yubikey'
+
+AC_SUBST(targetname)  # keep this!  Don't change!
+AC_OUTPUT(all.mk)  # keep this!  Don't change!

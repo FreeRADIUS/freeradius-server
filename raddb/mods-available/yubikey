@@ -1,0 +1,41 @@
+#
+#  This module decrypts and validates Yubikey static and dynamic
+#  OTP tokens.
+#
+#  The module itself does not provide persistent storage as this
+#  would be duplicative of functionality already in the server.
+#
+#  Yubikey authentication needs two control attributes 
+#  retrieved from persistent storage:
+#    * Yubikey-Key     - The AES key use to decrypt the OTP data.
+#                        The Yubikey-Public-Id and/or User-Name 
+#                        attrubutes may be used to retrieve the key.
+#    * Yubikey-Counter - This is compared with the counter in the OTP
+#                        data and used to prevent replay attacks.
+#                        This attribute will also be available in 
+#                        the request list after successfull
+#                        decryption.                    
+#
+#  Yubikey-Counter isn't strictly required, but the server will
+#  generate warnings if it's not present when Yubikey.authenticate
+#  is called.
+#
+#  These attributes are available after authorization:
+#    * Yubikey-Public-ID  - The public portion of the OTP string
+#
+#  These attributes are available after authentication (if successfull):
+#    * Yubikey-Private-ID - The encrypted ID included in OTP data,
+#                           must be verified if tokens share keys.
+#    * Yubikey-Counter    - The last counter value (should be recorded).
+#    * Yubikey-Timestamp  - Token's internal clock (mainly useful for debugging).
+#    * Yubikey-Random     - Randomly generated value from the token.
+#    * Yubikey-Trigger    - How the Yubikey was triggered
+#                           ('keyboard' or 'button'). 
+yubikey {
+	#
+	#  The length (number of ascii bytes) of the Public-ID portion
+	#  of the OTP string.
+	#
+	#  Yubikey defaults to a 6 byte ID (2 * 6 = 12)
+	#id_length = 12
+}

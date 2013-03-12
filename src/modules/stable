@@ -39,3 +39,4 @@ rlm_sqlippool
 rlm_unix
 rlm_sometimes
 rlm_wimax
+rlm_yubikey
