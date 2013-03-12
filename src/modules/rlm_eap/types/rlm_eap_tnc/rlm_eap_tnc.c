@@ -259,8 +259,8 @@ static int tnc_initiate(void *instance, EAP_HANDLER *handler)
  * and appropriate EAP_RESPONSE. Furthermore, it sets the VlanID
  * based on the TNC_ConnectionState determined by NAA-TNCS.
  *
- * @param type_arg The configuration data
- * @param handler The EAP_HANDLER
+ * @param instance The configuration data.
+ * @param handler The EAP_HANDLER.
  * @return True, if successfully, else false.
  */
 static int tnc_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
@@ -273,35 +273,6 @@ static int tnc_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 	
 	TNC_ConnectionState connection_state;
 	uint8_t code = 0;
-
-	/*
-	if (!handler->opaque){
-		radlog(L_ERR, "rlm_eap_tnc: Invalid session data: handler->opaque was "
-		      "NULL");
-		return 0;
-	}
-
-	if (!handler->eap_ds) {
-		radlog(L_ERR, "rlm_eap_tnc: Invalid session data: handler->eap_ds "
-		      "was NULL");
-		       
-		return 0;
-	}
-
-	if (!handler->eap_ds->request) {
-		radlog(L_ERR, "rlm_eap_tnc: Invalid session data: "
-		      "handler->eap_ds->request was NULL");
-		      
-		return 0;
-	}	
-
-	if (!handler->eap_ds->response) {
-		radlog(L_ERR, "rlm_eap_tnc: Invalid session data: "
-		      "handler->eap_ds->response was NULL");
-		      
-		return 0;
-	}
-	*/
 	
 	if (handler->eap_ds->response->type.type != PW_EAP_TNC) {
 		radlog(L_ERR, "rlm_eap_tnc: Incorrect response type");
