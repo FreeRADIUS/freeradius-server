@@ -72,19 +72,19 @@ static const CONF_PARSER module_config[] = {
  */
 static int example_instantiate(CONF_SECTION *conf, void **instance)
 {
-	rlm_example_t *data;
+	rlm_example_t *inst;
 
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	*instance = data = talloc_zero(conf, rlm_example_t);
-	if (!data) return -1;
+	*instance = inst = talloc_zero(conf, rlm_example_t);
+	if (!inst) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
+	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
 
