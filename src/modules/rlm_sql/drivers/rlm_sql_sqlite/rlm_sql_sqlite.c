@@ -312,7 +312,7 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 #else
 		DEBUGW("rlm_sql_sqlite: sqlite3_open_v2() not available, "
 		       "cannot bootstrap database. Upgrade to SQLite >= 3.5.1 "
-		       "if you want this functionality")
+		       "if you want this functionality");
 #endif
 	}
 	
