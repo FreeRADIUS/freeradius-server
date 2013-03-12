@@ -60,8 +60,6 @@ RCSID("$Id$")
 #define USE_READLINE (1)
 #endif /* !defined(HAVE_READLINE_H) */
 
-#endif /* HAVE_LIBREADLINE */
-
 #ifdef HAVE_READLINE_HISTORY
 #if defined(HAVE_READLINE_HISTORY_H)
 #include <readline/history.h>
@@ -72,6 +70,8 @@ RCSID("$Id$")
 #endif /* defined(HAVE_READLINE_HISTORY_H) */
 
 #endif /* HAVE_READLINE_HISTORY */
+
+#endif /* HAVE_LIBREADLINE */
 
 /*
  *	For configuration file stuff.
