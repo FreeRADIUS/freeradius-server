@@ -835,6 +835,17 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 	if (strcmp("server", cf_section_name1(section)) == 0) in_server = TRUE;
 
+	/*
+	 *	Associate the clients structure with the section.
+	 */
+	if (cf_data_add(section, "clients", clients, NULL) < 0) {
+		cf_log_err(cf_sectiontoitem(section),
+			   "Failed to associate clients with section %s",
+		       cf_section_name1(section));
+		clients_free(clients);
+		return NULL;
+	}
+
 	for (cs = cf_subsection_find_next(section, NULL, "client");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(section, cs, "client")) {
