@@ -403,7 +403,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	close(pd[0]);
 
-	DEBUG2("Exec-Program output: %s", answer);
+	DEBUG2("Exec output: %s", answer);
 
 	/*
 	 *	Parse the output, if any.
@@ -421,7 +421,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		}
 
 		if (n == T_OP_INVALID) {
-			DEBUG("Exec-Program-Wait: plaintext: %s", answer);
+			DEBUG("Exec plaintext: %s", answer);
 			if (user_msg) {
 				strlcpy(user_msg, answer, msg_len);
 			}
@@ -448,7 +448,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				answer[strlen(answer) - 1] = '\0';
 			}
 
-			RDEBUG("Exec outpyt: %s", answer);
+			RDEBUG("Exec output: %s", answer);
 
 			vp = NULL;
 			if (userparse(answer, &vp) == T_OP_INVALID) {
