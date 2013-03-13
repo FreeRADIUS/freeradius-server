@@ -2753,7 +2753,6 @@ static int is_loopback(const fr_ipaddr_t *ipaddr)
 int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 {
 	int		override = FALSE;
-	int		rcode;
 	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
@@ -2780,37 +2779,31 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 	 *
 	 *	FIXME: If argv[0] == "vmpsd", then don't listen on auth/acct!
 	 */
-	if (mainconfig.port >= 0) auth_port = mainconfig.port;
+	if (mainconfig.port >= 0) {
+		auth_port = mainconfig.port;
+
+		/*
+		 *	-p X but no -i Y on the command-line.
+		 */
+		if ((mainconfig.port > 0) &&
+		    (mainconfig.myip.af == AF_UNSPEC)) {
+			radlog(L_ERR, "The command-line says \"-p %d\", but there is no associated IP address to use",
+			       mainconfig.port);
+			return -1;
+		}
+	}
 
 	/*
 	 *	If the IP address was configured on the command-line,
 	 *	use that as the "bind_address"
 	 */
 	if (mainconfig.myip.af != AF_UNSPEC) {
+		listen_socket_t *sock;
+
 		memcpy(&server_ipaddr, &mainconfig.myip,
 		       sizeof(server_ipaddr));
 		override = TRUE;
-		goto bind_it;
-	}
 
-	/*
-	 *	Else look for bind_address and/or listen sections.
-	 */
-	server_ipaddr.ipaddr.ip4addr.s_addr = htonl(INADDR_NONE);
-	rcode = cf_item_parse(config, "bind_address",
-			      PW_TYPE_IPADDR,
-			      &server_ipaddr.ipaddr.ip4addr, NULL);
-	if (rcode < 0) return -1; /* error parsing it */
-
-	if (rcode == 0) { /* successfully parsed IPv4 */
-		listen_socket_t *sock;
-
-		memset(&server_ipaddr, 0, sizeof(server_ipaddr));
-		server_ipaddr.af = AF_INET;
-
-		radlog(L_INFO, "WARNING: The directive 'bind_address' is deprecated, and will be removed in future versions of FreeRADIUS. Please edit the configuration files to use the directive 'listen'.");
-
-	bind_it:
 #ifdef WITH_VMPS
 		if (strcmp(progname, "vmpsd") == 0) {
 			this = listen_alloc(RAD_LISTEN_VQP);
@@ -2897,10 +2890,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 		*last = this;
 		last = &(this->next);
 #endif
-	} else if (mainconfig.port > 0) { /* no bind address, but a port */
-		radlog(L_ERR, "The command-line says \"-p %d\", but there is no associated IP address to use",
-		       mainconfig.port);
-		return -1;
 	}
 
 	/*
