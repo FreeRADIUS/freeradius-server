@@ -83,8 +83,7 @@ server.vrfy: ca.pem
 
 ######################################################################
 #
-#  Create a new client certificate, signed by the the above server
-#  certificate.
+#  Create a new client certificate, signed by the the above CA
 #
 ######################################################################
 client.csr client.key: client.cnf
