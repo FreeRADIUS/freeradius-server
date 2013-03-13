@@ -10,3 +10,4 @@ lt_error.c
 m4
 slist.c
 stamp-h1
+Makefile
