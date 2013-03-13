@@ -525,7 +525,7 @@ static int securid_authenticate(void *instance, REQUEST *request)
 		/* reply with Access-challenge message code (11) */
 
 		/* Generate Prompt attribute */
-		vp = paircreate(PW_PROMPT, 0);
+		vp = paircreate(NULL, PW_PROMPT, 0);
 				
 		rad_assert(vp != NULL);
 		vp->vp_integer = 0; /* no echo */
