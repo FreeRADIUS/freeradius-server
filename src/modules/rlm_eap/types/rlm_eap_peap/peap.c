@@ -824,7 +824,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 		RDEBUG("Processing SoH request");
 		debug_pair_list(fake->packet->vps);
 		RDEBUG("server %s {", fake->server);
-		rad_authenticate(fake);
+		rad_virtual_server(fake);
 		RDEBUG("} # server %s", fake->server);
 		RDEBUG("Got SoH reply");
 		debug_pair_list(fake->reply->vps);
@@ -1025,7 +1025,7 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	 *	Call authentication recursively, which will
 	 *	do PAP, CHAP, MS-CHAP, etc.
 	 */
-	rad_authenticate(fake);
+	rad_virtual_server(fake);
 
 	/*
 	 *	Note that we don't do *anything* with the reply

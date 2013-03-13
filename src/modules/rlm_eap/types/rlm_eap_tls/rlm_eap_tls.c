@@ -130,6 +130,8 @@ static CONF_PARSER module_config[] = {
 	  offsetof(EAP_TLS_CONF, check_cert_issuer), NULL, NULL},
 	{ "make_cert_command", PW_TYPE_STRING_PTR,
 	  offsetof(EAP_TLS_CONF, make_cert_command), NULL, NULL},
+	{ "virtual_server", PW_TYPE_STRING_PTR,
+	  offsetof(EAP_TLS_CONF, virtual_server), NULL, NULL },
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
@@ -1637,6 +1639,48 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	EAP-TLS-Success packet here.
 		 */
 	case EAPTLS_SUCCESS:
+		if (inst->conf->virtual_server) {
+			VALUE_PAIR *vp;
+			REQUEST *fake;
+
+			/* create a fake request */
+			fake = request_alloc_fake(request);
+			rad_assert(fake->packet->vps == NULL);
+
+			fake->packet->vps = paircopy(request->packet->vps);
+
+			/* set the virtual server to use */
+			if ((vp = pairfind(request->config_items,
+					   PW_VIRTUAL_SERVER)) != NULL) {
+				fake->server = vp->vp_strvalue;
+			} else {
+				fake->server = inst->conf->virtual_server;
+			}
+
+			RDEBUG("Processing EAP-TLS Certificate check:");
+			debug_pair_list(fake->packet->vps);
+
+			RDEBUG("server %s {", fake->server);
+
+			rad_virtual_server(fake);
+
+			RDEBUG("} # server %s", fake->server);
+
+			/* copy the reply vps back to our reply */
+			pairadd(&request->reply->vps, fake->reply->vps);
+			fake->reply->vps = NULL;
+
+			/* reject if virtual server didn't return accept */
+			if (fake->reply->code != PW_AUTHENTICATION_ACK) {
+				RDEBUG2("Certifictes were rejected by the virtual server");
+				request_free(&fake);
+				eaptls_fail(handler, 0);
+				return 0;
+			}
+
+			request_free(&fake);
+			/* success */
+		}
 		break;
 
 		/*
