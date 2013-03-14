@@ -46,7 +46,7 @@ static int sql_socket_destructor(void *c)
 		
 		if (fb_lasterror(conn)) {
 			DEBUGW("rlm_sql_firebird: Got error "
-			       "when closing socket:", conn->lasterror);
+			       "when closing socket: %s", conn->lasterror);
 		}
 	}
 	
