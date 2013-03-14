@@ -78,7 +78,7 @@ the rlm_ldap module:
 #	Example:(LDAP_DEBUG_FILTER+LDAP_DEBUG_CONNS)
 		ldap_debug = 0x0028 
 
-#	identity: DN under which LDAP searches are done password: pasword
+#	identity: DN under which LDAP searches are done password: password
 #	which authenticate this DN default: anonymous bind, no password
 #	required NOTE: searches are done now over unencrypted connection!
 #
