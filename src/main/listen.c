@@ -3095,7 +3095,14 @@ add_sockets:
 		home.ipaddr.af = home.src_ipaddr.af;
 		/* everything else is already set to zero */
 
-		if (!proxy_new_listener(&home, port)) {
+		this = proxy_new_listener(&home, port);
+		if (!this) {
+			listen_free(head);
+			return -1;
+		}
+
+		if (!event_new_fd(this)) {
+			listen_free(&this);
 			listen_free(head);
 			return -1;
 		}
