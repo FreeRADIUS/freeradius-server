@@ -108,6 +108,7 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 	ssize_t len;
 	char *buff;
 	char *p, *q, *s;
+	int cl;
 
 	int status;
 	sqlite3_stmt *statement;
@@ -176,18 +177,38 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 	buff[len] = '\0';
 	
 	fclose(f);
+
+	/*
+	 *	Check input encoding is UTF8 compliant
+	 */
+	p = buff;
+	while(((*p = '\xa') && (cl = 1)) ||
+	      ((*p = '\xd') && (cl = 1)) ||
+	      (cl = fr_utf8_char((uint8_t *) p))) {
+		p += cl;
+	}
 	
+	if (p != (buff + len)) {
+		radlog(L_ERR, "rlm_sql_sqlite: Bootstrap file contains "
+		       "none UTF8 char at offset %zu", p - buff);
+		       
+		talloc_free(buff);
+		
+		return -1;
+	}
+
 	/*
 	 *	Statement delimiter is ;\n
 	 */
 	p = s = buff;
-	while ((q = strchr(p, ';'))) {
+	while ((q = strchr(p, ';'))) {		
 		if (q[1] != '\n') {
 			p = q + 1;
 			continue;
 		}
 		
 		*q = '\0';
+		
 		(void) sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
 		if (sql_check_error(db)) {
 			talloc_free(buff);
@@ -288,13 +309,13 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			       "opening/creating SQLite database, error "
 			       "code (%u)", status);
 			       
-			return -1;
+			goto unlink;
 		}
 		
 		if (sql_check_error(db)) {
 			(void) sqlite3_close(db);
 			
-			return -1;
+			goto unlink;
 		}
 		
 		ret = sql_loadfile(db, driver->bootstrap);
@@ -303,10 +324,16 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		if (status != SQLITE_OK) {
 			radlog(L_ERR, "rlm_sql_sqlite: Error closing SQLite "
 			       "handle, error code (%u)", status); 
-			return -1;
+			goto unlink;
 		}
 		
-		if (ret < 0) {	
+		if (ret < 0) {
+			unlink:
+			if (unlink(driver->filename) < 0) {
+				radlog(L_ERR, "rlm_sql_sqlite: Error removing " 
+				       "partially initialised database: %s",
+				       strerror(errno));
+			}
 			return -1;
 		}
 #else
