@@ -431,7 +431,7 @@ static int ldap_bind_wrapper(REQUEST *request, LDAP_CONN **pconn,
 	LDAP_CONN	*conn = *pconn;
 	ldap_instance   *inst = conn->inst;
 	LDAPMessage	*result = NULL;
-	const char	*error;
+	const char	*error = NULL;
 	char 		*ext_error = NULL;
 	struct timeval tv;
 
@@ -852,7 +852,7 @@ static int perform_search(ldap_instance *inst, REQUEST *request,
 	int		ldap_errno;
 	int		count = 0;
 	struct timeval  tv;
-	const char 	*error;
+	const char 	*error = NULL;
 
 	/*
 	 *	OpenLDAP library doesn't declare attrs array as const, but
@@ -2219,7 +2219,7 @@ static rlm_rcode_t user_modify(ldap_instance *inst, REQUEST *request,
 	
 	const char	*user_dn;
 	
-	const char	*error;
+	const char	*error = NULL;
 
 	/*
 	 *	Build our set of modifications using the update sections in
