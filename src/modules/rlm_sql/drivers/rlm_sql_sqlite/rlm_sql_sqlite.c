@@ -182,8 +182,8 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 	 *	Check input encoding is UTF8 compliant
 	 */
 	p = buff;
-	while(((*p = '\xa') && (cl = 1)) ||
-	      ((*p = '\xd') && (cl = 1)) ||
+	while(((*p == '\xa') && (cl = 1)) ||
+	      ((*p == '\xd') && (cl = 1)) ||
 	      (cl = fr_utf8_char((uint8_t *) p))) {
 		p += cl;
 	}
