@@ -2602,8 +2602,8 @@ void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 
 	if (ci) {
 		radlog(L_ERR, "%s[%d]: %s",
-		       ci ? ci->filename : "unknown",
-		       ci ? ci->lineno : 0,
+		       ci->filename ? ci->filename : "unknown",
+		       ci->lineno ? ci->lineno : 0,
 		       buffer);
 	} else {
 		radlog(L_ERR, "<unknown>[*]: %s", buffer);
