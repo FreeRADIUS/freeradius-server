@@ -356,6 +356,8 @@ int main(int argc, char **argv)
 	 *	Read the file, printing out active entries.
 	 */
 	while (fread(&rt, sizeof(rt), 1, fp) == 1) {
+		char login[sizeof(rt.login) + 1];
+
 		if (rt.type != P_LOGIN) continue; /* hide logout sessions */
 		
 		/*
@@ -469,11 +471,10 @@ int main(int argc, char **argv)
 		/*
 		 *	Show the fill name, or not.
 		 */
+		memcpy(login, rt.login, sizeof(rt.login));
+		login[sizeof(rt.login)] = '\0';
+
 		if (showname) {
-			char login[sizeof(rt.login) + 1];
-			memcpy(login, rt.login, sizeof(rt.login));
-			login[sizeof(rt.login)] = '\0';
-			
 			printf((rawoutput == 0? rfmt1: rfmt1r),
 			       login,
 			       showcid ? rt.caller_id :
@@ -485,7 +486,7 @@ int main(int argc, char **argv)
 			       hostname(othername, sizeof(othername), rt.framed_address), eol);
 		} else {
 			printf((rawoutput == 0? rfmt2: rfmt2r),
-			       rt.login,
+			       login,
 			       portind, portno,
 			       proto(rt.proto, rt.porttype),
 			       dotime(rt.time),
