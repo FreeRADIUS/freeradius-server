@@ -1689,49 +1689,56 @@ static int insert_into_proxy_hash(REQUEST *request)
 	char buf[128];
 	int rcode, tries;
 	void *proxy_listener;
+	rad_listen_t *this;
 
 	rad_assert(request->proxy != NULL);
 	rad_assert(request->home_server != NULL);
 	rad_assert(proxy_list != NULL);
 
-	tries = 1;
-retry:
+
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	rcode = fr_packet_list_id_alloc(proxy_list,
-					request->home_server->proto,
-					request->proxy, &proxy_listener);
+	this = proxy_listener = NULL;
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-	
-	if (!rcode) {
+
+	for (tries = 0; tries < 2; tries++) {
+		rcode = fr_packet_list_id_alloc(proxy_list,
+						request->home_server->proto,
+						request->proxy, &proxy_listener);
+		if (rcode > 0) break;
+		if (tries > 0) break; /* try opening new socket only once */
+
 #ifdef HAVE_PTHREAD_H
-		if (proxy_no_new_sockets) return 0;
+		if (proxy_no_new_sockets) break;
 #endif
 
-		/*
-		 *	Also locks the proxy mutex, so we have to call
-		 *	it with the mutex unlocked.  Some systems
-		 *	don't support recursive mutexes.
-		 */
-		if (!proxy_new_listener(request->home_server, 0)) {
+		this = proxy_new_listener(request->home_server, 0);
+		if (!this) {
 			radlog(L_ERR, "Failed to create a new socket for proxying requests.");
-			return 0;
+			break;
 		}
 		request->proxy->src_port = 0; /* Use any new socket */
-
-		tries++;
-		if (tries > 2) {
-			RDEBUG2E("Failed allocating Id for new socket when proxying requests.");
-			return 0;
-		}
-		
-		goto retry;
+		proxy_listener = this;
 	}
 
-	request->proxy_listener = proxy_listener;
+	if (!proxy_listener) {
+		RDEBUG2E("Failed allocating Id for new socket when proxying requests.");
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		return 0;
+	}
 
+	/*
+	 *	Tell the event loop that we have a new FD.  It locks
+	 *	the socket, so we've got to unlock it here.
+	 */
+	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+	if (!event_new_fd(this)) {
+		listen_free(&this);
+		return 0;
+	}
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
+
+	request->proxy_listener = this;
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);

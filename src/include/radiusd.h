@@ -779,7 +779,7 @@ void fr_suid_down_permanent(void);
 /* listen.c */
 void listen_free(rad_listen_t **head);
 int listen_init(CONF_SECTION *cs, rad_listen_t **head, int spawn_flag);
-int proxy_new_listener(home_server *home, int src_port);
+rad_listen_t *proxy_new_listener(home_server *home, int src_port);
 RADCLIENT *client_listener_find(rad_listen_t *listener,
 				const fr_ipaddr_t *ipaddr, int src_port);
 

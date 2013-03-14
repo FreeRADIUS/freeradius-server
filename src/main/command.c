@@ -2069,17 +2069,15 @@ static void command_socket_free(rad_listen_t *this)
 {
 	fr_command_socket_t *cmd = this->data;
 
+	/*
+	 *	If it's a TCP socket, don't do anything.
+	 */
 	if (cmd->magic != COMMAND_SOCKET_MAGIC) {
-		listen_socket_t *sock = this->data;
-
-		free(sock->packet);
 		return;
 	}
 
 	if (!cmd->copy) return;
 	unlink(cmd->copy);
-	free(cmd->copy);
-	cmd->copy = NULL;
 }
 
 
@@ -2102,7 +2100,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->magic = COMMAND_SOCKET_MAGIC;
 	sock->copy = NULL;
-	if (sock->path) sock->copy = strdup(sock->path);
+	if (sock->path) sock->copy = talloc_strdup(sock, sock->path);
 
 #if defined(HAVE_GETPEEREID) || defined (SO_PEERCRED)
 	if (sock->uid_name) {
@@ -2534,9 +2532,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 		int i;
 		fr_cs_buffer_t *co;
 
-		co = rad_malloc(sizeof(*co));
-		memset(co, 0, sizeof(*co));
-
+		co = talloc_zero(sock, fr_cs_buffer_t);
 		sock->packet = (void *) co;
 
 		for (i = 0; i < 16; i++) {
@@ -2703,7 +2699,7 @@ static int command_domain_accept(rad_listen_t *listener)
 	/*
 	 *	Add the new listener.
 	 */
-	this = listen_alloc(listener->type);
+	this = listen_alloc(listener, listener->type);
 	if (!this) return 0;
 
 	/*

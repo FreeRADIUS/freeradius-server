@@ -81,7 +81,7 @@ typedef struct rad_listen_master_t {
 	rad_listen_decode_t	decode;
 } rad_listen_master_t;
 
-static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type);
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type);
 
 #ifdef WITH_COMMAND_SOCKET
 static int command_tcp_recv(rad_listen_t *listener);
@@ -623,7 +623,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 	/*
 	 *	Add the new listener.
 	 */
-	this = listen_alloc(listener->type);
+	this = listen_alloc(listener, listener->type);
 	if (!this) return -1;
 
 	/*
@@ -2440,15 +2440,61 @@ static int listen_bind(rad_listen_t *this)
 }
 
 
-/*
- *	Allocate & initialize a new listener.
- */
-static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
+static int listener_free(void *ctx)
 {
 	rad_listen_t *this;
 
-	this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
+	this = talloc_get_type_abort(ctx, rad_listen_t);
+
+	/*
+	 *	Other code may have eaten the FD.
+	 */
+	if (this->fd >= 0) close(this->fd);
+
+	if (master_listen[this->type].free) {
+		master_listen[this->type].free(this);
+	}
+
+#ifdef WITH_TCP
+	if ((this->type == RAD_LISTEN_AUTH)
+#ifdef WITH_ACCT
+	    || (this->type == RAD_LISTEN_ACCT)
+#endif
+#ifdef WITH_PROXY
+	    || (this->type == RAD_LISTEN_PROXY)
+#endif
+#ifdef WITH_COMMAND_SOCKET
+	    || ((this->type == RAD_LISTEN_COMMAND) &&
+		(((fr_command_socket_t *) this->data)->magic != COMMAND_SOCKET_MAGIC))
+#endif
+		) {
+		listen_socket_t *sock = this->data;
+
+#ifdef WITH_TLS
+		if (sock->request) {
+			pthread_mutex_destroy(&(sock->mutex));
+			request_free(&sock->request);
+			sock->packet = NULL;
+
+			if (sock->ssn) session_free(sock->ssn);
+			request_free(&sock->request);
+		} else
+#endif
+			rad_free(&sock->packet);
+	}
+#endif				/* WITH_TCP */
+
+	return 0;
+}
+
+/*
+ *	Allocate & initialize a new listener.
+ */
+static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
+{
+	rad_listen_t *this;
+
+	this = talloc_zero(ctx, rad_listen_t);
 
 	this->type = type;
 	this->recv = master_listen[this->type].recv;
@@ -2456,6 +2502,8 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 	this->print = master_listen[this->type].print;
 	this->encode = master_listen[this->type].encode;
 	this->decode = master_listen[this->type].decode;
+
+	talloc_set_destructor((void *) this, listener_free);
 
 	switch (type) {
 #ifdef WITH_STATS
@@ -2474,14 +2522,12 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 #ifdef WITH_COA
 	case RAD_LISTEN_COA:
 #endif
-		this->data = rad_malloc(sizeof(listen_socket_t));
-		memset(this->data, 0, sizeof(listen_socket_t));
+		this->data = talloc_zero(this, listen_socket_t);
 		break;
 
 #ifdef WITH_DHCP
 	case RAD_LISTEN_DHCP:
-		this->data = rad_malloc(sizeof(dhcp_socket_t));
-		memset(this->data, 0, sizeof(dhcp_socket_t));
+		this->data = talloc_zero(this, dhcp_socket_t);
 		break;
 #endif
 
@@ -2493,8 +2539,7 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
 
 #ifdef WITH_COMMAND_SOCKET
 	case RAD_LISTEN_COMMAND:
-		this->data = rad_malloc(sizeof(fr_command_socket_t));
-		memset(this->data, 0, sizeof(fr_command_socket_t));
+		this->data = talloc_zero(this, fr_command_socket_t);
 		break;
 #endif
 
@@ -2513,22 +2558,22 @@ static rad_listen_t *listen_alloc(RAD_LISTEN_TYPE type)
  *	Not thread-safe, but all calls to it are protected by the
  *	proxy mutex in event.c
  */
-int proxy_new_listener(home_server *home, int src_port)
+rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 {
 	rad_listen_t *this;
 	listen_socket_t *sock;
 	char buffer[256];
 
-	if (!home) return 0;
+	if (!home) return NULL;
 
 	if ((home->limit.max_connections > 0) &&
 	    (home->limit.num_connections >= home->limit.max_connections)) {
 		DEBUGW("Home server has too many open connections (%d)",
 		      home->limit.max_connections);
-		return 0;
+		return NULL;
 	}
 
-	this = listen_alloc(RAD_LISTEN_PROXY);
+	this = listen_alloc(mainconfig.config, RAD_LISTEN_PROXY);
 
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;
@@ -2565,7 +2610,7 @@ int proxy_new_listener(home_server *home, int src_port)
 			sock->ssn = tls_new_client_session(home->tls, this->fd);
 			if (!sock->ssn) {
 				listen_free(&this);
-				return 0;
+				return NULL;
 			}
 
 			this->recv = proxy_tls_recv;
@@ -2581,7 +2626,7 @@ int proxy_new_listener(home_server *home, int src_port)
 		DEBUG("Failed opening client socket ::%s:: : %s",
 		      buffer, fr_strerror());
 		listen_free(&this);
-		return 0;
+		return NULL;
 	}
 
 	/*
@@ -2597,26 +2642,18 @@ int proxy_new_listener(home_server *home, int src_port)
 			radlog(L_ERR, "Failed getting socket name: %s",
 			       strerror(errno));
 			listen_free(&this);
-			return 0;
+			return NULL;
 		}
 		
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
 			radlog(L_ERR, "Socket has unsupported address family");
 			listen_free(&this);
-			return 0;
+			return NULL;
 		}
 	}
 
-	/*
-	 *	Tell the event loop that we have a new FD
-	 */
-	if (!event_new_fd(this)) {
-		listen_free(&this);
-		return 0;
-	}
-	
-	return 1;
+	return this;
 }
 #endif
 
@@ -2707,7 +2744,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	/*
 	 *	Set up cross-type data.
 	 */
-	this = listen_alloc(type);
+	this = listen_alloc(cs, type);
 	this->server = server;
 	this->fd = -1;
 
@@ -2806,11 +2843,11 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 
 #ifdef WITH_VMPS
 		if (strcmp(progname, "vmpsd") == 0) {
-			this = listen_alloc(RAD_LISTEN_VQP);
+			this = listen_alloc(config, RAD_LISTEN_VQP);
 			if (!auth_port) auth_port = 1589;
 		} else
 #endif
-			this = listen_alloc(RAD_LISTEN_AUTH);
+			this = listen_alloc(config, RAD_LISTEN_AUTH);
 
 		sock = this->data;
 
@@ -2855,7 +2892,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 		 *	If we haven't already gotten acct_port from
 		 *	/etc/services, then make it auth_port + 1.
 		 */
-		this = listen_alloc(RAD_LISTEN_ACCT);
+		this = listen_alloc(config, RAD_LISTEN_ACCT);
 		sock = this->data;
 
 		/*
@@ -3087,45 +3124,7 @@ void listen_free(rad_listen_t **head)
 	this = *head;
 	while (this) {
 		rad_listen_t *next = this->next;
-
-		/*
-		 *	Other code may have eaten the FD.
-		 */
-		if (this->fd >= 0) close(this->fd);
-
-		if (master_listen[this->type].free) {
-			master_listen[this->type].free(this);
-		}
-
-#ifdef WITH_TCP
-		if ((this->type == RAD_LISTEN_AUTH)
-#ifdef WITH_ACCT
-		    || (this->type == RAD_LISTEN_ACCT)
-#endif
-#ifdef WITH_PROXY
-		    || (this->type == RAD_LISTEN_PROXY)
-#endif
-			) {
-			listen_socket_t *sock = this->data;
-
-#ifdef WITH_TLS
-			if (sock->request) {
-				pthread_mutex_destroy(&(sock->mutex));
-				request_free(&sock->request);
-				sock->packet = NULL;
-
-				if (sock->ssn) session_free(sock->ssn);
-				request_free(&sock->request);
-			} else
-#endif
-				rad_free(&sock->packet);
-
-		}
-#endif	/* WITH_TCP */
-
-		free(this->data);
-		free(this);
-
+		talloc_free(this);
 		this = next;
 	}
 
