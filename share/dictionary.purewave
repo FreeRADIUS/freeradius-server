@@ -21,7 +21,7 @@ ATTRIBUTE	Purewave-IP-Address			5	ipaddr
 ATTRIBUTE	Purewave-IP-Netmask			6	ipaddr
 
 #
-# Atribute 	Purewave-Service-Enable (optional parameter)
+# Attribute 	Purewave-Service-Enable (optional parameter)
 # Purpose	Enable or Disable service
 # Range		0-1
 # Default value	1
