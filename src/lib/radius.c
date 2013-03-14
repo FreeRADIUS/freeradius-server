@@ -3455,6 +3455,15 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 			return -1;
 		}
 		tag = 0;
+#ifndef NDEBUG
+		/*
+		 *	Fix for Coverity.
+		 */
+		if (da->type != PW_TYPE_OCTETS) {
+			dict_attr_free(&da);
+			return -1;
+		}
+#endif
 		break;
 	}
 
