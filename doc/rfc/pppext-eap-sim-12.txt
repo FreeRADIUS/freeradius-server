@@ -1781,7 +1781,7 @@ Internet Draft          EAP SIM Authentication        27 October, 2003
    exchange the notification can be used. If the P bit is set to zero, 
    the notification can only be used after the EAP/SIM/Challenge round 
    in full authentication or the EAP/SIM/Re-authentication round in 
-   reautentication. For these notifications, the AT_MAC attribute MUST 
+   reauthentication. For these notifications, the AT_MAC attribute MUST 
    be included in both EAP-Request/SIM/Notification and EAP-
    Response/SIM/Notification. 
 
