@@ -1728,17 +1728,19 @@ static int insert_into_proxy_hash(REQUEST *request)
 	}
 
 	/*
-	 *	Tell the event loop that we have a new FD.  It locks
-	 *	the socket, so we've got to unlock it here.
+	 *	If we have a new socket, tell the event loop.  It
+	 *	locks the socket, so we've got to unlock it here.
 	 */
-	PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-	if (!event_new_fd(this)) {
-		listen_free(&this);
-		return 0;
+	if (this) {
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		if (!event_new_fd(this)) {
+			listen_free(&this);
+			return 0;
+		}
+		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	}
-	PTHREAD_MUTEX_LOCK(&proxy_mutex);
 
-	request->proxy_listener = this;
+	request->proxy_listener = proxy_listener;
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
