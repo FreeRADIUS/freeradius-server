@@ -565,8 +565,7 @@ int fr_packet_list_num_elements(fr_packet_list_t *pl)
 
 /*
  *	1 == ID was allocated & assigned
- *	0 == error allocating memory
- *	-1 == all ID's are used, caller should open a new socket.
+ *	0 == couldn't allocate ID.
  *
  *	Note that this ALSO assigns a socket to use, and updates
  *	packet->request->src_ipaddr && packet->request->src_port
