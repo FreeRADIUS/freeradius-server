@@ -102,13 +102,12 @@ static int sql_check_error(sqlite3 *db)
 #ifdef HAVE_SQLITE_V2_API
 static int sql_loadfile(sqlite3 *db, const char *filename)
 {
-	FILE *f;
-	struct stat finfo;
-	
 	ssize_t len;
-	char *buff;
+	char *buffer;
 	char *p, *q, *s;
 	int cl;
+	FILE *f;
+	struct stat finfo;
 
 	int status;
 	sqlite3_stmt *statement;
@@ -147,10 +146,10 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		return -1;       
 	}
 	
-	MEM(buff = talloc_array(NULL, uint8_t, finfo.st_size + 1));
-	len = fread(buff, sizeof(char), finfo.st_size + 1, f);
+	MEM(buffer = talloc_array(NULL, char, finfo.st_size + 1));
+	len = fread(buffer, sizeof(char), finfo.st_size + 1, f);
 	if (len > finfo.st_size) {
-		talloc_free(buff);
+		talloc_free(buffer);
 		goto too_big;
 	} 
 	
@@ -160,7 +159,7 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 			       "file: %s", strerror(errno));
 			       
 			fclose(f);
-			talloc_free(buff);
+			talloc_free(buffer);
 
 			return -1;
 		}
@@ -168,39 +167,39 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		radlog(L_DBG, "rlm_sql_sqlite: Ignoring empty SQL file");
 		
 		fclose(f);
-		talloc_free(buff);
+		talloc_free(buffer);
 		
 		return 0;
 	}
 	
-	buff[len] = '\0';
+	buffer[len] = '\0';
 	fclose(f);
 
 	/*
-	 *	Check input encoding is UTF8 compliant
+	 *	Check if input data is UTF-8.  Allow CR/LF, too.
 	 */
-	for (p = buff; *p != '\0'; p += cl) {
+	for (p = buffer; p < (buffer + len); p += cl) {
 		if (*p < ' ') {
 			if ((*p != 0x0a) && (*p != 0x0d)) break;
 			cl = 1;
 		} else {
-			cl = fr_utf8_char(p);
+			cl = fr_utf8_char((uint8_t *) p);
 			if (!cl) break;
 		}
 	}
 	
-	if (*p) {
+	if (*p || ((p - buffer) != len)) {
 		radlog(L_ERR, "rlm_sql_sqlite: Bootstrap file contains "
-		       "non-UTF8 char at offset %zu", p - buff);
-		talloc_free(buff);
+		       "non-UTF8 char at offset %zu", p - buffer);
+		talloc_free(buffer);
 		return -1;
 	}
 
 	/*
 	 *	Statement delimiter is ;\n
 	 */
-	p = s = buff;
-	while ((q = strchr(p, ';'))) {		
+	s = p = buffer;
+	while ((q = strchr(p, ';'))) {
 		if (q[1] != '\n') {
 			p = q + 1;
 			continue;
@@ -210,7 +209,7 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		
 		(void) sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
 		if (sql_check_error(db)) {
-			talloc_free(buff);
+			talloc_free(buffer);
 			return -1;	    
 		}
 	
@@ -219,14 +218,14 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 	
 		(void) sqlite3_finalize(statement);
 		if (status || sql_check_error(db)) {
-			talloc_free(buff);
+			talloc_free(buffer);
 			return -1;	    
 		}
 		
 		p = s = q + 1;
 	}
 	
-	talloc_free(buff);
+	talloc_free(buffer);
 	return 0;
 }
 #endif
