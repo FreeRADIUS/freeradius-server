@@ -701,7 +701,7 @@ policy {
 
 ######################################################################
 #
-#  SNMP notificiations.  Uncomment the following line to enable
+#  SNMP notifications.  Uncomment the following line to enable
 #  snmptraps.  Note that you MUST also configure the full path
 #  to the "snmptrap" command in the "trigger.conf" file.
 #
