@@ -188,7 +188,7 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		}
 	}
 	
-	if (*p || ((p - buffer) != len)) {
+	if ((p - buffer) != len) {
 		radlog(L_ERR, "rlm_sql_sqlite: Bootstrap file contains "
 		       "non-UTF8 char at offset %zu", p - buffer);
 		talloc_free(buffer);
