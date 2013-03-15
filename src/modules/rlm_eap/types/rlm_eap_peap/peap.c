@@ -100,7 +100,7 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 static int eappeap_identity(EAP_HANDLER *handler, tls_session_t *tls_session)
 {
-	eap_packet_t eap_packet;
+	eap_packet_raw_t eap_packet;
 
 	eap_packet.code = PW_EAP_REQUEST;
 	eap_packet.id = handler->eap_ds->response->id + 1;
@@ -210,7 +210,7 @@ done:
 static int eapmessage_verify(REQUEST *request,
 			     const uint8_t *data, unsigned int data_len)
 {
-	const eap_packet_t *eap_packet = (const eap_packet_t *) data;
+	const eap_packet_raw_t *eap_packet = (const eap_packet_raw_t *) data;
 	uint8_t eap_type;
 	char buffer[256];
 
@@ -255,7 +255,7 @@ static int eapmessage_verify(REQUEST *request,
 	case PW_EAP_MSCHAPV2:
 	default:
 		RDEBUG2("EAP type %s",
-		       eaptype_type2name(eap_type,
+		       eap_type_data_type2name(eap_type,
 					 buffer, sizeof(buffer)));
 		return 1;
 		break;
@@ -387,7 +387,7 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 static int eappeap_check_tlv(REQUEST *request, const uint8_t *data,
 			     size_t data_len)
 {
-	const eap_packet_t *eap_packet = (const eap_packet_t *) data;
+	const eap_packet_raw_t *eap_packet = (const eap_packet_raw_t *) data;
 
 	if (data_len < 11) return 0;
 

@@ -271,7 +271,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	EAP_HANDLER	*handler;
-	eap_packet_t	*eap_packet;
+	eap_packet_raw_t	*eap_packet;
 	int		rcode;
 	rlm_rcode_t	module_rcode;
 
@@ -719,7 +719,7 @@ static rlm_rcode_t eap_post_auth(void *instance, REQUEST *request)
 	rlm_eap_t	*inst = instance;
 	VALUE_PAIR	*vp;
 	EAP_HANDLER	*handler;
-	eap_packet_t	*eap_packet;
+	eap_packet_raw_t	*eap_packet;
 	
 	/*
 	 * Only build a failure message if something previously rejected the request

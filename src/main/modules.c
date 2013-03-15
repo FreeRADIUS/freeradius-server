@@ -184,7 +184,7 @@ typedef struct lt_dlmodule_t {
   void		*ref;
 } lt_dlmodule_t;
 
-typedef struct eap_type_t EAP_TYPE;
+typedef struct eap_type_data_t EAP_TYPE;
 typedef struct rlm_sql_module_t rlm_sql_module_t;
 
 /*

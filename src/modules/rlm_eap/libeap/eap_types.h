@@ -32,59 +32,99 @@ RCSIDH(eap_types_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-#define PW_EAP_REQUEST		1
-#define PW_EAP_RESPONSE		2
-#define PW_EAP_SUCCESS		3
-#define PW_EAP_FAILURE		4
-#define PW_EAP_MAX_CODES	4
+/* Field length and other arbitrary things */
+#define EAP_HEADER_LEN 		4
 
 /* base for dictionary values */
 #define ATTRIBUTE_EAP_ID        1020
 #define ATTRIBUTE_EAP_CODE      1021
 #define ATTRIBUTE_EAP_BASE      1280
 
-#define PW_EAP_IDENTITY		1
-#define PW_EAP_NOTIFICATION	2
-#define PW_EAP_NAK		3
-#define PW_EAP_MD5		4
-#define PW_EAP_OTP		5
-#define PW_EAP_GTC		6
-#define PW_EAP_TLS		13
-#define PW_EAP_LEAP		17
-#define PW_EAP_SIM              18
-#define PW_EAP_TTLS		21
-#define PW_EAP_PEAP		25
-#define PW_EAP_MSCHAPV2		26
-#define PW_EAP_CISCO_MSCHAPV2	29
-#define PW_EAP_TNC		38
-#define PW_EAP_IKEV2		49
-#define PW_EAP_PWD              52
-     /* same number as last type */
-#define PW_EAP_MAX_TYPES	52
+typedef enum eap_code {
+	PW_EAP_REQUEST = 1,
+	PW_EAP_RESPONSE,
+	PW_EAP_SUCCESS,
+	PW_EAP_FAILURE,
+	PW_EAP_MAX_CODES
+} eap_code_t;
 
-#define EAP_HEADER_LEN 		4
+typedef enum eap_type {
+	PW_EAP_IDENTITY	= 1,		/* 1 */
+	PW_EAP_NOTIFICATION,		/* 2 */
+	PW_EAP_NAK,			/* 3 */
+	PW_EAP_MD5,			/* 4 */
+	PW_EAP_OTP,			/* 5 */
+	PW_EAP_GTC,			/* 6 */
+	PW_EAP_7,			/* 7  - unused */
+	PW_EAP_8,			/* 8  - unused */
+	PW_EAP_RSA_PUBLIC_KEY,		/* 9 */
+	PW_EAP_DSS_UNILATERAL,		/* 10 */
+	PW_EAP_KEA,			/* 11 */
+	PW_EAP_KEA_VALIDATE,		/* 12 */
+	PW_EAP_TLS,			/* 13 */
+	PW_EAP_DEFENDER_TOKEN,		/* 14 */
+	PW_EAP_RSA_SECURID,		/* 15 */
+	PW_EAP_ARCOT_SYSTEMS,		/* 16 */
+	PW_EAP_LEAP,			/* 17 */
+	PW_EAP_SIM,			/* 18 */
+	PW_EAP_SRP_SHA1,		/* 19 */
+	PW_EAP_20,			/* 20 - unassigned */
+	PW_EAP_TTLS,			/* 21 */
+	PW_EAP_REMOTE_ACCESS_SERVICE,	/* 22 */
+	PW_EAP_AKA,			/* 23 */
+	PW_EAP_3COM,			/* 24 - should this be EAP-HP now? */	
+	PW_EAP_PEAP,			/* 25 */
+	PW_EAP_MSCHAPV2,		/* 26 */
+	PW_EAP_MAKE,			/* 27 */
+	PW_EAP_CRYPTOCARD,		/* 28 */
+	PW_EAP_CISCO_MSCHAPV2,		/* 29 */
+	PW_EAP_DYNAMID,			/* 30 */
+	PW_EAP_ROB,			/* 31 */
+	PW_EAP_POTP,			/* 32 */
+	PW_EAP_MS_ATLV,			/* 33 */
+	PW_EAP_SENTRINET,		/* 34 */
+	PW_EAP_ACTIONTEC,		/* 35 */
+	PW_EAP_COGENT_BIOMETRIC,	/* 36 */
+	PW_EAP_AIRFORTRESS,		/* 37 */
+	PW_EAP_TNC,			/* 38 - fixme conflicts with HTTP DIGEST */
+//	PW_EAP_HTTP_DIGEST,		/* 38 */
+	PW_EAP_SECURISUITE,		/* 39 */
+	PW_EAP_DEVICECONNECT,		/* 40 */
+	PW_EAP_SPEKE,			/* 41 */
+	PW_EAP_MOBAC,			/* 42 */
+	PW_EAP_FAST,			/* 43 */
+	PW_EAP_ZONELABS,		/* 44 */
+	PW_EAP_LINK,			/* 45 */
+	PW_EAP_PAX,			/* 46 */
+	PW_EAP_PSK,			/* 47 */
+	PW_EAP_SAKE,			/* 48 */
+	PW_EAP_IKEV2,			/* 49 */
+	PW_EAP_AKA2,			/* 50 */
+	PW_EAP_GPSK,			/* 51 */
+	PW_EAP_PWD,			/* 52 */
+	PW_EAP_EKE,			/* 53 */
+	PW_EAP_MAX_TYPES		/* 54 - for validation */
+} eap_type_t;
 
-#define EAP_START		2
-#define NAME_LEN		32
-
-enum {
-	EAP_NOTFOUND,    /* not found */
-	EAP_FOUND,       /* found, continue */
-	EAP_OK,		 /* ok, continue */
-	EAP_FAIL,        /* failed, don't reply */
-	EAP_NOOP,        /* succeeded without doing anything */
-	EAP_INVALID,     /* invalid, don't reply */
-	EAP_VALID        /* valid, continue */
-};
+typedef enum eap_rcode {
+	EAP_NOTFOUND,    	//!< Not found.
+	EAP_FOUND,       	//!< Found, continue.
+	EAP_OK,		 	//!< Ok, continue.
+	EAP_FAIL,        	//!< Failed, don't reply.
+	EAP_NOOP,        	//!< Succeeded without doing anything.
+	EAP_INVALID,     	//!< Invalid, don't reply.
+	EAP_VALID,        	//!< Valid, continue.
+	EAP_MAX_RCODES
+} eap_rcode_t;
 
 /*
  * EAP-Type specific data.
  */
-typedef struct eaptype_t {
+typedef struct eap_type_data {
 	uint8_t	type;
 	size_t	length;
 	uint8_t	*data;
-} eaptype_t;
+} eap_type_data_t;
 
 /*
  * Structure to hold EAP data.
@@ -96,31 +136,31 @@ typedef struct eap_packet {
 	unsigned char	code;
 	unsigned char	id;
 	unsigned int	length;
-	eaptype_t	type;
+	eap_type_data_t	type;
 
 	unsigned char   *packet;
-} EAP_PACKET;
+} eap_packet_t;
 
 /*
  * Structure to represent packet format of eap *on wire*
  */
-typedef struct eap_packet_t {
+typedef struct eap_packet_raw {
 	uint8_t		code;
 	uint8_t		id;
 	uint8_t		length[2];
 	uint8_t		data[1];
-} eap_packet_t;
+} eap_packet_raw_t;
 
 
 /*
  * interfaces in eapcommon.c
  */
 extern int eaptype_name2type(const char *name);
-extern const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen);
-extern int eap_wireformat(EAP_PACKET *reply);
-extern int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply);
+extern const char *eap_type_data_type2name(unsigned int type, char *buffer, size_t buflen);
+extern int eap_wireformat(eap_packet_t *reply);
+extern int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply);
 extern VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet,
-				 const eap_packet_t *reply);
-extern eap_packet_t *eap_vp2packet(VALUE_PAIR *vps);
+				 const eap_packet_raw_t *reply);
+extern eap_packet_raw_t *eap_vp2packet(VALUE_PAIR *vps);
 
 #endif /* _EAP_TYPES_H */

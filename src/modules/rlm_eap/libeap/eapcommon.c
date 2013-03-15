@@ -116,7 +116,8 @@ static const char *eap_types[] = {
   "ikev2",
   "50",
   "51",
-  "pwd"
+  "pwd",
+  "eke"
 };				/* MUST have PW_EAP_MAX_TYPES */
 
 /*
@@ -126,7 +127,7 @@ int eaptype_name2type(const char *name)
 {
 	int i;
 
-	for (i = 0; i <= PW_EAP_MAX_TYPES; i++) {
+	for (i = 0; i < PW_EAP_MAX_TYPES; i++) {
 		if (strcmp(name, eap_types[i]) == 0) {
 			return i;
 		}
@@ -138,11 +139,11 @@ int eaptype_name2type(const char *name)
 /*
  *	Returns a text string containing the name of the EAP type.
  */
-const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
+const char *eap_type_data_type2name(unsigned int type, char *buffer, size_t buflen)
 {
 	DICT_VALUE	*dval;
 
-	if (type > PW_EAP_MAX_TYPES) {
+	if (type >= PW_EAP_MAX_TYPES) {
 		/*
 		 *	Prefer the dictionary name over a number,
 		 *	if it exists.
@@ -185,9 +186,9 @@ const char *eaptype_type2name(unsigned int type, char *buffer, size_t buflen)
  *                      be malloc()'ed to the right size.
  *
  */
-int eap_wireformat(EAP_PACKET *reply)
+int eap_wireformat(eap_packet_t *reply)
 {
-	eap_packet_t	*hdr;
+	eap_packet_raw_t	*hdr;
 	uint16_t total_length = 0;
 
 	if (reply == NULL) return EAP_INVALID;
@@ -207,7 +208,7 @@ int eap_wireformat(EAP_PACKET *reply)
 	}
 
 	reply->packet = (unsigned char *)malloc(total_length);
-	hdr = (eap_packet_t *)reply->packet;
+	hdr = (eap_packet_raw_t *)reply->packet;
 	if (!hdr) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return EAP_INVALID;
@@ -248,16 +249,16 @@ int eap_wireformat(EAP_PACKET *reply)
  *	compose EAP reply packet in EAP-Message attr of RADIUS.  If
  *	EAP exceeds 253, frame it in multiple EAP-Message attrs.
  */
-int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
+int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 {
 	VALUE_PAIR *vp;
-	eap_packet_t *eap_packet;
+	eap_packet_raw_t *eap_packet;
 	int rcode;
 
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return RLM_MODULE_INVALID;
 	}
-	eap_packet = (eap_packet_t *)reply->packet;
+	eap_packet = (eap_packet_raw_t *)reply->packet;
 
 	pairdelete(&(packet->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
 
@@ -307,7 +308,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, EAP_PACKET *reply)
 }
 
 
-VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_t *eap)
+VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_raw_t *eap)
 {
 	int		total, size;
 	const uint8_t	*ptr;
@@ -349,10 +350,10 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_t *eap)
  * NOTE: Sometimes Framed-MTU might contain the length of EAP-Message,
  *      refer fragmentation in rfc2869.
  */
-eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
+eap_packet_raw_t *eap_vp2packet(VALUE_PAIR *vps)
 {
 	VALUE_PAIR *first, *vp;
-	eap_packet_t *eap_packet;
+	eap_packet_raw_t *eap_packet;
 	unsigned char *ptr;
 	uint16_t len;
 	int total_len;
@@ -413,7 +414,7 @@ eap_packet_t *eap_vp2packet(VALUE_PAIR *vps)
 	/*
 	 *	Now that we know the lengths are OK, allocate memory.
 	 */
-	eap_packet = (eap_packet_t *) malloc(len);
+	eap_packet = (eap_packet_raw_t *) malloc(len);
 	if (eap_packet == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return NULL;

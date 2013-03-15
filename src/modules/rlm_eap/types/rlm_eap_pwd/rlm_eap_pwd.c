@@ -302,7 +302,7 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
     pwd_session_t *pwd_session;
     pwd_hdr *hdr;
     pwd_id_packet *id;
-    EAP_PACKET *response;
+    eap_packet_t *response;
     REQUEST *request, *fake;
     VALUE_PAIR *pw, **outvps, *vp;
     EAP_DS *eap_ds;

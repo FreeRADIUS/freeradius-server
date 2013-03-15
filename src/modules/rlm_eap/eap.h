@@ -46,8 +46,8 @@ RCSIDH(eap_h, "$Id$")
  *  we send EAP-Request/EAP-success/EAP-failure
  */
 typedef struct eap_ds {
-	EAP_PACKET	*response;
-	EAP_PACKET	*request;
+	eap_packet_t	*response;
+	eap_packet_t	*request;
 	int		set_request_id;
 } EAP_DS;
 
@@ -126,7 +126,7 @@ typedef struct _eap_handler {
 /*
  * Interface to call EAP sub mdoules
  */
-typedef struct eap_type_t {
+typedef struct eap_type_data_t {
 	const 	char *name;
 	int	(*attach)(CONF_SECTION *conf, void **type_data);
 	int	(*initiate)(void *type_data, EAP_HANDLER *handler);

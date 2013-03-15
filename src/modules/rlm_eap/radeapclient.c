@@ -1258,7 +1258,7 @@ static void map_eap_types(RADIUS_PACKET *req)
 {
 	VALUE_PAIR *vp, *vpnext;
 	int id, eapcode;
-	EAP_PACKET ep;
+	eap_packet_t ep;
 	int eap_type;
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY);
@@ -1330,7 +1330,7 @@ static void map_eap_types(RADIUS_PACKET *req)
 static void unmap_eap_types(RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *eap1;
-	eap_packet_t *e;
+	eap_packet_raw_t *e;
 	int len;
 	int type;
 
@@ -1397,7 +1397,7 @@ static void unmap_eap_types(RADIUS_PACKET *rep)
 
 static int map_eapsim_types(RADIUS_PACKET *r)
 {
-	EAP_PACKET ep;
+	eap_packet_t ep;
 	int ret;
 
 	memset(&ep, 0, sizeof(ep));

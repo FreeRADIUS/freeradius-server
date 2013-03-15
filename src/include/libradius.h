@@ -73,8 +73,6 @@ RCSIDH(libradius_h, "$Id$")
 extern "C" {
 #endif
 
-#define EAP_START               2
-
 #define AUTH_VECTOR_LEN		16
 #define CHAP_VALUE_LENGTH       16
 #define MAX_STRING_LEN		254	/* RFC2138: string 0-253 octets */

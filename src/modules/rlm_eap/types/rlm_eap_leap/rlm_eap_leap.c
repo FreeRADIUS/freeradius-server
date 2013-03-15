@@ -41,7 +41,7 @@ RCSID("$Id$")
 static int leap_initiate(UNUSED void *instance, EAP_HANDLER *handler)
 {
 	leap_session_t	*session;
-	LEAP_PACKET	*reply;
+	Leap_packet_t	*reply;
 
 	DEBUG2("  rlm_eap_leap: Stage 2");
 
@@ -92,8 +92,8 @@ static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 {
 	int		rcode;
 	leap_session_t	*session;
-	LEAP_PACKET	*packet;
-	LEAP_PACKET	*reply;
+	Leap_packet_t	*packet;
+	Leap_packet_t	*reply;
 	VALUE_PAIR	*password;
 
 	if (!handler->opaque) {

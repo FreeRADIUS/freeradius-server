@@ -36,23 +36,23 @@ RCSID("$Id$")
 #endif
 
 /*
- * Allocate a new EAP_PACKET
+ * Allocate a new eap_packet_t
  */
-EAP_PACKET *eap_packet_alloc(void)
+eap_packet_t *eap_packet_alloc(void)
 {
-	EAP_PACKET   *rp;
+	eap_packet_t   *rp;
 
-	rp = rad_malloc(sizeof(EAP_PACKET));
-	memset(rp, 0, sizeof(EAP_PACKET));
+	rp = rad_malloc(sizeof(eap_packet_t));
+	memset(rp, 0, sizeof(eap_packet_t));
 	return rp;
 }
 
 /*
- * Free EAP_PACKET
+ * Free eap_packet_t
  */
-void eap_packet_free(EAP_PACKET **eap_packet_ptr)
+void eap_packet_free(eap_packet_t **eap_packet_ptr)
 {
-	EAP_PACKET *eap_packet;
+	eap_packet_t *eap_packet;
 
 	if (!eap_packet_ptr) return;
 	eap_packet = *eap_packet_ptr;
@@ -81,7 +81,7 @@ void eap_packet_free(EAP_PACKET **eap_packet_ptr)
 }
 
 /*
- * Allocate a new EAP_PACKET
+ * Allocate a new eap_packet_t
  */
 EAP_DS *eap_ds_alloc(void)
 {
@@ -536,7 +536,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
  *	got to free the prev_eapds & move the eap_ds to prev_eapds
  */
 EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
-			  eap_packet_t *eap_packet)
+			  eap_packet_raw_t *eap_packet)
 {
 	VALUE_PAIR	*state;
 	EAP_HANDLER	*handler, myHandler;

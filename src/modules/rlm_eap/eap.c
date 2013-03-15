@@ -100,7 +100,7 @@ int eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs)
 	const char	*eaptype_name;
 	EAP_TYPES	*node;
 
-	eaptype_name = eaptype_type2name(eap_type, namebuf, sizeof(namebuf));
+	eaptype_name = eap_type_data_type2name(eap_type, namebuf, sizeof(namebuf));
 	snprintf(buffer, sizeof(buffer), "rlm_eap_%s", eaptype_name);
 
 	/* Make room for the EAP-Type */
@@ -223,7 +223,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 {
 	size_t		i;
 	unsigned int	default_eap_type = inst->default_eap_type;
-	eaptype_t	*eaptype;
+	eap_type_data_t	*eaptype;
 	VALUE_PAIR	*vp;
 	char		namebuf[64];
 	const char	*eaptype_name;
@@ -235,7 +235,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	Don't trust anyone.
 	 */
 	if ((eaptype->type == 0) ||
-	    (eaptype->type > PW_EAP_MAX_TYPES)) {
+	    (eaptype->type >= PW_EAP_MAX_TYPES)) {
 		RDEBUG2("Asked to select bad type");
 		return EAP_INVALID;
 	}
@@ -266,10 +266,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	Ensure it's valid.
 		 */
 		if ((default_eap_type < PW_EAP_MD5) ||
-		    (default_eap_type > PW_EAP_MAX_TYPES) ||
+		    (default_eap_type >= PW_EAP_MAX_TYPES) ||
 		    (inst->types[default_eap_type] == NULL)) {
 			RDEBUG2("No such EAP type %s",
-			       eaptype_type2name(default_eap_type,
+			       eap_type_data_type2name(default_eap_type,
 						 namebuf, sizeof(namebuf)));
 			return EAP_INVALID;
 		}
@@ -286,7 +286,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		if (eaptype_call(inst->types[default_eap_type],
 				 handler) == 0) {
 			RDEBUG2("Default EAP type %s failed in initiate",
-			       eaptype_type2name(default_eap_type,
+			       eap_type_data_type2name(default_eap_type,
 						 namebuf, sizeof(namebuf)));
 			return EAP_INVALID;
 		}
@@ -337,7 +337,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 				return EAP_INVALID;
 			}
 
-			if ((eaptype->data[i] > PW_EAP_MAX_TYPES) ||
+			if ((eaptype->data[i] >= PW_EAP_MAX_TYPES) ||
 			    !inst->types[eaptype->data[i]]) {
 				DICT_VALUE *dv;
 
@@ -352,7 +352,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 				continue;
 			}
 
-			eaptype_name = eaptype_type2name(eaptype->data[i],
+			eaptype_name = eap_type_data_type2name(eaptype->data[i],
 							 namebuf,
 							 sizeof(namebuf));
 			
@@ -373,7 +373,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 				char	mynamebuf[64];
 				RDEBUG2("Client wants %s, while we require %s.  Skipping the requested type.",
 				       eaptype_name,
-				       eaptype_type2name(vp->vp_integer,
+				       eap_type_data_type2name(vp->vp_integer,
 							 mynamebuf,
 							 sizeof(mynamebuf)));
 				continue;
@@ -390,7 +390,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 			RDEBUG2("No common EAP types found.");
 			return EAP_INVALID;
 		}
-		eaptype_name = eaptype_type2name(default_eap_type,
+		eaptype_name = eap_type_data_type2name(default_eap_type,
 						 namebuf, sizeof(namebuf));
 		RDEBUG2("EAP-NAK asked for EAP-Type/%s",
 		       eaptype_name);
@@ -402,7 +402,7 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 		 *	Key off of the configured sub-modules.
 		 */
 		default:
-			eaptype_name = eaptype_type2name(eaptype->type,
+			eaptype_name = eap_type_data_type2name(eaptype->type,
 							 namebuf,
 							 sizeof(namebuf));
 			RDEBUG2("EAP/%s", eaptype_name);
@@ -441,10 +441,10 @@ int eaptype_select(rlm_eap_t *inst, EAP_HANDLER *handler)
 rlm_rcode_t eap_compose(EAP_HANDLER *handler)
 {
 	VALUE_PAIR *vp;
-	eap_packet_t *eap_packet;
+	eap_packet_raw_t *eap_packet;
 	REQUEST *request = handler->request;
 	EAP_DS *eap_ds = handler->eap_ds;
-	EAP_PACKET *reply = eap_ds->request;
+	eap_packet_t *reply = eap_ds->request;
 	int rcode;
 
 	/*
@@ -509,7 +509,7 @@ rlm_rcode_t eap_compose(EAP_HANDLER *handler)
 	     (eap_ds->request->code == PW_EAP_RESPONSE)) &&
 	    (eap_ds->request->type.type == 0)) {
 		rad_assert(handler->eap_type >= PW_EAP_MD5);
-		rad_assert(handler->eap_type <= PW_EAP_MAX_TYPES);
+		rad_assert(handler->eap_type < PW_EAP_MAX_TYPES);
 
 		eap_ds->request->type.type = handler->eap_type;
 	}
@@ -522,7 +522,7 @@ rlm_rcode_t eap_compose(EAP_HANDLER *handler)
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return RLM_MODULE_INVALID;
 	}
-	eap_packet = (eap_packet_t *)reply->packet;
+	eap_packet = (eap_packet_raw_t *)reply->packet;
 
 	vp = eap_packet2vp(request->reply, eap_packet);
 	if (!vp) return RLM_MODULE_INVALID;
@@ -727,7 +727,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	Success, or Failure.
 	 */
 	if ((eap_msg->vp_octets[0] == 0) ||
-	    (eap_msg->vp_octets[0] > PW_EAP_MAX_CODES)) {
+	    (eap_msg->vp_octets[0] >= PW_EAP_MAX_CODES)) {
 		RDEBUG2("Unknown EAP packet");
 	} else {
 		RDEBUG2("EAP packet type %s id %d length %d",
@@ -759,7 +759,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	if ((eap_msg->vp_octets[4] >= PW_EAP_MD5) &&
 	    inst->ignore_unknown_eap_types &&
 	    ((eap_msg->vp_octets[4] == 0) ||
-	     (eap_msg->vp_octets[4] > PW_EAP_MAX_TYPES) ||
+	     (eap_msg->vp_octets[4] >= PW_EAP_MAX_TYPES) ||
 	     (inst->types[eap_msg->vp_octets[4]] == NULL))) {
 		RDEBUG2(" Ignoring Unknown EAP type");
 		return EAP_NOOP;
@@ -784,7 +784,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	    (eap_msg->length >= (EAP_HEADER_LEN + 2)) &&
 	    inst->ignore_unknown_eap_types &&
 	    ((eap_msg->vp_octets[5] == 0) ||
-	     (eap_msg->vp_octets[5] > PW_EAP_MAX_TYPES) ||
+	     (eap_msg->vp_octets[5] >= PW_EAP_MAX_TYPES) ||
 	     (inst->types[eap_msg->vp_octets[5]] == NULL))) {
 		RDEBUG2("Ignoring NAK with request for unknown EAP type");
 		return EAP_NOOP;
@@ -864,7 +864,7 @@ void eap_success(EAP_HANDLER *handler)
 /*
  * Basic EAP packet verfications & validations
  */
-static int eap_validation(REQUEST *request, eap_packet_t *eap_packet)
+static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
 {
 	uint16_t len;
 
@@ -878,7 +878,7 @@ static int eap_validation(REQUEST *request, eap_packet_t *eap_packet)
  	    ((eap_packet->code != PW_EAP_RESPONSE) &&
  	     (eap_packet->code != PW_EAP_REQUEST)) ||
 	    (eap_packet->data[0] <= 0) ||
-	    (eap_packet->data[0] > PW_EAP_MAX_TYPES)) {
+	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
 
 		radlog_request(L_AUTH, 0, request, 
 			       "Badly formatted EAP Message: Ignoring the packet");
@@ -899,7 +899,7 @@ static int eap_validation(REQUEST *request, eap_packet_t *eap_packet)
 /*
  *  Get the user Identity only from EAP-Identity packets
  */
-static char *eap_identity(REQUEST *request, eap_packet_t *eap_packet)
+static char *eap_identity(REQUEST *request, eap_packet_raw_t *eap_packet)
 {
 	int size;
 	uint16_t len;
@@ -931,10 +931,10 @@ static char *eap_identity(REQUEST *request, eap_packet_t *eap_packet)
 /*
  *	Create our Request-Response data structure with the eap packet
  */
-static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
+static EAP_DS *eap_buildds(eap_packet_raw_t **eap_packet_p)
 {
 	EAP_DS		*eap_ds = NULL;
-	eap_packet_t	*eap_packet = *eap_packet_p;
+	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 	int		typelen;
 	uint16_t	len;
 
@@ -988,11 +988,11 @@ static EAP_DS *eap_buildds(eap_packet_t **eap_packet_p)
  * username contains REQUEST->username which might have been stripped.
  * identity contains the one sent in EAP-Identity response
  */
-EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_t **eap_packet_p,
+EAP_HANDLER *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			 REQUEST *request)
 {
 	EAP_HANDLER	*handler = NULL;
-	eap_packet_t	*eap_packet = *eap_packet_p;
+	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 	VALUE_PAIR	*vp;
 
 	/*

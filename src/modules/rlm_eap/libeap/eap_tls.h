@@ -95,7 +95,7 @@ typedef struct tls_packet {
 	uint8_t		*data;
 	uint32_t	dlen;
 
-	//uint8_t		*packet;  /* Wired EAP-TLS packet as found in typdedata of EAP_PACKET */
+	//uint8_t		*packet;  /* Wired EAP-TLS packet as found in typdedata of eap_packet_t */
 } EAPTLS_PACKET;
 
 

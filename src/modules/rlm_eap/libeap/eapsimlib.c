@@ -61,7 +61,7 @@ RCSID("$Id$")
  * them all into a single EAP-SIM body.
  *
  */
-int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
+int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 {
 	VALUE_PAIR       *vp;
 	int               encoded_size;
@@ -254,14 +254,14 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, EAP_PACKET *ep)
 	if(macspace != NULL && vp != NULL)
 	{
 		unsigned char   *buffer;
-		eap_packet_t	*hdr;
+		eap_packet_raw_t	*hdr;
 		uint16_t         hmaclen, total_length = 0;
 		unsigned char    sha1digest[20];
 
 		total_length = EAP_HEADER_LEN + 1 + encoded_size;
 		hmaclen = total_length + appendlen;
 		buffer = (unsigned char *)malloc(hmaclen);
-		hdr = (eap_packet_t *)buffer;
+		hdr = (eap_packet_raw_t *)buffer;
 		if (!hdr) {
 			radlog(L_ERR, "rlm_eap: out of memory");
 			free(encodedmsg);
@@ -391,7 +391,7 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 		uint8_t calcmac[20])
 {
 	int ret;
-	eap_packet_t *e;
+	eap_packet_raw_t *e;
 	uint8_t *buffer;
 	int elen,len;
 	VALUE_PAIR *mac;

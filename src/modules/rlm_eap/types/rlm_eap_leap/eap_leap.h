@@ -26,7 +26,7 @@ RCSIDH(eap_leap_h, "$Id$")
  */
 
 /* eap packet structure */
-typedef struct leap_packet_t {
+typedef struct leap_packet_raw_t {
 	/*
 	 *  EAP header, followed by type comes before this.
 	 */
@@ -34,7 +34,7 @@ typedef struct leap_packet_t {
 	uint8_t unused;
 	uint8_t count;
 	uint8_t challenge[1];	/* 8 or 24, followed by user name */
-} leap_packet_t;
+} leap_packet_raw_t;
 
 /*
  *	Which is decoded into this.
@@ -47,7 +47,7 @@ typedef struct leap_packet {
 	unsigned char	*challenge;
 	int		name_len;
 	char		*name;
-} LEAP_PACKET;
+} Leap_packet_t;
 
 /*
  *	The information which must be kept around
@@ -61,15 +61,15 @@ typedef struct leap_session_t {
 
 /* function declarations here */
 
-LEAP_PACKET 	*eapleap_alloc(void);
-void 		eapleap_free(LEAP_PACKET **leap_packet_ptr);
+Leap_packet_t 	*eapleap_alloc(void);
+void 		eapleap_free(Leap_packet_t **leap_packet_ptr);
 
-int 		eapleap_compose(EAP_DS *auth, LEAP_PACKET *reply);
-LEAP_PACKET 	*eapleap_extract(EAP_DS *auth);
-LEAP_PACKET 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);
-int		eapleap_stage4(LEAP_PACKET *packet, VALUE_PAIR* password,
+int 		eapleap_compose(EAP_DS *auth, Leap_packet_t *reply);
+Leap_packet_t 	*eapleap_extract(EAP_DS *auth);
+Leap_packet_t 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);
+int		eapleap_stage4(Leap_packet_t *packet, VALUE_PAIR* password,
 			       leap_session_t *session);
-LEAP_PACKET	*eapleap_stage6(LEAP_PACKET *packet, REQUEST *request,
+Leap_packet_t	*eapleap_stage6(Leap_packet_t *packet, REQUEST *request,
 				VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session,
 				VALUE_PAIR **reply_vps);
