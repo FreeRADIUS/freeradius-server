@@ -673,6 +673,7 @@ VALUE	EAP-Type			Defender-Token		14
 VALUE	EAP-Type			RSA-SecurID-EAP		15
 VALUE	EAP-Type			Arcot-Systems-EAP	16
 VALUE	EAP-Type			Cisco-LEAP		17
+VALUE	EAP-Type			LEAP			17
 VALUE	EAP-Type			Nokia-IP-Smart-Card	18
 VALUE	EAP-Type			SIM			18
 VALUE	EAP-Type			SRP-SHA1		19
