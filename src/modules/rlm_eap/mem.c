@@ -118,14 +118,14 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 }
 
 /*
- * Allocate a new EAP_HANDLER
+ * Allocate a new eap_handler_t
  */
-EAP_HANDLER *eap_handler_alloc(rlm_eap_t *inst)
+eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 {
-	EAP_HANDLER	*handler;
+	eap_handler_t	*handler;
 
-	handler = rad_malloc(sizeof(EAP_HANDLER));
-	memset(handler, 0, sizeof(EAP_HANDLER));
+	handler = rad_malloc(sizeof(eap_handler_t));
+	memset(handler, 0, sizeof(eap_handler_t));
 
 	if (inst->handler_tree) {
 		PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
@@ -136,7 +136,7 @@ EAP_HANDLER *eap_handler_alloc(rlm_eap_t *inst)
 	return handler;
 }
 
-void eap_opaque_free(EAP_HANDLER *handler)
+void eap_opaque_free(eap_handler_t *handler)
 {
 	if (!handler)
 		return;
@@ -144,7 +144,7 @@ void eap_opaque_free(EAP_HANDLER *handler)
 	eap_handler_free(handler->inst_holder, handler);
 }
 
-void eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler)
+void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 {
 	if (!handler)
 		return;
@@ -182,7 +182,7 @@ void eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler)
 
 typedef struct check_handler_t {
 	rlm_eap_t	*inst;
-	EAP_HANDLER	*handler;
+	eap_handler_t	*handler;
 	int		trips;
 } check_handler_t;
 
@@ -251,7 +251,7 @@ done:
 
 void eaplist_free(rlm_eap_t *inst)
 {
-	EAP_HANDLER *node, *next;
+	eap_handler_t *node, *next;
 
        	for (node = inst->session_head; node != NULL; node = next) {
 		next = node->next;
@@ -278,8 +278,8 @@ static uint32_t eap_rand(fr_randctx *ctx)
 }
 
 
-static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
-				   EAP_HANDLER *handler)
+static eap_handler_t *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
+				   eap_handler_t *handler)
 {
 	rbnode_t *node;
 
@@ -321,7 +321,7 @@ static EAP_HANDLER *eaplist_delete(rlm_eap_t *inst, REQUEST *request,
 static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
 {
 	int i;
-	EAP_HANDLER *handler;
+	eap_handler_t *handler;
 
 	/*
 	 *	Check the first few handlers in the list, and delete
@@ -374,7 +374,7 @@ static void eaplist_expire(rlm_eap_t *inst, REQUEST *request, time_t timestamp)
  *	Since we're adding it to the list, we guess that this means
  *	the packet needs a State attribute.  So add one.
  */
-int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
+int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 {
 	int		status = 0;
 	VALUE_PAIR	*state;
@@ -441,7 +441,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 */
 	state->vp_octets[4] = handler->trips ^ handler->state[0];
 	state->vp_octets[5] = handler->eap_id ^ handler->state[1];
-	state->vp_octets[6] = handler->eap_type ^ handler->state[2];
+	state->vp_octets[6] = handler->type ^ handler->state[2];
 
 	/*
 	 *	and copy the state back again.
@@ -466,7 +466,7 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	}
 
 	if (status) {
-		EAP_HANDLER *prev;
+		eap_handler_t *prev;
 
 		prev = inst->session_tail;
 		if (prev) {
@@ -535,11 +535,11 @@ int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
  *	Also since we fill the eap_ds with the present EAP-Response we
  *	got to free the prev_eapds & move the eap_ds to prev_eapds
  */
-EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request,
+eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 			  eap_packet_raw_t *eap_packet)
 {
 	VALUE_PAIR	*state;
-	EAP_HANDLER	*handler, myHandler;
+	eap_handler_t	*handler, myHandler;
 
 	/*
 	 *	We key the sessions off of the 'state' attribute, so it

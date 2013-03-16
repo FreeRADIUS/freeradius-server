@@ -150,7 +150,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	if (ep->code != PW_EAP_SUCCESS)
 		ep->code = eapcode;
 	ep->id = (id & 0xff);
-	ep->type.type = PW_EAP_SIM;
+	ep->type.num = PW_EAP_SIM;
 
 	/*
 	 * if no attributes were found, do very little.

@@ -96,7 +96,7 @@ void eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr)
  *
  *	Fragment length is Framed-MTU - 4.
  */
-tls_session_t *eaptls_session(fr_tls_server_conf_t *tls_conf, EAP_HANDLER *handler, int client_cert)
+tls_session_t *eaptls_session(fr_tls_server_conf_t *tls_conf, eap_handler_t *handler, int client_cert)
 {
 	tls_session_t	*ssn;
 	int		verify_mode = 0;
@@ -169,7 +169,7 @@ int eaptls_start(EAP_DS *eap_ds, int peap_flag)
 	return 1;
 }
 
-int eaptls_success(EAP_HANDLER *handler, int peap_flag)
+int eaptls_success(eap_handler_t *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
 	REQUEST *request = handler->request;
@@ -200,11 +200,11 @@ int eaptls_success(EAP_HANDLER *handler, int peap_flag)
 	}
 
 	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl,
-			   handler->eap_type, &handler->request->reply->vps);
+			   handler->type, &handler->request->reply->vps);
 	return 1;
 }
 
-int eaptls_fail(EAP_HANDLER *handler, int peap_flag)
+int eaptls_fail(eap_handler_t *handler, int peap_flag)
 {
 	EAPTLS_PACKET	reply;
 	tls_session_t *tls_session = handler->opaque;
@@ -340,7 +340,7 @@ static int eaptls_send_ack(EAP_DS *eap_ds, int peap_flag)
  *	EAP-Type=EAP-TLS and no data. This serves as a fragment
  *	ACK. The EAP peer MUST wait.
  */
-static fr_tls_status_t eaptls_verify(EAP_HANDLER *handler)
+static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 {
 	EAP_DS *eap_ds = handler->eap_ds;
 	EAP_DS *prev_eap_ds = handler->prev_eapds;
@@ -356,9 +356,9 @@ static fr_tls_status_t eaptls_verify(EAP_HANDLER *handler)
 	 *	NULL, of if it's NOT an EAP-Response, or if the packet
 	 *	is too short.  See eap_validation()., in ../../eap.c
 	 *
-	 *	Also, eaptype_select() takes care of selecting the
+	 *	Also, eap_method_select() takes care of selecting the
 	 *	appropriate type, so we don't need to check
-	 *	eap_ds->response->type.type == PW_EAP_TLS, or anything
+	 *	eap_ds->response->type.num == PW_EAP_TLS, or anything
 	 *	else.
 	 */
 	eaptls_packet = (eaptls_packet_t *)eap_ds->response->type.data;
@@ -657,7 +657,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
  *	then how to let SSL API know about these sessions.)
  */
 static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
-					EAP_HANDLER *handler)
+					eap_handler_t *handler)
 {
 	tls_session_t *tls_session;
 
@@ -752,7 +752,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
 /*
  *	Process an EAP request
  */
-fr_tls_status_t eaptls_process(EAP_HANDLER *handler)
+fr_tls_status_t eaptls_process(eap_handler_t *handler)
 {
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
 	EAPTLS_PACKET	*tlspacket;
@@ -893,7 +893,7 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	uint8_t *ptr;
 
 	/*
-	 *	Don't set eap_ds->request->type.type, as the main EAP
+	 *	Don't set eap_ds->request->type.num, as the main EAP
 	 *	handler will do that for us.  This allows the TLS
 	 *	module to be called from TTLS & PEAP.
 	 */

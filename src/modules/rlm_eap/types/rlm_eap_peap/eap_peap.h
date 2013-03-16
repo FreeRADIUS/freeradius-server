@@ -35,7 +35,7 @@ typedef struct peap_tunnel_t {
 	VALUE_PAIR	*accept_vps;
 	int		status;
 	int		home_access_accept;
-	int		default_eap_type;
+	int		default_method;
 	int		copy_request_to_tunnel;
 	int		use_tunneled_reply;
 	int		proxy_tunneled_request_as_eap;
@@ -68,5 +68,5 @@ typedef struct peap_tunnel_t {
 /*
  *	Process the PEAP portion of an EAP-PEAP request.
  */
-int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session);
+int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session);
 #endif /* _EAP_PEAP_H */

@@ -184,8 +184,6 @@ typedef struct lt_dlmodule_t {
   void		*ref;
 } lt_dlmodule_t;
 
-typedef struct eap_type_data_t EAP_TYPE;
-typedef struct rlm_sql_module_t rlm_sql_module_t;
 
 /*
  *	FIXME: Write hackery to auto-generate this data.
@@ -197,8 +195,8 @@ extern module_t rlm_eap;
 extern module_t rlm_sql;
 /* and so on ... */
 
-extern EAP_TYPE rlm_eap_md5;
-extern rlm_sql_module_t rlm_sql_mysql;
+extern struct eap_type_data_t rlm_eap_md5;
+extern struct rlm_sql_module_t rlm_sql_mysql;
 /* and so on ... */
 
 static const lt_dlmodule_t lt_dlmodules[] = {

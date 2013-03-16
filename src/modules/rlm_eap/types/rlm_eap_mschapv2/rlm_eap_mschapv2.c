@@ -46,7 +46,7 @@ static CONF_PARSER module_config[] = {
 };
 
 
-static void fix_mppe_keys(EAP_HANDLER *handler, mschapv2_opaque_t *data)
+static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
 {
 	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
 	pairmove2(&data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
@@ -88,7 +88,7 @@ static int mschapv2_attach(CONF_SECTION *cs, void **instance)
 /*
  *	Compose the response.
  */
-static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
+static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 {
 	uint8_t *ptr;
 	int16_t length;
@@ -96,7 +96,7 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 	EAP_DS *eap_ds = handler->eap_ds;
 
 	eap_ds->request->code = PW_EAP_REQUEST;
-	eap_ds->request->type.type = PW_EAP_MSCHAPV2;
+	eap_ds->request->type.num = PW_EAP_MSCHAPV2;
 
 	/*
 	 *	Always called with vendor Microsoft
@@ -218,13 +218,13 @@ static int eapmschapv2_compose(EAP_HANDLER *handler, VALUE_PAIR *reply)
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
+static int mschapv2_initiate(void *instance, eap_handler_t *handler)
 {
 	int		i;
 	VALUE_PAIR	*challenge;
 	mschapv2_opaque_t *data;
 
-	type_data = type_data;	/* -Wunused */
+	instance = instance;	/* -Wunused */
 
 	challenge = pairmake("MS-CHAP-Challenge", "0x00", T_OP_EQ);
 	if (!challenge) {
@@ -293,7 +293,7 @@ static int mschapv2_initiate(void *type_data, EAP_HANDLER *handler)
  *
  *	Called from rlm_eap.c, eap_postproxy().
  */
-static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
+static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 {
 	VALUE_PAIR *response = NULL;
 	mschapv2_opaque_t *data;
@@ -370,7 +370,7 @@ static int mschap_postproxy(EAP_HANDLER *handler, void *tunnel_data)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
+static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 {
 	int rcode, ccode;
 	mschapv2_opaque_t *data;
@@ -769,7 +769,7 @@ packet_ready:
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_mschapv2 = {
+rlm_eap_module_t rlm_eap_mschapv2 = {
 	"eap_mschapv2",
 	mschapv2_attach,		/* attach */
 	mschapv2_initiate,	        /* Start the initial request */

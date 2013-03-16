@@ -35,13 +35,13 @@ RCSID("$Id$")
  * ie access challenge to the user/peer.
 
  * Frame eap reply packet.
- * len = header + type + leap_typedata
- * leap_typedata = value_size + value
+ * len = header + type + leap_methoddata
+ * leap_methoddata = value_size + value
  */
-static int leap_initiate(UNUSED void *instance, EAP_HANDLER *handler)
+static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	leap_session_t	*session;
-	Leap_packet_t	*reply;
+	leap_packet_t	*reply;
 
 	DEBUG2("  rlm_eap_leap: Stage 2");
 
@@ -88,12 +88,12 @@ static int leap_initiate(UNUSED void *instance, EAP_HANDLER *handler)
 	return 1;
 }
 
-static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
+static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		rcode;
 	leap_session_t	*session;
-	Leap_packet_t	*packet;
-	Leap_packet_t	*reply;
+	leap_packet_t	*packet;
+	leap_packet_t	*reply;
 	VALUE_PAIR	*password;
 
 	if (!handler->opaque) {
@@ -196,7 +196,7 @@ static int leap_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_leap = {
+rlm_eap_module_t rlm_eap_leap = {
 	"eap_leap",
 	NULL,			/* attach */
 	leap_initiate,		/* Start the initial request, after Identity */

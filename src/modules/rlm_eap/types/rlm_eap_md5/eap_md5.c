@@ -95,7 +95,7 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	if (!eap_ds 					 ||
 	    !eap_ds->response 				 ||
 	    (eap_ds->response->code != PW_MD5_RESPONSE)	 ||
-	    eap_ds->response->type.type != PW_EAP_MD5	 ||
+	    eap_ds->response->type.num != PW_EAP_MD5	 ||
 	    !eap_ds->response->type.data 		 ||
 	    (eap_ds->response->length <= MD5_HEADER_LEN) ||
 	    (eap_ds->response->type.data[0] <= 0)) {
@@ -222,7 +222,7 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 	 *	and EAP-Success, and EAP-Failure.
 	 */
 	if (reply->code < 3) {
-		eap_ds->request->type.type = PW_EAP_MD5;
+		eap_ds->request->type.num = PW_EAP_MD5;
 
 		rad_assert(reply->length > 0);
 

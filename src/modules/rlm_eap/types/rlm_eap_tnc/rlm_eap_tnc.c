@@ -138,7 +138,7 @@ static void tnc_free(void *conn_id)
  * For this package, only 'Identifier' has to be set dynamically. Any
  * other information is static.
  */
-static int tnc_initiate(void *instance, EAP_HANDLER *handler)
+static int tnc_initiate(void *instance, eap_handler_t *handler)
 {
 	rlm_eap_tnc_t *inst = instance;
 	REQUEST *request = NULL;
@@ -234,7 +234,7 @@ static int tnc_initiate(void *instance, EAP_HANDLER *handler)
 	*eap_tnc_request = SET_START(1);
 
 	handler->eap_ds->request->code = PW_EAP_REQUEST;
-	handler->eap_ds->request->type.type = PW_EAP_TNC;
+	handler->eap_ds->request->type.num = PW_EAP_TNC;
 	
 	handler->eap_ds->request->type.length = 1;
 	
@@ -260,10 +260,10 @@ static int tnc_initiate(void *instance, EAP_HANDLER *handler)
  * based on the TNC_ConnectionState determined by NAA-TNCS.
  *
  * @param instance The configuration data.
- * @param handler The EAP_HANDLER.
+ * @param handler The eap_handler_t.
  * @return True, if successfully, else false.
  */
-static int tnc_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
+static int tnc_authenticate(UNUSED void *instance, eap_handler_t *handler)
 {
 	TNC_ConnectionID conn_id;
 	TNC_Result result;
@@ -274,7 +274,7 @@ static int tnc_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 	TNC_ConnectionState connection_state;
 	uint8_t code = 0;
 	
-	if (handler->eap_ds->response->type.type != PW_EAP_TNC) {
+	if (handler->eap_ds->response->type.num != PW_EAP_TNC) {
 		radlog(L_ERR, "rlm_eap_tnc: Incorrect response type");
 
 		return 0;
@@ -324,7 +324,6 @@ static int tnc_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 		code = PW_EAP_SUCCESS;
 		pairadd(&handler->request->config_items,
 			pairmake("TNC-Status", "Access", T_OP_SET));
-		
 		break;
 		
 	case TNC_CONNECTION_STATE_ACCESS_ISOLATED:
@@ -343,7 +342,7 @@ static int tnc_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
 	 *	Build the TNC EAP request
 	 */
 	handler->eap_ds->request->code = code;
-	handler->eap_ds->request->type.type = PW_EAP_TNC;
+	handler->eap_ds->request->type.num = PW_EAP_TNC;
 	
 	handler->eap_ds->request->type.length = datalen;
 	
@@ -357,7 +356,7 @@ static int tnc_authenticate(UNUSED void *instance, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_tnc = {
+rlm_eap_module_t rlm_eap_tnc = {
 		"eap_tnc",
 		tnc_attach,		/* attach */
 		tnc_initiate,		/* Start the initial request */

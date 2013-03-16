@@ -66,8 +66,8 @@ char password[256];
 
 struct eapsim_keys eapsim_mk;
 
-static void map_eap_types(RADIUS_PACKET *req);
-static void unmap_eap_types(RADIUS_PACKET *rep);
+static void map_eap_methods(RADIUS_PACKET *req);
+static void unmap_eap_methods(RADIUS_PACKET *rep);
 static int map_eapsim_types(RADIUS_PACKET *r);
 static int unmap_eapsim_types(RADIUS_PACKET *r);
 
@@ -872,7 +872,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 * if there are EAP types, encode them into an EAP-Message
 	 *
 	 */
-	map_eap_types(rep);
+	map_eap_methods(rep);
 
 	/*
 	 *  Fix up Digest-Attributes issues
@@ -937,7 +937,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	send_packet(rep, &req);
 
 	/* okay got back the packet, go and decode the EAP-Message. */
-	unmap_eap_types(req);
+	unmap_eap_methods(req);
 
 	debug_packet(req, R_RECV);
 
@@ -1254,12 +1254,12 @@ int main(int argc, char **argv)
  *       just deserves an assert?
  *
  */
-static void map_eap_types(RADIUS_PACKET *req)
+static void map_eap_methods(RADIUS_PACKET *req)
 {
 	VALUE_PAIR *vp, *vpnext;
 	int id, eapcode;
 	eap_packet_t ep;
-	int eap_type;
+	int eap_method;
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY);
 	if(vp == NULL) {
@@ -1290,9 +1290,9 @@ static void map_eap_types(RADIUS_PACKET *req)
 		return;
 	}
 
-	eap_type = vp->da->attribute - ATTRIBUTE_EAP_BASE;
+	eap_method = vp->da->attribute - ATTRIBUTE_EAP_BASE;
 
-	switch(eap_type) {
+	switch(eap_method) {
 	case PW_EAP_IDENTITY:
 	case PW_EAP_NOTIFICATION:
 	case PW_EAP_NAK:
@@ -1315,7 +1315,7 @@ static void map_eap_types(RADIUS_PACKET *req)
 		memset(&ep, 0, sizeof(ep));
 		ep.code = eapcode;
 		ep.id   = id;
-		ep.type.type = eap_type;
+		ep.type.num = eap_method;
 		ep.type.length = vp->length;
 		ep.type.data = malloc(vp->length);
 		memcpy(ep.type.data,vp->vp_octets, vp->length);
@@ -1327,7 +1327,7 @@ static void map_eap_types(RADIUS_PACKET *req)
  * given a radius request with an EAP-Message body, decode it specific
  * attributes.
  */
-static void unmap_eap_types(RADIUS_PACKET *rep)
+static void unmap_eap_methods(RADIUS_PACKET *rep)
 {
 	VALUE_PAIR *eap1;
 	eap_packet_raw_t *e;
@@ -1488,7 +1488,7 @@ main(int argc, char *argv[])
 		}
 
 		map_eapsim_types(req);
-		map_eap_types(req);
+		map_eap_methods(req);
 
 		if (fr_debug_flag > 1) {
 			printf("Mapped to:\n");
@@ -1503,7 +1503,7 @@ main(int argc, char *argv[])
 		pairadd(&req2->vps, vp);
 
 		/* only call unmap for sim types here */
-		unmap_eap_types(req2);
+		unmap_eap_methods(req2);
 		unmap_eapsim_types(req2);
 
 		if (fr_debug_flag > 1) {

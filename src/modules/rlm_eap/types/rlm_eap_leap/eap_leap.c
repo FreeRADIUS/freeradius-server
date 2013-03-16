@@ -53,26 +53,26 @@ RCSID("$Id$")
 #include "eap_leap.h"
 
 /*
- *      Allocate a new Leap_packet_t
+ *      Allocate a new leap_packet_t
  */
-Leap_packet_t *eapleap_alloc(void)
+leap_packet_t *eapleap_alloc(void)
 {
-	Leap_packet_t   *rp;
+	leap_packet_t   *rp;
 
-	if ((rp = malloc(sizeof(Leap_packet_t))) == NULL) {
+	if ((rp = malloc(sizeof(leap_packet_t))) == NULL) {
 		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		return NULL;
 	}
-	memset(rp, 0, sizeof(Leap_packet_t));
+	memset(rp, 0, sizeof(leap_packet_t));
 	return rp;
 }
 
 /*
- *      Free Leap_packet_t
+ *      Free leap_packet_t
  */
-void eapleap_free(Leap_packet_t **leap_packet_ptr)
+void eapleap_free(leap_packet_t **leap_packet_ptr)
 {
-	Leap_packet_t *leap_packet;
+	leap_packet_t *leap_packet;
 
 	if (!leap_packet_ptr) return;
 	leap_packet = *leap_packet_ptr;
@@ -89,10 +89,10 @@ void eapleap_free(Leap_packet_t **leap_packet_ptr)
 /*
  *   Extract the data from the LEAP packet.
  */
-Leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
+leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 {
 	leap_packet_raw_t	*data;
-	Leap_packet_t	*packet;
+	leap_packet_t	*packet;
 	int		name_len;
 
 	/*
@@ -103,7 +103,7 @@ Leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 	    !eap_ds->response ||
 	    ((eap_ds->response->code != PW_EAP_RESPONSE) &&
 	     (eap_ds->response->code != PW_EAP_REQUEST)) ||
-	    eap_ds->response->type.type != PW_EAP_LEAP ||
+	    eap_ds->response->type.num != PW_EAP_LEAP ||
 	    !eap_ds->response->type.data ||
 	    (eap_ds->response->length < LEAP_HEADER_LEN) ||
 	    (eap_ds->response->type.data[0] != 0x01)) {	/* version 1 */
@@ -243,7 +243,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 /*
  *	Verify the MS-CHAP response from the user.
  */
-int eapleap_stage4(Leap_packet_t *packet, VALUE_PAIR* password,
+int eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
 		   leap_session_t *session)
 {
 	unsigned char ntpwdhash[16];
@@ -278,14 +278,14 @@ int eapleap_stage4(Leap_packet_t *packet, VALUE_PAIR* password,
 /*
  *	Verify ourselves to the AP
  */
-Leap_packet_t *eapleap_stage6(Leap_packet_t *packet, REQUEST *request,
+leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 			    VALUE_PAIR *user_name, VALUE_PAIR* password,
 			    leap_session_t *session, VALUE_PAIR **reply_vps)
 {
 	size_t i;
 	unsigned char ntpwdhash[16], ntpwdhashhash[16];
 	unsigned char buffer[256];
-	Leap_packet_t *reply;
+	leap_packet_t *reply;
 	unsigned char *p;
 	VALUE_PAIR *vp;
 
@@ -388,10 +388,10 @@ Leap_packet_t *eapleap_stage6(Leap_packet_t *packet, REQUEST *request,
  *	If an EAP LEAP request needs to be initiated then
  *	create such a packet.
  */
-Leap_packet_t *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
+leap_packet_t *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
 {
 	int i;
-	Leap_packet_t 	*reply;
+	leap_packet_t 	*reply;
 
 	reply = eapleap_alloc();
 	if (reply == NULL)  {
@@ -442,7 +442,7 @@ Leap_packet_t *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
 /*
  * compose the LEAP reply packet in the EAP reply typedata
  */
-int eapleap_compose(EAP_DS *eap_ds, Leap_packet_t *reply)
+int eapleap_compose(EAP_DS *eap_ds, leap_packet_t *reply)
 {
 	leap_packet_raw_t *data;
 
@@ -452,7 +452,7 @@ int eapleap_compose(EAP_DS *eap_ds, Leap_packet_t *reply)
 	switch (reply->code) {
 	case PW_EAP_REQUEST:
 	case PW_EAP_RESPONSE:
-		eap_ds->request->type.type = PW_EAP_LEAP;
+		eap_ds->request->type.num = PW_EAP_LEAP;
 		eap_ds->request->type.length = reply->length;
 
 		eap_ds->request->type.data = malloc(reply->length);

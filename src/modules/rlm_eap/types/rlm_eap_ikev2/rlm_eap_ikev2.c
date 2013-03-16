@@ -69,7 +69,7 @@ static void add_reply(VALUE_PAIR** vp,
 	pairadd(vp, reply_attr);
 }
 
-static int set_mppe_keys(EAP_HANDLER *handler)
+static int set_mppe_keys(eap_handler_t *handler)
 {
         unsigned char *p;
 	struct IKEv2Session *session;
@@ -95,7 +95,7 @@ static int set_mppe_keys(EAP_HANDLER *handler)
 
 // Compose Radius like message from table of output bytes
 static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
-        eap_ds->request->type.type = PW_EAP_IKEV2;
+        eap_ds->request->type.num = PW_EAP_IKEV2;
         eap_ds->request->code = ((struct EAPHeader *)out)->Code;
 	if(eap_ds->request->code<=PW_EAP_REQUEST && olen>4) {
 	    int lenn=(int)ntohs(((struct EAPHeader *)out)->Length);
@@ -120,9 +120,9 @@ static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
  * Free memory after EAP-IKEv2 module usage
  */
 
-static int ikev2_detach(void *type_data)
+static int ikev2_detach(void *instance)
 {
-    struct ikev2_ctx *data = (struct ikev2_ctx *) type_data;
+    struct ikev2_ctx *data = (struct ikev2_ctx *) instance;
     if (data) {
 	    Free_ikev2_ctx(data);
 	    data=NULL;
@@ -161,7 +161,7 @@ static void ikev2_free_opaque(void *opaque)
  * Configure EAP-ikev2 handler
  */
 
-static int ikev2_attach(CONF_SECTION *conf, void **type_data)
+static int ikev2_attach(CONF_SECTION *conf, void **instance)
 {
     char *default_authtype=NULL;
     char *usersfilename=NULL;
@@ -215,7 +215,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **type_data)
     if (i2 == NULL) {
 	return -1;
     }
-    *type_data =i2;
+    *instance =i2;
 
     if (cf_section_parse(conf,i2, module_config) < 0) {
 	return -1;
@@ -294,7 +294,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **type_data)
  */
 
 
-static int ikev2_initiate(void *type_data, EAP_HANDLER *handler)
+static int ikev2_initiate(void *instance, eap_handler_t *handler)
 {
     radlog( L_INFO,IKEv2_LOG_PREFIX "Initiate connection!");
 // This is the way for silent discarding behavior    
@@ -303,7 +303,7 @@ static int ikev2_initiate(void *type_data, EAP_HANDLER *handler)
 //    handler->request->reply->code=0;
 //    return 0;
     
-    struct ikev2_ctx *i2=(struct ikev2_ctx*)type_data;
+    struct ikev2_ctx *i2=(struct ikev2_ctx*)instance;
 
 
     struct IKEv2Session *session;
@@ -386,10 +386,10 @@ static int ikev2_initiate(void *type_data, EAP_HANDLER *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int ikev2_authenticate(void *type_data, EAP_HANDLER *handler)
+static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 {
 
-	struct ikev2_ctx *i2=(struct ikev2_ctx*)type_data;
+	struct ikev2_ctx *i2=(struct ikev2_ctx*)instance;
 	radlog( L_INFO, IKEv2_LOG_PREFIX "authenticate" );
 
 	rad_assert(handler->request != NULL);
@@ -401,7 +401,7 @@ static int ikev2_authenticate(void *type_data, EAP_HANDLER *handler)
 	if (!eap_ds                                      ||
 			!eap_ds->response                            ||
 			(eap_ds->response->code != PW_IKEV2_RESPONSE)  ||
-			eap_ds->response->type.type != PW_EAP_IKEV2    ||
+			eap_ds->response->type.num != PW_EAP_IKEV2    ||
 			!eap_ds->response->type.data){ 
 		radlog(L_ERR, IKEv2_LOG_PREFIX "corrupted data");
 		return -1;
@@ -420,7 +420,7 @@ static int ikev2_authenticate(void *type_data, EAP_HANDLER *handler)
 	hdr->Code=eap_ds->response->code;
 	hdr->Id=eap_ds->response->id;
 	hdr->Length=htons(eap_ds->response->length);
-	hdr->Type=eap_ds->response->type.type;
+	hdr->Type=eap_ds->response->type.num;
 	memcpy(in+5,eap_ds->response->type.data,eap_ds->response->length-5);
 	//koniec: skladanie pakietu
 
@@ -529,7 +529,7 @@ static int ikev2_authenticate(void *type_data, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_ikev2 = {
+rlm_eap_module_t rlm_eap_ikev2 = {
 	"eap_ikev2",
 	ikev2_attach,			/* attach */
 	ikev2_initiate,			/* Start the initial request */

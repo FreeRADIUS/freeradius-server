@@ -36,8 +36,8 @@ typedef struct rlm_eap_ttls_t {
 	/*
 	 *	Default tunneled EAP type
 	 */
-	char	*default_eap_type_name;
-	int	default_eap_type;
+	char	*default_method_name;
+	int	default_method;
 
 	/*
 	 *	Use the reply attributes from the tunneled session in
@@ -79,7 +79,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_ttls_t, tls_conf_name), NULL, NULL },
 
 	{ "default_eap_type", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_eap_ttls_t, default_eap_type_name), NULL, "md5" },
+	  offsetof(rlm_eap_ttls_t, default_method_name), NULL, "md5" },
 
 	{ "copy_request_to_tunnel", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_ttls_t, copy_request_to_tunnel), NULL, "no" },
@@ -121,10 +121,10 @@ static int eapttls_attach(CONF_SECTION *cs, void **instance)
 	 *	Convert the name to an integer, to make it easier to
 	 *	handle.
 	 */
-	inst->default_eap_type = eaptype_name2type(inst->default_eap_type_name);
-	if (inst->default_eap_type < 0) {
+	inst->default_method = eap_name2type(inst->default_method_name);
+	if (inst->default_method < 0) {
 		radlog(L_ERR, "rlm_eap_ttls: Unknown EAP type %s",
-		       inst->default_eap_type_name);
+		       inst->default_method_name);
 		return -1;
 	}
 
@@ -174,7 +174,7 @@ static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst)
 	t = rad_malloc(sizeof(*t));
 	memset(t, 0, sizeof(*t));
 
-	t->default_eap_type = inst->default_eap_type;
+	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 	t->virtual_server = inst->virtual_server;
@@ -185,7 +185,7 @@ static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int eapttls_initiate(void *type_arg, EAP_HANDLER *handler)
+static int eapttls_initiate(void *type_arg, eap_handler_t *handler)
 {
 	int		status;
 	tls_session_t	*ssn;
@@ -248,7 +248,7 @@ static int eapttls_initiate(void *type_arg, EAP_HANDLER *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
+static int eapttls_authenticate(void *arg, eap_handler_t *handler)
 {
 	int rcode;
 	fr_tls_status_t	status;
@@ -383,7 +383,7 @@ static int eapttls_authenticate(void *arg, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_ttls = {
+rlm_eap_module_t rlm_eap_ttls = {
 	"eap_ttls",
 	eapttls_attach,			/* attach */
 	eapttls_initiate,		/* Start the initial request */

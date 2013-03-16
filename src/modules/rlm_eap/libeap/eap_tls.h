@@ -59,10 +59,10 @@ RCSIDH(eap_tls_h, "$Id$")
 /*
  *	Externally exported TLS functions.
  */
-fr_tls_status_t eaptls_process(EAP_HANDLER *handler);
+fr_tls_status_t eaptls_process(eap_handler_t *handler);
 
-int 		eaptls_success(EAP_HANDLER *handler, int peap_flag);
-int 		eaptls_fail(EAP_HANDLER *handler, int peap_flag);
+int 		eaptls_success(eap_handler_t *handler, int peap_flag);
+int 		eaptls_fail(eap_handler_t *handler, int peap_flag);
 int 		eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn);
 
 
@@ -102,7 +102,7 @@ typedef struct tls_packet {
 /* EAP-TLS framework */
 EAPTLS_PACKET 	*eaptls_alloc(void);
 void 		eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr);
-tls_session_t	*eaptls_session(fr_tls_server_conf_t *tls_conf, EAP_HANDLER *handler, int client_cert);
+tls_session_t	*eaptls_session(fr_tls_server_conf_t *tls_conf, eap_handler_t *handler, int client_cert);
 int 		eaptls_start(EAP_DS *eap_ds, int peap);
 int 		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
 

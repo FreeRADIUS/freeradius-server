@@ -86,12 +86,12 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 /*
  *	Initiate the EAP-GTC session by sending a challenge to the peer.
  */
-static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
+static int gtc_initiate(void *instance, eap_handler_t *handler)
 {
 	char challenge_str[1024];
 	int length;
 	EAP_DS *eap_ds = handler->eap_ds;
-	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) type_data;
+	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
 
 	if (!radius_xlat(challenge_str, sizeof(challenge_str), inst->challenge, handler->request, NULL, NULL)) {
 		radlog(L_ERR, "rlm_eap_gtc: xlat of \"%s\" failed", inst->challenge);
@@ -130,11 +130,11 @@ static int gtc_initiate(void *type_data, EAP_HANDLER *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
+static int gtc_authenticate(void *instance, eap_handler_t *handler)
 {
 	VALUE_PAIR *vp;
 	EAP_DS *eap_ds = handler->eap_ds;
-	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) type_data;
+	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
 	REQUEST *request = handler->request;
 
 	/*
@@ -248,7 +248,7 @@ static int gtc_authenticate(void *type_data, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_gtc = {
+rlm_eap_module_t rlm_eap_gtc = {
 	"eap_gtc",
 	gtc_attach,	      		/* attach */
 	gtc_initiate,			/* Start the initial request */

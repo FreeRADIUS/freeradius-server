@@ -106,7 +106,7 @@ typedef struct _tls_info_t {
 } tls_info_t;
 
 /*
- * tls_session_t Structure gets stored as opaque in EAP_HANDLER
+ * tls_session_t Structure gets stored as opaque in eap_handler_t
  * This contains EAP-REQUEST specific data
  * (ie FR_TLS_DATA(fragment), EAPTLS-ALERT, EAPTLS-REQUEST ...)
  *

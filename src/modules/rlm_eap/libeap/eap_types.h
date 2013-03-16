@@ -27,7 +27,7 @@
 #define _EAP_TYPES_H
 
 #include <freeradius-devel/ident.h>
-RCSIDH(eap_types_h, "$Id$")
+RCSIDH(eap_methods_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
@@ -48,8 +48,9 @@ typedef enum eap_code {
 	PW_EAP_MAX_CODES
 } eap_code_t;
 
-typedef enum eap_type {
-	PW_EAP_IDENTITY	= 1,		/* 1 */
+typedef enum eap_method {
+	PW_EAP_INVALID = 0,		/* 0 */
+	PW_EAP_IDENTITY,		/* 1 */
 	PW_EAP_NOTIFICATION,		/* 2 */
 	PW_EAP_NAK,			/* 3 */
 	PW_EAP_MD5,			/* 4 */
@@ -107,8 +108,8 @@ typedef enum eap_type {
 } eap_type_t;
 
 typedef enum eap_rcode {
-	EAP_NOTFOUND,    	//!< Not found.
-	EAP_FOUND,       	//!< Found, continue.
+	EAP_NOTFOUND,    	//!< EAP handler data not found.
+	EAP_FOUND,       	//!< EAP handler data found, continue.
 	EAP_OK,		 	//!< Ok, continue.
 	EAP_FAIL,        	//!< Failed, don't reply.
 	EAP_NOOP,        	//!< Succeeded without doing anything.
@@ -117,13 +118,15 @@ typedef enum eap_rcode {
 	EAP_MAX_RCODES
 } eap_rcode_t;
 
+extern const FR_NAME_NUMBER eap_rcode_table[];
+
 /*
  * EAP-Type specific data.
  */
 typedef struct eap_type_data {
-	uint8_t	type;
-	size_t	length;
-	uint8_t	*data;
+	eap_type_t	num;
+	size_t		length;
+	uint8_t		*data;
 } eap_type_data_t;
 
 /*
@@ -133,12 +136,12 @@ typedef struct eap_type_data {
  *        =  1   +  1 +   2    +  1   +  X
  */
 typedef struct eap_packet {
-	unsigned char	code;
-	unsigned char	id;
-	unsigned int	length;
+	eap_code_t	code;
+	uint8_t		id;
+	size_t		length;
 	eap_type_data_t	type;
 
-	unsigned char   *packet;
+	uint8_t		*packet;
 } eap_packet_t;
 
 /*
@@ -155,8 +158,8 @@ typedef struct eap_packet_raw {
 /*
  * interfaces in eapcommon.c
  */
-extern int eaptype_name2type(const char *name);
-extern const char *eap_type_data_type2name(unsigned int type, char *buffer, size_t buflen);
+extern eap_type_t eap_name2type(const char *name);
+extern const char *eap_type2name(eap_type_t method);
 extern int eap_wireformat(eap_packet_t *reply);
 extern int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply);
 extern VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet,

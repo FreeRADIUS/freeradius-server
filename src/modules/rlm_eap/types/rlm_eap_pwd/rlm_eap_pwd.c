@@ -143,7 +143,7 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
     len = (sess->out_buf_len - sess->out_buf_pos) + sizeof(pwd_hdr);
     rad_assert(len > 0);
     eap_ds->request->code = PW_EAP_REQUEST;
-    eap_ds->request->type.type = PW_EAP_PWD;
+    eap_ds->request->type.num = PW_EAP_PWD;
     eap_ds->request->type.length = (len > sess->mtu) ? sess->mtu : len;
     eap_ds->request->type.data = malloc(eap_ds->request->type.length);
     memset(eap_ds->request->type.data, 0, eap_ds->request->type.length);
@@ -201,10 +201,10 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
 }
 
 static int
-eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
+eap_pwd_initiate (void *instance, eap_handler_t *handler)
 {
     pwd_session_t *pwd_session;
-    eap_pwd_t *inst = (eap_pwd_t *)type_data;
+    eap_pwd_t *inst = (eap_pwd_t *)instance;
     VALUE_PAIR *vp;
     pwd_id_packet *pack;
     
@@ -297,7 +297,7 @@ eap_pwd_initiate (void *type_data, EAP_HANDLER *handler)
 }
 
 static int
-eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
+eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 {
     pwd_session_t *pwd_session;
     pwd_hdr *hdr;
@@ -375,7 +375,7 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
          */
         exch = EAP_PWD_GET_EXCHANGE(hdr);
         eap_ds->request->code = PW_EAP_REQUEST;
-        eap_ds->request->type.type = PW_EAP_PWD;
+        eap_ds->request->type.num = PW_EAP_PWD;
         eap_ds->request->type.length = sizeof(pwd_hdr);
         if ((eap_ds->request->type.data = malloc(sizeof(pwd_hdr))) == NULL) {
             radlog(L_ERR, "rlm_eap_pwd: fragment ACK, out of memory");
@@ -631,7 +631,7 @@ eap_pwd_authenticate (void *arg, EAP_HANDLER *handler)
 }
 
 
-EAP_TYPE rlm_eap_pwd = {
+rlm_eap_module_t rlm_eap_pwd = {
     "eap_pwd",
     eap_pwd_attach,                     /* attach */
     eap_pwd_initiate,                   /* initiate to a client */

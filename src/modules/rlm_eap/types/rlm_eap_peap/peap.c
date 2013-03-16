@@ -33,7 +33,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
  *
  *       Result-TLV = Failure
  */
-static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
+static int eappeap_failure(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
 	REQUEST *request = handler->request;
@@ -68,7 +68,7 @@ static int eappeap_failure(EAP_HANDLER *handler, tls_session_t *tls_session)
  *
  *       Result-TLV = Success
  */
-static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
+static int eappeap_success(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[11];
 	REQUEST *request = handler->request;
@@ -98,7 +98,7 @@ static int eappeap_success(EAP_HANDLER *handler, tls_session_t *tls_session)
 }
 
 
-static int eappeap_identity(EAP_HANDLER *handler, tls_session_t *tls_session)
+static int eappeap_identity(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	eap_packet_raw_t eap_packet;
 
@@ -120,7 +120,7 @@ static int eappeap_identity(EAP_HANDLER *handler, tls_session_t *tls_session)
 /*
  * Send an MS SoH request
  */
-static int eappeap_soh(EAP_HANDLER *handler, tls_session_t *tls_session)
+static int eappeap_soh(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	uint8_t tlv_packet[20];
 
@@ -159,9 +159,9 @@ static int eappeap_soh(EAP_HANDLER *handler, tls_session_t *tls_session)
 static VALUE_PAIR* eapsoh_verify(REQUEST *request, const uint8_t *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;
-	uint8_t eap_type_base;
+	uint8_t eap_method_base;
 	uint32_t eap_vendor;
-	uint32_t eap_type;
+	uint32_t eap_method;
 	int rv;
 
 	vp = pairmake("SoH-Supported", "no", T_OP_EQ);
@@ -175,9 +175,9 @@ static VALUE_PAIR* eapsoh_verify(REQUEST *request, const uint8_t *data, unsigned
 		goto done;
 	}
 
-	eap_type_base = *data++;
-	if (eap_type_base != 254) {
-		RDEBUG("SoH - response is not extended EAP: %i", eap_type_base);
+	eap_method_base = *data++;
+	if (eap_method_base != 254) {
+		RDEBUG("SoH - response is not extended EAP: %i", eap_method_base);
 		goto done;
 	}
 
@@ -187,9 +187,9 @@ static VALUE_PAIR* eapsoh_verify(REQUEST *request, const uint8_t *data, unsigned
 		goto done;
 	}
 
-	eap_type = soh_pull_be_32(data); data += 4;
-	if (eap_type != 0x21) {
-		RDEBUG("SoH - response eap type %08x is not EAP-SoH", eap_type);
+	eap_method = soh_pull_be_32(data); data += 4;
+	if (eap_method != 0x21) {
+		RDEBUG("SoH - response eap type %08x is not EAP-SoH", eap_method);
 		goto done;
 	}
 
@@ -211,8 +211,7 @@ static int eapmessage_verify(REQUEST *request,
 			     const uint8_t *data, unsigned int data_len)
 {
 	const eap_packet_raw_t *eap_packet = (const eap_packet_raw_t *) data;
-	uint8_t eap_type;
-	char buffer[256];
+	eap_type_t eap_method;
 
 	/*
 	 *	No data, OR only 1 byte of EAP type.
@@ -222,8 +221,8 @@ static int eapmessage_verify(REQUEST *request,
 		return 0;
 	}
 
-	eap_type = *data;
-	switch (eap_type) {
+	eap_method = *data;
+	switch (eap_method) {
 	case PW_EAP_IDENTITY:
 		if (data_len == 1) {
 			RDEBUG2("Identity - ");
@@ -254,9 +253,8 @@ static int eapmessage_verify(REQUEST *request,
 		 */
 	case PW_EAP_MSCHAPV2:
 	default:
-		RDEBUG2("EAP type %s",
-		       eap_type_data_type2name(eap_type,
-					 buffer, sizeof(buffer)));
+		RDEBUG2("EAP type %s (%d)", eap_type2name(eap_method),
+			eap_method);
 		return 1;
 		break;
 	}
@@ -415,7 +413,7 @@ static int eappeap_check_tlv(REQUEST *request, const uint8_t *data,
 /*
  *	Use a reply packet to determine what to do.
  */
-static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
+static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			 REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode = RLM_MODULE_REJECT;
@@ -538,7 +536,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 /*
  *	Do post-proxy processing,
  */
-static int eappeap_postproxy(EAP_HANDLER *handler, void *data)
+static int eappeap_postproxy(eap_handler_t *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
@@ -731,7 +729,7 @@ static void print_tunneled_data(const uint8_t *data, size_t data_len)
 /*
  *	Process the pseudo-EAP contents of the tunneled data.
  */
-int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
+int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	peap_tunnel_t *t = tls_session->opaque;
 	REQUEST *fake;
@@ -946,10 +944,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 
 		pairadd(&fake->packet->vps, vp);
 
-		if (t->default_eap_type != 0) {
+		if (t->default_method != 0) {
 			RDEBUG2("Setting default EAP type for tunneled EAP session.");
 			vp = pairmake("EAP-Type", "0", T_OP_EQ);
-			vp->vp_integer = t->default_eap_type;
+			vp->vp_integer = t->default_method;
 			pairadd(&fake->config_items, vp);
 		}
 		break; }
@@ -1000,10 +998,10 @@ int eappeap_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 			 *	If there's a default EAP type,
 			 *	set it here.
 			 */
-			if (t->default_eap_type != 0) {
+			if (t->default_method != 0) {
 				DEBUG2("  PEAP: Setting default EAP type for tunneled EAP session.");
 				vp = pairmake("EAP-Type", "0", T_OP_EQ);
-				vp->vp_integer = t->default_eap_type;
+				vp->vp_integer = t->default_method;
 				pairadd(&fake->config_items, vp);
 			}
 		}

@@ -83,7 +83,7 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
+static int eaptls_initiate(void *type_arg, eap_handler_t *handler)
 {
 	int		status;
 	tls_session_t	*ssn;
@@ -132,7 +132,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eaptls_authenticate(void *type_arg, EAP_HANDLER *handler)
+static int eaptls_authenticate(void *type_arg, eap_handler_t *handler)
 {
 	fr_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
@@ -256,7 +256,7 @@ static int eaptls_authenticate(void *type_arg, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_tls = {
+rlm_eap_module_t rlm_eap_tls = {
 	"eap_tls",
 	eaptls_attach,			/* attach */
 	eaptls_initiate,		/* Start the initial request */

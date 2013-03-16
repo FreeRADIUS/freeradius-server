@@ -47,7 +47,7 @@ typedef struct leap_packet {
 	unsigned char	*challenge;
 	int		name_len;
 	char		*name;
-} Leap_packet_t;
+} leap_packet_t;
 
 /*
  *	The information which must be kept around
@@ -61,15 +61,15 @@ typedef struct leap_session_t {
 
 /* function declarations here */
 
-Leap_packet_t 	*eapleap_alloc(void);
-void 		eapleap_free(Leap_packet_t **leap_packet_ptr);
+leap_packet_t 	*eapleap_alloc(void);
+void 		eapleap_free(leap_packet_t **leap_packet_ptr);
 
-int 		eapleap_compose(EAP_DS *auth, Leap_packet_t *reply);
-Leap_packet_t 	*eapleap_extract(EAP_DS *auth);
-Leap_packet_t 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);
-int		eapleap_stage4(Leap_packet_t *packet, VALUE_PAIR* password,
+int 		eapleap_compose(EAP_DS *auth, leap_packet_t *reply);
+leap_packet_t 	*eapleap_extract(EAP_DS *auth);
+leap_packet_t 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);
+int		eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
 			       leap_session_t *session);
-Leap_packet_t	*eapleap_stage6(Leap_packet_t *packet, REQUEST *request,
+leap_packet_t	*eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 				VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session,
 				VALUE_PAIR **reply_vps);

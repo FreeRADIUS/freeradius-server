@@ -36,8 +36,8 @@ typedef struct rlm_eap_peap_t {
 	/*
 	 *	Default tunneled EAP type
 	 */
-	char	*default_eap_type_name;
-	int	default_eap_type;
+	char	*default_method_name;
+	int	default_method;
 
 	/*
 	 *	Use the reply attributes from the tunneled session in
@@ -81,8 +81,8 @@ static CONF_PARSER module_config[] = {
 	{ "tls", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, tls_conf_name), NULL, NULL },
 
-	{ "default_eap_type", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_eap_peap_t, default_eap_type_name), NULL, "mschapv2" },
+	{ "default_method", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_peap_t, default_method_name), NULL, "mschapv2" },
 
 	{ "copy_request_to_tunnel", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_peap_t, copy_request_to_tunnel), NULL, "no" },
@@ -132,10 +132,10 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 	 *	Convert the name to an integer, to make it easier to
 	 *	handle.
 	 */
-	inst->default_eap_type = eaptype_name2type(inst->default_eap_type_name);
-	if (inst->default_eap_type < 0) {
+	inst->default_method = eap_name2type(inst->default_method_name);
+	if (inst->default_method < 0) {
 		radlog(L_ERR, "rlm_eap_peap: Unknown EAP type %s",
-		       inst->default_eap_type_name);
+		       inst->default_method_name);
 		return -1;
 	}
 
@@ -181,7 +181,7 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 	t = rad_malloc(sizeof(*t));
 	memset(t, 0, sizeof(*t));
 
-	t->default_eap_type = inst->default_eap_type;
+	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
 	t->use_tunneled_reply = inst->use_tunneled_reply;
 #ifdef WITH_PROXY
@@ -198,7 +198,7 @@ static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
 /*
  *	Send an initial eap-tls request to the peer, using the libeap functions.
  */
-static int eappeap_initiate(void *type_arg, EAP_HANDLER *handler)
+static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 {
 	int		status;
 	tls_session_t	*ssn;
@@ -278,7 +278,7 @@ static int eappeap_initiate(void *type_arg, EAP_HANDLER *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
+static int eappeap_authenticate(void *arg, eap_handler_t *handler)
 {
 	int rcode;
 	fr_tls_status_t status;
@@ -419,7 +419,7 @@ static int eappeap_authenticate(void *arg, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_peap = {
+rlm_eap_module_t rlm_eap_peap = {
 	"eap_peap",
 	eappeap_attach,			/* attach */
 	eappeap_initiate,		/* Start the initial request */

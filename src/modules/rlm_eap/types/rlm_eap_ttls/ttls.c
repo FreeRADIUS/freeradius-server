@@ -651,7 +651,7 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
+static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			 REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode = RLM_MODULE_REJECT;
@@ -826,7 +826,7 @@ static int process_reply(EAP_HANDLER *handler, tls_session_t *tls_session,
 /*
  *	Do post-proxy processing,
  */
-static int eapttls_postproxy(EAP_HANDLER *handler, void *data)
+static int eapttls_postproxy(eap_handler_t *handler, void *data)
 {
 	int rcode;
 	tls_session_t *tls_session = (tls_session_t *) data;
@@ -965,7 +965,7 @@ static void my_request_free(void *data)
 /*
  *	Process the "diameter" contents of the tunneled data.
  */
-int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
+int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 {
 	int rcode = PW_AUTHENTICATION_REJECT;
 	REQUEST *fake;
@@ -1093,11 +1093,11 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 				 *	If there's a default EAP type,
 				 *	set it here.
 				 */
-				if (t->default_eap_type != 0) {
+				if (t->default_method != 0) {
 					RDEBUG("Setting default EAP type for tunneled EAP session.");
 					vp = paircreate(request, PW_EAP_TYPE, 0);
 					rad_assert(vp != NULL);
-					vp->vp_integer = t->default_eap_type;
+					vp->vp_integer = t->default_method;
 					pairadd(&fake->config_items, vp);
 				}
 
@@ -1238,7 +1238,7 @@ int eapttls_process(EAP_HANDLER *handler, tls_session_t *tls_session)
 	switch (fake->reply->code) {
 	case 0:			/* No reply code, must be proxied... */
 #ifdef WITH_PROXY
-	  vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
+		vp = pairfind(fake->config_items, PW_PROXY_TO_REALM, 0, TAG_ANY);
 		if (vp) {
 			eap_tunnel_data_t *tunnel;
 			RDEBUG("Tunneled authentication will be proxied to %s", vp->vp_strvalue);

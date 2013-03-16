@@ -75,7 +75,7 @@ static void eap_sim_state_free(void *opaque)
 /*
  *	build a reply to be sent.
  */
-static int eap_sim_compose(EAP_HANDLER *handler)
+static int eap_sim_compose(eap_handler_t *handler)
 {
 	/* we will set the ID on requests, since we have to HMAC it */
 	handler->eap_ds->set_request_id = 1;
@@ -84,7 +84,7 @@ static int eap_sim_compose(EAP_HANDLER *handler)
 				     handler->eap_ds->request);
 }
 
-static int eap_sim_sendstart(EAP_HANDLER *handler)
+static int eap_sim_sendstart(eap_handler_t *handler)
 {
 	VALUE_PAIR **vps, *newvp;
 	uint16_t *words;
@@ -206,7 +206,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
  * module to generate/calculate things.
  *
  */
-static int eap_sim_sendchallenge(EAP_HANDLER *handler)
+static int eap_sim_sendchallenge(eap_handler_t *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR **invps, **outvps, *newvp;
@@ -306,7 +306,7 @@ static int eap_sim_sendchallenge(EAP_HANDLER *handler)
  * radius attributes derived from the MSK.
  *
  */
-static int eap_sim_sendsuccess(EAP_HANDLER *handler)
+static int eap_sim_sendsuccess(eap_handler_t *handler)
 {
         unsigned char *p;
 	struct eap_sim_server_state *ess;
@@ -335,7 +335,7 @@ static int eap_sim_sendsuccess(EAP_HANDLER *handler)
 /*
  * run the server state machine.
  */
-static void eap_sim_stateenter(EAP_HANDLER *handler,
+static void eap_sim_stateenter(eap_handler_t *handler,
 			       struct eap_sim_server_state *ess,
 			       enum eapsim_serverstates newstate)
 {
@@ -380,7 +380,7 @@ static void eap_sim_stateenter(EAP_HANDLER *handler,
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
  */
-static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
+static int eap_sim_initiate(void *instance, eap_handler_t *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp;
@@ -389,7 +389,7 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
 
 	outvps = handler->request->reply->vps;
 
-	type_data = type_data;  /* shut up compiler */
+	instance = instance;  /* shut up compiler */
 
 	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1, 0, TAG_ANY);
 	if(vp == NULL) {
@@ -442,7 +442,7 @@ static int eap_sim_initiate(void *type_data, EAP_HANDLER *handler)
  * challenge, else, resend the Request/Start.
  *
  */
-static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
+static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 {
 	VALUE_PAIR *nonce_vp, *selectedversion_vp;
 	struct eap_sim_server_state *ess;
@@ -500,7 +500,7 @@ static int process_eap_sim_start(EAP_HANDLER *handler, VALUE_PAIR *vps)
  * calculated from the packet with the SRESx appended.
  *
  */
-static int process_eap_sim_challenge(EAP_HANDLER *handler, VALUE_PAIR *vps)
+static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 {
 	struct eap_sim_server_state *ess;
 	uint8_t srescat[EAPSIM_SRES_SIZE*3];
@@ -546,7 +546,7 @@ static int process_eap_sim_challenge(EAP_HANDLER *handler, VALUE_PAIR *vps)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
+static int eap_sim_authenticate(void *arg, eap_handler_t *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp, *vps;
@@ -636,7 +636,7 @@ static int eap_sim_authenticate(void *arg, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_sim = {
+rlm_eap_module_t rlm_eap_sim = {
 	"eap_sim",
 	NULL,				/* XXX attach */
 	eap_sim_initiate,		/* Start the initial request */

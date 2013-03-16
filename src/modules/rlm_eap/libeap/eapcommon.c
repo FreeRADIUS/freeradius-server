@@ -63,113 +63,46 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include "eap_types.h"
 
-static const char *eap_types[] = {
-  "",
-  "identity",
-  "notification",
-  "nak",			/* NAK */
-  "md5",
-  "otp",
-  "gtc",
-  "7",
-  "8",
-  "9",
-  "10",
-  "11",
-  "12",
-  "tls",			/* 13 */
-  "14",
-  "15",
-  "16",
-  "leap",			/* 17 */
-  "sim",                        /* 18 GSM-SIM authentication */
-  "19",
-  "20",
-  "ttls",			/* 21 */
-  "22",
-  "23",
-  "24",
-  "peap",			/* 25 */
-  "mschapv2",			/* 26 */
-  "27",
-  "28",
-  "cisco_mschapv2",		/* 29 */
-  "30",
-  "31",
-  "32",
-  "33",
-  "34",
-  "35",
-  "36",
-  "37",
-  "tnc",			/* 38 */
-  "39",
-  "40",
-  "41",
-  "42",
-  "fast",
-  "44",
-  "45",
-  "pax",
-  "psk",
-  "sake",
-  "ikev2",
-  "50",
-  "51",
-  "pwd",
-  "eke"
-};				/* MUST have PW_EAP_MAX_TYPES */
+const FR_NAME_NUMBER eap_rcode_table[] = {
+	{ "notfound",		EAP_NOTFOUND		},
+	{ "found",		EAP_OK			},
+	{ "ok",			EAP_FAIL		},
+	{ "fail",		EAP_NOOP		},
+	{ "noop",		EAP_INVALID		},
+	{ "invalid",		EAP_VALID		},
+	{ "valid",		EAP_MAX_RCODES		},
 
-/*
- *	Return an EAP-Type for a particular name.
+	{  NULL , -1 }
+};
+
+/** Return an EAP-Type for a particular name
+ *	.
  */
-int eaptype_name2type(const char *name)
+eap_type_t eap_name2type(const char *name)
 {
-	int i;
+	DICT_VALUE	*dv;
 
-	for (i = 0; i < PW_EAP_MAX_TYPES; i++) {
-		if (strcmp(name, eap_types[i]) == 0) {
-			return i;
-		}
+	dv = dict_valbyname(PW_EAP_TYPE, 0, name);
+	if (dv) {
+		return dv->value;
 	}
-
+	
 	return -1;
 }
 
-/*
- *	Returns a text string containing the name of the EAP type.
+/** Return an EAP-name for a particular type
+ *	.
  */
-const char *eap_type_data_type2name(unsigned int type, char *buffer, size_t buflen)
+const char *eap_type2name(eap_type_t method)
 {
-	DICT_VALUE	*dval;
+	DICT_VALUE	*dv;
 
-	if (type >= PW_EAP_MAX_TYPES) {
-		/*
-		 *	Prefer the dictionary name over a number,
-		 *	if it exists.
-		 */
-		dval = dict_valbyattr(PW_EAP_TYPE, 0, type);
-		if (dval) {
-			snprintf(buffer, buflen, "%s", dval->name);
-		}
-
-		snprintf(buffer, buflen, "%d", type);
-		return buffer;
-	} else if ((*eap_types[type] >= '0') && (*eap_types[type] <= '9')) {
-		/*
-		 *	Prefer the dictionary name, if it exists.
-		 */
-		dval = dict_valbyattr(PW_EAP_TYPE, 0, type);
-		if (dval) {
-			snprintf(buffer, buflen, "%s", dval->name);
-			return buffer;
-		} /* else it wasn't in the dictionary */
-	} /* else the name in the array was non-numeric */
-
-	/*
-	 *	Return the name, whatever it is.
-	 */
-	return eap_types[type];
+	dv = dict_valbyattr(PW_EAP_TYPE, 0, method);
+	if (dv) {
+		return dv->name;
+	}
+	
+	return "unknown";
 }
 
 /*
@@ -188,7 +121,7 @@ const char *eap_type_data_type2name(unsigned int type, char *buffer, size_t bufl
  */
 int eap_wireformat(eap_packet_t *reply)
 {
-	eap_packet_raw_t	*hdr;
+	eap_packet_raw_t	*header;
 	uint16_t total_length = 0;
 
 	if (reply == NULL) return EAP_INVALID;
@@ -201,30 +134,31 @@ int eap_wireformat(eap_packet_t *reply)
 
 	total_length = EAP_HEADER_LEN;
 	if (reply->code < 3) {
-		total_length += 1/*EAPtype*/;
+		total_length += 1/* EAP Method */;
 		if (reply->type.data && reply->type.length > 0) {
 			total_length += reply->type.length;
 		}
 	}
 
 	reply->packet = (unsigned char *)malloc(total_length);
-	hdr = (eap_packet_raw_t *)reply->packet;
-	if (!hdr) {
+	header = (eap_packet_raw_t *)reply->packet;
+	if (!header) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return EAP_INVALID;
 	}
 
-	hdr->code = (reply->code & 0xFF);
-	hdr->id = (reply->id & 0xFF);
+	header->code = (reply->code & 0xFF);
+	header->id = (reply->id & 0xFF);
+	
 	total_length = htons(total_length);
-	memcpy(hdr->length, &total_length, sizeof(total_length));
+	memcpy(header->length, &total_length, sizeof(total_length));
 
 	/*
 	 *	Request and Response packets are special.
 	 */
 	if ((reply->code == PW_EAP_REQUEST) ||
 	    (reply->code == PW_EAP_RESPONSE)) {
-		hdr->data[0] = (reply->type.type & 0xFF);
+		header->data[0] = (reply->type.num & 0xFF);
 
 		/*
 		 * Here since we cannot know the typedata format and length
@@ -235,7 +169,7 @@ int eap_wireformat(eap_packet_t *reply)
 		 * type is defined
 		 */
 		if (reply->type.data && reply->type.length > 0) {
-			memcpy(&hdr->data[1], reply->type.data, reply->type.length);
+			memcpy(&header->data[1], reply->type.data, reply->type.length);
 			free(reply->type.data);
 			reply->type.data = reply->packet + EAP_HEADER_LEN + 1/*EAPtype*/;
 		}

@@ -34,13 +34,13 @@ RCSIDH(rlm_eap_h, "$Id$")
 /*
  * Keep track of which sub modules we've loaded.
  */
-typedef struct eap_types_t {
-	const char	*typename;
-	EAP_TYPE       	*type;
-	lt_dlhandle     handle;
-	CONF_SECTION	*cs;
-	void		*type_data;
-} EAP_TYPES;
+typedef struct eap_module {
+	const char		*typename;
+	rlm_eap_module_t	*type;
+	lt_dlhandle		handle;
+	CONF_SECTION		*cs;
+	void			*instance;
+} eap_module_t;
 
 /*
  * This structure contains eap's persistent data.
@@ -48,20 +48,23 @@ typedef struct eap_types_t {
  * types = All supported EAP-Types
  * mutex = ensure only one thread is updating the sessions[] struct
  */
-typedef struct rlm_eap_t {
+typedef struct rlm_eap {
 	rbtree_t	*session_tree;
-	EAP_HANDLER	*session_head, *session_tail;
+	eap_handler_t	*session_head, *session_tail;
 	rbtree_t	*handler_tree; /* for debugging only */
-	EAP_TYPES 	*types[PW_EAP_MAX_TYPES];
+	eap_module_t 	*methods[PW_EAP_MAX_TYPES];
 
 	/*
 	 *	Configuration items.
 	 */
 	int		timer_limit;
-	char		*default_eap_type_name;
-	int		default_eap_type;
-	int		ignore_unknown_eap_types;
+	
+	const char	*default_method_name;
+	eap_type_t	default_method;
+	
+	int		ignore_unknown_types;
 	int		cisco_accounting_username_bug;
+	
 	int		max_sessions;
 
 #ifdef HAVE_PTHREAD_H
@@ -88,27 +91,28 @@ typedef struct rlm_eap_t {
 
 /* function definitions */
 /* EAP-Type */
-int      	eaptype_load(EAP_TYPES **type, int eap_type, CONF_SECTION *cs);
-int       	eaptype_select(rlm_eap_t *inst, EAP_HANDLER *h);
+int      	eap_module_load(eap_module_t **instance, eap_type_t method,
+		    		CONF_SECTION *cs);
+eap_code_t	eap_method_select(rlm_eap_t *inst, eap_handler_t *handler);
 
 /* EAP */
 int  		eap_start(rlm_eap_t *inst, REQUEST *request);
-void 		eap_fail(EAP_HANDLER *handler);
-void 		eap_success(EAP_HANDLER *handler);
-rlm_rcode_t 	eap_compose(EAP_HANDLER *handler);
-EAP_HANDLER 	*eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST *request);
+void 		eap_fail(eap_handler_t *handler);
+void 		eap_success(eap_handler_t *handler);
+rlm_rcode_t 	eap_compose(eap_handler_t *handler);
+eap_handler_t 	*eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST *request);
 
 /* Memory Management */
 eap_packet_t  	*eap_packet_alloc(void);
 EAP_DS      	*eap_ds_alloc(void);
-EAP_HANDLER 	*eap_handler_alloc(rlm_eap_t *inst);
+eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst);
 void	    	eap_packet_free(eap_packet_t **eap_packet);
 void	    	eap_ds_free(EAP_DS **eap_ds);
-void	    	eap_opaque_free(EAP_HANDLER *handler);
-void	    	eap_handler_free(rlm_eap_t *inst, EAP_HANDLER *handler);
+void	    	eap_opaque_free(eap_handler_t *handler);
+void	    	eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler);
 
-int 	    	eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler);
-EAP_HANDLER 	*eaplist_find(rlm_eap_t *inst, REQUEST *request,
+int 	    	eaplist_add(rlm_eap_t *inst, eap_handler_t *handler);
+eap_handler_t 	*eaplist_find(rlm_eap_t *inst, REQUEST *request,
 			      eap_packet_raw_t *eap_packet);
 void		eaplist_free(rlm_eap_t *inst);
 

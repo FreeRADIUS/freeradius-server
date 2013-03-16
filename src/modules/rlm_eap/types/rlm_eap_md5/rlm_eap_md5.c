@@ -34,12 +34,12 @@ RCSID("$Id$")
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static int md5_initiate(void *type_data, EAP_HANDLER *handler)
+static int md5_initiate(void *instance, eap_handler_t *handler)
 {
 	int		i;
 	MD5_PACKET	*reply;
 
-	type_data = type_data;	/* -Wunused */
+	instance = instance;	/* -Wunused */
 
 	/*
 	 *	Allocate an EAP-MD5 packet.
@@ -105,7 +105,7 @@ static int md5_initiate(void *type_data, EAP_HANDLER *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int md5_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
+static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
 {
 	MD5_PACKET	*packet;
 	MD5_PACKET	*reply;
@@ -164,7 +164,7 @@ static int md5_authenticate(UNUSED void *arg, EAP_HANDLER *handler)
  *	The module name should be the only globally exported symbol.
  *	That is, everything else should be 'static'.
  */
-EAP_TYPE rlm_eap_md5 = {
+rlm_eap_module_t rlm_eap_md5 = {
 	"eap_md5",
 	NULL,				/* attach */
 	md5_initiate,			/* Start the initial request */
