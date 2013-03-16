@@ -98,7 +98,7 @@ int eap_module_load(eap_module_t **instance, eap_type_t method,
 		    CONF_SECTION *cs)
 {
 	eap_module_t *inst;
-	const char *mod_name, *p;
+	char *mod_name, *p;
 
 	/* Make room for the EAP-Type */
 	*instance = inst = talloc_zero(cs, eap_module_t);
