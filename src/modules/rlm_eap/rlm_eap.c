@@ -162,7 +162,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 			return -1;
 		}
 		
-		if ((method < PW_EAP_MD5) (method > PW_EAP_MAX_TYPES)) {
+		if ((method < PW_EAP_MD5) && (method > PW_EAP_MAX_TYPES)) {
 			radlog(L_ERR, "rlm_eap: EAP method %s outside of "
 			       "valid range", name);
 
