@@ -85,11 +85,6 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #endif
 };
 
-
-#ifndef WITH_LIBLTDL
-#ifdef HAVE_DLFCN_H
-#include <dlfcn.h>
-
 #ifndef RTLD_NOW
 #define RTLD_NOW (0)
 #endif
@@ -97,8 +92,6 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #define RTLD_LOCAL (0)
 #endif
 
-#define fr_dlopenext lt_dlopenext
-#ifndef LT_SHREXT
 #ifdef __APPLE__
 #define LT_SHREXT ".dylib"
 #define LD_LIBRARY_PATH "DYLD_FALLBACK_LIBRARY_PATH"
@@ -108,27 +101,6 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #define LT_SHREXT ".so"
 #define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
-#endif
-
-int lt_dlinit(void)
-{
-	char *p;
-	const char *val;
-	char buffer[1024];
-
-	/*
-	 *	This doesn't really do anything...
-	 */
-	p = getenv(LD_LIBRARY_PATH);
-	if (p) {
-		snprintf(buffer, sizeof(buffer), "%s:%s", p, radlib_dir);
-		val = buffer;
-	} else {
-		val = radlib_dir;
-	}
-
-	return setenv(LD_LIBRARY_PATH, val, 1);
-}
 
 lt_dlhandle lt_dlopenext(const char *name)
 {
@@ -176,100 +148,6 @@ const char *lt_dlerror(void)
 {
 	return dlerror();
 }
-
-
-#else  /* without dlopen */
-typedef struct lt_dlmodule_t {
-  const char	*name;
-  void		*ref;
-} lt_dlmodule_t;
-
-
-/*
- *	FIXME: Write hackery to auto-generate this data.
- *	We only need to do this on systems that don't have dlopen.
- */
-extern module_t rlm_pap;
-extern module_t rlm_chap;
-extern module_t rlm_eap;
-extern module_t rlm_sql;
-/* and so on ... */
-
-extern struct eap_type_data_t rlm_eap_md5;
-extern struct rlm_sql_module_t rlm_sql_mysql;
-/* and so on ... */
-
-static const lt_dlmodule_t lt_dlmodules[] = {
-	{ "rlm_pap", &rlm_pap },
-	{ "rlm_chap", &rlm_chap },
-	{ "rlm_eap", &rlm_eap },
-	/* and so on ... */
-
-	{ "rlm_eap_md5", &rlm_eap_md5 },
-	/* and so on ... */
-		
-	{ "rlm_sql_mysql", &rlm_sql_mysql },
-	/* and so on ... */
-		
-	{ NULL, NULL }
-};
-
-#define fr_dlopenext lt_dlopenext
-lt_dlhandle lt_dlopenext(const char *name)
-{
-	int i;
-
-	for (i = 0; lt_dlmodules[i].name != NULL; i++) {
-		if (strcmp(name, lt_dlmodules[i].name) == 0) {
-			return lt_dlmodules[i].ref;
-		}
-	}
-
-	return NULL;
-}
-
-void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
-{
-	return handle;
-}
-
-int lt_dlclose(lt_dlhandle handle)
-{
-	return 0;
-}
-
-const char *lt_dlerror(void)
-{
-	return "Unspecified error";
-}
-
-#endif	/* HAVE_DLFCN_H */
-#else	/* WIT_LIBLTDL */
-
-/*
- *	Solve the issues of libraries linking to other libraries
- *	by using a newer libltdl API.
- */
-#ifndef HAVE_LT_DLADVISE_INIT
-#define fr_dlopenext lt_dlopenext
-#else
-static lt_dlhandle fr_dlopenext(const char *filename)
-{
-	lt_dlhandle handle = 0;
-	lt_dladvise advise;
-
-	if (!lt_dladvise_init (&advise) &&
-	    !lt_dladvise_ext (&advise) &&
-	    !lt_dladvise_global (&advise)) {
-		handle = lt_dlopenadvise (filename, advise);
-	}
-
-	lt_dladvise_destroy (&advise);
-
-	return handle;
-}
-#endif	/* HAVE_LT_DLADVISE_INIT */
-#endif /* WITH_LIBLTDL */
 
 static int virtual_server_idx(const char *name)
 {
@@ -458,7 +336,7 @@ static int module_entry_free(void *ctx)
 	 */
 	if (!mainconfig.debug_memory)
 #endif
-	  lt_dlclose(this->handle);	/* ignore any errors */
+		dlclose(this->handle);	/* ignore any errors */
 	return 0;
 }
 
@@ -470,8 +348,6 @@ int detach_modules(void)
 {
 	rbtree_free(instance_tree);
 	rbtree_free(module_tree);
-
-	lt_dlexit();
 
 	return 0;
 }
@@ -485,7 +361,7 @@ static module_entry_t *linkto_module(const char *module_name,
 {
 	module_entry_t myentry;
 	module_entry_t *node;
-	lt_dlhandle handle = NULL;
+	void *handle = NULL;
 	char module_struct[256];
 	char *p;
 	const module_t *module;
@@ -511,18 +387,18 @@ static module_entry_t *linkto_module(const char *module_name,
 	if (p) *p = '\0';
 
 #if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	module = lt_dlsym(RTLD_SELF, module_struct);
+	module = dlsym(RTLD_SELF, module_struct);
 	if (module) goto open_self;
 #endif
 
 	/*
 	 *	Keep the handle around so we can dlclose() it.
 	 */
-	handle = fr_dlopenext(module_name);
-	if (handle == NULL) {
+	handle = lt_dlopenext(module_name);
+	if (!handle) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Failed to link to module '%s': %s\n",
-			   module_name, lt_dlerror());
+			   module_name, dlerror());
 		return NULL;
 	}
 
@@ -532,12 +408,12 @@ static module_entry_t *linkto_module(const char *module_name,
 	 *	libltld MAY core here, if the handle it gives us contains
 	 *	garbage data.
 	 */
-	module = lt_dlsym(handle, module_struct);
+	module = dlsym(handle, module_struct);
 	if (!module) {
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Failed linking to %s structure: %s\n",
-			   module_name, lt_dlerror());
-		lt_dlclose(handle);
+			   module_name, dlerror());
+		dlclose(handle);
 		return NULL;
 	}
 
@@ -548,7 +424,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 *	Before doing anything else, check if it's sane.
 	 */
 	if (module->magic != RLM_MODULE_MAGIC_NUMBER) {
-		lt_dlclose(handle);
+		dlclose(handle);
 		cf_log_err(cf_sectiontoitem(cs),
 			   "Invalid version in module '%s'",
 			   module_name);
@@ -571,7 +447,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	if (!rbtree_insert(module_tree, node)) {
 		radlog(L_ERR, "Failed to cache module %s", module_name);
-		lt_dlclose(handle);
+		dlclose(handle);
 		talloc_free(node);
 		return NULL;
 	}
@@ -1475,48 +1351,6 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 *	If necessary, initialize libltdl.
 	 */
 	if (!reload) {
-		/*
-		 *	This line works around a completely
-		 *
-		 *		RIDICULOUS INSANE IDIOTIC
-		 *
-		 *	bug in libltdl on certain systems.  The "set
-		 *	preloaded symbols" macro below ends up
-		 *	referencing this name, but it isn't defined
-		 *	anywhere in the libltdl source.  As a result,
-		 *	any program STUPID enough to rely on libltdl
-		 *	fails to link, because the symbol isn't
-		 *	defined anywhere.
-		 *
-		 *	It's like libtool and libltdl are some kind
-		 *	of sick joke.
-		 */
-#ifdef IE_LIBTOOL_DIE
-#define lt__PROGRAM__LTX_preloaded_symbols lt_libltdl_LTX_preloaded_symbols
-#endif
-
-		/*
-		 *	Set the default list of preloaded symbols.
-		 *	This is used to initialize libltdl's list of
-		 *	preloaded modules.
-		 *
-		 *	i.e. Static modules.
-		 */
-		LTDL_SET_PRELOADED_SYMBOLS();
-
-		if (lt_dlinit() != 0) {
-			radlog(L_ERR, "Failed to initialize libraries: %s\n",
-					lt_dlerror());
-			return -1;
-		}
-
-		/*
-		 *	Set the search path to ONLY our library directory.
-		 *	This prevents the modules from being found from
-		 *	any location on the disk.
-		 */
-		lt_dlsetsearchpath(radlib_dir);
-
 		/*
 		 *	Set up the internal module struct.
 		 */

@@ -114,7 +114,7 @@ struct sql_inst {
 	const DICT_ATTR		*sql_user;	//!< Cached pointer to SQL-User-Name
 						//!< dictionary attribute.
 					
-	lt_dlhandle handle;
+	void *handle;
 	rlm_sql_module_t *module;
 
 	int (*sql_set_user)(rlm_sql_t *inst, REQUEST *request, const char *username);

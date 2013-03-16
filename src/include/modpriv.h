@@ -8,33 +8,22 @@
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 
-#ifdef WITH_SYSTEM_LTDL
-#define WITH_LIBLTDL
-#include <ltdl.h>
-
-#else
 #ifndef HAVE_DLFCN_H
 #error FreeRADIUS needs either libltdl, or a working dlopen()
-#endif	/* WITH_LIBLTDL */
-#endif	/* WITH_LIBLTDL */
+#else
+#include <dlfcn.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-#ifndef WITH_LIBLTDL
 typedef void *lt_dlhandle;
 
-int lt_dlinit(void);
 lt_dlhandle lt_dlopenext(const char *name);
 void *lt_dlsym(lt_dlhandle handle, const char *symbol);
 int lt_dlclose(lt_dlhandle handle);
 const char *lt_dlerror(void);
-
-#define LTDL_SET_PRELOADED_SYMBOLS(_x)
-#define lt_dlexit(_x)
-#define lt_dlsetsearchpath(_x)
-#endif	/* WITH_LIBLTDL */
 
 /*
  *	Keep track of which modules we've loaded.

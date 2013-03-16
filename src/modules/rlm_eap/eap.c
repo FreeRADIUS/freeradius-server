@@ -60,6 +60,7 @@
 RCSID("$Id$")
 
 #include "rlm_eap.h"
+#include <ctype.h>
 
 static const char *eap_codes[] = {
 	 "",				/* 0 is invalid */
@@ -85,7 +86,7 @@ static int eap_module_free(void *ctx)
 	 */
 	if (!mainconfig.debug_memory)
 #endif
-	if (inst->handle) lt_dlclose(inst->handle);
+	if (inst->handle) dlclose(inst->handle);
 
 	return 0;
 }
@@ -126,8 +127,8 @@ int eap_module_load(eap_module_t **instance, eap_type_t method,
 
 	inst->instance = NULL;
 
-#if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	inst->type = (rlm_eap_module_t *)lt_dlsym(RTLD_SELF, buffer);
+#if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
+	inst->type = dlsym(RTLD_SELF, mod_name);
 	if (inst->type) goto open_self;
 #endif
 
@@ -142,10 +143,10 @@ int eap_module_load(eap_module_t **instance, eap_type_t method,
 		return -1;
 	}
 
-	inst->type = (rlm_eap_module_t *)lt_dlsym(inst->handle, mod_name);
+	inst->type = dlsym(inst->handle, mod_name);
 	if (!inst->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to structure in %s: %s",
-		       inst->typename, lt_dlerror());
+		       inst->typename, dlerror());
 		
 		return -1;
 	}

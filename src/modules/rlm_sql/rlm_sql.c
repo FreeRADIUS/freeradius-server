@@ -771,7 +771,7 @@ static int rlm_sql_detach(void *instance)
 		/*
 		 *	FIXME: Call the modules 'destroy' function?
 		 */
-		lt_dlclose(inst->handle);	/* ignore any errors */
+		dlclose(inst->handle);	/* ignore any errors */
 #endif
 	}
 
@@ -918,18 +918,18 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	if (inst->handle == NULL) {
 		radlog(L_ERR, "Could not link driver %s: %s",
 		       inst->config->sql_driver_name,
-		       lt_dlerror());
+		       dlerror());
 		radlog(L_ERR, "Make sure it (and all its dependent libraries!)"
 		       "are in the search path of your system's ld.");
 		return -1;
 	}
 
-	inst->module = (rlm_sql_module_t *) lt_dlsym(inst->handle,
-						     inst->config->sql_driver_name);
+	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,
+						  inst->config->sql_driver_name);
 	if (!inst->module) {
 		radlog(L_ERR, "Could not link symbol %s: %s",
 		       inst->config->sql_driver_name,
-		       lt_dlerror());
+		       dlerror());
 		return -1;
 	}
 	
