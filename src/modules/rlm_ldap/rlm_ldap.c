@@ -712,7 +712,7 @@ static void *ldap_conn_create(void *ctx)
 	}
 #endif /* HAVE_LDAP_START_TLS */
 
-	conn = talloc(NULL, LDAP_CONN);
+	conn = talloc_zero(ctx, LDAP_CONN);
 	conn->inst = inst;
 	conn->handle = handle;
 	conn->rebound = FALSE;
