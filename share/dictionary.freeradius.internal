@@ -663,7 +663,9 @@ VALUE	EAP-Type			NAK			3
 VALUE	EAP-Type			MD5-Challenge		4
 VALUE	EAP-Type			MD5			4
 VALUE	EAP-Type			One-Time-Password	5
+VALUE	EAP-Type			OTP			5
 VALUE	EAP-Type			Generic-Token-Card	6
+VALUE	EAP-Type			GTC			6
 VALUE	EAP-Type			RSA-Public-Key		9
 VALUE	EAP-Type			DSS-Unilateral		10
 VALUE	EAP-Type			KEA			11
