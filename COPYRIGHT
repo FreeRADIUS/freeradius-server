@@ -21,11 +21,6 @@ The license for all files in the src/lib directory is the GNU LGPL
 version 2, which is included with this program in the file
 src/lib/LICENSE.
 
-2.3 libltdl/
-
-Most of the files in this directory are copyright the Free Software
-Foundation, Inc.  See the contents of the files for details.
-
 3. ALL OTHER FILES
 
 Copyright for files in this directory is held by the contributors.
