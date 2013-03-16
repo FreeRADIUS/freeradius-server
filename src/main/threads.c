@@ -345,7 +345,7 @@ int request_enqueue(REQUEST *request)
 		 *	Throw away accounting requests if we're too busy.
 		 */
 		if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-		    (fr_fifo_num_elements(thread_pool.fifo[RAD_LISTEN_ACCT]) > 0) && 
+		    (fr_fifo_num_elements(thread_pool.fifo[RAD_LISTEN_ACCT]) > 0) &&
 		    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
 		    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
 			
@@ -377,7 +377,7 @@ int request_enqueue(REQUEST *request)
 			last_complained = now;
 			complain = TRUE;
 		}
-		    
+		
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 		/*

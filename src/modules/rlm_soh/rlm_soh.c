@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_soh.c
@@ -97,7 +97,7 @@ static size_t soh_xlat(UNUSED void *instance, REQUEST *request, const char *fmt,
 
 static const CONF_PARSER module_config[] = {
 	/*
-	 * Do SoH over DHCP? 
+	 * Do SoH over DHCP?
 	 */
 	{ "dhcp",    PW_TYPE_BOOLEAN, offsetof(rlm_soh_t,dhcp), NULL, "no" },
 

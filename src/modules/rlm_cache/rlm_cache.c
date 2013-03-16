@@ -12,12 +12,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_cache.c
  * @brief Cache values and merge them back into future requests.
- * 
+ *
  * @copyright 2012-2013  The FreeRADIUS server project
  */
 #include <freeradius-devel/ident.h>
@@ -51,7 +51,7 @@ typedef struct rlm_cache_t {
 	rbtree_t		*cache;
 	fr_heap_t		*heap;
 	
-	value_pair_map_t	*maps;	//!< Attribute map applied to users 
+	value_pair_map_t	*maps;	//!< Attribute map applied to users
 					//!< and profiles.
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	cache_mutex;
@@ -298,7 +298,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	for (map = inst->maps; map != NULL; map = map->next) {
 		rad_assert(map->dst && map->src);
 
-		/* 
+		/*
 		 *	Specifying inner/outer request doesn't work here
 		 *	but there's no easy fix...
 		 */
@@ -316,7 +316,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			break;
 
 		default:
-			rad_assert(0); 
+			rad_assert(0);
 			return NULL;		
 		}
 	
@@ -331,13 +331,13 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	  - Map src and dst attributes differ
 		 */
 		to_req = NULL;
-		if (merge && ( !map->src->da || 
+		if (merge && ( !map->src->da ||
 		    (map->src->list != map->dst->list) ||
 		    (map->src->da != map->dst->da))) {
 			context = request;
 			/*
 			 *	It's ok if the list isn't valid here...
-			 *	It might be valid later when we merge 
+			 *	It might be valid later when we merge
 			 *	the cache entry.
 			 */
 			if (radius_request(&context, map->dst->request) == 0) {
@@ -349,7 +349,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	We infer that src was an attribute ref from the fact
 		 *	it contains a da.
 		 */
-		RDEBUG4(":: dst is \"%s\" src is \"%s\"", 
+		RDEBUG4(":: dst is \"%s\" src is \"%s\"",
 			fr_int2str(vpt_types, map->dst->type, "¿unknown?"),
 			fr_int2str(vpt_types, map->src->type, "¿unknown?"));
 			
@@ -497,7 +497,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			RDEBUG("\t%s %s '%s'", map->dst->name,
 			       fr_int2str(fr_tokens, map->op, "¿unknown?"),
 			       map->src->name);
-			       
+			
 			vp = pairalloc(NULL, map->dst->da);
 			if (!vp) continue;
 			
@@ -548,7 +548,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 
 	if (radius_attrmap(inst->cs, head, PAIR_LIST_REQUEST,
 			   PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
-		return -1;		   
+		return -1;		
 	}
 	
 	if (!*head) {
@@ -564,11 +564,11 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 		    (map->dst->type != VPT_TYPE_LIST)) {
 			cf_log_err(map->ci, "Left operand must be an attribute "
 				   "ref or a list");
-			   
+			
 			return -1;
 		}
 	
-		switch (map->src->type) 
+		switch (map->src->type)
 		{
 		/*
 		 *	Only =, :=, += and -= operators are supported for
@@ -691,7 +691,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_cache_t, epoch), NULL, "0" },
 	{ "add_stats", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_cache_t, stats), NULL, "no" },
-  
+
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 

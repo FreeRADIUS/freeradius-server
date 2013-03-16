@@ -12,12 +12,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_counter.c
  * @brief Provides a packet counter to track data usage and other values.
- * 
+ *
  * @copyright 2001,2006  The FreeRADIUS server project
  * @copyright 2001  Alan DeKok <aland@ox.org>
  * @copyright 2001-2003  Kostas Kalevras <kkalev@noc.ntua.gr>

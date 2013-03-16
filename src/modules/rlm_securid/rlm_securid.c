@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_securid.c
@@ -70,7 +70,7 @@ static int securid_session_cmp(const void *a, const void *b)
 
 
 static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
-				   const char* username, 
+				   const char* username,
 				   const char* passcode,
 				   char* replyMsgBuffer,int replyMsgBufferSize)
 {
@@ -122,7 +122,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 			return RC_SECURID_AUTH_SUCCESS;
 
-		case ACM_ACCESS_DENIED:         
+		case ACM_ACCESS_DENIED:
 			/* not this time */
 			RDEBUG("SecurID Access denied for %s", username);
 			SD_Close(sdiHandle);
@@ -141,10 +141,10 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			pSecurid_session->sdiHandle = sdiHandle; /* save ACE handle for future use */
 			pSecurid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
 			pSecurid_session->identity = strdup(username);
-			 
+			
 			/* Get PIN requirements */
 			acmRet = AceGetPinParams(sdiHandle, &pinParams);
-			 
+			
 			/* If a system-generated PIN is required */
 			if (pinParams.Selectable == CANNOT_CHOOSE_PIN) {
 				/* Prompt user to accept a system generated PIN */
@@ -170,7 +170,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 			/* insert new session in the session list */
 			securid_sessionlist_add(inst,request,pSecurid_session);
-			 
+			
 			return RC_SECURID_AUTH_CHALLENGE;
 
 		case ACM_NEXT_CODE_REQUIRED:
@@ -185,13 +185,13 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 			/* insert new session in the session list */
 			securid_sessionlist_add(inst,request,pSecurid_session);
-		     
+		
 			strlcpy(replyMsgBuffer, "\r\nPlease Enter the Next Code from Your Token:", replyMsgBufferSize);
 			return RC_SECURID_AUTH_CHALLENGE;
 		default:
 			radlog(L_ERR,"SecurID: Unexpected error from ACE/Agent API acmRet=%d",acmRet);
 			return RC_SECURID_AUTH_FAILURE;
-  
+
 			
 		}
 	} else {
@@ -237,7 +237,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			/* insert the updated session in the session list */
 			securid_sessionlist_add(inst,request,pSecurid_session);
 			return RC_SECURID_AUTH_CHALLENGE;
-			  
+			
 		case NEW_PIN_USER_CONFIRM_STATE:
 			RDEBUG2("SecurID NEW_PIN_USER_CONFIRM_STATE: User [%s]",username);
 			/* compare previous pin and current pin */
@@ -290,7 +290,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 							     pSecurid_session);
 				}
 			}
-			return rc;		  
+			return rc;		
 		case NEW_PIN_AUTH_VALIDATE_STATE:
 			acmRet = SD_Check(pSecurid_session->sdiHandle, (SD_CHAR*)passcode, (SD_CHAR*)username);
 			if (acmRet == ACM_OK) {
@@ -342,7 +342,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			}
 				
 			return rc;				
-			 
+			
 		case NEW_PIN_SYSTEM_CONFIRM_STATE:
 			acmRet = SD_Pin(pSecurid_session->sdiHandle, (SD_CHAR*)pSecurid_session->pin);
 			if (acmRet == ACM_NEW_PIN_ACCEPTED) {
@@ -362,7 +362,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			}
 				
 			return rc;
-			 
+			
 			/* USER_SELECTABLE state should be implemented to preserve compatibility with AM 6.x servers, which can return this state */
 		case NEW_PIN_USER_SELECT_STATE:
 			if (!strcmp(passcode, "y")) {

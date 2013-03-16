@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_eap2.c
@@ -74,13 +74,13 @@ typedef struct rlm_eap_t {
 	/*
 	 *	For EAP-FAST
 	 */
-	char		*pac_opaque_encr_key; 
-	char		*eap_fast_a_id; 
-	char		*eap_fast_a_id_info; 
-	int		eap_fast_prov; 
-	int		pac_key_lifetime; 
-	int		pac_key_refresh_time; 
-	int		backend_auth; 
+	char		*pac_opaque_encr_key;
+	char		*eap_fast_a_id;
+	char		*eap_fast_a_id_info;
+	int		eap_fast_prov;
+	int		pac_key_lifetime;
+	int		pac_key_refresh_time;
+	int		backend_auth;
 
 	int		num_types;
 	EapType		methods[EAP_MAX_METHODS];
@@ -453,27 +453,27 @@ static CONF_PARSER tls_config[] = {
 	  offsetof(rlm_eap_t, tparams.private_key_passwd),
 	  NULL, "whatever" },
 
-	{ "dh_file", PW_TYPE_STRING_PTR, 
-	  offsetof(rlm_eap_t, tparams.dh_file), NULL, "whatever" }, 
+	{ "dh_file", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_t, tparams.dh_file), NULL, "whatever" },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
-static CONF_PARSER fast_config[] = { 
-	{ "pac_opaque_encr_key", PW_TYPE_STRING_PTR, 
-	  offsetof(rlm_eap_t, pac_opaque_encr_key), NULL, NULL }, 
-	{ "eap_fast_a_id", PW_TYPE_STRING_PTR, 
-	  offsetof(rlm_eap_t, eap_fast_a_id), NULL, NULL }, 
-	{ "eap_fast_a_id_info", PW_TYPE_STRING_PTR, 
-	  offsetof(rlm_eap_t, eap_fast_a_id_info), NULL, NULL }, 
-	{ "eap_fast_prov", PW_TYPE_INTEGER, 
-	  offsetof(rlm_eap_t, eap_fast_prov), NULL, "3"}, 
-	{ "pac_key_lifetime", PW_TYPE_INTEGER, 
-	  offsetof(rlm_eap_t, pac_key_lifetime), NULL, "604800"}, 
-	{ "pac_key_refresh_time", PW_TYPE_INTEGER, 
-	  offsetof(rlm_eap_t, pac_key_refresh_time), NULL, "86400"}, 
-	{ NULL, -1, 0, NULL, NULL } /* end the list */ 
-}; 
+static CONF_PARSER fast_config[] = {
+	{ "pac_opaque_encr_key", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_t, pac_opaque_encr_key), NULL, NULL },
+	{ "eap_fast_a_id", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_t, eap_fast_a_id), NULL, NULL },
+	{ "eap_fast_a_id_info", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_eap_t, eap_fast_a_id_info), NULL, NULL },
+	{ "eap_fast_prov", PW_TYPE_INTEGER,
+	  offsetof(rlm_eap_t, eap_fast_prov), NULL, "3"},
+	{ "pac_key_lifetime", PW_TYPE_INTEGER,
+	  offsetof(rlm_eap_t, pac_key_lifetime), NULL, "604800"},
+	{ "pac_key_refresh_time", PW_TYPE_INTEGER,
+	  offsetof(rlm_eap_t, pac_key_refresh_time), NULL, "86400"},
+	{ NULL, -1, 0, NULL, NULL } /* end the list */
+};
 
 static const CONF_PARSER module_config[] = {
 	{ "timer_expire", PW_TYPE_INTEGER,
@@ -481,12 +481,12 @@ static const CONF_PARSER module_config[] = {
 	{ "cisco_accounting_username_bug", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_t, cisco_accounting_username_bug), NULL, "no" },
 
-	{ "backend_auth", PW_TYPE_BOOLEAN, 
-	  offsetof(rlm_eap_t, backend_auth), NULL, "yes" }, 
+	{ "backend_auth", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_t, backend_auth), NULL, "yes" },
 
 	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
 
-	{ "fast", PW_TYPE_SUBSECTION, 0, NULL, (const void *) fast_config }, 
+	{ "fast", PW_TYPE_SUBSECTION, 0, NULL, (const void *) fast_config },
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
@@ -901,14 +901,14 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Copy EAP-FAST parameters.
 		 */
-		handler->eap_conf.pac_opaque_encr_key = inst->pac_opaque_encr_key; 
-		handler->eap_conf.eap_fast_a_id = inst->eap_fast_a_id; 
-		handler->eap_conf.eap_fast_a_id_len = strlen(inst->eap_fast_a_id); 
-		handler->eap_conf.eap_fast_a_id_info = inst->eap_fast_a_id_info; 
-		handler->eap_conf.eap_fast_prov = inst->eap_fast_prov; 
-		handler->eap_conf.pac_key_lifetime = inst->pac_key_lifetime; 
-		handler->eap_conf.pac_key_refresh_time = inst->pac_key_refresh_time; 
-		handler->eap_conf.backend_auth = inst->backend_auth; 
+		handler->eap_conf.pac_opaque_encr_key = inst->pac_opaque_encr_key;
+		handler->eap_conf.eap_fast_a_id = inst->eap_fast_a_id;
+		handler->eap_conf.eap_fast_a_id_len = strlen(inst->eap_fast_a_id);
+		handler->eap_conf.eap_fast_a_id_info = inst->eap_fast_a_id_info;
+		handler->eap_conf.eap_fast_prov = inst->eap_fast_prov;
+		handler->eap_conf.pac_key_lifetime = inst->pac_key_lifetime;
+		handler->eap_conf.pac_key_refresh_time = inst->pac_key_refresh_time;
+		handler->eap_conf.backend_auth = inst->backend_auth;
 		
 		handler->server_ctx.eap = eap_server_sm_init(handler,
 							     &handler->eap_cb,

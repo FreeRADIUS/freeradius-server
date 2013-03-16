@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_realm.c
@@ -84,7 +84,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	    || (request->proxy != NULL)
 #endif
 	    ) {
-	    
+	
 		RDEBUG2("Proxy reply, or no User-Name.  Ignoring.");
 		return RLM_MODULE_OK;
 	}

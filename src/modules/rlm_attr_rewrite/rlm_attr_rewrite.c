@@ -12,12 +12,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_attr_rewrite.c
  * @brief Rewrite attribute values.
- * 
+ *
  * @copyright 2001,2006 The FreeRADIUS server project
  * @copyright 2002  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
@@ -42,17 +42,17 @@ typedef struct rlm_attr_rewrite {
 	const DICT_ATTR *da;	//!< The attribute definition.
 	char *search;		//!< The pattern to search for.
 	int search_len;		//!< The length of the search pattern.
-	char *searchin_str;	//!< The VALUE_PAIR list to search in. 
-				//!< Can be either packet, reply, proxy, 
-				//!< proxy_reply or control (plus it's alias 
+	char *searchin_str;	//!< The VALUE_PAIR list to search in.
+				//!< Can be either packet, reply, proxy,
+				//!< proxy_reply or control (plus it's alias
 				//!< 'config').
-	char searchin;		//!< The same as above just coded as a number 
+	char searchin;		//!< The same as above just coded as a number
 				//!< for speed.
 	char *replace;		//!< The replacement.
 	int replace_len;	//!< The length of the replacement string.
 	int  append;		//!< Switch to control append mode (1,0).
 	int  nocase;		//!< Ignore case.
-	int  new_attr;		//!< Boolean. Whether we need to create a new 
+	int  new_attr;		//!< Boolean. Whether we need to create a new
 				//!< attr.
 	int  num_matches;	//!< Maximum number of matches.
 	const char *name;	//!< The module name.

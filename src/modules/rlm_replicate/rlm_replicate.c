@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_replicate.c
@@ -39,7 +39,7 @@ static void cleanup(RADIUS_PACKET *packet)
  * Create a duplicate of the packet and send it to a list of realms
  * defined by the presence of the Replicate-To-Realm VP in the control
  * list of the current request.
- * 
+ *
  * This is pretty hacky and is 100% fire and forget. If you're looking
  * to forward authentication requests to multiple realms and process
  * the responses, this function will not allow you to do that.

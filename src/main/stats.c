@@ -555,7 +555,7 @@ void request_stats_reply(REQUEST *request)
 				ipaddr.af = AF_INET;
 				ipaddr.ipaddr.ip4addr.s_addr = server_ip->vp_ipaddr;
 				cl = listener_find_client_list(&ipaddr, server_port->vp_integer);
-							       
+							
 				/*
 				 *	Not found: don't do anything
 				 */

@@ -108,10 +108,10 @@ extern "C" {
 #endif
 
 typedef struct attr_flags {
-	unsigned int 	is_unknown : 1;		//!< Attribute number or  
+	unsigned int 	is_unknown : 1;		//!< Attribute number or
 						//!< vendor is unknown.				
 	unsigned int	is_tlv : 1;		//!< Is a sub attribute.
-	unsigned int	vp_free : 1;		//!< Should be freed when 
+	unsigned int	vp_free : 1;		//!< Should be freed when
 						//!< VALUE_PAIR is freed.
 						
 	unsigned int	has_tag : 1;		//!< Tagged attribute.
@@ -182,12 +182,12 @@ typedef union value_pair_data {
 typedef enum value_type {
 	VT_NONE = 0,				//!< VALUE_PAIR has no value.
 	VT_SET,					//!< VALUE_PAIR has children.
-	VT_LIST,				//!< VALUE_PAIR has multiple 
+	VT_LIST,				//!< VALUE_PAIR has multiple
 						//!< values.
 	VT_DATA,				//!< VALUE_PAIR has a single
 						//!< value.
-	VT_XLAT					//!< valuepair value must be 
-						//!< xlat expanded when it's 
+	VT_XLAT					//!< valuepair value must be
+						//!< xlat expanded when it's
 						//!< added to VALUE_PAIR tree.
 } value_type_t;
 
@@ -199,8 +199,8 @@ typedef struct value_pair {
 
 	struct value_pair	*next;
 
-	FR_TOKEN		op;		//!< Operator to use when 
-						//!< moving or inserting 
+	FR_TOKEN		op;		//!< Operator to use when
+						//!< moving or inserting
 						//!< valuepair into a list.
 
 	int8_t			tag;		//!< Tag value used to group
@@ -208,9 +208,9 @@ typedef struct value_pair {
 
 	union {
 	//	VALUE_SET	*set;		//!< Set of child attributes.
-	//	VLAUE_LIST	*list;		//!< List of values for 
+	//	VLAUE_LIST	*list;		//!< List of values for
 						//!< multivalued attribute.
-	//	VALUE_DATA 	*data;		//!< Value data for this 
+	//	VALUE_DATA 	*data;		//!< Value data for this
 						//!< attribute.
 	
 		const char 	*xlat;		//!< Source string for xlat
@@ -226,12 +226,12 @@ typedef struct value_pair {
 
 
 typedef struct value_pair_raw {
-	char l_opand[64];			//!< Left hand side of the 
+	char l_opand[64];			//!< Left hand side of the
 						//!< pair.
-	char r_opand[1024];			//!< Right hand side of the 
+	char r_opand[1024];			//!< Right hand side of the
 						//!< pair.
 	
-	FR_TOKEN quote;				//!< Type of quoting around 
+	FR_TOKEN quote;				//!< Type of quoting around
 						//!< the r_opand.
 	
 	FR_TOKEN op;				//!< Operator.

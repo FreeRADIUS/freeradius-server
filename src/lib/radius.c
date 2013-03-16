@@ -516,7 +516,7 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 #define AUTH_PASS_LEN (AUTH_VECTOR_LEN)
 /**
  * @brief Build an encrypted secret value to return in a reply packet
- * 
+ *
  *               The secret is hidden by xoring with a MD5 digest
  *               created from the shared secret and the authentication
  *               vector.  We put them into MD5 in the reverse order from

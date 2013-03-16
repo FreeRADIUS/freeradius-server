@@ -9,7 +9,7 @@
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
- 
+
 typedef struct smsotp_fd_t {
   pthread_mutex_t	mutex;
   const char		*path;	/* allows diff instances to use diff sockets */

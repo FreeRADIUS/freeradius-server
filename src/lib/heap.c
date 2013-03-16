@@ -43,7 +43,7 @@ void fr_heap_delete(fr_heap_t *hp)
 }
 
 fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
-{       
+{
 	fr_heap_t *fh;
 
 	if (!cmp) return NULL;
@@ -91,7 +91,7 @@ fr_heap_t *fr_heap_create(fr_heap_cmp_t cmp, size_t offset)
 	    *((int *)(((uint8_t *)heap->p[node]) + heap->offset)) = -1
 
 int fr_heap_insert(fr_heap_t *hp, void *data)
-{   
+{
 	int child = hp->num_elements;
 	
 	/*
@@ -146,7 +146,7 @@ static int fr_heap_bubble(fr_heap_t *hp, int child)
  *	Remove the top element, or object.
  */
 int fr_heap_extract(fr_heap_t *hp, void *data)
-{  
+{
 	int child, parent;
 	int max;
 

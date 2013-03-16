@@ -13,7 +13,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /*
  * $Id$
  *
@@ -101,7 +101,7 @@ const http_body_type_t http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
 
 
 /** Conversion table for method config values.
- * 
+ *
  * HTTP verb strings for http_method_t enum values. Used by libcurl in the
  * status line of the outgoing HTTP header, by rest_write_header for decoding
  * incoming HTTP responses, and by the configuration parser.
@@ -260,10 +260,10 @@ void rest_cleanup(void)
  * which hold the context data required for generating requests and parsing
  * responses. Calling rest_socket_delete will free this memory.
  *
- * If instance->connect_uri is not NULL libcurl will attempt to open a 
+ * If instance->connect_uri is not NULL libcurl will attempt to open a
  * TCP socket to the server specified in the URI. This is done so that when the
  * socket is first used, there will already be a cached TCP connection to the
- * REST server associated with the curl handle. 
+ * REST server associated with the curl handle.
  *
  * @see rest_socket_delete
  * @see fr_connection_pool_init
@@ -274,7 +274,7 @@ void rest_cleanup(void)
  * @return connection handle or NULL if the connection failed or couldn't
  *	be initialised.
  */
-void *rest_socket_create(void *instance) 
+void *rest_socket_create(void *instance)
 {
 	rlm_rest_t *inst = instance;
 
@@ -285,7 +285,7 @@ void *rest_socket_create(void *instance)
 	CURLcode ret;
 
 	if (!candle) {
-		radlog(L_ERR, "rlm_rest (%s): Failed to create CURL handle", 
+		radlog(L_ERR, "rlm_rest (%s): Failed to create CURL handle",
 		       inst->xlat_name);
 		return NULL;
 	}
@@ -321,7 +321,7 @@ void *rest_socket_create(void *instance)
 		goto connection_error;
 	}
 
-	/* 
+	/*
 	 *	Malloc memory for the connection handle abstraction.
 	 */
 	randle = malloc(sizeof(*randle));
@@ -352,7 +352,7 @@ void *rest_socket_create(void *instance)
 			inst->xlat_name,
 			ret, curl_easy_strerror(ret));
 
-	/* 
+	/*
 	 *	So we don't leak CURL handles.
 	 */
 	connection_error:
@@ -399,13 +399,13 @@ int rest_socket_alive(void *instance, void *handle)
 }
 
 /** Frees a libcurl handle, and any additional memory used by context data.
- * 
+ *
  * @param[in] instance configuration data.
  * @param[in] handle rlm_rest_handle_t to close and free.
  * @return returns TRUE.
  */
 int rest_socket_delete(UNUSED void *instance, void *handle)
-{   
+{
 	rlm_rest_handle_t *randle	= handle;
 	CURL *candle			= randle->handle;
 
@@ -420,7 +420,7 @@ int rest_socket_delete(UNUSED void *instance, void *handle)
 /** Encodes VALUE_PAIR linked list in POST format
  *
  * This is a stream function matching the rest_read_t prototype. Multiple
- * successive calls will return additional encoded VALUE_PAIRs. 
+ * successive calls will return additional encoded VALUE_PAIRs.
  * Only complete attribute headers @verbatim '<name>=' @endverbatim and values
  * will be written to the ptr buffer.
  *
@@ -497,7 +497,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 			p += len;
 			s -= len;
 
-			/* 
+			/*
 			 *	We wrote the attribute header, record progress.
 			 */
 			f = p;
@@ -531,7 +531,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 			*p++ = '&';
 		}
 
-		/* 
+		/*
 		 *	We wrote one full attribute value pair, record progress.
 		 */
 		f = p;
@@ -552,7 +552,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 
 	/*
 	 *	Cleanup for error conditions
-	 */ 
+	 */
 	no_space:
 
 	*f = '\0';
@@ -565,7 +565,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	 *	The buffer wasn't big enough to encode a single attribute chunk.
 	 */
 	if (!len) {
-		radlog(L_ERR, "rlm_rest (%s): AVP exceeds buffer length" 
+		radlog(L_ERR, "rlm_rest (%s): AVP exceeds buffer length"
 		       " or chunk", ctx->instance->xlat_name);
 	} else {
 		RDEBUG2("Returning %i bytes of POST data"
@@ -674,7 +674,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 
 			RDEBUG2("\tType   : %s", type);
 
-			/* 
+			/*
 		 	 *	We wrote the attribute header, record progress
 		 	 */
 			f = p;
@@ -700,7 +700,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			p += len;
 			s -= len;
 
-			/* 
+			/*
 			 *	Multivalued attribute
 			 */
 			if (current[1] &&
@@ -708,7 +708,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 				*p++ = ',';
 				current++;
 
-				/* 
+				/*
 				 *	We wrote one attribute value, record
 				 *	progress.
 				 */
@@ -728,7 +728,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 			*p++ = ',';
 		}
 
-		/* 
+		/*
 		 *	We wrote one full attribute value pair, record progress.
 		 */
 		f = p;
@@ -747,9 +747,9 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 
 	return len;
 
-	/* 
+	/*
 	 * Were out of buffer space
-	 */ 
+	 */
 	no_space:
 
 	*f = '\0';
@@ -777,13 +777,13 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
  * This function is used when the request will be sent to the HTTP server as one
  * contiguous entity. A buffer of REST_BODY_INCR bytes is allocated and passed
  * to the stream encoding function.
- * 
+ *
  * If the stream function does not return 0, a new buffer is allocated which is
  * the size of the previous buffer + REST_BODY_INCR bytes, the data from the
  * previous buffer is copied, and freed, and another call is made to the stream
  * function, passing a pointer into the new buffer at the end of the previously
  * written data.
- * 
+ *
  * This process continues until the stream function signals (by returning 0)
  * that it has no more data to write.
  *
@@ -833,7 +833,7 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func,
 /** (Re-)Initialises the data in a rlm_rest_read_t.
  *
  * Resets the values of a rlm_rest_read_t to their defaults.
- * 
+ *
  * Must be called between encoding sessions.
  *
  * As part of initialisation all VALUE_PAIR pointers in the REQUEST packet are
@@ -925,7 +925,7 @@ static void rest_read_ctx_free(rlm_rest_read_t *ctx)
  * Accepts VALUE_PAIRS in the same format as rest_encode_post, but with the
  * addition of optional attribute list qualifiers as part of the attribute name
  * string.
- * 
+ *
  * If no qualifiers are specified, will default to the request list.
  *
  * POST response format is:
@@ -1039,7 +1039,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		value = curl_easy_unescape(candle, p, len, &curl_len);
 
-		/* 
+		/*
 		 *	If we found a delimiter we want to skip over it,
 		 *	if we didn't we do *NOT* want to skip over the end
 		 *	of the buffer...
@@ -1065,7 +1065,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		}
 
 		vp->op = T_OP_SET;
- 
+
 		/*
 		 * 	Check to see if we've already processed an
 		 *	attribute of the same type if we have, change the op
@@ -1187,7 +1187,7 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 }
 
 /** Processes JSON response and converts it into multiple VALUE_PAIRs
- * 
+ *
  * Processes JSON attribute declarations in the format below. Will recurse when
  * processing nested attributes. When processing nested attributes flags and
  * operators from previous attributes are not inherited.
@@ -1213,7 +1213,7 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 	"<attributeN>":"[<value0>,<value1>,<valueN>]"
 }
 @endverbatim
- * 
+ *
  * JSON valuepair flags (bools):
  *  - do_xlat	(optional) Controls xlat expansion of values. Defaults to TRUE.
  *  - is_json	(optional) If TRUE, any nested JSON data will be copied to the
@@ -1266,7 +1266,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
       	       	       json_object_get_type(object));
 		return NULL;
    	}
-   
+
 	/*
 	 *	Process VP container
 	 */
@@ -1279,10 +1279,10 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		name = (char*)entry->k;
 
 		/* Fix the compiler warnings regarding const... */
-		memcpy(&value, &entry->v, sizeof(value)); 
+		memcpy(&value, &entry->v, sizeof(value));
 
 		entry = entry->next;
-   
+
 		/*
 		 *	For people handcrafting JSON responses
 		 */
@@ -1294,7 +1294,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 
 		attribute = name;
 		reference = request;
-   	 
+   	
 		/*
 		 *	Resolve attribute name to a dictionary entry and
 		 *	pairlist.
@@ -1446,7 +1446,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 }
 
 /** Converts JSON response into VALUE_PAIRs and adds them to the request.
- * 
+ *
  * Converts the raw JSON string into a json-c object tree and passes it to
  * json_pairmake. After the tree has been parsed json_object_put is called
  * which decrements the reference count of the root node by one, and frees
@@ -1534,14 +1534,14 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 		case WRITE_STATE_INIT:
 			RDEBUG("Processing header");
 
-			/* 
+			/*
 			 * HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
 			 *
 			 * "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
 			 */
 			if (s < 14) goto malformed;
 
-			/* 
+			/*
 			 * Check start of header matches...
 			 */
 			if (strncasecmp("HTTP/", p, 5) != 0) goto malformed;
@@ -1559,7 +1559,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 			s -= (q - p);
 			p  = q;
 
-			/* 
+			/*
 			 * Process reason_code.
 			 *
 			 * " 100" (4) + "\r\n" (2) = 6
@@ -1605,7 +1605,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 				p += 14;
 				s -= 14;
 
-				/* 
+				/*
 				 *	Check to see if there's a parameter
 				 *	separator.
 				 */
@@ -1759,7 +1759,7 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb,
  *
  * @see rest_write_body
  * @see rest_write_header
- * 
+ *
  * @param[in] request Current request.
  * @param[in] ctx data to initialise.
  * @param[in] type Default http_body_type to use when decoding raw data, may be
@@ -1788,7 +1788,7 @@ static void rest_write_free(rlm_rest_write_t *ctx)
 }
 
 /** Configures body specific curlopts.
- * 
+ *
  * Configures libcurl handle to use either chunked mode, where the request
  * data will be sent using multiple HTTP requests, or contiguous mode where
  * the request data will be sent in a single HTTP request.
@@ -1847,10 +1847,10 @@ static int rest_request_config_body(rlm_rest_t *instance,
 }
 
 /** Configures request curlopts.
- * 
+ *
  * Configures libcurl handle setting various curlopts for things like local
  * client time, Content-Type, and other FreeRADIUS custom headers.
- * 
+ *
  * Current FreeRADIUS custom headers are:
  *  - X-FreeRADIUS-Section	The module section being processed.
  *  - X-FreeRADIUS-Server	The current virtual server the REQUEST is
@@ -1893,7 +1893,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	ret = curl_easy_setopt(candle, CURLOPT_USERAGENT, "FreeRADIUS");
 	if (ret != CURLE_OK) goto error;
-  
+
 	snprintf(buffer, (sizeof(buffer) - 1), "Content-Type: %s",
 		 fr_int2str(http_content_type_table, type, "¿Unknown?"));
 	ctx->headers = curl_slist_append(ctx->headers, buffer);
@@ -1988,7 +1988,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			if (section->username) {
 				radius_xlat(buffer, sizeof(buffer),
 					    section->username, request, NULL, NULL);
-					    
+					
 				ret = curl_easy_setopt(candle, CURLOPT_USERNAME,
 						       buffer);
 				if (ret != CURLE_OK) goto error;
@@ -1996,7 +1996,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			if (section->password) {
 				radius_xlat(buffer, sizeof(buffer),
 					    section->password, request, NULL, NULL);
-					    
+					
 				ret = curl_easy_setopt(candle, CURLOPT_PASSWORD,
 						       buffer);
 				if (ret != CURLE_OK) goto error;
@@ -2010,7 +2010,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			if (section->username) {
 				radius_xlat(buffer, sizeof(buffer),
 					    section->username, request, NULL, NULL);
-					    
+					
 				ret = curl_easy_setopt(candle,
 						       CURLOPT_TLSAUTH_USERNAME,
 						       buffer);
@@ -2019,7 +2019,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			if (section->password) {
 				radius_xlat(buffer, sizeof(buffer),
 					    section->password, request, NULL, NULL);
-					    
+					
 				ret = curl_easy_setopt(candle,
 						       CURLOPT_TLSAUTH_PASSWORD,
 						       buffer);
@@ -2187,7 +2187,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 }
 
 /** Sends a REST (HTTP) request.
- * 
+ *
  * Send the actual REST request to the server. The response will be handled by
  * the numerous callbacks configured in rest_request_config.
  *
@@ -2214,7 +2214,7 @@ int rest_request_perform(rlm_rest_t *instance,
 }
 
 /** Sends the response to the correct decode function.
- * 
+ *
  * Uses the Content-Type information written in rest_write_header to
  * determine the correct decode function to use. The decode function will
  * then convert the raw received data into VALUE_PAIRs.
@@ -2225,7 +2225,7 @@ int rest_request_perform(rlm_rest_t *instance,
  * @param[in] handle to use.
  * @return TRUE on success or FALSE on error.
  */
-int rest_request_decode(rlm_rest_t *instance, 
+int rest_request_decode(rlm_rest_t *instance,
 			UNUSED rlm_rest_section_t *section,
 			REQUEST *request, void *handle)
 {
@@ -2268,7 +2268,7 @@ int rest_request_decode(rlm_rest_t *instance,
 }
 
 /** Cleans up after a REST request.
- * 
+ *
  * Resets all options associated with a CURL handle, and frees any headers
  * associated with it.
  *
@@ -2304,7 +2304,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance,
    	 * Free body data (only used if chunking is disabled)
    	 */
   	if (ctx->body != NULL) free(ctx->body);
-  
+
   	/*
    	 * Free other context info
    	 */
@@ -2313,7 +2313,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance,
 }
 
 /** URL encodes a string.
- * 
+ *
  * Encode special chars as per RFC 3986 section 4.
  *
  * @param[in] request Current request.
@@ -2336,7 +2336,7 @@ static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
 }
 
 /** Builds URI; performs XLAT expansions and encoding.
- * 
+ *
  * Splits the URI into "http://example.org" and "/%{xlat}/query/?bar=foo"
  * Both components are expanded, but values expanded for the second component
  * are also url encoded.

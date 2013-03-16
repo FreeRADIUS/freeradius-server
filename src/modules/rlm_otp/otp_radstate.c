@@ -80,7 +80,7 @@ RCSID("$Id$")
  * as an ASCII string (they only return data up to the first NUL byte).
  * So we must handle state as an ASCII string (0x00 -> 0x3030).
  */
- 
+
 /*
  * OTP_MAX_RADSTATE_LEN is composed of:
  *
@@ -90,13 +90,13 @@ RCSID("$Id$")
  *   sizeof(hmac) * 2 +		hmac
  *   1				\0'
  */
-  
+
 /** Generate an OTP state value
  *
  * Generates an OTP state value (an string of ASCII hexits in an opaque binary
  * string).
  *
- * @param[out] state buffer in which to write the generated state value. 
+ * @param[out] state buffer in which to write the generated state value.
  * @param[in] challenge The challenge value.
  * @param[in] clen The length of the challenge data.
  * @param[in] flags to remember.
@@ -131,7 +131,7 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	 */
 	p = state;
 	
-	/* 
+	/*
 	 *	Add the challenge (which is already ASCII encoded)
 	 */
 	p += fr_bin2hex((const uint8_t *) challenge, p, clen);

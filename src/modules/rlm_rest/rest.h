@@ -13,7 +13,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /*
  * $Id$
  *
@@ -22,7 +22,7 @@
  *
  * @copyright 2012-2013  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
  */
- 
+
 #include <freeradius-devel/ident.h>
 RCSIDH(other_h, "$Id$")
 
@@ -192,7 +192,7 @@ typedef struct rlm_rest_write_t {
 
 	char 		 *buffer;	/* HTTP incoming raw data */
 	size_t		 alloc;		/* Space allocated for buffer */
-	size_t		 used;		/* Space used in buffer */ 
+	size_t		 used;		/* Space used in buffer */
 
 	int		 code;		/* HTTP Status Code */
 	http_body_type_t type;		/* HTTP Content Type */

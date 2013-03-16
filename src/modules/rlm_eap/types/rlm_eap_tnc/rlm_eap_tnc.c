@@ -19,7 +19,7 @@
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  *
  */
- 
+
 /**
  * $Id$
  * @file rlm_eap_tnc.c
@@ -65,7 +65,7 @@ typedef struct rlm_eap_tnc {
 
 static CONF_PARSER module_config[] = {
 	{ "connection_string", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_eap_tnc_t, connection_string), NULL, 
+	  offsetof(rlm_eap_tnc_t, connection_string), NULL,
 	  "NAS Port: %{NAS-Port} NAS IP: %{NAS-IP-Address} NAS_PORT_TYPE: %{NAS-Port-Type}"},
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
@@ -90,7 +90,7 @@ static int tnc_attach(CONF_SECTION *cs, void **instance)
 	if (result != TNC_RESULT_SUCCESS) {
 		radlog(L_ERR, "rlm_eap_tnc: NAA-EAP initializeDefault returned an "
 		      "error code");
-		      
+		
 		return -1;
 	}
 
@@ -149,7 +149,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	TNC_Result result;
 	TNC_ConnectionID conn_id;
 
-	TNC_BufferReference eap_tnc_request; 
+	TNC_BufferReference eap_tnc_request;
 	TNC_BufferReference eap_tnc_user;
 	
 	VALUE_PAIR *username;
@@ -194,7 +194,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 
 	/*
 	 *	Previous code manually parsed the EAP identity response
-	 *	this was wrong. rlm_eap will *always* create the Username 
+	 *	this was wrong. rlm_eap will *always* create the Username
 	 *	from the EAP Identity response.
 	 *
 	 *	Something has gone very wrong if the User-Name doesn't exist.

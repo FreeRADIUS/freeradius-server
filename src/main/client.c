@@ -520,7 +520,7 @@ static const CONF_PARSER client_config[] = {
 
 	{ "src_ipaddr",  PW_TYPE_STRING_PTR,
 	  0, &cl_srcipaddr,  NULL },
-	  
+	
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
 	  offsetof(RADCLIENT, message_authenticator), 0, "no" },
 
@@ -1163,7 +1163,7 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 		      ip_ntoh(&request->packet->src_ipaddr,
 			      buffer, sizeof(buffer)),
 		      ip_ntoh(&c->ipaddr,
-			      buf2, sizeof(buf2)));		      
+			      buf2, sizeof(buf2)));		
 		goto error;
 	}
 

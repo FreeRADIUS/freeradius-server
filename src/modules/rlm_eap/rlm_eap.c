@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_eap.c
@@ -156,7 +156,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		method = eap_name2type(name);
 		if (method == PW_EAP_INVALID) {
 			radlog(L_ERR, "rlm_eap: Unknown EAP method %s",
-			       name);       
+			       name);
 			eap_detach(inst);
 			
 			return -1;
@@ -169,7 +169,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 			eap_detach(inst);
 			
 			return -1;
-		} 
+		}
 
 #ifndef HAVE_OPENSSL_SSL_H
 		/*

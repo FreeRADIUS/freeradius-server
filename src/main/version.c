@@ -65,7 +65,7 @@ int ssl_check_version(void)
  */
 const char *ssl_version(void)
 {
-	return SSLeay_version(SSLEAY_VERSION); 
+	return SSLeay_version(SSLEAY_VERSION);
 }
 #else
 int ssl_check_Version(void) {

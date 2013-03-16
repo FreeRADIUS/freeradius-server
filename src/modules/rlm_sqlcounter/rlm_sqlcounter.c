@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_sqlcounter.c
@@ -61,9 +61,9 @@ typedef struct rlm_sqlcounter_t {
 	char		*check_name;  	//!< Max-Daily-Session.
 	char		*reply_name;  	//!< Session-Timeout.
 	char		*key_name;  	//!< User-Name.
-	char		*sqlmod_inst;	//!< Instance of SQL module to use, 
+	char		*sqlmod_inst;	//!< Instance of SQL module to use,
 					//!< usually just 'sql'.
-	char		*query;		//!< SQL query to retrieve current 
+	char		*query;		//!< SQL query to retrieve current
 					//!< session time.
 	char		*reset;  	//!< Daily, weekly, monthly,
 					//!< never or user defined.

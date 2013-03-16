@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_yubikey.c
@@ -88,7 +88,7 @@ static size_t modhex2bin(const char *hex, uint8_t *bin, size_t len)
 		 *	We only deal with whole bytes
 		 */	
 		if (hex[(i << 1) + 1] == '\0')
-			return -1; 
+			return -1;
 		
 		if (!(c1 = memchr(modhextab, tolower((int) hex[i << 1]), 16)) ||
 		    !(c2 = memchr(modhextab, tolower((int) hex[(i << 1) + 1]), 16)))
@@ -334,7 +334,7 @@ static rlm_rcode_t yubikey_authenticate(void *instance, REQUEST *request)
 	}
 	
 	key = pairfind(request->config_items, PW_YUBIKEY_KEY, 0,
-		      TAG_ANY);     
+		      TAG_ANY);
 	if (!key) {
 		RDEBUGE("Yubikey-Key attribute not found in control "
 			"list, can't decrypt OTP data");
@@ -369,7 +369,7 @@ static rlm_rcode_t yubikey_authenticate(void *instance, REQUEST *request)
 		RDEBUG2("Private ID        : 0x%s", private_id);
 		RDEBUG2("Session counter   : %u", yubikey_counter(token.ctr));
 		RDEBUG2("# used in session : %u", token.use);
-		RDEBUG2("Token timetamp    : %u", 
+		RDEBUG2("Token timetamp    : %u",
 		        (token.tstph << 16) | token.tstpl);
 		RDEBUG2("Random data       : %u", token.rnd);
 		RDEBUG2("CRC data          : 0x%x", token.crc);

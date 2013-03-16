@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_redis.c
@@ -150,7 +150,7 @@ static size_t redis_xlat(void *instance, REQUEST *request,
 	if (!dissocket) {
 		radlog(L_ERR, "rlm_redis (%s): redis_get_socket() failed",
 		       inst->xlat_name);
-        
+
 		return 0;
 	}
 

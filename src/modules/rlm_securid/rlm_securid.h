@@ -10,9 +10,9 @@
 
 #define SAFE_STR(s) s==NULL?"EMPTY":s
 
-typedef enum { 
+typedef enum {
 	INITIAL_STATE = 0,
-	NEXT_CODE_REQUIRED_STATE = 100, 
+	NEXT_CODE_REQUIRED_STATE = 100,
 	NEW_PIN_REQUIRED_STATE = 200,
 	NEW_PIN_USER_CONFIRM_STATE = 201,
 	NEW_PIN_AUTH_VALIDATE_STATE = 202,
@@ -22,7 +22,7 @@ typedef enum {
 } SECURID_SESSION_STATE;
 
 /*
- * SECURID_SESSION is used to identify existing securID sessions 
+ * SECURID_SESSION is used to identify existing securID sessions
  * to continue Next-Token code and New-Pin conversations with a client
  *
  * next = pointer to next
@@ -47,10 +47,10 @@ typedef struct _securid_session_t {
 	fr_ipaddr_t		  src_ipaddr;
 	time_t			  timestamp;
 	unsigned int		  session_id;
-	int			  trips; 
+	int			  trips;
 	
 	char			  *pin;	     /* previous pin if user entered it during NEW-PIN mode process */
-	char			  *identity; /* save user's identity name for future use */ 
+	char			  *identity; /* save user's identity name for future use */
 
 } SECURID_SESSION;
 

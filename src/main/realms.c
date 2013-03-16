@@ -106,7 +106,7 @@ static const CONF_PARSER proxy_config[] = {
 	  offsetof(realm_config_t, fallback),
 	  NULL, "no" },
 
-	{ "dead_time",    PW_TYPE_INTEGER, 
+	{ "dead_time",    PW_TYPE_INTEGER,
 	  offsetof(realm_config_t, dead_time),
 	  NULL, Stringify(DEAD_TIME) },
 
@@ -468,7 +468,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 		}
 
 		if (!cf_section_sub_find_name2(rc->cs, "server", home->server)) {
-		  
+		
 			cf_log_err(cf_sectiontoitem(cs),
 				   "No such server %s", home->server);
 			goto error;

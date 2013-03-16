@@ -111,7 +111,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	DBSETLPWD(login, config->sql_password);
 	
 	if ((conn->dbproc = dbopen(login, config->sql_server)) == FAIL) {
-		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to connect to FreeTDS/MSSQL server %s@%s", 
+		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to connect to FreeTDS/MSSQL server %s@%s",
 			   config->xlat_name, config->sql_login, config->sql_server);
 		dbloginfree(login);
 		return -1;
@@ -120,7 +120,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	dbloginfree(login);
 	
 	if ((dbuse(conn->dbproc, config->sql_db)) == FAIL) {
-		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to select database on FreeTDS/MSSQL server %s@%s:%s", 
+		radlog(L_ERR, "rlm_sql_freetds (%s): Unable to select database on FreeTDS/MSSQL server %s@%s:%s",
 			   config->xlat_name, config->sql_login, config->sql_server, config->sql_db);
 		return -1;
 	}

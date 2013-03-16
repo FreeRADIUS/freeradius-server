@@ -163,7 +163,7 @@ open_self:
 	    ((inst->type->attach)(inst->cs, &(inst->instance)) < 0)) {
 		radlog(L_ERR, "rlm_eap: Failed to initialise %s",
 		       mod_name);
-		       
+		
 		talloc_steal(inst, inst->instance);
 		
 		return -1;
@@ -237,7 +237,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
  *
  */
 static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
-				    eap_type_t type, 
+				    eap_type_t type,
 			     	    eap_type_data_t *nak)
 {
 	unsigned int i;
@@ -272,7 +272,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		if (nak->data[i] == 0) {
 			RDEBUG("Peer NAK'd indicating it is not willing to "
 			       "continue ");
-			       
+			
 			return PW_EAP_INVALID;
 		}
 		
@@ -310,7 +310,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 				nak->data[i],
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
-				 
+				
 			continue;
 		}
 
@@ -346,7 +346,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 
 /** Select the correct callback based on a response
  *
- * Based on the EAP response from the supplicant, call the appropriate 
+ * Based on the EAP response from the supplicant, call the appropriate
  * method callback.
  *
  * Default to the configured EAP-Type for all Unsupported EAP-Types.
@@ -467,7 +467,7 @@ eap_code_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 					 "type %s (%d)",
 					 eap_type2name(type->num),
 					 type->num);
-					 
+					
 				return EAP_INVALID;
 			}
 
@@ -939,7 +939,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
 	    (eap_packet->data[0] <= 0) ||
 	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
 
-		radlog_request(L_AUTH, 0, request, 
+		radlog_request(L_AUTH, 0, request,
 			       "Badly formatted EAP Message: Ignoring the packet");
 		return EAP_INVALID;
 	}

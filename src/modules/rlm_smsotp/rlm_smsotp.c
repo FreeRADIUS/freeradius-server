@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_smsotp.c
@@ -154,7 +154,7 @@ static rlm_rcode_t smsotp_authenticate(void *instance, REQUEST *request)
 	}
 
 	DEBUG("rlm_smsotp: Generate OTP");
-  
+
 	/* set username */
   smsotp_write(fdp, "generate otp for ", 17);
   smsotp_write(fdp, (const char *) request->username->vp_strvalue, sizeof(request->username->vp_strvalue));
@@ -319,7 +319,7 @@ static int smsotp_read(smsotp_fd_t *fdp, char *buf, size_t len)
 {
   ssize_t n;
   size_t nread = 0;	/* bytes read into buf */
-  
+
   fd_set rfds;
   struct timeval tv;
   int retval;
@@ -345,7 +345,7 @@ static int smsotp_read(smsotp_fd_t *fdp, char *buf, size_t len)
     }
     nread += n;
 //    DEBUG("smsotp_read ... read more ?");
-    
+
     // check if more data is avalible
 		retval = select(1, &rfds, NULL, NULL, &tv);
 		if (!retval) {

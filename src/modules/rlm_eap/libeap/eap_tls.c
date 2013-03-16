@@ -701,7 +701,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
 		return FR_TLS_HANDLED;
 	}
 		
-	/* 
+	/*
 	 *	If there is no data to send i.e
 	 *	dirty_out.used <=0 and if the SSL
 	 *	handshake is finished, then return a
@@ -713,7 +713,7 @@ static fr_tls_status_t eaptls_operation(fr_tls_status_t status,
 		 *	Init is finished.  The rest is
 		 *	application data.
 		 */
-		tls_session->info.content_type = application_data; 
+		tls_session->info.content_type = application_data;
 		return FR_TLS_SUCCESS;
 	}
 	

@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 					exit(1);
 				}
 				fr_log_fp = fdopen(mainconfig.radlog_fd, "a");
-				break;		  
+				break;		
 
 			case 'i':
 				if (ip_hton(optarg, AF_UNSPEC, &mainconfig.myip) < 0) {
@@ -350,7 +350,7 @@ int main(int argc, char *argv[])
 	}
 	
 	/*
-	 *	Now we have logging check that the OpenSSL 
+	 *	Now we have logging check that the OpenSSL
 	 */
 
 	/*

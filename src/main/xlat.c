@@ -496,7 +496,7 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		case PW_TYPE_STRING:
 			if (vp->length > 8) {
 				break;
-			} 
+			}
 
 			memcpy(&integer, &(vp->vp_octets), vp->length);
 			
@@ -705,12 +705,12 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 {
 	int level = 0;
 	
-	/* 
+	/*
 	 *  Expand to previous (or current) level
 	 */
 	snprintf(out, outlen, "%d", request->options & RAD_REQUEST_OPTION_DEBUG4);
 
-	/* 
+	/*
 	 *  Assume we just want to get the current value and NOT set it to 0
 	 */
 	if (!*fmt)

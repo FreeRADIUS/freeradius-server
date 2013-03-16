@@ -2467,7 +2467,7 @@ static size_t print_attr_oid(char *buffer, size_t size, unsigned int attr,
 }
 
 /** Free dynamically allocated (unknown attributes)
- * 
+ *
  * If the da was dynamically allocated it will be freed, else the function
  * will return without doing anything.
  *
@@ -2628,7 +2628,7 @@ const DICT_ATTR *dict_attrunknownbyname(const char *attribute, int vp_free)
 			vendor = (int) strtol(p + 7, &q, 10);
 			if ((vendor == 0) || (vendor > FR_MAX_VENDOR)) {
 				fr_strerror_printf("Invalid vendor value in "
-						   "attribute name \"%s\"", 
+						   "attribute name \"%s\"",
 						   attribute);
 				return NULL;
 			}

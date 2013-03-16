@@ -328,7 +328,7 @@ int fb_init_socket(rlm_sql_firebird_conn_t *conn) {
 	radlog(L_DBG,"Init mutex %p\n",&conn->mut);
 #endif
 
-	/* 
+	/*
 	 *	Set tpb to read_committed/wait/no_rec_version
 	 */
 	fb_set_tpb(conn, 5, isc_tpb_version3, isc_tpb_wait, isc_tpb_write,
@@ -418,7 +418,7 @@ int fb_prepare(rlm_sql_firebird_conn_t *conn,char *sqlstr) {
 	short l;
 
 	if (!conn->trh) {
-		isc_start_transaction(conn->status, &conn->trh, 1, &conn->dbh, 
+		isc_start_transaction(conn->status, &conn->trh, 1, &conn->dbh,
 				      conn->tpb_len,conn->tpb);
 		if (!conn->trh) {
 			return -4;
@@ -500,7 +500,7 @@ int fb_affected_rows(rlm_sql_firebird_conn_t *conn) {
 	isc_dsql_sql_info(conn->status, &conn->stmt,
 			  sizeof (count_info), count_info,
 			  sizeof (info_buffer), info_buffer);
-			  
+			
 	if (IS_ISC_ERROR(conn->status)) {
 		return fb_lasterror(conn);
 	}

@@ -42,19 +42,19 @@ RCSIDH(extern_h, "$Id$")
 typedef struct otp_option {
 	const char *name;	//!< Instance name for otp_token_authorize().
 	char *otpd_rp;		//!< Otpd rendezvous point.
-	char *chal_prompt;	//!< Text to present challenge to user 
+	char *chal_prompt;	//!< Text to present challenge to user
 				//!< must have %s.
 				
 	int challenge_len;	//!< Challenge length, min 5 digits.
 	int challenge_delay;	//!< Max delay time for response, in seconds.
-	int allow_sync;		//!< Useful to override pwdfile 
+	int allow_sync;		//!< Useful to override pwdfile
 				//!< card_type settings.
 	int allow_async;	//!< C/R mode allowed?
 
-	int mschapv2_mppe_policy;	//!< Whether or not do to mppe for 
+	int mschapv2_mppe_policy;	//!< Whether or not do to mppe for
 					//!< mschapv2.
 	int mschapv2_mppe_types;	//!< Key type/length for mschapv2/mppe.
-	int mschap_mppe_policy;		//!< Whether or not do to mppe for 
+	int mschap_mppe_policy;		//!< Whether or not do to mppe for
 					//!< mschap .
 	int mschap_mppe_types;		//!< key type/length for mschap/mppe.
 } otp_option_t;

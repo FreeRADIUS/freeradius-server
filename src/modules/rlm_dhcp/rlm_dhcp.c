@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_dhcp.c
@@ -59,7 +59,7 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
 		 *out = '\0';
-		 
+		
 		 return 0;
 	}
 	
@@ -85,7 +85,7 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	fail:
 	
 	snprintf(out, freespace, "%i", decoded);
-			 
+			
 	return strlen(out);
 }
 

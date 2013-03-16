@@ -13,7 +13,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /*
  * $Id$
  *
@@ -320,7 +320,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 		 *	to close your program (_P_OVERLAY), to wait
 		 *	until the new process is finished (_P_WAIT) or
 		 *	for the two to run concurrently (_P_NOWAIT).
-		 
+		
 		 *	_spawn and _exec are useful for instances in
 		 *	which you have simple requirements for running
 		 *	the program, don't want the overhead of the
@@ -426,7 +426,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 		 */
 		if (nonblock) {
 			status = read(fd, answer + done, left);
-		} else 
+		} else
 #endif
 			/*
 			 *	There's at least 1 byte ready: read it.

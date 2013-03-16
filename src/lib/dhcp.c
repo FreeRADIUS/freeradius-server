@@ -791,14 +791,14 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	/*
 	 *	Loop over the options.
 	 */
-	 
+	
 	/*
-	 * 	Nothing uses tail after this call, if it does in the future 
+	 * 	Nothing uses tail after this call, if it does in the future
 	 *	it'll need to find the new tail...
 	 */
 	if (fr_dhcp_decode_options(packet,
 				   packet->data + 240, packet->data_len - 240,
-				   tail) < 0) { 
+				   tail) < 0) {
 		return -1;
 	}
 

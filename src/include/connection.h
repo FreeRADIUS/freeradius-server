@@ -15,7 +15,7 @@
  */
 #ifndef FR_CONNECTION_H
 #define FR_CONNECTION_H
-/* 
+/*
  * $Id$
  *
  * @file connection.h
@@ -24,7 +24,7 @@
  * @copyright 2012  The FreeRADIUS server project
  * @copyright 2012  Alan DeKok <aland@deployingradius.com>
  */
- 
+
 #include <freeradius-devel/ident.h>
 RCSIDH(connection_h, "$Id$")
 

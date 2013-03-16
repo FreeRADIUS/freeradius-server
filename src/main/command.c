@@ -203,7 +203,7 @@ static int fr_server_domain_socket(const char *path)
 			) {
 			radlog(L_ERR, "Cannot turn %s into socket", path);
 			close(sockfd);
-			return -1;		       
+			return -1;		
 		}
 
 		/*
@@ -380,7 +380,7 @@ static const char *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
  */
 static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION *cs,
 			       const void *base)
-			       
+			
 {
 	int i;
 	const void *data;
@@ -441,7 +441,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 
 		case PW_TYPE_BOOLEAN:
 			cprintf(listener, "%.*s%s = %s\n", indent, tabs,
-				variables[i].name, 
+				variables[i].name,
 				((*(const int *) data) == 0) ? "no" : "yes");
 			break;
 			
@@ -1994,7 +1994,7 @@ static fr_command_table_t command_table_set[] = {
 	  "set module <command> - set module commands",
 	  NULL, command_table_set_module },
 #ifdef WITH_PROXY
-	{ "home_server", FR_WRITE, 
+	{ "home_server", FR_WRITE,
 	  "set home_server <command> - set home server commands",
 	  NULL, command_table_set_home },
 #endif
@@ -2127,7 +2127,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 			       sock->gid_name, strerror(errno));
 			return -1;
 		}
-		sock->gid = gr->gr_gid; 
+		sock->gid = gr->gr_gid;
 	} else {
 		sock->gid = -1;
 	}
@@ -2154,7 +2154,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 	/*
 	 *	FIXME: check for absolute pathnames?
-	 *	check for uid/gid on the other end...	 
+	 *	check for uid/gid on the other end...	
 	 */
 
 	this->fd = fr_server_domain_socket(sock->path);
@@ -2675,7 +2675,7 @@ static int command_domain_accept(rad_listen_t *listener)
 
 			if (sock->uid_name && (sock->uid != uid)) {
 				radlog(L_ERR, "Unauthorized connection to %s from uid %ld",
-				       
+				
 				       sock->path, (long int) uid);
 				close(newfd);
 				return 0;

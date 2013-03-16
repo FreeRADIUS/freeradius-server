@@ -70,7 +70,7 @@ static pthread_mutex_t otp_fd_head_mutex = PTHREAD_MUTEX_INITIALIZER;
  * NB: The returned passcode will contain the PIN!  DO NOT LOG!
  */
 int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
-		 const otp_option_t *opt, 
+		 const otp_option_t *opt,
 		 char passcode[OTP_MAX_PASSCODE_LEN + 1])
 {
 	otp_request_t	otp_request;
@@ -92,7 +92,7 @@ int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 	
 	otp_request.pwe.pwe = pwe;
 
-	/* 
+	/*
 	 *	otp_pwe_present() (done by caller) guarantees that both of
 	 *	these exist
 	 */
@@ -127,24 +127,24 @@ int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 		if (cvp->length > 16) {
 			radlog(L_AUTH, "rlm_otp: CHAP challenge for [%s] "
 			       "too long", username);
-			       
+			
 			return RLM_MODULE_INVALID;
 		}
 		
 		if (rvp->length != 17) {
 			radlog(L_AUTH, "rlm_otp: CHAP response for [%s] "
 			      "wrong size", username);
-			      
+			
 			return RLM_MODULE_INVALID;
 		}
 		
 		(void) memcpy(otp_request.pwe.u.chap.challenge, cvp->vp_octets,
 			      cvp->length);
-			      
+			
 		otp_request.pwe.u.chap.clen = cvp->length;
 		(void) memcpy(otp_request.pwe.u.chap.response, rvp->vp_octets,
 			      rvp->length);
-			      
+			
 		otp_request.pwe.u.chap.rlen = rvp->length;
 		break;
 
@@ -152,14 +152,14 @@ int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 		if (cvp->length != 8) {
 			radlog(L_AUTH, "rlm_otp: MS-CHAP challenge for "
 			       "[%s] wrong size", username);
-			       
+			
 			return RLM_MODULE_INVALID;
 		}
 		
 		if (rvp->length != 50) {
 			radlog(L_AUTH, "rlm_otp: MS-CHAP response for [%s] "
 			       "wrong size", username);
-			       
+			
 			return RLM_MODULE_INVALID;
 		}
 		(void) memcpy(otp_request.pwe.u.chap.challenge,
@@ -177,14 +177,14 @@ int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 		if (cvp->length != 16) {
 			(void) radlog(L_AUTH, "rlm_otp: MS-CHAP2 challenge for "
 				      "[%s] wrong size", username);
-				      
+				
 			return RLM_MODULE_INVALID;
 		}
 		
 		if (rvp->length != 50) {
 			radlog(L_AUTH, "rlm_otp: MS-CHAP2 response for [%s] "
 			       "wrong size", username);
-			       
+			
 			return RLM_MODULE_INVALID;
 		}
 		
@@ -200,7 +200,7 @@ int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
 	} /* switch (otp_request.pwe.pwe) */
 
 	/*
-	 *	last byte must also be a terminator so otpd can verify 
+	 *	last byte must also be a terminator so otpd can verify
 	 *	length easily.
 	 */
 	otp_request.username[OTP_MAX_USERNAME_LEN] = '\0';
@@ -339,7 +339,7 @@ static int otp_write(otp_fd_t *fdp, const char *buf, size_t len)
 			} else {
 				radlog(L_ERR, "rlm_otp: %s: write to otpd: %s",
 				       __func__, strerror(errno));
-		       
+		
 				otp_putfd(fdp, 1);
 				return errno;
 	
@@ -364,7 +364,7 @@ static int otp_connect(const char *path)
 	if (sp_len > sizeof(sa.sun_path) - 1) {
 		radlog(L_ERR, "rlm_otp: %s: rendezvous point name too long",
 		       __func__);
-		       
+		
 		return -1;
 	}
 	sa.sun_family = AF_UNIX;
@@ -383,7 +383,7 @@ static int otp_connect(const char *path)
 		
 		radlog(L_ERR, "rlm_otp: %s: connect(%s): %s",
 		       __func__, path, strerror(errno));
-		       
+		
 		(void) close(fd);
 		
 		return -1;

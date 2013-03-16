@@ -168,7 +168,7 @@ void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 		handler->opaque = NULL;
 	}
 	else if ((handler->opaque) && (handler->free_opaque == NULL))
-                radlog(L_ERR, "rlm_eap (%s): Possible memory leak ...", 
+                radlog(L_ERR, "rlm_eap (%s): Possible memory leak ...",
                        inst->xlat_name);
 
 	handler->opaque = NULL;
@@ -505,7 +505,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 				       "sessions.  Try increasing "
 				       "\"max_sessions\" in the EAP module "
 				       "configuration", inst->xlat_name);
-			}				       
+			}				
 		} else {
 			radlog(L_ERR, "rlm_eap (%s): Internal error: "
 			       "failed to store handler", inst->xlat_name);
@@ -519,7 +519,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	       state->vp_octets[2], state->vp_octets[3],
 	       state->vp_octets[4], state->vp_octets[5],
 	       state->vp_octets[6], state->vp_octets[7]);
-	       
+	
 	pairadd(&(request->reply->vps), state);
 
 	return 1;
@@ -589,7 +589,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 		       state->vp_octets[2], state->vp_octets[3],
 		       state->vp_octets[4], state->vp_octets[5],
 		       state->vp_octets[6], state->vp_octets[7]);
-		       
+		
 		
 		eap_handler_free(inst, handler);
 		return NULL;

@@ -18,12 +18,12 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- *  Copyright (C) 2005-2006 Krzysztof Rzecki <krzysztof.rzecki@ccns.pl>      
- *  Copyright (C) 2005-2006 Rafal Mijal <rafal.mijal@ccns.pl>                
- *  Copyright (C) 2005-2006 Piotr Marnik <piotr.marnik@ccns.pl>              
- *  Copyright (C) 2005-2006 Pawel Matejski <pawel.matejski@ccns.pl>          
+ *  Copyright (C) 2005-2006 Krzysztof Rzecki <krzysztof.rzecki@ccns.pl>
+ *  Copyright (C) 2005-2006 Rafal Mijal <rafal.mijal@ccns.pl>
+ *  Copyright (C) 2005-2006 Piotr Marnik <piotr.marnik@ccns.pl>
+ *  Copyright (C) 2005-2006 Pawel Matejski <pawel.matejski@ccns.pl>
  *  Copyright 1999-2007 The FreeRADIUS server project
- * 
+ *
  */
 
 #include <freeradius-devel/radiusd.h>
@@ -59,7 +59,7 @@ static struct config_transform config_transforms[] =
      {"encryption",	IKEv2_TRT_ENCRYPTION_ALGORITHM,		OPT_ENCRYPTION},
      {"dhgroup",	IKEv2_TRT_DIFFIE_HELLMAN_GROUP,		OPT_DHGROUP },
      {NULL,0,0} /* end of list */
-    
+
 };
 
 
@@ -210,10 +210,10 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
  * Load all proposals from 'propsals' subsection
  */
 
-int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf) 
+int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf)
 {
     rad_assert(i2!=NULL && cf!=NULL);
-    
+
     CONF_SECTION *cf_prop=NULL;
     cf=cf_subsection_find_next(cf,NULL,"proposals");
     if(!cf) {
@@ -289,7 +289,7 @@ static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf)
 }
 
 
-void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *items,int default_client_authtype) 
+void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *items,int default_client_authtype)
 {
     rad_assert(list && id);
 
@@ -324,7 +324,7 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
 		radlog(L_ERR,IKEv2_LOG_PREFIX "Unsupported 'EAP-IKEv2-AuthType' value (%s),using 'both'",vp->vp_strvalue);
 		authtype=IKEv2_AUTH_BOTH;
 	    }
-	    
+	
 	}
 	AddSharedSec(list,id_type,id,secret,authtype);
     } else {
@@ -346,7 +346,7 @@ int rad_load_credentials(ikev2_ctx *i2,char *filename,char *authtype_name)
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Unsupported 'default_auth_type' value (%s), using both",authtype_name);
 	authtype=IKEv2_AUTH_BOTH;
     }
-    
+
     PAIR_LIST *users=NULL;
     if(getusersfile(filename,&users,"no")!=0) {
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading %s userfile",filename);
@@ -392,7 +392,7 @@ int rad_get_authtype(char* authtype_name)
     return IKEv2_AUTH_SK;
 }
 
-int file_exists(char *filename) 
+int file_exists(char *filename)
 {
     int result=0;
     FILE *fp=fopen(filename,"r");

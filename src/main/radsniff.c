@@ -162,7 +162,7 @@ static void sort(RADIUS_PACKET *packet)
 	for (i = 0; i < size - 1; i++)  {
 		for (j = 0; j < size - 1 - i; j++) {
 			if (array[j + 1]->da->attr < array[j]->da->attr)  {
-				tmp = array[j];         
+				tmp = array[j];
 				array[j] = array[j + 1];
 				array[j + 1] = tmp;
 			}
@@ -333,7 +333,7 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 
 	INFO(log_dst, "\t+%u.%03u", (unsigned int) elapsed.tv_sec,
 	       (unsigned int) elapsed.tv_usec / 1000);
-	       
+	
 	if (fr_debug_flag > 1) {
 		DEBUG(log_dst, "\n");
 		if (packet->vps) {

@@ -915,7 +915,7 @@ static const char *file_name(const char *path)
 
 #ifdef GEN_EXPORTS
 
-/** Returns a file's name without path or extension 
+/** Returns a file's name without path or extension
  *
  * @param path to check
  * @return pointer in path.
@@ -1284,7 +1284,7 @@ static void add_rpath(count_chars *cc, const char *path)
 	strcat(tmp, "=");
 #endif
 	strcat(tmp, path);
-  
+
 	push_count_chars(cc, tmp);
 }
 
@@ -1598,7 +1598,7 @@ static int parse_input_file_name(const char *arg, command_t *cmd)
 			 *	install, we're most likely getting the .la
 			 *	file that we want to install as.
 			 *
-			 *	The problem is that we need to add it as the 
+			 *	The problem is that we need to add it as the
 			 *	directory, not the .la file itself.
 			 *	Otherwise, we'll do odd things.
 			 */
@@ -2354,7 +2354,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 		/*
 		 *	Stop if we get another magic method
 		 */
-		if ((a == 1) && 
+		if ((a == 1) &&
 		    ((strncmp(arg, "LINK", 4) == 0) ||
 		     (strcmp(arg, "CC") == 0) ||
 		     (strcmp(arg, "CXX") == 0))) {
@@ -2471,7 +2471,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 				} else if (!strcmp(arg + 1, "undefined")) {
 					cmd->undefined_flag = argv[++a];
 					arg_used = 1;
-				/* 
+				/*
 				 *	Add dir to runtime library search path.
 				 */
 				} else if ((arg[1] == 'R') && !arg[2]) {
@@ -2484,7 +2484,7 @@ static void parse_args(int argc, char *argv[], command_t *cmd)
 		 *	Ok.. the argument doesn't begin with a dash
 		 *	maybe it's an input file.
 		 *
-		 *	Check its extension to see if it's a known input 
+		 *	Check its extension to see if it's a known input
 		 *	file and verify it exists.
 		 */
 		} else {

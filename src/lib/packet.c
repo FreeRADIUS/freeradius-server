@@ -173,7 +173,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 				fr_strerror_printf("Failed setting sockopt "
 						   "IPPROTO_IPV6 - IPV6_V6ONLY"
 						   ": %s", strerror(errno));
-				return -1;       
+				return -1;
 			}
 		}
 #endif /* IPV6_V6ONLY */
@@ -196,7 +196,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_MTU_DISCOVER: %s",
 					   strerror(errno));
-			return -1;   	       
+			return -1;   	
 		}
 #endif
 
@@ -211,7 +211,7 @@ int fr_socket(fr_ipaddr_t *ipaddr, int port)
 			fr_strerror_printf("Failed setting sockopt "
 					   "IPPROTO_IP - IP_DONTFRAG: %s",
 					   strerror(errno));
-			return -1;   
+			return -1;
 		}
 #endif
 	}
@@ -671,13 +671,13 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 		/*
 		 *	MUST match dst port, if we have one.
 		 */
-		if ((ps->dst_port != 0) && 
+		if ((ps->dst_port != 0) &&
 		    (ps->dst_port != request->dst_port)) continue;
 
 		/*
 		 *	MUST match requested src port, if one has been given.
 		 */
-		if ((request->src_port != 0) && 
+		if ((request->src_port != 0) &&
 		    (ps->src_port != request->src_port)) continue;
 
 		/*

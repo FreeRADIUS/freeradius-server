@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_expr.c
@@ -398,7 +398,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 			break;
 			
 			/*
-			 *  Binary data as hexits (we don't really support 
+			 *  Binary data as hexits (we don't really support
 			 *  non printable chars).
 			 */
 			case 'h':
@@ -416,7 +416,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 				radlog(L_ERR,
 				       "rlm_expr: invalid character class '%c'",
 				       *p);
-				       
+				
 				return 0;
 			break;
 		}
@@ -430,7 +430,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 }
 
 /**
- * @brief URLencode special characters 
+ * @brief URLencode special characters
  *
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
@@ -640,7 +640,7 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	
-	/* 
+	/*
 	 *  We can accurately calculate the length of the output string
 	 *  if it's larger than outlen, the output would be useless so abort.
 	 */

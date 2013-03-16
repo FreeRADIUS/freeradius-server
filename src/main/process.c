@@ -736,7 +736,7 @@ static void request_process_timer(REQUEST *request)
 
 	if ((request->reply->code == PW_AUTHENTICATION_REJECT) &&
 	    (request->root->reject_delay)) {
-		when = request->reply->timestamp; 
+		when = request->reply->timestamp;
 		when.tv_sec += request->root->reject_delay;
 
 		/*
@@ -1061,7 +1061,7 @@ STATE_MACHINE_DECL(request_finish)
 	 */
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		/*
-		 *	Override the response code if a 
+		 *	Override the response code if a
 		 *	control:Response-Packet-Type attribute is present.
 		 */
 		vp = pairfind(request->config_items, PW_RESPONSE_PACKET_TYPE, 0, TAG_ANY);
@@ -1102,7 +1102,7 @@ STATE_MACHINE_DECL(request_finish)
 		vp = radius_pairmake(request, &request->config_items,
 			     	     "Post-Auth-Type", "Challenge",
 			     	     T_OP_SET);
-				     
+				
 		if (vp) rad_postauth(request);
 		break;
 	default:
@@ -1287,7 +1287,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 			case PW_ACCOUNTING_REQUEST:
 				FR_STATS_INC(acct, total_dup_requests);
 				break;
-#endif					     
+#endif					
 #ifdef WITH_COA
 			case PW_COA_REQUEST:
 				FR_STATS_INC(coa, total_dup_requests);
@@ -3357,7 +3357,7 @@ STATE_MACHINE_DECL(coa_running)
 	case FR_ACTION_TIMER:
 		request_coa_timer(request);
 		break;
-	       
+	
 	case FR_ACTION_PROXY_REPLY:
 		request_common(request, action);
 		break;
@@ -3816,7 +3816,7 @@ int event_new_fd(rad_listen_t *this)
 					     this, &when, &sock->ev)) {
 				rad_panic("Failed to insert event");
 			}
-		       
+		
 			return 1;
 		}
 

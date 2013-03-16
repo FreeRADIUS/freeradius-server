@@ -512,7 +512,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		}
 
 		/*
-		 *	( EXPR ) 
+		 *	( EXPR )
 		 */
 		if (!found_condition && (*p == '(')) {
 			const char *end = p + 1;
@@ -1137,18 +1137,18 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		return RLM_MODULE_INVALID;
 	}
 	
-	/* 
+	/*
 	 *	Qualifiers not valid for this request
 	 */
 	if (radius_request(&update_request, request_name) < 0) {
 		RDEBUGW("List name refers to outer request"
 		       " but not in a tunnel.");
-		return RLM_MODULE_NOOP; 
+		return RLM_MODULE_NOOP;
 	}
 	
  	list = fr_str2int(pair_lists, name, PAIR_LIST_UNKNOWN);
- 
- 	/* 
+
+ 	/*
 	 *	Bad list name name
 	 */
 	if (list == PAIR_LIST_UNKNOWN) {

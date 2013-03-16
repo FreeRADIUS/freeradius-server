@@ -74,10 +74,10 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): no username");
 		return RLM_MODULE_FAIL;
 	}
-    
+
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	if (tDataBuff == NULL) {
-		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);  
+		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);
 		return RLM_MODULE_FAIL;
 	}
 	
@@ -87,19 +87,19 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 					eDSAuthenticationSearchNodeName,
 					&nodeCount, &context);
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
 		if (nodeCount < 1) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): nodeCount < 1, status = %ld", status);  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): nodeCount < 1, status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
 		
 		status = dsGetDirNodeName(dsRef, tDataBuff, 1, &nodeName);
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetDirNodeName() status = %ld", status);  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetDirNodeName() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -110,7 +110,7 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 		nodeName = NULL;
 		
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -135,7 +135,7 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 		status = dsGetRecordEntry(nodeRef, tDataBuff, 1,
 					  &attrListRef, &pRecEntry);
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;	
 		}
@@ -179,10 +179,10 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 			result = RLM_MODULE_NOOP;
 			break;
 		}
-        
+
 		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
 		if (pUserNode == NULL) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -192,7 +192,7 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 		free(pUserNode);
 
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);  
+			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -259,7 +259,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 		radlog(L_ERR,"rlm_mschap: od_mschap_auth(): dsOpenDirService = %d", status);
 		return RLM_MODULE_FAIL;
 	}
-    
+
 	status = getUserNodeRef(username_string, &shortUserName, &userNodeRef, dsRef);
 	if(status != RLM_MODULE_OK) {
 		if (status != RLM_MODULE_NOOP) {
@@ -272,14 +272,14 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 		return status;
 	}
 	
-	/* We got a node; fill the stepBuffer 
+	/* We got a node; fill the stepBuffer
 	   kDSStdAuthMSCHAP2
-	   MS-CHAPv2 authentication method. The Open Directory plug-in generates the reply data for the client. 
-	   The input buffer format consists of 
-	   a four byte length specifying the length of the user name that follows, the user name, 
-	   a four byte value specifying the length of the server challenge that follows, the server challenge, 
-	   a four byte value specifying the length of the peer challenge that follows, the peer challenge, 
-	   a four byte value specifying the length of the client's digest that follows, and the client's digest. 
+	   MS-CHAPv2 authentication method. The Open Directory plug-in generates the reply data for the client.
+	   The input buffer format consists of
+	   a four byte length specifying the length of the user name that follows, the user name,
+	   a four byte value specifying the length of the server challenge that follows, the server challenge,
+	   a four byte value specifying the length of the peer challenge that follows, the peer challenge,
+	   a four byte value specifying the length of the client's digest that follows, and the client's digest.
 	   The output buffer consists of a four byte value specifying the length of the return digest for the client's challenge.
 	   r = FillAuthBuff(pAuthBuff, 5,
 	   strlen(inName), inName,						// Directory Services long or short name

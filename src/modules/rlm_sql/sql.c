@@ -287,7 +287,7 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 		return -1;
 	}
 	
-	/* 
+	/*
 	 * We can't implement reconnect logic here, because the caller may require
 	 * the original connection to free up queries or result sets associated with
 	 * that connection.

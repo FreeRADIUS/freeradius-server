@@ -12,12 +12,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_attr_filter.c
  * @brief Filter the contents of a list, allowing only certain attributes.
- * 
+ *
  * @copyright (C) 2001,2006 The FreeRADIUS server project
  * @copyright (C) 2001 Chris Parker <cparker@starnetusa.net>
  */
@@ -294,7 +294,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 				}
 			}
 
-			/*  
+			/*
 			 *  Only move attribute if it passed all rules,
 			 *  or if the config says we should copy unmatched
 			 *  attributes ('relaxed' mode).
@@ -330,7 +330,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->username = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
-		if (!request->username) 
+		if (!request->username)
 			request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 	}

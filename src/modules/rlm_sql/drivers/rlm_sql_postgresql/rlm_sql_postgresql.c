@@ -388,7 +388,7 @@ static int sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *con
 static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
         rlm_sql_postgres_conn_t *conn = handle->conn;
-        
+
         conn->affected_rows = PQntuples(conn->result);
         if (conn->result)
                 return PQnfields(conn->result);

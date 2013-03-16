@@ -171,7 +171,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 
 	if (colourise && (len < sizeof(buffer))) {
 		len += strlcpy(buffer + len, VTC_RESET, sizeof(buffer) - len);
-	} 
+	}
 	
 	if (len < (sizeof(buffer) - 2)) {
 		buffer[len]	= '\n';
@@ -360,17 +360,17 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 			p[1] = '\0';
 		}
 		
-		len += strlcpy(buffer + len, 
+		len += strlcpy(buffer + len,
 			       fr_int2str(levels, lvl, ": "),
 		 	       sizeof(buffer) - len);
-		 	       
+		 	
 		if (len >= sizeof(buffer)) goto finish;
 	}
 	
 	if (request && request->module[0]) {
 		len = snprintf(buffer + len, sizeof(buffer) - len, "%s : ",
 			       request->module);
-			       
+			
 		if (len >= sizeof(buffer)) goto finish;
 	}
 	

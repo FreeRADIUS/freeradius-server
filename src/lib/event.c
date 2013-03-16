@@ -106,7 +106,7 @@ fr_event_list_t *fr_event_list_create(fr_event_status_t status)
 	if (!el) return NULL;
 	memset(el, 0, sizeof(*el));
 
-	el->times = fr_heap_create(fr_event_list_time_cmp, 
+	el->times = fr_heap_create(fr_event_list_time_cmp,
 				   offsetof(fr_event_t, heap));
 	if (!el->times) {
 		fr_event_list_free(el);
@@ -302,7 +302,7 @@ int fr_event_fd_delete(fr_event_list_t *el, int type, int fd)
 	}
 
 	return 0;
-}			 
+}			
 
 
 void fr_event_loop_exit(fr_event_list_t *el, int code)

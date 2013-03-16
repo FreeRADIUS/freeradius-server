@@ -7,8 +7,8 @@
 
 
 /*
- *  If were building a module we may have local PACKAGE_* defines if  
- *  AC_INIT() was called with full arguments.  
+ *  If were building a module we may have local PACKAGE_* defines if
+ *  AC_INIT() was called with full arguments.
  */
 #ifdef IS_MODULE
 #	undef PACKAGE_BUGREPORT

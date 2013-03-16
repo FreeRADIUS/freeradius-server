@@ -72,7 +72,7 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da)
 }
 
 /** Create a new valuepair
- * 
+ *
  * If attr and vendor match a dictionary entry then a VP with that DICT_ATTR
  * will be returned.
  *
@@ -81,7 +81,7 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da)
  *
  * Which type of DICT_ATTR the VALUE_PAIR was created with can be determined by
  * checking @verbatim vp->da->flags.is_unknown @endverbatim.
- * 
+ *
  * @param[in] ctx for allocated memory, usually a pointer to a RADIUS_PACKET
  * @param[in] attr number.
  * @param[in] vendor number.
@@ -103,7 +103,7 @@ VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 }
 
 /** Free memory used by a single valuepair.
- * 
+ *
  * @todo TLV: needs to die in fire.
  */
 void pairbasicfree(VALUE_PAIR *pair)
@@ -122,7 +122,7 @@ void pairbasicfree(VALUE_PAIR *pair)
 }
 
 /** Free memory used by a valuepair list.
- * 
+ *
  * @todo TLV: needs to free all dependents of each VP freed.
  */
 void pairfree(VALUE_PAIR **pair_ptr)
@@ -187,7 +187,7 @@ VALUE_PAIR *pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
 /** Delete matching pairs
  *
  * Delete matching pairs from the attribute list.
- * 
+ *
  * @param[in,out] first VP in list.
  * @param[in] attr to match.
  * @param[in] vendor to match.
@@ -217,7 +217,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 /** Add a VP to the end of the list.
  *
  * Locates the end of 'first', and links an additional VP 'add' at the end.
- * 
+ *
  * @param[in] first VP in linked list. Will add new VP to the end of this list.
  * @param[in] add VP to add to list.
  * @return a copy of the input VP
@@ -240,10 +240,10 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 /** Replace all matching VPs
  *
  * Walks over 'first', and replaces the first VP that matches 'replace'.
- * 
+ *
  * @note Memory used by the VP being replaced will be freed.
  * @note Will not work with unknown attributes.
- * 
+ *
  * @param[in,out] first VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
  * @return a copy of the input vp
@@ -350,7 +350,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
  * vp.
  *
  * @todo Should be able to do type conversions.
- * 
+ *
  * @param[in] da of new attribute to alloc.
  * @param[in] vp to copy data from.
  * @return the new valuepair.
@@ -391,7 +391,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
  *
  * Copy pairs of a matching attribute number, vendor number and tag from the
  * the input list to a new list, and returns the head of this list.
- * 
+ *
  * @param[in] vp which is head of the input list.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
  * @param[in] vendor to match.
@@ -447,10 +447,10 @@ VALUE_PAIR *paircopy(VALUE_PAIR *vp)
  *	 in most places. Consider using radius_pairmove in server code.
  *
  * @note pairfree should be called on the head of the source list to free
- *	 unmoved attributes (if they're no longer needed). 
+ *	 unmoved attributes (if they're no longer needed).
  *
  * @note Does not respect tags when matching.
- * 
+ *
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  *
@@ -529,7 +529,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 
 			found = pairfind(*to, i->da->attr, i->da->vendor,
 					 TAG_ANY);
-					 
+					
 			switch (i->op) {
 
 			/*
@@ -646,8 +646,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
  * the input list to the output list.
  *
  * @note pairfree should be called on the head of the old list to free unmoved
- 	 attributes (if they're no longer needed). 
- * 
+ 	 attributes (if they're no longer needed).
+ *
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  * @param[in] attr to match, if PW_VENDOR_SPECIFIC and vendor 0, only VSAs will
@@ -1327,7 +1327,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 		vp->length = 6;
 		break;
 
-	/* 
+	/*
 	 *	Crazy polymorphic (IPv4/IPv6) attribute type for WiMAX.
 	 *
 	 *	We try and make is saner by replacing the original
@@ -1622,7 +1622,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 			/*
 			 *	Just return the vp.
 			 *
-			 *	The value will likely be provided later by 
+			 *	The value will likely be provided later by
 			 *	an xlat expansion.
 			 */
 			return vp;
@@ -1726,7 +1726,7 @@ int pairmark_xlat(VALUE_PAIR *vp, const char *value)
 	vp->vp_strvalue[0] = '\0';
 	vp->length = 0;
 
-	return 0;	 
+	return 0;	
 }
 
 /** Read a single valuepair from a buffer, and advance the pointer
@@ -1836,7 +1836,7 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
 		return T_OP_INVALID;
 	}
 
-	/* 
+	/*
 	 *	Read value.  Note that empty string values are allowed
 	 */
 	quote = gettoken(ptr, raw->r_opand, sizeof(raw->r_opand));

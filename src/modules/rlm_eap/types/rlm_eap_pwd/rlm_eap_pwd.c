@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dan Harkins, 2012
  *
- *  Copyright holder grants permission for redistribution and use in source 
- *  and binary forms, with or without modification, provided that the 
+ *  Copyright holder grants permission for redistribution and use in source
+ *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
  *        notice, this list of conditions, and the following disclaimer
@@ -13,13 +13,13 @@
  *        distribution.
  *
  *  "DISCLAIMER OF LIABILITY
- *  
+ *
  *  THIS SOFTWARE IS PROVIDED BY DAN HARKINS ``AS IS'' AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
- *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE INDUSTRIAL LOUNGE BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+ *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
  *  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
  *  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
@@ -188,10 +188,10 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
         }
     } else {
         /*
-         * either it's not a fragment or it's the last fragment. 
+         * either it's not a fragment or it's the last fragment.
          * The out buffer isn't needed anymore though so get rid of it.
          */
-        memcpy(hdr->data, sess->out_buf + sess->out_buf_pos, 
+        memcpy(hdr->data, sess->out_buf + sess->out_buf_pos,
                (sess->out_buf_len - sess->out_buf_pos));
         free(sess->out_buf);
 	sess->out_buf = NULL;
@@ -207,7 +207,7 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
     eap_pwd_t *inst = (eap_pwd_t *)instance;
     VALUE_PAIR *vp;
     pwd_id_packet *pack;
-    
+
     if (!inst || !handler) {
         radlog(L_ERR, "rlm_eap_pwd: initiate, NULL data provided");
         return -1;
@@ -313,7 +313,7 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
     uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
     BIGNUM *x = NULL, *y = NULL;
 
-    if ((handler == NULL) || 
+    if ((handler == NULL) ||
         ((eap_ds = handler->eap_ds) == NULL) ||
         (inst == NULL)) {
         return 0;
@@ -424,7 +424,7 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
             *ptr = EAP_PWD_DEF_RAND_FUN;
             ptr += sizeof(uint8_t);
             *ptr = EAP_PWD_DEF_PRF;
-            
+
             pwd_session->peer_id_len = len - sizeof(pwd_id_packet);
             if (pwd_session->peer_id_len >= sizeof(pwd_session->peer_id)) {
                 RDEBUG2("pwd id response is malformed");
@@ -446,34 +446,34 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
                 request_free(&fake);
                 return 0;
             }
-            memcpy(fake->username->vp_strvalue, pwd_session->peer_id, 
+            memcpy(fake->username->vp_strvalue, pwd_session->peer_id,
                    pwd_session->peer_id_len);
             fake->username->length = pwd_session->peer_id_len;
             fake->username->vp_strvalue[fake->username->length] = 0;
 
 	    if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		    fake->server = vp->vp_strvalue;
-		    
+		
 	    } else if (inst->conf->virtual_server) {
 		    fake->server = inst->conf->virtual_server;
-		    
+		
 	    } /* else fake->server == request->server */
-	    
+	
 	    if ((debug_flag > 0) && fr_log_fp) {
 		    RDEBUG("Sending tunneled request");
-		    
+		
 		    debug_pair_list(fake->packet->vps);
-		    
+		
 		    fprintf(fr_log_fp, "server %s {\n",
 			    (fake->server == NULL) ? "" : fake->server);
 	    }
-	    
+	
 	    /*
 	     *	Call authorization recursively, which will
 	     *	get the password.
 	     */
 	    module_authorize(0, fake);
-	    
+	
 	    /*
 	     *	Note that we don't do *anything* with the reply
 	     *	attributes.
@@ -481,9 +481,9 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 	    if ((debug_flag > 0) && fr_log_fp) {
 		    fprintf(fr_log_fp, "} # server %s\n",
 			    (fake->server == NULL) ? "" : fake->server);
-		    
+		
 		    RDEBUG("Got tunneled reply code %d", fake->reply->code);
-		    
+		
 		    debug_pair_list(fake->reply->vps);
 	    }
 
@@ -531,7 +531,7 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
             /*
              * construct request
              */
-            pwd_session->out_buf_len = BN_num_bytes(pwd_session->order) + 
+            pwd_session->out_buf_len = BN_num_bytes(pwd_session->order) +
                 (2 * BN_num_bytes(pwd_session->prime));
             if ((pwd_session->out_buf = malloc(pwd_session->out_buf_len)) == NULL) {
                 radlog(L_ERR, "rlm_eap_pwd: out of memory to send commit");
@@ -546,7 +546,7 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
             ptr += BN_num_bytes(pwd_session->prime);
             offset = BN_num_bytes(pwd_session->prime) - BN_num_bytes(y);
             BN_bn2bin(y, ptr + offset);
-            
+
             ptr += BN_num_bytes(pwd_session->prime);
             offset = BN_num_bytes(pwd_session->order) - BN_num_bytes(pwd_session->my_scalar);
             BN_bn2bin(pwd_session->my_scalar, ptr + offset);

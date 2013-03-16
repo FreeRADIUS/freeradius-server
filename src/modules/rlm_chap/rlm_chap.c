@@ -12,12 +12,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_chap.c
  * @brief Process chap authentication requests.
- * 
+ *
  * @copyright 2001,2006  The FreeRADIUS server project
  * @copyright 2001  Kostas Kalevras <kkalev@noc.ntua.gr>
  */

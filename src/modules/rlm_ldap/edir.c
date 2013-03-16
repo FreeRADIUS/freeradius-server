@@ -85,7 +85,7 @@ static int berEncodePasswordData(struct berval **requestBV, char *object_dn)
 	}
 
 	object_len = strlen(object_dn) + 1;
-   
+
 	rc = ber_printf(requestBer, "{io}", NMAS_LDAP_EXT_VERSION,
 			object_dn, object_len);
 	if (rc < 0) {

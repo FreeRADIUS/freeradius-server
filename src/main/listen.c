@@ -2297,9 +2297,9 @@ static int listen_bind(rad_listen_t *this)
 				       (char *)&on, sizeof(on)) < 0) {
 				radlog(L_ERR, "Failed setting socket to IPv6 "
 				       "only: %s", strerror(errno));	
-		       		       
+		       		
 		       		close(this->fd);
-				return -1;       
+				return -1;
 			}
 		}
 #endif /* IPV6_V6ONLY */
@@ -2320,9 +2320,9 @@ static int listen_bind(rad_listen_t *this)
 			       &flag, sizeof(flag)) < 0) {
 			radlog(L_ERR, "Failed disabling PMTU discovery: %s",
 			       strerror(errno));
-			       
+			
 			close(this->fd);
-			return -1;    		       
+			return -1;    		
 		}
 #endif
 
@@ -2334,10 +2334,10 @@ static int listen_bind(rad_listen_t *this)
 		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG,
 			       &flag, sizeof(flag)) < 0) {
 			radlog(L_ERR, "Failed setting don't fragment flag: %s",
-			       strerror(errno));	  
-			       
+			       strerror(errno));	
+			
 			close(this->fd);
-			return -1;      
+			return -1;
 		}
 #endif
 	}

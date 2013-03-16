@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_ruby.c
@@ -190,12 +190,12 @@ static void add_vp_tuple(VALUE_PAIR **vpp, VALUE rb_value,
  * xxx We're not checking the errors. If we have errors, what do we do?
  */
 
-#define BUF_SIZE 1024    
+#define BUF_SIZE 1024
 static rlm_rcode_t ruby_function(REQUEST *request, int func,
 				 VALUE module, const char *function_name) {
-				 
+				
     rlm_rcode_t rcode = RLM_MODULE_OK;
-    
+
     char buf[BUF_SIZE]; /* same size as vp_print buffer */
 
     VALUE_PAIR *vp;
@@ -204,13 +204,13 @@ static rlm_rcode_t ruby_function(REQUEST *request, int func,
     int n_tuple;
     radlog(L_DBG, "Calling ruby function %s which has id: %d\n", function_name, func);
 
-    /* Return with "OK, continue" if the function is not defined. 
+    /* Return with "OK, continue" if the function is not defined.
      * TODO: Should check with rb_respond_to each time, just because ruby can define function dynamicly?
      */
     if (func == 0) {
         return rcode;
     }
-    
+
     n_tuple = 0;
 
     if (request) {
@@ -218,8 +218,8 @@ static rlm_rcode_t ruby_function(REQUEST *request, int func,
             n_tuple++;
         }
     }
-    
-    
+
+
     /*
         Creating ruby array, that contains arrays of [name,value]
         Maybe we should use hash instead? Can this names repeat?
@@ -249,8 +249,8 @@ static rlm_rcode_t ruby_function(REQUEST *request, int func,
     /* Calling corresponding ruby function, passing request and catching result */
     rb_result = rb_funcall(module, func, 1, rb_request);
 
-    /* 
-     *	Checking result, it can be array of type [result, 
+    /*
+     *	Checking result, it can be array of type [result,
      *	[array of reply pairs],[array of config pairs]],
      *	It can also be just a fixnum, which is a result itself.
      */
@@ -258,13 +258,13 @@ static rlm_rcode_t ruby_function(REQUEST *request, int func,
         if (!FIXNUM_P(rb_ary_entry(rb_result, 0))) {
             radlog(L_ERR, "rlm_ruby: First element of an array was not a "
             	   "FIXNUM (Which has to be a return_value)");
-            
+
             rcode = RLM_MODULE_FAIL;
             goto finish;
         }
-        
+
         rcode = FIX2INT(rb_ary_entry(rb_result, 0));
-        
+
         /*
          *	Only process the results if we were passed a request.
          */
@@ -280,7 +280,7 @@ static rlm_rcode_t ruby_function(REQUEST *request, int func,
     } else if (FIXNUM_P(rb_result)) {
         rcode = FIX2INT(rb_result);
     }
-    
+
     finish:
     return rcode;
 }

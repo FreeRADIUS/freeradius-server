@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_python.c
@@ -46,10 +46,10 @@ struct py_function_def {
 	
 	char     *module_name;
 	char     *function_name;
-}; 
+};
 
 struct rlm_python_t {
-	struct py_function_def 
+	struct py_function_def
 		instantiate,
 		authorize,
 		authenticate,
@@ -157,7 +157,7 @@ static PyObject *python_radlog(UNUSED PyObject *module, PyObject *args)
 }
 
 static PyMethodDef radiusd_methods[] = {
-	{ "radlog", &python_radlog, METH_VARARGS, 
+	{ "radlog", &python_radlog, METH_VARARGS,
 	  "radiusd.radlog(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
@@ -168,7 +168,7 @@ static PyMethodDef radiusd_methods[] = {
 
 static void python_error(void)
 {
-	PyObject 
+	PyObject
 		*pType = NULL,
 		*pValue = NULL,
 		*pTraceback = NULL,
@@ -207,13 +207,13 @@ static int python_init(void)
 	Py_Initialize();
 	PyEval_InitThreads(); /* This also grabs a lock */
 	
-	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods, 
+	if ((radiusd_module = Py_InitModule3("radiusd", radiusd_methods,
 					     "FreeRADIUS Module.")) == NULL)
 		goto failed;
 	
 	for (i = 0; radiusd_constants[i].name; i++)
 		if ((PyModule_AddIntConstant(radiusd_module,
-					     radiusd_constants[i].name, 
+					     radiusd_constants[i].name,
 					     radiusd_constants[i].value)) < 0)
 			goto failed;
 	

@@ -18,12 +18,12 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- *  Copyright (C) 2005-2006 Krzysztof Rzecki <krzysztof.rzecki@ccns.pl>      
- *  Copyright (C) 2005-2006 Rafal Mijal <rafal.mijal@ccns.pl>                
- *  Copyright (C) 2005-2006 Piotr Marnik <piotr.marnik@ccns.pl>              
- *  Copyright (C) 2005-2006 Pawel Matejski <pawel.matejski@ccns.pl>          
+ *  Copyright (C) 2005-2006 Krzysztof Rzecki <krzysztof.rzecki@ccns.pl>
+ *  Copyright (C) 2005-2006 Rafal Mijal <rafal.mijal@ccns.pl>
+ *  Copyright (C) 2005-2006 Piotr Marnik <piotr.marnik@ccns.pl>
+ *  Copyright (C) 2005-2006 Pawel Matejski <pawel.matejski@ccns.pl>
  *  Copyright 1999-2007 The FreeRADIUS server project
- * 
+ *
  */
 
 #include <freeradius-devel/radiusd.h>
@@ -100,10 +100,10 @@ static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
 	if(eap_ds->request->code<=PW_EAP_REQUEST && olen>4) {
 	    int lenn=(int)ntohs(((struct EAPHeader *)out)->Length);
 	    eap_ds->request->type.data = malloc(lenn);
-	    if (eap_ds->request->type.data == NULL) { 
+	    if (eap_ds->request->type.data == NULL) {
 		radlog(L_ERR, IKEv2_LOG_PREFIX "out of memory");
 		return 1;
-	    }       
+	    }
 	    memcpy(eap_ds->request->type.data,out+5,lenn-5);
 	    eap_ds->request->type.length = lenn-5;
 	} else {
@@ -186,13 +186,13 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	{  "DH_counter_max", PW_TYPE_INTEGER,
 	    offsetof(ikev2_ctx,DHCounterMax),NULL,IKEv2_DEFAULT_DH_COUNTER_MAX_STR},
 	{  "default_authtype",PW_TYPE_STRING_PTR,
-	    0,&default_authtype,"both" },  
+	    0,&default_authtype,"both" },
 	{  "usersfile",PW_TYPE_STRING_PTR,
-	    0,&usersfilename,"${confdir}/users" },  
+	    0,&usersfilename,"${confdir}/users" },
 	{  "server_authtype",PW_TYPE_STRING_PTR,
-	    0,&server_authtype,"secret" },  
+	    0,&server_authtype,"secret" },
 	{  "idtype",PW_TYPE_STRING_PTR,
-	    0,&server_idtype,IKEv2_DEFAULT_IDTYPE_STR},  
+	    0,&server_idtype,IKEv2_DEFAULT_IDTYPE_STR},
 	{  "certreq",PW_TYPE_BOOLEAN,
 	    offsetof(ikev2_ctx,sendCertReq),NULL,"no"},
 	{  "fast_DH_exchange",PW_TYPE_BOOLEAN,
@@ -205,7 +205,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 
  	{ NULL, -1, 0, NULL, NULL }           /* end the list */
      };
-    
+
     ikev2_set_log_callback(vxlogf);
 
     struct ikev2_ctx *i2;
@@ -243,7 +243,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR,IKEv2_LOG_PREFIX "Can not open 'private_key_file' %s",i2->pkfile);
 		return -1;
 	    }
-	    
+	
 	    break;
     }
     if(!i2->trusted) {
@@ -260,7 +260,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	    return -1;
 	}
     }
-    
+
     i2->idtype=IdTypeFromName(server_idtype);
     if(i2->idtype<=0) {
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Unsupported 'idtype': %s",server_idtype);
@@ -277,7 +277,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading users credentials");
 	return -1;
     }
-    
+
     i2->x509_store = NULL;
     if(CertInit(i2)){
         radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading certs/crl");
@@ -285,7 +285,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
     }
 
     return 0;
-} 
+}
 
 
 
@@ -297,18 +297,18 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 static int ikev2_initiate(void *instance, eap_handler_t *handler)
 {
     radlog( L_INFO,IKEv2_LOG_PREFIX "Initiate connection!");
-// This is the way for silent discarding behavior    
+// This is the way for silent discarding behavior
 //    handler->request->options|=RAD_REQUEST_OPTION_FAKE_REQUEST;
 //    handler->request->options|=RAD_REQUEST_OPTION_DONT_CACHE;
 //    handler->request->reply->code=0;
 //    return 0;
-    
+
     struct ikev2_ctx *i2=(struct ikev2_ctx*)instance;
 
 
     struct IKEv2Session *session;
     handler->free_opaque=ikev2_free_opaque;
-    
+
 
     // try get respondent FASTID
     uint8_t *eap_username=handler->request->username->vp_strvalue;
@@ -322,7 +322,7 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
 	radlog(L_DBG, IKEv2_LOG_PREFIX "Fast reconnect procedure start");
     }
     session->timestamp=time(NULL);
-    
+
     struct IKEv2Data *ikev2_data=IKEv2Data_new(i2,session);
     handler->opaque=ikev2_data;
 
@@ -341,7 +341,7 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
 	radlog(L_ERR,"XXX: session list contains:%d",session_count);
     }
 #endif
-    
+
 
     uint8_t *sikemsg=NULL;
     u_int32_t slen=0;
@@ -402,7 +402,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 			!eap_ds->response                            ||
 			(eap_ds->response->code != PW_IKEV2_RESPONSE)  ||
 			eap_ds->response->type.num != PW_EAP_IKEV2    ||
-			!eap_ds->response->type.data){ 
+			!eap_ds->response->type.data){
 		radlog(L_ERR, IKEv2_LOG_PREFIX "corrupted data");
 		return -1;
 	}
@@ -415,7 +415,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	}
 
 	rad_assert(in!=NULL);
-	struct EAPHeader *hdr = (struct EAPHeader *)in; 
+	struct EAPHeader *hdr = (struct EAPHeader *)in;
 
 	hdr->Code=eap_ds->response->code;
 	hdr->Id=eap_ds->response->id;
@@ -460,7 +460,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	if( !ikemsg || !len )     // send fragment ack
 	{
                 if(session->SK_ready) session->include_integ=1;
-		olen = CreateFragmentAck( in, &out, session ); // confirm fragment 
+		olen = CreateFragmentAck( in, &out, session ); // confirm fragment
 		free(in);
 		in=NULL;
 		if(ComposeRadMsg(out,olen,handler->eap_ds)){
@@ -472,7 +472,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	}
 	free(in);
 	in=NULL;
-    
+
 	uint8_t *sikemsg=NULL;   //out message
 	u_int32_t slen=0;
 
@@ -486,7 +486,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 
 	free( ikemsg );
 
-	if( slen != 0 ) //if there is there is something to send 
+	if( slen != 0 ) //if there is there is something to send
 	{
 		olen = CreateIKEv2Message(i2, sikemsg, slen, false, 0, session, &out );
 		//bobo: a to co ?
@@ -505,7 +505,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 			olen = CreateResultMessage( true, session, &out );
                         session->fFastReconnect=i2->enableFastReconnect;
 
-                        
+
                         //bobo:session->eapKeyData jest zle zainicjalizowane tutaj !!!!!!!!!!!!!! nie jest NULL!!!!!!!!!!1!!!!!!!!!!!!!!!!!!!!!!!11
                         GenEapKeys(session,EAP_IKEv2_KEY_LEN);
                         set_mppe_keys(handler);

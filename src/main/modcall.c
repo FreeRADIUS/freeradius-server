@@ -632,7 +632,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						    request->packet->vps,
 						    NULL, 1);
 			}
-					    
+					
 			goto skip; /* don't change anything on the stack */
 		}
 
@@ -1453,7 +1453,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	vp_name = name2;
 	if (strncmp(vp_name, "outer.", 6) == 0) {
 		vp_name += 6;
-	} 
+	}
 
 	for (i = 0; attrlist_names[i] != NULL; i++) {
 		if (strcmp(vp_name, attrlist_names[i]) == 0) {
@@ -2109,7 +2109,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (!this) do {
 		int i;
 		char *p;
-	  
+	
 		/*
 		 *	Maybe it's module.method
 		 */

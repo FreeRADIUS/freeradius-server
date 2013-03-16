@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_rediswho.c
@@ -41,12 +41,12 @@ typedef struct rlm_rediswho_t {
 	/*
 	 * 	expiry time in seconds if no updates are received for a user
 	 */
-	int expiry_time; 
+	int expiry_time;
 
 	/*
 	 *	How many session updates to keep track of per user
 	 */
-	int trim_count;             
+	int trim_count;
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
@@ -110,7 +110,7 @@ static int rediswho_instantiate(CONF_SECTION *conf, void ** instance)
 	 */
 	*instance = inst = talloc_zero(conf, rlm_rediswho_t);
 	if (!inst) return -1;
-    
+
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
@@ -121,7 +121,7 @@ static int rediswho_instantiate(CONF_SECTION *conf, void ** instance)
 
 	inst->xlat_name = cf_section_name2(conf);
 
-	if (!inst->xlat_name) 
+	if (!inst->xlat_name)
 		inst->xlat_name = cf_section_name1(conf);
 
 	inst->cs = conf;

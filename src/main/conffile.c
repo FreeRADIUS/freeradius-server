@@ -1450,7 +1450,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				 */
 				if (stat(value, &stat_buf) < 0) {
 					radlog(L_ERR, "%s[%d]: Failed reading directory %s: %s",
-					       filename, *lineno, 
+					       filename, *lineno,
 					       value, strerror(errno));
 					return -1;
 				}
@@ -1543,7 +1543,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				       filename, *lineno, buf2);
 				return -1;
 		       }
-		       
+		
 		       if (this->template) {
 				radlog(L_ERR, "%s[%d]: Section already has a template",
 				       filename, *lineno);
@@ -1970,7 +1970,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	    ((pair->value_type == T_DOUBLE_QUOTED_STRING) ||
 	     (pair->value_type == T_BACK_QUOTED_STRING))) {
 	     	VALUE_PAIR *vp;
-	     
+	
 		vp = pairmake(pair->attr, NULL, pair->op);
 		if (!vp) {
 			return NULL;

@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_sql.c
@@ -39,10 +39,10 @@ RCSID("$Id$")
 
 static const CONF_PARSER acct_section_config[] = {
 	{"reference", PW_TYPE_STRING_PTR,
-	  offsetof(sql_acct_section_t, reference), NULL, ".query"},  
+	  offsetof(sql_acct_section_t, reference), NULL, ".query"},
 	{"logfile", PW_TYPE_STRING_PTR,
 	 offsetof(sql_acct_section_t, logfile), NULL, NULL},
-	 
+	
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -99,7 +99,7 @@ static const CONF_PARSER module_config[] = {
 	 */
 	{"query_timeout", PW_TYPE_INTEGER,
 	 offsetof(rlm_sql_config_t,query_timeout), NULL, NULL},
-	 
+	
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -174,7 +174,7 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 			
 			return 0;
 		}
-	       
+	
 		numaffected = (inst->module->sql_affected_rows)(handle,
 								inst->config);
 		if (numaffected < 1) {
@@ -778,7 +778,7 @@ static int rlm_sql_detach(void *instance)
 	return 0;
 }
 
-static int parse_sub_section(CONF_SECTION *parent, 
+static int parse_sub_section(CONF_SECTION *parent,
 	 		     rlm_sql_t *inst,
 	 		     sql_acct_section_t **config,
 	 		     rlm_components_t comp)
@@ -870,7 +870,7 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 			return -1;
 		}
 
-		if (inst->config->groupmemb_query && 
+		if (inst->config->groupmemb_query &&
 		    inst->config->groupmemb_query[0]) {
 			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
 			      xlat_name, group_name);
@@ -969,10 +969,10 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	radlog(L_INFO, "rlm_sql (%s): Attempting to connect to database \"%s\"",
 	       inst->config->xlat_name, inst->config->sql_db);
-	       
+	
 	if (sql_socket_pool_init(inst) < 0) return -1;
 
-	if (inst->config->groupmemb_query && 
+	if (inst->config->groupmemb_query &&
 	    inst->config->groupmemb_query[0]) {
 		paircompare_register(PW_SQL_GROUP, PW_USER_NAME, sql_groupcmp, inst);
 	}
@@ -1011,7 +1011,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 		return RLM_MODULE_FAIL;
 
 	/*
-	 *  Reserve a socket 
+	 *  Reserve a socket
 	 *
 	 *  After this point use goto error or goto release to cleanup sockets
 	 *  temporary pairlists and temporary attributes.
@@ -1021,7 +1021,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 		goto error;
 
 	/*
-	 *  Query the check table to find any conditions associated with 
+	 *  Query the check table to find any conditions associated with
 	 *  this user/realm/whatever...
 	 */
 	if (inst->config->authorize_check_query &&
@@ -1042,7 +1042,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 		/*
 		 *  Only do this if *some* check pairs were returned
 		 */
-		if ((rows > 0) && 
+		if ((rows > 0) &&
 		    (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0)) {	
 			RDEBUG2("User found in radcheck table");
 			
@@ -1173,9 +1173,9 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
  *
  *	If the reference matches multiple config items, and a query fails or
  *	doesn't update any rows, the next matching config item is used.
- *  
+ *
  */
-static int acct_redundant(rlm_sql_t *inst, REQUEST *request, 
+static int acct_redundant(rlm_sql_t *inst, REQUEST *request,
 			  sql_acct_section_t *section)
 {
 	int	ret = RLM_MODULE_OK;
@@ -1246,7 +1246,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request,
 		
 		/*
 		 *  If rlm_sql_query cannot use the socket it'll try and
-		 *  reconnect. Reconnecting will automatically release 
+		 *  reconnect. Reconnecting will automatically release
 		 *  the current socket, and try to select a new one.
 		 *
 		 *  If we get SQL_DOWN it means all connections in the pool
@@ -1259,7 +1259,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request,
 		
 		rad_assert(handle);
 	
-		/* 
+		/*
 		 *  Assume all other errors are incidental, and just meant our
 		 *  operation failed and its not a client or SQL syntax error.
 		 */
@@ -1308,7 +1308,7 @@ static rlm_rcode_t rlm_sql_accounting(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;		
 
 	if (inst->config->accounting) {
-		return acct_redundant(inst, request, inst->config->accounting); 
+		return acct_redundant(inst, request, inst->config->accounting);
 	}
 	
 	return RLM_MODULE_NOOP;
@@ -1512,7 +1512,7 @@ static rlm_rcode_t rlm_sql_postauth(void *instance, REQUEST * request) {
 		return acct_redundant(inst, request, inst->config->postauth);
 	}
 	
-	return RLM_MODULE_NOOP; 
+	return RLM_MODULE_NOOP;
 }
 
 /*

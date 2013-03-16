@@ -60,7 +60,7 @@ freeradius-users@lists.freeradius.org
 
 @subsection dev_list FreeRADIUS-devel
 
-This list is for development of the server, including patches, and 
+This list is for development of the server, including patches, and
 new features. PLEASE DO NOT post questions related to the operation
 of the server here - use the "users" list. Most of the developers
 read both, and will answer your questions there if they have the time.

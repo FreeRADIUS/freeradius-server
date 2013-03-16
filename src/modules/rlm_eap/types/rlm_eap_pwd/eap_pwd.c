@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dan Harkins, 2012
  *
- *  Copyright holder grants permission for redistribution and use in source 
- *  and binary forms, with or without modification, provided that the 
+ *  Copyright holder grants permission for redistribution and use in source
+ *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
  *        notice, this list of conditions, and the following disclaimer
@@ -13,13 +13,13 @@
  *        distribution.
  *
  *  "DISCLAIMER OF LIABILITY
- *  
+ *
  *  THIS SOFTWARE IS PROVIDED BY DAN HARKINS ``AS IS'' AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
- *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE INDUSTRIAL LOUNGE BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+ *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
  *  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
  *  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
@@ -40,7 +40,7 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 
 /* The random function H(x) = HMAC-SHA256(0^32, x) */
-static void 
+static void
 H_Init(HMAC_CTX *ctx)
 {
     uint8_t allzero[SHA256_DIGEST_LENGTH];
@@ -49,13 +49,13 @@ H_Init(HMAC_CTX *ctx)
     HMAC_Init(ctx, allzero, SHA256_DIGEST_LENGTH, EVP_sha256());
 }
 
-static void 
+static void
 H_Update(HMAC_CTX *ctx, const uint8_t *data, int len)
 {
     HMAC_Update(ctx, data, len);
 }
 
-static void 
+static void
 H_Final(HMAC_CTX *ctx, uint8_t *digest)
 {
     unsigned int mdlen = SHA256_DIGEST_LENGTH;
@@ -65,7 +65,7 @@ H_Final(HMAC_CTX *ctx, uint8_t *digest)
 }
 
 /* a counter-based KDF based on NIST SP800-108 */
-static void 
+static void
 eap_pwd_kdf(uint8_t *key, int keylen, const char *label, int labellen,
             uint8_t *result, int resultbitlen)
 {
@@ -109,7 +109,7 @@ int
 compute_password_element (pwd_session_t *sess, uint16_t grp_num,
                           char *password, int password_len,
                           char *id_server, int id_server_len,
-                          char *id_peer, int id_peer_len, 
+                          char *id_peer, int id_peer_len,
                           uint32_t *token)
 {
     BIGNUM *x_candidate = NULL, *rnd = NULL, *cofactor = NULL;
@@ -430,8 +430,8 @@ compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     uint8_t *cruft = NULL;
     int offset, req = -1;
 
-    /* 
-     * Each component of the cruft will be at most as big as the prime 
+    /*
+     * Each component of the cruft will be at most as big as the prime
      */
     if (((cruft = malloc(BN_num_bytes(sess->prime))) == NULL) ||
         ((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
@@ -456,8 +456,8 @@ compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     BN_bn2bin(sess->k, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
 
-    /* 
-     * next is server element: x, y 
+    /*
+     * next is server element: x, y
      */
     if (!EC_POINT_get_affine_coordinates_GFp(sess->group,
                                              sess->my_element, x, y,
@@ -475,16 +475,16 @@ compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     BN_bn2bin(y, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
 
-    /* 
-     * and server scalar 
+    /*
+     * and server scalar
      */
     memset(cruft, 0, BN_num_bytes(sess->prime));
     offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->my_scalar);
     BN_bn2bin(sess->my_scalar, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->order));
 
-    /* 
-     * next is peer element: x, y 
+    /*
+     * next is peer element: x, y
      */
     if (!EC_POINT_get_affine_coordinates_GFp(sess->group,
                                              sess->peer_element, x, y,
@@ -503,16 +503,16 @@ compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     BN_bn2bin(y, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
 
-    /* 
-     * and peer scalar 
+    /*
+     * and peer scalar
      */
     memset(cruft, 0, BN_num_bytes(sess->prime));
     offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->peer_scalar);
     BN_bn2bin(sess->peer_scalar, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->order));
 
-    /* 
-     * finally, ciphersuite 
+    /*
+     * finally, ciphersuite
      */
     H_Update(&ctx, (uint8_t *)&sess->ciphersuite, sizeof(sess->ciphersuite));
 
@@ -537,8 +537,8 @@ compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     uint8_t *cruft = NULL;
     int offset, req = -1;
 
-    /* 
-     * Each component of the cruft will be at most as big as the prime 
+    /*
+     * Each component of the cruft will be at most as big as the prime
      */
     if (((cruft = malloc(BN_num_bytes(sess->prime))) == NULL) ||
         ((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
@@ -563,8 +563,8 @@ compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     BN_bn2bin(sess->k, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
 
-    /* 
-     * then peer element: x, y 
+    /*
+     * then peer element: x, y
      */
     if (!EC_POINT_get_affine_coordinates_GFp(sess->group,
                                              sess->peer_element, x, y,
@@ -583,16 +583,16 @@ compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     BN_bn2bin(y, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
 
-    /* 
-     * and peer scalar 
+    /*
+     * and peer scalar
      */
     memset(cruft, 0, BN_num_bytes(sess->prime));
     offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->peer_scalar);
     BN_bn2bin(sess->peer_scalar, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->order));
 
-    /* 
-     * then server element: x, y 
+    /*
+     * then server element: x, y
      */
     if (!EC_POINT_get_affine_coordinates_GFp(sess->group,
                                              sess->my_element, x, y,
@@ -610,16 +610,16 @@ compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     BN_bn2bin(y, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
 
-    /* 
-     * and server scalar 
+    /*
+     * and server scalar
      */
     memset(cruft, 0, BN_num_bytes(sess->prime));
     offset = BN_num_bytes(sess->order) - BN_num_bytes(sess->my_scalar);
     BN_bn2bin(sess->my_scalar, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->order));
 
-    /* 
-     * finally, ciphersuite 
+    /*
+     * finally, ciphersuite
      */
     H_Update(&ctx, (uint8_t *)&sess->ciphersuite, sizeof(sess->ciphersuite));
 
@@ -637,7 +637,7 @@ fin:
 }
 
 int
-compute_keys (pwd_session_t *sess, uint8_t *peer_confirm, 
+compute_keys (pwd_session_t *sess, uint8_t *peer_confirm,
               uint8_t *msk, uint8_t *emsk)
 {
     HMAC_CTX ctx;

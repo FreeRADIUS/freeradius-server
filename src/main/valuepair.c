@@ -329,7 +329,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
  * @param check
  * @param check_pairs
  * @param reply_pairs value pairs in the reply
- * @return 
+ * @return
  */
 int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
@@ -410,7 +410,7 @@ static int otherattr(unsigned int attribute)
  * @param instance argument to comparison function
  * @return 0
  */
-int paircompare_register(unsigned int attribute, int other_attr, 
+int paircompare_register(unsigned int attribute, int other_attr,
 			 RAD_COMPARE_FUNC func, void *instance)
 {
 	struct cmp *c;
@@ -537,7 +537,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	try_again:
 		if (other >= 0) {
 			while (auth_item != NULL) {
-				if ((auth_item->da->attr == 
+				if ((auth_item->da->attr ==
 				    (unsigned int) other) ||
 				    (other == 0)) {
 					break;
@@ -896,7 +896,7 @@ void debug_pair_list(VALUE_PAIR *vp)
 }
 
 /** Print a list of valuepairs to the request list.
- * 
+ *
  * @param[in] level Debug level (1-4).
  * @param[in] request to read logging params from.
  * @param[in] vp to print.
@@ -915,7 +915,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 }
 
 /** Resolve attribute pair_lists_t value to an attribute list.
- * 
+ *
  * The value returned is a pointer to the pointer of the HEAD of the list
  * in the REQUEST. If the head of the list changes, the pointer will still
  * be valid.
@@ -996,7 +996,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
  * an pair_lists_t value for that list. This value may be passed to
  * radius_list, along with the current request, to get a pointer to the
  * actual list in the request.
- * 
+ *
  * If qualifiers were consumed, write a new pointer into name to the
  * char after the last qualifier to be consumed.
  *
@@ -1020,10 +1020,10 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
 	/*
 	 *	We couldn't determine the list if:
 	 *	
-	 * 	A colon delimiter was found, but the next char was a 
+	 * 	A colon delimiter was found, but the next char was a
 	 *	number, indicating a tag, not a list qualifier.
 	 *
-	 *	No colon was found and the first char was upper case 
+	 *	No colon was found and the first char was upper case
 	 *	indicating an attribute.
 	 *
 	 */
@@ -1044,7 +1044,7 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
 }
 
 /** Resolve request to a request.
- * 
+ *
  * Resolve name to a current request.
  *
  * @see radius_list
@@ -1084,7 +1084,7 @@ int radius_request(REQUEST **context, request_refs_t name)
 }
 
 /** Resolve attribute name to a request.
- * 
+ *
  * Check the name string for qualifiers that reference a parent request and
  * write the pointer to this request to 'request'.
  *
@@ -1139,16 +1139,16 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
 
 /** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
  *
- * VPTs are used in various places where we need to pre-parse configuration 
+ * VPTs are used in various places where we need to pre-parse configuration
  * sections into attribute mappings.
  *
  * Note: name field is just a copy of the input pointer, if you know that
  * string might be freed before you're done with the vpt use radius_attr2tmpl
  * instead.
- * 
+ *
  * @param[in] name attribute name including qualifiers.
  * @param[out] vpt to modify.
- * @param[in] request_def The default request to insert unqualified 
+ * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return -1 on error or 0 on success.
@@ -1212,14 +1212,14 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 
 /** Parse qualifiers to convert attrname into a value_pair_tmpl_t.
  *
- * VPTs are used in various places where we need to pre-parse configuration 
+ * VPTs are used in various places where we need to pre-parse configuration
  * sections into attribute mappings.
  *
  * @param[in] name attribute name including qualifiers.
- * @param[in] request_def The default request to insert unqualified 
+ * @param[in] request_def The default request to insert unqualified
  *	attributes into.
  * @param[in] list_def The default list to insert unqualified attributes into.
- * @return pointer to a value_pair_tmpl_t struct (must be freed with 
+ * @return pointer to a value_pair_tmpl_t struct (must be freed with
  *	radius_tmplfree) or NULL on error.
  */
 value_pair_tmpl_t *radius_attr2tmpl(const char *name,
@@ -1297,7 +1297,7 @@ void radius_mapfree(value_pair_map_t **map)
 /** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
  *
  * Treats the left operand as an attribute reference
- * @verbatim<request>.<list>.<attribute>@endverbatim 
+ * @verbatim<request>.<list>.<attribute>@endverbatim
  *
  * Treatment of left operand depends on quotation, barewords are treated as
  * attribute references, double quoted values are treated as expandable strings,
@@ -1326,7 +1326,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	const char *attr;
 	const char *value;
 	FR_TOKEN type;
-	CONF_ITEM *ci = cf_pairtoitem(cp); 
+	CONF_ITEM *ci = cf_pairtoitem(cp);
 	
 	if (!cp) return NULL;
 	
@@ -1363,7 +1363,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	/*
 	 *	Lots of sanity checks for insane people...
 	 */
-	 
+	
 	/*
 	 *	We don't support implicit type conversion
 	 */
@@ -1384,7 +1384,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 		goto error;
 	}
 
-	switch (map->src->type) 
+	switch (map->src->type)
 	{
 	
 		/*
@@ -1427,7 +1427,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
  *
  * @param[in] parent to convert to map.
  * @param[out] head Where to store the head of the map.
- * @param[in] dst_list_def The default destination list, usually dictated by 
+ * @param[in] dst_list_def The default destination list, usually dictated by
  * 	the section the module is being called in.
  * @param[in] src_list_def The default source list, usually dictated by the
  *	section the module is being called in.
@@ -1543,7 +1543,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 		RDEBUGW("Mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
 		       map->src->name, map->dst->name);
-		       
+		
 		return -1;
 	}
 	
@@ -1559,7 +1559,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 			vp_prints_value(buffer, sizeof(buffer), vp, 1);
 			
 			RDEBUG("\t%s %s %s (%s)", map->dst->name,
-			       fr_int2str(fr_tokens, vp->op, "¿unknown?"), 
+			       fr_int2str(fr_tokens, vp->op, "¿unknown?"),
 			       buffer, src ? src : map->src->name);
 		}
 	}
@@ -1577,7 +1577,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
  *
  * @param request current request.
  * @param name attribute name including qualifiers.
- * @param vp_p where to write the pointer to the resolved VP. 
+ * @param vp_p where to write the pointer to the resolved VP.
  *	Will be NULL if the attribute couldn't be resolved.
  * @return -1 if either the attribute or qualifier were invalid, else 0
  */
@@ -1598,7 +1598,7 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 	}
 	
 	vps = radius_list(request, vpt.list);
-	if (!vps) {    
+	if (!vps) {
 		return 0;
 	}
 	

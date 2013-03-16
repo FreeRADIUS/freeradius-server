@@ -358,7 +358,7 @@ static int dhcp_process(REQUEST *request)
 	}
 
 	/* Packet from client, and we have DHCP-Relay-To-IP-Address */
-	if (pairfind(request->config_items, 270, DHCP_MAGIC_VENDOR, TAG_ANY)) { 
+	if (pairfind(request->config_items, 270, DHCP_MAGIC_VENDOR, TAG_ANY)) {
 		return dhcprelay_process_client_request(request);
 	}
 

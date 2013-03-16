@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_rest.c
@@ -69,7 +69,7 @@ static const CONF_PARSER section_config[] = {
 	 offsetof(rlm_rest_section_t, method_str), NULL, "GET"   },
 	{ "body", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_rest_section_t, body_str),   NULL, "post"  },
-	 
+	
 	/* User authentication */
 	{ "auth", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_rest_section_t, auth_str),   NULL, "none"  },
@@ -81,7 +81,7 @@ static const CONF_PARSER section_config[] = {
 	 offsetof(rlm_rest_section_t, require_auth), NULL, "no"},
 
 	/* Transfer configuration */
-	{ "timeout", PW_TYPE_INTEGER, 
+	{ "timeout", PW_TYPE_INTEGER,
 	 offsetof(rlm_rest_section_t, timeout),    NULL, "0" },
 	{ "chunk", PW_TYPE_INTEGER,
 	 offsetof(rlm_rest_section_t, chunk), 	   NULL, "0" },
@@ -91,7 +91,7 @@ static const CONF_PARSER section_config[] = {
 
 	{ NULL, -1, 0, NULL, NULL }
 };
- 
+
 static const CONF_PARSER module_config[] = {
 	{ "connect_uri", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_rest_t, connect_uri), NULL, "http://localhost/" },
@@ -146,7 +146,7 @@ static void rlm_rest_cleanup (rlm_rest_t *instance, rlm_rest_section_t *section,
 	rest_request_cleanup(instance, section, handle);
 };
 
-static int parse_sub_section(CONF_SECTION *parent, 
+static int parse_sub_section(CONF_SECTION *parent,
 	 		     rlm_rest_t *instance, rlm_rest_section_t *config,
 	 		     rlm_components_t comp)
 {
@@ -177,7 +177,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	 */
 	config->auth = fr_str2int(http_auth_table, config->auth_str,
 				  HTTP_AUTH_UNKNOWN);
-				  
+				
 	if (config->auth == HTTP_AUTH_UNKNOWN) {
 		radlog(L_ERR, "rlm_rest (%s): Unknown HTTP auth type \"%s\"",
 		       instance->xlat_name, config->auth_str);
@@ -186,12 +186,12 @@ static int parse_sub_section(CONF_SECTION *parent,
 	
 	if (!http_curl_auth[config->auth]) {
 		radlog(L_ERR, "rlm_rest (%s): Unsupported HTTP auth type \"%s\""
-		       ", check libcurl version, OpenSSL build configuration," 
+		       ", check libcurl version, OpenSSL build configuration,"
 		       " then recompile this module",
 		       instance->xlat_name, config->auth_str);
 		return -1;
 	}
-				    
+				
 	config->method = fr_str2int(http_method_table, config->method_str,
 				    HTTP_METHOD_CUSTOM);
 
@@ -307,7 +307,7 @@ static rlm_rcode_t rlm_rest_authorize(void *instance, REQUEST *request)
 	if (!handle) return RLM_MODULE_FAIL;
 
 	ret = rlm_rest_perform(instance, section, handle, request);
-	if (ret < 0) { 
+	if (ret < 0) {
 		rcode = RLM_MODULE_FAIL;
 		goto end;
 	}

@@ -547,7 +547,7 @@ int detail_recv(rad_listen_t *listener)
 			if (ip_hton(value, AF_INET, &data->client_ip) < 0) {
 				radlog(L_ERR,
 				       "Failed parsing Client-IP-Address");
-				       
+				
 				pairfree(&data->vps);
 				goto cleanup;
 			}
@@ -610,7 +610,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	if (data->state != STATE_QUEUED) {
 		radlog(L_ERR, "Truncated record: treating it as EOF for detail file %s", data->filename_work);
-		goto cleanup;	  
+		goto cleanup;	
 	}
 
 	/*
@@ -619,7 +619,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	if (!data->vps) {
 		data->state = STATE_HEADER;
-		if (!data->fp || feof(data->fp)) goto cleanup; 
+		if (!data->fp || feof(data->fp)) goto cleanup;
 		return 0;
 	}
 

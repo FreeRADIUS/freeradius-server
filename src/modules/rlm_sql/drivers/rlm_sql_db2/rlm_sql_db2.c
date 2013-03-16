@@ -90,7 +90,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	if(retval != SQL_SUCCESS) {
 		radlog(L_ERR, "could not connect to DB2 server %s\n",
 		       config->sql_server);
-		       
+		
 		return -1;
 	}
 

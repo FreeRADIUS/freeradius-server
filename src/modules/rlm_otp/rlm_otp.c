@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_otp.c
@@ -153,7 +153,7 @@ static int otp_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-/* 
+/*
  *	Generate a challenge to be presented to the user.
  */
 static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
@@ -188,7 +188,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 	if (!request->username) {
 		radlog(L_AUTH, "rlm_otp: %s: Attribute \"User-Name\" "
 		       "required for authentication.", __func__);
-		       
+		
 		return RLM_MODULE_INVALID;
 	}
 
@@ -196,7 +196,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 		radlog(L_AUTH, "rlm_otp: %s: Attribute "
 		       "\"User-Password\" or equivalent required "
 		       "for authentication.", __func__);
-		       
+		
 		return RLM_MODULE_INVALID;
 	}
 
@@ -205,7 +205,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 	 * 	here, but these are complicated to explain and application is
 	 * 	limited.  More importantly, since we've removed all actual OTP
 	 * 	code (now we ask otpd), it's awkward for us to support them.
-	 * 	Should the need arise to reinstate these options, the most 
+	 * 	Should the need arise to reinstate these options, the most
 	 *	likely choice is to duplicate some otpd code here.
 	 */
 	if (inst->allow_sync && !inst->allow_async) {
@@ -225,14 +225,14 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 
 	/*
 	 *	Create the State attribute, which will be returned to
-	 *	us along with the response.  
+	 *	us along with the response.
 	 *
-	 *	We will need this to verify the response. 
+	 *	We will need this to verify the response.
 	 *
 	 *	It must be hmac protected to prevent insertion of arbitrary
 	 *	State by an inside attacker.
 	 *
-	 *	If we won't actually use the State (server config doesn't 
+	 *	If we won't actually use the State (server config doesn't
 	 *	allow async), we just use a trivial State.
 	 *
 	 *	We always create at least a trivial State, so otp_authorize()
@@ -343,7 +343,7 @@ static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 	if (!request->username) {
 		radlog(L_AUTH, "rlm_otp: %s: Attribute \"User-Name\" required "
 	  	       "for authentication.", __func__);
-	  	       
+	  	
 		return RLM_MODULE_INVALID;
 	}
 	
@@ -353,7 +353,7 @@ static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 	if (pwe == 0) {
 		radlog(L_AUTH, "rlm_otp: %s: Attribute \"User-Password\" "
 		       "or equivalent required for authentication.", __func__);
-		       
+		
 		return RLM_MODULE_INVALID;
 	}
 
@@ -376,7 +376,7 @@ static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 		size_t	len;
 
 		/*
-		 *	Set expected State length (see otp_gen_state()) 
+		 *	Set expected State length (see otp_gen_state())
 		 */
 		elen = (inst->challenge_len * 2) + 8 + 8 + 32;
 
@@ -402,7 +402,7 @@ static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 		if (len != (vp->length / 2)) {
 			radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: "
 			       "not hex", __func__, username);
-		       
+		
 			return RLM_MODULE_INVALID;
 		}
 
@@ -423,14 +423,14 @@ static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 			      then, hmac_key);
 
 		/*
-		 *	Compare generated state (in hex form) 
-		 *	against generated state (in hex form) 
+		 *	Compare generated state (in hex form)
+		 *	against generated state (in hex form)
 		 *	to verify hmac.
 		 */
 		if (memcmp(gen_state, vp->vp_octets, vp->length)) {
 			radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: "
 			       "hmac", __func__, username);
-	       
+	
 			return RLM_MODULE_REJECT;
 		}
 

@@ -92,7 +92,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	if (fb_connect(conn,config)) {
 		radlog(L_ERR, "rlm_sql_firebird: Connection failed %s\n",
 		       conn->lasterror);
-		       
+		
 		return SQL_DOWN;
 	}
 
@@ -113,7 +113,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 #endif
 
 	try_again:
-	/* 
+	/*
 	 *	Try again query when deadlock, beacuse in any case it
 	 *	will be retried.
 	 */
@@ -125,7 +125,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 	  		       querystr);
 	  		
 			/*
-			 *	@todo For non READ_COMMITED transactions put 
+			 *	@todo For non READ_COMMITED transactions put
 			 *	rollback here
 			 *	fb_rollback(conn);
 			 */
@@ -215,7 +215,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
 	 	if (res) {
 	  		radlog(L_ERR, "rlm_sql_firebird. Fetch problem:'%s'",
 	  		       conn->lasterror);
-	  		       
+	  		
 	   		return -1;
 	 	}
 	} else {
@@ -234,7 +234,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
  */
 static int sql_finish_select_query(rlm_sql_handle_t *handle,
 				   UNUSED rlm_sql_config_t *config) {
-				   
+				
 	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) handle->conn;
 	
 	fb_commit(conn);

@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_sql_sqlite.c
@@ -129,10 +129,10 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		radlog(L_ERR, "rlm_sql_sqlite: Failed stating SQL "
 		       "file \"%s\": %s", filename,
 		       strerror(errno));
-		       
+		
 		fclose(f);
 
-		return -1; 
+		return -1;
 	}
 	
 	if (finfo.st_size > BOOTSTRAP_MAX) {
@@ -140,10 +140,10 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		radlog(L_ERR, "rlm_sql_sqlite: Size of SQL "
 		       "(%zu) file exceeds limit (%uk)", (size_t) finfo.st_size / 1024,
 		       BOOTSTRAP_MAX / 1024);
-		       
+		
 		fclose(f);
 
-		return -1;       
+		return -1;
 	}
 	
 	MEM(buffer = talloc_array(NULL, char, finfo.st_size + 1));
@@ -151,13 +151,13 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 	if (len > finfo.st_size) {
 		talloc_free(buffer);
 		goto too_big;
-	} 
+	}
 	
 	if (!len) {
 		if (ferror(f)) {
 			radlog(L_ERR, "rlm_sql_sqlite: Error reading SQL "
 			       "file: %s", strerror(errno));
-			       
+			
 			fclose(f);
 			talloc_free(buffer);
 
@@ -210,7 +210,7 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		(void) sqlite3_prepare_v2(db, s, len, &statement, &z_tail);
 		if (sql_check_error(db)) {
 			talloc_free(buffer);
-			return -1;	    
+			return -1;	
 		}
 	
 		(void) sqlite3_step(statement);
@@ -219,7 +219,7 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		(void) sqlite3_finalize(statement);
 		if (status || sql_check_error(db)) {
 			talloc_free(buffer);
-			return -1;	    
+			return -1;	
 		}
 		
 		p = s = q + 1;
@@ -306,7 +306,7 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
 			       "opening/creating SQLite database, error "
 			       "code (%u)", status);
-			       
+			
 			goto unlink;
 		}
 		
@@ -321,14 +321,14 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
 			radlog(L_ERR, "rlm_sql_sqlite: Error closing SQLite "
-			       "handle, error code (%u)", status); 
+			       "handle, error code (%u)", status);
 			goto unlink;
 		}
 		
 		if (ret < 0) {
 			unlink:
 			if (unlink(driver->filename) < 0) {
-				radlog(L_ERR, "rlm_sql_sqlite: Error removing " 
+				radlog(L_ERR, "rlm_sql_sqlite: Error removing "
 				       "partially initialised database: %s",
 				       strerror(errno));
 			}
@@ -386,7 +386,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 		radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
 		       "opening/creating SQLite database error "
 		       "code (%u)", status);
-		       
+		
 		return -1;
 	}
 	
@@ -422,7 +422,7 @@ static int sql_select_query(rlm_sql_handle_t *handle,
 				 strlen(querystr), &conn->statement,
 				 &z_tail);
 #endif
-				 
+				
 	conn->col_count = 0;
 		
 	return sql_check_error(conn->db);
@@ -444,7 +444,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 	status = sqlite3_prepare(conn->db, querystr,
 				 strlen(querystr), &conn->statement,
 				 &z_tail);
-#endif				    
+#endif				
 	status = sqlite3_step(conn->statement);
 		
 	return sql_check_error(conn->db);
@@ -531,7 +531,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	{
 		switch (sqlite3_column_type(conn->statement, i))
 		{
-		case SQLITE_INTEGER:	   
+		case SQLITE_INTEGER:	
 			row[i] = talloc_asprintf(row, "%d",
 						 sqlite3_column_int(conn->statement, i));
 			break;
@@ -562,7 +562,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 					len = sqlite3_column_bytes(conn->statement, i);
 					
 					MEM(row[i] = talloc_zero_array(row, char, len + 1));
-					memcpy(row[i], p, len);		          
+					memcpy(row[i], p, len);		
 				}
 			}
 			break;
@@ -620,10 +620,10 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
-  
+
 	if (conn->db) {
 		return sqlite3_changes(conn->db);	
-	}  
+	}
 
 	return -1;
 }

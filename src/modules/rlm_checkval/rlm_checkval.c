@@ -12,12 +12,12 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_checkval.c
  * @brief Enables simple value checking.
- * 
+ *
  * @copyright 2003,2006  The FreeRADIUS server project
  * @copyright 2003  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
@@ -45,20 +45,20 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_checkval_t {
-	char		*item_name;	//!< The attribute inside  
+	char		*item_name;	//!< The attribute inside
 					//!< Access-Request i.e.
 					//!< Calling-Station-Id.
-	char		*check_name;	//!< The attribute to check it with ie 
+	char		*check_name;	//!< The attribute to check it with ie
 					//!< Allowed-Calling-Station-Id.
-	char		*data_type;	//!< String, integer, ipaddr, date,  
+	char		*data_type;	//!< String, integer, ipaddr, date,
 					//!< abinary,octets.
 	PW_TYPE		type;		//!< Resolved data type.
 
 	const DICT_ATTR	*item;
 	const DICT_ATTR	*check;
 
-	int		notfound_reject;	//!< If we don't find the 
-						//!< item_name in the request 
+	int		notfound_reject;	//!< If we don't find the
+						//!< item_name in the request
 						//!< send back a reject.
 } rlm_checkval_t;
 

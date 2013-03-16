@@ -76,9 +76,9 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 				       (char *)&on, sizeof(on)) < 0) {
 				fr_strerror_printf("Failed in setsockopt(): %s",
 						   strerror(errno));
-				close(sockfd);       
+				close(sockfd);
 				return -1;
-			} 
+			}
 		}
 #endif /* IPV6_V6ONLY */
 	}
@@ -89,7 +89,7 @@ int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port)
 		close(sockfd);
 		return -1;
 	}
- 
+
 	if (bind(sockfd, (struct sockaddr *) &salocal, salen) < 0) {
 		fr_strerror_printf("Failed in bind(): %s", strerror(errno));
 		close(sockfd);

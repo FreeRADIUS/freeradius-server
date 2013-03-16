@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_perl.c
@@ -275,7 +275,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 	if (ret != 0) {
 		radlog(L_DBG,"rlm_perl: Failed associating interpretor "
 		       "with thread %s", strerror(ret));
-		       
+		
 		rlm_perl_destruct(interp);
 		return NULL;
 	}
@@ -536,7 +536,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 
 	while (nvp) {
 		/*
-		 *	Tagged attributes are added to the hash with name 
+		 *	Tagged attributes are added to the hash with name
 		 *	<attribute>:<tag>, others just use the normal attribute
 		 *	name as the key.
 		 */

@@ -107,7 +107,7 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 	if ((dst_ipaddr->af == AF_INET) &&
 	    (src_ipaddr->af != AF_UNSPEC)) {
 		return sendfromto(sockfd, data, data_len, flags,
-				  (struct sockaddr *)&src, sizeof_src, 
+				  (struct sockaddr *)&src, sizeof_src,
 				  (struct sockaddr *)&dst, sizeof_dst);
 	}
 #else
@@ -117,7 +117,7 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 	/*
 	 *	No udpfromto, OR an IPv6 socket, fail gracefully.
 	 */
-	return sendto(sockfd, data, data_len, flags, 
+	return sendto(sockfd, data, data_len, flags,
 		      (struct sockaddr *)&dst, sizeof_dst);
 }
 
@@ -180,7 +180,7 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 		   (header[1] > 4) ||
 		   (header[3] > VQP_MAX_ATTRIBUTES)) {
 		rad_recv_discard(sockfd);
-			 
+			
 		return 0;
 
 	} else {		/* we got 4 bytes of data. */
@@ -233,14 +233,14 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 #ifdef WITH_UDPFROMTO
 	if (dst.ss_family == AF_INET) {
 		data_len = recvfromto(sockfd, buf, len, flags,
-				      (struct sockaddr *)&src, &sizeof_src, 
+				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst);
 	} else
 #endif
 		/*
 		 *	No udpfromto, OR an IPv6 socket.  Fail gracefully.
 		 */
-		data_len = recvfrom(sockfd, buf, len, flags, 
+		data_len = recvfrom(sockfd, buf, len, flags,
 				    (struct sockaddr *)&src, &sizeof_src);
 	if (data_len < 0) {
 		free(buf);
@@ -323,7 +323,7 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 			fprintf(stderr, "%02x ", ptr[i]);
 			if ((i & 0x0f) == 0x0f) fprintf(stderr, "\n");
 		}
-	  
+	
 	}
 
 	if (ptr[3] > VQP_MAX_ATTRIBUTES) {

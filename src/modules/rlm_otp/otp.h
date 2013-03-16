@@ -87,7 +87,7 @@ typedef struct otp_request_t {
 
 	int		allow_async;		//!< Async auth allowed?
 	int		allow_sync;		//!< Sync auth allowed?
-	unsigned	challenge_delay;	//!< Min delay between async 
+	unsigned	challenge_delay;	//!< Min delay between async
 						//!< auths.
 	int		resync;			//!< Resync on async auth?
 } otp_request_t;

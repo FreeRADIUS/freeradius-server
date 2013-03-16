@@ -234,7 +234,7 @@ static void do_challenge(int sockfd)
 		fflush(stdout);
 	}
 
-	fr_hmac_md5((const uint8_t *) secret, strlen(secret), 
+	fr_hmac_md5((const uint8_t *) secret, strlen(secret),
 		    challenge, sizeof(challenge), challenge);
 
 	write(sockfd, challenge, sizeof(challenge));
@@ -334,7 +334,7 @@ static ssize_t run_command(int sockfd, const char *command,
 		 */
 		p = strstr(buffer, "radmin> ");
 		if (p &&
-		    ((p == buffer) || 
+		    ((p == buffer) ||
 		     (p[-1] == '\n') ||
 		     (p[-1] == '\r'))) {
 			*p = '\0';

@@ -18,11 +18,11 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  *
- *  Copyright (C) 2005-2006 Krzysztof Rzecki <krzysztof.rzecki@ccns.pl>      
- *  Copyright (C) 2005-2006 Rafal Mijal <rafal.mijal@ccns.pl>                
- *  Copyright (C) 2005-2006 Piotr Marnik <piotr.marnik@ccns.pl>              
- *  Copyright (C) 2005-2006 Pawel Matejski <pawel.matejski@ccns.pl>          
- * 
+ *  Copyright (C) 2005-2006 Krzysztof Rzecki <krzysztof.rzecki@ccns.pl>
+ *  Copyright (C) 2005-2006 Rafal Mijal <rafal.mijal@ccns.pl>
+ *  Copyright (C) 2005-2006 Piotr Marnik <piotr.marnik@ccns.pl>
+ *  Copyright (C) 2005-2006 Pawel Matejski <pawel.matejski@ccns.pl>
+ *
  */
 
 #include <freeradius-devel/radiusd.h>
@@ -35,17 +35,17 @@ void vxlogf(int iklevel, const char * fmt,va_list ap)
 {
     int level;
     switch(iklevel) {
-	case I2L_DBG:   
+	case I2L_DBG:
 	    level=L_DBG;
 	    break;
-	case I2L_INFO:   
+	case I2L_INFO:
 	    level=L_INFO;
 	    break;
-	case I2L_ERR:   
+	case I2L_ERR:
 	    level=L_ERR;
 	    break;
 	default:
-	level=L_DBG;    
+	level=L_DBG;
 
     }
     vradlog(level, fmt, ap);

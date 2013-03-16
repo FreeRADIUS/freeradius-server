@@ -1,8 +1,8 @@
 /*
  * Copyright (c) Dan Harkins, 2012
  *
- *  Copyright holder grants permission for redistribution and use in source 
- *  and binary forms, with or without modification, provided that the 
+ *  Copyright holder grants permission for redistribution and use in source
+ *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
  *        notice, this list of conditions, and the following disclaimer
@@ -13,13 +13,13 @@
  *        distribution.
  *
  *  "DISCLAIMER OF LIABILITY
- *  
+ *
  *  THIS SOFTWARE IS PROVIDED BY DAN HARKINS ``AS IS'' AND
- *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, 
- *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR 
+ *  ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO,
+ *  THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
  *  PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE INDUSTRIAL LOUNGE BE LIABLE
  *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
- *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR 
+ *  DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
  *  SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
  *  HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
  *  LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
@@ -106,7 +106,7 @@ typedef struct _pwd_session_t {
 int compute_password_element(pwd_session_t *sess, uint16_t grp_num,
                              char *password, int password_len,
                              char *id_server, int id_server_len,
-                             char *id_peer, int id_peer_len, 
+                             char *id_peer, int id_peer_len,
                              uint32_t *token);
 int compute_scalar_element(pwd_session_t *sess, BN_CTX *bnctx);
 int process_peer_commit (pwd_session_t *sess, uint8_t *commit, BN_CTX *bnctx);

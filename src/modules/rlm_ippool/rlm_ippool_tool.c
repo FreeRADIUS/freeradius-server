@@ -95,7 +95,7 @@ typedef struct ippool_key {
 
 void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 	   char *NASname, char *NASport, int old);
-	   
+	
 void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old);
 
 void tonewformat(char *sessiondbname, char *newsessiondbname);
@@ -454,9 +454,9 @@ void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old) {
 		
 		if ((key_datum.dsize != sizeof(struct ippool_key)) &&
 		    (key_datum.dsize != sizeof(struct old_ippool_key))) {
-		 	goto next;   
+		 	goto next;
 		}
-			    
+			
 		if (old) {
 			 memcpy(&old_key, key_datum.dptr, sizeof(struct old_ippool_key));
 		} else {

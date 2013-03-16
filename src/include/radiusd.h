@@ -167,7 +167,7 @@ typedef		int (*RAD_REQUEST_FUNP)(REQUEST *);
 
 struct request {
 #ifndef NDEBUG
-	uint32_t		magic; 		//!< Magic number used to 
+	uint32_t		magic; 		//!< Magic number used to
 						//!< detect memory corruption,
 						//!< or request structs that
 						//!< have not been properly
@@ -183,7 +183,7 @@ struct request {
 #endif
 	VALUE_PAIR		*config_items;	//!< VALUE_PAIR s used to set
 						//!< per request parameters for
-						//!< modules and the server 
+						//!< modules and the server
 						//!< core at runtime.
 	VALUE_PAIR		*username;	//!< Cached username VALUE_PAIR.
 	VALUE_PAIR		*password;	//!< Cached password VALUE_PAIR.
@@ -199,7 +199,7 @@ struct request {
 						
 	struct main_config_t	*root;		//!< Pointer to the main config
 						//!< hack to try and deal with
-						//!< hup. 
+						//!< hup.
 
 	request_data_t		*data;		//!< Request metadata.
 	
@@ -210,21 +210,21 @@ struct request {
 	pthread_t    		child_pid;	//!< Current thread handling
 						//!< the request.
 #endif
-	time_t			timestamp;	//!< When the request was 
+	time_t			timestamp;	//!< When the request was
 						//!< received.
 	unsigned int	       	number; 	//!< Monotonically increasing
-						//!< request number. Reset on 
+						//!< request number. Reset on
 						//!< server restart.
 
 	rad_listen_t		*listener;	//!< The listener that received
 						//!< the request.
 #ifdef WITH_PROXY
-	rad_listen_t		*proxy_listener;//!< Listener for outgoing 
+	rad_listen_t		*proxy_listener;//!< Listener for outgoing
 						//!< requests.
 #endif
 
 
-	int                     simul_max;	//!< Maximum number of 
+	int                     simul_max;	//!< Maximum number of
 						//!< concurrent sessions for
 						//!< this user.
 #ifdef WITH_SESSION_MGMT
@@ -235,7 +235,7 @@ struct request {
 #endif
 
 	int			options;	//!< Request options, currently
-						//!< just holds the debug level 
+						//!< just holds the debug level
 						//!< for the request.
 						
 	const char		*module;	//!< Module the request is
@@ -268,7 +268,7 @@ struct request {
 
 	const char		*server;
 	REQUEST			*parent;
-	radlog_func_t		radlog;		//!< Function to call to output 
+	radlog_func_t		radlog;		//!< Function to call to output
 						//!< log messages about this
 						//!< request.
 #ifdef WITH_COA
@@ -474,7 +474,7 @@ typedef struct main_config_t {
 	const char	*auth_badpass_msg;
 	const char	*auth_goodpass_msg;
 	int		colourise;	//!< Messages output to stderr and
-					//!< stdout may be formatted using 
+					//!< stdout may be formatted using
 					//!< VT100 escape sequences.
 	int		debug_memory;
 } MAIN_CONFIG_T;
@@ -553,13 +553,13 @@ typedef enum request_fail {
 	REQUEST_FAIL_DECODE,		//!< Rad_decode didn't like it.
 	REQUEST_FAIL_PROXY,		//!< Call to proxy modules failed.
 	REQUEST_FAIL_PROXY_SEND,	//!< Proxy_send didn't like it.
-	REQUEST_FAIL_NO_RESPONSE,	//!< We weren't told to respond, 
+	REQUEST_FAIL_NO_RESPONSE,	//!< We weren't told to respond,
 					//!< so we reject.
 	REQUEST_FAIL_HOME_SERVER,	//!< The home server didn't respond.
 	REQUEST_FAIL_HOME_SERVER2,	//!< Another case of the above.
 	REQUEST_FAIL_HOME_SERVER3,	//!< Another case of the above.
 	REQUEST_FAIL_NORMAL_REJECT,	//!< Authentication failure.
-	REQUEST_FAIL_SERVER_TIMEOUT	//!< The server took too long to 
+	REQUEST_FAIL_SERVER_TIMEOUT	//!< The server took too long to
 					//!< process the request.
 } request_fail_t;
 
@@ -824,7 +824,7 @@ typedef enum vpt_type {
 extern const FR_NAME_NUMBER vpt_types[];
 
 /** A pre-parsed template attribute
- *  
+ *
  *  Value pair template, used when processing various mappings sections
  *  to create a real valuepair later.
  *
@@ -838,7 +838,7 @@ typedef struct value_pair_tmpl_t {
 
 	request_refs_t		request; //!< Request to search or insert in.
 	pair_lists_t		list;	 //!< List to search or insert in.
-				       
+				
 	const DICT_ATTR		*da;	 //!< Resolved dictionary attribute.
 	vpt_type_t		type;	 //!< What type of value tmpl refers to.
 } value_pair_tmpl_t;
@@ -862,8 +862,8 @@ typedef struct value_pair_map {
 	FR_TOKEN		op; 	//!< The operator that controls
 					//!< insertion of the dst attribute.
 	
-	CONF_ITEM		*ci;	//!< Config item that the map was 
-					//!< created from. Mainly used for 
+	CONF_ITEM		*ci;	//!< Config item that the map was
+					//!< created from. Mainly used for
 					//!< logging validation errors.
 	
 	struct value_pair_map	*next;	//!< The next valuepair map.
@@ -879,7 +879,7 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 value_pair_tmpl_t *radius_attr2tmpl(const char *name,
 				    request_refs_t request_def,
 				    pair_lists_t list_def);
-				    
+				
 value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type);
 int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,

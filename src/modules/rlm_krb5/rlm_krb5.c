@@ -44,12 +44,12 @@ RCSID("$Id$")
 typedef struct rlm_krb5_t {
 	const char *xlat_name;	    //!< This module's instance name.
 	const char *keytabname;	    //!< The keytab to resolve the service in.
-	const char *service_princ;  //!< The service name provided by the 
+	const char *service_princ;  //!< The service name provided by the
 				    //!< config parser.
 	
-	char *hostname;		    //!< The hostname component of 
+	char *hostname;		    //!< The hostname component of
 				    //!< service_princ, or NULL.
-	char *service;		    //!< The service component of 
+	char *service;		    //!< The service component of
 				    //!< service_princ, or NULL.
 	
 	krb5_context *context;	    //!< The kerberos context (cloned once per
@@ -59,7 +59,7 @@ typedef struct rlm_krb5_t {
 	krb5_get_init_creds_opt	*gic_options;	 //!< Options to pass to the
 						 //!< get_initial_credentials.
 						 //!< function.
-	krb5_verify_init_creds_opt *vic_options; //!< Options to pass to the 
+	krb5_verify_init_creds_opt *vic_options; //!< Options to pass to the
 						 //!< validate_initial_creds
 						 //!< function.
 
@@ -122,7 +122,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	if (!krb5_is_thread_safe()) {
 		radlog(L_ERR, "rlm_krb5 (*): krb5 library is not threadsafe, "
 		       "please recompile it with thread support enabled");
-		       
+		
 		return -1;
 	}
 
@@ -141,7 +141,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	if (ret) {
 		radlog(L_ERR, "rlm_krb5 (%s): Context initialisation "
 		       "failed: %s", inst->xlat_name, error_message(ret));
-  
+
 		goto error;
 	} else {
 		radlog(L_DBG, "rlm_krb5 (%s): Context initialised "
@@ -199,13 +199,13 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	radlog(L_DBG, "rlm_krb5 (%s): Using service principal \"%s\"",
 	       inst->xlat_name, princ_name);
-	       
+	
 	krb5_free_unparsed_name(*context, princ_name);
 	
 	/*
 	 *	Setup options for getting credentials and verifying them
 	 */
-	 
+	
 	/* For some reason the 'init' version of this function is deprecated */
 	ret = krb5_get_init_creds_opt_alloc(*context, &(inst->gic_options));
 	if (ret) {
@@ -230,7 +230,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		       "Heimdal", inst->xlat_name, hostname);
 	}
 #endif
-	 
+	
 	return 0;
 	
 	error:
@@ -283,7 +283,7 @@ static rlm_rcode_t krb5_parse_user(rlm_krb5_t *inst, REQUEST *request,
 	if (ret) {
 		RDEBUG("Failed parsing username as principal: %s",
 		       error_message(ret));
-		       
+		
 		return RLM_MODULE_FAIL;
 	}
 
@@ -296,7 +296,7 @@ static rlm_rcode_t krb5_parse_user(rlm_krb5_t *inst, REQUEST *request,
 
 #ifndef HEIMDAL_KRB5
 
-/* 
+/*
  *  Validate userid/passwd (MIT)
  */
 static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
@@ -381,7 +381,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	RDEBUG("Successfully retrieved and decrypted TGT");
 	
 	memset(&keytab, 0, sizeof(keytab));
-	ret = inst->keytabname ? 
+	ret = inst->keytabname ?
 		krb5_kt_resolve(*context, inst->keytabname, &keytab) :
 		krb5_kt_default(*context, &keytab);
 	if (ret) {
@@ -394,7 +394,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	ret = krb5_verify_init_creds(*context, &init_creds, inst->server,
 				     keytab, NULL, inst->vic_options);
 	if (ret) goto error;
- 
+
 	cleanup:
 
 	if (context) {
@@ -438,7 +438,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	/*
 	 *	Setup krb5_verify_user options
 	 *
-	 *	Not entirely sure this is necessary, but as we use context 
+	 *	Not entirely sure this is necessary, but as we use context
 	 *	to get the cache handle, we probably do have to do this with
 	 *	the cloned context.
 	 */
@@ -448,7 +448,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	krb5_verify_opt_set_ccache(&options, ccache);
 	
 	memset(&keytab, 0, sizeof(keytab));
-	ret = inst->keytabname ? 
+	ret = inst->keytabname ?
 		krb5_kt_resolve(*context, inst->keytabname, &keytab) :
 		krb5_kt_default(*context, &keytab);
 	if (ret) {
@@ -468,7 +468,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	rcode = krb5_parse_user(inst, request, &client);
 	if (rcode != RLM_MODULE_OK) goto cleanup;
 
-	/* 
+	/*
 	 *	Verify the user, using the options we set in instantiate
 	 */
 	ret = krb5_verify_user_opt(*context, client,

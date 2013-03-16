@@ -12,7 +12,7 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
- 
+
 /**
  * $Id$
  * @file rlm_mschap.c
@@ -154,7 +154,7 @@ typedef struct rlm_mschap_t {
 	char *retry_msg;
 #ifdef WITH_OPEN_DIRECTORY
 	int  open_directory;
-#endif  
+#endif
 } rlm_mschap_t;
 
 

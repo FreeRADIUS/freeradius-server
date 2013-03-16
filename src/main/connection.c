@@ -55,9 +55,9 @@ struct fr_connection {
 					//!< has been reserved.
 	int		in_use;		//!< Whether the connection is currently
 					//!< reserved.
-	int		number;		//!< Unique ID assigned when the 
+	int		number;		//!< Unique ID assigned when the
 					//!< connection is created, these will
-					//!< monotonically increase over the 
+					//!< monotonically increase over the
 					//!< lifetime of the connection pool.
 	void		*connection;	//!< Pointer to whatever the module
 					//!< uses for a connection handle.
@@ -67,14 +67,14 @@ struct fr_connection {
  *
  * Defines the configuration of the connection pool, all the counters and
  * timestamps related to the connection pool, the mutex that stops multiple
- * threads leaving the pool in an inconsistent state, and the callbacks 
+ * threads leaving the pool in an inconsistent state, and the callbacks
  * required to open, close and check the status of connections within the pool.
  *
  * @see fr_connection
  */
 struct fr_connection_pool_t {	
 	int		start;		//!< Number of initial connections
-	int		min;		//!< Minimum number of concurrent 
+	int		min;		//!< Minimum number of concurrent
 					//!< connections to keep open.
 	int		max;		//!< Maximum number of concurrent
 					//!< connections to allow.
@@ -87,14 +87,14 @@ struct fr_connection_pool_t {
 					//!< connection can be used before being
 					//!< closed.
 	int		lifetime;	//!< How long a connection can be open
-					//!< before being closed (irrespective 
+					//!< before being closed (irrespective
 					//!< of whether it's idle or not).
 	int		idle_timeout;	//!< How long a connection can be idle
 					//!< before being closed.
 					
 	int		trigger;	//!< If TRUE execute connection triggers
 					//!< associated with the connection
-					//!< pool. 
+					//!< pool.
 
 	time_t		last_checked;	//!< Last time we pruned the connection
 					//!< pool.
@@ -103,9 +103,9 @@ struct fr_connection_pool_t {
 					//!< a connection but failed.
 	time_t		last_complained;//!< Last time we complained about
 					//!< configuration parameters.
-	time_t		last_throttled; //!< Last time we refused to spawn a 
+	time_t		last_throttled; //!< Last time we refused to spawn a
 					//!< connection because the last
-					//!< connection failed, or we were 
+					//!< connection failed, or we were
 					//!< already spawning a connection.
 	time_t		last_at_max;	//!< Last time we hit the maximum number
 					//!< of allowed connections.
@@ -124,7 +124,7 @@ struct fr_connection_pool_t {
 
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t	mutex;		//!< Mutex used to keep consistent state
-					//!< when making modifications in 
+					//!< when making modifications in
 					//!< threaded mode.
 #endif
 
@@ -312,7 +312,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	if (!conn) {
 		radlog(L_ERR, "%s: Opening connection failed (%i)",
 		       pool->log_prefix, pool->count);
-		       
+		
 		pool->last_failed = now;
 		free(this);
 		pool->spawning = FALSE; /* atomic, so no lock is needed */
@@ -432,14 +432,14 @@ static void fr_connection_close(fr_connection_pool_t *pool,
  *
  * Walks over the list of connections searching for a specified connection
  * handle and returns the first connection that contains that pointer.
- * 
+ *
  * @note Will lock mutex and only release mutex if connection handle
  * is not found, so will usually return will mutex held.
  * @note Must be called with the mutex free.
  *
  * @param[in] pool to search in.
  * @param[in] conn handle to search for.
- * @return the connection containing the specified handle, or NULL if non is 
+ * @return the connection containing the specified handle, or NULL if non is
  * found.
  */
 static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *conn)
@@ -467,7 +467,7 @@ static fr_connection_t *fr_connection_find(fr_connection_pool_t *pool, void *con
  *
  * Resolves the connection handle to a connection, then (if found)
  * closes, unlinks and frees that connection.
- * 
+ *
  * @note Must be called with the mutex free.
  *
  * @param[in,out] pool Connection pool to modify.
@@ -504,7 +504,7 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
  *
  * Closes, unlinks and frees all connections in the connection pool, then frees
  * all memory used by the connection pool.
- * 
+ *
  * @note Will call the 'stop' trigger.
  * @note Must be called with the mutex free.
  *
@@ -693,7 +693,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 		    (pool->last_complained < now)) {
 			radlog(L_INFO, "%s: WARNING: You probably need to "
 			       "lower \"min\"", pool->log_prefix);
-			       
+			
 			pool->last_complained = now;
 		}
 		fr_connection_close(pool, this);
@@ -850,7 +850,7 @@ int fr_connection_check(fr_connection_pool_t *pool, void *conn)
  * If no free connections are found will attempt to spawn a new one, conditional
  * on a connection spawning not already being in progress, and not being at the
  * 'max' connection limit.
- * 
+ *
  * @note fr_connection_release must be called once the caller has finished
  * using the connection.
  *
@@ -1025,7 +1025,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 		
 		radlog(L_ERR, "%s: Failed to reconnect (%i), and no other "
 		       "connections available", pool->log_prefix, conn_number);
-		       
+		
 		return NULL;
 	}
 	

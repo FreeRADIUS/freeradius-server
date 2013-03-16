@@ -396,7 +396,7 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 	int len;
 	char *p = buffer;
 	const char *q;
- 
+
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
 			case PW_TYPE_INTEGER:
@@ -447,7 +447,7 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 						*p++ = 'n';
 					} else if (*q == '\r') {
 						*p++ = 'r';
-					} else if (*q == '\t'){ 
+					} else if (*q == '\t'){
 						*p++ = 't';
 					} else {
 						if(s < 8) return -1;

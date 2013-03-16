@@ -279,7 +279,7 @@ int fr_substr2int(const FR_NAME_NUMBER *table, const char *name, int def, int le
 	size_t max;
 	
 	for (this = table; this->name != NULL; this++) {
-		/* 
+		/*
 		 * Match up to the length of the table entry if len is < 0.
 		 */
 		max = (len < 0) ? strlen(this->name) : (unsigned)len;

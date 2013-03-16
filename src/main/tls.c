@@ -742,7 +742,7 @@ void tls_session_information(tls_session_t *tls_session)
 		}
 	}
 
-	snprintf(tls_session->info.info_description, 
+	snprintf(tls_session->info.info_description,
 		 sizeof(tls_session->info.info_description),
 		 "%s %s%s [length %04lx]%s%s\n",
 		 str_write_p, str_version, str_content_type,
@@ -1285,7 +1285,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	BIO_set_conn_port(cbio, port);
 #if OPENSSL_VERSION_NUMBER < 0x1000003f
 	BIO_do_connect(cbio);
- 
+
 	/* Send OCSP request and wait for response */
 	resp = OCSP_sendreq_bio(cbio, path, req);
 	if (!resp) {
@@ -1538,7 +1538,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	 *	have a user identity.  i.e. we don't create the
 	 *	attributes for RadSec connections.
 	 */
-	if (identity && 
+	if (identity &&
 	    (lookup <= 1) && sn && ((size_t) sn->length < (sizeof(buf) / 2))) {
 		char *p = buf;
 		int i;
@@ -1823,26 +1823,26 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 #ifndef OPENSSL_NO_ECDH
 static int set_ecdh_curve(SSL_CTX *ctx, const char *ecdh_curve)
 {
-	int      nid; 
-	EC_KEY  *ecdh; 
+	int      nid;
+	EC_KEY  *ecdh;
 
 	if (!ecdh_curve || !*ecdh_curve) return 0;
 
-	nid = OBJ_sn2nid(ecdh_curve); 
-	if (!nid) { 
+	nid = OBJ_sn2nid(ecdh_curve);
+	if (!nid) {
 		radlog(L_ERR, "Unknown ecdh_curve \"%s\"", ecdh_curve);
 		return -1;
 	}
 
-	ecdh = EC_KEY_new_by_curve_name(nid); 
-	if (!ecdh) { 
+	ecdh = EC_KEY_new_by_curve_name(nid);
+	if (!ecdh) {
 		radlog(L_ERR, "Unable to create new curve \"%s\"", ecdh_curve);
 		return -1;
-	} 
+	}
 
-	SSL_CTX_set_tmp_ecdh(ctx, ecdh); 
+	SSL_CTX_set_tmp_ecdh(ctx, ecdh);
 
-	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE); 
+	SSL_CTX_set_options(ctx, SSL_OP_SINGLE_ECDH_USE);
 
 	EC_KEY_free(ecdh);
 
@@ -1928,7 +1928,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		/*
 		 * We don't want to put the private key password in eap.conf, so  check
 		 * for our special string which indicates we should get the password
-		 * programmatically. 
+		 * programmatically.
 		 */
 		const char* special_string = "Apple:UseCertAdmin";
 		if (strncmp(conf->private_key_password,
@@ -2003,14 +2003,14 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
 			radlog(L_ERR, "psk_hexphrase is too long (max %d)",
 			       PSK_MAX_PSK_LEN);
-			return NULL;			    
+			return NULL;			
 		}
 
 		hex_len = fr_hex2bin(conf->psk_password,
 				     (uint8_t *) buffer, psk_len);
 		if (psk_len != (2 * hex_len)) {
 			radlog(L_ERR, "psk_hexphrase is not all hex");
-			return NULL;			    
+			return NULL;			
 		}
 
 		goto post_ca;
@@ -2137,7 +2137,7 @@ post_ca:
 
 	/*
 	 *	Callbacks, etc. for session resumption.
-	 */						      
+	 */						
 	if (conf->session_cache_enable) {
 		SSL_CTX_sess_set_new_cb(ctx, cbtls_new_session);
 		SSL_CTX_sess_set_get_cb(ctx, cbtls_get_session);
@@ -2444,7 +2444,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		/*
 		 *	If we're in a resumed session and it's
-		 *	not allowed, 
+		 *	not allowed,
 		 */
 		if (SSL_session_reused(ssn->ssl)) {
 			RDEBUG("FAIL: Forcibly stopping session resumption as it is not allowed.");
@@ -2528,7 +2528,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
-	       
+	
 		vps = SSL_SESSION_get_ex_data(ssn->ssl->session,
 					     FR_TLS_EX_INDEX_VPS);
 		if (!vps) {
@@ -2592,7 +2592,7 @@ void tls_fail(tls_session_t *ssn)
 
 fr_tls_status_t tls_application_data(tls_session_t *ssn,
 				     REQUEST *request)
-				     
+				
 {
 	int err;
 
@@ -2696,7 +2696,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		    (ssn->dirty_out.used == 0)) {
 			RDEBUG2("ACK handshake is finished");
 
-			/* 
+			/*
 			 *	From now on all the content is
 			 *	application data set it here as nobody else
 			 *	sets it.
