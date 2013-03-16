@@ -42,7 +42,7 @@ typedef struct redis_socket_t {
 typedef struct rlm_redis_t REDIS_INST;
 
 typedef struct rlm_redis_t {
-	char	    *xlat_name;
+	const char	    *xlat_name;
 
 	char	    *hostname;
 	int	     port;

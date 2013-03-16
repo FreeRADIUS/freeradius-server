@@ -43,7 +43,7 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL} /* end the list */
 };
 
-static int redis_delete_conn(UNUSED void *ctx, void *conn)
+static int conn_delete(UNUSED void *ctx, void *conn)
 {
 	REDISSOCK *dissocket = conn;
 
@@ -54,11 +54,11 @@ static int redis_delete_conn(UNUSED void *ctx, void *conn)
 		dissocket->reply = NULL;
 	}
 
-	free(dissocket);
+	talloc_free(dissocket);
 	return 1;
 }
 
-static void *redis_create_conn(void *ctx)
+static void *conn_create(void *ctx)
 {
 	REDIS_INST *inst = ctx;
 	REDISSOCK *dissocket = NULL;
@@ -130,8 +130,7 @@ static void *redis_create_conn(void *ctx)
 		}
 	}
 
-	dissocket = rad_malloc(sizeof(*dissocket));
-	memset(dissocket, 0, sizeof(*dissocket));
+	dissocket = talloc_zero(inst, REDISSOCK);
 	dissocket->conn = conn;
 
 	return dissocket;
@@ -308,8 +307,8 @@ static int redis_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register(inst->xlat_name, redis_xlat, inst);
 
 	inst->pool = fr_connection_pool_init(conf, inst,
-					     redis_create_conn, NULL,
-					     redis_delete_conn);
+					     conn_create, NULL,
+					     conn_delete);
 	if (!inst->pool) {
 		return -1;
 	}
