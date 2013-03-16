@@ -278,8 +278,8 @@ void *rest_socket_create(void *instance)
 {
 	rlm_rest_t *inst = instance;
 
-	rlm_rest_handle_t	*randle;
-	rlm_rest_curl_context_t	*ctx;
+	rlm_rest_handle_t	*randle = NULL;
+	rlm_rest_curl_context_t	*ctx = NULL;
 
 	CURL *candle = curl_easy_init();
 	CURLcode ret;
@@ -322,13 +322,10 @@ void *rest_socket_create(void *instance)
 	}
 
 	/*
-	 *	Malloc memory for the connection handle abstraction.
+	 *	Allocate memory for the connection handle abstraction.
 	 */
-	randle = malloc(sizeof(*randle));
-	memset(randle, 0, sizeof(*randle));
-
-	ctx = malloc(sizeof(*ctx));
-	memset(ctx, 0, sizeof(*ctx));
+	randle = talloc_zero(inst, rlm_rest_handle_t);
+	ctx = talloc_zero(randle, rlm_rest_curl_context_t);
 
 	ctx->headers = NULL; /* CURL needs this to be NULL */
 	ctx->read.instance = inst;
@@ -358,6 +355,7 @@ void *rest_socket_create(void *instance)
 	connection_error:
 
 	curl_easy_cleanup(candle);
+	if (randle) talloc_free(randle);
 
 	return NULL;
 }
@@ -411,8 +409,7 @@ int rest_socket_delete(UNUSED void *instance, void *handle)
 
 	curl_easy_cleanup(candle);
 
-	free(randle->ctx);
-	free(randle);
+	talloc_free(randle);
 
 	return TRUE;
 }
