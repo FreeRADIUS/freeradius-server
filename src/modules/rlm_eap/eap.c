@@ -98,7 +98,7 @@ int eap_module_load(eap_module_t **instance, eap_type_t method,
 		    CONF_SECTION *cs)
 {
 	eap_module_t *inst;
-	const char *mod_name;
+	const char *mod_name, *p;
 
 	/* Make room for the EAP-Type */
 	*instance = inst = talloc_zero(cs, eap_module_t);
@@ -114,6 +114,16 @@ int eap_module_load(eap_module_t **instance, eap_type_t method,
 	 *	The name of the module were trying to load
 	 */
 	mod_name = talloc_asprintf(inst, "rlm_eap_%s", inst->typename);
+
+	/*
+	 *	dlopen is case sensitive
+	 */
+	p = mod_name;
+	while (*p) {
+		*p = tolower(*p);
+		p++;
+	}
+
 	inst->instance = NULL;
 
 #if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
