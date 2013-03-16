@@ -73,7 +73,7 @@ static void *conn_create(void *ctx)
 		return NULL;
 	}
 
-	fdp = rad_malloc(sizeof(*fdp));
+	fdp = talloc_zero(ctx, int);
 	*fdp = fd;
 
 	return fdp;
@@ -84,7 +84,7 @@ static int conn_delete(UNUSED void *ctx, void *connection)
 	int *fdp = connection;
 
 	close(*fdp);
-	free(fdp);
+	talloc_free(fdp);
 	return 0;
 }
 
