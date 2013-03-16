@@ -76,7 +76,12 @@ const FR_NAME_NUMBER eap_rcode_table[] = {
 };
 
 /** Return an EAP-Type for a particular name
- *	.
+ *
+ * Converts a name into an IANA EAP type.
+ *
+ * @param name to convert.
+ * @return The IANA EAP type or PW_EAP_INVALID if the name doesn't match any
+ * known types.
  */
 eap_type_t eap_name2type(const char *name)
 {
@@ -87,11 +92,12 @@ eap_type_t eap_name2type(const char *name)
 		return dv->value;
 	}
 	
-	return -1;
+	return PW_EAP_INVALID;
 }
 
 /** Return an EAP-name for a particular type
- *	.
+ *
+ * Resolve
  */
 const char *eap_type2name(eap_type_t method)
 {
