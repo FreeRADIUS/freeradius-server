@@ -104,8 +104,8 @@ static void PRF(const unsigned char *secret, unsigned int secret_len,
 		const unsigned char *seed,   unsigned int seed_len,
 		unsigned char *out, unsigned char *buf, unsigned int out_len)
 {
-        unsigned int i;
-        unsigned int len = (secret_len + 1) / 2;
+	unsigned int i;
+	unsigned int len = (secret_len + 1) / 2;
 	const unsigned char *s1 = secret;
 	const unsigned char *s2 = secret + (secret_len - len);
 
@@ -113,7 +113,7 @@ static void PRF(const unsigned char *secret, unsigned int secret_len,
 	P_hash(EVP_sha1(), s2, len, seed, seed_len, buf, out_len);
 
 	for (i=0; i < out_len; i++) {
-	        out[i] ^= buf[i];
+		out[i] ^= buf[i];
 	}
 }
 
@@ -162,7 +162,7 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 }
 
 
-#define FR_TLS_PRF_CHALLENGE        "ttls challenge"
+#define FR_TLS_PRF_CHALLENGE	"ttls challenge"
 
 /*
  *	Generate the TTLS challenge

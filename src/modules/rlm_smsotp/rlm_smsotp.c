@@ -274,7 +274,7 @@ static smsotp_fd_t * smsotp_getfd(const rlm_smsotp_t *opt)
     rc = smsotp_pthread_mutex_trylock(&fdp->mutex);
     if (!rc)
       if (!strcmp(fdp->path, opt->smsotp_socket))	/* could just use == */
-        break;
+	break;
   }
 
   if (!fdp) {
@@ -331,11 +331,11 @@ static int smsotp_read(smsotp_fd_t *fdp, char *buf, size_t len)
   while (nread < len) {
     if ((n = read(fdp->fd, &buf[nread], len - nread)) == -1) {
       if (errno == EINTR) {
-        continue;
+	continue;
       } else {
-        (void) radlog(L_ERR, "rlm_smsotp: %s: read from socket: %s", __func__, strerror(errno));
-        smsotp_putfd(fdp, 1);
-        return -1;
+	(void) radlog(L_ERR, "rlm_smsotp: %s: read from socket: %s", __func__, strerror(errno));
+	smsotp_putfd(fdp, 1);
+	return -1;
       }
     }
     if (!n) {
@@ -371,11 +371,11 @@ static int smsotp_write(smsotp_fd_t *fdp, const char *buf, size_t len)
   while (nleft) {
     if ((nwrote = write(fdp->fd, &buf[len - nleft], nleft)) == -1) {
       if (errno == EINTR || errno == EPIPE) {
-        continue;
+	continue;
       } else {
-        (void) radlog(L_ERR, "rlm_smsotp: %s: write to socket: %s", __func__, strerror(errno));
-        smsotp_putfd(fdp, 1);
-        return errno;
+	(void) radlog(L_ERR, "rlm_smsotp: %s: write to socket: %s", __func__, strerror(errno));
+	smsotp_putfd(fdp, 1);
+	return errno;
       }
     }
     nleft -= nwrote;

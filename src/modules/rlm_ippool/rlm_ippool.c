@@ -414,11 +414,11 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 	char xlat_str[MAX_STRING_LEN];
 	FR_MD5_CTX md5_context;
 #ifdef WITH_DHCP
-        int dhcp = FALSE;
+	int dhcp = FALSE;
 #endif
-        int attr_ipaddr = PW_FRAMED_IP_ADDRESS;
-        int attr_ipmask = PW_FRAMED_IP_NETMASK;
-        int vendor_ipaddr = 0;
+	int attr_ipaddr = PW_FRAMED_IP_ADDRESS;
+	int attr_ipmask = PW_FRAMED_IP_NETMASK;
+	int vendor_ipaddr = 0;
 
 
 	/* quiet the compiler */
@@ -444,7 +444,7 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 		cli = vp->vp_strvalue;
 
 #ifdef WITH_DHCP
-        if (request->listener->type == RAD_LISTEN_DHCP) {
+	if (request->listener->type == RAD_LISTEN_DHCP) {
 		dhcp = 1;
 		attr_ipaddr = PW_DHCP_YOUR_IP_ADDRESS;
 		vendor_ipaddr = DHCP_MAGIC_VENDOR;
@@ -647,8 +647,8 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 			 * That is:
 			 *  ---------------------------------------------
 			 *  - NAS/PORT Entry  |||| Free Entry  ||| Time
-			 *  -    IP1                 IP2(Free)    BEFORE
-			 *  -    IP2(Free)           IP1          AFTER
+			 *  -    IP1		 IP2(Free)    BEFORE
+			 *  -    IP2(Free)	   IP1	  AFTER
 			 *  ---------------------------------------------
 			 *
 			 * We only do this if we are NOT doing MPPP
@@ -709,11 +709,11 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 			entry.timeout = (time_t) vp->vp_integer;
 #ifdef WITH_DHCP
 			if (dhcp) {
-		                vp = radius_paircreate(request, &request->reply->vps,
+				vp = radius_paircreate(request, &request->reply->vps,
 						       PW_DHCP_IP_ADDRESS_LEASE_TIME, DHCP_MAGIC_VENDOR);
 				vp->vp_integer = entry.timeout;
 				pairdelete(&request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
-                        }
+			}
 #endif
 		} else {
 			entry.timeout = 0;

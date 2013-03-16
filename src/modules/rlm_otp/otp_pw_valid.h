@@ -38,7 +38,7 @@ typedef struct otp_fd_t {
 
 static int otprc2rlmrc(int);
 static int otp_verify(const otp_option_t *,
-                      const otp_request_t *, otp_reply_t *);
+		      const otp_request_t *, otp_reply_t *);
 static int otp_read(otp_fd_t *, char *, size_t);
 static int otp_write(otp_fd_t *, const char *, size_t);
 static int otp_connect(const char *);

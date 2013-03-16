@@ -36,7 +36,7 @@ RCSIDH(eap_methods_h, "$Id$")
 #define EAP_HEADER_LEN 		4
 
 /* base for dictionary values */
-#define ATTRIBUTE_EAP_ID        1020
+#define ATTRIBUTE_EAP_ID	1020
 #define ATTRIBUTE_EAP_CODE      1021
 #define ATTRIBUTE_EAP_BASE      1280
 
@@ -111,10 +111,10 @@ typedef enum eap_rcode {
 	EAP_NOTFOUND,    	//!< EAP handler data not found.
 	EAP_FOUND,       	//!< EAP handler data found, continue.
 	EAP_OK,		 	//!< Ok, continue.
-	EAP_FAIL,        	//!< Failed, don't reply.
-	EAP_NOOP,        	//!< Succeeded without doing anything.
+	EAP_FAIL,		//!< Failed, don't reply.
+	EAP_NOOP,		//!< Succeeded without doing anything.
 	EAP_INVALID,     	//!< Invalid, don't reply.
-	EAP_VALID,        	//!< Valid, continue.
+	EAP_VALID,		//!< Valid, continue.
 	EAP_MAX_RCODES
 } eap_rcode_t;
 
@@ -133,7 +133,7 @@ typedef struct eap_type_data {
  * Structure to hold EAP data.
  *
  * length = code + id + length + type + type.data
- *        =  1   +  1 +   2    +  1   +  X
+ *	=  1   +  1 +   2    +  1   +  X
  */
 typedef struct eap_packet {
 	eap_code_t	code;

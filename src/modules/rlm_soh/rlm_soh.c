@@ -23,8 +23,8 @@
 #include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
-#include        <freeradius-devel/radiusd.h>
-#include        <freeradius-devel/modules.h>
+#include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/dhcp.h>
 #include	<freeradius-devel/soh.h>
 

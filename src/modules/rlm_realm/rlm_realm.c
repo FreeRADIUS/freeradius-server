@@ -30,11 +30,11 @@ RCSID("$Id$")
 #define  REALM_FORMAT_SUFFIX   1
 
 typedef struct realm_config_t {
-        int        format;
-        char       *formatstring;
-        char       *delim;
-	int        ignore_default;
-	int        ignore_null;
+	int	format;
+	char       *formatstring;
+	char       *delim;
+	int	ignore_default;
+	int	ignore_null;
 } realm_config_t;
 
 static CONF_PARSER module_config[] = {
@@ -64,7 +64,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	VALUE_PAIR *vp;
 	REALM *realm;
 
-        struct realm_config_t *inst = instance;
+	struct realm_config_t *inst = instance;
 
 	/* initiate returnrealm */
 	*returnrealm = NULL;
@@ -95,7 +95,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 */
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL ) {
-	        RDEBUG2("Request already proxied.  Ignoring.");
+		RDEBUG2("Request already proxied.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
 
@@ -353,14 +353,14 @@ static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
 
 static int realm_instantiate(CONF_SECTION *conf, void **instance)
 {
-        struct realm_config_t *inst;
+	struct realm_config_t *inst;
 
-        /* setup a storage area for instance data */
-        *instance = inst = talloc_zero(conf, struct realm_config_t);
+	/* setup a storage area for instance data */
+	*instance = inst = talloc_zero(conf, struct realm_config_t);
 	if (!inst) return -1;
 
 	if(cf_section_parse(conf, inst, module_config) < 0) {
-               return -1;
+	       return -1;
 	}
 
 	if(strcasecmp(inst->formatstring, "suffix") == 0) {
@@ -369,7 +369,7 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
 	} else if(strcasecmp(inst->formatstring, "prefix") == 0) {
 	     inst->format = REALM_FORMAT_PREFIX;
 
-        } else {
+	} else {
 	     radlog(L_ERR, "Bad value \"%s\" for realm format value", inst->formatstring);
 	     return -1;
 	}
@@ -457,7 +457,7 @@ static rlm_rcode_t realm_coa(UNUSED void *instance, REQUEST *request)
 	REALM *realm;
 
 	if (pairfind(request->packet->vps, PW_REALM, 0, TAG_ANY) != NULL) {
-	        RDEBUG2("Request already proxied.  Ignoring.");
+		RDEBUG2("Request already proxied.  Ignoring.");
 		return RLM_MODULE_OK;
 	}
 

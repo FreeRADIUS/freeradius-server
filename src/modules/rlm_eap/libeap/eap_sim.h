@@ -35,23 +35,23 @@ RCSIDH(eap_sim_h, "$Id$")
 #define ATTRIBUTE_EAP_SIM_BASE      (6*256)
 
 #define ATTRIBUTE_EAP_SIM_SUBTYPE   	1200
-#define ATTRIBUTE_EAP_SIM_RAND1         1201
-#define ATTRIBUTE_EAP_SIM_RAND2         1202
-#define ATTRIBUTE_EAP_SIM_RAND3         1203
+#define ATTRIBUTE_EAP_SIM_RAND1	 1201
+#define ATTRIBUTE_EAP_SIM_RAND2	 1202
+#define ATTRIBUTE_EAP_SIM_RAND3	 1203
 
-#define ATTRIBUTE_EAP_SIM_SRES1         1204
-#define ATTRIBUTE_EAP_SIM_SRES2         1205
-#define ATTRIBUTE_EAP_SIM_SRES3         1206
+#define ATTRIBUTE_EAP_SIM_SRES1	 1204
+#define ATTRIBUTE_EAP_SIM_SRES2	 1205
+#define ATTRIBUTE_EAP_SIM_SRES3	 1206
 
-#define ATTRIBUTE_EAP_SIM_STATE         1207
-#define ATTRIBUTE_EAP_SIM_IMSI          1208
-#define ATTRIBUTE_EAP_SIM_HMAC          1209
-#define ATTRIBUTE_EAP_SIM_KEY           1210
-#define ATTRIBUTE_EAP_SIM_EXTRA         1211
+#define ATTRIBUTE_EAP_SIM_STATE	 1207
+#define ATTRIBUTE_EAP_SIM_IMSI	  1208
+#define ATTRIBUTE_EAP_SIM_HMAC	  1209
+#define ATTRIBUTE_EAP_SIM_KEY	   1210
+#define ATTRIBUTE_EAP_SIM_EXTRA	 1211
 
-#define ATTRIBUTE_EAP_SIM_KC1           1212
-#define ATTRIBUTE_EAP_SIM_KC2           1213
-#define ATTRIBUTE_EAP_SIM_KC3           1214
+#define ATTRIBUTE_EAP_SIM_KC1	   1212
+#define ATTRIBUTE_EAP_SIM_KC2	   1213
+#define ATTRIBUTE_EAP_SIM_KC3	   1214
 
 enum eapsim_subtype {
   eapsim_start       = 10,
@@ -80,25 +80,25 @@ enum eapsim_serverstates {
   eapsim_server_maxstates
 };
 
-#define PW_EAP_SIM_RAND                 1
-#define PW_EAP_SIM_PADDING              6
-#define PW_EAP_SIM_NONCE_MT             7
+#define PW_EAP_SIM_RAND		 1
+#define PW_EAP_SIM_PADDING	      6
+#define PW_EAP_SIM_NONCE_MT	     7
 #define PW_EAP_SIM_PERMANENT_ID_REQ    10
-#define PW_EAP_SIM_MAC                 11
-#define PW_EAP_SIM_NOTIFICATION        12
-#define PW_EAP_SIM_ANY_ID_REQ          13
-#define PW_EAP_SIM_IDENTITY            14
-#define PW_EAP_SIM_VERSION_LIST        15
+#define PW_EAP_SIM_MAC		 11
+#define PW_EAP_SIM_NOTIFICATION	12
+#define PW_EAP_SIM_ANY_ID_REQ	  13
+#define PW_EAP_SIM_IDENTITY	    14
+#define PW_EAP_SIM_VERSION_LIST	15
 #define PW_EAP_SIM_SELECTED_VERSION    16
 #define PW_EAP_SIM_FULLAUTH_ID_REQ     17
-#define PW_EAP_SIM_COUNTER             19
+#define PW_EAP_SIM_COUNTER	     19
 #define PW_EAP_SIM_COUNTER_TOO_SMALL   20
-#define PW_EAP_SIM_NONCE_S             21
-#define PW_EAP_SIM_IV                 129
-#define PW_EAP_SIM_ENCR_DATA          130
+#define PW_EAP_SIM_NONCE_S	     21
+#define PW_EAP_SIM_IV		 129
+#define PW_EAP_SIM_ENCR_DATA	  130
 #define PW_EAP_SIM_NEXT_PSEUDONUM     132
 #define PW_EAP_SIM_NEXT_REAUTH_ID     133
-#define PW_EAP_SIM_CHECKCODE          134
+#define PW_EAP_SIM_CHECKCODE	  134
 
 /*
  * interfaces in eapsimlib.c

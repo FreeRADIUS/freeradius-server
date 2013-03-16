@@ -34,8 +34,8 @@ RCSID("$Id$")
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
-#include        <freeradius-devel/md5.h>
-#include        <freeradius-devel/sha1.h>
+#include	<freeradius-devel/md5.h>
+#include	<freeradius-devel/sha1.h>
 
 #include 	<ctype.h>
 
@@ -116,7 +116,7 @@ void mschap_auth_response(const char *username,
 	static const char hex[16] = "0123456789ABCDEF";
 
 	size_t i;
-        uint8_t challenge[8];
+	uint8_t challenge[8];
 	uint8_t digest[20];
 
 	fr_SHA1Init(&Context);

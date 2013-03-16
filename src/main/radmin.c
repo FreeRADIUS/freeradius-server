@@ -112,7 +112,7 @@ static int fr_domain_socket(const char *path)
 #ifdef HAVE_SYS_UN_H
 	size_t len;
 	socklen_t socklen;
-        struct sockaddr_un saremote;
+	struct sockaddr_un saremote;
 
 	len = strlen(path);
 	if (len >= sizeof(saremote.sun_path)) {
@@ -120,18 +120,18 @@ static int fr_domain_socket(const char *path)
 		return -1;
 	}
 
-        if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		fprintf(stderr, "%s: Failed creating socket: %s\n",
 			progname, strerror(errno));
 		return -1;
-        }
+	}
 
-        saremote.sun_family = AF_UNIX;
+	saremote.sun_family = AF_UNIX;
 	memcpy(saremote.sun_path, path, len + 1); /* SUN_LEN does strlen */
 	
 	socklen = SUN_LEN(&saremote);
 
-        if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
+	if (connect(sockfd, (struct sockaddr *)&saremote, socklen) < 0) {
 		struct stat buf;
 
 		close(sockfd);
@@ -148,7 +148,7 @@ static int fr_domain_socket(const char *path)
 		}
 
 		return -1;
-        }
+	}
 
 #ifdef O_NONBLOCK
 	{
@@ -246,13 +246,13 @@ static int usage(void)
 	printf("Usage: %s [ args ]\n", progname);
 	printf("  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
 	printf("  -e command      Execute 'command' and then exit.\n");
-	printf("  -E              Echo commands as they are being executed.\n");
+	printf("  -E	      Echo commands as they are being executed.\n");
 	printf("  -f socket_file  Open socket_file directly, without reading radius.conf\n");
-	printf("  -h              Print usage help information.\n");
+	printf("  -h	      Print usage help information.\n");
 	printf("  -i input_file   Read commands from 'input_file'.\n");
-	printf("  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	printf("  -n name	 Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	printf("  -o output_file  Write commands to 'output_file'.\n");
-	printf("  -q              Quiet mode.\n");
+	printf("  -q	      Quiet mode.\n");
 
 	exit(1);
 }

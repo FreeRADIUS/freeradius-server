@@ -42,7 +42,7 @@ static const CONF_PARSER module_config[] = {
 	{ "max_sessions", PW_TYPE_INTEGER,
 	  offsetof(rlm_eap_t, max_sessions), NULL, "2048"},
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 /*
@@ -511,7 +511,7 @@ static rlm_rcode_t eap_authorize(void *instance, REQUEST *request)
 	 *	proxy reply (or the proxied packet)
 	 */
 	if (request->proxy != NULL)
-                return RLM_MODULE_NOOP;
+		return RLM_MODULE_NOOP;
 #endif
 
 	/*
@@ -527,7 +527,7 @@ static rlm_rcode_t eap_authorize(void *instance, REQUEST *request)
 	status = eap_start(inst, request);
 	switch(status) {
 	case EAP_NOOP:
-                return RLM_MODULE_NOOP;
+		return RLM_MODULE_NOOP;
 	case EAP_FAIL:
 		return RLM_MODULE_FAIL;
 	case EAP_FOUND:

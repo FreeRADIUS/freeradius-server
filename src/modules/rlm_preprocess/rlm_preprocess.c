@@ -59,11 +59,11 @@ static const CONF_PARSER module_config[] = {
 	{ "with_specialix_jetstream_hack",  PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_specialix_jetstream_hack), NULL,
 	  "no" },
-	{ "with_cisco_vsa_hack",        PW_TYPE_BOOLEAN,
+	{ "with_cisco_vsa_hack",	PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_cisco_vsa_hack), NULL, "no" },
-	{ "with_alvarion_vsa_hack",        PW_TYPE_BOOLEAN,
+	{ "with_alvarion_vsa_hack",	PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_alvarion_vsa_hack), NULL, "no" },
-	{ "with_cablelabs_vsa_hack",        PW_TYPE_BOOLEAN,
+	{ "with_cablelabs_vsa_hack",	PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_cablelabs_vsa_hack), NULL, NULL },
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -229,7 +229,7 @@ typedef struct cl_bcid_t {
 typedef struct cl_em_hdr_t {
 	uint16_t	version;
 	cl_bcid_t	bcid;
-	uint16_t        message_type;
+	uint16_t	message_type;
 	uint16_t	element_type;
 	uint8_t		element_id[8];
 	cl_timezone_t	time_zone;
@@ -538,9 +538,9 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Read this modules configuration data.
 	 */
-        if (cf_section_parse(conf, data, module_config) < 0) {
-                return -1;
-        }
+	if (cf_section_parse(conf, data, module_config) < 0) {
+		return -1;
+	}
 
 	data->huntgroups = NULL;
 	data->hints = NULL;

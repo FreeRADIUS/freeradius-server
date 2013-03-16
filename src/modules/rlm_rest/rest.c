@@ -1159,7 +1159,7 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 
 	if (flags->do_xlat) {
 		if (!radius_xlat(buffer, sizeof(buffer), value,
-			         request, NULL, NULL)) {
+				 request, NULL, NULL)) {
 			return NULL;
 		}
 		

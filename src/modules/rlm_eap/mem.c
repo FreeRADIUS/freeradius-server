@@ -168,8 +168,8 @@ void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 		handler->opaque = NULL;
 	}
 	else if ((handler->opaque) && (handler->free_opaque == NULL))
-                radlog(L_ERR, "rlm_eap (%s): Possible memory leak ...",
-                       inst->xlat_name);
+		radlog(L_ERR, "rlm_eap (%s): Possible memory leak ...",
+		       inst->xlat_name);
 
 	handler->opaque = NULL;
 	handler->free_opaque = NULL;

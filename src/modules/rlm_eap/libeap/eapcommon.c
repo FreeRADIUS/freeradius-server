@@ -27,10 +27,10 @@
 /*
  *  EAP PACKET FORMAT
  *  --- ------ ------
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Code      |  Identifier   |            Length             |
+ * |     Code      |  Identifier   |	    Length	     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |    Data ...
  * +-+-+-+-+
@@ -38,10 +38,10 @@
  *
  * EAP Request and Response Packet Format
  * --- ------- --- -------- ------ ------
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Code      |  Identifier   |            Length             |
+ * |     Code      |  Identifier   |	    Length	     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     Type      |  Type-Data ...
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
@@ -49,10 +49,10 @@
  *
  * EAP Success and Failure Packet Format
  * --- ------- --- ------- ------ ------
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Code      |  Identifier   |            Length             |
+ * |     Code      |  Identifier   |	    Length	     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -118,11 +118,11 @@ const char *eap_type2name(eap_type_t method)
  *	based on code.
  *
  * INPUT to function is reply->code
- *                      reply->id
- *                      reply->type   - setup with data
+ *		      reply->id
+ *		      reply->type   - setup with data
  *
  * OUTPUT reply->packet is setup with wire format, and will
- *                      be malloc()'ed to the right size.
+ *		      be malloc()'ed to the right size.
  *
  */
 int eap_wireformat(eap_packet_t *reply)

@@ -224,13 +224,13 @@ struct request {
 #endif
 
 
-	int                     simul_max;	//!< Maximum number of
+	int		     simul_max;	//!< Maximum number of
 						//!< concurrent sessions for
 						//!< this user.
 #ifdef WITH_SESSION_MGMT
-	int                     simul_count;	//!< The current number of
+	int		     simul_count;	//!< The current number of
 						//!< sessions for this user.
-	int                     simul_mpp; 	//!< WEIRD: 1 is false,
+	int		     simul_mpp; 	//!< WEIRD: 1 is false,
 						//!< 2 is true.
 #endif
 
@@ -280,15 +280,15 @@ struct request {
 #endif
 };				/* REQUEST typedef */
 
-#define RAD_REQUEST_OPTION_NONE            (0)
-#define RAD_REQUEST_OPTION_DEBUG           (1)
-#define RAD_REQUEST_OPTION_DEBUG2          (2)
-#define RAD_REQUEST_OPTION_DEBUG3          (3)
-#define RAD_REQUEST_OPTION_DEBUG4          (4)
+#define RAD_REQUEST_OPTION_NONE	    (0)
+#define RAD_REQUEST_OPTION_DEBUG	   (1)
+#define RAD_REQUEST_OPTION_DEBUG2	  (2)
+#define RAD_REQUEST_OPTION_DEBUG3	  (3)
+#define RAD_REQUEST_OPTION_DEBUG4	  (4)
 
 #define REQUEST_ACTIVE 		(1)
 #define REQUEST_STOP_PROCESSING (2)
-#define REQUEST_COUNTED	        (3)
+#define REQUEST_COUNTED		(3)
 
 #define REQUEST_QUEUED		(1)
 #define REQUEST_RUNNING		(2)
@@ -527,9 +527,9 @@ void log_talloc_report(TALLOC_CTX *ctx);
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
 #define MAX_REQUESTS		256
-#define RETRY_DELAY             5
-#define RETRY_COUNT             3
-#define DEAD_TIME               120
+#define RETRY_DELAY	     5
+#define RETRY_COUNT	     3
+#define DEAD_TIME	       120
 
 #define L_AUTH			2
 #define L_INFO			3
@@ -539,9 +539,9 @@ void log_talloc_report(TALLOC_CTX *ctx);
 
 #define L_DBG			16
 #define L_DBG_WARN		17
-#define L_DBG_ERR	        18
+#define L_DBG_ERR		18
 #define L_DBG_WARN2		19
-#define L_DBG_ERR2	        20
+#define L_DBG_ERR2		20
 
 
 /* for paircompare_register */
@@ -739,7 +739,7 @@ VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 /* xlat.c */
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
-size_t          radius_xlat(char * out, int outlen, const char *fmt,
+size_t	  radius_xlat(char * out, int outlen, const char *fmt,
 			    REQUEST * request, RADIUS_ESCAPE_STRING func, void *funcarg);
 typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t);
 int		xlat_register(const char *module, RAD_XLAT_FUNC func,
@@ -754,9 +754,9 @@ extern		void thread_pool_stop(void);
 extern		int thread_pool_addrequest(REQUEST *, RAD_REQUEST_FUNP);
 extern		pid_t rad_fork(void);
 extern		pid_t rad_waitpid(pid_t pid, int *status);
-extern          int total_active_threads(void);
-extern          void thread_pool_lock(void);
-extern          void thread_pool_unlock(void);
+extern	  int total_active_threads(void);
+extern	  void thread_pool_lock(void);
+extern	  void thread_pool_unlock(void);
 extern		void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 
 #ifndef HAVE_PTHREAD_H
@@ -816,7 +816,7 @@ typedef enum vpt_type {
 	VPT_TYPE_UNKNOWN = 0,
   	VPT_TYPE_LITERAL,		//!< Is a literal string.
     	VPT_TYPE_XLAT,			//!< Needs to be expanded.
-        VPT_TYPE_ATTR,			//!< Is an attribute.
+	VPT_TYPE_ATTR,			//!< Is an attribute.
 	VPT_TYPE_LIST,			//!< Is a list.
 	VPT_TYPE_EXEC			//!< Needs to be executed.
 } vpt_type_t;
@@ -831,7 +831,7 @@ extern const FR_NAME_NUMBER vpt_types[];
  * @see value_pair_map_t
  */
 typedef struct value_pair_tmpl_t {
-	const char	        *name;   //!< Original attribute ref string, or
+	const char		*name;   //!< Original attribute ref string, or
 					 //!< where this refers to a none FR
 					 //!< attribute, just the string id for
 					 //!< the attribute.

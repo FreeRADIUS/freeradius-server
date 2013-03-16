@@ -28,7 +28,7 @@
    1.3:
       *  add #include <config.h> ifdef HAVE_CONFIG_H
       *  cosmetic change, when exponent is 0 print xxxE+00
-         instead of xxxE-00
+	 instead of xxxE-00
    1.2:
       *  put the program under LGPL.
    1.1:
@@ -80,8 +80,8 @@ int n;
 /*
  * Find the integral part of the log in base 10
  * Note: this not a real log10()
-         I just need and approximation(integerpart) of x in:
-          10^x ~= r
+	 I just need and approximation(integerpart) of x in:
+	  10^x ~= r
  * log_10(200) = 2;
  * log_10(250) = 2;
  */
@@ -209,7 +209,7 @@ char ** fract;
       ch = (int)((fp + PRECISION)*base); /* force to round */
       integral_part[i] = (ch <= 9) ? ch + '0' : ch + 'a' - 10;
       if (! isxdigit(integral_part[i])) /* bail out overflow !! */
-        break;
+	break;
       number = ip;
      }
   }
@@ -362,9 +362,9 @@ double d;
   tmp = dtoa(d, p->precision, &tmp2);
   /* calculate the padding. 1 for the dot */
   p->width = p->width -
-            ((d > 0. && p->justify == RIGHT) ? 1:0) -
-            ((p->space == FOUND) ? 1:0) -
-            strlen(tmp) - p->precision - 1;
+	    ((d > 0. && p->justify == RIGHT) ? 1:0) -
+	    ((p->space == FOUND) ? 1:0) -
+	    strlen(tmp) - p->precision - 1;
   PAD_RIGHT(p);
   PUT_PLUS(d, p);
   PUT_SPACE(d, p);
@@ -405,8 +405,8 @@ double d;
    * 1 for '+|-', 3 for 'exp' */
   /* calculate how much padding need */
   p->width = p->width -
-             ((d > 0. && p->justify == RIGHT) ? 1:0) -
-             ((p->space == FOUND) ? 1:0) - p->precision - 7;
+	     ((d > 0. && p->justify == RIGHT) ? 1:0) -
+	     ((p->space == FOUND) ? 1:0) - p->precision - 7;
   PAD_RIGHT(p);
   PUT_PLUS(d, p);
   PUT_SPACE(d, p);
@@ -470,29 +470,29 @@ struct DATA * p;
       case ' ': p->space = FOUND; break;
       case '#': p->square = FOUND; break;
       case '*': if (p->width == NOT_FOUND)
-                  p->width = p->star_w = FOUND;
-                else
-                  p->precision = p->star_p = FOUND;
-                break;
+		  p->width = p->star_w = FOUND;
+		else
+		  p->precision = p->star_p = FOUND;
+		break;
       case '+': p->justify = RIGHT; break;
       case '-': p->justify = LEFT; break;
       case '.': if (p->width == NOT_FOUND)
-                  p->width = 0;
-                break;
+		  p->width = 0;
+		break;
       case '0': p->pad = '0'; break;
       case '1': case '2': case '3':
       case '4': case '5': case '6':
       case '7': case '8': case '9':     /* gob all the digits */
-        for (i = 0; isdigit(*s); i++, s++)
-          if (i < MAX_FIELD/2 - 1)
-            number[i] = *s;
-        number[i] = '\0';
-        if (p->width == NOT_FOUND)
-          p->width = atoi(number);
-        else
-          p->precision = atoi(number);
-        s--;   /* went to far go back */
-        break;
+	for (i = 0; isdigit(*s); i++, s++)
+	  if (i < MAX_FIELD/2 - 1)
+	    number[i] = *s;
+	number[i] = '\0';
+	if (p->width == NOT_FOUND)
+	  p->width = atoi(number);
+	else
+	  p->precision = atoi(number);
+	s--;   /* went to far go back */
+	break;
     }
   }
 }
@@ -529,142 +529,142 @@ va_list args;
     if ( *data.pf == '%' ) { /* we got a magic % cookie */
       conv_flag((char *)0, &data); /* initialise format flags */
       for (state = 1; *data.pf && state;) {
-        switch (*(++data.pf)) {
-          case '\0': /* a NULL here ? ? bail out */
-            *data.holder = '\0';
-            return data.counter;
-            break;
-          case 'f':  /* float, double */
-            STAR_ARGS(&data);
-            if (data.a_long == FOUND)
-               d = va_arg(args, LONG_DOUBLE);
-            else
-               d = va_arg(args, double);
-            floating(&data, d);
-            state = 0;
-            break;
-          case 'g':
-          case 'G':
-            STAR_ARGS(&data);
-            DEF_PREC(&data);
-            if (data.a_long == FOUND)
-               d = va_arg(args, LONG_DOUBLE);
-            else
-               d = va_arg(args, double);
-            i = log_10(d);
-            /*
-             * for '%g|%G' ANSI: use f if exponent
-             * is in the range or [-4,p] exclusively
-             * else use %e|%E
-             */
-            if (-4 < i && i < data.precision)
-              floating(&data, d);
-            else
-              exponent(&data, d);
-            state = 0;
-            break;
-          case 'e':
-          case 'E':  /* Exponent double */
-            STAR_ARGS(&data);
-            if (data.a_long == FOUND)
-               d = va_arg(args, LONG_DOUBLE);
-            else
-               d = va_arg(args, double);
-            exponent(&data, d);
-            state = 0;
-            break;
+	switch (*(++data.pf)) {
+	  case '\0': /* a NULL here ? ? bail out */
+	    *data.holder = '\0';
+	    return data.counter;
+	    break;
+	  case 'f':  /* float, double */
+	    STAR_ARGS(&data);
+	    if (data.a_long == FOUND)
+	       d = va_arg(args, LONG_DOUBLE);
+	    else
+	       d = va_arg(args, double);
+	    floating(&data, d);
+	    state = 0;
+	    break;
+	  case 'g':
+	  case 'G':
+	    STAR_ARGS(&data);
+	    DEF_PREC(&data);
+	    if (data.a_long == FOUND)
+	       d = va_arg(args, LONG_DOUBLE);
+	    else
+	       d = va_arg(args, double);
+	    i = log_10(d);
+	    /*
+	     * for '%g|%G' ANSI: use f if exponent
+	     * is in the range or [-4,p] exclusively
+	     * else use %e|%E
+	     */
+	    if (-4 < i && i < data.precision)
+	      floating(&data, d);
+	    else
+	      exponent(&data, d);
+	    state = 0;
+	    break;
+	  case 'e':
+	  case 'E':  /* Exponent double */
+	    STAR_ARGS(&data);
+	    if (data.a_long == FOUND)
+	       d = va_arg(args, LONG_DOUBLE);
+	    else
+	       d = va_arg(args, double);
+	    exponent(&data, d);
+	    state = 0;
+	    break;
 	  case 'u':  /* unsigned decimal */
 	    STAR_ARGS(&data);
-            if (data.a_longlong == FOUND)
-              d = va_arg(args, unsigned LONG_LONG);
-            else if (data.a_long == FOUND)
-              d = va_arg(args, unsigned long);
-            else
-              d = va_arg(args, unsigned int);
+	    if (data.a_longlong == FOUND)
+	      d = va_arg(args, unsigned LONG_LONG);
+	    else if (data.a_long == FOUND)
+	      d = va_arg(args, unsigned long);
+	    else
+	      d = va_arg(args, unsigned int);
 	    decimal(&data, d);
-            state = 0;
-            break;
-          case 'd':  /* decimal */
-            STAR_ARGS(&data);
-            if (data.a_longlong == FOUND)
-              d = va_arg(args, LONG_LONG);
-            else if (data.a_long == FOUND)
-              d = va_arg(args, long);
-            else
-              d = va_arg(args, int);
-            decimal(&data, d);
-            state = 0;
-            break;
-          case 'o':  /* octal */
-            STAR_ARGS(&data);
-            if (data.a_longlong == FOUND)
-              d = va_arg(args, LONG_LONG);
-            else if (data.a_long == FOUND)
-              d = va_arg(args, long);
-            else
-              d = va_arg(args, int);
-            octal(&data, d);
-            state = 0;
-            break;
-          case 'x':
-          case 'X':  /* hexadecimal */
-            STAR_ARGS(&data);
-            if (data.a_longlong == FOUND)
-              d = va_arg(args, LONG_LONG);
-            else if (data.a_long == FOUND)
-              d = va_arg(args, long);
-            else
-              d = va_arg(args, int);
-            hexa(&data, d);
-            state = 0;
-            break;
-          case 'c': /* character */
-            d = va_arg(args, int);
-            PUT_CHAR(d, &data);
-            state = 0;
-            break;
-          case 's':  /* string */
-            STAR_ARGS(&data);
-            strings(&data, va_arg(args, char *));
-            state = 0;
-            break;
-          case 'n':
-            *(va_arg(args, int *)) = data.counter; /* what's the count ? */
-            state = 0;
-            break;
-          case 'q':
-            data.a_longlong = FOUND;
-            break;
-          case 'L':
-          case 'l':
-            if (data.a_long == FOUND)
-              data.a_longlong = FOUND;
-            else
-              data.a_long = FOUND;
-            break;
-          case 'h':
-            break;
-          case '%':  /* nothing just % */
-            PUT_CHAR('%', &data);
-            state = 0;
-            break;
-          case '#': case ' ': case '+': case '*':
-          case '-': case '.': case '0': case '1':
-          case '2': case '3': case '4': case '5':
-          case '6': case '7': case '8': case '9':
-           /* initialize width and precision */
-            for (i = 0; isflag(*data.pf); i++, data.pf++)
-              if (i < MAX_FIELD - 1)
-                conv_field[i] = *data.pf;
-            conv_field[i] = '\0';
-            conv_flag(conv_field, &data);
-            data.pf--;   /* went to far go back */
-            break;
-          default:
-            /* is this an error ? maybe bail out */
-            state = 0;
-            break;
-        } /* end switch */
+	    state = 0;
+	    break;
+	  case 'd':  /* decimal */
+	    STAR_ARGS(&data);
+	    if (data.a_longlong == FOUND)
+	      d = va_arg(args, LONG_LONG);
+	    else if (data.a_long == FOUND)
+	      d = va_arg(args, long);
+	    else
+	      d = va_arg(args, int);
+	    decimal(&data, d);
+	    state = 0;
+	    break;
+	  case 'o':  /* octal */
+	    STAR_ARGS(&data);
+	    if (data.a_longlong == FOUND)
+	      d = va_arg(args, LONG_LONG);
+	    else if (data.a_long == FOUND)
+	      d = va_arg(args, long);
+	    else
+	      d = va_arg(args, int);
+	    octal(&data, d);
+	    state = 0;
+	    break;
+	  case 'x':
+	  case 'X':  /* hexadecimal */
+	    STAR_ARGS(&data);
+	    if (data.a_longlong == FOUND)
+	      d = va_arg(args, LONG_LONG);
+	    else if (data.a_long == FOUND)
+	      d = va_arg(args, long);
+	    else
+	      d = va_arg(args, int);
+	    hexa(&data, d);
+	    state = 0;
+	    break;
+	  case 'c': /* character */
+	    d = va_arg(args, int);
+	    PUT_CHAR(d, &data);
+	    state = 0;
+	    break;
+	  case 's':  /* string */
+	    STAR_ARGS(&data);
+	    strings(&data, va_arg(args, char *));
+	    state = 0;
+	    break;
+	  case 'n':
+	    *(va_arg(args, int *)) = data.counter; /* what's the count ? */
+	    state = 0;
+	    break;
+	  case 'q':
+	    data.a_longlong = FOUND;
+	    break;
+	  case 'L':
+	  case 'l':
+	    if (data.a_long == FOUND)
+	      data.a_longlong = FOUND;
+	    else
+	      data.a_long = FOUND;
+	    break;
+	  case 'h':
+	    break;
+	  case '%':  /* nothing just % */
+	    PUT_CHAR('%', &data);
+	    state = 0;
+	    break;
+	  case '#': case ' ': case '+': case '*':
+	  case '-': case '.': case '0': case '1':
+	  case '2': case '3': case '4': case '5':
+	  case '6': case '7': case '8': case '9':
+	   /* initialize width and precision */
+	    for (i = 0; isflag(*data.pf); i++, data.pf++)
+	      if (i < MAX_FIELD - 1)
+		conv_field[i] = *data.pf;
+	    conv_field[i] = '\0';
+	    conv_flag(conv_field, &data);
+	    data.pf--;   /* went to far go back */
+	    break;
+	  default:
+	    /* is this an error ? maybe bail out */
+	    state = 0;
+	    break;
+	} /* end switch */
       } /* end of for state */
     } else { /* not % */
       PUT_CHAR(*data.pf, &data);  /* add the char the string */

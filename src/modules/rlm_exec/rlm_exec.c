@@ -480,7 +480,7 @@ module_t rlm_exec = {
 	exec_detach,			/* detach */
 	{
 		exec_dispatch,		/* authentication */
-		exec_dispatch,	        /* authorization */
+		exec_dispatch,		/* authorization */
 		exec_dispatch,		/* pre-accounting */
 		exec_accounting,	/* accounting */
 		NULL,			/* check simul */

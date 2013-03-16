@@ -321,39 +321,39 @@ static void usage(int code)
 	printf("Usage: jlibtool [OPTIONS...] COMMANDS...\n");
 	printf("jlibtool is a replacement for GNU libtool with similar functionality.\n\n");
 
-	printf("  --config         show all configuration variables\n");
-	printf("  --debug          enable verbose shell tracing\n");
-	printf("  --dry-run        display commands without modifying any files\n");
-	printf("  --help           display this help message and exit\n");
+	printf("  --config	 show all configuration variables\n");
+	printf("  --debug	  enable verbose shell tracing\n");
+	printf("  --dry-run	display commands without modifying any files\n");
+	printf("  --help	   display this help message and exit\n");
 	printf("  --mode=MODE	   use operational mode MODE (you *must* set mode)\n");
 
-	printf("  --silent         don't print informational messages\n");
-	printf("  --tag=TAG        Ignored for libtool compatibility\n");
-	printf("  --version        print version information\n");
+	printf("  --silent	 don't print informational messages\n");
+	printf("  --tag=TAG	Ignored for libtool compatibility\n");
+	printf("  --version	print version information\n");
 
 
-	printf("  --shared         Build shared libraries when using --mode=link\n");
+	printf("  --shared	 Build shared libraries when using --mode=link\n");
 	printf("  --export-all	   Try to export 'def' file on some platforms\n");
 
 	printf("\nMODE must be one of the following:\n\n");
-	printf("  compile          compile a source file into a jlibtool object\n");
-	printf("  execute          automatically set library path, then run a program\n");
-	printf("  install          install libraries or executables\n");
-	printf("  link             create a library or an executable\n");
+	printf("  compile	  compile a source file into a jlibtool object\n");
+	printf("  execute	  automatically set library path, then run a program\n");
+	printf("  install	  install libraries or executables\n");
+	printf("  link	     create a library or an executable\n");
 
 	printf("\nMODE-ARGS can be the following:\n\n");
 	printf("  -export-dynamic  accepted and ignored\n");
-	printf("  -module          create a module when linking\n");
-	printf("  -shared          create a shared library when linking\n");
+	printf("  -module	  create a module when linking\n");
+	printf("  -shared	  create a shared library when linking\n");
 	printf("  -prefer-pic      prefer position-independent-code when compiling\n");
 	printf("  -prefer-non-pic  prefer non position-independent-code when compiling\n");
-	printf("  -static          create a static library when linking\n");
+	printf("  -static	  create a static library when linking\n");
 	printf("  -no-install      link libraries locally\n");
 	printf("  -rpath arg	   Set install path for shared libraries\n");
-	printf("  -l arg           pass '-l arg' to the link stage\n");
-	printf("  -L arg           pass '-L arg' to the link stage\n");
-	printf("  -R dir           add 'dir' to runtime library search path.\n");
-	printf("  -Zexe            accepted and ignored\n");
+	printf("  -l arg	   pass '-l arg' to the link stage\n");
+	printf("  -L arg	   pass '-L arg' to the link stage\n");
+	printf("  -R dir	   add 'dir' to runtime library search path.\n");
+	printf("  -Zexe	    accepted and ignored\n");
 	printf("  -avoid-version   accepted and ignored\n");
 
 	exit(code);

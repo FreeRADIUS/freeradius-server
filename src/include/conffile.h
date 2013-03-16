@@ -50,7 +50,7 @@ typedef struct CONF_PARSER {
 #define Stringify(x) XStringify(x)
 
 CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, const char *name1,
-			          const char *name2);
+				  const char *name2);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp,
 				const char *value);
 int		cf_item_parse(CONF_SECTION *cs, const char *name,

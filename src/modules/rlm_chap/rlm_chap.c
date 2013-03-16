@@ -93,9 +93,9 @@ static rlm_rcode_t chap_authenticate(UNUSED void *instance,
 			RDEBUGE("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 			RDEBUGE("!!! Please update your configuration so that the \"known !!!");
 			RDEBUGE("!!! good\" clear text password is in Cleartext-Password, !!!");
-			RDEBUGE("!!! and NOT in User-Password.                           !!!");
-			RDEBUGE("!!!                                                     !!!");
-			RDEBUGE("!!! Authentication will fail because of this.           !!!");
+			RDEBUGE("!!! and NOT in User-Password.			   !!!");
+			RDEBUGE("!!!						     !!!");
+			RDEBUGE("!!! Authentication will fail because of this.	   !!!");
 			RDEBUGE("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 		RDEBUG("Cleartext-Password is required for authentication");

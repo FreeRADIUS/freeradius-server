@@ -75,7 +75,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				   char* replyMsgBuffer,int replyMsgBufferSize)
 {
 	rlm_securid_t *inst = (rlm_securid_t *) instance;
-	int         acmRet;
+	int	 acmRet;
 	SD_PIN pinParams;
 	char newPin[10];
 	char format[30];
@@ -164,7 +164,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 					strcpy(format, "digits");
 				}
 				snprintf(replyMsgBuffer, replyMsgBufferSize,
-					 " \r\n   Enter your new PIN of %d to %d %s,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
+					 " \r\n   Enter your new PIN of %d to %d %s,\r\n		or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
 					 pinParams.Min, pinParams.Max, format);
 			}
 
@@ -229,7 +229,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			}
 			pSecurid_session->pin = strdup(passcode);
 
-			strlcpy(replyMsgBuffer,"\r\n                 Please re-enter new PIN:", replyMsgBufferSize);
+			strlcpy(replyMsgBuffer,"\r\n		 Please re-enter new PIN:", replyMsgBufferSize);
 
 			/* set next state */
 			pSecurid_session->securidSessionState = NEW_PIN_USER_CONFIRM_STATE;
@@ -255,7 +255,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 					strcpy(format, "digits");
 				}
 				snprintf(replyMsgBuffer, replyMsgBufferSize,
-					 " \r\n   Pins do not match--Please try again.\r\n   Enter your new PIN of %d to %d %s,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
+					 " \r\n   Pins do not match--Please try again.\r\n   Enter your new PIN of %d to %d %s,\r\n		or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
 					 pinParams.Min, pinParams.Max, format);
 
 				pSecurid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
@@ -389,7 +389,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				}
 					
 				snprintf(replyMsgBuffer, replyMsgBufferSize,
-					 " \r\n   Enter your new PIN of %d to %d %s,\r\n                or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
+					 " \r\n   Enter your new PIN of %d to %d %s,\r\n		or\r\n   <Ctrl-D> to cancel the New PIN procedure:",
 					 pinParams.Min, pinParams.Max, format);
 				pSecurid_session->securidSessionState = NEW_PIN_REQUIRED_STATE;
 					
@@ -438,11 +438,11 @@ static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 	*instance = inst = talloc_zero(conf, rlm_securid_t);
 	if (!inst) return -1;
 
-        /* If the configuration parameters can't be parsed, then fail. */
+	/* If the configuration parameters can't be parsed, then fail. */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		radlog(L_ERR, "rlm_securid: Unable to parse configuration section.");
 		return -1;
-        }
+	}
 
 	/*
 	 *	Lookup sessions in the tree.  We don't free them in
@@ -455,7 +455,7 @@ static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	pthread_mutex_init(&(inst->session_mutex), NULL);
-        return 0;
+	return 0;
 }
 
 

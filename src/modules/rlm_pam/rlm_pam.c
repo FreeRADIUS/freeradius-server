@@ -84,21 +84,21 @@ static int pam_instantiate(CONF_SECTION *conf, void **instance)
  * jab - stolen from pop3d
  *
  * Alan DeKok: modified to use PAM's appdata_ptr, so that we're
- *             multi-threaded safe, and don't have any nasty static
- *             variables hanging around.
+ *	     multi-threaded safe, and don't have any nasty static
+ *	     variables hanging around.
  *
  *************************************************************************/
 
 typedef struct my_PAM {
   const char *username;
   const char *password;
-  int         error;
+  int	 error;
 } my_PAM;
 
 static int PAM_conv (int num_msg,
-                     const struct pam_message **msg,
-                     struct pam_response **resp,
-                     void *appdata_ptr) {
+		     const struct pam_message **msg,
+		     struct pam_response **resp,
+		     void *appdata_ptr) {
   int count;
   struct pam_response *reply;
   my_PAM *pam_config = (my_PAM *) appdata_ptr;
@@ -125,11 +125,11 @@ static int PAM_conv (int num_msg,
     default:
       /* Must be an error of some sort... */
       for (count = 0; count < num_msg; count++) {
-        if (reply[count].resp) {
-          /* could be a password, let's be sanitary */
-          memset(reply[count].resp, 0, strlen(reply[count].resp));
-          free(reply[count].resp);
-        }
+	if (reply[count].resp) {
+	  /* could be a password, let's be sanitary */
+	  memset(reply[count].resp, 0, strlen(reply[count].resp));
+	  free(reply[count].resp);
+	}
       }
       free(reply);
       pam_config->error = 1;

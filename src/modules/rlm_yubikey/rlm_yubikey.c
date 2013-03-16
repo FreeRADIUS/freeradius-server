@@ -93,7 +93,7 @@ static size_t modhex2bin(const char *hex, uint8_t *bin, size_t len)
 		if (!(c1 = memchr(modhextab, tolower((int) hex[i << 1]), 16)) ||
 		    !(c2 = memchr(modhextab, tolower((int) hex[(i << 1) + 1]), 16)))
 			return -1;
-                 bin[i] = ((c1 - modhextab) <<4) + (c2 - modhextab);
+		 bin[i] = ((c1 - modhextab) <<4) + (c2 - modhextab);
 	}
 
 	return i;
@@ -366,13 +366,13 @@ static rlm_rcode_t yubikey_authenticate(void *instance, REQUEST *request)
 	if (request->options && request->radlog) {
 		(void) fr_bin2hex((uint8_t*) &token.uid,
 				  (char *) &private_id, YUBIKEY_UID_SIZE);
-		RDEBUG2("Private ID        : 0x%s", private_id);
+		RDEBUG2("Private ID	: 0x%s", private_id);
 		RDEBUG2("Session counter   : %u", yubikey_counter(token.ctr));
 		RDEBUG2("# used in session : %u", token.use);
 		RDEBUG2("Token timetamp    : %u",
-		        (token.tstph << 16) | token.tstpl);
+			(token.tstph << 16) | token.tstpl);
 		RDEBUG2("Random data       : %u", token.rnd);
-		RDEBUG2("CRC data          : 0x%x", token.crc);
+		RDEBUG2("CRC data	  : 0x%x", token.crc);
 		RDEBUG2("Triggered by      : %s", yubikey_capslock(token.ctr) ?
 			"keyboard" : "button");
 	}

@@ -81,9 +81,9 @@ typedef enum rlm_components {
  * attributes.
  */
 typedef struct section_type_value_t {
-        const char      *section;	//!< Section name e.g. "Authorize".
-        const char      *typename;	//!< Type name e.g. "Auth-Type".
-        int             attr;		//!< Attribute number.
+	const char      *section;	//!< Section name e.g. "Authorize".
+	const char      *typename;	//!< Type name e.g. "Auth-Type".
+	int	     attr;		//!< Attribute number.
 } section_type_value_t;
 
 /** Mappings between section names, typenames and control attributes

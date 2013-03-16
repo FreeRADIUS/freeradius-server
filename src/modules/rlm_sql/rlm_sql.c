@@ -139,10 +139,10 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 	RDEBUG("sql_xlat");
 
 	/*
-         * Add SQL-User-Name attribute just in case it is needed
-         *  We could search the string fmt for SQL-User-Name to see if this is
-         *  needed or not
-         */
+	 * Add SQL-User-Name attribute just in case it is needed
+	 *  We could search the string fmt for SQL-User-Name to see if this is
+	 *  needed or not
+	 */
 	sql_set_user(inst, request, NULL);
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
@@ -1318,12 +1318,12 @@ static rlm_rcode_t rlm_sql_accounting(void *instance, REQUEST * request) {
 
 #ifdef WITH_SESSION_MGMT
 /*
- *        See if a user is already logged in. Sets request->simul_count to the
- *        current session count for this user.
+ *	See if a user is already logged in. Sets request->simul_count to the
+ *	current session count for this user.
  *
- *        Check twice. If on the first pass the user exceeds his
- *        max. number of logins, do a second pass and validate all
- *        logins by querying the terminal server (using eg. SNMP).
+ *	Check twice. If on the first pass the user exceeds his
+ *	max. number of logins, do a second pass and validate all
+ *	logins by querying the terminal server (using eg. SNMP).
  */
 
 static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
@@ -1332,8 +1332,8 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
 	rlm_sql_row_t		row;
 	char		querystr[MAX_QUERY_LEN];
 	int		check = 0;
-        uint32_t        ipno = 0;
-        char            *call_num = NULL;
+	uint32_t	ipno = 0;
+	char	    *call_num = NULL;
 	VALUE_PAIR      *vp;
 	int		ret;
 	uint32_t	nas_addr = 0;
@@ -1405,15 +1405,15 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
 		return RLM_MODULE_FAIL;
 	}
 
-        /*
-         *      Setup some stuff, like for MPP detection.
-         */
+	/*
+	 *      Setup some stuff, like for MPP detection.
+	 */
 	request->simul_count = 0;
 
-        if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL)
-                ipno = vp->vp_ipaddr;
-        if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL)
-                call_num = vp->vp_strvalue;
+	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL)
+		ipno = vp->vp_ipaddr;
+	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL)
+		call_num = vp->vp_strvalue;
 
 
 	while (rlm_sql_fetch_row(&handle, inst) == 0) {
@@ -1469,14 +1469,14 @@ static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
 			 */
 			++request->simul_count;
 
-                        /*
-                         *      Does it look like a MPP attempt?
-                         */
-                        if (row[5] && ipno && inet_addr(row[5]) == ipno)
-                                request->simul_mpp = 2;
-                        else if (row[6] && call_num &&
-                                !strncmp(row[6],call_num,16))
-                                request->simul_mpp = 2;
+			/*
+			 *      Does it look like a MPP attempt?
+			 */
+			if (row[5] && ipno && inet_addr(row[5]) == ipno)
+				request->simul_mpp = 2;
+			else if (row[6] && call_num &&
+				!strncmp(row[6],call_num,16))
+				request->simul_mpp = 2;
 		}
 		else {
 			/*

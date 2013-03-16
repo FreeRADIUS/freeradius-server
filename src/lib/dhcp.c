@@ -212,7 +212,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src;
-	socklen_t	        sizeof_dst;
+	socklen_t		sizeof_dst;
 	RADIUS_PACKET		*packet;
 	int port;
 	uint8_t			*code;
@@ -438,7 +438,7 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #else
 
 	return sendfromto(packet->sockfd, packet->data, packet->data_len, 0,
-		          (struct sockaddr *)&src, sizeof_src,
+			  (struct sockaddr *)&src, sizeof_src,
 			  (struct sockaddr *)&dst, sizeof_dst);
 #endif
 }

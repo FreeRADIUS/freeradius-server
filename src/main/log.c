@@ -40,16 +40,16 @@ RCSID("$Id$")
  * Logging facility names
  */
 static const FR_NAME_NUMBER levels[] = {
-	{ ": Debug: ",          L_DBG   },
-	{ ": Auth: ",           L_AUTH  },
-	{ ": Proxy: ",          L_PROXY },
-	{ ": Info: ",           L_INFO  },
-	{ ": Acct: ",           L_ACCT  },
-	{ ": Error: ",          L_ERR   },
-	{ ": WARNING: ",        L_DBG_WARN   },
-	{ ": ERROR: ",          L_DBG_ERR   },
-	{ ": WARNING: ",        L_DBG_WARN2   },
-	{ ": ERROR: ",          L_DBG_ERR2   },
+	{ ": Debug: ",	  L_DBG   },
+	{ ": Auth: ",	   L_AUTH  },
+	{ ": Proxy: ",	  L_PROXY },
+	{ ": Info: ",	   L_INFO  },
+	{ ": Acct: ",	   L_ACCT  },
+	{ ": Error: ",	  L_ERR   },
+	{ ": WARNING: ",	L_DBG_WARN   },
+	{ ": ERROR: ",	  L_DBG_ERR   },
+	{ ": WARNING: ",	L_DBG_WARN2   },
+	{ ": ERROR: ",	  L_DBG_ERR2   },
 	{ NULL, 0 }
 };
 
@@ -155,7 +155,7 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 
 	if (len < sizeof(buffer)) {
 		len += vsnprintf(buffer + len,
-			         sizeof(buffer) - len - 1, fmt, ap);
+				 sizeof(buffer) - len - 1, fmt, ap);
 	}
 	
 	/*
@@ -255,11 +255,11 @@ int radlog(int lvl, const char *msg, ...)
  */
 void vp_listdebug(VALUE_PAIR *vp)
 {
-        char tmpPair[70];
-        for (; vp; vp = vp->next) {
-                vp_prints(tmpPair, sizeof(tmpPair), vp);
-                DEBUG2("     %s", tmpPair);
-        }
+	char tmpPair[70];
+	for (; vp; vp = vp->next) {
+		vp_prints(tmpPair, sizeof(tmpPair), vp);
+		DEBUG2("     %s", tmpPair);
+	}
 }
 
 extern char *request_log_file;

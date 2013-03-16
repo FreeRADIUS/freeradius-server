@@ -299,8 +299,8 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		talloc_free(buff);
 
 		status = sqlite3_open_v2(driver->filename, &db,
-				         SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-				         NULL);
+					 SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
+					 NULL);
 		
 		if (!db) {
 			radlog(L_ERR, "rlm_sql_sqlite: Failed creating "

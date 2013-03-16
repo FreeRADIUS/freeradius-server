@@ -613,13 +613,13 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 		 */
 
 		switch (rcode) {
-                case RLM_MODULE_FAIL:
+		case RLM_MODULE_FAIL:
 			request_free(&fake);
 			eaptls_fail(handler, 0);
 			return 0;
 			break;
 
-                default:  /* Don't Do Anything */
+		default:  /* Don't Do Anything */
 			RDEBUG2("Got reply %d", request->proxy_reply->code);
 			break;
 		}

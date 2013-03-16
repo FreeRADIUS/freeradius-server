@@ -77,7 +77,7 @@ RCSID("$Id$")
 #define THREAD_CANCELLED	(2)
 #define THREAD_EXITED		(3)
 
-#define NUM_FIFOS               RAD_LISTEN_MAX
+#define NUM_FIFOS	       RAD_LISTEN_MAX
 
 /*
  *  A data structure which contains the information about
@@ -86,18 +86,18 @@ RCSID("$Id$")
  *  pthread_id     pthread id
  *  thread_num     server thread number, 1...number of threads
  *  semaphore     used to block the thread until a request comes in
- *  status        is the thread running or exited?
+ *  status	is the thread running or exited?
  *  request_count the number of requests that this thread has handled
  *  timestamp     when the thread started executing.
  */
 typedef struct THREAD_HANDLE {
 	struct THREAD_HANDLE *prev;
 	struct THREAD_HANDLE *next;
-	pthread_t            pthread_id;
-	int                  thread_num;
-	int                  status;
-	unsigned int         request_count;
-	time_t               timestamp;
+	pthread_t	    pthread_id;
+	int		  thread_num;
+	int		  status;
+	unsigned int	 request_count;
+	time_t	       timestamp;
 	REQUEST		     *request;
 } THREAD_HANDLE;
 
@@ -192,13 +192,13 @@ static void thread_pool_manage(time_t now);
  *	A mapping of configuration file names to internal integers
  */
 static const CONF_PARSER thread_config[] = {
-	{ "start_servers",           PW_TYPE_INTEGER, 0, &thread_pool.start_threads,           "5" },
-	{ "max_servers",             PW_TYPE_INTEGER, 0, &thread_pool.max_threads,             "32" },
+	{ "start_servers",	   PW_TYPE_INTEGER, 0, &thread_pool.start_threads,	   "5" },
+	{ "max_servers",	     PW_TYPE_INTEGER, 0, &thread_pool.max_threads,	     "32" },
 	{ "min_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.min_spare_threads,       "3" },
 	{ "max_spare_servers",       PW_TYPE_INTEGER, 0, &thread_pool.max_spare_threads,       "10" },
 	{ "max_requests_per_server", PW_TYPE_INTEGER, 0, &thread_pool.max_requests_per_thread, "0" },
-	{ "cleanup_delay",           PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,           "5" },
-	{ "max_queue_size",          PW_TYPE_INTEGER, 0, &thread_pool.max_queue_size,          "65536" },
+	{ "cleanup_delay",	   PW_TYPE_INTEGER, 0, &thread_pool.cleanup_delay,	   "5" },
+	{ "max_queue_size",	  PW_TYPE_INTEGER, 0, &thread_pool.max_queue_size,	  "65536" },
 #ifdef WITH_STATS
 #ifdef WITH_ACCOUNTING
 	{ "auto_limit_acct",	     PW_TYPE_BOOLEAN, 0, &thread_pool.auto_limit_acct, NULL },

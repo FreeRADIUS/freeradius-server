@@ -183,7 +183,7 @@ static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	Function: sql_store_result
  *
  *	Purpose: database specific store_result function. Returns a result
- *               set for the query.
+ *	       set for the query.
  *
  *************************************************************************/
 static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -198,7 +198,7 @@ static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	Function: sql_num_fields
  *
  *	Purpose: database specific num_fields function. Returns number
- *               of columns from query
+ *	       of columns from query
  *
  *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -214,7 +214,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *con
  *	Function: sql_num_rows
  *
  *	Purpose: database specific num_rows. Returns number of rows in
- *               query
+ *	       query
  *
  *************************************************************************/
 static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -228,7 +228,7 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
- *               with all the data for the query in 'handle->row'. Returns
+ *	       with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if database is down.
  *
  *************************************************************************/
@@ -243,7 +243,7 @@ static int sql_fetch_row(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_
  *	Function: sql_free_result
  *
  *	Purpose: database specific free_result. Frees memory allocated
- *               for a result set
+ *	       for a result set
  *
  *************************************************************************/
 static int sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -258,7 +258,7 @@ static int sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_confi
  *	Function: sql_error
  *
  *	Purpose: database specific error. Returns error associated with
- *               connection
+ *	       connection
  *
  *************************************************************************/
 static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)

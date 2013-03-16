@@ -265,7 +265,7 @@ typedef struct fr_packet_socket_t {
  *	that should be managed.
  */
 struct fr_packet_list_t {
-	rbtree_t        *tree;
+	rbtree_t	*tree;
 
 	int		alloc_id;
 	int		num_outgoing;
@@ -355,7 +355,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 {
 	int i, start;
 	struct sockaddr_storage	src;
-	socklen_t	        sizeof_src;
+	socklen_t		sizeof_src;
 	fr_packet_socket_t	*ps;
 
 	if (!pl || !dst_ipaddr || (dst_ipaddr->af == AF_UNSPEC)) {

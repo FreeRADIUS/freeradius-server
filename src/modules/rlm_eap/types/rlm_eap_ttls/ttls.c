@@ -27,14 +27,14 @@ RCSID("$Id$")
 #include "eap_ttls.h"
 
 /*
- *    0                   1                   2                   3
+ *    0		   1		   2		   3
  *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |                           AVP Code                            |
+ *   |			   AVP Code			    |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |V M r r r r r r|                  AVP Length                   |
+ *   |V M r r r r r r|		  AVP Length		   |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |                        Vendor-ID (opt)                        |
+ *   |			Vendor-ID (opt)			|
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *   |    Data ...
  *   +-+-+-+-+-+-+-+-+
@@ -896,13 +896,13 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 		 */
 
 		switch (rcode) {
-                case RLM_MODULE_FAIL:
+		case RLM_MODULE_FAIL:
 			request_free(&fake);
 			eaptls_fail(handler, 0);
 			return 0;
 			break;
 
-                default:  /* Don't Do Anything */
+		default:  /* Don't Do Anything */
 			RDEBUG2("Got reply %d",
 			       request->proxy_reply->code);
 			break;

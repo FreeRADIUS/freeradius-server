@@ -17,7 +17,7 @@
    Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
    Revision History:
-                   see header of snprintf.c.
+		   see header of snprintf.c.
 
 format:
   int snprintf(holder, sizeof_holder, format, ...)
@@ -169,53 +169,53 @@ struct DATA {
 
 /* the conversion flags */
 #define isflag(c) ((c) == '#' || (c) == ' ' || \
-                   (c) == '*' || (c) == '+' || \
-                   (c) == '-' || (c) == '.' || \
-                   isdigit(c))
+		   (c) == '*' || (c) == '+' || \
+		   (c) == '-' || (c) == '.' || \
+		   isdigit(c))
 
 /* round off to the precision */
 #define ROUND(d, p) \
-            (d < 0.) ? \
-             d - pow_10(-(p)->precision) * 0.5 : \
-             d + pow_10(-(p)->precision) * 0.5
+	    (d < 0.) ? \
+	     d - pow_10(-(p)->precision) * 0.5 : \
+	     d + pow_10(-(p)->precision) * 0.5
 
 /* set default precision */
 #define DEF_PREC(p) \
-            if ((p)->precision == NOT_FOUND) \
-              (p)->precision = 6
+	    if ((p)->precision == NOT_FOUND) \
+	      (p)->precision = 6
 
 /* put a char */
 #define PUT_CHAR(c, p) \
-            if ((p)->counter < (p)->length) { \
-              *(p)->holder++ = (c); \
-              (p)->counter++; \
-            }
+	    if ((p)->counter < (p)->length) { \
+	      *(p)->holder++ = (c); \
+	      (p)->counter++; \
+	    }
 
 #define PUT_PLUS(d, p) \
-            if ((d) > 0. && (p)->justify == RIGHT) \
-              PUT_CHAR('+', p)
+	    if ((d) > 0. && (p)->justify == RIGHT) \
+	      PUT_CHAR('+', p)
 
 #define PUT_SPACE(d, p) \
-            if ((p)->space == FOUND && (d) > 0.) \
-              PUT_CHAR(' ', p)
+	    if ((p)->space == FOUND && (d) > 0.) \
+	      PUT_CHAR(' ', p)
 
 /* pad right */
 #define PAD_RIGHT(p) \
-            if ((p)->width > 0 && (p)->justify != LEFT) \
-              for (; (p)->width > 0; (p)->width--) \
-                 PUT_CHAR((p)->pad, p)
+	    if ((p)->width > 0 && (p)->justify != LEFT) \
+	      for (; (p)->width > 0; (p)->width--) \
+		 PUT_CHAR((p)->pad, p)
 
 /* pad left */
 #define PAD_LEFT(p) \
-            if ((p)->width > 0 && (p)->justify == LEFT) \
-              for (; (p)->width > 0; (p)->width--) \
-                 PUT_CHAR((p)->pad, p)
+	    if ((p)->width > 0 && (p)->justify == LEFT) \
+	      for (; (p)->width > 0; (p)->width--) \
+		 PUT_CHAR((p)->pad, p)
 
 /* if width and prec. in the args */
 #define STAR_ARGS(p) \
-            if ((p)->star_w == FOUND) \
-              (p)->width = va_arg(args, int); \
-            if ((p)->star_p == FOUND) \
-              (p)->precision = va_arg(args, int)
+	    if ((p)->star_w == FOUND) \
+	      (p)->width = va_arg(args, int); \
+	    if ((p)->star_p == FOUND) \
+	      (p)->precision = va_arg(args, int)
 
 #endif /* HAVE_VSNPRINTF */

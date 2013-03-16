@@ -38,8 +38,8 @@ RCSID("$Id$")
 #endif
 
 static const char *months[] = {
-        "jan", "feb", "mar", "apr", "may", "jun",
-        "jul", "aug", "sep", "oct", "nov", "dec" };
+	"jan", "feb", "mar", "apr", "may", "jun",
+	"jul", "aug", "sep", "oct", "nov", "dec" };
 
 /** Dynamically allocate a new attribute
  *
@@ -174,7 +174,7 @@ VALUE_PAIR *pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
 	while (first) {
 		if ((first->da->attr == attr) && (first->da->vendor == vendor)
 		    && ((tag == TAG_ANY) || (first->da->flags.has_tag &&
-		        (first->tag == tag)))) {
+			(first->tag == tag)))) {
 			return first;
 		}
 		first = first->next;
@@ -764,7 +764,7 @@ static int gettime(const char *valstr, time_t *date)
 	char		buf[64];
 	char		*p;
 	char		*f[4];
-	char            *tail = '\0';
+	char	    *tail = '\0';
 
 	/*
 	 * Test for unix timestamp date
@@ -1499,9 +1499,9 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 {
 	const DICT_ATTR *da;
 	VALUE_PAIR	*vp;
-	char            *tc, *ts;
+	char	    *tc, *ts;
 	int8_t		tag;
-	int             found_tag;
+	int	     found_tag;
 	char		buffer[256];
 	const char	*attrname = attribute;
 
@@ -1523,14 +1523,14 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 		ts = strrchr(attrname, ':');
 		if (!ts) return NULL;
 
-	         /* Colon found with something behind it */
-	         if (ts[1] == '*' && ts[2] == 0) {
-		         /* Wildcard tag for check items */
-		         tag = TAG_ANY;
+		 /* Colon found with something behind it */
+		 if (ts[1] == '*' && ts[2] == 0) {
+			 /* Wildcard tag for check items */
+			 tag = TAG_ANY;
 			 *ts = 0;
 		 } else if ((ts[1] >= '0') && (ts[1] <= '9')) {
-		         /* It's not a wild card tag */
-		         tag = strtol(ts + 1, &tc, 0);
+			 /* It's not a wild card tag */
+			 tag = strtol(ts + 1, &tc, 0);
 			 if (tc && !*tc && TAG_VALID_ZERO(tag))
 				 *ts = 0;
 			 else tag = 0;
@@ -1563,22 +1563,22 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	 */
 
 	if (value && (*value == ':' && da->flags.has_tag)) {
-	        /* If we already found a tag, this is invalid */
-	        if(found_tag) {
+		/* If we already found a tag, this is invalid */
+		if(found_tag) {
 			fr_strerror_printf("Duplicate tag %s for attribute %s",
 				   value, vp->da->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
 				   value, vp->da->name);
-		        pairbasicfree(vp);
+			pairbasicfree(vp);
 			return NULL;
 		}
-	        /* Colon found and attribute allows a tag */
-	        if (value[1] == '*' && value[2] == ':') {
+		/* Colon found and attribute allows a tag */
+		if (value[1] == '*' && value[2] == ':') {
 		       /* Wildcard tag for check items */
 		       tag = TAG_ANY;
 		       value += 3;
 		} else {
-	               /* Real tag */
+		       /* Real tag */
 		       tag = strtol(value + 1, &tc, 0);
 		       if (tc && *tc==':' && TAG_VALID_ZERO(tag))
 			    value = tc + 1;
@@ -1603,7 +1603,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	case T_OP_CMP_FALSE:
 		vp->vp_strvalue[0] = '\0';
 		vp->length = 0;
-	        return vp;
+		return vp;
 		break;
 
 		/*

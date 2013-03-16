@@ -132,7 +132,7 @@ typedef struct attr_flags {
 /*
  *  Values of the encryption flags.
  */
-#define FLAG_ENCRYPT_NONE            (0)
+#define FLAG_ENCRYPT_NONE	    (0)
 #define FLAG_ENCRYPT_USER_PASSWORD   (1)
 #define FLAG_ENCRYPT_TUNNEL_PASSWORD (2)
 #define FLAG_ENCRYPT_ASCEND_SECRET   (3)
@@ -143,7 +143,7 @@ typedef struct dict_attr {
 	unsigned int		attr;
 	PW_TYPE			type;
 	unsigned int		vendor;
-        ATTR_FLAGS              flags;
+	ATTR_FLAGS	      flags;
 	char			name[1];
 } DICT_ATTR;
 
@@ -192,7 +192,7 @@ typedef enum value_type {
 } value_type_t;
 
 typedef struct value_pair {
-	const DICT_ATTR	        *da;		//!< Dictionary attribute
+	const DICT_ATTR		*da;		//!< Dictionary attribute
 						//!< defines the attribute
 						//!< number, vendor and type
 						//!< of the attribute.
@@ -273,7 +273,7 @@ typedef struct fr_ipaddr_t {
 typedef struct radius_packet {
 	int			sockfd;
 	fr_ipaddr_t		src_ipaddr;
-        fr_ipaddr_t		dst_ipaddr;
+	fr_ipaddr_t		dst_ipaddr;
 	uint16_t		src_port;
 	uint16_t		dst_port;
 	int			id;
@@ -430,11 +430,11 @@ VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da);
 VALUE_PAIR	*paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
-void            pairbasicfree(VALUE_PAIR *pair);
+void	    pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
-void            pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
+void	    pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
 VALUE_PAIR	*paircopyvp(const VALUE_PAIR *vp);
 VALUE_PAIR	*paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp);

@@ -54,33 +54,33 @@ static CS_RETCODE CS_PUBLIC clientmsg_callback(UNUSED CS_CONTEXT *context,
 					       CS_CLIENTMSG *emsgp)
 {
 
-        /*
-        ** Error number: Print the error's severity, number, origin, and
-        ** layer. These four numbers uniquely identify the error.
-        */
-        radlog(L_ERR,
-                "Client Library error:\n");
-        radlog(L_ERR,
-                "severity(%ld) number(%ld) origin(%ld) layer(%ld)\n",
-                (long)CS_SEVERITY(emsgp->severity),
-                (long)CS_NUMBER(emsgp->msgnumber),
-                (long)CS_ORIGIN(emsgp->msgnumber),
-                (long)CS_LAYER(emsgp->msgnumber));
+	/*
+	** Error number: Print the error's severity, number, origin, and
+	** layer. These four numbers uniquely identify the error.
+	*/
+	radlog(L_ERR,
+		"Client Library error:\n");
+	radlog(L_ERR,
+		"severity(%ld) number(%ld) origin(%ld) layer(%ld)\n",
+		(long)CS_SEVERITY(emsgp->severity),
+		(long)CS_NUMBER(emsgp->msgnumber),
+		(long)CS_ORIGIN(emsgp->msgnumber),
+		(long)CS_LAYER(emsgp->msgnumber));
 
-        /*
-        ** Error text: Print the error text.
-        */
-        radlog(L_ERR, "%s\n", emsgp->msgstring);
+	/*
+	** Error text: Print the error text.
+	*/
+	radlog(L_ERR, "%s\n", emsgp->msgstring);
 
-        if (emsgp->osstringlen > 0)
-        {
-                radlog(L_ERR,
-                        "Operating system error number(%ld):\n",
-                        (long)emsgp->osnumber);
-                radlog(L_ERR, "%s\n", emsgp->osstring);
-        }
+	if (emsgp->osstringlen > 0)
+	{
+		radlog(L_ERR,
+			"Operating system error number(%ld):\n",
+			(long)emsgp->osnumber);
+		radlog(L_ERR, "%s\n", emsgp->osstring);
+	}
 
-        return (CS_SUCCEED);
+	return (CS_SUCCEED);
 }
 
 /************************************************************************
@@ -92,30 +92,30 @@ static CS_RETCODE CS_PUBLIC
 csmsg_callback(UNUSED CS_CONTEXT *context, CS_CLIENTMSG *emsgp)
 {
 
-        /*
-        ** Print the error number and message.
-        */
-        radlog(L_ERR,
-                "CS-Library error:\n");
-        radlog(L_ERR,
-                "\tseverity(%ld) layer(%ld) origin(%ld) number(%ld)",
-                (long)CS_SEVERITY(emsgp->msgnumber),
-                (long)CS_LAYER(emsgp->msgnumber),
-                (long)CS_ORIGIN(emsgp->msgnumber),
-                (long)CS_NUMBER(emsgp->msgnumber));
+	/*
+	** Print the error number and message.
+	*/
+	radlog(L_ERR,
+		"CS-Library error:\n");
+	radlog(L_ERR,
+		"\tseverity(%ld) layer(%ld) origin(%ld) number(%ld)",
+		(long)CS_SEVERITY(emsgp->msgnumber),
+		(long)CS_LAYER(emsgp->msgnumber),
+		(long)CS_ORIGIN(emsgp->msgnumber),
+		(long)CS_NUMBER(emsgp->msgnumber));
 
-        radlog(L_ERR, "%s\n", emsgp->msgstring);
+	radlog(L_ERR, "%s\n", emsgp->msgstring);
 
-        /*
-        ** Print any operating system error information.
-        */
-        if (emsgp->osstringlen > 0)
-        {
-                radlog(L_ERR, "Operating System Error: %s\n",
-                        emsgp->osstring);
-        }
+	/*
+	** Print any operating system error information.
+	*/
+	if (emsgp->osstringlen > 0)
+	{
+		radlog(L_ERR, "Operating System Error: %s\n",
+			emsgp->osstring);
+	}
 
-        return (CS_SUCCEED);
+	return (CS_SUCCEED);
 }
 
 /************************************************************************
@@ -128,31 +128,31 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *cp,
 					       CS_SERVERMSG *msgp)
 {
 
-        /*
-        ** Print the message info.
-        */
-        radlog(L_ERR,
-                "Sybase Server message:\n");
-        radlog(L_ERR,
-                "number(%ld) severity(%ld) state(%ld) line(%ld)\n",
-                (long)msgp->msgnumber, (long)msgp->severity,
-                (long)msgp->state, (long)msgp->line);
+	/*
+	** Print the message info.
+	*/
+	radlog(L_ERR,
+		"Sybase Server message:\n");
+	radlog(L_ERR,
+		"number(%ld) severity(%ld) state(%ld) line(%ld)\n",
+		(long)msgp->msgnumber, (long)msgp->severity,
+		(long)msgp->state, (long)msgp->line);
 
-        /*
-        ** Print the server and procedure names if supplied.
-        */
-        if (msgp->svrnlen > 0 && msgp->proclen > 0)
-                radlog(L_ERR, "Server name: %s   Procedure name: %s", msgp->svrname, msgp->proc);
+	/*
+	** Print the server and procedure names if supplied.
+	*/
+	if (msgp->svrnlen > 0 && msgp->proclen > 0)
+		radlog(L_ERR, "Server name: %s   Procedure name: %s", msgp->svrname, msgp->proc);
 
-        /*
-        ** Print the null terminated message.
-        */
-        radlog(L_ERR, "%s\n", msgp->text);
+	/*
+	** Print the null terminated message.
+	*/
+	radlog(L_ERR, "%s\n", msgp->text);
 
-        /*
-        ** Server message callbacks must return CS_SUCCEED.
-        */
-        return (CS_SUCCEED);
+	/*
+	** Server message callbacks must return CS_SUCCEED.
+	*/
+	return (CS_SUCCEED);
 }
 
 /*************************************************************************
@@ -160,7 +160,7 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *cp,
  *	Function: sql_error
  *
  *	Purpose: database specific error. Returns error associated with
- *               db
+ *	       db
  *
  *************************************************************************/
 static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
@@ -279,30 +279,30 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	/* Install callback functions for error-handling */
 
-        if (cs_config(conn->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
+	if (cs_config(conn->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to install CS Library error callback");
-                if (conn->context != (CS_CONTEXT *)NULL) {
-                        ct_exit(conn->context, CS_FORCE_EXIT);
-                        cs_ctx_drop(conn->context);
-                }
+		if (conn->context != (CS_CONTEXT *)NULL) {
+			ct_exit(conn->context, CS_FORCE_EXIT);
+			cs_ctx_drop(conn->context);
+		}
 		return -1;
 	}
 
 	if (ct_callback(conn->context, NULL, CS_SET, CS_CLIENTMSG_CB, (CS_VOID *)clientmsg_callback) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
-                if (conn->context != (CS_CONTEXT *)NULL) {
-                        ct_exit(conn->context, CS_FORCE_EXIT);
-                        cs_ctx_drop(conn->context);
-                }
+		if (conn->context != (CS_CONTEXT *)NULL) {
+			ct_exit(conn->context, CS_FORCE_EXIT);
+			cs_ctx_drop(conn->context);
+		}
 		return -1;
 	}
 
 	if (ct_callback(conn->context, NULL, CS_SET, CS_SERVERMSG_CB, (CS_VOID *)servermsg_callback) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
-                if (conn->context != (CS_CONTEXT *)NULL) {
-                        ct_exit(conn->context, CS_FORCE_EXIT);
-                        cs_ctx_drop(conn->context);
-                }
+		if (conn->context != (CS_CONTEXT *)NULL) {
+			ct_exit(conn->context, CS_FORCE_EXIT);
+			cs_ctx_drop(conn->context);
+		}
 		return -1;
 	}
 
@@ -321,10 +321,10 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 /*	if (ct_diag(conn->db, CS_INIT, CS_UNUSED, CS_UNUSED, NULL) != CS_SUCCEED) {
 		radlog(L_ERR,"rlm_sql_sybase(sql_socket_init): Unable to initialize error handling (ct_diag())");
-                if (conn->context != (CS_CONTEXT *)NULL) {
-                        ct_exit(conn->context, CS_FORCE_EXIT);
-                        cs_ctx_drop(conn->context);
-                }
+		if (conn->context != (CS_CONTEXT *)NULL) {
+			ct_exit(conn->context, CS_FORCE_EXIT);
+			cs_ctx_drop(conn->context);
+		}
 		return -1;
 	} */
 
@@ -373,7 +373,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Function: sql_query
  *
  *	Purpose: Issue a non-SELECT query (ie: update/delete/insert) to
- *               the database.
+ *	       the database.
  *
  *************************************************************************/
 static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
@@ -525,7 +525,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
  *	Function: sql_num_fields
  *
  *	Purpose: database specific num_fields function. Returns number
- *               of columns from query
+ *	       of columns from query
  *
  *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
@@ -560,11 +560,11 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 		return -1;
 	}
 
-        if (conn->results) {
-                while(conn->results[i]) free(conn->results[i++]);
-                free(conn->results);
-                conn->results=NULL;
-        }
+	if (conn->results) {
+		while(conn->results[i]) free(conn->results[i++]);
+		free(conn->results);
+		conn->results=NULL;
+	}
 
 	return 0;
 
@@ -656,7 +656,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 
 			for (i=0; i < colcount; i++) {
 
-                        	rowdata[i]=rad_malloc((MAX_DATASTR_LEN * sizeof(char))+1); /* Space to hold the result data */
+				rowdata[i]=rad_malloc((MAX_DATASTR_LEN * sizeof(char))+1); /* Space to hold the result data */
 
 				/* Associate the target buffer with the data */
 				if (ct_bind(conn->command, i+1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
@@ -725,7 +725,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
  *	Function: sql_store_result
  *
  *	Purpose: database specific store_result function. Returns a result
- *               set for the query.
+ *	       set for the query.
  *
  *************************************************************************/
 static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
@@ -744,7 +744,7 @@ static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	Function: sql_num_rows
  *
  *	Purpose: database specific num_rows. Returns number of rows in
- *               query
+ *	       query
  *
  *************************************************************************/
 static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
@@ -766,7 +766,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Function: sql_fetch_row
  *
  *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
- *               with all the data for the query in 'handle->row'. Returns
+ *	       with all the data for the query in 'handle->row'. Returns
  *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
  *
  *************************************************************************/
@@ -831,7 +831,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Function: sql_free_result
  *
  *	Purpose: database specific free_result. Frees memory allocated
- *               for a result set
+ *	       for a result set
  *
  *************************************************************************/
 static int sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
@@ -871,7 +871,7 @@ static int sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *c
  *	Function: sql_affected_rows
  *
  *	Purpose: Return the number of rows affected by the query (update,
- *               or insert)
+ *	       or insert)
  *
  *************************************************************************/
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {

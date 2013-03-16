@@ -240,7 +240,7 @@ static int getusersfile(const char *filename, fr_hash_table_t **pht,
 				 *	then bitch about it, giving a
 				 *	good warning message.
 				 */
-			         if ((vp->da->vendor == 0) &&
+				 if ((vp->da->vendor == 0) &&
 					(vp->da->attr > 0xff) &&
 					(vp->da->attr > 1000)) {
 					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"

@@ -5,12 +5,12 @@
  *  and binary forms, with or without modification, provided that the
  *  following conditions are met:
  *     1. Redistribution of source code must retain the above copyright
- *        notice, this list of conditions, and the following disclaimer
- *        in all source files.
+ *	notice, this list of conditions, and the following disclaimer
+ *	in all source files.
  *     2. Redistribution in binary form must retain the above copyright
- *        notice, this list of conditions, and the following disclaimer
- *        in the documentation and/or other materials provided with the
- *        distribution.
+ *	notice, this list of conditions, and the following disclaimer
+ *	in the documentation and/or other materials provided with the
+ *	distribution.
  *
  *  "DISCLAIMER OF LIABILITY
  *

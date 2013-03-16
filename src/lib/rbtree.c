@@ -43,7 +43,7 @@ struct rbnode_t {
     void	*Data;		/* data stored in node */
 };
 
-#define NIL &Sentinel           /* all leafs are sentinels */
+#define NIL &Sentinel	   /* all leafs are sentinels */
 static rbnode_t Sentinel = { NIL, NIL, NULL, Black, NULL};
 
 struct rbtree_t {
@@ -191,7 +191,7 @@ static void InsertFixup(rbtree_t *tree, rbnode_t *X)
 {
 	/*************************************
 	 *  maintain red-black tree balance  *
-	 *  after inserting node X           *
+	 *  after inserting node X	   *
 	 *************************************/
 
 	/* check red-black properties */
@@ -333,7 +333,7 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
 {
 	/*************************************
 	 *  maintain red-black tree balance  *
-	 *  after deleting node X            *
+	 *  after deleting node X	    *
 	 *************************************/
 
 	while (X != tree->Root && X->Color == Black) {

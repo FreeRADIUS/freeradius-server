@@ -1,9 +1,9 @@
 /***************************************************************************
-* rlm_sql.h                          rlm_sql - FreeRADIUS SQL Module      *
-*                                                                         *
-*     Header for main SQL module file                                     *
-*                                                                         *
-*                                    Mike Machado <mike@innercite.com>    *
+* rlm_sql.h			  rlm_sql - FreeRADIUS SQL Module      *
+*									 *
+*     Header for main SQL module file				     *
+*									 *
+*				    Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
 #ifndef _RLM_SQL_H
 #define _RLM_SQL_H

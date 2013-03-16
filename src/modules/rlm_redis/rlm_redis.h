@@ -36,22 +36,22 @@ RCSIDH(rlm_redis_h, "$Id$")
 
 typedef struct redis_socket_t {
 	redisContext	*conn;
-        redisReply      *reply;
+	redisReply      *reply;
 } REDISSOCK;
 
 typedef struct rlm_redis_t REDIS_INST;
 
 typedef struct rlm_redis_t {
-        char            *xlat_name;
+	char	    *xlat_name;
 
-        char            *hostname;
-        int             port;
+	char	    *hostname;
+	int	     port;
 	int		database;
 	char		*password;
 	fr_connection_pool_t *pool;
 
-        int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, const char *query, REQUEST *request);
-        int (*redis_finish_query)(REDISSOCK *dissocket);
+	int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, const char *query, REQUEST *request);
+	int (*redis_finish_query)(REDISSOCK *dissocket);
 
 } rlm_redis_t;
 
@@ -59,7 +59,7 @@ typedef struct rlm_redis_t {
 #define MAX_REDIS_ARGS			16
 
 int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
-                    const char *query, REQUEST *request);
+		    const char *query, REQUEST *request);
 int rlm_redis_finish_query(REDISSOCK *dissocket);
 
 #endif	/* RLM_REDIS_H */

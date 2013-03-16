@@ -71,19 +71,19 @@ static void add_reply(VALUE_PAIR** vp,
 
 static int set_mppe_keys(eap_handler_t *handler)
 {
-        unsigned char *p;
+	unsigned char *p;
 	struct IKEv2Session *session;
 	VALUE_PAIR **outvps;
 
 	session = ((struct IKEv2Data*)handler->opaque)->session;
 
-        if (session->eapKeyData==NULL){
-                radlog( L_INFO,IKEv2_LOG_PREFIX "Key session not available!!!");
-                return 1;
-        }
+	if (session->eapKeyData==NULL){
+		radlog( L_INFO,IKEv2_LOG_PREFIX "Key session not available!!!");
+		return 1;
+	}
 
 	/* outvps is the session to the client. */
-        outvps= &handler->request->reply->vps;
+	outvps= &handler->request->reply->vps;
 
 	p = session->eapKeyData;
 	add_reply(outvps, "MS-MPPE-Recv-Key",(const char*) p, IKEV2_MPPE_KEY_LEN);
@@ -95,8 +95,8 @@ static int set_mppe_keys(eap_handler_t *handler)
 
 // Compose Radius like message from table of output bytes
 static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
-        eap_ds->request->type.num = PW_EAP_IKEV2;
-        eap_ds->request->code = ((struct EAPHeader *)out)->Code;
+	eap_ds->request->type.num = PW_EAP_IKEV2;
+	eap_ds->request->code = ((struct EAPHeader *)out)->Code;
 	if(eap_ds->request->code<=PW_EAP_REQUEST && olen>4) {
 	    int lenn=(int)ntohs(((struct EAPHeader *)out)->Length);
 	    eap_ds->request->type.data = malloc(lenn);
@@ -110,7 +110,7 @@ static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
 	    eap_ds->request->type.data=NULL;
 	    eap_ds->request->type.length=0;
 	}
-        return 0;
+	return 0;
 }
 
 
@@ -203,7 +203,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	    offsetof(ikev2_ctx,enableFastReconnect),NULL,"yes"},
 
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
      };
 
     ikev2_set_log_callback(vxlogf);
@@ -224,8 +224,8 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 
     i2->authtype=rad_get_authtype(server_authtype);
     if(!i2->id) {
-        radlog(L_ERR,IKEv2_LOG_PREFIX "'id' configuration option is required!!!");
-        return -1;
+	radlog(L_ERR,IKEv2_LOG_PREFIX "'id' configuration option is required!!!");
+	return -1;
     }
     switch(i2->authtype) {
 	case IKEv2_AUTH_SK:
@@ -280,8 +280,8 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 
     i2->x509_store = NULL;
     if(CertInit(i2)){
-        radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading certs/crl");
-        return -1;
+	radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading certs/crl");
+	return -1;
     }
 
     return 0;
@@ -398,8 +398,8 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	//!!!!!if( hdr->Code == EAP_CODE_RESPONSE && hdr->Id == session->MsgID )
 	//!!!!! dorobic sprawdzanie czy to nie potwierdzenie odebrania fragmentu!!!
 	EAP_DS *eap_ds=handler->eap_ds;
-	if (!eap_ds                                      ||
-			!eap_ds->response                            ||
+	if (!eap_ds				      ||
+			!eap_ds->response			    ||
 			(eap_ds->response->code != PW_IKEV2_RESPONSE)  ||
 			eap_ds->response->type.num != PW_EAP_IKEV2    ||
 			!eap_ds->response->type.data){
@@ -430,19 +430,19 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	struct IKEv2Session *session=ikev2_data->session;
 	session->timestamp=time(NULL);
 
-        if( !session->fragdata )
-                 session->sendfrag = false;
-        if( session->sendfrag && !ParseFragmentAck( in, session ) ){
-	        session->eapMsgID=eap_ds->response->id+1;
-                olen = CreateIKEv2Message( i2, NULL, 0, false, hdr->Id, session, (uint8_t **)&out );
+	if( !session->fragdata )
+		 session->sendfrag = false;
+	if( session->sendfrag && !ParseFragmentAck( in, session ) ){
+		session->eapMsgID=eap_ds->response->id+1;
+		olen = CreateIKEv2Message( i2, NULL, 0, false, hdr->Id, session, (uint8_t **)&out );
 		free(in);
-	        if(ComposeRadMsg(out,olen,handler->eap_ds)){
-	        		free(out);
-	        		return 0;
+		if(ComposeRadMsg(out,olen,handler->eap_ds)){
+				free(out);
+				return 0;
 	       	}
 		free(out);
-                return 1;
-        }
+		return 1;
+	}
 
 	uint8_t *ikemsg;
 	u_int32_t len;
@@ -451,7 +451,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 
 	if( ParseIKEv2Message( in, &ikemsg, &len, session ) )
 	{
-                if(ikemsg!=NULL) free (ikemsg);
+		if(ikemsg!=NULL) free (ikemsg);
 		handler->eap_ds->request->code=PW_EAP_FAILURE;
 		radlog(L_INFO,IKEv2_LOG_PREFIX "Discarded packet");
 		return 1;
@@ -459,7 +459,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 
 	if( !ikemsg || !len )     // send fragment ack
 	{
-                if(session->SK_ready) session->include_integ=1;
+		if(session->SK_ready) session->include_integ=1;
 		olen = CreateFragmentAck( in, &out, session ); // confirm fragment
 		free(in);
 		in=NULL;
@@ -503,12 +503,12 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 		{
 			radlog(L_INFO,IKEv2_LOG_PREFIX "SUCCESS");
 			olen = CreateResultMessage( true, session, &out );
-                        session->fFastReconnect=i2->enableFastReconnect;
+			session->fFastReconnect=i2->enableFastReconnect;
 
 
-                        //bobo:session->eapKeyData jest zle zainicjalizowane tutaj !!!!!!!!!!!!!! nie jest NULL!!!!!!!!!!1!!!!!!!!!!!!!!!!!!!!!!!11
-                        GenEapKeys(session,EAP_IKEv2_KEY_LEN);
-                        set_mppe_keys(handler);
+			//bobo:session->eapKeyData jest zle zainicjalizowane tutaj !!!!!!!!!!!!!! nie jest NULL!!!!!!!!!!1!!!!!!!!!!!!!!!!!!!!!!!11
+			GenEapKeys(session,EAP_IKEv2_KEY_LEN);
+			set_mppe_keys(handler);
 		}
 		
 		// keep sessions in memory, only reference cleared
@@ -520,8 +520,8 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 			return 0;
 		}
 	}
-        //eap_ds->request->code = PW_EAP_REQUEST;
-        free(out);
+	//eap_ds->request->code = PW_EAP_REQUEST;
+	free(out);
 	return 1;
 }
 

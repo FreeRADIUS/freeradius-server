@@ -44,7 +44,7 @@ typedef struct fr_module_hup_t fr_module_hup_t;
 typedef struct module_instance_t {
 	char			name[MAX_STRING_LEN];
 	module_entry_t		*entry;
-	void                    *insthandle;
+	void		    *insthandle;
 #ifdef HAVE_PTHREAD_H
 	pthread_mutex_t		*mutex;
 #endif

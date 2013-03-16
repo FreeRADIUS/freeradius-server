@@ -38,7 +38,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 
-#include        <freeradius-devel/md5.h>
+#include	<freeradius-devel/md5.h>
 
 #include 	<ctype.h>
 
@@ -58,7 +58,7 @@ static void calc_apop_digest(uint8_t *buffer, const uint8_t *challenge,
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, challenge, challen);
 	fr_MD5Update(&context, (const uint8_t *) password, strlen(password));
-        fr_MD5Final(buffer, &context);
+	fr_MD5Final(buffer, &context);
 }
 
 
@@ -77,10 +77,10 @@ static void calc_md5_digest(uint8_t *buffer, const uint8_t *challenge,
 	fr_MD5Update(&context, buf, 64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        fr_MD5Final(buf+64,&context);
+	fr_MD5Final(buf+64,&context);
 	fr_MD5Init(&context);
 	fr_MD5Update(&context,buf,64+16);
-        fr_MD5Final(buffer,&context);
+	fr_MD5Final(buffer,&context);
 }
 
 static void calc_md4_digest(uint8_t *buffer, const uint8_t *challenge,
@@ -98,10 +98,10 @@ static void calc_md4_digest(uint8_t *buffer, const uint8_t *challenge,
 	fr_MD4Update(&context,buf,64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        fr_MD4Final(buf+64,&context);
+	fr_MD4Final(buf+64,&context);
 	fr_MD4Init(&context);
 	fr_MD4Update(&context,buf,64+16);
-        fr_MD4Final(buffer,&context);
+	fr_MD4Final(buffer,&context);
 }
 
 static void calc_sha1_digest(uint8_t *buffer, const uint8_t *challenge,
@@ -119,10 +119,10 @@ static void calc_sha1_digest(uint8_t *buffer, const uint8_t *challenge,
 	fr_SHA1Update(&context,buf,64+challen);
 	memset(buf, 0x5c, 64);
 	for(i=0; i<64 && password[i]; i++) buf[i]^=password[i];
-        fr_SHA1Final(buf+64,&context);
+	fr_SHA1Final(buf+64,&context);
 	fr_SHA1Init(&context);
 	fr_SHA1Update(&context,buf,64+20);
-        fr_SHA1Final(buffer,&context);
+	fr_SHA1Final(buffer,&context);
 }
 
 

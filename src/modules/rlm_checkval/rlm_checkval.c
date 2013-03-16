@@ -321,8 +321,8 @@ module_t rlm_checkval = {
 		NULL,			/* preaccounting */
 		checkval_accounting,	/* accounting */
 		NULL,			/* checksimul */
-		NULL,		        /* pre-proxy */
-		NULL,		        /* post-proxy */
-		NULL		        /* post-auth */
+		NULL,			/* pre-proxy */
+		NULL,			/* post-proxy */
+		NULL			/* post-auth */
 	},
 };

@@ -191,13 +191,13 @@ static FR_TOKEN getregex(const char **ptr, char *buffer, size_t buflen,
 
 static const FR_NAME_NUMBER modreturn_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
-	{ "fail",       RLM_MODULE_FAIL         },
-	{ "ok",         RLM_MODULE_OK           },
+	{ "fail",       RLM_MODULE_FAIL	 },
+	{ "ok",	 RLM_MODULE_OK	   },
 	{ "handled",    RLM_MODULE_HANDLED      },
 	{ "invalid",    RLM_MODULE_INVALID      },
 	{ "userlock",   RLM_MODULE_USERLOCK     },
 	{ "notfound",   RLM_MODULE_NOTFOUND     },
-	{ "noop",       RLM_MODULE_NOOP         },
+	{ "noop",       RLM_MODULE_NOOP	 },
 	{ "updated",    RLM_MODULE_UPDATED      },
 	{ NULL, 0 }
 };

@@ -159,25 +159,25 @@ static size_t redis_xlat(void *instance, REQUEST *request,
 		goto release;
 	}
 
-        switch (dissocket->reply->type) {
+	switch (dissocket->reply->type) {
 	case REDIS_REPLY_INTEGER:
-                buffer_ptr = buffer;
-                snprintf(buffer_ptr, sizeof(buffer), "%lld",
+		buffer_ptr = buffer;
+		snprintf(buffer_ptr, sizeof(buffer), "%lld",
 			 dissocket->reply->integer);
 
-                ret = strlen(buffer_ptr);
-                break;
+		ret = strlen(buffer_ptr);
+		break;
 
 	case REDIS_REPLY_STATUS:
 	case REDIS_REPLY_STRING:
-                buffer_ptr = dissocket->reply->str;
-                ret = dissocket->reply->len;
-                break;
+		buffer_ptr = dissocket->reply->str;
+		ret = dissocket->reply->len;
+		break;
 
 	default:
-                buffer_ptr = NULL;
-                break;
-        }
+		buffer_ptr = NULL;
+		break;
+	}
 
 	if ((ret >= freespace) || (buffer_ptr == NULL)) {
 		RDEBUG("rlm_redis (%s): Can't write result, insufficient space or unsupported result\n",

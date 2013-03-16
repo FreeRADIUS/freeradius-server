@@ -58,7 +58,7 @@ static int usage(void)
 {
 	printf("Usage: %s [ -d raddb_dir ] [ -o output_file ] [ -n name ]\n", progname);
 	printf("  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
-	printf("  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	printf("  -n name	 Read raddb/name.conf instead of raddb/radiusd.conf\n");
 	printf("  -o output_file  File where XML output will be written.\n");
 
 	exit(1);

@@ -32,10 +32,10 @@
  *
  * EAP Request and Response Packet Format
  * --- ------- --- -------- ------ ------
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Code      |  Identifier   |            Length             |
+ * |     Code      |  Identifier   |	    Length	     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     Type      |  SIM-Type     |   SIM-Length  |     value ... |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -64,11 +64,11 @@ RCSID("$Id$")
 int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 {
 	VALUE_PAIR       *vp;
-	int               encoded_size;
-	uint8_t          *encodedmsg, *attr;
+	int	       encoded_size;
+	uint8_t	  *encodedmsg, *attr;
 	unsigned int      id, eapcode;
 	unsigned char    *macspace, *append;
-	int               appendlen;
+	int	       appendlen;
 	unsigned char     subtype;
 
 	macspace = NULL;
@@ -158,7 +158,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 */
 	if(encoded_size == 0)
 	{
-	        encodedmsg = malloc(3);
+		encodedmsg = malloc(3);
 		/* FIX: could be NULL */
 
 		encodedmsg[0]=subtype;
@@ -255,7 +255,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	{
 		unsigned char   *buffer;
 		eap_packet_raw_t	*hdr;
-		uint16_t         hmaclen, total_length = 0;
+		uint16_t	 hmaclen, total_length = 0;
 		unsigned char    sha1digest[20];
 
 		total_length = EAP_HEADER_LEN + 1 + encoded_size;
@@ -290,7 +290,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		free(buffer);
 
 		/* now copy the digest to where it belongs in the AT_MAC */
-                /* note that it is truncated to 128-bits */
+		/* note that it is truncated to 128-bits */
 		memcpy(macspace, sha1digest, 16);
 	}
 
@@ -315,10 +315,10 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			    uint8_t *attr, unsigned int attrlen)
 {
-	VALUE_PAIR              *newvp;
-	int                     eapsim_attribute;
-	unsigned int            eapsim_len;
-	int                     es_attribute_count;
+	VALUE_PAIR	      *newvp;
+	int		     eapsim_attribute;
+	unsigned int	    eapsim_len;
+	int		     es_attribute_count;
 
 	es_attribute_count=0;
 

@@ -582,13 +582,13 @@ module_t rlm_unix = {
 	"System",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE,
 	unix_instantiate,		/* instantiation */
-	unix_detach,                 	/* detach */
+	unix_detach,		 	/* detach */
 	{
 		unix_authenticate,    /* authentication */
 		unix_authorize,       /* authorization */
-		NULL,                 /* preaccounting */
+		NULL,		 /* preaccounting */
 		unix_accounting,      /* accounting */
-		NULL,                  /* checksimul */
+		NULL,		  /* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */

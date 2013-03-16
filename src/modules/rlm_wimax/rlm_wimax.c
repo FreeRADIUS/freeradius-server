@@ -508,7 +508,7 @@ module_t rlm_wimax = {
 	RLM_MODULE_INIT,
 	"wimax",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	wimax_instantiate,	        /* instantiation */
+	wimax_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */

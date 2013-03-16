@@ -29,7 +29,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/rad_assert.h>
 
 #include	<fcntl.h>
-#include        <limits.h>
+#include	<limits.h>
 
 #include "config.h"
 
@@ -723,12 +723,12 @@ module_t rlm_radutmp = {
 	RLM_MODULE_INIT,
 	"radutmp",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	radutmp_instantiate,          /* instantiation */
-	NULL,		               /* detach */
+	radutmp_instantiate,	  /* instantiation */
+	NULL,			       /* detach */
 	{
-		NULL,                 /* authentication */
-		NULL,                 /* authorization */
-		NULL,                 /* preaccounting */
+		NULL,		 /* authentication */
+		NULL,		 /* authorization */
+		NULL,		 /* preaccounting */
 #ifdef WITH_ACCOUNTING
 		radutmp_accounting,   /* accounting */
 #else

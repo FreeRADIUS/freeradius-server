@@ -211,7 +211,7 @@ static uint64_t filetime_to_unix_epoch (const FILETIME *ft)
 	uint64_t res = (uint64_t) ft->dwHighDateTime << 32;
 
 	res |= ft->dwLowDateTime;
-	res /= 10;                   /* from 100 nano-sec periods to usec */
+	res /= 10;		   /* from 100 nano-sec periods to usec */
 	res -= DELTA_EPOCH_IN_USEC;  /* from Win epoch to Unix epoch */
 	return (res);
 }
@@ -225,11 +225,11 @@ int gettimeofday (struct timeval *tv, UNUSED void *tz)
 		errno = EINVAL;
 		return (-1);
 	}
-        GetSystemTimeAsFileTime (&ft);
-        tim = filetime_to_unix_epoch (&ft);
-        tv->tv_sec  = (long) (tim / 1000000L);
-        tv->tv_usec = (long) (tim % 1000000L);
-        return (0);
+	GetSystemTimeAsFileTime (&ft);
+	tim = filetime_to_unix_epoch (&ft);
+	tv->tv_sec  = (long) (tim / 1000000L);
+	tv->tv_usec = (long) (tim % 1000000L);
+	return (0);
 }
 #endif
 #endif

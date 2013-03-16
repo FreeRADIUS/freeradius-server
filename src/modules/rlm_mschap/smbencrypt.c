@@ -24,10 +24,10 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
-#include        <freeradius-devel/md4.h>
-#include        <freeradius-devel/md5.h>
-#include        <freeradius-devel/sha1.h>
-#include        <ctype.h>
+#include	<freeradius-devel/md4.h>
+#include	<freeradius-devel/md5.h>
+#include	<freeradius-devel/sha1.h>
+#include	<ctype.h>
 
 
 #include	"smbdes.h"
@@ -77,7 +77,7 @@ int main (int argc, char *argv[])
 	char ntpass[33];
 	char lmpass[33];
 
-	fprintf(stderr, "LM Hash                         \tNT Hash\n");
+	fprintf(stderr, "LM Hash			 \tNT Hash\n");
 	fprintf(stderr, "--------------------------------\t--------------------------------\n");
 	fflush(stderr);
 	for (i = 1; i < argc; i++ ) {

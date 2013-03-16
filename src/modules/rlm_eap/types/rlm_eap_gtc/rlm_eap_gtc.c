@@ -48,7 +48,7 @@ static CONF_PARSER module_config[] = {
 	{ "auth_type", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_gtc_t, auth_type_name), NULL, "PAP" },
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 

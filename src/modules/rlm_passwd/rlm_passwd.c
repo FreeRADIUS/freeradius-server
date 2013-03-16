@@ -187,7 +187,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	if(!(ht->fp = fopen(file,"r"))) {
 		free(ht->filename);
 		free(ht);
-		               return NULL;
+			       return NULL;
 	}
 
 	/*

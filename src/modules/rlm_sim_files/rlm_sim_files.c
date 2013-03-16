@@ -30,7 +30,7 @@
  *
  * The triplets file contains records of the form:
 @verbatim
-IMSI            RAND                             SRES     Kc
+IMSI	    RAND			     SRES     Kc
 232420100000015,30000000000000000000000000000000,30112233,445566778899AABB
 @endverbatim
  *
@@ -54,7 +54,7 @@ RCSID("$Id$")
 #include	<fcntl.h>
 #include	<limits.h>
 
-#include        "../rlm_eap/libeap/eap_sim.h"
+#include	"../rlm_eap/libeap/eap_sim.h"
 
 struct sim_file_instance {
 	/* autz */
@@ -100,11 +100,11 @@ static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 	struct sim_file_instance *inst = instance;
 	VALUE_PAIR     **reply_pairs;
 	VALUE_PAIR     **config_pairs;
-	FILE            *triplets;
-	char             tripbuf[sizeof("232420100000015,30000000000000000000000000000000,30112233,445566778899AABB")*2];
-	char             imsi[128], chal[256], kc[128], sres[128];
-	int              imsicount;
-	int              fieldcount;
+	FILE	    *triplets;
+	char	     tripbuf[sizeof("232420100000015,30000000000000000000000000000000,30112233,445566778899AABB")*2];
+	char	     imsi[128], chal[256], kc[128], sres[128];
+	int	      imsicount;
+	int	      fieldcount;
 	int lineno;
 
 	reply_pairs = &request->reply->vps;
@@ -247,10 +247,10 @@ module_t rlm_sim_files = {
 	{
 		NULL,			/* authentication */
 		sim_file_authorize, 	/* authorization */
-		NULL,        		/* preaccounting */
+		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
-		NULL,          		/* pre-proxy */
+		NULL,	  		/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 	},

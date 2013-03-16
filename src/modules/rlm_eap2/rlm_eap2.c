@@ -456,7 +456,7 @@ static CONF_PARSER tls_config[] = {
 	{ "dh_file", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_t, tparams.dh_file), NULL, "whatever" },
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 static CONF_PARSER fast_config[] = {
@@ -488,7 +488,7 @@ static const CONF_PARSER module_config[] = {
 
 	{ "fast", PW_TYPE_SUBSECTION, 0, NULL, (const void *) fast_config },
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 

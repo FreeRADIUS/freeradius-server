@@ -71,10 +71,10 @@ RCSID("$Id$")
 #    include <linux/version.h>
 #    if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,14)
 #      if defined IPV6_2292PKTINFO
-#        undef IPV6_RECVPKTINFO
-#        undef IPV6_PKTINFO
-#        define IPV6_RECVPKTINFO IPV6_2292PKTINFO
-#        define IPV6_PKTINFO IPV6_2292PKTINFO
+#	undef IPV6_RECVPKTINFO
+#	undef IPV6_PKTINFO
+#	define IPV6_RECVPKTINFO IPV6_2292PKTINFO
+#	define IPV6_PKTINFO IPV6_2292PKTINFO
 #      endif
 #    endif
 #  endif

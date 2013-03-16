@@ -194,10 +194,10 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
  * Challenges will come from one of three places eventually:
  *
  * 1  from attributes like ATTRIBUTE_EAP_SIM_RANDx
- *            (these might be retrived from a database)
+ *	    (these might be retrived from a database)
  *
  * 2  from internally implemented SIM authenticators
- *            (a simple one based upon XOR will be provided)
+ *	    (a simple one based upon XOR will be provided)
  *
  * 3  from some kind of SS7 interface.
  *
@@ -308,7 +308,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
  */
 static int eap_sim_sendsuccess(eap_handler_t *handler)
 {
-        unsigned char *p;
+	unsigned char *p;
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR **outvps;
 	VALUE_PAIR *newvp;
@@ -359,7 +359,7 @@ static void eap_sim_stateenter(eap_handler_t *handler,
 		/*
 		 * send the EAP Success message
 		 */
-  	        eap_sim_sendsuccess(handler);
+  		eap_sim_sendsuccess(handler);
 		handler->eap_ds->request->code = PW_EAP_SUCCESS;
 		break;
 
@@ -393,7 +393,7 @@ static int eap_sim_initiate(void *instance, eap_handler_t *handler)
 
 	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1, 0, TAG_ANY);
 	if(vp == NULL) {
-	        DEBUG2("   can not initiate sim, no RAND1 attribute");
+		DEBUG2("   can not initiate sim, no RAND1 attribute");
 		return 0;
 	}
 
@@ -417,7 +417,7 @@ static int eap_sim_initiate(void *instance, eap_handler_t *handler)
 	    eap_sim_getchalans(outvps, 1, ess) +
 	    eap_sim_getchalans(outvps, 2, ess)) != 3)
 	{
-	        DEBUG2("   can not initiate sim, missing attributes");
+		DEBUG2("   can not initiate sim, missing attributes");
 		return 0;
 	}
 

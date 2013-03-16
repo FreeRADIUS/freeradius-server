@@ -47,7 +47,7 @@ static const CONF_PARSER module_config[] = {
     NULL, "fail" },
   { "simulcount", PW_TYPE_INTEGER,    offsetof(rlm_always_t,simulcount),
     NULL, "0" },
-  { "mpp",        PW_TYPE_BOOLEAN,    offsetof(rlm_always_t,mpp),
+  { "mpp",	PW_TYPE_BOOLEAN,    offsetof(rlm_always_t,mpp),
     NULL, "no" },
 
   { NULL, -1, 0, NULL, NULL }		/* end the list */

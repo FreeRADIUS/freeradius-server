@@ -68,7 +68,7 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 	      j=0;
 	    }
 	    if(k==20) {
-	      printf("\n                ");
+	      printf("\n		");
 	      k=0;
 	      j=0;
 	    }
@@ -88,7 +88,7 @@ void eapsim_calculate_keys(struct eapsim_keys *ek)
 	fr_SHA1Final(ek->master_key, &context);
 
 	/*
-         * now use the PRF to expand it, generated K_aut, K_encr,
+	 * now use the PRF to expand it, generated K_aut, K_encr,
 	 * MSK and EMSK.
 	 */
 	fips186_2prf(ek->master_key, fk);
@@ -150,7 +150,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 
 	printf("\n\nOutput\n");
 
-	printf("mk:         ");
+	printf("mk:	 ");
 	j=0; k=0;
 	for (i = 0; i < sizeof(ek->master_key); i++) {
 		if(j==4) {
@@ -186,11 +186,11 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 		printf("%02x", ek->K_encr[i]);
 	}
 
-	printf("\nmsk:        ");
+	printf("\nmsk:	");
 	j=0; k=0;
 	for (i = 0; i < sizeof(ek->msk); i++) {
 		if(k==20) {
-			printf("\n            ");
+			printf("\n	    ");
 			k=0;
 			j=0;
 		}
@@ -207,7 +207,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 	j=0; k=0;
 	for (i = 0; i < sizeof(ek->emsk); i++) {
 		if(k==20) {
-			printf("\n            ");
+			printf("\n	    ");
 			k=0;
 			j=0;
 		}
@@ -229,7 +229,7 @@ void eapsim_dump_mk(struct eapsim_keys *ek)
 
 struct eapsim_keys inputkey1 = {
 	{'e', 'a', 'p', 's','i','m' },
-        6,
+	6,
 	  0x4d, 0x6c, 0x40, 0xde, 0x48, 0x3a, 0xdd, 0x99,   /* nonce_mt */
 	  0x50, 0x90, 0x2c, 0x40, 0x24, 0xce, 0x76, 0x5e,
 	  0x89, 0xab, 0xcd, 0xef, 0x89, 0xab, 0xcd, 0xef,   /* chalX */
@@ -238,7 +238,7 @@ struct eapsim_keys inputkey1 = {
 	  0x9a, 0xbc, 0xde, 0xf8, 0x9a, 0xbc, 0xde, 0xf8,
 	  0xab, 0xcd, 0xef, 0x89, 0xab, 0xcd, 0xef, 0x89,
 	  0xab, 0xcd, 0xef, 0x89, 0xab, 0xcd, 0xef, 0x89,
-	  0x12, 0x34, 0xab, 0xcd,                             /* sresX */
+	  0x12, 0x34, 0xab, 0xcd,			     /* sresX */
 	  0x12, 0x34, 0xab, 0xcd,
 	  0x23, 0x4a, 0xbc, 0xd1,
 	  0x00, 0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77,  /* Kc */

@@ -18,8 +18,8 @@ RCSID("$Id$")
 
 void fr_md4_calc(output, input, inlen)
 unsigned char *output;
-const unsigned char *input;                       /* input block */
-unsigned int inlen;                     /* length of input block */
+const unsigned char *input;		       /* input block */
+unsigned int inlen;		     /* length of input block */
 {
 	FR_MD4_CTX	context;
 

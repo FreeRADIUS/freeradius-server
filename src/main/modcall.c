@@ -161,13 +161,13 @@ static void add_child(modgroup *g, modcallable *c)
  * actions */
 static const FR_NAME_NUMBER rcode_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
-	{ "fail",       RLM_MODULE_FAIL         },
-	{ "ok",         RLM_MODULE_OK           },
+	{ "fail",       RLM_MODULE_FAIL	 },
+	{ "ok",	 RLM_MODULE_OK	   },
 	{ "handled",    RLM_MODULE_HANDLED      },
 	{ "invalid",    RLM_MODULE_INVALID      },
 	{ "userlock",   RLM_MODULE_USERLOCK     },
 	{ "notfound",   RLM_MODULE_NOTFOUND     },
-	{ "noop",       RLM_MODULE_NOOP         },
+	{ "noop",       RLM_MODULE_NOOP	 },
 	{ "updated",    RLM_MODULE_UPDATED      },
 	{ NULL, 0 }
 };
@@ -364,7 +364,7 @@ static const char *group_name[] = {
 	"xlat"
 };
 
-static const char *modcall_spaces = "                              ";
+static const char *modcall_spaces = "			      ";
 
 #define MODCALL_STACK_MAX (32)
 
@@ -632,7 +632,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						    request->packet->vps,
 						    NULL, 1);
 			}
-					
+					    
 			goto skip; /* don't change anything on the stack */
 		}
 
@@ -1453,7 +1453,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	vp_name = name2;
 	if (strncmp(vp_name, "outer.", 6) == 0) {
 		vp_name += 6;
-	}
+	} 
 
 	for (i = 0; attrlist_names[i] != NULL; i++) {
 		if (strcmp(vp_name, attrlist_names[i]) == 0) {
@@ -2109,7 +2109,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	if (!this) do {
 		int i;
 		char *p;
-	
+	  
 		/*
 		 *	Maybe it's module.method
 		 */

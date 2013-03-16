@@ -24,10 +24,10 @@
 /*
  *  EAP PACKET FORMAT
  *  --- ------ ------
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Code      |  Identifier   |            Length             |
+ * |     Code      |  Identifier   |	    Length	     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |    Data ...
  * +-+-+-+-+
@@ -35,10 +35,10 @@
  *
  * EAP Request and Response Packet Format
  * --- ------- --- -------- ------ ------
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Code      |  Identifier   |            Length             |
+ * |     Code      |  Identifier   |	    Length	     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |     Type      |  Type-Data ...
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
@@ -46,10 +46,10 @@
  *
  * EAP Success and Failure Packet Format
  * --- ------- --- ------- ------ ------
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |     Code      |  Identifier   |            Length             |
+ * |     Code      |  Identifier   |	    Length	     |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  */
@@ -829,7 +829,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	asking for one which we don't support.
 	 *
 	 *	NAK is code + id + length1 + length + NAK
-	 *             + requested EAP type(s).
+	 *	     + requested EAP type(s).
 	 *
 	 *	We know at this point that we can't handle the
 	 *	request.  We could either return an EAP-Fail here, but
@@ -1002,9 +1002,9 @@ static EAP_DS *eap_buildds(eap_packet_raw_t **eap_packet_p)
 	}
 
 	eap_ds->response->packet = (unsigned char *)eap_packet;
-        eap_ds->response->code = eap_packet->code;
-        eap_ds->response->id = eap_packet->id;
-        eap_ds->response->type.num = eap_packet->data[0];
+	eap_ds->response->code = eap_packet->code;
+	eap_ds->response->id = eap_packet->id;
+	eap_ds->response->type.num = eap_packet->data[0];
 
 	memcpy(&len, eap_packet->length, sizeof(uint16_t));
 	len = ntohs(len);
@@ -1094,43 +1094,43 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			return NULL;
 		}
 
-               vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-               if (!vp) {
-                       /*
-                        *	NAS did not set the User-Name
-                        *	attribute, so we set it here and
-                        *	prepend it to the beginning of the
-                        *	request vps so that autz's work
-                        *	correctly
+	       vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	       if (!vp) {
+		       /*
+			*	NAS did not set the User-Name
+			*	attribute, so we set it here and
+			*	prepend it to the beginning of the
+			*	request vps so that autz's work
+			*	correctly
 			*/
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-                       vp = pairmake("User-Name", handler->identity, T_OP_EQ);
-                       if (vp == NULL) {
+		       vp = pairmake("User-Name", handler->identity, T_OP_EQ);
+		       if (vp == NULL) {
 			       RDEBUG("Out of memory");
-                               free(*eap_packet_p);
-                               *eap_packet_p = NULL;
-                               return NULL;
-                       }
-                       vp->next = request->packet->vps;
-                       request->packet->vps = vp;
+			       free(*eap_packet_p);
+			       *eap_packet_p = NULL;
+			       return NULL;
+		       }
+		       vp->next = request->packet->vps;
+		       request->packet->vps = vp;
 
-               } else {
-                       /*
-                        *      A little more paranoia.  If the NAS
-                        *      *did* set the User-Name, and it doesn't
-                        *      match the identity, (i.e. If they
-                        *      change their User-Name part way through
-                        *      the EAP transaction), then reject the
-                        *      request as the NAS is doing something
-                        *      funny.
+	       } else {
+		       /*
+			*      A little more paranoia.  If the NAS
+			*      *did* set the User-Name, and it doesn't
+			*      match the identity, (i.e. If they
+			*      change their User-Name part way through
+			*      the EAP transaction), then reject the
+			*      request as the NAS is doing something
+			*      funny.
 			*/
-                       if (strncmp(handler->identity, vp->vp_strvalue,
+		       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-                               RDEBUG("Identity does not match User-Name.  Authentication failed.");
-                               free(*eap_packet_p);
-                               *eap_packet_p = NULL;
-                               return NULL;
-                       }
+			       RDEBUG("Identity does not match User-Name.  Authentication failed.");
+			       free(*eap_packet_p);
+			       *eap_packet_p = NULL;
+			       return NULL;
+		       }
 	       }
 	} else {		/* packet was EAP identity */
 		handler = eap_handler_alloc(inst);
@@ -1153,41 +1153,41 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			return NULL;
 		}
 
-               vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
-               if (!vp) {
-                       /*
-                        *	NAS did not set the User-Name
-                        *	attribute, so we set it here and
-                        *	prepend it to the beginning of the
-                        *	request vps so that autz's work
-                        *	correctly
+	       vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	       if (!vp) {
+		       /*
+			*	NAS did not set the User-Name
+			*	attribute, so we set it here and
+			*	prepend it to the beginning of the
+			*	request vps so that autz's work
+			*	correctly
 			*/
 		       RDEBUG2W("NAS did not set User-Name.  Setting it locally from EAP Identity");
-                       vp = pairmake("User-Name", handler->identity, T_OP_EQ);
-                       if (vp == NULL) {
-                               RDEBUG("Out of memory");
-                               free(*eap_packet_p);
-                               *eap_packet_p = NULL;
+		       vp = pairmake("User-Name", handler->identity, T_OP_EQ);
+		       if (vp == NULL) {
+			       RDEBUG("Out of memory");
+			       free(*eap_packet_p);
+			       *eap_packet_p = NULL;
 			       eap_handler_free(inst, handler);
-                               return NULL;
-                       }
-                       vp->next = request->packet->vps;
-                       request->packet->vps = vp;
-               } else {
-                       /*
-                        *      Paranoia.  If the NAS *did* set the
-                        *      User-Name, and it doesn't match the
-                        *      identity, the NAS is doing something
-                        *      funny, so reject the request.
+			       return NULL;
+		       }
+		       vp->next = request->packet->vps;
+		       request->packet->vps = vp;
+	       } else {
+		       /*
+			*      Paranoia.  If the NAS *did* set the
+			*      User-Name, and it doesn't match the
+			*      identity, the NAS is doing something
+			*      funny, so reject the request.
 			*/
-                       if (strncmp(handler->identity, vp->vp_strvalue,
+		       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
-                               RDEBUG("Identity does not match User-Name, setting from EAP Identity.");
-                               free(*eap_packet_p);
-                               *eap_packet_p = NULL;
-                               eap_handler_free(inst, handler);
-                               return NULL;
-                       }
+			       RDEBUG("Identity does not match User-Name, setting from EAP Identity.");
+			       free(*eap_packet_p);
+			       *eap_packet_p = NULL;
+			       eap_handler_free(inst, handler);
+			       return NULL;
+		       }
 	       }
 	}
 

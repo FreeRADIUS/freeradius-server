@@ -403,7 +403,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 					vp = map->dst->type == VPT_TYPE_LIST ?
 						paircopyvp(found) :
 						paircopyvpdata(map->dst->da,
-						               found);
+							       found);
 					if (!vp) continue;
 					
 					vp->op = map->op;

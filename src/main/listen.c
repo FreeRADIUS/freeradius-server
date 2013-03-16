@@ -274,7 +274,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	/*
 	 *	Run a fake request through the given virtual server.
 	 *	Look for FreeRADIUS-Client-IP-Address
-	 *	         FreeRADIUS-Client-Secret
+	 *		 FreeRADIUS-Client-Secret
 	 *		...
 	 *
 	 *	and create the RADCLIENT structure from that.
@@ -2390,7 +2390,7 @@ static int listen_bind(rad_listen_t *this)
 		 */
 		{
 			struct sockaddr_storage	src;
-			socklen_t	        sizeof_src = sizeof(src);
+			socklen_t		sizeof_src = sizeof(src);
 			
 			memset(&src, 0, sizeof_src);
 			if (getsockname(this->fd, (struct sockaddr *) &src,
@@ -2634,7 +2634,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 	 */
 	if (sock->my_port == 0) {
 		struct sockaddr_storage	src;
-		socklen_t	        sizeof_src = sizeof(src);
+		socklen_t		sizeof_src = sizeof(src);
 		
 		memset(&src, 0, sizeof_src);
 		if (getsockname(this->fd, (struct sockaddr *) &src,

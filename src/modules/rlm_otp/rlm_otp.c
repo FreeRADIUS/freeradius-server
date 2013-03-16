@@ -172,7 +172,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 		if (vp) {
       			auth_type_found = 1;
       			if (strcmp(vp->vp_strvalue, inst->name)) {
-        			return RLM_MODULE_NOOP;
+				return RLM_MODULE_NOOP;
     			}	
   		}
   	}

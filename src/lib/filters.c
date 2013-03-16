@@ -102,7 +102,7 @@ typedef struct ascend_ip_filter_t {
 	uint16_t	dstport;
 	uint8_t		srcPortComp;
 	uint8_t		dstPortComp;
-	unsigned char   fill[4];        /* used to be fill[2] */
+	unsigned char   fill[4];	/* used to be fill[2] */
 } ascend_ip_filter_t;
 
 
@@ -174,7 +174,7 @@ typedef struct ascend_generic_filter_t {
 	uint8_t		mask[ RAD_MAX_FILTER_LEN ];
 	uint8_t		value[ RAD_MAX_FILTER_LEN ];
 	uint8_t		compNeq;
-	uint8_t		fill[3];        /* used to be fill[1] */
+	uint8_t		fill[3];	/* used to be fill[1] */
 } ascend_generic_filter_t;
 
 /*
@@ -462,17 +462,17 @@ static int ascend_parse_ipx_net(int argc, char **argv,
  *	where:
  *
  *  srcipxnet:      Keyword for source IPX address.
- *                  nnnn = IPX Node address.
+ *		  nnnn = IPX Node address.
  *
  *  srcipxnode:     Keyword for source IPX Node address.
- *                  mmmmm = IPX Node Address, could be FFFFFF.
- *                  A vlid ipx node number should accompany ipx net number.
+ *		  mmmmm = IPX Node Address, could be FFFFFF.
+ *		  A vlid ipx node number should accompany ipx net number.
  *
  *	srcipxsoc:      Keyword for source IPX socket address.
  *
- *	cmd:            One of ">" or "<" or "=" or "!=".
+ *	cmd:	    One of ">" or "<" or "=" or "!=".
  *
- *	value:          Socket value to be compared against, in hex.
+ *	value:	  Socket value to be compared against, in hex.
  *
  *	dstipxnet:	Keyword for destination IPX address.
  *			nnnn = IPX Node address.
@@ -559,7 +559,7 @@ static int ascend_parse_ipaddr(uint32_t *ipaddr, char *str)
 {
 	int		count = 0;
 	int		ip[4];
-	int             masklen;
+	int	     masklen;
 	uint32_t	netmask = 0;
 
 	/*
@@ -683,7 +683,7 @@ static int ascend_parse_port(uint16_t *port, char *compare, char *str)
 #define IP_SRC_PORT_FLAG    (1 << 2)
 #define IP_DEST_PORT_FLAG   (1 << 3)
 #define IP_PROTO_FLAG       (1 << 4)
-#define IP_EST_FLAG         (1 << 5)
+#define IP_EST_FLAG	 (1 << 5)
 
 #define DONE_FLAGS	(IP_SRC_ADDR_FLAG | IP_DEST_ADDR_FLAG | \
 			IP_SRC_PORT_FLAG | IP_DEST_PORT_FLAG | \
@@ -963,7 +963,7 @@ int
 ascend_parse_filter(VALUE_PAIR *pair)
 {
 	int		token, type;
-	int	        rcode;
+	int		rcode;
 	int		argc;
 	char		*argv[32];
 	ascend_filter_t filter;

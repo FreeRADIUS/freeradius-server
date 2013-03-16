@@ -314,7 +314,7 @@ void rad_recv_discard(int sockfd)
 	socklen_t		sizeof_src = sizeof(src);
 
 	(void) recvfrom(sockfd, header, sizeof(header), 0,
-		        (struct sockaddr *)&src, &sizeof_src);
+			(struct sockaddr *)&src, &sizeof_src);
 }
 
 
@@ -397,7 +397,7 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src = sizeof(src);
-	socklen_t	        sizeof_dst = sizeof(dst);
+	socklen_t		sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
 	uint8_t			header[4];
 	void			*buf;
@@ -517,26 +517,26 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 /**
  * @brief Build an encrypted secret value to return in a reply packet
  *
- *               The secret is hidden by xoring with a MD5 digest
- *               created from the shared secret and the authentication
- *               vector.  We put them into MD5 in the reverse order from
- *               that used when encrypting passwords to RADIUS.
+ *	       The secret is hidden by xoring with a MD5 digest
+ *	       created from the shared secret and the authentication
+ *	       vector.  We put them into MD5 in the reverse order from
+ *	       that used when encrypting passwords to RADIUS.
  *
  */
 static void make_secret(uint8_t *digest, const uint8_t *vector,
 			const char *secret, const uint8_t *value)
 {
 	FR_MD5_CTX context;
-        int             i;
+	int	     i;
 
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, vector, AUTH_VECTOR_LEN);
 	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
 	fr_MD5Final(digest, &context);
 
-        for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
+	for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
 		digest[i] ^= value[i];
-        }
+	}
 }
 
 #define MAX_PASS_LEN (128)
@@ -973,11 +973,11 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 		 */
 		if (room < (18 + lvalue)) return 0;
 
-        	switch (packet->code) {
-	        case PW_AUTHENTICATION_ACK:
-        	case PW_AUTHENTICATION_REJECT:
-        	case PW_ACCESS_CHALLENGE:
-        	default:
+		switch (packet->code) {
+		case PW_AUTHENTICATION_ACK:
+		case PW_AUTHENTICATION_REJECT:
+		case PW_ACCESS_CHALLENGE:
+		default:
 			if (!original) {
 				fr_strerror_printf("ERROR: No request packet, cannot encrypt %s attribute in the vp.", vp->da->name);
 				return -1;
@@ -987,15 +987,15 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 			make_tunnel_passwd(ptr + lvalue, &len, data, len,
 					   room - lvalue,
 					   secret, original->vector);
-                	break;
-	        case PW_ACCOUNTING_REQUEST:
-        	case PW_DISCONNECT_REQUEST:
-	        case PW_COA_REQUEST:
+			break;
+		case PW_ACCOUNTING_REQUEST:
+		case PW_DISCONNECT_REQUEST:
+		case PW_COA_REQUEST:
 			ptr[0] = vp->tag;
 			make_tunnel_passwd(ptr + 1, &len, data, len - 1, room,
 					   secret, packet->vector);
-	                break;
-        	}
+			break;
+		}
 		break;
 
 		/*
@@ -1656,7 +1656,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	       const char *secret)
 {
 	radius_packet_t	*hdr;
-	uint8_t	        *ptr;
+	uint8_t		*ptr;
 	uint16_t	total_length;
 	int		len;
 	const VALUE_PAIR	*reply;

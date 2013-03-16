@@ -152,10 +152,10 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 
 static int fr_server_domain_socket(const char *path)
 {
-        int sockfd;
+	int sockfd;
 	size_t len;
 	socklen_t socklen;
-        struct sockaddr_un salocal;
+	struct sockaddr_un salocal;
 	struct stat buf;
 	
 	if (!path) {
@@ -169,14 +169,14 @@ static int fr_server_domain_socket(const char *path)
 		return -1;
 	}
 
-        if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
+	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
 		radlog(L_ERR, "Failed creating socket: %s",
 			strerror(errno));
 		return -1;
-        }
+	}
 
 	memset(&salocal, 0, sizeof(salocal));
-        salocal.sun_family = AF_UNIX;
+	salocal.sun_family = AF_UNIX;
 	memcpy(salocal.sun_path, path, len + 1); /* SUN_LEN does strlen */
 	
 	socklen = SUN_LEN(&salocal);
@@ -223,12 +223,12 @@ static int fr_server_domain_socket(const char *path)
 		}
 	}
 
-        if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
+	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
 		radlog(L_ERR, "Failed binding to %s: %s",
 			path, strerror(errno));
 		close(sockfd);
 		return -1;
-        }
+	}
 
 	/*
 	 *	FIXME: There's a race condition here.  But Linux
@@ -246,7 +246,7 @@ static int fr_server_domain_socket(const char *path)
 			path, strerror(errno));
 		close(sockfd);
 		return -1;
-        }
+	}
 
 #ifdef O_NONBLOCK
 	{
@@ -2688,7 +2688,7 @@ static int command_domain_accept(rad_listen_t *listener)
 				return 0;
 			}
 		} while (0);
-        }
+	}
 #endif
 
 	if (command_write_magic(newfd, NULL) < 0) {

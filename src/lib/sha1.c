@@ -110,12 +110,12 @@ unsigned int i, j;
     if ((context->count[0] += len << 3) < (len << 3)) context->count[1]++;
     context->count[1] += (len >> 29);
     if ((j + len) > 63) {
-        memcpy(&context->buffer[j], data, (i = 64-j));
-        fr_SHA1Transform(context->state, context->buffer);
-        for ( ; i + 63 < len; i += 64) {
-            fr_SHA1Transform(context->state, &data[i]);
-        }
-        j = 0;
+	memcpy(&context->buffer[j], data, (i = 64-j));
+	fr_SHA1Transform(context->state, context->buffer);
+	for ( ; i + 63 < len; i += 64) {
+	    fr_SHA1Transform(context->state, &data[i]);
+	}
+	j = 0;
     }
     else i = 0;
     memcpy(&context->buffer[j], &data[i], len - i);
@@ -130,17 +130,17 @@ uint32_t i, j;
 uint8_t finalcount[8];
 
     for (i = 0; i < 8; i++) {
-        finalcount[i] = (uint8_t)((context->count[(i >= 4 ? 0 : 1)]
-         >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
+	finalcount[i] = (uint8_t)((context->count[(i >= 4 ? 0 : 1)]
+	 >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
     }
     fr_SHA1Update(context, (const unsigned char *) "\200", 1);
     while ((context->count[0] & 504) != 448) {
-        fr_SHA1Update(context, (const unsigned char *) "\0", 1);
+	fr_SHA1Update(context, (const unsigned char *) "\0", 1);
     }
     fr_SHA1Update(context, finalcount, 8);  /* Should cause a fr_SHA1Transform() */
     for (i = 0; i < 20; i++) {
-        digest[i] = (uint8_t)
-         ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
+	digest[i] = (uint8_t)
+	 ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
     }
     /* Wipe variables */
     i = j = 0;
@@ -158,8 +158,8 @@ void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context)
   uint32_t i, j;
 
     for (i = 0; i < 20; i++) {
-        digest[i] = (uint8_t)
-         ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
+	digest[i] = (uint8_t)
+	 ((context->state[i>>2] >> ((3-(i & 3)) * 8) ) & 255);
     }
 
     /* Wipe variables */

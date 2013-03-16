@@ -206,7 +206,7 @@ size_t fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
 int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimitst)
 {
 	DICT_VALUE  *v;
-	char        buf[1024];
+	char	buf[1024];
 	const char  *a = NULL;
 	size_t      len;
 	time_t      t;
@@ -245,24 +245,24 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 			a = buf;
 			break;
 		case PW_TYPE_INTEGER:
-		        if (vp->da->flags.has_tag) {
-			        /* Attribute value has a tag, need to ignore it */
+			if (vp->da->flags.has_tag) {
+				/* Attribute value has a tag, need to ignore it */
 				if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, (vp->vp_integer & 0xffffff)))
 				    != NULL)
-				        a = v->name;
+					a = v->name;
 				else {
-				        snprintf(buf, sizeof(buf), "%u", (vp->vp_integer & 0xffffff));
-				        a = buf;
+					snprintf(buf, sizeof(buf), "%u", (vp->vp_integer & 0xffffff));
+					a = buf;
 				}
 			} else {
 		case PW_TYPE_BYTE:
 		case PW_TYPE_SHORT:
-			        /* Normal, non-tagged attribute */
+				/* Normal, non-tagged attribute */
 				if ((v = dict_valbyattr(vp->da->attr, vp->da->vendor, vp->vp_integer))
 				    != NULL)
-				        a = v->name;
+					a = v->name;
 				else {
-				        snprintf(buf, sizeof(buf), "%u", vp->vp_integer);
+					snprintf(buf, sizeof(buf), "%u", vp->vp_integer);
 					a = buf;
 				}
 			}
@@ -621,7 +621,7 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 		vp_prints_value(out + len, outlen - len, vp, 1);
 
 	} else {
-	        snprintf(out, outlen, "%s %s ", vp->da->name, token);
+		snprintf(out, outlen, "%s %s ", vp->da->name, token);
 		len = strlen(out);
 		vp_prints_value(out + len, outlen - len, vp, 1);
 

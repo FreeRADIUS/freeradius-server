@@ -107,7 +107,7 @@ static CONF_PARSER module_config[] = {
 	{ "soh_virtual_server", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_eap_peap_t, soh_virtual_server), NULL, NULL },
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 

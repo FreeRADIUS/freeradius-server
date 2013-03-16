@@ -74,7 +74,7 @@ typedef enum operation_t {
  * state = state attribute from the reply we sent
  * state_len = length of data in the state attribute.
  * src_ipaddr = client which sent us the RADIUS request containing
- *              this EAP conversation.
+ *	      this EAP conversation.
  * eap_id = copy of EAP id we sent to the client.
  * timestamp  = timestamp when this handler was last used.
  * identity = Identity, as obtained, from EAP-Identity response.

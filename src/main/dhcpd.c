@@ -64,7 +64,7 @@ typedef struct dhcp_socket_t {
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
 	const char	*src_interface;
-        fr_ipaddr_t     src_ipaddr;
+	fr_ipaddr_t     src_ipaddr;
 } dhcp_socket_t;
 
 #ifdef WITH_UDPFROMTO
@@ -564,8 +564,8 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		cf_item_parse(cs, "src_interface", PW_TYPE_STRING_PTR,
 			      &sock->src_interface, NULL);
 	} else {
-                sock->src_interface = sock->interface;
-        }
+		sock->src_interface = sock->interface;
+	}
 
 	if (!sock->src_interface && sock->interface) {
 		sock->src_interface = talloc_strdup(sock, sock->interface);

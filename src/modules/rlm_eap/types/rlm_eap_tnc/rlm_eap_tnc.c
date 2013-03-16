@@ -33,17 +33,17 @@
 /*
  * EAP-TNC Packet with EAP Header, general structure
  *
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |      Code     |   Identifier  |            Length             |
- * |               |               |                               |
+ * |      Code     |   Identifier  |	    Length	     |
+ * |	       |	       |			       |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |      Type     |  Flags  | Ver |          Data Length          |
- * |               |L M S R R| =1  |                               |
+ * |      Type     |  Flags  | Ver |	  Data Length	  |
+ * |	       |L M S R R| =1  |			       |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |          Data Length          |           Data ...
- * |                               |
+ * |	  Data Length	  |	   Data ...
+ * |			       |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  */
 
@@ -68,7 +68,7 @@ static CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_tnc_t, connection_string), NULL,
 	  "NAS Port: %{NAS-Port} NAS IP: %{NAS-IP-Address} NAS_PORT_TYPE: %{NAS-Port-Type}"},
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 static int tnc_attach(CONF_SECTION *cs, void **instance)
@@ -125,14 +125,14 @@ static void tnc_free(void *conn_id)
  * Initiates the EPA_TNC session by sending the first EAP_TNC_RESPONSE
  * to the peer. The packet has the Start-Bit set and contains no data.
  *
- *  0                   1                   2                   3
+ *  0		   1		   2		   3
  *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- * |      Code     |   Identifier  |            Length             |
- * |               |               |                               |
+ * |      Code     |   Identifier  |	    Length	     |
+ * |	       |	       |			       |
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  * |      Type     |  Flags  | Ver |
- * |               |0 0 1 0 0|0 0 1|
+ * |	       |0 0 1 0 0|0 0 1|
  * +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  * For this package, only 'Identifier' has to be set dynamically. Any

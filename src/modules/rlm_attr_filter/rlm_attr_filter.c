@@ -32,7 +32,7 @@ RCSID("$Id$")
 
 #include	<ctype.h>
 #include	<fcntl.h>
-#include        <limits.h>
+#include	<limits.h>
 
 
 /*
@@ -57,7 +57,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
-                      int *pass, int *fail)
+		      int *pass, int *fail)
 {
 	int compare;
 
@@ -152,7 +152,7 @@ static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	rcode = attr_filter_getfile(inst->file, &inst->attrs);
-        if (rcode != 0) {
+	if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->file);
 
 		return -1;

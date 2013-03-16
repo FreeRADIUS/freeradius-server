@@ -77,8 +77,8 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, "  -v          Show program version information.\n");
-	fprintf(stderr, "  -x          Debugging mode.\n");
+	fprintf(stderr, "  -v	  Show program version information.\n");
+	fprintf(stderr, "  -x	  Debugging mode.\n");
 
 	exit(1);
 }

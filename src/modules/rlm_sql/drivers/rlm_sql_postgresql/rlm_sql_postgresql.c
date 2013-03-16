@@ -49,12 +49,12 @@ RCSID("$Id$")
 #include "sql_postgresql.h"
 
 typedef struct rlm_sql_postgres_conn {
-   PGconn          *db;
-   PGresult        *result;
-   int             cur_row;
-   int             num_fields;
+   PGconn	  *db;
+   PGresult	*result;
+   int	     cur_row;
+   int	     num_fields;
    int		   affected_rows;
-   char            **row;
+   char	    **row;
 } rlm_sql_postgres_conn_t;
 
 /* Internal function. Return true if the postgresql status value
@@ -382,18 +382,18 @@ static int sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *con
  *      Function: sql_num_fields
  *
  *      Purpose: database specific num_fields. Returns number of rows in
- *               query
+ *	       query
  *
  *************************************************************************/
 static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
-        rlm_sql_postgres_conn_t *conn = handle->conn;
+	rlm_sql_postgres_conn_t *conn = handle->conn;
 
-        conn->affected_rows = PQntuples(conn->result);
-        if (conn->result)
-                return PQnfields(conn->result);
+	conn->affected_rows = PQntuples(conn->result);
+	if (conn->result)
+		return PQnfields(conn->result);
 
-        return 0;
+	return 0;
 }
 
 
@@ -403,7 +403,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
  *	Function: sql_free_result
  *
  *	Purpose: database specific free_result. Frees memory allocated
- *               for a result set
+ *	       for a result set
  *
  *************************************************************************/
 static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
@@ -427,7 +427,7 @@ static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *c
  *	Function: sql_error
  *
  *	Purpose: database specific error. Returns error associated with
- *               connection
+ *	       connection
  *
  *************************************************************************/
 static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {

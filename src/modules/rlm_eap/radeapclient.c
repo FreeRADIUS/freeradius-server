@@ -86,15 +86,15 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
 	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
 	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
-	fprintf(stderr, "  -h          Print usage help information.\n");
+	fprintf(stderr, "  -h	  Print usage help information.\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
-	fprintf(stderr, "  -q          Do not print anything out.\n");
-	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
-	fprintf(stderr, "  -v          Show program version information.\n");
-	fprintf(stderr, "  -x          Debugging mode.\n");
-	fprintf(stderr, "  -4          Use IPv4 address of server\n");
-	fprintf(stderr, "  -6          Use IPv6 address of server.\n");
+	fprintf(stderr, "  -q	  Do not print anything out.\n");
+	fprintf(stderr, "  -s	  Print out summary information of auth results.\n");
+	fprintf(stderr, "  -v	  Show program version information.\n");
+	fprintf(stderr, "  -x	  Debugging mode.\n");
+	fprintf(stderr, "  -4	  Use IPv4 address of server\n");
+	fprintf(stderr, "  -6	  Use IPv6 address of server.\n");
 
 	exit(1);
 }
@@ -1011,7 +1011,7 @@ int main(int argc, char **argv)
 			do_output = 0;
 			break;
 		case 'x':
-		        debug_flag++;
+			debug_flag++;
 			fr_debug_flag++;
 			break;
 
@@ -1048,21 +1048,21 @@ int main(int argc, char **argv)
 			printf("radclient: $Id$ built on " __DATE__ " at " __TIME__ "\n");
 			exit(0);
 			break;
-               case 'S':
+	       case 'S':
 		       fp = fopen(optarg, "r");
-                       if (!fp) {
-                               fprintf(stderr, "radclient: Error opening %s: %s\n",
-                                       optarg, strerror(errno));
-                               exit(1);
-                       }
-                       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-                               fprintf(stderr, "radclient: Error reading %s: %s\n",
-                                       optarg, strerror(errno));
-                               exit(1);
-                       }
+		       if (!fp) {
+			       fprintf(stderr, "radclient: Error opening %s: %s\n",
+				       optarg, strerror(errno));
+			       exit(1);
+		       }
+		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
+			       fprintf(stderr, "radclient: Error reading %s: %s\n",
+				       optarg, strerror(errno));
+			       exit(1);
+		       }
 		       fclose(fp);
 
-                       /* truncate newline */
+		       /* truncate newline */
 		       p = filesecret + strlen(filesecret) - 1;
 		       while ((p >= filesecret) &&
 			      (*p < ' ')) {
@@ -1070,11 +1070,11 @@ int main(int argc, char **argv)
 			       --p;
 		       }
 
-                       if (strlen(filesecret) < 2) {
-                               fprintf(stderr, "radclient: Secret in %s is too short\n", optarg);
-                               exit(1);
-                       }
-                       secret = filesecret;
+		       if (strlen(filesecret) < 2) {
+			       fprintf(stderr, "radclient: Secret in %s is too short\n", optarg);
+			       exit(1);
+		       }
+		       secret = filesecret;
 		       break;
 		case 'h':
 		default:
@@ -1412,7 +1412,7 @@ static int map_eapsim_types(RADIUS_PACKET *r)
 
 static int unmap_eapsim_types(RADIUS_PACKET *r)
 {
-	VALUE_PAIR             *esvp;
+	VALUE_PAIR	     *esvp;
 
 	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM, 0, TAG_ANY);
 	if (esvp == NULL) {

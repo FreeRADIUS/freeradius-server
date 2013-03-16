@@ -1,5 +1,5 @@
 /*
- * md4.h        Structures and prototypes for md4.
+ * md4.h	Structures and prototypes for md4.
  *
  * Version:     $Id$
  * License:		LGPL, but largely derived from a public domain source.

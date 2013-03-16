@@ -96,7 +96,7 @@ static CONF_PARSER module_config[] = {
 	{ "require_client_cert", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_ttls_t, req_client_cert), NULL, "no" },
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 

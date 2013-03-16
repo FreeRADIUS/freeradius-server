@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <freeradius-devel/rad_assert.h>
 
 typedef struct rlm_eap_mschapv2_t {
-        int with_ntdomain_hack;
+	int with_ntdomain_hack;
 	int send_error;
 } rlm_eap_mschapv2_t;
 
@@ -104,18 +104,18 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 	switch (reply->da->attr) {
 	case PW_MSCHAP_CHALLENGE:
 		/*
-		 *   0                   1                   2                   3
+		 *   0		   1		   2		   3
 		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |     Code      |   Identifier  |            Length             |
+		 *  |     Code      |   Identifier  |	    Length	     |
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |     Type      |   OpCode      |  MS-CHAPv2-ID |  MS-Length...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |   MS-Length   |  Value-Size   |  Challenge...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |                             Challenge...
+		 *  |			     Challenge...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |                             Name...
+		 *  |			     Name...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(handler->identity);
@@ -149,14 +149,14 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 
 	case PW_MSCHAP2_SUCCESS:
 		/*
-		 *   0                   1                   2                   3
+		 *   0		   1		   2		   3
 		 *   0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |     Code      |   Identifier  |            Length             |
+		 *  |     Code      |   Identifier  |	    Length	     |
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 *  |     Type      |   OpCode      |  MS-CHAPv2-ID |  MS-Length...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-		 *  |   MS-Length   |                    Message...
+		 *  |   MS-Length   |		    Message...
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		DEBUG2("MSCHAP Success\n");
@@ -471,7 +471,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	failure:
 			handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 			eap_ds->request->code = PW_EAP_FAILURE;
-	                return 1;
+			return 1;
 
 		case PW_EAP_MSCHAPV2_SUCCESS:
 			/*
@@ -599,7 +599,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	MS-Length - MS-Value - 5.
 	 */
 	name->length = (((eap_ds->response->type.data[2] << 8) |
-                         eap_ds->response->type.data[3]) -
+			 eap_ds->response->type.data[3]) -
 			eap_ds->response->type.data[4] - 5);
 	if (name->length >= sizeof(name->vp_strvalue)) {
 		name->length = sizeof(name->vp_strvalue) - 1;
@@ -772,7 +772,7 @@ packet_ready:
 rlm_eap_module_t rlm_eap_mschapv2 = {
 	"eap_mschapv2",
 	mschapv2_attach,		/* attach */
-	mschapv2_initiate,	        /* Start the initial request */
+	mschapv2_initiate,		/* Start the initial request */
 	NULL,				/* authorization */
 	mschapv2_authenticate,		/* authentication */
 	NULL				/* detach */

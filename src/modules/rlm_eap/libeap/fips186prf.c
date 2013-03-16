@@ -110,13 +110,13 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
 	 * let XKEY := MK,
 	 *
 	 * Step 3: For j = 0 to 3 do
-         *   a. XVAL = XKEY
-         *   b. w_0 = SHA1(XVAL)
-         *   c. XKEY = (1 + XKEY + w_0) mod 2^160
-         *   d. XVAL = XKEY
-         *   e. w_1 = SHA1(XVAL)
-         *   f. XKEY = (1 + XKEY + w_1) mod 2^160
-         * 3.3 x_j = w_0|w_1
+	 *   a. XVAL = XKEY
+	 *   b. w_0 = SHA1(XVAL)
+	 *   c. XKEY = (1 + XKEY + w_0) mod 2^160
+	 *   d. XVAL = XKEY
+	 *   e. w_1 = SHA1(XVAL)
+	 *   f. XKEY = (1 + XKEY + w_1) mod 2^160
+	 * 3.3 x_j = w_0|w_1
 	 *
 	 */
 	memcpy(&xkey, mk, sizeof(xkey));
@@ -218,7 +218,7 @@ void fips186_2prf(uint8_t mk[20], uint8_t finalkey[160])
  * Step 3.3 provides the following values:
  *
  * w[0] || w[1]=  2070b322 3dba372f de1c0ffc 7b2e3b49 8b260614
- *                3c6c18ba cb0f6c55 babb1378 8e20d737 a3275116
+ *		3c6c18ba cb0f6c55 babb1378 8e20d737 a3275116
  *
  */
 
@@ -253,7 +253,7 @@ main(int argc, char *argv[])
 	j=0; k=0;
 	for (i = 0; i < 160; i++) {
 		if(k==20) {
-			printf("\n            ");
+			printf("\n	    ");
 			k=0;
 			j=0;
 		}

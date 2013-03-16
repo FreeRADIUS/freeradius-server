@@ -89,9 +89,9 @@ static rlm_rcode_t expiration_authorize(void *instance, REQUEST *request)
 				pairfree(&request->reply->vps);
 				request->reply->vps = vp;
 			}
-                        snprintf(logstr, sizeof(logstr), "Account has expired [Expiration %s]",check_item->vp_strvalue);
-                        module_fmsg_vp = pairmake("Module-Failure-Message", logstr, T_OP_EQ);
-                        pairadd(&request->packet->vps, module_fmsg_vp);
+			snprintf(logstr, sizeof(logstr), "Account has expired [Expiration %s]",check_item->vp_strvalue);
+			module_fmsg_vp = pairmake("Module-Failure-Message", logstr, T_OP_EQ);
+			pairadd(&request->packet->vps, module_fmsg_vp);
 
 			return RLM_MODULE_USERLOCK;
 		}

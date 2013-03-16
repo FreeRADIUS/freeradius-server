@@ -41,12 +41,12 @@ RCSID("$Id$")
  *	Header above output and format.
  */
 static const char *hdr1 =
-"Login      Name              What  TTY  When      From            Location";
+"Login      Name	      What  TTY  When      From	    Location";
 static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3u %-9.9s %-15.15s %-.19s%s";
 static const char *rfmt1r = "%s,%s,%s,%s%u,%s,%s,%s%s";
 
 static const char *hdr2 =
-"Login      Port    What      When          From            Location";
+"Login      Port    What      When	  From	    Location";
 static const char *rfmt2 = "%-10.10s %s%-5u  %-6.6s %-13.13s %-15.15s %-.28s%s";
 static const char *rfmt2r = "%s,%s%u,%s,%s,%s,%s%s";
 
@@ -184,7 +184,7 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "       -P <port>: Show entries matching the given nas port\n");
 	fprintf(output, "       -r: Print output as raw comma-delimited data\n");
 	fprintf(output, "       -R: Print output as RADIUS attributes and values\n");
-	fprintf(output, "           Includes ALL information from the radutmp record.\n");
+	fprintf(output, "	   Includes ALL information from the radutmp record.\n");
 	fprintf(output, "       -s: show full name\n");
 	fprintf(output, "       -S: hide shell users from radius\n");
 	fprintf(output, "       -u <user>: Show entries matching the given user\n");
@@ -311,7 +311,7 @@ int main(int argc, char **argv)
 	memset(&mainconfig, 0, sizeof(mainconfig));
 	mainconfig.radlog_dest = RADLOG_STDOUT;
 
-        /* Read radiusd.conf */
+	/* Read radiusd.conf */
 	snprintf(buffer, sizeof(buffer), "%.200s/radiusd.conf", raddb_dir);
 	maincs = cf_file_read(buffer);
 	if (!maincs) {
@@ -319,13 +319,13 @@ int main(int argc, char **argv)
 		exit(1);
 	}
 
-        /* Read the radutmp section of radiusd.conf */
-        cs = cf_section_find_name2(cf_section_sub_find(maincs, "modules"), "radutmp", NULL);
-        if(!cs) {
-                fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
-                        argv[0]);
-                exit(1);
-        }
+	/* Read the radutmp section of radiusd.conf */
+	cs = cf_section_find_name2(cf_section_sub_find(maincs, "modules"), "radutmp", NULL);
+	if(!cs) {
+		fprintf(stderr, "%s: No configuration information in radutmp section of radiusd.conf!\n",
+			argv[0]);
+		exit(1);
+	}
 
 	cf_section_parse(cs, NULL, module_config);
 

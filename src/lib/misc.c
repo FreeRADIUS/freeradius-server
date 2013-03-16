@@ -482,7 +482,7 @@ size_t fr_hex2bin(const char *hex, uint8_t *bin, size_t len)
 		if(!(c1 = memchr(hextab, tolower((int) hex[i << 1]), 16)) ||
 		   !(c2 = memchr(hextab, tolower((int) hex[(i << 1) + 1]), 16)))
 			break;
-                 bin[i] = ((c1-hextab)<<4) + (c2-hextab);
+		 bin[i] = ((c1-hextab)<<4) + (c2-hextab);
 	}
 
 	return i;

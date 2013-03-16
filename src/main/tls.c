@@ -765,7 +765,7 @@ static CONF_PARSER cache_config[] = {
 	  offsetof(fr_tls_server_conf_t, session_id_name), NULL, NULL},
 	{ "persist_dir", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, session_cache_path), NULL, NULL},
-	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 static CONF_PARSER verify_config[] = {
@@ -773,7 +773,7 @@ static CONF_PARSER verify_config[] = {
 	  offsetof(fr_tls_server_conf_t, verify_tmp_dir), NULL, NULL},
 	{ "client", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, verify_client_cert_cmd), NULL, NULL},
-	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 #ifdef HAVE_OPENSSL_OCSP_H
@@ -790,7 +790,7 @@ static CONF_PARSER ocsp_config[] = {
 	  offsetof(fr_tls_server_conf_t, ocsp_timeout), NULL, "yes"},
 	{ "softfail", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, ocsp_softfail), NULL, "yes"},
-	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 #endif
 
@@ -861,7 +861,7 @@ static CONF_PARSER tls_server_config[] = {
 	{ "ocsp", PW_TYPE_SUBSECTION, 0, NULL, (const void *) ocsp_config },
 #endif
 
-	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 
@@ -912,7 +912,7 @@ static CONF_PARSER tls_client_config[] = {
 #endif
 #endif
 
- 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
+ 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
 
 
@@ -991,7 +991,7 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 
 	fr_bin2hex(sess->session_id, buffer, size);
 
-        DEBUG2("  SSL: Removing session %s from the cache", buffer);
+	DEBUG2("  SSL: Removing session %s from the cache", buffer);
 	conf = (fr_tls_server_conf_t *)SSL_CTX_get_app_data(ctx);
 	if (conf && conf->session_cache_path) {
 		int rv;
@@ -1012,7 +1012,7 @@ static void cbtls_remove_session(SSL_CTX *ctx, SSL_SESSION *sess)
 		rv = unlink(filename);
 	}
 
-        return;
+	return;
 }
 
 static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
@@ -1106,7 +1106,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 
 	fr_bin2hex(data, buffer, size);
 
-        DEBUG2("  SSL: Client requested cached session %s", buffer);
+	DEBUG2("  SSL: Client requested cached session %s", buffer);
 
 	conf = (fr_tls_server_conf_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_CONF);
 	if (conf && conf->session_cache_path) {
@@ -1357,7 +1357,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	/*	Verify OCSP cert status */
 	if(!OCSP_resp_find_status(bresp, certid, &status, &reason,
-				                      &rev, &thisupd, &nextupd)) {
+						      &rev, &thisupd, &nextupd)) {
 		radlog(L_ERR, "ERROR: No Status found.\n");
 		goto ocsp_end;
 	}
@@ -1368,8 +1368,8 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 		goto ocsp_end;
 	}
 	BIO_puts(bio_out, "\tThis Update: ");
-        ASN1_GENERALIZEDTIME_print(bio_out, thisupd);
-        BIO_puts(bio_out, "\n");
+	ASN1_GENERALIZEDTIME_print(bio_out, thisupd);
+	BIO_puts(bio_out, "\n");
 	if (nextupd) {
 		BIO_puts(bio_out, "\tNext Update: ");
 		ASN1_GENERALIZEDTIME_print(bio_out, nextupd);
@@ -1385,11 +1385,11 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	default:
 		/* REVOKED / UNKNOWN */
 		DEBUG2("[ocsp] --> Cert status: %s",OCSP_cert_status_str(status));
-                if (reason != -1)
+		if (reason != -1)
 			DEBUG2("[ocsp] --> Reason: %s", OCSP_crl_reason_str(reason));
-                BIO_puts(bio_out, "\tRevocation Time: ");
-                ASN1_GENERALIZEDTIME_print(bio_out, rev);
-                BIO_puts(bio_out, "\n");
+		BIO_puts(bio_out, "\tRevocation Time: ");
+		ASN1_GENERALIZEDTIME_print(bio_out, rev);
+		BIO_puts(bio_out, "\n");
 		break;
 	}
 
@@ -1804,7 +1804,7 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 	store = X509_STORE_new();
 
 	/* Load the CAs we trust */
-        if (conf->ca_file || conf->ca_path)
+	if (conf->ca_file || conf->ca_path)
 		if(!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
 			radlog(L_ERR, "rlm_eap: X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
 			radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
@@ -1860,8 +1860,8 @@ static int set_ecdh_curve(SSL_CTX *ctx, const char *ecdh_curve)
  * is using the session
  */
 static void sess_free_vps(UNUSED void *parent, void *data_ptr,
-                                UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
-                                UNUSED long argl, UNUSED void *argp)
+				UNUSED CRYPTO_EX_DATA *ad, UNUSED int idx,
+				UNUSED long argl, UNUSED void *argp)
 {
 	VALUE_PAIR *vp = data_ptr;
 	if (!vp) return;
@@ -2345,9 +2345,9 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-        if (generate_eph_rsa_key(conf->ctx) < 0) {
+	if (generate_eph_rsa_key(conf->ctx) < 0) {
 		goto error;
-        }
+	}
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
@@ -2409,9 +2409,9 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		goto error;
 	}
 
-        if (generate_eph_rsa_key(conf->ctx) < 0) {
+	if (generate_eph_rsa_key(conf->ctx) < 0) {
 		goto error;
-        }
+	}
 
 	cf_data_add(cs, "tls-conf", conf, (void *)(void *) tls_server_conf_free);
 

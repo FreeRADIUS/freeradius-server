@@ -24,7 +24,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
 #include	<freeradius-devel/rad_assert.h>
-#include        <freeradius-devel/md5.h>
+#include	<freeradius-devel/md5.h>
 
 #include 	<ctype.h>
 
@@ -50,25 +50,25 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 static int getUserNodeRef(char* inUserName, char **outUserName,
 			  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
-	tDataBuffer             *tDataBuff	= NULL;
+	tDataBuffer	     *tDataBuff	= NULL;
 	tDirNodeReference       nodeRef		= 0;
-	long                    status		= eDSNoErr;
-	tContextData            context		= 0;
-	uint32_t           	nodeCount	= 0;
-	uint32_t                attrIndex	= 0;
-	tDataList               *nodeName	= NULL;
+	long		    status		= eDSNoErr;
+	tContextData	    context		= 0;
+	uint32_t	   	nodeCount	= 0;
+	uint32_t		attrIndex	= 0;
+	tDataList	       *nodeName	= NULL;
 	tAttributeEntryPtr      pAttrEntry	= NULL;
-	tDataList               *pRecName	= NULL;
-	tDataList               *pRecType	= NULL;
-	tDataList               *pAttrType	= NULL;
-	uint32_t           	recCount	= 0;
-	tRecordEntry            *pRecEntry	= NULL;
+	tDataList	       *pRecName	= NULL;
+	tDataList	       *pRecType	= NULL;
+	tDataList	       *pAttrType	= NULL;
+	uint32_t	   	recCount	= 0;
+	tRecordEntry	    *pRecEntry	= NULL;
 	tAttributeListRef       attrListRef	= 0;
-	char                    *pUserLocation	= NULL;
+	char		    *pUserLocation	= NULL;
 	tAttributeValueListRef  valueRef	= 0;
 	tAttributeValueEntry    *pValueEntry	= NULL;
-	tDataList               *pUserNode	= NULL;
-	int                     result		= RLM_MODULE_FAIL;
+	tDataList	       *pUserNode	= NULL;
+	int		     result		= RLM_MODULE_FAIL;
 	
 	if (inUserName == NULL) {
 		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): no username");

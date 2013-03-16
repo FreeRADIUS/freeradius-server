@@ -72,7 +72,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct detail_instance,header), NULL, "%t" },
 	{ "detailperm",    PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,detailperm), NULL, "0600" },
-	{ "group",         PW_TYPE_STRING_PTR,
+	{ "group",	 PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,group), NULL,  NULL},
 	{ "dirperm",       PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,dirperm),    NULL, "0755" },
@@ -89,7 +89,7 @@ static const CONF_PARSER module_config[] = {
  */
 static int detail_detach(void *instance)
 {
-        struct detail_instance *inst = instance;
+	struct detail_instance *inst = instance;
 	if (inst->ht) fr_hash_table_free(inst->ht);
 	return 0;
 }
@@ -495,7 +495,7 @@ static rlm_rcode_t detail_accounting(void *instance, REQUEST *request)
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
 	    strcmp(((struct detail_instance *)instance)->detailfile,
-	           ((listen_detail_t *)request->listener->data)->filename) == 0) {
+		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file.");
 		return RLM_MODULE_NOOP;
 	}

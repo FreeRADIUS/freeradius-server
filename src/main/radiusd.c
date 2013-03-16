@@ -384,7 +384,7 @@ int main(int argc, char *argv[])
 	 */
 	if ((mainconfig.debug_memory == 1) || (debug_flag == 0)) {
 #ifdef HAVE_SIGACTION
-	        act.sa_handler = sig_fatal;
+		act.sa_handler = sig_fatal;
 		sigaction(SIGINT, &act, NULL);
 		sigaction(SIGQUIT, &act, NULL);
 #else
@@ -516,20 +516,20 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output,
 			"Usage: %s [-d db_dir] [-l log_dir] [-i address] [-n name] [-fsvXx]\n", progname);
 	fprintf(output, "Options:\n\n");
-	fprintf(output, "  -C              Check configuration and exit.\n");
+	fprintf(output, "  -C	      Check configuration and exit.\n");
 	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
-	fprintf(output, "  -f              Run as a foreground process, not a daemon.\n");
-	fprintf(output, "  -h              Print this help message.\n");
+	fprintf(output, "  -f	      Run as a foreground process, not a daemon.\n");
+	fprintf(output, "  -h	      Print this help message.\n");
 	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY.\n");
 	fprintf(output, "  -l log_file     Logging output will be written to this file.\n");
-	fprintf(output, "  -m              On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
-	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
-	fprintf(output, "  -p port         Listen on port ONLY.\n");
-	fprintf(output, "  -s              Do not spawn child processes to handle requests.\n");
-	fprintf(output, "  -t              Disable threads.\n");
-	fprintf(output, "  -v              Print server version information.\n");
-	fprintf(output, "  -X              Turn on full debugging.\n");
-	fprintf(output, "  -x              Turn on additional debugging. (-xx gives more debugging).\n");
+	fprintf(output, "  -m	      On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
+	fprintf(output, "  -n name	 Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	fprintf(output, "  -p port	 Listen on port ONLY.\n");
+	fprintf(output, "  -s	      Do not spawn child processes to handle requests.\n");
+	fprintf(output, "  -t	      Disable threads.\n");
+	fprintf(output, "  -v	      Print server version information.\n");
+	fprintf(output, "  -X	      Turn on full debugging.\n");
+	fprintf(output, "  -x	      Turn on additional debugging. (-xx gives more debugging).\n");
 	exit(status);
 }
 

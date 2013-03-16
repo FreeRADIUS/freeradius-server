@@ -371,19 +371,19 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output, "options:\n");
 	fprintf(output, "  -c <count>      Number of packets to capture.\n");
 	fprintf(output, "  -d <directory>  Set dictionary directory.\n");
-	fprintf(output, "  -F              Filter PCAP file from stdin to stdout.\n");
+	fprintf(output, "  -F	      Filter PCAP file from stdin to stdout.\n");
 	fprintf(output, "  -f <filter>     PCAP filter (default is 'udp port <port> or <port + 1> or 3799')\n");
-	fprintf(output, "  -h              This help message.\n");
+	fprintf(output, "  -h	      This help message.\n");
 	fprintf(output, "  -i <interface>  Capture packets from interface (defaults to any if supported).\n");
 	fprintf(output, "  -I <file>       Read packets from file (overrides input of -F).\n");
 	fprintf(output, "  -p <port>       Filter packets by port (default is 1812).\n");
-	fprintf(output, "  -q              Print less debugging information.\n");
+	fprintf(output, "  -q	      Print less debugging information.\n");
 	fprintf(output, "  -r <filter>     RADIUS attribute filter.\n");
 	fprintf(output, "  -s <secret>     RADIUS secret.\n");
-	fprintf(output, "  -S              Sort attributes in the packet (useful for diffing responses).\n");
-	fprintf(output, "  -v              Show program version information.\n");
+	fprintf(output, "  -S	      Sort attributes in the packet (useful for diffing responses).\n");
+	fprintf(output, "  -v	      Show program version information.\n");
 	fprintf(output, "  -w <file>       Write output packets to file (overrides output of -F).\n");
-	fprintf(output, "  -x              Print more debugging information (defaults to -xx).\n");
+	fprintf(output, "  -x	      Print more debugging information (defaults to -xx).\n");
 	exit(status);
 }
 
@@ -587,11 +587,11 @@ int main(int argc, char *argv[])
 	 */
 	if (fr_debug_flag > 2) {
 				DEBUG1(log_dst, "Sniffing with options:\n");
-		if (from_dev)	DEBUG1(log_dst, "  Device                   : [%s]\n", from_dev);
+		if (from_dev)	DEBUG1(log_dst, "  Device		   : [%s]\n", from_dev);
 		if (limit > 0)	DEBUG1(log_dst, "  Capture limit (packets)  : [%d]\n", limit);
-				DEBUG1(log_dst, "  PCAP filter              : [%s]\n", pcap_filter);
-				DEBUG1(log_dst, "  RADIUS secret            : [%s]\n", radius_secret);
-		if (filter_vps){DEBUG1(log_dst, "  RADIUS filter            :\n");
+				DEBUG1(log_dst, "  PCAP filter	      : [%s]\n", pcap_filter);
+				DEBUG1(log_dst, "  RADIUS secret	    : [%s]\n", radius_secret);
+		if (filter_vps){DEBUG1(log_dst, "  RADIUS filter	    :\n");
 			vp_printlist(log_dst, filter_vps);
 		}
 	}

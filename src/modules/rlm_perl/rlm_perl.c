@@ -410,7 +410,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	AV		*end_AV;
 
 	char **embed;
-        char **envp = NULL;
+	char **envp = NULL;
 	const char *xlat_name;
 	int exitstatus = 0, argc=0;
 
@@ -420,8 +420,8 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	*instance = inst = talloc_zero(conf, PERL_INST);
 	if (!inst) return -1;
 
-        embed = talloc_size(inst, 4 * sizeof(char *));
-        memset(embed, 0, 4 *sizeof(char *));
+	embed = talloc_size(inst, 4 * sizeof(char *));
+	memset(embed, 0, 4 *sizeof(char *));
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
@@ -458,7 +458,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 		argc = 3;
 	}
 
-        PERL_SYS_INIT3(&argc, &embed, &envp);
+	PERL_SYS_INIT3(&argc, &embed, &envp);
 #ifdef USE_ITHREADS
 	if ((inst->perl = perl_alloc()) == NULL) {
 		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
@@ -490,7 +490,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
 	end_AV = PL_endav;
 	PL_endav = Nullav;
 
-        newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
+	newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
 
 	if(!exitstatus) {
 		exitstatus = perl_run(inst->perl);
@@ -542,7 +542,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		 */
 		if (nvp->da->flags.has_tag && (nvp->tag != 0)) {
 			snprintf(namebuf, sizeof(namebuf), "%s:%d",
-			         nvp->da->name, nvp->tag);
+				 nvp->da->name, nvp->tag);
 			name = namebuf;
 		} else {
 			name = nvp->da->name;
@@ -595,23 +595,23 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
  *
  */
 static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv, FR_TOKEN op) {
-       char            *val;
+       char	    *val;
        VALUE_PAIR      *vpp;
 
        if (SvOK(sv)) {
-               val = SvPV_nolen(sv);
-               vpp = pairmake(key, val, op);
-               if (vpp != NULL) {
-                       pairadd(vp, vpp);
-                       radlog(L_DBG,
-                         "rlm_perl: Added pair %s = %s", key, val);
+	       val = SvPV_nolen(sv);
+	       vpp = pairmake(key, val, op);
+	       if (vpp != NULL) {
+		       pairadd(vp, vpp);
+		       radlog(L_DBG,
+			 "rlm_perl: Added pair %s = %s", key, val);
 		       return 1;
-               } else {
-                       radlog(L_DBG,
-                         "rlm_perl: ERROR: Failed to create pair %s = %s",
-                         key, val);
-               }
-        }
+	       } else {
+		       radlog(L_DBG,
+			 "rlm_perl: ERROR: Failed to create pair %s = %s",
+			 key, val);
+	       }
+	}
        return 0;
 }
 
@@ -629,18 +629,18 @@ static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
 
        *vp = NULL;
        for (i = hv_iterinit(my_hv); i > 0; i--) {
-               res_sv = hv_iternextsv(my_hv,&key,&key_len);
-               if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
-                       av = (AV*)SvRV(res_sv);
-                       len = av_len(av);
-                       for (j = 0; j <= len; j++) {
-                               av_sv = av_fetch(av, j, 0);
-                               ret = pairadd_sv(vp, key, *av_sv, T_OP_ADD) + ret;
-                       }
-               } else ret = pairadd_sv(vp, key, res_sv, T_OP_EQ) + ret;
-        }
+	       res_sv = hv_iternextsv(my_hv,&key,&key_len);
+	       if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
+		       av = (AV*)SvRV(res_sv);
+		       len = av_len(av);
+		       for (j = 0; j <= len; j++) {
+			       av_sv = av_fetch(av, j, 0);
+			       ret = pairadd_sv(vp, key, *av_sv, T_OP_ADD) + ret;
+		       }
+	       } else ret = pairadd_sv(vp, key, res_sv, T_OP_EQ) + ret;
+	}
 
-        return ret;
+	return ret;
 }
 
 /*
@@ -841,10 +841,10 @@ static rlm_rcode_t perl_accounting(void *instance, REQUEST *request)
 
 	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
 		acctstatustype = pair->vp_integer;
-        } else {
-                radlog(L_ERR, "Invalid Accounting Packet");
-                return RLM_MODULE_INVALID;
-        }
+	} else {
+		radlog(L_ERR, "Invalid Accounting Packet");
+		return RLM_MODULE_INVALID;
+	}
 
 	switch (acctstatustype) {
 
@@ -998,7 +998,7 @@ static int perl_detach(void *instance)
 	perl_free(inst->perl);
 #endif
 
-        PERL_SYS_TERM();
+	PERL_SYS_TERM();
 	return exitstatus;
 }
 

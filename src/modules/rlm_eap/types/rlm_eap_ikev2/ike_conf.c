@@ -186,7 +186,7 @@ int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat
 				 *	then bitch about it, giving a
 				 *	good warning message.
 				 */
-			         if ((vp->da->vendor == 0) &&
+				 if ((vp->da->vendor == 0) &&
 					(vp->da->attr > 0xff) &&
 					(vp->da->attr > 1000)) {
 					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
@@ -304,7 +304,7 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
 	if(!vp) {
 	    radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Id type not set",id);
 	} else {
-            id_type = vp->vp_integer;
+	    id_type = vp->vp_integer;
 	    if(!id_type) {
 		radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Not valid id type",id);
 	    }

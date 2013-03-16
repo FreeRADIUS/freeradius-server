@@ -42,8 +42,8 @@ static pthread_mutex_t fr_crypt_mutex;
  * performs a crypt password check in an thread-safe way.
  *
  * returns:  0 -- check succeeded
- *          -1 -- failed to crypt
- *           1 -- check failed
+ *	  -1 -- failed to crypt
+ *	   1 -- check failed
  */
 int fr_crypt_check(const char *key, const char *crypted)
 {

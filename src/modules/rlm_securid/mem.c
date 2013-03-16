@@ -157,7 +157,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request,
 			session->next = NULL;
 			inst->session_tail = session;
 		} else {
-		        /* 1st time */
+			/* 1st time */
 			inst->session_head = inst->session_tail = session;
 			session->next = session->prev = NULL;
 		}

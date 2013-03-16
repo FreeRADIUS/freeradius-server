@@ -684,17 +684,17 @@ int rad_virtual_server(REQUEST *request)
 
 	result = rad_authenticate(request);
 
-        if (request->reply->code == PW_AUTHENTICATION_REJECT) {
-                pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
-                vp = radius_pairmake(request, &request->config_items,
-                                     "Post-Auth-Type", "Reject",
-                                     T_OP_SET);
-                if (vp) rad_postauth(request);
-        }
+	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
+		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
+		vp = radius_pairmake(request, &request->config_items,
+				     "Post-Auth-Type", "Reject",
+				     T_OP_SET);
+		if (vp) rad_postauth(request);
+	}
 
-        if (request->reply->code == PW_AUTHENTICATION_ACK) {
-                rad_postauth(request);
-        }
+	if (request->reply->code == PW_AUTHENTICATION_ACK) {
+		rad_postauth(request);
+	}
 
 	return result;
 }

@@ -106,20 +106,20 @@ static void NEVER_RETURNS usage(void)
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
 	fprintf(stderr, "  -d raddb    Set dictionary directory.\n");
 	fprintf(stderr, "  -f file     Read packets from file, not stdin.\n");
-	fprintf(stderr, "  -F          Print the file name, packet number and reply code.\n");
-	fprintf(stderr, "  -h          Print usage help information.\n");
+	fprintf(stderr, "  -F	  Print the file name, packet number and reply code.\n");
+	fprintf(stderr, "  -h	  Print usage help information.\n");
 	fprintf(stderr, "  -i id       Set request id to 'id'.  Values may be 0..255\n");
 	fprintf(stderr, "  -n num      Send N requests/s\n");
 	fprintf(stderr, "  -p num      Send 'num' packets from a file in parallel.\n");
-	fprintf(stderr, "  -q          Do not print anything out.\n");
+	fprintf(stderr, "  -q	  Do not print anything out.\n");
 	fprintf(stderr, "  -r retries  If timeout, retry sending the packet 'retries' times.\n");
-	fprintf(stderr, "  -s          Print out summary information of auth results.\n");
+	fprintf(stderr, "  -s	  Print out summary information of auth results.\n");
 	fprintf(stderr, "  -S file     read secret from file, not command line.\n");
 	fprintf(stderr, "  -t timeout  Wait 'timeout' seconds before retrying (may be a floating point number).\n");
-	fprintf(stderr, "  -v          Show program version information.\n");
-	fprintf(stderr, "  -x          Debugging mode.\n");
-	fprintf(stderr, "  -4          Use IPv4 address of server\n");
-	fprintf(stderr, "  -6          Use IPv6 address of server.\n");
+	fprintf(stderr, "  -v	  Show program version information.\n");
+	fprintf(stderr, "  -x	  Debugging mode.\n");
+	fprintf(stderr, "  -4	  Use IPv4 address of server\n");
+	fprintf(stderr, "  -6	  Use IPv6 address of server.\n");
 #ifdef WITH_TCP
 	fprintf(stderr, "  -P proto    Use proto (tcp or udp) for transport.\n");
 #endif
@@ -1004,21 +1004,21 @@ int main(int argc, char **argv)
 		case 's':
 			do_summary = 1;
 			break;
-               case 'S':
+	       case 'S':
 		       fp = fopen(optarg, "r");
-                       if (!fp) {
-                               fprintf(stderr, "radclient: Error opening %s: %s\n",
-                                       optarg, strerror(errno));
-                               exit(1);
-                       }
-                       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
-                               fprintf(stderr, "radclient: Error reading %s: %s\n",
-                                       optarg, strerror(errno));
-                               exit(1);
-                       }
+		       if (!fp) {
+			       fprintf(stderr, "radclient: Error opening %s: %s\n",
+				       optarg, strerror(errno));
+			       exit(1);
+		       }
+		       if (fgets(filesecret, sizeof(filesecret), fp) == NULL) {
+			       fprintf(stderr, "radclient: Error reading %s: %s\n",
+				       optarg, strerror(errno));
+			       exit(1);
+		       }
 		       fclose(fp);
 
-                       /* truncate newline */
+		       /* truncate newline */
 		       p = filesecret + strlen(filesecret) - 1;
 		       while ((p >= filesecret) &&
 			      (*p < ' ')) {
@@ -1026,11 +1026,11 @@ int main(int argc, char **argv)
 			       --p;
 		       }
 
-                       if (strlen(filesecret) < 2) {
-                               fprintf(stderr, "radclient: Secret in %s is too short\n", optarg);
-                               exit(1);
-                       }
-                       secret = filesecret;
+		       if (strlen(filesecret) < 2) {
+			       fprintf(stderr, "radclient: Secret in %s is too short\n", optarg);
+			       exit(1);
+		       }
+		       secret = filesecret;
 		       break;
 		case 't':
 			if (!isdigit((int) *optarg))

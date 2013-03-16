@@ -29,7 +29,7 @@ typedef enum {
  * state = state attribute from the reply we sent
  * state_len = length of data in the state attribute.
  * src_ipaddr = client which sent us the RADIUS request containing
- *              this SecurID conversation.
+ *	      this SecurID conversation.
  * timestamp  = timestamp when this handler was last used.
  * trips = number of trips
  * identity = Identity of the user

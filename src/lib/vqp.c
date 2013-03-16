@@ -40,24 +40,24 @@ RCSID("$Id$");
  *
  * VLAN Query Protocol (VQP)
  *
- *    0                   1                   2                   3
+ *    0		   1		   2		   3
  *    0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *   |    Version    |    Opcode     | Response Code |  Data Count   |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |                         Transaction ID                        |
+ *   |			 Transaction ID			|
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |                            Type (1)                           |
+ *   |			    Type (1)			   |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |             Length            |            Data               /
- *   /                                                               /
- *   /                                                               /
+ *   |	     Length	    |	    Data	       /
+ *   /							       /
+ *   /							       /
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |                            Type (n)                           |
+ *   |			    Type (n)			   |
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
- *   |             Length            |            Data               /
- *   /                                                               /
- *   /                                                               /
+ *   |	     Length	    |	    Data	       /
+ *   /							       /
+ *   /							       /
  *   +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
  *
  * VQP is layered over UDP.  The default destination port is 1589.
@@ -134,7 +134,7 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	struct sockaddr_storage	src;
 	struct sockaddr_storage	dst;
 	socklen_t		sizeof_src = sizeof(src);
-	socklen_t	        sizeof_dst = sizeof(dst);
+	socklen_t		sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
 	uint8_t			header[4];
 	void			*buf;
