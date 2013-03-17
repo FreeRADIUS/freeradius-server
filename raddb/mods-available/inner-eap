@@ -9,7 +9,7 @@
 #
 #  See also raddb/sites-available/inner-tunnel
 #
-#  See raddb/modules/eap for full documentation on the meaning of these
+#  See raddb/mods-available/eap for full documentation on the meaning of these
 #  configuration entries.
 #
 eap inner-eap {
