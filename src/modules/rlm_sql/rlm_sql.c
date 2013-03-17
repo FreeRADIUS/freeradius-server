@@ -483,28 +483,17 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, const char *username)
 }
 
 
-static void sql_grouplist_free (rlm_sql_grouplist_t **group_list)
-{
-	rlm_sql_grouplist_t *last;
-
-	while(*group_list) {
-		last = *group_list;
-		*group_list = (*group_list)->next;
-		free(last);
-	}
-}
-
-
-static int sql_get_grouplist (rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST *request, rlm_sql_grouplist_t **group_list)
+static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle,
+			     REQUEST *request, rlm_sql_grouplist_t **phead)
 {
 	char    querystr[MAX_QUERY_LEN];
 	int     num_groups = 0;
 	rlm_sql_row_t row;
-	rlm_sql_grouplist_t   *group_list_tmp;
+	rlm_sql_grouplist_t *entry;
 
 	/* NOTE: sql_set_user should have been run before calling this function */
 
-	group_list_tmp = *group_list = NULL;
+	entry = *phead = NULL;
 
 	if (!inst->config->groupmemb_query ||
 	    (inst->config->groupmemb_query[0] == 0))
@@ -526,19 +515,20 @@ static int sql_get_grouplist (rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST
 		if (row[0] == NULL){
 			RDEBUG("row[0] returned NULL");
 			(inst->module->sql_finish_select_query)(handle, inst->config);
-			sql_grouplist_free(group_list);
+			talloc_free(entry);
 			return -1;
 		}
-		if (*group_list == NULL) {
-			*group_list = rad_malloc(sizeof(rlm_sql_grouplist_t));
-			group_list_tmp = *group_list;
+
+		if (!*phead) {
+			*phead = talloc_zero(handle, rlm_sql_grouplist_t);
+			entry = *phead;
 		} else {
-			rad_assert(group_list_tmp != NULL);
-			group_list_tmp->next = rad_malloc(sizeof(rlm_sql_grouplist_t));
-			group_list_tmp = group_list_tmp->next;
+			rad_assert(entry != NULL);
+			entry->next = talloc_zero(handle, rlm_sql_grouplist_t);
+			entry = entry->next;
 		}
-		group_list_tmp->next = NULL;
-		strlcpy(group_list_tmp->groupname, row[0], MAX_STRING_LEN);
+		entry->next = NULL;
+		strlcpy(entry->name, row[0], MAX_STRING_LEN);
 	}
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
@@ -559,7 +549,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 {
 	rlm_sql_handle_t *handle;
 	rlm_sql_t *inst = instance;
-	rlm_sql_grouplist_t *group_list, *group_list_tmp;
+	rlm_sql_grouplist_t *head, *entry;
 
 	check_pairs = check_pairs;
 	reply_pairs = reply_pairs;
@@ -591,26 +581,25 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, handle, request, &group_list) < 0) {
+	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
 		radlog_request(L_ERR, 0, request,
 			       "Error getting group membership");
 		sql_release_socket(inst, handle);
 		return 1;
 	}
 
-	for (group_list_tmp = group_list; group_list_tmp != NULL; group_list_tmp = group_list_tmp->next) {
-		if (strcmp(group_list_tmp->groupname, check->vp_strvalue) == 0){
+	for (entry = head; entry != NULL; entry = entry->next) {
+		if (strcmp(entry->name, check->vp_strvalue) == 0){
 			RDEBUG("sql_groupcmp finished: User is a member of group %s",
 			       check->vp_strvalue);
-			/* Free the grouplist */
-			sql_grouplist_free(&group_list);
+			talloc_free(head);
 			sql_release_socket(inst, handle);
 			return 0;
 		}
 	}
 
 	/* Free the grouplist */
-	sql_grouplist_free(&group_list);
+	talloc_free(head);
 	sql_release_socket(inst,handle);
 
 	RDEBUG("sql_groupcmp finished: User is NOT a member of group %s",
@@ -625,7 +614,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 {
 	VALUE_PAIR *check_tmp = NULL;
 	VALUE_PAIR *reply_tmp = NULL;
-	rlm_sql_grouplist_t *group_list, *group_list_tmp;
+	rlm_sql_grouplist_t *head, *entry;
 	VALUE_PAIR *sql_group = NULL;
 	char    querystr[MAX_QUERY_LEN];
 	int found = 0;
@@ -634,21 +623,21 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 	/*
 	 *	Get the list of groups this user is a member of
 	 */
-	if (sql_get_grouplist(inst, handle, request, &group_list) < 0) {
+	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
 		radlog_request(L_ERR, 0, request, "Error retrieving group list");
 		return -1;
 	}
 
-	for (group_list_tmp = group_list; group_list_tmp != NULL && *dofallthrough != 0; group_list_tmp = group_list_tmp->next) {
+	for (entry = head; entry != NULL && *dofallthrough != 0; entry = entry->next) {
 		/*
 		 *	Add the Sql-Group attribute to the request list so we know
 		 *	which group we're retrieving attributes for
 		 */
-		sql_group = pairmake("Sql-Group", group_list_tmp->groupname, T_OP_EQ);
+		sql_group = pairmake("Sql-Group", entry->name, T_OP_EQ);
 		if (!sql_group) {
 			radlog_request(L_ERR, 0, request,
 				       "Error creating Sql-Group attribute");
-			sql_grouplist_free(&group_list);
+			talloc_free(head);
 			return -1;
 		}
 		pairadd(&request->packet->vps, sql_group);
@@ -657,17 +646,17 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 				       "Error generating query; rejecting user");
 			/* Remove the grouup we added above */
 			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
-			sql_grouplist_free(&group_list);
+			talloc_free(head);
 			return -1;
 		}
 		rows = sql_getvpdata(inst, &handle, &check_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
-			       group_list_tmp->groupname);
+			       entry->name);
 			/* Remove the grouup we added above */
 			pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 			pairfree(&check_tmp);
-			sql_grouplist_free(&group_list);
+			talloc_free(head);
 			return -1;
 		} else if (rows > 0) {
 			/*
@@ -676,7 +665,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 			if (paircompare(request, request->packet->vps, check_tmp, &request->reply->vps) == 0) {
 				found = 1;
 				RDEBUG2("User found in group %s",
-					group_list_tmp->groupname);
+					entry->name);
 				/*
 				 *	Now get the reply pairs since the paircompare matched
 				 */
@@ -685,17 +674,17 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 					/* Remove the grouup we added above */
 					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 					pairfree(&check_tmp);
-					sql_grouplist_free(&group_list);
+					talloc_free(head);
 					return -1;
 				}
 				if (sql_getvpdata(inst, &handle, &reply_tmp, querystr) < 0) {
 					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
-					       group_list_tmp->groupname);
+					       entry->name);
 					/* Remove the grouup we added above */
 					pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 					pairfree(&check_tmp);
 					pairfree(&reply_tmp);
-					sql_grouplist_free(&group_list);
+					talloc_free(head);
 					return -1;
 				}
 				*dofallthrough = fallthrough(reply_tmp);
@@ -711,7 +700,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 			 */
 			found = 1;
 			RDEBUG2("User found in group %s",
-				group_list_tmp->groupname);
+				entry->name);
 			/*
 			 *	Now get the reply pairs since the paircompare matched
 			 */
@@ -720,17 +709,17 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 				/* Remove the grouup we added above */
 				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 				pairfree(&check_tmp);
-				sql_grouplist_free(&group_list);
+				talloc_free(head);
 				return -1;
 			}
 			if (sql_getvpdata(inst, &handle, &reply_tmp, querystr) < 0) {
 				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
-				       group_list_tmp->groupname);
+				       entry->name);
 				/* Remove the grouup we added above */
 				pairdelete(&request->packet->vps, PW_SQL_GROUP, 0, TAG_ANY);
 				pairfree(&check_tmp);
 				pairfree(&reply_tmp);
-				sql_grouplist_free(&group_list);
+				talloc_free(head);
 				return -1;
 			}
 			*dofallthrough = fallthrough(reply_tmp);
@@ -747,7 +736,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 		pairfree(&reply_tmp);
 	}
 
-	sql_grouplist_free(&group_list);
+	talloc_free(head);
 	return found;
 }
 
