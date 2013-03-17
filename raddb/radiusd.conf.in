@@ -629,42 +629,17 @@ modules {
 #  something defined by another module, you can list them in order
 #  here, and ensure that the configuration will be OK.
 #
+#  After the modules listed here have been loaded, all of the modules
+#  in the "mods-enabled" directory will be loaded.  Loading the
+#  "mods-enabled" directory means that unlike Version 2, you usually
+#  don't need to list modules here.
+#
 instantiate {
 	#
-	#  Allows the execution of external scripts.
-	#  The entire command line (and output) must fit into 253 bytes.
-	#
-	#  e.g. Framed-Pool = `%{exec:/bin/echo foo}`
-	exec
-
-	#
-	#  The expression module doesn't do authorization,
-	#  authentication, or accounting.  It only does dynamic
-	#  translation, of the form:
-	#
-	#	Session-Timeout = `%{expr:2 + 3}`
-	#
-	#  So the module needs to be instantiated, but CANNOT be
-	#  listed in any other section.  See 'doc/rlm_expr' for
-	#  more information.
-	#
-	expr
-
-	#
-	#  The DHCP module currently just registers some DHCP related
-	#  expansions, but will eventually contain all the code necessary
-	#  for encoding and decoding DHCP packets.
-	#
-	dhcp	
-	
-
-	#
-	# We add the counter module here so that it registers
+	# We list the counter module here so that it registers
 	# the check-name attribute before any module which sets
 	# it
 #	daily
-	expiration
-	logintime
 
 	# subsections here can be thought of as "virtual" modules.
 	#

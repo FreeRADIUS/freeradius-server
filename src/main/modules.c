@@ -1459,6 +1459,31 @@ int setup_modules(int reload, CONF_SECTION *config)
 	} /* if there's an 'instantiate' section. */
 
 	/*
+	 *	Now that we've loaded the explicitly ordered modules,
+	 *	load everything in the "modules" section.  This is
+	 *	because we've now split up the modules into
+	 *	mods-enabled.
+	 */
+	for (ci=cf_item_find_next(modules, NULL);
+	     ci != NULL;
+	     ci=next) {
+		const char *name;
+		module_instance_t *module;
+		CONF_SECTION *subcs;
+
+		next = cf_item_find_next(modules, ci);
+
+		if (!cf_item_is_section(ci)) continue;
+
+		subcs = cf_itemtosection(ci);
+		name = cf_section_name2(subcs);
+		if (!name) name = cf_section_name1(subcs);
+
+		module = find_module_instance(modules, name, 1);
+		if (!module) return -1;
+	}
+
+	/*
 	 *	Loop over the listeners, figuring out which sections
 	 *	to load.
 	 */
