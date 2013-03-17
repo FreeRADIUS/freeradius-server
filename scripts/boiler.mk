@@ -381,6 +381,7 @@ define INCLUDE_SUBMAKEFILE
         $${OBJS}: SRC_CXXFLAGS := $${SRC_CXXFLAGS}
         $${OBJS}: SRC_DEFS := $$(addprefix -D,$${SRC_DEFS})
         $${OBJS}: SRC_INCDIRS := $$(addprefix -I,$${SRC_INCDIRS})
+        $${OBJS}: ${1}
     endif
     endif
 
