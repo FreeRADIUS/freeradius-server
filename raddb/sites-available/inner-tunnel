@@ -129,7 +129,7 @@ authorize {
 	#  is meant to mirror the "users" file.
 	#
 	#  See "Authorization Queries" in sql.conf
-#	sql
+	-sql
 
 	#
 	#  If you are using /etc/smbpasswd, and are also doing
@@ -138,9 +138,8 @@ authorize {
 #	etc_smbpasswd
 
 	#
-	#  The ldap module will set Auth-Type to LDAP if it has not
-	#  already been set
-#	ldap
+	#  The ldap module reads passwords from the LDAP database.
+	-ldap
 
 	#
 	#  Enforce daily limits on time spent logged in.
@@ -228,6 +227,12 @@ authenticate {
 	# Note that this means "check plain-text password against
 	# the ldap database", which means that EAP won't work,
 	# as it does not supply a plain-text password.
+	#
+	#  We do NOT recommend using this.  LDAP servers are databases.
+	#  They are NOT authentication servers.  FreeRADIUS is an
+	#  authentication server, and knows what to do with authentication.
+	#  LDAP servers do not.
+	#
 #	Auth-Type LDAP {
 #		ldap
 #	}
@@ -261,21 +266,17 @@ session {
 #  Once we KNOW that the user has been authenticated, there are
 #  additional steps we can take.
 post-auth {
-	# Note that we do NOT assign IP addresses here.
-	# If you try to assign IP addresses for EAP authentication types,
-	# it WILL NOT WORK.  You MUST use DHCP.
-
 	#
 	#  If you want to have a log of authentication replies,
-	#  un-comment the following line, and the 'detail reply_log'
-	#  section, above.
+	#  un-comment the following line, and enable the
+	#  'detail reply_log' module.
 #	reply_log
 
 	#
 	#  After authenticating the user, do another SQL query.
 	#
 	#  See "Authentication Logging Queries" in sql.conf
-#	sql
+	-sql
 
 	#
 	#  Instead of sending the query to the SQL server,
@@ -299,7 +300,7 @@ post-auth {
 	#
 	Post-Auth-Type REJECT {
 		# log failed authentications in SQL, too.
-#		sql
+		-sql
 		attr_filter.access_reject
 	}
 

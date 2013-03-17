@@ -854,7 +854,7 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	It's OK for the module to not exist.
 		 */
 		if (!this && modname && (modname[0] == '-')) {
-			DEBUGW("Not loading module \"%s\" as it is not enabled", modname + 1);
+		  DEBUGW("Ignoring \"%s\" (see raddb/mods-available/README.rst)", modname + 1);
 			continue;
 		}
 
