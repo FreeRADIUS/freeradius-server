@@ -319,9 +319,6 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		return NULL;
 	}
 	
-	radlog(L_INFO, "%s: Opening connection successful (%i)",
-	       pool->log_prefix, pool->count);
-
 	this->start = now;
 	this->connection = conn;	
 
