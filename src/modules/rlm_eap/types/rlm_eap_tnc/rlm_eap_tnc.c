@@ -222,7 +222,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	/*
 	 *	Set connection ID
 	 */
-	handler->opaque = talloc(NULL, TNC_ConnectionID);
+	handler->opaque = talloc(handler, TNC_ConnectionID);
 	memcpy(handler->opaque, &conn_id, sizeof(TNC_ConnectionID));
 	handler->free_opaque = tnc_free;
 

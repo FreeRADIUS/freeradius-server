@@ -700,9 +700,6 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	EAP-Starts.
 	 */
 	if ((eap_msg->length == 0) || (eap_msg->length == 2)) {
-		EAP_DS *eap_ds;
-		eap_handler_t handler;
-
 		/*
 		 *	It's a valid EAP-Start, but the request
 		 *	was marked as being proxied.  So we don't
@@ -716,32 +713,20 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		}
 
 		RDEBUG2("Got EAP_START message");
-		if ((eap_ds = eap_ds_alloc()) == NULL) {
-			RDEBUG2("EAP Start failed in allocation");
-			return EAP_FAIL;
-		}
+		vp = paircreate(request->reply, PW_EAP_MESSAGE, 0);
+		if (!vp) return EAP_FAIL;
+		pairadd(&request->reply->vps, vp);
 
 		/*
-		 *	It's an EAP-Start packet.  Tell them to stop wasting
-		 *	our time, and give us an EAP-Identity packet.
-		 *
-		 *	Hmm... we should probably check the contents of the
-		 *	EAP-Start packet for something...
+		 *	Manually create an EAP Identity request
 		 */
-		eap_ds->request->code = PW_EAP_REQUEST;
-		eap_ds->request->type.num = PW_EAP_IDENTITY;
+		vp->vp_octets[0] = PW_EAP_REQUEST;
+		vp->vp_octets[1] = 0; /* ID */
+		vp->vp_octets[2] = 0;
+		vp->vp_octets[3] = 5; /* length */
+		vp->vp_octets[4] = PW_EAP_IDENTITY;
+		vp->length = 5;
 
-		/*
-		 *	We don't have a handler, but eap_compose needs one,
-		 *	(for various reasons), so we fake it out here.
-		 */
-		memset(&handler, 0, sizeof(handler));
-		handler.request = request;
-		handler.eap_ds = eap_ds;
-
-		eap_compose(&handler);
-
-		eap_ds_free(&eap_ds);
 		return EAP_FOUND;
 	} /* end of handling EAP-Start */
 
@@ -905,7 +890,7 @@ void eap_fail(eap_handler_t *handler)
 	pairdelete(&handler->request->reply->vps, PW_STATE, 0, TAG_ANY);
 
 	eap_packet_free(&handler->eap_ds->request);
-	handler->eap_ds->request = eap_packet_alloc();
+	handler->eap_ds->request = eap_packet_alloc(handler->eap_ds);
 
 	handler->eap_ds->request->code = PW_EAP_FAILURE;
 	eap_compose(handler);
@@ -990,14 +975,15 @@ static char *eap_identity(REQUEST *request, eap_packet_raw_t *eap_packet)
 /*
  *	Create our Request-Response data structure with the eap packet
  */
-static EAP_DS *eap_buildds(eap_packet_raw_t **eap_packet_p)
+static EAP_DS *eap_buildds(eap_handler_t *handler,
+			   eap_packet_raw_t **eap_packet_p)
 {
 	EAP_DS		*eap_ds = NULL;
 	eap_packet_raw_t	*eap_packet = *eap_packet_p;
 	int		typelen;
 	uint16_t	len;
 
-	if ((eap_ds = eap_ds_alloc()) == NULL) {
+	if ((eap_ds = eap_ds_alloc(handler)) == NULL) {
 		return NULL;
 	}
 
@@ -1191,7 +1177,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	       }
 	}
 
-	handler->eap_ds = eap_buildds(eap_packet_p);
+	handler->eap_ds = eap_buildds(handler, eap_packet_p);
 	if (handler->eap_ds == NULL) {
 		free(*eap_packet_p);
 		*eap_packet_p = NULL;

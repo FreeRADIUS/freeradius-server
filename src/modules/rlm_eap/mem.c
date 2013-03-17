@@ -36,19 +36,15 @@ RCSID("$Id$")
 #endif
 
 /*
- * Allocate a new eap_packet_t
+ *	Allocate a new eap_packet_t
  */
-eap_packet_t *eap_packet_alloc(void)
+eap_packet_t *eap_packet_alloc(EAP_DS *eap_ds)
 {
-	eap_packet_t   *rp;
-
-	rp = rad_malloc(sizeof(eap_packet_t));
-	memset(rp, 0, sizeof(eap_packet_t));
-	return rp;
+	return talloc_zero(eap_ds, eap_packet_t);
 }
 
 /*
- * Free eap_packet_t
+ *	Free eap_packet_t
  */
 void eap_packet_free(eap_packet_t **eap_packet_ptr)
 {
@@ -75,7 +71,7 @@ void eap_packet_free(eap_packet_t **eap_packet_ptr)
 		eap_packet->packet = NULL;
 	}
 
-	free(eap_packet);
+	talloc_free(eap_packet);
 
 	*eap_packet_ptr = NULL;
 }
@@ -83,17 +79,16 @@ void eap_packet_free(eap_packet_t **eap_packet_ptr)
 /*
  * Allocate a new eap_packet_t
  */
-EAP_DS *eap_ds_alloc(void)
+EAP_DS *eap_ds_alloc(eap_handler_t *handler)
 {
 	EAP_DS	*eap_ds;
 
-	eap_ds = rad_malloc(sizeof(EAP_DS));
-	memset(eap_ds, 0, sizeof(EAP_DS));
-	if ((eap_ds->response = eap_packet_alloc()) == NULL) {
+	eap_ds = talloc_zero(handler, EAP_DS);
+	if ((eap_ds->response = eap_packet_alloc(eap_ds)) == NULL) {
 		eap_ds_free(&eap_ds);
 		return NULL;
 	}
-	if ((eap_ds->request = eap_packet_alloc()) == NULL) {
+	if ((eap_ds->request = eap_packet_alloc(eap_ds)) == NULL) {
 		eap_ds_free(&eap_ds);
 		return NULL;
 	}
@@ -113,7 +108,7 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 	if (eap_ds->response) eap_packet_free(&(eap_ds->response));
 	if (eap_ds->request) eap_packet_free(&(eap_ds->request));
 
-	free(eap_ds);
+	talloc_free(eap_ds);
 	*eap_ds_p = NULL;
 }
 
@@ -124,15 +119,14 @@ eap_handler_t *eap_handler_alloc(rlm_eap_t *inst)
 {
 	eap_handler_t	*handler;
 
-	handler = rad_malloc(sizeof(eap_handler_t));
-	memset(handler, 0, sizeof(eap_handler_t));
+	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
+	handler = talloc_zero(inst, eap_handler_t);
 
 	if (inst->handler_tree) {
-		PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
 		rbtree_insert(inst->handler_tree, handler);
-		PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
-	
 	}
+	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
+
 	return handler;
 }
 
@@ -148,12 +142,6 @@ void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 {
 	if (!handler)
 		return;
-
-	if (inst->handler_tree) {
-		PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
-		rbtree_deletebydata(inst->handler_tree, handler);
-		PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
-	}
 
 	if (handler->identity) {
 		free(handler->identity);
@@ -176,7 +164,12 @@ void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 
 	if (handler->certs) pairfree(&handler->certs);
 
-	free(handler);
+	PTHREAD_MUTEX_LOCK(&(inst->handler_mutex));
+	if (inst->handler_tree) {
+		rbtree_deletebydata(inst->handler_tree, handler);
+	}
+	talloc_free(handler);
+	PTHREAD_MUTEX_UNLOCK(&(inst->handler_mutex));
 }
 
 

@@ -103,8 +103,8 @@ rlm_rcode_t 	eap_compose(eap_handler_t *handler);
 eap_handler_t 	*eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_msg, REQUEST *request);
 
 /* Memory Management */
-eap_packet_t  	*eap_packet_alloc(void);
-EAP_DS      	*eap_ds_alloc(void);
+eap_packet_t  	*eap_packet_alloc(EAP_DS *eap_ds);
+EAP_DS      	*eap_ds_alloc(eap_handler_t *handler);
 eap_handler_t 	*eap_handler_alloc(rlm_eap_t *inst);
 void	    	eap_packet_free(eap_packet_t **eap_packet);
 void	    	eap_ds_free(EAP_DS **eap_ds);
