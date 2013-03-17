@@ -523,8 +523,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle,
 			*phead = talloc_zero(handle, rlm_sql_grouplist_t);
 			entry = *phead;
 		} else {
-			rad_assert(entry != NULL);
-			entry->next = talloc_zero(handle, rlm_sql_grouplist_t);
+			entry->next = talloc_zero(*phead, rlm_sql_grouplist_t);
 			entry = entry->next;
 		}
 		entry->next = NULL;
