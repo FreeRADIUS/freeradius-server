@@ -439,7 +439,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	node->module = module;
 	node->handle = handle;
 
-	cf_log_module(cs, "Linked to module %s", module_name);
+	cf_log_module(cs, "Loaded module %s", module_name);
 
 	/*
 	 *	Add the module as "rlm_foo-version" to the configuration
@@ -755,7 +755,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	return 1;		/* OK */
 }
 
-static int define_type(const DICT_ATTR *dattr, const char *name)
+static int define_type(CONF_SECTION *cs, const DICT_ATTR *dattr, const char *name)
 {
 	uint32_t value;
 	DICT_VALUE *dval;
@@ -778,7 +778,7 @@ static int define_type(const DICT_ATTR *dattr, const char *name)
 		value = fr_rand() & 0x00ffffff;
 	} while (dict_valbyattr(dattr->attr, dattr->vendor, value));
 
-	DEBUG2("  Module: Creating %s = %s", dattr->name, name);
+	cf_log_module(cs, "Creating %s = %s", dattr->name, name);
 	if (dict_addvalue(name, dattr->name, value) < 0) {
 		radlog(L_ERR, "%s", fr_strerror());
 		return 0;
@@ -942,8 +942,6 @@ static int load_byserver(CONF_SECTION *cs)
 			    cf_section_filename(cs));
 	}
 
-	cf_log_info(cs, " modules {");
-
 	components = rbtree_create(indexed_modcallable_cmp, NULL, 0);
 	if (!components) {
 		radlog(L_ERR, "Failed to initialize components\n");
@@ -1006,7 +1004,7 @@ static int load_byserver(CONF_SECTION *cs)
 			if ((section_type_value[comp].attr == PW_AUTH_TYPE) &&
 			    cf_item_is_pair(modref)) {
 				CONF_PAIR *cp = cf_itemtopair(modref);
-				if (!define_type(dattr, cf_pair_attr(cp))) {
+				if (!define_type(cs, dattr, cf_pair_attr(cp))) {
 					goto error;
 				}
 
@@ -1019,8 +1017,8 @@ static int load_byserver(CONF_SECTION *cs)
 			name1 = cf_section_name1(subsubcs);
 
 			if (strcmp(name1, section_type_value[comp].typename) == 0) {
-				if (!define_type(dattr,
-						 cf_section_name2(subsubcs))) {
+			  if (!define_type(cs, dattr,
+					   cf_section_name2(subsubcs))) {
 					goto error;
 				}
 			}
@@ -1041,8 +1039,8 @@ static int load_byserver(CONF_SECTION *cs)
 			
 		if (cf_item_find_next(subcs, NULL) == NULL) continue;
 			
-		cf_log_module(cs, "Checking %s {...} for more modules to load",
-		       section_type_value[comp].section);
+		cf_log_module(cs, "Loading %s {...}",
+			      section_type_value[comp].section);
 
 		/*
 		 *	Skip pre/post-proxy sections if we're not
@@ -1134,7 +1132,6 @@ static int load_byserver(CONF_SECTION *cs)
 #endif
 	}
 
-	cf_log_info(cs, " } # modules");
 	cf_log_info(cs, "} # server");
 
 	if (!flag && name) {
@@ -1464,6 +1461,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 *	because we've now split up the modules into
 	 *	mods-enabled.
 	 */
+	cf_log_info(cs, " modules {");
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=next) {
@@ -1482,6 +1480,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		module = find_module_instance(modules, name, 1);
 		if (!module) return -1;
 	}
+	cf_log_info(cs, " } # modules");
 
 	/*
 	 *	Loop over the listeners, figuring out which sections

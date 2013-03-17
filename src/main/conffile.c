@@ -2641,7 +2641,7 @@ void cf_log_module(const CONF_SECTION *cs, const char *fmt, ...)
 	if (debug_flag > 1 && cf_log_modules && cs) {
 		vsnprintf(buffer, sizeof(buffer), fmt, ap);
 
-		radlog(L_DBG, " Module: %s", buffer);
+		DEBUG("%.*s# %s", cs->depth, parse_spaces, buffer);
 	}
 	va_end(ap);
 }

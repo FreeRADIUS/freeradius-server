@@ -2065,8 +2065,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 
 		if (subcs) {
-			DEBUG2(" Module: Loading virtual module %s",
-			       modrefname);
+			cf_log_module(cs, "Loading virtual module %s",
+				      modrefname);
 
 			/*
 			 *	redundant foo {} is a single.
