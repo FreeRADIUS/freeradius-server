@@ -759,6 +759,8 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	return output;
 }
 
+static const char *parse_spaces = "                                                                                                                                                                                                                                                                ";
+
 
 /*
  *	Parses an item (not a CONF_ITEM) into the specified format,
@@ -823,12 +825,14 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			       "variable %s", value, name);
 			return -1;
 		}
-		cf_log_info(cs, "\t%s = %s", name, value);
+		cf_log_info(cs, "%.*s\t%s = %s",
+			    cs->depth, parse_spaces, name, value);
 		break;
 
 	case PW_TYPE_INTEGER:
 		*(int *)data = strtol(value, 0, 0);
-		cf_log_info(cs, "\t%s = %d", name, *(int *)data);
+		cf_log_info(cs, "%.*s\t%s = %d",
+			    cs->depth, parse_spaces, name, *(int *)data);
 		break;
 
 	case PW_TYPE_STRING_PTR:
@@ -862,7 +866,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			}
 		}
 
-		cf_log_info(cs, "\t%s = \"%s\"", name, value ? value : "(null)");
+		cf_log_info(cs, "%.*s\t%s = \"%s\"",
+			    cs->depth, parse_spaces, name, value ? value : "(null)");
 		*q = value ? talloc_strdup(cs, value) : NULL;
 		break;
 
@@ -897,7 +902,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			if (!value) return -1;
 		}
 
-		cf_log_info(cs, "\t%s = \"%s\"", name, value);
+		cf_log_info(cs, "%.*s\t%s = \"%s\"",
+			    cs->depth, parse_spaces, name, value);
 		*q = value ? talloc_strdup(cs, value) : NULL;
 
 		/*
@@ -928,7 +934,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		 */
 		if (strcmp(value, "*") == 0) {
 			*(uint32_t *) data = htonl(INADDR_ANY);
-			cf_log_info(cs, "\t%s = *", name);
+			cf_log_info(cs, "%.*s\t%s = *",
+				    cs->depth, parse_spaces, name);
 			break;
 		}
 		if (ip_hton(value, AF_INET, &ipaddr) < 0) {
@@ -937,9 +944,11 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		}
 		
 		if (strspn(value, "0123456789.") == strlen(value)) {
-			cf_log_info(cs, "\t%s = %s", name, value);
+			cf_log_info(cs, "%.*s\t%s = %s",
+				    cs->depth, parse_spaces, name, value);
 		} else {
-			cf_log_info(cs, "\t%s = %s IP address [%s]", name, value,
+			cf_log_info(cs, "%.*s\t%s = %s IP address [%s]",
+				    cs->depth, parse_spaces, name, value,
 			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
 		}
 		*(uint32_t *) data = ipaddr.ipaddr.ip4addr.s_addr;
@@ -950,8 +959,9 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
 			return -1;
 		}
-		cf_log_info(cs, "\t%s = %s IPv6 address [%s]", name, value,
-			       ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
+		cf_log_info(cs, "%.*s\t%s = %s IPv6 address [%s]",
+			    cs->depth, parse_spaces, name, value,
+			    ip_ntoh(&ipaddr, ipbuf, sizeof(ipbuf)));
 		memcpy(data, &ipaddr.ipaddr.ip6addr,
 		       sizeof(ipaddr.ipaddr.ip6addr));
 		break;
@@ -983,7 +993,6 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	return rcode;
 }
 
-static const char *parse_spaces = "																																";
 
 /*
  *	A copy of cf_section_parse that initializes pointers before
