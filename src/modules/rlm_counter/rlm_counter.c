@@ -414,10 +414,15 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	memset(&flags, 0, sizeof(flags));
-	dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags);
+	if (dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
+		radlog(L_ERR, "rlm_counter: Failed to create counter attribute %s: %s",
+		       inst->counter_name, fr_strerror());
+		return -1;
+	}
+
 	dattr = dict_attrbyname(inst->counter_name);
 	if (dattr == NULL) {
-		radlog(L_ERR, "rlm_counter: Failed to create counter attribute %s",
+		radlog(L_ERR, "rlm_counter: Failed to find counter attribute %s",
 				inst->counter_name);
 		return -1;
 	}
@@ -432,10 +437,15 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_counter: 'check-name' must be set.");
 		return -1;
 	}
-	dict_addattr(inst->check_name, 0, PW_TYPE_INTEGER, -1, flags);
+	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
+		radlog(L_ERR, "rlm_counter: Failed to create check attribute %s: %s",
+		       inst->counter_name, fr_strerror());
+		return -1;
+
+	}
 	dattr = dict_attrbyname(inst->check_name);
 	if (dattr == NULL) {
-		radlog(L_ERR, "rlm_counter: Failed to create check attribute %s",
+		radlog(L_ERR, "rlm_counter: Failed to find check attribute %s",
 				inst->counter_name);
 		return -1;
 	}
