@@ -100,7 +100,7 @@ static int sql_check_error(sqlite3 *db)
 }
 
 #ifdef HAVE_SQLITE_V2_API
-static int sql_loadfile(sqlite3 *db, const char *filename)
+static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 {
 	ssize_t len;
 	char *buffer;
@@ -146,7 +146,7 @@ static int sql_loadfile(sqlite3 *db, const char *filename)
 		return -1;
 	}
 	
-	MEM(buffer = talloc_array(NULL, char, finfo.st_size + 1));
+	MEM(buffer = talloc_array(ctx, char, finfo.st_size + 1));
 	len = fread(buffer, sizeof(char), finfo.st_size + 1, f);
 	if (len > finfo.st_size) {
 		talloc_free(buffer);
@@ -281,10 +281,10 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		if (p) {
 			size_t len = (p - driver->filename) + 1;
 			
-			buff = talloc_array(NULL, char, len);
+			buff = talloc_array(conf, char, len);
 			strlcpy(buff, driver->filename, len);
 		} else {
-			buff = talloc_strdup(NULL, driver->filename);
+			buff = talloc_strdup(conf, driver->filename);
 		}
 		
 		if (rad_mkdir(buff, 0700) < 0) {
@@ -316,7 +316,7 @@ static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			goto unlink;
 		}
 		
-		ret = sql_loadfile(db, driver->bootstrap);
+		ret = sql_loadfile(conf, db, driver->bootstrap);
 		
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
