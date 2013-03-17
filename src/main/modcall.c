@@ -2344,6 +2344,11 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 							      grouptype,
 							      &junk);
 				if (!single) {
+					if (cf_item_is_pair(ci) &&
+					    cf_pair_attr(cf_itemtopair(ci))[0] == '-') {
+						continue;
+					}
+
 					cf_log_err(ci,
 						   "Failed to parse \"%s\" entry.",
 						   attr);
