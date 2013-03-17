@@ -62,4 +62,4 @@ $INCLUDE	@prefix@/share/freeradius/dictionary
 #	This file WILL NOT EVER be created, edited, or modified
 #	by FreeRADIUS.
 #
-$INCLUDE-	dictionary.local
+$INCLUDE	dictionary.local
