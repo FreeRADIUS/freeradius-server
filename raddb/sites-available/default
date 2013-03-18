@@ -435,19 +435,6 @@ authenticate {
 	#  Pluggable Authentication Modules.
 #	pam
 
-	#
-	#  See 'man getpwent' for information on how the 'unix'
-	#  module checks the users password.  Note that packets
-	#  containing CHAP-Password attributes CANNOT be authenticated
-	#  against /etc/passwd!  See the FAQ for details.
-	#
-	#  For normal "crypt" authentication, the "pap" module should
-	#  be used instead of the "unix" module.  The "unix" module should
-	#  be used for authentication ONLY for compatibility with legacy
-	#  FreeRADIUS configurations.
-	#
-	unix
-
 	#  Uncomment it if you want to use ldap for authentication
 	#
 	#  Note that this means "check plain-text password against

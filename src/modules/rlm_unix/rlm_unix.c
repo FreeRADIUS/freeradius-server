@@ -162,8 +162,7 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static int unix_getpw(UNUSED void *instance, REQUEST *request,
-		      VALUE_PAIR **vp_list)
+static rlm_rcode_t unix_authorize(UNUSED void *instance, REQUEST *request)
 {
 	const char	*name;
 	const char	*encrypted_pass;
@@ -304,72 +303,9 @@ static int unix_getpw(UNUSED void *instance, REQUEST *request,
 	vp = pairmake("Crypt-Password", encrypted_pass, T_OP_SET);
 	if (!vp) return RLM_MODULE_FAIL;
 
-	pairmove(vp_list, &vp);
-	pairfree(&vp);		/* might not be NULL; */
+	pairadd(&request->config_items, vp);
 
 	return RLM_MODULE_UPDATED;
-}
-
-
-/*
- *	Pull the users password from where-ever, and add it to
- *	the given vp list.
- */
-static rlm_rcode_t unix_authorize(void *instance, REQUEST *request)
-{
-	return unix_getpw(instance, request, &request->config_items);
-}
-
-/*
- *	Pull the users password from where-ever, and add it to
- *	the given vp list.
- */
-static rlm_rcode_t unix_authenticate(void *instance, REQUEST *request)
-{
-#ifdef OSFSIA
-	char		*info[2];
-	char		*progname = "radius";
-	SIAENTITY	*ent = NULL;
-
-	info[0] = progname;
-	info[1] = NULL;
-	if (sia_ses_init (&ent, 1, info, NULL, name, NULL, 0, NULL) !=
-	    SIASUCCESS)
-		return RLM_MODULE_NOTFOUND;
-	if ((ret = sia_ses_authent (NULL, passwd, ent)) != SIASUCCESS) {
-		if (ret & SIASTOP)
-			sia_ses_release (&ent);
-		return RLM_MODULE_NOTFOUND;
-	}
-	if (sia_ses_estab (NULL, ent) != SIASUCCESS) {
-		sia_ses_release (&ent);
-		return RLM_MODULE_NOTFOUND;
-	}
-#else  /* OSFSIA */
-	int rcode;
-	VALUE_PAIR *vp = NULL;
-
-	if (!request->password ||
-	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication.");
-		return RLM_MODULE_INVALID;
-	}
-
-	rcode = unix_getpw(instance, request, &vp);
-	if (rcode != RLM_MODULE_UPDATED) return rcode;
-
-	/*
-	 *	0 means "ok"
-	 */
-	if (fr_crypt_check((char *) request->password->vp_strvalue,
-			     (char *) vp->vp_strvalue) != 0) {
-		radlog_request(L_AUTH, 0, request, "invalid password \"%s\"",
-			       request->password->vp_strvalue);
-		return RLM_MODULE_REJECT;
-	}
-#endif /* OSFFIA */
-
-	return RLM_MODULE_OK;
 }
 
 
@@ -584,7 +520,7 @@ module_t rlm_unix = {
 	unix_instantiate,		/* instantiation */
 	unix_detach,		 	/* detach */
 	{
-		unix_authenticate,    /* authentication */
+		NULL,		    /* authentication */
 		unix_authorize,       /* authorization */
 		NULL,		 /* preaccounting */
 		unix_accounting,      /* accounting */

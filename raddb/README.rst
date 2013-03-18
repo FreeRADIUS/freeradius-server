@@ -187,6 +187,22 @@ It is otherwise unchanged.  You chould be able to copy your old
 ``eap.conf`` file directly to ``mods-enabled/eap``.
 
 
+Unix
+----
+
+The unix module does not have an "authenticate" section.  So you
+cannot set "Auth-Type := System".  The "unix" module has also been
+deleted from the examples in sites-available/.  Listing it there has
+been deprecated for many years.
+
+The PAP module can do crypt authentication.  It should be used instead
+of Unix authentication.
+
+The Unix module still can pull the passwords from /etc/passwd, or
+/etc/shadow.  This is done by listing it in the "authorize" section,
+as is done in the sites-available/ examples.
+
+
 RadSec
 ------
 
