@@ -291,7 +291,7 @@ static int eappeap_authenticate(void *arg, eap_handler_t *handler)
 	 *	allocate it if it doesn't already exist.
 	 */
 	if (!tls_session->opaque) {
-		peap = tls_session->opaque = peap_alloc(inst);
+	  peap = tls_session->opaque = peap_alloc(inst, handler);
 		tls_session->free_opaque = peap_free;
 	}
 
@@ -351,7 +351,7 @@ static int eappeap_authenticate(void *arg, eap_handler_t *handler)
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
 	if (!tls_session->opaque) {
-		tls_session->opaque = peap_alloc(inst);
+	  tls_session->opaque = peap_alloc(inst, handler);
 		tls_session->free_opaque = peap_free;
 	}
 
