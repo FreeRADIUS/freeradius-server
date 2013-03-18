@@ -796,49 +796,47 @@ static void ldap_release_socket(ldap_instance *inst, LDAP_CONN *conn)
 static size_t ldap_escape_func(UNUSED REQUEST *request, char *out,
 			       size_t outlen, const char *in, UNUSED void *arg)
 {
-	size_t len = 0;
-
-	while (in[0]) {
+	static const char encode[] = ",+\"\\<>;*=()";
+	static const char hextab[] = "0123456789abcdef";
+	size_t left = outlen;
+	
+	if (*in && ((*in == ' ') || (*in == '#'))) {
+		goto encode;
+	}
+	
+	while (*in) {
 		/*
 		 *	Encode unsafe characters.
 		 */
-		if (((len == 0) &&
-		    ((in[0] == ' ') || (in[0] == '#'))) ||
-		    (strchr(",+\"\\<>;*=()", *in))) {
-			static const char hex[] = "0123456789abcdef";
+		if (memchr(encode, *in, sizeof(encode) - 1)) {
+			encode:
 
 			/*
 			 *	Only 3 or less bytes available.
 			 */
-			if (outlen <= 3) {
-				break;
-			}
+			if (left <= 3) break;
 
-			*(out++) = '\\';
-			*(out++) = hex[((*in) >> 4) & 0x0f];
-			*(out++) = hex[(*in) & 0x0f];
-			outlen -= 3;
-			len += 3;
+			*out++ = '\\';
+			*out++ = hextab[(*in >> 4) & 0x0f];
+			*out++ = hextab[*in & 0x0f];
 			in++;
+			left -= 3;
+
 			continue;
 		}
 
-		/*
-		 *	Only one byte left.
-		 */
-		if (outlen <= 1) {
-			break;
-		}
+		if (left <= 1) break;
 
 		/*
-		 *	Allowed character.
+		 *	Doesn't need encoding
 		 */
-		*(out++) = *(in++);
-		outlen--;
-		len++;
+		*out++ = *in++;
+		left--;
 	}
+	
 	*out = '\0';
-	return len;
+	
+	return outlen - left;
 }
 
 /** Do a search and get a response
