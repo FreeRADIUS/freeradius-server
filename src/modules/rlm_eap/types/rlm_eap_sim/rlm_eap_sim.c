@@ -43,26 +43,6 @@ struct eap_sim_server_state {
 	int  sim_id;
 };
 
-/*
- * Add value pair to reply
- */
-static void add_reply(VALUE_PAIR** vp,
-		      const char* name, const uint8_t *value, size_t len)
-{
-	VALUE_PAIR *reply_attr;
-	reply_attr = pairmake(name, "", T_OP_EQ);
-	if (!reply_attr) {
-		DEBUG("rlm_eap_sim: "
-		      "add_reply failed to create attribute %s: %s\n",
-		      name, fr_strerror());
-		return;
-	}
-
-	memcpy(reply_attr->vp_strvalue, value, len);
-	reply_attr->length = len;
-	pairadd(vp, reply_attr);
-}
-
 static void eap_sim_state_free(void *opaque)
 {
 	struct eap_sim_server_state *ess = (struct eap_sim_server_state *)opaque;
@@ -310,24 +290,22 @@ static int eap_sim_sendsuccess(eap_handler_t *handler)
 {
 	unsigned char *p;
 	struct eap_sim_server_state *ess;
-	VALUE_PAIR **outvps;
-	VALUE_PAIR *newvp;
+	VALUE_PAIR *vp;
 	RADIUS_PACKET *packet;
 
 	/* outvps is the data to the client. */
 	packet = handler->request->reply;
-	outvps= &packet->vps;
 	ess = (struct eap_sim_server_state *)handler->opaque;
 
 	/* set the EAP_ID - new value */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
-	newvp->vp_integer = ess->sim_id++;
-	pairreplace(outvps, newvp);
+	vp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
+	vp->vp_integer = ess->sim_id++;
+	pairreplace(handler->request->reply, vp);
 
 	p = ess->keys.msk;
-	add_reply(outvps, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(handler->request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
 	p += EAPTLS_MPPE_KEY_LEN;
-	add_reply(outvps, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(handler->request, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
 	return 1;
 }
 

@@ -373,3 +373,23 @@ eap_packet_raw_t *eap_vp2packet(VALUE_PAIR *vps)
 
 	return eap_packet;
 }
+
+/*
+ *	Add raw hex data to the reply.
+ */
+void eap_add_reply(REQUEST *request,
+		   const char *name, const uint8_t *value, int len)
+{
+	VALUE_PAIR *vp;
+
+	vp = pairmake(name, "", T_OP_EQ);
+	if (!vp) {
+		RDEBUGE("Did not create attribute %s: %s\n",
+			name, fr_strerror());
+		return;
+	}
+
+	memcpy(vp->vp_octets, value, len);
+	vp->length = len;
+	pairadd(&request->reply->vps, vp);
+}

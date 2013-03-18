@@ -53,26 +53,6 @@ static CONF_PARSER pwd_module_config[] = {
     { NULL, -1, 0, NULL, NULL }
 };
 
-/*
- * stolen from rlm_eap_sim: Add value pair to reply
- */
-static void add_reply(VALUE_PAIR** vp,
-		      const char* name, const uint8_t *value, size_t len)
-{
-    VALUE_PAIR *reply_attr;
-    reply_attr = pairmake(name, "", T_OP_EQ);
-    if (!reply_attr) {
-	DEBUG("rlm_eap_pwd: "
-	      "add_reply failed to create attribute %s: %s\n",
-	      name, fr_strerror());
-	return;
-    }
-
-    memcpy(reply_attr->vp_strvalue, value, len);
-    reply_attr->length = len;
-    pairadd(vp, reply_attr);
-}
-
 static int
 eap_pwd_detach (void *arg)
 {
@@ -304,7 +284,7 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
     pwd_id_packet *id;
     eap_packet_t *response;
     REQUEST *request, *fake;
-    VALUE_PAIR *pw, **outvps, *vp;
+    VALUE_PAIR *pw, *vp;
     EAP_DS *eap_ds;
     int len, ret = 0;
     eap_pwd_t *inst = (eap_pwd_t *)arg;
@@ -609,9 +589,10 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 	    /*
 	     * return the MSK (in halves)
 	     */
-	    outvps = &handler->request->reply->vps;
-	    add_reply(outvps, "MS-MPPE-Recv-Key", msk, MPPE_KEY_LEN);
-	    add_reply(outvps, "MS-MPPE-Send-Key", msk+MPPE_KEY_LEN, MPPE_KEY_LEN);
+	    eap_add_reply(handler->request,
+			  "MS-MPPE-Recv-Key", msk, MPPE_KEY_LEN);
+	    eap_add_reply(handler->request,
+			  "MS-MPPE-Send-Key", msk+MPPE_KEY_LEN, MPPE_KEY_LEN);
 	    ret = 1;
 	    break;
 	default:

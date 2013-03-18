@@ -165,5 +165,7 @@ extern int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply);
 extern VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet,
 				 const eap_packet_raw_t *reply);
 extern eap_packet_raw_t *eap_vp2packet(VALUE_PAIR *vps);
+void eap_add_reply(REQUEST *request,
+		   const char *name, const uint8_t *value, int len);
 
 #endif /* _EAP_TYPES_H */

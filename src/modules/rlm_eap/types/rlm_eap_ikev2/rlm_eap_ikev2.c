@@ -50,30 +50,10 @@
 #define IKEV2_MPPE_KEY_LEN     32
 
 
-
-/*
- * Add value pair to reply: copied from FreeRADIUS
- */
-static void add_reply(VALUE_PAIR** vp,
-		      const char* name, const char* value, int len)
-{
-	VALUE_PAIR *reply_attr;
-	reply_attr = pairmake(name, "", T_OP_EQ);
-	if (!reply_attr) {
-		radlog(L_INFO, IKEv2_LOG_PREFIX "add_reply failed to create attribute %s: %s", name, fr_strerror());
-		return;
-	}
-
-	memcpy(reply_attr->vp_octets, value, len);
-	reply_attr->length = len;
-	pairadd(vp, reply_attr);
-}
-
 static int set_mppe_keys(eap_handler_t *handler)
 {
 	unsigned char *p;
 	struct IKEv2Session *session;
-	VALUE_PAIR **outvps;
 
 	session = ((struct IKEv2Data*)handler->opaque)->session;
 
@@ -82,13 +62,12 @@ static int set_mppe_keys(eap_handler_t *handler)
 		return 1;
 	}
 
-	/* outvps is the session to the client. */
-	outvps= &handler->request->reply->vps;
-
 	p = session->eapKeyData;
-	add_reply(outvps, "MS-MPPE-Recv-Key",(const char*) p, IKEV2_MPPE_KEY_LEN);
+	eap_add_reply(handler->request,
+		      "MS-MPPE-Recv-Key",(const char*) p, IKEV2_MPPE_KEY_LEN);
 	p += IKEV2_MPPE_KEY_LEN;
-	add_reply(outvps, "MS-MPPE-Send-Key",(const char*) p, IKEV2_MPPE_KEY_LEN);
+	eap_add_reply(handler->request,
+		  "MS-MPPE-Send-Key",(const char*) p, IKEV2_MPPE_KEY_LEN);
 	return 0;
 }
 

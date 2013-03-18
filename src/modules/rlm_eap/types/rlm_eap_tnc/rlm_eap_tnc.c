@@ -273,6 +273,7 @@ static int tnc_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	
 	TNC_ConnectionState connection_state;
 	uint8_t code = 0;
+	REQUEST *request = handler->request;
 	
 	if (handler->eap_ds->response->type.num != PW_EAP_TNC) {
 		radlog(L_ERR, "rlm_eap_tnc: Incorrect response type");
@@ -285,7 +286,7 @@ static int tnc_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	 */
 	conn_id = *((TNC_ConnectionID *) (handler->opaque));
 
-	DEBUG2("rlm_eap_tnc: Starting authentication for connection ID %lX",
+	RDEBUG2("Starting authentication for connection ID %lX",
 	       conn_id);
 
 	/*
@@ -300,8 +301,8 @@ static int tnc_authenticate(UNUSED void *instance, eap_handler_t *handler)
 				   handler->eap_ds->response->type.length,
 				   &data, &datalen, &connection_state);
 	if (result != TNC_RESULT_SUCCESS) {
-		radlog(L_ERR, "rlm_eap_tnc: NAA-EAP processEAPTNCData returned "
-		      "an error code");
+		RDEBUG("NAA-EAP processEAPTNCData returned "
+		       "an error code");
 
 		return 0;
 	}

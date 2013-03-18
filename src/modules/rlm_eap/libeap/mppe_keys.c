@@ -29,26 +29,6 @@ RCSID("$Id$")
 #include "eap_tls.h"
 
 /*
- * Add value pair to reply
- */
-static void add_reply(VALUE_PAIR** vp,
-		      const char* name, const uint8_t * value, int len)
-{
-	VALUE_PAIR *reply_attr;
-	reply_attr = pairmake(name, "", T_OP_EQ);
-	if (!reply_attr) {
-		DEBUG("rlm_eap_tls: "
-		      "add_reply failed to create attribute %s: %s\n",
-		      name, fr_strerror());
-		return;
-	}
-
-	memcpy(reply_attr->vp_octets, value, len);
-	reply_attr->length = len;
-	pairadd(vp, reply_attr);
-}
-
-/*
  * TLS PRF from RFC 2246
  */
 static void P_hash(const EVP_MD *evp_md,
@@ -124,7 +104,7 @@ static void PRF(const unsigned char *secret, unsigned int secret_len,
 /*
  *	Generate keys according to RFC 2716 and add to reply
  */
-void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
+void eaptls_gen_mppe_keys(REQUEST *request, SSL *s,
 			  const char *prf_label)
 {
 	unsigned char out[4*EAPTLS_MPPE_KEY_LEN], buf[4*EAPTLS_MPPE_KEY_LEN];
@@ -133,7 +113,7 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 	size_t prf_size;
 
 	if (!s->s3) {
-		DEBUG("ERROR: No SSLv3 information");
+		RDEBUG("ERROR: No SSLv3 information");
 		return;
 	}
 
@@ -153,12 +133,12 @@ void eaptls_gen_mppe_keys(VALUE_PAIR **reply_vps, SSL *s,
 	    seed, prf_size, out, buf, sizeof(out));
 
 	p = out;
-	add_reply(reply_vps, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
 	p += EAPTLS_MPPE_KEY_LEN;
-	add_reply(reply_vps, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
+	eap_add_reply(request, "MS-MPPE-Send-Key", p, EAPTLS_MPPE_KEY_LEN);
 
-	add_reply(reply_vps, "EAP-MSK", out, 64);
-	add_reply(reply_vps, "EAP-EMSK", out + 64, 64);
+	eap_add_reply(request, "EAP-MSK", out, 64);
+	eap_add_reply(request, "EAP-EMSK", out + 64, 64);
 }
 
 
