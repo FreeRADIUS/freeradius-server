@@ -193,7 +193,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	 *	Automatically generate MPPE keying material.
 	 */
 	if (tls_session->prf_label) {
-		eaptls_gen_mppe_keys(&handler->request->reply->vps,
+		eaptls_gen_mppe_keys(handler->request,
 				     tls_session->ssl, tls_session->prf_label);
 	} else {
 		RDEBUGW("Not adding MPPE keys because there is no PRF label");
