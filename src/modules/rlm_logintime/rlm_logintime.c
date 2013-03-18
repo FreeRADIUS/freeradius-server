@@ -184,9 +184,6 @@ static rlm_rcode_t logintime_authorize(void *instance, REQUEST *request)
 	 	 */
 			DEBUG("rlm_logintime: timestr returned unlimited");
 		} else if (r < data->min_time) {
-			char logstr[MAX_STRING_LEN];
-			VALUE_PAIR *module_fmsg_vp;
-
 			/*
 		 	 *      User called outside allowed time interval.
 		 	 */
@@ -205,11 +202,8 @@ static rlm_rcode_t logintime_authorize(void *instance, REQUEST *request)
 				request->reply->vps = tmp;
 			}
 
-			snprintf(logstr, sizeof(logstr), "Outside allowed timespan (time allowed %s)",
-			check_item->vp_strvalue);
-			module_fmsg_vp = pairmake("Module-Failure-Message", logstr, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-
+			RDEBUGE("Outside allowed timespan (time allowed %s)",
+					   check_item->vp_strvalue);
 			return RLM_MODULE_REJECT;
 
 		} else if (r > 0) {

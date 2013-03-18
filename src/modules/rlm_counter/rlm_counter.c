@@ -874,22 +874,17 @@ static rlm_rcode_t counter_authorize(void *instance, REQUEST *request)
 				key_vp->vp_strvalue,check_vp->vp_integer,counter.user_counter);
 		DEBUG2("rlm_counter: Sent Reply-Item for user %s, Type=Session-Timeout, value=%d",
 				key_vp->vp_strvalue,res);
-	}
-	else{
-		char module_fmsg[MAX_STRING_LEN];
-		VALUE_PAIR *module_fmsg_vp;
-
+	} else {
 		/*
 		 * User is denied access, send back a reply message
 		*/
-		sprintf(msg, "Your maximum %s usage time has been reached", inst->reset);
+		sprintf(msg, "Your maximum %s usage time has been reached",
+			inst->reset);
 		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
 		pairadd(&request->reply->vps, reply_item);
 
-		snprintf(module_fmsg,sizeof(module_fmsg), "rlm_counter: Maximum %s usage time reached", inst->reset);
-		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);
-
+		RDEBUGE("Maximum %s usage time reached",
+				   inst->reset);
 		rcode = RLM_MODULE_REJECT;
 
 		DEBUG2("rlm_counter: Rejected user %s, check_item=%d, counter=%d",

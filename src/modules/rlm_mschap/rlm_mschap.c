@@ -1079,7 +1079,6 @@ static int do_mschap(rlm_mschap_t *inst,
 					     NULL, NULL, 1);
 		if (result != 0) {
 			char *p;
-			VALUE_PAIR *vp = NULL;
 
 			/*
 			 * look for "Password expired", or "Must
@@ -1092,20 +1091,11 @@ static int do_mschap(rlm_mschap_t *inst,
 			}
 
 			RDEBUG2("External script failed.");
-
-			vp = pairmake("Module-Failure-Message", "", T_OP_EQ);
-			if (!vp) {
-				radlog_request(L_ERR, 0, request, "No memory to allocate Module-Failure-Message");
-				return RLM_MODULE_FAIL;
-			}
-
 			p = strchr(buffer, '\n');
 			if (p) *p = '\0';
-			snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue),
-				"%s: External script says %s",
-				 inst->xlat_name, buffer);
-			vp->length = strlen(vp->vp_strvalue);
-			pairadd(&request->packet->vps, vp);
+
+			RDEBUGE("External script says: %s",
+					       buffer);
 			return -1;
 		}
 

@@ -265,22 +265,9 @@ static rlm_rcode_t do_checkval(void *instance, REQUEST *request)
 
 	if (rcode == RLM_MODULE_REJECT) {
 		if (!item && inst->notfound_reject){
-			char module_fmsg[MAX_STRING_LEN];
-			VALUE_PAIR *module_fmsg_vp;
-
-			snprintf(module_fmsg,sizeof(module_fmsg),
-				"rlm_checkval: Could not find item named %s in request", inst->item_name);
-			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
-		}
-		else{
-			char module_fmsg[MAX_STRING_LEN];
-			VALUE_PAIR *module_fmsg_vp;
-
-			snprintf(module_fmsg,sizeof(module_fmsg),
-				"rlm_checkval: This %s is not allowed for the user", inst->item_name);
-			module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
+			RDEBUGE("Could not find item named %s in request", inst->item_name);
+		} else {
+			RDEBUGE("This %s is not allowed for the user", inst->item_name);
 		}
 	}
 

@@ -735,6 +735,8 @@ VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
 			    const char *attribute, const char *value,
 			    FR_TOKEN op);
+void module_failure_msg(REQUEST *request, const char *fmt, ...);
+
 
 /* xlat.c */
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);

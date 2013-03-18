@@ -184,8 +184,6 @@ rlm_rcode_t module_send_coa(int type, REQUEST *request);
 #define MODULE_NULL_COA_FUNCS
 #endif
 
-char *module_failure_msg(REQUEST *request, const char *fmt, ...);
-
 rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request);
 
 /*

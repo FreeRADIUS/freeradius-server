@@ -58,8 +58,6 @@ static rlm_rcode_t chap_authenticate(UNUSED void *instance,
 {
 	VALUE_PAIR *passwd_item, *chap;
 	uint8_t pass_str[MAX_STRING_LEN];
-	VALUE_PAIR *module_fmsg_vp;
-	char module_fmsg[MAX_STRING_LEN];
 
 	if (!request->username) {
 		radlog_request(L_AUTH, 0, request, "rlm_chap: Attribute \"User-Name\" is required for authentication.\n");
@@ -98,12 +96,8 @@ static rlm_rcode_t chap_authenticate(UNUSED void *instance,
 			RDEBUGE("!!! Authentication will fail because of this.	   !!!");
 			RDEBUGE("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
-		RDEBUG("Cleartext-Password is required for authentication");
-		snprintf(module_fmsg, sizeof(module_fmsg),
-			 "rlm_chap: Clear text password not available");
-		module_fmsg_vp = pairmake("Module-Failure-Message",
-					  module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);
+
+		RDEBUGE("Clear text password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -115,12 +109,7 @@ static rlm_rcode_t chap_authenticate(UNUSED void *instance,
 
 	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1,
 			   CHAP_VALUE_LENGTH) != 0) {
-		RDEBUG("Password check failed");
-		snprintf(module_fmsg, sizeof(module_fmsg),
-			 "rlm_chap: Wrong user password");
-		module_fmsg_vp = pairmake("Module-Failure-Message",
-					  module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);
+		RDEBUGE("Password is comparison failed: password is incorrect");
 		return RLM_MODULE_REJECT;
 	}
 

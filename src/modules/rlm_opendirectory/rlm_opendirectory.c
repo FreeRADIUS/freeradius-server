@@ -427,22 +427,20 @@ static rlm_rcode_t od_authorize(UNUSED void *instance, REQUEST *request)
 	}
 	
 	if (uuid_is_null(uuid)) {
-		radius_pairmake(request, &request->packet->vps,
-				"Module-Failure-Message", "Could not get the user's uuid", T_OP_EQ);
+		RDEBUGE("Could not get the user's uuid",
+				   T_OP_EQ);
 		return RLM_MODULE_NOTFOUND;
 	}
 	
 	if (!uuid_is_null(guid_sacl)) {
 		err = mbr_check_service_membership(uuid, kRadiusServiceName, &ismember);
 		if (err != 0) {
-			radius_pairmake(request, &request->packet->vps,
-					"Module-Failure-Message", "Failed to check group membership", T_OP_EQ);
+			RDEBUGE("Failed to check group membership", T_OP_EQ);
 			return RLM_MODULE_FAIL;
 		}
 		
 		if (ismember == 0) {
-			radius_pairmake(request, &request->packet->vps,
-					"Module-Failure-Message", "User is not authorized", T_OP_EQ);
+			RDEBUGE("User is not authorized", T_OP_EQ);
 			return RLM_MODULE_USERLOCK;
 		}
 	}
@@ -450,14 +448,12 @@ static rlm_rcode_t od_authorize(UNUSED void *instance, REQUEST *request)
 	if (!uuid_is_null(guid_nasgroup)) {
 		err = mbr_check_membership_refresh(uuid, guid_nasgroup, &ismember);
 		if (err != 0) {
-			radius_pairmake(request, &request->packet->vps,
-					"Module-Failure-Message", "Failed to check group membership", T_OP_EQ);
+			RDEBUGE("Failed to check group membership", T_OP_EQ);
 			return RLM_MODULE_FAIL;
 		}
 		
 		if (ismember == 0) {
-			radius_pairmake(request, &request->packet->vps,
-					"Module-Failure-Message", "User is not authorized", T_OP_EQ);
+			RDEBUGE("User is not authorized", T_OP_EQ);
 			return RLM_MODULE_USERLOCK;
 		}
 	}

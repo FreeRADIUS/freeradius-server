@@ -1610,29 +1610,3 @@ rlm_rcode_t module_send_coa(int send_coa_type, REQUEST *request)
 	return indexed_modcall(RLM_COMPONENT_SEND_COA, send_coa_type, request);
 }
 #endif
-
-/** Add a module failure message VALUE_PAIR to the request
- */
-char *module_failure_msg(REQUEST *request, const char *fmt, ...)
-{
-	size_t len;
-	va_list ap;
-	VALUE_PAIR *vp;
-
-	va_start(ap, fmt);
-	vp = paircreate(request->packet, PW_MODULE_FAILURE_MESSAGE, 0);
-	if (!vp) {
-		va_end(ap);
-		
-		return NULL;
-	}
-
-	len = snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s: ",
-		       request->module);
-	vsnprintf(vp->vp_strvalue + len, sizeof(vp->vp_strvalue) - len, fmt,
-		  ap);
-
-	pairadd(&request->packet->vps, vp);
-	
-	return vp->vp_strvalue + len;
-}

@@ -466,11 +466,9 @@ static int securid_authenticate(void *instance, REQUEST *request)
 {
 	int rcode;
 	rlm_securid_t *inst = instance;
-	VALUE_PAIR *module_fmsg_vp;
 	VALUE_PAIR *vp;
 	char  buffer[MAX_STRING_LEN]="";
 	const char *username=NULL, *password=NULL;
-	char module_fmsg[MAX_STRING_LEN]="";
 	
 	/*
 	 *	We can only authenticate user requests which HAVE
@@ -498,9 +496,7 @@ static int securid_authenticate(void *instance, REQUEST *request)
 	 *	The user MUST supply a non-zero-length password.
 	 */
 	if (request->password->length == 0) {
-		snprintf(module_fmsg,sizeof(module_fmsg),"rlm_securid: empty password supplied");
-		module_fmsg_vp = pairmake("Module-Failure-Message", module_fmsg, T_OP_EQ);
-		pairadd(&request->packet->vps, module_fmsg_vp);
+		RDEBUGE("Password should not be empty");
 		return RLM_MODULE_INVALID;
 	}
 

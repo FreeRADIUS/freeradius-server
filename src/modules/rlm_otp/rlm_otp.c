@@ -357,12 +357,6 @@ static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	/* Add a message to the auth log. */
-	pairadd(&request->packet->vps, pairmake("Module-Failure-Message",
-		"rlm_otp", T_OP_EQ));
-	pairadd(&request->packet->vps, pairmake("Module-Success-Message",
-		"rlm_otp", T_OP_EQ));
-
 	/*
 	 *	Retrieve the challenge (from State attribute).
 	 */

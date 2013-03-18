@@ -74,9 +74,6 @@ static rlm_rcode_t expiration_authorize(void *instance, REQUEST *request)
 		*/
 		RDEBUG("Checking Expiration time: '%s'",check_item->vp_strvalue);
 		if (((time_t) check_item->vp_date) <= request->timestamp) {
-			char logstr[MAX_STRING_LEN];
-			VALUE_PAIR *module_fmsg_vp;
-
 			RDEBUG("Account has expired");
 
 			if (data->msg && data->msg[0]){
@@ -89,10 +86,8 @@ static rlm_rcode_t expiration_authorize(void *instance, REQUEST *request)
 				pairfree(&request->reply->vps);
 				request->reply->vps = vp;
 			}
-			snprintf(logstr, sizeof(logstr), "Account has expired [Expiration %s]",check_item->vp_strvalue);
-			module_fmsg_vp = pairmake("Module-Failure-Message", logstr, T_OP_EQ);
-			pairadd(&request->packet->vps, module_fmsg_vp);
 
+			RDEBUGE("Account has expired [Expiration %s]",check_item->vp_strvalue);
 			return RLM_MODULE_USERLOCK;
 		}
 		/*
