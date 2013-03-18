@@ -167,19 +167,18 @@ static void peap_free(void *p)
 	pairfree(&t->accept_vps);
 	pairfree(&t->soh_reply_vps);
 
-	free(t);
+	talloc_free(t);
 }
 
 
 /*
  *	Free the PEAP per-session data
  */
-static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst)
+static peap_tunnel_t *peap_alloc(rlm_eap_peap_t *inst, eap_handler_t *handler)
 {
 	peap_tunnel_t *t;
 
-	t = rad_malloc(sizeof(*t));
-	memset(t, 0, sizeof(*t));
+	t = talloc_zero(handler, peap_tunnel_t);
 
 	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;

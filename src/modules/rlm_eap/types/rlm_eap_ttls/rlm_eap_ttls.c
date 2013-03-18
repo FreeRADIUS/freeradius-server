@@ -160,19 +160,19 @@ static void ttls_free(void *p)
 	pairfree(&t->username);
 	pairfree(&t->state);
 	pairfree(&t->accept_vps);
-	free(t);
+	talloc_free(t);
 }
 
 
 /*
  *	Allocate the TTLS per-session data
  */
-static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst)
+static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst,
+				 eap_handler_t *handler)
 {
 	ttls_tunnel_t *t;
 
-	t = rad_malloc(sizeof(*t));
-	memset(t, 0, sizeof(*t));
+	t = talloc(handler, ttls_tunnel_t);
 
 	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;
@@ -329,7 +329,7 @@ static int eapttls_authenticate(void *arg, eap_handler_t *handler)
 	 *	allocate it here, if it wasn't already alloacted.
 	 */
 	if (!tls_session->opaque) {
-		tls_session->opaque = ttls_alloc(inst);
+		tls_session->opaque = ttls_alloc(inst, handler);
 		tls_session->free_opaque = ttls_free;
 	}
 
