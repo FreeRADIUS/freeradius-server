@@ -300,7 +300,7 @@ static int eap_sim_sendsuccess(eap_handler_t *handler)
 	/* set the EAP_ID - new value */
 	vp = paircreate(packet, ATTRIBUTE_EAP_ID, 0);
 	vp->vp_integer = ess->sim_id++;
-	pairreplace(handler->request->reply, vp);
+	pairreplace(&handler->request->reply->vps, vp);
 
 	p = ess->keys.msk;
 	eap_add_reply(handler->request, "MS-MPPE-Recv-Key", p, EAPTLS_MPPE_KEY_LEN);
