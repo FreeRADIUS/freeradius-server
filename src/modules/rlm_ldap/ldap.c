@@ -622,6 +622,7 @@ retry:
  *
  * Binds as the administrative user and attempts to modify an LDAP object.
  *
+ * @param inst rlm_ldap configuration.
  * @param request Current request.
  * @param pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL after 
  *	calling this function.
@@ -695,7 +696,8 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
  *
  * This potentially allows for all authorization and authentication checks to be performed in one ldap search
  * operation, which is a big bonus given the number of crappy, slow *cough*AD*cough* LDAP directory servers out there.
- *
+ * 
+ * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request.
  * @param[in,out] pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL 
  *	after calling this function.

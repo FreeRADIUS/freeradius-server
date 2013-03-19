@@ -533,8 +533,11 @@ static int ldap_detach(void *instance)
  *
  * Allocate a new ldap_acct_section_t and write the config data into it.
  *
+ * @param[in] inst rlm_ldap configuration.
  * @param[in] parent of the config section.
- * @param[out] 
+ * @param[out] config to write the sub section parameters to.
+ * @param[in] comp The section name were parsing the config for.
+ * @return 0 on success, else < 0 on failure.
  */
 static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_acct_section_t **config,
 	 		     rlm_components_t comp)
@@ -563,11 +566,15 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
 	return 0;
 }
 
-/** Parses config
- * Uses section of radiusd config file passed as parameter to create an
- * instance of the module.
+/** Instantiate the module
+ * 
+ * Creates a new instance of the module reading parameters from a configuration section.
+ *
+ * @param conf to parse.
+ * @param instance Where to write pointer to configuration data.
+ * @return 0 on success < 0 on failure.
  */
-static int ldap_instantiate(CONF_SECTION * conf, void **instance)
+static int ldap_instantiate(CONF_SECTION *conf, void **instance)
 {
 	ldap_instance_t *inst;
 
@@ -687,7 +694,10 @@ error:
 }
 
 /** Check the user's password against ldap database
- *
+ * 
+ * @param instance rlm_ldap configuration.
+ * @param request Current request.
+ * @return one of the RLM_MODULE_* values.
  */
 static rlm_rcode_t ldap_authenticate(void *instance, REQUEST *request)
 {
@@ -1115,7 +1125,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 
 
 	dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
-	if (!dn || (rcode = RLM_MODULE_OK)) {
+	if (!dn || (rcode != RLM_MODULE_OK)) {
 		goto error;
 	}
 	
