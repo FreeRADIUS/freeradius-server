@@ -421,8 +421,8 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 		RDEBUG("pwd unable to create fake request!");
 		return 0;
 	    }
-	    fake->username = pairmake_request("User-Name", "", T_OP_EQ);
-	    if (!fake->username);
+	    fake->username = pairmake_packet("User-Name", "", T_OP_EQ);
+	    if (!fake->username) {
 		RDEBUG("pwd unanable to create value pair for username!");
 		request_free(&fake);
 		return 0;
