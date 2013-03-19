@@ -1418,6 +1418,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
  *  - Vendor-%d-Attr-%d
  *  - VendorName-Attr-%d
  *
+ * @param ctx for talloc
  * @param attribute name to parse.
  * @param value to parse (must be a hex string).
  * @param op to assign to new valuepair.
@@ -1491,6 +1492,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
  * The string value is parsed according to the type of VALUE_PAIR being created.
  *
  * @param[in] ctx for talloc
+ * @param[in] vps list where the attribute will be added (optional)
  * @param[in] attribute name.
  * @param[in] value attribute value.
  * @param[in] op to assign to new VALUE_PAIR.
