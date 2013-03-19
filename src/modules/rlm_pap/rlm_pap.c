@@ -211,7 +211,7 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 				 *	that instead of this one.
 				 */
 				if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
-					RDEBUG("Config already contains \"known good\" password.  Ignoring Password-With-Header");
+					RDEBUG("Config already contains \"reference\" password.  Ignoring Password-With-Header");
 					break;
 				}
 
@@ -337,8 +337,8 @@ static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUGW("No \"known good\" password found for the user.  Not setting Auth-Type.");
-		RDEBUGW("Authentication will fail unless a \"known good\" password is available.");
+		RDEBUGW("No \"reference\" password found for the user.  Not setting Auth-Type.");
+		RDEBUGW("Authentication will fail unless a \"reference\" password is available.");
 		return RLM_MODULE_NOOP;
 	}
 
