@@ -700,12 +700,13 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
  * @param[in,out] pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL 
  *	after calling this function.
  * @param[in] attrs Additional attributes to retrieve, may be NULL.
+ * @param[in] force Query even if the User-DN already exists.
  * @param[out] result Where to write the result, may be NULL in which case result is discarded.
  * @param[out] rcode The status of the operation, one of the RLM_MODULE_* codes.
  * @return The user's DN or NULL on error.
  */
 const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			       const char *attrs[], LDAPMessage **result, rlm_rcode_t *rcode)
+			       const char *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode)
 {
 	static const char *tmp_attrs[] = { NULL };
 	
@@ -735,7 +736,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	/*
 	 *	If the caller isn't looking for the result we can just return the current userdn value.
 	 */
-	if (!result) {
+	if (!force) {
 		vp = pairfind(request->config_items, PW_LDAP_USERDN, 0, TAG_ANY);
 		if (vp) {
 			RDEBUG("Using user DN from request \"%s\"", vp->vp_strvalue);

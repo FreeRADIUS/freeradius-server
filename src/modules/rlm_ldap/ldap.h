@@ -218,7 +218,7 @@ rlm_rcode_t rlm_ldap_apply_profile(const ldap_instance_t *inst, REQUEST *request
 			    	   const char *profile, const rlm_ldap_map_xlat_t *expanded);
 			    	   
 const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			       const char *attrs[], LDAPMessage **result, rlm_rcode_t *rcode);
+			       const char *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode);
 			       
 rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request, const ldap_handle_t *conn,
 				  LDAPMessage *entry);

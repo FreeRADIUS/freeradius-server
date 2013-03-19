@@ -298,7 +298,7 @@ free_urldesc:
 static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *thing, VALUE_PAIR *check,
 			     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	ldap_instance_t   *inst = instance;
+	ldap_instance_t	*inst = instance;
 	rlm_rcode_t	rcode;
 	ldap_rcode_t	status;
 	int		i, found;
@@ -328,7 +328,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	/*
 	 *	This is used in the default membership filter.
 	 */
-	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, NULL, &rcode);
+	user_dn = rlm_ldap_find_user(inst, request, &conn, group_attrs, FALSE, &result, &rcode);
 	if (!user_dn) {
 		rlm_ldap_release_socket(inst, conn);
 		return 1;
@@ -735,7 +735,7 @@ static rlm_rcode_t ldap_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Get the DN by doing a search.
 	 */
-	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, NULL, &rcode);
+	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
 	if (!user_dn) {
 		rlm_ldap_release_socket(inst, conn);
 		
@@ -808,7 +808,7 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST *request)
 	
 	expanded.attrs[expanded.count] = NULL;
 	 
-	if (!rlm_ldap_find_user(inst, request, &conn, expanded.attrs, &result, &rcode)) {
+	if (!rlm_ldap_find_user(inst, request, &conn, expanded.attrs, TRUE, &result, &rcode)) {
 		goto free_result;			
 	}
 
@@ -1114,7 +1114,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	if (!conn) return RLM_MODULE_FAIL;
 
 
-	dn = rlm_ldap_find_user(inst, request, &conn, NULL, NULL, &rcode);
+	dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
 	if (!dn || (rcode = RLM_MODULE_OK)) {
 		goto error;
 	}
