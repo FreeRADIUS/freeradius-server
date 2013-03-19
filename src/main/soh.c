@@ -364,7 +364,6 @@ static const char* healthclass2str(uint8_t hc) {
  * Note that sohvp might still have been updated in event of a failure.
  *
  * @param request Current request
- * @param[out] sohvp list of value pairs to update
  * @param data MS-SOH blob
  * @param data_len length of MS-SOH blob
  *
