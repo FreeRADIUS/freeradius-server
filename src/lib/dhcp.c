@@ -1025,7 +1025,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	size_t dhcp_size, length;
 #ifndef NDEBUG
 	const char *name;
+#ifdef WITH_UDPFROMTO
 	char src_ip_buf[256];
+#endif
 	char dst_ip_buf[256];
 #endif
 
@@ -1045,7 +1047,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	} else {
 		name = "?Unknown?";
 	}
-#endif
 
 	DEBUG(
 #ifdef WITH_UDPFROMTO
@@ -1064,6 +1065,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 			&packet->dst_ipaddr.ipaddr,
 		     dst_ip_buf, sizeof(dst_ip_buf)),
 	      packet->dst_port);
+#endif
 
 	p = packet->data;
 
