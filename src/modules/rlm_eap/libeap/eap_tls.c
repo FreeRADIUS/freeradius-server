@@ -45,41 +45,6 @@ RCSID("$Id$")
 #include "eap_tls.h"
 
 /*
- *      Allocate a new TLS_PACKET
- */
-EAPTLS_PACKET *eaptls_alloc(void)
-{
-	EAPTLS_PACKET   *rp;
-
-	if ((rp = malloc(sizeof(EAPTLS_PACKET))) == NULL) {
-		radlog(L_ERR, "rlm_eap_tls: out of memory");
-		return NULL;
-	}
-	memset(rp, 0, sizeof(EAPTLS_PACKET));
-	return rp;
-}
-
-/*
- *      Free EAPTLS_PACKET
- */
-void eaptls_free(EAPTLS_PACKET **eaptls_packet_ptr)
-{
-	EAPTLS_PACKET *eaptls_packet;
-
-	if (!eaptls_packet_ptr) return;
-	eaptls_packet = *eaptls_packet_ptr;
-	if (eaptls_packet == NULL) return;
-
-	if (eaptls_packet->data) {
-		free(eaptls_packet->data);
-		eaptls_packet->data = NULL;
-	}
-
-	free(eaptls_packet);
-	*eaptls_packet_ptr = NULL;
-}
-
-/*
  *	Send an initial eap-tls request to the peer.
  *
  *	Frame eap reply packet.
@@ -295,7 +260,7 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	(ssn->record_minus)(&ssn->dirty_out, reply.data + lbit, size);
 
 	eaptls_compose(eap_ds, &reply);
-	free(reply.data);
+	talloc_free(reply.data);
 	reply.data = NULL;
 
 	return 1;
@@ -511,7 +476,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	 */
 	assert(eap_ds->response->length > 2);
 
-	tlspacket = eaptls_alloc();
+	tlspacket = talloc(eap_ds, EAPTLS_PACKET);
 	if (tlspacket == NULL) return NULL;
 
 	/*
@@ -533,7 +498,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	if (TLS_LENGTH_INCLUDED(tlspacket->flags) &&
 	    (tlspacket->length < 5)) { /* flags + TLS message length */
 		RDEBUG("Invalid EAP-TLS packet received.  (Length bit is set, but no length was found.)");
-		eaptls_free(&tlspacket);
+		talloc_free(tlspacket);
 		return NULL;
 	}
 
@@ -552,7 +517,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 		data_len = ntohl(data_len);
 		if (data_len > MAX_RECORD_SIZE) {
 			RDEBUG("The EAP-TLS packet will contain more data than we can process.");
-			eaptls_free(&tlspacket);
+			talloc_free(tlspacket);
 			return NULL;
 		}
 
@@ -561,7 +526,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 
 		if (data_len < tlspacket->length) {
 			RDEBUG("EAP-TLS packet claims to be smaller than the encapsulating EAP packet.");
-			eaptls_free(&tlspacket);
+			talloc_free(tlspacket);
 			return NULL;
 		}
 #endif
@@ -582,7 +547,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	case FR_TLS_MORE_FRAGMENTS_WITH_LENGTH:
 		if (tlspacket->length < 5) { /* flags + TLS message length */
 			RDEBUG("Invalid EAP-TLS packet received.  (Expected length, got none.)");
-			eaptls_free(&tlspacket);
+			talloc_free(tlspacket);
 			return NULL;
 		}
 
@@ -615,16 +580,17 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 
 	default:
 		RDEBUG("Invalid EAP-TLS packet received");
-		eaptls_free(&tlspacket);
+		talloc_free(tlspacket);
 		return NULL;
 	}
 
 	tlspacket->dlen = data_len;
 	if (data_len) {
-		tlspacket->data = (unsigned char *)malloc(data_len);
+		tlspacket->data = talloc_array(tlspacket, uint8_t,
+					       data_len);
 		if (tlspacket->data == NULL) {
 			RDEBUG("out of memory");
-			eaptls_free(&tlspacket);
+			talloc_free(tlspacket);
 			return NULL;
 		}
 		memcpy(tlspacket->data, data, data_len);
@@ -834,7 +800,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	 */
 	if (tlspacket->dlen !=
 	    (tls_session->record_plus)(&tls_session->dirty_in, tlspacket->data, tlspacket->dlen)) {
-		eaptls_free(&tlspacket);
+		talloc_free(tlspacket);
 		RDEBUG("Exceeded maximum record size");
 		status =FR_TLS_FAIL;
 		goto done;
@@ -843,7 +809,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	/*
 	 *	No longer needed.
 	 */
-	eaptls_free(&tlspacket);
+	talloc_free(tlspacket);
 
 	/*
 	 *	SSL initalization is done.  Return.
@@ -913,7 +879,8 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	 *	Identifier value in the subsequent fragment contained
 	 *	within an EAP- Reponse.
 	 */
-	eap_ds->request->type.data = malloc(reply->length - TLS_HEADER_LEN + 1);
+	eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t,
+						  reply->length - TLS_HEADER_LEN + 1);
 	if (eap_ds->request->type.data == NULL) {
 		radlog(L_ERR, "out of memory");
 		return 0;

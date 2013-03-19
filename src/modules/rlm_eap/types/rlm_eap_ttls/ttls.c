@@ -1267,9 +1267,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			/*
 			 *	Set up the callbacks for the tunnel
 			 */
-			tunnel = rad_malloc(sizeof(*tunnel));
-			memset(tunnel, 0, sizeof(*tunnel));
-
+			tunnel = talloc_zero(request, eap_tunnel_data_t);
 			tunnel->tls_session = tls_session;
 			tunnel->callback = eapttls_postproxy;
 
@@ -1279,7 +1277,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			rcode = request_data_add(request,
 						 request->proxy,
 						 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-						 tunnel, free);
+						 tunnel, NULL);
 			rad_assert(rcode == 0);
 
 			/*

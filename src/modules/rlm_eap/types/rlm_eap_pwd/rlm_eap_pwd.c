@@ -109,8 +109,6 @@ free_session (void *data)
     EC_POINT_free(session->pwe);
     BN_free(session->order);
     BN_free(session->prime);
-
-    free(session);
 }
 
 static int
@@ -125,9 +123,8 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
     eap_ds->request->code = PW_EAP_REQUEST;
     eap_ds->request->type.num = PW_EAP_PWD;
     eap_ds->request->type.length = (len > sess->mtu) ? sess->mtu : len;
-    eap_ds->request->type.data = malloc(eap_ds->request->type.length);
-    memset(eap_ds->request->type.data, 0, eap_ds->request->type.length);
-
+    eap_ds->request->type.data = talloc_zero_array(eap_ds->request, uint8_t,
+						   eap_ds->request->type.length);
     hdr = (pwd_hdr *)eap_ds->request->type.data;
     switch (sess->state) {
 	case PWD_STATE_ID_REQ:
@@ -173,7 +170,7 @@ send_pwd_request (pwd_session_t *sess, EAP_DS *eap_ds)
 	 */
 	memcpy(hdr->data, sess->out_buf + sess->out_buf_pos,
 	       (sess->out_buf_len - sess->out_buf_pos));
-	free(sess->out_buf);
+	talloc_free(sess->out_buf);
 	sess->out_buf = NULL;
 	sess->out_buf_pos = sess->out_buf_len = 0;
     }
@@ -212,7 +209,7 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
 	    return -1;
     }
 
-    if ((pwd_session = (pwd_session_t *)malloc(sizeof(*pwd_session))) == NULL) {
+    if ((pwd_session = talloc_zero(handler, pwd_session_t)) == NULL) {
 	radlog(L_ERR, "rlm_eap_pwd: initiate, out of memory (1)");
 	return -1;
     }
@@ -256,11 +253,11 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
      * construct an EAP-pwd-ID/Request
      */
     pwd_session->out_buf_len = sizeof(pwd_id_packet) + strlen(inst->conf->server_id);
-    if ((pwd_session->out_buf = malloc(pwd_session->out_buf_len)) == NULL) {
+    if ((pwd_session->out_buf = talloc_zero_array(pwd_session, uint8_t,
+						  pwd_session->out_buf_len)) == NULL) {
 	radlog(L_ERR, "rlm_eap_pwd: initiate, out of memory to send ID request");
 	return -1;
     }
-    memset(pwd_session->out_buf, 0, pwd_session->out_buf_len);
 
     pack = (pwd_id_packet *)pwd_session->out_buf;
     pack->group_num = htons(pwd_session->group_num);
@@ -326,8 +323,9 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 	    return 0;
 	}
 	pwd_session->in_buf_len = ntohs(buf[0] * 256 | buf[1]);
-	if ((pwd_session->in_buf = malloc(pwd_session->in_buf_len)) == NULL) {
-	    RDEBUG2("pwd cannot malloc %d buffer to hold fragments",
+	if ((pwd_session->in_buf = talloc_zero_array(pwd_session, uint8_t,
+						     pwd_session->in_buf_len)) == NULL) {
+	    RDEBUG2("pwd cannot allocate %d buffer to hold fragments",
 		    pwd_session->in_buf_len);
 	    return 0;
 	}
@@ -357,7 +355,8 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 	eap_ds->request->code = PW_EAP_REQUEST;
 	eap_ds->request->type.num = PW_EAP_PWD;
 	eap_ds->request->type.length = sizeof(pwd_hdr);
-	if ((eap_ds->request->type.data = malloc(sizeof(pwd_hdr))) == NULL) {
+	if ((eap_ds->request->type.data = talloc_array(eap_ds->request,
+						       uint8_t, sizeof(pwd_hdr))) == NULL) {
 	    radlog(L_ERR, "rlm_eap_pwd: fragment ACK, out of memory");
 	    return 0;
 	}
@@ -514,7 +513,8 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 	     */
 	    pwd_session->out_buf_len = BN_num_bytes(pwd_session->order) +
 		(2 * BN_num_bytes(pwd_session->prime));
-	    if ((pwd_session->out_buf = malloc(pwd_session->out_buf_len)) == NULL) {
+	    if ((pwd_session->out_buf = talloc_array(pwd_session, uint8_t,
+						     pwd_session->out_buf_len)) == NULL) {
 		radlog(L_ERR, "rlm_eap_pwd: out of memory to send commit");
 		return 0;
 	    }
@@ -559,7 +559,8 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 	     * construct a response...which is just our confirm blob
 	     */
 	    pwd_session->out_buf_len = SHA256_DIGEST_LENGTH;
-	    if ((pwd_session->out_buf = malloc(pwd_session->out_buf_len)) == NULL) {
+	    if ((pwd_session->out_buf = talloc_array(pwd_session, uint8_t,
+						     pwd_session->out_buf_len)) == NULL) {
 		radlog(L_ERR, "rlm_eap_pwd: out of memory to send confirm");
 		return 0;
 	    }
@@ -605,8 +606,8 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
      * we processed the buffered fragments, get rid of them
      */
     if (pwd_session->in_buf) {
-	free(pwd_session->in_buf);
-	pwd_session->in_buf = NULL;
+	    talloc_free(pwd_session->in_buf);
+	    pwd_session->in_buf = NULL;
     }
 
     return ret;

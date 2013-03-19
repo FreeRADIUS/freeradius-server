@@ -59,11 +59,11 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 
 	eapleap_compose(handler->eap_ds, reply);
 
-	handler->opaque = malloc(sizeof(leap_session_t));
+	handler->opaque = session = talloc(handler, leap_session_t);
 	if (!handler->opaque) {
-	  radlog(L_ERR, "rlm_eap_leap: Out of memory");
-	  eapleap_free(&reply);
-	  return 0;
+		radlog(L_ERR, "rlm_eap_leap: Out of memory");
+		talloc_free(reply);
+		return 0;
 	}
 
 	/*
@@ -71,8 +71,7 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 	 *	we sent to the AP.  The later stages will take care
 	 *	of filling in the peer response.
 	 */
-	session = (leap_session_t *) handler->opaque;
-	handler->free_opaque = free; /* just malloc'd memory */
+	handler->free_opaque = NULL;
 
 	session->stage = 4;	/* the next stage we're in */
 	memcpy(session->peer_challenge, reply->challenge, reply->count);
@@ -84,7 +83,7 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 	 */
 	handler->stage = AUTHENTICATE;
 
-	eapleap_free(&reply);
+	talloc_free(reply);
 	return 1;
 }
 
@@ -117,7 +116,7 @@ static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	if (!password) password = pairfind(handler->request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (!password) {
 		DEBUG2("rlm_eap_leap: No Cleartext-Password or NT-Password configured for this user");
-		eapleap_free(&packet);
+		talloc_free(packet);
 		return 0;
 	}
 
@@ -137,7 +136,7 @@ static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
 		 */
 		if (!rcode) {
 			handler->eap_ds->request->code = PW_EAP_FAILURE;
-			eapleap_free(&packet);
+			talloc_free(packet);
 			return 0;
 		}
 
@@ -156,9 +155,8 @@ static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
 		 *	is EAP_SUCCESS.
 		 */
 		handler->request->reply->code = PW_ACCESS_CHALLENGE;
-		eapleap_free(&packet);
+		talloc_free(packet);
 		return 1;
-		break;
 
 	case 6:			/* Issue session key */
 		DEBUG2("  rlm_eap_leap: Stage 6");
@@ -176,7 +174,7 @@ static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
 		break;
 	}
 
-	eapleap_free(&packet);
+	talloc_free(packet);
 
 	/*
 	 *	Process the packet.  We don't care about any previous
@@ -187,8 +185,7 @@ static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	}
 
 	eapleap_compose(handler->eap_ds, reply);
-
-	eapleap_free(&reply);
+	talloc_free(reply);
 	return 1;
 }
 

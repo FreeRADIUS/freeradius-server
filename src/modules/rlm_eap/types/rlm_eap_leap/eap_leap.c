@@ -51,41 +51,6 @@ RCSID("$Id$")
 #include <stdlib.h>
 #include "eap.h"
 #include "eap_leap.h"
-
-/*
- *      Allocate a new leap_packet_t
- */
-leap_packet_t *eapleap_alloc(void)
-{
-	leap_packet_t   *rp;
-
-	if ((rp = malloc(sizeof(leap_packet_t))) == NULL) {
-		radlog(L_ERR, "rlm_eap_leap: out of memory");
-		return NULL;
-	}
-	memset(rp, 0, sizeof(leap_packet_t));
-	return rp;
-}
-
-/*
- *      Free leap_packet_t
- */
-void eapleap_free(leap_packet_t **leap_packet_ptr)
-{
-	leap_packet_t *leap_packet;
-
-	if (!leap_packet_ptr) return;
-	leap_packet = *leap_packet_ptr;
-	if (leap_packet == NULL) return;
-
-	if (leap_packet->challenge) free(leap_packet->challenge);
-	if (leap_packet->name) free(leap_packet->name);
-
-	free(leap_packet);
-
-	*leap_packet_ptr = NULL;
-}
-
 /*
  *   Extract the data from the LEAP packet.
  */
@@ -144,7 +109,7 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 		break;
 	}
 
-	packet = eapleap_alloc();
+	packet = talloc(eap_ds, leap_packet_t);
 	if (!packet) return NULL;
 
 	/*
@@ -164,10 +129,10 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 	 */
 	packet->count = data->count;
 
-	packet->challenge = malloc(packet->count);
+	packet->challenge = talloc_array(packet, uint8_t, packet->count);
 	if (packet->challenge == NULL) {
 		radlog(L_ERR, "rlm_eap_leap: out of memory");
-		eapleap_free(&packet);
+		talloc_free(packet);
 		return NULL;
 	}
 	memcpy(packet->challenge, data->challenge, packet->count);
@@ -181,10 +146,10 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 	 */
 	name_len = packet->length - 3 - packet->count;
 	if (name_len > 0) {
-		packet->name = malloc(name_len + 1);
+		packet->name = talloc_array(packet, char, name_len + 1);
 		if (!packet->name) {
 			radlog(L_ERR, "rlm_eap_leap: out of memory");
-			eapleap_free(&packet);
+			talloc_free(packet);
 			return NULL;
 		}
 		memcpy(packet->name, &data->challenge[packet->count],
@@ -296,27 +261,27 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 		return NULL;
 	}
 
-	reply = eapleap_alloc();
+	reply = talloc(session, leap_packet_t);
 	if (!reply) return NULL;
 
 	reply->code = PW_EAP_RESPONSE;
 	reply->length = LEAP_HEADER_LEN + 24 + user_name->length;
 	reply->count = 24;
 
-	reply->challenge = malloc(reply->count);
+	reply->challenge = talloc_array(reply, uint8_t, reply->count);
 	if (reply->challenge == NULL) {
 		radlog(L_ERR, "rlm_eap_leap: out of memory");
-		eapleap_free(&reply);
+		talloc_free(reply);
 		return NULL;
 	}
 
 	/*
 	 *	The LEAP packet also contains the user name.
 	 */
-	reply->name = malloc(user_name->length + 1);
+	reply->name = talloc_array(reply, char, user_name->length + 1);
 	if (reply->name == NULL) {
 		radlog(L_ERR, "rlm_eap_leap: out of memory");
-		eapleap_free(&reply);
+		talloc_free(reply);
 		return NULL;
 	}
 
@@ -331,7 +296,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	 *  MPPE hash = ntpwdhash(ntpwdhash(unicode(pw)))
 	 */
 	if (!eapleap_ntpwdhash(ntpwdhash, password)) {
-		eapleap_free(&reply);
+		talloc_free(reply);
 		return NULL;
 	}
 	fr_md4_calc(ntpwdhashhash, ntpwdhash, 16);
@@ -348,7 +313,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	vp = pairmake_reply("Cisco-AVPair", "leap:session-key=", T_OP_ADD);
 	if (!vp) {
 		radlog(L_ERR, "rlm_eap_leap: Failed to create Cisco-AVPair attribute.  LEAP cancelled.");
-		eapleap_free(&reply);
+		talloc_free(reply);
 		return NULL;
 	}
 
@@ -387,12 +352,12 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
  *	If an EAP LEAP request needs to be initiated then
  *	create such a packet.
  */
-leap_packet_t *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
+leap_packet_t *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 {
 	int i;
 	leap_packet_t 	*reply;
 
-	reply = eapleap_alloc();
+	reply = talloc(eap_ds, leap_packet_t);
 	if (reply == NULL)  {
 		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		return NULL;
@@ -402,10 +367,10 @@ leap_packet_t *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	reply->length = LEAP_HEADER_LEN + 8 + user_name->length;
 	reply->count = 8;	/* random challenge */
 
-	reply->challenge = malloc(reply->count);
+	reply->challenge = talloc_array(reply, uint8_t, reply->count);
 	if (reply->challenge == NULL) {
 		radlog(L_ERR, "rlm_eap_leap: out of memory");
-		eapleap_free(&reply);
+		talloc_free(reply);
 		return NULL;
 	}
 
@@ -421,10 +386,10 @@ leap_packet_t *eapleap_initiate(UNUSED EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	/*
 	 *	The LEAP packet also contains the user name.
 	 */
-	reply->name = malloc(user_name->length + 1);
+	reply->name = talloc_array(reply, char, user_name->length + 1);
 	if (reply->name == NULL) {
 		radlog(L_ERR, "rlm_eap_leap: out of memory");
-		eapleap_free(&reply);
+		talloc_free(reply);
 		return NULL;
 	}
 
@@ -454,7 +419,9 @@ int eapleap_compose(EAP_DS *eap_ds, leap_packet_t *reply)
 		eap_ds->request->type.num = PW_EAP_LEAP;
 		eap_ds->request->type.length = reply->length;
 
-		eap_ds->request->type.data = malloc(reply->length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request,
+							  uint8_t,
+							  reply->length);
 		if (eap_ds->request->type.data == NULL) {
 			radlog(L_ERR, "rlm_eap_leap: out of memory");
 			return 0;

@@ -908,7 +908,7 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 	 *	ID and authentication vector.
 	 */
 	if (rep->data) {
-		free(rep->data);
+		talloc_free(rep->data);
 		rep->data = NULL;
 	}
 
@@ -1317,8 +1317,7 @@ static void map_eap_methods(RADIUS_PACKET *req)
 		ep.id   = id;
 		ep.type.num = eap_method;
 		ep.type.length = vp->length;
-		ep.type.data = malloc(vp->length);
-		memcpy(ep.type.data,vp->vp_octets, vp->length);
+		ep.type.data = vp->vp_octets; /* no need for copy */
 		eap_basic_compose(req, &ep);
 	}
 }
@@ -1371,7 +1370,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 		/* verify the length is big enough to hold type */
 		if(len < 5)
 		{
-			free(e);
+			talloc_free(e);
 			return;
 		}
 
@@ -1391,7 +1390,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 		break;
 	}
 
-	free(e);
+	talloc_free(e);
 	return;
 }
 

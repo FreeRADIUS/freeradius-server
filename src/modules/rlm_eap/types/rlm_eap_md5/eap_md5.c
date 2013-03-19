@@ -45,40 +45,6 @@ RCSID("$Id$")
 #include "eap_md5.h"
 
 /*
- *      Allocate a new MD5_PACKET
- */
-MD5_PACKET *eapmd5_alloc(void)
-{
-	MD5_PACKET   *rp;
-
-	if ((rp = malloc(sizeof(MD5_PACKET))) == NULL) {
-		radlog(L_ERR, "rlm_eap_md5: out of memory");
-		return NULL;
-	}
-	memset(rp, 0, sizeof(MD5_PACKET));
-	return rp;
-}
-
-/*
- *      Free MD5_PACKET
- */
-void eapmd5_free(MD5_PACKET **md5_packet_ptr)
-{
-	MD5_PACKET *md5_packet;
-
-	if (!md5_packet_ptr) return;
-	md5_packet = *md5_packet_ptr;
-	if (md5_packet == NULL) return;
-
-	if (md5_packet->value) free(md5_packet->value);
-	if (md5_packet->name) free(md5_packet->name);
-
-	free(md5_packet);
-
-	*md5_packet_ptr = NULL;
-}
-
-/*
  *	We expect only RESPONSE for which SUCCESS or FAILURE is sent back
  */
 MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
@@ -103,7 +69,7 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 		return NULL;
 	}
 
-	packet = eapmd5_alloc();
+	packet = talloc_zero(eap_ds, md5_packet_t);
 	if (!packet) return NULL;
 
 	/*
@@ -131,10 +97,10 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	/*
 	 *	Allocate room for the data, and copy over the data.
 	 */
-	packet->value = malloc(packet->value_size);
+	packet->value = talloc_array(packet, uint8_t, packet->value_size);
 	if (packet->value == NULL) {
 		radlog(L_ERR, "rlm_eap_md5: out of memory");
-		eapmd5_free(&packet);
+		talloc_free(packet);
 		return NULL;
 	}
 	memcpy(packet->value, data->value_name, packet->value_size);
@@ -145,10 +111,10 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	 */
 	name_len =  packet->length - (packet->value_size + 1);
 	if (name_len) {
-		packet->name = malloc(name_len + 1);
+	  packet->name = talloc_array(packet, char, name_len + 1);
 		if (!packet->name) {
 			radlog(L_ERR, "rlm_eap_md5: out of memory");
-			eapmd5_free(&packet);
+			talloc_free(packet);
 			return NULL;
 		}
 		memcpy(packet->name, data->value_name + packet->value_size,
@@ -226,9 +192,11 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 
 		rad_assert(reply->length > 0);
 
-		eap_ds->request->type.data = malloc(reply->length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request,
+							  uint8_t,
+							  reply->length);
 		if (eap_ds->request->type.data == NULL) {
-			eapmd5_free(&reply);
+			talloc_free(reply);
 			radlog(L_ERR, "rlm_eap_md5: out of memory");
 			return 0;
 		}
@@ -256,8 +224,7 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 		/* TODO: In future we might add message here wrt rfc1994 */
 	}
 	eap_ds->request->code = reply->code;
-
-	eapmd5_free(&reply);
+	talloc_free(reply);
 
 	return 1;
 }

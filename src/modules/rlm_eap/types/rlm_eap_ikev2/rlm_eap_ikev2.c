@@ -77,14 +77,15 @@ static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
 	eap_ds->request->type.num = PW_EAP_IKEV2;
 	eap_ds->request->code = ((struct EAPHeader *)out)->Code;
 	if(eap_ds->request->code<=PW_EAP_REQUEST && olen>4) {
-	    int lenn=(int)ntohs(((struct EAPHeader *)out)->Length);
-	    eap_ds->request->type.data = malloc(lenn);
+	    int len=(int)ntohs(((struct EAPHeader *)out)->Length);
+	    eap_ds->request->type.data = talloc_array(eap_ds->request,
+						      uint8_t, len);
 	    if (eap_ds->request->type.data == NULL) {
 		radlog(L_ERR, IKEv2_LOG_PREFIX "out of memory");
 		return 1;
 	    }
-	    memcpy(eap_ds->request->type.data,out+5,lenn-5);
-	    eap_ds->request->type.length = lenn-5;
+	    memcpy(eap_ds->request->type.data,out+5,len-5);
+	    eap_ds->request->type.length = len-5;
 	} else {
 	    eap_ds->request->type.data=NULL;
 	    eap_ds->request->type.length=0;

@@ -119,7 +119,8 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 		 */
 		length = MSCHAPV2_HEADER_LEN + MSCHAPV2_CHALLENGE_LEN + strlen(handler->identity);
-		eap_ds->request->type.data = malloc(length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request,
+							  uint8_t, length);
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
@@ -161,7 +162,8 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 */
 		DEBUG2("MSCHAP Success\n");
 		length = 46;
-		eap_ds->request->type.data = malloc(length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request,
+							  uint8_t, length);
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
@@ -182,7 +184,8 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 	case PW_MSCHAP_ERROR:
 		DEBUG2("MSCHAP Failure\n");
 		length = 4 + reply->length - 1;
-		eap_ds->request->type.data = malloc(length);
+		eap_ds->request->type.data = talloc_array(eap_ds->request,
+							  uint8_t, length);
 
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
@@ -624,8 +627,7 @@ packet_ready:
 		/*
 		 *	Set up the callbacks for the tunnel
 		 */
-		tunnel = rad_malloc(sizeof(*tunnel));
-		memset(tunnel, 0, sizeof(*tunnel));
+		tunnel = talloc_zero(request, eap_tunnel_data_t);
 
 		tunnel->tls_session = arg;
 		tunnel->callback = mschap_postproxy;
@@ -636,7 +638,7 @@ packet_ready:
 		rcode = request_data_add(request,
 					 request->proxy,
 					 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
-					 tunnel, free);
+					 tunnel, NULL);
 		rad_assert(rcode == 0);
 
 		/*

@@ -36,47 +36,6 @@ RCSID("$Id$")
 #endif
 
 /*
- *	Allocate a new eap_packet_t
- */
-eap_packet_t *eap_packet_alloc(EAP_DS *eap_ds)
-{
-	return talloc_zero(eap_ds, eap_packet_t);
-}
-
-/*
- *	Free eap_packet_t
- */
-void eap_packet_free(eap_packet_t **eap_packet_ptr)
-{
-	eap_packet_t *eap_packet;
-
-	if (!eap_packet_ptr) return;
-	eap_packet = *eap_packet_ptr;
-	if (!eap_packet) return;
-
-   	if (eap_packet->type.data) {
-		/*
-		 *	There's no packet, OR the type data isn't
-		 *	pointing inside of the packet: free it.
-		 */
-		if ((eap_packet->packet == NULL) ||
-		    (eap_packet->type.data != (eap_packet->packet + 5))) {
-			free(eap_packet->type.data);
-		}
-		eap_packet->type.data = NULL;
-	}
-
-	if (eap_packet->packet) {
-		free(eap_packet->packet);
-		eap_packet->packet = NULL;
-	}
-
-	talloc_free(eap_packet);
-
-	*eap_packet_ptr = NULL;
-}
-
-/*
  * Allocate a new eap_packet_t
  */
 EAP_DS *eap_ds_alloc(eap_handler_t *handler)
@@ -84,11 +43,13 @@ EAP_DS *eap_ds_alloc(eap_handler_t *handler)
 	EAP_DS	*eap_ds;
 
 	eap_ds = talloc_zero(handler, EAP_DS);
-	if ((eap_ds->response = eap_packet_alloc(eap_ds)) == NULL) {
+	eap_ds->response = talloc_zero(eap_ds, eap_packet_t);
+	if (!eap_ds->response) {
 		eap_ds_free(&eap_ds);
 		return NULL;
 	}
-	if ((eap_ds->request = eap_packet_alloc(eap_ds)) == NULL) {
+	eap_ds->request = talloc_zero(eap_ds, eap_packet_t);
+	if (!eap_ds->response) {
 		eap_ds_free(&eap_ds);
 		return NULL;
 	}
@@ -105,8 +66,8 @@ void eap_ds_free(EAP_DS **eap_ds_p)
 	eap_ds = *eap_ds_p;
 	if (!eap_ds) return;
 
-	if (eap_ds->response) eap_packet_free(&(eap_ds->response));
-	if (eap_ds->request) eap_packet_free(&(eap_ds->request));
+	if (eap_ds->response) talloc_free(eap_ds->response);
+	if (eap_ds->request) talloc_free(eap_ds->request);
 
 	talloc_free(eap_ds);
 	*eap_ds_p = NULL;
@@ -144,7 +105,7 @@ void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 		return;
 
 	if (handler->identity) {
-		free(handler->identity);
+		talloc_free(handler->identity);
 		handler->identity = NULL;
 	}
 
@@ -155,9 +116,6 @@ void eap_handler_free(rlm_eap_t *inst, eap_handler_t *handler)
 		handler->free_opaque(handler->opaque);
 		handler->opaque = NULL;
 	}
-	else if ((handler->opaque) && (handler->free_opaque == NULL))
-		radlog(L_ERR, "rlm_eap (%s): Possible memory leak ...",
-		       inst->xlat_name);
 
 	handler->opaque = NULL;
 	handler->free_opaque = NULL;

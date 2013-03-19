@@ -352,7 +352,6 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 					  inst, REQUEST_DATA_eap_handler_t,
 					  handler, (void *) eap_opaque_free);
 		rad_assert(status == 0);
-
 		return RLM_MODULE_HANDLED;
 	}
 #endif

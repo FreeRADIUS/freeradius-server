@@ -61,9 +61,6 @@ typedef struct leap_session_t {
 
 /* function declarations here */
 
-leap_packet_t 	*eapleap_alloc(void);
-void 		eapleap_free(leap_packet_t **leap_packet_ptr);
-
 int 		eapleap_compose(EAP_DS *auth, leap_packet_t *reply);
 leap_packet_t 	*eapleap_extract(EAP_DS *auth);
 leap_packet_t 	*eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name);

@@ -122,7 +122,7 @@ const char *eap_type2name(eap_type_t method)
  *		      reply->type   - setup with data
  *
  * OUTPUT reply->packet is setup with wire format, and will
- *		      be malloc()'ed to the right size.
+ *		      be allocated to the right size.
  *
  */
 int eap_wireformat(eap_packet_t *reply)
@@ -146,7 +146,7 @@ int eap_wireformat(eap_packet_t *reply)
 		}
 	}
 
-	reply->packet = (unsigned char *)malloc(total_length);
+	reply->packet = talloc_array(reply, uint8_t, total_length);
 	header = (eap_packet_raw_t *)reply->packet;
 	if (!header) {
 		radlog(L_ERR, "rlm_eap: out of memory");
@@ -176,7 +176,7 @@ int eap_wireformat(eap_packet_t *reply)
 		 */
 		if (reply->type.data && reply->type.length > 0) {
 			memcpy(&header->data[1], reply->type.data, reply->type.length);
-			free(reply->type.data);
+			talloc_free(reply->type.data);
 			reply->type.data = reply->packet + EAP_HEADER_LEN + 1/*EAPtype*/;
 		}
 	}
@@ -331,7 +331,7 @@ eap_packet_raw_t *eap_vp2packet(VALUE_PAIR *vps)
 	}
 
 	/*
-	 *	Sanity check the length, BEFORE malloc'ing memory.
+	 *	Sanity check the length, BEFORE allocating  memory.
 	 */
 	total_len = 0;
 	for (vp = first; vp; vp = pairfind(vp->next, PW_EAP_MESSAGE, 0, TAG_ANY)) {

@@ -47,9 +47,6 @@ typedef struct md5_packet {
 
 /* function declarations here */
 
-MD5_PACKET 	*eapmd5_alloc(void);
-void 		eapmd5_free(MD5_PACKET **md5_packet_ptr);
-
 int 		eapmd5_compose(EAP_DS *auth, MD5_PACKET *reply);
 MD5_PACKET 	*eapmd5_extract(EAP_DS *auth);
 int 		eapmd5_verify(MD5_PACKET *pkt, VALUE_PAIR* pwd, uint8_t *ch);

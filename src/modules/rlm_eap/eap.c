@@ -573,7 +573,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	}
 
 	/*
-	 *	FIXME: We malloc memory for the eap packet, and then
+	 *	FIXME: We allocate memory for the eap packet, and then
 	 *	immediately copy that data into VALUE_PAIRs.  This
 	 *	could be done more efficiently...
 	 */
@@ -889,9 +889,8 @@ void eap_fail(eap_handler_t *handler)
 	pairdelete(&handler->request->reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	pairdelete(&handler->request->reply->vps, PW_STATE, 0, TAG_ANY);
 
-	eap_packet_free(&handler->eap_ds->request);
-	handler->eap_ds->request = eap_packet_alloc(handler->eap_ds);
-
+	talloc_free(handler->eap_ds->request);
+	handler->eap_ds->request = talloc(handler->eap_ds, eap_packet_t);
 	handler->eap_ds->request->code = PW_EAP_FAILURE;
 	eap_compose(handler);
 }
@@ -943,7 +942,7 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
 /*
  *  Get the user Identity only from EAP-Identity packets
  */
-static char *eap_identity(REQUEST *request, eap_packet_raw_t *eap_packet)
+static char *eap_identity(REQUEST *request, eap_handler_t *handler, eap_packet_raw_t *eap_packet)
 {
 	int size;
 	uint16_t len;
@@ -964,7 +963,7 @@ static char *eap_identity(REQUEST *request, eap_packet_raw_t *eap_packet)
 	}
 
 	size = len - 5;
-	identity = rad_malloc(size + 1);
+	identity = talloc_array(handler, char, size + 1);
 	memcpy(identity, &eap_packet->data[1], size);
 	identity[size] = '\0';
 
@@ -1034,7 +1033,7 @@ static EAP_DS *eap_buildds(eap_handler_t *handler,
  * identity contains the one sent in EAP-Identity response
  */
 eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
-			 REQUEST *request)
+			   REQUEST *request)
 {
 	eap_handler_t	*handler = NULL;
 	eap_packet_raw_t	*eap_packet = *eap_packet_p;
@@ -1044,7 +1043,8 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	 *	Ensure it's a valid EAP-Request, or EAP-Response.
 	 */
 	if (eap_validation(request, eap_packet) == EAP_INVALID) {
-		free(*eap_packet_p);
+	error:
+		talloc_free(*eap_packet_p);
 		*eap_packet_p = NULL;
 		return NULL;
 	}
@@ -1059,9 +1059,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			/* Either send EAP_Identity or EAP-Fail */
 			RDEBUG("Either EAP-request timed out OR"
 			       " EAP-response to an unknown EAP-request");
-			free(*eap_packet_p);
-			*eap_packet_p = NULL;
-			return NULL;
+			goto error;
 		}
 
 		/*
@@ -1075,9 +1073,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		if ((eap_packet->data[0] != PW_EAP_NAK) &&
 		    (eap_packet->data[0] != handler->type)) {
 			RDEBUG("Response appears to match, but EAP type is wrong.");
-			free(*eap_packet_p);
-			*eap_packet_p = NULL;
-			return NULL;
+			goto error;
 		}
 
 	       vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
@@ -1093,9 +1089,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
 		       if (vp == NULL) {
 			       RDEBUG("Out of memory");
-			       free(*eap_packet_p);
-			       *eap_packet_p = NULL;
-			       return NULL;
+			       goto error;
 		       }
 		       vp->next = request->packet->vps;
 		       request->packet->vps = vp;
@@ -1113,30 +1107,25 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
 			       RDEBUG("Identity does not match User-Name.  Authentication failed.");
-			       free(*eap_packet_p);
-			       *eap_packet_p = NULL;
-			       return NULL;
+			       goto error;
 		       }
 	       }
 	} else {		/* packet was EAP identity */
 		handler = eap_handler_alloc(inst);
 		if (handler == NULL) {
 			RDEBUG("Out of memory.");
-			free(*eap_packet_p);
-			*eap_packet_p = NULL;
-			return NULL;
+			goto error;
 		}
 
 		/*
 		 *	All fields in the handler are set to zero.
 		 */
-		handler->identity = eap_identity(request, eap_packet);
+		handler->identity = eap_identity(request, handler, eap_packet);
 		if (handler->identity == NULL) {
 			RDEBUG("Identity Unknown, authentication failed");
-			free(*eap_packet_p);
-			*eap_packet_p = NULL;
+		error2:
 			eap_handler_free(inst, handler);
-			return NULL;
+			goto error;
 		}
 
 	       vp = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
@@ -1152,10 +1141,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
 		       if (vp == NULL) {
 			       RDEBUG("Out of memory");
-			       free(*eap_packet_p);
-			       *eap_packet_p = NULL;
-			       eap_handler_free(inst, handler);
-			       return NULL;
+			       goto error2;
 		       }
 		       vp->next = request->packet->vps;
 		       request->packet->vps = vp;
@@ -1169,20 +1155,14 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       if (strncmp(handler->identity, vp->vp_strvalue,
 				   MAX_STRING_LEN) != 0) {
 			       RDEBUG("Identity does not match User-Name, setting from EAP Identity.");
-			       free(*eap_packet_p);
-			       *eap_packet_p = NULL;
-			       eap_handler_free(inst, handler);
-			       return NULL;
+			       goto error2;
 		       }
 	       }
 	}
 
 	handler->eap_ds = eap_buildds(handler, eap_packet_p);
 	if (handler->eap_ds == NULL) {
-		free(*eap_packet_p);
-		*eap_packet_p = NULL;
-		eap_handler_free(inst, handler);
-		return NULL;
+		goto error2;
 	}
 
 	handler->timestamp = request->timestamp;

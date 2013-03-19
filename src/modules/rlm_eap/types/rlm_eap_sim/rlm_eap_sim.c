@@ -43,15 +43,6 @@ struct eap_sim_server_state {
 	int  sim_id;
 };
 
-static void eap_sim_state_free(void *opaque)
-{
-	struct eap_sim_server_state *ess = (struct eap_sim_server_state *)opaque;
-
-	if (!ess) return;
-
-	free(ess);
-}
-
 /*
  *	build a reply to be sent.
  */
@@ -375,14 +366,14 @@ static int eap_sim_initiate(void *instance, eap_handler_t *handler)
 		return 0;
 	}
 
-	ess = malloc(sizeof(struct eap_sim_server_state));
+	ess = talloc_zero(handler, struct eap_sim_server_state);
 	if(ess == NULL) {
 		DEBUG2("   no space for eap sim state");
 		return 0;
 	}
 
-	handler->opaque = ((void *)ess);
-	handler->free_opaque = eap_sim_state_free;
+	handler->opaque = ess;
+	handler->free_opaque = NULL;
 
 	handler->stage = AUTHENTICATE;
 

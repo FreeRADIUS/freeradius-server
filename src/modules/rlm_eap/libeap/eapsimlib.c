@@ -158,7 +158,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 */
 	if(encoded_size == 0)
 	{
-		encodedmsg = malloc(3);
+		encodedmsg = talloc_array(ep, uint8_t, 3);
 		/* FIX: could be NULL */
 
 		encodedmsg[0]=subtype;
@@ -173,7 +173,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 
 
 	/*
-	 * figured out the length, so malloc some space for the results.
+	 * figured out the length, so allocate some space for the results.
 	 *
 	 * Note that we do not bother going through an "EAP" stage, which
 	 * is a bit strange compared to the unmap, which expects to see
@@ -185,10 +185,9 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 *
 	 */
 
-	/* malloc space for it */
 
 	encoded_size += 3;
-	encodedmsg = malloc(encoded_size);
+	encodedmsg = talloc_array(ep, uint8_t, encoded_size);
 	if (encodedmsg == NULL) {
 		radlog(L_ERR, "eapsim: out of memory allocating %d bytes", encoded_size+5);
 		return 0;
@@ -264,7 +263,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		hdr = (eap_packet_raw_t *)buffer;
 		if (!hdr) {
 			radlog(L_ERR, "rlm_eap: out of memory");
-			free(encodedmsg);
+			talloc_free(encodedmsg);
 			return 0;
 		}
 
@@ -298,7 +297,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	if(macspace != NULL && vp == NULL)
 	{
 		if(encodedmsg != NULL)
-			free(encodedmsg);
+			talloc_free(encodedmsg);
 		return 0;
 	}
 

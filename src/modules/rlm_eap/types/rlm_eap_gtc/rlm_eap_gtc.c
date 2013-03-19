@@ -105,7 +105,8 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 	 */
 	eap_ds->request->code = PW_EAP_REQUEST;
 
-	eap_ds->request->type.data = malloc(length);
+	eap_ds->request->type.data = talloc_array(eap_ds->request,
+						  uint8_t, length);
 	if (eap_ds->request->type.data == NULL) {
 		radlog(L_ERR, "rlm_eap_gtc: out of memory");
 		return 0;

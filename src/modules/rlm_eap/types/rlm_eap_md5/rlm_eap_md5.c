@@ -44,7 +44,7 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	/*
 	 *	Allocate an EAP-MD5 packet.
 	 */
-	reply = eapmd5_alloc();
+	reply = talloc(handler, MD5_PACKET);
 	if (reply == NULL)  {
 		radlog(L_ERR, "rlm_eap_md5: out of memory");
 		return 0;
@@ -60,10 +60,10 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	/*
 	 *	Allocate user data.
 	 */
-	reply->value = malloc(reply->value_size);
+	reply->value = talloc_array(reply, uint8_t, reply->value_size);
 	if (reply->value == NULL) {
 		radlog(L_ERR, "rlm_eap_md5: out of memory");
-		eapmd5_free(&reply);
+		talloc_free(reply);
 		return 0;
 	}
 
@@ -78,7 +78,7 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	/*
 	 *	Keep track of the challenge.
 	 */
-	handler->opaque = malloc(reply->value_size);
+	handler->opaque = talloc_array(reply, uint8_t, reply->value_size);
 	rad_assert(handler->opaque != NULL);
 	memcpy(handler->opaque, reply->value, reply->value_size);
 	handler->free_opaque = free;
@@ -132,9 +132,9 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
 	/*
 	 *	Create a reply, and initialize it.
 	 */
-	reply = eapmd5_alloc();
+	reply = talloc(packet, MD5_PACKET);
 	if (!reply) {
-		eapmd5_free(&packet);
+		talloc_free(packet);
 		return 0;
 	}
 	reply->id = handler->eap_ds->request->id;
@@ -155,8 +155,7 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
 	 *	and free it.
 	 */
 	eapmd5_compose(handler->eap_ds, reply);
-
-	eapmd5_free(&packet);
+	talloc_free(packet);
 	return 1;
 }
 
