@@ -1490,6 +1490,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
  *
  * The string value is parsed according to the type of VALUE_PAIR being created.
  *
+ * @param[in] ctx for talloc
  * @param[in] attribute name.
  * @param[in] value attribute value.
  * @param[in] op to assign to new VALUE_PAIR.
