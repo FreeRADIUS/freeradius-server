@@ -328,7 +328,7 @@ static CONF_PARSER home_server_config[] = {
 	{ "max_outstanding", PW_TYPE_INTEGER,
 	  offsetof(home_server,max_outstanding), NULL,   "65536" },
 	{ "require_message_authenticator",  PW_TYPE_BOOLEAN,
-	  offsetof(home_server, message_authenticator), 0, NULL },
+	  offsetof(home_server, message_authenticator), 0, "yes" },
 
 	{ "zombie_period", PW_TYPE_INTEGER,
 	  offsetof(home_server,zombie_period), NULL,   "40" },
