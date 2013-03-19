@@ -26,8 +26,8 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(checkval_cflags)
-AC_SUBST(checkval_ldflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

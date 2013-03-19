@@ -7,7 +7,7 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	od_ldflags="${od_ldflags} -framework DirectoryService" 
+	mod_ldflags="${mod_ldflags} -framework DirectoryService" 
 	
 	FR_SMART_CHECK_INCLUDE(membership.h)
 	if test "$ac_cv_header_membership_h" != "yes"; then
@@ -29,8 +29,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(od_ldflags)
-AC_SUBST(od_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)
 

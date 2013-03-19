@@ -172,10 +172,10 @@ AC_ARG_WITH(edir,
   esac ]
 )
 
-ldap_ldflags=$SMART_LIBS
-ldap_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
+mod_ldflags=$SMART_LIBS
+mod_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
 AC_SUBST(edir)
-AC_SUBST(ldap_ldflags)
-AC_SUBST(ldap_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

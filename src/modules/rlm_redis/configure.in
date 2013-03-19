@@ -106,9 +106,9 @@ if test "x$fail" != x; then
 	fi
 fi
 
-redis_ldflags="$SMART_LIBS"
-redis_cflags="$SMART_CFLAGS"
-AC_SUBST(redis_ldflags)
-AC_SUBST(redis_cflags)
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

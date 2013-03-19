@@ -12,7 +12,7 @@ if test x$with_[]modname != xno; then
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
 	AC_CHECK_HEADER(openssl/hmac.h,
-		[ wimax_cflags="$wimax_cflags" ],
+		[ mod_cflags="$mod_cflags" ],
 		[ fail=$fail" openssl/hmac.h" ]
 	)
 
@@ -34,8 +34,8 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(wimax_cflags)  # change 'wimax'
-AC_SUBST(wimax_ldflags)  # change 'wimax'
+AC_SUBST(mod_cflags)  # change 'wimax'
+AC_SUBST(mod_ldflags)  # change 'wimax'
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)  # keep this!  Don't change!

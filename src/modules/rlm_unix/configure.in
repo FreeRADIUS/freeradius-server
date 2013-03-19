@@ -39,7 +39,7 @@ if test x$with_[]modname != xno; then
 
 	AC_CHECK_LIB(shadow, getspnam,
 		[
-			unix_ldflags="${unix_ldflags} -lshadow"
+			mod_ldflags="${mod_ldflags} -lshadow"
 			AC_DEFINE(HAVE_GETSPNAM)
 		]
 	)
@@ -61,8 +61,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(unix_ldflags)
-AC_SUBST(unix_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(all.mk)

@@ -10,8 +10,8 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_pwd])
 
 fail=
-eap_pwd_ldflags=
-eap_pwd_cflags=
+mod_ldflags=
+mod_cflags=
 
 if test x$with_[]modname != xno; then
 
@@ -21,11 +21,11 @@ if test x$with_[]modname != xno; then
 
 	AC_ARG_WITH(rlm-eap-pwd-lib-dir,
 	[  --with-rlm-eap-pwd-lib-dir       directory for eap-pwd libs],
-	eap_pwd_ldflags="-L$withval")
+	mod_ldflags="-L$withval")
 
 	AC_ARG_WITH(rlm-eap-pwd-include-dir,
 	[  --with-rlm-eap-pwd-include-dir   directory for eap-pwd includes],
-	eap_pwd_cflags="-I$withval")
+	mod_cflags="-I$withval")
 
 	dnl ############################################################
 	dnl # Check for header files
@@ -85,7 +85,7 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(eap_pwd_ldflags)
-AC_SUBST(eap_pwd_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

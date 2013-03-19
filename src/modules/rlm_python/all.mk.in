@@ -6,8 +6,8 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-TGT_LDLIBS	:= @python_ldflags@
-SRC_CFLAGS	:= @python_cflags@
+TGT_LDLIBS	:= @mod_ldflags@
+SRC_CFLAGS	:= @mod_cflags@
 
 install: $(R)$(raddbdir)/example.py
 

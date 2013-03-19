@@ -24,9 +24,9 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-sqlcounter_ldflags=$SMART_LIBS
-sqlcounter_cflags=$SMART_CFLAGS
-AC_SUBST(sqlcounter_ldflags)
-AC_SUBST(sqlcounter_cflags)
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

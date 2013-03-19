@@ -3,8 +3,8 @@ AC_REVISION($Revision: 1.10 $)
 AC_DEFUN(modname,[rlm_sql_oracle])
 
 fail=
-sql_oracle_ldflags=
-sql_oracle_cflags=
+mod_ldflags=
+mod_cflags=
 if test x$with_[]modname != xno; then
 
     dnl ############################################################
@@ -118,23 +118,23 @@ if test x$with_[]modname != xno; then
                                    (void (*)(dvoid *, dvoid *)) 0 );
     
                 ],
-                [sql_oracle_ldflags="$LIBS"],
+                [mod_ldflags="$LIBS"],
             )
-            if test "x$sql_oracle_ldflags" != "x"; then
+            if test "x$mod_ldflags" != "x"; then
                     AC_MSG_RESULT(yes)
                     break
             fi
             AC_MSG_RESULT(no)
         done
         
-        if test "x$sql_oracle_ldflags" != "x"; then
+        if test "x$mod_ldflags" != "x"; then
                 break
         fi
     done
 
     LIBS="$old_LIBS"
 
-    if test "x$sql_oracle_ldflags" = "x"; then
+    if test "x$mod_ldflags" = "x"; then
         AC_MSG_WARN([oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME.])
         fail=["$fail libclntsh libnnz[9-11]"]
     fi
@@ -156,8 +156,8 @@ if test "x$fail" != x; then
 	fi
 fi
 
-sql_oracle_cflags="$SMART_CFLAGS"
-AC_SUBST(sql_oracle_ldflags)
-AC_SUBST(sql_oracle_cflags)
+mod_cflags="$SMART_CFLAGS"
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

@@ -45,7 +45,7 @@ if test x$with_[]modname != xno; then
        [  --enable-heimdal-krb5             Enable if you have heimdal krb5],
        [ case "$enableval" in
                yes)
-                       krb5_h_cflags="-DHEIMDAL_KRB5"
+                       krb5mod_cflags="-DHEIMDAL_KRB5"
                        ;;
          esac ]
        )
@@ -101,7 +101,7 @@ if test x"$fail" != x""; then
 fi
 
 krb5_ldflags=$SMART_LIBS
-krb5_cflags="${krb5_h_cflags} $SMART_CFLAGS"
+krb5_cflags="${krb5mod_cflags} $SMART_CFLAGS"
 
 AC_SUBST(krb5_cflags)
 AC_SUBST(krb5_ldflags)

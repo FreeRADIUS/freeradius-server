@@ -58,10 +58,10 @@ if test x"$eapsubdirs" = x""; then
 	eaptypes=""
 fi
 
-eap_ldflags=$SMART_LIBS
-eap_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 AC_SUBST(eaptypes)
-AC_SUBST(eap_ldflags)
-AC_SUBST(eap_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT()

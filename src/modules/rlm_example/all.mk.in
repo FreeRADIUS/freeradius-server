@@ -19,8 +19,8 @@ endif
 
 SOURCES		:= $(TARGETNAME).c other.c
 
-SRC_CFLAGS	:= @example_cflags@
-TGT_LDLIBS	:= @example_ldflags@
+SRC_CFLAGS	:= @mod_cflags@
+TGT_LDLIBS	:= @mod_ldflags@
 
 #
 #  If the target has documentation in man format it should be set here

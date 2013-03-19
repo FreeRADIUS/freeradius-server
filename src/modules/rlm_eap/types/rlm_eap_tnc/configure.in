@@ -88,11 +88,11 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-eap_tnc_cflags="${SMART_CFLAGS}"
-eap_tnc_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
+mod_ldflags="${SMART_LIBS}"
 
-AC_SUBST(eap_tnc_cflags)
-AC_SUBST(eap_tnc_ldflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)  # keep this!  Don't change!

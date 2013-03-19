@@ -57,10 +57,10 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-counter_ldflags=$SMART_LIBS
-counter_cflags=$SMART_CFLAGS
-AC_SUBST(counter_ldflags)
-AC_SUBST(counter_cflags)
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(all.mk)

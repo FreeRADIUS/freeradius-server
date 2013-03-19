@@ -6,6 +6,6 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @postgresql_cflags@
+SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -I${top_srcdir}/src/modules/rlm_sql
-TGT_LDLIBS	:= @postgresql_ldflags@
+TGT_LDLIBS	:= @mod_ldflags@

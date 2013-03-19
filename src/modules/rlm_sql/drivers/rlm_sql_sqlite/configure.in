@@ -113,10 +113,10 @@ if test "x$fail" != x; then
 	fi
 fi
 
-sql_sqlite_ldflags="$SMART_LIBS"
-sql_sqlite_cflags="$SMART_CFLAGS"
-AC_SUBST(sql_sqlite_ldflags)
-AC_SUBST(sql_sqlite_cflags)
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 
 AC_CONFIG_HEADER(config.h)
 

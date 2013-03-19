@@ -10,8 +10,8 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_ttls])
 
 fail=
-eap_ttls_ldflags=
-eap_ttls_cflags=
+mod_ldflags=
+mod_cflags=
 
 if test x$with_[]modname != xno; then
 
@@ -21,11 +21,11 @@ if test x$with_[]modname != xno; then
 
 	AC_ARG_WITH(rlm-eap-ttls-lib-dir,
 	[  --with-rlm-eap-ttls-lib-dir      directory for eap-ttls libs],
-	eap_ttls_ldflags="-L$withval")
+	mod_ldflags="-L$withval")
 
 	AC_ARG_WITH(rlm-eap-ttls-include-dir,
 	[  --with-rlm-eap-ttls-include-dir  directory for eap-ttls includes],
-	eap_ttls_cflags="-I$withval")
+	mod_cflags="-I$withval")
 
 	dnl ############################################################
 	dnl # Check for OpenSSL support
@@ -61,8 +61,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(eap_ttls_ldflags)
-AC_SUBST(eap_ttls_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER([config.h])
 AC_OUTPUT(all.mk)

@@ -3,8 +3,8 @@ AC_INIT(rlm_otp.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_otp])
 
-otp_cflags=
-otp_ldflags=
+mod_cflags=
+mod_ldflags=
 
 if test x$with_[]modname != xno; then
 
@@ -24,27 +24,27 @@ if test x$with_[]modname != xno; then
 	dnl mostly for openssl
 	AC_ARG_WITH(rlm-otp-lib-dir,
 	[  --with-rlm-otp-lib-dir        directory for otp libs],
-	otp_ldflags="-L$withval $otp_ldflags")
+	mod_ldflags="-L$withval $mod_ldflags")
 	AC_ARG_WITH(rlm-otp-include-dir,
 	[  --with-rlm-otp-include-dir    directory for otp includes],
-	otp_cflags="$otp_cflags -I$withval")
+	mod_cflags="$mod_cflags -I$withval")
 
 	dnl extra argument: --openssl-libraries=dir
 	AC_ARG_WITH(openssl-libraries,
 	[  --with-openssl-libraries=DIR  directory to look for OpenSSL library files],
-	otp_ldflags="-L$withval $otp_ldflags")
+	mod_ldflags="-L$withval $mod_ldflags")
 
 	dnl extra argument: --openssl-includes=dir
 	AC_ARG_WITH(openssl-includes,
 	[  --with-openssl-includes=DIR   directory to look for OpenSSL include files],
-	otp_cflags="$otp_cflags -I$withval")
+	mod_cflags="$mod_cflags -I$withval")
 
 	dnl ############################################################
 	dnl # Check for libraries
 	dnl ############################################################
 
 	old_LDFLAGS="$LDFLAGS"
-	LDFLAGS="$otp_ldflags $LDFLAGS"
+	LDFLAGS="$mod_ldflags $LDFLAGS"
 	AC_CHECK_LIB(ssl, SSL_new, [], [ fail="$fail openssl-libs" ])
 	LDFLAGS="$old_LDFLAGS"
 
@@ -53,7 +53,7 @@ if test x$with_[]modname != xno; then
 	dnl ############################################################
 
 	old_CFLAGS="$CFLAGS"
-	CFLAGS="$CFLAGS $otp_cflags"
+	CFLAGS="$CFLAGS $mod_cflags"
 	AC_CHECK_HEADERS( \
 		openssl/des.h \
 		openssl/hmac.h \
@@ -82,8 +82,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(otp_cflags)
-AC_SUBST(otp_ldflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)

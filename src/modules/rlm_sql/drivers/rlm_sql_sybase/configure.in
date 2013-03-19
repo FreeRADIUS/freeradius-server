@@ -101,9 +101,9 @@ if test "x$fail" != x; then
 	fi
 fi
 
-sql_sybase_ldflags="$SMART_LIBS"
-sql_sybase_cflags="$SMART_CFLAGS"
-AC_SUBST(sql_sybase_ldflags)
-AC_SUBST(sql_sybase_cflags)
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

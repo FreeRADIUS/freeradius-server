@@ -12,12 +12,12 @@ if test x$with_[]modname != xno; then
 	dnl set $fail to what's missing, on fatal errors.
 	dnl use AC_MSG_WARN() on important messages.
 	AC_CHECK_LIB(c, printf,
-		[ example_ldflags="$example_ldflags -lc" ],
+		[ mod_ldflags="$mod_ldflags -lc" ],
 		[ fail=$fail" printf" ]
 	)
 
 	AC_CHECK_HEADER(stdio.h,
-		[ example_cflags="$example_cflags -I/usr/include" ],
+		[ mod_cflags="$mod_cflags -I/usr/include" ],
 		[ fail=$fail" stdio.h" ]
 	)
 
@@ -42,8 +42,8 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(example_cflags)  # change 'example'
-AC_SUBST(example_ldflags)  # change 'example'
+AC_SUBST(mod_cflags)  # change 'example'
+AC_SUBST(mod_ldflags)  # change 'example'
 
 AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
 

@@ -62,10 +62,10 @@ if test x"$targetname" != x""; then
 	ippool_install="rlm_ippool_install"
 fi
 
-ippool_ldflags=$SMART_LIBS
-ippool_cflags=$SMART_CFLAGS
-AC_SUBST(ippool_ldflags)
-AC_SUBST(ippool_cflags)
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_SUBST(ippool_utils)
 AC_SUBST(ippool_install)

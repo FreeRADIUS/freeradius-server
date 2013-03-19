@@ -75,9 +75,9 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-postgresql_ldflags=$SMART_LIBS
-postgresql_cflags=$SMART_CFLAGS
-AC_SUBST(postgresql_ldflags)
-AC_SUBST(postgresql_cflags)
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

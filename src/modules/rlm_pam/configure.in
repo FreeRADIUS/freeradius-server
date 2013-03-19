@@ -9,13 +9,13 @@ if test x$with_[]modname != xno; then
 	AC_PROG_CPP
 
 	AC_CHECK_LIB(dl, dlopen,
-		[ pam_ldflags="-ldl" ]
+		[ mod_ldflags="-ldl" ]
 	)
 
 	AC_CHECK_LIB(pam, pam_start,
-		[ pam_ldflags="-lpam $pam_ldflags" ],
+		[ mod_ldflags="-lpam $mod_ldflags" ],
 		[ fail=$fail" libpam" ],
-		[ $pam_ldflags ]
+		[ $mod_ldflags ]
 	)
 
 dnl #
@@ -26,7 +26,7 @@ dnl #
 			security/pam_appl.h \
 			pam/pam_appl.h \
 			)
-	pam_cflags="-I."
+	mod_cflags="-I."
 
 	targetname=modname
 else
@@ -44,8 +44,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(pam_ldflags)
-AC_SUBST(pam_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_CONFIG_HEADER(config.h)
 AC_OUTPUT(all.mk)

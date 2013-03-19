@@ -6,6 +6,6 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @redis_cflags@
+SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	:= -I$(top_builddir)/src/modules/rlm_redis
-TGT_LDLIBS	:= @redis_ldflags@
+TGT_LDLIBS	:= @mod_ldflags@

@@ -6,8 +6,8 @@ endif
 
 SOURCES		:= $(TARGETNAME).c 
 
-SRC_CFLAGS	:= @eap_tnc_cflags@
-TGT_LDLIBS	:= @eap_tnc_ldflags@
+SRC_CFLAGS	:= @mod_cflags@
+TGT_LDLIBS	:= @mod_ldflags@
 
 SRC_INCDIRS	:= ../../ ../../libeap/
 TGT_PREREQS	:= libfreeradius-eap.a

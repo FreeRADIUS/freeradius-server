@@ -6,8 +6,8 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @counter_cflags@
-TGT_LDLIBS	:= @counter_ldflags@
+SRC_CFLAGS	:= @mod_cflags@
+TGT_LDLIBS	:= @mod_ldflags@
 
 install: install.bindir $(R)$(bindir)/rad_counter
 

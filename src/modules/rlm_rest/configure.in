@@ -134,11 +134,11 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-rest_ldflags="${LIBCURL} ${SMART_LIBS}"
-rest_cflags="${SMART_CFLAGS}"
+mod_ldflags="${LIBCURL} ${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
 
-AC_SUBST(rest_cflags)
-AC_SUBST(rest_ldflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

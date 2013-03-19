@@ -6,5 +6,5 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @redis_cflags@
-TGT_LDLIBS	:= @redis_ldflags@
+SRC_CFLAGS	:= @mod_cflags@
+TGT_LDLIBS	:= @mod_ldflags@

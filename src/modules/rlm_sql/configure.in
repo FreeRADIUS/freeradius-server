@@ -59,9 +59,9 @@ if test x"$fail" != x""; then
 fi
 
 
-sql_ldflags=$SMART_LIBS
-sql_cflags=$SMART_CFLAGS
-AC_SUBST(sql_ldflags)
-AC_SUBST(sql_cflags)
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

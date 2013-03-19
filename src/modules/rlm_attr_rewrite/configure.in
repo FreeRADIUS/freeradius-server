@@ -33,8 +33,8 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(attr_rewrite_cflags)
-AC_SUBST(attr_rewrite_ldflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

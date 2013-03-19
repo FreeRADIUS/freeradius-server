@@ -97,11 +97,11 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-yubikey_ldflags="${SMART_LIBS}"
-yubikey_cflags="${SMART_CFLAGS}"
+mod_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
 
-AC_SUBST(yubikey_cflags)  # change 'yubikey'
-AC_SUBST(yubikey_ldflags)  # change 'yubikey'
+AC_SUBST(mod_cflags)  # change 'yubikey'
+AC_SUBST(mod_ldflags)  # change 'yubikey'
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)  # keep this!  Don't change!

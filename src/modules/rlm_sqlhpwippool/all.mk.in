@@ -6,6 +6,6 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @sqlhpwippool_cflags@
+SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -I$(top_builddir)/src/modules/rlm_sql
-TGT_LDLIBS	:= @sqlhpwippool_ldflags@
+TGT_LDLIBS	:= @mod_ldflags@

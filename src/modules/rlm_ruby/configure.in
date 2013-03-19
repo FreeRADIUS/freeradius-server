@@ -14,8 +14,8 @@ m4_include([ax_prog_ruby_version.m4])
 m4_include([ax_ruby_devel.m4])
 
 targetname=modname
-ruby_cflags=
-ruby_ldflags=
+mod_cflags=
+mod_ldflags=
 if test x$with_[]modname != xno; then
 	AC_PROG_CC
 	AC_PROG_CPP
@@ -24,8 +24,8 @@ if test x$with_[]modname != xno; then
 	if test -n "$RUBY"; then
 		AX_RUBY_DEVEL([1.8])
 		if test -n "$RUBY_VERSION"; then
-			ruby_cflags="${RUBY_CFLAGS}"
-			ruby_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
+			mod_cflags="${RUBY_CFLAGS}"
+			mod_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
 		else
 			fail="ruby"
 			targetname=
@@ -48,8 +48,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(ruby_ldflags)
-AC_SUBST(ruby_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(ruby_headers)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

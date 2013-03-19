@@ -11,7 +11,7 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_header_membership_h" = "xyes"; then
 		AC_DEFINE([HAVE_MEMBERSHIP_H],[1],[Build with Apple Open Directory support])
 		mschap_sources+="opendir.c"
-		mschap_ldflags+=" -framework DirectoryService" 
+		mod_ldflags+=" -framework DirectoryService" 
 	fi
 	targetname=modname
 else
@@ -30,8 +30,8 @@ if test x"$fail" != x""; then
 fi
 
 AC_SUBST(mschap_sources)
-AC_SUBST(mschap_ldflags)
-AC_SUBST(mschap_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 
 AC_CONFIG_HEADER(config.h)

@@ -31,8 +31,8 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(smsotp_cflags)  # change 'example'
-AC_SUBST(smsotp_ldflags)  # change 'example'
+AC_SUBST(mod_cflags)  # change 'example'
+AC_SUBST(mod_ldflags)  # change 'example'
 
 AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
 
