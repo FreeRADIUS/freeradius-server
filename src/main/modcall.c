@@ -564,7 +564,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					}
 #endif
 
-					copy = paircopy(vp);
+					copy = paircopy(request, vp);
 					copy_p = &copy;
 
 					request_data_add(request, radius_get_vp,

@@ -588,7 +588,7 @@ void request_stats_reply(REQUEST *request)
 			 *	If found, echo it back, along with
 			 *	the requested statistics.
 			 */
-			pairadd(&request->reply->vps, paircopyvp(vp));
+			pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
 
 			/*
 			 *	When retrieving client by number, also
@@ -615,11 +615,11 @@ void request_stats_reply(REQUEST *request)
 			
 			if (server_ip) {
 				pairadd(&request->reply->vps,
-					paircopyvp(server_ip));
+					paircopyvp(request->reply, server_ip));
 			}
 			if (server_port) {
 				pairadd(&request->reply->vps,
-					paircopyvp(server_port));
+					paircopyvp(request->reply, server_port));
 			}
 
 			if ((flag->vp_integer & 0x01) != 0) {
@@ -666,9 +666,9 @@ void request_stats_reply(REQUEST *request)
 		if (!this) return;
 		
 		pairadd(&request->reply->vps,
-			paircopyvp(server_ip));
+			paircopyvp(request->reply, server_ip));
 		pairadd(&request->reply->vps,
-			paircopyvp(server_port));
+			paircopyvp(request->reply, server_port));
 
 		if (((flag->vp_integer & 0x01) != 0) &&
 		    ((request->listener->type == RAD_LISTEN_AUTH) ||
@@ -719,9 +719,9 @@ void request_stats_reply(REQUEST *request)
 		if (!home) return;
 		
 		pairadd(&request->reply->vps,
-			paircopyvp(server_ip));
+			paircopyvp(request->reply, server_ip));
 		pairadd(&request->reply->vps,
-			paircopyvp(server_port));
+			paircopyvp(request->reply, server_port));
 
 		vp = radius_paircreate(request, &request->reply->vps,
 				       172, VENDORPEC_FREERADIUS);

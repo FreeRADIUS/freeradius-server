@@ -1169,7 +1169,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		}
 
 		/* cache the VPs into the session */
-		vp = paircopy(pairlist->reply);
+		vp = paircopy(conf, pairlist->reply);
 		SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_VPS, vp);
 		DEBUG2("  SSL: Successfully restored session %s", buffer);
 	}
@@ -2452,13 +2452,13 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
-		vp = paircopy2(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
+		vp = paircopy2(ssn, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
+		vp = paircopy2(ssn, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
+		vp = paircopy2(ssn, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
 		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS);
@@ -2467,7 +2467,11 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		 *	Hmm... the certs should probably be session data.
 		 */
 		if (certs) {
-			pairadd(&vps, paircopy(*certs));
+			/*
+			 *	@todo: some go into reply, others into
+			 *	request
+			 */
+			pairadd(&vps, paircopy(request, *certs));
 		}
 
 		if (vps) {
@@ -2515,7 +2519,6 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
-	
 		vps = SSL_SESSION_get_ex_data(ssn->ssl->session,
 					     FR_TLS_EX_INDEX_VPS);
 		if (!vps) {
@@ -2536,10 +2539,10 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				    (vp->da->attr >= 1910) &&
 				    (vp->da->attr < 1929)) {
 					pairadd(&request->packet->vps,
-						paircopyvp(vp));
+						paircopyvp(request->packet, vp));
 				} else {
 					pairadd(&request->reply->vps,
-						paircopyvp(vp));
+						paircopyvp(request->packet, vp));
 				}
 			}
 

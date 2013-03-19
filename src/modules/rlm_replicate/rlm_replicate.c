@@ -153,7 +153,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 			 *	attributes.
 			 */
 			if (*vps) {
-				packet->vps = paircopy(*vps);
+				packet->vps = paircopy(packet, *vps);
 				if (!packet->vps) {
 					RDEBUGE("Out of memory!");
 					rcode = RLM_MODULE_FAIL;

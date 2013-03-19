@@ -60,7 +60,7 @@ static void free_data(void *ptr)
 
 	pairfree(&data->mppe_keys);
 	pairfree(&data->reply);
-	free(data);
+	talloc_free(data);
 }
 
 
@@ -239,7 +239,7 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	/*
 	 *	Keep track of the challenge.
 	 */
-	data = malloc(sizeof(mschapv2_opaque_t));
+	data = talloc_zero(handler, mschapv2_opaque_t);
 	rad_assert(data != NULL);
 
 	/*
@@ -351,7 +351,7 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 	 * access-accept e.g. vlan, etc. This lets the PEAP
 	 * use_tunneled_reply code work
 	 */
-	data->reply = paircopy(request->reply->vps);
+	data->reply = paircopy(data, request->reply->vps);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,

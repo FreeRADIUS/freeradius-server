@@ -409,7 +409,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 *	except PW_STRIP_USER_NAME and PW_FALL_THROUGH
 			 *	and xlat them.
 			 */
-			add = paircopy(i->reply);
+			add = paircopy(request->packet, i->reply);
 			ft = fallthrough(add);
 			pairdelete(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
 			pairdelete(&add, PW_FALL_THROUGH, 0, TAG_ANY);

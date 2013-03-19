@@ -138,7 +138,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		RDEBUG2("Merging cached control list:");
 		rdebug_pair_list(2, request, c->control);
 		
-		vp = paircopy(c->control);
+		vp = paircopy(request, c->control);
 		pairmove(&request->config_items, &vp);
 		pairfree(&vp);
 	}
@@ -147,7 +147,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		RDEBUG2("Merging cached request list:");
 		rdebug_pair_list(2, request, c->request);
 		
-		vp = paircopy(c->request);
+		vp = paircopy(request->packet, c->request);
 		pairmove(&request->packet->vps, &vp);
 		pairfree(&vp);
 	}
@@ -156,7 +156,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		RDEBUG2("Merging cached reply list:");
 		rdebug_pair_list(2, request, c->reply);
 		
-		vp = paircopy(c->reply);
+		vp = paircopy(request->reply, c->reply);
 		pairmove(&request->reply->vps, &vp);
 		pairfree(&vp);
 	}
@@ -385,24 +385,24 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			case T_OP_EQ:
 			case T_OP_SUB:
 				vp = map->dst->type == VPT_TYPE_LIST ?
-					paircopyvp(found) :
-					paircopyvpdata(map->dst->da, found);
+					paircopyvp(c, found) :
+					paircopyvpdata(c, map->dst->da, found);
 				
 				if (!vp) continue;
 				
 				pairadd(to_cache, vp);
 
 				if (to_req) {
-					vp = paircopyvp(vp);
-					radius_pairmove(request, to_req, vp);			
+					vp = paircopyvp(request, vp);
+					radius_pairmove(request, to_req, vp);
 				}
 				
 				break;
 			case T_OP_ADD:
 				do {
 					vp = map->dst->type == VPT_TYPE_LIST ?
-						paircopyvp(found) :
-						paircopyvpdata(map->dst->da,
+						paircopyvp(c, found) :
+						paircopyvpdata(c, map->dst->da,
 							       found);
 					if (!vp) continue;
 					
@@ -410,7 +410,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 					pairadd(to_cache, vp);
 					
 					if (to_req) {
-						vp = paircopyvp(vp);
+						vp = paircopyvp(request, vp);
 						radius_pairmove(request, to_req,
 								vp);
 								
@@ -439,7 +439,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			}
 			if (!from) continue;
 			
-			found = paircopy(*from);
+			found = paircopy(c, *from);
 			if (!found) continue;
 			
 			for (vp = found; vp != NULL; vp = vp->next) {
@@ -454,7 +454,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			pairadd(to_cache, found);
 			
 			if (to_req) {
-				vp = paircopy(found);
+				vp = paircopy(request, found);
 				radius_pairmove(request, to_req, vp);
 			}
 			
@@ -485,7 +485,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			pairadd(to_cache, vp);
 			
 			if (to_req) {
-				vp = paircopyvp(vp);
+				vp = paircopyvp(request, vp);
 				radius_pairmove(request, to_req, vp);			
 			}
 			
@@ -510,7 +510,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			pairadd(to_cache, vp);
 			
 			if (to_req) {
-				vp = paircopyvp(vp);
+				vp = paircopyvp(request, vp);
 				radius_pairmove(request, to_req, vp);	
 			}
 			

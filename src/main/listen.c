@@ -1670,7 +1670,7 @@ static int rad_coa_recv(REQUEST *request)
 	 *	Copy State from the request to the reply.
 	 *	See RFC 5176 Section 3.3.
 	 */
-	vp = paircopy2(request->packet->vps, PW_STATE, 0, TAG_ANY);
+	vp = paircopy2(request->reply, request->packet->vps, PW_STATE, 0, TAG_ANY);
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	/*

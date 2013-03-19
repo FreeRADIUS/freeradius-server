@@ -517,7 +517,7 @@ static int perl_instantiate(CONF_SECTION *conf, void **instance)
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
-static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
+static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vp, HV *rad_hv)
 {
 	VALUE_PAIR *nvp, *vpa;
 	AV *av;
@@ -532,7 +532,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 	 *	Copy the valuepair list so we can remove attributes we've
 	 *	already processed.
 	 */
-	nvp = paircopy(vp);
+	nvp = paircopy(ctx, vp);
 
 	while (nvp) {
 		/*
@@ -552,7 +552,7 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
 		 *	Create a new list with all the attributes like this one
 		 *	which are in the same tag group.
 		 */
-		vpa = paircopy2(nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
+		vpa = paircopy2(ctx, nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
 
 		/*
 		 *	Attribute has multiple values
@@ -705,20 +705,20 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
 #endif
 
-	perl_store_vps(request->reply->vps, rad_reply_hv);
-	perl_store_vps(request->config_items, rad_check_hv);
-	perl_store_vps(request->packet->vps, rad_request_hv);
-	perl_store_vps(request->config_items, rad_config_hv);
+	perl_store_vps(request->reply, request->reply->vps, rad_reply_hv);
+	perl_store_vps(request, request->config_items, rad_check_hv);
+	perl_store_vps(request->packet, request->packet->vps, rad_request_hv);
+	perl_store_vps(request, request->config_items, rad_config_hv);
 
 #ifdef WITH_PROXY
 	if (request->proxy != NULL) {
-		perl_store_vps(request->proxy->vps, rad_request_proxy_hv);
+		perl_store_vps(request->proxy, request->proxy->vps, rad_request_proxy_hv);
 	} else {
 		hv_undef(rad_request_proxy_hv);
 	}
 
 	if (request->proxy_reply !=NULL) {
-		perl_store_vps(request->proxy_reply->vps, rad_request_proxy_reply_hv);
+		perl_store_vps(request->proxy_reply, request->proxy_reply->vps, rad_request_proxy_reply_hv);
 	} else {
 		hv_undef(rad_request_proxy_reply_hv);
 	}

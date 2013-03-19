@@ -162,7 +162,7 @@ static int eaptls_authenticate(void *type_arg, eap_handler_t *handler)
 			fake = request_alloc_fake(request);
 			rad_assert(fake->packet->vps == NULL);
 
-			fake->packet->vps = paircopy(request->packet->vps);
+			fake->packet->vps = paircopy(fake->packet, request->packet->vps);
 
 			/* set the virtual server to use */
 			if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {

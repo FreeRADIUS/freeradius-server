@@ -1174,7 +1174,11 @@ int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
 		output_vps = radius_list(update_request, list);
 	}
 
-	newlist = paircopy(input_vps);
+	/*
+	 *	@todo: figure out where the newlist goes, too...
+	 *	to the TALLOC_CTX, and not just the request.
+	 */
+	newlist = paircopy(request, input_vps);
 	if (!newlist) {
 		RDEBUG2("Out of memory");
 		return RLM_MODULE_FAIL;

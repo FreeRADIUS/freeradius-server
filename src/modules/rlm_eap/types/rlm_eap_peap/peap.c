@@ -1221,7 +1221,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 		 "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	if (t->username) {
-		vp = paircopy(t->username);
+		vp = paircopy(t, t->username);
 		pairadd(&fake->packet->vps, vp);
 		fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		RDEBUG2("Setting User-Name to %s", fake->username->vp_strvalue);
@@ -1234,7 +1234,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 	 *	Add the State attribute, too, if it exists.
 	 */
 	if (t->state) {
-		vp = paircopy(t->state);
+		vp = paircopy(fake->packet, t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
 
@@ -1304,7 +1304,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->da->attr, vp->da->vendor, TAG_ANY);
+			copy = paircopy2(fake->packet, vp, vp->da->attr, vp->da->vendor, TAG_ANY);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}

@@ -247,7 +247,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 			 *    the output list without checking it.
 			 */
 			if (check_item->op == T_OP_SET ) {
-				vp = paircopyvp(check_item);
+				vp = paircopyvp(packet, check_item);
 				if (!vp) {
 					pairfree(&output);
 					return RLM_MODULE_FAIL;
@@ -303,7 +303,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 				if (!pass) {
 					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->da->name);
 				}
-				*output_tail = paircopyvp(vp);
+				*output_tail = paircopyvp(packet, vp);
 				if (!*output_tail) {
 					pairfree(&output);
 					return RLM_MODULE_FAIL;

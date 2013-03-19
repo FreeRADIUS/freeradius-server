@@ -301,23 +301,23 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
  *
  * Allocate a new valuepair and copy the da from the old vp.
  *
+ * @param[in] talloc context
  * @param[in] vp to copy.
  * @return a copy of the input VP or NULL on error.
  */
-VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
+VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
 {
 	VALUE_PAIR *n;
 
 	if (!vp) return NULL;
-	
-	n = pairalloc(NULL, vp->da);
+
+	n = pairalloc(ctx, vp->da);
 	if (!n) {
 		fr_strerror_printf("out of memory");
 		return NULL;
 	}
 	
 	memcpy(n, vp, sizeof(*n));
-	
 	
 	/*
 	 *	Now copy the value
@@ -329,7 +329,6 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
 	n->da = dict_attr_copy(vp->da, TRUE);
 	if (!n->da) {
 		pairbasicfree(n);
-		
 		return NULL;
 	}
 	
@@ -355,7 +354,7 @@ VALUE_PAIR *paircopyvp(const VALUE_PAIR *vp)
  * @param[in] vp to copy data from.
  * @return the new valuepair.
  */
-VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
+VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, const DICT_ATTR *da, const VALUE_PAIR *vp)
 {
 	VALUE_PAIR *n;
 
@@ -363,7 +362,7 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
 
 	if (da->type != vp->da->type) return NULL;
 	
-	n = pairalloc(NULL, da);
+	n = pairalloc(ctx, da);
 	if (!n) {
 		return NULL;	
 	}
@@ -398,8 +397,8 @@ VALUE_PAIR *paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp)
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
  * @return the head of the new VALUE_PAIR list.
  */
-VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
-		      int8_t tag)
+VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp,
+		      unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *first, *n, **last;
 
@@ -416,7 +415,7 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 			goto skip;
 		}
 
-		n = paircopyvp(vp);
+		n = paircopyvp(ctx, vp);
 		if (!n) return first;
 		
 		*last = n;
@@ -436,9 +435,9 @@ VALUE_PAIR *paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 /*
  *	Copy a pairlist.
  */
-VALUE_PAIR *paircopy(VALUE_PAIR *vp)
+VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp)
 {
-	return paircopy2(vp, 0, 0, TAG_ANY);
+	return paircopy2(ctx, vp, 0, 0, TAG_ANY);
 }
 
 /** Move pairs from source list to destination list respecting operator

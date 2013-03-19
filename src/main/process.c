@@ -1088,7 +1088,8 @@ STATE_MACHINE_DECL(request_finish)
 	/*
 	 *	Copy Proxy-State from the request to the reply.
 	 */
-	vp = paircopy2(request->packet->vps, PW_PROXY_STATE, 0, TAG_ANY);
+	vp = paircopy2(request->reply, request->packet->vps,
+		       PW_PROXY_STATE, 0, TAG_ANY);
 	if (vp) pairadd(&request->reply->vps, vp);
 
 	switch (request->reply->code)
@@ -3122,14 +3123,14 @@ static void request_coa_originate(REQUEST *request)
 	rad_assert(coa->packet != NULL);
 	rad_assert(coa->packet->vps == NULL);
 	memcpy(coa->packet, request->packet, sizeof(*request->packet));
-	coa->packet->vps = paircopy(request->packet->vps);
+	coa->packet->vps = paircopy(coa->packet, request->packet->vps);
 	coa->packet->data = NULL;
 	rad_assert(coa->reply != NULL);
 	rad_assert(coa->reply->vps == NULL);
 	memcpy(coa->reply, request->reply, sizeof(*request->reply));
-	coa->reply->vps = paircopy(request->reply->vps);
+	coa->reply->vps = paircopy(coa->reply, request->reply->vps);
 	coa->reply->data = NULL;
-	coa->config_items = paircopy(request->config_items);
+	coa->config_items = paircopy(coa, request->config_items);
 	coa->num_coa_requests = 0;
 	coa->handle = null_handler;
 	coa->number = request->number ^ (1 << 24);

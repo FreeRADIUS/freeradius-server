@@ -395,7 +395,7 @@ static int dhcp_process(REQUEST *request)
 		
 		vp = pairfind(request->packet->vps, attr, DHCP_MAGIC_VENDOR, TAG_ANY);
 		if (vp) {
-			pairadd(&request->reply->vps, paircopyvp(vp));
+			pairadd(&request->reply->vps, paircopyvp(request->reply, vp));
 		}
 	}
 

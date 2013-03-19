@@ -673,12 +673,12 @@ static int respond_eap_sim(RADIUS_PACKET *req,
 	VALUE_PAIR *vp, *statevp, *radstate, *eapid;
 	char statenamebuf[32], subtypenamebuf[32];
 
-	if ((radstate = paircopy2(req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
+	if ((radstate = paircopy2(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
 
-	if ((eapid = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
+	if ((eapid = paircopy2(NULL, req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		return 0;
 	}
@@ -782,13 +782,13 @@ static int respond_eap_md5(RADIUS_PACKET *req,
 
 	cleanresp(rep);
 
-	if ((state = paircopy2(req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
+	if ((state = paircopy2(NULL, req->vps, PW_STATE, 0, TAG_ANY)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no state attribute found\n");
 		return 0;
 	}
 
-	if ((id = paircopy2(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
+	if ((id = paircopy2(NULL, req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY)) == NULL)
 	{
 		fprintf(stderr, "radeapclient: no EAP-ID attribute found\n");
 		return 0;
@@ -1496,7 +1496,7 @@ main(int argc, char *argv[])
 		}
 
 		/* find the EAP-Message, copy it to req2 */
-		vp = paircopy2(req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		vp = paircopy2(NULL, req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		if(vp == NULL) continue;
 

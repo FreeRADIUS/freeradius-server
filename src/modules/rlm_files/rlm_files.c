@@ -409,7 +409,6 @@ static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
 	const char	*name, *match;
-	VALUE_PAIR	**config_pairs;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	const PAIR_LIST	*user_pl, *default_pl;
@@ -430,8 +429,6 @@ static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
 		if (len) name = buffer;
 		else name = "NONE";
 	}
-
-	config_pairs = &request->config_items;
 
 	if (!ht) return RLM_MODULE_NOOP;
 
@@ -471,10 +468,12 @@ static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
 			RDEBUG2("%s: Matched entry %s at line %d",
 			       filename, match, pl->lineno);
 			found = 1;
-			check_tmp = paircopy(pl->check);
-			reply_tmp = paircopy(pl->reply);
+			check_tmp = paircopy(request, pl->check);
+
+			/* ctx may be reply or proxy */
+			reply_tmp = paircopy(request, pl->reply);
 			radius_xlat_move(request, reply_pairs, &reply_tmp);
-			pairmove(config_pairs, &check_tmp);
+			pairmove(&request->config_items, &check_tmp);
 			pairfree(&reply_tmp);
 			pairfree(&check_tmp);
 

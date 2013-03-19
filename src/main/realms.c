@@ -2114,7 +2114,8 @@ void home_server_update_request(home_server *home, REQUEST *request)
 		 *	attribute is the one hacked through
 		 *	the 'hints' file.
 		 */
-		request->proxy->vps =  paircopy(request->packet->vps);
+		request->proxy->vps = paircopy(request->proxy,
+					       request->packet->vps);
 	}
 
 	/*

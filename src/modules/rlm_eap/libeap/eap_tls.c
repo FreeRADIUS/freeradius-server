@@ -766,7 +766,7 @@ fr_tls_status_t eaptls_process(eap_handler_t *handler)
 	SSL_set_ex_data(tls_session->ssl, FR_TLS_EX_INDEX_REQUEST, request);
 
 	if (handler->certs) pairadd(&request->packet->vps,
-				    paircopy(handler->certs));
+				    paircopy(request->packet, handler->certs));
 
 	/* This case is when SSL generates Alert then we
 	 * send that alert to the client and then send the EAP-Failure

@@ -1109,7 +1109,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			vp = paircopy(t->username);
+			vp = paircopy(t, t->username);
 			pairadd(&fake->packet->vps, vp);
 			fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		}
@@ -1119,7 +1119,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	Add the State attribute, too, if it exists.
 	 */
 	if (t->state) {
-		vp = paircopy(t->state);
+		vp = paircopy(t, t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
 
@@ -1187,7 +1187,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Don't copy from the head, we've already
 			 *	checked it.
 			 */
-			copy = paircopy2(vp, vp->da->attr, vp->da->vendor, TAG_ANY);
+			copy = paircopy2(fake->packet, vp, vp->da->attr, vp->da->vendor, TAG_ANY);
 			pairadd(&fake->packet->vps, copy);
 		}
 	}

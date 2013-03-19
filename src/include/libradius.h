@@ -436,10 +436,10 @@ void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t t
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void	    pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
-VALUE_PAIR	*paircopyvp(const VALUE_PAIR *vp);
-VALUE_PAIR	*paircopyvpdata(const DICT_ATTR *da, const VALUE_PAIR *vp);
-VALUE_PAIR	*paircopy(VALUE_PAIR *vp);
-VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp);
+VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, const DICT_ATTR *da, const VALUE_PAIR *vp);
+VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp);
+VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag);
 int		pairparsevalue(VALUE_PAIR *vp, const char *value);

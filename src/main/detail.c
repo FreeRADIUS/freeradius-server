@@ -689,7 +689,7 @@ int detail_recv(rad_listen_t *listener)
 	 *	Otherwise, it lets us re-send the original packet
 	 *	contents, unmolested.
 	 */
-	packet->vps = paircopy(data->vps);
+	packet->vps = paircopy(packet, data->vps);
 
 	/*
 	 *	Prefer the Event-Timestamp in the packet, if it
