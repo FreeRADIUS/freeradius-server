@@ -301,7 +301,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
  *
  * Allocate a new valuepair and copy the da from the old vp.
  *
- * @param[in] talloc context
+ * @param[in] ctx for talloc
  * @param[in] vp to copy.
  * @return a copy of the input VP or NULL on error.
  */
@@ -350,6 +350,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
  *
  * @todo Should be able to do type conversions.
  *
+ * @param[in] ctx for talloc
  * @param[in] da of new attribute to alloc.
  * @param[in] vp to copy data from.
  * @return the new valuepair.
@@ -391,6 +392,7 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, const DICT_ATTR *da, const VALUE_PAI
  * Copy pairs of a matching attribute number, vendor number and tag from the
  * the input list to a new list, and returns the head of this list.
  *
+ * @param[in] ctx for talloc
  * @param[in] vp which is head of the input list.
  * @param[in] attr to match, if 0 input list will not be filtered by attr.
  * @param[in] vendor to match.
