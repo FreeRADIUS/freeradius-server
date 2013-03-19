@@ -40,7 +40,7 @@
  * This is a callback for xlat operations.
  *
  * Will escape any characters in input strings that would cause the string to be interpreted as part of a DN and or
- * filter. Escape sequence is \<hex><hex>.
+ * filter. Escape sequence is @verbatim \<hex><hex> @endverbatim
  *
  * @param request The current request.
  * @param out Pointer to output buffer.
@@ -109,7 +109,7 @@ int rlm_ldap_is_dn(const char *str)
  *
  * @param full DN.
  * @param part Partial DN as returned by ldap_parse_result.
- * @param the length of the portion of full which wasn't matched or -1 on error.
+ * @return the length of the portion of full which wasn't matched or -1 on error.
  */
 static size_t rlm_ldap_common_dn(const char *full, const char *part)
 {
@@ -413,6 +413,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
  * Performs a simple bind to the LDAP directory, and handles any errors that
  * occur.
  *
+ * @param inst rlm_ldap configuration.
  * @param request Current request, this may be NULL, in which case all debug logging is done with radlog.
  * @param pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL after 
  *	calling this function.
@@ -514,6 +515,7 @@ error:
  * Binds as the administrative user and performs a search, dealing with any
  * errors.
  *
+ * @param inst rlm_ldap configuration.
  * @param request Current request.
  * @param pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL 
  *	after calling this function.
@@ -736,6 +738,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	if (!result) {
 		vp = pairfind(request->config_items, PW_LDAP_USERDN, 0, TAG_ANY);
 		if (vp) {
+			RDEBUG("Using user DN from request \"%s\"", vp->vp_strvalue);
 			*rcode = RLM_MODULE_OK;
 			return vp->vp_strvalue;
 		}
@@ -778,6 +781,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 			*rcode = RLM_MODULE_NOTFOUND;
 			return NULL;
 		default:
+			*rcode = RLM_MODULE_FAIL;
 			return NULL;
 	}
 	
@@ -802,8 +806,8 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 		goto finish;
 	}
 	
-	vp = pairmake(request, &request->config_items,
-		      "LDAP-UserDn", dn, T_OP_EQ);
+	RDEBUG("User object found at DN \"%s\"", dn);
+	vp = pairmake(request, &request->config_items, "LDAP-UserDn", dn, T_OP_EQ);
 	if (vp) {	
 		*rcode = RLM_MODULE_OK;
 	}

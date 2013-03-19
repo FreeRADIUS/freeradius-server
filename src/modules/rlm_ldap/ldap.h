@@ -1,6 +1,6 @@
 /**
  * $Id$
- * @file ldap.
+ * @file ldap.h
  * @brief LDAP authorization and authentication module headers.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>
@@ -15,6 +15,8 @@
 #include	<ldap.h>
 
 #define LDAP_MAX_ATTRMAP	128
+#define LDAP_MAP_RESERVED	3
+
 #define LDAP_MAX_ATTR_STR_LEN	256
 #define LDAP_MAX_FILTER_STR_LEN	1024
 
@@ -153,7 +155,9 @@ typedef struct ldap_handle {
 
 typedef struct rlm_ldap_map_xlat {
 	const value_pair_map_t *maps;
-	const char *attrs[LDAP_MAX_ATTRMAP];
+	const char *attrs[LDAP_MAX_ATTRMAP + LDAP_MAP_RESERVED + 1]; //!< Reserve some space for access attributes
+								     //!< and NULL termination.
+	int count;
 } rlm_ldap_map_xlat_t;
 
 typedef struct rlm_ldap_result {
@@ -243,5 +247,4 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
 
 void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		     const rlm_ldap_map_xlat_t *expanded, LDAPMessage *entry);
-
 #endif

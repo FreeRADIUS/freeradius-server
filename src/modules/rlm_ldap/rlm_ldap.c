@@ -761,17 +761,12 @@ static rlm_rcode_t ldap_authenticate(void *instance, REQUEST *request)
  */
 static rlm_rcode_t ldap_authorize(void *instance, REQUEST *request)
 {
-	ldap_rcode_t status;
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ldap_instance_t	*inst = instance;
-	char		*user_dn = NULL;
 	char		**vals;
 	VALUE_PAIR	*vp;
 	ldap_handle_t	*conn;
 	LDAPMessage	*result, *entry;
-	int		ldap_errno;
-	char		filter[LDAP_MAX_FILTER_STR_LEN];
-	char		basedn[LDAP_MAX_FILTER_STR_LEN];
 	rlm_ldap_map_xlat_t	expanded; /* faster that mallocing every time */
 	
 	if (!request->username) {
@@ -789,18 +784,6 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (!radius_xlat(filter, sizeof(filter), inst->filter, request, rlm_ldap_escape_func, NULL)) {
-		RDEBUGE("Failed creating filter");
-		
-		return RLM_MODULE_INVALID;
-	}
-
-	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn, request, rlm_ldap_escape_func, NULL)) {
-		RDEBUGE("Failed creating basedn");
-		
-		return RLM_MODULE_INVALID;
-	}
-	
 	if (rlm_ldap_map_xlat(request, inst->user_map, &expanded) < 0) {
 		return RLM_MODULE_FAIL;
 	}
@@ -808,37 +791,27 @@ static rlm_rcode_t ldap_authorize(void *instance, REQUEST *request)
 	conn = rlm_ldap_get_socket(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
 	
-	status = rlm_ldap_search(inst, request, &conn, basedn, LDAP_SCOPE_SUBTREE, filter, expanded.attrs, &result);
-	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			rcode = RLM_MODULE_NOTFOUND;
-			RDEBUGE("User object not found");
-		default:
-			goto free_socket;
+	/*
+	 *	Add any additional attributes we need for checking access, memberships, and profiles
+	 */
+	if (inst->access_positive) {
+		expanded.attrs[expanded.count++] = inst->userobj_access_attr;
+	}
+
+	if (inst->userobj_membership_attr) {
+		expanded.attrs[expanded.count++] = inst->userobj_membership_attr;
 	}
 	
-	rad_assert(conn);
-
-	entry = ldap_first_entry(conn->handle, result);
-	if (!entry) {
-		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s",
-		        ldap_err2string(ldap_errno));
-		       
-		goto free_result;
-	}
-
-	user_dn = ldap_get_dn(conn->handle, entry);
-	if (!user_dn) {
-		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("ldap_get_dn() failed: %s", ldap_err2string(ldap_errno));
-
-		goto free_result;
+	if (inst->profile_attr) {
+		expanded.attrs[expanded.count++] = inst->profile_attr;
 	}
 	
-	RDEBUG2("User found at DN \"%s\"", user_dn);
+	expanded.attrs[expanded.count] = NULL;
+	 
+	if (!rlm_ldap_find_user(inst, request, &conn, expanded.attrs, &result, &rcode)) {
+		goto free_result;			
+	}
+
 
 #ifdef WITH_EDIR
 	/*
@@ -936,10 +909,10 @@ skip_edir:
 	}
 	
 free_result:
-	if (user_dn) ldap_memfree(user_dn);
 	rlm_ldap_map_xlat_free(&expanded);
-	ldap_msgfree(result);
-free_socket:
+	if (result) {
+		ldap_msgfree(result);
+	}
 	rlm_ldap_release_socket(inst, conn);
 
 	return rcode;

@@ -228,7 +228,10 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
 			
 	}
 	
+	rad_assert(total < LDAP_MAX_ATTRMAP);
+	
 	expanded->attrs[total] = NULL;
+	expanded->count = total;
 	expanded->maps = maps;
 	
 	return 0;
