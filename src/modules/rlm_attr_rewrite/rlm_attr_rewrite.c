@@ -191,7 +191,11 @@ static rlm_rcode_t do_attr_rewrite(void *instance, REQUEST *request)
 			DEBUG2("%s: xlat on replace string failed.", inst->name);
 			return rcode;
 		}
-		attr_vp = pairmake(inst->attribute,replace_STR,0);
+
+		/*
+		 *	@todo: this shouldn't really be the request.
+		 */
+		attr_vp = pairmake(request, NULL, inst->attribute,replace_STR,0);
 		if (attr_vp == NULL){
 			DEBUG2("%s: Could not add new attribute %s with value '%s'", inst->name,
 				inst->attribute,replace_STR);

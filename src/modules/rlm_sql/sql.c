@@ -162,7 +162,7 @@ int sql_release_socket(rlm_sql_t * inst, rlm_sql_handle_t * handle)
  *	Purpose: Read entries from the database and fill VALUE_PAIR structures
  *
  *************************************************************************/
-int sql_userparse(VALUE_PAIR **head, rlm_sql_row_t row)
+int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 {
 	VALUE_PAIR *vp;
 	const char *ptr, *value;
@@ -241,7 +241,7 @@ int sql_userparse(VALUE_PAIR **head, rlm_sql_row_t row)
 	/*
 	 *	Create the pair
 	 */
-	vp = pairmake(row[2], NULL, operator);
+	vp = pairmake(ctx, NULL, row[2], NULL, operator);
 	if (!vp) {
 		radlog(L_ERR, "rlm_sql: Failed to create the pair: %s",
 		       fr_strerror());
@@ -412,7 +412,8 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query
  *	Purpose: Get any group check or reply pairs
  *
  *************************************************************************/
-int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle, VALUE_PAIR **pair, char *query)
+int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
+		  TALLOC_CTX *ctx, VALUE_PAIR **pair, char *query)
 {
 	rlm_sql_row_t row;
 	int     rows = 0;
@@ -425,7 +426,7 @@ int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle, VALUE_PAIR **pair
 		row = (*handle)->row;
 		if (!row)
 			break;
-		if (sql_userparse(pair, row) != 0) {
+		if (sql_userparse(ctx, pair, row) != 0) {
 			radlog(L_ERR, "rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
 			
 			(inst->module->sql_finish_select_query)(*handle, inst->config);

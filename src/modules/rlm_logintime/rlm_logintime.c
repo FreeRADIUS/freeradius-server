@@ -191,15 +191,13 @@ static rlm_rcode_t logintime_authorize(void *instance, REQUEST *request)
 			DEBUG("rlm_logintime: timestr returned reject");
 			if (data->msg && data->msg[0]){
 				char msg[MAX_STRING_LEN];
-				VALUE_PAIR *tmp;
 
 				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL, NULL)) {
 					radlog(L_ERR, "rlm_logintime: xlat failed.");
 					return RLM_MODULE_FAIL;
 				}
 				pairfree(&request->reply->vps);
-				tmp = pairmake("Reply-Message", msg, T_OP_SET);
-				request->reply->vps = tmp;
+				pairmake_reply("Reply-Message", msg, T_OP_SET);
 			}
 
 			RDEBUGE("Outside allowed timespan (time allowed %s)",

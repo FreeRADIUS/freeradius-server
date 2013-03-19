@@ -300,10 +300,8 @@ static rlm_rcode_t unix_authorize(UNUSED void *instance, REQUEST *request)
 	if (encrypted_pass[0] == 0)
 		return RLM_MODULE_NOOP;
 
-	vp = pairmake("Crypt-Password", encrypted_pass, T_OP_SET);
+	vp = pairmake_config("Crypt-Password", encrypted_pass, T_OP_SET);
 	if (!vp) return RLM_MODULE_FAIL;
-
-	pairadd(&request->config_items, vp);
 
 	return RLM_MODULE_UPDATED;
 }

@@ -140,6 +140,7 @@ static int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	int		i, status;
 	uint32_t	lvalue;
 	VALUE_PAIR	*state;
+	REQUEST		*request = handler->request;
 
 	rad_assert(handler != NULL);
 	rad_assert(handler->request != NULL);
@@ -148,9 +149,8 @@ static int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pairmake("State", "0x00", T_OP_EQ);
+	state = pairmake_reply("State", "0x00", T_OP_EQ);
 	if (!state) return 0;
-	pairadd(&(handler->request->reply->vps), state);
 	state->length = EAP_STATE_LEN;
 
 	/*
@@ -714,8 +714,7 @@ static int eap_example_server_step(EAP_HANDLER *handler)
 				 */
 			}
 
-			vp = radius_pairmake(request, &request->reply->vps,
-					     "MS-MPPE-Recv-Key", "", T_OP_EQ);
+			vp = pairmake_reply("MS-MPPE-Recv-Key", "", T_OP_EQ);
 			if (vp) {
 				memcpy(vp->vp_octets,
 				       handler->server_ctx.eap_if->eapKeyData,
@@ -723,8 +722,7 @@ static int eap_example_server_step(EAP_HANDLER *handler)
 				vp->length = length;
 			}
 			
-			vp = radius_pairmake(request, &request->reply->vps,
-					     "MS-MPPE-Send-Key", "", T_OP_EQ);
+			vp = pairmake_reply("MS-MPPE-Send-Key", "", T_OP_EQ);
 			if (vp) {
 				memcpy(vp->vp_octets,
 				       handler->server_ctx.eap_if->eapKeyData + length,

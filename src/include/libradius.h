@@ -443,7 +443,7 @@ VALUE_PAIR	*paircopy2(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, in
 void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag);
 int		pairparsevalue(VALUE_PAIR *vp, const char *value);
-VALUE_PAIR	*pairmake(const char *attribute, const char *value, FR_TOKEN op);
+VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *attribute, const char *value, FR_TOKEN op);
 int 		pairmark_xlat(VALUE_PAIR *vp, const char *value);
 FR_TOKEN 	pairread(const char **ptr, VALUE_PAIR_RAW *raw);
 FR_TOKEN	userparse(const char *buffer, VALUE_PAIR **head);

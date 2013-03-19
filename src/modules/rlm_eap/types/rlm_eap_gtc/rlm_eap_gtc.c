@@ -140,7 +140,7 @@ static int gtc_authenticate(void *instance, eap_handler_t *handler)
 	/*
 	 *	Get the Cleartext-Password for this user.
 	 */
-	rad_assert(handler->request != NULL);
+	rad_assert(request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
 
 	/*
@@ -174,7 +174,7 @@ static int gtc_authenticate(void *instance, eap_handler_t *handler)
 		/*
 		 *	For now, do clear-text password authentication.
 		 */
-		vp = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+		vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
 			RDEBUG2E("Cleartext-Password is required for authentication.");
 			eap_ds->request->code = PW_EAP_FAILURE;
@@ -205,9 +205,9 @@ static int gtc_authenticate(void *instance, eap_handler_t *handler)
 		 *	If there was a User-Password in the request,
 		 *	why the heck are they using EAP-GTC?
 		 */
-		pairdelete(&handler->request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+		pairdelete(&request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
-		vp = pairmake("User-Password", "", T_OP_EQ);
+		vp = pairmake_packet("User-Password", "", T_OP_EQ);
 		if (!vp) {
 			radlog(L_ERR, "rlm_eap_gtc: out of memory");
 			return 0;
@@ -220,13 +220,12 @@ static int gtc_authenticate(void *instance, eap_handler_t *handler)
 		 *	Add the password to the request, and allow
 		 *	another module to do the work of authenticating it.
 		 */
-		pairadd(&handler->request->packet->vps, vp);
-		handler->request->password = vp;
+		request->password = vp;
 
 		/*
 		 *	This is a wild & crazy hack.
 		 */
-		rcode = module_authenticate(inst->auth_type, handler->request);
+		rcode = module_authenticate(inst->auth_type, request);
 		if (rcode != RLM_MODULE_OK) {
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;

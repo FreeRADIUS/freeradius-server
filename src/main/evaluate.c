@@ -265,7 +265,8 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				 */
 				da = dict_attrbyname(pleft);
 				if (da && (da->vendor == 0) && radius_find_compare(da->attr)) {
-					VALUE_PAIR *check = pairmake(pleft, pright, token);
+					VALUE_PAIR *check;
+					check = pairmake(request, NULL, pleft, pright, token);
 					*presult = (radius_callback_compare(request, NULL, check, NULL, NULL) == 0);
 					RDEBUG3("  Callback returns %d",
 						*presult);

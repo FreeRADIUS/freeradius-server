@@ -380,7 +380,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pairmake("State", "0x00", T_OP_EQ);
+	state = pairmake_reply("State", "0x00", T_OP_EQ);
 	if (!state) return 0;
 
 	/*
@@ -512,8 +512,6 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	       state->vp_octets[2], state->vp_octets[3],
 	       state->vp_octets[4], state->vp_octets[5],
 	       state->vp_octets[6], state->vp_octets[7]);
-	
-	pairadd(&(request->reply->vps), state);
 
 	return 1;
 }

@@ -840,35 +840,6 @@ VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 	return vp;
 }
 
-/** Create a VALUE_PAIR from ASCII strings and add it to a list of VALUE_PAIR s
- *
- * Converts an attribute string identifier (with an optional tag qualifier)
- * and value string into a VALUE_PAIR.
- *
- * The string value is parsed according to the type of VALUE_PAIR being created.
- *
- * @param[in] request current request.
- * @param[out] vps List to add new VALUE_PAIR to, if NULL will just
- *	return VALUE_PAIR.
- * @param[in] attribute name.
- * @param[in] value attribute value.
- * @param[in] op fr_tokens value.
- * @return a new VALUE_PAIR.
- */
-VALUE_PAIR *radius_pairmake(UNUSED REQUEST *request, VALUE_PAIR **vps,
-			    const char *attribute, const char *value,
-			    FR_TOKEN op)
-{
-	VALUE_PAIR *vp;
-
-	vp = pairmake(attribute, value, op);
-	if (!vp) return NULL;
-
-	if (vps) pairadd(vps, vp);
-
-	return vp;
-}
-
 /** Print a single valuepair to stderr or error log.
  *
  * @param[in] vp list to print.

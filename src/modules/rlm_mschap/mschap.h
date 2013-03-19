@@ -16,7 +16,7 @@ void mschap_auth_response(const char *username,
 			  uint8_t *ntresponse,
 			  uint8_t *peer_challenge, uint8_t *auth_challenge,
 			  char *response);
-void mschap_add_reply(REQUEST *request, VALUE_PAIR ** vp, unsigned char ident,
+void mschap_add_reply(REQUEST *request, unsigned char ident,
 		      const char* name, const char* value, int len);
 
 

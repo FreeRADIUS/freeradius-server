@@ -624,9 +624,8 @@ autz_redo:
 				 *	Remove ALL reply attributes.
 				 */
 				pairfree(&request->reply->vps);
-				radius_pairmake(request, &request->reply->vps,
-						"Reply-Message",
-						user_msg, T_OP_SET);
+				pairmake_reply("Reply-Message",
+					       user_msg, T_OP_SET);
 
 				snprintf(logstr, sizeof(logstr), "Multiple logins (max %d) %s",
 					check_item->vp_integer,
@@ -686,9 +685,7 @@ int rad_virtual_server(REQUEST *request)
 
 	if (request->reply->code == PW_AUTHENTICATION_REJECT) {
 		pairdelete(&request->config_items, PW_POST_AUTH_TYPE, 0, TAG_ANY);
-		vp = radius_pairmake(request, &request->config_items,
-				     "Post-Auth-Type", "Reject",
-				     T_OP_SET);
+		vp = pairmake_config("Post-Auth-Type", "Reject", T_OP_SET);
 		if (vp) rad_postauth(request);
 	}
 

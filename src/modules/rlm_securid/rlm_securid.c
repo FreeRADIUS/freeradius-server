@@ -466,7 +466,6 @@ static int securid_authenticate(void *instance, REQUEST *request)
 {
 	int rcode;
 	rlm_securid_t *inst = instance;
-	VALUE_PAIR *vp;
 	char  buffer[MAX_STRING_LEN]="";
 	const char *username=NULL, *password=NULL;
 	
@@ -541,17 +540,8 @@ static int securid_authenticate(void *instance, REQUEST *request)
 		break;
 	}
 
-	if (*buffer) {
-		/* Generate Reply-Message attribute with reply message data */
-		vp = pairmake("Reply-Message", buffer, T_OP_EQ);
-		
-		/* make sure message ends with '\0' */
-		if (vp->length < (int) sizeof(vp->vp_strvalue)) {
-			vp->vp_strvalue[vp->length] = '\0';
-			vp->length++;
-		}
-		pairadd(&request->reply->vps,vp);
-	}
+	if (*buffer) pairmake_reply("Reply-Message", buffer, T_OP_EQ);
+
 	return rcode;
 }
 

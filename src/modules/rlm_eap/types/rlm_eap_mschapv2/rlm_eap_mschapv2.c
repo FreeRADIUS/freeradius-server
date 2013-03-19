@@ -218,19 +218,14 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 /*
  *	Initiate the EAP-MSCHAPV2 session by sending a challenge to the peer.
  */
-static int mschapv2_initiate(void *instance, eap_handler_t *handler)
+static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		i;
 	VALUE_PAIR	*challenge;
 	mschapv2_opaque_t *data;
 
-	instance = instance;	/* -Wunused */
-
-	challenge = pairmake("MS-CHAP-Challenge", "0x00", T_OP_EQ);
-	if (!challenge) {
-		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
-		return 0;
-	}
+	challenge = pairmake(handler, NULL,
+			     "MS-CHAP-Challenge", "0x00", T_OP_EQ);
 
 	/*
 	 *	Get a random challenge.
@@ -297,27 +292,29 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 {
 	VALUE_PAIR *response = NULL;
 	mschapv2_opaque_t *data;
+	REQUEST *request = handler->request;
 
 	data = (mschapv2_opaque_t *) handler->opaque;
 	rad_assert(data != NULL);
 
 	tunnel_data = tunnel_data; /* -Wunused */
 
-	DEBUG2("  rlm_eap_mschapv2: Passing reply from proxy back into the tunnel %p %d.",
-	       handler->request, handler->request->reply->code);
+	RDEBUG2("Passing reply from proxy back into the tunnel %d.",
+		request->reply->code);
 
 	/*
 	 *	There is only a limited number of possibilities.
 	 */
-	switch (handler->request->reply->code) {
+	switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
-		DEBUG("  rlm_eap_mschapv2: Proxied authentication succeeded.");
+		RDEBUG2("Proxied authentication succeeded.");
+
 		/*
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
 		pairmove2(&response,
-			  &handler->request->reply->vps,
+			  &request->reply->vps,
 			  PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		break;
 
@@ -338,7 +335,7 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 	/*
 	 *	Done doing EAP proxy stuff.
 	 */
-	handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+	request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 	eapmschapv2_compose(handler, response);
 	data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
@@ -354,13 +351,13 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 	 * access-accept e.g. vlan, etc. This lets the PEAP
 	 * use_tunneled_reply code work
 	 */
-	data->reply = paircopy(handler->request->reply->vps);
+	data->reply = paircopy(request->reply->vps);
 
 	/*
 	 *	And we need to challenge the user, not ack/reject them,
 	 *	so we re-write the ACK to a challenge.  Yuck.
 	 */
-	handler->request->reply->code = PW_ACCESS_CHALLENGE;
+	request->reply->code = PW_ACCESS_CHALLENGE;
 	pairfree(&response);
 
 	return 1;
@@ -377,8 +374,9 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	EAP_DS *eap_ds = handler->eap_ds;
 	VALUE_PAIR *challenge, *response, *name;
 	rlm_eap_mschapv2_t *inst = (rlm_eap_mschapv2_t *) arg;
+	REQUEST *request = handler->request;
 
-	rad_assert(handler->request != NULL);
+	rad_assert(request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
 
 	data = (mschapv2_opaque_t *) handler->opaque;
@@ -413,21 +411,19 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 				DEBUG2("  rlm_eap_mschapv2: password change packet received");
 
-				challenge = pairmake("MS-CHAP-Challenge", "0x00", T_OP_EQ);
+				challenge = pairmake_packet("MS-CHAP-Challenge", "0x00", T_OP_EQ);
 				if (!challenge) {
 					radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 					return 0;
 				}
 				challenge->length = MSCHAPV2_CHALLENGE_LEN;
 				memcpy(challenge->vp_strvalue, data->challenge, MSCHAPV2_CHALLENGE_LEN);
-				pairadd(&handler->request->packet->vps, challenge);
 
-				cpw = pairmake("MS-CHAP2-CPW", "", T_OP_EQ);
+				cpw = pairmake_packet("MS-CHAP2-CPW", "", T_OP_EQ);
 				cpw->vp_octets[0] = 7;
 				cpw->vp_octets[1] = mschap_id;
 				memcpy(cpw->vp_octets+2, eap_ds->response->type.data + 520, 66);
 				cpw->length = 68;
-				pairadd(&handler->request->packet->vps, cpw);
 
 				/*
 				 * break the encoded password into VPs (3 of them)
@@ -439,7 +435,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 					if (to_copy > 243)
 						to_copy = 243;
 
-					nt_enc = pairmake("MS-CHAP-NT-Enc-PW", "", T_OP_ADD);
+					nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", "", T_OP_ADD);
 					nt_enc->vp_octets[0] = 6;
 					nt_enc->vp_octets[1] = mschap_id;
 					nt_enc->vp_octets[2] = 0;
@@ -448,11 +444,10 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 					memcpy(nt_enc->vp_octets + 4, eap_ds->response->type.data + 4 + copied, to_copy);
 					copied += to_copy;
 					nt_enc->length = 4 + to_copy;
-					pairadd(&handler->request->packet->vps, nt_enc);
 				}
 
 				DEBUG2("  rlm_eap_mschapv2: built change password packet");
-				debug_pair_list(handler->request->packet->vps);
+				debug_pair_list(request->packet->vps);
 
 				/*
 				 * jump to "authentication"
@@ -469,7 +464,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 			}
 
 	failure:
-			handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+			request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 1;
 
@@ -483,7 +478,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 			switch (ccode) {
 				case PW_EAP_MSCHAPV2_SUCCESS:
 					eap_ds->request->code = PW_EAP_SUCCESS;
-					pairadd(&handler->request->reply->vps, data->mppe_keys);
+					pairadd(&request->reply->vps, data->mppe_keys);
 					data->mppe_keys = NULL;
 					/* fall through... */
 
@@ -492,9 +487,9 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 					/*
 					 *	It's a success.  Don't proxy it.
 					 */
-					handler->request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
+					request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-					pairadd(&handler->request->reply->vps, data->reply);
+					pairadd(&request->reply->vps, data->reply);
 					data->reply = NULL;
 					return 1;
 			}
@@ -566,7 +561,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
-	challenge = pairmake("MS-CHAP-Challenge", "0x00", T_OP_EQ);
+	challenge = pairmake_packet("MS-CHAP-Challenge", "0x00", T_OP_EQ);
 	if (!challenge) {
 		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
@@ -574,9 +569,8 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	challenge->length = MSCHAPV2_CHALLENGE_LEN;
 	memcpy(challenge->vp_strvalue, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
-	response = pairmake("MS-CHAP2-Response", "0x00", T_OP_EQ);
+	response = pairmake_packet("MS-CHAP2-Response", "0x00", T_OP_EQ);
 	if (!response) {
-		pairfree(&challenge);
 		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
 	}
@@ -587,10 +581,8 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	response->vp_strvalue[0] = eap_ds->response->type.data[1];
 	response->vp_strvalue[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 
-	name = pairmake("NTLM-User-Name", "", T_OP_EQ);
+	name = pairmake_packet("NTLM-User-Name", "", T_OP_EQ);
 	if (!name) {
-		pairfree(&challenge);
-		pairfree(&response);
 		radlog(L_ERR, "rlm_eap_mschapv2: Failed creating NTLM-User-Name: %s", fr_strerror());
 		return 0;
 	}
@@ -610,14 +602,6 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	       name->length);
 	name->vp_strvalue[name->length] = '\0';
 
-	/*
-	 *	Add the pairs to the request, and call the 'mschap'
-	 *	module.
-	 */
-	pairadd(&handler->request->packet->vps, challenge);
-	pairadd(&handler->request->packet->vps, response);
-	pairadd(&handler->request->packet->vps, name);
-
 packet_ready:
 
 #ifdef WITH_PROXY
@@ -631,7 +615,7 @@ packet_ready:
 	 *	EAP attributes, and proxy the MS-CHAP attributes to a
 	 *	home server.
 	 */
-	if (handler->request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
+	if (request->options & RAD_REQUEST_OPTION_PROXY_EAP) {
 		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
 
@@ -649,8 +633,8 @@ packet_ready:
 		/*
 		 *	Associate the callback with the request.
 		 */
-		rcode = request_data_add(handler->request,
-					 handler->request->proxy,
+		rcode = request_data_add(request,
+					 request->proxy,
 					 REQUEST_DATA_EAP_TUNNEL_CALLBACK,
 					 tunnel, free);
 		rad_assert(rcode == 0);
@@ -665,7 +649,7 @@ packet_ready:
 		 *	the State attribute back, before passing
 		 *	the handler & request back into the tunnel.
 		 */
-		pairdelete(&handler->request->packet->vps, PW_STATE, 0, TAG_ANY);
+		pairdelete(&request->packet->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	Fix the User-Name when proxying, to strip off
@@ -674,7 +658,7 @@ packet_ready:
 		 *	in the user name, THEN discard the user name.
 		 */
 		if (inst->with_ntdomain_hack &&
-		    ((challenge = pairfind(handler->request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) != NULL) &&
+		    ((challenge = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY)) != NULL) &&
 		    ((username = strchr(challenge->vp_strvalue, '\\')) != NULL)) {
 			/*
 			 *	Wipe out the NT domain.
@@ -700,7 +684,7 @@ packet_ready:
 	/*
 	 *	This is a wild & crazy hack.
 	 */
-	rcode = module_authenticate(PW_AUTHTYPE_MS_CHAP, handler->request);
+	rcode = module_authenticate(PW_AUTHTYPE_MS_CHAP, request);
 
 	/*
 	 *	Delete MPPE keys & encryption policy.  We don't
@@ -714,12 +698,12 @@ packet_ready:
 	 */
 	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
-		pairmove2(&response, &handler->request->reply->vps,
+		pairmove2(&response, &request->reply->vps,
 			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	} else if (inst->send_error) {
-		pairmove2(&response, &handler->request->reply->vps,
+		pairmove2(&response, &request->reply->vps,
 			  PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (response) {
 			int n,err,retry;

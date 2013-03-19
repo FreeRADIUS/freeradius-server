@@ -632,14 +632,13 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 		 *	Add the Sql-Group attribute to the request list so we know
 		 *	which group we're retrieving attributes for
 		 */
-		sql_group = pairmake("Sql-Group", entry->name, T_OP_EQ);
+		sql_group = pairmake_packet("Sql-Group", entry->name, T_OP_EQ);
 		if (!sql_group) {
 			radlog_request(L_ERR, 0, request,
 				       "Error creating Sql-Group attribute");
 			talloc_free(head);
 			return -1;
 		}
-		pairadd(&request->packet->vps, sql_group);
 		if (!radius_xlat(querystr, sizeof(querystr), inst->config->authorize_group_check_query, request, sql_escape_func, inst)) {
 			radlog_request(L_ERR, 0, request,
 				       "Error generating query; rejecting user");
@@ -648,7 +647,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 			talloc_free(head);
 			return -1;
 		}
-		rows = sql_getvpdata(inst, &handle, &check_tmp, querystr);
+		rows = sql_getvpdata(inst, &handle, request, &check_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "Error retrieving check pairs for group %s",
 			       entry->name);
@@ -676,7 +675,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 					talloc_free(head);
 					return -1;
 				}
-				if (sql_getvpdata(inst, &handle, &reply_tmp, querystr) < 0) {
+				if (sql_getvpdata(inst, &handle, request->reply, &reply_tmp, querystr) < 0) {
 					radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 					       entry->name);
 					/* Remove the grouup we added above */
@@ -711,7 +710,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 				talloc_free(head);
 				return -1;
 			}
-			if (sql_getvpdata(inst, &handle, &reply_tmp, querystr) < 0) {
+			if (sql_getvpdata(inst, &handle, request->reply, &reply_tmp, querystr) < 0) {
 				radlog_request(L_ERR, 0, request, "Error retrieving reply pairs for group %s",
 				       entry->name);
 				/* Remove the grouup we added above */
@@ -1020,7 +1019,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 			goto error;
 		}
 		
-		rows = sql_getvpdata(inst, &handle, &check_tmp, querystr);
+		rows = sql_getvpdata(inst, &handle, request, &check_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 	
@@ -1058,7 +1057,7 @@ static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
 			goto error;
 		}
 		
-		rows = sql_getvpdata(inst, &handle, &reply_tmp, querystr);
+		rows = sql_getvpdata(inst, &handle, request->reply, &reply_tmp, querystr);
 		if (rows < 0) {
 			radlog_request(L_ERR, 0, request, "SQL query error; rejecting user");
 

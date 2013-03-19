@@ -503,20 +503,18 @@ static int passwd_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (struct passwd_instance * inst, REQUEST *request, VALUE_PAIR ** vp, struct mypasswd * pw, char when, const char *listname)
+static void addresult (struct passwd_instance * inst, REQUEST *request, TALLOC_CTX *ctx, VALUE_PAIR **vps, struct mypasswd * pw, char when, const char *listname)
 {
 	int i;
-	VALUE_PAIR *newpair;
+	VALUE_PAIR *vp;
 
 	for (i=0; i<inst->nfields; i++) {
 		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
 			if ( !inst->ignoreempty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
-				if (! (newpair = pairmake (inst->pwdfmt->field[i], pw->field[i], T_OP_EQ))) {
-					radlog(L_AUTH, "rlm_passwd: Unable to create %s: %s", inst->pwdfmt->field[i], pw->field[i]);
-					return;
+				vp = pairmake(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);
+				if (vp) {
+					RDEBUG("Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 				}
-				RDEBUG("Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
-				pairadd (vp, newpair);
 			} else
 				RDEBUG("NOOP %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
 		}
@@ -542,9 +540,9 @@ static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
 			continue;
 		}
 		do {
-			addresult(inst, request, &request->config_items, pw, 0, "config_items");
-			addresult(inst, request, &request->reply->vps, pw, 1, "reply_items");
-			addresult(inst, request, &request->packet->vps, 	pw, 2, "request_items");
+			addresult(inst, request, request, &request->config_items, pw, 0, "config_items");
+			addresult(inst, request, request->reply, &request->reply->vps, pw, 1, "reply_items");
+			addresult(inst, request, request->packet, &request->packet->vps, 	pw, 2, "request_items");
 		} while ( (pw = get_next(buffer, inst->ht, &last_found)) );
 		found++;
 		if (!inst->allowmultiple) break;

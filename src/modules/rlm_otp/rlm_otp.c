@@ -211,8 +211,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 	if (inst->allow_sync && !inst->allow_async) {
 		/* This is the token sync response. */
 		if (!auth_type_found) {
-			pairadd(&request->config_items,
-				pairmake("Auth-Type", inst->name, T_OP_EQ));
+			pairmake_config("Auth-Type", inst->name, T_OP_EQ);
 		}
 
 		return RLM_MODULE_OK;
@@ -314,8 +313,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 	DEBUG("rlm_otp: Sending Access-Challenge.");
 
 	if (!auth_type_found) {
-		pairadd(&request->config_items,
-			pairmake("Auth-Type", inst->name, T_OP_EQ));
+		pairmake_config("Auth-Type", inst->name, T_OP_EQ);
 	}
 	
 	return RLM_MODULE_HANDLED;

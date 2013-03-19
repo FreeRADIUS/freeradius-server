@@ -216,7 +216,6 @@ static rlm_rcode_t smsotp_authenticate(void *instance, REQUEST *request)
 {
 	rlm_smsotp_t *inst = instance;
 	VALUE_PAIR *state;
-	VALUE_PAIR *reply;
 	int bufsize;
 	int *fdp;
 	rlm_rcode_t rcode = RLM_MODULE_FAIL;
@@ -304,11 +303,8 @@ static rlm_rcode_t smsotp_authenticate(void *instance, REQUEST *request)
 	 *	Create the challenge, and add it to the reply.
 	 */
 		
-	reply = pairmake("Reply-Message", inst->challenge, T_OP_EQ);
-	pairadd(&request->reply->vps, reply);
-
-	state = pairmake("State", buffer, T_OP_EQ);
-	pairadd(&request->reply->vps, state);
+	pairmake_reply("Reply-Message", inst->challenge, T_OP_EQ);
+	pairmake_reply("State", buffer, T_OP_EQ);
 	
 	/*
 	 *  Mark the packet as an Access-Challenge packet.
@@ -348,7 +344,7 @@ static rlm_rcode_t smsotp_authorize(void *instance, REQUEST *request)
 		DEBUG("rlm_smsotp: Found reply to access challenge (AUTZ), Adding Auth-Type '%s'",inst->authtype);
 		
 		pairdelete(&request->config_items, PW_AUTH_TYPE, 0, TAG_ANY); /* delete old auth-type */
-		pairadd(&request->config_items, pairmake("Auth-Type", inst->authtype, T_OP_SET));
+		pairmake_config("Auth-Type", inst->authtype, T_OP_SET);
 	}
 
 	return RLM_MODULE_OK;

@@ -628,20 +628,20 @@ static int mschap_instantiate(CONF_SECTION *conf, void **instance)
  *	add_reply() adds either MS-CHAP2-Success or MS-CHAP-Error
  *	attribute to reply packet
  */
-void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
+void mschap_add_reply(REQUEST *request, unsigned char ident,
 		      const char* name, const char* value, int len)
 {
-	VALUE_PAIR *reply_attr;
-	reply_attr = pairmake(name, "", T_OP_EQ);
-	if (!reply_attr) {
+	VALUE_PAIR *vp;
+
+	vp = pairmake_reply(name, "", T_OP_EQ);
+	if (!vp) {
 		RDEBUG("Failed to create attribute %s: %s\n", name, fr_strerror());
 		return;
 	}
 
-	reply_attr->vp_octets[0] = ident;
-	memcpy(reply_attr->vp_octets + 1, value, len);
-	reply_attr->length = len + 1;
-	pairadd(vp, reply_attr);
+	vp->vp_octets[0] = ident;
+	memcpy(vp->vp_octets + 1, value, len);
+	vp->length = len + 1;
 }
 
 /*
@@ -651,7 +651,8 @@ static void mppe_add_reply(REQUEST *request,
 			   const char* name, const uint8_t * value, int len)
 {
        VALUE_PAIR *vp;
-       vp = radius_pairmake(request, &request->reply->vps, name, "", T_OP_EQ);
+
+       vp = pairmake_reply(name, "", T_OP_EQ);
        if (!vp) {
 	       RDEBUG("rlm_mschap: mppe_add_reply failed to create attribute %s: %s\n", name, fr_strerror());
 	       return;
@@ -911,9 +912,8 @@ ntlm_auth_err:
 		 * the new NT hash - this should be preferred over the
 		 * cleartext password as it avoids unicode hassles
 		 */
-		new_hash = radius_pairmake(request, &request->packet->vps,
-				"MS-CHAP-New-NT-Password", "",
-				T_OP_EQ);
+		new_hash = pairmake_packet("MS-CHAP-New-NT-Password", "",
+					   T_OP_EQ);
 		fr_md4_calc(new_hash->vp_octets, p, passlen);
 		new_hash->length = 16;
 
@@ -933,9 +933,8 @@ ntlm_auth_err:
 		 * do some unpleasant vileness to turn it into
 		 * utf8 without pulling in libraries like iconv
 		 */
-		new_pass = radius_pairmake(request, &request->packet->vps,
-				"MS-CHAP-New-Cleartext-Password", "",
-				T_OP_EQ);
+		new_pass = pairmake_packet("MS-CHAP-New-Cleartext-Password", "",
+					   T_OP_EQ);
 		new_pass->length = 0;
 		i = 0;
 		while (i<passlen) {
@@ -1284,8 +1283,7 @@ static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
 	 *	will take care of turning clear-text passwords into
 	 *	NT/LM passwords.
 	 */
-	if (!radius_pairmake(request, &request->config_items,
-			     "Auth-Type", inst->auth_type, T_OP_EQ)) {
+	if (!pairmake_config("Auth-Type", inst->auth_type, T_OP_EQ)) {
 		return RLM_MODULE_FAIL;
 	}
 
@@ -1347,9 +1345,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 	if (!smb_ctrl) {
 		password = pairfind(request->config_items, PW_SMB_ACCOUNT_CTRL_TEXT, 0, TAG_ANY);
 		if (password) {
-			smb_ctrl = radius_pairmake(request,
-						   &request->config_items,
-						   "SMB-Account-CTRL", "0",
+			smb_ctrl = pairmake_config("SMB-Account-CTRL", "0",
 						   T_OP_SET);
 			if (smb_ctrl) {
 				smb_ctrl->vp_integer = pdb_decode_acct_ctrl(password->vp_strvalue);
@@ -1400,8 +1396,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
-		lm_password = radius_pairmake(request, &request->config_items,
-					      "LM-Password", "", T_OP_EQ);
+		lm_password = pairmake_config("LM-Password", "", T_OP_EQ);
 		if (!lm_password) {
 			radlog_request(L_ERR, 0, request, "No memory");
 		} else {
@@ -1431,8 +1426,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
-		nt_password = radius_pairmake(request, &request->config_items,
-					      "NT-Password", "", T_OP_EQ);
+		nt_password = pairmake_config("NT-Password", "", T_OP_EQ);
 		if (!nt_password) {
 			radlog_request(L_ERR, 0, request, "No memory");
 			return RLM_MODULE_FAIL;
@@ -1534,7 +1528,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 			RDEBUG("Password change failed");
 
 			snprintf(buffer, sizeof(buffer), "E=709 R=0 M=Password change failed");
-			mschap_add_reply(request, &request->reply->vps,
+			mschap_add_reply(request,
 					cpw->vp_octets[1], "MS-CHAP-Error",
 					buffer, strlen(buffer));
 			return RLM_MODULE_REJECT;
@@ -1755,7 +1749,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 				snprintf(buffer + 45, sizeof(buffer) - 45,
 					 " V=3 M=%s", inst->retry_msg);
 			}
-			mschap_add_reply(request, &request->reply->vps,
+			mschap_add_reply(request,
 					 *response->vp_octets, "MS-CHAP-Error",
 					 buffer, strlen(buffer));
 			return RLM_MODULE_REJECT;
@@ -1775,7 +1769,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 
 			snprintf(buffer, sizeof(buffer), "E=648 R=0 C=%s V=3 M=Password Expired", newchal);
 
-			mschap_add_reply(request, &request->reply->vps,
+			mschap_add_reply(request,
 					 *response->vp_octets, "MS-CHAP-Error",
 					 buffer, strlen(buffer));
 			return RLM_MODULE_REJECT;
@@ -1787,7 +1781,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 			      response->vp_octets + 2, /* peer challenge */
 			      challenge->vp_octets, /* our challenge */
 			      msch2resp); /* calculated MPPE key */
-		mschap_add_reply(request, &request->reply->vps, *response->vp_octets,
+		mschap_add_reply(request, *response->vp_octets,
 				 "MS-CHAP2-Success", msch2resp, 42);
 		chap = 2;
 
@@ -1811,7 +1805,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 		if (((smb_ctrl->vp_integer & ACB_DISABLED) != 0) ||
 		    ((smb_ctrl->vp_integer & (ACB_NORMAL|ACB_WSTRUST)) == 0)) {
 			RDEBUG2("SMB-Account-Ctrl says that the account is disabled, or is not a normal or workstatin trust account.");
-			mschap_add_reply(request, &request->reply->vps,
+			mschap_add_reply(request,
 					  *response->vp_octets,
 					  "MS-CHAP-Error", "E=691 R=1", 9);
 			return RLM_MODULE_NOTFOUND;
@@ -1822,7 +1816,7 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 		 */
 		if ((smb_ctrl->vp_integer & ACB_AUTOLOCK) != 0) {
 			RDEBUG2("SMB-Account-Ctrl says that the account is locked out.");
-			mschap_add_reply(request, &request->reply->vps,
+			mschap_add_reply(request,
 					  *response->vp_octets,
 					  "MS-CHAP-Error", "E=647 R=0", 9);
 			return RLM_MODULE_USERLOCK;
@@ -1872,13 +1866,11 @@ static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
 				       mppe_sendkey, 16);
 
 		}
-		radius_pairmake(request, &request->reply->vps,
-				"MS-MPPE-Encryption-Policy",
-				(inst->require_encryption)? "0x00000002":"0x00000001",
-				T_OP_EQ);
-		radius_pairmake(request, &request->reply->vps,
-				"MS-MPPE-Encryption-Types",
-				(inst->require_strong)? "0x00000004":"0x00000006",
+		pairmake_reply("MS-MPPE-Encryption-Policy",
+			       (inst->require_encryption)? "0x00000002":"0x00000001",
+			       T_OP_EQ);
+		pairmake_reply("MS-MPPE-Encryption-Types",
+			       (inst->require_strong)? "0x00000004":"0x00000006",
 				T_OP_EQ);
 	} /* else we weren't asked to use MPPE */
 

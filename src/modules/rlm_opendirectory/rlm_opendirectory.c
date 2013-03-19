@@ -408,7 +408,7 @@ static rlm_rcode_t od_authorize(UNUSED void *instance, REQUEST *request)
 	if (uuid_is_null(guid_sacl) && uuid_is_null(guid_nasgroup)) {
 		RDEBUG("no access control groups, all users allowed.");
 		if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
-			pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
+			pairmake_config("Auth-Type", kAuthType, T_OP_EQ);
 			RDEBUG("Setting Auth-Type = %s", kAuthType);
 		}
 		return RLM_MODULE_OK;
@@ -459,7 +459,7 @@ static rlm_rcode_t od_authorize(UNUSED void *instance, REQUEST *request)
 	}
 	
 	if (pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY) == NULL) {
-		pairadd(&request->config_items, pairmake("Auth-Type", kAuthType, T_OP_EQ));
+		pairmake_config("Auth-Type", kAuthType, T_OP_EQ);
 		RDEBUG("Setting Auth-Type = %s", kAuthType);
 	}
 

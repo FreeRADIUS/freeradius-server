@@ -175,7 +175,7 @@ static rlm_rcode_t soh_postauth(UNUSED void * instance, REQUEST *request)
 					} else {
 						RDEBUG("SoH decoding NAP from DHCP request");
 						/* SoH payload */
-						rcode = soh_verify(request, request->packet->vps, data, vlen);
+						rcode = soh_verify(request, data, vlen);
 						if (rcode < 0) {
 							return RLM_MODULE_FAIL;
 						}
@@ -207,7 +207,7 @@ static rlm_rcode_t soh_authorize(UNUSED void * instance, REQUEST *request)
 
 	RDEBUG("SoH radius VP found");
 	/* decode it */
-	rv = soh_verify(request, request->packet->vps, vp->vp_octets, vp->length);
+	rv = soh_verify(request, vp->vp_octets, vp->length);
 	if (rv < 0) {
 		return RLM_MODULE_FAIL;
 	}

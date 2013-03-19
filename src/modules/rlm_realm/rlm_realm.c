@@ -204,8 +204,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	entered.
 	 */
 	if (realm->name[0] != '~') realmname = realm->name;
-	pairadd(&request->packet->vps, pairmake("Realm", realmname,
-						T_OP_EQ));
+	pairmake_packet("Realm", realmname, T_OP_EQ);
 	RDEBUG2("Adding Realm = \"%s\"", realmname);
 
 	/*
@@ -324,29 +323,6 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 }
 
 /*
- *	Add a "Proxy-To-Realm" attribute to the request.
- */
-static void add_proxy_to_realm(VALUE_PAIR **vps, REALM *realm)
-{
-	VALUE_PAIR *vp;
-
-	/*
-	 *	Tell the server to proxy this request to another
-	 *	realm.
-	 */
-	vp = pairmake("Proxy-To-Realm", realm->name, T_OP_EQ);
-	if (!vp) {
-		radlog(L_ERR, "no memory");
-		exit(1);
-	}
-
-	/*
-	 *  Add it, even if it's already present.
-	 */
-	pairadd(vps, vp);
-}
-
-/*
  *  Perform the realm module instantiation.  Configuration info is
  *  stored in *instance for later use.
  */
@@ -408,7 +384,7 @@ static rlm_rcode_t realm_authorize(void *instance, REQUEST *request)
 	 */
 	RDEBUG2("Preparing to proxy authentication request to realm \"%s\"\n",
 	       realm->name);
-	add_proxy_to_realm(&request->config_items, realm);
+	pairmake_config("Proxy-To-Realm", realm->name, T_OP_EQ);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
 }
@@ -441,7 +417,7 @@ static rlm_rcode_t realm_preacct(void *instance, REQUEST *request)
 	 */
 	RDEBUG2("Preparing to proxy accounting request to realm \"%s\"\n",
 	       realm->name);
-	add_proxy_to_realm(&request->config_items, realm);
+	pairmake_config("Proxy-To-Realm", realm->name, T_OP_EQ);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
 }
@@ -492,7 +468,7 @@ static rlm_rcode_t realm_coa(UNUSED void *instance, REQUEST *request)
 	 */
 	RDEBUG2("Preparing to proxy authentication request to realm \"%s\"\n",
 	       realm->name);
-	add_proxy_to_realm(&request->config_items, realm);
+	pairmake_config("Proxy-To-Realm", realm->name, T_OP_EQ);
 
 	return RLM_MODULE_UPDATED; /* try the next module */
 }

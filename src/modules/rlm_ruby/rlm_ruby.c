@@ -103,7 +103,7 @@ static VALUE radlog_rb(UNUSED VALUE self, VALUE msg_type, VALUE rb_msg) {
 
 /* Tuple to value pair conversion */
 
-static void add_vp_tuple(VALUE_PAIR **vpp, VALUE rb_value,
+static void add_vp_tuple(TALLOC_CTX *ctx, VALUE_PAIR **vpp, VALUE rb_value,
 	const char *function_name) {
     int i, outertuplesize;
     VALUE_PAIR *vp;
@@ -158,9 +158,8 @@ static void add_vp_tuple(VALUE_PAIR **vpp, VALUE rb_value,
 				function_name, s1, s2);
 
 			/* xxx Might need to support other T_OP */
-			vp = pairmake(s1, s2, T_OP_EQ);
+			vp = pairmake(ctx, vpp, s1, s2, T_OP_EQ);
 			if (vp != NULL) {
-			    pairadd(vpp, vp);
 			    radlog(L_DBG, "%s: s1, s2 OK\n",
 				    function_name);
 			} else {
@@ -272,10 +271,10 @@ static rlm_rcode_t ruby_function(REQUEST *request, int func,
 		rb_reply_items = rb_ary_entry(rb_result, 1);
 		rb_config_items = rb_ary_entry(rb_result, 2);
 	
-		add_vp_tuple(&request->reply->vps, rb_reply_items,
-			     function_name);
-		add_vp_tuple(&request->config_items, rb_config_items,
-			     function_name);
+		add_vp_tuple(request->reply, &request->reply->vps,
+			     rb_reply_items, function_name);
+		add_vp_tuple(request, &request->config_items,
+			     rb_config_items, function_name);
 	}
     } else if (FIXNUM_P(rb_result)) {
 	rcode = FIX2INT(rb_result);

@@ -82,9 +82,8 @@ static rlm_rcode_t expiration_authorize(void *instance, REQUEST *request)
 					return RLM_MODULE_FAIL;
 				}
 
-				vp = pairmake("Reply-Message", msg, T_OP_ADD);
 				pairfree(&request->reply->vps);
-				request->reply->vps = vp;
+				pairmake_reply("Reply-Message", msg, T_OP_ADD);
 			}
 
 			RDEBUGE("Account has expired [Expiration %s]",check_item->vp_strvalue);

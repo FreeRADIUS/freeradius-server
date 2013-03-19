@@ -156,7 +156,8 @@ static int eappeap_soh(eap_handler_t *handler, tls_session_t *tls_session)
 	return 1;
 }
 
-static VALUE_PAIR* eapsoh_verify(REQUEST *request, const uint8_t *data, unsigned int data_len) {
+static void eapsoh_verify(REQUEST *request, RADIUS_PACKET *packet,
+			  const uint8_t *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;
 	uint8_t eap_method_base;
@@ -164,44 +165,42 @@ static VALUE_PAIR* eapsoh_verify(REQUEST *request, const uint8_t *data, unsigned
 	uint32_t eap_method;
 	int rv;
 
-	vp = pairmake("SoH-Supported", "no", T_OP_EQ);
+	vp = pairmake(packet, &packet->vps, "SoH-Supported", "no", T_OP_EQ);
 	if (data && data[0] == PW_EAP_NAK) {
 		RDEBUG("SoH - client NAKed");
-		goto done;
+		return;
 	}
 
 	if (!data || data_len < 8) {
 		RDEBUG("SoH - eap payload too short");
-		goto done;
+		return;
 	}
 
 	eap_method_base = *data++;
 	if (eap_method_base != 254) {
 		RDEBUG("SoH - response is not extended EAP: %i", eap_method_base);
-		goto done;
+		return;
 	}
 
 	eap_vendor = soh_pull_be_24(data); data += 3;
 	if (eap_vendor != 0x137) {
 		RDEBUG("SoH - extended eap vendor %08x is not Microsoft", eap_vendor);
-		goto done;
+		return;
 	}
 
 	eap_method = soh_pull_be_32(data); data += 4;
 	if (eap_method != 0x21) {
 		RDEBUG("SoH - response eap type %08x is not EAP-SoH", eap_method);
-		goto done;
+		return;
 	}
 
 
-	rv = soh_verify(request, vp, data, data_len - 8);
+	rv = soh_verify(request, data, data_len - 8);
 	if (rv<0) {
 		RDEBUG("SoH - error decoding payload: %s", fr_strerror());
 	} else {
 		vp->vp_integer = 1;
 	}
-done:
-	return vp;
 }
 
 /*
@@ -800,7 +799,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		/*
 		 *	Save it for later.
 		 */
-		t->username = pairmake("User-Name", "", T_OP_EQ);
+		t->username = pairmake(t, NULL, "User-Name", "", T_OP_EQ);
 		rad_assert(t->username != NULL);
 		
 		memcpy(t->username->vp_strvalue, data + 1, data_len - 1);
@@ -819,7 +818,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
 		fake = request_alloc_fake(request);
 		rad_assert(fake->packet->vps == NULL);
-		fake->packet->vps = eapsoh_verify(request, data, data_len);
+		eapsoh_verify(request, fake->packet, data, data_len);
 		setup_fake_request(request, fake, t);
 
 		if (t->soh_virtual_server) {
@@ -946,9 +945,8 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 		if (t->default_method != 0) {
 			RDEBUG2("Setting default EAP type for tunneled EAP session.");
-			vp = pairmake("EAP-Type", "0", T_OP_EQ);
+			vp = pairmake(fake, &fake->config_items, "EAP-Type", "0", T_OP_EQ);
 			vp->vp_integer = t->default_method;
-			pairadd(&fake->config_items, vp);
 		}
 		break; }
 
@@ -986,7 +984,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		 *	EAP-Identity packet.
 		 */
 		if ((data[0] == PW_EAP_IDENTITY) && (data_len > 1)) {
-			t->username = pairmake("User-Name", "", T_OP_EQ);
+			t->username = pairmake(t, NULL, "User-Name", "", T_OP_EQ);
 			rad_assert(t->username != NULL);
 
 			memcpy(t->username->vp_strvalue, data + 1, data_len - 1);
@@ -1000,9 +998,8 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 */
 			if (t->default_method != 0) {
 				DEBUG2("  PEAP: Setting default EAP type for tunneled EAP session.");
-				vp = pairmake("EAP-Type", "0", T_OP_EQ);
+				vp = pairmake(fake, &fake->config_items, "EAP-Type", "0", T_OP_EQ);
 				vp->vp_integer = t->default_method;
-				pairadd(&fake->config_items, vp);
 			}
 		}
 	} /* else there WAS a t->username */
@@ -1220,10 +1217,8 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	vp = pairmake("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
-	if (vp) {
-		pairadd(&fake->packet->vps, vp);
-	}
+	pairmake(fake->packet, &fake->packet->vps,
+		 "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	if (t->username) {
 		vp = paircopy(t->username);

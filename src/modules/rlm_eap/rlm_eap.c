@@ -387,10 +387,10 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 		if (vp) {
 			vp = pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 			if (!vp) {
-				vp = pairmake("Message-Authenticator",
-					      "0x00", T_OP_EQ);
-				rad_assert(vp != NULL);
-				pairadd(&(request->proxy->vps), vp);
+				pairmake(request->proxy,
+					 &request->proxy->vps,
+					 "Message-Authenticator",
+					 "0x00", T_OP_EQ);
 			}
 		}
 
@@ -469,13 +469,11 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
-			vp = pairmake("User-Name", "",
+			vp = pairmake_reply("User-Name", "",
 				      T_OP_EQ);
 			strlcpy(vp->vp_strvalue, request->username->vp_strvalue,
 				sizeof(vp->vp_strvalue));
 			vp->length = request->username->length;
-			rad_assert(vp != NULL);
-			pairadd(&(request->reply->vps), vp);
 		}
 
 		/*
@@ -548,13 +546,12 @@ static rlm_rcode_t eap_authorize(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, PW_AUTH_TYPE, 0, TAG_ANY);
 	if ((!vp) || (vp->vp_integer != PW_AUTHTYPE_REJECT)) {
-		vp = pairmake("Auth-Type", inst->xlat_name, T_OP_EQ);
+		vp = pairmake_config("Auth-Type", inst->xlat_name, T_OP_EQ);
 		if (!vp) {
 			RDEBUG2("Failed to create Auth-Type %s: %s\n",
 				inst->xlat_name, fr_strerror());
 			return RLM_MODULE_FAIL;
 		}
-		pairadd(&request->config_items, vp);
 	} else {
 		RDEBUG2W("Auth-Type already set.  Not setting to EAP");
 	}
@@ -652,10 +649,9 @@ static rlm_rcode_t eap_post_proxy(void *inst, REQUEST *request)
 			 */
 			vp = pairfind(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 			if (!vp) {
-				vp = pairmake("User-Name", request->username->vp_strvalue,
-					      T_OP_EQ);
-				rad_assert(vp != NULL);
-				pairadd(&(request->reply->vps), vp);
+				pairmake_reply("User-Name",
+					       request->username->vp_strvalue,
+					       T_OP_EQ);
 			}
 		}
 
@@ -775,10 +771,7 @@ static rlm_rcode_t eap_post_auth(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-		vp = pairmake("Message-Authenticator",
-				  "0x00", T_OP_EQ);
-		rad_assert(vp != NULL);
-		pairadd(&(request->reply->vps), vp);
+		pairmake_reply("Message-Authenticator", "0x00", T_OP_EQ);
 	}
 
 	return RLM_MODULE_UPDATED;

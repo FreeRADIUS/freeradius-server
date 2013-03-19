@@ -95,11 +95,9 @@ static int sim_file_instantiate(CONF_SECTION *conf, void **instance)
 static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
-	VALUE_PAIR	*reply_tmp;
 	const char	*name;
 	struct sim_file_instance *inst = instance;
 	VALUE_PAIR     **reply_pairs;
-	VALUE_PAIR     **config_pairs;
 	FILE	    *triplets;
 	char	     tripbuf[sizeof("232420100000015,30000000000000000000000000000000,30112233,445566778899AABB")*2];
 	char	     imsi[128], chal[256], kc[128], sres[128];
@@ -108,7 +106,6 @@ static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 	int lineno;
 
 	reply_pairs = &request->reply->vps;
-	config_pairs = &request->config_items;
 
  	/*
 	 *	Grab the canonical user name.
@@ -185,7 +182,7 @@ static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 			continue;
 		}
 
-
+		/* @todo: Fix this code to use pairmake? */
 		r = paircreate(request->reply, ATTRIBUTE_EAP_SIM_RAND1 + imsicount, 0);
 		pairparsevalue(r, chal);
 		pairadd(reply_pairs, r);
@@ -219,19 +216,7 @@ static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
 	 * and it will add the Autz-Type entry.
 	 */
 
-	if((reply_tmp = pairmake ("EAP-Type", "SIM", T_OP_EQ)))
-	{
-		radlog(L_INFO, "rlm_sim_files: Adding EAP-Type: eap-sim");
-		pairadd (config_pairs, reply_tmp);
-	}
-
-#if 0
-	DEBUG("rlm_sim_files: saw config");
-	debug_pair_list(*config_pairs);
-
-	DEBUG("rlm_sim_files: saw reply");
-	debug_pair_list(*reply_pairs);
-#endif
+	pairmake_config("EAP-Type", "SIM", T_OP_EQ);
 
 	return RLM_MODULE_OK;
 }

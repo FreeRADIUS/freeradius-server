@@ -111,8 +111,8 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	int verify_mode;
 	tls_session_t *ssn = NULL;
 	
-	ssn = (tls_session_t *) malloc(sizeof(*ssn));
-	memset(ssn, 0, sizeof(*ssn));
+	ssn = talloc_zero(conf, tls_session_t);
+	if (!ssn) return NULL;
 
 	ssn->ctx = conf->ctx;
 	ssn->ssl = SSL_new(ssn->ctx);
@@ -135,6 +135,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 	SSL_set_verify(ssn->ssl, verify_mode, cbtls_verify);
 
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 	SSL_set_fd(ssn->ssl, fd);
 	if (SSL_connect(ssn->ssl) <= 0) {
 		int err;
@@ -142,7 +143,7 @@ tls_session_t *tls_new_client_session(fr_tls_server_conf_t *conf, int fd)
 			DEBUG("OpenSSL Err says %s",
 			      ERR_error_string(err, NULL));
 		}
-		free(ssn);
+		talloc_free(ssn);
 		return NULL;
 	}
 
@@ -184,8 +185,7 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	/* We use the SSL's "app_data" to indicate a call-back */
 	SSL_set_app_data(new_tls, NULL);
 
-	state = (tls_session_t *)malloc(sizeof(*state));
-	memset(state, 0, sizeof(*state));
+	state = talloc_zero(conf, tls_session_t);
 	session_init(state);
 
 	state->ctx = conf->ctx;
@@ -238,6 +238,7 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	SSL_set_verify(state->ssl, verify_mode, cbtls_verify);
 
 	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_CONF, (void *)conf);
+	SSL_set_ex_data(state->ssl, FR_TLS_EX_INDEX_SSN, (void *)state);
 	state->length_flag = conf->include_length;
 
 	/*
@@ -277,14 +278,8 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
 
 	if ((l = ERR_get_error()) != 0) {
 		const char *p = ERR_error_string(l, NULL);
-		VALUE_PAIR *vp;
 
-		radlog(L_ERR, "SSL error %s", p);
-
-		if (request) {
-			vp = pairmake("Module-Failure-Message", p, T_OP_ADD);
-			if (vp) pairadd(&request->packet->vps, vp);
-		}
+		if (request && p) RDEBUGE("SSL says: %s", p);
 	}
 	e = SSL_get_error(s, ret);
 
@@ -505,7 +500,7 @@ void session_free(void *ssn)
 
 	session_close(sess);
 
-	free(sess);
+	talloc_free(sess);
 }
 
 static void record_init(record_t *rec)
@@ -1044,7 +1039,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 		}
 
 		/* alloc and convert to ASN.1 */
-		sess_blob = malloc(blob_len);
+		sess_blob = talloc_array(conf, unsigned char, blob_len);
 		if (!sess_blob) {
 			DEBUG2("  SSL: could not allocate buffer len=%d to persist session", blob_len);
 			return 0;
@@ -1059,8 +1054,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 
 		/* open output file */
 		rv = snprintf(filename, sizeof(filename), "%s%c%s.asn1",
-			conf->session_cache_path, FR_DIR_SEP, buffer
-			);
+			      conf->session_cache_path, FR_DIR_SEP, buffer);
 		fd = open(filename, O_RDWR|O_CREAT|O_EXCL, 0600);
 		if (fd < 0) {
 			DEBUG2("  SSL: could not open session file %s: %s", filename, strerror(errno));
@@ -1084,7 +1078,7 @@ static int cbtls_new_session(SSL *ssl, SSL_SESSION *sess)
 	}
 
 error:
-	if (sess_blob) free(sess_blob);
+	if (sess_blob) talloc_free(sess_blob);
 
 	return 0;
 }
@@ -1144,7 +1138,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 			goto err;
 		}
 
-		sess_data = malloc(st.st_size);
+		sess_data = talloc_array(conf, unsigned char, st.st_size);
 		if (!sess_data) {
 		  DEBUG2("  SSL: could not alloc buffer for persisted session len=%d", (int) st.st_size);
 			close(fd);
@@ -1180,7 +1174,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		DEBUG2("  SSL: Successfully restored session %s", buffer);
 	}
 err:
-	if (sess_data) free(sess_data);
+	if (sess_data) talloc_free(sess_data);
 	if (pairlist) pairlist_free(&pairlist);
 
 	*copy = 0;
@@ -1492,6 +1486,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_STORE *ocsp_store = NULL;
 	X509 *issuer_cert;
 #endif
+	tls_session_t *ssn;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
@@ -1524,7 +1519,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #ifdef HAVE_OPENSSL_OCSP_H
 	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
 #endif
-
+	ssn = (tls_session_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
 
 	/*
 	 *	Get the Serial Number
@@ -1547,8 +1542,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
-		pairadd(certs,
-			pairmake(cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET));
+		pairmake(ssn, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
 	}
 
 
@@ -1561,8 +1555,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
-		pairadd(certs,
-			pairmake(cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET));
+		pairmake(ssn, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
 	}
 
 	/*
@@ -1574,8 +1567,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	subject[sizeof(subject) - 1] = '\0';
 	if (identity && (lookup <= 1) && subject[0] &&
 	    (strlen(subject) < MAX_STRING_LEN)) {
-		pairadd(certs,
-			pairmake(cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET));
+		pairmake(ssn, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
@@ -1583,8 +1575,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (identity && (lookup <= 1) && issuer[0] &&
 	    (strlen(issuer) < MAX_STRING_LEN)) {
-		pairadd(certs,
-			pairmake(cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET));
+		pairmake(ssn, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 	}
 
 	/*
@@ -1595,8 +1586,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (identity && (lookup <= 1) && common_name[0] && subject[0] &&
 	    (strlen(common_name) < MAX_STRING_LEN)) {
-		pairadd(certs,
-			pairmake(cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET));
+		pairmake(ssn, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 	}
 
 #ifdef GEN_EMAIL
@@ -1619,9 +1609,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					if (ASN1_STRING_length(name->d.rfc822Name) >= MAX_STRING_LEN)
 						break;
 
-					pairadd(certs,
-						pairmake(cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
-							 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET));
+					pairmake(ssn, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
+						 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
 					break;
 				default:
 					/* XXX TODO handle other SAN types */
@@ -1647,8 +1636,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (!my_ok) {
 		const char *p = X509_verify_cert_error_string(err);
 		radlog(L_ERR,"--> verify error:num=%d:%s\n",err, p);
-		radius_pairmake(request, &request->packet->vps,
-				"Module-Failure-Message", p, T_OP_SET);
+		RDEBUGE("SSL says error %d : %s", err, p);
 		return my_ok;
 	}
 
@@ -1747,8 +1735,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			}
 			fclose(fp);
 
-			if (!radius_pairmake(request, &request->packet->vps,
-					     "TLS-Client-Cert-Filename",
+			if (!pairmake_packet("TLS-Client-Cert-Filename",
 					     filename, T_OP_SET)) {
 				RDEBUG("Failed creating TLS-Client-Cert-Filename");
 
@@ -1945,16 +1932,16 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 			FILE* cmd_pipe = popen(cmd, "r");
 			if (!cmd_pipe) {
-				radlog(L_ERR, "rlm_eap: %s command failed.	Unable to get private_key_password", cmd);
-				radlog(L_ERR, "rlm_eap: Error reading private_key_file %s", conf->private_key_file);
+				radlog(L_ERR, "TLS: %s command failed.	Unable to get private_key_password", cmd);
+				radlog(L_ERR, "Error reading private_key_file %s", conf->private_key_file);
 				return NULL;
 			}
 
-			free(conf->private_key_password);
-			conf->private_key_password = malloc(max_password_len * sizeof(char));
+			talloc_free(conf->private_key_password);
+			conf->private_key_password = talloc_array(conf, char, max_password_len);
 			if (!conf->private_key_password) {
-				radlog(L_ERR, "rlm_eap: Can't malloc space for private_key_password");
-				radlog(L_ERR, "rlm_eap: Error reading private_key_file %s", conf->private_key_file);
+				radlog(L_ERR, "TLS: Can't allocate space for private_key_password");
+				radlog(L_ERR, "TLS: Error reading private_key_file %s", conf->private_key_file);
 				pclose(cmd_pipe);
 				return NULL;
 			}
@@ -2256,8 +2243,10 @@ static void tls_server_conf_free(fr_tls_server_conf_t *conf)
 	conf->ocsp_store = NULL;
 #endif
 
+#ifndef NDEBUG
 	memset(conf, 0, sizeof(*conf));
-	free(conf);
+#endif
+	talloc_free(conf);
 }
 
 
@@ -2275,12 +2264,11 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 		return conf;
 	}
 
-	conf = malloc(sizeof(*conf));
+	conf = talloc_zero(cs, fr_tls_server_conf_t);
 	if (!conf) {
 		radlog(L_ERR, "Out of memory");
 		return NULL;
 	}
-	memset(conf, 0, sizeof(*conf));
 
 	if (cf_section_parse(cs, conf, tls_server_config) < 0) {
 	error:
@@ -2379,12 +2367,11 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 		return conf;
 	}
 
-	conf = malloc(sizeof(*conf));
+	conf = talloc_zero(cs, fr_tls_server_conf_t);
 	if (!conf) {
 		radlog(L_ERR, "Out of memory");
 		return NULL;
 	}
-	memset(conf, 0, sizeof(*conf));
 
 	if (cf_section_parse(cs, conf, tls_client_config) < 0) {
 	error:
@@ -2573,8 +2560,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			/*
 			 *	Mark the request as resumed.
 			 */
-			vp = pairmake("EAP-Session-Resumed", "1", T_OP_SET);
-			if (vp) pairadd(&request->packet->vps, vp);
+			pairmake_packet("EAP-Session-Resumed", "1", T_OP_SET);
 		}
 	}
 

@@ -201,8 +201,7 @@ static rlm_rcode_t digest_authorize(void *instance, REQUEST *request)
 	 *	Everything's OK, add a digest authentication type.
 	 */
 	RDEBUG("Adding Auth-Type = DIGEST");
-	pairadd(&request->config_items,
-		pairmake("Auth-Type", "DIGEST", T_OP_EQ));
+	pairmake_config("Auth-Type", "DIGEST", T_OP_EQ);
 
 	return RLM_MODULE_OK;
 }

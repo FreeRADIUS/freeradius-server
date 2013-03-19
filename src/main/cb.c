@@ -73,15 +73,8 @@ void cbtls_info(const SSL *s, int where, int ret)
 		}
 	}
 
-	if (buffer[0]) {
-		radlog(L_ERR, "%s", buffer);
-		
-		if (request) {
-			VALUE_PAIR *vp;
-			
-			vp = pairmake("Module-Failure-Message", buffer, T_OP_ADD);
-			if (vp) pairadd(&request->packet->vps, vp);
-		}
+	if (buffer[0] && request) {
+		RDEBUGE("SSL says: %s", buffer);
 	}
 }
 

@@ -1043,10 +1043,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	/*
 	 *	Tell the request that it's a fake one.
 	 */
-	vp = pairmake("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
-	if (vp) {
-		pairadd(&fake->packet->vps, vp);
-	}
+	pairmake_packet("Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	if ((debug_flag > 0) && fr_log_fp) {
 		RDEBUG("Got tunneled request");
@@ -1078,7 +1075,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 				/*
 				 *	Create & remember a User-Name
 				 */
-				t->username = pairmake("User-Name", "", T_OP_EQ);
+				t->username = pairmake(t, NULL, "User-Name", "", T_OP_EQ);
 				rad_assert(t->username != NULL);
 
 				memcpy(t->username->vp_strvalue, vp->vp_strvalue + 5,

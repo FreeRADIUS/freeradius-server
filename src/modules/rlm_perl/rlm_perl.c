@@ -594,15 +594,15 @@ static void perl_store_vps(VALUE_PAIR *vp, HV *rad_hv)
  *     Value Pair Format
  *
  */
-static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv, FR_TOKEN op) {
+static int pairadd_sv(TALLOC_CTX *ctx, VALUE_PAIR **vps, char *key, SV *sv, FR_TOKEN op)
+{
        char	    *val;
-       VALUE_PAIR      *vpp;
+       VALUE_PAIR      *vp;
 
        if (SvOK(sv)) {
 	       val = SvPV_nolen(sv);
-	       vpp = pairmake(key, val, op);
-	       if (vpp != NULL) {
-		       pairadd(vp, vpp);
+	       vp = pairmake(ctx, vps, key, val, op);
+	       if (vp != NULL) {
 		       radlog(L_DBG,
 			 "rlm_perl: Added pair %s = %s", key, val);
 		       return 1;
@@ -619,7 +619,7 @@ static int pairadd_sv(VALUE_PAIR **vp, char *key, SV *sv, FR_TOKEN op) {
   *     Boyan :
   *     Gets the content from hashes
   */
-static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
+static int get_hv_content(TALLOC_CTX *ctx, HV *my_hv, VALUE_PAIR **vps)
 {
        SV		*res_sv, **av_sv;
        AV		*av;
@@ -627,7 +627,7 @@ static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
        I32		key_len, len, i, j;
        int		ret=0;
 
-       *vp = NULL;
+       *vps = NULL;
        for (i = hv_iterinit(my_hv); i > 0; i--) {
 	       res_sv = hv_iternextsv(my_hv,&key,&key_len);
 	       if (SvROK(res_sv) && (SvTYPE(SvRV(res_sv)) == SVt_PVAV)) {
@@ -635,9 +635,9 @@ static int get_hv_content(HV *my_hv, VALUE_PAIR **vp)
 		       len = av_len(av);
 		       for (j = 0; j <= len; j++) {
 			       av_sv = av_fetch(av, j, 0);
-			       ret = pairadd_sv(vp, key, *av_sv, T_OP_ADD) + ret;
+			       ret = pairadd_sv(ctx, vps, key, *av_sv, T_OP_ADD) + ret;
 		       }
-	       } else ret = pairadd_sv(vp, key, res_sv, T_OP_EQ) + ret;
+	       } else ret = pairadd_sv(ctx, vps, key, res_sv, T_OP_EQ) + ret;
 	}
 
 	return ret;
@@ -757,7 +757,7 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 	LEAVE;
 
 	vp = NULL;
-	if ((get_hv_content(rad_request_hv, &vp)) > 0 ) {
+	if ((get_hv_content(request->packet, rad_request_hv, &vp)) > 0 ) {
 		pairfree(&request->packet->vps);
 		request->packet->vps = vp;
 		vp = NULL;
@@ -771,13 +771,13 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 			request->password = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	}
 
-	if ((get_hv_content(rad_reply_hv, &vp)) > 0 ) {
+	if ((get_hv_content(request->reply, rad_reply_hv, &vp)) > 0 ) {
 		pairfree(&request->reply->vps);
 		request->reply->vps = vp;
 		vp = NULL;
 	}
 
-	if ((get_hv_content(rad_check_hv, &vp)) > 0 ) {
+	if ((get_hv_content(request, rad_check_hv, &vp)) > 0 ) {
 		pairfree(&request->config_items);
 		request->config_items = vp;
 		vp = NULL;
@@ -785,14 +785,14 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
 
 #ifdef WITH_PROXY
 	if (request->proxy &&
-	    (get_hv_content(rad_request_proxy_hv, &vp) > 0)) {
+	    (get_hv_content(request->proxy, rad_request_proxy_hv, &vp) > 0)) {
 		pairfree(&request->proxy->vps);
 		request->proxy->vps = vp;
 		vp = NULL;
 	}
 
 	if (request->proxy_reply &&
-	    (get_hv_content(rad_request_proxy_reply_hv, &vp) > 0)) {
+	    (get_hv_content(request->proxy_reply, rad_request_proxy_reply_hv, &vp) > 0)) {
 		pairfree(&request->proxy_reply->vps);
 		request->proxy_reply->vps = vp;
 		vp = NULL;

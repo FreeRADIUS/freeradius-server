@@ -114,13 +114,14 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port, int channels_per_line)
  *	in the string, like:  H323-Attribute = "h323-attribute=value".
  *	This sort of behaviour is nonsense.
  */
-static void cisco_vsa_hack(VALUE_PAIR *vp)
+static void cisco_vsa_hack(REQUEST *request)
 {
 	int		vendorcode;
 	char		*ptr;
 	char		newattr[MAX_STRING_LEN];
+	VALUE_PAIR	*vp;
 
-	for ( ; vp != NULL; vp = vp->next) {
+	for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
 		vendorcode = vp->da->vendor;
 		if (!((vendorcode == 9) || (vendorcode == 6618))) continue; /* not a Cisco or Quintum VSA, continue */
 
@@ -150,15 +151,7 @@ static void cisco_vsa_hack(VALUE_PAIR *vp)
 			gettoken(&p, newattr, sizeof(newattr));
 
 			if (dict_attrbyname(newattr) != NULL) {
-				VALUE_PAIR *newvp;
-
-				/*
-				 *  Make a new attribute.
-				 */
-				newvp = pairmake(newattr, ptr + 1, T_OP_EQ);
-				if (newvp) {
-					pairadd(&vp, newvp);
-				}
+				pairmake_packet(newattr, ptr + 1, T_OP_EQ);
 			}
 		} else {	/* h322-foo-bar = "h323-foo-bar = baz" */
 			/*
@@ -602,7 +595,7 @@ static rlm_rcode_t preprocess_authorize(void *instance, REQUEST *request)
 		 *	We need to run this hack because the h323-conf-id
 		 *	attribute should be used.
 		 */
-		cisco_vsa_hack(request->packet->vps);
+		cisco_vsa_hack(request);
 	}
 
 	if (data->with_alvarion_vsa_hack) {
@@ -680,7 +673,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 		 *	We need to run this hack because the h323-conf-id
 		 *	attribute should be used.
 		 */
-		cisco_vsa_hack(request->packet->vps);
+		cisco_vsa_hack(request);
 	}
 
 	if (data->with_alvarion_vsa_hack) {

@@ -137,11 +137,9 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request,
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pairmake("State", session->state, T_OP_EQ);
+	state = pairmake_reply("State", session->state, T_OP_EQ);
 	if (!state) return -1;
 	state->length = SECURID_STATE_LEN;
-
-
 
 	status = rbtree_insert(inst->session_tree, session);
 	if (status) {
@@ -175,8 +173,6 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request,
 		radlog(L_ERR, "rlm_securid: Failed to store session");
 		return -1;
 	}
-
-	pairadd(&(request->reply->vps), state);
 
 	return 0;
 }

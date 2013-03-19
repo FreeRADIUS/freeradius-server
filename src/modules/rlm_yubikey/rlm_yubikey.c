@@ -412,7 +412,7 @@ static rlm_rcode_t yubikey_authenticate(void *instance, REQUEST *request)
 	vp->vp_integer = counter;
 	vp->length = 4;
 	
-	radius_pairmake(request, &request->packet->vps, "Yubikey-Trigger",
+	pairmake_packet("Yubikey-Trigger",
 			yubikey_capslock(token.ctr) ? "keyboard" : "button",
 			T_OP_SET);
 	/*

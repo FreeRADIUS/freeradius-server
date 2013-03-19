@@ -802,9 +802,9 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 		goto finish;
 	}
 	
-	vp = pairmake("LDAP-UserDn", dn, T_OP_EQ);
+	vp = pairmake(request, &request->config_items,
+		      "LDAP-UserDn", dn, T_OP_EQ);
 	if (vp) {	
-		pairadd(&request->config_items, vp);
 		*rcode = RLM_MODULE_OK;
 	}
 	

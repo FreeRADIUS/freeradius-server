@@ -46,8 +46,7 @@ void
 otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
 	 const char *passcode)
 {
-  VALUE_PAIR **avp = &request->reply->vps;
-  VALUE_PAIR *cvp, *rvp, *vp;
+  VALUE_PAIR *cvp, *rvp;
 
   cvp = pairfind(request->packet->vps, pwattr[pwe - 1]->attr, pwattr[pwe - 1]->vendor, TAG_ANY);
   rvp = pairfind(request->packet->vps, pwattr[pwe]->attr, pwattr[pwe]->vendor, TAG_ANY);
@@ -61,14 +60,10 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
 
   case PWE_MSCHAP:
     /* First, set some related attributes. */
-    vp = pairmake("MS-MPPE-Encryption-Policy",
+    pairmake_reply("MS-MPPE-Encryption-Policy",
 		  otp_mppe_policy[opt->mschap_mppe_policy], T_OP_EQ);
-    rad_assert(vp != NULL);
-    pairadd(avp, vp);
-    vp = pairmake("MS-MPPE-Encryption-Types",
+    pairmake_reply("MS-MPPE-Encryption-Types",
 		  otp_mppe_types[opt->mschap_mppe_types], T_OP_EQ);
-    rad_assert(vp != NULL);
-    pairadd(avp, vp);
 
     /* If no MPPE, we're done. */
     if (!opt->mschap_mppe_policy)
@@ -118,9 +113,7 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
       mppe_keys_string[1] = 'x';
       for (i = 0; i < 32; ++i)
 	(void) sprintf(&mppe_keys_string[i*2+2], "%02X", mppe_keys[i]);
-      vp = pairmake("MS-CHAP-MPPE-Keys", mppe_keys_string, T_OP_EQ);
-      rad_assert(vp != NULL);
-      pairadd(avp, vp);
+      pairmake_reply("MS-CHAP-MPPE-Keys", mppe_keys_string, T_OP_EQ);
     } /* (doing mppe) */
   break; /* PWE_MSCHAP */
 
@@ -227,22 +220,16 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
       for (i = 0; i < sizeof(auth_md_string) - 1; ++i)
 	(void) sprintf(&auth_octet_string[i * 2 +4], "%02X", auth_md_string[i]);
 
-      vp = pairmake("MS-CHAP2-Success", auth_octet_string, T_OP_EQ);
-      rad_assert(vp != NULL);
-      pairadd(avp, vp);
+      pairmake_reply("MS-CHAP2-Success", auth_octet_string, T_OP_EQ);
     } /* Generate mutual auth info. */
 
     /*
      * Now, set some MPPE related attributes.
      */
-    vp = pairmake("MS-MPPE-Encryption-Policy",
+    pairmake_reply("MS-MPPE-Encryption-Policy",
 		  otp_mppe_policy[opt->mschapv2_mppe_policy], T_OP_EQ);
-    rad_assert(vp != NULL);
-    pairadd(avp, vp);
-    vp = pairmake("MS-MPPE-Encryption-Types",
+    pairmake_reply("MS-MPPE-Encryption-Types",
 		  otp_mppe_types[opt->mschapv2_mppe_types], T_OP_EQ);
-    rad_assert(vp != NULL);
-    pairadd(avp, vp);
 
     /* If no MPPE, we're done. */
     if (!opt->mschapv2_mppe_policy)
@@ -353,9 +340,7 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
       mppe_key_string[1] = 'x';
       for (i = 0; i < sizeof(MasterSendKey); ++i)
 	(void) sprintf(&mppe_key_string[i*2+2], "%02X", MasterSendKey[i]);
-      vp = pairmake("MS-MPPE-Send-Key", mppe_key_string, T_OP_EQ);
-      rad_assert(vp != NULL);
-      pairadd(avp, vp);
+      pairmake_reply("MS-MPPE-Send-Key", mppe_key_string, T_OP_EQ);
 
       /*
        * Generate the MS-MPPE-Recv-Key attribute.
@@ -364,10 +349,7 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
       mppe_key_string[1] = 'x';
       for (i = 0; i < sizeof(MasterReceiveKey); ++i)
 	(void) sprintf(&mppe_key_string[i*2+2], "%02X", MasterReceiveKey[i]);
-      vp = pairmake("MS-MPPE-Recv-Key", mppe_key_string, T_OP_EQ);
-      rad_assert(vp != NULL);
-      pairadd(avp, vp);
-
+      pairmake_reply("MS-MPPE-Recv-Key", mppe_key_string, T_OP_EQ);
     } /* (doing mppe) */
   } /* PWE_MSCHAP2 */
   break; /* PWE_MSCHAP2 */

@@ -40,8 +40,7 @@ static rlm_rcode_t chap_authorize(UNUSED void *instance,
 	}
 
 	RDEBUG("Setting 'Auth-Type := CHAP'");
-	pairadd(&request->config_items,
-		pairmake("Auth-Type", "CHAP", T_OP_EQ));
+	pairmake_config("Auth-Type", "CHAP", T_OP_EQ);
 
 	return RLM_MODULE_OK;
 }

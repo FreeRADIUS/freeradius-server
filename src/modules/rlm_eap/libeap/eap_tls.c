@@ -143,6 +143,7 @@ tls_session_t *eaptls_session(fr_tls_server_conf_t *tls_conf, eap_handler_t *han
 #ifdef HAVE_OPENSSL_OCSP_H
 	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_STORE, (void *)tls_conf->ocsp_store);
 #endif
+	SSL_set_ex_data(ssn->ssl, FR_TLS_EX_INDEX_SSN, (void *)ssn);
 
 	return ssn;
 }

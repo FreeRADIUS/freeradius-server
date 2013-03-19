@@ -100,7 +100,6 @@ static int example_instantiate(CONF_SECTION *conf, void **instance)
 static rlm_rcode_t example_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
-	VALUE_PAIR *reply;
 
 	/* quiet the compiler */
 	instance = instance;
@@ -118,10 +117,8 @@ static rlm_rcode_t example_authorize(void *instance, REQUEST *request)
 	/*
 	 *  Create the challenge, and add it to the reply.
 	 */
-       	reply = pairmake("Reply-Message", "This is a challenge", T_OP_EQ);
-	pairadd(&request->reply->vps, reply);
-	state = pairmake("State", "0", T_OP_EQ);
-	pairadd(&request->reply->vps, state);
+	pairmake_reply("Reply-Message", "This is a challenge", T_OP_EQ);
+	pairmake_reply("State", "0", T_OP_EQ);
 
 	/*
 	 *  Mark the packet as an Access-Challenge packet.

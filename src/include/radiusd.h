@@ -732,10 +732,14 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 int radius_find_compare(unsigned int attribute);
 VALUE_PAIR	*radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 				   unsigned int attribute, unsigned int vendor);
-VALUE_PAIR *radius_pairmake(REQUEST *request, VALUE_PAIR **vps,
-			    const char *attribute, const char *value,
-			    FR_TOKEN op);
 void module_failure_msg(REQUEST *request, const char *fmt, ...);
+
+/*
+ *	Less code == less bugs
+ */
+#define pairmake_packet(_a, _b, _c) pairmake(request->packet, &request->packet->vps, _a, _b, _c)
+#define pairmake_reply(_a, _b, _c) pairmake(request->reply, &request->reply->vps, _a, _b, _c)
+#define pairmake_config(_a, _b, _c) pairmake(request, &request->config_items, _a, _b, _c)
 
 
 /* xlat.c */

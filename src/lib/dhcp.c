@@ -651,7 +651,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 		 *	Loop over all of the entries, building VPs
 		 */
 		for (i = 0; i < num_entries; i++) {
-			vp = pairmake(da->name, NULL, T_OP_ADD);
+			vp = pairmake(packet, NULL, da->name, NULL, T_OP_ADD);
 			if (!vp) {
 				fr_strerror_printf("Cannot build attribute %s",
 					fr_strerror());
@@ -718,7 +718,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	Decode the header.
 	 */
 	for (i = 0; i < 14; i++) {
-		vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
+		vp = pairmake(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
 			char buffer[256];
 			strlcpy(buffer, fr_strerror(), sizeof(buffer));
@@ -1285,7 +1285,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		p = packet->data;
 
 		for (i = 0; i < 14; i++) {
-			vp = pairmake(dhcp_header_names[i], NULL, T_OP_EQ);
+			vp = pairmake(packet, NULL,
+				      dhcp_header_names[i], NULL, T_OP_EQ);
 			if (!vp) {
 				char buffer[256];
 				strlcpy(buffer, fr_strerror(), sizeof(buffer));

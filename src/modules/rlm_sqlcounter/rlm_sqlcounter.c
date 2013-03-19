@@ -629,8 +629,7 @@ static rlm_rcode_t sqlcounter_authorize(void *instance, REQUEST *request)
 		 * User is denied access, send back a reply message
 		 */
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", data->reset);
-		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
-		pairadd(&request->reply->vps, reply_item);
+		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
 		RDEBUGE("Maximum %s usage time reached",
 				   data->reset);

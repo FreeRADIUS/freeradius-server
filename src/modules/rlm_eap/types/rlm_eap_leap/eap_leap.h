@@ -71,8 +71,7 @@ int		eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
 			       leap_session_t *session);
 leap_packet_t	*eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 				VALUE_PAIR *user_name, VALUE_PAIR* password,
-				leap_session_t *session,
-				VALUE_PAIR **reply_vps);
+				leap_session_t *session);
 
 void eapleap_lmpwdhash(const unsigned char *password,unsigned char *lmhash);
 void eapleap_mschap(const unsigned char *win_password,

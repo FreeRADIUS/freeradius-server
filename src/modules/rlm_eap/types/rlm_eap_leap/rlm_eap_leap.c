@@ -164,7 +164,7 @@ static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
 		DEBUG2("  rlm_eap_leap: Stage 6");
 		reply = eapleap_stage6(packet, handler->request,
 				       handler->request->username, password,
-				       session, &handler->request->reply->vps);
+				       session);
 		break;
 
 		/*

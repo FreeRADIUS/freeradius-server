@@ -382,7 +382,7 @@ void eap_add_reply(REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	vp = pairmake(name, "", T_OP_EQ);
+	vp = pairmake_reply(name, "", T_OP_EQ);
 	if (!vp) {
 		RDEBUGE("Did not create attribute %s: %s\n",
 			name, fr_strerror());
@@ -391,5 +391,4 @@ void eap_add_reply(REQUEST *request,
 
 	memcpy(vp->vp_octets, value, len);
 	vp->length = len;
-	pairadd(&request->reply->vps, vp);
 }

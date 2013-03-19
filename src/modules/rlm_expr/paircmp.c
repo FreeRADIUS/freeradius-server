@@ -228,7 +228,7 @@ static int genericcmp(void *instance UNUSED,
 		snprintf(name, sizeof(name), "%%{%s}", check->da->name);
 
 		radius_xlat(value, sizeof(value), name, req, NULL, NULL);
-		vp = pairmake(check->da->name, value, check->op);
+		vp = pairmake(req, NULL, check->da->name, value, check->op);
 
 		/*
 		 *	Paircmp returns 0 for failed comparison,

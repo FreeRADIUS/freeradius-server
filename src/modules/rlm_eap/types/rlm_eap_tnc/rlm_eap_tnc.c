@@ -316,21 +316,18 @@ static int tnc_authenticate(UNUSED void *instance, eap_handler_t *handler)
 		break;
 	case TNC_CONNECTION_STATE_ACCESS_NONE:
 		code = PW_EAP_FAILURE;
-		pairadd(&handler->request->config_items,
-			pairmake("TNC-Status", "None", T_OP_SET));
+		pairmake_config("TNC-Status", "None", T_OP_SET);
 					
 		break;
 		
 	case TNC_CONNECTION_STATE_ACCESS_ALLOWED:
 		code = PW_EAP_SUCCESS;
-		pairadd(&handler->request->config_items,
-			pairmake("TNC-Status", "Access", T_OP_SET));
+		pairmake_config("TNC-Status", "Access", T_OP_SET);
 		break;
 		
 	case TNC_CONNECTION_STATE_ACCESS_ISOLATED:
 		code = PW_EAP_SUCCESS;
-		pairadd(&handler->request->config_items,
-			pairmake("TNC-Status", "Isolate", T_OP_SET));
+		pairmake_config("TNC-Status", "Isolate", T_OP_SET);
 			
 		break;
 	default:

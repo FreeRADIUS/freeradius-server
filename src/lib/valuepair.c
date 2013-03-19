@@ -1422,7 +1422,8 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
  * @param op to assign to new valuepair.
  * @return new valuepair or NULL on error.
  */
-static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
+static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
+				const char *attribute, const char *value,
 				FR_TOKEN op)
 {
 	VALUE_PAIR	*vp;
@@ -1450,10 +1451,8 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
 	 *	it.  This next stop also looks the attribute up in the
 	 *	dictionary, and creates the appropriate type for it.
 	 */
-	vp = pairalloc(NULL, da);
-	if (!vp) {
-		return NULL;
-	}
+	vp = pairalloc(ctx, da);
+	if (!vp) return NULL;
 
 	vp->op = (op == 0) ? T_OP_EQ : op;
 	
@@ -1495,7 +1494,8 @@ static VALUE_PAIR *pairmake_any(const char *attribute, const char *value,
  * @param[in] op to assign to new VALUE_PAIR.
  * @return a new VALUE_PAIR.
  */
-VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
+VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
+		     const char *attribute, const char *value, FR_TOKEN op)
 {
 	const DICT_ATTR *da;
 	VALUE_PAIR	*vp;
@@ -1547,15 +1547,10 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 	 */
 	da = dict_attrbyname(attrname);
 	if (!da) {
-		return pairmake_any(attrname, value, op);
+		vp = pairmake_any(ctx, attrname, value, op);
+		if (vp) pairadd(vps, vp);
+		return vp;
 	}
-
-	vp = pairalloc(NULL, da);
-	if (!vp) {
-		return NULL;
-	}
-
-	vp->op = (op == 0) ? T_OP_EQ : op;
 
 	/*      Check for a tag in the 'Merit' format of:
 	 *      :Tag:Value.  Print an error if we already found
@@ -1569,7 +1564,6 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 				   value, vp->da->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
 				   value, vp->da->name);
-			pairbasicfree(vp);
 			return NULL;
 		}
 		/* Colon found and attribute allows a tag */
@@ -1584,26 +1578,25 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 			    value = tc + 1;
 		       else tag = 0;
 		}
-		found_tag = 1;
 	}
 
-	if (found_tag) {
-		vp->tag = tag;
+	vp = pairalloc(ctx, da);
+	if (!vp) {
+		return NULL;
 	}
+
+	vp->op = (op == 0) ? T_OP_EQ : op;
+	vp->tag = tag;
 
 	switch (vp->op) {
 	default:
 		break;
 
-		/*
-		 *      For =* and !* operators, the value is irrelevant
-		 *      so we return now.
-		 */
 	case T_OP_CMP_TRUE:
 	case T_OP_CMP_FALSE:
 		vp->vp_strvalue[0] = '\0';
 		vp->length = 0;
-		return vp;
+		value = NULL;	/* ignore it! */
 		break;
 
 		/*
@@ -1618,15 +1611,11 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 		return NULL;
 
 #else
-		if (!value) {
-			/*
-			 *	Just return the vp.
-			 *
-			 *	The value will likely be provided later by
-			 *	an xlat expansion.
-			 */
-			return vp;
-		}
+
+		/*
+		 *	Someone else will fill in the value.
+		 */
+		if (!value) break;
 
 		pairbasicfree(vp);
 		
@@ -1643,17 +1632,16 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 			}
 		}
 
-		vp = pairmake(attribute, NULL, op);
-		if (!vp) {
-			return NULL;
-		}
+		vp = pairmake(ctx, NULL, attribute, NULL, op);
+		if (!vp) return NULL;
 		
 		if (pairmark_xlat(vp, value) < 0) {
 			pairbasicfree(vp);
 			return NULL;
 		}
-		
-		return vp;
+
+		value = NULL;	/* ignore it */
+		break;
 #endif
 	}
 
@@ -1670,6 +1658,7 @@ VALUE_PAIR *pairmake(const char *attribute, const char *value, FR_TOKEN op)
 		return NULL;
 	}
 
+	if (vps) pairadd(vps, vp);
 	return vp;
 }
 
@@ -1932,7 +1921,7 @@ FR_TOKEN userparse(const char *buffer, VALUE_PAIR **list)
 		last_token = pairread(&p, &raw);
 		if (last_token == T_OP_INVALID) break;
 		
-		vp = pairmake(raw.l_opand, raw.r_opand, raw.op);
+		vp = pairmake(NULL, NULL, raw.l_opand, raw.r_opand, raw.op);
 		if (!vp) break;
 		
 		if (raw.quote == T_DOUBLE_QUOTED_STRING) {

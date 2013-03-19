@@ -176,7 +176,7 @@ static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
 		pairdelete(&request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
 		pairdelete(&request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
-		vp = radius_pairmake(request, &request->reply->vps, "WiMAX-MSK", "0x00", T_OP_EQ);
+		vp = pairmake_reply("WiMAX-MSK", "0x00", T_OP_EQ);
 		if (vp) {
 			memcpy(vp->vp_octets, msk->vp_octets, msk->length);
 			vp->length = msk->length;

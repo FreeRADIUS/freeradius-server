@@ -280,7 +280,7 @@ int eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
  */
 leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 			    VALUE_PAIR *user_name, VALUE_PAIR* password,
-			    leap_session_t *session, VALUE_PAIR **reply_vps)
+			    leap_session_t *session)
 {
 	size_t i;
 	unsigned char ntpwdhash[16], ntpwdhashhash[16];
@@ -345,7 +345,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	/*
 	 *  Calculate the leap:session-key attribute
 	 */
-	vp = pairmake("Cisco-AVPair", "leap:session-key=", T_OP_ADD);
+	vp = pairmake_reply("Cisco-AVPair", "leap:session-key=", T_OP_ADD);
 	if (!vp) {
 		radlog(L_ERR, "rlm_eap_leap: Failed to create Cisco-AVPair attribute.  LEAP cancelled.");
 		eapleap_free(&reply);
@@ -379,7 +379,6 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	rad_tunnel_pwencode(vp->vp_strvalue + vp->length, &i,
 			    request->client->secret, request->packet->vector);
 	vp->length += i;
-	pairadd(reply_vps, vp);
 
 	return reply;
 }

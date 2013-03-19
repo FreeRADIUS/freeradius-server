@@ -2132,9 +2132,9 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	 */
 	if ((request->packet->code == PW_AUTHENTICATION_REQUEST) &&
 	    !pairfind(request->proxy->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY)) {
-		radius_pairmake(request, &request->proxy->vps,
-				"Message-Authenticator", "0x00",
-				T_OP_SET);
+		pairmake(request->proxy, &request->proxy->vps,
+			 "Message-Authenticator", "0x00",
+			 T_OP_SET);
 	}
 }
 

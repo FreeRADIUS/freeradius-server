@@ -1980,7 +1980,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	     (pair->value_type == T_BACK_QUOTED_STRING))) {
 	     	VALUE_PAIR *vp;
 	     
-		vp = pairmake(pair->attr, NULL, pair->op);
+		vp = pairmake(pair, NULL, pair->attr, NULL, pair->op);
 		if (!vp) {
 			return NULL;
 		}
@@ -1994,7 +1994,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 		return vp;
 	}
 
-	return pairmake(pair->attr, pair->value, pair->op);
+	return pairmake(pair, NULL, pair->attr, pair->value, pair->op);
 }
 
 /*

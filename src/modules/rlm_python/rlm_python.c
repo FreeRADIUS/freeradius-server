@@ -249,7 +249,7 @@ static int python_destroy(void)
 
 /* TODO: Convert this function to accept any iterable objects? */
 
-static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
+static void python_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 			   const char *funcname)
 {
 	int	     i;
@@ -308,9 +308,8 @@ static void python_vptuple(VALUE_PAIR **vpp, PyObject *pValue,
 		}
 		s1 = PyString_AsString(pStr1);
 		s2 = PyString_AsString(pStr2);
-		vp = pairmake(s1, s2, op);
+		vp = pairmake(ctx, vps, s1, s2, op);
 		if (vp != NULL) {
-			pairadd(vpp, vp);
 			radlog(L_DBG, "rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
 		} else {
 			radlog(L_DBG, "rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
@@ -455,10 +454,10 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 		/* Now have the return value */
 		ret = PyInt_AsLong(pTupleInt);
 		/* Reply item tuple */
-		python_vptuple(&request->reply->vps,
+		python_vptuple(request->reply, &request->reply->vps,
 			       PyTuple_GET_ITEM(pRet, 1), funcname);
 		/* Config item tuple */
-		python_vptuple(&request->config_items,
+		python_vptuple(request, &request->config_items,
 			       PyTuple_GET_ITEM(pRet, 2), funcname);
 
 	} else if (PyInt_CheckExact(pRet)) {

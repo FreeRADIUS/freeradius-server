@@ -880,8 +880,7 @@ static rlm_rcode_t counter_authorize(void *instance, REQUEST *request)
 		*/
 		sprintf(msg, "Your maximum %s usage time has been reached",
 			inst->reset);
-		reply_item=pairmake("Reply-Message", msg, T_OP_EQ);
-		pairadd(&request->reply->vps, reply_item);
+		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
 		RDEBUGE("Maximum %s usage time reached",
 				   inst->reset);
