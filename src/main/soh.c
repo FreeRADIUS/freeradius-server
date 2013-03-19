@@ -137,7 +137,6 @@ uint32_t soh_pull_be_32(const uint8_t *p) {
  * failure case.
  *
  * @param request Current request
- * @param[out] sohvp value pair list which will be updated
  * @param p binary blob
  * @param data_len length of blob
  * @return 1 on success, 0 on failure
