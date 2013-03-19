@@ -21,7 +21,7 @@ export DESTDIR := $(R)
 # And over-ride all of the other magic.
 include scripts/boiler.mk
 
-test: build.raddb
+test: build.raddb ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient
 	@$(MAKE) -C raddb/certs
 	@$(MAKE) -C src/tests tests
 
