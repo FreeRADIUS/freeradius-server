@@ -127,7 +127,7 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
  *
  *	FIXME:  This is copied from rad_recvfrom, with minor edits.
  */
-static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
+static ssize_t vqp_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 			    fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
 {
@@ -137,7 +137,6 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	socklen_t		sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
 	uint8_t			header[4];
-	void			*buf;
 	size_t			len;
 	int			port;
 
@@ -223,8 +222,8 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 */
 	len = (12 * (4 + 4 + MAX_VMPS_LEN));
 
-	buf = malloc(len);
-	if (!buf) return -1;
+	packet->data = talloc_array(packet, uint8_t, len);
+	if (!packet->data) return -1;
 
 	/*
 	 *	Receive the packet.  The OS will discard any data in the
@@ -232,7 +231,7 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 */
 #ifdef WITH_UDPFROMTO
 	if (dst.ss_family == AF_INET) {
-		data_len = recvfromto(sockfd, buf, len, flags,
+		data_len = recvfromto(sockfd, packet->data, len, flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst);
 	} else
@@ -240,15 +239,13 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 		/*
 		 *	No udpfromto, OR an IPv6 socket.  Fail gracefully.
 		 */
-		data_len = recvfrom(sockfd, buf, len, flags,
+		data_len = recvfrom(sockfd, packet->data, len, flags,
 				    (struct sockaddr *)&src, &sizeof_src);
 	if (data_len < 0) {
-		free(buf);
 		return data_len;
 	}
 
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, &port)) {
-		free(buf);
 		return -1;	/* Unknown address family, Die Die Die! */
 	}
 	*src_port = port;
@@ -260,14 +257,8 @@ static ssize_t vqp_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 *	Different address families should never happen.
 	 */
 	if (src.ss_family != dst.ss_family) {
-		free(buf);
 		return -1;
 	}
-
-	/*
-	 *	Tell the caller about the data
-	 */
-	*pbuf = buf;
 
 	return data_len;
 }
@@ -288,9 +279,9 @@ RADIUS_PACKET *vqp_recv(int sockfd)
 		return NULL;
 	}
 
-	length = vqp_recvfrom(sockfd, &packet->data, 0,
-					&packet->src_ipaddr, &packet->src_port,
-					&packet->dst_ipaddr, &packet->dst_port);
+	length = vqp_recvfrom(sockfd, packet, 0,
+			      &packet->src_ipaddr, &packet->src_port,
+			      &packet->dst_ipaddr, &packet->dst_port);
 
 	/*
 	 *	Check for socket errors.
@@ -610,7 +601,7 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 		length += vps[i]->length;
 	}
 
-	packet->data = malloc(length);
+	packet->data = talloc_array(packet, uint8_t, length);
 	if (!packet->data) {
 		fr_strerror_printf("No memory");
 		return -1;

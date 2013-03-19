@@ -36,10 +36,6 @@ RCSID("$Id$")
 #include	<freeradius-devel/udpfromto.h>
 #endif
 
-#ifdef HAVE_MALLOC_H
-#include	<malloc.h>
-#endif
-
 #if 0
 #define VP_TRACE if (fr_debug_flag) printf
 
@@ -390,7 +386,7 @@ ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
  * @brief wrapper for recvfrom, which handles recvfromto, IPv6, and all
  *	possible combinations.
  */
-static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
+static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
 			    fr_ipaddr_t *src_ipaddr, uint16_t *src_port,
 			    fr_ipaddr_t *dst_ipaddr, uint16_t *dst_port)
 {
@@ -400,7 +396,6 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	socklen_t		sizeof_dst = sizeof(dst);
 	ssize_t			data_len;
 	uint8_t			header[4];
-	void			*buf;
 	size_t			len;
 	int			port;
 
@@ -463,8 +458,8 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 		}
 	}
 
-	buf = malloc(len);
-	if (!buf) return -1;
+	packet->data = talloc_array(packet, uint8_t, len);
+	if (!packet->data) return -1;
 
 	/*
 	 *	Receive the packet.  The OS will discard any data in the
@@ -472,7 +467,7 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 */
 #ifdef WITH_UDPFROMTO
 	if ((dst.ss_family == AF_INET) || (dst.ss_family == AF_INET6)) {
-		data_len = recvfromto(sockfd, buf, len, flags,
+		data_len = recvfromto(sockfd, packet->data, len, flags,
 				      (struct sockaddr *)&src, &sizeof_src,
 				      (struct sockaddr *)&dst, &sizeof_dst);
 	} else
@@ -480,15 +475,13 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 		/*
 		 *	No udpfromto, fail gracefully.
 		 */
-		data_len = recvfrom(sockfd, buf, len, flags,
+		data_len = recvfrom(sockfd, packet->data, len, flags,
 				    (struct sockaddr *)&src, &sizeof_src);
 	if (data_len < 0) {
-		free(buf);
 		return data_len;
 	}
 
 	if (!fr_sockaddr2ipaddr(&src, sizeof_src, src_ipaddr, &port)) {
-		free(buf);
 		return -1;	/* Unknown address family, Die Die Die! */
 	}
 	*src_port = port;
@@ -500,14 +493,8 @@ static ssize_t rad_recvfrom(int sockfd, uint8_t **pbuf, int flags,
 	 *	Different address families should never happen.
 	 */
 	if (src.ss_family != dst.ss_family) {
-		free(buf);
 		return -1;
 	}
-
-	/*
-	 *	Tell the caller about the data
-	 */
-	*pbuf = buf;
 
 	return data_len;
 }
@@ -1822,7 +1809,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	 *	memory for a request.
 	 */
 	packet->data_len = total_length;
-	packet->data = (uint8_t *) malloc(packet->data_len);
+	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	if (!packet->data) {
 		fr_strerror_printf("Out of memory");
 		return -1;
@@ -2542,9 +2529,9 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
 		flags &= ~0x02;
 	}
 
-	data_len = rad_recvfrom(fd, &packet->data, sock_flags,
-					&packet->src_ipaddr, &packet->src_port,
-					&packet->dst_ipaddr, &packet->dst_port);
+	data_len = rad_recvfrom(fd, packet, sock_flags,
+				&packet->src_ipaddr, &packet->src_port,
+				&packet->dst_ipaddr, &packet->dst_port);
 
 	/*
 	 *	Check for socket errors.
@@ -4349,7 +4336,7 @@ void rad_free(RADIUS_PACKET **radius_packet_ptr)
 	if (!radius_packet_ptr || !*radius_packet_ptr) return;
 	radius_packet = *radius_packet_ptr;
 
-	free(radius_packet->data);
+	talloc_free(radius_packet->data); /* not really necessary... */
 
 	pairfree(&radius_packet->vps);
 

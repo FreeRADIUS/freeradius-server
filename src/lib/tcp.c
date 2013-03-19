@@ -265,7 +265,7 @@ int fr_tcp_read_packet(RADIUS_PACKET *packet, int flags)
 			return -1;
 		}
 		
-		packet->data = malloc(packet_len);
+		packet->data = talloc_array(packet, uint8_t, packet_len);
 		if (!packet->data) {
 			fr_strerror_printf("Out of memory");
 			return -1;

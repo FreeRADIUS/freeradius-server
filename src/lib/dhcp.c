@@ -222,11 +222,10 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 		fr_strerror_printf("Failed allocating packet");
 		return NULL;
 	}
-	memset(packet, 0, sizeof(*packet));
 
-	packet->data = malloc(MAX_PACKET_SIZE);
+	packet->data = talloc_zero_array(packet, uint8_t, MAX_PACKET_SIZE);
 	if (!packet->data) {
-		fr_strerror_printf("Failed in malloc");
+		fr_strerror_printf("Out of memory");
 		rad_free(&packet);
 		return NULL;
 	}
@@ -1044,9 +1043,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 	if (packet->data) return 0;
 
-	packet->data = malloc(MAX_PACKET_SIZE);
 	packet->data_len = MAX_PACKET_SIZE;
-	memset(packet->data, 0, packet->data_len);
+	packet->data = talloc_zero_array(packet, uint8_t, packet->data_len);
 
 	/* XXX Ugly ... should be set by the caller */
 	if (packet->code == 0) packet->code = PW_DHCP_NAK;
@@ -1362,7 +1360,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	if (num_vps > 1) {
 		VALUE_PAIR **array, **last;
 
-		array = malloc(num_vps * sizeof(VALUE_PAIR *));
+		array = talloc_array(packet, VALUE_PAIR*, num_vps);
 
 		i = 0;
 		for (vp = packet->vps; vp != NULL; vp = vp->next) {
@@ -1381,7 +1379,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 			array[i]->next = NULL;
 			last = &(array[i]->next);
 		}
-		free(array);
+		talloc_free(array);
 	}
 
 	p[0] = 0x35;		/* DHCP-Message-Type */
