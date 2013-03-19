@@ -475,7 +475,7 @@ static void deallocate_id(radclient_t *radclient)
 	 *	authentication vector.
 	 */
 	if (radclient->request->data) {
-		free(radclient->request->data);
+		talloc_free(radclient->request->data);
 		radclient->request->data = NULL;
 	}
 
