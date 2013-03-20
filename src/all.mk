@@ -7,7 +7,7 @@ ${BUILD_DIR}/make/include/freeradius-devel:
 
 .PHONY: src/freeradius-devel
 src/freeradius-devel:
-	@[ -e $@ ] || echo LN-S $@ && ln -s include $@
+	@[ -e $@ ] || (echo LN-S $@ && ln -s include $@)
 
 src/%c src/%h src/%mk: | src/freeradius-devel/ \
 			${BUILD_DIR}/make/include/freeradius-devel
