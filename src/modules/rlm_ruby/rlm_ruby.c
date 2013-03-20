@@ -53,12 +53,12 @@ typedef struct rlm_ruby_t {
     RLM_RUBY_STRUCT(preacct);
     RLM_RUBY_STRUCT(accounting);
     RLM_RUBY_STRUCT(checksimul);
-    RLM_RUBY_STRUCT(preproxy);
-    RLM_RUBY_STRUCT(postproxy);
-    RLM_RUBY_STRUCT(postauth);
+    RLM_RUBY_STRUCT(pre_proxy);
+    RLM_RUBY_STRUCT(post_proxy);
+    RLM_RUBY_STRUCT(post_auth);
 #ifdef WITH_COA
-    RLM_RUBY_STRUCT(recvcoa);
-    RLM_RUBY_STRUCT(sendcoa);
+    RLM_RUBY_STRUCT(recv_coa);
+    RLM_RUBY_STRUCT(send_coa);
 #endif
     RLM_RUBY_STRUCT(detach);
 
@@ -409,12 +409,12 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
     RLM_RUBY_LOAD(preacct);
     RLM_RUBY_LOAD(accounting);
     RLM_RUBY_LOAD(checksimul);
-    RLM_RUBY_LOAD(preproxy);
-    RLM_RUBY_LOAD(postproxy);
-    RLM_RUBY_LOAD(postauth);
+    RLM_RUBY_LOAD(pre_proxy);
+    RLM_RUBY_LOAD(post_proxy);
+    RLM_RUBY_LOAD(post_auth);
 #ifdef WITH_COA
-    RLM_RUBY_LOAD(recvcoa);
-    RLM_RUBY_LOAD(sendcoa);
+    RLM_RUBY_LOAD(recv_coa);
+    RLM_RUBY_LOAD(send_coa);
 #endif
     RLM_RUBY_LOAD(detach);
 
@@ -434,12 +434,12 @@ RLM_RUBY_FUNC(authenticate)
 RLM_RUBY_FUNC(preacct)
 RLM_RUBY_FUNC(accounting)
 RLM_RUBY_FUNC(checksimul)
-RLM_RUBY_FUNC(preproxy)
-RLM_RUBY_FUNC(postproxy)
-RLM_RUBY_FUNC(postauth)
+RLM_RUBY_FUNC(pre_proxy)
+RLM_RUBY_FUNC(post_proxy)
+RLM_RUBY_FUNC(post_auth)
 #ifdef WITH_COA
-RLM_RUBY_FUNC(recvcoa)
-RLM_RUBY_FUNC(sendcoa)
+RLM_RUBY_FUNC(recv_coa)
+RLM_RUBY_FUNC(send_coa)
 #endif
 
 static int mod_detach(UNUSED void *instance)
@@ -472,12 +472,12 @@ module_t rlm_ruby = {
 	mod_preacct, /* preaccounting */
 	mod_accounting, /* accounting */
 	mod_checksimul, /* checksimul */
-	mod_preproxy, /* pre-proxy */
-	mod_postproxy, /* post-proxy */
-	mod_postauth /* post-auth */
+	mod_pre_proxy, /* pre-proxy */
+	mod_post_proxy, /* post-proxy */
+	mod_post_auth /* post-auth */
 #ifdef WITH_COA
-	, mod_recvcoa,
-	mod_sendcoa
+	, mod_recv_coa,
+	mod_send_coa
 #endif
     },
 };

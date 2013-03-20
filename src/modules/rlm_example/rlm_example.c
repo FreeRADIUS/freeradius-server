@@ -146,7 +146,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t example_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -215,7 +215,7 @@ module_t rlm_example = {
 	{
 		mod_authenticate,	/* authentication */
 		mod_authorize,	/* authorization */
-		example_preacct,	/* preaccounting */
+		mod_preacct,	/* preaccounting */
 		mod_accounting,	/* accounting */
 		mod_checksimul,	/* checksimul */
 		NULL,			/* pre-proxy */

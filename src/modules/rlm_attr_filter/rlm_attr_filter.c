@@ -338,7 +338,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 	return RLM_MODULE_UPDATED;
 }
 
-static rlm_rcode_t attr_filter_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->packet);
 }
@@ -360,7 +360,7 @@ static rlm_rcode_t attr_filter_postproxy(void *instance, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t attr_filter_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->reply);
 }
@@ -381,7 +381,7 @@ module_t rlm_attr_filter = {
 	{
 		NULL,			/* authentication */
 		mod_authorize,	/* authorization */
-		attr_filter_preacct,	/* pre-acct */
+		mod_preacct,	/* pre-acct */
 		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
@@ -390,7 +390,7 @@ module_t rlm_attr_filter = {
 #else
 		NULL, NULL,
 #endif
-		attr_filter_postauth	/* post-auth */
+		mod_post_auth	/* post-auth */
 	},
 };
 

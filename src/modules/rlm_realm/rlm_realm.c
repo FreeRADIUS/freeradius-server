@@ -393,7 +393,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  * This does the exact same thing as the mod_authorize, it's just called
  * differently.
  */
-static rlm_rcode_t realm_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	int rcode;
 	const char *name = (char *)request->username->vp_strvalue;
@@ -427,7 +427,7 @@ static rlm_rcode_t realm_preacct(void *instance, REQUEST *request)
  *	CoA realms via Operator-Name.  Because the realm isn't in a
  *	User-Name, concepts like "prefix" and "suffix' don't matter.
  */
-static rlm_rcode_t realm_coa(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t realm_recv_coa(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -484,14 +484,14 @@ module_t rlm_realm = {
 	{
 		NULL,			/* authentication */
 		mod_authorize,	/* authorization */
-		realm_preacct,		/* preaccounting */
+		mod_preacct,		/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */
 #ifdef WITH_COA
-		, realm_coa,		/* recv-coa */
+		, realm_recv_coa,	/* recv-coa */
 		NULL			/* send-coa */
 #endif
 	},

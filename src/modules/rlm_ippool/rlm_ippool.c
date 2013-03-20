@@ -391,7 +391,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_ippool_t *data = (rlm_ippool_t *) instance;
 	int delete = 0;
@@ -816,6 +816,6 @@ module_t rlm_ippool = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		ippool_postauth		/* post-auth */
+		mod_post_auth		/* post-auth */
 	},
 };

@@ -508,7 +508,7 @@ static int do_logging(char *str, int retcode)
 /*
  *	Allocate an IP number from the pool.
  */
-static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request)
 {
 	rlm_sqlippool_t * inst = (rlm_sqlippool_t *) instance;
 	char allocation[MAX_STRING_LEN];
@@ -890,6 +890,6 @@ module_t rlm_sqlippool = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		sqlippool_postauth	/* post-auth */
+		mod_post_auth	/* post-auth */
 	},
 };

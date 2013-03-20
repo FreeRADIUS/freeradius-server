@@ -129,7 +129,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t wimax_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	return mod_authorize(instance, request);
 }
@@ -149,7 +149,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 /*
  *	Generate the keys after the user has been authenticated.
  */
-static rlm_rcode_t wimax_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_wimax_t *inst = instance;
 	VALUE_PAIR *msk, *emsk, *vp;
@@ -513,11 +513,11 @@ module_t rlm_wimax = {
 	{
 		NULL,			/* authentication */
 		mod_authorize,	/* authorization */
-		wimax_preacct,		/* preaccounting */
+		mod_preacct,		/* preaccounting */
 		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		wimax_postauth 		/* post-auth */
+		mod_post_auth 		/* post-auth */
 	},
 };

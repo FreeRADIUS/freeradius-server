@@ -871,7 +871,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 		 *	session.
 		 */
 		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
-		rcode = rad_postauth(fake);
+		rcode = mod_post_auth(fake);
 		RDEBUG2("post-auth returns %d", rcode);
 
 		if ((debug_flag > 0) && fr_log_fp) {

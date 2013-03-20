@@ -1492,7 +1492,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 /*
  *	Postauth: Write a record of the authentication attempt
  */
-static rlm_rcode_t rlm_sql_postauth(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;
 	
 	if (inst->config->postauth) {
@@ -1530,6 +1530,6 @@ module_t rlm_sql = {
 #endif
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		rlm_sql_postauth	/* post-auth */
+		mod_post_auth	/* post-auth */
 	},
 };

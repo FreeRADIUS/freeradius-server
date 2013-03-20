@@ -515,7 +515,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t detail_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->reply, FALSE);
 }
@@ -604,7 +604,7 @@ module_t rlm_detail = {
 #else
 		NULL, NULL,
 #endif
-		detail_postauth		/* post-auth */
+		mod_post_auth		/* post-auth */
 #ifdef WITH_COA
 		, mod_recv_coa,
 		mod_send_coa

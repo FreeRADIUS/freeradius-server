@@ -1159,7 +1159,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
 /** Check the user's password against ldap database
  *
  */
-static rlm_rcode_t ldap_postauth(void *instance, REQUEST * request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request)
 {
 	ldap_instance_t	*inst = instance;
 
@@ -1186,6 +1186,6 @@ module_t rlm_ldap = {
 		NULL,			/* checksimul 		 */
 		NULL,			/* pre-proxy 		 */
 		NULL,			/* post-proxy 		 */
-		ldap_postauth		/* post-auth */
+		mod_post_auth		/* post-auth */
 	},
 };

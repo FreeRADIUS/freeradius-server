@@ -330,7 +330,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 /* assign new IP address, if required */
-static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	char *pname;       /* name of requested IP pool */
@@ -351,7 +351,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	vp = pairfind(request->reply->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
 	if (vp) {
 		nvp_log(__LINE__, inst, L_DBG,
-			"sqlhpwippool_postauth(): IP address "
+			"mod_post_auth(): IP address "
 			"already in the reply packet - exiting");
 		return RLM_MODULE_NOOP;
 	}
@@ -361,12 +361,12 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	if (vp) {
 		pname = vp->vp_strvalue;
 		nvp_log(__LINE__, inst, L_DBG,
-			"sqlhpwippool_postauth(): pool name = '%s'",
+			"mod_post_auth(): pool name = '%s'",
 			pname);
 	}
 	else {
 		nvp_log(__LINE__, inst, L_DBG,
-			"sqlhpwippool_postauth(): no IP pool name - exiting");
+			"mod_post_auth(): no IP pool name - exiting");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -378,7 +378,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	else {
 		nasip = 0;
 		nvp_log(__LINE__, inst, L_DBG,
-			"sqlhpwippool_postauth(): no NAS IP address in "
+			"mod_post_auth(): no NAS IP address in "
 			"the request packet - using \"0.0.0.0/0\" (any)");
 	}
 
@@ -386,13 +386,13 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 	sqlsock = sql_get_socket(inst->sqlinst);
 	if (!sqlsock) {
 		nvp_log(__LINE__, inst, L_ERR,
-			"sqlhpwippool_postauth(): error while requesting an SQL socket");
+			"mod_post_auth(): error while requesting an SQL socket");
 		return RLM_MODULE_FAIL;
 	}
 
 	/* get connection id as temporary unique integer */
 	if (nvp_select(__LINE__, inst, sqlsock, "SELECT CONNECTION_ID()") < 1) {
-		nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_postauth(): WTF ;-)!");
+		nvp_log(__LINE__, inst, L_ERR, "mod_post_auth(): WTF ;-)!");
 		nvp_select_finish(inst, sqlsock);
 		sql_release_socket(inst->sqlinst, sqlsock);
 		return RLM_MODULE_FAIL;
@@ -412,7 +412,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 		inst->sincesync = 0;
 
 		nvp_log(__LINE__, inst, L_DBG,
-			"sqlhpwippool_postauth(): syncing with radacct table");
+			"mod_post_auth(): syncing with radacct table");
 
 		r = (nvp_freeclosed(inst, sqlsock) && nvp_syncfree(inst, sqlsock));
 
@@ -422,7 +422,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 
 		if (!r) {
 			nvp_log(__LINE__, inst, L_ERR,
-				"sqlhpwippool_postauth(): synchronization failed");
+				"mod_post_auth(): synchronization failed");
 			sql_release_socket(inst->sqlinst, sqlsock);
 			return RLM_MODULE_FAIL;
 		}
@@ -430,7 +430,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 
 	for (s_gid = 0; s_gid < RLM_NETVIM_MAX_ROWS && !(ip.s_addr); s_gid++) {
 		nvp_log(__LINE__, inst, L_DBG,
-			"sqlhpwippool_postauth(): selecting gid on position %lu",
+			"mod_post_auth(): selecting gid on position %lu",
 			s_gid);
 
 		/* find the most specific group which NAS belongs to */
@@ -450,7 +450,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 		       inst->db_name, nasip, s_gid)) {
 			case -1:
 				nvp_log(__LINE__, inst, L_ERR,
-					"sqlhpwippool_postauth(): couldn't find "
+					"mod_post_auth(): couldn't find "
 					"any more matching host groups");
 				goto end_gid;		  /* exit the main loop */
 			case 0:
@@ -464,7 +464,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 
 		for (s_prio = 0; s_prio < RLM_NETVIM_MAX_ROWS && !(ip.s_addr); s_prio++) {
 			nvp_log(__LINE__, inst, L_DBG,
-				"sqlhpwippool_postauth(): selecting prio on position %lu",
+				"mod_post_auth(): selecting prio on position %lu",
 				s_prio);
 
 			/* prepare to search for best fit pool */
@@ -491,7 +491,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 				inst->db_name, gid, pname, s_prio)) {
 				case -1:
 					nvp_log(__LINE__, inst, L_DBG,
-						"sqlhpwippool_postauth(): couldn't find "
+						"mod_post_auth(): couldn't find "
 						"any more matching pools for gid = %u",
 						gid);
 					goto end_prio;	       /* select next gid */
@@ -510,7 +510,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 
 			for (s_pid = 0; s_pid < RLM_NETVIM_MAX_ROWS && !(ip.s_addr); s_pid++) {
 				nvp_log(__LINE__, inst, L_DBG,
-					"sqlhpwippool_postauth(): selecting PID on position %lu",
+					"mod_post_auth(): selecting PID on position %lu",
 					s_pid);
 
 				/* search for best fit pool */
@@ -537,7 +537,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 					weights_sum, used_sum, s_pid)) {
 					case -1:
 						nvp_log(__LINE__, inst, L_DBG,
-							"sqlhpwippool_postauth(): couldn't find any more "
+							"mod_post_auth(): couldn't find any more "
 							"matching pools of prio = %ld for gid = %lu",
 							prio, gid);
 						goto end_pid;	      /* select next prio */
@@ -586,7 +586,7 @@ static rlm_rcode_t sqlhpwippool_postauth(void *instance, REQUEST *request)
 					inst->db_name, connid)) {
 					case -1:
 						nvp_log(__LINE__, inst, L_ERR,
-							"sqlhpwippool_postauth(): couldn't reserve an IP address "
+							"mod_post_auth(): couldn't reserve an IP address "
 							"from pool of pid = %lu (prio = %ld, gid = %lu)",
 							pid, prio, gid);
 						continue;			    /* select next pid */
@@ -627,14 +627,14 @@ end_gid:
 	/* no free IP address found */
 	if (!ip.s_addr) {
 		nvp_log(__LINE__, inst, L_INFO,
-			"sqlhpwippool_postauth(): no free IP address found!");
+			"mod_post_auth(): no free IP address found!");
 
 		if (inst->nofreefail) {
-			nvp_log(__LINE__, inst, L_DBG, "sqlhpwippool_postauth(): rejecting user");
+			nvp_log(__LINE__, inst, L_DBG, "mod_post_auth(): rejecting user");
 			return RLM_MODULE_REJECT;
 		}
 		else {
-			nvp_log(__LINE__, inst, L_DBG, "sqlhpwippool_postauth(): exiting");
+			nvp_log(__LINE__, inst, L_DBG, "mod_post_auth(): exiting");
 			return RLM_MODULE_NOOP;
 		}
 	}
@@ -644,7 +644,7 @@ end_gid:
 			       PW_FRAMED_IP_ADDRESS, 0);
 	vp->vp_ipaddr = ip.s_addr;
 
-	nvp_log(__LINE__, inst, L_DBG, "sqlhpwippool_postauth(): returning %s",
+	nvp_log(__LINE__, inst, L_DBG, "mod_post_auth(): returning %s",
 		inet_ntoa(ip));
 	return RLM_MODULE_OK;
 }
@@ -785,6 +785,6 @@ module_t rlm_sqlhpwippool = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		sqlhpwippool_postauth	/* post-auth */
+		mod_post_auth	/* post-auth */
 	},
 };

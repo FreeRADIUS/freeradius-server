@@ -374,7 +374,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
  *
  *	Then, call exec_dispatch.
  */
-static rlm_rcode_t exec_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	int result;
 	int exec_wait = 0;
@@ -486,7 +486,7 @@ module_t rlm_exec = {
 		NULL,			/* check simul */
 		exec_dispatch,		/* pre-proxy */
 		exec_dispatch,		/* post-proxy */
-		exec_postauth		/* post-auth */
+		mod_post_auth		/* post-auth */
 #ifdef WITH_COA
 		, exec_dispatch,
 		exec_dispatch

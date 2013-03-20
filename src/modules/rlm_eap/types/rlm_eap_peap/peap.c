@@ -588,7 +588,7 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 		 *	FIXME: If rcode returns fail, do something
 		 *	intelligent...
 		 */
-		rcode = rad_postauth(fake);
+		rcode = mod_post_auth(fake);
 
 		if ((debug_flag > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "} # server %s\n", fake->server);

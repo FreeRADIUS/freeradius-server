@@ -235,7 +235,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 				request->packet->code);
 }
 
-static rlm_rcode_t replicate_preaccounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preaccounting(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
 				request->packet->code);
@@ -247,25 +247,25 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				request->reply->code);
 }
 
-static rlm_rcode_t replicate_preproxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REQUEST,
 				request->proxy->code);
 }
 
-static rlm_rcode_t replicate_postproxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_PROXY_REPLY,
 				request->proxy_reply->code);
 }
 
-static rlm_rcode_t replicate_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
-	return replicate_packet(instance, request, PAIR_LIST_REPLY,
+	return mod_packet(instance, request, PAIR_LIST_REPLY,
 				request->reply->code);
 }
 
-static rlm_rcode_t replicate_coarequest(void *instance, REQUEST *request)
+static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
 				request->packet->code);
@@ -289,14 +289,14 @@ module_t rlm_replicate = {
 	{
 		NULL,			/* authentication */
 		mod_authorize,	/* authorization */
-		replicate_preaccounting,/* preaccounting */
+		mod_preaccounting,/* preaccounting */
 		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
-		replicate_preproxy,	/* pre-proxy */
-		replicate_postproxy,	/* post-proxy */
-		replicate_postauth	/* post-auth */
+		mod_pre_proxy,	/* pre-proxy */
+		mod_post_proxy,	/* post-proxy */
+		mod_post_auth	/* post-auth */
 #ifdef WITH_COA
-		, replicate_coarequest, /* coa-request */
+		, mod_recv_coa, /* coa-request */
 		NULL
 #endif
 	},

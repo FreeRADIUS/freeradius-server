@@ -447,7 +447,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	return do_attr_rewrite(instance, request);
 }
 
-static rlm_rcode_t attr_rewrite_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
@@ -469,7 +469,7 @@ static rlm_rcode_t attr_rewrite_postproxy(void *instance, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t attr_rewrite_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
@@ -492,7 +492,7 @@ module_t rlm_attr_rewrite = {
 	{
 		mod_authenticate,	/* authentication */
 		mod_authorize, 	/* authorization */
-		attr_rewrite_preacct,		/* preaccounting */
+		mod_preacct,		/* preaccounting */
 		mod_accounting,	/* accounting */
 		mod_checksimul,	/* checksimul */
 #ifdef WITH_PROXY
@@ -501,6 +501,6 @@ module_t rlm_attr_rewrite = {
 #else
 		NULL, NULL,
 #endif
-		attr_rewrite_postauth		/* post-auth */
+		mod_post_auth		/* post-auth */
 	},
 };

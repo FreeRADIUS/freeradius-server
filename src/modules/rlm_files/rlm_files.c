@@ -521,7 +521,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  *	config_items. Reply items are Not Recommended(TM) in acct_users,
  *	except for Fallthrough, which should work
  */
-static rlm_rcode_t file_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -558,7 +558,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 			   request->packet->vps, &request->reply->vps);
 }
 
-static rlm_rcode_t file_postauth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -578,7 +578,7 @@ module_t rlm_files = {
 	{
 		mod_authenticate,	/* authentication */
 		mod_authorize, 	/* authorization */
-		file_preacct,		/* preaccounting */
+		mod_preacct,		/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
@@ -587,7 +587,7 @@ module_t rlm_files = {
 #else
 		NULL, NULL,
 #endif
-		file_postauth		/* post-auth */
+		mod_post_auth		/* post-auth */
 	},
 };
 

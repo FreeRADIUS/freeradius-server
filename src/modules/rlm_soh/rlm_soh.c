@@ -135,7 +135,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-static rlm_rcode_t soh_postauth(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(UNUSED void * instance, REQUEST *request)
 {
 #ifdef WITH_DHCP
 	int rcode;
@@ -229,6 +229,6 @@ module_t rlm_soh = {
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
-		soh_postauth		/* post-auth */
+		mod_post_auth		/* post-auth */
 	},
 };
