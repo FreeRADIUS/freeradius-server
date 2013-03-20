@@ -182,9 +182,9 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
       return -1;
     }
 
-    retval = mod_authenticate(pamh, 0);
+    retval = pam_authenticate(pamh, 0);
     if (retval != PAM_SUCCESS) {
-      DEBUG("pam_pass: function mod_authenticate FAILED for <%s>. Reason: %s",
+      DEBUG("pam_pass: function pam_authenticate FAILED for <%s>. Reason: %s",
 	    name, pam_strerror(pamh, retval));
       pam_end(pamh, retval);
       return -1;
@@ -210,7 +210,7 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
 }
 
 /* translate between function declarations */
-static rlm_rcode_t pam_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	int	r;
 	VALUE_PAIR *pair;
@@ -269,7 +269,7 @@ module_t rlm_pam = {
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		pam_auth,		/* authenticate */
+		mod_authenticate,	/* authenticate */
 		NULL,			/* authorize */
 		NULL,			/* pre-accounting */
 		NULL,			/* accounting */
