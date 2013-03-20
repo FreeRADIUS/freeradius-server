@@ -41,7 +41,6 @@ typedef struct ldap_instance {
 	char		*login;
 	char		*password;
 
-	char		*filter;
 	char		*basedn;
 
 	int		chase_referrals;

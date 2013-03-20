@@ -762,7 +762,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	}
 
 	
-	if (!radius_xlat(filter, sizeof(filter), inst->filter, request, rlm_ldap_escape_func, NULL)) {
+	if (!radius_xlat(filter, sizeof(filter), inst->userobj_filter, request, rlm_ldap_escape_func, NULL)) {
 		RDEBUGE("Unable to create filter");
 		
 		*rcode = RLM_MODULE_INVALID;
