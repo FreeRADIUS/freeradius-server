@@ -480,7 +480,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairmove2(&t->state, &(reply->vps), PW_STATE, 0, TAG_ANY);
+		pairmove2(t, &t->state, &(reply->vps), PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
@@ -488,7 +488,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &(reply->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
+		pairmove2(t, &vp, &(reply->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
@@ -1120,7 +1120,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			pairmove2(&(request->config_items),
+			pairmove2(request, &(request->config_items),
 				   &(fake->config_items),
 				   PW_PROXY_TO_REALM, 0, TAG_ANY);
 

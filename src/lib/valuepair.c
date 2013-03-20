@@ -452,12 +452,13 @@ VALUE_PAIR *paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp)
  *
  * @note Does not respect tags when matching.
  *
+ * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  *
  * @see radius_pairmove
  */
-void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
+void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 {
 	VALUE_PAIR **tailto, *i, *j, *next;
 	VALUE_PAIR *tailfrom = NULL;
@@ -559,7 +560,6 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 				}
 				tailfrom = i;
 				continue;
-				break;
 
 			case T_OP_EQ:		/* = */
 				/*
@@ -635,8 +635,9 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
 		}
 		*tailto = i;
 		if (i) {
-			i->next = NULL;
 			tailto = &i->next;
+			i->next = NULL;
+			talloc_steal(ctx, i);
 		}
 	}
 }
@@ -649,6 +650,7 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
  * @note pairfree should be called on the head of the old list to free unmoved
  	 attributes (if they're no longer needed).
  *
+ * @param[in] ctx for talloc
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  * @param[in] attr to match, if PW_VENDOR_SPECIFIC and vendor 0, only VSAs will
@@ -656,8 +658,8 @@ void pairmove(VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
  */
-void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
-	       unsigned int vendor, int8_t tag)
+void pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+	       unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *to_tail, *i, *next;
 	VALUE_PAIR *iprev = NULL;
@@ -728,6 +730,7 @@ void pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr,
 			*to = i;
 		to_tail = i;
 		i->next = NULL;
+		talloc_steal(ctx, i);
 	}
 }
 

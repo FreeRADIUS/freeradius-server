@@ -1079,6 +1079,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 
 		*last = vp;
 		last = &(*last)->next;
+		talloc_steal(request, vp);
 	}
 
 	rad_assert(request != NULL);

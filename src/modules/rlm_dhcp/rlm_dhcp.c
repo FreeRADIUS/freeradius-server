@@ -77,7 +77,7 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 		 decoded++;
 	} while (next);
 	
-	pairmove(&(request->packet->vps), &head);
+	pairmove(request->packet, &(request->packet->vps), &head);
 	
 	/* Free any unmoved pairs */
 	pairfree(&head);

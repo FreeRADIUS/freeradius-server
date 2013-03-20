@@ -698,7 +698,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	packet, and we will send EAP-Success.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
+		pairmove2(tls_session, &vp, &reply->vps, PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (vp) {
 			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
@@ -731,7 +731,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			 *	can figure it out, from the non-tunneled
 			 *	EAP-Success packet.
 			 */
-			pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+			pairmove2(tls_session, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 			pairfree(&vp);
 		}
 
@@ -779,7 +779,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairmove2(&t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
+		pairmove2(t, &t->state, &reply->vps, PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	We should really be a bit smarter about this,
@@ -789,7 +789,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	method works in 99.9% of the situations.
 		 */
 		vp = NULL;
-		pairmove2(&vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
+		pairmove2(t, &vp, &reply->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	There MUST be a Reply-Message in the challenge,
@@ -799,7 +799,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	we MUST create one, with an empty string as
 		 *	it's value.
 		 */
-		pairmove2(&vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
+		pairmove2(t, &vp, &reply->vps, PW_REPLY_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	Handle the ACK, by tunneling any necessary reply
@@ -1244,7 +1244,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			pairmove2(&(request->config_items),
+			pairmove2(request, &(request->config_items),
 				  &(fake->config_items),
 				  PW_PROXY_TO_REALM, 0, TAG_ANY);
 

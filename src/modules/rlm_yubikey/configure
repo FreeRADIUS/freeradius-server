@@ -2940,10 +2940,10 @@ $as_echo "$as_me: WARNING: yubikey libraries not found. Use --with-yubikey-lib-d
       fail="$fail libct"
     fi
 
-	targetname=rlm_yubikey     # keep this!  Don't change!
+	targetname=rlm_yubikey
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module rlm_yubikey is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module rlm_yubikey is disabled.
 fi
 
 if test x"$fail" != x""; then
@@ -2961,10 +2961,9 @@ fi
 mod_ldflags="${SMART_LIBS}"
 mod_cflags="${SMART_CFLAGS}"
 
-  # change 'yubikey'
-  # change 'yubikey'
 
-  # keep this!  Don't change!
+
+
 
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
@@ -4138,4 +4137,3 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
-  # keep this!  Don't change!

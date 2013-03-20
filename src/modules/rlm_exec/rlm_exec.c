@@ -341,7 +341,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *
 	 *	If we're not waiting, then there are no output pairs.
 	 */
-	if (output_pairs) pairmove(output_pairs, &answer);
+	if (output_pairs) pairmove(request, output_pairs, &answer);
 
 	pairfree(&answer);
 
@@ -402,7 +402,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	/*
 	 *	Always add the value-pairs to the reply.
 	 */
-	pairmove(&request->reply->vps, &tmp);
+	pairmove(request->reply, &request->reply->vps, &tmp);
 	pairfree(&tmp);
 
 	if (result < 0) {

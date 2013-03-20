@@ -139,7 +139,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		rdebug_pair_list(2, request, c->control);
 		
 		vp = paircopy(request, c->control);
-		pairmove(&request->config_items, &vp);
+		pairmove(request, &request->config_items, &vp);
 		pairfree(&vp);
 	}
 
@@ -148,7 +148,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		rdebug_pair_list(2, request, c->request);
 		
 		vp = paircopy(request->packet, c->request);
-		pairmove(&request->packet->vps, &vp);
+		pairmove(request->packet, &request->packet->vps, &vp);
 		pairfree(&vp);
 	}
 
@@ -157,7 +157,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		rdebug_pair_list(2, request, c->reply);
 		
 		vp = paircopy(request->reply, c->reply);
-		pairmove(&request->reply->vps, &vp);
+		pairmove(request->reply, &request->reply->vps, &vp);
 		pairfree(&vp);
 	}
 	

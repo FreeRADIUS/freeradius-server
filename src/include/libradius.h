@@ -440,8 +440,9 @@ VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp);
 VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, const DICT_ATTR *da, const VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
-void		pairmove(VALUE_PAIR **to, VALUE_PAIR **from);
-void		pairmove2(VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag);
+void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
+void		pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
+			  unsigned int attr, unsigned int vendor, int8_t tag);
 int		pairparsevalue(VALUE_PAIR *vp, const char *value);
 VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *attribute, const char *value, FR_TOKEN op);
 int 		pairmark_xlat(VALUE_PAIR *vp, const char *value);

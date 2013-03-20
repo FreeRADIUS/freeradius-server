@@ -473,7 +473,7 @@ static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
 			/* ctx may be reply or proxy */
 			reply_tmp = paircopy(request, pl->reply);
 			radius_xlat_move(request, reply_pairs, &reply_tmp);
-			pairmove(&request->config_items, &check_tmp);
+			pairmove(request, &request->config_items, &check_tmp);
 			pairfree(&reply_tmp);
 			pairfree(&check_tmp);
 
