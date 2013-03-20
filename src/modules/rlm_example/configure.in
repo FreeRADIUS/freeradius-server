@@ -1,7 +1,7 @@
 AC_PREREQ([2.53])
-AC_INIT(rlm_example.c) # change 'example'
+AC_INIT(rlm_example.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_example]) # change 'example'
+AC_DEFUN(modname,[rlm_example])
 
 if test x$with_[]modname != xno; then
 
@@ -21,13 +21,13 @@ if test x$with_[]modname != xno; then
 		[ fail=$fail" stdio.h" ]
 	)
 
-	AC_CHECK_HEADERS(stdio.h stdlib.h)  # for the config.h defs
-	AC_CHECK_FUNCS(printf)  # for the config.h defs
+	AC_CHECK_HEADERS(stdio.h stdlib.h)
+	AC_CHECK_FUNCS(printf)
 
-	targetname=modname     # keep this!  Don't change!
+	targetname=modname
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.
@@ -42,10 +42,10 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(mod_cflags)  # change 'example'
-AC_SUBST(mod_ldflags)  # change 'example'
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
-AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
+AC_CONFIG_HEADER(config.h)
 
-AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(all.mk)  # keep this!  Don't change!
+AC_SUBST(targetname)
+AC_OUTPUT(all.mk)

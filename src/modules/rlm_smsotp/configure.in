@@ -1,22 +1,22 @@
 AC_PREREQ([2.53])
-AC_INIT(rlm_smsotp.c) # change 'example'
+AC_INIT(rlm_smsotp.c)
 AC_REVISION($Revision: 0.1 $)
-AC_DEFUN(modname,[rlm_smsotp]) # change 'example'
+AC_DEFUN(modname,[rlm_smsotp])
 
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	AC_CHECK_HEADERS(sys/un.h)  # for the config.h defs
+	AC_CHECK_HEADERS(sys/un.h)
 	if test "$ac_cv_header_sys_un_h" != "yes"; then
 	  fail="$fail sys/un.h"
 	fi
 
-	targetname=modname     # keep this!  Don't change!
+	targetname=modname
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.
@@ -31,10 +31,10 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(mod_cflags)  # change 'example'
-AC_SUBST(mod_ldflags)  # change 'example'
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
-AC_CONFIG_HEADER(config.h)  # delete if you don't want a config.h file.
+AC_CONFIG_HEADER(config.h)
 
-AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(all.mk)  # keep this!  Don't change!
+AC_SUBST(targetname)
+AC_OUTPUT(all.mk)

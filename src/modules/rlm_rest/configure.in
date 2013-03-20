@@ -117,10 +117,10 @@ if test x$with_[]modname != xno; then
 		AC_MSG_WARN([silently building without JSON support. requires: json-c])
 	fi
 
-	targetname=modname     # keep this!  Don't change!
+	targetname=modname
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.

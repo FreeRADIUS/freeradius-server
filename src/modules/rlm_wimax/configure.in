@@ -1,7 +1,7 @@
 AC_PREREQ([2.53])
-AC_INIT(rlm_wimax.c) # change 'wimax'
+AC_INIT(rlm_wimax.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_wimax]) # change 'wimax'
+AC_DEFUN(modname,[rlm_wimax])
 
 if test x$with_[]modname != xno; then
 
@@ -16,10 +16,10 @@ if test x$with_[]modname != xno; then
 		[ fail=$fail" openssl/hmac.h" ]
 	)
 
-	targetname=modname     # keep this!  Don't change!
+	targetname=modname
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.
@@ -34,8 +34,8 @@ if test x"$fail" != x""; then
 fi
 
 
-AC_SUBST(mod_cflags)  # change 'wimax'
-AC_SUBST(mod_ldflags)  # change 'wimax'
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 
-AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(all.mk)  # keep this!  Don't change!
+AC_SUBST(targetname)
+AC_OUTPUT(all.mk)

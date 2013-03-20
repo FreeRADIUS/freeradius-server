@@ -65,10 +65,10 @@ if test x$with_[]modname != xno; then
 	)
 	CFLAGS="$old_CFLAGS"
 
-	targetname=modname     # keep this!  Don't change!
+	targetname=modname
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.
@@ -85,5 +85,5 @@ fi
 AC_SUBST(mod_cflags)
 AC_SUBST(mod_ldflags)
 
-AC_SUBST(targetname)  # keep this!  Don't change!
+AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

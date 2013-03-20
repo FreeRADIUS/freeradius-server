@@ -80,10 +80,10 @@ if test x$with_[]modname != xno; then
       fail="$fail libct"
     fi
 
-	targetname=modname     # keep this!  Don't change!
+	targetname=modname
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module modname is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module modname is disabled.
 fi
 
 dnl  Don't change this section.
@@ -100,8 +100,7 @@ fi
 mod_ldflags="${SMART_LIBS}"
 mod_cflags="${SMART_CFLAGS}"
 
-AC_SUBST(mod_cflags)  # change 'yubikey'
-AC_SUBST(mod_ldflags)  # change 'yubikey'
-
-AC_SUBST(targetname)  # keep this!  Don't change!
-AC_OUTPUT(all.mk)  # keep this!  Don't change!
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
+AC_SUBST(targetname)
+AC_OUTPUT(all.mk)
