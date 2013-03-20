@@ -137,28 +137,24 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 	if (c->control) {
 		RDEBUG2("Merging cached control list:");
 		rdebug_pair_list(2, request, c->control);
-		
-		vp = paircopy(request, c->control);
-		pairmove(request, &request->config_items, &vp);
-		pairfree(&vp);
+
+		pairadd(&request->config_items, paircopy(request, c->control));
 	}
 
 	if (c->packet && request->packet) {
 		RDEBUG2("Merging cached request list:");
 		rdebug_pair_list(2, request, c->packet);
 		
-		vp = paircopy(request->packet, c->packet);
-		pairmove(request->packet, &request->packet->vps, &vp);
-		pairfree(&vp);
+		pairadd(&request->packet->vps,
+			paircopy(request->packet, c->packet));
 	}
 
 	if (c->reply && request->reply) {
 		RDEBUG2("Merging cached reply list:");
 		rdebug_pair_list(2, request, c->reply);
-		
-		vp = paircopy(request->reply, c->reply);
-		pairmove(request->reply, &request->reply->vps, &vp);
-		pairfree(&vp);
+
+		pairadd(&request->reply->vps,
+			paircopy(request->reply, c->reply));
 	}
 	
 	if (inst->stats) {
