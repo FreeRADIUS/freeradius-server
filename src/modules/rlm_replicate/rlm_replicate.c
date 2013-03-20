@@ -261,7 +261,7 @@ static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 
 static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
-	return mod_packet(instance, request, PAIR_LIST_REPLY,
+	return replicate_packet(instance, request, PAIR_LIST_REPLY,
 				request->reply->code);
 }
 
