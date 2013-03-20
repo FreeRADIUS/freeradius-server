@@ -422,11 +422,8 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp,
 		
 		*last = n;
 		last = &n->next;
-		vp = vp->next;
-		
-		continue;
-		
-		skip:
+
+	skip:
 		vp = vp->next;
 	}
 	
