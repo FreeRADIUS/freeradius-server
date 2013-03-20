@@ -127,7 +127,7 @@ ifneq "$(wildcard config.log)" ""
 CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
 
 src/%all.mk: src/%all.mk.in src/%configure
-	@ECHO CONFIGURE $(dir $@)
+	@echo CONFIGURE $(dir $@)
 	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
 endif
 
