@@ -9,7 +9,9 @@ ${BUILD_DIR}/make/include/freeradius-devel:
 src/freeradius-devel:
 	@[ -e $@ ] || ln -s include $@
 
-src/%c src/%h src/%mk: | src/freeradius-devel \
+src/freeradius-devel/autoconf.h: | src/freeradius-devel/
+
+src/%c src/%h src/%mk: | src/freeradius-devel/autoconf.h
 			${BUILD_DIR}/make/include/freeradius-devel
 
 SUBMAKEFILES := include/all.mk lib/all.mk modules/all.mk main/all.mk
