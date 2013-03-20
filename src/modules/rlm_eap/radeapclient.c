@@ -1340,11 +1340,11 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	if(e == NULL) return;
 
 	/* create EAP-ID and EAP-CODE attributes to start */
-	eap1 = paircreate(ATTRIBUTE_EAP_ID, 0, PW_TYPE_INTEGER);
+	eap1 = paircreate(rep, ATTRIBUTE_EAP_ID, 0, PW_TYPE_INTEGER);
 	eap1->vp_integer = e->id;
 	pairadd(&(rep->vps), eap1);
 
-	eap1 = paircreate(ATTRIBUTE_EAP_CODE, 0, PW_TYPE_INTEGER);
+	eap1 = paircreate(rep, ATTRIBUTE_EAP_CODE, 0, PW_TYPE_INTEGER);
 	eap1->vp_integer = e->code;
 	pairadd(&(rep->vps), eap1);
 
@@ -1383,7 +1383,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 			len = MAX_STRING_LEN;
 		}
 
-		eap1 = paircreate(type, 0, PW_TYPE_OCTETS);
+		eap1 = paircreate(rep, type, 0);
 		memcpy(eap1->vp_strvalue, &e->data[1], len);
 		eap1->length = len;
 		pairadd(&(rep->vps), eap1);

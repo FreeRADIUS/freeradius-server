@@ -1092,7 +1092,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 */
 				if (t->default_method != 0) {
 					RDEBUG("Setting default EAP type for tunneled EAP session.");
-					vp = paircreate(request, PW_EAP_TYPE, 0);
+					vp = paircreate(fake, PW_EAP_TYPE, 0);
 					rad_assert(vp != NULL);
 					vp->vp_integer = t->default_method;
 					pairadd(&fake->config_items, vp);
@@ -1119,7 +1119,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 *	Add the State attribute, too, if it exists.
 	 */
 	if (t->state) {
-		vp = paircopy(t, t->state);
+		vp = paircopy(fake->packet, t->state);
 		if (vp) pairadd(&fake->packet->vps, vp);
 	}
 

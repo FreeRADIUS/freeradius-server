@@ -662,7 +662,7 @@ static int eap_req2vp(EAP_HANDLER *handler)
 		size = total;
 		if (size > 253) size = 253;
 
-		vp = paircreate(PW_EAP_MESSAGE, 0);
+		vp = paircreate(handler->request->reply, PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			pairfree(&head);
 			return -1;

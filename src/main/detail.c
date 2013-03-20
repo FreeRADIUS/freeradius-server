@@ -708,7 +708,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	vp = pairfind(packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(data, PW_ACCT_DELAY_TIME, 0);
+		vp = paircreate(packet, PW_ACCT_DELAY_TIME, 0);
 		rad_assert(vp != NULL);
 		pairadd(&packet->vps, vp);
 	}
@@ -721,7 +721,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	vp = pairfind(packet->vps, PW_PACKET_TRANSMIT_COUNTER, 0, TAG_ANY);
 	if (!vp) {
-		vp = paircreate(data, PW_PACKET_TRANSMIT_COUNTER, 0);
+		vp = paircreate(packet, PW_PACKET_TRANSMIT_COUNTER, 0);
 		rad_assert(vp != NULL);
 		pairadd(&packet->vps, vp);
 	}
