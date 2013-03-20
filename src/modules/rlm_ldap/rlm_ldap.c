@@ -737,8 +737,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("Login attempt by \"%s\" with password \"%s\"", request->username->vp_strvalue,
-	       request->password->vp_strvalue);
+	RDEBUG("Login attempt by \"%s\"", request->username->vp_strvalue);
 
 	conn = rlm_ldap_get_socket(inst, request);
 	if (!conn) return RLM_MODULE_FAIL;
@@ -773,6 +772,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
+	int		ldap_errno;
 	ldap_instance_t	*inst = instance;
 	char		**vals;
 	VALUE_PAIR	*vp;
@@ -820,9 +820,26 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	expanded.attrs[expanded.count] = NULL;
 	 
 	if (!rlm_ldap_find_user(inst, request, &conn, expanded.attrs, TRUE, &result, &rcode)) {
-		goto free_result;			
+		goto finish;			
 	}
 
+	entry = ldap_first_entry(conn->handle, result);
+	if (!entry) {
+		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+			 
+		goto finish;
+	}
+
+	/*
+	 *	Check for access.
+	 */
+	if (inst->userobj_access_attr) {
+		rcode = rlm_ldap_check_access(inst, request, conn, entry);
+		if (rcode != RLM_MODULE_OK) {
+			goto finish;
+		}
+	}
 
 #ifdef WITH_EDIR
 	/*
@@ -870,7 +887,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			conn->rebound = TRUE;
 			rcode = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, TRUE);
 			if (rcode != RLM_MODULE_OK) {
-				goto free_result;
+				goto finish;
 			}
 			
 			RDEBUG("Bind as user \"%s\" was successful", dn);
@@ -879,16 +896,6 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 skip_edir:
 #endif
-
-	/*
-	 *	Check for access.
-	 */
-	if (inst->userobj_access_attr) {
-		rcode = rlm_ldap_check_access(inst, request, conn, entry);
-		if (rcode != RLM_MODULE_OK) {
-			goto free_result;
-		}
-	}
 
 	/*
 	 *	Apply ONE user profile, or a default user profile.
@@ -923,7 +930,7 @@ skip_edir:
 		rlm_ldap_check_reply(inst, request);
 	}
 	
-free_result:
+finish:
 	rlm_ldap_map_xlat_free(&expanded);
 	if (result) {
 		ldap_msgfree(result);
