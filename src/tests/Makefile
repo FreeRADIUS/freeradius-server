@@ -61,7 +61,7 @@ test.conf: dictionary
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf
-	@$(BIN_PATH)/radiusd -txxl $(TEST_PATH)/radius.log -md $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) || tail -n 20 $(TEST_PATH)/radius.log
+	@gdb -silent -x $(TEST_PATH)/gdb.conf --args $(BIN_PATH)/radiusd -ftxxl $(TEST_PATH)/radius.log -md $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) &
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
@@ -85,6 +85,22 @@ tests: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
+	@echo "Waiting for daemon to start..."; \
+	for i in {1..10}; do \
+		printf "."; \
+		if [ -f radiusd.pid ]; then \
+			if ps `cat radiusd.pid > /dev/null`; then \
+				exit 0; \
+			else \
+				break; \
+			fi; \
+		fi; \
+		sleep 1; \
+	done; \
+	echo; echo "FreeRADIUS daemon failed to start"; \
+	echo "Last log entries were:"; \
+	tail -n 20 $(TEST_PATH)/radius.log; \
+	exit 1;
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill
 	@rm -f $(RADDB_PATH)/test.conf
