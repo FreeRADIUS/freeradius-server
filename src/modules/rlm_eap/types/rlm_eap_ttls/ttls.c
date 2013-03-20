@@ -1109,7 +1109,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		} /* else there WAS a t->username */
 
 		if (t->username) {
-			vp = paircopy(t, t->username);
+			vp = paircopy(fake->packet, t->username);
 			pairadd(&fake->packet->vps, vp);
 			fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		}

@@ -1219,7 +1219,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 		 "Freeradius-Proxied-To", "127.0.0.1", T_OP_EQ);
 
 	if (t->username) {
-		vp = paircopy(t, t->username);
+		vp = paircopy(fake->packet, t->username);
 		pairadd(&fake->packet->vps, vp);
 		fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		RDEBUG2("Setting User-Name to %s", fake->username->vp_strvalue);
