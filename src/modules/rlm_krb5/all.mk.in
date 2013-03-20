@@ -6,6 +6,6 @@ endif
 
 SOURCES		:= $(TARGETNAME).c
 
-SRC_CFLAGS	:= @krb5_cflags@
+SRC_CFLAGS	:= @mod_cflags@
 SRC_CFLAGS	+= -I/usr/include/et -DKRB5_DEPRECATED
-TGT_LDLIBS	:= @krb5_ldflags@
+TGT_LDLIBS	:= @mod_cflags@

@@ -586,8 +586,8 @@ ac_unique_file="rlm_eap_ikev2.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-eap_ikev2_ldflags
-eap_ikev2_cflags
+mod_cflags
+mod_cflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2982,8 +2982,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_eap_ikev2 requires: $fail." >&2;};
 	fi
 fi
 
-eap_ikev2_cflags="${SMART_CFLAGS}"
-eap_ikev2_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
+mod_cflags="${SMART_LIBS}"
 
 
 

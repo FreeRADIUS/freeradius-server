@@ -100,10 +100,10 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-krb5_ldflags=$SMART_LIBS
-krb5_cflags="${krb5mod_cflags} $SMART_CFLAGS"
+mod_cflags=$SMART_LIBS
+mod_cflags="${krb5mod_cflags} $SMART_CFLAGS"
 
-AC_SUBST(krb5_cflags)
-AC_SUBST(krb5_ldflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

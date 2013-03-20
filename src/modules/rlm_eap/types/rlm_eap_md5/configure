@@ -586,8 +586,8 @@ ac_unique_file="rlm_eap_md5.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-eap_md5_cflags
-eap_md5_ldflags
+mod_cflags
+mod_cflags
 target_alias
 host_alias
 build_alias
@@ -1668,8 +1668,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 fail=
-eap_md5_ldflags=
-eap_md5_cflags=
+mod_cflags=
+mod_cflags=
 
 if test x$with_rlm_eap_md5 != xno; then
 

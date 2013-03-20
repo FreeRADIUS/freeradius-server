@@ -10,8 +10,8 @@ AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_eap_mschapv2])
 
 fail=
-eap_mschapv2_ldflags=
-eap_mschapv2_cflags=
+mod_cflags=
+mod_cflags=
 
 if test x$with_[]modname != xno; then
 
@@ -37,7 +37,7 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-AC_SUBST(eap_mschapv2_ldflags)
-AC_SUBST(eap_mschapv2_cflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

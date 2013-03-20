@@ -586,8 +586,8 @@ ac_unique_file="rlm_krb5.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-krb5_ldflags
-krb5_cflags
+mod_cflags
+mod_cflags
 CPP
 OBJEXT
 EXEEXT
@@ -3664,8 +3664,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_krb5 requires: $fail." >&2;};
 	fi
 fi
 
-krb5_ldflags=$SMART_LIBS
-krb5_cflags="${krb5mod_cflags} $SMART_CFLAGS"
+mod_cflags=$SMART_LIBS
+mod_cflags="${krb5mod_cflags} $SMART_CFLAGS"
 
 
 

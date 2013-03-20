@@ -100,11 +100,11 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-eap_ikev2_cflags="${SMART_CFLAGS}"
-eap_ikev2_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
+mod_cflags="${SMART_LIBS}"
 
-AC_SUBST(eap_ikev2_cflags)
-AC_SUBST(eap_ikev2_ldflags)
+AC_SUBST(mod_cflags)
+AC_SUBST(mod_cflags)
 
 AC_SUBST(targetname)  # keep this!  Don't change!
 AC_OUTPUT(all.mk)  # keep this!  Don't change!
