@@ -716,7 +716,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	VALUE_PAIR	*vp = NULL;
 	LDAPMessage	*tmp_msg = NULL, *entry = NULL;
 	int		ldap_errno;
-	char		*dn;
+	char		*dn = NULL;
 	char	    	filter[LDAP_MAX_FILTER_STR_LEN];	
 	char	    	basedn[LDAP_MAX_FILTER_STR_LEN];
 	
