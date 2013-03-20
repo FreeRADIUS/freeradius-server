@@ -651,7 +651,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in,out] to destination list.
  * @param[in,out] from source list.
  * @param[in] attr to match, if PW_VENDOR_SPECIFIC and vendor 0, only VSAs will
- *	      be copied.
+ *	      be copied.  If 0 and 0, all attributes will match
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
  */
@@ -663,6 +663,8 @@ void pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 
 	/*
 	 *	Find the last pair in the "to" list and put it in "to_tail".
+	 *
+	 *	@todo: replace the "if" with "VALUE_PAIR **tail"
 	 */
 	if (*to != NULL) {
 		to_tail = *to;
@@ -670,6 +672,25 @@ void pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			to_tail = i;
 	} else
 		to_tail = NULL;
+
+	/*
+	 *	Attr/vendor of 0 means "move them all".
+	 *	It's better than "pairadd(foo,bar);bar=NULL"
+	 */
+	if ((vendor == 0) && (attr == 0)) {
+		if (*to) {
+			to_tail->next = *from;
+		} else {
+			*to = *from;
+		}
+		
+		*from = NULL;
+
+		for (i = *from; i; i = i->next) {
+			talloc_steal(ctx, i);
+		}
+		return;
+	}
 
 	for(i = *from; i; i = next) {
 		next = i->next;
