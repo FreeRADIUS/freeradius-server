@@ -6,5 +6,5 @@ endif
 
 SOURCES		:= $(TARGETNAME).c smbdes.c mschap.c @mschap_sources@
 
-SRC_CFLAGS	:= @mschap_cflags@
-TGT_LDLIBS	:= @mschap_ldflags@
+SRC_CFLAGS	:= @mod_cflags@
+TGT_LDLIBS	:= @mod_ldflags@
