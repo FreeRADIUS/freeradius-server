@@ -780,10 +780,12 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	const CONF_PAIR *cp = NULL;
 	char ipbuf[128];
 
+	if (!cs) return -1;
+
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	type &= ~PW_TYPE_DEPRECATED;
 
-	if (cs) cp = cf_pair_find(cs, name);
+	cp = cf_pair_find(cs, name);
 	
 	if (cp) {
 		value = cp->value;
@@ -800,7 +802,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		return 0;
 	}
 
-	if (cs && deprecated) {
+	if (deprecated) {
 		cf_log_err(&(cs->item), "\"%s\" is deprecated.  Please replace "
 			   "it with the up-to-date configuration", name);
 		if (check_config) {
@@ -846,7 +848,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		 *	expanded automagically when the configuration
 		 *	file was read.
 		 */
-		if (cs && (value == dflt)) {
+		if (value == dflt) {
 			char buffer[8192];
 
 			int lineno = 0;
