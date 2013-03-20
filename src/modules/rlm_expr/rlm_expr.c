@@ -707,7 +707,7 @@ static int expr_detach(void *instance)
 	rlm_expr_t	*inst = instance;
 
 	xlat_unregister(inst->xlat_name, expr_xlat, instance);
-	pair_builtincompare_detach();
+	pair_builtincompare_del();
 	return 0;
 }
 
@@ -755,7 +755,7 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Initialize various paircompare functions
 	 */
-	pair_builtincompare_init();
+	pair_builtincompare_add();
 	return 0;
 }
 

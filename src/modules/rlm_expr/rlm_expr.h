@@ -21,7 +21,7 @@
 #include <freeradius-devel/ident.h>
 RCSIDH(rlm_expr_h, "$Id$")
 
-void pair_builtincompare_init(void);
-void pair_builtincompare_detach(void);
+void pair_builtincompare_add(void);
+void pair_builtincompare_del(void);
 
 #endif

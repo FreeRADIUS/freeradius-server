@@ -281,7 +281,7 @@ static int generic_attrs[] = {
 /*
  *	Register server-builtin special attributes.
  */
-void pair_builtincompare_init(void)
+void pair_builtincompare_add(void)
 {
 	int i;
 
@@ -297,7 +297,7 @@ void pair_builtincompare_init(void)
 	}
 }
 
-void pair_builtincompare_detach(void)
+void pair_builtincompare_del(void)
 {
 	int i;
 
