@@ -65,7 +65,7 @@ typedef struct rlm_cache_entry_t {
 	time_t		created;
 	time_t		expires;
 	VALUE_PAIR	*control;
-	VALUE_PAIR	*request;
+	VALUE_PAIR	*packet;
 	VALUE_PAIR	*reply;
 } rlm_cache_entry_t;
 
@@ -96,7 +96,7 @@ static void cache_entry_free(void *data)
 	rlm_cache_entry_t *c = data;
 
 	pairfree(&c->control);
-	pairfree(&c->request);
+	pairfree(&c->packet);
 	pairfree(&c->reply);
 
 	talloc_free(c);
@@ -143,11 +143,11 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
 		pairfree(&vp);
 	}
 
-	if (c->request && request->packet) {
+	if (c->packet && request->packet) {
 		RDEBUG2("Merging cached request list:");
-		rdebug_pair_list(2, request, c->request);
+		rdebug_pair_list(2, request, c->packet);
 		
-		vp = paircopy(request->packet, c->request);
+		vp = paircopy(request->packet, c->packet);
 		pairmove(request->packet, &request->packet->vps, &vp);
 		pairfree(&vp);
 	}
@@ -304,7 +304,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 */
 		switch (map->dst->list) {
 		case PAIR_LIST_REQUEST:
-			to_cache = &c->request;
+			to_cache = &c->packet;
 			break;
 			
 		case PAIR_LIST_REPLY:
@@ -635,7 +635,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 
 	switch (list) {
 	case PAIR_LIST_REQUEST:
-		vps = c->request;
+		vps = c->packet;
 		break;
 		
 	case PAIR_LIST_REPLY:
