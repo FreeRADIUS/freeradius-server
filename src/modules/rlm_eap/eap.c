@@ -355,7 +355,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
  * @param handler State data that persists over multiple rounds of EAP.
  * @return a status code.
  */
-eap_code_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
+eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 {
 	eap_type_data_t		*type = &handler->eap_ds->response->type;
 	REQUEST			*request = handler->request;
