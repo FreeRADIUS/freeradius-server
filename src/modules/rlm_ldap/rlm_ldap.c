@@ -295,12 +295,12 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	ldap_instance_t	*inst = instance;
 	rlm_rcode_t	rcode;
 	ldap_rcode_t	status;
-	int		i, found;
+	int		i, found = FALSE;
 	LDAPMessage     *result = NULL;
 	LDAPMessage     *entry = NULL;
 	int		ldap_errno;
 	int		check_is_dn = FALSE, value_is_dn = FALSE;
-	char		**vals;
+	char		**vals = NULL;
 	const char	*group_attrs[] = {inst->userobj_membership_attr, NULL};
 	ldap_handle_t	*conn;
 	const char	*user_dn;
@@ -430,7 +430,6 @@ check_attr:
 	 *	Loop over the list of groups the user is a member of,
 	 *	looking for a match.
 	 */
-	found = FALSE;
 	for (i = 0; i < ldap_count_values(vals); i++) {
 		value_is_dn = rlm_ldap_is_dn(vals[i]);
 		
