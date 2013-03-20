@@ -247,4 +247,12 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
 
 void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		     const rlm_ldap_map_xlat_t *expanded, LDAPMessage *entry);
+
+/*
+ *	edir.c - Magic extensions for Novell
+ */
+#ifdef WITH_EDIR
+int nmasldap_get_password(LDAP *ld, const char *dn, char *password, size_t *len);
+#endif
+
 #endif

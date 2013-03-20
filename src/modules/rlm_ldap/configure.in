@@ -157,24 +157,8 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-dnl extra argument: --with-edir
-dnl If using Novell eDirectory, enable UP and Novell specific code
-WITH_EDIRECTORY=no
-AC_ARG_WITH(edir,
-[  --with-edir             enable Novell eDirectory integration.  (default=no) ],
-[ case "$withval" in
-    yes)
-	SMART_CFLAGS="$SMART_CFLAGS -DWITH_EDIR"
-	edir="edir.c"
-        ;;
-    *)
-        ;;
-  esac ]
-)
-
 mod_ldflags=$SMART_LIBS
-mod_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
-AC_SUBST(edir)
+mod_cflags="$SMART_CFLAGS -DWITH_EDIR -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)

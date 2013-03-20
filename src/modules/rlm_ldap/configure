@@ -588,7 +588,6 @@ LIBOBJS
 targetname
 mod_cflags
 mod_ldflags
-edir
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -641,7 +640,6 @@ with_rlm_ldap_lib_dir
 with_rlm_ldap_include_dir
 enable_shared
 with_threads
-with_edir
 '
       ac_precious_vars='build_alias
 host_alias
@@ -1266,7 +1264,6 @@ Optional Packages:
   --with-rlm-ldap-lib-dir=DIR       directory for LDAP library files
   --with-rlm-ldap-include-dir=DIR   directory for LDAP include files
   --with-threads          use threads, if available. (default=yes)
-  --with-edir             enable Novell eDirectory integration.  (default=no)
 
 Some influential environment variables:
   CC          C compiler command
@@ -3414,25 +3411,8 @@ $as_echo "$as_me: WARNING: $libsuggestion" >&2;}
 	fi
 fi
 
-WITH_EDIRECTORY=no
-
-# Check whether --with-edir was given.
-if test "${with_edir+set}" = set; then :
-  withval=$with_edir;  case "$withval" in
-    yes)
-	SMART_CFLAGS="$SMART_CFLAGS -DWITH_EDIR"
-	edir="edir.c"
-        ;;
-    *)
-        ;;
-  esac
-
-fi
-
-
 mod_ldflags=$SMART_LIBS
-mod_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
-
+mod_cflags="$SMART_CFLAGS -DWITH_EDIR -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
 
 
 

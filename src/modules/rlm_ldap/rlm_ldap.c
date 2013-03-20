@@ -36,10 +36,6 @@ RCSID("$Id$")
 
 #include	"ldap.h"
 
-#ifdef WITH_EDIR
-extern int nmasldap_get_password(LDAP *ld, char *objectDN, char *pwd, size_t *pwdSize);
-#endif
-
 /*
  *	TLS Configuration
  */
@@ -778,6 +774,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR	*vp;
 	ldap_handle_t	*conn;
 	LDAPMessage	*result, *entry;
+	const char 	*dn;
 	rlm_ldap_map_xlat_t	expanded; /* faster that mallocing every time */
 	
 	if (!request->username) {
@@ -818,8 +815,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 	
 	expanded.attrs[expanded.count] = NULL;
-	 
-	if (!rlm_ldap_find_user(inst, request, &conn, expanded.attrs, TRUE, &result, &rcode)) {
+	
+	dn = rlm_ldap_find_user(inst, request, &conn, expanded.attrs, TRUE, &result, &rcode);
+	if (!dn) {
 		goto finish;			
 	}
 
@@ -854,15 +852,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	if (inst->edir) {
 		int res = 0;
-		size_t bufsize;
-		char buffer[256];
-
-		bufsize = sizeof(buffer);
+		char password[256];
+		size_t pass_size = sizeof(password);
 
 		/*
 		 *	Retrive universal password
 		 */
-		res = nmasldap_get_password(conn->handle, dn, buffer, &bufsize);
+		res = nmasldap_get_password(conn->handle, dn, password, &pass_size);
 		if (res != 0) {
 			RDEBUGW("Failed to retrieve eDirectory password");
 			rcode = RLM_MODULE_NOOP;
@@ -874,8 +870,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 *	Add Cleartext-Password attribute to the request
 		 */
 		vp = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, 0);
-		strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));
-		vp->length = strlen(vp->vp_strvalue);
+		strlcpy(vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
+		vp->length = pass_size;
 		
 		RDEBUG2("Added eDirectory password in check items as %s = %s", vp->da->name, vp->vp_strvalue);
 			
