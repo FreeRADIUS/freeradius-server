@@ -69,7 +69,7 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 		return NULL;
 	}
 
-	packet = talloc_zero(eap_ds, md5_packet_t);
+	packet = talloc_zero(eap_ds, MD5_PACKET);
 	if (!packet) return NULL;
 
 	/*
