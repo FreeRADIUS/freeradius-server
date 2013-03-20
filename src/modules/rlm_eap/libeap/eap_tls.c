@@ -251,7 +251,9 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 	reply.dlen = lbit + size;
 	reply.length = TLS_HEADER_LEN + 1/*flags*/ + reply.dlen;
 
-	reply.data = malloc(reply.dlen);
+	reply.data = talloc_array(eap_ds, uint8_t, reply.length);
+	if (!reply.data) return 0;
+
 	if (lbit) {
 		nlen = htonl(ssn->tls_msg_len);
 		memcpy(reply.data, &nlen, lbit);
