@@ -37,8 +37,7 @@ RCSID("$Id$")
 #include	"ldap.h"
 
 #ifdef WITH_EDIR
-extern int nmasldap_get_password(LDAP *ld, char *objectDN, char *pwd,
-				 size_t *pwdSize);
+extern int nmasldap_get_password(LDAP *ld, char *objectDN, char *pwd, size_t *pwdSize);
 #endif
 
 /*
@@ -145,8 +144,7 @@ static const CONF_PARSER module_config[] = {
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
-	{"edir", PW_TYPE_BOOLEAN,
-	 offsetof(ldap_instance_t,edir), NULL, NULL}, /* NULL defaults to "no" */
+	{"edir", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir), NULL, NULL}, /* NULL defaults to "no" */
 
 	/*
 	 * Attempt to bind with the Cleartext password we got from eDirectory
@@ -844,16 +842,20 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 		bufsize = sizeof(buffer);
 
-		/* retrive universal password */
-		res = nmasldap_get_password(conn->handle, user_dn, buffer, &bufsize);
+		/*
+		 *	Retrive universal password
+		 */
+		res = nmasldap_get_password(conn->handle, dn, buffer, &bufsize);
 		if (res != 0) {
 			RDEBUGW("Failed to retrieve eDirectory password");
-			module_rcode = RLM_MODULE_NOOP;
+			rcode = RLM_MODULE_NOOP;
 
 			goto free_result;
 		}
 
-		/* Add Cleartext-Password attribute to the request */
+		/*
+		 *	Add Cleartext-Password attribute to the request
+		 */
 		vp = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, 0);
 		strlcpy(vp->vp_strvalue, buffer, sizeof(vp->vp_strvalue));
 		vp->length = strlen(vp->vp_strvalue);
@@ -866,12 +868,12 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			 *	Bind as the user
 			 */
 			conn->rebound = TRUE;
-			module_rcode = ldap_bind_user(request, &conn, user_dn, vp->vp_strvalue, TRUE);
-			if (module_rcode != RLM_MODULE_OK) {
+			rcode = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, TRUE);
+			if (rcode != RLM_MODULE_OK) {
 				goto free_result;
 			}
 			
-			RDEBUG("Bind as user \"%s\" was successful", user_dn);
+			RDEBUG("Bind as user \"%s\" was successful", dn);
 		}
 	}
 
