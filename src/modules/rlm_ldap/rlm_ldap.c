@@ -390,8 +390,9 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	 *	object attribute.
 	 */
 	if (!inst->userobj_membership_attr) {
-		rlm_ldap_release_socket(inst, conn);
 		RDEBUG("Group object \"%s\" not found, or user is not a member", check->vp_strvalue);
+		rlm_ldap_release_socket(inst, conn);
+
 		return 1;
 	}
 
@@ -406,6 +407,8 @@ check_attr:
 			break;
 		case LDAP_PROC_NO_RESULT:
 			RDEBUG("Can't check membership attributes, user object not found");
+			
+			/* FALL-THROUGH */
 		default:
 			rlm_ldap_release_socket(inst, conn);
 			return 1;

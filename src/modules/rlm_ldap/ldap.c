@@ -239,7 +239,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 	lib_errno = ldap_parse_result(conn->handle, *result,
 				      &srv_errno,
 				      extra ? &part_dn : NULL,
-				      extra ? extra : NULL,
+				      extra ? &srv_err : NULL,
 				      NULL, NULL, freeit);
 				      
 	if (lib_errno != LDAP_SUCCESS) {
@@ -277,7 +277,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		
 		our_err = talloc_asprintf(conn, "Match stopped here: [%.*s]%s", len, part_dn, part_dn ? part_dn : "");
 
-		break;
+		goto error_string;
 
 	case LDAP_INSUFFICIENT_ACCESS:
 		*error = "Insufficient access. Check the identity and password configuration directives";
