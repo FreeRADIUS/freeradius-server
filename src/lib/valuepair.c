@@ -684,11 +684,11 @@ void pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			*to = *from;
 		}
 		
-		*from = NULL;
-
 		for (i = *from; i; i = i->next) {
 			talloc_steal(ctx, i);
 		}
+
+		*from = NULL;
 		return;
 	}
 
