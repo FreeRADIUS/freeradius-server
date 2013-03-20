@@ -127,14 +127,14 @@ ifneq "$(wildcard config.log)" ""
 CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
 
 src/%all.mk: src/%all.mk.in src/%configure
-	@ECHO CONFIGURE $(dir $<)
+	@ECHO CONFIGURE $(dir $@)
 	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
 endif
 
 # Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
 src/%configure: src/%configure.in acinclude.m4 aclocal.m4
-	@echo AUTOCONF $@
+	@echo AUTOCONF $(dir $@)
 	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I ./m4
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
 		echo AUTOHEADER $@ \
