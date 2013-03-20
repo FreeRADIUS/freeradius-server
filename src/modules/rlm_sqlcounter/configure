@@ -586,8 +586,8 @@ ac_unique_file="rlm_sqlcounter.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sqlcounter_cflags
-sqlcounter_ldflags
+mod_cflags
+mod_ldflags
 CPP
 OBJEXT
 EXEEXT
@@ -2716,8 +2716,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sqlcounter requires: $fail." >&2;};
 	fi
 fi
 
-sqlcounter_ldflags=$SMART_LIBS
-sqlcounter_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

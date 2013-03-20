@@ -623,8 +623,8 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-attr_rewrite_ldflags
-attr_rewrite_cflags
+mod_ldflags
+mod_cflags
 EGREP
 GREP
 CPP

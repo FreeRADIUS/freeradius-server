@@ -586,8 +586,8 @@ ac_unique_file="rlm_sql_firebird.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_firebird_cflags
-sql_firebird_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2970,8 +2970,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_firebird requires:$fail." >&2;};
 	fi
 fi
 
-sql_firebird_ldflags="$SMART_LIBS"
-sql_firebird_cflags="$SMART_CFLAGS"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
 
 
 

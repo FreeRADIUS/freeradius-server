@@ -586,8 +586,8 @@ ac_unique_file="rlm_opendirectory.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-od_cflags
-od_ldflags
+mod_cflags
+mod_ldflags
 CPP
 OBJEXT
 EXEEXT
@@ -2698,7 +2698,7 @@ ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-	od_ldflags="${od_ldflags} -framework DirectoryService"
+	mod_ldflags="${mod_ldflags} -framework DirectoryService"
 
 
 

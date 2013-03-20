@@ -586,8 +586,8 @@ ac_unique_file="rlm_sql_mysql.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_mysql_cflags
-sql_mysql_ldflags
+mod_cflags
+mod_ldflags
 MYSQL_CONFIG
 OBJEXT
 EXEEXT
@@ -3222,9 +3222,9 @@ $as_echo "$as_me: WARNING: MySQL libraries not found. Use --with-mysql-lib-dir=<
 
 
     if test "x$MYSQL_CONFIG" = "xyes"; then
-	mysql_cflags="$(mysql_config --cflags)"
+	mod_cflags="$(mysql_config --cflags)"
 	old_CFLAGS="$CFLAGS"
-	CFLAGS="$CFLAGS $mysql_cflags"
+	CFLAGS="$CFLAGS $mod_cflags"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql.h (using mysql_config --cflags)" >&5
 $as_echo_n "checking for mysql.h (using mysql_config --cflags)... " >&6; }
 	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -3248,13 +3248,13 @@ $as_echo "yes" >&6; }
 
 $as_echo "#define HAVE_MYSQL_H /**/" >>confdefs.h
 
-	    SMART_CFLAGS="$SMART_CFLAGS $mysql_cflags"
+	    SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
 	else
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
 
-	    mysql_cflags="$(mysql_config --include)"
-	    CFLAGS="$old_CFLAGS $mysql_cflags"
+	    mod_cflags="$(mysql_config --include)"
+	    CFLAGS="$old_CFLAGS $mod_cflags"
 	    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for mysql.h (using mysql_config --include)" >&5
 $as_echo_n "checking for mysql.h (using mysql_config --include)... " >&6; }
 	    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
@@ -3278,7 +3278,7 @@ $as_echo "yes" >&6; }
 
 $as_echo "#define HAVE_MYSQL_H /**/" >>confdefs.h
 
-	        SMART_CFLAGS="$SMART_CFLAGS $mysql_cflags"
+	        SMART_CFLAGS="$SMART_CFLAGS $mod_cflags"
 	    else
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
@@ -3463,8 +3463,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_mysql requires:$fail." >&2;};
 	fi
 fi
 
-sql_mysql_ldflags="$SMART_LIBS"
-sql_mysql_cflags="$SMART_CFLAGS"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
 
 
 

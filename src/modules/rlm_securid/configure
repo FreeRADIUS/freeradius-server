@@ -586,8 +586,8 @@ ac_unique_file="rlm_securid.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_securid_cflags
-sql_securid_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2978,8 +2978,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_securid requires:$fail." >&2;};
 	fi
 fi
 
-sql_securid_ldflags="$SMART_LIBS"
-sql_securid_cflags="$SMART_CFLAGS"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
 
 
 

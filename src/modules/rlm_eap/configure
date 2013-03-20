@@ -587,8 +587,8 @@ enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-eap_cflags
-eap_ldflags
+mod_cflags
+mod_ldflags
 eaptypes
 subdirs
 OBJEXT
@@ -2603,8 +2603,8 @@ if test x"$eapsubdirs" = x""; then
 	eaptypes=""
 fi
 
-eap_ldflags=$SMART_LIBS
-eap_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

@@ -586,8 +586,8 @@ ac_unique_file="rlm_ldap.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-ldap_cflags
-ldap_ldflags
+mod_cflags
+mod_ldflags
 edir
 OBJEXT
 EXEEXT
@@ -3430,8 +3430,8 @@ if test "${with_edir+set}" = set; then :
 fi
 
 
-ldap_ldflags=$SMART_LIBS
-ldap_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
+mod_ldflags=$SMART_LIBS
+mod_cflags="$SMART_CFLAGS -DLDAP_DEPRECATED -DLDAP_SET_REBIND_PROC_ARGS=$ac_cv_ldap_set_rebind_proc"
 
 
 

@@ -586,8 +586,8 @@ ac_unique_file="rlm_sql_postgresql.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-postgresql_cflags
-postgresql_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2961,8 +2961,8 @@ $as_echo "$as_me: WARNING: $libsuggestion" >&2;}
 	fi
 fi
 
-postgresql_ldflags=$SMART_LIBS
-postgresql_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

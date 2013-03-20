@@ -586,8 +586,8 @@ ac_unique_file="rlm_eap_pwd.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-eap_pwd_cflags
-eap_pwd_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1851,8 +1851,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 fail=
-eap_pwd_ldflags=
-eap_pwd_cflags=
+mod_ldflags=
+mod_cflags=
 
 if test x$with_rlm_eap_pwd != xno; then
 
@@ -1860,14 +1860,14 @@ if test x$with_rlm_eap_pwd != xno; then
 
 # Check whether --with-rlm-eap-pwd-lib-dir was given.
 if test "${with_rlm_eap_pwd_lib_dir+set}" = set; then :
-  withval=$with_rlm_eap_pwd_lib_dir; eap_pwd_ldflags="-L$withval"
+  withval=$with_rlm_eap_pwd_lib_dir; mod_ldflags="-L$withval"
 fi
 
 
 
 # Check whether --with-rlm-eap-pwd-include-dir was given.
 if test "${with_rlm_eap_pwd_include_dir+set}" = set; then :
-  withval=$with_rlm_eap_pwd_include_dir; eap_pwd_cflags="-I$withval"
+  withval=$with_rlm_eap_pwd_include_dir; mod_cflags="-I$withval"
 fi
 
 

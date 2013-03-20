@@ -586,8 +586,8 @@ ac_unique_file="rlm_eap_sim.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-eap_sim_cflags
-eap_sim_ldflags
+mod_cflags
+mod_ldflags
 target_alias
 host_alias
 build_alias
@@ -1668,8 +1668,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 fail=
-eap_sim_ldflags=
-eap_sim_cflags=
+mod_ldflags=
+mod_cflags=
 
 if test x$with_rlm_eap_sim != xno; then
 

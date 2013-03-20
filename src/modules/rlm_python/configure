@@ -586,8 +586,8 @@ ac_unique_file="rlm_python.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-python_cflags
-python_ldflags
+mod_cflags
+mod_ldflags
 PYTHONBIN
 CPP
 OBJEXT
@@ -3008,7 +3008,7 @@ fi
 		CFLAGS=$old_CFLAGS
 
 		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			python_cflags=$PY_CFLAGS
+			mod_cflags=$PY_CFLAGS
 		else
 			fail="$fail Python.h"
 			targetname=
@@ -3187,7 +3187,7 @@ fi
 
 		eval t=\${ac_cv_lib_${sm_lib_safe}_${sm_func_safe}}
 		if test "x$t" = "xyes"; then
-			python_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION} -lm"
+			mod_ldflags="$PY_LIB_LOC $PY_EXTRA_LIBS -lpython${PY_VERSION} -lm"
 			targetname=rlm_python
 		else
 			targetname=

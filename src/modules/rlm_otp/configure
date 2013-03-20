@@ -623,8 +623,8 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-otp_ldflags
-otp_cflags
+mod_ldflags
+mod_cflags
 EGREP
 GREP
 CPP
@@ -2026,8 +2026,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 
-otp_cflags=
-otp_ldflags=
+mod_cflags=
+mod_ldflags=
 
 if test x$with_rlm_otp != xno; then
 
@@ -3233,33 +3233,33 @@ fi
 
 # Check whether --with-rlm-otp-lib-dir was given.
 if test "${with_rlm_otp_lib_dir+set}" = set; then :
-  withval=$with_rlm_otp_lib_dir; otp_ldflags="-L$withval $otp_ldflags"
+  withval=$with_rlm_otp_lib_dir; mod_ldflags="-L$withval $mod_ldflags"
 fi
 
 
 # Check whether --with-rlm-otp-include-dir was given.
 if test "${with_rlm_otp_include_dir+set}" = set; then :
-  withval=$with_rlm_otp_include_dir; otp_cflags="$otp_cflags -I$withval"
+  withval=$with_rlm_otp_include_dir; mod_cflags="$mod_cflags -I$withval"
 fi
 
 
 
 # Check whether --with-openssl-libraries was given.
 if test "${with_openssl_libraries+set}" = set; then :
-  withval=$with_openssl_libraries; otp_ldflags="-L$withval $otp_ldflags"
+  withval=$with_openssl_libraries; mod_ldflags="-L$withval $mod_ldflags"
 fi
 
 
 
 # Check whether --with-openssl-includes was given.
 if test "${with_openssl_includes+set}" = set; then :
-  withval=$with_openssl_includes; otp_cflags="$otp_cflags -I$withval"
+  withval=$with_openssl_includes; mod_cflags="$mod_cflags -I$withval"
 fi
 
 
 
 	old_LDFLAGS="$LDFLAGS"
-	LDFLAGS="$otp_ldflags $LDFLAGS"
+	LDFLAGS="$mod_ldflags $LDFLAGS"
 	{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for SSL_new in -lssl" >&5
 $as_echo_n "checking for SSL_new in -lssl... " >&6; }
 if ${ac_cv_lib_ssl_SSL_new+:} false; then :
@@ -3311,7 +3311,7 @@ fi
 
 
 	old_CFLAGS="$CFLAGS"
-	CFLAGS="$CFLAGS $otp_cflags"
+	CFLAGS="$CFLAGS $mod_cflags"
 	for ac_header in \
 		openssl/des.h \
 		openssl/hmac.h \

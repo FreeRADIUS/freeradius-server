@@ -586,8 +586,8 @@ ac_unique_file="rlm_eap_peap.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-eap_peap_cflags
-eap_peap_ldflags
+mod_cflags
+mod_ldflags
 target_alias
 host_alias
 build_alias
@@ -1676,8 +1676,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 fail=
-eap_peap_ldflags=
-eap_peap_cflags=
+mod_ldflags=
+mod_cflags=
 
 if test x$with_rlm_eap_peap != xno; then
 
@@ -1685,14 +1685,14 @@ if test x$with_rlm_eap_peap != xno; then
 
 # Check whether --with-rlm-eap-peap-lib-dir was given.
 if test "${with_rlm_eap_peap_lib_dir+set}" = set; then :
-  withval=$with_rlm_eap_peap_lib_dir; eap_peap_ldflags="-L$withval"
+  withval=$with_rlm_eap_peap_lib_dir; mod_ldflags="-L$withval"
 fi
 
 
 
 # Check whether --with-rlm-eap-peap-include-dir was given.
 if test "${with_rlm_eap_peap_include_dir+set}" = set; then :
-  withval=$with_rlm_eap_peap_include_dir; eap_peap_cflags="-I$withval"
+  withval=$with_rlm_eap_peap_include_dir; mod_cflags="-I$withval"
 fi
 
 

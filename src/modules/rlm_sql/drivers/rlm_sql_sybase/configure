@@ -586,8 +586,8 @@ ac_unique_file="rlm_sql_sybase.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_sybase_cflags
-sql_sybase_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2979,8 +2979,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_sybase requires:$fail." >&2;};
 	fi
 fi
 
-sql_sybase_ldflags="$SMART_LIBS"
-sql_sybase_cflags="$SMART_CFLAGS"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
 
 
 

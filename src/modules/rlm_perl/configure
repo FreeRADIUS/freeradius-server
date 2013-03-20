@@ -586,8 +586,8 @@ ac_unique_file="rlm_perl.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-perl_ldflags
-perl_cflags
+mod_ldflags
+mod_cflags
 PERL
 CPP
 OBJEXT
@@ -2935,31 +2935,31 @@ fi
 
 								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ccopts'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
-		perl_cflags=$($PERL -MExtUtils::Embed -e ccopts)
+		mod_cflags=$($PERL -MExtUtils::Embed -e ccopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${perl_cflags}\"" >&5
-$as_echo "$as_me: ExtUtil's ccopts were \"${perl_cflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${mod_cflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ccopts were \"${mod_cflags}\"" >&6;}
 
-		perl_cflags=$(echo "$perl_cflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+		mod_cflags=$(echo "$mod_cflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${perl_cflags}\"" >&5
-$as_echo "$as_me: Sanitized ccopts are \"${perl_cflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
+$as_echo "$as_me: Sanitized ccopts are \"${mod_cflags}\"" >&6;}
 
-		CFLAGS="${perl_cflags} ${CFLAGS}"
+		CFLAGS="${mod_cflags} ${CFLAGS}"
 
 								{ $as_echo "$as_me:${as_lineno-$LINENO}: Calling ExtUtils::Embed to get 'ldflags'" >&5
 $as_echo "$as_me: Calling ExtUtils::Embed to get 'ldflags'" >&6;}
-		perl_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
+		mod_ldflags=$($PERL -MExtUtils::Embed -e ldopts)
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${perl_ldflags}\"" >&5
-$as_echo "$as_me: ExtUtil's ldopts were \"${perl_ldflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ldopts were \"${mod_ldflags}\"" >&5
+$as_echo "$as_me: ExtUtil's ldopts were \"${mod_ldflags}\"" >&6;}
 
-		perl_ldflags=$(echo "$perl_ldflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
+		mod_ldflags=$(echo "$mod_ldflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
 
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldopts are \"${perl_ldflags}\"" >&5
-$as_echo "$as_me: Sanitized ldopts are \"${perl_ldflags}\"" >&6;}
+		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ldopts are \"${mod_ldflags}\"" >&5
+$as_echo "$as_me: Sanitized ldopts are \"${mod_ldflags}\"" >&6;}
 
-		LIBS="${perl_ldflags} ${LIBS}"
+		LIBS="${mod_ldflags} ${LIBS}"
 
 								smart_try_dir=
 

@@ -586,8 +586,8 @@ ac_unique_file="rlm_sql_unixodbc.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_unixodbc_cflags
-sql_unixodbc_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2971,8 +2971,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_unixodbc requires:$fail." >&2;};
 	fi
 fi
 
-sql_unixodbc_ldflags="$SMART_LIBS"
-sql_unixodbc_cflags="$SMART_CFLAGS"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
 
 
 

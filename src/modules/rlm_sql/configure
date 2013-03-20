@@ -587,8 +587,8 @@ enable_option_checking=no
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_cflags
-sql_ldflags
+mod_cflags
+mod_ldflags
 subdirs
 OBJEXT
 EXEEXT
@@ -2603,8 +2603,8 @@ $as_echo "$as_me: WARNING: $libsuggestion" >&2;}
 fi
 
 
-sql_ldflags=$SMART_LIBS
-sql_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

@@ -623,8 +623,8 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-example_ldflags
-example_cflags
+mod_ldflags
+mod_cflags
 EGREP
 GREP
 CPP
@@ -3048,7 +3048,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_c_printf" >&5
 $as_echo "$ac_cv_lib_c_printf" >&6; }
 if test "x$ac_cv_lib_c_printf" = xyes; then :
-   example_ldflags="$example_ldflags -lc"
+   mod_ldflags="$mod_ldflags -lc"
 else
    fail=$fail" printf"
 
@@ -3317,7 +3317,7 @@ done
 
 ac_fn_c_check_header_mongrel "$LINENO" "stdio.h" "ac_cv_header_stdio_h" "$ac_includes_default"
 if test "x$ac_cv_header_stdio_h" = xyes; then :
-   example_cflags="$example_cflags -I/usr/include"
+   mod_cflags="$mod_cflags -I/usr/include"
 else
    fail=$fail" stdio.h"
 

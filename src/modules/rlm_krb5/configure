@@ -2799,7 +2799,7 @@ fi
 if test "${enable_heimdal_krb5+set}" = set; then :
   enableval=$enable_heimdal_krb5;  case "$enableval" in
                yes)
-                       krb5_h_cflags="-DHEIMDAL_KRB5"
+                       krb5mod_cflags="-DHEIMDAL_KRB5"
                        ;;
          esac
 
@@ -3665,7 +3665,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_krb5 requires: $fail." >&2;};
 fi
 
 krb5_ldflags=$SMART_LIBS
-krb5_cflags="${krb5_h_cflags} $SMART_CFLAGS"
+krb5_cflags="${krb5mod_cflags} $SMART_CFLAGS"
 
 
 

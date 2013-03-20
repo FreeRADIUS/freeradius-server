@@ -586,8 +586,8 @@ ac_unique_file="rlm_checkval.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-checkval_ldflags
-checkval_cflags
+mod_ldflags
+mod_cflags
 CPP
 OBJEXT
 EXEEXT

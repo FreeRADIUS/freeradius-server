@@ -586,8 +586,8 @@ ac_unique_file="rlm_sql_freetds.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_freetds_cflags
-sql_freetds_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -3129,8 +3129,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_freetds requires:$fail." >&2;};
 	fi
 fi
 
-sql_freetds_ldflags="$SMART_LIBS"
-sql_freetds_cflags="$SMART_CFLAGS"
+mod_ldflags="$SMART_LIBS"
+mod_cflags="$SMART_CFLAGS"
 
 
 

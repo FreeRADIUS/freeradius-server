@@ -586,8 +586,8 @@ ac_unique_file="rlm_sqlippool.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sqlippool_cflags
-sqlippool_ldflags
+mod_cflags
+mod_ldflags
 target_alias
 host_alias
 build_alias
@@ -1676,8 +1676,8 @@ else
 	echo \*\*\* module rlm_sqlippool is disabled.
 fi
 
-sqlippool_ldflags=$SMART_LIBS
-sqlippool_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

@@ -586,8 +586,8 @@ ac_unique_file="rlm_sqlhpwippool.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sqlhpwippool_cflags
-sqlhpwippool_ldflags
+mod_cflags
+mod_ldflags
 CPP
 OBJEXT
 EXEEXT
@@ -2716,8 +2716,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sqlhpwippool requires: $fail." >&2;};
 	fi
 fi
 
-sqlhpwippool_ldflags=$SMART_LIBS
-sqlhpwippool_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

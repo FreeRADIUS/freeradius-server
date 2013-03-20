@@ -588,8 +588,8 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
 ruby_headers
-ruby_cflags
-ruby_ldflags
+mod_cflags
+mod_ldflags
 RUBY_EXTRA_LIBS
 RUBY_SITE_PKG
 RUBY_LDFLAGS
@@ -2058,8 +2058,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 targetname=rlm_ruby
-ruby_cflags=
-ruby_ldflags=
+mod_cflags=
+mod_ldflags=
 if test x$with_rlm_ruby != xno; then
 	ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -3587,8 +3587,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     #
 
 		if test -n "$RUBY_VERSION"; then
-			ruby_cflags="${RUBY_CFLAGS}"
-			ruby_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
+			mod_cflags="${RUBY_CFLAGS}"
+			mod_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
 		else
 			fail="ruby"
 			targetname=

@@ -587,8 +587,8 @@ ac_unique_file="rlm_counter.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-counter_cflags
-counter_ldflags
+mod_cflags
+mod_ldflags
 EGREP
 GREP
 CPP
@@ -3327,8 +3327,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_counter requires: $fail." >&2;};
 	fi
 fi
 
-counter_ldflags=$SMART_LIBS
-counter_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

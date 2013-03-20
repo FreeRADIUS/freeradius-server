@@ -586,8 +586,8 @@ ac_unique_file="rlm_eap_tnc.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-eap_tnc_ldflags
-eap_tnc_cflags
+mod_ldflags
+mod_cflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -2970,8 +2970,8 @@ $as_echo "$as_me: WARNING: Required libraries are available from https://github.
 	fi
 fi
 
-eap_tnc_cflags="${SMART_CFLAGS}"
-eap_tnc_ldflags="${SMART_LIBS}"
+mod_cflags="${SMART_CFLAGS}"
+mod_ldflags="${SMART_LIBS}"
 
 
 

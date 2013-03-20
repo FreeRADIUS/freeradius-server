@@ -586,8 +586,8 @@ ac_unique_file="rlm_mschap.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-mschap_cflags
-mschap_ldflags
+mod_cflags
+mod_ldflags
 mschap_sources
 CPP
 OBJEXT
@@ -2849,7 +2849,7 @@ fi
 $as_echo "#define HAVE_MEMBERSHIP_H 1" >>confdefs.h
 
 		mschap_sources+="opendir.c"
-		mschap_ldflags+=" -framework DirectoryService"
+		mod_ldflags+=" -framework DirectoryService"
 	fi
 	targetname=rlm_mschap
 else

@@ -623,8 +623,8 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-unix_cflags
-unix_ldflags
+mod_cflags
+mod_ldflags
 EGREP
 GREP
 CPP
@@ -3368,7 +3368,7 @@ fi
 $as_echo "$ac_cv_lib_shadow_getspnam" >&6; }
 if test "x$ac_cv_lib_shadow_getspnam" = xyes; then :
 
-			unix_ldflags="${unix_ldflags} -lshadow"
+			mod_ldflags="${mod_ldflags} -lshadow"
 			$as_echo "#define HAVE_GETSPNAM 1" >>confdefs.h
 
 

@@ -586,8 +586,8 @@ ac_unique_file="rlm_sql_oracle.c"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-sql_oracle_cflags
-sql_oracle_ldflags
+mod_cflags
+mod_ldflags
 OBJEXT
 EXEEXT
 ac_ct_CC
@@ -1788,8 +1788,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
 fail=
-sql_oracle_ldflags=
-sql_oracle_cflags=
+mod_ldflags=
+mod_cflags=
 if test x$with_rlm_sql_oracle != xno; then
 
 
@@ -2843,11 +2843,11 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_link "$LINENO"; then :
-  sql_oracle_ldflags="$LIBS"
+  mod_ldflags="$LIBS"
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
-            if test "x$sql_oracle_ldflags" != "x"; then
+            if test "x$mod_ldflags" != "x"; then
                     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
                     break
@@ -2856,14 +2856,14 @@ $as_echo "yes" >&6; }
 $as_echo "no" >&6; }
         done
 
-        if test "x$sql_oracle_ldflags" != "x"; then
+        if test "x$mod_ldflags" != "x"; then
                 break
         fi
     done
 
     LIBS="$old_LIBS"
 
-    if test "x$sql_oracle_ldflags" = "x"; then
+    if test "x$mod_ldflags" = "x"; then
         { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME." >&5
 $as_echo "$as_me: WARNING: oracle libraries not found.  Use --with-oracle-lib-dir=<path> or set ORACLE_HOME." >&2;}
         fail="$fail libclntsh libnnz[9-11]"
@@ -2887,7 +2887,7 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_sql_oracle requires:$fail." >&2;};
 	fi
 fi
 
-sql_oracle_cflags="$SMART_CFLAGS"
+mod_cflags="$SMART_CFLAGS"
 
 
 

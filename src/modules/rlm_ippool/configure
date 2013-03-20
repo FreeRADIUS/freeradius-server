@@ -589,8 +589,8 @@ LIBOBJS
 ippool_install
 ippool_utils
 targetname
-ippool_cflags
-ippool_ldflags
+mod_cflags
+mod_ldflags
 EGREP
 GREP
 CPP
@@ -3334,8 +3334,8 @@ if test x"$targetname" != x""; then
 	ippool_install="rlm_ippool_install"
 fi
 
-ippool_ldflags=$SMART_LIBS
-ippool_cflags=$SMART_CFLAGS
+mod_ldflags=$SMART_LIBS
+mod_cflags=$SMART_CFLAGS
 
 
 

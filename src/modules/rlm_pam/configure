@@ -623,8 +623,8 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-pam_cflags
-pam_ldflags
+mod_cflags
+mod_ldflags
 EGREP
 GREP
 CPP
@@ -2981,7 +2981,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_dl_dlopen" >&5
 $as_echo "$ac_cv_lib_dl_dlopen" >&6; }
 if test "x$ac_cv_lib_dl_dlopen" = xyes; then :
-   pam_ldflags="-ldl"
+   mod_ldflags="-ldl"
 
 fi
 
@@ -2992,7 +2992,7 @@ if ${ac_cv_lib_pam_pam_start+:} false; then :
   $as_echo_n "(cached) " >&6
 else
   ac_check_lib_save_LIBS=$LIBS
-LIBS="-lpam  $pam_ldflags
+LIBS="-lpam  $mod_ldflags
 	 $LIBS"
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
@@ -3024,7 +3024,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_pam_pam_start" >&5
 $as_echo "$ac_cv_lib_pam_pam_start" >&6; }
 if test "x$ac_cv_lib_pam_pam_start" = xyes; then :
-   pam_ldflags="-lpam $pam_ldflags"
+   mod_ldflags="-lpam $mod_ldflags"
 else
    fail=$fail" libpam"
 fi
@@ -3306,7 +3306,7 @@ fi
 
 done
 
-	pam_cflags="-I."
+	mod_cflags="-I."
 
 	targetname=rlm_pam
 else

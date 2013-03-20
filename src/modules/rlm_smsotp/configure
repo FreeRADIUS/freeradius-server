@@ -623,8 +623,8 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-smsotp_ldflags
-smsotp_cflags
+mod_ldflags
+mod_cflags
 EGREP
 GREP
 CPP

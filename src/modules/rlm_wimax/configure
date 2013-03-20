@@ -623,8 +623,8 @@ ac_includes_default="\
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
-wimax_ldflags
-wimax_cflags
+mod_ldflags
+mod_cflags
 EGREP
 GREP
 CPP
@@ -3160,7 +3160,7 @@ done
 
 ac_fn_c_check_header_mongrel "$LINENO" "openssl/hmac.h" "ac_cv_header_openssl_hmac_h" "$ac_includes_default"
 if test "x$ac_cv_header_openssl_hmac_h" = xyes; then :
-   wimax_cflags="$wimax_cflags"
+   mod_cflags="$mod_cflags"
 else
    fail=$fail" openssl/hmac.h"
 
