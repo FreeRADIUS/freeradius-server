@@ -202,6 +202,13 @@ The Unix module still can pull the passwords from /etc/passwd, or
 /etc/shadow.  This is done by listing it in the "authorize" section,
 as is done in the sites-available/ examples.
 
+SIM_FILES
+---------
+
+The rlm_sim_files module has been deleted.  It was never marked "stable",
+and was never used in a production environment.  There are better ways
+to test EAP.
+
 
 RadSec
 ------
