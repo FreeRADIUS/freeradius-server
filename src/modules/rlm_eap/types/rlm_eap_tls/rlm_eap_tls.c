@@ -181,8 +181,8 @@ static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 			RDEBUG("} # server %s", fake->server);
 
 			/* copy the reply vps back to our reply */
-			pairadd(&request->reply->vps, fake->reply->vps);
-			fake->reply->vps = NULL;
+			pairmove2(request->reply, &request->reply->vps,
+				  &fake->reply->vps, 0, 0, TAG_ANY);
 
 			/* reject if virtual server didn't return accept */
 			if (fake->reply->code != PW_AUTHENTICATION_ACK) {

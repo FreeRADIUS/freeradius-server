@@ -1847,8 +1847,8 @@ static int process_proxy_reply(REQUEST *request)
 		 *	Add the attributes left in the proxy
 		 *	reply to the reply list.
 		 */
-		pairadd(&request->reply->vps, request->proxy_reply->vps);
-		request->proxy_reply->vps = NULL;
+		pairmove2(request->reply, &request->reply->vps,
+			  &request->proxy_reply->vps, 0, 0, TAG_ANY);
 		
 		/*
 		 *	Free proxy request pairs.

@@ -481,8 +481,10 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 			switch (ccode) {
 				case PW_EAP_MSCHAPV2_SUCCESS:
 					eap_ds->request->code = PW_EAP_SUCCESS;
-					pairadd(&request->reply->vps, data->mppe_keys);
-					data->mppe_keys = NULL;
+
+					pairmove2(request->reply,
+						  &request->reply->vps,
+						  &data->mppe_keys, 0, 0, TAG_ANY);
 					/* fall through... */
 
 				case PW_EAP_MSCHAPV2_ACK:
@@ -492,8 +494,9 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 					 */
 					request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-					pairadd(&request->reply->vps, data->reply);
-					data->reply = NULL;
+					pairmove2(request->reply,
+						  &request->reply->vps,
+						  &data->reply, 0, 0, TAG_ANY);
 					return 1;
 			}
 			radlog(L_ERR, "rlm_eap_mschapv2: Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);

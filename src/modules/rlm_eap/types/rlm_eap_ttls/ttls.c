@@ -753,8 +753,8 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 */
 		if (t->use_tunneled_reply) {
 			pairdelete(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
-			pairadd(&request->reply->vps, reply->vps);
-			reply->vps = NULL;
+			pairmove2(request->reply, &request->reply->vps,
+				  &reply->vps, 0, 0, TAG_ANY);
 		}
 		break;
 
