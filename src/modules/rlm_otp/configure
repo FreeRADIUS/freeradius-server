@@ -3335,10 +3335,10 @@ done
 
 	CFLAGS="$old_CFLAGS"
 
-	targetname=rlm_otp     # keep this!  Don't change!
+	targetname=rlm_otp
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module rlm_otp is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module rlm_otp is disabled.
 fi
 
 if test x"$fail" != x""; then
@@ -3356,7 +3356,7 @@ fi
 
 
 
-  # keep this!  Don't change!
+
 
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value

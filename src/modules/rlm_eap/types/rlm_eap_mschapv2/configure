@@ -587,7 +587,6 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
 mod_cflags
-mod_cflags
 target_alias
 host_alias
 build_alias

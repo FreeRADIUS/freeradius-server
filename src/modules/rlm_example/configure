@@ -2077,9 +2077,9 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
- # change 'example'
 
- # change 'example'
+
+
 
 if test x$with_rlm_example != xno; then
 
@@ -3337,7 +3337,7 @@ _ACEOF
 fi
 
 done
-  # for the config.h defs
+
 	for ac_func in printf
 do :
   ac_fn_c_check_func "$LINENO" "printf" "ac_cv_func_printf"
@@ -3348,12 +3348,12 @@ _ACEOF
 
 fi
 done
-  # for the config.h defs
 
-	targetname=rlm_example     # keep this!  Don't change!
+
+	targetname=rlm_example
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module rlm_example is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module rlm_example is disabled.
 fi
 
 if test x"$fail" != x""; then
@@ -3369,13 +3369,13 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_example requires: $fail." >&2;};
 fi
 
 
-  # change 'example'
-  # change 'example'
+
+
 
 ac_config_headers="$ac_config_headers config.h"
-  # delete if you don't want a config.h file.
 
-  # keep this!  Don't change!
+
+
 
   unset ac_cv_env_LIBS_set
   unset ac_cv_env_LIBS_value
@@ -4654,4 +4654,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
 
-  # keep this!  Don't change!
+

@@ -2957,7 +2957,7 @@ done
 
      if test -d "$_libcurl_with" ; then
         LIBCURL_CPPFLAGS="-I$withval/include"
-        mod_ldflags="-L$withval/lib"
+        _libcurl_ldflags="-L$withval/lib"
         # Extract the first word of "curl-config", so it can be a program name with args.
 set dummy curl-config; ac_word=$2
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
@@ -3108,7 +3108,7 @@ $as_echo "$libcurl_cv_lib_version_ok" >&6; }
 
         # we didn't find curl-config, so let's see if the user-supplied
         # link line (or failing that, "-lcurl") is enough.
-        LIBCURL=${LIBCURL-"$mod_ldflags -lcurl"}
+        LIBCURL=${LIBCURL-"$_libcurl_ldflags -lcurl"}
 
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether libcurl is usable" >&5
 $as_echo_n "checking whether libcurl is usable... " >&6; }
@@ -3244,7 +3244,7 @@ _ACEOF
      unset _libcurl_protocol
      unset _libcurl_protocols
      unset _libcurl_version
-     unset mod_ldflags
+     unset _libcurl_ldflags
   fi
 
   if test x$_libcurl_with = xno || test x$libcurl_cv_lib_curl_usable != xyes ; then
@@ -3663,10 +3663,10 @@ $as_echo "#define HAVE_JSON 1" >>confdefs.h
 $as_echo "$as_me: WARNING: silently building without JSON support. requires: json-c" >&2;}
 	fi
 
-	targetname=rlm_rest     # keep this!  Don't change!
+	targetname=rlm_rest
 else
-	targetname=            # keep this!  Don't change!
-	echo \*\*\* module rlm_rest is disabled.  # keep this!  Don't change!
+	targetname=
+	echo \*\*\* module rlm_rest is disabled.
 fi
 
 if test x"$fail" != x""; then

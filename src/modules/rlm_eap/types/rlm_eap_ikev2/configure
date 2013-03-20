@@ -587,7 +587,6 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
 mod_cflags
-mod_cflags
 OBJEXT
 EXEEXT
 ac_ct_CC

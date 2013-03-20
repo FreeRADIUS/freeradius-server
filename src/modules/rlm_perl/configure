@@ -3330,7 +3330,7 @@ $as_echo "$LINKS" >&6; }
 	fi
 else
 		targetname=
-		echo \*\*\* module rlm_perl is disabled.  # keep this!  Don't change!
+		echo \*\*\* module rlm_perl is disabled.
 fi
 
 if test x"$fail" != x""; then
