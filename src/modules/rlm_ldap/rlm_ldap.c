@@ -773,7 +773,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR	*vp;
 	ldap_handle_t	*conn;
 	LDAPMessage	*result, *entry;
-	const char 	*dn;
+	const char 	*dn = NULL;
 	rlm_ldap_map_xlat_t	expanded; /* faster that mallocing every time */
 	
 	if (!request->username) {
