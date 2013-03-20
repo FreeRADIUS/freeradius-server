@@ -119,6 +119,18 @@ distclean: clean
 CONFIGURE_IN_FILES := $(shell find . -name configure.in -print)
 CONFIGURE_FILES	   := $(patsubst %.in,%,$(CONFIGURE_IN_FILES))
 
+#  If we've already run configure, then add rules which cause the
+#  module-specific "all.mk" files to depend on the mk.in files, and on
+#  the configure script.
+#  T
+ifneq "$(wildcard config.log)" ""
+CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
+
+src/%all.mk: src/%all.mk.in src/%configure
+	@ECHO CONFIGURE $(dir $<)
+	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+endif
+
 # Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
 src/%configure: src/%configure.in acinclude.m4 aclocal.m4
