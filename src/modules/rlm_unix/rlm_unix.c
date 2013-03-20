@@ -115,7 +115,7 @@ static int groupcmp(void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
 /*
  *	Detach.
  */
-static int unix_detach(UNUSED void *instance)
+static int mod_detach(UNUSED void *instance)
 {
 #define inst ((struct unix_instance *)instance)
 
@@ -130,7 +130,7 @@ static int unix_detach(UNUSED void *instance)
 /*
  *	Read the config
  */
-static int unix_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct unix_instance *inst;
 
@@ -162,7 +162,7 @@ static int unix_instantiate(CONF_SECTION *conf, void **instance)
  *	Pull the users password from where-ever, and add it to
  *	the given vp list.
  */
-static rlm_rcode_t unix_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	const char	*name;
 	const char	*encrypted_pass;
@@ -339,7 +339,7 @@ static char *uue(void *in)
 /*
  *	Unix accounting - write a wtmp file.
  */
-static rlm_rcode_t unix_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
 	FILE		*fp;
@@ -515,13 +515,13 @@ module_t rlm_unix = {
 	RLM_MODULE_INIT,
 	"System",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE,
-	unix_instantiate,		/* instantiation */
-	unix_detach,		 	/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,		 	/* detach */
 	{
 		NULL,		    /* authentication */
-		unix_authorize,       /* authorization */
+		mod_authorize,       /* authorization */
 		NULL,		 /* preaccounting */
-		unix_accounting,      /* accounting */
+		mod_accounting,      /* accounting */
 		NULL,		  /* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */

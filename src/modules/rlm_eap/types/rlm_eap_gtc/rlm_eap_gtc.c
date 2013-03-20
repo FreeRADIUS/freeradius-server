@@ -131,7 +131,7 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int gtc_authenticate(void *instance, eap_handler_t *handler)
+static int mod_authenticate(void *instance, eap_handler_t *handler)
 {
 	VALUE_PAIR *vp;
 	EAP_DS *eap_ds = handler->eap_ds;
@@ -226,7 +226,7 @@ static int gtc_authenticate(void *instance, eap_handler_t *handler)
 		/*
 		 *	This is a wild & crazy hack.
 		 */
-		rcode = module_authenticate(inst->auth_type, request);
+		rcode = process_authenticate(inst->auth_type, request);
 		if (rcode != RLM_MODULE_OK) {
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
@@ -253,6 +253,6 @@ rlm_eap_module_t rlm_eap_gtc = {
 	gtc_attach,	      		/* attach */
 	gtc_initiate,			/* Start the initial request */
 	NULL,				/* authorization */
-	gtc_authenticate,		/* authentication */
+	mod_authenticate,		/* authentication */
 	NULL     			/* detach */
 };

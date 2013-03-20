@@ -414,7 +414,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 }
 
 /******************************************/
-static int securid_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_securid_t *inst = (rlm_securid_t *) instance;
 
@@ -430,7 +430,7 @@ static int securid_detach(void *instance)
 }
 
 
-static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
+static rlm_rcode_t mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_securid_t *inst;
 
@@ -462,7 +462,7 @@ static rlm_rcode_t securid_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static int securid_authenticate(void *instance, REQUEST *request)
+static int mod_authenticate(void *instance, REQUEST *request)
 {
 	int rcode;
 	rlm_securid_t *inst = instance;
@@ -559,10 +559,10 @@ module_t rlm_securid = {
 	RLM_MODULE_INIT,
 	"securid",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	securid_instantiate,		/* instantiation */
-	securid_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		securid_authenticate,	/* authentication */
+		mod_authenticate,	/* authentication */
 		NULL,			/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */

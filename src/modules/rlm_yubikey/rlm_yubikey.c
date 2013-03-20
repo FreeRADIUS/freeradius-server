@@ -153,7 +153,7 @@ static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int yubikey_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_yubikey_t *inst;
 	DICT_VALUE *dval;
@@ -203,7 +203,7 @@ static int yubikey_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t yubikey_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_yubikey_t *inst = instance;
 	
@@ -283,7 +283,7 @@ static rlm_rcode_t yubikey_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t yubikey_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_yubikey_t *inst = instance;
 	
@@ -442,7 +442,7 @@ static rlm_rcode_t yubikey_authenticate(void *instance, REQUEST *request)
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int yubikey_detach(UNUSED void *instance)
+static int mod_detach(UNUSED void *instance)
 {
 	/* free things here */
 	return 0;
@@ -461,11 +461,11 @@ module_t rlm_yubikey = {
 	RLM_MODULE_INIT,
 	"yubikey",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	yubikey_instantiate,		/* instantiation */
-	yubikey_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		yubikey_authenticate,	/* authentication */
-		yubikey_authorize,	/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize,	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

@@ -1514,7 +1514,7 @@ int setup_modules(int reload, CONF_SECTION *config)
  *	Call all authorization modules until one returns
  *	somethings else than RLM_MODULE_OK
  */
-rlm_rcode_t module_authorize(int autz_type, REQUEST *request)
+rlm_rcode_t process_authorize(int autz_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_AUTZ, autz_type, request);
 }
@@ -1522,7 +1522,7 @@ rlm_rcode_t module_authorize(int autz_type, REQUEST *request)
 /*
  *	Authenticate a user/password with various methods.
  */
-rlm_rcode_t module_authenticate(int auth_type, REQUEST *request)
+rlm_rcode_t process_authenticate(int auth_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_AUTH, auth_type, request);
 }
@@ -1539,7 +1539,7 @@ rlm_rcode_t module_preacct(REQUEST *request)
 /*
  *	Do accounting for ALL configured sessions
  */
-rlm_rcode_t module_accounting(int acct_type, REQUEST *request)
+rlm_rcode_t process_accounting(int acct_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_ACCT, acct_type, request);
 }
@@ -1551,7 +1551,7 @@ rlm_rcode_t module_accounting(int acct_type, REQUEST *request)
  *
  *	Returns: 0 == OK, 1 == double logins, 2 == multilink attempt
  */
-int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
+int process_checksimul(int sess_type, REQUEST *request, int maxsimul)
 {
 	rlm_rcode_t rcode;
 
@@ -1577,7 +1577,7 @@ int module_checksimul(int sess_type, REQUEST *request, int maxsimul)
 /*
  *	Do pre-proxying for ALL configured sessions
  */
-rlm_rcode_t module_pre_proxy(int type, REQUEST *request)
+rlm_rcode_t process_pre_proxy(int type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_PRE_PROXY, type, request);
 }
@@ -1585,7 +1585,7 @@ rlm_rcode_t module_pre_proxy(int type, REQUEST *request)
 /*
  *	Do post-proxying for ALL configured sessions
  */
-rlm_rcode_t module_post_proxy(int type, REQUEST *request)
+rlm_rcode_t process_post_proxy(int type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_POST_PROXY, type, request);
 }
@@ -1594,18 +1594,18 @@ rlm_rcode_t module_post_proxy(int type, REQUEST *request)
 /*
  *	Do post-authentication for ALL configured sessions
  */
-rlm_rcode_t module_post_auth(int postauth_type, REQUEST *request)
+rlm_rcode_t process_post_auth(int postauth_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_POST_AUTH, postauth_type, request);
 }
 
 #ifdef WITH_COA
-rlm_rcode_t module_recv_coa(int recv_coa_type, REQUEST *request)
+rlm_rcode_t process_recv_coa(int recv_coa_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_RECV_COA, recv_coa_type, request);
 }
 
-rlm_rcode_t module_send_coa(int send_coa_type, REQUEST *request)
+rlm_rcode_t process_send_coa(int send_coa_type, REQUEST *request)
 {
 	return indexed_modcall(RLM_COMPONENT_SEND_COA, send_coa_type, request);
 }

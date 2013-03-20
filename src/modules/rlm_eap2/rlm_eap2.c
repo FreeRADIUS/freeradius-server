@@ -67,7 +67,7 @@ typedef struct rlm_eap_t {
 	 *	Configuration items.
 	 */
 	int		timer_limit;
-	int		cisco_accounting_username_bug;
+	int		mod_accounting_username_bug;
 
 	struct tls_connection_params tparams;
 
@@ -333,7 +333,7 @@ static EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request)
 /*
  * delete all the allocated space by eap module
  */
-static int eap_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_eap_t *inst;
 
@@ -478,8 +478,8 @@ static CONF_PARSER fast_config[] = {
 static const CONF_PARSER module_config[] = {
 	{ "timer_expire", PW_TYPE_INTEGER,
 	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
-	{ "cisco_accounting_username_bug", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_t, cisco_accounting_username_bug), NULL, "no" },
+	{ "mod_accounting_username_bug", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_t, mod_accounting_username_bug), NULL, "no" },
 
 	{ "backend_auth", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_t, backend_auth), NULL, "yes" },
@@ -518,7 +518,7 @@ static int eap_example_server_init_tls(rlm_eap_t *inst)
 /*
  * read the config section and load all the eap authentication types present.
  */
-static int eap_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	int i, num_types;
 	int		has_tls, do_tls;
@@ -529,7 +529,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	if (!inst) return -1;
 
 	if (cf_section_parse(cs, inst, module_config) < 0) {
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -553,7 +553,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
 		radlog(L_ERR, "rlm_eap2: Cannot initialize tree");
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -564,7 +564,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	 *	some methods.
 	 */
 	if (eap_server_register_methods() < 0) {
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -602,7 +602,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		if (inst->methods[num_types] == EAP_TYPE_NONE) {
 			radlog(L_ERR, "rlm_eap2: Unknown EAP type %s",
 			       auth_type);
-			eap_detach(inst);
+			mod_detach(inst);
 			return -1;
 		}
 
@@ -627,7 +627,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 
 	if (do_tls && !has_tls) {
 		radlog(L_ERR, "rlm_eap2: TLS has not been configured.  Cannot do methods that need TLS.");
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -637,7 +637,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		 */
 		if (eap_example_server_init_tls(inst) < 0) {
 			radlog(L_ERR, "rlm_eap2: Cannot initialize TLS");
-			eap_detach(inst);
+			mod_detach(inst);
 			return -1;
 		}
 	}
@@ -849,7 +849,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 /*
  *	Do EAP.
  */
-static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	EAP_HANDLER	*handler;
@@ -981,7 +981,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 		 *	Cisco AP1230 has a bug and needs a zero
 		 *	terminated string in Access-Accept.
 		 */
-		if ((inst->cisco_accounting_username_bug) &&
+		if ((inst->mod_accounting_username_bug) &&
 		    (vp->length < (int) sizeof(vp->vp_strvalue))) {
 			vp->vp_strvalue[vp->length] = '\0';
 			vp->length++;
@@ -1007,10 +1007,10 @@ module_t rlm_eap2 = {
 	RLM_MODULE_INIT,
 	"eap2",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	eap_instantiate,		/* instantiation */
-	eap_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		eap_authenticate,	/* authentication */
+		mod_authenticate,	/* authentication */
 		NULL,			/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */

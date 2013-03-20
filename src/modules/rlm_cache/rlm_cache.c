@@ -700,7 +700,7 @@ static const CONF_PARSER module_config[] = {
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int cache_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_cache_t *inst = instance;
 	
@@ -719,7 +719,7 @@ static int cache_detach(void *instance)
 /*
  *	Instantiate the module.
  */
-static int cache_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_cache_t *inst;
 
@@ -860,8 +860,8 @@ module_t rlm_cache = {
 	RLM_MODULE_INIT,
 	"cache",
 	0,				/* type */
-	cache_instantiate,		/* instantiation */
-	cache_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		cache_it,		/* authorization */

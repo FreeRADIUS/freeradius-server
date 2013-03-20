@@ -126,7 +126,7 @@ static void calc_sha1_digest(uint8_t *buffer, const uint8_t *challenge,
 }
 
 
-static rlm_rcode_t cram_authenticate(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(UNUSED void * instance, REQUEST *request)
 {
 	VALUE_PAIR *authtype, *challenge, *response, *password;
 	uint8_t buffer[64];
@@ -199,7 +199,7 @@ module_t rlm_cram = {
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{
-		cram_authenticate,	/* authenticate */
+		mod_authenticate,	/* authenticate */
 		NULL,			/* authorize */
 		NULL,			/* pre-accounting */
 		NULL,			/* accounting */

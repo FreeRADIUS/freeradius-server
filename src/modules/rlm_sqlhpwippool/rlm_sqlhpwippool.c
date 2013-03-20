@@ -282,7 +282,7 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 }
 
 /* standard foobar code */
-static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_sqlhpwippool_t *inst;
 	module_instance_t *sqlinst;
@@ -307,7 +307,7 @@ static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
 	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sqlinst_name), 1 );
 	if (!sqlinst) {
 		nvp_log(__LINE__, inst, L_ERR,
-			"sqlhpwippool_instantiate(): cannot find module instance "
+			"mod_instantiate(): cannot find module instance "
 			"named \"%s\"",
 			inst->sqlinst_name);
 		return -1;
@@ -316,7 +316,7 @@ static int sqlhpwippool_instantiate(CONF_SECTION *conf, void **instance)
 	/* check if the given instance is really a rlm_sql instance */
 	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
 		nvp_log(__LINE__, inst, L_ERR,
-			"sqlhpwippool_instantiate(): given instance (%s) is not "
+			"mod_instantiate(): given instance (%s) is not "
 			"an instance of the rlm_sql module",
 			inst->sqlinst_name);
 		return -1;
@@ -649,7 +649,7 @@ end_gid:
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_sql_handle_t *sqlsock;
@@ -668,7 +668,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 	}
 	else {
 		nvp_log(__LINE__, inst, L_ERR,
-			"sqlhpwippool_accounting(): unique session ID not found");
+			"mod_accounting(): unique session ID not found");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -677,7 +677,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 		acct_type = vp->vp_integer;
 	}
 	else {
-		nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_accounting(): "
+		nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): "
 					       "couldn't find type of accounting packet");
 		return RLM_MODULE_FAIL;
 	}
@@ -694,7 +694,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 	sqlsock = sql_get_socket(inst->sqlinst);
 	if (!sqlsock) {
 		nvp_log(__LINE__, inst, L_ERR,
-			"sqlhpwippool_accounting(): couldn't connect to database");
+			"mod_accounting(): couldn't connect to database");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -704,7 +704,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 		case PW_STATUS_ALIVE:
 			vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY);
 			if (!vp) {
-				nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_accounting(): no framed IP");
+				nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no framed IP");
 				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
@@ -744,7 +744,7 @@ static rlm_rcode_t sqlhpwippool_accounting(void *instance, REQUEST *request)
 		case PW_STATUS_ACCOUNTING_ON:
 			vp = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 			if (!vp) {
-				nvp_log(__LINE__, inst, L_ERR, "sqlhpwippool_accounting(): no NAS IP");
+				nvp_log(__LINE__, inst, L_ERR, "mod_accounting(): no NAS IP");
 				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
@@ -775,13 +775,13 @@ module_t rlm_sqlhpwippool = {
 	RLM_MODULE_INIT,
 	"sqlhpwippool",			/* name */
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	sqlhpwippool_instantiate,	/* instantiation */
+	mod_instantiate,	/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
 		NULL,			/* preaccounting */
-		sqlhpwippool_accounting,/* accounting */
+		mod_accounting,/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */

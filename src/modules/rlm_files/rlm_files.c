@@ -319,7 +319,7 @@ static int getusersfile(const char *filename, fr_hash_table_t **pht,
 /*
  *	Clean up.
  */
-static int file_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	struct file_instance *inst = instance;
 	fr_hash_table_free(inst->users);
@@ -338,7 +338,7 @@ static int file_detach(void *instance)
 /*
  *	(Re-)read the "users" file into memory.
  */
-static int file_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct file_instance *inst;
 	int rcode;
@@ -353,14 +353,14 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 	rcode = getusersfile(inst->usersfile, &inst->users, inst->compat_mode);
 	if (rcode != 0) {
 	  radlog(L_ERR, "Errors reading %s", inst->usersfile);
-		file_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
 	rcode = getusersfile(inst->acctusersfile, &inst->acctusers, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->acctusersfile);
-		file_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -371,14 +371,14 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 	rcode = getusersfile(inst->preproxy_usersfile, &inst->preproxy_users, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->preproxy_usersfile);
-		file_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
 	rcode = getusersfile(inst->postproxy_usersfile, &inst->postproxy_users, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->postproxy_usersfile);
-		file_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 #endif
@@ -386,14 +386,14 @@ static int file_instantiate(CONF_SECTION *conf, void **instance)
 	rcode = getusersfile(inst->auth_usersfile, &inst->auth_users, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->auth_usersfile);
-		file_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
 	rcode = getusersfile(inst->postauth_usersfile, &inst->postauth_users, inst->compat_mode);
 	if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->postauth_usersfile);
-		file_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -507,7 +507,7 @@ static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t file_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -549,7 +549,7 @@ static rlm_rcode_t file_postproxy(void *instance, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t file_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	struct file_instance *inst = instance;
 
@@ -573,11 +573,11 @@ module_t rlm_files = {
 	RLM_MODULE_INIT,
 	"files",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,
-	file_instantiate,		/* instantiation */
-	file_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		file_authenticate,	/* authentication */
-		file_authorize, 	/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize, 	/* authorization */
 		file_preacct,		/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

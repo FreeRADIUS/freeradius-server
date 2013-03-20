@@ -392,7 +392,7 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int passwd_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	int nfields=0, keyfield=-1, listable=0;
 	char *s;
@@ -496,7 +496,7 @@ static int passwd_instantiate(CONF_SECTION *conf, void **instance)
 #undef inst
 }
 
-static int passwd_detach (void *instance) {
+static int mod_detach (void *instance) {
 #define inst ((struct passwd_instance *)instance)
 	if(inst->ht) release_ht(inst->ht);
 	return 0;
@@ -559,8 +559,8 @@ module_t rlm_passwd = {
 	RLM_MODULE_INIT,
 	"passwd",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	passwd_instantiate,		/* instantiation */
-	passwd_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		passwd_map,		/* authorization */

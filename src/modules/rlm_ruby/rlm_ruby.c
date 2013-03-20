@@ -190,7 +190,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, VALUE_PAIR **vpp, VALUE rb_value,
  */
 
 #define BUF_SIZE 1024
-static rlm_rcode_t ruby_function(REQUEST *request, int func,
+static rlm_rcode_t do_ruby(REQUEST *request, int func,
 				 VALUE module, const char *function_name) {
 				
     rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -309,7 +309,7 @@ static struct varlookup {
 /*
  * Import a user module and load a function from it
  */
-static int load_ruby_function(const char *f_name, int *func, VALUE module) {
+static int load_function(const char *f_name, int *func, VALUE module) {
     if (f_name == NULL) {
 	*func = 0;
     } else {
@@ -321,7 +321,7 @@ static int load_ruby_function(const char *f_name, int *func, VALUE module) {
 	if (!rb_respond_to(module, *func))
 	    *func = 0;
     }
-    radlog(L_DBG, "load_ruby_function %s, result: %d", f_name, *func);
+    radlog(L_DBG, "load_function %s, result: %d", f_name, *func);
     return 0;
 }
 
@@ -336,7 +336,7 @@ static int load_ruby_function(const char *f_name, int *func, VALUE module) {
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int ruby_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
     rlm_ruby_t *data;
     VALUE module;
@@ -399,7 +399,7 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance)
     /*
      * Import user modules.
      */
-#define RLM_RUBY_LOAD(foo) if (load_ruby_function(#foo, &data->func_##foo, data->pModule_builtin)==-1) { \
+#define RLM_RUBY_LOAD(foo) if (load_function(#foo, &data->func_##foo, data->pModule_builtin)==-1) { \
 	return -1; \
     }
 
@@ -419,12 +419,12 @@ static int ruby_instantiate(CONF_SECTION *conf, void **instance)
     RLM_RUBY_LOAD(detach);
 
     /* Call the instantiate function.  No request.  Use the return value. */
-    return ruby_function(NULL, data->func_instantiate, data->pModule_builtin, "instantiate");
+    return do_ruby(NULL, data->func_instantiate, data->pModule_builtin, "instantiate");
 }
 
-#define RLM_RUBY_FUNC(foo) static rlm_rcode_t ruby_##foo(void *instance, REQUEST *request) \
+#define RLM_RUBY_FUNC(foo) static rlm_rcode_t mod_##foo(void *instance, REQUEST *request) \
 { \
-    return ruby_function(request, \
+    return do_ruby(request, \
 			   ((struct rlm_ruby_t *)instance)->func_##foo,((struct rlm_ruby_t *)instance)->pModule_builtin, \
 			   #foo); \
 }
@@ -442,7 +442,7 @@ RLM_RUBY_FUNC(recvcoa)
 RLM_RUBY_FUNC(sendcoa)
 #endif
 
-static int ruby_detach(UNUSED void *instance)
+static int mod_detach(UNUSED void *instance)
 {
     ruby_finalize();
     ruby_cleanup(0);
@@ -464,20 +464,20 @@ module_t rlm_ruby = {
     "ruby",
     //	RLM_TYPE_THREAD_SAFE,		/* type */
     RLM_TYPE_THREAD_UNSAFE, /* type, ok, let's be honest, MRI is not yet treadsafe */
-    ruby_instantiate, /* instantiation */
-    ruby_detach, /* detach */
+    mod_instantiate, /* instantiation */
+    mod_detach, /* detach */
     {
-	ruby_authenticate, /* authentication */
-	ruby_authorize, /* authorization */
-	ruby_preacct, /* preaccounting */
-	ruby_accounting, /* accounting */
-	ruby_checksimul, /* checksimul */
-	ruby_preproxy, /* pre-proxy */
-	ruby_postproxy, /* post-proxy */
-	ruby_postauth /* post-auth */
+	mod_authenticate, /* authentication */
+	mod_authorize, /* authorization */
+	mod_preacct, /* preaccounting */
+	mod_accounting, /* accounting */
+	mod_checksimul, /* checksimul */
+	mod_preproxy, /* pre-proxy */
+	mod_postproxy, /* post-proxy */
+	mod_postauth /* post-auth */
 #ifdef WITH_COA
-	, ruby_recvcoa,
-	ruby_sendcoa
+	, mod_recvcoa,
+	mod_sendcoa
 #endif
     },
 };

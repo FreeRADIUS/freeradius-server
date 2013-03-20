@@ -327,7 +327,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
  *  stored in *instance for later use.
  */
 
-static int realm_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct realm_config_t *inst;
 
@@ -365,7 +365,7 @@ static int realm_instantiate(CONF_SECTION *conf, void **instance)
  *
  *  This should very nearly duplicate the old proxy_send() code
  */
-static rlm_rcode_t realm_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 	REALM *realm;
@@ -390,7 +390,7 @@ static rlm_rcode_t realm_authorize(void *instance, REQUEST *request)
 }
 
 /*
- * This does the exact same thing as the realm_authorize, it's just called
+ * This does the exact same thing as the mod_authorize, it's just called
  * differently.
  */
 static rlm_rcode_t realm_preacct(void *instance, REQUEST *request)
@@ -479,11 +479,11 @@ module_t rlm_realm = {
 	RLM_MODULE_INIT,
 	"realm",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	realm_instantiate,	       	/* instantiation */
+	mod_instantiate,	       	/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		realm_authorize,	/* authorization */
+		mod_authorize,	/* authorization */
 		realm_preacct,		/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

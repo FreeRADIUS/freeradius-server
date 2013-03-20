@@ -63,7 +63,7 @@ typedef struct rlm_eap {
 	eap_type_t	default_method;
 	
 	int		ignore_unknown_types;
-	int		cisco_accounting_username_bug;
+	int		mod_accounting_username_bug;
 	
 	int		max_sessions;
 

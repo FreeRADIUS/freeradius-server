@@ -157,7 +157,7 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 /*
  *	Detach an instance and free it's data.
  */
-static int exec_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_exec_t	*inst = instance;
 
@@ -179,7 +179,7 @@ static int exec_detach(void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int exec_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_exec_t	*inst;
 	const char	*xlat_name;
@@ -207,7 +207,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		radlog(L_ERR, "rlm_exec (%s): Failed parsing the "
 		       "configuration", xlat_name);
-		exec_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -217,7 +217,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst->input) {
 		radlog(L_ERR, "rlm_exec (%s): Must define input pairs for "
 		       "external program", xlat_name);
-		exec_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -229,7 +229,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 	    (inst->output != NULL)) {
 		radlog(L_ERR, "rlm_exec (%s): Cannot read output pairs if "
 			      "wait=no", xlat_name);
-		exec_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -247,7 +247,7 @@ static int exec_instantiate(CONF_SECTION *conf, void **instance)
 			       "See list of VALUEs for Packet-Type in "
 			       "share/dictionary", xlat_name,
 			       inst->packet_type);
-			exec_detach(inst);
+			mod_detach(inst);
 			return -1;
 		}
 		inst->packet_code = dval->value;
@@ -431,7 +431,7 @@ static rlm_rcode_t exec_postauth(void *instance, REQUEST *request)
  *
  *	Then, call exec_dispatch.
  */
-static  rlm_rcode_t exec_accounting(void *instance, REQUEST *request)
+static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	int result;
 	int exec_wait = 0;
@@ -476,13 +476,13 @@ module_t rlm_exec = {
 	RLM_MODULE_INIT,
 	"exec",				/* Name */
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	exec_instantiate,		/* instantiation */
-	exec_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		exec_dispatch,		/* authentication */
 		exec_dispatch,		/* authorization */
 		exec_dispatch,		/* pre-accounting */
-		exec_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* check simul */
 		exec_dispatch,		/* pre-proxy */
 		exec_dispatch,		/* post-proxy */

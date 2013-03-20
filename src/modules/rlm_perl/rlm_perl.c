@@ -404,7 +404,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
  *	parse a module and give him a chance to live
  *
  */
-static int perl_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	PERL_INST       *inst = (PERL_INST *) instance;
 	AV		*end_AV;
@@ -648,7 +648,7 @@ static int get_hv_content(TALLOC_CTX *ctx, HV *my_hv, VALUE_PAIR **vps)
  * 	Store all vps in hashes %RAD_CHECK %RAD_REPLY %RAD_REQUEST
  *
  */
-static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
+static int do_perl(void *instance, REQUEST *request, char *function_name)
 {
 
 	PERL_INST	*inst = instance;
@@ -809,32 +809,32 @@ static int rlmperl_call(void *instance, REQUEST *request, char *function_name)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t perl_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			    ((PERL_INST *)instance)->func_authorize);
 }
 
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t perl_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			    ((PERL_INST *)instance)->func_authenticate);
 }
 /*
  *	Massage the request before recording it or proxying it
  */
-static rlm_rcode_t perl_preacct(void *instance, REQUEST *request)
+static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			    ((PERL_INST *)instance)->func_preacct);
 }
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t perl_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*pair;
 	int 		acctstatustype=0;
@@ -851,10 +851,10 @@ static rlm_rcode_t perl_accounting(void *instance, REQUEST *request)
 		case PW_STATUS_START:
 
 			if (((PERL_INST *)instance)->func_start_accounting) {
-				return rlmperl_call(instance, request,
+				return do_perl(instance, request,
 					    ((PERL_INST *)instance)->func_start_accounting);
 			} else {
-				return rlmperl_call(instance, request,
+				return do_perl(instance, request,
 					    ((PERL_INST *)instance)->func_accounting);
 			}
 			break;
@@ -862,15 +862,15 @@ static rlm_rcode_t perl_accounting(void *instance, REQUEST *request)
 		case PW_STATUS_STOP:
 
 			if (((PERL_INST *)instance)->func_stop_accounting) {
-				return rlmperl_call(instance, request,
+				return do_perl(instance, request,
 					    ((PERL_INST *)instance)->func_stop_accounting);
 			} else {
-				return rlmperl_call(instance, request,
+				return do_perl(instance, request,
 					    ((PERL_INST *)instance)->func_accounting);
 			}
 			break;
 		default:
-			return rlmperl_call(instance, request,
+			return do_perl(instance, request,
 					    ((PERL_INST *)instance)->func_accounting);
 
 	}
@@ -878,9 +878,9 @@ static rlm_rcode_t perl_accounting(void *instance, REQUEST *request)
 /*
  *	Check for simultaneouse-use
  */
-static rlm_rcode_t perl_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			((PERL_INST *)instance)->func_checksimul);
 }
 
@@ -888,17 +888,17 @@ static rlm_rcode_t perl_checksimul(void *instance, REQUEST *request)
 /*
  *	Pre-Proxy request
  */
-static rlm_rcode_t perl_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			((PERL_INST *)instance)->func_pre_proxy);
 }
 /*
  *	Post-Proxy request
  */
-static rlm_rcode_t perl_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			((PERL_INST *)instance)->func_post_proxy);
 }
 #endif
@@ -906,33 +906,33 @@ static rlm_rcode_t perl_post_proxy(void *instance, REQUEST *request)
 /*
  *	Pre-Auth request
  */
-static rlm_rcode_t perl_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			((PERL_INST *)instance)->func_post_auth);
 }
 #ifdef WITH_COA
 /*
  *	Recv CoA request
  */
-static rlm_rcode_t perl_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			((PERL_INST *)instance)->func_recv_coa);
 }
 /*
  *	Send CoA request
  */
-static rlm_rcode_t perl_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t mod_send_coa(void *instance, REQUEST *request)
 {
-	return rlmperl_call(instance, request,
+	return do_perl(instance, request,
 			((PERL_INST *)instance)->func_send_coa);
 }
 #endif
 /*
  * Detach a instance give a chance to a module to make some internal setup ...
  */
-static int perl_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	PERL_INST	*inst = (PERL_INST *) instance;
 	int 		exitstatus = 0, count = 0;
@@ -1020,24 +1020,24 @@ module_t rlm_perl = {
 #else
 	RLM_TYPE_THREAD_UNSAFE,
 #endif
-	perl_instantiate,		/* instantiation */
-	perl_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		perl_authenticate,	/* authenticate */
-		perl_authorize,		/* authorize */
-		perl_preacct,		/* preacct */
-		perl_accounting,	/* accounting */
-		perl_checksimul,      	/* check simul */
+		mod_authenticate,	/* authenticate */
+		mod_authorize,		/* authorize */
+		mod_preacct,		/* preacct */
+		mod_accounting,	/* accounting */
+		mod_checksimul,      	/* check simul */
 #ifdef WITH_PROXY
-		perl_pre_proxy,		/* pre-proxy */
-		perl_post_proxy,	/* post-proxy */
+		mod_pre_proxy,		/* pre-proxy */
+		mod_post_proxy,	/* post-proxy */
 #else
 		NULL, NULL,
 #endif
-		perl_post_auth		/* post-auth */
+		mod_post_auth		/* post-auth */
 #ifdef WITH_COA
-		, perl_recv_coa,
-		perl_send_coa
+		, mod_recv_coa,
+		mod_send_coa
 #endif
 	},
 };

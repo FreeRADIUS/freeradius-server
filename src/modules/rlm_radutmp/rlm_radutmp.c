@@ -74,7 +74,7 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_radutmp_t *inst;
 
@@ -164,7 +164,7 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsign
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	struct radutmp	ut, u;
 	VALUE_PAIR	*vp;
@@ -546,7 +546,7 @@ static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t radutmp_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 {
 	struct radutmp	u;
 	int		fd;
@@ -723,19 +723,19 @@ module_t rlm_radutmp = {
 	RLM_MODULE_INIT,
 	"radutmp",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	radutmp_instantiate,	  /* instantiation */
+	mod_instantiate,	  /* instantiation */
 	NULL,			       /* detach */
 	{
 		NULL,		 /* authentication */
 		NULL,		 /* authorization */
 		NULL,		 /* preaccounting */
 #ifdef WITH_ACCOUNTING
-		radutmp_accounting,   /* accounting */
+		mod_accounting,   /* accounting */
 #else
 		NULL,
 #endif
 #ifdef WITH_SESSION_MGMT
-		radutmp_checksimul,	/* checksimul */
+		mod_checksimul,	/* checksimul */
 #else
 		NULL,
 #endif

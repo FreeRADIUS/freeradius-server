@@ -100,7 +100,7 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	return result;
 }
 
-static int rediswho_instantiate(CONF_SECTION *conf, void ** instance)
+static int mod_instantiate(CONF_SECTION *conf, void ** instance)
 {
 	module_instance_t *modinst;
 	rlm_rediswho_t *inst;
@@ -147,7 +147,7 @@ static int rediswho_instantiate(CONF_SECTION *conf, void ** instance)
 	return 0;
 }
 
-static int rediswho_accounting_all(REDISSOCK **dissocket_p,
+static int mod_accounting_all(REDISSOCK **dissocket_p,
 				   rlm_rediswho_t *inst, REQUEST *request,
 				   const char *insert,
 				   const char *trim,
@@ -175,7 +175,7 @@ static int rediswho_accounting_all(REDISSOCK **dissocket_p,
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t rediswho_accounting(void * instance, REQUEST * request)
+static rlm_rcode_t mod_accounting(void * instance, REQUEST * request)
 {
 	rlm_rcode_t rcode;
 	VALUE_PAIR * vp;
@@ -213,7 +213,7 @@ static rlm_rcode_t rediswho_accounting(void * instance, REQUEST * request)
 	trim = cf_pair_value(cf_pair_find(cs, "trim"));
 	expire = cf_pair_value(cf_pair_find(cs, "expire"));
 
-	rcode = rediswho_accounting_all(&dissocket, inst, request,
+	rcode = mod_accounting_all(&dissocket, inst, request,
 					insert,
 					trim,
 					expire);
@@ -228,13 +228,13 @@ module_t rlm_rediswho = {
 	RLM_MODULE_INIT,
 	"rediswho",
 	RLM_TYPE_THREAD_SAFE,	/* type */
-	rediswho_instantiate,	/* instantiation */
+	mod_instantiate,	/* instantiation */
 	NULL, 			/* detach */
 	{
 		NULL, /* authentication */
 		NULL, /* authorization */
 		NULL, /* preaccounting */
-		rediswho_accounting, /* accounting */
+		mod_accounting, /* accounting */
 		NULL, /* checksimul */
 		NULL, /* pre-proxy */
 		NULL, /* post-proxy */

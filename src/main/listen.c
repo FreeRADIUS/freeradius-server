@@ -281,7 +281,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 */
 	DEBUG("server %s {", request->server);
 
-	rcode = module_authorize(0, request);
+	rcode = process_authorize(0, request);
 
 	DEBUG("} # server %s", request->server);
 
@@ -336,7 +336,7 @@ int rad_status_server(REQUEST *request)
 	case RAD_LISTEN_AUTH:
 		dval = dict_valbyname(PW_AUTZ_TYPE, 0, "Status-Server");
 		if (dval) {
-			rcode = module_authorize(dval->value, request);
+			rcode = process_authorize(dval->value, request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -363,7 +363,7 @@ int rad_status_server(REQUEST *request)
 	case RAD_LISTEN_ACCT:
 		dval = dict_valbyname(PW_ACCT_TYPE, 0, "Status-Server");
 		if (dval) {
-			rcode = module_accounting(dval->value, request);
+			rcode = process_accounting(dval->value, request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -390,7 +390,7 @@ int rad_status_server(REQUEST *request)
 	case RAD_LISTEN_COA:
 		dval = dict_valbyname(PW_RECV_COA_TYPE, 0, "Status-Server");
 		if (dval) {
-			rcode = module_recv_coa(dval->value, request);
+			rcode = process_recv_coa(dval->value, request);
 		} else {
 			rcode = RLM_MODULE_OK;
 		}
@@ -1637,7 +1637,7 @@ static int rad_coa_recv(REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 
-		rcode = module_recv_coa(0, request);
+		rcode = process_recv_coa(0, request);
 		switch (rcode) {
 		case RLM_MODULE_FAIL:
 		case RLM_MODULE_INVALID:
@@ -1677,7 +1677,7 @@ static int rad_coa_recv(REQUEST *request)
 	 *	We may want to over-ride the reply.
 	 */
 	if (request->reply->code) {
-		rcode = module_send_coa(0, request);
+		rcode = process_send_coa(0, request);
 		switch (rcode) {
 			/*
 			 *	We need to send CoA-NAK back if Service-Type

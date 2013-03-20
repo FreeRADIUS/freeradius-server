@@ -179,7 +179,7 @@ static int user_case_cmp(const void *a, const void *b)
 /*
  *	Detach.
  */
-static int radutmp_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	NAS_PORT	*this, *next;
 	rlm_radutmp_t *inst = instance;
@@ -208,7 +208,7 @@ static int radutmp_detach(void *instance)
 /*
  *	Instantiate.
  */
-static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_radutmp_t *inst;
 
@@ -219,14 +219,14 @@ static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 	memset(inst, 0, sizeof(*inst));
 
 	if (cf_section_parse(conf, inst, module_config)) {
-		radutmp_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
 	inst->cache.nas_ports = rbtree_create(nas_port_cmp, free, 0);
 	if (!inst->cache.nas_ports) {
 		radlog(L_ERR, "rlm_radutmp: Failed to create nas tree");
-		radutmp_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -240,7 +240,7 @@ static int radutmp_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	if (!inst->user_tree) {
 		radlog(L_ERR, "rlm_radutmp: Failed to create user tree");
-		radutmp_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -708,7 +708,7 @@ static int cache_file(rlm_radutmp_t *inst, radutmp_cache_t *cache)
 /*
  *	Store logins in the RADIUS utmp file.
  */
-static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_radutmp_t	*inst = instance;
 	struct radutmp	utmp, u;
@@ -1292,7 +1292,7 @@ static rlm_rcode_t radutmp_accounting(void *instance, REQUEST *request)
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t radutmp_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 {
 	struct radutmp	u;
 	int		fd;
@@ -1491,18 +1491,18 @@ module_t rlm_radutmp = {
   "radutmp",
   0,       			/* type: reserved */
   NULL,		 	/* initialization */
-  radutmp_instantiate,	  /* instantiation */
+  mod_instantiate,	  /* instantiation */
   {
 	  NULL,		 /* authentication */
 	  NULL,		 /* authorization */
 	  NULL,		 /* preaccounting */
-	  radutmp_accounting,   /* accounting */
-	  radutmp_checksimul,	/* checksimul */
+	  mod_accounting,   /* accounting */
+	  mod_checksimul,	/* checksimul */
 	  NULL,			/* pre-proxy */
 	  NULL,			/* post-proxy */
 	  NULL			/* post-auth */
   },
-  radutmp_detach,	       /* detach */
+  mod_detach,	       /* detach */
   NULL,	 		/* destroy */
 };
 

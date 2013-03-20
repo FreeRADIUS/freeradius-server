@@ -582,7 +582,7 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 		 */
 		fake->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 		RDEBUG2("Passing reply back for EAP-MS-CHAP-V2");
-		module_post_proxy(0, fake);
+		process_post_proxy(0, fake);
 
 		/*
 		 *	FIXME: If rcode returns fail, do something
@@ -1081,7 +1081,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 				 *	Run the EAP authentication.
 				 */
 				DEBUG2("  PEAP: Calling authenticate in order to initiate tunneled EAP session.");
-				rcode = module_authenticate(PW_AUTHTYPE_EAP, fake);
+				rcode = process_authenticate(PW_AUTHTYPE_EAP, fake);
 				if (rcode == RLM_MODULE_OK) {
 					/*
 					 *	Authentication succeeded! Rah!

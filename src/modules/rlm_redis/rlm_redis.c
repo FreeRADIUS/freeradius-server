@@ -198,7 +198,7 @@ release:
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int redis_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	REDIS_INST *inst = instance;
 
@@ -281,7 +281,7 @@ int rlm_redis_finish_query(REDISSOCK *dissocket)
 	return 0;
 }
 
-static int redis_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	REDIS_INST *inst;
 
@@ -323,8 +323,8 @@ module_t rlm_redis = {
 	RLM_MODULE_INIT,
 	"redis",
 	RLM_TYPE_THREAD_SAFE, /* type */
-	redis_instantiate, /* instantiation */
-	redis_detach, /* detach */
+	mod_instantiate, /* instantiation */
+	mod_detach, /* detach */
 	{
 		NULL, /* authentication */
 		NULL, /* authorization */

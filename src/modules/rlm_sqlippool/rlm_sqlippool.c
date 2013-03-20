@@ -400,7 +400,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int sqlippool_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	module_instance_t *sqlinst;
 	rlm_sqlippool_t *inst;
@@ -477,12 +477,12 @@ static int sqlippool_instantiate(CONF_SECTION *conf, void **instance)
 	sqlinst = find_module_instance(cf_section_find("modules"),
 				       inst->sql_instance_name, 1);
 	if (!sqlinst) {
-		radlog(L_ERR, "sqlippool_instantiate: failed to find sql instance named %s", inst->sql_instance_name);
+		radlog(L_ERR, "mod_instantiate: failed to find sql instance named %s", inst->sql_instance_name);
 		return -1;
 	}
 
 	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
-		radlog(L_ERR, "sqlippool_instantiate: Module \"%s\""
+		radlog(L_ERR, "mod_instantiate: Module \"%s\""
 		       " is not an instance of the rlm_sql module",
 		       inst->sql_instance_name);
 		return -1;
@@ -673,7 +673,7 @@ static rlm_rcode_t sqlippool_postauth(void *instance, REQUEST * request)
 	return do_logging(logstr, RLM_MODULE_OK);
 }
 
-static int sqlippool_accounting_start(rlm_sql_handle_t * handle,
+static int mod_accounting_start(rlm_sql_handle_t * handle,
 				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
@@ -697,7 +697,7 @@ static int sqlippool_accounting_start(rlm_sql_handle_t * handle,
 	return RLM_MODULE_OK;
 }
 
-static int sqlippool_accounting_alive(rlm_sql_handle_t * handle,
+static int mod_accounting_alive(rlm_sql_handle_t * handle,
 				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
@@ -721,7 +721,7 @@ static int sqlippool_accounting_alive(rlm_sql_handle_t * handle,
 	return RLM_MODULE_OK;
 }
 
-static int sqlippool_accounting_stop(rlm_sql_handle_t * handle,
+static int mod_accounting_stop(rlm_sql_handle_t * handle,
 				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	char    logstr[MAX_STRING_LEN];
@@ -749,7 +749,7 @@ static int sqlippool_accounting_stop(rlm_sql_handle_t * handle,
 	return do_logging(logstr, RLM_MODULE_OK);
 }
 
-static int sqlippool_accounting_on(rlm_sql_handle_t * handle,
+static int mod_accounting_on(rlm_sql_handle_t * handle,
 				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
@@ -773,7 +773,7 @@ static int sqlippool_accounting_on(rlm_sql_handle_t * handle,
 	return RLM_MODULE_OK;
 }
 
-static int sqlippool_accounting_off(rlm_sql_handle_t * handle,
+static int mod_accounting_off(rlm_sql_handle_t * handle,
 				      rlm_sqlippool_t *inst, REQUEST *request)
 {
 	/*
@@ -802,7 +802,7 @@ static int sqlippool_accounting_off(rlm_sql_handle_t * handle,
  *	If we find one and we have allocated an IP to this nas/port
  *	combination, then deallocate it.
  */
-static rlm_rcode_t sqlippool_accounting(void * instance, REQUEST * request)
+static rlm_rcode_t mod_accounting(void * instance, REQUEST * request)
 {
 	int rcode;
 	VALUE_PAIR * vp;
@@ -842,23 +842,23 @@ static rlm_rcode_t sqlippool_accounting(void * instance, REQUEST * request)
 
 	switch (acct_status_type) {
 	case PW_STATUS_START:
-		rcode = sqlippool_accounting_start(handle, inst, request);
+		rcode = mod_accounting_start(handle, inst, request);
 		break;
 
 	case PW_STATUS_ALIVE:
-		rcode = sqlippool_accounting_alive(handle, inst, request);
+		rcode = mod_accounting_alive(handle, inst, request);
 		break;
 
 	case PW_STATUS_STOP:
-		rcode = sqlippool_accounting_stop(handle, inst, request);
+		rcode = mod_accounting_stop(handle, inst, request);
 		break;
 
 	case PW_STATUS_ACCOUNTING_ON:
-		rcode = sqlippool_accounting_on(handle, inst, request);
+		rcode = mod_accounting_on(handle, inst, request);
 		break;
 
 	case PW_STATUS_ACCOUNTING_OFF:
-		rcode = sqlippool_accounting_off(handle, inst, request);
+		rcode = mod_accounting_off(handle, inst, request);
 		break;
 	}
 
@@ -880,13 +880,13 @@ module_t rlm_sqlippool = {
 	RLM_MODULE_INIT,
 	"SQL IP Pool",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	sqlippool_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
 		NULL,			/* preaccounting */
-		sqlippool_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */

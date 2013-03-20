@@ -97,7 +97,7 @@ static int tnc_attach(CONF_SECTION *cs, void **instance)
 	return 0;
 }
 
-static int tnc_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	TNC_Result result;
 	
@@ -263,7 +263,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
  * @param handler The eap_handler_t.
  * @return True, if successfully, else false.
  */
-static int tnc_authenticate(UNUSED void *instance, eap_handler_t *handler)
+static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 {
 	TNC_ConnectionID conn_id;
 	TNC_Result result;
@@ -359,6 +359,6 @@ rlm_eap_module_t rlm_eap_tnc = {
 		tnc_attach,		/* attach */
 		tnc_initiate,		/* Start the initial request */
 		NULL,			/* authorization */
-		tnc_authenticate,	/* authentication */
-		tnc_detach		/* detach */
+		mod_authenticate,	/* authentication */
+		mod_detach		/* detach */
 };

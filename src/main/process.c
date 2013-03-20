@@ -1815,11 +1815,11 @@ static int process_proxy_reply(REQUEST *request)
 		
 		request->server = request->home_pool->virtual_server;
 		RDEBUG2(" server %s {", request->server);
-		rcode = module_post_proxy(post_proxy_type, request);
+		rcode = process_post_proxy(post_proxy_type, request);
 		RDEBUG2(" }");
 		request->server = old_server;
 	} else {
-		rcode = module_post_proxy(post_proxy_type, request);
+		rcode = process_post_proxy(post_proxy_type, request);
 	}
 
 #ifdef WITH_COA
@@ -2277,11 +2277,11 @@ static int request_will_proxy(REQUEST *request)
 		
 		request->server = request->home_pool->virtual_server;
 		RDEBUG2(" server %s {", request->server);
-		rcode = module_pre_proxy(pre_proxy_type, request);
+		rcode = process_pre_proxy(pre_proxy_type, request);
 		RDEBUG2(" }");
 			request->server = old_server;
 	} else {
-		rcode = module_pre_proxy(pre_proxy_type, request);
+		rcode = process_pre_proxy(pre_proxy_type, request);
 	}
 	switch (rcode) {
 	case RLM_MODULE_FAIL:
@@ -3149,11 +3149,11 @@ static void request_coa_originate(REQUEST *request)
 		
 		coa->server = coa->home_pool->virtual_server;
 		RDEBUG2(" server %s {", coa->server);
-		rcode = module_pre_proxy(pre_proxy_type, coa);
+		rcode = process_pre_proxy(pre_proxy_type, coa);
 		RDEBUG2(" }");
 		coa->server = old_server;
 	} else {
-		rcode = module_pre_proxy(pre_proxy_type, coa);
+		rcode = process_pre_proxy(pre_proxy_type, coa);
 	}
 	switch (rcode) {
 	default:

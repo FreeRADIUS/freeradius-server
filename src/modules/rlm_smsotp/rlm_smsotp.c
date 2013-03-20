@@ -170,7 +170,7 @@ static int write_all(int *fdp, const char *buf, size_t len)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int smsotp_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_smsotp_t *inst;
 	struct sockaddr_un sa;
@@ -212,7 +212,7 @@ static int smsotp_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t smsotp_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_smsotp_t *inst = instance;
 	VALUE_PAIR *state;
@@ -327,7 +327,7 @@ done:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t smsotp_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *state;
 	rlm_smsotp_t *inst = instance;
@@ -364,11 +364,11 @@ module_t rlm_smsotp = {
 	RLM_MODULE_INIT,
 	"smsotp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	smsotp_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		smsotp_authenticate,	/* authentication */
-		smsotp_authorize,	/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize,	/* authorization */
 		NULL,	/* preaccounting */
 		NULL,	/* accounting */
 		NULL,	/* checksimul */

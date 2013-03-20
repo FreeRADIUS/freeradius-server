@@ -141,7 +141,7 @@ static PyObject *radiusd_module = NULL;
  */
 
 /* radlog wrapper */
-static PyObject *python_radlog(UNUSED PyObject *module, PyObject *args)
+static PyObject *mod_radlog(UNUSED PyObject *module, PyObject *args)
 {
 	int status;
 	char *msg;
@@ -157,7 +157,7 @@ static PyObject *python_radlog(UNUSED PyObject *module, PyObject *args)
 }
 
 static PyMethodDef radiusd_methods[] = {
-	{ "radlog", &python_radlog, METH_VARARGS,
+	{ "radlog", &mod_radlog, METH_VARARGS,
 	  "radiusd.radlog(level, msg)\n\n" \
 	  "Print a message using radiusd logging system. level should be one of the\n" \
 	  "constants L_DBG, L_AUTH, L_INFO, L_ERR, L_PROXY\n"
@@ -166,7 +166,7 @@ static PyMethodDef radiusd_methods[] = {
 };
 
 
-static void python_error(void)
+static void mod_error(void)
 {
 	PyObject
 		*pType = NULL,
@@ -196,7 +196,7 @@ static void python_error(void)
 	Pyx_UNBLOCK_THREADS
 }
 
-static int python_init(void)
+static int mod_init(void)
 {
 	int i;
 	static char name[] = "radiusd";
@@ -219,11 +219,11 @@ static int python_init(void)
 	
 	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
 	
-	radlog(L_DBG, "python_init done");
+	radlog(L_DBG, "mod_init done");
 	return 0;
 	
  failed:
-	python_error();
+	mod_error();
 	Py_XDECREF(radiusd_module);
 	radiusd_module = NULL;
 	Py_Finalize();
@@ -232,7 +232,7 @@ static int python_init(void)
 
 #if 0
 
-static int python_destroy(void)
+static int mod_destroy(void)
 {
 	Pyx_BLOCK_THREADS
 	Py_XDECREF(radiusd_module);
@@ -249,7 +249,7 @@ static int python_destroy(void)
 
 /* TODO: Convert this function to accept any iterable objects? */
 
-static void python_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
+static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 			   const char *funcname)
 {
 	int	     i;
@@ -325,7 +325,7 @@ static void python_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
  *	FIXME: We're not checking the errors. If we have errors, what
  *	do we do?
  */
-static int python_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
+static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 {
 	PyObject *pStr = NULL;
 	char buf[1024];
@@ -354,7 +354,7 @@ static int python_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	return -1;
 }
 
-static int python_function(REQUEST *request, PyObject *pFunc,
+static int do_python(REQUEST *request, PyObject *pFunc,
 			   const char *funcname)
 {
 	VALUE_PAIR      *vp;
@@ -405,7 +405,7 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 			if ((pPair = PyTuple_New(2)) == NULL)
 				goto failed;
 			
-			if (python_populate_vptuple(pPair, vp) == 0) {
+			if (mod_populate_vptuple(pPair, vp) == 0) {
 				/* Put the tuple inside the container */
 				PyTuple_SET_ITEM(pArgs, i, pPair);
 			} else {
@@ -454,10 +454,10 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 		/* Now have the return value */
 		ret = PyInt_AsLong(pTupleInt);
 		/* Reply item tuple */
-		python_vptuple(request->reply, &request->reply->vps,
+		mod_vptuple(request->reply, &request->reply->vps,
 			       PyTuple_GET_ITEM(pRet, 1), funcname);
 		/* Config item tuple */
-		python_vptuple(request, &request->config_items,
+		mod_vptuple(request, &request->config_items,
 			       PyTuple_GET_ITEM(pRet, 2), funcname);
 
 	} else if (PyInt_CheckExact(pRet)) {
@@ -480,7 +480,7 @@ static int python_function(REQUEST *request, PyObject *pFunc,
 	return ret;
 	
  failed:
-	python_error();
+	mod_error();
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
 	PyGILState_Release(gstate);
@@ -492,9 +492,9 @@ static int python_function(REQUEST *request, PyObject *pFunc,
  *	Import a user module and load a function from it
  */
 
-static int python_load_function(struct py_function_def *def)
+static int mod_load_function(struct py_function_def *def)
 {
-	const char *funcname = "python_load_function";
+	const char *funcname = "mod_load_function";
 	PyGILState_STATE gstate;
 	
 	gstate = PyGILState_Ensure();
@@ -519,7 +519,7 @@ static int python_load_function(struct py_function_def *def)
 	return 0;
 	
  failed:
-	python_error();
+	mod_error();
 	radlog(L_ERR, "rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
 	Py_XDECREF(def->function);
 	def->function = NULL;
@@ -530,7 +530,7 @@ static int python_load_function(struct py_function_def *def)
 }
 
 
-static void python_objclear(PyObject **ob)
+static void mod_objclear(PyObject **ob)
 {
 	if (*ob != NULL) {
 		Pyx_BLOCK_THREADS
@@ -548,17 +548,17 @@ static void free_and_null(char **p)
 	}
 }
 
-static void python_funcdef_clear(struct py_function_def *def)
+static void mod_funcdef_clear(struct py_function_def *def)
 {
-	python_objclear(&def->function);
-	python_objclear(&def->module);
+	mod_objclear(&def->function);
+	mod_objclear(&def->module);
 	free_and_null(&def->function_name);
 	free_and_null(&def->module_name);
 }
 
-static void python_instance_clear(struct rlm_python_t *data)
+static void mod_instance_clear(struct rlm_python_t *data)
 {
-#define A(x) python_funcdef_clear(&data->x)
+#define A(x) mod_funcdef_clear(&data->x)
 	
 	A(instantiate);
 	A(authorize);
@@ -582,7 +582,7 @@ static void python_instance_clear(struct rlm_python_t *data)
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int python_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct rlm_python_t    *data = NULL;
 
@@ -592,7 +592,7 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	*instance = data = talloc_zero(conf, struct rlm_python_t);
 	if (!data) return -1;
 
-	if (python_init() != 0) {
+	if (mod_init() != 0) {
 		return -1;
 	}
 
@@ -604,7 +604,7 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-#define A(x) if (python_load_function(&data->x) < 0) goto failed
+#define A(x) if (mod_load_function(&data->x) < 0) goto failed
 
 	A(instantiate);
 	A(authenticate);
@@ -627,27 +627,27 @@ static int python_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Call the instantiate function.  No request.  Use the
 	 *	return value.
 	 */
-	return python_function(NULL, data->instantiate.function,
+	return do_python(NULL, data->instantiate.function,
 			       "instantiate");
  failed:
-	python_error();
-	python_instance_clear(data);
+	mod_error();
+	mod_instance_clear(data);
 	return -1;
 }
 
-static int python_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	struct rlm_python_t    *data = (struct rlm_python_t *) instance;
 	int	     ret;
 	
-	ret = python_function(NULL, data->detach.function, "detach");
+	ret = do_python(NULL, data->detach.function, "detach");
 	
-	python_instance_clear(data);
+	mod_instance_clear(data);
 	return ret;
 }
 
-#define A(x) static rlm_rcode_t python_##x(void *instance, REQUEST *request) { \
-  return python_function(request, ((struct rlm_python_t *)instance)->x.function, #x); \
+#define A(x) static rlm_rcode_t mod_##x(void *instance, REQUEST *request) { \
+  return do_python(request, ((struct rlm_python_t *)instance)->x.function, #x); \
 }
 
 A(authenticate)
@@ -678,20 +678,20 @@ module_t rlm_python = {
 	RLM_MODULE_INIT,
 	"python",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	python_instantiate,		/* instantiation */
-	python_detach,
+	mod_instantiate,		/* instantiation */
+	mod_detach,
 	{
-		python_authenticate,	/* authentication */
-		python_authorize,	/* authorization */
-		python_preacct,		/* preaccounting */
-		python_accounting,	/* accounting */
-		python_checksimul,	/* checksimul */
-		python_pre_proxy,	/* pre-proxy */
-		python_post_proxy,	/* post-proxy */
-		python_post_auth	/* post-auth */
+		mod_authenticate,	/* authentication */
+		mod_authorize,	/* authorization */
+		mod_preacct,		/* preaccounting */
+		mod_accounting,	/* accounting */
+		mod_checksimul,	/* checksimul */
+		mod_pre_proxy,	/* pre-proxy */
+		mod_post_proxy,	/* post-proxy */
+		mod_post_auth	/* post-auth */
 #ifdef WITH_COA
-		, python_recv_coa,
-		python_send_coa
+		, mod_recv_coa,
+		mod_send_coa
 #endif
 	}
 };

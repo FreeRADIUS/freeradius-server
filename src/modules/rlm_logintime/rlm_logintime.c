@@ -157,7 +157,7 @@ static int time_of_day(void *instance,
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t logintime_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_logintime_t *data = (rlm_logintime_t *)instance;
 	VALUE_PAIR *check_item = NULL;
@@ -240,7 +240,7 @@ static rlm_rcode_t logintime_authorize(void *instance, REQUEST *request)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int logintime_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_logintime_t *data;
 
@@ -273,7 +273,7 @@ static int logintime_instantiate(CONF_SECTION *conf, void **instance)
 	return 0;
 }
 
-static int logintime_detach(UNUSED void *instance)
+static int mod_detach(UNUSED void *instance)
 {
 	paircompare_unregister(PW_CURRENT_TIME, timecmp);
 	paircompare_unregister(PW_TIME_OF_DAY, time_of_day);
@@ -293,11 +293,11 @@ module_t rlm_logintime = {
 	RLM_MODULE_INIT,
 	"logintime",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	logintime_instantiate,		/* instantiation */
-	logintime_detach,		/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,		/* detach */
 	{
 		NULL,			/* authentication */
-		logintime_authorize, 	/* authorization */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

@@ -342,7 +342,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *req,
 }
 
 
-static int sqlcounter_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_sqlcounter_t *inst = (rlm_sqlcounter_t *)instance;
 
@@ -361,7 +361,7 @@ static int sqlcounter_detach(void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_sqlcounter_t *data;
 	const DICT_ATTR *dattr;
@@ -504,7 +504,7 @@ static int sqlcounter_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t sqlcounter_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_sqlcounter_t *data = (rlm_sqlcounter_t *) instance;
 	int rcode = RLM_MODULE_NOOP;
@@ -655,11 +655,11 @@ module_t rlm_sqlcounter = {
 	RLM_MODULE_INIT,
 	"SQL Counter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	sqlcounter_instantiate,		/* instantiation */
-	sqlcounter_detach,		/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,		/* detach */
 	{
 		NULL,			/* authentication */
-		sqlcounter_authorize, 	/* authorization */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

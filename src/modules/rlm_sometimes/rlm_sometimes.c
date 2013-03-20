@@ -91,7 +91,7 @@ static int str2rcode(const char *s)
 	}
 }
 
-static int sometimes_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_sometimes_t *inst;
 
@@ -202,14 +202,14 @@ static rlm_rcode_t sometimes_reply(void *instance, REQUEST *request)
 	return sometimes_return(instance, request->reply, NULL);
 }
 
-static rlm_rcode_t sometimes_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy) return RLM_MODULE_NOOP;
 
 	return sometimes_return(instance, request->proxy, request->proxy_reply);
 }
 
-static rlm_rcode_t sometimes_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 {
 	if (!request->proxy_reply) return RLM_MODULE_NOOP;
 
@@ -220,7 +220,7 @@ module_t rlm_sometimes = {
 	RLM_MODULE_INIT,
 	"sometimes",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	sometimes_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		sometimes_packet,	/* authentication */
@@ -228,8 +228,8 @@ module_t rlm_sometimes = {
 		sometimes_packet,	/* preaccounting */
 		sometimes_packet,	/* accounting */
 		NULL,
-		sometimes_pre_proxy,	/* pre-proxy */
-		sometimes_post_proxy,	/* post-proxy */
+		mod_pre_proxy,	/* pre-proxy */
+		mod_post_proxy,	/* post-proxy */
 		sometimes_reply		/* post-auth */
 #ifdef WITH_COA
 		,

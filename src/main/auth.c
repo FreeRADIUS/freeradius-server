@@ -250,7 +250,7 @@ static int rad_check_password(REQUEST *request)
 	 *	status into the values as defined at
 	 *	the top of this function.
 	 */
-	result = module_authenticate(auth_type, request);
+	result = process_authenticate(auth_type, request);
 	switch (result) {
 		/*
 		 *	An authentication module FAIL
@@ -299,7 +299,7 @@ int rad_postauth(REQUEST *request)
 		RDEBUG2("Using Post-Auth-Type %s",
 			dict_valnamebyattr(PW_POST_AUTH_TYPE, 0, postauth_type));
 	}
-	result = module_post_auth(postauth_type, request);
+	result = process_post_auth(postauth_type, request);
 	switch (result) {
 		/*
 		 *	The module failed, or said to reject the user: Do so.
@@ -441,7 +441,7 @@ int rad_authenticate(REQUEST *request)
 	 *	Get the user's authorization information from the database
 	 */
 autz_redo:
-	result = module_authorize(autz_type, request);
+	result = process_authorize(autz_type, request);
 	switch (result) {
 		case RLM_MODULE_NOOP:
 		case RLM_MODULE_NOTFOUND:
@@ -594,7 +594,7 @@ autz_redo:
 		 *	for the Simultaneous-Use parameter.
 		 */
 		if (namepair &&
-		    (r = module_checksimul(session_type, request, check_item->vp_integer)) != 0) {
+		    (r = process_checksimul(session_type, request, check_item->vp_integer)) != 0) {
 			char mpp_ok = 0;
 
 			if (r == 2){

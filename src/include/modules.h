@@ -168,17 +168,17 @@ typedef struct module_t {
 int setup_modules(int, CONF_SECTION *);
 int detach_modules(void);
 int module_hup(CONF_SECTION *modules);
-rlm_rcode_t module_authorize(int type, REQUEST *request);
-rlm_rcode_t module_authenticate(int type, REQUEST *request);
+rlm_rcode_t process_authorize(int type, REQUEST *request);
+rlm_rcode_t process_authenticate(int type, REQUEST *request);
 rlm_rcode_t module_preacct(REQUEST *request);
-rlm_rcode_t module_accounting(int type, REQUEST *request);
-int module_checksimul(int type, REQUEST *request, int maxsimul);
-rlm_rcode_t module_pre_proxy(int type, REQUEST *request);
-rlm_rcode_t module_post_proxy(int type, REQUEST *request);
-rlm_rcode_t module_post_auth(int type, REQUEST *request);
+rlm_rcode_t process_accounting(int type, REQUEST *request);
+int process_checksimul(int type, REQUEST *request, int maxsimul);
+rlm_rcode_t process_pre_proxy(int type, REQUEST *request);
+rlm_rcode_t process_post_proxy(int type, REQUEST *request);
+rlm_rcode_t process_post_auth(int type, REQUEST *request);
 #ifdef WITH_COA
-rlm_rcode_t module_recv_coa(int type, REQUEST *request);
-rlm_rcode_t module_send_coa(int type, REQUEST *request);
+rlm_rcode_t process_recv_coa(int type, REQUEST *request);
+rlm_rcode_t process_send_coa(int type, REQUEST *request);
 #define MODULE_NULL_COA_FUNCS ,NULL,NULL
 #else
 #define MODULE_NULL_COA_FUNCS

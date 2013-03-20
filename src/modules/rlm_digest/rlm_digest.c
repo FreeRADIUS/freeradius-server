@@ -178,7 +178,7 @@ static int digest_fix(REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t digest_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode;
 
@@ -209,7 +209,7 @@ static rlm_rcode_t digest_authorize(void *instance, REQUEST *request)
 /*
  *	Perform all of the wondrous variants of digest authentication.
  */
-static rlm_rcode_t digest_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	int i;
 	size_t a1_len, a2_len, kd_len;
@@ -614,8 +614,8 @@ module_t rlm_digest = {
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{
-		digest_authenticate,	/* authentication */
-		digest_authorize, 	/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

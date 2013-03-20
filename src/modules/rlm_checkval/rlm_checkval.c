@@ -93,7 +93,7 @@ static const CONF_PARSER module_config[] = {
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int checkval_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_checkval_t *inst;
 	const DICT_ATTR *da;
@@ -277,12 +277,12 @@ static rlm_rcode_t do_checkval(void *instance, REQUEST *request)
 
 /*
  */
-static rlm_rcode_t checkval_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	return do_checkval(instance,request);
 }
 
-static rlm_rcode_t checkval_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	return do_checkval(instance,request);
 }
@@ -300,13 +300,13 @@ module_t rlm_checkval = {
 	 RLM_MODULE_INIT,
 	"checkval",
 	0,				/* type */
-	checkval_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		checkval_authorize, 	/* authorization */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
-		checkval_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */

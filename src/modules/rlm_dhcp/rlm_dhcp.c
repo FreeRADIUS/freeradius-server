@@ -94,7 +94,7 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int dhcp_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	xlat_unregister("dhcp_options", dhcp_options_xlat, instance);
 	return 0;
@@ -104,7 +104,7 @@ static int dhcp_detach(void *instance)
 /*
  *	Instantiate the module.
  */
-static int dhcp_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_dhcp_t *inst;
 
@@ -130,8 +130,8 @@ module_t rlm_dhcp = {
 	RLM_MODULE_INIT,
 	"dhcp",
 	0,				/* type */
-	dhcp_instantiate,		/* instantiation */
-	dhcp_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */

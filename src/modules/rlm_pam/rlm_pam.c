@@ -61,7 +61,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	(Re-)read radiusd.conf into memory.
  */
-static int pam_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_pam_t *data;
 
@@ -182,9 +182,9 @@ static int pam_pass(const char *name, const char *passwd, const char *pamauth)
       return -1;
     }
 
-    retval = pam_authenticate(pamh, 0);
+    retval = mod_authenticate(pamh, 0);
     if (retval != PAM_SUCCESS) {
-      DEBUG("pam_pass: function pam_authenticate FAILED for <%s>. Reason: %s",
+      DEBUG("pam_pass: function mod_authenticate FAILED for <%s>. Reason: %s",
 	    name, pam_strerror(pamh, retval));
       pam_end(pamh, retval);
       return -1;
@@ -266,7 +266,7 @@ module_t rlm_pam = {
 	RLM_MODULE_INIT,
 	"pam",
 	RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
-	pam_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		pam_auth,		/* authenticate */

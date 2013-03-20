@@ -517,7 +517,7 @@ static int add_nas_attr(REQUEST *request)
 /*
  *	Initialize.
  */
-static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	int	rcode;
 	rlm_preprocess_t *data;
@@ -569,7 +569,7 @@ static int preprocess_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Preprocess a request.
  */
-static rlm_rcode_t preprocess_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	int r;
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
@@ -732,7 +732,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 /*
  *      Clean up the module's instance.
  */
-static int preprocess_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
 
@@ -747,11 +747,11 @@ module_t rlm_preprocess = {
 	RLM_MODULE_INIT,
 	"preprocess",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	preprocess_instantiate,	/* instantiation */
-	preprocess_detach,	/* detach */
+	mod_instantiate,	/* instantiation */
+	mod_detach,	/* detach */
 	{
 		NULL,			/* authentication */
-		preprocess_authorize,	/* authorization */
+		mod_authorize,	/* authorization */
 		preprocess_preaccounting, /* pre-accounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

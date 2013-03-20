@@ -62,7 +62,7 @@ RCSID("$Id$")
  * where '+' denotes concatentation, 'challenge' is ... the challenge,
  * 'flags' is a 32-bit value that can be used to record additional info,
  * 'time' is the 32-bit time (LSB if time_t is 64 bits), and 'key' is a
- * random key, generated in otp_instantiate().  'flags' and 'time' are
+ * random key, generated in mod_instantiate().  'flags' and 'time' are
  * in network byte order.
  *
  * As the signing key is unique to each server, only the server which

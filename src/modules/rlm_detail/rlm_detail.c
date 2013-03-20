@@ -87,7 +87,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	Clean up.
  */
-static int detail_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	struct detail_instance *inst = instance;
 	if (inst->ht) fr_hash_table_free(inst->ht);
@@ -113,7 +113,7 @@ static int detail_cmp(const void *a, const void *b)
 /*
  *	(Re-)read radiusd.conf into memory.
  */
-static int detail_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	detail_instance_t *inst;
 	CONF_SECTION	*cs;
@@ -122,7 +122,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		detail_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -155,7 +155,7 @@ static int detail_instantiate(CONF_SECTION *conf, void **instance)
 
 			if (!fr_hash_table_insert(inst->ht, da)) {
 				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
-				detail_detach(inst);
+				mod_detach(inst);
 				return -1;
 			}
 		}
@@ -490,7 +490,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 /*
  *	Accounting - write the detail files.
  */
-static rlm_rcode_t detail_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
@@ -507,7 +507,7 @@ static rlm_rcode_t detail_accounting(void *instance, REQUEST *request)
 /*
  *	Incoming Access Request - write the detail files.
  */
-static rlm_rcode_t detail_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->packet, FALSE);
 }
@@ -524,7 +524,7 @@ static rlm_rcode_t detail_postauth(void *instance, REQUEST *request)
 /*
  *	Incoming CoA - write the detail files.
  */
-static rlm_rcode_t detail_recv_coa(void *instance, REQUEST *request)
+static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->packet, FALSE);
 }
@@ -532,7 +532,7 @@ static rlm_rcode_t detail_recv_coa(void *instance, REQUEST *request)
 /*
  *	Outgoing CoA - write the detail files.
  */
-static rlm_rcode_t detail_send_coa(void *instance, REQUEST *request)
+static rlm_rcode_t mod_send_coa(void *instance, REQUEST *request)
 {
 	return do_detail(instance,request,request->reply, FALSE);
 }
@@ -542,7 +542,7 @@ static rlm_rcode_t detail_send_coa(void *instance, REQUEST *request)
  *	Outgoing Access-Request to home server - write the detail files.
  */
 #ifdef WITH_PROXY
-static rlm_rcode_t detail_pre_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
 {
 	if (request->proxy &&
 	    request->proxy->vps) {
@@ -556,7 +556,7 @@ static rlm_rcode_t detail_pre_proxy(void *instance, REQUEST *request)
 /*
  *	Outgoing Access-Request Reply - write the detail files.
  */
-static rlm_rcode_t detail_post_proxy(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
 {
 	if (request->proxy_reply &&
 	    request->proxy_reply->vps) {
@@ -573,7 +573,7 @@ static rlm_rcode_t detail_post_proxy(void *instance, REQUEST *request)
 	if (!request->proxy_reply) {
 		rlm_rcode_t rcode;
 
-		rcode = detail_accounting(instance, request);
+		rcode = mod_accounting(instance, request);
 		if (rcode == RLM_MODULE_OK) {
 			request->reply->code = PW_ACCOUNTING_RESPONSE;
 		}
@@ -590,24 +590,24 @@ module_t rlm_detail = {
 	RLM_MODULE_INIT,
 	"detail",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,
-	detail_instantiate,		/* instantiation */
-	detail_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
-		detail_authorize, 	/* authorization */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
-		detail_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
-		detail_pre_proxy,      	/* pre-proxy */
-		detail_post_proxy,	/* post-proxy */
+		mod_pre_proxy,      	/* pre-proxy */
+		mod_post_proxy,	/* post-proxy */
 #else
 		NULL, NULL,
 #endif
 		detail_postauth		/* post-auth */
 #ifdef WITH_COA
-		, detail_recv_coa,
-		detail_send_coa
+		, mod_recv_coa,
+		mod_send_coa
 #endif
 	},
 };

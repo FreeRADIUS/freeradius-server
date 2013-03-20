@@ -270,7 +270,7 @@ static long od_check_passwd(const char *uname, const char *password)
  *	Check the users password against the standard UNIX
  *	password table.
  */
-static rlm_rcode_t od_authenticate(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	char *name, *passwd;
 	int		ret;
@@ -333,7 +333,7 @@ static rlm_rcode_t od_authenticate(UNUSED void *instance, REQUEST *request)
 /*
  *	member of the radius group?
  */
-static rlm_rcode_t od_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	char *name = NULL;
 	struct passwd *userdata = NULL;
@@ -475,8 +475,8 @@ module_t rlm_opendirectory = {
 	NULL,			/* instantiation */
 	NULL,			   	/* detach */
 	{
-		od_authenticate, /* authentication */
-		od_authorize,	/* authorization */
+		mod_authenticate, /* authentication */
+		mod_authorize,	/* authorization */
 		NULL,		/* preaccounting */
 		NULL,		/* accounting */
 		NULL,		/* checksimul */

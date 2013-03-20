@@ -566,9 +566,9 @@ static const CONF_PARSER module_config[] = {
 
 /*
  *	deinstantiate module, free all memory allocated during
- *	mschap_instantiate()
+ *	mod_instantiate()
  */
-static int mschap_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_mschap_t *inst = instance;
 	if (inst->xlat_name) {
@@ -581,7 +581,7 @@ static int mschap_detach(void *instance)
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
  */
-static int mschap_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	const char *name;
 	rlm_mschap_t *inst;
@@ -1250,11 +1250,11 @@ static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
 
 
 /*
- *	mschap_authorize() - authorize user if we can authenticate
+ *	mod_authorize() - authorize user if we can authenticate
  *	it later. Add Auth-Type attribute if present in module
  *	configuration (usually Auth-Type must be "MS-CHAP")
  */
-static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void * instance, REQUEST *request)
 {
 	rlm_mschap_t *inst = instance;
 	VALUE_PAIR *challenge = NULL;
@@ -1291,7 +1291,7 @@ static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
 }
 
 /*
- *	mschap_authenticate() - authenticate user based on given
+ *	mod_authenticate() - authenticate user based on given
  *	attributes and configuration.
  *	We will try to find out password in configuration
  *	or in configured passwd file.
@@ -1307,7 +1307,7 @@ static rlm_rcode_t mschap_authorize(void * instance, REQUEST *request)
  *	If MS-CHAP2 succeeds we MUST return
  *	PW_MSCHAP2_SUCCESS
  */
-static rlm_rcode_t mschap_authenticate(void * instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 {
 #define inst ((rlm_mschap_t *)instance)
 	VALUE_PAIR *challenge = NULL;
@@ -1882,11 +1882,11 @@ module_t rlm_mschap = {
 	RLM_MODULE_INIT,
 	"MS-CHAP",
 	RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,		/* type */
-	mschap_instantiate,		/* instantiation */
-	mschap_detach,		/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,		/* detach */
 	{
-		mschap_authenticate,	/* authenticate */
-		mschap_authorize,	/* authorize */
+		mod_authenticate,	/* authenticate */
+		mod_authorize,	/* authorize */
 		NULL,			/* pre-accounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

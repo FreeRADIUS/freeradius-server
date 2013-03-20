@@ -84,7 +84,7 @@ static const FR_NAME_NUMBER header_names[] = {
 };
 
 
-static int pap_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_pap_t *inst;
 	DICT_VALUE *dval;
@@ -172,7 +172,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
  *	This isn't strictly necessary, but it does make the
  *	server simpler to configure.
  */
-static rlm_rcode_t pap_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_pap_t *inst = instance;
 	int auth_type = FALSE;
@@ -639,7 +639,7 @@ static int pap_auth_ns_mta_md5(REQUEST *request, VALUE_PAIR *vp)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t pap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_rcode_t rc = RLM_MODULE_INVALID;
@@ -752,11 +752,11 @@ module_t rlm_pap = {
 	RLM_MODULE_INIT,
 	"PAP",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	pap_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		pap_authenticate,	/* authentication */
-		pap_authorize,		/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

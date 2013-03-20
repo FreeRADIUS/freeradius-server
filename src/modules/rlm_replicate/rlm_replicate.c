@@ -229,7 +229,7 @@ static rlm_rcode_t replicate_packet(void *instance, REQUEST *request,
 }
 #endif
 
-static rlm_rcode_t replicate_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REQUEST,
 				request->packet->code);
@@ -241,7 +241,7 @@ static rlm_rcode_t replicate_preaccounting(void *instance, REQUEST *request)
 				request->packet->code);
 }
 
-static rlm_rcode_t replicate_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	return replicate_packet(instance, request, PAIR_LIST_REPLY,
 				request->reply->code);
@@ -288,9 +288,9 @@ module_t rlm_replicate = {
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		replicate_authorize,	/* authorization */
+		mod_authorize,	/* authorization */
 		replicate_preaccounting,/* preaccounting */
-		replicate_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		replicate_preproxy,	/* pre-proxy */
 		replicate_postproxy,	/* post-proxy */

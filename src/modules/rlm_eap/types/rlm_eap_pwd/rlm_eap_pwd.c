@@ -54,7 +54,7 @@ static CONF_PARSER pwd_module_config[] = {
 };
 
 static int
-eap_pwd_detach (void *arg)
+mod_detach (void *arg)
 {
     eap_pwd_t *inst;
 
@@ -274,7 +274,7 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
 }
 
 static int
-eap_pwd_authenticate (void *arg, eap_handler_t *handler)
+mod_authenticate (void *arg, eap_handler_t *handler)
 {
     pwd_session_t *pwd_session;
     pwd_hdr *hdr;
@@ -452,7 +452,7 @@ eap_pwd_authenticate (void *arg, eap_handler_t *handler)
 	     *	Call authorization recursively, which will
 	     *	get the password.
 	     */
-	    module_authorize(0, fake);
+	    process_authorize(0, fake);
 	
 	    /*
 	     *	Note that we don't do *anything* with the reply
@@ -619,7 +619,7 @@ rlm_eap_module_t rlm_eap_pwd = {
     eap_pwd_attach,		     /* attach */
     eap_pwd_initiate,		   /* initiate to a client */
     NULL,			       /* no authorization */
-    eap_pwd_authenticate,	       /* pwd authentication */
-    eap_pwd_detach		      /* detach */
+    mod_authenticate,	       /* pwd authentication */
+    mod_detach		      /* detach */
 };
 

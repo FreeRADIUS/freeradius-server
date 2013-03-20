@@ -95,7 +95,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	Instantiate the module.
  */
-static int linelog_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_linelog_t *inst;
 
@@ -338,7 +338,7 @@ module_t rlm_linelog = {
 	RLM_MODULE_INIT,
 	"linelog",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	linelog_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		do_linelog,	/* authentication */

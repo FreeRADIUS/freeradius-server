@@ -37,8 +37,8 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_eap_t, timer_limit), NULL, "60"},
 	{ "ignore_unknown_eap_types", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_t, ignore_unknown_types), NULL, "no" },
-	{ "cisco_accounting_username_bug", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_eap_t, cisco_accounting_username_bug), NULL, "no" },
+	{ "mod_accounting_username_bug", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_eap_t, mod_accounting_username_bug), NULL, "no" },
 	{ "max_sessions", PW_TYPE_INTEGER,
 	  offsetof(rlm_eap_t, max_sessions), NULL, "2048"},
 
@@ -48,7 +48,7 @@ static const CONF_PARSER module_config[] = {
 /*
  * delete all the allocated space by eap module
  */
-static int eap_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_eap_t *inst;
 
@@ -112,7 +112,7 @@ static int eap_handler_ptr_cmp(const void *a, const void *b)
 /*
  * read the config section and load all the eap authentication types present.
  */
-static int eap_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
 	int		i;
 	eap_type_t	method;
@@ -124,7 +124,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	if (!inst) return -1;
 
 	if (cf_section_parse(cs, inst, module_config) < 0) {
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -157,7 +157,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		if (method == PW_EAP_INVALID) {
 			radlog(L_ERR, "rlm_eap: Unknown EAP method %s",
 			       name);
-			eap_detach(inst);
+			mod_detach(inst);
 			
 			return -1;
 		}
@@ -166,7 +166,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 			radlog(L_ERR, "rlm_eap: EAP method %s outside of "
 			       "valid range", name);
 
-			eap_detach(inst);
+			mod_detach(inst);
 			
 			return -1;
 		}
@@ -198,7 +198,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		 */
 		if (eap_module_load(&inst->methods[method], method, scs) < 0) {
 			talloc_steal(inst, inst->methods[method]);
-			eap_detach(inst);
+			mod_detach(inst);
 			
 			return -1;
 		}
@@ -211,7 +211,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		radlog(L_ERR, "rlm_eap: No EAP method configured, module "
 		       "cannot do anything.");
 		
-		eap_detach(inst);
+		mod_detach(inst);
 		
 		return -1;
 	}
@@ -223,14 +223,14 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	if (method == PW_EAP_INVALID) {
 		radlog(L_ERR, "rlm_eap: Unknown default EAP method %s",
 		       inst->default_method_name);
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
 	if (inst->methods[method] == NULL) {
 		radlog(L_ERR, "rlm_eap: No such sub-type for default EAP "
 		       "method %s", inst->default_method_name);
-		eap_detach(inst);
+		mod_detach(inst);
 		
 		return -1;
 	}
@@ -248,7 +248,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
 		radlog(L_ERR, "rlm_eap: Cannot initialize tree");
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -256,14 +256,14 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 		inst->handler_tree = rbtree_create(eap_handler_ptr_cmp, NULL, 0);
 		if (!inst->handler_tree) {
 			radlog(L_ERR, "rlm_eap: Cannot initialize tree");
-			eap_detach(inst);
+			mod_detach(inst);
 			return -1;
 		}
 
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
 			radlog(L_ERR, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
-			eap_detach(inst);
+			mod_detach(inst);
 			return -1;
 		}
 #endif
@@ -272,7 +272,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
 		radlog(L_ERR, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
-		eap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 #endif
@@ -284,7 +284,7 @@ static int eap_instantiate(CONF_SECTION *cs, void **instance)
 /*
  *	For backwards compatibility.
  */
-static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_eap_t		*inst;
 	eap_handler_t		*handler;
@@ -479,7 +479,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
 		 *	Cisco AP1230 has a bug and needs a zero
 		 *	terminated string in Access-Accept.
 		 */
-		if ((inst->cisco_accounting_username_bug) &&
+		if ((inst->mod_accounting_username_bug) &&
 		    (vp->length < (int) sizeof(vp->vp_strvalue))) {
 			vp->vp_strvalue[vp->length] = '\0';
 			vp->length++;
@@ -494,7 +494,7 @@ static rlm_rcode_t eap_authenticate(void *instance, REQUEST *request)
  * to check for user existance & get their configured values.
  * It Handles EAP-START Messages, User-Name initilization.
  */
-static rlm_rcode_t eap_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst;
 	int		status;
@@ -566,7 +566,7 @@ static rlm_rcode_t eap_authorize(void *instance, REQUEST *request)
  *	If we're proxying EAP, then there may be magic we need
  *	to do.
  */
-static rlm_rcode_t eap_post_proxy(void *inst, REQUEST *request)
+static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
@@ -724,7 +724,7 @@ static rlm_rcode_t eap_post_proxy(void *inst, REQUEST *request)
 }
 #endif
 
-static rlm_rcode_t eap_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	rlm_eap_t	*inst = instance;
 	VALUE_PAIR	*vp;
@@ -784,20 +784,20 @@ module_t rlm_eap = {
 	RLM_MODULE_INIT,
 	"eap",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	eap_instantiate,		/* instantiation */
-	eap_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		eap_authenticate,	/* authentication */
-		eap_authorize,		/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 #ifdef WITH_PROXY
-		eap_post_proxy,		/* post-proxy */
+		mod_post_proxy,		/* post-proxy */
 #else
 		NULL,
 #endif
-		eap_post_auth		/* post-auth */
+		mod_post_auth		/* post-auth */
 	},
 };

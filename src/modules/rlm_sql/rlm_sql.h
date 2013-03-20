@@ -91,7 +91,7 @@ typedef struct rlm_sql_handle {
 typedef struct rlm_sql_module_t {
 	const char *name;
 
-	int (*sql_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);	
+	int (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);	
 	int (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query);
 	int (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query);

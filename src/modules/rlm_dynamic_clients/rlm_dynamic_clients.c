@@ -31,7 +31,7 @@ RCSID("$Id$")
 /*
  *	Find the client definition.
  */
-static rlm_rcode_t dynamic_client_authorize(UNUSED void *instance,
+static rlm_rcode_t mod_authorize(UNUSED void *instance,
 					    REQUEST *request)
 {
 	size_t length;
@@ -92,7 +92,7 @@ static rlm_rcode_t dynamic_client_authorize(UNUSED void *instance,
 	return RLM_MODULE_OK;
 }
 #else
-static rlm_rcode_t dynamic_client_authorize(UNUSED void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	RDEBUG("Dynamic clients are unsupported in this build.");
 	return RLM_MODULE_FAIL;
@@ -116,7 +116,7 @@ module_t rlm_dynamic_clients = {
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		dynamic_client_authorize,	/* authorization */
+		mod_authorize,	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

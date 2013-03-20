@@ -91,7 +91,7 @@ int rad_accounting(REQUEST *request)
 			DEBUG2("  Found Acct-Type %s",
 			       dict_valnamebyattr(PW_ACCT_TYPE, 0, acct_type));
 		}
-		result = module_accounting(acct_type, request);
+		result = process_accounting(acct_type, request);
 		switch (result) {
 			/*
 			 *	In case the accounting module returns FAIL,

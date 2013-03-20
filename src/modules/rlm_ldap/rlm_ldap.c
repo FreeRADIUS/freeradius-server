@@ -516,7 +516,7 @@ check_attr:
 /** Detach from the LDAP server and cleanup internal state.
  *
  */
-static int ldap_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	ldap_instance_t *inst = instance;
 	
@@ -574,7 +574,7 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
  * @param instance Where to write pointer to configuration data.
  * @return 0 on success < 0 on failure.
  */
-static int ldap_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	ldap_instance_t *inst;
 
@@ -682,14 +682,14 @@ static int ldap_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->pool = fr_connection_pool_init(inst->cs, inst, rlm_ldap_conn_create, NULL, rlm_ldap_conn_delete);
 	if (!inst->pool) {
-		ldap_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 	
 	return 0;
 
 error:
-	ldap_detach(inst);
+	mod_detach(inst);
 	return -1;
 }
 
@@ -699,7 +699,7 @@ error:
  * @param request Current request.
  * @return one of the RLM_MODULE_* values.
  */
-static rlm_rcode_t ldap_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode;
 	const char	*user_dn;
@@ -769,7 +769,7 @@ static rlm_rcode_t ldap_authenticate(void *instance, REQUEST *request)
 /** Check if user is authorized for remote access
  *
  */
-static rlm_rcode_t ldap_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ldap_instance_t	*inst = instance;
@@ -1145,7 +1145,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	return rcode;
 }
 
-static rlm_rcode_t ldap_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
 	ldap_instance_t *inst = instance;		
 
 	if (inst->accounting) {
@@ -1176,13 +1176,13 @@ module_t rlm_ldap = {
 	RLM_MODULE_INIT,
 	"ldap",
 	RLM_TYPE_THREAD_SAFE,	/* type: reserved 	 */
-	ldap_instantiate,	/* instantiation 	 */
-	ldap_detach,		/* detach 		 */
+	mod_instantiate,	/* instantiation 	 */
+	mod_detach,		/* detach 		 */
 	{
-		ldap_authenticate,	/* authentication 	 */
-		ldap_authorize,		/* authorization 	 */
+		mod_authenticate,	/* authentication 	 */
+		mod_authorize,		/* authorization 	 */
 		NULL,			/* preaccounting 	 */
-		ldap_accounting,	/* accounting 		 */
+		mod_accounting,	/* accounting 		 */
 		NULL,			/* checksimul 		 */
 		NULL,			/* pre-proxy 		 */
 		NULL,			/* post-proxy 		 */

@@ -80,7 +80,7 @@ static rlm_rcode_t str2rcode(const char *s)
 	}
 }
 
-static int always_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_always_t *inst;
 
@@ -124,7 +124,7 @@ static rlm_rcode_t always_return(void *instance, UNUSED REQUEST *request)
 /*
  *	checksimul fakes some other variables besides the rcode...
  */
-static rlm_rcode_t always_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 {
 	struct rlm_always_t *inst = instance;
 
@@ -141,7 +141,7 @@ module_t rlm_always = {
 	RLM_MODULE_INIT,
 	"always",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	always_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		always_return,		/* authentication */
@@ -149,7 +149,7 @@ module_t rlm_always = {
 		always_return,		/* preaccounting */
 		always_return,		/* accounting */
 #ifdef WITH_SESSION_MGMT
-		always_checksimul,	/* checksimul */
+		mod_checksimul,	/* checksimul */
 #else
 		NULL,
 #endif

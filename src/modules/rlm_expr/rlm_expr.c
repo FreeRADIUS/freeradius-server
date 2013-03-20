@@ -702,7 +702,7 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 /*
  * Detach a instance free all ..
  */
-static int expr_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_expr_t	*inst = instance;
 
@@ -721,7 +721,7 @@ static int expr_detach(void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int expr_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_expr_t	*inst;
 
@@ -732,7 +732,7 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst) return -1;
 	
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		expr_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 
@@ -772,8 +772,8 @@ module_t rlm_expr = {
 	RLM_MODULE_INIT,
 	"expr",				/* Name */
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
-	expr_instantiate,		/* instantiation */
-	expr_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */

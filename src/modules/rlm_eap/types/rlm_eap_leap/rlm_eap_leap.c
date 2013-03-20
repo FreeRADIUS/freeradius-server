@@ -87,7 +87,7 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 	return 1;
 }
 
-static int leap_authenticate(UNUSED void *instance, eap_handler_t *handler)
+static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		rcode;
 	leap_session_t	*session;
@@ -198,6 +198,6 @@ rlm_eap_module_t rlm_eap_leap = {
 	NULL,			/* attach */
 	leap_initiate,		/* Start the initial request, after Identity */
 	NULL,			/* authorization */
-	leap_authenticate,	/* authentication */
+	mod_authenticate,	/* authentication */
 	NULL,			/* detach */
 };

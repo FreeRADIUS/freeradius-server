@@ -795,7 +795,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	/*
 	 *	We've been told to ignore unknown EAP types, AND it's
 	 *	an unknown type.  Return "NOOP", which will cause the
-	 *	eap_authorize() to return NOOP.
+	 *	mod_authorize() to return NOOP.
 	 *
 	 *	EAP-Identity, Notification, and NAK are all handled
 	 *	internally, so they never have handlers.

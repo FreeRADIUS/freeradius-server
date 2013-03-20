@@ -515,7 +515,7 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int eap_sim_authenticate(void *arg, eap_handler_t *handler)
+static int mod_authenticate(void *arg, eap_handler_t *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp, *vps;
@@ -594,7 +594,7 @@ static int eap_sim_authenticate(void *arg, eap_handler_t *handler)
 		/* if we get into some other state, die, as this
 		 * is a coding error!
 		 */
-		DEBUG2("  illegal-unknown state reached in eap_sim_authenticate\n");
+		DEBUG2("  illegal-unknown state reached in mod_authenticate\n");
 		rad_assert(0 == 1);
  	}
 
@@ -610,6 +610,6 @@ rlm_eap_module_t rlm_eap_sim = {
 	NULL,				/* XXX attach */
 	eap_sim_initiate,		/* Start the initial request */
 	NULL,				/* XXX authorization */
-	eap_sim_authenticate,		/* authentication */
+	mod_authenticate,		/* authentication */
 	NULL				/* XXX detach */
 };

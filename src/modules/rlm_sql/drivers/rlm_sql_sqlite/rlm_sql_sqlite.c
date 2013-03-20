@@ -230,7 +230,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 }
 #endif
 
-static int sql_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
+static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_config_t *driver;
 	int exists;
@@ -632,7 +632,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle,
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_sqlite = {
 	"rlm_sql_sqlite",
-	sql_instantiate,
+	mod_instantiate,
 	sql_socket_init,
 	sql_query,
 	sql_select_query,

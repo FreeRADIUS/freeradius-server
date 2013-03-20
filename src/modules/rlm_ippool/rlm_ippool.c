@@ -132,7 +132,7 @@ static const CONF_PARSER module_config[] = {
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int ippool_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_ippool_t *data;
 	int cache_size;
@@ -267,7 +267,7 @@ static int ippool_instantiate(CONF_SECTION *conf, void **instance)
  *	Check for an Accounting-Stop
  *	If we find one and we have allocated an IP to this nas/port combination, deallocate it.
  */
-static rlm_rcode_t ippool_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_ippool_t *data = (rlm_ippool_t *)instance;
 	datum key_datum;
@@ -783,7 +783,7 @@ static rlm_rcode_t ippool_postauth(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static int ippool_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_ippool_t *data = (rlm_ippool_t *) instance;
 
@@ -806,13 +806,13 @@ module_t rlm_ippool = {
 	RLM_MODULE_INIT,
 	"ippool",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	ippool_instantiate,		/* instantiation */
-	ippool_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,		 	/* authorization */
 		NULL,			/* preaccounting */
-		ippool_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */

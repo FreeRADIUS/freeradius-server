@@ -42,7 +42,7 @@ static int sql_socket_destructor(void *c)
 	fb_commit(conn);
 	if (conn->dbh) {
 		fb_free_statement(conn);
-		isc_detach_database(conn->status, &(conn->dbh));
+		mod_detach_database(conn->status, &(conn->dbh));
 		
 		if (fb_lasterror(conn)) {
 			DEBUGW("rlm_sql_firebird: Got error "

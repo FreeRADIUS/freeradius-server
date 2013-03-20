@@ -58,7 +58,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t expiration_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_expiration_t *data = (rlm_expiration_t *)instance;
 	VALUE_PAIR *vp, *check_item = NULL;
@@ -130,7 +130,7 @@ static int expirecmp(void *instance, REQUEST *req,
 }
 
 
-static int expiration_detach(UNUSED void *instance)
+static int mod_detach(UNUSED void *instance)
 {
 	paircompare_unregister(PW_EXPIRATION, expirecmp);
 	return 0;
@@ -146,7 +146,7 @@ static int expiration_detach(UNUSED void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int expiration_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_expiration_t *data;
 
@@ -185,11 +185,11 @@ module_t rlm_expiration = {
 	RLM_MODULE_INIT,
 	"expiration",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	expiration_instantiate,		/* instantiation */
-	expiration_detach,		/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,		/* detach */
 	{
 		NULL,			/* authentication */
-		expiration_authorize, 	/* authorization */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

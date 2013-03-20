@@ -739,7 +739,7 @@ static int rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm_sql_han
 }
 
 
-static int rlm_sql_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_sql_t *inst = instance;
 
@@ -796,7 +796,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	return 0;
 }
 
-static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_sql_t *inst;
 	const char *xlat_name;
@@ -920,7 +920,7 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	
-	if (inst->module->sql_instantiate) {
+	if (inst->module->mod_instantiate) {
 		CONF_SECTION *cs;
 		const char *name;
 		
@@ -942,7 +942,7 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 		/*
 		 *	It's up to the driver to register a destructor
 		 */
-		if (inst->module->sql_instantiate(cs, inst->config) < 0) {
+		if (inst->module->mod_instantiate(cs, inst->config) < 0) {
 			return -1;
 		}
 	}
@@ -975,7 +975,7 @@ static int rlm_sql_instantiate(CONF_SECTION *conf, void **instance)
 }
 
 
-static rlm_rcode_t rlm_sql_authorize(void *instance, REQUEST * request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 {
 	int ret = RLM_MODULE_NOTFOUND;
 	
@@ -1291,7 +1291,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request,
 /*
  *	Accounting: Insert or update session data in our sql table
  */
-static rlm_rcode_t rlm_sql_accounting(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
 	rlm_sql_t *inst = instance;		
 
 	if (inst->config->accounting) {
@@ -1313,7 +1313,7 @@ static rlm_rcode_t rlm_sql_accounting(void *instance, REQUEST * request) {
  *	logins by querying the terminal server (using eg. SNMP).
  */
 
-static rlm_rcode_t rlm_sql_checksimul(void *instance, REQUEST * request) {
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 	rlm_sql_handle_t 	*handle;
 	rlm_sql_t	*inst = instance;
 	rlm_sql_row_t		row;
@@ -1512,19 +1512,19 @@ module_t rlm_sql = {
 	RLM_MODULE_INIT,
 	"SQL",
 	RLM_TYPE_THREAD_SAFE,	/* type: reserved */
-	rlm_sql_instantiate,	/* instantiation */
-	rlm_sql_detach,		/* detach */
+	mod_instantiate,	/* instantiation */
+	mod_detach,		/* detach */
 	{
 		NULL,			/* authentication */
-		rlm_sql_authorize,	/* authorization */
+		mod_authorize,	/* authorization */
 		NULL,			/* preaccounting */
 #ifdef WITH_ACCOUNTING
-		rlm_sql_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 #else
 		NULL,
 #endif
 #ifdef WITH_SESSION_MGMT
-		rlm_sql_checksimul,	/* checksimul */
+		mod_checksimul,	/* checksimul */
 #else
 		NULL,
 #endif

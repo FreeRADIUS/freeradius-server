@@ -125,7 +125,7 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
-static int counter_detach(void *instance);
+static int mod_detach(void *instance);
 
 
 /*
@@ -322,7 +322,7 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int counter_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_counter_t *inst;
 	const DICT_ATTR *dattr;
@@ -355,14 +355,14 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->key_name == NULL) {
 		radlog(L_ERR, "rlm_counter: 'key' must be set.");
-		counter_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 	dattr = dict_attrbyname(inst->key_name);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: No such attribute %s",
 				inst->key_name);
-		counter_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 	inst->key_attr = dattr->attr;
@@ -372,14 +372,14 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->count_attribute == NULL) {
 		radlog(L_ERR, "rlm_counter: 'count-attribute' must be set.");
-		counter_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 	dattr = dict_attrbyname(inst->count_attribute);
 	if (dattr == NULL) {
 		radlog(L_ERR, "rlm_counter: No such attribute %s",
 				inst->count_attribute);
-		counter_detach(inst);
+		mod_detach(inst);
 		return -1;
 	}
 	inst->count_attr = dattr->attr;
@@ -392,13 +392,13 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 		if (dattr == NULL) {
 			radlog(L_ERR, "rlm_counter: No such attribute %s",
 					inst->reply_name);
-			counter_detach(inst);
+			mod_detach(inst);
 			return -1;
 		}
 		if (dattr->type != PW_TYPE_INTEGER) {
 			radlog(L_ERR, "rlm_counter: Reply attribute %s is not of type integer",
 				inst->reply_name);
-			counter_detach(inst);
+			mod_detach(inst);
 			return -1;
 		}
 		inst->reply_attr = dattr->attr;
@@ -565,7 +565,7 @@ static int counter_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t counter_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_counter_t *inst = instance;
 	datum key_datum;
@@ -737,7 +737,7 @@ static rlm_rcode_t counter_accounting(void *instance, REQUEST *request)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t counter_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_counter_t *inst = instance;
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
@@ -893,7 +893,7 @@ static rlm_rcode_t counter_authorize(void *instance, REQUEST *request)
 	return rcode;
 }
 
-static int counter_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_counter_t *inst = instance;
 
@@ -920,13 +920,13 @@ module_t rlm_counter = {
 	 RLM_MODULE_INIT,
 	"counter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	counter_instantiate,		/* instantiation */
-	counter_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authentication */
-		counter_authorize, 	/* authorization */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
-		counter_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */

@@ -67,7 +67,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	Per-instance initialization
  */
-static int otp_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	otp_option_t *opt;
 
@@ -156,7 +156,7 @@ static int otp_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Generate a challenge to be presented to the user.
  */
-static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	otp_option_t *inst = (otp_option_t *) instance;
 
@@ -234,8 +234,8 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 	 *	If we won't actually use the State (server config doesn't
 	 *	allow async), we just use a trivial State.
 	 *
-	 *	We always create at least a trivial State, so otp_authorize()
-	 *	can quickly pass on to otp_authenticate().
+	 *	We always create at least a trivial State, so mod_authorize()
+	 *	can quickly pass on to mod_authenticate().
 	 */
 	{
 		int32_t now = htonl(time(NULL)); //!< Low-order 32 bits on LP64.
@@ -323,7 +323,7 @@ static rlm_rcode_t otp_authorize(void *instance, REQUEST *request)
 /*
  *	Verify the response entered by the user.
  */
-static rlm_rcode_t otp_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	otp_option_t *inst = (otp_option_t *) instance;
 
@@ -459,11 +459,11 @@ module_t rlm_otp = {
 	RLM_MODULE_INIT,
 	"otp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	otp_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
-		otp_authenticate,	/* authentication */
-		otp_authorize,		/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

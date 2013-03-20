@@ -224,7 +224,7 @@ static int parse_sub_section(CONF_SECTION *parent,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int rlm_rest_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_rest_t *data;
 	const char *xlat_name;
@@ -293,7 +293,7 @@ static int rlm_rest_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t rlm_rest_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_rest_t *my_instance = instance;
 	rlm_rest_section_t *section = &my_instance->authorize;
@@ -368,7 +368,7 @@ static rlm_rcode_t rlm_rest_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t rlm_rest_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -380,7 +380,7 @@ static rlm_rcode_t rlm_rest_authenticate(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t rlm_rest_accounting(UNUSED void *instance,
+static rlm_rcode_t mod_accounting(UNUSED void *instance,
 				       UNUSED REQUEST *request)
 {
 	return RLM_MODULE_OK;
@@ -396,7 +396,7 @@ static rlm_rcode_t rlm_rest_accounting(UNUSED void *instance,
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t rlm_rest_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 {
 	instance = instance;
 
@@ -409,7 +409,7 @@ static rlm_rcode_t rlm_rest_checksimul(void *instance, REQUEST *request)
  *	Only free memory we allocated.  The strings allocated via
  *	cf_section_parse() do not need to be freed.
  */
-static int rlm_rest_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_rest_t *my_instance = instance;
 
@@ -434,14 +434,14 @@ module_t rlm_rest = {
 	RLM_MODULE_INIT,
 	"rlm_rest",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	rlm_rest_instantiate,		/* instantiation */
-	rlm_rest_detach,		/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,		/* detach */
 	{
-		rlm_rest_authenticate,	/* authentication */
-		rlm_rest_authorize,	/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize,	/* authorization */
 		NULL,			/* preaccounting */
-		rlm_rest_accounting,	/* accounting */
-		rlm_rest_checksimul,	/* checksimul */
+		mod_accounting,	/* accounting */
+		mod_checksimul,	/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */

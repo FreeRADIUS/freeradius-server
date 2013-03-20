@@ -72,7 +72,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	(Re-)read the "users" file into memory.
  */
-static int sim_file_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct sim_file_instance *inst;
 
@@ -92,7 +92,7 @@ static int sim_file_instantiate(CONF_SECTION *conf, void **instance)
  *	for this user from the database. The main code only
  *	needs to check the password, the rest is done here.
  */
-static rlm_rcode_t sim_file_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*namepair;
 	const char	*name;
@@ -227,11 +227,11 @@ module_t rlm_sim_files = {
 	RLM_MODULE_INIT,
 	"sim_files",
 	0,				/* type: reserved */
-	sim_file_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		sim_file_authorize, 	/* authorization */
+		mod_authorize, 	/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

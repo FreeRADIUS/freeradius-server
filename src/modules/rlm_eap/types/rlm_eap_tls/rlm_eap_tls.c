@@ -132,7 +132,7 @@ static int eaptls_initiate(void *type_arg, eap_handler_t *handler)
 /*
  *	Do authentication, by letting EAP-TLS do most of the work.
  */
-static int eaptls_authenticate(void *type_arg, eap_handler_t *handler)
+static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 {
 	fr_tls_status_t	status;
 	tls_session_t *tls_session = (tls_session_t *) handler->opaque;
@@ -261,6 +261,6 @@ rlm_eap_module_t rlm_eap_tls = {
 	eaptls_attach,			/* attach */
 	eaptls_initiate,		/* Start the initial request */
 	NULL,				/* authorization */
-	eaptls_authenticate,		/* authentication */
+	mod_authenticate,		/* authentication */
 	NULL				/* detach */
 };

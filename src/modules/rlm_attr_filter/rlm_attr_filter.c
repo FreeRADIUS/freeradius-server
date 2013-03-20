@@ -125,7 +125,7 @@ static int attr_filter_getfile(const char *filename, PAIR_LIST **pair_list)
 /*
  *	Clean up.
  */
-static int attr_filter_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_attr_filter_t *inst = instance;
 	pairlist_free(&inst->attrs);
@@ -137,7 +137,7 @@ static int attr_filter_detach(void *instance)
 /*
  *	(Re-)read the "attrs" file into memory.
  */
-static int attr_filter_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_attr_filter_t *inst;
 	int rcode;
@@ -343,7 +343,7 @@ static rlm_rcode_t attr_filter_preacct(void *instance, REQUEST *request)
 	return attr_filter_common(instance, request, request->packet);
 }
 
-static rlm_rcode_t attr_filter_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->reply);
 }
@@ -365,7 +365,7 @@ static rlm_rcode_t attr_filter_postauth(void *instance, REQUEST *request)
 	return attr_filter_common(instance, request, request->reply);
 }
 
-static rlm_rcode_t attr_filter_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	return attr_filter_common(instance, request, request->packet);
 }
@@ -376,13 +376,13 @@ module_t rlm_attr_filter = {
 	RLM_MODULE_INIT,
 	"attr_filter",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	attr_filter_instantiate,	/* instantiation */
-	attr_filter_detach,		/* detach */
+	mod_instantiate,	/* instantiation */
+	mod_detach,		/* detach */
 	{
 		NULL,			/* authentication */
-		attr_filter_authorize,	/* authorization */
+		mod_authorize,	/* authorization */
 		attr_filter_preacct,	/* pre-acct */
-		attr_filter_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
 		attr_filter_preproxy,	/* pre-proxy */

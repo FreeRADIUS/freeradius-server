@@ -78,7 +78,7 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
-static int attr_rewrite_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_attr_rewrite_t *inst;
 	const DICT_ATTR *dattr;
@@ -432,17 +432,17 @@ to_do_again:
 	return rcode;
 }
 
-static rlm_rcode_t attr_rewrite_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
 
-static rlm_rcode_t attr_rewrite_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
 
-static rlm_rcode_t attr_rewrite_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
@@ -452,7 +452,7 @@ static rlm_rcode_t attr_rewrite_preacct(void *instance, REQUEST *request)
 	return do_attr_rewrite(instance, request);
 }
 
-static rlm_rcode_t attr_rewrite_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 {
 	return do_attr_rewrite(instance, request);
 }
@@ -487,14 +487,14 @@ module_t rlm_attr_rewrite = {
 	RLM_MODULE_INIT,
 	"attr_rewrite",
 	RLM_TYPE_THREAD_UNSAFE,			/* type */
-	attr_rewrite_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,					/* detach */
 	{
-		attr_rewrite_authenticate,	/* authentication */
-		attr_rewrite_authorize, 	/* authorization */
+		mod_authenticate,	/* authentication */
+		mod_authorize, 	/* authorization */
 		attr_rewrite_preacct,		/* preaccounting */
-		attr_rewrite_accounting,	/* accounting */
-		attr_rewrite_checksimul,	/* checksimul */
+		mod_accounting,	/* accounting */
+		mod_checksimul,	/* checksimul */
 #ifdef WITH_PROXY
 		attr_rewrite_preproxy,		/* pre-proxy */
 		attr_rewrite_postproxy,		/* post-proxy */

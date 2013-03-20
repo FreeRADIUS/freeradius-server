@@ -104,7 +104,7 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static int soh_detach(void *instance)
+static int mod_detach(void *instance)
 {
 	rlm_soh_t	*inst = instance;
 
@@ -114,7 +114,7 @@ static int soh_detach(void *instance)
 	return 0;
 }
 
-static int soh_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	const char *name;
 	rlm_soh_t *inst;
@@ -193,7 +193,7 @@ static rlm_rcode_t soh_postauth(UNUSED void * instance, REQUEST *request)
 	return RLM_MODULE_NOOP;
 }
 
-static rlm_rcode_t soh_authorize(UNUSED void * instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void * instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	int rv;
@@ -219,11 +219,11 @@ module_t rlm_soh = {
 	RLM_MODULE_INIT,
 	"SoH",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	soh_instantiate,		/* instantiation */
-	soh_detach,			/* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
 		NULL,			/* authenticate */
-		soh_authorize,		/* authorize */
+		mod_authorize,		/* authorize */
 		NULL,			/* pre-accounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

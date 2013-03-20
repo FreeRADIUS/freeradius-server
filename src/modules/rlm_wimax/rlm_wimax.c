@@ -60,7 +60,7 @@ static const CONF_PARSER module_config[] = {
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int wimax_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_wimax_t *inst;
 
@@ -87,7 +87,7 @@ static int wimax_instantiate(CONF_SECTION *conf, void **instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t wimax_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 
@@ -131,13 +131,13 @@ static rlm_rcode_t wimax_authorize(void *instance, REQUEST *request)
  */
 static rlm_rcode_t wimax_preacct(void *instance, REQUEST *request)
 {
-	return wimax_authorize(instance, request);
+	return mod_authorize(instance, request);
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t wimax_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	/* quiet the compiler */
 	instance = instance;
@@ -508,13 +508,13 @@ module_t rlm_wimax = {
 	RLM_MODULE_INIT,
 	"wimax",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	wimax_instantiate,		/* instantiation */
+	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		wimax_authorize,	/* authorization */
+		mod_authorize,	/* authorization */
 		wimax_preacct,		/* preaccounting */
-		wimax_accounting,	/* accounting */
+		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
