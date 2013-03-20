@@ -141,7 +141,7 @@ AUTOCONF_EXISTS := $(shell autoconf --version 2>/dev/null)
 ifneq "$(AUTOCONF_EXISTS)" ""
 # Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
-src/%configure: src/%configure.in acinclude.m4 aclocal.m4
+src/%configure: src/%configure.in acinclude.m4 aclocal.m4 | src/freeradius-devel
 	@echo AUTOCONF $(dir $@)
 	@cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I ./m4
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
