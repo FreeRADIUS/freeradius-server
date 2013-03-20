@@ -468,6 +468,7 @@ static int mod_authenticate(void *instance, REQUEST *request)
 	rlm_securid_t *inst = instance;
 	char  buffer[MAX_STRING_LEN]="";
 	const char *username=NULL, *password=NULL;
+	VALUE_PAIR *vp;
 	
 	/*
 	 *	We can only authenticate user requests which HAVE
