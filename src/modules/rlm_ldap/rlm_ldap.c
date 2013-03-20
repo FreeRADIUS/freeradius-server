@@ -867,7 +867,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			RDEBUGW("Failed to retrieve eDirectory password");
 			rcode = RLM_MODULE_NOOP;
 
-			goto free_result;
+			goto finish;
 		}
 
 		/*
