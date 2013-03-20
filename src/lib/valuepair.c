@@ -1565,9 +1565,9 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 		/* If we already found a tag, this is invalid */
 		if(found_tag) {
 			fr_strerror_printf("Duplicate tag %s for attribute %s",
-				   value, vp->da->name);
+				   value, da->name);
 			DEBUG("Duplicate tag %s for attribute %s\n",
-				   value, vp->da->name);
+				   value, da->name);
 			return NULL;
 		}
 		/* Colon found and attribute allows a tag */
