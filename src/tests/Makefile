@@ -61,14 +61,27 @@ test.conf: dictionary
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf
-	@gdb -silent -x $(TEST_PATH)/gdb.conf --args $(BIN_PATH)/radiusd -ftxxl $(TEST_PATH)/radius.log -md $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) &
+	@gdb -silent -x $(TEST_PATH)/gdb.conf --args \
+	$(BIN_PATH)/radiusd -fPtxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) > $(TEST_PATH)/gdb.log 2>&1 &
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
 .PHONY: radiusd.kill
 radiusd.kill:
 	@if [ -f radiusd.pid ]; then \
-		(kill -TERM `cat radiusd.pid` >/dev/null 2>&1) || exit 0; \
+	    ret=0; \
+	    if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+	        echo "FreeRADIUS terminated during test"; \
+	        echo "GDB output was:"; \
+	        cat "$(TEST_PATH)/gdb.log"; \
+	        echo "Last log entries were:"; \
+	        tail -n 20 $(TEST_PATH)/radius.log; \
+	        ret=1; \
+	    fi; \
+		if ! kill -TERM `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+		    ret=1; \
+		fi; \
+		exit $$ret; \
 	fi
 	@rm -f radiusd.pid
 
@@ -85,21 +98,24 @@ tests: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
-	@echo "Waiting for daemon to start..."; \
-	for i in {1..10}; do \
-		printf "."; \
-		if [ -f radiusd.pid ]; then \
-			if ps `cat radiusd.pid > /dev/null`; then \
+	@echo "Waiting for server to start..."; \
+	for i in `seq 15 1`; do \
+		printf $$i; \
+		if [ -f '$(TEST_PATH)/radiusd.pid' ]; then \
+			if ps `cat $(TEST_PATH)/radiusd.pid > /dev/null` > /dev/null 2>&1; then \
+				echo; echo "Server started with PID" `cat $(TEST_PATH)/radiusd.pid`; \
 				exit 0; \
 			else \
 				break; \
 			fi; \
 		fi; \
 		sleep 1; \
-	done; \
-	echo; echo "FreeRADIUS daemon failed to start"; \
+	done; echo; \
+	echo "FreeRADIUS daemon failed to start"; \
 	echo "Last log entries were:"; \
-	tail -n 20 $(TEST_PATH)/radius.log; \
+	tail -n 20 "$(TEST_PATH)/radius.log"; \
+	echo "GDB output was:"; \
+	cat "$(TEST_PATH)/gdb.log"; \
 	exit 1;
 	@BIN_PATH="$(BIN_PATH)" PORT="$(PORT)" ./runtests.sh $(TESTS)
 	@$(MAKE) radiusd.kill

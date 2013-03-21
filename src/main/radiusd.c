@@ -97,6 +97,7 @@ int main(int argc, char *argv[])
 	int argval;
 	int spawn_flag = TRUE;
 	int dont_fork = FALSE;
+	int write_pid = FALSE;
 	int flag = 0;
 
 #ifdef HAVE_SIGACTION
@@ -149,7 +150,7 @@ int main(int argc, char *argv[])
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
-	while ((argval = getopt(argc, argv, "Cd:fhi:l:mMn:p:stvxX")) != EOF) {
+	while ((argval = getopt(argc, argv, "Cd:fhi:l:mMn:p:PstvxX")) != EOF) {
 
 		switch(argval) {
 			case 'C':
@@ -215,6 +216,11 @@ int main(int argc, char *argv[])
 					exit(1);
 				}
 				flag |= 2;
+				break;
+				
+			case 'P':
+				/* Force the PID to be written, even in -f mode */
+				write_pid = TRUE;
 				break;
 
 			case 's':	/* Single process mode */
@@ -408,12 +414,17 @@ int main(int argc, char *argv[])
 #endif
 
 	/*
+	 *	Write out the PID anyway if were in foreground mode.
+	 */
+	if (!dont_fork) write_pid = TRUE;
+
+	/*
 	 *  Only write the PID file if we're running as a daemon.
 	 *
 	 *  And write it AFTER we've forked, so that we write the
 	 *  correct PID.
 	 */
-	if (dont_fork == FALSE) {
+	if (write_pid) {
 		FILE *fp;
 
 		fp = fopen(mainconfig.pid_file, "w");
@@ -516,20 +527,21 @@ static void NEVER_RETURNS usage(int status)
 	fprintf(output,
 			"Usage: %s [-d db_dir] [-l log_dir] [-i address] [-n name] [-fsvXx]\n", progname);
 	fprintf(output, "Options:\n\n");
-	fprintf(output, "  -C	      Check configuration and exit.\n");
-	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
-	fprintf(output, "  -f	      Run as a foreground process, not a daemon.\n");
-	fprintf(output, "  -h	      Print this help message.\n");
-	fprintf(output, "  -i ipaddr       Listen on ipaddr ONLY.\n");
-	fprintf(output, "  -l log_file     Logging output will be written to this file.\n");
-	fprintf(output, "  -m	      On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
-	fprintf(output, "  -n name	 Read raddb/name.conf instead of raddb/radiusd.conf\n");
-	fprintf(output, "  -p port	 Listen on port ONLY.\n");
-	fprintf(output, "  -s	      Do not spawn child processes to handle requests.\n");
-	fprintf(output, "  -t	      Disable threads.\n");
-	fprintf(output, "  -v	      Print server version information.\n");
-	fprintf(output, "  -X	      Turn on full debugging.\n");
-	fprintf(output, "  -x	      Turn on additional debugging. (-xx gives more debugging).\n");
+	fprintf(output, "  -C            Check configuration and exit.\n");
+	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddbdir/*\".\n");
+	fprintf(output, "  -f            Run as a foreground process, not a daemon.\n");
+	fprintf(output, "  -h            Print this help message.\n");
+	fprintf(output, "  -i ipaddr     Listen on ipaddr ONLY.\n");
+	fprintf(output, "  -l log_file   Logging output will be written to this file.\n");
+	fprintf(output, "  -m            On SIGINT or SIGQUIT exit cleanly instead of immediately.\n");
+	fprintf(output, "  -n name       Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	fprintf(output, "  -p port       Listen on port ONLY.\n");
+	fprintf(output, "  -P            Always write out PID, even with -f");
+	fprintf(output, "  -s            Do not spawn child processes to handle requests.\n");
+	fprintf(output, "  -t            Disable threads.\n");
+	fprintf(output, "  -v            Print server version information.\n");
+	fprintf(output, "  -X            Turn on full debugging.\n");
+	fprintf(output, "  -x            Turn on additional debugging. (-xx gives more debugging).\n");
 	exit(status);
 }
 
