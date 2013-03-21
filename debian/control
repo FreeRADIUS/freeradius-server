@@ -70,8 +70,6 @@ Description: FreeRADIUS client utilities
   - radtest
   - radwho
   - radzap
-  - rlm_dbm_cat
-  - rlm_dbm_parser
   - rlm_ippool_tool
   - smbencrypt
 
