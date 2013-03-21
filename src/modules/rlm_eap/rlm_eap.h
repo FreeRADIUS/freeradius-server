@@ -91,7 +91,7 @@ typedef struct rlm_eap {
 
 /* function definitions */
 /* EAP-Type */
-int      	eap_module_load(eap_module_t **instance, eap_type_t method,
+int      	eap_module_load(rlm_eap_t *inst, eap_module_t **method, eap_type_t num,
 		    		CONF_SECTION *cs);
 eap_rcode_t	eap_method_select(rlm_eap_t *inst, eap_handler_t *handler);
 

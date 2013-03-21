@@ -114,7 +114,7 @@ static int eap_handler_ptr_cmp(const void *a, const void *b)
  */
 static int mod_instantiate(CONF_SECTION *cs, void **instance)
 {
-	int		i;
+	int		i, ret;
 	eap_type_t	method;
 	int		num_methods;
 	CONF_SECTION 	*scs;
@@ -155,16 +155,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 		method = eap_name2type(name);
 		if (method == PW_EAP_INVALID) {
-			radlog(L_ERR, "rlm_eap: Unknown EAP method %s",
-			       name);
+			radlog(L_ERR, "rlm_eap (%s): Unknown EAP method %s", inst->xlat_name, name);
 			mod_detach(inst);
 			
 			return -1;
 		}
 		
 		if ((method < PW_EAP_MD5) || (method > PW_EAP_MAX_TYPES)) {
-			radlog(L_ERR, "rlm_eap: EAP method %s outside of "
-			       "valid range", name);
+			radlog(L_ERR, "rlm_eap (%s): EAP method %s outside of valid range", inst->xlat_name, name);
 
 			mod_detach(inst);
 			
@@ -187,8 +185,8 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		if ((method == PW_EAP_TLS) ||
 		    (method == PW_EAP_TTLS) ||
 		    (method == PW_EAP_PEAP)) {
-			DEBUG2("Ignoring EAP method %s because we do not have "
-			       "OpenSSL support", name);
+			DEBUG2("rlm_eap (%s): Ignoring EAP method %s because we do not have OpenSSL support",
+			       inst->xlat_name, name);
 			continue;
 		}
 #endif
@@ -196,7 +194,11 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		/*
 		 *	Load the type.
 		 */
-		if (eap_module_load(&inst->methods[method], method, scs) < 0) {
+		ret = eap_module_load(inst, &inst->methods[method], method, scs);
+		
+		(void) talloc_get_type_abort(inst->methods[method], eap_module_t);
+		
+		if (ret < 0) {
 			talloc_steal(inst, inst->methods[method]);
 			mod_detach(inst);
 			
@@ -208,11 +210,9 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (num_methods == 0) {
-		radlog(L_ERR, "rlm_eap: No EAP method configured, module "
-		       "cannot do anything.");
-		
+		radlog(L_ERR, "rlm_eap (%s): No EAP method configured, module cannot do anything", inst->xlat_name);
 		mod_detach(inst);
-		
+
 		return -1;
 	}
 
@@ -221,15 +221,16 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	method = eap_name2type(inst->default_method_name);
 	if (method == PW_EAP_INVALID) {
-		radlog(L_ERR, "rlm_eap: Unknown default EAP method %s",
+		radlog(L_ERR, "rlm_eap (%s): Unknown default EAP method %s", inst->xlat_name,
 		       inst->default_method_name);
 		mod_detach(inst);
+		
 		return -1;
 	}
 
 	if (inst->methods[method] == NULL) {
-		radlog(L_ERR, "rlm_eap: No such sub-type for default EAP "
-		       "method %s", inst->default_method_name);
+		radlog(L_ERR, "rlm_eap (%s): No such sub-type for default EAP method %s", inst->xlat_name,
+		       inst->default_method_name);
 		mod_detach(inst);
 		
 		return -1;
@@ -247,23 +248,26 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		radlog(L_ERR, "rlm_eap: Cannot initialize tree");
+		radlog(L_ERR, "rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
 		mod_detach(inst);
+		
 		return -1;
 	}
 
 	if (fr_debug_flag) {
 		inst->handler_tree = rbtree_create(eap_handler_ptr_cmp, NULL, 0);
 		if (!inst->handler_tree) {
-			radlog(L_ERR, "rlm_eap: Cannot initialize tree");
+			radlog(L_ERR, "rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
 			mod_detach(inst);
+			
 			return -1;
 		}
 
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
-			radlog(L_ERR, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
+			radlog(L_ERR, "rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
 			mod_detach(inst);
+			
 			return -1;
 		}
 #endif
@@ -271,8 +275,9 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
-		radlog(L_ERR, "rlm_eap: Failed initializing mutex: %s", strerror(errno));
+		radlog(L_ERR, "rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
 		mod_detach(inst);
+		
 		return -1;
 	}
 #endif
