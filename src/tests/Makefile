@@ -99,8 +99,8 @@ tests: $(RADDB_PATH)/test.conf radiusd.kill
 	@rm -f radius.log
 	@$(MAKE) radiusd.pid
 	@echo "Waiting for server to start..."; \
-	for i in `seq 15 1`; do \
-		printf $$i; \
+	for i in 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0; do \
+		printf "$$i "; \
 		if [ -f '$(TEST_PATH)/radiusd.pid' ]; then \
 			if ps `cat $(TEST_PATH)/radiusd.pid > /dev/null` > /dev/null 2>&1; then \
 				echo; echo "Server started with PID" `cat $(TEST_PATH)/radiusd.pid`; \
