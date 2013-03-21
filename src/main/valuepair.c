@@ -860,6 +860,11 @@ void debug_pair_list(VALUE_PAIR *vp)
 	if (!vp || !debug_flag || !fr_log_fp) return;
 
 	while (vp) {
+		/*
+		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
+		 */
+		(void) talloc_get_type_abort(vp, VALUE_PAIR);
+		
 		vp_print(fr_log_fp, vp);
 		vp = vp->next;
 	}
@@ -878,6 +883,11 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 	if (!vp || !request || !request->radlog) return;
 	
 	while (vp) {
+		/*
+		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
+		 */
+		(void) talloc_get_type_abort(vp, VALUE_PAIR);
+		
 		vp_prints(buffer, sizeof(buffer), vp);
 		
 		request->radlog(L_DBG, level, request, "\t%s", buffer);
