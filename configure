@@ -7455,7 +7455,7 @@ $as_echo_n "checking for developer gcc flags... " >&6; }
 
 if test "x$developer" = "xyes"; then
   if test "x$GCC" = "xyes"; then
-    devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2"
+    devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length  -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
     CFLAGS="$CFLAGS $devflags"
     INSTALLSTRIP=""
     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes.  Using $devflags" >&5
