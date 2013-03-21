@@ -13,7 +13,7 @@ DEFAULT_MODULES := always attr_filter attr_rewrite cache_eap chap checkval \
 		detail detail.log digest dhcp dynamic_clients eap \
 		echo exec expiration expr files linelog logintime \
 		mschap ntlm_auth pap passwd preprocess radutmp realm \
-		replicate soh sradutmp unix utf8 wimax
+		replicate soh sradutmp unix utf8
 
 LOCAL_MODULES   := $(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
