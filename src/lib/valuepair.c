@@ -110,16 +110,25 @@ void pairbasicfree(VALUE_PAIR *vp)
 {
 	if (!vp) return;
 	
-	rad_assert(vp->da);
-	
+	/*
+	 *	The lack of DA probably means something has gone wrong, try and get as much info 
+	 *	as we can before calling talloc_free (at which point we'll probably get an abort).
+	 */
+	if (!vp->da) {
+		fr_strerror_printf("VALUE_PAIR has invalid DICT_ATTR pointer (probably already freed)");
+		
+		if (!talloc_get_type(vp, VALUE_PAIR)) {
+			fr_strerror_printf("Pointer being freed is NOT a VALUE_PAIR, got type \"%s\"",
+					   talloc_get_name(vp));
+		}
 	/*
 	 *	Only free the DICT_ATTR if it was dynamically allocated
 	 *	and was marked for free when the VALUE_PAIR is freed.
 	 */
-	if (vp->da->flags.vp_free) {
+	} else if (vp->da->flags.vp_free) {
 		dict_attr_free(&(vp->da));
 	}
-	
+
 	/* clear the memory here */
 	memset(vp, 0, sizeof(*vp));
 	talloc_free(vp);
