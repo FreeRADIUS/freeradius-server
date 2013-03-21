@@ -21,6 +21,14 @@ export DESTDIR := $(R)
 # And over-ride all of the other magic.
 include scripts/boiler.mk
 
+#  Tests specifically for Travis.  We do a LOT more than just
+#  the above tests
+ifneq "$(findstring travis,${prefix})" ""
+travis-test: test
+    @make install
+    @make deb
+endif
+
 test: build.raddb ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient
 	@$(MAKE) -C raddb/certs
 	@$(MAKE) -C src/tests tests
