@@ -385,8 +385,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		return EAP_INVALID;
 	}
 
-	RDEBUG2("EAP Peer sent %s (%d)", eap_type2name(type->num),
-		type->num);
+	RDEBUG2("Peer sent %s (%d)", eap_type2name(type->num), type->num);
 	/*
 	 *	Figure out what to do.
 	 */
