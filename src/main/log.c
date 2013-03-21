@@ -40,16 +40,16 @@ RCSID("$Id$")
  * Logging facility names
  */
 static const FR_NAME_NUMBER levels[] = {
-	{ ": Debug: ",	  L_DBG   },
-	{ ": Auth: ",	   L_AUTH  },
-	{ ": Proxy: ",	  L_PROXY },
-	{ ": Info: ",	   L_INFO  },
-	{ ": Acct: ",	   L_ACCT  },
-	{ ": Error: ",	  L_ERR   },
+	{ ": Debug: ",		L_DBG   },
+	{ ": Auth: ",		L_AUTH  },
+	{ ": Proxy: ",		L_PROXY },
+	{ ": Info: ",		L_INFO  },
+	{ ": Acct: ",		L_ACCT  },
+	{ ": Error: ",		L_ERR   },
 	{ ": WARNING: ",	L_DBG_WARN   },
-	{ ": ERROR: ",	  L_DBG_ERR   },
+	{ ": ERROR: ",		L_DBG_ERR   },
 	{ ": WARNING: ",	L_DBG_WARN2   },
-	{ ": ERROR: ",	  L_DBG_ERR2   },
+	{ ": ERROR: ",		L_DBG_ERR2   },
 	{ NULL, 0 }
 };
 
@@ -414,24 +414,32 @@ void log_talloc(const char *msg)
 
 void log_talloc_report(TALLOC_CTX *ctx)
 {
+
 	struct main_config_t *myconfig = &mainconfig;
 	FILE *fd;
-
+	const char *null_ctx;
 	int i = 0;
+
+	if (ctx) {
+		null_ctx = talloc_get_name(NULL);
+	}
+
 	fd = fdopen(myconfig->radlog_fd, "w");
 	if (!fd) {
-		radlog(L_ERR, "Couldn't write memory report, fdopen failed: %s",
-		       strerror(errno));
+		radlog(L_ERR, "Couldn't write memory report, fdopen failed: %s", strerror(errno));
 
 		return;
 	}
 	
-	do {
-		radlog(L_INFO, "(%i) Talloc report for \"%s\"", i++, talloc_get_name(ctx));
-		talloc_report_full(ctx, fd);
-	
-		if (!ctx) break;
-	} while ((ctx = talloc_parent(ctx)));
+	if (!ctx) {
+		talloc_report_full(NULL, fd);
+	} else {
+		do {
+			radlog(L_INFO, "Context level %i", i++);
+		
+			talloc_report_full(ctx, fd);
+		} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */
+	}
 	
 	fclose(fd);
 }
