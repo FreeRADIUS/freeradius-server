@@ -41,7 +41,7 @@ RCSID("$Id$")
 /*
  *	Requires typeof(), which is in most modern C compilers.
  */
-#define VERIFY(_x) _x=talloc_get_type_abort(_x, VALUE_PAIR)
+#define VERIFY(_x) _x=talloc_get_type(_x, VALUE_PAIR)
 #else
 #define VERIFY(_x)
 #endif
@@ -122,18 +122,10 @@ void pairbasicfree(VALUE_PAIR *vp)
 	VERIFY(vp);
 	
 	/*
-	 *	The lack of DA probably means something has gone
-	 *	wrong, try and get as much info as we can before
-	 *	calling talloc_free (at which point we'll probably get
-	 *	an abort).
+	 *	The lack of DA means something has gone wrong
 	 */
 	if (!vp->da) {
 		fr_strerror_printf("VALUE_PAIR has NULL DICT_ATTR pointer (probably already freed)");
-		
-		if (!talloc_get_type(vp, VALUE_PAIR)) {
-			fr_strerror_printf("Pointer being freed is NOT a VALUE_PAIR, got type \"%s\"",
-					   talloc_get_name(vp));
-		}
 	/*
 	 *	Only free the DICT_ATTR if it was dynamically allocated
 	 *	and was marked for free when the VALUE_PAIR is freed.
