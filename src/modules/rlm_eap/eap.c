@@ -109,12 +109,12 @@ int eap_module_load(eap_module_t **instance, eap_type_t method,
 
 	/* fill in the structure */
 	inst->cs = cs;
-	inst->typename = eap_type2name(method);
+	inst->name = eap_type2name(method);
 	
 	/*
 	 *	The name of the module were trying to load
 	 */
-	mod_name = talloc_asprintf(inst, "rlm_eap_%s", inst->typename);
+	mod_name = talloc_asprintf(inst, "rlm_eap_%s", inst->name);
 
 	/*
 	 *	dlopen is case sensitive
@@ -146,7 +146,7 @@ int eap_module_load(eap_module_t **instance, eap_type_t method,
 	inst->type = dlsym(inst->handle, mod_name);
 	if (!inst->type) {
 		radlog(L_ERR, "rlm_eap: Failed linking to structure in %s: %s",
-		       inst->typename, dlerror());
+		       inst->name, dlerror());
 		
 		return -1;
 	}

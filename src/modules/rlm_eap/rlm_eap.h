@@ -35,7 +35,7 @@ RCSIDH(rlm_eap_h, "$Id$")
  * Keep track of which sub modules we've loaded.
  */
 typedef struct eap_module {
-	const char		*typename;
+	const char		*name;
 	rlm_eap_module_t	*type;
 	lt_dlhandle		handle;
 	CONF_SECTION		*cs;
