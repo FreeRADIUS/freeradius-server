@@ -18,7 +18,10 @@ Build-Depends: debhelper (>= 6.0.7),
  libreadline-dev,
  libsnmp-dev,
  libpq-dev,
- libssl-dev
+ libssl-dev,
+ libtalloc-dev,
+ libyubikey-dev,
+ libsqlite3-dev
 Section: net
 Priority: optional
 Maintainer: Josip Rodin <joy-packages@debian.org>
