@@ -106,19 +106,23 @@ VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
  *
  * @todo TLV: needs to die in fire.
  */
-void pairbasicfree(VALUE_PAIR *pair)
+void pairbasicfree(VALUE_PAIR *vp)
 {
+	if (!vp) return;
+	
+	rad_assert(vp->da);
+	
 	/*
 	 *	Only free the DICT_ATTR if it was dynamically allocated
 	 *	and was marked for free when the VALUE_PAIR is freed.
 	 */
-	if (pair->da->flags.vp_free) {
-		dict_attr_free(&(pair->da));
+	if (vp->da->flags.vp_free) {
+		dict_attr_free(&(vp->da));
 	}
 	
 	/* clear the memory here */
-	memset(pair, 0, sizeof(*pair));
-	talloc_free(pair);
+	memset(vp, 0, sizeof(*vp));
+	talloc_free(vp);
 }
 
 /** Free memory used by a valuepair list.
