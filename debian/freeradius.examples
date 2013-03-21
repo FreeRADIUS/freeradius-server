@@ -4,8 +4,6 @@ scripts/create-users.pl
 scripts/cryptpasswd
 scripts/cryptpasswd.in
 scripts/exec-program-wait
-scripts/Makefile
-scripts/min-includes.pl
 scripts/radiusd2ldif.pl
 scripts/radiusd.cron.daily
 scripts/radiusd.cron.daily.in
