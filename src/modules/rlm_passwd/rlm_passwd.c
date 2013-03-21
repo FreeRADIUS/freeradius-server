@@ -499,6 +499,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 static int mod_detach (void *instance) {
 #define inst ((struct passwd_instance *)instance)
 	if(inst->ht) release_ht(inst->ht);
+	free(inst->pwdfmt);
 	return 0;
 #undef inst
 }
