@@ -863,7 +863,10 @@ void debug_pair_list(VALUE_PAIR *vp)
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
-		(void) talloc_get_type_abort(vp, VALUE_PAIR);
+		if (!talloc_get_type(vp, VALUE_PAIR)) {
+			log_talloc_report(vp);	
+			rad_assert(0);
+		}
 		
 		vp_print(fr_log_fp, vp);
 		vp = vp->next;
@@ -886,7 +889,10 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
-		(void) talloc_get_type_abort(vp, VALUE_PAIR);
+		if (!talloc_get_type(vp, VALUE_PAIR)) {
+			log_talloc_report(vp);	
+			rad_assert(0);
+		}
 		
 		vp_prints(buffer, sizeof(buffer), vp);
 		
