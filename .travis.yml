@@ -6,7 +6,7 @@ before_install:
   - sudo apt-get update -qq
   - sudo apt-get install -qq libtalloc-dev libssl-dev
   - sudo apt-get install -qq gdb
-  - sudo apt-get install -qq build-essential autoconf dh-make debhelper devscripts fakeroot lintian pbuilder
+  - sudo apt-get install -qq build-essential autoconf dh-make debhelper devscripts fakeroot lintian pbuilder quilt
   - sudo apt-get install -qq -y -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" libmysqlclient-dev
-  - sudo apt-get install -qq libkrb5-dev libgdbm-dev libhiredis-dev libldap2-dev libpam0g-dev libpcap-dev libperl-dev libpq-dev libreadline-dev libyubikey-dev firebird-dev freetds-dev python-dev ruby-dev unixodbc-dev
+  - sudo apt-get install -qq libkrb5-dev libgdbm-dev libhiredis-dev libldap2-dev libpam0g-dev libpcap-dev libperl-dev libpq-dev libreadline-dev libsnmp-dev libiodbc2-dev libyubikey-dev firebird-dev freetds-dev python-dev ruby-dev
 script: ./configure -C --prefix=$HOME/travis && make -j8 && make travis-test
