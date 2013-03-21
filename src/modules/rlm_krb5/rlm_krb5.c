@@ -85,7 +85,7 @@ static int krb5_detach(void *instance)
 	free(inst->vic_options);
 
 	if (inst->gic_options) {
-		krb5_get_init_creds_opt_free(*(inst->context),
+		krb5_get_init_creds_opt_free(*inst->context,
 					     inst->gic_options);
 	}
 #endif
@@ -94,7 +94,7 @@ static int krb5_detach(void *instance)
 	free(inst->service);
 		
 	if (inst->context) {
-		krb5_free_context(*(inst->context));
+		krb5_free_context(*inst->context);
 	}
 	
 	free(instance);
@@ -310,6 +310,8 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	krb5_keytab keytab;
 	krb5_context *context = NULL;
 	
+	rad_assert(inst->context);
+	
 	/*
 	 *	All the snippets on threadsafety say that individual threads
 	 *	must each use their own copy of context.
@@ -320,7 +322,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 *
 	 *	@todo Use the connection API (3.0 only).
 	 */
-	ret = krb5_copy_context(*(inst->context), context);
+	ret = krb5_copy_context(*inst->context, context);
 	if (ret) {
 		radlog(L_ERR, "rlm_krb5 (%s): Error cloning krb5 context: %s",
 		       inst->xlat_name, error_message(ret));
@@ -399,8 +401,8 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 
 	if (context) {
 		krb5_free_cred_contents(*context, &init_creds);
-		krb5_free_context(*context);
 		krb5_kt_close(*context, keytab);
+		krb5_free_context(*context);
 	}
 	
 	return rcode;
@@ -424,10 +426,12 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	krb5_verify_opt options;
 	krb5_context *context = NULL;
 	
+	rad_assert(inst->context);
+
 	/*
 	 *	See above in MIT krb5_auth
 	 */
-	ret = krb5_copy_context(*(inst->context), context);
+	ret = krb5_copy_context(*inst->context, context);
 	if (ret) {
 		radlog(L_ERR, "rlm_krb5 (%s): Error cloning krb5 context: %s",
 		       inst->xlat_name, error_message(ret));
@@ -508,8 +512,8 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	
 	cleanup:
 	
-	krb5_free_context(*context);
 	krb5_kt_close(*context, keytab);
+	krb5_free_context(*context);
 	
 	return rcode;
 }
