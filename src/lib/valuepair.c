@@ -115,7 +115,7 @@ void pairbasicfree(VALUE_PAIR *vp)
 	 *	as we can before calling talloc_free (at which point we'll probably get an abort).
 	 */
 	if (!vp->da) {
-		fr_strerror_printf("VALUE_PAIR has invalid DICT_ATTR pointer (probably already freed)");
+		fr_strerror_printf("VALUE_PAIR has NULL DICT_ATTR pointer (probably already freed)");
 		
 		if (!talloc_get_type(vp, VALUE_PAIR)) {
 			fr_strerror_printf("Pointer being freed is NOT a VALUE_PAIR, got type \"%s\"",
