@@ -243,7 +243,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		 *	Bare words on the left can be attribute names.
 		 */
 		if (!(radius_get_vp(request, pleft, &vp) < 0)) {
-			VALUE_PAIR myvp;
+			VALUE_PAIR *myvp;
 
 			/*
 			 *	VP exists, and that's all we're looking for.
@@ -293,15 +293,17 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			}
 #endif
 
-			memcpy(&myvp, vp, sizeof(myvp));
-			if (!pairparsevalue(&myvp, pright)) {
+			myvp = paircopyvp(request, vp);
+			if (!pairparsevalue(myvp, pright)) {
+				pairbasicfree(myvp);
 				RDEBUG2("Failed parsing \"%s\": %s",
 				       pright, fr_strerror());
 				return FALSE;
 			}
 
-			myvp.op = token;
-			*presult = paircmp(&myvp, vp);
+			myvp->op = token;
+			*presult = paircmp(myvp, vp);
+			pairbasicfree(myvp);
 			RDEBUG3("  paircmp -> %d", *presult);
 			return TRUE;
 		} /* else it's not a VP in a list */

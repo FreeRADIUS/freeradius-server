@@ -37,6 +37,15 @@ RCSID("$Id$")
 #endif
 #endif
 
+#if defined(WITH_VERIFY_PTR)
+/*
+ *	Requires typeof(), which is in most modern C compilers.
+ */
+#define VERIFY(_x) _x=talloc_get_type_abort(_x, VALUE_PAIR)
+#else
+#define VERIFY(_x)
+#endif
+
 static const char *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
@@ -109,10 +118,14 @@ VALUE_PAIR *paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor)
 void pairbasicfree(VALUE_PAIR *vp)
 {
 	if (!vp) return;
+
+	VERIFY(vp);
 	
 	/*
-	 *	The lack of DA probably means something has gone wrong, try and get as much info 
-	 *	as we can before calling talloc_free (at which point we'll probably get an abort).
+	 *	The lack of DA probably means something has gone
+	 *	wrong, try and get as much info as we can before
+	 *	calling talloc_free (at which point we'll probably get
+	 *	an abort).
 	 */
 	if (!vp->da) {
 		fr_strerror_printf("VALUE_PAIR has NULL DICT_ATTR pointer (probably already freed)");
@@ -130,7 +143,9 @@ void pairbasicfree(VALUE_PAIR *vp)
 	}
 
 	/* clear the memory here */
+#ifndef NDEBUG
 	memset(vp, 0, sizeof(*vp));
+#endif
 	talloc_free(vp);
 }
 
@@ -138,20 +153,21 @@ void pairbasicfree(VALUE_PAIR *vp)
  *
  * @todo TLV: needs to free all dependents of each VP freed.
  */
-void pairfree(VALUE_PAIR **pair_ptr)
+void pairfree(VALUE_PAIR **vps)
 {
-	VALUE_PAIR	*next, *pair;
+	VALUE_PAIR	*next, *vp;
 
-	if (!pair_ptr) return;
-	pair = *pair_ptr;
+	if (!vps) return;
+	vp = *vps;
 
-	while (pair != NULL) {
-		next = pair->next;
-		pairbasicfree(pair);
-		pair = next;
+	while (vp) {
+		VERIFY(vp);
+		next = vp->next;
+		pairbasicfree(vp);
+		vp = next;
 	}
 
-	*pair_ptr = NULL;
+	*vps = NULL;
 }
 
 /** Mark malformed or unrecognised attributed as unknown
@@ -163,6 +179,7 @@ int pair2unknown(VALUE_PAIR *vp)
 {
 	const DICT_ATTR *da;
 	
+	VERIFY(vp);
 	if (vp->da->flags.is_unknown) {
 		return 0;
 	}
@@ -181,16 +198,17 @@ int pair2unknown(VALUE_PAIR *vp)
  *
  * @todo should take DAs and do a pointer comparison.
  */
-VALUE_PAIR *pairfind(VALUE_PAIR *first, unsigned int attr, unsigned int vendor,
+VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 		      int8_t tag)
 {
-	while (first) {
-		if ((first->da->attr == attr) && (first->da->vendor == vendor)
-		    && ((tag == TAG_ANY) || (first->da->flags.has_tag &&
-			(first->tag == tag)))) {
-			return first;
+	while (vp) {
+		VERIFY(vp);
+		if ((vp->da->attr == attr) && (vp->da->vendor == vendor)
+		    && ((tag == TAG_ANY) || (vp->da->flags.has_tag &&
+			(vp->tag == tag)))) {
+			return vp;
 		}
-		first = first->next;
+		vp = vp->next;
 	}
 
 	return NULL;
@@ -215,6 +233,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 	VALUE_PAIR **last = first;
 
 	for(i = *first; i; i = next) {
+		VERIFY(i);
 		next = i->next;
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
 		    ((tag == TAG_ANY) ||
@@ -241,12 +260,14 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 
 	if (!add) return;
 
+	VERIFY(add);
+
 	if (*first == NULL) {
 		*first = add;
 		return;
 	}
 	for(i = *first; i->next; i = i->next)
-		;
+		VERIFY(i);
 	i->next = add;
 }
 
@@ -266,6 +287,8 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **prev = first;
 
+	VERIFY(replace);
+
 	if (*first == NULL) {
 		*first = replace;
 		return;
@@ -277,6 +300,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	 *	we ignore any others that might exist.
 	 */
 	for(i = *first; i; i = next) {
+		VERIFY(i);
 		next = i->next;
 
 		/*
@@ -323,6 +347,8 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
 	VALUE_PAIR *n;
 
 	if (!vp) return NULL;
+
+	VERIFY(vp);
 
 	n = pairalloc(ctx, vp->da);
 	if (!n) {
@@ -374,6 +400,8 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, const DICT_ATTR *da, const VALUE_PAI
 
 	if (!vp) return NULL;
 
+	VERIFY(vp);
+
 	if (da->type != vp->da->type) return NULL;
 	
 	n = pairalloc(ctx, da);
@@ -421,6 +449,8 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp,
 	last = &first;
 
 	while (vp) {
+		VERIFY(vp);
+
 		if ((attr > 0) &&
 		    ((vp->da->attr != attr) || (vp->da->vendor != vendor)))
 			goto skip;
@@ -481,6 +511,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tailto = to;
 	for(i = *to; i; i = i->next) {
+		VERIFY(i);
 		if (!i->da->vendor &&
 		    (i->da->attr == PW_USER_PASSWORD ||
 		     i->da->attr == PW_CRYPT_PASSWORD))
@@ -492,6 +523,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	 *	Loop over the "from" list.
 	 */
 	for(i = *from; i; i = next) {
+		VERIFY(i);
 		next = i->next;
 
 		/*
@@ -681,8 +713,10 @@ void pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 	 */
 	if (*to != NULL) {
 		to_tail = *to;
-		for(i = *to; i; i = i->next)
+		for(i = *to; i; i = i->next) {
+			VERIFY(i);
 			to_tail = i;
+		}
 	} else
 		to_tail = NULL;
 
@@ -706,6 +740,7 @@ void pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 	}
 
 	for(i = *from; i; i = next) {
+		VERIFY(i);
 		next = i->next;
 
 		if ((tag != TAG_ANY) && i->da->flags.has_tag &&
@@ -965,6 +1000,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 	DICT_VALUE	*dval;
 
 	if (!value) return FALSE;
+	VERIFY(vp);
 
 	/*
 	 *	Even for integers, dates and ip addresses we
