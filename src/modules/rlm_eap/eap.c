@@ -76,7 +76,11 @@ static int eap_module_free(void *ctx)
 
 	inst = talloc_get_type_abort(ctx, eap_module_t);
 
-	if (inst->type->detach) (inst->type->detach)(inst->instance);
+	/*
+	 *	We have to check inst->type as it's only allocated 
+	 *	if we loaded the eap method.
+	 */
+	if (inst->type && inst->type->detach) (inst->type->detach)(inst->instance);
 
 #ifndef NDEBUG
 	/*
