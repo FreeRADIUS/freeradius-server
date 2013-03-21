@@ -417,6 +417,7 @@ void log_talloc_report(TALLOC_CTX *ctx)
 	struct main_config_t *myconfig = &mainconfig;
 	FILE *fd;
 
+	int i = 0;
 	fd = fdopen(myconfig->radlog_fd, "w");
 	if (!fd) {
 		radlog(L_ERR, "Couldn't write memory report, fdopen failed: %s",
@@ -424,8 +425,13 @@ void log_talloc_report(TALLOC_CTX *ctx)
 
 		return;
 	}
-	radlog(L_INFO, "Allocated memory at time of report:");
-	talloc_report_full(ctx, fd);
-
+	
+	do {
+		radlog(L_INFO, "(%i) Talloc report for \"%s\"", i++, talloc_get_name(ctx));
+		talloc_report_full(ctx, fd);
+	
+		if (!ctx) break;
+	} while ((ctx = talloc_parent(ctx)));
+	
 	fclose(fd);
 }

@@ -864,6 +864,8 @@ void debug_pair_list(VALUE_PAIR *vp)
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
 		if (!talloc_get_type(vp, VALUE_PAIR)) {
+			radlog(L_ERR, "Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+			
 			log_talloc_report(vp);	
 			rad_assert(0);
 		}
@@ -890,6 +892,8 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
 		if (!talloc_get_type(vp, VALUE_PAIR)) {
+			RDEBUGE("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+			
 			log_talloc_report(vp);	
 			rad_assert(0);
 		}

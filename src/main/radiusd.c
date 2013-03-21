@@ -510,6 +510,7 @@ int main(int argc, char *argv[])
 #endif
 
 	if (memory_report) {
+		radlog(L_INFO, "Allocated memory at time of report:");
 		log_talloc_report(NULL);
 	}
 
