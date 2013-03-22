@@ -327,8 +327,8 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 	case LDAP_OPERATIONS_ERROR:
 		*error = "Please set 'chase_referrals=yes' and 'rebind=yes'. See the ldap module configuration "
 			 "for details.";
+			 
 		/* FALL-THROUGH */
-
 	default:
 		status = LDAP_PROC_ERROR;
 		
@@ -420,12 +420,11 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
  * @param dn The DN of the user, may be NULL to bind anonymously.
  * @param password May be NULL if no password is specified.
  * @param retry if the server is down.
- * @return one of the RLM_MODULE_* values.
+ * @return one of the LDAP_PROC_* values.
  */
-rlm_rcode_t rlm_ldap_bind(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn, const char *dn,
-			  const char *password, int retry)
+ldap_rcode_t rlm_ldap_bind(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn, const char *dn,
+			   const char *password, int retry)
 {
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	ldap_rcode_t	status;
 	
 	int		msgid;
@@ -454,16 +453,12 @@ retry:
 	case LDAP_PROC_SUCCESS:
 		break;
 	case LDAP_PROC_NOT_PERMITTED:
-		rcode = RLM_MODULE_USERLOCK;
-		
 		LDAP_ERR_REQ("Bind was not permitted: %s", error);
 		LDAP_EXT_REQ();
 		
 		break;
 
 	case LDAP_PROC_REJECT:
-		rcode = RLM_MODULE_REJECT;
-		
 		LDAP_ERR_REQ("Bind credentials incorrect: %s", error);
 		LDAP_EXT_REQ();
 
@@ -482,14 +477,14 @@ retry:
 			}
 		};
 		
+		status = LDAP_PROC_ERROR;
+		
 		/*
 		 *	Were not allowed to retry, or there are no more
 		 *	sockets, treat this as a hard failure.
 		 */
-		goto error;
+		/* FALL-THROUGH */
 	default:
-error:
-		rcode = RLM_MODULE_FAIL;
 #ifdef HAVE_LDAP_INITIALIZE
 		if (inst->is_url) {
 			LDAP_ERR_REQ("Bind with %s to %s failed: %s", dn, inst->server, error);
@@ -506,7 +501,7 @@ error:
 
 	if (extra) talloc_free(extra);
 
-	return rcode; /* caller closes the connection */
+	return status; /* caller closes the connection */
 }
 
 
@@ -554,7 +549,8 @@ ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap
 	 *	Do all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		if (rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE) != RLM_MODULE_OK) {
+		status = rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE);
+		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
 
@@ -645,7 +641,8 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
 	 *	Perform all modifications as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		if (rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE) != RLM_MODULE_OK) {
+		status = rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE);
+		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
 
@@ -751,7 +748,8 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	 *	Perform all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		if (rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE) != RLM_MODULE_OK) {
+		status = rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE);
+		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
 		}
@@ -949,7 +947,7 @@ void rlm_ldap_check_reply(const ldap_instance_t *inst, REQUEST *request)
 static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t request, UNUSED ber_int_t msgid,
 			   void *ctx)
 {
-	rlm_rcode_t rcode;
+	ldap_rcode_t status;
 	ldap_handle_t *conn = ctx;
 	
 	int ldap_errno;
@@ -960,15 +958,15 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 
 	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->xlat_name, url);
 
-	rcode = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->login, conn->inst->password, FALSE);
-	
-	if (rcode == RLM_MODULE_OK) {
-		return LDAP_SUCCESS;
+	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->login, conn->inst->password, FALSE);
+	if (status != LDAP_PROC_SUCCESS) {
+		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
+			
+		return ldap_errno;
 	}
 	
-	ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-			
-	return ldap_errno;
+
+	return LDAP_SUCCESS;
 }
 #endif
 
@@ -981,7 +979,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
  */
 void *rlm_ldap_conn_create(void *ctx)
 {
-	rlm_rcode_t rcode;
+	ldap_rcode_t status;
 	
 	int ldap_errno, ldap_version;
 	struct timeval tv;
@@ -1124,8 +1122,8 @@ void *rlm_ldap_conn_create(void *ctx)
 	conn->rebound = FALSE;
 	conn->referred = FALSE;
 
-	rcode = rlm_ldap_bind(inst, NULL, &conn, inst->login, inst->password, FALSE);
-	if (rcode != RLM_MODULE_OK) {
+	status = rlm_ldap_bind(inst, NULL, &conn, inst->login, inst->password, FALSE);
+	if (status != LDAP_PROC_SUCCESS) {
 		goto error;
 	}
 

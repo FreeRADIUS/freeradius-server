@@ -698,7 +698,8 @@ error:
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode;
-	const char	*user_dn;
+	ldap_rcode_t	status;
+	const char	*dn;
 	ldap_instance_t	*inst = instance;
 	ldap_handle_t	*conn;
 
@@ -740,8 +741,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Get the DN by doing a search.
 	 */
-	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
-	if (!user_dn) {
+	dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
+	if (!dn) {
 		rlm_ldap_release_socket(inst, conn);
 		
 		return rcode;
@@ -751,10 +752,33 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	Bind as the user
 	 */
 	conn->rebound = TRUE;
-	rcode = rlm_ldap_bind(inst, request, &conn, user_dn, request->password->vp_strvalue, TRUE);
-	if (rcode == RLM_MODULE_OK) {
-		RDEBUG("Bind as user \"%s\" was successful", user_dn);
-	}
+	status = rlm_ldap_bind(inst, request, &conn, dn, request->password->vp_strvalue, TRUE);
+	switch (status) {
+	case LDAP_PROC_SUCCESS:
+		rcode = RLM_MODULE_OK;
+		RDEBUG("Bind as user \"%s\" was successful", dn);
+		
+		break;
+	case LDAP_PROC_NOT_PERMITTED:
+		rcode = RLM_MODULE_USERLOCK;
+		
+		break;
+	case LDAP_PROC_REJECT:
+		rcode = RLM_MODULE_REJECT;
+		
+		break;
+	case LDAP_PROC_BAD_DN:
+		rcode = RLM_MODULE_INVALID;
+		
+		break;
+	case LDAP_PROC_NO_RESULT:
+		rcode = RLM_MODULE_NOTFOUND;
+		
+		break;
+	default:
+		rcode = RLM_MODULE_FAIL;
+		break;
+	};
 
 	rlm_ldap_release_socket(inst, conn);
 	
@@ -766,7 +790,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	rlm_rcode_t rcode = RLM_MODULE_OK;
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	ldap_rcode_t	status;
 	int		ldap_errno;
 	ldap_instance_t	*inst = instance;
 	char		**vals;
@@ -880,12 +905,34 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			 *	Bind as the user
 			 */
 			conn->rebound = TRUE;
-			rcode = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, TRUE);
-			if (rcode != RLM_MODULE_OK) {
+			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, TRUE);
+			switch (status) {
+			case LDAP_PROC_SUCCESS:
+				rcode = RLM_MODULE_OK;
+				RDEBUG("Bind as user \"%s\" was successful", dn);
+				
+				break;
+			case LDAP_PROC_NOT_PERMITTED:
+				rcode = RLM_MODULE_USERLOCK;
+				
 				goto finish;
-			}
-			
-			RDEBUG("Bind as user \"%s\" was successful", dn);
+			case LDAP_PROC_REJECT:
+				rcode = RLM_MODULE_REJECT;
+				
+				goto finish;
+			case LDAP_PROC_BAD_DN:
+				rcode = RLM_MODULE_INVALID;
+				
+				goto finish;
+			case LDAP_PROC_NO_RESULT:
+				rcode = RLM_MODULE_NOTFOUND;
+				
+				goto finish;
+			default:
+				rcode = RLM_MODULE_FAIL;
+				
+				goto finish;
+			};
 		}
 	}
 
