@@ -68,16 +68,16 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_lib_com_err_set_com_err_hook" != xyes; then
 		AC_MSG_WARN([the comm_err library isn't found!])
 	fi
-
-	FR_SMART_CHECK_LIB(krb5, krb5_init_context)
-	if test "x$ac_cv_lib_krb5_krb5_init_context" != xyes; then
-		fail="$fail krb5"
-	fi
 	
 	dnl Only the heimdal version of the library has this function
-	FR_SMART_CHECK_LIB(krb5, krb5_h_errno_to_heim_errno )
-	if test "x$ac_cv_lib_krb5_krb5_h_errno_to_heim_errno" == xyes; then
+	FR_SMART_CHECK_LIB(krb5, krb5_verify_user_opt)
+	if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
         krb5mod_cflags="-DHEIMDAL_KRB5"
+	else
+	    FR_SMART_CHECK_LIB(krb5, krb5_get_init_creds_password)
+	    if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
+		    fail="$fail krb5"
+	    fi
 	fi
 		
 	krb5threadsafe=

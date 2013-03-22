@@ -3110,7 +3110,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto in $try" >&5
 $as_echo_n "checking for krb5_encrypt_data in -lk5crypto in $try... " >&6; }
     LIBS="-L$try -rpath$try -lk5crypto $old_LIBS -Wl,-rpath,$try"
@@ -3281,7 +3281,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
 $as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
     LIBS="-L$try -rpath$try -lcrypto $old_LIBS -Wl,-rpath,$try"
@@ -3457,7 +3457,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err in $try" >&5
 $as_echo_n "checking for set_com_err_hook in -lcom_err in $try... " >&6; }
     LIBS="-L$try -rpath$try -lcom_err $old_LIBS -Wl,-rpath,$try"
@@ -3503,7 +3503,7 @@ $as_echo "$as_me: WARNING: the comm_err library isn't found!" >&2;}
 
 
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "krb5_init_context" | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "krb5_verify_user_opt" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -3511,16 +3511,16 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5 in $try" >&5
-$as_echo_n "checking for krb5_init_context in -lkrb5 in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_verify_user_opt in -lkrb5 in $try" >&5
+$as_echo_n "checking for krb5_verify_user_opt in -lkrb5 in $try... " >&6; }
     LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char krb5_init_context();
+extern char krb5_verify_user_opt();
 int
 main ()
 {
-krb5_init_context()
+krb5_verify_user_opt()
   ;
   return 0;
 }
@@ -3543,16 +3543,16 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5" >&5
-$as_echo_n "checking for krb5_init_context in -lkrb5... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_verify_user_opt in -lkrb5" >&5
+$as_echo_n "checking for krb5_verify_user_opt in -lkrb5... " >&6; }
   LIBS="-lkrb5 $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char krb5_init_context();
+extern char krb5_verify_user_opt();
 int
 main ()
 {
-krb5_init_context()
+krb5_verify_user_opt()
   ;
   return 0;
 }
@@ -3628,17 +3628,17 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5 in $try" >&5
-$as_echo_n "checking for krb5_init_context in -lkrb5 in $try... " >&6; }
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_verify_user_opt in -lkrb5 in $try" >&5
+$as_echo_n "checking for krb5_verify_user_opt in -lkrb5 in $try... " >&6; }
     LIBS="-L$try -rpath$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char krb5_init_context();
+extern char krb5_verify_user_opt();
 int
 main ()
 {
-krb5_init_context()
+krb5_verify_user_opt()
   ;
   return 0;
 }
@@ -3666,14 +3666,13 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_krb5_krb5_init_context" != xyes; then
-		fail="$fail krb5"
-	fi
-
+	if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
+        krb5mod_cflags="-DHEIMDAL_KRB5"
+	else
 
 
 sm_lib_safe=`echo "krb5" | sed 'y%./+-%__p_%'`
-sm_func_safe=`echo "krb5_h_errno_to_heim_errno " | sed 'y%./+-%__p_%'`
+sm_func_safe=`echo "krb5_get_init_creds_password" | sed 'y%./+-%__p_%'`
 
 old_LIBS="$LIBS"
 smart_lib=
@@ -3681,16 +3680,16 @@ smart_lib_dir=
 
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_h_errno_to_heim_errno  in -lkrb5 in $try" >&5
-$as_echo_n "checking for krb5_h_errno_to_heim_errno  in -lkrb5 in $try... " >&6; }
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_get_init_creds_password in -lkrb5 in $try" >&5
+$as_echo_n "checking for krb5_get_init_creds_password in -lkrb5 in $try... " >&6; }
     LIBS="-L$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char krb5_h_errno_to_heim_errno ();
+extern char krb5_get_init_creds_password();
 int
 main ()
 {
-krb5_h_errno_to_heim_errno ()
+krb5_get_init_creds_password()
   ;
   return 0;
 }
@@ -3713,16 +3712,16 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$smart_lib" = "x"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_h_errno_to_heim_errno  in -lkrb5" >&5
-$as_echo_n "checking for krb5_h_errno_to_heim_errno  in -lkrb5... " >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_get_init_creds_password in -lkrb5" >&5
+$as_echo_n "checking for krb5_get_init_creds_password in -lkrb5... " >&6; }
   LIBS="-lkrb5 $old_LIBS"
   cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char krb5_h_errno_to_heim_errno ();
+extern char krb5_get_init_creds_password();
 int
 main ()
 {
-krb5_h_errno_to_heim_errno ()
+krb5_get_init_creds_password()
   ;
   return 0;
 }
@@ -3798,17 +3797,17 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_h_errno_to_heim_errno  in -lkrb5 in $try" >&5
-$as_echo_n "checking for krb5_h_errno_to_heim_errno  in -lkrb5 in $try... " >&6; }
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_get_init_creds_password in -lkrb5 in $try" >&5
+$as_echo_n "checking for krb5_get_init_creds_password in -lkrb5 in $try... " >&6; }
     LIBS="-L$try -rpath$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-extern char krb5_h_errno_to_heim_errno ();
+extern char krb5_get_init_creds_password();
 int
 main ()
 {
-krb5_h_errno_to_heim_errno ()
+krb5_get_init_creds_password()
   ;
   return 0;
 }
@@ -3836,8 +3835,9 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_krb5_krb5_h_errno_to_heim_errno" == xyes; then
-        krb5mod_cflags="-DHEIMDAL_KRB5"
+	    if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
+		    fail="$fail krb5"
+	    fi
 	fi
 
 	krb5threadsafe=
@@ -3969,7 +3969,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_is_thread_safe in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_is_thread_safe in -lkrb5 in $try... " >&6; }
     LIBS="-L$try -rpath$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
@@ -4036,9 +4036,6 @@ rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
 fi
 
 	fi
-
-
-
 
 	targetname=rlm_krb5
 else
