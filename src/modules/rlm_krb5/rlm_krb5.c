@@ -35,7 +35,7 @@ RCSID("$Id$")
 #include <krb5.h>
 #include <com_err.h>
 
-#define SERVICE_NAME_LEN 64	    //!< Maximum length of a service name.
+#define SERVICE_NAME_LEN 64		//!< Maximum length of a service name.
 
 /** Instance configuration for rlm_krb5
  *
@@ -63,8 +63,8 @@ typedef struct rlm_krb5_t {
 							//!< validate_initial_creds
 							//!< function.
 
-	krb5_principal server;	    //!< A structure representing the parsed
-				    //!< service_princ.
+	krb5_principal server;		//!< A structure representing the parsed
+					//!< service_princ.
 #endif
 	
 } rlm_krb5_t;
@@ -82,7 +82,7 @@ static int krb5_detach(void *instance)
 	rlm_krb5_t *inst = instance;
 		
 #ifndef HEIMDAL_KRB5
-	free(inst->vic_options);
+	talloc_free(inst->vic_options);
 
 	if (inst->gic_options) {
 		krb5_get_init_creds_opt_free(inst->context, inst->gic_options);
@@ -90,7 +90,7 @@ static int krb5_detach(void *instance)
 #endif
 
 	/* Don't free hostname, it's just a pointer into service_princ */
-	free(inst->service);
+	talloc_free(inst->service);
 		
 	if (inst->context) {
 		krb5_free_context(inst->context);
@@ -137,7 +137,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	if (ret) {
 		radlog(L_ERR, "rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
 
-		goto error;
+		return -1;
 	}
 	
 	radlog(L_DBG, "rlm_krb5 (%s): Context initialised successfully", inst->xlat_name);
@@ -159,7 +159,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		}
 		
 		if (len) {
-			inst->service = rad_malloc(len + 1);
+			inst->service = talloc_array(inst, char, (len + 1));
 			strlcpy(inst->service, inst->service_princ, len);
 		}
 	}
@@ -182,7 +182,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_krb5 (%s): Failed parsing service "
 		       "principal: %s", inst->xlat_name, error_message(ret));
 
-		goto error;
+		return -1;
 	}
 	
 	ret = krb5_unparse_name(inst->context, inst->server, &princ_name);
@@ -192,7 +192,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		       "principal string: %s", inst->xlat_name,
 		       error_message(ret));
 
-		goto error;
+		return -1;
 	}
 	
 	/*
@@ -214,11 +214,10 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		       "credential options: %s", inst->xlat_name,
 		       error_message(ret));
 		
-		goto error;
+		return -1;
 	}
 	
-	inst->vic_options = rad_calloc(sizeof(*(inst->vic_options)));
-	if (!inst->vic_options) goto error;
+	MEM(inst->vic_options = talloc_zero(inst, krb5_verify_init_creds_opt));
 	
 	krb5_verify_init_creds_opt_init(inst->vic_options);
 	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, TRUE);
@@ -226,10 +225,6 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 #endif
 	
 	return 0;
-	
-	error:
-	krb5_detach(inst);
-	return -1;
 }
 
 static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_principal *client)
