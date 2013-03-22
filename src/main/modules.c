@@ -102,6 +102,24 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 #define LD_LIBRARY_PATH "LD_LIBRARY_PATH"
 #endif
 
+/*
+ *	Because dlopen produces really shitty and inaccurate error messages
+ */
+static void check_lib_access(const char *name)
+{
+	if (access(name, R_OK) < 0) switch (errno) {
+		case EACCES:
+			DEBUGW("Library \"%s\" exists, but we don't have permission to read", name);
+			break;
+		case ENOENT:
+			DEBUG3("Library not found at path \"%s\"", name);
+			break;
+		default:
+			DEBUG3("Possible issue accessing Library \"%s\": %s", name, strerror(errno));
+			break;
+	}
+}
+
 lt_dlhandle lt_dlopenext(const char *name)
 {
 	int flags = RTLD_NOW;
@@ -119,6 +137,9 @@ lt_dlhandle lt_dlopenext(const char *name)
 	 *	Prefer loading our libraries by absolute path.
 	 */
 	snprintf(buffer, sizeof(buffer), "%s/%s%s", radlib_dir, name, LT_SHREXT);
+	
+	check_lib_access(buffer);
+	
 	handle = dlopen(buffer, flags);
 	if (handle) return handle;
 
