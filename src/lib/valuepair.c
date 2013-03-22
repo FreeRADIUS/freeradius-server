@@ -41,7 +41,7 @@ RCSID("$Id$")
 /*
  *	Requires typeof(), which is in most modern C compilers.
  */
-#define VERIFY(_x) _x=talloc_get_type(_x, VALUE_PAIR)
+#define VERIFY(_x) _x=talloc_get_type_abort(_x, VALUE_PAIR)
 #else
 #define VERIFY(_x)
 #endif
