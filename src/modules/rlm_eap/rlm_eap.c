@@ -169,7 +169,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 			return -1;
 		}
 
-#ifndef HAVE_OPENSSL_SSL_H
+#if !defined(HAVE_OPENSSL_SSL_H) || !defined(HAVE_LIBSSL)
 		/*
 		 *	This allows the default configuration to be
 		 *	shipped with EAP-TLS, etc. enabled.  If the
