@@ -7,5 +7,5 @@ endif
 SOURCES		:= $(TARGETNAME).c
 
 SRC_CFLAGS	:= @mod_cflags@
-SRC_CFLAGS	+= -I/usr/include/et -DKRB5_DEPRECATED
-TGT_LDLIBS	:= @mod_cflags@
+SRC_CFLAGS	+= -DKRB5_DEPRECATED
+TGT_LDLIBS	:= @mod_ldflags@

@@ -73,7 +73,7 @@ if test x$with_[]modname != xno; then
 	if test "x$krb5libcrypto" = x; then
 		AC_MSG_WARN([neither krb5 'k5crypto' nor 'crypto' libraries are found!])
 	fi
-
+	
 	FR_SMART_CHECK_LIB(com_err, set_com_err_hook)
 	if test "x$ac_cv_lib_com_err_set_com_err_hook" != xyes; then
 		AC_MSG_WARN([the comm_err library isn't found!])
@@ -100,10 +100,10 @@ if test x"$fail" != x""; then
 	fi
 fi
 
-mod_cflags=$SMART_LIBS
-mod_cflags="${krb5mod_cflags} $SMART_CFLAGS"
+mod_ldflags="${krb5libcrypto} ${SMART_LIBS}"
+mod_cflags="${krb5mod_cflags} ${SMART_CFLAGS}"
 
-AC_SUBST(mod_cflags)
+AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
 AC_SUBST(targetname)
 AC_OUTPUT(all.mk)

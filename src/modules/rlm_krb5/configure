@@ -587,6 +587,7 @@ ac_subst_vars='LTLIBOBJS
 LIBOBJS
 targetname
 mod_cflags
+mod_ldflags
 CPP
 OBJEXT
 EXEEXT
@@ -3085,7 +3086,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_encrypt_data in -lk5crypto in $try" >&5
 $as_echo_n "checking for krb5_encrypt_data in -lk5crypto in $try... " >&6; }
     LIBS="-L$try -rpath$try -lk5crypto $old_LIBS -Wl,-rpath,$try"
@@ -3256,7 +3257,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for DH_new in -lcrypto in $try" >&5
 $as_echo_n "checking for DH_new in -lcrypto in $try... " >&6; }
     LIBS="-L$try -rpath$try -lcrypto $old_LIBS -Wl,-rpath,$try"
@@ -3432,7 +3433,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for set_com_err_hook in -lcom_err in $try" >&5
 $as_echo_n "checking for set_com_err_hook in -lcom_err in $try... " >&6; }
     LIBS="-L$try -rpath$try -lcom_err $old_LIBS -Wl,-rpath,$try"
@@ -3603,7 +3604,7 @@ fi
 eval "smart_lib_dir=\"\$smart_lib_dir $DIRS\""
 
 
-  for try in $smart_lib_dir /usr/local/lib /opt/lib; do
+  for try in $smart_lib_dir /usr/lib /usr/local/lib /opt/lib; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for krb5_init_context in -lkrb5 in $try" >&5
 $as_echo_n "checking for krb5_init_context in -lkrb5 in $try... " >&6; }
     LIBS="-L$try -rpath$try -lkrb5 $old_LIBS -Wl,-rpath,$try"
@@ -3663,8 +3664,8 @@ $as_echo "$as_me: WARNING: FAILURE: rlm_krb5 requires: $fail." >&2;};
 	fi
 fi
 
-mod_cflags=$SMART_LIBS
-mod_cflags="${krb5mod_cflags} $SMART_CFLAGS"
+mod_ldflags="${krb5libcrypto} ${SMART_LIBS}"
+mod_cflags="${krb5mod_cflags} ${SMART_CFLAGS}"
 
 
 
