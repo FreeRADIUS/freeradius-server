@@ -1,12 +1,12 @@
-TARGETNAME	:= @targetname@
+TARGETNAME	:= rlm_eap_leap
 
 ifneq "$(TARGETNAME)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
-SOURCES		:= $(TARGETNAME).c
+SOURCES		:= $(TARGETNAME).c eap_leap.c smbdes.c
 
-SRC_CFLAGS	:= @mod_cflags@
-TGT_LDLIBS	:= @mod_ldflags@
+SRC_CFLAGS	:=
+TGT_LDLIBS	:=
 SRC_INCDIRS	:= ../../ ../../libeap/
 TGT_PREREQS	:= libfreeradius-eap.a
