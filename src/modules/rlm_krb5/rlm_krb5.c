@@ -42,26 +42,26 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_krb5.
  */
 typedef struct rlm_krb5_t {
-	const char *xlat_name;	    //!< This module's instance name.
-	const char *keytabname;	    //!< The keytab to resolve the service in.
-	const char *service_princ;  //!< The service name provided by the
-				    //!< config parser.
+	const char	*xlat_name;	//!< This module's instance name.
+	const char	*keytabname;	//!< The keytab to resolve the service in.
+	const char	*service_princ;	//!< The service name provided by the
+					//!< config parser.
 	
-	char *hostname;		    //!< The hostname component of
-				    //!< service_princ, or NULL.
-	char *service;		    //!< The service component of
-				    //!< service_princ, or NULL.
+	char		*hostname;	//!< The hostname component of
+					//!< service_princ, or NULL.
+	char		*service;	//!< The service component of
+					//!< service_princ, or NULL.
 	
-	krb5_context *context;	    //!< The kerberos context (cloned once per
-				    //!< request).
+	krb5_context context;		//!< The kerberos context (cloned once per
+					//!< request).
 	
 #ifndef HEIMDAL_KRB5
-	krb5_get_init_creds_opt	*gic_options;	 //!< Options to pass to the
-						 //!< get_initial_credentials.
-						 //!< function.
-	krb5_verify_init_creds_opt *vic_options; //!< Options to pass to the
-						 //!< validate_initial_creds
-						 //!< function.
+	krb5_get_init_creds_opt		*gic_options;	//!< Options to pass to the
+							//!< get_initial_credentials.
+							//!< function.
+	krb5_verify_init_creds_opt	*vic_options;	//!< Options to pass to the
+							//!< validate_initial_creds
+							//!< function.
 
 	krb5_principal server;	    //!< A structure representing the parsed
 				    //!< service_princ.
@@ -85,8 +85,7 @@ static int krb5_detach(void *instance)
 	free(inst->vic_options);
 
 	if (inst->gic_options) {
-		krb5_get_init_creds_opt_free(*inst->context,
-					     inst->gic_options);
+		krb5_get_init_creds_opt_free(inst->context, inst->gic_options);
 	}
 #endif
 
@@ -94,10 +93,8 @@ static int krb5_detach(void *instance)
 	free(inst->service);
 		
 	if (inst->context) {
-		krb5_free_context(*inst->context);
+		krb5_free_context(inst->context);
 	}
-	
-	free(instance);
 
 	return 0;
 }
@@ -107,47 +104,44 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	rlm_krb5_t *inst;
 	krb5_error_code ret;
 	
-	krb5_context *context;
 	char *princ_name;
-	
-#ifndef HEIMDAL_KRB5
-	radlog(L_ERR, "rlm_krb5 (*): Using MIT Kerberos library");
-#else
-	radlog(L_ERR, "rlm_krb5 (*): Using Heimdal Kerberos library");
-#endif
-	/*
- 	 *	@todo Update configure script to call krb5_is_thread_safe,
- 	 *	this should really be a warning.
- 	 */
-	if (!krb5_is_thread_safe()) {
-		radlog(L_ERR, "rlm_krb5 (*): krb5 library is not threadsafe, "
-		       "please recompile it with thread support enabled");
-		
-		return -1;
-	}
 
 	*instance = inst = talloc_zero(conf, rlm_krb5_t);
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
 	
+	
+#ifdef HEIMDAL_KRB5
+	radlog(L_INFO, "rlm_krb5 (*): Using Heimdal Kerberos library");
+#else
+	radlog(L_INFO, "rlm_krb5 (*): Using MIT Kerberos library");
+#endif
+
+#ifndef KRB5_IS_THREAD_SAFE
+	if (!krb5_is_thread_safe()) {
+		DEBUGW("rlm_krb5 (*): libkrb5 is not threadsafe, recompile it with thread support enabled");
+		DEBUGW("rlm_krb5 (*): rlm_krb5 will run in single threaded mode");
+	} else {
+		DEBUGW("rlm_krb5 (*): Build time krb5 library was not threadsafe, but run time library claims to be");
+		DEBUGW("rlm_krb5 (*): Reconfigure and recompile rlm_krb5 to enable thread support");
+	}
+#endif
+
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
 	
-	context = inst->context = rad_calloc(sizeof(*context));
-	ret = krb5_init_context(context);
+	ret = krb5_init_context(&inst->context);
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Context initialisation "
-		       "failed: %s", inst->xlat_name, error_message(ret));
+		radlog(L_ERR, "rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
 
 		goto error;
-	} else {
-		radlog(L_DBG, "rlm_krb5 (%s): Context initialised "
-		       "successfully", inst->xlat_name);
 	}
 	
+	radlog(L_DBG, "rlm_krb5 (%s): Context initialised successfully", inst->xlat_name);
+
 	/*
 	 *	Split service principal into service and host components
 	 *	they're needed to build the server principal in MIT,
@@ -170,11 +164,18 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		}
 	}
 	
-#ifndef HEIMDAL_KRB5
+#ifdef HEIMDAL_KRB5
+	if (inst->hostname) {
+		radlog(L_DBG, "rlm_krb5 (%s): Ignoring hostname component of "
+		       "service principal \"%s\", not needed/supported by "
+		       "Heimdal", inst->xlat_name, inst->hostname);
+	}
+#else
+
 	/*
 	 *	Convert the service principal string to a krb5 principal.
 	 */
-	ret = krb5_sname_to_principal(*context, inst->hostname,
+	ret = krb5_sname_to_principal(inst->context, inst->hostname,
 				      inst->service, KRB5_NT_SRV_HST,
 				      &(inst->server));
 	if (ret) {
@@ -184,7 +185,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		goto error;
 	}
 	
-	ret = krb5_unparse_name(*context, inst->server, &princ_name);
+	ret = krb5_unparse_name(inst->context, inst->server, &princ_name);
 	if (ret) {
 		/* Uh? */
 		radlog(L_ERR, "rlm_krb5 (%s): Failed constructing service "
@@ -200,14 +201,14 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	radlog(L_DBG, "rlm_krb5 (%s): Using service principal \"%s\"",
 	       inst->xlat_name, princ_name);
 	
-	krb5_free_unparsed_name(*context, princ_name);
+	krb5_free_unparsed_name(inst->context, princ_name);
 	
 	/*
 	 *	Setup options for getting credentials and verifying them
 	 */
 	
 	/* For some reason the 'init' version of this function is deprecated */
-	ret = krb5_get_init_creds_opt_alloc(*context, &(inst->gic_options));
+	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options));
 	if (ret) {
 		radlog(L_ERR, "rlm_krb5 (%s): Couldn't allocated inital "
 		       "credential options: %s", inst->xlat_name,
@@ -220,15 +221,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst->vic_options) goto error;
 	
 	krb5_verify_init_creds_opt_init(inst->vic_options);
-	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options,
-						     TRUE);
+	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, TRUE);
 	
-#else
-	if (inst->hostname) {
-		radlog(L_DBG, "rlm_krb5 (%s): Ignoring hostname component of "
-		       "service principal \"%s\", not needed/supported by "
-		       "Heimdal", inst->xlat_name, hostname);
-	}
 #endif
 	
 	return 0;
@@ -238,8 +232,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	return -1;
 }
 
-static rlm_rcode_t krb5_parse_user(rlm_krb5_t *inst, REQUEST *request,
-			   	   krb5_principal *client)
+static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_principal *client)
 {
 	krb5_error_code ret;
 	char *princ_name;
@@ -278,137 +271,21 @@ static rlm_rcode_t krb5_parse_user(rlm_krb5_t *inst, REQUEST *request,
 		return RLM_MODULE_INVALID;
 	}
 	
-	ret = krb5_parse_name(*(inst->context), request->username->vp_strvalue,
-			      client);
+	ret = krb5_parse_name(context, request->username->vp_strvalue, client);
 	if (ret) {
-		RDEBUG("Failed parsing username as principal: %s",
-		       error_message(ret));
+		RDEBUG("Failed parsing username as principal: %s", error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
 
-	krb5_unparse_name(*(inst->context), *client, &princ_name);
+	krb5_unparse_name(context, *client, &princ_name);
 	RDEBUG("Using client principal \"%s\"", princ_name);
-	krb5_free_unparsed_name(*(inst->context), princ_name);
+	krb5_free_unparsed_name(context, princ_name);
 
 	return RLM_MODULE_OK;
 }
 
-#ifndef HEIMDAL_KRB5
-
-/*
- *  Validate userid/passwd (MIT)
- */
-static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
-{
-	rlm_krb5_t *inst = instance;
-	rlm_rcode_t rcode;	
-	krb5_error_code ret;
-
-	krb5_principal client;
-	krb5_creds init_creds;
-	krb5_keytab keytab;
-	krb5_context *context = NULL;
-	
-	rad_assert(inst->context);
-	
-	/*
-	 *	All the snippets on threadsafety say that individual threads
-	 *	must each use their own copy of context.
-	 *
-	 *	As we don't have any per thread instantiation, we either have
-	 *	to clone inst->context on every request, or use the connection
-	 *	API.
-	 *
-	 *	@todo Use the connection API (3.0 only).
-	 */
-	ret = krb5_copy_context(*inst->context, context);
-	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Error cloning krb5 context: %s",
-		       inst->xlat_name, error_message(ret));
-		
-		return RLM_MODULE_FAIL;
-	}
-	rad_assert(context != NULL); /* tell coverity copy context copies it */
-
-	/*
-	 *	Check we have all the required VPs, and convert the username
-	 *	into a principal.
-	 */
-	rcode = krb5_parse_user(inst, request, &client);
-	if (rcode != RLM_MODULE_OK) goto cleanup;
-
-	/*
-	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
-	 */
-	memset(&init_creds, 0, sizeof(init_creds));
-	ret = krb5_get_init_creds_password(*context, &init_creds, client,
-					   request->password->vp_strvalue,
-					   NULL, NULL, 0, NULL,
-					   inst->gic_options);
-	if (ret) {
-		error:
-		switch (ret) {
-		case KRB5_LIBOS_BADPWDMATCH:
-		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			RDEBUG("Provided password was incorrect: %s",
-			       error_message(ret));
-			rcode = RLM_MODULE_REJECT;
-			break;
-			
-		case KRB5KDC_ERR_KEY_EXP:
-		case KRB5KDC_ERR_CLIENT_REVOKED:
-		case KRB5KDC_ERR_SERVICE_REVOKED:
-			RDEBUG("Account has been locked out: %s",
-			       error_message(ret));
-			rcode = RLM_MODULE_USERLOCK;
-			break;
-			
-		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			RDEBUG("User not found: %s", error_message(ret));
-			rcode = RLM_MODULE_NOTFOUND;
-			break;
-			
-		default:
-			radlog(L_ERR, "rlm_krb5 (%s): Failed getting/verifying "
-			       "credentials: %s", inst->xlat_name,
-			       error_message(ret));
-			rcode = RLM_MODULE_FAIL;
-			break;
-		}
-
-		goto cleanup;
-	}
-	
-	RDEBUG("Successfully retrieved and decrypted TGT");
-	
-	memset(&keytab, 0, sizeof(keytab));
-	ret = inst->keytabname ?
-		krb5_kt_resolve(*context, inst->keytabname, &keytab) :
-		krb5_kt_default(*context, &keytab);
-	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Resolving keytab failed: %s",
-		       inst->xlat_name, error_message(ret));
-		
-		goto cleanup;
-	}
-	
-	ret = krb5_verify_init_creds(*context, &init_creds, inst->server,
-				     keytab, NULL, inst->vic_options);
-	if (ret) goto error;
-
-	cleanup:
-
-	if (context) {
-		krb5_free_cred_contents(*context, &init_creds);
-		krb5_kt_close(*context, keytab);
-		krb5_free_context(*context);
-	}
-	
-	return rcode;
-}
-
-#else
+#ifdef HEIMDAL_KRB5
 
 /*
  *	Validate user/pass (Heimdal)
@@ -424,20 +301,31 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	krb5_ccache ccache;
 	krb5_keytab keytab;
 	krb5_verify_opt options;
-	krb5_context *context = NULL;
+	krb5_context context;
 	
 	rad_assert(inst->context);
 
+#ifdef KRB5_IS_THREAD_SAFE
 	/*
 	 *	See above in MIT krb5_auth
 	 */
-	ret = krb5_copy_context(*inst->context, context);
+	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
 		radlog(L_ERR, "rlm_krb5 (%s): Error cloning krb5 context: %s",
 		       inst->xlat_name, error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
+#else
+	context = inst->context;
+#endif
+
+	/*
+	 *	Zero out local storage
+	 */
+	memset(&keytab, 0, sizeof(keytab));
+	memset(&client, 0, sizeof(client));
+	memset(&init_creds, 0, sizeof(init_creds));
 	
 	/*
 	 *	Setup krb5_verify_user options
@@ -446,15 +334,13 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 *	to get the cache handle, we probably do have to do this with
 	 *	the cloned context.
 	 */
-	krb5_cc_default(*context, &ccache);
+	krb5_cc_default(context, &ccache);
 	
 	krb5_verify_opt_init(&options);
 	krb5_verify_opt_set_ccache(&options, ccache);
-	
-	memset(&keytab, 0, sizeof(keytab));
 	ret = inst->keytabname ?
-		krb5_kt_resolve(*context, inst->keytabname, &keytab) :
-		krb5_kt_default(*context, &keytab);
+		krb5_kt_resolve(context, inst->keytabname, &keytab) :
+		krb5_kt_default(context, &keytab);
 	if (ret) {
 		radlog(L_ERR, "rlm_krb5 (%s): Resolving keytab failed: %s",
 		       inst->xlat_name, error_message(ret));
@@ -469,13 +355,13 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_verify_opt_set_service(&options, inst->service);
 	}
 	
-	rcode = krb5_parse_user(inst, request, &client);
+	rcode = krb5_parse_user(request, context, &client);
 	if (rcode != RLM_MODULE_OK) goto cleanup;
 
 	/*
 	 *	Verify the user, using the options we set in instantiate
 	 */
-	ret = krb5_verify_user_opt(*context, client,
+	ret = krb5_verify_user_opt(context, client,
 				   request->password->vp_strvalue,
 				   &options);
 	if (ret) {
@@ -511,9 +397,135 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	}
 	
 	cleanup:
+	krb5_free_principal(context, client);
+	krb5_kt_close(context, keytab);
+#ifdef KRB5_IS_THREAD_SAFE
+	krb5_free_context(context);
+#endif
+	return rcode;
+}
+
+#else
+
+/*
+ *  Validate userid/passwd (MIT)
+ */
+static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
+{
+	rlm_krb5_t *inst = instance;
+	rlm_rcode_t rcode;	
+	krb5_error_code ret;
+
+	krb5_principal client;
+	krb5_creds init_creds;
+	krb5_keytab keytab;	/* ktid */
+	krb5_context context;
 	
-	krb5_kt_close(*context, keytab);
-	krb5_free_context(*context);
+	rad_assert(inst->context);
+
+#ifdef KRB5_IS_THREAD_SAFE	
+	/*
+	 *	All the snippets on threadsafety say that individual threads
+	 *	must each use their own copy of context.
+	 *
+	 *	As we don't have any per thread instantiation, we either have
+	 *	to clone inst->context on every request, or use the connection
+	 *	API.
+	 *
+	 *	@todo Use the connection API (3.0 only).
+	 */
+	ret = krb5_copy_context(inst->context, &context);
+	if (ret) {
+		radlog(L_ERR, "rlm_krb5 (%s): Error cloning krb5 context: %s",
+		       inst->xlat_name, error_message(ret));
+		
+		return RLM_MODULE_FAIL;
+	}
+	rad_assert(context != NULL); /* tell coverity copy context copies it */
+#else
+	context = inst->context;
+#endif
+
+	/*
+	 *	Zero out local storage
+	 */
+	memset(&keytab, 0, sizeof(keytab));
+	memset(&client, 0, sizeof(client));
+	memset(&init_creds, 0, sizeof(init_creds));
+
+	/*
+	 *	Check we have all the required VPs, and convert the username
+	 *	into a principal.
+	 */
+	rcode = krb5_parse_user(request, context, &client);
+	if (rcode != RLM_MODULE_OK) goto cleanup;
+
+	/*
+	 *	Setup the keytab
+	 */
+	ret = inst->keytabname ?
+		krb5_kt_resolve(context, inst->keytabname, &keytab) :
+		krb5_kt_default(context, &keytab);
+	if (ret) {
+		radlog(L_ERR, "rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
+		
+		goto cleanup;
+	}
+	
+	/*
+	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
+	 */
+	ret = krb5_get_init_creds_password(context, &init_creds, client, request->password->vp_strvalue,
+					   NULL, NULL, 0, NULL, inst->gic_options);
+	if (ret) {
+		error:
+		switch (ret) {
+		case KRB5_LIBOS_BADPWDMATCH:
+		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
+			RDEBUG("Provided password was incorrect: %s",
+			       error_message(ret));
+			rcode = RLM_MODULE_REJECT;
+			break;
+			
+		case KRB5KDC_ERR_KEY_EXP:
+		case KRB5KDC_ERR_CLIENT_REVOKED:
+		case KRB5KDC_ERR_SERVICE_REVOKED:
+			RDEBUG("Account has been locked out: %s",
+			       error_message(ret));
+			rcode = RLM_MODULE_USERLOCK;
+			break;
+			
+		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
+			RDEBUG("User not found: %s", error_message(ret));
+			rcode = RLM_MODULE_NOTFOUND;
+			break;
+			
+		default:
+			radlog(L_ERR, "rlm_krb5 (%s): Failed getting/verifying "
+			       "credentials: %s", inst->xlat_name,
+			       error_message(ret));
+			rcode = RLM_MODULE_FAIL;
+			break;
+		}
+
+		goto cleanup;
+	}
+	
+	RDEBUG("Successfully retrieved and decrypted TGT");
+
+	ret = krb5_verify_init_creds(context, &init_creds, inst->server, keytab, NULL, inst->vic_options);
+	if (ret) goto error;
+
+	cleanup:
+
+	if (context) {
+		krb5_free_principal(context, client);
+		krb5_free_cred_contents(context, &init_creds);
+		krb5_kt_close(context, keytab);
+#ifdef KRB5_IS_THREAD_SAFE
+		krb5_free_context(context);
+#endif
+	}
 	
 	return rcode;
 }
@@ -522,8 +534,12 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 
 module_t rlm_krb5 = {
 	RLM_MODULE_INIT,
-	"Kerberos",
-	RLM_TYPE_THREAD_SAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,
+	"krb5",
+	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE
+#ifdef KRB5_IS_THREAD_SAFE
+	| RLM_TYPE_THREAD_SAFE
+#endif
+	,
 	krb5_instantiate,   		/* instantiation */
 	krb5_detach,			/* detach */
 	{

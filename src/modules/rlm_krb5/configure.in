@@ -40,16 +40,6 @@ if test x$with_[]modname != xno; then
 	  esac ]
 	)
 
-       dnl extra argument: --enable-heimdal-krb5
-       AC_ARG_ENABLE(heimdal-krb5,
-       [  --enable-heimdal-krb5             Enable if you have heimdal krb5],
-       [ case "$enableval" in
-               yes)
-                       krb5mod_cflags="-DHEIMDAL_KRB5"
-                       ;;
-         esac ]
-       )
-
 	smart_try_dir=$rlm_krb5_include_dir
 	FR_SMART_CHECK_INCLUDE(krb5.h)
 	if test "$ac_cv_header_krb5_h" != "yes"; then
@@ -83,6 +73,19 @@ if test x$with_[]modname != xno; then
 	if test "x$ac_cv_lib_krb5_krb5_init_context" != xyes; then
 		fail="$fail krb5"
 	fi
+	
+	dnl Only the heimdal version of the library has this function
+	FR_SMART_CHECK_LIB(krb5, krb5_h_errno_to_heim_errno )
+	if test "x$ac_cv_lib_krb5_krb5_h_errno_to_heim_errno" == xyes; then
+        krb5mod_cflags="-DHEIMDAL_KRB5"
+	fi
+		
+	krb5threadsafe=
+	FR_SMART_CHECK_LIB(krb5, krb5_is_thread_safe)
+	if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
+        AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
+                      [krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[krb5 library is not threadsafe]])])
+	fi
 
 	targetname=modname
 else
@@ -101,7 +104,7 @@ if test x"$fail" != x""; then
 fi
 
 mod_ldflags="${krb5libcrypto} ${SMART_LIBS}"
-mod_cflags="${krb5mod_cflags} ${SMART_CFLAGS}"
+mod_cflags="${krb5mod_cflags} ${krb5threadsafe} ${SMART_CFLAGS}"
 
 AC_SUBST(mod_ldflags)
 AC_SUBST(mod_cflags)
