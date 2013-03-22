@@ -62,7 +62,7 @@ test.conf: dictionary
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf
 	@gdb -silent -x $(TEST_PATH)/gdb.conf --args \
-	$(BIN_PATH)/radiusd -fPtxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) > $(TEST_PATH)/gdb.log 2>&1 &
+	$(BIN_PATH)/radiusd -fPtxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) > $(TEST_PATH)/gdb.log 2>&1 &
 
 # We can't make this depend on radiusd.pid, because then make will create
 # radiusd.pid when we make radiusd.kill, which we don't want.
