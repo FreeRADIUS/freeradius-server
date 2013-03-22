@@ -23,8 +23,9 @@ include scripts/boiler.mk
 
 test: build.raddb ${BUILD_DIR}/bin/radiusd ${BUILD_DIR}/bin/radclient
 	@$(MAKE) -C raddb/certs
+	@./build/make/jlibtool --mode=execute ./build/bin/radiusd -XCd ./raddb/ -n debug
 	@$(MAKE) -C src/tests tests
-		
+
 #  Tests specifically for Travis.  We do a LOT more than just
 #  the above tests
 ifneq "$(findstring travis,${prefix})" ""
