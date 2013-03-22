@@ -100,52 +100,52 @@ static int eap_module_free(void *ctx)
  */
 int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF_SECTION *cs)
 {
-	eap_module_t *sub_inst;
-	char *method_name, *p;
+	eap_module_t *method;
+	char *mod_name, *p;
 
 	/* Make room for the EAP-Type */
-	*m_inst = sub_inst = talloc_zero(cs, eap_module_t);
+	*m_inst = method = talloc_zero(cs, eap_module_t);
 	if (!inst) return -1;
 
-	talloc_set_destructor((void *) sub_inst, eap_module_free);
+	talloc_set_destructor((void *) method, eap_module_free);
 
 	/* fill in the structure */
-	sub_inst->cs = cs;
-	sub_inst->name = eap_type2name(num);
+	method->cs = cs;
+	method->name = eap_type2name(num);
 	
 	/*
 	 *	The name of the module were trying to load
 	 */
-	method_name = talloc_asprintf(sub_inst, "rlm_eap_%s", sub_inst->name);
+	mod_name = talloc_asprintf(method, "rlm_eap_%s", method->name);
 
 	/*
 	 *	dlopen is case sensitive
 	 */
-	p = method_name;
+	p = mod_name;
 	while (*p) {
 		*p = tolower(*p);
 		p++;
 	}
 
 #if defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	sub_inst->type = dlsym(RTLD_SELF, method_name);
-	if (sub_inst->type) goto open_self;
+	method->type = dlsym(RTLD_SELF, mod_name);
+	if (method->type) goto open_self;
 #endif
 
 	/*
 	 *	Link the loaded EAP-Type
 	 */
-	sub_inst->handle = lt_dlopenext(method_name);
-	if (!sub_inst->handle) {
-		radlog(L_ERR, "rlm_eap (%s): Failed to link %s: %s", inst->xlat_name, method_name, lt_dlerror());
+	method->handle = lt_dlopenext(mod_name);
+	if (!method->handle) {
+		radlog(L_ERR, "rlm_eap (%s): Failed to link %s: %s", inst->xlat_name, mod_name, lt_dlerror());
 
 		return -1;
 	}
 
-	sub_inst->type = dlsym(sub_inst->handle, method_name);
-	if (!sub_inst->type) {
+	method->type = dlsym(method->handle, mod_name);
+	if (!method->type) {
 		radlog(L_ERR, "rlm_eap (%s): Failed linking to structure in %s: %s", inst->xlat_name,
-		       sub_inst->name, dlerror());
+		       method->name, dlerror());
 		
 		return -1;
 	}
@@ -153,23 +153,23 @@ int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF
 #if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
 open_self:
 #endif
-	cf_log_module(cs, "Linked to sub-module %s", method_name);
+	cf_log_module(cs, "Linked to sub-module %s", mod_name);
 	
 	/*
 	 *	Call the attach num in the EAP num module
 	 */
-	if ((sub_inst->type->attach) && ((sub_inst->type->attach)(sub_inst->cs, &(sub_inst->instance)) < 0)) {
-		radlog(L_ERR, "rlm_eap (%s): Failed to initialise %s", inst->xlat_name, method_name);
+	if ((method->type->attach) && ((method->type->attach)(method->cs, &(method->instance)) < 0)) {
+		radlog(L_ERR, "rlm_eap (%s): Failed to initialise %s", inst->xlat_name, mod_name);
 		
-		if (sub_inst->instance) {
-			talloc_steal(sub_inst, sub_inst->instance);
+		if (method->instance) {
+			talloc_steal(method, method->instance);
 		}
 		
 		return -1;
 	}
 
-	if (sub_inst->instance) {
-		talloc_steal(sub_inst, sub_inst->instance);
+	if (method->instance) {
+		talloc_steal(method, method->instance);
 	}
 	
 	return 0;
