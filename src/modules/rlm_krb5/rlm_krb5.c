@@ -35,8 +35,6 @@ RCSID("$Id$")
 #include <krb5.h>
 #include <com_err.h>
 
-#define SERVICE_NAME_LEN 64		//!< Maximum length of a service name.
-
 /** Instance configuration for rlm_krb5
  *
  * Holds the configuration and preparsed data for a instance of rlm_krb5.
@@ -155,7 +153,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 			len = (inst->hostname - inst->service_princ);			
 			inst->hostname++;
 		} else {
-			len = SERVICE_NAME_LEN;
+			len = strlen(inst->service_princ);
 		}
 		
 		if (len) {
