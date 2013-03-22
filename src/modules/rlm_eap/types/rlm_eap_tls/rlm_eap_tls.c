@@ -35,7 +35,6 @@ RCSID("$Id$")
 #endif
 
 #include "rlm_eap_tls.h"
-#include "config.h"
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>

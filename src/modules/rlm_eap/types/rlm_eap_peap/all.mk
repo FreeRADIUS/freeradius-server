@@ -1,15 +1,14 @@
-TARGETNAME	:= @targetname@
+TARGETNAME	:= rlm_eap_peap
 
-ifneq "$(TARGETNAME)" ""
+ifneq "$(OPENSSL_LIBS)" ""
 TARGET		:= $(TARGETNAME).a
 endif
 
 SOURCES		:= $(TARGETNAME).c peap.c
 
-SRC_CFLAGS	:= @mod_cflags@
-TGT_LDLIBS	:= @mod_ldflags@
+SRC_CFLAGS	:=
+TGT_LDLIBS	:=
 TGT_LDLIBS	+= $(OPENSSL_LIBS)
 
 SRC_INCDIRS	:= ../../ ../../libeap/
 TGT_PREREQS	:= libfreeradius-eap.a
-

@@ -45,6 +45,12 @@ if test x$with_[]modname != xno; then
 	if test "x$OPENSSL_LIBS" != "x"; then
 		AC_MSG_RESULT(yes)
 
+		AC_CHECK_LIB(c $OPENSSL_LIBS, EVP_sha256,
+		[  AC_DEFINE(HAVE_OPENSSL_EVP_SHA256, 1,
+		  [Define to 1 if you have the `EVP_sha256' function .])
+		],
+		[ AC_MSG_WARN([EVP_sha256 not found, may have issues wirh WiMAX certificates]) ])
+
 	else
 		AC_MSG_RESULT(no)
 		fail="OpenSSL"
