@@ -112,10 +112,10 @@ static void check_lib_access(const char *name)
 			DEBUGW("Library \"%s\" exists, but we don't have permission to read", name);
 			break;
 		case ENOENT:
-			DEBUG3("Library not found at path \"%s\"", name);
+			DEBUG4("Library not found at path \"%s\"", name);
 			break;
 		default:
-			DEBUG3("Possible issue accessing Library \"%s\": %s", name, strerror(errno));
+			DEBUG4("Possible issue accessing Library \"%s\": %s", name, strerror(errno));
 			break;
 	}
 }
