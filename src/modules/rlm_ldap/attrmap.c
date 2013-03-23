@@ -289,3 +289,63 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		ldap_value_free(result.values);
 	}
 }
+
+/** Search for and apply an LDAP profile
+ * 
+ * LDAP profiles are mapped using the same attribute map as user objects, they're used to add common sets of attributes
+ * to the request.
+ *
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn of profile object to apply.
+ * @param[in] expanded Structure containing a list of xlat expanded attribute names and mapping information.
+ * @return One of the RLM_MODULE_* values.
+ */
+rlm_rcode_t rlm_ldap_map_profile(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+			    	 const char *dn, const rlm_ldap_map_xlat_t *expanded)
+{
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
+	ldap_rcode_t	status;
+	LDAPMessage	*result = NULL, *entry = NULL;
+	int		ldap_errno;
+	LDAP		*handle = (*pconn)->handle;
+	char		filter[LDAP_MAX_FILTER_STR_LEN];
+
+	if (!dn || !*dn) {
+		return RLM_MODULE_OK;
+	}
+	strlcpy(filter, inst->base_filter, sizeof(filter));
+
+	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, filter, expanded->attrs, &result);
+	switch (status) {
+		case LDAP_PROC_SUCCESS:
+			break;
+		case LDAP_PROC_NO_RESULT:
+			RDEBUG("Profile object \"%s\" not found", dn);
+			return RLM_MODULE_NOTFOUND;
+		default:
+			return RLM_MODULE_FAIL;
+	}
+	
+	rad_assert(*pconn);
+	rad_assert(result);
+	
+	entry = ldap_first_entry(handle, result);
+	if (!entry) {
+		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		
+		rcode = RLM_MODULE_NOTFOUND;
+	 	
+	 	goto free_result;
+	}
+	
+	rlm_ldap_map_do(inst, request, handle, expanded, entry);
+
+free_result:
+	ldap_msgfree(result);
+	
+	return rcode;
+}
+

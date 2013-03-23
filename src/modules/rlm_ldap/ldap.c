@@ -413,13 +413,12 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
  * Performs a simple bind to the LDAP directory, and handles any errors that
  * occur.
  *
- * @param inst rlm_ldap configuration.
- * @param request Current request, this may be NULL, in which case all debug logging is done with radlog.
- * @param pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL after 
- *	calling this function.
- * @param dn The DN of the user, may be NULL to bind anonymously.
- * @param password May be NULL if no password is specified.
- * @param retry if the server is down.
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request, this may be NULL, in which case all debug logging is done with radlog.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn of the user, may be NULL to bind anonymously.
+ * @param[in] password of the user, may be NULL if no password is specified.
+ * @param[in] retry if the server is down.
  * @return one of the LDAP_PROC_* values.
  */
 ldap_rcode_t rlm_ldap_bind(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn, const char *dn,
@@ -501,27 +500,27 @@ retry:
 		break;
 	}
 
-	if (extra) talloc_free(extra);
-
+	if (extra) {
+		talloc_free(extra);
+	}
+	
 	return status; /* caller closes the connection */
 }
 
 
 /** Search for something in the LDAP directory
  *
- * Binds as the administrative user and performs a search, dealing with any
- * errors.
+ * Binds as the administrative user and performs a search, dealing with any errors.
  *
- * @param inst rlm_ldap configuration.
- * @param request Current request.
- * @param pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL 
- *	after calling this function.
- * @param dn to use.
- * @param scope to use.
- * @param filter to use.
- * @param attrs to retrieve.
- * @param result Where to store the result. Must be freed with ldap_msgfree.
- *	may be NULL in which case result will be automatically freed after use.
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn to use as base for the search.
+ * @param[in] scope to use (LDAP_SCOPE_BASE, LDAP_SCOPE_ONE, LDAP_SCOPE_SUB).
+ * @param[in] filter to use, should be pre-escaped.
+ * @param[in] attrs to retrieve.
+ * @param[out] result Where to store the result. Must be freed with ldap_msgfree if LDAP_PROC_SUCCESS is returned.
+ *	May be NULL in which case result will be automatically freed after use.
  * @return One of the LDAP_PROC_* values.
  */
 ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
@@ -613,8 +612,10 @@ retry:
 	}
 	
 	finish:
-	if (extra) talloc_free(extra);
-
+	if (extra) {
+		talloc_free(extra);
+	}
+	
 	return status;
 }
 
@@ -622,12 +623,11 @@ retry:
  *
  * Binds as the administrative user and attempts to modify an LDAP object.
  *
- * @param inst rlm_ldap configuration.
- * @param request Current request.
- * @param pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL after 
- *	calling this function.
- * @param dn to modify.
- * @param mods to make.
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn of the object to modify.
+ * @param[in] mods to make, see 'man ldap_modify' for more information.
  * @return One of the LDAP_PROC_* values.
  */
 ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
@@ -687,8 +687,10 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
 	}		     
 	
 	finish:
-	if (extra) talloc_free(extra);
-
+	if (extra) {
+		talloc_free(extra);
+	}
+	
 	return status;
 }
 
@@ -702,8 +704,7 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
  * 
  * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request.
- * @param[in,out] pconn to use. May change as this function auto re-connects. Caller must check that pconn is not NULL 
- *	after calling this function.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @param[in] attrs Additional attributes to retrieve, may be NULL.
  * @param[in] force Query even if the User-DN already exists.
  * @param[out] result Where to write the result, may be NULL in which case result is discarded.
@@ -830,64 +831,17 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	return vp ? vp->vp_strvalue : NULL;
 }
 
-rlm_rcode_t rlm_ldap_apply_profile(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			    	   const char *profile, const rlm_ldap_map_xlat_t *expanded)
-{
-	rlm_rcode_t	rcode = RLM_MODULE_OK;
-	ldap_rcode_t	status;
-	LDAPMessage	*result = NULL, *entry = NULL;
-	int		ldap_errno;
-	LDAP		*handle = (*pconn)->handle;
-	char		filter[LDAP_MAX_FILTER_STR_LEN];
-
-	if (!profile || !*profile) {
-		return RLM_MODULE_NOOP;
-	}
-	strlcpy(filter, inst->base_filter, sizeof(filter));
-
-	status = rlm_ldap_search(inst, request, pconn, profile, LDAP_SCOPE_BASE, filter, expanded->attrs, &result);
-	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			RDEBUG("Profile \"%s\" not found", profile);
-			return RLM_MODULE_NOTFOUND;
-		default:
-			return RLM_MODULE_FAIL;
-	}
-	
-	rad_assert(*pconn);
-	rad_assert(result);
-	
-	entry = ldap_first_entry(handle, result);
-	if (!entry) {
-		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-		
-		rcode = RLM_MODULE_NOTFOUND;
-	 	
-	 	goto free_result;
-	}
-	
-	rlm_ldap_map_do(inst, request, handle, expanded, entry);
-
-free_result:
-	ldap_msgfree(result);
-	
-	return rcode;
-}
-
 /** Convert multiple group names into a DNs
  * 
  * Given an array of group names, builds a filter matching all names, then retrieves all group objects
  * and stores the DN associated with each group object.
  *
- * @param inst rlm_ldap configuration.
- * @param request Current request.
- * @param pconn Current connection.
- * @param names to covert to DNs (NULL terminated).
- * @param out Where to write the DNs. DNs must be freed with ldap_memfree(). Will be NULL terminated.
- * @param outlen Size of out.
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] names to covert to DNs (NULL terminated).
+ * @param[out] out Where to write the DNs. DNs must be freed with ldap_memfree(). Will be NULL terminated.
+ * @param[in] outlen Size of out.
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request,
@@ -1002,11 +956,12 @@ rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request
  *
  * Unlike the inverse conversion of a name to a DN, most LDAP directories don't allow filtering by DN,
  * so we need to search for each DN individually.
- * @param inst rlm_ldap configuration.
- * @param request Current request.
- * @param pconn Current connection.
- * @param dn to resolve.
- * @param out Where to write group name (must be freed with ldap_memfree()).
+ *
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] dn to resolve.
+ * @param[out] out Where to write group name (must be freed with ldap_memfree()).
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
@@ -1070,10 +1025,10 @@ rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *request
 
 /** Convert group membership information into attributes
  *
- * @param inst rlm_ldap configuration.
- * @param request Current request.
- * @param pconn Current connection.
- * @param entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
+ * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
  * @return One of the RLM_MODULE_* values.
  */
 rlm_rcode_t rlm_ldap_cacheable_membership(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
@@ -1187,10 +1142,10 @@ rlm_rcode_t rlm_ldap_cacheable_membership(const ldap_instance_t *inst, REQUEST *
 
 /** Check for presence of access attribute in result
  *
- * @param inst rlm_ldap configuration.
- * @param request Current request.
- * @param conn used to retrieve entry.
- * @param entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
+ * @param[in] inst rlm_ldap configuration.
+ * @param[in] request Current request.
+ * @param[in] conn used to retrieve access attributes.
+ * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
  * @return RLM_MODULE_USERLOCK if the user was denied access, else RLM_MODULE_OK.
  */
 rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request,

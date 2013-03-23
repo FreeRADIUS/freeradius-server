@@ -210,9 +210,6 @@ ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap
 			     
 ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
 			     const char *dn, LDAPMod *mods[]);
-
-rlm_rcode_t rlm_ldap_apply_profile(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			    	   const char *profile, const rlm_ldap_map_xlat_t *expanded);
 			    	   
 const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
 			       const char *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode);
@@ -254,6 +251,9 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
 
 void rlm_ldap_map_do(const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		     const rlm_ldap_map_xlat_t *expanded, LDAPMessage *entry);
+
+rlm_rcode_t rlm_ldap_map_profile(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+			    	 const char *profile, const rlm_ldap_map_xlat_t *expanded);
 
 /*
  *	edir.c - Magic extensions for Novell

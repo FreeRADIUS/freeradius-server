@@ -955,7 +955,7 @@ skip_edir:
 
 		if (vp) profile = vp->vp_strvalue;
 
-		rlm_ldap_apply_profile(inst, request, &conn, profile, &expanded);
+		rlm_ldap_map_profile(inst, request, &conn, profile, &expanded);
 	}
 
 	/*
@@ -965,7 +965,7 @@ skip_edir:
 		vals = ldap_get_values(conn->handle, entry, inst->profile_attr);
 		if (vals != NULL) {
 			for (i = 0; vals[i] != NULL; i++) {
-				rlm_ldap_apply_profile(inst, request, &conn, vals[i], &expanded);
+				rlm_ldap_map_profile(inst, request, &conn, vals[i], &expanded);
 			}
 	
 			ldap_value_free(vals);
