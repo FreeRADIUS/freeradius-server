@@ -432,6 +432,8 @@ ldap_rcode_t rlm_ldap_bind(const ldap_instance_t *inst, REQUEST *request, ldap_h
 	const char	*error = NULL;
 	char 		*extra = NULL;
 
+	rad_assert(*pconn && (*pconn)->handle);
+	
 	/*
 	 *	Bind as anonymous user
 	 */
@@ -538,6 +540,8 @@ ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap
 	const char 	*error = NULL;
 	char		*extra = NULL;
 
+	rad_assert(*pconn && (*pconn)->handle);
+	
 	/*
 	 *	OpenLDAP library doesn't declare attrs array as const, but
 	 *	it really should be *sigh*.
@@ -637,6 +641,8 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
 	const char 	*error = NULL;
 	char		*extra = NULL;			   
 
+	rad_assert(*pconn && (*pconn)->handle);
+		
 	/*
 	 *	Perform all modifications as the admin user.
 	 */
