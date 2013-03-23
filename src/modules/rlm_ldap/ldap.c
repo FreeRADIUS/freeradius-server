@@ -167,25 +167,22 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
-	int lib_errno = LDAP_SUCCESS;	//!< errno returned by the library.
-	int srv_errno = LDAP_SUCCESS;	//!< errno in the result message.
+	int lib_errno = LDAP_SUCCESS;	// errno returned by the library.
+	int srv_errno = LDAP_SUCCESS;	// errno in the result message.
 	
-	char *part_dn = NULL;		//!< Partial DN match.
-	char *our_err = NULL;		//!< Our extended error message.
-	char *srv_err = NULL;		//!< Server's extended error message.
+	char *part_dn = NULL;		// Partial DN match.
+	char *our_err = NULL;		// Our extended error message.
+	char *srv_err = NULL;		// Server's extended error message.
 	char *p, *a;
 
-	int freeit = FALSE;		//!< Whether the message should
-					//!< be freed after being processed.
+	int freeit = FALSE;		// Whether the message should be freed after being processed.
 	int len;
 	
-	struct timeval tv;		//!< Holds timeout values.
+	struct timeval tv;		// Holds timeout values.
 	
-	LDAPMessage *tmp_msg;		//!< Temporary message pointer storage
-					//!< if we weren't provided with one.
+	LDAPMessage *tmp_msg;		// Temporary message pointer storage if we weren't provided with one.
 	
-	const char *tmp_err;		//!< Temporary error pointer storage
-					//!< if we weren't provided with one.
+	const char *tmp_err;		// Temporary error pointer storage if we weren't provided with one.
 	
 	if (!error) {
 		error = &tmp_err;
@@ -410,8 +407,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 
 /** Bind to the LDAP directory as a user
  *
- * Performs a simple bind to the LDAP directory, and handles any errors that
- * occur.
+ * Performs a simple bind to the LDAP directory, and handles any errors that occur.
  *
  * @param[in] inst rlm_ldap configuration.
  * @param[in] request Current request, this may be NULL, in which case all debug logging is done with radlog.
@@ -529,12 +525,12 @@ ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap
 {
 	ldap_rcode_t	status;
 	
-	int		msgid;		//!< Message id returned by
-					//!< ldap_search_ext.
+	int		msgid;		// Message id returned by
+					// ldap_search_ext.
 				
-	int		count = 0;	//!< Number of results we got.
+	int		count = 0;	// Number of results we got.
 	
-	struct timeval	tv;		//!< Holds timeout values.
+	struct timeval	tv;		// Holds timeout values.
 	
 	const char 	*error = NULL;
 	char		*extra = NULL;
@@ -635,8 +631,7 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
 {
 	ldap_rcode_t	status;
 	
-	int		msgid;		//!< Message id returned by
-					//!< ldap_search_ext.
+	int		msgid;		// Message id returned by ldap_search_ext.
 	
 	const char 	*error = NULL;
 	char		*extra = NULL;			   
