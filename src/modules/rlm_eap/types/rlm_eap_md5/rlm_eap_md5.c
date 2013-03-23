@@ -31,6 +31,11 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
+static void md5_free(void *data)
+{
+	talloc_free(data);
+}
+
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
@@ -81,7 +86,7 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	handler->opaque = talloc_array(reply, uint8_t, reply->value_size);
 	rad_assert(handler->opaque != NULL);
 	memcpy(handler->opaque, reply->value, reply->value_size);
-	handler->free_opaque = free;
+	handler->free_opaque = NULL;
 
 	/*
 	 *	Compose the EAP-MD5 packet out of the data structure,

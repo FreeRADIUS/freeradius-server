@@ -717,8 +717,10 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			 *	Use the tunneled reply, but not now.
 			 */
 			if (t->use_tunneled_reply) {
-				t->accept_vps = reply->vps;
-				reply->vps = NULL;
+				rad_assert(t->accept_vps == NULL);
+				pairmove2(t, &t->accept_vps, &reply->vps,
+					  0, 0, TAG_ANY);
+				rad_assert(reply->vps == NULL);
 			}
 
 		} else { /* no MS-CHAP2-Success */

@@ -459,8 +459,9 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
 			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
-			t->accept_vps = reply->vps;
-			reply->vps = NULL;
+			rad_assert(t->accept_vps == NULL);
+			pairmove2(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
+			rad_assert(reply->vps == NULL);
 		}
 		break;
 
@@ -506,8 +507,10 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
 			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 
-			t->accept_vps = reply->vps;
-			reply->vps = NULL;
+			rad_assert(t->accept_vps == NULL);
+			pairmove2(t, &t->accept_vps, &reply->vps,
+				  0, 0, TAG_ANY);
+			rad_assert(reply->vps == NULL);
 		}
 
 		/*
