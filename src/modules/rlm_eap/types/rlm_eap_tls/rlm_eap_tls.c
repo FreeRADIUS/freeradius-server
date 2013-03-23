@@ -180,7 +180,7 @@ static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 			RDEBUG("} # server %s", fake->server);
 
 			/* copy the reply vps back to our reply */
-			pairmove2(request->reply, &request->reply->vps,
+			pairfilter(request->reply, &request->reply->vps,
 				  &fake->reply->vps, 0, 0, TAG_ANY);
 
 			/* reject if virtual server didn't return accept */

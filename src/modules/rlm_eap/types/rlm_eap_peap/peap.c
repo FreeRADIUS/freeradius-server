@@ -460,7 +460,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
 			rad_assert(t->accept_vps == NULL);
-			pairmove2(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
+			pairfilter(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
 			rad_assert(reply->vps == NULL);
 		}
 		break;
@@ -481,7 +481,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	Get rid of the old State, too.
 		 */
 		pairfree(&t->state);
-		pairmove2(t, &t->state, &(reply->vps), PW_STATE, 0, TAG_ANY);
+		pairfilter(t, &t->state, &(reply->vps), PW_STATE, 0, TAG_ANY);
 
 		/*
 		 *	PEAP takes only EAP-Message attributes inside
@@ -489,7 +489,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 		 *	Access-Challenge is ignored.
 		 */
 		vp = NULL;
-		pairmove2(t, &vp, &(reply->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
+		pairfilter(t, &vp, &(reply->vps), PW_EAP_MESSAGE, 0, TAG_ANY);
 
 		/*
 		 *	Handle EAP-MSCHAP-V2, where Access-Accept's
@@ -508,7 +508,7 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 
 			rad_assert(t->accept_vps == NULL);
-			pairmove2(t, &t->accept_vps, &reply->vps,
+			pairfilter(t, &t->accept_vps, &reply->vps,
 				  0, 0, TAG_ANY);
 			rad_assert(reply->vps == NULL);
 		}
@@ -845,7 +845,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 		/* save the SoH VPs */
 		rad_assert(t->soh_reply_vps == NULL);
-		pairmove2(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
+		pairfilter(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
 		rad_assert(fake->reply->vps == NULL);
 		request_free(&fake);
 
@@ -1124,7 +1124,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Tell the original request that it's going
 			 *	to be proxied.
 			 */
-			pairmove2(request, &(request->config_items),
+			pairfilter(request, &(request->config_items),
 				   &(fake->config_items),
 				   PW_PROXY_TO_REALM, 0, TAG_ANY);
 

@@ -285,7 +285,7 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		if (t && t->authenticated) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			debug_pair_list(t->accept_vps);
-			pairmove2(handler->request->reply,
+			pairfilter(handler->request->reply,
 				  &handler->request->reply->vps,
 				  &t->accept_vps, 0, 0, TAG_ANY);
 		do_keys:

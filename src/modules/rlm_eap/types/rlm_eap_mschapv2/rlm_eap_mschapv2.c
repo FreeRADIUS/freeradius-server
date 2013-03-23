@@ -48,10 +48,10 @@ static CONF_PARSER module_config[] = {
 
 static void fix_mppe_keys(eap_handler_t *handler, mschapv2_opaque_t *data)
 {
-	pairmove2(data, &data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
-	pairmove2(data, &data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
-	pairmove2(data, &data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
-	pairmove2(data, &data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 7, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 8, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
+	pairfilter(data, &data->mppe_keys, &handler->request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 }
 
 static void free_data(void *ptr)
@@ -316,7 +316,7 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 		 *	Move the attribute, so it doesn't go into
 		 *	the reply.
 		 */
-		pairmove2(data, &response,
+		pairfilter(data, &response,
 			  &request->reply->vps,
 			  PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		break;
@@ -482,7 +482,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 				case PW_EAP_MSCHAPV2_SUCCESS:
 					eap_ds->request->code = PW_EAP_SUCCESS;
 
-					pairmove2(request->reply,
+					pairfilter(request->reply,
 						  &request->reply->vps,
 						  &data->mppe_keys, 0, 0, TAG_ANY);
 					/* fall through... */
@@ -494,7 +494,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 					 */
 					request->options &= ~RAD_REQUEST_OPTION_PROXY_EAP;
 #endif
-					pairmove2(request->reply,
+					pairfilter(request->reply,
 						  &request->reply->vps,
 						  &data->reply, 0, 0, TAG_ANY);
 					return 1;
@@ -703,12 +703,12 @@ packet_ready:
 	 */
 	response = NULL;
 	if (rcode == RLM_MODULE_OK) {
-		pairmove2(data, &response, &request->reply->vps,
+		pairfilter(data, &response, &request->reply->vps,
 			 PW_MSCHAP2_SUCCESS, VENDORPEC_MICROSOFT, TAG_ANY);
 		data->code = PW_EAP_MSCHAPV2_SUCCESS;
 
 	} else if (inst->send_error) {
-		pairmove2(data, &response, &request->reply->vps,
+		pairfilter(data, &response, &request->reply->vps,
 			  PW_MSCHAP_ERROR, VENDORPEC_MICROSOFT, TAG_ANY);
 		if (response) {
 			int n,err,retry;

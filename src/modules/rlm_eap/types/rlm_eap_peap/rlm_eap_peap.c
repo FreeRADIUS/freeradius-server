@@ -377,14 +377,14 @@ static int mod_authenticate(void *arg, eap_handler_t *handler)
 		if (peap->soh_reply_vps) {
 			RDEBUG2("Using saved attributes from the SoH reply");
 			debug_pair_list(peap->soh_reply_vps);
-			pairmove2(handler->request->reply,
+			pairfilter(handler->request->reply,
 				  &handler->request->reply->vps,
 				  &peap->soh_reply_vps, 0, 0, TAG_ANY);
 		}
 		if (peap->accept_vps) {
 			RDEBUG2("Using saved attributes from the original Access-Accept");
 			debug_pair_list(peap->accept_vps);
-			pairmove2(handler->request->reply,
+			pairfilter(handler->request->reply,
 				  &handler->request->reply->vps,
 				  &peap->accept_vps, 0, 0, TAG_ANY);
 		}

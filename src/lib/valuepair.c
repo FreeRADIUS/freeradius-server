@@ -676,7 +676,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	}
 }
 
-/** Move matching pairs
+/** Move matching pairs between VALUE_PAIR lists
  *
  * Move pairs of a matching attribute number, vendor number and tag from the
  * the input list to the output list.
@@ -692,8 +692,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
  * @param[in] vendor to match.
  * @param[in] tag to match, TAG_ANY matches any tag, TAG_UNUSED matches tagless VPs.
  */
-void pairmove2(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
-	       unsigned int attr, unsigned int vendor, int8_t tag)
+void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *to_tail, *i, *next;
 	VALUE_PAIR *iprev = NULL;
