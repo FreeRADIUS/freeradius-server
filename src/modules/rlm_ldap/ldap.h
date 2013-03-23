@@ -46,50 +46,46 @@ typedef struct ldap_instance {
 	int		chase_referrals;
 	int		rebind;
 
-	int		ldap_debug;		//!< Debug flag for the SDK.
+	int		ldap_debug;			//!< Debug flag for the SDK.
 
-	const char	*xlat_name;		//!< Instance name.
+	const char	*xlat_name;			//!< Instance name.
 
 	int		expect_password;
 	
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
 	 */
-	value_pair_map_t *user_map; 		//!< Attribute map applied 
-						//!< to users and profiles.
+	value_pair_map_t *user_map; 			//!< Attribute map applied to users and profiles.
 	
 	/*
 	 *	User object attributes and filters
 	 */
-	const char	*userobj_filter;	//!< Filter to retrieve only
-						//!< user objects.
-	const char	*userobj_membership_attr;	//!< Attribute that
-							//!< describes groups
-							//!< the user is a
-							//!< member of.
-	char		*userobj_access_attr;	//!< Attribute to check to see
-						//!< if the user should be 
-						//!< locked out.
-	int		access_positive;	//!< If true the presence of 
-						//!< the attribute will allow
-						//!< access, else it will
-						//!< deny access.
-
+	const char	*userobj_filter;		//!< Filter to retrieve only user objects.
+	const char	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
+	char		*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
+	int		access_positive;		//!< If true the presence of the attribute will allow access, 
+							//!< else it will deny access.
+						
+	int		cacheable_group_name;		//!< If true the server will determine complete set of group
+							//!< memberships for the current user object, and perform any
+							//!< resolution necessary to determine the names of those
+							//!< groups, then right them to the control list (LDAP-Group).
+							
+	int		cacheable_group_dn;		//!< If true the server will determine complete set of group
+							//!< memberships for the current user object, and perform any
+							//!< resolution necessary to determine the DNs of those groups,
+							//!< then right them to the control list (LDAP-GroupDN).
 	/*
 	 *	Group object attributes and filters
 	 */
-	const char	*groupobj_name_attr;	//!< The name of the group.
-	const char	*groupobj_membership_filter;	//!< Filter to only
-							//!< retrieve groups
-							//!< which contain
-							//!< the user as a 
-							//!< member.
+	const char	*groupobj_name_attr;		//!< The name of the group.
+	const char	*groupobj_membership_filter;	//!< Filter to only retrieve groups which contain
+							//!< the user as a member.
 	
 	/*
 	 *	Profiles
 	 */
-	const char	*base_filter;		//!< Base filter combined with
-						//!< all other filters.
+	const char	*base_filter;			//!< Base filter combined with all other filters.
 	const char	*default_profile;
 	const char	*profile_attr;
 	

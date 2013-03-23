@@ -867,7 +867,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	/*
 	 *	We already have a Cleartext-Password.  Skip edir.
 	 */
-	if (inst->edir && pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
+	if (pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) {
 		goto skip_edir;
 	}
 

@@ -814,7 +814,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	}
 	
 	RDEBUG("User object found at DN \"%s\"", dn);
-	vp = pairmake(request, &request->config_items, "LDAP-UserDn", dn, T_OP_EQ);
+	vp = pairmake(request, &request->config_items, "LDAP-UserDN", dn, T_OP_EQ);
 	if (vp) {	
 		*rcode = RLM_MODULE_OK;
 	}
@@ -885,8 +885,8 @@ free_result:
  * @param entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
  * @return RLM_MODULE_USERLOCK if the user was denied access, else RLM_MODULE_OK.
  */
-rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request, const ldap_handle_t *conn,
-				  LDAPMessage *entry)
+rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request,
+				  const ldap_handle_t *conn, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	char **vals = NULL;
