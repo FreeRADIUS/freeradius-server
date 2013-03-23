@@ -957,9 +957,7 @@ skip_edir:
 	if (inst->profile_attr) {
 		vals = ldap_get_values(conn->handle, entry, inst->profile_attr);
 		if (vals != NULL) {
-			int i;
-	
-			for (i = 0; (vals[i] != NULL) && (*vals[i] != '\0'); i++) {
+			for (i = 0; vals[i] != NULL; i++) {
 				rlm_ldap_apply_profile(inst, request, &conn, vals[i], &expanded);
 			}
 	
