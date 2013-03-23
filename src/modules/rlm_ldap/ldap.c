@@ -884,7 +884,7 @@ free_result:
  *
  * @param inst rlm_ldap configuration.
  * @param request Current request.
- * @param conn Current connection.
+ * @param pconn Current connection.
  * @param names to covert to DNs (NULL terminated).
  * @param out Where to write the DNs. DNs must be freed with ldap_memfree(). Will be NULL terminated.
  * @param outlen Size of out.
@@ -1004,7 +1004,7 @@ rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request
  * so we need to search for each DN individually.
  * @param inst rlm_ldap configuration.
  * @param request Current request.
- * @param conn Current connection.
+ * @param pconn Current connection.
  * @param dn to resolve.
  * @param out Where to write group name (must be freed with ldap_memfree()).
  * @return One of the RLM_MODULE_* values.
@@ -1072,7 +1072,7 @@ rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *request
  *
  * @param inst rlm_ldap configuration.
  * @param request Current request.
- * @param conn used to retrieve entry.
+ * @param pconn Current connection.
  * @param entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
  * @return One of the RLM_MODULE_* values.
  */
