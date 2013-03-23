@@ -844,8 +844,9 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		}
 
 		/* save the SoH VPs */
-		t->soh_reply_vps = fake->reply->vps;
-		fake->reply->vps = NULL;
+		rad_assert(t->soh_reply_vps == NULL);
+		pairmove2(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
+		rad_assert(fake->reply->vps == NULL);
 		request_free(&fake);
 
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
