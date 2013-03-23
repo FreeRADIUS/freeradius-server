@@ -37,8 +37,6 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_logintime_t {
-	char *msg;		/* The Reply-Message passed back to the user
-				 * if the account is outside allowed timestamp */
 	int min_time;
 } rlm_logintime_t;
 
@@ -52,9 +50,8 @@ typedef struct rlm_logintime_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_logintime_t,msg), NULL,
-	"You are calling outside your allowed timespan\r\n"},
   { "minimum-timeout", PW_TYPE_INTEGER, offsetof(rlm_logintime_t,min_time), NULL, "60" },
+  
   { NULL, -1, 0, NULL, NULL }
 };
 
@@ -160,72 +157,64 @@ static int time_of_day(void *instance,
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_logintime_t *data = (rlm_logintime_t *)instance;
-	VALUE_PAIR *check_item = NULL;
-	int r;
+	VALUE_PAIR *ends, *timeout;
+	int left;
 
-	if ((check_item = pairfind(request->config_items, PW_LOGIN_TIME, 0, TAG_ANY)) != NULL) {
-
-		/*
-	 	 *      Authentication is OK. Now see if this
-	 	 *      user may login at this time of the day.
-	 	 */
-		DEBUG("rlm_logintime: Checking Login-Time: '%s'",check_item->vp_strvalue);
-		r = timestr_match((char *)check_item->vp_strvalue,
-		request->timestamp);
-		if (r == 0) {   /* unlimited */
-			/*
-		 	 *      Do nothing: login-time is OK.
-		 	 */
-
-		/*
-	 	 *      Session-Timeout needs to be at least
-	 	 *      60 seconds, some terminal servers
-	 	 *      ignore smaller values.
-	 	 */
-			DEBUG("rlm_logintime: timestr returned unlimited");
-		} else if (r < data->min_time) {
-			/*
-		 	 *      User called outside allowed time interval.
-		 	 */
-
-			DEBUG("rlm_logintime: timestr returned reject");
-			if (data->msg && data->msg[0]){
-				char msg[MAX_STRING_LEN];
-
-				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL, NULL)) {
-					radlog(L_ERR, "rlm_logintime: xlat failed.");
-					return RLM_MODULE_FAIL;
-				}
-				pairfree(&request->reply->vps);
-				pairmake_reply("Reply-Message", msg, T_OP_SET);
-			}
-
-			RDEBUGE("Outside allowed timespan (time allowed %s)",
-					   check_item->vp_strvalue);
-			return RLM_MODULE_REJECT;
-
-		} else if (r > 0) {
-			VALUE_PAIR *reply_item;
-
-			/*
-		 	 *      User is allowed, but set Session-Timeout.
-		 	 */
-			DEBUG("rlm_logintime: timestr returned accept");
-			if ((reply_item = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY)) != NULL) {
-				if (reply_item->vp_integer > (unsigned) r)
-					reply_item->vp_integer = r;
-			} else {
-				reply_item = radius_paircreate(request,
-							       &request->reply->vps,
-							       PW_SESSION_TIMEOUT, 0);
-				reply_item->vp_integer = r;
-			}
-			DEBUG("rlm_logintime: Session-Timeout set to: %d",r);
-		}
-	}
-	else
+	ends = pairfind(request->config_items, PW_LOGIN_TIME, 0, TAG_ANY);
+	if (!ends) {
 		return RLM_MODULE_NOOP;
+	}
+	
+	/*
+	 *      Authentication is OK. Now see if this user may login at this time of the day.
+	 */
+	RDEBUG("Checking Login-Time");	
 
+	/* 
+	 *	Compare the time the request was received with the current Login-Time value
+	 */
+	left = timestr_match(ends->vp_strvalue, request->timestamp);
+
+	/*
+	 *      Do nothing, login time is not controlled (unendsed).
+	 */
+	if (left == 0) {
+		return RLM_MODULE_OK;
+	}
+	
+	/*
+	 *      The min_time setting is to deal with NAS that won't allow Session-Timeout values below a certain value
+	 *	For example some Alcatel Lucent products won't allow a Session-Timeout < 300 (5 minutes).
+	 *
+	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
+	 */	
+	if (left < data->min_time) {
+		RDEBUGE("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
+			ends->vp_strvalue, data->min_time);
+		
+		return RLM_MODULE_USERLOCK;
+	}
+	
+	/* else left > data->min_time */
+	
+	/*
+	 *	There's time left in the users session, inform the NAS by including a Session-Timeout 
+	 *	attribute in the reply, or modifying the existing one.
+	 */
+	RDEBUG("Login within allowed time-slot, %i seconds left in this session", left);
+	
+	timeout = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
+	if (timeout) {	/* just update... */
+		if (timeout->vp_integer > (unsigned int) left) {
+			timeout->vp_integer = left;
+		}
+	} else {	
+		timeout = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
+		timeout->vp_integer = left;
+	}
+	
+	RDEBUG("reply:Session-Timeout set to %i", left);
+		
 	return RLM_MODULE_OK;
 }
 
