@@ -877,6 +877,314 @@ free_result:
 	return rcode;
 }
 
+/** Convert multiple group names into a DNs
+ * 
+ * Given an array of group names, builds a filter matching all names, then retrieves all group objects
+ * and stores the DN associated with each group object.
+ *
+ * @param inst rlm_ldap configuration.
+ * @param request Current request.
+ * @param conn Current connection.
+ * @param names to covert to DNs (NULL terminated).
+ * @param out Where to write the DNs. DNs must be freed with ldap_memfree(). Will be NULL terminated.
+ * @param outlen Size of out.
+ * @return One of the RLM_MODULE_* values.
+ */
+rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request,
+				   ldap_handle_t **pconn, char **names, char **out,
+				   size_t outlen)
+{
+	rlm_rcode_t rcode;
+	ldap_rcode_t status;
+	int ldap_errno;
+	
+	unsigned int name_cnt, entry_cnt;
+	const char *attrs[] = { NULL };
+
+	LDAPMessage *result = NULL, *entry;
+
+	char **name = names;
+	char **dn = out;
+	char buffer[LDAP_MAX_GROUP_NAME_LEN + 1];
+	
+	char *filter;
+	
+	*dn = NULL;
+	
+	if (!*names) {
+		return RLM_MODULE_OK;
+	}
+	
+	if (!inst->groupobj_name_attr) {
+		RDEBUGE("Told to convert group names to DNs but missing 'group.name_attribute' directive");
+		
+		return RLM_MODULE_INVALID;
+	}
+
+	/*
+	 *	It'll probably only save a few ms in network latency, but it means we can send a query
+	 *	for the entire group list at once.
+	 */
+	filter = talloc_asprintf(request, "(&(%s)(|(", inst->base_filter);
+	while (*name) {
+		rlm_ldap_escape_func(request, buffer, sizeof(buffer), *++name, NULL);
+		filter = talloc_asprintf_append_buffer(filter, "(%s=%s)", inst->groupobj_name_attr, buffer);
+		
+		entry_cnt++;
+	}
+	filter = talloc_strdup_append_buffer(filter, "))");
+	
+	status = rlm_ldap_search(inst, request, pconn, inst->basedn, LDAP_SCOPE_SUB, filter, attrs, &result);
+	switch (status) {
+		case LDAP_PROC_SUCCESS:
+			break;
+		case LDAP_PROC_NO_RESULT:
+			rcode = RLM_MODULE_INVALID;
+			goto finish;
+		default:
+			rcode = RLM_MODULE_FAIL;
+			goto finish;
+	}
+	
+	entry_cnt = ldap_count_entries((*pconn)->handle, result);
+	if (entry_cnt > name_cnt) {
+		RDEBUGE("Number of DNs exceeds number of names, base_dn or base_filter should be more restrictive");
+		rcode = RLM_MODULE_INVALID;
+		
+		goto finish;
+	}
+	
+	if (entry_cnt > (outlen - 1)) {
+		RDEBUGE("Number of DNs exceeds limit (%i)", outlen - 1);
+		rcode = RLM_MODULE_INVALID;
+		
+		goto finish;
+	}
+	
+	if (entry_cnt < name_cnt) {
+		RDEBUGW("Got partial mapping of group names to DNs, membership information may be incomplete");
+	}
+	
+	entry = ldap_first_entry((*pconn)->handle, result);
+	if (!entry) {
+		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+			
+		rcode = RLM_MODULE_INVALID;	 
+		goto finish;
+	}
+	
+	do {
+		*dn = ldap_get_dn((*pconn)->handle, entry);	
+	} while((entry = ldap_next_entry((*pconn)->handle, entry)));
+	
+	*dn = NULL;
+	
+	finish:
+	talloc_free(filter);
+	if (result) {
+		ldap_msgfree(result);
+	}
+	
+	/*
+	 *	Be nice and cleanup the output array if we error out.
+	 */
+	if (status != RLM_MODULE_OK) {
+		dn = out;
+		while(*dn) ldap_memfree(*dn++);
+		*dn = NULL;
+	}
+	
+	return status;
+}
+
+/** Convert a single group name into a DN
+ *
+ * Unlike the inverse conversion of a name to a DN, most LDAP directories don't allow filtering by DN,
+ * so we need to search for each DN individually.
+ * @param inst rlm_ldap configuration.
+ * @param request Current request.
+ * @param conn Current connection.
+ * @param dn to resolve.
+ * @param out Where to write group name (must be freed with ldap_memfree()).
+ * @return One of the RLM_MODULE_* values.
+ */
+rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+				   const char *dn, char **out)
+{
+	rlm_rcode_t rcode;
+	ldap_rcode_t status;
+	int ldap_errno;
+	
+	char **vals;
+	const char *attrs[] = { inst->groupobj_name_attr, NULL };
+	LDAPMessage *result = NULL, *entry;
+	
+	*out = NULL;
+	
+	if (!inst->groupobj_name_attr) {
+		RDEBUGE("Told to convert group DN to name but missing 'group.name_attribute' directive");
+		
+		return RLM_MODULE_INVALID;
+	}
+	
+	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, inst->base_filter, attrs,
+				 &result); 
+	switch (status) {
+		case LDAP_PROC_SUCCESS:
+			break;
+		case LDAP_PROC_NO_RESULT:
+			return RLM_MODULE_INVALID;
+		default:
+			return RLM_MODULE_FAIL;
+	}
+	
+	entry = ldap_first_entry((*pconn)->handle, result);
+	if (!entry) {
+		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
+		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+			
+		rcode = RLM_MODULE_INVALID;	 
+		goto finish;
+	}
+
+	vals = ldap_get_values((*pconn)->handle, entry, inst->groupobj_name_attr);
+	if (!vals) {
+		rcode = RLM_MODULE_INVALID;
+		goto finish;
+	}
+	
+	*out = *vals;
+	
+	finish:
+	if (result) {
+		ldap_msgfree(result);
+	}
+	
+	if (vals) {
+		ldap_value_free(vals);	      
+	}
+	
+	return rcode;
+}
+
+/** Convert group membership information into attributes
+ *
+ * @param inst rlm_ldap configuration.
+ * @param request Current request.
+ * @param conn used to retrieve entry.
+ * @param entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
+ * @return One of the RLM_MODULE_* values.
+ */
+rlm_rcode_t rlm_ldap_cacheable_membership(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+				   	  LDAPMessage *entry)
+{
+	rlm_rcode_t rcode;
+	char **vals;
+
+	char *group_name[LDAP_MAX_CACHEABLE + 1];
+	char **name_p = group_name;
+
+	char *group_dn[LDAP_MAX_CACHEABLE + 1];
+	char **dn_p;
+	
+	char *name;
+	
+	int is_dn;
+	int i;
+
+	if (!inst->cacheable_group_dn && !inst->cacheable_group_name) {
+		return RLM_MODULE_OK;
+	}
+	
+	/*
+	 *	Group membership apparently isn't stored in user objects, so jump straight to resolving groups
+	 *	with the group membership filter.
+	 */
+	if (!inst->userobj_membership_attr) {
+		goto skip_userobj;
+	}
+	
+	/*
+	 *	Parse the membership information we got in the initial user query.
+	 */
+	vals = ldap_get_values((*pconn)->handle, entry, inst->userobj_membership_attr);
+	if (!vals) {
+		goto skip_userobj;
+	}
+
+	for (i = 0; (vals[i] != NULL) && (i < LDAP_MAX_CACHEABLE); i++) {
+		is_dn = rlm_ldap_is_dn(vals[i]);
+		
+		if (inst->cacheable_group_dn) {
+			/*
+			 *	The easy case, were caching DNs and we got a DN.
+			 */
+			if (is_dn) {
+				pairmake(request, &request->config_items, "LDAP-GroupDN", vals[i], T_OP_ADD);
+				RDEBUG3("Added LDAP-GroupDN with value \"%s\" to control list", vals[i]);
+				
+			/*
+			 *	We were told to cache DNs but we got a name, we now need to resolve this to a DN.
+			 *	Store all the group names in an array so we can do one query.
+			 */
+			} else {
+				*name_p++ = vals[i];
+			}
+		}
+		
+		if (inst->cacheable_group_name) {
+			/*
+			 *	The easy case, were caching names and we got a name.
+			 */
+			if (!is_dn) {
+				pairmake(request, &request->config_items, "LDAP-Group", vals[i], T_OP_ADD);
+				RDEBUG3("Added LDAP-Group with value \"%s\" to control list", vals[i]);
+			/*
+			 *	We were told to cache names but we got a DN, we now need to resolve this to a name.
+			 *	Only Active Directory supports filtering on DN, so we have to search for each
+			 *	individual group.
+			 */
+			} else {
+				rcode = rlm_ldap_group_dn2name(inst, request, pconn, vals[i], &name);
+				if (rcode != RLM_MODULE_OK) {
+					ldap_value_free(vals);
+					
+					return rcode;
+				}
+				
+				pairmake(request, &request->config_items, "LDAP-Group", name, T_OP_ADD);
+				RDEBUG3("Added LDAP-Group with value \"%s\" to control list", name);
+				ldap_memfree(name);
+			}
+		}
+	}
+	*name_p = NULL;
+	
+	rcode = rlm_ldap_group_name2dn(inst, request, pconn, group_name, group_dn, sizeof(group_dn));
+	
+	ldap_value_free(vals);
+	
+	if (rcode != RLM_MODULE_OK) {
+		return rcode;
+	}
+	
+	dn_p = group_dn;
+	while(*dn_p) {
+		pairmake(request, &request->config_items, "LDAP-GroupDN", *dn_p, T_OP_ADD);
+		RDEBUG3("Added LDAP-GroupDN with value \"%s\" to control list", *dn_p);
+		ldap_memfree(*dn_p);
+		
+		dn_p++;
+	}
+
+	skip_userobj:
+	
+	/* @todo add code to search for groups with this user as a member and add them to control list */
+	
+	return rcode;
+}		
+
 /** Check for presence of access attribute in result
  *
  * @param inst rlm_ldap configuration.

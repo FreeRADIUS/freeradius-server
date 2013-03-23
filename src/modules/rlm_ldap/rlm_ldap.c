@@ -76,6 +76,8 @@ static CONF_PARSER group_config[] = {
 	 "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)"
 	 "(uniquemember=%{Ldap-UserDn})))"},
 	{"membership_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_membership_attr), NULL, NULL},
+	{"name_cacheable", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,cacheable_group_name), NULL, NULL},
+	{"dn_cacheable", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,cacheable_group_dn), NULL, NULL},
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -603,6 +605,10 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		
 		goto error;
 	}
+	
+	if ((inst->cacheable_group_dn || inst->cacheable_group_name) && !inst->groupobj_name_attr) {
+		DEBUGW("Directive 'group.name_attribute' should be set if cacheable group information is enabled");
+	}
 
 	/*
 	 *	Check for URLs.  If they're used and the library doesn't support them, then complain.
@@ -793,6 +799,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	ldap_rcode_t	status;
 	int		ldap_errno;
+	int		i;
 	ldap_instance_t	*inst = instance;
 	char		**vals;
 	VALUE_PAIR	*vp;

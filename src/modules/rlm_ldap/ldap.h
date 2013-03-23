@@ -16,7 +16,9 @@
 
 #define LDAP_MAX_ATTRMAP	128
 #define LDAP_MAP_RESERVED	3
+#define LDAP_MAX_CACHEABLE	64
 
+#define LDAP_MAX_GROUP_NAME_LEN 128
 #define LDAP_MAX_ATTR_STR_LEN	256
 #define LDAP_MAX_FILTER_STR_LEN	1024
 
@@ -215,6 +217,16 @@ rlm_rcode_t rlm_ldap_apply_profile(const ldap_instance_t *inst, REQUEST *request
 const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
 			       const char *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode);
 			       
+rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request,
+				   ldap_handle_t **pconn, char **names, char **out,
+				   size_t outlen);
+
+rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+				   const char *dn, char **out);
+
+rlm_rcode_t rlm_ldap_cacheable_membership(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+				   	  LDAPMessage *entry);
+       
 rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request, const ldap_handle_t *conn,
 				  LDAPMessage *entry);
 				  
