@@ -348,9 +348,9 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		strlcpy(filter, gr_filter, sizeof(filter));
 		strlcpy(basedn, check->vp_strvalue, sizeof(basedn));	
 	} else {
-		snprintf(filter, sizeof(filter), "(&(%s=%s)%s)",
+		snprintf(filter, sizeof(filter), "(&(%s=%s)%s%s)",
 			 inst->groupobj_name_attr,
-			 check->vp_strvalue, gr_filter);
+			 check->vp_strvalue, inst->base_filter, gr_filter);
 
 		/*
 		 *	rlm_ldap_find_user does this, too.  Oh well.
