@@ -877,7 +877,7 @@ rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request
 	 */
 	filter = talloc_asprintf(request, "(&(%s)(|(", inst->base_filter);
 	while (*name) {
-		rlm_ldap_escape_func(request, buffer, sizeof(buffer), *++name, NULL);
+		rlm_ldap_escape_func(request, buffer, sizeof(buffer), *name++, NULL);
 		filter = talloc_asprintf_append_buffer(filter, "(%s=%s)", inst->groupobj_name_attr, buffer);
 		
 		entry_cnt++;
