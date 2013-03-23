@@ -152,6 +152,8 @@ static void ttls_free(void *p)
 
 	if (!t) return;
 
+	rad_assert(talloc_get_type_abort(t, ttls_tunnel_t) != NULL);
+
 	if (t->username) {
 		DEBUG2("rlm_eap_ttls: Freeing handler for user %s",
 		       t->username->vp_strvalue);
@@ -172,7 +174,7 @@ static ttls_tunnel_t *ttls_alloc(rlm_eap_ttls_t *inst,
 {
 	ttls_tunnel_t *t;
 
-	t = talloc(handler, ttls_tunnel_t);
+	t = talloc_zero(handler, ttls_tunnel_t);
 
 	t->default_method = inst->default_method;
 	t->copy_request_to_tunnel = inst->copy_request_to_tunnel;

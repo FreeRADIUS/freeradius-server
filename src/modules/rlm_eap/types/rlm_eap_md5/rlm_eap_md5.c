@@ -31,11 +31,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/rad_assert.h>
 
-static void md5_free(void *data)
-{
-	talloc_free(data);
-}
-
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
