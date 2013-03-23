@@ -847,7 +847,8 @@ rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request
 	ldap_rcode_t status;
 	int ldap_errno;
 	
-	unsigned int name_cnt, entry_cnt;
+	unsigned int name_cnt = 0;
+	unsigned int entry_cnt;
 	const char *attrs[] = { NULL };
 
 	LDAPMessage *result = NULL, *entry;
@@ -938,7 +939,7 @@ rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request
 	/*
 	 *	Be nice and cleanup the output array if we error out.
 	 */
-	if (status != RLM_MODULE_OK) {
+	if (rcode != RLM_MODULE_OK) {
 		dn = out;
 		while(*dn) ldap_memfree(*dn++);
 		*dn = NULL;
