@@ -722,11 +722,11 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		RDEBUGW("  You have set \"Auth-Type := LDAP\" somewhere.");
-		RDEBUGW("  *********************************************");
-		RDEBUGW("  * THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
-		RDEBUGW("  * YOU ARE PREVENTING THE SERVER FROM WORKING.");
-		RDEBUGW("  *********************************************");
+		RDEBUGW("You have set \"Auth-Type := LDAP\" somewhere.");
+		RDEBUGW("*********************************************");
+		RDEBUGW("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
+		RDEBUGW("* YOU ARE PREVENTING THE SERVER FROM WORKING.");
+		RDEBUGW("*********************************************");
 		
 		RDEBUGE("Attribute \"User-Password\" is required for authentication.");
 		
