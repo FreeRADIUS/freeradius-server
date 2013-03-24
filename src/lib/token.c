@@ -30,7 +30,11 @@ RCSID("$Id$")
 #include <ctype.h>
 
 const FR_NAME_NUMBER fr_tokens[] = {
-	{ "=~", T_OP_REG_EQ,	}, /* order is important! */
+	{ "&=~", T_OP_MULTI_REG_EQ_ALL, }, /* order is important! */
+	{ "|=~", T_OP_MULTI_REG_EQ_ANY, },
+	{ "&==", T_OP_MULTI_CMP_EQ_ALL, },
+	{ "|==", T_OP_MULTI_CMP_EQ_ANY, },
+	{ "=~", T_OP_REG_EQ,	},
 	{ "!~", T_OP_REG_NE,	},
 	{ "{",	T_LCBRACE,	},
 	{ "}",	T_RCBRACE,	},
@@ -61,7 +65,8 @@ const FR_NAME_NUMBER fr_tokens[] = {
  */
 #define TOKEN_MATCH(bptr, tptr) \
 	( (tptr)[0] == (bptr)[0] && \
-	 ((tptr)[1] == (bptr)[1] || (tptr)[1] == 0))
+	 ((tptr)[1] == (bptr)[1] || (tptr)[1] == 0) && \
+	 ((tptr)[1] == 0 || (tptr)[2] == (bptr)[2] || (tptr)[2] == 0))
 
 /*
  *	Read a word from a buffer and advance pointer.
