@@ -54,7 +54,6 @@ typedef struct rlm_sqlippool_t {
 	char *allocate_find;	/* SQL query to find an unused IP */
 	char *allocate_update;	/* SQL query to mark an IP as used */
 	char *allocate_commit;	/* SQL query to commit */
-	char *allocate_rollback; /* SQL query to rollback */
 
 	char *pool_check;	/* Query to check for the existence of the pool */
 
@@ -62,31 +61,26 @@ typedef struct rlm_sqlippool_t {
 	char *start_begin;	/* SQL query to begin */
 	char *start_update;	/* SQL query to update an IP entry */
 	char *start_commit;	/* SQL query to commit */
-	char *start_rollback;	/* SQL query to rollback */
 
 				/* Alive sequence */
 	char *alive_begin;	/* SQL query to begin */
 	char *alive_update;	/* SQL query to update an IP entry */
 	char *alive_commit;	/* SQL query to commit */
-	char *alive_rollback;	/* SQL query to rollback */
 
 				/* Stop sequence */
 	char *stop_begin;	/* SQL query to begin */
 	char *stop_clear;	/* SQL query to clear an IP */
 	char *stop_commit;	/* SQL query to commit */
-	char *stop_rollback;	/* SQL query to rollback */
 
 				/* On sequence */
 	char *on_begin;		/* SQL query to begin */
 	char *on_clear;		/* SQL query to clear an entire NAS */
 	char *on_commit;	/* SQL query to commit */
-	char *on_rollback;	/* SQL query to rollback */
 
 				/* Off sequence */
 	char *off_begin;	/* SQL query to begin */
 	char *off_clear;	/* SQL query to clear an entire NAS */
 	char *off_commit;	/* SQL query to commit */
-	char *off_rollback;	/* SQL query to rollback */
 
 				/* Logging Section */
 	char *log_exists;	/* There was an ip address already assigned */
@@ -129,8 +123,6 @@ static CONF_PARSER module_config[] = {
     offsetof(rlm_sqlippool_t,allocate_update), NULL, "" },
   { "allocate-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,allocate_commit), NULL, "COMMIT" },
-  { "allocate-rollback", PW_TYPE_STRING_PTR,
-    offsetof(rlm_sqlippool_t,allocate_rollback), NULL, "ROLLBACK" },
 
   { "pool-check", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,pool_check), NULL, "" },
@@ -141,8 +133,6 @@ static CONF_PARSER module_config[] = {
     offsetof(rlm_sqlippool_t,start_update), NULL, "" },
   { "start-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,start_commit), NULL, "COMMIT" },
-  { "start-rollback", PW_TYPE_STRING_PTR,
-    offsetof(rlm_sqlippool_t,start_rollback), NULL, "ROLLBACK" },
 
   { "alive-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,alive_begin), NULL, "START TRANSACTION" },
@@ -150,8 +140,6 @@ static CONF_PARSER module_config[] = {
     offsetof(rlm_sqlippool_t,alive_update), NULL, "" },
   { "alive-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,alive_commit), NULL, "COMMIT" },
-  { "alive-rollback", PW_TYPE_STRING_PTR,
-    offsetof(rlm_sqlippool_t,alive_rollback), NULL, "ROLLBACK" },
 
   { "stop-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,stop_begin), NULL, "START TRANSACTION" },
@@ -159,8 +147,6 @@ static CONF_PARSER module_config[] = {
     offsetof(rlm_sqlippool_t,stop_clear), NULL, "" },
   { "stop-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,stop_commit), NULL, "COMMIT" },
-  { "stop-rollback", PW_TYPE_STRING_PTR,
-    offsetof(rlm_sqlippool_t,stop_rollback), NULL, "ROLLBACK" },
 
   { "on-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,on_begin), NULL, "START TRANSACTION" },
@@ -168,8 +154,6 @@ static CONF_PARSER module_config[] = {
     offsetof(rlm_sqlippool_t,on_clear), NULL, "" },
   { "on-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,on_commit), NULL, "COMMIT" },
-  { "on-rollback", PW_TYPE_STRING_PTR,
-    offsetof(rlm_sqlippool_t,on_rollback), NULL, "ROLLBACK" },
 
   { "off-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,off_begin), NULL, "START TRANSACTION" },
@@ -177,8 +161,6 @@ static CONF_PARSER module_config[] = {
     offsetof(rlm_sqlippool_t,off_clear), NULL, "" },
   { "off-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
-  { "off-rollback", PW_TYPE_STRING_PTR,
-    offsetof(rlm_sqlippool_t,off_rollback), NULL, "ROLLBACK" },
 
   { "sqlippool_log_exists", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t, log_exists), NULL, "" },
