@@ -282,6 +282,11 @@ static int sqlippool_command(const char * fmt, rlm_sql_handle_t * handle,
 	char expansion[MAX_QUERY_LEN];
 	char query[MAX_QUERY_LEN];
 
+	/*
+	 *	If we don't have a command, do nothing.
+	 */
+	if (!*fmt) return 0;
+
 	sqlippool_expand(expansion, sizeof(expansion),
 			 fmt, data, param, param_len);
 
