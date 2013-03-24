@@ -235,8 +235,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	 * 	a User-Name attribute.
 	 */
 	if (!request->username) {
-		RDEBUG("Attribute \"User-Name\" is required for "
-		       "authentication");
+		RDEBUGE("Attribute \"User-Name\" is required for authentication");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -246,8 +245,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	 * 	a User-Password attribute.
 	 */
 	if (!request->password) {
-		RDEBUG("Attribute \"User-Password\" is required for "
-		       "authentication");
+		RDEBUGE("Attribute \"User-Password\" is required for authentication");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -257,8 +255,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	 * 	and not anything else.
 	 */
 	if (request->password->da->attr != PW_USER_PASSWORD) {
-		RDEBUG("Attribute \"User-Password\" is required for "
-		       "authentication.  Cannot use \"%s\".",
+		RDEBUGE("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".",
 		       request->password->da->name);
 		
 		return RLM_MODULE_INVALID;
@@ -266,7 +263,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	
 	ret = krb5_parse_name(context, request->username->vp_strvalue, client);
 	if (ret) {
-		RDEBUG("Failed parsing username as principal: %s", error_message(ret));
+		RDEBUGE("Failed parsing username as principal: %s", error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -304,8 +301,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Error cloning krb5 context: %s",
-		       inst->xlat_name, error_message(ret));
+		RDEBUGE("Error cloning krb5 context: %s", error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -335,8 +331,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_resolve(context, inst->keytabname, &keytab) :
 		krb5_kt_default(context, &keytab);
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Resolving keytab failed: %s",
-		       inst->xlat_name, error_message(ret));
+		RDEBUGE("Resolving keytab failed: %s", error_message(ret));
 		
 		goto cleanup;
 	}
@@ -361,16 +356,14 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			RDEBUG("Provided password was incorrect: %s",
-			       error_message(ret));
+			RDEBUGE("Provided password was incorrect: %s", error_message(ret));
 			rcode = RLM_MODULE_REJECT;
 		
 			break;
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			RDEBUG("Account has been locked out: %s",
-			       error_message(ret));
+			RDEBUGE("Account has been locked out: %s", error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
 		
 			break;
@@ -379,8 +372,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			rcode = RLM_MODULE_NOTFOUND;
 					
 		default:
-			radlog(L_ERR, "rlm_krb5 (%s): Verifying user failed: "
-			       "%s", inst->xlat_name, error_message(ret));
+			RDEBUGE("Verifying user failed: %s", error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 		
 			break;
@@ -433,8 +425,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Error cloning krb5 context: %s",
-		       inst->xlat_name, error_message(ret));
+		RDEBUGE("Error cloning krb5 context: %s", inst->xlat_name, error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -464,7 +455,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_resolve(context, inst->keytabname, &keytab) :
 		krb5_kt_default(context, &keytab);
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
+		RDEBUGE("Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
 		
 		goto cleanup;
 	}
@@ -479,16 +470,14 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			RDEBUG("Provided password was incorrect: %s",
-			       error_message(ret));
+			RDEBUGE("Provided password was incorrect: %s", error_message(ret));
 			rcode = RLM_MODULE_REJECT;
 			break;
 			
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			RDEBUG("Account has been locked out: %s",
-			       error_message(ret));
+			RDEBUGE("Account has been locked out: %s", error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
 			break;
 			
@@ -498,9 +487,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			break;
 			
 		default:
-			radlog(L_ERR, "rlm_krb5 (%s): Failed getting/verifying "
-			       "credentials: %s", inst->xlat_name,
-			       error_message(ret));
+			RDEBUGE("Failed getting/verifying credentials: %s", error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}
