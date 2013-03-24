@@ -93,7 +93,7 @@ typedef struct eap_tls_conf {
 
 /* This structure gets stored in arg */
 typedef struct _eap_tls_t {
-	EAP_TLS_CONF 	*conf;
+	EAP_TLS_CONF 	conf;
 	SSL_CTX		*ctx;
 #ifdef HAVE_OPENSSL_OCSP_H
 	X509_STORE	*store; /* OCSP Revocation Store */

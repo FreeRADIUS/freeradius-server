@@ -213,7 +213,6 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 static void cbtls_remove_session(UNUSED SSL_CTX *ctx, SSL_SESSION *sess)
 {
 	size_t size;
-	VALUE_PAIR *vp;
 	char buffer[2 * MAX_SESSION_SIZE + 1];
 
 	size = sess->session_id_length;
@@ -1262,13 +1261,7 @@ static int eaptls_detach(void *arg)
 	eap_tls_t 	 *inst;
 
 	inst = (eap_tls_t *) arg;
-	conf = inst->conf;
-
-	if (conf) {
-		memset(conf, 0, sizeof(*conf));
-		free(inst->conf);
-		inst->conf = NULL;
-	}
+	conf = &(inst->conf);
 
 	if (inst->ctx) SSL_CTX_free(inst->ctx);
 	inst->ctx = NULL;
@@ -1299,20 +1292,14 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 	memset(inst, 0, sizeof(*inst));
+	conf = &(inst->conf);
 
 	/*
-	 *	Parse the config file & get all the configured values
+	 *	Hack: conf is the first structure inside of inst.  The
+	 *	CONF_PARSER stuff above uses offsetof() and
+	 *	EAP_TLS_CONF, which is technically wrong.
 	 */
-	conf = (EAP_TLS_CONF *)malloc(sizeof(*conf));
-	if (conf == NULL) {
-		free(inst);
-		radlog(L_ERR, "rlm_eap_tls: out of memory");
-		return -1;
-	}
-	memset(conf, 0, sizeof(*conf));
-
-	inst->conf = conf;
-	if (cf_section_parse(cs, conf, module_config) < 0) {
+	if (cf_section_parse(cs, inst, module_config) < 0) {
 		eaptls_detach(inst);
 		return -1;
 	}
@@ -1460,13 +1447,13 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *
 	 *	FIXME: Also do it every N sessions?
 	 */
-	if (inst->conf->session_cache_enable &&
-	    ((inst->conf->session_last_flushed + (inst->conf->session_timeout * 1800)) <= request->timestamp)) {
+	if (inst->conf.session_cache_enable &&
+	    ((inst->conf.session_last_flushed + (inst->conf.session_timeout * 1800)) <= request->timestamp)) {
 		RDEBUG2("Flushing SSL sessions (of #%ld)",
 			SSL_CTX_sess_number(inst->ctx));
 
 		SSL_CTX_flush_sessions(inst->ctx, request->timestamp);
-		inst->conf->session_last_flushed = request->timestamp;
+		inst->conf.session_last_flushed = request->timestamp;
 	}
 
 	/*
@@ -1517,12 +1504,12 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	this index should be global.
 	 */
 	SSL_set_ex_data(ssn->ssl, 0, (void *)handler);
-	SSL_set_ex_data(ssn->ssl, 1, (void *)inst->conf);
+	SSL_set_ex_data(ssn->ssl, 1, (void *)&(inst->conf));
 #ifdef HAVE_OPENSSL_OCSP_H
 	SSL_set_ex_data(ssn->ssl, 2, (void *)inst->store);
 #endif
 
-	ssn->length_flag = inst->conf->include_length;
+	ssn->length_flag = inst->conf.include_length;
 
 	/*
 	 *	We use default fragment size, unless the Framed-MTU
@@ -1536,7 +1523,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 	 *	of EAP-TLS in order to calculate fragment sizes is
 	 *	just too much.
 	 */
-	ssn->offset = inst->conf->fragment_size;
+	ssn->offset = inst->conf.fragment_size;
 	vp = pairfind(handler->request->packet->vps, PW_FRAMED_MTU);
 	if (vp && ((vp->vp_integer - 14) < ssn->offset)) {
 		/*
@@ -1598,7 +1585,7 @@ static int eaptls_initiate(void *type_arg, EAP_HANDLER *handler)
 		break;
 	}
 
-	if (inst->conf->session_cache_enable) {
+	if (inst->conf.session_cache_enable) {
 		ssn->allow_session_resumption = 1; /* otherwise it's zero */
 	}
 
@@ -1639,7 +1626,7 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	EAP-TLS-Success packet here.
 		 */
 	case EAPTLS_SUCCESS:
-		if (inst->conf->virtual_server) {
+		if (inst->conf.virtual_server) {
 			VALUE_PAIR *vp;
 			REQUEST *fake;
 
@@ -1654,7 +1641,7 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 					   PW_VIRTUAL_SERVER)) != NULL) {
 				fake->server = vp->vp_strvalue;
 			} else {
-				fake->server = inst->conf->virtual_server;
+				fake->server = inst->conf.virtual_server;
 			}
 
 			RDEBUG("Processing EAP-TLS Certificate check:");
@@ -1727,7 +1714,7 @@ static int eaptls_authenticate(void *arg, EAP_HANDLER *handler)
 		 *	the client can't re-use it.
 		 */
 	default:
-		if (inst->conf->session_cache_enable) {	
+		if (inst->conf.session_cache_enable) {	
 			SSL_CTX_remove_session(inst->ctx,
 					       tls_session->ssl->session);
 		}
