@@ -390,8 +390,12 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	}
 	
 	cleanup:
-	krb5_free_principal(context, client);
-	krb5_kt_close(context, keytab);
+	if (client) {
+		krb5_free_principal(context, client);
+	}
+	if (keytab) {
+		krb5_kt_close(context, keytab);
+	}
 #ifdef KRB5_IS_THREAD_SAFE
 	krb5_free_context(context);
 #endif
@@ -512,9 +516,15 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	cleanup:
 
 	if (context) {
-		krb5_free_principal(context, client);
+		if (client) {
+			krb5_free_principal(context, client);
+		}
+		if (keytab) {
+			krb5_kt_close(context, keytab);
+		}
+		
 		krb5_free_cred_contents(context, &init_creds);
-		krb5_kt_close(context, keytab);
+
 #ifdef KRB5_IS_THREAD_SAFE
 		krb5_free_context(context);
 #endif
