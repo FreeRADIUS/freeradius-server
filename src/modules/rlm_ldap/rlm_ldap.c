@@ -695,7 +695,7 @@ error:
 	return -1;
 }
 
-/** Check the user's password against ldap database
+/** Check the user's password against ldap directory
  * 
  * @param instance rlm_ldap configuration.
  * @param request Current request.
@@ -1214,10 +1214,6 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST * request) {
 	return RLM_MODULE_NOOP;
 }
 
-
-/** Check the user's password against ldap database
- *
- */
 static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request)
 {
 	ldap_instance_t	*inst = instance;
