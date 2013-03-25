@@ -108,10 +108,10 @@ static CONF_PARSER option_config[] = {
 	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,net_timeout), NULL, "10"},
 
 	/* timeout for search results */
-	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,timeout), NULL, "20"},
+	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,res_timeout), NULL, "20"},
 
 	/* allow server unlimited time for search (server-side limit) */
-	{"timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance_t,timelimit), NULL, "20"},
+	{"srv_timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance_t,srv_timelimit), NULL, "20"},
 
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
 	{"idle", PW_TYPE_INTEGER, offsetof(ldap_instance_t,keepalive_idle), NULL, "60"},
@@ -131,12 +131,12 @@ static const CONF_PARSER module_config[] = {
 	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance_t,port), NULL, "389"},
 
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
-	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,login), NULL, ""},
+	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 
 	/*
 	 *	DN's and filters.
 	 */
-	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,basedn), NULL, "o=notexist"},
+	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_dn), NULL, "o=notexist"},
 
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_filter), NULL, "(uid=%u)"},
 
@@ -183,7 +183,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	int ldap_errno;
 	const char *url;
 	const char **attrs;
-	char buffer[LDAP_MAX_FILTER_STR_LEN];
+	char buffer[LDAP_MAX_DN_STR_LEN + LDAP_MAX_FILTER_STR_LEN];
 
 	if (strchr(fmt, '%') != NULL) {
 		if (!radius_xlat(buffer, sizeof(buffer), fmt, request, rlm_ldap_escape_func, NULL)) {
@@ -309,7 +309,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	char		gr_filter[LDAP_MAX_FILTER_STR_LEN];
 	char		filter[LDAP_MAX_FILTER_STR_LEN];
-	char		basedn[LDAP_MAX_FILTER_STR_LEN];
+	char		base_dn[LDAP_MAX_DN_STR_LEN];
 
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
@@ -348,7 +348,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue);
 	if (check_is_dn) {
 		strlcpy(filter, gr_filter, sizeof(filter));
-		strlcpy(basedn, check->vp_strvalue, sizeof(basedn));	
+		strlcpy(base_dn, check->vp_strvalue, sizeof(base_dn));	
 	} else {
 		snprintf(filter, sizeof(filter), "(&(%s=%s)%s%s)",
 			 inst->groupobj_name_attr,
@@ -357,14 +357,14 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		/*
 		 *	rlm_ldap_find_user does this, too.  Oh well.
 		 */
-		if (!radius_xlat(basedn, sizeof(basedn), inst->basedn, request, rlm_ldap_escape_func, NULL)) {
-			RDEBUGE("Failed creating basedn");
+		if (!radius_xlat(base_dn, sizeof(base_dn), inst->base_dn, request, rlm_ldap_escape_func, NULL)) {
+			RDEBUGE("Failed creating base_dn");
 			
 			return 1;
 		}
 	}
 
-	status = rlm_ldap_search(inst, request, &conn, basedn, LDAP_SCOPE_SUBTREE, filter, NULL, NULL);
+	status = rlm_ldap_search(inst, request, &conn, base_dn, LDAP_SCOPE_SUBTREE, filter, NULL, NULL);
 	switch (status) {
 		case LDAP_PROC_SUCCESS:
 			RDEBUG("User found in group object");

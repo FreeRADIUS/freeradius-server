@@ -210,9 +210,9 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		goto process_error;
 	}
 	
-	tv.tv_sec = inst->timeout;
-	tv.tv_usec = 0;
-
+	memset(&tv, 0, sizeof(tv));
+	tv.tv_sec = inst->res_timeout;
+	
 	/*
 	 *	Now retrieve the result and check for errors
 	 *	ldap_result returns -1 on error, and 0 on timeout
@@ -260,7 +260,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		break;
 
 	case LDAP_NO_SUCH_OBJECT:
-		*error = "The specified object wasn't found, check basedn and admin dn";
+		*error = "The specified object wasn't found, check base_dn and admin dn";
 		
 		status = LDAP_PROC_BAD_DN;
 		
@@ -548,7 +548,7 @@ ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap
 	 *	Do all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE);
+		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, TRUE);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -565,8 +565,8 @@ ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap
 	 *	to the ld. result should pick it up without us
 	 *	having to pass it explicitly.
 	 */
-	tv.tv_sec = inst->timeout;
-	tv.tv_usec = 0;
+	memset(&tv, 0, sizeof(tv));
+	tv.tv_sec = inst->res_timeout;
 retry:	
 	(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs, 0, NULL, NULL, &tv, 0, &msgid);
 
@@ -642,7 +642,7 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
 	 *	Perform all modifications as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE);
+		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, TRUE);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
@@ -717,7 +717,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	int		ldap_errno;
 	char		*dn = NULL;
 	char	    	filter[LDAP_MAX_FILTER_STR_LEN];	
-	char	    	basedn[LDAP_MAX_FILTER_STR_LEN];
+	char	    	base_dn[LDAP_MAX_DN_STR_LEN];
 	
 	int freeit = FALSE;					//!< Whether the message should
 								//!< be freed after being processed.
@@ -750,7 +750,7 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 	 *	Perform all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->login, inst->password, TRUE);
+		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, TRUE);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
@@ -769,14 +769,14 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 		return NULL;
 	}
 
-	if (!radius_xlat(basedn, sizeof(basedn), inst->basedn, request, rlm_ldap_escape_func, NULL)) {
-		RDEBUGE("Unable to create basedn");
+	if (!radius_xlat(base_dn, sizeof(base_dn), inst->base_dn, request, rlm_ldap_escape_func, NULL)) {
+		RDEBUGE("Unable to create base_dn");
 		
 		*rcode = RLM_MODULE_INVALID;
 		return NULL;
 	}
 
-	status = rlm_ldap_search(inst, request, pconn, basedn, LDAP_SCOPE_SUBTREE, filter, attrs, result);
+	status = rlm_ldap_search(inst, request, pconn, base_dn, LDAP_SCOPE_SUBTREE, filter, attrs, result);
 	switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;
@@ -884,7 +884,7 @@ rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request
 	}
 	filter = talloc_strdup_append_buffer(filter, "))");
 	
-	status = rlm_ldap_search(inst, request, pconn, inst->basedn, LDAP_SCOPE_SUB, filter, attrs, &result);
+	status = rlm_ldap_search(inst, request, pconn, inst->base_dn, LDAP_SCOPE_SUB, filter, attrs, &result);
 	switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;
@@ -1223,7 +1223,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 
 	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->xlat_name, url);
 
-	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->login, conn->inst->password, FALSE);
+	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password, FALSE);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			
@@ -1309,11 +1309,12 @@ void *rlm_ldap_conn_create(void *ctx)
 		}
 	}
 
+	memset(&tv, 0, sizeof(tv));
 	tv.tv_sec = inst->net_timeout;
-	tv.tv_usec = 0;
+
 	do_ldap_option(LDAP_OPT_NETWORK_TIMEOUT, "net_timeout", &tv);
 
-	do_ldap_option(LDAP_OPT_TIMELIMIT, "timelimit", &(inst->timelimit));
+	do_ldap_option(LDAP_OPT_TIMELIMIT, "srv_timelimit", &(inst->srv_timelimit));
 
 	ldap_version = LDAP_VERSION3;
 	do_ldap_option(LDAP_OPT_PROTOCOL_VERSION, "ldap_version", &ldap_version);
@@ -1387,7 +1388,7 @@ void *rlm_ldap_conn_create(void *ctx)
 	conn->rebound = FALSE;
 	conn->referred = FALSE;
 
-	status = rlm_ldap_bind(inst, NULL, &conn, inst->login, inst->password, FALSE);
+	status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, FALSE);
 	if (status != LDAP_PROC_SUCCESS) {
 		goto error;
 	}

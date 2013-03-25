@@ -14,13 +14,20 @@
 #include	<freeradius-devel/modules.h>
 #include	<ldap.h>
 
-#define LDAP_MAX_ATTRMAP	128
-#define LDAP_MAP_RESERVED	3
-#define LDAP_MAX_CACHEABLE	64
-
-#define LDAP_MAX_GROUP_NAME_LEN 128
-#define LDAP_MAX_ATTR_STR_LEN	256
-#define LDAP_MAX_FILTER_STR_LEN	1024
+#define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and 
+							//!< FreeRADIUS attributes.
+#define LDAP_MAP_RESERVED		3		//!< Number of additional items to allocate in expanded 
+							//!< attribute name arrays. Currently for enable attribute, 
+							//!< group membership attribute, and profile attribute.
+					
+#define LDAP_MAX_CACHEABLE		64		//!< Maximum number of groups we retrieve from the server for
+							//!< a given user. If more than this number are retrieve the 
+							//!< module returns invalid.
+					
+#define LDAP_MAX_GROUP_NAME_LEN		128		//!< Maximum name of a group name.
+#define LDAP_MAX_ATTR_STR_LEN		256		//!< Maximum length of an xlat expanded LDAP attribute.
+#define LDAP_MAX_FILTER_STR_LEN		1024		//!< Maximum length of an xlat expanded filter.
+#define LDAP_MAX_DN_STR_LEN		2048		//!< Maximum length of an xlat expanded DN.
 
 /*
  *	The default setting for TLS Certificate Verification
@@ -28,31 +35,43 @@
 #define TLS_DEFAULT_VERIFY "allow"
 
 typedef struct ldap_acct_section {
-	CONF_SECTION	*cs;
+	CONF_SECTION	*cs;				//!< Section configuration.
 	
-	const char *reference;
+	const char *reference;				//!< Configuration reference string.
 } ldap_acct_section_t;
 
 typedef struct ldap_instance {
-	CONF_SECTION	*cs;
-	fr_connection_pool_t *pool;
+	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
+	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
-	char		*server;
-	int		port;
+	char		*server;			//!< Initial server to bind to.
+	int		is_url;				//!< Whether ldap_is_ldap_url says 'server' is an 
+							//!< ldap[s]:// url.
+	int		port;				//!< Port to use when binding to the server.
 
-	char		*login;
-	char		*password;
+	char		*admin_dn;			//!< DN we bind as when we need to query the LDAP
+							//!< directory.
+	char		*password;			//!< Password used in administrative bind.
 
-	char		*basedn;
+	char		*base_dn;			//!< The point in the LDAP directory that encompasses all the 
+							//!< userobj and groupobj that we want to retrieve.
 
-	int		chase_referrals;
-	int		rebind;
+	int		chase_referrals;		//!< If the LDAP server returns a referral to another server
+							//!< or point in the tree, follow it, establishing new
+							//!< connections and binding where necessary.
+
+	int		rebind;				//!< Controls whether we set an ldad_rebind_proc function
+							//!< and so determines if we can bind to other servers whilst
+							//!< chasing referrals. If this is false, we will still chase
+							//!< referrals on the same server, but won't bind to other
+							//!< servers.
 
 	int		ldap_debug;			//!< Debug flag for the SDK.
 
 	const char	*xlat_name;			//!< Instance name.
 
-	int		expect_password;
+	int		expect_password;		//!< True if the user_map included a mapping between an LDAP
+							//!< attribute and one of our password reference attributes.
 	
 	/*
 	 *	RADIUS attribute to LDAP attribute maps
@@ -88,66 +107,89 @@ typedef struct ldap_instance {
 	 *	Profiles
 	 */
 	const char	*base_filter;			//!< Base filter combined with all other filters.
-	const char	*default_profile;
-	const char	*profile_attr;
+	const char	*default_profile;		//!< If this is set, we will search for a profile object
+							//!< with this name, and map any attributes it contains.
+							//!< No value should be set if profiles are not being used
+							//!< as there is an associated performance penalty.
+	const char	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
+							//!< in userobj or groupobj.
 	
 
 	/*
 	 *	Accounting
 	 */
-	ldap_acct_section_t *postauth;
-	ldap_acct_section_t *accounting;
+	ldap_acct_section_t *postauth;			//!< Modify mappings for post-auth.
+	ldap_acct_section_t *accounting;		//!< Modify mappings for accounting.
 
 	/*
 	 *	TLS items.  We should really normalize these with the
 	 *	TLS code in 3.0.
 	 */
 	int		tls_mode;
-	int		start_tls;
-	char		*tls_cacertfile;
-	char		*tls_cacertdir;
-	char		*tls_certfile;
-	char		*tls_keyfile;
-	char		*tls_randfile;
-	char		*tls_require_cert;
+	int		start_tls;			//!< Send the Start TLS message to the LDAP directory
+							//!< to start encrypted communications using the standard
+							//!< LDAP port.
+
+	char		*tls_cacertfile;		//!< Sets the full path to a CA certificate (used to validate
+							//!< the certificate the server presents).
+							
+	char		*tls_cacertdir;			//!< Sets the path to a directory containing CA certificates.
+	
+	char		*tls_certfile;			//!< Sets the path to the public certificate file we present
+							//!< to the servers.
+							
+	char		*tls_keyfile;			//!< Sets the path to the private key for our public 
+							//!< certificate.
+							
+	char		*tls_randfile;			//!< Path to the random file if /dev/random and /dev/urandom
+							//!< are unavailable.
+							
+	char		*tls_require_cert;		//!< Sets requirements for validating the certificate the 
+							//!< server presents.
 
 	/*
 	 *	Options
 	 */
-	int		timelimit;
-	int  		net_timeout;
-	int		timeout;
-	int		is_url;
+							
+	int  		net_timeout;			//!< How long we wait for new connections to the LDAP server
+							//!< to be established.
+	int		res_timeout;			//!< How long we wait for a result from the server.
+	int		srv_timelimit;			//!< How long the server should spent on a single request
+							//!< (also bounded by value on the server).
 
 #ifdef WITH_EDIR
  	/*
 	 *	eDir support
 	 */
-	int		edir;
-	int		edir_autz;
+	int		edir;				//!< If true attempt to retrieve the user's Cleartext password
+							//!< using the Universal Password feature of Novell eDirectory.
+	int		edir_autz;			//!< If true, and we have the Universal Password, bind with it
+							//!< to perform additional authorisation checks.
 #endif
 	/*
 	 *	For keep-alives.
 	 */
 #ifdef LDAP_OPT_X_KEEPALIVE_IDLE
-	int		keepalive_idle;
+	int		keepalive_idle;			//!< Number of seconds a connections needs to remain idle
+							//!< before TCP starts sending keepalive probes.
 #endif
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
-	int		keepalive_probes;
+	int		keepalive_probes;		//!< Number of missed timeouts before the connection is
+							//!< dropped.
 #endif
-#ifdef LDAP_OPT_ERROR_NUMBER
-	int		keepalive_interval;
+#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
+	int		keepalive_interval;		//!< Interval between keepalive probes.
 #endif
 
 } ldap_instance_t;
 
 typedef struct ldap_handle {
-	LDAP		*handle;	//!< LDAP LD handle.
-	int		rebound;	//!< Whether the connection has been rebound to something other than the admin
-					//!< user.
-	int		referred;	//!< Whether the connection is now established a server other than the
-					//!< configured one.
-	ldap_instance_t	*inst;		//!< rlm_ldap configuration.
+	LDAP		*handle;			//!< LDAP LD handle.
+	int		rebound;			//!< Whether the connection has been rebound to something 
+							//!< other than the admin user.
+	int		referred;			//!< Whether the connection is now established a server 
+							//!< other than the configured one.
+	ldap_instance_t	*inst;				//!< rlm_ldap configuration.
 } ldap_handle_t;
 
 typedef struct rlm_ldap_map_xlat {
@@ -163,19 +205,22 @@ typedef struct rlm_ldap_result {
 } rlm_ldap_result_t;
 
 typedef enum {
-	LDAP_PROC_SUCCESS = 0,		//!< Operation was successfull.
-	LDAP_PROC_ERROR	= -1,		//!< Unrecoverable library/server error.
-	LDAP_PROC_RETRY	= -2,		//!< Transitory error, caller should
-					//!< retry the operation with a new
-					//!< connection.
-	LDAP_PROC_NOT_PERMITTED = -3,	//!< Operation was not permitted, 
-					//!< either current user was locked out
-					//!< in the case of binds, or has
-					//!< insufficient access.
-	LDAP_PROC_REJECT = -4,		//!< Bind failed, user was rejected.
-	LDAP_PROC_BAD_DN = -5,		//!< Specified an invalid object in a
-					//!< bind or search DN.
-	LDAP_PROC_NO_RESULT = -6	//!< Got no results.
+	LDAP_PROC_SUCCESS = 0,				//!< Operation was successfull.
+	
+	LDAP_PROC_ERROR	= -1,				//!< Unrecoverable library/server error.
+	
+	LDAP_PROC_RETRY	= -2,				//!< Transitory error, caller should retry the operation 
+							//!< with a new connection.
+					
+	LDAP_PROC_NOT_PERMITTED = -3,			//!< Operation was not permitted, either current user was 
+							//!< locked out in the case of binds, or has insufficient 
+							//!< access.
+					
+	LDAP_PROC_REJECT = -4,				//!< Bind failed, user was rejected.
+	
+	LDAP_PROC_BAD_DN = -5,				//!< Specified an invalid object in a bind or search DN.
+					
+	LDAP_PROC_NO_RESULT = -6			//!< Got no results.
 } ldap_rcode_t;
 
 /*
