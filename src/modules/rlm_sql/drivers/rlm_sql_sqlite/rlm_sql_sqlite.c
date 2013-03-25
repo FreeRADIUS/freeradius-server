@@ -82,8 +82,7 @@ static int sql_check_error(sqlite3 *db)
 	case SQLITE_FULL:
 	case SQLITE_CONSTRAINT:
 	case SQLITE_MISMATCH:
-		radlog(L_ERR, "rlm_sql_sqlite: Error (%d): %s", error,
-		       sqlite3_errmsg(db));
+		radlog(L_ERR, "rlm_sql_sqlite: Error (%d): %s", error, sqlite3_errmsg(db));
 		
 		return -1;
 		break;
@@ -92,8 +91,7 @@ static int sql_check_error(sqlite3 *db)
 	 *	Errors with the handle, that probably require reinitialisation
 	 */
 	default:
-		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, "
-		       "error (%d): %s", error, sqlite3_errmsg(db));
+		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, error (%d): %s", error, sqlite3_errmsg(db));
 		return SQL_DOWN;
 		break;
 	}
@@ -113,21 +111,18 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	sqlite3_stmt *statement;
 	const char *z_tail;
 
-	radlog(L_INFO, "rlm_sql_sqlite: Executing SQL statements from "
-	       "file \"%s\"", filename);
+	radlog(L_INFO, "rlm_sql_sqlite: Executing SQL statements from file \"%s\"", filename);
 
 	f = fopen(filename, "r");
 	if (!f) {
-		radlog(L_ERR, "rlm_sql_sqlite: Failed opening SQL "
-		       "file \"%s\": %s", filename,
+		radlog(L_ERR, "rlm_sql_sqlite: Failed opening SQL file \"%s\": %s", filename,
 		       strerror(errno));
 	
 		return -1;
 	}
 	
 	if (fstat(fileno(f), &finfo) < 0) {
-		radlog(L_ERR, "rlm_sql_sqlite: Failed stating SQL "
-		       "file \"%s\": %s", filename,
+		radlog(L_ERR, "rlm_sql_sqlite: Failed stating SQL file \"%s\": %s", filename,
 		       strerror(errno));
 		
 		fclose(f);
@@ -137,9 +132,8 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	
 	if (finfo.st_size > BOOTSTRAP_MAX) {
 		too_big:
-		radlog(L_ERR, "rlm_sql_sqlite: Size of SQL "
-		       "(%zu) file exceeds limit (%uk)", (size_t) finfo.st_size / 1024,
-		       BOOTSTRAP_MAX / 1024);
+		radlog(L_ERR, "rlm_sql_sqlite: Size of SQL (%zu) file exceeds limit (%uk)",
+		       (size_t) finfo.st_size / 1024, BOOTSTRAP_MAX / 1024);
 		
 		fclose(f);
 
@@ -155,8 +149,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	
 	if (!len) {
 		if (ferror(f)) {
-			radlog(L_ERR, "rlm_sql_sqlite: Error reading SQL "
-			       "file: %s", strerror(errno));
+			radlog(L_ERR, "rlm_sql_sqlite: Error reading SQL file: %s", strerror(errno));
 			
 			fclose(f);
 			talloc_free(buffer);
@@ -189,8 +182,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	}
 	
 	if ((p - buffer) != len) {
-		radlog(L_ERR, "rlm_sql_sqlite: Bootstrap file contains "
-		       "non-UTF8 char at offset %zu", p - buffer);
+		radlog(L_ERR, "rlm_sql_sqlite: Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
 		talloc_free(buffer);
 		return -1;
 	}
@@ -235,33 +227,27 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	rlm_sql_sqlite_config_t *driver;
 	int exists;
 
-	radlog(L_DBG, "rlm_sql_sqlite: SQLite library version: %s",
-	       sqlite3_libversion());
+	DEBUG("rlm_sql_sqlite: SQLite library version: %s", sqlite3_libversion());
 
 	if (sqlite3_libversion_number() != SQLITE_VERSION_NUMBER) {
-		DEBUG2("rlm_sql_sqlite: SQLite library version (%s) is "
-		       "different from the version the server was originally "
-		       "built against (%s), this may cause issues",
+		DEBUG2("rlm_sql_sqlite: SQLite library version (%s) is different from the version the server was "
+		       "originally built against (%s), this may cause issues",
 		       sqlite3_libversion(), SQLITE_VERSION);
 	}
 	
-	MEM(driver = config->driver = talloc_zero(config,
-						  rlm_sql_sqlite_config_t));
+	MEM(driver = config->driver = talloc_zero(config, rlm_sql_sqlite_config_t));
 	
 	if (cf_section_parse(conf, driver, driver_config) < 0) {
 		return -1;
 	}
 	
 	if (!driver->filename) {
-		MEM(driver->filename = talloc_asprintf(driver, "%s/%s",
-						       radius_dir,
-						       config->sql_db));
+		MEM(driver->filename = talloc_asprintf(driver, "%s/%s", radius_dir, config->sql_db));
 	}
 	
 	exists = rad_file_exists(driver->filename);
 	if (exists < 0) {
-		radlog(L_ERR, "rlm_sql_sqlite: Database exists, but couldn't "
-		       "be opened: %s", strerror(errno));
+		radlog(L_ERR, "rlm_sql_sqlite: Database exists, but couldn't be opened: %s", strerror(errno));
 	
 		return -1;
 	}
@@ -274,8 +260,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		char *buff;
 		sqlite3 *db = NULL;
 		
-		radlog(L_INFO, "rlm_sql_sqlite: Database doesn't exist, "
-		       "creating it and loading schema");
+		radlog(L_INFO, "rlm_sql_sqlite: Database doesn't exist, creating it and loading schema");
 		
 		p = strrchr(driver->filename, '/');
 		if (p) {
@@ -288,8 +273,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		}
 		
 		if (rad_mkdir(buff, 0700) < 0) {
-			radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
-			       "directory for SQLite database");
+			radlog(L_ERR, "rlm_sql_sqlite: Failed creating directory for SQLite database");
 			
 			talloc_free(buff);
 			
@@ -298,13 +282,9 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		talloc_free(buff);
 
-		status = sqlite3_open_v2(driver->filename, &db,
-					 SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE,
-					 NULL);
-		
+		status = sqlite3_open_v2(driver->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-			radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
-			       "opening/creating SQLite database, error "
+			radlog(L_ERR, "rlm_sql_sqlite: Failed creating opening/creating SQLite database, error "
 			       "code (%u)", status);
 			
 			goto unlink;
@@ -320,24 +300,21 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
-			radlog(L_ERR, "rlm_sql_sqlite: Error closing SQLite "
-			       "handle, error code (%u)", status);
+			radlog(L_ERR, "rlm_sql_sqlite: Error closing SQLite handle, error code (%u)", status);
 			goto unlink;
 		}
 		
 		if (ret < 0) {
 			unlink:
 			if (unlink(driver->filename) < 0) {
-				radlog(L_ERR, "rlm_sql_sqlite: Error removing "
-				       "partially initialised database: %s",
+				radlog(L_ERR, "rlm_sql_sqlite: Error removing partially initialised database: %s",
 				       strerror(errno));
 			}
 			return -1;
 		}
 #else
-		DEBUGW("rlm_sql_sqlite: sqlite3_open_v2() not available, "
-		       "cannot bootstrap database. Upgrade to SQLite >= 3.5.1 "
-		       "if you want this functionality");
+		DEBUGW("rlm_sql_sqlite: sqlite3_open_v2() not available, cannot bootstrap database. "
+		       "Upgrade to SQLite >= 3.5.1 if you need this functionality");
 #endif
 	}
 	
@@ -354,8 +331,7 @@ static int sql_socket_destructor(void *c)
 	if (conn->db) {
 		status = sqlite3_close(conn->db);
 		if (status != SQLITE_OK) {
-			DEBUGW("rlm_sql_sqlite: Got SQLite error "
-			       "code (%u) when closing socket", status);
+			DEBUGW("rlm_sql_sqlite: Got SQLite error code (%u) when closing socket", status);
 		}
 	}
 	
@@ -372,20 +348,16 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_sqlite_conn_t));
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
 
-	radlog(L_INFO, "rlm_sql_sqlite: Opening SQLite database \"%s\"",
-	       driver->filename);
+	radlog(L_INFO, "rlm_sql_sqlite: Opening SQLite database \"%s\"", driver->filename);
 
 #ifdef HAVE_SQLITE_V2_API	
-	status = sqlite3_open_v2(driver->filename, &(conn->db),
-				 SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX,
-				 NULL);
+	status = sqlite3_open_v2(driver->filename, &(conn->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);
 #else
 	status = sqlite3_open(driver->filename, &(conn->db));
 #endif
 	if (!conn->db) {
-		radlog(L_ERR, "rlm_sql_sqlite: Failed creating "
-		       "opening/creating SQLite database error "
-		       "code (%u)", status);
+		radlog(L_ERR, "rlm_sql_sqlite: Failed creating opening/creating SQLite database error code (%u)",
+		       status);
 		
 		return -1;
 	}
@@ -414,13 +386,9 @@ static int sql_select_query(rlm_sql_handle_t *handle,
 	const char *z_tail;
 	
 #ifdef HAVE_SQLITE_V2_API
-	status = sqlite3_prepare_v2(conn->db, querystr,
-				    strlen(querystr), &conn->statement,
-				    &z_tail);
+	status = sqlite3_prepare_v2(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
 #else
-	status = sqlite3_prepare(conn->db, querystr,
-				 strlen(querystr), &conn->statement,
-				 &z_tail);
+	status = sqlite3_prepare(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
 #endif
 				
 	conn->col_count = 0;
@@ -429,35 +397,28 @@ static int sql_select_query(rlm_sql_handle_t *handle,
 }
 
 
-static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
-		     char *querystr)
+static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char *querystr)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	const char *z_tail;
 
 #ifdef HAVE_SQLITE_V2_API
-	status = sqlite3_prepare_v2(conn->db, querystr,
-				    strlen(querystr), &conn->statement,
-				    &z_tail);
+	status = sqlite3_prepare_v2(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
 #else
-	status = sqlite3_prepare(conn->db, querystr,
-				 strlen(querystr), &conn->statement,
-				 &z_tail);
+	status = sqlite3_prepare(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
 #endif				
 	status = sqlite3_step(conn->statement);
 		
 	return sql_check_error(conn->db);
 }
 
-static int sql_store_result(UNUSED rlm_sql_handle_t *handle,
-			    UNUSED rlm_sql_config_t *config)
+static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
 
-static int sql_num_fields(rlm_sql_handle_t * handle,
-			  UNUSED rlm_sql_config_t *config)
+static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	
@@ -468,8 +429,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle,
 	return 0;
 }
 
-static int sql_num_rows(rlm_sql_handle_t *handle,
-			UNUSED rlm_sql_config_t *config)
+static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	
@@ -524,21 +484,18 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	 */
 	talloc_free(handle->row);
 	
-	MEM(row = handle->row = talloc_zero_array(handle->conn, char *,
-					    	  conn->col_count + 1));
+	MEM(row = handle->row = talloc_zero_array(handle->conn, char *, conn->col_count + 1));
 	
 	for (i = 0; i < conn->col_count; i++)
 	{
 		switch (sqlite3_column_type(conn->statement, i))
 		{
 		case SQLITE_INTEGER:	
-			row[i] = talloc_asprintf(row, "%d",
-						 sqlite3_column_int(conn->statement, i));
+			MEM(row[i] = talloc_asprintf(row, "%d", sqlite3_column_int(conn->statement, i)));
 			break;
 			
 		case SQLITE_FLOAT:
-			row[i] = talloc_asprintf(row, "%f",
-						 sqlite3_column_double(conn->statement, i));
+			MEM(row[i] = talloc_asprintf(row, "%f", sqlite3_column_double(conn->statement, i)));
 			break;
 			
 		case SQLITE_TEXT:
@@ -547,7 +504,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 				p = (const char *) sqlite3_column_text(conn->statement, i);
 				
 				if (p) {
-					row[i] = talloc_strdup(row, p);
+					MEM(row[i] = talloc_strdup(row, p));
 				}
 			}
 			break;
