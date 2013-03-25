@@ -90,7 +90,7 @@ struct request_data_t {
 /*
  *	Add opaque data (with a "free" function) to a REQUEST.
  *
- *	The unique ptr is meant to be a malloc'd module configuration,
+ *	The unique ptr is meant to be a module configuration,
  *	and the unique integer allows the caller to have multiple
  *	opaque data associated with a REQUEST.
  */
@@ -377,7 +377,7 @@ int rad_mkdir(char *directory, mode_t mode)
 
 
 /*
- *	Module malloc() call, which does stuff if the malloc fails.
+ *	Allocate memory, or exit.
  *
  *	This call ALWAYS succeeds!
  */
