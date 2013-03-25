@@ -364,7 +364,7 @@ static const char *group_name[] = {
 	"xlat"
 };
 
-static const char *modcall_spaces = "			      ";
+static const char *modcall_spaces = "                                                                ";
 
 #define MODCALL_STACK_MAX (32)
 
