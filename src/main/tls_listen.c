@@ -190,6 +190,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 			return 0;
 		}
 
+		talloc_steal(sock, sock->ssn);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&request->packet->vps);
 
@@ -288,7 +289,7 @@ app:
 	}
 
 	packet = sock->packet;
-	packet->data = rad_malloc(sock->ssn->clean_out.used);
+	packet->data = talloc_array(packet, uint8_t, sock->ssn->clean_out.used);
 	packet->data_len = sock->ssn->clean_out.used;
 	sock->ssn->record_minus(&sock->ssn->clean_out, packet->data, packet->data_len);
 	packet->vps = NULL;
@@ -474,7 +475,11 @@ int proxy_tls_recv(rad_listen_t *listener)
 	RADIUS_PACKET *packet;
 	uint8_t *data;
 
-	if (!sock->data) sock->data = rad_malloc(sock->ssn->offset);
+	/*
+	 *	Get the maximum size of data to receive.
+	 */
+	if (!sock->data) sock->data = talloc_array(sock, uint8_t,
+						   sock->ssn->offset);
 	data = sock->data;
 
 	DEBUG3("Proxy SSL socket has data to read");
@@ -545,7 +550,7 @@ redo:
 	packet->code = data[0];
 	packet->id = data[1];
 	packet->data_len = length;
-	packet->data = rad_malloc(packet->data_len);
+	packet->data = talloc_array(packet, uint8_t, packet->data_len);
 	memcpy(packet->data, data, packet->data_len);
 	memcpy(packet->vector, packet->data + 4, 16);
 
