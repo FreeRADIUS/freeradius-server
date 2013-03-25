@@ -269,7 +269,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 			buff = talloc_array(conf, char, len);
 			strlcpy(buff, driver->filename, len);
 		} else {
-			buff = talloc_strdup(conf, driver->filename);
+			MEM(buff = talloc_strdup(conf, driver->filename));
 		}
 		
 		if (rad_mkdir(buff, 0700) < 0) {

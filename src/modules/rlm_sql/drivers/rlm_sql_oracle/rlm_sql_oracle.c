@@ -308,8 +308,8 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		}
 	}
 
-	row = talloc_zero_array(conn, char*, conn->col_count + 1);
-	ind = talloc_zero_array(row, sb2, conn->col_count + 1);
+	MEM(row = talloc_zero_array(conn, char*, conn->col_count + 1));
+	MEM(ind = talloc_zero_array(row, sb2, conn->col_count + 1));
 
 	for (i = 0; i < conn->col_count; i++) {
 		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
@@ -354,7 +354,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 				goto error;
 			}
 
-			row[i] = talloc_zero_array(row, char, dsize + 1);
+			MEM(row[i] = talloc_zero_array(row, char, dsize + 1));
 			
 			break;
 		case SQLT_DAT:
@@ -364,7 +364,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		case SQLT_PDN:
 		case SQLT_BIN:
 		case SQLT_NUM:
-			row[i] = talloc_zero_array(row, char, dsize + 1);
+			MEM(row[i] = talloc_zero_array(row, char, dsize + 1));
 
 			break;
 		default:
@@ -378,7 +378,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		/*
 		 *	Grab the actual row value and write it to the buffer we allocated.
 		 */
-		status = OCIDefineByPos(conn->query, &define, conn->error, i, (ub1 *)row[i], dsize + 1, SQLT_STR,
+		status = OCIDefineByPos(conn->query, &define, conn->error, i + 1, (ub1 *)row[i], dsize + 1, SQLT_STR,
 					(dvoid *)&ind[i], NULL, NULL, OCI_DEFAULT);
 
 		if (status != OCI_SUCCESS) {
