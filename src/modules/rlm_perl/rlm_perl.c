@@ -417,11 +417,10 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	*instance = inst = talloc_zero(conf, PERL_INST);
+	MEM(*instance = inst = talloc_zero(conf, PERL_INST));
 	if (!inst) return -1;
 
-	embed = talloc_size(inst, 4 * sizeof(char *));
-	memset(embed, 0, 4 *sizeof(char *));
+	MEM(embed = talloc_zero_array(inst, char *, 4));
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
