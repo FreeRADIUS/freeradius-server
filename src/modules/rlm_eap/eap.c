@@ -498,10 +498,21 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 {
 	VALUE_PAIR *vp;
 	eap_packet_raw_t *eap_packet;
-	REQUEST *request = handler->request;
-	EAP_DS *eap_ds = handler->eap_ds;
-	eap_packet_t *reply = eap_ds->request;
+	REQUEST *request;
+	EAP_DS *eap_ds;
+	eap_packet_t *reply;
 	int rcode;
+
+#ifndef NDEBUG
+	handler = talloc_get_type_abort(handler, eap_handler_t);
+	request = talloc_get_type_abort(handler->request, REQUEST);
+	eap_ds = talloc_get_type_abort(handler->eap_ds, EAP_DS);
+	reply = talloc_get_type_abort(eap_ds->request, eap_packet_t);
+#else
+	request = handler->request;
+	eap_ds = handler->eap_ds;
+	reply = eap_ds->request;
+#endif
 
 	/*
 	 *	The Id for the EAP packet to the NAS wasn't set.
