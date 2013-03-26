@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef DEBUG
 #undef DEBUG
@@ -551,7 +552,8 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vp, HV *rad_hv)
 		 *	Create a new list with all the attributes like this one
 		 *	which are in the same tag group.
 		 */
-		vpa = paircopy2(ctx, nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
+		vpa = NULL;
+		pairfilter(ctx, &vpa, &nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
 
 		/*
 		 *	Attribute has multiple values
@@ -576,15 +578,9 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vp, HV *rad_hv)
 		}
 
 		pairfree(&vpa);
-		
-		/*
-		 *	Finally remove all the VPs we processed from our copy
-		 *	of the list.
-		 */
-		pairdelete(&nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
 	}
 
-	pairfree(&nvp);		/* shouldn't be necessary, but hey... */
+	rad_assert(nvp == NULL);
 }
 
 /*
