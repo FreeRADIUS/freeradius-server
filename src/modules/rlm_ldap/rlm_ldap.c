@@ -119,7 +119,7 @@ static CONF_PARSER option_config[] = {
 #ifdef LDAP_OPT_X_KEEPALIVE_PROBES
 	{"probes", PW_TYPE_INTEGER, offsetof(ldap_instance_t,keepalive_probes), NULL, "3"},
 #endif
-#ifdef LDAP_OPT_ERROR_NUMBER
+#ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
 	{"interval", PW_TYPE_INTEGER,  offsetof(ldap_instance_t,keepalive_interval), NULL, "30"},
 #endif
 	{ NULL, -1, 0, NULL, NULL }
