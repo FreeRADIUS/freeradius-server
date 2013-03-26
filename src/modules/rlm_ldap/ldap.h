@@ -44,17 +44,18 @@ typedef struct ldap_instance {
 	CONF_SECTION	*cs;				//!< Main configuration section for this instance.
 	fr_connection_pool_t *pool;			//!< Connection pool instance.
 
-	char		*server;			//!< Initial server to bind to.
+	const char	*server;			//!< Initial server to bind to.
 	int		is_url;				//!< Whether ldap_is_ldap_url says 'server' is an 
 							//!< ldap[s]:// url.
 	int		port;				//!< Port to use when binding to the server.
 
-	char		*admin_dn;			//!< DN we bind as when we need to query the LDAP
+	const char	*admin_dn;			//!< DN we bind as when we need to query the LDAP
 							//!< directory.
-	char		*password;			//!< Password used in administrative bind.
-
-	char		*base_dn;			//!< The point in the LDAP directory that encompasses all the 
-							//!< userobj and groupobj that we want to retrieve.
+	const char	*password;			//!< Password used in administrative bind.
+	
+	const char	*base_dn;			//!< Provided for convenience and backwards compatibility.
+							//!< is the default value for userobj_base_dn, and 
+							//!< groupobj_base_dn, if no dn is configured explicitly.
 
 	int		chase_referrals;		//!< If the LDAP server returns a referral to another server
 							//!< or point in the tree, follow it, establishing new
@@ -81,11 +82,28 @@ typedef struct ldap_instance {
 	/*
 	 *	User object attributes and filters
 	 */
-	const char	*userobj_filter;		//!< Filter to retrieve only user objects.
+	const char	*userobj_filter;		//!< Filter to retrieve only retrieve user objects.
+	const char	*userobj_base_dn;		//!< DN to search for users under.
+	const char	*userobj_scope_str;		//!< Scope (sub, one, base).
+	int		userobj_scope;			//!< Search scope.
+	
 	const char	*userobj_membership_attr;	//!< Attribute that describes groups the user is a member of.
 	char		*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
 	int		access_positive;		//!< If true the presence of the attribute will allow access, 
 							//!< else it will deny access.
+
+	/*
+	 *	Group object attributes and filters
+	 */
+	 
+	const char	*groupobj_filter;		//!< Filter to retrieve only retrieve group objects.
+	const char	*groupobj_base_dn;		//!< DN to search for users under.
+	const char	*groupobj_scope_str;		//!< Scope (sub, one, base).
+	int		groupobj_scope;			//!< Search scope.
+
+	const char	*groupobj_name_attr;		//!< The name of the group.
+	const char	*groupobj_membership_filter;	//!< Filter to only retrieve groups which contain
+							//!< the user as a member.
 						
 	int		cacheable_group_name;		//!< If true the server will determine complete set of group
 							//!< memberships for the current user object, and perform any
@@ -96,25 +114,21 @@ typedef struct ldap_instance {
 							//!< memberships for the current user object, and perform any
 							//!< resolution necessary to determine the DNs of those groups,
 							//!< then right them to the control list (LDAP-GroupDN).
-	/*
-	 *	Group object attributes and filters
-	 */
-	const char	*groupobj_name_attr;		//!< The name of the group.
-	const char	*groupobj_membership_filter;	//!< Filter to only retrieve groups which contain
-							//!< the user as a member.
+	
+	const DICT_ATTR	*group_da;			//!< The DA associated with this specific version of the
+							//!< rlm_ldap module.
 	
 	/*
 	 *	Profiles
 	 */
-	const char	*base_filter;			//!< Base filter combined with all other filters.
 	const char	*default_profile;		//!< If this is set, we will search for a profile object
 							//!< with this name, and map any attributes it contains.
 							//!< No value should be set if profiles are not being used
 							//!< as there is an associated performance penalty.
 	const char	*profile_attr;			//!< Attribute that identifies profiles to apply. May appear
 							//!< in userobj or groupobj.
+	const char	*profile_filter;		//!< Filter to retrieve only retrieve group objects.
 	
-
 	/*
 	 *	Accounting
 	 */
@@ -130,21 +144,21 @@ typedef struct ldap_instance {
 							//!< to start encrypted communications using the standard
 							//!< LDAP port.
 
-	char		*tls_cacertfile;		//!< Sets the full path to a CA certificate (used to validate
+	const char	*tls_cacertfile;		//!< Sets the full path to a CA certificate (used to validate
 							//!< the certificate the server presents).
 							
-	char		*tls_cacertdir;			//!< Sets the path to a directory containing CA certificates.
+	const char	*tls_cacertdir;			//!< Sets the path to a directory containing CA certificates.
 	
-	char		*tls_certfile;			//!< Sets the path to the public certificate file we present
+	const char	*tls_certfile;			//!< Sets the path to the public certificate file we present
 							//!< to the servers.
 							
-	char		*tls_keyfile;			//!< Sets the path to the private key for our public 
+	const char	*tls_keyfile;			//!< Sets the path to the private key for our public 
 							//!< certificate.
 							
-	char		*tls_randfile;			//!< Path to the random file if /dev/random and /dev/urandom
+	const char	*tls_randfile;			//!< Path to the random file if /dev/random and /dev/urandom
 							//!< are unavailable.
 							
-	char		*tls_require_cert;		//!< Sets requirements for validating the certificate the 
+	const char	*tls_require_cert;		//!< Sets requirements for validating the certificate the 
 							//!< server presents.
 
 	/*
@@ -246,6 +260,8 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 
 int rlm_ldap_is_dn(const char *str);
 
+ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const char **sub, size_t sublen);
+
 ldap_rcode_t rlm_ldap_bind(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn, const char *dn,
 			  const char *password, int retry);
 			  
@@ -258,16 +274,6 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
 			    	   
 const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
 			       const char *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode);
-			       
-rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request,
-				   ldap_handle_t **pconn, char **names, char **out,
-				   size_t outlen);
-
-rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-				   const char *dn, char **out);
-
-rlm_rcode_t rlm_ldap_cacheable_membership(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-				   	  LDAPMessage *entry);
        
 rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request, const ldap_handle_t *conn,
 				  LDAPMessage *entry);
@@ -284,6 +290,23 @@ int rlm_ldap_conn_delete(UNUSED void *ctx, void *connection);
 ldap_handle_t *rlm_ldap_get_socket(const ldap_instance_t *inst, REQUEST *request);
 
 void rlm_ldap_release_socket(const ldap_instance_t *inst, ldap_handle_t *conn);
+
+/*
+ *	groups.s - Group membership functions.
+ */
+
+rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+				       LDAPMessage *entry);
+				       
+rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn);
+
+rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+					    VALUE_PAIR *check);
+					    
+rlm_rcode_t rlm_ldap_check_userobj_dynamic(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+					   const char *dn, VALUE_PAIR *check);
+
+rlm_rcode_t rlm_ldap_check_cached(const ldap_instance_t *inst, REQUEST *request, VALUE_PAIR *check);
 
 /*
  *	attrmap.c - Attribute mapping code.

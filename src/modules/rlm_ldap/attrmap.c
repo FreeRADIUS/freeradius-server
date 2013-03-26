@@ -315,7 +315,7 @@ rlm_rcode_t rlm_ldap_map_profile(const ldap_instance_t *inst, REQUEST *request, 
 	if (!dn || !*dn) {
 		return RLM_MODULE_OK;
 	}
-	strlcpy(filter, inst->base_filter, sizeof(filter));
+	strlcpy(filter, inst->profile_filter, sizeof(filter));
 
 	status = rlm_ldap_search(inst, request, pconn, dn, LDAP_SCOPE_BASE, filter, expanded->attrs, &result);
 	switch (status) {

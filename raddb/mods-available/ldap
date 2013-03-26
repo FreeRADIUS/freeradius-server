@@ -20,9 +20,9 @@ ldap {
 #	identity = "cn=admin,dc=example,dc=org"
 #	password = mypass
 
-
-#	basedn = "ou=people,dc=example,dc=org"
-#	filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
+	#  Unless overridden in user or group, the dn from
+	#  whilch all searches will start at.
+#	basedn = "dc=example,dc=org"
 
 	#
 	#  Mapping of RADIUS dictionary attributes to LDAP directory attributes.
@@ -72,26 +72,82 @@ ldap {
 #	edir_autz = no
 
 	#
-	#  Profile related attributes.
+	#  User object identification.
 	#
-	profiles {
-		#  Control whether or not "access_attr" is used to
+	user {
+		#  Filter for user objects, should be specific enough
+		#  to identify a single user object.
+		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
+		
+		#  Control whether or not "access_attribute" is used to
 		#  determine authorization.  If set to "yes", then
-		#  "access_attr" existing means "allow access".
-		#  "access_attr" not existing means "deny access"
+		#  "access_attribute" existing means "allow access".
+		#  "access_attribute" not existing means "deny access"
 		#
 		#   If set to "no", then
-		#  "access_attr" existing means "deny access".
-		#  "access_attr" not existing means "allow access"
-#		positive_access_attr = yes
+		#  "access_attribute" existing means "deny access".
+		#  "access_attribute" not existing means "allow access"
+#		positive_access = yes
 
 		#  If this is undefined, anyone is authorized.
 		#  If it is defined, the contents of this attribute
 		#  determine whether or not the user is authorized
-#		access_attr = "dialupAccess"
+#		access_attribute = "dialupAccess"
+	}
 
-		# Base filter for the following profiles.
-#		base_filter = "(objectclass=radiusprofile)"
+	#
+	#  User membership checking.
+	#
+	group {
+		#  Filter for group objects, should match all available
+		#  group objects a user might be a member of.
+#		filter = "(|(objectClass=GroupOfNames)(objectClass=GroupOfUniqueNames))"
+
+		#  Attribute that uniquely identifies a group.
+		#  Is used when converting group DNs to group
+		#  names.
+#		name_attribute = cn
+
+		#  The attribute in user objects which contain the names
+		#  or DNs of groups a user is a member of.
+		#
+		#  Unless a conversion between group name and group DN is
+		#  needed, there's no requirement for the group objects
+		#  referenced to actually exist.
+		membership_attribute = "memberOf"
+
+		#  Filter to find group objects a user is a member of.
+		#  That is, group objects with attributes that 
+		#  identify members (the inverse of membership_attribute).
+#		membership_filter = "(|(member=%{control:Ldap-UserDn})(uniquemember=%{control:Ldap-UserDn})"
+
+		#  If cacheable_name or cacheable_dn are enabled,
+		#  all group information for the user will be 
+		#  retrieved from the directory and written to LDAP-Group
+		#  attributes appropriate for the instance of rlm_ldap.
+		#
+		#  For group comparisons these attributes will be checked
+		#  instead of querying the LDAP directory directly.
+		#
+		#  This feature is intended to be used with rlm_cache.
+		#
+		#  If you with to use this feature, you should enable 
+		#  the type that matches the format of your check items
+		#  .i.e. if your groups are specified as DNs then enable
+		#  cacheable_dn else enabled cacheable_name.
+#		cacheable_name = "no"
+#		cacheable_dn = "no"
+	}
+	
+	#
+	#  User profiles. RADIUS profile objects contain sets of attributes
+	#  to insert into the request. These attribtues are mapped using
+	#  the same mapping scheme appled to user objects.
+	#
+	profiles {
+		# Filter for RAIDUS profile objects, should match all available
+		# group objects a user might be a member of.
+#		filter = "(objectclass=radiusprofile)"
 
 		#  The default profile applied to all users.
 #		default_profile = "cn=radprofile,dc=example,dc=org"
@@ -103,22 +159,6 @@ ldap {
 #		profile_attribute = "radiusProfileDn"
 	}
 
-	#
-	#  Group membership checking.  Disabled by default.
-	#
-	#  When doing checks for LDAP-Group = foo"
-	#
-	group {
-		# Check for "cn=foo"
-#		name_attribute = cn
-
-		# Filter to get the list of groups that a user belongs to.
-#		membership_filter = "(|(&(objectClass=GroupOfNames)(member=%{control:Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)(uniquemember=%{control:Ldap-UserDn})))"
-
-		# If the filter returns nothing
-		membership_attribute = radiusGroupName
-	}
-	
 	#
 	#  Modify user object on receiving Accounting-Request
 	#
@@ -254,7 +294,7 @@ ldap {
 		#		can't be verified)
 		#    "demand" (fail if the certificate doesn't verify.)
 		#
-		#	The default is "allow"
+		#  The default is "allow"
 #		require_cert	= "demand"
 	}
 

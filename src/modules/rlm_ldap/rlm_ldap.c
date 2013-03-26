@@ -37,6 +37,17 @@ RCSID("$Id$")
 #include	"ldap.h"
 
 /*
+ *	Scopes
+ */
+const FR_NAME_NUMBER ldap_scope[] = {
+	{ "sub",	LDAP_SCOPE_SUB	},
+	{ "one",	LDAP_SCOPE_ONE	},
+	{ "base",	LDAP_SCOPE_BASE },
+	
+	{  NULL , -1 }
+};
+
+/*
  *	TLS Configuration
  */
 static CONF_PARSER tls_config[] = {
@@ -47,19 +58,29 @@ static CONF_PARSER tls_config[] = {
 	{"keyfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_keyfile), NULL, NULL}, // OK if it changes on HUP
 	{"randfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_randfile), NULL, NULL},
 	{"require_cert",PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert), NULL, TLS_DEFAULT_VERIFY},
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+
+static CONF_PARSER profile_config[] = {
+	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
+	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, default_profile), NULL, NULL},
+	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_filter), NULL, NULL},
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
- *	Access limitations
+ *	User configuration
  */
-static CONF_PARSER attr_config[] = {
-	/* LDAP attribute name that controls remote access */
-	{"userobj_access_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_access_attr), NULL, NULL},
-	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,access_positive), NULL, "yes"},
-	{"base_filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_filter), NULL, "(objectclass=radiusprofile)"},
-	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,default_profile), NULL, NULL},
-	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,profile_attr), NULL, NULL},
+static CONF_PARSER user_config[] = {
+	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
+	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
+	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_base_dn), NULL, NULL},
+	
+	{"access_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
+	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, access_positive), NULL, "yes"},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -68,16 +89,16 @@ static CONF_PARSER attr_config[] = {
  *	Group configuration
  */
 static CONF_PARSER group_config[] = {
-	/*
-	 *	Group checks.  These could probably be done via dynamic xlat's.
-	 */
-	{"name_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,groupobj_name_attr), NULL, "cn"},
-	{"membership_filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,groupobj_membership_filter), NULL,
-	 "(|(&(objectClass=GroupOfNames)(member=%{Ldap-UserDn}))(&(objectClass=GroupOfUniqueNames)"
-	 "(uniquemember=%{Ldap-UserDn})))"},
-	{"membership_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_membership_attr), NULL, NULL},
-	{"name_cacheable", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,cacheable_group_name), NULL, NULL},
-	{"dn_cacheable", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,cacheable_group_dn), NULL, NULL},
+	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_filter), NULL, NULL},
+	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_scope_str), NULL, "sub"},
+	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_base_dn), NULL, NULL},
+	
+	{"name_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_name_attr), NULL, "cn"},
+	{"membership_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_membership_attr), NULL, NULL},
+	{"membership_filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_membership_filter), NULL, NULL},
+	{"cacheable_name", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, cacheable_group_name), NULL, "no"},
+	{"cacheable_dn", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, cacheable_group_dn), NULL, "no"},
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -86,6 +107,7 @@ static CONF_PARSER group_config[] = {
  */
 static const CONF_PARSER acct_section_config[] = {
 	{"reference", PW_TYPE_STRING_PTR, offsetof(ldap_acct_section_t, reference), NULL, "."},
+
 	{NULL, -1, 0, NULL, NULL}
 };
 
@@ -108,7 +130,7 @@ static CONF_PARSER option_config[] = {
 	{"net_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,net_timeout), NULL, "10"},
 
 	/* timeout for search results */
-	{"timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,res_timeout), NULL, "20"},
+	{"res_timeout", PW_TYPE_INTEGER, offsetof(ldap_instance_t,res_timeout), NULL, "20"},
 
 	/* allow server unlimited time for search (server-side limit) */
 	{"srv_timelimit", PW_TYPE_INTEGER, offsetof(ldap_instance_t,srv_timelimit), NULL, "20"},
@@ -122,6 +144,7 @@ static CONF_PARSER option_config[] = {
 #ifdef LDAP_OPT_X_KEEPALIVE_INTERVAL
 	{"interval", PW_TYPE_INTEGER,  offsetof(ldap_instance_t,keepalive_interval), NULL, "30"},
 #endif
+
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -133,33 +156,24 @@ static const CONF_PARSER module_config[] = {
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 
-	/*
-	 *	DN's and filters.
-	 */
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_dn), NULL, "o=notexist"},
-
-	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_filter), NULL, "(uid=%u)"},
-
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
 	{"edir", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir), NULL, NULL}, /* NULL defaults to "no" */
 
 	/*
-	 * Attempt to bind with the Cleartext password we got from eDirectory
-	 * Universal password for additional authorization checks.
+	 *	Attempt to bind with the Cleartext password we got from eDirectory
+	 *	Universal password for additional authorization checks.
 	 */
 	{"edir_autz", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir_autz), NULL, NULL}, /* NULL defaults to "no" */
 #endif
 
-	/*
-	 *	Terrible things which should be deleted.
-	 */
-	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (const void *) attr_config },
+	{ "user", PW_TYPE_SUBSECTION, 0, NULL, (const void *) user_config },
 
 	{ "group", PW_TYPE_SUBSECTION, 0, NULL, (const void *) group_config },
+	
+	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (const void *) profile_config },
 
-	{ "options", PW_TYPE_SUBSECTION, 0, NULL,
-	 (const void *) option_config },
+	{ "options", PW_TYPE_SUBSECTION, 0, NULL, (const void *) option_config },
 
 	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
 
@@ -212,9 +226,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	    !*ldap_url->lud_attrs[0] ||
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) ||
 	    ldap_url->lud_attrs[1]) {
-		RDEBUGE("Bad attributes list in LDAP URL. "
-			"URL must specify exactly one attribute to "
-		        "retrieve");
+		RDEBUGE("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
 		       
 		goto free_urldesc;
 	}
@@ -296,21 +308,13 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 {
 	ldap_instance_t	*inst = instance;
 	rlm_rcode_t	rcode;
-	ldap_rcode_t	status;
-	int		i, found = FALSE;
-	LDAPMessage     *result = NULL;
-	LDAPMessage     *entry = NULL;
-	int		ldap_errno;
-	int		check_is_dn = FALSE, value_is_dn = FALSE;
-	char		**vals = NULL;
-	const char	*group_attrs[] = {inst->userobj_membership_attr, NULL};
+	
+	int		found = FALSE;
+	int		check_is_dn;
+
 	ldap_handle_t	*conn;
 	const char	*user_dn;
-
-	char		gr_filter[LDAP_MAX_FILTER_STR_LEN];
-	char		filter[LDAP_MAX_FILTER_STR_LEN];
-	char		base_dn[LDAP_MAX_DN_STR_LEN];
-
+	
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
 	if (check->length == 0) {
@@ -324,187 +328,69 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	/*
 	 *	This is used in the default membership filter.
 	 */
-	user_dn = rlm_ldap_find_user(inst, request, &conn, group_attrs, FALSE, &result, &rcode);
+	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
 	if (!user_dn) {
 		rlm_ldap_release_socket(inst, conn);
 		return 1;
 	}
-	
+
 	rad_assert(conn);
-	
-	if (!inst->groupobj_membership_filter) goto check_attr;
-
-	if (!radius_xlat(gr_filter, sizeof(gr_filter),
-			 inst->groupobj_membership_filter, request, rlm_ldap_escape_func,
-			 NULL)) {
-		RDEBUGE("Failed creating group filter");
-
-		return 1;
-	}
 
 	/*
-	 *	If it's a DN, use that.
+	 *	Check if we can do cached membership verification
 	 */
 	check_is_dn = rlm_ldap_is_dn(check->vp_strvalue);
-	if (check_is_dn) {
-		strlcpy(filter, gr_filter, sizeof(filter));
-		strlcpy(base_dn, check->vp_strvalue, sizeof(base_dn));	
-	} else {
-		snprintf(filter, sizeof(filter), "(&(%s=%s)%s%s)",
-			 inst->groupobj_name_attr,
-			 check->vp_strvalue, inst->base_filter, gr_filter);
-
-		/*
-		 *	rlm_ldap_find_user does this, too.  Oh well.
-		 */
-		if (!radius_xlat(base_dn, sizeof(base_dn), inst->base_dn, request, rlm_ldap_escape_func, NULL)) {
-			RDEBUGE("Failed creating base_dn");
-			
-			return 1;
-		}
-	}
-
-	status = rlm_ldap_search(inst, request, &conn, base_dn, LDAP_SCOPE_SUBTREE, filter, NULL, NULL);
-	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			RDEBUG("User found in group object");
-			found = TRUE;
-			goto finish;
-		case LDAP_PROC_NO_RESULT:
-			RDEBUG("Search returned not found");
-			goto check_attr;
-		default:
-			goto finish;
-	}
-	
-	rad_assert(conn);
-	rad_assert(result);
-
-	/*
-	 *	Else the search returned NOTFOUND.  See if we're
-	 *	configured to search for group membership using user
-	 *	object attribute.
-	 */
-	if (!inst->userobj_membership_attr) {
-		RDEBUG("Group object \"%s\" not found, or user is not a member", check->vp_strvalue);
-		rlm_ldap_release_socket(inst, conn);
-
-		return 1;
-	}
-
-check_attr:
-	RDEBUG2("Checking user object membership (%s) attributes", inst->userobj_membership_attr);
-
-	snprintf(filter ,sizeof(filter), "(objectclass=*)");
-
-	status = rlm_ldap_search(inst, request, &conn, user_dn, LDAP_SCOPE_BASE, filter, group_attrs, &result);
-	switch (status) {
-		case LDAP_PROC_SUCCESS:
-			break;
-		case LDAP_PROC_NO_RESULT:
-			RDEBUG("Can't check membership attributes, user object not found");
-			
-			/* FALL-THROUGH */
-		default:
-			rlm_ldap_release_socket(inst, conn);
-			return 1;
-	}
-
-	entry = ldap_first_entry(conn->handle, result);
-	if (!entry) {
-		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
-			       
-		rlm_ldap_release_socket(inst, conn);
-		ldap_msgfree(result);
-		return 1;
-	}
-
-	vals = ldap_get_values(conn->handle, entry, inst->userobj_membership_attr);
-	if (!vals) {
-		RDEBUG("No group membership attribute(s) found in user object");
-		rlm_ldap_release_socket(inst, conn);
-		ldap_msgfree(result);
-		return 1;
-	}
-
-	/*
-	 *	Loop over the list of groups the user is a member of,
-	 *	looking for a match.
-	 */
-	for (i = 0; i < ldap_count_values(vals); i++) {
-		value_is_dn = rlm_ldap_is_dn(vals[i]);
-		
-		RDEBUG2("Processing group membership value \"%s\"", vals[i]);
-
-		/*
-		 *	Both literal group names, do case sensitive comparison
-		 */
-		if (!check_is_dn && !value_is_dn) {
-			if (strcmp(vals[i], check->vp_strvalue) == 0){
-				RDEBUG("User found (membership value matches check value)");
-			       
-				found = TRUE;
+	if ((check_is_dn && inst->cacheable_group_dn) || (!check_is_dn && inst->cacheable_group_name)) {
+		switch(rlm_ldap_check_cached(inst, request, check)) {
+			case RLM_MODULE_NOTFOUND:
 				break;
-			}
-			
-			continue;
-		}
-
-		/*
-		 *	Both DNs, do case insensitive comparison
-		 */
-		if (check_is_dn && value_is_dn) {
-			if (strcasecmp(vals[i], check->vp_strvalue) == 0){
-				RDEBUG("User found (membership DN matches check DN)");
-			       
+			case RLM_MODULE_OK:
 				found = TRUE;
-				break;
-			}
-			
-			continue;
-		}
-		
-		/*
-		 *	If the value is not a DN, or the check item is a DN
-		 *	there's nothing more we can do.
-		 */
-		if (!value_is_dn && check_is_dn) continue;
-
-		/*
-		 *	We have a value which is a DN, and a check item which
-		 *	specifies the name of a group, search using the value
-		 *	DN for the group, and see if it has a groupobj_name_attr
-		 *	which matches our check val.
-		 */
-		RDEBUG2("Searching with membership DN and group name");
-
-		snprintf(filter,sizeof(filter), "(%s=%s)", inst->groupobj_name_attr, check->vp_strvalue);
-
-		status = rlm_ldap_search(inst, request, &conn, vals[i], LDAP_SCOPE_BASE, filter, NULL, NULL);       
-		switch (status) {
-			case LDAP_PROC_SUCCESS:
-				found = TRUE;
-				RDEBUG("User found (group name in membership DN matches check value)");
-				
-				break;
-			case LDAP_PROC_NO_RESULT:
-				continue;
 			default:
 				goto finish;
 		}
-
-		break;
 	}
 
-	finish:
+	rad_assert(conn);
+
+	/*
+	 *	Check groupobj user membership
+	 */
+	if (inst->groupobj_membership_filter) {
+		switch(rlm_ldap_check_groupobj_dynamic(inst, request, &conn, check)) {
+			case RLM_MODULE_NOTFOUND:
+				break;
+			case RLM_MODULE_OK:
+				found = TRUE;
+			default:
+				goto finish;
+		}
+	}
 	
-	ldap_value_free(vals);
-	ldap_msgfree(result);
+	rad_assert(conn);
+
+	/*
+	 *	Check userobj group membership
+	 */
+	if (inst->userobj_membership_attr) {
+		switch(rlm_ldap_check_userobj_dynamic(inst, request, &conn, user_dn, check)) {
+			case RLM_MODULE_NOTFOUND:
+				break;
+			case RLM_MODULE_OK:
+				found = TRUE;
+			default:
+				goto finish;
+		}
+	}
+	
+	rad_assert(conn);
+	
+	finish:
 	rlm_ldap_release_socket(inst, conn);
 
 	if (!found) {
 		RDEBUG("User is not a member of specified group");
+		
 		return 1;
 	}
 
@@ -606,10 +492,44 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		goto error;
 	}
 	
-	if ((inst->cacheable_group_dn || inst->cacheable_group_name) && !inst->groupobj_name_attr) {
-		DEBUGW("Directive 'group.name_attribute' should be set if cacheable group information is enabled");
+	if (inst->cacheable_group_name && inst->groupobj_membership_filter && !inst->groupobj_name_attr) {
+		LDAP_ERR("Directive 'group.name_attribute' must be set if cacheable group names are enabled");
+		
+		goto error;
 	}
 
+	/*
+	 *	Copy across values from base_dn to the object specific base_dn.
+	 */
+	if (!inst->groupobj_base_dn) {
+		if (!inst->base_dn) {
+			LDAP_ERR("Missing 'base_dn' directive");
+			
+			goto error;
+		}
+		
+		inst->groupobj_base_dn = inst->base_dn;
+	}
+
+	if (!inst->userobj_base_dn) {
+		if (!inst->base_dn) {
+			LDAP_ERR("Missing 'base_dn' directive");
+			
+			goto error;
+		}
+		
+		inst->userobj_base_dn = inst->base_dn;
+	}
+	
+	/*
+	 *	Sanity checks for cacheable groups code.
+	 */
+	if (inst->cacheable_group_name && inst->groupobj_membership_filter && !inst->groupobj_name_attr) {
+		LDAP_ERR("Told to cache group names and membership filter provided, but 'group.name_attribute' "
+			 "directive is missing");
+	}
+	
+	
 	/*
 	 *	Check for URLs.  If they're used and the library doesn't support them, then complain.
 	 */
@@ -647,6 +567,23 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 #endif
 
 	/*
+	 *	Convert scope strings to integers
+	 */
+	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
+	if (inst->userobj_scope < 0) {
+		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+			 inst->userobj_scope_str);
+		goto error;
+	}
+	
+	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
+	if (inst->groupobj_scope < 0) {
+		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+			 inst->groupobj_scope_str);
+		goto error;
+	}
+
+	/*
 	 *	Build the attribute map
 	 */
 	if (rlm_ldap_map_verify(inst, &(inst->user_map)) < 0) {
@@ -656,9 +593,9 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Group comparison checks.
 	 */
+	inst->group_da = dict_attrbyvalue(PW_LDAP_GROUP, 0);
 	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, rlm_ldap_groupcmp, inst);	
 	if (cf_section_name2(conf)) {
-		const DICT_ATTR *da;
 		ATTR_FLAGS flags;
 		char buffer[256];
 
@@ -667,14 +604,15 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		memset(&flags, 0, sizeof(flags));
 
 		dict_addattr(buffer, -1, 0, PW_TYPE_STRING, flags);
-		da = dict_attrbyname(buffer);
-		if (!da) {
+		inst->group_da = dict_attrbyname(buffer);
+		if (!inst->group_da) {
 			LDAP_ERR("Failed creating attribute %s", buffer);
 			
 			goto error;
 		}
+		
 
-		paircompare_register(da->attr, PW_USER_NAME, rlm_ldap_groupcmp, inst);
+		paircompare_register(inst->group_da->attr, PW_USER_NAME, rlm_ldap_groupcmp, inst);
 	}
 
 	xlat_register(inst->xlat_name, ldap_xlat, inst);
@@ -865,6 +803,21 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	if (inst->userobj_access_attr) {
 		rcode = rlm_ldap_check_access(inst, request, conn, entry);
+		if (rcode != RLM_MODULE_OK) {
+			goto finish;
+		}
+	}
+	
+	/*
+	 *	Check if we need to cache group memberships
+	 */
+	if (inst->cacheable_group_dn || inst->cacheable_group_name) {
+		rcode = rlm_ldap_cacheable_userobj(inst, request, &conn, entry);
+		if (rcode != RLM_MODULE_OK) {
+			goto finish;
+		}
+		
+		rcode = rlm_ldap_cacheable_groupobj(inst, request, &conn);
 		if (rcode != RLM_MODULE_OK) {
 			goto finish;
 		}
@@ -1237,7 +1190,7 @@ module_t rlm_ldap = {
 		mod_authenticate,	/* authentication 	 */
 		mod_authorize,		/* authorization 	 */
 		NULL,			/* preaccounting 	 */
-		mod_accounting,	/* accounting 		 */
+		mod_accounting,		/* accounting 		 */
 		NULL,			/* checksimul 		 */
 		NULL,			/* pre-proxy 		 */
 		NULL,			/* post-proxy 		 */
