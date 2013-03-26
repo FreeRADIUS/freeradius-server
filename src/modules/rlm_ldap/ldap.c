@@ -179,10 +179,14 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const c
 		return 0;
 	}
 
+	p = buffer;
 	if (cnt > 1) {
-		if (outlen < 3) goto oob;
-
-		len += strlcpy(p, "(&", left);
+		if (outlen < 3) {
+			goto oob;
+		}
+		
+		p[len++] = '(';
+		p[len++] = '&';
 		
 		for (i = 0; i < sublen; i++) {
 			if (sub[i] && (*sub[i] != '\0')) {
@@ -197,10 +201,17 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const c
 			} 
 		}
 		
+		if ((outlen - len) < 2) {
+			goto oob;
+		}
+		
+		p[len++] = ')';
+		p[len] = '\0';
+		
 		in = buffer;
 	}
 
-	len = radius_xlat(out, outlen, p, request, rlm_ldap_escape_func, NULL);
+	len = radius_xlat(out, outlen, in, request, rlm_ldap_escape_func, NULL);
 	if (!len) {
 		RDEBUGE("Failed creating filter");
 		
