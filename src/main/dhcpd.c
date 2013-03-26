@@ -422,6 +422,10 @@ static int dhcp_process(REQUEST *request)
 	if (vp) {
 		RDEBUG("DHCP: Reply will be unicast to giaddr from original packet");
 		request->reply->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
+
+		vp = pairfind(request->reply->vps, PW_PACKET_DST_PORT);
+		if (vp) request->reply->dst_port = vp->vp_integer;
+
 		return 1;
 	}
 
