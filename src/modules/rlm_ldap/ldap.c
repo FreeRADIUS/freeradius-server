@@ -148,7 +148,8 @@ static size_t rlm_ldap_common_dn(const char *full, const char *part)
  * @param request Current request.
  * @param out Where to write the expanded string.
  * @param outlen Length of output buffer.
- * @param fmt Format string.
+ * @param sub Array of subfilters (may contain NULLs).
+ * @param sublen Number of potential subfilters in array.
  * @return length of expanded data.
  */
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const char **sub, size_t sublen)
