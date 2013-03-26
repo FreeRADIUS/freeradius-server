@@ -169,11 +169,11 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	fclose(f);
 
 	/*
-	 *	Check if input data is UTF-8.  Allow CR/LF, too.
+	 *	Check if input data is UTF-8.  Allow CR/LF \t, too.
 	 */
 	for (p = buffer; p < (buffer + len); p += cl) {
 		if (*p < ' ') {
-			if ((*p != 0x0a) && (*p != 0x0d)) break;
+			if ((*p != 0x0a) && (*p != 0x0d) && (*p != '\t')) break;
 			cl = 1;
 		} else {
 			cl = fr_utf8_char((uint8_t *) p);
@@ -227,8 +227,6 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	rlm_sql_sqlite_config_t *driver;
 	int exists;
 
-	DEBUG("rlm_sql_sqlite: SQLite library version: %s", sqlite3_libversion());
-
 	if (sqlite3_libversion_number() != SQLITE_VERSION_NUMBER) {
 		DEBUG2("rlm_sql_sqlite: SQLite library version (%s) is different from the version the server was "
 		       "originally built against (%s), this may cause issues",
@@ -241,6 +239,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		return -1;
 	}
 	
+	radlog(L_INFO, "rlm_sql_sqlite: SQLite library version: %s", sqlite3_libversion());
 	if (!driver->filename) {
 		MEM(driver->filename = talloc_asprintf(driver, "%s/%s", radius_dir, config->sql_db));
 	}
