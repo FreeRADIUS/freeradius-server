@@ -150,7 +150,7 @@ struct eapsim_keys {
 /*
  * interfaces in eapsimlib.c
  */
-extern int  eapsim_checkmac(VALUE_PAIR *rvps,
+extern int  eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
 			    uint8_t key[8],
 			    uint8_t *extra, int extralen,
 			    uint8_t calcmac[20]);

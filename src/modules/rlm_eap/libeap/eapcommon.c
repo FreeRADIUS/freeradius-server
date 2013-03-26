@@ -290,7 +290,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_raw_t *eap)
  * NOTE: Sometimes Framed-MTU might contain the length of EAP-Message,
  *      refer fragmentation in rfc2869.
  */
-eap_packet_raw_t *eap_vp2packet(VALUE_PAIR *vps)
+eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 {
 	VALUE_PAIR *first, *vp;
 	eap_packet_raw_t *eap_packet;
@@ -354,7 +354,7 @@ eap_packet_raw_t *eap_vp2packet(VALUE_PAIR *vps)
 	/*
 	 *	Now that we know the lengths are OK, allocate memory.
 	 */
-	eap_packet = (eap_packet_raw_t *) malloc(len);
+	eap_packet = talloc_zero(ctx, eap_packet_raw_t);
 	if (eap_packet == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return NULL;

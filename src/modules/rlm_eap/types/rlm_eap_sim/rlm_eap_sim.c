@@ -482,7 +482,7 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 	memcpy(srescat +(2*EAPSIM_SRES_SIZE), ess->keys.sres[2], EAPSIM_SRES_SIZE);
 
 	/* verify the MAC, now that we have all the keys. */
-	if(eapsim_checkmac(vps, ess->keys.K_aut,
+	if(eapsim_checkmac(handler, vps, ess->keys.K_aut,
 			   srescat, sizeof(srescat),
 			   calcmac)) {
 		DEBUG2("MAC check succeed\n");

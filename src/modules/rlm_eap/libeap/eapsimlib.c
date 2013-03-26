@@ -259,7 +259,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 
 		total_length = EAP_HEADER_LEN + 1 + encoded_size;
 		hmaclen = total_length + appendlen;
-		buffer = (unsigned char *)malloc(hmaclen);
+		buffer = talloc_array(r, uint8_t, hmaclen);
 		hdr = (eap_packet_raw_t *)buffer;
 		if (!hdr) {
 			radlog(L_ERR, "rlm_eap: out of memory");
@@ -384,7 +384,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
  *
  */
 int
-eapsim_checkmac(VALUE_PAIR *rvps,
+eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
 		uint8_t key[EAPSIM_AUTH_SIZE],
 		uint8_t *extra, int extralen,
 		uint8_t calcmac[20])
@@ -406,21 +406,16 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	/* get original copy of EAP message, note that it was sanitized
 	 * to have a valid length, which we depend upon.
 	 */
-	e = eap_vp2packet(rvps);
-
-	if(e == NULL)
-	{
-		return 0;
-	}
+	e = eap_vp2packet(ctx, rvps);
+	if (!e) return 0;
 
 	/* make copy big enough for everything */
 	elen = e->length[0] * 256 + e->length[1];
 	len = elen + extralen;
 
-	buffer = malloc(len);
-	if(buffer == NULL)
-	{
-		free(e);
+	buffer = talloc_array(ctx, uint8_t, len);
+	if (!buffer) {
+		talloc_free(e);
 		return 0;
 	}
 
@@ -468,8 +463,8 @@ eapsim_checkmac(VALUE_PAIR *rvps,
 	}
 
  done:
-	free(e);
-	free(buffer);
+	talloc_free(e);
+	talloc_free(buffer);
 	return(ret);
 }
 

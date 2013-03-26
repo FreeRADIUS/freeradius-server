@@ -995,7 +995,8 @@ static EAP_DS *eap_buildds(eap_handler_t *handler,
 		return NULL;
 	}
 
-	eap_ds->response->packet = (unsigned char *)eap_packet;
+	eap_ds->response->packet = (uint8_t *) eap_packet;
+	talloc_steal(eap_ds, eap_packet);
 	eap_ds->response->code = eap_packet->code;
 	eap_ds->response->id = eap_packet->id;
 	eap_ds->response->type.num = eap_packet->data[0];

@@ -610,7 +610,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	}
 
 	/* verify the MAC, now that we have all the keys. */
-	if(eapsim_checkmac(req->vps, eapsim_mk.K_aut,
+	if(eapsim_checkmac(NULL, req->vps, eapsim_mk.K_aut,
 			   eapsim_mk.nonce_mt, sizeof(eapsim_mk.nonce_mt),
 			   calcmac)) {
 		printf("MAC check succeed\n");
@@ -1334,7 +1334,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	int type;
 
 	/* find eap message */
-	e = eap_vp2packet(rep->vps);
+	e = eap_vp2packet(NULL, rep->vps);
 
 	/* nothing to do! */
 	if(e == NULL) return;

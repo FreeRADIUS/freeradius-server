@@ -308,7 +308,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Get the eap packet  to start with
 	 */
-	eap_packet = eap_vp2packet(request->packet->vps);
+	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (eap_packet == NULL) {
 		radlog_request(L_ERR, 0, request, "Malformed EAP Message");
 		return RLM_MODULE_FAIL;
@@ -753,7 +753,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 	
-	eap_packet = eap_vp2packet(request->packet->vps);
+	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (eap_packet == NULL) {
 		radlog_request(L_ERR, 0, request, "Malformed EAP Message");
 		return RLM_MODULE_FAIL;
