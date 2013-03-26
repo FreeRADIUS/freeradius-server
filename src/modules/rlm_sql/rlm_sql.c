@@ -820,8 +820,6 @@ static int rlm_sql_detach(void *instance)
 		if (allowed_chars == inst->config->allowed_chars) {
 			allowed_chars = NULL;
 		}
-		free(inst->config);
-		inst->config = NULL;
 	}
 
 	if (inst->handle) {
@@ -845,9 +843,13 @@ static int rlm_sql_instantiate(CONF_SECTION * conf, void **instance)
 	inst = rad_malloc(sizeof(SQL_INST));
 	memset(inst, 0, sizeof(SQL_INST));
 
-	inst->config = rad_malloc(sizeof(SQL_CONFIG));
-	memset(inst->config, 0, sizeof(SQL_CONFIG));
-
+	/*
+	 *	The server core expects to be able to do
+	 *	cf_section_parse_free(inst).  So this hack is
+	 *	necessary.
+	 */
+	inst->config = &inst->myconfig;
+	
 	/*
 	 *	Export these methods, too.  This avoids RTDL_GLOBAL.
 	 */

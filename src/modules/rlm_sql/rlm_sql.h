@@ -62,10 +62,12 @@ typedef struct rlm_sql_module_t {
 typedef struct sql_inst SQL_INST;
 
 struct sql_inst {
+	SQL_CONFIG	myconfig; /* HACK */
+
 	time_t		connect_after;
 	SQLSOCK		*sqlpool;
 	SQLSOCK		*last_used;
-	SQL_CONFIG	*config;
+	SQL_CONFIG	*config; /* pointer to myconfig (HACK) */
 
 	lt_dlhandle handle;
 	rlm_sql_module_t *module;
