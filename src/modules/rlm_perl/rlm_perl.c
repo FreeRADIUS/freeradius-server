@@ -517,9 +517,9 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
  *  	Example for this is Cisco-AVPair that holds multiple values.
  *  	Which will be available as array_ref in $RAD_REQUEST{'Cisco-AVPair'}
  */
-static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vp, HV *rad_hv)
+static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 {
-	VALUE_PAIR *nvp, *vpa;
+	VALUE_PAIR *head, *sublist;
 	AV *av;
 	const char *name;
 	char namebuf[256];
@@ -529,41 +529,42 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vp, HV *rad_hv)
 	hv_undef(rad_hv);
 	
 	/*
-	 *	Copy the valuepair list so we can remove attributes we've
-	 *	already processed.
+	 *	Copy the valuepair list so we can remove attributes
+	 *	we've already processed.  This is a horrible hack to
+	 *	get around various other stupidity.
 	 */
-	nvp = paircopy(ctx, vp);
+	head = paircopy(ctx, vps);
 
-	while (nvp) {
+	while (head) {
 		/*
 		 *	Tagged attributes are added to the hash with name
 		 *	<attribute>:<tag>, others just use the normal attribute
 		 *	name as the key.
 		 */
-		if (nvp->da->flags.has_tag && (nvp->tag != 0)) {
+		if (head->da->flags.has_tag && (head->tag != 0)) {
 			snprintf(namebuf, sizeof(namebuf), "%s:%d",
-				 nvp->da->name, nvp->tag);
+				 head->da->name, head->tag);
 			name = namebuf;
 		} else {
-			name = nvp->da->name;
+			name = head->da->name;
 		}
 
 		/*
 		 *	Create a new list with all the attributes like this one
 		 *	which are in the same tag group.
 		 */
-		vpa = NULL;
-		pairfilter(ctx, &vpa, &nvp, nvp->da->attr, nvp->da->vendor, nvp->tag);
+		sublist = NULL;
+		pairfilter(ctx, &sublist, &head, head->da->attr, head->da->vendor, head->tag);
 
 		/*
 		 *	Attribute has multiple values
 		 */
-		if (vpa->next) {
-			VALUE_PAIR *vpn;
+		if (sublist->next) {
+			VALUE_PAIR *vp;
 
 			av = newAV();
-			for (vpn = vpa; vpn; vpn = vpn->next) {
-				len = vp_prints_value(buffer, sizeof(buffer), vpn, FALSE);
+			for (vp = sublist; vp; vp = vp->next) {
+				len = vp_prints_value(buffer, sizeof(buffer), vp, FALSE);
 				av_push(av, newSVpv(buffer, len));
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
@@ -573,14 +574,14 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vp, HV *rad_hv)
 		 *	added to the hash.
 		 */
 		} else {
-			len = vp_prints_value(buffer, sizeof(buffer), vpa, FALSE);
+			len = vp_prints_value(buffer, sizeof(buffer), sublist, FALSE);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 
-		pairfree(&vpa);
+		pairfree(&sublist);
 	}
 
-	rad_assert(nvp == NULL);
+	rad_assert(head == NULL);
 }
 
 /*
