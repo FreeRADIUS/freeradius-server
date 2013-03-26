@@ -1,7 +1,7 @@
 FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
 	* Updated dictionary.alcatel, dictionary.bskyb, dictionary.proxim,
-	  dictionary.zeus
+	  dictionary.zeus, dictionary.rfc6677
 	* Added %{randstr:..} support. Creates random strings in a
 	  controllable format.
 	* Added operator support to rlm_python
@@ -25,6 +25,8 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	  and look for comments mentioning EAP-Key-Name.  MacSec now works.
 	* Added support for hex numbers (0x...) to %{expr: ...}
 	* Backported TLS client certificate validation from 3.0.0.
+	* Run Post-Auth for EAP inner-tunnel methods.
+	* Added more RCCs
 
 	Bug fixes
 	* Skip OCSP if there's no host / port / url, with soft_fail
@@ -59,7 +61,9 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	* On debug builds, don't dlclose() modules when '-m' is used.
 	  This allows valgrind to show module symbols.
 	* Don't count Status-Server packets in Access-Request statistics
-
+	* Minor cleanups to debug output
+	* Be more careful handling module configurations to avoid crash
+	  on otherwise clean exit.
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
