@@ -497,12 +497,14 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	VALUE_PAIR *found;
 	int has_password = 0;
 
+	if (!to || !from || !*from) return;
+
 	/*
 	 *	First, see if there are any passwords here, and
 	 *	point "tailto" to the end of the "to" list.
 	 */
 	tailto = to;
-	for(i = *to; i; i = i->next) {
+	if (*to) for (i = *to; i; i = i->next) {
 		VERIFY(i);
 		if (!i->da->vendor &&
 		    (i->da->attr == PW_USER_PASSWORD ||
@@ -514,7 +516,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	/*
 	 *	Loop over the "from" list.
 	 */
-	for(i = *from; i; i = next) {
+	for (i = *from; i; i = next) {
 		VERIFY(i);
 		next = i->next;
 
