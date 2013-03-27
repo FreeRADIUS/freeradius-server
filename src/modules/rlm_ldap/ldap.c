@@ -152,13 +152,13 @@ static size_t rlm_ldap_common_dn(const char *full, const char *part)
  * @param sublen Number of potential subfilters in array.
  * @return length of expanded data.
  */
-ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const char **sub, size_t sublen)
+ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, char *out, size_t outlen)
 {
 	char buffer[LDAP_MAX_FILTER_STR_LEN + 1];
 	const char *in;
-	char *p = NULL;
+	char *p = buffer;
 	
-	size_t len;
+	size_t len = 0;
 	
 	unsigned int i;
 	int cnt = 0;
@@ -178,7 +178,6 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const c
 		return 0;
 	}
 
-	p = buffer;
 	if (cnt > 1) {
 		if (outlen < 3) {
 			goto oob;
@@ -529,6 +528,7 @@ retry:
 	status = rlm_ldap_result(inst, *pconn, msgid, dn, NULL, &error, &extra);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
+		LDAP_DBG_REQ("Bind successful");
 		break;
 	case LDAP_PROC_NOT_PERMITTED:
 		LDAP_ERR_REQ("Bind was not permitted: %s", error);

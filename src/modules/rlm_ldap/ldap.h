@@ -247,6 +247,9 @@ typedef enum {
 #define LDAP_DBGW(fmt, ...) radlog(L_DBG_WARN, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
 #define LDAP_DBGW_REQ(fmt, ...) do { if (request) {RDEBUGW(fmt, ##__VA_ARGS__);} else {LDAP_DBGW(fmt, ##__VA_ARGS__);}} while (0)
 
+#define LDAP_DBG(fmt, ...) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_DBG_REQ(fmt, ...) do { if (request) {RDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
+
 #define LDAP_ERR(fmt, ...) radlog(L_ERR, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
 #define LDAP_ERR_REQ(fmt, ...) do { if (request) {RDEBUGE(fmt, ##__VA_ARGS__);} else {LDAP_ERR(fmt, ##__VA_ARGS__);}} while (0)
 
@@ -260,7 +263,7 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
 
 int rlm_ldap_is_dn(const char *str);
 
-ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const char **sub, size_t sublen);
+ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, char *out, size_t outlen);
 
 ldap_rcode_t rlm_ldap_bind(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn, const char *dn,
 			  const char *password, int retry);
