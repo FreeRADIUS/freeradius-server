@@ -122,7 +122,7 @@ static size_t rlm_ldap_common_dn(const char *full, const char *part)
 	f_len = strlen(full);
 	
 	if (!part) {
-		return f_len;
+		return -1;
 	}
 	
 	p_len = strlen(part);
@@ -341,7 +341,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		break;
 
 	case LDAP_NO_SUCH_OBJECT:
-		*error = "The specified object wasn't found, check base_dn and admin dn";
+		*error = "The specified DN wasn't found, check base_dn and identity";
 		
 		status = LDAP_PROC_BAD_DN;
 		
@@ -353,7 +353,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		len = rlm_ldap_common_dn(dn, part_dn);
 		if (len < 0) break;
 		
-		our_err = talloc_asprintf(conn, "Match stopped here: [%.*s]%s", len, part_dn, part_dn ? part_dn : "");
+		our_err = talloc_asprintf(conn, "Match stopped here: [%.*s]%s", len, dn, part_dn ? part_dn : "");
 
 		goto error_string;
 
@@ -423,11 +423,11 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		/*
 		 *	Output the error codes from the library and server
 		 */
-		p = talloc_strdup(conn, "");
+		p = talloc_zero_array(conn, char, 1);
 		if (!p) break;
 
 		if (lib_errno != srv_errno) {
-			a = talloc_asprintf_append(p, "LDAP lib error: %s (%u), srv error: %s (%u)", 
+			a = talloc_asprintf_append(p, "LDAP lib error: %s (%u), srv error: %s (%u). ", 
 				      		   ldap_err2string(lib_errno), lib_errno,
 						   ldap_err2string(srv_errno), srv_errno);
 			if (!a) {
@@ -439,7 +439,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		}
 
 		if (our_err) {
-			a = talloc_asprintf_append_buffer(p, ". %s", our_err);
+			a = talloc_asprintf_append_buffer(p, "%s. ", our_err);
 			if (!a) {
 				talloc_free(p);
 				break;
@@ -449,7 +449,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		}
 		
 		if (srv_err) {
-			a = talloc_asprintf_append_buffer(p, ". Server said: %s", srv_err);
+			a = talloc_asprintf_append_buffer(p, "Server said: %s. ", srv_err);
 			if (!a) {
 				talloc_free(p);
 				break;
@@ -671,7 +671,7 @@ retry:
 			/* FALL-THROUGH */
 		default:
 			RDEBUGE("Failed performing search: %s", error);
-			RDEBUGE("%s", extra);
+			if (extra) RDEBUGE("%s", extra);
 
 			goto finish;
 	}

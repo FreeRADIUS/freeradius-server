@@ -571,7 +571,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(const ldap_instance_t *inst, REQUEST 
 		 */
 		if (!name_is_dn && !value_is_dn) {
 			if (strcmp(vals[i], name) == 0){
-				RDEBUG("User found. Comparison between membership: name, check: name]");
+				RDEBUG("User found. Comparison between membership: name, check: name");
 				rcode = RLM_MODULE_OK;
 				
 				goto finish;
@@ -675,13 +675,12 @@ rlm_rcode_t rlm_ldap_check_cached(const ldap_instance_t *inst, REQUEST *request,
 	VALUE_PAIR	*vp;
 	int		ret;
 
-	RDEBUG2("Checking cached group information");
-	
 	vp = request->config_items;
 	while ((vp = pairfind(vp, inst->group_da->attr, inst->group_da->vendor, TAG_ANY))) {
 		
 		ret = radius_compare_vps(request, check, vp);
 		if (ret == 0) {
+			RDEBUG2("User found. Matched cached membership");
 			return RLM_MODULE_OK;
 		}
 		
@@ -690,5 +689,6 @@ rlm_rcode_t rlm_ldap_check_cached(const ldap_instance_t *inst, REQUEST *request,
 		}
 	}
 	
+	RDEBUG2("Membership not found");
 	return RLM_MODULE_NOTFOUND;
 }

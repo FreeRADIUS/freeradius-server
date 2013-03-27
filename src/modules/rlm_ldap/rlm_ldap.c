@@ -314,7 +314,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	int		found = FALSE;
 	int		check_is_dn;
 
-	ldap_handle_t	*conn;
+	ldap_handle_t	*conn = NULL;
 	const char	*user_dn;
 	
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
@@ -323,20 +323,6 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 		RDEBUG("Cannot do comparison (group name is empty)");
 		return 1;
 	}
-
-	conn = rlm_ldap_get_socket(inst, request);
-	if (!conn) return 1;
-
-	/*
-	 *	This is used in the default membership filter.
-	 */
-	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
-	if (!user_dn) {
-		rlm_ldap_release_socket(inst, conn);
-		return 1;
-	}
-
-	rad_assert(conn);
 
 	/*
 	 *	Check if we can do cached membership verification
@@ -351,6 +337,18 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 			default:
 				goto finish;
 		}
+	}
+
+	conn = rlm_ldap_get_socket(inst, request);
+	if (!conn) return 1;
+
+	/*
+	 *	This is used in the default membership filter.
+	 */
+	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
+	if (!user_dn) {
+		rlm_ldap_release_socket(inst, conn);
+		return 1;
 	}
 
 	rad_assert(conn);
@@ -388,8 +386,10 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	rad_assert(conn);
 	
 	finish:
-	rlm_ldap_release_socket(inst, conn);
-
+	if (conn) {
+		rlm_ldap_release_socket(inst, conn);
+	}
+	
 	if (!found) {
 		RDEBUG("User is not a member of specified group");
 		
@@ -767,7 +767,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Add any additional attributes we need for checking access, memberships, and profiles
 	 */
-	if (inst->access_positive) {
+	if (inst->userobj_access_attr) {
 		expanded.attrs[expanded.count++] = inst->userobj_access_attr;
 	}
 
