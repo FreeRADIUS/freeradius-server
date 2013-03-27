@@ -47,7 +47,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 		   VALUE_PAIR * usernamepair);
 
 
-static int getUserNodeRef(char* inUserName, char **outUserName,
+static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName,
 			  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
 	tDataBuffer	     *tDataBuff	= NULL;
@@ -152,8 +152,7 @@ static int getUserNodeRef(char* inUserName, char **outUserName,
 				} else if (strcmp(pAttrEntry->fAttributeSignature.fBufferData, kDSNAttrRecordName) == 0) {
 					status = dsGetAttributeValue(nodeRef, tDataBuff, 1, valueRef, &pValueEntry);
 					if (status == eDSNoErr && pValueEntry != NULL) {
-						*outUserName = (char *) malloc(pValueEntry->fAttributeValueData.fBufferLength + 1);
-						bzero(*outUserName,pValueEntry->fAttributeValueData.fBufferLength + 1);
+						*outUserName = talloc_array(request, char, pValueEntry->fAttributeValueData.fBufferLength + 1);
 						memcpy(*outUserName, pValueEntry->fAttributeValueData.fBufferData, pValueEntry->fAttributeValueData.fBufferLength);
 					}
 				}
@@ -246,7 +245,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	unsigned int t;
 #endif
 	
-	username_string = (char *) malloc(usernamepair->length + 1);
+	username_string = talloc_array(request, char, usernamepair->length + 1);
 	if (username_string == NULL)
 		return RLM_MODULE_FAIL;
 	
@@ -255,18 +254,18 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	
 	status = dsOpenDirService(&dsRef);
 	if (status != eDSNoErr) {
-		free(username_string);
+		talloc_free(username_string);
 		radlog(L_ERR,"rlm_mschap: od_mschap_auth(): dsOpenDirService = %d", status);
 		return RLM_MODULE_FAIL;
 	}
 
-	status = getUserNodeRef(username_string, &shortUserName, &userNodeRef, dsRef);
+	status = getUserNodeRef(request, username_string, &shortUserName, &userNodeRef, dsRef);
 	if(status != RLM_MODULE_OK) {
 		if (status != RLM_MODULE_NOOP) {
 			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
 		}
 		if (username_string != NULL)
-			free(username_string);
+			talloc_free(username_string);
 		if (dsRef != 0)
 			dsCloseDirService(dsRef);
 		return status;
@@ -388,9 +387,9 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 
 	/* clean up */
 	if (username_string != NULL)
-		free(username_string);
+		talloc_free(username_string);
 	if (shortUserName != NULL)
-		free(shortUserName);
+		talloc_free(shortUserName);
 
 	if (tDataBuff != NULL)
 		dsDataBufferDeAllocate(dsRef, tDataBuff);
