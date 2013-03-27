@@ -230,7 +230,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	 *	Bild first EAP TNC request
 	 */
 
-	MEM(eap_tnc_request = malloc(1));
+	MEM(eap_tnc_request = talloc_array(handler->eap_ds->request, uint8_t, 1));
 	*eap_tnc_request = SET_START(1);
 
 	handler->eap_ds->request->code = PW_EAP_REQUEST;
@@ -238,7 +238,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	
 	handler->eap_ds->request->type.length = 1;
 	
-	free(handler->eap_ds->request->type.data);
+	talloc_free(handler->eap_ds->request->type.data);
 	handler->eap_ds->request->type.data = eap_tnc_request;
 	
 	/*
@@ -344,8 +344,15 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	
 	handler->eap_ds->request->type.length = datalen;
 	
-	free(handler->eap_ds->request->type.data);
-	handler->eap_ds->request->type.data = data;
+	talloc_free(handler->eap_ds->request->type.data);
+
+	/*
+	 *	"data" is not talloc'd memory.
+	 */
+	handler->eap_ds->request->type.data = talloc_array(handler->eap_ds->request,
+							   unt8_t, datalen);
+	memcpy(handler->eap_ds->request->type.data, data, datalen);
+	free(data);
 
 	return 1;
 }
