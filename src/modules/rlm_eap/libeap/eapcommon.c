@@ -354,7 +354,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	/*
 	 *	Now that we know the lengths are OK, allocate memory.
 	 */
-	eap_packet = talloc_zero(ctx, eap_packet_raw_t);
+	eap_packet = (eap_packet_raw_t *) talloc_zero_array(ctx, uint8_t, len);
 	if (eap_packet == NULL) {
 		radlog(L_ERR, "rlm_eap: out of memory");
 		return NULL;
