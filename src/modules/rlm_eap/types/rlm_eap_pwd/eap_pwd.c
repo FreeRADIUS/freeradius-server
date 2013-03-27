@@ -172,11 +172,10 @@ compute_password_element (pwd_session_t *sess, uint16_t grp_num,
     }
     primebitlen = BN_num_bits(sess->prime);
     primebytelen = BN_num_bytes(sess->prime);
-    if ((prfbuf = malloc(primebytelen)) == NULL) {
-	DEBUG("unable to malloc space for prf buffer");
+    if ((prfbuf = talloc_zero_array(sess, uint8_t, primebytelen)) == NULL) {
+	DEBUG("unable to alloc space for prf buffer");
 	goto fail;
     }
-    memset(prfbuf, 0, primebytelen);
     ctr = 0;
     while (1) {
 	if (ctr > 10) {
@@ -265,22 +264,14 @@ compute_password_element (pwd_session_t *sess, uint16_t grp_num,
     }
     sess->group_num = grp_num;
     if (0) {
-fail:
-	EC_GROUP_free(sess->group);
-	EC_POINT_free(sess->pwe);
-	BN_free(sess->order);
-	BN_free(sess->prime);
-	free(prfbuf);
-	prfbuf = NULL;
-	free(sess);
-	sess = NULL;
+fail:				/* DON'T free sess, it's in handler->opaque */
 	ret = -1;
     }
     /* cleanliness and order.... */
     BN_free(cofactor);
     BN_free(x_candidate);
     BN_free(rnd);
-    free(prfbuf);
+    talloc_free(prfbuf);
 
     return ret;
 }
@@ -433,7 +424,7 @@ compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     /*
      * Each component of the cruft will be at most as big as the prime
      */
-    if (((cruft = malloc(BN_num_bytes(sess->prime))) == NULL) ||
+    if (((cruft = talloc_zero_array(sess, uint8_t, BN_num_bytes(sess->prime))) == NULL) ||
 	((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
 	DEBUG2("pwd: unable to allocate space to compute confirm!");
 	goto fin;
@@ -451,7 +442,6 @@ compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
      *
      * First is k
      */
-    memset(cruft, 0, BN_num_bytes(sess->prime));
     offset = BN_num_bytes(sess->prime) - BN_num_bytes(sess->k);
     BN_bn2bin(sess->k, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
@@ -521,7 +511,7 @@ compute_server_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     req = 0;
 fin:
     if (cruft != NULL) {
-	free(cruft);
+	    talloc_free(cruft);
     }
     BN_free(x);
     BN_free(y);
@@ -540,7 +530,7 @@ compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     /*
      * Each component of the cruft will be at most as big as the prime
      */
-    if (((cruft = malloc(BN_num_bytes(sess->prime))) == NULL) ||
+    if (((cruft = talloc_zero_array(sess, uint8_t, BN_num_bytes(sess->prime))) == NULL) ||
 	((x = BN_new()) == NULL) || ((y = BN_new()) == NULL)) {
 	DEBUG2("pwd: unable to allocate space to compute confirm!");
 	goto fin;
@@ -558,7 +548,6 @@ compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
      *
      * First is k
      */
-    memset(cruft, 0, BN_num_bytes(sess->prime));
     offset = BN_num_bytes(sess->prime) - BN_num_bytes(sess->k);
     BN_bn2bin(sess->k, cruft + offset);
     H_Update(&ctx, cruft, BN_num_bytes(sess->prime));
@@ -628,7 +617,7 @@ compute_peer_confirm (pwd_session_t *sess, uint8_t *buf, BN_CTX *bnctx)
     req = 0;
 fin:
     if (cruft != NULL) {
-	free(cruft);
+	    talloc_free(cruft);
     }
     BN_free(x);
     BN_free(y);
@@ -646,7 +635,7 @@ compute_keys (pwd_session_t *sess, uint8_t *peer_confirm,
     uint8_t msk_emsk[128];		/* 64 each */
     int offset;
 
-    if ((cruft = malloc(BN_num_bytes(sess->prime))) == NULL) {
+    if ((cruft = talloc_array(sess, uint8_t, BN_num_bytes(sess->prime))) == NULL) {
 	DEBUG2("pwd: unable to allocate space to compute keys");
 	return -1;
     }
@@ -689,7 +678,7 @@ compute_keys (pwd_session_t *sess, uint8_t *peer_confirm,
     memcpy(msk, msk_emsk, 64);
     memcpy(emsk, msk_emsk + 64, 64);
 
-    free(cruft);
+    talloc_free(cruft);
     return 0;
 }
 
