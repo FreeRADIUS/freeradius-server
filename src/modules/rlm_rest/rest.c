@@ -784,7 +784,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
  * This process continues until the stream function signals (by returning 0)
  * that it has no more data to write.
  *
- * @param[out] buffer where the pointer to the malloced buffer should
+ * @param[out] buffer where the pointer to the alloced buffer should
  *	be written.
  * @param[in] func Stream function.
  * @param[in] limit Maximum buffer size to alloc.
@@ -799,7 +799,7 @@ static ssize_t rest_read_wrapper(char **buffer, rest_read_t func,
 	char *previous = NULL;
 	char *current;
 
-	size_t alloc = REST_BODY_INCR;	/* Size of buffer to malloc */
+	size_t alloc = REST_BODY_INCR;	/* Size of buffer to alloc */
 	size_t used  = 0;		/* Size of data written */
 	size_t len   = 0;
 
