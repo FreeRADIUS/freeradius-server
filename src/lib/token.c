@@ -261,6 +261,10 @@ int fr_str2int(const FR_NAME_NUMBER *table, const char *name, int def)
 {
 	const FR_NAME_NUMBER *this;
 
+	if (!name) {
+		return def;
+	}
+	
 	for (this = table; this->name != NULL; this++) {
 		if (strcasecmp(this->name, name) == 0) {
 			return this->number;
@@ -277,7 +281,11 @@ int fr_substr2int(const FR_NAME_NUMBER *table, const char *name, int def, int le
 {
 	const FR_NAME_NUMBER *this;
 	size_t max;
-	
+
+	if (!name) {
+		return def;
+	}
+
 	for (this = table; this->name != NULL; this++) {
 		/*
 		 * Match up to the length of the table entry if len is < 0.
