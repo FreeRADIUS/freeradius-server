@@ -155,6 +155,8 @@ static const CONF_PARSER module_config[] = {
 
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
+	
+	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_dn), NULL, ""},
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
@@ -492,6 +494,9 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		goto error;
 	}
 	
+	/*
+	 *	Sanity checks for cacheable groups code.
+	 */
 	if (inst->cacheable_group_name && inst->groupobj_membership_filter && !inst->groupobj_name_attr) {
 		LDAP_ERR("Directive 'group.name_attribute' must be set if cacheable group names are enabled");
 		
@@ -520,15 +525,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		
 		inst->userobj_base_dn = inst->base_dn;
 	}
-	
-	/*
-	 *	Sanity checks for cacheable groups code.
-	 */
-	if (inst->cacheable_group_name && inst->groupobj_membership_filter && !inst->groupobj_name_attr) {
-		LDAP_ERR("Told to cache group names and membership filter provided, but 'group.name_attribute' "
-			 "directive is missing");
-	}
-	
 	
 	/*
 	 *	Check for URLs.  If they're used and the library doesn't support them, then complain.

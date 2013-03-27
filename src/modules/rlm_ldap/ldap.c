@@ -158,7 +158,6 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char *out, size_t outlen, const c
 	const char *in;
 	char *p = NULL;
 	
-	size_t left = sizeof(buffer);
 	size_t len;
 	
 	unsigned int i;
@@ -278,6 +277,8 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		freeit = TRUE;
 	}
 	
+	*result = NULL;
+	
 	/*
 	 *	Check if there was an error sending the request
 	 */
@@ -315,7 +316,10 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 				      extra ? &part_dn : NULL,
 				      extra ? &srv_err : NULL,
 				      NULL, NULL, freeit);
-				      
+	if (freeit) {
+		*result = NULL;
+	}
+	
 	if (lib_errno != LDAP_SUCCESS) {
 		ldap_get_option(conn->handle, LDAP_OPT_ERROR_NUMBER,
 				&lib_errno);
@@ -354,7 +358,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		goto error_string;
 
 	case LDAP_INSUFFICIENT_ACCESS:
-		*error = "Insufficient access. Check the identity and password configuration config items";
+		*error = "Insufficient access. Check the identity and password configuration directives";
 		
 		status = LDAP_PROC_NOT_PERMITTED;
 		break;
@@ -435,7 +439,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 		}
 
 		if (our_err) {
-			a = talloc_asprintf_append_buffer(p,". %s", our_err);
+			a = talloc_asprintf_append_buffer(p, ". %s", our_err);
 			if (!a) {
 				talloc_free(p);
 				break;

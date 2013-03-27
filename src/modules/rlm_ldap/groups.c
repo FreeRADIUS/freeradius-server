@@ -43,7 +43,7 @@
 static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
 					  char **names, char **out, size_t outlen)
 {
-	rlm_rcode_t rcode;
+	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ldap_rcode_t status;
 	int ldap_errno;
 	
@@ -66,7 +66,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
 	}
 	
 	if (!inst->groupobj_name_attr) {
-		RDEBUGE("Told to convert group names to DNs but missing 'group.name_attribute' config item");
+		RDEBUGE("Told to convert group names to DNs but missing 'group.name_attribute' directive");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -83,7 +83,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
 		rlm_ldap_escape_func(request, buffer, sizeof(buffer), *name++, NULL);
 		filter = talloc_asprintf_append_buffer(filter, "(%s=%s)", inst->groupobj_name_attr, buffer);
 		
-		entry_cnt++;
+		name_cnt++;
 	}
 	filter = talloc_asprintf_append_buffer(filter, "%s%s",
 					       names[0] && names[1] ? ")" : "",
@@ -95,7 +95,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
 		case LDAP_PROC_SUCCESS:
 			break;
 		case LDAP_PROC_NO_RESULT:
-			rcode = RLM_MODULE_INVALID;
+			RDEBUG("Tried to resolve group name(s) to DNs but got no results");
 			goto finish;
 		default:
 			rcode = RLM_MODULE_FAIL;
@@ -118,7 +118,8 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
 	}
 	
 	if (entry_cnt < name_cnt) {
-		RDEBUGW("Got partial mapping of group names to DNs, membership information may be incomplete");
+		RDEBUGW("Got partial mapping of group names (%i) to DNs (%i), membership information may be incomplete",
+			name_cnt, entry_cnt);
 	}
 	
 	entry = ldap_first_entry((*pconn)->handle, result);
@@ -126,12 +127,12 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 			
-		rcode = RLM_MODULE_INVALID;	 
+		rcode = RLM_MODULE_FAIL;	 
 		goto finish;
 	}
 	
 	do {
-		*dn = ldap_get_dn((*pconn)->handle, entry);	
+		*dn++ = ldap_get_dn((*pconn)->handle, entry);	
 	} while((entry = ldap_next_entry((*pconn)->handle, entry)));
 	
 	*dn = NULL;
@@ -151,7 +152,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
 		*dn = NULL;
 	}
 	
-	return status;
+	return rcode;
 }
 
 /** Convert a single group name into a DN
@@ -180,7 +181,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *
 	*out = NULL;
 	
 	if (!inst->groupobj_name_attr) {
-		RDEBUGE("Told to convert group DN to name but missing 'group.name_attribute' config item");
+		RDEBUGE("Told to convert group DN to name but missing 'group.name_attribute' directive");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -255,6 +256,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *req
 	 */
 	vals = ldap_get_values((*pconn)->handle, entry, inst->userobj_membership_attr);
 	if (!vals) {
+		RDEBUG2("No cacheable group memberships found in user object");
+		
 		return RLM_MODULE_OK;
 	}
 
@@ -266,8 +269,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *req
 			 *	The easy case, were caching DNs and we got a DN.
 			 */
 			if (is_dn) {
-				pairmake(request, &request->config_items, "LDAP-Group", vals[i], T_OP_ADD);
-				RDEBUG3("Added LDAP-Group with value \"%s\" to control list", vals[i]);
+				pairmake(request, &request->config_items, inst->group_da->name, vals[i], T_OP_ADD);
+				RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, vals[i]);
 			
 			/*
 			 *	We were told to cache DNs but we got a name, we now need to resolve 
@@ -283,8 +286,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *req
 			 *	The easy case, were caching names and we got a name.
 			 */
 			if (!is_dn) {
-				pairmake(request, &request->config_items, "LDAP-Group", vals[i], T_OP_ADD);
-				RDEBUG3("Added LDAP-Group with value \"%s\" to control list", vals[i]);
+				pairmake(request, &request->config_items, inst->group_da->name, vals[i], T_OP_ADD);
+				RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, vals[i]);
 			/*
 			 *	We were told to cache names but we got a DN, we now need to resolve 
 			 *	this to a name.
@@ -299,8 +302,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *req
 					return rcode;
 				}
 			
-				pairmake(request, &request->config_items, "LDAP-Group", name, T_OP_ADD);
-				RDEBUG3("Added LDAP-Group with value \"%s\" to control list", name);
+				pairmake(request, &request->config_items, inst->group_da->name, name, T_OP_ADD);
+				RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, name);
 				ldap_memfree(name);
 			}
 		}
@@ -317,8 +320,8 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *req
 
 	dn_p = group_dn;
 	while(*dn_p) {
-		pairmake(request, &request->config_items, "LDAP-Group", *dn_p, T_OP_ADD);
-		RDEBUG3("Added LDAP-Group with value \"%s\" to control list", *dn_p);
+		pairmake(request, &request->config_items, inst->group_da->name, *dn_p, T_OP_ADD);
+		RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, *dn_p);
 		ldap_memfree(*dn_p);
 	
 		dn_p++;
@@ -355,11 +358,11 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *re
 	char *dn;
 
 	if (!inst->groupobj_membership_filter) {
-		RDEBUG2("Skipping caching group objects as config item 'group.membership_filter' is not set");
+		RDEBUG2("Skipping caching group objects as directive 'group.membership_filter' is not set");
 	
 		return RLM_MODULE_OK;
 	}
-
+	
 	if (rlm_ldap_xlat_filter(request, filter, sizeof(filter), filters, sizeof(filters)) < 0) {
 		return RLM_MODULE_INVALID;
 	}
@@ -374,7 +377,8 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *re
 	switch (status) {
 		case LDAP_PROC_SUCCESS:
 			break;
-			
+		case LDAP_PROC_NO_RESULT:
+			RDEBUG2("No cacheable group memberships found in group objects");
 		default:
 			goto finish;
 	}
@@ -390,8 +394,8 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *re
 	do {
 		if (inst->cacheable_group_dn) {
 			dn = ldap_get_dn((*pconn)->handle, entry);
-			pairmake(request, &request->config_items, "LDAP-Group", dn, T_OP_ADD);
-			RDEBUG3("Added LDAP-Group with value \"%s\" to control list", dn);
+			pairmake(request, &request->config_items, inst->group_da->name, dn, T_OP_ADD);
+			RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, dn);
 			ldap_memfree(dn);
 		}
 		
@@ -401,8 +405,8 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *re
 				continue;
 			}
 			
-			pairmake(request, &request->config_items, "LDAP-Group", *vals, T_OP_ADD);
-			RDEBUG3("Added LDAP-Group with value \"%s\" to control list", *vals);
+			pairmake(request, &request->config_items, inst->group_da->name, *vals, T_OP_ADD);
+			RDEBUG("Added %s with value \"%s\" to control list", inst->group_da->name, *vals);
 			
 			ldap_value_free(vals);
 		}		
