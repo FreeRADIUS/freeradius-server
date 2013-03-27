@@ -161,7 +161,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 			return -1;
 		}
 		
-		if ((method < PW_EAP_MD5) || (method > PW_EAP_MAX_TYPES)) {
+		if ((method < PW_EAP_MD5) || (method >= PW_EAP_MAX_TYPES)) {
 			radlog(L_ERR, "rlm_eap (%s): EAP method %s outside of valid range", inst->xlat_name, name);
 
 			mod_detach(inst);
