@@ -350,7 +350,7 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	 *	"data" is not talloc'd memory.
 	 */
 	handler->eap_ds->request->type.data = talloc_array(handler->eap_ds->request,
-							   unt8_t, datalen);
+							   uint8_t, datalen);
 	memcpy(handler->eap_ds->request->type.data, data, datalen);
 	free(data);
 
