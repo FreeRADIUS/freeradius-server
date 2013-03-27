@@ -389,8 +389,8 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 
 	//skladanie pakietu
 	uint8_t *in=NULL;
-	if(!(in=malloc(eap_ds->response->length))){
-		radlog(L_ERR, IKEv2_LOG_PREFIX "malloc error");
+	if(!(in=talloc_array(eap_ds, uint8_t, eap_ds->response->length))){
+		radlog(L_ERR, IKEv2_LOG_PREFIX "alloc error");
 		return -1;
 	}
 
@@ -415,7 +415,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	if( session->sendfrag && !ParseFragmentAck( in, session ) ){
 		session->eapMsgID=eap_ds->response->id+1;
 		olen = CreateIKEv2Message( i2, NULL, 0, false, hdr->Id, session, (uint8_t **)&out );
-		free(in);
+		talloc_free(in);
 		if(ComposeRadMsg(out,olen,handler->eap_ds)){
 				free(out);
 				return 0;
@@ -441,7 +441,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	{
 		if(session->SK_ready) session->include_integ=1;
 		olen = CreateFragmentAck( in, &out, session ); // confirm fragment
-		free(in);
+		talloc_free(in);
 		in=NULL;
 		if(ComposeRadMsg(out,olen,handler->eap_ds)){
 			free(out);
@@ -450,7 +450,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 		free(out);
 		return 1;
 	}
-	free(in);
+	talloc_free(in);
 	in=NULL;
 
 	uint8_t *sikemsg=NULL;   //out message
