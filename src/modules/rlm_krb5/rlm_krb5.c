@@ -372,7 +372,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			rcode = RLM_MODULE_NOTFOUND;
 					
 		default:
-			RDEBUGE("Verifying user failed: %s", error_message(ret));
+			RDEBUGE("Error verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 		
 			break;
@@ -487,7 +487,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			break;
 			
 		default:
-			RDEBUGE("Failed getting/verifying credentials: %s", error_message(ret));
+			RDEBUGE("Error retrieving or verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}
