@@ -1009,10 +1009,22 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 	for (i = 0; variables[i].name != NULL; i++) {
 		if (variables[i].type == PW_TYPE_SUBSECTION) {
 			CONF_SECTION *subcs;
-			subcs = cf_section_sub_find(cs, variables[i].name);
-			if (!subcs) continue;
 
 			if (!variables[i].dflt) continue;
+
+			subcs = cf_section_sub_find(cs, variables[i].name);
+
+			/*
+			 *	If there's no subsection in the
+			 *	config, BUT the CONF_PARSER wants one,
+			 *	then create an empty one.  This is so
+			 *	that we can track the strings,
+			 *	etc. allocated in the subsection.
+			 */
+			if (!subcs) {
+				subcs = cf_section_alloc(cs, variables[i].name,
+							 NULL);
+			}
 
 			cf_section_parse_init(subcs, base,
 					      (const CONF_PARSER *) variables[i].dflt);
@@ -1035,6 +1047,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 		*(char **) data = NULL;
 	} /* for all variables in the configuration section */
 }
+
 
 /*
  *	Parse a configuration section into user-supplied variables.
@@ -1068,16 +1081,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			CONF_SECTION *subcs;
 			subcs = cf_section_sub_find(cs, variables[i].name);
 
-			/*
-			 *	If the configuration section is NOT there,
-			 *	then ignore it.
-			 *
-			 *	FIXME! This is probably wrong... we should
-			 *	probably set the items to their default values.
-			 */
-			if (!subcs) continue;
-
-			if (!variables[i].dflt) {
+			if (!variables[i].dflt || !subcs) {
 				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
 				goto error;
 			}
