@@ -899,7 +899,7 @@ void eap_fail(eap_handler_t *handler)
 	pairdelete(&handler->request->reply->vps, PW_STATE, 0, TAG_ANY);
 
 	talloc_free(handler->eap_ds->request);
-	handler->eap_ds->request = talloc(handler->eap_ds, eap_packet_t);
+	handler->eap_ds->request = talloc_zero(handler->eap_ds, eap_packet_t);
 	handler->eap_ds->request->code = PW_EAP_FAILURE;
 	eap_compose(handler);
 }
