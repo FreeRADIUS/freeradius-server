@@ -74,7 +74,7 @@ int ssl_version_check(void) {
 
 const char *ssl_version()
 {
-	return "not linked"
+	return "not linked";
 }
 #endif
 
