@@ -226,6 +226,7 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	int		i;
 	VALUE_PAIR	*challenge;
 	mschapv2_opaque_t *data;
+	REQUEST		*request = handler->request;
 
 	challenge = pairmake(handler, NULL,
 			     "MS-CHAP-Challenge", "0x00", T_OP_EQ);
@@ -237,7 +238,7 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) {
 		challenge->vp_strvalue[i] = fr_rand();
 	}
-	DEBUG2("rlm_eap_mschapv2: Issuing Challenge");
+	RDEBUG2("Issuing Challenge");
 
 	/*
 	 *	Keep track of the challenge.
@@ -323,7 +324,7 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 
 	default:
 	case PW_AUTHENTICATION_REJECT:
-		DEBUG("  rlm_eap_mschapv2: Proxied authentication did not succeed.");
+		RDEBUG("Proxied authentication did not succeed.");
 		return 0;
 	}
 
@@ -331,7 +332,7 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 	 *	No response, die.
 	 */
 	if (!response) {
-		radlog(L_ERR, "rlm_eap_mschapv2: Proxied reply contained no MS-CHAPv2-Success or MS-CHAP-Error");
+		RDEBUGE("Proxied reply contained no MS-CHAP-Success or MS-CHAP-Error");
 		return 0;
 	}
 
@@ -388,7 +389,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	Sanity check the response.
 	 */
 	if (eap_ds->response->length <= 5) {
-		radlog(L_ERR, "rlm_eap_mschapv2: corrupted data");
+		RDEBUGE("corrupted data");
 		return 0;
 	}
 
@@ -397,7 +398,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	switch (data->code) {
 		case PW_EAP_MSCHAPV2_FAILURE:
 			if (ccode == PW_EAP_MSCHAPV2_RESPONSE) {
-				DEBUG2("  rlm_eap_mschapv2: authentication re-try from client after we sent a failure");
+				RDEBUG2("authentication re-try from client after we sent a failure");
 				break;
 			}
 
@@ -412,7 +413,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 				int mschap_id = eap_ds->response->type.data[1];
 				int copied=0,seq=1;
 
-				DEBUG2("  rlm_eap_mschapv2: password change packet received");
+				RDEBUG2("password change packet received");
 
 				challenge = pairmake_packet("MS-CHAP-Challenge", "0x00", T_OP_EQ);
 				if (!challenge) {
@@ -449,7 +450,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 					nt_enc->length = 4 + to_copy;
 				}
 
-				DEBUG2("  rlm_eap_mschapv2: built change password packet");
+				RDEBUG2("built change password packet");
 				debug_pair_list(request->packet->vps);
 
 				/*
@@ -462,7 +463,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 			 * we sent a failure and are expecting a failure back
 			 */
 			if (ccode != PW_EAP_MSCHAPV2_FAILURE) {
-				radlog(L_ERR, "rlm_eap_mschapv2: Sent FAILURE expecting FAILURE but got %d", ccode);
+				RDEBUGE("Sent FAILURE expecting FAILURE but got %d", ccode);
 				return 0;
 			}
 
@@ -499,7 +500,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 						  &data->reply, 0, 0, TAG_ANY);
 					return 1;
 			}
-			radlog(L_ERR, "rlm_eap_mschapv2: Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
+			RDEBUGE("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
 			return 0;
 
 		case PW_EAP_MSCHAPV2_CHALLENGE:
@@ -509,7 +510,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 			 * we sent a challenge, expecting a response
 			 */
 			if (ccode != PW_EAP_MSCHAPV2_RESPONSE) {
-				radlog(L_ERR, "rlm_eap_mschapv2: Sent CHALLENGE expecting RESPONSE but got %d", ccode);
+				RDEBUGE("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
 				return 0;
 			}
 			/* authentication happens below */
@@ -518,7 +519,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 		default:
 			/* should never happen */
-			radlog(L_ERR, "rlm_eap_mschapv2: unknown state %d", data->code);
+			RDEBUGE("unknown state %d", data->code);
 			return 0;
 	}
 
@@ -532,7 +533,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	MS-CHAP value length.
 	 */
 	if (eap_ds->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
-		radlog(L_ERR, "rlm_eap_mschapv2: Response is too short");
+		RDEBUGE("Response is too short");
 		return 0;
 	}
 
@@ -542,7 +543,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	bytes) plus 1 byte of flags at the end.
 	 */
 	if (eap_ds->response->type.data[4] != 49) {
-		radlog(L_ERR, "rlm_eap_mschapv2: Response is of incorrect length %d", eap_ds->response->type.data[4]);
+		RDEBUGE("Response is of incorrect length %d", eap_ds->response->type.data[4]);
 		return 0;
 	}
 
@@ -552,8 +553,8 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 */
 	if (((eap_ds->response->type.data[2] << 8) |
 	     eap_ds->response->type.data[3]) < (5 + 49)) {
-		radlog(L_ERR, "rlm_eap_mschapv2: Response contains contradictory length %d %d",
-		      (eap_ds->response->type.data[2] << 8) |
+		RDEBUGE("Response contains contradictory length %d %d",
+			(eap_ds->response->type.data[2] << 8) |
 		       eap_ds->response->type.data[3], 5 + 49);
 		return 0;
 	}
@@ -589,7 +590,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 	name = pairmake_packet("NTLM-User-Name", "", T_OP_EQ);
 	if (!name) {
-		radlog(L_ERR, "rlm_eap_mschapv2: Failed creating NTLM-User-Name: %s", fr_strerror());
+		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
 	}
 	
@@ -625,7 +626,7 @@ packet_ready:
 		char *username = NULL;
 		eap_tunnel_data_t *tunnel;
 
-		DEBUG2("rlm_eap_mschapv2: cancelling authentication and letting it be proxied");
+		RDEBUG2("cancelling authentication and letting it be proxied");
 
 		/*
 		 *	Set up the callbacks for the tunnel
@@ -714,7 +715,7 @@ packet_ready:
 			int n,err,retry;
 			char buf[34];
 
-			DEBUG2("  MSCHAP-Error: %s", response->vp_strvalue);
+			RDEBUG2("MSCHAP-Error: %s", response->vp_strvalue);
 
 			/*
 			 *	Pxarse the new challenge out of the
@@ -724,10 +725,10 @@ packet_ready:
 			 */
 			n = sscanf(response->vp_strvalue, "%*cE=%d R=%d C=%32s", &err, &retry, &buf[0]);
 			if (n == 3) {
-				DEBUG2("  Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s", err, retry, buf);
+				DEBUG2("Found new challenge from MS-CHAP-Error: err=%d retry=%d challenge=%s", err, retry, buf);
 				fr_hex2bin(buf, data->challenge, 16);
 			} else {
-				DEBUG2("  Could not parse new challenge from MS-CHAP-Error: %d", n);
+				DEBUG2("Could not parse new challenge from MS-CHAP-Error: %d", n);
 			}
 		}
 		data->code = PW_EAP_MSCHAPV2_FAILURE;
@@ -740,7 +741,7 @@ packet_ready:
 	 *	No response, die.
 	 */
 	if (!response) {
-		radlog(L_ERR, "rlm_eap_mschapv2: No MS-CHAPv2-Success or MS-CHAP-Error was found.");
+		RDEBUGE("No MS-CHAP-Success or MS-CHAP-Error was found.");
 		return 0;
 	}
 
