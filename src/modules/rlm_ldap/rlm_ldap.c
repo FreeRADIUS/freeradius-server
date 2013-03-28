@@ -771,7 +771,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		expanded.attrs[expanded.count++] = inst->userobj_access_attr;
 	}
 
-	if (inst->userobj_membership_attr) {
+	if (inst->userobj_membership_attr && (inst->cacheable_group_dn || inst->cacheable_group_name)) {
 		expanded.attrs[expanded.count++] = inst->userobj_membership_attr;
 	}
 	
