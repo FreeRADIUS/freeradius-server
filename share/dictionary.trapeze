@@ -29,4 +29,10 @@ ATTRIBUTE	Trapeze-End-Date			6	string
 ATTRIBUTE	Trapeze-Start-Date			7	string
 ATTRIBUTE	Trapeze-URL				8	string
 
+# Additional attributes, not known when added
+ATTRIBUTE	Trapeze-User-Group-Name			9	string
+ATTRIBUTE	Trapeze-QoS-Profile			10	string
+ATTRIBUTE	Trapeze-Simultaneous-Logins		11	string
+ATTRIBUTE	Trapeze-CoA-Username			12	string
+
 END-VENDOR	Trapeze
