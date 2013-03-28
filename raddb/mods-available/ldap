@@ -101,7 +101,7 @@ ldap {
 	group {
 		#  Filter for group objects, should match all available
 		#  group objects a user might be a member of.
-#		filter = "(|(objectClass=GroupOfNames)(objectClass=GroupOfUniqueNames))"
+		filter = "(objectClass=posixGroup)"
 
 		#  Attribute that uniquely identifies a group.
 		#  Is used when converting group DNs to group
@@ -119,7 +119,7 @@ ldap {
 		#  Filter to find group objects a user is a member of.
 		#  That is, group objects with attributes that 
 		#  identify members (the inverse of membership_attribute).
-#		membership_filter = "(|(member=%{control:Ldap-UserDn})(uniquemember=%{control:Ldap-UserDn})"
+#		membership_filter = "(|(member=%{control:Ldap-UserDn})(memberUid=%{%{Stripped-User-Name}:-%{User-Name}}))"
 
 		#  If cacheable_name or cacheable_dn are enabled,
 		#  all group information for the user will be 
@@ -134,7 +134,7 @@ ldap {
 		#  If you with to use this feature, you should enable 
 		#  the type that matches the format of your check items
 		#  .i.e. if your groups are specified as DNs then enable
-		#  cacheable_dn else enabled cacheable_name.
+		#  cacheable_dn else enable cacheable_name.
 #		cacheable_name = "no"
 #		cacheable_dn = "no"
 	}
