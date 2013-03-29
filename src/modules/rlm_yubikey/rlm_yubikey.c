@@ -116,23 +116,24 @@ static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
-		radlog(L_ERR, "rlm_yubikey: xlat failed.");
+		RDEBUGE("expansion of format string failed.");
 		*out = '\0';
 		return 0;
 	}
 	
 	declen = modhex2bin(buffer, decbuf, sizeof(decbuf));
 	if (declen < 0) {
-		radlog(L_ERR, "rlm_yubikey: modhex string invalid");
+		RDEBUGE("modhex string invalid");
 		*out = '\0';
 		return 0;
 	}
 	
 	p = decbuf;
 	while ((declen-- > 0) && (--freespace > 0)) {
-		if (freespace < 3)
+		if (freespace < 3) {
 			break;
-
+		}
+		
 		snprintf(out, 3, "%02x", *p++);
 		
 		/* Already decremented */
@@ -171,7 +172,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
-	
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -186,9 +186,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	
 	if (YUBIKEY_UID_SIZE > MAX_STRING_LEN) {
-		radlog(L_ERR, "rlm_yubikey (%s): YUBIKEY_UID_SIZE too big",
-		       inst->name);
-		
+		RDEBUGE("YUBIKEY_UID_SIZE too big");
 		return -1;
 	}
 	
@@ -224,8 +222,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUG2("No Clear-Text password in the request. "
-			"Can't do Yubikey authentication.");
+		RDEBUG2("No Clear-Text password in the request. Can't do Yubikey authentication.");
 			
 		return RLM_MODULE_NOOP;
 	}
@@ -240,25 +237,21 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	
 	 */
 	if (len != (inst->id_len + 32)) {
-		RDEBUG2("User-Password value is not the correct length, "
-			"expected %u, got %zu",
-			inst->id_len + 32, len);
-			
+		RDEBUGE("User-Password value is not the correct length, "
+			"expected %u, got %zu", inst->id_len + 32, len);
 		return RLM_MODULE_NOOP;	
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
-			RDEBUG2("User-Password (aes-block) value contains "
-				"non modhex chars");
-			
+			RDEBUG2E("User-Password (aes-block) value contains "
+				 "non modhex chars");
 			return RLM_MODULE_NOOP;	
 		}
 	}
 	
 	if (inst->auth_type) {
-		vp = radius_paircreate(request, &request->config_items,
-				       PW_AUTH_TYPE, 0);
+		vp = radius_paircreate(request, &request->config_items, PW_AUTH_TYPE, 0);
 		vp->vp_integer = inst->auth_type;
 	}
 	
@@ -269,8 +262,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	It's left up to the user if they want to decode it or not.
 	 */
 	if (inst->id_len) {
-		vp = radius_paircreate(request, &request->packet->vps,
-				       PW_YUBIKEY_PUBLIC_ID, 0);
+		vp = pairmake(request, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
 		
 		strlcpy(vp->vp_strvalue, passcode, inst->id_len + 1);
 		
@@ -290,7 +282,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	char *passcode;
 	size_t i, len;
 	uint32_t counter;
-	
+
+	const DICT_ATTR *da;	
 	VALUE_PAIR *key, *vp;
 	yubikey_token_st token;
 	
@@ -301,10 +294,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-
 		RDEBUGE("No Clear-Text password in the request. "
 			"Can't do Yubikey authentication.");
-			
 		return RLM_MODULE_FAIL;
 	}
 	
@@ -317,10 +308,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
 	 */
 	if (len != (inst->id_len + 32)) {
-		RDEBUGE("User-Password value is not the correct length, "
-			"expected %u, got %zu",
+		RDEBUGE("User-Password value is not the correct length, expected %u, got %zu",
 			inst->id_len + 32, len);
-			
 		return RLM_MODULE_FAIL;	
 	}
 
@@ -328,24 +317,21 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		if (!is_modhex(*passcode)) {
 			RDEBUG2("User-Password (aes-block) value contains "
 				"non modhex chars");
-			
 			return RLM_MODULE_FAIL;	
 		}
 	}
 	
-	key = pairfind(request->config_items, PW_YUBIKEY_KEY, 0,
-		      TAG_ANY);
+	da = dict_attrbyname("Yubikey-Key");
+	key = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY);
 	if (!key) {
 		RDEBUGE("Yubikey-Key attribute not found in control "
 			"list, can't decrypt OTP data");
-	
 		return RLM_MODULE_FAIL;
 	}
 
 	if (key->length != YUBIKEY_KEY_SIZE) {
 		RDEBUGE("Yubikey-Key length incorrect, expected %u got %zu",
 			YUBIKEY_KEY_SIZE, key->length);
-			
 		return RLM_MODULE_FAIL;	
 	}
 	
@@ -357,7 +343,6 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	if (!yubikey_crc_ok_p((uint8_t *) &token)) {
 		RDEBUGE("Decrypting OTP token data failed, rejecting");	
-		
 		return RLM_MODULE_REJECT;
 	}
 	
@@ -372,32 +357,27 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		RDEBUG2("Token timetamp    : %u",
 			(token.tstph << 16) | token.tstpl);
 		RDEBUG2("Random data       : %u", token.rnd);
-		RDEBUG2("CRC data	  : 0x%x", token.crc);
-		RDEBUG2("Triggered by      : %s", yubikey_capslock(token.ctr) ?
-			"keyboard" : "button");
+		RDEBUG2("CRC data          : 0x%x", token.crc);
 	}
 
 	/*
 	 *	Private ID used for validation purposes
 	 */
-	vp = radius_paircreate(request, &request->packet->vps,
-			       PW_YUBIKEY_PRIVATE_ID, 0);	
+	vp = pairmake(request, &request->packet->vps, "Yubikey-Private-ID", NULL, T_OP_SET);	
 	memcpy(vp->vp_octets, token.uid, YUBIKEY_UID_SIZE);
 	vp->length = YUBIKEY_UID_SIZE;
 	
 	/*
 	 *	Token timestamp
 	 */
-	vp = radius_paircreate(request, &request->packet->vps,
-			       PW_YUBIKEY_TIMESTAMP, 0);
+	vp = pairmake(request, &request->packet->vps, "Yubikey-Timestamp", NULL, T_OP_SET);
 	vp->vp_integer = (token.tstph << 16) | token.tstpl;
 	vp->length = 4;
 	
 	/*
 	 *	Token random
 	 */
-	vp = radius_paircreate(request, &request->packet->vps,
-			       PW_YUBIKEY_RANDOM, 0);
+	vp = pairmake(request, &request->packet->vps, "Yubikey-Random", NULL, T_OP_SET);
 	vp->vp_integer = token.rnd;
 	vp->length = 4;
 	
@@ -407,45 +387,27 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	counter = (yubikey_counter(token.ctr) << 16) | token.use;
 	
-	vp = radius_paircreate(request, &request->packet->vps,
-			       PW_YUBIKEY_COUNTER, 0);
+	vp = pairmake(request, &request->packet->vps, "Yubikey-Counter", NULL, T_OP_SET);
 	vp->vp_integer = counter;
 	vp->length = 4;
 	
-	pairmake_packet("Yubikey-Trigger",
-			yubikey_capslock(token.ctr) ? "keyboard" : "button",
-			T_OP_SET);
 	/*
 	 *	Now we check for replay attacks
 	 */
-	vp = pairfind(request->config_items, PW_YUBIKEY_COUNTER, 0,
-		      TAG_ANY);
+	vp = pairfind(request->config_items, vp->da->attr, vp->da->vendor, TAG_ANY);
 	if (!vp) {
 		RDEBUGW("Yubikey-Counter not found in control list, skipping "
 			"replay attack checks");
-	
 		return RLM_MODULE_OK;
 	}
 
 	if (counter <= vp->vp_integer) {
-		RDEBUGE("Replay attack detected! Counter value %u, is "
-			"lt or eq to last known counter value %u",
+		RDEBUGE("Replay attack detected! Counter value %u, is lt or eq to last known counter value %u",
 			counter, vp->vp_integer);
-	
 		return RLM_MODULE_REJECT;	
 	}
 
 	return RLM_MODULE_OK;
-}
-
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
-static int mod_detach(UNUSED void *instance)
-{
-	/* free things here */
-	return 0;
 }
 
 /*
@@ -462,10 +424,10 @@ module_t rlm_yubikey = {
 	"yubikey",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		mod_authenticate,	/* authentication */
-		mod_authorize,	/* authorization */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */

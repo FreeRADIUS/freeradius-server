@@ -61,7 +61,6 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 
 	handler->opaque = session = talloc(handler, leap_session_t);
 	if (!handler->opaque) {
-		radlog(L_ERR, "rlm_eap_leap: Out of memory");
 		talloc_free(reply);
 		return 0;
 	}

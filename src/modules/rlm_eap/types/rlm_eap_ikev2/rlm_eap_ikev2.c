@@ -81,7 +81,6 @@ static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
 	    eap_ds->request->type.data = talloc_array(eap_ds->request,
 						      uint8_t, len);
 	    if (eap_ds->request->type.data == NULL) {
-		radlog(L_ERR, IKEv2_LOG_PREFIX "out of memory");
 		return 1;
 	    }
 	    memcpy(eap_ds->request->type.data,out+5,len-5);

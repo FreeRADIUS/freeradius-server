@@ -99,7 +99,6 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	 */
 	packet->value = talloc_array(packet, uint8_t, packet->value_size);
 	if (packet->value == NULL) {
-		radlog(L_ERR, "rlm_eap_md5: out of memory");
 		talloc_free(packet);
 		return NULL;
 	}
@@ -113,7 +112,6 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	if (name_len) {
 	  packet->name = talloc_array(packet, char, name_len + 1);
 		if (!packet->name) {
-			radlog(L_ERR, "rlm_eap_md5: out of memory");
 			talloc_free(packet);
 			return NULL;
 		}
@@ -197,7 +195,6 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 							  reply->length);
 		if (eap_ds->request->type.data == NULL) {
 			talloc_free(reply);
-			radlog(L_ERR, "rlm_eap_md5: out of memory");
 			return 0;
 		}
 		ptr = eap_ds->request->type.data;

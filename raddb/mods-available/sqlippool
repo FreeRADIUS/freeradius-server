@@ -38,26 +38,26 @@ sqlippool {
 	#
 	################################################################
 	
-	# Logging configuration. (Comment out to disable logging)
-	sqlippool_log_exists = "Existing IP: %{reply:Framed-IP-Address} \
-	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	#  Logging configuration.  These messages are added to the "control"
+	#  items, as Module-Success-Message.  They are not logged anywhere
+	#  else, unlike previous versions.  If you want to have them logged
+	#  to a file, see the "linelog" module, and create an entry which
+	#  writes Module-Success-Message message.
+	# 
+	log {
+		exists = "Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	
-	sqlippool_log_success = "Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} \
-	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		success = "Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	
-	sqlippool_log_clear = "Released IP %{Framed-IP-Address}\
-	(did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
+		clear = "Released IP %{Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} user %{User-Name})"
 	
-	sqlippool_log_failed = "IP Allocation FAILED from %{control:Pool-Name} \
-	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		failed = "IP Allocation FAILED from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	
-	sqlippool_log_nopool = "No Pool-Name defined \
-	(did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+		nopool = "No Pool-Name defined (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
+	}
 	
 	#  Use the same database as configured in the "sql" module, "database"
-	#  configuration item.  Change the "postgresql" name below to be the
-	#  same as the "database" field of the SQL module referred to in the
-	#  "sql-instance-name", above.
+	#  configuration item.
 	#
 	$INCLUDE sql/ippool/${modules.${sql-instance-name}.dialect}/queries.conf
 }

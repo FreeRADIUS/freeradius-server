@@ -108,8 +108,8 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	if (data->reset == NULL)
-		return -1;
+	rad_assert(data->reset != NULL);
+
 	if (isdigit((int) data->reset[0])){
 		len = strlen(data->reset);
 		if (len == 0)
@@ -148,8 +148,6 @@ static int find_next_reset(rlm_sqlcounter_t *data, time_t timeval)
 	} else if (strcmp(data->reset, "never") == 0) {
 		data->reset_time = 0;
 	} else {
-		radlog(L_ERR, "rlm_sqlcounter: Unknown reset timer \"%s\"",
-			data->reset);
 		return -1;
 	}
 
@@ -180,8 +178,8 @@ static int find_prev_reset(rlm_sqlcounter_t *data, time_t timeval)
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	if (data->reset == NULL)
-		return -1;
+	rad_assert(data->reset != NULL);
+
 	if (isdigit((int) data->reset[0])){
 		len = strlen(data->reset);
 		if (len == 0)
@@ -220,8 +218,6 @@ static int find_prev_reset(rlm_sqlcounter_t *data, time_t timeval)
 	} else if (strcmp(data->reset, "never") == 0) {
 		data->reset_time = 0;
 	} else {
-		radlog(L_ERR, "rlm_sqlcounter: Unknown reset timer \"%s\"",
-			data->reset);
 		return -1;
 	}
 	len = strftime(sPrevTime, sizeof(sPrevTime), "%Y-%m-%d %H:%M:%S", tm);
@@ -379,36 +375,36 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		radlog(L_ERR, "rlm_sqlcounter: Unable to parse parameters.");
+		cf_log_err(cf_sectiontoitem(conf), "Unable to parse parameters.");
 		return -1;
 	}
 
 	/*
 	 *	No query, die.
 	 */
-	if (data->query == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: 'query' must be set.");
+	if (!data->query) {
+		cf_log_err(cf_sectiontoitem(conf), "'query' must be set.");
 		return -1;
 	}
 
 	/*
 	 *	Discover the attribute number of the key.
 	 */
-	if (data->key_name == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: 'key' must be set.");
+	if (!data->key_name) {
+		cf_log_err(cf_sectiontoitem(conf), "'key' must be set.");
 		return -1;
 	}
 	dattr = dict_attrbyname(data->key_name);
-	if (dattr == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
+	if (!dattr) {
+		cf_log_err(cf_sectiontoitem(conf), "No such attribute %s",
 				data->key_name);
 		return -1;
 	}
 	data->key_attr = dattr;
 
 	dattr = dict_attrbyname(data->reply_name);
-	if (dattr == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: No such attribute %s",
+	if (!dattr) {
+		cf_log_err(cf_sectiontoitem(conf), "No such attribute %s",
 			       data->reply_name);
 		return -1;
 	}
@@ -419,29 +415,29 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Check the "sqlmod-inst" option.
 	 */
-	if (data->sqlmod_inst == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: 'sqlmod-inst' must be set.");
+	if (!data->sqlmod_inst) {
+		cf_log_err(cf_sectiontoitem(conf), "'sqlmod-inst' must be set.");
 		return -1;
 	}
 
 	/*
 	 *  Create a new attribute for the counter.
 	 */
-	if (data->counter_name == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: 'counter-name' must be set.");
+	if (!data->counter_name) {
+		cf_log_err(cf_sectiontoitem(conf), "'counter-name' must be set.");
 		return -1;
 	}
 
 	memset(&flags, 0, sizeof(flags));
 	dict_addattr(data->counter_name, -1, 0, PW_TYPE_INTEGER, flags);
 	dattr = dict_attrbyname(data->counter_name);
-	if (dattr == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: Failed to create counter attribute %s",
+	if (!dattr) {
+		cf_log_err(cf_sectiontoitem(conf), "Failed to create counter attribute %s",
 				data->counter_name);
 		return -1;
 	}
 	if (dattr->vendor != 0) {
-		radlog(L_ERR, "Counter attribute must not be a VSA");
+		cf_log_err(cf_sectiontoitem(conf), "Counter attribute must not be a VSA");
 		return -1;
 	}
 	data->dict_attr = dattr;
@@ -449,14 +445,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Create a new attribute for the check item.
 	 */
-	if (data->check_name == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: 'check-name' must be set.");
+	if (!data->check_name) {
+		cf_log_err(cf_sectiontoitem(conf), "'check-name' must be set.");
 		return -1;
 	}
 	dict_addattr(data->check_name, 0, PW_TYPE_INTEGER, -1, flags);
 	dattr = dict_attrbyname(data->check_name);
-	if (dattr == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: Failed to create check attribute %s",
+	if (!dattr) {
+		cf_log_err(cf_sectiontoitem(conf), "Failed to create check attribute %s",
 				data->check_name);
 		return -1;
 	}
@@ -466,15 +462,15 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *  Discover the end of the current time period.
 	 */
-	if (data->reset == NULL) {
-		radlog(L_ERR, "rlm_sqlcounter: 'reset' must be set.");
+	if (!data->reset) {
+		cf_log_err(cf_sectiontoitem(conf), "'reset' must be set.");
 		return -1;
 	}
 	now = time(NULL);
 	data->reset_time = 0;
 
 	if (find_next_reset(data,now) == -1) {
-		radlog(L_ERR, "rlm_sqlcounter: Failed to find the next reset time.");
+		cf_log_err(cf_sectiontoitem(conf), "Invalid reset '%s'", data->reset);
 		return -1;
 	}
 
@@ -483,8 +479,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	data->last_reset = 0;
 
-	if (find_prev_reset(data,now) == -1) {
-		radlog(L_ERR, "rlm_sqlcounter: Failed to find the previous reset time.");
+	if (find_prev_reset(data, now) < 0) {
+		cf_log_err(cf_sectiontoitem(conf), "Invalid reset '%s'", data->reset);
 		return -1;
 	}
 
@@ -540,7 +536,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	DEBUG2("rlm_sqlcounter: Entering module authorize code");
 	key_vp = ((data->key_attr->vendor == 0) && (data->key_attr->attr == PW_USER_NAME)) ? request->username : pairfind(request->packet->vps, data->key_attr->attr, data->key_attr->vendor, TAG_ANY);
-	if (key_vp == NULL) {
+	if (!key_vp) {
 		DEBUG2("rlm_sqlcounter: Could not find Key value pair");
 		return rcode;
 	}

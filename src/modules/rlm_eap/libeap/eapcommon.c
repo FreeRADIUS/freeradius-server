@@ -149,7 +149,6 @@ int eap_wireformat(eap_packet_t *reply)
 	reply->packet = talloc_array(reply, uint8_t, total_length);
 	header = (eap_packet_raw_t *)reply->packet;
 	if (!header) {
-		radlog(L_ERR, "rlm_eap: out of memory");
 		return EAP_INVALID;
 	}
 
@@ -356,7 +355,6 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 */
 	eap_packet = (eap_packet_raw_t *) talloc_zero_array(ctx, uint8_t, len);
 	if (eap_packet == NULL) {
-		radlog(L_ERR, "rlm_eap: out of memory");
 		return NULL;
 	}
 

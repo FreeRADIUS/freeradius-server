@@ -336,6 +336,8 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		goto cleanup;
 	}
 	
+	RDEBUG("Using keytab \"%s\"", keytab);
+	
 	krb5_verify_opt_set_keytab(&options, keytab);
 	krb5_verify_opt_set_secure(&options, TRUE);
 
@@ -356,23 +358,23 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			RDEBUGE("Provided password was incorrect: %s", error_message(ret));
+			RDEBUGE("Provided password was incorrect (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_REJECT;
 		
 			break;
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			RDEBUGE("Account has been locked out: %s", error_message(ret));
+			RDEBUGE("Account has been locked out (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
 		
 			break;
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			RDEBUG("User not found: %s", error_message(ret));
+			RDEBUG("User not found: %s (%i)", ret, error_message(ret));
 			rcode = RLM_MODULE_NOTFOUND;
 					
 		default:
-			RDEBUGE("Verifying user failed: %s", error_message(ret));
+			RDEBUGE("Error verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 		
 			break;
@@ -460,6 +462,8 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		goto cleanup;
 	}
 	
+	RDEBUG("Using keytab \"%s\"", keytab);
+	
 	/*
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
 	 */
@@ -470,24 +474,24 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			RDEBUGE("Provided password was incorrect: %s", error_message(ret));
+			RDEBUGE("Provided password was incorrect (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_REJECT;
 			break;
 			
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			RDEBUGE("Account has been locked out: %s", error_message(ret));
+			RDEBUGE("Account has been locked out (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
 			break;
 			
 		case KRB5KDC_ERR_C_PRINCIPAL_UNKNOWN:
-			RDEBUG("User not found: %s", error_message(ret));
+			RDEBUG("User not found (%i): %s", ret,  error_message(ret));
 			rcode = RLM_MODULE_NOTFOUND;
 			break;
 			
 		default:
-			RDEBUGE("Failed getting/verifying credentials: %s", error_message(ret));
+			RDEBUGE("Error retrieving or verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}

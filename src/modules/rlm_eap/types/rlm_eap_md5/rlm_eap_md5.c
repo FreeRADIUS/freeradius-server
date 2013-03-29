@@ -46,7 +46,6 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	 */
 	reply = talloc(handler, MD5_PACKET);
 	if (reply == NULL)  {
-		radlog(L_ERR, "rlm_eap_md5: out of memory");
 		return 0;
 	}
 
@@ -62,7 +61,6 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	 */
 	reply->value = talloc_array(reply, uint8_t, reply->value_size);
 	if (reply->value == NULL) {
-		radlog(L_ERR, "rlm_eap_md5: out of memory");
 		talloc_free(reply);
 		return 0;
 	}
