@@ -104,8 +104,7 @@ static size_t modhex2bin(const char *hex, uint8_t *bin, size_t len)
  *
  * Example: "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
  */
-static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request,
-				 const char *fmt, char *out, size_t outlen)
+static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, const char *fmt, char *out, size_t outlen)
 {	
 	char buffer[1024];
 	uint8_t decbuf[1024], *p;
@@ -186,7 +185,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	
 	if (YUBIKEY_UID_SIZE > MAX_STRING_LEN) {
-		RDEBUGE("YUBIKEY_UID_SIZE too big");
+		DEBUGE("rlm_yubikey: YUBIKEY_UID_SIZE too big");
+		
 		return -1;
 	}
 	
@@ -212,8 +212,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
-	if (!request->password ||
-	    (request->password->da->attr != PW_USER_PASSWORD)) {
+	if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
 		/*
 		 *	Don't print out debugging messages if we know
 		 *	they're useless.
@@ -237,15 +236,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	
 	 */
 	if (len != (inst->id_len + 32)) {
-		RDEBUGE("User-Password value is not the correct length, "
-			"expected %u, got %zu", inst->id_len + 32, len);
+		RDEBUGE("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
 		return RLM_MODULE_NOOP;	
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
-			RDEBUG2E("User-Password (aes-block) value contains "
-				 "non modhex chars");
+			RDEBUG2E("User-Password (aes-block) value contains non modhex chars");
 			return RLM_MODULE_NOOP;	
 		}
 	}
@@ -292,10 +289,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Can't do yubikey auth if there's no password.
 	 */
-	if (!request->password ||
-	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		RDEBUGE("No Clear-Text password in the request. "
-			"Can't do Yubikey authentication.");
+	if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
+		RDEBUGE("No Clear-Text password in the request. Can't do Yubikey authentication.");
 		return RLM_MODULE_FAIL;
 	}
 	
@@ -308,15 +303,13 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
 	 */
 	if (len != (inst->id_len + 32)) {
-		RDEBUGE("User-Password value is not the correct length, expected %u, got %zu",
-			inst->id_len + 32, len);
+		RDEBUGE("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
 		return RLM_MODULE_FAIL;	
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
-			RDEBUG2("User-Password (aes-block) value contains "
-				"non modhex chars");
+			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
 			return RLM_MODULE_FAIL;	
 		}
 	}
@@ -324,14 +317,12 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	da = dict_attrbyname("Yubikey-Key");
 	key = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY);
 	if (!key) {
-		RDEBUGE("Yubikey-Key attribute not found in control "
-			"list, can't decrypt OTP data");
+		RDEBUGE("Yubikey-Key attribute not found in control list, can't decrypt OTP data");
 		return RLM_MODULE_FAIL;
 	}
 
 	if (key->length != YUBIKEY_KEY_SIZE) {
-		RDEBUGE("Yubikey-Key length incorrect, expected %u got %zu",
-			YUBIKEY_KEY_SIZE, key->length);
+		RDEBUGE("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, key->length);
 		return RLM_MODULE_FAIL;	
 	}
 	
@@ -396,8 +387,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, vp->da->attr, vp->da->vendor, TAG_ANY);
 	if (!vp) {
-		RDEBUGW("Yubikey-Counter not found in control list, skipping "
-			"replay attack checks");
+		RDEBUGW("Yubikey-Counter not found in control list, skipping replay attack checks");
 		return RLM_MODULE_OK;
 	}
 
