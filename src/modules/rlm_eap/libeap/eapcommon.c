@@ -257,6 +257,11 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_raw_t *eap)
 
 	total = eap->length[0] * 256 + eap->length[1];
 
+	if (total == 0) {
+		DEBUG("Asked to encode empty EAP-Message!");
+		return NULL;
+	}
+
 	ptr = (const uint8_t *) eap;
 
 	do {
