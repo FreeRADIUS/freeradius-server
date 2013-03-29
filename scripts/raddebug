@@ -52,7 +52,7 @@ do
 	extra="-f $OPTARG"
 	;;
   t)	timeout="$OPTARG"
-	[ "$timout" = "0" ] && timeout=1000000
+	[ "$timeout" = "0" ] && timeout=1000000
 	;;
   u)	condition="(User-Name == $OPTARG)"
 	;;
@@ -77,6 +77,7 @@ fi
 #  Debug to a file, and then tell us where the file is.
 #
 outfile=`$radmin -e "debug file radmin.debug.$$" -e "show debug file"`
+group=`$radmin -e "debug file radmin.debug.$$" -e "show config group"`
 
 #
 #  If there was an error setting the debug output, re-set the
@@ -93,6 +94,7 @@ fi
 #  Truncate the file, and ensure it's writable by radiusd
 #
 cp /dev/null $outfile
+[ "$group" != "" ] && chgrp $group $outfile
 chmod g+w $outfile
 
 TAILPID=$$
