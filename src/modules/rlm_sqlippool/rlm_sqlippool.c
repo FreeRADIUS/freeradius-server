@@ -95,7 +95,7 @@ typedef struct rlm_sqlippool_t {
 
 } rlm_sqlippool_t;
 
-static CONF_PARSER log_config[] = {
+static CONF_PARSER message_config[] = {
   { "exists", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t, log_exists), NULL, NULL },
   { "success", PW_TYPE_STRING_PTR,
@@ -181,7 +181,7 @@ static CONF_PARSER module_config[] = {
   { "off-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
 
-  { "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) log_config },
+  { "messages", PW_TYPE_SUBSECTION, 0, NULL, (const void *) message_config },
 
   { NULL, -1, 0, NULL, NULL }
 };

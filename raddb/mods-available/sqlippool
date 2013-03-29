@@ -38,13 +38,13 @@ sqlippool {
 	#
 	################################################################
 	
-	#  Logging configuration.  These messages are added to the "control"
-	#  items, as Module-Success-Message.  They are not logged anywhere
-	#  else, unlike previous versions.  If you want to have them logged
-	#  to a file, see the "linelog" module, and create an entry which
-	#  writes Module-Success-Message message.
+	#  These messages are added to the "control" items, as
+	#  Module-Success-Message.  They are not logged anywhere else,
+	#  unlike previous versions.  If you want to have them logged
+	#  to a file, see the "linelog" module, and create an entry
+	#  which writes Module-Success-Message message.
 	# 
-	log {
+	messages {
 		exists = "Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 	
 		success = "Allocated IP: %{reply:Framed-IP-Address} from %{control:Pool-Name} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
