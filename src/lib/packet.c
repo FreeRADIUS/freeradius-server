@@ -611,12 +611,18 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	}
 
 	src_any = fr_inaddr_any(&request->src_ipaddr);
-	if (src_any < 0) return 0;
+	if (src_any < 0) {
+		fr_strerror_printf("Can't check src_ipaddr");
+		return 0;
+	}
 
 	/*
 	 *	MUST specify a destination address.
 	 */
-	if (fr_inaddr_any(&request->dst_ipaddr) != 0) return 0;
+	if (fr_inaddr_any(&request->dst_ipaddr) != 0) {
+		fr_strerror_printf("Must specify a dst_ipaddr");
+		return 0;
+	}
 
 	/*
 	 *	FIXME: Go to an LRU system.  This prevents ID re-use
@@ -744,7 +750,10 @@ int fr_packet_list_id_alloc(fr_packet_list_t *pl, int proto,
 	/*
 	 *	Ask the caller to allocate a new ID.
 	 */
-	if (fd < 0) return 0;
+	if (fd < 0) {
+		fr_strerror_printf("Failed finding socket, caller must allocate a new one");
+		return 0;
+	}
 
 	ps->num_outgoing++;
 	pl->num_outgoing++;
