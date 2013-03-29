@@ -214,8 +214,12 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 	int result;
 	uint32_t lint, rint;
 	VALUE_PAIR *vp = NULL;
+	VALUE_PAIR *myvp= NULL;
 #ifdef HAVE_REGEX_H
 	char buffer[8192];
+	int i, compare;
+	regex_t reg;
+	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 #else
 	cflags = cflags;	/* -Wunused */
 #endif
@@ -240,10 +244,140 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		}
 
 		/*
+		 * Check if we need to do MVA comparison
+		 */
+
+#ifdef HAVE_REGEX_H
+		if ((token == T_OP_MULTI_CMP_EQ_ALL) || (token == T_OP_MULTI_CMP_EQ_ANY) ||
+			 (token == T_OP_MULTI_REG_EQ_ALL) || (token == T_OP_MULTI_REG_EQ_ANY)) {
+#else
+		if ((token == T_OP_MULTI_CMP_EQ_ALL) || (token == T_OP_MULTI_CMP_EQ_ANY)) {
+#endif
+			
+			/*
+			 * We only accept "", '' and /regexp/ on left hand side
+			 */
+
+			if(rt != T_DOUBLE_QUOTED_STRING && rt != T_SINGLE_QUOTED_STRING) {
+				RDEBUG("Invalid value for operator %s", fr_token_name(token));
+				return FALSE;
+			}
+
+			/*
+			 * Return FALSE if we don't find the LHS attribute in the request
+			 */
+			
+			if ((radius_get_vp(request, pleft, &vp) < 0)) {
+				RDEBUG("Attribute %s not found",pleft);
+				return FALSE;
+			}				
+
+
+			/*
+			 * Initialize the regex engine. Return FALSE in case of error
+			 */
+
+			if ((token == T_OP_MULTI_REG_EQ_ALL) || (token == T_OP_MULTI_REG_EQ_ANY)) {
+				/*
+				 *	do not include substring matches.
+				 */
+				cflags |= REG_NOSUB;
+				compare = regcomp(&reg, pright, cflags);
+				if (compare != 0) {
+					if (debug_flag) {
+						char errbuf[128];
+		
+						regerror(compare, &reg, errbuf, sizeof(errbuf));
+						DEBUGE("Failed compiling regular expression: %s", errbuf);
+					}
+					return FALSE;
+				}
+			}
+
+			/*
+			 * loop over attributes
+			 */
+
+			do {
+
+				vp_prints_value(buffer, sizeof(buffer), vp, 0);
+				pleft = buffer;
+
+				/*
+				 * Proceed with the comparisons
+				 */
+
+				switch (token) {
+					case T_OP_MULTI_CMP_EQ_ALL:
+					case T_OP_MULTI_CMP_EQ_ANY:
+						myvp = paircopyvp(request, vp);
+						if (!pairparsevalue(myvp, pright)) {
+							pairbasicfree(myvp);
+							RDEBUG2("Failed parsing \"%s\": %s",
+							       pright, fr_strerror());
+							return FALSE;
+						}
+
+						myvp->op = T_OP_CMP_EQ; 
+						result = paircmp(myvp, vp);
+						pairbasicfree(myvp);
+						RDEBUG3("  paircmp -> %d", result);
+						break;
+
+					case T_OP_MULTI_REG_EQ_ALL:
+					case T_OP_MULTI_REG_EQ_ANY:
+						compare = regexec(&reg, pleft, 0, NULL, 0);
+						result = (compare == 0);
+						break;
+
+					default:
+						RDEBUG("Error while comparing MVA");
+						return FALSE;
+				}
+
+				RDEBUG("      ? Evaluating %s %s %s -> %s",pleft, fr_token_name(token), pright,
+						(result==TRUE)? "TRUE":"FALSE");
+
+				/*
+				 * See if we can short-circuit the loop based on & or | operator
+				 */
+
+				switch (token) {
+					case T_OP_MULTI_CMP_EQ_ALL:
+					case T_OP_MULTI_REG_EQ_ALL:
+						if(!result) {
+							 goto finishMVA;
+						}
+						break;
+
+					case T_OP_MULTI_CMP_EQ_ANY:
+					case T_OP_MULTI_REG_EQ_ANY:
+						if(result) goto finishMVA;
+						break;
+
+					default:
+						RDEBUG("Error while comparing MVA");
+						return FALSE;
+				}
+
+
+				vp = pairfind(vp->next, vp->da->attr, vp->da->vendor, TAG_ANY);
+			} while (vp);
+
+
+finishMVA:
+			if ((token == T_OP_MULTI_REG_EQ_ALL) || (token == T_OP_MULTI_REG_EQ_ANY)) {
+				regfree(&reg);
+			}
+			*presult = result;
+			return TRUE;
+
+		}
+
+		/*
 		 *	Bare words on the left can be attribute names.
 		 */
 		if (!(radius_get_vp(request, pleft, &vp) < 0)) {
-			VALUE_PAIR *myvp;
 
 			/*
 			 *	VP exists, and that's all we're looking for.
@@ -375,9 +509,6 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 
 #ifdef HAVE_REGEX_H
 	case T_OP_REG_EQ: {
-		int i, compare;
-		regex_t reg;
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
 		
 		/*
 		 *	Include substring matches.
@@ -430,10 +561,6 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 		break;
 		
 	case T_OP_REG_NE: {
-		int compare;
-		regex_t reg;
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-		
 		/*
 		 *	Include substring matches.
 		 */
@@ -706,7 +833,9 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 */
 #ifdef HAVE_REGEX_H
 		if ((token == T_OP_REG_EQ) ||
-		    (token == T_OP_REG_NE)) {
+		    (token == T_OP_REG_NE) ||
+			 (token == T_OP_MULTI_REG_EQ_ALL) ||
+			 (token == T_OP_MULTI_REG_EQ_ANY)) {
 			rt = getregex(&p, right, sizeof(right), &cflags);
 			if (rt != T_DOUBLE_QUOTED_STRING) {
 				radlog(L_ERR, "Expected regular expression at: %s", p);
