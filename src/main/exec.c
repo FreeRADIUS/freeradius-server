@@ -601,7 +601,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
-			RDEBUGE("Exec: child returned %d", status);
+			RDEBUG("Exec: child returned %d", status);
 			return status;
 		}
 	}
