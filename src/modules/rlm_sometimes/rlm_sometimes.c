@@ -64,32 +64,8 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static int str2rcode(const char *s)
-{
-	if(!strcasecmp(s, "reject"))
-		return RLM_MODULE_REJECT;
-	else if(!strcasecmp(s, "fail"))
-		return RLM_MODULE_FAIL;
-	else if(!strcasecmp(s, "ok"))
-		return RLM_MODULE_OK;
-	else if(!strcasecmp(s, "handled"))
-		return RLM_MODULE_HANDLED;
-	else if(!strcasecmp(s, "invalid"))
-		return RLM_MODULE_INVALID;
-	else if(!strcasecmp(s, "userlock"))
-		return RLM_MODULE_USERLOCK;
-	else if(!strcasecmp(s, "notfound"))
-		return RLM_MODULE_NOTFOUND;
-	else if(!strcasecmp(s, "noop"))
-		return RLM_MODULE_NOOP;
-	else if(!strcasecmp(s, "updated"))
-		return RLM_MODULE_UPDATED;
-	else {
-		radlog(L_ERR,
-			"rlm_sometimes: Unknown module rcode '%s'.\n", s);
-		return -1;
-	}
-}
+
+extern const FR_NAME_NUMBER mod_rcode_table[];
 
 static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
@@ -112,14 +88,15 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
 	 */
-	inst->rcode = str2rcode(inst->rcode_str);
+	inst->rcode = fr_str2int(mod_rcode_table, inst->rcode_str, -1);
 	if (inst->rcode == -1) {
+		cf_log_err_cs(conf, "Unknown module return code '%s'", inst->rcode_str);
 		return -1;
 	}
 
 	inst->da = dict_attrbyname(inst->key);
 	if (!inst->da) {
-		radlog(L_ERR, "rlm_sometimes; Unknown attributes %s", inst->key);
+		cf_log_err_cs(conf, "Unknown attribute '%s'", inst->key);
 		return -1;
 	}
 

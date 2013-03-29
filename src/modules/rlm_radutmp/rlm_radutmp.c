@@ -92,7 +92,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static int radutmp_zap(UNUSED rlm_radutmp_t *inst,
+static int radutmp_zap(REQUEST *request,
 		       const char *filename,
 		       uint32_t nasaddr,
 		       time_t t)
@@ -104,7 +104,7 @@ static int radutmp_zap(UNUSED rlm_radutmp_t *inst,
 
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
-		radlog(L_ERR, "rlm_radutmp: Error accessing file %s: %s",
+		RDEBUGE("Error accessing file %s: %s",
 		       filename, strerror(errno));
 		return RLM_MODULE_FAIL;
 	}
@@ -112,13 +112,10 @@ static int radutmp_zap(UNUSED rlm_radutmp_t *inst,
 	/*
 	 *	Lock the utmp file, prefer lockf() over flock().
 	 */
-	if (rad_lockfd(fd, LOCK_LEN) < 0)
-	{
-		radlog(L_ERR, "rlm_radutmp: Failed to acquire lock on file %s:"
+	if (rad_lockfd(fd, LOCK_LEN) < 0) {
+		RDEBUGE("Failed to acquire lock on file %s:"
 		       " %s", filename, strerror(errno));
-		
 		close(fd);
-		
 		return RLM_MODULE_FAIL;
 	}
 
@@ -133,7 +130,7 @@ static int radutmp_zap(UNUSED rlm_radutmp_t *inst,
 	   *	Match. Zap it.
 	   */
 	  if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-	    radlog(L_ERR, "rlm_radutmp: radutmp_zap: negative lseek!");
+	    RDEBUGE("radutmp_zap: negative lseek!");
 	    lseek(fd, (off_t)0, SEEK_SET);
 	  }
 	  u.type = P_IDLE;
@@ -221,12 +218,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		     memcmp(vp->vp_strvalue, "00000000", 8) == 0)
 			check2 = 1;
 		if (check1 == 0 || check2 == 0) {
-#if 0 /* Cisco sometimes sends START records without username. */
-			radlog(L_ERR, "rlm_radutmp: no username in record");
-			return RLM_MODULE_FAIL;
-#else
 			break;
-#endif
 		}
 		radlog(L_INFO, "rlm_radutmp: converting reboot records.");
 		if (status == PW_STATUS_STOP)
@@ -340,7 +332,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	    (ut.nas_address != htonl(INADDR_NONE))) {
 		radlog(L_INFO, "rlm_radutmp: NAS %s restarted (Accounting-On packet seen)",
 		       nas);
-		radutmp_zap(inst, filename, ut.nas_address, ut.time);
+		radutmp_zap(request, filename, ut.nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
 
@@ -348,7 +340,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	    (ut.nas_address != htonl(INADDR_NONE))) {
 		radlog(L_INFO, "rlm_radutmp: NAS %s rebooted (Accounting-Off packet seen)",
 		       nas);
-		radutmp_zap(inst, filename, ut.nas_address, ut.time);
+		radutmp_zap(request, filename, ut.nas_address, ut.time);
 		return RLM_MODULE_OK;
 	}
 
@@ -358,7 +350,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if (status != PW_STATUS_START &&
 	    status != PW_STATUS_STOP &&
 	    status != PW_STATUS_ALIVE) {
-		radlog(L_ERR, "rlm_radutmp: NAS %s port %u unknown packet type %d)",
+		RDEBUGE("NAS %s port %u unknown packet type %d)",
 		       nas, ut.nas_port, status);
 		return RLM_MODULE_NOOP;
 	}
@@ -399,7 +391,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	fd = open(filename, O_RDWR|O_CREAT, inst->permission);
 	if (fd < 0) {
-		radlog(L_ERR, "rlm_radutmp: Error accessing file %s: %s",
+		RDEBUGE("Error accessing file %s: %s",
 		       filename, strerror(errno));
 		return RLM_MODULE_FAIL;
 	}
@@ -442,7 +434,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			 *	send _only_ logout records).
 			 */
 			if (u.type == P_LOGIN)
-				radlog(L_ERR, "rlm_radutmp: Logout entry for NAS %s port %u has wrong ID",
+				RDEBUGW("Logout entry for NAS %s port %u has wrong ID",
 				       nas, u.nas_port);
 			r = -1;
 			break;
@@ -458,7 +450,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				r = -1;
 				break;
 			}
-			radlog(L_ERR, "rlm_radutmp: Login entry for NAS %s port %u wrong order",
+			RDEBUGW("Login entry for NAS %s port %u wrong order",
 			       nas, u.nas_port);
 			r = -1;
 			break;
@@ -480,7 +472,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		}
 
 		if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-			radlog(L_ERR, "rlm_radutmp: negative lseek!");
+			RDEBUGW("negative lseek!");
 			lseek(fd, (off_t)0, SEEK_SET);
 			off = 0;
 		} else
@@ -525,7 +517,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			u.delay = ut.delay;
 			write(fd, &u, sizeof(u));
 		} else if (r == 0) {
-			radlog(L_ERR, "rlm_radutmp: Logout for NAS %s port %u, but no Login record",
+			RDEBUGW("Logout for NAS %s port %u, but no Login record",
 			       nas, ut.nas_port);
 		}
 	}
@@ -707,7 +699,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 				 *	Return an error.
 				 */
 				close(fd);
-				radlog(L_ERR, "rlm_radutmp: Failed to check the terminal server for user '%s'.", utmp_login);
+				RDEBUGW("Failed to check the terminal server for user '%s'.", utmp_login);
 				return RLM_MODULE_FAIL;
 			}
 		}

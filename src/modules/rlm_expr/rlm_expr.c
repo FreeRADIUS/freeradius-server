@@ -260,7 +260,7 @@ static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
 	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
+		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
@@ -297,7 +297,7 @@ static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
 	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
+		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
@@ -339,7 +339,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 	 */
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
+		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
@@ -446,7 +446,7 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
+		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
@@ -500,7 +500,7 @@ static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
+		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
@@ -645,7 +645,7 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 	 *  if it's larger than outlen, the output would be useless so abort.
 	 */
 	if (!len || ((FR_BASE64_ENC_LENGTH(len) + 1) > outlen)) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
+		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
@@ -671,14 +671,14 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	
 	if (!len) {
-		radlog(L_ERR, "rlm_expr: xlat failed.");
+		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
 	
 	declen = fr_base64_decode(buffer, len, decbuf, sizeof(decbuf));
 	if (declen < 0) {
-		radlog(L_ERR, "rlm_expr: base64 string invalid");
+		RDEBUGE("base64 string invalid");
 		*out = '\0';
 		return 0;
 	}

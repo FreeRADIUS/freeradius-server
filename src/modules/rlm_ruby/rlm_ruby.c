@@ -103,7 +103,7 @@ static VALUE radlog_rb(UNUSED VALUE self, VALUE msg_type, VALUE rb_msg) {
 
 /* Tuple to value pair conversion */
 
-static void add_vp_tuple(TALLOC_CTX *ctx, VALUE_PAIR **vpp, VALUE rb_value,
+static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VALUE rb_value,
 	const char *function_name) {
     int i, outertuplesize;
     VALUE_PAIR *vp;
@@ -114,7 +114,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, VALUE_PAIR **vpp, VALUE rb_value,
     }
 
     if (TYPE(rb_value) != T_ARRAY) {
-	radlog(L_ERR, "add_vp_tuple, %s: non-array passed", function_name);
+        RDEBUGE("add_vp_tuple, %s: non-array passed", function_name);
 	return;
     }
 
@@ -131,8 +131,8 @@ static void add_vp_tuple(TALLOC_CTX *ctx, VALUE_PAIR **vpp, VALUE rb_value,
 	    int tuplesize;
 
 	    if ((tuplesize = RARRAY_LEN(pTupleElement)) != 2) {
-		radlog(L_ERR, "%s: tuple element %d is a tuple "
-			" of size %d. must be 2\n", function_name,
+	      RDEBUGE("%s: tuple element %d is a tuple "
+		      " of size %d. must be 2\n", function_name,
 			i, tuplesize);
 	    } else {
 		VALUE pString1, pString2;
@@ -167,17 +167,17 @@ static void add_vp_tuple(TALLOC_CTX *ctx, VALUE_PAIR **vpp, VALUE rb_value,
 				    function_name);
 			}
 		    } else {
-			radlog(L_ERR, "%s: string conv failed\n",
+			RDEBUGE("%s: string conv failed\n",
 				function_name);
 		    }
 
 		} else {
-		    radlog(L_ERR, "%s: tuple element %d must be "
+		    RDEBUGE("%s: tuple element %d must be "
 			    "(string, string)", function_name, i);
 		}
 	    }
 	} else {
-	    radlog(L_ERR, "%s: tuple element %d is not a tuple\n",
+	    RDEBUGE("%s: tuple element %d is not a tuple\n",
 		    function_name, i);
 	}
     }
@@ -255,7 +255,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, int func,
      */
     if (TYPE(rb_result) == T_ARRAY) {
 	if (!FIXNUM_P(rb_ary_entry(rb_result, 0))) {
-	    radlog(L_ERR, "rlm_ruby: First element of an array was not a "
+	    RDEBUGE("First element of an array was not a "
 	    	   "FIXNUM (Which has to be a return_value)");
 
 	    rcode = RLM_MODULE_FAIL;
@@ -271,9 +271,9 @@ static rlm_rcode_t do_ruby(REQUEST *request, int func,
 		rb_reply_items = rb_ary_entry(rb_result, 1);
 		rb_config_items = rb_ary_entry(rb_result, 2);
 	
-		add_vp_tuple(request->reply, &request->reply->vps,
+		add_vp_tuple(request->reply, request, &request->reply->vps,
 			     rb_reply_items, function_name);
-		add_vp_tuple(request, &request->config_items,
+		add_vp_tuple(request, request, &request->config_items,
 			     rb_config_items, function_name);
 	}
     } else if (FIXNUM_P(rb_result)) {
@@ -389,12 +389,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/* TODO: What actualy should we do? Exit with module fail? Or continue... but what the point then? */
 	radlog(L_ERR, "Script File was not set");
     } else {
-	radlog(L_DBG, "Loading file %s...", data->scriptFile);
+        DEBUG("Loading file %s...", data->scriptFile);
 	rb_load_protect(rb_str_new2(data->scriptFile), 0, &status);
-	if (!status)
-	    radlog(L_DBG, "Loaded file %s", data->scriptFile);
-	else
+	if (!status) {
+	  DEBUG("Loaded file %s", data->scriptFile);
+	} else {
 	    radlog(L_ERR, "Error loading file %s status: %d", data->scriptFile, status);
+	}
     }
     /*
      * Import user modules.

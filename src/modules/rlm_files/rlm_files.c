@@ -352,14 +352,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	rcode = getusersfile(inst->usersfile, &inst->users, inst->compat_mode);
 	if (rcode != 0) {
-	  radlog(L_ERR, "Errors reading %s", inst->usersfile);
+		radlog(L_ERR, "Failed reading %s", inst->usersfile);
 		mod_detach(inst);
 		return -1;
 	}
 
 	rcode = getusersfile(inst->acctusersfile, &inst->acctusers, inst->compat_mode);
 	if (rcode != 0) {
-		radlog(L_ERR, "Errors reading %s", inst->acctusersfile);
+		radlog(L_ERR, "Failed reading %s", inst->acctusersfile);
 		mod_detach(inst);
 		return -1;
 	}
@@ -370,14 +370,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	rcode = getusersfile(inst->preproxy_usersfile, &inst->preproxy_users, inst->compat_mode);
 	if (rcode != 0) {
-		radlog(L_ERR, "Errors reading %s", inst->preproxy_usersfile);
+		radlog(L_ERR, "Failed reading %s", inst->preproxy_usersfile);
 		mod_detach(inst);
 		return -1;
 	}
 
 	rcode = getusersfile(inst->postproxy_usersfile, &inst->postproxy_users, inst->compat_mode);
 	if (rcode != 0) {
-		radlog(L_ERR, "Errors reading %s", inst->postproxy_usersfile);
+		radlog(L_ERR, "Failed reading %s", inst->postproxy_usersfile);
 		mod_detach(inst);
 		return -1;
 	}
@@ -385,14 +385,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	rcode = getusersfile(inst->auth_usersfile, &inst->auth_users, inst->compat_mode);
 	if (rcode != 0) {
-		radlog(L_ERR, "Errors reading %s", inst->auth_usersfile);
+		radlog(L_ERR, "Failed reading %s", inst->auth_usersfile);
 		mod_detach(inst);
 		return -1;
 	}
 
 	rcode = getusersfile(inst->postauth_usersfile, &inst->postauth_users, inst->compat_mode);
 	if (rcode != 0) {
-		radlog(L_ERR, "Errors reading %s", inst->postauth_usersfile);
+		radlog(L_ERR, "Failed reading %s", inst->postauth_usersfile);
 		mod_detach(inst);
 		return -1;
 	}
