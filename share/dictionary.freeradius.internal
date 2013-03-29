@@ -274,24 +274,6 @@ ATTRIBUTE	EAP-Sim-KC2				1213	octets
 ATTRIBUTE	EAP-Sim-KC3				1214	octets
 
 #
-#	Range:	1280-1300
-#		Yubikey.
-#
-#	For Yubikey, attributes representing fields in the AES Block, 
-#	and other identifiers.
-#
-ATTRIBUTE	Yubikey-Key				1280	octets
-ATTRIBUTE	Yubikey-Public-ID			1281	string
-ATTRIBUTE	Yubikey-Private-ID			1282	octets
-ATTRIBUTE	Yubikey-Counter				1283	integer
-ATTRIBUTE	Yubikey-Timestamp			1284	integer
-ATTRIBUTE	Yubikey-Random				1285	integer
-ATTRIBUTE	Yubikey-Trigger				1286	integer
-
-VALUE	Yubikey-Trigger			Button			0
-VALUE	Yubikey-Trigger			Keyboard		1
-
-#
 #	Range:	1280 - 1535
 #		EAP-type specific attributes
 #

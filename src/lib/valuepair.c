@@ -827,7 +827,7 @@ static int gettime(const char *valstr, time_t *date)
 	char		buf[64];
 	char		*p;
 	char		*f[4];
-	char	    *tail = '\0';
+	char		*tail = '\0';
 
 	/*
 	 * Test for unix timestamp date
@@ -1566,9 +1566,9 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 {
 	const DICT_ATTR *da;
 	VALUE_PAIR	*vp;
-	char	    *tc, *ts;
+	char		*tc, *ts;
 	int8_t		tag;
-	int	     found_tag;
+	int		found_tag;
 	char		buffer[256];
 	const char	*attrname = attribute;
 
