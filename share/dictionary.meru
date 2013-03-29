@@ -6,12 +6,12 @@
 #	$Id$
 #
 #
-VENDOR          Meru            15983
+VENDOR		Meru				15983
 
-BEGIN-VENDOR    Meru
+BEGIN-VENDOR	Meru
 
-ATTRIBUTE       Access-Point-Id                 1       integer
-ATTRIBUTE       Access-Point-Name               2       string
+ATTRIBUTE	Access-Point-Id				1	integer
+ATTRIBUTE	Access-Point-Name			2	string
 
 END-VENDOR      Meru
 
