@@ -1686,7 +1686,6 @@ static int insert_into_proxy_hash(REQUEST *request)
 	char buf[128];
 	int rcode, tries;
 	void *proxy_listener;
-	rad_listen_t *this;
 
 	rad_assert(request->proxy != NULL);
 	rad_assert(request->home_server != NULL);
@@ -1694,17 +1693,22 @@ static int insert_into_proxy_hash(REQUEST *request)
 
 
 	PTHREAD_MUTEX_LOCK(&proxy_mutex);
-	this = proxy_listener = NULL;
+	proxy_listener = NULL;
 	request->num_proxied_requests = 1;
 	request->num_proxied_responses = 0;
 
 	for (tries = 0; tries < 2; tries++) {
+		rad_listen_t *this;
+
 		RDEBUG3("proxy: Trying to allocate ID (%d/2)", tries);
 		rcode = fr_packet_list_id_alloc(proxy_list,
 						request->home_server->proto,
 						request->proxy, &proxy_listener);
+		if ((debug_flag > 2) && (rcode == 0)) {
+			RDEBUG("proxy: Failed allocating ID: %s", fr_strerror());
+		}
 		if (rcode > 0) break;
-		if (tries > 0) break; /* try opening new socket only once */
+		if (tries > 0) continue; /* try opening new socket only once */
 
 #ifdef HAVE_PTHREAD_H
 		if (proxy_no_new_sockets) break;
@@ -1713,24 +1717,18 @@ static int insert_into_proxy_hash(REQUEST *request)
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(request->home_server, 0);
 		if (!this) {
+			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			radlog(L_ERR, "proxy: Failed to create a new outbound socket");
-			break;
+			return 0;
 		}
+
 		request->proxy->src_port = 0; /* Use any new socket */
 		proxy_listener = this;
-	}
 
-	if (!proxy_listener) {
-		RDEBUG2E("proxy: Failed allocating Id for proxied request");
-		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		return 0;
-	}
-
-	/*
-	 *	If we have a new socket, tell the event loop.  It
-	 *	locks the socket, so we've got to unlock it here.
-	 */
-	if (this) {
+		/*
+		 *	Add it to the event loop (and to the packet list)
+		 *	before we try to grab another Id.
+		 */
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		if (!event_new_fd(this)) {
 			RDEBUG3("proxy: Failed inserting new socket into event loop");
@@ -1740,6 +1738,14 @@ static int insert_into_proxy_hash(REQUEST *request)
 		PTHREAD_MUTEX_LOCK(&proxy_mutex);
 	}
 
+	if (!proxy_listener || (rcode == 0)) {
+		RDEBUG2E("proxy: Failed allocating Id for proxied request");
+		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
+		return 0;
+	}
+
+	rad_assert(request->proxy->id >= 0);
+	
 	request->proxy_listener = proxy_listener;
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
