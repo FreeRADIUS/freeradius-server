@@ -872,22 +872,22 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	rcode = cf_section_parse(cs, data, detail_config);
 	if (rcode < 0) {
-		cf_log_err(cf_sectiontoitem(cs), "Failed parsing listen section");
+		cf_log_err_cs(cs, "Failed parsing listen section");
 		return -1;
 	}
 
 	if (!data->filename) {
-		cf_log_err(cf_sectiontoitem(cs), "No detail file specified in listen section");
+		cf_log_err_cs(cs, "No detail file specified in listen section");
 		return -1;
 	}
 
 	if ((data->load_factor < 1) || (data->load_factor > 100)) {
-		cf_log_err(cf_sectiontoitem(cs), "Load factor must be between 1 and 100");
+		cf_log_err_cs(cs, "Load factor must be between 1 and 100");
 		return -1;
 	}
 
 	if ((data->poll_interval < 1) || (data->poll_interval > 20)) {
-		cf_log_err(cf_sectiontoitem(cs), "poll_interval must be between 1 and 20");
+		cf_log_err_cs(cs, "poll_interval must be between 1 and 20");
 		return -1;
 	}
 

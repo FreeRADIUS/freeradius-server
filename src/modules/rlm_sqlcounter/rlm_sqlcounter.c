@@ -375,7 +375,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		cf_log_err(cf_sectiontoitem(conf), "Unable to parse parameters.");
+		cf_log_err_cs(conf, "Unable to parse parameters.");
 		return -1;
 	}
 
@@ -383,7 +383,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	No query, die.
 	 */
 	if (!data->query) {
-		cf_log_err(cf_sectiontoitem(conf), "'query' must be set.");
+		cf_log_err_cs(conf, "'query' must be set.");
 		return -1;
 	}
 
@@ -391,12 +391,12 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Discover the attribute number of the key.
 	 */
 	if (!data->key_name) {
-		cf_log_err(cf_sectiontoitem(conf), "'key' must be set.");
+		cf_log_err_cs(conf, "'key' must be set.");
 		return -1;
 	}
 	dattr = dict_attrbyname(data->key_name);
 	if (!dattr) {
-		cf_log_err(cf_sectiontoitem(conf), "No such attribute %s",
+		cf_log_err_cs(conf, "No such attribute %s",
 				data->key_name);
 		return -1;
 	}
@@ -404,7 +404,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	dattr = dict_attrbyname(data->reply_name);
 	if (!dattr) {
-		cf_log_err(cf_sectiontoitem(conf), "No such attribute %s",
+		cf_log_err_cs(conf, "No such attribute %s",
 			       data->reply_name);
 		return -1;
 	}
@@ -416,7 +416,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Check the "sqlmod-inst" option.
 	 */
 	if (!data->sqlmod_inst) {
-		cf_log_err(cf_sectiontoitem(conf), "'sqlmod-inst' must be set.");
+		cf_log_err_cs(conf, "'sqlmod-inst' must be set.");
 		return -1;
 	}
 
@@ -424,7 +424,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *  Create a new attribute for the counter.
 	 */
 	if (!data->counter_name) {
-		cf_log_err(cf_sectiontoitem(conf), "'counter-name' must be set.");
+		cf_log_err_cs(conf, "'counter-name' must be set.");
 		return -1;
 	}
 
@@ -432,12 +432,12 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	dict_addattr(data->counter_name, -1, 0, PW_TYPE_INTEGER, flags);
 	dattr = dict_attrbyname(data->counter_name);
 	if (!dattr) {
-		cf_log_err(cf_sectiontoitem(conf), "Failed to create counter attribute %s",
+		cf_log_err_cs(conf, "Failed to create counter attribute %s",
 				data->counter_name);
 		return -1;
 	}
 	if (dattr->vendor != 0) {
-		cf_log_err(cf_sectiontoitem(conf), "Counter attribute must not be a VSA");
+		cf_log_err_cs(conf, "Counter attribute must not be a VSA");
 		return -1;
 	}
 	data->dict_attr = dattr;
@@ -446,13 +446,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 * Create a new attribute for the check item.
 	 */
 	if (!data->check_name) {
-		cf_log_err(cf_sectiontoitem(conf), "'check-name' must be set.");
+		cf_log_err_cs(conf, "'check-name' must be set.");
 		return -1;
 	}
 	dict_addattr(data->check_name, 0, PW_TYPE_INTEGER, -1, flags);
 	dattr = dict_attrbyname(data->check_name);
 	if (!dattr) {
-		cf_log_err(cf_sectiontoitem(conf), "Failed to create check attribute %s",
+		cf_log_err_cs(conf, "Failed to create check attribute %s",
 				data->check_name);
 		return -1;
 	}
@@ -463,14 +463,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *  Discover the end of the current time period.
 	 */
 	if (!data->reset) {
-		cf_log_err(cf_sectiontoitem(conf), "'reset' must be set.");
+		cf_log_err_cs(conf, "'reset' must be set.");
 		return -1;
 	}
 	now = time(NULL);
 	data->reset_time = 0;
 
 	if (find_next_reset(data,now) == -1) {
-		cf_log_err(cf_sectiontoitem(conf), "Invalid reset '%s'", data->reset);
+		cf_log_err_cs(conf, "Invalid reset '%s'", data->reset);
 		return -1;
 	}
 
@@ -480,7 +480,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	data->last_reset = 0;
 
 	if (find_prev_reset(data, now) < 0) {
-		cf_log_err(cf_sectiontoitem(conf), "Invalid reset '%s'", data->reset);
+		cf_log_err_cs(conf, "Invalid reset '%s'", data->reset);
 		return -1;
 	}
 

@@ -375,7 +375,7 @@ static int sqlippool_query1(char *out, int outlen, const char *fmt,
 	return retval;
 }
 
-#define NOT_EMPTY(_x, _y) do { if (!inst->_x || !*inst->_x) { cf_log_err(cf_sectiontoitem(conf), "the '" _y "' variable must be set"); return -1;}} while (0)
+#define NOT_EMPTY(_x, _y) do { if (!inst->_x || !*inst->_x) { cf_log_err_cs(conf, "the '" _y "' variable must be set"); return -1;}} while (0)
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -425,13 +425,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	sqlinst = find_module_instance(cf_section_find("modules"),
 				       inst->sql_instance_name, 1);
 	if (!sqlinst) {
-		cf_log_err(cf_sectiontoitem(conf), "failed to find sql instance named %s",
+		cf_log_err_cs(conf, "failed to find sql instance named %s",
 			   inst->sql_instance_name);
 		return -1;
 	}
 
 	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
-		cf_log_err(cf_sectiontoitem(conf), "Module \"%s\""
+		cf_log_err_cs(conf, "Module \"%s\""
 		       " is not an instance of the rlm_sql module",
 		       inst->sql_instance_name);
 		return -1;

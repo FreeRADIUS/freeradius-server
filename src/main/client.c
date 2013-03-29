@@ -571,7 +571,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Missing client name");
 		return NULL;
 	}
@@ -587,7 +587,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	c->prefix = -1;
 
 	if (cf_section_parse(cs, c, client_config) < 0) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Error parsing client section.");
 	error:
 		client_free(c);
@@ -604,7 +604,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	 *	per-server clients cannot.
 	 */
 	if (in_server && c->server) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Clients inside of an server section cannot point to a server.");
 		goto error;
 	}
@@ -625,7 +625,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		if (prefix_ptr) {
 			c->prefix = atoi(prefix_ptr + 1);
 			if ((c->prefix < 0) || (c->prefix > 128)) {
-				cf_log_err(cf_sectiontoitem(cs),
+				cf_log_err_cs(cs,
 					   "Invalid Prefix value '%s' for IP.",
 					   prefix_ptr + 1);
 				goto error;
@@ -638,7 +638,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		 *	Always get the numeric representation of IP
 		 */
 		if (ip_hton(name2, AF_UNSPEC, &c->ipaddr) < 0) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Failed to look up hostname %s: %s",
 				   name2, fr_strerror());
 			goto error;
@@ -660,7 +660,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			c->ipaddr.ipaddr.ip4addr = cl_ip4addr;
 
 			if ((c->prefix < -1) || (c->prefix > 32)) {
-				cf_log_err(cf_sectiontoitem(cs),
+				cf_log_err_cs(cs,
 					   "Netmask must be between 0 and 32");
 				goto error;
 			}
@@ -670,12 +670,12 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			c->ipaddr.ipaddr.ip6addr = cl_ip6addr;
 				
 			if ((c->prefix < -1) || (c->prefix > 128)) {
-				cf_log_err(cf_sectiontoitem(cs),
+				cf_log_err_cs(cs,
 					   "Netmask must be between 0 and 128");
 				goto error;
 			}
 		} else {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "No IP address defined for the client");
 			goto error;
 		}
@@ -703,7 +703,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 				c->proto = IPPROTO_IP; /* fake for dual */
 				
 			} else {
-				cf_log_err(cf_sectiontoitem(cs),
+				cf_log_err_cs(cs,
 					   "Unknown proto \"%s\".", hs_proto);
 				goto error;
 			}
@@ -719,7 +719,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	if (cl_srcipaddr) {
 #ifdef WITH_UDPFROMTO
 		if (ip_hton(cl_srcipaddr, c->ipaddr.af, &c->src_ipaddr) < 0) {
-			cf_log_err(cf_sectiontoitem(cs), "Failed parsing src_ipaddr");
+			cf_log_err_cs(cs, "Failed parsing src_ipaddr");
 			goto error;
 		}
 #else
@@ -748,7 +748,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		     (c->prefix == 32)) ||
 		    ((c->ipaddr.af == AF_INET6) &&
 		     (c->prefix == 128))) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Dynamic clients MUST be a network, not a single IP address.");
 			goto error;
 		}
@@ -770,7 +770,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		if (value && (strcmp(value, "yes") == 0)) return c;
 
 #endif
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "secret must be at least 1 character long");
 		goto error;
 	}
@@ -788,7 +788,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 							   HOME_TYPE_COA);
 		}
 		if (!c->coa_pool && !c->coa_server) {
-			cf_log_err(cf_sectiontoitem(cs), "No such home_server or home_server_pool \"%s\"", c->coa_name);
+			cf_log_err_cs(cs, "No such home_server or home_server_pool \"%s\"", c->coa_name);
 			goto error;
 		}
 	}
@@ -839,7 +839,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	 *	Associate the clients structure with the section.
 	 */
 	if (cf_data_add(section, "clients", clients, NULL) < 0) {
-		cf_log_err(cf_sectiontoitem(section),
+		cf_log_err_cs(section,
 			   "Failed to associate clients with section %s",
 		       cf_section_name1(section));
 		clients_free(clients);
@@ -878,7 +878,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			
 			value = cf_pair_value(cp);
 			if (!value) {
-				cf_log_err(cf_sectiontoitem(cs),
+				cf_log_err_cs(cs,
 					   "The \"directory\" entry must not be empty");
 				client_free(c);
 				return NULL;
@@ -888,7 +888,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			
 			dir = opendir(value);
 			if (!dir) {
-				cf_log_err(cf_sectiontoitem(cs), "Error reading directory %s: %s", value, strerror(errno));
+				cf_log_err_cs(cs, "Error reading directory %s: %s", value, strerror(errno));
 				client_free(c);
 				return NULL;
 			}
@@ -922,7 +922,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 				dc = client_read(buf2, in_server, TRUE);
 				if (!dc) {
-					cf_log_err(cf_sectiontoitem(cs),
+					cf_log_err_cs(cs,
 						   "Failed reading client file \"%s\"", buf2);
 					client_free(c);
 					closedir(dir);
@@ -946,7 +946,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 
 	add_client:
 		if (!client_add(clients, c)) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Failed to add client %s",
 				   cf_section_name2(cs));
 			client_free(c);

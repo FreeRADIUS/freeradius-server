@@ -202,7 +202,7 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 		 */
 		if (action == 0) return 0;
 	} else {
-		cf_log_err(cf_pairtoitem(cp), "Unknown action '%s'.\n",
+		cf_log_err_cp(cp, "Unknown action '%s'.\n",
 			   value);
 		return 0;
 	}
@@ -212,7 +212,7 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 
 		rcode = fr_str2int(rcode_table, attr, -1);
 		if (rcode < 0) {
-			cf_log_err(cf_pairtoitem(cp),
+			cf_log_err_cp(cp,
 				   "Unknown module rcode '%s'.\n",
 				   attr);
 			return 0;
@@ -1445,7 +1445,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Require list name for 'update'.\n");
 		return NULL;
 	}
@@ -1463,7 +1463,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	}
 
 	if (!ok) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Unknown attribute list \"%s\"",
 			   name2);
 		return NULL;
@@ -1535,7 +1535,7 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 	}
 
 	if (!head) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "ERROR: update %s section cannot be empty",
 			   name2);
 		return NULL;
@@ -1570,13 +1570,13 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "You must specify a variable to switch over for 'switch'.");
 		return NULL;
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err(cf_sectiontoitem(cs), "'switch' statements cannot be empty.");
+		cf_log_err_cs(cs, "'switch' statements cannot be empty.");
 		return NULL;
 	}
 
@@ -1633,13 +1633,13 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "You must specify an attribute to loop over in 'foreach'.");
 		return NULL;
 	}
 
 	if (!cf_item_find_next(cs, NULL)) {
-		cf_log_err(cf_sectiontoitem(cs), "'foreach' blocks cannot be empty.");
+		cf_log_err_cs(cs, "'foreach' blocks cannot be empty.");
 		return NULL;
 	}
 

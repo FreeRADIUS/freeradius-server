@@ -2224,7 +2224,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 #ifdef WITH_TLS
 	if (this->tls) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "TLS is not supported for control sockets");
 		return -1;
 	}
@@ -2232,7 +2232,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock = this->data;
 	if (sock->proto != IPPROTO_TCP) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "UDP is not supported for control sockets");
 		return -1;
 	}

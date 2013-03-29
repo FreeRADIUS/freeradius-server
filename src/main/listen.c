@@ -929,7 +929,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		if (rcode < 0) return -1;
 
 		if (rcode == 1) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "No address specified in listen section");
 			return -1;
 		}
@@ -941,7 +941,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (rcode < 0) return -1;
 
 	if ((listen_port < 0) || (listen_port > 65535)) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Invalid value for \"port\"");
 			return -1;
 	}
@@ -951,7 +951,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (rcode < 0) return -1;
 
 	if (max_pps && ((max_pps < 10) || (max_pps > 1000000))) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Invalid value for \"max_pps\"");
 			return -1;
 	}
@@ -960,7 +960,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (cf_pair_find(cs, "proto")) {
 #ifndef WITH_TCP
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "System does not support the TCP protocol.  Delete this line from the configuration file.");
 		return -1;
 #else
@@ -998,7 +998,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			if ((sock->limit.lifetime > 0) && (sock->limit.idle_timeout > sock->limit.lifetime))
 				sock->limit.idle_timeout = 0;
 		} else {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Unknown proto name \"%s\"", proto);
 			return -1;
 		}
@@ -1010,7 +1010,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 #ifdef WITH_PROXY
 		if ((this->type == RAD_LISTEN_PROXY) &&
 		    (sock->proto != IPPROTO_UDP)) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Proxy listeners can only listen on proto = udp");
 			return -1;
 		}
@@ -1023,7 +1023,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	Don't allow TLS configurations for UDP sockets.
 		 */
 		if (sock->proto != IPPROTO_TCP) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "TLS transport is not available for UDP sockets.");
 			return -1;
 		}
@@ -1053,7 +1053,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	Built without TLS.  Disallow it.
 		 */
 		if (cf_section_sub_find(cs, "tls")) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "TLS transport is not available in this executable.");
 			return -1;
 		}
@@ -1065,7 +1065,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		 *	No "proto" field.  Disallow TLS.
 		 */
 	} else if (cf_section_sub_find(cs, "tls")) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "TLS transport is not available in this \"listen\" section.");
 		return -1;
 	}
@@ -1100,7 +1100,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		rad_assert(cp != NULL);
 		value = cf_pair_value(cp);
 		if (!value) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "No interface name given");
 			return -1;
 		}
@@ -1113,7 +1113,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (cf_pair_find(cs, "broadcast")) {
 #ifndef SO_BROADCAST
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "System does not support broadcast sockets.  Delete this line from the configuration file.");
 		return -1;
 #else
@@ -1121,7 +1121,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		CONF_PAIR *cp = cf_pair_find(cs, "broadcast");
 
 		if (this->type != RAD_LISTEN_DHCP) {
-			cf_log_err(cf_pairtoitem(cp),
+			cf_log_err_cp(cp,
 				   "Broadcast can only be set for DHCP listeners.  Delete this line from the configuration file.");
 			return -1;
 		}
@@ -1129,7 +1129,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		rad_assert(cp != NULL);
 		value = cf_pair_value(cp);
 		if (!value) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "No broadcast value given");
 			return -1;
 		}
@@ -1147,7 +1147,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	if (listen_bind(this) < 0) {
 		char buffer[128];
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Error binding to port for %s port %d",
 			   ip_ntoh(&sock->my_ipaddr, buffer, sizeof(buffer)),
 			   sock->my_port);
@@ -1181,7 +1181,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			client_cs = cf_section_find(section_name);
 		}
 		if (!client_cs) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Failed to find clients %s {...}",
 				   section_name);
 			return -1;
@@ -1211,7 +1211,7 @@ static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	sock->clients = clients_parse_section(client_cs);
 	if (!sock->clients) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Failed to load clients for this listen section");
 		return -1;
 	}
@@ -2702,14 +2702,14 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 			      &listen_type, "");
 	if (rcode < 0) return NULL;
 	if (rcode == 1) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "No type specified in listen section");
 		return NULL;
 	}
 
 	type = fr_str2int(listen_compare, listen_type, -1);
 	if (type < 0) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Invalid type \"%s\" in listen section.",
 			   listen_type);
 		return NULL;
@@ -2856,7 +2856,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 
 		sock->clients = clients_parse_section(config);
 		if (!sock->clients) {
-			cf_log_err(cf_sectiontoitem(config),
+			cf_log_err_cs(config,
 				   "Failed to find any clients for this listen section");
 			listen_free(&this);
 			return -1;
@@ -2906,7 +2906,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 
 		sock->clients = clients_parse_section(config);
 		if (!sock->clients) {
-			cf_log_err(cf_sectiontoitem(config),
+			cf_log_err_cs(config,
 				   "Failed to find any clients for this listen section");
 			return -1;
 		}
@@ -3025,8 +3025,8 @@ add_sockets:
 
 #ifdef WITH_TLS
 		if (!spawn_flag && this->tls) {
-			cf_log_err(cf_sectiontoitem(this->cs), "Threading must be enabled for TLS sockets to function properly.");
-			cf_log_err(cf_sectiontoitem(this->cs), "You probably need to do 'radiusd -fxx -l stdout' for debugging");
+			cf_log_err_cs(this->cs, "Threading must be enabled for TLS sockets to function properly.");
+			cf_log_err_cs(this->cs, "You probably need to do 'radiusd -fxx -l stdout' for debugging");
 			return -1;
 		}
 #endif

@@ -391,7 +391,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	node = rbtree_finddata(module_tree, &myentry);
 	if (node) return node;
 	if (strlen(module_name) >= sizeof(module_struct)) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Failed to link to module '%s': Name is too long\n",
 			   module_name);
 		return NULL;
@@ -417,7 +417,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	handle = lt_dlopenext(module_name);
 	if (!handle) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Failed to link to module '%s': %s\n",
 			   module_name, dlerror());
 		return NULL;
@@ -431,7 +431,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	module = dlsym(handle, module_struct);
 	if (!module) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Failed linking to %s structure: %s\n",
 			   module_name, dlerror());
 		dlclose(handle);
@@ -446,7 +446,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 */
 	if (module->magic != RLM_MODULE_MAGIC_NUMBER) {
 		dlclose(handle);
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Invalid version in module '%s'",
 			   module_name);
 		return NULL;
@@ -566,7 +566,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	if ((node->entry->module->instantiate) &&
 	    (!check_config || check_config_safe) &&
 	    ((node->entry->module->instantiate)(cs, &node->insthandle) < 0)) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "Instantiation failed for module \"%s\"",
 			   instname);
 		if (node->entry->module->detach) {
@@ -737,7 +737,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 *	Sanity check.
 	 */
 	if (!name2) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "No name specified for %s block",
 			   section_type_value[comp].typename);
 		return 1;
@@ -759,7 +759,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	 */
 	dval = dict_valbyname(dattr->attr, dattr->vendor, name2);
 	if (!dval) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "%s %s Not previously configured",
 			   section_type_value[comp].typename, name2);
 		modcallable_free(&ml);
@@ -824,7 +824,7 @@ static int load_component_section(CONF_SECTION *cs,
 	 */
 	dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
 	if (!dattr) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "No such attribute %s",
 			   section_type_value[comp].typename);
 		return -1;
@@ -880,7 +880,7 @@ static int load_component_section(CONF_SECTION *cs,
 		}
 
 		if (!this) {
-			cf_log_err(cf_sectiontoitem(cs),
+			cf_log_err_cs(cs,
 				   "Errors parsing %s section.\n",
 				   cf_section_name1(cs));
 			return -1;
@@ -903,7 +903,7 @@ static int load_component_section(CONF_SECTION *cs,
 				modrefname = cf_section_name2(scs);
 				if (!modrefname) {
 					modcallable_free(&this);
-					cf_log_err(cf_sectiontoitem(cs),
+					cf_log_err_cs(cs,
 						   "Errors parsing %s sub-section.\n",
 						   cf_section_name1(scs));
 					return -1;
@@ -917,7 +917,7 @@ static int load_component_section(CONF_SECTION *cs,
 				 *	recognize.  Die!
 				 */
 				modcallable_free(&this);
-				cf_log_err(cf_sectiontoitem(cs),
+				cf_log_err_cs(cs,
 					   "Unknown Auth-Type \"%s\" in %s sub-section.",
 					   modrefname, section_type_value[comp].section);
 				return -1;
@@ -995,7 +995,7 @@ static int load_byserver(CONF_SECTION *cs)
 		 */
 		dattr = dict_attrbyvalue(section_type_value[comp].attr, 0);
 		if (!dattr) {
-			cf_log_err(cf_sectiontoitem(subcs),
+			cf_log_err_cs(subcs,
 				   "No such attribute %s",
 				   section_type_value[comp].typename);
 		error:
@@ -1280,7 +1280,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	cf_log_module(cs, "Trying to reload module \"%s\"", node->name);
 	
 	if ((node->entry->module->instantiate)(cs, &insthandle) < 0) {
-		cf_log_err(cf_sectiontoitem(cs),
+		cf_log_err_cs(cs,
 			   "HUP failed for module \"%s\".  Using old configuration.",
 			   node->name);
 		return 0;

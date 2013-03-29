@@ -548,7 +548,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 	}
 	
 	if (!*head) {
-		cf_log_err(cf_sectiontoitem(inst->cs),
+		cf_log_err_cs(inst->cs,
 			   "Cache config must contain an update section, and "
 			   "that section must not be empty");
 
@@ -741,17 +741,17 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register(inst->xlat_name, cache_xlat, inst);
 
 	if (!inst->key || !*inst->key) {
-		cf_log_err(cf_sectiontoitem(conf), "You must specify a key");
+		cf_log_err_cs(conf, "You must specify a key");
 		return -1;
 	}
 
 	if (inst->ttl == 0) {
-		cf_log_err(cf_sectiontoitem(conf), "TTL must be greater than zero");
+		cf_log_err_cs(conf, "TTL must be greater than zero");
 		return -1;
 	}
 	
 	if (inst->epoch != 0){
-		cf_log_err(cf_sectiontoitem(conf), "Epoch should only be set dynamically");
+		cf_log_err_cs(conf, "Epoch should only be set dynamically");
 		return -1;
 	}
 

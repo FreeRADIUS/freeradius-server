@@ -190,7 +190,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	if (strlen(inst->socket) > (sizeof(sa.sun_path) - 1)){
-		cf_log_err(cf_sectiontoitem(conf), "Socket filename is too long");
+		cf_log_err_cs(conf, "Socket filename is too long");
 		return -1;
 	}
 
