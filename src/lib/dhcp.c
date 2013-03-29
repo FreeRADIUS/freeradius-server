@@ -30,7 +30,9 @@ RCSID("$Id$")
 
 #ifdef WITH_DHCP
 
+#ifndef __MINGW32__
 #include <sys/ioctl.h>
+#endif
 
 #ifdef HAVE_SYS_SOCKET_H
 #include <sys/socket.h>
@@ -39,8 +41,9 @@ RCSID("$Id$")
 #include <sys/types.h>
 #endif
 
+#ifndef __MINGW32__
 #include <net/if_arp.h>
-
+#endif
 
 #define DHCP_CHADDR_LEN	(16)
 #define DHCP_SNAME_LEN	(64)
