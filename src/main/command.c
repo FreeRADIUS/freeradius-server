@@ -357,6 +357,31 @@ static int command_uptime(rad_listen_t *listener,
 	return 1;		/* success */
 }
 
+static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
+{
+	CONF_ITEM *ci;
+	CONF_PAIR *cp;
+	const char *value;
+
+	if (argc != 1) {
+		cprintf(listener, "ERROR: No path was given\n");
+		return 0;
+	}
+
+	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
+	if (!ci) return 0;
+
+	if (!cf_item_is_pair(ci)) return 0;
+
+	cp = cf_itemtopair(ci);
+	value = cf_pair_value(cp);
+	if (!value) return 0;
+
+	cprintf(listener, "%s\n", value);
+
+	return 1;		/* success */
+}
+
 static const char *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
 /*
@@ -1353,6 +1378,9 @@ static fr_command_table_t command_table_show[] = {
 	{ "client", FR_READ,
 	  "show client <command> - do sub-command of client",
 	  NULL, command_table_show_client },
+	{ "config", FR_READ,
+	  "show config <path> - shows the value of configuration option <path>",
+	  command_show_config, NULL },
 	{ "debug", FR_READ,
 	  "show debug <command> - show debug properties",
 	  NULL, command_table_show_debug },
