@@ -108,7 +108,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, (const char **) argv, 1,
 				sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
-		RDEBUG("Exec: invalid command line '%s'.", cmd);
+		RDEBUG("invalid command line '%s'.", cmd);
 		return -1;
 	}
 
@@ -119,15 +119,13 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	if (exec_wait) {
 		if (input_fd) {
 			if (pipe(to_child) != 0) {
-				RDEBUG("Exec: Couldn't open pipe to child: %s",
-				       strerror(errno));
+				RDEBUG("Couldn't open pipe to child: %s", strerror(errno));
 				return -1;
 			}
 		}
 		if (output_fd) {
 			if (pipe(from_child) != 0) {
-				RDEBUG("Exec: Couldn't open pipe from child: %s",
-				       strerror(errno));
+				RDEBUG("Couldn't open pipe from child: %s", strerror(errno));
 				/* safe because these either need closing or are == -1 */
 				close(to_child[0]);
 				close(to_child[1]);
@@ -201,8 +199,8 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			RDEBUG("Exec: Failed opening /dev/null: %s\n",
-			       strerror(errno));
+			RDEBUG("Failed opening /dev/null: %s\n", strerror(errno));
+			
 			exit(1);
 		}
 
@@ -252,8 +250,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 		closefrom(3);
 
 		execve(argv[0], argv, envp);
-		RDEBUGW("Exec: failed to execute %s: %s",
-		       argv[0], strerror(errno));
+		RDEBUGW("Failed to execute %s: %s", argv[0], strerror(errno));
 		exit(1);
 	}
 
@@ -268,8 +265,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	 *	Parent process.
 	 */
 	if (pid < 0) {
-		RDEBUG("Exec: Couldn't fork %s: %s",
-		       argv[0], strerror(errno));
+		RDEBUG("Couldn't fork %s: %s", argv[0], strerror(errno));
 		if (exec_wait) {
 			/* safe because these either need closing or are == -1 */
 			close(to_child[0]);
@@ -302,7 +298,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	return pid;
 #else
 	if (exec_wait) {
-		RDEBUG("Exec: Wait is not supported");
+		RDEBUG("Wait is not supported");
 		return -1;
 	}
 	
@@ -404,7 +400,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 		rcode = select(fd + 1, &fds, NULL, NULL, &wake);
 		if (rcode == 0) {
 		too_long:
-			RDEBUG("Exec: Child PID %u is taking too much time: forcing failure and killing child.", pid);
+			RDEBUG("Child PID %u is taking too much time: forcing failure and killing child.", pid);
 			kill(pid, SIGTERM);
 			close(fd); /* should give SIGPIPE to child, too */
 
@@ -516,7 +512,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 		 * failure - radius_readfrom_program will
 		 * have called close(from_child) for us
 		 */
-		DEBUG("failed to read from child output");
+		DEBUG("Failed to read from child output");
 		return 1;
 
 	}
@@ -529,7 +525,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	close(from_child);
 
-	DEBUG2("Exec: Program output is %s", answer);
+	RDEBUG2("Program output is %s", answer);
 
 	/*
 	 *	Parse the output, if any.
@@ -576,7 +572,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			}
 
 			if (userparse(answer, &vp) == T_OP_INVALID) {
-				RDEBUGE("Exec: Unparsable reply from '%s'", cmd);
+				RDEBUGE("Unparsable reply from '%s'", cmd);
 
 			} else {
 				/*
@@ -594,20 +590,24 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 	 */
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
-		RDEBUGE("Exec: Timeout waiting for child");
+		RDEBUGE("Timeout waiting for child");
 		return 2;
 	}
 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
-			RDEBUG("Exec: child returned %d", status);
-			return status;
+			if (status != 0) {
+				RDEBUGE("Child returned error %d", status);
+				return status;
+			}
+			
+			RDEBUG("Child executed successfully");
+			return 0;
 		}
 	}
 
-	RDEBUG("Exec:Abnormal child exit: %s",
-	       strerror(errno));
+	RDEBUGE("Abnormal child exit: %s", strerror(errno));
 #endif	/* __MINGW32__ */
 
 	return 1;
@@ -660,12 +660,12 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name, int quen
 
 	ci = cf_reference_item(subcs, mainconfig.config, attr);
 	if (!ci) {
-		DEBUG3("No such item in trigger section: %s", attr);
+		RDEBUG3("No such item in trigger section: %s", attr);
 		return;
 	}
 
 	if (!cf_item_is_pair(ci)) {
-		DEBUG2("Trigger is not a configuration variable: %s", attr);
+		RDEBUG2("Trigger is not a configuration variable: %s", attr);
 		return;
 	}
 
@@ -674,7 +674,7 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name, int quen
 
 	value = cf_pair_value(cp);
 	if (!value) {
-		DEBUG2("Trigger has no value: %s", name);
+		RDEBUG2("Trigger has no value: %s", name);
 		return;
 	}
 
@@ -712,6 +712,6 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name, int quen
 		}
 	}
 
-	DEBUG("Trigger %s -> %s", name, value);
+	RDEBUG("Trigger %s -> %s", name, value);
 	radius_exec_program(value, request, 0, NULL, 0, vp, NULL, 1);
 }
