@@ -52,7 +52,7 @@ do
 	extra="-f $OPTARG"
 	;;
   t)	timeout="$OPTARG"
-	[ "$timout" = "0" ] && timeout=1000000
+	[ "$timeout" = "0" ] && timeout=1000000
 	;;
   u)	condition="(User-Name == $OPTARG)"
 	;;
@@ -93,6 +93,7 @@ fi
 #  Truncate the file, and ensure it's writable by radiusd
 #
 cp /dev/null $outfile
+chgrp radiusd $outfile
 chmod g+w $outfile
 
 TAILPID=$$
