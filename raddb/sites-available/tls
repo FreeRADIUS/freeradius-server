@@ -12,6 +12,9 @@ listen {
 	# For now, only TCP transport is allowed.
 	proto = tcp
 
+	# Send packets to the default virtual server
+	virtual_server = default
+
 	clients = radsec
 
 	#  This is *exactly* the same configuration as used by the EAP-TLS
@@ -68,7 +71,7 @@ listen {
 		#  there are fewer round trips when setting up a TLS
 		#  connection.  But only if the certificates are large.
 		#
-	#	fragment_size = 65536
+		fragment_size = 8192
 
 		#  include_length is a flag which is
 		#  by default set to yes If set to
@@ -345,7 +348,7 @@ home_server tls {
 		#  However, TLS can send 64K of data at once.
 		#  It can be useful to set it higher.
 		#
-	#	fragment_size = 65536
+		fragment_size = 8192
 
 		#  include_length is a flag which is
 		#  by default set to yes If set to
