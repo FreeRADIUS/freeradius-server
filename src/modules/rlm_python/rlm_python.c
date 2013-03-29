@@ -50,7 +50,7 @@ struct py_function_def {
 
 struct rlm_python_t {
 	struct py_function_def
-		instantiate,
+	instantiate,
 		authorize,
 		authenticate,
 		preacct,
@@ -78,54 +78,54 @@ struct rlm_python_t {
 static CONF_PARSER module_config[] = {
 
 #define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.module_name), NULL, NULL }, \
-  { "func_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.function_name), NULL, NULL },
+	{ "func_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.function_name), NULL, NULL },
 
-  A(instantiate)
-  A(authorize)
-  A(authenticate)
-  A(preacct)
-  A(accounting)
-  A(checksimul)
-  A(pre_proxy)
-  A(post_proxy)
-  A(post_auth)
+	A(instantiate)
+	A(authorize)
+	A(authenticate)
+	A(preacct)
+	A(accounting)
+	A(checksimul)
+	A(pre_proxy)
+	A(post_proxy)
+	A(post_auth)
 #ifdef WITH_COA
-  A(recv_coa)
-  A(send_coa)
+	A(recv_coa)
+	A(send_coa)
 #endif
-  A(detach)
+	A(detach)
 
 #undef A
 
-  { NULL, -1, 0, NULL, NULL }		/* end the list */
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
 static struct {
-  const char *name;
-  int  value;
+	const char *name;
+	int  value;
 } radiusd_constants[] = {
 
 #define A(x) { #x, x },
 
-  A(L_DBG)
-  A(L_AUTH)
-  A(L_INFO)
-  A(L_ERR)
-  A(L_PROXY)
-  A(RLM_MODULE_REJECT)
-  A(RLM_MODULE_FAIL)
-  A(RLM_MODULE_OK)
-  A(RLM_MODULE_HANDLED)
-  A(RLM_MODULE_INVALID)
-  A(RLM_MODULE_USERLOCK)
-  A(RLM_MODULE_NOTFOUND)
-  A(RLM_MODULE_NOOP)
-  A(RLM_MODULE_UPDATED)
-  A(RLM_MODULE_NUMCODES)
+	A(L_DBG)
+	A(L_AUTH)
+	A(L_INFO)
+	A(L_ERR)
+	A(L_PROXY)
+	A(RLM_MODULE_REJECT)
+	A(RLM_MODULE_FAIL)
+	A(RLM_MODULE_OK)
+	A(RLM_MODULE_HANDLED)
+	A(RLM_MODULE_INVALID)
+	A(RLM_MODULE_USERLOCK)
+	A(RLM_MODULE_NOTFOUND)
+	A(RLM_MODULE_NOOP)
+	A(RLM_MODULE_UPDATED)
+	A(RLM_MODULE_NUMCODES)
 
 #undef A
 
-  { NULL, 0 },
+	{ NULL, 0 },
 };
 
 
@@ -177,7 +177,7 @@ static void mod_error(void)
 	
 	Pyx_BLOCK_THREADS
 
-	PyErr_Fetch(&pType, &pValue, &pTraceback);
+		PyErr_Fetch(&pType, &pValue, &pTraceback);
 	if (!pType || !pValue)
 		goto failed;
 	if (((pStr1 = PyObject_Str(pType)) == NULL) ||
@@ -186,7 +186,7 @@ static void mod_error(void)
 
 	radlog(L_ERR, "rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
 	
- failed:
+failed:
 	Py_XDECREF(pStr1);
 	Py_XDECREF(pStr2);
 	Py_XDECREF(pType);
@@ -194,7 +194,7 @@ static void mod_error(void)
 	Py_XDECREF(pTraceback);
 	
 	Pyx_UNBLOCK_THREADS
-}
+		}
 
 static int mod_init(void)
 {
@@ -222,7 +222,7 @@ static int mod_init(void)
 	radlog(L_DBG, "mod_init done");
 	return 0;
 	
- failed:
+failed:
 	mod_error();
 	Py_XDECREF(radiusd_module);
 	radiusd_module = NULL;
@@ -235,10 +235,10 @@ static int mod_init(void)
 static int mod_destroy(void)
 {
 	Pyx_BLOCK_THREADS
-	Py_XDECREF(radiusd_module);
+		Py_XDECREF(radiusd_module);
 	Py_Finalize();
 	Pyx_UNBLOCK_THREADS
-	return 0;
+		return 0;
 }
 
 /*
@@ -250,7 +250,7 @@ static int mod_destroy(void)
 /* TODO: Convert this function to accept any iterable objects? */
 
 static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
-			   const char *funcname)
+			const char *funcname)
 {
 	int	     i;
 	int	     tuplesize;
@@ -350,12 +350,12 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	
 	return 0;
 	
- failed:
+failed:
 	return -1;
 }
 
 static int do_python(REQUEST *request, PyObject *pFunc,
-			   const char *funcname)
+		     const char *funcname)
 {
 	VALUE_PAIR      *vp;
 	PyObject	*pRet = NULL;
@@ -455,10 +455,10 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 		ret = PyInt_AsLong(pTupleInt);
 		/* Reply item tuple */
 		mod_vptuple(request->reply, &request->reply->vps,
-			       PyTuple_GET_ITEM(pRet, 1), funcname);
+			    PyTuple_GET_ITEM(pRet, 1), funcname);
 		/* Config item tuple */
 		mod_vptuple(request, &request->config_items,
-			       PyTuple_GET_ITEM(pRet, 2), funcname);
+			    PyTuple_GET_ITEM(pRet, 2), funcname);
 
 	} else if (PyInt_CheckExact(pRet)) {
 		/* Just an integer */
@@ -473,13 +473,13 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 		goto failed;
 	}
 
- okay:
+okay:
 	Py_DECREF(pArgs);
 	Py_DECREF(pRet);
 	PyGILState_Release(gstate);
 	return ret;
 	
- failed:
+failed:
 	mod_error();
 	Py_XDECREF(pArgs);
 	Py_XDECREF(pRet);
@@ -518,7 +518,7 @@ static int mod_load_function(struct py_function_def *def)
 	PyGILState_Release(gstate);
 	return 0;
 	
- failed:
+failed:
 	mod_error();
 	radlog(L_ERR, "rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
 	Py_XDECREF(def->function);
@@ -534,9 +534,9 @@ static void mod_objclear(PyObject **ob)
 {
 	if (*ob != NULL) {
 		Pyx_BLOCK_THREADS
-		Py_DECREF(*ob);
+			Py_DECREF(*ob);
 		Pyx_UNBLOCK_THREADS
-		*ob = NULL;
+			*ob = NULL;
 	}
 }
 
@@ -628,8 +628,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	return value.
 	 */
 	return do_python(NULL, data->instantiate.function,
-			       "instantiate");
- failed:
+			 "instantiate");
+failed:
 	mod_error();
 	mod_instance_clear(data);
 	return -1;
@@ -647,8 +647,8 @@ static int mod_detach(void *instance)
 }
 
 #define A(x) static rlm_rcode_t mod_##x(void *instance, REQUEST *request) { \
-  return do_python(request, ((struct rlm_python_t *)instance)->x.function, #x); \
-}
+		return do_python(request, ((struct rlm_python_t *)instance)->x.function, #x); \
+	}
 
 A(authenticate)
 A(authorize)

@@ -51,13 +51,13 @@ struct hashtable {
 #define rad_malloc(s) malloc(s)
 
 void printpw(struct mypasswd *pw, int nfields){
-  int i;
-  if (pw) {
-  	for( i = 0; i < nfields; i++ ) printf("%s:", pw->field[i]);
-  	printf("\n");
-  }
-  else printf ("Not found\n");
-  fflush(stdout);
+	int i;
+	if (pw) {
+		for( i = 0; i < nfields; i++ ) printf("%s:", pw->field[i]);
+		printf("\n");
+	}
+	else printf ("Not found\n");
+	fflush(stdout);
 }
 #endif
 
@@ -75,7 +75,7 @@ static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, size_t
 }
 
 static int string_to_entry(const char* string, int nfields, char delimiter,
-	struct mypasswd *passwd, size_t bufferlen)
+			   struct mypasswd *passwd, size_t bufferlen)
 {
 	char *str;
 	size_t len, i;
@@ -155,7 +155,7 @@ static void release_ht(struct hashtable * ht){
 }
 
 static struct hashtable * build_hash_table (const char * file, int nfields,
-	int keyfield, int islist, int tablesize, int ignorenis, char delimiter)
+					    int keyfield, int islist, int tablesize, int ignorenis, char delimiter)
 {
 	struct hashtable* ht;
 	size_t len;
@@ -187,7 +187,7 @@ static struct hashtable * build_hash_table (const char * file, int nfields,
 	if(!(ht->fp = fopen(file,"r"))) {
 		free(ht->filename);
 		free(ht);
-			       return NULL;
+		return NULL;
 	}
 
 	/*
@@ -281,7 +281,7 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 
 	while (fgets(buffer, 1024,ht->fp)) {
 		if(*buffer && *buffer!='\n' && (len = string_to_entry(buffer, ht->nfields, ht->delimiter, passwd, sizeof(ht->buffer)-1)) &&
-			(!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
+		   (!ht->ignorenis || (*buffer !='-' && *buffer != '+') ) ){
 			if(!ht->islist) {
 				if(!strcmp(passwd->field[ht->keyfield], name))
 					return passwd;
@@ -333,28 +333,28 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
 #define MALLOC_CHECK_ 1
 
 int main(void){
- struct hashtable *ht;
- char *buffer;
- struct mypasswd* pw, *last_found;
- int i;
+	struct hashtable *ht;
+	char *buffer;
+	struct mypasswd* pw, *last_found;
+	int i;
 
- ht = build_hash_table("/etc/group", 4, 3, 1, 100, 0, ":");
- if(!ht) {
- 	printf("Hash table not built\n");
- 	return -1;
- }
- for (i=0; i<ht->tablesize; i++) if (ht->table[i]) {
-  printf("%d:\n", i);
-  for(pw=ht->table[i]; pw; pw=pw->next) printpw(pw, 4);
- }
+	ht = build_hash_table("/etc/group", 4, 3, 1, 100, 0, ":");
+	if(!ht) {
+		printf("Hash table not built\n");
+		return -1;
+	}
+	for (i=0; i<ht->tablesize; i++) if (ht->table[i]) {
+			printf("%d:\n", i);
+			for(pw=ht->table[i]; pw; pw=pw->next) printpw(pw, 4);
+		}
 
- while(fgets(buffer, 1024, stdin)){
-  buffer[strlen(buffer)-1] = 0;
-  pw = get_pw_nam(buffer, ht, &last_found);
-  printpw(pw,4);
-  while (pw = get_next(buffer, ht, &last_found)) printpw(pw,4);
- }
- release_ht(ht);
+	while(fgets(buffer, 1024, stdin)){
+		buffer[strlen(buffer)-1] = 0;
+		pw = get_pw_nam(buffer, ht, &last_found);
+		printpw(pw,4);
+		while (pw = get_next(buffer, ht, &last_found)) printpw(pw,4);
+	}
+	release_ht(ht);
 }
 
 #else  /* TEST */
@@ -376,19 +376,19 @@ struct passwd_instance {
 
 static const CONF_PARSER module_config[] = {
 	{ "filename",   PW_TYPE_FILENAME,
-	   offsetof(struct passwd_instance, filename), NULL,  NULL },
+	  offsetof(struct passwd_instance, filename), NULL,  NULL },
 	{ "format",   PW_TYPE_STRING_PTR,
-	   offsetof(struct passwd_instance, format), NULL,  NULL },
+	  offsetof(struct passwd_instance, format), NULL,  NULL },
 	{ "delimiter",   PW_TYPE_STRING_PTR,
-	   offsetof(struct passwd_instance, delimiter), NULL,  ":" },
+	  offsetof(struct passwd_instance, delimiter), NULL,  ":" },
 	{ "ignorenislike",   PW_TYPE_BOOLEAN,
-	   offsetof(struct passwd_instance, ignorenislike), NULL,  "yes" },
+	  offsetof(struct passwd_instance, ignorenislike), NULL,  "yes" },
 	{ "ignoreempty",   PW_TYPE_BOOLEAN,
-	   offsetof(struct passwd_instance, ignoreempty), NULL,  "yes" },
+	  offsetof(struct passwd_instance, ignoreempty), NULL,  "yes" },
 	{ "allowmultiplekeys",   PW_TYPE_BOOLEAN,
-	   offsetof(struct passwd_instance, allowmultiple), NULL,  "no" },
+	  offsetof(struct passwd_instance, allowmultiple), NULL,  "no" },
 	{ "hashsize",   PW_TYPE_INTEGER,
-	   offsetof(struct passwd_instance, hashsize), NULL,  "100" },
+	  offsetof(struct passwd_instance, hashsize), NULL,  "100" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -532,7 +532,7 @@ static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
 
 	for (key = request->packet->vps;
 	     key && (key = pairfind(key, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY));
-	  key = key->next ){
+	     key = key->next ){
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
