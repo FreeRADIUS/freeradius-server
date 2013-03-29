@@ -236,13 +236,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	
 	 */
 	if (len != (inst->id_len + 32)) {
-		RDEBUGE("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
+		RDEBUG2("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
 		return RLM_MODULE_NOOP;	
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
-			RDEBUG2E("User-Password (aes-block) value contains non modhex chars");
+			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
+			
 			return RLM_MODULE_NOOP;	
 		}
 	}
