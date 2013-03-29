@@ -1024,6 +1024,9 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 			if (!subcs) {
 				subcs = cf_section_alloc(cs, variables[i].name,
 							 NULL);
+				cf_item_add(cs, &(subcs->item));
+				subcs->item.filename = cs->item.filename;
+				subcs->item.lineno = cs->item.lineno;
 			}
 
 			cf_section_parse_init(subcs, base,
@@ -1082,7 +1085,8 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			subcs = cf_section_sub_find(cs, variables[i].name);
 
 			if (!variables[i].dflt || !subcs) {
-				DEBUG2("Internal sanity check 1 failed in cf_section_parse");
+				DEBUG2("Internal sanity check 1 failed in cf_section_parse %s",
+				       variables[i]);
 				goto error;
 			}
 
