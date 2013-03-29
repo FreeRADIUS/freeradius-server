@@ -2625,6 +2625,39 @@ void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 	}
 }
 
+void cf_log_err_cs(const CONF_SECTION *cs, const char *fmt, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	rad_assert(cs != NULL);
+
+	radlog(L_ERR, "%s[%d]: %s",
+	       cs->item.filename ? cs->item.filename : "unknown",
+	       cs->item.lineno ? cs->item.lineno : 0,
+	       buffer);
+}
+
+void cf_log_err_cp(const CONF_PAIR *cp, const char *fmt, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, fmt);
+	vsnprintf(buffer, sizeof(buffer), fmt, ap);
+	va_end(ap);
+
+	rad_assert(cp != NULL);
+
+	radlog(L_ERR, "%s[%d]: %s",
+	       cp->item.filename ? cp->item.filename : "unknown",
+	       cp->item.lineno ? cp->item.lineno : 0,
+	       buffer);
+}
 
 void cf_log_info(const CONF_SECTION *cs, const char *fmt, ...)
 {

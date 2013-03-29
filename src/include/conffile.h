@@ -107,6 +107,17 @@ void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 		__attribute__ ((format (printf, 2, 3)))
 #endif
 ;
+void cf_log_err_cs(const CONF_SECTION *cs, const char *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
+void cf_log_err_cp(const CONF_PAIR *cp, const char *fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
+
 void cf_log_info(const CONF_SECTION *cs, const char *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
