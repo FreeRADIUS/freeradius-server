@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
 
@@ -375,7 +376,7 @@ static int sqlippool_query1(char * out, int outlen, const char * fmt,
 	return retval;
 }
 
-#define IS_EMPTY(_x) (!_x ||!*_x)
+#define NOT_EMPTY(_x, _y) do { if (!inst->_x || !*inst->_x) { cf_log_err(cf_sectiontoitem(conf), "the '" _y "' variable must be set"); return -1;}} while (0)
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -406,54 +407,15 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	if (IS_EMPTY(inst->sql_instance_name)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'sql-instance-name' variable must be set.");
-		return -1;
-	}
-
-	/*
-	 *	Check that all the queries are in place
-	 */
-
-	if (IS_EMPTY(inst->allocate_clear)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'allocate-clear' statement must be set.");
-		return -1;
-	}
-
-	if (IS_EMPTY(inst->allocate_find)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'allocate-find' statement must be set.");
-		return -1;
-	}
-
-	if (IS_EMPTY(inst->allocate_update)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'allocate-update' statement must be set.");
-		return -1;
-	}
-
-	if (IS_EMPTY(inst->start_update)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'start-update' statement must be set.");
-		return -1;
-	}
-
-	if (IS_EMPTY(inst->alive_update)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'alive-update' statement must be set.");
-		return -1;
-	}
-
-	if (IS_EMPTY(inst->stop_clear)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'stop-clear' statement must be set.");
-		return -1;
-	}
-
-	if (IS_EMPTY(inst->on_clear)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'on-clear' statement must be set.");
-		return -1;
-	}
-
-	if (IS_EMPTY(inst->off_clear)) {
-		radlog(L_ERR, "rlm_sqlippool: the 'off-clear' statement must be set.");
-		return -1;
-	}
+	NOT_EMPTY(sql_instance_name, "sql-instance-name");
+	NOT_EMPTY(allocate_clear,    "allocate-clear");
+	NOT_EMPTY(allocate_find,     "allocate-find");
+	NOT_EMPTY(allocate_update,   "allocate-update");
+	NOT_EMPTY(start_update,      "start-update");
+	NOT_EMPTY(alive_update,      "alive-update");
+	NOT_EMPTY(stop_clear,        "stop-clear");
+	NOT_EMPTY(on_clear,          "on-clear");
+	NOT_EMPTY(off_clear,         "off-clear");
 
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL)
@@ -464,12 +426,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	sqlinst = find_module_instance(cf_section_find("modules"),
 				       inst->sql_instance_name, 1);
 	if (!sqlinst) {
-		radlog(L_ERR, "mod_instantiate: failed to find sql instance named %s", inst->sql_instance_name);
+		cf_log_err(cf_sectiontoitem(conf), "failed to find sql instance named %s",
+			   inst->sql_instance_name);
 		return -1;
 	}
 
 	if (strcmp(sqlinst->entry->name, "rlm_sql") != 0) {
-		radlog(L_ERR, "mod_instantiate: Module \"%s\""
+		cf_log_err(cf_sectiontoitem(conf), "Module \"%s\""
 		       " is not an instance of the rlm_sql module",
 		       inst->sql_instance_name);
 		return -1;
@@ -527,7 +490,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST * request)
 	}
 
 	handle = inst->sql_inst->sql_get_socket(inst->sql_inst);
-	if (handle == NULL) {
+	if (!handle) {
 		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_FAIL;
 	}
@@ -818,7 +781,7 @@ static rlm_rcode_t mod_accounting(void * instance, REQUEST * request)
 	}
 
 	handle = inst->sql_inst->sql_get_socket(inst->sql_inst);
-	if (handle == NULL) {
+	if (!handle) {
 		RDEBUG("cannot allocate sql connection");
 		return RLM_MODULE_NOOP;
 	}

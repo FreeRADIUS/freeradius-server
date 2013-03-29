@@ -116,14 +116,14 @@ static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 
 	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
 	if (!len) {
-		radlog(L_ERR, "rlm_yubikey: xlat failed.");
+		RDEBUGE("expansion of format string failed.");
 		*out = '\0';
 		return 0;
 	}
 	
 	declen = modhex2bin(buffer, decbuf, sizeof(decbuf));
 	if (declen < 0) {
-		radlog(L_ERR, "rlm_yubikey: modhex string invalid");
+		RDEBUGE("modhex string invalid");
 		*out = '\0';
 		return 0;
 	}
@@ -172,7 +172,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
-	
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -187,9 +186,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	
 	if (YUBIKEY_UID_SIZE > MAX_STRING_LEN) {
-		radlog(L_ERR, "rlm_yubikey (%s): YUBIKEY_UID_SIZE too big",
-		       inst->name);
-		
+		RDEBUGE("YUBIKEY_UID_SIZE too big");
 		return -1;
 	}
 	
@@ -240,16 +237,15 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	
 	 */
 	if (len != (inst->id_len + 32)) {
-		RDEBUG2("User-Password value is not the correct length, expected %u, got %zu",
-			inst->id_len + 32, len);
-			
+		RDEBUGE("User-Password value is not the correct length, "
+			"expected %u, got %zu", inst->id_len + 32, len);
 		return RLM_MODULE_NOOP;	
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
-			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
-			
+			RDEBUG2E("User-Password (aes-block) value contains "
+				 "non modhex chars");
 			return RLM_MODULE_NOOP;	
 		}
 	}
@@ -298,9 +294,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-
-		RDEBUGE("No Clear-Text password in the request. Can't do Yubikey authentication.");
-			
+		RDEBUGE("No Clear-Text password in the request. "
+			"Can't do Yubikey authentication.");
 		return RLM_MODULE_FAIL;
 	}
 	
@@ -315,14 +310,13 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	if (len != (inst->id_len + 32)) {
 		RDEBUGE("User-Password value is not the correct length, expected %u, got %zu",
 			inst->id_len + 32, len);
-			
 		return RLM_MODULE_FAIL;	
 	}
 
 	for (i = inst->id_len; i < len; i++) {
 		if (!is_modhex(*passcode)) {
-			RDEBUG2("User-Password (aes-block) value contains non modhex chars");
-			
+			RDEBUG2("User-Password (aes-block) value contains "
+				"non modhex chars");
 			return RLM_MODULE_FAIL;	
 		}
 	}
@@ -330,14 +324,14 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	da = dict_attrbyname("Yubikey-Key");
 	key = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY);
 	if (!key) {
-		RDEBUGE("Yubikey-Key attribute not found in control list, can't decrypt OTP data");
-	
+		RDEBUGE("Yubikey-Key attribute not found in control "
+			"list, can't decrypt OTP data");
 		return RLM_MODULE_FAIL;
 	}
 
 	if (key->length != YUBIKEY_KEY_SIZE) {
-		RDEBUGE("Yubikey-Key length incorrect, expected %u got %zu", YUBIKEY_KEY_SIZE, key->length);
-			
+		RDEBUGE("Yubikey-Key length incorrect, expected %u got %zu",
+			YUBIKEY_KEY_SIZE, key->length);
 		return RLM_MODULE_FAIL;	
 	}
 	
@@ -349,7 +343,6 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	if (!yubikey_crc_ok_p((uint8_t *) &token)) {
 		RDEBUGE("Decrypting OTP token data failed, rejecting");	
-		
 		return RLM_MODULE_REJECT;
 	}
 	
@@ -403,29 +396,18 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	vp = pairfind(request->config_items, vp->da->attr, vp->da->vendor, TAG_ANY);
 	if (!vp) {
-		RDEBUGW("Yubikey-Counter not found in control list, skipping replay attack checks");
-	
+		RDEBUGW("Yubikey-Counter not found in control list, skipping "
+			"replay attack checks");
 		return RLM_MODULE_OK;
 	}
 
 	if (counter <= vp->vp_integer) {
 		RDEBUGE("Replay attack detected! Counter value %u, is lt or eq to last known counter value %u",
 			counter, vp->vp_integer);
-	
 		return RLM_MODULE_REJECT;	
 	}
 
 	return RLM_MODULE_OK;
-}
-
-/*
- *	Only free memory we allocated.  The strings allocated via
- *	cf_section_parse() do not need to be freed.
- */
-static int mod_detach(UNUSED void *instance)
-{
-	/* free things here */
-	return 0;
 }
 
 /*
@@ -442,7 +424,7 @@ module_t rlm_yubikey = {
 	"yubikey",
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		mod_authenticate,	/* authentication */
 		mod_authorize,		/* authorization */

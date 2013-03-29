@@ -519,13 +519,13 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	}
 	
 	if (!rbtree_insert(inst->cache, c)) {
-		radlog(L_ERR, "rlm_cache: FAILED adding entry for key %s", key);
+		RDEBUGE("FAILED adding entry for key %s", key);
 		cache_entry_free(c);
 		return NULL;
 	}
 
 	if (!fr_heap_insert(inst->heap, c)) {
-		radlog(L_ERR, "rlm_cache: FAILED adding entry for key %s", key);
+		RDEBUGE("FAILED adding entry for key %s", key);
 		rbtree_deletebydata(inst->cache, c);
 		return NULL;
 	}
@@ -617,7 +617,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	
 	target = dict_attrbyname(p);
 	if (!target) {
-		radlog(L_ERR, "rlm_cache: Unknown attribute \"%s\"", p);
+		RDEBUGE("Unknown attribute \"%s\"", p);
 		return -1;
 	}
 	
@@ -644,12 +644,12 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 		
 	case PAIR_LIST_UNKNOWN:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
-		radlog(L_ERR, "rlm_cache: Unknown list qualifier in \"%s\"", fmt);
+		RDEBUGE("Unknown list qualifier in \"%s\"", fmt);
 		return 0;
 		
 	default:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
-		radlog(L_ERR, "rlm_cache: Unsupported list \"%s\"",
+		RDEBUGE("Unsupported list \"%s\"",
 		       fr_int2str(pair_lists, list, "¿Unknown?"));
 		return 0;
 	}
@@ -741,23 +741,23 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register(inst->xlat_name, cache_xlat, inst);
 
 	if (!inst->key || !*inst->key) {
-		radlog(L_ERR, "rlm_cache: You must specify a key");
+		cf_log_err(cf_sectiontoitem(conf), "You must specify a key");
 		return -1;
 	}
 
 	if (inst->ttl == 0) {
-		radlog(L_ERR, "rlm_cache: TTL must be greater than zero");
+		cf_log_err(cf_sectiontoitem(conf), "TTL must be greater than zero");
 		return -1;
 	}
 	
 	if (inst->epoch != 0){
-		radlog(L_ERR, "rlm_cache: Epoch should only be set dynamically");
+		cf_log_err(cf_sectiontoitem(conf), "Epoch should only be set dynamically");
 		return -1;
 	}
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&inst->cache_mutex, NULL) < 0) {
-		radlog(L_ERR, "rlm_cache: Failed initializing mutex: %s",
+		DEBUGE("Failed initializing mutex: %s",
 		       strerror(errno));
 		return -1;
 	}
@@ -768,7 +768,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->cache = rbtree_create(cache_entry_cmp, cache_entry_free, 0);
 	if (!inst->cache) {
-		radlog(L_ERR, "rlm_cache: Failed to create cache");
+		DEBUGE("Failed to create cache");
 		return -1;
 	}
 
@@ -778,7 +778,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	inst->heap = fr_heap_create(cache_heap_cmp,
 				    offsetof(rlm_cache_entry_t, offset));
 	if (!inst->heap) {
-		radlog(L_ERR, "rlm_cache: Failed to create cache");
+		DEBUGE("Failed to create heap for the cache");
 		return -1;
 	}
 
