@@ -98,7 +98,7 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	 *	Allocate room for the data, and copy over the data.
 	 */
 	packet->value = talloc_array(packet, uint8_t, packet->value_size);
-	if (packet->value == NULL) {
+	if (!packet->value) {
 		talloc_free(packet);
 		return NULL;
 	}
@@ -193,7 +193,7 @@ int eapmd5_compose(EAP_DS *eap_ds, MD5_PACKET *reply)
 		eap_ds->request->type.data = talloc_array(eap_ds->request,
 							  uint8_t,
 							  reply->length);
-		if (eap_ds->request->type.data == NULL) {
+		if (!eap_ds->request->type.data) {
 			talloc_free(reply);
 			return 0;
 		}

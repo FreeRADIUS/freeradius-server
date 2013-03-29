@@ -178,7 +178,7 @@ static void mod_error(void)
 	Pyx_BLOCK_THREADS
 
 	PyErr_Fetch(&pType, &pValue, &pTraceback);
-	if (pType == NULL || pValue == NULL)
+	if (!pType || !pValue)
 		goto failed;
 	if (((pStr1 = PyObject_Str(pType)) == NULL) ||
 	    ((pStr2 = PyObject_Str(pValue)) == NULL))
@@ -337,7 +337,7 @@ static int mod_populate_vptuple(PyObject *pPair, VALUE_PAIR *vp)
 	else
 		pStr = PyString_FromString(vp->da->name);
 	
-	if (pStr == NULL)
+	if (!pStr)
 		goto failed;
 	
 	PyTuple_SET_ITEM(pPair, 0, pStr);
@@ -366,7 +366,7 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 	PyGILState_STATE gstate;
 	
 	/* Return with "OK, continue" if the function is not defined. */
-	if (pFunc == NULL)
+	if (!pFunc)
 		return RLM_MODULE_OK;
 	
 	/* Default return value is "OK, continue" */
@@ -419,10 +419,10 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 	/* Call Python function. */
 	pRet = PyObject_CallFunctionObjArgs(pFunc, pArgs, NULL);
 	
-	if (pRet == NULL)
+	if (!pRet)
 		goto failed;
 	
-	if (request == NULL)
+	if (!request)
 		goto okay;
 
 	/*

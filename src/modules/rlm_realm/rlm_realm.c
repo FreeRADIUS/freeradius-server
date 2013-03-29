@@ -79,7 +79,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	Also, if there's no User-Name attribute, we can't
 	 *	proxy it, either.
 	 */
-	if ((request->username == NULL)
+	if ((!request->username)
 #ifdef WITH_PROXY
 	    || (request->proxy != NULL)
 #endif
@@ -161,7 +161,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	realm = realm_find(realmname);
 	if (!realm) {
 		RDEBUG2("No such realm \"%s\"",
-		       (realmname == NULL) ? "NULL" : realmname);
+		       (!realmname) ? "NULL" : realmname);
 		return RLM_MODULE_NOOP;
 	}
 	if( inst->ignore_default &&

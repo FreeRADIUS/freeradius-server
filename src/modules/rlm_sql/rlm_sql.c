@@ -154,7 +154,7 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 	}
 
 	handle = sql_get_socket(inst);
-	if (handle == NULL)
+	if (!handle)
 		return 0;
 
 	rlm_sql_query_log(inst, request, NULL, querystr);
@@ -222,14 +222,14 @@ static size_t sql_xlat(void *instance, REQUEST *request,
 	}
 
 	row = handle->row;
-	if (row == NULL) {
+	if (!row) {
 		RDEBUG("SQL query did not return any results");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		sql_release_socket(inst,handle);
 		return 0;
 	}
 
-	if (row[0] == NULL){
+	if (!row[0]){
 		RDEBUG("Null value in first column");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		sql_release_socket(inst,handle);
@@ -271,7 +271,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	      inst->config->xlat_name, querystr);
 
 	handle = sql_get_socket(inst);
-	if (handle == NULL)
+	if (!handle)
 		return -1;
 	if (rlm_sql_select_query(&handle,inst,querystr)){
 		return -1;
@@ -280,7 +280,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	while(rlm_sql_fetch_row(&handle, inst) == 0) {
 		i++;
 		row = handle->row;
-		if (row == NULL)
+		if (!row)
 			break;
 		/*
 		 *  The return data for each row MUST be in the following order:
@@ -510,9 +510,9 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle,
 	}
 	while (rlm_sql_fetch_row(&handle, inst) == 0) {
 		row = handle->row;
-		if (row == NULL)
+		if (!row)
 			break;
-		if (row[0] == NULL){
+		if (!row[0]){
 			RDEBUG("row[0] returned NULL");
 			(inst->module->sql_finish_select_query)(handle, inst->config);
 			talloc_free(entry);
@@ -573,7 +573,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp
 	 *	Get a socket for this lookup
 	 */
 	handle = sql_get_socket(inst);
-	if (handle == NULL) {
+	if (!handle) {
 		return 1;
 	}
 
@@ -828,7 +828,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	inst->cs = conf;
 
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) {
+	if (!xlat_name) {
 		xlat_name = cf_section_name1(conf);
 	} else {
 		char *group_name;
@@ -902,7 +902,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Load the appropriate driver for our database
 	 */
 	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
-	if (inst->handle == NULL) {
+	if (!inst->handle) {
 		radlog(L_ERR, "Could not link driver %s: %s",
 		       inst->config->sql_driver_name,
 		       dlerror());
@@ -1004,7 +1004,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	 *  temporary pairlists and temporary attributes.
 	 */
 	handle = sql_get_socket(inst);
-	if (handle == NULL)
+	if (!handle)
 		goto error;
 
 	/*
@@ -1206,7 +1206,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request,
 	RDEBUG2("Using query template '%s'", attr);
 	
 	handle = sql_get_socket(inst);
-	if (handle == NULL)
+	if (!handle)
 		return RLM_MODULE_FAIL;
 		
 	sql_set_user(inst, request, NULL);
@@ -1332,7 +1332,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 		return RLM_MODULE_NOOP;
 	}
 
-	if((request->username == NULL) || (request->username->length == 0)) {
+	if((!request->username) || (request->username->length == 0)) {
 		radlog_request(L_ERR, 0, request,
 					   "Zero Length username not permitted\n");
 		return RLM_MODULE_INVALID;
@@ -1346,7 +1346,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 
 	/* initialize the sql socket */
 	handle = sql_get_socket(inst);
-	if(handle == NULL)
+	if(!handle)
 		return RLM_MODULE_FAIL;
 
 	if(rlm_sql_select_query(&handle, inst, querystr)) {
@@ -1362,7 +1362,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 	}
 
 	row = handle->row;
-	if (row == NULL) {
+	if (!row) {
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 		sql_release_socket(inst, handle);
 		return RLM_MODULE_FAIL;
@@ -1405,7 +1405,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 
 	while (rlm_sql_fetch_row(&handle, inst) == 0) {
 		row = handle->row;
-		if (row == NULL)
+		if (!row)
 			break;
 		if (!row[2]){
 			(inst->module->sql_finish_select_query)(handle, inst->config);

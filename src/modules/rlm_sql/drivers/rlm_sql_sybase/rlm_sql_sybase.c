@@ -383,7 +383,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 	CS_RETCODE	ret, results_ret;
 	CS_INT		result_type;
 
-	 if (conn->db == NULL) {
+	 if (!conn->db) {
 		radlog(L_ERR, "Socket not connected");
 		return -1;
 	}
@@ -592,7 +592,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 	int		colcount,i;
 	char		**rowdata;
 
-	 if (conn->db == NULL) {
+	 if (!conn->db) {
 		radlog(L_ERR, "Socket not connected");
 		return -1;
 	}

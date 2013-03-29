@@ -130,7 +130,7 @@ int eap_wireformat(eap_packet_t *reply)
 	eap_packet_raw_t	*header;
 	uint16_t total_length = 0;
 
-	if (reply == NULL) return EAP_INVALID;
+	if (!reply) return EAP_INVALID;
 
 	/*
 	 *	If reply->packet is set, then the wire format
@@ -301,7 +301,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Get only EAP-Message attribute list
 	 */
 	first = pairfind(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-	if (first == NULL) {
+	if (!first) {
 		DEBUG("rlm_eap: EAP-Message not found");
 		return NULL;
 	}
@@ -354,7 +354,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
 	 *	Now that we know the lengths are OK, allocate memory.
 	 */
 	eap_packet = (eap_packet_raw_t *) talloc_zero_array(ctx, uint8_t, len);
-	if (eap_packet == NULL) {
+	if (!eap_packet) {
 		return NULL;
 	}
 

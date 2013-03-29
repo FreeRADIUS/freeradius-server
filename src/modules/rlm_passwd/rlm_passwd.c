@@ -132,7 +132,7 @@ static unsigned int hash(const char * username, unsigned int tablesize)
 static void release_hash_table(struct hashtable * ht){
 	int i;
 
-	if (ht == NULL) return;
+	if (!ht) return;
 	for (i = 0; i < ht->tablesize; i++)
  		if (ht->table[i])
  			destroy_password(ht->table[i]);
@@ -420,7 +420,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	lf = talloc_strdup(inst, inst->format);
-	if ( lf == NULL) {
+	if ( !lf) {
 		radlog(L_ERR, "rlm_passwd: memory allocation failed for lf");
 		return -1;
 	}

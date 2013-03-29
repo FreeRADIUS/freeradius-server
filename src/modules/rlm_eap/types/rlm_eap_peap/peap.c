@@ -459,9 +459,9 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
 			pairdelete(&reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
-			rad_assert(t->accept_vps == NULL);
+			rad_assert(!t->accept_vps);
 			pairfilter(t, &t->accept_vps, &reply->vps, 0, 0, TAG_ANY);
-			rad_assert(reply->vps == NULL);
+			rad_assert(!reply->vps);
 		}
 		break;
 
@@ -507,10 +507,10 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			pairdelete(&reply->vps, PW_PROXY_STATE, 0, TAG_ANY);
 			pairdelete(&reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 
-			rad_assert(t->accept_vps == NULL);
+			rad_assert(!t->accept_vps);
 			pairfilter(t, &t->accept_vps, &reply->vps,
 				  0, 0, TAG_ANY);
-			rad_assert(reply->vps == NULL);
+			rad_assert(!reply->vps);
 		}
 
 		/*
@@ -566,12 +566,12 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 		/*
 		 *	Terrible hacks.
 		 */
-		rad_assert(fake->packet == NULL);
+		rad_assert(!fake->packet);
 		fake->packet = request->proxy;
 		fake->packet->src_ipaddr = request->packet->src_ipaddr;
 		request->proxy = NULL;
 
-		rad_assert(fake->reply == NULL);
+		rad_assert(!fake->reply);
 		fake->reply = request->proxy_reply;
 		request->proxy_reply = NULL;
 
@@ -626,7 +626,7 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 			break;
 		}
 	}
-	request_free(&fake);	/* robust if fake == NULL */
+	request_free(&fake);	/* robust if !fake */
 
 	/*
 	 *	If there was no EAP-Message in the reply packet, then
@@ -820,7 +820,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	case PEAP_STATUS_WAIT_FOR_SOH_RESPONSE:
 		fake = request_alloc_fake(request);
-		rad_assert(fake->packet->vps == NULL);
+		rad_assert(!fake->packet->vps);
 		eapsoh_verify(request, fake->packet, data, data_len);
 		setup_fake_request(request, fake, t);
 
@@ -844,9 +844,9 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		}
 
 		/* save the SoH VPs */
-		rad_assert(t->soh_reply_vps == NULL);
+		rad_assert(!t->soh_reply_vps);
 		pairfilter(t, &t->soh_reply_vps, &fake->reply->vps, 0, 0, TAG_ANY);
-		rad_assert(fake->reply->vps == NULL);
+		rad_assert(!fake->reply->vps);
 		request_free(&fake);
 
 		if (t->session_resumption_state == PEAP_RESUMPTION_YES) {
@@ -918,7 +918,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 
 	fake = request_alloc_fake(request);
 
-	rad_assert(fake->packet->vps == NULL);
+	rad_assert(!fake->packet->vps);
 
 	switch (t->status) {
 		/*
@@ -975,7 +975,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		debug_pair_list(fake->packet->vps);
 
 		fprintf(fr_log_fp, "server %s {\n",
-			(fake->server == NULL) ? "" : fake->server);
+			(!fake->server) ? "" : fake->server);
 	}
 
 	/*
@@ -1024,7 +1024,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		debug_pair_list(fake->packet->vps);
 
 		fprintf(fr_log_fp, "server %s {\n",
-			(fake->server == NULL) ? "" : fake->server);
+			(!fake->server) ? "" : fake->server);
 	}
 
 	/*
@@ -1039,7 +1039,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	if ((debug_flag > 0) && fr_log_fp) {
 		fprintf(fr_log_fp, "} # server %s\n",
-			(fake->server == NULL) ? "" : fake->server);
+			(!fake->server) ? "" : fake->server);
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		
@@ -1132,7 +1132,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Seed the proxy packet with the
 			 *	tunneled request.
 			 */
-			rad_assert(request->proxy == NULL);
+			rad_assert(!request->proxy);
 			request->proxy = fake->packet;
 			memset(&request->proxy->src_ipaddr, 0,
 			       sizeof(request->proxy->src_ipaddr));

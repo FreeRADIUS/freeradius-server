@@ -70,13 +70,13 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 	tDataList	       *pUserNode	= NULL;
 	int		     result		= RLM_MODULE_FAIL;
 	
-	if (inUserName == NULL) {
+	if (!inUserName) {
 		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): no username");
 		return RLM_MODULE_FAIL;
 	}
 
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
-	if (tDataBuff == NULL) {
+	if (!tDataBuff) {
 		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);
 		return RLM_MODULE_FAIL;
 	}
@@ -180,7 +180,7 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 		}
 
 		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
-		if (pUserNode == NULL) {
+		if (!pUserNode) {
 			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");
 			result = RLM_MODULE_FAIL;
 			break;
@@ -246,7 +246,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 #endif
 	
 	username_string = talloc_array(request, char, usernamepair->length + 1);
-	if (username_string == NULL)
+	if (!username_string)
 		return RLM_MODULE_FAIL;
 	
 	strlcpy(username_string, (char *)usernamepair->vp_strvalue,

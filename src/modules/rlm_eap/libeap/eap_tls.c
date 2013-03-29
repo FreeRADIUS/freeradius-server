@@ -342,7 +342,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 	 *
 	 *	Find if this is a reply to the previous request sent
 	 */
-	if ((eaptls_packet == NULL) ||
+	if ((!eaptls_packet) ||
 	    ((eap_ds->response->length == EAP_HEADER_LEN + 2) &&
 	     ((eaptls_packet->flags & 0xc0) == 0x00))) {
 
@@ -391,8 +391,8 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			 * 	(It is because Last fragment will not have M bit set)
 			 */
 			if (!prev_eap_ds ||
-			    (prev_eap_ds->response == NULL) ||
-			    (eaptls_prev == NULL) ||
+			    (!prev_eap_ds->response) ||
+			    (!eaptls_prev) ||
 			    !TLS_MORE_FRAGMENTS(eaptls_prev->flags)) {
 
 				RDEBUG2("Received EAP-TLS First Fragment of the message");
@@ -480,7 +480,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	assert(eap_ds->response->length > 2);
 
 	tlspacket = talloc(eap_ds, EAPTLS_PACKET);
-	if (tlspacket == NULL) return NULL;
+	if (!tlspacket) return NULL;
 
 	/*
 	 *	Code & id for EAPTLS & EAP are same
@@ -591,7 +591,7 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 	if (data_len) {
 		tlspacket->data = talloc_array(tlspacket, uint8_t,
 					       data_len);
-		if (tlspacket->data == NULL) {
+		if (!tlspacket->data) {
 			talloc_free(tlspacket);
 			return NULL;
 		}
@@ -883,7 +883,7 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	 */
 	eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t,
 						  reply->length - TLS_HEADER_LEN + 1);
-	if (eap_ds->request->type.data == NULL) {
+	if (!eap_ds->request->type.data) {
 		return 0;
 	}
 

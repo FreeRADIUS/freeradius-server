@@ -1032,7 +1032,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 			"¿Unknown?"));
 
 		q = strchr(p, '&');
-		len = (q == NULL) ? (rawlen - (p - raw)) : (unsigned)(q - p);
+		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);
 
 		value = curl_easy_unescape(candle, p, len, &curl_len);
 
@@ -1041,7 +1041,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		 *	if we didn't we do *NOT* want to skip over the end
 		 *	of the buffer...
 		 */
-		p += (q == NULL) ? len : (len + 1);
+		p += (!q) ? len : (len + 1);
 
 		RDEBUG2("\tLength : %i", curl_len);
 		RDEBUG2("\tValue  : \"%s\"", value);
@@ -1551,7 +1551,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 			 * of reason_code.
 			 */
 			q = memchr(p, ' ', s);
-			if (q == NULL) goto malformed;
+			if (!q) goto malformed;
 
 			s -= (q - p);
 			p  = q;
@@ -1578,7 +1578,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 				s -= 4;
 
 				q = memchr(p, '\r', s);
-				if (q == NULL) goto malformed;
+				if (!q) goto malformed;
 
 				len = (q - p);
 
@@ -1612,9 +1612,9 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 				 *	If there's not, find the end of this
 				 *	header.
 				 */
-				if (q == NULL) q = memchr(p, '\r', s);
+				if (!q) q = memchr(p, '\r', s);
 
-				len = (q == NULL) ? s : (unsigned)(q - p);
+				len = (!q) ? s : (unsigned)(q - p);
 
 				type = fr_substr2int(http_content_type_table,
 					p, HTTP_BODY_UNKNOWN,
@@ -2231,7 +2231,7 @@ int rest_request_decode(rlm_rest_t *instance,
 
 	int ret;
 
-	if (ctx->write.buffer == NULL) {
+	if (!ctx->write.buffer) {
 		RDEBUG("Skipping attribute processing, no body data received");
 		return FALSE;
 	}

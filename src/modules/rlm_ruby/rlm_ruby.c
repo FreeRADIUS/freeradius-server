@@ -310,7 +310,7 @@ static struct varlookup {
  * Import a user module and load a function from it
  */
 static int load_function(const char *f_name, int *func, VALUE module) {
-    if (f_name == NULL) {
+    if (!f_name) {
 	*func = 0;
     } else {
 	*func = rb_intern(f_name);
@@ -385,7 +385,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
     /* Add functions into module */
     rb_define_module_function(module, "radlog", radlog_rb, 2);
 
-    if (data->scriptFile == NULL) {
+    if (!data->scriptFile) {
 	/* TODO: What actualy should we do? Exit with module fail? Or continue... but what the point then? */
 	radlog(L_ERR, "Script File was not set");
     } else {

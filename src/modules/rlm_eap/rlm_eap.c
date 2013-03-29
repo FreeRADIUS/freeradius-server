@@ -228,7 +228,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		return -1;
 	}
 
-	if (inst->methods[method] == NULL) {
+	if (!inst->methods[method]) {
 		radlog(L_ERR, "rlm_eap (%s): No such sub-type for default EAP method %s", inst->xlat_name,
 		       inst->default_method_name);
 		mod_detach(inst);
@@ -309,7 +309,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	Get the eap packet  to start with
 	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
-	if (eap_packet == NULL) {
+	if (!eap_packet) {
 		radlog_request(L_ERR, 0, request, "Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
@@ -320,7 +320,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	this call.
 	 */
 	handler = eap_handler(inst, &eap_packet, request);
-	if (handler == NULL) {
+	if (!handler) {
 		RDEBUG2("Failed in handler");
 		return RLM_MODULE_INVALID;
 	}
@@ -369,7 +369,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	if (request->proxy != NULL) {
 		VALUE_PAIR *vp = NULL;
 
-		rad_assert(request->proxy_reply == NULL);
+		rad_assert(!request->proxy_reply);
 
 		/*
 		 *	Add the handle to the proxied list, so that we
@@ -754,13 +754,13 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	}
 	
 	eap_packet = eap_vp2packet(request, request->packet->vps);
-	if (eap_packet == NULL) {
+	if (!eap_packet) {
 		radlog_request(L_ERR, 0, request, "Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 
 	handler = eap_handler(inst, &eap_packet, request);
-	if (handler == NULL) {
+	if (!handler) {
 		RDEBUG2("Failed to get handler, probably already removed, not inserting EAP-Failure");
 		return RLM_MODULE_NOOP;
 	}

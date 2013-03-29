@@ -183,7 +183,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
-	if (conn->sock == NULL) {
+	if (!conn->sock) {
 		radlog(L_ERR, "rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;
 	}
@@ -207,7 +207,7 @@ static int sql_store_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 	int status;
 
-	if (conn->sock == NULL) {
+	if (!conn->sock) {
 		radlog(L_ERR, "rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;
 	}
@@ -336,7 +336,7 @@ static int sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *con
 retry_fetch_row:
 	handle->row = mysql_fetch_row(conn->result);
 
-	if (handle->row == NULL) {
+	if (!handle->row) {
 		status = sql_check_error(mysql_errno(conn->sock));
 		if (status != 0) {
 			radlog(L_ERR, "rlm_sql_mysql: Cannot fetch row");
@@ -398,7 +398,7 @@ static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
-	if (conn == NULL || conn->sock == NULL) {
+	if (!conn || !conn->sock) {
 		return "rlm_sql_mysql: no connection to db";
 	}
 	return mysql_error(conn->sock);

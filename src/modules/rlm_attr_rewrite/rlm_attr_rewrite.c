@@ -102,11 +102,11 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Discover the attribute number of the key.
 	 */
-	if (inst->attribute == NULL) {
+	if (!inst->attribute) {
 		radlog(L_ERR, "rlm_attr_rewrite: 'attribute' must be set.");
 		return -1;
 	}
-	if (inst->search == NULL || inst->replace == NULL) {
+	if (!inst->search || !inst->replace) {
 		radlog(L_ERR, "rlm_attr_rewrite: search/replace strings must be set.");
 		return -1;
 	}
@@ -122,7 +122,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_attr_rewrite: Illegal range for match number.");
 		return -1;
 	}
-	if (inst->searchin_str == NULL) {
+	if (!inst->searchin_str) {
 		radlog(L_ERR, "rlm_attr_rewrite: Illegal searchin directive given. Assuming packet.");
 		inst->searchin = RLM_REGEX_INPACKET;
 	}
@@ -147,7 +147,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		}
 	}
 	dattr = dict_attrbyname(inst->attribute);
-	if (dattr == NULL) {
+	if (!dattr) {
 		radlog(L_ERR, "rlm_attr_rewrite: No such attribute %s",
 				inst->attribute);
 		return -1;
@@ -181,7 +181,7 @@ static rlm_rcode_t do_attr_rewrite(void *instance, REQUEST *request)
 	char replace_STR[MAX_STRING_LEN];
 
 	if ((attr_vp = pairfind(request->config_items, PW_REWRITE_RULE, 0, TAG_ANY)) != NULL){
-		if (inst->name == NULL || strcmp(inst->name,attr_vp->vp_strvalue))
+		if (!inst->name || strcmp(inst->name,attr_vp->vp_strvalue))
 			return RLM_MODULE_NOOP;
 	}
 
@@ -196,7 +196,7 @@ static rlm_rcode_t do_attr_rewrite(void *instance, REQUEST *request)
 		 *	@todo: this shouldn't really be the request.
 		 */
 		attr_vp = pairmake(request, NULL, inst->attribute,replace_STR,0);
-		if (attr_vp == NULL){
+		if (!attr_vp){
 			DEBUG2("%s: Could not add new attribute %s with value '%s'", inst->name,
 				inst->attribute,replace_STR);
 			return rcode;
@@ -275,7 +275,7 @@ static rlm_rcode_t do_attr_rewrite(void *instance, REQUEST *request)
 do_again:
 		if (tmp != NULL)
 			attr_vp = pairfind(tmp, inst->da->attr, inst->da->vendor, TAG_ANY);
-		if (attr_vp == NULL) {
+		if (!attr_vp) {
 			DEBUG2("%s: Could not find value pair for attribute %s", inst->name,inst->attribute);
 			return rcode;
 		}

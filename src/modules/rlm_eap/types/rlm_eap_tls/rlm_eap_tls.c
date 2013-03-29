@@ -159,7 +159,7 @@ static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 
 			/* create a fake request */
 			fake = request_alloc_fake(request);
-			rad_assert(fake->packet->vps == NULL);
+			rad_assert(!fake->packet->vps);
 
 			fake->packet->vps = paircopy(fake->packet, request->packet->vps);
 

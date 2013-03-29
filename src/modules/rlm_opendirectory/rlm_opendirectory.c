@@ -92,7 +92,7 @@ static long od_check_passwd(const char *uname, const char *password)
 	uint32_t		uiLen 		= 0;
 	uint32_t		pwLen 		= 0;
 	
-	if (uname == NULL || password == NULL)
+	if (!uname || !password)
 		return result;
 	
 	do
@@ -102,7 +102,7 @@ static long od_check_passwd(const char *uname, const char *password)
 			return result;
 		
 		tDataBuff = dsDataBufferAllocate( dsRef, 4096 );
-		if (tDataBuff == NULL)
+		if (!tDataBuff)
 			break;
 		
 		/* find user on search node */
@@ -379,7 +379,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 		if (uuid_parse(rad_client->community, guid_nasgroup) != 0) {
 			/* attempt to resolve the name */
 			groupdata = getgrnam(rad_client->community);
-			if (groupdata == NULL) {
+			if (!groupdata) {
 				radlog(L_AUTH, "rlm_opendirectory: The group \"%s\" does not exist on this system.", rad_client->community);
 				return RLM_MODULE_FAIL;
 			}
@@ -393,7 +393,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	else
 #endif
 	{
-		if (rad_client == NULL) {
+		if (!rad_client) {
 			RDEBUG("The client record could not be found for host %s.",
 					ip_ntoh(&request->packet->src_ipaddr,
 						host_ipaddr, sizeof(host_ipaddr)));

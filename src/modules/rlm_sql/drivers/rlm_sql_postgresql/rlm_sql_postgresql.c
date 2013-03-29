@@ -213,7 +213,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	char *errorcode;
 	char *errormsg;
 
-	if (conn->db == NULL) {
+	if (!conn->db) {
 		radlog(L_ERR, "rlm_sql_postgresql: Socket not connected");
 		return SQL_DOWN;
 	}

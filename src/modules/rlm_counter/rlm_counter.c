@@ -150,7 +150,7 @@ static int counter_cmp(void *instance,
 	 *	Find the key attribute.
 	 */
 	key_vp = pairfind(request, inst->key_attr, 0, TAG_ANY);
-	if (key_vp == NULL) {
+	if (!key_vp) {
 		return RLM_MODULE_NOOP;
 	}
 
@@ -159,7 +159,7 @@ static int counter_cmp(void *instance,
 
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
 
-	if (count_datum.dptr == NULL) {
+	if (!count_datum.dptr) {
 		return -1;
 	}
 	memcpy(&counter, count_datum.dptr, sizeof(rad_counter));
@@ -220,7 +220,7 @@ static rlm_rcode_t reset_db(rlm_counter_t *inst)
 	 */
 	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
 			GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
-	if (inst->gdbm == NULL) {
+	if (!inst->gdbm) {
 		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 				inst->filename, strerror(errno));
 		return RLM_MODULE_FAIL;
@@ -258,7 +258,7 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 	if (len == 0) *sCurrentTime = '\0';
 	tm->tm_sec = tm->tm_min = 0;
 
-	if (inst->reset == NULL)
+	if (!inst->reset)
 		return -1;
 	if (isdigit((int) inst->reset[0])){
 		len = strlen(inst->reset);
@@ -353,13 +353,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Discover the attribute number of the key.
 	 */
-	if (inst->key_name == NULL) {
+	if (!inst->key_name) {
 		radlog(L_ERR, "rlm_counter: 'key' must be set.");
 		mod_detach(inst);
 		return -1;
 	}
 	dattr = dict_attrbyname(inst->key_name);
-	if (dattr == NULL) {
+	if (!dattr) {
 		radlog(L_ERR, "rlm_counter: No such attribute %s",
 				inst->key_name);
 		mod_detach(inst);
@@ -370,13 +370,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Discover the attribute number of the counter.
 	 */
-	if (inst->count_attribute == NULL) {
+	if (!inst->count_attribute) {
 		radlog(L_ERR, "rlm_counter: 'count-attribute' must be set.");
 		mod_detach(inst);
 		return -1;
 	}
 	dattr = dict_attrbyname(inst->count_attribute);
-	if (dattr == NULL) {
+	if (!dattr) {
 		radlog(L_ERR, "rlm_counter: No such attribute %s",
 				inst->count_attribute);
 		mod_detach(inst);
@@ -389,7 +389,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (inst->reply_name != NULL) {
 		dattr = dict_attrbyname(inst->reply_name);
-		if (dattr == NULL) {
+		if (!dattr) {
 			radlog(L_ERR, "rlm_counter: No such attribute %s",
 					inst->reply_name);
 			mod_detach(inst);
@@ -408,7 +408,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *  Create a new attribute for the counter.
 	 */
-	if (inst->counter_name == NULL) {
+	if (!inst->counter_name) {
 		radlog(L_ERR, "rlm_counter: 'counter-name' must be set.");
 		return -1;
 	}
@@ -421,7 +421,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	dattr = dict_attrbyname(inst->counter_name);
-	if (dattr == NULL) {
+	if (!dattr) {
 		radlog(L_ERR, "rlm_counter: Failed to find counter attribute %s",
 				inst->counter_name);
 		return -1;
@@ -433,7 +433,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Create a new attribute for the check item.
 	 */
-	if (inst->check_name == NULL) {
+	if (!inst->check_name) {
 		radlog(L_ERR, "rlm_counter: 'check-name' must be set.");
 		return -1;
 	}
@@ -444,7 +444,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	}
 	dattr = dict_attrbyname(inst->check_name);
-	if (dattr == NULL) {
+	if (!dattr) {
 		radlog(L_ERR, "rlm_counter: Failed to find check attribute %s",
 				inst->counter_name);
 		return -1;
@@ -466,7 +466,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Find when to reset the database.
 	 */
-	if (inst->reset == NULL) {
+	if (!inst->reset) {
 		radlog(L_ERR, "rlm_counter: 'reset' must be set.");
 		return -1;
 	}
@@ -479,14 +479,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	if (inst->filename == NULL) {
+	if (!inst->filename) {
 		radlog(L_ERR, "rlm_counter: 'filename' must be set.");
 		return -1;
 	}
 	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
 			       GDBM_WRCREAT | GDBM_COUNTER_OPTS,
 			       0600, NULL);
-	if (inst->gdbm == NULL) {
+	if (!inst->gdbm) {
 		radlog(L_ERR, "rlm_counter: Failed to open file %s: %s",
 				inst->filename, strerror(errno));
 		return -1;
@@ -638,7 +638,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	The REAL username, after stripping.
 	 */
 	key_vp = (inst->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, inst->key_attr, 0, TAG_ANY);
-	if (key_vp == NULL){
+	if (!key_vp){
 		DEBUG("rlm_counter: Could not find the key-attribute in the request. Returning NOOP.");
 		return RLM_MODULE_NOOP;
 	}
@@ -647,7 +647,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	Look for the attribute to use as a counter.
 	 */
 	count_vp = pairfind(request->packet->vps, inst->count_attr, 0, TAG_ANY);
-	if (count_vp == NULL){
+	if (!count_vp){
 		DEBUG("rlm_counter: Could not find the count-attribute in the request.");
 		return RLM_MODULE_NOOP;
 	}
@@ -659,7 +659,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	pthread_mutex_lock(&inst->mutex);
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
 	pthread_mutex_unlock(&inst->mutex);
-	if (count_datum.dptr == NULL){
+	if (!count_datum.dptr){
 		DEBUG("rlm_counter: Could not find the requested key in the database.");
 		counter.user_counter = 0;
 		if (uniqueid_vp != NULL)
@@ -776,7 +776,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	DEBUG2("rlm_counter: Entering module authorize code");
 	key_vp = (inst->key_attr == PW_USER_NAME) ? request->username : pairfind(request->packet->vps, inst->key_attr, 0, TAG_ANY);
-	if (key_vp == NULL) {
+	if (!key_vp) {
 		DEBUG2("rlm_counter: Could not find Key value pair");
 		return rcode;
 	}

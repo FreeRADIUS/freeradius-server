@@ -717,7 +717,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	No attribute was found that looked like a password to match.
 	 */
-	if (auth_func == NULL) {
+	if (!auth_func) {
 		RDEBUG("No password configured for the user.  Cannot do authentication");
 		return RLM_MODULE_FAIL;
 	}

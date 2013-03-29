@@ -502,7 +502,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	PL_endav = end_AV;
 
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL)
+	if (!xlat_name)
 		xlat_name = cf_section_name1(conf);
 	if (xlat_name) {
 		xlat_register(xlat_name, perl_xlat, inst);
@@ -581,7 +581,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 		pairfree(&sublist);
 	}
 
-	rad_assert(head == NULL);
+	rad_assert(!head);
 }
 
 /*

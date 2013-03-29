@@ -94,11 +94,11 @@ static int groupcmp(void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
 	}
 
 	pwd = getpwnam(req->username->vp_strvalue);
-	if (pwd == NULL)
+	if (!pwd)
 		return -1;
 
 	grp = getgrnam(check->vp_strvalue);
-	if (grp == NULL)
+	if (!grp)
 		return -1;
 	
 	retval = (pwd->pw_gid == grp->gr_gid) ? 0 : -1;
@@ -219,7 +219,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	 *	prevents users from using NULL password fields as things
 	 *	stand right now.
 	 */
-	if ((encrypted_pass == NULL) || (strlen(encrypted_pass) < 10)) {
+	if ((!encrypted_pass) || (strlen(encrypted_pass) < 10)) {
 		if ((spwd = getspnam(name)) == NULL) {
 			return RLM_MODULE_NOTFOUND;
 		}
@@ -254,7 +254,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 		}
 	}
 	endusershell();
-	if (shell == NULL) {
+	if (!shell) {
 		radlog_request(L_AUTH, 0, request, "[%s]: invalid shell [%s]",
 		       name, pwd->pw_shell);
 		return RLM_MODULE_REJECT;

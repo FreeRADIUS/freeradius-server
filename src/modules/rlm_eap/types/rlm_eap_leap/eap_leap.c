@@ -130,7 +130,7 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 	packet->count = data->count;
 
 	packet->challenge = talloc_array(packet, uint8_t, packet->count);
-	if (packet->challenge == NULL) {
+	if (!packet->challenge) {
 		talloc_free(packet);
 		return NULL;
 	}
@@ -216,7 +216,7 @@ int eapleap_stage4(leap_packet_t *packet, VALUE_PAIR* password,
 	/*
 	 *	No password or previous packet.  Die.
 	 */
-	if ((password == NULL) || (session == NULL)) {
+	if ((!password) || (!session)) {
 		return 0;
 	}
 
@@ -255,7 +255,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	/*
 	 *	No password or previous packet.  Die.
 	 */
-	if ((password == NULL) || (session == NULL)) {
+	if ((!password) || (!session)) {
 		return NULL;
 	}
 
@@ -267,7 +267,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	reply->count = 24;
 
 	reply->challenge = talloc_array(reply, uint8_t, reply->count);
-	if (reply->challenge == NULL) {
+	if (!reply->challenge) {
 		talloc_free(reply);
 		return NULL;
 	}
@@ -276,7 +276,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	 *	The LEAP packet also contains the user name.
 	 */
 	reply->name = talloc_array(reply, char, user_name->length + 1);
-	if (reply->name == NULL) {
+	if (!reply->name) {
 		talloc_free(reply);
 		return NULL;
 	}
@@ -354,7 +354,7 @@ leap_packet_t *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	leap_packet_t 	*reply;
 
 	reply = talloc(eap_ds, leap_packet_t);
-	if (reply == NULL)  {
+	if (!reply)  {
 		return NULL;
 	}
 
@@ -363,7 +363,7 @@ leap_packet_t *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	reply->count = 8;	/* random challenge */
 
 	reply->challenge = talloc_array(reply, uint8_t, reply->count);
-	if (reply->challenge == NULL) {
+	if (!reply->challenge) {
 		talloc_free(reply);
 		return NULL;
 	}
@@ -381,7 +381,7 @@ leap_packet_t *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	 *	The LEAP packet also contains the user name.
 	 */
 	reply->name = talloc_array(reply, char, user_name->length + 1);
-	if (reply->name == NULL) {
+	if (!reply->name) {
 		talloc_free(reply);
 		return NULL;
 	}
@@ -415,7 +415,7 @@ int eapleap_compose(EAP_DS *eap_ds, leap_packet_t *reply)
 		eap_ds->request->type.data = talloc_array(eap_ds->request,
 							  uint8_t,
 							  reply->length);
-		if (eap_ds->request->type.data == NULL) {
+		if (!eap_ds->request->type.data) {
 			return 0;
 		}
 		data = (leap_packet_raw_t *) eap_ds->request->type.data;

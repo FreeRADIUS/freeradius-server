@@ -145,7 +145,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 	
-	if (conn->dbproc == NULL || DBDEAD(conn->dbproc)) {
+	if (!conn->dbproc || DBDEAD(conn->dbproc)) {
 		radlog(L_ERR, "rlm_sql_freetds (%s): Socket not connected", config->xlat_name);
 		return SQL_DOWN;
 	}

@@ -135,7 +135,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 		return -1;
 	}
 
-	if (conn->dbc_handle == NULL) {
+	if (!conn->dbc_handle) {
 		radlog(L_ERR, "sql_query:  Socket not connected");
 		return -1;
 	}

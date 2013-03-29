@@ -124,7 +124,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (eap_ds->request->type.data == NULL) {
+		if (!eap_ds->request->type.data) {
 			return 0;
 		}
 		eap_ds->request->type.length = length;
@@ -166,7 +166,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (eap_ds->request->type.data == NULL) {
+		if (!eap_ds->request->type.data) {
 			return 0;
 		}
 		memset(eap_ds->request->type.data, 0, length);
@@ -188,7 +188,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		/*
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
-		if (eap_ds->request->type.data == NULL) {
+		if (!eap_ds->request->type.data) {
 			return 0;
 		}
 		memset(eap_ds->request->type.data, 0, length);

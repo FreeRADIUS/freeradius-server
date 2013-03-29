@@ -81,7 +81,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 *
 	 */
 	vp = pairfind(r->vps, ATTRIBUTE_EAP_SIM_SUBTYPE, 0, TAG_ANY);
-	if(vp == NULL)
+	if(!vp)
 	{
 		subtype = eapsim_start;
 	}
@@ -91,7 +91,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	}
 
 	vp = pairfind(r->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY);
-	if(vp == NULL)
+	if(!vp)
 	{
 		id = ((int)getpid() & 0xff);
 	}
@@ -101,7 +101,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	}
 
 	vp = pairfind(r->vps, ATTRIBUTE_EAP_CODE, 0, TAG_ANY);
-	if(vp == NULL)
+	if(!vp)
 	{
 		eapcode = PW_EAP_REQUEST;
 	}
@@ -188,7 +188,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 
 	encoded_size += 3;
 	encodedmsg = talloc_array(ep, uint8_t, encoded_size);
-	if (encodedmsg == NULL) {
+	if (!encodedmsg) {
 		return 0;
 	}
 	memset(encodedmsg, 0, encoded_size);
@@ -292,7 +292,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	}
 
 	/* if we had an AT_MAC and no key, then fail */
-	if(macspace != NULL && vp == NULL)
+	if(macspace != NULL && !vp)
 	{
 		if(encodedmsg != NULL)
 			talloc_free(encodedmsg);
@@ -395,7 +395,7 @@ eapsim_checkmac(TALLOC_CTX *ctx, VALUE_PAIR *rvps,
 
 	mac = pairfind(rvps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
 
-	if(mac == NULL
+	if(!mac
 	   || mac->length != 18) {
 		/* can't check a packet with no AT_MAC attribute */
 		return 0;

@@ -95,7 +95,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 	*replyMsgBuffer = '\0';
 
 	pSecurid_session = securid_sessionlist_find(inst,request);
-	if (pSecurid_session == NULL) {
+	if (!pSecurid_session) {
 		/* securid session not found */
 		SDI_HANDLE  sdiHandle = SDI_HANDLE_NONE;
 

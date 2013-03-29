@@ -400,7 +400,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 	fullauthidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ, 0, TAG_ANY);
 	permanentidreq_vp = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_PERMANENT_ID_REQ, 0, TAG_ANY);
 
-	if(fullauthidreq_vp == NULL ||
+	if(!fullauthidreq_vp ||
 	   anyidreq_vp != NULL ||
 	   permanentidreq_vp != NULL) {
 		fprintf(stderr, "start message has %sanyidreq, %sfullauthid and %spermanentid. Illegal combination.\n",
@@ -459,7 +459,7 @@ static int process_eap_start(RADIUS_PACKET *req,
 		 * insert the identity here.
 		 */
 		vp = pairfind(rep->vps, PW_USER_NAME, 0, TAG_ANY);
-		if(vp == NULL)
+		if(!vp)
 		{
 			fprintf(stderr, "eap-sim: We need to have a User-Name attribute!\n");
 			return 0;
@@ -504,7 +504,7 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	/* look for the AT_MAC and the challenge data */
 	mac   = pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0, TAG_ANY);
 	randvp= pairfind(req->vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND, 0, TAG_ANY);
-	if(mac == NULL || randvp == NULL) {
+	if(!mac || !randvp) {
 		fprintf(stderr, "radeapclient: challenge message needs to contain RAND and MAC\n");
 		return 0;
 	}
@@ -525,9 +525,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	  randcfgvp[1] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND2, 0, TAG_ANY);
 	  randcfgvp[2] = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_RAND3, 0, TAG_ANY);
 
-	  if(randcfgvp[0] == NULL ||
-	     randcfgvp[1] == NULL ||
-	     randcfgvp[2] == NULL) {
+	  if(!randcfgvp[0] ||
+	     !randcfgvp[1] ||
+	     !randcfgvp[2]) {
 	    fprintf(stderr, "radeapclient: needs to have rand1, 2 and 3 set.\n");
 	    return 0;
 	  }
@@ -578,9 +578,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	sres2 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES2, 0, TAG_ANY);
 	sres3 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_SRES3, 0, TAG_ANY);
 
-	if(sres1 == NULL ||
-	   sres2 == NULL ||
-	   sres3 == NULL) {
+	if(!sres1 ||
+	   !sres2 ||
+	   !sres3) {
 		fprintf(stderr, "radeapclient: needs to have sres1, 2 and 3 set.\n");
 		return 0;
 	}
@@ -592,9 +592,9 @@ static int process_eap_challenge(RADIUS_PACKET *req,
 	Kc2 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC2, 0, TAG_ANY);
 	Kc3 = pairfind(rep->vps, ATTRIBUTE_EAP_SIM_KC3, 0, TAG_ANY);
 
-	if(Kc1 == NULL ||
-	   Kc2 == NULL ||
-	   Kc3 == NULL) {
+	if(!Kc1 ||
+	   !Kc2 ||
+	   !Kc3) {
 		fprintf(stderr, "radeapclient: needs to have Kc1, 2 and 3 set.\n");
 		return 0;
 	}
@@ -1086,7 +1086,7 @@ int main(int argc, char **argv)
 	argv += (optind - 1);
 
 	if ((argc < 3)  ||
-	    ((secret == NULL) && (argc < 4))) {
+	    ((!secret) && (argc < 4))) {
 		usage();
 	}
 
@@ -1262,14 +1262,14 @@ static void map_eap_methods(RADIUS_PACKET *req)
 	int eap_method;
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_ID, 0, TAG_ANY);
-	if(vp == NULL) {
+	if(!vp) {
 		id = ((int)getpid() & 0xff);
 	} else {
 		id = vp->vp_integer;
 	}
 
 	vp = pairfind(req->vps, ATTRIBUTE_EAP_CODE, 0, TAG_ANY);
-	if(vp == NULL) {
+	if(!vp) {
 		eapcode = PW_EAP_REQUEST;
 	} else {
 		eapcode = vp->vp_integer;
@@ -1286,7 +1286,7 @@ static void map_eap_methods(RADIUS_PACKET *req)
 		}
 	}
 
-	if(vp == NULL) {
+	if(!vp) {
 		return;
 	}
 
@@ -1337,7 +1337,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	e = eap_vp2packet(NULL, rep->vps);
 
 	/* nothing to do! */
-	if(e == NULL) return;
+	if(!e) return;
 
 	/* create EAP-ID and EAP-CODE attributes to start */
 	eap1 = paircreate(rep, ATTRIBUTE_EAP_ID, 0, PW_TYPE_INTEGER);
@@ -1414,7 +1414,7 @@ static int unmap_eapsim_types(RADIUS_PACKET *r)
 	VALUE_PAIR	     *esvp;
 
 	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM, 0, TAG_ANY);
-	if (esvp == NULL) {
+	if (!esvp) {
 		radlog(L_ERR, "eap: EAP-Sim attribute not found");
 		return 0;
 	}
@@ -1497,7 +1497,7 @@ main(int argc, char *argv[])
 		/* find the EAP-Message, copy it to req2 */
 		vp = paircopy2(NULL, req->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 
-		if(vp == NULL) continue;
+		if(!vp) continue;
 
 		pairadd(&req2->vps, vp);
 

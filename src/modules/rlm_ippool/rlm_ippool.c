@@ -158,11 +158,11 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	cache_size = data->cache_size;
 
-	if (data->session_db == NULL) {
+	if (!data->session_db) {
 		radlog(L_ERR, "rlm_ippool: 'session-db' must be set.");
 		return -1;
 	}
-	if (data->ip_index == NULL) {
+	if (!data->ip_index) {
 		radlog(L_ERR, "rlm_ippool: 'ip-index' must be set.");
 		return -1;
 	}
@@ -177,14 +177,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	data->gdbm = gdbm_open(data->session_db, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
-	if (data->gdbm == NULL) {
+	if (!data->gdbm) {
 		radlog(L_ERR, "rlm_ippool: Failed to open file %s: %s",
 				data->session_db, strerror(errno));
 		return -1;
 	}
 	data->ip = gdbm_open(data->ip_index, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
-	if (data->ip == NULL) {
+	if (!data->ip) {
 		radlog(L_ERR, "rlm_ippool: Failed to open file %s: %s",
 				data->ip_index, strerror(errno));
 		return -1;
@@ -195,7 +195,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		radlog(L_ERR, "rlm_ippool: Failed to set cache size");
 
 	key_datum = gdbm_firstkey(data->gdbm);
-	if (key_datum.dptr == NULL){
+	if (!key_datum.dptr){
 			/*
 			 * If the database does not exist initialize it.
 			 * We set the nas/port pairs to not existent values and
@@ -429,7 +429,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	 * run only if they match
 	 */
 	if ((vp = pairfind(request->config_items, PW_POOL_NAME, 0, TAG_ANY)) != NULL){
-		if (data->name == NULL || (strcmp(data->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
+		if (!data->name || (strcmp(data->name,vp->vp_strvalue) && strcmp(vp->vp_strvalue,"DEFAULT")))
 			return RLM_MODULE_NOOP;
 	} else {
 		RDEBUG("Could not find Pool-Name attribute.");
@@ -584,7 +584,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		}
 	}
 
-	if (key_datum.dptr == NULL){
+	if (!key_datum.dptr){
 		key_datum = gdbm_firstkey(data->gdbm);
 		while(key_datum.dptr){
 			data_datum = gdbm_fetch(data->gdbm, key_datum);

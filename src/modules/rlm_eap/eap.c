@@ -398,7 +398,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		 */
 		if ((next < PW_EAP_MD5) ||
 		    (next >= PW_EAP_MAX_TYPES) ||
-		    (inst->methods[next] == NULL)) {
+		    (!inst->methods[next])) {
 			RDEBUG2E("Tried to start unsupported method (%d)",
 				 next);
 			
@@ -660,7 +660,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	VALUE_PAIR *eap_msg;
 
 	eap_msg = pairfind(request->packet->vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-	if (eap_msg == NULL) {
+	if (!eap_msg) {
 		RDEBUG2("No EAP-Message, not doing EAP");
 		return EAP_NOOP;
 	}
@@ -694,7 +694,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		 *	to it.
 		 */
 		realm = realm_find(proxy->vp_strvalue);
-		if (!realm || (realm && (realm->auth_pool == NULL))) {
+		if (!realm || (realm && (!realm->auth_pool))) {
 			proxy = NULL;
 		}
 	}
@@ -813,7 +813,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	    inst->ignore_unknown_types &&
 	    ((eap_msg->vp_octets[4] == 0) ||
 	     (eap_msg->vp_octets[4] >= PW_EAP_MAX_TYPES) ||
-	     (inst->methods[eap_msg->vp_octets[4]] == NULL))) {
+	     (!inst->methods[eap_msg->vp_octets[4]]))) {
 		RDEBUG2(" Ignoring Unknown EAP type");
 		return EAP_NOOP;
 	}
@@ -838,7 +838,7 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	    inst->ignore_unknown_types &&
 	    ((eap_msg->vp_octets[5] == 0) ||
 	     (eap_msg->vp_octets[5] >= PW_EAP_MAX_TYPES) ||
-	     (inst->methods[eap_msg->vp_octets[5]] == NULL))) {
+	     (!inst->methods[eap_msg->vp_octets[5]]))) {
 		RDEBUG2("Ignoring NAK with request for unknown EAP type");
 		return EAP_NOOP;
 	}
@@ -957,7 +957,7 @@ static char *eap_identity(REQUEST *request, eap_handler_t *handler, eap_packet_r
 	uint16_t len;
 	char *identity;
 
-	if ((eap_packet == NULL) ||
+	if ((!eap_packet) ||
 	    (eap_packet->code != PW_EAP_RESPONSE) ||
 	    (eap_packet->data[0] != PW_EAP_IDENTITY)) {
 		return NULL;
@@ -1065,7 +1065,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	 */
 	if (eap_packet->data[0] != PW_EAP_IDENTITY) {
 		handler = eaplist_find(inst, request, eap_packet);
-		if (handler == NULL) {
+		if (!handler) {
 			/* Either send EAP_Identity or EAP-Fail */
 			RDEBUG("Either EAP-request timed out OR"
 			       " EAP-response to an unknown EAP-request");
@@ -1097,7 +1097,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*/
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
 		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
-		       if (vp == NULL) {
+		       if (!vp) {
 			       goto error;
 		       }
 		       vp->next = request->packet->vps;
@@ -1121,7 +1121,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	       }
 	} else {		/* packet was EAP identity */
 		handler = eap_handler_alloc(inst);
-		if (handler == NULL) {
+		if (!handler) {
 			goto error;
 		}
 
@@ -1129,7 +1129,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		 *	All fields in the handler are set to zero.
 		 */
 		handler->identity = eap_identity(request, handler, eap_packet);
-		if (handler->identity == NULL) {
+		if (!handler->identity) {
 			RDEBUG("Identity Unknown, authentication failed");
 		error2:
 			eap_handler_free(inst, handler);
@@ -1147,7 +1147,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*/
 		       RDEBUG2W("NAS did not set User-Name.  Setting it locally from EAP Identity");
 		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
-		       if (vp == NULL) {
+		       if (!vp) {
 			       goto error2;
 		       }
 		       vp->next = request->packet->vps;
@@ -1168,7 +1168,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	}
 
 	handler->eap_ds = eap_buildds(handler, eap_packet_p);
-	if (handler->eap_ds == NULL) {
+	if (!handler->eap_ds) {
 		goto error2;
 	}
 

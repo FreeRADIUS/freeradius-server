@@ -118,7 +118,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 	rad_assert(chalno >= 0 && chalno < 3);
 
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_RAND1+chalno, 0, TAG_ANY);
-	if(vp == NULL) {
+	if(!vp) {
 		/* bad, we can't find stuff! */
 		DEBUG2("   eap-sim can not find sim-challenge%d",chalno+1);
 		return 0;
@@ -131,7 +131,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 	memcpy(ess->keys.rand[chalno], vp->vp_strvalue, EAPSIM_RAND_SIZE);
 
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_SRES1+chalno, 0, TAG_ANY);
-	if(vp == NULL) {
+	if(!vp) {
 		/* bad, we can't find stuff! */
 		DEBUG2("   eap-sim can not find sim-sres%d",chalno+1);
 		return 0;
@@ -144,7 +144,7 @@ static int eap_sim_getchalans(VALUE_PAIR *vps, int chalno,
 	memcpy(ess->keys.sres[chalno], vp->vp_strvalue, EAPSIM_SRES_SIZE);
 
 	vp = pairfind(vps, ATTRIBUTE_EAP_SIM_KC1+chalno, 0, TAG_ANY);
-	if(vp == NULL) {
+	if(!vp) {
 		/* bad, we can't find stuff! */
 		DEBUG2("   eap-sim can not find sim-kc%d",chalno+1);
 		return 0;
@@ -361,13 +361,13 @@ static int eap_sim_initiate(void *instance, eap_handler_t *handler)
 	instance = instance;  /* shut up compiler */
 
 	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1, 0, TAG_ANY);
-	if(vp == NULL) {
+	if(!vp) {
 		DEBUG2("   can not initiate sim, no RAND1 attribute");
 		return 0;
 	}
 
 	ess = talloc_zero(handler, struct eap_sim_server_state);
-	if(ess == NULL) {
+	if(!ess) {
 		DEBUG2("   no space for eap sim state");
 		return 0;
 	}
@@ -422,8 +422,8 @@ static int process_eap_sim_start(eap_handler_t *handler, VALUE_PAIR *vps)
 	nonce_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_NONCE_MT, 0, TAG_ANY);
 	selectedversion_vp = pairfind(vps, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_SELECTED_VERSION, 0, TAG_ANY);
 
-	if(nonce_vp == NULL ||
-	   selectedversion_vp == NULL) {
+	if(!nonce_vp ||
+	   !selectedversion_vp) {
 		DEBUG2("   client did not select a version and send a NONCE");
 		eap_sim_stateenter(handler, ess, eapsim_server_start);
 		return 1;

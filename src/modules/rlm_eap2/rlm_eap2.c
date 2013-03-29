@@ -498,7 +498,7 @@ static int eap_example_server_init_tls(rlm_eap_t *inst)
 
 	os_memset(&tconf, 0, sizeof(tconf));
 	inst->tls_ctx = tls_init(&tconf);
-	if (inst->tls_ctx == NULL)
+	if (!inst->tls_ctx)
 		return -1;
 
 	if (tls_global_set_params(inst->tls_ctx, &inst->tparams)) {
@@ -767,7 +767,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	Get only EAP-Message attribute list
 	 */
 	first = pairfind(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
-	if (first == NULL) {
+	if (!first) {
 		radlog(L_ERR, "rlm_eap2: EAP-Message not found");
 		return -1;
 	}
@@ -910,7 +910,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		handler->server_ctx.eap = eap_server_sm_init(handler,
 							     &handler->eap_cb,
 							     &handler->eap_conf);
-		if (handler->server_ctx.eap == NULL) {
+		if (!handler->server_ctx.eap) {
 			free(handler);
 			return RLM_MODULE_FAIL;
 		}

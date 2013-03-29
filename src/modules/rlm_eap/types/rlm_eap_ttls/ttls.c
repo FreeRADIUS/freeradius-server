@@ -717,10 +717,10 @@ static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
 			 *	Use the tunneled reply, but not now.
 			 */
 			if (t->use_tunneled_reply) {
-				rad_assert(t->accept_vps == NULL);
+				rad_assert(!t->accept_vps);
 				pairfilter(t, &t->accept_vps, &reply->vps,
 					  0, 0, TAG_ANY);
-				rad_assert(reply->vps == NULL);
+				rad_assert(!reply->vps);
 			}
 
 		} else { /* no MS-CHAP2-Success */
@@ -854,18 +854,18 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 		/*
 		 *	Terrible hacks.
 		 */
-		rad_assert(fake->packet == NULL);
+		rad_assert(!fake->packet);
 		fake->packet = request->proxy;
 		fake->packet->src_ipaddr = request->packet->src_ipaddr;
 		request->proxy = NULL;
 
-		rad_assert(fake->reply == NULL);
+		rad_assert(!fake->reply);
 		fake->reply = request->proxy_reply;
 		request->proxy_reply = NULL;
 
 		if ((debug_flag > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "server %s {\n",
-				(fake->server == NULL) ? "" : fake->server);
+				(!fake->server) ? "" : fake->server);
 		}
 
 		/*
@@ -878,7 +878,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 
 		if ((debug_flag > 0) && fr_log_fp) {
 			fprintf(fr_log_fp, "} # server %s\n",
-				(fake->server == NULL) ? "" : fake->server);
+				(!fake->server) ? "" : fake->server);
 			
 			RDEBUG("Final reply from tunneled session code %d",
 			       fake->reply->code);
@@ -910,7 +910,7 @@ static int eapttls_postproxy(eap_handler_t *handler, void *data)
 			break;
 		}
 	}
-	request_free(&fake);	/* robust if fake == NULL */
+	request_free(&fake);	/* robust if !fake */
 
 	/*
 	 *	Process the reply from the home server.
@@ -1031,7 +1031,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	fake = request_alloc_fake(request);
 
-	rad_assert(fake->packet->vps == NULL);
+	rad_assert(!fake->packet->vps);
 
 	/*
 	 *	Add the tunneled attributes to the fake request.
@@ -1209,7 +1209,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 		debug_pair_list(fake->packet->vps);
 
 		fprintf(fr_log_fp, "server %s {\n",
-			(fake->server == NULL) ? "" : fake->server);
+			(!fake->server) ? "" : fake->server);
 	}
 
 	/*
@@ -1224,7 +1224,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	if ((debug_flag > 0) && fr_log_fp) {
 		fprintf(fr_log_fp, "} # server %s\n",
-			(fake->server == NULL) ? "" : fake->server);
+			(!fake->server) ? "" : fake->server);
 
 		RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		
@@ -1254,7 +1254,7 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			 *	Seed the proxy packet with the
 			 *	tunneled request.
 			 */
-			rad_assert(request->proxy == NULL);
+			rad_assert(!request->proxy);
 			request->proxy = fake->packet;
 			memset(&request->proxy->src_ipaddr, 0,
 			       sizeof(request->proxy->src_ipaddr));

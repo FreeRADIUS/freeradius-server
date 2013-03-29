@@ -54,7 +54,7 @@ static int leap_initiate(UNUSED void *instance, eap_handler_t *handler)
 	}
 
 	reply = eapleap_initiate(handler->eap_ds, handler->request->username);
-	if (reply == NULL)
+	if (!reply)
 		return 0;
 
 	eapleap_compose(handler->eap_ds, reply);

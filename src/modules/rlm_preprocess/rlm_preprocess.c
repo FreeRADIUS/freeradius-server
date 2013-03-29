@@ -266,7 +266,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	 */
 	request_pairs = request->packet->vps;
 	namepair = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY);
-	if ((namepair == NULL) ||
+	if ((!namepair) ||
 	    (namepair->length <= 0)) {
 	  return;
 	}
@@ -345,7 +345,7 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 	VALUE_PAIR	*tmp;
 	int		result = -1;
 
-	if (check == NULL) return 0;
+	if (!check) return 0;
 
 	while (result != 0 && check_item != NULL) {
 
@@ -378,7 +378,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 
 	request_pairs = request->packet->vps;
 
-	if (hints == NULL || request_pairs == NULL)
+	if (!hints || !request_pairs)
 		return RLM_MODULE_NOOP;
 
 	/*
@@ -389,7 +389,7 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	else
 		name = (char *)tmp->vp_strvalue;
 
-	if (name == NULL || name[0] == 0)
+	if (!name || name[0] == 0)
 		/*
 		 *	No name, nothing to do.
 		 */
@@ -438,7 +438,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 	 *	We're not controlling access by huntgroups:
 	 *	Allow them in.
 	 */
-	if (huntgroups == NULL)
+	if (!huntgroups)
 		return RLM_MODULE_OK;
 
 	for(i = huntgroups; i; i = i->next) {

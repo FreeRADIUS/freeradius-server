@@ -321,7 +321,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 	 *	No entry matched.  We didn't do anything.
 	 */
 	if (!found) {
-		rad_assert(output == NULL);
+		rad_assert(!output);
 		return RLM_MODULE_NOOP;
 	}
 

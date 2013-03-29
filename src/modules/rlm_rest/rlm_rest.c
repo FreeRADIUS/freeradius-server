@@ -244,7 +244,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	xlat_name = cf_section_name2(conf);
-	if (xlat_name == NULL) {
+	if (!xlat_name) {
 		xlat_name = cf_section_name1(conf);
 	}
 

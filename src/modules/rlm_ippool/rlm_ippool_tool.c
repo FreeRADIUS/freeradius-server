@@ -134,12 +134,12 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 		return;
 	}
 
-	if (sessiondb == NULL) {
+	if (!sessiondb) {
 		printf("rlm_ippool_tool: Unable to open DB '%s'\n", sessiondbname);
 		return;
 	}
 
-	if (indexdb == NULL) {
+	if (!indexdb) {
 		printf("rlm_ippool_tool: Unable to open DB '%s'\n", indexdbname);
 		return;
 	}
@@ -226,7 +226,7 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 	}
 	key_datum.dptr = NULL;
 
-	if (key_datum.dptr == NULL) {
+	if (!key_datum.dptr) {
 		key_datum = gdbm_firstkey(sessiondb);
 		
 		while (key_datum.dptr) {
@@ -369,7 +369,7 @@ void tonewformat(char *sessiondbname, char *newsessiondbname) {
 	sessiondb = gdbm_open(sessiondbname, 512, GDBM_READER, 0,NULL);
 	newsessiondb = gdbm_open(newsessiondbname, 512, GDBM_NEWDB, 0,NULL);
 
-	if (sessiondb == NULL || newsessiondb == NULL) return;
+	if (!sessiondb || !newsessiondb) return;
 
 	memset(key_str, 0, 17);
 
@@ -403,7 +403,7 @@ void tonewformat(char *sessiondbname, char *newsessiondbname) {
 		newkey_datum.dsize = sizeof(ippool_key);
 		data_datum = gdbm_fetch(sessiondb, key_datum);
 		
-		if (data_datum.dptr == NULL) {
+		if (!data_datum.dptr) {
 			goto next;
 		}
 		
@@ -442,7 +442,7 @@ void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old) {
 	sessiondb = gdbm_open(sessiondbname, 512, mode, 0,NULL);
 	indexdb = gdbm_open(indexdbname, 512, mode, 0,NULL);
 
-	if ((sessiondb == NULL) || (indexdb == NULL)) {
+	if ((!sessiondb) || (!indexdb)) {
 		return;
 	}
 	
@@ -464,7 +464,7 @@ void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old) {
 		}
 	
 		data_datum = gdbm_fetch(sessiondb, key_datum);
-		if (data_datum.dptr == NULL) {
+		if (!data_datum.dptr) {
 			goto next;
 		}
 		
@@ -552,7 +552,7 @@ void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old) {
 		
 		if (vflag && MATCH_IP(ipaddress, ip) && MATCH_ACTIVE(info)) {
 			printf("\n");
-		} else if (vflag && ipaddress == NULL){
+		} else if (vflag && !ipaddress){
 			if (old) {
 				printf("NAS:%s port:0x%x\n", old_key.nas, old_key.port);
 			} else	{

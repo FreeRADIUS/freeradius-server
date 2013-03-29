@@ -95,7 +95,7 @@ free_session (void *data)
 {
     pwd_session_t *session = (pwd_session_t *)data;
 
-    if (session == NULL) {
+    if (!session) {
 	radlog(L_ERR, "rlm_eap_pwd: freeing a NULL session...naughty, naughty");
 	return;
     }
@@ -193,7 +193,7 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
     /*
      * make sure the server's been configured properly
      */
-    if (inst->conf->server_id == NULL) {
+    if (!inst->conf->server_id) {
 	radlog(L_ERR, "rlm_eap_pwd: server ID is not configured!");
 	return -1;
     }
@@ -288,9 +288,9 @@ mod_authenticate (void *arg, eap_handler_t *handler)
     uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
     BIGNUM *x = NULL, *y = NULL;
 
-    if ((handler == NULL) ||
+    if ((!handler) ||
 	((eap_ds = handler->eap_ds) == NULL) ||
-	(inst == NULL)) {
+	(!inst)) {
 	return 0;
     }
     pwd_session = (pwd_session_t *)handler->opaque;
@@ -442,7 +442,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 		    debug_pair_list(fake->packet->vps);
 		
 		    fprintf(fr_log_fp, "server %s {\n",
-			    (fake->server == NULL) ? "" : fake->server);
+			    (!fake->server) ? "" : fake->server);
 	    }
 	
 	    /*
@@ -457,7 +457,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	     */
 	    if ((debug_flag > 0) && fr_log_fp) {
 		    fprintf(fr_log_fp, "} # server %s\n",
-			    (fake->server == NULL) ? "" : fake->server);
+			    (!fake->server) ? "" : fake->server);
 		
 		    RDEBUG("Got tunneled reply code %d", fake->reply->code);
 		

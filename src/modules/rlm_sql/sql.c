@@ -173,7 +173,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 	/*
 	 *	Verify the 'Attribute' field
 	 */
-	if (row[2] == NULL || row[2][0] == '\0') {
+	if (!row[2] || row[2][0] == '\0') {
 		radlog(L_ERR, "rlm_sql: The 'Attribute' field is empty or NULL, skipping the entire row.");
 		return -1;
 	}

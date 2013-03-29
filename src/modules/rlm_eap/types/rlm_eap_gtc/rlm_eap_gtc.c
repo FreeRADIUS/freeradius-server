@@ -107,7 +107,7 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 
 	eap_ds->request->type.data = talloc_array(eap_ds->request,
 						  uint8_t, length);
-	if (eap_ds->request->type.data == NULL) {
+	if (!eap_ds->request->type.data) {
 		return 0;
 	}
 

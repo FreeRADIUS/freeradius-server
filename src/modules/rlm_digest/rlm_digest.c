@@ -35,7 +35,7 @@ static int digest_fix(REQUEST *request)
 	 *	We need both of these attributes to do the authentication.
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0, TAG_ANY);
-	if (vp == NULL) {
+	if (!vp) {
 		return RLM_MODULE_NOOP;
 	}
 
@@ -50,7 +50,7 @@ static int digest_fix(REQUEST *request)
 	 *	We need these, too.
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
-	if (vp == NULL) {
+	if (!vp) {
 		return RLM_MODULE_NOOP;
 	}
 
@@ -244,7 +244,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	We need these, too.
 	 */
 	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
-	if (vp == NULL) {
+	if (!vp) {
 	error:
 		RDEBUGE("You set 'Auth-Type = Digest' for a request that does not contain any digest attributes!");
 		return RLM_MODULE_INVALID;
@@ -321,7 +321,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	Assume MD5 if no Digest-Algorithm attribute received
 	 */
 	algo = pairfind(request->packet->vps, PW_DIGEST_ALGORITHM, 0, TAG_ANY);
-	if ((algo == NULL) ||
+	if ((!algo) ||
 	    (strcasecmp(algo->vp_strvalue, "MD5") == 0)) {
 		/*
 		 *	Set A1 to Digest-HA1 if no User-Password found

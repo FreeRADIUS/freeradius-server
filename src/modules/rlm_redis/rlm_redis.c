@@ -178,7 +178,7 @@ static size_t redis_xlat(void *instance, REQUEST *request,
 		break;
 	}
 
-	if ((ret >= freespace) || (buffer_ptr == NULL)) {
+	if ((ret >= freespace) || (!buffer_ptr)) {
 		RDEBUG("rlm_redis (%s): Can't write result, insufficient space or unsupported result\n",
 		       inst->xlat_name);
 		ret = 0;

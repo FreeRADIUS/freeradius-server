@@ -45,7 +45,7 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	 *	Allocate an EAP-MD5 packet.
 	 */
 	reply = talloc(handler, MD5_PACKET);
-	if (reply == NULL)  {
+	if (!reply)  {
 		return 0;
 	}
 
@@ -60,7 +60,7 @@ static int md5_initiate(void *instance, eap_handler_t *handler)
 	 *	Allocate user data.
 	 */
 	reply->value = talloc_array(reply, uint8_t, reply->value_size);
-	if (reply->value == NULL) {
+	if (!reply->value) {
 		talloc_free(reply);
 		return 0;
 	}
@@ -116,7 +116,7 @@ static int md5_authenticate(UNUSED void *arg, eap_handler_t *handler)
 	rad_assert(handler->stage == AUTHENTICATE);
 
 	password = pairfind(handler->request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
-	if (password == NULL) {
+	if (!password) {
 		DEBUG2("rlm_eap_md5: Cleartext-Password is required for EAP-MD5 authentication");
 		return 0;
 	}

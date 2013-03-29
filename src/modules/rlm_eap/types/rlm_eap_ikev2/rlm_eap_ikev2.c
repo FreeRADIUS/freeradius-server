@@ -80,7 +80,7 @@ static int ComposeRadMsg(uint8_t *out,u_int32_t olen, EAP_DS *eap_ds){
 	    int len=(int)ntohs(((struct EAPHeader *)out)->Length);
 	    eap_ds->request->type.data = talloc_array(eap_ds->request,
 						      uint8_t, len);
-	    if (eap_ds->request->type.data == NULL) {
+	    if (!eap_ds->request->type.data) {
 		return 1;
 	    }
 	    memcpy(eap_ds->request->type.data,out+5,len-5);
@@ -191,7 +191,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 
 
     i2 = Create_ikev2_ctx();
-    if (i2 == NULL) {
+    if (!i2) {
 	return -1;
     }
     *instance =i2;
