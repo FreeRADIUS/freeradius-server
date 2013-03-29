@@ -1652,6 +1652,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 	 *	the mutex.  This guarantees that when another thread
 	 *	grabs the mutex, the "not in hash" flag is correct.
 	 */
+	RDEBUG3("proxy: request is no longer in proxy hash");
 	request->in_proxy_hash = FALSE;
 }
 
@@ -1698,6 +1699,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	request->num_proxied_responses = 0;
 
 	for (tries = 0; tries < 2; tries++) {
+		RDEBUG3("proxy: Trying to allocate ID (%d/2)", tries);
 		rcode = fr_packet_list_id_alloc(proxy_list,
 						request->home_server->proto,
 						request->proxy, &proxy_listener);
@@ -1708,9 +1710,10 @@ static int insert_into_proxy_hash(REQUEST *request)
 		if (proxy_no_new_sockets) break;
 #endif
 
+		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(request->home_server, 0);
 		if (!this) {
-			radlog(L_ERR, "Failed to create a new socket for proxying requests.");
+			radlog(L_ERR, "proxy: Failed to create a new outbound socket");
 			break;
 		}
 		request->proxy->src_port = 0; /* Use any new socket */
@@ -1718,7 +1721,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	}
 
 	if (!proxy_listener) {
-		RDEBUG2E("Failed allocating Id for new socket when proxying requests.");
+		RDEBUG2E("proxy: Failed allocating Id for proxied request");
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		return 0;
 	}
@@ -1730,6 +1733,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	if (this) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		if (!event_new_fd(this)) {
+			RDEBUG3("proxy: Failed inserting new socket into event loop");
 			listen_free(&this);
 			return 0;
 		}
@@ -1745,6 +1749,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	}
 
 	request->in_proxy_hash = TRUE;
+	RDEBUG3("proxy: request is now in proxy hash");
 
 	/*
 	 *	Keep track of maximum outstanding requests to a
@@ -2353,6 +2358,8 @@ static int request_proxy(REQUEST *request, int retransmit)
 		radlog_request(L_PROXY, 0, request, "Failed to insert initial packet into the proxy list.");
 		return -1;
 	}
+
+	rad_assert(request->proxy->id >= 0);
 
 	RDEBUG2("Proxying request to home server %s port %d",
 	       inet_ntop(request->proxy->dst_ipaddr.af,
