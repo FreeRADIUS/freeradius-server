@@ -501,7 +501,7 @@ static int request_dequeue(REQUEST **prequest)
 	rad_assert(request->magic == REQUEST_MAGIC);
 
 	request->component = "<core>";
-	request->module = "<thread>";
+	request->module = "";
 
 	/*
 	 *	If the request has sat in the queue for too long,
