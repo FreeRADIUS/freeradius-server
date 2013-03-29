@@ -125,7 +125,6 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
 		if (eap_ds->request->type.data == NULL) {
-			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 			return 0;
 		}
 		eap_ds->request->type.length = length;
@@ -168,7 +167,6 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
 		if (eap_ds->request->type.data == NULL) {
-			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 			return 0;
 		}
 		memset(eap_ds->request->type.data, 0, length);
@@ -191,7 +189,6 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		 *	Allocate room for the EAP-MS-CHAPv2 data.
 		 */
 		if (eap_ds->request->type.data == NULL) {
-			radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 			return 0;
 		}
 		memset(eap_ds->request->type.data, 0, length);
@@ -417,7 +414,6 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 				challenge = pairmake_packet("MS-CHAP-Challenge", "0x00", T_OP_EQ);
 				if (!challenge) {
-					radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 					return 0;
 				}
 				challenge->length = MSCHAPV2_CHALLENGE_LEN;
@@ -570,7 +566,6 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 */
 	challenge = pairmake_packet("MS-CHAP-Challenge", "0x00", T_OP_EQ);
 	if (!challenge) {
-		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
 	}
 	challenge->length = MSCHAPV2_CHALLENGE_LEN;
@@ -578,7 +573,6 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 	response = pairmake_packet("MS-CHAP2-Response", "0x00", T_OP_EQ);
 	if (!response) {
-		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
 	}
 
@@ -590,7 +584,6 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 	name = pairmake_packet("NTLM-User-Name", "", T_OP_EQ);
 	if (!name) {
-		radlog(L_ERR, "rlm_eap_mschapv2: out of memory");
 		return 0;
 	}
 	

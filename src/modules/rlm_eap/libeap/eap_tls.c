@@ -592,7 +592,6 @@ static EAPTLS_PACKET *eaptls_extract(REQUEST *request, EAP_DS *eap_ds, fr_tls_st
 		tlspacket->data = talloc_array(tlspacket, uint8_t,
 					       data_len);
 		if (tlspacket->data == NULL) {
-			RDEBUG("out of memory");
 			talloc_free(tlspacket);
 			return NULL;
 		}
@@ -885,7 +884,6 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
 	eap_ds->request->type.data = talloc_array(eap_ds->request, uint8_t,
 						  reply->length - TLS_HEADER_LEN + 1);
 	if (eap_ds->request->type.data == NULL) {
-		radlog(L_ERR, "out of memory");
 		return 0;
 	}
 

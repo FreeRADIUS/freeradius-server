@@ -1098,7 +1098,6 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
 		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
 		       if (vp == NULL) {
-			       RDEBUG("Out of memory");
 			       goto error;
 		       }
 		       vp->next = request->packet->vps;
@@ -1123,7 +1122,6 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 	} else {		/* packet was EAP identity */
 		handler = eap_handler_alloc(inst);
 		if (handler == NULL) {
-			RDEBUG("Out of memory.");
 			goto error;
 		}
 
@@ -1150,7 +1148,6 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 		       RDEBUG2W("NAS did not set User-Name.  Setting it locally from EAP Identity");
 		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
 		       if (vp == NULL) {
-			       RDEBUG("Out of memory");
 			       goto error2;
 		       }
 		       vp->next = request->packet->vps;

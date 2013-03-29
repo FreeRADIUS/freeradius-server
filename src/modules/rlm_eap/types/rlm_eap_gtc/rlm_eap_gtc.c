@@ -108,7 +108,6 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 	eap_ds->request->type.data = talloc_array(eap_ds->request,
 						  uint8_t, length);
 	if (eap_ds->request->type.data == NULL) {
-		radlog(L_ERR, "rlm_eap_gtc: out of memory");
 		return 0;
 	}
 
@@ -210,7 +209,6 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 
 		vp = pairmake_packet("User-Password", "", T_OP_EQ);
 		if (!vp) {
-			radlog(L_ERR, "rlm_eap_gtc: out of memory");
 			return 0;
 		}
 		vp->length = eap_ds->response->type.length;

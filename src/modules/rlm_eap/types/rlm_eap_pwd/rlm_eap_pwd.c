@@ -210,7 +210,6 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
     }
 
     if ((pwd_session = talloc_zero(handler, pwd_session_t)) == NULL) {
-	radlog(L_ERR, "rlm_eap_pwd: initiate, out of memory (1)");
 	return -1;
     }
     /*
@@ -255,7 +254,6 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
     pwd_session->out_buf_len = sizeof(pwd_id_packet) + strlen(inst->conf->server_id);
     if ((pwd_session->out_buf = talloc_zero_array(pwd_session, uint8_t,
 						  pwd_session->out_buf_len)) == NULL) {
-	radlog(L_ERR, "rlm_eap_pwd: initiate, out of memory to send ID request");
 	return -1;
     }
 
@@ -357,7 +355,6 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	eap_ds->request->type.length = sizeof(pwd_hdr);
 	if ((eap_ds->request->type.data = talloc_array(eap_ds->request,
 						       uint8_t, sizeof(pwd_hdr))) == NULL) {
-	    radlog(L_ERR, "rlm_eap_pwd: fragment ACK, out of memory");
 	    return 0;
 	}
 	hdr = (pwd_hdr *)eap_ds->request->type.data;
@@ -515,7 +512,6 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 		(2 * BN_num_bytes(pwd_session->prime));
 	    if ((pwd_session->out_buf = talloc_array(pwd_session, uint8_t,
 						     pwd_session->out_buf_len)) == NULL) {
-		radlog(L_ERR, "rlm_eap_pwd: out of memory to send commit");
 		return 0;
 	    }
 	    memset(pwd_session->out_buf, 0, pwd_session->out_buf_len);
@@ -561,7 +557,6 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	    pwd_session->out_buf_len = SHA256_DIGEST_LENGTH;
 	    if ((pwd_session->out_buf = talloc_array(pwd_session, uint8_t,
 						     pwd_session->out_buf_len)) == NULL) {
-		radlog(L_ERR, "rlm_eap_pwd: out of memory to send confirm");
 		return 0;
 	    }
 	    memset(pwd_session->out_buf, 0, pwd_session->out_buf_len);

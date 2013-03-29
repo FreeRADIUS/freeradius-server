@@ -143,7 +143,7 @@ static int replicate_packet(void *instance, REQUEST *request,
 			if (!vps) {
 				RDEBUGW("List '%s' doesn't exist for "
 				       "this packet", fr_int2str(pair_lists,
-				       list, "¿unknown?"));
+				       list, "?unknown?"));
 				rcode = RLM_MODULE_INVALID;
 				goto done;
 			}
@@ -155,7 +155,6 @@ static int replicate_packet(void *instance, REQUEST *request,
 			if (*vps) {
 				packet->vps = paircopy(packet, *vps);
 				if (!packet->vps) {
-					RDEBUGE("Out of memory!");
 					rcode = RLM_MODULE_FAIL;
 					goto done;
 				}

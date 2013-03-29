@@ -460,7 +460,6 @@ static int radutmp_zap(rlm_radutmp_t *inst,
 	 */
 	offset_tree = rbtree_create(offset_cmp, NULL, 0);
 	if (!offset_tree) {
-		radlog(L_ERR, "rlm_radutmp: Out of memory");
 		return 0;
 	}
 

@@ -189,7 +189,6 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	encoded_size += 3;
 	encodedmsg = talloc_array(ep, uint8_t, encoded_size);
 	if (encodedmsg == NULL) {
-		radlog(L_ERR, "eapsim: out of memory allocating %d bytes", encoded_size+5);
 		return 0;
 	}
 	memset(encodedmsg, 0, encoded_size);
@@ -262,7 +261,6 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 		buffer = talloc_array(r, uint8_t, hmaclen);
 		hdr = (eap_packet_raw_t *)buffer;
 		if (!hdr) {
-			radlog(L_ERR, "rlm_eap: out of memory");
 			talloc_free(encodedmsg);
 			return 0;
 		}

@@ -821,7 +821,6 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 */
 	*data = malloc(len);
 	if (!*data) {
-		radlog(L_ERR, "rlm_eap2: out of memory");
 		return -1;
 	}
 	*data_len = len;

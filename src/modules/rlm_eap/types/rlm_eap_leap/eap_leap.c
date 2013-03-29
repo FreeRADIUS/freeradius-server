@@ -131,7 +131,6 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 
 	packet->challenge = talloc_array(packet, uint8_t, packet->count);
 	if (packet->challenge == NULL) {
-		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		talloc_free(packet);
 		return NULL;
 	}
@@ -148,7 +147,6 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 	if (name_len > 0) {
 		packet->name = talloc_array(packet, char, name_len + 1);
 		if (!packet->name) {
-			radlog(L_ERR, "rlm_eap_leap: out of memory");
 			talloc_free(packet);
 			return NULL;
 		}
@@ -270,7 +268,6 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 
 	reply->challenge = talloc_array(reply, uint8_t, reply->count);
 	if (reply->challenge == NULL) {
-		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		talloc_free(reply);
 		return NULL;
 	}
@@ -280,7 +277,6 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	 */
 	reply->name = talloc_array(reply, char, user_name->length + 1);
 	if (reply->name == NULL) {
-		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		talloc_free(reply);
 		return NULL;
 	}
@@ -359,7 +355,6 @@ leap_packet_t *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 
 	reply = talloc(eap_ds, leap_packet_t);
 	if (reply == NULL)  {
-		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		return NULL;
 	}
 
@@ -369,7 +364,6 @@ leap_packet_t *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 
 	reply->challenge = talloc_array(reply, uint8_t, reply->count);
 	if (reply->challenge == NULL) {
-		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		talloc_free(reply);
 		return NULL;
 	}
@@ -388,7 +382,6 @@ leap_packet_t *eapleap_initiate(EAP_DS *eap_ds, VALUE_PAIR *user_name)
 	 */
 	reply->name = talloc_array(reply, char, user_name->length + 1);
 	if (reply->name == NULL) {
-		radlog(L_ERR, "rlm_eap_leap: out of memory");
 		talloc_free(reply);
 		return NULL;
 	}
@@ -423,7 +416,6 @@ int eapleap_compose(EAP_DS *eap_ds, leap_packet_t *reply)
 							  uint8_t,
 							  reply->length);
 		if (eap_ds->request->type.data == NULL) {
-			radlog(L_ERR, "rlm_eap_leap: out of memory");
 			return 0;
 		}
 		data = (leap_packet_raw_t *) eap_ds->request->type.data;
