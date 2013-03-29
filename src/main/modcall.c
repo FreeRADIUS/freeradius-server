@@ -159,10 +159,10 @@ static void add_child(modgroup *g, modcallable *c)
 
 /* Here's where we recognize all of our keywords: first the rcodes, then the
  * actions */
-static const FR_NAME_NUMBER rcode_table[] = {
+const FR_NAME_NUMBER mod_rcode_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
 	{ "fail",       RLM_MODULE_FAIL	 },
-	{ "ok",	 RLM_MODULE_OK	   },
+	{ "ok",	 	RLM_MODULE_OK	   },
 	{ "handled",    RLM_MODULE_HANDLED      },
 	{ "invalid",    RLM_MODULE_INVALID      },
 	{ "userlock",   RLM_MODULE_USERLOCK     },
@@ -210,7 +210,7 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 	if (strcasecmp(attr, "default") != 0) {
 		int rcode;
 
-		rcode = fr_str2int(rcode_table, attr, -1);
+		rcode = fr_str2int(mod_rcode_table, attr, -1);
 		if (rcode < 0) {
 			cf_log_err_cp(cp,
 				   "Unknown module rcode '%s'.\n",
@@ -772,7 +772,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				       stack.pointer + 1, modcall_spaces,
 				       group_name[child->type],
 				       child->name ? child->name : "",
-				       fr_int2str(rcode_table,
+				       fr_int2str(mod_rcode_table,
 						    stack.result[stack.pointer],
 						  "??"));
 				goto do_return;
@@ -796,7 +796,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		RDEBUG2("%.*s[%s] = %s",
 			stack.pointer + 1, modcall_spaces,
 			child->name ? child->name : "",
-			fr_int2str(rcode_table, myresult, "??"));
+			fr_int2str(mod_rcode_table, myresult, "??"));
 
 	handle_priority:
 		mypriority = child->actions[myresult];
@@ -808,7 +808,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				RDEBUG2("%.*s} # %s %s = %s",
 					stack.pointer + 1, modcall_spaces,
 					group_name[child->type], child->name ? child->name : "",
-					fr_int2str(rcode_table, myresult, "??"));
+					fr_int2str(mod_rcode_table, myresult, "??"));
 			}
 		}
 #else
@@ -946,7 +946,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       stack.pointer + 1, modcall_spaces,
 			       group_name[parent->type],
 			       parent->name ? parent->name : "",
-				fr_int2str(rcode_table, myresult, "??"));
+				fr_int2str(mod_rcode_table, myresult, "??"));
 
 #ifdef WITH_UNLANG
 			if ((parent->type == MOD_IF) ||
@@ -1005,7 +1005,7 @@ static void dump_mc(modcallable *c, int indent)
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
 		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
-		      fr_int2str(rcode_table, i, "??"),
+		      fr_int2str(mod_rcode_table, i, "??"),
 		      action2str(c->actions[i]));
 	}
 
