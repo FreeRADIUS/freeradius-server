@@ -1169,7 +1169,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		}
 
 		/* cache the VPs into the session */
-		vp = paircopy(conf, pairlist->reply);
+		vp = paircopy(NULL, pairlist->reply);
 		SSL_SESSION_set_ex_data(sess, FR_TLS_EX_INDEX_VPS, vp);
 		DEBUG2("  SSL: Successfully restored session %s", buffer);
 	}
@@ -1542,7 +1542,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			sprintf(p, "%02x", (unsigned int)sn->data[i]);
 			p += 2;
 		}
-		pairmake(ssn, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
+		pairmake(NULL, certs, cert_attr_names[FR_TLS_SERIAL][lookup], buf, T_OP_SET);
 	}
 
 
@@ -1555,7 +1555,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	    (asn_time->length < (int) sizeof(buf))) {
 		memcpy(buf, (char*) asn_time->data, asn_time->length);
 		buf[asn_time->length] = '\0';
-		pairmake(ssn, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
+		pairmake(NULL, certs, cert_attr_names[FR_TLS_EXPIRATION][lookup], buf, T_OP_SET);
 	}
 
 	/*
@@ -1567,7 +1567,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	subject[sizeof(subject) - 1] = '\0';
 	if (identity && (lookup <= 1) && subject[0] &&
 	    (strlen(subject) < MAX_STRING_LEN)) {
-		pairmake(ssn, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
+		pairmake(NULL, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
@@ -1575,7 +1575,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	issuer[sizeof(issuer) - 1] = '\0';
 	if (identity && (lookup <= 1) && issuer[0] &&
 	    (strlen(issuer) < MAX_STRING_LEN)) {
-		pairmake(ssn, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
+		pairmake(NULL, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 	}
 
 	/*
@@ -1586,7 +1586,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	common_name[sizeof(common_name) - 1] = '\0';
 	if (identity && (lookup <= 1) && common_name[0] && subject[0] &&
 	    (strlen(common_name) < MAX_STRING_LEN)) {
-		pairmake(ssn, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
+		pairmake(NULL, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 	}
 
 #ifdef GEN_EMAIL
@@ -1609,7 +1609,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 					if (ASN1_STRING_length(name->d.rfc822Name) >= MAX_STRING_LEN)
 						break;
 
-					pairmake(ssn, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
+					pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
 						 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
 					break;
 				default:
@@ -2452,13 +2452,13 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 
 		fr_bin2hex(ssn->ssl->session->session_id, buffer, size);
 
-		vp = paircopy2(ssn, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
+		vp = paircopy2(NULL, request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(ssn, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
+		vp = paircopy2(NULL, request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 		
-		vp = paircopy2(ssn, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
+		vp = paircopy2(NULL, request->reply->vps, PW_CACHED_SESSION_POLICY, 0, TAG_ANY);
 		if (vp) pairadd(&vps, vp);
 
 		certs = (VALUE_PAIR **)SSL_get_ex_data(ssn->ssl, FR_TLS_EX_INDEX_CERTS);
@@ -2471,7 +2471,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			 *	@todo: some go into reply, others into
 			 *	request
 			 */
-			pairadd(&vps, paircopy(request, *certs));
+			pairadd(&vps, paircopy(NULL, *certs));
 		}
 
 		if (vps) {
