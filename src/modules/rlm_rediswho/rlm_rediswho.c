@@ -100,24 +100,10 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	return result;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void ** instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	module_instance_t *modinst;
-	rlm_rediswho_t *inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_rediswho_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_rediswho_t *inst = instance;
 
 	inst->xlat_name = cf_section_name2(conf);
 
@@ -228,6 +214,8 @@ module_t rlm_rediswho = {
 	RLM_MODULE_INIT,
 	"rediswho",
 	RLM_TYPE_THREAD_SAFE,	/* type */
+	sizeof(rlm_rediswho_t),
+	module_config,
 	mod_instantiate,	/* instantiation */
 	NULL, 			/* detach */
 	{

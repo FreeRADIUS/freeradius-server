@@ -183,10 +183,10 @@ static int parse_sub_section(CONF_SECTION *parent,
 	}
 	
 	if (!http_curl_auth[config->auth]) {
-		cf_log_err(cs, "Unsupported HTTP auth type \"%s\""
-		       ", check libcurl version, OpenSSL build configuration,"
-		       " then recompile this module",
-		       config->auth_str);
+		cf_log_err_cs(cs, "Unsupported HTTP auth type \"%s\""
+			      ", check libcurl version, OpenSSL build configuration,"
+			      " then recompile this module",
+			      config->auth_str);
 		return -1;
 	}
 				
@@ -204,7 +204,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 
 	if (http_body_type_supported[config->body] == HTTP_BODY_UNSUPPORTED) {
 		cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\""
-		       ", please submit patches", instance->xlat_name,
+		       ", please submit patches",
 		       config->body_str);
 		return -1;
 	}
@@ -222,45 +222,31 @@ static int parse_sub_section(CONF_SECTION *parent,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_rest_t *data;
+	rlm_rest_t *inst = instance;
 	const char *xlat_name;
-
-	/*
-	 *	Allocate memory for instance data.
-	 */
-	*instance = data = talloc_zero(conf, rlm_rest_t);
-	if (!data) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		return -1;
-	}
 
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name) {
 		xlat_name = cf_section_name1(conf);
 	}
 
-	data->xlat_name = xlat_name;
+	inst->xlat_name = xlat_name;
 
 	/*
 	 *	Parse sub-section configs.
 	 */
 	if (
-		(parse_sub_section(conf, &data->authorize,
+		(parse_sub_section(conf, &inst->authorize,
 				   RLM_COMPONENT_AUTZ) < 0) ||
-		(parse_sub_section(conf, &data->authenticate,
+		(parse_sub_section(conf, &inst->authenticate,
 				   RLM_COMPONENT_AUTH) < 0) ||
-		(parse_sub_section(conf, &data->accounting,
+		(parse_sub_section(conf, &inst->accounting,
 				   RLM_COMPONENT_ACCT) < 0) ||
-		(parse_sub_section(conf, &data->checksimul,
+		(parse_sub_section(conf, &inst->checksimul,
 				   RLM_COMPONENT_SESS) < 0) ||
-		(parse_sub_section(conf, &data->postauth,
+		(parse_sub_section(conf, &inst->postauth,
 				   RLM_COMPONENT_POST_AUTH) < 0))
 	{
 		return -1;
@@ -269,16 +255,16 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Initialise REST libraries.
 	 */
-	if (!rest_init(data)) {
+	if (!rest_init(inst)) {
 		return -1;
 	}
 
-	data->conn_pool = fr_connection_pool_init(conf, data,
+	inst->conn_pool = fr_connection_pool_init(conf, inst,
 						  rest_socket_create,
 						  rest_socket_alive,
 						  rest_socket_delete);
 
-	if (!data->conn_pool) {
+	if (!inst->conn_pool) {
 		return -1;
 	}
 
@@ -432,6 +418,8 @@ module_t rlm_rest = {
 	RLM_MODULE_INIT,
 	"rlm_rest",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_rest_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,		/* detach */
 	{

@@ -153,24 +153,10 @@ static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, const 
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_yubikey_t *inst;
+	rlm_yubikey_t *inst = instance;
 	DICT_VALUE *dval;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_yubikey_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -413,6 +399,8 @@ module_t rlm_yubikey = {
 	RLM_MODULE_INIT,
 	"yubikey",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_yubikey_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

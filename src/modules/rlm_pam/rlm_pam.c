@@ -58,23 +58,6 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-/*
- *	(Re-)read radiusd.conf into memory.
- */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
-{
-	rlm_pam_t *data;
-
-	*instance = data = talloc_zero(conf, rlm_pam_t);
-	if (!data) return -1;
-
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		return -1;
-	}
-
-	return 0;
-}
-
 /*************************************************************************
  *
  *	Function: PAM_conv
@@ -266,7 +249,9 @@ module_t rlm_pam = {
 	RLM_MODULE_INIT,
 	"pam",
 	RLM_TYPE_THREAD_UNSAFE,	/* The PAM libraries are not thread-safe */
-	mod_instantiate,		/* instantiation */
+	sizeof(rlm_pam_t),
+	module_config,
+	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{
 		mod_authenticate,	/* authenticate */

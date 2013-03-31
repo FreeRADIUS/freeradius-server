@@ -51,37 +51,6 @@ static const CONF_PARSER module_config[] = {
 };
 
 /*
- *	Do any per-module initialization that is separate to each
- *	configured instance of the module.  e.g. set up connections
- *	to external databases, read configuration files, set up
- *	dictionary entries, etc.
- *
- *	If configuration information is given in the config section
- *	that must be referenced in later calls, store a handle to it
- *	in *instance otherwise put a null pointer there.
- */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
-{
-	rlm_wimax_t *inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_wimax_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
-
-	return 0;
-}
-
-/*
  *	Find the named user in this modules database.  Create the set
  *	of attribute-value pairs to check and reply with for this user
  *	from the database. The authentication code only needs to check
@@ -508,6 +477,8 @@ module_t rlm_wimax = {
 	RLM_MODULE_INIT,
 	"wimax",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_wimax_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

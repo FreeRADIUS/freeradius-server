@@ -43,12 +43,6 @@ typedef struct rlm_example_t {
 
 /*
  *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
   { "integer", PW_TYPE_INTEGER,    offsetof(rlm_example_t,value), NULL,   "1" },
@@ -70,21 +64,15 @@ static const CONF_PARSER module_config[] = {
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_example_t *inst;
-
+	rlm_example_t *inst = instance;
+  
 	/*
-	 *	Set up a storage area for instance data
+	 *	Do more work here
 	 */
-	*instance = inst = talloc_zero(conf, rlm_example_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
+	if (!inst->boolean) {
+		cf_log_err_cs(conf, "Boolean is false: forcing error!");
 		return -1;
 	}
 
@@ -210,6 +198,8 @@ module_t rlm_example = {
 	RLM_MODULE_INIT,
 	"example",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_example_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

@@ -150,7 +150,7 @@ static CONF_PARSER option_config[] = {
 
 
 static const CONF_PARSER module_config[] = {
-	{"server", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,server), NULL, "localhost"},
+	{"server", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,server), NULL, "localhost"},
 	{"port", PW_TYPE_INTEGER, offsetof(ldap_instance_t,port), NULL, "389"},
 
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
@@ -460,12 +460,9 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
  * @param instance Where to write pointer to configuration data.
  * @return 0 on success < 0 on failure.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	ldap_instance_t *inst;
-
-	*instance = inst = talloc_zero(conf, ldap_instance_t);
-	if (!inst) return -1;
+	ldap_instance_t *inst = instance;
 
 	inst->cs = conf;
 
@@ -480,20 +477,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
 	 */
-	if ((cf_section_parse(conf, inst, module_config) < 0) ||
-	    (parse_sub_section(inst, conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
+	if ((parse_sub_section(inst, conf, &inst->accounting, RLM_COMPONENT_ACCT) < 0) ||
 	    (parse_sub_section(inst, conf, &inst->postauth, RLM_COMPONENT_POST_AUTH) < 0)) {
 		LDAP_ERR("Failed parsing configuration");
 		
 		goto error;
 	}
 
-	if (!inst->server) {
-		LDAP_ERR("Missing 'server' directive");
-		
-		goto error;
-	}
-	
 	/*
 	 *	Sanity checks for cacheable groups code.
 	 */
@@ -508,7 +498,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (!inst->groupobj_base_dn) {
 		if (!inst->base_dn) {
-			LDAP_ERR("Missing 'base_dn' directive");
+			LDAP_ERR("Must set 'base_dn' if there is no 'group_base_dn'");
 			
 			goto error;
 		}
@@ -518,7 +508,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	if (!inst->userobj_base_dn) {
 		if (!inst->base_dn) {
-			LDAP_ERR("Missing 'base_dn' directive");
+			LDAP_ERR("Must set 'base_dn' if there is no 'userobj_base_dn'");
 			
 			goto error;
 		}
@@ -567,14 +557,14 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+		LDAP_ERR("Invalid 'user.scope' value '%s', expected 'sub', 'one' or 'base'",
 			 inst->userobj_scope_str);
 		goto error;
 	}
 	
 	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+		LDAP_ERR("Invalid 'group.scope' value '%s', expected 'sub', 'one' or 'base'",
 			 inst->groupobj_scope_str);
 		goto error;
 	}
@@ -1178,6 +1168,8 @@ module_t rlm_ldap = {
 	RLM_MODULE_INIT,
 	"ldap",
 	RLM_TYPE_THREAD_SAFE,	/* type: reserved 	 */
+	sizeof(ldap_instance_t),
+	module_config,
 	mod_instantiate,	/* instantiation 	 */
 	mod_detach,		/* detach 		 */
 	{

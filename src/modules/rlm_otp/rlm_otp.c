@@ -38,27 +38,27 @@ static int ninstance = 0;	//!< Number of instances, for global init.
 
 /* A mapping of configuration file names to internal variables. */
 static const CONF_PARSER module_config[] = {
-	{ "otpd_rp", PW_TYPE_STRING_PTR, offsetof(otp_option_t, otpd_rp),
+	{ "otpd_rp", PW_TYPE_STRING_PTR, offsetof(rlm_otp_t, otpd_rp),
 	  NULL, OTP_OTPD_RP },
-	{ "challenge_prompt", PW_TYPE_STRING_PTR,offsetof(otp_option_t, chal_prompt),
+	{ "challenge_prompt", PW_TYPE_STRING_PTR,offsetof(rlm_otp_t, chal_prompt),
 	  NULL, OTP_CHALLENGE_PROMPT },
-	{ "challenge_length", PW_TYPE_INTEGER, offsetof(otp_option_t, challenge_len),
+	{ "challenge_length", PW_TYPE_INTEGER, offsetof(rlm_otp_t, challenge_len),
 	  NULL, "6" },
-	{ "challenge_delay", PW_TYPE_INTEGER, offsetof(otp_option_t, challenge_delay),
+	{ "challenge_delay", PW_TYPE_INTEGER, offsetof(rlm_otp_t, challenge_delay),
 	  NULL, "30" },
-	{ "allow_sync", PW_TYPE_BOOLEAN, offsetof(otp_option_t, allow_sync),
+	{ "allow_sync", PW_TYPE_BOOLEAN, offsetof(rlm_otp_t, allow_sync),
 	  NULL, "yes" },
-	{ "allow_async", PW_TYPE_BOOLEAN, offsetof(otp_option_t, allow_async),
+	{ "allow_async", PW_TYPE_BOOLEAN, offsetof(rlm_otp_t, allow_async),
 	  NULL, "no" },
 
 	{ "mschapv2_mppe", PW_TYPE_INTEGER,
-	  offsetof(otp_option_t, mschapv2_mppe_policy), NULL, "2" },
+	  offsetof(rlm_otp_t, mschapv2_mppe_policy), NULL, "2" },
 	{ "mschapv2_mppe_bits", PW_TYPE_INTEGER,
-	  offsetof(otp_option_t, mschapv2_mppe_types), NULL, "2" },
+	  offsetof(rlm_otp_t, mschapv2_mppe_types), NULL, "2" },
 	{ "mschap_mppe", PW_TYPE_INTEGER,
-	  offsetof(otp_option_t, mschap_mppe_policy), NULL, "2" },
+	  offsetof(rlm_otp_t, mschap_mppe_policy), NULL, "2" },
 	{ "mschap_mppe_bits", PW_TYPE_INTEGER,
-	  offsetof(otp_option_t, mschap_mppe_types), NULL, "2" },
+	  offsetof(rlm_otp_t, mschap_mppe_types), NULL, "2" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -67,18 +67,9 @@ static const CONF_PARSER module_config[] = {
 /*
  *	Per-instance initialization
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	otp_option_t *opt;
-
-	/* Set up a storage area for instance data. */
-	*instance = opt = talloc_zero(conf, otp_option_t);
-	if (!opt) return -1;
-
-	/* If the configuration parameters can't be parsed, then fail. */
-	if (cf_section_parse(conf, opt, module_config) < 0) {
-		return -1;
-	}
+	rlm_otp_t *opt = instance;
 
 	/* Onetime initialization. */
 	if (!ninstance) {
@@ -149,7 +140,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	otp_option_t *inst = (otp_option_t *) instance;
+	rlm_otp_t *inst = (rlm_otp_t *) instance;
 
 	char challenge[OTP_MAX_CHALLENGE_LEN + 1];	/* +1 for '\0' terminator */
 	int auth_type_found;
@@ -316,7 +307,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  */
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
-	otp_option_t *inst = (otp_option_t *) instance;
+	rlm_otp_t *inst = instance;
 
 	const char *username;
 	int rc;
@@ -445,6 +436,8 @@ module_t rlm_otp = {
 	RLM_MODULE_INIT,
 	"otp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_otp_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

@@ -568,6 +568,7 @@ static const CONF_PARSER module_config[] = {
 static int mod_detach(void *instance)
 {
 	rlm_mschap_t *inst = instance;
+
 	if (inst->xlat_name) {
 		xlat_unregister(inst->xlat_name, mschap_xlat, instance);
 	}
@@ -578,17 +579,10 @@ static int mod_detach(void *instance)
  *	Create instance for our module. Allocate space for
  *	instance structure and read configuration parameters
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	const char *name;
-	rlm_mschap_t *inst;
-
-	*instance = inst = talloc_zero(conf, rlm_mschap_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_mschap_t *inst = instance;
 
 	/*
 	 *	Create the dynamic translation.
@@ -1868,6 +1862,8 @@ module_t rlm_mschap = {
 	RLM_MODULE_INIT,
 	"MS-CHAP",
 	RLM_TYPE_THREAD_SAFE | RLM_TYPE_HUP_SAFE,		/* type */
+	sizeof(rlm_mschap_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,		/* detach */
 	{

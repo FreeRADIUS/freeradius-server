@@ -39,7 +39,7 @@ RCSIDH(extern_h, "$Id$")
 /* Default prompt for presentation of challenge */
 #define OTP_CHALLENGE_PROMPT "Challenge: %{reply:OTP-Challenge}\n Response: "
 
-typedef struct otp_option {
+typedef struct rlm_otp_t {
 	const char *name;	//!< Instance name for mod_authorize().
 	char *otpd_rp;		//!< Otpd rendezvous point.
 	char *chal_prompt;	//!< Text to present challenge to user
@@ -57,13 +57,13 @@ typedef struct otp_option {
 	int mschap_mppe_policy;		//!< Whether or not do to mppe for
 					//!< mschap .
 	int mschap_mppe_types;		//!< key type/length for mschap/mppe.
-} otp_option_t;
+} rlm_otp_t;
 
 /* otp_mppe.c */
-void otp_mppe(REQUEST *, otp_pwe_t, const otp_option_t *, const char *);
+void otp_mppe(REQUEST *, otp_pwe_t, const rlm_otp_t *, const char *);
 
 /* otp_pw_valid.c */
-int otp_pw_valid(REQUEST *, int, const char *, const otp_option_t *, char []);
+int otp_pw_valid(REQUEST *, int, const char *, const rlm_otp_t *, char []);
 
 /* otp_radstate.c */
 #define OTP_MAX_RADSTATE_LEN 2 + (OTP_MAX_CHALLENGE_LEN * 2 + 8 + 8 + 32)*2 + 1

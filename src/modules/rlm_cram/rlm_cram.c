@@ -196,6 +196,8 @@ module_t rlm_cram = {
 	RLM_MODULE_INIT,
 	"CRAM",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	0,
+	NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{

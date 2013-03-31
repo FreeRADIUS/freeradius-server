@@ -114,17 +114,10 @@ static int mod_detach(void *instance)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	const char *name;
-	rlm_soh_t *inst;
-
-	*instance = inst = talloc_zero(conf, rlm_soh_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_soh_t *inst = instance;
 
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
@@ -219,6 +212,8 @@ module_t rlm_soh = {
 	RLM_MODULE_INIT,
 	"SoH",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_soh_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

@@ -80,25 +80,9 @@ static rlm_rcode_t str2rcode(const char *s)
 	}
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	rlm_always_t *inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_always_t);
-	if (!inst) {
-		return -1;
-	}
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_always_t *inst = instance;
 
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
@@ -141,6 +125,8 @@ module_t rlm_always = {
 	RLM_MODULE_INIT,
 	"always",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_always_t),		/* config size */
+	module_config,			/* configuration */
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

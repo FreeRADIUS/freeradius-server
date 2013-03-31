@@ -170,30 +170,14 @@ static int write_all(int *fdp, const char *buf, size_t len)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_smsotp_t *inst;
+	rlm_smsotp_t *inst = instance;
 	struct sockaddr_un sa;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_smsotp_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
-
-	if (strlen(inst->socket) > (sizeof(sa.sun_path) - 1)){
+	if (strlen(inst->socket) > (sizeof(sa.sun_path) - 1)) {
 		cf_log_err_cs(conf, "Socket filename is too long");
 		return -1;
 	}
-
 
 	/*
 	 *	Initialize the socket pool.
@@ -364,6 +348,8 @@ module_t rlm_smsotp = {
 	RLM_MODULE_INIT,
 	"smsotp",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_smsotp_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

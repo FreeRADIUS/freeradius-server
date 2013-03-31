@@ -518,19 +518,12 @@ static int eap_example_server_init_tls(rlm_eap_t *inst)
 /*
  * read the config section and load all the eap authentication types present.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void *instance)
 {
 	int i, num_types;
 	int		has_tls, do_tls;
-	rlm_eap_t	*inst;
+	rlm_eap_t	*inst = instance;
 	CONF_SECTION	*scs;
-
-	*instance = inst = talloc_zero(conf, rlm_eap_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
 
 	/*
 	 *	Create our own random pool.
@@ -1000,6 +993,8 @@ module_t rlm_eap2 = {
 	RLM_MODULE_INIT,
 	"eap2",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_eap_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

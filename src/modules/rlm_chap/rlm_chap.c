@@ -131,6 +131,8 @@ module_t rlm_chap = {
 	 RLM_MODULE_INIT,
 	"CHAP",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	 0,
+	 NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{

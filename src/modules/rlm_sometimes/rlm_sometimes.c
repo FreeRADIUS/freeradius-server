@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	The instance data for rlm_sometimes is the list of fake values we are
@@ -52,7 +53,7 @@ static const CONF_PARSER module_config[] = {
   { "rcode",      PW_TYPE_STRING_PTR, offsetof(rlm_sometimes_t,rcode_str),
     NULL, "fail" },
 
-  { "key", PW_TYPE_STRING_PTR,    offsetof(rlm_sometimes_t,key),
+  { "key", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,    offsetof(rlm_sometimes_t,key),
     NULL, "User-Name" },
 
   { "start", PW_TYPE_INTEGER,    offsetof(rlm_sometimes_t,start),
@@ -67,23 +68,9 @@ static const CONF_PARSER module_config[] = {
 
 extern const FR_NAME_NUMBER mod_rcode_table[];
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_sometimes_t *inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_sometimes_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_sometimes_t *inst = instance;
 
 	/*
 	 *	Convert the rcode string to an int, and get rid of it
@@ -95,10 +82,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	inst->da = dict_attrbyname(inst->key);
-	if (!inst->da) {
-		cf_log_err_cs(conf, "Unknown attribute '%s'", inst->key);
-		return -1;
-	}
+	rad_assert(inst->da);
 
 	return 0;
 }
@@ -195,6 +179,8 @@ module_t rlm_sometimes = {
 	RLM_MODULE_INIT,
 	"sometimes",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	sizeof(rlm_sometimes_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

@@ -336,9 +336,9 @@ static int load_function(const char *f_name, int *func, VALUE module) {
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	rlm_ruby_t *data;
+	rlm_ruby_t *inst = instance;
 	VALUE module;
 	int idx;
 
@@ -354,25 +354,12 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 
 	int status;
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = data = talloc_zero(conf, rlm_ruby_t);
-	if (!data) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		return -1;
-	}
 
 	/*
 	 * Setup our 'radiusd' module.
 	 */
 
-	if ((module = data->pModule_builtin = rb_define_module(data->moduleName)) == 0) {
+	if ((module = inst->pModule_builtin = rb_define_module(inst->moduleName)) == 0) {
 		radlog(L_ERR, "Ruby rb_define_module failed");
 		return -1;
 	}
@@ -385,22 +372,22 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/* Add functions into module */
 	rb_define_module_function(module, "radlog", radlog_rb, 2);
 
-	if (!data->scriptFile) {
+	if (!inst->scriptFile) {
 		/* TODO: What actualy should we do? Exit with module fail? Or continue... but what the point then? */
 		radlog(L_ERR, "Script File was not set");
 	} else {
-		DEBUG("Loading file %s...", data->scriptFile);
-		rb_load_protect(rb_str_new2(data->scriptFile), 0, &status);
+		DEBUG("Loading file %s...", inst->scriptFile);
+		rb_load_protect(rb_str_new2(inst->scriptFile), 0, &status);
 		if (!status) {
-			DEBUG("Loaded file %s", data->scriptFile);
+			DEBUG("Loaded file %s", inst->scriptFile);
 		} else {
-			radlog(L_ERR, "Error loading file %s status: %d", data->scriptFile, status);
+			radlog(L_ERR, "Error loading file %s status: %d", inst->scriptFile, status);
 		}
 	}
 	/*
 	 * Import user modules.
 	 */
-#define RLM_RUBY_LOAD(foo) if (load_function(#foo, &data->func_##foo, data->pModule_builtin)==-1) { \
+#define RLM_RUBY_LOAD(foo) if (load_function(#foo, &inst->func_##foo, inst->pModule_builtin)==-1) { \
 		return -1;						\
 	}
 
@@ -420,7 +407,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	RLM_RUBY_LOAD(detach);
 
 	/* Call the instantiate function.  No request.  Use the return value. */
-	return do_ruby(NULL, data->func_instantiate, data->pModule_builtin, "instantiate");
+	return do_ruby(NULL, inst->func_instantiate, inst->pModule_builtin, "instantiate");
 }
 
 #define RLM_RUBY_FUNC(foo) static rlm_rcode_t mod_##foo(void *instance, REQUEST *request) \
@@ -465,6 +452,8 @@ module_t rlm_ruby = {
 	"ruby",
 	//	RLM_TYPE_THREAD_SAFE,		/* type */
 	RLM_TYPE_THREAD_UNSAFE, /* type, ok, let's be honest, MRI is not yet treadsafe */
+	sizeof(rlm_ruby_t),
+	module_config,
 	mod_instantiate, /* instantiation */
 	mod_detach, /* detach */
 	{

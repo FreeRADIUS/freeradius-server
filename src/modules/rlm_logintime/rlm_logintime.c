@@ -156,7 +156,7 @@ static int time_of_day(void *instance,
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	rlm_logintime_t *data = (rlm_logintime_t *)instance;
+	rlm_logintime_t *inst = instance;
 	VALUE_PAIR *ends, *timeout;
 	int left;
 
@@ -188,14 +188,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */	
-	if (left < data->min_time) {
+	if (left < inst->min_time) {
 		RDEBUGE("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
-			ends->vp_strvalue, data->min_time);
+			ends->vp_strvalue, inst->min_time);
 		
 		return RLM_MODULE_USERLOCK;
 	}
 	
-	/* else left > data->min_time */
+	/* else left > inst->min_time */
 	
 	/*
 	 *	There's time left in the users session, inform the NAS by including a Session-Timeout 
@@ -229,25 +229,11 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_logintime_t *data;
+	rlm_logintime_t *inst = instance;
 
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = data = talloc_zero(conf, rlm_logintime_t);
-	if (!data) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		return -1;
-	}
-
-	if (data->min_time == 0) {
+	if (inst->min_time == 0) {
 		cf_log_err_cs(conf, "Invalid value '0' for minimum-timeout");
 		return -1;
 	}
@@ -255,8 +241,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Register a Current-Time comparison function
 	 */
-	paircompare_register(PW_CURRENT_TIME, 0, timecmp, data);
-	paircompare_register(PW_TIME_OF_DAY, 0, time_of_day, data);
+	paircompare_register(PW_CURRENT_TIME, 0, timecmp, inst);
+	paircompare_register(PW_TIME_OF_DAY, 0, time_of_day, inst);
 
 	return 0;
 }
@@ -281,6 +267,8 @@ module_t rlm_logintime = {
 	RLM_MODULE_INIT,
 	"logintime",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_logintime_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,		/* detach */
 	{

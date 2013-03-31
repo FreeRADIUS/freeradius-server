@@ -131,7 +131,7 @@ typedef rlm_rcode_t (*packetmethod)(void *instance, REQUEST *request);
  *		alloced by by callback and freed by detach.
  * @return -1 if instantiation failed, else 0.
  */
-typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void **instance);
+typedef int (*instantiate_t)(CONF_SECTION *mod_cs, void *instance);
 
 /** Module detach callback
  *
@@ -156,6 +156,8 @@ typedef struct module_t {
 	const char	*name;	//!< The name of the module (without rlm_
 				//!< prefix).
 	int		type;	//!< One or more of the RLM_TYPE_* constants.
+	size_t		inst_size;	//!< Size of the instance data
+	const CONF_PARSER *config;	//!< Configuration information
 	instantiate_t	instantiate;	//!< Function to use for instantiation.
 	detach_t	detach;	//!< Function to use to free module instance.
 	packetmethod	methods[RLM_COMPONENT_COUNT]; //!< Pointers to the

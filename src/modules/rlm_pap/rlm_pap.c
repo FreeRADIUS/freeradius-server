@@ -84,24 +84,10 @@ static const FR_NAME_NUMBER header_names[] = {
 };
 
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_pap_t *inst;
+	rlm_pap_t *inst = instance;
 	DICT_VALUE *dval;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_pap_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	inst->name = cf_section_name2(conf);
 	if (!inst->name) {
@@ -752,6 +738,8 @@ module_t rlm_pap = {
 	RLM_MODULE_INIT,
 	"PAP",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	sizeof(rlm_pap_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

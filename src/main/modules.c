@@ -561,27 +561,50 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	}
 
 	/*
-	 *	Call the module's instantiation routine.
+	 *	If there is supposed to be instance data, allocate it now.
+	 *	Also parse the configuration data, if required.
 	 */
-	if ((node->entry->module->instantiate) &&
-	    (!check_config || check_config_safe) &&
-	    ((node->entry->module->instantiate)(cs, &node->insthandle) < 0)) {
-		cf_log_err_cs(cs,
-			   "Instantiation failed for module \"%s\"",
-			   instname);
+	if (node->entry->module->inst_size) {
+		/* FIXME: make this rlm_config_t ?? */
+		node->insthandle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
+		rad_assert(node->insthandle != NULL);
+
+		/*
+		 *	So we can see where this configuration is from
+		 *	FIXME: set it to rlm_NAME_t, or some such thing
+		 */
+		talloc_set_name(node->insthandle, "rlm_config_t");
+
+		if (node->entry->module->config &&
+		    (cf_section_parse(cs, node->insthandle,
+				      node->entry->module->config) < 0)) {
+			cf_log_err_cs(cs,
+				      "Invalid configuration for module \"%s\"",
+				      instname);
+			talloc_free(node);
+			return NULL;
+		}
+		
+		/*
+		 *	Set the destructor.
+		 */
 		if (node->entry->module->detach) {
 			talloc_set_destructor((void *) node->insthandle,
 					      node->entry->module->detach);
 		}
-		talloc_free(node->insthandle);
-		talloc_free(node);
-		return NULL;
 	}
 
-	if (node->insthandle) {
-		talloc_set_destructor((void *) node->insthandle,
-				      node->entry->module->detach);
-		talloc_steal(node, node->insthandle);
+	/*
+	 *	Call the module's instantiation routine.
+	 */
+	if ((node->entry->module->instantiate) &&
+	    (!check_config || check_config_safe) &&
+	    ((node->entry->module->instantiate)(cs, node->insthandle) < 0)) {
+		cf_log_err_cs(cs,
+			      "Instantiation failed for module \"%s\"",
+			      instname);
+		talloc_free(node);
+		return NULL;
 	}
 
 	/*

@@ -282,19 +282,10 @@ static int nvp_cleanup(rlm_sqlhpwippool_t *data)
 }
 
 /* standard foobar code */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_sqlhpwippool_t *inst;
+	rlm_sqlhpwippool_t *inst = instance;
 	module_instance_t *sqlinst;
-
-	/* set up a storage area for instance data */
-	*instance = inst = talloc_zero(conf, rlm_sqlhpwippool_t);
-	if (!inst) return -1;
-
-	/* fail if the configuration parameters can't be parsed */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	/* save my name */
 	inst->myname = cf_section_name2(conf);
@@ -775,6 +766,8 @@ module_t rlm_sqlhpwippool = {
 	RLM_MODULE_INIT,
 	"sqlhpwippool",			/* name */
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_sqlhpwippool_t),
+	module_config,
 	mod_instantiate,	/* instantiation */
 	NULL,				/* detach */
 	{

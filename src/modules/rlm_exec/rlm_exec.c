@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 /*
  *	Define a structure for our module configuration.
@@ -55,7 +56,7 @@ static const CONF_PARSER module_config[] = {
 	{ "wait", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,wait), NULL, "yes" },
 	{ "program",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,program), NULL, NULL },
-	{ "input_pairs", PW_TYPE_STRING_PTR,
+	{ "input_pairs", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_exec_t,input), NULL, "request" },
 	{ "output_pairs",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,output), NULL, NULL },
@@ -179,23 +180,9 @@ static int mod_detach(void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_exec_t	*inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_exec_t);
-	if (!inst) return -1;
-	
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_exec_t	*inst = instance;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
@@ -208,11 +195,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	No input pairs defined.  Why are we executing a program?
 	 */
-	if (!inst->input) {
-		cf_log_err_cs(conf, "Must define input pairs for "
-		       "external program");
-		return -1;
-	}
+	rad_assert(inst->input && *inst->input);
 
 	/*
 	 *	Sanity check the config.  If we're told to NOT wait,
@@ -467,6 +450,8 @@ module_t rlm_exec = {
 	RLM_MODULE_INIT,
 	"exec",				/* Name */
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_exec_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

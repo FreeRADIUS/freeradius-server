@@ -120,7 +120,7 @@ static CONF_PARSER message_config[] = {
  *	buffer over-flows.
  */
 static CONF_PARSER module_config[] = {
-  {"sql-instance-name",PW_TYPE_STRING_PTR,
+  {"sql-instance-name",PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
    offsetof(rlm_sqlippool_t,sql_instance_name), NULL, "sql"},
 
   { "lease-duration", PW_TYPE_INTEGER,
@@ -134,11 +134,11 @@ static CONF_PARSER module_config[] = {
 
   { "allocate-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,allocate_begin), NULL, "START TRANSACTION" },
-  { "allocate-clear", PW_TYPE_STRING_PTR,
+  { "allocate-clear", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,allocate_clear), NULL, "" },
-  { "allocate-find", PW_TYPE_STRING_PTR,
+  { "allocate-find", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,allocate_find), NULL, "" },
-  { "allocate-update", PW_TYPE_STRING_PTR,
+  { "allocate-update", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,allocate_update), NULL, "" },
   { "allocate-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,allocate_commit), NULL, "COMMIT" },
@@ -148,35 +148,35 @@ static CONF_PARSER module_config[] = {
 
   { "start-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,start_begin), NULL, "START TRANSACTION" },
-  { "start-update", PW_TYPE_STRING_PTR,
+  { "start-update", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,start_update), NULL, "" },
   { "start-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,start_commit), NULL, "COMMIT" },
 
   { "alive-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,alive_begin), NULL, "START TRANSACTION" },
-  { "alive-update", PW_TYPE_STRING_PTR,
+  { "alive-update", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,alive_update), NULL, "" },
   { "alive-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,alive_commit), NULL, "COMMIT" },
 
   { "stop-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,stop_begin), NULL, "START TRANSACTION" },
-  { "stop-clear", PW_TYPE_STRING_PTR,
+  { "stop-clear", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,stop_clear), NULL, "" },
   { "stop-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,stop_commit), NULL, "COMMIT" },
 
   { "on-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,on_begin), NULL, "START TRANSACTION" },
-  { "on-clear", PW_TYPE_STRING_PTR,
+  { "on-clear", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,on_clear), NULL, "" },
   { "on-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,on_commit), NULL, "COMMIT" },
 
   { "off-begin", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,off_begin), NULL, "START TRANSACTION" },
-  { "off-clear", PW_TYPE_STRING_PTR,
+  { "off-clear", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
     offsetof(rlm_sqlippool_t,off_clear), NULL, "" },
   { "off-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
@@ -375,8 +375,6 @@ static int sqlippool_query1(char *out, int outlen, const char *fmt,
 	return retval;
 }
 
-#define NOT_EMPTY(_x, _y) do { if (!inst->_x || !*inst->_x) { cf_log_err_cs(conf, "the '" _y "' variable must be set"); return -1;}} while (0)
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -387,34 +385,11 @@ static int sqlippool_query1(char *out, int outlen, const char *fmt,
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	module_instance_t *sqlinst;
-	rlm_sqlippool_t *inst;
+	rlm_sqlippool_t *inst = instance;
 	const char *pool_name = NULL;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_sqlippool_t);
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
-
-	NOT_EMPTY(sql_instance_name, "sql-instance-name");
-	NOT_EMPTY(allocate_clear,    "allocate-clear");
-	NOT_EMPTY(allocate_find,     "allocate-find");
-	NOT_EMPTY(allocate_update,   "allocate-update");
-	NOT_EMPTY(start_update,      "start-update");
-	NOT_EMPTY(alive_update,      "alive-update");
-	NOT_EMPTY(stop_clear,        "stop-clear");
-	NOT_EMPTY(on_clear,          "on-clear");
-	NOT_EMPTY(off_clear,         "off-clear");
 
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL)
@@ -722,6 +697,8 @@ module_t rlm_sqlippool = {
 	RLM_MODULE_INIT,
 	"sqlippool",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_sqlippool_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

@@ -43,7 +43,7 @@ RCSID("$Id$")
  * Add MPPE attributes to a request, if required.
  */
 void
-otp_mppe(REQUEST *request, otp_pwe_t pwe, const otp_option_t *opt,
+otp_mppe(REQUEST *request, otp_pwe_t pwe, const rlm_otp_t *opt,
 	 const char *passcode)
 {
   VALUE_PAIR *cvp, *rvp;

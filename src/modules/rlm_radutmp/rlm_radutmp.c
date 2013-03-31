@@ -59,9 +59,9 @@ typedef struct rlm_radutmp_t {
 } rlm_radutmp_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "filename", PW_TYPE_STRING_PTR,
+	{ "filename", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_radutmp_t,filename), NULL,  RADUTMP },
-	{ "username", PW_TYPE_STRING_PTR,
+	{ "username", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_radutmp_t,username), NULL,  "%{User-Name}"},
 	{ "case_sensitive", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_radutmp_t,case_sensitive), NULL,  "yes"},
@@ -73,20 +73,6 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_radutmp_t,callerid_ok), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
-
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
-{
-	rlm_radutmp_t *inst;
-
-	*instance = inst = talloc_zero(conf, rlm_radutmp_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(conf, inst, module_config)) {
-		return -1;
-	}
-
-	return 0;
-}
 
 /*
  *	Zap all users on a NAS from the radutmp file.
@@ -714,7 +700,9 @@ module_t rlm_radutmp = {
 	RLM_MODULE_INIT,
 	"radutmp",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
-	mod_instantiate,	  /* instantiation */
+	sizeof(rlm_radutmp_t),
+	module_config,
+	NULL,			       /* instantiation */
 	NULL,			       /* detach */
 	{
 		NULL,		 /* authentication */

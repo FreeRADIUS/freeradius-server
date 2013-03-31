@@ -104,12 +104,9 @@ static int mod_detach(void *instance)
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	rlm_dhcp_t *inst;
-
-	*instance = inst = talloc_zero(conf, rlm_dhcp_t);
-	if (!inst) return -1;
+	rlm_dhcp_t *inst = instance;
 	
 	xlat_register("dhcp_options", dhcp_options_xlat, inst);
 
@@ -130,6 +127,8 @@ module_t rlm_dhcp = {
 	RLM_MODULE_INIT,
 	"dhcp",
 	0,				/* type */
+	sizeof(rlm_dhcp_t),
+	NULL,				/* CONF_PARSER */
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

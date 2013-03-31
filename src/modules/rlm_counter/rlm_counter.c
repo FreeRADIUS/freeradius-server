@@ -323,9 +323,9 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_counter_t *inst;
+	rlm_counter_t *inst = instance;
 	const DICT_ATTR *dattr;
 	DICT_VALUE *dval;
 	ATTR_FLAGS flags;
@@ -336,19 +336,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	datum time_datum;
 	const char *default1 = "DEFAULT1";
 	const char *default2 = "DEFAULT2";
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_counter_t);
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	cache_size = inst->cache_size;
 
@@ -891,9 +878,11 @@ static int mod_detach(void *instance)
  *	is single-threaded.
  */
 module_t rlm_counter = {
-	 RLM_MODULE_INIT,
+	RLM_MODULE_INIT,
 	"counter",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_counter_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

@@ -32,7 +32,7 @@ RCSID("$Id$")
  *	Find the client definition.
  */
 static rlm_rcode_t mod_authorize(UNUSED void *instance,
-					    REQUEST *request)
+				 REQUEST *request)
 {
 	size_t length;
 	const char *value;
@@ -112,6 +112,8 @@ module_t rlm_dynamic_clients = {
 	RLM_MODULE_INIT,
 	"dynamic_clients",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	0,
+	NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{

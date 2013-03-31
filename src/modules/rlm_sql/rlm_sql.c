@@ -796,14 +796,30 @@ static int parse_sub_section(CONF_SECTION *parent,
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_sql_t *inst;
+	rlm_sql_t *inst = instance;
 	const char *xlat_name;
 
-	*instance = inst = talloc_zero(conf, rlm_sql_t);
-	if (!inst) return -1;
-	
+	/*
+	 *	Hack...
+	 */
+	inst->config = &inst->myconfig;
+	inst->cs = conf;
+
+	/*
+	 *	If the configuration parameters can't be parsed, then fail.
+	 */
+	if ((parse_sub_section(conf, inst,
+			       &inst->config->accounting,
+			       RLM_COMPONENT_ACCT) < 0) ||
+	    (parse_sub_section(conf, inst,
+			       &inst->config->postauth,
+			       RLM_COMPONENT_POST_AUTH) < 0)) {
+		cf_log_err_cs(conf, "Invalid configuration");
+		return -1;
+	}
+		
 	/*
 	 *	Cache the SQL-User-Name DICT_ATTR, so we can be slightly
 	 *	more efficient about creating SQL-User-Name attributes.
@@ -824,9 +840,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
 	
-	inst->config = talloc_zero(inst, rlm_sql_config_t);
-	inst->cs = conf;
-
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name) {
 		xlat_name = cf_section_name1(conf);
@@ -874,21 +887,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	inst->config->xlat_name = talloc_strdup(inst->config, xlat_name);
 	xlat_register(xlat_name, sql_xlat, inst);
 
-	/*
-	 *	If the configuration parameters can't be parsed, then fail.
-	 */
-	if ((cf_section_parse(conf, inst->config, module_config) < 0) ||
-	    (parse_sub_section(conf, inst,
-			       &inst->config->accounting,
-			       RLM_COMPONENT_ACCT) < 0) ||
-	    (parse_sub_section(conf, inst,
-			       &inst->config->postauth,
-			       RLM_COMPONENT_POST_AUTH) < 0)) {
-		radlog(L_ERR, "rlm_sql (%s): Failed parsing configuration",
-		       inst->config->xlat_name);
-		return -1;
-	}
-		
 	/*
 	 *	Sanity check for crazy people.
 	 */
@@ -1512,6 +1510,8 @@ module_t rlm_sql = {
 	RLM_MODULE_INIT,
 	"SQL",
 	RLM_TYPE_THREAD_SAFE,	/* type: reserved */
+	sizeof(rlm_sql_t),
+	module_config,
 	mod_instantiate,	/* instantiation */
 	mod_detach,		/* detach */
 	{

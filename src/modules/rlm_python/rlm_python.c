@@ -48,7 +48,7 @@ struct py_function_def {
 	char     *function_name;
 };
 
-struct rlm_python_t {
+typedef struct rlm_python_t {
 	struct py_function_def
 	instantiate,
 		authorize,
@@ -64,7 +64,7 @@ struct rlm_python_t {
 		send_coa,
 #endif
 		detach;
-};
+} rlm_python_t;
 
 /*
  *	A mapping of configuration file names to internal variables.
@@ -77,8 +77,8 @@ struct rlm_python_t {
  */
 static CONF_PARSER module_config[] = {
 
-#define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.module_name), NULL, NULL }, \
-	{ "func_" #x, PW_TYPE_STRING_PTR, offsetof(struct rlm_python_t, x.function_name), NULL, NULL },
+#define A(x) { "mod_" #x, PW_TYPE_STRING_PTR, offsetof(rlm_python_t, x.module_name), NULL, NULL }, \
+	{ "func_" #x, PW_TYPE_STRING_PTR, offsetof(rlm_python_t, x.function_name), NULL, NULL },
 
 	A(instantiate)
 	A(authorize)
@@ -556,9 +556,9 @@ static void mod_funcdef_clear(struct py_function_def *def)
 	free_and_null(&def->module_name);
 }
 
-static void mod_instance_clear(struct rlm_python_t *data)
+static void mod_instance_clear(rlm_python_t *inst)
 {
-#define A(x) mod_funcdef_clear(&data->x)
+#define A(x) mod_funcdef_clear(&inst->x)
 	
 	A(instantiate);
 	A(authorize);
@@ -582,29 +582,15 @@ static void mod_instance_clear(struct rlm_python_t *data)
  *	in *instance otherwise put a null pointer there.
  *
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	struct rlm_python_t    *data = NULL;
-
-	/*
-	 *      Set up a storage area for instance data
-	 */
-	*instance = data = talloc_zero(conf, struct rlm_python_t);
-	if (!data) return -1;
-
-	/*
-	 *      If the configuration parameters can't be parsed, then
-	 *      fail.
-	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		return -1;
-	}
+	rlm_python_t *inst = instance;
 
 	if (mod_init() != 0) {
 		return -1;
 	}
 
-#define A(x) if (mod_load_function(&data->x) < 0) goto failed
+#define A(x) if (mod_load_function(&inst->x) < 0) goto failed
 
 	A(instantiate);
 	A(authenticate);
@@ -627,27 +613,27 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Call the instantiate function.  No request.  Use the
 	 *	return value.
 	 */
-	return do_python(NULL, data->instantiate.function,
+	return do_python(NULL, inst->instantiate.function,
 			 "instantiate");
 failed:
 	mod_error();
-	mod_instance_clear(data);
+	mod_instance_clear(inst);
 	return -1;
 }
 
 static int mod_detach(void *instance)
 {
-	struct rlm_python_t    *data = (struct rlm_python_t *) instance;
+	rlm_python_t *inst = instance;
 	int	     ret;
 	
-	ret = do_python(NULL, data->detach.function, "detach");
+	ret = do_python(NULL, inst->detach.function, "detach");
 	
-	mod_instance_clear(data);
+	mod_instance_clear(inst);
 	return ret;
 }
 
 #define A(x) static rlm_rcode_t mod_##x(void *instance, REQUEST *request) { \
-		return do_python(request, ((struct rlm_python_t *)instance)->x.function, #x); \
+		return do_python(request, ((rlm_python_t *)instance)->x.function, #x); \
 	}
 
 A(authenticate)
@@ -678,6 +664,8 @@ module_t rlm_python = {
 	RLM_MODULE_INIT,
 	"python",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_python_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,
 	{

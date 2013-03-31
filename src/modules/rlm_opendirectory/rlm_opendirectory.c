@@ -472,6 +472,8 @@ module_t rlm_opendirectory = {
 	RLM_MODULE_INIT,
 	"opendirectory",
 	RLM_TYPE_THREAD_SAFE,	/* type */
+	0,
+	NULL,			/* CONF_PARSER */
 	NULL,			/* instantiation */
 	NULL,			   	/* detach */
 	{

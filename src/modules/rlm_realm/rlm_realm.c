@@ -327,22 +327,14 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
  *  stored in *instance for later use.
  */
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	struct realm_config_t *inst;
+	struct realm_config_t *inst = instance;
 
-	/* setup a storage area for instance data */
-	*instance = inst = talloc_zero(conf, struct realm_config_t);
-	if (!inst) return -1;
-
-	if(cf_section_parse(conf, inst, module_config) < 0) {
-	       return -1;
-	}
-
-	if(strcasecmp(inst->formatstring, "suffix") == 0) {
+	if (strcasecmp(inst->formatstring, "suffix") == 0) {
 	     inst->format = REALM_FORMAT_SUFFIX;
 
-	} else if(strcasecmp(inst->formatstring, "prefix") == 0) {
+	} else if (strcasecmp(inst->formatstring, "prefix") == 0) {
 	     inst->format = REALM_FORMAT_PREFIX;
 
 	} else {
@@ -350,7 +342,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 			      inst->formatstring);
 	     return -1;
 	}
-	if(strlen(inst->delim) != 1) {
+
+	if (strlen(inst->delim) != 1) {
 		cf_log_err_cs(conf, "Invalid value \"%s\" for delimiter",
 			      inst->delim);
 	     return -1;
@@ -481,6 +474,8 @@ module_t rlm_realm = {
 	RLM_MODULE_INIT,
 	"realm",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	sizeof(struct realm_config_t),
+	module_config,
 	mod_instantiate,	       	/* instantiation */
 	NULL,				/* detach */
 	{

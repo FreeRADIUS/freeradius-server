@@ -130,28 +130,15 @@ static int mod_detach(UNUSED void *instance)
 /*
  *	Read the config
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	struct unix_instance *inst;
-
-	/*
-	 *	Allocate room for the instance.
-	 */
-	*instance = inst = talloc_zero(conf, struct unix_instance);
-	if (!inst) return -1;
-
-	/*
-	 *	Parse the configuration, failing if we can't do so.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	struct unix_instance *inst = instance;
 
 	/* FIXME - delay these until a group file has been read so we know
 	 * groupcmp can actually do something */
-	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp, NULL);
+	paircompare_register(PW_GROUP, PW_USER_NAME, groupcmp, inst);
 #ifdef PW_GROUP_NAME /* compat */
-	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp, NULL);
+	paircompare_register(PW_GROUP_NAME, PW_USER_NAME, groupcmp, inst);
 #endif
 
 	return 0;
@@ -515,6 +502,8 @@ module_t rlm_unix = {
 	RLM_MODULE_INIT,
 	"System",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE,
+	sizeof(struct unix_instance),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,		 	/* detach */
 	{

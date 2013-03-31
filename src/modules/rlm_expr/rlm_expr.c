@@ -721,19 +721,9 @@ static int mod_detach(void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_expr_t	*inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_expr_t);
-	if (!inst) return -1;
-	
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_expr_t *inst = instance;
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
@@ -771,6 +761,8 @@ module_t rlm_expr = {
 	RLM_MODULE_INIT,
 	"expr",				/* Name */
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_expr_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

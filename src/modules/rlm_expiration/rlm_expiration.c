@@ -60,7 +60,7 @@ static const CONF_PARSER module_config[] = {
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	rlm_expiration_t *data = (rlm_expiration_t *)instance;
+	rlm_expiration_t *inst = instance;
 	VALUE_PAIR *vp, *check_item = NULL;
 	char msg[MAX_STRING_LEN];
 
@@ -76,8 +76,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		if (((time_t) check_item->vp_date) <= request->timestamp) {
 			RDEBUG("Account has expired");
 
-			if (data->msg && data->msg[0]){
-				if (!radius_xlat(msg, sizeof(msg), data->msg, request, NULL, NULL)) {
+			if (inst->msg && inst->msg[0]){
+				if (!radius_xlat(msg, sizeof(msg), inst->msg, request, NULL, NULL)) {
 					radlog(L_ERR, "rlm_expiration: xlat failed.");
 					return RLM_MODULE_FAIL;
 				}
@@ -146,28 +146,14 @@ static int mod_detach(UNUSED void *instance)
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	rlm_expiration_t *data;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = data = talloc_zero(conf, rlm_expiration_t);
-	if (!data) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		return -1;
-	}
+	rlm_expiration_t *inst = instance;
 
 	/*
 	 * Register the expiration comparison operation.
 	 */
-	paircompare_register(PW_EXPIRATION, 0, expirecmp, data);
+	paircompare_register(PW_EXPIRATION, 0, expirecmp, inst);
 	return 0;
 }
 
@@ -184,6 +170,8 @@ module_t rlm_expiration = {
 	RLM_MODULE_INIT,
 	"expiration",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	sizeof(rlm_expiration_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,		/* detach */
 	{

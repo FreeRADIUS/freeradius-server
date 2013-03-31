@@ -52,7 +52,7 @@ extern char **environ;
  *	a lot cleaner to do so, and a pointer to the structure can
  *	be used as the instance handle.
  */
-typedef struct perl_inst {
+typedef struct rlm_perl_t {
 	/* Name of the perl module */
 	char	*module;
 
@@ -81,53 +81,42 @@ typedef struct perl_inst {
 	pthread_key_t	*thread_key;
 
 	pthread_mutex_t clone_mutex;
-} PERL_INST;
+} rlm_perl_t;
 /*
  *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
  */
+#define RLM_PERL_CONF(_x) { "func_" Stringify(_x), PW_TYPE_STRING_PTR, \
+			offsetof(rlm_perl_t,func_##_x), NULL, Stringify(_x)}
+
 static const CONF_PARSER module_config[] = {
 	{ "module",  PW_TYPE_FILENAME,
-	  offsetof(PERL_INST,module), NULL,  "module"},
-	{ "func_authorize", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_authorize), NULL, "authorize"},
-	{ "func_authenticate", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_authenticate), NULL, "authenticate"},
-	{ "func_accounting", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_accounting), NULL, "accounting"},
-	{ "func_preacct", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_preacct), NULL, "preacct"},
-	{ "func_checksimul", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_checksimul), NULL, "checksimul"},
-	{ "func_detach", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_detach), NULL, "detach"},
-	{ "func_xlat", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_xlat), NULL, "xlat"},
+	  offsetof(rlm_perl_t,module), NULL,  "module"},
+
+	RLM_PERL_CONF(authorize),
+	RLM_PERL_CONF(authenticate),
+	RLM_PERL_CONF(post_auth),
+	RLM_PERL_CONF(accounting),
+	RLM_PERL_CONF(preacct),
+	RLM_PERL_CONF(checksimul),
+	RLM_PERL_CONF(detach),
+	RLM_PERL_CONF(xlat),
+
 #ifdef WITH_PROXY
-	{ "func_pre_proxy", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_pre_proxy), NULL, "pre_proxy"},
-	{ "func_post_proxy", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_post_proxy), NULL, "post_proxy"},
+	RLM_PERL_CONF(pre_proxy),
+	RLM_PERL_CONF(post_proxy),
 #endif
-	{ "func_post_auth", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_post_auth), NULL, "post_auth"},
 #ifdef WITH_COA
-	{ "func_recv_coa", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_recv_coa), NULL, "recv_coa"},
-	{ "func_send_coa", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_send_coa), NULL, "send_coa"},
+	RLM_PERL_CONF(recv_coa),
+	RLM_PERL_CONF(send_coa),
 #endif
 	{ "perl_flags", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,perl_flags), NULL, NULL},
+	  offsetof(rlm_perl_t,perl_flags), NULL, NULL},
+
 	{ "func_start_accounting", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_start_accounting), NULL, NULL},
+	  offsetof(rlm_perl_t,func_start_accounting), NULL, NULL},
+
 	{ "func_stop_accounting", PW_TYPE_STRING_PTR,
-	  offsetof(PERL_INST,func_stop_accounting), NULL, NULL},
+	  offsetof(rlm_perl_t,func_stop_accounting), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -328,7 +317,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 			char *out, size_t freespace)
 {
 
-	PERL_INST	*inst= (PERL_INST *) instance;
+	rlm_perl_t	*inst= (rlm_perl_t *) instance;
 	PerlInterpreter *perl;
 	char		params[1024], *ptr, *tmp;
 	int		count;
@@ -405,9 +394,9 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
  *	parse a module and give him a chance to live
  *
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	PERL_INST       *inst = (PERL_INST *) instance;
+	rlm_perl_t       *inst = instance;
 	AV		*end_AV;
 
 	char **embed;
@@ -415,20 +404,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	const char *xlat_name;
 	int exitstatus = 0, argc=0;
 
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, PERL_INST);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
-	
 	MEM(embed = talloc_zero_array(inst, char *, 4));
 
 	/*
@@ -642,7 +617,7 @@ static int get_hv_content(TALLOC_CTX *ctx, HV *my_hv, VALUE_PAIR **vps)
 static int do_perl(void *instance, REQUEST *request, char *function_name)
 {
 
-	PERL_INST	*inst = instance;
+	rlm_perl_t	*inst = instance;
 	VALUE_PAIR	*vp;
 	int		exitstatus=0, count;
 	STRLEN		n_a;
@@ -656,6 +631,12 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 	HV		*rad_request_proxy_reply_hv;
 #endif
 	
+	/*
+	 *	Radius has told us to call this function, but none
+	 *	is defined.
+	 */
+	if (!function_name) return RLM_MODULE_FAIL;
+
 #ifdef USE_ITHREADS
 	pthread_mutex_lock(&inst->clone_mutex);
 
@@ -678,23 +659,10 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 		ENTER;
 		SAVETMPS;
 
-
-		/*
-		 *	Radius has told us to call this function, but none
-		 *	is defined.
-		 */
-		if (!function_name) {
-			return RLM_MODULE_FAIL;
-		}
-
 		rad_reply_hv = get_hv("RAD_REPLY",1);
 		rad_check_hv = get_hv("RAD_CHECK",1);
 		rad_config_hv = get_hv("RAD_CONFIG",1);
 		rad_request_hv = get_hv("RAD_REQUEST",1);
-#ifdef WITH_PROXY
-		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
-		rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
-#endif
 
 		perl_store_vps(request->reply, request->reply->vps, rad_reply_hv);
 		perl_store_vps(request, request->config_items, rad_check_hv);
@@ -702,6 +670,9 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 		perl_store_vps(request, request->config_items, rad_config_hv);
 
 #ifdef WITH_PROXY
+		rad_request_proxy_hv = get_hv("RAD_REQUEST_PROXY",1);
+		rad_request_proxy_reply_hv = get_hv("RAD_REQUEST_PROXY_REPLY",1);
+
 		if (request->proxy != NULL) {
 			perl_store_vps(request->proxy, request->proxy->vps, rad_request_proxy_hv);
 		} else {
@@ -794,34 +765,30 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 	return exitstatus;
 }
 
-/*
- *	Find the named user in this modules database.  Create the set
- *	of attribute-value pairs to check and reply with for this user
- *	from the database. The authentication code only needs to check
- *	the password, the rest is done here.
- */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_authorize);
-}
+#define RLM_PERL_FUNC(_x) static rlm_rcode_t mod_##_x(void *instance, REQUEST *request) \
+	{								\
+		return do_perl(instance, request,			\
+			       ((rlm_perl_t *)instance)->func_##_x); \
+	}
 
-/*
- *	Authenticate the user with the given password.
- */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_authenticate);
-}
-/*
- *	Massage the request before recording it or proxying it
- */
-static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_preacct);
-}
+RLM_PERL_FUNC(authorize)
+RLM_PERL_FUNC(authenticate)
+RLM_PERL_FUNC(post_auth)
+
+RLM_PERL_FUNC(checksimul)
+
+#ifdef WITH_PROXY
+RLM_PERL_FUNC(pre_proxy)
+RLM_PERL_FUNC(post_proxy)
+#endif
+
+#ifdef WITH_COA
+RLM_PERL_FUNC(recv_coa)
+RLM_PERL_FUNC(send_coa)
+#endif
+
+RLM_PERL_FUNC(preacct)
+
 /*
  *	Write accounting information to this modules database.
  */
@@ -841,91 +808,39 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 
 	case PW_STATUS_START:
 
-		if (((PERL_INST *)instance)->func_start_accounting) {
+		if (((rlm_perl_t *)instance)->func_start_accounting) {
 			return do_perl(instance, request,
-				       ((PERL_INST *)instance)->func_start_accounting);
+				       ((rlm_perl_t *)instance)->func_start_accounting);
 		} else {
 			return do_perl(instance, request,
-				       ((PERL_INST *)instance)->func_accounting);
+				       ((rlm_perl_t *)instance)->func_accounting);
 		}
 		break;
 
 	case PW_STATUS_STOP:
 
-		if (((PERL_INST *)instance)->func_stop_accounting) {
+		if (((rlm_perl_t *)instance)->func_stop_accounting) {
 			return do_perl(instance, request,
-				       ((PERL_INST *)instance)->func_stop_accounting);
+				       ((rlm_perl_t *)instance)->func_stop_accounting);
 		} else {
 			return do_perl(instance, request,
-				       ((PERL_INST *)instance)->func_accounting);
+				       ((rlm_perl_t *)instance)->func_accounting);
 		}
 		break;
 	default:
 		return do_perl(instance, request,
-			       ((PERL_INST *)instance)->func_accounting);
+			       ((rlm_perl_t *)instance)->func_accounting);
 
 	}
 }
-/*
- *	Check for simultaneouse-use
- */
-static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_checksimul);
-}
 
-#ifdef WITH_PROXY
-/*
- *	Pre-Proxy request
- */
-static rlm_rcode_t mod_pre_proxy(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_pre_proxy);
-}
-/*
- *	Post-Proxy request
- */
-static rlm_rcode_t mod_post_proxy(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_post_proxy);
-}
-#endif
 
-/*
- *	Pre-Auth request
- */
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_post_auth);
-}
-#ifdef WITH_COA
-/*
- *	Recv CoA request
- */
-static rlm_rcode_t mod_recv_coa(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_recv_coa);
-}
-/*
- *	Send CoA request
- */
-static rlm_rcode_t mod_send_coa(void *instance, REQUEST *request)
-{
-	return do_perl(instance, request,
-		       ((PERL_INST *)instance)->func_send_coa);
-}
-#endif
 /*
  * Detach a instance give a chance to a module to make some internal setup ...
  */
 static int mod_detach(void *instance)
 {
-	PERL_INST	*inst = (PERL_INST *) instance;
+	rlm_perl_t	*inst = (rlm_perl_t *) instance;
 	int 		exitstatus = 0, count = 0;
 
 #if 0
@@ -1011,6 +926,8 @@ module_t rlm_perl = {
 #else
 	RLM_TYPE_THREAD_UNSAFE,
 #endif
+	sizeof(rlm_perl_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

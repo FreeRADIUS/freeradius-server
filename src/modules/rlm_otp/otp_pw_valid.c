@@ -70,7 +70,7 @@ static pthread_mutex_t otp_fd_head_mutex = PTHREAD_MUTEX_INITIALIZER;
  * NB: The returned passcode will contain the PIN!  DO NOT LOG!
  */
 int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
-		 const otp_option_t *opt,
+		 const rlm_otp_t *opt,
 		 char passcode[OTP_MAX_PASSCODE_LEN + 1])
 {
 	otp_request_t	otp_request;
@@ -229,7 +229,7 @@ int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
  * Returns an OTP_* code, or -1 on system failure.
  * Fills in reply.
  */
-static int otp_verify(const otp_option_t *opt,
+static int otp_verify(const rlm_otp_t *opt,
 		      const otp_request_t *request, otp_reply_t *reply)
 {
 	otp_fd_t *fdp;
@@ -400,7 +400,7 @@ static int otp_connect(const char *path)
  * requests to otpd and we have no way to demultiplex
  * the responses.
  */
-static otp_fd_t * otp_getfd(const otp_option_t *opt)
+static otp_fd_t * otp_getfd(const rlm_otp_t *opt)
 {
 	int rc;
 	otp_fd_t *fdp;

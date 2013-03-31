@@ -137,19 +137,10 @@ static int mod_detach(void *instance)
 /*
  *	(Re-)read the "attrs" file into memory.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	rlm_attr_filter_t *inst;
+	rlm_attr_filter_t *inst = instance;
 	int rcode;
-
-	*instance = inst = talloc_zero(conf, rlm_attr_filter_t);
-	if (!inst) {
-		return -1;
-	}
-
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	rcode = attr_filter_getfile(inst->file, &inst->attrs);
 	if (rcode != 0) {
@@ -338,44 +329,34 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 	return RLM_MODULE_UPDATED;
 }
 
-static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
-{
-	return attr_filter_common(instance, request, request->packet);
-}
+#define RLM_AF_FUNC(_x, _y) static rlm_rcode_t mod_##_x(void *instance, REQUEST *request) \
+			{ \
+				return attr_filter_common(instance, request, request->_y); \
+			}
 
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
-{
-	return attr_filter_common(instance, request, request->reply);
-}
+RLM_AF_FUNC(authorize, packet)
+RLM_AF_FUNC(post_auth, reply)
+
+RLM_AF_FUNC(preacct, packet)
+RLM_AF_FUNC(accounting, reply)
 
 #ifdef WITH_PROXY
-static rlm_rcode_t attr_filter_preproxy(void *instance, REQUEST *request)
-{
-	return attr_filter_common(instance, request, request->proxy);
-}
-
-static rlm_rcode_t attr_filter_postproxy(void *instance, REQUEST *request)
-{
-	return attr_filter_common(instance, request, request->proxy_reply);
-}
+RLM_AF_FUNC(pre_proxy, proxy)
+RLM_AF_FUNC(post_proxy, proxy_reply)
 #endif
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
-{
-	return attr_filter_common(instance, request, request->reply);
-}
-
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
-{
-	return attr_filter_common(instance, request, request->packet);
-}
-
+#ifdef WITH_COA
+RLM_AF_FUNC(recv_coa, packet)
+RLM_AF_FUNC(send_coa, reply)
+#endif
 
 /* globally exported name */
 module_t rlm_attr_filter = {
 	RLM_MODULE_INIT,
 	"attr_filter",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	sizeof(rlm_attr_filter_t),
+	module_config,
 	mod_instantiate,	/* instantiation */
 	mod_detach,		/* detach */
 	{
@@ -385,12 +366,17 @@ module_t rlm_attr_filter = {
 		mod_accounting,	/* accounting */
 		NULL,			/* checksimul */
 #ifdef WITH_PROXY
-		attr_filter_preproxy,	/* pre-proxy */
-		attr_filter_postproxy,	/* post-proxy */
+		mod_pre_proxy,	/* pre-proxy */
+		mod_post_proxy,	/* post-proxy */
 #else
 		NULL, NULL,
 #endif
 		mod_post_auth	/* post-auth */
+#ifdef WITH_COA
+		,
+		mod_recv_coa,
+		mod_send_coa
+#endif
 	},
 };
 

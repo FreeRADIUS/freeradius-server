@@ -113,17 +113,10 @@ static int detail_cmp(const void *a, const void *b)
 /*
  *	(Re-)read radiusd.conf into memory.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	detail_instance_t *inst;
+	detail_instance_t *inst = instance;
 	CONF_SECTION	*cs;
-
-	*instance = inst = talloc_zero(conf, detail_instance_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	/*
 	 *	Suppress certain attributes.
@@ -588,6 +581,8 @@ module_t rlm_detail = {
 	RLM_MODULE_INIT,
 	"detail",
 	RLM_TYPE_THREAD_UNSAFE | RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,
+	sizeof(detail_instance_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

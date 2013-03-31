@@ -253,7 +253,7 @@ static void cablelabs_vsa_hack(VALUE_PAIR **list)
 /*
  *	Mangle username if needed, IN PLACE.
  */
-static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
+static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 {
 	int		num_proxy_state;
 	VALUE_PAIR	*namepair;
@@ -271,7 +271,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 	  return;
 	}
 
-	if (data->with_ntdomain_hack) {
+	if (inst->with_ntdomain_hack) {
 		char		*ptr;
 		char		newname[MAX_STRING_LEN];
 
@@ -289,7 +289,7 @@ static void rad_mangle(rlm_preprocess_t *data, REQUEST *request)
 		}
 	}
 
-	if (data->with_specialix_jetstream_hack) {
+	if (inst->with_specialix_jetstream_hack) {
 		char		*ptr;
 
 		/*
@@ -517,33 +517,20 @@ static int add_nas_attr(REQUEST *request)
 /*
  *	Initialize.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	int	rcode;
-	rlm_preprocess_t *data;
-
-	/*
-	 *	Allocate room to put the module's instantiation data.
-	 */
-	*instance = data = talloc_zero(conf, rlm_preprocess_t);
-	if (!data) return -1;
-
-	/*
-	 *	Read this modules configuration data.
-	 */
-	if (cf_section_parse(conf, data, module_config) < 0) {
-		return -1;
-	}
+	rlm_preprocess_t *inst = instance;
 
 	/*
 	 *	Read the huntgroups file.
 	 */
-	if (data->huntgroup_file) {
-		rcode = pairlist_read(data->huntgroup_file,
-				      &(data->huntgroups), 0);
+	if (inst->huntgroup_file) {
+		rcode = pairlist_read(inst->huntgroup_file,
+				      &(inst->huntgroups), 0);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_preprocess: Error reading %s",
-			       data->huntgroup_file);
+			       inst->huntgroup_file);
 			return -1;
 		}
 	}
@@ -551,11 +538,11 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Read the hints file.
 	 */
-	if (data->hints_file) {
-		rcode = pairlist_read(data->hints_file, &(data->hints), 0);
+	if (inst->hints_file) {
+		rcode = pairlist_read(inst->hints_file, &(inst->hints), 0);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_preprocess: Error reading %s",
-			       data->hints_file);
+			       inst->hints_file);
 			return -1;
 		}
 	}
@@ -569,25 +556,25 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	int r;
-	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
+	rlm_preprocess_t *inst = instance;
 
 	/*
 	 *	Mangle the username, to get rid of stupid implementation
 	 *	bugs.
 	 */
-	rad_mangle(data, request);
+	rad_mangle(inst, request);
 
-	if (data->with_ascend_hack) {
+	if (inst->with_ascend_hack) {
 		/*
 		 *	If we're using Ascend systems, hack the NAS-Port-Id
 		 *	in place, to go from Ascend's weird values to something
 		 *	approaching rationality.
 		 */
 		ascend_nasport_hack(pairfind(request->packet->vps, PW_NAS_PORT, 0, TAG_ANY),
-				    data->ascend_channels_per_line);
+				    inst->ascend_channels_per_line);
 	}
 
-	if (data->with_cisco_vsa_hack) {
+	if (inst->with_cisco_vsa_hack) {
 	 	/*
 		 *	We need to run this hack because the h323-conf-id
 		 *	attribute should be used.
@@ -595,7 +582,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		cisco_vsa_hack(request);
 	}
 
-	if (data->with_alvarion_vsa_hack) {
+	if (inst->with_alvarion_vsa_hack) {
 	 	/*
 		 *	We need to run this hack because the Alvarion
 		 *	people are crazy.
@@ -603,7 +590,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		alvarion_vsa_hack(request->packet->vps);
 	}
 
-	if (data->with_cablelabs_vsa_hack) {
+	if (inst->with_cablelabs_vsa_hack) {
 	 	/*
 		 *	We need to run this hack because the Cablelabs
 		 *	people are crazy.
@@ -621,7 +608,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	hints_setup(data->hints, request);
+	hints_setup(inst->hints, request);
 
 	/*
 	 *      If there is a PW_CHAP_PASSWORD attribute but there
@@ -639,7 +626,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	}
 
 	if ((r = huntgroup_access(request,
-				  data->huntgroups)) != RLM_MODULE_OK) {
+				  inst->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
 		radlog_request(L_AUTH, 0, request, "No huntgroup access: [%s] (%s)",
 		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
@@ -657,15 +644,15 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 {
 	int r;
 	VALUE_PAIR *vp;
-	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
+	rlm_preprocess_t *inst = instance;
 
 	/*
 	 *  Ensure that we have the SAME user name for both
 	 *  authentication && accounting.
 	 */
-	rad_mangle(data, request);
+	rad_mangle(inst, request);
 
-	if (data->with_cisco_vsa_hack) {
+	if (inst->with_cisco_vsa_hack) {
 	 	/*
 		 *	We need to run this hack because the h323-conf-id
 		 *	attribute should be used.
@@ -673,7 +660,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 		cisco_vsa_hack(request);
 	}
 
-	if (data->with_alvarion_vsa_hack) {
+	if (inst->with_alvarion_vsa_hack) {
 	 	/*
 		 *	We need to run this hack because the Alvarion
 		 *	people are crazy.
@@ -681,7 +668,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 		alvarion_vsa_hack(request->packet->vps);
 	}
 
-	if (data->with_cablelabs_vsa_hack) {
+	if (inst->with_cablelabs_vsa_hack) {
 	 	/*
 		 *	We need to run this hack because the Cablelabs
 		 *	people are crazy.
@@ -696,7 +683,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 		return RLM_MODULE_FAIL;
 	}
 
-	hints_setup(data->hints, request);
+	hints_setup(inst->hints, request);
 
 	/*
 	 *	Add an event timestamp.  This means that the rest of
@@ -715,7 +702,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 	}
 
 	if ((r = huntgroup_access(request,
-				  data->huntgroups)) != RLM_MODULE_OK) {
+				  inst->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
 		radlog_request(L_INFO, 0, request, "No huntgroup access: [%s] (%s)",
 		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
@@ -731,10 +718,10 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
  */
 static int mod_detach(void *instance)
 {
-	rlm_preprocess_t *data = (rlm_preprocess_t *) instance;
+	rlm_preprocess_t *inst = instance;
 
-	pairlist_free(&(data->huntgroups));
-	pairlist_free(&(data->hints));
+	pairlist_free(&(inst->huntgroups));
+	pairlist_free(&(inst->hints));
 
 	return 0;
 }
@@ -744,6 +731,8 @@ module_t rlm_preprocess = {
 	RLM_MODULE_INIT,
 	"preprocess",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_preprocess_t),
+	module_config,
 	mod_instantiate,	/* instantiation */
 	mod_detach,	/* detach */
 	{

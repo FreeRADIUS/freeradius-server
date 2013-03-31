@@ -283,6 +283,8 @@ module_t rlm_replicate = {
 	RLM_MODULE_INIT,
 	"replicate",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	0,
+	NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{

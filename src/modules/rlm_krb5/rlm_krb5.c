@@ -97,19 +97,12 @@ static int krb5_detach(void *instance)
 	return 0;
 }
 
-static int krb5_instantiate(CONF_SECTION *conf, void **instance)
+static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_krb5_t *inst;
+	rlm_krb5_t *inst = instance;
 	krb5_error_code ret;
-	
 	char *princ_name;
 
-	*instance = inst = talloc_zero(conf, rlm_krb5_t);
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
-	
-	
 #ifdef HEIMDAL_KRB5
 	DEBUG("Using Heimdal Kerberos library");
 #else
@@ -535,6 +528,8 @@ module_t rlm_krb5 = {
 	| RLM_TYPE_THREAD_SAFE
 #endif
 	,
+	sizeof(rlm_krb5_t),
+	module_config,
 	krb5_instantiate,   		/* instantiation */
 	krb5_detach,			/* detach */
 	{

@@ -96,23 +96,9 @@ static const CONF_PARSER module_config[] = {
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_linelog_t *inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_linelog_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_linelog_t *inst = instance;
 
 	rad_assert(inst->filename && *inst->filename);
 
@@ -337,6 +323,8 @@ module_t rlm_linelog = {
 	RLM_MODULE_INIT,
 	"linelog",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_linelog_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{

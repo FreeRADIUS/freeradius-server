@@ -112,20 +112,13 @@ static int eap_handler_ptr_cmp(const void *a, const void *b)
 /*
  * read the config section and load all the eap authentication types present.
  */
-static int mod_instantiate(CONF_SECTION *cs, void **instance)
+static int mod_instantiate(CONF_SECTION *cs, void *instance)
 {
 	int		i, ret;
 	eap_type_t	method;
 	int		num_methods;
 	CONF_SECTION 	*scs;
-	rlm_eap_t	*inst;
-
-	*instance = inst = talloc_zero(cs, rlm_eap_t);
-	if (!inst) return -1;
-
-	if (cf_section_parse(cs, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_eap_t	*inst = instance;
 
 	/*
 	 *	Create our own random pool.
@@ -767,6 +760,8 @@ module_t rlm_eap = {
 	RLM_MODULE_INIT,
 	"eap",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	sizeof(rlm_eap_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

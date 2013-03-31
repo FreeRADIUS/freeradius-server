@@ -611,6 +611,8 @@ module_t rlm_digest = {
 	RLM_MODULE_INIT,
 	"digest",
 	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	0,
+	NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{

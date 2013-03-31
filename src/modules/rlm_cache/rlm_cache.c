@@ -715,20 +715,11 @@ static int mod_detach(void *instance)
 /*
  *	Instantiate the module.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_cache_t *inst;
+	rlm_cache_t *inst = instance;
 
-	*instance = inst = talloc_zero(conf, rlm_cache_t);
 	inst->cs = conf;
-	
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	inst->xlat_name = cf_section_name2(conf);
 	if (!inst->xlat_name) {
@@ -853,6 +844,8 @@ module_t rlm_cache = {
 	RLM_MODULE_INIT,
 	"cache",
 	0,				/* type */
+	sizeof(rlm_cache_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

@@ -64,6 +64,8 @@ module_t rlm_utf8 = {
 	RLM_MODULE_INIT,
 	"utf8",
 	RLM_TYPE_THREAD_SAFE,		/* type */
+	0,
+	NULL,				/* CONF_PARSER */
 	NULL,				/* instantiation */
 	NULL,				/* detach */
 	{

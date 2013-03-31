@@ -430,18 +430,9 @@ static int mod_detach(void *instance)
 }
 
 
-static rlm_rcode_t mod_instantiate(CONF_SECTION *conf, void **instance)
+static rlm_rcode_t mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_securid_t *inst;
-
-	/* Set up a storage area for instance data */
-	*instance = inst = talloc_zero(conf, rlm_securid_t);
-	if (!inst) return -1;
-
-	/* If the configuration parameters can't be parsed, then fail. */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_securid_t *inst = instance;
 
 	/*
 	 *	Lookup sessions in the tree.  We don't free them in
@@ -559,6 +550,8 @@ module_t rlm_securid = {
 	RLM_MODULE_INIT,
 	"securid",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	sizeof(rlm_securid_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

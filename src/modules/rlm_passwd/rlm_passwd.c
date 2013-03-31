@@ -393,7 +393,7 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	int nfields=0, keyfield=-1, listable=0;
 	char *s;
@@ -401,14 +401,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	size_t len;
 	int i;
 	const DICT_ATTR * da;
-	struct passwd_instance *inst;
-
-	*instance = inst = talloc_zero(conf, struct passwd_instance);
-	if (!inst) return -1;
-
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	struct passwd_instance *inst = instance;
 
 	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->format && *inst->format);
@@ -560,6 +553,8 @@ module_t rlm_passwd = {
 	RLM_MODULE_INIT,
 	"passwd",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,   	/* type */
+	sizeof(struct passwd_instance),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

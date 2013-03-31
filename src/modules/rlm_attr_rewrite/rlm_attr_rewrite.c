@@ -79,25 +79,9 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_attr_rewrite_t *inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_attr_rewrite_t);
-	if (!inst) {
-		return -1;
-	}
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_attr_rewrite_t *inst = instance;
 
 	/*
 	 *	Discover the attribute number of the key.
@@ -433,47 +417,27 @@ to_do_again:
 	return rcode;
 }
 
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
+#define RLM_AR_FUNC(_x) static rlm_rcode_t mod_##_x(void *instance, REQUEST *request) \
+			 { \
+				return do_attr_rewrite(instance, request); \
+			 }		
 
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
-
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
-
-static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
-
-static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
+RLM_AR_FUNC(authorize)
+RLM_AR_FUNC(authenticate)
+RLM_AR_FUNC(post_auth)
+RLM_AR_FUNC(preacct)
+RLM_AR_FUNC(accounting)
+RLM_AR_FUNC(checksimul)
 
 #ifdef WITH_PROXY
-static rlm_rcode_t attr_rewrite_preproxy(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
-
-static rlm_rcode_t attr_rewrite_postproxy(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
+RLM_AR_FUNC(pre_proxy)
+RLM_AR_FUNC(post_proxy)
 #endif
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
-{
-	return do_attr_rewrite(instance, request);
-}
+#ifdef WITH_COA
+RLM_AR_FUNC(recv_coa)
+RLM_AR_FUNC(send_coa)
+#endif
 
 /*
  *	The module name should be the only globally exported symbol.
@@ -488,6 +452,8 @@ module_t rlm_attr_rewrite = {
 	RLM_MODULE_INIT,
 	"attr_rewrite",
 	RLM_TYPE_THREAD_UNSAFE,			/* type */
+	sizeof(rlm_attr_rewrite_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,					/* detach */
 	{
@@ -497,11 +463,16 @@ module_t rlm_attr_rewrite = {
 		mod_accounting,	/* accounting */
 		mod_checksimul,	/* checksimul */
 #ifdef WITH_PROXY
-		attr_rewrite_preproxy,		/* pre-proxy */
-		attr_rewrite_postproxy,		/* post-proxy */
+		mod_pre_proxy,		/* pre-proxy */
+		mod_post_proxy,		/* post-proxy */
 #else
 		NULL, NULL,
 #endif
 		mod_post_auth		/* post-auth */
+#ifdef WITH_COA
+		,
+		mod_recv_coa,
+		mod_send_coa
+#endif
 	},
 };

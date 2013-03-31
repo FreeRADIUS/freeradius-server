@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include	<fcntl.h>
 #include	<limits.h>
 
-struct file_instance {
+typedef struct rlm_files_t {
 	char *compat_mode;
 
 	char *key;
@@ -62,7 +62,7 @@ struct file_instance {
 	/* post-authenticate */
 	char *postauth_usersfile;
 	fr_hash_table_t *postauth_users;
-};
+} rlm_files_t;
 
 
 /*
@@ -78,23 +78,23 @@ static int fallthrough(VALUE_PAIR *vp)
 
 static const CONF_PARSER module_config[] = {
 	{ "usersfile",	   PW_TYPE_FILENAME,
-	  offsetof(struct file_instance,usersfile), NULL, NULL },
+	  offsetof(rlm_files_t,usersfile), NULL, NULL },
 	{ "acctusersfile", PW_TYPE_FILENAME,
-	  offsetof(struct file_instance,acctusersfile), NULL, NULL },
+	  offsetof(rlm_files_t,acctusersfile), NULL, NULL },
 #ifdef WITH_PROXY
 	{ "preproxy_usersfile", PW_TYPE_FILENAME,
-	  offsetof(struct file_instance,preproxy_usersfile), NULL, NULL },
+	  offsetof(rlm_files_t,preproxy_usersfile), NULL, NULL },
 	{ "postproxy_usersfile", PW_TYPE_FILENAME,
-	  offsetof(struct file_instance,postproxy_usersfile), NULL, NULL },
+	  offsetof(rlm_files_t,postproxy_usersfile), NULL, NULL },
 #endif
 	{ "auth_usersfile", PW_TYPE_FILENAME,
-	  offsetof(struct file_instance,auth_usersfile), NULL, NULL },
+	  offsetof(rlm_files_t,auth_usersfile), NULL, NULL },
 	{ "postauth_usersfile", PW_TYPE_FILENAME,
-	  offsetof(struct file_instance,postauth_usersfile), NULL, NULL },
+	  offsetof(rlm_files_t,postauth_usersfile), NULL, NULL },
 	{ "compat",	   PW_TYPE_STRING_PTR,
-	  offsetof(struct file_instance,compat_mode), NULL, "cistron" },
+	  offsetof(rlm_files_t,compat_mode), NULL, "cistron" },
 	{ "key",	   PW_TYPE_STRING_PTR,
-	  offsetof(struct file_instance,key), NULL, NULL },
+	  offsetof(rlm_files_t,key), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -321,7 +321,7 @@ static int getusersfile(const char *filename, fr_hash_table_t **pht,
  */
 static int mod_detach(void *instance)
 {
-	struct file_instance *inst = instance;
+	rlm_files_t *inst = instance;
 	fr_hash_table_free(inst->users);
 	fr_hash_table_free(inst->acctusers);
 #ifdef WITH_PROXY
@@ -338,16 +338,9 @@ static int mod_detach(void *instance)
 /*
  *	(Re-)read the "users" file into memory.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	struct file_instance *inst;
-
-	*instance = inst = talloc_zero(conf, struct file_instance);
-	if (!inst) return -1;
-
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	rlm_files_t *inst = instance;
 
 #undef READFILE
 #define READFILE(_x, _y) do { if (getusersfile(inst->_x, &inst->_y, inst->compat_mode) != 0) { radlog(L_ERR, "Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
@@ -369,7 +362,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 /*
  *	Common code called by everything below.
  */
-static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
+static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 		       const char *filename, fr_hash_table_t *ht,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
@@ -474,7 +467,7 @@ static rlm_rcode_t file_common(struct file_instance *inst, REQUEST *request,
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	struct file_instance *inst = instance;
+	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "users", inst->users,
 			   request->packet->vps, &request->reply->vps);
@@ -488,7 +481,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
  */
 static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
-	struct file_instance *inst = instance;
+	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "acct_users", inst->acctusers,
 			   request->packet->vps, &request->reply->vps);
@@ -497,7 +490,7 @@ static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 #ifdef WITH_PROXY
 static rlm_rcode_t file_preproxy(void *instance, REQUEST *request)
 {
-	struct file_instance *inst = instance;
+	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "preproxy_users",
 			   inst->preproxy_users,
@@ -506,7 +499,7 @@ static rlm_rcode_t file_preproxy(void *instance, REQUEST *request)
 
 static rlm_rcode_t file_postproxy(void *instance, REQUEST *request)
 {
-	struct file_instance *inst = instance;
+	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "postproxy_users",
 			   inst->postproxy_users,
@@ -516,7 +509,7 @@ static rlm_rcode_t file_postproxy(void *instance, REQUEST *request)
 
 static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
-	struct file_instance *inst = instance;
+	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "auth_users",
 			   inst->auth_users,
@@ -525,7 +518,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
-	struct file_instance *inst = instance;
+	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "postauth_users",
 			   inst->postauth_users,
@@ -538,6 +531,8 @@ module_t rlm_files = {
 	RLM_MODULE_INIT,
 	"files",
 	RLM_TYPE_CHECK_CONFIG_SAFE | RLM_TYPE_HUP_SAFE,
+	sizeof(rlm_files_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	mod_detach,			/* detach */
 	{

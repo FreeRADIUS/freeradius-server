@@ -26,7 +26,7 @@ RCSIDH(otp_pw_valid_h, "$Id$")
 
 #include <pthread.h>
 #include <sys/types.h>
-#include "extern.h"	/* otp_option_t */
+#include "extern.h"	/* rlm_otp_t */
 #include "otp.h"	/* otp_request_t, otp_reply_t */
 
 typedef struct otp_fd_t {
@@ -37,12 +37,12 @@ typedef struct otp_fd_t {
 } otp_fd_t;
 
 static int otprc2rlmrc(int);
-static int otp_verify(const otp_option_t *,
+static int otp_verify(const rlm_otp_t *,
 		      const otp_request_t *, otp_reply_t *);
 static int otp_read(otp_fd_t *, char *, size_t);
 static int otp_write(otp_fd_t *, const char *, size_t);
 static int otp_connect(const char *);
-static otp_fd_t *otp_getfd(const otp_option_t *);
+static otp_fd_t *otp_getfd(const rlm_otp_t *);
 static void otp_putfd(otp_fd_t *, int);
 
 #endif /* OTP_PW_VALID_H */

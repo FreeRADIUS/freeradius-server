@@ -281,23 +281,9 @@ int rlm_redis_finish_query(REDISSOCK *dissocket)
 	return 0;
 }
 
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	REDIS_INST *inst;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, REDIS_INST);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
+	REDIS_INST *inst = instance;
 
 	inst->xlat_name = cf_section_name2(conf);
 
@@ -323,6 +309,8 @@ module_t rlm_redis = {
 	RLM_MODULE_INIT,
 	"redis",
 	RLM_TYPE_THREAD_SAFE, /* type */
+	sizeof(REDIS_INST),	/* yuck */
+	module_config,
 	mod_instantiate, /* instantiation */
 	mod_detach, /* detach */
 	{

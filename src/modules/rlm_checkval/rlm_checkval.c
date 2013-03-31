@@ -94,25 +94,11 @@ static const CONF_PARSER module_config[] = {
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(CONF_SECTION *conf, void **instance)
+static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_checkval_t *inst;
+	rlm_checkval_t *inst = instance;
 	const DICT_ATTR *da;
 	ATTR_FLAGS flags;
-
-	/*
-	 *	Set up a storage area for instance data
-	 */
-	*instance = inst = talloc_zero(conf, rlm_checkval_t);
-	if (!inst) return -1;
-
-	/*
-	 *	If the configuration parameters can't be parsed, then
-	 *	fail.
-	 */
-	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
 
 	rad_assert(inst->data_type && *inst->data_type);	
 	rad_assert(inst->item_name && *inst->item_name);
@@ -158,7 +144,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 static rlm_rcode_t do_checkval(void *instance, REQUEST *request)
 {
-	rlm_checkval_t *inst = (rlm_checkval_t *) instance;
+	rlm_checkval_t *inst = instance;
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR *check, *item;
 	VALUE_PAIR *tmp;
@@ -277,9 +263,11 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
  *	is single-threaded.
  */
 module_t rlm_checkval = {
-	 RLM_MODULE_INIT,
+	RLM_MODULE_INIT,
 	"checkval",
 	0,				/* type */
+	sizeof(rlm_checkval_t),
+	module_config,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
