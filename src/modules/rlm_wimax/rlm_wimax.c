@@ -479,7 +479,7 @@ module_t rlm_wimax = {
 	RLM_TYPE_THREAD_SAFE,		/* type */
 	sizeof(rlm_wimax_t),
 	module_config,
-	mod_instantiate,		/* instantiation */
+	NULL,			/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
