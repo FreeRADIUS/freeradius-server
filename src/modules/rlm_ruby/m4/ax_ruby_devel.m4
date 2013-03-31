@@ -100,9 +100,9 @@ $ac_distutils_result])
             #  add both paths.
             #
             if test -d "${ruby_path}/${ruby_arch}"; then
-                 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch}"
+                 ruby_path=" -I${ruby_path} -I${ruby_path}/${ruby_arch} -isystem ${ruby_path} -isystem {ruby_path}/${ruby_arch}"
             else
-                 ruby_path=" -I${ruby_path}"
+                 ruby_path=" -I${ruby_path} -isystem ${ruby_path}"
             fi
         fi
         
