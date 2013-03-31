@@ -194,7 +194,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -212,7 +211,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst->input) {
 		cf_log_err_cs(conf, "Must define input pairs for "
 		       "external program");
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -224,7 +222,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	    (inst->output != NULL)) {
 		cf_log_err_cs(conf, "Cannot read output pairs if "
 			      "wait=no");
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -242,7 +239,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 				      "See list of VALUEs for Packet-Type in "
 				      "share/dictionary",
 				      inst->packet_type);
-			mod_detach(inst);
 			return -1;
 		}
 		inst->packet_code = dval->value;

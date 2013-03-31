@@ -552,7 +552,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
 		radlog(L_ERR, "rlm_eap2: Cannot initialize tree");
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -563,7 +562,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 *	some methods.
 	 */
 	if (eap_server_register_methods() < 0) {
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -601,7 +599,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		if (inst->methods[num_types] == EAP_TYPE_NONE) {
 			radlog(L_ERR, "rlm_eap2: Unknown EAP type %s",
 			       auth_type);
-			mod_detach(inst);
 			return -1;
 		}
 
@@ -626,7 +623,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 	if (do_tls && !has_tls) {
 		radlog(L_ERR, "rlm_eap2: TLS has not been configured.  Cannot do methods that need TLS.");
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -636,7 +632,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		 */
 		if (eap_example_server_init_tls(inst) < 0) {
 			radlog(L_ERR, "rlm_eap2: Cannot initialize TLS");
-			mod_detach(inst);
 			return -1;
 		}
 	}

@@ -732,7 +732,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst) return -1;
 	
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		mod_detach(inst);
 		return -1;
 	}
 

@@ -618,14 +618,12 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	inst->pool = fr_connection_pool_init(inst->cs, inst, rlm_ldap_conn_create, NULL, rlm_ldap_conn_delete);
 	if (!inst->pool) {
-		mod_detach(inst);
 		return -1;
 	}
 	
 	return 0;
 
 error:
-	mod_detach(inst);
 	return -1;
 }
 

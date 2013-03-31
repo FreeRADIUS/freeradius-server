@@ -155,16 +155,11 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		method = eap_name2type(name);
 		if (method == PW_EAP_INVALID) {
 			cf_log_err_cs(cs, "Unknown EAP method %s", name);
-			mod_detach(inst);
-			
 			return -1;
 		}
 		
 		if ((method < PW_EAP_MD5) || (method >= PW_EAP_MAX_TYPES)) {
 			cf_log_err_cs(cs, "Invalid EAP method %s (unsupported)", name);
-
-			mod_detach(inst);
-			
 			return -1;
 		}
 
@@ -199,8 +194,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		
 		if (ret < 0) {
 			talloc_steal(inst, inst->methods[method]);
-			mod_detach(inst);
-			
 			return -1;
 		}
 
@@ -210,8 +203,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 	if (num_methods == 0) {
 		cf_log_err_cs(cs, "No EAP method configured, module cannot do anything");
-		mod_detach(inst);
-
 		return -1;
 	}
 
@@ -222,16 +213,12 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	if (method == PW_EAP_INVALID) {
 		cf_log_err_cs(cs, "Unknown default EAP method '%s'",
 		       inst->default_method_name);
-		mod_detach(inst);
-		
 		return -1;
 	}
 
 	if (!inst->methods[method]) {
 		cf_log_err_cs(cs, "No such sub-type for default EAP method %s",
 		       inst->default_method_name);
-		mod_detach(inst);
-		
 		return -1;
 	}
 	inst->default_method = method; /* save the numerical method */
@@ -248,8 +235,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
 		radlog(L_ERR, "rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
-		mod_detach(inst);
-		
 		return -1;
 	}
 
@@ -257,16 +242,12 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 		inst->handler_tree = rbtree_create(eap_handler_ptr_cmp, NULL, 0);
 		if (!inst->handler_tree) {
 			radlog(L_ERR, "rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
-			mod_detach(inst);
-			
 			return -1;
 		}
 
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
 			radlog(L_ERR, "rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
-			mod_detach(inst);
-			
 			return -1;
 		}
 #endif
@@ -275,8 +256,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
 		radlog(L_ERR, "rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
-		mod_detach(inst);
-		
 		return -1;
 	}
 #endif

@@ -379,7 +379,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		if (!dattr) {
 			cf_log_err_cs(conf, "No such attribute %s",
 				      inst->reply_name);
-			mod_detach(inst);
 			return -1;
 		}
 		if (dattr->type != PW_TYPE_INTEGER) {
