@@ -773,7 +773,7 @@ static const char *parse_spaces = "                                             
 int cf_item_parse(CONF_SECTION *cs, const char *name,
 		  int type, void *data, const char *dflt)
 {
-	int deprecated, rcode = 0;
+	int deprecated, required, attribute, rcode;
 	char **q;
 	const char *value;
 	fr_ipaddr_t ipaddr;
@@ -783,28 +783,44 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 	if (!cs) return -1;
 
 	deprecated = (type & PW_TYPE_DEPRECATED);
-	type &= ~PW_TYPE_DEPRECATED;
+	required = (type & PW_TYPE_REQUIRED);
+	attribute = (type & PW_TYPE_ATTRIBUTE);
+	type &= 0xff;		/* normal types are small */
+	rcode = 0;
+
+	if (attribute) required = 1;
 
 	cp = cf_pair_find(cs, name);
 	
 	if (cp) {
 		value = cp->value;
 		
-	} else if (!dflt) {
-		return 1;	/* nothing to parse, return default value */
-
 	} else {
 		rcode = 1;
 		value = dflt;
 	}
 
 	if (!value) {
-		return 0;
+		if (required) {
+			cf_log_err(&(cs->item), "Configuration item '%s' must have a value", name);
+			return -1;
+		}
+		return rcode;
+	}
+
+	if (!*value && required) {
+	is_required:
+		if (!cp) {
+			cf_log_err(&(cs->item), "Configuration item '%s' must not be empty", name);
+		} else {
+			cf_log_err(&(cp->item), "Configuration item'%s' must not be empty", name);
+		}
+		return -1;
 	}
 
 	if (deprecated) {
-		cf_log_err(&(cs->item), "\"%s\" is deprecated.  Please replace "
-			   "it with the up-to-date configuration", name);
+		cf_log_err(&(cs->item), "Configuration item \"%s\" is deprecated.  Please replace "
+			   "it with the up-to-date name", name);
 		if (check_config) {
 			return -1;
 		}
@@ -823,7 +839,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			*(int *)data = 0;
 		} else {
 			*(int *)data = 0;
-			radlog(L_ERR, "Bad value \"%s\" for boolean "
+			cf_log_err(&(cs->item), "Invalid value \"%s\" for boolean "
 			       "variable %s", value, name);
 			return -1;
 		}
@@ -868,6 +884,21 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			}
 		}
 
+		if (required && (!value || !*value)) goto is_required;
+
+		if (attribute) {
+			if (!dict_attrbyname(value)) {
+				if (!cp) {
+					cf_log_err(&(cs->item), "No such attribute '%s' for configuration '%s'",
+						      value, name);
+				} else {
+					cf_log_err(&(cp->item), "No such attribute '%s'",
+						   value);
+				}
+				return -1;
+			}
+		}
+
 		cf_log_info(cs, "%.*s\t%s = \"%s\"",
 			    cs->depth, parse_spaces, name, value ? value : "(null)");
 		*q = value ? talloc_strdup(cs, value) : NULL;
@@ -903,6 +934,8 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 						    value);
 			if (!value) return -1;
 		}
+
+		if (required && (!value || !*value)) goto is_required;
 
 		cf_log_info(cs, "%.*s\t%s = \"%s\"",
 			    cs->depth, parse_spaces, name, value);
@@ -1086,7 +1119,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 
 			if (!variables[i].dflt || !subcs) {
 				DEBUG2("Internal sanity check 1 failed in cf_section_parse %s",
-				       variables[i]);
+				       variables[i].name);
 				goto error;
 			}
 
