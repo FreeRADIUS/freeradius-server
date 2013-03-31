@@ -406,16 +406,20 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		radlog(L_ERR, "rlm_passwd: cann't parse configuration");
 		return -1;
 	}
-	if(!inst->filename || *inst->filename == '\0' || !inst->format || *inst->format == '\0') {
-		radlog(L_ERR, "rlm_passwd: can't find passwd file and/or format in configuration");
+	if(!inst->filename || *inst->filename == '\0') {
+		cf_log_err_cs(conf, "Must specify a 'filename'");
+		return -1;
+	}
+
+	if (!inst->format || *inst->format == '\0') {
+		cf_log_err_cs(conf, "Must specify a 'format'");
 		return -1;
 	}
 
 	if (inst->hashsize == 0) {
-		radlog(L_ERR, "rlm_passwd: hashsize=0 is no longer permitted as it will break the server.");
+		cf_log_err_cs(conf, "Invalid value '0' for hashsize");
 		return -1;
 	}
 
@@ -449,7 +453,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		s++;
 	}while(*s);
 	if(keyfield < 0) {
-		radlog(L_ERR, "rlm_passwd: no field market as key in format: %s", inst->format);
+		cf_log_err_cs(conf, "no field marked as key in format: %s",
+			      inst->format);
 		return -1;
 	}
 	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, *inst->delimiter)) ){
@@ -477,7 +482,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		if (*inst->pwdfmt->field[i] == '~') inst->pwdfmt->field[i]++;
 	}
 	if (!*inst->pwdfmt->field[keyfield]) {
-		radlog(L_ERR, "rlm_passwd: key field is empty");
+		cf_log_err_cs(conf, "key field is empty");
 		release_ht(inst->ht);
 		return -1;
 	}

@@ -59,7 +59,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 	uint8_t pass_str[MAX_STRING_LEN];
 
 	if (!request->username) {
-		radlog_request(L_AUTH, 0, request, "rlm_chap: Attribute \"User-Name\" is required for authentication.\n");
+		RDEBUGW("Attribute \"User-Name\" is required for authentication.\n");
 		return RLM_MODULE_INVALID;
 	}
 

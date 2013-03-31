@@ -186,7 +186,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	
 	if (YUBIKEY_UID_SIZE > MAX_STRING_LEN) {
 		DEBUGE("rlm_yubikey: YUBIKEY_UID_SIZE too big");
-		
 		return -1;
 	}
 	

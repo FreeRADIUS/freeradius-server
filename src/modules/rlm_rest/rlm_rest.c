@@ -147,7 +147,7 @@ static void rlm_rest_cleanup (rlm_rest_t *instance, rlm_rest_section_t *section,
 };
 
 static int parse_sub_section(CONF_SECTION *parent,
-	 		     rlm_rest_t *instance, rlm_rest_section_t *config,
+	 		     rlm_rest_section_t *config,
 	 		     rlm_components_t comp)
 {
 	CONF_SECTION *cs;
@@ -161,8 +161,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	}
 	
 	if (cf_section_parse(cs, config, section_config) < 0) {
-		radlog(L_ERR, "rlm_rest (%s): Parsing config section failed",
-		       instance->xlat_name);
+		cf_log_err_cs(cs, "Failed parsing configuration subsection");
 		return -1;
 	}
 
@@ -179,16 +178,16 @@ static int parse_sub_section(CONF_SECTION *parent,
 				  HTTP_AUTH_UNKNOWN);
 				
 	if (config->auth == HTTP_AUTH_UNKNOWN) {
-		radlog(L_ERR, "rlm_rest (%s): Unknown HTTP auth type \"%s\"",
-		       instance->xlat_name, config->auth_str);
+		cf_log_err_cs(cs, "Unknown HTTP auth type '%s'",
+			      config->auth_str);
 		return -1;	
 	}
 	
 	if (!http_curl_auth[config->auth]) {
-		radlog(L_ERR, "rlm_rest (%s): Unsupported HTTP auth type \"%s\""
+		cf_log_err_cs(cs, "Unsupported HTTP auth type '%s'"
 		       ", check libcurl version, OpenSSL build configuration,"
 		       " then recompile this module",
-		       instance->xlat_name, config->auth_str);
+		       config->auth_str);
 		return -1;
 	}
 				
@@ -199,15 +198,15 @@ static int parse_sub_section(CONF_SECTION *parent,
 				  HTTP_BODY_UNKNOWN);
 
 	if (config->body == HTTP_BODY_UNKNOWN) {
-		radlog(L_ERR, "rlm_rest (%s): Unknown HTTP body type \"%s\"",
-		       instance->xlat_name, config->body_str);
+		cf_log_err_cs(cs, "Unknown HTTP body type '%s'",
+			      config->body_str);
 		return -1;
 	}
 
 	if (http_body_type_supported[config->body] == HTTP_BODY_UNSUPPORTED) {
-		radlog(L_ERR, "rlm_rest (%s): Unsupported HTTP body type \"%s\""
-		       ", please submit patches", instance->xlat_name,
-		       config->body_str);
+		cf_log_err_cs(cs, "Unsupported HTTP body type '%s'"
+			      ", please submit patches",
+			      config->body_str);
 		return -1;
 	}
 
@@ -254,15 +253,15 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Parse sub-section configs.
 	 */
 	if (
-		(parse_sub_section(conf, data, &data->authorize,
+		(parse_sub_section(conf, &data->authorize,
 				   RLM_COMPONENT_AUTZ) < 0) ||
-		(parse_sub_section(conf, data, &data->authenticate,
+		(parse_sub_section(conf, &data->authenticate,
 				   RLM_COMPONENT_AUTH) < 0) ||
-		(parse_sub_section(conf, data, &data->accounting,
+		(parse_sub_section(conf, &data->accounting,
 				   RLM_COMPONENT_ACCT) < 0) ||
-		(parse_sub_section(conf, data, &data->checksimul,
+		(parse_sub_section(conf, &data->checksimul,
 				   RLM_COMPONENT_SESS) < 0) ||
-		(parse_sub_section(conf, data, &data->postauth,
+		(parse_sub_section(conf, &data->postauth,
 				   RLM_COMPONENT_POST_AUTH) < 0))
 	{
 		return -1;

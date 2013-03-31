@@ -161,7 +161,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		radlog(L_ERR, "rlm_expiration: Configuration parsing failed.");
 		return -1;
 	}
 

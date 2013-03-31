@@ -111,18 +111,18 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 	
 	
 #ifdef HEIMDAL_KRB5
-	radlog(L_INFO, "rlm_krb5 (*): Using Heimdal Kerberos library");
+	DEBUG("Using Heimdal Kerberos library");
 #else
-	radlog(L_INFO, "rlm_krb5 (*): Using MIT Kerberos library");
+	DEBUG("Using MIT Kerberos library");
 #endif
 
 #ifndef KRB5_IS_THREAD_SAFE
 	if (!krb5_is_thread_safe()) {
-		DEBUGW("rlm_krb5 (*): libkrb5 is not threadsafe, recompile it with thread support enabled");
-		DEBUGW("rlm_krb5 (*): rlm_krb5 will run in single threaded mode");
+		DEBUGW("libkrb5 is not threadsafe, recompile it with thread support enabled");
+		DEBUGW("rlm_krb5 will run in single threaded mode");
 	} else {
-		DEBUGW("rlm_krb5 (*): Build time krb5 library was not threadsafe, but run time library claims to be");
-		DEBUGW("rlm_krb5 (*): Reconfigure and recompile rlm_krb5 to enable thread support");
+		DEBUGW("Build time krb5 library was not threadsafe, but run time library claims to be");
+		DEBUGW("Reconfigure and recompile rlm_krb5 to enable thread support");
 	}
 #endif
 
@@ -138,7 +138,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	
-	radlog(L_DBG, "rlm_krb5 (%s): Context initialised successfully", inst->xlat_name);
+	radlog(L_DBG, "rlm_krb5 (%s): Context initialised successfully",
+	       inst->xlat_name);
 
 	/*
 	 *	Split service principal into service and host components

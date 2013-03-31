@@ -348,21 +348,20 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
+
 	cache_size = inst->cache_size;
 
 	/*
 	 *	Discover the attribute number of the key.
 	 */
 	if (!inst->key_name) {
-		radlog(L_ERR, "rlm_counter: 'key' must be set.");
-		mod_detach(inst);
+		cf_log_err_cs(conf, "Must set 'key'.");
 		return -1;
 	}
 	dattr = dict_attrbyname(inst->key_name);
 	if (!dattr) {
-		radlog(L_ERR, "rlm_counter: No such attribute %s",
+		cf_log_err_cs(conf, "No such attribute '%s'",
 				inst->key_name);
-		mod_detach(inst);
 		return -1;
 	}
 	inst->key_attr = dattr->attr;
@@ -371,14 +370,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Discover the attribute number of the counter.
 	 */
 	if (!inst->count_attribute) {
-		radlog(L_ERR, "rlm_counter: 'count-attribute' must be set.");
-		mod_detach(inst);
+		cf_log_err_cs(conf, "Must set 'count-attribute'");
 		return -1;
 	}
 	dattr = dict_attrbyname(inst->count_attribute);
 	if (!dattr) {
-		radlog(L_ERR, "rlm_counter: No such attribute %s",
-				inst->count_attribute);
+		cf_log_err_cs(conf, "No such attribute %s",
+			      inst->count_attribute);
 		mod_detach(inst);
 		return -1;
 	}
@@ -390,26 +388,24 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (inst->reply_name != NULL) {
 		dattr = dict_attrbyname(inst->reply_name);
 		if (!dattr) {
-			radlog(L_ERR, "rlm_counter: No such attribute %s",
-					inst->reply_name);
+			cf_log_err_cs(conf, "No such attribute %s",
+				      inst->reply_name);
 			mod_detach(inst);
 			return -1;
 		}
 		if (dattr->type != PW_TYPE_INTEGER) {
-			radlog(L_ERR, "rlm_counter: Reply attribute %s is not of type integer",
-				inst->reply_name);
-			mod_detach(inst);
+			cf_log_err_cs(conf, "Reply attribute' %s' is not of type integer",
+				      inst->reply_name);
 			return -1;
 		}
 		inst->reply_attr = dattr->attr;
 	}
 
-
 	/*
 	 *  Create a new attribute for the counter.
 	 */
 	if (!inst->counter_name) {
-		radlog(L_ERR, "rlm_counter: 'counter-name' must be set.");
+		cf_log_err_cs(conf, "Must set 'counter-name'");
 		return -1;
 	}
 
@@ -422,8 +418,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	dattr = dict_attrbyname(inst->counter_name);
 	if (!dattr) {
-		radlog(L_ERR, "rlm_counter: Failed to find counter attribute %s",
-				inst->counter_name);
+		cf_log_err_cs(conf, "Failed to find counter attribute %s",
+			      inst->counter_name);
 		return -1;
 	}
 	inst->dict_attr = dattr->attr;
@@ -434,7 +430,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 * Create a new attribute for the check item.
 	 */
 	if (!inst->check_name) {
-		radlog(L_ERR, "rlm_counter: 'check-name' must be set.");
+		cf_log_err_cs(conf, "Must set 'check-name'");
 		return -1;
 	}
 	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
@@ -467,7 +463,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 * Find when to reset the database.
 	 */
 	if (!inst->reset) {
-		radlog(L_ERR, "rlm_counter: 'reset' must be set.");
+		cf_log_err_cs(conf, "Must set 'reset'");
 		return -1;
 	}
 	now = time(NULL);

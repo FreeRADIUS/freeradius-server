@@ -103,9 +103,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Set up a storage area for instance data
 	 */
 	*instance = inst = talloc_zero(conf, rlm_checkval_t);
-	if (!inst) {
-		return -1;
-	}
+	if (!inst) return -1;
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
@@ -119,17 +117,30 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 * Check if data_type exists
 	 */
 	if (!inst->data_type || !*inst->data_type){
-		radlog(L_ERR, "rlm_checkval: Data type not defined");
+		cf_log_err_cs(conf, "Must set 'data-type'");
 		return -1;
 	}
 
 	if (!inst->item_name || !*inst->item_name){
-		radlog(L_ERR, "rlm_checkval: Item name not defined");
+		cf_log_err_cs(conf, "Must set 'item-name'");
 		return -1;
 	}
 
 	if (!inst->check_name || !*inst->check_name){
-		radlog(L_ERR, "rlm_checkval: Check item name not defined");
+		cf_log_err_cs(conf, "Must set 'check-name'");
+		return -1;
+	}
+
+
+	/*
+	 *	Convert the string type to an integer type,
+	 *	so we don't have to do string comparisons on each
+	 *	packet.
+	 */
+	inst->type = fr_str2int(dict_attr_types, inst->data_type, 0);
+	if (!inst->type) {
+		cf_log_err_cs(conf, "Invalid data-type '%s'",
+			      inst->data_type);
 		return -1;
 	}
 
@@ -138,7 +149,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	da = dict_attrbyname(inst->item_name);
 	if (!da) {
-		radlog(L_ERR, "rlm_checkval: No such attribute %s",
+		cf_log_err_cs(conf, "No such attribute '%s'",
 		       inst->item_name);
 		return -1;
 	}
@@ -160,18 +171,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	inst->check = da;
 	DEBUG2("rlm_checkval: Registered name %s for attribute %d",
 		da->name,da->attr);
-
-	/*
-	 *	Convert the string type to an integer type,
-	 *	so we don't have to do string comparisons on each
-	 *	packet.
-	 */
-	inst->type = fr_str2int(dict_attr_types, inst->data_type, 0);
-	if (!inst->type) {
-		radlog(L_ERR, "rlm_checkval: Data type %s in not known",
-		       inst->data_type);
-		return -1;
-	}
 
 	return 0;
 }

@@ -346,11 +346,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	     inst->format = REALM_FORMAT_PREFIX;
 
 	} else {
-	     radlog(L_ERR, "Bad value \"%s\" for realm format value", inst->formatstring);
+		cf_log_err_cs(conf, "Invalid value \"%s\" for format",
+			      inst->formatstring);
 	     return -1;
 	}
 	if(strlen(inst->delim) != 1) {
-	     radlog(L_ERR, "Bad value \"%s\" for realm delimiter value", inst->delim);
+		cf_log_err_cs(conf, "Invalid value \"%s\" for delimiter",
+			      inst->delim);
 	     return -1;
 	}
 

@@ -341,7 +341,6 @@ static int mod_detach(void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	struct file_instance *inst;
-	int rcode;
 
 	*instance = inst = talloc_zero(conf, struct file_instance);
 	if (!inst) return -1;
@@ -350,52 +349,19 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	rcode = getusersfile(inst->usersfile, &inst->users, inst->compat_mode);
-	if (rcode != 0) {
-		radlog(L_ERR, "Failed reading %s", inst->usersfile);
-		mod_detach(inst);
-		return -1;
-	}
+#undef READFILE
+#define READFILE(_x, _y) do { if (getusersfile(inst->_x, &inst->_y, inst->compat_mode) != 0) { radlog(L_ERR, "Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
 
-	rcode = getusersfile(inst->acctusersfile, &inst->acctusers, inst->compat_mode);
-	if (rcode != 0) {
-		radlog(L_ERR, "Failed reading %s", inst->acctusersfile);
-		mod_detach(inst);
-		return -1;
-	}
+	READFILE(usersfile, users);
+	READFILE(acctusersfile, acctusers);
 
 #ifdef WITH_PROXY
-	/*
-	 *  Get the pre-proxy stuff
-	 */
-	rcode = getusersfile(inst->preproxy_usersfile, &inst->preproxy_users, inst->compat_mode);
-	if (rcode != 0) {
-		radlog(L_ERR, "Failed reading %s", inst->preproxy_usersfile);
-		mod_detach(inst);
-		return -1;
-	}
-
-	rcode = getusersfile(inst->postproxy_usersfile, &inst->postproxy_users, inst->compat_mode);
-	if (rcode != 0) {
-		radlog(L_ERR, "Failed reading %s", inst->postproxy_usersfile);
-		mod_detach(inst);
-		return -1;
-	}
+	READFILE(preproxy_usersfile, preproxy_users);
+	READFILE(postproxy_usersfile, postproxy_users);
 #endif
 
-	rcode = getusersfile(inst->auth_usersfile, &inst->auth_users, inst->compat_mode);
-	if (rcode != 0) {
-		radlog(L_ERR, "Failed reading %s", inst->auth_usersfile);
-		mod_detach(inst);
-		return -1;
-	}
-
-	rcode = getusersfile(inst->postauth_usersfile, &inst->postauth_users, inst->compat_mode);
-	if (rcode != 0) {
-		radlog(L_ERR, "Failed reading %s", inst->postauth_usersfile);
-		mod_detach(inst);
-		return -1;
-	}
+	READFILE(auth_usersfile, auth_users);
+	READFILE(postauth_usersfile, postauth_users);
 
 	*instance = inst;
 	return 0;

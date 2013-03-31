@@ -100,56 +100,47 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if ((opt->challenge_len < 5) ||
 	    (opt->challenge_len > OTP_MAX_CHALLENGE_LEN)) {
 		opt->challenge_len = 6;
-		
-		radlog(L_ERR, "rlm_otp: %s: invalid challenge_length, "
-		       "range 5-%d, using default of 6", __func__,
-		       OTP_MAX_CHALLENGE_LEN);
+
+		DEBUGW("invalid challenge_length %d, "
+		       "range 5-%d, using default of 6",
+		       opt->challenge_len, OTP_MAX_CHALLENGE_LEN);
 	}
 
 	if (!opt->allow_sync && !opt->allow_async) {
-		radlog(L_ERR, "rlm_otp: %s: at least one of {allow_async, "
-		       "allow_sync} must be set", __func__);
+		cf_log_err_cs(conf, "at least one of {allow_async, "
+			      "allow_sync} must be set");
 		return -1;
 	}
 
 	if ((opt->mschapv2_mppe_policy > 2) ||
 	    (opt->mschapv2_mppe_policy < 0)) {
 		opt->mschapv2_mppe_policy = 2;
-		
-		radlog(L_ERR, "rlm_otp: %s: invalid value for mschapv2_mppe, "
-		       "using default of 2", __func__);
+		DEBUGW("Invalid value for mschapv2_mppe, "
+			"using default of 2");
 	}
 
 	if ((opt->mschapv2_mppe_types > 2) || (opt->mschapv2_mppe_types < 0)) {
 		opt->mschapv2_mppe_types = 2;
-		radlog(L_ERR, "rlm_otp: %s: invalid value for "
-		       "mschapv2_mppe_bits, using default of 2", __func__);
+		DEBUGW("Invalid value for "
+		       "mschapv2_mppe_bits, using default of 2");
 	}
 
 	if ((opt->mschap_mppe_policy > 2) || (opt->mschap_mppe_policy < 0)) {
 		opt->mschap_mppe_policy = 2;
-		radlog(L_ERR, "rlm_otp: %s: invalid value for mschap_mppe, "
-		       "using default of 2", __func__);
+		DEBUGW("Invalid value for mschap_mppe, "
+		       "using default of 2");
   	}
 
   	if (opt->mschap_mppe_types != 2) {
 		opt->mschap_mppe_types = 2;
-		radlog(L_ERR, "rlm_otp: %s: invalid value for "
-		       "mschap_mppe_bits, using default of 2", __func__);
+		DEBUGW("Invalid value for "
+		       "mschap_mppe_bits, using default of 2");
 	}
 
 	/* set the instance name (for use with authorize()) */
 	opt->name = cf_section_name2(conf);
-	if (!opt->name) {
-    		opt->name = cf_section_name1(conf);
-    	}
+	if (!opt->name) opt->name = cf_section_name1(conf);
     	
-  	if (!opt->name) {
-		radlog(L_ERR, "rlm_otp: %s: no instance name "
-		       "(this can't happen)", __func__);
-    		return -1;
-	}
-
 	return 0;
 }
 
@@ -186,16 +177,16 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	/* User-Name attribute required. */
 	if (!request->username) {
-		radlog(L_AUTH, "rlm_otp: %s: Attribute \"User-Name\" "
-		       "required for authentication.", __func__);
+		RDEBUGW("Attribute \"User-Name\" "
+		       "required for authentication.");
 		
 		return RLM_MODULE_INVALID;
 	}
 
 	if (otp_pwe_present(request) == 0) {
-		radlog(L_AUTH, "rlm_otp: %s: Attribute "
-		       "\"User-Password\" or equivalent required "
-		       "for authentication.", __func__);
+		RDEBUGW("Attribute "
+			"\"User-Password\" or equivalent required "
+			"for authentication.");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -339,8 +330,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 	/* User-Name attribute required. */
 	if (!request->username) {
-		radlog(L_AUTH, "rlm_otp: %s: Attribute \"User-Name\" required "
-	  	       "for authentication.", __func__);
+		RDEBUGW("Attribute \"User-Name\" required "
+			"for authentication.");
 	  	
 		return RLM_MODULE_INVALID;
 	}
@@ -349,8 +340,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	
 	pwe = otp_pwe_present(request);
 	if (pwe == 0) {
-		radlog(L_AUTH, "rlm_otp: %s: Attribute \"User-Password\" "
-		       "or equivalent required for authentication.", __func__);
+		RDEBUGW("Attribute \"User-Password\" "
+			"or equivalent required for authentication.");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -373,9 +364,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		elen = (inst->challenge_len * 2) + 8 + 8 + 32;
 
 		if (vp->length != elen) {
-			radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: "
-			       "length", __func__, username);
-
+			RDEBUGE("Bad radstate for [%s]: length", username);
 			return RLM_MODULE_INVALID;
 		}
 
@@ -392,8 +381,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		len = fr_hex2bin(vp->vp_strvalue, bin_state, vp->length);
 		if (len != (vp->length / 2)) {
-			radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: "
-			       "not hex", __func__, username);
+			RDEBUGE("bad radstate for [%s]: not hex", username);
 		
 			return RLM_MODULE_INVALID;
 		}
@@ -420,8 +408,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	to verify hmac.
 		 */
 		if (memcmp(gen_state, vp->vp_octets, vp->length)) {
-			radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: "
-			       "hmac", __func__, username);
+			RDEBUGE("bad radstate for [%s]: hmac", username);
 	
 			return RLM_MODULE_REJECT;
 		}
@@ -431,8 +418,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		then = ntohl(then);
 		if (time(NULL) - then > inst->challenge_delay) {
-			radlog(L_AUTH, "rlm_otp: %s: bad radstate for [%s]: "
-			       "expired", __func__, username);
+			RDEBUGE("bad radstate for [%s]: expired",username);
 
 			return RLM_MODULE_REJECT;
 		}

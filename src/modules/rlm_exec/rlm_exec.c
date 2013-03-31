@@ -31,7 +31,7 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_exec_t {
-	const char		*xlat_name;
+	const char	*xlat_name;
 	int		bare;
 	int		wait;
 	char		*program;
@@ -182,7 +182,6 @@ static int mod_detach(void *instance)
 static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_exec_t	*inst;
-	const char	*xlat_name;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -190,33 +189,29 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	*instance = inst = talloc_zero(conf, rlm_exec_t);
 	if (!inst) return -1;
 	
-	xlat_name = cf_section_name2(conf);
-	if (!xlat_name) {
-		xlat_name = cf_section_name1(conf);
-		inst->bare = 1;
-	}
-	if (xlat_name) {
-		inst->xlat_name = xlat_name;
-		xlat_register(xlat_name, exec_xlat, inst);
-	}
-
 	/*
 	 *	If the configuration parameters can't be parsed, then
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		radlog(L_ERR, "rlm_exec (%s): Failed parsing the "
-		       "configuration", xlat_name);
 		mod_detach(inst);
 		return -1;
 	}
+
+	inst->xlat_name = cf_section_name2(conf);
+	if (!inst->xlat_name) {
+		inst->xlat_name = cf_section_name1(conf);
+		inst->bare = 1;
+	}
+
+	xlat_register(inst->xlat_name, exec_xlat, inst);
 
 	/*
 	 *	No input pairs defined.  Why are we executing a program?
 	 */
 	if (!inst->input) {
-		radlog(L_ERR, "rlm_exec (%s): Must define input pairs for "
-		       "external program", xlat_name);
+		cf_log_err_cs(conf, "Must define input pairs for "
+		       "external program");
 		mod_detach(inst);
 		return -1;
 	}
@@ -227,8 +222,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	if (!inst->wait &&
 	    (inst->output != NULL)) {
-		radlog(L_ERR, "rlm_exec (%s): Cannot read output pairs if "
-			      "wait=no", xlat_name);
+		cf_log_err_cs(conf, "Cannot read output pairs if "
+			      "wait=no");
 		mod_detach(inst);
 		return -1;
 	}
@@ -243,10 +238,10 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 		dval = dict_valbyname(PW_PACKET_TYPE, 0, inst->packet_type);
 		if (!dval) {
-			radlog(L_ERR, "rlm_exec (%s): Unknown packet type %s: "
-			       "See list of VALUEs for Packet-Type in "
-			       "share/dictionary", xlat_name,
-			       inst->packet_type);
+			cf_log_err_cs(conf, "Unknown packet type %s: "
+				      "See list of VALUEs for Packet-Type in "
+				      "share/dictionary",
+				      inst->packet_type);
 			mod_detach(inst);
 			return -1;
 		}

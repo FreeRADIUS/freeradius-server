@@ -535,9 +535,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	data->huntgroups = NULL;
-	data->hints = NULL;
-
 	/*
 	 *	Read the huntgroups file.
 	 */

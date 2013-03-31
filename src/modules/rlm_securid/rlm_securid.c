@@ -440,7 +440,6 @@ static rlm_rcode_t mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	/* If the configuration parameters can't be parsed, then fail. */
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		radlog(L_ERR, "rlm_securid: Unable to parse configuration section.");
 		return -1;
 	}
 

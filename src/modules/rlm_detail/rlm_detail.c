@@ -122,7 +122,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -149,13 +148,12 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 			da = dict_attrbyname(attr);
 			if (!da) {
-				radlog(L_INFO, "rlm_detail: WARNING: No such attribute %s: Cannot suppress printing it.", attr);
-				continue;
+				cf_log_err_cs(conf, "No such attribute '%s'",
+					      attr);
 			}
 
 			if (!fr_hash_table_insert(inst->ht, da)) {
 				radlog(L_ERR, "rlm_detail: Failed trying to remember %s", attr);
-				mod_detach(inst);
 				return -1;
 			}
 		}

@@ -142,7 +142,6 @@ typedef struct rlm_mschap_t {
 	int require_encryption;
 	int require_strong;
 	int with_ntdomain_hack;	/* this should be in another module */
-	char *passwd_file;
 	const char *xlat_name;
 	char *ntlm_auth;
 	char *ntlm_cpw;
@@ -547,8 +546,6 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t,require_strong), NULL, "no" },
 	{ "with_ntdomain_hack",     PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "yes" },
-	{ "passwd",   PW_TYPE_STRING_PTR,
-	  offsetof(rlm_mschap_t, passwd_file), NULL,  NULL },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
 	{ "passchange", PW_TYPE_SUBSECTION, 0, NULL, (const void *) passchange_config },
@@ -590,17 +587,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (!inst) return -1;
 
 	if (cf_section_parse(conf, inst, module_config) < 0) {
-		return -1;
-	}
-
-	/*
-	 *	This module used to support SMB Password files, but it
-	 *	made it too complicated.  If the user tries to
-	 *	configure an SMB Password file, then die, with an
-	 *	error message.
-	 */
-	if (inst->passwd_file) {
-		radlog(L_ERR, "rlm_mschap: SMB password file is no longer supported in this module.  Use rlm_passwd module instead");
 		return -1;
 	}
 

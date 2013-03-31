@@ -418,10 +418,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Set up a storage area for instance data
 	 */
-	MEM(*instance = inst = talloc_zero(conf, PERL_INST));
+	*instance = inst = talloc_zero(conf, PERL_INST);
 	if (!inst) return -1;
-
-	MEM(embed = talloc_zero_array(inst, char *, 4));
 
 	/*
 	 *	If the configuration parameters can't be parsed, then
@@ -431,6 +429,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 	
+	MEM(embed = talloc_zero_array(inst, char *, 4));
+
 	/*
 	 *	Create pthread key. This key will be stored in instance
 	 */
@@ -459,26 +459,21 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	PERL_SYS_INIT3(&argc, &embed, &envp);
-#ifdef USE_ITHREADS
+
 	if ((inst->perl = perl_alloc()) == NULL) {
-		radlog(L_DBG, "rlm_perl: No memory for allocating new perl !");
+		radlog(L_ERR, "rlm_perl: No memory for allocating new perl !");
 		return (-1);
 	}
 
 	perl_construct(inst->perl);
+
+#ifdef USE_ITHREADS
 	PL_perl_destruct_level = 2;
 
 	{
 		dTHXa(inst->perl);
 	}
 	PERL_SET_CONTEXT(inst->perl);
-#else
-	if ((inst->perl = perl_alloc()) == NULL) {
-		radlog(L_ERR, "rlm_perl: No memory for allocating new perl !");
-		return -1;
-	}
-
-	perl_construct(inst->perl);
 #endif
 
 #if PERL_REVISION >= 5 && PERL_VERSION >=8

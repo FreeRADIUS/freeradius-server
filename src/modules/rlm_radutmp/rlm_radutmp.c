@@ -85,7 +85,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	inst->nas_port_list = NULL;
 	return 0;
 }
 

@@ -244,12 +244,11 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	fail.
 	 */
 	if (cf_section_parse(conf, data, module_config) < 0) {
-		radlog(L_ERR, "rlm_logintime: Configuration parsing failed.");
 		return -1;
 	}
 
-	if (data->min_time == 0){
-		radlog(L_ERR, "rlm_logintime: Minimum timeout should be non zero.");
+	if (data->min_time == 0) {
+		cf_log_err_cs(conf, "Invalid value '0' for minimum-timeout");
 		return -1;
 	}
 

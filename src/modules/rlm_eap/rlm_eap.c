@@ -124,7 +124,6 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	if (!inst) return -1;
 
 	if (cf_section_parse(cs, inst, module_config) < 0) {
-		mod_detach(inst);
 		return -1;
 	}
 
@@ -155,14 +154,14 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 
 		method = eap_name2type(name);
 		if (method == PW_EAP_INVALID) {
-			radlog(L_ERR, "rlm_eap (%s): Unknown EAP method %s", inst->xlat_name, name);
+			cf_log_err_cs(cs, "Unknown EAP method %s", name);
 			mod_detach(inst);
 			
 			return -1;
 		}
 		
 		if ((method < PW_EAP_MD5) || (method >= PW_EAP_MAX_TYPES)) {
-			radlog(L_ERR, "rlm_eap (%s): EAP method %s outside of valid range", inst->xlat_name, name);
+			cf_log_err_cs(cs, "Invalid EAP method %s (unsupported)", name);
 
 			mod_detach(inst);
 			
@@ -210,7 +209,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (num_methods == 0) {
-		radlog(L_ERR, "rlm_eap (%s): No EAP method configured, module cannot do anything", inst->xlat_name);
+		cf_log_err_cs(cs, "No EAP method configured, module cannot do anything");
 		mod_detach(inst);
 
 		return -1;
@@ -221,7 +220,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	 */
 	method = eap_name2type(inst->default_method_name);
 	if (method == PW_EAP_INVALID) {
-		radlog(L_ERR, "rlm_eap (%s): Unknown default EAP method %s", inst->xlat_name,
+		cf_log_err_cs(cs, "Unknown default EAP method '%s'",
 		       inst->default_method_name);
 		mod_detach(inst);
 		
@@ -229,7 +228,7 @@ static int mod_instantiate(CONF_SECTION *cs, void **instance)
 	}
 
 	if (!inst->methods[method]) {
-		radlog(L_ERR, "rlm_eap (%s): No such sub-type for default EAP method %s", inst->xlat_name,
+		cf_log_err_cs(cs, "No such sub-type for default EAP method %s",
 		       inst->default_method_name);
 		mod_detach(inst);
 		

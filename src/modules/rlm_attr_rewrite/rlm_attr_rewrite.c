@@ -103,27 +103,32 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 *	Discover the attribute number of the key.
 	 */
 	if (!inst->attribute) {
-		radlog(L_ERR, "rlm_attr_rewrite: 'attribute' must be set.");
+		cf_log_err_cs(conf, "Must set 'attribute'");
 		return -1;
 	}
-	if (!inst->search || !inst->replace) {
-		radlog(L_ERR, "rlm_attr_rewrite: search/replace strings must be set.");
+	if (!inst->search) {
+		cf_log_err_cs(conf, "Must set 'search'");
+		return -1;
+	}
+
+	if (!inst->replace) {
+		cf_log_err_cs(conf, "Must set 'replace'");
 		return -1;
 	}
 	inst->search_len = strlen(inst->search);
 	inst->replace_len = strlen(inst->replace);
 
 	if (inst->replace_len == 0 && inst->new_attr){
-		radlog(L_ERR, "rlm_attr_rewrite: replace string must not be zero length in order to create new attribute.");
+		cf_log_err_cs(conf, "replace string must not be zero length in order to create new attribute.");
 		return -1;
 	}
 
 	if (inst->num_matches < 1 || inst->num_matches > MAX_STRING_LEN) {
-		radlog(L_ERR, "rlm_attr_rewrite: Illegal range for match number.");
+		cf_log_err_cs(conf, "Invalid range for 'max-matches'");
 		return -1;
 	}
 	if (!inst->searchin_str) {
-		radlog(L_ERR, "rlm_attr_rewrite: Illegal searchin directive given. Assuming packet.");
+		DEBUGW("No 'searchin' specified.  Using 'packet'");
 		inst->searchin = RLM_REGEX_INPACKET;
 	}
 	else{
@@ -142,14 +147,15 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 			inst->searchin = RLM_REGEX_INPROXYREPLY;
 #endif
 		else {
-			radlog(L_ERR, "rlm_attr_rewrite: Illegal searchin directive given. Assuming packet.");
-			inst->searchin = RLM_REGEX_INPACKET;
+			cf_log_err_cs(conf, "Invalid value '%s' for 'searchin'",
+				      inst->searchin_str);
+			return -1;
 		}
 	}
 	dattr = dict_attrbyname(inst->attribute);
 	if (!dattr) {
-		radlog(L_ERR, "rlm_attr_rewrite: No such attribute %s",
-				inst->attribute);
+		cf_log_err_cs(conf, "No such attribute '%s'",
+			      inst->attribute);
 		return -1;
 	}
 	inst->da = dattr;

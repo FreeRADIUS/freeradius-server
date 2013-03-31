@@ -159,19 +159,19 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	cache_size = data->cache_size;
 
 	if (!data->session_db) {
-		radlog(L_ERR, "rlm_ippool: 'session-db' must be set.");
+		cf_log_err_cs(conf, "Must set 'session-db'");
 		return -1;
 	}
 	if (!data->ip_index) {
-		radlog(L_ERR, "rlm_ippool: 'ip-index' must be set.");
+		cf_log_err_cs(conf, "Must set 'ip-index'");
 		return -1;
 	}
 	data->range_start = htonl(data->range_start);
 	data->range_stop = htonl(data->range_stop);
 	data->netmask = htonl(data->netmask);
 	if (data->range_start == 0 || data->range_stop == 0 || \
-			 data->range_start >= data->range_stop ) {
-		radlog(L_ERR, "rlm_ippool: Invalid configuration data given.");
+	    data->range_start >= data->range_stop ) {
+		cf_log_err_cs(conf, "Invalid data range");
 		return -1;
 	}
 

@@ -114,13 +114,13 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 
 	if (!inst->filename) {
-		radlog(L_ERR, "rlm_linelog: Must specify an output filename");
+		cf_log_err_cs(conf, "Must specify an output filename");
 		return -1;
 	}
 
 #ifndef HAVE_SYSLOG_H
 	if (strcmp(inst->filename, "syslog") == 0) {
-		radlog(L_ERR, "rlm_linelog: Syslog output is not supported");
+		cf_log_err_cs(conf, "Syslog output is not supported on this system");
 		return -1;
 	}
 #else
@@ -129,7 +129,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (inst->syslog_facility) {
 		inst->facility = fr_str2int(syslog_str2fac, inst->syslog_facility, -1);
 		if (inst->facility < 0) {
-			radlog(L_ERR, "rlm_linelog: Bad syslog facility '%s'", inst->syslog_facility);
+			cf_log_err_cs(conf, "Invalid syslog facility '%s'",
+				   inst->syslog_facility);
 			return -1;
 		}
 	}
@@ -138,7 +139,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 #endif
 
 	if (!inst->line) {
-		radlog(L_ERR, "rlm_linelog: Must specify a log format");
+		cf_log_err_cs(conf, "Must specify a log format");
 		return -1;
 	}
 
