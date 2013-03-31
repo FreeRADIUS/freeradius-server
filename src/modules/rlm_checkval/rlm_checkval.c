@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
@@ -72,11 +73,11 @@ typedef struct rlm_checkval_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "item-name", PW_TYPE_STRING_PTR,
+	{ "item-name", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,
 	  offsetof(rlm_checkval_t,item_name), NULL,  NULL},
-	{ "check-name", PW_TYPE_STRING_PTR,
+	{ "check-name", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_checkval_t,check_name), NULL,  NULL},
-	{ "data-type", PW_TYPE_STRING_PTR,
+	{ "data-type", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_checkval_t,data_type),NULL, "integer"},
 	{ "notfound-reject", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_checkval_t,notfound_reject),NULL, "no"},
@@ -113,24 +114,9 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	/*
-	 * Check if data_type exists
-	 */
-	if (!inst->data_type || !*inst->data_type){
-		cf_log_err_cs(conf, "Must set 'data-type'");
-		return -1;
-	}
-
-	if (!inst->item_name || !*inst->item_name){
-		cf_log_err_cs(conf, "Must set 'item-name'");
-		return -1;
-	}
-
-	if (!inst->check_name || !*inst->check_name){
-		cf_log_err_cs(conf, "Must set 'check-name'");
-		return -1;
-	}
-
+	rad_assert(inst->data_type && *inst->data_type);	
+	rad_assert(inst->item_name && *inst->item_name);
+	rad_assert(inst->check_name && *inst->check_name);
 
 	/*
 	 *	Convert the string type to an integer type,
@@ -147,13 +133,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Discover the attribute number of the item name
 	 */
-	da = dict_attrbyname(inst->item_name);
-	if (!da) {
-		cf_log_err_cs(conf, "No such attribute '%s'",
-		       inst->item_name);
-		return -1;
-	}
-	inst->item = da;
+	inst->item = dict_attrbyname(inst->item_name);
+	rad_assert(inst->item != NULL);
 
 	/*
 	 *	Add the check attribute name to the dictionary

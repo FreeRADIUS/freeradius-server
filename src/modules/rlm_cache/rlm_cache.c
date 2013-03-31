@@ -677,7 +677,7 @@ done:
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "key",  PW_TYPE_STRING_PTR,
+	{ "key",  PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_cache_t, key), NULL, NULL},
 	{ "ttl", PW_TYPE_INTEGER,
 	  offsetof(rlm_cache_t, ttl), NULL, "500" },
@@ -740,10 +740,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	 */
 	xlat_register(inst->xlat_name, cache_xlat, inst);
 
-	if (!inst->key || !*inst->key) {
-		cf_log_err_cs(conf, "Must specify 'key'");
-		return -1;
-	}
+	rad_assert(inst->key && *inst->key);
 
 	if (inst->ttl == 0) {
 		cf_log_err_cs(conf, "Must set 'ttl' to non-zero");

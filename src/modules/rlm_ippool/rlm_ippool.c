@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include "config.h"
 #include <ctype.h>
@@ -110,9 +111,9 @@ typedef struct ippool_key {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "session-db", PW_TYPE_STRING_PTR, offsetof(rlm_ippool_t,session_db), NULL, NULL },
-  { "ip-index", PW_TYPE_STRING_PTR, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
-  { "key", PW_TYPE_STRING_PTR, offsetof(rlm_ippool_t,key), NULL, "%{NAS-IP-Address} %{NAS-Port}" },
+  { "session-db", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,session_db), NULL, NULL },
+  { "ip-index", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
+  { "key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,key), NULL, "%{NAS-IP-Address} %{NAS-Port}" },
   { "range-start", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_start), NULL, "0" },
   { "range-stop", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_stop), NULL, "0" },
   { "netmask", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,netmask), NULL, "0" },
@@ -158,14 +159,9 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	}
 	cache_size = data->cache_size;
 
-	if (!data->session_db) {
-		cf_log_err_cs(conf, "Must set 'session-db'");
-		return -1;
-	}
-	if (!data->ip_index) {
-		cf_log_err_cs(conf, "Must set 'ip-index'");
-		return -1;
-	}
+	rad_assert(data->session_db && *data->session_db);
+	rad_assert(data->ip_index && *data->ip_index);
+
 	data->range_start = htonl(data->range_start);
 	data->range_stop = htonl(data->range_stop);
 	data->netmask = htonl(data->netmask);

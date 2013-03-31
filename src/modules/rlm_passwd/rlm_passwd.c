@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 struct mypasswd {
 	struct mypasswd *next;
@@ -375,9 +376,9 @@ struct passwd_instance {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "filename",   PW_TYPE_FILENAME,
+	{ "filename",   PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
 	  offsetof(struct passwd_instance, filename), NULL,  NULL },
-	{ "format",   PW_TYPE_STRING_PTR,
+	{ "format",   PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(struct passwd_instance, format), NULL,  NULL },
 	{ "delimiter",   PW_TYPE_STRING_PTR,
 	  offsetof(struct passwd_instance, delimiter), NULL,  ":" },
@@ -408,15 +409,9 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	if (cf_section_parse(conf, inst, module_config) < 0) {
 		return -1;
 	}
-	if(!inst->filename || *inst->filename == '\0') {
-		cf_log_err_cs(conf, "Must specify a 'filename'");
-		return -1;
-	}
 
-	if (!inst->format || *inst->format == '\0') {
-		cf_log_err_cs(conf, "Must specify a 'format'");
-		return -1;
-	}
+	rad_assert(inst->filename && *inst->filename);
+	rad_assert(inst->format && *inst->format);
 
 	if (inst->hashsize == 0) {
 		cf_log_err_cs(conf, "Invalid value '0' for hashsize");

@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_FCNTL_H
 #include <fcntl.h>
@@ -76,7 +77,7 @@ typedef struct rlm_linelog_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename",  PW_TYPE_STRING_PTR,
+	{ "filename",  PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
 	{ "syslog_facility",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,syslog_facility), NULL,  NULL},
@@ -113,10 +114,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	if (!inst->filename) {
-		cf_log_err_cs(conf, "Must specify an output filename");
-		return -1;
-	}
+	rad_assert(inst->filename && *inst->filename);
 
 #ifndef HAVE_SYSLOG_H
 	if (strcmp(inst->filename, "syslog") == 0) {

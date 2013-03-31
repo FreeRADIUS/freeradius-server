@@ -27,6 +27,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
 
@@ -114,11 +115,11 @@ typedef struct rad_counter {
  */
 static const CONF_PARSER module_config[] = {
   { "filename", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,filename), NULL, NULL },
-  { "key", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,key_name), NULL, NULL },
-  { "reset", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,reset), NULL,  NULL },
-  { "count-attribute", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,count_attribute), NULL, NULL },
-  { "counter-name", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,counter_name), NULL,  NULL },
-  { "check-name", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,check_name), NULL, NULL },
+  { "key", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE, offsetof(rlm_counter_t,key_name), NULL, NULL },
+  { "reset", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,reset), NULL,  NULL },
+  { "count-attribute", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE, offsetof(rlm_counter_t,count_attribute), NULL, NULL },
+  { "counter-name", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,counter_name), NULL,  NULL },
+  { "check-name", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,check_name), NULL, NULL },
   { "reply-name", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,reply_name), NULL, NULL },
   { "allowed-servicetype", PW_TYPE_STRING_PTR, offsetof(rlm_counter_t,service_type),NULL, NULL },
   { "cache-size", PW_TYPE_INTEGER, offsetof(rlm_counter_t,cache_size), NULL, "1000" },
@@ -351,17 +352,10 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 
 	cache_size = inst->cache_size;
 
-	/*
-	 *	Discover the attribute number of the key.
-	 */
-	if (!inst->key_name) {
-		cf_log_err_cs(conf, "Must set 'key'.");
-		return -1;
-	}
 	dattr = dict_attrbyname(inst->key_name);
-	if (!dattr) {
-		cf_log_err_cs(conf, "No such attribute '%s'",
-				inst->key_name);
+	rad_assert(dattr != NULL);
+	if (dattr->vendor != 0) {
+		cf_log_err_cs(conf, "Configuration item 'key' cannot be a VSA");
 		return -1;
 	}
 	inst->key_attr = dattr->attr;
@@ -369,15 +363,10 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Discover the attribute number of the counter.
 	 */
-	if (!inst->count_attribute) {
-		cf_log_err_cs(conf, "Must set 'count-attribute'");
-		return -1;
-	}
 	dattr = dict_attrbyname(inst->count_attribute);
-	if (!dattr) {
-		cf_log_err_cs(conf, "No such attribute %s",
-			      inst->count_attribute);
-		mod_detach(inst);
+	rad_assert(dattr != NULL);
+	if (dattr->vendor != 0) {
+		cf_log_err_cs(conf, "Configuration item 'count-attribute' cannot be a VSA");
 		return -1;
 	}
 	inst->count_attr = dattr->attr;
@@ -404,11 +393,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *  Create a new attribute for the counter.
 	 */
-	if (!inst->counter_name) {
-		cf_log_err_cs(conf, "Must set 'counter-name'");
-		return -1;
-	}
-
+	rad_assert(inst->counter_name && *inst->counter_name);
 	memset(&flags, 0, sizeof(flags));
 	if (dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
 		radlog(L_ERR, "rlm_counter: Failed to create counter attribute %s: %s",
@@ -429,10 +414,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Create a new attribute for the check item.
 	 */
-	if (!inst->check_name) {
-		cf_log_err_cs(conf, "Must set 'check-name'");
-		return -1;
-	}
+	rad_assert(inst->check_name && *inst->check_name);
 	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
 		radlog(L_ERR, "rlm_counter: Failed to create check attribute %s: %s",
 		       inst->counter_name, fr_strerror());
@@ -462,10 +444,7 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 * Find when to reset the database.
 	 */
-	if (!inst->reset) {
-		cf_log_err_cs(conf, "Must set 'reset'");
-		return -1;
-	}
+	rad_assert(inst->reset && *inst->reset);
 	now = time(NULL);
 	inst->reset_time = 0;
 	inst->last_reset = now;

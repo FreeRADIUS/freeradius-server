@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/rad_assert.h>
 
 #ifdef HAVE_REGEX_H
 #	include <regex.h>
@@ -59,7 +60,7 @@ typedef struct rlm_attr_rewrite {
 } rlm_attr_rewrite_t;
 
 static const CONF_PARSER module_config[] = {
-  { "attribute", PW_TYPE_STRING_PTR,
+  { "attribute", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE,
     offsetof(rlm_attr_rewrite_t,attribute), NULL, NULL },
   { "searchfor", PW_TYPE_STRING_PTR,
     offsetof(rlm_attr_rewrite_t,search), NULL, NULL },
@@ -81,7 +82,6 @@ static const CONF_PARSER module_config[] = {
 static int mod_instantiate(CONF_SECTION *conf, void **instance)
 {
 	rlm_attr_rewrite_t *inst;
-	const DICT_ATTR *dattr;
 
 	/*
 	 *	Set up a storage area for instance data
@@ -102,10 +102,8 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	/*
 	 *	Discover the attribute number of the key.
 	 */
-	if (!inst->attribute) {
-		cf_log_err_cs(conf, "Must set 'attribute'");
-		return -1;
-	}
+	rad_assert(inst->attribute && *inst->attribute);
+
 	if (!inst->search) {
 		cf_log_err_cs(conf, "Must set 'search'");
 		return -1;
@@ -152,13 +150,10 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 			return -1;
 		}
 	}
-	dattr = dict_attrbyname(inst->attribute);
-	if (!dattr) {
-		cf_log_err_cs(conf, "No such attribute '%s'",
-			      inst->attribute);
-		return -1;
-	}
-	inst->da = dattr;
+
+	inst->da = dict_attrbyname(inst->attribute);
+	rad_assert(inst->da != NULL);
+
 	/* Add the module instance name */
 	inst->name = cf_section_name2(conf); /* may be NULL */
 
