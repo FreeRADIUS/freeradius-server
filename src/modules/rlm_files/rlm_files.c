@@ -363,7 +363,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 	READFILE(auth_usersfile, auth_users);
 	READFILE(postauth_usersfile, postauth_users);
 
-	*instance = inst;
 	return 0;
 }
 

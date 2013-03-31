@@ -100,8 +100,6 @@ static int mod_instantiate(CONF_SECTION *conf, void **instance)
 		return -1;
 	}
 
-	*instance = inst;
-
 	return 0;
 }
 
