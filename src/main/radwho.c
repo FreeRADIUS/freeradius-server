@@ -42,13 +42,9 @@ RCSID("$Id$")
  */
 static const char *hdr1 =
 "Login      Name	      What  TTY  When      From	    Location";
-static const char *rfmt1 = "%-10.10s %-17.17s %-5.5s %s%-3u %-9.9s %-15.15s %-.19s%s";
-static const char *rfmt1r = "%s,%s,%s,%s%u,%s,%s,%s%s";
 
 static const char *hdr2 =
 "Login      Port    What      When	  From	    Location";
-static const char *rfmt2 = "%-10.10s %s%-5u  %-6.6s %-13.13s %-15.15s %-.28s%s";
-static const char *rfmt2r = "%s,%s%u,%s,%s,%s,%s%s";
 
 static const char *eol = "\n";
 static int showname = -1;
@@ -475,28 +471,50 @@ int main(int argc, char **argv)
 		login[sizeof(rt.login)] = '\0';
 
 		if (showname) {
-			printf((rawoutput == 0? rfmt1: rfmt1r),
-			       login,
-			       showcid ? rt.caller_id :
-			       (showsid? session_id : fullname(rt.login)),
-			       proto(rt.proto, rt.porttype),
-			       portind, portno,
-			       dotime(rt.time),
-			       hostname(nasname, sizeof(nasname), rt.nas_address),
-			       hostname(othername, sizeof(othername), rt.framed_address), eol);
+			if (rawoutput == 0) {
+				printf("%-10.10s %-17.17s %-5.5s %s%-3u %-9.9s %-15.15s %-.19s%s",
+				       login,
+				       showcid ? rt.caller_id :
+				       (showsid? session_id : fullname(rt.login)),
+				       proto(rt.proto, rt.porttype),
+				       portind, portno,
+				       dotime(rt.time),
+				       hostname(nasname, sizeof(nasname), rt.nas_address),
+				       hostname(othername, sizeof(othername), rt.framed_address), eol);
+			} else {
+				printf("%s,%s,%s,%s%u,%s,%s,%s%s",
+				       login,
+				       showcid ? rt.caller_id :
+				       (showsid? session_id : fullname(rt.login)),
+				       proto(rt.proto, rt.porttype),
+				       portind, portno,
+				       dotime(rt.time),
+				       hostname(nasname, sizeof(nasname), rt.nas_address),
+				       hostname(othername, sizeof(othername), rt.framed_address), eol);
+			}
 		} else {
-			printf((rawoutput == 0? rfmt2: rfmt2r),
-			       login,
-			       portind, portno,
-			       proto(rt.proto, rt.porttype),
-			       dotime(rt.time),
-			       hostname(nasname, sizeof(nasname), rt.nas_address),
-			       hostname(othername, sizeof(othername), rt.framed_address),
-			       eol);
+			if (rawoutput == 0) {
+				printf("%-10.10s %s%-5u  %-6.6s %-13.13s %-15.15s %-.28s%s",
+				       login,
+				       portind, portno,
+				       proto(rt.proto, rt.porttype),
+				       dotime(rt.time),
+				       hostname(nasname, sizeof(nasname), rt.nas_address),
+				       hostname(othername, sizeof(othername), rt.framed_address),
+				       eol);
+			} else {
+				printf("%s,%s%u,%s,%s,%s,%s%s",
+				       login,
+				       portind, portno,
+				       proto(rt.proto, rt.porttype),
+				       dotime(rt.time),
+				       hostname(nasname, sizeof(nasname), rt.nas_address),
+				       hostname(othername, sizeof(othername), rt.framed_address),
+				       eol);
+			}
 		}
 	}
 	fclose(fp);
 
 	return 0;
 }
-
