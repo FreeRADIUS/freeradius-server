@@ -161,7 +161,6 @@ static int parse_sub_section(CONF_SECTION *parent,
 	}
 	
 	if (cf_section_parse(cs, config, section_config) < 0) {
-		cf_log_err_cs(cs, "Failed parsing configuration subsection");
 		return -1;
 	}
 
@@ -184,7 +183,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	}
 	
 	if (!http_curl_auth[config->auth]) {
-		cf_log_err_cs(cs, "Unsupported HTTP auth type '%s'"
+		cf_log_err(cs, "Unsupported HTTP auth type \"%s\""
 		       ", check libcurl version, OpenSSL build configuration,"
 		       " then recompile this module",
 		       config->auth_str);
@@ -204,9 +203,9 @@ static int parse_sub_section(CONF_SECTION *parent,
 	}
 
 	if (http_body_type_supported[config->body] == HTTP_BODY_UNSUPPORTED) {
-		cf_log_err_cs(cs, "Unsupported HTTP body type '%s'"
-			      ", please submit patches",
-			      config->body_str);
+		cf_log_err_cs(cs, "Unsupported HTTP body type \"%s\""
+		       ", please submit patches", instance->xlat_name,
+		       config->body_str);
 		return -1;
 	}
 
