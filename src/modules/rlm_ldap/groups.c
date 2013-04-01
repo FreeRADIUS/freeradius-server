@@ -176,7 +176,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *
 	ldap_rcode_t status;
 	int ldap_errno;
 	
-	char **vals;
+	char **vals = NULL;
 	const char *attrs[] = { inst->groupobj_name_attr, NULL };
 	LDAPMessage *result = NULL, *entry;
 	
