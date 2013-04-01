@@ -147,8 +147,15 @@ ifeq "${bm_shared_libs}" "yes"
     #          with no dependency on the source. 
     # RELINL : flags use to build executables that can be run
     #          from the build directory / source tree.
-    RPATH_FLAGS := -rpath ${libdir} -rdynamic
-    RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs -rdynamic
+    RPATH_FLAGS := -rpath ${libdir}
+    RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs
+    
+    # Add extra debugging symbols for gcc (not supported by clang)
+    ifeq "${CC}" "gcc"
+        RPATH_FLAGS += " -rdynamic"
+        RELINK_FLAGS += " -rdynamic"
+    endif
+    
     RELINK_FLAGS_MIN := -rpath ${libdir}
 
     ifneq "${bm_static_libs}" "yes"
