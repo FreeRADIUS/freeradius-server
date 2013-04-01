@@ -33,7 +33,6 @@ RCSID("$Id$")
 #include "otp.h"
 
 /* Global data */
-static uint8_t hmac_key[16];	//!< to protect State attribute.
 static int ninstance = 0;	//!< Number of instances, for global init.
 
 /* A mapping of configuration file names to internal variables. */
@@ -69,12 +68,12 @@ static const CONF_PARSER module_config[] = {
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	rlm_otp_t *opt = instance;
+	rlm_otp_t *inst = instance;
 
 	/* Onetime initialization. */
 	if (!ninstance) {
 		/* Generate a random key, used to protect the State attribute. */
-		otp_get_random(hmac_key, sizeof(hmac_key));
+		otp_get_random(inst->hmac_key, sizeof(inst->hmac_key));
 
 		/* Initialize the passcode encoding/checking functions. */
 		otp_pwe_init();
@@ -88,49 +87,49 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	/* Verify ranges for those vars that are limited. */
-	if ((opt->challenge_len < 5) ||
-	    (opt->challenge_len > OTP_MAX_CHALLENGE_LEN)) {
-		opt->challenge_len = 6;
+	if ((inst->challenge_len < 5) ||
+	    (inst->challenge_len > OTP_MAX_CHALLENGE_LEN)) {
+		inst->challenge_len = 6;
 
 		DEBUGW("invalid challenge_length %d, "
 		       "range 5-%d, using default of 6",
-		       opt->challenge_len, OTP_MAX_CHALLENGE_LEN);
+		       inst->challenge_len, OTP_MAX_CHALLENGE_LEN);
 	}
 
-	if (!opt->allow_sync && !opt->allow_async) {
+	if (!inst->allow_sync && !inst->allow_async) {
 		cf_log_err_cs(conf, "at least one of {allow_async, "
 			      "allow_sync} must be set");
 		return -1;
 	}
 
-	if ((opt->mschapv2_mppe_policy > 2) ||
-	    (opt->mschapv2_mppe_policy < 0)) {
-		opt->mschapv2_mppe_policy = 2;
+	if ((inst->mschapv2_mppe_policy > 2) ||
+	    (inst->mschapv2_mppe_policy < 0)) {
+		inst->mschapv2_mppe_policy = 2;
 		DEBUGW("Invalid value for mschapv2_mppe, "
 			"using default of 2");
 	}
 
-	if ((opt->mschapv2_mppe_types > 2) || (opt->mschapv2_mppe_types < 0)) {
-		opt->mschapv2_mppe_types = 2;
+	if ((inst->mschapv2_mppe_types > 2) || (inst->mschapv2_mppe_types < 0)) {
+		inst->mschapv2_mppe_types = 2;
 		DEBUGW("Invalid value for "
 		       "mschapv2_mppe_bits, using default of 2");
 	}
 
-	if ((opt->mschap_mppe_policy > 2) || (opt->mschap_mppe_policy < 0)) {
-		opt->mschap_mppe_policy = 2;
+	if ((inst->mschap_mppe_policy > 2) || (inst->mschap_mppe_policy < 0)) {
+		inst->mschap_mppe_policy = 2;
 		DEBUGW("Invalid value for mschap_mppe, "
 		       "using default of 2");
   	}
 
-  	if (opt->mschap_mppe_types != 2) {
-		opt->mschap_mppe_types = 2;
+	if (inst->mschap_mppe_types != 2) {
+		inst->mschap_mppe_types = 2;
 		DEBUGW("Invalid value for "
 		       "mschap_mppe_bits, using default of 2");
 	}
 
 	/* set the instance name (for use with authorize()) */
-	opt->name = cf_section_name2(conf);
-	if (!opt->name) opt->name = cf_section_name1(conf);
+	inst->name = cf_section_name2(conf);
+	if (!inst->name) inst->name = cf_section_name1(conf);
     	
 	return 0;
 }
@@ -227,7 +226,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		VALUE_PAIR *vp;
 
 		len = otp_gen_state(gen_state, challenge, inst->challenge_len,
-				    0, now, hmac_key);
+				    0, now, inst->hmac_key);
 		
 		vp = paircreate(request->reply, PW_STATE, 0);
 		if (!vp) {
@@ -391,7 +390,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	Generate new state from returned input data
 		 */
 		otp_gen_state(gen_state, challenge, inst->challenge_len, 0,
-			      then, hmac_key);
+			      then, inst->hmac_key);
 
 		/*
 		 *	Compare generated state (in hex form)

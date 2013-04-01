@@ -44,6 +44,8 @@ typedef struct rlm_otp_t {
 	char *otpd_rp;		//!< Otpd rendezvous point.
 	char *chal_prompt;	//!< Text to present challenge to user
 				//!< must have %s.
+
+	uint8_t hmac_key[16];   //!< because it doesn't track State
 				
 	int challenge_len;	//!< Challenge length, min 5 digits.
 	int challenge_delay;	//!< Max delay time for response, in seconds.
