@@ -3032,7 +3032,7 @@ DICT_VALUE *dict_valbyname(unsigned int attr, unsigned int vendor, const char *n
 int dict_vendorbyname(const char *name)
 {
 	DICT_VENDOR *dv;
-	uint32_t buffer[(sizeof(*dv) + DICT_VENDOR_MAX_NAME_LEN + 3)/4];
+	size_t buffer[(sizeof(*dv) + DICT_VENDOR_MAX_NAME_LEN + sizeof(size_t) - 1) / sizeof(size_t)];
 
 	if (!name) return 0;
 
