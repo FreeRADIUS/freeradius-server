@@ -28,10 +28,6 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 
-#ifdef DEBUG
-#undef DEBUG
-#endif
-
 #ifdef INADDR_ANY
 #undef INADDR_ANY
 #endif
