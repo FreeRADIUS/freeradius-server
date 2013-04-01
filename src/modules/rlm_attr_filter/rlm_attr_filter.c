@@ -123,18 +123,6 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, const char *filename, PAIR_LIST 
 
 
 /*
- *	Clean up.
- */
-static int mod_detach(void *instance)
-{
-	rlm_attr_filter_t *inst = instance;
-	pairlist_free(&inst->attrs);
-
-	return 0;
-}
-
-
-/*
  *	(Re-)read the "attrs" file into memory.
  */
 static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
@@ -358,7 +346,7 @@ module_t rlm_attr_filter = {
 	sizeof(rlm_attr_filter_t),
 	module_config,
 	mod_instantiate,	/* instantiation */
-	mod_detach,		/* detach */
+	NULL,			/* detach */
 	{
 		NULL,			/* authentication */
 		mod_authorize,	/* authorization */

@@ -713,19 +713,6 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 	return r;
 }
 
-/*
- *      Clean up the module's instance.
- */
-static int mod_detach(void *instance)
-{
-	rlm_preprocess_t *inst = instance;
-
-	pairlist_free(&(inst->huntgroups));
-	pairlist_free(&(inst->hints));
-
-	return 0;
-}
-
 /* globally exported name */
 module_t rlm_preprocess = {
 	RLM_MODULE_INIT,
@@ -734,7 +721,7 @@ module_t rlm_preprocess = {
 	sizeof(rlm_preprocess_t),
 	module_config,
 	mod_instantiate,	/* instantiation */
-	mod_detach,	/* detach */
+	NULL,			/* detach */
 	{
 		NULL,			/* authentication */
 		mod_authorize,	/* authorization */
