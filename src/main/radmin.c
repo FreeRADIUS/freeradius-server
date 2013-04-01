@@ -76,7 +76,7 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-char *radius_dir = RADDBDIR;
+const char *radius_dir = RADDBDIR;
 const char *progname = "radmin";
 const char *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT

@@ -404,15 +404,13 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
 }
 #endif
 
-
+#ifdef WITH_STATS
 /*
  *	Find a client in the RADCLIENTS list by number.
  *	This is a support function for the statistics code.
  */
-RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
-			       int number)
+RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients, int number)
 {
-#ifdef WITH_STATS
 	if (!clients) clients = root_clients;
 
 	if (!clients) return NULL;
@@ -426,12 +424,15 @@ RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients,
 
 		return rbtree_finddata(tree_num, &myclient);
 	}
-#else
-	clients = clients;	/* -Wunused */
-	number = number;	/* -Wunused */
-#endif
+
 	return NULL;
 }
+#else
+RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int number)
+{
+	return NULL;
+}
+#endif
 
 
 /*

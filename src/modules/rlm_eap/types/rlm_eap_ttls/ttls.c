@@ -651,14 +651,13 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 /*
  *	Use a reply packet to determine what to do.
  */
-static int process_reply(eap_handler_t *handler, tls_session_t *tls_session,
+static int process_reply(UNUSED eap_handler_t *handler, tls_session_t *tls_session,
 			 REQUEST *request, RADIUS_PACKET *reply)
 {
 	int rcode = RLM_MODULE_REJECT;
 	VALUE_PAIR *vp;
 	ttls_tunnel_t *t = tls_session->opaque;
 
-	handler = handler;	/* -Wunused */
 	rad_assert(request != NULL);
 	rad_assert(handler->request == request);
 

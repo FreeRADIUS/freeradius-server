@@ -2003,7 +2003,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		goto post_ca;
 	}
 #else
-	client = client;	/* -Wunused */
+	(void) client;	/* -Wunused */
 #endif
 
 	/*

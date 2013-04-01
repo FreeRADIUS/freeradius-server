@@ -573,7 +573,7 @@ extern int		debug_flag;
 extern const char	*radacct_dir;
 extern const char	*radlog_dir;
 extern const char	*radlib_dir;
-extern char		*radius_dir;
+extern const char	*radius_dir;
 extern const char	*radius_libdir;
 extern uint32_t		expiration_seconds;
 extern int		log_stripped_names;

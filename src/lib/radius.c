@@ -250,7 +250,11 @@ void rad_print_hex(RADIUS_PACKET *packet)
  *	possible combinations.
  */
 static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
+#ifdef WITH_UDPFROMTO
 		      fr_ipaddr_t *src_ipaddr, int src_port,
+#else
+		      UNUSED fr_ipaddr_t *src_ipaddr, UNUSED int src_port,
+#endif
 		      fr_ipaddr_t *dst_ipaddr, int dst_port)
 {
 	int rcode;
@@ -262,8 +266,6 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 	socklen_t		sizeof_src;
 
 	fr_ipaddr2sockaddr(src_ipaddr, src_port, &src, &sizeof_src);
-#else
-	src_port = src_port;	/* -Wunused */
 #endif
 
 	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
@@ -283,8 +285,6 @@ static int rad_sendto(int sockfd, void *data, size_t data_len, int flags,
 				   (struct sockaddr *)&dst, sizeof_dst);
 		goto done;
 	}
-#else
-	src_ipaddr = src_ipaddr; /* -Wunused */
 #endif
 
 	/*

@@ -667,7 +667,6 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 			if ((da->vendor == DHCP_MAGIC_VENDOR) &&
 			    (da->attr == 61) && !da->flags.array &&
 			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
-				vp->type = PW_TYPE_ETHERNET;
 				memcpy(vp->vp_octets, p + 1, 6);
 				vp->length = alen;
 
@@ -895,16 +894,13 @@ static int attr_cmp(const void *one, const void *two)
 	return ((*a)->da->attr - (*b)->da->attr);
 }
 
-
-static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, size_t room)
+/*
+ * @fixme Check room!
+ */
+static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, UNUSED size_t room)
 {
 	size_t length;
 	uint32_t lvalue;
-
-	/*
-	 *	FIXME: Check room!
-	 */
-	room = room;		/* -Wunused */
 
 	/*
 	 *	Search for all attributes of the same
@@ -1525,10 +1521,10 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	return 0;
 }
 
+#ifdef SIOCSARP
 int fr_dhcp_add_arp_entry(int fd, const char *interface,
 			  VALUE_PAIR *macaddr, VALUE_PAIR *ip)
 {
-#ifdef SIOCSARP
 	struct sockaddr_in *sin;
 	struct arpreq req;
 
@@ -1556,15 +1552,14 @@ int fr_dhcp_add_arp_entry(int fd, const char *interface,
 	}
 
 	return 0;
+}
 #else
-	fd = fd;		/* -Wunused */
-	interface = interface;	/* -Wunused */
-	macaddr = macaddr;	/* -Wunused */
-	ip = ip;		/* -Wunused */
-
+int fr_dhcp_add_arp_entry(UNUSED int fd, UNUSED const char *interface,
+			  UNUSED VALUE_PAIR *macaddr, UNUSED VALUE_PAIR *ip)
+{
 	fr_strerror_printf("Adding ARP entry is unsupported on this system");
 	return -1;
-#endif
 }
+#endif
 
 #endif /* WITH_DHCP */

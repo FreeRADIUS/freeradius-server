@@ -671,10 +671,8 @@ int rbtree_num_elements(rbtree_t *tree)
 /*
  *	Given a Node, return the data.
  */
-void *rbtree_node2data(rbtree_t *tree, rbnode_t *node)
+void *rbtree_node2data(UNUSED rbtree_t *tree, rbnode_t *node)
 {
-	tree = tree;		/* -Wunused */
-
 	if (!node) return NULL;
 
 	return node->Data;

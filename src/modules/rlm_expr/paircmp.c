@@ -30,18 +30,14 @@ RCSID("$Id$")
 /*
  *	Compare a Connect-Info and a Connect-Rate
  */
-static int connectcmp(void *instance,
+static int connectcmp(UNUSED void *instance,
 		      REQUEST *req UNUSED,
 		      VALUE_PAIR *request,
 		      VALUE_PAIR *check,
-		      VALUE_PAIR *check_pairs,
-		      VALUE_PAIR **reply_pairs)
+		      UNUSED VALUE_PAIR *check_pairs,
+		      UNUSED VALUE_PAIR **reply_pairs)
 {
 	int rate;
-
-	instance = instance;
-	check_pairs = check_pairs; /* shut the compiler up */
-	reply_pairs = reply_pairs;
 
 	rate = atoi((char *)request->vp_strvalue);
 	return rate - check->vp_integer;
@@ -51,18 +47,13 @@ static int connectcmp(void *instance,
 /*
  *	Compare a portno with a range.
  */
-static int portcmp(void *instance,
-		   REQUEST *req UNUSED, VALUE_PAIR *request, VALUE_PAIR *check,
-	VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *request, VALUE_PAIR *check,
+		   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	char buf[MAX_STRING_LEN];
 	char *s, *p, *next;
 	uint32_t lo, hi;
 	uint32_t port;
-
-	instance = instance;
-	check_pairs = check_pairs; /* shut the compiler up */
-	reply_pairs = reply_pairs;
 
 	if (!request) return -1;
 

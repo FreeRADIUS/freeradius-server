@@ -1047,7 +1047,7 @@ STATE_MACHINE_DECL(request_finish)
 
 	TRACE_STATE_MACHINE;
 
-	action = action;	/* -Wunused */
+	(void) action;	/* -Wunused */
 
 	if (request->master_state == REQUEST_STOP_PROCESSING) return;
 

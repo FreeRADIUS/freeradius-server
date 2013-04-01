@@ -208,19 +208,20 @@ static const FR_NAME_NUMBER modreturn_table[] = {
  */
 static int radius_do_cmp(REQUEST *request, int *presult,
 			 FR_TOKEN lt, const char *pleft, FR_TOKEN token,
-			 FR_TOKEN rt, const char *pright,
-			 int cflags, int modreturn)
+			 UNUSED FR_TOKEN rt, const char *pright,
+#ifdef HAVE_REGEX_H
+			 int cflags,
+#else
+			 UNUSED int cflags,
+#endif
+			 int modreturn)
 {
 	int result;
 	uint32_t lint, rint;
 	VALUE_PAIR *vp = NULL;
 #ifdef HAVE_REGEX_H
 	char buffer[8192];
-#else
-	cflags = cflags;	/* -Wunused */
 #endif
-
-	rt = rt;		/* -Wunused */
 
 	if (lt == T_BARE_WORD) {
 		/*

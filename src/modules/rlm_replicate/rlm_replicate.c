@@ -51,7 +51,7 @@ static void cleanup(RADIUS_PACKET *packet)
  * @return RCODE fail on error, invalid if list does not exist, noop if no
  * 	   replications succeeded, else ok.
  */
-static int replicate_packet(void *instance, REQUEST *request,
+static int replicate_packet(UNUSED void *instance, REQUEST *request,
 			    pair_lists_t list, unsigned int code)
 {
 	int rcode = RLM_MODULE_NOOP;
@@ -61,7 +61,6 @@ static int replicate_packet(void *instance, REQUEST *request,
 	home_pool_t *pool;
 	RADIUS_PACKET *packet = NULL;
 
-	instance = instance;	/* -Wunused */
 	last = request->config_items;
 
 	/*

@@ -351,18 +351,13 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static size_t xlat_config(void *instance, REQUEST *request,
-			  const char *fmt, char *out,
-			  size_t outlen)
+static size_t xlat_config(UNUSED void *instance, UNUSED REQUEST *request, const char *fmt, char *out, size_t outlen)
 {
 	const char *value;
 	CONF_PAIR *cp;
 	CONF_ITEM *ci;
 	char buffer[1024];
-
-	request = request;	/* -Wunused */
-	instance = instance;	/* -Wunused */
-
+	
 	/*
 	 *	Expand it safely.
 	 */

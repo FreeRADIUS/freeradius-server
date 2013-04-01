@@ -29,13 +29,10 @@ RCSID("$Id$")
 /*
  *	Reject any non-UTF8 data.
  */
-static rlm_rcode_t utf8_clean(void *instance, REQUEST *request)
+static rlm_rcode_t utf8_clean(UNUSED void *instance, REQUEST *request)
 {
 	size_t i, len;
 	VALUE_PAIR *vp, *next;
-
-	/* quiet the compiler */
-	instance = instance;
 
 	for (vp = request->packet->vps; vp != NULL; vp = next) {
 		next = vp->next;

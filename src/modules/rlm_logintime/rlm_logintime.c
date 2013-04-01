@@ -59,16 +59,9 @@ static const CONF_PARSER module_config[] = {
 /*
  *      Compare the current time to a range.
  */
-static int timecmp(void *instance,
-		REQUEST *req,
-		VALUE_PAIR *request, VALUE_PAIR *check,
-		VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
+		   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	instance = instance;
-	request = request;      /* shut the compiler up */
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
-
 	/*
 	 *      If there's a request, use that timestamp.
 	 */
@@ -83,20 +76,13 @@ static int timecmp(void *instance,
 /*
  *	Time-Of-Day support
  */
-static int time_of_day(void *instance,
-		       REQUEST *req,
-		       VALUE_PAIR *request, VALUE_PAIR *check,
-		       VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int time_of_day(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
+		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	int scan;
 	int hhmmss, when;
 	char *p;
 	struct tm *tm, s_tm;
-
-	instance = instance;
-	request = request;      /* shut the compiler up */
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
 
 	/*
 	 *	Must be called with a request pointer.

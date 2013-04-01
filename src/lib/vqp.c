@@ -76,7 +76,12 @@ RCSID("$Id$");
  *	Duplicate code is bad.
  */
 static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
-		      fr_ipaddr_t *src_ipaddr, fr_ipaddr_t *dst_ipaddr,
+#ifdef WITH_UDPFROMTO
+		      fr_ipaddr_t *src_ipaddr,
+#else
+		      UNUSED fr_ipaddr_t *src_ipaddr,
+#endif
+		      fr_ipaddr_t *dst_ipaddr,
 		      int dst_port)
 {
 	struct sockaddr_storage	dst;
@@ -89,8 +94,6 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 	if (!fr_ipaddr2sockaddr(src_ipaddr, 0, &src, &sizeof_src)) {
 		return -1;   /* Unknown address family, Die Die Die! */	
 	}
-#else
-	src_ipaddr = src_ipaddr; /* -Wunused */
 #endif
 
 	if (!fr_ipaddr2sockaddr(dst_ipaddr, dst_port, &dst, &sizeof_dst)) {
@@ -110,8 +113,6 @@ static int vqp_sendto(int sockfd, void *data, size_t data_len, int flags,
 				  (struct sockaddr *)&src, sizeof_src,
 				  (struct sockaddr *)&dst, sizeof_dst);
 	}
-#else
-	src_ipaddr = src_ipaddr; /* -Wunused */
 #endif
 
 	/*

@@ -112,15 +112,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *      Compare the expiration date.
  */
-static int expirecmp(void *instance, REQUEST *req,
-		VALUE_PAIR *request, VALUE_PAIR *check,
-		VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
+		     UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	time_t now = 0;
-	instance = instance;
-	request = request;      /* shut the compiler up */
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
 
 	now = (req) ? req->timestamp : time(NULL);
 

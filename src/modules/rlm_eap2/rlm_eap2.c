@@ -367,8 +367,7 @@ static int eap_handler_cmp(const void *a, const void *b)
 }
 
 
-static int server_get_eap_user(void *ctx, const u8 *identity,
-			       size_t identity_len, int phase2,
+static int server_get_eap_user(void *ctx, UNUSED const u8 *identity, UNUSED size_t identity_len, int phase2,
 			       struct eap_user *user)
 {
 	int i;
@@ -382,9 +381,7 @@ static int server_get_eap_user(void *ctx, const u8 *identity,
 	 *	FIXME: Run through "authorise" again to look up
 	 *	password for the given identity
 	 */
-	identity = identity;	/* -Wunused */
-	identity_len = identity_len; /* -Wunused */
-
+	 
 	/*
 	 *	Do this always, just in case.
 	 */

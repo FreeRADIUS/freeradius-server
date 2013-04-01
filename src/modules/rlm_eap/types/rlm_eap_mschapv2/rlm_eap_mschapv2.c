@@ -289,7 +289,7 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
  *
  *	Called from rlm_eap.c, eap_postproxy().
  */
-static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
+static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 {
 	VALUE_PAIR *response = NULL;
 	mschapv2_opaque_t *data;
@@ -297,8 +297,6 @@ static int mschap_postproxy(eap_handler_t *handler, void *tunnel_data)
 
 	data = (mschapv2_opaque_t *) handler->opaque;
 	rad_assert(data != NULL);
-
-	tunnel_data = tunnel_data; /* -Wunused */
 
 	RDEBUG2("Passing reply from proxy back into the tunnel %d.",
 		request->reply->code);

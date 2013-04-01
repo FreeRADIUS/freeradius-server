@@ -1424,9 +1424,8 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 
 
 #ifdef WITH_UNLANG
-static modcallable *do_compile_modupdate(modcallable *parent,
-					 int component, CONF_SECTION *cs,
-					 const char *name2)
+static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int component,
+					 CONF_SECTION *cs, const char *name2)
 {
 	int i, ok = FALSE;
 	const char *vp_name;
@@ -1441,8 +1440,6 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 		"coa", "coa-reply", "disconnect", "disconnect-reply",
 		NULL
 	};
-
-	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err_cs(cs,
@@ -1560,14 +1557,11 @@ static modcallable *do_compile_modupdate(modcallable *parent,
 }
 
 
-static modcallable *do_compile_modswitch(modcallable *parent,
-					 int component, CONF_SECTION *cs)
+static modcallable *do_compile_modswitch(modcallable *parent, UNUSED int component, CONF_SECTION *cs)
 {
 	modcallable *csingle;
 	CONF_ITEM *ci;
 	int had_seen_default = FALSE;
-
-	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err_cs(cs,
@@ -1617,20 +1611,17 @@ static modcallable *do_compile_modswitch(modcallable *parent,
 		}
 	}
 
-	csingle= do_compile_modgroup(parent, component, cs,
-				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
+	csingle = do_compile_modgroup(parent, component, cs, GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
 	if (!csingle) return NULL;
 	csingle->type = MOD_SWITCH;
 	return csingle;
 }
 
 static modcallable *do_compile_modforeach(modcallable *parent,
-					  int component, CONF_SECTION *cs,
+					  UNUSED int component, CONF_SECTION *cs,
 					  const char *name2)
 {
 	modcallable *csingle;
-
-	component = component;	/* -Wunused */
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err_cs(cs,
@@ -1651,15 +1642,12 @@ static modcallable *do_compile_modforeach(modcallable *parent,
 	return csingle;
 }
 
-static modcallable *do_compile_modbreak(modcallable *parent, int component)
+static modcallable *do_compile_modbreak(modcallable *parent, UNUSED int component)
 {
 	modcallable *csingle;
 
-	component = component;	/* -Wunused */
-
-
-	csingle= do_compile_modgroup(parent, component, NULL,
-				     GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
+	csingle = do_compile_modgroup(parent, component, NULL,
+				      GROUPTYPE_SIMPLE, GROUPTYPE_SIMPLE);
 	if (!csingle) return NULL;
 	csingle->name = "";
 	csingle->type = MOD_BREAK;

@@ -34,12 +34,10 @@ RCSID("$Id$")
 /*
  *	Initiate the EAP-MD5 session by sending a challenge to the peer.
  */
-static int md5_initiate(void *instance, eap_handler_t *handler)
+static int md5_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	int		i;
 	MD5_PACKET	*reply;
-
-	instance = instance;	/* -Wunused */
 
 	/*
 	 *	Allocate an EAP-MD5 packet.

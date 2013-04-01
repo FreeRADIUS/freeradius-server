@@ -436,11 +436,9 @@ static int filename_cmp(const void *one, const void *two)
 	return strcmp((const char *) one, (const char *) two);
 }
 
-static int filename_walk(void *context, void *data)
+static int filename_walk(UNUSED void *context, void *data)
 {
 	const char	*filename = data;
-
-	context = context;	/* -Wunused */
 
 	/*
 	 *	Read request(s) from the file.

@@ -2497,12 +2497,10 @@ static void cf_section_copy_data(CONF_SECTION *s, CONF_SECTION *d)
 /*
  *	For a CONF_DATA element, stat the filename, if necessary.
  */
-static int filename_stat(void *context, void *data)
+static int filename_stat(UNUSED void *context, void *data)
 {
 	struct stat buf;
 	CONF_DATA *cd = data;
-
-	context = context;	/* -Wunused */
 
 	if (cd->flag != PW_TYPE_FILENAME) return 0;
 

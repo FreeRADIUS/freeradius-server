@@ -255,7 +255,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		RDEBUGE("Peer sent empty (invalid) NAK. "
 			"Can't select method to continue with");
 
-		return EAP_INVALID;
+		return PW_EAP_INVALID;
 	}
 
 	/*

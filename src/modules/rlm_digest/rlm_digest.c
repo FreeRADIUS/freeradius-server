@@ -209,7 +209,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Perform all of the wondrous variants of digest authentication.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	int i;
 	size_t a1_len, a2_len, kd_len;
@@ -219,8 +219,6 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	uint8_t hash[16];	/* MD5 output */
 	VALUE_PAIR *vp, *passwd, *algo;
 	VALUE_PAIR *qop, *nonce;
-
-	instance = instance;	/* -Wunused */
 
 	/*
 	 *	We require access to the plain-text password, or to the

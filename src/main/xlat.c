@@ -673,7 +673,7 @@ static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
  *
  */
 static size_t xlat_regex(void *instance, REQUEST *request,
-			 const char *fmt, char *out, size_t outlen)
+			 UNUSED const char *fmt, char *out, size_t outlen)
 {
 	char *regex;
 
@@ -681,8 +681,6 @@ static size_t xlat_regex(void *instance, REQUEST *request,
 	 *	We cheat: fmt is "0" to "8", but those numbers
 	 *	are already in the "instance".
 	 */
-	fmt = fmt;		/* -Wunused */
-
 	regex = request_data_reference(request, request,
 				 REQUEST_DATA_REGEX | *(int *)instance);
 	if (!regex) return 0;
@@ -898,12 +896,10 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
  * @param[in] func
  * @param[in] instance
  */
-void xlat_unregister(const char *module, RAD_XLAT_FUNC func, void *instance)
+void xlat_unregister(const char *module, UNUSED RAD_XLAT_FUNC func, void *instance)
 {
 	xlat_t	*c;
 	xlat_t		my_xlat;
-
-	func = func;		/* -Wunused */
 
 	if (!module) return;
 

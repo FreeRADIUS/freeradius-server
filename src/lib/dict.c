@@ -2255,11 +2255,8 @@ static int my_dict_init(const char *parent, const char *filename,
 /*
  *	Empty callback for hash table initialization.
  */
-static int null_callback(void *ctx, void *data)
+static int null_callback(UNUSED void *ctx, UNUSED void *data)
 {
-	ctx = ctx;		/* -Wunused */
-	data = data;		/* -Wunused */
-
 	return 0;
 }
 

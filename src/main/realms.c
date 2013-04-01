@@ -1109,12 +1109,12 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	home_pool_t mypool, *pool;
 	CONF_SECTION *subcs;
 #else
-	rc = rc;		/* -Wunused */
-	realm = realm;
-	secret = secret;
-	ldflag = ldflag;
-	type = type;
-	server = server;
+	(void) rc;		/* -Wunused */
+	(void) realm;
+	(void) secret;
+	(void) ldflag;
+	(void) type;
+	(void) server;
 #endif
 
 	/*

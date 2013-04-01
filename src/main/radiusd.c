@@ -57,7 +57,7 @@ RCSID("$Id$")
  *  Global variables.
  */
 const char *progname = NULL;
-char *radius_dir = NULL;
+const char *radius_dir = NULL;
 const char *radacct_dir = NULL;
 const char *radlog_dir = NULL;
 const char *radlib_dir = NULL;
@@ -168,7 +168,9 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'd':
-				if (radius_dir) free(radius_dir);
+				if (radius_dir) {
+					rad_const_free(radius_dir);
+				}
 				radius_dir = strdup(optarg);
 				break;
 
@@ -515,7 +517,7 @@ int main(int argc, char *argv[])
 	 */
 	free_mainconfig();
 	
-	free(radius_dir);
+	rad_const_free(radius_dir);
 		
 #ifdef WIN32
 	WSACleanup();
@@ -591,10 +593,8 @@ static void sig_fatal(int sig)
  *  We got the hangup signal.
  *  Re-read the configuration files.
  */
-static void sig_hup(int sig)
+static void sig_hup(UNUSED int sig)
 {
-	sig = sig; /* -Wunused */
-
 	reset_signal(SIGHUP, sig_hup);
 
 	radius_signal_self(RADIUS_SIGNAL_SELF_HUP);

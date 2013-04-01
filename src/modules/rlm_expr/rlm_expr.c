@@ -245,16 +245,13 @@ static int get_number(REQUEST *request, const char **string, int64_t *answer)
 /*
  *  Do xlat of strings!
  */
-static size_t expr_xlat(void *instance, REQUEST *request, const char *fmt,
+static size_t expr_xlat(UNUSED void *instance, REQUEST *request, const char *fmt,
 			char *out, size_t outlen)
 {
 	int		rcode;
 	int64_t		result;
-	rlm_expr_t	*inst = instance;
 	const		char *p;
 	char		buffer[256];
-
-	inst = inst;		/* -Wunused */
 
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).

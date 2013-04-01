@@ -2787,7 +2787,14 @@ static int is_loopback(const fr_ipaddr_t *ipaddr)
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
  */
-int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
+int listen_init(CONF_SECTION *config, rad_listen_t **head,
+#ifdef WITH_TLS
+	        int spawn_flag
+#else
+		UNUSED int spawn_flag
+#endif
+	        )
+
 {
 	int		override = FALSE;
 	CONF_SECTION	*cs = NULL;
@@ -2797,9 +2804,6 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head, int spawn_flag)
 	int		auth_port = 0;
 #ifdef WITH_PROXY
 	int		defined_proxy = 0;
-#endif
-#ifndef WITH_TLS
-	spawn_flag = spawn_flag; /* -Wunused */
 #endif
 
 	/*

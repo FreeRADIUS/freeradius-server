@@ -229,11 +229,8 @@ static unsigned long ssl_id_function(void)
 	return (unsigned long) pthread_self();
 }
 
-static void ssl_locking_function(int mode, int n, const char *file, int line)
+static void ssl_locking_function(int mode, int n, UNUSED const char *file, UNUSED int line)
 {
-	file = file;		/* -Wunused */
-	line = line;		/* -Wunused */
-
 	if (mode & CRYPTO_LOCK) {
 		pthread_mutex_lock(&(ssl_mutexes[n]));
 	} else {
@@ -812,15 +809,13 @@ static int pid_cmp(const void *one, const void *two)
  *
  *	FIXME: What to do on a SIGHUP???
  */
-int thread_pool_init(CONF_SECTION *cs, int *spawn_flag)
+int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 {
 #ifndef WITH_GCD
 	int		i, rcode;
 	CONF_SECTION	*pool_cf;
 #endif
 	time_t		now;
-
-	cs = cs;		/* -Wunused */
 
 	now = time(NULL);
 
