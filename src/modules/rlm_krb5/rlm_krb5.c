@@ -54,11 +54,9 @@ typedef struct rlm_krb5_t {
 					//!< request).
 	
 #ifndef HEIMDAL_KRB5
-	krb5_get_init_creds_opt		*gic_options;	//!< Options to pass to the
-							//!< get_initial_credentials.
+	krb5_get_init_creds_opt		*gic_options;	//!< Options to pass to the get_initial_credentials.
 							//!< function.
-	krb5_verify_init_creds_opt	*vic_options;	//!< Options to pass to the
-							//!< validate_initial_creds
+	krb5_verify_init_creds_opt	*vic_options;	//!< Options to pass to the validate_initial_creds
 							//!< function.
 
 	krb5_principal server;		//!< A structure representing the parsed
@@ -68,10 +66,8 @@ typedef struct rlm_krb5_t {
 } rlm_krb5_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "keytab", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_krb5_t,keytabname), NULL, NULL },
-	{ "service_principal", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_krb5_t,service_princ), NULL, NULL },
+	{ "keytab", PW_TYPE_STRING_PTR, offsetof(rlm_krb5_t, keytabname), NULL, NULL },
+	{ "service_principal", PW_TYPE_STRING_PTR, offsetof(rlm_krb5_t,service_princ), NULL, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -101,6 +97,8 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_krb5_t *inst = instance;
 	krb5_error_code ret;
+	krb5_keytab keytab;
+	char keytab_name[200];
 	char *princ_name;
 
 #ifdef HEIMDAL_KRB5
@@ -126,13 +124,12 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	
 	ret = krb5_init_context(&inst->context);
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
+		DEBUGE("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
 
 		return -1;
 	}
 	
-	radlog(L_DBG, "rlm_krb5 (%s): Context initialised successfully",
-	       inst->xlat_name);
+	radlog(L_DBG, "rlm_krb5 (%s): Context initialised successfully", inst->xlat_name);
 
 	/*
 	 *	Split service principal into service and host components
@@ -158,21 +155,17 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	
 #ifdef HEIMDAL_KRB5
 	if (inst->hostname) {
-		radlog(L_DBG, "rlm_krb5 (%s): Ignoring hostname component of "
-		       "service principal \"%s\", not needed/supported by "
-		       "Heimdal", inst->xlat_name, inst->hostname);
+		radlog(L_DBG, "rlm_krb5 (%s): Ignoring hostname component of service principal \"%s\", not "
+		       "needed/supported by Heimdal", inst->xlat_name, inst->hostname);
 	}
 #else
 
 	/*
 	 *	Convert the service principal string to a krb5 principal.
 	 */
-	ret = krb5_sname_to_principal(inst->context, inst->hostname,
-				      inst->service, KRB5_NT_SRV_HST,
-				      &(inst->server));
+	ret = krb5_sname_to_principal(inst->context, inst->hostname, inst->service, KRB5_NT_SRV_HST, &(inst->server));
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Failed parsing service "
-		       "principal: %s", inst->xlat_name, error_message(ret));
+		DEBUGE("rlm_krb5 (%s): Failed parsing service principal: %s", inst->xlat_name, error_message(ret));
 
 		return -1;
 	}
@@ -180,8 +173,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_unparse_name(inst->context, inst->server, &princ_name);
 	if (ret) {
 		/* Uh? */
-		radlog(L_ERR, "rlm_krb5 (%s): Failed constructing service "
-		       "principal string: %s", inst->xlat_name,
+		DEBUGE("rlm_krb5 (%s): Failed constructing service principal string: %s", inst->xlat_name,
 		       error_message(ret));
 
 		return -1;
@@ -190,8 +182,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Not necessarily the same as the config item
 	 */
-	radlog(L_DBG, "rlm_krb5 (%s): Using service principal \"%s\"",
-	       inst->xlat_name, princ_name);
+	DEBUG("rlm_krb5 (%s): Using service principal \"%s\"", inst->xlat_name, princ_name);
 	
 	krb5_free_unparsed_name(inst->context, princ_name);
 	
@@ -202,12 +193,33 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	/* For some reason the 'init' version of this function is deprecated */
 	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options));
 	if (ret) {
-		radlog(L_ERR, "rlm_krb5 (%s): Couldn't allocated inital "
-		       "credential options: %s", inst->xlat_name,
+		DEBUGE("rlm_krb5 (%s): Couldn't allocated inital credential options: %s", inst->xlat_name,
 		       error_message(ret));
 		
 		return -1;
 	}
+
+	/*
+	 *	Perform basic checks on the keytab
+	 */
+	ret = inst->keytabname ?
+		krb5_kt_resolve(inst->context, inst->keytabname, &keytab) :
+		krb5_kt_default(inst->context, &keytab);
+	if (ret) {
+		DEBUGE("rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
+		
+		return -1;
+	}
+
+	ret = krb5_kt_get_name(inst->context, keytab, keytab_name, sizeof(keytab_name));
+	krb5_kt_close(inst->context, keytab);
+	if (ret) {
+		DEBUGE("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name, error_message(ret)); 
+	
+		return -1;
+	}
+	
+	DEBUG("rlm_krb5 (%s): Using keytab \"%s\"", inst->xlat_name, keytab_name);
 	
 	MEM(inst->vic_options = talloc_zero(inst, krb5_verify_init_creds_opt));
 	
@@ -330,8 +342,6 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		goto cleanup;
 	}
 	
-	RDEBUG("Using keytab \"%s\"", keytab);
-	
 	krb5_verify_opt_set_keytab(&options, keytab);
 	krb5_verify_opt_set_secure(&options, TRUE);
 
@@ -345,9 +355,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	/*
 	 *	Verify the user, using the options we set in instantiate
 	 */
-	ret = krb5_verify_user_opt(context, client,
-				   request->password->vp_strvalue,
-				   &options);
+	ret = krb5_verify_user_opt(context, client, request->password->vp_strvalue, &options);
 	if (ret) {
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
@@ -455,8 +463,6 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		
 		goto cleanup;
 	}
-	
-	RDEBUG("Using keytab \"%s\"", keytab);
 	
 	/*
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
