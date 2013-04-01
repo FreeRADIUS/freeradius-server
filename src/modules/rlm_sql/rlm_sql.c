@@ -543,16 +543,12 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle,
  * username will then be checked with the passed check string.
  */
 
-static int sql_groupcmp(void *instance, REQUEST *request, VALUE_PAIR *request_vp, VALUE_PAIR *check,
-			VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *request_vp, VALUE_PAIR *check,
+			UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sql_handle_t *handle;
 	rlm_sql_t *inst = instance;
 	rlm_sql_grouplist_t *head, *entry;
-
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
-	request_vp = request_vp;
 
 	RDEBUG("sql_groupcmp");
 	if (!check || !check->length){

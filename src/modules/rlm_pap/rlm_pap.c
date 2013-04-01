@@ -625,14 +625,11 @@ static int pap_auth_ns_mta_md5(REQUEST *request, VALUE_PAIR *vp)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_rcode_t rc = RLM_MODULE_INVALID;
 	int (*auth_func)(REQUEST *, VALUE_PAIR *) = NULL;
-
-	/* Shut the compiler up */
-	instance = instance;
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {

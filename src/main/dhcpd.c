@@ -126,7 +126,6 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	/* set DEST ipaddr/port to the next server ipaddr/port */
 	request->packet->dst_ipaddr.af = AF_INET;
 	request->packet->dst_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
-	request->packet->dst_port = request->packet->dst_port;
 
 	if (fr_dhcp_encode(request->packet) < 0) {
 		DEBUG("dhcprelay_process_client_request: ERROR in fr_dhcp_encode\n");

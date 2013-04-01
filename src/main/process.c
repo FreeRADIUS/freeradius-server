@@ -3431,14 +3431,11 @@ STATE_MACHINE_DECL(request_coa_process)
  *	Event handlers.
  *
  ***********************************************************************/
-static void event_socket_handler(fr_event_list_t *xel, UNUSED int fd,
-				 void *ctx)
+static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, void *ctx)
 {
 	rad_listen_t *listener = ctx;
 
 	rad_assert(xel == el);
-
-	xel = xel;
 
 	if (
 #ifdef WITH_DETAIL

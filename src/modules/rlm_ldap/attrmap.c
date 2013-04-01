@@ -26,13 +26,11 @@
 #include <freeradius-devel/rad_assert.h>
 #include "ldap.h"
 
-static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, const value_pair_map_t *map, void *ctx)
+static VALUE_PAIR *rlm_ldap_map_getvalue(UNUSED REQUEST *request, const value_pair_map_t *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
 	VALUE_PAIR *head, **tail, *vp;
 	int i;
-	
-	request = request;
 	
 	head = NULL;
 	tail = &head;

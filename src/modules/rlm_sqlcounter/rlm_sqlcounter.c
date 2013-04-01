@@ -313,15 +313,12 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, rlm_sqlcoun
  */
 static int sqlcounter_cmp(void *instance, REQUEST *req,
 			  UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
-			  VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+			  UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sqlcounter_t *inst = instance;
 	int counter;
 	char querystr[MAX_QUERY_LEN];
 	char sqlxlat[MAX_QUERY_LEN];
-
-	check_pairs = check_pairs; /* shut the compiler up */
-	reply_pairs = reply_pairs;
 
 	/* first, expand %k, %b and %e in query */
 	sqlcounter_expand(querystr, MAX_QUERY_LEN, inst->query, inst);
@@ -449,7 +446,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	rlm_sqlcounter_t *inst = instance;
 	int rcode = RLM_MODULE_NOOP;
@@ -460,10 +457,6 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	char msg[128];
 	char querystr[MAX_QUERY_LEN];
 	char sqlxlat[MAX_QUERY_LEN];
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
 
 	/*
 	 *	Before doing anything else, see if we have to reset

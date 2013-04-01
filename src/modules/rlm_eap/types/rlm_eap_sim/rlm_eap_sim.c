@@ -351,7 +351,7 @@ static void eap_sim_stateenter(eap_handler_t *handler,
  *	Initiate the EAP-SIM session by starting the state machine
  *      and initiating the state.
  */
-static int eap_sim_initiate(void *instance, eap_handler_t *handler)
+static int eap_sim_initiate(UNUSED void *instance, eap_handler_t *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp;
@@ -359,8 +359,6 @@ static int eap_sim_initiate(void *instance, eap_handler_t *handler)
 	time_t n;
 
 	outvps = handler->request->reply->vps;
-
-	instance = instance;  /* shut up compiler */
 
 	vp = pairfind(outvps, ATTRIBUTE_EAP_SIM_RAND1, 0, TAG_ANY);
 	if(!vp) {
@@ -517,14 +515,12 @@ static int process_eap_sim_challenge(eap_handler_t *handler, VALUE_PAIR *vps)
 /*
  *	Authenticate a previously sent challenge.
  */
-static int mod_authenticate(void *arg, eap_handler_t *handler)
+static int mod_authenticate(UNUSED void *arg, eap_handler_t *handler)
 {
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR *vp, *vps;
 	enum eapsim_subtype subtype;
 	int success;
-
-	arg = arg; /* shut up compiler */
 
 	ess = (struct eap_sim_server_state *)handler->opaque;
 

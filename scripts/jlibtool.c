@@ -680,8 +680,8 @@ static void add_runtime_dir_lib(const char *arg, command_t *cmd)
 #ifdef RPATH
 	add_rpath(cmd->shared_opts.dependencies, arg);
 #else
-	arg = arg;			/* -Wunused */
-	cmd = cmd;
+	(void) arg;			/* -Wunused */
+	(void) cmd;
 #endif
 }
 

@@ -352,12 +352,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(UNUSED void *instance, UNUSED REQUEST *request)
 {
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
-
 	return RLM_MODULE_OK;
 }
 
@@ -380,10 +376,8 @@ static rlm_rcode_t mod_accounting(UNUSED void *instance,
  *	max. number of logins, do a second pass and validate all
  *	logins by querying the terminal server (using eg. SNMP).
  */
-static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
+static rlm_rcode_t mod_checksimul(UNUSED void *instance, REQUEST *request)
 {
-	instance = instance;
-
 	request->simul_count=0;
 
 	return RLM_MODULE_OK;

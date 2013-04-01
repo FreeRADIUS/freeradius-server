@@ -425,9 +425,8 @@ static int server_get_eap_user(void *ctx, UNUSED const u8 *identity, UNUSED size
 }
 
 
-static const char * server_get_eap_req_id_text(void *ctx, size_t *len)
+static const char * server_get_eap_req_id_text(UNUSED void *ctx, size_t *len)
 {
-	ctx = ctx;		/* -Wunused */
 	*len = 0;
 	return NULL;
 }

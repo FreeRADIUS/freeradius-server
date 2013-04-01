@@ -311,14 +311,10 @@ done:
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	VALUE_PAIR *state;
 	rlm_smsotp_t *inst = instance;
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
 
 	/*
 	 *  Look for the 'state' attribute.

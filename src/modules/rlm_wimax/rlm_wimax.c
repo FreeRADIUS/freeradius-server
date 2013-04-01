@@ -56,13 +56,9 @@ static const CONF_PARSER module_config[] = {
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	VALUE_PAIR *vp;
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
 
 	/*
 	 *	Fix Calling-Station-Id.  Damn you, WiMAX!
@@ -106,12 +102,8 @@ static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
+static rlm_rcode_t mod_accounting(UNUSED void *instance, UNUSED REQUEST *request)
 {
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
-
 	return RLM_MODULE_OK;
 }
 

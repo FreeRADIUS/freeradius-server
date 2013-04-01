@@ -73,18 +73,14 @@ static const CONF_PARSER module_config[] = {
 /*
  *	The Group = handler.
  */
-static int groupcmp(void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
-		    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
-		    VALUE_PAIR **reply_pairs)
+static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *request,
+		    VALUE_PAIR *check, UNUSED VALUE_PAIR *check_pairs,
+		    UNUSED VALUE_PAIR **reply_pairs)
 {
 	struct passwd	*pwd;
 	struct group	*grp;
 	char		**member;
 	int		retval;
-
-	instance = instance;
-	check_pairs = check_pairs;
-	reply_pairs = reply_pairs;
 
 	/*
 	 *	No user name, doesn't compare.
