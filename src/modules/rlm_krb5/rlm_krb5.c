@@ -129,7 +129,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	
-	radlog(L_DBG, "rlm_krb5 (%s): Context initialised successfully", inst->xlat_name);
+	DEBUG("rlm_krb5 (%s): Context initialised successfully", inst->xlat_name);
 
 	/*
 	 *	Split service principal into service and host components
@@ -155,7 +155,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	
 #ifdef HEIMDAL_KRB5
 	if (inst->hostname) {
-		radlog(L_DBG, "rlm_krb5 (%s): Ignoring hostname component of service principal \"%s\", not "
+		DEBUG("rlm_krb5 (%s): Ignoring hostname component of service principal \"%s\", not "
 		       "needed/supported by Heimdal", inst->xlat_name, inst->hostname);
 	}
 #else
