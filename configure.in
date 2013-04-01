@@ -124,10 +124,31 @@ AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
 
 dnl #
-dnl # Set Default CFLAGS
+dnl # check if were compiling with CLANG, autoconf GCC macro
+dnl # identifies CLANG as GCC
+dnl #
+AC_MSG_CHECKING([if compiling with clang])
+
+AC_COMPILE_IFELSE(
+[AC_LANG_PROGRAM([], [[
+#ifndef __clang__
+       not clang
+#endif
+]])],
+[CLANG=yes], [CLANG=no])
+
+AC_MSG_RESULT([$CLANG])
+
+dnl #
+dnl # Set Default CFLAGS for GCC compatible compilers
 dnl #
 if test "x$GCC" = "xyes"; then
     CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+fi
+
+if test "x$CLANG" = "xyes"; then
+    CFLAGS="$CFLAGS -Qunused-arguments"
+    LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi
 
 dnl Compile in large (2G+) file support.
