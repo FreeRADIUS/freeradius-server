@@ -149,7 +149,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 		
 		if (len) {
 			inst->service = talloc_array(inst, char, (len + 1));
-			strlcpy(inst->service, inst->service_princ, len);
+			strlcpy(inst->service, inst->service_princ, len + 1);
 		}
 	}
 	
