@@ -58,7 +58,7 @@ static int eap_sim_compose(eap_handler_t *handler)
 static int eap_sim_sendstart(eap_handler_t *handler)
 {
 	VALUE_PAIR **vps, *newvp;
-	uint16_t *words;
+	uint16_t words[3];
 	struct eap_sim_server_state *ess;
 	RADIUS_PACKET *packet;
 
@@ -78,12 +78,14 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	 */
 
 	/* the version list. We support only version 1. */
-	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0);
-	words = (uint16_t *)newvp->vp_strvalue;
-	newvp->length = 3*sizeof(uint16_t);
-	words[0] = htons(1*sizeof(uint16_t));
+	words[0] = htons(sizeof(words[1]));
 	words[1] = htons(EAP_SIM_VERSION);
 	words[2] = 0;
+
+	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0);
+       	memcpy(newvp->vp_octets, words, sizeof(words));
+	newvp->length = sizeof(words);
+
 	pairadd(vps, newvp);
 
 	/* set the EAP_ID - new value */

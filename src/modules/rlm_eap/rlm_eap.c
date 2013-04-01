@@ -186,11 +186,11 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		(void) talloc_get_type_abort(inst->methods[method], eap_module_t);
 		
 		if (ret < 0) {
-			talloc_steal(inst, inst->methods[method]);
+			(void) talloc_steal(inst, inst->methods[method]);
 			return -1;
 		}
 
-		talloc_steal(inst, inst->methods[method]);
+		(void) talloc_steal(inst, inst->methods[method]);
 		num_methods++;	/* successfully loaded one more methods */
 	}
 

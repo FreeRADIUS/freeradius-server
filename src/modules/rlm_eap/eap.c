@@ -162,14 +162,14 @@ open_self:
 		radlog(L_ERR, "rlm_eap (%s): Failed to initialise %s", inst->xlat_name, mod_name);
 		
 		if (method->instance) {
-			talloc_steal(method, method->instance);
+			(void) talloc_steal(method, method->instance);
 		}
 		
 		return -1;
 	}
 
 	if (method->instance) {
-		talloc_steal(method, method->instance);
+		(void) talloc_steal(method, method->instance);
 	}
 	
 	return 0;
@@ -996,7 +996,7 @@ static EAP_DS *eap_buildds(eap_handler_t *handler,
 	}
 
 	eap_ds->response->packet = (uint8_t *) eap_packet;
-	talloc_steal(eap_ds, eap_packet);
+	(void) talloc_steal(eap_ds, eap_packet);
 	eap_ds->response->code = eap_packet->code;
 	eap_ds->response->id = eap_packet->id;
 	eap_ds->response->type.num = eap_packet->data[0];
