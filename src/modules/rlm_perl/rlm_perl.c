@@ -186,7 +186,7 @@ static void rlm_perl_close_handles(void **handles)
 	}
 
 	for (i=0; handles[i]; i++) {
-		radlog(L_DBG, "close %p\n", handles[i]);
+		DEBUG("close %p\n", handles[i]);
 		dlclose(handles[i]);
 	}
 

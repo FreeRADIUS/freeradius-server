@@ -119,11 +119,11 @@ static void ikev2_free_opaque(void *opaque)
     struct IKEv2Data *ikev2_data=(struct IKEv2Data*)opaque;
     if(ikev2_data->session) {
 	if(ikev2_data->session->Status!=IKEv2_SST_ESTABLISHED) {
-	    radlog(L_DBG, IKEv2_LOG_PREFIX "Unfinished IKEv2 session - cleanup!!!");
+	    DEBUG(IKEv2_LOG_PREFIX "Unfinished IKEv2 session - cleanup!!!");
 	    IKEv2EndSession(ikev2_data->i2,ikev2_data->session);
 	    ikev2_data->session=NULL;
 	} else {
-	    radlog(L_DBG, IKEv2_LOG_PREFIX "Unfinished IKEv2 session - keep it!!!");
+	    DEBUG(IKEv2_LOG_PREFIX "Unfinished IKEv2 session - keep it!!!");
 	    ikev2_data->session=NULL;
 	}
     }
@@ -298,7 +298,7 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
 	    return 1;
 	}
     } else {
-	radlog(L_DBG, IKEv2_LOG_PREFIX "Fast reconnect procedure start");
+	DEBUG(IKEv2_LOG_PREFIX "Fast reconnect procedure start");
     }
     session->timestamp=time(NULL);
 

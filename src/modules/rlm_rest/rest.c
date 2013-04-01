@@ -231,9 +231,7 @@ int rest_init(rlm_rest_t *instance)
 		return FALSE;
 	}
 
-	radlog(L_DBG, "rlm_rest (%s): CURL library version: %s",
-	       instance->xlat_name,
-	       curl_version());
+	DEBUG("rlm_rest (%s): CURL library version: %s", instance->xlat_name, curl_version());
 
 	return TRUE;
 }
@@ -308,7 +306,7 @@ void *rest_socket_create(void *instance)
 			       inst->connect_uri);
 	if (ret != CURLE_OK) goto error;
 
-	radlog(L_DBG, "rlm_rest (%s): Connecting to \"%s\"",
+	DEBUG("rlm_rest (%s): Connecting to \"%s\"",
 	       inst->xlat_name,
 	       inst->connect_uri);
 

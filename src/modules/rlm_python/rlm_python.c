@@ -219,7 +219,7 @@ static int mod_init(void)
 	
 	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
 	
-	radlog(L_DBG, "mod_init done");
+	DEBUG("mod_init done");
 	return 0;
 	
 failed:
@@ -310,9 +310,9 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		s2 = PyString_AsString(pStr2);
 		vp = pairmake(ctx, vps, s1, s2, op);
 		if (vp != NULL) {
-			radlog(L_DBG, "rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
+			DEBUG("rlm_python:%s: '%s' = '%s'", funcname, s1, s2);
 		} else {
-			radlog(L_DBG, "rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
+			DEBUG("rlm_python:%s: Failed: '%s' = '%s'", funcname, s1, s2);
 		}
 	}
 }
