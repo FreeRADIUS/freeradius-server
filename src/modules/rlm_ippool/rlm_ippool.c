@@ -374,7 +374,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
+static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	rlm_ippool_t *inst = instance;
 	int delete = 0;
@@ -402,12 +402,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	int attr_ipaddr = PW_FRAMED_IP_ADDRESS;
 	int attr_ipmask = PW_FRAMED_IP_NETMASK;
 	int vendor_ipaddr = 0;
-
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
-
+	
 	/* Check if Pool-Name attribute exists. If it exists check our name and
 	 * run only if they match
 	 */

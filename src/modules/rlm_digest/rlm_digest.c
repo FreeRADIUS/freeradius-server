@@ -178,12 +178,9 @@ static int digest_fix(REQUEST *request)
 	return RLM_MODULE_OK;
 }
 
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 {
 	rlm_rcode_t rcode;
-
-	/* quiet the compiler */
-	instance = instance;
 
 	/*
 	 *	Double-check and fix the attributes.

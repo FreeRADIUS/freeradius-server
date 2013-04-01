@@ -132,20 +132,14 @@ static int mod_detach(void *instance);
 /*
  *	See if the counter matches.
  */
-static int counter_cmp(void *instance,
-		       REQUEST *req UNUSED,
-		       VALUE_PAIR *request, VALUE_PAIR *check,
-		       VALUE_PAIR *check_pairs, VALUE_PAIR **reply_pairs)
+static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check,
+		       UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_counter_t *inst = instance;
 	datum key_datum;
 	datum count_datum;
 	VALUE_PAIR *key_vp;
 	rad_counter counter;
-
-	check_pairs = check_pairs; /* shut the compiler up */
-	reply_pairs = reply_pairs;
-	req = req;
 
 	/*
 	 *	Find the key attribute.
@@ -698,7 +692,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
  *	from the database. The authentication code only needs to check
  *	the password, the rest is done here.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 {
 	rlm_counter_t *inst = instance;
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
@@ -709,10 +703,6 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
-
-	/* quiet the compiler */
-	instance = instance;
-	request = request;
 
 	/*
 	 *	Before doing anything else, see if we have to reset
