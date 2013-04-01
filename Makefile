@@ -115,7 +115,7 @@ distclean: clean
 	@-find . ! -name configure.in -name \*.in -print | \
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
-	@-find src/modules -regex '.*/config\.[^.]*$' -print | \
+	@-find src/modules -regex .\*/config\.[^.]*\$ -print | \
 		while read file; do rm -f $$file; done
 
 ######################################################################
