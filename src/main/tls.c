@@ -1114,7 +1114,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 		rv = snprintf(filename, sizeof(filename), "%s%c%s.vps",
 			conf->session_cache_path, FR_DIR_SEP, buffer
 			);
-		rv = pairlist_read(filename, &pairlist, 1);
+		rv = pairlist_read(NULL, filename, &pairlist, 1);
 		if (rv < 0) {
 			/* not safe to un-persist a session w/o VPs */
 			DEBUG2("  SSL: could not load persisted VPs for session %s", buffer);
@@ -1138,7 +1138,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 			goto err;
 		}
 
-		sess_data = talloc_array(conf, unsigned char, st.st_size);
+		sess_data = talloc_array(NULL, unsigned char, st.st_size);
 		if (!sess_data) {
 		  DEBUG2("  SSL: could not alloc buffer for persisted session len=%d", (int) st.st_size);
 			close(fd);

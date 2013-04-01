@@ -74,14 +74,14 @@ static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 }
 
 
-static int attr_filter_getfile(const char *filename, PAIR_LIST **pair_list)
+static int attr_filter_getfile(TALLOC_CTX *ctx, const char *filename, PAIR_LIST **pair_list)
 {
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
 	VALUE_PAIR *vp;
 
-	rcode = pairlist_read(filename, &attrs, 1);
+	rcode = pairlist_read(ctx, filename, &attrs, 1);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -142,7 +142,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_attr_filter_t *inst = instance;
 	int rcode;
 
-	rcode = attr_filter_getfile(inst->file, &inst->attrs);
+	rcode = attr_filter_getfile(inst, inst->file, &inst->attrs);
 	if (rcode != 0) {
 		radlog(L_ERR, "Errors reading %s", inst->file);
 

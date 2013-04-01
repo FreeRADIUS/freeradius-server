@@ -118,7 +118,7 @@ static void my_pairlist_free(void *data)
 }
 
 
-static int getusersfile(const char *filename, fr_hash_table_t **pht,
+static int getusersfile(TALLOC_CTX *ctx, const char *filename, fr_hash_table_t **pht,
 			char *compat_mode_str)
 {
 	int rcode;
@@ -132,7 +132,7 @@ static int getusersfile(const char *filename, fr_hash_table_t **pht,
 		return 0;
 	}
 
-	rcode = pairlist_read(filename, &users, 1);
+	rcode = pairlist_read(ctx, filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -343,7 +343,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_files_t *inst = instance;
 
 #undef READFILE
-#define READFILE(_x, _y) do { if (getusersfile(inst->_x, &inst->_y, inst->compat_mode) != 0) { radlog(L_ERR, "Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
+#define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { radlog(L_ERR, "Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
 
 	READFILE(usersfile, users);
 	READFILE(acctusersfile, acctusers);

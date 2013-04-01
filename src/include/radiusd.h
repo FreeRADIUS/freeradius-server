@@ -664,7 +664,7 @@ RADCLIENT	*client_read(const char *filename, int in_server, int flag);
 
 
 /* files.c */
-int		pairlist_read(const char *file, PAIR_LIST **list, int complain);
+int		pairlist_read(TALLOC_CTX *ctx, const char *file, PAIR_LIST **list, int complain);
 void		pairlist_free(PAIR_LIST **);
 
 /* version.c */

@@ -526,7 +526,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 *	Read the huntgroups file.
 	 */
 	if (inst->huntgroup_file) {
-		rcode = pairlist_read(inst->huntgroup_file,
+		rcode = pairlist_read(inst, inst->huntgroup_file,
 				      &(inst->huntgroups), 0);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_preprocess: Error reading %s",
@@ -539,7 +539,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 *	Read the hints file.
 	 */
 	if (inst->hints_file) {
-		rcode = pairlist_read(inst->hints_file, &(inst->hints), 0);
+		rcode = pairlist_read(inst, inst->hints_file, &(inst->hints), 0);
 		if (rcode < 0) {
 			radlog(L_ERR, "rlm_preprocess: Error reading %s",
 			       inst->hints_file);

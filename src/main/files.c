@@ -58,7 +58,7 @@ void pairlist_free(PAIR_LIST **pl)
  *	Read the users, huntgroups or hints file.
  *	Return a PAIR_LIST.
  */
-int pairlist_read(const char *file, PAIR_LIST **list, int complain)
+int pairlist_read(TALLOC_CTX *ctx, const char *file, PAIR_LIST **list, int complain)
 {
 	FILE *fp;
 	int mode = FIND_MODE_NAME;
@@ -165,7 +165,7 @@ parse_again:
 
 				t = NULL;
 				
-				if (pairlist_read(newfile, &t, 0) != 0) {
+				if (pairlist_read(ctx, newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
 					radlog(L_ERR,
 					       "%s[%d]: Could not open included file %s: %s",
@@ -233,27 +233,19 @@ parse_again:
 					fclose(fp);
 					return -1;
 				}
-			}
-			else {
-				size_t entry_len;
-				char *q;
-
-				entry_len = strlen(entry) + 1;
-
+			} else {
 				/*
 				 *	Done with this entry...
 				 */
-				t = rad_malloc(sizeof(*t) + entry_len);
-				memset(t, 0, sizeof(*t));
+				MEM(t = talloc_zero(ctx, PAIR_LIST));
+
 				t->check = check_tmp;
 				t->reply = reply_tmp;
 				t->lineno = old_lineno;
 				check_tmp = NULL;
 				reply_tmp = NULL;
 
-				q = (void *) &t[1];
-				memcpy(q, entry, entry_len);
-				t->name = q;
+				t->name = talloc_strdup(t, entry);
 
 				*last = t;
 				last = &(t->next);
