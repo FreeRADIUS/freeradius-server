@@ -33,7 +33,7 @@ RCSID("$Id$")
 
 /* krb5 includes */
 #include <krb5.h>
-#include <com_err.h>
+#include <et/com_err.h>
 
 /** Instance configuration for rlm_krb5
  *
