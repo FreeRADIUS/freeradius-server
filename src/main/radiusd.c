@@ -133,7 +133,7 @@ int main(int argc, char *argv[])
 
 	debug_flag = 0;
 	spawn_flag = TRUE;
-	radius_dir = strdup(RADIUS_DIR);
+	radius_dir = talloc_strdup(NULL, RADIUS_DIR);
 
 	/*
 	 *	Ensure that the configuration is initialized.
@@ -171,7 +171,7 @@ int main(int argc, char *argv[])
 				if (radius_dir) {
 					rad_const_free(radius_dir);
 				}
-				radius_dir = strdup(optarg);
+				radius_dir = talloc_strdup(NULL, optarg);
 				break;
 
 			case 'f':
