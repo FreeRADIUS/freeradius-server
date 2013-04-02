@@ -937,6 +937,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		if (!stack.children[stack.pointer]) {
 		do_return:
 			myresult = stack.result[stack.pointer];
+			mypriority = 0; /* reset for the next result */
 			if (stack.pointer == 0) break;
 			stack.pointer--;
 			if (stack.pointer == 0) break;
