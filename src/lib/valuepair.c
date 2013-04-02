@@ -672,7 +672,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 		if (i) {
 			tailto = &i->next;
 			i->next = NULL;
-			talloc_steal(ctx, i);
+			(void) talloc_steal(ctx, i);
 		}
 	}
 }
@@ -724,7 +724,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 		}
 		
 		for (i = *from; i; i = i->next) {
-			talloc_steal(ctx, i);
+			(void) talloc_steal(ctx, i);
 		}
 
 		*from = NULL;
@@ -788,7 +788,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 			*to = i;
 		to_tail = i;
 		i->next = NULL;
-		talloc_steal(ctx, i);
+		(void) talloc_steal(ctx, i);
 	}
 }
 
