@@ -13,8 +13,8 @@ extern "C" {
 #  define DEPRECATED_OFF _Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"");
 #  define DEPRECATED_RST _Pragma("clang diagnostic pop");
 #elif __GNUC__
-#  define DEPRECATED_OFF _Pragma("gcc diagnostic push");_Pragma("gcc diagnostic ignored \"-Wdeprecated-declarations\"");
-#  define DEPRECATED_RST _Pragma("gcc diagnostic pop");
+#  define DEPRECATED_OFF _Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"");
+#  define DEPRECATED_RST _Pragma("GCC diagnostic pop");
 #else
 #  define DEPRECATED_OFF
 #  define DEPRECATED_RST
