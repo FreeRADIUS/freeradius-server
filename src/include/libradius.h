@@ -169,7 +169,7 @@ typedef union value_pair_data {
 	uint32_t		integer;
 	int32_t			sinteger;
 	uint64_t		integer64;
-	uint8_t			filter[32];
+	size_t			filter[32/sizeof(size_t)];
 	uint8_t			ifid[8]; /* struct? */
 	uint8_t			ipv6prefix[18]; /* struct? */
 	uint8_t			ipv4prefix[6]; /* struct? */
