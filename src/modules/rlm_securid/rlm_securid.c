@@ -23,7 +23,6 @@
  * @copyright 2012  The FreeRADIUS server project
  * @copyright 2012  Alan DeKok <aland@networkradius.com>
  */
-#include <freeradius-devel/ident.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <ctype.h>

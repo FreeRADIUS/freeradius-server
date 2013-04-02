@@ -24,7 +24,6 @@
  * Copyright 2006 The FreeRADIUS Server Project.
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>

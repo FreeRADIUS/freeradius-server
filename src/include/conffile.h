@@ -8,7 +8,6 @@
  *
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(conffile_h, "$Id$")
 
 #include <stddef.h>

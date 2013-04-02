@@ -26,7 +26,6 @@
 #ifndef RADIUS_MODULES_H
 #define RADIUS_MODULES_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(modules_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>

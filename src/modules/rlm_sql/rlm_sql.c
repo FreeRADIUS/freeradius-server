@@ -23,7 +23,6 @@
  * @copyright 2000  Mike Machado <mike@innercite.com>
  * @copyright 2000  Alan DeKok <aland@ox.org>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <ctype.h>

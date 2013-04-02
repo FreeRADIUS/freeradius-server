@@ -23,7 +23,6 @@
  * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

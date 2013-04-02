@@ -22,7 +22,6 @@
 #ifndef OTP_MPPE_H
 #define OTP_MPPE_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(otp_mppe_h, "$Id$")
 
 /* MPPE encryption policy */

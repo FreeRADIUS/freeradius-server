@@ -7,7 +7,6 @@
  *
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(detail_h, "$Id$")
 
 #ifdef __cplusplus

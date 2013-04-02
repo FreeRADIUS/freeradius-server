@@ -44,7 +44,6 @@
  *  The LEAP type (0x11) is *not* included in the type data...
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <stdio.h>

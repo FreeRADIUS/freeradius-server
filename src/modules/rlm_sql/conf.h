@@ -8,7 +8,6 @@
 *				     Mike Machado <mike@innercite.com>    *
 ***************************************************************************/
 
-#include <freeradius-devel/ident.h>
 RCSIDH(conf_h, "$Id$")
 
 #define CHECKRAD1		"/usr/sbin/checkrad"

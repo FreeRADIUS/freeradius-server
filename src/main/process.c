@@ -24,7 +24,6 @@
  * @copyright 2012  Alan DeKok <aland@deployingradius.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

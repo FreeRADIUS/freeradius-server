@@ -7,7 +7,6 @@
  *  from public domain source code.
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 /*

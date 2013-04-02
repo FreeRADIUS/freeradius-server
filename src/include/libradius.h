@@ -23,8 +23,6 @@
  *
  * @copyright 1999-2008 The FreeRADIUS server project
  */
-
-#include <freeradius-devel/ident.h>
 RCSIDH(libradius_h, "$Id$")
 
 #include <freeradius-devel/missing.h>

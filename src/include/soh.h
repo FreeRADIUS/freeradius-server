@@ -24,7 +24,6 @@
  * @copyright 2010 Phil Mayers <p.mayers@imperial.ac.uk>
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(soh_h, "$Id$")
 
 #ifdef __cplusplus

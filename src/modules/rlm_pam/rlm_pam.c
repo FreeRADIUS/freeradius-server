@@ -27,7 +27,6 @@
  * @copyright 1997  Jeph Blaize <jblaize@kiva.net>
  * @copyright 1999  miguel a.l. paraz <map@iphil.net>
  */
-#include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>

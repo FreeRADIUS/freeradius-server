@@ -37,7 +37,6 @@ Alain Magloire: alainm@rcsm.ee.mcgill.ca
 
 #ifndef HAVE_VSNPRINTF
 
-#include <freeradius-devel/ident.h>
 RCSIDH(snprintf_h, "$Id$")
 
 #if __STDC__

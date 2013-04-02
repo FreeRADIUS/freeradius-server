@@ -21,7 +21,6 @@
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2000  Jeff Carneal <jeff@apex.net>
  */
-#include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>

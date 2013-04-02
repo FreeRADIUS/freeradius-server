@@ -25,7 +25,6 @@
  * Copyright 2008 The FreeRADIUS server project
  * Copyright 2008 Alan DeKok <aland@deployingradius.com>
  */
-#include <freeradius-devel/ident.h>
 RCSIDH(dhcp_h, "$Id$")
 
 #ifdef __cplusplus

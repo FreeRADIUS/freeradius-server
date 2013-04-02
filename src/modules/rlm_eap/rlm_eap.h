@@ -24,7 +24,6 @@
 #ifndef _RLM_EAP_H
 #define _RLM_EAP_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(rlm_eap_h, "$Id$")
 
 #include <freeradius-devel/modpriv.h>

@@ -21,7 +21,6 @@
  * @copyright 2002,2006  The FreeRADIUS server project
  * @copyright 2002  Boian Jordanov <bjordanov@orbitel.bg>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

@@ -24,7 +24,6 @@
  * @copyright 2009 Dante http://dante.net
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(tcp_h, "$Id$")
 
 int fr_tcp_socket(fr_ipaddr_t *ipaddr, int port);

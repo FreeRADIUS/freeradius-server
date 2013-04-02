@@ -23,7 +23,6 @@
 #ifndef _SQL_FBAPI_H_
 #define _SQL_FBAPI_H_
 
-#include <freeradius-devel/ident.h>
 RCSIDH(sql_fbapi_h, "$Id$")
 
 #include <stdlib.h>

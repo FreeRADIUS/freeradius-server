@@ -34,9 +34,9 @@
 #ifndef _EAP_PWD_H
 #define _EAP_PWD_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(eap_pwd_h, "$Id$")
 #include "eap.h"
+
 #include <openssl/bn.h>
 #include <openssl/sha.h>
 #include <openssl/ec.h>

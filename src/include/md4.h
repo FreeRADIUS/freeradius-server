@@ -9,7 +9,6 @@
 #ifndef _FR_MD4_H
 #define _FR_MD4_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(md4_h, "$Id$")
 
 #ifdef HAVE_INTTYPES_H

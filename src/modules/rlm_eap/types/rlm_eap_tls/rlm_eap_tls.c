@@ -23,8 +23,8 @@
  *
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef HAVE_OPENSSL_RAND_H
 #include <openssl/rand.h>

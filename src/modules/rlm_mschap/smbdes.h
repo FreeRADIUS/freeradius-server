@@ -3,7 +3,6 @@
 #ifndef _SMBDES_H
 #define _SMBDES_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(smbdes_h, "$Id$")
 
 void smbhash(unsigned char *out, const unsigned char *in, unsigned char *key);

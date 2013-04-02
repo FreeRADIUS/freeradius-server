@@ -22,7 +22,6 @@
  */
 
 /*  MPPE support from Takahiro Wagatsuma <waga@sic.shibaura-it.ac.jp> */
-#include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>

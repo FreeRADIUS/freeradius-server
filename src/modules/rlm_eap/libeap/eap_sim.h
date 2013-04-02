@@ -24,7 +24,6 @@
 #ifndef _EAP_SIM_H
 #define _EAP_SIM_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(eap_sim_h, "$Id$")
 
 #include "eap_types.h"

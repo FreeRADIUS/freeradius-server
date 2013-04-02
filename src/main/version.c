@@ -22,13 +22,13 @@
  * Copyright 2000  Chris Parker <cparker@starnetusa.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
-
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
+
 #include <openssl/crypto.h>
 #include <openssl/opensslv.h>
 

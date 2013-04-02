@@ -46,7 +46,6 @@
    up with a different answer to the one above)
 */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>

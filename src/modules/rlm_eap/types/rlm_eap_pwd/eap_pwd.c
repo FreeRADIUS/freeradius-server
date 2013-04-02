@@ -31,7 +31,6 @@
  * license (including the GNU public license).
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include "eap_pwd.h"

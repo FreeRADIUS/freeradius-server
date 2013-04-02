@@ -24,7 +24,6 @@
 #ifndef RLM_REDIS_H
 #define	RLM_REDIS_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(rlm_redis_h, "$Id$")
 
 #ifdef HAVE_PTHREAD_H

@@ -21,7 +21,6 @@
  * @copyright 2013 The FreeRADIUS server project
  * @copyright 2013 your name \<your address\>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

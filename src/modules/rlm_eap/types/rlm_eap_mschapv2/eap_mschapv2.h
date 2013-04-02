@@ -1,7 +1,6 @@
 #ifndef _EAP_MSCHAPV2_H
 #define _EAP_MSCHAPV2_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(eap_mschapv2_h, "$Id$")
 
 #include "eap.h"

@@ -24,8 +24,8 @@
 #ifndef _EAP_TLS_H
 #define _EAP_TLS_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(eap_tls_h, "$Id$")
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <stdio.h>
 #include <stdlib.h>

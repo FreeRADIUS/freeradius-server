@@ -23,7 +23,6 @@
  * Copyright 2006  The FreeRADIUS server project
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #ifndef HAVE_STRLCAT

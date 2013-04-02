@@ -19,7 +19,6 @@
  * Copyright 2000  Dmitri Ageev <d_ageev@ortcc.ru>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

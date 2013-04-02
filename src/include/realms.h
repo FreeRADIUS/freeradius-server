@@ -9,7 +9,6 @@
  *
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(realms_h, "$Id$")
 
 #ifdef __cplusplus

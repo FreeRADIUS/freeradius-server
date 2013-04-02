@@ -21,7 +21,6 @@
  * Copyright 2001  hereUare Communications, Inc. <raghud@hereuare.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <stdio.h>

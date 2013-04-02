@@ -24,7 +24,6 @@
  * Copyright 2007 Alan DeKok <aland@deployingradius.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(event_h, "$Id$")
 
 #ifdef __cplusplus

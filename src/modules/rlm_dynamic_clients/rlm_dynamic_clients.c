@@ -21,7 +21,6 @@
  * @copyright 2008  The FreeRADIUS server project
  * @copyright 2008  Alan DeKok <aland@deployingradius.com>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

@@ -19,7 +19,6 @@
  * Copyright 2005,2006 TRI-D Systems, Inc.
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include "extern.h"

@@ -19,7 +19,6 @@
  * Copyright 2012  Alan DeKok <aland@networkradius.com>
  */
 
-#include <freeradius-devel/ident.h>
 #include <stdio.h>
 #include "rlm_securid.h"
 

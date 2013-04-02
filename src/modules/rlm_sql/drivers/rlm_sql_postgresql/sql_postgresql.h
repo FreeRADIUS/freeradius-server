@@ -3,7 +3,6 @@
 #ifndef _SQL_POSTGRESQL_H_
 #define _SQL_POSTGRESQL_H_
 
-#include <freeradius-devel/ident.h>
 RCSIDH(sql_postgresql_h, "$Id$")
 
 /**************************************************

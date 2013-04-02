@@ -53,7 +53,6 @@
  SUCH DAMAGE.
 */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
@@ -123,7 +122,6 @@ void addip(char *sessiondbname, char *indexdbname, char *ipaddress,
 	signed int rcode;
 	int delete = 0;
 	int port;
-	int extra = 0;
 	int found = 0;
 
 	sessiondb = gdbm_open(sessiondbname, 512, mode, 0,NULL);

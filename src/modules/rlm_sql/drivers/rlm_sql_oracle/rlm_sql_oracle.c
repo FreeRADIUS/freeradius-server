@@ -19,7 +19,6 @@
  * Copyright 2000  David Kerry <davidk@snti.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

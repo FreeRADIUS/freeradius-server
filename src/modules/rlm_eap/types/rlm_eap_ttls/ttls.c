@@ -21,7 +21,6 @@
  *   Copyright 2006 The FreeRADIUS server project
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include "eap_ttls.h"

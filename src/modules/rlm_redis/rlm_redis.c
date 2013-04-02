@@ -21,7 +21,6 @@
  * @copyright 2000,2006  The FreeRADIUS server project
  * @copyright 2011  TekSavvy Solutions <gabe@teksavvy.com>
  */
-#include <freeradius-devel/ident.h>
 
 RCSID("$Id$")
 

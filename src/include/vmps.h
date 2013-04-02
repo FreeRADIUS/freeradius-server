@@ -24,7 +24,6 @@
  * @copyright 2013 The FreeRADIUS server project
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(vmps_h, "$Id$")
 
 #ifdef __cplusplus

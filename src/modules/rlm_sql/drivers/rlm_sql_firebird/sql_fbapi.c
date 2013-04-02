@@ -19,7 +19,6 @@
  * Copyright 2006  Vitaly Bodzhgua <vitaly@eastera.net>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include "sql_fbapi.h"

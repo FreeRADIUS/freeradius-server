@@ -20,7 +20,6 @@
  * Copyright (C) 2009 Dante http://dante.net
  */
 
-#include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>

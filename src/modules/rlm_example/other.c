@@ -21,7 +21,6 @@
  * Copyright 2000  your name <your address>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <stdio.h>

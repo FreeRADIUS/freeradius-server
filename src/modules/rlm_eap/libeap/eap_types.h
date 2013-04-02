@@ -26,7 +26,6 @@
 #ifndef _EAP_TYPES_H
 #define _EAP_TYPES_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(eap_methods_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>

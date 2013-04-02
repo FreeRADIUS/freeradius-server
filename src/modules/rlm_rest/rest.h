@@ -23,7 +23,6 @@
  * @copyright 2012-2013  Arran Cudbard-Bell <a.cudbard-bell@freeradius.org>
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(other_h, "$Id$")
 
 #include <freeradius-devel/connection.h>

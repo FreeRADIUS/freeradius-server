@@ -21,7 +21,6 @@
  * Copyright 2000  Jeff Carneal <jeff@apex.net>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

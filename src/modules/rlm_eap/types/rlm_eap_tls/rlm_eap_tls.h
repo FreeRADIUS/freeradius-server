@@ -24,7 +24,6 @@
 #ifndef _RLM_EAP_TLS_H
 #define _RLM_EAP_TLS_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(rlm_eap_tls_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>

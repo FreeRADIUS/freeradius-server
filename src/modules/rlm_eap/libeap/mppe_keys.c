@@ -22,11 +22,11 @@
  * Authors: Henrik Eriksson <henriken@axis.com> & Lars Viklund <larsv@axis.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
-#include <openssl/hmac.h>
 #include "eap_tls.h"
+#include <openssl/hmac.h>
 
 /*
  * TLS PRF from RFC 2246

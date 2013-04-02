@@ -21,7 +21,6 @@
  *  Copyright 2006  Nicolas Baradakis <nicolas.baradakis@cegetel.net>
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(radsniff_h, "$Id$")
 
 #include <sys/types.h>

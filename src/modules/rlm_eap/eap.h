@@ -24,7 +24,6 @@
 #ifndef _EAP_H
 #define _EAP_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(eap_h, "$Id$")
 
 #include <freeradius-devel/radiusd.h>

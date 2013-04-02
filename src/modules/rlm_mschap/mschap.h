@@ -3,7 +3,6 @@
 #ifndef _MSCHAP_H
 #define _MSCHAP_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(mschap_h, "$Id$")
 
 void mschap_ntpwdhash (uint8_t *szHash, const char *szPassword);

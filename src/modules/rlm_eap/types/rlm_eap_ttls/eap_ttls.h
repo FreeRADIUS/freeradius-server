@@ -23,7 +23,6 @@
 #ifndef _EAP_TTLS_H
 #define _EAP_TTLS_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(eap_ttls_h, "$Id$")
 
 #include "eap_tls.h"

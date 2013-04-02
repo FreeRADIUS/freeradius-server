@@ -25,7 +25,6 @@
 ** Function: fr_hmac_md5
 */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>

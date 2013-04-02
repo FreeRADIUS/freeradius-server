@@ -20,7 +20,6 @@
  * Copyright 2000  Mattias Sjostrom <mattias@nogui.se>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

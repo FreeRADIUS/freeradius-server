@@ -22,7 +22,6 @@
  * Copyright 2007 Alan DeKok
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(heap_h, "$Id$")
 
 #ifdef __cplusplus

@@ -7,7 +7,6 @@
 #ifndef SYSUTMP_H_INCLUDED
 #define SYSUTMP_H_INCLUDED
 
-#include <freeradius-devel/ident.h>
 RCSIDH(sysutmp_h, "$Id$")
 
 /*

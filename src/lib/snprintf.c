@@ -49,7 +49,6 @@
 
 */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include "snprintf.h"

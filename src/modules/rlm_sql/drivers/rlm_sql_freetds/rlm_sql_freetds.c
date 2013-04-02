@@ -20,7 +20,6 @@
  * Copyright 2009 Gabriel Blanchard gabe@teksavvy.com
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

@@ -1,7 +1,6 @@
 #ifndef _RLM_SECURID_H
 #define _RLM_SECURID_H
 
-#include <freeradius-devel/ident.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>

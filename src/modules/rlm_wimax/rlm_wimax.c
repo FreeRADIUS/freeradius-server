@@ -16,8 +16,8 @@
  *
  * @copyright 2008 Alan DeKok <aland@networkradius.com>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>

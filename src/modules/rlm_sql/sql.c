@@ -24,7 +24,6 @@
  * Copyright 2001  Chad Miller <cmiller@surfsouth.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>

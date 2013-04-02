@@ -22,7 +22,6 @@
  * @copyright 2013 The FreeRADIUS server project
  * @copyright 2013 Network RADIUS <info@networkradius.com>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

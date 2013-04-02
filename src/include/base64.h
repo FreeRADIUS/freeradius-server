@@ -19,7 +19,6 @@
 #ifndef _FR_BASE64_H
 #define _FR_BASE64_H
 
-#include <freeradius-devel/ident.h>
 RCSIDH(base64_h, "$Id$")
 
 #include <stddef.h>

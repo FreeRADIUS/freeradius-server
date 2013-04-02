@@ -25,7 +25,6 @@
  * @copyright 2012  Alan DeKok <aland@deployingradius.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(connection_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>

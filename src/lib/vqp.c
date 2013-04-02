@@ -20,7 +20,6 @@
  * Copyright 2007 Alan DeKok <aland@deployingradius.com>
  */
 
-#include	<freeradius-devel/ident.h>
 RCSID("$Id$");
 
 #include	<freeradius-devel/libradius.h>

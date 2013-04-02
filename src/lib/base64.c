@@ -22,7 +22,6 @@
  * @author Simon Josefsson.
  * @see RFC 3548 <http://www.ietf.org/rfc/rfc3548.txt>.
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>

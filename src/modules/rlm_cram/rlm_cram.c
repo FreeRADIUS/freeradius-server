@@ -32,7 +32,6 @@
  * @copyright 2001,2006  The FreeRADIUS server project
  * @copyright 2002 SANDY (http://www.sandy.ru/) under GPLr
  */
-#include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>

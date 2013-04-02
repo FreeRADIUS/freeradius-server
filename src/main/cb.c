@@ -21,13 +21,12 @@
  * Copyright 2006  The FreeRADIUS server project
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 
 #include <freeradius-devel/radiusd.h>
 
 #ifdef WITH_TLS
-
 void cbtls_info(const SSL *s, int where, int ret)
 {
 	const char *str, *state;

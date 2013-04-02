@@ -21,7 +21,6 @@
  * @copyright 2008 Andriy Dmytrenko aka Antti, BuzhNET
  */
 
-#include <freeradius-devel/ident.h>
 
 RCSID("$Id$")
 

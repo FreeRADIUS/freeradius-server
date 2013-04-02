@@ -54,7 +54,6 @@
  *
  */
 
-#include <freeradius-devel/ident.h>
 #include <freeradius-devel/modpriv.h>
 
 RCSID("$Id$")

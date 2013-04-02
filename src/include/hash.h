@@ -24,7 +24,6 @@
  * Copyright 2005,2006  The FreeRADIUS server project
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(hash_h, "$Id$")
 
 #ifdef __cplusplus

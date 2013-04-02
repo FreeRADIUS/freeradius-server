@@ -28,7 +28,6 @@
  * by Joerg Wendland <wendland@scan-plus.de>
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

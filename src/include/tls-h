@@ -26,7 +26,6 @@
  * @copyright 2010 Network RADIUS SARL <info@networkradius.com>
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(tls_h, "$Id$")
 
 #include <freeradius-devel/conffile.h>

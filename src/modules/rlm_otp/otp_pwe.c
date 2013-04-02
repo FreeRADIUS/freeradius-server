@@ -25,7 +25,6 @@
  * is not sufficient for X9.9 use.
  */
 
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 /* avoid inclusion of these FR headers which conflict w/ OpenSSL */
@@ -36,6 +35,7 @@ RCSID("$Id$")
 
 #include "extern.h"
 
+USES_APPLE_DEPRECATED_API
 #include <openssl/des.h>
 #include <openssl/md4.h>
 #include <openssl/md5.h>

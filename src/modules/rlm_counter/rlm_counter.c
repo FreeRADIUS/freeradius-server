@@ -22,7 +22,6 @@
  * @copyright 2001  Alan DeKok <aland@ox.org>
  * @copyright 2001-2003  Kostas Kalevras <kkalev@noc.ntua.gr>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

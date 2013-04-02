@@ -24,7 +24,6 @@
  * @copyright 1999-2000,2002-2008  The FreeRADIUS server project
  */
 
-#include <freeradius-devel/ident.h>
 RCSIDH(radiusd_h, "$Id$")
 
 #include <freeradius-devel/libradius.h>

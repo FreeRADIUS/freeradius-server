@@ -20,7 +20,6 @@
  *
  * @copyright 2012-2013  Arran Cudbard-Bell <arran.cudbardb@freeradius.org>
  */
-#include <freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>

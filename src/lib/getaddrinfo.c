@@ -7,7 +7,6 @@
  *	return all IPv4 addresses provided by DNS lookup.
  */
 
-#include	<freeradius-devel/ident.h>
 RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
