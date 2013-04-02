@@ -377,7 +377,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		clients->min_prefix = client->prefix;
 	}
 
-	talloc_steal(clients, client); /* reparent it */
+	(void) talloc_steal(clients, client); /* reparent it */
 
 	return 1;
 }

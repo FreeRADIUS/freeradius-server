@@ -150,7 +150,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		sock->packet->dst_port = sock->my_port;
 
 		if (sock->request) {
-			talloc_steal(sock->request, sock->packet);
+			(void) talloc_steal(sock->request, sock->packet);
 			sock->request->packet = sock->packet;
 		}
 	}
@@ -190,7 +190,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 			return 0;
 		}
 
-		talloc_steal(sock, sock->ssn);
+		(void) talloc_steal(sock, sock->ssn);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&request->packet->vps);
 
