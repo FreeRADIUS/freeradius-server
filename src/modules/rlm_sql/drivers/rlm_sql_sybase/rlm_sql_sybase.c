@@ -230,7 +230,6 @@ static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 
 static int sql_socket_destructor(void *c)
 {
-	int status = 0;
 	rlm_sql_sybase_conn_t *conn = c;
 	
 	DEBUG2("rlm_sql_sybase: Socket destructor called, closing socket");
