@@ -815,6 +815,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		do_return:
 			rad_assert(stack.pointer > 0);
 			myresult = stack.result[stack.pointer];
+			mypriority = 0; /* reset for the next result */
 			stack.pointer--;
 
 			if (stack.pointer == 0) break;
