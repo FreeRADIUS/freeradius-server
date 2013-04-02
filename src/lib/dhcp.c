@@ -163,7 +163,7 @@ static uint8_t *dhcp_get_option(dhcp_packet_t *packet, size_t packet_size,
 				continue;
 
 			} else if ((field == DHCP_FILE_FIELD) &&
-				   (overload && DHCP_SNAME_FIELD)) {
+				   (overload & DHCP_SNAME_FIELD)) {
 				data = packet->sname;
 				where = 0;
 				size = sizeof(packet->sname);
