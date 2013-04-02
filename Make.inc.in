@@ -72,6 +72,14 @@ OPENSSL_LIBS	= @OPENSSL_LIBS@
 OPENSSL_INCLUDE = @OPENSSL_INCLUDE@
 CFLAGS		+= $(OPENSSL_INCLUDE)
 
+#
+#  If the system has OpenSSL, use it's version of MD4/MD5/SHA1, instead of
+#  using ours.
+#
+ifneq "$(OPENSSL_LIBS)" ""
+CFLAGS		+=  -DWITH_OPENSSL_MD4 -DWITH_OPENSSL_MD5 -DWITH_OPENSSL_SHA1
+endif
+
 LIBREADLINE	= @LIBREADLINE@
 
 #
