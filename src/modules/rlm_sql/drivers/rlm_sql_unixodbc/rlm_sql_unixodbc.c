@@ -47,7 +47,6 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 static int sql_socket_destructor(void *c)
 {
-	int status = 0;
 	rlm_sql_unixodbc_conn_t *conn = c;
 	
 	DEBUG2("rlm_sql_sybase: Socket destructor called, closing socket");
