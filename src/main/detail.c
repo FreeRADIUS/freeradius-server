@@ -863,8 +863,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 	if (check_config) return 0;
 
 	if (!this->data) {
-		this->data = rad_malloc(sizeof(*data));
-		memset(this->data, 0, sizeof(*data));
+		this->data = talloc_zero(this, listen_detail_t);
 	}
 
 	data = this->data;
