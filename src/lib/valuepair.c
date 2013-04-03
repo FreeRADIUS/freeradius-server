@@ -1956,6 +1956,7 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
  * @note If the function returns T_OP_INVALID, an error has occurred and
  * @note the valuepair list should probably be freed.
  *
+ * @param ctx for talloc
  * @param buffer to read valuepairs from.
  * @param list where the parsed VALUE_PAIRs will be appended.
  * @return the last token parsed, or T_OP_INVALID
