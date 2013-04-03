@@ -29,6 +29,7 @@ RCSID("$Id$")
 #include <freeradius-devel/vqp.h>
 #include <freeradius-devel/dhcp.h>
 #include <freeradius-devel/process.h>
+#include <freeradius-devel/protocol.h>
 
 #include <freeradius-devel/vmps.h>
 #include <freeradius-devel/detail.h>
@@ -64,21 +65,6 @@ static void print_packet(RADIUS_PACKET *packet)
 }
 #endif
 
-/*
- *	We'll use this below.
- */
-typedef int (*rad_listen_parse_t)(CONF_SECTION *, rad_listen_t *);
-typedef void (*rad_listen_free_t)(rad_listen_t *);
-
-typedef struct rad_listen_master_t {
-	rad_listen_parse_t	parse;
-	rad_listen_free_t	free;
-	rad_listen_recv_t	recv;
-	rad_listen_send_t	send;
-	rad_listen_print_t	print;
-	rad_listen_encode_t	encode;
-	rad_listen_decode_t	decode;
-} rad_listen_master_t;
 
 static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type);
 
@@ -87,6 +73,8 @@ static int command_tcp_recv(rad_listen_t *listener);
 static int command_tcp_send(rad_listen_t *listener, REQUEST *request);
 static int command_write_magic(int newfd, listen_socket_t *sock);
 #endif
+
+static fr_protocol_t master_listen[RAD_LISTEN_MAX];
 
 /*
  *	Xlat for %{listen:foo}
@@ -706,59 +694,7 @@ static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
-	const char *name;
-
-	switch (this->type) {
-#ifdef WITH_STATS
-	case RAD_LISTEN_NONE:	/* what a hack... */
-		name = "status";
-		break;
-#endif
-
-	case RAD_LISTEN_AUTH:
-		name = "authentication";
-		break;
-
-#ifdef WITH_ACCOUNTING
-	case RAD_LISTEN_ACCT:
-		name = "accounting";
-		break;
-#endif
-
-#ifdef WITH_PROXY
-	case RAD_LISTEN_PROXY:
-		name = "proxy";
-		break;
-#endif
-
-#ifdef WITH_VMPS
-	case RAD_LISTEN_VQP:
-		name = "vmps";
-		break;
-#endif
-
-#ifdef WITH_DHCP
-	case RAD_LISTEN_DHCP:
-		name = "dhcp";
-		break;
-#endif
-
-#ifdef WITH_COA
-	case RAD_LISTEN_COA:
-		name = "coa";
-		break;
-#endif
-
-#ifdef WITH_COMMAND_SOCKET
-	case RAD_LISTEN_COMMAND:
-		name = "control";
-		break;
-#endif
-
-	default:
-		name = "??";
-		break;
-	}
+	const char *name = master_listen[this->type].name;
 
 #define FORWARD len = strlen(buffer); if (len >= (bufsize + 1)) return 0;buffer += len;bufsize -= len
 #define ADDSTRING(_x) strlcpy(buffer, _x, bufsize);FORWARD
@@ -1987,68 +1923,81 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 #include "command.c"
 
-static const rad_listen_master_t master_listen[RAD_LISTEN_MAX] = {
+/*
+ *	Temporarily NOT const!
+ */
+static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 #ifdef WITH_STATS
-	{ common_socket_parse, NULL,
+	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
+	  common_socket_parse, NULL,
 	  stats_socket_recv, auth_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode },
 #else
 	/*
 	 *	This always gets defined.
 	 */
-	{ NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
+	{ RLM_MODULE_INIT, "status", 0, NULL,
+	  NULL, NULL, NULL, NULL, NULL, NULL, NULL},	/* RAD_LISTEN_NONE */
 #endif
 
 #ifdef WITH_PROXY
 	/* proxying */
-	{ common_socket_parse, NULL,
+	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
+	  common_socket_parse, NULL,
 	  proxy_socket_recv, proxy_socket_send,
 	  socket_print, proxy_socket_encode, proxy_socket_decode },
 #endif
 
 	/* authentication */
-	{ common_socket_parse, NULL,
+	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
+	  common_socket_parse, NULL,
 	  auth_socket_recv, auth_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode },
 
 #ifdef WITH_ACCOUNTING
 	/* accounting */
-	{ common_socket_parse, NULL,
+	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
+	  common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
 	  socket_print, client_socket_encode, client_socket_decode},
 #endif
 
 #ifdef WITH_DETAIL
 	/* detail */
-	{ detail_parse, detail_free,
+	{ RLM_MODULE_INIT, "detail", sizeof(listen_detail_t), NULL,
+	  detail_parse, detail_free,
 	  detail_recv, detail_send,
 	  detail_print, detail_encode, detail_decode },
 #endif
 
 #ifdef WITH_VMPS
 	/* vlan query protocol */
-	{ common_socket_parse, NULL,
+	{ RLM_MODULE_INIT, "vmps", sizeof(listen_socket_t), NULL,
+	  common_socket_parse, NULL,
 	  vqp_socket_recv, vqp_socket_send,
 	  socket_print, vqp_socket_encode, vqp_socket_decode },
 #endif
 
 #ifdef WITH_DHCP
 	/* dhcp query protocol */
-	{ dhcp_socket_parse, NULL,
+	{ RLM_MODULE_INIT, "dhcp", sizeof(dhcp_socket_t), NULL,
+	  dhcp_socket_parse, NULL,
 	  dhcp_socket_recv, dhcp_socket_send,
 	  socket_print, dhcp_socket_encode, dhcp_socket_decode },
 #endif
 
 #ifdef WITH_COMMAND_SOCKET
 	/* TCP command socket */
-	{ command_socket_parse, command_socket_free,
+	{ RLM_MODULE_INIT, "control", sizeof(fr_command_socket_t), NULL,
+	  command_socket_parse, command_socket_free,
 	  command_domain_accept, command_domain_send,
 	  command_socket_print, command_socket_encode, command_socket_decode },
 #endif
 
 #ifdef WITH_COA
 	/* Change of Authorization */
-	{ common_socket_parse, NULL,
+	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
+	  common_socket_parse, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
 	  socket_print, client_socket_encode, client_socket_decode },
 #endif
@@ -2504,48 +2453,7 @@ static rad_listen_t *listen_alloc(TALLOC_CTX *ctx, RAD_LISTEN_TYPE type)
 
 	talloc_set_destructor((void *) this, listener_free);
 
-	switch (type) {
-#ifdef WITH_STATS
-	case RAD_LISTEN_NONE:
-#endif
-	case RAD_LISTEN_AUTH:
-#ifdef WITH_ACCOUNTING
-	case RAD_LISTEN_ACCT:
-#endif
-#ifdef WITH_PROXY
-	case RAD_LISTEN_PROXY:
-#endif
-#ifdef WITH_VMPS
-	case RAD_LISTEN_VQP:
-#endif
-#ifdef WITH_COA
-	case RAD_LISTEN_COA:
-#endif
-		this->data = talloc_zero(this, listen_socket_t);
-		break;
-
-#ifdef WITH_DHCP
-	case RAD_LISTEN_DHCP:
-		this->data = talloc_zero(this, dhcp_socket_t);
-		break;
-#endif
-
-#ifdef WITH_DETAIL
-	case RAD_LISTEN_DETAIL:
-		this->data = NULL;
-		break;
-#endif
-
-#ifdef WITH_COMMAND_SOCKET
-	case RAD_LISTEN_COMMAND:
-		this->data = talloc_zero(this, fr_command_socket_t);
-		break;
-#endif
-
-	default:
-		rad_assert("Unsupported option!" == NULL);
-		break;
-	}
+	this->data = talloc_zero_array(this, uint8_t, master_listen[this->type].inst_size);
 
 	return this;
 }

@@ -862,10 +862,6 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (check_config) return 0;
 
-	if (!this->data) {
-		this->data = talloc_zero(this, listen_detail_t);
-	}
-
 	data = this->data;
 
 	rcode = cf_section_parse(cs, data, detail_config);
