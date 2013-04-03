@@ -457,6 +457,29 @@ void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
 	free(c);
 }
 
+/** Unregister comparison function for a module
+ *
+ *  All paircompare() functions for this module will be unregistered.
+ *
+ * @param instance the module instance
+ * @return Void.
+ */
+void paircompare_unregister_instance(void *instance)
+{
+	struct cmp *c, **tail;
+
+	tail = &cmp;
+	while ((c = *tail) != NULL) {
+		if (c->instance == instance) {
+			*tail = c->next;
+			free(c);
+			continue;
+		}
+
+		tail = &(c->next);
+	}
+}
+
 /** Compare two pair lists except for the password information.
  *
  * For every element in "check" at least one matching copy must be present
