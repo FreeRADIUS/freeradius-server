@@ -392,32 +392,19 @@ static module_entry_t *linkto_module(const char *module_name,
 	module_entry_t myentry;
 	module_entry_t *node;
 	void *handle = NULL;
-	char module_struct[256];
-	char *p;
 	const module_t *module;
 
 	strlcpy(myentry.name, module_name, sizeof(myentry.name));
 	node = rbtree_finddata(module_tree, &myentry);
 	if (node) return node;
-	if (strlen(module_name) >= sizeof(module_struct)) {
-		cf_log_err_cs(cs,
-			   "Failed to link to module '%s': Name is too long\n",
-			   module_name);
-		return NULL;
-	}
 
 	/*
-	 *	Link to the module's rlm_FOO{} module structure.
-	 *
-	 *	The module_name variable has the version number
-	 *	embedded in it, and we don't want that here.
+	 *	Link to the module's rlm_FOO{} structure, the same as
+	 *	the module name.
 	 */
-	strlcpy(module_struct, module_name, sizeof(module_struct));
-	p = strrchr(module_struct, '-');
-	if (p) *p = '\0';
 
 #if !defined(WITH_LIBLTDL) && defined(HAVE_DLFCN_H) && defined(RTLD_SELF)
-	module = dlsym(RTLD_SELF, module_struct);
+	module = dlsym(RTLD_SELF, module_name);
 	if (module) goto open_self;
 #endif
 
@@ -438,7 +425,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 *	libltld MAY core here, if the handle it gives us contains
 	 *	garbage data.
 	 */
-	module = dlsym(handle, module_struct);
+	module = dlsym(handle, module_name);
 	if (!module) {
 		cf_log_err_cs(cs,
 			   "Failed linking to %s structure: %s\n",
