@@ -44,7 +44,7 @@ void pairlist_free(PAIR_LIST **pl)
 		if (p->check) pairfree(&p->check);
 		if (p->reply) pairfree(&p->reply);
 		next = p->next;
-		free(p);
+		talloc_free(p);
 	}
 	*pl = NULL;
 }
