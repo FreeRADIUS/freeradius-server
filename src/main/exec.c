@@ -537,7 +537,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 			 *	for plain text (user_msg).
 			 */
 			vp = NULL;
-			n = userparse(answer, &vp);
+			n = userparse(request, answer, &vp);
 			if (vp) {
 				pairfree(&vp);
 			}
@@ -570,7 +570,7 @@ int radius_exec_program(const char *cmd, REQUEST *request,
 				answer[strlen(answer) - 1] = '\0';
 			}
 
-			if (userparse(answer, &vp) == T_OP_INVALID) {
+			if (userparse(request, answer, &vp) == T_OP_INVALID) {
 				RDEBUGE("Unparsable reply from '%s'", cmd);
 
 			} else {

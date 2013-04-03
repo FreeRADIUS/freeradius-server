@@ -565,7 +565,7 @@ static void process_file(const char *filename)
 				p += 7;
 			}
 
-			if (userparse(p, &head) != T_EOL) {
+			if (userparse(NULL, p, &head) != T_EOL) {
 				strlcpy(output, fr_strerror(), sizeof(output));
 				continue;
 			}

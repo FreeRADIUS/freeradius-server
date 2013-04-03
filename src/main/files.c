@@ -37,15 +37,7 @@ RCSID("$Id$")
  */
 void pairlist_free(PAIR_LIST **pl)
 {
-	PAIR_LIST *p, *next;
-
-	for (p = *pl; p; p = next) {
-		/* name is allocated contiguous with p */
-		if (p->check) pairfree(&p->check);
-		if (p->reply) pairfree(&p->reply);
-		next = p->next;
-		talloc_free(p);
-	}
+	talloc_free(*pl);
 	*pl = NULL;
 }
 
@@ -191,7 +183,7 @@ parse_again:
 			check_tmp = NULL;
 			reply_tmp = NULL;
 			old_lineno = lineno;
-			parsecode = userparse(ptr, &check_tmp);
+			parsecode = userparse(ctx, ptr, &check_tmp);
 			if (parsecode == T_OP_INVALID) {
 				pairlist_free(&pl);
 				radlog(L_ERR,
@@ -222,7 +214,7 @@ parse_again:
 				/*
 				 *	Parse the reply values
 				 */
-				parsecode = userparse(buffer, &reply_tmp);
+				parsecode = userparse(ctx, buffer, &reply_tmp);
 				/* valid tokens are 1 or greater */
 				if (parsecode < 1) {
 					pairlist_free(&pl);

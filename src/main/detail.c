@@ -577,7 +577,7 @@ int detail_recv(rad_listen_t *listener)
 		 *	attributes like radsqlrelay does?
 		 */
 		vp = NULL;
-		if ((userparse(buffer, &vp) > 0) &&
+		if ((userparse(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
 			*tail = vp;
 			tail = &(vp->next);

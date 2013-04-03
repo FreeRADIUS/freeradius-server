@@ -258,7 +258,7 @@ static int radclient_init(const char *filename)
 		/*
 		 *	Read the VP's.
 		 */
-		radclient->request->vps = readvp2(fp, &filedone, "radclient:");
+		radclient->request->vps = readvp2(NULL, fp, &filedone, "radclient:");
 		if (!radclient->request->vps) {
 			rad_free(&radclient->request);
 			free(radclient);

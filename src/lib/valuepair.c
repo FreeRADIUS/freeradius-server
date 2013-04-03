@@ -1960,7 +1960,7 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
  * @param list where the parsed VALUE_PAIRs will be appended.
  * @return the last token parsed, or T_OP_INVALID
  */
-FR_TOKEN userparse(const char *buffer, VALUE_PAIR **list)
+FR_TOKEN userparse(TALLOC_CTX *ctx, const char *buffer, VALUE_PAIR **list)
 {
 	VALUE_PAIR	*vp, *head, **tail;
 	const char	*p;
@@ -1987,7 +1987,7 @@ FR_TOKEN userparse(const char *buffer, VALUE_PAIR **list)
 		last_token = pairread(&p, &raw);
 		if (last_token == T_OP_INVALID) break;
 		
-		vp = pairmake(NULL, NULL, raw.l_opand, raw.r_opand, raw.op);
+		vp = pairmake(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
 		if (!vp) break;
 		
 		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
@@ -2026,7 +2026,7 @@ FR_TOKEN userparse(const char *buffer, VALUE_PAIR **list)
  *
  *	Hmm... this function is only used by radclient..
  */
-VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
+VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, const char *errprefix)
 {
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;
@@ -2057,7 +2057,7 @@ VALUE_PAIR *readvp2(FILE *fp, int *pfiledone, const char *errprefix)
 		 *	Read all of the attributes on the current line.
 		 */
 		vp = NULL;
-		last_token = userparse(buf, &vp);
+		last_token = userparse(ctx, buf, &vp);
 		if (!vp) {
 			if (last_token != T_EOL) {
 				fr_perror("%s", errprefix);

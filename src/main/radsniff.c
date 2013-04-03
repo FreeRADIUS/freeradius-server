@@ -532,7 +532,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (radius_filter) {
-		parsecode = userparse(radius_filter, &filter_vps);
+		parsecode = userparse(NULL, radius_filter, &filter_vps);
 		if (parsecode == T_OP_INVALID) {
 			fprintf(stderr, "radsniff: Invalid RADIUS filter \"%s\" (%s)\n", radius_filter, fr_strerror());
 			exit(64);
