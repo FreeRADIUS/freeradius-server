@@ -889,8 +889,6 @@ static int mod_detach(void *instance)
 		}
 	}
 
-	xlat_unregister(inst->xlat_name, perl_xlat, instance);
-
 #ifdef USE_ITHREADS
 	rlm_perl_destruct(inst->perl);
 	pthread_mutex_destroy(&inst->clone_mutex);

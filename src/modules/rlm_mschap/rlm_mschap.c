@@ -560,19 +560,6 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-/*
- *	deinstantiate module, free all memory allocated during
- *	mod_instantiate()
- */
-static int mod_detach(void *instance)
-{
-	rlm_mschap_t *inst = instance;
-
-	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, mschap_xlat, instance);
-	}
-	return 0;
-}
 
 /*
  *	Create instance for our module. Allocate space for
@@ -1864,7 +1851,7 @@ module_t rlm_mschap = {
 	sizeof(rlm_mschap_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		mod_authenticate,	/* authenticate */
 		mod_authorize,	/* authorize */

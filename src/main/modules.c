@@ -329,6 +329,8 @@ static void module_instance_free(void *data)
 	 */
 	paircompare_unregister_instance(this->insthandle);
 
+	xlat_unregister(this->name, NULL, this->insthandle);
+
 #ifndef NDEBUG
 	memset(this, 0, sizeof(*this));
 #endif

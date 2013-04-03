@@ -155,21 +155,6 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 
 
 /*
- *	Detach an instance and free it's data.
- */
-static int mod_detach(void *instance)
-{
-	rlm_exec_t	*inst = instance;
-
-	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, exec_xlat, instance);
-	}
-
-	return 0;
-}
-
-
-/*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
  *	to external databases, read configuration files, set up
@@ -452,7 +437,7 @@ module_t rlm_exec = {
 	sizeof(rlm_exec_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		exec_dispatch,		/* authentication */
 		exec_dispatch,		/* authorization */

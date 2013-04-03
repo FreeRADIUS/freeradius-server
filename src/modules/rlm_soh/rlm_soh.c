@@ -103,15 +103,6 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static int mod_detach(void *instance)
-{
-	rlm_soh_t	*inst = instance;
-
-	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, soh_xlat, instance);
-	}
-	return 0;
-}
 
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
@@ -214,7 +205,7 @@ module_t rlm_soh = {
 	sizeof(rlm_soh_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
+	NULL,			/* detach */
 	{
 		NULL,			/* authenticate */
 		mod_authorize,		/* authorize */

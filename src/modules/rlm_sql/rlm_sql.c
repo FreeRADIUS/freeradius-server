@@ -740,10 +740,6 @@ static int mod_detach(void *instance)
 
 	if (inst->config) {
 		if (inst->pool) sql_poolfree(inst);
-
-		if (inst->config->xlat_name) {
-			xlat_unregister(inst->config->xlat_name, sql_xlat, instance);
-		}
 	}
 
 	if (inst->handle) {

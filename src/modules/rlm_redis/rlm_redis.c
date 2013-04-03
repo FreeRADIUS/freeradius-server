@@ -203,10 +203,6 @@ static int mod_detach(void *instance)
 
 	fr_connection_pool_delete(inst->pool);
 
-	if (inst->xlat_name) {
-		xlat_unregister(inst->xlat_name, redis_xlat, instance);
-	}
-
 	return 0;
 }
 
