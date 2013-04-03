@@ -43,7 +43,7 @@ typedef struct CONF_PARSER {
   int type;			/* PW_TYPE_STRING, etc. */
   size_t offset;		/* relative pointer within "base" */
   void *data;			/* absolute pointer if base is NULL */
-  const char *dflt;		/* default as it would appear in radiusd.conf */
+  const void *dflt;		/* default as it would appear in radiusd.conf */
 } CONF_PARSER;
 
 /* This preprocessor trick will be useful in initializing CONF_PARSER struct */
