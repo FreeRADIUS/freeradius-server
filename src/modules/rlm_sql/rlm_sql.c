@@ -738,8 +738,6 @@ static int mod_detach(void *instance)
 {
 	rlm_sql_t *inst = instance;
 
-	paircompare_unregister(PW_SQL_GROUP, sql_groupcmp);
-	
 	if (inst->config) {
 		if (inst->pool) sql_poolfree(inst);
 

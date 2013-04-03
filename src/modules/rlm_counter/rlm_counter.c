@@ -847,7 +847,6 @@ static int mod_detach(void *instance)
 {
 	rlm_counter_t *inst = instance;
 
-	paircompare_unregister(inst->dict_attr, counter_cmp);
 	if (inst->gdbm) {
 		gdbm_close(inst->gdbm);
 	}

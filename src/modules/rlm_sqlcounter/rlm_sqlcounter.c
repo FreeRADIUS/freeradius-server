@@ -334,15 +334,6 @@ static int sqlcounter_cmp(void *instance, REQUEST *req,
 }
 
 
-static int mod_detach(void *instance)
-{
-	rlm_sqlcounter_t *inst = (rlm_sqlcounter_t *)instance;
-
-	paircompare_unregister(inst->dict_attr->attr, sqlcounter_cmp);
-
-	return 0;
-}
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -595,7 +586,7 @@ module_t rlm_sqlcounter = {
 	sizeof(rlm_sqlcounter_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		mod_authorize, 	/* authorization */

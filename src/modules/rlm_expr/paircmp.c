@@ -271,35 +271,18 @@ static int generic_attrs[] = {
 /*
  *	Register server-builtin special attributes.
  */
-void pair_builtincompare_add(void)
+void pair_builtincompare_add(void *instance)
 {
 	int i;
 
-	paircompare_register(PW_NAS_PORT, PW_NAS_PORT, portcmp, NULL);
-	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, NULL);
-	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, NULL);
-	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, NULL);
-	paircompare_register(PW_PACKET_TYPE, 0, packetcmp, NULL);
-	paircompare_register(PW_RESPONSE_PACKET_TYPE, 0, responsecmp, NULL);
+	paircompare_register(PW_NAS_PORT, PW_NAS_PORT, portcmp, instance);
+	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, instance);
+	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, instance);
+	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, instance);
+	paircompare_register(PW_PACKET_TYPE, 0, packetcmp, instance);
+	paircompare_register(PW_RESPONSE_PACKET_TYPE, 0, responsecmp, instance);
 
 	for (i = 0; generic_attrs[i] != 0; i++) {
-		paircompare_register(generic_attrs[i], -1, genericcmp, NULL);
+		paircompare_register(generic_attrs[i], -1, genericcmp, instance);
 	}
-}
-
-void pair_builtincompare_del(void)
-{
-	int i;
-
-	paircompare_unregister(PW_NAS_PORT, portcmp);
-	paircompare_unregister(PW_PREFIX, presufcmp);
-	paircompare_unregister(PW_SUFFIX, presufcmp);
-	paircompare_unregister(PW_CONNECT_RATE, connectcmp);
-	paircompare_unregister(PW_PACKET_TYPE, packetcmp);
-	paircompare_unregister(PW_RESPONSE_PACKET_TYPE, responsecmp);
-
-	for (i = 0; generic_attrs[i] != 0; i++) {
-		paircompare_unregister(generic_attrs[i], genericcmp);
-	}
-
 }

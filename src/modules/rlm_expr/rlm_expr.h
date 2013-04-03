@@ -20,7 +20,6 @@
  */
 RCSIDH(rlm_expr_h, "$Id$")
 
-void pair_builtincompare_add(void);
-void pair_builtincompare_del(void);
+void pair_builtincompare_add(void *instance);
 
 #endif

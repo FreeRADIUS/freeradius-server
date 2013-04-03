@@ -108,21 +108,6 @@ static int groupcmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *requ
 
 
 /*
- *	Detach.
- */
-static int mod_detach(UNUSED void *instance)
-{
-#define inst ((struct unix_instance *)instance)
-
-	paircompare_unregister(PW_GROUP, groupcmp);
-#ifdef PW_GROUP_NAME
-	paircompare_unregister(PW_GROUP_NAME, groupcmp);
-#endif
-#undef inst
-	return 0;
-}
-
-/*
  *	Read the config
  */
 static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
@@ -500,7 +485,7 @@ module_t rlm_unix = {
 	sizeof(struct unix_instance),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,		 	/* detach */
+	NULL,				/* detach */
 	{
 		NULL,		    /* authentication */
 		mod_authorize,       /* authorization */

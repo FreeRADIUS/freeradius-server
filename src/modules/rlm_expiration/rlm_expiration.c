@@ -124,12 +124,6 @@ static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *req
 }
 
 
-static int mod_detach(UNUSED void *instance)
-{
-	paircompare_unregister(PW_EXPIRATION, expirecmp);
-	return 0;
-}
-
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -167,7 +161,7 @@ module_t rlm_expiration = {
 	sizeof(rlm_expiration_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,		/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		mod_authorize, 	/* authorization */

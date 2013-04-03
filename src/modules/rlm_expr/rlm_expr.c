@@ -703,7 +703,6 @@ static int mod_detach(void *instance)
 	rlm_expr_t	*inst = instance;
 
 	xlat_unregister(inst->xlat_name, expr_xlat, instance);
-	pair_builtincompare_del();
 	return 0;
 }
 
@@ -740,7 +739,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize various paircompare functions
 	 */
-	pair_builtincompare_add();
+	pair_builtincompare_add(instance);
 	return 0;
 }
 
