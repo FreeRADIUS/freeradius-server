@@ -323,7 +323,15 @@ static void module_instance_free(void *data)
 		talloc_free(this->mutex);
 	}
 #endif
+
+	/*
+	 *	Remove any registered paircompares.
+	 */
+	paircompare_unregister_instance(this->insthandle);
+
+#ifndef NDEBUG
 	memset(this, 0, sizeof(*this));
+#endif
 	talloc_free(this);
 }
 
