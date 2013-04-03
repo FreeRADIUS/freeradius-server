@@ -696,17 +696,6 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 
 
 /*
- * Detach a instance free all ..
- */
-static int mod_detach(void *instance)
-{
-	rlm_expr_t	*inst = instance;
-
-	xlat_unregister(inst->xlat_name, expr_xlat, instance);
-	return 0;
-}
-
-/*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
  *	to external databases, read configuration files, set up
@@ -724,8 +713,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->xlat_name) {
 		inst->xlat_name = cf_section_name1(conf);
 	}
+
 	xlat_register(inst->xlat_name, expr_xlat, inst);
 
+	/*
+	 *	FIXME: unregister these, too
+	 */
 	xlat_register("rand", rand_xlat, inst);
 	xlat_register("randstr", randstr_xlat, inst);
 	xlat_register("urlquote", urlquote_xlat, inst);
@@ -759,7 +752,7 @@ module_t rlm_expr = {
 	sizeof(rlm_expr_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,			/* detach */
+	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
 		NULL,			/* authorization */
