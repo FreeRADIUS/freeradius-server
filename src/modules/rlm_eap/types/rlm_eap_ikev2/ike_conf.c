@@ -71,12 +71,12 @@ static struct config_transform config_transforms[] =
  *	Also, it is UNNECESSARY to read the "users" file here!
  *	Doing this shows a misunderstanding of how the server works.
  */
-int getusersfile(const char *filename, PAIR_LIST **pair_list, const char *compat_mode_str)
+int getusersfile(TALLOC_CTX *ctx, const char *filename, PAIR_LIST **pair_list, const char *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;
 
-	rcode = pairlist_read(filename, &users, 1);
+	rcode = pairlist_read(ctx, filename, &users, 1);
 	if (rcode < 0) {
 		return -1;
 	}
@@ -336,7 +336,7 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
  * load user credentials from raddb/users (read directly from users file)
  */
 
-int rad_load_credentials(ikev2_ctx *i2,char *filename,char *authtype_name)
+int rad_load_credentials(TALLOC_CTX *ctx, ikev2_ctx *i2,char *filename,char *authtype_name)
 {
     rad_assert(i2 && filename && authtype_name);
     int authtype;
@@ -348,7 +348,7 @@ int rad_load_credentials(ikev2_ctx *i2,char *filename,char *authtype_name)
     }
 
     PAIR_LIST *users=NULL;
-    if(getusersfile(filename,&users,"no")!=0) {
+    if(getusersfile(ctx, filename,&users,"no")!=0) {
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading %s userfile",filename);
 	return -1;
     }

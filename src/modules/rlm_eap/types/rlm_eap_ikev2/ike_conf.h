@@ -38,8 +38,8 @@
 
 
 int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf);
-int rad_load_credentials(ikev2_ctx *i2,char *filename,char *authtype_name);
-int getusersfile(const char *filename, PAIR_LIST **pair_list,const char *compat_mode_str);
+int rad_load_credentials(TALLOC_CTX *ctx, ikev2_ctx *i2,char *filename,char *authtype_name);
+int getusersfile(TALLOC_CTX *ctx, const char *filename, PAIR_LIST **pair_list,const char *compat_mode_str);
 void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *items,int default_client_authtype);
 int rad_get_authtype(char *authtype_name);
 int rad_get_client_authtype(const char *authtype);

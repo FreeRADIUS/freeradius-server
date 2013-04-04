@@ -251,7 +251,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	return -1;
     }
 
-    int res=rad_load_credentials(i2,usersfilename,default_authtype);
+    int res=rad_load_credentials(instance, i2,usersfilename,default_authtype);
     if(res==-1) {
 	radlog(L_ERR,IKEv2_LOG_PREFIX "Error while loading users credentials");
 	return -1;
