@@ -2631,12 +2631,12 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		 *	And throw away the handle.
 		 *	@todo: fix it later
 		 */
-	}
 
-	if (master_listen[type].magic !=  RLM_MODULE_INIT) {
-		radlog(L_ERR, "Failed to load protocol '%s' due to internal sanity check problem",
-		       master_listen[type].name);
-		return NULL;
+		if (master_listen[type].magic !=  RLM_MODULE_INIT) {
+			radlog(L_ERR, "Failed to load protocol '%s' due to internal sanity check problem",
+			       master_listen[type].name);
+			return NULL;
+		}
 	}
 
 	cf_log_info(cs, "listen {");
