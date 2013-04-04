@@ -84,7 +84,7 @@ const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES] = {
 #define CURLAUTH_NTLM_WB	0
 #endif
 
-const http_body_type_t http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
+const CURLoption http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
 	0,			// HTTP_AUTH_UNKNOWN
 	0,			// HTTP_AUTH_NONE
 	CURLOPT_TLSAUTH_SRP,	// HTTP_AUTH_TLS_SRP

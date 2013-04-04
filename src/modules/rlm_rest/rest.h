@@ -87,7 +87,7 @@ typedef enum {
  */
 extern const http_body_type_t http_body_type_supported[HTTP_BODY_NUM_ENTRIES];
 
-extern const http_body_type_t http_curl_auth[HTTP_AUTH_NUM_ENTRIES];
+extern const CURLoption http_curl_auth[HTTP_AUTH_NUM_ENTRIES];
 
 extern const FR_NAME_NUMBER http_auth_table[];
 
