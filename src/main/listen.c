@@ -31,7 +31,6 @@ RCSID("$Id$")
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/protocol.h>
 
-#include <freeradius-devel/vmps.h>
 #include <freeradius-devel/detail.h>
 
 #ifdef WITH_UDPFROMTO
@@ -690,7 +689,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 /*
  *	This function is stupid and complicated.
  */
-static int socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
+int common_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
@@ -835,7 +834,7 @@ static CONF_PARSER limit_config[] = {
 /*
  *	Parse an authentication or accounting socket.
  */
-static int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
+int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
 	int		listen_port, max_pps;
@@ -1931,7 +1930,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	{ RLM_MODULE_INIT, "status", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  stats_socket_recv, auth_socket_send,
-	  socket_print, client_socket_encode, client_socket_decode },
+	  common_socket_print, client_socket_encode, client_socket_decode },
 #else
 	/*
 	 *	This always gets defined.
@@ -1945,21 +1944,21 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	{ RLM_MODULE_INIT, "proxy", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  proxy_socket_recv, proxy_socket_send,
-	  socket_print, proxy_socket_encode, proxy_socket_decode },
+	  common_socket_print, proxy_socket_encode, proxy_socket_decode },
 #endif
 
 	/* authentication */
 	{ RLM_MODULE_INIT, "auth", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  auth_socket_recv, auth_socket_send,
-	  socket_print, client_socket_encode, client_socket_decode },
+	  common_socket_print, client_socket_encode, client_socket_decode },
 
 #ifdef WITH_ACCOUNTING
 	/* accounting */
 	{ RLM_MODULE_INIT, "acct", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  acct_socket_recv, acct_socket_send,
-	  socket_print, client_socket_encode, client_socket_decode},
+	  common_socket_print, client_socket_encode, client_socket_decode},
 #endif
 
 #ifdef WITH_DETAIL
@@ -1972,10 +1971,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 
 #ifdef WITH_VMPS
 	/* vlan query protocol */
-	{ RLM_MODULE_INIT, "vmps", sizeof(listen_socket_t), NULL,
-	  common_socket_parse, NULL,
-	  vqp_socket_recv, vqp_socket_send,
-	  socket_print, vqp_socket_encode, vqp_socket_decode },
+	{ 0, "vmps", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #ifdef WITH_DHCP
@@ -1983,7 +1979,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	{ RLM_MODULE_INIT, "dhcp", sizeof(dhcp_socket_t), NULL,
 	  dhcp_socket_parse, NULL,
 	  dhcp_socket_recv, dhcp_socket_send,
-	  socket_print, dhcp_socket_encode, dhcp_socket_decode },
+	  common_socket_print, dhcp_socket_encode, dhcp_socket_decode },
 #endif
 
 #ifdef WITH_COMMAND_SOCKET
@@ -1999,7 +1995,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 	{ RLM_MODULE_INIT, "coa", sizeof(listen_socket_t), NULL,
 	  common_socket_parse, NULL,
 	  coa_socket_recv, auth_socket_send, /* CoA packets are same as auth */
-	  socket_print, client_socket_encode, client_socket_decode },
+	  common_socket_print, client_socket_encode, client_socket_decode },
 #endif
 
 };
@@ -2600,11 +2596,59 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	int		type, rcode;
 	char		*listen_type;
 	rad_listen_t	*this;
+	CONF_PAIR	*cp;
+	const char	*value;
+	lt_dlhandle	handle;
+	char		buffer[32];
 
-	listen_type = NULL;
-	
+	cp = cf_pair_find(cs, "type");
+	if (!cp) {
+		cf_log_err_cs(cs,
+			   "No type specified in listen section");
+		return NULL;
+	}
+
+	value = cf_pair_value(cp);
+	if (!value) {
+		cf_log_err_cp(cp,
+			      "Type cannot be empty");
+		return NULL;
+	}
+
+	snprintf(buffer, sizeof(buffer), "proto_%s", value);
+	handle = lt_dlopenext(buffer);
+	if (handle) {
+		fr_protocol_t	*proto;
+
+		proto = dlsym(handle, buffer);
+		if (!proto) {
+			cf_log_err_cs(cs,
+				      "Failed linking to protocol %s : %s\n",
+				      value, dlerror());
+			dlclose(handle);
+			return NULL;
+		}
+
+		type = fr_str2int(listen_compare, value, -1);
+		rad_assert(type >= 0); /* shouldn't be able to compile an invalid type */
+
+		memcpy(&master_listen[type], proto, sizeof(*proto));
+
+		/*
+		 *	And throw away the handle.
+		 *	@todo: fix it later
+		 */
+	}
+
+	if (master_listen[type].magic !=  RLM_MODULE_INIT) {
+		radlog(L_ERR, "Failed to load protocol '%s' due to internal sanity check problem",
+		       master_listen[type].name);
+		return NULL;
+	}
+
 	cf_log_info(cs, "listen {");
 
+	listen_type = NULL;
 	rcode = cf_item_parse(cs, "type", PW_TYPE_STRING_PTR,
 			      &listen_type, "");
 	if (rcode < 0) return NULL;

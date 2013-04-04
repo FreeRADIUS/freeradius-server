@@ -2245,7 +2245,7 @@ static int command_socket_print(const rad_listen_t *this, char *buffer, size_t b
 	fr_command_socket_t *sock = this->data;
 
 	if (sock->magic != COMMAND_SOCKET_MAGIC) {
-		return socket_print(this, buffer, bufsize);
+		return common_socket_print(this, buffer, bufsize);
 	}
 
 	snprintf(buffer, bufsize, "command file %s", sock->path);

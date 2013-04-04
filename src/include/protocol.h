@@ -49,6 +49,12 @@ typedef struct fr_protocol_t {
 	rad_listen_decode_t	decode;
 } fr_protocol_t;
 
+/*
+ *	@todo: fix for later
+ */
+int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this);
+int common_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize);
+
 
 #ifdef __cplusplus
 }

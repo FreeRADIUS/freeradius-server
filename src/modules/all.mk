@@ -16,3 +16,5 @@ else
 SUBMAKEFILES := $(sort $(wildcard ${top_srcdir}/src/modules/rlm_*/all.mk) \
 		$(patsubst %.in,%,$(wildcard ${top_srcdir}/src/modules/rlm_*/all.mk.in)))
 endif
+
+SUBMAKEFILES += $(wildcard ${top_srcdir}/src/modules/proto_*/all.mk)
