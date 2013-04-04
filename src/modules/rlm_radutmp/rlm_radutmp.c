@@ -147,21 +147,23 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsign
  */
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	struct radutmp	ut, u;
 	VALUE_PAIR	*vp;
 	int		status = -1;
 	int		protocol = -1;
 	time_t		t;
-	int		fd;
+	int		fd = -1;
 	int		port_seen = 0;
 	int		off;
 	rlm_radutmp_t	*inst = instance;
-	char		buffer[256];
-	char		filename[1024];
 	char		ip_name[32]; /* 255.255.255.255 */
 	const char	*nas;
 	NAS_PORT	*cache;
 	int		r;
+	
+	char		*filename = NULL;
+	char		*expanded = NULL;
 
 	if (request->packet->src_ipaddr.af != AF_INET) {
 		DEBUG("rlm_radutmp: IPv6 not supported!");
@@ -292,64 +294,65 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Set the protocol field.
 	 */
-	if (protocol == PW_PPP)
+	if (protocol == PW_PPP) {
 		ut.proto = 'P';
-	else if (protocol == PW_SLIP)
+	} else if (protocol == PW_SLIP) {
 		ut.proto = 'S';
-	else
+	} else {
 		ut.proto = 'T';
+	}
+	
 	ut.time = t - ut.delay;
 
 	/*
 	 *	Get the utmp filename, via xlat.
 	 */
-	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL, NULL);
+	if (radius_xlat(filename, 0, request, inst->filename, NULL, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	/*
 	 *	See if this was a reboot.
 	 *
-	 *	Hmm... we may not want to zap all of the users when
-	 *	the NAS comes up, because of issues with receiving
+	 *	Hmm... we may not want to zap all of the users when the NAS comes up, because of issues with receiving
 	 *	UDP packets out of order.
 	 */
-	if (status == PW_STATUS_ACCOUNTING_ON &&
-	    (ut.nas_address != htonl(INADDR_NONE))) {
-		radlog(L_INFO, "rlm_radutmp: NAS %s restarted (Accounting-On packet seen)",
-		       nas);
+	if (status == PW_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
+		radlog(L_INFO, "rlm_radutmp: NAS %s restarted (Accounting-On packet seen)", nas);
 		radutmp_zap(request, filename, ut.nas_address, ut.time);
-		return RLM_MODULE_OK;
+		rcode = RLM_MODULE_OK;
+		
+		goto finish;
 	}
 
-	if (status == PW_STATUS_ACCOUNTING_OFF &&
-	    (ut.nas_address != htonl(INADDR_NONE))) {
-		radlog(L_INFO, "rlm_radutmp: NAS %s rebooted (Accounting-Off packet seen)",
-		       nas);
+	if (status == PW_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
+		radlog(L_INFO, "rlm_radutmp: NAS %s rebooted (Accounting-Off packet seen)", nas);
 		radutmp_zap(request, filename, ut.nas_address, ut.time);
-		return RLM_MODULE_OK;
+		rcode = RLM_MODULE_OK;
+		
+		goto finish;
 	}
 
 	/*
 	 *	If we don't know this type of entry pretend we succeeded.
 	 */
-	if (status != PW_STATUS_START &&
-	    status != PW_STATUS_STOP &&
-	    status != PW_STATUS_ALIVE) {
-		RDEBUGE("NAS %s port %u unknown packet type %d)",
-		       nas, ut.nas_port, status);
-		return RLM_MODULE_NOOP;
+	if (status != PW_STATUS_START && status != PW_STATUS_STOP && status != PW_STATUS_ALIVE) {
+		RDEBUGE("NAS %s port %u unknown packet type %d)", nas, ut.nas_port, status);
+		rcode = RLM_MODULE_NOOP;
+		
+		goto finish;
 	}
 
 	/*
-	 *	Translate the User-Name attribute, or whatever else
-	 *	they told us to use.
+	 *	Translate the User-Name attribute, or whatever else they told us to use.
 	 */
-	*buffer = '\0';
-	radius_xlat(buffer, sizeof(buffer), inst->username, request, NULL, NULL);
-
-	/*
-	 *  Copy the previous translated user name.
-	 */
-	strlcpy(ut.login, buffer, RUT_NAMESIZE);
+	if (radius_axlat(&expanded, request, inst->username, NULL, NULL) < 0) {
+		rcode = RLM_MODULE_FAIL;
+		
+		goto finish;
+	}
+	strlcpy(ut.login, expanded, RUT_NAMESIZE);
+	TALLOC_FREE(expanded);
 
 	/*
 	 *	Perhaps we don't want to store this record into
@@ -359,15 +362,17 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	- with the username "!root" (console admin login)
 	 */
 	if (!port_seen) {
-		DEBUG2("  rlm_radutmp: No NAS-Port seen.  Cannot do anything.");
-		DEBUG2W("checkrad will probably not work!");
-		return RLM_MODULE_NOOP;
+		RDEBUG2W("No NAS-Port seen.  Cannot do anything. Checkrad will probably not work!");
+		rcode = RLM_MODULE_NOOP;
+		
+		goto finish;
 	}
 
 	if (strncmp(ut.login, "!root", RUT_NAMESIZE) == 0) {
-		DEBUG2("  rlm_radutmp: Not recording administrative user");
-
-		return RLM_MODULE_NOOP;
+		RDEBUG2("Not recording administrative user");
+		rcode = RLM_MODULE_NOOP;
+		
+		goto finish;
 	}
 
 	/*
@@ -375,9 +380,10 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	fd = open(filename, O_RDWR|O_CREAT, inst->permission);
 	if (fd < 0) {
-		RDEBUGE("Error accessing file %s: %s",
-		       filename, strerror(errno));
-		return RLM_MODULE_FAIL;
+		RDEBUGE("Error accessing file %s: %s", filename, strerror(errno));
+		rcode = RLM_MODULE_FAIL;
+	
+		goto finish;
 	}
 
 	/*
@@ -388,8 +394,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Find the entry for this NAS / portno combination.
 	 */
-	if ((cache = nas_port_find(inst->nas_port_list, ut.nas_address,
-				   ut.nas_port)) != NULL) {
+	if ((cache = nas_port_find(inst->nas_port_list, ut.nas_address, ut.nas_port)) != NULL) {
 		lseek(fd, (off_t)cache->offset, SEEK_SET);
 	}
 
@@ -397,36 +402,32 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	off = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
 		off += sizeof(u);
-		if (u.nas_address != ut.nas_address ||
-		    u.nas_port	  != ut.nas_port)
+		if ((u.nas_address != ut.nas_address) || (u.nas_port != ut.nas_port)) {
 			continue;
+		}
 
 		/*
 		 *	Don't compare stop records to unused entries.
 		 */
-		if (status == PW_STATUS_STOP &&
-		    u.type == P_IDLE) {
+		if (status == PW_STATUS_STOP && u.type == P_IDLE) {
 			continue;
 		}
 
-		if (status == PW_STATUS_STOP &&
-		    strncmp(ut.session_id, u.session_id,
-			    sizeof(u.session_id)) != 0) {
+		if ((status == PW_STATUS_STOP) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) != 0) {
 			/*
 			 *	Don't complain if this is not a
 			 *	login record (some clients can
 			 *	send _only_ logout records).
 			 */
-			if (u.type == P_LOGIN)
-				RDEBUGW("Logout entry for NAS %s port %u has wrong ID",
-				       nas, u.nas_port);
+			if (u.type == P_LOGIN) {
+				RDEBUGW("Logout entry for NAS %s port %u has wrong ID", nas, u.nas_port);
+			}
+			
 			r = -1;
 			break;
 		}
 
-		if (status == PW_STATUS_START &&
-		    strncmp(ut.session_id, u.session_id,
-			    sizeof(u.session_id)) == 0  &&
+		if ((status == PW_STATUS_START) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
 		    u.time >= ut.time) {
 			if (u.type == P_LOGIN) {
 				radlog(L_INFO, "rlm_radutmp: Login entry for NAS %s port %u duplicate",
@@ -434,20 +435,17 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				r = -1;
 				break;
 			}
-			RDEBUGW("Login entry for NAS %s port %u wrong order",
-			       nas, u.nas_port);
+			
+			RDEBUGW("Login entry for NAS %s port %u wrong order", nas, u.nas_port);
 			r = -1;
 			break;
 		}
 
 		/*
-		 *	FIXME: the ALIVE record could need
-		 *	some more checking, but anyway I'd
+		 *	FIXME: the ALIVE record could need some more checking, but anyway I'd
 		 *	rather rewrite this mess -- miquels.
 		 */
-		if (status == PW_STATUS_ALIVE &&
-		    strncmp(ut.session_id, u.session_id,
-			    sizeof(u.session_id)) == 0  &&
+		if ((status == PW_STATUS_ALIVE) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
 		    u.type == P_LOGIN) {
 			/*
 			 *	Keep the original login time.
@@ -459,8 +457,10 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			RDEBUGW("negative lseek!");
 			lseek(fd, (off_t)0, SEEK_SET);
 			off = 0;
-		} else
+		} else {
 			off -= sizeof(u);
+		}
+		
 		r = 1;
 		break;
 	} /* read the file until we find a match */
@@ -469,8 +469,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	Found the entry, do start/update it with
 	 *	the information from the packet.
 	 */
-	if (r >= 0 &&  (status == PW_STATUS_START ||
-			status == PW_STATUS_ALIVE)) {
+	if ((r >= 0) && (status == PW_STATUS_START || status == PW_STATUS_ALIVE)) {
 		/*
 		 *	Remember where the entry was, because it's
 		 *	easier than searching through the entire file.
@@ -501,12 +500,18 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			u.delay = ut.delay;
 			write(fd, &u, sizeof(u));
 		} else if (r == 0) {
-			RDEBUGW("Logout for NAS %s port %u, but no Login record",
-			       nas, ut.nas_port);
+			RDEBUGW("Logout for NAS %s port %u, but no Login record", nas, ut.nas_port);
 		}
 	}
-	close(fd);	/* and implicitely release the locks */
 
+	finish:
+	
+	talloc_free(filename);
+	
+	if (fd > -1) {
+		close(fd);	/* and implicitely release the locks */
+	}
+	
 	return RLM_MODULE_OK;
 }
 #endif
@@ -524,22 +529,26 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
  */
 static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 {
+	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	struct radutmp	u;
-	int		fd;
+	int		fd = -1;
 	VALUE_PAIR	*vp;
 	uint32_t	ipno = 0;
 	char		*call_num = NULL;
-	int		rcode;
 	rlm_radutmp_t	*inst = instance;
-	char		login[256];
-	char		filename[1024];
+	
+	char		*expanded = NULL;
+	ssize_t		len;
 
 	/*
 	 *	Get the filename, via xlat.
 	 */
-	radius_xlat(filename, sizeof(filename), inst->filename, request, NULL, NULL);
+	if (radius_axlat(&expanded, request, inst->filename, NULL, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
-	if ((fd = open(filename, O_RDWR)) < 0) {
+	fd = open(expanded, O_RDWR);
+	if (fd < 0) {
 		/*
 		 *	If the file doesn't exist, then no users
 		 *	are logged in.
@@ -552,16 +561,24 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 		/*
 		 *	Error accessing the file.
 		 */
-		radlog(L_ERR, "rlm_radumtp: Error accessing file %s: %s",
-		       filename, strerror(errno));
+		radlog(L_ERR, "rlm_radumtp: Error accessing file %s: %s", expanded, strerror(errno));
+		
+		rcode = RLM_MODULE_FAIL;
+		
+		goto finish;
+	}
+	
+	TALLOC_FREE(expanded);
+
+	len = radius_axlat(&expanded, request, inst->username, NULL, NULL);
+	if (len < 0) {
 		return RLM_MODULE_FAIL;
 	}
+	
+	if (!len) {
+		rcode = RLM_MODULE_NOOP;
 
-	*login = '\0';
-	radius_xlat(login, sizeof(login), inst->username, request, NULL, NULL);
-	if (!*login) {
-		close(fd);
-		return RLM_MODULE_NOOP;
+		goto finish;
 	}
 
 	/*
@@ -575,10 +592,9 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	 *	Loop over utmp, counting how many people MAY be logged in.
 	 */
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
-		if (((strncmp(login, u.login, RUT_NAMESIZE) == 0) ||
-		     (!inst->case_sensitive &&
-		      (strncasecmp(login, u.login, RUT_NAMESIZE) == 0))) &&
-		    (u.type == P_LOGIN)) {
+		if (((strncmp(expanded, u.login, RUT_NAMESIZE) == 0) || 
+		    (!inst->case_sensitive && (strncasecmp(expanded, u.login, RUT_NAMESIZE) == 0))) &&
+		     (u.type == P_LOGIN)) {
 			++request->simul_count;
 		}
 	}
@@ -587,20 +603,23 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	 *	The number of users logged in is OK,
 	 *	OR, we've been told to not check the NAS.
 	 */
-	if ((request->simul_count < request->simul_max) ||
-	    !inst->check_nas) {
-		close(fd);
-		return RLM_MODULE_OK;
+	if ((request->simul_count < request->simul_max) || !inst->check_nas) {
+		rcode = RLM_MODULE_OK;
+		
+		goto finish;
 	}
 	lseek(fd, (off_t)0, SEEK_SET);
 
 	/*
 	 *	Setup some stuff, like for MPP detection.
 	 */
-	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL)
+	if ((vp = pairfind(request->packet->vps, PW_FRAMED_IP_ADDRESS, 0, TAG_ANY)) != NULL) {
 		ipno = vp->vp_ipaddr;
-	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL)
+	}
+	
+	if ((vp = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) != NULL) {
 		call_num = vp->vp_strvalue;
+	}
 
 	/*
 	 *	lock the file while reading/writing.
@@ -615,10 +634,8 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	 */
 	request->simul_count = 0;
 	while (read(fd, &u, sizeof(u)) == sizeof(u)) {
-		if (((strncmp(login, u.login, RUT_NAMESIZE) == 0) ||
-		     (!inst->case_sensitive &&
-		      (strncasecmp(login, u.login, RUT_NAMESIZE) == 0))) &&
-		    (u.type == P_LOGIN)) {
+		if (((strncmp(expanded, u.login, RUT_NAMESIZE) == 0) || (!inst->case_sensitive &&
+		    (strncasecmp(expanded, u.login, RUT_NAMESIZE) == 0))) && (u.type == P_LOGIN)) {
 			char session_id[sizeof(u.session_id) + 1];
 			char utmp_login[sizeof(u.login) + 1];
 
@@ -648,17 +665,15 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 			 *	to block everyone else while
 			 *	that's happening.  */
 			rad_unlockfd(fd, LOCK_LEN);
-			rcode = rad_check_ts(u.nas_address, u.nas_port,
-					     utmp_login, session_id);
+			rcode = rad_check_ts(u.nas_address, u.nas_port, utmp_login, session_id);
 			rad_lockfd(fd, LOCK_LEN);
 
 			if (rcode == 0) {
 				/*
 				 *	Stale record - zap it.
 				 */
-				session_zap(request, u.nas_address,
-					    u.nas_port, login, session_id,
-					    u.framed_address, u.proto,0);
+				session_zap(request, u.nas_address, u.nas_port, expanded, session_id,
+					    u.framed_address, u.proto, 0);
 			}
 			else if (rcode == 1) {
 				/*
@@ -669,28 +684,28 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 				/*
 				 *	Does it look like a MPP attempt?
 				 */
-				if (strchr("SCPA", u.proto) &&
-				    ipno && u.framed_address == ipno)
+				if (strchr("SCPA", u.proto) && ipno && u.framed_address == ipno) {
 					request->simul_mpp = 2;
-				else if (strchr("SCPA", u.proto) && call_num &&
-					!strncmp(u.caller_id,call_num,16))
+				} else if (strchr("SCPA", u.proto) && call_num && !strncmp(u.caller_id, call_num,16)) {
 					request->simul_mpp = 2;
-			}
-			else {
-				/*
-				 *	Failed to check the terminal
-				 *	server for duplicate logins:
-				 *	Return an error.
-				 */
-				close(fd);
+				}
+			} else {
 				RDEBUGW("Failed to check the terminal server for user '%s'.", utmp_login);
-				return RLM_MODULE_FAIL;
+				rcode = RLM_MODULE_FAIL;
+				
+				goto finish;
 			}
 		}
 	}
-	close(fd);		/* and implicitely release the locks */
-
-	return RLM_MODULE_OK;
+	finish:
+	
+	talloc_free(expanded);
+	
+	if (fd > -1) {
+		close(fd);		/* and implicitely release the locks */
+	}
+	
+	return rcode;
 }
 #endif
 

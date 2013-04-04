@@ -243,8 +243,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 */
 	{
 		VALUE_PAIR *vp;
-		char buff[1024];
-		size_t len;
+
+		char *expanded = NULL;
+		ssize_t len;
 
 		/*
 		 *	First add the internal OTP challenge attribute to
@@ -266,18 +267,20 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 *	what the challenge value is.
 		 */
 		
-		len = radius_xlat(buff, sizeof(buff), inst->chal_prompt,
-				  request, NULL, NULL);
-		if (len == 0) {
+		len = radius_axlat(&expanded, request, inst->chal_prompt, NULL, NULL);
+		if (len < 0) {
 			return RLM_MODULE_FAIL;
 		}
 		
 		vp = paircreate(request->reply, PW_REPLY_MESSAGE, 0);
 		if (!vp) {
+			talloc_free(expanded);
 			return RLM_MODULE_FAIL;
 		}
 		
-		memcpy(vp->vp_strvalue, challenge, len);	
+		memcpy(vp->vp_strvalue, expanded, len);
+		talloc_free(expanded);
+			
 		vp->length = inst->challenge_len;
 		vp->op = T_OP_SET;
 		

@@ -447,32 +447,38 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 {
 	int fd;
 	const char *filename = NULL;
-	char buffer[8192];
+	char *expanded = NULL;
 
-	if (section) filename = section->logfile;
-
-	if (!filename) filename = inst->config->logfile;
-
-	if (!filename) return;
-
-	if (!radius_xlat(buffer, sizeof(buffer), filename, request, NULL, NULL)) {
-		radlog(L_ERR, "rlm_sql (%s): xlat failed.",
-		       inst->config->xlat_name);
+	if (section) {
+		filename = section->logfile;
+	}
+	
+	if (!filename) {
+		filename = inst->config->logfile;
+		
+		if (!filename) {
+			return;
+		}
+	}
+	
+	if (radius_axlat(&expanded, request, filename, NULL, NULL) < 0) {
 		return;
 	}
 
 	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
 	if (fd < 0) {
-		radlog(L_ERR, "rlm_sql (%s): Couldn't open logfile '%s': %s",
-		       inst->config->xlat_name, buffer, strerror(errno));
+		radlog(L_ERR, "rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
+		       expanded, strerror(errno));
+		       
+		talloc_free(expanded);
 		return;
 	}
 
-	if ((rad_lockfd(fd, MAX_QUERY_LEN) < 0) ||
-	    (write(fd, query, strlen(query)) < 0) ||
-	    (write(fd, ";\n", 2) < 0)) {
-		radlog(L_ERR, "rlm_sql (%s): Failed writing to logfile '%s': %s",
-		       inst->config->xlat_name, buffer, strerror(errno));
+	if ((rad_lockfd(fd, MAX_QUERY_LEN) < 0) || (write(fd, query, strlen(query)) < 0) || (write(fd, ";\n", 2) < 0)) {
+		radlog(L_ERR, "rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
+		       strerror(errno));
 	}
+	
+	talloc_free(expanded);
 	close(fd);		/* and release the lock */
 }

@@ -201,7 +201,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	char buffer[LDAP_MAX_DN_STR_LEN + LDAP_MAX_FILTER_STR_LEN];
 
 	if (strchr(fmt, '%') != NULL) {
-		if (!radius_xlat(buffer, sizeof(buffer), fmt, request, rlm_ldap_escape_func, NULL)) {
+		if (!radius_xlat(buffer, sizeof(buffer), request, fmt, rlm_ldap_escape_func, NULL)) {
 			RDEBUGE("Unable to create LDAP URL");
 			return 0;
 		}
@@ -972,7 +972,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		*p++ = '.';
 	}
 	
-	if (!radius_xlat(p, (sizeof(path) - (p - path)) - 1, section->reference, request, NULL, NULL)) {
+	if (radius_xlat(p, (sizeof(path) - (p - path)) - 1, request, section->reference, NULL, NULL) < 0) {
 		goto error;	
 	}
 
@@ -1043,17 +1043,18 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 		if (op == T_OP_CMP_FALSE) {
 			passed[last_pass] = NULL;
 		} else if (do_xlat) {
-			p = rad_malloc(1024);
-			if (radius_xlat(p, 1024, value, request, NULL, NULL) <= 0) {
-				RDEBUG("xlat failed or empty value string, skipping attribute \"%s\"", attr);
+			char *exp = NULL;
+			
+			if (radius_xlat(exp, 0, request, value, NULL, NULL) <= 0) {
+				RDEBUG("Skipping attribute \"%s\"", attr);
 			       	       
-				free(p);
+				talloc_free(exp);
 				
 				continue;
 			}
 			
-			expanded[last_exp++] = p;
-			passed[last_pass] = p;
+			expanded[last_exp++] = exp;
+			passed[last_pass] = exp;
 		/* 
 		 *	Static strings
 		 */
@@ -1132,7 +1133,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	 *	Free up any buffers we allocated for xlat expansion
 	 */	
 	for (i = 0; i < last_exp; i++) {
-		free(expanded[i]);
+		talloc_free(expanded[i]);
 	}
 
 	rlm_ldap_release_socket(inst, conn);

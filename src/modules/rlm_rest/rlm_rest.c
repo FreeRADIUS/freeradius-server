@@ -102,31 +102,28 @@ static int rlm_rest_perform (rlm_rest_t *instance, rlm_rest_section_t *section,
 			     void *handle, REQUEST *request)
 {
 	size_t uri_len;
-	char uri[REST_URI_MAX_LEN];
+	char *uri = NULL;
 	
 	int ret;
 	
 	RDEBUG("Expanding URI components");
+
 	/*
 	 *	Build xlat'd URI, this allows REST servers to be specified by
 	 *	request attributes.
 	 */
-	uri_len = rest_uri_build(instance, section, request, uri, sizeof(uri));
+	uri_len = rest_uri_build(&uri, instance, section, request);
 	if (uri_len <= 0) return -1;
 
-	RDEBUG("Sending HTTP %s to \"%s\"",
-		fr_int2str(http_method_table, section->method, NULL),
-		uri);
+	RDEBUG("Sending HTTP %s to \"%s\"", fr_int2str(http_method_table, section->method, NULL), uri);
 
 	/*
 	 *	Configure various CURL options, and initialise the read/write
 	 *	context data.
 	 */
-	ret = rest_request_config(instance, section, request,
-		handle,
-		section->method,
-		section->body,
-		uri);
+	ret = rest_request_config(instance, section, request, handle, section->method, section->body, uri);
+	talloc_free(uri);
+	
 	if (ret <= 0) return -1;
 
 	/*

@@ -197,9 +197,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), inst->detailfile, request, NULL, NULL) == 0) {
-		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to expand detail file %s",
-		    inst->detailfile);
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->detailfile, NULL, NULL) < 0) {
 	    return RLM_MODULE_FAIL;
 	}
 	RDEBUG2("%s expands to %s", inst->detailfile, buffer);
@@ -342,9 +340,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		return RLM_MODULE_FAIL;
 	}
 
-	if (radius_xlat(timestamp, sizeof(timestamp), inst->header, request, NULL, NULL) == 0) {
-		radlog_request(L_ERR, 0, request, "rlm_detail: Unable to expand detail header format %s",
-			inst->header);
+	if (radius_xlat(timestamp, sizeof(timestamp), request, inst->header, NULL, NULL) < 0) {
 		close(outfd);
 		return RLM_MODULE_FAIL;
 	}

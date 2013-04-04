@@ -861,7 +861,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 
 		if (!request) continue;
 
-		sublen = radius_xlat(to, left - 1, argv[i], request, NULL, NULL);
+		sublen = radius_xlat(to, left - 1, request, argv[i], NULL, NULL);
 		if (sublen <= 0) {
 			if (can_fail) {
 				/*

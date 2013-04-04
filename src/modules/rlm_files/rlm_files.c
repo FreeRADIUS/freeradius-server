@@ -381,10 +381,12 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 	} else {
 		int len;
 
-		len = radius_xlat(buffer, sizeof(buffer), inst->key,
-				  request, NULL, NULL);
-		if (len) name = buffer;
-		else name = "NONE";
+		len = radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL);
+		if (len < 0) {
+			return RLM_MODULE_FAIL;
+		}
+		
+		name = len ? buffer : "NONE";
 	}
 
 	if (!ht) return RLM_MODULE_NOOP;

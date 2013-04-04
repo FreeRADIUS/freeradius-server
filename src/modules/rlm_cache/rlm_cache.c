@@ -459,8 +459,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 		 *	needs to be expanded.
 		 */
 		case VPT_TYPE_XLAT:
-			if (radius_xlat(buffer, sizeof(buffer), map->src->name,
-					request, NULL, NULL) <= 0) {
+			if (radius_xlat(buffer, sizeof(buffer), request, map->src->name, NULL, NULL) <= 0) {
 				continue;		
 			}
 
@@ -610,7 +609,9 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	char buffer[1024];
 	int ret = 0;
 
-	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
+		return 0;
+	}
 
 	list = radius_list_name(&p, PAIR_LIST_REQUEST);
 	
@@ -792,9 +793,11 @@ static rlm_rcode_t cache_it(void *instance, REQUEST *request)
 	rlm_cache_t *inst = instance;
 	VALUE_PAIR *vp;
 	char buffer[1024];
-	int rcode;
+	rlm_rcode_t rcode;
 
-	radius_xlat(buffer, sizeof(buffer), inst->key, request, NULL, NULL);
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
 	PTHREAD_MUTEX_LOCK(&inst->cache_mutex);
 	c = cache_find(inst, request, buffer);

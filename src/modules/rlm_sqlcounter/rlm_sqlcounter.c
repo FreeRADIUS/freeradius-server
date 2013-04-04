@@ -239,7 +239,7 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *
  */
 
-static int sqlcounter_expand(char *out, int outlen, const char *fmt, rlm_sqlcounter_t *inst)
+static size_t sqlcounter_expand(char *out, int outlen, const char *fmt, rlm_sqlcounter_t *inst)
 {
 	int c,freespace;
 	const char *p;
@@ -251,7 +251,7 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, rlm_sqlcoun
 	/* Calculate freespace in output */
 	freespace = outlen - (q - out);
 		if (freespace <= 1)
-			break;
+			return -1;
 		c = *p;
 		if ((c != '%') && (c != '\\')) {
 			*q++ = *p;
@@ -310,25 +310,53 @@ static int sqlcounter_expand(char *out, int outlen, const char *fmt, rlm_sqlcoun
 /*
  *	See if the counter matches.
  */
-static int sqlcounter_cmp(void *instance, REQUEST *req,
-			  UNUSED VALUE_PAIR *request, VALUE_PAIR *check,
+static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req , VALUE_PAIR *check,
 			  UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
 	rlm_sqlcounter_t *inst = instance;
 	int counter;
-	char querystr[MAX_QUERY_LEN];
-	char sqlxlat[MAX_QUERY_LEN];
 
+	char *p;
+	char query[MAX_QUERY_LEN];
+	char *expanded = NULL;
+	
+	size_t len;
+
+	len = snprintf(query, sizeof(query), "%%{%s:", inst->sqlmod_inst, query);
+	if (len >= sizeof(query) - 1) {
+		RDEBUGE("Insufficient query buffer space");
+		
+		return RLM_MODULE_FAIL;
+	}
+	
+	p = query + len;
+	
 	/* first, expand %k, %b and %e in query */
-	sqlcounter_expand(querystr, MAX_QUERY_LEN, inst->query, inst);
-
-	/* third, wrap query with sql module call & expand */
-	snprintf(sqlxlat, sizeof(sqlxlat), "%%{%s:%s}", inst->sqlmod_inst, querystr);
+	len = sqlcounter_expand(p, p - query, inst->query, inst);
+	if (len <= 0) {
+		RDEBUGE("Insufficient query buffer space");
+		
+		return RLM_MODULE_FAIL;
+	}
+	
+	p += len;
+	
+	if ((p - query) < 2) {
+		RDEBUGE("Insufficient query buffer space");
+		
+		return RLM_MODULE_FAIL;
+	}
+	
+	p[0] = '}';
+	p[1] = '\0';
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, sqlxlat, req, NULL, NULL);
+	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
-	counter = atoi(querystr);
+	counter = atoi(expanded);
+	talloc_free(expanded);
 
 	return counter - check->vp_integer;
 }
@@ -445,15 +473,18 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	VALUE_PAIR *key_vp, *check_vp;
 	VALUE_PAIR *reply_item;
 	char msg[128];
-	char querystr[MAX_QUERY_LEN];
-	char sqlxlat[MAX_QUERY_LEN];
+	
+	char *p;
+	char query[MAX_QUERY_LEN];
+	char *expanded = NULL;
+	
+	size_t len;
 
 	/*
 	 *	Before doing anything else, see if we have to reset
 	 *	the counters.
 	 */
 	if (inst->reset_time && (inst->reset_time <= request->timestamp)) {
-
 		/*
 		 *	Re-set the next time and prev_time for this counters range
 		 */
@@ -461,15 +492,16 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		find_next_reset(inst,request->timestamp);
 	}
 
-
 	/*
 	 *      Look for the key.  User-Name is special.  It means
 	 *      The REAL username, after stripping.
 	 */
-	DEBUG2("rlm_sqlcounter: Entering module authorize code");
-	key_vp = ((inst->key_attr->vendor == 0) && (inst->key_attr->attr == PW_USER_NAME)) ? request->username : pairfind(request->packet->vps, inst->key_attr->attr, inst->key_attr->vendor, TAG_ANY);
+	RDEBUG2("Entering module authorize code");
+	key_vp = ((inst->key_attr->vendor == 0) && (inst->key_attr->attr == PW_USER_NAME)) ?
+			request->username :
+			pairfind(request->packet->vps, inst->key_attr->attr, inst->key_attr->vendor, TAG_ANY);
 	if (!key_vp) {
-		DEBUG2("rlm_sqlcounter: Could not find Key value pair");
+		RDEBUG2("Could not find Key value pair");
 		return rcode;
 	}
 
@@ -480,25 +512,50 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		return rcode;
 	}
 	/* DEBUG2("rlm_sqlcounter: Found Check item attribute %d", dattr->attr); */
-	if ((check_vp= pairfind(request->config_items, dattr->attr, dattr->vendor, TAG_ANY)) == NULL) {
-		DEBUG2("rlm_sqlcounter: Could not find Check item value pair");
+	if ((check_vp = pairfind(request->config_items, dattr->attr, dattr->vendor, TAG_ANY)) == NULL) {
+		RDEBUG2("Could not find Check item value pair");
 		return rcode;
 	}
 
+	len = snprintf(query, sizeof(query), "%%{%s:", inst->sqlmod_inst, query);
+	if (len >= sizeof(query) - 1) {
+		RDEBUGE("Insufficient query buffer space");
+		
+		return RLM_MODULE_FAIL;
+	}
+	
+	p = query + len;
+	
 	/* first, expand %k, %b and %e in query */
-	sqlcounter_expand(querystr, MAX_QUERY_LEN, inst->query, inst);
-
-	/* next, wrap query with sql module & expand */
-	snprintf(sqlxlat, sizeof(sqlxlat), "%%{%s:%s}", inst->sqlmod_inst, querystr);
+	len = sqlcounter_expand(p, p - query, inst->query, inst);
+	if (len <= 0) {
+		RDEBUGE("Insufficient query buffer space");
+		
+		return RLM_MODULE_FAIL;
+	}
+	
+	p += len;
+	
+	if ((p - query) < 2) {
+		RDEBUGE("Insufficient query buffer space");
+		
+		return RLM_MODULE_FAIL;
+	}
+	
+	p[0] = '}';
+	p[1] = '\0';
 
 	/* Finally, xlat resulting SQL query */
-	radius_xlat(querystr, MAX_QUERY_LEN, sqlxlat, request, NULL, NULL);
+	if (radius_axlat(&expanded, request, query, NULL, NULL) < 0) {
+		return RLM_MODULE_FAIL;
+	}
 
-	if (sscanf(querystr, "%u", &counter) != 1) {
-		DEBUG2("rlm_sqlcounter: No integer found in string \"%s\"",
-		       querystr);
+	if (sscanf(expanded, "%u", &counter) != 1) {
+		RDEBUG2("No integer found in string \"%s\"", expanded);
 		return RLM_MODULE_NOOP;
 	}
+
+	talloc_free(expanded);
 
 	/*
 	 * Check if check item > counter
@@ -506,7 +563,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	if (check_vp->vp_integer > counter) {
 		unsigned int res = check_vp->vp_integer - counter;
 
-		DEBUG2("rlm_sqlcounter: Check item is greater than query result");
+		RDEBUG2("Check item is greater than query result");
 		/*
 		 *	We are assuming that simultaneous-use=1. But
 		 *	even if that does not happen then our user
@@ -519,8 +576,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		 *	limit, so that the user will not need to login
 		 *	again.  Do this only for Session-Timeout.
 		 */
-		if ((inst->reply_attr->attr == PW_SESSION_TIMEOUT) &&
-		    inst->reset_time &&
+		if ((inst->reply_attr->attr == PW_SESSION_TIMEOUT) && inst->reset_time &&
 		    (res >= (inst->reset_time - request->timestamp))) {
 			res = inst->reset_time - request->timestamp;
 			res += check_vp->vp_integer;
@@ -532,26 +588,24 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		 */
 		reply_item = pairfind(request->reply->vps, inst->reply_attr->attr, inst->reply_attr->vendor, TAG_ANY);
 		if (reply_item) {
-			if (reply_item->vp_integer > res)
+			if (reply_item->vp_integer > res) {
 				reply_item->vp_integer = res;
-
+			}
 		} else {
-			reply_item = radius_paircreate(request,
-						       &request->reply->vps,
-						       inst->reply_attr->attr,
+			reply_item = radius_paircreate(request, &request->reply->vps, inst->reply_attr->attr,
 						       inst->reply_attr->vendor);
 			reply_item->vp_integer = res;
 		}
 
 		rcode = RLM_MODULE_OK;
 
-		DEBUG2("rlm_sqlcounter: Authorized user %s, check_item=%u, counter=%u",
-				key_vp->vp_strvalue,check_vp->vp_integer,counter);
-		DEBUG2("rlm_sqlcounter: Sent Reply-Item for user %s, Type=%s, value=%u",
-				key_vp->vp_strvalue,inst->reply_name,reply_item->vp_integer);
+		RDEBUG2("Authorized user %s, check_item=%u, counter=%u", key_vp->vp_strvalue, check_vp->vp_integer,
+			counter);
+		RDEBUG2("Sent Reply-Item for user %s, Type=%s, value=%u", key_vp->vp_strvalue, inst->reply_name, 
+			reply_item->vp_integer);
 	}
 	else{
-		DEBUG2("rlm_sqlcounter: (Check item - counter) is less than zero");
+		RDEBUG2("(Check item - counter) is less than zero");
 
 		/*
 		 * User is denied access, send back a reply message
@@ -563,8 +617,8 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 				   inst->reset);
 		rcode = RLM_MODULE_REJECT;
 
-		DEBUG2("rlm_sqlcounter: Rejected user %s, check_item=%u, counter=%u",
-				key_vp->vp_strvalue,check_vp->vp_integer,counter);
+		RDEBUG2("Rejected user %s, check_item=%u, counter=%u", key_vp->vp_strvalue, 
+		        check_vp->vp_integer,counter);
 	}
 
 	return rcode;

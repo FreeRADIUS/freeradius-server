@@ -745,8 +745,12 @@ void module_failure_msg(REQUEST *request, const char *fmt, ...);
 /* xlat.c */
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
 
-size_t	  radius_xlat(char * out, int outlen, const char *fmt,
-			    REQUEST * request, RADIUS_ESCAPE_STRING func, void *funcarg);
+ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, const char *fmt, RADIUS_ESCAPE_STRING escape,
+		    void *escape_ctx);
+		    
+ssize_t radius_axlat(char **out, REQUEST *request, const char *fmt, RADIUS_ESCAPE_STRING escape,
+		    	  void *escape_ctx);
+		    
 typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t);
 int		xlat_register(const char *module, RAD_XLAT_FUNC func,
 			      void *instance);

@@ -260,5 +260,4 @@ void rest_request_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
 /*
  *	Helper functions
  */
-ssize_t rest_uri_build(rlm_rest_t *instance, rlm_rest_section_t *section,
-		       REQUEST *request, char *buffer, size_t bufsize);
+ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request);

@@ -36,6 +36,7 @@ RCSID("$Id$")
 #include	"smbdes.h"
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
+USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #  include	<openssl/rc4.h>
 #endif
 
@@ -450,8 +451,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL,NULL)) {
-			RDEBUG("xlat failed");
+		if (radius_xlat(buf2, sizeof(buf2), request, p, NULL, NULL) < 0) {
 			*buffer = '\0';
 			return 0;
 		}
@@ -476,8 +476,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 
 		while (isspace(*p)) p++;
 
-		if (!radius_xlat(buf2, sizeof(buf2),p,request,NULL,NULL)) {
-			RDEBUG("xlat failed");
+		if (radius_xlat(buf2, sizeof(buf2), request, p, NULL, NULL) < 0) {
 			*buffer = '\0';
 			return 0;
 		}
@@ -699,9 +698,13 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		 */
 
 		if (inst->ntlm_cpw_username) {
-			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_username, request, NULL, NULL);
-			strcat(buf, "\n");
-			len++;
+			len = radius_xlat(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_username, NULL, NULL);
+			if (len < 0) {
+				goto ntlm_auth_err;
+			}
+			
+			buf[len++] = '\n';
+			buf[len] = '\0';
 
 			if (write_all(to_child, buf, len) != len) {
 				RDEBUG2("failed to write username to child");
@@ -712,9 +715,13 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		}
 
 		if (inst->ntlm_cpw_domain) {
-			len = radius_xlat(buf, sizeof(buf) - 2, inst->ntlm_cpw_domain, request, NULL, NULL);
-			strcat(buf, "\n");
-			len++;
+			len = radius_xlat(buf, sizeof(buf) - 2, request, inst->ntlm_cpw_domain, NULL, NULL);
+			if (len < 0) {
+				goto ntlm_auth_err;
+			}
+			
+			buf[len++] = '\n';
+			buf[len] = '\0';
 
 			if (write_all(to_child, buf, len) != len) {
 				RDEBUG2("failed to write domain to child");
@@ -829,8 +836,9 @@ ntlm_auth_err:
 
 		VALUE_PAIR *new_pass, *new_hash;
 		uint8_t *p;
-		size_t i, result_len;
+		size_t i;
 		size_t passlen;
+		ssize_t result_len;
 		char result[253];
 		uint8_t nt_pass_decrypted[516], old_nt_hash_expected[16];
 		RC4_KEY key;
@@ -955,8 +963,10 @@ ntlm_auth_err:
 		/*
 		 * perform the xlat
 		 */
-		result_len = radius_xlat(result, sizeof(result), inst->local_cpw, request, NULL, NULL);
-		if (!result_len) {
+		result_len = radius_xlat(result, sizeof(result), request, inst->local_cpw, NULL, NULL);
+		if (result_len < 0){
+			return -1;
+		} else if (result_len == 0) {
 			RDEBUG("Local MS-CHAPv2 password change - xlat didn't give any result, assuming failure");
 			return -1;
 		}

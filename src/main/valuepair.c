@@ -670,7 +670,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
  */
 int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 {
-	size_t len;
+	ssize_t len;
 	
 	char buffer[1024];
 	
@@ -678,12 +678,12 @@ int radius_xlat_do(REQUEST *request, VALUE_PAIR *vp)
 	
 	vp->type = VT_DATA;
 	
-	len = radius_xlat(buffer, sizeof(buffer), vp->value.xlat, request,
-			  NULL, NULL);
+	len = radius_xlat(buffer, sizeof(buffer), request, vp->value.xlat, NULL, NULL);
+
 
 	rad_const_free(vp->value.xlat);
 	vp->value.xlat = NULL;
-	if (!len) {
+	if (len < 0) {
 		return -1;
 	}
 	

@@ -144,7 +144,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	REQUEST *request = NULL;
 	
 	char buff[71];
-	size_t len = 0;
+	ssize_t len = 0;
 	
 	TNC_Result result;
 	TNC_ConnectionID conn_id;
@@ -171,11 +171,8 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	/*
 	 *	Build the connection string
 	 */
-	len = radius_xlat(buff, sizeof(buff), inst->connection_string, request,
-			  NULL, NULL);
-	if(len == 0){
-		radlog(L_ERR, "rlm_eap_tnc: Connection string expansion failed");
-		
+	len = radius_xlat(buff, sizeof(buff), request, inst->connection_string, NULL, NULL);
+	if (len < 0){
 		return 0;
 	}
 

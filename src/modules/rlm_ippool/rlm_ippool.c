@@ -276,8 +276,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	}
 	switch(acctstatustype){
 		case PW_STATUS_STOP:
-			if (!radius_xlat(xlat_str,MAX_STRING_LEN,inst->key, request, NULL, NULL)){
-				RDEBUG("xlat on the 'key' directive failed");
+			if (radius_xlat(xlat_str, sizeof(xlat_str), request, inst->key, NULL, NULL) < 0){
 				return RLM_MODULE_NOOP;
 			}
 			fr_MD5Init(&md5_context);
@@ -429,10 +428,10 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	}
 #endif
 
-	if (!radius_xlat(xlat_str,MAX_STRING_LEN,inst->key, request, NULL, NULL)){
-		RDEBUG("xlat on the 'key' directive failed");
+	if (radius_xlat(xlat_str, sizeof(xlat_str), request, inst->key, NULL, NULL) < 0){
 		return RLM_MODULE_NOOP;
 	}
+	
 	fr_MD5Init(&md5_context);
 	fr_MD5Update(&md5_context, (uint8_t *)xlat_str, strlen(xlat_str));
 	fr_MD5Final(key_str, &md5_context);

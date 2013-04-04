@@ -99,8 +99,10 @@ static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *reque
  */
 static int presufcmp(UNUSED void *instance,
 		     REQUEST *req,
-		     VALUE_PAIR *request, VALUE_PAIR *check,
-		     VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
+		     VALUE_PAIR *request,
+		     VALUE_PAIR *check,
+		     VALUE_PAIR *check_pairs,
+		     UNUSED VALUE_PAIR **reply_pairs)
 {
 	VALUE_PAIR *vp;
 	char *name;
@@ -108,13 +110,14 @@ static int presufcmp(UNUSED void *instance,
 	int len, namelen;
 	int ret = -1;
 
-	if (!request) return -1;
-
+	if (!request) {
+		return -1;
+	}
+	
 	name = request->vp_strvalue;
 
 #if 0 /* DEBUG */
-	printf("Comparing %s and %s, check->attr is %d\n",
-		name, check->vp_strvalue, check->attribute);
+	printf("Comparing %s and %s, check->attr is %d\n", name, check->vp_strvalue, check->attribute);
 #endif
 
 	len = strlen((char *)check->vp_strvalue);
@@ -135,9 +138,10 @@ static int presufcmp(UNUSED void *instance,
 			}
 			break;
 	}
-	if (ret != 0)
+	if (ret != 0) {
 		return ret;
-
+	}
+	
 	/*
 	 *	If Strip-User-Name == No, then don't do any more.
 	 */
@@ -168,13 +172,14 @@ static int presufcmp(UNUSED void *instance,
 /*
  *	Compare the request packet type.
  */
-static int packetcmp(void *instance UNUSED, REQUEST *req,
-		     VALUE_PAIR *request UNUSED,
+static int packetcmp(UNUSED void *instance,
+		     REQUEST *request,
+		     UNUSED VALUE_PAIR *req,
 		     VALUE_PAIR *check,
-		     VALUE_PAIR *check_pairs UNUSED,
-		     VALUE_PAIR **reply_pairs UNUSED)
+		     UNUSED VALUE_PAIR *check_pairs,
+		     UNUSED VALUE_PAIR **reply_pairs)
 {
-	if (req->packet->code == check->vp_integer) {
+	if (request->packet->code == check->vp_integer) {
 		return 0;
 	}
 
@@ -184,14 +189,14 @@ static int packetcmp(void *instance UNUSED, REQUEST *req,
 /*
  *	Compare the response packet type.
  */
-static int responsecmp(void *instance UNUSED,
-		       REQUEST *req,
-		       VALUE_PAIR *request UNUSED,
+static int responsecmp(UNUSED void *instance,
+		       REQUEST *request,
+		       UNUSED VALUE_PAIR *req,
 		       VALUE_PAIR *check,
-		       VALUE_PAIR *check_pairs UNUSED,
-		       VALUE_PAIR **reply_pairs UNUSED)
+		       UNUSED VALUE_PAIR *check_pairs,
+		       UNUSED VALUE_PAIR **reply_pairs)
 {
-	if (req->reply->code == check->vp_integer) {
+	if (request->reply->code == check->vp_integer) {
 		return 0;
 	}
 
@@ -201,12 +206,12 @@ static int responsecmp(void *instance UNUSED,
 /*
  *	Generic comparisons, via xlat.
  */
-static int genericcmp(void *instance UNUSED,
-		      REQUEST *req,
-		      VALUE_PAIR *request UNUSED,
+static int genericcmp(UNUSED void *instance,
+		      REQUEST *request,
+		      UNUSED VALUE_PAIR *req,
 		      VALUE_PAIR *check,
-		      VALUE_PAIR *check_pairs UNUSED,
-		      VALUE_PAIR **reply_pairs UNUSED)
+		      UNUSED VALUE_PAIR *check_pairs,
+		      UNUSED VALUE_PAIR **reply_pairs)
 {
 	if ((check->op != T_OP_REG_EQ) &&
 	    (check->op != T_OP_REG_NE)) {
@@ -217,7 +222,9 @@ static int genericcmp(void *instance UNUSED,
 
 		snprintf(name, sizeof(name), "%%{%s}", check->da->name);
 
-		radius_xlat(value, sizeof(value), name, req, NULL, NULL);
+		if (radius_xlat(value, sizeof(value), request, name, NULL, NULL) < 0) {
+			return 0;
+		}
 		vp = pairmake(req, NULL, check->da->name, value, check->op);
 
 		/*
@@ -252,7 +259,7 @@ static int genericcmp(void *instance UNUSED,
 	/*
 	 *	Will do the xlat for us
 	 */
-	return radius_compare_vps(req, check, NULL);
+	return radius_compare_vps(request, check, NULL);
 }
 
 static int generic_attrs[] = {

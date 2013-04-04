@@ -622,8 +622,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			char buffer[128];
 
 			if (!mx->exec) {
-				radius_xlat(buffer, sizeof(buffer),
-					    mx->xlat_name, request, NULL, NULL);
+				radius_xlat(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
 			} else {
 				RDEBUG("`%s`", mx->xlat_name);
 				radius_exec_program(mx->xlat_name, request,
@@ -715,18 +714,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				if (!strchr(child->name, '%')) {
 					VALUE_PAIR *vp = NULL;
 
-					radius_get_vp(request, child->name,
-						      &vp);
+					radius_get_vp(request, child->name, &vp);
 					if (vp) {
-						vp_prints_value(buffer,
-								sizeof(buffer),
-								vp, 0);
+						vp_prints_value(buffer, sizeof(buffer), vp, 0);
 					} else {
 						*buffer = '\0';
 					}
 				} else {
-					radius_xlat(buffer, sizeof(buffer),
-						    child->name, request, NULL, NULL);
+					radius_xlat(buffer, sizeof(buffer), request, child->name, NULL, NULL);
 				}
 				null_case = q = NULL;
 				for(p = g->children; p; p = p->next) {
@@ -755,10 +750,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			stack.start[stack.pointer] = stack.children[stack.pointer];
 
-			RDEBUG2("%.*s- entering %s %s {...}",
-			       stack.pointer, modcall_spaces,
-			       group_name[child->type],
-			       child->name ? child->name : "");
+			RDEBUG2("%.*s- entering %s %s {...}", stack.pointer, modcall_spaces, group_name[child->type],
+			        child->name ? child->name : "");
 
 			/*
 			 *	Catch the special case of a NULL group.

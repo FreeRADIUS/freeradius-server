@@ -158,7 +158,7 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, 
 	const char *in;
 	char *p = buffer;
 	
-	size_t len = 0;
+	ssize_t len = 0;
 	
 	unsigned int i;
 	int cnt = 0;
@@ -190,7 +190,7 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, 
 			if (sub[i] && (*sub[i] != '\0')) {
 				len += strlcpy(p + len, sub[i], outlen - len);
 				
-				if (len >= outlen) {
+				if ((size_t) len >= outlen) {
 					oob:
 					RDEBUGE("Out of buffer space creating filter");
 					
@@ -209,8 +209,8 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, 
 		in = buffer;
 	}
 
-	len = radius_xlat(out, outlen, in, request, rlm_ldap_escape_func, NULL);
-	if (!len) {
+	len = radius_xlat(out, outlen, request, in, rlm_ldap_escape_func, NULL);
+	if (len < 0) {
 		RDEBUGE("Failed creating filter");
 		
 		return -1;
@@ -842,14 +842,14 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
 		(*pconn)->rebound = FALSE;
 	}
 	
-	if (!radius_xlat(filter, sizeof(filter), inst->userobj_filter, request, rlm_ldap_escape_func, NULL)) {
+	if (radius_xlat(filter, sizeof(filter), request, inst->userobj_filter, rlm_ldap_escape_func, NULL) < 0) {
 		RDEBUGE("Unable to create filter");
 		
 		*rcode = RLM_MODULE_INVALID;
 		return NULL;
 	}
 
-	if (!radius_xlat(base_dn, sizeof(base_dn), inst->userobj_base_dn, request, rlm_ldap_escape_func, NULL)) {
+	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
 		RDEBUGE("Unable to create base_dn");
 		
 		*rcode = RLM_MODULE_INVALID;

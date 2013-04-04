@@ -281,33 +281,38 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt,
 /*
  * Query the database executing a command with no result rows
  */
-static int sqlippool_command(const char * fmt, rlm_sql_handle_t * handle,
-			     rlm_sqlippool_t *data, REQUEST * request,
+static int sqlippool_command(const char * fmt, rlm_sql_handle_t * handle, rlm_sqlippool_t *data, REQUEST * request,
 			     char * param, int param_len)
 {
-	char expansion[MAX_QUERY_LEN];
 	char query[MAX_QUERY_LEN];
+	char *expanded = NULL;
+	
+	int ret;
 
 	/*
 	 *	If we don't have a command, do nothing.
 	 */
 	if (!*fmt) return 0;
 
-	sqlippool_expand(expansion, sizeof(expansion),
-			 fmt, data, param, param_len);
+	/*
+	 *	@todo this needs to die (should just be done in xlat expansion)
+	 */
+	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
 
-	if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func, data->sql_inst)) {
-		RDEBUGE("xlat failed on: '%s'", query);
+	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) {
 		return 0;
 	}
 
-	if (data->sql_inst->sql_query(&handle, data->sql_inst, query)){
-		RDEBUGE("database query error in: '%s'", query);
+	ret = data->sql_inst->sql_query(&handle, data->sql_inst, expanded);
+	if (!ret){
+		RDEBUGE("database query error in: '%s'", expanded);
+		talloc_free(expanded);
+		
 		return 0;
 	}
+	talloc_free(expanded);
 
-	(data->sql_inst->module->sql_finish_query)(handle,
-						   data->sql_inst->config);
+	(data->sql_inst->module->sql_finish_query)(handle, data->sql_inst->config);
 	return 0;
 }
 
@@ -324,31 +329,34 @@ static int sqlippool_query1(char *out, int outlen, const char *fmt,
 			    rlm_sql_handle_t *handle, rlm_sqlippool_t *data,
 			    REQUEST *request, char *param, int param_len)
 {
-	char expansion[MAX_QUERY_LEN];
 	char query[MAX_QUERY_LEN];
-	int rlen, retval = 0;
+	char *expanded = NULL;
+	
+	int rlen, retval;
 
-	sqlippool_expand(expansion, sizeof(expansion),
-			 fmt, data, param, param_len);
+	/*
+	 *	@todo this needs to die (should just be done in xlat expansion)
+	 */
+	sqlippool_expand(query, sizeof(query), fmt, data, param, param_len);
 
 	rad_assert(request != NULL);
 
+	*out = '\0';
+	
 	/*
-	 *Do an xlat on the provided string
+	 *	Do an xlat on the provided string
 	 */
-	if (!radius_xlat(query, sizeof(query), expansion, request, data->sql_inst->sql_escape_func, data->sql_inst)) {
-			DEBUGE("xlat failed on '%s'", expansion);
-			out[0] = '\0';
-			return 0;
-	}
-
-	if (data->sql_inst->sql_select_query(&handle, data->sql_inst, query)){
-		RDEBUGE("database query error on '%s'", query);
-		out[0] = '\0';
+	if (radius_axlat(&expanded, request, query, data->sql_inst->sql_escape_func, data->sql_inst) < 0) {
 		return 0;
 	}
-
-	out[0] = '\0';
+	retval = data->sql_inst->sql_select_query(&handle, data->sql_inst, expanded);
+	talloc_free(expanded);
+	
+	if (retval != 0){
+		RDEBUGE("database query error on '%s'", query);
+		
+		return 0;
+	}
 
 	if (!data->sql_inst->sql_fetch_row(&handle, data->sql_inst)) {
 		if (handle->row) {
@@ -369,8 +377,8 @@ static int sqlippool_query1(char *out, int outlen, const char *fmt,
 		RDEBUG("SQL query did not succeed");
 	}
 
-	(data->sql_inst->module->sql_finish_select_query)(handle,
-							  data->sql_inst->config);
+	(data->sql_inst->module->sql_finish_select_query)(handle, data->sql_inst->config);
+
 	return retval;
 }
 
@@ -417,19 +425,22 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 
 /*
- *if we have something to log, then we log it
- *otherwise we return the retcode as soon as possible
+ *	If we have something to log, then we log it. 
+ *	Otherwise we return the retcode as soon as possible
  */
 static int do_logging(REQUEST *request, char *str, int rcode)
 {
-	char buffer[1024];
-
+	char *expanded = NULL;
+	
 	if (!str || !*str) return rcode;
 
-	radius_xlat(buffer, sizeof(buffer), str, request, NULL, NULL);
-	if (!*buffer) return rcode;
+	if (radius_axlat(&expanded, request, str, NULL, NULL) < 0) {
+		return rcode;
+	}
 
-	pairmake_config("Module-Success-Message", buffer, T_OP_SET);
+	pairmake_config("Module-Success-Message", expanded, T_OP_SET);
+	
+	talloc_free(expanded);
 
 	return rcode;
 }

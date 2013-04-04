@@ -503,9 +503,8 @@ static int pap_auth_ssha(REQUEST *request, VALUE_PAIR *vp)
 
 static int pap_auth_nt(REQUEST *request, VALUE_PAIR *vp)
 {
-	uint8_t binbuf[128];
-	char charbuf[128];
-	char buff2[MAX_STRING_LEN + 50];
+	uint8_t binbuf[16];
+	char charbuf[32 + 1];
 
 	RDEBUG("Using NT encryption.");
 
@@ -515,13 +514,11 @@ static int pap_auth_nt(REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_REJECT;
 	}
 
-	strlcpy(buff2, "%{mschap:NT-Hash %{User-Password}}", sizeof(buff2));
-	if (!radius_xlat(charbuf, sizeof(charbuf),buff2,request,NULL,NULL)){
-		RDEBUGE("mschap xlat failed");
+	if (!radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:NT-Hash %{User-Password}}", NULL, NULL) < 0){
 		return RLM_MODULE_REJECT;
 	}
 
-	if ((fr_hex2bin(charbuf, binbuf, 16) != vp->length) ||
+	if ((fr_hex2bin(charbuf, binbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
 		RDEBUGE("NT password check failed");
 		return RLM_MODULE_REJECT;
@@ -533,9 +530,8 @@ static int pap_auth_nt(REQUEST *request, VALUE_PAIR *vp)
 
 static int pap_auth_lm(REQUEST *request, VALUE_PAIR *vp)
 {
-	uint8_t binbuf[128];
-	char charbuf[128];
-	char buff2[MAX_STRING_LEN + 50];
+	uint8_t binbuf[16];
+	char charbuf[32 + 1];
 
 	RDEBUG("Using LM encryption.");
 
@@ -545,13 +541,11 @@ static int pap_auth_lm(REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_REJECT;
 	}
 
-	strlcpy(buff2, "%{mschap:LM-Hash %{User-Password}}", sizeof(buff2));
-	if (!radius_xlat(charbuf,sizeof(charbuf),buff2,request,NULL,NULL)){
-		RDEBUGE("mschap xlat failed");
+	if (!radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:LM-Hash %{User-Password}}", NULL, NULL) < 0){
 		return RLM_MODULE_REJECT;
 	}
 
-	if ((fr_hex2bin(charbuf, binbuf, 16) != vp->length) ||
+	if ((fr_hex2bin(charbuf, binbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
 		RDEBUGE("LM password check failed");
 		return RLM_MODULE_REJECT;

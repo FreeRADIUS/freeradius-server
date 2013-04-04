@@ -255,8 +255,7 @@ static size_t expr_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
-		RDEBUGE("xlat failed.");
+	if (radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL) < 0) {
 		*out = '\0';
 		return 0;
 	}
@@ -292,7 +291,7 @@ static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
+	if (radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL) < 0) {
 		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
@@ -326,16 +325,15 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 	char		buffer[1024];
 	unsigned int	result;
 	size_t		freespace = outlen;
-	size_t		len;
+	ssize_t		len;
 	
 	if (outlen <= 1) return 0;
 
 	/*
 	 * Do an xlat on the provided string (nice recursive operation).
 	 */
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
-	if (!len) {
-		RDEBUGE("xlat failed.");
+	len = radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL);
+	if (len < 0) {
 		*out = '\0';
 		return 0;
 	}
@@ -436,13 +434,12 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
 	char	*p;
 	char 	buffer[1024];
 	size_t	freespace = outlen;
-	size_t	len;
+	ssize_t	len;
 	
 	if (outlen <= 1) return 0;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
-	if (!len) {
-		RDEBUGE("xlat failed.");
+	len = radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL);
+	if (len < 0) {
 		*out = '\0';
 		return 0;
 	}
@@ -490,13 +487,12 @@ static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
 	char	*p;
 	char 	buffer[1024];
 	size_t	freespace = outlen;
-	size_t	len;
+	ssize_t	len;
 	
 	if (outlen <= 1) return 0;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
-	if (!len) {
-		RDEBUGE("xlat failed.");
+	len = radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL);
+	if (len < 0) {
 		*out = '\0';
 		return 0;
 	}
@@ -542,7 +538,7 @@ static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
 
 	if (outlen <= 1) return 0;
 
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
+	if (radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL) < 0) {
 		*out = '\0';
 		return 0;
 	}
@@ -572,9 +568,10 @@ static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
 	char buffer[1024];
 
 	if (outlen <= 1) return 0;
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
-		*out = '\0';
+	
+	*out = '\0';
+		
+	if (radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL) < 0) {
 		return 0;
 	}
 
@@ -601,9 +598,10 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
 	uint8_t digest[16];
 	int i;
 	FR_MD5_CTX ctx;
-
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL)) {
-		*out = '\0';
+	
+	*out = '\0';
+		
+	if (radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL) < 0) {
 		return 0;
 	}
 
@@ -631,16 +629,16 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
 static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
 			  const char *fmt, char *out, size_t outlen)
 {
-	size_t len;
+	ssize_t len;
 	char buffer[1024];
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
+	len = radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL);
 	
 	/*
 	 *  We can accurately calculate the length of the output string
 	 *  if it's larger than outlen, the output would be useless so abort.
 	 */
-	if (!len || ((FR_BASE64_ENC_LENGTH(len) + 1) > outlen)) {
+	if ((len < 0) || ((FR_BASE64_ENC_LENGTH(len) + 1) > (ssize_t) outlen)) {
 		RDEBUGE("xlat failed.");
 		*out = '\0';
 		return 0;
@@ -662,27 +660,29 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
 	
 	ssize_t declen;
 	size_t freespace = outlen;
-	size_t len;
+	ssize_t len;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
-	
-	if (!len) {
-		RDEBUGE("xlat failed.");
-		*out = '\0';
+	*out = '\0';
+		
+	len = radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL);
+	if (len < 0) {
+
 		return 0;
 	}
 	
+	*out = '\0';
+		
 	declen = fr_base64_decode(buffer, len, decbuf, sizeof(decbuf));
 	if (declen < 0) {
-		RDEBUGE("base64 string invalid");
-		*out = '\0';
+		RDEBUGE("Base64 string invalid");
 		return 0;
 	}
 	
 	p = decbuf;
 	while ((declen-- > 0) && (--freespace > 0)) {
-		if (freespace < 3)
+		if (freespace < 3) {
 			break;
+		}
 
 		snprintf(out, 3, "%02x", *p++);
 		

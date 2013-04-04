@@ -161,7 +161,7 @@ void rlm_ldap_map_xlat_free(const rlm_ldap_map_xlat_t *expanded)
 		switch (map->src->type) {
 		case VPT_TYPE_XLAT:		
 		case VPT_TYPE_ATTR:
-			rad_cfree(name);
+			rad_const_free(name);
 			break;
 		default:
 			break;
@@ -176,27 +176,27 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
 {
 	const value_pair_map_t *map;
 	unsigned int total = 0;
-	
 	size_t len;
-	char *buffer;
-
+	
 	VALUE_PAIR *found, **from = NULL;
 	REQUEST *context;
 
 	for (map = maps; map != NULL; map = map->next) {
 		switch (map->src->type) {
 		case VPT_TYPE_XLAT:
-			buffer = rad_malloc(LDAP_MAX_ATTR_STR_LEN);
-			len = radius_xlat(buffer, LDAP_MAX_ATTR_STR_LEN, map->src->name, request, NULL, NULL);
-					  
-			if (len <= 0) {
-				RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->src->name);
-				       
-				goto error;
-			}
+			{
+				char *exp = NULL;
 			
-			expanded->attrs[total++] = buffer;
-			break;
+				len = radius_xlat(exp, 0, request, map->src->name, NULL, NULL);		  
+				if (len <= 0) {
+					RDEBUG("Expansion of LDAP attribute \"%s\" failed", map->src->name);
+				       
+					goto error;
+				}
+			
+				expanded->attrs[total++] = exp;
+				break;
+			}
 
 		case VPT_TYPE_ATTR:
 			context = request;
@@ -206,14 +206,10 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
 			}
 			if (!from) continue;
 			
-			found = pairfind(*from, map->src->da->attr,
-					 map->src->da->vendor, TAG_ANY);
+			found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 			if (!found) continue;
 			
-			buffer = rad_malloc(LDAP_MAX_ATTR_STR_LEN);
-			strlcpy(buffer, found->vp_strvalue, LDAP_MAX_ATTR_STR_LEN);
-			
-			expanded->attrs[total++] = buffer;
+			expanded->attrs[total++] = talloc_strdup(request, found->vp_strvalue);
 			break;
 			
 		case VPT_TYPE_LITERAL:

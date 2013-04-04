@@ -949,7 +949,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 	char *name  = NULL;
 	char *value = NULL;
 	
-	char buffer[1024];
+	char *expanded = NULL;
 
 	const DICT_ATTR *da;
 	VALUE_PAIR *vp;
@@ -965,6 +965,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 	int curl_len; /* Length from last curl_easy_unescape call */
 
 	int count = 0;
+	int ret;
 
 	processed[0] = NULL;
 
@@ -1025,8 +1026,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		assert(vps);
 
-		RDEBUG2("\tType  : %s", fr_int2str(dict_attr_types, da->type,
-			"¿Unknown?"));
+		RDEBUG2("\tType  : %s", fr_int2str(dict_attr_types, da->type, "¿Unknown?"));
 
 		q = strchr(p, '&');
 		len = (!q) ? (rawlen - (p - raw)) : (unsigned)(q - p);
@@ -1045,8 +1045,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		
 		RDEBUG("Performing xlat expansion of response value");
 		
-		if (!radius_xlat(buffer, sizeof(buffer),
-				 value, request, NULL, NULL)) {
+		if (!radius_axlat(&expanded, request, value, NULL, NULL)) {
 			goto skip;
 		}
 
@@ -1054,7 +1053,8 @@ static int rest_decode_post(rlm_rest_t *instance,
 		if (!vp) {
 			radlog(L_ERR, "rlm_rest (%s): Failed creating"
 			       " valuepair", instance->xlat_name);
-
+			talloc_free(expanded);
+			
 			goto error;
 		}
 
@@ -1078,7 +1078,9 @@ static int rest_decode_post(rlm_rest_t *instance,
 			current[1] = NULL;
 		}
 
-		if (!pairparsevalue(vp, buffer)) {
+		ret = pairparsevalue(vp, expanded);
+		talloc_free(expanded);
+		if (!ret) {
 			RDEBUG("Incompatible value assignment, skipping");
 			pairbasicfree(vp);
 			goto skip;
@@ -1129,13 +1131,14 @@ static int rest_decode_post(rlm_rest_t *instance,
  * @param[in] leaf object containing the VALUE_PAIR value.
  * @return The VALUE_PAIR just created, or NULL on error.
  */
-static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
+static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 				      UNUSED rlm_rest_section_t *section,
 				      REQUEST *request, const DICT_ATTR *da,
 				      json_flags_t *flags, json_object *leaf)
 {
 	const char *value, *to_parse;
-	char buffer[1024];
+	char *expanded = NULL;
+	int ret;
 	
 	VALUE_PAIR *vp;
 
@@ -1152,28 +1155,31 @@ static VALUE_PAIR *json_pairmake_leaf(rlm_rest_t *instance,
 	RDEBUG2("\tValue  : \"%s\"", value);
 
 	if (flags->do_xlat) {
-		if (!radius_xlat(buffer, sizeof(buffer), value,
-				 request, NULL, NULL)) {
+		if (radius_axlat(&expanded, request, value, NULL, NULL) < 0) {
 			return NULL;
 		}
 		
-		to_parse = buffer;
+		to_parse = expanded;
 	} else {
 		to_parse = value;
 	}
 
 	vp = paircreate(NULL, da->attr, da->vendor);
 	if (!vp) {
-		radlog(L_ERR, "rlm_rest (%s): Failed creating valuepair",
-		       instance->xlat_name);
+		RDEBUGE("Failed creating valuepair");
+		talloc_free(expanded);
+		
 		return NULL;
 	}
 
 	vp->op = flags->op;
 	
-	if (!pairparsevalue(vp, to_parse)) {
+	ret = pairparsevalue(vp, to_parse);
+	talloc_free(expanded);
+	if (!ret) {
 		RDEBUG("Incompatible value assignment, skipping");
 		pairbasicfree(vp);
+		
 		return NULL;
 	}
 
@@ -1975,49 +1981,49 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	if (auth) {
 		if ((auth >= HTTP_AUTH_BASIC) &&
 	    	    (auth <= HTTP_AUTH_ANY_SAFE)) {
-			ret = curl_easy_setopt(candle, CURLOPT_HTTPAUTH,
-					       http_curl_auth[auth]);
+			ret = curl_easy_setopt(candle, CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 			if (ret != CURLE_OK) goto error;
 			
-			if (section->username) {
-				radius_xlat(buffer, sizeof(buffer),
-					    section->username, request, NULL, NULL);
-					
-				ret = curl_easy_setopt(candle, CURLOPT_USERNAME,
-						       buffer);
-				if (ret != CURLE_OK) goto error;
+			if (section->username) {				
+				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
+					goto error;
+				}
+				ret = curl_easy_setopt(candle, CURLOPT_USERNAME, buffer);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
 			}
-			if (section->password) {
-				radius_xlat(buffer, sizeof(buffer),
-					    section->password, request, NULL, NULL);
-					
-				ret = curl_easy_setopt(candle, CURLOPT_PASSWORD,
-						       buffer);
-				if (ret != CURLE_OK) goto error;
+			if (section->password) {	
+				if (radius_xlat(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
+					goto error;
+				}
+				ret = curl_easy_setopt(candle, CURLOPT_PASSWORD, buffer);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
 			}
 
 #ifdef CURLOPT_TLSAUTH_USERNAME
 		} else if (type == HTTP_AUTH_TLS_SRP) {
-			ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_TYPE,
-					       http_curl_auth[auth]);
+			ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
 		
 			if (section->username) {
-				radius_xlat(buffer, sizeof(buffer),
-					    section->username, request, NULL, NULL);
-					
-				ret = curl_easy_setopt(candle,
-						       CURLOPT_TLSAUTH_USERNAME,
-						       buffer);
-				if (ret != CURLE_OK) goto error;
+				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
+					goto error;
+				}	
+				ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_USERNAME, buffer);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
 			}
 			if (section->password) {
-				radius_xlat(buffer, sizeof(buffer),
-					    section->password, request, NULL, NULL);
-					
-				ret = curl_easy_setopt(candle,
-						       CURLOPT_TLSAUTH_PASSWORD,
-						       buffer);
-				if (ret != CURLE_OK) goto error;
+				if (radius_xlat(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
+					goto error;
+				}
+				ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_PASSWORD, buffer);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
 			}
 #endif
 		}
@@ -2343,17 +2349,17 @@ static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
  * @return length of data written to buffer (excluding NULL) or < 0 if an error
  *	occurred.
  */
-ssize_t rest_uri_build(rlm_rest_t *instance, rlm_rest_section_t *section,
-		       REQUEST *request, char *buffer, size_t bufsize)
+ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request)
 {
 	const char *p, *q;
-
-	char *out, *scheme;
+	char *path_exp = NULL;
+	
+	char *scheme;
 	const char *path;
 
 	unsigned short count = 0;
 
-	size_t len;
+	ssize_t len, outlen;
 
 	p = section->uri;
 
@@ -2376,18 +2382,30 @@ ssize_t rest_uri_build(rlm_rest_t *instance, rlm_rest_section_t *section,
 
 	len = (q - p);
 
-	scheme = rad_malloc(len + 1);
+	scheme = talloc_array(request, char, len + 1);
 	strlcpy(scheme, section->uri, len + 1);
 
 	path = (q + 1);
 
-	out = buffer;
-	out += radius_xlat(out, bufsize, scheme, request, NULL, NULL);
+	len = radius_axlat(out, request, scheme, NULL, NULL);
+	talloc_free(scheme);
+	if (len < 0) {
+		TALLOC_FREE(*out);
+		
+		return 0;
+	}
 
-	free(scheme);
+	outlen = len;
 
-	out += radius_xlat(out, (bufsize - (buffer - out)), path, request,
-			 rest_uri_escape, NULL);
+	len = radius_axlat(&path_exp, request, path, rest_uri_escape, NULL);
+	if (len < 0) {
+		TALLOC_FREE(*out);
+		
+		return 0;
+	}
 
-	return (buffer - out);
+	*out = talloc_strdup_append(*out, path_exp);
+	talloc_free(path_exp);
+	
+	return outlen += len;
 }

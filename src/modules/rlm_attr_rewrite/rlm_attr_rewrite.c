@@ -171,8 +171,7 @@ static rlm_rcode_t do_attr_rewrite(void *instance, REQUEST *request)
 
 	if (inst->new_attr){
 		/* new_attribute = yes */
-		if (!radius_xlat(replace_STR, sizeof(replace_STR), inst->replace, request, NULL, NULL)) {
-			DEBUG2("%s: xlat on replace string failed.", inst->name);
+		if (radius_xlat(replace_STR, sizeof(replace_STR), request, inst->replace, NULL, NULL) < 0) {
 			return rcode;
 		}
 
@@ -271,7 +270,8 @@ do_again:
 		if (inst->nocase)
 			cflags |= REG_ICASE;
 
-		if (!radius_xlat(search_STR, sizeof(search_STR), inst->search, request, NULL, NULL) && inst->search_len != 0) {
+		if ((radius_xlat(search_STR, sizeof(search_STR), request, inst->search, NULL, NULL) < 0) &&
+		    (inst->search_len != 0)) {
 			DEBUG2("%s: xlat on search string failed.", inst->name);
 			return rcode;
 		}
@@ -364,8 +364,7 @@ do_again:
 
 			if (!done_xlat){
 				if (inst->replace_len != 0 &&
-				radius_xlat(replace_STR, sizeof(replace_STR), inst->replace, request, NULL, NULL) == 0) {
-					DEBUG2("%s: xlat on replace string failed.", inst->name);
+				radius_xlat(replace_STR, sizeof(replace_STR), request, inst->replace, NULL, NULL) < 0) {
 					return rcode;
 				}
 				replace_len = (inst->replace_len != 0) ? strlen(replace_STR) : 0;

@@ -314,16 +314,15 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 
 	rlm_perl_t	*inst= (rlm_perl_t *) instance;
 	PerlInterpreter *perl;
-	char		params[1024], *ptr, *tmp;
+	char		*expanded, *ptr, *tmp;
 	int		count;
 	size_t		ret = 0;
 	STRLEN		n_a;
 
 	/*
-	 * Do an xlat on the provided string (nice recursive operation).
+	 *	Do an xlat on the provided string (nice recursive operation).
 	 */
-	if (!radius_xlat(params, sizeof(params), fmt, request, NULL, NULL)) {
-		radlog(L_ERR, "rlm_perl: xlat failed.");
+	if (radius_axlat(&expanded, request, fmt, NULL, NULL) < 0) {
 		return 0;
 	}
 
@@ -340,7 +339,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 		dSP;
 		ENTER;SAVETMPS;
 
-		ptr = strtok(params, " ");
+		ptr = strtok(expanded, " ");
 
 		PUSHMARK(SP);
 
@@ -363,8 +362,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 			strlcpy(out, tmp, freespace);
 			ret = strlen(out);
 
-			radlog(L_DBG,"rlm_perl: Len is %zu , out is %s freespace is %zu",
-			       ret, out, freespace);
+			radlog(L_DBG,"rlm_perl: Len is %zu , out is %s freespace is %zu", ret, out, freespace);
 		}
 
 		PUTBACK ;
@@ -372,6 +370,9 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 		LEAVE ;
 
 	}
+	
+	talloc_free(expanded);
+	
 	return ret;
 }
 /*

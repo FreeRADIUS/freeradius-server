@@ -92,8 +92,7 @@ static int gtc_initiate(void *instance, eap_handler_t *handler)
 	EAP_DS *eap_ds = handler->eap_ds;
 	rlm_eap_gtc_t *inst = (rlm_eap_gtc_t *) instance;
 
-	if (!radius_xlat(challenge_str, sizeof(challenge_str), inst->challenge, handler->request, NULL, NULL)) {
-		radlog(L_ERR, "rlm_eap_gtc: xlat of \"%s\" failed", inst->challenge);
+	if (radius_xlat(challenge_str, sizeof(challenge_str), handler->request, inst->challenge, NULL, NULL) < 0) {
 		return 0;
 	}
 

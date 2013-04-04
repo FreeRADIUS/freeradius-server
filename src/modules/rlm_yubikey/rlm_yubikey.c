@@ -60,39 +60,42 @@ static const CONF_PARSER module_config[] = {
 };
 
 static const char *modhextab = "cbdefghijklnrtuv";
+static const char *hextab = "0123456789abcdef";
 
 #define is_modhex(x) (memchr(modhextab, tolower(x), 16))
 
-/** Convert yubikey modhex data to binary
+/** Convert yubikey modhex to normal hex
  *
- * This is a simpler version of the yubikey function which also does input
- * checking.
+ * The same buffer may be passed as modhex and hex to convert the modhex in place.
  *
- * @param[in] hex modhex data.
- * @param[out] bin where to write the decoded data.
- * @param[in] len The size of the output buffer.
+ * Modhex and hex must be the same size.
+ *
+ * @param[in] modhex data.
+ * @param[out] hex where to write the standard hexits.
  * @return The number of bytes written to the output buffer, or -1 on error.
  */
-static size_t modhex2bin(const char *hex, uint8_t *bin, size_t len)
+static ssize_t modhex2hex(const char *modhex, uint8_t *hex, size_t len)
 {
 	size_t i;
 	char *c1, *c2;
 
 	for (i = 0; i < len; i++) {
-		if (hex[i << 1] == '\0') {
+		if (modhex[i << 1] == '\0') {
 			break;
 		}
 		
 		/*
 		 *	We only deal with whole bytes
 		 */	
-		if (hex[(i << 1) + 1] == '\0')
+		if (modhex[(i << 1) + 1] == '\0')
 			return -1;
 		
-		if (!(c1 = memchr(modhextab, tolower((int) hex[i << 1]), 16)) ||
-		    !(c2 = memchr(modhextab, tolower((int) hex[(i << 1) + 1]), 16)))
+		if (!(c1 = memchr(modhextab, tolower((int) modhex[i << 1]), 16)) ||
+		    !(c2 = memchr(modhextab, tolower((int) modhex[(i << 1) + 1]), 16)))
 			return -1;
-		 bin[i] = ((c1 - modhextab) <<4) + (c2 - modhextab);
+		
+		hex[i] = hextab[c1 - modhextab];
+		hex[i + 1] = hextab[c2 - modhextab];
 	}
 
 	return i;
@@ -105,41 +108,30 @@ static size_t modhex2bin(const char *hex, uint8_t *bin, size_t len)
  */
 static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, const char *fmt, char *out, size_t outlen)
 {	
-	char buffer[1024];
-	uint8_t decbuf[1024], *p;
-	
-	ssize_t declen;
-	size_t freespace = outlen;
-	size_t len;
+	ssize_t len;
 
-	len = radius_xlat(buffer, sizeof(buffer), fmt, request, NULL, NULL);
-	if (!len) {
-		RDEBUGE("expansion of format string failed.");
-		*out = '\0';
-		return 0;
+	char *expanded = NULL;
+	len = radius_axlat(&expanded, request, fmt, NULL, NULL);
+	if (len < 0) {
+		return len;
 	}
 	
-	declen = modhex2bin(buffer, decbuf, sizeof(decbuf));
-	if (declen < 0) {
-		RDEBUGE("modhex string invalid");
+	/*
+	 *	mod2hex allows conversions in place
+	 */
+	len = modhex2hex(expanded, (uint8_t *) expanded, strlen(expanded));
+	if (len <= 0) {
+		talloc_free(expanded);
 		*out = '\0';
-		return 0;
+		
+		RDEBUGE("Modhex string invalid");
+		
+		return len;
 	}
 	
-	p = decbuf;
-	while ((declen-- > 0) && (--freespace > 0)) {
-		if (freespace < 3) {
-			break;
-		}
-		
-		snprintf(out, 3, "%02x", *p++);
-		
-		/* Already decremented */
-		freespace -= 1;
-		out += 2;
-	}
-
-	return outlen - freespace;
+	strlcpy(out, expanded, outlen);
+	
+	return len;
 }
 
 /*

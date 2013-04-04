@@ -664,7 +664,7 @@ static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) goto nothing;
 
-	return radius_xlat(out, outlen, vp->vp_strvalue, request, NULL, NULL);
+	return radius_xlat(out, outlen, request, vp->vp_strvalue, NULL, NULL);
 }
 
 #ifdef HAVE_REGEX_H
@@ -939,9 +939,8 @@ void xlat_free(void)
  * @param[in] funcarg pointer to pass to escape function.
  * @return 0 on success, -1 on failure.
  */
-static int decode_attribute(const char **from, char **to, int freespace,
-			     REQUEST *request,
-			     RADIUS_ESCAPE_STRING func, void *funcarg)
+static ssize_t decode_attribute(const char **from, char **to, int freespace, REQUEST *request,
+				RADIUS_ESCAPE_STRING func, void *funcarg)
 {
 	int	do_length = 0;
 	const char *module_name, *xlat_str;
@@ -1042,7 +1041,11 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 *	Expand the first one.  If we did, exit the
 		 *	conditional.
 		 */
-		retlen = radius_xlat(q, freespace, buffer, request, func, funcarg);
+		retlen = radius_xlat(q, freespace, request, buffer, func, funcarg);
+		if (retlen < 0) {
+			return retlen;
+		}
+		
 		if (retlen) {
 			q += retlen;
 			goto done;
@@ -1053,8 +1056,11 @@ static int decode_attribute(const char **from, char **to, int freespace,
 		 *	Expand / copy the second string if required.
 		 */
 		if (expand2) {
-			retlen = radius_xlat(q, freespace, l,
-					    request, func, funcarg);
+			retlen = radius_xlat(q, freespace, request, l, func, funcarg);
+			if (retlen < 0) {
+				return retlen;
+			}
+			
 			if (retlen) {
 				q += retlen;
 			}
@@ -1148,11 +1154,14 @@ do_xlat:
 		return -1;
 	}
 
-	if (!c->internal) RDEBUG3("radius_xlat: Running registered xlat function of module %s for string \'%s\'",
-				  c->module, xlat_str);
+	if (!c->internal) {
+		RDEBUG3("Running registered xlat function of module %s for string \'%s\'",
+			c->module, xlat_str);
+	}
 	if (func) {
 		/* xlat to a temporary buffer, then escape */
 		char tmpbuf[8192];
+
 		retlen = c->do_xlat(c->instance, request, xlat_str, tmpbuf, sizeof(tmpbuf));
 		if (retlen > 0) {
 			retlen = func(request, q, freespace, tmpbuf, funcarg);
@@ -1176,7 +1185,10 @@ do_xlat:
 		 *	Expand the second bit.
 		 */
 		RDEBUG2("\t... expanding second conditional");
-		retlen = radius_xlat(q, freespace, next, request, func, funcarg);
+		retlen = radius_xlat(q, freespace, request, next, func, funcarg);
+		if (retlen < 0) {
+			return retlen;
+		}
 	}
 	q += retlen;
 
@@ -1189,36 +1201,52 @@ done:
  *
  * See 'doc/variables.txt' for more information.
  *
- * @param[out] out output buffer.
- * @param[in] outlen size of output buffer.
- * @param[in] fmt string to expand.
+ * @param[out] out Where to write pointer to output buffer.
+ * @param[in] ctx Where to write the pointer to the output buffer.
  * @param[in] request current request.
+ * @param[in] fmt string to expand.
  * @param[in] func function to escape final value e.g. SQL quoting.
- * @param[in] funcarg pointer to pass to escape function.
+ * @param[in] ctx pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure
- */
-size_t radius_xlat(char *out, int outlen, const char *fmt,
-		   REQUEST *request,
-		   RADIUS_ESCAPE_STRING func, void *funcarg)
+ */    	   
+static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const char *fmt, RADIUS_ESCAPE_STRING escape,
+		    	   void *ctx)
 {
-	int c, len, freespace;
+	char *buff;
+	
+	int c, freespace;
 	const char *p;
 	char *q;
 	char *nl;
 	VALUE_PAIR *tmp;
 	struct tm *TM, s_TM;
 	char tmpdt[40]; /* For temporary storing of dates */
-
+	ssize_t len, bufflen;
+	
+	rad_assert(fmt);
+	rad_assert(request);
+	
 	/*
-	 *	Catch bad modules.
+	 *	Caller either needs to pass us a NULL buffer and a 0 length size, or a non-NULL buffer
+	 *	and the size of that buffer.
 	 */
-	if (!fmt || !out || !request) return 0;
+	if (!out) {
+		rad_assert(outlen == 0);
+	
+		*out = buff = talloc_array(request, char, 8192);
+		bufflen = 8192;
+	} else {
+		rad_assert(outlen != 0);
+	
+		buff = *out;
+		bufflen = outlen;
+	}
 
-       	q = out;
+       	q = buff;
 	p = fmt;
 	while (*p) {
 		/* Calculate freespace in output */
-		freespace = outlen - (q - out);
+		freespace = bufflen - (q - buff);
 		if (freespace <= 1)
 			break;
 		c = *p;
@@ -1264,7 +1292,11 @@ size_t radius_xlat(char *out, int outlen, const char *fmt,
 		} else if (c == '%') switch(*p) {
 			case '{':
 				p--;
-				if (decode_attribute(&p, &q, freespace, request, func, funcarg) < 0) return 0;
+				len = decode_attribute(&p, &q, freespace, request, escape, ctx);
+				if (len < 0) {
+					return len;
+				}
+				
 				break;
 
 			case '%':
@@ -1394,12 +1426,29 @@ size_t radius_xlat(char *out, int outlen, const char *fmt,
 					*q++ = '%';
 					*q++ = *p++;
 				}
-				break;
+				
+				goto error;
 		}
 	}
 	*q = '\0';
 
-	RDEBUG2("\texpand: '%s' -> '%s'", fmt, out);
+	RDEBUG2("\texpand: '%s' -> '%s'", fmt, buff);
 
-	return strlen(out);
+	return strlen(buff);
+	
+	error:
+	talloc_free(*out);
+	*out = NULL;
+	
+	return -1;
+}
+
+ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, const char *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
+{
+	return xlat_expand(&out, outlen, request, fmt, escape, ctx);
+}
+		    
+ssize_t radius_axlat(char **out, REQUEST *request, const char *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
+{
+	return xlat_expand(out, 0, request, fmt, escape, ctx);
 }

@@ -213,8 +213,13 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		CONF_ITEM *ci;
 		CONF_PAIR *cp;
 
-		radius_xlat(line + 1, sizeof(line) - 2, inst->reference,
-			    request, linelog_escape_func, NULL);
+		p = line + 1;
+		
+		if (radius_xlat(p, sizeof(line) - 2, request, inst->reference, linelog_escape_func,
+		    NULL) < 0) {
+			return RLM_MODULE_FAIL;
+		}
+		
 		line[0] = '.';	/* force to be in current section */
 
 		/*
@@ -251,8 +256,9 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 	 *	FIXME: Check length.
 	 */
 	if (strcmp(inst->filename, "syslog") != 0) {
-		radius_xlat(buffer, sizeof(buffer), inst->filename, request,
-			    NULL, NULL);
+		if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, NULL, NULL) < 0) {
+			return RLM_MODULE_FAIL;
+		}
 		
 		/* check path and eventually create subdirs */
 		p = strrchr(buffer,'/');
@@ -296,8 +302,13 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 	/*
 	 *	FIXME: Check length.
 	 */
-	radius_xlat(line, sizeof(line) - 1, value, request,
-		    linelog_escape_func, NULL);
+	if (radius_xlat(line, sizeof(line) - 1, request, value, linelog_escape_func, NULL) < 0) {
+		if (fd > -1) {
+			close(fd);
+		}
+		
+		return RLM_MODULE_FAIL;
+	}
 
 	if (fd >= 0) {
 		strcat(line, "\n");

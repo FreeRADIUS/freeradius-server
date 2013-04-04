@@ -67,9 +67,8 @@ int log_stripped_names;
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_log_file = NULL;
-size_t radius_xlat(char *out, UNUSED int outlen, UNUSED const char *fmt,
-		   UNUSED REQUEST *request,
-		   UNUSED RADIUS_ESCAPE_STRING func, UNUSED void *arg)
+ssize_t radius_xlat(char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED const char *fmt,
+		    UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)
 {
 	*out = 0;
 	return 0;

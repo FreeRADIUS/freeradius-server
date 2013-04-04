@@ -75,6 +75,7 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass)
 	char clean_username[1024];
 	char buf[1024];
 	char extra[1024];
+	char *p;
 	VALUE_PAIR *username = NULL;
 
 	if (!request->root->log_auth) {
@@ -136,8 +137,8 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass)
 
 	if (extra_msg) {
 		extra[0] = ' ';
-		radius_xlat(extra + 1, sizeof(extra) - 1, extra_msg, request,
-			    NULL, NULL);
+		p = extra + 1;
+		radius_xlat(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL);
 	} else {
 		*extra = '\0';
 	}

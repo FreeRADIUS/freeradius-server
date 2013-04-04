@@ -173,9 +173,11 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 	} else {
 		int len;
 
-		len = radius_xlat(buffer, sizeof(buffer), inst->key,
-				  request, NULL, NULL);
-		if (!len) {
+		len = radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL);
+		if (len < 0) {
+			return RLM_MODULE_FAIL;
+		}
+		if (len == 0) {
 			return RLM_MODULE_NOOP;
 		}
 		keyname = buffer;

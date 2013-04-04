@@ -360,7 +360,7 @@ static size_t xlat_config(UNUSED void *instance, UNUSED REQUEST *request, const 
 	/*
 	 *	Expand it safely.
 	 */
-	if (!radius_xlat(buffer, sizeof(buffer), fmt, request, config_escape_func, NULL)) {
+	if (radius_xlat(buffer, sizeof(buffer), request, fmt, config_escape_func, NULL) < 0) {
 		return 0;
 	}
 

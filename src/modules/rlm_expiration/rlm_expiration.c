@@ -63,7 +63,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR *vp, *check_item = NULL;
 	char msg[MAX_STRING_LEN];
 
-	if ((check_item = pairfind(request->config_items, PW_EXPIRATION, 0, TAG_ANY)) != NULL){
+	check_item = pairfind(request->config_items, PW_EXPIRATION, 0, TAG_ANY);
+	if (check_item != NULL) {
 		/*
 		*      Has this user's password expired?
 		*
@@ -76,8 +77,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			RDEBUG("Account has expired");
 
 			if (inst->msg && inst->msg[0]){
-				if (!radius_xlat(msg, sizeof(msg), inst->msg, request, NULL, NULL)) {
-					radlog(L_ERR, "rlm_expiration: xlat failed.");
+				if (radius_xlat(msg, sizeof(msg), request, inst->msg, NULL, NULL) < 0) {
 					return RLM_MODULE_FAIL;
 				}
 
@@ -85,7 +85,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 				pairmake_reply("Reply-Message", msg, T_OP_ADD);
 			}
 
-			RDEBUGE("Account has expired [Expiration %s]",check_item->vp_strvalue);
+			RDEBUGE("Account has expired [Expiration %s]", check_item->vp_strvalue);
 			return RLM_MODULE_USERLOCK;
 		}
 		/*
@@ -94,17 +94,15 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, PW_SESSION_TIMEOUT, 0, TAG_ANY);
 		if (!vp) {
-			vp = radius_paircreate(request, &request->reply->vps,
-					       PW_SESSION_TIMEOUT, 0);
+			vp = radius_paircreate(request, &request->reply->vps, PW_SESSION_TIMEOUT, 0);
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
-
 		} else if (vp->vp_date > ((uint32_t) (((time_t) check_item->vp_date) - request->timestamp))) {
 			vp->vp_date = (uint32_t) (((time_t) check_item->vp_date) - request->timestamp);
 		}
-	}
-	else
+	} else {
 		return RLM_MODULE_NOOP;
-
+	}
+	
 	return RLM_MODULE_OK;
 }
 

@@ -378,7 +378,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *re
 		return RLM_MODULE_INVALID;
 	}
 
-	if (!radius_xlat(base_dn, sizeof(base_dn), inst->groupobj_base_dn, request, rlm_ldap_escape_func, NULL)) {
+	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
 		RDEBUGE("Failed creating base_dn");
 	
 		return RLM_MODULE_INVALID;
@@ -485,8 +485,8 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST
 		/*
 		 *	rlm_ldap_find_user does this, too.  Oh well.
 		 */
-		if (!radius_xlat(base_dn, sizeof(base_dn), inst->groupobj_base_dn, request,
-				 rlm_ldap_escape_func, NULL)) {
+		if (radius_xlat(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, 
+				rlm_ldap_escape_func, NULL) < 0) {
 			rcode = RLM_MODULE_INVALID;
 			
 			RDEBUGE("Failed creating base_dn");
