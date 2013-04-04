@@ -24,9 +24,8 @@ RCSID("$Id$");
 
 #include	<freeradius-devel/libradius.h>
 #include	<freeradius-devel/udpfromto.h>
-#include	<freeradius-devel/vqp.h>
 
-#ifdef WITH_VMPS
+#include	"vqp.h"
 
 #define MAX_VMPS_LEN (MAX_STRING_LEN - 1)
 
@@ -690,4 +689,3 @@ int vqp_encode(RADIUS_PACKET *packet, RADIUS_PACKET *original)
 
 	return 0;
 }
-#endif
