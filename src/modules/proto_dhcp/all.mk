@@ -1,7 +1,1 @@
-TARGETNAME	:= proto_dhcp
-
-ifneq "$(TARGETNAME)" ""
-TARGET		:= $(TARGETNAME).a
-endif
-
-SOURCES		:= dhcpd.c
+SUBMAKEFILES := proto_dhcp.mk rlm_dhcp.mk dhclient.mk

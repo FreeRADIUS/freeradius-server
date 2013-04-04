@@ -24,8 +24,6 @@ RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
 
-#ifdef WITH_DHCP
-
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/dhcp.h>
@@ -141,5 +139,3 @@ module_t rlm_dhcp = {
 		NULL,			/* post-auth */
 	},
 };
-
-#endif

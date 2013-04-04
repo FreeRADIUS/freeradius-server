@@ -27,8 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/udpfromto.h>
 #include <freeradius-devel/dhcp.h>
 
-#ifdef WITH_DHCP
-
 #ifndef __MINGW32__
 #include <sys/ioctl.h>
 #endif
@@ -53,6 +51,9 @@ RCSID("$Id$")
 #ifndef INADDR_BROADCAST
 #define INADDR_BROADCAST INADDR_NONE
 #endif
+
+/* @todo: this is a hack */
+#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
 
 typedef struct dhcp_packet_t {
 	uint8_t		opcode;
@@ -1560,5 +1561,3 @@ int fr_dhcp_add_arp_entry(UNUSED int fd, UNUSED const char *interface,
 	return -1;
 }
 #endif
-
-#endif /* WITH_DHCP */
