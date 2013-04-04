@@ -1496,17 +1496,15 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	uint8_t		*data;
 	size_t		size;
 
+	da = dict_attrunknownbyname(attribute, TRUE);
+	if (!da) return NULL;
+
 	/*
 	 *	Unknown attributes MUST be of type 'octets'
 	 */
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
 		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
 				   "string, not \"%s\"", attribute, value);
-		return NULL;
-	}
-
-	da = dict_attrunknownbyname(attribute, TRUE);
-	if (!da) {
 		return NULL;
 	}
 
@@ -1989,7 +1987,10 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, const char *buffer, VALUE_PAIR **list)
 		if (last_token == T_OP_INVALID) break;
 		
 		vp = pairmake(ctx, NULL, raw.l_opand, raw.r_opand, raw.op);
-		if (!vp) break;
+		if (!vp) {
+			last_token = T_OP_INVALID;
+			break;
+		}
 		
 		if (raw.quote == T_DOUBLE_QUOTED_STRING) {
 			if (pairmark_xlat(vp, raw.r_opand) < 0) {
