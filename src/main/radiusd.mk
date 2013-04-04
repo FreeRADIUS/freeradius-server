@@ -3,7 +3,7 @@ SOURCES := acct.c auth.c client.c conffile.c crypt.c exec.c files.c \
 		  listen.c log.c mainconfig.c modules.c modcall.c \
 		  radiusd.c stats.c soh.c connection.c \
 		  session.c threads.c util.c valuepair.c version.c  \
-		  xlat.c process.c realms.c evaluate.c vmps.c detail.c
+		  xlat.c process.c realms.c evaluate.c detail.c
 ifneq ($(OPENSSL_LIBS),)
 SOURCES	+= cb.c tls.c tls_listen.c
 endif
