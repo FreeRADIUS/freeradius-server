@@ -429,7 +429,7 @@ static int mod_detach(void *instance)
 }
 
 
-static rlm_rcode_t mod_instantiate(CONF_SECTION *conf, void *instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_securid_t *inst = instance;
 
@@ -451,7 +451,7 @@ static rlm_rcode_t mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Authenticate the user via one of any well-known password.
  */
-static int mod_authenticate(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	int rcode;
 	rlm_securid_t *inst = instance;
