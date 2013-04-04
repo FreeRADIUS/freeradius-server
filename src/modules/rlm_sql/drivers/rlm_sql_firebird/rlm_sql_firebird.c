@@ -41,7 +41,7 @@ static int sql_socket_destructor(void *c)
 	fb_commit(conn);
 	if (conn->dbh) {
 		fb_free_statement(conn);
-		mod_detach_database(conn->status, &(conn->dbh));
+		isc_detach_database(conn->status, &(conn->dbh));
 		
 		if (fb_lasterror(conn)) {
 			DEBUGW("rlm_sql_firebird: Got error "
@@ -257,15 +257,6 @@ static int sql_finish_query(rlm_sql_handle_t *handle,
  */
 static int sql_free_result(UNUSED rlm_sql_handle_t *handle,
 			   UNUSED rlm_sql_config_t *config) {
-	return 0;
-}
-
-/** Closes an open database connection and cleans up any open handles.
- *
- */
-static int sql_close(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
-{
-	fb_destroy_socket((rlm_sql_firebird_conn_t *) handle->conn);
 	return 0;
 }
 
