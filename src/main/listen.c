@@ -27,7 +27,6 @@ RCSID("$Id$")
 #include <freeradius-devel/modules.h>
 #include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/vqp.h>
-#include <freeradius-devel/dhcp.h>
 #include <freeradius-devel/process.h>
 #include <freeradius-devel/protocol.h>
 
@@ -1918,8 +1917,6 @@ static int proxy_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 }
 #endif
 
-#include "dhcpd.c"
-
 #include "command.c"
 
 /*
@@ -1976,10 +1973,7 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX] = {
 
 #ifdef WITH_DHCP
 	/* dhcp query protocol */
-	{ RLM_MODULE_INIT, "dhcp", sizeof(dhcp_socket_t), NULL,
-	  dhcp_socket_parse, NULL,
-	  dhcp_socket_recv, dhcp_socket_send,
-	  common_socket_print, dhcp_socket_encode, dhcp_socket_decode },
+	{ 0, "dhcp", 0, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL },
 #endif
 
 #ifdef WITH_COMMAND_SOCKET

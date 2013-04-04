@@ -21,8 +21,6 @@
  * Copyright 2008,2011 Alan DeKok <aland@deployingradius.com>
  */
 
-#ifdef WITH_DHCP
-
 /*
  * Standard sequence:
  *	INADDR_ANY : 68 -> INADDR_BROADCAST : 67	DISCOVER
@@ -45,6 +43,17 @@
  * Note: NACK are broadcasted, rest is unicast, unless client asked
  * for a broadcast
  */
+
+
+#include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/modules.h>
+#include <freeradius-devel/protocol.h>
+#include <freeradius-devel/process.h>
+#include <freeradius-devel/dhcp.h>
+#include <freeradius-devel/rad_assert.h>
+
+
+extern int check_config;	/* @todo globals are bad, m'kay? */
 
 /*
  *	Same contents as listen_socket_t.
@@ -660,5 +669,13 @@ static int dhcp_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	return fr_dhcp_decode(request->packet);
 }
-#endif /* WITH_DCHP */
 
+fr_protocol_t proto_dhcp = {
+	RLM_MODULE_INIT,
+	"dhcp",
+	sizeof(dhcp_socket_t),
+	NULL,
+	dhcp_socket_parse, NULL,
+	dhcp_socket_recv, dhcp_socket_send,
+	common_socket_print, dhcp_socket_encode, dhcp_socket_decode
+};
