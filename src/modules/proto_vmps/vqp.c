@@ -29,6 +29,13 @@ RCSID("$Id$");
 
 #define MAX_VMPS_LEN (MAX_STRING_LEN - 1)
 
+/* @todo: this is a hack */
+#  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
+void fr_strerror_printf(const char *fmt, ...);
+#  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
+					vp_print(fr_log_fp, vp); \
+				     } \
+				} while(0)
 /*
  *  http://www.openbsd.org/cgi-bin/cvsweb/src/usr.sbin/tcpdump/print-vqp.c
  *
