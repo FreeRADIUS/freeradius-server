@@ -1062,8 +1062,6 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	if (dofallthrough) {
 		rcode = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
 		if (rcode != RLM_MODULE_OK) {
-			RDEBUGE("Error processing groups");
-
 			goto release;
 		}
 	}

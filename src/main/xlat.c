@@ -1230,7 +1230,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const ch
 	 *	Caller either needs to pass us a NULL buffer and a 0 length size, or a non-NULL buffer
 	 *	and the size of that buffer.
 	 */
-	if (!out) {
+	if (!*out) {
 		rad_assert(outlen == 0);
 	
 		*out = buff = talloc_array(request, char, 8192);
