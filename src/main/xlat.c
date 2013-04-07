@@ -1306,7 +1306,6 @@ static ssize_t radius_xlat_tokenize_r(const char *fmt, char *tokens, size_t len,
 					continue;
 			
 				case 'x':
-					{
 					/* We expect two digits [0-9] */
 					if ((len - i) < 3) {
 						return -1;
@@ -1323,7 +1322,6 @@ static ssize_t radius_xlat_tokenize_r(const char *fmt, char *tokens, size_t len,
 			
 					i += 2;
 					continue;
-					}
 			
 				default:
 					i++;
@@ -1436,7 +1434,7 @@ static ssize_t radius_xlat_tokenize_r(const char *fmt, char *tokens, size_t len,
 			}
 			
 			DEBUGE("Invalid alternation: Expected closing brace");
-			return i * -1;
+			return -i;
 
 		/*
 		 *	"foo bar baz %{<we are here>}" (and we know it's an expansion)
@@ -1506,7 +1504,7 @@ static ssize_t radius_xlat_tokenize_r(const char *fmt, char *tokens, size_t len,
 				if (fmt[i] != '}') {
 					DEBUGE("Invalid expansion: Missing terminating '}'");
 				
-					return i * -1;
+					return -i;
 				}
 				
 				/*
@@ -1543,7 +1541,7 @@ static ssize_t radius_xlat_tokenize_r(const char *fmt, char *tokens, size_t len,
 			DEBUGE("Invalid expansion: char '%c' is not allowed in xlat function or attribute names",
 			       tokens[i]);
 		
-			return i * -1;
+			return -i;
 		}
 	}
 	
@@ -1592,19 +1590,20 @@ static void radius_xlat_tokenize_debug(xlat_exp_t *node, int lvl)
 	
 	free(pad);
 }
+
+static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
+
+
 static ssize_t radius_xlat_tokenize(TALLOC_CTX *ctx, const char *fmt, xlat_exp_t **node)
 {
 	ssize_t len;
 	ssize_t inlen;
 	const xlat_t *def;
+	char *tokens;
+
 	/* 
 	 *	Copy the original format string to a buffer so we can mangle it.
 	 */
-	char *tokens;
-	
-	def = xlat_find("request");
-	rad_assert(def);
-	
 	tokens = talloc_strdup(ctx, fmt);
 
 	/*
@@ -1615,6 +1614,7 @@ static ssize_t radius_xlat_tokenize(TALLOC_CTX *ctx, const char *fmt, xlat_exp_t
 	inlen = talloc_get_size(tokens) - 1;
 	
 	len = radius_xlat_tokenize_r(fmt, tokens, inlen, def, *node);
+
 	/*
 	 *	Output something like:
 	 *
@@ -1622,16 +1622,8 @@ static ssize_t radius_xlat_tokenize(TALLOC_CTX *ctx, const char *fmt, xlat_exp_t
 	 *	"       ^ error was here"
 	 */
 	if (len < 0) {
-		size_t pos = (size_t) len * -1;
-		char *pad = malloc(pos);
-		memset(pad, ' ', pos);
-		
-		pad[len * -1] = '\0';
-		
 		DEBUGE("%s", fmt);
-		DEBUGE("%s^ error was here", pad);
-		
-		free(pad);
+		DEBUGE("%.*s^ invalid text begins here", (int) -len, xlat_spaces);
 		
 		talloc_free(*node);
 		*node = NULL;
@@ -1645,7 +1637,7 @@ static ssize_t radius_xlat_tokenize(TALLOC_CTX *ctx, const char *fmt, xlat_exp_t
 		talloc_free(*node);
 		*node = NULL;
 		
-		return len * -1;
+		return -len;
 	}
 
 #if 0
