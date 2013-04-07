@@ -588,7 +588,6 @@ void			radius_signal_self(int flag);
 #define RADIUS_SIGNAL_SELF_NEW_FD	(1 << 4)
 #define RADIUS_SIGNAL_SELF_MAX		(1 << 5)
 
-
 /*
  *	Function prototypes.
  */
