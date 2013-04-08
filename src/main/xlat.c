@@ -31,6 +31,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/base64.h>
 
 #include	<ctype.h>
+#include	<limits.h>
 
 typedef struct xlat_t {
 	char		module[MAX_STRING_LEN];
@@ -42,9 +43,20 @@ typedef struct xlat_t {
 
 typedef struct xlat_exp xlat_exp_t;
 
+typedef enum {
+	XLAT_LITERAL,		//!< Literal string
+	XLAT_MODULE,		//!< xlat module
+	XLAT_ATTRIBUTE,		//!< xlat attribute
+	XLAT_ALTERNATE		//!< xlat conditional syntax :-
+} xlat_state_t;
+
 struct xlat_exp {
 	const char *fmt;	//!< The format string.
 	size_t len;		//!< Length of the format string.
+	const DICT_ATTR *da;	//!< the name of the dictionary attribute	
+	int num;		//!< attribute number
+	int tag;		//!< attribute tag
+	xlat_state_t type;	//!< type of this expansion
 	
 	xlat_exp_t *child;	//!< Nested expansion.
 	xlat_exp_t *next;	//!< Next in the list.
@@ -57,12 +69,6 @@ typedef struct xlat_out {
 	const char *out;	//!< Output data.
 	size_t len;		//!< Length of the output string.
 } xlat_out_t;
-
-typedef enum {
-	XLAT_LITERAL,		//!< Literal string
-	XLAT_EXPANSION,		//!< xlat function
-	XLAT_ALTERNATE		//!< xlat conditional syntax :-
-} xlat_state_t;
 
 static rbtree_t *xlat_root = NULL;
 
@@ -1171,9 +1177,9 @@ do_xlat:
 	}
 	if (!c) {
 		if (!module_name) {
-			RDEBUG2W("Unknown Attribute \"%s\" in string expansion \"%%%s\"", xlat_str, *from);
+			RDEBUG2W("Unknown Attribute \"%s\" in string expansion \"%s\"", xlat_str, buffer);
 		} else {
-			RDEBUG2W("Unknown module \"%s\" in string expansion \"%%%s\"", module_name, *from);
+			RDEBUG2W("Unknown module \"%s\" in string expansion \"%s\"", module_name, buffer);
 		}
 		return -1;
 	}
@@ -1221,399 +1227,445 @@ done:
 	return 0;
 }
 
-/** Chop the tokens string
- *
- * Insert null delimiters into the tokens string, to form tokens, and set the node fmt pointer
- * to be the start of the token.
- *
- * @param p start of the token.
- * @param q end of the token (will be replace with '\q').
- * @param node to set the fmt string in.
- * @return q + 1
- */
-inline static char * radius_xlat_chop(char *p, char *q, xlat_exp_t *node)
+
+static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, const xlat_t *def, xlat_exp_t **head,
+				       const char **error);
+static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, const xlat_t *def, xlat_exp_t **head,
+				     int brace, const char **error);
+
+static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, const xlat_t *def, xlat_exp_t **head,
+					 const char **error)
 {
-	/* 
-	 *	Terminate current token
-	 */
-	*q = '\0';
-
-	node->fmt = p;
-	node->len = q - p;
-
-	/*
-	 *	Return the start of the next token
-	 */
-	return q + 1;
-}
-
-/** Convert an xlat expression into a tree
- *
- * @param fmt string.
- * @param tokens Mutable copy of fmt string, should be a talloc child of the root node.
- * @param def Default xlat to use for expansions which do not formerly specify an xlat function.
- * @param node to add to children, alternates or siblings to.
- * @return On success, the number of bytes of fmt processed, on error the position of the error * -1.
- */
-static ssize_t radius_xlat_tokenize_r(const char *fmt, char *tokens, size_t len, const xlat_t *def, xlat_exp_t *node)
-{
-	size_t i;
-	xlat_exp_t *head = node;
-	
-	char *p = tokens;
-	uint8_t c;
-	
 	ssize_t slen;
-	xlat_state_t state = XLAT_LITERAL;
-	const xlat_t *xlat;
+	char *p;
+	xlat_exp_t *node;
+
+	rad_assert(fmt[0] == '%');
+	rad_assert(fmt[1] == '{');
+	rad_assert(fmt[2] == '%');
+	rad_assert(fmt[3] == '{');
 	
-	rad_assert(node);
+	node = talloc_zero(ctx, xlat_exp_t);
+	node->xlat = def;
+	node->type = XLAT_ALTERNATE;
 
-	for (i = 0; i < len; i++) {
-		switch (state) {
-		/*
-		 *	"<we are here> %{}"
-		 *
-		 *	or
-		 *
-		 *	"for bar baz %{%{func:<here>}}"
-		 *
-		 *	or
-		 *
-		 *	"foo bar baz %{%{}:-<here>}"
-		 *
-		 */
-		case XLAT_LITERAL:
-			literal:
-			if (fmt[i] == '\\') switch (fmt[i + 1]) {
-				case '\\':
-					head = head->next = talloc_zero(head, xlat_exp_t);
-					p = radius_xlat_chop(p, tokens + (i + 1), head);
-			
-					i++;
-					continue;
-			
-				case 't':
-					tokens[i] = '\t';
-
-					i++;
-					continue;
-			
-				case 'n':
-					tokens[i] = '\n';
-			
-					i++;
-					continue;
-			
-				case 'x':
-					/* We expect two digits [0-9] */
-					if ((len - i) < 3) {
-						return -1;
-					}
-			
-					if (!fr_hex2bin(tokens + i, &c, 1)) {
-						return -1;
-					}
-			
-					tokens[i] = (char) c;
-				
-					head = head->next = talloc_zero(head, xlat_exp_t);
-					p = radius_xlat_chop(p, tokens + (i + 1), head);
-			
-					i += 2;
-					continue;
-			
-				default:
-					i++;
-					continue;	
-			}
-		
-			/*
-			 *	We found the beginning of an expansion '%{'
-			 */
-			if ((fmt[i] == '%') && (fmt[i + 1] == '{')) {
-				/*
-				 *	We only need to do add a node here if we were previously processing
-				 *	a literal string.
-				 */
-				if (i) {
-					head = head->next = talloc_zero(head, xlat_exp_t);
-					p = radius_xlat_chop(p, tokens + i, head);
-				}			
-			
-				i += 2;	/* Next iteration we process the interior %{ */
-				p = tokens + i;
-
-				/*
-				 *	This isn't a function or attribute, it's a container.
-				 */
-				if ((fmt[i] == '%') && (fmt[i + 1] == '{')) {
-					state = XLAT_ALTERNATE;
-					goto alternate;
-				}
-				
-				state = XLAT_EXPANSION;
-				goto expansion;
-			}
-
-			/*
-			 *	We found a '}' this could be a formatting error, or it could be
-			 *	we were parsing the arguments to an xlat function or alternate.
-			 *
-			 *	e.g. "%{func:<this}>" or %{%{}:-<this}> 
-			 *
-			 */
-			if ((fmt[i] == '}') || ((fmt[i] == ':') && (fmt[i + 1] == '-'))) {
-				/* Any more trailing literals? */
-				if (p != (tokens + i)) {
-					head = head->next = talloc_zero(head, xlat_exp_t);
-					p = radius_xlat_chop(p, tokens + i, head);	
-				}
-
-				return i;
-			}
-			
-			break;
-			
-		case XLAT_ALTERNATE:
-			alternate:
-			/*
-			 *	We found a '%{%{', earlier, recurse to deal with the interior expression
-			 */
-			head = head->next = talloc_zero(head, xlat_exp_t);
-			slen = radius_xlat_tokenize_r(fmt + i, tokens + i, len - i, def, head);
-			if (slen < 0) {
-				return slen - i;	/* correct error offset */
-			}
-			if (slen == 0) {
-				DEBUGE("Invalid alternation: Zero length left operand");
-				
-				return (i - 1) * -1; 
-			}
-			
-			/* Fixup the tree structure */
-			head->child = head->next;
-			head->next = NULL;
-		
-			i += slen;
-			
-			/*
-			 *	We should now be "foo bar baz %{%{}<here>}", which is the only place
-			 *	an alternate operator can legally appear.
-			 */
-			if ((fmt[i] == ':') && (fmt[i + 1] == '-')) {				
-				i += 2;
-
-				slen = radius_xlat_tokenize_r(fmt + i, tokens + i, len - i, def, head);
-				if (slen < 0) {
-					return slen - i;	/* correct error offset */
-				}		
-				if (slen == 0) {
-					DEBUGE("Invalid alternation: Zero length right operand");
-					
-					return (i - 1) * -1; 
-				}
-				
-				/* Fixup the tree structure */
-				head->alternate = head->next;
-				head->next = NULL;
-				
-				i += slen;
-			}
-
-			/*
-			 *	End of expansion '}'
-			 *
-			 */
-			if (fmt[i] == '}') {
-				i++;
-				p = tokens + i;
-				
-				state = XLAT_LITERAL;
-				goto literal;
-			}
-			
-			DEBUGE("Invalid alternation: Expected closing brace");
-			return -i;
-
-		/*
-		 *	"foo bar baz %{<we are here>}" (and we know it's an expansion)
-		 *
-		 *	Now we need to figure out what type...
-		 */				
-		case XLAT_EXPANSION:
-			expansion:
-			/*
-			 *	The square brackets are a slightly hacky addition for attribute selectors
-			 */
-			if (isalnum(fmt[i]) || (fmt[i] == '-') || (fmt[i] == '_') ||
-			    (fmt[i] == '[') || (fmt[i] == ']') || (fmt[i] == '.')) {
-				continue;
-			
-			/*
-			 *	Function specifier "foo bar baz %{func:"
-			 *
-			 *	Recurse to deal with the argument string (which starts off being treated
-			 *	as a literal).
-			 */
-			} else if (fmt[i] == ':') {
-				/*
-				 *	This is a common typo because of the legacy expression format
-				 */
-				if (fmt[i + 1] == '-') {
-					DEBUGE("Invalid alternation: Left operand for ':-' must be an '%%{expansion}'");
-				
-					return (p - tokens) * -1; 
-				}
-
-				/*
-				 *	Resolve the xlat function
-				 */
-				tokens[i] = '\0';
-				xlat = xlat_find(p);
-			
-				if (!xlat) {
-					DEBUGE("Invalid expansion: No such function \"%s\"", p);
-				
-					return (p - tokens) * -1;
-				}
-			
-				i++;
-				
-				head = head->next = talloc_zero(head, xlat_exp_t);
-				head->xlat = xlat;
-				slen = radius_xlat_tokenize_r(fmt + i, tokens + i, len - i, def, head);
-				if (slen < 0) {
-					return slen - i;	/* correct error offset */
-				}
-				if (slen == 0) {
-					DEBUGE("Invalid expansion: zero length argument string");
-					
-					return (i - 1) * -1; 
-				}
-				
-				/* Correct the tree structure */
-				head->child = head->next;
-				head->next = NULL;
-				
-				i += slen;
-			
-				/*
-				 *	End of expansion '}'
-				 */
-				if (fmt[i] != '}') {
-					DEBUGE("Invalid expansion: Missing terminating '}'");
-				
-					return -i;
-				}
-				
-				/*
-				 *	Start of next literal/expansion/alternation
-				 */
-				i++;
-				p = tokens + i;
-				
-				state = XLAT_LITERAL;
-				goto literal;
-			/*
-			 *	This emulates normal list section - it's an unqualified attribute %{attribute}
-			 */
-			} else if (fmt[i] == '}') {
-				if (!def) {
-					DEBUGE("No default xlat function provided");
-					
-					return (p - tokens) * -1; 
-				}
-				
-				/*
-				 *	Pretend we got %{def:<str>}
-				 */
-				head = head->next = talloc_zero(head, xlat_exp_t);
-				head->xlat = def;
-				
-				head->child = talloc_zero(head, xlat_exp_t);
-				p = radius_xlat_chop(p, tokens + i, head->child);
-				
-				state = XLAT_LITERAL;
-				goto literal;
-			}
-		
-			DEBUGE("Invalid expansion: char '%c' is not allowed in xlat function or attribute names",
-			       tokens[i]);
-		
-			return -i;
-		}
+	DEBUG3("ALTERNATE: %s", fmt);
+	p = fmt + 2;
+	slen = xlat_tokenize_expansion(node, p, def, &node->child, error);
+	if (slen < 0) {
+		talloc_free(node);
+		return slen - (p - fmt);
 	}
-	
-	/*
-	 *	We reached the end of the format string, if there are trailing literals add them now
-	 */
-	if (p != (tokens + i)) {
-		head = head->next = talloc_zero(head, xlat_exp_t);
-		p = radius_xlat_chop(p, tokens + i, head);	
+	p += slen;
+
+	if (p[0] != ':') {
+		talloc_free(node);
+		*error = "Expected ':' after first expansion";
+		return -(p - fmt);
 	}
-	
-	return i;
+	p++;
+
+	if (p[0] != '-') {
+		talloc_free(node);
+		*error = "Expected '-' after ':'";
+		return -(p - fmt);
+	}
+	p++;
+
+	DEBUG3("ELSE %s", p);
+	slen = xlat_tokenize_literal(node, p, def, &node->alternate, TRUE, error);
+	if (slen < 0) {
+		talloc_free(node);
+		return slen - (p - fmt);
+	}
+	p += slen;
+
+	*head = node;
+	return p - fmt;
 }
 
-static void radius_xlat_tokenize_debug(xlat_exp_t *node, int lvl)
+static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, const xlat_t *def, xlat_exp_t **head,
+				       const char **error)
 {
-	char *pad = malloc(lvl);
-	memset(pad, '\t', lvl);
-	pad[lvl] = '\0';
-	
-	while(node) {
-		if (node->fmt) {
-			DEBUG("%sliteral \"%s\"", pad, node->fmt);
+	ssize_t slen;
+	char *p;
+	xlat_exp_t *node;
+
+	rad_assert(fmt[0] == '%');
+	rad_assert(fmt[1] == '{');
+
+	DEBUG3("EXPANSION: %s", fmt);
+
+	/*
+	 *	%{%{...}:-bar}
+	 */
+	if ((fmt[2] == '%') && (fmt[3] == '{')) {
+		return xlat_tokenize_alternation(ctx, fmt, def, head, error);
+	}
+
+	node = talloc_zero(ctx, xlat_exp_t);
+	node->fmt = fmt + 2;
+	node->len = 0;
+	node->xlat = def;
+	node->type = XLAT_MODULE;
+
+	p = fmt + 2;
+
+	while (*p) {
+		/*
+		 *	%{mod: ... }
+		 *	%{Tunnel-Password:1}
+		 */
+		if (*p == ':') {
+			node->len = p - fmt;
+			if (node->len == 0) {
+				*error = "Module name cannot be empty";
+				return -(p - fmt);
+			}
+
+			*p = '\0';
+
+			/*
+			 *	Allow %{Tunnel-Password:1}
+			 */
+			node->da = dict_attrbyname(fmt + 2);
+			if (node->da) {
+				unsigned long tag, num;
+				char *end;
+
+				if (!node->da->flags.has_tag) {
+					talloc_free(node);
+					*error = "Attribute cannot have a tag";
+					return - (p - fmt);
+				}
+
+				tag = strtoul(p + 1, &end, 10);
+				p++;
+
+				if (tag == ULONG_MAX) {
+					talloc_free(node);
+					*error = "Invalid tag value";
+					return - (p - fmt);
+				}
+
+				p = end; /* skip the tag */
+
+				num = 0;
+				if (*p == '[') {
+					p++;
+
+					if (*p== '#') {
+						num = 65536;
+						p++;
+
+					} else if (*p == '*') {
+						num = 65537;
+						p++;
+
+					} else if (isdigit((int) *p)) {
+						num = strtoul(p, &end, 10);
+						if ((num == ULONG_MAX) || (num > 65535)) {
+							talloc_free(node);
+							*error = "Invalid number";
+							return - (p - fmt);
+						}
+						p = end;
+						DEBUG("END %s", p);
+
+					} else {
+						talloc_free(node);
+						*error = "Invalid array reference";
+						return - (p - fmt);
+					}
+
+					if (*p != ']') {
+						talloc_free(node);
+						*error = "Expected ']'";
+						return - (p - fmt);
+					}
+					p++;
+				}
+
+
+				if (*p != '}') {
+					talloc_free(node);
+					*error = "Expected '}'";
+					return - (p - fmt);
+				}
+
+				node->type = XLAT_ATTRIBUTE;
+				node->tag = tag;
+				node->num = num;
+
+				p++;
+				break;
+			} /* if node->da exists */
+
+			DEBUG3("MOD %s:%s", node->fmt, p);
+			slen = xlat_tokenize_literal(node, p, def, &node->child, TRUE, error);
+			if (slen < 0) {
+				talloc_free(node);
+				return slen - (p - fmt);
+			}
+
+			node->xlat = xlat_find(node->fmt);
+			if (!node->xlat) {
+				talloc_free(node);
+				*error = "Unknown module";
+				return - (p - fmt);
+			}
+
+			p += slen; /* includes the trailing brace */
+			node->type = XLAT_MODULE;
+			break;
 		}
-		if (node->xlat) {
-			DEBUG("%sxlat \"%s\"", pad, node->xlat->module);
+
+		/*
+		 *	%{ ... }
+		 */
+		if (*p == '}') {
+			node->len = p - fmt;
+			if (node->len == 0) {
+				talloc_free(node);
+				*error = "Empty expansion is invalid";
+				return -(p - fmt);
+			}
+
+			*(p++) = '\0';
+			break;
 		}
-		if (!node->fmt && !node->xlat && !node->child && !node->alternate) {
-			DEBUG("%sempty", pad);
+
+		/*
+		 *	Escaping is an error.
+		 */
+		if ((*p == '\\') || (*p <= ' ')) {
+			talloc_free(node);
+			*error = "Invalid character in expansion name";
+			return -(p - fmt);
 		}
-	
-		if (node->child) {
-			DEBUG("%s{", pad);
-			radius_xlat_tokenize_debug(node->child, lvl + 1);
-			DEBUG("%s}", pad);
+
+		p++;
+	}
+
+	*head = node;
+	return p - fmt;
+}
+
+
+static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, const xlat_t *def, xlat_exp_t **head,
+				     int brace, const char **error)
+{
+	char *p, *q;
+	xlat_exp_t *node;
+
+	DEBUG3("LITERAL: %s", fmt);
+
+	node = talloc_zero(ctx, xlat_exp_t);
+	node->fmt = fmt;
+	node->len = 0;
+	node->xlat = def;
+	node->type = XLAT_LITERAL;
+
+	p = fmt;
+	q = fmt;
+
+	while (*p) {
+		/*
+		 *	Convert \n to it's literal representation.
+		 */
+		if (p[0] == '\\') switch (p[1]) {
+			case 't':
+				*(q++) = '\t';
+				p += 2;
+				node->len++;
+				continue;
+
+			case 'n':
+				*(q++) = '\n';
+				p += 2;
+				node->len++;
+				continue;
+
+			case 'x':
+				p += 2;
+				if (!p[0] || !p[1]) {
+					talloc_free(node);
+					*error = "Hex expansion requires two hex digits";
+					return -(p - fmt);
+				}
+
+				if (!fr_hex2bin(p, (uint8_t *) q, 2)) {
+					talloc_free(node);
+					*error = "Invalid hex characters";
+					return -(p - fmt);
+				}
+
+				/*
+				 *	Don't let people shoot themselves in the foot.
+				 *	\x00 is forbidden.
+				 */
+				if (!*q) {
+					talloc_free(node);
+					*error = "Cannot add zero byte to printable string";
+					return -(p - fmt);
+				}
+
+				p += 2;
+				q++;
+				node->len++;
+				continue;
+
+			default:
+				*(q++) = *p;
+				p += 2;
+				node->len++;
+				continue;	
+			}
+
+		/*
+		 *	Process the expansion
+		 */
+		if ((p[0] == '%') && (p[1] == '{')) {
+			ssize_t slen;
+
+			slen = xlat_tokenize_expansion(node, p, def, &node->next, error);
+			if (slen < 0) {
+				talloc_free(node);
+				return slen - (p - fmt);
+			}
+
+			p += slen;
+
+			rad_assert(node->next != NULL);
+
+			/*
+			 *	"foo %{User-Name} bar"
+			 *	LITERAL		"foo "
+			 *	EXPANSION	User-Name
+			 *	LITERAL		" bar"
+			 */
+			slen = xlat_tokenize_literal(node->next, p, def, &(node->next->next), brace, error);
+			if (slen < 0) {
+				talloc_free(node);
+				return slen - (p - fmt);
+			}
+
+			p += slen;
+			break;	/* stop processing the string */
 		}
-	
-		if (node->alternate) {
-			DEBUG("%selse {", pad);
-			radius_xlat_tokenize_debug(node->alternate, lvl + 1);
-			DEBUG("%s}", pad);
+
+		/*
+		 *	If required, eat the brace.
+		 */
+		if (brace && (*p == '}')) {
+			*q = '\0';
+			p++;
+			break;
 		}
-		
+
+		*(q++) = *(p++);
+		node->len++;
+	}
+
+	/*
+	 *	Squash zero-width literals
+	 */
+	if (node->len > 0) {
+		*head = node;
+
+	} else {		
+		(void) talloc_steal(ctx, node->next);
+		*head = node->next;
+		talloc_free(node);
+	}
+
+	return p - fmt;
+}
+
+
+static const char xlat_tabs[] = "																																																																																																																																";
+
+static void xlat_tokenize_debug(xlat_exp_t *node, int lvl)
+{
+	rad_assert(node != NULL);
+
+	if (lvl >= (int) sizeof(xlat_tabs)) lvl = sizeof(xlat_tabs);
+
+	while (node) {
+		switch (node->type) {
+		case XLAT_LITERAL:
+			DEBUG("%.*sliteral: %s", lvl, xlat_tabs, node->fmt);
+			break;
+
+		case XLAT_ATTRIBUTE:
+			rad_assert(node->da != NULL);
+			DEBUG("%.*sattribute: %s", lvl, xlat_tabs, node->da->name);
+			rad_assert(node->child == NULL);
+			if ((node->tag != 0) || (node->num != 0)) {
+				DEBUG("%.*s{", lvl, xlat_tabs);
+
+				if (node->tag) DEBUG("%.*stag %d", lvl + 1, xlat_tabs, node->tag);
+				if (node->num) {
+					if (node->num == 65536) {
+						DEBUG("%.*s[#]", lvl + 1, xlat_tabs);
+					} else if (node->num == 65537) {
+						DEBUG("%.*s[*]", lvl + 1, xlat_tabs);
+					} else {
+						DEBUG("%.*s[%d]", lvl + 1, xlat_tabs, node->num);
+					}
+				}
+
+				DEBUG("%.*s}", lvl, xlat_tabs);
+			}
+			break;
+
+		case XLAT_MODULE:
+			rad_assert(node->xlat != NULL);
+			DEBUG("%.*smodule: %s", lvl, xlat_tabs, node->xlat->module);
+			if (node->child) {
+				DEBUG("%.*s{", lvl, xlat_tabs);
+				xlat_tokenize_debug(node->child, lvl + 1);
+				DEBUG("%.*s}", lvl, xlat_tabs);
+			}
+			break;
+
+		case XLAT_ALTERNATE:
+			DEBUG("%.*sif {", lvl, xlat_tabs);
+			xlat_tokenize_debug(node->child, lvl + 1);
+			DEBUG("%.*s}", lvl, xlat_tabs);
+			DEBUG("%.*selse {", lvl, xlat_tabs);
+			xlat_tokenize_debug(node->alternate, lvl + 1);
+			DEBUG("%.*s}", lvl, xlat_tabs);
+			break;
+		}
 		node = node->next;
-	};
-	
-	free(pad);
+	}
 }
 
 static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 
-static ssize_t radius_xlat_tokenize(TALLOC_CTX *ctx, const char *fmt, xlat_exp_t **node)
+static ssize_t xlat_tokenize(REQUEST *request, const char *fmt, xlat_exp_t **head)
 {
-	ssize_t len;
-	ssize_t inlen;
-	const xlat_t *def;
+	ssize_t slen;
+	const xlat_t *def = NULL;
 	char *tokens;
+	const char *error;
+
+	*head = NULL;
 
 	/* 
-	 *	Copy the original format string to a buffer so we can mangle it.
+	 *	Copy the original format string to a buffer so that
+	 *	the later functions can mangle it in-place, which is
+	 *	much faster.
 	 */
-	tokens = talloc_strdup(ctx, fmt);
+	tokens = talloc_strdup(request, fmt);
+	if (!tokens) return -1;
 
-	/*
-	 *	Allocate an empty root node
-	 */	
-	*node = talloc_zero(tokens, xlat_exp_t);
-	
-	inlen = talloc_get_size(tokens) - 1;
-	
-	len = radius_xlat_tokenize_r(fmt, tokens, inlen, def, *node);
+	def = xlat_find("request");
+	rad_assert(def);
+
+	slen = xlat_tokenize_literal(request, tokens, def, head, FALSE, &error);
 
 	/*
 	 *	Output something like:
@@ -1621,32 +1673,25 @@ static ssize_t radius_xlat_tokenize(TALLOC_CTX *ctx, const char *fmt, xlat_exp_t
 	 *	"format string"
 	 *	"       ^ error was here"
 	 */
-	if (len < 0) {
-		DEBUGE("%s", fmt);
-		DEBUGE("%.*s^ invalid text begins here", (int) -len, xlat_spaces);
-		
-		talloc_free(*node);
-		*node = NULL;
-		
-		return len;
-	}
-	
-	if (len != inlen) {
-		DEBUGE("Too many '}'");
+	if (slen < 0) {
+		size_t indent = -slen;
+		talloc_free(tokens);
 
-		talloc_free(*node);
-		*node = NULL;
-		
-		return -len;
+		rad_assert(error != NULL);
+		if (indent < sizeof(xlat_spaces)) {
+			RDEBUGE("%s", fmt);
+			RDEBUGE("%.*s^ %s", (int) -slen, xlat_spaces, error);
+		}
+		return slen;
 	}
 
-#if 0
-	DEBUG("%s", fmt);
-	DEBUG("Parsed xlat tree:");
-	radius_xlat_tokenize_debug(*node, 0);
-#endif
+	if (*head && (debug_flag > 2)) {
+		DEBUG("%s", fmt);
+		DEBUG("Parsed xlat tree:");
+		xlat_tokenize_debug(*head, 0);
+	}
 
-	return len;
+	return slen;
 }
 
 /** Replace %whatever in a string.
@@ -1680,8 +1725,12 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const ch
 	
 	xlat_exp_t *node;
 	
-	/* Temporary */
-	radius_xlat_tokenize(request, fmt, &node);
+	/*
+	 *	Give better errors than the old code.
+	 */
+	if (xlat_tokenize(request, fmt, &node) < 0) {
+		return -1;
+	}
 	talloc_free(node);
 	
 	/*
