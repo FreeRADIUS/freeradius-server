@@ -71,6 +71,7 @@ static const char *hextab = "0123456789abcdef";
  * Modhex and hex must be the same size.
  *
  * @param[in] modhex data.
+ * @param[in] len of input and output buffers.
  * @param[out] hex where to write the standard hexits.
  * @return The number of bytes written to the output buffer, or -1 on error.
  */

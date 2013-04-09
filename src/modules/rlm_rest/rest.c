@@ -2341,11 +2341,10 @@ static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
  * Both components are expanded, but values expanded for the second component
  * are also url encoded.
  *
+ * @param[out] out Where to write the pointer to the new buffer containing the escaped URI.
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
  * @param[in] request Current request
- * @param[out] buffer to write expanded URI to.
- * @param[in] bufsize Size of buffer.
  * @return length of data written to buffer (excluding NULL) or < 0 if an error
  *	occurred.
  */
