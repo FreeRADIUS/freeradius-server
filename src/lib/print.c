@@ -380,6 +380,132 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 	return strlen(out);
 }
 
+
+/*
+ *	vp_prints_value for talloc
+ */
+char *vp_asprintf(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
+{
+	char *p;
+
+	switch (vp->da->type) {
+	case PW_TYPE_STRING:
+		/*
+		 *	FIXME: deal with \r\n" ??
+		 */
+		p = talloc_strdup(ctx, vp->vp_strvalue);
+		break;
+
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
+	case PW_TYPE_INTEGER:
+		p = talloc_asprintf(ctx, "%u", vp->vp_integer);
+		break;
+
+	case PW_TYPE_SIGNED:
+		p = talloc_asprintf(ctx, "%d", vp->vp_signed);
+		break;
+
+	case PW_TYPE_INTEGER64:
+		p = talloc_asprintf(ctx, "%llu", vp->vp_integer64);
+		break;
+
+	case PW_TYPE_ETHERNET:
+		p = talloc_asprintf(ctx, "%02x:%02x:%02x:%02x:%02x:%02x",
+				    vp->vp_ether[0], vp->vp_ether[1],
+				    vp->vp_ether[2], vp->vp_ether[3],
+				    vp->vp_ether[4], vp->vp_ether[5]);
+		break;
+
+	case PW_TYPE_ABINARY:
+#ifdef WITH_ASCEND_BINARY
+		p = talloc_array(ctx, char, 128);
+		if (!p) return NULL;
+		print_abinary(vp, p, 128, 0);
+		break;
+#else
+		  /* FALL THROUGH */
+#endif
+
+	case PW_TYPE_OCTETS:
+		p = talloc_array(ctx, char, 3 + vp->length * 2);
+		if (!p) return NULL;
+		memcpy(p, "0x", 2);
+		fr_bin2hex(vp->vp_octets, p + 2, vp->length);
+		break;
+
+	case PW_TYPE_DATE:
+	{
+		time_t      t;
+		struct tm   s_tm;
+
+		t = vp->vp_date;
+
+		p = talloc_array(ctx, char, 64);
+		strftime(p, 64, "%b %e %Y %H:%M:%S %Z",
+			 localtime_r(&t, &s_tm));
+		break;
+	}
+
+	case PW_TYPE_IPADDR:
+		p = talloc_asprintf(ctx, "%u.%u.%u.%u",
+				    (vp->vp_ipaddr >> 24) & 0xff,
+				    (vp->vp_ipaddr >>16) & 0xff,
+				    (vp->vp_ipaddr >> 8) & 0xff,
+				    vp->vp_ipaddr& 0xff);
+		break;
+
+	case PW_TYPE_IPV4PREFIX:
+		p = talloc_asprintf(ctx, "%u.%u.%u.%u/%u",
+				    vp->vp_ipv4prefix[2],
+				    vp->vp_ipv4prefix[3],
+				    vp->vp_ipv4prefix[4],
+				    vp->vp_ipv4prefix[5],
+				    vp->vp_ipv4prefix[1] & 0x3f);
+		break;
+
+	case PW_TYPE_IPV6ADDR:
+		p = talloc_asprintf(ctx, "%x:%x:%x:%x:%x:%x:%x:%x",
+				    (vp->vp_ipv6addr.s6_addr[0] << 8) | vp->vp_ipv6addr.s6_addr[1],
+				    (vp->vp_ipv6addr.s6_addr[2] << 8) | vp->vp_ipv6addr.s6_addr[3],
+				    (vp->vp_ipv6addr.s6_addr[4] << 8) | vp->vp_ipv6addr.s6_addr[5],
+				    (vp->vp_ipv6addr.s6_addr[6] << 8) | vp->vp_ipv6addr.s6_addr[7],
+				    (vp->vp_ipv6addr.s6_addr[8] << 8) | vp->vp_ipv6addr.s6_addr[9],
+				    (vp->vp_ipv6addr.s6_addr[10] << 8) | vp->vp_ipv6addr.s6_addr[11],
+				    (vp->vp_ipv6addr.s6_addr[12] << 8) | vp->vp_ipv6addr.s6_addr[13],
+				    (vp->vp_ipv6addr.s6_addr[14] << 8) | vp->vp_ipv6addr.s6_addr[15]);
+		break;
+
+	case PW_TYPE_IPV6PREFIX:
+		p = talloc_asprintf(ctx, "%x:%x:%x:%x:%x:%x:%x:%x/%u",
+				    (vp->vp_ipv6prefix[2] << 8) | vp->vp_ipv6prefix[3],
+				    (vp->vp_ipv6prefix[4] << 8) | vp->vp_ipv6prefix[5],
+				    (vp->vp_ipv6prefix[6] << 8) | vp->vp_ipv6prefix[7],
+				    (vp->vp_ipv6prefix[8] << 8) | vp->vp_ipv6prefix[9],
+				    (vp->vp_ipv6prefix[10] << 8) | vp->vp_ipv6prefix[11],
+				    (vp->vp_ipv6prefix[12] << 8) | vp->vp_ipv6prefix[13],
+				    (vp->vp_ipv6prefix[14] << 8) | vp->vp_ipv6prefix[15],
+				    (vp->vp_ipv6prefix[16] << 8) | vp->vp_ipv6prefix[17],
+				    vp->vp_ipv6prefix[2]);
+		break;
+
+	case PW_TYPE_IFID:
+		p = talloc_asprintf(ctx, "%x:%x:%x:%x",
+				    (vp->vp_ifid[0] << 8) | vp->vp_ifid[1],
+				    (vp->vp_ifid[2] << 8) | vp->vp_ifid[3],
+				    (vp->vp_ifid[4] << 8) | vp->vp_ifid[5],
+				    (vp->vp_ifid[6] << 8) | vp->vp_ifid[7]);
+		break;
+
+	default:
+		p = NULL;
+		break;
+	}
+
+	return p;
+}
+
+
 /**
  *  Almost identical to vp_prints_value, but escapes certain chars so the string
  *  may be used as a JSON value.

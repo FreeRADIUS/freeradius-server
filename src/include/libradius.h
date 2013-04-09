@@ -295,6 +295,7 @@ size_t		fr_print_string(const char *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
 				const VALUE_PAIR *vp, int delimitst);
+char     	*vp_asprintf(TALLOC_CTX *ctx, const VALUE_PAIR *vp);
 int     	vp_prints_value_json(char *out, size_t outlen,
 				     const VALUE_PAIR *vp);
 size_t		vp_print_name(char *buffer, size_t bufsize,
