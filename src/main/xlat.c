@@ -1514,6 +1514,7 @@ static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * cons
  * See 'doc/variables.txt' for more information.
  *
  * @param[out] out Where to write pointer to output buffer.
+ * @param[in] outlen Size of out.
  * @param[in] request current request.
  * @param[in] fmt string to expand.
  * @param[in] escape function to escape final value e.g. SQL quoting.
