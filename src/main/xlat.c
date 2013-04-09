@@ -1517,8 +1517,8 @@ static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * cons
  * @param[in] ctx Where to write the pointer to the output buffer.
  * @param[in] request current request.
  * @param[in] fmt string to expand.
- * @param[in] func function to escape final value e.g. SQL quoting.
- * @param[in] ctx pointer to pass to escape function.
+ * @param[in] escape function to escape final value e.g. SQL quoting.
+ * @param[in] escape_ctx pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure
  */
 static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const char *fmt,
