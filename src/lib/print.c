@@ -449,10 +449,10 @@ char *vp_asprintf(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
 
 	case PW_TYPE_IPADDR:
 		p = talloc_asprintf(ctx, "%u.%u.%u.%u",
-				    (vp->vp_ipaddr >> 24) & 0xff,
-				    (vp->vp_ipaddr >>16) & 0xff,
-				    (vp->vp_ipaddr >> 8) & 0xff,
-				    vp->vp_ipaddr& 0xff);
+				    vp->vp_octets[0], /* network byte order */
+				    vp->vp_octets[1],
+				    vp->vp_octets[2],
+				    vp->vp_octets[3]);
 		break;
 
 	case PW_TYPE_IPV4PREFIX:
