@@ -96,7 +96,7 @@ $(RADDB_PATH)/test.conf: test.conf
 # remove the changes to raddb/
 tests: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
-	@rm -f radius.log
+	@rm -f $(TEST_PATH)/radius.log $(TEST_PATH)/gdb.log
 	@$(MAKE) radiusd.pid
 	@echo "Waiting for server to start..."; \
 	for i in 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0; do \
@@ -123,7 +123,7 @@ tests: $(RADDB_PATH)/test.conf radiusd.kill
 
 tests.eap: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
-	@rm -f radius.log
+	@rm -f $(TEST_PATH)/radius.log $(TEST_PATH)/gdb.log
 	@$(MAKE) radiusd.pid
 	@$(MAKE) eap
 	@$(MAKE) radiusd.kill
