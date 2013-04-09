@@ -350,7 +350,7 @@ int main(int argc, char **argv)
 	 *	Read the file, printing out active entries.
 	 */
 	while (fread(&rt, sizeof(rt), 1, fp) == 1) {
-		char login[sizeof(rt.login) + 1];
+		char name[sizeof(rt.login) + 1];
 
 		if (rt.type != P_LOGIN) continue; /* hide logout sessions */
 		
@@ -465,13 +465,13 @@ int main(int argc, char **argv)
 		/*
 		 *	Show the fill name, or not.
 		 */
-		memcpy(login, rt.login, sizeof(rt.login));
-		login[sizeof(rt.login)] = '\0';
+		memcpy(name, rt.login, sizeof(rt.login));
+		name[sizeof(rt.login)] = '\0';
 
 		if (showname) {
 			if (rawoutput == 0) {
 				printf("%-10.10s %-17.17s %-5.5s %s%-3u %-9.9s %-15.15s %-.19s%s",
-				       login,
+				       name,
 				       showcid ? rt.caller_id :
 				       (showsid? session_id : fullname(rt.login)),
 				       proto(rt.proto, rt.porttype),
@@ -481,7 +481,7 @@ int main(int argc, char **argv)
 				       hostname(othername, sizeof(othername), rt.framed_address), eol);
 			} else {
 				printf("%s,%s,%s,%s%u,%s,%s,%s%s",
-				       login,
+				       name,
 				       showcid ? rt.caller_id :
 				       (showsid? session_id : fullname(rt.login)),
 				       proto(rt.proto, rt.porttype),
@@ -493,7 +493,7 @@ int main(int argc, char **argv)
 		} else {
 			if (rawoutput == 0) {
 				printf("%-10.10s %s%-5u  %-6.6s %-13.13s %-15.15s %-.28s%s",
-				       login,
+				       name,
 				       portind, portno,
 				       proto(rt.proto, rt.porttype),
 				       dotime(rt.time),
@@ -502,7 +502,7 @@ int main(int argc, char **argv)
 				       eol);
 			} else {
 				printf("%s,%s%u,%s,%s,%s,%s%s",
-				       login,
+				       name,
 				       portind, portno,
 				       proto(rt.proto, rt.porttype),
 				       dotime(rt.time),
