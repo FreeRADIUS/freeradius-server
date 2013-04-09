@@ -72,6 +72,7 @@ radiusd.kill:
 	@if [ -f radiusd.pid ]; then \
 	    ret=0; \
 	    if ! ps `cat $(TEST_PATH)/radiusd.pid` >/dev/null 2>&1; then \
+		rm -f radiusd.pid; \
 	        echo "FreeRADIUS terminated during test"; \
 	        echo "GDB output was:"; \
 	        cat "$(TEST_PATH)/gdb.log"; \
