@@ -3327,6 +3327,7 @@ fi
 
 
 
+	have_json="yes"
 	smart_try_dir="$jsonc_include_dir"
 
 
@@ -3479,7 +3480,6 @@ $as_echo "$as_me: WARNING: json-c headers not found. Use --with-jsonc-include-di
 	fi
 
 
-	have_json="yes"
 	smart_try_dir="$jsonc_lib_dir"
 
 
@@ -3649,7 +3649,7 @@ fi
 
 	if test "x$ac_cv_lib_json_c_json_c_version" != "xyes"
 	then
-	    	have_json="no"
+	    have_json="no"
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: json-c libraries not found. Use --with-jsonc-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: json-c libraries not found. Use --with-jsonc-lib-dir=<path>." >&2;}
 	fi

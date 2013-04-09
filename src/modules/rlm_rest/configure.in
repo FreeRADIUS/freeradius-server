@@ -91,6 +91,7 @@ if test x$with_[]modname != xno; then
 	dnl # Check for json-c header files
 	dnl ############################################################
 
+	have_json="yes"
 	smart_try_dir="$jsonc_include_dir"
 	FR_SMART_CHECK_INCLUDE([json/json.h])
 	if test "x$ac_cv_header_json_json_h" != "xyes"; then
@@ -102,12 +103,11 @@ if test x$with_[]modname != xno; then
 	dnl # Check for json-c libraries
 	dnl ############################################################
 
-	have_json="yes"
 	smart_try_dir="$jsonc_lib_dir"
 	FR_SMART_CHECK_LIB([json-c], [json_c_version])
 	if test "x$ac_cv_lib_json_c_json_c_version" != "xyes"
 	then
-	    	have_json="no"
+	    have_json="no"
 		AC_MSG_WARN([json-c libraries not found. Use --with-jsonc-lib-dir=<path>.])
 	fi
 	
