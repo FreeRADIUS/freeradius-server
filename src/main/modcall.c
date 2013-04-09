@@ -1873,7 +1873,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
-				cf_log_err(ci, "'elsif' cannot be used in this section section.");
+				cf_log_err(ci, "'elsif' cannot be used in this section.");
 				return NULL;
 			}
 
