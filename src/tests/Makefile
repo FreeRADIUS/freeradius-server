@@ -61,6 +61,7 @@ test.conf: dictionary
 	@echo '$$INCLUDE $${testdir}/config/' >> test.conf
 
 radiusd.pid: $(RADDB_PATH)/test.conf test.conf
+	@rm -f $(TEST_PATH)/gdb.log $(TEST_PATH)/radius.log
 	@gdb -silent -x $(TEST_PATH)/gdb.conf --args \
 	$(BIN_PATH)/radiusd -fPtxxxxml $(TEST_PATH)/radius.log -d $(RADDB_PATH) -n test -i 127.0.0.1 -p $(PORT) > $(TEST_PATH)/gdb.log 2>&1 &
 
@@ -96,7 +97,6 @@ $(RADDB_PATH)/test.conf: test.conf
 # remove the changes to raddb/
 tests: $(RADDB_PATH)/test.conf radiusd.kill
 	@chmod a+x runtests.sh
-	@rm -f $(TEST_PATH)/radius.log $(TEST_PATH)/gdb.log
 	@$(MAKE) radiusd.pid
 	@echo "Waiting for server to start..."; \
 	for i in 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0; do \
