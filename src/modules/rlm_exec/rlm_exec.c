@@ -154,6 +154,34 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 }
 
 
+static const char special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
+
+/*
+ *	Escape special characters
+ */
+static size_t shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *inst)
+{
+	char *q, *end;
+	const char *p;
+
+	q = out;
+	end = out + outlen;
+	p = in;
+
+	while (*p) {
+		if ((q + 3) >= end) break;
+
+		if (strchr(special, *p) != NULL) {
+			*(q++) = '\\';
+		}
+		*(q++) = *(p++);
+	}
+
+	*q = '\0';
+	return q - out;
+}
+
+
 /*
  *	Do any per-module initialization that is separate to each
  *	configured instance of the module.  e.g. set up connections
@@ -174,7 +202,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->bare = 1;
 	}
 
-	xlat_register(inst->xlat_name, exec_xlat, inst);
+	xlat_register(inst->xlat_name, exec_xlat, shell_escape, inst);
 
 	/*
 	 *	No input pairs defined.  Why are we executing a program?

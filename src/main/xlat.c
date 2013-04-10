@@ -37,7 +37,8 @@ typedef struct xlat_t {
 	char		module[MAX_STRING_LEN];
 	int		length;
 	void		*instance;
-	RAD_XLAT_FUNC	do_xlat;
+	RAD_XLAT_FUNC	func;
+	RADIUS_ESCAPE_STRING  escape;
 	int		internal;	/* not allowed to re-define these */
 } xlat_t;
 
@@ -399,7 +400,7 @@ static xlat_t *xlat_find(const char *module)
  * @param instance argument to xlat function
  * @return 0 on success, -1 on failure
  */
-int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
+int xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
@@ -427,14 +428,14 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 #ifdef WITH_UNLANG
 		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
 			xlat_register(xlat_foreach_names[i],
-				      xlat_foreach, &xlat_inst[i]);
+				      xlat_foreach, NULL, &xlat_inst[i]);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
 			c->internal = TRUE;
 		}
 #endif
 
-#define XLAT_REGISTER(_x) xlat_register(Stringify(_x), xlat_ ## _x, NULL); \
+#define XLAT_REGISTER(_x) xlat_register(Stringify(_x), xlat_ ## _x, NULL, NULL); \
 		c = xlat_find(Stringify(_x)); \
 		rad_assert(c != NULL); \
 		c->internal = TRUE
@@ -446,7 +447,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		XLAT_REGISTER(xlat);
 		XLAT_REGISTER(module);
 
-		xlat_register("debug", xlat_debug, &xlat_inst[0]);
+		xlat_register("debug", xlat_debug, NULL, &xlat_inst[0]);
 		c = xlat_find("debug");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
@@ -464,7 +465,8 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 			return -1;
 		}
 
-		c->do_xlat = func;
+		c->func = func;
+		c->escape = escape;
 		c->instance = instance;
 		return 0;
 	}
@@ -475,7 +477,8 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 	c = rad_malloc(sizeof(*c));
 	memset(c, 0, sizeof(*c));
 
-	c->do_xlat = func;
+	c->func = func;
+	c->escape = escape;
 	strlcpy(c->module, module, sizeof(c->module));
 	c->length = strlen(c->module);
 	c->instance = instance;
@@ -520,10 +523,18 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
+#if 0
+#define XLAT_DEBUG DEBUG3
+#else
+#define XLAT_DEBUG(...)
+#endif
+
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 				       const char **error);
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 				     int brace, const char **error);
+static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * const head,
+			   RADIUS_ESCAPE_STRING escape, void *escape_ctx);
 
 static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 					 const char **error)
@@ -536,6 +547,8 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	rad_assert(fmt[1] == '{');
 	rad_assert(fmt[2] == '%');
 	rad_assert(fmt[3] == '{');
+
+	XLAT_DEBUG("ALTERNATE: %s", fmt);
 
 	node = talloc_zero(ctx, xlat_exp_t);
 	node->type = XLAT_ALTERNATE;
@@ -591,6 +604,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		return xlat_tokenize_alternation(ctx, fmt, head, error);
 	}
 
+	XLAT_DEBUG("EXPANSION: %s", fmt);
 	node = talloc_zero(ctx, xlat_exp_t);
 	attrname = node->fmt = fmt + 2;
 	node->len = 0;
@@ -606,6 +620,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			return -2;
 		}
 
+		XLAT_DEBUG("REGEX: %s", fmt);
 		fmt[3] = '\0';
 		node->num = fmt[2] - '0'; /* ASCII */
 
@@ -614,7 +629,6 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		return 4;
 	}
 #endif /* HAVE_REGEX_H */
-
 
 	p = strchr(node->fmt, ':');
 	if (p) {
@@ -627,6 +641,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		if (node->xlat) {
 			node->type = XLAT_MODULE;
 
+			XLAT_DEBUG("MOD: %s --> %s", node->fmt, p);
 			slen = xlat_tokenize_literal(node, p, &node->child, TRUE, error);
 			if (slen < 0) {
 				talloc_free(node);
@@ -784,6 +799,8 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 
 	if (!*fmt) return 0;
 
+	XLAT_DEBUG("LITERAL: %s", fmt);
+
 	node = talloc_zero(ctx, xlat_exp_t);
 	node->fmt = fmt;
 	node->len = 0;
@@ -851,11 +868,13 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		if ((p[0] == '%') && (p[1] == '{')) {
 			ssize_t slen;
 
+			XLAT_DEBUG("LITERAL: %s --> %s", node->fmt, p);
 			slen = xlat_tokenize_expansion(node, p, &node->next, error);
 			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
+			*p = '\0'; /* end the literal */
 			p += slen;
 
 			rad_assert(node->next != NULL);
@@ -943,11 +962,11 @@ static void xlat_tokenize_debug(const xlat_exp_t *node, int lvl)
 	while (node) {
 		switch (node->type) {
 		case XLAT_LITERAL:
-			DEBUG("%.*sliteral: %s", lvl, xlat_tabs, node->fmt);
+			DEBUG("%.*sliteral: '%s'", lvl, xlat_tabs, node->fmt);
 			break;
 
 		case XLAT_PERCENT:
-			DEBUG("%.*sliteral (with %%): %s", lvl, xlat_tabs, node->fmt);
+			DEBUG("%.*sliteral (with %%): '%s'", lvl, xlat_tabs, node->fmt);
 			break;
 
 		case XLAT_ATTRIBUTE:
@@ -1281,16 +1300,21 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 	return vp_asprintf(ctx, vp);
 }
 
-static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * const node)
+static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * const node,
+			 RADIUS_ESCAPE_STRING escape, void *escape_ctx, int lvl)
 {
 	size_t rcode;
 	char *str, *child;
 	REQUEST *ref;
 
+	XLAT_DEBUG("%.*sxlat aprint %d", lvl, xlat_spaces, node->type);
+
 	switch (node->type) {
+		/*
+		 *	Don't escape this
+		 */
 	case XLAT_LITERAL:
-		str = talloc_strdup(ctx, node->fmt);
-		break;
+		return talloc_strdup(ctx, node->fmt);
 
 	case XLAT_PERCENT: {
 		const char *p;
@@ -1399,18 +1423,23 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 		 *	Some attributes are virtual <sigh>
 		 */
 		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag);
+		XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
 		break;
 
 	case XLAT_MODULE:
 		rad_assert(node->child != NULL);
 
-		child = xlat_aprint(ctx, request, node->child);
-		if (!child) return NULL;
+		if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
+			rad_assert(child == NULL);
+			return NULL;
+		}
+
+		XLAT_DEBUG("%.*sexpand mod %s --> '%s'", lvl, xlat_spaces, node->fmt, child);
 
 		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
 		rad_assert(node->child != NULL);
 
-		rcode = node->xlat->do_xlat(node->xlat->instance, request, child, str, 1024);
+		rcode = node->xlat->func(node->xlat->instance, request, child, str, 1024);
 		talloc_free(child);
 		if (rcode == 0) {
 			talloc_free(str);
@@ -1432,12 +1461,30 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 		rad_assert(node->child != NULL);
 		rad_assert(node->alternate != NULL);
 
-		str = xlat_aprint(ctx, request, node->child);
+		str = xlat_aprint(ctx, request, node->child, node->xlat->escape, node->xlat->instance, lvl);
 		if (str) break;
 
-		str = xlat_aprint(ctx, request, node->alternate);
+		str = xlat_aprint(ctx, request, node->alternate, node->xlat->escape, node->xlat->instance, lvl);
 		break;
 
+	}
+
+	/*
+	 *	Escape the non-literals we found above.
+	 */
+	if (escape) {
+		size_t esclen;
+		char *escaped;
+
+		escaped = talloc_array(ctx, char, 1024); /* FIXME: do something intelligent */
+		esclen = escape(request, escaped, 1024, str, escape_ctx);
+		talloc_free(str);
+		if (esclen == 0) {
+			talloc_free(escaped);
+			return NULL;
+		}
+
+		str = escaped;
 	}
 
 	rad_assert(str != NULL);
@@ -1445,8 +1492,8 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 }
 
 
-static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * const head)
-
+static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * const head,
+			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	int i, list;
 	size_t total;
@@ -1461,7 +1508,12 @@ static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * cons
 	 *	array.
 	 */
 	if (!head->next) {
-		answer = xlat_aprint(request, request, head);
+		/*
+		 *	Pass the MAIN escape function.  Recursive
+		 *	calls will call node-specific escape
+		 *	functions.
+		 */
+		answer = xlat_aprint(request, request, head, escape, escape_ctx, 0);
 		if (!answer) return 0;
 		*out = answer;
 		return strlen(answer);
@@ -1476,7 +1528,7 @@ static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * cons
 	if (!array) return -1;
 
 	for (node = head, i = 0; node != NULL; node = node->next, i++) {
-		array[i] = xlat_aprint(array, request, node); /* may be NULL */
+		array[i] = xlat_aprint(array, request, node, escape, escape_ctx, 0); /* may be NULL */
 	}
 
 	total = 0;
@@ -1522,7 +1574,7 @@ static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * cons
  * @return length of string written @bug should really have -1 for failure
  */
 static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const char *fmt,
-			   UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)
+			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	char *buff;
 	ssize_t len;
@@ -1539,7 +1591,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const ch
 		return -1;
 	}
 
-	len = xlat_process(&buff, request, node);
+	len = xlat_process(&buff, request, node, escape, escape_ctx);
 	talloc_free(node);
 
 	if (len <= 0) {

@@ -319,12 +319,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 	size_t		ret = 0;
 	STRLEN		n_a;
 
-	/*
-	 *	Do an xlat on the provided string (nice recursive operation).
-	 */
-	if (radius_axlat(&expanded, request, fmt, NULL, NULL) < 0) {
-		return 0;
-	}
+	expanded = fmt;		/* FIXME */
 
 #ifndef WITH_ITHREADS
 	perl = inst->perl;
@@ -471,7 +466,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!xlat_name)
 		xlat_name = cf_section_name1(conf);
 	if (xlat_name) {
-		xlat_register(xlat_name, perl_xlat, inst);
+		xlat_register(xlat_name, perl_xlat, NULL, inst);
 	}
 
 	return 0;

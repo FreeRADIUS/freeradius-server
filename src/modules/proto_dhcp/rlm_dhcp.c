@@ -105,7 +105,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_dhcp_t *inst = instance;
 	
-	xlat_register("dhcp_options", dhcp_options_xlat, inst);
+	xlat_register("dhcp_options", dhcp_options_xlat, NULL, inst);
 
 	return 0;
 }

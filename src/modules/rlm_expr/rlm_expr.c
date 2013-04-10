@@ -250,17 +250,8 @@ static size_t expr_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
 	int		rcode;
 	int64_t		result;
 	const		char *p;
-	char		buffer[256];
 
-	/*
-	 * Do an xlat on the provided string (nice recursive operation).
-	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, fmt, NULL, NULL) < 0) {
-		*out = '\0';
-		return 0;
-	}
-
-	p = buffer;
+	p = fmt;
 	rcode = get_number(request, &p, &result);
 	if (rcode < 0) {
 		return 0;
@@ -714,20 +705,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->xlat_name = cf_section_name1(conf);
 	}
 
-	xlat_register(inst->xlat_name, expr_xlat, inst);
+	xlat_register(inst->xlat_name, expr_xlat, NULL, inst);
 
 	/*
 	 *	FIXME: unregister these, too
 	 */
-	xlat_register("rand", rand_xlat, inst);
-	xlat_register("randstr", randstr_xlat, inst);
-	xlat_register("urlquote", urlquote_xlat, inst);
-	xlat_register("escape", escape_xlat, inst);
-	xlat_register("tolower", lc_xlat, inst);
-	xlat_register("toupper", uc_xlat, inst);
-	xlat_register("md5", md5_xlat, inst);
-	xlat_register("tobase64", base64_xlat, inst);
-	xlat_register("base64tohex", base64_to_hex_xlat, inst);
+	xlat_register("rand", rand_xlat, NULL, inst);
+	xlat_register("randstr", randstr_xlat, NULL, inst);
+	xlat_register("urlquote", urlquote_xlat, NULL, inst);
+	xlat_register("escape", escape_xlat, NULL, inst);
+	xlat_register("tolower", lc_xlat, NULL, inst);
+	xlat_register("toupper", uc_xlat, NULL, inst);
+	xlat_register("md5", md5_xlat, NULL, inst);
+	xlat_register("tobase64", base64_xlat, NULL, inst);
+	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
 
 	/*
 	 *	Initialize various paircompare functions

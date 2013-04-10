@@ -285,7 +285,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!inst->xlat_name)
 		inst->xlat_name = cf_section_name1(conf);
 
-	xlat_register(inst->xlat_name, redis_xlat, inst);
+	xlat_register(inst->xlat_name, redis_xlat, NULL, inst); /* FIXME! */
 
 	inst->pool = fr_connection_pool_init(conf, inst,
 					     conn_create, NULL,

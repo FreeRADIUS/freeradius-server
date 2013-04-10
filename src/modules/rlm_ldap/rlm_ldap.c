@@ -198,17 +198,8 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	int ldap_errno;
 	const char *url;
 	const char **attrs;
-	char buffer[LDAP_MAX_DN_STR_LEN + LDAP_MAX_FILTER_STR_LEN];
 
-	if (strchr(fmt, '%') != NULL) {
-		if (!radius_xlat(buffer, sizeof(buffer), request, fmt, rlm_ldap_escape_func, NULL)) {
-			RDEBUGE("Unable to create LDAP URL");
-			return 0;
-		}
-		url = buffer;
-	} else {
-		url = fmt;
-	}
+	url = fmt;
 
 	if (!ldap_is_ldap_url(url)) {
 		RDEBUGE("String passed does not look like an LDAP URL");
@@ -600,7 +591,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		paircompare_register(inst->group_da->attr, PW_USER_NAME, rlm_ldap_groupcmp, inst);
 	}
 
-	xlat_register(inst->xlat_name, ldap_xlat, inst);
+	xlat_register(inst->xlat_name, ldap_xlat, rlm_ldap_escape_func, inst);
 
 	/*
 	 *	Initialize the socket pool.

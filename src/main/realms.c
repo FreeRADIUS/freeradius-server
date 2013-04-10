@@ -1968,8 +1968,8 @@ int realms_init(CONF_SECTION *config)
 
 
 #ifdef WITH_PROXY
-	xlat_register("home_server", xlat_home_server, NULL);
-	xlat_register("home_server_pool", xlat_server_pool, NULL);
+	xlat_register("home_server", xlat_home_server, NULL, NULL);
+	xlat_register("home_server_pool", xlat_server_pool, NULL, NULL);
 #endif
 
 	/*

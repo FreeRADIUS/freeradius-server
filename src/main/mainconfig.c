@@ -936,8 +936,8 @@ int read_mainconfig(int reload)
 	/*
 	 *  Register the %{config:section.subsection} xlat function.
 	 */
-	xlat_register("config", xlat_config, NULL);
-	xlat_register("client", xlat_client, NULL);
+	xlat_register("config", xlat_config, NULL, NULL);
+	xlat_register("client", xlat_client, NULL, NULL);
 
 	/*
 	 *	Starting the server, WITHOUT "-x" on the

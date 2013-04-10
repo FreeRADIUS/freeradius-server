@@ -3062,7 +3062,7 @@ add_sockets:
 	 */
 	if (!*head) return -1;
 
-	xlat_register("listen", xlat_listen, NULL);
+	xlat_register("listen", xlat_listen, NULL, NULL);
 
 	return 0;
 }

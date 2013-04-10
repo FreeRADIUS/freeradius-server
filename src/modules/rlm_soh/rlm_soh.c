@@ -113,7 +113,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = name;
 	if (!inst->xlat_name) return -1;
-	xlat_register(inst->xlat_name, soh_xlat, inst);
+	xlat_register(inst->xlat_name, soh_xlat, NULL, inst);
 
 	return 0;
 }

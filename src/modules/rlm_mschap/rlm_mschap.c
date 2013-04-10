@@ -575,7 +575,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	name = cf_section_name2(conf);
 	if (!name) name = cf_section_name1(conf);
 	inst->xlat_name = name;
-	xlat_register(inst->xlat_name, mschap_xlat, inst);
+	xlat_register(inst->xlat_name, mschap_xlat, NULL, inst);
 
 	/*
 	 *	For backwards compatibility

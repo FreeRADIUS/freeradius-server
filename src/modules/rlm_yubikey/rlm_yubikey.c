@@ -111,26 +111,21 @@ static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, const 
 {	
 	ssize_t len;
 
-	char *expanded = NULL;
-	len = radius_axlat(&expanded, request, fmt, NULL, NULL);
-	if (len < 0) {
-		return len;
+	if (outlen < strlen(fmt)) {
+		*out = '\0';
+		return 0;
 	}
-	
+
 	/*
 	 *	mod2hex allows conversions in place
 	 */
-	len = modhex2hex(expanded, (uint8_t *) expanded, strlen(expanded));
+	len = modhex2hex(fmt, (uint8_t *) out, strlen(fmt));
 	if (len <= 0) {
-		talloc_free(expanded);
 		*out = '\0';
-		
 		RDEBUGE("Modhex string invalid");
 		
-		return len;
+		return 0;
 	}
-	
-	strlcpy(out, expanded, outlen);
 	
 	return len;
 }

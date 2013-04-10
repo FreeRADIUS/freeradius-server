@@ -606,12 +606,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	pair_lists_t list;
 	const DICT_ATTR *target;
 	const char *p = fmt;
-	char buffer[1024];
 	int ret = 0;
-
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->key, NULL, NULL) < 0) {
-		return 0;
-	}
 
 	list = radius_list_name(&p, PAIR_LIST_REQUEST);
 	
@@ -622,10 +617,10 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	}
 	
 	PTHREAD_MUTEX_LOCK(&inst->cache_mutex);
-	c = cache_find(inst, request, buffer);
+	c = cache_find(inst, request, fmt);
 	
 	if (!c) {
-		RDEBUG("No cache entry for key \"%s\"", buffer);
+		RDEBUG("No cache entry for key \"%s\"", fmt);
 		goto done;
 	}
 
@@ -729,7 +724,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Register the cache xlat function
 	 */
-	xlat_register(inst->xlat_name, cache_xlat, inst);
+	xlat_register(inst->xlat_name, cache_xlat, NULL, inst);
 
 	rad_assert(inst->key && *inst->key);
 

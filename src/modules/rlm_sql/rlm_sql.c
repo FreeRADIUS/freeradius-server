@@ -132,8 +132,7 @@ static size_t sql_xlat(void *instance, REQUEST *request, const char *fmt, char *
 	rlm_sql_row_t row;
 	rlm_sql_t *inst = instance;
 	size_t ret = 0;
-	
-	char *expanded = NULL;
+	char *query = fmt;	/* FIXME: */
 
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
@@ -142,31 +141,24 @@ static size_t sql_xlat(void *instance, REQUEST *request, const char *fmt, char *
 	 */
 	sql_set_user(inst, request, NULL);
 	
-	/*
-	 *	Do an xlat on the provided string (nice recursive operation).
-	 */
-	if (radius_axlat(&expanded, request, fmt, sql_escape_func, inst) < 0) {
-		return 0;
-	}
-
 	handle = sql_get_socket(inst);
 	if (!handle) {
 		return 0;
 	}
 	
-	rlm_sql_query_log(inst, request, NULL, expanded);
+	rlm_sql_query_log(inst, request, NULL, query);
 
 	/*
 	 *	If the query starts with any of the following prefixes,
 	 *	then return the number of rows affected
 	 */
-	if ((strncasecmp(expanded, "insert", 6) == 0) ||
-	    (strncasecmp(expanded, "update", 6) == 0) ||
-	    (strncasecmp(expanded, "delete", 6) == 0)) {
+	if ((strncasecmp(query, "insert", 6) == 0) ||
+	    (strncasecmp(query, "update", 6) == 0) ||
+	    (strncasecmp(query, "delete", 6) == 0)) {
 		int numaffected;
 		char buffer[21]; /* 64bit max is 20 decimal chars + null byte */
 
-		if (rlm_sql_query(&handle, inst, expanded)) {
+		if (rlm_sql_query(&handle, inst, query)) {
 			goto finish;
 		}
 	
@@ -204,7 +196,7 @@ static size_t sql_xlat(void *instance, REQUEST *request, const char *fmt, char *
 		goto finish;
 	} /* else it's a SELECT statement */
 
-	if (rlm_sql_select_query(&handle, inst, expanded)){
+	if (rlm_sql_select_query(&handle, inst, query)){
 		goto finish;
 	}
 
@@ -247,7 +239,6 @@ static size_t sql_xlat(void *instance, REQUEST *request, const char *fmt, char *
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 	
 	finish:
-	talloc_free(expanded);
 	sql_release_socket(inst, handle);
 	
 	return ret;
@@ -853,7 +844,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Register the SQL xlat function
 	 */
 	inst->config->xlat_name = talloc_strdup(inst->config, xlat_name);
-	xlat_register(xlat_name, sql_xlat, inst);
+	xlat_register(xlat_name, sql_xlat, sql_escape_func, inst);
 
 	/*
 	 *	Sanity check for crazy people.
