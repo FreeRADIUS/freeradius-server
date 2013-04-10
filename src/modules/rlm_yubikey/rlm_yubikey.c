@@ -162,7 +162,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	
-	xlat_register("modhextohex", modhex_to_hex_xlat, inst);
+	xlat_register("modhextohex", modhex_to_hex_xlat, NULL, inst);
 
 	return 0;
 }
