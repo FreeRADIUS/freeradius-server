@@ -37,9 +37,11 @@ typedef struct rlm_exec_t {
 	char		*program;
 	char		*input;
 	char		*output;
-	char	*packet_type;
+	pair_lists_t	input_list;
+	pair_lists_t	output_list;
+	char		*packet_type;
 	unsigned int	packet_code;
-	int	shell_escape;
+	int		shell_escape;
 } rlm_exec_t;
 
 /*
@@ -67,66 +69,17 @@ static const CONF_PARSER module_config[] = {
 
 
 /*
- *	Decode the configuration file string to a pointer to
- *	a value-pair list in the REQUEST data structure.
- */
-static VALUE_PAIR **decode_string(REQUEST *request, const char *string)
-{
-	if (!string) return NULL;
-
-	/*
-	 *	Yuck.  We need a 'switch' over character strings
-	 *	in C.
-	 */
-	if (strcmp(string, "request") == 0) {
-		return &request->packet->vps;
-	}
-
-	if (strcmp(string, "reply") == 0) {
-		if (!request->reply) return NULL;
-
-		return &request->reply->vps;
-	}
-
-#ifdef WITH_PROXY
-	if (strcmp(string, "proxy-request") == 0) {
-		if (!request->proxy) return NULL;
-
-		return &request->proxy->vps;
-	}
-
-	if (strcmp(string, "proxy-reply") == 0) {
-		if (!request->proxy_reply) return NULL;
-
-		return &request->proxy_reply->vps;
-	}
-#endif
-
-	if (strcmp(string, "config") == 0) {
-		return &request->config_items;
-	}
-
-	if (strcmp(string, "none") == 0) {
-		return NULL;
-	}
-
-	return NULL;
-}
-
-
-/*
  *	Do xlat of strings.
  */
 static size_t exec_xlat(void *instance, REQUEST *request,
-		     const char *fmt, char *out, size_t outlen)
+			const char *fmt, char *out, size_t outlen)
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
 	VALUE_PAIR	**input_pairs;
 	char *p;
-
 	
-	input_pairs = decode_string(request, inst->input);
+	input_pairs = radius_list(request, inst->input_list);
 	if (!input_pairs) {
 		radlog(L_ERR, "rlm_exec (%s): Failed to find input pairs"
 		       " for xlat", inst->xlat_name);
@@ -140,7 +93,7 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	RDEBUG2("Executing %s", fmt);
 	result = radius_exec_program(fmt, request, inst->wait,
 				     out, outlen, *input_pairs, NULL, inst->shell_escape);
-	RDEBUG2("result %d", result);
+	RDEBUG2("result %d --> '%s'", result, out);
 	if (result != 0) {
 		out[0] = '\0';
 		return 0;
@@ -194,6 +147,7 @@ static size_t shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, co
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
+	const char *p;
 	rlm_exec_t	*inst = instance;
 
 	inst->xlat_name = cf_section_name2(conf);
@@ -208,6 +162,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	No input pairs defined.  Why are we executing a program?
 	 */
 	rad_assert(inst->input && *inst->input);
+
+	p = inst->input;
+	inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+	if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+		cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
+		return -1;
+	}
+
+	inst->output_list = PAIR_LIST_UNKNOWN;
+	if (inst->output) {
+		pair_lists_t l;
+
+		p = inst->output;
+		l = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		if ((l == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+			cf_log_err_cs(conf, "Invalid output list '%s'", inst->output);
+			return -1;
+		}
+	}
 
 	/*
 	 *	Sanity check the config.  If we're told to NOT wait,
@@ -285,22 +258,8 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	/*
 	 *	Decide what input/output the program takes.
 	 */
-	input_pairs = decode_string(request, inst->input);
-	output_pairs = decode_string(request, inst->output);
-
-	if (!input_pairs) {
-		RDEBUG2W("Possible parse error in %s",
-			inst->input);
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	It points to the attribute list, but the attribute
-	 *	list is empty.
-	 */
-	if (!*input_pairs) {
-		RDEBUG2W("Input pairs are empty.  No attributes will be passed to the script");
-	}
+	input_pairs = radius_list(request, inst->input_list);
+	output_pairs = radius_list(request, inst->output_list);
 
 	/*
 	 *	This function does it's own xlat of the input program
