@@ -34,12 +34,12 @@ RCSID("$Id$")
 #include	<limits.h>
 
 typedef struct xlat_t {
-	char		module[MAX_STRING_LEN];
-	int		length;
-	void		*instance;
-	RAD_XLAT_FUNC	func;
-	RADIUS_ESCAPE_STRING  escape;
-	int		internal;	/* not allowed to re-define these */
+	char			name[MAX_STRING_LEN];	//!< Name of the xlat expansion.
+	int			length;			//!< Length of name.
+	void			*instance;		//!< Module instance passed to xlat and escape functions.
+	RAD_XLAT_FUNC		func;			//!< xlat function.
+	RADIUS_ESCAPE_STRING	escape;			//!< Escape function to apply to dynamic input to func.
+	int			internal;		//!< If true, cannot be redefined.
 } xlat_t;
 
 typedef struct xlat_exp xlat_exp_t;
@@ -373,8 +373,8 @@ static int xlat_cmp(const void *a, const void *b)
 		return ((const xlat_t *)a)->length - ((const xlat_t *)b)->length;
 	}
 
-	return memcmp(((const xlat_t *)a)->module,
-		      ((const xlat_t *)b)->module,
+	return memcmp(((const xlat_t *)a)->name,
+		      ((const xlat_t *)b)->name,
 		      ((const xlat_t *)a)->length);
 }
 
@@ -382,12 +382,12 @@ static int xlat_cmp(const void *a, const void *b)
 /*
  *	find the appropriate registered xlat function.
  */
-static xlat_t *xlat_find(const char *module)
+static xlat_t *xlat_find(const char *name)
 {
 	xlat_t my_xlat;
 
-	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
-	my_xlat.length = strlen(my_xlat.module);
+	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
+	my_xlat.length = strlen(my_xlat.name);
 
 	return rbtree_finddata(xlat_root, &my_xlat);
 }
@@ -395,19 +395,19 @@ static xlat_t *xlat_find(const char *module)
 
 /** Register an xlat function.
  *
- * @param module xlat name
- * @param func xlat function to be called
- * @param escape the escape function
- * @param instance argument to xlat function
+ * @param[in] name xlat name.
+ * @param[in] func xlat function to be called.
+ * @param[in] escape function to sanitize any sub expansions passed to the xlat function.
+ * @param[in] instance of module that's registering the xlat function.
  * @return 0 on success, -1 on failure
  */
-int xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
+int xlat_register(const char *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
 
-	if (!module || !*module) {
-		DEBUG("xlat_register: Invalid module name");
+	if (!name || !*name) {
+		DEBUG("xlat_register: Invalid xlat name");
 		return -1;
 	}
 
@@ -457,8 +457,8 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING e
 	/*
 	 *	If it already exists, replace the instance.
 	 */
-	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
-	my_xlat.length = strlen(my_xlat.module);
+	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
+	my_xlat.length = strlen(my_xlat.name);
 	c = rbtree_finddata(xlat_root, &my_xlat);
 	if (c) {
 		if (c->internal) {
@@ -480,8 +480,8 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING e
 
 	c->func = func;
 	c->escape = escape;
-	strlcpy(c->module, module, sizeof(c->module));
-	c->length = strlen(c->module);
+	strlcpy(c->name, name, sizeof(c->name));
+	c->length = strlen(c->name);
 	c->instance = instance;
 
 	rbtree_insert(xlat_root, c);
@@ -494,19 +494,19 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING e
  * We can only have one function to call per name, so the passing of "func"
  * here is extraneous.
  *
- * @param[in] module xlat to unregister.
+ * @param[in] name xlat to unregister.
  * @param[in] func
  * @param[in] instance
  */
-void xlat_unregister(const char *module, UNUSED RAD_XLAT_FUNC func, void *instance)
+void xlat_unregister(const char *name, UNUSED RAD_XLAT_FUNC func, void *instance)
 {
 	xlat_t	*c;
 	xlat_t		my_xlat;
 
-	if (!module) return;
+	if (!name) return;
 
-	strlcpy(my_xlat.module, module, sizeof(my_xlat.module));
-	my_xlat.length = strlen(my_xlat.module);
+	strlcpy(my_xlat.name, name, sizeof(my_xlat.name));
+	my_xlat.length = strlen(my_xlat.name);
 
 	c = rbtree_finddata(xlat_root, &my_xlat);
 	if (!c) return;
@@ -997,7 +997,7 @@ static void xlat_tokenize_debug(const xlat_exp_t *node, int lvl)
 
 		case XLAT_MODULE:
 			rad_assert(node->xlat != NULL);
-			DEBUG("%.*smodule: %s", lvl, xlat_tabs, node->xlat->module);
+			DEBUG("%.*sxlat: %s", lvl, xlat_tabs, node->xlat->name);
 			if (node->child) {
 				DEBUG("%.*s{", lvl, xlat_tabs);
 				xlat_tokenize_debug(node->child, lvl + 1);
