@@ -286,10 +286,19 @@ int fr_substr2int(const FR_NAME_NUMBER *table, const char *name, int def, int le
 	}
 
 	for (this = table; this->name != NULL; this++) {
+		size_t tlen;
+
+		tlen = strlen(this->name);
+
 		/*
-		 * Match up to the length of the table entry if len is < 0.
+		 *	Don't match "request" to user input "req".
 		 */
-		max = (len < 0) ? strlen(this->name) : (unsigned)len;
+		if ((len > 0) && (len < (int) tlen)) continue;
+
+		/*
+		 *	Match up to the length of the table entry if len is < 0.
+		 */
+		max = (len < 0) ? tlen : (unsigned)len;
 		
 		if (strncasecmp(this->name, name, max) == 0) {
 			return this->number;
