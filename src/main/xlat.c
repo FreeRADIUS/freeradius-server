@@ -397,6 +397,7 @@ static xlat_t *xlat_find(const char *module)
  *
  * @param module xlat name
  * @param func xlat function to be called
+ * @param escape the escape function
  * @param instance argument to xlat function
  * @return 0 on success, -1 on failure
  */
