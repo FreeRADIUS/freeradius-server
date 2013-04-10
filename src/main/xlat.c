@@ -1149,9 +1149,9 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 	if ((da->vendor != 0) || (da->attr < 256) || (list == PAIR_LIST_CONTROL)) {
 	print_vp:
 		vp = pairfind(vps, da->attr, da->vendor, tag);
-		if (!vp) return xlat_emptytype(ctx, da->type);
+		if (!vp) return vp_aprinttype(ctx, da->type);
 
-		return vp_sprint(ctx, vp);
+		return vp_aprint(ctx, vp);
 	}
 
 	/*
@@ -1186,7 +1186,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 	 *	there's no packet, we can't print any attribute
 	 *	referencing it.
 	 */
-	if (!packet) return xlat_emptytype(ctx, da->type);
+	if (!packet) return vp_aprinttype(ctx, da->type);
 
 	memset(&myvp, 0, sizeof(myvp));
 	myvp.da = da;
@@ -1251,8 +1251,8 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 		break;
 	}
 
-	if (!vp) return xlat_emptytype(ctx, da->type);
-	return vp_sprint(ctx, vp);
+	if (!vp) return vp_aprinttype(ctx, da->type);
+	return vp_aprint(ctx, vp);
 }
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * const node,
