@@ -105,11 +105,21 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 	char *envp[MAX_ENVP];
 
 	argc = rad_expand_xlat(request, cmd, MAX_ARGV, (const char **) argv, 1,
-				sizeof(argv_buf), argv_buf);
+			       sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
 		RDEBUG("invalid command line '%s'.", cmd);
 		return -1;
 	}
+
+
+#ifndef NDEBUG
+	if (debug_flag > 2) {
+		RDEBUG3("executing cmd %s", cmd);
+		for (i = 0; i < argc; i++) {
+			RDEBUG3("\t[%d] %s", i, argv[i]);
+		}
+	}
+#endif
 
 #ifndef __MINGW32__
 	/*
