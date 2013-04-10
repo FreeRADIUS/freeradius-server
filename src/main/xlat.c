@@ -367,15 +367,16 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 /*
  *	Compare two xlat_t structs, based ONLY on the module name.
  */
-static int xlat_cmp(const void *a, const void *b)
+static int xlat_cmp(const void *one, const void *two)
 {
-	if (((const xlat_t *)a)->length != ((const xlat_t *)b)->length) {
-		return ((const xlat_t *)a)->length - ((const xlat_t *)b)->length;
+	const xlat_t *a = one;
+	const xlat_t *b = two;
+
+	if (a->length != b->length) {
+		return a->length - b->length;
 	}
 
-	return memcmp(((const xlat_t *)a)->name,
-		      ((const xlat_t *)b)->name,
-		      ((const xlat_t *)a)->length);
+	return memcmp(a->name, b->name, a->length);
 }
 
 
