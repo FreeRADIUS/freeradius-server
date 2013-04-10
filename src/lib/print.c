@@ -381,10 +381,54 @@ int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimit
 }
 
 
+char *vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type)
+{
+	switch (type) {
+	case PW_TYPE_STRING :
+		return talloc_strdup(ctx, "_");
+
+	case PW_TYPE_INTEGER64:
+	case PW_TYPE_SIGNED:
+	case PW_TYPE_BYTE:
+	case PW_TYPE_SHORT:
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_DATE :
+		return talloc_strdup(ctx, "0");
+
+	case PW_TYPE_IPADDR :
+		return talloc_strdup(ctx, "?.?.?.?");
+
+	case PW_TYPE_IPV4PREFIX:
+		return talloc_strdup(ctx, "?.?.?.?/?");
+
+	case PW_TYPE_IPV6ADDR:
+		return talloc_strdup(ctx, "[:?:]");
+
+	case PW_TYPE_IPV6PREFIX:
+		return talloc_strdup(ctx, "[:?:]/?");
+
+	case PW_TYPE_OCTETS:
+		return talloc_strdup(ctx, "0x??");
+
+	case PW_TYPE_ETHERNET:
+		return talloc_strdup(ctx, "??:??:??:??:??:??:??:??");
+
+#ifdef WITH_ASCEND_BINARY
+	case PW_TYPE_ABINARY:
+		return talloc_strdup(ctx, "??");
+#endif
+
+	default :
+		break;
+	}
+
+	return talloc_strdup(ctx, "<UNKNOWN-TYPE>");
+}
+
 /*
  *	vp_prints_value for talloc
  */
-char *vp_asprintf(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
+char *vp_aprint(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
 {
 	char *p;
 

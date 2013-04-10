@@ -1084,52 +1084,6 @@ static ssize_t xlat_tokenize(REQUEST *request, const char *fmt, xlat_exp_t **hea
 	return slen;
 }
 
-static char *xlat_emptytype(TALLOC_CTX *ctx, PW_TYPE type)
-{
-	switch (type) {
-	case PW_TYPE_STRING :
-		return talloc_strdup(ctx, "_");
-
-	case PW_TYPE_INTEGER64:
-	case PW_TYPE_SIGNED:
-	case PW_TYPE_BYTE:
-	case PW_TYPE_SHORT:
-	case PW_TYPE_INTEGER:
-	case PW_TYPE_DATE :
-		return talloc_strdup(ctx, "0");
-
-	case PW_TYPE_IPADDR :
-		return talloc_strdup(ctx, "?.?.?.?");
-
-	case PW_TYPE_IPV4PREFIX:
-		return talloc_strdup(ctx, "?.?.?.?/?");
-
-	case PW_TYPE_IPV6ADDR:
-		return talloc_strdup(ctx, "[:?:]");
-
-	case PW_TYPE_IPV6PREFIX:
-		return talloc_strdup(ctx, "[:?:]/?");
-
-	case PW_TYPE_OCTETS:
-		return talloc_strdup(ctx, "0x??");
-
-	case PW_TYPE_ETHERNET:
-		return talloc_strdup(ctx, "??:??:??:??:??:??:??:??");
-
-#ifdef WITH_ASCEND_BINARY
-	case PW_TYPE_ABINARY:
-		return talloc_strdup(ctx, "??");
-#endif
-
-	default :
-		break;
-	}
-
-	return talloc_strdup(ctx, "<UNKNOWN-TYPE>");
-}
-
-
-
 
 static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, const DICT_ATTR *da, int8_t tag)
 {
@@ -1143,7 +1097,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 	 */
 	switch (list) {
 	default:
-		return xlat_emptytype(ctx, da->type);
+		return vp_aprinttype(ctx, da->type);
 
 	case PAIR_LIST_CONTROL:
 		vps = request->config_items;
@@ -1196,7 +1150,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 		vp = pairfind(vps, da->attr, da->vendor, tag);
 		if (!vp) return xlat_emptytype(ctx, da->type);
 
-		return vp_asprintf(ctx, vp);
+		return vp_sprint(ctx, vp);
 	}
 
 	/*
@@ -1297,7 +1251,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 	}
 
 	if (!vp) return xlat_emptytype(ctx, da->type);
-	return vp_asprintf(ctx, vp);
+	return vp_sprint(ctx, vp);
 }
 
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * const node,
