@@ -1,5 +1,5 @@
 /*
- * dhclient.c	General radius packet debug tool.
+ * dhcpclient.c	General radius packet debug tool.
  *
  * Version:	$Id$
  *
@@ -61,7 +61,7 @@ static RADIUS_PACKET *reply = NULL;
 #define DHCP_VEND_LEN	(308)
 #define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
 
-const char *dhclient_version = "dhclient version " RADIUSD_VERSION_STRING
+const char *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
@@ -69,7 +69,7 @@ const char *dhclient_version = "dhclient version " RADIUSD_VERSION_STRING
 
 static void NEVER_RETURNS usage(void)
 {
-	fprintf(stderr, "Usage: dhclient [options] server[:port] <command>\n");
+	fprintf(stderr, "Usage: dhcpclient [options] server[:port] <command>\n");
 
 	fprintf(stderr, "  <command>    One of discover, request, offer\n");
 	fprintf(stderr, "  -c count    Send each packet 'count' times.\n");
@@ -98,7 +98,7 @@ static int request_init(const char *filename)
 	if (filename) {
 		fp = fopen(filename, "r");
 		if (!fp) {
-			fprintf(stderr, "dhclient: Error opening %s: %s\n",
+			fprintf(stderr, "dhcpclient: Error opening %s: %s\n",
 				filename, strerror(errno));
 			return 0;
 		}
@@ -111,7 +111,7 @@ static int request_init(const char *filename)
 	/*
 	 *	Read the VP's.
 	 */
-	request->vps = readvp2(NULL, fp, &filedone, "dhclient:");
+	request->vps = readvp2(NULL, fp, &filedone, "dhcpclient:");
 	if (!request->vps) {
 		rad_free(&request);
 		if (fp != stdin) fclose(fp);
@@ -287,7 +287,7 @@ int main(int argc, char **argv)
 			timeout = atof(optarg);
 			break;
 		case 'v':
-			printf("%s\n", dhclient_version);
+			printf("%s\n", dhcpclient_version);
 			exit(0);
 			break;
 		case 'x':
@@ -305,7 +305,7 @@ int main(int argc, char **argv)
 	if (argc < 2) usage();
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
-		fr_perror("dhclient");
+		fr_perror("dhcpclient");
 		return 1;
 	}
 
@@ -340,7 +340,7 @@ int main(int argc, char **argv)
 		}
 
 		if (ip_hton(hostname, AF_INET, &server_ipaddr) < 0) {
-			fprintf(stderr, "dhclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
+			fprintf(stderr, "dhcpclient: Failed to find IP address for host %s: %s\n", hostname, strerror(errno));
 			exit(1);
 		}
 
@@ -379,7 +379,7 @@ int main(int argc, char **argv)
 	 *	No data read.  Die.
 	 */
 	if (!request || !request->vps) {
-		fprintf(stderr, "dhclient: Nothing to send.\n");
+		fprintf(stderr, "dhcpclient: Nothing to send.\n");
 		exit(1);
 	}
 	request->code = packet_code;
@@ -398,7 +398,7 @@ int main(int argc, char **argv)
 	}
 	sockfd = fr_socket(&client_ipaddr, client_port);
 	if (sockfd < 0) {
-		fprintf(stderr, "dhclient: socket: %s\n", fr_strerror());
+		fprintf(stderr, "dhcpclient: socket: %s\n", fr_strerror());
 		exit(1);
 	}
 
@@ -416,27 +416,27 @@ int main(int argc, char **argv)
 	 *	Encode the packet
 	 */
 	if (fr_dhcp_encode(request) < 0) {
-		fprintf(stderr, "dhclient: failed encoding: %s\n",
+		fprintf(stderr, "dhcpclient: failed encoding: %s\n",
 			fr_strerror());
 		exit(1);
 	}
 	if (fr_debug_flag) print_hex(request);
 	
 	if (fr_dhcp_send(request) < 0) {
-		fprintf(stderr, "dhclient: failed sending: %s\n",
+		fprintf(stderr, "dhcpclient: failed sending: %s\n",
 			strerror(errno));
 		exit(1);
 	}
 
 	reply = fr_dhcp_recv(sockfd);
 	if (!reply) {
-		fprintf(stderr, "dhclient: no reply\n");
+		fprintf(stderr, "dhcpclient: no reply\n");
 		exit(1);
 	}
 	if (fr_debug_flag) print_hex(reply);
 
 	if (fr_dhcp_decode(reply) < 0) {
-		fprintf(stderr, "dhclient: failed decoding\n");
+		fprintf(stderr, "dhcpclient: failed decoding\n");
 		return 1;
 	}
 
