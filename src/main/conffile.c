@@ -1235,12 +1235,21 @@ static ssize_t condition_tokenize(const char *start, int brace, const char **err
 
 		/*
 		 *	Grab a sub-condition.
-		 *
-		 *	FIXME: have a code saying something was there!
-		 *	Otherwise we could do if () { ...
 		 */
 		if (*p == '(') {
-			p++;
+			const char *q = p + 1;
+
+			/*
+			 *	Peek ahead
+			 */
+			while (isspace((int) *q)) q++;
+
+			if (*q == ')') {
+				COND_DEBUG("RETURN %d", __LINE__);
+				*error = "Empty condition is invalid";
+				return -(p + 1 - start);
+			}
+			p = q;
 
 			/*
 			 *	We've already eaten one layer of
