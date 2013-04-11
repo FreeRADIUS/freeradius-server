@@ -25,7 +25,7 @@ ldap {
 #	basedn = "dc=example,dc=org"
 
 	#
-	#  Mapping of RADIUS dictionary attributes to LDAP directory attributes.
+	#  Mapping of LDAP directory attributes to RADIUS dictionary attributes.
 	#
 	#  WARNING: Although this format is almost identical to the unlang 
 	#  update section format, it does *NOT* mean that you can use other
@@ -35,27 +35,28 @@ ldap {
 	# 	<radius attr> <op> <ldap attr>
 	# 
 	#  Where:
-	#  	<radius attr>:	The destination RADIUS attribute
+	#  	<radius attr>:	Is the destination RADIUS attribute
 	# 			with any valid list and request qualifiers.
 	#  	<op>: 		Is any assignment attribute (=, :=, +=, -=).
-	#  	<ldap attr>:	The attribute in the associated with user or
-	#			profile objects in the LDAP. 
-	# 			directory. If the attribute name is wrapped in 
-	# 			double quotes it will be xlat expanded.
+	#  	<ldap attr>:	Is the attribute associated with user or
+	#			profile objects in the LDAP directory.
+	# 			If the attribute name is wrapped in double
+	# 			quotes it will be xlat expanded.
 	# 
-	#  Request and list qualifiers may also be placed after the section
-	#  name to set defaults for unqualified RADIUS attributes.
+	#  Request and list qualifiers may also be placed after the 'update' 
+	#  section name to set defaults destination requests/lists
+	# for unqualified RADIUS attributes.
 	#
 	#  Note: LDAP attribute names should be single quoted unless you want
 	#  the name value to be derived from an xlat expansion, or an
 	#  attribute ref.
 	#
-	update reply {
-#		control:NT-Password 	:= 'ntPassword'
-#		Reply-Message		:= 'radiusReplyMessage'
-#		Tunnel-Type		:= 'radiusTunnelType'
-#		Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
-#		Tunnel-Private-Group-ID := 'radiusTunnelPrivategroupId'
+	update {
+#		control:NT-Password		:= 'ntPassword'
+#		reply:Reply-Message		:= 'radiusReplyMessage'
+#		reply:Tunnel-Type		:= 'radiusTunnelType'
+#		reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
+#		reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
 	}
 
 	# Set to "no" to disable the 'no "known good" password' warning,
