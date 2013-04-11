@@ -1160,15 +1160,14 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 
 
 /*
- *	Sanity check the "if" or "elsif", presuming that the first '('
- *	has already been eaten.
+ *	Sanity check the entire condition.
  *
  *	We're not really parsing it here, just checking if it's mostly
  *	well-formed.
  */
 static int condition_looks_ok(const char **ptr)
 {
-	int num_braces = 1;
+	int num_braces = 0;
 	int quote = 0;
 	const char *p = *ptr;
 
@@ -1616,6 +1615,57 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		}
 
 		/*
+		 *	Handle if/elsif specially.
+		 */
+		if ((strcmp(buf1, "if") == 0) || (strcmp(buf1, "elsif") == 0)) {
+			CONF_SECTION *server;
+			const char *end = ptr;
+
+			/*
+			 *	if / elsif MUST be inside of a
+			 *	processing section, which MUST in turn
+			 *	be inside of a "server" directive.
+			 */
+			if (!this->item.parent) {
+			invalid_location:
+				radlog(L_ERR, "%s[%d]: Invalid location for '%s'",
+				       filename, *lineno, buf1);
+				return -1;
+			}
+
+			server = this->item.parent;
+			while ((strcmp(server->name1, "server") != 0) &&
+			       (strcmp(server->name1, "policy") != 0)) {
+				server = server->item.parent;
+				if (!server) goto invalid_location;
+			}
+			
+			if (!condition_looks_ok(&end)) {
+				radlog(L_ERR, "%s[%d]: Parse error in condition at: %s",
+				       filename, *lineno, ptr);
+				return -1;
+			}
+
+			if ((size_t) (end - ptr) >= (sizeof(buf2) - 1)) {
+				radlog(L_ERR, "%s[%d]: Condition is too large after \"%s\"",
+				       filename, *lineno, buf1);
+				return -1;
+			}
+
+			memcpy(buf2, ptr, end - ptr);
+			buf2[end - ptr] = '\0';
+			ptr = end;
+			t2 = T_BARE_WORD;
+			
+			if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
+				radlog(L_ERR, "%s[%d]: Expected '{'",
+				       filename, *lineno);
+				return -1;
+			}
+			goto section_alloc;
+		}
+
+		/*
 		 *	Grab the next token.
 		 */
 		t2 = gettoken(&ptr, buf2, sizeof(buf2));
@@ -1687,67 +1737,6 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			cpn->item.lineno = *lineno;
 			cf_item_add(this, &(cpn->item));
 			continue;
-
-			/*
-			 *	This horrible code is here to support
-			 *	if/then/else failover in the
-			 *	authorize, etc. sections.  It makes no
-			 *	sense anywhere else.
-			 */
-		case T_LBRACE:
-			if ((strcmp(buf1, "if") == 0) ||
-			    (strcmp(buf1, "elsif") == 0)) {
-				const char *end = ptr;
-				CONF_SECTION *server;
-
-				if (!condition_looks_ok(&end)) {
-					radlog(L_ERR, "%s[%d]: Parse error in condition at: %s",
-					       filename, *lineno, ptr);
-					return -1;
-				}
-
-				if ((size_t) (end - ptr) >= (sizeof(buf2) - 1)) {
-					radlog(L_ERR, "%s[%d]: Statement too complicated after \"%s\"",
-					       filename, *lineno, buf1);
-					return -1;
-				}
-
-				/*
-				 *	More sanity checking.  This is
-				 *	getting to be a horrible hack.
-				 */
-				server = this;
-				while (server) {
-					if (strcmp(server->name1, "server") == 0) break;
-					server = server->item.parent;
-				}
-				
-				if (0 && !server) {
-					radlog(L_ERR, "%s[%d]: Processing directives such as \"%s\" cannot be used here.",
-					       filename, *lineno, buf1);
-					return -1;
-				}
-
-				buf2[0] = '(';
-				memcpy(buf2 + 1, ptr, end - ptr);
-				buf2[end - ptr + 1] = '\0';
-				ptr = end;
-				t2 = T_BARE_WORD;
-
-				if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
-					radlog(L_ERR, "%s[%d]: Expected '{'",
-					       filename, *lineno);
-					return -1;
-				}
-				goto section_alloc;
-
-			} else {
-				radlog(L_ERR, "%s[%d]: Parse error after \"%s\"",
-				       filename, *lineno, buf1);
-				return -1;
-			}
-
-			/* FALL-THROUGH */
 
 			/*
 			 *	No '=', must be a section or sub-section.
