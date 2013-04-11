@@ -565,6 +565,30 @@ int dict_addvendor(const char *name, unsigned int value)
 	return 0;
 }
 
+
+/*
+ *	[a-zA-Z0-9_-:.]+
+ */
+const int dict_attr_allowed_chars[256] = {
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1,
+	0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+	1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+
 /*
  *	Add an attribute to the dictionary.
  */
@@ -573,7 +597,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 {
 	size_t namelen;
 	static int      max_attr = 0;
-	const char	*p;
+	const uint8_t	*p;
 	const DICT_ATTR	*da;
 	DICT_ATTR *n;
 	
@@ -584,18 +608,8 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 	}
 
 	for (p = name; *p != '\0'; p++) {
-		if (*p < ' ') {
-			fr_strerror_printf("dict_addattr: attribute name cannot contain control characters");
-			return -1;
-		}
-
-		if ((*p == '"') || (*p == '\\')) {
-			fr_strerror_printf("dict_addattr: attribute name cannot contain quotation or backslash");
-			return -1;
-		}
-
-		if ((*p == '<') || (*p == '>') || (*p == '&')) {
-			fr_strerror_printf("dict_addattr: attribute name cannot contain XML control characters");
+		if (!dict_attr_allowed_chars[*p]) {
+			fr_strerror_printf("dict_addattr: Invalid character '%c' in attribute name", *p);
 			return -1;
 		}
 	}
