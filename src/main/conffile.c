@@ -1158,6 +1158,42 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 	return -1;
 }
 
+#if 0
+#define COND_DEBUG DEBUG
+#else
+#define COND_DEBUG(...)
+#endif
+
+
+static ssize_t condition_tokenize_string(const char *start, const char **error)
+{
+	const char *p = start;
+
+	p++;
+
+	COND_DEBUG("STRING %s", start);
+	while (*p) {
+		if (*p == *start) {
+			COND_DEBUG("end of string %s", p);
+			break;
+		}
+
+		if (*p == '\\') {
+			p++;
+			if (!*p) {
+				*error = "End of string after escape";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return -(p - start);
+			}
+		}
+	
+		p++;		/* allow anything else */
+	}
+
+	COND_DEBUG("RETURN %d '%s'", __LINE__, p);
+	return p - start;
+}
+
 
 /*
  *	Sanity check the entire condition.
@@ -1165,84 +1201,352 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
  *	We're not really parsing it here, just checking if it's mostly
  *	well-formed.
  */
-static int condition_looks_ok(const char **ptr)
+static ssize_t condition_tokenize(const char *start, int brace, const char **error)
 {
-	int num_braces = 0;
-	int quote = 0;
-	const char *p = *ptr;
+	int sub, regex;
+	ssize_t slen;
+	const char *p = start;
 
-	while (*p) {
-		if (quote) {
-			if (*p == quote) {
-				p++;
-				quote = 0;
-				continue;
-			}
+	if (p == start) {
+		COND_DEBUG("START %s", p);
+		sub = FALSE;
 
-			if (*p == '\\') {
-				if (!p[1]) {
-					return 0; /* no trailing slash */
-				}
-				p += 2;
-				continue;
-			}
-			p++;
-			continue;
-		}
-
-		switch (*p) {
-		case '\\':
-			if (!p[1]) {
-				return 0; /* no trailing slash */
-			}
-			p += 2;
-			continue;
-
-		case '(':
-			num_braces++;
-			p++;
-			continue;
-
-		case ')':
-			if (num_braces == 1) {
-				const char *q = p + 1;
-
-				/*
-				 *	Validate that there isn't much
-				 *	else after the closing brace.
-				 */
-				while ((*q == ' ') || (*q == '\t')) q++;
-
-				/*
-				 *	Parse error.
-				 */
-				if (*q != '{') {
-					DEBUG2("Expected open brace '{' after condition at %s", p);
-					return 0;
-				}
-
-				*ptr = p + 1; /* include the trailing ')' */
-				return 1;
-			}
-			num_braces--;
-			p++;
-			continue;
-
-		case '"':
-		case '\'':
-		case '/':
-		case '`':
-			quote = *p;
-			/* FALL-THROUGH */
-
-		default:
-			p++;
-			break;
-		}
+	} else {
+	start_over:
+		COND_DEBUG("START OVER %s", p);
 	}
 
-	DEBUG3("Unexpected error");
-	return 0;
+	/*
+	 *	We expect to see the start of a condition here.
+	 */
+	while (*p) {
+		if (isspace((int) *p)) {
+			p++;
+			continue;
+		}
+
+		/*
+		 *	Allow !CONDITION
+		 */
+		if (*p == '!') {
+			p++;
+			continue;
+		}
+
+		/*
+		 *	Grab a sub-condition.
+		 *
+		 *	FIXME: have a code saying something was there!
+		 *	Otherwise we could do if () { ...
+		 */
+		if (*p == '(') {
+			p++;
+
+			/*
+			 *	We've already eaten one layer of
+			 *	brackets.  Go recurse to get more.
+			 */
+			slen = condition_tokenize(p, TRUE, error);
+			if (slen < 0) {
+				COND_DEBUG("RETURN %d", __LINE__);
+				return slen - (p - start);
+			}
+
+			if (p[slen] != ')') {
+				*error = "No matching close brace";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return -(p - start);
+			}
+
+			p += slen + 1;
+
+			/*
+			 *	If we're not looking for more braces,
+			 *	we've found the last one.
+			 */
+			if (!brace) {
+				return p - start;
+			}
+
+			/*
+			 *	Had a leading subcondition.  We now
+			 *	allow AND/OR.
+			 */
+			sub = TRUE;
+			continue;
+		}
+
+		/*
+		 *	Finish the current condition
+		 */
+		if (*p == ')') {
+		closing_brace:
+			if (!brace) {
+				*error = "Too many closing braces";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return - (p - start);
+			}
+
+			/*
+			 *	DON'T skip the closing brace
+			 */
+			COND_DEBUG("RETURN %d", __LINE__);
+			return p - start;
+		}
+
+		/*
+		 *	Look for CONDITION AND CONDITION
+		 */
+		if (((p[0] == '&') && (p[1] == '&')) ||
+		    ((p[0] == '|') && (p[1] == '|'))) {
+			if (!sub) {
+				*error = "Expected condition before logical operator";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return -(p - start);
+			}
+
+			/*
+			 *	We've now done CONDITION
+			 *	AND/OR... allow a bare condition
+			 *	again.
+			 */
+			sub = FALSE;
+			p += 2;
+			continue;
+		}
+
+		/*
+		 *	We've seen a subcondition, followed by
+		 *	something OTHER than another subcondition or
+		 *	AND/OR.  It's a parse error.
+		 */
+		if (sub) {
+			*error = "Unexpected text";
+				COND_DEBUG("RETURN %d", __LINE__);
+			return -(p - start);
+		}
+
+		/*
+		 *	Something else.  It must be a bare condition.
+		 */
+		break;
+	}
+
+	rad_assert(!isspace((int) *p));
+
+	/*
+	 *	FOO
+	 *	FOO OP BAR
+	 */
+	while (*p) {
+		/*
+		 *	LHS may be a string.
+		 */
+		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
+			COND_DEBUG("LHS %s", p);
+			slen = condition_tokenize_string(p, error);
+			if (slen < 0) {
+				COND_DEBUG("RETURN %d", __LINE__);
+				return slen - (p - start);
+			}
+
+			if (p[slen] != *p) {
+				*error = "String is not terminated";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return -(p - start);
+			}
+
+			p += slen + 1;
+			break;
+		}
+
+		/*
+		 *	The LHS should really be limited to only a few
+		 *	things.  For now, we allow pretty much anything.
+		 */
+		if (*p == '\\') {
+		unexpected_escape:
+			*error = "Unexpected escape";
+				COND_DEBUG("RETURN %d", __LINE__);
+			return -(p - start);
+		}
+
+		/*
+		 *	("foo") is valid.
+		 */
+		if (*p == ')') goto closing_brace;
+
+		/*
+		 *	Spaces or AND/OR or OP delineate the LHS.
+		 */
+		if (isspace((int) *p) || (*p == '&') || (*p == '|') ||
+		    (*p == '!') || (*p == '=') || (*p == '<') || (*p == '>')) {
+			break;
+		}
+
+		p++;
+	}
+
+	while (isspace((int) *p)) p++; /* skip spaces */
+
+	/*
+	 *	(foo)
+	 */
+	if (*p == ')') goto closing_brace;
+
+	COND_DEBUG("OPERATOR? %s", p);
+
+	/*
+	 *	We've successfully parsed the LHS.  If it's just an
+	 *	existence check, the next thing may be AND/OR.
+	 */
+	if (((p[0] == '&') && (p[1] == '&')) ||
+	    ((p[0] == '|') && (p[1] == '|'))) {
+		sub = FALSE;
+		p += 2;
+		COND_DEBUG("AFTER AND/OR %s", p);
+		goto start_over;
+	}
+
+	/*
+	 *	The next thing should now be a comparison operator.
+	 */
+	regex = FALSE;
+	switch (*p) {
+	default:
+		*error = "Invalid text.  Expected comparison operator";
+				COND_DEBUG("RETURN %d", __LINE__);
+		return -(p - start);
+
+	case '!':
+		regex = (p[1] == '~');
+
+		p++;
+		if (!((*p == '=') || (*p == '~') || (*p == '*'))) {
+		invalid_operator:
+			*error = "Invalid text in operator";
+				COND_DEBUG("RETURN %d", __LINE__);
+			return -(p - start);
+		}
+
+		p += 2;
+		break;
+
+	case '=':
+		regex = (p[1] == '~');
+
+		p++;
+		if (!((*p == '=') || (*p == '~') || (*p == '*'))) {
+			goto invalid_operator;
+		}
+		p += 2;
+		break;
+
+	case '<':
+	case '>':
+		if (p[1] == '=') {
+			p++;
+		}
+		p++;
+		break;
+	}
+
+	while (isspace((int) *p)) p++; /* skip spaces */
+
+	COND_DEBUG("RHS %s", p);
+
+	if (regex) {
+		if (*p != '/') {
+			*error = "Expected regex '/'";
+				COND_DEBUG("RETURN %d", __LINE__);
+			return -(p - start);
+		}
+
+		slen = condition_tokenize_string(p, error);
+		if (slen < 0) {
+				COND_DEBUG("RETURN %d", __LINE__);
+			return slen - (p - start);
+		}
+
+		if (p[slen] != *p) {
+			COND_DEBUG("RETURN %d", __LINE__);
+			*error = "Unterminated regex";
+			return -(p - start);
+		}
+		p += slen + 1;
+
+		/*
+		 *	Allow /foo/i
+		 */
+		if (*p == 'i') p++;
+
+		COND_DEBUG("DONE REGEX %s", p);
+		sub = TRUE;
+		goto start_over;
+
+	} else if (!regex && (*p == '/')) {
+		*error = "UnExpected regex '/'";
+		COND_DEBUG("RETURN %d", __LINE__);
+		return -(p - start);
+	}
+
+	if ((*p == '"') || (*p == '`') || (*p == '\'')) {
+		slen = condition_tokenize_string(p, error);
+		if (slen < 0) {
+				COND_DEBUG("RETURN %d", __LINE__);
+			return slen - (p - start);
+		}
+
+		if (p[slen] != *p) {
+			COND_DEBUG("RETURN %d", __LINE__);
+			*error = "Unterminated string";
+			return -(p - start);
+		}
+		p += slen + 1;
+
+		COND_DEBUG("DONE STRING %s", p);
+		sub = TRUE;
+		goto start_over;
+	}
+
+	/*
+	 *	The RHS should now be just a bare word.
+	 */
+	while (*p) {
+		/*
+		 *	Can't do: aaa"foo".  That's dumb.
+		 */
+		if ((*p == '"') || (*p == '`') || (*p == '\'')) {
+			*error = "Unexpected start of string";
+				COND_DEBUG("RETURN %d", __LINE__);
+			return -(p - start);
+		}
+
+		if (*p == '\\') goto unexpected_escape;
+
+		/*
+		 *	Allow braces to close a bare word.
+		 */
+		if (*p == ')') goto closing_brace;
+
+		/*
+		 *	RHS is delineated by a space.
+		 */
+		if (isspace((int) *p)) {
+			COND_DEBUG("SPACE AFTER RHS: %s", p);
+			sub = TRUE;
+			goto start_over;
+		}
+
+		/*
+		 *	For now, allow anything else.
+		 */
+
+		p++;
+	}
+
+	COND_DEBUG("RETURN %d", __LINE__);
+	return p - start;
 }
 
 
@@ -1619,7 +1923,8 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 */
 		if ((strcmp(buf1, "if") == 0) || (strcmp(buf1, "elsif") == 0)) {
 			CONF_SECTION *server;
-			const char *end = ptr;
+			const char *error = NULL;
+			ssize_t slen;
 
 			/*
 			 *	if / elsif MUST be inside of a
@@ -1640,21 +1945,36 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				if (!server) goto invalid_location;
 			}
 			
-			if (!condition_looks_ok(&end)) {
-				radlog(L_ERR, "%s[%d]: Parse error in condition at: %s",
-				       filename, *lineno, ptr);
+			slen = condition_tokenize(ptr, FALSE, &error);
+			if (slen < 0) {
+				size_t offset;
+				char *spbuf;
+
+				offset = -slen;
+				offset += ptr - buf;
+
+				spbuf = malloc(offset + 1);
+				memset(spbuf, ' ', offset);
+				spbuf[offset] = '\0';
+
+				radlog(L_ERR, "%s[%d]: Parse error in condition",
+				       filename, *lineno);
+
+				DEBUGE("%s", buf);
+				DEBUGE("%.*s^%s", (int) offset, spbuf, error);
+				free(spbuf);
 				return -1;
 			}
 
-			if ((size_t) (end - ptr) >= (sizeof(buf2) - 1)) {
+			if ((size_t) slen >= (sizeof(buf2) - 1)) {
 				radlog(L_ERR, "%s[%d]: Condition is too large after \"%s\"",
 				       filename, *lineno, buf1);
 				return -1;
 			}
 
-			memcpy(buf2, ptr, end - ptr);
-			buf2[end - ptr] = '\0';
-			ptr = end;
+			memcpy(buf2, ptr, slen);
+			buf2[slen] = '\0';
+			ptr += slen;
 			t2 = T_BARE_WORD;
 			
 			if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
@@ -1662,6 +1982,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				       filename, *lineno);
 				return -1;
 			}
+
 			goto section_alloc;
 		}
 
