@@ -94,6 +94,11 @@ struct fr_connection_pool_t {
 	int		trigger;	//!< If TRUE execute connection triggers
 					//!< associated with the connection
 					//!< pool.
+					
+	int		spread;		//!< If TRUE requests will be spread 
+					//!< across all connections, instead of
+					//!< re-using the most recently used
+					//!< connections first.
 
 	time_t		last_checked;	//!< Last time we pruned the connection
 					//!< pool.
@@ -199,22 +204,25 @@ static void fr_connection_unlink(fr_connection_pool_t *pool,
 	this->prev = this->next = NULL;
 }
 
-/** Adds a connection to the connection list
+/** Adds a connection to the head of the connection list
  *
  * @note Must be called with the mutex held.
  *
  * @param[in,out] pool to modify.
  * @param[in] this Connection to add.
  */
-static void fr_connection_link(fr_connection_pool_t *pool,
-			       fr_connection_t *this)
+static void fr_connection_link_head(fr_connection_pool_t *pool,
+			            fr_connection_t *this)
 {
 	rad_assert(pool != NULL);
 	rad_assert(this != NULL);
 	rad_assert(pool->head != this);
 	rad_assert(pool->tail != this);
 
-	if (pool->head) pool->head->prev = this;
+	if (pool->head) {
+		pool->head->prev = this;
+	}
+	
 	this->next = pool->head;
 	this->prev = NULL;
 	pool->head = this;
@@ -223,6 +231,35 @@ static void fr_connection_link(fr_connection_pool_t *pool,
 		pool->tail = this;
 	} else {
 		rad_assert(this->next != NULL);
+	}
+}
+
+/** Adds a connection to the tail of the connection list
+ *
+ * @note Must be called with the mutex held.
+ *
+ * @param[in,out] pool to modify.
+ * @param[in] this Connection to add.
+ */
+static void fr_connection_link_tail(fr_connection_pool_t *pool,
+			            fr_connection_t *this)
+{
+	rad_assert(pool != NULL);
+	rad_assert(this != NULL);
+	rad_assert(pool->head != this);
+	rad_assert(pool->tail != this);
+
+	if (pool->tail) {
+		pool->tail->next = this;
+	}
+	this->prev = pool->tail;
+	this->next = NULL;
+	pool->tail = this;
+	if (!pool->head) {
+		rad_assert(this->prev == NULL);
+		pool->head = this;
+	} else {
+		rad_assert(this->prev != NULL);
 	}
 }
 
@@ -329,7 +366,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 
 	this->number = pool->count++;
 	this->last_used = now;
-	fr_connection_link(pool, this);
+	fr_connection_link_head(pool, this);
 	pool->num++;
 	pool->spawning = FALSE;
 	pool->last_spawned = time(NULL);
@@ -388,7 +425,7 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
 
 	this->number = pool->count++;
 	this->last_used = time(NULL);
-	fr_connection_link(pool, this);
+	fr_connection_link_head(pool, this);
 	pool->num++;
 
 	pthread_mutex_unlock(&pool->mutex);
@@ -550,13 +587,19 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
  * @param[in] d Callback to delete connections.
+ * @param[in] spread requests over the entire pool (if TRUE) else concentrate
+ *	them on a subset of connections (if FALSE.
+ * @param[in] prefix to prepend to all log message, if NULL will create prefix
+ *	from parent conf section names. 
  * @return A new connection pool or NULL on error.
  */
 fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      void *ctx,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      fr_connection_delete_t d)
+					      fr_connection_delete_t d,
+					      int spread,
+					      char *prefix)
 {
 	int i, lp_len;
 	fr_connection_pool_t *pool;
@@ -579,6 +622,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pool->create = c;
 	pool->alive = a;
 	pool->delete = d;
+	pool->spread = spread;
 
 	pool->head = pool->tail = NULL;
 
@@ -586,25 +630,29 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pthread_mutex_init(&pool->mutex, NULL);
 #endif
 
-	modules = cf_item_parent(cf_sectiontoitem(parent));
-	if (modules) {
-		cs_name1 = cf_section_name1(modules);
-		if (cs_name1 && (strcmp(cs_name1, "modules") == 0)) {
-			cs_name1 = cf_section_name1(parent);
-			cs_name2 = cf_section_name2(parent);
-			if (!cs_name2) {
-				cs_name2 = cs_name1;
+	if (!prefix) {
+		modules = cf_item_parent(cf_sectiontoitem(parent));
+		if (modules) {
+			cs_name1 = cf_section_name1(modules);
+			if (cs_name1 && (strcmp(cs_name1, "modules") == 0)) {
+				cs_name1 = cf_section_name1(parent);
+				cs_name2 = cf_section_name2(parent);
+				if (!cs_name2) {
+					cs_name2 = cs_name1;
+				}
+
+				lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
+				pool->log_prefix = rad_malloc(lp_len);
+				snprintf(pool->log_prefix, lp_len, LOG_PREFIX, cs_name1,
+					 cs_name2);
 			}
+		} else {		/* not a module configuration */
+			cs_name1 = cf_section_name1(parent);
 
-			lp_len = (sizeof(LOG_PREFIX) - 4) + strlen(cs_name1) + strlen(cs_name2);
-			pool->log_prefix = rad_malloc(lp_len);
-			snprintf(pool->log_prefix, lp_len, LOG_PREFIX, cs_name1,
-				 cs_name2);
+			pool->log_prefix = strdup(cs_name1);
 		}
-	} else {		/* not a module configuration */
-		cs_name1 = cf_section_name1(parent);
-
-		pool->log_prefix = strdup(cs_name1);
+	} else {
+		pool->log_prefix = strdup(prefix);
 	}
 	
 	DEBUG("%s: Initialising connection pool", pool->log_prefix);
@@ -929,13 +977,29 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 	this->in_use = FALSE;
 	
 	/*
-	 *	Put it at the head of the list, so
-	 *	that it will get re-used quickly.
+	 *	Determines whether the last used connection gets
+	 *	re-used first.
 	 */
-	if (this != pool->head) {
-		fr_connection_unlink(pool, this);
-		fr_connection_link(pool, this);
+	if (pool->spread) {
+		/*
+		 *	Put it at the tail of the list, so
+		 *	that it will get re-used last.
+		 */
+		if (this != pool->tail) {
+			fr_connection_unlink(pool, this);
+			fr_connection_link_tail(pool, this);
+		}
+	} else {
+		/*
+		 *	Put it at the head of the list, so
+		 *	that it will get re-used quickly.
+		 */
+		if (this != pool->head) {
+			fr_connection_unlink(pool, this);
+			fr_connection_link_head(pool, this);
+		}
 	}
+
 	rad_assert(pool->active > 0);
 	pool->active--;
 

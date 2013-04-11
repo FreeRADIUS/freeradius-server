@@ -98,8 +98,8 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static int rlm_rest_perform (rlm_rest_t *instance, rlm_rest_section_t *section,
-			     void *handle, REQUEST *request)
+static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
+			    void *handle, REQUEST *request)
 {
 	size_t uri_len;
 	char *uri = NULL;
@@ -136,8 +136,8 @@ static int rlm_rest_perform (rlm_rest_t *instance, rlm_rest_section_t *section,
 	return 1;
 }
 
-static void rlm_rest_cleanup (rlm_rest_t *instance, rlm_rest_section_t *section,
-			      void *handle)
+static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
+			     void *handle)
 {
 	rest_request_cleanup(instance, section, handle);
 };
@@ -256,9 +256,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	inst->conn_pool = fr_connection_pool_init(conf, inst,
-						  rest_socket_create,
-						  rest_socket_alive,
-						  rest_socket_delete);
+						  rest_socket_create, rest_socket_alive, rest_socket_delete,
+						  FALSE, NULL);
 
 	if (!inst->conn_pool) {
 		return -1;

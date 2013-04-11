@@ -1252,7 +1252,6 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 	(inst->module->sql_finish_query)(handle, inst->config);
 
 	finish:
-	talloc_free(path);
 	talloc_free(expanded);
 	sql_release_socket(inst, handle);
 

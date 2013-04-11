@@ -75,7 +75,9 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *cs,
 					      void *ctx,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
-					      fr_connection_delete_t d);
+					      fr_connection_delete_t d,
+					      int spread,
+					      char *prefix);
 void fr_connection_pool_delete(fr_connection_pool_t *pool);
 
 int fr_connection_check(fr_connection_pool_t *pool, void *conn);

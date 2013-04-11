@@ -182,9 +182,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Initialize the socket pool.
 	 */
 	inst->pool = fr_connection_pool_init(conf, inst,
-					     conn_create,
-					     NULL,
-					     conn_delete);
+					     conn_create, NULL, conn_delete,
+					     FALSE, NULL);
 	if (!inst->pool) {
 		return -1;
 	}

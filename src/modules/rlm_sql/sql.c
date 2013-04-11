@@ -107,9 +107,8 @@ static int sql_conn_delete(UNUSED void *ctx, void *conn)
 int sql_socket_pool_init(rlm_sql_t * inst)
 {
 	inst->pool = fr_connection_pool_init(inst->cs, inst,
-					     sql_conn_create,
-					     NULL,
-					     sql_conn_delete);
+					     sql_conn_create, NULL, sql_conn_delete,
+					     FALSE, NULL);
 	if (!inst->pool) return -1;
 
 	return 1;
