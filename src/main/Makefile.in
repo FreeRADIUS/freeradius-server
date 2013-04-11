@@ -146,12 +146,12 @@ radmin$(EXEEXT): radmin.lo $(LIBRADIUS) util.lo log.lo conffile.lo
 radconf2xml$(EXEEXT): radconf2xml.lo $(LIBRADIUS) util.lo log.lo conffile.lo
 	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o $@ $^ $(LIBS)
 
-dhclient.lo: dhclient.c $(INCLUDES)
-	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c dhclient.c
+dhcpclient.lo: dhcpclient.c $(INCLUDES)
+	$(LIBTOOL) --mode=compile $(CC) $(CFLAGS) -c dhcpclient.c
 
 # Don't install this for now.
-dhclient$(EXEEXT): dhclient.lo $(LIBRADIUS)
-	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o dhclient dhclient.lo $(LIBRADIUS) $(LIBS)
+dhcpclient$(EXEEXT): dhcpclient.lo $(LIBRADIUS)
+	$(LIBTOOL) --mode=link $(CC) $(LDFLAGS) $(LINK_MODE) -o dhcpclient dhcpclient.lo $(LIBRADIUS) $(LIBS)
 
 clean:
 	rm -rf *.o *.so *.lo *~ $(BINARIES) .libs
