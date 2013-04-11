@@ -2162,10 +2162,12 @@ post_ca:
 	}
 
 	/* Load randomness */
-	if (!(RAND_load_file(conf->random_file, 1024*1024))) {
-		radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-		radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
-		return NULL;
+	if (conf->random_file) {
+		if (!(RAND_load_file(conf->random_file, 1024*1024))) {
+			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
+			return NULL;
+		}
 	}
 
 	/*
