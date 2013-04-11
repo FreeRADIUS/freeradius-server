@@ -45,7 +45,7 @@ ldap {
 	# 
 	#  Request and list qualifiers may also be placed after the 'update' 
 	#  section name to set defaults destination requests/lists
-	# for unqualified RADIUS attributes.
+	#  for unqualified RADIUS attributes.
 	#
 	#  Note: LDAP attribute names should be single quoted unless you want
 	#  the name value to be derived from an xlat expansion, or an
