@@ -893,3 +893,158 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 	return argc;
 }
 
+const FR_NAME_NUMBER pair_lists[] = {
+	{ "request",		PAIR_LIST_REQUEST },
+	{ "reply",		PAIR_LIST_REPLY },
+	{ "config",		PAIR_LIST_CONTROL },
+	{ "control",		PAIR_LIST_CONTROL },
+#ifdef WITH_PROXY
+	{ "proxy-request",	PAIR_LIST_PROXY_REQUEST },
+	{ "proxy-reply",	PAIR_LIST_PROXY_REPLY },
+#endif
+#ifdef WITH_COA
+	{ "coa",		PAIR_LIST_COA },
+	{ "coa-reply",		PAIR_LIST_COA_REPLY },
+	{ "disconnect",		PAIR_LIST_DM },
+	{ "disconnect-reply",	PAIR_LIST_DM_REPLY },
+#endif
+	{  NULL , -1 }
+};
+
+const FR_NAME_NUMBER request_refs[] = {
+	{ "outer",		REQUEST_OUTER },
+	{ "current",		REQUEST_CURRENT },
+	{ "parent",		REQUEST_PARENT },
+	{  NULL , -1 }
+};
+
+
+/** Resolve attribute name to a list.
+ *
+ * Check the name string for qualifiers that specify a list and return
+ * an pair_lists_t value for that list. This value may be passed to
+ * radius_list, along with the current request, to get a pointer to the
+ * actual list in the request.
+ *
+ * If qualifiers were consumed, write a new pointer into name to the
+ * char after the last qualifier to be consumed.
+ *
+ * radius_list_name should be called before passing a name string that
+ * may contain qualifiers to dict_attrbyname.
+ *
+ * @see dict_attrbyname
+ *
+ * @param[in,out] name of attribute.
+ * @param[in] unknown the list to return if no qualifiers were found.
+ * @return PAIR_LIST_UNKOWN if qualifiers couldn't be resolved to a list.
+ */
+pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
+{
+	const char *p = *name;
+	const char *q;
+	
+	/* This should never be a NULL pointer or zero length string */
+	rad_assert(name && *name);
+
+	/*
+	 *	We couldn't determine the list if:
+	 *	
+	 * 	A colon delimiter was found, but the next char was a
+	 *	number, indicating a tag, not a list qualifier.
+	 *
+	 *	No colon was found and the first char was upper case
+	 *	indicating an attribute.
+	 *
+	 */
+	q = strchr(p, ':');
+	if (((q && (q[1] >= '0') && (q[1] <= '9'))) ||
+	    (!q && isupper((int) *p))) {
+		return unknown;
+	}
+	
+	if (q) {
+		*name = (q + 1);	/* Consume the list and delimiter */
+	} else {
+		q = (p + strlen(p));	/* Consume the entire string */
+		*name = q;
+	}
+	
+	return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+}
+
+
+/** Resolve attribute name to a request.
+ *
+ * Check the name string for qualifiers that reference a parent request and
+ * write the pointer to this request to 'request'.
+ *
+ * If qualifiers were consumed, write a new pointer into name to the
+ * char after the last qualifier to be consumed.
+ *
+ * radius_ref_request should be called before radius_list_name.
+ *
+ * @see radius_list_name
+ * @param[in,out] name of attribute.
+ * @param[in] unknown Request ref to return if no request qualifier is present.
+ * @return one of the REQUEST_* definitions or REQUEST_UNKOWN
+ */
+request_refs_t radius_request_name(const char **name, request_refs_t unknown)
+{
+	char *p;
+	int request;
+	
+	p = strchr(*name, '.');
+	if (!p) {
+		return REQUEST_CURRENT;
+	}
+	
+	request = fr_substr2int(request_refs, *name, unknown,
+				p - *name);
+	
+	if (request != REQUEST_UNKNOWN) {
+		*name = p + 1;
+	}
+	
+	return request;
+}
+
+/** Resolve request to a request.
+ *
+ * Resolve name to a current request.
+ *
+ * @see radius_list
+ * @param[in,out] context Base context to use, and to write the result back to.
+ * @param[in] name (request) to resolve to.
+ * @return 0 if request is valid in this context, else -1.
+ */
+int radius_request(REQUEST **context, request_refs_t name)
+{
+	REQUEST *request = *context;
+	
+	switch (name) {
+		case REQUEST_CURRENT:
+			return 0;
+		
+		case REQUEST_PARENT:	/* for future use in request chaining */
+		case REQUEST_OUTER:
+			if (!request->parent) {
+				RDEBUGW("Specified request \"%s\" is "
+				       "not available in this context",
+				       fr_int2str(request_refs, name,
+		       				  "¿unknown?"));
+				return FALSE;
+			}
+			
+			*context = request->parent;
+			
+			break;
+	
+		case REQUEST_UNKNOWN:
+		default:
+			rad_assert(0);
+			return -1;
+	}
+	
+	return 0;
+}
+
