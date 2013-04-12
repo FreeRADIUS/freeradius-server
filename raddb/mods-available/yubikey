@@ -41,12 +41,12 @@ yubikey {
 	#    * Yubikey-Timestamp  - Token's internal clock (mainly useful for debugging).
 	#    * Yubikey-Random     - Randomly generated value from the token.
 	#
-	decrypt = "no"
+	decrypt = no
 	
 	#
 	#  Validation mode - Tokens will be validated against a Yubicloud server
 	#
-	validate = "no"
+	validate = no
 	
 	#
 	#  Settings for validation mode.
@@ -62,8 +62,8 @@ yubikey {
 		#  If no URLs are listed, will default to the default URLs in the 
 		#  ykclient library, which point to the yubico validation servers.
 		servers {
-#			uri = "http://api.yubico.com/wsapi/2.0/verify?id=%d&otp=%s"
-#			uri = "http://api2.yubico.com/wsapi/2.0/verify?id=%d&otp=%s"
+#			uri = 'http://api.yubico.com/wsapi/2.0/verify?id=%d&otp=%s'
+#			uri = 'http://api2.yubico.com/wsapi/2.0/verify?id=%d&otp=%s'
 		}
 		
 		#
@@ -78,7 +78,7 @@ yubikey {
 		#
 		#  Must be set to your API key for the validation server.
 		#
-#		api_key = "000000000000000000000000"
+#		api_key = '000000000000000000000000'
 		
 		#
 		#  Connection pool parameters
