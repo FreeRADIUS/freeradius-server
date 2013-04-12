@@ -16,9 +16,10 @@
 
 #define LDAP_MAX_ATTRMAP		128		//!< Maximum number of mappings between LDAP and 
 							//!< FreeRADIUS attributes.
-#define LDAP_MAP_RESERVED		3		//!< Number of additional items to allocate in expanded 
+#define LDAP_MAP_RESERVED		4		//!< Number of additional items to allocate in expanded 
 							//!< attribute name arrays. Currently for enable attribute, 
-							//!< group membership attribute, and profile attribute.
+							//!< group membership attribute, valuepair attribute, 
+							//!< and profile attribute.
 					
 #define LDAP_MAX_CACHEABLE		64		//!< Maximum number of groups we retrieve from the server for
 							//!< a given user. If more than this number are retrieve the 
@@ -91,6 +92,9 @@ typedef struct ldap_instance {
 	char		*userobj_access_attr;		//!< Attribute to check to see if the user should be locked out.
 	int		access_positive;		//!< If true the presence of the attribute will allow access, 
 							//!< else it will deny access.
+							
+	const char	*valuepair_attr;		//!< Generic dynamic mapping attribute, contains a RADIUS
+							//!< attribute and value.
 
 	/*
 	 *	Group object attributes and filters

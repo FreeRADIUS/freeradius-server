@@ -1019,7 +1019,6 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 		      pair_lists_t list_def)
 {
 	const DICT_ATTR *da;
-	char buffer[128];
 	const char *p;
 	size_t len;
 
@@ -1030,10 +1029,7 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 	vpt->request = radius_request_name(&p, request_def);
 	len = p - name;
 	if (vpt->request == REQUEST_UNKNOWN) {
-		strlcpy(buffer, name, len < sizeof(buffer) ?
-			len + 1 : sizeof(buffer));
-		
-		radlog(L_ERR, "Invalid request qualifier \"%s\"", buffer);
+		radlog(L_ERR, "Invalid request qualifier \"%.*s\"", (int) len, name);
 		
 		return -1;
 	}
@@ -1042,10 +1038,7 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 	vpt->list = radius_list_name(&p, list_def);
 	if (vpt->list == PAIR_LIST_UNKNOWN) {
 		len = p - name;
-		strlcpy(buffer, name, len < sizeof(buffer) ?
-			len + 1 : sizeof(buffer));
-				
-		radlog(L_ERR, "Invalid list qualifier \"%s\"", buffer);
+		radlog(L_ERR, "Invalid list qualifier \"%.*s\"", (int) len, name);
 		
 		return -1;
 	}
@@ -1430,6 +1423,66 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 	 */
 	radius_pairmove(request, list, head);
 	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
+	
+	return 0;
+}
+
+/** Convert a valuepair string to VALUE_PAIR and insert it into a list
+ *
+ * Takes a valuepair string with list and request qualifiers, converts it into a VALUE_PAIR
+ * and inserts it into the appropriate list.
+ *
+ * @param request Current request.
+ * @param raw string to parse.
+ * @param request_def to use if attribute isn't qualified.
+ * @param list_def to use if attribute isn't qualified.
+ * @return 0 on success, -1 on error.
+ */
+int radius_str2vp(REQUEST *request, const char *raw, request_refs_t request_def, pair_lists_t list_def)
+{
+	const char *p;
+	size_t len;
+	request_refs_t req;
+	pair_lists_t list;
+	
+	VALUE_PAIR *vp = NULL;
+	VALUE_PAIR **vps;
+	
+	p = raw;
+	
+	req = radius_request_name(&p, request_def);
+	len = p - raw;
+	if (req == REQUEST_UNKNOWN) {
+		RDEBUGE("Invalid request qualifier \"%.*s\"", (int) len, raw);
+		
+		return -1;
+	}
+	raw += len;
+	
+	list = radius_list_name(&p, list_def);
+	if (list == PAIR_LIST_UNKNOWN) {
+		len = p - raw;
+				
+		RDEBUGE("Invalid list qualifier \"%.*s\"", (int) len, raw);
+		
+		return -1;
+	}
+	raw += len;
+
+	if (radius_request(&request, req) < 0) {
+		return -1;
+	}
+	
+	vps = radius_list(request, list);
+	if (!vps) {
+		return -1;
+	}
+	
+	if (userparse(request, raw, &vp) == T_OP_INVALID) {
+		return -1;
+	}
+	
+	pairmove(request, vps, &vp);
 	
 	return 0;
 }

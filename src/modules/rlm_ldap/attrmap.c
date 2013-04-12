@@ -253,6 +253,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 	rlm_ldap_result_t	result;
 	const char		*name;
 
+
 	for (map = expanded->maps; map != NULL; map = map->next) {
 		name = expanded->attrs[total++];
 		
@@ -281,6 +282,26 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		next:
 		
 		ldap_value_free(result.values);
+	}
+	
+	/*
+	 *	Retrieve any valuepair attributes from the result, these are generic values specifying
+	 *	a radius list, operator and value.
+	 */
+	if (inst->valuepair_attr) {
+		char 		**values;
+		int		count, i;
+			
+	 	values = ldap_get_values(handle, entry, inst->valuepair_attr);
+		count = ldap_count_values(values);
+		
+		for (i = 0; i < count; i++) {
+			if (radius_str2vp(request, values[i], REQUEST_CURRENT, PAIR_LIST_REPLY) < 0) {
+				RDEBUGW("Failed parsing valuepair attribute \"%s\", skipping...", values[i]);
+			}
+		}
+		
+		ldap_value_free(values);
 	}
 }
 

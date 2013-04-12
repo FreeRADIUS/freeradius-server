@@ -156,6 +156,8 @@ static const CONF_PARSER module_config[] = {
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 	
 	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_dn), NULL, ""},
+	
+	{"valuepair_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, base_dn), NULL, NULL},
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
@@ -757,6 +759,10 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	
 	if (inst->profile_attr) {
 		expanded.attrs[expanded.count++] = inst->profile_attr;
+	}
+	
+	if (inst->valuepair_attr) {
+		expanded.attrs[expanded.count++] = inst->valuepair_attr;
 	}
 	
 	expanded.attrs[expanded.count] = NULL;

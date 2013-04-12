@@ -903,6 +903,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 		       const char *src, radius_tmpl_getvalue_t func, void *ctx);
 void radius_mapfree(value_pair_map_t **map);
 
+int radius_str2vp(REQUEST *request, const char *str, request_refs_t request_def, pair_lists_t list_def);
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
 
 #ifdef WITH_TLS

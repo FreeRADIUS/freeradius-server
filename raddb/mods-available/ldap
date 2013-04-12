@@ -58,10 +58,24 @@ ldap {
 #		reply:Tunnel-Medium-Type	:= 'radiusTunnelMediumType'
 #		reply:Tunnel-Private-Group-ID	:= 'radiusTunnelPrivategroupId'
 	}
-
-	# Set to "no" to disable the 'no "known good" password' warning,
-	# if you're not using LDAP to retrieve password values.
-#	expect_password = yes
+	
+	#
+	#  Generic valuepair attribute
+	#  If set, this will attribute will be retrieved in addition to any 
+	#  mapped attributes.
+	# 
+	#  Values should be in the format:
+	#  	<radius attr> <op> <value>
+	#
+	#  Where:
+	#  	<radius attr>:	Is the attribute you wish to create
+	# 			with any valid list and request qualifiers.
+	#  	<op>: 		Is any assignment attribute (=, :=, +=, -=).
+	#  	<value>:	Is the value to parse into the new valuepair.
+	# 			If the attribute name is wrapped in double
+	# 			quotes it will be xlat expanded.
+	#
+#	valuepair_attr = "radiusValuePair"
 
 	# Set to yes if you have eDirectory and want to use the universal
 	# password mechanism.
