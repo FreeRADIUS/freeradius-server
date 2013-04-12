@@ -30,6 +30,13 @@ extern "C" {
 
 ssize_t fr_condition_tokenize(const char *start, const char **error);
 
+/*
+ *	In xlat.c for now
+ */
+typedef struct xlat_exp xlat_exp_t;
+ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
+		      const char **error);
+
 #ifdef __cplusplus
 }
 #endif

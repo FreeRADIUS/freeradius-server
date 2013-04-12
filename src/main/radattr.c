@@ -27,6 +27,7 @@ RCSID("$Id$")
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
 
+#include <talloc.h>
 #include <ctype.h>
 
 #ifdef HAVE_GETOPT_H
@@ -34,6 +35,62 @@ RCSID("$Id$")
 #endif
 
 #include <assert.h>
+
+int debug_flag = 0;
+
+/**********************************************************************
+ *	Hacks for xlat
+ */
+#include <stdarg.h>
+
+typedef struct REQUEST REQUEST;
+typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
+typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t);
+
+int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
+void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...);
+int		xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
+			      void *instance);
+int radlog(UNUSED int lvl, const char *msg, ...);
+
+int radius_get_vp(UNUSED REQUEST *request, UNUSED const char *name, UNUSED VALUE_PAIR **vp_p)
+{
+	return 0;
+}
+
+void radlog_request(UNUSED int lvl, UNUSED int priority, UNUSED REQUEST *request, const char *msg, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, msg);
+	vsnprintf(buffer, sizeof(buffer), msg, ap);
+	va_end(ap);
+}
+
+int radlog(UNUSED int lvl, const char *msg, ...)
+{
+	va_list ap;
+	char buffer[256];
+
+	va_start(ap, msg);
+	vsnprintf(buffer, sizeof(buffer), msg, ap);
+	va_end(ap);
+
+	return 0;
+}
+
+static size_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
+		       UNUSED const char *fmt, UNUSED char *out, UNUSED size_t outlen)
+{
+	return 0;
+}
+
+
+/*
+ *	End of hacks for xlat
+ *
+ **********************************************************************/
 
 static int encode_tlv(char *buffer, uint8_t *output, size_t outlen);
 
@@ -479,7 +536,24 @@ static void parse_condition(const char *input, char *output, size_t outlen)
 	const char *error = NULL;
 
 	slen = fr_condition_tokenize(input, &error);
-	if (slen < 0) {
+	if (slen <= 0) {
+		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -slen, error);
+		return;
+	}
+
+	strlcpy(output, "OK", outlen);
+}
+
+static void parse_xlat(const char *input, char *output, size_t outlen)
+{
+	ssize_t slen;
+	const char *error = NULL;
+	char *fmt = talloc_strdup(NULL, input);
+	xlat_exp_t *head;
+
+	slen = xlat_tokenize(fmt, fmt, &head, &error);
+	talloc_free(fmt);
+	if (slen <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -slen, error);
 		return;
 	}
@@ -531,8 +605,12 @@ static void process_file(const char *filename)
 			*p = '\0';
 		}
 
+		/*
+		 *	Comments, with hacks for User-Name[#]
+		 */
 		p = strchr(buffer, '#');
-		if (p) *p = '\0';
+		if (p && (p == buffer) ||
+		    ((p > buffer) && (p[-1] != '['))) *p = '\0';
 
 		p = buffer;
 		while (isspace((int) *p)) p++;
@@ -685,6 +763,12 @@ static void process_file(const char *filename)
 			continue;		     
 		}
 
+		if (strncmp(p, "xlat ", 5) == 0) {
+			p += 5;
+			parse_xlat(p, output, sizeof(output));
+			continue;		     
+		}
+
 		fprintf(stderr, "Unknown input at line %d of %s\n",
 			lineno, filename);
 		exit(1);
@@ -704,6 +788,7 @@ int main(int argc, char *argv[])
 			break;
 	  	case 'x':
 			fr_debug_flag++;
+			debug_flag = fr_debug_flag;
 			break;
 		default:
 			fprintf(stderr, "usage: radattr [OPTS] filename\n");
@@ -714,6 +799,11 @@ int main(int argc, char *argv[])
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radattr");
+		return 1;
+	}
+
+	if (xlat_register("test", xlat_test, NULL, NULL) < 0) {
+		fprintf(stderr, "Failed registering xlat");
 		return 1;
 	}
 

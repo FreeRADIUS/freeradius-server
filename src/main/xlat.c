@@ -27,6 +27,7 @@
 RCSID("$Id$")
 
 #include	<freeradius-devel/radiusd.h>
+#include	<freeradius-devel/parser.h>
 #include	<freeradius-devel/rad_assert.h>
 #include	<freeradius-devel/base64.h>
 
@@ -41,8 +42,6 @@ typedef struct xlat_t {
 	RADIUS_ESCAPE_STRING	escape;			//!< Escape function to apply to dynamic input to func.
 	int			internal;		//!< If true, cannot be redefined.
 } xlat_t;
-
-typedef struct xlat_exp xlat_exp_t;
 
 typedef enum {
 	XLAT_LITERAL,		//!< Literal string
@@ -525,10 +524,16 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
+#if 1
+#define XLAT_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
+#endif
+
+#ifndef XLAT_DEBUG
 #if 0
 #define XLAT_DEBUG DEBUG3
 #else
 #define XLAT_DEBUG(...)
+#endif
 #endif
 
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
@@ -557,7 +562,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 
 	p = fmt + 2;
 	slen = xlat_tokenize_expansion(node, p, &node->child, error);
-	if (slen < 0) {
+	if (slen <= 0) {
 		talloc_free(node);
 		return slen - (p - fmt);
 	}
@@ -578,7 +583,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	p++;
 
 	slen = xlat_tokenize_literal(node, p,  &node->alternate, TRUE, error);
-	if (slen < 0) {
+	if (slen <= 0) {
 		talloc_free(node);
 		return slen - (p - fmt);
 	}
@@ -634,7 +639,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 	p = strchr(node->fmt, ':');
 	if (p) {
-		*(p++) = '\0';
+		*p = '\0';
 
 		/*
 		 *	%{mod: ... }
@@ -644,44 +649,68 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			node->type = XLAT_MODULE;
 
 			XLAT_DEBUG("MOD: %s --> %s", node->fmt, p);
-			slen = xlat_tokenize_literal(node, p, &node->child, TRUE, error);
-			if (slen < 0) {
+			slen = xlat_tokenize_literal(node, p + 1, &node->child, TRUE, error);
+			if (slen <= 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
-			p += slen;
+			p += slen + 1;
 
 			*head = node;
 			rad_assert(node->next == NULL);
 			return p - fmt;
 		}
 
-		/*
-		 *	Not a module.  Has to be an attribute
-		 *	reference.
-		 *
-		 *	As of v3, we've removed %{request: ..>} as
-		 *	internally registered xlats.
-		 */
-		node->ref = radius_request_name(&attrname, REQUEST_CURRENT);
-		rad_assert(node->ref != REQUEST_UNKNOWN);
+		*p = ':';
 
-		node->list = radius_list_name(&attrname, PAIR_LIST_REQUEST);
-		rad_assert(node->list != PAIR_LIST_UNKNOWN);
-		brace = strchr(p, '}');
+		brace = strchr(attrname, '}');
+		if (!brace) goto no_brace;
+		*brace = '\0';
 
+		if (p < brace) {
+			XLAT_DEBUG("Looking for list in '%s'", attrname);
+
+			/*
+			 *	Not a module.  Has to be an attribute
+			 *	reference.
+			 *
+			 *	As of v3, we've removed %{request: ..>} as
+			 *	internally registered xlats.
+			 */
+			node->ref = radius_request_name(&attrname, REQUEST_CURRENT);
+			rad_assert(node->ref != REQUEST_UNKNOWN);
+			
+			node->list = radius_list_name(&attrname, PAIR_LIST_REQUEST);
+			if (node->list == PAIR_LIST_UNKNOWN) {
+				talloc_free(node);
+				*error = "Unknown module";
+				return -2;
+			}
+
+			*p = '\0'; /* again */
+			p = NULL;  /* and the first stuff is a list, not a tag */
+
+		} else { /* the : is after the brace: the LHS MUST be an attribute */
+			XLAT_DEBUG("Is bare attr name %s", attrname);
+			p = NULL; /* ignore the ':' */
+		}
 	} else {
 		node->ref = REQUEST_CURRENT;
 		node->list = PAIR_LIST_REQUEST;
 		brace = strchr(attrname, '}');
+		XLAT_DEBUG("is attribute %s", attrname);
 	}
 
+
 	if (!brace) {
+	no_brace:
 		talloc_free(node);
 		*error = "No matching closing brace";
 		return -1;	/* second character of format string */
 	}
 	*brace = '\0';
+
+	XLAT_DEBUG("Looking for attribute name in %s", attrname);
 
 	/*
 	 *	Allow for an array reference.
@@ -872,7 +901,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 
 			XLAT_DEBUG("LITERAL: %s --> %s", node->fmt, p);
 			slen = xlat_tokenize_expansion(node, p, &node->next, error);
-			if (slen < 0) {
+			if (slen <= 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
@@ -895,7 +924,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			 *	LITERAL		" bar"
 			 */
 			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
-			if (slen < 0) {
+			if (slen <= 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
@@ -1028,13 +1057,20 @@ static void xlat_tokenize_debug(const xlat_exp_t *node, int lvl)
 static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 
+ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
+		      const char **error)
+{
+	return xlat_tokenize_literal(ctx, fmt, head, FALSE, error);
+}
+
+
 /** Tokenize an xlat expansion
  *
  * @param[in] request the input request.  Memory will be attached here.
  * @param[in] fmt the format string to expand
  * @param[out] head the head of the xlat list / tree structure.
  */
-static ssize_t xlat_tokenize(REQUEST *request, const char *fmt, xlat_exp_t **head)
+static ssize_t xlat_tokenize_request(REQUEST *request, const char *fmt, xlat_exp_t **head)
 {
 	ssize_t slen;
 	char *tokens;
@@ -1058,7 +1094,7 @@ static ssize_t xlat_tokenize(REQUEST *request, const char *fmt, xlat_exp_t **hea
 	 *	"format string"
 	 *	"       ^ error was here"
 	 */
-	if (slen < 0) {
+	if (slen <= 0) {
 		size_t indent = -slen;
 		talloc_free(tokens);
 
@@ -1542,7 +1578,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const ch
 	/*
 	 *	Give better errors than the old code.
 	 */
-	if (xlat_tokenize(request, fmt, &node) < 0) {
+	if (xlat_tokenize_request(request, fmt, &node) <= 0) {
 		if (*out) *out[0] = '\0';
 		return -1;
 	}
