@@ -23,6 +23,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/libradius.h>
+#include <freeradius-devel/parser.h>
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radpaths.h>
 
@@ -472,6 +473,20 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 	return length + sublen;
 }
 
+static void parse_condition(const char *input, char *output, size_t outlen)
+{
+	ssize_t slen;
+	const char *error = NULL;
+
+	slen = fr_condition_tokenize(input, &error);
+	if (slen < 0) {
+		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -slen, error);
+		return;
+	}
+
+	strlcpy(output, "OK", outlen);
+}
+
 static void process_file(const char *filename)
 {
 	int lineno;
@@ -662,6 +677,12 @@ static void process_file(const char *filename)
 
 			process_file(p);
 			continue;
+		}
+
+		if (strncmp(p, "condition ", 10) == 0) {
+			p += 10;
+			parse_condition(p, output, sizeof(output));
+			continue;		     
 		}
 
 		fprintf(stderr, "Unknown input at line %d of %s\n",

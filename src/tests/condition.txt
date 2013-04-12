@@ -1,0 +1,77 @@
+#
+#  Tests for parsing conditional expressions.
+#
+#  $Id$
+#
+
+#
+#  A bunch of errors, in the order that the error strings
+#  appear in parser.c
+#
+condition ("foo\
+data ERROR offset 6 'End of string after escape'
+
+condition ("foo
+data ERROR offset 2 'Unterminated string'
+
+condition ()
+data ERROR offset 1 'Empty condition is invalid'
+
+condition (!)
+data ERROR offset 1 'Empty condition is invalid'
+
+condition (foo == bar
+data ERROR offset 1 'No matching close brace'
+
+condition (|| b)
+data ERROR offset 1 'Expected condition before logical operator'
+
+condition ((a || b) foo)
+data ERROR offset 10 'Expected logical operator || or &&'
+
+# escapes in names are illegal
+condition (a\ foo || b)
+data ERROR offset 2 'Unexpected escape'
+
+condition (a FOO b)
+data ERROR offset 3 'Invalid text.  Expected comparison operator'
+
+condition (a !x b)
+data ERROR offset 4 'Invalid operator'
+
+condition (a =x b)
+data ERROR offset 4 'Invalid operator'
+
+condition (a =~ b)
+data ERROR offset 6 'Expected regular expression'
+
+condition (a == /b/)
+data ERROR offset 6 'Unexpected regular expression'
+
+condition (a == b"foo")
+data ERROR offset 7 'Unexpected start of string'
+
+# And now we have a bunch of VALID conditions we want to parse.
+
+# sillyness is OK
+condition ((((((a))))))
+data OK
+
+condition (a == b)
+data OK
+
+condition (!a)
+data OK
+
+condition (a == b || c == d)
+data OK
+
+condition ((a == b) || (c == d))
+data OK
+
+condition (!(a == b) || (c == d))
+data OK
+
+# different from above!
+condition (!((a == b) || (c == d)))
+data OK
