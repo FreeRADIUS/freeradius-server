@@ -1,4 +1,4 @@
-# -*- text -*-
+# -*- makefile -*-
 ##
 ## Makefile -- Build and run tests for the server.
 ##
@@ -39,7 +39,7 @@ SECRET	= testing123
 #
 #	Build the directory for testing the server
 #
-all: tests
+all: parse tests
 
 clean:
 	@rm -f $(RADDB_PATH)/test.conf test.conf dictionary
@@ -150,4 +150,8 @@ peap:
 leap:
 	$(EAPOL_TEST) -c leap.conf -s $(SECRET)
 
-ATTRS	:= rfc.txt errors.txt extended.txt lucent.txt wimax.txt
+ATTRS	:= rfc.txt errors.txt extended.txt lucent.txt wimax.txt \
+	condition.txt xlat.txt
+
+parse: $(ATTRS) $(BIN_PATH)/radattr
+	$(BIN_PATH)/radattr -d $(top_srcdir)/share $(ATTRS)
