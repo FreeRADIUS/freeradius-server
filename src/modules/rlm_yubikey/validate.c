@@ -102,15 +102,14 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 		count++;
 		uri = cf_pair_find_next(conf, uri, "uri");
 	}
-
+	inst->uris = talloc_zero_array(inst, const char *, count);
+	
 	uri = first;
 	count = 0;
-	inst->uris = talloc_zero_array(inst, const char *, count);
 	while (uri) {
 		inst->uris[count++] = cf_pair_value(uri);
 		uri = cf_pair_find_next(conf, uri, "uri");
 	}
-	
 	if (count) {
 		status = ykclient_set_url_templates(inst->ykc, count, inst->uris);
 		if (status != YKCLIENT_OK) {
