@@ -61,9 +61,9 @@ typedef struct rlm_ruby_t {
 #endif
 	RLM_RUBY_STRUCT(detach);
 
-	char *scriptFile;
-	char *moduleName;
-	VALUE pModule_builtin;
+	char *script_file;
+	char *module_name;
+	VALUE module;
 
 } rlm_ruby_t;
 
@@ -77,10 +77,10 @@ typedef struct rlm_ruby_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "scriptfile", PW_TYPE_FILENAME,
-	  offsetof(struct rlm_ruby_t, scriptFile), NULL, NULL},
-	{ "modulename", PW_TYPE_STRING_PTR,
-	  offsetof(struct rlm_ruby_t, moduleName), NULL, "Radiusd"},
+	{ "script_file", PW_TYPE_FILENAME,
+	  offsetof(struct rlm_ruby_t, script_file), NULL, NULL},
+	{ "module_name", PW_TYPE_STRING_PTR,
+	  offsetof(struct rlm_ruby_t, module_name), NULL, "Radiusd"},
 	{ NULL, -1, 0, NULL, NULL} /* end of module_config */
 };
 
@@ -333,61 +333,66 @@ static int load_function(const char *f_name, int *func, VALUE module) {
  *	If configuration information is given in the config section
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
- *
  */
 static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_ruby_t *inst = instance;
 	VALUE module;
+	
 	int idx;
+	int status;
+	
+	if (!inst->script_file) {
+		DEBUGE("Script File was not set");
+		return -1;
+	}
 
 	/*
-	 * Initialize Ruby interpreter. Fatal error if this fails.
+	 *	Initialize Ruby interpreter. Fatal error if this fails.
 	 */
-
 	ruby_init();
 	ruby_init_loadpath();
 	ruby_script("radiusd");
+
 	/* disabling GC, it will eat your memory, but at least it will be stable. */
 	rb_gc_disable();
 
-
-	int status;
-
 	/*
-	 * Setup our 'radiusd' module.
+	 *	Setup our 'radiusd' module.
 	 */
-
-	if ((module = inst->pModule_builtin = rb_define_module(inst->moduleName)) == 0) {
-		radlog(L_ERR, "Ruby rb_define_module failed");
+	module = inst->module = rb_define_module(inst->module_name);
+	if (!module) {
+		DEBUGE("Ruby rb_define_module failed");
+		
 		return -1;
 	}
+	
 	/*
-	 * Load constants into module
+	 *	Load constants into module
 	 */
-	for (idx = 0; constants[idx].name; idx++)
+	for (idx = 0; constants[idx].name; idx++) {
 		rb_define_const(module, constants[idx].name, INT2NUM(constants[idx].value));
-
-	/* Add functions into module */
+	}
+	
+	/*
+	 *	Expose some FreeRADIUS API functions as ruby functions
+	 */
 	rb_define_module_function(module, "radlog", radlog_rb, 2);
 
-	if (!inst->scriptFile) {
-		/* TODO: What actualy should we do? Exit with module fail? Or continue... but what the point then? */
-		radlog(L_ERR, "Script File was not set");
-	} else {
-		DEBUG("Loading file %s...", inst->scriptFile);
-		rb_load_protect(rb_str_new2(inst->scriptFile), 0, &status);
-		if (!status) {
-			DEBUG("Loaded file %s", inst->scriptFile);
-		} else {
-			radlog(L_ERR, "Error loading file %s status: %d", inst->scriptFile, status);
-		}
+	DEBUG("Loading file %s...", inst->script_file);
+	rb_load_protect(rb_str_new2(inst->script_file), 0, &status);
+	if (status) {
+		DEBUGE("Error loading file %s status: %d", inst->script_file, status);
+		
+		return -1;
 	}
+	DEBUG("Loaded file %s", inst->script_file);
+
 	/*
-	 * Import user modules.
+	 *	Import user modules.
 	 */
-#define RLM_RUBY_LOAD(foo) if (load_function(#foo, &inst->func_##foo, inst->pModule_builtin)==-1) { \
-		return -1;						\
+#define RLM_RUBY_LOAD(foo) if (load_function(#foo, &inst->func_##foo, inst->module)==-1) { \
+		return -1; \
 	}
 
 	RLM_RUBY_LOAD(instantiate);
@@ -406,14 +411,14 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	RLM_RUBY_LOAD(detach);
 
 	/* Call the instantiate function.  No request.  Use the return value. */
-	return do_ruby(NULL, inst->func_instantiate, inst->pModule_builtin, "instantiate");
+	return do_ruby(NULL, inst->func_instantiate, inst->module, "instantiate");
 }
 
 #define RLM_RUBY_FUNC(foo) static rlm_rcode_t mod_##foo(void *instance, REQUEST *request) \
-	{								\
-		return do_ruby(request,					\
-			       ((struct rlm_ruby_t *)instance)->func_##foo,((struct rlm_ruby_t *)instance)->pModule_builtin, \
-			       #foo);					\
+	{ \
+		return do_ruby(request,	\
+			       ((struct rlm_ruby_t *)instance)->func_##foo,((struct rlm_ruby_t *)instance)->module, \
+			       #foo); \
 	}
 
 RLM_RUBY_FUNC(authorize)
@@ -449,21 +454,20 @@ static int mod_detach(UNUSED void *instance)
 module_t rlm_ruby = {
 	RLM_MODULE_INIT,
 	"ruby",
-	//	RLM_TYPE_THREAD_SAFE,		/* type */
 	RLM_TYPE_THREAD_UNSAFE, /* type, ok, let's be honest, MRI is not yet treadsafe */
 	sizeof(rlm_ruby_t),
 	module_config,
-	mod_instantiate, /* instantiation */
-	mod_detach, /* detach */
+	mod_instantiate,		/* instantiation */
+	mod_detach,			/* detach */
 	{
-		mod_authenticate, /* authentication */
-		mod_authorize, /* authorization */
-		mod_preacct, /* preaccounting */
-		mod_accounting, /* accounting */
-		mod_checksimul, /* checksimul */
-		mod_pre_proxy, /* pre-proxy */
-		mod_post_proxy, /* post-proxy */
-		mod_post_auth /* post-auth */
+		mod_authenticate,	/* authentication */
+		mod_authorize,		/* authorization */
+		mod_preacct,		/* preaccounting */
+		mod_accounting,		/* accounting */
+		mod_checksimul,		/* checksimul */
+		mod_pre_proxy,		/* pre-proxy */
+		mod_post_proxy,		/* post-proxy */
+		mod_post_auth		/* post-auth */
 #ifdef WITH_COA
 		, mod_recv_coa,
 		mod_send_coa
