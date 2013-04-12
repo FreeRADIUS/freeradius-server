@@ -61,9 +61,10 @@ yubikey {
 		#
 		#  If no URLs are listed, will default to the default URLs in the 
 		#  ykclient library, which point to the yubico validation servers.
-		
-#		uri = "http://api.yubico.com/wsapi/2.0/verify?id=%d&otp=%s"
-#		uri = "http://api2.yubico.com/wsapi/2.0/verify?id=%d&otp=%s"
+		servers {
+#			uri = "http://api.yubico.com/wsapi/2.0/verify?id=%d&otp=%s"
+#			uri = "http://api2.yubico.com/wsapi/2.0/verify?id=%d&otp=%s"
+		}
 		
 		#
 		#  API Client ID

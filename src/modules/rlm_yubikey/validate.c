@@ -61,7 +61,7 @@ static int mod_socket_delete(UNUSED void *instance, void *handle)
 int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 {
 	ykclient_rc status;
-	CONF_PAIR *uri, *first;
+	CONF_SECTION *servers;
 	
 	char prefix[100];
 	
@@ -89,36 +89,45 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 		return -1;
 	}
 	
-	/*
-	 *	If there were no uris configured we just use the default
-	 *	ykclient uris which point to the yubico servers.
-	 */
-	first = uri = cf_pair_find(conf, "uri");
-	if (!uri) {
-		goto init;
-	}
+	servers = cf_section_sub_find(conf, "servers");
+	if (servers) {
+		CONF_PAIR *uri, *first;
+		/*
+		 *	If there were no uris configured we just use the default
+		 *	ykclient uris which point to the yubico servers.
+		 */
+		first = uri = cf_pair_find(servers, "uri");
+		if (!uri) {
+			goto init;
+		}
 	
-	while (uri) {
-		count++;
-		uri = cf_pair_find_next(conf, uri, "uri");
-	}
-	inst->uris = talloc_zero_array(inst, const char *, count);
+		while (uri) {
+			count++;
+			uri = cf_pair_find_next(servers, uri, "uri");
+		}
+		inst->uris = talloc_zero_array(inst, const char *, count);
 	
-	uri = first;
-	count = 0;
-	while (uri) {
-		inst->uris[count++] = cf_pair_value(uri);
-		uri = cf_pair_find_next(conf, uri, "uri");
-	}
-	if (count) {
-		status = ykclient_set_url_templates(inst->ykc, count, inst->uris);
-		if (status != YKCLIENT_OK) {
-			goto yk_error;
+		uri = first;
+		count = 0;
+		while (uri) {
+			inst->uris[count++] = cf_pair_value(uri);
+			uri = cf_pair_find_next(servers, uri, "uri");
+		}
+		if (count) {
+			status = ykclient_set_url_templates(inst->ykc, count, inst->uris);
+			if (status != YKCLIENT_OK) {
+				goto yk_error;
+			}
 		}
 	}
 	
 init:
-	ykclient_set_client_b64(inst->ykc, inst->client_id, inst->api_key);
+	status = ykclient_set_client_b64(inst->ykc, inst->client_id, inst->api_key);
+	if (status != YKCLIENT_OK) {
+		DEBUGE("rlm_yubikey (%s): Failed setting API credentials: %s", ykclient_strerror(status), inst->name);	
+		
+		return -1;
+	}
 	
 	snprintf(prefix, sizeof(prefix), "rlm_yubikey (%s)", inst->name);
 	inst->conn_pool = fr_connection_pool_init(conf, inst,
