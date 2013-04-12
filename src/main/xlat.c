@@ -524,7 +524,7 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
-#if 1
+#if 0
 #define XLAT_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
 #endif
 
