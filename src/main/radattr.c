@@ -52,6 +52,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 int		xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			      void *instance);
 int radlog(UNUSED int lvl, const char *msg, ...);
+void module_failure_msg(REQUEST *request, const char *fmt, ...);
 
 int radius_get_vp(UNUSED REQUEST *request, UNUSED const char *name, UNUSED VALUE_PAIR **vp_p)
 {
@@ -85,7 +86,10 @@ static size_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
 {
 	return 0;
 }
+void module_failure_msg(UNUSED REQUEST *request, UNUSED const char *fmt, ...)
+{
 
+}
 
 /*
  *	End of hacks for xlat
@@ -609,8 +613,8 @@ static void process_file(const char *filename)
 		 *	Comments, with hacks for User-Name[#]
 		 */
 		p = strchr(buffer, '#');
-		if (p && (p == buffer) ||
-		    ((p > buffer) && (p[-1] != '['))) *p = '\0';
+		if (p && ((p == buffer) ||
+			  ((p > buffer) && (p[-1] != '[')))) *p = '\0';
 
 		p = buffer;
 		while (isspace((int) *p)) p++;
