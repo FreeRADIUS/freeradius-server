@@ -322,7 +322,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	
 	size_t len;
 
-	len = snprintf(query, sizeof(query), "%%{%s:", inst->sqlmod_inst, query);
+	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
 	if (len >= sizeof(query) - 1) {
 		RDEBUGE("Insufficient query buffer space");
 		
@@ -517,7 +517,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		return rcode;
 	}
 
-	len = snprintf(query, sizeof(query), "%%{%s:", inst->sqlmod_inst, query);
+	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
 	if (len >= sizeof(query) - 1) {
 		RDEBUGE("Insufficient query buffer space");
 		
