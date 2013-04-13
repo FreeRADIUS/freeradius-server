@@ -1290,12 +1290,14 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 				goto error;
 			}
 		break;
+
 		/*
 		 *	@todo add support for exec expansion.
 		 */
 		case VPT_TYPE_EXEC:
 			cf_log_err(ci, "Exec values are not allowed");
 			break;
+
 		default:
 			break;
 	}
@@ -1400,7 +1402,7 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
  * @param request The current request.
  * @param map specifying destination attribute and location and src identifier.
  * @param func to retrieve module specific values and convert them to
- *	VLAUE_PAIRS.
+ *	VALUE_PAIRS.
  * @param ctx to be passed to func.
  * @param src name to be used in debugging if different from map value.
  * @return -1 if either attribute or qualifier weren't valid in this context
@@ -1454,6 +1456,61 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 	
 	return 0;
 }
+
+/** Convert a map to a VALUE_PAIR.
+ *
+ * @param[in] REQUEST structure (used only for talloc)
+ * @param[in] map the map.  The LHS has to be VPT_TYPE_ATTR.
+ * @param[in] ctx unused
+ * @return the newly allocated VALUE_PAIR
+ */
+VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
+			  UNUSED void *ctx)
+{
+	ssize_t slen;
+	char *str;
+	VALUE_PAIR *vp;
+
+	rad_assert(request != NULL);
+	rad_assert(map != NULL);
+	rad_assert(map->dst->type == VPT_TYPE_ATTR);
+	rad_assert(map->dst->da != NULL);
+
+	vp = pairalloc(request, map->dst->da);
+	if (!vp) return NULL;
+
+	/*
+	 *	And parse the RHS
+	 */
+	switch (map->src->type) {
+	case VPT_TYPE_XLAT:
+		str = NULL;
+		slen = radius_axlat(&str, request, map->src->name, NULL, NULL);
+		if (slen < 0) {
+			pairfree(&vp);
+			return NULL;
+		}
+		if (!pairparsevalue(vp, str)) {
+			pairfree(&vp);
+		}
+		talloc_free(str);
+		break;
+
+	case VPT_TYPE_LITERAL:
+		if (!pairparsevalue(vp, map->src->name)) {
+			pairfree(&vp);
+		}
+		break;
+
+	default:
+		rad_assert(0 == 1);
+		pairfree(&vp);
+		break;
+	}
+
+	return vp;
+}
+
 
 /** Convert a valuepair string to VALUE_PAIR and insert it into a list
  *

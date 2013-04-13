@@ -899,6 +899,8 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 				request_refs_t src_request_def,
 				pair_lists_t src_list_def);
 				
+VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
+			  void *ctx);
 int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 		       const char *src, radius_tmpl_getvalue_t func, void *ctx);
 void radius_mapfree(value_pair_map_t **map);
