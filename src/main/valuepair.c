@@ -1286,7 +1286,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 				cf_log_err(ci, "Operator \"%s\" not allowed "
 					   "for list copy",
 					   fr_int2str(fr_tokens, map->op,
-						      "¿unknown?"));
+						      "?unknown?"));
 				goto error;
 			}
 		break;
@@ -1435,25 +1435,23 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 	if (head == NULL) {
 		return -1;
 	}
-	
-	for (vp = head; vp != NULL; vp = vp->next) {
-		vp->op = map->op;
-		
-		if (debug_flag) {
-			vp_prints_value(buffer, sizeof(buffer), vp, 1);
-			
-			RDEBUG("\t%s %s %s (%s)", map->dst->name,
-			       fr_int2str(fr_tokens, vp->op, "¿unknown?"),
-			       buffer, src ? src : map->src->name);
-		}
+
+	if (debug_flag) for (vp = head; vp != NULL; vp = vp->next) {
+		 rad_assert(vp->op == map->op);
+
+		 vp_prints_value(buffer, sizeof(buffer), vp, 1);
+
+		 RDEBUG("\t%s %s %s (%s)", map->dst->name,
+			fr_int2str(fr_tokens, vp->op, "?unknown?"),
+			buffer, src ? src : map->src->name);
 	}
 	
 	/*
 	 *	Use pairmove so the operator is respected
 	 */
 	radius_pairmove(request, list, head);
-	pairfree(&vp); /* Free the VP if for some reason it wasn't moved */
-	
+
+	debug_pair_list(request->reply->vps);
 	return 0;
 }
 
