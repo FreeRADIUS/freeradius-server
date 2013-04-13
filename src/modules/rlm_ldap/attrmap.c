@@ -297,7 +297,8 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		
 		for (i = 0; i < count; i++) {
 			if (radius_str2vp(request, values[i], REQUEST_CURRENT, PAIR_LIST_REPLY) < 0) {
-				RDEBUGW("Failed parsing valuepair attribute \"%s\", skipping...", values[i]);
+				RDEBUGW("Failed parsing '%s' value \"%s\" as valuepair, skipping...",
+					inst->valuepair_attr, values[i]);
 			}
 		}
 		
