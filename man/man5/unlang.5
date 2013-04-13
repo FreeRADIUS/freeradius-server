@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "27 May 2011" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "13 April 2013" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -178,15 +178,13 @@ the current block.
 .DE
 
 The <list> can be one of "request", "reply", "proxy-request",
-"proxy-reply", "coa", "disconnect", or "control".  The "control" list
-is the list of attributes maintainted internally by the server that
-controls how the server processes the request.  Any attribute that
-does not go in a packet on the network will generally be placed in the
-"control" list.
+"proxy-reply", "coa", "disconnect", or "control".  As of Version 3,
+the <list> can be omitted, in which case "request" is assumed.
 
-For backwards compatibility with older versions, "check" is accepted
-as a synonym for "control".  The use of "check" is deprecated, and
-will be removed in a future release.
+The "control" list is the list of attributes maintainted internally by
+the server that controls how the server processes the request.  Any
+attribute that does not go in a packet on the network will generally
+be placed in the "control" list.
 
 For EAP methods with tunneled authentication sessions (i.e. PEAP and
 EAP-TTLS), the inner tunnel session can also reference
@@ -578,6 +576,9 @@ Attribute names
 The Attribute-Name must be a name previously defined in a dictionary.
 If an undefined name is used, the server will return an error, and
 will not start.
+
+The names can be qualified with a list prefix.  For example,
+"request:User-Name" is usually a synonym for "User-Name".
 .RE
 .IP Operators
 The operator used to assign the value of the attribute may be one of
@@ -630,14 +631,31 @@ value.
 .RE
 .IP Values
 .br
-The format of the value is attribute-specific, and is usually a
-string, integer, IP address, etc.  Prior to the attribute being
-instantiated, the value may be expanded as described above in the DATA
-TYPES section, above.  This flexibility means that, for example, you
-can assign an IP address value to an attribute by specifying the IP
-address directly, or by having the address returned from a database
-query, or by having the address returned as the output of a program
-that is executed.
+The value can be an attribute reference, or an attribute-specific
+string.
+
+When the value is an an attribute reference, it must take the form of
+"&Attribute-Name".  The leading "&" signifies that the value is a
+reference.  The "Attribute-Name" is an attribute name, such as
+"User-Name" or "request:User-Name".  When an attribute reference is
+used, both attributes must have the same data type.  For example,
+"User-Name := &NAS-Port" is invalid, because "User-Name" is a string,
+and "NAS-Port" is an integer.
+
+When the value is an attribute-specific string, it can be a string,
+integer, IP address, etc.  The value may be expanded as described
+above in the DATA TYPES section, above.  For example, specifying
+"Framed-IP-Address = 127.0.0.1" will cause the "Framed-IP-Address"
+attribute to be set to the IP address "127.0.0.1".  However, using
+"Framed-IP-Address := \"%{echo: 127.0.0.1}\"" will cause the "echo"
+module to be run with a string "127.0.0.1".  The output of the "echo"
+module will then be parsed as an IP address, and placed into the
+Framed-IP-Address attribute.
+
+This flexibility means that you can assign an IP address by specifying
+it directly, or by having the address returned from a database query,
+or by having the address returned as the output of a program that is
+executed.
 
 When string values are finally assigned to a variable, they can have a
 maximum length of 253 characters.  This limit is due in part to both
