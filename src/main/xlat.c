@@ -1453,10 +1453,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 		rad_assert(node->child != NULL);
 		rad_assert(node->alternate != NULL);
 
-		str = xlat_aprint(ctx, request, node->child, node->xlat->escape, node->xlat->instance, lvl);
+		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
 		if (str) break;
 
-		str = xlat_aprint(ctx, request, node->alternate, node->xlat->escape, node->xlat->instance, lvl);
+		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
 		break;
 
 	}
