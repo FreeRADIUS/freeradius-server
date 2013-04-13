@@ -67,7 +67,7 @@ typedef struct {
 	int grouptype;	/* after mc */
 	modcallable *children;
 	CONF_SECTION *cs;
-	VALUE_PAIR *vps;
+	value_pair_map_t *map;
 } modgroup;
 
 typedef struct {
@@ -499,10 +499,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				stack.pointer + 1, modcall_spaces,
 				child->name);
 
-			rcode = radius_update_attrlist(request, g->cs,
-						       g->vps, child->name);
-			if (rcode != RLM_MODULE_UPDATED) {
-				myresult = rcode;
+			rcode = radius_map2request(request, g->map, "update",
+						   radius_map2vp, NULL);
+			if (rcode < 0) {
+				myresult = RLM_MODULE_FAIL;
 				goto handle_priority;
 			}
 
@@ -1420,114 +1420,19 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int component,
 					 CONF_SECTION *cs, const char *name2)
 {
-	int i, ok = FALSE;
-	const char *vp_name;
+	int rcode;
 	modgroup *g;
 	modcallable *csingle;
-	CONF_ITEM *ci;
-	VALUE_PAIR *head, **tail;
-
-	static const char *attrlist_names[] = {
-		"request", "reply", "proxy-request", "proxy-reply",
-		"config", "control",
-		"coa", "coa-reply", "disconnect", "disconnect-reply",
-		NULL
-	};
-
-	if (!cf_section_name2(cs)) {
-		cf_log_err_cs(cs,
-			   "Require list name for 'update'.\n");
-		return NULL;
-	}
-
-	vp_name = name2;
-	if (strncmp(vp_name, "outer.", 6) == 0) {
-		vp_name += 6;
-	} 
-
-	for (i = 0; attrlist_names[i] != NULL; i++) {
-		if (strcmp(vp_name, attrlist_names[i]) == 0) {
-			ok = TRUE;
-			break;
-		}
-	}
-
-	if (!ok) {
-		cf_log_err_cs(cs,
-			   "Unknown attribute list \"%s\"",
-			   name2);
-		return NULL;
-	}
-
-	head = NULL;
-	tail = &head;
+	value_pair_map_t *map;
 
 	/*
-	 *	Walk through the children of the update section,
-	 *	ensuring that they're all known attributes.
+	 *	This looks at cs->name2 to determine which list to update
 	 */
-	for (ci=cf_item_find_next(cs, NULL);
-	     ci != NULL;
-	     ci=cf_item_find_next(cs, ci)) {
-		CONF_PAIR *cp;
-		VALUE_PAIR *vp;
+	rcode = radius_attrmap(cs, &map, PAIR_LIST_REQUEST, PAIR_LIST_REQUEST, 128);
+	if (rcode < 0) return NULL; /* message already printed */
 
-		if (cf_item_is_section(ci)) {
-			cf_log_err(ci, "\"update\" sections cannot have subsections");
-			return NULL;
-		}
-
-		if (!cf_item_is_pair(ci)) continue;
-
-		cp = cf_itemtopair(ci);	/* can't return NULL */
-		vp = cf_pairtovp(cp);
-		if (!vp) {
-			pairfree(&head);
-			cf_log_err(ci, "ERROR: %s", fr_strerror());
-			return NULL;
-		}
-
-		if ((vp->op != T_OP_EQ) &&
-		    (vp->op != T_OP_CMP_EQ) &&
-		    (vp->op != T_OP_ADD) &&
-		    (vp->op != T_OP_SUB) &&
-		    (vp->op != T_OP_LE) &&
-		    (vp->op != T_OP_GE) &&
-		    (vp->op != T_OP_CMP_FALSE) &&
-		    (vp->op != T_OP_SET)) {
-			pairfree(&head);
-			pairfree(&vp);
-			cf_log_err(ci, "Invalid operator for attribute");
-			return NULL;
-		}
-
-		/*
-		 *	A few more sanity checks.  The enforcement of
-		 *	<= or >= can only happen for integer
-		 *	attributes.
-		 */
-		if ((vp->op == T_OP_LE) ||
-		    (vp->op == T_OP_GE)) {
-			if ((vp->da->type != PW_TYPE_BYTE) &&
-			    (vp->da->type != PW_TYPE_SHORT) &&
-			    (vp->da->type != PW_TYPE_INTEGER) &&
-			    (vp->da->type != PW_TYPE_SIGNED) &&
-			    (vp->da->type != PW_TYPE_INTEGER64)) {
-				pairfree(&head);
-				pairfree(&vp);
-				cf_log_err(ci, "Enforcment of <= or >= is possible only for integer attributes");
-				return NULL;
-			}
-		}
-
-		*tail = vp;
-		tail = &(vp->next);
-	}
-
-	if (!head) {
-		cf_log_err_cs(cs,
-			   "ERROR: update %s section cannot be empty",
-			   name2);
+	if (!map) {
+		cf_log_err_cs(cs, "update sections cannot be empty");
 		return NULL;
 	}
 
@@ -1537,14 +1442,19 @@ static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int compone
 	
 	csingle->parent = parent;
 	csingle->next = NULL;
-	csingle->name = name2;
+
+	if (name2) {
+		csingle->name = name2;
+	} else {
+		csingle->name = "";
+	}
 	csingle->type = MOD_UPDATE;
 	csingle->method = component;
 	
 	g->grouptype = GROUPTYPE_SIMPLE;
 	g->children = NULL;
 	g->cs = cs;
-	g->vps = head;
+	g->map = map;
 
 	return csingle;
 }
@@ -1787,7 +1697,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		cs = cf_itemtosection(ci);
 		modrefname = cf_section_name1(cs);
 		name2 = cf_section_name2(cs);
-		if (!name2) name2 = "_UnNamedGroup";
+		if (!name2) name2 = "";
 
 		/*
 		 *	group{}, redundant{}, or append{} may appear
@@ -2425,7 +2335,7 @@ void modcallable_free(modcallable **pc)
 			next = loop->next;
 			modcallable_free(&loop);
 		}
-		pairfree(&g->vps);
+		radius_mapfree(&g->map);
 	}
 	free(c);
 	*pc = NULL;

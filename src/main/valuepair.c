@@ -1450,8 +1450,6 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 	 *	Use pairmove so the operator is respected
 	 */
 	radius_pairmove(request, list, head);
-
-	debug_pair_list(request->reply->vps);
 	return 0;
 }
 
@@ -1467,7 +1465,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 {
 	ssize_t slen;
 	char *str;
-	VALUE_PAIR *vp;
+	VALUE_PAIR *vp, *found, **from;
+	REQUEST *context;
 
 	rad_assert(request != NULL);
 	rad_assert(map != NULL);
@@ -1477,6 +1476,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 	vp = pairalloc(request, map->dst->da);
 	if (!vp) return NULL;
 
+	vp->op = map->op;
+
 	/*
 	 *	And parse the RHS
 	 */
@@ -1484,10 +1485,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 	case VPT_TYPE_XLAT:
 		str = NULL;
 		slen = radius_axlat(&str, request, map->src->name, NULL, NULL);
-		if (slen < 0) {
-			pairfree(&vp);
-			return NULL;
-		}
+		if (slen < 0) goto error;
+
 		if (!pairparsevalue(vp, str)) {
 			pairfree(&vp);
 		}
@@ -1495,13 +1494,45 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 		break;
 
 	case VPT_TYPE_LITERAL:
-		if (!pairparsevalue(vp, map->src->name)) {
-			pairfree(&vp);
+		if (!pairparsevalue(vp, map->src->name)) goto error;
+		break;
+
+	case VPT_TYPE_ATTR:
+		rad_assert(map->src->da->type == map->dst->da->type);
+		context = request;
+
+		if (radius_request(&context, map->src->request) == 0) {
+			from = radius_list(context, map->src->list);
 		}
+
+		/*
+		 *	Can't add the attribute if the list isn't
+		 *	valid.
+		 */
+		if (!from) goto error;
+
+		/*
+		 *	FIXME: allow tag references?
+		 */
+		found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
+		if (!found) {
+			RDEBUGW("\"%s\" not found, skipping",
+				map->src->name);
+			goto error;
+		}
+
+		/*
+		 *	Copy the data over verbatim, assuming it's
+		 *	actually data.
+		 */
+		rad_assert(found->type == VT_DATA);
+		memcpy(&vp->data, &found->data, found->length);
+		vp->length = found->length;
 		break;
 
 	default:
 		rad_assert(0 == 1);
+	error:
 		pairfree(&vp);
 		break;
 	}

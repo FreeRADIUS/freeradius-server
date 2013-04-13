@@ -811,8 +811,6 @@ void mark_home_server_dead(home_server *home, struct timeval *when);
 /* evaluate.c */
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      const char **ptr, int evaluate_it, int *presult);
-int radius_update_attrlist(REQUEST *request, CONF_SECTION *cs,
-			   VALUE_PAIR *input_vps, const char *name);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
 
 VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);
