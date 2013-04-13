@@ -26,7 +26,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include "ldap.h"
 
-static VALUE_PAIR *rlm_ldap_map_getvalue(UNUSED REQUEST *request, const value_pair_map_t *map, void *ctx)
+static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, const value_pair_map_t *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
 	VALUE_PAIR *head, **tail, *vp;
@@ -41,7 +41,7 @@ static VALUE_PAIR *rlm_ldap_map_getvalue(UNUSED REQUEST *request, const value_pa
 	 *	just use whatever was set in the attribute map.	
 	 */
 	for (i = 0; i < self->count; i++) {
-		vp = pairalloc(NULL, map->dst->da);
+		vp = pairalloc(request, map->dst->da);
 		rad_assert(vp);
 
 		if (!pairparsevalue(vp, self->values[i])) {
@@ -51,6 +51,7 @@ static VALUE_PAIR *rlm_ldap_map_getvalue(UNUSED REQUEST *request, const value_pa
 			continue;
 		}
 		
+		vp->op = map->op;
 		*tail = vp;
 		tail = &(vp->next);
 	}
