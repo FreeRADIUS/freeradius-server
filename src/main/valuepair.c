@@ -1252,6 +1252,24 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 		goto error;
 	}
 
+	/*
+	 *	Depending on the attribute type, some operators are
+	 *	disallowed.
+	 */
+	if (map->dst->type == VPT_TYPE_ATTR) {
+		if ((map->op != T_OP_EQ) &&
+		    (map->op != T_OP_CMP_EQ) &&
+		    (map->op != T_OP_ADD) &&
+		    (map->op != T_OP_SUB) &&
+		    (map->op != T_OP_LE) &&
+		    (map->op != T_OP_GE) &&
+		    (map->op != T_OP_CMP_FALSE) &&
+		    (map->op != T_OP_SET)) {
+			cf_log_err(ci, "Invalid operator for attribute");
+			goto error;
+		}
+	}
+
 	switch (map->src->type)
 	{
 	
