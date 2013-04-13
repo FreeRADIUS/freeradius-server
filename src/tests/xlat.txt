@@ -8,10 +8,14 @@ data ERROR offset 2 'Unknown module'
 xlat %{test:bar}
 data OK
 
-data OK
-
 xlat %{1}
 data OK
+
+xlat %{9}
+data ERROR offset 2 'Invalid regex reference'
+
+xlat %{10}
+data ERROR offset 2 'Invalid regex reference'
 
 xlat %{%{foo}:-%{bar}}
 data ERROR offset 4 'Unknown attribute'
@@ -60,3 +64,9 @@ data OK
 
 xlat %{request:User-Name[#]}
 data OK
+
+xlat %{coa:User-Name[#]}
+data OK
+
+xlat %{coaX:User-Name[#]}
+data ERROR offset 2 'Unknown module'
