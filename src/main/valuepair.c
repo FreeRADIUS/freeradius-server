@@ -1203,9 +1203,23 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	 *	Bare words always mean attribute references.
 	 */
 	type = cf_pair_value_type(cp);
-	map->src = type == T_BARE_WORD ?
-		   radius_attr2tmpl(value, src_request_def, src_list_def) :
-		   radius_str2tmpl(value, type);
+	if (type == T_BARE_WORD) {
+		if (*value == '&') {
+			map->src = radius_attr2tmpl(value + 1, src_request_def, src_list_def);
+
+		} else {
+			map->src = radius_attr2tmpl(value, src_request_def, src_list_def);
+			if (map->src) {
+				DEBUGW("%s[%d]: Please add '&' for attribute reference '%s = &%s'",
+				       cf_pair_filename(cp), cf_pair_lineno(cp),
+				       attr, value);
+			} else {
+				map->src = radius_str2tmpl(value, type);
+			}
+		}
+	} else {
+		map->src = radius_str2tmpl(value, type);
+	}
 
 	if (!map->src) {
 		goto error;
