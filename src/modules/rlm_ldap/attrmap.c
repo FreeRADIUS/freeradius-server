@@ -242,7 +242,7 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
  * Use the attribute map built earlier to convert LDAP values into valuepairs and insert them into whichever 
  * list they need to go into.
  *
- * This is *NOT* atomic, but there's no condition in which we should error out...
+ * This is *NOT* atomic, but there's no condition for which we should error out...
  */
 void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
 		     const rlm_ldap_map_xlat_t *expanded, LDAPMessage *entry)
