@@ -540,7 +540,8 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 {
 	value_pair_map_t *map;
 
-	if (radius_attrmap(inst->cs, head, PAIR_LIST_REQUEST,
+	if (radius_attrmap(cf_section_sub_find(inst->cs, "update"),
+			   head, PAIR_LIST_REQUEST,
 			   PAIR_LIST_REQUEST, MAX_ATTRMAP) < 0) {
 		return -1;		
 	}

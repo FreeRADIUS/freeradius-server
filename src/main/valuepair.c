@@ -1279,7 +1279,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
  *
  * Uses 'name2' of section to set default request and lists.
  *
- * @param[in] parent to convert to map.
+ * @param[in] cs the update section
  * @param[out] head Where to store the head of the map.
  * @param[in] dst_list_def The default destination list, usually dictated by
  * 	the section the module is being called in.
@@ -1288,7 +1288,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
  * @param[in] max number of mappings to process.
  * @return -1 on error, else 0.
  */
-int radius_attrmap(CONF_SECTION *parent, value_pair_map_t **head,
+int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		   unsigned int max)
 {
@@ -1296,21 +1296,17 @@ int radius_attrmap(CONF_SECTION *parent, value_pair_map_t **head,
 
 	request_refs_t request_def = REQUEST_CURRENT;
 
-	CONF_SECTION *cs;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
 
 	unsigned int total = 0;
 	value_pair_map_t **tail, *map;
+
 	*head = NULL;
 	tail = head;
 	
-	if (!parent) return 0;
-	
-	cs = cf_section_sub_find(parent, "update");
 	if (!cs) return 0;
-	
- 	ci = cf_sectiontoitem(cs);
+	ci = cf_sectiontoitem(cs);
 	
 	cs_list = p = cf_section_name2(cs);
 	if (cs_list) {
