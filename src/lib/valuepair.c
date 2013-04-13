@@ -75,6 +75,7 @@ VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da)
 	
 	vp->da = da;
 	vp->op = T_OP_EQ;
+	vp->type = VT_NONE;
 
 	return vp;
 }
@@ -1469,6 +1470,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 		return FALSE;
 	}
 
+	vp->type = VT_DATA;
 	return TRUE;
 }
 
