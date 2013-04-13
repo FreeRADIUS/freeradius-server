@@ -1409,7 +1409,7 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
  *	or callback returned NULL pointer, else 0.
  */
 int radius_map2request(REQUEST *request, const value_pair_map_t *map,
-		       const char *src, radius_tmpl_getvalue_t func, void *ctx)
+		       UNUSED const char *src, radius_tmpl_getvalue_t func, void *ctx)
 {
 	VALUE_PAIR **list, *vp, *head;
 	char buffer[MAX_STRING_LEN];
@@ -1441,9 +1441,9 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 
 		 vp_prints_value(buffer, sizeof(buffer), vp, 1);
 
-		 RDEBUG("\t%s %s %s (%s)", map->dst->name,
+		 RDEBUG("\t\t%s %s %s", map->dst->name,
 			fr_int2str(fr_tokens, vp->op, "?unknown?"),
-			buffer, src ? src : map->src->name);
+			buffer);
 	}
 	
 	/*
@@ -1463,8 +1463,6 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 			  UNUSED void *ctx)
 {
-	ssize_t slen;
-	char *str;
 	VALUE_PAIR *vp, *found, **from;
 	REQUEST *context;
 
@@ -1483,15 +1481,23 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 	 */
 	switch (map->src->type) {
 	case VPT_TYPE_XLAT:
-		str = NULL;
-		slen = radius_axlat(&str, request, map->src->name, NULL, NULL);
-		if (slen < 0) goto error;
+		/*
+		 *	Don't call unnecessary expansions
+		 */
+		if (strchr(map->src->name, '%') != NULL) {
+			ssize_t slen;
+			char *str = NULL;
 
-		if (!pairparsevalue(vp, str)) {
-			pairfree(&vp);
+			slen = radius_axlat(&str, request, map->src->name, NULL, NULL);
+			if (slen < 0) goto error;
+			
+			if (!pairparsevalue(vp, str)) {
+				pairfree(&vp);
+			}
+			talloc_free(str);
+			break;
 		}
-		talloc_free(str);
-		break;
+		/* FALL-THROUGH */
 
 	case VPT_TYPE_LITERAL:
 		if (!pairparsevalue(vp, map->src->name)) goto error;
