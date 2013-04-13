@@ -148,7 +148,7 @@ ldap {
 		#
 		#  If you with to use this feature, you should enable 
 		#  the type that matches the format of your check items
-		#  .i.e. if your groups are specified as DNs then enable
+		#  i.e. if your groups are specified as DNs then enable
 		#  cacheable_dn else enable cacheable_name.
 #		cacheable_name = "no"
 #		cacheable_dn = "no"

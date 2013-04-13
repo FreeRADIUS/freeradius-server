@@ -299,7 +299,7 @@ ldap_handle_t *rlm_ldap_get_socket(const ldap_instance_t *inst, REQUEST *request
 void rlm_ldap_release_socket(const ldap_instance_t *inst, ldap_handle_t *conn);
 
 /*
- *	groups.s - Group membership functions.
+ *	groups.c - Group membership functions.
  */
 
 rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,

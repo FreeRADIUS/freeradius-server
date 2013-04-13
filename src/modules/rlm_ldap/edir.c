@@ -153,8 +153,8 @@ finish:
  *
  * @param[in] ld LDAP handle.
  * @param[in] dn of user we want to retrieve the password for.
- * @param[out] out Where to write the retrieved password.
- * @param[out] outlen of data written to the password buffer.
+ * @param[out] password Where to write the retrieved password.
+ * @param[out] passlen Length of data written to the password buffer.
  * @return 0 on success and < 0 on failure.
  */
 int nmasldap_get_password(LDAP *ld, const char *dn, char *password, size_t *passlen)
