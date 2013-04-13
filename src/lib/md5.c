@@ -17,6 +17,10 @@ RCSID("$Id$")
  */
 #include "../include/md5.h"
 
+#ifdef WITH_OPENSSL_MD5
+USES_APPLE_DEPRECATED_API
+#endif
+
 void fr_md5_calc(uint8_t *output, const uint8_t *input,
 		     unsigned int inlen)
 {

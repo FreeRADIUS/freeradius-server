@@ -15,6 +15,10 @@ RCSID("$Id$")
  */
 #include "../include/md4.h"
 
+#ifdef WITH_OPENSSL_MD4
+USES_APPLE_DEPRECATED_API
+#endif
+
 void fr_md4_calc(output, input, inlen)
 unsigned char *output;
 const unsigned char *input;		       /* input block */

@@ -33,6 +33,7 @@
  * @copyright 2002 SANDY (http://www.sandy.ru/) under GPLr
  */
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API
 
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>
@@ -45,9 +46,6 @@ RCSID("$Id$")
 #define		SM_AUTHTYPE	101
 #define		SM_CHALLENGE	102
 #define		SM_RESPONSE     103
-
-
-
 
 static void calc_apop_digest(uint8_t *buffer, const uint8_t *challenge,
 			     size_t challen, const char *password)

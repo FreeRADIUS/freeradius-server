@@ -23,6 +23,7 @@
  * @copyright 2001       Kostas Kalevras <kkalev@noc.ntua.gr>
  */
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
