@@ -985,27 +985,38 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  *
  * @see radius_list_name
  * @param[in,out] name of attribute.
- * @param[in] unknown Request ref to return if no request qualifier is present.
+ * @param[in] def default request ref to return if no request qualifier is present.
  * @return one of the REQUEST_* definitions or REQUEST_UNKOWN
  */
-request_refs_t radius_request_name(const char **name, request_refs_t unknown)
+request_refs_t radius_request_name(const char **name, request_refs_t def)
 {
 	char *p;
 	int request;
-	
+
 	p = strchr(*name, '.');
 	if (!p) {
 		return REQUEST_CURRENT;
 	}
 	
-	request = fr_substr2int(request_refs, *name, unknown,
+	/*
+	 *	We may get passed "127.0.0.1".
+	 */
+	request = fr_substr2int(request_refs, *name, REQUEST_UNKNOWN,
 				p - *name);
-	
+
+	/*
+	 *	If we get a VALID LIST, skip it.
+	 */
 	if (request != REQUEST_UNKNOWN) {
 		*name = p + 1;
+		return request;
 	}
-	
-	return request;
+
+	/*
+	 *	Otherwise leave it alone, and return the caller's
+	 *	default.
+	 */
+	return def;
 }
 
 /** Resolve request to a request.
