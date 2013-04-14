@@ -48,6 +48,7 @@ dictionary:
 	@echo "# test dictionary not install.  Delete at any time." > dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/share/dictionary >> dictionary
 	@echo '$$INCLUDE ' $(top_builddir)/src/tests/dictionary.test >> dictionary
+	@touch '$$INCLUDE ' $(top_builddir)/share/dictionary.dhcp >> dictionary
 
 test.conf: dictionary
 	@echo "# test configuration file.  Do not install.  Delete at any time." > test.conf
