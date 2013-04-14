@@ -1093,7 +1093,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, const char *name,
 
 /** Convert module specific attribute id to value_pair_tmpl_t.
  *
- * @param[in[ for talloc
+ * @param[in] ctx for talloc
  * @param[in] name string to convert.
  * @param[in] type Type of quoting around value.
  * @return pointer to new VPT.
