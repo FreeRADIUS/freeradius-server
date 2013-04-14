@@ -2000,8 +2000,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		const char *realname = modrefname;
 		if (realname[0] == '-') realname++;
 
-		this = find_module_instance(modules, realname, 1);
-		if (!this && (realname != modrefname)) {
+		/*
+		 *	As of v3, only known modules are in the
+		 *	"modules" section.
+		 */
+		if (!cf_section_sub_find_name2(modules, NULL, realname)) {
 			/*
 			 *	We tried to load the module, but it doesn't exist.
 			 *	Give a silent error.
@@ -2009,6 +2012,13 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			*modname = modrefname;
 			return NULL;
 		}
+
+		/*
+		 *	It's "-foo" and it has a module config, but we
+		 *	can't load it.  That's a hard error.
+		 */
+		this = find_module_instance(modules, realname, 1);
+		if (!this && (realname != modrefname)) return NULL;
 	}
 
 	if (!this) do {
