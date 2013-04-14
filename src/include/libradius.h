@@ -318,6 +318,7 @@ int		dict_addattr(const char *name, int attr, unsigned int vendor, int type, ATT
 int		dict_addvalue(const char *namestr, const char *attrstr, int value);
 int		dict_init(const char *dir, const char *fn);
 void		dict_free(void);
+int		dict_read(const char *dir, const char *filename);
 void 		dict_attr_free(DICT_ATTR const **da);
 const DICT_ATTR	*dict_attr_copy(const DICT_ATTR *da, int vp_free);
 const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor, int vp_free);

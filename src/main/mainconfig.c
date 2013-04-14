@@ -877,10 +877,10 @@ int read_mainconfig(int reload)
 
 	/* Initialize the dictionary */
 	cp = cf_pair_find(cs, "dictionary");
-	if (cp) p = cf_pair_value(cp);
-	if (!p) p = radius_dir;
-	DEBUG2("including dictionary file %s/%s", p, RADIUS_DICTIONARY);
-	if (dict_init(p, RADIUS_DICTIONARY) != 0) {
+	if (cp) mainconfig.dictionary_dir = cf_pair_value(cp);
+	if (!mainconfig.dictionary_dir) mainconfig.dictionary_dir = radius_dir;
+	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
+	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		radlog(L_ERR, "Errors reading dictionary: %s",
 				fr_strerror());
 		return -1;

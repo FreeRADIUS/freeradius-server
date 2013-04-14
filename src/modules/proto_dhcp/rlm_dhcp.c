@@ -107,6 +107,17 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	
 	xlat_register("dhcp_options", dhcp_options_xlat, NULL, inst);
 
+	/*
+	 *	Load the DHCP dictionary if it hasn't already been loaded.
+	 */
+	if (!dict_attrbyname("DHCP-Message-Type")) {
+		if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
+			radlog(L_ERR, "Cannot open %s/dictionary.dhcp: %s",
+			       mainconfig.dictionary_dir, fr_strerror);
+			return -1;
+		}
+	}
+
 	return 0;
 }
 

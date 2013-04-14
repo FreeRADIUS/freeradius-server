@@ -1048,10 +1048,7 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 	da = dict_attrbyname(p);
 	if (!da) {
 		da = dict_attrunknownbyname(p, FALSE);
-		if (!da) {
-			radlog(L_ERR, "Attribute \"%s\" unknown", p);
-			return -1;
-		}
+		if (!da) return -1;
 	}
 	vpt->da = da;
 	

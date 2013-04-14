@@ -607,7 +607,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		return -1;
 	}
 
-	for (p = name; *p != '\0'; p++) {
+	for (p = (const uint8_t *) name; *p != '\0'; p++) {
 		if (!dict_attr_allowed_chars[*p]) {
 			fr_strerror_printf("dict_addattr: Invalid character '%c' in attribute name", *p);
 			return -1;
@@ -1882,6 +1882,20 @@ int str2argv(char *str, char **argv, int max_argc)
 
 	return argc;
 }
+
+static int my_dict_init(const char *parent, const char *filename,
+			const char *src_file, int src_line);
+
+int dict_read(const char *dir, const char *filename)
+{
+	if (!attributes_byname) {
+		fr_strerror_printf("Must call dict_init() before dict_read()");
+		return -1;
+	}
+
+	return my_dict_init(dir, filename, NULL, 0);
+}
+
 
 #define MAX_ARGV (16)
 
