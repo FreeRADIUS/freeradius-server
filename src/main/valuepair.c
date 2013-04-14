@@ -1455,7 +1455,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 
 /** Convert a map to a VALUE_PAIR.
  *
- * @param[in] REQUEST structure (used only for talloc)
+ * @param[in] request structure (used only for talloc)
  * @param[in] map the map.  The LHS has to be VPT_TYPE_ATTR.
  * @param[in] ctx unused
  * @return the newly allocated VALUE_PAIR
