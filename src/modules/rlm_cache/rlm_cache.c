@@ -696,7 +696,7 @@ static int mod_detach(void *instance)
 {
 	rlm_cache_t *inst = instance;
 	
-	radius_mapfree(&inst->maps);
+	talloc_free(inst->maps);
 
 	fr_heap_delete(inst->heap);
 	rbtree_free(inst->cache);

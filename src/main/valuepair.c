@@ -987,13 +987,9 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
 {
 	if (*tmpl == NULL) return;
 	
-	if ((*tmpl)->name) {
-		rad_cfree((*tmpl)->name);
-	}
-	
 	dict_attr_free(&((*tmpl)->da));
 	
-	free(*tmpl);
+	talloc_free(*tmpl);
 	
 	*tmpl = NULL;
 }
@@ -1069,6 +1065,7 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
  * VPTs are used in various places where we need to pre-parse configuration
  * sections into attribute mappings.
  *
+ * @param[in] ctx for talloc
  * @param[in] name attribute name including qualifiers.
  * @param[in] request_def The default request to insert unqualified
  *	attributes into.
@@ -1076,14 +1073,15 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
  * @return pointer to a value_pair_tmpl_t struct (must be freed with
  *	radius_tmplfree) or NULL on error.
  */
-value_pair_tmpl_t *radius_attr2tmpl(const char *name,
+value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, const char *name,
 				    request_refs_t request_def,
 				    pair_lists_t list_def)
 {
 	value_pair_tmpl_t *vpt;
-	const char *copy = strdup(name);
+	const char *copy;
 	
-	vpt = rad_calloc(sizeof(value_pair_tmpl_t));
+	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
+	copy = talloc_strdup(vpt, name);
 	
 	if (radius_parse_attr(copy, vpt, request_def, list_def) < 0) {
 		radius_tmplfree(&vpt);
@@ -1095,16 +1093,17 @@ value_pair_tmpl_t *radius_attr2tmpl(const char *name,
 
 /** Convert module specific attribute id to value_pair_tmpl_t.
  *
+ * @param[in[ for talloc
  * @param[in] name string to convert.
  * @param[in] type Type of quoting around value.
  * @return pointer to new VPT.
  */
-value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type)
+value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, const char *name, FR_TOKEN type)
 {
 	value_pair_tmpl_t *vpt;
 	
-	vpt = rad_calloc(sizeof(value_pair_tmpl_t));
-	vpt->name = strdup(name);
+	vpt = talloc_zero(ctx, value_pair_tmpl_t);
+	vpt->name = talloc_strdup(vpt, name);
 	
 	switch (type)
 	{
@@ -1126,28 +1125,6 @@ value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type)
 	return vpt;
 }
 
-/** Release memory used by a map linked list.
- *
- * @param map Head of the map linked list.
- */
-void radius_mapfree(value_pair_map_t **map)
-{
-	value_pair_map_t *next, *vpm;
-	
-	if (!map) return;
-	
-	for (vpm = *map; vpm != NULL; vpm = next) {
-		next = vpm->next;
-		
-		radius_tmplfree(&(vpm->dst));
-		radius_tmplfree(&(vpm->src));
-		
-		free(vpm);
-	}
-	
-	*map = NULL;
-}
-
 /** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
  *
  * Treats the left operand as an attribute reference
@@ -1157,7 +1134,7 @@ void radius_mapfree(value_pair_map_t **map)
  * attribute references, double quoted values are treated as expandable strings,
  * single quoted values are treated as literal strings.
  *
- * Return must be freed with radius_mapfree.
+ * Return must be freed with talloc_free
  *
  * @param[in] cp to convert to map.
  * @param[in] dst_request_def The default request to insert unqualified
@@ -1170,7 +1147,7 @@ void radius_mapfree(value_pair_map_t **map)
  *	in.
  * @return value_pair_map_t if successful or NULL on error.
  */
-value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
+value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				request_refs_t dst_request_def,
 				pair_lists_t dst_list_def,
 				request_refs_t src_request_def,
@@ -1184,7 +1161,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	
 	if (!cp) return NULL;
 	
-	map = rad_calloc(sizeof(value_pair_map_t));
+	map = talloc_zero(ctx, value_pair_map_t);
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
@@ -1194,7 +1171,7 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 		goto error;
 	}
 	
-	map->dst = radius_attr2tmpl(attr, dst_request_def, dst_list_def);
+	map->dst = radius_attr2tmpl(map, attr, dst_request_def, dst_list_def);
 	if (!map->dst){
 		goto error;
 	}
@@ -1205,20 +1182,20 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	type = cf_pair_value_type(cp);
 	if (type == T_BARE_WORD) {
 		if (*value == '&') {
-			map->src = radius_attr2tmpl(value + 1, src_request_def, src_list_def);
+			map->src = radius_attr2tmpl(map, value + 1, src_request_def, src_list_def);
 
 		} else {
-			map->src = radius_attr2tmpl(value, src_request_def, src_list_def);
+			map->src = radius_attr2tmpl(map, value, src_request_def, src_list_def);
 			if (map->src) {
 				DEBUGW("%s[%d]: Please add '&' for attribute reference '%s = &%s'",
 				       cf_pair_filename(cp), cf_pair_lineno(cp),
 				       attr, value);
 			} else {
-				map->src = radius_str2tmpl(value, type);
+				map->src = radius_str2tmpl(map, value, type);
 			}
 		}
 	} else {
-		map->src = radius_str2tmpl(value, type);
+		map->src = radius_str2tmpl(map, value, type);
 	}
 
 	if (!map->src) {
@@ -1304,9 +1281,9 @@ value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
 	
 	return map;
 	
-	error:
-		radius_mapfree(&map);
-		return NULL;
+error:
+	talloc_free(map);
+	return NULL;
 }
 
 /** Convert an 'update' config section into an attribute map.
@@ -1335,11 +1312,19 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 
 	unsigned int total = 0;
 	value_pair_map_t **tail, *map;
+	TALLOC_CTX *ctx;
 
 	*head = NULL;
 	tail = head;
-	
+
 	if (!cs) return 0;
+
+	/*
+	 *	The first map has cs as the parent.
+	 *	The rest have the previous map as the parent.
+	 */
+	ctx = cs;
+
 	ci = cf_sectiontoitem(cs);
 	
 	cs_list = p = cf_section_name2(cs);
@@ -1374,21 +1359,21 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		}
 	
 		cp = cf_itemtopair(ci);
-		map = radius_cp2map(cp, request_def, dst_list_def,
+		map = radius_cp2map(ctx, cp, request_def, dst_list_def,
 				    REQUEST_CURRENT, src_list_def);
 		if (!map) {
 			goto error;
 		}
 		
-		*tail = map;
+		ctx = *tail = map;
 		tail = &(map->next);
 	}
 
 	return 0;
 	
-	error:
-		radius_mapfree(head);
-		return -1;
+error:
+	talloc_free(head);
+	return -1;
 }
 
 

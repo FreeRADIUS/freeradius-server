@@ -2343,7 +2343,7 @@ void modcallable_free(modcallable **pc)
 			next = loop->next;
 			modcallable_free(&loop);
 		}
-		radius_mapfree(&g->map);
+		talloc_free(g->map);
 	}
 	free(c);
 	*pc = NULL;

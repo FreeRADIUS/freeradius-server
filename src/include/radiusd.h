@@ -883,15 +883,15 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl);
 int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 		      request_refs_t request_def,
 		      pair_lists_t list_def);
-value_pair_tmpl_t *radius_attr2tmpl(const char *name,
+value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, const char *name,
 				    request_refs_t request_def,
 				    pair_lists_t list_def);
 				
-value_pair_tmpl_t *radius_str2tmpl(const char *name, FR_TOKEN type);
+value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, const char *name, FR_TOKEN type);
 int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		   unsigned int max);
-value_pair_map_t *radius_cp2map(CONF_PAIR *cp,
+value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				request_refs_t dst_request_def,
 				pair_lists_t dst_list_def,
 				request_refs_t src_request_def,
@@ -901,7 +901,6 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 			  void *ctx);
 int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 		       const char *src, radius_tmpl_getvalue_t func, void *ctx);
-void radius_mapfree(value_pair_map_t **map);
 
 int radius_str2vp(REQUEST *request, const char *str, request_refs_t request_def, pair_lists_t list_def);
 int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);

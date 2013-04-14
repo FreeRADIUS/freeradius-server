@@ -401,7 +401,7 @@ static int mod_detach(void *instance)
 	fr_connection_pool_delete(inst->pool);
 
 	if (inst->user_map) {
-		radius_mapfree(&inst->user_map);
+		talloc_free(inst->user_map);
 	}
 
 	return 0;
