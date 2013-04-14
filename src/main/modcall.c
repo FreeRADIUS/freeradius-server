@@ -1993,8 +1993,22 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 	modules = cf_section_find("modules");
 	this = NULL;
 
-	if (modules && cf_section_sub_find_name2(modules, NULL, modrefname)) {
-		this = find_module_instance(modules, modrefname, 1);
+	if (modules) {
+		/*
+		 *	Try to load the optional module.
+		 */
+		const char *realname = modrefname;
+		if (realname[0] == '-') realname++;
+
+		this = find_module_instance(modules, realname, 1);
+		if (!this && (realname != modrefname)) {
+			/*
+			 *	We tried to load the module, but it doesn't exist.
+			 *	Give a silent error.
+			 */
+			*modname = modrefname;
+			return NULL;
+		}
 	}
 
 	if (!this) do {
@@ -2027,6 +2041,9 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		}
 		if (this) break;
 
+		/*
+		 *	Call a server.  This should really be deleted...
+		 */
 		if (strncmp(modrefname, "server[", 7) == 0) {
 			char buffer[256];
 
@@ -2046,15 +2063,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 			
 			return do_compile_modserver(parent, component, ci,
 						    modrefname, cs, buffer);
-		}
-
-		/*
-		 *	We tried to load the module, but it doesn't exist.
-		 *	Give a silent error.
-		 */
-		if (modrefname[0] == '-') {
-			*modname = modrefname;
-			return NULL;
 		}
 
 		*modname = NULL;
