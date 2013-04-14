@@ -968,7 +968,7 @@ static int load_component_section(CONF_SECTION *cs,
 
 static int load_byserver(CONF_SECTION *cs)
 {
-	int comp, flag;
+	int comp, found;
 	const char *name = cf_section_name2(cs);
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
@@ -1069,7 +1069,7 @@ static int load_byserver(CONF_SECTION *cs)
 	 *	Loop over all of the known components, finding their
 	 *	configuration section, and loading it.
 	 */
-	flag = 0;
+	found = 0;
 	for (comp = 0; comp < RLM_COMPONENT_COUNT; ++comp) {
 		CONF_SECTION *subcs;
 
@@ -1116,7 +1116,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 		server->subcs[comp] = subcs;
 
-		flag = 1;
+		found = 1;
 	} /* loop over components */
 
 	/*
@@ -1125,8 +1125,11 @@ static int load_byserver(CONF_SECTION *cs)
 	 *
 	 *	This is a bit of a hack...
 	 */
-	if (!flag) {
+	if (!found) do {
 		CONF_SECTION *subcs;
+#ifdef WITH_DHCP
+		const DICT_ATTR *dattr;
+#endif
 
 		subcs = cf_section_sub_find(cs, "vmps");
 		if (subcs) {
@@ -1138,43 +1141,46 @@ static int load_byserver(CONF_SECTION *cs)
 			c = lookup_by_index(components,
 					    RLM_COMPONENT_POST_AUTH, 0);
 			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
-			flag = 1;
+			found = 1;
+			break;
 		}
 
 #ifdef WITH_DHCP
-		if (!flag) {
-			const DICT_ATTR *dattr;
+		subcs = cf_subsection_find_next(cs, NULL, "dhcp");
+		dattr = dict_attrbyname("DHCP-Message-Type");
+		if (!dattr && subcs) {
+			cf_log_err_cs(subcs, "Found a 'dhcp' section, but no DHCP dictionaries have been loaded");
+			goto error;
+		}
 
-			dattr = dict_attrbyname("DHCP-Message-Type");
+		if (!dattr) break;
 
-			/*
-			 *	Handle each DHCP Message type separately.
-			 */
-			if (dattr) for (subcs = cf_subsection_find_next(cs, NULL, "dhcp");
-					subcs != NULL;
-					subcs = cf_subsection_find_next(cs, subcs,
-									"dhcp")) {
-				const char *name2 = cf_section_name2(subcs);
+		/*
+		 *	Handle each DHCP Message type separately.
+		 */
+		while (subcs) {
+			const char *name2 = cf_section_name2(subcs);
 
-				DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
-				if (!load_subcomponent_section(NULL, subcs,
-							       components,
-							       dattr,
-							       RLM_COMPONENT_POST_AUTH)) {
-					goto error; /* FIXME: memleak? */
-				}
-				c = lookup_by_index(components,
-						    RLM_COMPONENT_POST_AUTH, 0);
-				if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
-				flag = 1;
+			DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
+			if (!load_subcomponent_section(NULL, subcs,
+						       components,
+						       dattr,
+						       RLM_COMPONENT_POST_AUTH)) {
+				goto error; /* FIXME: memleak? */
 			}
+			c = lookup_by_index(components,
+					    RLM_COMPONENT_POST_AUTH, 0);
+			if (c) server->mc[RLM_COMPONENT_POST_AUTH] = c->modulelist;
+			found = 1;
+		
+			subcs = cf_subsection_find_next(cs, subcs, "dhcp");
 		}
 #endif
-	}
+	} while (0);
 
 	cf_log_info(cs, "} # server");
 
-	if (!flag && name) {
+	if (!found && name) {
 		DEBUGW("Server %s is empty, and will do nothing!",
 		      name);
 	}
