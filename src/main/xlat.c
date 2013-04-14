@@ -1594,23 +1594,6 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const ch
 		return len;
 	}
 
-	/*
-	 *	Escape the string, which may double it's size (or more)
-	 *
-	 *	@todo: For now, we assume that the string can only grow by 50%.
-	 */
-	if (escape) {
-		size_t explen;
-		char *exp;
-
-		explen = len + len / 2;
-
-		exp = talloc_array(request, char, explen);
-		escape(request, exp, explen, buff, escape_ctx);
-		talloc_free(buff);
-		buff = exp;
-	}
-
 	RDEBUG2("\texpand: '%s' -> '%s'", fmt, buff);
 
 	if (!*out) {
