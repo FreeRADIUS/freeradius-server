@@ -688,15 +688,17 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			}
 
 			*p = '\0'; /* again */
-			p = NULL;  /* and the first stuff is a list, not a tag */
 
 		} else { /* the : is after the brace: the LHS MUST be an attribute */
 			XLAT_DEBUG("Is bare attr name %s", attrname);
-			p = NULL; /* ignore the ':' */
+			node->ref = REQUEST_CURRENT;
+			node->list = PAIR_LIST_REQUEST;
 		}
+		p = NULL;  /* and the first part is a list, not a tag */
+
 	} else {
 		node->ref = REQUEST_CURRENT;
-		node->list = PAIR_LIST_REQUEST;
+		node->list = PAIR_LIST_REQUEST;	
 		brace = strchr(attrname, '}');
 		XLAT_DEBUG("is attribute %s", attrname);
 	}
