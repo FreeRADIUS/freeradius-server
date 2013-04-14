@@ -1136,6 +1136,7 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, const char *name, FR_TOKEN t
  *
  * Return must be freed with talloc_free
  *
+ * @param[in] ctx for talloc
  * @param[in] cp to convert to map.
  * @param[in] dst_request_def The default request to insert unqualified
  *	attributes into.
