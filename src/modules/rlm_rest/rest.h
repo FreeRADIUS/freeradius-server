@@ -229,11 +229,11 @@ int rest_init(rlm_rest_t *instance);
 
 void rest_cleanup(void);
 
-void *rest_socket_create(void *instance);
+void *mod_conn_create(void *instance);
 
-int rest_socket_alive(void *instance, void *handle);
+int mod_conn_alive(void *instance, void *handle);
 
-int rest_socket_delete(void *instance, void *handle);
+int mod_conn_delete(void *instance, void *handle);
 
 /*
  *	Request processing API

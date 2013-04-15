@@ -255,14 +255,14 @@ void rest_cleanup(void)
  *
  * Creates an instances of rlm_rest_handle_t, and rlm_rest_curl_context_t
  * which hold the context data required for generating requests and parsing
- * responses. Calling rest_socket_delete will free this memory.
+ * responses. Calling mod_conn_delete will free this memory.
  *
  * If instance->connect_uri is not NULL libcurl will attempt to open a
  * TCP socket to the server specified in the URI. This is done so that when the
  * socket is first used, there will already be a cached TCP connection to the
  * REST server associated with the curl handle.
  *
- * @see rest_socket_delete
+ * @see mod_conn_delete
  * @see fr_connection_pool_init
  * @see fr_connection_create_t
  * @see connection.c
@@ -271,7 +271,7 @@ void rest_cleanup(void)
  * @return connection handle or NULL if the connection failed or couldn't
  *	be initialised.
  */
-void *rest_socket_create(void *instance)
+void *mod_conn_create(void *instance)
 {
 	rlm_rest_t *inst = instance;
 
@@ -367,7 +367,7 @@ void *rest_socket_create(void *instance)
  * @returns FALSE if the last socket is dead, or if the socket state couldn't be
  *	determined, else TRUE.
  */
-int rest_socket_alive(void *instance, void *handle)
+int mod_conn_alive(void *instance, void *handle)
 {
 	rlm_rest_t *inst 		= instance;
 	rlm_rest_handle_t *randle	= handle;
@@ -399,7 +399,7 @@ int rest_socket_alive(void *instance, void *handle)
  * @param[in] handle rlm_rest_handle_t to close and free.
  * @return returns TRUE.
  */
-int rest_socket_delete(UNUSED void *instance, void *handle)
+int mod_conn_delete(UNUSED void *instance, void *handle)
 {
 	rlm_rest_handle_t *randle	= handle;
 	CURL *candle			= randle->handle;

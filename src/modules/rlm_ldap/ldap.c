@@ -1012,7 +1012,7 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
  * @param ctx rlm_ldap instance.
  * @return A new connection handle or NULL on error.
  */
-void *rlm_ldap_conn_create(void *ctx)
+void *mod_conn_create(void *ctx)
 {
 	ldap_rcode_t status;
 	
@@ -1182,7 +1182,7 @@ void *rlm_ldap_conn_create(void *ctx)
  * @param connection to destroy.
  * @return always indicates success.
  */
-int rlm_ldap_conn_delete(UNUSED void *ctx, void *connection)
+int mod_conn_delete(UNUSED void *ctx, void *connection)
 {
 	ldap_handle_t *conn = connection;
 

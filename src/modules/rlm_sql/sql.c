@@ -51,7 +51,7 @@ static int sql_conn_destructor(void *conn)
 	return 0;
 }
 
-static void *sql_conn_create(void *ctx)
+static void *mod_conn_create(void *ctx)
 {
 	int rcode;
 	rlm_sql_t *inst = ctx;
@@ -92,7 +92,7 @@ static void *sql_conn_create(void *ctx)
 /*
  *	@todo Calls to this should eventually go away.
  */
-static int sql_conn_delete(UNUSED void *ctx, void *conn)
+static int mod_conn_delete(UNUSED void *ctx, void *conn)
 {	
 	return talloc_free(conn);
 }
@@ -107,7 +107,7 @@ static int sql_conn_delete(UNUSED void *ctx, void *conn)
 int sql_socket_pool_init(rlm_sql_t * inst)
 {
 	inst->pool = fr_connection_pool_init(inst->cs, inst,
-					     sql_conn_create, NULL, sql_conn_delete,
+					     mod_conn_create, NULL, mod_conn_delete,
 					     NULL);
 	if (!inst->pool) return -1;
 

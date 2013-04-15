@@ -255,7 +255,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	inst->conn_pool = fr_connection_pool_init(conf, inst, rest_socket_create, rest_socket_alive, rest_socket_delete, NULL);
+	inst->conn_pool = fr_connection_pool_init(conf, inst, mod_conn_create, mod_conn_alive, mod_conn_delete, NULL);
 	if (!inst->conn_pool) {
 		return -1;
 	}

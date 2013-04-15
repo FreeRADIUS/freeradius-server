@@ -598,7 +598,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = fr_connection_pool_init(inst->cs, inst, rlm_ldap_conn_create, NULL, rlm_ldap_conn_delete, NULL);
+	inst->pool = fr_connection_pool_init(inst->cs, inst, mod_conn_create, NULL, mod_conn_delete, NULL);
 	if (!inst->pool) {
 		return -1;
 	}

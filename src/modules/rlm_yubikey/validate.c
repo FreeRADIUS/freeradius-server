@@ -18,7 +18,7 @@
  * fr_connection_pool_init, and called when a new connection is required by the
  * connection pool API.
  *
- * @see rest_socket_delete
+ * @see mod_conn_delete
  * @see fr_connection_pool_init
  * @see fr_connection_create_t
  * @see connection.c

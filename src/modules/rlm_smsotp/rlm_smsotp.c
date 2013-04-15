@@ -48,7 +48,7 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static void *conn_create(void *ctx)
+static void *mod_conn_create(void *ctx)
 {
 	int fd;
 	struct sockaddr_un sa;
@@ -78,7 +78,7 @@ static void *conn_create(void *ctx)
 	return fdp;
 }
 
-static int conn_delete(UNUSED void *ctx, void *connection)
+static int mod_conn_delete(UNUSED void *ctx, void *connection)
 {
 	int *fdp = connection;
 
@@ -181,7 +181,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialize the socket pool.
 	 */
-	inst->pool = fr_connection_pool_init(conf, inst, conn_create, NULL, conn_delete, NULL);
+	inst->pool = fr_connection_pool_init(conf, inst, mod_conn_create, NULL, mod_conn_delete, NULL);
 	if (!inst->pool) {
 		return -1;
 	}
