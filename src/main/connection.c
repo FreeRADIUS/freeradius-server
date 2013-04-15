@@ -173,6 +173,8 @@ static const CONF_PARSER connection_config[] = {
 	  0, "5" },
 	{ "idle_timeout",  PW_TYPE_INTEGER, offsetof(fr_connection_pool_t, idle_timeout),
 	  0, "60" },
+	{ "spread", PW_TYPE_BOOLEAN, offsetof(fr_connection_pool_t, spread),
+	  0, "no" },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -587,8 +589,6 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
  * @param[in] c Callback to create new connections.
  * @param[in] a Callback to check the status of connections.
  * @param[in] d Callback to delete connections.
- * @param[in] spread requests over the entire pool (if TRUE) else concentrate
- *	them on a subset of connections (if FALSE.
  * @param[in] prefix to prepend to all log message, if NULL will create prefix
  *	from parent conf section names. 
  * @return A new connection pool or NULL on error.
@@ -598,7 +598,6 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 					      fr_connection_create_t c,
 					      fr_connection_alive_t a,
 					      fr_connection_delete_t d,
-					      int spread,
 					      char *prefix)
 {
 	int i, lp_len;
@@ -622,8 +621,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	pool->create = c;
 	pool->alive = a;
 	pool->delete = d;
-	pool->spread = spread;
-
+	
 	pool->head = pool->tail = NULL;
 
 #ifdef HAVE_PTHREAD_H

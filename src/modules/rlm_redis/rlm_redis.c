@@ -287,7 +287,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	xlat_register(inst->xlat_name, redis_xlat, NULL, inst); /* FIXME! */
 
-	inst->pool = fr_connection_pool_init(conf, inst, conn_create, NULL, conn_delete, FALSE, NULL);
+	inst->pool = fr_connection_pool_init(conf, inst, conn_create, NULL, conn_delete, NULL);
 	if (!inst->pool) {
 		return -1;
 	}

@@ -113,6 +113,10 @@ yubikey {
 			# idle timeout (in seconds).  A connection which is
 			# unused for this length of time will be closed.
 			idle_timeout = 60
+			
+			# Cycle over all connections in a pool instead of concentrating
+			# connection use on a few connections.
+			spread = yes
 
 			# NOTE: All configuration settings are enforced.  If a
 			# connection is closed because of "idle_timeout",
