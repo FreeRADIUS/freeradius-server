@@ -95,8 +95,8 @@ linelog {
 		#  Don't log anything for these packets.
 		Alive = ""
 
-		Accounting-On = "NAS %C (%{NAS-IP-Address}) just came online"
-		Accounting-Off = "NAS %C (%{NAS-IP-Address}) just went offline"
+		Accounting-On = "NAS %{Packet-Src-IP-Address} (%{NAS-IP-Address}) just came online"
+		Accounting-Off = "NAS %{Packet-Src-IP-Address} (%{NAS-IP-Address}) just went offline"
 
 		# don't log anything for other Acct-Status-Types.
 		unknown = ""
