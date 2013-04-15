@@ -413,6 +413,11 @@ static size_t xlat_client(UNUSED void *instance, REQUEST *request,
 
 	cp = cf_pair_find(request->client->cs, fmt);
 	if (!cp || !(value = cf_pair_value(cp))) {
+		if (strcmp(fmt, "shortname") == 0) {
+			strlcpy(out, request->client->shortname, outlen);
+			return strlen(out);
+		}
+
 		*out = '\0';
 		return 0;
 	}
