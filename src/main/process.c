@@ -1716,7 +1716,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		RDEBUG3("proxy: Trying to open a new listener to the home server");
 		this = proxy_new_listener(request->home_server, 0);
 		if (!this) {
-			PTHREAD_MUTEX_LOCK(&proxy_mutex);
+			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 			radlog(L_ERR, "proxy: Failed to create a new outbound socket");
 			return 0;
 		}
