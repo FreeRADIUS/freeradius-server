@@ -545,6 +545,12 @@ static void parse_condition(const char *input, char *output, size_t outlen)
 		return;
 	}
 
+	input += slen;
+	if (*input != '\0') {
+		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) slen);
+		return;
+	}
+
 	strlcpy(output, "OK", outlen);
 }
 
