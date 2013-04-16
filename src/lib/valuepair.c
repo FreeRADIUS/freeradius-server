@@ -1508,7 +1508,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
 				   "string, not \"%s\"", attribute, value);
 		
-		dict_attr_free(da);
+		dict_attr_free(&da);
 		return NULL;
 	}
 
@@ -1519,7 +1519,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	 */
 	vp = pairalloc(ctx, da);
 	if (!vp) {
-		dict_attr_free(da);
+		dict_attr_free(&da);
 		return NULL;
 	}
 	
