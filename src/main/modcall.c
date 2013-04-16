@@ -2004,21 +2004,22 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		 *	As of v3, only known modules are in the
 		 *	"modules" section.
 		 */
-		if (!cf_section_sub_find_name2(modules, NULL, realname)) {
-			/*
-			 *	We tried to load the module, but it doesn't exist.
-			 *	Give a silent error.
-			 */
-			*modname = modrefname;
-			return NULL;
-		}
+		if (cf_section_sub_find_name2(modules, NULL, realname)) {
+			this = find_module_instance(modules, realname, 1);
+			if (!this && (realname != modrefname)) {
+				return NULL;
+			}
 
-		/*
-		 *	It's "-foo" and it has a module config, but we
-		 *	can't load it.  That's a hard error.
-		 */
-		this = find_module_instance(modules, realname, 1);
-		if (!this && (realname != modrefname)) return NULL;
+		} else {
+			/*
+			 *	We tried to load it and it doesn't
+			 *	exist.  Return a soft error.
+			 */
+			if (realname != modrefname) {
+				*modname = modrefname;
+				return NULL;
+			}
+		}
 	}
 
 	if (!this) do {
@@ -2039,7 +2040,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 				buffer[p - modrefname] = '\0';
 				component = i;
 				
-				this = find_module_instance(cf_section_find("modules"), buffer, 1);
+				this = find_module_instance(modules, buffer, 1);
 				if (this &&
 				    !this->entry->module->methods[i]) {
 					*modname = NULL;
