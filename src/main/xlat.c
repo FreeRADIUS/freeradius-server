@@ -637,17 +637,42 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	}
 #endif /* HAVE_REGEX_H */
 
-	p = strchr(node->fmt, ':');
+	/*
+	 *	%{Attr-Name}
+	 *	%{Attr-Name[#]}
+	 *	%{Tunnel-Password:1}
+	 *	%{Tunnel-Password:1[#]}
+	 *	%{request:Attr-Name}
+	 *	%{request:Tunnel-Password:1}
+	 *	%{request:Tunnel-Password:1[#]}
+	 *	%{mod:foo}
+	 */
+	q = brace = NULL;
+	for (p = fmt + 2; *p != '\0'; p++) {
+		if (*p == ':') break;
+
+		if (isspace((int) *p)) break;
+
+		if (*p == '[') break;
+
+		if (*p == '}') break;
+	}
+
+	if (*p != ':') p = NULL;
+
+	/*
+	 *	Might be a module name reference.
+	 */
 	if (p) {
 		*p = '\0';
 
 		/*
-		 *	%{mod: ... }
+		 *	%{mod:foo}
 		 */
 		node->xlat = xlat_find(node->fmt);
 		if (node->xlat) {
 			node->type = XLAT_MODULE;
-
+			
 			XLAT_DEBUG("MOD: %s --> %s", node->fmt, p);
 			slen = xlat_tokenize_literal(node, p + 1, &node->child, TRUE, error);
 			if (slen <= 0) {
@@ -655,69 +680,87 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 				return slen - (p - fmt);
 			}
 			p += slen + 1;
-
+			
 			*head = node;
 			rad_assert(node->next == NULL);
 			return p - fmt;
 		}
 
-		*p = ':';
-
-		brace = strchr(attrname, '}');
+		/*
+		 *	Modules can have '}' in their RHS, so we
+		 *	didn't check for that until now.
+		 *
+		 *	As of now, node->fmt MUST be a reference to an
+		 *	attribute, however complicated.  So it MUST have a closing brace.
+		 */
+		brace = strchr(p + 1, '}');
 		if (!brace) goto no_brace;
 		*brace = '\0';
 
-		if (p < brace) {
-			XLAT_DEBUG("Looking for list in '%s'", attrname);
+		/*
+		 *	%{User-Name}
+		 *	%{User-Name[1]}
+		 *	%{Tunnel-Password:1}
+		 *	%{request:Tunnel-Password:1}
+		 *
+		 *	<sigh>  The syntax is fairly poor.
+		 */
+		XLAT_DEBUG("Looking for list in '%s'", attrname);
 
-			/*
-			 *	Not a module.  Has to be an attribute
-			 *	reference.
-			 *
-			 *	As of v3, we've removed %{request: ..>} as
-			 *	internally registered xlats.
-			 */
-			node->ref = radius_request_name(&attrname, REQUEST_CURRENT);
-			rad_assert(node->ref != REQUEST_UNKNOWN);
-			
-			node->list = radius_list_name(&attrname, PAIR_LIST_REQUEST);
-			if (node->list == PAIR_LIST_UNKNOWN) {
-				talloc_free(node);
-				*error = "Unknown module";
-				return -2;
-			}
+		/*
+		 *	Not a module.  Has to be an attribute
+		 *	reference.
+		 *
+		 *	As of v3, we've removed %{request: ..>} as
+		 *	internally registered xlats.
+		 */
+		*p = ':';
+		node->ref = radius_request_name(&attrname, REQUEST_CURRENT);
+		rad_assert(node->ref != REQUEST_UNKNOWN);
 
-			*p = '\0'; /* again */
-
-		} else { /* the : is after the brace: the LHS MUST be an attribute */
-			XLAT_DEBUG("Is bare attr name %s", attrname);
-			node->ref = REQUEST_CURRENT;
-			node->list = PAIR_LIST_REQUEST;
+		node->list = radius_list_name(&attrname, PAIR_LIST_REQUEST);
+		if (node->list == PAIR_LIST_UNKNOWN) {
+			talloc_free(node);
+			*error = "Unknown module";
+			return -2;
 		}
-		p = NULL;  /* and the first part is a list, not a tag */
 
+		/*
+		 *	Check for a trailing tag.
+		 */
+		p = strchr(attrname, ':');
+		if (p) *p = '\0';
+		
 	} else {
+		brace = strchr(attrname, '}');
+		if (!brace) {
+		no_brace:
+			talloc_free(node);
+			*error = "No matching closing brace";
+			return -1;	/* second character of format string */
+		}
+		*brace = '\0';
+
 		node->ref = REQUEST_CURRENT;
 		node->list = PAIR_LIST_REQUEST;	
-		brace = strchr(attrname, '}');
-		XLAT_DEBUG("is attribute %s", attrname);
 	}
 
+	if (!brace) brace = strchr(attrname, '}');
 
-	if (!brace) {
-	no_brace:
-		talloc_free(node);
-		*error = "No matching closing brace";
-		return -1;	/* second character of format string */
-	}
 	*brace = '\0';
 
 	XLAT_DEBUG("Looking for attribute name in %s", attrname);
 
 	/*
-	 *	Allow for an array reference.
+	 *	Allow for an array reference.  They come AFTER the
+	 *	tag, if the tag exists.  Otherwise, they come after
+	 *	the attribute name.
 	 */
-	q = strchr(attrname, '[');
+	if (p) {
+		q = strchr(p + 1, '[');
+	} else {
+		q = strchr(attrname, '[');
+	}
 	if (q) *q = '\0';
 
 	/*
@@ -756,24 +799,25 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		node->tag = tag;
 		p = end;
 
+		if (*p) {
+			talloc_free(node);
+			*error = "Unexpected text after tag";
+			return - (p - fmt);
+		}
+
 	} else {
 		node->tag = TAG_ANY;
-		if (q) {
-			*q = '['; /* again */
-			p = q;
-		} else {
-			p = brace;
-		}
+		/* leave p alone */
 	}
 
 	/*
 	 *	Check for array reference
 	 */
-	if (*p == '[') {
+	if (q) {
 		unsigned long num;
 		char *end;
 
-		p++;
+		p = q + 1;
 		if (*p== '#') {
 			num = 65536;
 			p++;
@@ -803,20 +847,19 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			*error = "Expected ']'";
 			return - (p - fmt);
 		}
+
 		p++;
+		if (*p) {
+			talloc_free(node);
+			*error = "Unexpected text after array reference";
+			return - (p - fmt);
+		}
 	}
 
-	/*
-	 *	Anything unexpected (or left over) is a parse error.
-	 */
-	if (*p) {
-		talloc_free(node);
-		*error = "Unexpected text";
-		return - (p - fmt);
-	}
+	rad_assert(!p || (p == brace));
 
 	node->type = XLAT_ATTRIBUTE;
-	p++;
+	p = brace + 1;
 
 	*head = node;
 	rad_assert(node->next == NULL);

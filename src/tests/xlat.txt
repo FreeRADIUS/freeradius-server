@@ -47,6 +47,21 @@ data OK
 xlat %{Tunnel-Password:1[#]}
 data OK
 
+xlat %{reply:Tunnel-Password}
+data OK
+
+xlat %{reply:Tunnel-Password:1}
+data OK
+
+xlat %{reply:Tunnel-Password:1[3]}
+data OK
+
+xlat %{reply:Tunnel-Password:1[*]}
+data OK
+
+xlat %{reply:Tunnel-Password:1[#]}
+data OK
+
 xlat %{User-Name[3]}
 data OK
 
