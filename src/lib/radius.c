@@ -1583,7 +1583,6 @@ static ssize_t rad_vp2rfctlv(const RADIUS_PACKET *packet,
 	if (len <= 0) return len;
 
 	if (len > 253) {
-		fprintf(stderr, "SHIT!\n");
 		return -1;
 	}
 
