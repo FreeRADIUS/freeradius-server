@@ -223,6 +223,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char 
 
 /** Tokenize a conditional check
  *
+ *  @param[in] ctx for talloc
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[in] brace look for a closing brace
  *  @param[out] pcond pointer to the returned condition structure
