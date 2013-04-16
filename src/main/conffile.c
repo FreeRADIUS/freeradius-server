@@ -1532,9 +1532,10 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 *	Handle if/elsif specially.
 		 */
 		if ((strcmp(buf1, "if") == 0) || (strcmp(buf1, "elsif") == 0)) {
-			CONF_SECTION *server;
-			const char *error = NULL;
 			ssize_t slen;
+			const char *error = NULL;
+			char *p;
+			CONF_SECTION *server;
 
 			/*
 			 *	if / elsif MUST be inside of a
@@ -1548,6 +1549,9 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 
+			p = strrchr(ptr, '{'); /* ugh */
+			if (p) *p = '\0';
+
 			server = this->item.parent;
 			while ((strcmp(server->name1, "server") != 0) &&
 			       (strcmp(server->name1, "policy") != 0)) {
@@ -1556,6 +1560,8 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			}
 			
 			slen = fr_condition_tokenize(ptr, &error);
+			if (p) *p = '{';
+
 			if (slen < 0) {
 				size_t offset;
 				char *spbuf;

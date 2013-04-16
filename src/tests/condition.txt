@@ -4,6 +4,12 @@
 #  $Id$
 #
 
+condition a == b
+data OK
+
+condition a == b || c == d
+data OK
+
 #
 #  A bunch of errors, in the order that the error strings
 #  appear in parser.c
@@ -15,32 +21,32 @@ condition ("foo
 data ERROR offset 2 'Unterminated string'
 
 condition ()
-data ERROR offset 1 'Empty condition is invalid'
+data ERROR offset 1 'Empty string is invalid'
 
 condition (!)
-data ERROR offset 1 'Empty condition is invalid'
+data ERROR offset 2 'Empty string is invalid'
 
 condition (foo == bar
-data ERROR offset 1 'No matching close brace'
+data ERROR offset 11 'No closing brace at end of string'
 
 condition (|| b)
-data ERROR offset 1 'Expected condition before logical operator'
+data ERROR offset 1 'Empty string is invalid'
 
 condition ((a || b) foo)
-data ERROR offset 10 'Expected logical operator || or &&'
+data ERROR offset 10 'Unexpected text after condition'
 
 # escapes in names are illegal
 condition (a\ foo || b)
 data ERROR offset 2 'Unexpected escape'
 
 condition (a FOO b)
-data ERROR offset 3 'Invalid text.  Expected comparison operator'
+data ERROR offset 3 'Invalid text. Expected comparison operator'
 
 condition (a !x b)
-data ERROR offset 4 'Invalid operator'
+data ERROR offset 3 'Invalid operator'
 
 condition (a =x b)
-data ERROR offset 4 'Invalid operator'
+data ERROR offset 3 'Invalid operator'
 
 condition (a =~ b)
 data ERROR offset 6 'Expected regular expression'
@@ -74,4 +80,10 @@ data OK
 
 # different from above!
 condition (!((a == b) || (c == d)))
+data OK
+
+condition ((a == b) || (c == d)))
+data ERROR offset 22 'Unexpected closing brace'
+
+condition (handled && (Response-Packet-Type == Access-Challenge))
 data OK
