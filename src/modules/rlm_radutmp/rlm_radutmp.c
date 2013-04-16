@@ -572,7 +572,9 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 
 	len = radius_axlat(&expanded, request, inst->username, NULL, NULL);
 	if (len < 0) {
-		return RLM_MODULE_FAIL;
+		rcode = RLM_MODULE_FAIL;
+		
+		goto finish;
 	}
 	
 	if (!len) {

@@ -1039,11 +1039,9 @@ int radius_request(REQUEST **context, request_refs_t name)
 		case REQUEST_PARENT:	/* for future use in request chaining */
 		case REQUEST_OUTER:
 			if (!request->parent) {
-				RDEBUGW("Specified request \"%s\" is "
-				       "not available in this context",
-				       fr_int2str(request_refs, name,
-		       				  "¿unknown?"));
-				return FALSE;
+				RDEBUGW("Specified request \"%s\" is not available in this context",
+				       fr_int2str(request_refs, name, "¿unknown?"));
+				return -1;
 			}
 			
 			*context = request->parent;

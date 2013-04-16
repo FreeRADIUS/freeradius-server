@@ -259,6 +259,10 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	Decide what input/output the program takes.
 	 */
 	input_pairs = radius_list(request, inst->input_list);
+	if (!input_pairs) {
+		return RLM_MODULE_INVALID;
+	}
+	
 	output_pairs = radius_list(request, inst->output_list);
 
 	/*

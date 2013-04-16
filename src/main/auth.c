@@ -138,7 +138,9 @@ static int rad_authlog(const char *msg, REQUEST *request, int goodpass)
 	if (extra_msg) {
 		extra[0] = ' ';
 		p = extra + 1;
-		radius_xlat(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL);
+		if (radius_xlat(p, sizeof(extra) - 1, request, extra_msg, NULL, NULL) < 0) {
+			return -1;
+		}
 	} else {
 		*extra = '\0';
 	}

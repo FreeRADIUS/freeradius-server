@@ -494,7 +494,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST 
 		return 0;
 	}
 
-	if (!radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) {
+	if (radius_axlat(&expanded, request, inst->config->groupmemb_query, sql_escape_func, inst) < 0) {
 		return -1;
 	}
 

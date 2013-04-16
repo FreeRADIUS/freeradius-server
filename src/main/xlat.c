@@ -1322,8 +1322,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 		q = str;
 
 		when = request->timestamp;
-		if (request->packet) when = request->packet->timestamp.tv_sec;
-
+		if (request->packet) {
+			when = request->packet->timestamp.tv_sec;
+		}
+		
 		while (*p) {
 			if (*p != '%') { /* blind copy of non-% characters */
 				*(q++) = *(p++);
@@ -1375,7 +1377,9 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 				break;
 
 			case 'I': /* Request ID */
-				snprintf(q, freespace, "%i", request->packet->id);
+				if (request->packet) {
+					snprintf(q, freespace, "%i", request->packet->id);
+				}
 				break;
 
 			case 'S': /* request timestamp in SQL format*/
@@ -1411,7 +1415,9 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 
 	case XLAT_ATTRIBUTE:
 		ref = request;
-		radius_request(&ref, node->ref);
+		if (radius_request(&ref, node->ref) < 0) {			
+			return NULL;
+		}
 
 		/*
 		 *	Some attributes are virtual <sigh>

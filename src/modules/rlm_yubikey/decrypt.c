@@ -27,6 +27,11 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, VALUE_PAI
 	VALUE_PAIR *key, *vp;
 	
 	da = dict_attrbyname("Yubikey-Key");
+	if (!da) {
+		RDEBUGE("Dictionary missing entry for 'Yubikey-Key'");
+		return RLM_MODULE_FAIL;
+	}
+	
 	key = pairfind(request->config_items, da->attr, da->vendor, TAG_ANY);
 	if (!key) {
 		RDEBUGE("Yubikey-Key attribute not found in control list, can't decrypt OTP data");

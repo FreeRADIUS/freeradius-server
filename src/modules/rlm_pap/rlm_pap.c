@@ -515,7 +515,7 @@ static int pap_auth_nt(REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_REJECT;
 	}
 
-	if (!radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:NT-Hash %{User-Password}}", NULL, NULL) < 0){
+	if (radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:NT-Hash %{User-Password}}", NULL, NULL) < 0){
 		return RLM_MODULE_REJECT;
 	}
 
@@ -542,7 +542,7 @@ static int pap_auth_lm(REQUEST *request, VALUE_PAIR *vp)
 		return RLM_MODULE_REJECT;
 	}
 
-	if (!radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:LM-Hash %{User-Password}}", NULL, NULL) < 0){
+	if (radius_xlat(charbuf, sizeof(charbuf), request, "%{mschap:LM-Hash %{User-Password}}", NULL, NULL) < 0){
 		return RLM_MODULE_REJECT;
 	}
 

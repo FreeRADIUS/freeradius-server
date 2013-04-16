@@ -1507,6 +1507,8 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	if (value && (strncasecmp(value, "0x", 2) != 0)) {
 		fr_strerror_printf("Unknown attribute \"%s\" requires a hex "
 				   "string, not \"%s\"", attribute, value);
+		
+		dict_attr_free(da);
 		return NULL;
 	}
 
@@ -1516,8 +1518,11 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	 *	dictionary, and creates the appropriate type for it.
 	 */
 	vp = pairalloc(ctx, da);
-	if (!vp) return NULL;
-
+	if (!vp) {
+		dict_attr_free(da);
+		return NULL;
+	}
+	
 	vp->op = (op == 0) ? T_OP_EQ : op;
 	
 	if (!value) return vp;

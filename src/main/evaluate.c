@@ -100,7 +100,10 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 	case T_DOUBLE_QUOTED_STRING:
 		if (!strchr(value, '%')) return value;
 
-		radius_xlat(buffer, sizeof_buffer, request, value, NULL, NULL);
+		if (radius_xlat(buffer, sizeof_buffer, request, value, NULL, NULL) < 0) {
+			return NULL;
+		}
+		
 		return buffer;
 	}
 

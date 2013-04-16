@@ -714,14 +714,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				if (!strchr(child->name, '%')) {
 					VALUE_PAIR *vp = NULL;
 
-					radius_get_vp(request, child->name, &vp);
-					if (vp) {
-						vp_prints_value(buffer, sizeof(buffer), vp, 0);
-					} else {
+					if ((radius_get_vp(request, child->name, &vp) < 0) || !vp) {
 						*buffer = '\0';
+					} else {
+						vp_prints_value(buffer, sizeof(buffer), vp, 0);
 					}
 				} else {
-					radius_xlat(buffer, sizeof(buffer), request, child->name, NULL, NULL);
+					if (radius_xlat(buffer, sizeof(buffer), request, child->name, NULL, NULL) < 0) {
+						*buffer = '\0';
+					}
 				}
 				null_case = q = NULL;
 				for(p = g->children; p; p = p->next) {
