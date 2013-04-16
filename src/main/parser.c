@@ -225,7 +225,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char 
  *
  *  @param[in] start the start of the string to process.  Should be "(..."
  *  @param[in] brace look for a closing brace
- *  @param[out] child whether or not a child expression was parsed
+ *  @param[out] pcond pointer to the returned condition structure
  *  @param[out] error the parse error (if any)
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
