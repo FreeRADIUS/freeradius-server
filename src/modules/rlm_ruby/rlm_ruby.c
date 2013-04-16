@@ -44,7 +44,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_ruby_t {
-#define RLM_RUBY_STRUCT(foo) int func_##foo
+#define RLM_RUBY_STRUCT(foo) unsigned long func_##foo
 
 	RLM_RUBY_STRUCT(instantiate);
 	RLM_RUBY_STRUCT(authorize);
@@ -104,7 +104,8 @@ static VALUE radlog_rb(UNUSED VALUE self, VALUE msg_type, VALUE rb_msg) {
 
 static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VALUE rb_value,
 			 const char *function_name) {
-	int i, outertuplesize;
+	int i;
+	long outertuplesize;
 	VALUE_PAIR *vp;
 
 	/* If the Ruby function gave us nil for the tuple, then just return. */
@@ -127,7 +128,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 		    (TYPE(pTupleElement) == T_ARRAY)) {
 
 			/* Check if it's a pair */
-			int tuplesize;
+			long tuplesize;
 
 			if ((tuplesize = RARRAY_LEN(pTupleElement)) != 2) {
 				RDEBUGE("%s: tuple element %d is a tuple "
@@ -189,7 +190,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
  */
 
 #define BUF_SIZE 1024
-static rlm_rcode_t do_ruby(REQUEST *request, int func,
+static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 			   VALUE module, const char *function_name) {
 				
 	rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -200,7 +201,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, int func,
 	VALUE rb_request, rb_result, rb_reply_items, rb_config_items;
 
 	int n_tuple;
-	radlog(L_DBG, "Calling ruby function %s which has id: %d\n", function_name, func);
+	radlog(L_DBG, "Calling ruby function %s which has id: %lu\n", function_name, func);
 
 	/* Return with "OK, continue" if the function is not defined.
 	 * TODO: Should check with rb_respond_to each time, just because ruby can define function dynamicly?
@@ -308,7 +309,7 @@ static struct varlookup {
 /*
  * Import a user module and load a function from it
  */
-static int load_function(const char *f_name, int *func, VALUE module) {
+static int load_function(const char *f_name, unsigned long *func, VALUE module) {
 	if (!f_name) {
 		*func = 0;
 	} else {
@@ -320,7 +321,7 @@ static int load_function(const char *f_name, int *func, VALUE module) {
 		if (!rb_respond_to(module, *func))
 			*func = 0;
 	}
-	radlog(L_DBG, "load_function %s, result: %d", f_name, *func);
+	radlog(L_DBG, "load_function %s, result: %lu", f_name, *func);
 	return 0;
 }
 
