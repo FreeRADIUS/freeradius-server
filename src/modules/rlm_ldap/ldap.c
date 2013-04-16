@@ -1009,17 +1009,17 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
  *
  * Create a new ldap connection and allocate memory for a new rlm_handle_t
  *
- * @param ctx rlm_ldap instance.
+ * @param instance rlm_ldap instance.
  * @return A new connection handle or NULL on error.
  */
-void *mod_conn_create(void *ctx)
+void *mod_conn_create(void *instance)
 {
 	ldap_rcode_t status;
 	
 	int ldap_errno, ldap_version;
 	struct timeval tv;
 	
-	ldap_instance_t *inst = ctx;
+	ldap_instance_t *inst = instance;
 	LDAP *handle = NULL;
 	ldap_handle_t *conn = NULL;
 
@@ -1152,7 +1152,7 @@ void *mod_conn_create(void *ctx)
 	/*
 	 *	Allocate memory for the handle.
 	 */
-	conn = talloc_zero(ctx, ldap_handle_t);
+	conn = talloc_zero(instance, ldap_handle_t);
 	conn->inst = inst;
 	conn->handle = handle;
 	conn->rebound = FALSE;
@@ -1178,11 +1178,11 @@ void *mod_conn_create(void *ctx)
  * Unbinds the LDAP connection, informing the server and freeing any memory, then releases the memory used by the 
  * connection handle.
  *
- * @param ctx unused.
+ * @param instance unused.
  * @param connection to destroy.
  * @return always indicates success.
  */
-int mod_conn_delete(UNUSED void *ctx, void *connection)
+int mod_conn_delete(UNUSED void *instance, void *connection)
 {
 	ldap_handle_t *conn = connection;
 
