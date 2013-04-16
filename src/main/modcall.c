@@ -2012,8 +2012,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 		} else {
 			/*
-			 *	We tried to load it and it doesn't
-			 *	exist.  Return a soft error.
+			 *	We were asked to MAYBE load it and it
+			 *	doesn't exist.  Return a soft error.
 			 */
 			if (realname != modrefname) {
 				*modname = modrefname;
