@@ -1486,7 +1486,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_STORE *ocsp_store = NULL;
 	X509 *issuer_cert;
 #endif
-	tls_session_t *ssn;
 
 	client_cert = X509_STORE_CTX_get_current_cert(ctx);
 	err = X509_STORE_CTX_get_error(ctx);
@@ -1519,7 +1518,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 #ifdef HAVE_OPENSSL_OCSP_H
 	ocsp_store = (X509_STORE *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_STORE);
 #endif
-	ssn = (tls_session_t *)SSL_get_ex_data(ssl, FR_TLS_EX_INDEX_SSN);
 
 	/*
 	 *	Get the Serial Number
