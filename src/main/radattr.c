@@ -568,6 +568,11 @@ static void parse_xlat(const char *input, char *output, size_t outlen)
 		return;
 	}
 
+	if (input[slen] != '\0') {
+		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) slen);
+		return;
+	}
+
 	strlcpy(output, "OK", outlen);
 }
 
