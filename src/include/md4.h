@@ -84,7 +84,7 @@ void	 fr_MD4Transform(uint32_t [4], const uint8_t [MD4_BLOCK_LENGTH])
 		__attribute__((__bounded__(__minbytes__,2,MD4_BLOCK_LENGTH)))*/;
 /*__END_DECLS*/
 #else  /* WITH_OPENSSL_MD4 */
-
+USES_APPLE_DEPRECATED_API
 #define FR_MD4_CTX	MD4_CTX
 #define fr_MD4Init	MD4_Init
 #define fr_MD4Update	MD4_Update

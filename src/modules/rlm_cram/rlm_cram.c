@@ -33,7 +33,6 @@
  * @copyright 2002 SANDY (http://www.sandy.ru/) under GPLr
  */
 RCSID("$Id$")
-USES_APPLE_DEPRECATED_API
 
 #include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/modules.h>

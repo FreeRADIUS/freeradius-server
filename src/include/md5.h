@@ -78,6 +78,7 @@ void	 fr_MD5Transform(uint32_t [4], const uint8_t [MD5_BLOCK_LENGTH])
 
 #else  /* WITH_OPENSSL_HASH */
 
+USES_APPLE_DEPRECATED_API
 #define FR_MD5_CTX	MD5_CTX
 #define fr_MD5Init	MD5_Init
 #define fr_MD5Update	MD5_Update

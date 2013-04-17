@@ -30,10 +30,6 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
 
-#ifdef WITH_OPENSSL_MD5
-USES_APPLE_DEPRECATED_API
-#endif
-
 /*
 unsigned char*  text;		pointer to data stream
 int	     text_len;	    length of data stream

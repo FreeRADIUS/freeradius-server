@@ -30,7 +30,7 @@ void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX* context);
 void fr_SHA1FinalNoLen(uint8_t digest[20], fr_SHA1_CTX* context);
 
 #else  /* WITH_OPENSSL_SHA1 */
-
+USES_APPLE_DEPRECATED_API
 #define fr_SHA1_CTX	SHA_CTX
 #define fr_SHA1Init	SHA1_Init
 #define fr_SHA1Update	SHA1_Update

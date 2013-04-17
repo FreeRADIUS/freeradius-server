@@ -31,8 +31,10 @@ extern "C" {
  */
 #ifdef __APPLE__
 #  define USES_APPLE_DEPRECATED_API W_DEPRECATED_OFF
+#  define USES_APPLE_RST W_RST
 #else
 #  define USES_APPLE_DEPRECATED_API
+#  define USES_APPLE_RST
 #endif
 
 #if defined(__GNUC__)

@@ -27,10 +27,6 @@ RCSID("$Id$")
 
 #include	<freeradius-devel/libradius.h>
 
-#ifdef WITH_OPENSSL_MD5
-USES_APPLE_DEPRECATED_API
-#endif
-
 #include	<freeradius-devel/md5.h>
 
 #include	<fcntl.h>
