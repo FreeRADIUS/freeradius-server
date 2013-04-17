@@ -351,15 +351,14 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 
 		SPAGAIN;
 		if (SvTRUE(ERRSV)) {
-			radlog(L_ERR, "rlm_perl: perl_xlat exit %s\n",
-			       SvPV(ERRSV,n_a));
+			RDEBUGE("Exit %s", SvPV(ERRSV,n_a));
 			(void)POPs;
 		} else if (count > 0) {
 			tmp = POPp;
 			strlcpy(out, tmp, freespace);
 			ret = strlen(out);
 
-			radlog(L_DBG,"rlm_perl: Len is %zu , out is %s freespace is %zu", ret, out, freespace);
+			RDEBUG("Len is %zu , out is %s freespace is %zu", ret, out, freespace);
 		}
 
 		PUTBACK ;
