@@ -310,18 +310,16 @@ static XS(XS_radiusd_radlog)
 /*
  * The xlat function
  */
-static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
-			char *out, size_t freespace)
+static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt, char *out, size_t freespace)
 {
 
 	rlm_perl_t	*inst= (rlm_perl_t *) instance;
 	PerlInterpreter *perl;
-	char		*expanded, *ptr, *tmp;
+	char		*tmp;
+	const char	*p, *q;
 	int		count;
 	size_t		ret = 0;
 	STRLEN		n_a;
-
-	expanded = fmt;		/* FIXME */
 
 #ifndef WITH_ITHREADS
 	perl = inst->perl;
@@ -336,15 +334,15 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 		dSP;
 		ENTER;SAVETMPS;
 
-		ptr = strtok(expanded, " ");
-
 		PUSHMARK(SP);
-
-		while (ptr != NULL) {
-			XPUSHs(sv_2mortal(newSVpv(ptr,0)));
-			ptr = strtok(NULL, " ");
+		
+		p = fmt;
+		while ((q = strchr(p, ' '))) {
+			XPUSHs(sv_2mortal(newSVpv(p, p - q)));
+			
+			p = q + 1;
 		}
-
+		
 		PUTBACK;
 
 		count = call_pv(inst->func_xlat, G_SCALAR | G_EVAL);
@@ -366,8 +364,6 @@ static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt,
 		LEAVE ;
 
 	}
-	
-	talloc_free(expanded);
 	
 	return ret;
 }
