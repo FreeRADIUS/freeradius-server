@@ -12,14 +12,17 @@ extern "C" {
 #ifdef __clang__
 #  define W_DEPRECATED_OFF _Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"");
 #  define W_LITERALFMT_OFF _Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"");
+#  define W_UNEEDEDDEC_OFF _Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wunneeded-internal-declaration\"");
 #  define W_RST _Pragma("clang diagnostic pop");
 #elif __GNUC__
 #  define W_DEPRECATED_OFF _Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"");
 #  define W_LITERALFMT_OFF _Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"");
+#  define W_UNEEDEDDEC_OFF _Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wunneeded-internal-declaration\"");
 #  define W_RST _Pragma("GCC diagnostic pop");
 #else
 #  define W_DEPRECATED_OFF
 #  define W_LITERALFMT_OFF
+#  define W_UNEEDEDDEC_OFF
 #  define W_RST
 #endif
 
