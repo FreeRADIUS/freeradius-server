@@ -10,21 +10,24 @@ extern "C" {
 #endif
 
 #ifdef __clang__
-#  define DEPRECATED_OFF _Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"");
-#  define DEPRECATED_RST _Pragma("clang diagnostic pop");
+#  define W_DEPRECATED_OFF _Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"");
+#  define W_LITERALFMT_OFF _Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"");
+#  define W_RST _Pragma("clang diagnostic pop");
 #elif __GNUC__
-#  define DEPRECATED_OFF _Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"");
-#  define DEPRECATED_RST _Pragma("GCC diagnostic pop");
+#  define W_DEPRECATED_OFF _Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"");
+#  define W_LITERALFMT_OFF _Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"");
+#  define W_RST _Pragma("GCC diagnostic pop");
 #else
-#  define DEPRECATED_OFF
-#  define DEPRECATED_RST
+#  define W_DEPRECATED_OFF
+#  define W_LITERALFMT_OFF
+#  define W_RST
 #endif
 
 /*
  *	For dealing with APIs which are only deprecated in OSX (like the OpenSSL API)
  */
 #ifdef __APPLE__
-#  define USES_APPLE_DEPRECATED_API DEPRECATED_OFF
+#  define USES_APPLE_DEPRECATED_API W_DEPRECATED_OFF
 #else
 #  define USES_APPLE_DEPRECATED_API
 #endif
