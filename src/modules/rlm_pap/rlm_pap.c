@@ -322,8 +322,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUGW("No \"reference\" password found for the user.  Not setting Auth-Type.");
-		RDEBUGW("Authentication will fail unless a \"reference\" password is available.");
+		RDEBUGW("No \"known good\" password found for the user.  Not setting Auth-Type.");
+		RDEBUGW("Authentication will fail unless a \"known good\" password is available.");
 		return RLM_MODULE_NOOP;
 	}
 
