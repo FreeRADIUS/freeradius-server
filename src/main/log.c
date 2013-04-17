@@ -153,8 +153,9 @@ int vradlog(int lvl, const char *fmt, va_list ap)
 	}
 
 	if (len < sizeof(buffer)) {
-		len += vsnprintf(buffer + len,
-				 sizeof(buffer) - len - 1, fmt, ap);
+W_LITERALFMT_OFF
+		len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, fmt, ap);
+W_RST
 	}
 	
 	/*
