@@ -45,7 +45,7 @@ typedef struct fr_hash_entry_t {
 	struct fr_hash_entry_t *next;
 	uint32_t	reversed;
 	uint32_t	key;
- 	void		*data;
+ 	const void	*data;
 } fr_hash_entry_t;
 
 
@@ -385,7 +385,7 @@ static void fr_hash_table_grow(fr_hash_table_t *ht)
 /*
  *	Insert data.
  */
-int fr_hash_table_insert(fr_hash_table_t *ht, void *data)
+int fr_hash_table_insert(fr_hash_table_t *ht, const void *data)
 {
 	uint32_t key;
 	uint32_t entry;
@@ -457,16 +457,20 @@ static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht,
 /*
  *	Replace old data with new data, OR insert if there is no old.
  */
-int fr_hash_table_replace(fr_hash_table_t *ht, void *data)
+int fr_hash_table_replace(fr_hash_table_t *ht, const void *data)
 {
 	fr_hash_entry_t *node;
+	void *free;
 
 	if (!ht || !data) return 0;
 
 	node = fr_hash_table_find(ht, data);
 	if (!node) return fr_hash_table_insert(ht, data);
 
-	if (ht->free) ht->free(node->data);
+	if (ht->free) {
+		memcpy(&free, &node->data, sizeof(free));
+		ht->free(free);
+	}
 	node->data = data;
 
 	return 1;
@@ -479,11 +483,14 @@ int fr_hash_table_replace(fr_hash_table_t *ht, void *data)
 void *fr_hash_table_finddata(fr_hash_table_t *ht, const void *data)
 {
 	fr_hash_entry_t *node;
+	void *out;
 
 	node = fr_hash_table_find(ht, data);
 	if (!node) return NULL;
 
-	return node->data;
+	memcpy(&out, &node->data, sizeof(out));
+
+	return out;
 }
 
 
@@ -513,7 +520,7 @@ void *fr_hash_table_yank(fr_hash_table_t *ht, const void *data)
 	list_delete(ht, &ht->buckets[entry], node);
 	ht->num_elements--;
 
-	old = node->data;
+	memcpy(&old, &node->data, sizeof(old));
 	free(node);
 
 	return old;
@@ -557,7 +564,13 @@ void fr_hash_table_free(fr_hash_table_t *ht)
 
 			if (!node->data) continue; /* dummy entry */
 
-			if (ht->free) ht->free(node->data);
+
+			if (ht->free) {
+				void *free;
+				memcpy(&free, &node->data, sizeof(free));
+				ht->free(free);
+			}
+			
 			free(node);
 		}
 	}
@@ -598,9 +611,13 @@ int fr_hash_table_walk(fr_hash_table_t *ht,
 		if (!ht->buckets[i]) fr_hash_table_fixup(ht, i);
 
 		for (node = ht->buckets[i]; node != &ht->null; node = next) {
+			void *arg;
+			
 			next = node->next;
 
-			rcode = callback(context, node->data);
+			memcpy(&arg, node->data, sizeof(arg));
+			rcode = callback(context, arg);
+			
 			if (rcode != 0) return rcode;
 		}
 	}

@@ -55,10 +55,10 @@ fr_hash_table_t *fr_hash_table_create(fr_hash_table_hash_t hashNode,
 					  fr_hash_table_cmp_t cmpNode,
 					  fr_hash_table_free_t freeNode);
 void		fr_hash_table_free(fr_hash_table_t *ht);
-int		fr_hash_table_insert(fr_hash_table_t *ht, void *data);
+int		fr_hash_table_insert(fr_hash_table_t *ht, const void *data);
 int		fr_hash_table_delete(fr_hash_table_t *ht, const void *data);
 void		*fr_hash_table_yank(fr_hash_table_t *ht, const void *data);
-int		fr_hash_table_replace(fr_hash_table_t *ht, void *data);
+int		fr_hash_table_replace(fr_hash_table_t *ht, const void *data);
 void		*fr_hash_table_finddata(fr_hash_table_t *ht, const void *data);
 int		fr_hash_table_num_elements(fr_hash_table_t *ht);
 int		fr_hash_table_walk(fr_hash_table_t *ht,
