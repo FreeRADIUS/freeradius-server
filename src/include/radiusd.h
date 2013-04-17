@@ -462,7 +462,7 @@ typedef struct main_config_t {
 	int		kill_unresponsive_children;
 #endif
 	char		*log_file;
-	char		*dictionary_dir;
+	const char	*dictionary_dir;
 	char		*checkrad;
 	const char      *pid_file;
 	rad_listen_t	*listen;
