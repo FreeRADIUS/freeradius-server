@@ -133,7 +133,7 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 	 */
 	inst->default_method = eap_name2type(inst->default_method_name);
 	if (inst->default_method < 0) {
-		radlog(L_ERR, "rlm_eap_peap: Unknown EAP type %s",
+		DEBUGE("rlm_eap_peap: Unknown EAP type %s",
 		       inst->default_method_name);
 		return -1;
 	}
@@ -145,7 +145,7 @@ static int eappeap_attach(CONF_SECTION *cs, void **instance)
 	inst->tls_conf = eaptls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
-		radlog(L_ERR, "rlm_eap_peap: Failed initializing SSL context");
+		DEBUGE("rlm_eap_peap: Failed initializing SSL context");
 		return -1;
 	}
 

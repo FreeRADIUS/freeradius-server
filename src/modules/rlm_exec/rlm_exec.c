@@ -81,7 +81,7 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	
 	input_pairs = radius_list(request, inst->input_list);
 	if (!input_pairs) {
-		radlog(L_ERR, "rlm_exec (%s): Failed to find input pairs"
+		DEBUGE("rlm_exec (%s): Failed to find input pairs"
 		       " for xlat", inst->xlat_name);
 		out[0] = '\0';
 		return 0;
@@ -232,7 +232,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	We need a program to execute.
 	 */
 	if (!inst->program) {
-		radlog(L_ERR, "rlm_exec (%s): We require a program to execute",
+		DEBUGE("rlm_exec (%s): We require a program to execute",
 		       inst->xlat_name);
 		return RLM_MODULE_FAIL;
 	}
@@ -280,7 +280,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 				     inst->wait, msg, sizeof(msg),
 				     *input_pairs, &answer, inst->shell_escape);
 	if (result < 0) {
-		radlog(L_ERR, "rlm_exec (%s): External script failed",
+		DEBUGE("rlm_exec (%s): External script failed",
 		       inst->xlat_name);
 		return RLM_MODULE_FAIL;
 	}

@@ -1515,7 +1515,7 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 
 		pool = rbtree_finddata(home_pools_byname, &mypool);
 		if (!pool) {
-			radlog(L_ERR, "Internal sanity check failed in add_pool_to_realm");
+			DEBUGE("Internal sanity check failed in add_pool_to_realm");
 			return 0;
 		}
 	}
@@ -1884,7 +1884,7 @@ int realms_init(CONF_SECTION *config)
 	cs = cf_subsection_find_next(config, NULL, "proxy");
 	if (cs) {
 		if (cf_section_parse(cs, rc, proxy_config) < 0) {
-			radlog(L_ERR, "Failed parsing proxy section");
+			DEBUGE("Failed parsing proxy section");
 			
 			free(rc);
 			realms_free();
@@ -2099,7 +2099,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	if (!request->proxy) {
 		request->proxy = rad_alloc(request, TRUE);
 		if (!request->proxy) {
-			radlog(L_ERR, "no memory");
+			DEBUGE("no memory");
 			exit(1);
 		}
 		

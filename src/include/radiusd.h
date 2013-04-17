@@ -612,7 +612,7 @@ void 		rdebug_pair_list(int, REQUEST *, VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */
-#define MEM(x) if (!(x)) { radlog(L_ERR, "Out of memory"); exit(1); }
+#define MEM(x) if (!(x)) { DEBUGE("Out of memory"); exit(1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST **request);
 int		rad_mkdir(char *directory, mode_t mode);

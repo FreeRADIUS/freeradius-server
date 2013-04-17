@@ -74,7 +74,7 @@ static void *mod_conn_create(void *ctx)
 
 		reply = redisCommand(conn, buffer);
 		if (!reply) {
-			radlog(L_ERR, "rlm_redis (%s): Failed to run AUTH",
+			DEBUGE("rlm_redis (%s): Failed to run AUTH",
 			       inst->xlat_name);
 		do_close:
 			if (reply) freeReplyObject(reply);
@@ -86,14 +86,14 @@ static void *mod_conn_create(void *ctx)
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				radlog(L_ERR, "rlm_redis (%s): Failed authentication: reply %s",
+				DEBUGE("rlm_redis (%s): Failed authentication: reply %s",
 				       inst->xlat_name, reply->str);
 				goto do_close;
 			}
 			break;	/* else it's OK */
 
 		default:
-			radlog(L_ERR, "rlm_redis (%s): Unexpected reply to AUTH",
+			DEBUGE("rlm_redis (%s): Unexpected reply to AUTH",
 			       inst->xlat_name);
 			goto do_close;
 		}
@@ -106,7 +106,7 @@ static void *mod_conn_create(void *ctx)
 
 		reply = redisCommand(conn, buffer);
 		if (!reply) {
-			radlog(L_ERR, "rlm_redis (%s): Failed to run SELECT",
+			DEBUGE("rlm_redis (%s): Failed to run SELECT",
 			       inst->xlat_name);
 			goto do_close;
 		}
@@ -115,7 +115,7 @@ static void *mod_conn_create(void *ctx)
 		switch (reply->type) {
 		case REDIS_REPLY_STATUS:
 			if (strcmp(reply->str, "OK") != 0) {
-				radlog(L_ERR, "rlm_redis (%s): Failed SELECT %d: reply %s",
+				DEBUGE("rlm_redis (%s): Failed SELECT %d: reply %s",
 				       inst->xlat_name, inst->database,
 				       reply->str);
 				goto do_close;
@@ -123,7 +123,7 @@ static void *mod_conn_create(void *ctx)
 			break;	/* else it's OK */
 
 		default:
-			radlog(L_ERR, "rlm_redis (%s): Unexpected reply to SELECT",
+			DEBUGE("rlm_redis (%s): Unexpected reply to SELECT",
 			       inst->xlat_name);
 			goto do_close;
 		}
@@ -146,7 +146,7 @@ static size_t redis_xlat(void *instance, REQUEST *request,
 
 	dissocket = fr_connection_get(inst->pool);
 	if (!dissocket) {
-		radlog(L_ERR, "rlm_redis (%s): redis_get_socket() failed",
+		DEBUGE("rlm_redis (%s): redis_get_socket() failed",
 		       inst->xlat_name);
 
 		return 0;
@@ -232,7 +232,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
 
 	if (!dissocket->reply) {
-		radlog(L_ERR, "rlm_redis: (%s) REDIS error: %s",
+		DEBUGE("rlm_redis: (%s) REDIS error: %s",
 		       inst->xlat_name, dissocket->conn->errstr);
 
 		dissocket = fr_connection_reconnect(inst->pool, dissocket);
@@ -244,7 +244,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 
 		dissocket->reply = redisCommand(dissocket->conn, query);
 		if (!dissocket->reply) {
-			radlog(L_ERR, "rlm_redis (%s): failed after re-connect",
+			DEBUGE("rlm_redis (%s): failed after re-connect",
 			       inst->xlat_name);
 			fr_connection_del(inst->pool, dissocket);
 			goto error;
@@ -254,7 +254,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	}
 
 	if (dissocket->reply->type == REDIS_REPLY_ERROR) {
-		radlog(L_ERR, "rlm_redis (%s): query failed, %s",
+		DEBUGE("rlm_redis (%s): query failed, %s",
 		       inst->xlat_name, query);
 		return -1;
 	}

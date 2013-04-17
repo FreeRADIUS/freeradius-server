@@ -251,7 +251,7 @@ static int setup_ssl_mutexes(void)
 
 	ssl_mutexes = rad_malloc(CRYPTO_num_locks() * sizeof(pthread_mutex_t));
 	if (!ssl_mutexes) {
-		radlog(L_ERR, "Error allocating memory for SSL mutexes!");
+		DEBUGE("Error allocating memory for SSL mutexes!");
 		return 0;
 	}
 
@@ -381,7 +381,7 @@ int request_enqueue(REQUEST *request)
 		 *	Mark the request as done.
 		 */
 		if (complain) {
-			radlog(L_ERR, "Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
+			DEBUGE("Something is blocking the server.  There are %d packets in the queue, waiting to be processed.  Ignoring the new request.", thread_pool.max_queue_size);
 		}
 		return 0;
 	}
@@ -393,7 +393,7 @@ int request_enqueue(REQUEST *request)
 	 */
 	if (!fr_fifo_push(thread_pool.fifo[request->priority], request)) {
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
-		radlog(L_ERR, "!!! ERROR !!! Failed inserting request %d into the queue", request->number);
+		DEBUGE("!!! ERROR !!! Failed inserting request %d into the queue", request->number);
 		return 0;
 	}
 
@@ -534,7 +534,7 @@ static int request_dequeue(REQUEST **prequest)
 	pthread_mutex_unlock(&thread_pool.queue_mutex);
 
 	if (blocked) {
-		radlog(L_ERR, "(%u) %s has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
+		DEBUGE("(%u) %s has been waiting in the processing queue for %d seconds.  Check that all databases are running properly!",
 		       request->number, fr_packet_codes[request->packet->code], (int) blocked);
 	}
 
@@ -571,7 +571,7 @@ static void *request_handler_thread(void *arg)
 				DEBUG2("Re-wait %d", self->thread_num);
 				goto re_wait;
 			}
-			radlog(L_ERR, "Thread %d failed waiting for semaphore: %s: Exiting\n",
+			DEBUGE("Thread %d failed waiting for semaphore: %s: Exiting\n",
 			       self->thread_num, strerror(errno));
 			break;
 		}
@@ -748,7 +748,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	rcode = pthread_create(&handle->pthread_id, 0,
 			request_handler_thread, handle);
 	if (rcode != 0) {
-		radlog(L_ERR, "Thread create failed: %s",
+		DEBUGE("Thread create failed: %s",
 		       strerror(rcode));
 		return NULL;
 	}
@@ -850,7 +850,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	
 #ifdef WNOHANG
 	if ((pthread_mutex_init(&thread_pool.wait_mutex,NULL) != 0)) {
-		radlog(L_ERR, "FATAL: Failed to initialize wait mutex: %s",
+		DEBUGE("FATAL: Failed to initialize wait mutex: %s",
 		       strerror(errno));
 		return -1;
 	}
@@ -862,7 +862,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 						   pid_cmp,
 						   free);
 	if (!thread_pool.waiters) {
-		radlog(L_ERR, "FATAL: Failed to set up wait hash");
+		DEBUGE("FATAL: Failed to set up wait hash");
 		return -1;
 	}
 #endif
@@ -884,7 +884,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	if (thread_pool.max_threads == 0)
 		thread_pool.max_threads = 256;
 	if ((thread_pool.max_queue_size < 2) || (thread_pool.max_queue_size > 1048576)) {
-		radlog(L_ERR, "FATAL: max_queue_size value must be in range 2-1048576");
+		DEBUGE("FATAL: max_queue_size value must be in range 2-1048576");
 		return -1;
 	}
 #endif	/* WITH_GCD */
@@ -904,14 +904,14 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	memset(&thread_pool.semaphore, 0, sizeof(thread_pool.semaphore));
 	rcode = sem_init(&thread_pool.semaphore, 0, SEMAPHORE_LOCKED);
 	if (rcode != 0) {
-		radlog(L_ERR, "FATAL: Failed to initialize semaphore: %s",
+		DEBUGE("FATAL: Failed to initialize semaphore: %s",
 		       strerror(errno));
 		return -1;
 	}
 
 	rcode = pthread_mutex_init(&thread_pool.queue_mutex,NULL);
 	if (rcode != 0) {
-		radlog(L_ERR, "FATAL: Failed to initialize queue mutex: %s",
+		DEBUGE("FATAL: Failed to initialize queue mutex: %s",
 		       strerror(errno));
 		return -1;
 	}
@@ -922,7 +922,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	for (i = 0; i < RAD_LISTEN_MAX; i++) {
 		thread_pool.fifo[i] = fr_fifo_create(thread_pool.max_queue_size, NULL);
 		if (!thread_pool.fifo[i]) {
-			radlog(L_ERR, "FATAL: Failed to set up request fifo");
+			DEBUGE("FATAL: Failed to set up request fifo");
 			return -1;
 		}
 	}
@@ -934,7 +934,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	 *	to set up the mutexes and enable the thread callbacks.
 	 */
 	if (!setup_ssl_mutexes()) {
-		radlog(L_ERR, "FATAL: Failed to set up SSL mutexes");
+		DEBUGE("FATAL: Failed to set up SSL mutexes");
 		return -1;
 	}
 #endif
@@ -954,7 +954,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 #else
 	thread_pool.queue = dispatch_queue_create("org.freeradius.threads", NULL);
 	if (!thread_pool.queue) {
-		radlog(L_ERR, "Failed creating dispatch queue: %s\n",
+		DEBUGE("Failed creating dispatch queue: %s\n",
 		       strerror(errno));
 		exit(1);
 	}
@@ -1217,7 +1217,7 @@ pid_t rad_fork(void)
 		pthread_mutex_unlock(&thread_pool.wait_mutex);
 
 		if (!rcode) {
-			radlog(L_ERR, "Failed to store PID, creating what will be a zombie process %d",
+			DEBUGE("Failed to store PID, creating what will be a zombie process %d",
 			       (int) child_pid);
 			free(tf);
 		}

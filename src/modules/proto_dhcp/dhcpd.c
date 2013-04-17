@@ -544,14 +544,14 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 	if (broadcast) {
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			radlog(L_ERR, "Can't set broadcast option: %s\n",
+			DEBUGE("Can't set broadcast option: %s\n",
 			       strerror(errno));
 			return -1;
 		}
 	}
 
 	if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-		radlog(L_ERR, "Can't set re-use addres option: %s\n",
+		DEBUGE("Can't set re-use addres option: %s\n",
 		       strerror(errno));
 		return -1;
 	}
@@ -621,7 +621,7 @@ static int dhcp_socket_recv(rad_listen_t *listener)
 
 	packet = fr_dhcp_recv(listener->fd);
 	if (!packet) {
-		radlog(L_ERR, "%s", fr_strerror());
+		DEBUGE("%s", fr_strerror());
 		return 0;
 	}
 

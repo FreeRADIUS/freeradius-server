@@ -188,7 +188,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	conn->db = PQconnectdb(dbstring);
 
 	if (PQstatus(conn->db) != CONNECTION_OK) {
-		radlog(L_ERR, "rlm_sql_postgresql: Couldn't connect socket to "
+		DEBUGE("rlm_sql_postgresql: Couldn't connect socket to "
 		       "PostgreSQL server %s@%s:%s", config->sql_login,
 		       config->sql_server, config->sql_db);
 		return -1;
@@ -213,7 +213,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	char *errormsg;
 
 	if (!conn->db) {
-		radlog(L_ERR, "rlm_sql_postgresql: Socket not connected");
+		DEBUGE("rlm_sql_postgresql: Socket not connected");
 		return SQL_DOWN;
 	}
 
@@ -228,7 +228,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		 */
 	if (!conn->result)
 	{
-		radlog(L_ERR, "rlm_sql_postgresql: PostgreSQL Query failed Error: %s",
+		DEBUGE("rlm_sql_postgresql: PostgreSQL Query failed Error: %s",
 				PQerrorMessage(conn->db));
 		/* As this error COULD be a connection error OR an out-of-memory
 		 * condition return value WILL be wrong SOME of the time regardless!
@@ -478,7 +478,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 static int NEVER_RETURNS
 not_implemented(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
-	radlog(L_ERR, "sql_postgresql: calling unimplemented function");
+	DEBUGE("sql_postgresql: calling unimplemented function");
 	exit(1);
 }
 

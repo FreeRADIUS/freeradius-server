@@ -88,7 +88,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rcode = SQLAllocEnv(&conn->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_ERR, "sql_create_socket: SQLAllocEnv failed:  %s",
+		DEBUGE("sql_create_socket: SQLAllocEnv failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -96,7 +96,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	rcode = SQLAllocConnect(conn->env_handle,
 				&conn->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_ERR, "sql_create_socket: SQLAllocConnect failed:  %s",
+		DEBUGE("sql_create_socket: SQLAllocConnect failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -105,7 +105,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 			   SQL_NTS, config->sql_login, SQL_NTS,
 			   config->sql_password, SQL_NTS);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_ERR, "sql_create_socket: SQLConnectfailed:  %s",
+		DEBUGE("sql_create_socket: SQLConnectfailed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -129,19 +129,19 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 	rcode = SQLAllocStmt(conn->dbc_handle,
 			     &conn->stmt_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_ERR, "sql_create_socket: SQLAllocStmt failed:  %s",
+		DEBUGE("sql_create_socket: SQLAllocStmt failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
 
 	if (!conn->dbc_handle) {
-		radlog(L_ERR, "sql_query:  Socket not connected");
+		DEBUGE("sql_query:  Socket not connected");
 		return -1;
 	}
 
 	rcode = SQLExecDirect(conn->stmt_handle, querystr, SQL_NTS);
 	if (!SQL_SUCCEEDED(rcode)) {
-		radlog(L_ERR, "sql_query: failed:  %s",
+		DEBUGE("sql_query: failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}

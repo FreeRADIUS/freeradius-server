@@ -94,7 +94,7 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	VALUE_PAIR	*password;
 
 	if (!handler->opaque) {
-		radlog(L_ERR, "rlm_eap_leap: Cannot authenticate without LEAP history");
+		DEBUGE("rlm_eap_leap: Cannot authenticate without LEAP history");
 		return 0;
 	}
 	session = (leap_session_t *) handler->opaque;
@@ -168,7 +168,7 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 		 *	Stage 2 is handled by initiate()
 		 */
 	default:
-		radlog(L_ERR, "  rlm_eap_leap: Internal sanity check failed on stage");
+		DEBUGE("  rlm_eap_leap: Internal sanity check failed on stage");
 		break;
 	}
 

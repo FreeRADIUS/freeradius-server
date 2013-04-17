@@ -72,7 +72,7 @@ static int gtc_attach(CONF_SECTION *cs, void **instance)
 
 	dval = dict_valbyname(PW_AUTH_TYPE, 0, inst->auth_type_name);
 	if (!dval) {
-		radlog(L_ERR, "rlm_eap_gtc: Unknown Auth-Type %s",
+		DEBUGE("rlm_eap_gtc: Unknown Auth-Type %s",
 		       inst->auth_type_name);
 		return -1;
 	}
@@ -146,7 +146,7 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 	 *	of data.
 	 */
 	if (eap_ds->response->length <= 4) {
-		radlog(L_ERR, "rlm_eap_gtc: corrupted data");
+		DEBUGE("rlm_eap_gtc: corrupted data");
 		eap_ds->request->code = PW_EAP_FAILURE;
 		return 0;
 	}
@@ -229,7 +229,7 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 		}
 
 	} else {
-		radlog(L_ERR, "rlm_eap_gtc: Response is too large to understand");
+		DEBUGE("rlm_eap_gtc: Response is too large to understand");
 		eap_ds->request->code = PW_EAP_FAILURE;
 		return 0;
 

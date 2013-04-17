@@ -83,7 +83,7 @@ eap_pwd_attach (CONF_SECTION *cs, void **instance)
     }
 
     if ((inst->bnctx = BN_CTX_new()) == NULL) {
-	radlog(L_ERR, "rlm_eap_pwd: failed to get BN context!");
+	DEBUGE("rlm_eap_pwd: failed to get BN context!");
 	return -1;
     }
 
@@ -96,7 +96,7 @@ free_session (void *data)
     pwd_session_t *session = (pwd_session_t *)data;
 
     if (!session) {
-	radlog(L_ERR, "rlm_eap_pwd: freeing a NULL session...naughty, naughty");
+	DEBUGE("rlm_eap_pwd: freeing a NULL session...naughty, naughty");
 	return;
     }
     BN_free(session->private_value);
@@ -186,7 +186,7 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
     pwd_id_packet *pack;
 
     if (!inst || !handler) {
-	radlog(L_ERR, "rlm_eap_pwd: initiate, NULL data provided");
+	DEBUGE("rlm_eap_pwd: initiate, NULL data provided");
 	return -1;
     }
 
@@ -194,7 +194,7 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
      * make sure the server's been configured properly
      */
     if (!inst->conf->server_id) {
-	radlog(L_ERR, "rlm_eap_pwd: server ID is not configured!");
+	DEBUGE("rlm_eap_pwd: server ID is not configured!");
 	return -1;
     }
     switch (inst->conf->group) {
@@ -205,7 +205,7 @@ eap_pwd_initiate (void *instance, eap_handler_t *handler)
 	case 26:
 	    break;
 	default:
-	    radlog(L_ERR, "rlm_eap_pwd: group is not supported!");
+	    DEBUGE("rlm_eap_pwd: group is not supported!");
 	    return -1;
     }
 
@@ -548,7 +548,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 	     * compute our confirm blob
 	     */
 	    if (compute_server_confirm(pwd_session, pwd_session->my_confirm, inst->bnctx)) {
-		radlog(L_ERR, "rlm_eap_pwd: failed to compute confirm!");
+		DEBUGE("rlm_eap_pwd: failed to compute confirm!");
 		return 0;
 	    }
 	    /*

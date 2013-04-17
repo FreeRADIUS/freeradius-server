@@ -161,7 +161,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	if (!sock->request) {
 		sock->request = request = request_alloc();
 		if (!sock->request) {
-			radlog(L_ERR, "Out of memory");
+			DEBUGE("Out of memory");
 			return 0;
 		}
 
@@ -572,7 +572,7 @@ redo:
 		/*
 		 *	FIXME: Update MIB for packet types?
 		 */
-		radlog(L_ERR, "Invalid packet code %d sent to a proxy port "
+		DEBUGE("Invalid packet code %d sent to a proxy port "
 		       "from home server %s port %d - ID %d : IGNORED",
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),

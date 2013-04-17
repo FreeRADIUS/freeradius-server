@@ -561,7 +561,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 		/*
 		 *	Error accessing the file.
 		 */
-		radlog(L_ERR, "rlm_radumtp: Error accessing file %s: %s", expanded, strerror(errno));
+		DEBUGE("rlm_radumtp: Error accessing file %s: %s", expanded, strerror(errno));
 		
 		rcode = RLM_MODULE_FAIL;
 		

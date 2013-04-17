@@ -328,7 +328,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 			return 1;
 		}
 
-		radlog(L_ERR, "Failed to add duplicate client %s",
+		DEBUGE("Failed to add duplicate client %s",
 		       client->shortname);
 		return 0;
 	}
@@ -1206,7 +1206,7 @@ RADCLIENT *client_read(const char *filename, int in_server, int flag)
 	
 	cs = cf_section_sub_find(cs, "client");
 	if (!cs) {
-		radlog(L_ERR, "No \"client\" section found in client file");
+		DEBUGE("No \"client\" section found in client file");
 		return NULL;
 	}
 

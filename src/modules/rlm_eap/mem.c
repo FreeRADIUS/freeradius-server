@@ -451,13 +451,13 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 
 			if (last_logged < handler->timestamp) {
 				last_logged = handler->timestamp;
-				radlog(L_ERR, "rlm_eap (%s): Too many open "
+				DEBUGE("rlm_eap (%s): Too many open "
 				       "sessions.  Try increasing "
 				       "\"max_sessions\" in the EAP module "
 				       "configuration", inst->xlat_name);
 			}				
 		} else {
-			radlog(L_ERR, "rlm_eap (%s): Internal error: "
+			DEBUGE("rlm_eap (%s): Internal error: "
 			       "failed to store handler", inst->xlat_name);
 		}
 		return 0;
@@ -518,7 +518,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	 *	Might not have been there.
 	 */
 	if (!handler) {
-		radlog(L_ERR, "rlm_eap (%s): No EAP session matching state "
+		DEBUGE("rlm_eap (%s): No EAP session matching state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
 		       inst->xlat_name,
 		       state->vp_octets[0], state->vp_octets[1],
@@ -529,7 +529,7 @@ eap_handler_t *eaplist_find(rlm_eap_t *inst, REQUEST *request,
 	}
 
 	if (handler->trips >= 50) {
-		radlog(L_ERR, "rlm_eap (%s): Aborting! More than 50 roundtrips "
+		DEBUGE("rlm_eap (%s): Aborting! More than 50 roundtrips "
 		       "made in session with state "
 		       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
 		       inst->xlat_name,

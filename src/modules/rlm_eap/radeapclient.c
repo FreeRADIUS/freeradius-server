@@ -1414,7 +1414,7 @@ static int unmap_eapsim_types(RADIUS_PACKET *r)
 
 	esvp = pairfind(r->vps, ATTRIBUTE_EAP_BASE+PW_EAP_SIM, 0, TAG_ANY);
 	if (!esvp) {
-		radlog(L_ERR, "eap: EAP-Sim attribute not found");
+		DEBUGE("eap: EAP-Sim attribute not found");
 		return 0;
 	}
 

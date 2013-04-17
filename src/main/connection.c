@@ -310,11 +310,11 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		
 		if (complain) {
 			if (pool->spawning) {
-				radlog(L_ERR, "%s: Cannot open new connection, "
+				DEBUGE("%s: Cannot open new connection, "
 			       	       "connection spawning already in "
 			       	       "progress", pool->log_prefix);
 			} else {
-				radlog(L_ERR, "%s: Last connection failed, "
+				DEBUGE("%s: Last connection failed, "
 				       "throttling connection spawn",
 				       pool->log_prefix);
 			}
@@ -348,7 +348,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 */
 	conn = pool->create(pool->ctx);
 	if (!conn) {
-		radlog(L_ERR, "%s: Opening connection failed (%i)",
+		DEBUGE("%s: Opening connection failed (%i)",
 		       pool->log_prefix, pool->count);
 		
 		pool->last_failed = now;
@@ -930,7 +930,7 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 		pthread_mutex_unlock(&pool->mutex);
 		
 		if (complain) {
-			radlog(L_ERR, "%s: No connections available and at max "
+			DEBUGE("%s: No connections available and at max "
 			       "connection limit", pool->log_prefix);
 		}
 		
@@ -1081,7 +1081,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 		
 		if (!now) return NULL;
 		
-		radlog(L_ERR, "%s: Failed to reconnect (%i), and no other "
+		DEBUGE("%s: Failed to reconnect (%i), and no other "
 		       "connections available", pool->log_prefix, conn_number);
 		
 		return NULL;

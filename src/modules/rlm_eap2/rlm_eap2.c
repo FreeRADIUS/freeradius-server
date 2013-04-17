@@ -207,7 +207,7 @@ static int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	pthread_mutex_unlock(&(inst->session_mutex));
 
 	if (!status) {
-		radlog(L_ERR, "rlm_eap2: Failed to remember handler!");
+		DEBUGE("rlm_eap2: Failed to remember handler!");
 		eap_handler_free(handler);
 		return 0;
 	}
@@ -319,7 +319,7 @@ static EAP_HANDLER *eaplist_find(rlm_eap_t *inst, REQUEST *request)
 	 *	Found, but state verification failed.
 	 */
 	if (!handler) {
-		radlog(L_ERR, "rlm_eap2: State verification failed.");
+		DEBUGE("rlm_eap2: State verification failed.");
 		return NULL;
 	}
 
@@ -497,12 +497,12 @@ static int eap_example_server_init_tls(rlm_eap_t *inst)
 		return -1;
 
 	if (tls_global_set_params(inst->tls_ctx, &inst->tparams)) {
-		radlog(L_ERR, "rlm_eap2: Failed to set TLS parameters");
+		DEBUGE("rlm_eap2: Failed to set TLS parameters");
 		return -1;
 	}
 
 	if (tls_global_set_verify(inst->tls_ctx, 0)) {
-		radlog(L_ERR, "rlm_eap2: Failed to set check_crl");
+		DEBUGE("rlm_eap2: Failed to set check_crl");
 		return -1;
 	}
 
@@ -539,7 +539,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	 */
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		radlog(L_ERR, "rlm_eap2: Cannot initialize tree");
+		DEBUGE("rlm_eap2: Cannot initialize tree");
 		return -1;
 	}
 
@@ -585,7 +585,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		inst->methods[num_types] = eap_server_get_type(buffer,
 							       &inst->vendors[num_types]);
 		if (inst->methods[num_types] == EAP_TYPE_NONE) {
-			radlog(L_ERR, "rlm_eap2: Unknown EAP type %s",
+			DEBUGE("rlm_eap2: Unknown EAP type %s",
 			       auth_type);
 			return -1;
 		}
@@ -610,7 +610,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	inst->num_types = num_types;
 
 	if (do_tls && !has_tls) {
-		radlog(L_ERR, "rlm_eap2: TLS has not been configured.  Cannot do methods that need TLS.");
+		DEBUGE("rlm_eap2: TLS has not been configured.  Cannot do methods that need TLS.");
 		return -1;
 	}
 
@@ -619,7 +619,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		 *	Initialize TLS.
 		 */
 		if (eap_example_server_init_tls(inst) < 0) {
-			radlog(L_ERR, "rlm_eap2: Cannot initialize TLS");
+			DEBUGE("rlm_eap2: Cannot initialize TLS");
 			return -1;
 		}
 	}
@@ -750,7 +750,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 */
 	first = pairfind(vps, PW_EAP_MESSAGE, 0, TAG_ANY);
 	if (!first) {
-		radlog(L_ERR, "rlm_eap2: EAP-Message not found");
+		DEBUGE("rlm_eap2: EAP-Message not found");
 		return -1;
 	}
 
@@ -758,7 +758,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	Sanity check the length before doing anything.
 	 */
 	if (first->length < 4) {
-		radlog(L_ERR, "rlm_eap2: EAP packet is too short.");
+		DEBUGE("rlm_eap2: EAP packet is too short.");
 		return -1;
 	}
 
@@ -773,7 +773,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	Take out even more weird things.
 	 */
 	if (len < 4) {
-		radlog(L_ERR, "rlm_eap2: EAP packet has invalid length.");
+		DEBUGE("rlm_eap2: EAP packet has invalid length.");
 		return -1;
 	}
 
@@ -785,7 +785,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 		total_len += vp->length;
 
 		if (total_len > len) {
-			radlog(L_ERR, "rlm_eap2: Malformed EAP packet.  Length in packet header does not match actual length");
+			DEBUGE("rlm_eap2: Malformed EAP packet.  Length in packet header does not match actual length");
 			return -1;
 		}
 	}
@@ -794,7 +794,7 @@ static int eap_vp2data(VALUE_PAIR *vps, void **data, int *data_len)
 	 *	If the length is SMALLER, die, too.
 	 */
 	if (total_len < len) {
-		radlog(L_ERR, "rlm_eap2: Malformed EAP packet.  Length in packet header does not match actual length");
+		DEBUGE("rlm_eap2: Malformed EAP packet.  Length in packet header does not match actual length");
 		return -1;
 	}
 
@@ -853,7 +853,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	data = NULL;
 	data_len = 0;
 	if (eap_vp2data(request->packet->vps, &data, &data_len) < 0) {
-		radlog(L_ERR, "rlm_eap2: Malformed EAP Message");
+		DEBUGE("rlm_eap2: Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 

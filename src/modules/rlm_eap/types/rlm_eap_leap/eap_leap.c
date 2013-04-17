@@ -71,7 +71,7 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 	    !eap_ds->response->type.data ||
 	    (eap_ds->response->length < LEAP_HEADER_LEN) ||
 	    (eap_ds->response->type.data[0] != 0x01)) {	/* version 1 */
-		radlog(L_ERR, "rlm_eap_leap: corrupted data");
+		DEBUGE("rlm_eap_leap: corrupted data");
 		return NULL;
 	}
 
@@ -89,20 +89,20 @@ leap_packet_t *eapleap_extract(EAP_DS *eap_ds)
 	switch (eap_ds->response->code) {
 	case PW_EAP_RESPONSE:
 		if (data->count != 24) {
-			radlog(L_ERR, "rlm_eap_leap: Bad NTChallengeResponse in LEAP stage 3");
+			DEBUGE("rlm_eap_leap: Bad NTChallengeResponse in LEAP stage 3");
 			return NULL;
 		}
 		break;
 
 	case PW_EAP_REQUEST:
 		if (data->count != 8) {
-			radlog(L_ERR, "rlm_eap_leap: Bad AP Challenge in LEAP stage 5");
+			DEBUGE("rlm_eap_leap: Bad AP Challenge in LEAP stage 5");
 			return NULL;
 		}
 		break;
 
 	default:
-		radlog(L_ERR, "rlm_eap_leap: Invalid EAP code %d",
+		DEBUGE("rlm_eap_leap: Invalid EAP code %d",
 		       eap_ds->response->code);
 		return NULL;
 		break;
@@ -192,7 +192,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 							16);
 		}
 		if (password->length != 16) {
-			radlog(L_ERR, "rlm_eap_leap: Bad NT-Password");
+			DEBUGE("rlm_eap_leap: Bad NT-Password");
 			return 0;
 		}
 
@@ -307,7 +307,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	 */
 	vp = pairmake_reply("Cisco-AVPair", "leap:session-key=", T_OP_ADD);
 	if (!vp) {
-		radlog(L_ERR, "rlm_eap_leap: Failed to create Cisco-AVPair attribute.  LEAP cancelled.");
+		DEBUGE("rlm_eap_leap: Failed to create Cisco-AVPair attribute.  LEAP cancelled.");
 		talloc_free(reply);
 		return NULL;
 	}
@@ -439,7 +439,7 @@ int eapleap_compose(EAP_DS *eap_ds, leap_packet_t *reply)
 		break;
 
 	default:
-		radlog(L_ERR, "rlm_eap_leap: Internal sanity check failed");
+		DEBUGE("rlm_eap_leap: Internal sanity check failed");
 		return 0;
 		break;
 	}

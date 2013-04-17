@@ -412,7 +412,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	lf = talloc_strdup(inst, inst->format);
 	if ( !lf) {
-		radlog(L_ERR, "rlm_passwd: memory allocation failed for lf");
+		DEBUGE("rlm_passwd: memory allocation failed for lf");
 		return -1;
 	}
 	memset(lf, 0, strlen(inst->format));
@@ -445,16 +445,16 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, *inst->delimiter)) ){
-		radlog(L_ERR, "rlm_passwd: can't build hashtable from passwd file");
+		DEBUGE("rlm_passwd: can't build hashtable from passwd file");
 		return -1;
 	}
 	if (! (inst->pwdfmt = mypasswd_malloc(inst->format, nfields, &len)) ){
-		radlog(L_ERR, "rlm_passwd: memory allocation failed");
+		DEBUGE("rlm_passwd: memory allocation failed");
 		release_ht(inst->ht);
 		return -1;
 	}
 	if (!string_to_entry(inst->format, nfields, ':', inst->pwdfmt , len)) {
-		radlog(L_ERR, "rlm_passwd: unable to convert format entry");
+		DEBUGE("rlm_passwd: unable to convert format entry");
 		release_ht(inst->ht);
 		return -1;
 	}
@@ -474,7 +474,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	if (! (da = dict_attrbyname (inst->pwdfmt->field[keyfield])) ) {
-		radlog(L_ERR, "rlm_passwd: unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
+		DEBUGE("rlm_passwd: unable to resolve attribute: %s", inst->pwdfmt->field[keyfield]);
 		release_ht(inst->ht);
 		return -1;
 	}

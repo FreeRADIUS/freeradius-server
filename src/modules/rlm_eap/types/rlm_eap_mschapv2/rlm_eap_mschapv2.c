@@ -205,7 +205,7 @@ static int eapmschapv2_compose(eap_handler_t *handler, VALUE_PAIR *reply)
 		break;
 
 	default:
-		radlog(L_ERR, "rlm_eap_mschapv2: Internal sanity check failed");
+		DEBUGE("rlm_eap_mschapv2: Internal sanity check failed");
 		return 0;
 		break;
 	}

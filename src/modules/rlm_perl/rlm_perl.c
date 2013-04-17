@@ -152,8 +152,7 @@ static void **rlm_perl_get_handles(pTHX)
 		SV *handle_sv = *av_fetch(librefs, i, FALSE);
 
 		if(!handle_sv) {
-			radlog(L_ERR,
-			       "Could not fetch $%s[%d]!\n",
+			DEBUGE("Could not fetch $%s[%d]!\n",
 			       dl_librefs, (int)i);
 			continue;
 		}
@@ -424,7 +423,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	PERL_SYS_INIT3(&argc, &embed, &envp);
 
 	if ((inst->perl = perl_alloc()) == NULL) {
-		radlog(L_ERR, "rlm_perl: No memory for allocating new perl !");
+		DEBUGE("rlm_perl: No memory for allocating new perl !");
 		return (-1);
 	}
 
@@ -453,7 +452,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if(!exitstatus) {
 		exitstatus = perl_run(inst->perl);
 	} else {
-		radlog(L_ERR,"rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
+		DEBUGE("rlm_perl: perl_parse failed: %s not found or has syntax errors. \n", inst->module);
 		return (-1);
 	}
 
@@ -688,7 +687,7 @@ static int do_perl(void *instance, REQUEST *request, char *function_name)
 		SPAGAIN;
 
 		if (SvTRUE(ERRSV)) {
-			radlog(L_ERR, "rlm_perl: perl_embed:: module = %s , func = %s exit status= %s\n",
+			DEBUGE("rlm_perl: perl_embed:: module = %s , func = %s exit status= %s\n",
 			       inst->module,
 			       function_name, SvPV(ERRSV,n_a));
 			(void)POPs;
@@ -788,7 +787,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	if ((pair = pairfind(request->packet->vps, PW_ACCT_STATUS_TYPE, 0, TAG_ANY)) != NULL) {
 		acctstatustype = pair->vp_integer;
 	} else {
-		radlog(L_ERR, "Invalid Accounting Packet");
+		DEBUGE("Invalid Accounting Packet");
 		return RLM_MODULE_INVALID;
 	}
 

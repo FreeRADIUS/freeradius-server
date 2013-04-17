@@ -463,7 +463,7 @@ static module_entry_t *linkto_module(const char *module_name,
 	 *	section.
 	 */
 	if (!rbtree_insert(module_tree, node)) {
-		radlog(L_ERR, "Failed to cache module %s", module_name);
+		DEBUGE("Failed to cache module %s", module_name);
 		dlclose(handle);
 		talloc_free(node);
 		return NULL;
@@ -502,7 +502,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	cs = cf_section_sub_find_name2(modules, NULL, instname);
 	if (cs == NULL) {
-		radlog(L_ERR, "ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
+		DEBUGE("ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
 		return NULL;
 	}
 
@@ -820,7 +820,7 @@ static int define_type(CONF_SECTION *cs, const DICT_ATTR *dattr, const char *nam
 
 	cf_log_module(cs, "Creating %s = %s", dattr->name, name);
 	if (dict_addvalue(name, dattr->name, value) < 0) {
-		radlog(L_ERR, "%s", fr_strerror());
+		DEBUGE("%s", fr_strerror());
 		return 0;
 	}
 
@@ -984,7 +984,7 @@ static int load_byserver(CONF_SECTION *cs)
 
 	components = rbtree_create(indexed_modcallable_cmp, NULL, 0);
 	if (!components) {
-		radlog(L_ERR, "Failed to initialize components\n");
+		DEBUGE("Failed to initialize components\n");
 		goto error;
 	}
 
@@ -1019,7 +1019,7 @@ static int load_byserver(CONF_SECTION *cs)
 				   section_type_value[comp].typename);
 		error:
 			if (debug_flag == 0) {
-				radlog(L_ERR, "Failed to load virtual server %s",
+				DEBUGE("Failed to load virtual server %s",
 				       (name != NULL) ? name : "<default>");
 			}
 			talloc_free(server);
@@ -1263,7 +1263,7 @@ int virtual_servers_load(CONF_SECTION *config)
 		server = virtual_server_find(name2);
 		if (server &&
 		    (cf_top_section(server->cs) == config)) {
-			radlog(L_ERR, "Duplicate virtual server \"%s\" in file %s:%d and file %s:%d",
+			DEBUGE("Duplicate virtual server \"%s\" in file %s:%d and file %s:%d",
 			       server->name,
 			       cf_section_filename(server->cs),
 			       cf_section_lineno(server->cs),
@@ -1399,14 +1399,14 @@ int setup_modules(int reload, CONF_SECTION *config)
 		 */
 		module_tree = rbtree_create(module_entry_cmp, NULL, 0);
 		if (!module_tree) {
-			radlog(L_ERR, "Failed to initialize modules\n");
+			DEBUGE("Failed to initialize modules\n");
 			return -1;
 		}
 
 		instance_tree = rbtree_create(module_instance_cmp,
 					      module_instance_free, 0);
 		if (!instance_tree) {
-			radlog(L_ERR, "Failed to initialize modules\n");
+			DEBUGE("Failed to initialize modules\n");
 			return -1;
 		}
 	}
@@ -1451,7 +1451,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 
 		if (!name2) name2 = "";
 
-		radlog(L_ERR, "Duplicate module \"%s %s\", in file %s:%d and file %s:%d",
+		DEBUGE("Duplicate module \"%s %s\", in file %s:%d and file %s:%d",
 		       name1, name2,
 		       cf_section_filename(subcs),
 		       cf_section_lineno(subcs),
@@ -1546,7 +1546,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 		if (!cs && (listener->server != NULL)) {
 			listener->print(listener, buffer, sizeof(buffer));
 
-			radlog(L_ERR, "No server has been defined for %s", buffer);
+			DEBUGE("No server has been defined for %s", buffer);
 			return -1;
 		}
 	}

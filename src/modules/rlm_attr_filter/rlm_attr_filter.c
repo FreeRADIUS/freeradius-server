@@ -131,7 +131,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 
 	rcode = attr_filter_getfile(inst, inst->file, &inst->attrs);
 	if (rcode != 0) {
-		radlog(L_ERR, "Errors reading %s", inst->file);
+		DEBUGE("Errors reading %s", inst->file);
 
 		return -1;
 	}

@@ -320,7 +320,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 
 	/* big enough to have even a single attribute */
 	if(attrlen < 5) {
-		radlog(L_ERR, "eap: EAP-Sim attribute too short: %d < 2", attrlen);
+		DEBUGE("eap: EAP-Sim attribute too short: %d < 2", attrlen);
 		return 0;
 	}
 
@@ -337,7 +337,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 	while(attrlen > 0)
 	{
 		if(attrlen < 2) {
-			radlog(L_ERR, "eap: EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attrlen);
+			DEBUGE("eap: EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attrlen);
 			return 0;
 		}
 
@@ -345,7 +345,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		eapsim_len = attr[1] * 4;
 
 		if(eapsim_len > attrlen) {
-			radlog(L_ERR, "eap: EAP-Sim attribute %d (no.%d) has length longer than data (%d > %d)"
+			DEBUGE("eap: EAP-Sim attribute %d (no.%d) has length longer than data (%d > %d)"
 			       , eapsim_attribute
 			       , es_attribute_count, eapsim_len, attrlen);
 			return 0;
@@ -355,7 +355,7 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 			eapsim_len = MAX_STRING_LEN;
 		}
 		if (eapsim_len < 2) {
-			radlog(L_ERR, "eap: EAP-Sim attribute %d (no.%d) has length too small",
+			DEBUGE("eap: EAP-Sim attribute %d (no.%d) has length too small",
 			       eapsim_attribute, es_attribute_count);
 			       return 0;
 		}

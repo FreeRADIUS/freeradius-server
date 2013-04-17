@@ -90,7 +90,7 @@ static void sig_hup (int);
 #ifdef WITH_VERIFY_PTR
 static void die_horribly(const char *reason)
 {
-	radlog(L_ERR, "talloc abort: %s\n", reason);
+	DEBUGE("talloc abort: %s\n", reason);
 	abort();
 }
 #endif
@@ -314,7 +314,7 @@ int main(int argc, char *argv[])
 		pid_t pid = fork();
 
 		if (pid < 0) {
-			radlog(L_ERR, "Couldn't fork: %s", strerror(errno));
+			DEBUGE("Couldn't fork: %s", strerror(errno));
 			exit(1);
 		}
 
@@ -345,7 +345,7 @@ int main(int argc, char *argv[])
 
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			radlog(L_ERR, "Failed opening /dev/null: %s\n",
+			DEBUGE("Failed opening /dev/null: %s\n",
 			       strerror(errno));
 			exit(1);
 		}
@@ -449,7 +449,7 @@ int main(int argc, char *argv[])
 			fprintf(fp, "%d\n", (int) radius_pid);
 			fclose(fp);
 		} else {
-			radlog(L_ERR, "Failed creating PID file %s: %s\n",
+			DEBUGE("Failed creating PID file %s: %s\n",
 			       mainconfig.pid_file, strerror(errno));
 			exit(1);
 		}
@@ -468,7 +468,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (rcode < 0) {
-		radlog(L_ERR, "Exiting due to internal error: %s",
+		DEBUGE("Exiting due to internal error: %s",
 		       fr_strerror());
 		rcode = 2;
 	} else {

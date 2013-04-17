@@ -169,7 +169,7 @@ int securid_sessionlist_add(rlm_securid_t *inst,REQUEST *request,
 
 	if (!status) {
 		pairfree(&state);
-		radlog(L_ERR, "rlm_securid: Failed to store session");
+		DEBUGE("rlm_securid: Failed to store session");
 		return -1;
 	}
 
@@ -202,7 +202,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	}
 
 	if (state->length != SECURID_STATE_LEN) {
-		radlog(L_ERR,"rlm_securid: Invalid State variable. length=%d",state->length);
+		DEBUGE("rlm_securid: Invalid State variable. length=%d",state->length);
 		return NULL;
 	}
 
@@ -222,7 +222,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	 *	Might not have been there.
 	 */
 	if (!session) {
-		radlog(L_ERR,"rlm_securid: No SECURID session matching the State variable.");
+		DEBUGE("rlm_securid: No SECURID session matching the State variable.");
 		return NULL;
 	}
 

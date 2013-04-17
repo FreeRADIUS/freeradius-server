@@ -70,13 +70,13 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 	int		     result		= RLM_MODULE_FAIL;
 	
 	if (!inUserName) {
-		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): no username");
+		DEBUGE("rlm_mschap: getUserNodeRef(): no username");
 		return RLM_MODULE_FAIL;
 	}
 
 	tDataBuff = dsDataBufferAllocate(dsRef, 4096);
 	if (!tDataBuff) {
-		radlog(L_ERR, "rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);
+		DEBUGE("rlm_mschap: getUserNodeRef(): dsDataBufferAllocate() status = %ld", status);
 		return RLM_MODULE_FAIL;
 	}
 	
@@ -86,19 +86,19 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 					eDSAuthenticationSearchNodeName,
 					&nodeCount, &context);
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);
+			DEBUGE("rlm_mschap: getUserNodeRef(): no node found? status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
 		if (nodeCount < 1) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): nodeCount < 1, status = %ld", status);
+			DEBUGE("rlm_mschap: getUserNodeRef(): nodeCount < 1, status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
 		
 		status = dsGetDirNodeName(dsRef, tDataBuff, 1, &nodeName);
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetDirNodeName() status = %ld", status);
+			DEBUGE("rlm_mschap: getUserNodeRef(): dsGetDirNodeName() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -109,7 +109,7 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 		nodeName = NULL;
 		
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
+			DEBUGE("rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -126,7 +126,7 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 					 eDSExact, pRecType, pAttrType, 0,
 					 &recCount, &context);
 		if (status != eDSNoErr || recCount == 0) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordList() status = %ld, recCount=%u", status, recCount);
+			DEBUGE("rlm_mschap: getUserNodeRef(): dsGetRecordList() status = %ld, recCount=%u", status, recCount);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -134,7 +134,7 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 		status = dsGetRecordEntry(nodeRef, tDataBuff, 1,
 					  &attrListRef, &pRecEntry);
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);
+			DEBUGE("rlm_mschap: getUserNodeRef(): dsGetRecordEntry() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;	
 		}
@@ -180,7 +180,7 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 
 		pUserNode = dsBuildFromPath(dsRef, pUserLocation, "/");
 		if (!pUserNode) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");
+			DEBUGE("rlm_mschap: getUserNodeRef(): dsBuildFromPath() returned NULL");
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -190,7 +190,7 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 		free(pUserNode);
 
 		if (status != eDSNoErr) {
-			radlog(L_ERR,"rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
+			DEBUGE("rlm_mschap: getUserNodeRef(): dsOpenDirNode() status = %ld", status);
 			result = RLM_MODULE_FAIL;
 			break;
 		}
@@ -254,7 +254,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	status = dsOpenDirService(&dsRef);
 	if (status != eDSNoErr) {
 		talloc_free(username_string);
-		radlog(L_ERR,"rlm_mschap: od_mschap_auth(): dsOpenDirService = %d", status);
+		DEBUGE("rlm_mschap: od_mschap_auth(): dsOpenDirService = %d", status);
 		return RLM_MODULE_FAIL;
 	}
 
@@ -403,7 +403,7 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 	
 	if (status != eDSNoErr) {
 		errno = EACCES;
-		radlog(L_ERR, "rlm_mschap: authentication failed %d", status); /* <-- returns -14091 (eDSAuthMethodNotSupported) -14090 */
+		DEBUGE("rlm_mschap: authentication failed %d", status); /* <-- returns -14091 (eDSAuthMethodNotSupported) -14090 */
 		return RLM_MODULE_REJECT;
 	}
 	

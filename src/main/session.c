@@ -52,7 +52,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 #define PAIR(n,v,e) do { \
 		if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
 			request_free(&stopreq); \
-			radlog(L_ERR, "no memory"); \
+			DEBUGE("no memory"); \
 			pairfree(&(stopreq->packet->vps)); \
 			return 0; \
 		} \
@@ -64,7 +64,7 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
 #define STRINGPAIR(n,v) do { \
 	  if(!(vp = paircreate(stopreq->packet,n, 0))) {	\
 		request_free(&stopreq); \
-		radlog(L_ERR, "no memory"); \
+		DEBUGE("no memory"); \
 		pairfree(&(stopreq->packet->vps)); \
 		return 0; \
 	} \
@@ -159,7 +159,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	 *	Fork.
 	 */
 	if ((pid = rad_fork()) < 0) { /* do wait for the fork'd result */
-		radlog(L_ERR, "Accounting: Failed in fork(): Cannot run checkrad\n");
+		DEBUGE("Accounting: Failed in fork(): Cannot run checkrad\n");
 		return 2;
 	}
 
@@ -173,12 +173,12 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 		 *	happens to it now.
 		 */
 		if (child_pid == 0) {
-			radlog(L_ERR, "Check-TS: timeout waiting for checkrad");
+			DEBUGE("Check-TS: timeout waiting for checkrad");
 			return 2;
 		}
 
 		if (child_pid < 0) {
-			radlog(L_ERR, "Check-TS: unknown error in waitpid()");
+			DEBUGE("Check-TS: unknown error in waitpid()");
 			return 2;
 		}
 
@@ -208,7 +208,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 	execl(mainconfig.checkrad, "checkrad", cl->nastype, address, port,
 		user, session_id, NULL);
 #endif
-	radlog(L_ERR, "Check-TS: exec %s: %s", mainconfig.checkrad, strerror(errno));
+	DEBUGE("Check-TS: exec %s: %s", mainconfig.checkrad, strerror(errno));
 
 	/*
 	 *	Exit - 2 means "some error occured".
@@ -220,7 +220,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
 		 UNUSED const char *user, UNUSED const char *session_id)
 {
-	radlog(L_ERR, "Simultaneous-Use is not supported");
+	DEBUGE("Simultaneous-Use is not supported");
 	return 2;
 }
 #endif
@@ -239,7 +239,7 @@ int session_zap(UNUSED REQUEST *request, UNUSED uint32_t nasaddr, UNUSED unsigne
 int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
 		 UNUSED const char *user, UNUSED const char *session_id)
 {
-	radlog(L_ERR, "Simultaneous-Use is not supported");
+	DEBUGE("Simultaneous-Use is not supported");
 	return 2;
 }
 #endif

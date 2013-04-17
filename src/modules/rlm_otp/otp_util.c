@@ -87,7 +87,7 @@ void _otp_pthread_mutex_init(pthread_mutex_t *mutexp,
 
 	rc = pthread_mutex_init(mutexp, attr);
 	if (rc) {
-		radlog(L_ERR, "rlm_otp: %s: pthread_mutex_init: %s",
+		DEBUGE("rlm_otp: %s: pthread_mutex_init: %s",
 		       caller, strerror(rc));
 		
 		exit(1);
@@ -103,7 +103,7 @@ void _otp_pthread_mutex_lock(pthread_mutex_t *mutexp, const char *caller)
 
 	rc = pthread_mutex_lock(mutexp);
 	if (rc) {
-		radlog(L_ERR, "rlm_otp: %s: pthread_mutex_lock: %s",
+		DEBUGE("rlm_otp: %s: pthread_mutex_lock: %s",
 		       caller, strerror(rc));
 		
 		exit(1);
@@ -119,7 +119,7 @@ int _otp_pthread_mutex_trylock(pthread_mutex_t *mutexp, const char *caller)
 
 	rc = pthread_mutex_trylock(mutexp);
 	if (rc && rc != EBUSY) {
-		radlog(L_ERR, "rlm_otp: %s: pthread_mutex_trylock: %s",
+		DEBUGE("rlm_otp: %s: pthread_mutex_trylock: %s",
 		       caller, strerror(rc));
 		
 		exit(1);
@@ -137,7 +137,7 @@ void _otp_pthread_mutex_unlock(pthread_mutex_t *mutexp, const char *caller)
 
 	rc = pthread_mutex_unlock(mutexp);
   	if (rc) {
-		radlog(L_ERR, "rlm_otp: %s: pthread_mutex_unlock: %s",
+		DEBUGE("rlm_otp: %s: pthread_mutex_unlock: %s",
 		       caller, strerror(rc));
 		
 		exit(1);

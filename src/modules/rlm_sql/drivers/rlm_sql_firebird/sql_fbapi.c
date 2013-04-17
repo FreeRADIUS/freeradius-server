@@ -554,7 +554,7 @@ int fb_commit(rlm_sql_firebird_conn_t *conn) {
 		isc_commit_transaction (conn->status,&conn->trh);
 		if (IS_ISC_ERROR(conn->status)) {
 			fb_lasterror(conn);
-			radlog(L_ERR, "Fail to commit. Error: %s. Try to rollback.",
+			DEBUGE("Fail to commit. Error: %s. Try to rollback.",
 		       	       conn->lasterror);
 			return fb_rollback(conn);
 		}

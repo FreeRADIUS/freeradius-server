@@ -446,7 +446,7 @@ static void fr_set_dumpable(void)
 		no_core.rlim_max = 0;
 		
 		if (setrlimit(RLIMIT_CORE, &no_core) < 0) {
-			radlog(L_ERR, "Failed disabling core dumps: %s",
+			DEBUGE("Failed disabling core dumps: %s",
 			       strerror(errno));
 		}
 #endif
@@ -459,7 +459,7 @@ static void fr_set_dumpable(void)
 #ifdef HAVE_SYS_PRCTL_H
 #ifdef PR_SET_DUMPABLE
 	if (prctl(PR_SET_DUMPABLE, 1) < 0) {
-		radlog(L_ERR,"Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
+		DEBUGE("Cannot re-enable core dumps: prctl(PR_SET_DUMPABLE) failed: '%s'",
 		       strerror(errno));
 	}
 #endif
@@ -470,7 +470,7 @@ static void fr_set_dumpable(void)
 	 */
 #ifdef HAVE_SYS_RESOURCE_H
 	if (setrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		radlog(L_ERR, "Cannot update core dump limit: %s",
+		DEBUGE("Cannot update core dump limit: %s",
 		       strerror(errno));
 	}
 #endif
@@ -485,17 +485,17 @@ void fr_suid_up(void)
 	uid_t ruid, euid, suid;
 	
 	if (getresuid(&ruid, &euid, &suid) < 0) {
-		radlog(L_ERR, "Failed getting saved UID's");
+		DEBUGE("Failed getting saved UID's");
 		_exit(1);
 	}
 
 	if (setresuid(-1, suid, -1) < 0) {
-		radlog(L_ERR, "Failed switching to privileged user");
+		DEBUGE("Failed switching to privileged user");
 		_exit(1);
 	}
 
 	if (geteuid() != suid) {
-		radlog(L_ERR, "Switched to unknown UID");
+		DEBUGE("Switched to unknown UID");
 		_exit(1);
 	}
 }
@@ -524,13 +524,13 @@ void fr_suid_down_permanent(void)
 	if (!doing_setuid) return;
 
 	if (setresuid(server_uid, server_uid, server_uid) < 0) {
-		radlog(L_ERR, "Failed in permanent switch to uid %s: %s",
+		DEBUGE("Failed in permanent switch to uid %s: %s",
 		       uid_name, strerror(errno));
 		_exit(1);
 	}
 
 	if (geteuid() != server_uid) {
-		radlog(L_ERR, "Switched to unknown uid");
+		DEBUGE("Switched to unknown uid");
 		_exit(1);
 	}
 
@@ -590,7 +590,7 @@ static int switch_users(CONF_SECTION *cs)
 	 *	initialized.
 	 */
 	if (getrlimit(RLIMIT_CORE, &core_limits) < 0) {
-		radlog(L_ERR, "Failed to get current core limit:  %s", strerror(errno));
+		DEBUGE("Failed to get current core limit:  %s", strerror(errno));
 		return 0;
 	}
 #endif
@@ -760,19 +760,19 @@ int read_mainconfig(int reload)
 	char buffer[1024];
 
 	if (reload != 0) {
-		radlog(L_ERR, "Reload is not implemented");
+		DEBUGE("Reload is not implemented");
 		return -1;
 	}
 
 	if (stat(radius_dir, &statbuf) < 0) {
-		radlog(L_ERR, "Errors reading %s: %s",
+		DEBUGE("Errors reading %s: %s",
 		       radius_dir, strerror(errno));
 		return -1;
 	}
 
 #ifdef S_IWOTH
 	if ((statbuf.st_mode & S_IWOTH) != 0) {
-		radlog(L_ERR, "Configuration directory %s is globally writable.  Refusing to start due to insecure configuration.",
+		DEBUGE("Configuration directory %s is globally writable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 	  return -1;
 	}
@@ -780,7 +780,7 @@ int read_mainconfig(int reload)
 
 #ifdef S_IROTH
 	if (0 && (statbuf.st_mode & S_IROTH) != 0) {
-		radlog(L_ERR, "Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
+		DEBUGE("Configuration directory %s is globally readable.  Refusing to start due to insecure configuration.",
 		       radius_dir);
 		return -1;
 	}
@@ -792,7 +792,7 @@ int read_mainconfig(int reload)
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
 		 radius_dir, mainconfig.name);
 	if ((cs = cf_file_read(buffer)) == NULL) {
-		radlog(L_ERR, "Errors reading or parsing %s", buffer);
+		DEBUGE("Errors reading or parsing %s", buffer);
 		return -1;
 	}
 
@@ -886,7 +886,7 @@ int read_mainconfig(int reload)
 	if (!mainconfig.dictionary_dir) mainconfig.dictionary_dir = radius_dir;
 	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
 	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
-		radlog(L_ERR, "Errors reading dictionary: %s",
+		DEBUGE("Errors reading dictionary: %s",
 				fr_strerror());
 		return -1;
 	}
@@ -975,7 +975,7 @@ int read_mainconfig(int reload)
 
 	if (chroot_dir) {
 		if (chdir(radlog_dir) < 0) {
-			radlog(L_ERR, "Failed to 'chdir %s' after chroot: %s",
+			DEBUGE("Failed to 'chdir %s' after chroot: %s",
 			       radlog_dir, strerror(errno));
 			return -1;
 		}
@@ -1057,7 +1057,7 @@ void hup_mainconfig(void)
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
 		 radius_dir, mainconfig.name);
 	if ((cs = cf_file_read(buffer)) == NULL) {
-		radlog(L_ERR, "Failed to re-read or parse %s", buffer);
+		DEBUGE("Failed to re-read or parse %s", buffer);
 		return;
 	}
 

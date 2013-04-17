@@ -177,7 +177,7 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 	}
 
 	if ((new_tls = SSL_new(conf->ctx)) == NULL) {
-		radlog(L_ERR, "SSL: Error creating new SSL: %s",
+		DEBUGE("SSL: Error creating new SSL: %s",
 		       ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
 	}
@@ -309,12 +309,12 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
 		 *	being regarded as "dead".
 		 */
 	case SSL_ERROR_SYSCALL:
-		radlog(L_ERR, "SSL: %s failed in a system call (%d), TLS session fails.",
+		DEBUGE("SSL: %s failed in a system call (%d), TLS session fails.",
 		       text, ret);
 		return 0;
 
 	case SSL_ERROR_SSL:
-		radlog(L_ERR, "SSL: %s failed inside of TLS (%d), TLS session fails.",
+		DEBUGE("SSL: %s failed inside of TLS (%d), TLS session fails.",
 		       text, ret);
 		return 0;
 
@@ -325,7 +325,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
 		 *	them - so "politely inform" the caller that
 		 *	the code needs updating here.
 		 */
-		radlog(L_ERR, "SSL: FATAL SSL error ..... %d\n", e);
+		DEBUGE("SSL: FATAL SSL error ..... %d\n", e);
 		return 0;
 	}
 
@@ -920,7 +920,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	BIO *bio;
 
 	if ((bio = BIO_new_file(file, "r")) == NULL) {
-		radlog(L_ERR, "rlm_eap_tls: Unable to open DH file - %s", file);
+		DEBUGE("rlm_eap_tls: Unable to open DH file - %s", file);
 		return -1;
 	}
 
@@ -933,7 +933,7 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	}
 
 	if (SSL_CTX_set_tmp_dh(ctx, dh) < 0) {
-		radlog(L_ERR, "rlm_eap_tls: Unable to set DH parameters");
+		DEBUGE("rlm_eap_tls: Unable to set DH parameters");
 		DH_free(dh);
 		return -1;
 	}
@@ -953,7 +953,7 @@ static int generate_eph_rsa_key(SSL_CTX *ctx)
 	rsa = RSA_generate_key(512, RSA_F4, NULL, NULL);
 
 	if (!SSL_CTX_set_tmp_rsa(ctx, rsa)) {
-		radlog(L_ERR, "rlm_eap_tls: Couldn't set ephemeral RSA key");
+		DEBUGE("rlm_eap_tls: Couldn't set ephemeral RSA key");
 		return -1;
 	}
 
@@ -1283,7 +1283,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	/* Send OCSP request and wait for response */
 	resp = OCSP_sendreq_bio(cbio, path, req);
 	if (!resp) {
-		radlog(L_ERR, "Error: Couldn't get OCSP response");
+		DEBUGE("Error: Couldn't get OCSP response");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1293,14 +1293,14 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	rc = BIO_do_connect(cbio);
 	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
-		radlog(L_ERR, "Error: Couldn't connect to OCSP responder");
+		DEBUGE("Error: Couldn't connect to OCSP responder");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
 	ctx = OCSP_sendreq_new(cbio, path, req, -1);
 	if (!ctx) {
-		radlog(L_ERR, "Error: Couldn't send OCSP request");
+		DEBUGE("Error: Couldn't send OCSP request");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1318,7 +1318,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	} while ((rc == -1) && BIO_should_retry(cbio));
 
 	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
-		radlog(L_ERR, "Error: OCSP response timed out");
+		DEBUGE("Error: OCSP response timed out");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1326,7 +1326,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	OCSP_REQ_CTX_free(ctx);
 
 	if (rc == 0) {
-		radlog(L_ERR, "Error: Couldn't get OCSP response");
+		DEBUGE("Error: Couldn't get OCSP response");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1336,23 +1336,23 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	status = OCSP_response_status(resp);
 	DEBUG2("[ocsp] --> Response status: %s",OCSP_response_status_str(status));
 	if(status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-		radlog(L_ERR, "Error: OCSP response status: %s", OCSP_response_status_str(status));
+		DEBUGE("Error: OCSP response status: %s", OCSP_response_status_str(status));
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
 	if(conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
-		radlog(L_ERR, "Error: OCSP response has wrong nonce value");
+		DEBUGE("Error: OCSP response has wrong nonce value");
 		goto ocsp_end;
 	}
 	if(OCSP_basic_verify(bresp, NULL, store, 0)!=1){
-		radlog(L_ERR, "Error: Couldn't verify OCSP basic response");
+		DEBUGE("Error: Couldn't verify OCSP basic response");
 		goto ocsp_end;
 	}
 
 	/*	Verify OCSP cert status */
 	if(!OCSP_resp_find_status(bresp, certid, &status, &reason,
 						      &rev, &thisupd, &nextupd)) {
-		radlog(L_ERR, "ERROR: No Status found.\n");
+		DEBUGE("ERROR: No Status found.\n");
 		goto ocsp_end;
 	}
 
@@ -1633,7 +1633,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 	if (!my_ok) {
 		const char *p = X509_verify_cert_error_string(err);
-		radlog(L_ERR,"--> verify error:num=%d:%s\n",err, p);
+		DEBUGE("--> verify error:num=%d:%s\n",err, p);
 		RDEBUGE("SSL says error %d : %s", err, p);
 		return my_ok;
 	}
@@ -1641,18 +1641,18 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	switch (ctx->error) {
 
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
-		radlog(L_ERR, "issuer= %s\n", issuer);
+		DEBUGE("issuer= %s\n", issuer);
 		break;
 	case X509_V_ERR_CERT_NOT_YET_VALID:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_BEFORE_FIELD:
-		radlog(L_ERR, "notBefore=");
+		DEBUGE("notBefore=");
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notBefore(ctx->current_cert));
 #endif
 		break;
 	case X509_V_ERR_CERT_HAS_EXPIRED:
 	case X509_V_ERR_ERROR_IN_CERT_NOT_AFTER_FIELD:
-		radlog(L_ERR, "notAfter=");
+		DEBUGE("notAfter=");
 #if 0
 		ASN1_TIME_print(bio_err, X509_get_notAfter(ctx->current_cert));
 #endif
@@ -1697,7 +1697,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		if (my_ok && conf->ocsp_enable){
 			RDEBUG2("--> Starting OCSP Request");
 			if(X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert)!=1) {
-				radlog(L_ERR, "Error: Couldn't get issuer_cert for %s", common_name);
+				DEBUGE("Error: Couldn't get issuer_cert for %s", common_name);
 			}
 			my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
 		}
@@ -1789,8 +1789,8 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 	/* Load the CAs we trust */
 	if (conf->ca_file || conf->ca_path)
 		if(!X509_STORE_load_locations(store, conf->ca_file, conf->ca_path)) {
-			radlog(L_ERR, "rlm_eap: X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
-			radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
+			DEBUGE("rlm_eap: X509_STORE error %s", ERR_error_string(ERR_get_error(), NULL));
+			DEBUGE("rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
 			return NULL;
 		}
 
@@ -1813,13 +1813,13 @@ static int set_ecdh_curve(SSL_CTX *ctx, const char *ecdh_curve)
 
 	nid = OBJ_sn2nid(ecdh_curve);
 	if (!nid) {
-		radlog(L_ERR, "Unknown ecdh_curve \"%s\"", ecdh_curve);
+		DEBUGE("Unknown ecdh_curve \"%s\"", ecdh_curve);
 		return -1;
 	}
 
 	ecdh = EC_KEY_new_by_curve_name(nid);
 	if (!ecdh) {
-		radlog(L_ERR, "Unable to create new curve \"%s\"", ecdh_curve);
+		DEBUGE("Unable to create new curve \"%s\"", ecdh_curve);
 		return -1;
 	}
 
@@ -1928,16 +1928,16 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 			FILE* cmd_pipe = popen(cmd, "r");
 			if (!cmd_pipe) {
-				radlog(L_ERR, "TLS: %s command failed.	Unable to get private_key_password", cmd);
-				radlog(L_ERR, "Error reading private_key_file %s", conf->private_key_file);
+				DEBUGE("TLS: %s command failed.	Unable to get private_key_password", cmd);
+				DEBUGE("Error reading private_key_file %s", conf->private_key_file);
 				return NULL;
 			}
 
 			talloc_free(conf->private_key_password);
 			conf->private_key_password = talloc_array(conf, char, max_password_len);
 			if (!conf->private_key_password) {
-				radlog(L_ERR, "TLS: Can't allocate space for private_key_password");
-				radlog(L_ERR, "TLS: Error reading private_key_file %s", conf->private_key_file);
+				DEBUGE("TLS: Can't allocate space for private_key_password");
+				DEBUGE("TLS: Error reading private_key_file %s", conf->private_key_file);
 				pclose(cmd_pipe);
 				return NULL;
 			}
@@ -1959,7 +1959,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 	    (!conf->psk_identity && conf->psk_password) ||
 	    (conf->psk_identity && !*conf->psk_identity) ||
 	    (conf->psk_password && !*conf->psk_password)) {
-		radlog(L_ERR, "Invalid PSK Configuration: psk_identity or psk_password are empty");
+		DEBUGE("Invalid PSK Configuration: psk_identity or psk_password are empty");
 		return NULL;
 	}
 
@@ -1970,7 +1970,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		if (conf->certificate_file ||
 		    conf->private_key_password || conf->private_key_file ||
 		    conf->ca_file || conf->ca_path) {
-			radlog(L_ERR, "When PSKs are used, No certificate configuration is permitted");
+			DEBUGE("When PSKs are used, No certificate configuration is permitted");
 			return NULL;
 		}
 
@@ -1984,7 +1984,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 		psk_len = strlen(conf->psk_password);
 		if (strlen(conf->psk_password) > (2 * PSK_MAX_PSK_LEN)) {
-			radlog(L_ERR, "psk_hexphrase is too long (max %d)",
+			DEBUGE("psk_hexphrase is too long (max %d)",
 			       PSK_MAX_PSK_LEN);
 			return NULL;			
 		}
@@ -1992,7 +1992,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		hex_len = fr_hex2bin(conf->psk_password,
 				     (uint8_t *) buffer, psk_len);
 		if (psk_len != (2 * hex_len)) {
-			radlog(L_ERR, "psk_hexphrase is not all hex");
+			DEBUGE("psk_hexphrase is not all hex");
 			return NULL;			
 		}
 
@@ -2015,14 +2015,14 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 
 	if (type == SSL_FILETYPE_PEM) {
 		if (!(SSL_CTX_use_certificate_chain_file(ctx, conf->certificate_file))) {
-			radlog(L_ERR, "Error reading certificate file %s:%s",
+			DEBUGE("Error reading certificate file %s:%s",
 			       conf->certificate_file,
 			       ERR_error_string(ERR_get_error(), NULL));
 			return NULL;
 		}
 
 	} else if (!(SSL_CTX_use_certificate_file(ctx, conf->certificate_file, type))) {
-		radlog(L_ERR, "Error reading certificate file %s:%s",
+		DEBUGE("Error reading certificate file %s:%s",
 		       conf->certificate_file,
 		       ERR_error_string(ERR_get_error(), NULL));
 		return NULL;
@@ -2032,8 +2032,8 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 load_ca:
 	if (conf->ca_file || conf->ca_path) {
 		if (!SSL_CTX_load_verify_locations(ctx, conf->ca_file, conf->ca_path)) {
-			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			radlog(L_ERR, "rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
+			DEBUGE("rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			DEBUGE("rlm_eap_tls: Error reading Trusted root CA list %s",conf->ca_file );
 			return NULL;
 		}
 	}
@@ -2041,7 +2041,7 @@ load_ca:
 
 	if (conf->private_key_file) {
 		if (!(SSL_CTX_use_PrivateKey_file(ctx, conf->private_key_file, type))) {
-			radlog(L_ERR, "Failed reading private key file %s:%s",
+			DEBUGE("Failed reading private key file %s:%s",
 			       conf->private_key_file,
 			       ERR_error_string(ERR_get_error(), NULL));
 			return NULL;
@@ -2051,7 +2051,7 @@ load_ca:
 		 * Check if the loaded private key is the right one
 		 */
 		if (!SSL_CTX_check_private_key(ctx)) {
-			radlog(L_ERR, "Private key does not match the certificate public key");
+			DEBUGE("Private key does not match the certificate public key");
 			return NULL;
 		}
 	}
@@ -2138,8 +2138,8 @@ post_ca:
 	if (conf->check_crl) {
 	  certstore = SSL_CTX_get_cert_store(ctx);
 	  if (certstore == NULL) {
-	    radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-	    radlog(L_ERR, "rlm_eap_tls: Error reading Certificate Store");
+	    DEBUGE("rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+	    DEBUGE("rlm_eap_tls: Error reading Certificate Store");
 	    return NULL;
 	  }
 	  X509_STORE_set_flags(certstore, X509_V_FLAG_CRL_CHECK);
@@ -2162,8 +2162,8 @@ post_ca:
 	/* Load randomness */
 	if (conf->random_file) {
 		if (!(RAND_load_file(conf->random_file, 1024*1024))) {
-			radlog(L_ERR, "rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
-			radlog(L_ERR, "rlm_eap_tls: Error loading randomness");
+			DEBUGE("rlm_eap: SSL error %s", ERR_error_string(ERR_get_error(), NULL));
+			DEBUGE("rlm_eap_tls: Error loading randomness");
 			return NULL;
 		}
 	}
@@ -2173,7 +2173,7 @@ post_ca:
 	 */
 	if (conf->cipher_list) {
 		if (!SSL_CTX_set_cipher_list(ctx, conf->cipher_list)) {
-			radlog(L_ERR, "rlm_eap_tls: Error setting cipher list");
+			DEBUGE("rlm_eap_tls: Error setting cipher list");
 			return NULL;
 		}
 	}
@@ -2264,7 +2264,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 
 	conf = talloc_zero(cs, fr_tls_server_conf_t);
 	if (!conf) {
-		radlog(L_ERR, "Out of memory");
+		DEBUGE("Out of memory");
 		return NULL;
 	}
 
@@ -2300,12 +2300,12 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	}
 
 	if (!conf->private_key_file) {
-		radlog(L_ERR, "TLS Server requires a private key file");
+		DEBUGE("TLS Server requires a private key file");
 		goto error;
 	}
 
 	if (!conf->certificate_file) {
-		radlog(L_ERR, "TLS Server requires a certificate file");
+		DEBUGE("TLS Server requires a certificate file");
 		goto error;
 	}
 
@@ -2337,13 +2337,13 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 
 	if (conf->verify_tmp_dir) {
 		if (chmod(conf->verify_tmp_dir, S_IRWXU) < 0) {
-			radlog(L_ERR, "Failed changing permissions on %s: %s", conf->verify_tmp_dir, strerror(errno));
+			DEBUGE("Failed changing permissions on %s: %s", conf->verify_tmp_dir, strerror(errno));
 			goto error;
 		}
 	}
 
 	if (conf->verify_client_cert_cmd && !conf->verify_tmp_dir) {
-		radlog(L_ERR, "You MUST set the verify directory in order to use verify_client_cmd");
+		DEBUGE("You MUST set the verify directory in order to use verify_client_cmd");
 		goto error;
 	}
 
@@ -2367,7 +2367,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 
 	conf = talloc_zero(cs, fr_tls_server_conf_t);
 	if (!conf) {
-		radlog(L_ERR, "Out of memory");
+		DEBUGE("Out of memory");
 		return NULL;
 	}
 

@@ -297,7 +297,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, const char *name1,
 						parent,
 						buffer, sizeof(buffer), name2);
 			if (!name2) {
-				radlog(L_ERR, "Failed expanding section name");
+				DEBUGE("Failed expanding section name");
 				return NULL;
 			}
 		}
@@ -412,7 +412,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 				if (!cs->section_tree) {
 					cs->section_tree = rbtree_create(section_cmp, NULL, 0);
 					if (!cs->section_tree) {
-						radlog(L_ERR, "Out of memory");
+						DEBUGE("Out of memory");
 						_exit(1);
 					}
 				}
@@ -653,7 +653,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			 *	capped at 8k, which is sizeof(name)
 			 */
 			if ((size_t) (end - ptr) >= sizeof(name)) {
-				radlog(L_ERR, "%s[%d]: Reference string is too large",
+				DEBUGE("%s[%d]: Reference string is too large",
 				       cf, *lineno);
 				return NULL;
 			}
@@ -663,7 +663,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 
 			ci = cf_reference_item(parentcs, outercs, name);
 			if (!ci || (ci->type != CONF_ITEM_PAIR)) {
-				radlog(L_ERR, "%s[%d]: Reference \"%s\" not found",
+				DEBUGE("%s[%d]: Reference \"%s\" not found",
 				       cf, *lineno, input);
 				return NULL;
 			}
@@ -673,13 +673,13 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			 */
 			cp = cf_itemtopair(ci);
 			if (!cp->value) {
-				radlog(L_ERR, "%s[%d]: Reference \"%s\" has no value",
+				DEBUGE("%s[%d]: Reference \"%s\" has no value",
 				       cf, *lineno, input);
 				return NULL;
 			}
 
 			if (p + strlen(cp->value) >= output + outsize) {
-				radlog(L_ERR, "%s[%d]: Reference \"%s\" is too long",
+				DEBUGE("%s[%d]: Reference \"%s\" is too long",
 				       cf, *lineno, input);
 				return NULL;
 			}
@@ -711,7 +711,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			 *	capped at 8k, which is sizeof(name)
 			 */
 			if ((size_t) (end - ptr) >= sizeof(name)) {
-				radlog(L_ERR, "%s[%d]: Environment variable name is too large",
+				DEBUGE("%s[%d]: Environment variable name is too large",
 				       cf, *lineno);
 				return NULL;
 			}
@@ -730,7 +730,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 			}
 
 			if (p + strlen(env) >= output + outsize) {
-				radlog(L_ERR, "%s[%d]: Reference \"%s\" is too long",
+				DEBUGE("%s[%d]: Reference \"%s\" is too long",
 				       cf, *lineno, input);
 				return NULL;
 			}
@@ -748,7 +748,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 
 
 		if (p >= (output + outsize)) {
-			radlog(L_ERR, "%s[%d]: Reference \"%s\" is too long",
+			DEBUGE("%s[%d]: Reference \"%s\" is too long",
 			       cf, *lineno, input);
 			return NULL;
 		}
@@ -974,7 +974,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 			break;
 		}
 		if (ip_hton(value, AF_INET, &ipaddr) < 0) {
-			radlog(L_ERR, "Can't find IP address for host %s", value);
+			DEBUGE("Can't find IP address for host %s", value);
 			return -1;
 		}
 		
@@ -991,7 +991,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 
 	case PW_TYPE_IPV6ADDR:
 		if (ip_hton(value, AF_INET6, &ipaddr) < 0) {
-			radlog(L_ERR, "Can't find IPv6 address for host %s", value);
+			DEBUGE("Can't find IPv6 address for host %s", value);
 			return -1;
 		}
 		cf_log_info(cs, "%.*s\t%s = %s IPv6 address [%s]",
@@ -1010,7 +1010,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
 		rad_assert(type > PW_TYPE_INVALID);
 		rad_assert(type < PW_TYPE_MAX);
 
-		radlog(L_ERR, "type '%s' is not supported in the configuration files",
+		DEBUGE("type '%s' is not supported in the configuration files",
 		       fr_int2str(dict_attr_types, type, "?Unknown?"));
 		return -1;
 	} /* switch over variable type */
@@ -1199,7 +1199,7 @@ static int seen_too_much(const char *filename, int lineno, const char *ptr)
 	}
 
 	if (*ptr) {
-		radlog(L_ERR, "%s[%d] Unexpected text %s.  See \"man unlang\"",
+		DEBUGE("%s[%d] Unexpected text %s.  See \"man unlang\"",
 		       filename, lineno, ptr);
 		return TRUE;
 	}
@@ -1251,7 +1251,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 */
 		len = strlen(cbuf);
 		if ((cbuf + len + 1) >= (buf + sizeof(buf))) {
-			radlog(L_ERR, "%s[%d]: Line too long",
+			DEBUGE("%s[%d]: Line too long",
 			       filename, *lineno);
 			return -1;
 		}
@@ -1279,7 +1279,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			if (!*ptr || (*ptr == '#')) continue;
 
 		} else if (at_eof || (len == 0)) {
-			radlog(L_ERR, "%s[%d]: Continuation at EOF is illegal",
+			DEBUGE("%s[%d]: Continuation at EOF is illegal",
 			       filename, *lineno);
 			return -1;
 		}
@@ -1324,7 +1324,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				hack = rad_copy_string(buf1, ptr);
 			}
 			if (hack < 0) {
-				radlog(L_ERR, "%s[%d]: Invalid expansion: %s",
+				DEBUGE("%s[%d]: Invalid expansion: %s",
 				       filename, *lineno, ptr);
 				return -1;
 			}
@@ -1339,7 +1339,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				goto do_bare_word;
 				
 			default:
-				radlog(L_ERR, "%s[%d]: Invalid expansion: %s",
+				DEBUGE("%s[%d]: Invalid expansion: %s",
 				       filename, *lineno, ptr);
 				return -1;
 			}
@@ -1355,7 +1355,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 */
 	       if (t1 == T_RCBRACE) {
 		       if (this == current) {
-			       radlog(L_ERR, "%s[%d]: Too many closing braces",
+			       DEBUGE("%s[%d]: Too many closing braces",
 				      filename, *lineno);
 			       return -1;
 
@@ -1388,7 +1388,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				value = cf_local_file(filename, value, buf3,
 						      sizeof(buf3));
 				if (!value) {
-					radlog(L_ERR, "%s[%d]: Directories too deep.",
+					DEBUGE("%s[%d]: Directories too deep.",
 					       filename, *lineno);
 					return -1;
 				}
@@ -1413,21 +1413,21 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				 *	Security checks.
 				 */
 				if (stat(value, &stat_buf) < 0) {
-					radlog(L_ERR, "%s[%d]: Failed reading directory %s: %s",
+					DEBUGE("%s[%d]: Failed reading directory %s: %s",
 					       filename, *lineno, 
 					       value, strerror(errno));
 					return -1;
 				}
 
 				if ((stat_buf.st_mode & S_IWOTH) != 0) {
-					radlog(L_ERR, "%s[%d]: Directory %s is globally writable.  Refusing to start due to insecure configuration.",
+					DEBUGE("%s[%d]: Directory %s is globally writable.  Refusing to start due to insecure configuration.",
 					       filename, *lineno, value);
 					return -1;
 				}
 #endif
 				dir = opendir(value);
 				if (!dir) {
-					radlog(L_ERR, "%s[%d]: Error reading directory %s: %s",
+					DEBUGE("%s[%d]: Error reading directory %s: %s",
 					       filename, *lineno, value,
 					       strerror(errno));
 					return -1;
@@ -1496,20 +1496,20 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 		       templatecs = cf_section_sub_find(parentcs, "templates");
 		       if (!templatecs) {
-				radlog(L_ERR, "%s[%d]: No \"templates\" section for reference \"%s\"",
+				DEBUGE("%s[%d]: No \"templates\" section for reference \"%s\"",
 				       filename, *lineno, buf2);
 				return -1;
 		       }
 
 		       ci = cf_reference_item(parentcs, templatecs, buf2);
 		       if (!ci || (ci->type != CONF_ITEM_SECTION)) {
-				radlog(L_ERR, "%s[%d]: Reference \"%s\" not found",
+				DEBUGE("%s[%d]: Reference \"%s\" not found",
 				       filename, *lineno, buf2);
 				return -1;
 		       }
 		       
 		       if (this->template) {
-				radlog(L_ERR, "%s[%d]: Section already has a template",
+				DEBUGE("%s[%d]: Section already has a template",
 				       filename, *lineno);
 				return -1;
 		       }
@@ -1523,7 +1523,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 *	with 'internal' names;
 		 */
 		if (buf1[0] == '_') {
-			radlog(L_ERR, "%s[%d]: Illegal configuration pair name \"%s\"",
+			DEBUGE("%s[%d]: Illegal configuration pair name \"%s\"",
 					filename, *lineno, buf1);
 			return -1;
 		}
@@ -1544,7 +1544,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			 */
 			if (!this->item.parent) {
 			invalid_location:
-				radlog(L_ERR, "%s[%d]: Invalid location for '%s'",
+				DEBUGE("%s[%d]: Invalid location for '%s'",
 				       filename, *lineno, buf1);
 				return -1;
 			}
@@ -1573,7 +1573,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				memset(spbuf, ' ', offset);
 				spbuf[offset] = '\0';
 
-				radlog(L_ERR, "%s[%d]: Parse error in condition",
+				DEBUGE("%s[%d]: Parse error in condition",
 				       filename, *lineno);
 
 				DEBUGE("%s", buf);
@@ -1583,7 +1583,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			}
 
 			if ((size_t) slen >= (sizeof(buf2) - 1)) {
-				radlog(L_ERR, "%s[%d]: Condition is too large after \"%s\"",
+				DEBUGE("%s[%d]: Condition is too large after \"%s\"",
 				       filename, *lineno, buf1);
 				return -1;
 			}
@@ -1594,7 +1594,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			t2 = T_BARE_WORD;
 			
 			if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
-				radlog(L_ERR, "%s[%d]: Expected '{'",
+				DEBUGE("%s[%d]: Expected '{'",
 				       filename, *lineno);
 				return -1;
 			}
@@ -1623,7 +1623,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_OP_GE:
 		case T_OP_CMP_FALSE:
 			if (!this || (strcmp(this->name1, "update") != 0)) {
-				radlog(L_ERR, "%s[%d]: Invalid operator in assignment",
+				DEBUGE("%s[%d]: Invalid operator in assignment",
 				       filename, *lineno);
 				return -1;
 			}
@@ -1633,7 +1633,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_OP_SET:
 			t3 = getstring(&ptr, buf3, sizeof(buf3));
 			if (t3 == T_OP_INVALID) {
-				radlog(L_ERR, "%s[%d]: Parse error: %s",
+				DEBUGE("%s[%d]: Parse error: %s",
 				       filename, *lineno,
 				       fr_strerror());
 				return -1;
@@ -1645,7 +1645,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			 */
 			if ((t3 == T_BACK_QUOTED_STRING) &&
 			    (!this || (strcmp(this->name1, "update") != 0))) {
-				radlog(L_ERR, "%s[%d]: Syntax error: Invalid string `...` in assignment",
+				DEBUGE("%s[%d]: Syntax error: Invalid string `...` in assignment",
 				       filename, *lineno);
 				return -1;
 			}
@@ -1683,7 +1683,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		case T_SINGLE_QUOTED_STRING:
 			t3 = gettoken(&ptr, buf3, sizeof(buf3));
 			if (t3 != T_LCBRACE) {
-				radlog(L_ERR, "%s[%d]: Expecting section start brace '{' after \"%s %s\"",
+				DEBUGE("%s[%d]: Expecting section start brace '{' after \"%s %s\"",
 				       filename, *lineno, buf1, buf2);
 				return -1;
 			}
@@ -1696,7 +1696,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			css = cf_section_alloc(this, buf1,
 					       t2 == T_LCBRACE ? NULL : buf2);
 			if (!css) {
-				radlog(L_ERR, "%s[%d]: Failed allocating memory for section",
+				DEBUGE("%s[%d]: Failed allocating memory for section",
 						filename, *lineno);
 				return -1;
 			}
@@ -1711,7 +1711,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			continue;
 
 		default:
-			radlog(L_ERR, "%s[%d]: Parse error after \"%s\"",
+			DEBUGE("%s[%d]: Parse error after \"%s\"",
 			       filename, *lineno, buf1);
 			return -1;
 		}
@@ -1721,7 +1721,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 	 *	See if EOF was unexpected ..
 	 */
 	if (feof(fp) && (this != current)) {
-		radlog(L_ERR, "%s[%d]: EOF reached without closing brace for section %s starting at line %d",
+		DEBUGE("%s[%d]: EOF reached without closing brace for section %s starting at line %d",
 		       filename, *lineno,
 		       cf_section_name1(this), cf_section_lineno(this));
 		return -1;
@@ -1745,7 +1745,7 @@ int cf_file_include(CONF_SECTION *cs, const char *filename)
 
 	fp = fopen(filename, "r");
 	if (!fp) {
-		radlog(L_ERR, "Unable to open file \"%s\": %s",
+		DEBUGE("Unable to open file \"%s\": %s",
 		       filename, strerror(errno));
 		return -1;
 	}
@@ -1754,7 +1754,7 @@ int cf_file_include(CONF_SECTION *cs, const char *filename)
 #ifdef S_IWOTH
 		if ((statbuf.st_mode & S_IWOTH) != 0) {
 			fclose(fp);
-			radlog(L_ERR, "Configuration file %s is globally writable.  Refusing to start due to insecure configuration.",
+			DEBUGE("Configuration file %s is globally writable.  Refusing to start due to insecure configuration.",
 			       filename);
 			return -1;
 		}
@@ -1763,7 +1763,7 @@ int cf_file_include(CONF_SECTION *cs, const char *filename)
 #ifdef S_IROTH
 		if (0 && (statbuf.st_mode & S_IROTH) != 0) {
 			fclose(fp);
-			radlog(L_ERR, "Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
+			DEBUGE("Configuration file %s is globally readable.  Refusing to start due to insecure configuration.",
 			       filename);
 			return -1;
 		}
@@ -1772,7 +1772,7 @@ int cf_file_include(CONF_SECTION *cs, const char *filename)
 
 	if (cf_data_find_internal(cs, filename, PW_TYPE_FILENAME)) {
 		fclose(fp);
-		radlog(L_ERR, "Cannot include the same file twice: \"%s\"",
+		DEBUGE("Cannot include the same file twice: \"%s\"",
 		       filename);
 		return -1;
 	}
@@ -1786,7 +1786,7 @@ int cf_file_include(CONF_SECTION *cs, const char *filename)
 	if (cf_data_add_internal(cs, filename, mtime, free,
 				 PW_TYPE_FILENAME) < 0) {
 		fclose(fp);
-		radlog(L_ERR, "Internal error opening file \"%s\"",
+		DEBUGE("Internal error opening file \"%s\"",
 		       filename);
 		return -1;
 	}
@@ -1794,7 +1794,7 @@ int cf_file_include(CONF_SECTION *cs, const char *filename)
 	cd = cf_data_find_internal(cs, filename, PW_TYPE_FILENAME);
 	if (!cd) {
 		fclose(fp);
-		radlog(L_ERR, "Internal error opening file \"%s\"",
+		DEBUGE("Internal error opening file \"%s\"",
 		       filename);
 		return -1;
 	}
@@ -2576,12 +2576,12 @@ void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 	va_end(ap);
 
 	if (ci) {
-		radlog(L_ERR, "%s[%d]: %s",
+		DEBUGE("%s[%d]: %s",
 		       ci->filename ? ci->filename : "unknown",
 		       ci->lineno ? ci->lineno : 0,
 		       buffer);
 	} else {
-		radlog(L_ERR, "<unknown>[*]: %s", buffer);
+		DEBUGE("<unknown>[*]: %s", buffer);
 	}
 }
 
@@ -2596,7 +2596,7 @@ void cf_log_err_cs(const CONF_SECTION *cs, const char *fmt, ...)
 
 	rad_assert(cs != NULL);
 
-	radlog(L_ERR, "%s[%d]: %s",
+	DEBUGE("%s[%d]: %s",
 	       cs->item.filename ? cs->item.filename : "unknown",
 	       cs->item.lineno ? cs->item.lineno : 0,
 	       buffer);
@@ -2613,7 +2613,7 @@ void cf_log_err_cp(const CONF_PAIR *cp, const char *fmt, ...)
 
 	rad_assert(cp != NULL);
 
-	radlog(L_ERR, "%s[%d]: %s",
+	DEBUGE("%s[%d]: %s",
 	       cp->item.filename ? cp->item.filename : "unknown",
 	       cp->item.lineno ? cp->item.lineno : 0,
 	       buffer);

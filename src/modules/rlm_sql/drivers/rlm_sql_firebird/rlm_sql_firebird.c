@@ -89,7 +89,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	}
 	
 	if (fb_connect(conn,config)) {
-		radlog(L_ERR, "rlm_sql_firebird: Connection failed %s\n",
+		DEBUGE("rlm_sql_firebird: Connection failed %s\n",
 		       conn->lasterror);
 		
 		return SQL_DOWN;
@@ -132,7 +132,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 	  		goto try_again;
 	  	}
   	
-		radlog(L_ERR, "conn_id rlm_sql_firebird,sql_query error: "
+		DEBUGE("conn_id rlm_sql_firebird,sql_query error: "
 		       "sql_code=%li, error='%s', query=%s",
 		       (long int) conn->sql_code,
 		       conn->lasterror,
@@ -145,7 +145,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 		/* Free problem query */
 		if (fb_rollback(conn)) {
 			//assume the network is down if rollback had failed
-			radlog(L_ERR,"Fail to rollback transaction after "
+			DEBUGE("Fail to rollback transaction after "
 			       "previous error. Error: %s",
 			       conn->lasterror);
 		
@@ -212,7 +212,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
 	 	}
 	 	
 	 	if (res) {
-	  		radlog(L_ERR, "rlm_sql_firebird. Fetch problem:'%s'",
+	  		DEBUGE("rlm_sql_firebird. Fetch problem:'%s'",
 	  		       conn->lasterror);
 	  		
 	   		return -1;
@@ -277,7 +277,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	int affected_rows=fb_affected_rows(handle->conn);
 	
 	if (affected_rows < 0) {
-		radlog(L_ERR, "sql_affected_rows, rlm_sql_firebird. error:%s\n",
+		DEBUGE("sql_affected_rows, rlm_sql_firebird. error:%s\n",
 		       sql_error(handle,config));
 	}
 	

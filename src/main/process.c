@@ -253,7 +253,7 @@ static void request_coa_separate(REQUEST *coa);
 static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
 				    const char *msg)
 {
-	radlog(L_ERR, "[%s:%d] %s", file, line, msg);
+	DEBUGE("[%s:%d] %s", file, line, msg);
 	_exit(1);
 }
 
@@ -684,7 +684,7 @@ static void request_process_timer(REQUEST *request)
 			 */
 			if (spawn_flag &&
 			    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-				radlog(L_ERR, "WARNING: Unresponsive child for request %u, in component %s module %s",
+				DEBUGE("WARNING: Unresponsive child for request %u, in component %s module %s",
 				       request->number,
 				       request->component ? request->component : "<server core>",
 			       request->module ? request->module : "<server core>");
@@ -853,7 +853,7 @@ STATE_MACHINE_DECL(request_common)
 			return;
 		}
 #endif
-		radlog(L_ERR, "(%u) Discarding duplicate request from "
+		DEBUGE("(%u) Discarding duplicate request from "
 		       "client %s port %d - ID: %u due to unfinished request",
 		       request->number, request->client->shortname,
 		       request->packet->src_port,request->packet->id);
@@ -934,7 +934,7 @@ STATE_MACHINE_DECL(request_reject_delay)
 
 	switch (action) {
 	case FR_ACTION_DUP:
-		radlog(L_ERR, "(%u) Discarding duplicate request from "
+		DEBUGE("(%u) Discarding duplicate request from "
 		       "client %s port %d - ID: %u due to delayed reject",
 		       request->number, request->client->shortname,
 		       request->packet->src_port,request->packet->id);
@@ -1315,7 +1315,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 */
 	if (mainconfig.max_requests &&
 	    ((count = fr_packet_list_num_elements(pl)) > mainconfig.max_requests)) {
-		radlog(L_ERR, "Dropping request (%d is too many): from client %s port %d - ID: %d", count,
+		DEBUGE("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 		       client->shortname,
 		       packet->src_port, packet->id);
 		radlog(L_INFO, "WARNING: Please check the configuration file.\n"
@@ -1356,7 +1356,7 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request = request_alloc(); /* never fails */
 	request->reply = rad_alloc(request, 0);
 	if (!request->reply) {
-		radlog(L_ERR, "No memory");
+		DEBUGE("No memory");
 		request_free(&request);
 		return 1;
 	}
@@ -1717,7 +1717,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		this = proxy_new_listener(request->home_server, 0);
 		if (!this) {
 			PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-			radlog(L_ERR, "proxy: Failed to create a new outbound socket");
+			DEBUGE("proxy: Failed to create a new outbound socket");
 			return 0;
 		}
 
@@ -2495,7 +2495,7 @@ STATE_MACHINE_DECL(request_ping)
 
 	switch (action) {
 	case FR_ACTION_TIMER:
-		radlog(L_ERR, "No response to status check %d for home server %s port %d",
+		DEBUGE("No response to status check %d for home server %s port %d",
 		       request->number,
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
@@ -3444,7 +3444,7 @@ static void event_socket_handler(UNUSED fr_event_list_t *xel, UNUSED int fd, voi
 		char buffer[256];
 
 		listener->print(listener, buffer, sizeof(buffer));
-		radlog(L_ERR, "FATAL: Asked to read from closed socket: %s",
+		DEBUGE("FATAL: Asked to read from closed socket: %s",
 		       buffer);
 	
 		rad_panic("Socket was closed on us!");
@@ -3485,7 +3485,7 @@ static void event_poll_detail(void *ctx)
 
 	if (!fr_event_insert(el, event_poll_detail, this,
 			     &when, &detail->ev)) {
-		radlog(L_ERR, "Failed creating handler");
+		DEBUGE("Failed creating handler");
 		exit(1);
 	}
 }
@@ -3576,7 +3576,7 @@ int event_new_fd(rad_listen_t *this)
 				 *	open sockets, which should
 				 *	minimize this problem.
 				 */
-				radlog(L_ERR, "Failed adding proxy socket: %s",
+				DEBUGE("Failed adding proxy socket: %s",
 				       fr_strerror());
 				return 0;
 			}
@@ -3651,7 +3651,7 @@ int event_new_fd(rad_listen_t *this)
 		FD_MUTEX_LOCK(&fd_mutex);
 		if (!fr_event_fd_insert(el, 0, this->fd,
 					event_socket_handler, this)) {
-			radlog(L_ERR, "Failed adding event handler for socket!");
+			DEBUGE("Failed adding event handler for socket!");
 			exit(1);
 		}
 		FD_MUTEX_UNLOCK(&fd_mutex);
@@ -3703,7 +3703,7 @@ int event_new_fd(rad_listen_t *this)
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
-				radlog(L_ERR, "Fatal error freezing socket: %s",
+				DEBUGE("Fatal error freezing socket: %s",
 				       fr_strerror());
 				exit(1);
 			}
@@ -3745,12 +3745,12 @@ int event_new_fd(rad_listen_t *this)
 		 */
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
-			radlog(L_ERR, "FATAL failure opening /dev/null: %s",
+			DEBUGE("FATAL failure opening /dev/null: %s",
 			       strerror(errno));
 			exit(1);
 		}
 		if (dup2(devnull, this->fd) < 0) {
-			radlog(L_ERR, "FATAL failure closing socket: %s",
+			DEBUGE("FATAL failure closing socket: %s",
 			       strerror(errno));
 			exit(1);
 		}
@@ -3791,7 +3791,7 @@ int event_new_fd(rad_listen_t *this)
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_freeze(proxy_list,
 							  this->fd)) {
-				radlog(L_ERR, "Fatal error freezing socket: %s",
+				DEBUGE("Fatal error freezing socket: %s",
 				       fr_strerror());
 				exit(1);
 			}
@@ -3859,7 +3859,7 @@ finish:
 			PTHREAD_MUTEX_LOCK(&proxy_mutex);
 			if (!fr_packet_list_socket_remove(proxy_list,
 							  this->fd, NULL)) {
-				radlog(L_ERR, "Fatal error removing socket: %s",
+				DEBUGE("Fatal error removing socket: %s",
 				       fr_strerror());
 				exit(1);
 			}
@@ -4086,7 +4086,7 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&proxy_mutex, NULL) != 0) {
-			radlog(L_ERR, "FATAL: Failed to initialize proxy mutex: %s",
+			DEBUGE("FATAL: Failed to initialize proxy mutex: %s",
 			       strerror(errno));
 			exit(1);
 		}
@@ -4130,26 +4130,26 @@ int radius_event_init(CONF_SECTION *cs, int have_children)
 	 *	signal handlers.
 	 */
 	if (pipe(self_pipe) < 0) {
-		radlog(L_ERR, "radiusd: Error opening internal pipe: %s",
+		DEBUGE("radiusd: Error opening internal pipe: %s",
 		       strerror(errno));
 		exit(1);
 	}
 	if ((fcntl(self_pipe[0], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[0], F_SETFD, FD_CLOEXEC) < 0)) {
-		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
+		DEBUGE("radiusd: Error setting internal flags: %s",
 		       strerror(errno));
 		exit(1);
 	}
 	if ((fcntl(self_pipe[1], F_SETFL, O_NONBLOCK) < 0) ||
 	    (fcntl(self_pipe[1], F_SETFD, FD_CLOEXEC) < 0)) {
-		radlog(L_ERR, "radiusd: Error setting internal flags: %s",
+		DEBUGE("radiusd: Error setting internal flags: %s",
 		       strerror(errno));
 		exit(1);
 	}
 
 	if (!fr_event_fd_insert(el, 0, self_pipe[0],
 				  event_signal_handler, el)) {
-		radlog(L_ERR, "Failed creating handler for signals");
+		DEBUGE("Failed creating handler for signals");
 		exit(1);
 	}
 #endif	/* WITH_SELF_PIPE */

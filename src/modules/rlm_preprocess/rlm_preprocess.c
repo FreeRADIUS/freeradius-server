@@ -505,7 +505,7 @@ static int add_nas_attr(REQUEST *request)
 		break;
 
 	default:
-		radlog(L_ERR, "Unknown address family for packet");
+		DEBUGE("Unknown address family for packet");
 		return -1;
 	}
 
@@ -528,7 +528,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 		rcode = pairlist_read(inst, inst->huntgroup_file,
 				      &(inst->huntgroups), 0);
 		if (rcode < 0) {
-			radlog(L_ERR, "rlm_preprocess: Error reading %s",
+			DEBUGE("rlm_preprocess: Error reading %s",
 			       inst->huntgroup_file);
 			return -1;
 		}
@@ -540,7 +540,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	if (inst->hints_file) {
 		rcode = pairlist_read(inst, inst->hints_file, &(inst->hints), 0);
 		if (rcode < 0) {
-			radlog(L_ERR, "rlm_preprocess: Error reading %s",
+			DEBUGE("rlm_preprocess: Error reading %s",
 			       inst->hints_file);
 			return -1;
 		}

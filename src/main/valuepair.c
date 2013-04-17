@@ -827,7 +827,7 @@ VALUE_PAIR *radius_paircreate(REQUEST *request, VALUE_PAIR **vps,
 	 */
 	vp = paircreate(request, attribute, vendor);
 	if (!vp) {
-		radlog(L_ERR, "No memory!");
+		DEBUGE("No memory!");
 		rad_assert("No memory" == NULL);
 		_exit(1);
 	}
@@ -861,7 +861,7 @@ void debug_pair_list(VALUE_PAIR *vp)
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
 		if (!talloc_get_type(vp, VALUE_PAIR)) {
-			radlog(L_ERR, "Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+			DEBUGE("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
 			
 			log_talloc_report(vp);	
 			rad_assert(0);
@@ -1025,7 +1025,7 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 	vpt->request = radius_request_name(&p, request_def);
 	len = p - name;
 	if (vpt->request == REQUEST_UNKNOWN) {
-		radlog(L_ERR, "Invalid request qualifier \"%.*s\"", (int) len, name);
+		DEBUGE("Invalid request qualifier \"%.*s\"", (int) len, name);
 		
 		return -1;
 	}
@@ -1034,7 +1034,7 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
 	vpt->list = radius_list_name(&p, list_def);
 	if (vpt->list == PAIR_LIST_UNKNOWN) {
 		len = p - name;
-		radlog(L_ERR, "Invalid list qualifier \"%.*s\"", (int) len, name);
+		DEBUGE("Invalid list qualifier \"%.*s\"", (int) len, name);
 		
 		return -1;
 	}

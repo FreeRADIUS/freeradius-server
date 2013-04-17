@@ -273,7 +273,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 
 		fd = open(buffer, O_WRONLY | O_APPEND | O_CREAT, inst->permissions);
 		if (fd == -1) {
-			radlog(L_ERR, "rlm_linelog: Failed to open %s: %s",
+			DEBUGE("rlm_linelog: Failed to open %s: %s",
 			       buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}

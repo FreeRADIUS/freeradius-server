@@ -237,7 +237,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 		break;
 	default:
 		/* Should never enter here */
-		radlog(L_ERR, "rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
+		DEBUGE("rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
 		packet->code = PW_AUTHENTICATION_REJECT;
 		break;
 	}

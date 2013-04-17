@@ -74,7 +74,7 @@ int pairlist_read(TALLOC_CTX *ctx, const char *file, PAIR_LIST **list, int compl
 	if ((fp = fopen(file, "r")) == NULL) {
 		if (!complain)
 			return -1;
-		radlog(L_ERR, "Couldn't open %s for reading: %s",
+		DEBUGE("Couldn't open %s for reading: %s",
 				file, strerror(errno));
 		return -1;
 	}
@@ -88,7 +88,7 @@ int pairlist_read(TALLOC_CTX *ctx, const char *file, PAIR_LIST **list, int compl
 		lineno++;
 		if (!feof(fp) && (strchr(buffer, '\n') == NULL)) {
 			fclose(fp);
-			radlog(L_ERR, "%s[%d]: line too long", file, lineno);
+			DEBUGE("%s[%d]: line too long", file, lineno);
 			pairlist_free(&pl);
 			return -1;
 		}
@@ -109,8 +109,7 @@ parse_again:
 			 */
 			if (isspace((int) buffer[0]))  {
 				if (parsecode != T_EOL) {
-					radlog(L_ERR,
-					       "%s[%d]: Unexpected trailing comma for entry %s",
+					DEBUGE("%s[%d]: Unexpected trailing comma for entry %s",
 					       file, lineno, entry);
 					fclose(fp);
 					return -1;
@@ -158,8 +157,7 @@ parse_again:
 				
 				if (pairlist_read(ctx, newfile, &t, 0) != 0) {
 					pairlist_free(&pl);
-					radlog(L_ERR,
-					       "%s[%d]: Could not open included file %s: %s",
+					DEBUGE("%s[%d]: Could not open included file %s: %s",
 					       file, lineno, newfile, strerror(errno));
 					fclose(fp);
 					return -1;
@@ -186,14 +184,12 @@ parse_again:
 			parsecode = userparse(ctx, ptr, &check_tmp);
 			if (parsecode == T_OP_INVALID) {
 				pairlist_free(&pl);
-				radlog(L_ERR,
-				"%s[%d]: Parse error (check) for entry %s: %s",
+				DEBUGE("%s[%d]: Parse error (check) for entry %s: %s",
 					file, lineno, entry, fr_strerror());
 				fclose(fp);
 				return -1;
 			} else if (parsecode == T_COMMA) {
-				radlog(L_ERR,
-				       "%s[%d]: Unexpected trailing comma in check item list for entry %s",
+				DEBUGE("%s[%d]: Unexpected trailing comma in check item list for entry %s",
 				       file, lineno, entry);
 				fclose(fp);
 				return -1;
@@ -204,8 +200,7 @@ parse_again:
 		else {
 			if(*buffer == ' ' || *buffer == '\t') {
 				if (parsecode != T_COMMA) {
-					radlog(L_ERR,
-					       "%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
+					DEBUGE("%s[%d]: Syntax error: Previous line is missing a trailing comma for entry %s",
 					       file, lineno, entry);
 					fclose(fp);
 					return -1;
@@ -218,8 +213,7 @@ parse_again:
 				/* valid tokens are 1 or greater */
 				if (parsecode < 1) {
 					pairlist_free(&pl);
-					radlog(L_ERR,
-					       "%s[%d]: Parse error (reply) for entry %s: %s",
+					DEBUGE("%s[%d]: Parse error (reply) for entry %s: %s",
 					       file, lineno, entry, fr_strerror());
 					fclose(fp);
 					return -1;

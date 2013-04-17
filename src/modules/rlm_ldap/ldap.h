@@ -254,7 +254,7 @@ typedef enum {
 #define LDAP_DBG(fmt, ...) radlog(L_DBG, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
 #define LDAP_DBG_REQ(fmt, ...) do { if (request) {RDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBG(fmt, ##__VA_ARGS__);}} while (0)
 
-#define LDAP_ERR(fmt, ...) radlog(L_ERR, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_ERR(fmt, ...) DEBUGE("rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
 #define LDAP_ERR_REQ(fmt, ...) do { if (request) {RDEBUGE(fmt, ##__VA_ARGS__);} else {LDAP_ERR(fmt, ##__VA_ARGS__);}} while (0)
 
 #define LDAP_EXT() if (extra) LDAP_ERR(extra)
