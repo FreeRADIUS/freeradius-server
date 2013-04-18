@@ -75,7 +75,7 @@ struct cond_t {
 	cond_t  	*child;
 };
 
-W_UNEEDEDDEC_OFF
+W_UNUSEDDEC_OFF
 static void cond_debug(const cond_t *c)
 {
 
