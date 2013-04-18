@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include	<freeradius-devel/libradius.h>
 
 #include	<ctype.h>
+#include	<inttypes.h>
 
 #ifdef HAVE_PCREPOSIX_H
 #define WITH_REGEX
@@ -1158,7 +1159,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 		 *	Note that ALL integers are unsigned!
 		 */
 		p = vp->vp_strvalue;
-		if (sscanf(p, "%uPRId64", &y) != 1) {
+		if (sscanf(p, "%" PRIu64, &y) != 1) {
 			fr_strerror_printf("Invalid value %s for attribute %s",
 					   value, vp->da->name);
 			return FALSE;
