@@ -2846,8 +2846,6 @@ fi
 				PY_LIBS="-lpython$PY_VERSION"
 		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
 		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-		PY_INC_DIR="$PY_PREFIX/include/python$PY_VERSION"
-		PY_CFLAGS="-I$PY_PREFIX/include/python$PY_VERSION"
 		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config/Makefile"
 		if test -f ${PY_MAKEFILE}; then
 			PY_LOCALMODLIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
@@ -2859,7 +2857,7 @@ fi
 
 		old_CFLAGS=$CFLAGS
 		CFLAGS="$CFLAGS $PY_CFLAGS"
-		smart_try_dir=$PY_INC_DIR
+		smart_try_dir="$PY_PREFIX/include/python$PY_VERSION"
 
 
 
@@ -2872,7 +2870,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Python.h in $try" >&5
 $as_echo_n "checking for Python.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2887,7 +2885,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -2967,7 +2965,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Python.h in $try" >&5
 $as_echo_n "checking for Python.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2982,7 +2980,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3008,7 +3006,7 @@ fi
 		CFLAGS=$old_CFLAGS
 
 		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags=$PY_CFLAGS
+			mod_cflags=$smart_include
 		else
 			fail="$fail Python.h"
 			targetname=

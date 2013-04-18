@@ -105,7 +105,7 @@ static int dhcprelay_process_client_request(REQUEST *request)
 	 *
 	 * Drop requests if hop-count > 16 or admin specified another value
 	 */
-	if (vp = pairfind(request->config_items, 271, DHCP_MAGIC_VENDOR, TAG_ANY)) { /* DHCP-Relay-Max-Hop-Count */
+	if ((vp = pairfind(request->config_items, 271, DHCP_MAGIC_VENDOR, TAG_ANY))) { /* DHCP-Relay-Max-Hop-Count */
 	    maxhops = vp->vp_integer;
 	}
 	vp = pairfind(request->packet->vps, 259, DHCP_MAGIC_VENDOR, TAG_ANY); /* DHCP-Hop-Count */

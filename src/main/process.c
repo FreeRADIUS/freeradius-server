@@ -45,8 +45,6 @@ RCSID("$Id$")
 #	include <sys/wait.h>
 #endif
 
-#define NDEBUG
-
 extern pid_t radius_pid;
 extern int check_config;
 extern char *debug_condition;

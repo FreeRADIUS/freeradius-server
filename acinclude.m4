@@ -207,12 +207,12 @@ dnl #
 if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     AC_MSG_CHECKING([for $1 in $try])
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     AC_TRY_COMPILE([$2
 		    #include <$1>],
 		   [int a = 1;],
 		   [
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     AC_MSG_RESULT(yes)
 		     break
 		   ],
@@ -250,12 +250,12 @@ if test "x$smart_include" = "x"; then
   FR_LOCATE_DIR(smart_include_dir,$1)
   for try in $smart_include_dir /usr/local/include /opt/include; do
     AC_MSG_CHECKING([for $1 in $try])
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     AC_TRY_COMPILE([$2
 		    #include <$1>],
 		   [int a = 1;],
 		   [
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     AC_MSG_RESULT(yes)
 		     break
 		   ],

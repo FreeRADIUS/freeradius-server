@@ -56,8 +56,6 @@ if test x$with_[]modname != xno; then
 		PY_LIBS="-lpython$PY_VERSION"
 		PY_LIB_DIR="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
 		PY_LIB_LOC="-L$PY_EXEC_PREFIX/lib/python$PY_VERSION/config"
-		PY_INC_DIR="$PY_PREFIX/include/python$PY_VERSION"
-		PY_CFLAGS="-I$PY_PREFIX/include/python$PY_VERSION"
 		PY_MAKEFILE="$PY_EXEC_PREFIX/lib/python$PY_VERSION/config/Makefile"
 		if test -f ${PY_MAKEFILE}; then
 			PY_LOCALMODLIBS=`sed -n -e 's/^LOCALMODLIBS=\(.*\)/\1/p' $PY_MAKEFILE`
@@ -69,12 +67,12 @@ if test x$with_[]modname != xno; then
 
 		old_CFLAGS=$CFLAGS
 		CFLAGS="$CFLAGS $PY_CFLAGS"
-		smart_try_dir=$PY_INC_DIR
+		smart_try_dir="$PY_PREFIX/include/python$PY_VERSION"
 		FR_SMART_CHECK_INCLUDE(Python.h)
 		CFLAGS=$old_CFLAGS
 
 		if test "x$ac_cv_header_Python_h" = "xyes"; then
-			mod_cflags=$PY_CFLAGS
+			mod_cflags=$smart_include
 		else
 			fail="$fail Python.h"
 			targetname=
