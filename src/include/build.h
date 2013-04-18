@@ -9,14 +9,14 @@
 extern "C" {
 #endif
 
-#ifdef __clang__
+#if defined(__clang__) && ((__clang_major__ > 2) || ((__clang_major__ == 2) && (__clang_minor__ > 7)))
 #  define W_DEPRECATED_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"");
 #  define W_LITERALFMT_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"");
 #  define W_UNUSEDDEC_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wunused-function\"");
 #  define W_SHADOWDEC_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wshadow\"");
 #  define W_IMPLICITDEC_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wimplicit-function-declaration\"");
 #  define W_RST			_Pragma("clang diagnostic pop");
-#elif __GNUC__
+#elif defined(__GNUC__) && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ > 5)))
 #  define W_DEPRECATED_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"");
 #  define W_LITERALFMT_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"");
 #  define W_UNUSEDDEC_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wunused-function\"");
