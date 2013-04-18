@@ -105,7 +105,8 @@ void fb_dpb_add_str(char **dpb, char name, char *value) {
 	*dpb += l;
 }
 
-void fb_free_sqlda(XSQLDA *sqlda) {
+void fb_free_sqlda(XSQLDA *sqlda)
+{
 	int i;
 	for (i = 0; i < sqlda->sqld; i++) {
 		free(sqlda->sqlvar[i].sqldata);
