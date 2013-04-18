@@ -1097,11 +1097,11 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 
 		switch (dynamic_config[i].type) {
 		case PW_TYPE_IPADDR:
-			if (da->type == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
+			if (da->attr == PW_FREERADIUS_CLIENT_IP_ADDRESS) {
 				c->ipaddr.af = AF_INET;
 				c->ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
 				c->prefix = 32;
-			} else if (da->type == PW_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
+			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IP_ADDRESS) {
 #ifdef WITH_UDPFROMTO
 				c->src_ipaddr.af = AF_INET;
 				c->src_ipaddr.ipaddr.ip4addr.s_addr = vp->vp_ipaddr;
@@ -1113,11 +1113,11 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 			break;
 
 		case PW_TYPE_IPV6ADDR:
-			if (da->type == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
+			if (da->attr == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
 				c->ipaddr.af = AF_INET6;
 				c->ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;
 				c->prefix = 128;
-			} else if (da->type == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
+			} else if (da->attr == PW_FREERADIUS_CLIENT_SRC_IPV6_ADDRESS) {
 #ifdef WITH_UDPFROMTO
 				c->src_ipaddr.af = AF_INET6;
 				c->src_ipaddr.ipaddr.ip6addr = vp->vp_ipv6addr;

@@ -1446,7 +1446,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
 VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
 			  UNUSED void *ctx)
 {
-	VALUE_PAIR *vp, *found, **from;
+	VALUE_PAIR *vp, *found, **from = NULL;
 	REQUEST *context;
 
 	rad_assert(request != NULL);

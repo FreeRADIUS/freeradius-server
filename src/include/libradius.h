@@ -141,7 +141,7 @@ typedef struct dict_attr {
 	unsigned int		attr;
 	PW_TYPE			type;
 	unsigned int		vendor;
-	ATTR_FLAGS	      flags;
+	ATTR_FLAGS		flags;
 	char			name[1];
 } DICT_ATTR;
 
