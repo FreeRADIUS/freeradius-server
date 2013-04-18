@@ -66,7 +66,7 @@ int fb_free_result(rlm_sql_firebird_conn_t *conn);
 int fb_lasterror(rlm_sql_firebird_conn_t *conn);
 int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t *config);
 int fb_disconnect(rlm_sql_firebird_conn_t *conn);
-int fb_sql_query(rlm_sql_firebird_conn_t *conn, char *sqlstr);
+int fb_sql_query(rlm_sql_firebird_conn_t *conn, const char *query);
 int fb_affected_rows(rlm_sql_firebird_conn_t *conn);
 int fb_fetch(rlm_sql_firebird_conn_t *conn);
 void fb_free_statement(rlm_sql_firebird_conn_t *conn);

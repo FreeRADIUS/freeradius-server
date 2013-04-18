@@ -411,7 +411,7 @@ int fb_fetch(rlm_sql_firebird_conn_t *conn) {
 	return fetch_stat;
 }
 
-int fb_prepare(rlm_sql_firebird_conn_t *conn,char *sqlstr) {
+int fb_prepare(rlm_sql_firebird_conn_t *conn,char *query) {
 	static char stmt_info[] = { isc_info_sql_stmt_type };
 	char info_buffer[128];
 	short l;
@@ -434,7 +434,7 @@ int fb_prepare(rlm_sql_firebird_conn_t *conn,char *sqlstr) {
 	}
 
 	fb_free_sqlda(conn->sqlda_out);
-	isc_dsql_prepare(conn->status, &conn->trh, &conn->stmt, 0, sqlstr,
+	isc_dsql_prepare(conn->status, &conn->trh, &conn->stmt, 0, query,
 			 conn->sql_dialect, conn->sqlda_out);
 	if (IS_ISC_ERROR(conn->status)) {
 		return -2;
@@ -470,8 +470,8 @@ int fb_prepare(rlm_sql_firebird_conn_t *conn,char *sqlstr) {
 }
 
 
-int fb_sql_query(rlm_sql_firebird_conn_t *conn,char *sqlstr) {
-	if (fb_prepare(conn,sqlstr)) {
+int fb_sql_query(rlm_sql_firebird_conn_t *conn, const char *query) {
+	if (fb_prepare(conn,query)) {
 		return fb_lasterror(conn);
 	}
 	
