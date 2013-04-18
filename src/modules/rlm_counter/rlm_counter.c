@@ -167,8 +167,8 @@ static rlm_rcode_t add_defaults(rlm_counter_t *inst)
 {
 	datum key_datum;
 	datum time_datum;
-	static const char const *default1 = "DEFAULT1";
-	static const char const *default2 = "DEFAULT2";
+	static const char *default1 = "DEFAULT1";
+	static const char *default2 = "DEFAULT2";
 
 	DEBUG2("rlm_counter: add_defaults: Start");
 
@@ -212,8 +212,12 @@ static rlm_rcode_t reset_db(rlm_counter_t *inst)
 	/*
 	 *	Open a completely new database.
 	 */
-	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
-			GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
+	{
+		char *filename;
+		
+		memcpy(&filename, &inst->filename, sizeof(filename));
+		inst->gdbm = gdbm_open(filename, sizeof(int), GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
+	}
 	if (!inst->gdbm) {
 		DEBUGE("rlm_counter: Failed to open file %s: %s",
 				inst->filename, strerror(errno));
@@ -437,9 +441,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		DEBUGE("rlm_counter: 'filename' must be set.");
 		return -1;
 	}
-	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
-			       GDBM_WRCREAT | GDBM_COUNTER_OPTS,
-			       0600, NULL);
+
+	{
+		char *filename;
+		
+		memcpy(&filename, &inst->filename, sizeof(filename));
+		inst->gdbm = gdbm_open(filename, sizeof(int), GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
+	}
 	if (!inst->gdbm) {
 		DEBUGE("rlm_counter: Failed to open file %s: %s",
 				inst->filename, strerror(errno));
