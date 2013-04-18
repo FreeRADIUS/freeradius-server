@@ -43,9 +43,9 @@ static int sql_socket_destructor(void *c)
 		fb_free_statement(conn);
 		isc_detach_database(conn->status, &(conn->dbh));
 		
-		if (fb_lasterror(conn)) {
+		if (fb_error(conn)) {
 			DEBUGW("rlm_sql_firebird: Got error "
-			       "when closing socket: %s", conn->lasterror);
+			       "when closing socket: %s", conn->error);
 		}
 	}
 	
@@ -65,8 +65,8 @@ static int sql_socket_destructor(void *c)
 	free(conn->tpb);
 	free(conn->dpb);
 	
-	if (conn->lasterror) {
-		free(conn->lasterror);
+	if (conn->error) {
+		free(conn->error);
 	}
 
 	return 0;
@@ -90,7 +90,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	
 	if (fb_connect(conn,config)) {
 		DEBUGE("rlm_sql_firebird: Connection failed %s\n",
-		       conn->lasterror);
+		       conn->error);
 		
 		return SQL_DOWN;
 	}
@@ -115,7 +115,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 	 *	Try again query when deadlock, beacuse in any case it
 	 *	will be retried.
 	 */
- 	if (fb_sql_query(conn,query)) {
+ 	if (fb_sql_query(conn, query)) {
 		/* but may be lost for short sessions */
    		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
    		    !deadlock) {
@@ -133,7 +133,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 		DEBUGE("conn_id rlm_sql_firebird,sql_query error: "
 		       "sql_code=%li, error='%s', query=%s",
 		       (long int) conn->sql_code,
-		       conn->lasterror,
+		       conn->error,
 		       query);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
@@ -145,7 +145,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 			//assume the network is down if rollback had failed
 			DEBUGE("Fail to rollback transaction after "
 			       "previous error. Error: %s",
-			       conn->lasterror);
+			       conn->error);
 		
 			return SQL_DOWN;
 		}
@@ -210,7 +210,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
 	 	
 	 	if (res) {
 	  		DEBUGE("rlm_sql_firebird. Fetch problem:'%s'",
-	  		       conn->lasterror);
+	  		       conn->error);
 	  		
 	   		return -1;
 	 	}
@@ -264,7 +264,7 @@ static const char *sql_error(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config) {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	
-	return conn->lasterror;
+	return conn->error;
 }
 
 /** Return the number of rows affected by the query (update, or insert)

@@ -37,6 +37,14 @@ RCSIDH(sql_fbapi_h, "$Id$")
 #define DEADLOCK_SQL_CODE	-913
 #define DOWN_SQL_CODE		-902
 
+#if defined(_LP64) || defined(__LP64__) || defined(__arch64__)
+#define ISC_LONG_FMT "d"
+#define ISC_ULONG_FMT "u"
+#else
+#define ISC_LONG_FMT "l"
+#define ISC_ULONG_FMT "ul"
+#endif
+
 typedef struct rlm_sql_firebird_conn {
 	isc_db_handle dbh;
 	isc_stmt_handle stmt;
@@ -50,7 +58,7 @@ typedef struct rlm_sql_firebird_conn {
 	int tpb_len;
 	char *dpb;
 	int dpb_len;
-	char *lasterror;
+	char *error;
 
 	rlm_sql_row_t row;
 	int *row_sizes;
@@ -63,7 +71,7 @@ typedef struct rlm_sql_firebird_conn {
 
 
 int fb_free_result(rlm_sql_firebird_conn_t *conn);
-int fb_lasterror(rlm_sql_firebird_conn_t *conn);
+int fb_error(rlm_sql_firebird_conn_t *conn);
 int fb_init_socket(rlm_sql_firebird_conn_t *conn);
 int fb_connect(rlm_sql_firebird_conn_t *conn, rlm_sql_config_t *config);
 int fb_disconnect(rlm_sql_firebird_conn_t *conn);
