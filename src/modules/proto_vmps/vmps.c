@@ -56,7 +56,7 @@ static int vqp_socket_recv(rad_listen_t *listener)
 
 	packet = vqp_recv(listener->fd);
 	if (!packet) {
-		DEBUGE("%s", fr_strerror());
+		ERROR("%s", fr_strerror());
 		return 0;
 	}
 

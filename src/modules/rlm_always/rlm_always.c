@@ -73,7 +73,7 @@ static rlm_rcode_t str2rcode(const char *s)
 	else if(!strcasecmp(s, "updated"))
 		return RLM_MODULE_UPDATED;
 	else {
-		DEBUGE("rlm_always: Unknown module rcode '%s'.\n", s);
+		ERROR("rlm_always: Unknown module rcode '%s'.\n", s);
 		return RLM_MODULE_UNKNOWN;
 	}
 }

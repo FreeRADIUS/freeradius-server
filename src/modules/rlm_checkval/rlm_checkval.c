@@ -130,7 +130,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	dict_addattr(inst->check_name, -1, 0, PW_TYPE_STRING, flags);
 	da = dict_attrbyname(inst->check_name);
 	if (!da){
-		DEBUGE("rlm_checkval: No such attribute %s",
+		ERROR("rlm_checkval: No such attribute %s",
 		       inst->check_name);
 		return -1;
 	}

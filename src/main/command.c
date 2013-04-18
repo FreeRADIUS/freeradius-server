@@ -159,18 +159,18 @@ static int fr_server_domain_socket(const char *path)
 	struct stat buf;
 	
 	if (!path) {
-		DEBUGE("No path provided, was NULL.");
+		ERROR("No path provided, was NULL.");
 		return -1;
 	}
 	
 	len = strlen(path);
 	if (len >= sizeof(salocal.sun_path)) {
-		DEBUGE("Path too long in socket filename.");
+		ERROR("Path too long in socket filename.");
 		return -1;
 	}
 
 	if ((sockfd = socket(AF_UNIX, SOCK_STREAM, 0)) < 0) {
-		DEBUGE("Failed creating socket: %s",
+		ERROR("Failed creating socket: %s",
 			strerror(errno));
 		return -1;
 	}
@@ -186,7 +186,7 @@ static int fr_server_domain_socket(const char *path)
 	 */
 	if (stat(path, &buf) < 0) {
 		if (errno != ENOENT) {
-			DEBUGE("Failed to stat %s: %s",
+			ERROR("Failed to stat %s: %s",
 			       path, strerror(errno));
 			close(sockfd);
 			return -1;
@@ -201,7 +201,7 @@ static int fr_server_domain_socket(const char *path)
 		    && !S_ISSOCK(buf.st_mode)
 #endif
 			) {
-			DEBUGE("Cannot turn %s into socket", path);
+			ERROR("Cannot turn %s into socket", path);
 			close(sockfd);
 			return -1;		
 		}
@@ -210,13 +210,13 @@ static int fr_server_domain_socket(const char *path)
 		 *	Refuse to open sockets not owned by us.
 		 */
 		if (buf.st_uid != geteuid()) {
-			DEBUGE("We do not own %s", path);
+			ERROR("We do not own %s", path);
 			close(sockfd);
 			return -1;
 		}
 
 		if (unlink(path) < 0) {
-			DEBUGE("Failed to delete %s: %s",
+			ERROR("Failed to delete %s: %s",
 			       path, strerror(errno));
 			close(sockfd);
 			return -1;
@@ -224,7 +224,7 @@ static int fr_server_domain_socket(const char *path)
 	}
 
 	if (bind(sockfd, (struct sockaddr *)&salocal, socklen) < 0) {
-		DEBUGE("Failed binding to %s: %s",
+		ERROR("Failed binding to %s: %s",
 			path, strerror(errno));
 		close(sockfd);
 		return -1;
@@ -235,14 +235,14 @@ static int fr_server_domain_socket(const char *path)
 	 *	doesn't seem to permit fchmod on domain sockets.
 	 */
 	if (chmod(path, S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP) < 0) {
-		DEBUGE("Failed setting permissions on %s: %s",
+		ERROR("Failed setting permissions on %s: %s",
 		       path, strerror(errno));
 		close(sockfd);
 		return -1;
 	}
 
 	if (listen(sockfd, 8) < 0) {
-		DEBUGE("Failed listening to %s: %s",
+		ERROR("Failed listening to %s: %s",
 			path, strerror(errno));
 		close(sockfd);
 		return -1;
@@ -253,7 +253,7 @@ static int fr_server_domain_socket(const char *path)
 		int flags;
 		
 		if ((flags = fcntl(sockfd, F_GETFL, NULL)) < 0)  {
-			DEBUGE("Failure getting socket flags: %s",
+			ERROR("Failure getting socket flags: %s",
 				strerror(errno));
 			close(sockfd);
 			return -1;
@@ -261,7 +261,7 @@ static int fr_server_domain_socket(const char *path)
 		
 		flags |= O_NONBLOCK;
 		if( fcntl(sockfd, F_SETFL, flags) < 0) {
-			DEBUGE("Failure setting socket flags: %s",
+			ERROR("Failure setting socket flags: %s",
 				strerror(errno));
 			close(sockfd);
 			return -1;
@@ -1120,14 +1120,14 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 
 	output_file = request_data_reference(request, null_socket_send, 0);
 	if (!output_file) {
-		DEBUGE("WARNING: No output file for injected packet %d",
+		ERROR("WARNING: No output file for injected packet %d",
 		       request->number);
 		return 0;
 	}
 
 	fp = fopen(output_file, "w");
 	if (!fp) {
-		DEBUGE("Failed to send injected file to %s: %s",
+		ERROR("Failed to send injected file to %s: %s",
 		       output_file, strerror(errno));
 		return 0;
 	}
@@ -2133,7 +2133,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 		
 		pw = getpwnam(sock->uid_name);
 		if (!pw) {
-			DEBUGE("Failed getting uid for %s: %s",
+			ERROR("Failed getting uid for %s: %s",
 			       sock->uid_name, strerror(errno));
 			return -1;
 		}
@@ -2148,7 +2148,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 
 		gr = getgrnam(sock->gid_name);
 		if (!gr) {
-			DEBUGE("Failed getting gid for %s: %s",
+			ERROR("Failed getting gid for %s: %s",
 			       sock->gid_name, strerror(errno));
 			return -1;
 		}
@@ -2160,7 +2160,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 #else  /* can't get uid or gid of connecting user */
 
 	if (sock->uid_name || sock->gid_name) {
-		DEBUGE("System does not support uid or gid authentication for sockets");
+		ERROR("System does not support uid or gid authentication for sockets");
 		return -1;
 	}
 
@@ -2171,7 +2171,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	} else {
 		sock->co.mode = fr_str2int(mode_names, sock->mode_name, 0);
 		if (!sock->co.mode) {
-			DEBUGE("Invalid mode name \"%s\"",
+			ERROR("Invalid mode name \"%s\"",
 			       sock->mode_name);
 			return -1;
 		}
@@ -2195,7 +2195,7 @@ static int command_socket_parse_unix(CONF_SECTION *cs, rad_listen_t *this)
 	if ((sock->uid != (uid_t) -1) || (sock->gid != (gid_t) -1)) {
 		fr_suid_up();
 		if (fchown(this->fd, sock->uid, sock->gid) < 0) {
-			DEBUGE("Failed setting ownership of %s: %s",
+			ERROR("Failed setting ownership of %s: %s",
 			       sock->path, strerror(errno));
 			fr_suid_down();
 			return -1;
@@ -2410,7 +2410,7 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 		}
 
 		if (co->offset >= (ssize_t) (sizeof(co->buffer) - 1)) {
-			DEBUGE("Line too long!");
+			ERROR("Line too long!");
 			goto close_socket;
 		}
 
@@ -2534,7 +2534,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 
 	magic = htonl(0xf7eead15);
 	if (write(newfd, &magic, 4) < 0) {
-		DEBUGE("Failed writing initial data to socket: %s",
+		ERROR("Failed writing initial data to socket: %s",
 		       strerror(errno));
 		return -1;
 	}
@@ -2545,7 +2545,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 		magic = htonl(1);
 	}
 	if (write(newfd, &magic, 4) < 0) {
-		DEBUGE("Failed writing initial data to socket: %s",
+		ERROR("Failed writing initial data to socket: %s",
 		       strerror(errno));
 		return -1;
 	}
@@ -2604,7 +2604,7 @@ static int command_tcp_recv(rad_listen_t *this)
 #endif
 				if (errno == EINTR) return 0;
 				
-				DEBUGE("Failed reading from control socket; %s",
+				ERROR("Failed reading from control socket; %s",
 				       strerror(errno));
 				goto close_socket;
 			}
@@ -2620,7 +2620,7 @@ static int command_tcp_recv(rad_listen_t *this)
 
 		if (rad_digest_cmp(expected,
 				   (uint8_t *) co->buffer + 16, 16 != 0)) {
-			DEBUGE("radmin failed challenge: Closing socket");
+			ERROR("radmin failed challenge: Closing socket");
 			goto close_socket;
 		}
 
@@ -2680,7 +2680,7 @@ static int command_domain_accept(rad_listen_t *listener)
 		gid_t gid;
 
 		if (getpeereid(newfd, &uid, &gid) < 0) {
-			DEBUGE("Failed getting peer credentials for %s: %s",
+			ERROR("Failed getting peer credentials for %s: %s",
 			       sock->path, strerror(errno));
 			close(newfd);
 			return 0;
@@ -2699,7 +2699,7 @@ static int command_domain_accept(rad_listen_t *listener)
 			if (sock->gid_name && (sock->gid == gid)) break;
 
 			if (sock->uid_name && (sock->uid != uid)) {
-				DEBUGE("Unauthorized connection to %s from uid %ld",
+				ERROR("Unauthorized connection to %s from uid %ld",
 				
 				       sock->path, (long int) uid);
 				close(newfd);
@@ -2707,7 +2707,7 @@ static int command_domain_accept(rad_listen_t *listener)
 			}
 			
 			if (sock->gid_name && (sock->gid != gid)) {
-				DEBUGE("Unauthorized connection to %s from gid %ld",
+				ERROR("Unauthorized connection to %s from gid %ld",
 				       sock->path, (long int) gid);
 				close(newfd);
 				return 0;

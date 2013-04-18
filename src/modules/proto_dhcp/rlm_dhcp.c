@@ -112,7 +112,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	if (!dict_attrbyname("DHCP-Message-Type")) {
 		if (dict_read(mainconfig.dictionary_dir, "dictionary.dhcp") < 0) {
-			DEBUGE("Cannot open %s/dictionary.dhcp: %s",
+			ERROR("Cannot open %s/dictionary.dhcp: %s",
 			       mainconfig.dictionary_dir, fr_strerror());
 			return -1;
 		}

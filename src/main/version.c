@@ -48,7 +48,7 @@ int ssl_check_version(void)
 	ssl_linked = SSLeay();
 	
 	if (ssl_linked != ssl_built) {
-		DEBUGE("libssl version mismatch."
+		ERROR("libssl version mismatch."
 		       "  Built with: %lx\n  Linked: %lx",
 		       (unsigned long) ssl_built,
 		       (unsigned long) ssl_linked);

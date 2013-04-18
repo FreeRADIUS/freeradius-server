@@ -172,7 +172,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 	 *	Verify the 'Attribute' field
 	 */
 	if (!row[2] || row[2][0] == '\0') {
-		DEBUGE("rlm_sql: The 'Attribute' field is empty or NULL, skipping the entire row.");
+		ERROR("rlm_sql: The 'Attribute' field is empty or NULL, skipping the entire row.");
 		return -1;
 	}
 
@@ -184,7 +184,7 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 		operator = gettoken(&ptr, buf, sizeof(buf));
 		if ((operator < T_OP_ADD) ||
 		    (operator > T_OP_CMP_EQ)) {
-			DEBUGE("rlm_sql: Invalid operator \"%s\" for attribute %s", row[4], row[2]);
+			ERROR("rlm_sql: Invalid operator \"%s\" for attribute %s", row[4], row[2]);
 			return -1;
 		}
 
@@ -193,8 +193,8 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 		 *  Complain about empty or invalid 'op' field
 		 */
 		operator = T_OP_CMP_EQ;
-		DEBUGE("rlm_sql: The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
-		DEBUGE("rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
+		ERROR("rlm_sql: The 'op' field for attribute '%s = %s' is NULL, or non-existent.", row[2], row[3]);
+		ERROR("rlm_sql: You MUST FIX THIS if you want the configuration to behave as you expect.");
 	}
 
 	/*
@@ -241,21 +241,21 @@ int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 	 */
 	vp = pairmake(ctx, NULL, row[2], NULL, operator);
 	if (!vp) {
-		DEBUGE("rlm_sql: Failed to create the pair: %s",
+		ERROR("rlm_sql: Failed to create the pair: %s",
 		       fr_strerror());
 		return -1;
 	}
 	
 	if (do_xlat) {
 		if (pairmark_xlat(vp, value) < 0) {
-			DEBUGE("rlm_sql: Error marking pair for xlat");
+			ERROR("rlm_sql: Error marking pair for xlat");
 			
 			pairbasicfree(vp);
 			return -1;
 		}
 	} else {
 		if (pairparsevalue(vp, value) < 0) {
-			DEBUGE("rlm_sql: Error parsing value");
+			ERROR("rlm_sql: Error parsing value");
 			
 			pairbasicfree(vp);
 			return -1;
@@ -293,7 +293,7 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	ret = (inst->module->sql_fetch_row)(*handle, inst->config);
 	
 	if (ret < 0) {
-		DEBUGE("rlm_sql (%s): Error fetching row: %s", inst->config->xlat_name,
+		ERROR("rlm_sql (%s): Error fetching row: %s", inst->config->xlat_name,
 			   (inst->module->sql_error)(*handle, inst->config));
 	}
 
@@ -341,7 +341,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
 		}
 		
 		if (ret < 0) {
-			DEBUGE("rlm_sql (%s): Database query error: '%s'",
+			ERROR("rlm_sql (%s): Database query error: '%s'",
 				   inst->config->xlat_name,
 				   (inst->module->sql_error)(*handle, inst->config));
 		}
@@ -391,7 +391,7 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char 
 		}
 		
 		if (ret < 0) {
-			DEBUGE("rlm_sql (%s): Database query error '%s'",
+			ERROR("rlm_sql (%s): Database query error '%s'",
 				   inst->config->xlat_name,
 				   (inst->module->sql_error)(*handle, inst->config));
 		}
@@ -423,7 +423,7 @@ int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
 		if (!row)
 			break;
 		if (sql_userparse(ctx, pair, row) != 0) {
-			DEBUGE("rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
+			ERROR("rlm_sql (%s): Error getting data from database", inst->config->xlat_name);
 			
 			(inst->module->sql_finish_select_query)(*handle, inst->config);
 			
@@ -464,7 +464,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 
 	fd = open(filename, O_WRONLY | O_APPEND | O_CREAT, 0666);
 	if (fd < 0) {
-		DEBUGE("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
+		ERROR("rlm_sql (%s): Couldn't open logfile '%s': %s", inst->config->xlat_name,
 		       expanded, strerror(errno));
 		       
 		talloc_free(expanded);
@@ -472,7 +472,7 @@ void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
 	}
 
 	if ((rad_lockfd(fd, MAX_QUERY_LEN) < 0) || (write(fd, query, strlen(query)) < 0) || (write(fd, ";\n", 2) < 0)) {
-		DEBUGE("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
+		ERROR("rlm_sql (%s): Failed writing to logfile '%s': %s", inst->config->xlat_name, expanded,
 		       strerror(errno));
 	}
 	

@@ -53,8 +53,8 @@ static int query_timeout_handler(UNUSED void *dbproc) {
 
 static int err_handler(UNUSED DBPROCESS *dbproc, UNUSED int severity, UNUSED int dberr, UNUSED int oserr, char *dberrstr, char *oserrstr)
 {	
-		DEBUGE("rlm_sql_freetds: FreeTDS error: %s\n", dberrstr);
-		DEBUGE("rlm_sql_freetds: OS error: %s\n", oserrstr);
+		ERROR("rlm_sql_freetds: FreeTDS error: %s\n", dberrstr);
+		ERROR("rlm_sql_freetds: OS error: %s\n", oserrstr);
 		return 0;
 }
 
@@ -85,7 +85,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	rlm_sql_freetds_conn_t *conn;
 	
 	if (dbinit() == FAIL) {
-		DEBUGE("rlm_sql_freetds: Unable to init FreeTDS");
+		ERROR("rlm_sql_freetds: Unable to init FreeTDS");
 		return -1;		
 	}
 	
@@ -102,7 +102,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	DEBUG("rlm_sql_freetds (%s): Starting connect to FreeTDS/MSSQL server", config->xlat_name);
 	
 	if (!(login = dblogin())) {
-		DEBUGE("rlm_sql_freetds (%s): Unable to allocate login record", config->xlat_name);
+		ERROR("rlm_sql_freetds (%s): Unable to allocate login record", config->xlat_name);
 		return -1;
 	}
 	
@@ -110,7 +110,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	DBSETLPWD(login, config->sql_password);
 	
 	if ((conn->dbproc = dbopen(login, config->sql_server)) == FAIL) {
-		DEBUGE("rlm_sql_freetds (%s): Unable to connect to FreeTDS/MSSQL server %s@%s",
+		ERROR("rlm_sql_freetds (%s): Unable to connect to FreeTDS/MSSQL server %s@%s",
 			   config->xlat_name, config->sql_login, config->sql_server);
 		dbloginfree(login);
 		return -1;
@@ -119,7 +119,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	dbloginfree(login);
 	
 	if ((dbuse(conn->dbproc, config->sql_db)) == FAIL) {
-		DEBUGE("rlm_sql_freetds (%s): Unable to select database on FreeTDS/MSSQL server %s@%s:%s",
+		ERROR("rlm_sql_freetds (%s): Unable to select database on FreeTDS/MSSQL server %s@%s:%s",
 			   config->xlat_name, config->sql_login, config->sql_server, config->sql_db);
 		return -1;
 	}
@@ -145,17 +145,17 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 	
 	if (!conn->dbproc || DBDEAD(conn->dbproc)) {
-		DEBUGE("rlm_sql_freetds (%s): Socket not connected", config->xlat_name);
+		ERROR("rlm_sql_freetds (%s): Socket not connected", config->xlat_name);
 		return SQL_DOWN;
 	}
 	
 	if ((dbcmd(conn->dbproc, query)) == FAIL) {
-		DEBUGE("rlm_sql_freetds (%s): Unable to allocate SQL query", config->xlat_name);
+		ERROR("rlm_sql_freetds (%s): Unable to allocate SQL query", config->xlat_name);
 		return -1;
 	}
 	
 	if ((dbsqlexec(conn->dbproc)) == FAIL) {
-		DEBUGE("rlm_sql_freetds (%s): SQL query failed", config->xlat_name);
+		ERROR("rlm_sql_freetds (%s): SQL query failed", config->xlat_name);
 		return -1;
 	}
 	
@@ -172,7 +172,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
  *************************************************************************/
 static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, UNUSED const char *query)
 {	
-	DEBUGE("rlm_sql_freetds sql_select_query(): unsupported");
+	ERROR("rlm_sql_freetds sql_select_query(): unsupported");
 	return -1;
 }
 
@@ -187,7 +187,7 @@ static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *************************************************************************/
 static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
-	DEBUGE("rlm_sql_freetds sql_store_result(): unsupported");
+	ERROR("rlm_sql_freetds sql_store_result(): unsupported");
 	return -1;
 }
 

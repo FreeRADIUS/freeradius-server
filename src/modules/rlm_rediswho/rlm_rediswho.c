@@ -72,7 +72,7 @@ static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
 	if (inst->redis_inst->redis_query(dissocket_p, inst->redis_inst,
 					  fmt, request) < 0) {
 
-		DEBUGE("rediswho_command: database query error in: '%s'", fmt);
+		ERROR("rediswho_command: database query error in: '%s'", fmt);
 		return -1;
 
 	}
@@ -114,13 +114,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	modinst = find_module_instance(cf_section_find("modules"),
 				       inst->redis_instance_name, 1);
 	if (!modinst) {
-		DEBUGE("rediswho: failed to find module instance \"%s\"",
+		ERROR("rediswho: failed to find module instance \"%s\"",
 		       inst->redis_instance_name);
 		return -1;
 	}
 
 	if (strcmp(modinst->entry->name, "rlm_redis") != 0) {
-		DEBUGE("rediswho: Module \"%s\""
+		ERROR("rediswho: Module \"%s\""
 		       " is not an instance of the redis module",
 		       inst->redis_instance_name);
 		return -1;

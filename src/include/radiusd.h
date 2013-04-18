@@ -504,6 +504,8 @@ typedef struct main_config_t {
 #define RDEBUG3(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 3, request, fmt, ## __VA_ARGS__)
 #define RDEBUG4(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 4, request, fmt, ## __VA_ARGS__)
 
+#define ERROR(...)	radlog(L_ERR, ## __VA_ARGS__)
+#define INFO(...)	radlog(L_INFO, ## __VA_ARGS__)
 #define DEBUG(...)	if (debug_flag) radlog(L_DBG, ## __VA_ARGS__)
 #define DEBUGW(...)	if (debug_flag) radlog(L_DBG_WARN, ## __VA_ARGS__)
 #define DEBUGE(...)	if (debug_flag) radlog(L_DBG_ERR, ## __VA_ARGS__)
@@ -613,7 +615,7 @@ void 		rdebug_pair_list(int, REQUEST *, VALUE_PAIR *);
 int		log_err (char *);
 
 /* util.c */
-#define MEM(x) if (!(x)) { DEBUGE("Out of memory"); exit(1); }
+#define MEM(x) if (!(x)) { ERROR("Out of memory"); exit(1); }
 void (*reset_signal(int signo, void (*func)(int)))(int);
 void		request_free(REQUEST **request);
 int		rad_mkdir(char *directory, mode_t mode);

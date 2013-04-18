@@ -160,21 +160,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->gdbm = gdbm_open(inst->session_db, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (!inst->gdbm) {
-		DEBUGE("rlm_ippool: Failed to open file %s: %s",
+		ERROR("rlm_ippool: Failed to open file %s: %s",
 				inst->session_db, strerror(errno));
 		return -1;
 	}
 	inst->ip = gdbm_open(inst->ip_index, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (!inst->ip) {
-		DEBUGE("rlm_ippool: Failed to open file %s: %s",
+		ERROR("rlm_ippool: Failed to open file %s: %s",
 				inst->ip_index, strerror(errno));
 		return -1;
 	}
 	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
-		DEBUGE("rlm_ippool: Failed to set cache size");
+		ERROR("rlm_ippool: Failed to set cache size");
 	if (gdbm_setopt(inst->ip, GDBM_CACHESIZE, &cache_size, sizeof(int)) == -1)
-		DEBUGE("rlm_ippool: Failed to set cache size");
+		ERROR("rlm_ippool: Failed to set cache size");
 
 	key_datum = gdbm_firstkey(inst->gdbm);
 	if (!key_datum.dptr){
@@ -222,7 +222,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 			rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 			if (rcode < 0) {
-				DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+				ERROR("rlm_ippool: Failed storing data to %s: %s",
 						inst->session_db, gdbm_strerror(gdbm_errno));
 				gdbm_close(inst->gdbm);
 				gdbm_close(inst->ip);
@@ -325,7 +325,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 
 		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
-			DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+			ERROR("rlm_ippool: Failed storing data to %s: %s",
 					inst->session_db, gdbm_strerror(gdbm_errno));
 			pthread_mutex_unlock(&inst->op_mutex);
 			return RLM_MODULE_FAIL;
@@ -347,7 +347,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				data_datum.dsize = sizeof(int);
 				rcode = gdbm_store(inst->ip, key_datum, data_datum, GDBM_REPLACE);
 				if (rcode < 0) {
-					DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+					ERROR("rlm_ippool: Failed storing data to %s: %s",
 							inst->ip_index, gdbm_strerror(gdbm_errno));
 					pthread_mutex_unlock(&inst->op_mutex);
 					return RLM_MODULE_FAIL;
@@ -472,7 +472,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 
 			rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 			if (rcode < 0) {
-				DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+				ERROR("rlm_ippool: Failed storing data to %s: %s",
 					inst->session_db, gdbm_strerror(gdbm_errno));
 				pthread_mutex_unlock(&inst->op_mutex);
 				return RLM_MODULE_FAIL;
@@ -492,7 +492,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 					data_datum.dsize = sizeof(int);
 					rcode = gdbm_store(inst->ip, key_datum, data_datum, GDBM_REPLACE);
 					if (rcode < 0) {
-						DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+						ERROR("rlm_ippool: Failed storing data to %s: %s",
 								inst->ip_index, gdbm_strerror(gdbm_errno));
 						pthread_mutex_unlock(&inst->op_mutex);
 						return RLM_MODULE_FAIL;
@@ -644,7 +644,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 				rcode = gdbm_store(inst->gdbm, key_datum, data_datum_tmp, GDBM_REPLACE);
 				free(data_datum_tmp.dptr);
 				if (rcode < 0) {
-					DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+					ERROR("rlm_ippool: Failed storing data to %s: %s",
 						inst->session_db, gdbm_strerror(gdbm_errno));
 						pthread_mutex_unlock(&inst->op_mutex);
 					return RLM_MODULE_FAIL;
@@ -675,7 +675,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 				if (mppp)
 					extra = 1;
 				if (!mppp)
-					DEBUGE("rlm_ippool: mppp is not one. Please report this behaviour.");
+					ERROR("rlm_ippool: mppp is not one. Please report this behaviour.");
 			}
 		}
 		free(key_datum.dptr);
@@ -705,7 +705,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 		DEBUG2("rlm_ippool: Allocating ip to key: '%s'",hex_str);
 		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
-			DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+			ERROR("rlm_ippool: Failed storing data to %s: %s",
 				inst->session_db, gdbm_strerror(gdbm_errno));
 				pthread_mutex_unlock(&inst->op_mutex);
 			return RLM_MODULE_FAIL;
@@ -726,7 +726,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 		data_datum.dsize = sizeof(int);
 		rcode = gdbm_store(inst->ip, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
-			DEBUGE("rlm_ippool: Failed storing data to %s: %s",
+			ERROR("rlm_ippool: Failed storing data to %s: %s",
 				inst->ip_index, gdbm_strerror(gdbm_errno));
 			pthread_mutex_unlock(&inst->op_mutex);
 			return RLM_MODULE_FAIL;

@@ -89,7 +89,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	}
 	
 	if (fb_connect(conn,config)) {
-		DEBUGE("rlm_sql_firebird: Connection failed %s\n",
+		ERROR("rlm_sql_firebird: Connection failed %s\n",
 		       conn->error);
 		
 		return SQL_DOWN;
@@ -130,7 +130,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 	  		goto try_again;
 	  	}
   	
-		DEBUGE("conn_id rlm_sql_firebird,sql_query error: "
+		ERROR("conn_id rlm_sql_firebird,sql_query error: "
 		       "sql_code=%li, error='%s', query=%s",
 		       (long int) conn->sql_code,
 		       conn->error,
@@ -143,7 +143,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 		/* Free problem query */
 		if (fb_rollback(conn)) {
 			//assume the network is down if rollback had failed
-			DEBUGE("Fail to rollback transaction after "
+			ERROR("Fail to rollback transaction after "
 			       "previous error. Error: %s",
 			       conn->error);
 		
@@ -209,7 +209,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
 	 	}
 	 	
 	 	if (res) {
-	  		DEBUGE("rlm_sql_firebird. Fetch problem:'%s'",
+	  		ERROR("rlm_sql_firebird. Fetch problem:'%s'",
 	  		       conn->error);
 	  		
 	   		return -1;
@@ -274,7 +274,7 @@ static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	int affected_rows=fb_affected_rows(handle->conn);
 	
 	if (affected_rows < 0) {
-		DEBUGE("sql_affected_rows, rlm_sql_firebird. error:%s\n",
+		ERROR("sql_affected_rows, rlm_sql_firebird. error:%s\n",
 		       sql_error(handle,config));
 	}
 	

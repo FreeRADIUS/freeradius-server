@@ -203,7 +203,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 
     i2->authtype=rad_get_authtype(server_authtype);
     if(!i2->id) {
-	DEBUGE(IKEv2_LOG_PREFIX "'id' configuration option is required!!!");
+	ERROR(IKEv2_LOG_PREFIX "'id' configuration option is required!!!");
 	return -1;
     }
     switch(i2->authtype) {
@@ -211,15 +211,15 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	    break;
 	case IKEv2_AUTH_CERT:
 	    if(!i2->certfile || !i2->pkfile) {
-		DEBUGE(IKEv2_LOG_PREFIX "'certificate_file' and 'private_key_file' items are required for 'cert' auth type");
+		ERROR(IKEv2_LOG_PREFIX "'certificate_file' and 'private_key_file' items are required for 'cert' auth type");
 		return -1;
 	    }
 	    if(!file_exists(i2->certfile)) {
-		DEBUGE(IKEv2_LOG_PREFIX "Can not open 'certificate_file' %s",i2->certfile);
+		ERROR(IKEv2_LOG_PREFIX "Can not open 'certificate_file' %s",i2->certfile);
 		return -1;
 	    }
 	    if(!file_exists(i2->pkfile)) {
-		DEBUGE(IKEv2_LOG_PREFIX "Can not open 'private_key_file' %s",i2->pkfile);
+		ERROR(IKEv2_LOG_PREFIX "Can not open 'private_key_file' %s",i2->pkfile);
 		return -1;
 	    }
 	
@@ -229,37 +229,37 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	radlog(L_AUTH,IKEv2_LOG_PREFIX "'CA_file' item not set, client cert based authentication will fail");
     } else {
 	if(!file_exists(i2->trusted)) {
-	    DEBUGE(IKEv2_LOG_PREFIX "Can not open 'CA_file' %s",i2->trusted);
+	    ERROR(IKEv2_LOG_PREFIX "Can not open 'CA_file' %s",i2->trusted);
 	    return -1;
 	}
     }
     if(i2->crl_file) {
 	if(!file_exists(i2->crl_file)) {
-	    DEBUGE(IKEv2_LOG_PREFIX "Can not open 'crl_file' %s",i2->crl_file);
+	    ERROR(IKEv2_LOG_PREFIX "Can not open 'crl_file' %s",i2->crl_file);
 	    return -1;
 	}
     }
 
     i2->idtype=IdTypeFromName(server_idtype);
     if(i2->idtype<=0) {
-	DEBUGE(IKEv2_LOG_PREFIX "Unsupported 'idtype': %s",server_idtype);
+	ERROR(IKEv2_LOG_PREFIX "Unsupported 'idtype': %s",server_idtype);
 	return -1;
     }
 
     if(rad_load_proposals(i2,conf)) {
-	DEBUGE(IKEv2_LOG_PREFIX "Failed to load proposals");
+	ERROR(IKEv2_LOG_PREFIX "Failed to load proposals");
 	return -1;
     }
 
     int res=rad_load_credentials(instance, i2,usersfilename,default_authtype);
     if(res==-1) {
-	DEBUGE(IKEv2_LOG_PREFIX "Error while loading users credentials");
+	ERROR(IKEv2_LOG_PREFIX "Error while loading users credentials");
 	return -1;
     }
 
     i2->x509_store = NULL;
     if(CertInit(i2)){
-	DEBUGE(IKEv2_LOG_PREFIX "Error while loading certs/crl");
+	ERROR(IKEv2_LOG_PREFIX "Error while loading certs/crl");
 	return -1;
     }
 
@@ -294,7 +294,7 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
     session=FindSessionByFastid(i2,(const char*)eap_username);
     if(!session) {
 	if( IKEv2BeginSession( i2, &session, IKEv2_STY_INITIATOR ) != IKEv2_RET_OK ) {
-	    DEBUGE(IKEv2_LOG_PREFIX "Error: Can't initialize IKEv2 session.");
+	    ERROR(IKEv2_LOG_PREFIX "Error: Can't initialize IKEv2 session.");
 	    return 1;
 	}
     } else {
@@ -314,10 +314,10 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
 	ss=i2->SessionList;
 	while(ss) {
 	    session_count++;
-	    //DEBUGE("XXX scounter -> fastid=[%s]",ss->fastID);
+	    //ERROR("XXX scounter -> fastid=[%s]",ss->fastID);
 	    ss=ss->pNext;
 	}
-	DEBUGE("XXX: session list contains:%d",session_count);
+	ERROR("XXX: session list contains:%d",session_count);
     }
 #endif
 
@@ -327,7 +327,7 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
 
     if( IKEv2ProcessMsg( i2, NULL , &sikemsg, &slen, session) != IKEv2_RET_OK )
     {
-	DEBUGE(IKEv2_LOG_PREFIX "Error while processing IKEv2 message");
+	ERROR(IKEv2_LOG_PREFIX "Error while processing IKEv2 message");
 	return 1;
     }
 
@@ -382,14 +382,14 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 			(eap_ds->response->code != PW_IKEV2_RESPONSE)  ||
 			eap_ds->response->type.num != PW_EAP_IKEV2    ||
 			!eap_ds->response->type.data){
-		DEBUGE(IKEv2_LOG_PREFIX "corrupted data");
+		ERROR(IKEv2_LOG_PREFIX "corrupted data");
 		return -1;
 	}
 
 	//skladanie pakietu
 	uint8_t *in=NULL;
 	if(!(in=talloc_array(eap_ds, uint8_t, eap_ds->response->length))){
-		DEBUGE(IKEv2_LOG_PREFIX "alloc error");
+		ERROR(IKEv2_LOG_PREFIX "alloc error");
 		return -1;
 	}
 

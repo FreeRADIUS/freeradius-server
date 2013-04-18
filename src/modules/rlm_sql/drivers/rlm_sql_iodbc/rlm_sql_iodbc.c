@@ -92,7 +92,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rcode = SQLAllocEnv(&conn->env_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		DEBUGE("sql_create_socket: SQLAllocEnv failed:  %s",
+		ERROR("sql_create_socket: SQLAllocEnv failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -100,7 +100,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	rcode = SQLAllocConnect(conn->env_handle,
 				&conn->dbc_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		DEBUGE("sql_create_socket: SQLAllocConnect failed:  %s",
+		ERROR("sql_create_socket: SQLAllocConnect failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -118,7 +118,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 		rcode = SQLConnect(conn->dbc_handle, server, SQL_NTS, login, SQL_NTS, password, SQL_NTS);
 	}
 	if (!SQL_SUCCEEDED(rcode)) {
-		DEBUGE("sql_create_socket: SQLConnectfailed:  %s",
+		ERROR("sql_create_socket: SQLConnectfailed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -142,13 +142,13 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	rcode = SQLAllocStmt(conn->dbc_handle,
 			     &conn->stmt_handle);
 	if (!SQL_SUCCEEDED(rcode)) {
-		DEBUGE("sql_create_socket: SQLAllocStmt failed:  %s",
+		ERROR("sql_create_socket: SQLAllocStmt failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}
 
 	if (!conn->dbc_handle) {
-		DEBUGE("sql_query:  Socket not connected");
+		ERROR("sql_query:  Socket not connected");
 		return -1;
 	}
 
@@ -160,7 +160,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	}
 	
 	if (!SQL_SUCCEEDED(rcode)) {
-		DEBUGE("sql_query: failed:  %s",
+		ERROR("sql_query: failed:  %s",
 				sql_error(handle, config));
 		return -1;
 	}

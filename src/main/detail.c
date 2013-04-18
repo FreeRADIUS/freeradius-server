@@ -248,7 +248,7 @@ static int detail_open(rad_listen_t *this)
 		 */
 		this->fd = open(filename, O_RDWR);
 		if (this->fd < 0) {
-			DEBUGE("Detail - Failed to open %s: %s",
+			ERROR("Detail - Failed to open %s: %s",
 			       filename, strerror(errno));
 			if (filename != data->filename) free(filename);
 			return 0;
@@ -356,7 +356,7 @@ int detail_recv(rad_listen_t *listener)
 
 			data->fp = fdopen(listener->fd, "r");
 			if (!data->fp) {
-				DEBUGE("FATAL: Failed to re-open detail file %s: %s",
+				ERROR("FATAL: Failed to re-open detail file %s: %s",
 				       data->filename, strerror(errno));
 				exit(1);
 			}
@@ -382,7 +382,7 @@ int detail_recv(rad_listen_t *listener)
 				struct stat buf;
 				
 				if (fstat(listener->fd, &buf) < 0) {
-					DEBUGE("Failed to stat "
+					ERROR("Failed to stat "
 					       "detail file %s: %s",
 				       		data->filename,
 				       		strerror(errno));
@@ -544,7 +544,7 @@ int detail_recv(rad_listen_t *listener)
 		if (!strcasecmp(key, "Client-IP-Address")) {
 			data->client_ip.af = AF_INET;
 			if (ip_hton(value, AF_INET, &data->client_ip) < 0) {
-				DEBUGE("Failed parsing Client-IP-Address");
+				ERROR("Failed parsing Client-IP-Address");
 				
 				pairfree(&data->vps);
 				goto cleanup;
@@ -607,7 +607,7 @@ int detail_recv(rad_listen_t *listener)
 	 *	treat it as EOF.
 	 */
 	if (data->state != STATE_QUEUED) {
-		DEBUGE("Truncated record: treating it as EOF for detail file %s", data->filename_work);
+		ERROR("Truncated record: treating it as EOF for detail file %s", data->filename_work);
 		goto cleanup;	
 	}
 
@@ -627,7 +627,7 @@ int detail_recv(rad_listen_t *listener)
 	 */
 	packet = rad_alloc(NULL, 1);
 	if (!packet) {
-		DEBUGE("FATAL: Failed allocating memory for detail");
+		ERROR("FATAL: Failed allocating memory for detail");
 		exit(1);
 	}
 

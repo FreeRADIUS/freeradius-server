@@ -136,14 +136,14 @@ int eap_module_load(rlm_eap_t *inst, eap_module_t **m_inst, eap_type_t num, CONF
 	 */
 	method->handle = lt_dlopenext(mod_name);
 	if (!method->handle) {
-		DEBUGE("rlm_eap (%s): Failed to link %s: %s", inst->xlat_name, mod_name, lt_dlerror());
+		ERROR("rlm_eap (%s): Failed to link %s: %s", inst->xlat_name, mod_name, lt_dlerror());
 
 		return -1;
 	}
 
 	method->type = dlsym(method->handle, mod_name);
 	if (!method->type) {
-		DEBUGE("rlm_eap (%s): Failed linking to structure in %s: %s", inst->xlat_name,
+		ERROR("rlm_eap (%s): Failed linking to structure in %s: %s", inst->xlat_name,
 		       method->name, dlerror());
 		
 		return -1;
@@ -158,7 +158,7 @@ open_self:
 	 *	Call the attach num in the EAP num module
 	 */
 	if ((method->type->attach) && ((method->type->attach)(method->cs, &(method->instance)) < 0)) {
-		DEBUGE("rlm_eap (%s): Failed to initialise %s", inst->xlat_name, mod_name);
+		ERROR("rlm_eap (%s): Failed to initialise %s", inst->xlat_name, mod_name);
 		
 		if (method->instance) {
 			(void) talloc_steal(method, method->instance);
@@ -639,7 +639,7 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		}
 
 		/* Should never enter here */
-		DEBUGE("rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
+		ERROR("rlm_eap: reply code %d is unknown, Rejecting the request.", reply->code);
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		reply->code = PW_EAP_FAILURE;
 		rcode = RLM_MODULE_REJECT;

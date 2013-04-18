@@ -489,7 +489,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	int cflags = 0;
 	
 	if (!ptr || !*ptr || (depth >= 64)) {
-		DEBUGE("Internal sanity check failed in evaluate condition");
+		ERROR("Internal sanity check failed in evaluate condition");
 		return FALSE;
 	}
 
@@ -556,7 +556,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			while ((*p == ' ') || (*p == '\t')) p++;
 
 			if (!*p) {
-				DEBUGE("No closing brace");
+				ERROR("No closing brace");
 				return FALSE;
 			}
 
@@ -611,7 +611,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		}
 
 		if (found_condition) {
-			DEBUGE("Consecutive conditions at %s", p);
+			ERROR("Consecutive conditions at %s", p);
 			return FALSE;
 		}
 
@@ -622,7 +622,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 *	Look for common errors.
 		 */
 		if ((p[0] == '%') && (p[1] == '{')) {
-			DEBUGE("Bare %%{...} is invalid in condition at: %s", p);
+			ERROR("Bare %%{...} is invalid in condition at: %s", p);
 			return FALSE;
 		}
 
@@ -634,7 +634,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		    (lt != T_DOUBLE_QUOTED_STRING) &&
 		    (lt != T_SINGLE_QUOTED_STRING) &&
 		    (lt != T_BACK_QUOTED_STRING)) {
-			DEBUGE("Expected string or numbers at: %s", p);
+			ERROR("Expected string or numbers at: %s", p);
 			return FALSE;
 		}
 
@@ -643,7 +643,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			pleft = expand_string(xleft, sizeof(xleft), request,
 					      lt, left);
 			if (!pleft) {
-				DEBUGE("Failed expanding string at: %s",
+				ERROR("Failed expanding string at: %s",
 				       left);
 				return FALSE;
 			}
@@ -692,7 +692,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		token = gettoken(&p, comp, sizeof(comp));
 		if ((token < T_OP_NE) || (token > T_OP_CMP_EQ) ||
 		    (token == T_OP_CMP_TRUE)) {
-			DEBUGE("Expected comparison at: %s", comp);
+			ERROR("Expected comparison at: %s", comp);
 			return FALSE;
 		}
 		
@@ -700,7 +700,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 *	Look for common errors.
 		 */
 		if ((p[0] == '%') && (p[1] == '{')) {
-			DEBUGE("Bare %%{...} is invalid in condition at: %s", p);
+			ERROR("Bare %%{...} is invalid in condition at: %s", p);
 			return FALSE;
 		}
 		
@@ -712,7 +712,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		    (token == T_OP_REG_NE)) {
 			rt = getregex(&p, right, sizeof(right), &cflags);
 			if (rt != T_DOUBLE_QUOTED_STRING) {
-				DEBUGE("Expected regular expression at: %s", p);
+				ERROR("Expected regular expression at: %s", p);
 				return FALSE;
 			}
 		} else
@@ -723,7 +723,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		    (rt != T_DOUBLE_QUOTED_STRING) &&
 		    (rt != T_SINGLE_QUOTED_STRING) &&
 		    (rt != T_BACK_QUOTED_STRING)) {
-			DEBUGE("Expected string or numbers at: %s", p);
+			ERROR("Expected string or numbers at: %s", p);
 			return FALSE;
 		}
 		
@@ -732,7 +732,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			pright = expand_string(xright, sizeof(xright), request,
 					       rt, right);
 			if (!pright) {
-				DEBUGE("Failed expanding string at: %s",
+				ERROR("Failed expanding string at: %s",
 				       right);
 				return FALSE;
 			}
@@ -779,7 +779,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	} /* loop over the input condition */
 
 	if (!found_condition) {
-		DEBUGE("Syntax error.  Expected condition at %s", p);
+		ERROR("Syntax error.  Expected condition at %s", p);
 		return FALSE;
 	}
 

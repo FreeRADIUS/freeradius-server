@@ -211,7 +211,7 @@ static rlm_rcode_t do_attr_rewrite(void *instance, REQUEST *request)
 				break;
 #endif
 			default:
-				DEBUGE("%s: Illegal value for searchin. Changing to packet.", inst->name);
+				ERROR("%s: Illegal value for searchin. Changing to packet.", inst->name);
 				inst->searchin = RLM_REGEX_INPACKET;
 				pairadd(&request->packet->vps,attr_vp);
 				break;
@@ -250,7 +250,7 @@ static rlm_rcode_t do_attr_rewrite(void *instance, REQUEST *request)
 				break;
 #endif
 			default:
-				DEBUGE("%s: Illegal value for searchin. Changing to packet.", inst->name);
+				ERROR("%s: Illegal value for searchin. Changing to packet.", inst->name);
 				inst->searchin = RLM_REGEX_INPACKET;
 				attr_vp = pairfind(request->packet->vps, inst->da->attr, inst->da->vendor, TAG_ANY);
 				break;
@@ -306,7 +306,7 @@ do_again:
 			}
 			if (err != 0) {
 				regfree(&preg);
-				DEBUGE("%s: match failure for attribute %s with value '%s'", inst->name,
+				ERROR("%s: match failure for attribute %s with value '%s'", inst->name,
 						inst->attribute, attr_vp->vp_strvalue);
 				return rcode;
 			}

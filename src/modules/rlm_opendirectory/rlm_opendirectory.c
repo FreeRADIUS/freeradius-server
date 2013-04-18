@@ -357,7 +357,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	if (groupdata != NULL) {
 		err = mbr_gid_to_uuid(groupdata->gr_gid, guid_sacl);
 		if (err != 0) {
-			DEBUGE("rlm_opendirectory: The group \"%s\" does not have a GUID.", kRadiusSACLName);
+			ERROR("rlm_opendirectory: The group \"%s\" does not have a GUID.", kRadiusSACLName);
 			return RLM_MODULE_FAIL;
 		}		
 	}

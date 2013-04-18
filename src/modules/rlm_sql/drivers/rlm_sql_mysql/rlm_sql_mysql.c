@@ -125,10 +125,10 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 					NULL,
 					sql_flags);
 	if (!conn->sock) {
-		DEBUGE("rlm_sql_mysql: Couldn't connect socket to MySQL "
+		ERROR("rlm_sql_mysql: Couldn't connect socket to MySQL "
 		       "server %s@%s:%s", config->sql_login, config->sql_server,
 		       config->sql_db);
-		DEBUGE("rlm_sql_mysql: Mysql error '%s'",
+		ERROR("rlm_sql_mysql: Mysql error '%s'",
 		       mysql_error(&conn->db));
 		
 		conn->sock = NULL;
@@ -182,7 +182,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
 	if (!conn->sock) {
-		DEBUGE("rlm_sql_mysql: Socket not connected");
+		ERROR("rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;
 	}
 
@@ -206,15 +206,15 @@ static int sql_store_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *
 	int status;
 
 	if (!conn->sock) {
-		DEBUGE("rlm_sql_mysql: Socket not connected");
+		ERROR("rlm_sql_mysql: Socket not connected");
 		return SQL_DOWN;
 	}
 retry_store_result:
 	if (!(conn->result = mysql_store_result(conn->sock))) {
 		status = sql_check_error(mysql_errno(conn->sock));
 		if (status != 0) {
-			DEBUGE("rlm_sql_mysql: Cannot store result");
-			DEBUGE("rlm_sql_mysql: MySQL error '%s'",
+			ERROR("rlm_sql_mysql: Cannot store result");
+			ERROR("rlm_sql_mysql: MySQL error '%s'",
 			       mysql_error(conn->sock));
 			return status;
 		}
@@ -224,8 +224,8 @@ retry_store_result:
 			/* there are more results */
 			goto retry_store_result;
 		} else if (status > 0) {
-			DEBUGE("rlm_sql_mysql: Cannot get next result");
-			DEBUGE("rlm_sql_mysql: MySQL error '%s'",
+			ERROR("rlm_sql_mysql: Cannot get next result");
+			ERROR("rlm_sql_mysql: MySQL error '%s'",
 			       mysql_error(conn->sock));
 			return sql_check_error(status);
 		}
@@ -253,8 +253,8 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
 #else
 	if (!(num = mysql_num_fields(conn->sock))) {
 #endif
-		DEBUGE("rlm_sql_mysql: MYSQL Error: No Fields");
-		DEBUGE("rlm_sql_mysql: MYSQL error: %s",
+		ERROR("rlm_sql_mysql: MYSQL Error: No Fields");
+		ERROR("rlm_sql_mysql: MYSQL error: %s",
 		       mysql_error(conn->sock));
 	}
 	return num;
@@ -336,8 +336,8 @@ retry_fetch_row:
 	if (!handle->row) {
 		status = sql_check_error(mysql_errno(conn->sock));
 		if (status != 0) {
-			DEBUGE("rlm_sql_mysql: Cannot fetch row");
-			DEBUGE("rlm_sql_mysql: MySQL error '%s'",
+			ERROR("rlm_sql_mysql: Cannot fetch row");
+			ERROR("rlm_sql_mysql: MySQL error '%s'",
 			       mysql_error(conn->sock));
 			return status;
 		}
@@ -350,8 +350,8 @@ retry_fetch_row:
 			 && (conn->result != NULL))
 				goto retry_fetch_row;
 		} else if (status > 0) {
-			DEBUGE("rlm_sql_mysql: Cannot get next result");
-			DEBUGE("rlm_sql_mysql: MySQL error '%s'",
+			ERROR("rlm_sql_mysql: Cannot get next result");
+			ERROR("rlm_sql_mysql: MySQL error '%s'",
 			       mysql_error(conn->sock));
 			return sql_check_error(status);
 		}
@@ -429,8 +429,8 @@ skip_next_result:
 		/* there are more results */
 		goto skip_next_result;
 	}  else if (status > 0) {
-		DEBUGE("rlm_sql_mysql: Cannot get next result");
-		DEBUGE("rlm_sql_mysql: MySQL error '%s'",
+		ERROR("rlm_sql_mysql: Cannot get next result");
+		ERROR("rlm_sql_mysql: MySQL error '%s'",
 		       mysql_error(conn->sock));
 		return sql_check_error(status);
 	}
@@ -460,8 +460,8 @@ static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *
 		/* there are more results */
 		sql_finish_query(handle, config);
 	}  else if (status > 0) {
-		DEBUGE("rlm_sql_mysql: Cannot get next result");
-		DEBUGE("rlm_sql_mysql: MySQL error '%s'",
+		ERROR("rlm_sql_mysql: Cannot get next result");
+		ERROR("rlm_sql_mysql: MySQL error '%s'",
 		       mysql_error(conn->sock));
 		return sql_check_error(status);
 	}

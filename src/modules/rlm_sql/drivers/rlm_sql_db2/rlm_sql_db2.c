@@ -87,7 +87,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 			    config->sql_login,  SQL_NTS,
 			    config->sql_password, SQL_NTS);
 	if(retval != SQL_SUCCESS) {
-		DEBUGE("could not connect to DB2 server %s\n",
+		ERROR("could not connect to DB2 server %s\n",
 		       config->sql_server);
 		
 		return -1;
@@ -117,7 +117,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	retval = SQLExecDirect(conn->stmt, query, SQL_NTS);
 	if(retval != SQL_SUCCESS) {
 		/* XXX Check if retval means we should return SQL_DOWN */
-		DEBUGE("could not execute statement \"%s\"\n", query);
+		ERROR("could not execute statement \"%s\"\n", querystr);
 		return -1;
 	}
 
@@ -305,7 +305,7 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 static int
 not_implemented(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
-	DEBUGE("sql_db2: calling unimplemented function");
+	ERROR("sql_db2: calling unimplemented function");
 	exit(1);
 }
 

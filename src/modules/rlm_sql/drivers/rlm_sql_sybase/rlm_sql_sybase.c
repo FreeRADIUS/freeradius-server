@@ -57,8 +57,8 @@ static CS_RETCODE CS_PUBLIC clientmsg_callback(UNUSED CS_CONTEXT *context,
 	** Error number: Print the error's severity, number, origin, and
 	** layer. These four numbers uniquely identify the error.
 	*/
-	DEBUGE("Client Library error:\n");
-	DEBUGE("severity(%ld) number(%ld) origin(%ld) layer(%ld)\n",
+	ERROR("Client Library error:\n");
+	ERROR("severity(%ld) number(%ld) origin(%ld) layer(%ld)\n",
 		(long)CS_SEVERITY(emsgp->severity),
 		(long)CS_NUMBER(emsgp->msgnumber),
 		(long)CS_ORIGIN(emsgp->msgnumber),
@@ -67,13 +67,13 @@ static CS_RETCODE CS_PUBLIC clientmsg_callback(UNUSED CS_CONTEXT *context,
 	/*
 	** Error text: Print the error text.
 	*/
-	DEBUGE("%s\n", emsgp->msgstring);
+	ERROR("%s\n", emsgp->msgstring);
 
 	if (emsgp->osstringlen > 0)
 	{
-		DEBUGE("Operating system error number(%ld):\n",
+		ERROR("Operating system error number(%ld):\n",
 			(long)emsgp->osnumber);
-		DEBUGE("%s\n", emsgp->osstring);
+		ERROR("%s\n", emsgp->osstring);
 	}
 
 	return (CS_SUCCEED);
@@ -91,21 +91,21 @@ csmsg_callback(UNUSED CS_CONTEXT *context, CS_CLIENTMSG *emsgp)
 	/*
 	** Print the error number and message.
 	*/
-	DEBUGE("CS-Library error:\n");
-	DEBUGE("\tseverity(%ld) layer(%ld) origin(%ld) number(%ld)",
+	ERROR("CS-Library error:\n");
+	ERROR("\tseverity(%ld) layer(%ld) origin(%ld) number(%ld)",
 		(long)CS_SEVERITY(emsgp->msgnumber),
 		(long)CS_LAYER(emsgp->msgnumber),
 		(long)CS_ORIGIN(emsgp->msgnumber),
 		(long)CS_NUMBER(emsgp->msgnumber));
 
-	DEBUGE("%s\n", emsgp->msgstring);
+	ERROR("%s\n", emsgp->msgstring);
 
 	/*
 	** Print any operating system error information.
 	*/
 	if (emsgp->osstringlen > 0)
 	{
-		DEBUGE("Operating System Error: %s\n",
+		ERROR("Operating System Error: %s\n",
 			emsgp->osstring);
 	}
 
@@ -125,8 +125,8 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *cp,
 	/*
 	** Print the message info.
 	*/
-	DEBUGE("Sybase Server message:\n");
-	DEBUGE("number(%ld) severity(%ld) state(%ld) line(%ld)\n",
+	ERROR("Sybase Server message:\n");
+	ERROR("number(%ld) severity(%ld) state(%ld) line(%ld)\n",
 		(long)msgp->msgnumber, (long)msgp->severity,
 		(long)msgp->state, (long)msgp->line);
 
@@ -134,12 +134,12 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *cp,
 	** Print the server and procedure names if supplied.
 	*/
 	if (msgp->svrnlen > 0 && msgp->proclen > 0)
-		DEBUGE("Server name: %s   Procedure name: %s", msgp->svrname, msgp->proc);
+		ERROR("Server name: %s   Procedure name: %s", msgp->svrname, msgp->proc);
 
 	/*
 	** Print the null terminated message.
 	*/
-	DEBUGE("%s\n", msgp->text);
+	ERROR("%s\n", msgp->text);
 
 	/*
 	** Server message callbacks must return CS_SUCCEED.
@@ -177,14 +177,14 @@ static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	stempbuf[1][0]=(char)NULL;
 
 	if (ct_diag(conn->db, CS_STATUS, CS_CLIENTMSG_TYPE, CS_UNUSED, &msgcount) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_error): Failed to get number of pending Client messages");
+		ERROR("rlm_sql_sybase(sql_error): Failed to get number of pending Client messages");
 		return msgbuf;
 	}
-	DEBUGE("rlm_sql_sybase(sql_error): Number of pending Client messages: %d", (int)msgcount);
+	ERROR("rlm_sql_sybase(sql_error): Number of pending Client messages: %d", (int)msgcount);
 
 	for (i=1; i<=msgcount; i++) {
 		if (ct_diag(conn->db, CS_GET, CS_CLIENTMSG_TYPE, (CS_INT)i, &cmsg) != CS_SUCCEED) {
-			DEBUGE("rlm_sql_sybase(sql_error): Failed to retrieve pending Client message");
+			ERROR("rlm_sql_sybase(sql_error): Failed to retrieve pending Client message");
 			return msgbuf;
 		}
 		sprintf(ctempbuf[i-1],"rlm_sql_sybase: Client Library Error: severity(%ld) number(%ld) origin(%ld) layer(%ld):\n%s",
@@ -197,14 +197,14 @@ static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 
 
 	if (ct_diag(conn->db, CS_STATUS, CS_SERVERMSG_TYPE, CS_UNUSED, &msgcount) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_error): Failed to get number of pending Server messages");
+		ERROR("rlm_sql_sybase(sql_error): Failed to get number of pending Server messages");
 		return msgbuf;
 	}
-	DEBUGE("rlm_sql_sybase(sql_error): Number of pending Server messages: %d", (int)msgcount);
+	ERROR("rlm_sql_sybase(sql_error): Number of pending Server messages: %d", (int)msgcount);
 
 	for (i=1; i<=msgcount; i++) {
 		if (ct_diag(conn->db, CS_GET, CS_SERVERMSG_TYPE, (CS_INT)i, &smsg) != CS_SUCCEED) {
-			DEBUGE("rlm_sql_sybase(sql_error): Failed to retrieve pending Server message");
+			ERROR("rlm_sql_sybase(sql_error): Failed to retrieve pending Server message");
 			return msgbuf;
 		}
 		sprintf(stempbuf[i-1],"rlm_sql_sybase: Server message: severity(%ld) number(%ld) origin(%ld) layer(%ld):\n%s",
@@ -254,14 +254,14 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	   the db pooling design of rlm_sql, we'll have to go with one context per db */
 
 	if (cs_ctx_alloc(CS_VERSION_100, &conn->context) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to allocate CS context structure (cs_ctx_alloc())");
+		ERROR("rlm_sql_sybase(sql_socket_init): Unable to allocate CS context structure (cs_ctx_alloc())");
 		return -1;
 	}
 
 	/* Initialize ctlib */
 
 	if (ct_init(conn->context, CS_VERSION_100) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to initialize Client-Library (ct_init())");
+		ERROR("rlm_sql_sybase(sql_socket_init): Unable to initialize Client-Library (ct_init())");
 		if (conn->context != (CS_CONTEXT *)NULL) {
 			cs_ctx_drop(conn->context);
 		}
@@ -271,7 +271,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* Install callback functions for error-handling */
 
 	if (cs_config(conn->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to install CS Library error callback");
+		ERROR("rlm_sql_sybase(sql_socket_init): Unable to install CS Library error callback");
 		if (conn->context != (CS_CONTEXT *)NULL) {
 			ct_exit(conn->context, CS_FORCE_EXIT);
 			cs_ctx_drop(conn->context);
@@ -280,7 +280,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	}
 
 	if (ct_callback(conn->context, NULL, CS_SET, CS_CLIENTMSG_CB, (CS_VOID *)clientmsg_callback) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
+		ERROR("rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
 		if (conn->context != (CS_CONTEXT *)NULL) {
 			ct_exit(conn->context, CS_FORCE_EXIT);
 			cs_ctx_drop(conn->context);
@@ -289,7 +289,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	}
 
 	if (ct_callback(conn->context, NULL, CS_SET, CS_SERVERMSG_CB, (CS_VOID *)servermsg_callback) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
+		ERROR("rlm_sql_sybase(sql_socket_init): Unable to install client message callback");
 		if (conn->context != (CS_CONTEXT *)NULL) {
 			ct_exit(conn->context, CS_FORCE_EXIT);
 			cs_ctx_drop(conn->context);
@@ -300,7 +300,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* Allocate a ctlib db structure */
 
 	if (ct_con_alloc(conn->context, &conn->db) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to allocate db structure (ct_con_alloc())");
+		ERROR("rlm_sql_sybase(sql_socket_init): Unable to allocate db structure (ct_con_alloc())");
 		if (conn->context != (CS_CONTEXT *)NULL) {
 			ct_exit(conn->context, CS_FORCE_EXIT);
 			cs_ctx_drop(conn->context);
@@ -311,7 +311,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* Initialize inline error handling for the db */
 
 /*	if (ct_diag(conn->db, CS_INIT, CS_UNUSED, CS_UNUSED, NULL) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to initialize error handling (ct_diag())");
+		ERROR("rlm_sql_sybase(sql_socket_init): Unable to initialize error handling (ct_diag())");
 		if (conn->context != (CS_CONTEXT *)NULL) {
 			ct_exit(conn->context, CS_FORCE_EXIT);
 			cs_ctx_drop(conn->context);
@@ -328,8 +328,8 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 		
 		memcpy(&login, &config->sql_login, sizeof(login));
 		if (ct_con_props(conn->db, CS_SET, CS_USERNAME, login, strlen(config->sql_login), NULL) != CS_SUCCEED) {
-			DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to set username for db (ct_con_props())");
-			DEBUGE("%s", sql_error(handle, config));
+			ERROR("rlm_sql_sybase(sql_socket_init): Unable to set username for db (ct_con_props())");
+			ERROR("%s", sql_error(handle, config));
 			if (conn->context != (CS_CONTEXT *)NULL) {
 				ct_exit(conn->context, CS_FORCE_EXIT);
 				cs_ctx_drop(conn->context);
@@ -340,8 +340,8 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 		memcpy(&password, &config->sql_password, sizeof(password));
 		if (ct_con_props(conn->db, CS_SET, CS_PASSWORD, password, strlen(config->sql_password), 
 				 NULL) != CS_SUCCEED) {
-			DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to set password for db (ct_con_props())");
-			DEBUGE("%s", sql_error(handle, config));
+			ERROR("rlm_sql_sybase(sql_socket_init): Unable to set password for db (ct_con_props())");
+			ERROR("%s", sql_error(handle, config));
 
 			if (conn->context != (CS_CONTEXT *)NULL) {
 				ct_exit(conn->context, CS_FORCE_EXIT);
@@ -353,9 +353,9 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 		/* Establish the db */
 		memcpy(&server, &config->sql_server, sizeof(server));
 		if (ct_connect(conn->db, server, strlen(config->sql_server)) != CS_SUCCEED) {
-			DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to establish db to symbolic servername %s",
+			ERROR("rlm_sql_sybase(sql_socket_init): Unable to establish db to symbolic servername %s",
 			       config->sql_server);
-			DEBUGE("%s", sql_error(handle, config));
+			ERROR("%s", sql_error(handle, config));
 			
 			if (conn->context != (CS_CONTEXT *)NULL) {
 				ct_exit(conn->context, CS_FORCE_EXIT);
@@ -384,24 +384,24 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	CS_INT		result_type;
 
 	 if (!conn->db) {
-		DEBUGE("Socket not connected");
+		ERROR("Socket not connected");
 		return -1;
 	}
 
 	if (ct_cmd_alloc(conn->db, &conn->command) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_query): Unable to allocate command structure (ct_cmd_alloc())\n%s",
+		ERROR("rlm_sql_sybase(sql_query): Unable to allocate command structure (ct_cmd_alloc())\n%s",
 				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_command(conn->command, CS_LANG_CMD, query, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_query): Unable to initiate command structure (ct_command())\n%s",
+		ERROR("rlm_sql_sybase(sql_query): Unable to initiate command structure (ct_command())\n%s",
 				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_send(conn->command) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_query): Unable to send command (ct_send())\n%s",
+		ERROR("rlm_sql_sybase(sql_query): Unable to send command (ct_send())\n%s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -420,9 +420,9 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	if ((results_ret = ct_results(conn->command, &result_type)) == CS_SUCCEED) {
 		if (result_type != CS_CMD_SUCCEED) {
 			if  (result_type == CS_ROW_RESULT) {
-				DEBUGE("rlm_sql_sybase(sql_query): sql_query processed a query returning rows. Use sql_select_query instead!");
+				ERROR("rlm_sql_sybase(sql_query): sql_query processed a query returning rows. Use sql_select_query instead!");
 			}
-			DEBUGE("rlm_sql_sybase(sql_query): Result failure or unexpected result type from query\n%s",
+			ERROR("rlm_sql_sybase(sql_query): Result failure or unexpected result type from query\n%s",
 					 sql_error(handle, config));
 			return -1;
 		}
@@ -432,10 +432,10 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 		{
 
 		case CS_FAIL: /* Serious failure, sybase requires us to cancel and maybe even close db */
-			DEBUGE("rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
+			ERROR("rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
 					, sql_error(handle, config));
 			if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-				DEBUGE("rlm_sql_sybase(sql_query): cleaning up.");
+				ERROR("rlm_sql_sybase(sql_query): cleaning up.");
 
 				return SQL_DOWN;
 			}
@@ -443,7 +443,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 			break;
 
 		default:
-			DEBUGE("rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
+			ERROR("rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
 					sql_error(handle, config));
 			return -1;
 		}
@@ -458,7 +458,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 
 	if ((results_ret = ct_results(conn->command, &result_type)) == CS_SUCCEED) {
 		if (result_type != CS_CMD_DONE) {
-			DEBUGE("rlm_sql_sybase(sql_query): Result failure or unexpected result type from query\n%s",
+			ERROR("rlm_sql_sybase(sql_query): Result failure or unexpected result type from query\n%s",
 					 sql_error(handle, config));
 			return -1;
 		}
@@ -468,10 +468,10 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 		{
 
 		case CS_FAIL: /* Serious failure, sybase requires us to cancel and maybe even close db */
-			DEBUGE("rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
+			ERROR("rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
 					, sql_error(handle, config));
 			if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-				DEBUGE("rlm_sql_sybase(sql_query): cleaning up.");
+				ERROR("rlm_sql_sybase(sql_query): cleaning up.");
 				
 				return SQL_DOWN;
 			}
@@ -479,7 +479,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 			break;
 
 		default:
-			DEBUGE("rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
+			ERROR("rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
 					sql_error(handle, config));
 			return -1;
 		}
@@ -498,10 +498,10 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	{
 
 	case CS_FAIL: /* Serious failure, sybase requires us to cancel and maybe even close db */
-		DEBUGE("rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
+		ERROR("rlm_sql_sybase(sql_query): Failure retrieving query results\n%s"
 				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-			DEBUGE("rlm_sql_sybase(sql_query): cleaning up.");
+			ERROR("rlm_sql_sybase(sql_query): cleaning up.");
 	
 			return SQL_DOWN;
 		}
@@ -512,7 +512,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 		break;
 
 	default:
-		DEBUGE("rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
+		ERROR("rlm_sql_sybase(sql_query): Unexpected return value from ct_results()\n%s",
 				sql_error(handle, config));
 		return -1;
 		break;
@@ -534,7 +534,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	int	num;
 
 	if (ct_res_info(conn->command, CS_NUMDATA, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_num_fields): error retrieving column count: %s",
+		ERROR("rlm_sql_sybase(sql_num_fields): error retrieving column count: %s",
 			sql_error(handle, config));
 		return -1;
 	}
@@ -556,7 +556,7 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_finish_select_query): Freeing command structure failed.");
+		ERROR("rlm_sql_sybase(sql_finish_select_query): Freeing command structure failed.");
 		return -1;
 	}
 
@@ -593,25 +593,25 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 	char		**rowdata;
 
 	 if (!conn->db) {
-		DEBUGE("Socket not connected");
+		ERROR("Socket not connected");
 		return -1;
 	}
 
 
 	if (ct_cmd_alloc(conn->db, &conn->command) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_select_query): Unable to allocate command structure (ct_cmd_alloc())\n%s",
+		ERROR("rlm_sql_sybase(sql_select_query): Unable to allocate command structure (ct_cmd_alloc())\n%s",
 				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_command(conn->command, CS_LANG_CMD, query, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_select_query): Unable to initiate command structure (ct_command())\n%s",
+		ERROR("rlm_sql_sybase(sql_select_query): Unable to initiate command structure (ct_command())\n%s",
 				sql_error(handle, config));
 		return -1;
 	}
 
 	if (ct_send(conn->command) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_select_query): Unable to send command (ct_send())\n%s",
+		ERROR("rlm_sql_sybase(sql_select_query): Unable to send command (ct_send())\n%s",
 				sql_error(handle, config));
 		return -1;
 	}
@@ -666,7 +666,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 						free(rowdata[j]);
 					}
 					free(rowdata);
-					DEBUGE("rlm_sql_sybase(sql_select_query): ct_bind() failed)\n%s",
+					ERROR("rlm_sql_sybase(sql_select_query): ct_bind() failed)\n%s",
 							sql_error(handle, config));
 					return -1;
 				}
@@ -679,12 +679,12 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		case CS_CMD_SUCCEED:
 		case CS_CMD_DONE:
 
-			DEBUGE("rlm_sql_sybase(sql_select_query): Query returned no data");
+			ERROR("rlm_sql_sybase(sql_select_query): Query returned no data");
 			break;
 
 		default:
 
-			DEBUGE("rlm_sql_sybase(sql_select_query): Unexpected result type from query\n%s",
+			ERROR("rlm_sql_sybase(sql_select_query): Unexpected result type from query\n%s",
 					 sql_error(handle, config));
 			sql_finish_select_query(handle, config);
 			return -1;
@@ -699,10 +699,10 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		** the results and maybe even close the db.
 		*/
 
-		DEBUGE("rlm_sql_sybase(sql_select_query): Failure retrieving query results\n%s"
+		ERROR("rlm_sql_sybase(sql_select_query): Failure retrieving query results\n%s"
 				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-			DEBUGE("rlm_sql_sybase(sql_select_query): cleaning up.");
+			ERROR("rlm_sql_sybase(sql_select_query): cleaning up.");
 
 			return SQL_DOWN;
 		}
@@ -711,7 +711,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 
 	default:
 
-		DEBUGE("rlm_sql_sybase(sql_select_query): Unexpected return value from ct_results()\n%s",
+		ERROR("rlm_sql_sybase(sql_select_query): Unexpected return value from ct_results()\n%s",
 				sql_error(handle, config));
 		return -1;
 		break;
@@ -753,7 +753,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	int	num;
 
 	if (ct_res_info(conn->command, CS_ROW_COUNT, (CS_INT *)&num, CS_UNUSED, NULL) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_num_rows): error retrieving row count: %s",
+		ERROR("rlm_sql_sybase(sql_num_rows): error retrieving row count: %s",
 			sql_error(handle, config));
 		return -1;
 	}
@@ -789,10 +789,10 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 		** the results and maybe even close the db.
 		*/
 
-		DEBUGE("rlm_sql_sybase(sql_fetch_row): Failure fething row data\n%s"
+		ERROR("rlm_sql_sybase(sql_fetch_row): Failure fething row data\n%s"
 				, sql_error(handle, config));
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
-			DEBUGE("rlm_sql_sybase(sql_fetch_row): cleaning up.");
+			ERROR("rlm_sql_sybase(sql_fetch_row): cleaning up.");
 
 			return SQL_DOWN;
 		}
@@ -812,12 +812,12 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	case CS_ROW_FAIL:
 
-		DEBUGE("rlm_sql_sybase(sql_fetch_row): Recoverable failure fething row data, try again perhaps?");
+		ERROR("rlm_sql_sybase(sql_fetch_row): Recoverable failure fething row data, try again perhaps?");
 		return -1;
 
 	default:
 
-		DEBUGE("rlm_sql_sybase(sql_fetch_row): Unexpected returncode from ct_fetch");
+		ERROR("rlm_sql_sybase(sql_fetch_row): Unexpected returncode from ct_fetch");
 		return -1;
 		break;
 	}
@@ -859,7 +859,7 @@ static int sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *c
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_finish_query): Freeing command structure failed.");
+		ERROR("rlm_sql_sybase(sql_finish_query): Freeing command structure failed.");
 		return -1;
 	}
 

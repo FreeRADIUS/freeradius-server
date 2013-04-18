@@ -84,13 +84,13 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* 1. Allocate environment handle and register version */
 	err_handle = SQLAllocHandle(SQL_HANDLE_ENV,SQL_NULL_HANDLE,&conn->env);
 	if (sql_state(err_handle, handle, config)) {
-		DEBUGE("rlm_sql_unixodbc: Can't allocate environment handle\n");
+		ERROR("rlm_sql_unixodbc: Can't allocate environment handle\n");
 		return -1;
 	}
 	
 	err_handle = SQLSetEnvAttr(conn->env, SQL_ATTR_ODBC_VERSION, (void*)SQL_OV_ODBC3, 0);
 	if (sql_state(err_handle, handle, config)) {
-		DEBUGE("rlm_sql_unixodbc: Can't register ODBC version\n");
+		ERROR("rlm_sql_unixodbc: Can't register ODBC version\n");
 		SQLFreeHandle(SQL_HANDLE_ENV, conn->env);
 		return -1;
 	}
@@ -98,7 +98,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* 2. Allocate connection handle */
 	err_handle = SQLAllocHandle(SQL_HANDLE_DBC, conn->env, &conn->dbc);
 	if (sql_state(err_handle, handle, config)) {
-		DEBUGE("rlm_sql_unixodbc: Can't allocate connection handle\n");
+		ERROR("rlm_sql_unixodbc: Can't allocate connection handle\n");
 		SQLFreeHandle(SQL_HANDLE_ENV, conn->env);
 		return -1;
     	}
@@ -110,7 +110,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	(SQLCHAR*) config->sql_password, strlen(config->sql_password));
 	
 	if (sql_state(err_handle, handle, config)) {
-		DEBUGE("rlm_sql_unixodbc: Connection failed\n");
+		ERROR("rlm_sql_unixodbc: Connection failed\n");
 		SQLFreeHandle(SQL_HANDLE_DBC, conn->dbc);
 		SQLFreeHandle(SQL_HANDLE_ENV, conn->env);
 		return -1;
@@ -119,7 +119,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	/* 4. Allocate the statement */
 	err_handle = SQLAllocStmt(conn->dbc, &conn->statement);
 	if (sql_state(err_handle, handle, config)) {
-		DEBUGE("rlm_sql_unixodbc: Can't allocate the statement\n");
+		ERROR("rlm_sql_unixodbc: Can't allocate the statement\n");
 		return -1;
 	}
 
@@ -393,13 +393,13 @@ static int sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED rlm_sql_c
 
 		/* SQLSTATE 08 class describes various connection errors */
 		case '8':
-			DEBUGE("rlm_sql_unixodbc: SQL down %s %s\n", state, error);
+			ERROR("rlm_sql_unixodbc: SQL down %s %s\n", state, error);
 			res = SQL_DOWN;
 			break;
 		
 		/* any other SQLSTATE means error */
 		default:
-			DEBUGE("rlm_sql_unixodbc: %s %s\n", state, error);
+			ERROR("rlm_sql_unixodbc: %s %s\n", state, error);
 			res = -1;
 		    	break;
 		}

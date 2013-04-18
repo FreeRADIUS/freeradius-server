@@ -88,7 +88,7 @@ static int tnc_attach(CONF_SECTION *cs, void **instance)
 	
 	result = initializeDefault();
 	if (result != TNC_RESULT_SUCCESS) {
-		DEBUGE("rlm_eap_tnc: NAA-EAP initializeDefault returned an "
+		ERROR("rlm_eap_tnc: NAA-EAP initializeDefault returned an "
 		      "error code");
 		
 		return -1;
@@ -105,7 +105,7 @@ static int mod_detach(void *instance)
 	
 	result = terminate();
 	if (result != TNC_RESULT_SUCCESS) {
-		DEBUGE("rlm_eap_tnc: NAA-EAP terminate returned an "
+		ERROR("rlm_eap_tnc: NAA-EAP terminate returned an "
 		      "error code whilst detaching");
 		return -1;
 	}
@@ -159,7 +159,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	 *	FIXME check concrete outer EAP method.
 	 */
 	if (!handler->request || !handler->request->parent) {
-		DEBUGE("rlm_eap_tnc: EAP_TNC must only be used as an "
+		ERROR("rlm_eap_tnc: EAP_TNC must only be used as an "
 		      "inner method within a protected tunneled EAP created "
 		      "by an outer EAP method");
 		
@@ -183,7 +183,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	 */
 	result = getConnection(buff, &conn_id);
 	if (result != TNC_RESULT_SUCCESS) {
-		DEBUGE("rlm_eap_tnc: NAA-EAP getConnection returned an "
+		ERROR("rlm_eap_tnc: NAA-EAP getConnection returned an "
 		      "error code");
 
 		return 0;
@@ -210,7 +210,7 @@ static int tnc_initiate(void *instance, eap_handler_t *handler)
 	
 	result = storeUsername(conn_id, eap_tnc_user, username->length);
 	if (result != TNC_RESULT_SUCCESS) {
-		DEBUGE("rlm_eap_tnc: NAA-EAP storeUsername returned an "
+		ERROR("rlm_eap_tnc: NAA-EAP storeUsername returned an "
 		      "error code");
 
 		return 0;
@@ -273,7 +273,7 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 	REQUEST *request = handler->request;
 	
 	if (handler->eap_ds->response->type.num != PW_EAP_TNC) {
-		DEBUGE("rlm_eap_tnc: Incorrect response type");
+		ERROR("rlm_eap_tnc: Incorrect response type");
 
 		return 0;
 	}
@@ -328,7 +328,7 @@ static int mod_authenticate(UNUSED void *instance, eap_handler_t *handler)
 			
 		break;
 	default:
-		DEBUGE("rlm_eap_tnc: Invalid connection state");
+		ERROR("rlm_eap_tnc: Invalid connection state");
 		
 		return 0;
 	}

@@ -145,7 +145,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			}
 
 			if (!fr_hash_table_insert(inst->ht, da)) {
-				DEBUGE("rlm_detail: Failed trying to remember %s", attr);
+				ERROR("rlm_detail: Failed trying to remember %s", attr);
 				return -1;
 			}
 		}

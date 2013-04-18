@@ -221,7 +221,7 @@ int rest_init(rlm_rest_t *instance)
 
 	ret = curl_global_init(CURL_GLOBAL_ALL);
 	if (ret != CURLE_OK) {
-		DEBUGE("rlm_rest (%s): CURL init returned error: %i - %s",
+		ERROR("rlm_rest (%s): CURL init returned error: %i - %s",
 		       instance->xlat_name,
 		       ret, curl_easy_strerror(ret));
 
@@ -281,13 +281,13 @@ void *mod_conn_create(void *instance)
 	CURLcode ret;
 
 	if (!candle) {
-		DEBUGE("rlm_rest (%s): Failed to create CURL handle",
+		ERROR("rlm_rest (%s): Failed to create CURL handle",
 		       inst->xlat_name);
 		return NULL;
 	}
 
 	if (!*inst->connect_uri) {
-		DEBUGE("rlm_rest (%s): Skipping pre-connect,"
+		ERROR("rlm_rest (%s): Skipping pre-connect,"
 		       " connect_uri not specified", inst->xlat_name);
 		return candle;
 	}
@@ -310,7 +310,7 @@ void *mod_conn_create(void *instance)
 
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
-		DEBUGE("rlm_rest (%s): Connection failed: %i - %s",
+		ERROR("rlm_rest (%s): Connection failed: %i - %s",
 			inst->xlat_name,
 			ret, curl_easy_strerror(ret));
 
@@ -341,7 +341,7 @@ void *mod_conn_create(void *instance)
 	 */
 	error:
 
-	DEBUGE("rlm_rest (%s): Failed setting curl option: %i - %s",
+	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s",
 			inst->xlat_name,
 			ret, curl_easy_strerror(ret));
 
@@ -377,7 +377,7 @@ int mod_conn_alive(void *instance, void *handle)
 
 	ret = curl_easy_getinfo(candle, CURLINFO_LASTSOCKET, &last_socket);
 	if (ret != CURLE_OK) {
-		DEBUGE("rlm_rest (%s): Couldn't determine socket"
+		ERROR("rlm_rest (%s): Couldn't determine socket"
 		       " state: %i - %s", inst->xlat_name, ret,
 		       curl_easy_strerror(ret));
 
@@ -557,7 +557,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 	 *	The buffer wasn't big enough to encode a single attribute chunk.
 	 */
 	if (!len) {
-		DEBUGE("rlm_rest (%s): AVP exceeds buffer length"
+		ERROR("rlm_rest (%s): AVP exceeds buffer length"
 		       " or chunk", ctx->instance->xlat_name);
 	} else {
 		RDEBUG2("Returning %i bytes of POST data"
@@ -754,7 +754,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	 *	The buffer wasn't big enough to encode a single attribute chunk.
 	 */
 	if (!len) {
-		DEBUGE("rlm_rest (%s): AVP exceeds buffer length"
+		ERROR("rlm_rest (%s): AVP exceeds buffer length"
 		       " or chunk", ctx->instance->xlat_name);
 	} else {
 		RDEBUG2("Returning %i bytes of JSON data"
@@ -1049,7 +1049,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		vp = pairalloc(NULL, da);
 		if (!vp) {
-			DEBUGE("rlm_rest (%s): Failed creating"
+			ERROR("rlm_rest (%s): Failed creating"
 			       " valuepair", instance->xlat_name);
 			talloc_free(expanded);
 			
@@ -1085,7 +1085,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		}
 
 		if (++count == REST_BODY_MAX_ATTRS) {
-			DEBUGE("rlm_rest (%s): At maximum"
+			ERROR("rlm_rest (%s): At maximum"
 			       " attribute limit", instance->xlat_name);
 			return count;
 		}
@@ -1106,7 +1106,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 	}
 
 	if (!count) {
-		DEBUGE("rlm_rest (%s): Malformed POST data \"%s\"",
+		ERROR("rlm_rest (%s): Malformed POST data \"%s\"",
 		       instance->xlat_name, raw);
 	}
 
@@ -1409,7 +1409,7 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		i = 0;
 		do {
 			if (!(*max_attrs)--) {
-					DEBUGE("rlm_rest (%s): At "
+					ERROR("rlm_rest (%s): At "
 					       "maximum attribute limit",
 					       instance->xlat_name);
 					return NULL;
@@ -1480,7 +1480,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 
 	json = json_tokener_parse(p);
 	if (!json) {
-		DEBUGE("rlm_rest (%s): Malformed JSON data \"%s\"",
+		ERROR("rlm_rest (%s): Malformed JSON data \"%s\"",
 			instance->xlat_name, raw);
 		return -1;
 	}
@@ -1821,7 +1821,7 @@ static int rest_request_config_body(rlm_rest_t *instance,
 		len = rest_read_wrapper(&ctx->body, func,
 					REST_BODY_MAX_LEN , &ctx->read);
 		if (len <= 0) {
-			DEBUGE("rlm_rest (%s): Failed creating HTTP"
+			ERROR("rlm_rest (%s): Failed creating HTTP"
 			       " body content", instance->xlat_name);
 			return FALSE;
 		}
@@ -1838,7 +1838,7 @@ static int rest_request_config_body(rlm_rest_t *instance,
 	return TRUE;
 
 	error:
-	DEBUGE("rlm_rest (%s): Failed setting curl option: %i - %s",
+	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s",
 		instance->xlat_name, ret, curl_easy_strerror(ret));
 
 	return FALSE;
@@ -2174,12 +2174,12 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	return TRUE;
 
 	error:
-	DEBUGE("rlm_rest (%s): Failed setting curl option: %i - %s",
+	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s",
 	       instance->xlat_name, ret, curl_easy_strerror(ret));
 	return FALSE;
 
 	error_header:
-	DEBUGE("rlm_rest (%s): Failed creating header",
+	ERROR("rlm_rest (%s): Failed creating header",
 	       instance->xlat_name);
 	return FALSE;
 }
@@ -2203,7 +2203,7 @@ int rest_request_perform(rlm_rest_t *instance,
 
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
-		DEBUGE("rlm_rest (%s): Request failed: %i - %s",
+		ERROR("rlm_rest (%s): Request failed: %i - %s",
 		       instance->xlat_name, ret, curl_easy_strerror(ret));
 		return FALSE;
 	}
@@ -2372,7 +2372,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *sec
 	}
 
 	if (count != 3) {
-		DEBUGE("rlm_rest (%s): Error URI is malformed,"
+		ERROR("rlm_rest (%s): Error URI is malformed,"
 		       " can't find start of path", instance->xlat_name);
 		return -1;
 	}

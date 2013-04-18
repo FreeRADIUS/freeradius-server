@@ -284,19 +284,19 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		 *  5. Virtual Server (optional)
 		 */
 		if (!row[0]){
-			DEBUGE("rlm_sql (%s): No row id found on pass %d",inst->config->xlat_name,i);
+			ERROR("rlm_sql (%s): No row id found on pass %d",inst->config->xlat_name,i);
 			continue;
 		}
 		if (!row[1]){
-			DEBUGE("rlm_sql (%s): No nasname found for row %s",inst->config->xlat_name,row[0]);
+			ERROR("rlm_sql (%s): No nasname found for row %s",inst->config->xlat_name,row[0]);
 			continue;
 		}
 		if (!row[2]){
-			DEBUGE("rlm_sql (%s): No short name found for row %s",inst->config->xlat_name,row[0]);
+			ERROR("rlm_sql (%s): No short name found for row %s",inst->config->xlat_name,row[0]);
 			continue;
 		}
 		if (!row[4]){
-			DEBUGE("rlm_sql (%s): No secret found for row %s",inst->config->xlat_name,row[0]);
+			ERROR("rlm_sql (%s): No secret found for row %s",inst->config->xlat_name,row[0]);
 			continue;
 		}
 
@@ -317,7 +317,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		if (prefix_ptr) {
 			c->prefix = atoi(prefix_ptr + 1);
 			if ((c->prefix < 0) || (c->prefix > 128)) {
-				DEBUGE("rlm_sql (%s): Invalid Prefix value '%s' for IP.",
+				ERROR("rlm_sql (%s): Invalid Prefix value '%s' for IP.",
 				       inst->config->xlat_name, prefix_ptr + 1);
 				talloc_free(c);
 				continue;
@@ -330,7 +330,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
 		 *	Always get the numeric representation of IP
 		 */
 		if (ip_hton(row[1], AF_UNSPEC, &c->ipaddr) < 0) {
-			DEBUGE("rlm_sql (%s): Failed to look up hostname %s: %s",
+			ERROR("rlm_sql (%s): Failed to look up hostname %s: %s",
 			       inst->config->xlat_name,
 			       row[1], fr_strerror());
 			talloc_free(c);
@@ -743,7 +743,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	
 	*config = talloc_zero(parent, sql_acct_section_t);
 	if (cf_section_parse(cs, *config, acct_section_config) < 0) {
-		DEBUGE("rlm_sql (%s): Couldn't find configuration for "
+		ERROR("rlm_sql (%s): Couldn't find configuration for "
 		       "%s, will return NOOP for calls from this section",
 		       inst->config->xlat_name, name);
 		return -1;
@@ -815,7 +815,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		memset(&flags, 0, sizeof(flags));
 		if (dict_addattr(group_name, -1, 0, PW_TYPE_STRING, flags) < 0) {
-			DEBUGE("rlm_sql (%s): Failed to create "
+			ERROR("rlm_sql (%s): Failed to create "
 			       "attribute %s: %s", xlat_name, group_name,
 			       fr_strerror());
 			return -1;
@@ -823,7 +823,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		dattr = dict_attrbyname(group_name);
 		if (!dattr) {
-			DEBUGE("rlm_sql (%s): Failed to create "
+			ERROR("rlm_sql (%s): Failed to create "
 			       "attribute %s", xlat_name, group_name);
 			return -1;
 		}
@@ -849,7 +849,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	Sanity check for crazy people.
 	 */
 	if (strncmp(inst->config->sql_driver_name, "rlm_sql_", 8) != 0) {
-		DEBUGE("rlm_sql (%s): \"%s\" is NOT an SQL driver!",
+		ERROR("rlm_sql (%s): \"%s\" is NOT an SQL driver!",
 		       inst->config->xlat_name, inst->config->sql_driver_name);
 		return -1;
 	}
@@ -859,10 +859,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->handle = lt_dlopenext(inst->config->sql_driver_name);
 	if (!inst->handle) {
-		DEBUGE("Could not link driver %s: %s",
+		ERROR("Could not link driver %s: %s",
 		       inst->config->sql_driver_name,
 		       dlerror());
-		DEBUGE("Make sure it (and all its dependent libraries!)"
+		ERROR("Make sure it (and all its dependent libraries!)"
 		       "are in the search path of your system's ld.");
 		return -1;
 	}
@@ -870,7 +870,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->module = (rlm_sql_module_t *) dlsym(inst->handle,
 						  inst->config->sql_driver_name);
 	if (!inst->module) {
-		DEBUGE("Could not link symbol %s: %s",
+		ERROR("Could not link symbol %s: %s",
 		       inst->config->sql_driver_name,
 		       dlerror());
 		return -1;
@@ -922,7 +922,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (inst->config->do_clients) {
 		if (generate_sql_clients(inst) == -1){
-			DEBUGE("Failed to load clients from SQL.");
+			ERROR("Failed to load clients from SQL.");
 			return -1;
 		}
 	}

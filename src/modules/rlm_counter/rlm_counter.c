@@ -178,7 +178,7 @@ static rlm_rcode_t add_defaults(rlm_counter_t *inst)
 	time_datum.dsize = sizeof(time_t);
 
 	if (gdbm_store(inst->gdbm, key_datum, time_datum, GDBM_REPLACE) < 0){
-		DEBUGE("rlm_counter: Failed storing data to %s: %s",
+		ERROR("rlm_counter: Failed storing data to %s: %s",
 				inst->filename, gdbm_strerror(gdbm_errno));
 		return RLM_MODULE_FAIL;
 	}
@@ -191,7 +191,7 @@ static rlm_rcode_t add_defaults(rlm_counter_t *inst)
 	time_datum.dsize = sizeof(time_t);
 
 	if (gdbm_store(inst->gdbm, key_datum, time_datum, GDBM_REPLACE) < 0){
-		DEBUGE("rlm_counter: Failed storing data to %s: %s",
+		ERROR("rlm_counter: Failed storing data to %s: %s",
 				inst->filename, gdbm_strerror(gdbm_errno));
 		return RLM_MODULE_FAIL;
 	}
@@ -219,13 +219,13 @@ static rlm_rcode_t reset_db(rlm_counter_t *inst)
 		inst->gdbm = gdbm_open(filename, sizeof(int), GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
 	}
 	if (!inst->gdbm) {
-		DEBUGE("rlm_counter: Failed to open file %s: %s",
+		ERROR("rlm_counter: Failed to open file %s: %s",
 				inst->filename, strerror(errno));
 		return RLM_MODULE_FAIL;
 	}
 	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size,
 			sizeof(cache_size)) == -1) {
-		DEBUGE("rlm_counter: Failed to set cache size");
+		ERROR("rlm_counter: Failed to set cache size");
 	}
 	
 	DEBUG2("rlm_counter: reset_db: Opened new database");
@@ -296,7 +296,7 @@ static int find_next_reset(rlm_counter_t *inst, time_t timeval)
 	} else if (strcmp(inst->reset, "never") == 0) {
 		inst->reset_time = 0;
 	} else {
-		DEBUGE("rlm_counter: Unknown reset timer \"%s\"",
+		ERROR("rlm_counter: Unknown reset timer \"%s\"",
 			inst->reset);
 		return -1;
 	}
@@ -379,7 +379,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->counter_name && *inst->counter_name);
 	memset(&flags, 0, sizeof(flags));
 	if (dict_addattr(inst->counter_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
-		DEBUGE("rlm_counter: Failed to create counter attribute %s: %s",
+		ERROR("rlm_counter: Failed to create counter attribute %s: %s",
 		       inst->counter_name, fr_strerror());
 		return -1;
 	}
@@ -399,14 +399,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	rad_assert(inst->check_name && *inst->check_name);
 	if (dict_addattr(inst->check_name, -1, 0, PW_TYPE_INTEGER, flags) < 0) {
-		DEBUGE("rlm_counter: Failed to create check attribute %s: %s",
+		ERROR("rlm_counter: Failed to create check attribute %s: %s",
 		       inst->counter_name, fr_strerror());
 		return -1;
 
 	}
 	dattr = dict_attrbyname(inst->check_name);
 	if (!dattr) {
-		DEBUGE("rlm_counter: Failed to find check attribute %s",
+		ERROR("rlm_counter: Failed to find check attribute %s",
 				inst->counter_name);
 		return -1;
 	}
@@ -417,7 +417,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (inst->service_type != NULL) {
 		if ((dval = dict_valbyname(PW_SERVICE_TYPE, 0, inst->service_type)) == NULL) {
-			DEBUGE("rlm_counter: Failed to find attribute number for %s",
+			ERROR("rlm_counter: Failed to find attribute number for %s",
 					inst->service_type);
 			return -1;
 		}
@@ -433,12 +433,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->last_reset = now;
 
 	if (find_next_reset(inst,now) == -1){
-		DEBUGE("rlm_counter: find_next_reset() returned -1. Exiting.");
+		ERROR("rlm_counter: find_next_reset() returned -1. Exiting.");
 		return -1;
 	}
 
 	if (!inst->filename) {
-		DEBUGE("rlm_counter: 'filename' must be set.");
+		ERROR("rlm_counter: 'filename' must be set.");
 		return -1;
 	}
 
@@ -449,13 +449,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->gdbm = gdbm_open(filename, sizeof(int), GDBM_NEWDB | GDBM_COUNTER_OPTS, 0600, NULL);
 	}
 	if (!inst->gdbm) {
-		DEBUGE("rlm_counter: Failed to open file %s: %s",
+		ERROR("rlm_counter: Failed to open file %s: %s",
 				inst->filename, strerror(errno));
 		return -1;
 	}
 	if (gdbm_setopt(inst->gdbm, GDBM_CACHESIZE, &cache_size,
 			sizeof(cache_size)) == -1) {
-		DEBUGE("rlm_counter: Failed to set cache size");
+		ERROR("rlm_counter: Failed to set cache size");
 	}
 
 	/*
@@ -486,7 +486,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			inst->last_reset = now;
 			ret = reset_db(inst);
 			if (ret != RLM_MODULE_OK){
-				DEBUGE("rlm_counter: reset_db() failed");
+				ERROR("rlm_counter: reset_db() failed");
 				return -1;
 			}
 		} else {
@@ -505,7 +505,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	else{
 		ret = add_defaults(inst);
 		if (ret != RLM_MODULE_OK){
-			DEBUGE("rlm_counter: add_defaults() failed");
+			ERROR("rlm_counter: add_defaults() failed");
 			return -1;
 		}
 	}
@@ -684,7 +684,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	ret = gdbm_store(inst->gdbm, key_datum, count_datum, GDBM_REPLACE);
 	pthread_mutex_unlock(&inst->mutex);
 	if (ret < 0) {
-		DEBUGE("rlm_counter: Failed storing data to %s: %s",
+		ERROR("rlm_counter: Failed storing data to %s: %s",
 				inst->filename, gdbm_strerror(gdbm_errno));
 		return RLM_MODULE_FAIL;
 	}

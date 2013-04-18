@@ -71,7 +71,7 @@ static int eaptls_attach(CONF_SECTION *cs, void **instance)
 	inst->tls_conf = eaptls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
-		DEBUGE("rlm_eap_tls: Failed initializing SSL context");
+		ERROR("rlm_eap_tls: Failed initializing SSL context");
 		return -1;
 	}
 

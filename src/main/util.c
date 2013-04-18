@@ -385,7 +385,7 @@ void *rad_malloc(size_t size)
 	void *ptr = malloc(size);
 
 	if (ptr == NULL) {
-		DEBUGE("no memory");
+		ERROR("no memory");
 		exit(1);
 	}
 
@@ -431,7 +431,7 @@ void rad_cfree(const void *ptr)
 void NEVER_RETURNS rad_assert_fail (const char *file, unsigned int line,
 				    const char *expr)
 {
-	DEBUGE("ASSERT FAILED %s[%u]: %s", file, line, expr);
+	ERROR("ASSERT FAILED %s[%u]: %s", file, line, expr);
 	abort();
 }
 
@@ -754,7 +754,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 	int left;
 
 	if (strlen(cmd) > (argv_buflen - 1)) {
-		DEBUGE("rad_expand_xlat: Command line is too long");
+		ERROR("rad_expand_xlat: Command line is too long");
 		return -1;
 	}
 
@@ -762,7 +762,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 	 *	Check for bad escapes.
 	 */
 	if (cmd[strlen(cmd) - 1] == '\\') {
-		DEBUGE("rad_expand_xlat: Command line has final backslash, without a following character");
+		ERROR("rad_expand_xlat: Command line has final backslash, without a following character");
 		return -1;
 	}
 
@@ -795,7 +795,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 		 */
 		while (*from && (*from != ' ') && (*from != '\t')) {
 			if (to >= argv_buf + argv_buflen - 1) {
-				DEBUGE("rad_expand_xlat: Ran out of space in command line");
+				ERROR("rad_expand_xlat: Ran out of space in command line");
 				return -1;
 			}
 
@@ -804,7 +804,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 			case '\'':
 				length = rad_copy_string_bare(to, from);
 				if (length < 0) {
-					DEBUGE("rad_expand_xlat: Invalid string passed as argument");
+					ERROR("rad_expand_xlat: Invalid string passed as argument");
 					return -1;
 				}
 				from += length+2;
@@ -817,7 +817,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 
 					length = rad_copy_variable(to, from);
 					if (length < 0) {
-						DEBUGE("rad_expand_xlat: Invalid variable expansion passed as argument");
+						ERROR("rad_expand_xlat: Invalid variable expansion passed as argument");
 						return -1;
 					}
 					from += length;
@@ -843,7 +843,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 	 *	We have to have SOMETHING, at least.
 	 */
 	if (argc <= 0) {
-		DEBUGE("rad_expand_xlat: Empty command line.");
+		ERROR("rad_expand_xlat: Empty command line.");
 		return -1;
 	}
 
@@ -872,7 +872,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 				 */
 				sublen = 0;
 			} else {
-				DEBUGE("rad_expand_xlat: xlat failed");
+				ERROR("rad_expand_xlat: xlat failed");
 				return -1;
 			}
 		}
@@ -884,7 +884,7 @@ int rad_expand_xlat(REQUEST *request, const char *cmd,
 		left--;
 
 		if (left <= 0) {
-			DEBUGE("rad_expand_xlat: Ran out of space while expanding arguments.");
+			ERROR("rad_expand_xlat: Ran out of space while expanding arguments.");
 			return -1;
 		}
 	}

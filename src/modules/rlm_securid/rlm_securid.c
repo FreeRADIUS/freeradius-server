@@ -82,12 +82,12 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 	int rc=-1;
 
 	if (!username) {
-		DEBUGE("SecurID username is NULL");
+		ERROR("SecurID username is NULL");
 		return RC_SECURID_AUTH_FAILURE;		
 	}
 
 	if (!passcode) {
-		DEBUGE("SecurID passcode is NULL for %s user",username);
+		ERROR("SecurID passcode is NULL for %s user",username);
 		return RC_SECURID_AUTH_FAILURE;		
 	}
 
@@ -100,13 +100,13 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 		acmRet = SD_Init(&sdiHandle);
 		if (acmRet != ACM_OK) {
-			DEBUGE("Cannot communicate with the ACE/Server");
+			ERROR("Cannot communicate with the ACE/Server");
 			return -1;
 		}
 
 		acmRet = SD_Lock(sdiHandle, (SD_CHAR*)username);
 		if (acmRet != ACM_OK) {
-			DEBUGE("SecurID: Access denied. Name [%s] lock failed.",username);
+			ERROR("SecurID: Access denied. Name [%s] lock failed.",username);
 			return -2;
 		}
 
@@ -128,7 +128,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			return RC_SECURID_AUTH_ACCESS_DENIED_FAILURE;
 
 		case ACM_INVALID_SERVER:
-			DEBUGE("SecurID: Invalid ACE server.");
+			ERROR("SecurID: Invalid ACE server.");
 			return RC_SECURID_AUTH_INVALID_SERVER_FAILURE;
 
 		case ACM_NEW_PIN_REQUIRED:
@@ -188,7 +188,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			strlcpy(replyMsgBuffer, "\r\nPlease Enter the Next Code from Your Token:", replyMsgBufferSize);
 			return RC_SECURID_AUTH_CHALLENGE;
 		default:
-			DEBUGE("SecurID: Unexpected error from ACE/Agent API acmRet=%d",acmRet);
+			ERROR("SecurID: Unexpected error from ACE/Agent API acmRet=%d",acmRet);
 			return RC_SECURID_AUTH_FAILURE;
 
 			
@@ -401,7 +401,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 			return rc;
 				
 		default:
-			DEBUGE("rlm_securid: Invalid session state %d for user [%s]",
+			ERROR("rlm_securid: Invalid session state %d for user [%s]",
 			       pSecurid_session->securidSessionState,
 			       username);
 			break;	
@@ -439,7 +439,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	inst->session_tree = rbtree_create(securid_session_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		DEBUGE("rlm_securid: Cannot initialize session tree.");
+		ERROR("rlm_securid: Cannot initialize session tree.");
 		return -1;
 	}
 

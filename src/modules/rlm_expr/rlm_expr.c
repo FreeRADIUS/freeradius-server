@@ -398,7 +398,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
 			break;
 			
 			default:
-				DEBUGE("rlm_expr: invalid character class '%c'",
+				ERROR("rlm_expr: invalid character class '%c'",
 				       *p);
 				
 				return 0;

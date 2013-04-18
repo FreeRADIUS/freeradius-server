@@ -655,7 +655,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			 *	FIXME: Do so.
 			 */
 			if (stack.pointer >= MODCALL_STACK_MAX) {
-				DEBUGE("Internal sanity check failed: module stack is too deep");
+				ERROR("Internal sanity check failed: module stack is too deep");
 				exit(1);
 			}
 

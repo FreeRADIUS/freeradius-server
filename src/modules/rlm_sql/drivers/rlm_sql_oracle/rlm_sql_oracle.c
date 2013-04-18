@@ -95,11 +95,11 @@ static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 
 	if (strstr(sql_error(handle, config), "ORA-03113") || strstr(sql_error(handle, config), "ORA-03114")) {
-		DEBUGE("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
+		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
 		return SQL_DOWN;
 	}
 	else {
-		DEBUGE("rlm_sql_oracle: OCI_SERVER_NORMAL");
+		ERROR("rlm_sql_oracle: OCI_SERVER_NORMAL");
 		return -1;
 	}
 }
@@ -146,7 +146,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	 *	Initialises the oracle environment
 	 */
 	if (OCIEnvCreate(&conn->env, OCI_DEFAULT | OCI_THREADED, NULL, NULL, NULL, NULL, 0, NULL)) {
-		DEBUGE("rlm_sql_oracle: Couldn't init Oracle OCI environment (OCIEnvCreate())");
+		ERROR("rlm_sql_oracle: Couldn't init Oracle OCI environment (OCIEnvCreate())");
 		
 		return -1;
 	}
@@ -155,7 +155,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	 *	Allocates an error handle
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->error, OCI_HTYPE_ERROR, 0, NULL)) {
-		DEBUGE("rlm_sql_oracle: Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
+		ERROR("rlm_sql_oracle: Couldn't init Oracle ERROR handle (OCIHandleAlloc())");
 		
 		return -1;
 	}
@@ -164,7 +164,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	 *	Allocate handles for select and update queries
 	 */
 	if (OCIHandleAlloc((dvoid *)conn->env, (dvoid **)&conn->query, OCI_HTYPE_STMT, 0, NULL)) {
-		DEBUGE("rlm_sql_oracle: Couldn't init Oracle query handles: %s", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: Couldn't init Oracle query handles: %s", sql_error(handle, config));
 		
 		return -1;
 	}
@@ -176,7 +176,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 		     (const OraText *)config->sql_login, strlen(config->sql_login),
                      (const OraText *)config->sql_password, strlen(config->sql_password),
                      (const OraText *)config->sql_db, strlen(config->sql_db))) {
-		DEBUGE("rlm_sql_oracle: Oracle logon failed: '%s'", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: Oracle logon failed: '%s'", sql_error(handle, config));
 
 		return -1;
 	}
@@ -200,7 +200,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	/* get the number of columns in the select list */
 	if (OCIAttrGet((dvoid *)conn->query, OCI_HTYPE_STMT, (dvoid *)&count, NULL, OCI_ATTR_PARAM_COUNT,
 		       conn->error)) {
-		DEBUGE("rlm_sql_oracle: Error retrieving column count : %s", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: Error retrieving column count : %s", sql_error(handle, config));
 		
 		return -1;
 	}
@@ -222,14 +222,14 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
 	if (!conn->ctx) {
-		DEBUGE("rlm_sql_oracle: Socket not connected");
+		ERROR("rlm_sql_oracle: Socket not connected");
 		
 		return SQL_DOWN;
 	}
 
 	if (OCIStmtPrepare(conn->query, conn->error, (OraText *) query, strlen(query),
 			   OCI_NTV_SYNTAX, OCI_DEFAULT)) {
-		DEBUGE("rlm_sql_oracle: prepare failed in sql_query: %s", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: prepare failed in sql_query: %s", sql_error(handle, config));
 		
 		return -1;
 	}
@@ -242,7 +242,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
 	}
 
 	if (status == OCI_ERROR) {
-		DEBUGE("rlm_sql_oracle: execute query failed in sql_query: %s", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: execute query failed in sql_query: %s", sql_error(handle, config));
 		return sql_check_error(handle, config);
 	}
 	
@@ -276,7 +276,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 
 	if (OCIStmtPrepare(conn->query, conn->error, (OraText *) query, strlen(query), OCI_NTV_SYNTAX,
 			   OCI_DEFAULT)) {
-		DEBUGE("rlm_sql_oracle: prepare failed in sql_select_query: %s", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: prepare failed in sql_select_query: %s", sql_error(handle, config));
 		
 		return -1;
 	}
@@ -290,7 +290,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 	}
 
 	if (status != OCI_SUCCESS) {
-		DEBUGE("rlm_sql_oracle: query failed in sql_select_query: %s", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: query failed in sql_select_query: %s", sql_error(handle, config));
 		
 		return sql_check_error(handle, config);
 	}
@@ -313,7 +313,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 	for (i = 0; i < conn->col_count; i++) {
 		status = OCIParamGet(conn->query, OCI_HTYPE_STMT, conn->error, (dvoid **)&param, i + 1);
 		if (status != OCI_SUCCESS) {
-			DEBUGE("rlm_sql_oracle: OCIParamGet() failed in sql_select_query: %s",
+			ERROR("rlm_sql_oracle: OCIParamGet() failed in sql_select_query: %s",
 			       sql_error(handle, config));
 			
 			goto error;
@@ -322,7 +322,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		status = OCIAttrGet((dvoid*)param, OCI_DTYPE_PARAM, (dvoid*)&dtype, NULL, OCI_ATTR_DATA_TYPE,
 				    conn->error);
 		if (status != OCI_SUCCESS) {
-			DEBUGE("rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
+			ERROR("rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
 			       sql_error(handle, config));
 
 			goto error;
@@ -347,7 +347,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 			status = OCIAttrGet((dvoid *)param, OCI_DTYPE_PARAM, (dvoid *)&dsize, NULL,
 					    OCI_ATTR_DATA_SIZE, conn->error);
 			if (status != OCI_SUCCESS) {
-				DEBUGE("rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
+				ERROR("rlm_sql_oracle: OCIAttrGet() failed in sql_select_query: %s",
 				       sql_error(handle, config));
 
 				goto error;
@@ -381,7 +381,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 					(dvoid *)&ind[i], NULL, NULL, OCI_DEFAULT);
 
 		if (status != OCI_SUCCESS) {
-			DEBUGE("rlm_sql_oracle: OCIDefineByPos() failed in sql_select_query: %s",
+			ERROR("rlm_sql_oracle: OCIDefineByPos() failed in sql_select_query: %s",
 			       sql_error(handle, config));
 			
 			goto error;
@@ -451,7 +451,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
 	if (!conn->ctx) {
-		DEBUGE("rlm_sql_oracle: Socket not connected");
+		ERROR("rlm_sql_oracle: Socket not connected");
 		
 		return SQL_DOWN;
 	}
@@ -466,7 +466,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	}
 
 	if (status == OCI_ERROR) {
-		DEBUGE("rlm_sql_oracle: fetch failed in sql_fetch_row: %s", sql_error(handle, config));
+		ERROR("rlm_sql_oracle: fetch failed in sql_fetch_row: %s", sql_error(handle, config));
 		return sql_check_error(handle, config);
 	}
 	

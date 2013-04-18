@@ -183,7 +183,7 @@ static void mod_error(void)
 	    ((pStr2 = PyObject_Str(pValue)) == NULL))
 		goto failed;
 
-	DEBUGE("rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
+	ERROR("rlm_python:EXCEPT:%s: %s", PyString_AsString(pStr1), PyString_AsString(pStr2));
 	
 failed:
 	Py_XDECREF(pStr1);
@@ -263,7 +263,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		return;
 
 	if (!PyTuple_CheckExact(pValue)) {
-		DEBUGE("rlm_python:%s: non-tuple passed", funcname);
+		ERROR("rlm_python:%s: non-tuple passed", funcname);
 		return;
 	}
 	/* Get the tuple tuplesize. */
@@ -279,14 +279,14 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		long op;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
-			DEBUGE("rlm_python:%s: tuple element %d is not a tuple", funcname, i);
+			ERROR("rlm_python:%s: tuple element %d is not a tuple", funcname, i);
 			continue;
 		}
 		/* Check if it's a pair */
 
 		pairsize = PyTuple_GET_SIZE(pTupleElement);
 		if ((pairsize < 2) || (pairsize > 3)) {
-			DEBUGE("rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2 or 3.", funcname, i, pairsize);
+			ERROR("rlm_python:%s: tuple element %d is a tuple of size %d. Must be 2 or 3.", funcname, i, pairsize);
 			continue;
 		}
 
@@ -302,7 +302,7 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		}
 
 		if ((!PyString_CheckExact(pStr1)) || (!PyString_CheckExact(pStr2))) {
-			DEBUGE("rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
+			ERROR("rlm_python:%s: tuple element %d must be as (str, str)", funcname, i);
 			continue;
 		}
 		s1 = PyString_AsString(pStr1);
@@ -441,13 +441,13 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 		PyObject *pTupleInt;
 		
 		if (PyTuple_GET_SIZE(pRet) != 3) {
-			DEBUGE("rlm_python:%s: tuple must be (return, replyTuple, configTuple)", funcname);
+			ERROR("rlm_python:%s: tuple must be (return, replyTuple, configTuple)", funcname);
 			goto failed;
 		}
 		
 		pTupleInt = PyTuple_GET_ITEM(pRet, 0);
 		if (!PyInt_CheckExact(pTupleInt)) {
-			DEBUGE("rlm_python:%s: first tuple element not an integer", funcname);
+			ERROR("rlm_python:%s: first tuple element not an integer", funcname);
 			goto failed;
 		}
 		/* Now have the return value */
@@ -468,7 +468,7 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 		ret = RLM_MODULE_OK;
 	} else {
 		/* Not tuple or None */
-		DEBUGE("rlm_python:%s: function did not return a tuple or None", funcname);
+		ERROR("rlm_python:%s: function did not return a tuple or None", funcname);
 		goto failed;
 	}
 
@@ -500,17 +500,17 @@ static int mod_load_function(struct py_function_def *def)
 	
 	if (def->module_name != NULL && def->function_name != NULL) {
 		if ((def->module = PyImport_ImportModule(def->module_name)) == NULL) {
-			DEBUGE("rlm_python:%s: module '%s' is not found", funcname, def->module_name);
+			ERROR("rlm_python:%s: module '%s' is not found", funcname, def->module_name);
 			goto failed;
 		}
 		
 		if ((def->function = PyObject_GetAttrString(def->module, def->function_name)) == NULL) {
-			DEBUGE("rlm_python:%s: function '%s.%s' is not found", funcname, def->module_name, def->function_name);
+			ERROR("rlm_python:%s: function '%s.%s' is not found", funcname, def->module_name, def->function_name);
 			goto failed;
 		}
 		
 		if (!PyCallable_Check(def->function)) {
-			DEBUGE("rlm_python:%s: function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
+			ERROR("rlm_python:%s: function '%s.%s' is not callable", funcname, def->module_name, def->function_name);
 			goto failed;
 		}
 	}
@@ -519,7 +519,7 @@ static int mod_load_function(struct py_function_def *def)
 	
 failed:
 	mod_error();
-	DEBUGE("rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
+	ERROR("rlm_python:%s: failed to import python function '%s.%s'", funcname, def->module_name, def->function_name);
 	Py_XDECREF(def->function);
 	def->function = NULL;
 	Py_XDECREF(def->module);

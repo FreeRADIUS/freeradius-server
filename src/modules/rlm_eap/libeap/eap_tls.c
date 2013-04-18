@@ -946,7 +946,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *attr)
 		tls_cs = cf_section_sub_find_name2(parent, TLS_CONFIG_SECTION, tls_conf_name);
 
 		if (!tls_cs) {
-			DEBUGE("error: cannot find tls config '%s'", tls_conf_name);
+			ERROR("error: cannot find tls config '%s'", tls_conf_name);
 			return NULL;
 		}
 	} else {
@@ -974,7 +974,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *attr)
 	 *	The EAP RFC's say 1020, but we're less picky.
 	 */
 	if (tls_conf->fragment_size < 100) {
-		DEBUGE("error: Fragment size is too small.");
+		ERROR("error: Fragment size is too small.");
 		return NULL;
 	}
 
@@ -985,7 +985,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *attr)
 	 *	that can be devoted *solely* to EAP.
 	 */
 	if (tls_conf->fragment_size > 4000) {
-		DEBUGE("error: Fragment size is too large.");
+		ERROR("error: Fragment size is too large.");
 		return NULL;
 	}
 

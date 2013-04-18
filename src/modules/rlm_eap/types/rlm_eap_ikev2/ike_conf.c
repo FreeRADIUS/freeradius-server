@@ -217,7 +217,7 @@ int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf)
     CONF_SECTION *cf_prop=NULL;
     cf=cf_subsection_find_next(cf,NULL,"proposals");
     if(!cf) {
-	DEBUGE(IKEv2_LOG_PREFIX "Can't find proposals section");
+	ERROR(IKEv2_LOG_PREFIX "Can't find proposals section");
 	return -1;
     }
     int nprop=0;
@@ -232,13 +232,13 @@ int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf)
 	prop=AddProposal(&i2->suppProp);
 	prot=AddProtocol(prop,IKEv2_PID_IKE_SA,0,0);
 	if(rad_load_transforms(prot,cf_prop)) {
-	    DEBUGE(IKEv2_LOG_PREFIX "Failed to load proposal (%d)",
+	    ERROR(IKEv2_LOG_PREFIX "Failed to load proposal (%d)",
 		    nprop);
 	    return -1;
 	}
     }
     if(!nprop) {
-	DEBUGE(IKEv2_LOG_PREFIX "Can't find any proposal");
+	ERROR(IKEv2_LOG_PREFIX "Can't find any proposal");
 	return -1;
     }
     return 0;
@@ -267,12 +267,12 @@ static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf)
 		cp=cf_pair_find_next(cf,cp,config_transforms[i].name)
 	   )  {
 	    if(TransformFromName(cf_pair_value(cp),config_transforms[i].type,&id,&keylen)) {
-		DEBUGE(IKEv2_LOG_PREFIX "Unsupported %s transform: %s ",
+		ERROR(IKEv2_LOG_PREFIX "Unsupported %s transform: %s ",
 			config_transforms[i].name,cf_pair_value(cp));
 		return -1;
 	    }
 	    if(!AddTransform(prot,config_transforms[i].type,id,keylen)) {
-		DEBUGE(IKEv2_LOG_PREFIX "Problem with transform %s:%s",
+		ERROR(IKEv2_LOG_PREFIX "Problem with transform %s:%s",
 			config_transforms[i].name,cf_pair_value(cp));
 		return -1;
 	    }
@@ -281,8 +281,9 @@ static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf)
 	i++;
     }
     if((option_exists & OPT_NEEDED) != OPT_NEEDED ) {
-	DEBUGE(IKEv2_LOG_PREFIX "Not all mandatory transforms are set properly");
+	ERROR(IKEv2_LOG_PREFIX "Not all mandatory transforms are set properly");
 	DEBUG(IKEv2_LOG_PREFIX "Option flags: 0x%02X",option_exists);
+
 	return -1;
     }
     return 0;
@@ -321,7 +322,7 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
 	if(vp && vp->length) {
 	    authtype=AuthtypeFromName(vp->vp_strvalue);
 	    if(authtype==-1) {
-		DEBUGE(IKEv2_LOG_PREFIX "Unsupported 'EAP-IKEv2-AuthType' value (%s),using 'both'",vp->vp_strvalue);
+		ERROR(IKEv2_LOG_PREFIX "Unsupported 'EAP-IKEv2-AuthType' value (%s),using 'both'",vp->vp_strvalue);
 		authtype=IKEv2_AUTH_BOTH;
 	    }
 	
@@ -343,13 +344,13 @@ int rad_load_credentials(TALLOC_CTX *ctx, ikev2_ctx *i2,char *filename,char *aut
 
     authtype=AuthtypeFromName(authtype_name);
     if(authtype==-1) {
-	DEBUGE(IKEv2_LOG_PREFIX "Unsupported 'default_auth_type' value (%s), using both",authtype_name);
+	ERROR(IKEv2_LOG_PREFIX "Unsupported 'default_auth_type' value (%s), using both",authtype_name);
 	authtype=IKEv2_AUTH_BOTH;
     }
 
     PAIR_LIST *users=NULL;
     if(getusersfile(ctx, filename,&users,"no")!=0) {
-	DEBUGE(IKEv2_LOG_PREFIX "Error while loading %s userfile",filename);
+	ERROR(IKEv2_LOG_PREFIX "Error while loading %s userfile",filename);
 	return -1;
     }
     PAIR_LIST *tusers=users;
@@ -363,12 +364,12 @@ int rad_load_credentials(TALLOC_CTX *ctx, ikev2_ctx *i2,char *filename,char *aut
     //print sslist
 //    struct sharedSecList *sslist=i2->sslist;
 //    while(sslist) {
-//	DEBUGE("sslist:id=%s",sslist->id);
-//	DEBUGE("sslist:idlen=%d",sslist->idlen);
-//	DEBUGE("sslist:pwd=%s",sslist->pwd);
-//	DEBUGE("sslist:pwdlen=%d",sslist->pwdlen);
-//	DEBUGE("sslist:idtype= %d",sslist->idtype);
-//	DEBUGE("sslist:authtype=%d",sslist->authtype);
+//	ERROR("sslist:id=%s",sslist->id);
+//	ERROR("sslist:idlen=%d",sslist->idlen);
+//	ERROR("sslist:pwd=%s",sslist->pwd);
+//	ERROR("sslist:pwdlen=%d",sslist->pwdlen);
+//	ERROR("sslist:idtype= %d",sslist->idtype);
+//	ERROR("sslist:authtype=%d",sslist->authtype);
 //	sslist=sslist->next;
 //    }
     return 0;

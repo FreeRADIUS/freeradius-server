@@ -123,7 +123,7 @@ static int eapttls_attach(CONF_SECTION *cs, void **instance)
 	 */
 	inst->default_method = eap_name2type(inst->default_method_name);
 	if (inst->default_method < 0) {
-		DEBUGE("rlm_eap_ttls: Unknown EAP type %s",
+		ERROR("rlm_eap_ttls: Unknown EAP type %s",
 		       inst->default_method_name);
 		return -1;
 	}
@@ -135,7 +135,7 @@ static int eapttls_attach(CONF_SECTION *cs, void **instance)
 	inst->tls_conf = eaptls_conf_parse(cs, "tls");
 
 	if (!inst->tls_conf) {
-		DEBUGE("rlm_eap_ttls: Failed initializing SSL context");
+		ERROR("rlm_eap_ttls: Failed initializing SSL context");
 		return -1;
 	}
 

@@ -152,7 +152,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 		listener->print(listener, name, sizeof(name));
 
-		DEBUGE("Ignoring request to %s from unknown client %s port %d"
+		ERROR("Ignoring request to %s from unknown client %s port %d"
 #ifdef WITH_TCP
 		       " proto %s"
 #endif
@@ -450,7 +450,7 @@ static int dual_tcp_recv(rad_listen_t *listener)
 	if (rcode == -1) {	/* error reading packet */
 		char buffer[256];
 
-		DEBUGE("Invalid packet from %s port %d: closing socket",
+		ERROR("Invalid packet from %s port %d: closing socket",
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
 		       packet->src_port);
 	}
@@ -1471,7 +1471,7 @@ static int acct_socket_recv(rad_listen_t *listener)
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
 		FR_STATS_INC(acct, total_malformed_requests);
-		DEBUGE("%s", fr_strerror());
+		ERROR("%s", fr_strerror());
 		return 0;
 	}
 
@@ -1737,7 +1737,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 
 	packet = rad_recv(listener->fd, 0);
 	if (!packet) {
-		DEBUGE("%s", fr_strerror());
+		ERROR("%s", fr_strerror());
 		return 0;
 	}
 
@@ -1767,7 +1767,7 @@ static int proxy_socket_recv(rad_listen_t *listener)
 		/*
 		 *	FIXME: Update MIB for packet types?
 		 */
-		DEBUGE("Invalid packet code %d sent to a proxy port "
+		ERROR("Invalid packet code %d sent to a proxy port "
 		       "from home server %s port %d - ID %d : IGNORED",
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
@@ -1819,7 +1819,7 @@ static int proxy_socket_tcp_recv(rad_listen_t *listener)
 		/*
 		 *	FIXME: Update MIB for packet types?
 		 */
-		DEBUGE("Invalid packet code %d sent to a proxy port "
+		ERROR("Invalid packet code %d sent to a proxy port "
 		       "from home server %s port %d - ID %d : IGNORED",
 		       packet->code,
 		       ip_ntoh(&packet->src_ipaddr, buffer, sizeof(buffer)),
@@ -2014,7 +2014,7 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->proto == IPPROTO_TCP) {
 #ifdef WITH_VMPS
 		if (this->type == RAD_LISTEN_VQP) {
-			DEBUGE("VQP does not support TCP transport");
+			ERROR("VQP does not support TCP transport");
 			return -1;
 		}
 #endif
@@ -2104,7 +2104,7 @@ static int listen_bind(rad_listen_t *this)
 
 		this->print(this, buffer, sizeof(buffer));
 
-		DEBUGE("Failed opening %s: %s", buffer, strerror(errno));
+		ERROR("Failed opening %s: %s", buffer, strerror(errno));
 		return -1;
 	}
 
@@ -2117,7 +2117,7 @@ static int listen_bind(rad_listen_t *this)
 	if (rcode >= 0) {
 		if (fcntl(this->fd, F_SETFD, rcode | FD_CLOEXEC) < 0) {
 			close(this->fd);
-			DEBUGE("Failed setting close on exec: %s", strerror(errno));
+			ERROR("Failed setting close on exec: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -2139,7 +2139,7 @@ static int listen_bind(rad_listen_t *this)
 		fr_suid_down();
 		if (rcode < 0) {
 			close(this->fd);
-			DEBUGE("Failed binding to interface %s: %s",
+			ERROR("Failed binding to interface %s: %s",
 			       sock->interface, strerror(errno));
 			return -1;
 		} /* else it worked. */
@@ -2161,7 +2161,7 @@ static int listen_bind(rad_listen_t *this)
 				sock->my_ipaddr.scope = if_nametoindex(sock->interface);
 				if (sock->my_ipaddr.scope == 0) {
 					close(this->fd);
-					DEBUGE("Failed finding interface %s: %s",
+					ERROR("Failed finding interface %s: %s",
 					       sock->interface, strerror(errno));
 					return -1;
 				}
@@ -2175,7 +2175,7 @@ static int listen_bind(rad_listen_t *this)
 				 */
 		{
 			close(this->fd);
-			DEBUGE("Failed binding to interface %s: \"bind to device\" is unsupported", sock->interface);
+			ERROR("Failed binding to interface %s: \"bind to device\" is unsupported", sock->interface);
 			return -1;
 		}
 #endif
@@ -2187,7 +2187,7 @@ static int listen_bind(rad_listen_t *this)
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
 			close(this->fd);
-			DEBUGE("Failed to reuse address: %s", strerror(errno));
+			ERROR("Failed to reuse address: %s", strerror(errno));
 			return -1;
 		}
 	}
@@ -2202,7 +2202,7 @@ static int listen_bind(rad_listen_t *this)
 	 *	Initialize udpfromto for all sockets.
 	 */
 	if (udpfromto_init(this->fd) != 0) {
-		DEBUGE("Failed initializing udpfromto: %s",
+		ERROR("Failed initializing udpfromto: %s",
 		       strerror(errno));
 		close(this->fd);
 		return -1;
@@ -2232,7 +2232,7 @@ static int listen_bind(rad_listen_t *this)
 			
 			if (setsockopt(this->fd, IPPROTO_IPV6, IPV6_V6ONLY,
 				       (char *)&on, sizeof(on)) < 0) {
-				DEBUGE("Failed setting socket to IPv6 "
+				ERROR("Failed setting socket to IPv6 "
 				       "only: %s", strerror(errno));	
 		       		
 		       		close(this->fd);
@@ -2255,7 +2255,7 @@ static int listen_bind(rad_listen_t *this)
 		flag = IP_PMTUDISC_DONT;
 		if (setsockopt(this->fd, IPPROTO_IP, IP_MTU_DISCOVER,
 			       &flag, sizeof(flag)) < 0) {
-			DEBUGE("Failed disabling PMTU discovery: %s",
+			ERROR("Failed disabling PMTU discovery: %s",
 			       strerror(errno));
 			
 			close(this->fd);
@@ -2270,7 +2270,7 @@ static int listen_bind(rad_listen_t *this)
 		flag = 0;
 		if (setsockopt(this->fd, IPPROTO_IP, IP_DONTFRAG,
 			       &flag, sizeof(flag)) < 0) {
-			DEBUGE("Failed setting don't fragment flag: %s",
+			ERROR("Failed setting don't fragment flag: %s",
 			       strerror(errno));	
 			
 			close(this->fd);
@@ -2285,7 +2285,7 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 		
 		if (setsockopt(this->fd, SOL_SOCKET, SO_BROADCAST, &on, sizeof(on)) < 0) {
-			DEBUGE("Can't set broadcast option: %s",
+			ERROR("Can't set broadcast option: %s",
 			       strerror(errno));
 			return -1;
 		}
@@ -2301,7 +2301,7 @@ static int listen_bind(rad_listen_t *this)
 		int on = 1;
 
 		if (setsockopt(this->fd, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
-			DEBUGE("Can't set re-use address option: %s",
+			ERROR("Can't set re-use address option: %s",
 			       strerror(errno));
 			return -1;
 		}
@@ -2315,7 +2315,7 @@ static int listen_bind(rad_listen_t *this)
 			close(this->fd);
 			
 			this->print(this, buffer, sizeof(buffer));
-			DEBUGE("Failed binding to %s: %s\n",
+			ERROR("Failed binding to %s: %s\n",
 			       buffer, strerror(errno));
 			return -1;
 		}
@@ -2332,14 +2332,14 @@ static int listen_bind(rad_listen_t *this)
 			memset(&src, 0, sizeof_src);
 			if (getsockname(this->fd, (struct sockaddr *) &src,
 					&sizeof_src) < 0) {
-				DEBUGE("Failed getting socket name: %s",
+				ERROR("Failed getting socket name: %s",
 				       strerror(errno));
 				return -1;
 			}
 			
 			if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 						&sock->my_ipaddr, &sock->my_port)) {
-				DEBUGE("Socket has unsupported address family");
+				ERROR("Socket has unsupported address family");
 				return -1;
 			}
 		}
@@ -2349,7 +2349,7 @@ static int listen_bind(rad_listen_t *this)
 	if (sock->proto == IPPROTO_TCP) {
 		if (listen(this->fd, 8) < 0) {
 			close(this->fd);
-			DEBUGE("Failed in listen(): %s", strerror(errno));
+			ERROR("Failed in listen(): %s", strerror(errno));
 			return -1;
 		}
 	} else
@@ -2357,7 +2357,7 @@ static int listen_bind(rad_listen_t *this)
 
 	  if (fr_nonblock(this->fd) < 0) {
 		  close(this->fd);
-		  DEBUGE("Failed setting non-blocking on socket: %s",
+		  ERROR("Failed setting non-blocking on socket: %s",
 			 strerror(errno));
 		  return -1;
 	  }
@@ -2535,7 +2535,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 		memset(&src, 0, sizeof_src);
 		if (getsockname(this->fd, (struct sockaddr *) &src,
 				&sizeof_src) < 0) {
-			DEBUGE("Failed getting socket name: %s",
+			ERROR("Failed getting socket name: %s",
 			       strerror(errno));
 			listen_free(&this);
 			return NULL;
@@ -2543,7 +2543,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 		
 		if (!fr_sockaddr2ipaddr(&src, sizeof_src,
 					&sock->my_ipaddr, &sock->my_port)) {
-			DEBUGE("Socket has unsupported address family");
+			ERROR("Socket has unsupported address family");
 			listen_free(&this);
 			return NULL;
 		}
@@ -2633,7 +2633,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 		 */
 
 		if (master_listen[type].magic !=  RLM_MODULE_INIT) {
-			DEBUGE("Failed to load protocol '%s' due to internal sanity check problem",
+			ERROR("Failed to load protocol '%s' due to internal sanity check problem",
 			       master_listen[type].name);
 			return NULL;
 		}
@@ -2680,7 +2680,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 	 *	This isn't allowed right now.
 	 */
 	else if (type == RAD_LISTEN_PROXY) {
-		DEBUGE("Error: listen type \"proxy\" Cannot appear in a virtual server section");
+		ERROR("Error: listen type \"proxy\" Cannot appear in a virtual server section");
 		return NULL;
 	}
 #endif
@@ -2772,7 +2772,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 		 */
 		if ((mainconfig.port > 0) &&
 		    (mainconfig.myip.af == AF_UNSPEC)) {
-			DEBUGE("The command-line says \"-p %d\", but there is no associated IP address to use",
+			ERROR("The command-line says \"-p %d\", but there is no associated IP address to use",
 			       mainconfig.port);
 			return -1;
 		}
@@ -2812,7 +2812,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 
 		if (listen_bind(this) < 0) {
 			listen_free(head);
-			DEBUGE("There appears to be another RADIUS server running on the authentication port %d", sock->my_port);
+			ERROR("There appears to be another RADIUS server running on the authentication port %d", sock->my_port);
 			listen_free(&this);
 			return -1;
 		}
@@ -2862,7 +2862,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 		if (listen_bind(this) < 0) {
 			listen_free(&this);
 			listen_free(head);
-			DEBUGE("There appears to be another RADIUS server running on the accounting port %d", sock->my_port);
+			ERROR("There appears to be another RADIUS server running on the accounting port %d", sock->my_port);
 			return -1;
 		}
 
@@ -2955,7 +2955,7 @@ add_sockets:
 	 *	proxying is pointless.
 	 */
 	if (!*head) {
-		DEBUGE("The server is not configured to listen on any ports.  Cannot start.");
+		ERROR("The server is not configured to listen on any ports.  Cannot start.");
 		return -1;
 	}
 

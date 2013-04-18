@@ -226,20 +226,20 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	 */
 	inst->session_tree = rbtree_create(eap_handler_cmp, NULL, 0);
 	if (!inst->session_tree) {
-		DEBUGE("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
+		ERROR("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
 		return -1;
 	}
 
 	if (fr_debug_flag) {
 		inst->handler_tree = rbtree_create(eap_handler_ptr_cmp, NULL, 0);
 		if (!inst->handler_tree) {
-			DEBUGE("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
+			ERROR("rlm_eap (%s): Cannot initialize tree", inst->xlat_name);
 			return -1;
 		}
 
 #ifdef HAVE_PTHREAD_H
 		if (pthread_mutex_init(&(inst->handler_mutex), NULL) < 0) {
-			DEBUGE("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
+			ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
 			return -1;
 		}
 #endif
@@ -247,7 +247,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&(inst->session_mutex), NULL) < 0) {
-		DEBUGE("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
+		ERROR("rlm_eap (%s): Failed initializing mutex: %s", inst->xlat_name, strerror(errno));
 		return -1;
 	}
 #endif

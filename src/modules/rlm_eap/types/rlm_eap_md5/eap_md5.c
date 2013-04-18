@@ -64,7 +64,7 @@ MD5_PACKET *eapmd5_extract(EAP_DS *eap_ds)
 	    !eap_ds->response->type.data 		 ||
 	    (eap_ds->response->length <= MD5_HEADER_LEN) ||
 	    (eap_ds->response->type.data[0] <= 0)) {
-		DEBUGE("rlm_eap_md5: corrupted data");
+		ERROR("rlm_eap_md5: corrupted data");
 		return NULL;
 	}
 
@@ -138,7 +138,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 	 *	Sanity check it.
 	 */
 	if (packet->value_size != 16) {
-		DEBUGE("rlm_eap_md5: Expected 16 bytes of response to challenge, got %d", packet->value_size);
+		ERROR("rlm_eap_md5: Expected 16 bytes of response to challenge, got %d", packet->value_size);
 		return 0;
 	}
 

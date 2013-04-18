@@ -300,7 +300,7 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
 			if (errno == EINTR) {
 				continue;
 			} else {
-				DEBUGE("rlm_otp: %s: read from otpd: %s",
+				ERROR("rlm_otp: %s: read from otpd: %s",
 		     		       __func__, strerror(errno));
 				otp_putfd(fdp, 1);
 
@@ -309,7 +309,7 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
 		}
 		
 		if (!n) {
-			DEBUGE("rlm_otp: %s: otpd disconnect", __func__);
+			ERROR("rlm_otp: %s: otpd disconnect", __func__);
 			otp_putfd(fdp, 1);
 
 			return 0;
@@ -336,7 +336,7 @@ static int otp_write(otp_fd_t *fdp, const char *buf, size_t len)
 			if (errno == EINTR) {
 				continue;
 			} else {
-				DEBUGE("rlm_otp: %s: write to otpd: %s",
+				ERROR("rlm_otp: %s: write to otpd: %s",
 				       __func__, strerror(errno));
 		
 				otp_putfd(fdp, 1);
@@ -361,7 +361,7 @@ static int otp_connect(const char *path)
 	/* setup for unix domain socket */
 	sp_len = strlen(path);
 	if (sp_len > sizeof(sa.sun_path) - 1) {
-		DEBUGE("rlm_otp: %s: rendezvous point name too long",
+		ERROR("rlm_otp: %s: rendezvous point name too long",
 		       __func__);
 		
 		return -1;
@@ -372,7 +372,7 @@ static int otp_connect(const char *path)
 	/* connect to otpd */
 	fd = socket(PF_UNIX, SOCK_STREAM, 0);
 	if (fd == -1) {
-		DEBUGE("rlm_otp: %s: socket: %s", __func__,
+		ERROR("rlm_otp: %s: socket: %s", __func__,
 		       strerror(errno));
 		
 		return -1;
@@ -380,7 +380,7 @@ static int otp_connect(const char *path)
 	if (connect(fd, (struct sockaddr *) &sa,
 	      sizeof(sa.sun_family) + sp_len) == -1) {
 		
-		DEBUGE("rlm_otp: %s: connect(%s): %s",
+		ERROR("rlm_otp: %s: connect(%s): %s",
 		       __func__, path, strerror(errno));
 		
 		(void) close(fd);
