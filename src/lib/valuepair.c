@@ -989,7 +989,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 	char		*p;
 	const char	*cp, *cs;
 	int		x;
-	unsigned long long y;
+	uint64_t	y;
 	size_t		length;
 	DICT_VALUE	*dval;
 
