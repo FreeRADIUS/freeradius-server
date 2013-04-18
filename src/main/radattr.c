@@ -542,12 +542,15 @@ static void parse_condition(const char *input, char *output, size_t outlen)
 {
 	ssize_t slen;
 	const char *error = NULL;
+	fr_cond_t *cond;
 
-	slen = fr_condition_tokenize(input, &error);
+	slen = fr_condition_tokenize(NULL, input, &cond, &error);
 	if (slen <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -slen, error);
 		return;
 	}
+
+	talloc_free(cond);
 
 	input += slen;
 	if (*input != '\0') {

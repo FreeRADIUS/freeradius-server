@@ -1247,6 +1247,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 	int spaces = FALSE;
 	char *cbuf = buf;
 	size_t len;
+	fr_cond_t *cond = NULL;
 
 	this = current;		/* add items here */
 
@@ -1579,7 +1580,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				if (!server) goto invalid_location;
 			}
 			
-			slen = fr_condition_tokenize(ptr, &error);
+			slen = fr_condition_tokenize(this, ptr, &cond, &error);
 			if (p) *p = '{';
 
 			if (slen < 0) {
@@ -1603,7 +1604,8 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			}
 
 			if ((size_t) slen >= (sizeof(buf2) - 1)) {
-				ERROR("%s[%d]: Condition is too large after \"%s\"",
+				talloc_free(cond);
+				DEBUGE("%s[%d]: Condition is too large after \"%s\"",
 				       filename, *lineno, buf1);
 				return -1;
 			}
@@ -1614,7 +1616,8 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			t2 = T_BARE_WORD;
 			
 			if (gettoken(&ptr, buf3, sizeof(buf3)) != T_LCBRACE) {
-				ERROR("%s[%d]: Expected '{'",
+				talloc_free(cond);
+				DEBUGE("%s[%d]: Expected '{'",
 				       filename, *lineno);
 				return -1;
 			}
@@ -1711,7 +1714,10 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 
 		case T_LCBRACE:
 		section_alloc:
-			if (seen_too_much(filename, *lineno, ptr)) return -1;
+			if (seen_too_much(filename, *lineno, ptr)) {
+				if (cond) talloc_free(cond);
+				return -1;
+			}
 
 			css = cf_section_alloc(this, buf1,
 					       t2 == T_LCBRACE ? NULL : buf2);
@@ -1723,6 +1729,11 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 			cf_item_add(this, &(css->item));
 			css->item.filename = filename;
 			css->item.lineno = *lineno;
+
+			if (cond) {
+				cf_data_add_internal(css, "if", cond, NULL, FALSE);
+				cond = NULL; /* eaten by the above line */
+			}
 
 			/*
 			 *	The current section is now the child section.

@@ -28,7 +28,39 @@ RCSIDH(parser_h, "$Id$");
 extern "C" {
 #endif
 
-ssize_t fr_condition_tokenize(const char *start, const char **error);
+typedef struct fr_cond_t fr_cond_t;
+
+typedef enum cond_op_t {
+	COND_NONE = 0,
+	COND_TRUE,
+	COND_NOT = '!',
+	COND_AND = '&',
+	COND_OR = '|'
+} cond_op_t;
+
+
+/*
+ *	Allow for the following structures:
+ *
+ *	FOO			no OP, RHS is NULL
+ *	FOO OP BAR
+ *	(COND)			no LHS/RHS, child is COND, child OP is TRUE
+ *	(!(COND))		no LHS/RHS, child is COND, child OP is NOT
+ *	(COND1 OP COND2)	no LHS/RHS, next is COND2, next OP is OP
+ */
+struct fr_cond_t {
+	char		*lhs;
+	char		*rhs;
+	FR_TOKEN 	op;
+	int		regex_i;
+
+	cond_op_t	next_op;
+	fr_cond_t	*next;
+	cond_op_t	child_op;
+	fr_cond_t  	*child;
+};
+
+ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, const char *start, fr_cond_t **head, const char **error);
 
 /*
  *	In xlat.c for now

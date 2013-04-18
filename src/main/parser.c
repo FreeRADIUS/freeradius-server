@@ -43,40 +43,8 @@ RCSID("$Id$")
 #endif
 #endif
 
-typedef enum cond_op_t {
-	COND_NONE = 0,
-	COND_TRUE,
-	COND_NOT = '!',
-	COND_AND = '&',
-	COND_OR = '|'
-} cond_op_t;
-
-
-typedef struct cond_t cond_t;
-
-/*
- *	Allow for the following structures:
- *
- *	FOO			no OP, RHS is NULL
- *	FOO OP BAR
- *	(COND)			no LHS/RHS, child is COND, child OP is TRUE
- *	(!(COND))		no LHS/RHS, child is COND, child OP is NOT
- *	(COND1 OP COND2)	no LHS/RHS, next is COND2, next OP is OP
- */
-struct cond_t {
-	char		*lhs;
-	char		*rhs;
-	FR_TOKEN 	op;
-	int		regex_i;
-
-	cond_op_t	next_op;
-	cond_t		*next;
-	cond_op_t	child_op;
-	cond_t  	*child;
-};
-
-DIAG_OFF(unused-function)
-static void cond_debug(const cond_t *c)
+W_UNUSEDDEC_OFF
+static void cond_debug(const fr_cond_t *c)
 {
 
 next:
@@ -233,15 +201,15 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char 
  *  @param[out] error the parse error (if any)
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace, cond_t **pcond, const char **error)
+static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace, fr_cond_t **pcond, const char **error)
 {
 	ssize_t slen;
 	const char *p = start;
-	cond_t *c;
+	fr_cond_t *c;
 
 	COND_DEBUG("START %s", p);
 
-	c = talloc_zero(ctx, cond_t);
+	c = talloc_zero(ctx, fr_cond_t);
 
 	rad_assert(c != NULL);
 
@@ -377,6 +345,14 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace,
 				p += 2;
 
 				} else if (p[1] == '*') {
+					/*
+					 *	FOO !* BAR
+					 *
+					 *	is really !(FOO)
+					 *
+					 *	FIXME: we should
+					 *	really re-write it...
+					 */
 					c->op = T_OP_CMP_FALSE;
 					p += 2;
 
@@ -553,25 +529,13 @@ done:
 
 /** Tokenize a conditional check
  *
+ *  @param[in] ctx for talloc
  *  @param[in] start the start of the string to process.  Should be "(..."
+ *  @param[out] head the parsed condition structure
  *  @param[out] error the parse error (if any)
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-ssize_t fr_condition_tokenize(const char *start, const char **error)
+ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, const char *start, fr_cond_t **head, const char **error)
 {
-	ssize_t slen;
-	cond_t *c = NULL;
-
-	slen = condition_tokenize(NULL, start, FALSE, &c, error);
-	if (slen <= 0) return slen;
-
-	if (!c) {
-		COND_DEBUG("RETURN %d", __LINE__);
-		*error = "Empty condition is invalid";
-		return -1;
-	}
-
-	talloc_free(c);
-
-	return slen;
+	return condition_tokenize(ctx, start, FALSE, head, error);
 }

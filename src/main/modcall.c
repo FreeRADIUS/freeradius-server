@@ -25,6 +25,7 @@ RCSID("$Id$")
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
 #include <freeradius-devel/modcall.h>
+#include <freeradius-devel/parser.h>
 #include <freeradius-devel/rad_assert.h>
 
 
@@ -67,7 +68,8 @@ typedef struct {
 	int grouptype;	/* after mc */
 	modcallable *children;
 	CONF_SECTION *cs;
-	value_pair_map_t *map;
+	value_pair_map_t *map;	/* update */
+	const fr_cond_t *cond;	/* if/elsif */
 } modgroup;
 
 typedef struct {
@@ -458,6 +460,10 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		if ((child->type == MOD_IF) || (child->type == MOD_ELSIF)) {
 			int condition = TRUE;
 			const char *p = child->name;
+			modgroup *g;
+
+			g = mod_callabletogroup(child);
+			rad_assert(g->cond != NULL);
 
 			RDEBUG2("%.*s? %s %s",
 			       stack.pointer + 1, modcall_spaces,
@@ -1683,9 +1689,6 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 					 int grouptype,
 					 const char **modname)
 {
-#ifdef WITH_UNLANG
-	int result;
-#endif
 	const char *modrefname;
 	modsingle *single;
 	modcallable *csingle;
@@ -1759,6 +1762,8 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 #ifdef WITH_UNLANG
 		} else 	if (strcmp(modrefname, "if") == 0) {
+			modgroup *g;
+
 			if (!cf_section_name2(cs)) {
 				cf_log_err(ci, "'if' without condition.");
 				return NULL;
@@ -1770,17 +1775,17 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 						     grouptype);
 			if (!csingle) return NULL;
 			csingle->type = MOD_IF;
-
-			if (!radius_evaluate_condition(NULL, 0, 0, modname,
-						       FALSE, &result)) {
-				modcallable_free(&csingle);
-				return NULL;
-			}
 			*modname = name2;
+
+			g = mod_callabletogroup(csingle);
+			g->cond = cf_data_find(g->cs, "if");
+			rad_assert(g->cond != NULL);
 
 			return csingle;
 
 		} else 	if (strcmp(modrefname, "elsif") == 0) {
+			modgroup *g;
+
 			if (parent &&
 			    ((parent->type == MOD_LOAD_BALANCE) ||
 			     (parent->type == MOD_REDUNDANT_LOAD_BALANCE))) {
@@ -1799,13 +1804,11 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 						     grouptype);
 			if (!csingle) return NULL;
 			csingle->type = MOD_ELSIF;
-
-			if (!radius_evaluate_condition(NULL, 0, 0, modname,
-						       FALSE, &result)) {
-				modcallable_free(&csingle);
-				return NULL;
-			}
 			*modname = name2;
+
+			g = mod_callabletogroup(csingle);
+			g->cond = cf_data_find(g->cs, "if");
+			rad_assert(g->cond != NULL);
 
 			return csingle;
 
@@ -2176,6 +2179,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 	memset(g, 0, sizeof(*g));
 	g->grouptype = grouptype;
 	g->children = NULL;
+	g->cs = cs;
 
 	c = mod_grouptocallable(g);
 	c->parent = parent;
