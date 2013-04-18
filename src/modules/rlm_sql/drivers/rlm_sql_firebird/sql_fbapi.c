@@ -314,7 +314,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		case SQL_ARRAY:
 			/* Print the blob id on blobs or arrays */
 			bid = *(ISC_QUAD ISC_FAR *) var->sqldata;
-			snprintf(conn->row[i], conn->row_sizes[i], "%08ISC_LONG_FMTx:%08ISC_LONG_FMTx",
+			snprintf(conn->row[i], conn->row_sizes[i], "%08" ISC_LONG_FMT "x:%08" ISC_LONG_FMT "x",
 				 bid.gds_quad_high, bid.gds_quad_low);
 			break;
 
