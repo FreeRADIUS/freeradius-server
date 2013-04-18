@@ -1158,7 +1158,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 		 *	Note that ALL integers are unsigned!
 		 */
 		p = vp->vp_strvalue;
-		if (sscanf(p, "%u" PRId64, &y) != 1) {
+		if (sscanf(p, "%uPRId64", &y) != 1) {
 			fr_strerror_printf("Invalid value %s for attribute %s",
 					   value, vp->da->name);
 			return FALSE;
