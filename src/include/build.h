@@ -9,35 +9,37 @@
 extern "C" {
 #endif
 
-#if defined(__clang__) && ((__clang_major__ > 2) || ((__clang_major__ == 2) && (__clang_minor__ > 7)))
-#  define W_DEPRECATED_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wdeprecated-declarations\"");
-#  define W_LITERALFMT_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wformat-nonliteral\"");
-#  define W_UNUSEDDEC_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wunused-function\"");
-#  define W_SHADOWDEC_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wshadow\"");
-#  define W_IMPLICITDEC_OFF	_Pragma("clang diagnostic push");_Pragma("clang diagnostic ignored \"-Wimplicit-function-declaration\"");
-#  define W_RST			_Pragma("clang diagnostic pop");
-#elif defined(__GNUC__) && ((__GNUC__ > 4) || ((__GNUC__ == 4) && (__GNUC_MINOR__ > 5)))
-#  define W_DEPRECATED_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wdeprecated-declarations\"");
-#  define W_LITERALFMT_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wformat-nonliteral\"");
-#  define W_UNUSEDDEC_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wunused-function\"");
-#  define W_SHADOWDEC_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wshadow\"");
-#  define W_IMPLICITDEC_OFF	_Pragma("GCC diagnostic push");_Pragma("GCC diagnostic ignored \"-Wimplicit-function-declaration\"");
-#  define W_RST			_Pragma("GCC diagnostic pop");
+/*
+ *	Macros for controlling warnings in GCC >= 4.2 and clang >= 2.8
+ */
+#define DIAG_STR(s) #s
+#define DIAG_JOINSTR(x,y) DIAG_STR(x ## y)
+#define DIAG_DO_PRAGMA(x) _Pragma (#x)
+
+#if defined(__GNUC__) && ((__GNUC__ * 100) + __GNUC_MINOR__) >= 402
+#  define DIAG_PRAGMA(x) DIAG_DO_PRAGMA(GCC diagnostic x)
+#  if ((__GNUC__ * 100) + __GNUC_MINOR__) >= 406
+#    define DIAG_OFF(x) DIAG_PRAGMA(push) DIAG_PRAGMA(ignored DIAG_JOINSTR(-W,x))
+#    define DIAG_ON(x) DIAG_PRAGMA(pop)
+#  else
+#    define DIAG_OFF(x) DIAG_PRAGMA(ignored DIAG_JOINSTR(-W,x))
+#    define DIAG_ON(x)  DIAG_PRAGMA(warning DIAG_JOINSTR(-W,x))
+#  endif
+#elif defined(__clang__) && ((__clang_major__ * 100) + __clang_minor__ >= 208)
+#  define DIAG_PRAGMA(x) DIAG_DO_PRAGMA(clang diagnostic x)
+#  define DIAG_OFF(x) DIAG_PRAGMA(push) DIAG_PRAGMA(ignored DIAG_JOINSTR(-W,x))
+#  define DIAG_ON(x) DIAG_PRAGMA(pop)
 #else
-#  define W_DEPRECATED_OFF
-#  define W_LITERALFMT_OFF
-#  define W_UNUSEDDEC_OFF
-#  define W_SHADOWDEC_OFF
-#  define W_IMPLICITDEC_OFF
-#  define W_RST
+#  define DIAG_OFF(x)
+#  define DIAG_ON(x)
 #endif
 
 /*
  *	For dealing with APIs which are only deprecated in OSX (like the OpenSSL API)
  */
 #ifdef __APPLE__
-#  define USES_APPLE_DEPRECATED_API W_DEPRECATED_OFF
-#  define USES_APPLE_RST W_RST
+#  define USES_APPLE_DEPRECATED_API DIAG_OFF(deprecated-declarations)
+#  define USES_APPLE_RST DIAG_ON(deprecated-declarations)
 #else
 #  define USES_APPLE_DEPRECATED_API
 #  define USES_APPLE_RST

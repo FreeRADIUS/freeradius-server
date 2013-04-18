@@ -197,11 +197,11 @@ static void rlm_perl_destruct(PerlInterpreter *perl)
 
 	PL_origenviron = environ;
 
-W_SHADOWDEC_OFF
+DIAG_OFF(shadow)
 	{
 		dTHXa(perl);
 	}
-W_RST
+DIAG_ON(shadow)
 	/*
 	 * FIXME: This shouldn't happen
 	 *

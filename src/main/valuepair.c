@@ -1658,8 +1658,8 @@ void module_failure_msg(REQUEST *request, const char *fmt, ...)
 
 	len = snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s: ", request->module);
 	
-W_LITERALFMT_OFF
+DIAG_OFF(format-nonliteral)
 	vsnprintf(vp->vp_strvalue + len, sizeof(vp->vp_strvalue) - len, fmt, ap);
-W_RST
+DIAG_ON(format-nonliteral)
 	pairadd(&request->packet->vps, vp);
 }

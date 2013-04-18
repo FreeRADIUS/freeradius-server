@@ -64,10 +64,10 @@ void radlog_request(UNUSED int lvl, UNUSED int priority, UNUSED REQUEST *request
 	va_list ap;
 	char buffer[256];
 
-W_LITERALFMT_OFF
+DIAG_OFF(format-nonliteral)
 	va_start(ap, msg);
 	vsnprintf(buffer, sizeof(buffer), msg, ap);
-W_RST
+DIAG_ON(format-nonliteral)
 	va_end(ap);
 }
 
@@ -77,9 +77,9 @@ int radlog(UNUSED int lvl, const char *msg, ...)
 	char buffer[256];
 
 	va_start(ap, msg);
-W_LITERALFMT_OFF
+DIAG_OFF(format-nonliteral)
 	vsnprintf(buffer, sizeof(buffer), msg, ap);
-W_RST
+DIAG_ON(format-nonliteral)
 	va_end(ap);
 
 	return 0;

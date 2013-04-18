@@ -1116,9 +1116,9 @@ void *mod_conn_create(void *instance)
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "cacertdir", inst->tls_cacertdir);
 
 #  ifdef HAVE_LDAP_INT_TLS_CONFIG
-W_IMPLICITDEC_OFF
+DIAG_OFF(implicit-function-declaration)
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT, inst->tls_require_cert) != LDAP_OPT_SUCCESS) {
-W_RST
+DIAG_ON(implicit-function-declaration)
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		
 		LDAP_ERR("Could not set LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s", inst->tls_require_cert,

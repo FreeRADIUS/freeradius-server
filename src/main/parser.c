@@ -75,7 +75,7 @@ struct cond_t {
 	cond_t  	*child;
 };
 
-W_UNUSEDDEC_OFF
+DIAG_OFF(unused-function)
 static void cond_debug(const cond_t *c)
 {
 
@@ -128,7 +128,7 @@ next:
 	c = c->next;
 	goto next;
 }
-W_RST
+DIAG_ON(unused-function)
 
 
 static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, const char *start, char **out, const char **error)
