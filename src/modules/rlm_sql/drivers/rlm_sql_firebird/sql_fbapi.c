@@ -51,8 +51,8 @@ static void fb_dpb_add_str(char **dpb, char name, const char *value)
 	
 	l = strlen(value);
 
-	*(*dpb)++ = name;
-	*(*dpb)++ = (char) l;
+	*(*dpb)++= name;
+	*(*dpb)++= (char) l;
 	
 	memmove(*dpb, value, l);
 	
@@ -187,7 +187,7 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 		
 		switch (dtype) {
 		case SQL_TEXT:
-			if (conn->row_sizes[i]< = var->sqllen) {
+			if (conn->row_sizes[i]<= var->sqllen) {
 				conn->row_sizes[i] = var->sqllen + 1;
 				conn->row[i] = realloc(conn->row[i],
 						       conn->row_sizes[i]);
@@ -353,7 +353,7 @@ int fb_connect(rlm_sql_firebird_conn_t * conn, rlm_sql_config_t *config)
 
 	conn->dpb_len = 4;
 	if (config->sql_login) {
-		conn->dpb_len+ = strlen(config->sql_login) + 2;
+		conn->dpb_len+= strlen(config->sql_login) + 2;
 	}
 	
 	if (config->sql_password) {
@@ -363,10 +363,10 @@ int fb_connect(rlm_sql_firebird_conn_t * conn, rlm_sql_config_t *config)
 	conn->dpb = (char *) malloc(conn->dpb_len);
 	p = conn->dpb;
 
-	*conn->dpb++ = isc_dpb_version1;
-	*conn->dpb++ = isc_dpb_num_buffers;
-	*conn->dpb++ = 1;
-	*conn->dpb++ = 90;
+	*conn->dpb++= isc_dpb_version1;
+	*conn->dpb++= isc_dpb_num_buffers;
+	*conn->dpb++= 1;
+	*conn->dpb++= 90;
 
 	fb_dpb_add_str(&conn->dpb, isc_dpb_user_name, config->sql_login);
 	fb_dpb_add_str(&conn->dpb, isc_dpb_password, config->sql_password);
@@ -403,14 +403,14 @@ int fb_connect(rlm_sql_firebird_conn_t * conn, rlm_sql_config_t *config)
 int fb_fetch(rlm_sql_firebird_conn_t *conn)
 {
 	long fetch_stat;
-	if (conn->statement_type! = isc_info_sql_stmt_select) {
+	if (conn->statement_type!= isc_info_sql_stmt_select) {
 		return 100;
 	}
 	
 	fetch_stat = isc_dsql_fetch(conn->status, &conn->stmt,
 				    SQL_DIALECT_V6, conn->sqlda_out);
 	if (fetch_stat) {
-		if (fetch_stat! = 100L) {
+		if (fetch_stat!= 100L) {
 			fb_error(conn);
 		} else {
 			conn->sql_code = 0;
