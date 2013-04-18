@@ -392,7 +392,7 @@ int main(int argc, char *argv[])
 	const char *from_file = NULL;			/* Read from pcap file */
 	int from_stdin = 0;				/* Read from stdin */
 	
-	pcap_t *in;					/* PCAP input handle */
+	pcap_t *in = NULL;				/* PCAP input handle */
 	
 	int limit = -1;					/* How many packets to sniff */
 	
