@@ -153,7 +153,7 @@ static int sql_check_error(int error)
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
 	case -1:
-		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d, returning SQL_DOWN", error);
+		DEBUG("rlm_sql_mysql: MYSQL check_error: %d, returning SQL_DOWN", error);
 		return SQL_DOWN;
 		break;
 	case 0:
@@ -163,7 +163,7 @@ static int sql_check_error(int error)
 	case CR_COMMANDS_OUT_OF_SYNC:
 	case CR_UNKNOWN_ERROR:
 	default:
-		radlog(L_DBG, "rlm_sql_mysql: MYSQL check_error: %d received", error);
+		DEBUG("rlm_sql_mysql: MYSQL check_error: %d received", error);
 		return -1;
 		break;
 	}
@@ -421,7 +421,7 @@ skip_next_result:
 	if (status != 0) {
 		return status;
 	} else if (conn->result != NULL) {
-		radlog(L_DBG, "rlm_sql_mysql: SQL statement returned unexpected result");
+		DEBUG("rlm_sql_mysql: SQL statement returned unexpected result");
 		sql_free_result(handle, config);
 	}
 	status = mysql_next_result(conn->sock);

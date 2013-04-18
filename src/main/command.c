@@ -1143,21 +1143,18 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 		fprintf(fp, "%s\n", what);
 
 		if (debug_flag) {
-			request->radlog(L_DBG, 0, request,
-					"Injected %s packet to host %s port 0 code=%d, id=%d",
-					what,
-					inet_ntop(request->reply->src_ipaddr.af,
-						  &request->reply->src_ipaddr.ipaddr,
-						  buffer, sizeof(buffer)),
-					request->reply->code, request->reply->id);
+			RDEBUG("Injected %s packet to host %s port 0 code=%d, id=%d", what,
+			       inet_ntop(request->reply->src_ipaddr.af,
+					 &request->reply->src_ipaddr.ipaddr,
+					 buffer, sizeof(buffer)),
+					 request->reply->code, request->reply->id);
 		}
 
 		for (vp = request->reply->vps; vp != NULL; vp = vp->next) {
 			vp_prints(buffer, sizeof(buffer), vp);
 			fprintf(fp, "%s\n", buffer);
 			if (debug_flag) {
-				request->radlog(L_DBG, 0, request, "\t%s",
-						buffer);
+				RDEBUG("\t%s", buffer);
 			}
 		}
 	}
@@ -1346,7 +1343,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	}
 
 	if (debug_flag) {
-		radlog(L_DBG, "Injecting %s packet from host %s port 0 code=%d, id=%d",
+		DEBUG("Injecting %s packet from host %s port 0 code=%d, id=%d",
 				fr_packet_codes[packet->code],
 				inet_ntop(packet->src_ipaddr.af,
 					  &packet->src_ipaddr.ipaddr,
@@ -1355,7 +1352,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 		
 		for (vp = packet->vps; vp != NULL; vp = vp->next) {
 			vp_prints(buffer, sizeof(buffer), vp);
-			radlog(L_DBG, "\t%s", buffer);
+			DEBUG("\t%s", buffer);
 		}
 
 		DEBUGW("INJECTION IS LEAKING MEMORY!");

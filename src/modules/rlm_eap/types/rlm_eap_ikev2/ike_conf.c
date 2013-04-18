@@ -254,7 +254,7 @@ int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf)
 static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf)
 {
     rad_assert(prot!=NULL && cf!=NULL);
-    radlog(L_DBG,IKEv2_LOG_PREFIX "Begin load transforms");
+    DEBUG(IKEv2_LOG_PREFIX "Begin load transforms");
     CONF_PAIR *cp;
     int option_exists=0;
     int i=0;
@@ -282,7 +282,7 @@ static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf)
     }
     if((option_exists & OPT_NEEDED) != OPT_NEEDED ) {
 	DEBUGE(IKEv2_LOG_PREFIX "Not all mandatory transforms are set properly");
-	radlog(L_DBG,IKEv2_LOG_PREFIX "Option flags: 0x%02X",option_exists);
+	DEBUG(IKEv2_LOG_PREFIX "Option flags: 0x%02X",option_exists);
 	return -1;
     }
     return 0;
@@ -302,17 +302,17 @@ void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *
 	//idtype
 	vp=pairfind(items, RAD_EAP_IKEV2_IDTYPE, 0, TAG_ANY);
 	if(!vp) {
-	    radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Id type not set",id);
+	    DEBUG(IKEv2_LOG_PREFIX "[%s] -- Id type not set",id);
 	} else {
 	    id_type = vp->vp_integer;
 	    if(!id_type) {
-		radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Not valid id type",id);
+		DEBUG(IKEv2_LOG_PREFIX "[%s] -- Not valid id type",id);
 	    }
 	}
 	//secret
 	vp=pairfind(items, RAD_EAP_IKEV2_SECRET, 0, TAG_ANY);
 	if(!vp || !vp->length) {
-	    radlog(L_DBG,IKEv2_LOG_PREFIX "[%s] -- Secret not set",id);
+	    DEBUG(IKEv2_LOG_PREFIX "[%s] -- Secret not set",id);
 	} else {
 	    secret=vp->vp_strvalue;
 	}
@@ -380,11 +380,11 @@ int rad_get_authtype(char* authtype_name)
 {
     rad_assert(authtype_name);
     if(!strcmp(authtype_name,"cert")) {
-	radlog(L_DBG,IKEv2_LOG_PREFIX "Using  server auth type: cert");
+	DEBUG(IKEv2_LOG_PREFIX "Using  server auth type: cert");
 	return IKEv2_AUTH_CERT;
     }
     if(!strcmp(authtype_name,"secret")) {
-	radlog(L_DBG,IKEv2_LOG_PREFIX "Using server auth type: secret");
+	DEBUG(IKEv2_LOG_PREFIX "Using server auth type: secret");
 	return IKEv2_AUTH_SK;
     }
     radlog(L_AUTH,IKEv2_LOG_PREFIX "Unsupported server auth type: %s",authtype_name);

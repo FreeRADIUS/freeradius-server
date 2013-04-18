@@ -325,7 +325,7 @@ int fb_init_socket(rlm_sql_firebird_conn_t *conn) {
 	conn->sql_dialect = 3;
 #ifdef _PTHREAD_H
 	pthread_mutex_init (&conn->mut, NULL);
-	radlog(L_DBG,"Init mutex %p\n",&conn->mut);
+	DEBUG("Init mutex %p\n",&conn->mut);
 #endif
 
 	/*

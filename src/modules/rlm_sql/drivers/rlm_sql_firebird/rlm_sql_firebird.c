@@ -119,8 +119,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 		/* but may be lost for short sessions */
    		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
    		    !deadlock) {
-	  		radlog(L_DBG,"conn_id deadlock. Retry query %s",
-	  		       query);
+	  		DEBUG("conn_id deadlock. Retry query %s", query);
 	  		
 			/*
 			 *	@todo For non READ_COMMITED transactions put

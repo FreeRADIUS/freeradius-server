@@ -154,21 +154,18 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 					s2 = StringValuePtr(pString2);
 
 					if ((s1 != NULL) && (s2 != NULL)) {
-						radlog(L_DBG, "%s: %s = %s ",
+						DEBUG("%s: %s = %s ",
 						       function_name, s1, s2);
 
 						/* xxx Might need to support other T_OP */
 						vp = pairmake(ctx, vpp, s1, s2, T_OP_EQ);
 						if (vp != NULL) {
-							radlog(L_DBG, "%s: s1, s2 OK\n",
-							       function_name);
+							DEBUG("%s: s1, s2 OK", function_name);
 						} else {
-							radlog(L_DBG, "%s: s1, s2 FAILED\n",
-							       function_name);
+							DEBUG("%s: s1, s2 FAILED", function_name);
 						}
 					} else {
-						RDEBUGE("%s: string conv failed\n",
-							function_name);
+						RDEBUGE("%s: string conv failed", function_name);
 					}
 
 				} else {
@@ -201,7 +198,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 	VALUE rb_request, rb_result, rb_reply_items, rb_config_items;
 
 	int n_tuple;
-	radlog(L_DBG, "Calling ruby function %s which has id: %lu\n", function_name, func);
+	DEBUG("Calling ruby function %s which has id: %lu\n", function_name, func);
 
 	/* Return with "OK, continue" if the function is not defined.
 	 * TODO: Should check with rb_respond_to each time, just because ruby can define function dynamicly?
@@ -321,7 +318,7 @@ static int load_function(const char *f_name, unsigned long *func, VALUE module) 
 		if (!rb_respond_to(module, *func))
 			*func = 0;
 	}
-	radlog(L_DBG, "load_function %s, result: %lu", f_name, *func);
+	DEBUG("load_function %s, result: %lu", f_name, *func);
 	return 0;
 }
 

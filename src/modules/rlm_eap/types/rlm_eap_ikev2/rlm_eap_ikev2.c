@@ -115,7 +115,7 @@ static int ikev2_detach(void *instance)
 
 static void ikev2_free_opaque(void *opaque)
 {
-    radlog(L_DBG,IKEv2_LOG_PREFIX "Free session data");
+    DEBUG(IKEv2_LOG_PREFIX "Free session data");
     struct IKEv2Data *ikev2_data=(struct IKEv2Data*)opaque;
     if(ikev2_data->session) {
 	if(ikev2_data->session->Status!=IKEv2_SST_ESTABLISHED) {
@@ -129,7 +129,7 @@ static void ikev2_free_opaque(void *opaque)
     }
     int fastDeleted=FreeSessionIfExpired(ikev2_data->i2,time(NULL));
     if(fastDeleted) {
-	radlog(L_DBG,IKEv2_LOG_PREFIX "Deleted %d expired IKEv2 sessions",fastDeleted);
+	DEBUG(IKEv2_LOG_PREFIX "Deleted %d expired IKEv2 sessions",fastDeleted);
     }
     free(ikev2_data);
 }

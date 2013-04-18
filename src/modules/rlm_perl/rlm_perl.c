@@ -259,8 +259,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 	ret = pthread_setspecific(*key, interp);
 	if (ret != 0) {
-		radlog(L_DBG,"rlm_perl: Failed associating interpretor "
-		       "with thread %s", strerror(ret));
+		DEBUG("rlm_perl: Failed associating interpretor with thread %s", strerror(ret));
 		
 		rlm_perl_destruct(interp);
 		return NULL;
@@ -556,13 +555,10 @@ static int pairadd_sv(TALLOC_CTX *ctx, VALUE_PAIR **vps, char *key, SV *sv, FR_T
 		val = SvPV_nolen(sv);
 		vp = pairmake(ctx, vps, key, val, op);
 		if (vp != NULL) {
-			radlog(L_DBG,
-			       "rlm_perl: Added pair %s = %s", key, val);
+			DEBUG("rlm_perl: Added pair %s = %s", key, val);
 			return 1;
 		} else {
-			radlog(L_DBG,
-			       "rlm_perl: ERROR: Failed to create pair %s = %s",
-			       key, val);
+			DEBUG("rlm_perl: ERROR: Failed to create pair %s = %s", key, val);
 		}
 	}
 	return 0;

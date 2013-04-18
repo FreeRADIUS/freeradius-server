@@ -324,7 +324,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 
 	for (vp = packet->vps; vp != NULL; vp = vp->next) {
 		vp_prints(buffer, sizeof(buffer), vp);
-		request->radlog(L_DBG, 0, request, "\t%s", buffer);
+		RDEBUG("\t%s", buffer);
 	}
 }
 

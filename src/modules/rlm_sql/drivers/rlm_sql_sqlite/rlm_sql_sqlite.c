@@ -156,7 +156,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 			return -1;
 		}
 		
-		radlog(L_DBG, "rlm_sql_sqlite: Ignoring empty SQL file");
+		DEBUG("rlm_sql_sqlite: Ignoring empty SQL file");
 		
 		fclose(f);
 		talloc_free(buffer);

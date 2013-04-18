@@ -112,7 +112,7 @@ static int check_fatal_error (char *errorcode)
 
 	while(errorcodes[x].errorcode != NULL){
 		if (strcmp(errorcodes[x].errorcode, errorcode) == 0){
-			radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s: %s] Occurred!!", errorcode, errorcodes[x].meaning);
+			DEBUG("rlm_sql_postgresql: Postgresql Fatal Error: [%s: %s] Occurred!!", errorcode, errorcodes[x].meaning);
 			if (errorcodes[x].shouldreconnect == 1)
 				return SQL_DOWN;
 			else
@@ -121,7 +121,7 @@ static int check_fatal_error (char *errorcode)
 		x++;
 	}
 
-	radlog(L_DBG, "rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcode);
+	DEBUG("rlm_sql_postgresql: Postgresql Fatal Error: [%s] Occurred!!", errorcode);
 	/*	We don't seem to have a matching error class/code */
 	return -1;
 }
@@ -236,7 +236,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		return  SQL_DOWN;
 	} else {
 		ExecStatusType status = PQresultStatus(conn->result);
-		radlog(L_DBG, "rlm_sql_postgresql: Status: %s", PQresStatus(status));
+		DEBUG("rlm_sql_postgresql: Status: %s", PQresStatus(status));
 
 		switch (status){
 
@@ -248,7 +248,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 				returning no data...
 				*/
 				conn->affected_rows	= affected_rows(conn->result);
-				radlog(L_DBG, "rlm_sql_postgresql: query affected rows = %i", conn->affected_rows);
+				DEBUG("rlm_sql_postgresql: query affected rows = %i", conn->affected_rows);
 				return 0;
 
 			break;
@@ -259,14 +259,14 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 				conn->cur_row = 0;
  				conn->affected_rows = PQntuples(conn->result);
 				numfields = PQnfields(conn->result); /*Check row storing functions..*/
-				radlog(L_DBG, "rlm_sql_postgresql: query affected rows = %i , fields = %i", conn->affected_rows, numfields);
+				DEBUG("rlm_sql_postgresql: query affected rows = %i , fields = %i", conn->affected_rows, numfields);
 				return 0;
 
 			break;
 
 			case PGRES_BAD_RESPONSE:
 				/*The server's response was not understood.*/
-				radlog(L_DBG, "rlm_sql_postgresql: Bad Response From Server!!");
+				DEBUG("rlm_sql_postgresql: Bad Response From Server!!");
 				return -1;
 
 			break;
@@ -284,7 +284,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 
 				errorcode = PQresultErrorField(conn->result, PG_DIAG_SQLSTATE);
 				errormsg  = PQresultErrorField(conn->result, PG_DIAG_MESSAGE_PRIMARY);
-				radlog(L_DBG, "rlm_sql_postgresql: Error %s", errormsg);
+				DEBUG("rlm_sql_postgresql: Error %s", errormsg);
 				return check_fatal_error(errorcode);
 #endif
 
