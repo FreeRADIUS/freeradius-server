@@ -292,7 +292,7 @@ void rlm_ldap_check_reply(const ldap_instance_t *inst, REQUEST *request);
  */
 void *mod_conn_create(void *ctx);
 
-int mod_conn_delete(UNUSED void *ctx, void *connection);
+int mod_conn_delete(UNUSED void *instance, void *handle);
 
 ldap_handle_t *rlm_ldap_get_socket(const ldap_instance_t *inst, REQUEST *request);
 

@@ -42,9 +42,9 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL} /* end the list */
 };
 
-static int mod_conn_delete(UNUSED void *ctx, void *conn)
+static int mod_conn_delete(UNUSED void *instance, void *handle)
 {
-	REDISSOCK *dissocket = conn;
+	REDISSOCK *dissocket = handle;
 
 	redisFree(dissocket->conn);
 

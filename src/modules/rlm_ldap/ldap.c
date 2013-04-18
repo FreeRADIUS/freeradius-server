@@ -1178,13 +1178,13 @@ void *mod_conn_create(void *instance)
  * Unbinds the LDAP connection, informing the server and freeing any memory, then releases the memory used by the 
  * connection handle.
  *
- * @param instance unused.
- * @param connection to destroy.
+ * @param instance rlm_ldap instance.
+ * @param handle to destroy.
  * @return always indicates success.
  */
-int mod_conn_delete(UNUSED void *instance, void *connection)
+int mod_conn_delete(UNUSED void *instance, void *handle)
 {
-	ldap_handle_t *conn = connection;
+	ldap_handle_t *conn = handle;
 
 	ldap_unbind_s(conn->handle);
 	talloc_free(conn);

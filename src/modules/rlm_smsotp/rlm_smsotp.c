@@ -48,11 +48,11 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static void *mod_conn_create(void *ctx)
+static void *mod_conn_create(void *instance)
 {
 	int fd;
 	struct sockaddr_un sa;
-	rlm_smsotp_t *inst = ctx;
+	rlm_smsotp_t *inst = instance;
 	socklen_t socklen = sizeof(sa);
 	int *fdp;
 
@@ -72,15 +72,15 @@ static void *mod_conn_create(void *ctx)
 		return NULL;
 	}
 
-	fdp = talloc_zero(ctx, int);
+	fdp = talloc_zero(instance, int);
 	*fdp = fd;
 
 	return fdp;
 }
 
-static int mod_conn_delete(UNUSED void *ctx, void *connection)
+static int mod_conn_delete(UNUSED void *instance, void *handle)
 {
-	int *fdp = connection;
+	int *fdp = handle;
 
 	close(*fdp);
 	talloc_free(fdp);

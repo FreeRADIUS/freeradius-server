@@ -51,13 +51,13 @@ static int sql_conn_destructor(void *conn)
 	return 0;
 }
 
-static void *mod_conn_create(void *ctx)
+static void *mod_conn_create(void *instance)
 {
 	int rcode;
-	rlm_sql_t *inst = ctx;
+	rlm_sql_t *inst = instance;
 	rlm_sql_handle_t *handle;
 
-	handle = talloc_zero(ctx, rlm_sql_handle_t);
+	handle = talloc_zero(instance, rlm_sql_handle_t);
 	
 	/*
 	 *	Handle requires a pointer to the SQL inst so the
@@ -92,9 +92,9 @@ static void *mod_conn_create(void *ctx)
 /*
  *	@todo Calls to this should eventually go away.
  */
-static int mod_conn_delete(UNUSED void *ctx, void *conn)
+static int mod_conn_delete(UNUSED void *instance, void *handle)
 {	
-	return talloc_free(conn);
+	return talloc_free(handle);
 }
 
 /*************************************************************************
