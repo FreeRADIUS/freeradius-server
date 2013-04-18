@@ -565,7 +565,7 @@ int fb_commit(rlm_sql_firebird_conn_t *conn) {
 		if (IS_ISC_ERROR(conn->status)) {
 			fb_error(conn);
 			ERROR("Fail to commit. Error: %s. Try to rollback.",
-		       	       conn->lasterror);
+		       	       conn->error);
 			return fb_rollback(conn);
 		}
 	}
