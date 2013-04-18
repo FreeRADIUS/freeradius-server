@@ -79,47 +79,36 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 
 int fb_error(rlm_sql_firebird_conn_t *conn)
 {
-	char msg[512 + 2];
-	int l;
-	ISC_LONG *pstatus;
-	char *p = 0;
-
+	char error[512];	/* Temporary error buffer, lets hope isc_interprete wont overflow it... */
+	ISC_STATUS *pstatus;
+	
 	conn->sql_code = 0;
 
+	/*
+	 *	Free any previous errors.
+	 */
+	TALLOC_FREE(conn->error);
+
+	/*
+	 *	Check if the status array contains an error
+	 */
 	if (IS_ISC_ERROR(conn->status)) {
-		/*
-		 *	If error occured, free the previous error's text
-		 *	and create a new one.
-		 */
-		pstatus = conn->status;
-		if (conn->error) {
-			free(conn->error);
-		}
-		
-		conn->error = 0;
 		conn->sql_code = isc_sqlcode(conn->status);
 		
-		isc_interprete(msg, &pstatus);
-		p = strdup(msg);
+		/*
+		 *	pstatus is a pointer into the status array which is
+		 *	advanced by isc_interprete. It's initialised to the
+		 *	first element of the status array.
+		 */
+		pstatus = &conn->status[0];
+		isc_interprete(&error, &pstatus);
+		conn->error = talloc_vasprintf(conn, "%s. ", &error);
 		
-		msg[0] = '.';
-		msg[1] = ' ';
-		
-		while (isc_interprete(msg + 2, &pstatus)) {
-			l = strlen(p);
-			p = realloc(p, l + strlen(msg) + 2);
-			
-			strcat(p, msg);
+		while (isc_interprete(&error, &pstatus)) {
+			conn->error = talloc_vasprintf_append(conn->error, "%s. ", &error);
 		}
 		
-		conn->error = p;
-	} else {
-		//return empty (but not null) string if there are  no error
-		if (conn->error) {
-			*(conn->error) = '\0';
-		} else {
-			conn->error = strdup("");
-		}
+		memset(&conn->status, 0, sizeof(conn->status));
 	}
 	
 	return conn->sql_code;
@@ -564,8 +553,7 @@ int fb_commit(rlm_sql_firebird_conn_t *conn) {
 		isc_commit_transaction (conn->status, &conn->trh);
 		if (IS_ISC_ERROR(conn->status)) {
 			fb_error(conn);
-			ERROR("Fail to commit. Error: %s. Try to rollback.",
-		       	       conn->error);
+			ERROR("Fail to commit. Error: %s. Try to rollback.", conn->error);
 			return fb_rollback(conn);
 		}
 	}

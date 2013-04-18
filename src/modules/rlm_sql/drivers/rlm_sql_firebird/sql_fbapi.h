@@ -32,7 +32,7 @@ RCSIDH(sql_fbapi_h, "$Id$")
 #include <freeradius-devel/radiusd.h>
 #include "rlm_sql.h"
 
-#define IS_ISC_ERROR(status)  (status[0] == 1 && status[1])
+#define IS_ISC_ERROR(status)  ((status[0] == 1) && (status[1] > 0))
 
 #define DEADLOCK_SQL_CODE	-913
 #define DOWN_SQL_CODE		-902
@@ -49,7 +49,10 @@ typedef struct rlm_sql_firebird_conn {
 	isc_db_handle dbh;
 	isc_stmt_handle stmt;
 	isc_tr_handle trh;
-	ISC_STATUS status[20];
+	
+	ISC_STATUS status[20];		//!< Magic interbase status code array (holds multiple error codes used
+					//!< to construct more detailed error messages.
+					
 	ISC_LONG sql_code;
 	XSQLDA *sqlda_out;
 	int sql_dialect;

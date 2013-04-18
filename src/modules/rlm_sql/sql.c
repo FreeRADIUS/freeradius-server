@@ -293,8 +293,9 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	ret = (inst->module->sql_fetch_row)(*handle, inst->config);
 	
 	if (ret < 0) {
-		ERROR("rlm_sql (%s): Error fetching row: %s", inst->config->xlat_name,
-			   (inst->module->sql_error)(*handle, inst->config));
+		const char *error = (inst->module->sql_error)(*handle, inst->config);
+		DEBUGE("rlm_sql (%s): Error fetching row: %s",
+		       inst->config->xlat_name, error ? error : "<UNKNOWN>");
 	}
 
 	return ret;
@@ -341,9 +342,9 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
 		}
 		
 		if (ret < 0) {
-			ERROR("rlm_sql (%s): Database query error: '%s'",
-				   inst->config->xlat_name,
-				   (inst->module->sql_error)(*handle, inst->config));
+			const char *error = (inst->module->sql_error)(*handle, inst->config);
+			ERROR("rlm_sql (%s): Database query error: %s",
+			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
 		}
 		
 		return ret;
@@ -391,9 +392,9 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char 
 		}
 		
 		if (ret < 0) {
+			const char *error = (inst->module->sql_error)(*handle, inst->config);
 			ERROR("rlm_sql (%s): Database query error '%s'",
-				   inst->config->xlat_name,
-				   (inst->module->sql_error)(*handle, inst->config));
+			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
 		}
 		
 		return ret;
