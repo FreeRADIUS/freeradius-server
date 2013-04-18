@@ -155,7 +155,7 @@ static size_t rlm_ldap_common_dn(const char *full, const char *part)
 ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, char *out, size_t outlen)
 {
 	char buffer[LDAP_MAX_FILTER_STR_LEN + 1];
-	const char *in;
+	const char *in = NULL;
 	char *p = buffer;
 	
 	ssize_t len = 0;

@@ -81,7 +81,7 @@ static int sql_check_error(sqlite3 *db)
 	case SQLITE_FULL:
 	case SQLITE_CONSTRAINT:
 	case SQLITE_MISMATCH:
-		DEBUGE("rlm_sql_sqlite: Error (%d): %s", error, sqlite3_errmsg(db));
+		radlog(L_ERR, "rlm_sql_sqlite: Error (%d): %s", error, sqlite3_errmsg(db));
 		
 		return -1;
 		break;
@@ -90,7 +90,7 @@ static int sql_check_error(sqlite3 *db)
 	 *	Errors with the handle, that probably require reinitialisation
 	 */
 	default:
-		DEBUGE("rlm_sql_sqlite: Handle is unusable, error (%d): %s", error, sqlite3_errmsg(db));
+		radlog(L_ERR, "rlm_sql_sqlite: Handle is unusable, error (%d): %s", error, sqlite3_errmsg(db));
 		return SQL_DOWN;
 		break;
 	}
@@ -114,14 +114,14 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 
 	f = fopen(filename, "r");
 	if (!f) {
-		DEBUGE("rlm_sql_sqlite: Failed opening SQL file \"%s\": %s", filename,
+		radlog(L_ERR, "rlm_sql_sqlite: Failed opening SQL file \"%s\": %s", filename,
 		       strerror(errno));
 	
 		return -1;
 	}
 	
 	if (fstat(fileno(f), &finfo) < 0) {
-		DEBUGE("rlm_sql_sqlite: Failed stating SQL file \"%s\": %s", filename,
+		radlog(L_ERR, "rlm_sql_sqlite: Failed stating SQL file \"%s\": %s", filename,
 		       strerror(errno));
 		
 		fclose(f);
@@ -131,7 +131,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	
 	if (finfo.st_size > BOOTSTRAP_MAX) {
 		too_big:
-		DEBUGE("rlm_sql_sqlite: Size of SQL (%zu) file exceeds limit (%uk)",
+		radlog(L_ERR, "rlm_sql_sqlite: Size of SQL (%zu) file exceeds limit (%uk)",
 		       (size_t) finfo.st_size / 1024, BOOTSTRAP_MAX / 1024);
 		
 		fclose(f);
@@ -148,7 +148,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	
 	if (!len) {
 		if (ferror(f)) {
-			DEBUGE("rlm_sql_sqlite: Error reading SQL file: %s", strerror(errno));
+			radlog(L_ERR, "rlm_sql_sqlite: Error reading SQL file: %s", strerror(errno));
 			
 			fclose(f);
 			talloc_free(buffer);
@@ -156,7 +156,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 			return -1;
 		}
 		
-		DEBUG("rlm_sql_sqlite: Ignoring empty SQL file");
+		radlog(L_DBG, "rlm_sql_sqlite: Ignoring empty SQL file");
 		
 		fclose(f);
 		talloc_free(buffer);
@@ -181,7 +181,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 	}
 	
 	if ((p - buffer) != len) {
-		DEBUGE("rlm_sql_sqlite: Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
+		radlog(L_ERR, "rlm_sql_sqlite: Bootstrap file contains non-UTF8 char at offset %zu", p - buffer);
 		talloc_free(buffer);
 		return -1;
 	}
@@ -245,7 +245,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 	
 	exists = rad_file_exists(driver->filename);
 	if (exists < 0) {
-		DEBUGE("rlm_sql_sqlite: Database exists, but couldn't be opened: %s", strerror(errno));
+		radlog(L_ERR, "rlm_sql_sqlite: Database exists, but couldn't be opened: %s", strerror(errno));
 	
 		return -1;
 	}
@@ -271,7 +271,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		}
 		
 		if (rad_mkdir(buff, 0700) < 0) {
-			DEBUGE("rlm_sql_sqlite: Failed creating directory for SQLite database");
+			radlog(L_ERR, "rlm_sql_sqlite: Failed creating directory for SQLite database");
 			
 			talloc_free(buff);
 			
@@ -282,7 +282,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 
 		status = sqlite3_open_v2(driver->filename, &db, SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE, NULL);
 		if (!db) {
-			DEBUGE("rlm_sql_sqlite: Failed creating opening/creating SQLite database, error "
+			radlog(L_ERR, "rlm_sql_sqlite: Failed creating opening/creating SQLite database, error "
 			       "code (%u)", status);
 			
 			goto unlink;
@@ -298,14 +298,14 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		
 		status = sqlite3_close(db);
 		if (status != SQLITE_OK) {
-			DEBUGE("rlm_sql_sqlite: Error closing SQLite handle, error code (%u)", status);
+			radlog(L_ERR, "rlm_sql_sqlite: Error closing SQLite handle, error code (%u)", status);
 			goto unlink;
 		}
 		
 		if (ret < 0) {
 			unlink:
 			if (unlink(driver->filename) < 0) {
-				DEBUGE("rlm_sql_sqlite: Error removing partially initialised database: %s",
+				radlog(L_ERR, "rlm_sql_sqlite: Error removing partially initialised database: %s",
 				       strerror(errno));
 			}
 			return -1;
@@ -354,7 +354,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	status = sqlite3_open(driver->filename, &(conn->db));
 #endif
 	if (!conn->db) {
-		DEBUGE("rlm_sql_sqlite: Failed creating opening/creating SQLite database error code (%u)",
+		radlog(L_ERR, "rlm_sql_sqlite: Failed creating opening/creating SQLite database error code (%u)",
 		       status);
 		
 		return -1;

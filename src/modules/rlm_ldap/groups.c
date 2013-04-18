@@ -443,7 +443,6 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST
 					    VALUE_PAIR *check)
 					    
 {
-	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND;
 	ldap_rcode_t	status;
 
 	char		base_dn[LDAP_MAX_DN_STR_LEN + 1];
@@ -486,9 +485,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST
 		 *	rlm_ldap_find_user does this, too.  Oh well.
 		 */
 		if (radius_xlat(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, 
-				rlm_ldap_escape_func, NULL) < 0) {
-			rcode = RLM_MODULE_INVALID;
-			
+				rlm_ldap_escape_func, NULL) < 0) {		
 			RDEBUGE("Failed creating base_dn");
 		
 			return RLM_MODULE_INVALID;

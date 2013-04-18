@@ -313,7 +313,12 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 	if (fd >= 0) {
 		strcat(line, "\n");
 		
-		write(fd, line, strlen(line));
+		if (write(fd, line, strlen(line)) < 0) {
+			DEBUGE("rlm_linelog: Failed writing: %s", strerror(errno));
+			
+			return RLM_MODULE_FAIL;
+		}
+		
 		close(fd);
 
 #ifdef HAVE_SYSLOG_H

@@ -485,6 +485,7 @@ typedef struct main_config_t {
 
 #if __GNUC__ >= 3
 #define RDEBUG(fmt, ...)    if(request && request->radlog) request->radlog(L_DBG, 1, request, fmt, ## __VA_ARGS__)
+#define RDEBUGI(fmt, ...)   if(request && request->radlog) request->radlog(L_INFO, 1, request, fmt, ## __VA_ARGS__)
 #define RDEBUGW(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_WARN, 1, request, fmt, ## __VA_ARGS__)
 #define RDEBUGE(fmt, ...)   do { if(request) { \
 					module_failure_msg(request, fmt, ## __VA_ARGS__); \
