@@ -52,7 +52,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *co
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, UNUSED char *querystr)
+static int sql_query(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, UNUSED const char *query)
 {
 	return 0;
 }
@@ -94,8 +94,7 @@ static int sql_num_fields(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_confi
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
-			    UNUSED char *querystr)
+static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, UNUSED const char *query)
 {
 	return 0;
 }

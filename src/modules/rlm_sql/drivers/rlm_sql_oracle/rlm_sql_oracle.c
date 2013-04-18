@@ -216,7 +216,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query)
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query)
 {
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -257,7 +257,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query)
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query)
 {
 
 	int		status;

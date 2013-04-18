@@ -204,9 +204,8 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
-		     char *querystr) {
-
+static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, const char *query)
+{
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 	int numfields = 0;
 	char *errorcode;
@@ -217,7 +216,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		return SQL_DOWN;
 	}
 
-	conn->result = PQexec(conn->db, querystr);
+	conn->result = PQexec(conn->db, query);
 		/*
 		 * Returns a PGresult pointer or possibly a null pointer.
 		 * A non-null pointer will generally be returned except in
@@ -331,8 +330,8 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char *querystr) {
-	return sql_query(handle, config, querystr);
+static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, const char *query) {
+	return sql_query(handle, config, query);
 }
 
 /*************************************************************************

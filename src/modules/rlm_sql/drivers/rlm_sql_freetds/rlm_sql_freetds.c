@@ -140,7 +140,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr)
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
 	
@@ -149,7 +149,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 		return SQL_DOWN;
 	}
 	
-	if ((dbcmd(conn->dbproc, querystr)) == FAIL) {
+	if ((dbcmd(conn->dbproc, query)) == FAIL) {
 		DEBUGE("rlm_sql_freetds (%s): Unable to allocate SQL query", config->xlat_name);
 		return -1;
 	}
@@ -170,7 +170,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, UNUSED char *querystr)
+static int sql_select_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, UNUSED const char *query)
 {	
 	DEBUGE("rlm_sql_freetds sql_select_query(): unsupported");
 	return -1;

@@ -307,7 +307,7 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
  *	Purpose: call the module's sql_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query)
+int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
 {
 	int ret;
 
@@ -357,7 +357,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query)
  *	Purpose: call the module's sql_select_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query)
+int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
 {
 	int ret;
 
@@ -409,7 +409,7 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query
  *
  *************************************************************************/
 int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
-		  TALLOC_CTX *ctx, VALUE_PAIR **pair, char *query)
+		  TALLOC_CTX *ctx, VALUE_PAIR **pair, const char *query)
 {
 	rlm_sql_row_t row;
 	int     rows = 0;
@@ -440,7 +440,7 @@ int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
  *	Log the query to a file.
  */
 void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
-		       sql_acct_section_t *section, char *query)
+		       sql_acct_section_t *section, const char *query)
 {
 	int fd;
 	const char *filename = NULL;

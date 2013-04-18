@@ -134,13 +134,13 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	int state;
 
 	/* Executing query */
-	err_handle = SQLExecDirect(conn->statement, (SQLCHAR *)querystr, strlen(querystr));
+	err_handle = SQLExecDirect(conn->statement, (SQLCHAR *)query, strlen(query));
 	
 	if ((state = sql_state(err_handle, handle, config))) {
 		if(state == SQL_DOWN) {
@@ -159,7 +159,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	SQLINTEGER column;
 	SQLLEN len;
@@ -167,7 +167,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 	int state;
 
 	/* Only state = 0 means success */
-	if ((state = sql_query(handle, config, querystr))) {
+	if ((state = sql_query(handle, config, query))) {
 		return state;
 	}
 

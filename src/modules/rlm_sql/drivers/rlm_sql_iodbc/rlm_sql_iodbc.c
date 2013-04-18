@@ -22,6 +22,7 @@
  */
 
 RCSID("$Id$")
+USES_APPLE_DEPRECATED_API
 
 #include <freeradius-devel/radiusd.h>
 
@@ -33,6 +34,8 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
+#define IODBC_MAX_ERROR_LEN 256
+
 typedef struct rlm_sql_iodbc_conn {
 	HENV    env_handle;
 	HDBC    dbc_handle;
@@ -42,7 +45,8 @@ typedef struct rlm_sql_iodbc_conn {
 	rlm_sql_row_t row;
 
 	struct sql_socket *next;
-
+	
+	SQLCHAR error[IODBC_MAX_ERROR_LEN];
 	void	*conn;
 } rlm_sql_iodbc_conn_t;
 
@@ -101,9 +105,18 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 		return -1;
 	}
 
-	rcode = SQLConnect(conn->dbc_handle, config->sql_server,
-			   SQL_NTS, config->sql_login, SQL_NTS,
-			   config->sql_password, SQL_NTS);
+	/*
+	 *	The iodbc API doesn't qualify arguments as const even when they should be.
+	 */
+	{
+		SQLCHAR *server, *login, *password;
+		
+		memcpy(&server, &config->sql_server, sizeof(server));
+		memcpy(&login, &config->sql_login, sizeof(login));
+		memcpy(&password, &config->sql_password, sizeof(password));
+		
+		rcode = SQLConnect(conn->dbc_handle, server, SQL_NTS, login, SQL_NTS, password, SQL_NTS);
+	}
 	if (!SQL_SUCCEEDED(rcode)) {
 		DEBUGE("sql_create_socket: SQLConnectfailed:  %s",
 				sql_error(handle, config));
@@ -121,7 +134,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
 
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 	SQLRETURN rcode;
@@ -139,7 +152,13 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 		return -1;
 	}
 
-	rcode = SQLExecDirect(conn->stmt_handle, querystr, SQL_NTS);
+	{
+		SQLCHAR *statement;
+		
+		memcpy(&statement, &query, sizeof(statement));
+		rcode = SQLExecDirect(conn->stmt_handle, statement, SQL_NTS);
+	}
+	
 	if (!SQL_SUCCEEDED(rcode)) {
 		DEBUGE("sql_query: failed:  %s",
 				sql_error(handle, config));
@@ -157,15 +176,15 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
 
 	int numfields = 0;
-	int i=0;
-	char **row=NULL;
-	SQLINTEGER len=0;
+	int i = 0;
+	char **row = NULL;
+	long len = 0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
-	if(sql_query(handle, config, querystr) < 0) {
+	if(sql_query(handle, config, query) < 0) {
 		return -1;
 	}
 
@@ -176,14 +195,13 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 	row[numfields] = NULL;
 
 	for(i=1; i<=numfields; i++) {
-		SQLColAttributes(conn->stmt_handle, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH,
-										NULL, 0, NULL, &len);
+		SQLColAttributes(conn->stmt_handle, ((SQLUSMALLINT) i), SQL_COLUMN_LENGTH, NULL, 0, NULL, &len);
 		len++;
 
 		/*
 		 * Allocate space for each column
 		 */
-		row[i-1] = (SQLCHAR*)rad_malloc((int)len);
+		row[i - 1] = rad_malloc((size_t) len);
 
 		/*
 		 * This makes me feel dirty, but, according to Microsoft, it works.
@@ -317,12 +335,13 @@ static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	SQLINTEGER errornum = 0;
 	SQLSMALLINT length = 0;
 	SQLCHAR state[256] = "";
-	static SQLCHAR error[256] = "";
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
+	conn->error[0] = '\0';
+	
 	SQLError(conn->env_handle, conn->dbc_handle, conn->stmt_handle,
-		state, &errornum, error, 256, &length);
-	return error;
+		state, &errornum, conn->error, IODBC_MAX_ERROR_LEN, &length);
+	return (const char *) &conn->error;
 }
 
 /*************************************************************************
@@ -358,7 +377,7 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *c
  *************************************************************************/
 static int sql_affected_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
-	SQLINTEGER count;
+	long count;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 
 	SQLRowCount(conn->stmt_handle, &count);

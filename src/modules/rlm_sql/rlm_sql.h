@@ -92,8 +92,8 @@ typedef struct rlm_sql_module_t {
 
 	int (*mod_instantiate)(CONF_SECTION *conf, rlm_sql_config_t *config);	
 	int (*sql_socket_init)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-	int (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query);
-	int (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *query);
+	int (*sql_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query);
+	int (*sql_select_query)(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query);
 	int (*sql_store_result)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_num_fields)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 	int (*sql_num_rows)(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -121,8 +121,8 @@ struct sql_inst {
 	rlm_sql_handle_t *(*sql_get_socket)(rlm_sql_t *inst);
 	int (*sql_release_socket)(rlm_sql_t *inst, rlm_sql_handle_t *handle);
 	size_t (*sql_escape_func)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
-	int (*sql_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query);
-	int (*sql_select_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query);
+	int (*sql_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query);
+	int (*sql_select_query)(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query);
 	int (*sql_fetch_row)(rlm_sql_handle_t **handle, rlm_sql_t *inst);
 };
 
@@ -138,14 +138,14 @@ rlm_sql_handle_t *sql_get_socket(rlm_sql_t *inst);
 int     sql_release_socket(rlm_sql_t *inst, rlm_sql_handle_t *handle);
 int     sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **first_pair, rlm_sql_row_t row);
 int     sql_read_realms(rlm_sql_handle_t *handle);
-int     sql_getvpdata(rlm_sql_t *inst, rlm_sql_handle_t **handle, TALLOC_CTX *ctx, VALUE_PAIR **pair, char *query);
+int     sql_getvpdata(rlm_sql_t *inst, rlm_sql_handle_t **handle, TALLOC_CTX *ctx, VALUE_PAIR **pair, const char *query);
 int     sql_read_naslist(rlm_sql_handle_t *handle);
 int     sql_read_clients(rlm_sql_handle_t *handle);
 int     sql_dict_init(rlm_sql_handle_t *handle);
 void 	rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
-	       		  sql_acct_section_t *section, char *querystr);
-int	rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query);
-int	rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char *query);
+	       		  sql_acct_section_t *section, const char *query);
+int	rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query);
+int	rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query);
 int	rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst);
 int	sql_set_user(rlm_sql_t *inst, REQUEST *request, const char *username);
 #endif

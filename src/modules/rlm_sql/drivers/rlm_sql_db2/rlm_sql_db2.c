@@ -103,8 +103,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
-		     char *querystr)
+static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, const char *query)
 {
 	SQLRETURN retval;
 	rlm_sql_db2_conn_t *conn;
@@ -112,14 +111,13 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	conn = handle->conn;
 
 	/* allocate handle for statement */
-	SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc,
-			&(conn->stmt));
+	SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &(conn->stmt));
 
 	/* execute query */
-	retval = SQLExecDirect(conn->stmt, querystr, SQL_NTS);
+	retval = SQLExecDirect(conn->stmt, query, SQL_NTS);
 	if(retval != SQL_SUCCESS) {
 		/* XXX Check if retval means we should return SQL_DOWN */
-		DEBUGE("could not execute statement \"%s\"\n", querystr);
+		DEBUGE("could not execute statement \"%s\"\n", query);
 		return -1;
 	}
 
@@ -134,9 +132,9 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char *querystr)
+static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, const char *query)
 {
-	return sql_query(handle, config, querystr);
+	return sql_query(handle, config, query);
 }
 
 

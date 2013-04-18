@@ -322,40 +322,49 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 
 	/* Set User and Password properties for the db */
-
-	if (ct_con_props(conn->db, CS_SET, CS_USERNAME, config->sql_login,
-					 strlen(config->sql_login), NULL) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to set username for db (ct_con_props())\n%s",
-		sql_error(handle, config));
-		if (conn->context != (CS_CONTEXT *)NULL) {
-			ct_exit(conn->context, CS_FORCE_EXIT);
-			cs_ctx_drop(conn->context);
+	{
+		CS_VOID *login, *password;
+		CS_CHAR *server;
+		
+		memcpy(&login, &config->sql_login, sizeof(login));
+		if (ct_con_props(conn->db, CS_SET, CS_USERNAME, login, strlen(config->sql_login), NULL) != CS_SUCCEED) {
+			DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to set username for db (ct_con_props())");
+			DEBUGE("%s", sql_error(handle, config));
+			if (conn->context != (CS_CONTEXT *)NULL) {
+				ct_exit(conn->context, CS_FORCE_EXIT);
+				cs_ctx_drop(conn->context);
+			}
+			return -1;
 		}
-		return -1;
+		
+		memcpy(&password, &config->sql_password, sizeof(password));
+		if (ct_con_props(conn->db, CS_SET, CS_PASSWORD, password, strlen(config->sql_password), 
+				 NULL) != CS_SUCCEED) {
+			DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to set password for db (ct_con_props())");
+			DEBUGE("%s", sql_error(handle, config));
+
+			if (conn->context != (CS_CONTEXT *)NULL) {
+				ct_exit(conn->context, CS_FORCE_EXIT);
+				cs_ctx_drop(conn->context);
+			}
+			return -1;
+		}
+		
+		/* Establish the db */
+		memcpy(&server, &config->sql_server, sizeof(server));
+		if (ct_connect(conn->db, server, strlen(config->sql_server)) != CS_SUCCEED) {
+			DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to establish db to symbolic servername %s",
+			       config->sql_server);
+			DEBUGE("%s", sql_error(handle, config));
+			
+			if (conn->context != (CS_CONTEXT *)NULL) {
+				ct_exit(conn->context, CS_FORCE_EXIT);
+				cs_ctx_drop(conn->context);
+			}
+			return -1;
+		}
 	}
 
-	if (ct_con_props(conn->db, CS_SET, CS_PASSWORD, config->sql_password,
-					strlen(config->sql_password), NULL) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to set password for db (ct_con_props())\n%s",
-		sql_error(handle, config));
-		if (conn->context != (CS_CONTEXT *)NULL) {
-			ct_exit(conn->context, CS_FORCE_EXIT);
-			cs_ctx_drop(conn->context);
-		}
-		return -1;
-	}
-
-	/* Establish the db */
-
-	if (ct_connect(conn->db, config->sql_server, strlen(config->sql_server)) != CS_SUCCEED) {
-		DEBUGE("rlm_sql_sybase(sql_socket_init): Unable to establish db to symbolic servername %s\n%s",
-				config->sql_server, sql_error(handle, config));
-		if (conn->context != (CS_CONTEXT *)NULL) {
-			ct_exit(conn->context, CS_FORCE_EXIT);
-			cs_ctx_drop(conn->context);
-		}
-		return -1;
-	}
 	return 0;
 }
 
@@ -367,7 +376,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 
@@ -385,7 +394,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *q
 		return -1;
 	}
 
-	if (ct_command(conn->command, CS_LANG_CMD, querystr, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
+	if (ct_command(conn->command, CS_LANG_CMD, query, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
 		DEBUGE("rlm_sql_sybase(sql_query): Unable to initiate command structure (ct_command())\n%s",
 				sql_error(handle, config));
 		return -1;
@@ -572,7 +581,7 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	      be discarded.
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char *querystr) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 
@@ -595,7 +604,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		return -1;
 	}
 
-	if (ct_command(conn->command, CS_LANG_CMD, querystr, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
+	if (ct_command(conn->command, CS_LANG_CMD, query, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
 		DEBUGE("rlm_sql_sybase(sql_select_query): Unable to initiate command structure (ct_command())\n%s",
 				sql_error(handle, config));
 		return -1;

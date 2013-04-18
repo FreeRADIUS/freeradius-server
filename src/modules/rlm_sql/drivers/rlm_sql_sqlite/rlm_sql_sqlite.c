@@ -376,17 +376,16 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return 0;
 }
 
-static int sql_select_query(rlm_sql_handle_t *handle,
-			   UNUSED rlm_sql_config_t *config, char *querystr)
+static int sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, const char *query)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	const char *z_tail;
 	
 #ifdef HAVE_SQLITE_V2_API
-	status = sqlite3_prepare_v2(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
+	status = sqlite3_prepare_v2(conn->db, query, strlen(query), &conn->statement, &z_tail);
 #else
-	status = sqlite3_prepare(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
+	status = sqlite3_prepare(conn->db, query, strlen(query), &conn->statement, &z_tail);
 #endif
 				
 	conn->col_count = 0;
@@ -395,16 +394,16 @@ static int sql_select_query(rlm_sql_handle_t *handle,
 }
 
 
-static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char *querystr)
+static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, const char *query)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	const char *z_tail;
 
 #ifdef HAVE_SQLITE_V2_API
-	status = sqlite3_prepare_v2(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
+	status = sqlite3_prepare_v2(conn->db, query, strlen(query), &conn->statement, &z_tail);
 #else
-	status = sqlite3_prepare(conn->db, querystr, strlen(querystr), &conn->statement, &z_tail);
+	status = sqlite3_prepare(conn->db, query, strlen(query), &conn->statement, &z_tail);
 #endif				
 	status = sqlite3_step(conn->statement);
 		

@@ -101,8 +101,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 /** Issue a non-SELECT query (ie: update/delete/insert) to the database.
  *
  */
-static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
-		     char *querystr) {
+static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, const char *query) {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	
 	int deadlock = 0;
@@ -116,12 +115,12 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 	 *	Try again query when deadlock, beacuse in any case it
 	 *	will be retried.
 	 */
- 	if (fb_sql_query(conn,querystr)) {
+ 	if (fb_sql_query(conn,query)) {
 		/* but may be lost for short sessions */
    		if ((conn->sql_code == DEADLOCK_SQL_CODE) &&
    		    !deadlock) {
 	  		radlog(L_DBG,"conn_id deadlock. Retry query %s",
-	  		       querystr);
+	  		       query);
 	  		
 			/*
 			 *	@todo For non READ_COMMITED transactions put
@@ -136,7 +135,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 		       "sql_code=%li, error='%s', query=%s",
 		       (long int) conn->sql_code,
 		       conn->lasterror,
-		       querystr);
+		       query);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
 			return SQL_DOWN;
@@ -167,9 +166,8 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config,
 /** Issue a select query to the database.
  *
  */
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config,
-			    char *querystr) {
-	return sql_query(handle, config, querystr);
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+	return sql_query(handle, config, query);
 }
 
 /** Returns a result set for the query.

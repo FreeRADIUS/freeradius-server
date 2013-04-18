@@ -126,13 +126,12 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, const char *i
  *  for inserts, updates and deletes the number of rows afftected will be
  *  returned instead.
  */
-static size_t sql_xlat(void *instance, REQUEST *request, const char *fmt, char *out, size_t freespace)
+static size_t sql_xlat(void *instance, REQUEST *request, const char *query, char *out, size_t freespace)
 {
 	rlm_sql_handle_t *handle = NULL;
 	rlm_sql_row_t row;
 	rlm_sql_t *inst = instance;
 	size_t ret = 0;
-	char *query = fmt;	/* FIXME: */
 
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
