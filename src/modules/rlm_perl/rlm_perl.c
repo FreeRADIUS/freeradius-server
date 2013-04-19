@@ -187,9 +187,9 @@ static void rlm_perl_close_handles(void **handles)
 	free(handles);
 }
 
+DIAG_OFF(shadow)
 static void rlm_perl_destruct(PerlInterpreter *perl)
 {
-DIAG_OFF(shadow)
 	dTHXa(perl);
 
 	PERL_SET_CONTEXT(perl);
@@ -202,7 +202,6 @@ DIAG_OFF(shadow)
 	{
 		dTHXa(perl);
 	}
-DIAG_ON(shadow)
 	/*
 	 * FIXME: This shouldn't happen
 	 *
@@ -214,6 +213,7 @@ DIAG_ON(shadow)
 	perl_destruct(perl);
 	perl_free(perl);
 }
+DIAG_ON(shadow)
 
 static void rlm_destroy_perl(PerlInterpreter *perl)
 {

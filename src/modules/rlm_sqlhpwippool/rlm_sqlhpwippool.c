@@ -102,13 +102,12 @@ static int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl,
 	return r;
 }
 /* handy SQL query tool */
+DIAG_OFF(format-nonliteral)
 static int nvp_vquery(unsigned int line, rlm_sqlhpwippool_t *data,
 		      rlm_sql_handle_t *sqlsock, char const *fmt, va_list ap)
 {
 	char query[MAX_QUERY_LEN];
-DIAG_OFF(format-nonliteral)
 	vsnprintf(query, MAX_QUERY_LEN, fmt, ap);
-DIAG_ON(format-nonliteral)
 	if (rlm_sql_query(&sqlsock, data->sqlinst, query)) {
 		nvp_log(__LINE__, data, L_ERR, "nvp_vquery(): query from line %u: %s",
 			line, (char const *)(data->db->sql_error)(sqlsock, data->sqlinst->config));
@@ -117,6 +116,7 @@ DIAG_ON(format-nonliteral)
 
 	return 1;
 }
+DIAG_ON(format-nonliteral)
 
 /* wrapper around nvp_vquery */
 static int nvp_query(unsigned int line, rlm_sqlhpwippool_t *data,

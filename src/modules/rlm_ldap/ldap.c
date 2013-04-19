@@ -1012,6 +1012,8 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
  * @param instance rlm_ldap instance.
  * @return A new connection handle or NULL on error.
  */
+DIAG_OFF(implicit-function-declaration)
+DIAG_OFF(nested-externs)
 void *mod_conn_create(void *instance)
 {
 	ldap_rcode_t status;
@@ -1116,11 +1118,7 @@ void *mod_conn_create(void *instance)
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "cacertdir", inst->tls_cacertdir);
 
 #  ifdef HAVE_LDAP_INT_TLS_CONFIG
-DIAG_OFF(implicit-function-declaration)
-DIAG_OFF(nested-externs)
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT, inst->tls_require_cert) != LDAP_OPT_SUCCESS) {
-DIAG_ON(nested-externs)
-DIAG_ON(implicit-function-declaration)
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		
 		LDAP_ERR("Could not set LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s", inst->tls_require_cert,
@@ -1175,6 +1173,8 @@ DIAG_ON(implicit-function-declaration)
 	
 	return NULL;
 }
+DIAG_ON(nested-externs)
+DIAG_ON(implicit-function-declaration)
 
 
 /** Close and delete a connection
