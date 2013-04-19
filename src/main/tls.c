@@ -1161,7 +1161,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 
 		/* openssl mutates &p */
 		p = sess_data;
-		sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(unsigned char const * const *) &p, st.st_size);
+		sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(void **) &p, st.st_size);
 
 		if (!sess) {
 			DEBUG2("  SSL: OpenSSL failed to load persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
@@ -2713,3 +2713,4 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 }
 
 #endif	/* WITH_TLS */
+

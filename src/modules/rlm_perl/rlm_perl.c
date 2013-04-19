@@ -189,6 +189,7 @@ static void rlm_perl_close_handles(void **handles)
 
 static void rlm_perl_destruct(PerlInterpreter *perl)
 {
+DIAG_OFF(shadow)
 	dTHXa(perl);
 
 	PERL_SET_CONTEXT(perl);
@@ -197,7 +198,7 @@ static void rlm_perl_destruct(PerlInterpreter *perl)
 
 	PL_origenviron = environ;
 
-DIAG_OFF(shadow)
+
 	{
 		dTHXa(perl);
 	}

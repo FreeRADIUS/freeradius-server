@@ -459,16 +459,18 @@ static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht, void const *data
 int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
-	void *free;
+	void *tofree;
 
 	if (!ht || !data) return 0;
 
 	node = fr_hash_table_find(ht, data);
-	if (!node) return fr_hash_table_insert(ht, data);
-
+	if (!node) {
+		return fr_hash_table_insert(ht, data);
+	}
+	
 	if (ht->free) {
-		memcpy(&free, &node->data, sizeof(free));
-		ht->free(free);
+		memcpy(&tofree, &node->data, sizeof(tofree));
+		ht->free(tofree);
 	}
 	node->data = data;
 

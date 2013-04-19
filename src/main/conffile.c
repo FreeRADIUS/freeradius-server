@@ -136,9 +136,14 @@ CONF_SECTION *cf_itemtosection(CONF_ITEM const *ci)
 }
 CONF_ITEM *cf_pairtoitem(CONF_PAIR const *cp)
 {
-	if (cp == NULL)
+	CONF_ITEM *out;
+	
+	if (cp == NULL) {
 		return NULL;
-	return (CONF_ITEM *)cp;
+	}
+	
+	memcpy(&out, &cp, sizeof(out));
+	return out;
 }
 CONF_ITEM *cf_sectiontoitem(CONF_SECTION const *cs)
 {

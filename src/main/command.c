@@ -2615,7 +2615,7 @@ static int command_tcp_recv(rad_listen_t *this)
 			if (co->offset < 16) return 0;
 		}
 
-		fr_hmac_md5((void *) sock->client->secret,
+		fr_hmac_md5((void const *) sock->client->secret,
 			    strlen(sock->client->secret),
 			    (uint8_t *) co->buffer, 16, expected);
 

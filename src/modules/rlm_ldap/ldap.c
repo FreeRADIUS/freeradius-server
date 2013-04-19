@@ -1117,7 +1117,9 @@ void *mod_conn_create(void *instance)
 
 #  ifdef HAVE_LDAP_INT_TLS_CONFIG
 DIAG_OFF(implicit-function-declaration)
+DIAG_OFF(nested-externs)
 	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT, inst->tls_require_cert) != LDAP_OPT_SUCCESS) {
+DIAG_ON(nested-externs)
 DIAG_ON(implicit-function-declaration)
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 		
