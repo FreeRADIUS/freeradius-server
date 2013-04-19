@@ -42,12 +42,11 @@ extern void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char id
 /*
  *	Only used by rlm_mschap.c
  */
-int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
-		   VALUE_PAIR * usernamepair);
+rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair);
 
 
-static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName,
-			  tDirNodeReference* userNodeRef, tDirReference dsRef)
+static rlm_rcode_t getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName,
+				  tDirNodeReference* userNodeRef, tDirReference dsRef)
 {
 	tDataBuffer	     *tDataBuff	= NULL;
 	tDirNodeReference       nodeRef		= 0;
@@ -67,7 +66,7 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 	tAttributeValueListRef  valueRef	= 0;
 	tAttributeValueEntry    *pValueEntry	= NULL;
 	tDataList	       *pUserNode	= NULL;
-	int		     result		= RLM_MODULE_FAIL;
+	rlm_rcode_t		result		= RLM_MODULE_FAIL;
 	
 	if (!inUserName) {
 		ERROR("rlm_mschap: getUserNodeRef(): no username");
@@ -226,9 +225,9 @@ static int getUserNodeRef(REQUEST *request, char* inUserName, char **outUserName
 	return  result;
 }
 
-int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
-		   VALUE_PAIR * usernamepair)
+rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * usernamepair)
 {
+	rlm_rcode_t		rcode		 = RLM_MODULE_OK;
 	tDirStatus		status		 = eDSNoErr;
 	tDirReference		dsRef		 = 0;
 	tDirNodeReference	userNodeRef	 = 0;
@@ -258,16 +257,16 @@ int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge,
 		return RLM_MODULE_FAIL;
 	}
 
-	status = getUserNodeRef(request, username_string, &shortUserName, &userNodeRef, dsRef);
-	if(status != RLM_MODULE_OK) {
-		if (status != RLM_MODULE_NOOP) {
+	rcode = getUserNodeRef(request, username_string, &shortUserName, &userNodeRef, dsRef);
+	if (rcode != RLM_MODULE_OK) {
+		if (rcode != RLM_MODULE_NOOP) {
 			RDEBUG2("od_mschap_auth: getUserNodeRef() failed");
 		}
 		if (username_string != NULL)
 			talloc_free(username_string);
 		if (dsRef != 0)
 			dsCloseDirService(dsRef);
-		return status;
+		return rcode;
 	}
 	
 	/* We got a node; fill the stepBuffer
