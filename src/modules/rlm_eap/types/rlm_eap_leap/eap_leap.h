@@ -69,8 +69,7 @@ leap_packet_t	*eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 				VALUE_PAIR *user_name, VALUE_PAIR* password,
 				leap_session_t *session);
 
-void eapleap_lmpwdhash(const unsigned char *password,unsigned char *lmhash);
-void eapleap_mschap(const unsigned char *win_password,
-		 const unsigned char *challenge, unsigned char *response);
+void eapleap_lmpwdhash(unsigned char const *password,unsigned char *lmhash);
+void eapleap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response);
 
 #endif /*_EAP_LEAP_H*/

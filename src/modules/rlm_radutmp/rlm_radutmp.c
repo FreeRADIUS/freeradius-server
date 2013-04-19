@@ -34,7 +34,7 @@ RCSID("$Id$")
 
 #define LOCK_LEN sizeof(struct radutmp)
 
-static const char porttypes[] = "ASITX";
+static char const porttypes[] = "ASITX";
 
 /*
  *	used for caching radutmp lookups in the accounting component. The
@@ -76,7 +76,7 @@ static const CONF_PARSER module_config[] = {
 /*
  *	Zap all users on a NAS from the radutmp file.
  */
-static rlm_rcode_t radutmp_zap(REQUEST *request, const char *filename, uint32_t nasaddr, time_t t)
+static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t nasaddr, time_t t)
 {
 	struct radutmp	u;
 	int		fd;
@@ -159,7 +159,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	int		off;
 	rlm_radutmp_t	*inst = instance;
 	char		ip_name[32]; /* 255.255.255.255 */
-	const char	*nas;
+	char const	*nas;
 	NAS_PORT	*cache;
 	int		r;
 	

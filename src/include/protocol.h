@@ -36,7 +36,7 @@ typedef void (*rad_listen_free_t)(rad_listen_t *);
 
 typedef struct fr_protocol_t {
 	uint32_t 	magic;	//!< Used to validate loaded library
-	const char	*name;	//!< The name of the protocol
+	char const	*name;	//!< The name of the protocol
 	size_t		inst_size;
 	CONF_PARSER	*proto_config;
 
@@ -53,7 +53,7 @@ typedef struct fr_protocol_t {
  *	@todo: fix for later
  */
 int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this);
-int common_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize);
+int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize);
 
 
 #ifdef __cplusplus

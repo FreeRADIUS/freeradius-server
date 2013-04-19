@@ -63,7 +63,7 @@ int ssl_check_version(void)
  *
  * Print the currently linked version of the OpenSSL library.
  */
-const char *ssl_version(void)
+char const *ssl_version(void)
 {
 	return SSLeay_version(SSLEAY_VERSION);
 }
@@ -72,7 +72,7 @@ int ssl_check_Version(void) {
 	return 0;
 }
 
-const char *ssl_version()
+char const *ssl_version()
 {
 	return "not linked";
 }

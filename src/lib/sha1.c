@@ -35,7 +35,7 @@ RCSID("$Id$")
 
 /* Hash a single 512-bit block. This is the core of the algorithm. */
 
-void fr_SHA1Transform(uint32_t state[5], const uint8_t buffer[64])
+void fr_SHA1Transform(uint32_t state[5], uint8_t const buffer[64])
 {
   uint32_t a, b, c, d, e;
   typedef union {
@@ -101,7 +101,7 @@ void fr_SHA1Init(fr_SHA1_CTX* context)
 
 /* Run your data through this. */
 
-void fr_SHA1Update(fr_SHA1_CTX* context, const uint8_t* data, unsigned int len)
+void fr_SHA1Update(fr_SHA1_CTX *context,uint8_t const *data, size_t len)
 {
 unsigned int i, j;
 
@@ -132,9 +132,9 @@ uint8_t finalcount[8];
 	finalcount[i] = (uint8_t)((context->count[(i >= 4 ? 0 : 1)]
 	 >> ((3-(i & 3)) * 8) ) & 255);  /* Endian independent */
     }
-    fr_SHA1Update(context, (const unsigned char *) "\200", 1);
+    fr_SHA1Update(context, (unsigned char const *) "\200", 1);
     while ((context->count[0] & 504) != 448) {
-	fr_SHA1Update(context, (const unsigned char *) "\0", 1);
+	fr_SHA1Update(context, (unsigned char const *) "\0", 1);
     }
     fr_SHA1Update(context, finalcount, 8);  /* Should cause a fr_SHA1Transform() */
     for (i = 0; i < 20; i++) {

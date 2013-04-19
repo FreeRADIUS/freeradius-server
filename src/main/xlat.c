@@ -55,7 +55,7 @@ typedef enum {
 } xlat_state_t;
 
 struct xlat_exp {
-	const char *fmt;	//!< The format string.
+	char const *fmt;	//!< The format string.
 	size_t len;		//!< Length of the format string.
 
 	const DICT_ATTR *da;	//!< the name of the dictionary attribute	
@@ -74,14 +74,14 @@ struct xlat_exp {
 };
 
 typedef struct xlat_out {
-	const char *out;	//!< Output data.
+	char const *out;	//!< Output data.
 	size_t len;		//!< Length of the output string.
 } xlat_out_t;
 
 static rbtree_t *xlat_root = NULL;
 
 #ifdef WITH_UNLANG
-static const char * const xlat_foreach_names[] = {"Foreach-Variable-0",
+static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
 						  "Foreach-Variable-1",
 						  "Foreach-Variable-2",
 						  "Foreach-Variable-3",
@@ -137,7 +137,7 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
  *
  */
 static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
-			   const char *fmt, char *out, size_t outlen)
+			   char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR 	*vp;
 
@@ -183,7 +183,7 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
  *
  */
 static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen)
+		       char const *fmt, char *out, size_t outlen)
 {
 	size_t i;
 	VALUE_PAIR *vp;
@@ -220,7 +220,7 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
  *
  */
 static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen)
+			  char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 	uint8_t buffer[MAX_STRING_LEN];
@@ -246,7 +246,7 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
  *
  */
 static size_t xlat_module(UNUSED void *instance, REQUEST *request,
-			  UNUSED const char *fmt, char *out, size_t outlen)
+			  UNUSED char const *fmt, char *out, size_t outlen)
 {
 	strlcpy(out, request->module, outlen);
 
@@ -259,7 +259,7 @@ static size_t xlat_module(UNUSED void *instance, REQUEST *request,
  * @see modcall()
  */
 static size_t xlat_foreach(void *instance, REQUEST *request,
-			   UNUSED const char *fmt, char *out, size_t outlen)
+			   UNUSED char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR	**pvp;
 
@@ -284,7 +284,7 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
  * expand to "\n\n\n"
  */
 static size_t xlat_string(UNUSED void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen)
+			  char const *fmt, char *out, size_t outlen)
 {
 	int len;
 	VALUE_PAIR *vp;
@@ -311,7 +311,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
  *
  */
 static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
-			const char *fmt, char *out, size_t outlen)
+			char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 
@@ -333,7 +333,7 @@ static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
  * Example %{debug:3}
  */
 static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
-			 const char *fmt, char *out, size_t outlen)
+			 char const *fmt, char *out, size_t outlen)
 {
 	int level = 0;
 	
@@ -366,7 +366,7 @@ static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
 /*
  *	Compare two xlat_t structs, based ONLY on the module name.
  */
-static int xlat_cmp(const void *one, const void *two)
+static int xlat_cmp(void const *one, void const *two)
 {
 	const xlat_t *a = one;
 	const xlat_t *b = two;
@@ -382,7 +382,7 @@ static int xlat_cmp(const void *one, const void *two)
 /*
  *	find the appropriate registered xlat function.
  */
-static xlat_t *xlat_find(const char *name)
+static xlat_t *xlat_find(char const *name)
 {
 	xlat_t my_xlat;
 
@@ -401,7 +401,7 @@ static xlat_t *xlat_find(const char *name)
  * @param[in] instance of module that's registering the xlat function.
  * @return 0 on success, -1 on failure
  */
-int xlat_register(const char *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
+int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape, void *instance)
 {
 	xlat_t	*c;
 	xlat_t	my_xlat;
@@ -498,7 +498,7 @@ int xlat_register(const char *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
  * @param[in] func
  * @param[in] instance
  */
-void xlat_unregister(const char *name, UNUSED RAD_XLAT_FUNC func, void *instance)
+void xlat_unregister(char const *name, UNUSED RAD_XLAT_FUNC func, void *instance)
 {
 	xlat_t	*c;
 	xlat_t		my_xlat;
@@ -537,14 +537,14 @@ void xlat_free(void)
 #endif
 
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				       const char **error);
+				       char const **error);
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				     int brace, const char **error);
-static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * const head,
+				     int brace, char const **error);
+static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * const head,
 			   RADIUS_ESCAPE_STRING escape, void *escape_ctx);
 
 static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-					 const char **error)
+					 char const **error)
 {
 	ssize_t slen;
 	char *p;
@@ -594,11 +594,11 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 }
 
 static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				       const char **error)
+				       char const **error)
 {
 	ssize_t slen;
 	char *p, *q, *brace;
-	const char *attrname;
+	char const *attrname;
 	xlat_exp_t *node;
 
 	rad_assert(fmt[0] == '%');
@@ -868,7 +868,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 
 
 static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-				     int brace, const char **error)
+				     int brace, char const **error)
 {
 	char *p, *q;
 	xlat_exp_t *node;
@@ -1027,9 +1027,9 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 }
 
 
-static const char xlat_tabs[] = "																																																																																																																																";
+static char const xlat_tabs[] = "																																																																																																																																";
 
-static void xlat_tokenize_debug(const xlat_exp_t *node, int lvl)
+static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 {
 	rad_assert(node != NULL);
 
@@ -1099,11 +1099,11 @@ static void xlat_tokenize_debug(const xlat_exp_t *node, int lvl)
 	}
 }
 
-static const char xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
+static char const xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-		      const char **error)
+		      char const **error)
 {
 	return xlat_tokenize_literal(ctx, fmt, head, FALSE, error);
 }
@@ -1115,11 +1115,11 @@ ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
  * @param[in] fmt the format string to expand
  * @param[out] head the head of the xlat list / tree structure.
  */
-static ssize_t xlat_tokenize_request(REQUEST *request, const char *fmt, xlat_exp_t **head)
+static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp_t **head)
 {
 	ssize_t slen;
 	char *tokens;
-	const char *error;
+	char const *error;
 
 	*head = NULL;
 
@@ -1168,7 +1168,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, const char *fmt, xlat_exp
 }
 
 
-static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, const DICT_ATTR *da, int8_t tag)
+static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da, int8_t tag)
 {
 	VALUE_PAIR *vp, *vps = NULL;
 	RADIUS_PACKET *packet = NULL;
@@ -1337,7 +1337,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, co
 	return vp_aprint(ctx, vp);
 }
 
-static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * const node,
+static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
 			 RADIUS_ESCAPE_STRING escape, void *escape_ctx, int lvl)
 {
 	size_t rcode;
@@ -1354,7 +1354,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 		return talloc_strdup(ctx, node->fmt);
 
 	case XLAT_PERCENT: {
-		const char *p;
+		char const *p;
 		char *q, *nl;
 		size_t freespace;
 		struct tm *TM, s_TM;
@@ -1535,7 +1535,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 }
 
 
-static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * const head,
+static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * const head,
 			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	int i, list;
@@ -1616,7 +1616,7 @@ static size_t xlat_process(char **out, REQUEST *request, const xlat_exp_t * cons
  * @param[in] escape_ctx pointer to pass to escape function.
  * @return length of string written @bug should really have -1 for failure
  */
-static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const char *fmt,
+static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char const *fmt,
 			   RADIUS_ESCAPE_STRING escape, void *escape_ctx)
 {
 	char *buff;
@@ -1654,12 +1654,12 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, const ch
 	return strlen(*out);
 }
 
-ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, const char *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
+ssize_t radius_xlat(char *out, size_t outlen, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
 {
 	return xlat_expand(&out, outlen, request, fmt, escape, ctx);
 }
 		    
-ssize_t radius_axlat(char **out, REQUEST *request, const char *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
+ssize_t radius_axlat(char **out, REQUEST *request, char const *fmt, RADIUS_ESCAPE_STRING escape, void *ctx)
 {
 	return xlat_expand(out, 0, request, fmt, escape, ctx);
 }

@@ -111,23 +111,23 @@ extern int strcasecmp(char *s1, char *s2);
 #endif
 
 #ifndef HAVE_STRSEP
-extern char *strsep(char **stringp, const char *delim);
+extern char *strsep(char **stringp, char const *delim);
 #endif
 
 #ifndef HAVE_LOCALTIME_R
 struct tm;
-struct tm *localtime_r(const time_t *l_clock, struct tm *result);
+struct tm *localtime_r(time_t const *l_clock, struct tm *result);
 #endif
 
 #ifndef HAVE_CTIME_R
-char *ctime_r(const time_t *l_clock, char *l_buf);
+char *ctime_r(time_t const *l_clock, char *l_buf);
 #endif
 
 #ifndef HAVE_INET_PTON
-int		inet_pton(int af, const char *src, void *dst);
+int		inet_pton(int af, char const *src, void *dst);
 #endif
 #ifndef HAVE_INET_NTOP
-const char	*inet_ntop(int af, const void *src, char *dst, size_t cnt);
+char const	*inet_ntop(int af, void const *src, char *dst, size_t cnt);
 #endif
 #ifndef HAVE_CLOSEFROM
 int		closefrom(int fd);
@@ -302,21 +302,21 @@ struct addrinfo
 /* Translate name of a service location and/or a service name to set of
    socket addresses. */
 #ifndef HAVE_GETADDRINFO
-extern int getaddrinfo (const char *__name,
-			const char *__service,
-			const struct addrinfo *__req,
+extern int getaddrinfo (char const *__name,
+			char const *__service,
+			struct addrinfo const *__req,
 			struct addrinfo **__pai);
 
 /* Free `addrinfo' structure AI including associated storage.  */
 extern void freeaddrinfo (struct addrinfo *__ai);
 
 /* Convert error return from getaddrinfo() to a string.  */
-extern const char *gai_strerror (int __ecode);
+extern char const *gai_strerror (int __ecode);
 #endif
 
 /* Translate a socket address to a location and service name. */
 #ifndef HAVE_GETNAMEINFO
-extern int getnameinfo (const struct sockaddr *__sa,
+extern int getnameinfo (struct sockaddr const *__sa,
 			socklen_t __salen, char *__host,
 			size_t __hostlen, char *__serv,
 			size_t __servlen, unsigned int __flags);
@@ -326,22 +326,22 @@ extern int getnameinfo (const struct sockaddr *__sa,
  *	Functions from snprintf.c
  */
 #ifndef HAVE_VSNPRINTF
-extern int vsnprintf(char *str, size_t count, const char *fmt, va_list arg);
+extern int vsnprintf(char *str, size_t count, char const *fmt, va_list arg);
 #endif
 
 #ifndef HAVE_SNPRINTF
-extern int snprintf(char *str, size_t count, const char *fmt, ...);
+extern int snprintf(char *str, size_t count, char const *fmt, ...);
 #endif
 
 /*
  *	Functions from strl{cat,cpy}.c
  */
 #ifndef HAVE_STRLCPY
-extern size_t strlcpy(char *dst, const char *src, size_t siz);
+extern size_t strlcpy(char *dst, char const *src, size_t siz);
 #endif
 
 #ifndef HAVE_STRLCAT
-extern size_t strlcat(char *dst, const char *src, size_t siz);
+extern size_t strlcat(char *dst, char const *src, size_t siz);
 #endif
 
 #ifndef INT16SZ
@@ -349,7 +349,7 @@ extern size_t strlcat(char *dst, const char *src, size_t siz);
 #endif
 
 #ifndef HAVE_GMTIME_R
-struct tm *gmtime_r(const time_t *l_clock, struct tm *result);
+struct tm *gmtime_r(time_t const *l_clock, struct tm *result);
 #endif
 
 #ifndef HAVE_GETTIMEOFDAY
@@ -384,8 +384,8 @@ int gettimeofday (struct timeval *tv, void *tz);
 #  define offsetof(TYPE, MEMBER) ((size_t) &((TYPE *)0)->MEMBER)
 #endif
 
-void timeval2ntp(const struct timeval *tv, uint8_t *ntp);
-void ntp2timeval(struct timeval *tv, const char *ntp);
+void timeval2ntp(struct  timeval const *tv, uint8_t *ntp);
+void ntp2timeval(struct timeval *tv, char const *ntp);
 
 #define ntohll(x) (((uint64_t)(ntohl((uint32_t)((x << 32) >> 32))) << 32) | \
 		   (uint64_t)ntohl(((uint32_t)(x >> 32))))

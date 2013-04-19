@@ -36,7 +36,7 @@ static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf);
 
 struct config_transform
 {
-    const char *name;
+    char const *name;
     u_int8_t type;
     int exist_flag;
 };
@@ -71,7 +71,7 @@ static struct config_transform config_transforms[] =
  *	Also, it is UNNECESSARY to read the "users" file here!
  *	Doing this shows a misunderstanding of how the server works.
  */
-int getusersfile(TALLOC_CTX *ctx, const char *filename, PAIR_LIST **pair_list, const char *compat_mode_str)
+int getusersfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list, char const *compat_mode_str)
 {
 	int rcode;
 	PAIR_LIST *users = NULL;

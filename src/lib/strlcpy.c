@@ -35,10 +35,10 @@ RCSID("$Id$")
  * Returns strlen(src); if retval >= siz, truncation occurred.
  */
 size_t
-strlcpy(char *dst, const char *src, size_t siz)
+strlcpy(char *dst, char const *src, size_t siz)
 {
 	char *d = dst;
-	const char *s = src;
+	char const *s = src;
 	size_t n = siz;
 
 	/* Copy as many bytes as will fit */

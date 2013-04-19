@@ -58,7 +58,7 @@ extern int od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR * 
 #define ACB_AUTOLOCK   0x04000000	//!< Account auto locked.
 #define ACB_PW_EXPIRED 0x00020000	//!< Password Expired.
 
-static int pdb_decode_acct_ctrl(const char *p)
+static int pdb_decode_acct_ctrl(char const *p)
 {
 	int acct_ctrl = 0;
 	int done = 0;
@@ -142,13 +142,13 @@ typedef struct rlm_mschap_t {
 	int require_encryption;
 	int require_strong;
 	int with_ntdomain_hack;	/* this should be in another module */
-	const char *xlat_name;
+	char const *xlat_name;
 	char *ntlm_auth;
 	char *ntlm_cpw;
 	char *ntlm_cpw_username;
 	char *ntlm_cpw_domain;
 	char *local_cpw;
-	const char *auth_type;
+	char const *auth_type;
 	int allow_retry;
 	char *retry_msg;
 #ifdef WITH_OPEN_DIRECTORY
@@ -164,7 +164,7 @@ typedef struct rlm_mschap_t {
  *	attributes.
  */
 static size_t mschap_xlat(void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen)
+		       char const *fmt, char *out, size_t outlen)
 {
 	size_t		i, data_len;
 	uint8_t		*data = NULL;
@@ -442,7 +442,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 * Return the NT-Hash of the passed string
 		 */
 	} else if (strncasecmp(fmt, "NT-Hash ", 8) == 0) {
-		const char *p;
+		char const *p;
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'NT-Hash' */
@@ -467,7 +467,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 * Return the LM-Hash of the passed string
 		 */
 	} else if (strncasecmp(fmt, "LM-Hash ", 8) == 0) {
-		const char *p;
+		char const *p;
 		char buf2[1024];
 
 		p = fmt + 8;	/* 7 is the length of 'LM-Hash' */
@@ -546,7 +546,7 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_mschap_t,with_ntdomain_hack), NULL, "yes" },
 	{ "ntlm_auth",   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_mschap_t, ntlm_auth), NULL,  NULL },
-	{ "passchange", PW_TYPE_SUBSECTION, 0, NULL, (const void *) passchange_config },
+	{ "passchange", PW_TYPE_SUBSECTION, 0, NULL, (void const *) passchange_config },
 	{ "allow_retry",   PW_TYPE_BOOLEAN,
 	  offsetof(rlm_mschap_t, allow_retry), NULL,  "yes" },
 	{ "retry_msg",   PW_TYPE_STRING_PTR,
@@ -566,7 +566,7 @@ static const CONF_PARSER module_config[] = {
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	const char *name;
+	char const *name;
 	rlm_mschap_t *inst = instance;
 
 	/*
@@ -594,7 +594,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	attribute to reply packet
  */
 void mschap_add_reply(REQUEST *request, unsigned char ident,
-		      const char* name, const char* value, int len)
+		      char const* name, char const* value, int len)
 {
 	VALUE_PAIR *vp;
 
@@ -613,7 +613,7 @@ void mschap_add_reply(REQUEST *request, unsigned char ident,
  *	Add MPPE attributes to the reply.
  */
 static void mppe_add_reply(REQUEST *request,
-			   const char* name, const uint8_t * value, int len)
+			   char const* name, uint8_t const * value, int len)
 {
        VALUE_PAIR *vp;
 
@@ -627,7 +627,7 @@ static void mppe_add_reply(REQUEST *request,
        vp->length = len;
 }
 
-static int write_all(int fd, const char *buf, int len) {
+static int write_all(int fd, char const *buf, int len) {
 	int rv,done=0;
 
 	while (done < len) {
@@ -679,7 +679,7 @@ static int do_mschap_cpw(rlm_mschap_t *inst,
 		int status, len;
 		char buf[2048];
 		char *pmsg;
-		const char *emsg;
+		char const *emsg;
 
 		RDEBUG("Doing MS-CHAPv2 password change via ntlm_auth helper");
 

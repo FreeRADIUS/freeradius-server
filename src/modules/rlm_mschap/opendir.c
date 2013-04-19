@@ -37,7 +37,7 @@ RCSID("$Id$")
  *	In rlm_mschap.c
  */
 extern void mschap_add_reply(REQUEST *request, VALUE_PAIR** vp, unsigned char ident,
-			     const char* name, const char* value, int len);
+			     char const* name, char const* value, int len);
 
 /*
  *	Only used by rlm_mschap.c

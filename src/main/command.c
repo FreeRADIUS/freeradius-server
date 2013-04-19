@@ -59,9 +59,9 @@ typedef int (*fr_command_func_t)(rad_listen_t *, int, char *argv[]);
 #define FR_WRITE (2)
 
 struct fr_command_table_t {
-	const char *command;
+	char const *command;
 	int mode;		/* read/write */
-	const char *help;
+	char const *help;
 	fr_command_func_t func;
 	fr_command_table_t *table;
 };
@@ -123,7 +123,7 @@ static FR_NAME_NUMBER mode_names[] = {
 };
 
 
-static ssize_t cprintf(rad_listen_t *listener, const char *fmt, ...)
+static ssize_t cprintf(rad_listen_t *listener, char const *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
 #endif
@@ -150,7 +150,7 @@ static int getpeereid(int s, uid_t *euid, gid_t *egid)
 #endif /* HAVE_GETPEEREID */
 
 
-static int fr_server_domain_socket(const char *path)
+static int fr_server_domain_socket(char const *path)
 {
 	int sockfd;
 	size_t len;
@@ -285,7 +285,7 @@ static void command_close_socket(rad_listen_t *this)
 }
 
 
-static ssize_t cprintf(rad_listen_t *listener, const char *fmt, ...)
+static ssize_t cprintf(rad_listen_t *listener, char const *fmt, ...)
 {
 	ssize_t len;
 	va_list ap;
@@ -377,7 +377,7 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 {
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
-	const char *value;
+	char const *value;
 
 	if (argc != 1) {
 		cprintf(listener, "ERROR: No path was given\n");
@@ -398,19 +398,19 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 	return 1;		/* success */
 }
 
-static const char *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+static char const *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
 /*
  *	FIXME: Recurse && indent?
  */
 static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION *cs,
-			       const void *base)
+			       void const *base)
 			
 {
 	int i;
 	const void *data;
-	const char *name1 = cf_section_name1(cs);
-	const char *name2 = cf_section_name2(cs);
+	char const *name1 = cf_section_name1(cs);
+	char const *name2 = cf_section_name2(cs);
 	const CONF_PARSER *variables = cf_section_parse_table(cs);
 	char buffer[256];
 
@@ -442,7 +442,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			data = variables[i].data;;
 			
 		} else {
-			data = (((const char *)base) + variables[i].offset);
+			data = (((char const *)base) + variables[i].offset);
 		}
 
 		switch (variables[i].type) {
@@ -453,7 +453,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			
 		case PW_TYPE_INTEGER:
 			cprintf(listener, "%.*s%s = %u\n", indent, tabs,
-				variables[i].name, *(const int *) data);
+				variables[i].name, *(int const *) data);
 			break;
 			
 		case PW_TYPE_IPADDR:
@@ -467,7 +467,7 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 		case PW_TYPE_BOOLEAN:
 			cprintf(listener, "%.*s%s = %s\n", indent, tabs,
 				variables[i].name,
-				((*(const int *) data) == 0) ? "no" : "yes");
+				((*(int const *) data) == 0) ? "no" : "yes");
 			break;
 			
 		case PW_TYPE_STRING_PTR:
@@ -475,9 +475,9 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			/*
 			 *	FIXME: Escape things in the string!
 			 */
-			if (*(const char * const *) data) {
+			if (*(char const * const *) data) {
 				cprintf(listener, "%.*s%s = \"%s\"\n", indent, tabs,
-					variables[i].name, *(const char * const *) data);
+					variables[i].name, *(char const * const *) data);
 			} else {
 				cprintf(listener, "%.*s%s = \n", indent, tabs,
 					variables[i].name);
@@ -516,7 +516,7 @@ static int command_show_module_config(rad_listen_t *listener, int argc, char *ar
 	return 1;		/* success */
 }
 
-static const char *method_names[RLM_COMPONENT_COUNT] = {
+static char const *method_names[RLM_COMPONENT_COUNT] = {
 	"authenticate",
 	"authorize",
 	"preacct",
@@ -608,8 +608,8 @@ static int command_show_modules(rad_listen_t *listener, UNUSED int argc, UNUSED 
 
 	subcs = NULL;
 	while ((subcs = cf_subsection_find_next(cs, subcs, NULL)) != NULL) {
-		const char *name1 = cf_section_name1(subcs);
-		const char *name2 = cf_section_name2(subcs);
+		char const *name1 = cf_section_name1(subcs);
+		char const *name2 = cf_section_name2(subcs);
 
 		module_instance_t *mi;
 
@@ -634,7 +634,7 @@ static int command_show_home_servers(rad_listen_t *listener, UNUSED int argc, UN
 {
 	int i;
 	home_server *home;
-	const char *type, *state, *proto;
+	char const *type, *state, *proto;
 
 	char buffer[256];
 
@@ -1133,7 +1133,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 	}
 
 	if (request->reply->code != 0) {
-		const char *what = "reply";
+		char const *what = "reply";
 		char buffer[1024];
 
 		if (request->reply->code < FR_MAX_PACKET_CODE) {
@@ -1630,7 +1630,7 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 }
 
 #ifdef WITH_STATS
-static const char *elapsed_names[8] = {
+static char const *elapsed_names[8] = {
 	"1us", "10us", "100us", "1ms", "10ms", "100ms", "1s", "10s"
 };
 
@@ -2237,7 +2237,7 @@ static int command_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	return 0;
 }
 
-static int command_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
+static int command_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 {
 	fr_command_socket_t *sock = this->data;
 
@@ -2279,7 +2279,7 @@ static int str2argvX(char *str, char **argv, int max_argc)
 		if (!*str) return argc;
 
 		if ((*str == '\'') || (*str == '"')) {
-			const char *p = str;
+			char const *p = str;
 			FR_TOKEN token;
 
 			token = gettoken(&p, buffer, sizeof(buffer));

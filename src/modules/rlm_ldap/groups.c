@@ -40,7 +40,7 @@
  * @param[in] outlen Size of out.
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 					  char **names, char **out, size_t outlen)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -49,7 +49,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
 	
 	unsigned int name_cnt = 0;
 	unsigned int entry_cnt;
-	const char *attrs[] = { NULL };
+	char const *attrs[] = { NULL };
 
 	LDAPMessage *result = NULL, *entry;
 
@@ -169,15 +169,15 @@ static rlm_rcode_t rlm_ldap_group_name2dn(const ldap_instance_t *inst, REQUEST *
  * @param[out] out Where to write group name (must be freed with talloc_free).
  * @return One of the RLM_MODULE_* values.
  */
-static rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-					  const char *dn, char **out)
+static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+					  char const *dn, char **out)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ldap_rcode_t status;
 	int ldap_errno;
 	
 	char **vals = NULL;
-	const char *attrs[] = { inst->groupobj_name_attr, NULL };
+	char const *attrs[] = { inst->groupobj_name_attr, NULL };
 	LDAPMessage *result = NULL, *entry;
 	
 	*out = NULL;
@@ -243,7 +243,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(const ldap_instance_t *inst, REQUEST *
  * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_cacheable_userobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 				       LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
@@ -346,7 +346,7 @@ rlm_rcode_t rlm_ldap_cacheable_userobj(const ldap_instance_t *inst, REQUEST *req
  * @param[in,out] pconn to use. May change as this function calls functions which auto re-connect.
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn)
+rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	ldap_rcode_t status;
@@ -359,10 +359,10 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *re
 
 	char base_dn[LDAP_MAX_DN_STR_LEN];
 	
-	const char *filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
+	char const *filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };
 	char filter[LDAP_MAX_FILTER_STR_LEN + 1];
 	
-	const char *attrs[] = { inst->groupobj_name_attr, NULL };
+	char const *attrs[] = { inst->groupobj_name_attr, NULL };
 	
 	char *dn;
 
@@ -439,7 +439,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(const ldap_instance_t *inst, REQUEST *re
  * @param[in] check vp containing the group value (name or dn).
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
+rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 					    VALUE_PAIR *check)
 					    
 {
@@ -447,14 +447,14 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST
 
 	char		base_dn[LDAP_MAX_DN_STR_LEN + 1];
 	char 		filter[LDAP_MAX_FILTER_STR_LEN + 1];
-	const char	*dn = base_dn;
+	char const	*dn = base_dn;
 	
 	char		*name = check->vp_strvalue;
 
 	RDEBUG2("Checking for user in group objects");
 	
 	if (rlm_ldap_is_dn(name)) {
-		const char *filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };		
+		char const *filters[] = { inst->groupobj_filter, inst->groupobj_membership_filter };		
 		
 		if (rlm_ldap_xlat_filter(request,
 					 filters, sizeof(filters) / sizeof(*filters),
@@ -465,7 +465,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST
 		dn = name;	
 	} else {
 		char name_filter[LDAP_MAX_FILTER_STR_LEN];
-		const char *filters[] = { name_filter, inst->groupobj_filter, inst->groupobj_membership_filter };
+		char const *filters[] = { name_filter, inst->groupobj_filter, inst->groupobj_membership_filter };
 		
 		if (!inst->groupobj_name_attr) {
 			RDEBUGE("Told to search for group by name, but missing 'group.name_attribute' "
@@ -518,8 +518,8 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(const ldap_instance_t *inst, REQUEST
  * @param[in] check vp containing the group value (name or dn).
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_check_userobj_dynamic(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-					   const char *dn, VALUE_PAIR *check)
+rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+					   char const *dn, VALUE_PAIR *check)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_NOTFOUND;
 	ldap_rcode_t	status;
@@ -531,7 +531,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(const ldap_instance_t *inst, REQUEST 
 	
 	char		*name = check->vp_strvalue;
 	
-	const char	*attrs[] = { inst->userobj_membership_attr, NULL };
+	char const	*attrs[] = { inst->userobj_membership_attr, NULL };
 	int		i, count, ldap_errno; 
 		
 	RDEBUG2("Checking user object membership (%s) attributes", inst->userobj_membership_attr);
@@ -682,7 +682,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(const ldap_instance_t *inst, REQUEST 
  *
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_check_cached(const ldap_instance_t *inst, REQUEST *request, VALUE_PAIR *check)
+rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request, VALUE_PAIR *check)
 {
 	VALUE_PAIR	*vp;
 	int		ret;

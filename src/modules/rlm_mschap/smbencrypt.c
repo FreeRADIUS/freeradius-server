@@ -31,12 +31,12 @@ RCSID("$Id$")
 
 #include	"smbdes.h"
 
-static const char * hex = "0123456789ABCDEF";
+static char const * hex = "0123456789ABCDEF";
 
 /*
  *	FIXME: use functions in freeradius
  */
-static void tohex (const unsigned char * src, size_t len, char *dst)
+static void tohex (unsigned char const  *src, size_t len, char *dst)
 {
 	size_t i;
 	for (i=0; i<len; i++) {
@@ -46,7 +46,7 @@ static void tohex (const unsigned char * src, size_t len, char *dst)
 	dst[(i*2)] = 0;
 }
 
-static void ntpwdhash (uint8_t *szHash, const char *szPassword)
+static void ntpwdhash (uint8_t *szHash, char const *szPassword)
 {
 	char szUnicodePass[513];
 	char nPasswordLen;

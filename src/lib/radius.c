@@ -39,7 +39,7 @@ RCSID("$Id$")
 #if 0
 #define VP_TRACE if (fr_debug_flag) printf
 
-static void VP_HEXDUMP(const char *msg, const uint8_t *data, size_t len)
+static void VP_HEXDUMP(char const *msg, uint8_t const *data, size_t len)
 {
 	size_t i;
 
@@ -90,7 +90,7 @@ static int fr_rand_initialized = 0;
 static unsigned int salt_offset = 0;
 static uint8_t nullvector[AUTH_VECTOR_LEN] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }; /* for CoA decode */
 
-const char *fr_packet_codes[FR_MAX_PACKET_CODE] = {
+char const *fr_packet_codes[FR_MAX_PACKET_CODE] = {
   "",
   "Access-Request",
   "Access-Accept",
@@ -146,7 +146,7 @@ const char *fr_packet_codes[FR_MAX_PACKET_CODE] = {
 };
 
 
-void fr_printf_log(const char *fmt, ...)
+void fr_printf_log(char const *fmt, ...)
 {
 	va_list ap;
 
@@ -162,9 +162,9 @@ void fr_printf_log(const char *fmt, ...)
 	return;
 }
 
-static const char *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
+static char const *tabs = "\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t\t";
 
-static void print_hex_data(const uint8_t *ptr, int attrlen, int depth)
+static void print_hex_data(uint8_t const *ptr, int attrlen, int depth)
 {
 	int i;
 
@@ -510,15 +510,15 @@ static ssize_t rad_recvfrom(int sockfd, RADIUS_PACKET *packet, int flags,
  *	       that used when encrypting passwords to RADIUS.
  *
  */
-static void make_secret(uint8_t *digest, const uint8_t *vector,
-			const char *secret, const uint8_t *value)
+static void make_secret(uint8_t *digest, uint8_t const *vector,
+			char const *secret, uint8_t const *value)
 {
 	FR_MD5_CTX context;
 	int	     i;
 
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, vector, AUTH_VECTOR_LEN);
-	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
+	fr_MD5Update(&context, (uint8_t const *) secret, strlen(secret));
 	fr_MD5Final(digest, &context);
 
 	for ( i = 0; i < AUTH_VECTOR_LEN; i++ ) {
@@ -528,8 +528,8 @@ static void make_secret(uint8_t *digest, const uint8_t *vector,
 
 #define MAX_PASS_LEN (128)
 static void make_passwd(uint8_t *output, ssize_t *outlen,
-			const uint8_t *input, size_t inlen,
-			const char *secret, const uint8_t *vector)
+			uint8_t const *input, size_t inlen,
+			char const *secret, uint8_t const *vector)
 {
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
@@ -558,7 +558,7 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 	*outlen = len;
 
 	fr_MD5Init(&context);
-	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
+	fr_MD5Update(&context, (uint8_t const *) secret, strlen(secret));
 	old = context;
 
 	/*
@@ -584,8 +584,8 @@ static void make_passwd(uint8_t *output, ssize_t *outlen,
 }
 
 static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
-			       const uint8_t *input, size_t inlen, size_t room,
-			       const char *secret, const uint8_t *vector)
+			       uint8_t const *input, size_t inlen, size_t room,
+			       char const *secret, uint8_t const *vector)
 {
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
@@ -652,7 +652,7 @@ static void make_tunnel_passwd(uint8_t *output, ssize_t *outlen,
 	passwd[2] = inlen;	/* length of the password string */
 
 	fr_MD5Init(&context);
-	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
+	fr_MD5Update(&context, (uint8_t const *) secret, strlen(secret));
 	old = context;
 
 	fr_MD5Update(&context, vector, AUTH_VECTOR_LEN);
@@ -679,7 +679,7 @@ extern int fr_attr_max_tlv;
 extern int fr_attr_shift[];
 extern int fr_attr_mask[];
 
-static int do_next_tlv(const VALUE_PAIR *vp, const VALUE_PAIR *next, int nest)
+static int do_next_tlv(VALUE_PAIR const *vp, VALUE_PAIR const *next, int nest)
 {
 	unsigned int tlv1, tlv2;
 
@@ -720,15 +720,15 @@ static int do_next_tlv(const VALUE_PAIR *vp, const VALUE_PAIR *next, int nest)
 }
 
 
-static ssize_t vp2data_any(const RADIUS_PACKET *packet,
-			   const RADIUS_PACKET *original,
-			   const char *secret, int nest,
-			   const VALUE_PAIR **pvp,
+static ssize_t vp2data_any(RADIUS_PACKET const *packet,
+			   RADIUS_PACKET const *original,
+			   char const *secret, int nest,
+			   VALUE_PAIR const **pvp,
 			   uint8_t *start, size_t room);
 
-static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
-			   const RADIUS_PACKET *original,
-			   const char *secret, const VALUE_PAIR **pvp,
+static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
+			   RADIUS_PACKET const *original,
+			   char const *secret, VALUE_PAIR const **pvp,
 			   unsigned int attribute, uint8_t *ptr, size_t room);
 
 /**
@@ -736,10 +736,10 @@ static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
  *	the *data* portion of the TLV, and assumes that the encapsulating
  *	attribute has already been encoded.
  */
-static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
-			    const RADIUS_PACKET *original,
-			    const char *secret, int nest,
-			    const VALUE_PAIR **pvp,
+static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
+			    RADIUS_PACKET const *original,
+			    char const *secret, int nest,
+			    VALUE_PAIR const **pvp,
 			    uint8_t *start, size_t room)
 {
 	ssize_t len;
@@ -804,10 +804,10 @@ static ssize_t vp2data_tlvs(const RADIUS_PACKET *packet,
  * @brief Encodes the data portion of an attribute.
  * @return -1 on error, or the length of the data portion.
  */
-static ssize_t vp2data_any(const RADIUS_PACKET *packet,
-			   const RADIUS_PACKET *original,
-			   const char *secret, int nest,
-			   const VALUE_PAIR **pvp,
+static ssize_t vp2data_any(RADIUS_PACKET const *packet,
+			   RADIUS_PACKET const *original,
+			   char const *secret, int nest,
+			   VALUE_PAIR const **pvp,
 			   uint8_t *start, size_t room)
 {
 	uint32_t lvalue;
@@ -884,7 +884,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 		break;
 
 	case PW_TYPE_IPADDR:
-		data = (const uint8_t *) &vp->vp_ipaddr;
+		data = (uint8_t const *) &vp->vp_ipaddr;
 		len = 4;	/* just in case */
 		break;
 
@@ -893,7 +893,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 		 */
 	case PW_TYPE_DATE:
 		lvalue = htonl(vp->vp_date);
-		data = (const uint8_t *) &lvalue;
+		data = (uint8_t const *) &lvalue;
 		len = 4;	/* just in case */
 		break;
 
@@ -1014,7 +1014,7 @@ static ssize_t vp2data_any(const RADIUS_PACKET *packet,
 	return len + (ptr - start);
 }
 
-static ssize_t attr_shift(const uint8_t *start, const uint8_t *end,
+static ssize_t attr_shift(uint8_t const *start, uint8_t const *end,
 			  uint8_t *ptr, int hdr_len, ssize_t len,
 			  int flag_offset, int vsa_offset)
 {
@@ -1077,9 +1077,9 @@ static ssize_t attr_shift(const uint8_t *start, const uint8_t *end,
 /**
  * @brief Encode an "extended" attribute.
  */
-int rad_vp2extended(const RADIUS_PACKET *packet,
-		    const RADIUS_PACKET *original,
-		    const char *secret, const VALUE_PAIR **pvp,
+int rad_vp2extended(RADIUS_PACKET const *packet,
+		    RADIUS_PACKET const *original,
+		    char const *secret, VALUE_PAIR const **pvp,
 		    uint8_t *ptr, size_t room)
 {
 	int len;
@@ -1191,9 +1191,9 @@ int rad_vp2extended(const RADIUS_PACKET *packet,
 /**
  * @brief Encode a WiMAX attribute.
  */
-int rad_vp2wimax(const RADIUS_PACKET *packet,
-		 const RADIUS_PACKET *original,
-		 const char *secret, const VALUE_PAIR **pvp,
+int rad_vp2wimax(RADIUS_PACKET const *packet,
+		 RADIUS_PACKET const *original,
+		 char const *secret, VALUE_PAIR const **pvp,
 		 uint8_t *ptr, size_t room)
 {
 	int len;
@@ -1269,9 +1269,9 @@ int rad_vp2wimax(const RADIUS_PACKET *packet,
  *	vp->da->attr == attribute.  Otherwise, attribute may be
  *	something else.
  */
-static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
-			   const RADIUS_PACKET *original,
-			   const char *secret, const VALUE_PAIR **pvp,
+static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
+			   RADIUS_PACKET const *original,
+			   char const *secret, VALUE_PAIR const **pvp,
 			   unsigned int attribute, uint8_t *ptr, size_t room)
 {
 	ssize_t len;
@@ -1303,9 +1303,9 @@ static ssize_t vp2attr_rfc(const RADIUS_PACKET *packet,
  * @brief Encode a VSA which is a TLV.  If it's in the RFC format, call
  *	vp2attr_rfc.  Otherwise, encode it here.
  */
-static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
-			   const RADIUS_PACKET *original,
-			   const char *secret, const VALUE_PAIR **pvp,
+static ssize_t vp2attr_vsa(RADIUS_PACKET const *packet,
+			   RADIUS_PACKET const *original,
+			   char const *secret, VALUE_PAIR const **pvp,
 			   unsigned int attribute, unsigned int vendor,
 			   uint8_t *ptr, size_t room)
 {
@@ -1431,8 +1431,8 @@ static ssize_t vp2attr_vsa(const RADIUS_PACKET *packet,
 /**
  * @brief Encode a Vendor-Specific attribute.
  */
-int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		const char *secret, const VALUE_PAIR **pvp, uint8_t *ptr,
+int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+		char const *secret, VALUE_PAIR const **pvp, uint8_t *ptr,
 		size_t room)
 {
 	ssize_t len;
@@ -1492,9 +1492,9 @@ int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 /**
  * @brief Encode an RFC standard attribute 1..255
  */
-int rad_vp2rfc(const RADIUS_PACKET *packet,
-	       const RADIUS_PACKET *original,
-	       const char *secret, const VALUE_PAIR **pvp,
+int rad_vp2rfc(RADIUS_PACKET const *packet,
+	       RADIUS_PACKET const *original,
+	       char const *secret, VALUE_PAIR const **pvp,
 	       uint8_t *ptr, size_t room)
 {
 	const VALUE_PAIR *vp = *pvp;
@@ -1546,9 +1546,9 @@ int rad_vp2rfc(const RADIUS_PACKET *packet,
 			   ptr, room);
 }
 
-static ssize_t rad_vp2rfctlv(const RADIUS_PACKET *packet,
-			     const RADIUS_PACKET *original,
-			     const char *secret, const VALUE_PAIR **pvp,
+static ssize_t rad_vp2rfctlv(RADIUS_PACKET const *packet,
+			     RADIUS_PACKET const *original,
+			     char const *secret, VALUE_PAIR const **pvp,
 			     uint8_t *start, size_t room)
 {
 	ssize_t len;
@@ -1591,8 +1591,8 @@ static ssize_t rad_vp2rfctlv(const RADIUS_PACKET *packet,
 /**
  * @brief Parse a data structure into a RADIUS attribute.
  */
-int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		const char *secret, const VALUE_PAIR **pvp, uint8_t *start,
+int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+		char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
 		size_t room)
 {
 	const VALUE_PAIR *vp;
@@ -1638,15 +1638,15 @@ int rad_vp2attr(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 /**
  * @brief Encode a packet.
  */
-int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-	       const char *secret)
+int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+	       char const *secret)
 {
 	radius_packet_t	*hdr;
 	uint8_t		*ptr;
 	uint16_t	total_length;
 	int		len;
 	const VALUE_PAIR	*reply;
-	const char	*what;
+	char const	*what;
 	char		ip_src_buffer[128];
 	char		ip_dst_buffer[128];
 
@@ -1735,7 +1735,7 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 	reply = packet->vps;
 	while (reply) {
 		size_t last_len;
-		const char *last_name = NULL;
+		char const *last_name = NULL;
 
 		/*
 		 *	Ignore non-wire attributes, but allow extended
@@ -1827,8 +1827,8 @@ int rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 /**
  * @brief Sign a previously encoded packet.
  */
-int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-	     const char *secret)
+int rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+	     char const *secret)
 {
 	radius_packet_t	*hdr = (radius_packet_t *)packet->data;
 
@@ -1893,7 +1893,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 		 *	attribute.
 		 */
 		fr_hmac_md5(packet->data, packet->data_len,
-			    (const uint8_t *) secret, strlen(secret),
+			    (uint8_t const *) secret, strlen(secret),
 			    calc_auth_vector);
 		memcpy(packet->data + packet->offset + 2,
 		       calc_auth_vector, AUTH_VECTOR_LEN);
@@ -1929,7 +1929,7 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
 			FR_MD5_CTX	context;
 			fr_MD5Init(&context);
 			fr_MD5Update(&context, packet->data, packet->data_len);
-			fr_MD5Update(&context, (const uint8_t *) secret,
+			fr_MD5Update(&context, (uint8_t const *) secret,
 				     strlen(secret));
 			fr_MD5Final(digest, &context);
 
@@ -1946,11 +1946,11 @@ int rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
  * @brief Reply to the request.  Also attach
  *	reply attribute value pairs and any user message provided.
  */
-int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-	     const char *secret)
+int rad_send(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+	     char const *secret)
 {
 	VALUE_PAIR		*reply;
-	const char		*what;
+	char const		*what;
 	char			ip_src_buffer[128];
 	char			ip_dst_buffer[128];
 
@@ -2031,7 +2031,7 @@ int rad_send(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
  *
  *	http://www.cs.rice.edu/~dwallach/pub/crosby-timing2009.pdf
  */
-int rad_digest_cmp(const uint8_t *a, const uint8_t *b, size_t length)
+int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length)
 {
 	int result = 0;
 	size_t i;
@@ -2048,7 +2048,7 @@ int rad_digest_cmp(const uint8_t *a, const uint8_t *b, size_t length)
  * @brief Validates the requesting client NAS.  Calculates the
  *	Request Authenticator based on the clients private key.
  */
-static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
+static int calc_acctdigest(RADIUS_PACKET *packet, char const *secret)
 {
 	uint8_t		digest[AUTH_VECTOR_LEN];
 	FR_MD5_CTX		context;
@@ -2066,7 +2066,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
 	 */
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, packet->data, packet->data_len);
-	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
+	fr_MD5Update(&context, (uint8_t const *) secret, strlen(secret));
 	fr_MD5Final(digest, &context);
 
 	/*
@@ -2082,7 +2082,7 @@ static int calc_acctdigest(RADIUS_PACKET *packet, const char *secret)
  *	Response Authenticator based on the clients private key.
  */
 static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-			    const char *secret)
+			    char const *secret)
 {
 	uint8_t		calc_digest[AUTH_VECTOR_LEN];
 	FR_MD5_CTX		context;
@@ -2104,7 +2104,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 	 */
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, packet->data, packet->data_len);
-	fr_MD5Update(&context, (const uint8_t *) secret, strlen(secret));
+	fr_MD5Update(&context, (uint8_t const *) secret, strlen(secret));
 	fr_MD5Final(calc_digest, &context);
 
 	/*
@@ -2123,7 +2123,7 @@ static int calc_replydigest(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 /**
  * @brief Check if a set of RADIUS formatted TLVs are OK.
  */
-int rad_tlv_ok(const uint8_t *data, size_t length,
+int rad_tlv_ok(uint8_t const *data, size_t length,
 	       size_t dv_type, size_t dv_length)
 {
 	const uint8_t *end = data + length;
@@ -2626,7 +2626,7 @@ RADIUS_PACKET *rad_recv(int fd, int flags)
  * 	(and Message-Authenticator if present) of a packet.
  */
 int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-	       const char *secret)
+	       char const *secret)
 {
 	uint8_t			*ptr;
 	int			length;
@@ -2691,7 +2691,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 			}
 
 			fr_hmac_md5(packet->data, packet->data_len,
-				    (const uint8_t *) secret, strlen(secret),
+				    (uint8_t const *) secret, strlen(secret),
 				    calc_auth_vector);
 			if (rad_digest_cmp(calc_auth_vector, msg_auth_vector,
 				   sizeof(calc_auth_vector)) != 0) {
@@ -2798,20 +2798,20 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 }
 
 
-static ssize_t data2vp(const RADIUS_PACKET *packet,
-		       const RADIUS_PACKET *original,
-		       const char *secret,
-		       const DICT_ATTR *da, const uint8_t *start,
-		       const size_t attrlen, const size_t packetlen,
+static ssize_t data2vp(RADIUS_PACKET const *packet,
+		       RADIUS_PACKET const *original,
+		       char const *secret,
+		       DICT_ATTR const *da, uint8_t const *start,
+		       size_t const attrlen, size_t const packetlen,
 		       VALUE_PAIR **pvp);
 
 /**
  * @brief convert TLVs to one or more VPs
  */
-static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
-			    const RADIUS_PACKET *original,
-			    const char *secret, const DICT_ATTR *da,
-			    const uint8_t *start, size_t length,
+static ssize_t data2vp_tlvs(RADIUS_PACKET const *packet,
+			    RADIUS_PACKET const *original,
+			    char const *secret, DICT_ATTR const *da,
+			    uint8_t const *start, size_t length,
 			    VALUE_PAIR **pvp)
 {
 	const uint8_t *data = start;
@@ -2875,10 +2875,10 @@ static ssize_t data2vp_tlvs(const RADIUS_PACKET *packet,
  *
  *	"length" can be LONGER than just this sub-vsa
  */
-static ssize_t data2vp_vsa(const RADIUS_PACKET *packet,
-			   const RADIUS_PACKET *original,
-			   const char *secret, DICT_VENDOR *dv,
-			   const uint8_t *data, size_t length,
+static ssize_t data2vp_vsa(RADIUS_PACKET const *packet,
+			   RADIUS_PACKET const *original,
+			   char const *secret, DICT_VENDOR *dv,
+			   uint8_t const *data, size_t length,
 			   VALUE_PAIR **pvp)
 {
 	unsigned int attribute;
@@ -2963,10 +2963,10 @@ static ssize_t data2vp_vsa(const RADIUS_PACKET *packet,
  *
  *	Called ONLY for Vendor-Specific
  */
-static ssize_t data2vp_wimax(const RADIUS_PACKET *packet,
-			     const RADIUS_PACKET *original,
-			     const char *secret, uint32_t vendor,
-			     const uint8_t *data,
+static ssize_t data2vp_wimax(RADIUS_PACKET const *packet,
+			     RADIUS_PACKET const *original,
+			     char const *secret, uint32_t vendor,
+			     uint8_t const *data,
 			     size_t attrlen, size_t packetlen,
 			     VALUE_PAIR **pvp)
 {
@@ -3061,9 +3061,9 @@ static ssize_t data2vp_wimax(const RADIUS_PACKET *packet,
 /**
  * @brief Convert a top-level VSA to one or more VPs
  */
-static ssize_t data2vp_vsas(const RADIUS_PACKET *packet,
-			    const RADIUS_PACKET *original,
-			    const char *secret, const uint8_t *data,
+static ssize_t data2vp_vsas(RADIUS_PACKET const *packet,
+			    RADIUS_PACKET const *original,
+			    char const *secret, uint8_t const *data,
 			    size_t attrlen, size_t packetlen,
 			    VALUE_PAIR **pvp)
 {
@@ -3140,11 +3140,11 @@ static ssize_t data2vp_vsas(const RADIUS_PACKET *packet,
  *
  * @return -1 on error, or "length".
  */
-static ssize_t data2vp(const RADIUS_PACKET *packet,
-		       const RADIUS_PACKET *original,
-		       const char *secret,
-		       const DICT_ATTR *da, const uint8_t *start,
-		       const size_t attrlen, const size_t packetlen,
+static ssize_t data2vp(RADIUS_PACKET const *packet,
+		       RADIUS_PACKET const *original,
+		       char const *secret,
+		       DICT_ATTR const *da, uint8_t const *start,
+		       size_t const attrlen, size_t const packetlen,
 		       VALUE_PAIR **pvp)
 {
 	int tag = 0;
@@ -3190,7 +3190,7 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 		if (da->type != PW_TYPE_STRING) return -1;
 #endif
 
-		data = (const uint8_t *) "";
+		data = (uint8_t const *) "";
 		datalen = 1;
 		goto alloc_cui;	/* skip everything */
 	}
@@ -3566,10 +3566,10 @@ static ssize_t data2vp(const RADIUS_PACKET *packet,
 /**
  * @brief Create a "normal" VALUE_PAIR from the given data.
  */
-ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
-		    const RADIUS_PACKET *original,
-		    const char *secret,
-		    const uint8_t *data, size_t length,
+ssize_t rad_attr2vp(RADIUS_PACKET const *packet,
+		    RADIUS_PACKET const *original,
+		    char const *secret,
+		    uint8_t const *data, size_t length,
 		    VALUE_PAIR **pvp)
 {
 	ssize_t rcode;
@@ -3603,7 +3603,7 @@ ssize_t rad_attr2vp(const RADIUS_PACKET *packet,
  * @return -1 on error, or the length of the data read
  */
 ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
-		     const uint8_t *data, size_t length,
+		     uint8_t const *data, size_t length,
 		     VALUE_PAIR **pvp)
 {
 	const DICT_ATTR *da;
@@ -3622,7 +3622,7 @@ ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
  * @brief Converts vp_data to network byte order
  * @return -1 on error, or the length of the value
  */
-ssize_t rad_vp2data(const VALUE_PAIR *vp, uint8_t *out, size_t outlen)
+ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 {
 	size_t		len = 0;
 	uint32_t	lvalue;
@@ -3699,7 +3699,7 @@ ssize_t rad_vp2data(const VALUE_PAIR *vp, uint8_t *out, size_t outlen)
  * @return -1 on decoding error, 0 on success
  */
 int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-	       const char *secret)
+	       char const *secret)
 {
 	int			packet_length;
 	int			num_attributes;
@@ -3796,8 +3796,8 @@ int rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original,
  *	int *pwlen is updated to the new length of the encrypted
  *	password - a multiple of 16 bytes.
  */
-int rad_pwencode(char *passwd, size_t *pwlen, const char *secret,
-		 const uint8_t *vector)
+int rad_pwencode(char *passwd, size_t *pwlen, char const *secret,
+		 uint8_t const *vector)
 {
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
@@ -3831,7 +3831,7 @@ int rad_pwencode(char *passwd, size_t *pwlen, const char *secret,
 	secretlen = strlen(secret);
 
 	fr_MD5Init(&context);
-	fr_MD5Update(&context, (const uint8_t *) secret, secretlen);
+	fr_MD5Update(&context, (uint8_t const *) secret, secretlen);
 	old = context;		/* save intermediate work */
 
 	/*
@@ -3861,8 +3861,8 @@ int rad_pwencode(char *passwd, size_t *pwlen, const char *secret,
 /**
  * @brief Decode password.
  */
-int rad_pwdecode(char *passwd, size_t pwlen, const char *secret,
-		 const uint8_t *vector)
+int rad_pwdecode(char *passwd, size_t pwlen, char const *secret,
+		 uint8_t const *vector)
 {
 	FR_MD5_CTX context, old;
 	uint8_t	digest[AUTH_VECTOR_LEN];
@@ -3887,7 +3887,7 @@ int rad_pwdecode(char *passwd, size_t pwlen, const char *secret,
 	secretlen = strlen(secret);
 
 	fr_MD5Init(&context);
-	fr_MD5Update(&context, (const uint8_t *) secret, secretlen);
+	fr_MD5Update(&context, (uint8_t const *) secret, secretlen);
 	old = context;		/* save intermediate work */
 
 	/*
@@ -3933,8 +3933,8 @@ int rad_pwdecode(char *passwd, size_t pwlen, const char *secret,
  *      This is per RFC-2868 which adds a two char SALT to the initial intermediate
  *      value MD5 hash.
  */
-int rad_tunnel_pwencode(char *passwd, size_t *pwlen, const char *secret,
-			const uint8_t *vector)
+int rad_tunnel_pwencode(char *passwd, size_t *pwlen, char const *secret,
+			uint8_t const *vector)
 {
 	uint8_t	buffer[AUTH_VECTOR_LEN + MAX_STRING_LEN + 3];
 	unsigned char	digest[AUTH_VECTOR_LEN];
@@ -4016,8 +4016,8 @@ int rad_tunnel_pwencode(char *passwd, size_t *pwlen, const char *secret,
  *      initial intermediate value, to differentiate it from the
  *      above.
  */
-int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
-			const uint8_t *vector)
+int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, char const *secret,
+			uint8_t const *vector)
 {
 	FR_MD5_CTX  context, old;
 	uint8_t		digest[AUTH_VECTOR_LEN];
@@ -4058,7 +4058,7 @@ int rad_tunnel_pwdecode(uint8_t *passwd, size_t *pwlen, const char *secret,
 	secretlen = strlen(secret);
 
 	fr_MD5Init(&context);
-	fr_MD5Update(&context, (const uint8_t *) secret, secretlen);
+	fr_MD5Update(&context, (uint8_t const *) secret, secretlen);
 	old = context;		/* save intermediate work */
 
 	/*
@@ -4178,7 +4178,7 @@ int rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output, int id,
  *
  *	May be called any number of times.
  */
-void fr_rand_seed(const void *data, size_t size)
+void fr_rand_seed(void const *data, size_t size)
 {
 	uint32_t hash;
 

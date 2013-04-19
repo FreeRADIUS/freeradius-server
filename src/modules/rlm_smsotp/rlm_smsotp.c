@@ -139,7 +139,7 @@ static size_t read_all(int *fdp, char *buf, size_t len)
 /*
  *	Write all of the data, taking care of EINTR, etc.
  */
-static int write_all(int *fdp, const char *buf, size_t len)
+static int write_all(int *fdp, char const *buf, size_t len)
 {
 	size_t left = len;
 	ssize_t n;

@@ -40,7 +40,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_cache_t {
-	const char		*xlat_name;
+	char const		*xlat_name;
 	char			*key;
 	int			ttl;
 	int			max_entries;
@@ -58,7 +58,7 @@ typedef struct rlm_cache_t {
 } rlm_cache_t;
 
 typedef struct rlm_cache_entry_t {
-	const char	*key;
+	char const	*key;
 	int		offset;
 	long long int	hits;
 	time_t		created;
@@ -82,7 +82,7 @@ typedef struct rlm_cache_entry_t {
  *	Compare two entries by key.  There may only be one entry with
  *	the same key.
  */
-static int cache_entry_cmp(const void *one, const void *two)
+static int cache_entry_cmp(void const *one, void const *two)
 {
 	const rlm_cache_entry_t *a = one;
 	const rlm_cache_entry_t *b = two;
@@ -105,7 +105,7 @@ static void cache_entry_free(void *data)
  *	Compare two entries by expiry time.  There may be multiple
  *	entries with the same expiry time.
  */
-static int cache_heap_cmp(const void *one, const void *two)
+static int cache_heap_cmp(void const *one, void const *two)
 {
 	const rlm_cache_entry_t *a = one;
 	const rlm_cache_entry_t *b = two;
@@ -171,7 +171,7 @@ static void cache_merge(rlm_cache_t *inst, REQUEST *request,
  *	Find a cached entry.
  */
 static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
-				     const char *key)
+				     char const *key)
 {
 	int ttl;
 	rlm_cache_entry_t *c, my_c;
@@ -240,7 +240,7 @@ static rlm_cache_entry_t *cache_find(rlm_cache_t *inst, REQUEST *request,
  *	Add an entry to the cache.
  */
 static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
-				    const char *key)
+				    char const *key)
 {
 	int ttl;
 	VALUE_PAIR *vp, *found, **to_req, **to_cache, **from;
@@ -599,14 +599,14 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
  *	Allow single attribute values to be retrieved from the cache.
  */
 static size_t cache_xlat(void *instance, REQUEST *request,
-			 const char *fmt, char *out, size_t freespace)
+			 char const *fmt, char *out, size_t freespace)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;
 	VALUE_PAIR *vp, *vps;
 	pair_lists_t list;
 	const DICT_ATTR *target;
-	const char *p = fmt;
+	char const *p = fmt;
 	int ret = 0;
 
 	list = radius_list_name(&p, PAIR_LIST_REQUEST);

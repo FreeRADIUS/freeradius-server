@@ -358,7 +358,7 @@ static int ascend_parse_ipx_net(int argc, char **argv,
 				ascend_ipx_net_t *net, uint8_t *comp)
 {
 	int		token;
-	const char	*p;
+	char const	*p;
 
 	if (argc < 3) return -1;
 
@@ -1113,14 +1113,14 @@ ascend_parse_filter(VALUE_PAIR *pair)
  *	Note we don't bother checking 'len' after the snprintf's.
  *	This function should ONLY be called with a large (~1k) buffer.
  */
-void print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimitst)
+void print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int delimitst)
 {
   size_t 		i;
   char			*p;
   ascend_filter_t	*filter;
 
-  static const char *action[] = {"drop", "forward"};
-  static const char *direction[] = {"out", "in"};
+  static char const *action[] = {"drop", "forward"};
+  static char const *direction[] = {"out", "in"};
 
   p = buffer;
 

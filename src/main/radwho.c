@@ -39,25 +39,25 @@ RCSID("$Id$")
 /*
  *	Header above output and format.
  */
-static const char *hdr1 =
+static char const *hdr1 =
 "Login      Name	      What  TTY  When      From	    Location";
 
-static const char *hdr2 =
+static char const *hdr2 =
 "Login      Port    What      When	  From	    Location";
 
-static const char *eol = "\n";
+static char const *eol = "\n";
 static int showname = -1;
 static int showptype = 0;
 static int showcid = 0;
 int debug_flag = 0;
-const char *progname = "radwho";
-const char *radlog_dir = NULL;
-const char *radutmp_file = NULL;
+char const *progname = "radwho";
+char const *radlog_dir = NULL;
+char const *radutmp_file = NULL;
 int check_config = FALSE;
 
-const char *raddb_dir = NULL;
-const char *radacct_dir = NULL;
-const char *radlib_dir = NULL;
+char const *raddb_dir = NULL;
+char const *radacct_dir = NULL;
+char const *radlib_dir = NULL;
 uint32_t myip = INADDR_ANY;
 int log_stripped_names;
 
@@ -67,7 +67,7 @@ int log_stripped_names;
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_log_file = NULL;
-ssize_t radius_xlat(char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED const char *fmt,
+ssize_t radius_xlat(char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
 		    UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)
 {
 	*out = 0;
@@ -104,7 +104,7 @@ static char *fullname(char *username)
 /*
  *	Return protocol type.
  */
-static const char *proto(int id, int porttype)
+static char const *proto(int id, int porttype)
 {
 	static char buf[8];
 
@@ -146,7 +146,7 @@ static char *dotime(time_t t)
 /*
  *	Print address of NAS.
  */
-static const char *hostname(char *buf, size_t buflen, uint32_t ipaddr)
+static char const *hostname(char *buf, size_t buflen, uint32_t ipaddr)
 {
 	/*
 	 *	WTF is this code for?
@@ -203,11 +203,11 @@ int main(int argc, char **argv)
 	int showsid = 0;
 	int rawoutput = 0;
 	int radiusoutput = 0;	/* Radius attributes */
-	const char *portind;
+	char const *portind;
 	int c;
 	unsigned int portno;
 	char buffer[2048];
-	const char *user = NULL;
+	char const *user = NULL;
 	int user_cmp = 0;
 	time_t now = 0;
 	uint32_t nas_port = ~0;

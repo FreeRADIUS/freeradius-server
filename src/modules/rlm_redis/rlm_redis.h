@@ -41,7 +41,7 @@ typedef struct redis_socket_t {
 typedef struct rlm_redis_t REDIS_INST;
 
 typedef struct rlm_redis_t {
-	const char	    *xlat_name;
+	char const	    *xlat_name;
 
 	char	    *hostname;
 	int	     port;
@@ -49,7 +49,7 @@ typedef struct rlm_redis_t {
 	char		*password;
 	fr_connection_pool_t *pool;
 
-	int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, const char *query, REQUEST *request);
+	int (*redis_query)(REDISSOCK **dissocket_p, REDIS_INST *inst, char const *query, REQUEST *request);
 	int (*redis_finish_query)(REDISSOCK *dissocket);
 
 } rlm_redis_t;
@@ -58,7 +58,7 @@ typedef struct rlm_redis_t {
 #define MAX_REDIS_ARGS			16
 
 int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
-		    const char *query, REQUEST *request);
+		    char const *query, REQUEST *request);
 int rlm_redis_finish_query(REDISSOCK *dissocket);
 
 #endif	/* RLM_REDIS_H */

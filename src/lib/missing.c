@@ -79,7 +79,7 @@ int strcasecmp(char *s1, char *s2)
 #endif
 
 #ifndef HAVE_INET_ATON
-int inet_aton(const char *cp, struct in_addr *inp)
+int inet_aton(char const *cp, struct in_addr *inp)
 {
 	int	a1, a2, a3, a4;
 
@@ -105,10 +105,10 @@ int inet_aton(const char *cp, struct in_addr *inp)
  *	If *stringp is NULL, strsep returns NULL.
  */
 char *
-strsep(char **stringp, const char *delim)
+strsep(char **stringp, char const *delim)
 {
 	char *s;
-	const char *spanp;
+	char const *spanp;
 	int c, sc;
 	char *tok;
 
@@ -145,7 +145,7 @@ strsep(char **stringp, const char *delim)
  *	Even if localtime is NOT re-entrant, this function will
  *	lower the possibility of race conditions.
  */
-struct tm *localtime_r(const time_t *l_clock, struct tm *result)
+struct tm *localtime_r(time_t const *l_clock, struct tm *result)
 {
   memcpy(result, localtime(l_clock), sizeof(*result));
 
@@ -164,7 +164,7 @@ struct tm *localtime_r(const time_t *l_clock, struct tm *result)
  *	Even if ctime is NOT re-entrant, this function will
  *	lower the possibility of race conditions.
  */
-char *ctime_r(const time_t *l_clock, char *l_buf)
+char *ctime_r(time_t const *l_clock, char *l_buf)
 {
   strcpy(l_buf, ctime(l_clock));
 
@@ -183,7 +183,7 @@ char *ctime_r(const time_t *l_clock, char *l_buf)
  *	Even if gmtime is NOT re-entrant, this function will
  *	lower the possibility of race conditions.
  */
-struct tm *gmtime_r(const time_t *l_clock, struct tm *result)
+struct tm *gmtime_r(time_t const *l_clock, struct tm *result)
 {
   memcpy(result, gmtime(l_clock), sizeof(*result));
 
@@ -205,7 +205,7 @@ struct tm *gmtime_r(const time_t *l_clock, struct tm *result)
 #define DELTA_EPOCH_IN_USEC  11644473600000000ULL
 #endif
 
-static uint64_t filetime_to_unix_epoch (const FILETIME *ft)
+static uint64_t filetime_to_unix_epoch (FILETIME const *ft)
 {
 	uint64_t res = (uint64_t) ft->dwHighDateTime << 32;
 
@@ -240,7 +240,7 @@ int gettimeofday (struct timeval *tv, UNUSED void *tz)
  *	of seconds, 32-bit integer of fractional seconds)
  */
 void
-timeval2ntp(const struct timeval *tv, uint8_t *ntp)
+timeval2ntp(struct timeval const *tv, uint8_t *ntp)
 {
 	uint32_t sec, usec;
 
@@ -259,7 +259,7 @@ timeval2ntp(const struct timeval *tv, uint8_t *ntp)
  *	Inverse of timeval2ntp
  */
 void
-ntp2timeval(struct timeval *tv, const char *ntp)
+ntp2timeval(struct timeval *tv, char const *ntp)
 {
 	uint32_t sec, usec;
 

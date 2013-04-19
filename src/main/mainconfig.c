@@ -80,21 +80,21 @@ static cached_config_t	*cs_cache = NULL;
  */
 static uid_t server_uid = 0;
 static gid_t server_gid = 0;
-static const char *uid_name = NULL;
-static const char *gid_name = NULL;
+static char const *uid_name = NULL;
+static char const *gid_name = NULL;
 #endif
-static const char *chroot_dir = NULL;
+static char const *chroot_dir = NULL;
 static int allow_core_dumps = 0;
-static const char *radlog_dest = NULL;
+static char const *radlog_dest = NULL;
 
 /*
  *	These are not used anywhere else..
  */
-static const char *localstatedir = NULL;
-static const char *prefix = NULL;
-static const char *my_name = NULL;
-static const char *sbindir = NULL;
-static const char *run_dir = NULL;
+static char const *localstatedir = NULL;
+static char const *prefix = NULL;
+static char const *my_name = NULL;
+static char const *sbindir = NULL;
+static char const *run_dir = NULL;
 static char *syslog_facility = NULL;
 static int do_colourise = FALSE;
 
@@ -187,7 +187,7 @@ static const CONF_PARSER logdest_config[] = {
 
 
 static const CONF_PARSER serverdest_config[] = {
-	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) logdest_config },
+	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (void const *) logdest_config },
 	{ "log_file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, NULL },
 	{ "log_destination", PW_TYPE_STRING_PTR, 0, &radlog_dest, NULL },
 	{ "use_utc", PW_TYPE_BOOLEAN, 0, &log_dates_utc, NULL },
@@ -243,7 +243,7 @@ static const CONF_PARSER server_config[] = {
 #ifdef WITH_PROXY
 	{ "proxy_requests", PW_TYPE_BOOLEAN, 0, &mainconfig.proxy_requests, "yes" },
 #endif
-	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (const void *) log_config_nodest },
+	{ "log", PW_TYPE_SUBSECTION, 0, NULL, (void const *) log_config_nodest },
 
 	/*
 	 *	People with old configs will have these.  They are listed
@@ -258,7 +258,7 @@ static const CONF_PARSER server_config[] = {
 	{ "log_auth_goodpass", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &mainconfig.log_auth_goodpass, NULL },
 	{ "log_stripped_names", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED, 0, &log_stripped_names, NULL },
 
-	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) security_config },
+	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (void const *) security_config },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -275,7 +275,7 @@ static const CONF_PARSER bootstrap_security_config[] = {
 };
 
 static const CONF_PARSER bootstrap_config[] = {
-	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (const void *) bootstrap_security_config },
+	{  "security", PW_TYPE_SUBSECTION, 0, NULL, (void const *) bootstrap_security_config },
 
 	/*
 	 *	For backwards compatibility.
@@ -295,10 +295,10 @@ static const CONF_PARSER bootstrap_config[] = {
 #define MAX_ARGV (256)
 
 
-static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
+static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
 	size_t len = 0;
-	static const char *disallowed = "%{}\\'\"`";
+	static char const *disallowed = "%{}\\'\"`";
 
 	while (in[0]) {
 		/*
@@ -350,9 +350,9 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static size_t xlat_config(UNUSED void *instance, UNUSED REQUEST *request, const char *fmt, char *out, size_t outlen)
+static size_t xlat_config(UNUSED void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
-	const char *value;
+	char const *value;
 	CONF_PAIR *cp;
 	CONF_ITEM *ci;
 	char buffer[1024];
@@ -398,10 +398,10 @@ static size_t xlat_config(UNUSED void *instance, UNUSED REQUEST *request, const 
  *	Xlat for %{client:foo}
  */
 static size_t xlat_client(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out,
+		       char const *fmt, char *out,
 		       size_t outlen)
 {
-	const char *value = NULL;
+	char const *value = NULL;
 	CONF_PAIR *cp;
 
 	if (!fmt || !out || (outlen < 1)) return 0;
@@ -752,7 +752,7 @@ static const FR_NAME_NUMBER str2dest[] = {
  */
 int read_mainconfig(int reload)
 {
-	const char *p = NULL;
+	char const *p = NULL;
 	CONF_PAIR *cp;
 	CONF_SECTION *cs;
 	struct stat statbuf;

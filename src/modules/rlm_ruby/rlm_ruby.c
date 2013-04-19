@@ -103,7 +103,7 @@ static VALUE radlog_rb(UNUSED VALUE self, VALUE msg_type, VALUE rb_msg) {
 /* Tuple to value pair conversion */
 
 static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VALUE rb_value,
-			 const char *function_name) {
+			 char const *function_name) {
 	int i;
 	long outertuplesize;
 	VALUE_PAIR *vp;
@@ -144,7 +144,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 				    (TYPE(pString2) == T_STRING)) {
 
 
-					const char *s1, *s2;
+					char const *s1, *s2;
 
 					/* pairmake() will convert and find any
 					 * errors in the pair.
@@ -188,7 +188,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 
 #define BUF_SIZE 1024
 static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
-			   VALUE module, const char *function_name) {
+			   VALUE module, char const *function_name) {
 				
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 
@@ -282,7 +282,7 @@ finish:
 }
 
 static struct varlookup {
-	const char* name;
+	char const* name;
 	int value;
 } constants[] = {
 	{ "L_DBG", L_DBG},
@@ -306,7 +306,7 @@ static struct varlookup {
 /*
  * Import a user module and load a function from it
  */
-static int load_function(const char *f_name, unsigned long *func, VALUE module) {
+static int load_function(char const *f_name, unsigned long *func, VALUE module) {
 	if (!f_name) {
 		*func = 0;
 	} else {

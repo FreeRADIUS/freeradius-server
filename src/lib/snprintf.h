@@ -113,7 +113,7 @@ struct DATA {
   char *holder;
   int counter;
 #ifdef __STDC__
-  const char *pf;
+  char const *pf;
 #else
   char *pf;
 #endif

@@ -86,7 +86,7 @@ static const CONF_PARSER section_config[] = {
 	 offsetof(rlm_rest_section_t, chunk), 	   NULL, "0" },
 
 	/* TLS Parameters */
-	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
+	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -148,7 +148,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 {
 	CONF_SECTION *cs;
 
-	const char *name = section_type_value[comp].section;
+	char const *name = section_type_value[comp].section;
 
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
@@ -221,7 +221,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_rest_t *inst = instance;
-	const char *xlat_name;
+	char const *xlat_name;
 
 	xlat_name = cf_section_name2(conf);
 	if (!xlat_name) {

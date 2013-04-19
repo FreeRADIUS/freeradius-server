@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <EAPIKEv2/logging.h>
 
-void vxlogf(int iklevel, const char * fmt,va_list ap)
+void vxlogf(int iklevel, char const * fmt,va_list ap)
 {
     int level;
     switch(iklevel) {

@@ -239,10 +239,10 @@ static int find_prev_reset(rlm_sqlcounter_t *inst, time_t timeval)
  *
  */
 
-static size_t sqlcounter_expand(char *out, int outlen, const char *fmt, rlm_sqlcounter_t *inst)
+static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlcounter_t *inst)
 {
 	int c,freespace;
-	const char *p;
+	char const *p;
 	char *q;
 	char tmpdt[40]; /* For temporary storing of dates */
 

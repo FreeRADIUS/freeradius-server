@@ -25,7 +25,7 @@ RCSID("$Id$")
 
 
 /* Forward declarations */
-static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -96,7 +96,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 /** Issue a non-SELECT query (ie: update/delete/insert) to the database.
  *
  */
-static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, const char *query) {
+static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query) {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	
 	int deadlock = 0;
@@ -155,7 +155,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 /** Issue a select query to the database.
  *
  */
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 	return sql_query(handle, config, query);
 }
 
@@ -249,7 +249,7 @@ static int sql_free_result(UNUSED rlm_sql_handle_t *handle,
 /** Returns error associated with connection.
  *
  */
-static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	
 	return conn->error;

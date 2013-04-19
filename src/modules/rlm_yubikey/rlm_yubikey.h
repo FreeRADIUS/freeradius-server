@@ -20,12 +20,12 @@
  *	be used as the instance handle.
  */
 typedef struct rlm_yubikey_t {
-	const char 		*name;			//!< Instance name.
+	char const 		*name;			//!< Instance name.
 	int			auth_type;		//!< Our Auth-Type.
 	unsigned int		id_len;			//!< The length of the Public ID portion of the OTP string.
 	int			decrypt;		//!< Decrypt the OTP string using the yubikey library.
 	int			validate;		//!< Validate the OTP string using the ykclient library.
-	const char		**uris;			//!< Yubicloud URLs to validate the token against.
+	char const		**uris;			//!< Yubicloud URLs to validate the token against.
 	
 #ifdef HAVE_YKCLIENT
 	unsigned int		client_id;		//!< Validation API client ID.

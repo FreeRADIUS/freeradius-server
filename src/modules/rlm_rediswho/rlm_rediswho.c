@@ -31,7 +31,7 @@ RCSID("$Id$")
 #include <rlm_redis.h>
 
 typedef struct rlm_rediswho_t {
-	const char *xlat_name;
+	char const *xlat_name;
 	CONF_SECTION *cs;
 
 	char *redis_instance_name;
@@ -59,7 +59,7 @@ static CONF_PARSER module_config[] = {
 /*
  *	Query the database executing a command with no result rows
  */
-static int rediswho_command(const char *fmt, REDISSOCK **dissocket_p,
+static int rediswho_command(char const *fmt, REDISSOCK **dissocket_p,
 			    rlm_rediswho_t *inst, REQUEST *request)
 {
 	REDISSOCK *dissocket;
@@ -133,9 +133,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 static int mod_accounting_all(REDISSOCK **dissocket_p,
 				   rlm_rediswho_t *inst, REQUEST *request,
-				   const char *insert,
-				   const char *trim,
-				   const char *expire)
+				   char const *insert,
+				   char const *trim,
+				   char const *expire)
 {
 	int result;
 
@@ -165,7 +165,7 @@ static rlm_rcode_t mod_accounting(void * instance, REQUEST * request)
 	VALUE_PAIR * vp;
 	DICT_VALUE *dv;
 	CONF_SECTION *cs;
-	const char *insert, *trim, *expire;
+	char const *insert, *trim, *expire;
 	rlm_rediswho_t *inst = (rlm_rediswho_t *) instance;
 	REDISSOCK *dissocket;
 

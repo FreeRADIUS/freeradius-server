@@ -1010,12 +1010,12 @@ void radius_tmplfree(value_pair_tmpl_t **tmpl)
  * @param[in] list_def The default list to insert unqualified attributes into.
  * @return -1 on error or 0 on success.
  */
-int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
+int radius_parse_attr(char const *name, value_pair_tmpl_t *vpt,
 		      request_refs_t request_def,
 		      pair_lists_t list_def)
 {
 	const DICT_ATTR *da;
-	const char *p;
+	char const *p;
 	size_t len;
 
 	memset(vpt, 0, sizeof(*vpt));
@@ -1070,12 +1070,12 @@ int radius_parse_attr(const char *name, value_pair_tmpl_t *vpt,
  * @return pointer to a value_pair_tmpl_t struct (must be freed with
  *	radius_tmplfree) or NULL on error.
  */
-value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, const char *name,
+value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
 				    request_refs_t request_def,
 				    pair_lists_t list_def)
 {
 	value_pair_tmpl_t *vpt;
-	const char *copy;
+	char const *copy;
 	
 	vpt = talloc(ctx, value_pair_tmpl_t); /* parse_attr zeroes it */
 	copy = talloc_strdup(vpt, name);
@@ -1095,7 +1095,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, const char *name,
  * @param[in] type Type of quoting around value.
  * @return pointer to new VPT.
  */
-value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, const char *name, FR_TOKEN type)
+value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type)
 {
 	value_pair_tmpl_t *vpt;
 	
@@ -1152,8 +1152,8 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				pair_lists_t src_list_def)
 {
 	value_pair_map_t *map;
-	const char *attr;
-	const char *value;
+	char const *attr;
+	char const *value;
 	FR_TOKEN type;
 	CONF_ITEM *ci = cf_pairtoitem(cp);
 	
@@ -1303,7 +1303,7 @@ int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		   unsigned int max)
 {
-	const char *cs_list, *p;
+	char const *cs_list, *p;
 
 	request_refs_t request_def = REQUEST_CURRENT;
 
@@ -1393,8 +1393,8 @@ error:
  * @return -1 if either attribute or qualifier weren't valid in this context
  *	or callback returned NULL pointer, else 0.
  */
-int radius_map2request(REQUEST *request, const value_pair_map_t *map,
-		       UNUSED const char *src, radius_tmpl_getvalue_t func, void *ctx)
+int radius_map2request(REQUEST *request, value_pair_map_t const *map,
+		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
 {
 	VALUE_PAIR **list, *vp, *head;
 	char buffer[MAX_STRING_LEN];
@@ -1445,7 +1445,7 @@ int radius_map2request(REQUEST *request, const value_pair_map_t *map,
  * @param[in] ctx unused
  * @return the newly allocated VALUE_PAIR
  */
-VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
+VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 			  UNUSED void *ctx)
 {
 	VALUE_PAIR *vp, *found, **from = NULL;
@@ -1543,9 +1543,9 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, const value_pair_map_t *map,
  * @param list_def to use if attribute isn't qualified.
  * @return 0 on success, -1 on error.
  */
-int radius_str2vp(REQUEST *request, const char *raw, request_refs_t request_def, pair_lists_t list_def)
+int radius_str2vp(REQUEST *request, char const *raw, request_refs_t request_def, pair_lists_t list_def)
 {
-	const char *p;
+	char const *p;
 	size_t len;
 	request_refs_t req;
 	pair_lists_t list;
@@ -1600,7 +1600,7 @@ int radius_str2vp(REQUEST *request, const char *raw, request_refs_t request_def,
  *	Will be NULL if the attribute couldn't be resolved.
  * @return -1 if either the attribute or qualifier were invalid, else 0
  */
-int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
+int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
 {
 	value_pair_tmpl_t vpt;
 	VALUE_PAIR **vps;
@@ -1645,7 +1645,7 @@ int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p)
 
 /** Add a module failure message VALUE_PAIR to the request
  */
-void module_failure_msg(REQUEST *request, const char *fmt, ...)
+void module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
 	size_t len;
 	va_list ap;

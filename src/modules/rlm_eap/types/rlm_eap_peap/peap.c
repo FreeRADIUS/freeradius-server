@@ -157,7 +157,7 @@ static int eappeap_soh(eap_handler_t *handler, tls_session_t *tls_session)
 }
 
 static void eapsoh_verify(REQUEST *request, RADIUS_PACKET *packet,
-			  const uint8_t *data, unsigned int data_len) {
+			  uint8_t const *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;
 	uint8_t eap_method_base;
@@ -207,9 +207,9 @@ static void eapsoh_verify(REQUEST *request, RADIUS_PACKET *packet,
  *	Verify the tunneled EAP message.
  */
 static int eapmessage_verify(REQUEST *request,
-			     const uint8_t *data, unsigned int data_len)
+			     uint8_t const *data, unsigned int data_len)
 {
-	const eap_packet_raw_t *eap_packet = (const eap_packet_raw_t *) data;
+	const eap_packet_raw_t *eap_packet = (eap_packet_raw_t const *) data;
 	eap_type_t eap_method;
 
 	/*
@@ -266,7 +266,7 @@ static int eapmessage_verify(REQUEST *request,
  */
 static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 			  EAP_DS *eap_ds,
-			  const uint8_t *data, size_t data_len)
+			  uint8_t const *data, size_t data_len)
 {
 	size_t total;
 	VALUE_PAIR *vp = NULL, *head, **tail;
@@ -381,10 +381,10 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 /*
  *	See if there's a TLV in the response.
  */
-static int eappeap_check_tlv(REQUEST *request, const uint8_t *data,
+static int eappeap_check_tlv(REQUEST *request, uint8_t const *data,
 			     size_t data_len)
 {
-	const eap_packet_raw_t *eap_packet = (const eap_packet_raw_t *) data;
+	const eap_packet_raw_t *eap_packet = (eap_packet_raw_t const *) data;
 
 	if (data_len < 11) return 0;
 
@@ -688,7 +688,7 @@ static void my_request_free(void *data)
 #endif
 
 
-static const char *peap_state(peap_tunnel_t *t)
+static char const *peap_state(peap_tunnel_t *t)
 {
 	switch (t->status) {
 		case PEAP_STATUS_TUNNEL_ESTABLISHED:
@@ -711,7 +711,7 @@ static const char *peap_state(peap_tunnel_t *t)
 	return "?";
 }
 
-static void print_tunneled_data(const uint8_t *data, size_t data_len)
+static void print_tunneled_data(uint8_t const *data, size_t data_len)
 {
 	size_t i;
 

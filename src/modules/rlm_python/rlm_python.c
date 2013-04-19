@@ -100,7 +100,7 @@ static CONF_PARSER module_config[] = {
 };
 
 static struct {
-	const char *name;
+	char const *name;
 	int  value;
 } radiusd_constants[] = {
 
@@ -249,7 +249,7 @@ static int mod_destroy(void)
 /* TODO: Convert this function to accept any iterable objects? */
 
 static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
-			const char *funcname)
+			char const *funcname)
 {
 	int	     i;
 	int	     tuplesize;
@@ -274,8 +274,8 @@ static void mod_vptuple(TALLOC_CTX *ctx, VALUE_PAIR **vps, PyObject *pValue,
 		PyObject *pStr2;
 		PyObject *pOp;
 		int pairsize;
-		const char *s1;
-		const char *s2;
+		char const *s1;
+		char const *s2;
 		long op;
 
 		if (!PyTuple_CheckExact(pTupleElement)) {
@@ -354,7 +354,7 @@ failed:
 }
 
 static int do_python(REQUEST *request, PyObject *pFunc,
-		     const char *funcname)
+		     char const *funcname)
 {
 	VALUE_PAIR      *vp;
 	PyObject	*pRet = NULL;
@@ -493,7 +493,7 @@ failed:
 
 static int mod_load_function(struct py_function_def *def)
 {
-	const char *funcname = "mod_load_function";
+	char const *funcname = "mod_load_function";
 	PyGILState_STATE gstate;
 	
 	gstate = PyGILState_Ensure();

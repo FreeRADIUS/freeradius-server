@@ -310,7 +310,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_otp_t *inst = instance;
 
-	const char *username;
+	char const *username;
 	int rc;
 	otp_pwe_t pwe;
 	VALUE_PAIR *vp;

@@ -78,7 +78,7 @@ int log_dates_utc = 0;
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
  */
-int vradlog(int lvl, const char *fmt, va_list ap)
+int vradlog(int lvl, char const *fmt, va_list ap)
 {
 	struct main_config_t *myconfig = &mainconfig;
 	unsigned char *p;
@@ -224,7 +224,7 @@ DIAG_ON(format-nonliteral)
 	return 0;
 }
 
-int log_debug(const char *msg, ...)
+int log_debug(char const *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -236,7 +236,7 @@ int log_debug(const char *msg, ...)
 	return r;
 }
 
-int radlog(int lvl, const char *msg, ...)
+int radlog(int lvl, char const *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -266,15 +266,15 @@ extern char *request_log_file;
 extern char *debug_log_file;
 #endif
 
-void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...)
+void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...)
 {
 	size_t len = 0;
-	const char *filename = request_log_file;
+	char const *filename = request_log_file;
 	FILE *fp = NULL;
 	va_list ap;
 	char buffer[8192];
 	char *p;
-	const char *extra = "";
+	char const *extra = "";
 
 	va_start(ap, msg);
 
@@ -408,7 +408,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ..
 	va_end(ap);
 }
 
-void log_talloc(const char *msg)
+void log_talloc(char const *msg)
 {
 	radlog(L_INFO, "%s", msg);
 }
@@ -418,7 +418,7 @@ void log_talloc_report(TALLOC_CTX *ctx)
 
 	struct main_config_t *myconfig = &mainconfig;
 	FILE *fd;
-	const char *null_ctx;
+	char const *null_ctx;
 	int i = 0;
 
 	if (ctx) {

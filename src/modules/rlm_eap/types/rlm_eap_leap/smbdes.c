@@ -152,7 +152,7 @@ static const uchar sbox[8][4][16] = {
 	 {7, 11,  4,  1,  9, 12, 14,  2,  0,  6, 10, 13, 15,  3,  5,  8},
 	 {2,  1, 14,  7,  4, 10,  8, 13, 15, 12,  9,  0,  3,  5,  6, 11}}};
 
-static void permute(char *out, const char *in, const uchar *p, int n)
+static void permute(char *out, char const *in, uchar const *p, int n)
 {
 	int i;
 	for (i=0;i<n;i++)
@@ -281,7 +281,7 @@ static void str_to_key(unsigned char *str,unsigned char *key)
 }
 
 
-static void smbhash(unsigned char *out, const unsigned char *in, unsigned char *key)
+static void smbhash(unsigned char *out, unsigned char const *in, unsigned char *key)
 {
 	int i;
 	char outb[64];
@@ -313,7 +313,7 @@ static void smbhash(unsigned char *out, const unsigned char *in, unsigned char *
  *	Converts the password to uppercase, and creates the LM
  *	password hash.
  */
-void eapleap_lmpwdhash(const unsigned char *password,unsigned char *lmhash)
+void eapleap_lmpwdhash(unsigned char const *password, unsigned char *lmhash)
 {
 	int i;
 	unsigned char p14[14];
@@ -333,8 +333,7 @@ void eapleap_lmpwdhash(const unsigned char *password,unsigned char *lmhash)
  *
  *	The win_password MUST be exactly 16 bytes long.
  */
-void eapleap_mschap(const unsigned char *win_password,
-		 const unsigned char *challenge, unsigned char *response)
+void eapleap_mschap(unsigned char const *win_password, unsigned char const *challenge, unsigned char *response)
 {
 	unsigned char p21[21];
 

@@ -136,7 +136,7 @@ static void *mod_conn_create(void *ctx)
 }
 
 static size_t redis_xlat(void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t freespace)
+		      char const *fmt, char *out, size_t freespace)
 {
 	REDIS_INST *inst = instance;
 	REDISSOCK *dissocket;
@@ -210,11 +210,11 @@ static int mod_detach(void *instance)
  *	Query the redis database
  */
 int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
-		    const char *query, REQUEST *request)
+		    char const *query, REQUEST *request)
 {
 	REDISSOCK *dissocket;
 	int argc;
-	const char *argv[MAX_REDIS_ARGS];
+	char const *argv[MAX_REDIS_ARGS];
 	char argv_buf[MAX_QUERY_LEN];
 
 	if (!query || !*query || !inst || !dissocket_p) {

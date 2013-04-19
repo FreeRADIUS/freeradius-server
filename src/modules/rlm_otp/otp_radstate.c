@@ -106,9 +106,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  * @return the amount of data written into the state buffer.
  */
 size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
-		     const char challenge[OTP_MAX_CHALLENGE_LEN],
+		     char const challenge[OTP_MAX_CHALLENGE_LEN],
 		     size_t clen,
-		     int32_t flags, int32_t when, const uint8_t key[16])
+		     int32_t flags, int32_t when, uint8_t const key[16])
 {
 	HMAC_CTX hmac_ctx;
 	uint8_t hmac[MD5_DIGEST_LENGTH];
@@ -121,7 +121,7 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	 *	contiguous piece.
 	 */
 	HMAC_Init(&hmac_ctx, key, sizeof(key[0]) * 16, EVP_md5());
-	HMAC_Update(&hmac_ctx, (const uint8_t *) challenge, clen);
+	HMAC_Update(&hmac_ctx, (uint8_t const *) challenge, clen);
 	HMAC_Update(&hmac_ctx, (uint8_t *) &flags, 4);
 	HMAC_Update(&hmac_ctx, (uint8_t *) &when, 4);
 	HMAC_Final(&hmac_ctx, hmac, NULL);
@@ -135,7 +135,7 @@ size_t otp_gen_state(char state[OTP_MAX_RADSTATE_LEN],
 	/*
 	 *	Add the challenge (which is already ASCII encoded)
 	 */
-	p += fr_bin2hex((const uint8_t *) challenge, p, clen);
+	p += fr_bin2hex((uint8_t const *) challenge, p, clen);
 	
 	/* Add the flags and time. */
 	p += fr_bin2hex((uint8_t *) &flags, p, 4);

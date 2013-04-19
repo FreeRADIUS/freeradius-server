@@ -52,7 +52,7 @@ static const CONF_PARSER module_config[] = {
 
 
 /* comparison function to find session in the tree */
-static int securid_session_cmp(const void *a, const void *b)
+static int securid_session_cmp(void const *a, void const *b)
 {
 	int rcode;
 	const SECURID_SESSION *one = a;
@@ -69,8 +69,8 @@ static int securid_session_cmp(const void *a, const void *b)
 
 
 static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
-				   const char* username,
-				   const char* passcode,
+				   char const* username,
+				   char const* passcode,
 				   char* replyMsgBuffer,int replyMsgBufferSize)
 {
 	rlm_securid_t *inst = (rlm_securid_t *) instance;
@@ -456,7 +456,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	int rcode;
 	rlm_securid_t *inst = instance;
 	char  buffer[MAX_STRING_LEN]="";
-	const char *username=NULL, *password=NULL;
+	char const *username=NULL, *password=NULL;
 	VALUE_PAIR *vp;
 	
 	/*

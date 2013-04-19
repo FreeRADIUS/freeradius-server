@@ -34,7 +34,7 @@ RCSIDH(rlm_eap_h, "$Id$")
  * Keep track of which sub modules we've loaded.
  */
 typedef struct eap_module {
-	const char		*name;
+	char const		*name;
 	rlm_eap_module_t	*type;
 	lt_dlhandle		handle;
 	CONF_SECTION		*cs;
@@ -58,7 +58,7 @@ typedef struct rlm_eap {
 	 */
 	int		timer_limit;
 	
-	const char	*default_method_name;
+	char const	*default_method_name;
 	eap_type_t	default_method;
 	
 	int		ignore_unknown_types;
@@ -71,7 +71,7 @@ typedef struct rlm_eap {
 	pthread_mutex_t	handler_mutex;
 #endif
 
-	const char	*xlat_name; /* no xlat's yet */
+	char const	*xlat_name; /* no xlat's yet */
 	fr_randctx	rand_pool;
 } rlm_eap_t;
 

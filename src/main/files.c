@@ -49,13 +49,13 @@ void pairlist_free(PAIR_LIST **pl)
  *	Read the users, huntgroups or hints file.
  *	Return a PAIR_LIST.
  */
-int pairlist_read(TALLOC_CTX *ctx, const char *file, PAIR_LIST **list, int complain)
+int pairlist_read(TALLOC_CTX *ctx, char const *file, PAIR_LIST **list, int complain)
 {
 	FILE *fp;
 	int mode = FIND_MODE_NAME;
 	char entry[256];
 	char buffer[8192];
-	const char *ptr;
+	char const *ptr;
 	VALUE_PAIR *check_tmp;
 	VALUE_PAIR *reply_tmp;
 	PAIR_LIST *pl = NULL, *t;

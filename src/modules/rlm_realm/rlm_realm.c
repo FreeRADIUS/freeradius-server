@@ -58,7 +58,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 {
 	char namebuf[MAX_STRING_LEN];
 	char *username;
-	const char *realmname = NULL;
+	char const *realmname = NULL;
 	char *ptr;
 	VALUE_PAIR *vp;
 	REALM *realm;
@@ -390,7 +390,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	int rcode;
-	const char *name = (char *)request->username->vp_strvalue;
+	char const *name = (char *)request->username->vp_strvalue;
 	REALM *realm;
 
 	if (!name)

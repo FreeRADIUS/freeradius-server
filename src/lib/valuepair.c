@@ -46,7 +46,7 @@ RCSID("$Id$")
 #define VERIFY(_x)
 #endif
 
-static const char *months[] = {
+static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
 
@@ -58,7 +58,7 @@ static const char *months[] = {
  * @param[in] da Specifies the dictionary attribute to build the VP from.
  * @return a new value pair or NULL if an error occurred.
  */
-VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da)
+VALUE_PAIR *pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da)
 {
 	VALUE_PAIR *vp;
 
@@ -335,7 +335,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
  * @param[in] vp to copy.
  * @return a copy of the input VP or NULL on error.
  */
-VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
+VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 {
 	VALUE_PAIR *n;
 
@@ -387,7 +387,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
  * @param[in] vp to copy data from.
  * @return the new valuepair.
  */
-VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, const DICT_ATTR *da, const VALUE_PAIR *vp)
+VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp)
 {
 	VALUE_PAIR *n;
 
@@ -798,7 +798,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 /*
  *	Sort of strtok/strsep function.
  */
-static char *mystrtok(char **ptr, const char *sep)
+static char *mystrtok(char **ptr, char const *sep)
 {
 	char	*res;
 
@@ -820,7 +820,7 @@ static char *mystrtok(char **ptr, const char *sep)
  *	Turn printable string into time_t
  *	Returns -1 on error, 0 on OK.
  */
-static int gettime(const char *valstr, time_t *date)
+static int gettime(char const *valstr, time_t *date)
 {
 	int		i;
 	time_t		t;
@@ -953,7 +953,7 @@ static int gettime(const char *valstr, time_t *date)
 	return 0;
 }
 
-static const char *hextab = "0123456789abcdef";
+static char const *hextab = "0123456789abcdef";
 
 /*
  *  Parse a string value into a given VALUE_PAIR
@@ -963,7 +963,7 @@ static const char *hextab = "0123456789abcdef";
  *  double-check the parsed value, to be sure it's legal for that
  *  type (length, etc.)
  */
-static uint32_t getint(const char *value, char **end)
+static uint32_t getint(char const *value, char **end)
 {
 	if ((value[0] == '0') && (value[1] == 'x')) {
 		return strtoul(value, end, 16);
@@ -972,7 +972,7 @@ static uint32_t getint(const char *value, char **end)
 	return strtoul(value, end, 10);
 }
 
-static int check_for_whitespace(const char *value)
+static int check_for_whitespace(char const *value)
 {
 	while (*value) {
 		if (!isspace((int) *value)) return 0;
@@ -984,10 +984,10 @@ static int check_for_whitespace(const char *value)
 }
 
 
-int pairparsevalue(VALUE_PAIR *vp, const char *value)
+int pairparsevalue(VALUE_PAIR *vp, char const *value)
 {
 	char		*p;
-	const char	*cp, *cs;
+	char const	*cp, *cs;
 	int		x;
 	uint64_t	y;
 	size_t		length;
@@ -1362,7 +1362,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
 
 	case PW_TYPE_ETHERNET:
 		{
-			const char *c1, *c2;
+			char const *c1, *c2;
 
 			length = 0;
 			cp = value;
@@ -1490,7 +1490,7 @@ int pairparsevalue(VALUE_PAIR *vp, const char *value)
  * @return new valuepair or NULL on error.
  */
 static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
-				const char *attribute, const char *value,
+				char const *attribute, char const *value,
 				FR_TOKEN op)
 {
 	VALUE_PAIR	*vp;
@@ -1567,7 +1567,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
  * @return a new VALUE_PAIR.
  */
 VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
-		     const char *attribute, const char *value, FR_TOKEN op)
+		     char const *attribute, char const *value, FR_TOKEN op)
 {
 	const DICT_ATTR *da;
 	VALUE_PAIR	*vp;
@@ -1575,7 +1575,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 	int8_t		tag;
 	int		found_tag;
 	char		buffer[256];
-	const char	*attrname = attribute;
+	char const	*attrname = attribute;
 
 	/*
 	 *    Check for tags in 'Attribute:Tag' format.
@@ -1743,7 +1743,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
  * @param value to expand.
  * @return 0 if marking succeeded or -1 if vp already had a value, or OOM.
  */
-int pairmark_xlat(VALUE_PAIR *vp, const char *value)
+int pairmark_xlat(VALUE_PAIR *vp, char const *value)
 {
 	char *raw;
 	
@@ -1776,9 +1776,9 @@ int pairmark_xlat(VALUE_PAIR *vp, const char *value)
  * @param[out] raw The struct to write the raw VALUE_PAIR to.
  * @return the last token read.
  */
-FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
+FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 {
-	const char	*p;
+	char const	*p;
 	char *q;
 	FR_TOKEN	ret = T_OP_INVALID, next, quote;
 	char		buf[8];
@@ -1812,7 +1812,7 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
 	q = raw->l_opand;
 	*q = '\0';
 	while (*p) {
-		const uint8_t *t = (const uint8_t *) p;
+		const uint8_t *t = (uint8_t const *) p;
 
 		if (q >= (raw->l_opand + sizeof(raw->l_opand))) {
 		too_long:
@@ -1945,10 +1945,10 @@ FR_TOKEN pairread(const char **ptr, VALUE_PAIR_RAW *raw)
  * @param list where the parsed VALUE_PAIRs will be appended.
  * @return the last token parsed, or T_OP_INVALID
  */
-FR_TOKEN userparse(TALLOC_CTX *ctx, const char *buffer, VALUE_PAIR **list)
+FR_TOKEN userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **list)
 {
 	VALUE_PAIR	*vp, *head, **tail;
-	const char	*p;
+	char const	*p;
 	FR_TOKEN	last_token = T_OP_INVALID;
 	FR_TOKEN	previous_token;
 	VALUE_PAIR_RAW	raw;
@@ -2014,7 +2014,7 @@ FR_TOKEN userparse(TALLOC_CTX *ctx, const char *buffer, VALUE_PAIR **list)
  *
  *	Hmm... this function is only used by radclient..
  */
-VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, const char *errprefix)
+VALUE_PAIR *readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errprefix)
 {
 	char buf[8192];
 	FR_TOKEN last_token = T_EOL;

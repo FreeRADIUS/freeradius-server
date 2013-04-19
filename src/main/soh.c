@@ -88,7 +88,7 @@ typedef struct {
  *
  * caller must ensure enough data exists at "p"
  */
-uint16_t soh_pull_be_16(const uint8_t *p) {
+uint16_t soh_pull_be_16(uint8_t const *p) {
 	uint16_t r;
 
 	r = *p++ << 8;
@@ -101,7 +101,7 @@ uint16_t soh_pull_be_16(const uint8_t *p) {
  *
  * caller must ensure enough data exists at "p"
  */
-uint32_t soh_pull_be_24(const uint8_t *p) {
+uint32_t soh_pull_be_24(uint8_t const *p) {
 	uint32_t r;
 
 	r = *p++ << 16;
@@ -115,7 +115,7 @@ uint32_t soh_pull_be_24(const uint8_t *p) {
  *
  * caller must ensure enough data exists at "p"
  */
-uint32_t soh_pull_be_32(const uint8_t *p) {
+uint32_t soh_pull_be_32(uint8_t const *p) {
 	uint32_t r;
 
 	r = *p++ << 24;
@@ -140,7 +140,7 @@ uint32_t soh_pull_be_32(const uint8_t *p) {
  * @param data_len length of blob
  * @return 1 on success, 0 on failure
  */
-static int eapsoh_mstlv(REQUEST *request, const uint8_t *p, unsigned int data_len) {
+static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_len) {
 	VALUE_PAIR *vp;
 	uint8_t c;
 	int t;
@@ -309,7 +309,7 @@ static int eapsoh_mstlv(REQUEST *request, const uint8_t *p, unsigned int data_le
  * @brief Convert windows Health Class status into human-readable
  * 	string. Tedious, really, really tedious...
  */
-static const char* clientstatus2str(uint32_t hcstatus) {
+static char const* clientstatus2str(uint32_t hcstatus) {
 	switch (hcstatus) {
 		/* this lot should all just be for windows updates */
 		case 0xff0005:
@@ -341,7 +341,7 @@ static const char* clientstatus2str(uint32_t hcstatus) {
 /**
  * @brief convert a Health Class into a string
  */
-static const char* healthclass2str(uint8_t hc) {
+static char const* healthclass2str(uint8_t hc) {
 	switch (hc) {
 		case 0:
 			return "firewall";
@@ -369,7 +369,7 @@ static const char* healthclass2str(uint8_t hc) {
  * @return 0 on success, -1 on failure
  *
  */
-int soh_verify(REQUEST *request, const uint8_t *data, unsigned int data_len) {
+int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
 	VALUE_PAIR *vp;
 	eap_soh hdr;
@@ -519,7 +519,7 @@ int soh_verify(REQUEST *request, const uint8_t *data, unsigned int data_len) {
 
 				if (curr_shid==0x137 && curr_shid_c==128) {
 
-					const char *s, *t;
+					char const *s, *t;
 					uint32_t hcstatus = soh_pull_be_32(data);
 
 					RDEBUG2("SoH Health-Class-Status microsoft DWORD=%08x", hcstatus);

@@ -68,7 +68,7 @@ int 		eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn);
 
 /* MPPE key generation */
 void	    eaptls_gen_mppe_keys(REQUEST *request, SSL *s,
-				 const char *prf_label);
+				 char const *prf_label);
 void		eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size);
 void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header);
 
@@ -106,6 +106,6 @@ tls_session_t	*eaptls_session(fr_tls_server_conf_t *tls_conf, eap_handler_t *han
 int 		eaptls_start(EAP_DS *eap_ds, int peap);
 int 		eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply);
 
-fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *key);
+fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *key);
 
 #endif /*_EAP_TLS_H*/

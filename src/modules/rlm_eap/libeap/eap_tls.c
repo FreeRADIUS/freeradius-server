@@ -924,9 +924,9 @@ int eaptls_compose(EAP_DS *eap_ds, EAPTLS_PACKET *reply)
  *	fall back to compatibility mode and read the TLS options from
  *	the 'tls' section.
  */
-fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, const char *attr)
+fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *attr)
 {
-	const char 		*tls_conf_name;
+	char const 		*tls_conf_name;
 	CONF_PAIR		*cp;
 	CONF_SECTION		*parent;
 	CONF_SECTION		*tls_cs;

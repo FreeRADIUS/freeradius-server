@@ -55,7 +55,7 @@ typedef struct rlm_attr_rewrite {
 	int  new_attr;		//!< Boolean. Whether we need to create a new
 				//!< attr.
 	int  num_matches;	//!< Maximum number of matches.
-	const char *name;	//!< The module name.
+	char const *name;	//!< The module name.
 } rlm_attr_rewrite_t;
 
 static const CONF_PARSER module_config[] = {

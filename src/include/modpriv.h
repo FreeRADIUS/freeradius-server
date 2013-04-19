@@ -20,10 +20,10 @@ extern "C" {
 
 typedef void *lt_dlhandle;
 
-lt_dlhandle lt_dlopenext(const char *name);
-void *lt_dlsym(lt_dlhandle handle, const char *symbol);
+lt_dlhandle lt_dlopenext(char const *name);
+void *lt_dlsym(lt_dlhandle handle, char const *symbol);
 int lt_dlclose(lt_dlhandle handle);
-const char *lt_dlerror(void);
+char const *lt_dlerror(void);
 
 /*
  *	Keep track of which modules we've loaded.
@@ -53,7 +53,7 @@ typedef struct module_instance_t {
 	fr_module_hup_t	       	*mh;
 } module_instance_t;
 
-module_instance_t *find_module_instance(CONF_SECTION *, const char *instname,
+module_instance_t *find_module_instance(CONF_SECTION *, char const *instname,
 					int do_link);
 int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when);
 

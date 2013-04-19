@@ -58,7 +58,7 @@ static char trans[64] =
 #define ENC(c) trans[c]
 
 struct unix_instance {
-	const char *radwtmp;
+	char const *radwtmp;
 };
 
 static const CONF_PARSER module_config[] = {
@@ -131,8 +131,8 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  */
 static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 {
-	const char	*name;
-	const char	*encrypted_pass;
+	char const	*name;
+	char const	*encrypted_pass;
 #ifdef HAVE_GETSPNAM
 	struct spwd	*spwd = NULL;
 #endif
@@ -313,7 +313,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	struct utmp	ut;
 	time_t		t;
 	char		buf[64];
-	const char	*s;
+	char const	*s;
 	int		delay = 0;
 	int		status = -1;
 	int		nas_address = 0;

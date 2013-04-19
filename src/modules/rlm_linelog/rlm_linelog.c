@@ -135,7 +135,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  *	Escape unprintable characters.
  */
 static size_t linelog_escape_func(UNUSED REQUEST *request,
-		char *out, size_t outlen, const char *in,
+		char *out, size_t outlen, char const *in,
 		UNUSED void *arg)
 {
 	int len = 0;
@@ -201,7 +201,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 	char *p;
 	char line[1024];
 	rlm_linelog_t *inst = (rlm_linelog_t*) instance;
-	const char *value = inst->line;
+	char const *value = inst->line;
 
 #ifdef HAVE_GRP_H
 	gid_t gid;

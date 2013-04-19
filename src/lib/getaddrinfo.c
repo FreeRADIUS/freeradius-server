@@ -132,7 +132,7 @@ static int copy_hostent(struct hostent *from, struct hostent *to,
 
 #ifdef LOCAL_GETHOSTBYNAMERSTYLE
 static struct hostent *
-gethostbyname_r(const char *hostname, struct hostent *result,
+gethostbyname_r(char const *hostname, struct hostent *result,
 	   char *buffer, int buflen, int *error)
 {
     struct hostent *hp;
@@ -165,7 +165,7 @@ gethostbyname_r(const char *hostname, struct hostent *result,
 
 #ifdef LOCAL_GETHOSTBYADDRR
 static struct hostent *
-gethostbyaddr_r(const char *addr, int len, int type, struct hostent *result,
+gethostbyaddr_r(char const *addr, int len, int type, struct hostent *result,
 		char *buffer, int buflen, int *error)
 {
     struct hostent *hp;
@@ -228,7 +228,7 @@ malloc_ai(int port, u_long addr, int socktype, int proto)
     }
 }
 
-const char *
+char const *
 gai_strerror(int ecode)
 {
     switch (ecode) {
@@ -259,8 +259,8 @@ freeaddrinfo(struct addrinfo *ai)
 }
 
 int
-getaddrinfo(const char *hostname, const char *servname,
-	    const struct addrinfo *hints, struct addrinfo **res)
+getaddrinfo(char const *hostname, char const *servname,
+	    struct addrinfo const *hints, struct addrinfo **res)
 {
     struct addrinfo *cur, *prev = NULL;
     struct hostent *hp;
@@ -295,7 +295,7 @@ getaddrinfo(const char *hostname, const char *servname,
 	    port = htons(atoi(servname));
 	else {
 	    struct servent *se;
-	    const char *pe_proto;
+	    char const *pe_proto;
 
 	    switch (socktype) {
 	    case SOCK_DGRAM:
@@ -379,12 +379,10 @@ getaddrinfo(const char *hostname, const char *servname,
 
 #ifndef HAVE_GETNAMEINFO
 int
-getnameinfo(const struct sockaddr *sa, socklen_t salen,
-		char *host, size_t hostlen,
-		char *serv, size_t servlen,
-		unsigned int flags)
+getnameinfo(struct sockaddr const  *sa, socklen_t salen, char *host, size_t hostlen, char *serv, size_t servlen,
+	    unsigned int flags)
 {
-    const struct sockaddr_in *sin = (const struct sockaddr_in *)sa;
+    const struct sockaddr_in *sin = (struct sockaddr_in const *)sa;
     struct hostent *hp;
     struct hostent result;
     char tmpserv[16];
@@ -413,23 +411,23 @@ getnameinfo(const struct sockaddr *sa, socklen_t salen,
 	/*  Reverse DNS lookup required */
 #ifdef GETHOSTBYADDRRSTYLE
 #if GETHOSTBYADDRRSTYLE == SYSVSTYLE
-	    hp = gethostbyaddr_r((const char *)&sin->sin_addr,
+	    hp = gethostbyaddr_r((char const *)&sin->sin_addr,
 			       salen, AF_INET,
 			       &result, buffer, sizeof(buffer), &error);
 #elif GETHOSTBYADDRRSTYLE == GNUSTYLE
-	    if (gethostbyaddr_r((const char *)&sin->sin_addr,
+	    if (gethostbyaddr_r((char const *)&sin->sin_addr,
 			       salen, AF_INET,
 				    &result, buffer, sizeof(buffer),
 				    &hp, &error) != 0) {
 			hp = NULL;
 	     }
 #else
-	    hp = gethostbyaddr_r((const char *)&sin->sin_addr,
+	    hp = gethostbyaddr_r((char const *)&sin->sin_addr,
 			       salen, AF_INET,
 			       &result, buffer, sizeof(buffer), &error);
 #endif
 #else
-	    hp = gethostbyaddr_r((const char *)&sin->sin_addr,
+	    hp = gethostbyaddr_r((char const *)&sin->sin_addr,
 			       salen, AF_INET,
 			       &result, buffer, sizeof(buffer), &error);
 #endif

@@ -70,7 +70,7 @@ static int mod_detach(void *instance)
 /*
  *	Compare two handlers.
  */
-static int eap_handler_cmp(const void *a, const void *b)
+static int eap_handler_cmp(void const *a, void const *b)
 {
 	int rcode;
 	const eap_handler_t *one = a;
@@ -100,7 +100,7 @@ static int eap_handler_cmp(const void *a, const void *b)
 /*
  *	Compare two handler pointers
  */
-static int eap_handler_ptr_cmp(const void *a, const void *b)
+static int eap_handler_ptr_cmp(void const *a, void const *b)
 {
 	if (a < b) return -1;
 	if (a > b) return +1;
@@ -137,7 +137,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	    scs != NULL;
 	    scs = cf_subsection_find_next(cs, scs, NULL)) {
 
-		const char *name;
+		char const *name;
 
 		name = cf_section_name1(scs);
 		if (!name)  continue;

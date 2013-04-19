@@ -73,7 +73,7 @@ static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 }
 
 
-static int attr_filter_getfile(TALLOC_CTX *ctx, const char *filename, PAIR_LIST **pair_list)
+static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list)
 {
 	int rcode;
 	PAIR_LIST *attrs = NULL;

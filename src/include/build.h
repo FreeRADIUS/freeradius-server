@@ -47,8 +47,8 @@ extern "C" {
 
 #if defined(__GNUC__)
 /* force inclusion of ident keywords in the face of optimization */
-#define RCSID(id) static const char rcsid[] __attribute__ ((used)) = id;
-#define RCSIDH(h, id) static const char rcsid_ ## h [] __attribute__ ((used)) = id;
+#define RCSID(id) static char const rcsid[] __attribute__ ((used)) = id;
+#define RCSIDH(h, id) static char const rcsid_ ## h [] __attribute__ ((used)) = id;
 #elif defined(__SUNPRO_C)
 /* put ident keyword into comment section (nicer than gcc way) */
 #define DO_PRAGMA(x) _Pragma(#x)

@@ -180,7 +180,7 @@ static CONF_PARSER module_config[] = {
   { "off-commit", PW_TYPE_STRING_PTR,
     offsetof(rlm_sqlippool_t,off_commit), NULL, "COMMIT" },
 
-  { "messages", PW_TYPE_SUBSECTION, 0, NULL, (const void *) message_config },
+  { "messages", PW_TYPE_SUBSECTION, 0, NULL, (void const *) message_config },
 
   { NULL, -1, 0, NULL, NULL }
 };
@@ -193,11 +193,11 @@ static CONF_PARSER module_config[] = {
  *	%J	lease_duration
  *
  */
-static int sqlippool_expand(char * out, int outlen, const char * fmt,
+static int sqlippool_expand(char * out, int outlen, char const * fmt,
 			    rlm_sqlippool_t *data, char * param, int param_len)
 {
 	char *q;
-	const char *p;
+	char const *p;
 	char tmp[40]; /* For temporary storing of integers */
 
 	q = out;
@@ -281,7 +281,7 @@ static int sqlippool_expand(char * out, int outlen, const char * fmt,
 /*
  * Query the database executing a command with no result rows
  */
-static int sqlippool_command(const char * fmt, rlm_sql_handle_t * handle, rlm_sqlippool_t *data, REQUEST * request,
+static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sqlippool_t *data, REQUEST * request,
 			     char * param, int param_len)
 {
 	char query[MAX_QUERY_LEN];
@@ -325,7 +325,7 @@ static int sqlippool_command(const char * fmt, rlm_sql_handle_t * handle, rlm_sq
 /*
  * Query the database expecting a single result row
  */
-static int sqlippool_query1(char *out, int outlen, const char *fmt,
+static int sqlippool_query1(char *out, int outlen, char const *fmt,
 			    rlm_sql_handle_t *handle, rlm_sqlippool_t *data,
 			    REQUEST *request, char *param, int param_len)
 {
@@ -396,7 +396,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	module_instance_t *sqlinst;
 	rlm_sqlippool_t *inst = instance;
-	const char *pool_name = NULL;
+	char const *pool_name = NULL;
 
 	pool_name = cf_section_name2(conf);
 	if (pool_name != NULL)

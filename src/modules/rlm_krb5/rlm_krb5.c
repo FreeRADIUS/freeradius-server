@@ -39,9 +39,9 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_krb5.
  */
 typedef struct rlm_krb5_t {
-	const char	*xlat_name;	//!< This module's instance name.
-	const char	*keytabname;	//!< The keytab to resolve the service in.
-	const char	*service_princ;	//!< The service name provided by the
+	char const	*xlat_name;	//!< This module's instance name.
+	char const	*keytabname;	//!< The keytab to resolve the service in.
+	char const	*service_princ;	//!< The service name provided by the
 					//!< config parser.
 	
 	char		*hostname;	//!< The hostname component of

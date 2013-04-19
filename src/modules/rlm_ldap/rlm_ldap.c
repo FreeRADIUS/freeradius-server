@@ -170,15 +170,15 @@ static const CONF_PARSER module_config[] = {
 	{"edir_autz", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir_autz), NULL, NULL}, /* NULL defaults to "no" */
 #endif
 
-	{ "user", PW_TYPE_SUBSECTION, 0, NULL, (const void *) user_config },
+	{ "user", PW_TYPE_SUBSECTION, 0, NULL, (void const *) user_config },
 
-	{ "group", PW_TYPE_SUBSECTION, 0, NULL, (const void *) group_config },
+	{ "group", PW_TYPE_SUBSECTION, 0, NULL, (void const *) group_config },
 	
-	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (const void *) profile_config },
+	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (void const *) profile_config },
 
-	{ "options", PW_TYPE_SUBSECTION, 0, NULL, (const void *) option_config },
+	{ "options", PW_TYPE_SUBSECTION, 0, NULL, (void const *) option_config },
 
-	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
+	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
 
 	{NULL, -1, 0, NULL, NULL}
 };
@@ -186,7 +186,7 @@ static const CONF_PARSER module_config[] = {
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  */
-static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
+static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
 			char *out, size_t freespace)
 {
 	ldap_rcode_t status;
@@ -198,8 +198,8 @@ static size_t ldap_xlat(void *instance, REQUEST *request, const char *fmt,
 	char **vals;
 	ldap_handle_t *conn;
 	int ldap_errno;
-	const char *url;
-	const char **attrs;
+	char const *url;
+	char const **attrs;
 
 	url = fmt;
 
@@ -307,7 +307,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	int		check_is_dn;
 
 	ldap_handle_t	*conn = NULL;
-	const char	*user_dn;
+	char const	*user_dn;
 	
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
@@ -422,7 +422,7 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
 {
 	CONF_SECTION *cs;
 
-	const char *name = section_type_value[comp].section;
+	char const *name = section_type_value[comp].section;
 	
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
@@ -619,7 +619,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode;
 	ldap_rcode_t	status;
-	const char	*dn;
+	char const	*dn;
 	ldap_instance_t	*inst = instance;
 	ldap_handle_t	*conn;
 
@@ -719,7 +719,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	VALUE_PAIR	*vp;
 	ldap_handle_t	*conn;
 	LDAPMessage	*result, *entry;
-	const char 	*dn = NULL;
+	char const 	*dn = NULL;
 	rlm_ldap_map_xlat_t	expanded; /* faster that mallocing every time */
 	
 	if (!request->username) {
@@ -884,7 +884,7 @@ skip_edir:
 	 */
 	vp = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
 	if (vp || inst->default_profile) {
-		const char *profile = inst->default_profile;
+		char const *profile = inst->default_profile;
 
 		if (vp) profile = vp->vp_strvalue;
 
@@ -944,10 +944,10 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	char 		*expanded[LDAP_MAX_ATTRMAP];
 	int		last_exp = 0;
 	
-	const char	*attr;
-	const char	*value;
+	char const	*attr;
+	char const	*value;
 	
-	const char	*dn;
+	char const	*dn;
 	/*
 	 *	Build our set of modifications using the update sections in
 	 *	the config.

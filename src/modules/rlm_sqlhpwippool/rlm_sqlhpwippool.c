@@ -47,10 +47,10 @@
 #define RLM_NETVIM_MAX_ROWS 1000000
 #define RLM_NETVIM_TMP_PREFIX "auth-tmp-"
 
-static const char rcsid[] = "$Id$";
+static char const rcsid[] = "$Id$";
 
 typedef struct rlm_sqlhpwippool_t {
-	const char *myname;	 /* name of this instance */
+	char const *myname;	 /* name of this instance */
 	rlm_sql_t *sqlinst;	  /* rlm_sql_t for requested instance */
 	rlm_sql_module_t *db;       /* here the fun takes place ;-) */
 #ifdef HAVE_PTHREAD_D
@@ -85,7 +85,7 @@ static CONF_PARSER module_config[] = {
 
 /* wrapper around radlog which adds prefix with module and instance name */
 static int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl,
-		   const char *fmt, ...)
+		   char const *fmt, ...)
 {
 	va_list ap;
 	int r;
@@ -103,7 +103,7 @@ static int nvp_log(unsigned int line, rlm_sqlhpwippool_t *data, int lvl,
 }
 /* handy SQL query tool */
 static int nvp_vquery(unsigned int line, rlm_sqlhpwippool_t *data,
-		      rlm_sql_handle_t *sqlsock, const char *fmt, va_list ap)
+		      rlm_sql_handle_t *sqlsock, char const *fmt, va_list ap)
 {
 	char query[MAX_QUERY_LEN];
 DIAG_OFF(format-nonliteral)
@@ -111,7 +111,7 @@ DIAG_OFF(format-nonliteral)
 DIAG_ON(format-nonliteral)
 	if (rlm_sql_query(&sqlsock, data->sqlinst, query)) {
 		nvp_log(__LINE__, data, L_ERR, "nvp_vquery(): query from line %u: %s",
-			line, (const char *)(data->db->sql_error)(sqlsock, data->sqlinst->config));
+			line, (char const *)(data->db->sql_error)(sqlsock, data->sqlinst->config));
 		return 0;
 	}
 
@@ -120,7 +120,7 @@ DIAG_ON(format-nonliteral)
 
 /* wrapper around nvp_vquery */
 static int nvp_query(unsigned int line, rlm_sqlhpwippool_t *data,
-		    rlm_sql_handle_t *sqlsock, const char *fmt, ...)
+		    rlm_sql_handle_t *sqlsock, char const *fmt, ...)
 {
 	int r;
 	va_list ap;
@@ -143,7 +143,7 @@ static int nvp_finish(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
  *  0 on db error
  *  1 on success */
 static int nvp_select(unsigned int line, rlm_sqlhpwippool_t *data,
-		      rlm_sql_handle_t *sqlsock, const char *fmt, ...)
+		      rlm_sql_handle_t *sqlsock, char const *fmt, ...)
 {
 	va_list ap;
 

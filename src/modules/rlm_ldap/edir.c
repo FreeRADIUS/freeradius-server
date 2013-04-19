@@ -66,7 +66,7 @@ RCSID("$Id$")
  * @param[in] dn to query for.
  * @return 0 on success, and < 0 on error.
  */
-static int ber_encode_request_data(const char *dn, struct berval **request_bv)
+static int ber_encode_request_data(char const *dn, struct berval **request_bv)
 {
 	int err = 0;
 	int rc = 0;
@@ -157,7 +157,7 @@ finish:
  * @param[out] passlen Length of data written to the password buffer.
  * @return 0 on success and < 0 on failure.
  */
-int nmasldap_get_password(LDAP *ld, const char *dn, char *password, size_t *passlen)
+int nmasldap_get_password(LDAP *ld, char const *dn, char *password, size_t *passlen)
 {
 	int err = 0;
 	struct berval *request_bv = NULL;

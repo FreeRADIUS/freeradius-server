@@ -38,7 +38,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 	VALUE_PAIR	*cli;
 	VALUE_PAIR	*pair;
 	int		port = 0;
-	const char	*tls = "";
+	char const	*tls = "";
 
 	if ((cli = pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY)) == NULL)
 		do_cli = 0;
@@ -67,10 +67,10 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
  * Make sure user/pass are clean
  * and then log them
  */
-static int rad_authlog(const char *msg, REQUEST *request, int goodpass)
+static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 {
 	int logit;
-	const char *extra_msg = NULL;
+	char const *extra_msg = NULL;
 	char clean_password[1024];
 	char clean_username[1024];
 	char buf[1024];
@@ -564,7 +564,7 @@ autz_redo:
 		int r, session_type = 0;
 		char		logstr[1024];
 		char		umsg[MAX_STRING_LEN + 1];
-		const char	*user_msg = NULL;
+		char const	*user_msg = NULL;
 
 		tmp = pairfind(request->config_items, PW_SESSION_TYPE, 0, TAG_ANY);
 		if (tmp) {

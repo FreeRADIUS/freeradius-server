@@ -64,7 +64,7 @@ typedef struct dhcp_socket_t {
 	 */
 	fr_ipaddr_t	ipaddr;
 	int		port;
-	const char		*interface;
+	char const		*interface;
 	RADCLIENT_LIST	*clients;
 
 	/*
@@ -72,7 +72,7 @@ typedef struct dhcp_socket_t {
 	 */
 	int		suppress_responses;
 	RADCLIENT	dhcp_client;
-	const char	*src_interface;
+	char const	*src_interface;
 	fr_ipaddr_t     src_ipaddr;
 } dhcp_socket_t;
 
@@ -536,7 +536,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 */
 	cp = cf_pair_find(cs, "broadcast");
 	if (cp) {
-		const char *value = cf_pair_value(cp);
+		char const *value = cf_pair_value(cp);
 		if (value && (strcmp(value, "no") == 0)) {
 			broadcast = 0;
 		}

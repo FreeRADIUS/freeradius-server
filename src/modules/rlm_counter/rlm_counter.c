@@ -60,14 +60,14 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_counter_t {
-	const char *filename;		/* name of the database file */
-	const char *reset;		/* daily, weekly, monthly, never or user defined */
-	const char *key_name;		/* User-Name */
-	const char *count_attribute;	/* Acct-Session-Time */
-	const char *counter_name;	/* Daily-Session-Time */
-	const char *check_name;		/* Daily-Max-Session */
-	const char *reply_name;		/* Session-Timeout */
-	const char *service_type;	/* Service-Type to search for */
+	char const *filename;		/* name of the database file */
+	char const *reset;		/* daily, weekly, monthly, never or user defined */
+	char const *key_name;		/* User-Name */
+	char const *count_attribute;	/* Acct-Session-Time */
+	char const *counter_name;	/* Daily-Session-Time */
+	char const *check_name;		/* Daily-Max-Session */
+	char const *reply_name;		/* Session-Timeout */
+	char const *service_type;	/* Service-Type to search for */
 	
 	int cache_size;
 	uint32_t service_val;
@@ -167,8 +167,8 @@ static rlm_rcode_t add_defaults(rlm_counter_t *inst)
 {
 	datum key_datum;
 	datum time_datum;
-	static const char *default1 = "DEFAULT1";
-	static const char *default2 = "DEFAULT2";
+	static char const *default1 = "DEFAULT1";
+	static char const *default2 = "DEFAULT2";
 
 	DEBUG2("rlm_counter: add_defaults: Start");
 
@@ -331,8 +331,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	int ret;
 	datum key_datum;
 	datum time_datum;
-	const char *default1 = "DEFAULT1";
-	const char *default2 = "DEFAULT2";
+	char const *default1 = "DEFAULT1";
+	char const *default2 = "DEFAULT2";
 
 	cache_size = inst->cache_size;
 

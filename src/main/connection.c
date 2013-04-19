@@ -605,7 +605,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 	fr_connection_t *this;
 	CONF_SECTION *modules;
 	CONF_SECTION *cs;
-	const char *cs_name1, *cs_name2;
+	char const *cs_name1, *cs_name2;
 	time_t now = time(NULL);
 
 	if (!parent || !ctx || !c || !d) return NULL;

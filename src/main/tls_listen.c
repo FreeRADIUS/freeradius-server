@@ -50,7 +50,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 #define PTHREAD_MUTEX_UNLOCK(_x)
 #endif
 
-static void dump_hex(const char *msg, const uint8_t *data, size_t data_len)
+static void dump_hex(char const *msg, uint8_t const *data, size_t data_len)
 {
 	size_t i;
 

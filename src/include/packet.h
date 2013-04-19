@@ -30,10 +30,10 @@ RCSIDH(packet_h, "$Id$")
 extern "C" {
 #endif
 
-int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b);
+int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b);
 int fr_inaddr_any(fr_ipaddr_t *ipaddr);
 void fr_request_from_reply(RADIUS_PACKET *request,
-			     const RADIUS_PACKET *reply);
+			     RADIUS_PACKET const *reply);
 int fr_socket(fr_ipaddr_t *ipaddr, int port);
 int fr_nonblock(int fd);
 

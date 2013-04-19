@@ -37,10 +37,10 @@ RCSID("$Id$")
  * If retval >= siz, truncation occurred.
  */
 size_t
-strlcat(char *dst, const char *src, size_t siz)
+strlcat(char *dst, char const *src, size_t siz)
 {
 	char *d = dst;
-	const char *s = src;
+	char const *s = src;
 	size_t n = siz;
 	size_t dlen;
 

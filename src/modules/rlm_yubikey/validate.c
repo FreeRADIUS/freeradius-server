@@ -110,7 +110,7 @@ yk_error:
 			count++;
 			uri = cf_pair_find_next(servers, uri, "uri");
 		}
-		inst->uris = talloc_zero_array(inst, const char *, count);
+		inst->uris = talloc_zero_array(inst, char const *, count);
 	
 		uri = first;
 		count = 0;

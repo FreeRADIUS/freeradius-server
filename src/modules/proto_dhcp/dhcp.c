@@ -54,7 +54,7 @@ RCSID("$Id$")
 
 /* @todo: this is a hack */
 #  define DEBUG			if (fr_debug_flag && fr_log_fp) fr_printf_log
-void fr_strerror_printf(const char *fmt, ...);
+void fr_strerror_printf(char const *fmt, ...);
 #  define debug_pair(vp)	do { if (fr_debug_flag && fr_log_fp) { \
 					vp_print(fr_log_fp, vp); \
 				     } \
@@ -90,7 +90,7 @@ typedef struct dhcp_option_t {
  *	INADDR_ANY : 68 -> INADDR_BROADCAST : 67	REQUEST
  *	INADDR_BROADCAST : 68 <- SERVER_IP : 67		ACK
  */
-static const char *dhcp_header_names[] = {
+static char const *dhcp_header_names[] = {
 	"DHCP-Opcode",
 	"DHCP-Hardware-Type",
 	"DHCP-Hardware-Address-Length",
@@ -109,7 +109,7 @@ static const char *dhcp_header_names[] = {
 	NULL
 };
 
-static const char *dhcp_message_types[] = {
+static char const *dhcp_message_types[] = {
 	"invalid",
 	"DHCP-Discover",
 	"DHCP-Offer",
@@ -356,7 +356,7 @@ RADIUS_PACKET *fr_dhcp_recv(int sockfd)
 
 	if (fr_debug_flag > 1) {
 		char type_buf[64];
-		const char *name = type_buf;
+		char const *name = type_buf;
 		char src_ip_buf[256], dst_ip_buf[256];
 
 		if ((packet->code >= PW_DHCP_DISCOVER) &&
@@ -403,7 +403,7 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 
 	if (fr_debug_flag > 1) {
 		char type_buf[64];
-		const char *name = type_buf;
+		char const *name = type_buf;
 #ifdef WITH_UDPFROMTO
 		char src_ip_buf[256];
 #endif
@@ -450,11 +450,9 @@ int fr_dhcp_send(RADIUS_PACKET *packet)
 #endif
 }
 
-static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp,
-			   const uint8_t *p, size_t alen);
+static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const *p, size_t alen);
 
-static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv,
-		      const uint8_t *data, size_t data_len)
+static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *data, size_t data_len)
 {
 	const uint8_t *p;
 	VALUE_PAIR *head, **tail, *vp;
@@ -522,8 +520,7 @@ make_tlv:
 /*
  *	Decode ONE value into a VP
  */
-static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp,
-			   const uint8_t *p, size_t alen)
+static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const *p, size_t alen)
 {
 	switch (vp->da->type) {
 	case PW_TYPE_BYTE:
@@ -879,7 +876,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 }
 
 
-static int attr_cmp(const void *one, const void *two)
+static int attr_cmp(void const *one, void const *two)
 {
 	const VALUE_PAIR * const *a = one;
 	const VALUE_PAIR * const *b = two;
@@ -1038,7 +1035,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	uint32_t lvalue, mms;
 	size_t dhcp_size, length;
 #ifndef NDEBUG
-	const char *name;
+	char const *name;
 #  ifdef WITH_UDPFROMTO
 	char src_ip_buf[256];
 #  endif
@@ -1527,7 +1524,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 }
 
 #ifdef SIOCSARP
-int fr_dhcp_add_arp_entry(int fd, const char *interface,
+int fr_dhcp_add_arp_entry(int fd, char const *interface,
 			  VALUE_PAIR *macaddr, VALUE_PAIR *ip)
 {
 	struct sockaddr_in *sin;
@@ -1559,7 +1556,7 @@ int fr_dhcp_add_arp_entry(int fd, const char *interface,
 	return 0;
 }
 #else
-int fr_dhcp_add_arp_entry(UNUSED int fd, UNUSED const char *interface,
+int fr_dhcp_add_arp_entry(UNUSED int fd, UNUSED char const *interface,
 			  UNUSED VALUE_PAIR *macaddr, UNUSED VALUE_PAIR *ip)
 {
 	fr_strerror_printf("Adding ARP entry is unsupported on this system");

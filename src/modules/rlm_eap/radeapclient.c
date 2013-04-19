@@ -43,7 +43,7 @@ extern int sha1_data_problems;
 
 static int retries = 10;
 static float timeout = 3;
-static const char *secret = NULL;
+static char const *secret = NULL;
 static int do_output = 1;
 static int do_summary = 0;
 static int filedone = 0;
@@ -51,7 +51,7 @@ static int totalapp = 0;
 static int totaldeny = 0;
 static char filesecret[256];
 char *radius_dir = NULL;
-const char *progname = "radeapclient";
+char const *progname = "radeapclient";
 /* fr_randctx randctx; */
 
 #ifdef WITH_TLS
@@ -59,7 +59,7 @@ const char *progname = "radeapclient";
 #endif
 
 radlog_dest_t radlog_dest = RADLOG_STDERR;
-const char *radlog_dir = NULL;
+char const *radlog_dir = NULL;
 int debug_flag = 0;
 char password[256];
 
@@ -98,7 +98,7 @@ static void NEVER_RETURNS usage(void)
 	exit(1);
 }
 
-int radlog(int lvl, const char *msg, ...)
+int radlog(int lvl, char const *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -113,7 +113,7 @@ int radlog(int lvl, const char *msg, ...)
 	return r;
 }
 
-int log_debug(const char *msg, ...)
+int log_debug(char const *msg, ...)
 {
 	va_list ap;
 	int r;
@@ -127,7 +127,7 @@ int log_debug(const char *msg, ...)
 }
 
 void radlog_request(UNUSED int lvl, UNUSED int priority,
-		    UNUSED REQUEST *request, const char *msg, ...)
+		    UNUSED REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 
@@ -137,7 +137,7 @@ void radlog_request(UNUSED int lvl, UNUSED int priority,
 	fputc('\n', stderr);
 }
 
-static int getport(const char *name)
+static int getport(char const *name)
 {
 	struct	servent		*svp;
 
@@ -155,7 +155,7 @@ static void debug_packet(RADIUS_PACKET *packet, int direction)
 {
 	VALUE_PAIR *vp;
 	char buffer[1024];
-	const char *received, *from;
+	char const *received, *from;
 	const fr_ipaddr_t *ip;
 	int port;
 
@@ -1125,8 +1125,8 @@ int main(int argc, char **argv)
 	if (force_af == AF_UNSPEC) force_af = AF_INET;
 	req->dst_ipaddr.af = force_af;
 	if (strcmp(argv[1], "-") != 0) {
-		const char *hostname = argv[1];
-		const char *portname = argv[1];
+		char const *hostname = argv[1];
+		char const *portname = argv[1];
 		char buffer[256];
 
 		if (*argv[1] == '[') { /* IPv6 URL encoded */
@@ -1425,9 +1425,9 @@ static int unmap_eapsim_types(RADIUS_PACKET *r)
 
 #include <assert.h>
 
-const char *radius_dir = RADDBDIR;
+char const *radius_dir = RADDBDIR;
 
-int radlog(int lvl, const char *msg, ...)
+int radlog(int lvl, char const *msg, ...)
 {
 	va_list ap;
 	int r;

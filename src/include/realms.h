@@ -41,11 +41,11 @@ typedef struct fr_socket_limit_t {
 } fr_socket_limit_t;
 
 typedef struct home_server {
-	const char	*name;
+	char const	*name;
 
-	const char	*hostname;
-	const char	*server; /* for internal proxying */
-	const char	*parent_server;
+	char const	*hostname;
+	char const	*server; /* for internal proxying */
+	char const	*parent_server;
 
 	fr_ipaddr_t	ipaddr;
 
@@ -57,7 +57,7 @@ typedef struct home_server {
 
 	fr_ipaddr_t	src_ipaddr; /* preferred source IP address */
 
-	const char	*secret;
+	char const	*secret;
 
 	fr_event_t	*ev;
 	struct timeval	when;
@@ -75,8 +75,8 @@ typedef struct home_server {
 	int		state;
 
 	int		ping_check;
-	const char	*ping_user_name;
-	const char	*ping_user_password;
+	char const	*ping_user_name;
+	char const	*ping_user_password;
 
 	int		ping_interval;
 	int		num_pings_to_alive;
@@ -117,13 +117,13 @@ typedef enum home_pool_type_t {
 
 
 typedef struct home_pool_t {
-	const char		*name;
+	char const		*name;
 	home_pool_type_t	type;
 
 	int			server_type;
 	CONF_SECTION		*cs;
 
-	const char		*virtual_server; /* for pre/post-proxy */
+	char const		*virtual_server; /* for pre/post-proxy */
 	
 	home_server		*fallback;
 	int			in_fallback;
@@ -135,7 +135,7 @@ typedef struct home_pool_t {
 
 
 typedef struct _realm {
-	const char		*name;
+	char const		*name;
 
 	int			striprealm;
 
@@ -148,19 +148,19 @@ typedef struct _realm {
 
 int realms_init(CONF_SECTION *config);
 void realms_free(void);
-REALM *realm_find(const char *name); /* name is from a packet */
-REALM *realm_find2(const char *name); /* ... with name taken from realm_find */
+REALM *realm_find(char const *name); /* name is from a packet */
+REALM *realm_find2(char const *name); /* ... with name taken from realm_find */
 
 void home_server_update_request(home_server *home, REQUEST *request);
-home_server *home_server_ldb(const char *realmname, home_pool_t *pool, REQUEST *request);
+home_server *home_server_ldb(char const *realmname, home_pool_t *pool, REQUEST *request);
 home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto);
 #ifdef WITH_COA
-home_server *home_server_byname(const char *name, int type);
+home_server *home_server_byname(char const *name, int type);
 #endif
 #ifdef WITH_STATS
 home_server *home_server_bynumber(int number);
 #endif
-home_pool_t *home_pool_byname(const char *name, int type);
+home_pool_t *home_pool_byname(char const *name, int type);
 
 #ifdef __cplusplus
 }

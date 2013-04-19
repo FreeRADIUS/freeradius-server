@@ -229,7 +229,7 @@ static unsigned long ssl_id_function(void)
 	return (unsigned long) pthread_self();
 }
 
-static void ssl_locking_function(int mode, int n, UNUSED const char *file, UNUSED int line)
+static void ssl_locking_function(int mode, int n, UNUSED char const *file, UNUSED int line)
 {
 	if (mode & CRYPTO_LOCK) {
 		pthread_mutex_lock(&(ssl_mutexes[n]));
@@ -787,14 +787,14 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 
 
 #ifdef WNOHANG
-static uint32_t pid_hash(const void *data)
+static uint32_t pid_hash(void const *data)
 {
 	const thread_fork_t *tf = data;
 
 	return fr_hash(&tf->pid, sizeof(tf->pid));
 }
 
-static int pid_cmp(const void *one, const void *two)
+static int pid_cmp(void const *one, void const *two)
 {
 	const thread_fork_t *a = one;
 	const thread_fork_t *b = two;

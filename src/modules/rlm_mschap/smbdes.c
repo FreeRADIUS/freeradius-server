@@ -154,7 +154,7 @@ static const uchar sbox[8][4][16] = {
 	 {7, 11,  4,  1,  9, 12, 14,  2,  0,  6, 10, 13, 15,  3,  5,  8},
 	 {2,  1, 14,  7,  4, 10,  8, 13, 15, 12,  9,  0,  3,  5,  6, 11}}};
 
-static void permute(char *out, const char *in, const uchar *p, int n)
+static void permute(char *out, char const *in, uchar const *p, int n)
 {
 	int i;
 	for (i=0;i<n;i++)
@@ -283,7 +283,7 @@ static void str_to_key(unsigned char *str,unsigned char *key)
 }
 
 
-void smbhash(unsigned char *out, const unsigned char *in, unsigned char *key)
+void smbhash(unsigned char *out, unsigned char const *in, unsigned char *key)
 {
 	int i;
 	char outb[64];
@@ -315,7 +315,7 @@ void smbhash(unsigned char *out, const unsigned char *in, unsigned char *key)
  *	Converts the password to uppercase, and creates the LM
  *	password hash.
  */
-void smbdes_lmpwdhash(const char *password, uint8_t *lmhash)
+void smbdes_lmpwdhash(char const *password, uint8_t *lmhash)
 {
 	int i;
 	uint8_t p14[14];
@@ -335,8 +335,8 @@ void smbdes_lmpwdhash(const char *password, uint8_t *lmhash)
  *
  *	The win_password MUST be exactly 16 bytes long.
  */
-void smbdes_mschap(const uint8_t win_password[16],
-		 const uint8_t *challenge, uint8_t *response)
+void smbdes_mschap(uint8_t const win_password[16],
+		 uint8_t const *challenge, uint8_t *response)
 {
 	uint8_t p21[21];
 

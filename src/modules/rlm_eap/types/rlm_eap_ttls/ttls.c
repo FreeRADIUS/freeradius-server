@@ -42,8 +42,7 @@ RCSID("$Id$")
 /*
  *	Verify that the diameter packet is valid.
  */
-static int diameter_verify(REQUEST *request,
-			   const uint8_t *data, unsigned int data_len)
+static int diameter_verify(REQUEST *request, uint8_t const *data, unsigned int data_len)
 {
 	uint32_t attr;
 	uint32_t length;
@@ -81,12 +80,14 @@ static int diameter_verify(REQUEST *request,
 		 *	Too short or too long is bad.
 		 */
 		if (length <= (hdr_len - 4)) {
-			RDEBUG2("Tunneled attribute %u is too short (%u < %u) to contain anything useful.", attr, length, hdr_len);
+			RDEBUG2("Tunneled attribute %u is too short (%u < %u) to contain anything useful.", attr,
+				length, hdr_len);
 			return 0;
 		}
 
 		if (length > remaining) {
-			RDEBUG2("Tunneled attribute %u is longer than room remaining in the packet (%u > %u).", attr, length, remaining);
+			RDEBUG2("Tunneled attribute %u is longer than room remaining in the packet (%u > %u).", attr,
+				length, remaining);
 			return 0;
 		}
 
@@ -134,7 +135,7 @@ static int diameter_verify(REQUEST *request,
  *	Convert diameter attributes to our VALUE_PAIR's
  */
 static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
-			       const uint8_t *data, size_t data_len)
+			       uint8_t const *data, size_t data_len)
 {
 	uint32_t	attr;
 	uint32_t	vendor;

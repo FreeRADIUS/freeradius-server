@@ -75,9 +75,9 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-const char *radius_dir = RADDBDIR;
-const char *progname = "radmin";
-const char *radmin_version = "radmin version " RADIUSD_VERSION_STRING
+char const *radius_dir = RADDBDIR;
+char const *progname = "radmin";
+char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
@@ -93,7 +93,7 @@ int debug_flag = 0;
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_log_file = NULL;
-ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED const char *fmt,
+ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
 		    UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)
 {
 	return -1;
@@ -102,9 +102,9 @@ int check_config = FALSE;
 
 static FILE *outputfp = NULL;
 static int echo = FALSE;
-static const char *secret = "testing123";
+static char const *secret = "testing123";
 
-static int fr_domain_socket(const char *path)
+static int fr_domain_socket(char const *path)
 {
 	int sockfd = -1;
 #ifdef HAVE_SYS_UN_H
@@ -172,7 +172,7 @@ static int fr_domain_socket(const char *path)
 	return sockfd;
 }
 
-static int client_socket(const char *server)
+static int client_socket(char const *server)
 {
 	int sockfd, port;
 	fr_ipaddr_t ipaddr;
@@ -232,7 +232,7 @@ static void do_challenge(int sockfd)
 		fflush(stdout);
 	}
 
-	fr_hmac_md5((const uint8_t *) secret, strlen(secret),
+	fr_hmac_md5((uint8_t const *) secret, strlen(secret),
 		    challenge, sizeof(challenge), challenge);
 
 	if (write(sockfd, challenge, sizeof(challenge)) < 0) {
@@ -258,7 +258,7 @@ static int usage(void)
 	exit(1);
 }
 
-static ssize_t run_command(int sockfd, const char *command,
+static ssize_t run_command(int sockfd, char const *command,
 			   char *buffer, size_t bufsize)
 {
 	char *p;
@@ -365,13 +365,13 @@ int main(int argc, char **argv)
 	uint32_t magic, needed;
 	char *line = NULL;
 	ssize_t len, size;
-	const char *file = NULL;
-	const char *name = "radiusd";
+	char const *file = NULL;
+	char const *name = "radiusd";
 	char *p, buffer[65536];
-	const char *input_file = NULL;
+	char const *input_file = NULL;
 	FILE *inputfp = stdin;
-	const char *output_file = NULL;
-	const char *server = NULL;
+	char const *output_file = NULL;
+	char const *server = NULL;
 	
 	char *commands[MAX_COMMANDS];
 	int num_commands = -1;
@@ -476,7 +476,7 @@ int main(int argc, char **argv)
 
 		subcs = NULL;
 		while ((subcs = cf_subsection_find_next(cs, subcs, "listen")) != NULL) {
-			const char *value;
+			char const *value;
 			CONF_PAIR *cp = cf_pair_find(subcs, "type");
 			
 			if (!cp) continue;

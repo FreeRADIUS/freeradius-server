@@ -13,31 +13,23 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/sha1.h>
 
-
-/*
-uint8_t*  text;		pointer to data stream
-int	     text_len;	    length of data stream
-uint8_t*  key;		 pointer to authentication key
-int	     key_len;	     length of authentication key
-uint8_t*  digest;	      caller digest to be filled in
-*/
-
 #ifdef HMAC_SHA1_DATA_PROBLEMS
 unsigned int sha1_data_problems = 0;
 #endif
 
-void
-fr_hmac_sha1(const uint8_t *text, int text_len,
-	       const uint8_t *key, int key_len,
-	       uint8_t *digest)
+/** Calculate HMAC using SHA1
+ *
+ * @param text Pointer to data stream.
+ * @param text_len length of data stream.
+ * @param key Pointer to authentication key.
+ * @param key_len Length of authentication key.
+ * @param digest Caller digest to be filled in.
+ */
+void fr_hmac_sha1(uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len, uint8_t *digest)
 {
 	fr_SHA1_CTX context;
-	uint8_t k_ipad[65];    /* inner padding -
-				      * key XORd with ipad
-				      */
-	uint8_t k_opad[65];    /* outer padding -
-				      * key XORd with opad
-				      */
+	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
+	uint8_t k_opad[65];    /* outer padding - key XORd with opad */
 	uint8_t tk[20];
 	int i;
 	/* if key is longer than 64 bytes reset it to key=SHA1(key) */

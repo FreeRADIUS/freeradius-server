@@ -35,8 +35,8 @@ RCSID("$Id$")
  *	protocol.
  */
 typedef struct rlm_eap_gtc_t {
-	const char	*challenge;
-	const char	*auth_type_name;
+	char const	*challenge;
+	char const	*auth_type_name;
 	int		auth_type;
 } rlm_eap_gtc_t;
 

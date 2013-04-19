@@ -50,7 +50,7 @@ H_Init(HMAC_CTX *ctx)
 }
 
 static void
-H_Update(HMAC_CTX *ctx, const uint8_t *data, int len)
+H_Update(HMAC_CTX *ctx, uint8_t const *data, int len)
 {
     HMAC_Update(ctx, data, len);
 }
@@ -66,7 +66,7 @@ H_Final(HMAC_CTX *ctx, uint8_t *digest)
 
 /* a counter-based KDF based on NIST SP800-108 */
 static void
-eap_pwd_kdf(uint8_t *key, int keylen, const char *label, int labellen,
+eap_pwd_kdf(uint8_t *key, int keylen, char const *label, int labellen,
 	    uint8_t *result, int resultbitlen)
 {
     HMAC_CTX hctx;
@@ -86,7 +86,7 @@ eap_pwd_kdf(uint8_t *key, int keylen, const char *label, int labellen,
 	    HMAC_Update(&hctx, digest, mdlen);
 	}
 	HMAC_Update(&hctx, (uint8_t *) &i, sizeof(uint16_t));
-	HMAC_Update(&hctx, (const uint8_t *)label, labellen);
+	HMAC_Update(&hctx, (uint8_t const *)label, labellen);
 	HMAC_Update(&hctx, (uint8_t *) &L, sizeof(uint16_t));
 	HMAC_Final(&hctx, digest, &mdlen);
 	if ((len + (int) mdlen) > resultbytelen) {
@@ -672,7 +672,7 @@ compute_keys (pwd_session_t *sess, uint8_t *peer_confirm,
 
     /* stretch the mk with the session-id to get MSK | EMSK */
     eap_pwd_kdf(mk, SHA256_DIGEST_LENGTH,
-		(const char *)session_id, SHA256_DIGEST_LENGTH+1,
+		(char const *)session_id, SHA256_DIGEST_LENGTH+1,
 		msk_emsk, 1024);  /* it's bits, ((64 + 64) * 8) */
 
     memcpy(msk, msk_emsk, 64);

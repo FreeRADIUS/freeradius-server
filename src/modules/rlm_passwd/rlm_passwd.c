@@ -62,7 +62,7 @@ void printpw(struct mypasswd *pw, int nfields){
 #endif
 
 
-static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, size_t* len)
+static struct mypasswd * mypasswd_malloc(char const* buffer, int nfields, size_t* len)
 {
 	struct mypasswd *t;
 	/* reserve memory for (struct mypasswd) + listflag (nfields * sizeof (char*)) +
@@ -74,7 +74,7 @@ static struct mypasswd * mypasswd_malloc(const char* buffer, int nfields, size_t
   	return (t);
 }
 
-static int string_to_entry(const char* string, int nfields, char delimiter,
+static int string_to_entry(char const* string, int nfields, char delimiter,
 			   struct mypasswd *passwd, size_t bufferlen)
 {
 	char *str;
@@ -120,7 +120,7 @@ static void destroy_password (struct mypasswd * pass)
 }
 
 
-static unsigned int hash(const char * username, unsigned int tablesize)
+static unsigned int hash(char const * username, unsigned int tablesize)
 {
 	int h=1;
 	while (*username) {
@@ -154,7 +154,7 @@ static void release_ht(struct hashtable * ht){
 	free(ht);
 }
 
-static struct hashtable * build_hash_table (const char * file, int nfields,
+static struct hashtable * build_hash_table (char const * file, int nfields,
 					    int keyfield, int islist, int tablesize, int ignorenis, char delimiter)
 {
 	struct hashtable* ht;
@@ -496,7 +496,7 @@ static int mod_detach (void *instance) {
 #undef inst
 }
 
-static void addresult (struct passwd_instance * inst, REQUEST *request, TALLOC_CTX *ctx, VALUE_PAIR **vps, struct mypasswd * pw, char when, const char *listname)
+static void addresult (struct passwd_instance * inst, REQUEST *request, TALLOC_CTX *ctx, VALUE_PAIR **vps, struct mypasswd * pw, char when, char const *listname)
 {
 	int i;
 	VALUE_PAIR *vp;

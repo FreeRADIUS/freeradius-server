@@ -32,7 +32,7 @@ RCSID("$Id$")
 #include <freeradius-devel/conf.h>
 #include <freeradius-devel/radsniff.h>
 
-static const char *radius_secret = "testing123";
+static char const *radius_secret = "testing123";
 static VALUE_PAIR *filter_vps = NULL;
 
 static int do_sort = 0;
@@ -56,9 +56,9 @@ static rbtree_t *request_tree = NULL;
 static pcap_dumper_t *out = NULL;
 static RADIUS_PACKET *nullpacket = NULL;
 
-typedef int (*rbcmp)(const void *, const void *);
+typedef int (*rbcmp)(void const *, void const *);
 
-static const char *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
+static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
@@ -180,7 +180,7 @@ static void sort(RADIUS_PACKET *packet)
 }
 
 #define USEC 1000000
-static void tv_sub(const struct timeval *end, const struct timeval *start,
+static void tv_sub(struct timeval const *end, struct timeval const *start,
 		   struct timeval *elapsed)
 {
 	elapsed->tv_sec = end->tv_sec - start->tv_sec;
@@ -199,7 +199,7 @@ static void tv_sub(const struct timeval *end, const struct timeval *start,
 	}
 }
 
-static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, const uint8_t *data)
+static void got_packet(UNUSED uint8_t *args, struct pcap_pkthdr const*header, uint8_t const *data)
 {
 
 	static int count = 1;			/* Packets seen */
@@ -230,14 +230,14 @@ static void got_packet(UNUSED uint8_t *args, const struct pcap_pkthdr *header, c
 
 	if ((data[0] == 2) && (data[1] == 0) &&
 	    (data[2] == 0) && (data[3] == 0)) {
-		ip = (const struct ip_header*) (data + 4);
+		ip = (struct ip_header const *) (data + 4);
 
 	} else {
-		ip = (const struct ip_header*)(data + size_ethernet);
+		ip = (struct ip_header const *)(data + size_ethernet);
 	}
 	
-	udp = (const struct udp_header*)(((const uint8_t *) ip) + size_ip);
-	payload = (const uint8_t *)(((const uint8_t *) udp) + size_udp);
+	udp = (struct udp_header const *)(((uint8_t const *) ip) + size_ip);
+	payload = (uint8_t const *)(((uint8_t const *) udp) + size_udp);
 
 	packet = rad_alloc(NULL, 0);
 	if (!packet) {
@@ -388,8 +388,8 @@ static void NEVER_RETURNS usage(int status)
 
 int main(int argc, char *argv[])
 {
-	const char *from_dev = NULL;			/* Capture from device */
-	const char *from_file = NULL;			/* Read from pcap file */
+	char const *from_dev = NULL;			/* Capture from device */
+	char const *from_file = NULL;			/* Read from pcap file */
 	int from_stdin = 0;				/* Read from stdin */
 	
 	pcap_t *in = NULL;				/* PCAP input handle */
@@ -412,7 +412,7 @@ int main(int argc, char *argv[])
 
 	int opt;
 	FR_TOKEN parsecode;
-	const char *radius_dir = RADIUS_DIR;
+	char const *radius_dir = RADIUS_DIR;
 	
 	fr_debug_flag = 2;
 	log_dst = stdout;

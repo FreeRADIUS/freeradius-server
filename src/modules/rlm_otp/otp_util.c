@@ -79,9 +79,7 @@ void otp_async_challenge(char challenge[OTP_MAX_CHALLENGE_LEN + 1],
 /** Guaranteed initialization
  *
  */
-void _otp_pthread_mutex_init(pthread_mutex_t *mutexp,
-			     const pthread_mutexattr_t *attr,
-			     const char *caller)
+void _otp_pthread_mutex_init(pthread_mutex_t *mutexp, pthread_mutexattr_t const *attr, char const *caller)
 {
 	int rc;
 
@@ -97,7 +95,7 @@ void _otp_pthread_mutex_init(pthread_mutex_t *mutexp,
 /** Guaranteed lock
  *
  */
-void _otp_pthread_mutex_lock(pthread_mutex_t *mutexp, const char *caller)
+void _otp_pthread_mutex_lock(pthread_mutex_t *mutexp, char const *caller)
 {
 	int rc;
 
@@ -113,7 +111,7 @@ void _otp_pthread_mutex_lock(pthread_mutex_t *mutexp, const char *caller)
 /** Guaranteed trylock
  *
  */
-int _otp_pthread_mutex_trylock(pthread_mutex_t *mutexp, const char *caller)
+int _otp_pthread_mutex_trylock(pthread_mutex_t *mutexp, char const *caller)
 {
 	int rc;
 
@@ -131,7 +129,7 @@ int _otp_pthread_mutex_trylock(pthread_mutex_t *mutexp, const char *caller)
 /** Guaranteed unlock
  *
  */
-void _otp_pthread_mutex_unlock(pthread_mutex_t *mutexp, const char *caller)
+void _otp_pthread_mutex_unlock(pthread_mutex_t *mutexp, char const *caller)
 {
 	int rc;
 

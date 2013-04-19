@@ -80,8 +80,8 @@ typedef enum rlm_components {
  * attributes.
  */
 typedef struct section_type_value_t {
-	const char      *section;	//!< Section name e.g. "Authorize".
-	const char      *typename;	//!< Type name e.g. "Auth-Type".
+	char const      *section;	//!< Section name e.g. "Authorize".
+	char const      *typename;	//!< Type name e.g. "Auth-Type".
 	int	     attr;		//!< Attribute number.
 } section_type_value_t;
 
@@ -152,7 +152,7 @@ typedef int (*detach_t)(void *instance);
  */
 typedef struct module_t {
 	uint32_t 	magic;	//!< Used to validate module struct.
-	const char	*name;	//!< The name of the module (without rlm_
+	char const	*name;	//!< The name of the module (without rlm_
 				//!< prefix).
 	int		type;	//!< One or more of the RLM_TYPE_* constants.
 	size_t		inst_size;	//!< Size of the instance data

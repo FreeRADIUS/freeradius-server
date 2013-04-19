@@ -31,7 +31,7 @@ RCSID("$Id$")
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_exec_t {
-	const char	*xlat_name;
+	char const	*xlat_name;
 	int		bare;
 	int		wait;
 	char		*program;
@@ -72,7 +72,7 @@ static const CONF_PARSER module_config[] = {
  *	Do xlat of strings.
  */
 static size_t exec_xlat(void *instance, REQUEST *request,
-			const char *fmt, char *out, size_t outlen)
+			char const *fmt, char *out, size_t outlen)
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
@@ -107,15 +107,15 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 }
 
 
-static const char special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
+static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
 
 /*
  *	Escape special characters
  */
-static size_t shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *inst)
+static size_t shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *inst)
 {
 	char *q, *end;
-	const char *p;
+	char const *p;
 
 	q = out;
 	end = out + outlen;
@@ -147,7 +147,7 @@ static size_t shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, co
  */
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
-	const char *p;
+	char const *p;
 	rlm_exec_t	*inst = instance;
 
 	inst->xlat_name = cf_section_name2(conf);

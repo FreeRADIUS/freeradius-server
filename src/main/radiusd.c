@@ -55,17 +55,17 @@ RCSID("$Id$")
 /*
  *  Global variables.
  */
-const char *progname = NULL;
-const char *radius_dir = NULL;
-const char *radacct_dir = NULL;
-const char *radlog_dir = NULL;
-const char *radlib_dir = NULL;
+char const *progname = NULL;
+char const *radius_dir = NULL;
+char const *radacct_dir = NULL;
+char const *radlog_dir = NULL;
+char const *radlib_dir = NULL;
 int log_stripped_names;
 int debug_flag = 0;
 int check_config = FALSE;
 int memory_report = FALSE;
 
-const char *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
+char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
@@ -88,7 +88,7 @@ static void sig_hup (int);
 #endif
 
 #ifdef WITH_VERIFY_PTR
-static void die_horribly(const char *reason)
+static void die_horribly(char const *reason)
 {
 	ERROR("talloc abort: %s\n", reason);
 	abort();

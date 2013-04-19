@@ -52,7 +52,7 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static rlm_rcode_t str2rcode(const char *s)
+static rlm_rcode_t str2rcode(char const *s)
 {
 	if(!strcasecmp(s, "reject"))
 		return RLM_MODULE_REJECT;

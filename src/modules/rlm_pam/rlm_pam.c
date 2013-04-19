@@ -48,7 +48,7 @@ RCSID("$Id$")
 #endif
 
 typedef struct rlm_pam_t {
-	const char *pam_auth_name;
+	char const *pam_auth_name;
 } rlm_pam_t;
 
 static const CONF_PARSER module_config[] = {
@@ -72,15 +72,12 @@ static const CONF_PARSER module_config[] = {
  *************************************************************************/
 
 typedef struct my_PAM {
-  const char *username;
-  const char *password;
+  char const *username;
+  char const *password;
   int	 error;
 } my_PAM;
 
-static int PAM_conv (int num_msg,
-		     const struct pam_message **msg,
-		     struct pam_response **resp,
-		     void *appdata_ptr) {
+static int PAM_conv(int num_msg, struct pam_message const **msg, struct pam_response **resp, void *appdata_ptr) {
   int count;
   struct pam_response *reply;
   my_PAM *pam_config = (my_PAM *) appdata_ptr;
@@ -140,7 +137,7 @@ static int PAM_conv (int num_msg,
  * allows you to have multiple authentication types (i.e. multiple
  * files associated with radius in /etc/pam.d)
  */
-static int pam_pass(const char *name, const char *passwd, const char *pamauth)
+static int pam_pass(char const *name, char const *passwd, char const *pamauth)
 {
     pam_handle_t *pamh=NULL;
     int retval;
@@ -198,7 +195,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	VALUE_PAIR *pair;
 	rlm_pam_t *data = (rlm_pam_t *) instance;
 
-	const char *pam_auth_string = data->pam_auth_name;
+	char const *pam_auth_string = data->pam_auth_name;
 
 	/*
 	 *	We can only authenticate user requests which HAVE

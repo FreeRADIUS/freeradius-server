@@ -55,13 +55,13 @@ static void tls_server_conf_free(fr_tls_server_conf_t *conf);
 /* record */
 static void 		record_init(record_t *buf);
 static void 		record_close(record_t *buf);
-static unsigned int 	record_plus(record_t *buf, const void *ptr,
+static unsigned int 	record_plus(record_t *buf, void const *ptr,
 				    unsigned int size);
 static unsigned int 	record_minus(record_t *buf, void *ptr,
 				     unsigned int size);
 
 #ifdef PSK_MAX_IDENTITY_LEN
-static unsigned int psk_server_callback(SSL *ssl, const char *identity,
+static unsigned int psk_server_callback(SSL *ssl, char const *identity,
 					unsigned char *psk,
 					unsigned int max_psk_len)
 {
@@ -85,7 +85,7 @@ static unsigned int psk_server_callback(SSL *ssl, const char *identity,
 	return fr_hex2bin(conf->psk_password, psk, psk_len);
 }
 
-static unsigned int psk_client_callback(SSL *ssl, UNUSED const char *hint,
+static unsigned int psk_client_callback(SSL *ssl, UNUSED char const *hint,
 					char *identity, unsigned int max_identity_len,
 					unsigned char *psk, unsigned int max_psk_len)
 {
@@ -271,13 +271,13 @@ tls_session_t *tls_new_session(fr_tls_server_conf_t *conf, REQUEST *request,
 /*
  *	Print out some text describing the error.
  */
-static int int_ssl_check(REQUEST *request, SSL *s, int ret, const char *text)
+static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 {
 	int e;
 	unsigned long l;
 
 	if ((l = ERR_get_error()) != 0) {
-		const char *p = ERR_error_string(l, NULL);
+		char const *p = ERR_error_string(l, NULL);
 
 		if (request && p) RDEBUGE("SSL says: %s", p);
 	}
@@ -518,7 +518,7 @@ static void record_close(record_t *rec)
  *	Copy data to the intermediate buffer, before we send
  *	it somewhere.
  */
-static unsigned int record_plus(record_t *rec, const void *ptr,
+static unsigned int record_plus(record_t *rec, void const *ptr,
 				unsigned int size)
 {
 	unsigned int added = MAX_RECORD_SIZE - rec->used;
@@ -558,8 +558,8 @@ static unsigned int record_minus(record_t *rec, void *ptr,
 
 void tls_session_information(tls_session_t *tls_session)
 {
-	const char *str_write_p, *str_version, *str_content_type = "";
-	const char *str_details1 = "", *str_details2= "";
+	char const *str_write_p, *str_version, *str_content_type = "";
+	char const *str_details1 = "", *str_details2= "";
 	REQUEST *request;
 
 	/*
@@ -848,12 +848,12 @@ static CONF_PARSER tls_server_config[] = {
 #endif
 #endif
 
-	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (const void *) cache_config },
+	{ "cache", PW_TYPE_SUBSECTION, 0, NULL, (void const *) cache_config },
 
-	{ "verify", PW_TYPE_SUBSECTION, 0, NULL, (const void *) verify_config },
+	{ "verify", PW_TYPE_SUBSECTION, 0, NULL, (void const *) verify_config },
 
 #ifdef HAVE_OPENSSL_OCSP_H
-	{ "ocsp", PW_TYPE_SUBSECTION, 0, NULL, (const void *) ocsp_config },
+	{ "ocsp", PW_TYPE_SUBSECTION, 0, NULL, (void const *) ocsp_config },
 #endif
 
 	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
@@ -1161,7 +1161,7 @@ static SSL_SESSION *cbtls_get_session(SSL *ssl,
 
 		/* openssl mutates &p */
 		p = sess_data;
-		sess = d2i_SSL_SESSION(NULL, (const unsigned char **) &p, st.st_size);
+		sess = d2i_SSL_SESSION(NULL, (unsigned char const **)(unsigned char const * const *) &p, st.st_size);
 
 		if (!sess) {
 			DEBUG2("  SSL: OpenSSL failed to load persisted session: %s", ERR_error_string(ERR_get_error(), NULL));
@@ -1424,7 +1424,7 @@ ocsp_end:
 /*
  *	For creating certificate attributes.
  */
-static const char *cert_attr_names[6][2] = {
+static char const *cert_attr_names[6][2] = {
   { "TLS-Client-Cert-Serial",		"TLS-Cert-Serial" },
   { "TLS-Client-Cert-Expiration",	"TLS-Cert-Expiration" },
   { "TLS-Client-Cert-Subject",		"TLS-Cert-Subject" },
@@ -1632,7 +1632,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	}
 
 	if (!my_ok) {
-		const char *p = X509_verify_cert_error_string(err);
+		char const *p = X509_verify_cert_error_string(err);
 		ERROR("--> verify error:num=%d:%s\n",err, p);
 		RDEBUGE("SSL says error %d : %s", err, p);
 		return my_ok;
@@ -1804,7 +1804,7 @@ static X509_STORE *init_revocation_store(fr_tls_server_conf_t *conf)
 
 #if OPENSSL_VERSION_NUMBER >= 0x0090800fL
 #ifndef OPENSSL_NO_ECDH
-static int set_ecdh_curve(SSL_CTX *ctx, const char *ecdh_curve)
+static int set_ecdh_curve(SSL_CTX *ctx, char const *ecdh_curve)
 {
 	int      nid;
 	EC_KEY  *ecdh;
@@ -1913,7 +1913,7 @@ static SSL_CTX *init_tls_ctx(fr_tls_server_conf_t *conf, int client)
 		 * for our special string which indicates we should get the password
 		 * programmatically.
 		 */
-		const char* special_string = "Apple:UseCertAdmin";
+		char const* special_string = "Apple:UseCertAdmin";
 		if (strncmp(conf->private_key_password,
 					special_string,
 					strlen(special_string)) == 0)

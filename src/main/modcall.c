@@ -47,7 +47,7 @@ static modcallable *do_compile_modgroup(modcallable *,
 struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
-	const char *name;
+	char const *name;
 	enum { MOD_SINGLE = 1, MOD_GROUP, MOD_LOAD_BALANCE, MOD_REDUNDANT_LOAD_BALANCE,
 #ifdef WITH_UNLANG
 	       MOD_IF, MOD_ELSE, MOD_ELSIF, MOD_UPDATE, MOD_SWITCH, MOD_CASE,
@@ -79,7 +79,7 @@ typedef struct {
 
 typedef struct {
 	modcallable mc;
-	const char *ref_name;
+	char const *ref_name;
 	CONF_SECTION *ref_cs;
 } modref;
 
@@ -180,7 +180,7 @@ const FR_NAME_NUMBER mod_rcode_table[] = {
 static int compile_action(modcallable *c, CONF_PAIR *cp)
 {
 	int action;
-	const char *attr, *value;
+	char const *attr, *value;
 
 	attr = cf_pair_attr(cp);
 	value = cf_pair_value(cp);
@@ -232,7 +232,7 @@ static int compile_action(modcallable *c, CONF_PAIR *cp)
 }
 
 /* Some short names for debugging output */
-static const char * const comp2str[] = {
+static char const * const comp2str[] = {
 	"authenticate",
 	"authorize",
 	"preacct",
@@ -344,7 +344,7 @@ static int default_component_results[RLM_COMPONENT_COUNT] = {
 };
 
 
-static const char *group_name[] = {
+static char const *group_name[] = {
 	"",
 	"single",
 	"group",
@@ -365,7 +365,7 @@ static const char *group_name[] = {
 	"xlat"
 };
 
-static const char *modcall_spaces = "                                                                ";
+static char const *modcall_spaces = "                                                                ";
 
 #define MODCALL_STACK_MAX (32)
 
@@ -459,7 +459,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 */
 		if ((child->type == MOD_IF) || (child->type == MOD_ELSIF)) {
 			int condition = TRUE;
-			const char *p = child->name;
+			char const *p = child->name;
 			modgroup *g;
 
 			g = mod_callabletogroup(child);
@@ -607,7 +607,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	
 		if (child->type == MOD_REFERENCE) {
 			modref *mr = mod_callabletoref(child);
-			const char *server = request->server;
+			char const *server = request->server;
 
 			if (server == mr->ref_name) {
 				RDEBUGW("Suppressing recursive call to server %s", server);
@@ -972,7 +972,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 
 #if 0
-static const char *action2str(int action)
+static char const *action2str(int action)
 {
 	static char buf[32];
 	if(action==MOD_ACTION_RETURN)
@@ -1425,7 +1425,7 @@ defaultactions[RLM_COMPONENT_COUNT][GROUPTYPE_COUNT][RLM_MODULE_NUMCODES] =
 
 #ifdef WITH_UNLANG
 static modcallable *do_compile_modupdate(modcallable *parent, UNUSED int component,
-					 CONF_SECTION *cs, const char *name2)
+					 CONF_SECTION *cs, char const *name2)
 {
 	int rcode;
 	modgroup *g;
@@ -1492,7 +1492,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED int compone
 	     ci != NULL;
 	     ci=cf_item_find_next(cs, ci)) {
 		CONF_SECTION *subcs;
-		const char *name1, *name2;
+		char const *name1, *name2;
 
 		if (!cf_item_is_section(ci)) {
 			if (!cf_item_is_pair(ci)) continue;
@@ -1529,7 +1529,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED int compone
 
 static modcallable *do_compile_modforeach(modcallable *parent,
 					  UNUSED int component, CONF_SECTION *cs,
-					  const char *name2)
+					  char const *name2)
 {
 	modcallable *csingle;
 
@@ -1567,9 +1567,9 @@ static modcallable *do_compile_modbreak(modcallable *parent, UNUSED int componen
 
 static modcallable *do_compile_modserver(modcallable *parent,
 					 int component, CONF_ITEM *ci,
-					 const char *name,
+					 char const *name,
 					 CONF_SECTION *cs,
-					 const char *server)
+					 char const *server)
 {
 	modcallable *csingle;
 	CONF_SECTION *subcs;
@@ -1602,7 +1602,7 @@ static modcallable *do_compile_modserver(modcallable *parent,
 }
 
 static modcallable *do_compile_modxlat(modcallable *parent,
-				       int component, const char *fmt)
+				       int component, char const *fmt)
 {
 	modcallable *csingle;
 	modxlat *mx;
@@ -1636,7 +1636,7 @@ static modcallable *do_compile_modxlat(modcallable *parent,
 /*
  *	redundant, etc. can refer to modules or groups, but not much else.
  */
-static int all_children_are_modules(CONF_SECTION *cs, const char *name)
+static int all_children_are_modules(CONF_SECTION *cs, char const *name)
 {
 	CONF_ITEM *ci;
 
@@ -1652,7 +1652,7 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 		 */
 		if (cf_item_is_section(ci)) {
 			CONF_SECTION *subcs = cf_itemtosection(ci);
-			const char *name1 = cf_section_name1(subcs);
+			char const *name1 = cf_section_name1(subcs);
 
 			if ((strcmp(name1, "if") == 0) ||
 			    (strcmp(name1, "else") == 0) ||
@@ -1687,16 +1687,16 @@ static int all_children_are_modules(CONF_SECTION *cs, const char *name)
 static modcallable *do_compile_modsingle(modcallable *parent,
 					 int component, CONF_ITEM *ci,
 					 int grouptype,
-					 const char **modname)
+					 char const **modname)
 {
-	const char *modrefname;
+	char const *modrefname;
 	modsingle *single;
 	modcallable *csingle;
 	module_instance_t *this;
 	CONF_SECTION *cs, *subcs, *modules;
 
 	if (cf_item_is_section(ci)) {
-		const char *name2;
+		char const *name2;
 
 		cs = cf_itemtosection(ci);
 		modrefname = cf_section_name1(cs);
@@ -2001,7 +2001,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 		/*
 		 *	Try to load the optional module.
 		 */
-		const char *realname = modrefname;
+		char const *realname = modrefname;
 		if (realname[0] == '-') realname++;
 
 		/*
@@ -2153,7 +2153,7 @@ static modcallable *do_compile_modsingle(modcallable *parent,
 
 modcallable *compile_modsingle(modcallable *parent,
 			       int component, CONF_ITEM *ci,
-			       const char **modname)
+			       char const **modname)
 {
 	modcallable *ret = do_compile_modsingle(parent, component, ci,
 						GROUPTYPE_SIMPLE,
@@ -2220,7 +2220,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 		 *	to modules with updated return codes.
 		 */
 		if (cf_item_is_section(ci)) {
-			const char *junk = NULL;
+			char const *junk = NULL;
 			modcallable *single;
 			CONF_SECTION *subcs = cf_itemtosection(ci);
 
@@ -2238,7 +2238,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			continue;
 
 		} else {
-			const char *attr, *value;
+			char const *attr, *value;
 			CONF_PAIR *cp = cf_itemtopair(ci);
 
 			attr = cf_pair_attr(cp);
@@ -2251,7 +2251,7 @@ static modcallable *do_compile_modgroup(modcallable *parent,
 			 */
 			if (!value) {
 				modcallable *single;
-				const char *junk = NULL;
+				char const *junk = NULL;
 
 				single = do_compile_modsingle(c,
 							      component,
@@ -2314,7 +2314,7 @@ modcallable *compile_modgroup(modcallable *parent,
 }
 
 void add_to_modcallable(modcallable **parent, modcallable *this,
-			int component, const char *name)
+			int component, char const *name)
 {
 	modgroup *g;
 

@@ -117,7 +117,7 @@ otp_pwe_init(void)
  * Returns 0 for "no supported password present", or the
  * password encoding type.
  */
-otp_pwe_t otp_pwe_present(const REQUEST *request)
+otp_pwe_t otp_pwe_present(REQUEST const *request)
 {
 	unsigned i;
 

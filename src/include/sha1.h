@@ -16,10 +16,10 @@ typedef struct {
     uint8_t buffer[64];
 } fr_SHA1_CTX;
 
-void fr_SHA1Transform(uint32_t state[5], const uint8_t buffer[64]);
-void fr_SHA1Init(fr_SHA1_CTX* context);
-void fr_SHA1Update(fr_SHA1_CTX* context, const uint8_t* data, unsigned int len);
-void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX* context);
+void fr_SHA1Transform(uint32_t state[5], uint8_t const buffer[64]);
+void fr_SHA1Init(fr_SHA1_CTX *context);
+void fr_SHA1Update(fr_SHA1_CTX *context, uint8_t const *data, size_t len);
+void fr_SHA1Final(uint8_t digest[20], fr_SHA1_CTX *context);
 
 /*
  * this version implements a raw SHA1 transform, no length is appended,

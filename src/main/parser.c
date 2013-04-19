@@ -43,7 +43,7 @@ RCSID("$Id$")
 #endif
 #endif
 
-static size_t cond_sprint_string(char *buffer, size_t bufsize, const char *str, FR_TOKEN type)
+static size_t cond_sprint_string(char *buffer, size_t bufsize, char const *str, FR_TOKEN type)
 {
 	char c;
 	const char *p = str;
@@ -120,7 +120,7 @@ static size_t cond_sprint_string(char *buffer, size_t bufsize, const char *str, 
 	return q - buffer;
 }
 
-size_t fr_cond_sprint(char *buffer, size_t bufsize, const fr_cond_t *c)
+size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c)
 {
 	size_t len;
 	char *p = buffer;
@@ -190,8 +190,8 @@ next:
 DIAG_ON(unused-function)
 
 
-static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, const char *start, char **out,
-					 FR_TOKEN *op, const char **error)
+static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, char **out,
+					 FR_TOKEN *op, char const **error)
 {
 	const char *p = start;
 	char *q;
@@ -267,11 +267,11 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, const char *start, cha
 	return -1;
 }
 
-static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char **out,
-				       FR_TOKEN *op, const char **error)
+static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char **out,
+				       FR_TOKEN *op, char const **error)
 {
 	size_t len;
-	const char *p = start;
+	char const *p = start;
 
 	if ((*p == '"') || (*p == '\'') || (*p == '`') || (*p == '/')) {
 		return condition_tokenize_string(ctx, start, out, op, error);
@@ -336,7 +336,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char 
  *  @param[out] error the parse error (if any)
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace, fr_cond_t **pcond, const char **error)
+static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace, fr_cond_t **pcond, char const **error)
 {
 	ssize_t slen;
 	const char *p = start;
@@ -695,7 +695,7 @@ done:
  *  @param[out] error the parse error (if any)
  *  @return length of the string skipped, or when negative, the offset to the offending error
  */
-ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, const char *start, fr_cond_t **head, const char **error)
+ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **head, char const **error)
 {
 	return condition_tokenize(ctx, start, FALSE, head, error);
 }

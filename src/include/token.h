@@ -68,23 +68,23 @@ typedef enum fr_token_t {
 #define	T_EQEND		(T_OP_CMP_EQ + 1)
 
 typedef struct FR_NAME_NUMBER {
-	const char	*name;
+	char const	*name;
 	int		number;
 } FR_NAME_NUMBER;
 
 extern const FR_NAME_NUMBER fr_tokens[];
 
-int fr_str2int(const FR_NAME_NUMBER *table, const char *name, int def);
-int fr_substr2int(const FR_NAME_NUMBER *table, const char *name, int def, int len);
-const char *fr_int2str(const FR_NAME_NUMBER *table, int number,
-			 const char *def);
+int fr_str2int(FR_NAME_NUMBER const *table, char const *name, int def);
+int fr_substr2int(FR_NAME_NUMBER const *table, char const *name, int def, int len);
+char const *fr_int2str(FR_NAME_NUMBER const *table, int number,
+			 char const *def);
 
 
-int		getword (const char **ptr, char *buf, int buflen);
-int		getbareword (const char **ptr, char *buf, int buflen);
-FR_TOKEN	gettoken(const char **ptr, char *buf, int buflen);
-FR_TOKEN	getstring(const char **ptr, char *buf, int buflen);
-const char	*fr_token_name(int);
+int		getword (char const **ptr, char *buf, int buflen);
+int		getbareword (char const **ptr, char *buf, int buflen);
+FR_TOKEN	gettoken(char const **ptr, char *buf, int buflen);
+FR_TOKEN	getstring(char const **ptr, char *buf, int buflen);
+char const	*fr_token_name(int);
 
 #ifdef __cplusplus
 }

@@ -155,7 +155,7 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *cp,
  *	       db
  *
  *************************************************************************/
-static const char *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static char const *sql_error(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	static char	msg='\0';
 /*
@@ -376,7 +376,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 
@@ -581,7 +581,7 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	      be discarded.
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 

@@ -77,10 +77,10 @@ static fr_protocol_t master_listen[RAD_LISTEN_MAX];
  *	Xlat for %{listen:foo}
  */
 static size_t xlat_listen(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out,
+		       char const *fmt, char *out,
 		       size_t outlen)
 {
-	const char *value = NULL;
+	char const *value = NULL;
 	CONF_PAIR *cp;
 
 	if (!fmt || !out || (outlen < 1)) return 0;
@@ -105,7 +105,7 @@ static size_t xlat_listen(UNUSED void *instance, REQUEST *request,
  *	Find a per-socket client.
  */
 RADCLIENT *client_listener_find(rad_listen_t *listener,
-				const fr_ipaddr_t *ipaddr, int src_port)
+				fr_ipaddr_t const *ipaddr, int src_port)
 {
 #ifdef WITH_DYNAMIC_CLIENTS
 	int rcode;
@@ -687,11 +687,11 @@ static int dual_tcp_accept(rad_listen_t *listener)
 /*
  *	This function is stupid and complicated.
  */
-int common_socket_print(const rad_listen_t *this, char *buffer, size_t bufsize)
+int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 {
 	size_t len;
 	listen_socket_t *sock = this->data;
-	const char *name = master_listen[this->type].name;
+	char const *name = master_listen[this->type].name;
 
 #define FORWARD len = strlen(buffer); if (len >= (bufsize + 1)) return 0;buffer += len;bufsize -= len
 #define ADDSTRING(_x) strlcpy(buffer, _x, bufsize);FORWARD
@@ -1026,7 +1026,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	else don't.
 	 */
 	if (cf_pair_find(cs, "interface")) {
-		const char *value;
+		char const *value;
 		CONF_PAIR *cp = cf_pair_find(cs, "interface");
 
 		rad_assert(cp != NULL);
@@ -1049,7 +1049,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			   "System does not support broadcast sockets.  Delete this line from the configuration file.");
 		return -1;
 #else
-		const char *value;
+		char const *value;
 		CONF_PAIR *cp = cf_pair_find(cs, "broadcast");
 
 		if (this->type != RAD_LISTEN_DHCP) {
@@ -2008,7 +2008,7 @@ static int listen_bind(rad_listen_t *this)
 #define proto_for_port "udp"
 #define sock_type SOCK_DGRAM
 #else
-	const char *proto_for_port = "udp";
+	char const *proto_for_port = "udp";
 	int sock_type = SOCK_DGRAM;
 	
 	if (sock->proto == IPPROTO_TCP) {
@@ -2584,13 +2584,13 @@ static const FR_NAME_NUMBER listen_compare[] = {
 };
 
 
-static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
+static rad_listen_t *listen_parse(CONF_SECTION *cs, char const *server)
 {
 	int		type, rcode;
 	char		*listen_type;
 	rad_listen_t	*this;
 	CONF_PAIR	*cp;
-	const char	*value;
+	char const	*value;
 	lt_dlhandle	handle;
 	char		buffer[32];
 
@@ -2706,7 +2706,7 @@ static rad_listen_t *listen_parse(CONF_SECTION *cs, const char *server)
 }
 
 #ifdef WITH_PROXY
-static int is_loopback(const fr_ipaddr_t *ipaddr)
+static int is_loopback(fr_ipaddr_t const *ipaddr)
 {
 	/*
 	 *	We shouldn't proxy on loopback.
@@ -2883,7 +2883,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	 */
 	if (mainconfig.myip.af != AF_UNSPEC) {
 		CONF_SECTION *subcs;
-		const char *name2 = cf_section_name2(cs);
+		char const *name2 = cf_section_name2(cs);
 
 		cs = cf_section_sub_find_name2(config, "server",
 					       mainconfig.name);
@@ -2933,7 +2933,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
 		CONF_SECTION *subcs;
-		const char *name2 = cf_section_name2(cs);
+		char const *name2 = cf_section_name2(cs);
 		
 		for (subcs = cf_subsection_find_next(cs, NULL, "listen");
 		     subcs != NULL;
@@ -3087,7 +3087,7 @@ void listen_free(rad_listen_t **head)
 }
 
 #ifdef WITH_STATS
-RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
+RADCLIENT_LIST *listener_find_client_list(fr_ipaddr_t const *ipaddr,
 					  int port)
 {
 	rad_listen_t *this;
@@ -3113,7 +3113,7 @@ RADCLIENT_LIST *listener_find_client_list(const fr_ipaddr_t *ipaddr,
 }
 #endif
 
-rad_listen_t *listener_find_byipaddr(const fr_ipaddr_t *ipaddr, int port, int proto)
+rad_listen_t *listener_find_byipaddr(fr_ipaddr_t const *ipaddr, int port, int proto)
 {
 	rad_listen_t *this;
 

@@ -52,9 +52,9 @@ RCSID("$Id$")
 
 #ifdef WITH_UNLANG
 
-static int all_digits(const char *string)
+static int all_digits(char const *string)
 {
-	const char *p = string;
+	char const *p = string;
 
 	if (*p == '-') p++;
 
@@ -63,11 +63,11 @@ static int all_digits(const char *string)
 	return (*p == '\0');
 }
 
-static const char *filler = "????????????????????????????????????????????????????????????????";
+static char const *filler = "????????????????????????????????????????????????????????????????";
 
-static const char *expand_string(char *buffer, size_t sizeof_buffer,
+static char const *expand_string(char *buffer, size_t sizeof_buffer,
 				 REQUEST *request,
-				 FR_TOKEN value_type, const char *value)
+				 FR_TOKEN value_type, char const *value)
 {
 	int result;
 	char *p;
@@ -111,10 +111,10 @@ static const char *expand_string(char *buffer, size_t sizeof_buffer,
 }
 
 #ifdef HAVE_REGEX_H
-static FR_TOKEN getregex(const char **ptr, char *buffer, size_t buflen,
+static FR_TOKEN getregex(char const **ptr, char *buffer, size_t buflen,
 			 int *pcflags)
 {
-	const char *p = *ptr;
+	char const *p = *ptr;
 	char *q = buffer;
 
 	if (*p != '/') return T_OP_INVALID;
@@ -209,8 +209,8 @@ static const FR_NAME_NUMBER modreturn_table[] = {
  *	*presult is "did comparison match or not"
  */
 static int radius_do_cmp(REQUEST *request, int *presult,
-			 FR_TOKEN lt, const char *pleft, FR_TOKEN token,
-			 UNUSED FR_TOKEN rt, const char *pright,
+			 FR_TOKEN lt, char const *pleft, FR_TOKEN token,
+			 UNUSED FR_TOKEN rt, char const *pright,
 #ifdef HAVE_REGEX_H
 			 int cflags,
 #else
@@ -474,17 +474,17 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 
 
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
-			      const char **ptr, int evaluate_it, int *presult)
+			      char const **ptr, int evaluate_it, int *presult)
 {
 	int found_condition = FALSE;
 	int result = TRUE;
 	int invert = FALSE;
 	int evaluate_next_condition = evaluate_it;
-	const char *p;
-	const char *q, *start;
+	char const *p;
+	char const *q, *start;
 	FR_TOKEN token, lt, rt;
 	char left[1024], right[1024], comp[4];
-	const char *pleft, *pright;
+	char const *pleft, *pright;
 	char  xleft[1024], xright[1024];
 	int cflags = 0;
 	
@@ -521,7 +521,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 *	( EXPR )
 		 */
 		if (!found_condition && (*p == '(')) {
-			const char *end = p + 1;
+			char const *end = p + 1;
 
 			/*
 			 *	Evaluate the condition, bailing out on

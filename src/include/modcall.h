@@ -31,11 +31,11 @@ modcallable *compile_modgroup(modcallable *parent,
  * may be a CONF_SECTION containing action specifiers like "notfound = return"
  * or a simple CONF_PAIR, in which case the default actions are used. */
 modcallable *compile_modsingle(modcallable *parent, int component, CONF_ITEM *ci,
-			       const char **modname);
+			       char const **modname);
 
 /* Add an entry to the end of a modgroup, creating it first if necessary */
 void add_to_modcallable(modcallable **parent, modcallable *this,
-			int component, const char *name);
+			int component, char const *name);
 
 /* Free a tree returned by compile_modgroup or compile_modsingle */
 void modcallable_free(modcallable **pc);

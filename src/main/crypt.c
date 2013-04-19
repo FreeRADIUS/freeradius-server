@@ -44,7 +44,7 @@ static pthread_mutex_t fr_crypt_mutex;
  *	  -1 -- failed to crypt
  *	   1 -- check failed
  */
-int fr_crypt_check(const char *key, const char *crypted)
+int fr_crypt_check(char const *key, char const *crypted)
 {
 	char *passwd;
 	int cmp = 0;

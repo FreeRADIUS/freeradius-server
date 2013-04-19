@@ -117,7 +117,7 @@ static const CONF_PARSER proxy_config[] = {
 };
 #endif
 
-static int realm_name_cmp(const void *one, const void *two)
+static int realm_name_cmp(void const *one, void const *two)
 {
 	const REALM *a = one;
 	const REALM *b = two;
@@ -134,7 +134,7 @@ static void home_server_free(void *data)
 	free(home);
 }
 
-static int home_server_name_cmp(const void *one, const void *two)
+static int home_server_name_cmp(void const *one, void const *two)
 {
 	const home_server *a = one;
 	const home_server *b = two;
@@ -145,7 +145,7 @@ static int home_server_name_cmp(const void *one, const void *two)
 	return strcasecmp(a->name, b->name);
 }
 
-static int home_server_addr_cmp(const void *one, const void *two)
+static int home_server_addr_cmp(void const *one, void const *two)
 {
 	int rcode;
 	const home_server *a = one;
@@ -174,7 +174,7 @@ static int home_server_addr_cmp(const void *one, const void *two)
 }
 
 #ifdef WITH_STATS
-static int home_server_number_cmp(const void *one, const void *two)
+static int home_server_number_cmp(void const *one, void const *two)
 {
 	const home_server *a = one;
 	const home_server *b = two;
@@ -183,7 +183,7 @@ static int home_server_number_cmp(const void *one, const void *two)
 }
 #endif
 
-static int home_pool_name_cmp(const void *one, const void *two)
+static int home_pool_name_cmp(void const *one, void const *two)
 {
 	const home_pool_t *a = one;
 	const home_pool_t *b = two;
@@ -195,10 +195,10 @@ static int home_pool_name_cmp(const void *one, const void *two)
 }
 
 
-static size_t xlat_cs(CONF_SECTION *cs, const char *fmt, char *out, size_t outlen)
+static size_t xlat_cs(CONF_SECTION *cs, char const *fmt, char *out, size_t outlen)
 
 {
-	const char *value = NULL;
+	char const *value = NULL;
 
 	/*
 	 *	Instance name
@@ -229,7 +229,7 @@ static size_t xlat_cs(CONF_SECTION *cs, const char *fmt, char *out, size_t outle
  *	Xlat for %{home_server:foo}
  */
 static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
-			       const char *fmt, char *out, size_t outlen)
+			       char const *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
@@ -246,7 +246,7 @@ static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
  *	Xlat for %{home_server_pool:foo}
  */
 static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
-			       const char *fmt, char *out, size_t outlen)
+			       char const *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
@@ -399,10 +399,10 @@ static CONF_PARSER home_server_config[] = {
 #endif
 
 #ifdef WITH_COA
-	{  "coa", PW_TYPE_SUBSECTION, 0, NULL, (const void *) home_server_coa },
+	{  "coa", PW_TYPE_SUBSECTION, 0, NULL, (void const *) home_server_coa },
 #endif
 
-	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (const void *) limit_config },
+	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (void const *) limit_config },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
@@ -414,7 +414,7 @@ static void null_free(UNUSED void *data)
 
 static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
-	const char *name2;
+	char const *name2;
 	home_server *home;
 	int dual = FALSE;
 	CONF_PAIR *cp;
@@ -853,7 +853,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 }
 
 
-static home_pool_t *server_pool_alloc(const char *name, home_pool_type_t type,
+static home_pool_t *server_pool_alloc(char const *name, home_pool_type_t type,
 				      int server_type, int num_home_servers)
 {
 	home_pool_t *pool;
@@ -874,7 +874,7 @@ static home_pool_t *server_pool_alloc(const char *name, home_pool_type_t type,
 }
 
 static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
-				  const char *name, int server_type,
+				  char const *name, int server_type,
 				  home_server **phome)
 {
 	home_server myhome, *home;
@@ -917,9 +917,9 @@ static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
 static int server_pool_add(realm_config_t *rc,
 			   CONF_SECTION *cs, int server_type, int do_print)
 {
-	const char *name2;
+	char const *name2;
 	home_pool_t *pool = NULL;
-	const char *value;
+	char const *value;
 	CONF_PAIR *cp;
 	int num_home_servers;
 	home_server *home;
@@ -1097,10 +1097,10 @@ static int server_pool_add(realm_config_t *rc,
 #endif
 
 static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
-			  const char *realm,
-			  const char *name, const char *secret,
+			  char const *realm,
+			  char const *name, char const *secret,
 			  home_pool_type_t ldflag, home_pool_t **pool_p,
-			  int type, const char *server)
+			  int type, char const *server)
 {
 #ifdef WITH_PROXY
 	int i, insert_point, num_home_servers;
@@ -1200,7 +1200,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	 *	No home server, allocate one.
 	 */
 	if (!home) {
-		const char *p;
+		char const *p;
 		char *q;
 
 		home = rad_malloc(sizeof(*home));
@@ -1330,7 +1330,7 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 	for (subcs = cf_section_find_next(cs, NULL, "realm");
 	     subcs != NULL;
 	     subcs = cf_section_find_next(cs, subcs, "realm")) {
-		const char *this = cf_section_name2(subcs);
+		char const *this = cf_section_name2(subcs);
 
 		if (!this || (strcmp(this, realm) != 0)) continue;
 		num_home_servers++;
@@ -1360,8 +1360,8 @@ static int old_server_add(realm_config_t *rc, CONF_SECTION *cs,
 
 static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 {
-	const char *host;
-	const char *secret = NULL;
+	char const *host;
+	char const *secret = NULL;
 	home_pool_type_t ldflag;
 	CONF_PAIR *cp;
 
@@ -1484,7 +1484,7 @@ static int old_realm_config(realm_config_t *rc, CONF_SECTION *cs, REALM *r)
 
 #ifdef WITH_PROXY
 static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
-			     const char *name, home_pool_t **dest,
+			     char const *name, home_pool_t **dest,
 			     int server_type, int do_print)
 {
 	home_pool_t mypool, *pool;
@@ -1534,14 +1534,14 @@ static int add_pool_to_realm(realm_config_t *rc, CONF_SECTION *cs,
 
 static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 {
-	const char *name2;
+	char const *name2;
 	REALM *r = NULL;
 	CONF_PAIR *cp;
 #ifdef WITH_PROXY
 	home_pool_t *auth_pool, *acct_pool;
-	const char *auth_pool_name, *acct_pool_name;
+	char const *auth_pool_name, *acct_pool_name;
 #ifdef WITH_COA
-	const char *coa_pool_name;
+	char const *coa_pool_name;
 	home_pool_t *coa_pool;
 #endif
 #endif
@@ -1788,7 +1788,7 @@ static const FR_NAME_NUMBER home_server_types[] = {
 static int pool_peek_type(CONF_SECTION *config, CONF_SECTION *cs)
 {
 	int home;
-	const char *name, *type;
+	char const *name, *type;
 	CONF_PAIR *cp;
 	CONF_SECTION *server_cs;
 
@@ -1985,7 +1985,7 @@ int realms_init(CONF_SECTION *config)
 /*
  *	Find a realm where "name" might be the regex.
  */
-REALM *realm_find2(const char *name)
+REALM *realm_find2(char const *name)
 {
 	REALM myrealm;
 	REALM *realm;
@@ -2019,7 +2019,7 @@ REALM *realm_find2(const char *name)
 /*
  *	Find a realm in the REALM list.
  */
-REALM *realm_find(const char *name)
+REALM *realm_find(char const *name)
 {
 	REALM myrealm;
 	REALM *realm;
@@ -2138,7 +2138,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	}
 }
 
-home_server *home_server_ldb(const char *realmname,
+home_server *home_server_ldb(char const *realmname,
 			     home_pool_t *pool, REQUEST *request)
 {
 	int		start;
@@ -2459,7 +2459,7 @@ home_server *home_server_find(fr_ipaddr_t *ipaddr, int port, int proto)
 }
 
 #ifdef WITH_COA
-home_server *home_server_byname(const char *name, int type)
+home_server *home_server_byname(char const *name, int type)
 {
 	home_server myhome;
 
@@ -2484,7 +2484,7 @@ home_server *home_server_bynumber(int number)
 }
 #endif
 
-home_pool_t *home_pool_byname(const char *name, int type)
+home_pool_t *home_pool_byname(char const *name, int type)
 {
 	home_pool_t mypool;
 	

@@ -50,8 +50,8 @@ typedef struct rlm_sql_sqlite_conn {
 } rlm_sql_sqlite_conn_t;
 
 typedef struct rlm_sql_sqlite_config {
-	const char *filename;
-	const char *bootstrap;
+	char const *filename;
+	char const *bootstrap;
 } rlm_sql_sqlite_config_t;
 
 static const CONF_PARSER driver_config[] = {
@@ -97,7 +97,7 @@ static int sql_check_error(sqlite3 *db)
 }
 
 #ifdef HAVE_SQLITE_V2_API
-static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
+static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 {
 	ssize_t len;
 	char *buffer;
@@ -108,7 +108,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, const char *filename)
 
 	int status;
 	sqlite3_stmt *statement;
-	const char *z_tail;
+	char const *z_tail;
 
 	radlog(L_INFO, "rlm_sql_sqlite: Executing SQL statements from file \"%s\"", filename);
 
@@ -376,10 +376,10 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return 0;
 }
 
-static int sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, const char *query)
+static int sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
-	const char *z_tail;
+	char const *z_tail;
 	
 #ifdef HAVE_SQLITE_V2_API
 	(void) sqlite3_prepare_v2(conn->db, query, strlen(query), &conn->statement, &z_tail);
@@ -393,11 +393,11 @@ static int sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *c
 }
 
 
-static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, const char *query)
+static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
-	const char *z_tail;
+	char const *z_tail;
 
 #ifdef HAVE_SQLITE_V2_API
 	status = sqlite3_prepare_v2(conn->db, query, strlen(query), &conn->statement, &z_tail);
@@ -500,8 +500,8 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 			
 		case SQLITE_TEXT:
 			{
-				const char *p;
-				p = (const char *) sqlite3_column_text(conn->statement, i);
+				char const *p;
+				p = (char const *) sqlite3_column_text(conn->statement, i);
 				
 				if (p) {
 					MEM(row[i] = talloc_strdup(row, p));
@@ -555,7 +555,7 @@ static int sql_free_result(rlm_sql_handle_t *handle,
 	return 0;
 }
 
-static const char *sql_error(rlm_sql_handle_t *handle,
+static char const *sql_error(rlm_sql_handle_t *handle,
 			     UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;

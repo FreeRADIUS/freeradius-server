@@ -64,15 +64,15 @@ struct fr_cond_t {
 	fr_cond_t  	*child;
 };
 
-ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, const char *start, fr_cond_t **head, const char **error);
-size_t fr_cond_sprint(char *buffer, size_t bufsize, const fr_cond_t *c);
+ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **head, char const **error);
+size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 
 /*
  *	In xlat.c for now
  */
 typedef struct xlat_exp xlat_exp_t;
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
-		      const char **error);
+		      char const **error);
 
 #ifdef __cplusplus
 }

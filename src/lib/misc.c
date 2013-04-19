@@ -36,7 +36,7 @@ int		fr_debug_flag = 0;
  *
  *	FIXME: DELETE THIS
  */
-const char *ip_ntoa(char *buffer, uint32_t ipaddr)
+char const *ip_ntoa(char *buffer, uint32_t ipaddr)
 {
 	ipaddr = ntohl(ipaddr);
 
@@ -125,7 +125,7 @@ int rad_unlockfd(int fd, int lock_len)
 /*
  *	Return an interface-id in standard colon notation
  */
-char *ifid_ntoa(char *buffer, size_t size, const uint8_t *ifid)
+char *ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid)
 {
 	snprintf(buffer, size, "%x:%x:%x:%x",
 		 (ifid[0] << 8) + ifid[1], (ifid[2] << 8) + ifid[3],
@@ -138,10 +138,10 @@ char *ifid_ntoa(char *buffer, size_t size, const uint8_t *ifid)
  *	Return an interface-id from
  *	one supplied in standard colon notation.
  */
-uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
+uint8_t *ifid_aton(char const *ifid_str, uint8_t *ifid)
 {
-	static const char xdigits[] = "0123456789abcdef";
-	const char *p, *pch;
+	static char const xdigits[] = "0123456789abcdef";
+	char const *p, *pch;
 	int num_id = 0, val = 0, idx = 0;
 
 	for (p = ifid_str; ; ++p) {
@@ -183,13 +183,13 @@ uint8_t *ifid_aton(const char *ifid_str, uint8_t *ifid)
 
 
 #ifndef HAVE_INET_PTON
-static int inet_pton4(const char *src, struct in_addr *dst)
+static int inet_pton4(char const *src, struct in_addr *dst)
 {
 	int octet;
 	unsigned int num;
-	const char *p, *off;
+	char const *p, *off;
 	uint8_t tmp[4];
-	static const char digits[] = "0123456789";
+	static char const digits[] = "0123456789";
 
 	octet = 0;
 	p = src;
@@ -247,12 +247,12 @@ static int inet_pton4(const char *src, struct in_addr *dst)
  *	Paul Vixie, 1996.
  */
 static int
-inet_pton6(const char *src, unsigned char *dst)
+inet_pton6(char const *src, unsigned char *dst)
 {
-	static const char xdigits_l[] = "0123456789abcdef",
+	static char const xdigits_l[] = "0123456789abcdef",
 			  xdigits_u[] = "0123456789ABCDEF";
 	u_char tmp[IN6ADDRSZ], *tp, *endp, *colonp;
-	const char *xdigits, *curtok;
+	char const *xdigits, *curtok;
 	int ch, saw_xdigit;
 	u_int val;
 
@@ -267,7 +267,7 @@ inet_pton6(const char *src, unsigned char *dst)
 	saw_xdigit = 0;
 	val = 0;
 	while ((ch = *src++) != '\0') {
-		const char *pch;
+		char const *pch;
 
 		if ((pch = strchr((xdigits = xdigits_l), ch)) == NULL)
 			pch = strchr((xdigits = xdigits_u), ch);
@@ -335,7 +335,7 @@ inet_pton6(const char *src, unsigned char *dst)
  *	Utility function, so that the rest of the server doesn't
  *	have ifdef's around IPv6 support
  */
-int inet_pton(int af, const char *src, void *dst)
+int inet_pton(int af, char const *src, void *dst)
 {
 	if (af == AF_INET) {
 		return inet_pton4(src, dst);
@@ -357,7 +357,7 @@ int inet_pton(int af, const char *src, void *dst)
  *	Utility function, so that the rest of the server doesn't
  *	have ifdef's around IPv6 support
  */
-const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
+char const *inet_ntop(int af, void const *src, char *dst, size_t cnt)
 {
 	if (af == AF_INET) {
 		const uint8_t *ipaddr = src;
@@ -402,7 +402,7 @@ const char *inet_ntop(int af, const void *src, char *dst, size_t cnt)
  *	address family, or the first address (of whatever family),
  *	if AF_UNSPEC is used.
  */
-int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
+int ip_hton(char const *src, int af, fr_ipaddr_t *dst)
 {
 	int rcode;
 	struct addrinfo hints, *ai = NULL, *res = NULL;
@@ -437,7 +437,7 @@ int ip_hton(const char *src, int af, fr_ipaddr_t *dst)
 /*
  *	Look IP addresses up, and print names (depending on DNS config)
  */
-const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
+char const *ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt)
 {
 	struct sockaddr_storage ss;
 	int error;
@@ -463,7 +463,7 @@ const char *ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt)
 }
 
 
-static const char *hextab = "0123456789abcdef";
+static char const *hextab = "0123456789abcdef";
 
 /** Convert hex strings to binary data
  *
@@ -472,7 +472,7 @@ static const char *hextab = "0123456789abcdef";
  * @param len length of input string.
  * @return length of data written to buffer.
  */
-size_t fr_hex2bin(const char *hex, uint8_t *bin, size_t len)
+size_t fr_hex2bin(char const *hex, uint8_t *bin, size_t len)
 {
 	size_t i;
 	char *c1, *c2;
@@ -499,7 +499,7 @@ size_t fr_hex2bin(const char *hex, uint8_t *bin, size_t len)
  * @param[in] len of bin input.
  * @return length of data written to buffer.
  */
-size_t fr_bin2hex(const uint8_t *bin, char *hex, size_t len)
+size_t fr_bin2hex(uint8_t const *bin, char *hex, size_t len)
 {
 	size_t i;
 
@@ -546,7 +546,7 @@ int closefrom(int fd)
 }
 #endif
 
-int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b)
+int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 {
 	if (a->af < b->af) return -1;
 	if (a->af > b->af) return +1;
@@ -576,7 +576,7 @@ int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b)
 	return -1;
 }
 
-int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
+int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
 		       struct sockaddr_storage *sa, socklen_t *salen)
 {
 	if (ipaddr->af == AF_INET) {
@@ -613,7 +613,7 @@ int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
 }
 
 
-int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
+int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, int *port)
 {
 	if (sa->ss_family == AF_INET) {

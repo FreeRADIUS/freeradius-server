@@ -48,10 +48,10 @@
  * @param in Raw unescaped string.
  * @param arg Any additional arguments (unused).
  */
-size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, const char *in, UNUSED void *arg)
+size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *arg)
 {
-	static const char encode[] = ",+\"\\<>;*=()";
-	static const char hextab[] = "0123456789abcdef";
+	static char const encode[] = ",+\"\\<>;*=()";
+	static char const hextab[] = "0123456789abcdef";
 	size_t left = outlen;
 	
 	if (*in && ((*in == ' ') || (*in == '#'))) {
@@ -98,7 +98,7 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  * @param str to check.
  * @return true if string is a DN, else false.
  */
-int rlm_ldap_is_dn(const char *str)
+int rlm_ldap_is_dn(char const *str)
 {
 	return strrchr(str, ',') == NULL ? FALSE : TRUE;
 }
@@ -111,7 +111,7 @@ int rlm_ldap_is_dn(const char *str)
  * @param part Partial DN as returned by ldap_parse_result.
  * @return the length of the portion of full which wasn't matched or -1 on error.
  */
-static size_t rlm_ldap_common_dn(const char *full, const char *part)
+static size_t rlm_ldap_common_dn(char const *full, char const *part)
 {
 	size_t f_len, p_len, i;
 	
@@ -152,10 +152,10 @@ static size_t rlm_ldap_common_dn(const char *full, const char *part)
  * @param sublen Number of potential subfilters in array.
  * @return length of expanded data.
  */
-ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, char *out, size_t outlen)
+ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, char *out, size_t outlen)
 {
 	char buffer[LDAP_MAX_FILTER_STR_LEN + 1];
-	const char *in = NULL;
+	char const *in = NULL;
 	char *p = buffer;
 	
 	ssize_t len = 0;
@@ -237,8 +237,8 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, const char **sub, size_t sublen, 
  *	(with talloc_free).
  * @return One of the LDAP_PROC_* codes.
  */
-static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_handle_t *conn, int msgid, const char *dn,
-				    LDAPMessage **result, const char **error, char **extra)
+static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t const *conn, int msgid, char const *dn,
+				    LDAPMessage **result, char const **error, char **extra)
 {
 	ldap_rcode_t status = LDAP_PROC_SUCCESS;
 
@@ -257,7 +257,7 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
 	
 	LDAPMessage *tmp_msg;		// Temporary message pointer storage if we weren't provided with one.
 	
-	const char *tmp_err;		// Temporary error pointer storage if we weren't provided with one.
+	char const *tmp_err;		// Temporary error pointer storage if we weren't provided with one.
 	
 	if (!error) {
 		error = &tmp_err;
@@ -497,14 +497,14 @@ static ldap_rcode_t rlm_ldap_result(const ldap_instance_t *inst, const ldap_hand
  * @param[in] retry if the server is down.
  * @return one of the LDAP_PROC_* values.
  */
-ldap_rcode_t rlm_ldap_bind(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn, const char *dn,
-			   const char *password, int retry)
+ldap_rcode_t rlm_ldap_bind(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn, char const *dn,
+			   char const *password, int retry)
 {
 	ldap_rcode_t	status;
 	
 	int		msgid;
 	
-	const char	*error = NULL;
+	char const	*error = NULL;
 	char 		*extra = NULL;
 
 	rad_assert(*pconn && (*pconn)->handle);
@@ -600,8 +600,8 @@ retry:
  *	May be NULL in which case result will be automatically freed after use.
  * @return One of the LDAP_PROC_* values.
  */
-ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			     const char *dn, int scope, const char *filter, const char * const *attrs,
+ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+			     char const *dn, int scope, char const *filter, char const * const *attrs,
 			     LDAPMessage **result)
 {
 	ldap_rcode_t	status;
@@ -613,7 +613,7 @@ ldap_rcode_t rlm_ldap_search(const ldap_instance_t *inst, REQUEST *request, ldap
 	
 	struct timeval	tv;		// Holds timeout values.
 	
-	const char 	*error = NULL;
+	char const 	*error = NULL;
 	char		*extra = NULL;
 
 	rad_assert(*pconn && (*pconn)->handle);
@@ -707,14 +707,14 @@ retry:
  * @param[in] mods to make, see 'man ldap_modify' for more information.
  * @return One of the LDAP_PROC_* values.
  */
-ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			     const char *dn, LDAPMod *mods[])
+ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+			     char const *dn, LDAPMod *mods[])
 {
 	ldap_rcode_t	status;
 	
 	int		msgid;		// Message id returned by ldap_search_ext.
 	
-	const char 	*error = NULL;
+	char const 	*error = NULL;
 	char		*extra = NULL;			   
 
 	rad_assert(*pconn && (*pconn)->handle);
@@ -787,10 +787,10 @@ ldap_rcode_t rlm_ldap_modify(const ldap_instance_t *inst, REQUEST *request, ldap
  * @param[out] rcode The status of the operation, one of the RLM_MODULE_* codes.
  * @return The user's DN or NULL on error.
  */
-const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			       const char *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode)
+char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+			       char const *attrs[], int force, LDAPMessage **result, rlm_rcode_t *rcode)
 {
-	static const char *tmp_attrs[] = { NULL };
+	static char const *tmp_attrs[] = { NULL };
 	
 	ldap_rcode_t	status;
 	VALUE_PAIR	*vp = NULL;
@@ -914,8 +914,8 @@ const char *rlm_ldap_find_user(const ldap_instance_t *inst, REQUEST *request, ld
  * @param[in] entry retrieved by rlm_ldap_find_user or rlm_ldap_search.
  * @return RLM_MODULE_USERLOCK if the user was denied access, else RLM_MODULE_OK.
  */
-rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request,
-				  const ldap_handle_t *conn, LDAPMessage *entry)
+rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
+				  ldap_handle_t const *conn, LDAPMessage *entry)
 {
 	rlm_rcode_t rcode = RLM_MODULE_OK;
 	char **vals = NULL;
@@ -946,7 +946,7 @@ rlm_rcode_t rlm_ldap_check_access(const ldap_instance_t *inst, REQUEST *request,
  * @param inst rlm_ldap configuration.
  * @param request Current request.
  */
-void rlm_ldap_check_reply(const ldap_instance_t *inst, REQUEST *request)
+void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
 {
        /*
 	*	More warning messages for people who can't be bothered to read the documentation.
@@ -1202,7 +1202,7 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
  * @param inst rlm_ldap configuration.
  * @param request Current request.
  */
-ldap_handle_t *rlm_ldap_get_socket(const ldap_instance_t *inst, REQUEST *request)
+ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request)
 {
 	ldap_handle_t *conn;
 
@@ -1224,7 +1224,7 @@ ldap_handle_t *rlm_ldap_get_socket(const ldap_instance_t *inst, REQUEST *request
  * @param inst rlm_ldap configuration.
  * @param conn to release.
  */
-void rlm_ldap_release_socket(const ldap_instance_t *inst, ldap_handle_t *conn)
+void rlm_ldap_release_socket(ldap_instance_t const *inst, ldap_handle_t *conn)
 {
 	/*
 	 *	Could have already been free'd due to a previous error.

@@ -180,7 +180,7 @@ static uint32_t parent_of(uint32_t key)
 static fr_hash_entry_t *list_find(fr_hash_table_t *ht,
 				    fr_hash_entry_t *head,
 				    uint32_t reversed,
-				    const void *data)
+				    void const *data)
 {
 	fr_hash_entry_t *cur;
 
@@ -385,7 +385,7 @@ static void fr_hash_table_grow(fr_hash_table_t *ht)
 /*
  *	Insert data.
  */
-int fr_hash_table_insert(fr_hash_table_t *ht, const void *data)
+int fr_hash_table_insert(fr_hash_table_t *ht, void const *data)
 {
 	uint32_t key;
 	uint32_t entry;
@@ -435,8 +435,7 @@ int fr_hash_table_insert(fr_hash_table_t *ht, const void *data)
 /*
  *	Internal find a node routine.
  */
-static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht,
-					       const void *data)
+static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht, void const *data)
 {
 	uint32_t key;
 	uint32_t entry;
@@ -457,7 +456,7 @@ static fr_hash_entry_t *fr_hash_table_find(fr_hash_table_t *ht,
 /*
  *	Replace old data with new data, OR insert if there is no old.
  */
-int fr_hash_table_replace(fr_hash_table_t *ht, const void *data)
+int fr_hash_table_replace(fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
 	void *free;
@@ -480,7 +479,7 @@ int fr_hash_table_replace(fr_hash_table_t *ht, const void *data)
 /*
  *	Find data from a template
  */
-void *fr_hash_table_finddata(fr_hash_table_t *ht, const void *data)
+void *fr_hash_table_finddata(fr_hash_table_t *ht, void const *data)
 {
 	fr_hash_entry_t *node;
 	void *out;
@@ -498,7 +497,7 @@ void *fr_hash_table_finddata(fr_hash_table_t *ht, const void *data)
 /*
  *	Yank an entry from the hash table, without freeing the data.
  */
-void *fr_hash_table_yank(fr_hash_table_t *ht, const void *data)
+void *fr_hash_table_yank(fr_hash_table_t *ht, void const *data)
 {
 	uint32_t key;
 	uint32_t entry;
@@ -530,7 +529,7 @@ void *fr_hash_table_yank(fr_hash_table_t *ht, const void *data)
 /*
  *	Delete a piece of data from the hash table.
  */
-int fr_hash_table_delete(fr_hash_table_t *ht, const void *data)
+int fr_hash_table_delete(fr_hash_table_t *ht, void const *data)
 {
 	void *old;
 
@@ -712,7 +711,7 @@ int fr_hash_table_info(fr_hash_table_t *ht)
  *	Which also includes public domain source.  We've re-written
  *	it here for our purposes.
  */
-uint32_t fr_hash(const void *data, size_t size)
+uint32_t fr_hash(void const *data, size_t size)
 {
 	const uint8_t *p = data;
 	const uint8_t *q = p + size;
@@ -746,7 +745,7 @@ uint32_t fr_hash(const void *data, size_t size)
 /*
  *	Continue hashing data.
  */
-uint32_t fr_hash_update(const void *data, size_t size, uint32_t hash)
+uint32_t fr_hash_update(void const *data, size_t size, uint32_t hash)
 {
 	const uint8_t *p = data;
 	const uint8_t *q = p + size;
@@ -790,7 +789,7 @@ uint32_t fr_hash_fold(uint32_t hash, int bits)
 /*
  *	Hash a C string, so we loop over it once.
  */
-uint32_t fr_hash_string(const char *p)
+uint32_t fr_hash_string(char const *p)
 {
 	uint32_t      hash = FNV_MAGIC_INIT;
 
@@ -813,7 +812,7 @@ uint32_t fr_hash_string(const char *p)
 #include <stdio.h>
 #include <stdlib.h>
 
-static uint32_t hash_int(const void *data)
+static uint32_t hash_int(void const *data)
 {
 	return fr_hash((int *) data, sizeof(int));
 }

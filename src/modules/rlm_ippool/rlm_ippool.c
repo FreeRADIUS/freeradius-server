@@ -140,8 +140,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	ippool_key key;
 	datum key_datum;
 	datum data_datum;
-	const char *cli = "0";
-	const char *pool_name = NULL;
+	char const *cli = "0";
+	char const *pool_name = NULL;
 
 	cache_size = inst->cache_size;
 

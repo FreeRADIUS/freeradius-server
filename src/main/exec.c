@@ -82,7 +82,7 @@ static void tv_sub(struct timeval *end, struct timeval *start,
  * @param shell_escape
  * @return PID of the child process, -1 on error.
  */
-pid_t radius_start_program(const char *cmd, REQUEST *request,
+pid_t radius_start_program(char const *cmd, REQUEST *request,
 			int exec_wait,
 			int *input_fd,
 			int *output_fd,
@@ -99,7 +99,7 @@ pid_t radius_start_program(const char *cmd, REQUEST *request,
 #endif
 	int argc;
 	int i;
-	const char *argv[MAX_ARGV];
+	char const *argv[MAX_ARGV];
 	char **argv_p;
 	char argv_buf[4096];
 #define MAX_ENVP 1024
@@ -489,7 +489,7 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
  * @param shell_escape
  * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
  */
-int radius_exec_program(const char *cmd, REQUEST *request,
+int radius_exec_program(char const *cmd, REQUEST *request,
 			int exec_wait,
 			char *user_msg, int msg_len,
 			VALUE_PAIR *input_pairs,
@@ -629,13 +629,13 @@ static void time_free(void *data)
 	free(data);
 }
 
-void exec_trigger(REQUEST *request, CONF_SECTION *cs, const char *name, int quench)
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench)
 {
 	CONF_SECTION *subcs;
 	CONF_ITEM *ci;
 	CONF_PAIR *cp;
-	const char *attr;
-	const char *value;
+	char const *attr;
+	char const *value;
 	VALUE_PAIR *vp;
 
 	/*

@@ -273,7 +273,7 @@ void request_free(REQUEST **request_ptr)
  *
  *	Allow only uppercase/lowercase letters, numbers, and '-_/.'
  */
-int rad_checkfilename(const char *filename)
+int rad_checkfilename(char const *filename)
 {
 	if (strspn(filename, "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.") == strlen(filename)) {
 		return 0;
@@ -289,7 +289,7 @@ int rad_checkfilename(const char *filename)
  *	exists but there was an error opening it. errno value should be usable
  *	for error messages.
  */
-int rad_file_exists(const char *filename)
+int rad_file_exists(char const *filename)
 {
 	int des;
 	int ret = 1;
@@ -400,7 +400,7 @@ void *rad_calloc(size_t size)
 	return ptr;
 }
 
-void rad_const_free(const void *ptr)
+void rad_const_free(void const *ptr)
 {
 	void *tmp;
 	if (!ptr) return;
@@ -414,7 +414,7 @@ void rad_const_free(const void *ptr)
  *	Signature for free is dumb, and raises errors when we try
  *	to free const ptrs.
  */
-void rad_cfree(const void *ptr)
+void rad_cfree(void const *ptr)
 {
 	void *tmp;
 	if (!ptr) return;
@@ -428,8 +428,8 @@ void rad_cfree(const void *ptr)
  *
  */
 
-void NEVER_RETURNS rad_assert_fail (const char *file, unsigned int line,
-				    const char *expr)
+void NEVER_RETURNS rad_assert_fail (char const *file, unsigned int line,
+				    char const *expr)
 {
 	ERROR("ASSERT FAILED %s[%u]: %s", file, line, expr);
 	abort();
@@ -584,7 +584,7 @@ REQUEST *request_alloc_coa(REQUEST *request)
 /*
  *	Copy a quoted string.
  */
-int rad_copy_string(char *to, const char *from)
+int rad_copy_string(char *to, char const *from)
 {
 	int length = 0;
 	char quote = *from;
@@ -612,7 +612,7 @@ int rad_copy_string(char *to, const char *from)
  *	returned is the number of chars written; the number of
  *	characters consumed is 2 more than this.
  */
-int rad_copy_string_bare(char *to, const char *from)
+int rad_copy_string_bare(char *to, char const *from)
 {
 	int length = 0;
 	char quote = *from;
@@ -638,7 +638,7 @@ int rad_copy_string_bare(char *to, const char *from)
 /*
  *	Copy a %{} string.
  */
-int rad_copy_variable(char *to, const char *from)
+int rad_copy_variable(char *to, char const *from)
 {
 	int length = 0;
 	int sublen;
@@ -743,11 +743,11 @@ int rad_pps(int *past, int *present, time_t *then, struct timeval *now)
  * Return argc or -1 on failure.
  */
 
-int rad_expand_xlat(REQUEST *request, const char *cmd,
-		    int max_argc, const char *argv[], int can_fail,
+int rad_expand_xlat(REQUEST *request, char const *cmd,
+		    int max_argc, char const *argv[], int can_fail,
 		    size_t argv_buflen, char *argv_buf)
 {
-	const char *from;
+	char const *from;
 	char *to;
 	int argc = -1;
 	int i;
@@ -938,10 +938,10 @@ const FR_NAME_NUMBER request_refs[] = {
  * @param[in] unknown the list to return if no qualifiers were found.
  * @return PAIR_LIST_UNKOWN if qualifiers couldn't be resolved to a list.
  */
-pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
+pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
 {
-	const char *p = *name;
-	const char *q;
+	char const *p = *name;
+	char const *q;
 	
 	/* This should never be a NULL pointer or zero length string */
 	rad_assert(name && *name);
@@ -988,7 +988,7 @@ pair_lists_t radius_list_name(const char **name, pair_lists_t unknown)
  * @param[in] def default request ref to return if no request qualifier is present.
  * @return one of the REQUEST_* definitions or REQUEST_UNKOWN
  */
-request_refs_t radius_request_name(const char **name, request_refs_t def)
+request_refs_t radius_request_name(char const **name, request_refs_t def)
 {
 	char *p;
 	int request;

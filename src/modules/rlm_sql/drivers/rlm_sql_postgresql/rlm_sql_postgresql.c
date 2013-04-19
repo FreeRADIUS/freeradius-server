@@ -151,7 +151,7 @@ static int sql_socket_destructor(void *c)
  *************************************************************************/
 static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	char dbstring[2048];
-	const char *port, *host;
+	char const *port, *host;
 	rlm_sql_postgres_conn_t *conn;
 
 #ifdef HAVE_OPENSSL_CRYPTO_H
@@ -204,7 +204,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, const char *query)
+static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 	int numfields = 0;
@@ -330,7 +330,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, const char *query) {
+static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query) {
 	return sql_query(handle, config, query);
 }
 
@@ -428,7 +428,7 @@ static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *c
  *	       connection
  *
  *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
+static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
 
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 

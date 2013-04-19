@@ -27,7 +27,7 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-static const char *days[] =
+static char const *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };
 
 #define DAYMIN		(24*60)
@@ -44,7 +44,7 @@ static const char *days[] =
 /*
  *	String code.
  */
-static int strcode (const char **str)
+static int strcode (char const **str)
 {
 	int i;
 	size_t l;
@@ -69,7 +69,7 @@ static int strcode (const char **str)
 /*
  *	Fill bitmap with hours/mins.
  */
-static int hour_fill(char *bitmap, const char *tm)
+static int hour_fill(char *bitmap, char const *tm)
 {
 	char *p;
 	int start, end;
@@ -123,9 +123,9 @@ static int hour_fill(char *bitmap, const char *tm)
 /*
  *	Call the fill bitmap function for every day listed.
  */
-static int day_fill(char *bitmap, const char *tm)
+static int day_fill(char *bitmap, char const *tm)
 {
-	const char *hr;
+	char const *hr;
 	int n;
 	int start, end;
 

@@ -166,7 +166,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	 */
 	HMAC_Init_ex(&hmac, emsk->vp_octets, emsk->length, EVP_sha256(), NULL);
 	
-	HMAC_Update(&hmac, (const uint8_t *) &mip_rk_1, rk1_len);
+	HMAC_Update(&hmac, (uint8_t const *) &mip_rk_1, rk1_len);
 	HMAC_Update(&hmac, &usage_data[0], sizeof(usage_data));
 	HMAC_Final(&hmac, &mip_rk_2[0], &rk2_len);
 
@@ -179,7 +179,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	 */
 	HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha256(), NULL);
 	
-	HMAC_Update(&hmac, (const uint8_t *) "SPI CMIP PMIP", 12);
+	HMAC_Update(&hmac, (uint8_t const *) "SPI CMIP PMIP", 12);
 	HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 
 	/*
@@ -243,9 +243,9 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 
-		HMAC_Update(&hmac, (const uint8_t *) "PMIP4 MN HA", 11);
-		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipaddr, 4);
-		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
+		HMAC_Update(&hmac, (uint8_t const *) "PMIP4 MN HA", 11);
+		HMAC_Update(&hmac, (uint8_t const *) &ip->vp_ipaddr, 4);
+		HMAC_Update(&hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->length);
 		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 
 		/*
@@ -294,9 +294,9 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 
-		HMAC_Update(&hmac, (const uint8_t *) "CMIP4 MN HA", 11);
-		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipaddr, 4);
-		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
+		HMAC_Update(&hmac, (uint8_t const *) "CMIP4 MN HA", 11);
+		HMAC_Update(&hmac, (uint8_t const *) &ip->vp_ipaddr, 4);
+		HMAC_Update(&hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->length);
 		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 
 		/*
@@ -345,9 +345,9 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 
-		HMAC_Update(&hmac, (const uint8_t *) "CMIP6 MN HA", 11);
-		HMAC_Update(&hmac, (const uint8_t *) &ip->vp_ipv6addr, 16);
-		HMAC_Update(&hmac, (const uint8_t *) &mn_nai->vp_strvalue, mn_nai->length);
+		HMAC_Update(&hmac, (uint8_t const *) "CMIP6 MN HA", 11);
+		HMAC_Update(&hmac, (uint8_t const *) &ip->vp_ipv6addr, 16);
+		HMAC_Update(&hmac, (uint8_t const *) &mn_nai->vp_strvalue, mn_nai->length);
 		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 
 		/*
@@ -393,7 +393,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	if (fa_rk && (fa_rk->length <= 1)) {
 		HMAC_Init_ex(&hmac, mip_rk, rk_len, EVP_sha1(), NULL);
 		
-		HMAC_Update(&hmac, (const uint8_t *) "FA-RK", 5);
+		HMAC_Update(&hmac, (uint8_t const *) "FA-RK", 5);
 
 		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 

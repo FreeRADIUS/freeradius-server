@@ -128,7 +128,7 @@ typedef struct _eap_handler {
  * Interface to call EAP sub mdoules
  */
 typedef struct rlm_eap_module {
-	const char *name;
+	char const *name;
 	int (*attach)(CONF_SECTION *conf, void **instance);
 	int (*initiate)(void *instance, eap_handler_t *handler);
 	int (*authorize)(void *instance, eap_handler_t *handler);

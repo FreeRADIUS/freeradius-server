@@ -54,7 +54,7 @@ struct rbtree_t {
 #endif
 	rbnode_t *Root;
 	int	num_elements;
-	int (*Compare)(const void *, const void *);
+	int (*Compare)(void const *, void const *);
 	int replace_flag;
 	void (*freeNode)(void *);
 #ifdef HAVE_PTHREAD_H
@@ -103,7 +103,7 @@ void rbtree_free(rbtree_t *tree)
 /*
  *	Create a new red-black tree.
  */
-rbtree_t *rbtree_create(int (*Compare)(const void *, const void *),
+rbtree_t *rbtree_create(int (*Compare)(void const *, void const *),
 			void (*freeNode)(void *),
 			int flags)
 {
@@ -486,7 +486,7 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
  *	Delete a node from the tree, based on given data, which MUST
  *	have come from rbtree_finddata().
  */
-int rbtree_deletebydata(rbtree_t *tree, const void *data)
+int rbtree_deletebydata(rbtree_t *tree, void const *data)
 {
 	rbnode_t *node = rbtree_find(tree, data);
 
@@ -501,7 +501,7 @@ int rbtree_deletebydata(rbtree_t *tree, const void *data)
 /*
  *	Find an element in the tree, returning the data, not the node.
  */
-rbnode_t *rbtree_find(rbtree_t *tree, const void *Data)
+rbnode_t *rbtree_find(rbtree_t *tree, void const *Data)
 {
 	/*******************************
 	 *  find node containing Data  *
@@ -532,7 +532,7 @@ rbnode_t *rbtree_find(rbtree_t *tree, const void *Data)
 /*
  *	Find the user data.
  */
-void *rbtree_finddata(rbtree_t *tree, const void *Data)
+void *rbtree_finddata(rbtree_t *tree, void const *Data)
 {
 	rbnode_t *X;
 

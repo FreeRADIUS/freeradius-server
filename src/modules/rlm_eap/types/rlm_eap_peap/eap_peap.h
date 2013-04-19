@@ -38,9 +38,9 @@ typedef struct peap_tunnel_t {
 	int		copy_request_to_tunnel;
 	int		use_tunneled_reply;
 	int		proxy_tunneled_request_as_eap;
-	const char	*virtual_server;
+	char const	*virtual_server;
 	int		soh;
-	const char	*soh_virtual_server;
+	char const	*soh_virtual_server;
 	VALUE_PAIR	*soh_reply_vps;
 	int		session_resumption_state;
 } peap_tunnel_t;

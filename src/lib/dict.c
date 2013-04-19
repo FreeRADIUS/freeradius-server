@@ -158,13 +158,13 @@ const int fr_attr_mask[MAX_TLV_NEST + 1] = {
 #define FNV_MAGIC_INIT (0x811c9dc5)
 #define FNV_MAGIC_PRIME (0x01000193)
 
-static uint32_t dict_hashname(const char *name)
+static uint32_t dict_hashname(char const *name)
 {
 	uint32_t hash = FNV_MAGIC_INIT;
-	const char *p;
+	char const *p;
 
 	for (p = name; *p != '\0'; p++) {
-		int c = *(const unsigned char *) p;
+		int c = *(unsigned char const *) p;
 		if (isalpha(c)) c = tolower(c);
 
 		hash *= FNV_MAGIC_PRIME;
@@ -178,12 +178,12 @@ static uint32_t dict_hashname(const char *name)
 /*
  *	Hash callback functions.
  */
-static uint32_t dict_attr_name_hash(const void *data)
+static uint32_t dict_attr_name_hash(void const *data)
 {
-	return dict_hashname(((const DICT_ATTR *)data)->name);
+	return dict_hashname(((DICT_ATTR const *)data)->name);
 }
 
-static int dict_attr_name_cmp(const void *one, const void *two)
+static int dict_attr_name_cmp(void const *one, void const *two)
 {
 	const DICT_ATTR *a = one;
 	const DICT_ATTR *b = two;
@@ -191,7 +191,7 @@ static int dict_attr_name_cmp(const void *one, const void *two)
 	return strcasecmp(a->name, b->name);
 }
 
-static uint32_t dict_attr_value_hash(const void *data)
+static uint32_t dict_attr_value_hash(void const *data)
 {
 	uint32_t hash;
 	const DICT_ATTR *attr = data;
@@ -200,7 +200,7 @@ static uint32_t dict_attr_value_hash(const void *data)
 	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
 }
 
-static int dict_attr_value_cmp(const void *one, const void *two)
+static int dict_attr_value_cmp(void const *one, void const *two)
 {
 	const DICT_ATTR *a = one;
 	const DICT_ATTR *b = two;
@@ -211,7 +211,7 @@ static int dict_attr_value_cmp(const void *one, const void *two)
 	return a->attr - b->attr;
 }
 
-static uint32_t dict_attr_combo_hash(const void *data)
+static uint32_t dict_attr_combo_hash(void const *data)
 {
 	uint32_t hash;
 	const DICT_ATTR *attr = data;
@@ -221,7 +221,7 @@ static uint32_t dict_attr_combo_hash(const void *data)
 	return fr_hash_update(&attr->attr, sizeof(attr->attr), hash);
 }
 
-static int dict_attr_combo_cmp(const void *one, const void *two)
+static int dict_attr_combo_cmp(void const *one, void const *two)
 {
 	const DICT_ATTR *a = one;
 	const DICT_ATTR *b = two;
@@ -235,12 +235,12 @@ static int dict_attr_combo_cmp(const void *one, const void *two)
 	return a->attr - b->attr;
 }
 
-static uint32_t dict_vendor_name_hash(const void *data)
+static uint32_t dict_vendor_name_hash(void const *data)
 {
-	return dict_hashname(((const DICT_VENDOR *)data)->name);
+	return dict_hashname(((DICT_VENDOR const *)data)->name);
 }
 
-static int dict_vendor_name_cmp(const void *one, const void *two)
+static int dict_vendor_name_cmp(void const *one, void const *two)
 {
 	const DICT_VENDOR *a = one;
 	const DICT_VENDOR *b = two;
@@ -248,13 +248,13 @@ static int dict_vendor_name_cmp(const void *one, const void *two)
 	return strcasecmp(a->name, b->name);
 }
 
-static uint32_t dict_vendor_value_hash(const void *data)
+static uint32_t dict_vendor_value_hash(void const *data)
 {
-	return fr_hash(&(((const DICT_VENDOR *)data)->vendorpec),
-			 sizeof(((const DICT_VENDOR *)data)->vendorpec));
+	return fr_hash(&(((DICT_VENDOR const *)data)->vendorpec),
+			 sizeof(((DICT_VENDOR const *)data)->vendorpec));
 }
 
-static int dict_vendor_value_cmp(const void *one, const void *two)
+static int dict_vendor_value_cmp(void const *one, void const *two)
 {
 	const DICT_VENDOR *a = one;
 	const DICT_VENDOR *b = two;
@@ -262,7 +262,7 @@ static int dict_vendor_value_cmp(const void *one, const void *two)
 	return a->vendorpec - b->vendorpec;
 }
 
-static uint32_t dict_value_name_hash(const void *data)
+static uint32_t dict_value_name_hash(void const *data)
 {
 	uint32_t hash;
 	const DICT_VALUE *dval = data;
@@ -272,7 +272,7 @@ static uint32_t dict_value_name_hash(const void *data)
 	return fr_hash_update(&dval->attr, sizeof(dval->attr), hash);
 }
 
-static int dict_value_name_cmp(const void *one, const void *two)
+static int dict_value_name_cmp(void const *one, void const *two)
 {
 	int rcode;
 	const DICT_VALUE *a = one;
@@ -287,7 +287,7 @@ static int dict_value_name_cmp(const void *one, const void *two)
 	return strcasecmp(a->name, b->name);
 }
 
-static uint32_t dict_value_value_hash(const void *data)
+static uint32_t dict_value_value_hash(void const *data)
 {
 	uint32_t hash;
 	const DICT_VALUE *dval = data;
@@ -297,7 +297,7 @@ static uint32_t dict_value_value_hash(const void *data)
 	return fr_hash_update(&dval->value, sizeof(dval->value), hash);
 }
 
-static int dict_value_value_cmp(const void *one, const void *two)
+static int dict_value_value_cmp(void const *one, void const *two)
 {
 	int rcode;
 	const DICT_VALUE *a = one;
@@ -343,7 +343,7 @@ static void dict_stat_free(void)
 /*
  *	Add an entry to the list of stat buffers.
  */
-static void dict_stat_add(const char *name, const struct stat *stat_buf)
+static void dict_stat_add(char const *name, struct stat const *stat_buf)
 {
 	dict_stat_t *this;
 
@@ -367,7 +367,7 @@ static void dict_stat_add(const char *name, const struct stat *stat_buf)
  *	See if any dictionaries have changed.  If not, don't
  *	do anything.
  */
-static int dict_stat_check(const char *root_dir, const char *root_file)
+static int dict_stat_check(char const *root_dir, char const *root_file)
 {
 	struct stat buf;
 	dict_stat_t *this;
@@ -503,7 +503,7 @@ void dict_free(void)
 /*
  *	Add vendor to the list.
  */
-int dict_addvendor(const char *name, unsigned int value)
+int dict_addvendor(char const *name, unsigned int value)
 {
 	size_t length;
 	DICT_VENDOR *dv;
@@ -592,7 +592,7 @@ const int dict_attr_allowed_chars[256] = {
 /*
  *	Add an attribute to the dictionary.
  */
-int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
+int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 		 ATTR_FLAGS flags)
 {
 	size_t namelen;
@@ -607,7 +607,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 		return -1;
 	}
 
-	for (p = (const uint8_t *) name; *p != '\0'; p++) {
+	for (p = (uint8_t const *) name; *p != '\0'; p++) {
 		if (!dict_attr_allowed_chars[*p]) {
 			fr_strerror_printf("dict_addattr: Invalid character '%c' in attribute name", *p);
 			return -1;
@@ -903,7 +903,7 @@ int dict_addattr(const char *name, int attr, unsigned int vendor, int type,
 /*
  *	Add a value for an attribute to the dictionary.
  */
-int dict_addvalue(const char *namestr, const char *attrstr, int value)
+int dict_addvalue(char const *namestr, char const *attrstr, int value)
 {
 	size_t		length;
 	const DICT_ATTR	*dattr;
@@ -1057,11 +1057,11 @@ int dict_addvalue(const char *namestr, const char *attrstr, int value)
 	return 0;
 }
 
-static int sscanf_i(const char *str, unsigned int *pvalue)
+static int sscanf_i(char const *str, unsigned int *pvalue)
 {
 	int rcode = 0;
 	int base = 10;
-	static const char *tab = "0123456789";
+	static char const *tab = "0123456789";
 
 	if ((str[0] == '0') &&
 	    ((str[1] == 'x') || (str[1] == 'X'))) {
@@ -1072,7 +1072,7 @@ static int sscanf_i(const char *str, unsigned int *pvalue)
 	}
 
 	while (*str) {
-		const char *c;
+		char const *c;
 
 		if (*str == '.') break;
 
@@ -1103,10 +1103,10 @@ static int sscanf_i(const char *str, unsigned int *pvalue)
  *
  *	<whew>!  Are we crazy, or what?
  */
-int dict_str2oid(const char *ptr, unsigned int *pvalue, unsigned int *pvendor,
+int dict_str2oid(char const *ptr, unsigned int *pvalue, unsigned int *pvendor,
 		 int tlv_depth)
 {
-	const char *p;
+	char const *p;
 	unsigned int value;
 	const DICT_ATTR *da = NULL;
 
@@ -1235,9 +1235,9 @@ static const DICT_ATTR *dict_parent(unsigned int attr, unsigned int vendor)
 /*
  *	Process the ATTRIBUTE command
  */
-static int process_attribute(const char* fn, const int line,
+static int process_attribute(char const* fn, int const line,
 			     unsigned int block_vendor,
-			     const DICT_ATTR *block_tlv, int tlv_depth,
+			     DICT_ATTR const *block_tlv, int tlv_depth,
 			     char **argv, int argc)
 {
 	int		oid = 0;
@@ -1605,7 +1605,7 @@ static int process_attribute(const char* fn, const int line,
 /*
  *	Process the VALUE command
  */
-static int process_value(const char* fn, const int line, char **argv,
+static int process_value(char const* fn, int const line, char **argv,
 			 int argc)
 {
 	unsigned int	value;
@@ -1650,7 +1650,7 @@ static int process_value(const char* fn, const int line, char **argv,
  *	This allows VALUE mappings to be shared among multiple
  *	attributes.
  */
-static int process_value_alias(const char* fn, const int line, char **argv,
+static int process_value_alias(char const* fn, int const line, char **argv,
 			       int argc)
 {
 	const DICT_ATTR *my_da, *da;
@@ -1718,7 +1718,7 @@ static int process_value_alias(const char* fn, const int line, char **argv,
 /*
  *	Process the VENDOR command
  */
-static int process_vendor(const char* fn, const int line, char **argv,
+static int process_vendor(char const* fn, int const line, char **argv,
 			  int argc)
 {
 	int	value;
@@ -1771,7 +1771,7 @@ static int process_vendor(const char* fn, const int line, char **argv,
 
 	if (format) {
 		int type, length;
-		const char *p;
+		char const *p;
 		DICT_VENDOR *dv;
 
 		if (strncasecmp(format, "format=", 7) != 0) {
@@ -1883,10 +1883,10 @@ int str2argv(char *str, char **argv, int max_argc)
 	return argc;
 }
 
-static int my_dict_init(const char *parent, const char *filename,
-			const char *src_file, int src_line);
+static int my_dict_init(char const *parent, char const *filename,
+			char const *src_file, int src_line);
 
-int dict_read(const char *dir, const char *filename)
+int dict_read(char const *dir, char const *filename)
 {
 	if (!attributes_byname) {
 		fr_strerror_printf("Must call dict_init() before dict_read()");
@@ -1902,8 +1902,8 @@ int dict_read(const char *dir, const char *filename)
 /*
  *	Initialize the dictionary.
  */
-static int my_dict_init(const char *parent, const char *filename,
-			const char *src_file, int src_line)
+static int my_dict_init(char const *parent, char const *filename,
+			char const *src_file, int src_line)
 {
 	FILE	*fp;
 	char 	dir[256], fn[256];
@@ -2291,7 +2291,7 @@ static int null_callback(UNUSED void *ctx, UNUSED void *data)
  *	Initialize the directory, then fix the attr member of
  *	all attributes.
  */
-int dict_init(const char *dir, const char *fn)
+int dict_init(char const *dir, char const *fn)
 {
 	/*
 	 *	Check if we need to change anything.  If not, don't do
@@ -2525,7 +2525,7 @@ void dict_attr_free(DICT_ATTR const **da)
  *	VALUE_PAIR which contains it.
  * @return return a copy of the da.
  */
-const DICT_ATTR *dict_attr_copy(const DICT_ATTR *da, int vp_free)
+const DICT_ATTR *dict_attr_copy(DICT_ATTR const *da, int vp_free)
 {
 	DICT_ATTR *copy;
 	
@@ -2632,12 +2632,12 @@ const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor,
  * @param[in] vp_free if > 0 DICT_ATTR will be freed on VALUE_PAIR free.
  * @return new da or NULL on error.
  */
-const DICT_ATTR *dict_attrunknownbyname(const char *attribute, int vp_free)
+const DICT_ATTR *dict_attrunknownbyname(char const *attribute, int vp_free)
 {
 	unsigned int   	attr, vendor = 0;
 	unsigned int    dv_type = 1;	/* The type of vendor field */
 
-	const char	*p = attribute;
+	char const	*p = attribute;
 	char		*q;
 	
 	DICT_VENDOR	*dv;
@@ -2867,7 +2867,7 @@ const DICT_ATTR *dict_attrbytype(unsigned int attr, unsigned int vendor,
 /**
  * @brief Using a parent and attr/vendor, find a child attr/vendor
  */
-int dict_attr_child(const DICT_ATTR *parent,
+int dict_attr_child(DICT_ATTR const *parent,
 		    unsigned int *pattr, unsigned int *pvendor)
 {
 	unsigned int attr, vendor;
@@ -2950,8 +2950,7 @@ find:
 /*
  *	Get an attribute by it's numerical value, and the parent
  */
-const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent,
-			     unsigned int attr, unsigned int vendor)
+const DICT_ATTR *dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr, unsigned int vendor)
 {
 	unsigned int my_attr, my_vendor;
 	DICT_ATTR dattr;
@@ -2971,7 +2970,7 @@ const DICT_ATTR *dict_attrbyparent(const DICT_ATTR *parent,
 /*
  *	Get an attribute by its name.
  */
-const DICT_ATTR *dict_attrbyname(const char *name)
+const DICT_ATTR *dict_attrbyname(char const *name)
 {
 	DICT_ATTR *da;
 	uint32_t buffer[(sizeof(*da) + DICT_ATTR_MAX_NAME_LEN + 3)/4];
@@ -3013,7 +3012,7 @@ DICT_VALUE *dict_valbyattr(unsigned int attr, unsigned int vendor, int value)
 /*
  *	Associate a value with an attribute and return it.
  */
-const char *dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value)
+char const *dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value)
 {
 	DICT_VALUE *dv;
 
@@ -3026,7 +3025,7 @@ const char *dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value
 /*
  *	Get a value by its name, keyed off of an attribute.
  */
-DICT_VALUE *dict_valbyname(unsigned int attr, unsigned int vendor, const char *name)
+DICT_VALUE *dict_valbyname(unsigned int attr, unsigned int vendor, char const *name)
 {
 	DICT_VALUE *my_dv, *dv;
 	uint32_t buffer[(sizeof(*my_dv) + DICT_VALUE_MAX_NAME_LEN + 3)/4];
@@ -3055,7 +3054,7 @@ DICT_VALUE *dict_valbyname(unsigned int attr, unsigned int vendor, const char *n
  *
  *	This is efficient only for small numbers of vendors.
  */
-int dict_vendorbyname(const char *name)
+int dict_vendorbyname(char const *name)
 {
 	DICT_VENDOR *dv;
 	size_t buffer[(sizeof(*dv) + DICT_VENDOR_MAX_NAME_LEN + sizeof(size_t) - 1) / sizeof(size_t)];

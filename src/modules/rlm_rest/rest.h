@@ -101,7 +101,7 @@ extern const FR_NAME_NUMBER http_content_header_table[];
  *	Structure for section configuration
  */
 typedef struct rlm_rest_section_t {
-	const char *name;
+	char const *name;
 	char *uri;
 	
 	char *method_str;
@@ -133,7 +133,7 @@ typedef struct rlm_rest_section_t {
  *	Structure for module configuration
  */
 typedef struct rlm_rest_t {
-	const char *xlat_name;
+	char const *xlat_name;
 
 	char *connect_uri;
 

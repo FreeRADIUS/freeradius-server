@@ -35,8 +35,8 @@ RCSID("$Id$")
  *	End a session by faking a Stop packet to all accounting modules.
  */
 int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
-		const char *user,
-		const char *sessionid, uint32_t cliaddr, char proto,
+		char const *user,
+		char const *sessionid, uint32_t cliaddr, char proto,
 		int session_time)
 {
 	REQUEST *stopreq;
@@ -120,8 +120,8 @@ int session_zap(REQUEST *request, uint32_t nasaddr, unsigned int port,
  *		1 The user is logged in.
  *		2 Some error occured.
  */
-int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
-		 const char *session_id)
+int rad_check_ts(uint32_t nasaddr, unsigned int portnum, char const *user,
+		 char const *session_id)
 {
 	pid_t	pid, child_pid;
 	int	status;
@@ -218,7 +218,7 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, const char *user,
 }
 #else
 int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
-		 UNUSED const char *user, UNUSED const char *session_id)
+		 UNUSED char const *user, UNUSED char const *session_id)
 {
 	ERROR("Simultaneous-Use is not supported");
 	return 2;
@@ -229,15 +229,15 @@ int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
 /* WITH_SESSION_MGMT */
 
 int session_zap(UNUSED REQUEST *request, UNUSED uint32_t nasaddr, UNUSED unsigned int port,
-		UNUSED const char *user,
-		UNUSED const char *sessionid, UNUSED uint32_t cliaddr, UNUSED char proto,
+		UNUSED char const *user,
+		UNUSED char const *sessionid, UNUSED uint32_t cliaddr, UNUSED char proto,
 		UNUSED int session_time)
 {
 	return RLM_MODULE_FAIL;
 }
 
 int rad_check_ts(UNUSED uint32_t nasaddr, UNUSED unsigned int portnum,
-		 UNUSED const char *user, UNUSED const char *session_id)
+		 UNUSED char const *user, UNUSED char const *session_id)
 {
 	ERROR("Simultaneous-Use is not supported");
 	return 2;

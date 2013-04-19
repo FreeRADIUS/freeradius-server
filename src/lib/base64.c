@@ -44,10 +44,9 @@ RCSID("$Id$")
  * @return The amount of data we wrote to the buffer or -1 if output buffer
  *	was too small.
  */
-size_t fr_base64_encode(const uint8_t *in, size_t inlen, char *out,
-			size_t outlen)
+size_t fr_base64_encode(uint8_t const *in, size_t inlen, char *out, size_t outlen)
 {
-	static const char b64str[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm"
+	static char const b64str[64] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklm"
 				       "nopqrstuvwxyz0123456789+/";
 
 	char *p = out;
@@ -58,13 +57,8 @@ size_t fr_base64_encode(const uint8_t *in, size_t inlen, char *out,
 	
 	while (inlen) {
 		*p++ = b64str[(in[0] >> 2) & 0x3f];
-		
-		*p++ = b64str[((in[0] << 4) +
-			      (--inlen ? in[1] >> 4 : 0)) & 0x3f];
-			
-		*p++ = (inlen ? b64str[((in[1] << 2) +
-				       (--inlen ? in[2] >> 6 : 0)) & 0x3f] : '=');
-				
+		*p++ = b64str[((in[0] << 4) + (--inlen ? in[1] >> 4 : 0)) & 0x3f];
+		*p++ = (inlen ? b64str[((in[1] << 2) + (--inlen ? in[2] >> 6 : 0)) & 0x3f] : '=');	
 		*p++ = inlen ? b64str[in[2] & 0x3f] : '=';
 
 		if (inlen) inlen--;
@@ -92,7 +86,7 @@ size_t fr_base64_encode(const uint8_t *in, size_t inlen, char *out,
  * @param[out] out Which to write the pointer to the newly allocated buffer.
  * @return The length of the string in the output buffer or -1 on error.
  */
-ssize_t fr_base64_encode_alloc(const uint8_t *in, size_t inlen, char **out)
+ssize_t fr_base64_encode_alloc(uint8_t const *in, size_t inlen, char **out)
 {
 	size_t outlen = FR_BASE64_ENC_LENGTH(inlen) + 1;
 
@@ -300,7 +294,7 @@ int fr_isbase64(char c)
  * @param[in] outlen The length of the output buffer.
  * @return -1 on error, else the length of decoded data.
  */
-ssize_t fr_base64_decode(const char *in, size_t inlen, uint8_t *out,
+ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out,
 			 size_t outlen)
 {
 	uint8_t *p = out;
@@ -314,8 +308,7 @@ ssize_t fr_base64_decode(const char *in, size_t inlen, uint8_t *out,
 			break;
 		}
 
-		*p++ = ((b64[us(in[0])] << 2) |
-			(b64[us(in[1])] >> 4));
+		*p++ = ((b64[us(in[0])] << 2) | (b64[us(in[1])] >> 4));
 
 		if (inlen == 2) break;
 
@@ -324,8 +317,7 @@ ssize_t fr_base64_decode(const char *in, size_t inlen, uint8_t *out,
 		} else {
 			if (!fr_isbase64(in[2])) break;
 			
-			*p++ = ((b64[us(in[1])] << 4) & 0xf0) |
-				(b64[us(in[2])] >> 2);
+			*p++ = ((b64[us(in[1])] << 4) & 0xf0) | (b64[us(in[2])] >> 2);
 			
 			if (inlen == 3) break;
 
@@ -334,8 +326,7 @@ ssize_t fr_base64_decode(const char *in, size_t inlen, uint8_t *out,
 			} else {
 	      			if (!fr_isbase64(in[3])) break;
 
-				*p++ = ((b64[us(in[2])] << 6) & 0xc0) |
-					 b64[us(in[3])];
+				*p++ = ((b64[us(in[2])] << 6) & 0xc0) | b64[us(in[3])];
 	    		}
 		}
 		
@@ -372,7 +363,7 @@ ssize_t fr_base64_decode(const char *in, size_t inlen, uint8_t *out,
  * @param[out] out Where to write the pointer to the decoded data.
  * @return -1 on error, else the length of data written to the buffer.
  */
-ssize_t fr_base64_decode_alloc(const char *in, size_t inlen, uint8_t **out)
+ssize_t fr_base64_decode_alloc(char const *in, size_t inlen, uint8_t **out)
 {
 	ssize_t ret;
 	/*

@@ -177,7 +177,7 @@ static int sql_check_error(int error)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, const char *query)
+static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
@@ -268,7 +268,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query)
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	int ret;
 
@@ -391,7 +391,7 @@ static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *c
  *	       connection
  *
  *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 

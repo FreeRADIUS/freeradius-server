@@ -68,8 +68,8 @@ static pthread_mutex_t otp_fd_head_mutex = PTHREAD_MUTEX_INITIALIZER;
  * Returns one of the RLM_MODULE_* codes.  passcode is filled in.
  * NB: The returned passcode will contain the PIN!  DO NOT LOG!
  */
-int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
-		 const rlm_otp_t *opt,
+int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
+		 rlm_otp_t const *opt,
 		 char passcode[OTP_MAX_PASSCODE_LEN + 1])
 {
 	otp_request_t	otp_request;
@@ -228,8 +228,8 @@ int otp_pw_valid(REQUEST *request, int pwe, const char *challenge,
  * Returns an OTP_* code, or -1 on system failure.
  * Fills in reply.
  */
-static int otp_verify(const rlm_otp_t *opt,
-		      const otp_request_t *request, otp_reply_t *reply)
+static int otp_verify(rlm_otp_t const *opt,
+		      otp_request_t const *request, otp_reply_t *reply)
 {
 	otp_fd_t *fdp;
 	int rc;
@@ -245,7 +245,7 @@ static int otp_verify(const rlm_otp_t *opt,
 		return -1;
 	}
 
-	rc = otp_write(fdp, (const char *) request, sizeof(*request));
+	rc = otp_write(fdp, (char const *) request, sizeof(*request));
 	if (rc != sizeof(*request)) {
 		if (rc == 0) {
 			goto retry;	/* otpd disconnect */	/*TODO: pause */
@@ -325,7 +325,7 @@ otp_read(otp_fd_t *fdp, char *buf, size_t len)
  *	Full write with logging, and close on failure.
  *	Returns 0 on success, errno on failure.
  */
-static int otp_write(otp_fd_t *fdp, const char *buf, size_t len)
+static int otp_write(otp_fd_t *fdp, char const *buf, size_t len)
 {
 	size_t nleft = len;
 	ssize_t nwrote;
@@ -352,7 +352,7 @@ static int otp_write(otp_fd_t *fdp, const char *buf, size_t len)
 }
 
 /* connect to otpd and return fd */
-static int otp_connect(const char *path)
+static int otp_connect(char const *path)
 {
 	int fd;
 	struct sockaddr_un sa;
@@ -399,7 +399,7 @@ static int otp_connect(const char *path)
  * requests to otpd and we have no way to demultiplex
  * the responses.
  */
-static otp_fd_t * otp_getfd(const rlm_otp_t *opt)
+static otp_fd_t * otp_getfd(rlm_otp_t const *opt)
 {
 	int rc;
 	otp_fd_t *fdp;

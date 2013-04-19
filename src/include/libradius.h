@@ -211,7 +211,7 @@ typedef struct value_pair {
 	//	VALUE_DATA 	*data;		//!< Value data for this
 						//!< attribute.
 	
-		const char 	*xlat;		//!< Source string for xlat
+		char const 	*xlat;		//!< Source string for xlat
 						//!< expansion.
 	} value;
 	
@@ -290,20 +290,20 @@ typedef struct radius_packet {
 /*
  *	Printing functions.
  */
-int		fr_utf8_char(const uint8_t *str);
-size_t		fr_print_string(const char *in, size_t inlen,
+int		fr_utf8_char(uint8_t const *str);
+size_t		fr_print_string(char const *in, size_t inlen,
 				 char *out, size_t outlen);
 int     	vp_prints_value(char *out, size_t outlen,
-				const VALUE_PAIR *vp, int delimitst);
+				VALUE_PAIR const *vp, int delimitst);
 char		*vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type);
-char     	*vp_aprint(TALLOC_CTX *ctx, const VALUE_PAIR *vp);
+char     	*vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 int     	vp_prints_value_json(char *out, size_t outlen,
-				     const VALUE_PAIR *vp);
+				     VALUE_PAIR const *vp);
 size_t		vp_print_name(char *buffer, size_t bufsize,
 			      unsigned int attr, unsigned int vendor);
-int     	vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp);
-void		vp_print(FILE *, const VALUE_PAIR *);
-void		vp_printlist(FILE *, const VALUE_PAIR *);
+int     	vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp);
+void		vp_print(FILE *, VALUE_PAIR const *);
+void		vp_printlist(FILE *, VALUE_PAIR const *);
 #define		fprint_attr_val vp_print
 
 /*
@@ -311,30 +311,30 @@ void		vp_printlist(FILE *, const VALUE_PAIR *);
  */
 extern const int dict_attr_allowed_chars[256];
 int		str2argv(char *str, char **argv, int max_argc);
-int		dict_str2oid(const char *ptr, unsigned int *pattr,
+int		dict_str2oid(char const *ptr, unsigned int *pattr,
 			     unsigned int *pvendor, int tlv_depth);
-int		dict_addvendor(const char *name, unsigned int value);
-int		dict_addattr(const char *name, int attr, unsigned int vendor, int type, ATTR_FLAGS flags);
-int		dict_addvalue(const char *namestr, const char *attrstr, int value);
-int		dict_init(const char *dir, const char *fn);
+int		dict_addvendor(char const *name, unsigned int value);
+int		dict_addattr(char const *name, int attr, unsigned int vendor, int type, ATTR_FLAGS flags);
+int		dict_addvalue(char const *namestr, char const *attrstr, int value);
+int		dict_init(char const *dir, char const *fn);
 void		dict_free(void);
-int		dict_read(const char *dir, const char *filename);
+int		dict_read(char const *dir, char const *filename);
 void 		dict_attr_free(DICT_ATTR const **da);
-const DICT_ATTR	*dict_attr_copy(const DICT_ATTR *da, int vp_free);
+const DICT_ATTR	*dict_attr_copy(DICT_ATTR const *da, int vp_free);
 const DICT_ATTR	*dict_attrunknown(unsigned int attr, unsigned int vendor, int vp_free);
-const DICT_ATTR	*dict_attrunknownbyname(const char *attribute, int vp_free);
+const DICT_ATTR	*dict_attrunknownbyname(char const *attribute, int vp_free);
 const DICT_ATTR	*dict_attrbyvalue(unsigned int attr, unsigned int vendor);
-const DICT_ATTR	*dict_attrbyname(const char *attr);
+const DICT_ATTR	*dict_attrbyname(char const *attr);
 const DICT_ATTR	*dict_attrbytype(unsigned int attr, unsigned int vendor,
 				 PW_TYPE type);
-const DICT_ATTR	*dict_attrbyparent(const DICT_ATTR *parent, unsigned int attr,
+const DICT_ATTR	*dict_attrbyparent(DICT_ATTR const *parent, unsigned int attr,
 					   unsigned int vendor);
-int		dict_attr_child(const DICT_ATTR *parent,
+int		dict_attr_child(DICT_ATTR const *parent,
 				unsigned int *pattr, unsigned int *pvendor);
 DICT_VALUE	*dict_valbyattr(unsigned int attr, unsigned int vendor, int val);
-DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, const char *val);
-const char	*dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value);
-int		dict_vendorbyname(const char *name);
+DICT_VALUE	*dict_valbyname(unsigned int attr, unsigned int vendor, char const *val);
+char const	*dict_valnamebyattr(unsigned int attr, unsigned int vendor, int value);
+int		dict_vendorbyname(char const *name);
 DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
 #if 1 /* FIXME: compat */
@@ -346,89 +346,85 @@ DICT_VENDOR	*dict_vendorbyvalue(int vendor);
 
 /* md5.c */
 
-void		fr_md5_calc(uint8_t *, const uint8_t *, unsigned int);
+void		fr_md5_calc(uint8_t *, uint8_t const *, unsigned int);
 
 /* hmac.c */
 
-void fr_hmac_md5(const uint8_t *text, int text_len,
-		   const uint8_t *key, int key_len,
-		   unsigned char *digest);
+void fr_hmac_md5(uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len, unsigned char *digest);
 
 /* hmacsha1.c */
 
-void fr_hmac_sha1(const uint8_t *text, int text_len,
-		    const uint8_t *key, int key_len,
-		    uint8_t *digest);
+void fr_hmac_sha1(uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len, uint8_t *digest);
 
 /* radius.c */
-int		rad_send(RADIUS_PACKET *, const RADIUS_PACKET *, const char *secret);
+int		rad_send(RADIUS_PACKET *, RADIUS_PACKET const *, char const *secret);
 int		rad_packet_ok(RADIUS_PACKET *packet, int flags);
 RADIUS_PACKET	*rad_recv(int fd, int flags);
 ssize_t rad_recv_header(int sockfd, fr_ipaddr_t *src_ipaddr, int *src_port,
 			int *code);
 void		rad_recv_discard(int sockfd);
 int		rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
-			   const char *secret);
-int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, const char *secret);
-int		rad_encode(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-			   const char *secret);
-int		rad_sign(RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-			 const char *secret);
+			   char const *secret);
+int		rad_decode(RADIUS_PACKET *packet, RADIUS_PACKET *original, char const *secret);
+int		rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			   char const *secret);
+int		rad_sign(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
+			 char const *secret);
 
-int rad_digest_cmp(const uint8_t *a, const uint8_t *b, size_t length);
+int rad_digest_cmp(uint8_t const *a, uint8_t const *b, size_t length);
 RADIUS_PACKET	*rad_alloc(TALLOC_CTX *ctx, int newvector);
 RADIUS_PACKET	*rad_alloc_reply(TALLOC_CTX *ctx, RADIUS_PACKET *);
 void		rad_free(RADIUS_PACKET **);
-int		rad_pwencode(char *encpw, size_t *len, const char *secret,
-			     const uint8_t *vector);
-int		rad_pwdecode(char *encpw, size_t len, const char *secret,
-			     const uint8_t *vector);
-int		rad_tunnel_pwencode(char *encpw, size_t *len, const char *secret,
-				    const uint8_t *vector);
+int		rad_pwencode(char *encpw, size_t *len, char const *secret,
+			     uint8_t const *vector);
+int		rad_pwdecode(char *encpw, size_t len, char const *secret,
+			     uint8_t const *vector);
+int		rad_tunnel_pwencode(char *encpw, size_t *len, char const *secret,
+				    uint8_t const *vector);
 int		rad_tunnel_pwdecode(uint8_t *encpw, size_t *len,
-				    const char *secret, const uint8_t *vector);
+				    char const *secret, uint8_t const *vector);
 int		rad_chap_encode(RADIUS_PACKET *packet, uint8_t *output,
 				int id, VALUE_PAIR *password);
 
-int rad_attr_ok(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
+int rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 		DICT_ATTR *da,
-		const uint8_t *data, size_t length);
-int rad_tlv_ok(const uint8_t *data, size_t length,
+		uint8_t const *data, size_t length);
+int rad_tlv_ok(uint8_t const *data, size_t length,
 	       size_t dv_type, size_t dv_length);
 
-ssize_t	rad_attr2vp(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-		    const char *secret,
-		    const uint8_t *data, size_t length,
+ssize_t	rad_attr2vp(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+		    char const *secret,
+		    uint8_t const *data, size_t length,
 		    VALUE_PAIR **pvp);
 
 ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
-		     const uint8_t *data, size_t length,
+		     uint8_t const *data, size_t length,
 		     VALUE_PAIR **pvp);
 
-ssize_t rad_vp2data(const VALUE_PAIR *vp, uint8_t *out, size_t outlen);
+ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen);
 
-int rad_vp2extended(const RADIUS_PACKET *packet,
-		    const RADIUS_PACKET *original,
-		    const char *secret, const VALUE_PAIR **pvp,
+int rad_vp2extended(RADIUS_PACKET const *packet,
+		    RADIUS_PACKET const *original,
+		    char const *secret, VALUE_PAIR const **pvp,
 		    uint8_t *ptr, size_t room);
-int rad_vp2wimax(const RADIUS_PACKET *packet,
-		 const RADIUS_PACKET *original,
-		 const char *secret, const VALUE_PAIR **pvp,
+int rad_vp2wimax(RADIUS_PACKET const *packet,
+		 RADIUS_PACKET const *original,
+		 char const *secret, VALUE_PAIR const **pvp,
 		 uint8_t *ptr, size_t room);
-int rad_vp2vsa(const RADIUS_PACKET *packet, const RADIUS_PACKET *original,
-	       const char *secret, const VALUE_PAIR **pvp, uint8_t *start,
+int rad_vp2vsa(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+	       char const *secret, VALUE_PAIR const **pvp, uint8_t *start,
 	       size_t room);
-int rad_vp2rfc(const RADIUS_PACKET *packet,
-	       const RADIUS_PACKET *original,
-	       const char *secret, const VALUE_PAIR **pvp,
+int rad_vp2rfc(RADIUS_PACKET const *packet,
+	       RADIUS_PACKET const *original,
+	       char const *secret, VALUE_PAIR const **pvp,
 	       uint8_t *ptr, size_t room);
 
-int rad_vp2attr(const RADIUS_PACKET *packet,
-		const RADIUS_PACKET *original, const char *secret,
-		const VALUE_PAIR **pvp, uint8_t *ptr, size_t room);
+int rad_vp2attr(RADIUS_PACKET const *packet,
+		RADIUS_PACKET const *original, char const *secret,
+		VALUE_PAIR const **pvp, uint8_t *ptr, size_t room);
 
 /* valuepair.c */
-VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, const DICT_ATTR *da);
+VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da);
 VALUE_PAIR	*paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
@@ -438,44 +434,44 @@ void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t t
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void	    pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
-VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, const VALUE_PAIR *vp);
-VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, const DICT_ATTR *da, const VALUE_PAIR *vp);
+VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
+VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			  unsigned int attr, unsigned int vendor, int8_t tag);
-int		pairparsevalue(VALUE_PAIR *vp, const char *value);
-VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, const char *attribute, const char *value, FR_TOKEN op);
-int 		pairmark_xlat(VALUE_PAIR *vp, const char *value);
-FR_TOKEN 	pairread(const char **ptr, VALUE_PAIR_RAW *raw);
-FR_TOKEN	userparse(TALLOC_CTX *ctx, const char *buffer, VALUE_PAIR **head);
-VALUE_PAIR	*readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, const char *errprefix);
+int		pairparsevalue(VALUE_PAIR *vp, char const *value);
+VALUE_PAIR	*pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps, char const *attribute, char const *value, FR_TOKEN op);
+int 		pairmark_xlat(VALUE_PAIR *vp, char const *value);
+FR_TOKEN 	pairread(char const **ptr, VALUE_PAIR_RAW *raw);
+FR_TOKEN	userparse(TALLOC_CTX *ctx, char const *buffer, VALUE_PAIR **head);
+VALUE_PAIR	*readvp2(TALLOC_CTX *ctx, FILE *fp, int *pfiledone, char const *errprefix);
 
 /*
  *	Error functions.
  */
 #ifdef _LIBRADIUS
-void		fr_strerror_printf(const char *, ...)
+void		fr_strerror_printf(char const *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
 #endif
-void		fr_perror(const char *, ...)
+void		fr_perror(char const *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
 #endif
 ;
-extern const char *fr_strerror(void);
+extern char const *fr_strerror(void);
 extern int	fr_dns_lookups;	/* 0 = no dns lookups */
 extern int	fr_debug_flag;	/* 0 = no debugging information */
 extern int	fr_max_attributes; /* per incoming packet */
 #define	FR_MAX_PACKET_CODE (52)
-extern const char *fr_packet_codes[FR_MAX_PACKET_CODE];
+extern char const *fr_packet_codes[FR_MAX_PACKET_CODE];
 extern FILE	*fr_log_fp;
 extern void rad_print_hex(RADIUS_PACKET *packet);
-void		fr_printf_log(const char *, ...)
+void		fr_printf_log(char const *, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 1, 2)))
 #endif
@@ -484,28 +480,28 @@ void		fr_printf_log(const char *, ...)
 /*
  *	Several handy miscellaneous functions.
  */
-const char 	*ip_ntoa(char *, uint32_t);
-char		*ifid_ntoa(char *buffer, size_t size, const uint8_t *ifid);
-uint8_t		*ifid_aton(const char *ifid_str, uint8_t *ifid);
+char const 	*ip_ntoa(char *, uint32_t);
+char		*ifid_ntoa(char *buffer, size_t size, uint8_t const *ifid);
+uint8_t		*ifid_aton(char const *ifid_str, uint8_t *ifid);
 int		rad_lockfd(int fd, int lock_len);
 int		rad_lockfd_nonblock(int fd, int lock_len);
 int		rad_unlockfd(int fd, int lock_len);
-size_t		fr_bin2hex(const uint8_t *bin, char *hex, size_t len);
-size_t		fr_hex2bin(const char *hex, uint8_t *bin, size_t len);
-int fr_ipaddr_cmp(const fr_ipaddr_t *a, const fr_ipaddr_t *b);
+size_t		fr_bin2hex(uint8_t const *bin, char *hex, size_t len);
+size_t		fr_hex2bin(char const *hex, uint8_t *bin, size_t len);
+int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b);
 
-int		ip_hton(const char *src, int af, fr_ipaddr_t *dst);
-const char	*ip_ntoh(const fr_ipaddr_t *src, char *dst, size_t cnt);
-int fr_ipaddr2sockaddr(const fr_ipaddr_t *ipaddr, int port,
+int		ip_hton(char const *src, int af, fr_ipaddr_t *dst);
+char const	*ip_ntoh(fr_ipaddr_t const *src, char *dst, size_t cnt);
+int fr_ipaddr2sockaddr(fr_ipaddr_t const *ipaddr, int port,
 		       struct sockaddr_storage *sa, socklen_t *salen);
-int fr_sockaddr2ipaddr(const struct sockaddr_storage *sa, socklen_t salen,
+int fr_sockaddr2ipaddr(struct sockaddr_storage const *sa, socklen_t salen,
 		       fr_ipaddr_t *ipaddr, int * port);
 
 
 #ifdef WITH_ASCEND_BINARY
 /* filters.c */
 int		ascend_parse_filter(VALUE_PAIR *pair);
-void		print_abinary(const VALUE_PAIR *vp, char *buffer, size_t len, int delimitst);
+void		print_abinary(VALUE_PAIR const *vp, char *buffer, size_t len, int delimitst);
 #endif /*WITH_ASCEND_BINARY*/
 
 /* random numbers in isaac.c */
@@ -522,11 +518,11 @@ typedef struct fr_randctx {
 void fr_isaac(fr_randctx *ctx);
 void fr_randinit(fr_randctx *ctx, int flag);
 uint32_t fr_rand(void);	/* like rand(), but better. */
-void fr_rand_seed(const void *, size_t ); /* seed the random pool */
+void fr_rand_seed(void const *, size_t ); /* seed the random pool */
 
 
 /* crypt wrapper from crypt.c */
-int fr_crypt_check(const char *key, const char *salt);
+int fr_crypt_check(char const *key, char const *salt);
 
 /* rbtree.c */
 typedef struct rbtree_t rbtree_t;
@@ -535,16 +531,16 @@ typedef struct rbnode_t rbnode_t;
 #define RBTREE_FLAG_NONE    (0)
 #define RBTREE_FLAG_REPLACE (1 << 0)
 #define RBTREE_FLAG_LOCK    (1 << 1)
-rbtree_t       *rbtree_create(int (*Compare)(const void *, const void *),
+rbtree_t       *rbtree_create(int (*Compare)(void const *, void const *),
 			      void (*freeNode)(void *),
 			      int flags);
 void		rbtree_free(rbtree_t *tree);
 int		rbtree_insert(rbtree_t *tree, void *Data);
 rbnode_t	*rbtree_insertnode(rbtree_t *tree, void *Data);
 void		rbtree_delete(rbtree_t *tree, rbnode_t *Z);
-int		rbtree_deletebydata(rbtree_t *tree, const void *data);
-rbnode_t       *rbtree_find(rbtree_t *tree, const void *Data);
-void	       *rbtree_finddata(rbtree_t *tree, const void *Data);
+int		rbtree_deletebydata(rbtree_t *tree, void const *data);
+rbnode_t       *rbtree_find(rbtree_t *tree, void const *Data);
+void	       *rbtree_finddata(rbtree_t *tree, void const *Data);
 int		rbtree_num_elements(rbtree_t *tree);
 void	       *rbtree_min(rbtree_t *tree);
 void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);

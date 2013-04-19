@@ -133,7 +133,7 @@ typedef struct _tls_session_t {
 
 	void 		(*record_init)(record_t *buf);
 	void 		(*record_close)(record_t *buf);
-	unsigned int 	(*record_plus)(record_t *buf, const void *ptr,
+	unsigned int 	(*record_plus)(record_t *buf, void const *ptr,
 				       unsigned int size);
 	unsigned int 	(*record_minus)(record_t *buf, void *ptr,
 					unsigned int size);
@@ -156,7 +156,7 @@ typedef struct _tls_session_t {
 	void 		*opaque;
 	void 		(*free_opaque)(void *opaque);
 
-	const char	*prf_label;
+	char const	*prf_label;
 	int		allow_session_resumption;
 } tls_session_t;
 
@@ -287,9 +287,9 @@ enum HandshakeType {
 
 /* Callbacks */
 int 		cbtls_password(char *buf, int num, int rwflag, void *userdata);
-void 		cbtls_info(const SSL *s, int where, int ret);
-void 		cbtls_msg(int write_p, int msg_version, int content_type,
-			const void *buf, size_t len, SSL *ssl, void *arg);
+void 		cbtls_info(SSL const *s, int where, int ret);
+void 		cbtls_msg(int write_p, int msg_version, int content_type, void const *buf, size_t len, SSL *ssl,
+			  void *arg);
 int		cbtls_verify(int ok, X509_STORE_CTX *ctx);
 
 /* TLS */

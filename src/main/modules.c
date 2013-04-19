@@ -38,7 +38,7 @@ typedef struct indexed_modcallable {
 } indexed_modcallable;
 
 typedef struct virtual_server_t {
-	const char	*name;
+	char const	*name;
 	time_t		created;
 	int		can_free;
 	CONF_SECTION	*cs;
@@ -104,7 +104,7 @@ const section_type_value_t section_type_value[RLM_COMPONENT_COUNT] = {
 /*
  *	Because dlopen produces really shitty and inaccurate error messages
  */
-static void check_lib_access(const char *name)
+static void check_lib_access(char const *name)
 {
 	if (access(name, R_OK) < 0) switch (errno) {
 		case EACCES:
@@ -119,7 +119,7 @@ static void check_lib_access(const char *name)
 	}
 }
 
-lt_dlhandle lt_dlopenext(const char *name)
+lt_dlhandle lt_dlopenext(char const *name)
 {
 	int flags = RTLD_NOW;
 	void *handle;
@@ -152,7 +152,7 @@ lt_dlhandle lt_dlopenext(const char *name)
 	return dlopen(buffer, flags);
 }
 
-void *lt_dlsym(lt_dlhandle handle, UNUSED const char *symbol)
+void *lt_dlsym(lt_dlhandle handle, UNUSED char const *symbol)
 {
 	return dlsym(handle, symbol);
 }
@@ -164,12 +164,12 @@ int lt_dlclose(lt_dlhandle handle)
 	return dlclose(handle);
 }
 
-const char *lt_dlerror(void)
+char const *lt_dlerror(void)
 {
 	return dlerror();
 }
 
-static int virtual_server_idx(const char *name)
+static int virtual_server_idx(char const *name)
 {
 	uint32_t hash;
 
@@ -180,7 +180,7 @@ static int virtual_server_idx(const char *name)
 	return hash & (VIRTUAL_SERVER_HASH_SIZE - 1);
 }
 
-static virtual_server_t *virtual_server_find(const char *name)
+static virtual_server_t *virtual_server_find(char const *name)
 {
 	rlm_rcode_t rcode;
 	virtual_server_t *server;
@@ -251,7 +251,7 @@ static int indexed_modcallable_free(void *ctx)
 	return 0;
 }
 
-static int indexed_modcallable_cmp(const void *one, const void *two)
+static int indexed_modcallable_cmp(void const *one, void const *two)
 {
 	const indexed_modcallable *a = one;
 	const indexed_modcallable *b = two;
@@ -266,7 +266,7 @@ static int indexed_modcallable_cmp(const void *one, const void *two)
 /*
  *	Compare two module entries
  */
-static int module_instance_cmp(const void *one, const void *two)
+static int module_instance_cmp(void const *one, void const *two)
 {
 	const module_instance_t *a = one;
 	const module_instance_t *b = two;
@@ -341,7 +341,7 @@ static void module_instance_free(void *data)
 /*
  *	Compare two module entries
  */
-static int module_entry_cmp(const void *one, const void *two)
+static int module_entry_cmp(void const *one, void const *two)
 {
 	const module_entry_t *a = one;
 	const module_entry_t *b = two;
@@ -386,7 +386,7 @@ int detach_modules(void)
 /*
  *	Find a module on disk or in memory, and link to it.
  */
-static module_entry_t *linkto_module(const char *module_name,
+static module_entry_t *linkto_module(char const *module_name,
 				     CONF_SECTION *cs)
 {
 	module_entry_t myentry;
@@ -476,11 +476,11 @@ static module_entry_t *linkto_module(const char *module_name,
  *	Find a module instance.
  */
 module_instance_t *find_module_instance(CONF_SECTION *modules,
-					const char *askedname, int do_link)
+					char const *askedname, int do_link)
 {
 	int check_config_safe = FALSE;
 	CONF_SECTION *cs;
-	const char *name1, *instname;
+	char const *name1, *instname;
 	module_instance_t *node, myNode;
 	char module_name[256];
 
@@ -540,7 +540,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 
 	if (check_config && (node->entry->module->instantiate) &&
 	    (node->entry->module->type & RLM_TYPE_CHECK_CONFIG_SAFE) == 0) {
-		const char *value = NULL;
+		char const *value = NULL;
 		CONF_PAIR *cp;
 
 		cp = cf_pair_find(cs, "force_check_config");
@@ -742,12 +742,12 @@ rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
  */
 static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 				     rbtree_t *components,
-				     const DICT_ATTR *dattr, int comp)
+				     DICT_ATTR const *dattr, int comp)
 {
 	indexed_modcallable *subcomp;
 	modcallable *ml;
 	DICT_VALUE *dval;
-	const char *name2 = cf_section_name2(cs);
+	char const *name2 = cf_section_name2(cs);
 
 	rad_assert(comp >= RLM_COMPONENT_AUTH);
 	rad_assert(comp < RLM_COMPONENT_COUNT);
@@ -795,7 +795,7 @@ static int load_subcomponent_section(modcallable *parent, CONF_SECTION *cs,
 	return 1;		/* OK */
 }
 
-static int define_type(CONF_SECTION *cs, const DICT_ATTR *dattr, const char *name)
+static int define_type(CONF_SECTION *cs, DICT_ATTR const *dattr, char const *name)
 {
 	uint32_t value;
 	DICT_VALUE *dval;
@@ -834,8 +834,8 @@ static int load_component_section(CONF_SECTION *cs,
 	CONF_ITEM *modref;
 	int idx;
 	indexed_modcallable *subcomp;
-	const char *modname;
-	const char *visiblename;
+	char const *modname;
+	char const *visiblename;
 	const DICT_ATTR *dattr;
 
 	/*
@@ -856,7 +856,7 @@ static int load_component_section(CONF_SECTION *cs,
 	for (modref = cf_item_find_next(cs, NULL);
 	     modref != NULL;
 	     modref = cf_item_find_next(cs, modref)) {
-		const char *name1;
+		char const *name1;
 		CONF_PAIR *cp = NULL;
 		CONF_SECTION *scs = NULL;
 
@@ -915,7 +915,7 @@ static int load_component_section(CONF_SECTION *cs,
 		 */
 		if (comp == RLM_COMPONENT_AUTH) {
 			DICT_VALUE *dval;
-			const char *modrefname = NULL;
+			char const *modrefname = NULL;
 			if (cp) {
 				modrefname = cf_pair_attr(cp);
 			} else {
@@ -969,7 +969,7 @@ static int load_component_section(CONF_SECTION *cs,
 static int load_byserver(CONF_SECTION *cs)
 {
 	int comp, found;
-	const char *name = cf_section_name2(cs);
+	char const *name = cf_section_name2(cs);
 	rbtree_t *components;
 	virtual_server_t *server = NULL;
 	indexed_modcallable *c;
@@ -1033,7 +1033,7 @@ static int load_byserver(CONF_SECTION *cs)
 		for (modref = cf_item_find_next(subcs, NULL);
 		     modref != NULL;
 		     modref = cf_item_find_next(subcs, modref)) {
-			const char *name1;
+			char const *name1;
 			CONF_SECTION *subsubcs;
 
 			/*
@@ -1159,7 +1159,7 @@ static int load_byserver(CONF_SECTION *cs)
 		 *	Handle each DHCP Message type separately.
 		 */
 		while (subcs) {
-			const char *name2 = cf_section_name2(subcs);
+			char const *name2 = cf_section_name2(subcs);
 
 			DEBUG2(" Module: Checking dhcp %s {...} for more modules to load", name2);
 			if (!load_subcomponent_section(NULL, subcs,
@@ -1254,7 +1254,7 @@ int virtual_servers_load(CONF_SECTION *config)
 	for (cs = cf_subsection_find_next(config, NULL, "server");
 	     cs != NULL;
 	     cs = cf_subsection_find_next(config, cs, "server")) {
-		const char *name2;
+		char const *name2;
 		virtual_server_t *server;
 
 		name2 = cf_section_name2(cs);
@@ -1353,7 +1353,7 @@ int module_hup(CONF_SECTION *modules)
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=cf_item_find_next(modules, ci)) {
-		const char *instname;
+		char const *instname;
 		module_instance_t myNode;
 
 		/*
@@ -1432,7 +1432,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=next) {
-		const char *name1, *name2;
+		char const *name1, *name2;
 		CONF_SECTION *subcs, *duplicate;
 
 		next = cf_item_find_next(modules, ci);
@@ -1470,7 +1470,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	if (cs != NULL) {
 		CONF_PAIR *cp;
 		module_instance_t *module;
-		const char *name;
+		char const *name;
 
 		cf_log_info(cs, " instantiate {");
 
@@ -1511,7 +1511,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	for (ci=cf_item_find_next(modules, NULL);
 	     ci != NULL;
 	     ci=next) {
-		const char *name;
+		char const *name;
 		module_instance_t *module;
 		CONF_SECTION *subcs;
 

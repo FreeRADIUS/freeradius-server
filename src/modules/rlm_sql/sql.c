@@ -163,7 +163,7 @@ int sql_release_socket(rlm_sql_t * inst, rlm_sql_handle_t * handle)
 int sql_userparse(TALLOC_CTX *ctx, VALUE_PAIR **head, rlm_sql_row_t row)
 {
 	VALUE_PAIR *vp;
-	const char *ptr, *value;
+	char const *ptr, *value;
 	char buf[MAX_STRING_LEN];
 	char do_xlat = 0;
 	FR_TOKEN token, operator = T_EOL;
@@ -293,7 +293,7 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
 	ret = (inst->module->sql_fetch_row)(*handle, inst->config);
 	
 	if (ret < 0) {
-		const char *error = (inst->module->sql_error)(*handle, inst->config);
+		char const *error = (inst->module->sql_error)(*handle, inst->config);
 		DEBUGE("rlm_sql (%s): Error fetching row: %s",
 		       inst->config->xlat_name, error ? error : "<UNKNOWN>");
 	}
@@ -308,7 +308,7 @@ int rlm_sql_fetch_row(rlm_sql_handle_t **handle, rlm_sql_t *inst)
  *	Purpose: call the module's sql_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
+int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret;
 
@@ -342,7 +342,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
 		}
 		
 		if (ret < 0) {
-			const char *error = (inst->module->sql_error)(*handle, inst->config);
+			char const *error = (inst->module->sql_error)(*handle, inst->config);
 			ERROR("rlm_sql (%s): Database query error: %s",
 			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
 		}
@@ -358,7 +358,7 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
  *	Purpose: call the module's sql_select_query and implement re-connect
  *
  *************************************************************************/
-int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char *query)
+int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 {
 	int ret;
 
@@ -392,7 +392,7 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char 
 		}
 		
 		if (ret < 0) {
-			const char *error = (inst->module->sql_error)(*handle, inst->config);
+			char const *error = (inst->module->sql_error)(*handle, inst->config);
 			ERROR("rlm_sql (%s): Database query error '%s'",
 			      inst->config->xlat_name, error ? error : "<UNKNOWN>");
 		}
@@ -410,7 +410,7 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, const char 
  *
  *************************************************************************/
 int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
-		  TALLOC_CTX *ctx, VALUE_PAIR **pair, const char *query)
+		  TALLOC_CTX *ctx, VALUE_PAIR **pair, char const *query)
 {
 	rlm_sql_row_t row;
 	int     rows = 0;
@@ -441,10 +441,10 @@ int sql_getvpdata(rlm_sql_t * inst, rlm_sql_handle_t **handle,
  *	Log the query to a file.
  */
 void rlm_sql_query_log(rlm_sql_t *inst, REQUEST *request,
-		       sql_acct_section_t *section, const char *query)
+		       sql_acct_section_t *section, char const *query)
 {
 	int fd;
-	const char *filename = NULL;
+	char const *filename = NULL;
 	char *expanded = NULL;
 
 	if (section) {

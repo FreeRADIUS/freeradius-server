@@ -117,7 +117,7 @@ static int fallthrough(VALUE_PAIR *vp)
  *	Yucky prototype.
  */
 static int generate_sql_clients(rlm_sql_t *inst);
-static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
+static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 
 /*
  *			SQL xlat function
@@ -126,7 +126,7 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, const char *i
  *  for inserts, updates and deletes the number of rows afftected will be
  *  returned instead.
  */
-static size_t sql_xlat(void *instance, REQUEST *request, const char *query, char *out, size_t freespace)
+static size_t sql_xlat(void *instance, REQUEST *request, char const *query, char *out, size_t freespace)
 {
 	rlm_sql_handle_t *handle = NULL;
 	rlm_sql_row_t row;
@@ -386,7 +386,7 @@ static int generate_sql_clients(rlm_sql_t *inst)
  *	Translate the SQL queries.
  */
 static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
-			      const char *in, void *arg)
+			      char const *in, void *arg)
 {
 	rlm_sql_t *inst = arg;
 	size_t len = 0;
@@ -441,11 +441,11 @@ static size_t sql_escape_func(UNUSED REQUEST *request, char *out, size_t outlen,
  *	escape it twice. (it will make things wrong if we have an
  *	escape candidate character in the username)
  */
-int sql_set_user(rlm_sql_t *inst, REQUEST *request, const char *username)
+int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 {
 	char *expanded = NULL;
 	VALUE_PAIR *vp = NULL;
-	const char *sqluser;
+	char const *sqluser;
 	ssize_t len;
 
 	if (username != NULL) {
@@ -730,7 +730,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 {
 	CONF_SECTION *cs;
 
-	const char *name = section_type_value[comp].section;
+	char const *name = section_type_value[comp].section;
 	
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
@@ -757,7 +757,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
-	const char *xlat_name;
+	char const *xlat_name;
 
 	/*
 	 *	Hack...
@@ -878,7 +878,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	
 	if (inst->module->mod_instantiate) {
 		CONF_SECTION *cs;
-		const char *name;
+		char const *name;
 		
 		name = strrchr(inst->config->sql_driver_name, '_');
 		if (!name) {
@@ -1065,7 +1065,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		 */
 		user_profile = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
 		
-		const char *profile = user_profile ?
+		char const *profile = user_profile ?
 				      user_profile->vp_strvalue :
 				      inst->config->default_profile;
 			
@@ -1125,8 +1125,8 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 
 	CONF_ITEM		*item;
 	CONF_PAIR 		*pair;
-	const char		*attr = NULL;
-	const char		*value;
+	char const		*attr = NULL;
+	char const		*value;
 
 	char			path[MAX_STRING_LEN];
 	char			*p = path;

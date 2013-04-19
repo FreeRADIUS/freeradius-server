@@ -98,15 +98,15 @@ static const CONF_PARSER module_config[] = {
 };
 
 
-static uint32_t pairlist_hash(const void *data)
+static uint32_t pairlist_hash(void const *data)
 {
-	return fr_hash_string(((const PAIR_LIST *)data)->name);
+	return fr_hash_string(((PAIR_LIST const *)data)->name);
 }
 
-static int pairlist_cmp(const void *a, const void *b)
+static int pairlist_cmp(void const *a, void const *b)
 {
-	return strcmp(((const PAIR_LIST *)a)->name,
-		      ((const PAIR_LIST *)b)->name);
+	return strcmp(((PAIR_LIST const *)a)->name,
+		      ((PAIR_LIST const *)b)->name);
 }
 
 static void my_pairlist_free(void *data)
@@ -117,7 +117,7 @@ static void my_pairlist_free(void *data)
 }
 
 
-static int getusersfile(TALLOC_CTX *ctx, const char *filename, fr_hash_table_t **pht,
+static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t **pht,
 			char *compat_mode_str)
 {
 	int rcode;
@@ -362,10 +362,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
  *	Common code called by everything below.
  */
 static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
-		       const char *filename, fr_hash_table_t *ht,
+		       char const *filename, fr_hash_table_t *ht,
 		       VALUE_PAIR *request_pairs, VALUE_PAIR **reply_pairs)
 {
-	const char	*name, *match;
+	char const	*name, *match;
 	VALUE_PAIR	*check_tmp;
 	VALUE_PAIR	*reply_tmp;
 	const PAIR_LIST	*user_pl, *default_pl;

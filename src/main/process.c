@@ -55,7 +55,7 @@ time_t				fr_start_time;
 static fr_packet_list_t *pl = NULL;
 static fr_event_list_t *el = NULL;
 
-static const char *action_codes[] = {
+static char const *action_codes[] = {
 	"INVALID",
 	"run",
 	"done",
@@ -248,8 +248,8 @@ static void request_coa_separate(REQUEST *coa);
 
 #define INSERT_EVENT(_function, _ctx) if (!fr_event_insert(el, _function, _ctx, &((_ctx)->when), &((_ctx)->ev))) { _rad_panic(__FILE__, __LINE__, "Failed to insert event"); }
 
-static void NEVER_RETURNS _rad_panic(const char *file, unsigned int line,
-				    const char *msg)
+static void NEVER_RETURNS _rad_panic(char const *file, unsigned int line,
+				    char const *msg)
 {
 	ERROR("[%s:%d] %s", file, line, msg);
 	_exit(1);
@@ -280,7 +280,7 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 {
 	VALUE_PAIR *vp;
 	char buffer[1024];
-	const char *received, *from;
+	char const *received, *from;
 	const fr_ipaddr_t *ip;
 	int port;
 
@@ -578,7 +578,7 @@ STATE_MACHINE_DECL(request_done)
 }
 
 
-static void request_cleanup_delay_init(REQUEST *request, const struct timeval *pnow)
+static void request_cleanup_delay_init(REQUEST *request, struct timeval const *pnow)
 {
 	struct timeval now, when;
 
@@ -999,7 +999,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 #ifdef WITH_UNLANG
 		if (debug_condition) {
 			int result = FALSE;
-			const char *my_debug = debug_condition;
+			char const *my_debug = debug_condition;
 
 			/*
 			 *	Ignore parse errors.
@@ -1819,7 +1819,7 @@ static int process_proxy_reply(REQUEST *request)
 	}
 	
 	if (request->home_pool && request->home_pool->virtual_server) {
-		const char *old_server = request->server;
+		char const *old_server = request->server;
 		
 		request->server = request->home_pool->virtual_server;
 		RDEBUG2(" server %s {", request->server);
@@ -2092,7 +2092,7 @@ STATE_MACHINE_DECL(request_virtual_server)
 static int request_will_proxy(REQUEST *request)
 {
 	int rcode, pre_proxy_type = 0;
-	const char *realmname = NULL;
+	char const *realmname = NULL;
 	VALUE_PAIR *vp, *strippedname;
 	home_server *home;
 	REALM *realm = NULL;
@@ -2281,7 +2281,7 @@ static int request_will_proxy(REQUEST *request)
 	rad_assert(request->home_pool != NULL);
 
 	if (request->home_pool->virtual_server) {
-		const char *old_server = request->server;
+		char const *old_server = request->server;
 		
 		request->server = request->home_pool->virtual_server;
 		RDEBUG2(" server %s {", request->server);
@@ -2703,7 +2703,7 @@ static void ping_home_server(void *ctx)
 	INSERT_EVENT(ping_home_server, home);
 }
 
-static void home_trigger(home_server *home, const char *trigger)
+static void home_trigger(home_server *home, char const *trigger)
 {
 	REQUEST my_request;
 	RADIUS_PACKET my_packet;
@@ -3155,7 +3155,7 @@ static void request_coa_originate(REQUEST *request)
 	}
 
 	if (coa->home_pool && coa->home_pool->virtual_server) {
-		const char *old_server = coa->server;
+		char const *old_server = coa->server;
 		
 		coa->server = coa->home_pool->virtual_server;
 		RDEBUG2(" server %s {", coa->server);

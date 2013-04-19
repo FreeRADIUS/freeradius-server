@@ -61,33 +61,34 @@ typedef struct rlm_otp_t {
 } rlm_otp_t;
 
 /* otp_mppe.c */
-void otp_mppe(REQUEST *, otp_pwe_t, const rlm_otp_t *, const char *);
+void otp_mppe(REQUEST *, otp_pwe_t, rlm_otp_t const *, char const *);
 
 /* otp_pw_valid.c */
-int otp_pw_valid(REQUEST *, int, const char *, const rlm_otp_t *, char []);
+int otp_pw_valid(REQUEST *, int, char const *, rlm_otp_t const *, char []);
 
 /* otp_radstate.c */
 #define OTP_MAX_RADSTATE_LEN 2 + (OTP_MAX_CHALLENGE_LEN * 2 + 8 + 8 + 32)*2 + 1
 
-size_t otp_gen_state(char[OTP_MAX_RADSTATE_LEN],
-		     const char[OTP_MAX_CHALLENGE_LEN], size_t,
-		     int32_t, int32_t, const uint8_t[16]);
+size_t otp_gen_state(char [OTP_MAX_RADSTATE_LEN],
+		     char const [OTP_MAX_CHALLENGE_LEN],
+		     size_t,
+		     int32_t, int32_t, uint8_t const [16]);
 
 /* otp_pwe.c */
 extern const	DICT_ATTR *pwattr[8];
 void		otp_pwe_init(void);
-otp_pwe_t	otp_pwe_present(const REQUEST *);
+otp_pwe_t	otp_pwe_present(REQUEST const *);
 
 /* otp_util.c */
 void	otp_get_random(uint8_t *, size_t);
 void	otp_async_challenge(char[OTP_MAX_CHALLENGE_LEN + 1], size_t);
-ssize_t	otp_a2x(const uint8_t *, size_t, uint8_t *);
+ssize_t	otp_a2x(uint8_t const *, size_t, uint8_t *);
 
-void	_otp_pthread_mutex_init(pthread_mutex_t *, const pthread_mutexattr_t *,
-				const char *);
-void	_otp_pthread_mutex_lock(pthread_mutex_t *, const char *);
-int	_otp_pthread_mutex_trylock(pthread_mutex_t *, const char *);
-void	_otp_pthread_mutex_unlock(pthread_mutex_t *, const char *);
+void	_otp_pthread_mutex_init(pthread_mutex_t *, pthread_mutexattr_t const *,
+				char const *);
+void	_otp_pthread_mutex_lock(pthread_mutex_t *, char const *);
+int	_otp_pthread_mutex_trylock(pthread_mutex_t *, char const *);
+void	_otp_pthread_mutex_unlock(pthread_mutex_t *, char const *);
 
 #define otp_pthread_mutex_init(a, b) _otp_pthread_mutex_init((a), (b), __func__)
 #define otp_pthread_mutex_lock(a) _otp_pthread_mutex_lock((a), __func__)

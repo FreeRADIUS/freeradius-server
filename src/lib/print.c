@@ -35,7 +35,7 @@ RCSID("$Id$")
  *	Note that we don't care about the length of the input string,
  *	because '\0' is an invalid UTF-8 character.
  */
-int fr_utf8_char(const uint8_t *str)
+int fr_utf8_char(uint8_t const *str)
 {
 	if (*str < 0x20) return 0;
 
@@ -127,10 +127,10 @@ int fr_utf8_char(const uint8_t *str)
  *	has to be larger than the input string by at least 5 bytes.
  *	If not, the output is silently truncated...
  */
-size_t fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
+size_t fr_print_string(char const *in, size_t inlen, char *out, size_t outlen)
 {
-	const char	*start = out;
-	const uint8_t	*str = (const uint8_t *) in;
+	char const	*start = out;
+	const uint8_t	*str = (uint8_t const *) in;
 	int		sp = 0;
 	int		utf8 = 0;
 
@@ -203,11 +203,11 @@ size_t fr_print_string(const char *in, size_t inlen, char *out, size_t outlen)
  *  Print one value into a string.
  *  delimitst will define if strings and dates will be delimited by '"'
  */
-int vp_prints_value(char * out, size_t outlen, const VALUE_PAIR *vp, int delimitst)
+int vp_prints_value(char * out, size_t outlen, VALUE_PAIR const *vp, int delimitst)
 {
 	DICT_VALUE  *v;
 	char	buf[1024];
-	const char  *a = NULL;
+	char const  *a = NULL;
 	size_t      len;
 	time_t      t;
 	struct tm   s_tm;
@@ -429,7 +429,7 @@ char *vp_aprinttype(TALLOC_CTX *ctx, PW_TYPE type)
 /*
  *	vp_prints_value for talloc
  */
-char *vp_aprint(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
+char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 {
 	char *p;
 
@@ -560,12 +560,12 @@ char *vp_aprint(TALLOC_CTX *ctx, const VALUE_PAIR *vp)
  *
  * @todo must check to see if the attribute has a dictionary value
  */
-int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
+int vp_prints_value_json(char *buffer, size_t bufsize, VALUE_PAIR const *vp)
 {
 	int s = 0;
 	int len;
 	char *p = buffer;
-	const char *q;
+	char const *q;
 
 	if (!vp->da->flags.has_tag) {
 		switch (vp->da->type) {
@@ -647,7 +647,7 @@ int vp_prints_value_json(char *buffer, size_t bufsize, const VALUE_PAIR *vp)
 /*
  *  This is a hack, and has to be kept in sync with tokens.h
  */
-static const char *vp_tokens[] = {
+static char const *vp_tokens[] = {
   "?",				/* T_OP_INVALID */
   "EOL",			/* T_EOL */
   "{",
@@ -768,10 +768,10 @@ size_t vp_print_name(char *buffer, size_t bufsize,
 /*
  *	Print one attribute and value into a string.
  */
-int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
+int vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 {
 	size_t		len;
-	const char	*token = NULL;
+	char const	*token = NULL;
 
 	out[0] = '\0';
 	if (!vp || !vp->da) return 0;
@@ -804,7 +804,7 @@ int vp_prints(char *out, size_t outlen, const VALUE_PAIR *vp)
 /*
  *	Print one attribute and value.
  */
-void vp_print(FILE *fp, const VALUE_PAIR *vp)
+void vp_print(FILE *fp, VALUE_PAIR const *vp)
 {
 	char	buf[1024];
 
@@ -819,7 +819,7 @@ void vp_print(FILE *fp, const VALUE_PAIR *vp)
  *	Print a whole list of attributes, indented by a TAB
  *	and with a newline at the end.
  */
-void vp_printlist(FILE *fp, const VALUE_PAIR *vp)
+void vp_printlist(FILE *fp, VALUE_PAIR const *vp)
 {
 	for (; vp; vp = vp->next) {
 		vp_print(fp, vp);

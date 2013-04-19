@@ -498,7 +498,7 @@ struct DATA * p;
 
 PUBLIC int
 #ifdef __STDC__
-vsnprintf(char *string, size_t length, const char * format, va_list args)
+vsnprintf(char *string, size_t length, char const * format, va_list args)
 #else
 vsnprintf(string, length, format, args)
 char *string;
@@ -681,7 +681,7 @@ va_list args;
 
 PUBLIC int
 #if __STDC__
-snprintf(char *string, size_t length, const char * format, ...)
+snprintf(char *string, size_t length, char const * format, ...)
 #else
 snprintf(string, length, format, va_alist)
 char *string;

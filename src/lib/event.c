@@ -66,7 +66,7 @@ struct fr_event_t {
 };
 
 
-static int fr_event_list_time_cmp(const void *one, const void *two)
+static int fr_event_list_time_cmp(void const *one, void const *two)
 {
 	const fr_event_t *a = one;
 	const fr_event_t *b = two;

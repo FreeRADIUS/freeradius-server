@@ -64,7 +64,7 @@ typedef struct rlm_sql_oracle_conn_t {
  *	       connection
  *
  *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 
 	static char	msgbuf[512];
@@ -173,9 +173,9 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	 *	Login to the oracle server
 	 */
 	if (OCILogon(conn->env, conn->error, &conn->ctx,
-		     (const OraText *)config->sql_login, strlen(config->sql_login),
-                     (const OraText *)config->sql_password, strlen(config->sql_password),
-                     (const OraText *)config->sql_db, strlen(config->sql_db))) {
+		     (OraText const *)config->sql_login, strlen(config->sql_login),
+                     (OraText const *)config->sql_password, strlen(config->sql_password),
+                     (OraText const *)config->sql_db, strlen(config->sql_db))) {
 		ERROR("rlm_sql_oracle: Oracle logon failed: '%s'", sql_error(handle, config));
 
 		return -1;
@@ -216,7 +216,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query)
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -257,7 +257,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query)
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 
 	int		status;

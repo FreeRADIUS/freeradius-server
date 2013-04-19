@@ -46,20 +46,19 @@ RCSID("$Id$")
 #define		SM_CHALLENGE	102
 #define		SM_RESPONSE     103
 
-static void calc_apop_digest(uint8_t *buffer, const uint8_t *challenge,
-			     size_t challen, const char *password)
+static void calc_apop_digest(uint8_t *buffer, uint8_t const *challenge,
+			     size_t challen, char const *password)
 {
 	FR_MD5_CTX context;
 
 	fr_MD5Init(&context);
 	fr_MD5Update(&context, challenge, challen);
-	fr_MD5Update(&context, (const uint8_t *) password, strlen(password));
+	fr_MD5Update(&context, (uint8_t const *) password, strlen(password));
 	fr_MD5Final(buffer, &context);
 }
 
 
-static void calc_md5_digest(uint8_t *buffer, const uint8_t *challenge,
-			    size_t challen, const char *password)
+static void calc_md5_digest(uint8_t *buffer, uint8_t const *challenge, size_t challen, char const *password)
 {
 	uint8_t buf[1024];
 	int i;
@@ -79,8 +78,7 @@ static void calc_md5_digest(uint8_t *buffer, const uint8_t *challenge,
 	fr_MD5Final(buffer,&context);
 }
 
-static void calc_md4_digest(uint8_t *buffer, const uint8_t *challenge,
-			    size_t challen, const char *password)
+static void calc_md4_digest(uint8_t *buffer, uint8_t const *challenge, size_t challen, char const *password)
 {
 	uint8_t buf[1024];
 	int i;
@@ -100,8 +98,8 @@ static void calc_md4_digest(uint8_t *buffer, const uint8_t *challenge,
 	fr_MD4Final(buffer,&context);
 }
 
-static void calc_sha1_digest(uint8_t *buffer, const uint8_t *challenge,
-			     size_t challen, const char *password)
+static void calc_sha1_digest(uint8_t *buffer, uint8_t const *challenge,
+			     size_t challen, char const *password)
 {
 	uint8_t buf[1024];
 	int i;

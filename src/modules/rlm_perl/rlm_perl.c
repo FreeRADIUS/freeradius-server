@@ -271,7 +271,7 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 
 static void xs_init(pTHX)
 {
-	const char *file = __FILE__;
+	char const *file = __FILE__;
 
 	/* DynaLoader is a special case */
 	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
@@ -308,13 +308,13 @@ static XS(XS_radiusd_radlog)
 /*
  * The xlat function
  */
-static size_t perl_xlat(void *instance, REQUEST *request, const char *fmt, char *out, size_t freespace)
+static size_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 
 	rlm_perl_t	*inst= (rlm_perl_t *) instance;
 	PerlInterpreter *perl;
 	char		*tmp;
-	const char	*p, *q;
+	char const	*p, *q;
 	int		count;
 	size_t		ret = 0;
 	STRLEN		n_a;
@@ -387,7 +387,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	char **embed;
 	char **envp = NULL;
-	const char *xlat_name;
+	char const *xlat_name;
 	int exitstatus = 0, argc=0;
 
 	MEM(embed = talloc_zero_array(inst, char *, 4));
@@ -477,7 +477,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 {
 	VALUE_PAIR *head, *sublist;
 	AV *av;
-	const char *name;
+	char const *name;
 	char namebuf[256];
 	char buffer[1024];
 	int len;

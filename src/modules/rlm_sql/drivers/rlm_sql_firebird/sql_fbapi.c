@@ -41,7 +41,7 @@ static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
 }
 
 
-static void fb_dpb_add_str(char **dpb, char name, const char *value)
+static void fb_dpb_add_str(char **dpb, char name, char const *value)
 {
 	int l;
 	
@@ -421,7 +421,7 @@ int fb_fetch(rlm_sql_firebird_conn_t *conn)
 	return fetch_stat;
 }
 
-static int fb_prepare(rlm_sql_firebird_conn_t *conn, const char *query)
+static int fb_prepare(rlm_sql_firebird_conn_t *conn, char const *query)
 {
 	static char stmt_info[] = { isc_info_sql_stmt_type };
 	char info_buffer[128];
@@ -481,7 +481,7 @@ static int fb_prepare(rlm_sql_firebird_conn_t *conn, const char *query)
 }
 
 
-int fb_sql_query(rlm_sql_firebird_conn_t *conn, const char *query) {
+int fb_sql_query(rlm_sql_firebird_conn_t *conn, char const *query) {
 	if (fb_prepare(conn, query)) {
 		return fb_error(conn);
 	}

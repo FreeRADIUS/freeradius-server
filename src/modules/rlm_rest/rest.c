@@ -614,7 +614,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 	char *p = ptr;	/* Position in buffer */
 	char *f = ptr;	/* Position in buffer of last fully encoded attribute or value */
 
-	const char *type;
+	char const *type;
 
 	ssize_t len = 0;
 	ssize_t s = (size * nmemb) - 1;
@@ -941,9 +941,9 @@ static int rest_decode_post(rlm_rest_t *instance,
 	rlm_rest_handle_t *randle = handle;
 	CURL *candle		  = randle->handle;
 
-	const char *p = raw, *q;
+	char const *p = raw, *q;
 
-	const char *attribute;
+	char const *attribute;
 	char *name  = NULL;
 	char *value = NULL;
 	
@@ -1131,10 +1131,10 @@ static int rest_decode_post(rlm_rest_t *instance,
  */
 static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 				      UNUSED rlm_rest_section_t *section,
-				      REQUEST *request, const DICT_ATTR *da,
+				      REQUEST *request, DICT_ATTR const *da,
 				      json_flags_t *flags, json_object *leaf)
 {
-	const char *value, *to_parse;
+	char const *value, *to_parse;
 	char *expanded = NULL;
 	int ret;
 	
@@ -1239,10 +1239,10 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 				 REQUEST *request, json_object *object,
 				 int level, int *max_attrs)
 {
-	const char *p;
+	char const *p;
 	char *q;
 	
-	const char *name, *attribute;
+	char const *name, *attribute;
 
 	struct json_object *value, *idx, *tmp;
 	struct lh_entry *entry;
@@ -1466,7 +1466,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 			    REQUEST *request, UNUSED void *handle,
 			    char *raw, UNUSED size_t rawlen)
 {
-	const char *p = raw;
+	char const *p = raw;
 	
 	struct json_object *json;
 	
@@ -1517,7 +1517,7 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 	rlm_rest_write_t *ctx  = userdata;
 	REQUEST *request       = ctx->request; /* Used by RDEBUG */
 	
-	const char *p = ptr, *q;
+	char const *p = ptr, *q;
 	char *tmp;
 
 	const size_t t = (size * nmemb);
@@ -1698,7 +1698,7 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb,
 	rlm_rest_write_t *ctx  = userdata;
 	REQUEST *request       = ctx->request; /* Used by RDEBUG */
 	
-	const char *p = ptr;
+	char const *p = ptr;
 	char *tmp;
 
 	const size_t t = (size * nmemb);
@@ -2322,7 +2322,7 @@ void rest_request_cleanup(UNUSED rlm_rest_t *instance,
  * @return length of data written to out (excluding NULL).
  */
 static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
-			      const char *raw, UNUSED void *arg)
+			      char const *raw, UNUSED void *arg)
 {
 	char *escaped;
 
@@ -2348,11 +2348,11 @@ static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
  */
 ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request)
 {
-	const char *p, *q;
+	char const *p, *q;
 	char *path_exp = NULL;
 	
 	char *scheme;
-	const char *path;
+	char const *path;
 
 	unsigned short count = 0;
 

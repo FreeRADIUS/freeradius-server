@@ -30,32 +30,25 @@ RCSID("$Id$")
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/md5.h>
 
-/*
-unsigned char*  text;		pointer to data stream
-int	     text_len;	    length of data stream
-unsigned char*  key;		 pointer to authentication key
-int	     key_len;	     length of authentication key
-unsigned char*  digest;	      caller digest to be filled in
-*/
-
-void
-fr_hmac_md5(const uint8_t *text, int text_len,
-	      const uint8_t *key, int key_len,
-	      uint8_t *digest)
+/** Calculate HMAC using MD5
+ *
+ * @param text Pointer to data stream.
+ * @param text_len length of data stream.
+ * @param key Pointer to authentication key.
+ * @param key_len Length of authentication key.
+ * @param digest Caller digest to be filled in.
+ */
+void fr_hmac_md5(uint8_t const *text, size_t text_len, uint8_t const *key, size_t key_len, uint8_t *digest)
 {
 	FR_MD5_CTX context;
-	uint8_t k_ipad[65];    /* inner padding -
-				      * key XORd with ipad
-				      */
-	uint8_t k_opad[65];    /* outer padding -
-				      * key XORd with opad
-				      */
+	uint8_t k_ipad[65];    /* inner padding - key XORd with ipad */
+	uint8_t k_opad[65];    /* outer padding - key XORd with opad */
 	uint8_t tk[16];
 	int i;
+	
 	/* if key is longer than 64 bytes reset it to key=MD5(key) */
 	if (key_len > 64) {
-
-		FR_MD5_CTX      tctx;
+		FR_MD5_CTX tctx;
 
 		fr_MD5Init(&tctx);
 		fr_MD5Update(&tctx, key, key_len);

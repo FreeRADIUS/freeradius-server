@@ -353,7 +353,7 @@ static int mod_detach(void *instance)
 /*
  *	Compare two handlers.
  */
-static int eap_handler_cmp(const void *a, const void *b)
+static int eap_handler_cmp(void const *a, void const *b)
 {
 	int rcode;
 	const EAP_HANDLER *one = a;
@@ -424,7 +424,7 @@ static int server_get_eap_user(void *ctx, UNUSED const u8 *identity, UNUSED size
 }
 
 
-static const char * server_get_eap_req_id_text(UNUSED void *ctx, size_t *len)
+static char const * server_get_eap_req_id_text(UNUSED void *ctx, size_t *len)
 {
 	*len = 0;
 	return NULL;
@@ -479,9 +479,9 @@ static const CONF_PARSER module_config[] = {
 	{ "backend_auth", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_eap_t, backend_auth), NULL, "yes" },
 
-	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (const void *) tls_config },
+	{ "tls", PW_TYPE_SUBSECTION, 0, NULL, (void const *) tls_config },
 
-	{ "fast", PW_TYPE_SUBSECTION, 0, NULL, (const void *) fast_config },
+	{ "fast", PW_TYPE_SUBSECTION, 0, NULL, (void const *) fast_config },
 
  	{ NULL, -1, 0, NULL, NULL }	   /* end the list */
 };
@@ -559,7 +559,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 	for (scs=cf_subsection_find_next(cs, NULL, NULL);
 		scs != NULL;
 		scs=cf_subsection_find_next(cs, scs, NULL)) {
-		const char	*auth_type;
+		char const	*auth_type;
 		char		buffer[64], *p;
 
 		auth_type = cf_section_name1(scs);

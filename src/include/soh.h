@@ -30,10 +30,10 @@ RCSIDH(soh_h, "$Id$")
 extern "C" {
 #endif
 
-int soh_verify(REQUEST *request, const uint8_t *data, unsigned int data_len);
-uint16_t soh_pull_be_16(const uint8_t *p);
-uint32_t soh_pull_be_24(const uint8_t *p);
-uint32_t soh_pull_be_32(const uint8_t *p);
+int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len);
+uint16_t soh_pull_be_16(uint8_t const *p);
+uint32_t soh_pull_be_24(uint8_t const *p);
+uint32_t soh_pull_be_32(uint8_t const *p);
 
 #ifdef __cplusplus
 }

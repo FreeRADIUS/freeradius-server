@@ -50,7 +50,7 @@ typedef struct rlm_sql_iodbc_conn {
 	void	*conn;
 } rlm_sql_iodbc_conn_t;
 
-static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 static int sql_socket_destructor(void *c)
@@ -134,7 +134,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 	SQLRETURN rcode;
@@ -176,7 +176,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	int numfields = 0;
 	int i = 0;
@@ -330,7 +330,7 @@ static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       connection
  *
  *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	SQLINTEGER errornum = 0;
 	SQLSMALLINT length = 0;
@@ -341,7 +341,7 @@ static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	
 	SQLError(conn->env_handle, conn->dbc_handle, conn->stmt_handle,
 		state, &errornum, conn->error, IODBC_MAX_ERROR_LEN, &length);
-	return (const char *) &conn->error;
+	return (char const *) &conn->error;
 }
 
 /*************************************************************************

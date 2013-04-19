@@ -144,7 +144,7 @@ static void cisco_vsa_hack(REQUEST *request)
 		 *	attribute.
 		 */
 		if (vp->da->attr == 1) {
-			const char *p;
+			char const *p;
 
 			p = vp->vp_strvalue;
 			gettoken(&p, newattr, sizeof(newattr));

@@ -43,8 +43,7 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
  * Add MPPE attributes to a request, if required.
  */
 void
-otp_mppe(REQUEST *request, otp_pwe_t pwe, const rlm_otp_t *opt,
-	 const char *passcode)
+otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const *passcode)
 {
   VALUE_PAIR *cvp, *rvp;
 

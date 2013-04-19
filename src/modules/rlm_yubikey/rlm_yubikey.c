@@ -49,13 +49,13 @@ static const CONF_PARSER module_config[] = {
 	{ "decrypt", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, decrypt), NULL, "no" },
 	{ "validate", PW_TYPE_BOOLEAN, offsetof(rlm_yubikey_t, validate), NULL, "no" },	
 #ifdef HAVE_YKCLIENT
-	{ "validation", PW_TYPE_SUBSECTION, 0, NULL, (const void *) validation_config },
+	{ "validation", PW_TYPE_SUBSECTION, 0, NULL, (void const *) validation_config },
 #endif
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
-static const char *modhextab = "cbdefghijklnrtuv";
-static const char *hextab = "0123456789abcdef";
+static char const *modhextab = "cbdefghijklnrtuv";
+static char const *hextab = "0123456789abcdef";
 
 #define is_modhex(x) (memchr(modhextab, tolower(x), 16))
 
@@ -70,7 +70,7 @@ static const char *hextab = "0123456789abcdef";
  * @param[out] hex where to write the standard hexits.
  * @return The number of bytes written to the output buffer, or -1 on error.
  */
-static ssize_t modhex2hex(const char *modhex, uint8_t *hex, size_t len)
+static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
 {
 	size_t i;
 	char *c1, *c2;
@@ -102,7 +102,7 @@ static ssize_t modhex2hex(const char *modhex, uint8_t *hex, size_t len)
  *
  * Example: "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
  */
-static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, const char *fmt, char *out, size_t outlen)
+static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {	
 	ssize_t len;
 

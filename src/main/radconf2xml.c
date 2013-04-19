@@ -33,8 +33,8 @@ RCSID("$Id$")
 /*
  *	For configuration file stuff.
  */
-const char *raddb_dir = RADDBDIR;
-const char *progname = "radconf2xml";
+char const *raddb_dir = RADDBDIR;
+char const *progname = "radconf2xml";
 
 /*
  *	The rest of this is because the conffile.c, etc. assume
@@ -45,7 +45,7 @@ int debug_flag = 0;
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_log_file = NULL;
-ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED const char *fmt,
+ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
 		    UNUSED RADIUS_ESCAPE_STRING func, UNUSED void *arg)
 {
 	return -1;
@@ -66,8 +66,8 @@ int main(int argc, char **argv)
 {
 	int argval;
 	CONF_SECTION *cs;
-	const char *file = NULL;
-	const char *name = "radiusd";
+	char const *file = NULL;
+	char const *name = "radiusd";
 	FILE *fp;
 	char buffer[2048];
 

@@ -82,7 +82,7 @@ const FR_NAME_NUMBER eap_rcode_table[] = {
  * @return The IANA EAP type or PW_EAP_INVALID if the name doesn't match any
  * known types.
  */
-eap_type_t eap_name2type(const char *name)
+eap_type_t eap_name2type(char const *name)
 {
 	DICT_VALUE	*dv;
 
@@ -98,7 +98,7 @@ eap_type_t eap_name2type(const char *name)
  *
  * Resolve
  */
-const char *eap_type2name(eap_type_t method)
+char const *eap_type2name(eap_type_t method)
 {
 	DICT_VALUE	*dv;
 
@@ -246,7 +246,7 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 }
 
 
-VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_raw_t *eap)
+VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 {
 	int		total, size;
 	const uint8_t	*ptr;
@@ -261,7 +261,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, const eap_packet_raw_t *eap)
 		return NULL;
 	}
 
-	ptr = (const uint8_t *) eap;
+	ptr = (uint8_t const *) eap;
 
 	do {
 		size = total;
@@ -380,7 +380,7 @@ eap_packet_raw_t *eap_vp2packet(TALLOC_CTX *ctx, VALUE_PAIR *vps)
  *	Add raw hex data to the reply.
  */
 void eap_add_reply(REQUEST *request,
-		   const char *name, const uint8_t *value, int len)
+		   char const *name, uint8_t const *value, int len)
 {
 	VALUE_PAIR *vp;
 

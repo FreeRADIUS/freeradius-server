@@ -44,22 +44,22 @@ int debug_flag = 0;
 #include <stdarg.h>
 
 typedef struct REQUEST REQUEST;
-typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, const char *in, void *arg);
-typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, const char *, char *, size_t);
+typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
+typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 
-int radius_get_vp(REQUEST *request, const char *name, VALUE_PAIR **vp_p);
-void radlog_request(int lvl, int priority, REQUEST *request, const char *msg, ...);
-int		xlat_register(const char *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
+int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p);
+void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...);
+int		xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			      void *instance);
-int radlog(UNUSED int lvl, const char *msg, ...);
-void module_failure_msg(REQUEST *request, const char *fmt, ...);
+int radlog(UNUSED int lvl, char const *msg, ...);
+void module_failure_msg(REQUEST *request, char const *fmt, ...);
 
-int radius_get_vp(UNUSED REQUEST *request, UNUSED const char *name, UNUSED VALUE_PAIR **vp_p)
+int radius_get_vp(UNUSED REQUEST *request, UNUSED char const *name, UNUSED VALUE_PAIR **vp_p)
 {
 	return 0;
 }
 
-void radlog_request(UNUSED int lvl, UNUSED int priority, UNUSED REQUEST *request, const char *msg, ...)
+void radlog_request(UNUSED int lvl, UNUSED int priority, UNUSED REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 	char buffer[256];
@@ -71,7 +71,7 @@ DIAG_ON(format-nonliteral)
 	va_end(ap);
 }
 
-int radlog(UNUSED int lvl, const char *msg, ...)
+int radlog(UNUSED int lvl, char const *msg, ...)
 {
 	va_list ap;
 	char buffer[256];
@@ -86,11 +86,11 @@ DIAG_ON(format-nonliteral)
 }
 
 static size_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
-		       UNUSED const char *fmt, UNUSED char *out, UNUSED size_t outlen)
+		       UNUSED char const *fmt, UNUSED char *out, UNUSED size_t outlen)
 {
 	return 0;
 }
-void module_failure_msg(UNUSED REQUEST *request, UNUSED const char *fmt, ...)
+void module_failure_msg(UNUSED REQUEST *request, UNUSED char const *fmt, ...)
 {
 
 }
@@ -102,7 +102,7 @@ void module_failure_msg(UNUSED REQUEST *request, UNUSED const char *fmt, ...)
 
 static int encode_tlv(char *buffer, uint8_t *output, size_t outlen);
 
-static const char *hextab = "0123456789abcdef";
+static char const *hextab = "0123456789abcdef";
 
 static int encode_data_string(char *buffer,
 			      uint8_t *output, size_t outlen)
@@ -538,10 +538,10 @@ static int encode_rfc(char *buffer, uint8_t *output, size_t outlen)
 	return length + sublen;
 }
 
-static void parse_condition(const char *input, char *output, size_t outlen)
+static void parse_condition(char const *input, char *output, size_t outlen)
 {
 	ssize_t slen;
-	const char *error = NULL;
+	char const *error = NULL;
 	fr_cond_t *cond;
 
 	slen = fr_condition_tokenize(NULL, input, &cond, &error);
@@ -562,10 +562,10 @@ static void parse_condition(const char *input, char *output, size_t outlen)
 	talloc_free(cond);
 }
 
-static void parse_xlat(const char *input, char *output, size_t outlen)
+static void parse_xlat(char const *input, char *output, size_t outlen)
 {
 	ssize_t slen;
-	const char *error = NULL;
+	char const *error = NULL;
 	char *fmt = talloc_strdup(NULL, input);
 	xlat_exp_t *head;
 
@@ -584,7 +584,7 @@ static void parse_xlat(const char *input, char *output, size_t outlen)
 	strlcpy(output, "OK", outlen);
 }
 
-static void process_file(const char *filename)
+static void process_file(char const *filename)
 {
 	int lineno;
 	size_t i, outlen;
@@ -690,7 +690,7 @@ static void process_file(const char *filename)
 			vp = head;
 			len = 0;
 			while (vp) {
-				len = rad_vp2attr(NULL, NULL, NULL, (const VALUE_PAIR **) &vp,
+				len = rad_vp2attr(NULL, NULL, NULL, (VALUE_PAIR const **) &vp,
 						  attr, sizeof(data) - (attr - data));
 				if (len < 0) {
 					fprintf(stderr, "Failed encoding %s: %s\n",
@@ -803,7 +803,7 @@ static void process_file(const char *filename)
 int main(int argc, char *argv[])
 {
 	int c;
-	const char *radius_dir = RADDBDIR;
+	char const *radius_dir = RADDBDIR;
 
 	while ((c = getopt(argc, argv, "d:x")) != EOF) switch(c) {
 		case 'd':

@@ -39,7 +39,7 @@ typedef struct rlm_sql_unixodbc_conn {
 #include <sqlext.h>
 
 /* Forward declarations */
-static const char *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_state(long err_handle, rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
@@ -134,7 +134,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	long err_handle;
 	int state;
@@ -159,7 +159,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const c
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, const char *query) {
+static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 	rlm_sql_unixodbc_conn_t *conn = handle->conn;
 	SQLINTEGER column;
 	SQLLEN len;
@@ -336,7 +336,7 @@ static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       connection
  *
  *************************************************************************/
-static const char *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	SQLCHAR state[256];
 	SQLCHAR error[256];
 	SQLINTEGER errornum = 0;

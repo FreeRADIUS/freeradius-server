@@ -83,7 +83,7 @@ static expr_map_t map[] =
 static char randstr_punc[] = "!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~";
 static char randstr_salt[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmopqrstuvwxyz/.";
 
-static int get_number(REQUEST *request, const char **string, int64_t *answer)
+static int get_number(REQUEST *request, char const **string, int64_t *answer)
 {
 	int		i, found;
 	int64_t		result;
@@ -244,7 +244,7 @@ static int get_number(REQUEST *request, const char **string, int64_t *answer)
 /*
  *  Do xlat of strings!
  */
-static size_t expr_xlat(UNUSED void *instance, REQUEST *request, const char *fmt,
+static size_t expr_xlat(UNUSED void *instance, REQUEST *request, char const *fmt,
 			char *out, size_t outlen)
 {
 	int		rcode;
@@ -273,7 +273,7 @@ static size_t expr_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
  *  @brief Generate a random integer value
  *
  */
-static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt,
+static size_t rand_xlat(UNUSED void *instance, REQUEST *request, char const *fmt,
 			char *out, size_t outlen)
 {
 	int64_t		result;
@@ -310,7 +310,7 @@ static size_t rand_xlat(UNUSED void *instance, REQUEST *request, const char *fmt
  *  Format similar to String::Random.
  */
 static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
-			   const char *fmt, char *out, size_t outlen)
+			   char const *fmt, char *out, size_t outlen)
 {
 	char		*p;
 	char		buffer[1024];
@@ -419,7 +419,7 @@ static size_t randstr_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{urlquote:http://example.org/}" == "http%3A%47%47example.org%47"
  */
 static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
-			    const char *fmt, char *out, size_t outlen)
+			    char const *fmt, char *out, size_t outlen)
 {
 	char	*p;
 	char 	buffer[1024];
@@ -471,7 +471,7 @@ static size_t urlquote_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60=/img=62"
  */
 static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen)
+			  char const *fmt, char *out, size_t outlen)
 {
 	rlm_expr_t *inst = instance;
 	char	*p;
@@ -521,7 +521,7 @@ static size_t escape_xlat(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen)
+		      char const *fmt, char *out, size_t outlen)
 {
 	char *p, *q;
 	char buffer[1024];
@@ -552,7 +552,7 @@ static size_t lc_xlat(UNUSED void *instance, REQUEST *request,
  * Probably only works for ASCII
  */
 static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
-		      const char *fmt, char *out, size_t outlen)
+		      char const *fmt, char *out, size_t outlen)
 {
 	char *p, *q;
 	char buffer[1024];
@@ -582,7 +582,7 @@ static size_t uc_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{md5:foo}" == "acbd18db4cc2f85cedef654fccc4a4d8"
  */
 static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
-		       const char *fmt, char *out, size_t outlen)
+		       char const *fmt, char *out, size_t outlen)
 {
 	char buffer[1024];
 	uint8_t digest[16];
@@ -617,7 +617,7 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{tobase64:foo}" == "Zm9v"
  */
 static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
-			  const char *fmt, char *out, size_t outlen)
+			  char const *fmt, char *out, size_t outlen)
 {
 	ssize_t len;
 	char buffer[1024];
@@ -643,7 +643,7 @@ static size_t base64_xlat(UNUSED void *instance, REQUEST *request,
  * Example: "%{base64tohex:Zm9v}" == "666f6f"
  */
 static size_t base64_to_hex_xlat(UNUSED void *instance, REQUEST *request,
-				 const char *fmt, char *out, size_t outlen)
+				 char const *fmt, char *out, size_t outlen)
 {	
 	char buffer[1024];
 	uint8_t decbuf[1024], *p;

@@ -78,7 +78,7 @@ static void fr_strerror_make_key(void)
 /*
  *	Log to a buffer, trying to be thread-safe.
  */
-void fr_strerror_printf(const char *fmt, ...)
+void fr_strerror_printf(char const *fmt, ...)
 {
 	va_list ap;
 
@@ -114,13 +114,13 @@ void fr_strerror_printf(const char *fmt, ...)
 	va_end(ap);
 }
 
-const char *fr_strerror(void)
+char const *fr_strerror(void)
 {
 #ifndef USE_PTHREAD_FOR_TLS
 	return fr_strerror_buffer;
 
 #else
-	const char *msg;
+	char const *msg;
 
 	pthread_once(&fr_strerror_once, fr_strerror_make_key);
 
@@ -131,7 +131,7 @@ const char *fr_strerror(void)
 #endif
 }
 
-void fr_perror(const char *fmt, ...)
+void fr_perror(char const *fmt, ...)
 {
 	va_list ap;
 

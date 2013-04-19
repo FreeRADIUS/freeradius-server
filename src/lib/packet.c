@@ -37,7 +37,7 @@ RCSID("$Id$")
  *	That's because if the authentication vector is different,
  *	it means that the NAS has given up on the earlier request.
  */
-int fr_packet_cmp(const RADIUS_PACKET *a, const RADIUS_PACKET *b)
+int fr_packet_cmp(RADIUS_PACKET const *a, RADIUS_PACKET const *b)
 {
 	int rcode;
 
@@ -87,7 +87,7 @@ int fr_inaddr_any(fr_ipaddr_t *ipaddr)
  *	Create a fake "request" from a reply, for later lookup.
  */
 void fr_request_from_reply(RADIUS_PACKET *request,
-			     const RADIUS_PACKET *reply)
+			     RADIUS_PACKET const *reply)
 {
 	request->sockfd = reply->sockfd;
 	request->id = reply->id;
@@ -436,7 +436,7 @@ int fr_packet_list_socket_add(fr_packet_list_t *pl, int sockfd, int proto,
 	return 1;
 }
 
-static int packet_entry_cmp(const void *one, const void *two)
+static int packet_entry_cmp(void const *one, void const *two)
 {
 	const RADIUS_PACKET * const *a = one;
 	const RADIUS_PACKET * const *b = two;

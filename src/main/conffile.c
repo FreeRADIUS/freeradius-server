@@ -53,20 +53,20 @@ struct conf_item {
 	struct conf_item *next;
 	struct conf_part *parent;
 	int lineno;
-	const char *filename;
+	char const *filename;
 	CONF_ITEM_TYPE type;
 };
 struct conf_pair {
 	CONF_ITEM item;
-	const char *attr;
-	const char *value;
+	char const *attr;
+	char const *value;
 	FR_TOKEN op;
 	FR_TOKEN value_type;
 };
 struct conf_part {
 	CONF_ITEM item;
-	const char *name1;
-	const char *name2;
+	char const *name1;
+	char const *name2;
 	struct conf_item *children;
 	struct conf_item *tail;	/* for speed */
 	CONF_SECTION	*template;
@@ -86,7 +86,7 @@ struct conf_part {
  */
 struct conf_data {
 	CONF_ITEM  item;
-	const char *name;
+	char const *name;
 	int	   flag;
 	void	   *data;	/* user data */
 	void       (*free)(void *); /* free user data function */
@@ -94,15 +94,15 @@ struct conf_data {
 
 extern int check_config;
 
-static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
+static int cf_data_add_internal(CONF_SECTION *cs, char const *name,
 				void *data, void (*data_free)(void *),
 				int flag);
-static void *cf_data_find_internal(const CONF_SECTION *cs, const char *name,
+static void *cf_data_find_internal(CONF_SECTION const *cs, char const *name,
 				   int flag);
-static const char *cf_expand_variables(const char *cf, int *lineno,
+static char const *cf_expand_variables(char const *cf, int *lineno,
 				       CONF_SECTION *outercs,
 				       char *output, size_t outsize,
-				       const char *input);
+				       char const *input);
 
 int cf_log_config = 1;
 int cf_log_modules = 1;
@@ -110,7 +110,7 @@ int cf_log_modules = 1;
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
-CONF_PAIR *cf_itemtopair(const CONF_ITEM *ci)
+CONF_PAIR *cf_itemtopair(CONF_ITEM const *ci)
 {
 	CONF_PAIR *out;
 	
@@ -122,7 +122,7 @@ CONF_PAIR *cf_itemtopair(const CONF_ITEM *ci)
 	memcpy(&out, &ci, sizeof(out));
 	return out;
 }
-CONF_SECTION *cf_itemtosection(const CONF_ITEM *ci)
+CONF_SECTION *cf_itemtosection(CONF_ITEM const *ci)
 {
 	CONF_SECTION *out;
 	
@@ -134,13 +134,13 @@ CONF_SECTION *cf_itemtosection(const CONF_ITEM *ci)
 	memcpy(&out, &ci, sizeof(out));
 	return out;
 }
-CONF_ITEM *cf_pairtoitem(const CONF_PAIR *cp)
+CONF_ITEM *cf_pairtoitem(CONF_PAIR const *cp)
 {
 	if (cp == NULL)
 		return NULL;
 	return (CONF_ITEM *)cp;
 }
-CONF_ITEM *cf_sectiontoitem(const CONF_SECTION *cs)
+CONF_ITEM *cf_sectiontoitem(CONF_SECTION const *cs)
 {
 	CONF_ITEM *out;
 	
@@ -152,7 +152,7 @@ CONF_ITEM *cf_sectiontoitem(const CONF_SECTION *cs)
 	return out;
 }
 
-static CONF_ITEM *cf_datatoitem(const CONF_DATA *cd)
+static CONF_ITEM *cf_datatoitem(CONF_DATA const *cd)
 {
 	CONF_ITEM *out;
 	
@@ -167,8 +167,8 @@ static CONF_ITEM *cf_datatoitem(const CONF_DATA *cd)
 /*
  *	Create a new CONF_PAIR
  */
-static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, const char *attr,
-				const char *value, FR_TOKEN op,
+static CONF_PAIR *cf_pair_alloc(CONF_SECTION *parent, char const *attr,
+				char const *value, FR_TOKEN op,
 				FR_TOKEN value_type)
 {
 	CONF_PAIR *cp;
@@ -213,7 +213,7 @@ static int cf_data_free(void *ctx)
 /*
  *	rbtree callback function
  */
-static int pair_cmp(const void *a, const void *b)
+static int pair_cmp(void const *a, void const *b)
 {
 	const CONF_PAIR *one = a;
 	const CONF_PAIR *two = b;
@@ -225,7 +225,7 @@ static int pair_cmp(const void *a, const void *b)
 /*
  *	rbtree callback function
  */
-static int section_cmp(const void *a, const void *b)
+static int section_cmp(void const *a, void const *b)
 {
 	const CONF_SECTION *one = a;
 	const CONF_SECTION *two = b;
@@ -237,7 +237,7 @@ static int section_cmp(const void *a, const void *b)
 /*
  *	rbtree callback function
  */
-static int name2_cmp(const void *a, const void *b)
+static int name2_cmp(void const *a, void const *b)
 {
 	const CONF_SECTION *one = a;
 	const CONF_SECTION *two = b;
@@ -255,7 +255,7 @@ static int name2_cmp(const void *a, const void *b)
 /*
  *	rbtree callback function
  */
-static int data_cmp(const void *a, const void *b)
+static int data_cmp(void const *a, void const *b)
 {
 	int rcode;
 
@@ -302,8 +302,8 @@ static int cf_section_free(void *ctx)
 /*
  *	Allocate a CONF_SECTION
  */
-CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, const char *name1,
-			       const char *name2)
+CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, char const *name1,
+			       char const *name2)
 {
 	CONF_SECTION *cs;
 	char buffer[1024];
@@ -364,7 +364,7 @@ CONF_SECTION *cf_section_alloc(CONF_SECTION *parent, const char *name1,
  *	Replace pair in a given section with a new pair,
  *	of the given value.
  */
-int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, const char *value)
+int cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp, char const *value)
 {
 	CONF_PAIR *newp;
 	CONF_ITEM *ci, *cn, **last;
@@ -483,9 +483,9 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 }
 
 
-CONF_ITEM *cf_reference_item(const CONF_SECTION *parentcs,
+CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     CONF_SECTION *outercs,
-			     const char *ptr)
+			     char const *ptr)
 {
 	CONF_PAIR *cp;
 	CONF_SECTION *next;
@@ -621,13 +621,13 @@ CONF_SECTION *cf_top_section(CONF_SECTION *cs)
 /*
  *	Expand the variables in an input string.
  */
-static const char *cf_expand_variables(const char *cf, int *lineno,
+static char const *cf_expand_variables(char const *cf, int *lineno,
 				       CONF_SECTION *outercs,
 				       char *output, size_t outsize,
-				       const char *input)
+				       char const *input)
 {
 	char *p;
-	const char *end, *ptr;
+	char const *end, *ptr;
 	const CONF_SECTION *parentcs;
 	char name[8192];
 
@@ -779,7 +779,7 @@ static const char *cf_expand_variables(const char *cf, int *lineno,
 	return output;
 }
 
-static const char *parse_spaces = "                                                                                                                                                                                                                                                                ";
+static char const *parse_spaces = "                                                                                                                                                                                                                                                                ";
 
 
 /*
@@ -790,12 +790,12 @@ static const char *parse_spaces = "                                             
  *	default value was used.  Note that the default value will be
  *	used ONLY if the CONF_PAIR is NULL.
  */
-int cf_item_parse(CONF_SECTION *cs, const char *name,
-		  int type, void *data, const char *dflt)
+int cf_item_parse(CONF_SECTION *cs, char const *name,
+		  int type, void *data, char const *dflt)
 {
 	int deprecated, required, attribute, rcode;
 	char **q;
-	const char *value;
+	char const *value;
 	fr_ipaddr_t ipaddr;
 	const CONF_PAIR *cp = NULL;
 	char ipbuf[128];
@@ -1054,7 +1054,7 @@ int cf_item_parse(CONF_SECTION *cs, const char *name,
  *	parsing them.
  */
 static void cf_section_parse_init(CONF_SECTION *cs, void *base,
-				  const CONF_PARSER *variables)
+				  CONF_PARSER const *variables)
 {
 	int i;
 	void *data;
@@ -1083,7 +1083,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 			}
 
 			cf_section_parse_init(subcs, base,
-					      (const CONF_PARSER *) variables[i].dflt);
+					      (CONF_PARSER const *) variables[i].dflt);
 			continue;
 		}
 
@@ -1109,7 +1109,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
  *	Parse a configuration section into user-supplied variables.
  */
 int cf_section_parse(CONF_SECTION *cs, void *base,
-		     const CONF_PARSER *variables)
+		     CONF_PARSER const *variables)
 {
 	int i;
 	void *data;
@@ -1144,7 +1144,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 			}
 
 			if (cf_section_parse(subcs, base,
-					     (const CONF_PARSER *) variables[i].dflt) < 0) {
+					     (CONF_PARSER const *) variables[i].dflt) < 0) {
 				goto error;
 			}
 			continue;
@@ -1180,7 +1180,7 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 }
 
 
-static const char *cf_local_file(const char *base, const char *filename,
+static char const *cf_local_file(char const *base, char const *filename,
 				 char *buffer, size_t bufsize)
 {
 	size_t dirsize;
@@ -1205,7 +1205,7 @@ static const char *cf_local_file(const char *base, const char *filename,
 	return buffer;
 }
 
-static int seen_too_much(const char *filename, int lineno, const char *ptr)
+static int seen_too_much(char const *filename, int lineno, char const *ptr)
 {
 	while (*ptr) {
 		if (isspace(*ptr)) {
@@ -1231,14 +1231,14 @@ static int seen_too_much(const char *filename, int lineno, const char *ptr)
 /*
  *	Read a part of the config file.
  */
-static int cf_section_read(const char *filename, int *lineno, FILE *fp,
+static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			   CONF_SECTION *current)
 
 {
 	CONF_SECTION *this, *css;
 	CONF_PAIR *cpn;
-	const char *ptr;
-	const char *value;
+	char const *ptr;
+	char const *value;
 	char buf[8192];
 	char buf1[8192];
 	char buf2[8192];
@@ -1458,7 +1458,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 				 *	Read the directory, ignoring "." files.
 				 */
 				while ((dp = readdir(dir)) != NULL) {
-					const char *p;
+					char const *p;
 
 					if (dp->d_name[0] == '.') continue;
 
@@ -1554,7 +1554,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 		 */
 		if ((strcmp(buf1, "if") == 0) || (strcmp(buf1, "elsif") == 0)) {
 			ssize_t slen;
-			const char *error = NULL;
+			char const *error = NULL;
 			char *p;
 			CONF_SECTION *server;
 
@@ -1764,7 +1764,7 @@ static int cf_section_read(const char *filename, int *lineno, FILE *fp,
 /*
  *	Include one config file in another.
  */
-int cf_file_include(CONF_SECTION *cs, const char *filename)
+int cf_file_include(CONF_SECTION *cs, char const *filename)
 {
 	FILE		*fp;
 	int		lineno = 0;
@@ -1848,7 +1848,7 @@ int cf_file_include(CONF_SECTION *cs, const char *filename)
 /*
  *	Bootstrap a config file.
  */
-CONF_SECTION *cf_file_read(const char *filename)
+CONF_SECTION *cf_file_read(char const *filename)
 {
 	char *p;
 	CONF_PAIR *cp;
@@ -1885,7 +1885,7 @@ void cf_file_free(CONF_SECTION *cs)
 /*
  * Return a CONF_PAIR within a CONF_SECTION.
  */
-CONF_PAIR *cf_pair_find(const CONF_SECTION *cs, const char *name)
+CONF_PAIR *cf_pair_find(CONF_SECTION const *cs, char const *name)
 {
 	CONF_ITEM	*ci;
 	CONF_PAIR	*cp = NULL;
@@ -1920,7 +1920,7 @@ CONF_PAIR *cf_pair_find(const CONF_SECTION *cs, const char *name)
  * Return the attr of a CONF_PAIR
  */
 
-const char *cf_pair_attr(const CONF_PAIR *pair)
+char const *cf_pair_attr(CONF_PAIR const *pair)
 {
 	return (pair ? pair->attr : NULL);
 }
@@ -1929,12 +1929,12 @@ const char *cf_pair_attr(const CONF_PAIR *pair)
  * Return the value of a CONF_PAIR
  */
 
-const char *cf_pair_value(const CONF_PAIR *pair)
+char const *cf_pair_value(CONF_PAIR const *pair)
 {
 	return (pair ? pair->value : NULL);
 }
 
-FR_TOKEN cf_pair_operator(const CONF_PAIR *pair)
+FR_TOKEN cf_pair_operator(CONF_PAIR const *pair)
 {
 	return (pair ? pair->op : T_OP_INVALID);
 }
@@ -1944,7 +1944,7 @@ FR_TOKEN cf_pair_operator(const CONF_PAIR *pair)
  * T_BARE_WORD, T_SINGLE_QUOTED_STRING, T_BACK_QUOTED_STRING
  * T_DOUBLE_QUOTED_STRING or T_OP_INVALID if the pair is NULL.
  */
-FR_TOKEN cf_pair_value_type(const CONF_PAIR *pair)
+FR_TOKEN cf_pair_value_type(CONF_PAIR const *pair)
 {
 	return (pair ? pair->value_type : T_OP_INVALID);
 }
@@ -1952,7 +1952,7 @@ FR_TOKEN cf_pair_value_type(const CONF_PAIR *pair)
 /*
  *	Copied here for error reporting.
  */
-extern void fr_strerror_printf(const char *, ...);
+extern void fr_strerror_printf(char const *, ...);
 
 /*
  * Turn a CONF_PAIR into a VALUE_PAIR
@@ -2000,7 +2000,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
  * Return the first label of a CONF_SECTION
  */
 
-const char *cf_section_name1(const CONF_SECTION *cs)
+char const *cf_section_name1(CONF_SECTION const *cs)
 {
 	return (cs ? cs->name1 : NULL);
 }
@@ -2009,7 +2009,7 @@ const char *cf_section_name1(const CONF_SECTION *cs)
  * Return the second label of a CONF_SECTION
  */
 
-const char *cf_section_name2(const CONF_SECTION *cs)
+char const *cf_section_name2(CONF_SECTION const *cs)
 {
 	return (cs ? cs->name2 : NULL);
 }
@@ -2017,7 +2017,7 @@ const char *cf_section_name2(const CONF_SECTION *cs)
 /*
  * Find a value in a CONF_SECTION
  */
-const char *cf_section_value_find(const CONF_SECTION *cs, const char *attr)
+char const *cf_section_value_find(CONF_SECTION const *cs, char const *attr)
 {
 	CONF_PAIR	*cp;
 
@@ -2027,10 +2027,10 @@ const char *cf_section_value_find(const CONF_SECTION *cs, const char *attr)
 }
 
 
-CONF_SECTION *cf_section_find_name2(const CONF_SECTION *cs,
-				    const char *name1, const char *name2)
+CONF_SECTION *cf_section_find_name2(CONF_SECTION const *cs,
+				    char const *name1, char const *name2)
 {
-	const char	*their2;
+	char const	*their2;
 	const CONF_ITEM	*ci;
 
 	if (!cs || !name1) return NULL;
@@ -2060,8 +2060,8 @@ CONF_SECTION *cf_section_find_name2(const CONF_SECTION *cs,
  * attr is NULL, any attr matches.
  */
 
-CONF_PAIR *cf_pair_find_next(const CONF_SECTION *cs,
-			     const CONF_PAIR *pair, const char *attr)
+CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
+			     CONF_PAIR const *pair, char const *attr)
 {
 	CONF_ITEM	*ci;
 
@@ -2089,7 +2089,7 @@ CONF_PAIR *cf_pair_find_next(const CONF_SECTION *cs,
  * Find a CONF_SECTION, or return the root if name is NULL
  */
 
-CONF_SECTION *cf_section_find(const char *name)
+CONF_SECTION *cf_section_find(char const *name)
 {
 	if (name)
 		return cf_section_sub_find(mainconfig.config, name);
@@ -2099,7 +2099,7 @@ CONF_SECTION *cf_section_find(const char *name)
 
 /** Find a sub-section in a section
  */
-CONF_SECTION *cf_section_sub_find(const CONF_SECTION *cs, const char *name)
+CONF_SECTION *cf_section_sub_find(CONF_SECTION const *cs, char const *name)
 {
 	CONF_ITEM *ci;
 
@@ -2131,8 +2131,8 @@ CONF_SECTION *cf_section_sub_find(const CONF_SECTION *cs, const char *name)
 /** Find a CONF_SECTION with both names.
  *	
  */
-CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
-					const char *name1, const char *name2)
+CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
+					char const *name1, char const *name2)
 {
 	CONF_ITEM    *ci;
 
@@ -2184,9 +2184,9 @@ CONF_SECTION *cf_section_sub_find_name2(const CONF_SECTION *cs,
  * name1 is NULL, any name1 matches.
  */
 
-CONF_SECTION *cf_subsection_find_next(const CONF_SECTION *section,
-				      const CONF_SECTION *subsection,
-				      const char *name1)
+CONF_SECTION *cf_subsection_find_next(CONF_SECTION const *section,
+				      CONF_SECTION const *subsection,
+				      char const *name1)
 {
 	CONF_ITEM	*ci;
 
@@ -2221,9 +2221,9 @@ CONF_SECTION *cf_subsection_find_next(const CONF_SECTION *section,
  * name1 is NULL, any name1 matches.
  */
 
-CONF_SECTION *cf_section_find_next(const CONF_SECTION *section,
-				   const CONF_SECTION *subsection,
-				   const char *name1)
+CONF_SECTION *cf_section_find_next(CONF_SECTION const *section,
+				   CONF_SECTION const *subsection,
+				   char const *name1)
 {
 	if (!section) return NULL;
 
@@ -2236,7 +2236,7 @@ CONF_SECTION *cf_section_find_next(const CONF_SECTION *section,
  * Return the next item after a CONF_ITEM.
  */
 
-CONF_ITEM *cf_item_find_next(const CONF_SECTION *section, const CONF_ITEM *item)
+CONF_ITEM *cf_item_find_next(CONF_SECTION const *section, CONF_ITEM const *item)
 {
 	if (!section) return NULL;
 
@@ -2252,44 +2252,44 @@ CONF_ITEM *cf_item_find_next(const CONF_SECTION *section, const CONF_ITEM *item)
 	}
 }
 
-CONF_SECTION *cf_item_parent(const CONF_ITEM *ci)
+CONF_SECTION *cf_item_parent(CONF_ITEM const *ci)
 {
 	if (!ci) return NULL;
 
 	return ci->parent;
 }
 
-int cf_section_lineno(const CONF_SECTION *section)
+int cf_section_lineno(CONF_SECTION const *section)
 {
 	return section->item.lineno;
 }
 
-const char *cf_pair_filename(const CONF_PAIR *pair)
+char const *cf_pair_filename(CONF_PAIR const *pair)
 {
 	return pair->item.filename;
 }
 
-const char *cf_section_filename(const CONF_SECTION *section)
+char const *cf_section_filename(CONF_SECTION const *section)
 {
 	return section->item.filename;
 }
 
-int cf_pair_lineno(const CONF_PAIR *pair)
+int cf_pair_lineno(CONF_PAIR const *pair)
 {
 	return pair->item.lineno;
 }
 
-int cf_item_is_section(const CONF_ITEM *item)
+int cf_item_is_section(CONF_ITEM const *item)
 {
 	return item->type == CONF_ITEM_SECTION;
 }
-int cf_item_is_pair(const CONF_ITEM *item)
+int cf_item_is_pair(CONF_ITEM const *item)
 {
 	return item->type == CONF_ITEM_PAIR;
 }
 
 
-static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
+static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, char const *name,
 				void *data, void (*data_free)(void *))
 {
 	CONF_DATA *cd;
@@ -2316,7 +2316,7 @@ static CONF_DATA *cf_data_alloc(CONF_SECTION *parent, const char *name,
 }
 
 
-static void *cf_data_find_internal(const CONF_SECTION *cs, const char *name,
+static void *cf_data_find_internal(CONF_SECTION const *cs, char const *name,
 				   int flag)
 {
 	if (!cs || !name) return NULL;
@@ -2338,7 +2338,7 @@ static void *cf_data_find_internal(const CONF_SECTION *cs, const char *name,
 /*
  *	Find data from a particular section.
  */
-void *cf_data_find(const CONF_SECTION *cs, const char *name)
+void *cf_data_find(CONF_SECTION const *cs, char const *name)
 {
 	CONF_DATA *cd = cf_data_find_internal(cs, name, 0);
 
@@ -2350,7 +2350,7 @@ void *cf_data_find(const CONF_SECTION *cs, const char *name)
 /*
  *	Add named data to a configuration section.
  */
-static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
+static int cf_data_add_internal(CONF_SECTION *cs, char const *name,
 				void *data, void (*data_free)(void *),
 				int flag)
 {
@@ -2375,7 +2375,7 @@ static int cf_data_add_internal(CONF_SECTION *cs, const char *name,
 /*
  *	Add named data to a configuration section.
  */
-int cf_data_add(CONF_SECTION *cs, const char *name,
+int cf_data_add(CONF_SECTION *cs, char const *name,
 		void *data, void (*data_free)(void *))
 {
 	return cf_data_add_internal(cs, name, data, data_free, 0);
@@ -2597,7 +2597,7 @@ int cf_section_template(CONF_SECTION *cs, CONF_SECTION *template)
  *	pollute every other function with the knowledge of the
  *	configuration internals.
  */
-void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
+void cf_log_err(CONF_ITEM const *ci, char const *fmt, ...)
 {
 	va_list ap;
 	char buffer[256];
@@ -2616,7 +2616,7 @@ void cf_log_err(const CONF_ITEM *ci, const char *fmt, ...)
 	}
 }
 
-void cf_log_err_cs(const CONF_SECTION *cs, const char *fmt, ...)
+void cf_log_err_cs(CONF_SECTION const *cs, char const *fmt, ...)
 {
 	va_list ap;
 	char buffer[256];
@@ -2633,7 +2633,7 @@ void cf_log_err_cs(const CONF_SECTION *cs, const char *fmt, ...)
 	       buffer);
 }
 
-void cf_log_err_cp(const CONF_PAIR *cp, const char *fmt, ...)
+void cf_log_err_cp(CONF_PAIR const *cp, char const *fmt, ...)
 {
 	va_list ap;
 	char buffer[256];
@@ -2650,7 +2650,7 @@ void cf_log_err_cp(const CONF_PAIR *cp, const char *fmt, ...)
 	       buffer);
 }
 
-void cf_log_info(const CONF_SECTION *cs, const char *fmt, ...)
+void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)
 {
 	va_list ap;
 
@@ -2662,7 +2662,7 @@ void cf_log_info(const CONF_SECTION *cs, const char *fmt, ...)
 /*
  *	Wrapper to simplify the code.
  */
-void cf_log_module(const CONF_SECTION *cs, const char *fmt, ...)
+void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)
 {
 	va_list ap;
 	char buffer[256];
@@ -2689,7 +2689,7 @@ const CONF_PARSER *cf_section_parse_table(CONF_SECTION *cs)
  *
 */
 
-static int dump_config_section(const CONF_SECTION *cs, int indent)
+static int dump_config_section(CONF_SECTION const *cs, int indent)
 {
 	CONF_SECTION	*scs;
 	CONF_PAIR	*cp;
@@ -2734,7 +2734,7 @@ int dump_config(CONF_SECTION *cs)
 }
 #endif
 
-static const char *cf_pair_print_value(const CONF_PAIR *cp,
+static char const *cf_pair_print_value(CONF_PAIR const *cp,
 				       char *buffer, size_t buflen)
 {
 	char *p;
@@ -2765,14 +2765,14 @@ static const char *cf_pair_print_value(const CONF_PAIR *cp,
 }
 
 
-int cf_pair2xml(FILE *fp, const CONF_PAIR *cp)
+int cf_pair2xml(FILE *fp, CONF_PAIR const *cp)
 {
 	fprintf(fp, "<%s>", cp->attr);
 	if (cp->value) {
 		char buffer[2048];
 
 		char *p = buffer;
-		const char *q = cp->value;
+		char const *q = cp->value;
 
 		while (*q && (p < (buffer + sizeof(buffer) - 1))) {
 			if (q[0] == '&') {
@@ -2802,7 +2802,7 @@ int cf_pair2xml(FILE *fp, const CONF_PAIR *cp)
 	return 1;
 }
 
-int cf_section2xml(FILE *fp, const CONF_SECTION *cs)
+int cf_section2xml(FILE *fp, CONF_SECTION const *cs)
 {
 	CONF_ITEM *ci, *next;
 
@@ -2840,7 +2840,7 @@ int cf_section2xml(FILE *fp, const CONF_SECTION *cs)
 	return 1;		/* success */
 }
 
-int cf_pair2file(FILE *fp, const CONF_PAIR *cp)
+int cf_pair2file(FILE *fp, CONF_PAIR const *cp)
 {
 	char buffer[2048];
 
@@ -2850,7 +2850,7 @@ int cf_pair2file(FILE *fp, const CONF_PAIR *cp)
 	return 1;
 }
 
-int cf_section2file(FILE *fp, const CONF_SECTION *cs)
+int cf_section2file(FILE *fp, CONF_SECTION const *cs)
 {
 	const CONF_ITEM *ci, *next;
 
@@ -2872,11 +2872,11 @@ int cf_section2file(FILE *fp, const CONF_SECTION *cs)
 
 		switch (ci->type) {
 		case CONF_ITEM_PAIR:
-			if (!cf_pair2file(fp, (const CONF_PAIR *) ci)) return 0;
+			if (!cf_pair2file(fp, (CONF_PAIR const *) ci)) return 0;
 			break;
 
 		case CONF_ITEM_SECTION:
-			if (!cf_section2file(fp, (const CONF_SECTION *) ci)) return 0;
+			if (!cf_section2file(fp, (CONF_SECTION const *) ci)) return 0;
 			break;
 
 		default:	/* should really be an error. */

@@ -34,7 +34,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance,
 				 REQUEST *request)
 {
 	size_t length;
-	const char *value;
+	char const *value;
 	CONF_PAIR *cp;
 	RADCLIENT *c;
 	char buffer[2048];

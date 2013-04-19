@@ -101,7 +101,7 @@ void client_free(RADCLIENT *client)
 /*
  *	Callback for comparing two clients.
  */
-static int client_ipaddr_cmp(const void *one, const void *two)
+static int client_ipaddr_cmp(void const *one, void const *two)
 {
 	const RADCLIENT *a = one;
 	const RADCLIENT *b = two;
@@ -125,7 +125,7 @@ static int client_ipaddr_cmp(const void *one, const void *two)
 }
 
 #ifdef WITH_STATS
-static int client_num_cmp(const void *one, const void *two)
+static int client_num_cmp(void const *one, void const *two)
 {
 	const RADCLIENT *a = one;
 	const RADCLIENT *b = two;
@@ -408,7 +408,7 @@ void client_delete(RADCLIENT_LIST *clients, RADCLIENT *client)
  *	Find a client in the RADCLIENTS list by number.
  *	This is a support function for the statistics code.
  */
-RADCLIENT *client_findbynumber(const RADCLIENT_LIST *clients, int number)
+RADCLIENT *client_findbynumber(RADCLIENT_LIST const *clients, int number)
 {
 	if (!clients) clients = root_clients;
 
@@ -437,8 +437,7 @@ RADCLIENT *client_findbynumber(UNUSED const RADCLIENT_LIST *clients, UNUSED int 
 /*
  *	Find a client in the RADCLIENTS list.
  */
-RADCLIENT *client_find(const RADCLIENT_LIST *clients,
-		       const fr_ipaddr_t *ipaddr, int proto)
+RADCLIENT *client_find(RADCLIENT_LIST const *clients, fr_ipaddr_t const *ipaddr, int proto)
 {
 	int i, max_prefix;
 	RADCLIENT myclient;
@@ -483,7 +482,7 @@ RADCLIENT *client_find(const RADCLIENT_LIST *clients,
 /*
  *	Old wrapper for client_find
  */
-RADCLIENT *client_find_old(const fr_ipaddr_t *ipaddr)
+RADCLIENT *client_find_old(fr_ipaddr_t const *ipaddr)
 {
 	return client_find(root_clients, ipaddr, IPPROTO_UDP);
 }
@@ -543,7 +542,7 @@ static const CONF_PARSER client_config[] = {
 	{ "proto",  PW_TYPE_STRING_PTR,
 	  0, &hs_proto, NULL },
 
-	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (const void *) limit_config },
+	{ "limit", PW_TYPE_SUBSECTION, 0, NULL, (void const *) limit_config },
 #endif
 
 #ifdef WITH_DYNAMIC_CLIENTS
@@ -567,7 +566,7 @@ static const CONF_PARSER client_config[] = {
 static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 {
 	RADCLIENT	*c;
-	const char	*name2;
+	char const	*name2;
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
@@ -759,7 +758,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 	if (!c->secret || !*c->secret) {
 #ifdef WITH_DHCP
-		const char *value = NULL;
+		char const *value = NULL;
 		CONF_PAIR *cp = cf_pair_find(cs, "dhcp");
 
 		if (cp) value = cf_pair_value(cp);
@@ -862,7 +861,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 #ifdef WITH_DYNAMIC_CLIENTS
 #ifdef HAVE_DIRENT_H
 		if (c->client_server) {
-			const char *value;
+			char const *value;
 			CONF_PAIR *cp;
 			DIR		*dir;
 			struct dirent	*dp;
@@ -897,7 +896,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 			 *	Read the directory, ignoring "." files.
 			 */
 			while ((dp = readdir(dir)) != NULL) {
-				const char *p;
+				char const *p;
 				RADCLIENT *dc;
 
 				if (dp->d_name[0] == '.') continue;
@@ -1192,9 +1191,9 @@ RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
 /*
  *	Read a client definition from the given filename.
  */
-RADCLIENT *client_read(const char *filename, int in_server, int flag)
+RADCLIENT *client_read(char const *filename, int in_server, int flag)
 {
-	const char *p;
+	char const *p;
 	RADCLIENT *c;
 	CONF_SECTION *cs;
 	char buffer[256];

@@ -61,7 +61,7 @@ static RADIUS_PACKET *reply = NULL;
 #define DHCP_VEND_LEN	(308)
 #define DHCP_OPTION_MAGIC_NUMBER (0x63825363)
 
-const char *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
+char const *dhcpclient_version = "dhcpclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
@@ -86,7 +86,7 @@ static void NEVER_RETURNS usage(void)
 /*
  *	Initialize the request.
  */
-static int request_init(const char *filename)
+static int request_init(char const *filename)
 {
 	FILE *fp;
 	VALUE_PAIR *vp;
@@ -173,7 +173,7 @@ static int request_init(const char *filename)
 	return 1;
 }
 
-static const char *dhcp_header_names[] = {
+static char const *dhcp_header_names[] = {
 	"DHCP-Opcode",
 	"DHCP-Hardware-Type",
 	"DHCP-Hardware-Address-Length",
@@ -263,8 +263,8 @@ int main(int argc, char **argv)
 {
 	char *p;
 	int c;
-	const char *radius_dir = RADDBDIR;
-	const char *filename = NULL;
+	char const *radius_dir = RADDBDIR;
+	char const *filename = NULL;
 
 	fr_debug_flag = 0;
 
@@ -314,8 +314,8 @@ int main(int argc, char **argv)
 	 */
 	server_ipaddr.af = AF_INET;
 	if (strcmp(argv[1], "-") != 0) {
-		const char *hostname = argv[1];
-		const char *portname = argv[1];
+		char const *hostname = argv[1];
+		char const *portname = argv[1];
 		char buffer[256];
 
 		if (*argv[1] == '[') { /* IPv6 URL encoded */

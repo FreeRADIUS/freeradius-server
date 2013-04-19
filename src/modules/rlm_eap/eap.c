@@ -61,7 +61,7 @@ RCSID("$Id$")
 #include "rlm_eap.h"
 #include <ctype.h>
 
-static const char *eap_codes[] = {
+static char const *eap_codes[] = {
 	 "",				/* 0 is invalid */
 	"request",
 	"response",
@@ -182,7 +182,7 @@ static int eap_module_call(eap_module_t *module, eap_handler_t *handler)
 	int rcode = 1;
 	REQUEST *request = handler->request;
 	
-	const char *caller = request->module;
+	char const *caller = request->module;
 
 	RDEBUG2("Calling %s to process EAP data", module->type->name);
 	

@@ -44,7 +44,7 @@ typedef struct REQUEST REQUEST;	/* to shut up warnings about mschap.h */
 static int success = 0;
 static int retries = 3;
 static float timeout = 5;
-static const char *secret = NULL;
+static char const *secret = NULL;
 static int do_output = 1;
 static int totalapp = 0;
 static int totaldeny = 0;
@@ -64,7 +64,7 @@ static int sockfd;
 static int last_used_id = -1;
 
 #ifdef WITH_TCP
-const char *proto = NULL;
+char const *proto = NULL;
 #endif
 static int ipproto = IPPROTO_UDP;
 
@@ -77,7 +77,7 @@ typedef struct radclient_t {
 	struct		radclient_t *prev;
 	struct		radclient_t *next;
 
-	const char	*filename;
+	char const	*filename;
 	int		packet_number; /* in the file */
 	char		password[256];
 	time_t		timestamp;
@@ -91,7 +91,7 @@ typedef struct radclient_t {
 static radclient_t *radclient_head = NULL;
 static radclient_t *radclient_tail = NULL;
 
-const char *radclient_version = "radclient version " RADIUSD_VERSION_STRING
+char const *radclient_version = "radclient version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
 " (git #" RADIUSD_VERSION_COMMIT ")"
 #endif
@@ -160,7 +160,7 @@ static void radclient_free(radclient_t *radclient)
 }
 
 static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
-			   const char *password)
+			   char const *password)
 {
 	unsigned int i;
 	VALUE_PAIR *challenge, *response;
@@ -202,7 +202,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
  *	Initialize a radclient data structure and add it to
  *	the global linked list.
  */
-static int radclient_init(const char *filename)
+static int radclient_init(char const *filename)
 {
 	FILE *fp;
 	VALUE_PAIR *vp;
@@ -430,14 +430,14 @@ static int radclient_sane(radclient_t *radclient)
 /*
  *	For request handline.
  */
-static int filename_cmp(const void *one, const void *two)
+static int filename_cmp(void const *one, void const *two)
 {
-	return strcmp((const char *) one, (const char *) two);
+	return strcmp((char const *) one, (char const *) two);
 }
 
 static int filename_walk(UNUSED void *context, void *data)
 {
-	const char	*filename = data;
+	char const	*filename = data;
 
 	/*
 	 *	Read request(s) from the file.
@@ -888,7 +888,7 @@ static int recv_one_packet(int wait_time)
 }
 
 
-static int getport(const char *name)
+static int getport(char const *name)
 {
 	struct	servent		*svp;
 
@@ -904,7 +904,7 @@ int main(int argc, char **argv)
 {
 	char *p;
 	int c;
-	const char *radius_dir = RADDBDIR;
+	char const *radius_dir = RADDBDIR;
 	char filesecret[256];
 	FILE *fp;
 	int do_summary = 0;
@@ -1066,8 +1066,8 @@ int main(int argc, char **argv)
 	if (force_af == AF_UNSPEC) force_af = AF_INET;
 	server_ipaddr.af = force_af;
 	if (strcmp(argv[1], "-") != 0) {
-		const char *hostname = argv[1];
-		const char *portname = argv[1];
+		char const *hostname = argv[1];
+		char const *portname = argv[1];
 		char buffer[256];
 
 		if (*argv[1] == '[') { /* IPv6 URL encoded */
@@ -1232,7 +1232,7 @@ int main(int argc, char **argv)
 	do {
 		int n = parallel;
 		radclient_t *next;
-		const char *filename = NULL;
+		char const *filename = NULL;
 
 		done = 1;
 		sleep_time = -1;

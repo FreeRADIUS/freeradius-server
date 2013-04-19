@@ -31,6 +31,6 @@
 
 #define IKEv2_LOG_PREFIX "    rlm_eap_ikev2: "
 
-void vxlogf(int iklevel, const char * fmt,va_list ap);
+void vxlogf(int iklevel, char const * fmt,va_list ap);
 
 #endif //LOGGING_IMPL_H

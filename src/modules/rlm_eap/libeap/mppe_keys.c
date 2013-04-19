@@ -31,9 +31,9 @@ USES_APPLE_DEPRECATED_API	/* OpenSSL API has been deprecated by Apple */
 /*
  * TLS PRF from RFC 2246
  */
-static void P_hash(const EVP_MD *evp_md,
-		   const unsigned char *secret, unsigned int secret_len,
-		   const unsigned char *seed,   unsigned int seed_len,
+static void P_hash(EVP_MD const *evp_md,
+		   unsigned char const *secret, unsigned int secret_len,
+		   unsigned char const *seed,   unsigned int seed_len,
 		   unsigned char *out, unsigned int out_len)
 {
 	HMAC_CTX ctx_a, ctx_out;
@@ -80,8 +80,8 @@ static void P_hash(const EVP_MD *evp_md,
 	memset(a, 0, sizeof(a));
 }
 
-static void PRF(const unsigned char *secret, unsigned int secret_len,
-		const unsigned char *seed,   unsigned int seed_len,
+static void PRF(unsigned char const *secret, unsigned int secret_len,
+		unsigned char const *seed,   unsigned int seed_len,
 		unsigned char *out, unsigned char *buf, unsigned int out_len)
 {
 	unsigned int i;
@@ -105,7 +105,7 @@ static void PRF(const unsigned char *secret, unsigned int secret_len,
  *	Generate keys according to RFC 2716 and add to reply
  */
 void eaptls_gen_mppe_keys(REQUEST *request, SSL *s,
-			  const char *prf_label)
+			  char const *prf_label)
 {
 	unsigned char out[4*EAPTLS_MPPE_KEY_LEN], buf[4*EAPTLS_MPPE_KEY_LEN];
 	unsigned char seed[64 + 2*SSL3_RANDOM_SIZE];

@@ -26,7 +26,7 @@
 #include <freeradius-devel/rad_assert.h>
 #include "ldap.h"
 
-static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, const value_pair_map_t *map, void *ctx)
+static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, value_pair_map_t const *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
 	VALUE_PAIR *head, **tail, *vp;
@@ -149,12 +149,12 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 /** Free attribute map values
  *
  */
-void rlm_ldap_map_xlat_free(const rlm_ldap_map_xlat_t *expanded)
+void rlm_ldap_map_xlat_free(rlm_ldap_map_xlat_t const *expanded)
 {
 	const value_pair_map_t *map;
 	unsigned int total = 0;
 	
-	const char *name;
+	char const *name;
 	
 	for (map = expanded->maps; map != NULL; map = map->next) {
 		name = expanded->attrs[total++];
@@ -174,7 +174,7 @@ void rlm_ldap_map_xlat_free(const rlm_ldap_map_xlat_t *expanded)
 /** Expand values in an attribute map where needed
  *
  */
-int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_map_xlat_t *expanded)
+int rlm_ldap_map_xlat(REQUEST *request, value_pair_map_t const *maps, rlm_ldap_map_xlat_t *expanded)
 {
 	const value_pair_map_t *map;
 	unsigned int total = 0;
@@ -247,13 +247,13 @@ int rlm_ldap_map_xlat(REQUEST *request, const value_pair_map_t *maps, rlm_ldap_m
  * This is *NOT* atomic, but there's no condition for which we should error out...
  */
 void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP *handle,
-		     const rlm_ldap_map_xlat_t *expanded, LDAPMessage *entry)
+		     rlm_ldap_map_xlat_t const *expanded, LDAPMessage *entry)
 {
 	const value_pair_map_t 	*map;
 	unsigned int		total = 0;
 	
 	rlm_ldap_result_t	result;
-	const char		*name;
+	char const		*name;
 
 
 	for (map = expanded->maps; map != NULL; map = map->next) {
@@ -320,8 +320,8 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
  * @param[in] expanded Structure containing a list of xlat expanded attribute names and mapping information.
  * @return One of the RLM_MODULE_* values.
  */
-rlm_rcode_t rlm_ldap_map_profile(const ldap_instance_t *inst, REQUEST *request, ldap_handle_t **pconn,
-			    	 const char *dn, const rlm_ldap_map_xlat_t *expanded)
+rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
+			    	 char const *dn, rlm_ldap_map_xlat_t const *expanded)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	ldap_rcode_t	status;
