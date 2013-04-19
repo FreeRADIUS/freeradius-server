@@ -143,13 +143,17 @@ endif
 ifeq "${bm_shared_libs}" "yes"
     RELINK := local/
 
+    ifneq "$(CC)" "clang"
+	RDYNAMIC := -rdynamic
+    endif
+
     # RPATH  : flags use to build executables that are installed,
     #          with no dependency on the source. 
     # RELINL : flags use to build executables that can be run
     #          from the build directory / source tree.
-    RPATH_FLAGS := -rpath ${libdir} -rdynamic
-    RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs -rdynamic
-    
+    RPATH_FLAGS := -rpath ${libdir} $(RDYNAMIC)
+    RELINK_FLAGS := -rpath $(abspath ${BUILD_DIR})/lib/${RELINK}/.libs $(RDYNAMIC)
+
     RELINK_FLAGS_MIN := -rpath ${libdir}
 
     ifneq "${bm_static_libs}" "yes"
