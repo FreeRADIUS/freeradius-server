@@ -233,7 +233,7 @@ int fr_heap_num_elements(fr_heap_t *hp)
 #include <stdlib.h>
 
 
-static int heap_cmp(const void *a, const void *b)
+static int heap_cmp(void const *a, void const *b)
 {
 	return *(int *)a - *(int *) b;
 

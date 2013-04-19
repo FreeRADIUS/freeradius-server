@@ -17,7 +17,7 @@ RCSID("$Id$")
  */
 #include "../include/md5.h"
 
-void fr_md5_calc(uint8_t *output, const uint8_t *input,
+void fr_md5_calc(uint8_t *output, uint8_t const *input,
 		     unsigned int inlen)
 {
 	FR_MD5_CTX	context;
@@ -112,7 +112,7 @@ fr_MD5Init(FR_MD5_CTX *ctx)
  * @return Void.
  */
 void
-fr_MD5Update(FR_MD5_CTX *ctx, const unsigned char *input, size_t len)
+fr_MD5Update(FR_MD5_CTX *ctx, unsigned char const *input, size_t len)
 {
 	size_t have, need;
 
@@ -198,7 +198,7 @@ fr_MD5Final(uint8_t digest[MD5_DIGEST_LENGTH], FR_MD5_CTX *ctx)
  * the data and converts bytes into longwords for this routine.
  */
 void
-fr_MD5Transform(uint32_t state[4], const uint8_t block[MD5_BLOCK_LENGTH])
+fr_MD5Transform(uint32_t state[4], uint8_t const block[MD5_BLOCK_LENGTH])
 {
 	uint32_t a, b, c, d, in[MD5_BLOCK_LENGTH / 4];
 
