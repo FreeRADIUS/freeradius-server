@@ -78,6 +78,7 @@ int log_dates_utc = 0;
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
  */
+DIAG_OFF(format-nonliteral)
 int vradlog(int lvl, char const *fmt, va_list ap)
 {
 	struct main_config_t *myconfig = &mainconfig;
@@ -153,9 +154,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	}
 
 	if (len < sizeof(buffer)) {
-DIAG_OFF(format-nonliteral)
 		len += vsnprintf(buffer + len, sizeof(buffer) - len - 1, fmt, ap);
-DIAG_ON(format-nonliteral)
 	}
 	
 	/*
@@ -223,6 +222,7 @@ DIAG_ON(format-nonliteral)
 
 	return 0;
 }
+DIAG_ON(format-nonliteral)
 
 int log_debug(char const *msg, ...)
 {
