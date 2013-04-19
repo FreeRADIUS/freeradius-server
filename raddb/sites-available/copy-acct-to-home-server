@@ -139,7 +139,6 @@ server copy-acct-to-home-server {
 	#  Only a few modules currently have this method.
 	#
 	pre-proxy {
-	#	attr_rewrite
 	
 		#  If you want to have a log of packets proxied to a home
 		#  server, un-comment the following line, and the
@@ -160,7 +159,6 @@ server copy-acct-to-home-server {
 		#  'detail post_proxy_log' section in radiusd.conf.
 	#	post_proxy_log
 	
-	#	attr_rewrite
 	
 		#  Uncomment the following line if you want to filter
 		#  replies from remote proxies based on the rules

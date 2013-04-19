@@ -818,34 +818,6 @@ modules {
 		delimiter = "%"
 	}
 	
-	#  rewrite arbitrary packets.  Useful in accounting and authorization.
-	#
-	## This module is highly experimental at the moment.  Please give 
-	## feedback to the mailing list.
-	#
-	#  The module can also use the Rewrite-Rule attribute. If it
-	#  is set and matches the name of the module instance, then
-	#  that module instance will be the only one which runs.
-	#
-	#  Also if new_attribute is set to yes then a new attribute
-	#  will be created containing the value replacewith and it
-	#  will be added to searchin (packet, reply or config).
-	# searchfor,ignore_case and max_matches will be ignored in that case.
-
-	#
-	#attr_rewrite sanecallerid {
-	#	attribute = Called-Station-Id
-		# may be "packet", "reply", or "config"
-	#	searchin = packet
-	#	searchfor = "[+ ]"
-	#	replacewith = ""
-	#	ignore_case = no
-	#	new_attribute = no
-	#	max_matches = 10
-	#	## If set to yes then the replace string will be appended to the original string
-	#	append = no
-	#}
-
 	# Preprocess the incoming RADIUS request, before handing it off
 	# to other modules.
 	#
@@ -1522,7 +1494,6 @@ post-auth {
 #  Only a few modules currently have this method.
 #
 pre-proxy {
-	# attr_rewrite
 }
 
 #
@@ -1531,8 +1502,6 @@ pre-proxy {
 #  post-proxy stage.
 #
 post-proxy {
-	# attr_rewrite
-
 	#
 	#  If you are proxing LEAP, you MUST configure the EAP
 	#  module, and you MUST list it here, in the post-proxy
