@@ -2279,11 +2279,10 @@ static int str2argvX(char *str, char **argv, int max_argc)
 		if (!*str) return argc;
 
 		if ((*str == '\'') || (*str == '"')) {
-			char *p = str;
+			const char *p = str;
 			FR_TOKEN token;
 
-			token = gettoken((const char **) &p, buffer,
-					 sizeof(buffer));
+			token = gettoken(&p, buffer, sizeof(buffer));
 			if ((token != T_SINGLE_QUOTED_STRING) &&
 			    (token != T_DOUBLE_QUOTED_STRING)) {
 				return -1;
@@ -2296,8 +2295,8 @@ static int str2argvX(char *str, char **argv, int max_argc)
 
 			memcpy(str, buffer, len + 1);
 			argv[argc] = str;
-			str = p;
-
+			
+			memcpy(&str, &p, sizeof(str));
 		} else {
 			argv[argc] = str;
 		}
