@@ -1645,6 +1645,7 @@ int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
 
 /** Add a module failure message VALUE_PAIR to the request
  */
+DIAG_OFF(format-nonliteral)
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
 	size_t len;
@@ -1660,8 +1661,7 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 
 	len = snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s: ", request->module);
 	
-DIAG_OFF(format-nonliteral)
 	vsnprintf(vp->vp_strvalue + len, sizeof(vp->vp_strvalue) - len, fmt, ap);
-DIAG_ON(format-nonliteral)
 	pairadd(&request->packet->vps, vp);
 }
+DIAG_ON(format-nonliteral)

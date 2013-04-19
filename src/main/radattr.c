@@ -59,31 +59,31 @@ int radius_get_vp(UNUSED REQUEST *request, UNUSED char const *name, UNUSED VALUE
 	return 0;
 }
 
+DIAG_OFF(format-nonliteral)
 void radlog_request(UNUSED int lvl, UNUSED int priority, UNUSED REQUEST *request, char const *msg, ...)
 {
 	va_list ap;
 	char buffer[256];
 
-DIAG_OFF(format-nonliteral)
 	va_start(ap, msg);
 	vsnprintf(buffer, sizeof(buffer), msg, ap);
-DIAG_ON(format-nonliteral)
 	va_end(ap);
 }
+DIAG_ON(format-nonliteral)
 
+DIAG_OFF(format-nonliteral)
 int radlog(UNUSED int lvl, char const *msg, ...)
 {
 	va_list ap;
 	char buffer[256];
 
 	va_start(ap, msg);
-DIAG_OFF(format-nonliteral)
 	vsnprintf(buffer, sizeof(buffer), msg, ap);
-DIAG_ON(format-nonliteral)
 	va_end(ap);
 
 	return 0;
 }
+DIAG_ON(format-nonliteral)
 
 static size_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
 		       UNUSED char const *fmt, UNUSED char *out, UNUSED size_t outlen)
