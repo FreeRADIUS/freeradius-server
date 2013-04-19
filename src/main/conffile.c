@@ -112,17 +112,27 @@ int cf_log_modules = 1;
  */
 CONF_PAIR *cf_itemtopair(const CONF_ITEM *ci)
 {
-	if (ci == NULL)
+	CONF_PAIR *out;
+	
+	if (ci == NULL) {
 		return NULL;
+	}
 	rad_assert(ci->type == CONF_ITEM_PAIR);
-	return (CONF_PAIR *)ci;
+	
+	memcpy(&out, &ci, sizeof(out));
+	return out;
 }
 CONF_SECTION *cf_itemtosection(const CONF_ITEM *ci)
 {
-	if (ci == NULL)
+	CONF_SECTION *out;
+	
+	if (ci == NULL) {
 		return NULL;
+	}
 	rad_assert(ci->type == CONF_ITEM_SECTION);
-	return (CONF_SECTION *)ci;
+	
+	memcpy(&out, &ci, sizeof(out));
+	return out;
 }
 CONF_ITEM *cf_pairtoitem(const CONF_PAIR *cp)
 {
@@ -132,16 +142,26 @@ CONF_ITEM *cf_pairtoitem(const CONF_PAIR *cp)
 }
 CONF_ITEM *cf_sectiontoitem(const CONF_SECTION *cs)
 {
-	if (cs == NULL)
+	CONF_ITEM *out;
+	
+	if (cs == NULL) {
 		return NULL;
-	return (CONF_ITEM *)cs;
+	}
+	
+	memcpy(&out, &cs, sizeof(out));
+	return out;
 }
 
 static CONF_ITEM *cf_datatoitem(const CONF_DATA *cd)
 {
-	if (cd == NULL)
+	CONF_ITEM *out;
+	
+	if (cd == NULL) {
 		return NULL;
-	return (CONF_ITEM *)cd;
+	}
+	
+	memcpy(&out, &cd, sizeof(out));
+	return out;
 }
 
 /*
