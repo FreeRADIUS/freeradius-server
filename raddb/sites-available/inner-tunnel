@@ -341,8 +341,6 @@ post-auth {
 #  Only a few modules currently have this method.
 #
 pre-proxy {
-#	attr_rewrite
-
 	#  Uncomment the following line if you want to change attributes
 	#  as defined in the preproxy_users file.
 #	files
@@ -369,8 +367,6 @@ post-proxy {
 	#  un-comment the following line, and the 'detail post_proxy_log'
 	#  section, above.
 #	post_proxy_log
-
-#	attr_rewrite
 
 	#  Uncomment the following line if you want to filter replies from
 	#  remote proxies based on the rules defined in the 'attrs' file.

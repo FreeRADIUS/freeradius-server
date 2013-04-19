@@ -1,6 +1,5 @@
 rlm_always
 rlm_attr_filter
-rlm_attr_rewrite
 rlm_cache
 rlm_chap
 rlm_checkval

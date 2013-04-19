@@ -325,7 +325,6 @@ fi
 %doc %{_mandir}/man5/radrelay.conf.5.gz
 %doc %{_mandir}/man5/rlm_always.5.gz
 %doc %{_mandir}/man5/rlm_attr_filter.5.gz
-%doc %{_mandir}/man5/rlm_attr_rewrite.5.gz
 %doc %{_mandir}/man5/rlm_chap.5.gz
 %doc %{_mandir}/man5/rlm_counter.5.gz
 %doc %{_mandir}/man5/rlm_detail.5.gz
@@ -363,8 +362,6 @@ fi
 %{_libdir}/freeradius/rlm_always-%{version}.so
 %{_libdir}/freeradius/rlm_attr_filter.so
 %{_libdir}/freeradius/rlm_attr_filter-%{version}.so
-%{_libdir}/freeradius/rlm_attr_rewrite.so
-%{_libdir}/freeradius/rlm_attr_rewrite-%{version}.so
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_chap-%{version}.so
 %{_libdir}/freeradius/rlm_checkval.so

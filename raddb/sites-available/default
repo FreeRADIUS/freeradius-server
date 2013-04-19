@@ -751,8 +751,6 @@ post-auth {
 #  Only a few modules currently have this method.
 #
 pre-proxy {
-#	attr_rewrite
-
         # Before proxing the request add an Operator-Name attribute identifying
         # if the operator-name is found for this client.
         # No need to uncomment this if you have already enabled this in
@@ -790,8 +788,6 @@ post-proxy {
 	#  un-comment the following line, and the 'detail post_proxy_log'
 	#  section, above.
 #	post_proxy_log
-
-#	attr_rewrite
 
 	#  Uncomment the following line if you want to filter replies from
 	#  remote proxies based on the rules defined in the 'attrs' file.
