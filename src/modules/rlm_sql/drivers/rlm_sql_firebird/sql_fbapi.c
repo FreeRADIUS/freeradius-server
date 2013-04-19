@@ -79,7 +79,7 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 
 int fb_error(rlm_sql_firebird_conn_t *conn)
 {
-	char error[512];	/* Temporary error buffer, lets hope isc_interprete wont overflow it... */
+	ISC_SCHAR error[512];	/* Temporary error buffer, lets hope isc_interprete wont overflow it... */
 	ISC_STATUS *pstatus;
 	
 	conn->sql_code = 0;
@@ -101,11 +101,11 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 		 *	first element of the status array.
 		 */
 		pstatus = &conn->status[0];
-		isc_interprete(&error, &pstatus);
-		conn->error = talloc_vasprintf(conn, "%s. ", &error);
+		fb_interprete(error, sizeof(error), &pstatus);
+		conn->error = talloc_vasprintf(conn, "%s. ", error);
 		
-		while (isc_interprete(&error, &pstatus)) {
-			conn->error = talloc_vasprintf_append(conn->error, "%s. ", &error);
+		while (fb_interprete(error, sizeof(error), &pstatus)) {
+			conn->error = talloc_vasprintf_append(conn->error, "%s. ", error);
 		}
 		
 		memset(&conn->status, 0, sizeof(conn->status));
