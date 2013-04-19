@@ -5,10 +5,10 @@
 #
 
 condition a == b
-data OK
+data a == b
 
 condition a == b || c == d
-data OK
+data a == b || c == d
 
 #
 #  A bunch of errors, in the order that the error strings
@@ -61,29 +61,35 @@ data ERROR offset 7 'Unexpected start of string'
 
 # sillyness is OK
 condition ((((((a))))))
-data OK
+data (a)
 
 condition (a == b)
-data OK
+data (a == b)
 
 condition (!a)
-data OK
+data (!a)
 
+#
+#  Hmm... these next two should really be identical.
+#
 condition (a == b || c == d)
-data OK
+data (a == b || c == d)
 
 condition ((a == b) || (c == d))
-data OK
+data (a == b) || (c == d)
 
 condition (!(a == b) || (c == d))
-data OK
+data (!(a == b) || (c == d))
 
 # different from above!
 condition (!((a == b) || (c == d)))
-data OK
+data (!((a == b) || (c == d)))
 
 condition ((a == b) || (c == d)))
 data ERROR offset 22 'Unexpected closing brace'
 
 condition (handled && (Response-Packet-Type == Access-Challenge))
-data OK
+data (handled && (Response-Packet-Type == Access-Challenge))
+
+condition (!(!foo))
+data foo

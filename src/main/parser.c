@@ -43,24 +43,110 @@ RCSID("$Id$")
 #endif
 #endif
 
-W_UNUSEDDEC_OFF
-static void cond_debug(const fr_cond_t *c)
+static size_t cond_sprint_string(char *buffer, size_t bufsize, const char *str, FR_TOKEN type)
 {
+	char c;
+	const char *p = str;
+	char *q = buffer;
+	char *end = q + bufsize - 3;
+
+	switch (type) {
+	default:
+		return 0;
+
+	case T_BARE_WORD:
+		strlcpy(buffer, str, bufsize);
+		return strlen(buffer);
+
+	case T_OP_REG_EQ:
+		c = '/';
+		break;
+
+	case T_DOUBLE_QUOTED_STRING:
+		c = '"';
+		break;
+
+	case T_SINGLE_QUOTED_STRING:
+		c = '\'';
+		break;
+
+	case T_BACK_QUOTED_STRING:
+		c = '`';
+		break;
+	}
+
+	*(q++) = c;
+
+	while (*p && (q < end)) {
+		if (*p == c) {
+			*(q++) = '\\';
+			*(q++) = *(p++);
+			continue;
+		}
+
+		switch (*p) {
+		case '\\':
+			*(q++) = '\\';
+			*(q++) = *(p++);
+			break;
+
+		case '\r':
+			*(q++) = '\\';
+			*(q++) = 'r';
+			p++;
+			break;
+
+		case '\n':
+			*(q++) = '\\';
+			*(q++) = 'r';
+			p++;
+			break;
+
+		case '\t':
+			*(q++) = '\\';
+			*(q++) = 't';
+			p++;
+			break;
+
+		default:
+			*(q++) = *(p++);
+			break;
+		}
+	}
+
+	*(q++) = c;
+	*(q++) = '\0';
+
+	return q - buffer;
+}
+
+size_t fr_cond_sprint(char *buffer, size_t bufsize, const fr_cond_t *c)
+{
+	size_t len;
+	char *p = buffer;
+	char *end = buffer + bufsize - 1;
 
 next:
 	if (c->child_op == COND_NOT) {
-		printf("!");
+		*(p++) = '!';
 	}
 
 	if (c->op != T_OP_INVALID) {
 		rad_assert(c->lhs != NULL);
-		printf("%s", c->lhs);
+
+		len = cond_sprint_string(p, end - p, c->lhs, c->lhs_type);
+		p += len;
 
 		if (c->op != T_OP_CMP_TRUE) {
-			printf(" %s ", fr_token_name(c->op));
+			*(p++) = ' ';
+			strlcpy(p, fr_token_name(c->op), end - p);
+			p += strlen(p);
+			*(p++) = ' ';
 
 			rad_assert(c->rhs != NULL);
-			printf("%s", c->rhs);
+
+			len = cond_sprint_string(p, end - p, c->rhs, c->rhs_type);
+			p += len;
 		}
 
 	} else {
@@ -70,24 +156,28 @@ next:
 		rad_assert(c->child_op != COND_OR);
 		rad_assert(c->child != NULL);
 
-		printf("(");
-		cond_debug(c->child);
-		printf(")");
+		*(p++) = '(';
+		len = fr_cond_sprint(p, end - p, c->child);
+		p += len;
+		*(p++) = ')';
 	}
 
 	if (c->next_op == COND_NONE) {
 		rad_assert(c->next == NULL);
-		return;
+		*p = '\0';
+		return p - buffer;
 	}
 
 	rad_assert(c->next_op != COND_TRUE);
 	rad_assert(c->next_op != COND_NOT);
 
 	if (c->next_op == COND_AND) {
-		printf(" && ");
+		strlcpy(p, " && ", end - p);
+		p += strlen(p);
 
 	} else if (c->next_op == COND_OR) {
-		printf(" || ");
+		strlcpy(p, " || ", end - p);
+		p += strlen(p);
 
 	} else {
 		rad_assert(0 == 1);
@@ -567,8 +657,33 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace,
 	p += slen;
 
 done:
-	*pcond = c;
 	COND_DEBUG("RETURN %d", __LINE__);
+
+	/*
+	 *	Normalize it.
+	 *
+	 *	((FOO)) --> FOO
+	 *	!(!FOO) --> FOO
+	 *
+	 *	FIXME: do more normalization.
+	 *
+	 *	(FOO) --> FOO
+	 *	((COND1) || (COND2)) --> COND1 || COND2
+	 *	etc.
+	 */
+	if (c->child && !c->next &&
+	    (c->child->child_op == c->child_op)) {
+		fr_cond_t *child = c->child;
+
+		(void) talloc_steal(ctx, child);
+
+		c->child = NULL;
+		talloc_free(c);
+		c = child;
+		c->child_op = COND_TRUE;
+	}
+
+	*pcond = c;
 	return p - start;
 }
 

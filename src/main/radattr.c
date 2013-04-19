@@ -550,15 +550,16 @@ static void parse_condition(const char *input, char *output, size_t outlen)
 		return;
 	}
 
-	talloc_free(cond);
-
 	input += slen;
 	if (*input != '\0') {
+		talloc_free(cond);
 		snprintf(output, outlen, "ERROR offset %d 'Too much text'", (int) slen);
 		return;
 	}
 
-	strlcpy(output, "OK", outlen);
+	fr_cond_sprint(output, outlen, cond);
+
+	talloc_free(cond);
 }
 
 static void parse_xlat(const char *input, char *output, size_t outlen)
