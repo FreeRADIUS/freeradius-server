@@ -3,7 +3,7 @@ AC_INIT(rlm_perl.c)
 AC_REVISION($Revision$)
 AC_DEFUN(modname,[rlm_perl])
 
-m4_include([ax_with_prog.m4])
+m4_include([m4/ax_with_prog.m4])
 
 if test x$with_[]modname != xno; then
 	AC_PROG_CC
@@ -29,6 +29,7 @@ if test x$with_[]modname != xno; then
 		AC_MSG_NOTICE([ExtUtil's ccopts were \"${mod_cflags}\"])
 		
 		mod_cflags=[$(echo "$mod_cflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')]
+		mod_cflags=[$(echo "$mod_cflags" | sed 's/-I\([^ ]*\)/-isystem \1 -I\1/g')]
 		
 		AC_MSG_NOTICE([Sanitized ccopts are \"${mod_cflags}\"])
 		
