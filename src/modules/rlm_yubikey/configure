@@ -2705,7 +2705,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for yubikey.h in $try" >&5
 $as_echo_n "checking for yubikey.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2720,7 +2720,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -2800,7 +2800,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for yubikey.h in $try" >&5
 $as_echo_n "checking for yubikey.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2815,7 +2815,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3041,7 +3041,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ykclient.h in $try" >&5
 $as_echo_n "checking for ykclient.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3056,7 +3056,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3136,7 +3136,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ykclient.h in $try" >&5
 $as_echo_n "checking for ykclient.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try -I$try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3151,7 +3151,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try -I$try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3516,7 +3516,7 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	    if test "x$ac_cv_lib_ykclient_ykclient_request" != "xyes"; then
+	    if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
 	        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient library missing ykclient_request_process, please upgrade." >&5
 $as_echo "$as_me: WARNING: ykclient library missing ykclient_request_process, please upgrade." >&2;}
 	    else

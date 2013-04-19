@@ -81,12 +81,17 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 
 	DEBUG("rlm_yubikey (%s): Initialising ykclient", inst->name);
 	
-	status = ykclient_init(&inst->ykc);
-	yk_error:
+	status = ykclient_global_init();
 	if (status != YKCLIENT_OK) {
+yk_error:
 		DEBUGE("rlm_yubikey (%s): %s", ykclient_strerror(status), inst->name);
 		
 		return -1;
+	}
+	
+	status = ykclient_init(&inst->ykc);
+	if (status != YKCLIENT_OK) {
+		goto yk_error;
 	}
 	
 	servers = cf_section_sub_find(conf, "servers");
@@ -144,6 +149,7 @@ int rlm_yubikey_ykclient_detach(rlm_yubikey_t *inst)
 {
 	fr_connection_pool_delete(inst->conn_pool);
 	ykclient_done(&inst->ykc);
+	ykclient_global_done();
 	
 	return 0;
 }
