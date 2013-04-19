@@ -566,9 +566,9 @@ void fr_hash_table_free(fr_hash_table_t *ht)
 
 
 			if (ht->free) {
-				void *free;
-				memcpy(&free, &node->data, sizeof(free));
-				ht->free(free);
+				void *tofree;
+				memcpy(&tofree, &node->data, sizeof(tofree));
+				ht->free(tofree);
 			}
 			
 			free(node);
