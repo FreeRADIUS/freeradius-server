@@ -3517,8 +3517,8 @@ if test "x$smart_lib" != "x"; then
 fi
 
 	    if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient library missing ykclient_request_process, please upgrade." >&5
-$as_echo "$as_me: WARNING: ykclient library missing ykclient_request_process, please upgrade." >&2;}
+	        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&5
+$as_echo "$as_me: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&2;}
 	    else
 		    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&2;}

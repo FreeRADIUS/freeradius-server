@@ -164,7 +164,7 @@ if test x$with_[]modname != xno; then
 	    have_ykclient="no"
 	    FR_SMART_CHECK_LIB([ykclient], [ykclient_request])
 	    if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
-	        AC_MSG_WARN([ykclient library missing ykclient_request_process, please upgrade.])
+	        AC_MSG_WARN([libykclient missing ykclient_request_process. A later version of libykclient is required.])
 	    else
 		    AC_MSG_WARN([ykclient libraries not found. Use --with-ykclient-lib-dir=<path>.])
 	    fi
