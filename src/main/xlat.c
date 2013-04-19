@@ -1341,7 +1341,7 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, const xlat_exp_t * c
 			 RADIUS_ESCAPE_STRING escape, void *escape_ctx, int lvl)
 {
 	size_t rcode;
-	char *str, *child;
+	char *str = NULL, *child;
 	REQUEST *ref;
 
 	XLAT_DEBUG("%.*sxlat aprint %d", lvl, xlat_spaces, node->type);

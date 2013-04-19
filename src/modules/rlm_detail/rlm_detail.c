@@ -124,9 +124,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if (cs) {
 		CONF_ITEM	*ci;
 
-		inst->ht = fr_hash_table_create(detail_hash, detail_cmp,
-						  NULL);
-
+		inst->ht = fr_hash_table_create(detail_hash, detail_cmp, NULL);
+		
 		for (ci = cf_item_find_next(cs, NULL);
 		     ci != NULL;
 		     ci = cf_item_find_next(cs, ci)) {
@@ -460,7 +459,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 *	return an error.
 	 */
 	if (fflush(fp) != 0) {
-		ftruncate(outfd, fsize); /* ignore errors! */
+		(void) ftruncate(outfd, fsize); /* ignore errors! */
 		fclose(fp);
 		return RLM_MODULE_FAIL;
 	}

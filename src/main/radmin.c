@@ -235,7 +235,10 @@ static void do_challenge(int sockfd)
 	fr_hmac_md5((const uint8_t *) secret, strlen(secret),
 		    challenge, sizeof(challenge), challenge);
 
-	write(sockfd, challenge, sizeof(challenge));
+	if (write(sockfd, challenge, sizeof(challenge)) < 0) {
+		fprintf(stderr, "%s: Failed writing challenge data: %s\n",
+			progname, strerror(errno));
+	}
 }
 
 

@@ -631,7 +631,7 @@ static int mod_accounting_off(rlm_sql_handle_t *handle,
  */
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
-	int rcode;
+	int rcode = RLM_MODULE_NOOP;
 	VALUE_PAIR *vp;
 	int acct_status_type;
 	rlm_sqlippool_t *inst = (rlm_sqlippool_t *) instance;
@@ -659,8 +659,8 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 
 	handle = inst->sql_inst->sql_get_socket(inst->sql_inst);
 	if (!handle) {
-		RDEBUG("cannot allocate sql connection");
-		return RLM_MODULE_NOOP;
+		RDEBUG("Cannot allocate sql connection");
+		return RLM_MODULE_FAIL;
 	}
 
 	if (inst->sql_inst->sql_set_user(inst->sql_inst, request, NULL) < 0) {

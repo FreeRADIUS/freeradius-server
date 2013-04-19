@@ -2525,9 +2525,9 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 }
 
 
-	/*
-	 *	Write 32-bit magic number && version information.
-	 */
+/*
+ *	Write 32-bit magic number && version information.
+ */
 static int command_write_magic(int newfd, listen_socket_t *sock)
 {
 	uint32_t magic;
@@ -2545,8 +2545,7 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 		magic = htonl(1);
 	}
 	if (write(newfd, &magic, 4) < 0) {
-		ERROR("Failed writing initial data to socket: %s",
-		       strerror(errno));
+		ERROR("Failed writing initial data to socket: %s", strerror(errno));
 		return -1;
 	}
 
@@ -2567,7 +2566,10 @@ static int command_write_magic(int newfd, listen_socket_t *sock)
 		/*
 		 *	FIXME: EINTR, etc.
 		 */
-		write(newfd, co->buffer, 16);
+		if (write(newfd, co->buffer, 16) < 0) {
+			ERROR("Failed writing version data to socket: %s", strerror(errno));
+			return -1;
+		}
 	}
 
 	return 0;

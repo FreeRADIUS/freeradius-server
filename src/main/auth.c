@@ -348,11 +348,8 @@ int rad_authenticate(REQUEST *request)
 	VALUE_PAIR	*module_msg;
 	VALUE_PAIR	*tmp = NULL;
 	int		result;
-	const char	*password;
 	char		autz_retry = 0;
 	int		autz_type = 0;
-
-	password = "";
 
 #ifdef WITH_PROXY
 	/*
@@ -419,22 +416,8 @@ int rad_authenticate(REQUEST *request)
 	 *	Discover which password we want to use.
 	 */
 	auth_item = request->password;
-	if (auth_item) {
-		password = (const char *)auth_item->vp_strvalue;
-
-	} else {
-		/*
-		 *	Maybe there's a CHAP-Password?
-		 */
-		if ((auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-			password = "<CHAP-PASSWORD>";
-
-		} else {
-			/*
-			 *	No password we recognize.
-			 */
-			password = "<NO-PASSWORD>";
-		}
+	if (!auth_item) {
+		auth_item = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	}
 	request->password = auth_item;
 

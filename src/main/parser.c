@@ -128,6 +128,7 @@ next:
 	c = c->next;
 	goto next;
 }
+
 DIAG_ON(unused-function)
 
 
@@ -234,12 +235,9 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char 
  */
 static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace, cond_t **pcond, const char **error)
 {
-	int sub;
 	ssize_t slen;
 	const char *p = start;
 	cond_t *c;
-
-	sub = FALSE;
 
 	COND_DEBUG("START %s", p);
 

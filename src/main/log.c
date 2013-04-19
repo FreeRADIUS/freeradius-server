@@ -214,8 +214,7 @@ DIAG_ON(format-nonliteral)
 	case RADLOG_FILES:
 	case RADLOG_STDOUT:
 	case RADLOG_STDERR:
-		write(myconfig->radlog_fd, buffer, strlen(buffer));
-		break;
+		return write(myconfig->radlog_fd, buffer, strlen(buffer));
 
 	default:
 	case RADLOG_NULL:	/* should have been caught above */
