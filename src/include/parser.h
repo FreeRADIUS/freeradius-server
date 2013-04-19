@@ -52,6 +52,10 @@ struct fr_cond_t {
 	char		*lhs;
 	char		*rhs;
 	FR_TOKEN 	op;
+
+	FR_TOKEN 	lhs_type;
+	FR_TOKEN 	rhs_type;
+
 	int		regex_i;
 
 	cond_op_t	next_op;

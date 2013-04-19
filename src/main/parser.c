@@ -100,23 +100,48 @@ next:
 DIAG_ON(unused-function)
 
 
-static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, const char *start, char **out, const char **error)
+static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, const char *start, char **out,
+					 FR_TOKEN *op, const char **error)
 {
 	const char *p = start;
+	char *q;
 
-	p++;
+	switch (*p++) {
+	default:
+		return -1;
+
+	case '"':
+		*op = T_DOUBLE_QUOTED_STRING;
+		break;
+
+	case '\'':
+		*op = T_SINGLE_QUOTED_STRING;
+		break;
+
+	case '`':
+		*op = T_BACK_QUOTED_STRING;
+		break;
+
+	case '/':
+		*op = T_OP_REG_EQ; /* a bit of a hack. */
+		break;
+
+	}
+
+	*out = talloc_array(ctx, char, strlen(start) - 1); /* + 2 - 1 */
+	if (!*out) return -1;
+
+	q = *out;
 
 	COND_DEBUG("STRING %s", start);
 	while (*p) {
 		if (*p == *start) {
-			size_t len = (p + 1) - start;
+			*q = '\0';
+			p++;
 
 			COND_DEBUG("end of string %s", p);
-			*out = talloc_array(ctx, char, len + 1);
 
-			memcpy(*out, start, len);
-			(*out)[len] = '\0';
-			return len;
+			return (p - start);
 		}
 
 		if (*p == '\\') {
@@ -126,23 +151,43 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, const char *start, cha
 				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
+
+			switch (*p) {
+			case 'r':
+				*q++ = '\r';
+				break;
+			case 'n':
+				*q++ = '\n';
+				break;
+			case 't':
+				*q++ = '\t';
+				break;
+			default:
+				*q++ = *p;
+				break;
+			}
+			p++;
+			continue;
 		}
 	
-		p++;		/* allow anything else */
+		*(q++) = *(p++);
 	}
 
 	*error = "Unterminated string";
 	return -1;
 }
 
-static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char **out, const char **error)
+static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, const char *start, char **out,
+				       FR_TOKEN *op, const char **error)
 {
 	size_t len;
 	const char *p = start;
 
 	if ((*p == '"') || (*p == '\'') || (*p == '`') || (*p == '/')) {
-		return condition_tokenize_string(ctx, start, out, error);
+		return condition_tokenize_string(ctx, start, out, op, error);
 	}
+
+	*op = T_BARE_WORD;
 
 	while (*p) {
 		/*
@@ -272,7 +317,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace,
 		 *	Grab the LHS
 		 */
 		COND_DEBUG("LHS %s", p);
-		slen = condition_tokenize_word(c, p, &c->lhs, error);
+		slen = condition_tokenize_word(c, p, &c->lhs, &c->lhs_type, error);
 		if (slen <= 0) {
 			talloc_free(c);
 			COND_DEBUG("RETURN %d", __LINE__);
@@ -423,7 +468,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, const char *start, int brace,
 			/*
 			 *	Grab the RHS
 			 */
-			slen = condition_tokenize_word(c, p, &c->rhs, error);
+			slen = condition_tokenize_word(c, p, &c->rhs, &c->rhs_type, error);
 			if (slen <= 0) {
 				talloc_free(c);
 				COND_DEBUG("RETURN %d", __LINE__);
