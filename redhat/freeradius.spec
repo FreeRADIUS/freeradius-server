@@ -364,10 +364,6 @@ fi
 %{_libdir}/freeradius/rlm_attr_filter-%{version}.so
 %{_libdir}/freeradius/rlm_chap.so
 %{_libdir}/freeradius/rlm_chap-%{version}.so
-%{_libdir}/freeradius/rlm_checkval.so
-%{_libdir}/freeradius/rlm_checkval-%{version}.so
-%{_libdir}/freeradius/rlm_copy_packet.so
-%{_libdir}/freeradius/rlm_copy_packet-%{version}.so
 %{_libdir}/freeradius/rlm_counter.so
 %{_libdir}/freeradius/rlm_counter-%{version}.so
 %{_libdir}/freeradius/rlm_dbm.so

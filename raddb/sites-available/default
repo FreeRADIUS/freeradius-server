@@ -344,9 +344,6 @@ authorize {
 #	daily
 
 	#
-	# Use the checkval module
-#	checkval
-
 	expiration
 	logintime
 

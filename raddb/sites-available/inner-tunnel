@@ -145,10 +145,6 @@ authorize {
 	#  Enforce daily limits on time spent logged in.
 #	daily
 
-	#
-	# Use the checkval module
-#	checkval
-
 	expiration
 	logintime
 

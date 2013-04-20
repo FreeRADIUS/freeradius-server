@@ -2,8 +2,6 @@ rlm_always
 rlm_attr_filter
 rlm_cache
 rlm_chap
-rlm_checkval
-rlm_copy_packet
 rlm_counter
 rlm_detail
 rlm_dhcp
@@ -20,7 +18,6 @@ rlm_ldap
 rlm_linelog
 rlm_logintime
 rlm_mschap
-rlm_ns_mta_md5
 rlm_otp
 rlm_pam
 rlm_pap
