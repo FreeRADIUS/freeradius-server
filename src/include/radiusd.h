@@ -896,6 +896,12 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		   unsigned int max);
+value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, const char *lhs, FR_TOKEN lhs_type,
+				 FR_TOKEN op, const char *rhs, FR_TOKEN rhs_type,
+				 request_refs_t dst_request_def,
+				 pair_lists_t dst_list_def,
+				 request_refs_t src_request_def,
+				 pair_lists_t src_list_def);
 value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				request_refs_t dst_request_def,
 				pair_lists_t dst_list_def,

@@ -1122,6 +1122,73 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 	return vpt;
 }
 
+
+/** Convert strings to value_pair_map_e
+ *
+ * Treatment of operands depends on quotation, barewords are treated
+ * as attribute references, double quoted values are treated as
+ * expandable strings, single quoted values are treated as literal
+ * strings.
+ *
+ * Return must be freed with talloc_free
+ *
+ * @param[in] ctx for talloc
+ * @param[in] lhs of the operation
+ * @param[in] lhs_type type of the LHS string
+ * @param[in] op the operation to perform
+ * @param[in] rhs of the operation
+ * @param[in] rhs_type type of the RHS string
+ * @param[in] dst_request_def The default request to insert unqualified
+ *	attributes into.
+ * @param[in] dst_list_def The default list to insert unqualified attributes
+ *	into.
+ * @param[in] src_request_def The default request to resolve attribute
+ *	references in.
+ * @param[in] src_list_def The default list to resolve unqualified attributes
+ *	in.
+ * @return value_pair_map_t if successful or NULL on error.
+ */
+value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, const char *lhs, FR_TOKEN lhs_type,
+				 FR_TOKEN op, const char *rhs, FR_TOKEN rhs_type,
+				 request_refs_t dst_request_def,
+				 pair_lists_t dst_list_def,
+				 request_refs_t src_request_def,
+				 pair_lists_t src_list_def)
+{
+	value_pair_map_t *map;
+
+	map = talloc_zero(ctx, value_pair_map_t);
+
+	if ((lhs_type == T_BARE_WORD) && (*lhs == '&')) {
+		map->dst = radius_attr2tmpl(map, lhs, dst_request_def, dst_list_def);
+	} else {
+		map->dst = radius_str2tmpl(map, lhs, lhs_type);
+	}
+
+	if (!map->dst) {
+	error:
+		talloc_free(map);
+		return NULL;
+	}
+
+	map->op = op;
+
+	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
+		return map;
+	}
+
+	if ((rhs_type == T_BARE_WORD) && (*rhs == '&')) {
+		map->src = radius_attr2tmpl(map, rhs, src_request_def, src_list_def);
+	} else {
+		map->src = radius_str2tmpl(map, rhs, rhs_type);
+	}
+
+	if (!map->dst) goto error;
+
+	return map;
+}
+
+
 /** Convert CONFIG_PAIR (which may contain refs) to value_pair_map_t.
  *
  * Treats the left operand as an attribute reference
