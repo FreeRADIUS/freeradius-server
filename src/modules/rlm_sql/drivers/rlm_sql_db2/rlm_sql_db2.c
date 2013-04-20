@@ -117,7 +117,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	retval = SQLExecDirect(conn->stmt, query, SQL_NTS);
 	if(retval != SQL_SUCCESS) {
 		/* XXX Check if retval means we should return SQL_DOWN */
-		ERROR("could not execute statement \"%s\"\n", querystr);
+		ERROR("Could not execute statement \"%s\"\n", query);
 		return -1;
 	}
 
