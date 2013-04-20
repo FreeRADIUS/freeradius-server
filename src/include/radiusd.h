@@ -507,6 +507,7 @@ typedef struct main_config_t {
 #define ERROR(...)	radlog(L_ERR, ## __VA_ARGS__)
 #define INFO(...)	radlog(L_INFO, ## __VA_ARGS__)
 #define DEBUG(...)	if (debug_flag) radlog(L_DBG, ## __VA_ARGS__)
+#define DEBUGI(...)	if (debug_flag) radlog(L_INFO, ## __VA_ARGS__)
 #define DEBUGW(...)	if (debug_flag) radlog(L_DBG_WARN, ## __VA_ARGS__)
 #define DEBUGE(...)	if (debug_flag) radlog(L_DBG_ERR, ## __VA_ARGS__)
 
