@@ -3406,7 +3406,7 @@ $ac_distutils_result" >&2;}
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking for Ruby cflags" >&5
 $as_echo_n "checking for Ruby cflags... " >&6; }
         if test -z "$RUBY_CFLAGS"; then
-            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))' | sed 's/-arch [^ ]*[ ]*//g'`
+            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))'`
         fi
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: $RUBY_CFLAGS" >&5
 $as_echo "$RUBY_CFLAGS" >&6; }
@@ -3587,7 +3587,11 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     #
 
 		if test -n "$RUBY_VERSION"; then
-			mod_cflags="${RUBY_CFLAGS}"
+			mod_cflags=$(echo "${RUBY_CFLAGS}" | sed 's/-I[ ]*/-isystem /g' | sed 's/-arch [^ ]*[ ]*//g')
+
+            { $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized cflags are \"${mod_cflags}\"" >&5
+$as_echo "$as_me: Sanitized cflags are \"${mod_cflags}\"" >&6;}
+
 			mod_ldflags="${RUBY_LDFLAGS} ${RUBY_EXTRA_LIBS}"
 		else
 			fail="ruby"
@@ -3617,11 +3621,7 @@ fi
 
 
 
-
-  unset ac_cv_env_LIBS_set
-  unset ac_cv_env_LIBS_value
-
-  ac_config_files="$ac_config_files all.mk"
+ac_config_files="$ac_config_files all.mk"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -4778,5 +4778,4 @@ if test -n "$ac_unrecognized_opts" && test "$enable_option_checking" != no; then
   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: unrecognized options: $ac_unrecognized_opts" >&5
 $as_echo "$as_me: WARNING: unrecognized options: $ac_unrecognized_opts" >&2;}
 fi
-
 

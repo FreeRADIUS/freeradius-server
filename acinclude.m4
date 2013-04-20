@@ -212,7 +212,7 @@ if test "x$smart_try_dir" != "x"; then
 		    #include <$1>],
 		   [int a = 1;],
 		   [
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     AC_MSG_RESULT(yes)
 		     break
 		   ],
@@ -255,7 +255,7 @@ if test "x$smart_include" = "x"; then
 		    #include <$1>],
 		   [int a = 1;],
 		   [
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     AC_MSG_RESULT(yes)
 		     break
 		   ],

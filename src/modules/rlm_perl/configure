@@ -2940,8 +2940,7 @@ $as_echo "$as_me: Calling ExtUtils::Embed to get 'ccopts'" >&6;}
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: ExtUtil's ccopts were \"${mod_cflags}\"" >&5
 $as_echo "$as_me: ExtUtil's ccopts were \"${mod_cflags}\"" >&6;}
 
-		mod_cflags=$(echo "$mod_cflags" | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
-		mod_cflags=$(echo "$mod_cflags" | sed 's/-I\([^ ]*\)/-isystem \1 -I\1/g')
+		mod_cflags=$(echo "$mod_cflags" | sed 's/-I[ ]*/-isystem /g' | sed 's/-arch [^ ]*//g;s/  / /g;s/^ *//;s/ *$//')
 
 		{ $as_echo "$as_me:${as_lineno-$LINENO}: Sanitized ccopts are \"${mod_cflags}\"" >&5
 $as_echo "$as_me: Sanitized ccopts are \"${mod_cflags}\"" >&6;}
@@ -2990,7 +2989,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3085,7 +3084,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3139,7 +3138,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3234,7 +3233,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break

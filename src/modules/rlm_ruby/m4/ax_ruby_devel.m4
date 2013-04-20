@@ -78,7 +78,7 @@ $ac_distutils_result])
         #
         AC_MSG_CHECKING([for Ruby cflags])
         if test -z "$RUBY_CFLAGS"; then
-            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))' | sed ['s/-arch [^ ]*[ ]*//g']`
+            RUBY_CFLAGS=`$RUBY -rmkmf -e 'print RbConfig::CONFIG.fetch(%q(CFLAGS))'`
         fi
         AC_MSG_RESULT([$RUBY_CFLAGS])
     
