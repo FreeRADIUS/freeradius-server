@@ -36,17 +36,17 @@ static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf);
 
 struct config_transform
 {
-    char const *name;
-    u_int8_t type;
-    int exist_flag;
+	char const *name;
+	u_int8_t type;
+	int exist_flag;
 };
 
 enum {
-    OPT_INTEGRITY 	= 0x01,
-    OPT_PRF 		= 0x02,
-    OPT_ENCRYPTION 	= 0x04,
-    OPT_DHGROUP 	= 0x08,
-    OPT_NEEDED 		= OPT_INTEGRITY | OPT_PRF | OPT_ENCRYPTION | OPT_DHGROUP
+	OPT_INTEGRITY	= 0x01,
+	OPT_PRF		= 0x02,
+	OPT_ENCRYPTION	= 0x04,
+	OPT_DHGROUP	= 0x08,
+	OPT_NEEDED	= OPT_INTEGRITY | OPT_PRF | OPT_ENCRYPTION | OPT_DHGROUP
 	
 };
 	
@@ -54,11 +54,11 @@ enum {
 
 static struct config_transform config_transforms[] =
 {
-     {"integrity",	IKEv2_TRT_INTEGRITY_ALGORITHM,		OPT_INTEGRITY},
-     {"prf",		IKEv2_TRT_PSEUDO_RANDOM_FUNCTION,	OPT_PRF},
-     {"encryption",	IKEv2_TRT_ENCRYPTION_ALGORITHM,		OPT_ENCRYPTION},
-     {"dhgroup",	IKEv2_TRT_DIFFIE_HELLMAN_GROUP,		OPT_DHGROUP },
-     {NULL,0,0} /* end of list */
+	 {"integrity",	IKEv2_TRT_INTEGRITY_ALGORITHM,		OPT_INTEGRITY},
+	 {"prf",	IKEv2_TRT_PSEUDO_RANDOM_FUNCTION,	OPT_PRF},
+	 {"encryption",	IKEv2_TRT_ENCRYPTION_ALGORITHM,		OPT_ENCRYPTION},
+	 {"dhgroup",	IKEv2_TRT_DIFFIE_HELLMAN_GROUP,		OPT_DHGROUP },
+	 {NULL, 0, 0} /* end of list */
 
 };
 
@@ -86,7 +86,7 @@ int getusersfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list, c
 	 *	or if we're in compat_mode.
 	 */
 	if ((debug_flag) ||
-	    (strcmp(compat_mode_str, "cistron") == 0)) {
+		(strcmp(compat_mode_str, "cistron") == 0)) {
 		PAIR_LIST *entry;
 		VALUE_PAIR *vp;
 		int compat_mode = FALSE;
@@ -212,36 +212,36 @@ int getusersfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list, c
 
 int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf)
 {
-    rad_assert(i2!=NULL && cf!=NULL);
+	rad_assert(i2!=NULL && cf!=NULL);
 
-    CONF_SECTION *cf_prop=NULL;
-    cf=cf_subsection_find_next(cf,NULL,"proposals");
-    if(!cf) {
+	CONF_SECTION *cf_prop=NULL;
+	cf=cf_subsection_find_next(cf,NULL,"proposals");
+	if(!cf) {
 	ERROR(IKEv2_LOG_PREFIX "Can't find proposals section");
 	return -1;
-    }
-    int nprop=0;
-    for(
-	    cf_prop=cf_subsection_find_next(cf,NULL,"proposal");
-	    cf_prop;
-	    cf_prop=cf_subsection_find_next(cf,cf_prop,"proposal")
-       ) {
+	}
+	int nprop=0;
+	for(
+		cf_prop=cf_subsection_find_next(cf,NULL,"proposal");
+		cf_prop;
+		cf_prop=cf_subsection_find_next(cf,cf_prop,"proposal")
+	   ) {
 	nprop++;
 	struct Proposal *prop;
 	struct Protocol *prot;
 	prop=AddProposal(&i2->suppProp);
 	prot=AddProtocol(prop,IKEv2_PID_IKE_SA,0,0);
 	if(rad_load_transforms(prot,cf_prop)) {
-	    ERROR(IKEv2_LOG_PREFIX "Failed to load proposal (%d)",
-		    nprop);
-	    return -1;
+		ERROR(IKEv2_LOG_PREFIX "Failed to load proposal (%d)",
+			nprop);
+		return -1;
 	}
-    }
-    if(!nprop) {
+	}
+	if(!nprop) {
 	ERROR(IKEv2_LOG_PREFIX "Can't find any proposal");
 	return -1;
-    }
-    return 0;
+	}
+	return 0;
 
 }
 
@@ -251,87 +251,101 @@ int rad_load_proposals(ikev2_ctx *i2,CONF_SECTION *cf)
  * Load transforms from protocol subsection
  */
 
-static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf)
+static int rad_load_transforms(struct Protocol *prot, CONF_SECTION *cf)
 {
-    rad_assert(prot!=NULL && cf!=NULL);
-    DEBUG(IKEv2_LOG_PREFIX "Begin load transforms");
-    CONF_PAIR *cp;
-    int option_exists=0;
-    int i=0;
-    while(config_transforms[i].name)  {
-	uint8_t id;
-	uint16_t keylen;
-	for(
-		cp=cf_pair_find(cf,config_transforms[i].name);
-		cp;
-		cp=cf_pair_find_next(cf,cp,config_transforms[i].name)
-	   )  {
-	    if(TransformFromName(cf_pair_value(cp),config_transforms[i].type,&id,&keylen)) {
-		ERROR(IKEv2_LOG_PREFIX "Unsupported %s transform: %s ",
-			config_transforms[i].name,cf_pair_value(cp));
-		return -1;
-	    }
-	    if(!AddTransform(prot,config_transforms[i].type,id,keylen)) {
-		ERROR(IKEv2_LOG_PREFIX "Problem with transform %s:%s",
-			config_transforms[i].name,cf_pair_value(cp));
-		return -1;
-	    }
-	    option_exists|=config_transforms[i].exist_flag;
+	CONF_PAIR *cp;
+	int option_exists = 0;
+	int i = 0;
+	
+	rad_assert(prot); rad_assert(cf;
+	DEBUG(IKEv2_LOG_PREFIX "Begin load transforms");
+	
+	while(config_transforms[i].name)
+	{
+		uint8_t id;
+		uint16_t keylen;
+		
+		for(cp = cf_pair_find(cf,config_transforms[i].name);
+		    cp;
+		    cp = cf_pair_find_next(cf,cp,config_transforms[i].name)) {
+			if (TransformFromName(cf_pair_value(cp),config_transforms[i].type,&id,&keylen)) {
+				ERROR(IKEv2_LOG_PREFIX "Unsupported %s transform: %s ",
+				      config_transforms[i].name,cf_pair_value(cp));
+				return -1;
+			}
+		
+			if (!AddTransform(prot,config_transforms[i].type,id,keylen)) {
+				ERROR(IKEv2_LOG_PREFIX "Problem with transform %s:%s",
+				      config_transforms[i].name,cf_pair_value(cp));
+				return -1;
+			}
+			option_exists |= config_transforms[i].exist_flag;
+		}
+		i++;
 	}
-	i++;
-    }
-    if((option_exists & OPT_NEEDED) != OPT_NEEDED ) {
-	ERROR(IKEv2_LOG_PREFIX "Not all mandatory transforms are set properly");
-	DEBUG(IKEv2_LOG_PREFIX "Option flags: 0x%02X",option_exists);
 
-	return -1;
-    }
-    return 0;
+	if ((option_exists & OPT_NEEDED) != OPT_NEEDED) {
+		ERROR(IKEv2_LOG_PREFIX "Not all mandatory transforms are set properly");
+		DEBUG(IKEv2_LOG_PREFIX "Option flags: 0x%02X",option_exists);
+
+		return -1;
+	}
+	return 0;
 }
 
 
 void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALUE_PAIR *items, 
-			       int default_client_authtype)
+				   int default_client_authtype)
 {
-    rad_assert(list && id);
+	rad_assert(list && id);
 
-    char *secret=NULL;
-    int id_type=0;
-    int authtype=default_client_authtype;
-
-    if(items) {
+	char *ike_id;
+	char *secret = NULL;
+	int id_type = 0;
+	int authtype = default_client_authtype;
 	VALUE_PAIR *vp;
-	//idtype
-	vp=pairfind(items, RAD_EAP_IKEV2_IDTYPE, 0, TAG_ANY);
-	if(!vp) {
-	    DEBUG(IKEv2_LOG_PREFIX "[%s] -- Id type not set",id);
-	} else {
-	    id_type = vp->vp_integer;
-	    if(!id_type) {
-		DEBUG(IKEv2_LOG_PREFIX "[%s] -- Not valid id type",id);
-	    }
-	}
-	//secret
-	vp=pairfind(items, RAD_EAP_IKEV2_SECRET, 0, TAG_ANY);
-	if(!vp || !vp->length) {
-	    DEBUG(IKEv2_LOG_PREFIX "[%s] -- Secret not set",id);
-	} else {
-	    secret=vp->vp_strvalue;
-	}
-	//authtype
-	vp=pairfind(items, RAD_EAP_IKEV2_AUTHTYPE, 0, TAG_ANY);
-	if(vp && vp->length) {
-	    authtype=AuthtypeFromName(vp->vp_strvalue);
-	    if(authtype==-1) {
-		ERROR(IKEv2_LOG_PREFIX "Unsupported 'EAP-IKEv2-AuthType' value (%s),using 'both'",vp->vp_strvalue);
-		authtype=IKEv2_AUTH_BOTH;
-	    }
+
+	memcpy(&ike_id, &id, sizeof(id));
 	
+	if (!items) {
+		AddSharedSec(list, 0, ike_id, NULL, default_client_authtype);
+		
+		return;
 	}
-	AddSharedSec(list,id_type,id,secret,authtype);
-    } else {
-	AddSharedSec(list,0,id,NULL,default_client_authtype);
-    }
+
+	//idtype
+	vp = pairfind(items, RAD_EAP_IKEV2_IDTYPE, 0, TAG_ANY);
+	if (!vp) {
+		DEBUG(IKEv2_LOG_PREFIX "[%s] -- Id type not set", id);
+	} else {
+		id_type = vp->vp_integer;
+		if (!id_type) {
+			DEBUG(IKEv2_LOG_PREFIX "[%s] -- Not valid id type", id);
+		}
+	}
+	
+	//secret
+	vp = pairfind(items, RAD_EAP_IKEV2_SECRET, 0, TAG_ANY);
+	if (!vp || !vp->length) {
+		DEBUG(IKEv2_LOG_PREFIX "[%s] -- Secret not set", id);
+	} else {
+		secret = vp->vp_strvalue;
+	}
+	
+	//authtype
+	vp = pairfind(items, RAD_EAP_IKEV2_AUTHTYPE, 0, TAG_ANY);
+	if (vp && vp->length) {
+		authtype = AuthtypeFromName(vp->vp_strvalue);
+	
+		if (authtype == -1) {
+			ERROR(IKEv2_LOG_PREFIX "Unsupported 'EAP-IKEv2-AuthType' value (%s),using 'both'", 
+			      vp->vp_strvalue);
+			authtype = IKEv2_AUTH_BOTH;
+		}
+
+	}
+	
+	AddSharedSec(list, id_type, ike_id, secret, authtype);
 }
 
 /**
@@ -340,31 +354,31 @@ void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALU
 
 int rad_load_credentials(TALLOC_CTX *ctx, ikev2_ctx *i2,char *filename,char *authtype_name)
 {
-    rad_assert(i2 && filename && authtype_name);
-    int authtype;
+	rad_assert(i2 && filename && authtype_name);
+	int authtype;
 
-    authtype=AuthtypeFromName(authtype_name);
-    if(authtype==-1) {
+	authtype=AuthtypeFromName(authtype_name);
+	if(authtype==-1) {
 	ERROR(IKEv2_LOG_PREFIX "Unsupported 'default_auth_type' value (%s), using both",authtype_name);
 	authtype=IKEv2_AUTH_BOTH;
-    }
+	}
 
-    PAIR_LIST *users=NULL;
-    if(getusersfile(ctx, filename,&users,"no")!=0) {
+	PAIR_LIST *users=NULL;
+	if(getusersfile(ctx, filename,&users,"no")!=0) {
 	ERROR(IKEv2_LOG_PREFIX "Error while loading %s userfile",filename);
 	return -1;
-    }
-    PAIR_LIST *tusers=users;
-    while(tusers) {
+	}
+	PAIR_LIST *tusers=users;
+	while(tusers) {
 	if(strcmp(tusers->name,"DEFAULT")) {
-	    rad_update_shared_seclist(&i2->sslist,tusers->name,tusers->check,authtype);
+		rad_update_shared_seclist(&i2->sslist,tusers->name,tusers->check,authtype);
 	}
 	tusers=tusers->next;
-    }
-    pairlist_free(&users);
-    //print sslist
-//    struct sharedSecList *sslist=i2->sslist;
-//    while(sslist) {
+	}
+	pairlist_free(&users);
+	//print sslist
+//	struct sharedSecList *sslist=i2->sslist;
+//	while(sslist) {
 //	ERROR("sslist:id=%s",sslist->id);
 //	ERROR("sslist:idlen=%d",sslist->idlen);
 //	ERROR("sslist:pwd=%s",sslist->pwd);
@@ -372,37 +386,37 @@ int rad_load_credentials(TALLOC_CTX *ctx, ikev2_ctx *i2,char *filename,char *aut
 //	ERROR("sslist:idtype= %d",sslist->idtype);
 //	ERROR("sslist:authtype=%d",sslist->authtype);
 //	sslist=sslist->next;
-//    }
-    return 0;
+//	}
+	return 0;
 
 
 }
 
 int rad_get_authtype(char* authtype_name)
 {
-    rad_assert(authtype_name);
-    if(!strcmp(authtype_name,"cert")) {
+	rad_assert(authtype_name);
+	if(!strcmp(authtype_name,"cert")) {
 	DEBUG(IKEv2_LOG_PREFIX "Using  server auth type: cert");
 	return IKEv2_AUTH_CERT;
-    }
-    if(!strcmp(authtype_name,"secret")) {
+	}
+	if(!strcmp(authtype_name,"secret")) {
 	DEBUG(IKEv2_LOG_PREFIX "Using server auth type: secret");
 	return IKEv2_AUTH_SK;
-    }
-    radlog(L_AUTH,IKEv2_LOG_PREFIX "Unsupported server auth type: %s",authtype_name);
-    radlog(L_AUTH,IKEv2_LOG_PREFIX "Using server auth type: secret (default)");
-    return IKEv2_AUTH_SK;
+	}
+	radlog(L_AUTH,IKEv2_LOG_PREFIX "Unsupported server auth type: %s",authtype_name);
+	radlog(L_AUTH,IKEv2_LOG_PREFIX "Using server auth type: secret (default)");
+	return IKEv2_AUTH_SK;
 }
 
 int file_exists(char *filename)
 {
-    int result=0;
-    FILE *fp=fopen(filename,"r");
-    if(fp) {
+	int result=0;
+	FILE *fp=fopen(filename,"r");
+	if(fp) {
 	result=1;
 	fclose(fp);
-    }
-    return result;
+	}
+	return result;
 }
 
 
