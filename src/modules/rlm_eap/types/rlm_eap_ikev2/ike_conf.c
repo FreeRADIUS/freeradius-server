@@ -290,7 +290,8 @@ static int rad_load_transforms(struct Protocol *prot,CONF_SECTION *cf)
 }
 
 
-void rad_update_shared_seclist(struct sharedSecList **list,char *id,VALUE_PAIR *items,int default_client_authtype)
+void rad_update_shared_seclist(struct sharedSecList **list, char const *id, VALUE_PAIR *items, 
+			       int default_client_authtype)
 {
     rad_assert(list && id);
 

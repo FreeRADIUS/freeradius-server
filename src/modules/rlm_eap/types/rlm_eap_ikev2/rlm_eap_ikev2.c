@@ -52,7 +52,7 @@
 
 static int set_mppe_keys(eap_handler_t *handler)
 {
-	unsigned char *p;
+	uint8_t const *p;
 	struct IKEv2Session *session;
 
 	session = ((struct IKEv2Data*)handler->opaque)->session;
@@ -63,11 +63,9 @@ static int set_mppe_keys(eap_handler_t *handler)
 	}
 
 	p = session->eapKeyData;
-	eap_add_reply(handler->request,
-		      "MS-MPPE-Recv-Key",(char const*) p, IKEV2_MPPE_KEY_LEN);
+	eap_add_reply(handler->request, "MS-MPPE-Recv-Key", p, IKEV2_MPPE_KEY_LEN);
 	p += IKEV2_MPPE_KEY_LEN;
-	eap_add_reply(handler->request,
-		  "MS-MPPE-Send-Key",(char const*) p, IKEV2_MPPE_KEY_LEN);
+	eap_add_reply(handler->request, "MS-MPPE-Send-Key", p, IKEV2_MPPE_KEY_LEN);
 	return 0;
 }
 
@@ -290,10 +288,10 @@ static int ikev2_initiate(void *instance, eap_handler_t *handler)
 
 
     // try get respondent FASTID
-    uint8_t *eap_username=handler->request->username->vp_strvalue;
-    session=FindSessionByFastid(i2,(char const*)eap_username);
+    uint8_t *eap_username = handler->request->username->vp_octets;
+    session = FindSessionByFastid(i2, (char const *)eap_username);
     if(!session) {
-	if( IKEv2BeginSession( i2, &session, IKEv2_STY_INITIATOR ) != IKEv2_RET_OK ) {
+	if(IKEv2BeginSession( i2, &session, IKEv2_STY_INITIATOR ) != IKEv2_RET_OK) {
 	    ERROR(IKEv2_LOG_PREFIX "Error: Can't initialize IKEv2 session.");
 	    return 1;
 	}
