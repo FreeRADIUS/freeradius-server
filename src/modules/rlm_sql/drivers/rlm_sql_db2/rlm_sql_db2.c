@@ -81,11 +81,23 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	SQLAllocHandle(SQL_HANDLE_ENV, SQL_NULL_HANDLE, &(conn->henv));
 	SQLAllocHandle(SQL_HANDLE_DBC, conn->henv, &(conn->hdbc));
 
-	/* connect to database */
-	retval = SQLConnect(conn->hdbc,
-			    config->sql_server, SQL_NTS,
-			    config->sql_login,  SQL_NTS,
-			    config->sql_password, SQL_NTS);
+	/*
+	 *	The db2 API doesn't qualify arguments as const even when they should be.
+	 */
+	{
+		SQLCHAR *server, *login, *password;
+		
+		memcpy(&server, &config->sql_server, sizeof(server));
+		memcpy(&login, &config->sql_login, sizeof(login));
+		memcpy(&password, &config->sql_password, sizeof(password));
+		
+		retval = SQLConnect(conn->hdbc,
+				    server, SQL_NTS,
+				    login,  SQL_NTS,
+				    password, SQL_NTS);
+	}
+
+	
 	if(retval != SQL_SUCCESS) {
 		ERROR("could not connect to DB2 server %s\n",
 		       config->sql_server);
@@ -114,11 +126,16 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 	SQLAllocHandle(SQL_HANDLE_STMT, conn->hdbc, &(conn->stmt));
 
 	/* execute query */
-	retval = SQLExecDirect(conn->stmt, query, SQL_NTS);
-	if(retval != SQL_SUCCESS) {
-		/* XXX Check if retval means we should return SQL_DOWN */
-		ERROR("Could not execute statement \"%s\"\n", query);
-		return -1;
+	{
+		SQLCHAR *db2_query;
+		memcpy(&db2_query, &query, sizeof(query));
+
+		retval = SQLExecDirect(conn->stmt, db2_query, SQL_NTS);
+		if(retval != SQL_SUCCESS) {
+			/* XXX Check if retval means we should return SQL_DOWN */
+			ERROR("Could not execute statement \"%s\"\n", query);
+			return -1;
+		}
 	}
 
 	return 0;
@@ -248,10 +265,11 @@ static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 
 	conn = handle->conn;
 
-	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt,
-			1, sqlstate, &err, msg, MSGLEN, &rl);
-	retval = (char*)rad_malloc(strlen(msg)+20);
+	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) sqlstate, &err, (SQLCHAR *) msg, MSGLEN, &rl);
+	
+	retval = rad_malloc(strlen(msg)+20);
 	sprintf(retval, "SQLSTATE %s: %s", sqlstate, msg);
+	
 	return retval;
 }
 

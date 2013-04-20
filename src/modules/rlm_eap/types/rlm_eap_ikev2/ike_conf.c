@@ -257,7 +257,9 @@ static int rad_load_transforms(struct Protocol *prot, CONF_SECTION *cf)
 	int option_exists = 0;
 	int i = 0;
 	
-	rad_assert(prot); rad_assert(cf;
+	rad_assert(prot);
+	rad_assert(cf);
+	
 	DEBUG(IKEv2_LOG_PREFIX "Begin load transforms");
 	
 	while(config_transforms[i].name)
