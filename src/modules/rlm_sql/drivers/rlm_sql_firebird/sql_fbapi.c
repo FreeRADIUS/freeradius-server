@@ -77,6 +77,7 @@ static void fb_set_sqlda(XSQLDA *sqlda) {
 	}
 }
 
+DIAG_OFF(deprecated-declarations)
 int fb_error(rlm_sql_firebird_conn_t *conn)
 {
 	ISC_SCHAR error[2048];	/* Only 1024 bytes should be written to this, but were playing it extra safe */
@@ -109,14 +110,10 @@ int fb_error(rlm_sql_firebird_conn_t *conn)
 		 *	allows us to maintain compatibility with the interbase
 		 *	API.
 		 */
-DIAG_OFF(deprecated-declarations)
 		isc_interprete(&error[0], &pstatus);
-DIAG_ON(deprecated-declarations)
 		conn->error = talloc_asprintf(conn, "%s. ", &error[0]);
 
-DIAG_OFF(deprecated-declarations)		
 		while (isc_interprete(&error[0], &pstatus)) {
-DIAG_ON(deprecated-declarations)
 			conn->error = talloc_asprintf_append(conn->error, "%s. ", &error[0]);
 		}
 		
@@ -125,6 +122,7 @@ DIAG_ON(deprecated-declarations)
 	
 	return conn->sql_code;
 }
+DIAG_ON(deprecated-declarations)
 
 void fb_free_sqlda(XSQLDA *sqlda)
 {
