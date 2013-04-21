@@ -7,7 +7,7 @@ cache cache_eap {
 	ttl = 15
 
 	update reply {
-		reply: += reply:
-		control:State := request:State
+		reply: += &reply:
+		control:State := &request:State
 	}
 }	
