@@ -248,6 +248,9 @@ $INCLUDE dictionary.yubico
 $INCLUDE dictionary.zeus
 $INCLUDE dictionary.zyxel
 
+# 	DHCP dictionary for DHCP functionality and use of dhcp module
+$INCLUDE dictionary.dhcp
+
 #
 #	And finally the server internal attributes.
 #	These are attributes which NEVER go into a RADIUS packet.
