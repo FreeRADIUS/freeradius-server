@@ -1743,9 +1743,21 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 		c = '`';
 		break;
 
-	case VPT_TYPE_ATTR:	/* FIXME: add outer.request:... */
+	case VPT_TYPE_ATTR:
 		buffer[0] = '&';
-		strlcpy(buffer + 1, vpt->da->name, bufsize - 1);
+		if (vpt->request == REQUEST_CURRENT) {
+			if (vpt->list == PAIR_LIST_REQUEST) {
+				strlcpy(buffer + 1, vpt->da->name, bufsize - 1);
+			} else {
+				snprintf(buffer + 1, bufsize - 1, "%s:%s",
+					 pair_lists[vpt->list], vp->da->name);
+			}
+
+		} else {
+			snprintf(buffer + 1, bufsize - 1, "%s.%s:%s",
+				 request_refs[vpt->request],
+				 pair_lists[vpt->list], vp->da->name);
+		}
 		return strlen(buffer);
 	}
 
