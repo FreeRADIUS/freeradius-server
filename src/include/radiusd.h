@@ -904,6 +904,7 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, const char *lhs, FR_TOKEN lhs_
 				 pair_lists_t dst_list_def,
 				 request_refs_t src_request_def,
 				 pair_lists_t src_list_def);
+size_t radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map);
 value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				request_refs_t dst_request_def,
 				pair_lists_t dst_list_def,

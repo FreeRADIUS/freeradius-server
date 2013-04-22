@@ -1808,6 +1808,43 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 }
 
 
+/**  Print a map to a string
+ *
+ * @param[out] buffer for the output string
+ * @param[in] bufsize of the buffer
+ * @param[in] map to print
+ * @return the size of the string printed
+ */
+size_t radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map)
+{
+	size_t len;
+	char *p = buffer;
+	char *end = buffer + bufsize;
+
+	len = radius_str2map(buffer, bufsize, map->dst);
+	p += len;
+
+	strlcpy(p, fr_token_name(map->op), end - p);
+	p += strlen(p);
+
+	/*
+	 *	The RHS doesn't matter for many operators
+	 */
+	if ((map->op == T_OP_CMP_TRUE) ||
+	    (map->op == T_OP_CMP_FALSE)) {
+		strlcpy(p, "ANY", (end - p));
+		p += strlen(p);
+		return p - buffer;
+	}
+
+	rad_assert(map->src != NULL);
+	len = radius_str2map(buffer, bufsize, map->src);
+	p += len;
+
+	return p - buffer;
+}
+
+
 /** Add a module failure message VALUE_PAIR to the request
  */
 DIAG_OFF(format-nonliteral)
