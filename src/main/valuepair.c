@@ -1114,6 +1114,9 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 		case T_BACK_QUOTED_STRING:
 			vpt->type = VPT_TYPE_EXEC;
 			break;
+		case T_OP_REG_EQ: /* hack */
+			vpt->type = VPT_TYPE_REGEX;
+			break;
 		default:
 			rad_assert(0);
 			return NULL;
@@ -1720,6 +1723,7 @@ int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
 size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
 {
 	char c;
+	const char *p;
 	char *q = buffer;
 	char *end;
 
@@ -1750,13 +1754,15 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 				strlcpy(buffer + 1, vpt->da->name, bufsize - 1);
 			} else {
 				snprintf(buffer + 1, bufsize - 1, "%s:%s",
-					 pair_lists[vpt->list], vp->da->name);
+					 fr_int2str(pair_lists, vpt->list, ""),
+					 vpt->da->name);
 			}
 
 		} else {
 			snprintf(buffer + 1, bufsize - 1, "%s.%s:%s",
-				 request_refs[vpt->request],
-				 pair_lists[vpt->list], vp->da->name);
+				 fr_int2str(request_refs, vpt->request, ""),
+				 fr_int2str(pair_lists, vpt->list, ""),
+				 vpt->da->name);
 		}
 		return strlen(buffer);
 	}
@@ -1833,7 +1839,7 @@ size_t radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	char *p = buffer;
 	char *end = buffer + bufsize;
 
-	len = radius_str2map(buffer, bufsize, map->dst);
+	len = radius_tmpl2str(buffer, bufsize, map->dst);
 	p += len;
 
 	strlcpy(p, fr_token_name(map->op), end - p);
@@ -1850,7 +1856,7 @@ size_t radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	}
 
 	rad_assert(map->src != NULL);
-	len = radius_str2map(buffer, bufsize, map->src);
+	len = radius_tmpl2str(buffer, bufsize, map->src);
 	p += len;
 
 	return p - buffer;
