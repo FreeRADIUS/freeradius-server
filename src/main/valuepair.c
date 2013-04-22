@@ -1710,6 +1710,104 @@ int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
 	return 0;
 }
 
+/**  Print a template to a string
+ *
+ * @param[out] buffer for the output string
+ * @param[in] bufsize of the buffer
+ * @param[in] vpt to print
+ * @return the size of the string printed
+ */
+size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt)
+{
+	char c;
+	char *q = buffer;
+	char *end;
+
+	switch (vpt->type) {
+	default:
+		return 0;
+
+	case VPT_TYPE_REGEX:
+		c = '/';
+		break;
+
+	case VPT_TYPE_XLAT:
+		c = '"';
+		break;
+
+	case VPT_TYPE_LITERAL:	/* single-quoted or bare word */
+		c = '\'';
+		break;
+
+	case VPT_TYPE_EXEC:
+		c = '`';
+		break;
+
+	case VPT_TYPE_ATTR:	/* FIXME: add outer.request:... */
+		buffer[0] = '&';
+		strlcpy(buffer + 1, vpt->da->name, bufsize - 1);
+		return strlen(buffer);
+	}
+
+	if (bufsize <= 3) {
+	no_room:
+		*buffer = '\0';
+		return 0;
+	}
+
+	p = vpt->name;
+	*(q++) = c;
+	end = buffer + bufsize - 3; /* quotes + EOS */
+
+	while (*p && (q < end)) {
+		if (*p == c) {
+			if ((q - end) < 4) goto no_room; /* escape, char, quote, EOS */
+			*(q++) = '\\';
+			*(q++) = *(p++);
+			continue;
+		}
+
+		switch (*p) {
+		case '\\':
+			if ((q - end) < 4) goto no_room;
+			*(q++) = '\\';
+			*(q++) = *(p++);
+			break;
+
+		case '\r':
+			if ((q - end) < 4) goto no_room;
+			*(q++) = '\\';
+			*(q++) = 'r';
+			p++;
+			break;
+
+		case '\n':
+			if ((q - end) < 4) goto no_room;
+			*(q++) = '\\';
+			*(q++) = 'r';
+			p++;
+			break;
+
+		case '\t':
+			if ((q - end) < 4) goto no_room;
+			*(q++) = '\\';
+			*(q++) = 't';
+			p++;
+			break;
+
+		default:
+			*(q++) = *(p++);
+			break;
+		}
+	}
+
+	*(q++) = c;
+	*(q++) = '\0';
+
+	return q - buffer;
+}
+
+
 /** Add a module failure message VALUE_PAIR to the request
  */
 DIAG_OFF(format-nonliteral)

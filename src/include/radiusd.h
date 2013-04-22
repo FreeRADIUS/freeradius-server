@@ -830,6 +830,7 @@ typedef enum vpt_type {
     	VPT_TYPE_XLAT,			//!< Needs to be expanded.
 	VPT_TYPE_ATTR,			//!< Is an attribute.
 	VPT_TYPE_LIST,			//!< Is a list.
+	VPT_TYPE_REGEX,			//!< Is a regex.
 	VPT_TYPE_EXEC			//!< Needs to be executed.
 } vpt_type_t;
 
@@ -893,6 +894,7 @@ value_pair_tmpl_t *radius_attr2tmpl(TALLOC_CTX *ctx, char const *name,
 				    pair_lists_t list_def);
 				
 value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN type);
+size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vpt);
 int radius_attrmap(CONF_SECTION *cs, value_pair_map_t **head,
 		   pair_lists_t dst_list_def, pair_lists_t src_list_def,
 		   unsigned int max);
