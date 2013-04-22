@@ -32,7 +32,12 @@ RCSID("$Id$")
 
 /* krb5 includes */
 #include <krb5.h>
-#include <com_err.h>
+
+#ifdef ET_COMM_ERR
+#  include <et/com_err.h>
+#else
+#  include <com_err.h>
+#endif
 
 /** Instance configuration for rlm_krb5
  *
@@ -46,14 +51,12 @@ typedef struct rlm_krb5_t {
 	
 	char		*hostname;	//!< The hostname component of
 					//!< service_princ, or NULL.
-	char		*service;	//!< The service component of
-					//!< service_princ, or NULL.
+	char		*service;	//!< The service component of service_princ, or NULL.
 	
-	krb5_context context;		//!< The kerberos context (cloned once per
-					//!< request).
+	krb5_context context;		//!< The kerberos context (cloned once per request).
 	
 #ifndef HEIMDAL_KRB5
-	krb5_get_init_creds_opt		*gic_options;	//!< Options to pass to the get_initial_credentials.
+	krb5_get_init_creds_opt		*gic_options;	//!< Options to pass to the get_initial_credentials
 							//!< function.
 	krb5_verify_init_creds_opt	*vic_options;	//!< Options to pass to the validate_initial_creds
 							//!< function.

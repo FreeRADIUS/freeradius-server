@@ -43,7 +43,21 @@ if test x$with_[]modname != xno; then
 	smart_try_dir=$rlm_krb5_include_dir
 	FR_SMART_CHECK_INCLUDE(krb5.h)
 	if test "$ac_cv_header_krb5_h" != "yes"; then
-	  fail="$fail krb5.h"
+        fail="$fail krb5.h"
+	fi
+
+    dnl #
+    dnl # This lives in different places depending on the distro
+    dnl #
+    
+	FR_SMART_CHECK_INCLUDE([com_err.h])
+	if test "$ac_cv_header_com_err_h" != "yes"; then
+        FR_SMART_CHECK_INCLUDE([et/com_err.h])
+        if test "$ac_cv_header_et_com_err_h" != "yes"; then
+            fail="$fail com_err.h"
+	    else
+	        krb5mod_cflags+="-DET_COMM_ERR "
+	    fi
 	fi
 
 	krb5libcrypto=
@@ -72,7 +86,7 @@ if test x$with_[]modname != xno; then
 	dnl Only the heimdal version of the library has this function
 	FR_SMART_CHECK_LIB(krb5, krb5_verify_user_opt)
 	if test "x$ac_cv_lib_krb5_krb5_verify_user_opt" == xyes; then
-        krb5mod_cflags="-DHEIMDAL_KRB5"
+        krb5mod_cflags+="-DHEIMDAL_KRB5 "
 	else
 	    FR_SMART_CHECK_LIB(krb5, krb5_get_init_creds_password)
 	    if test "x$ac_cv_lib_krb5_krb5_get_init_creds_password" != xyes; then
@@ -84,7 +98,7 @@ if test x$with_[]modname != xno; then
 	FR_SMART_CHECK_LIB(krb5, krb5_is_thread_safe)
 	if test "x$ac_cv_lib_krb5_krb5_is_thread_safe" == xyes; then
         AC_RUN_IFELSE([AC_LANG_PROGRAM([[#include <krb5.h>]], [[return krb5_is_thread_safe() ? 0 : 1]])],
-                      [krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[krb5 library is not threadsafe]])])
+                      [krb5threadsafe="-DKRB5_IS_THREAD_SAFE"], [AC_MSG_WARN([[libkrb5 is not threadsafe]])])
 	fi
 
 	targetname=modname
