@@ -42,6 +42,7 @@ typedef struct rlm_sql_conn {
 	SQLHANDLE hdbc;
 	SQLHANDLE henv;
 	SQLHANDLE stmt;
+	char const *error;
 } rlm_sql_db2_conn_t;
 
 static int sql_socket_destructor(void *c)
@@ -252,25 +253,21 @@ static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_con
  *	       connection
  *
  *************************************************************************/
-static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	/* this should really be enough, if not, you still got the sqlstate */
-#define MSGLEN 512
 	char sqlstate[6];
-	char msg[MSGLEN];
+	char msg[1024];
 	char *retval;
 	SQLINTEGER err;
 	SQLSMALLINT rl;
-	rlm_sql_db2_conn_t *conn;
+	rlm_sql_db2_conn_t *conn = handle->conn;
 
-	conn = handle->conn;
-
-	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) sqlstate, &err, (SQLCHAR *) msg, MSGLEN, &rl);
+	TALLOC_FREE(conn->error);
+	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) sqlstate, &err, (SQLCHAR *) msg, sizeof(msg), &rl);
+	conn->error = talloc_aprintf(conn, "sqlstate %s: %s", sqlstate, msg);
 	
-	retval = rad_malloc(strlen(msg)+20);
-	sprintf(retval, "SQLSTATE %s: %s", sqlstate, msg);
-	
-	return retval;
+	return conn->error;
 }
 
 
