@@ -114,7 +114,7 @@ static int check_fatal_error (char *errorcode)
 		if (strcmp(errorcodes[x].errorcode, errorcode) == 0){
 			DEBUG("rlm_sql_postgresql: Postgresql Fatal Error: [%s: %s] Occurred!!", errorcode, errorcodes[x].meaning);
 			if (errorcodes[x].shouldreconnect == 1)
-				return SQL_DOWN;
+				return RLM_SQL_RECONNECT;
 			else
 				return -1;
 		}
@@ -204,7 +204,7 @@ static int sql_init_socket(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 	int numfields = 0;
@@ -213,7 +213,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 
 	if (!conn->db) {
 		ERROR("rlm_sql_postgresql: Socket not connected");
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 
 	conn->result = PQexec(conn->db, query);
@@ -233,7 +233,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
 		 * condition return value WILL be wrong SOME of the time regardless!
 		 * Pick your poison....
 		 */
-		return  SQL_DOWN;
+		return  RLM_SQL_RECONNECT;
 	} else {
 		ExecStatusType status = PQresultStatus(conn->result);
 		DEBUG("rlm_sql_postgresql: Status: %s", PQresStatus(status));
@@ -330,7 +330,7 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config, char const *query) {
 	return sql_query(handle, config, query);
 }
 
@@ -340,10 +340,10 @@ static int sql_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config,
  *
  *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
  *	with all the data for the query in 'handle->row'. Returns
- *	0 on success, -1 on failure, SQL_DOWN if 'database is down'.
+ *	0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
  *
  *************************************************************************/
-static int sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
 
 	int records, i, len;
 	rlm_sql_postgres_conn_t *conn = handle->conn;
@@ -404,7 +404,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
  *	       for a result set
  *
  *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config) {
 
 	rlm_sql_postgres_conn_t *conn = handle->conn;
 
@@ -442,7 +442,7 @@ static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
 
 	return sql_free_result(handle, config);
 }
@@ -454,7 +454,7 @@ static int sql_finish_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config) {
 
 	return sql_free_result(handle, config);
 }
@@ -473,15 +473,6 @@ static int sql_affected_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
 	return conn->affected_rows;
 }
 
-
-static int NEVER_RETURNS
-not_implemented(UNUSED rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
-{
-	ERROR("sql_postgresql: calling unimplemented function");
-	exit(1);
-}
-
-
 /* Exported to rlm_sql */
 rlm_sql_module_t rlm_sql_postgresql = {
 	"rlm_sql_postgresql",
@@ -489,11 +480,11 @@ rlm_sql_module_t rlm_sql_postgresql = {
 	sql_init_socket,
 	sql_query,
 	sql_select_query,
-	not_implemented, /* sql_store_result */
+	NULL, /* sql_store_result */
 	sql_num_fields,
-	not_implemented, /* sql_num_rows */
+	NULL, /* sql_num_rows */
 	sql_fetch_row,
-	not_implemented, /* sql_free_result */
+	NULL, /* sql_free_result */
 	sql_error,
 	sql_finish_query,
 	sql_finish_select_query,

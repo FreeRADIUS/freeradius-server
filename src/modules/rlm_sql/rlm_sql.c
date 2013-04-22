@@ -1202,14 +1202,14 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 		 *  reconnect. Reconnecting will automatically release
 		 *  the current socket, and try to select a new one.
 		 *
-		 *  If we get SQL_DOWN it means all connections in the pool
+		 *  If we get RLM_SQL_RECONNECT it means all connections in the pool
 		 *  were exhausted, and we couldn't create a new connection,
 		 *  so we do not need to call sql_release_socket.
 		 */
 		sql_ret = rlm_sql_query(&handle, inst, expanded);
 		TALLOC_FREE(expanded);
 		
-		if (sql_ret == SQL_DOWN) {
+		if (sql_ret == RLM_SQL_RECONNECT) {
 			rcode = RLM_MODULE_FAIL;
 			
 			goto finish;

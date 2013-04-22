@@ -96,7 +96,7 @@ static int sql_check_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 
 	if (strstr(sql_error(handle, config), "ORA-03113") || strstr(sql_error(handle, config), "ORA-03114")) {
 		ERROR("rlm_sql_oracle: OCI_SERVER_NOT_CONNECTED");
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 	else {
 		ERROR("rlm_sql_oracle: OCI_SERVER_NORMAL");
@@ -134,7 +134,7 @@ static int sql_socket_destructor(void *c)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 
 	rlm_sql_oracle_conn_t *conn;
@@ -216,7 +216,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	int status;
 	rlm_sql_oracle_conn_t *conn = handle->conn;
@@ -228,7 +228,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char co
 	if (!conn->ctx) {
 		ERROR("rlm_sql_oracle: Socket not connected");
 		
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 
 	if (OCIStmtPrepare(conn->query, conn->error, oracle_query, strlen(query),
@@ -261,7 +261,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char co
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 
 	int		status;
@@ -416,7 +416,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
  *	       set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED rlm_sql_handle_t *handle,UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle,UNUSED rlm_sql_config_t *config)
 {
 	/* Not needed for Oracle */
 	return 0;
@@ -449,10 +449,10 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t
  *
  *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
  *	       with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, SQL_DOWN if database is down.
+ *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
  *
  *************************************************************************/
-static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 
 	int status;
@@ -461,7 +461,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	if (!conn->ctx) {
 		ERROR("rlm_sql_oracle: Socket not connected");
 		
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 
 	handle->row = NULL;
@@ -491,7 +491,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
  *	       for a result set
  *
  *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 
@@ -514,7 +514,7 @@ static int sql_free_result(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *co
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -528,7 +528,7 @@ static int sql_finish_query(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_oracle_conn_t *conn = handle->conn;
 

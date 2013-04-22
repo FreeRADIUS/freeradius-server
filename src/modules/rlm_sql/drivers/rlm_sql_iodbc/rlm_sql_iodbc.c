@@ -82,7 +82,7 @@ static int sql_socket_destructor(void *c)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_iodbc_conn_t *conn;
 	SQLRETURN rcode;
@@ -134,7 +134,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
 	SQLRETURN rcode;
@@ -176,7 +176,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char co
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	int numfields = 0;
 	int i = 0;
@@ -227,7 +227,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
  *	       set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	return 0;
 }
@@ -276,10 +276,10 @@ static int sql_num_rows(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t
  *
  *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
  *	       with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'
+ *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'
  *
  *************************************************************************/
-static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	SQLRETURN rc;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
@@ -289,7 +289,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
 	if((rc = SQLFetch(conn->stmt_handle)) == SQL_NO_DATA_FOUND) {
 		return 0;
 	}
-	/* XXX Check rc for database down, if so, return SQL_DOWN */
+	/* XXX Check rc for database down, if so, return RLM_SQL_RECONNECT */
 
 	handle->row = conn->row;
 	return 0;
@@ -305,7 +305,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
  *	       for a result set
  *
  *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	int i=0;
 	rlm_sql_iodbc_conn_t *conn = handle->conn;
@@ -351,7 +351,7 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	return sql_free_result(handle, config);
 }
@@ -363,7 +363,7 @@ static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) 
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	return sql_free_result(handle, config);
 }
 

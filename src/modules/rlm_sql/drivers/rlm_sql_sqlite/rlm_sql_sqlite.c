@@ -91,7 +91,7 @@ static int sql_check_error(sqlite3 *db)
 	 */
 	default:
 		ERROR("rlm_sql_sqlite: Handle is unusable, error (%d): %s", error, sqlite3_errmsg(db));
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 		break;
 	}
 }
@@ -336,7 +336,7 @@ static int sql_socket_destructor(void *c)
 	return 0;
 }
 
-static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn;
 	rlm_sql_sqlite_config_t *driver = config->driver;
@@ -376,7 +376,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return 0;
 }
 
-static int sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
 	char const *z_tail;
@@ -393,7 +393,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *c
 }
 
 
-static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
@@ -413,7 +413,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 	return sql_check_error(conn->db);
 }
 
-static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	return 0;
 }
@@ -440,7 +440,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *confi
 	return 0;
 }
 
-static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	int status;
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
@@ -532,7 +532,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 	return 0;
 }
 
-static int sql_free_result(rlm_sql_handle_t *handle,
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle,
 			   UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sqlite_conn_t *conn = handle->conn;
@@ -567,7 +567,7 @@ static char const *sql_error(rlm_sql_handle_t *handle,
 	return "Invalid handle";
 }
 
-static int sql_finish_query(rlm_sql_handle_t *handle,
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle,
 			    UNUSED rlm_sql_config_t *config)
 {
 	return sql_free_result(handle, config);

@@ -333,10 +333,10 @@ int rlm_sql_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const *query)
 		 * Run through all available sockets until we exhaust all existing
 		 * sockets in the pool and fail to establish a *new* connection.
 		 */
-		if (ret == SQL_DOWN) {
+		if (ret == RLM_SQL_RECONNECT) {
 			sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
-			if (!*handle) return SQL_DOWN;
+			if (!*handle) return RLM_SQL_RECONNECT;
 			
 			continue;
 		}
@@ -383,10 +383,10 @@ int rlm_sql_select_query(rlm_sql_handle_t **handle, rlm_sql_t *inst, char const 
 		 * Run through all available sockets until we exhaust all existing
 		 * sockets in the pool and fail to establish a *new* connection.
 		 */
-		if (ret == SQL_DOWN) {
+		if (ret == RLM_SQL_RECONNECT) {
 			sql_down:
 			*handle = fr_connection_reconnect(inst->pool, *handle);
-			if (!*handle) return SQL_DOWN;
+			if (!*handle) return RLM_SQL_RECONNECT;
 			
 			continue;
 		}

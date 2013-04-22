@@ -52,7 +52,7 @@ typedef struct rlm_sql_mysql_conn {
 } rlm_sql_mysql_conn_t;
 
 /* Prototypes */
-static int sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
+static sql_rcode_t sql_free_result(rlm_sql_handle_t*, rlm_sql_config_t*);
 
 static int sql_socket_destructor(void *c)
 {
@@ -74,7 +74,7 @@ static int sql_socket_destructor(void *c)
  *	Purpose: Establish connection to the db
  *
  *************************************************************************/
-static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn;
 	unsigned long sql_flags;
@@ -153,8 +153,8 @@ static int sql_check_error(int error)
 	case CR_SERVER_GONE_ERROR:
 	case CR_SERVER_LOST:
 	case -1:
-		DEBUG("rlm_sql_mysql: MYSQL check_error: %d, returning SQL_DOWN", error);
-		return SQL_DOWN;
+		DEBUG("rlm_sql_mysql: MYSQL check_error: %d, returning RLM_SQL_RECONNECT", error);
+		return RLM_SQL_RECONNECT;
 		break;
 	case 0:
 		return 0;
@@ -177,13 +177,13 @@ static int sql_check_error(int error)
  *	Purpose: Issue a query to the database
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config, char const *query)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
 	if (!conn->sock) {
 		ERROR("rlm_sql_mysql: Socket not connected");
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 
 	mysql_query(conn->sock, query);
@@ -200,14 +200,14 @@ static int sql_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config,
  *	       first non-empty one.
  *
  *************************************************************************/
-static int sql_store_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_store_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 	int status;
 
 	if (!conn->sock) {
 		ERROR("rlm_sql_mysql: Socket not connected");
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 retry_store_result:
 	if (!(conn->result = mysql_store_result(conn->sock))) {
@@ -268,7 +268,7 @@ static int sql_num_fields(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *co
  *	Purpose: Issue a select query to the database
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query)
 {
 	int ret;
 
@@ -315,10 +315,10 @@ static int sql_num_rows(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *conf
  *
  *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
  *	       with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, SQL_DOWN if database is down.
+ *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if database is down.
  *
  *************************************************************************/
-static int sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 	int status;
@@ -327,7 +327,7 @@ static int sql_fetch_row(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *con
 	 *  Check pointer before de-referencing it.
 	 */
 	if (!conn->result) {
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 
 retry_fetch_row:
@@ -369,7 +369,7 @@ retry_fetch_row:
  *	       for a result set
  *
  *************************************************************************/
-static int sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_free_result(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_mysql_conn_t *conn = handle->conn;
 
@@ -410,7 +410,7 @@ static char const *sql_error(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t 
  *	whether more results exist and process them in turn if so.
  *
  *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t * handle, UNUSED rlm_sql_config_t *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
 	rlm_sql_mysql_conn_t *conn = handle->conn;
@@ -447,7 +447,7 @@ skip_next_result:
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t * handle, rlm_sql_config_t *config)
 {
 #if (MYSQL_VERSION_ID >= 40100)
 	int status;

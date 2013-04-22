@@ -241,7 +241,7 @@ static int sql_socket_destructor(void *c)
  *	Purpose: Establish db to the db
  *
  *************************************************************************/
-static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_sybase_conn_t *conn;
 
@@ -376,7 +376,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       the database.
  *
  *************************************************************************/
-static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 
@@ -437,7 +437,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char co
 			if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 				ERROR("rlm_sql_sybase(sql_query): cleaning up.");
 
-				return SQL_DOWN;
+				return RLM_SQL_RECONNECT;
 			}
 			return -1;
 			break;
@@ -473,7 +473,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char co
 			if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 				ERROR("rlm_sql_sybase(sql_query): cleaning up.");
 				
-				return SQL_DOWN;
+				return RLM_SQL_RECONNECT;
 			}
 			return -1;
 			break;
@@ -503,7 +503,7 @@ static int sql_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char co
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			ERROR("rlm_sql_sybase(sql_query): cleaning up.");
 	
-			return SQL_DOWN;
+			return RLM_SQL_RECONNECT;
 		}
 		return -1;
 		break;
@@ -548,7 +548,7 @@ static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	Purpose: End the select query, such as freeing memory or result
  *
  *************************************************************************/
-static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 	int	i=0;
@@ -581,7 +581,7 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_conf
  *	      be discarded.
  *
  *************************************************************************/
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 
@@ -704,7 +704,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			ERROR("rlm_sql_sybase(sql_select_query): cleaning up.");
 
-			return SQL_DOWN;
+			return RLM_SQL_RECONNECT;
 		}
 		return -1;
 		break;
@@ -728,7 +728,7 @@ static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, 
  *	       set for the query.
  *
  *************************************************************************/
-static int sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 	/*
 	** Not needed for Sybase, code that may have gone here is
 	** in sql_select_query and sql_fetch_row
@@ -767,10 +767,10 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *
  *	Purpose: database specific fetch_row. Returns a rlm_sql_row_t struct
  *	       with all the data for the query in 'handle->row'. Returns
- *		 0 on success, -1 on failure, SQL_DOWN if 'database is down'.
+ *		 0 on success, -1 on failure, RLM_SQL_RECONNECT if 'database is down'.
  *
  *************************************************************************/
-static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 	CS_INT		ret, count;
@@ -794,9 +794,9 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			ERROR("rlm_sql_sybase(sql_fetch_row): cleaning up.");
 
-			return SQL_DOWN;
+			return RLM_SQL_RECONNECT;
 		}
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 		break;
 
 	case CS_END_DATA:
@@ -834,7 +834,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
  *	       for a result set
  *
  *************************************************************************/
-static int sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
+static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config) {
 
 	/*
 	** Not implemented, never called from rlm_sql anyway
@@ -852,7 +852,7 @@ static int sql_free_result(UNUSED rlm_sql_handle_t *handle, UNUSED rlm_sql_confi
  *	Purpose: End the query, such as freeing memory
  *
  *************************************************************************/
-static int sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_sybase_conn_t *conn = handle->conn;
 

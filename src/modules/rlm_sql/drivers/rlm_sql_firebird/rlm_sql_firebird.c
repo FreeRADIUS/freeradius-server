@@ -26,10 +26,10 @@ RCSID("$Id$")
 
 /* Forward declarations */
 static char const *sql_error(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-static int sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static sql_rcode_t sql_free_result(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 static int sql_num_fields(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
-static int sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config);
 
 static int sql_socket_destructor(void *c)
 {
@@ -71,7 +71,7 @@ static int sql_socket_destructor(void *c)
 /** Establish connection to the db
  *
  */
-static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	rlm_sql_firebird_conn_t	*conn;
 	
 	long res;
@@ -87,7 +87,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 	if (fb_connect(conn, config)) {
 		ERROR("rlm_sql_firebird: Connection failed: %s", conn->error);
 		
-		return SQL_DOWN;
+		return RLM_SQL_RECONNECT;
 	}
 
 	return 0;
@@ -96,7 +96,7 @@ static int sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 /** Issue a non-SELECT query (ie: update/delete/insert) to the database.
  *
  */
-static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, char const *query) {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	
 	int deadlock = 0;
@@ -129,7 +129,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 		      (long int) conn->sql_code, conn->error, query);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
-			return SQL_DOWN;
+			return RLM_SQL_RECONNECT;
 		}
 	
 		/* Free problem query */
@@ -137,7 +137,7 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 			//assume the network is down if rollback had failed
 			ERROR("Fail to rollback transaction after previous error: %s", conn->error);
 		
-			return SQL_DOWN;
+			return RLM_SQL_RECONNECT;
 		}
 		//   conn->in_use=0;
 		return -1;
@@ -155,14 +155,14 @@ static int sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config, 
 /** Issue a select query to the database.
  *
  */
-static int sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
+static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *config, char const *query) {
 	return sql_query(handle, config, query);
 }
 
 /** Returns a result set for the query.
  *
  */
-static int sql_store_result(UNUSED rlm_sql_handle_t *handle,
+static sql_rcode_t sql_store_result(UNUSED rlm_sql_handle_t *handle,
 			    UNUSED rlm_sql_config_t *config) {
 	return 0;
 }
@@ -185,7 +185,7 @@ static int sql_num_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config) {
 /** Returns an individual row.
  *
  */
-static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
+static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_firebird_conn_t *conn = handle->conn;
 	int res;
@@ -217,7 +217,7 @@ static int sql_fetch_row(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *conf
 /** End the select query, such as freeing memory or result.
  *
  */
-static int sql_finish_select_query(rlm_sql_handle_t *handle,
+static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle,
 				   UNUSED rlm_sql_config_t *config) {
 				
 	rlm_sql_firebird_conn_t *conn = (rlm_sql_firebird_conn_t *) handle->conn;
@@ -231,7 +231,7 @@ static int sql_finish_select_query(rlm_sql_handle_t *handle,
 /** End the query
  *
  */
-static int sql_finish_query(rlm_sql_handle_t *handle,
+static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle,
 			    rlm_sql_config_t *config) {
 	sql_free_result(handle, config);
 	
@@ -241,7 +241,7 @@ static int sql_finish_query(rlm_sql_handle_t *handle,
 /** Frees memory allocated for a result set.
  *
  */
-static int sql_free_result(UNUSED rlm_sql_handle_t *handle,
+static sql_rcode_t sql_free_result(UNUSED rlm_sql_handle_t *handle,
 			   UNUSED rlm_sql_config_t *config) {
 	return 0;
 }
