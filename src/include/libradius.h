@@ -423,6 +423,7 @@ void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t t
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
 void	    pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
+int		paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two);
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR const *vp);
 VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp);

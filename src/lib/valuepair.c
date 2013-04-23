@@ -2128,13 +2128,25 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		break;
 	}
 
+	return paircmp_op(one, one->op, two);
+}
+
+/*
+ *	Compare two attributes
+ */
+int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
+{
+	int compare;
+
 	/*
 	 *	Can't compare two attributes of differing types
+	 *
+	 *	FIXME: maybe do checks for IP OP IP/mask ??
 	 */
 	if (one->da->type != two->da->type) {
 		return one->da->type - two->da->type;
 	}
-	
+
 	/*
 	 *	After doing the previous check for special comparisons,
 	 *	do the per-type comparison here.
@@ -2224,7 +2236,7 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 	/*
 	 *	Now do the operator comparison.
 	 */
-	switch (one->op) {
+	switch (op) {
 	case T_OP_CMP_EQ:
 		return (compare == 0);
 
