@@ -92,8 +92,6 @@ struct conf_data {
 	void       (*free)(void *); /* free user data function */
 };
 
-extern int check_config;
-
 static int cf_data_add_internal(CONF_SECTION *cs, char const *name,
 				void *data, void (*data_free)(void *),
 				int flag);
@@ -104,8 +102,27 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				       char *output, size_t outsize,
 				       char const *input);
 
-int cf_log_config = 1;
-int cf_log_modules = 1;
+static bool cf_strict = false;		//!< If true, fail parsing if we find any deprecated items
+
+/** Turn on strict parsing
+ *
+ * Turns on strict parsing globally for all configuration files except dictionaries.
+ *
+ * @param strict If true, return an error if a section/item marked with PW_TYPE_DEPRECATED.
+ */
+void cf_set_strict(bool strict)
+{
+	cf_strict = strict;
+}
+
+/** Get current strict parsing value
+ *
+ * @return the current strict parsing value.
+ */
+bool cf_get_strict(void)
+{
+	return cf_strict;
+}
 
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
@@ -846,7 +863,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 	if (deprecated) {
 		cf_log_err(&(cs->item), "Configuration item \"%s\" is deprecated.  Please replace "
 			   "it with the up-to-date name", name);
-		if (check_config) {
+		if (cf_get_strict()) {
 			return -1;
 		}
 	}
@@ -2660,7 +2677,7 @@ void cf_log_info(CONF_SECTION const *cs, char const *fmt, ...)
 	va_list ap;
 
 	va_start(ap, fmt);
-	if (debug_flag > 1 && cf_log_config && cs) vradlog(L_DBG, fmt, ap);
+	if ((debug_flag > 1) && cs) vradlog(L_DBG, fmt, ap);
 	va_end(ap);
 }
 
@@ -2673,7 +2690,7 @@ void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)
 	char buffer[256];
 
 	va_start(ap, fmt);
-	if (debug_flag > 1 && cf_log_modules && cs) {
+	if (debug_flag > 1 && cs) {
 		vsnprintf(buffer, sizeof(buffer), fmt, ap);
 
 		DEBUG("%.*s# %s", cs->depth, parse_spaces, buffer);

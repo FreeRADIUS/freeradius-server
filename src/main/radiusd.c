@@ -306,7 +306,7 @@ int main(int argc, char *argv[])
 		
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
-	if (read_mainconfig(0) < 0) {
+	if (read_mainconfig(0, check_config) < 0) {
 		exit(1);
 	}
 

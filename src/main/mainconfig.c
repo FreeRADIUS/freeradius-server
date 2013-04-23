@@ -750,7 +750,7 @@ static const FR_NAME_NUMBER str2dest[] = {
  *
  *	This function can ONLY be called from the main server process.
  */
-int read_mainconfig(int reload)
+int read_mainconfig(int reload, bool strict)
 {
 	char const *p = NULL;
 	CONF_SECTION *cs;
@@ -784,6 +784,7 @@ int read_mainconfig(int reload)
 		return -1;
 	}
 #endif
+	cf_set_strict(strict);
 
 	radlog(L_INFO, "Starting - reading configuration files ...");
 

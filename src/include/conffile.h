@@ -50,6 +50,8 @@ typedef struct CONF_PARSER {
 #define XStringify(x) #x
 #define Stringify(x) XStringify(x)
 
+void cf_set_strict(bool strict);
+bool cf_get_strict(void);
 CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1,
 				  char const *name2);
 int		cf_pair_replace(CONF_SECTION *cs, CONF_PAIR *cp,
@@ -132,8 +134,6 @@ void cf_log_module(CONF_SECTION const *cs, char const *fmt, ...)
 CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 			     CONF_SECTION *outercs,
 			     char const *ptr);
-extern int cf_log_config;
-extern int cf_log_modules;
 
 extern int cf_pair2xml(FILE *fp, CONF_PAIR const *cp);
 extern int cf_section2xml(FILE *fp, CONF_SECTION const *cs);
