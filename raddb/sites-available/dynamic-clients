@@ -113,7 +113,7 @@ server dynamic_client_server {
 			FreeRADIUS-Client-IP-Address = "%{Packet-Src-IP-Address}"
 
 			# require_message_authenticator
-			FreeRADIUS-Client-Require-MA = no
+			FreeRADIUS-Client-Require-MA = "no"
 
 			# secret
 			FreeRADIUS-Client-Secret = "testing123"
