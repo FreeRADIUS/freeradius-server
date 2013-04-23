@@ -113,3 +113,6 @@ data handled && &Response-Packet-Type == Access-Challenge
 
 condition (!(!foo))
 data foo
+
+condition /foo/ =~ bar
+data ERROR offset 0 Conditional check cannot begin with a regular expression

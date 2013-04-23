@@ -338,6 +338,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		 *	Grab the LHS
 		 */
 		COND_DEBUG("LHS %s", p);
+		if (*p == '/') {
+			talloc_free(c);
+			*error = "Conditional check cannot begin with a regular expression";
+			COND_DEBUG("RETURN %d", __LINE__);
+			return -(p - start);
+		}
+
 		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
 			talloc_free(c);
