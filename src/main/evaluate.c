@@ -269,6 +269,7 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, int ifla
  * @param[in] modreturn the previous module return code
  * @param[in] depth of the recursion (only used for debugging)
  * @param[in] map the map to evaluate
+ * @param[in] iflag for regex case-insensitive comparisons
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
 int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth,
