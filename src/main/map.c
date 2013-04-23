@@ -163,20 +163,26 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 				request_refs_t ref;
 				pair_lists_t list;
 				const char *p = name;
-				const DICT_ATTR *da;
 
 				ref = radius_request_name(&p, REQUEST_CURRENT);
 				list = radius_list_name(&p, PAIR_LIST_REQUEST);
-				da = dict_attrbyname(p);
-				if (!da) {
-					vpt->type = VPT_TYPE_LITERAL;
-					break;
+
+				if ((p != name) && !*p) {
+					vpt->type = VPT_TYPE_LIST;
+
+				} else {
+					const DICT_ATTR *da;
+					da = dict_attrbyname(p);
+					if (!da) {
+						vpt->type = VPT_TYPE_LITERAL;
+						break;
+					}
+					vpt->da = da;
+					vpt->type = VPT_TYPE_ATTR;
 				}
 
-				vpt->type = VPT_TYPE_ATTR;
 				vpt->request = ref;
 				vpt->list = list;
-				vpt->da = da;
 				break;
 			}
 			/* FALL-THROUGH */
