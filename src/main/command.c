@@ -27,6 +27,7 @@
 #include <freeradius-devel/conffile.h>
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
+#include <freeradius-devel/parser.h>
 
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
@@ -843,16 +844,18 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 	return 0;
 }
 
-extern char *debug_condition;
-static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char *argv[])
+extern fr_cond_t *debug_condition;
+static int command_debug_condition(rad_listen_t *listener, int argc, char *argv[])
 {
+	char const *error;
+
 	/*
 	 *	Delete old condition.
 	 *
 	 *	This is thread-safe because the condition is evaluated
 	 *	in the main server thread, as is this code.
 	 */
-	free(debug_condition);
+	talloc_free(debug_condition);
 	debug_condition = NULL;
 
 	/*
@@ -862,7 +865,9 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 		return 0;
 	}
 
-	debug_condition = strdup(argv[0]);
+	if (fr_condition_tokenize(listener, argv[0], &debug_condition, &error) < 0) {
+		radlog(L_ERR, "Failed parsing condition '%s': %s", argv[0], error);
+	}
 
 	return 0;
 }
@@ -870,9 +875,13 @@ static int command_debug_condition(UNUSED rad_listen_t *listener, int argc, char
 static int command_show_debug_condition(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
+	char buffer[1024];
+
 	if (!debug_condition) return 0;
 
-	cprintf(listener, "%s\n", debug_condition);
+	fr_cond_sprint(buffer, sizeof(buffer), debug_condition);
+
+	cprintf(listener, "%s\n", buffer);
 	return 0;
 }
 

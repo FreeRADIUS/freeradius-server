@@ -777,8 +777,13 @@ void revive_home_server(void *ctx);
 void mark_home_server_dead(home_server *home, struct timeval *when);
 
 /* evaluate.c */
-int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
-			      char const **ptr, int evaluate_it, int *presult);
+typedef struct fr_cond_t fr_cond_t;
+int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
+			 value_pair_tmpl_t const *vpt);
+int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
+			value_pair_map_t const *map, int iflag);
+int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
+			 fr_cond_t const *c);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);
 
 VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list);

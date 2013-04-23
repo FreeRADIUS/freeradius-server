@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/parser.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <ctype.h>
@@ -52,741 +53,419 @@ RCSID("$Id$")
 
 #ifdef WITH_UNLANG
 
-static int all_digits(char const *string)
-{
-	char const *p = string;
-
-	if (*p == '-') p++;
-
-	while (isdigit((int) *p)) p++;
-
-	return (*p == '\0');
-}
-
-static char const *filler = "????????????????????????????????????????????????????????????????";
-
-static char const *expand_string(char *buffer, size_t sizeof_buffer,
-				 REQUEST *request,
-				 FR_TOKEN value_type, char const *value)
-{
-	int result;
-	char *p;
-
-	switch (value_type) {
-	default:
-	case T_BARE_WORD:
-	case T_SINGLE_QUOTED_STRING:
-		return value;
-
-	case T_BACK_QUOTED_STRING:
-		result = radius_exec_program(value, request, 1,
-					     buffer, sizeof_buffer, NULL,
-					     NULL, 0);
-		if (result != 0) {
-			return NULL;
-		}
-
-		/*
-		 *	The result should be ASCII.
-		 */
-		for (p = buffer; *p != '\0'; p++) {
-			if (*p < ' ' ) {
-				*p = '\0';
-				return buffer;
-			}
-		}
-		return buffer;
-
-	case T_DOUBLE_QUOTED_STRING:
-		if (!strchr(value, '%')) return value;
-
-		if (radius_xlat(buffer, sizeof_buffer, request, value, NULL, NULL) < 0) {
-			return NULL;
-		}
-		
-		return buffer;
-	}
-
-	return NULL;
-}
-
-#ifdef HAVE_REGEX_H
-static FR_TOKEN getregex(char const **ptr, char *buffer, size_t buflen,
-			 int *pcflags)
-{
-	char const *p = *ptr;
-	char *q = buffer;
-
-	if (*p != '/') return T_OP_INVALID;
-
-	*pcflags = REG_EXTENDED;
-
-	p++;
-	while (*p) {
-		if (buflen <= 1) break;
-
-		if (*p == '/') {
-			p++;
-
-			/*
-			 *	Check for case insensitivity
-			 */
-			if (*p == 'i') {
-				p++;
-				*pcflags |= REG_ICASE;
-			}
-
-			break;
-		}
-
-		if (*p == '\\') {
-			int x;
-			
-			switch (p[1]) {
-			case 'r':
-				*q++ = '\r';
-				break;
-			case 'n':
-				*q++ = '\n';
-				break;
-			case 't':
-				*q++ = '\t';
-				break;
-			case '"':
-				*q++ = '"';
-				break;
-			case '\'':
-				*q++ = '\'';
-				break;
-			case '`':
-				*q++ = '`';
-				break;
-				
-				/*
-				 *	FIXME: add 'x' and 'u'
-				 */
-
-			default:
-				if ((p[1] >= '0') && (p[1] <= '9') &&
-				    (sscanf(p + 1, "%3o", &x) == 1)) {
-					*q++ = x;
-					p += 2;
-				} else {
-					*q++ = p[1];
-				}
-				break;
-			}
-			p += 2;
-			buflen--;
-			continue;
-		}
-
-		*(q++) = *(p++);
-		buflen--;
-	}
-	*q = '\0';
-	*ptr = p;
-
-	return T_DOUBLE_QUOTED_STRING;
-}
+#if 0
+#define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
+#else
+#define EVAL_DEBUG(...)
 #endif
 
 static const FR_NAME_NUMBER modreturn_table[] = {
 	{ "reject",     RLM_MODULE_REJECT       },
-	{ "fail",       RLM_MODULE_FAIL	 },
-	{ "ok",	 RLM_MODULE_OK	   },
+	{ "fail",       RLM_MODULE_FAIL	 	},
+	{ "ok",		RLM_MODULE_OK	   	},
 	{ "handled",    RLM_MODULE_HANDLED      },
 	{ "invalid",    RLM_MODULE_INVALID      },
 	{ "userlock",   RLM_MODULE_USERLOCK     },
 	{ "notfound",   RLM_MODULE_NOTFOUND     },
-	{ "noop",       RLM_MODULE_NOOP	 },
+	{ "noop",       RLM_MODULE_NOOP	 	},
 	{ "updated",    RLM_MODULE_UPDATED      },
 	{ NULL, 0 }
 };
 
 
-/*
- *	*presult is "did comparison match or not"
- */
-static int radius_do_cmp(REQUEST *request, int *presult,
-			 FR_TOKEN lt, char const *pleft, FR_TOKEN token,
-			 UNUSED FR_TOKEN rt, char const *pright,
-#ifdef HAVE_REGEX_H
-			 int cflags,
-#else
-			 UNUSED int cflags,
-#endif
-			 int modreturn)
+static char *radius_expand_tmpl(REQUEST *request, value_pair_tmpl_t const *vpt)
 {
-	int result;
-	uint32_t lint, rint;
-	VALUE_PAIR *vp = NULL;
-#ifdef HAVE_REGEX_H
-	char buffer[8192];
-#endif
+	char *buffer = NULL;
+	VALUE_PAIR *vp;
 
-	if (lt == T_BARE_WORD) {
-		/*
-		 *	Maybe check the last return code.
-		 */
-		if (token == T_OP_CMP_TRUE) {
-			int isreturn;
+	rad_assert(vpt->type != VPT_TYPE_LIST);
 
-			/*
-			 *	Looks like a return code, treat is as such.
-			 */
-			isreturn = fr_str2int(modreturn_table, pleft, -1);
-			if (isreturn != -1) {
-				*presult = (modreturn == isreturn);
-				return true;
-			}
-		}
-
-		/*
-		 *	Bare words on the left can be attribute names.
-		 */
-		if (!(radius_get_vp(request, pleft, &vp) < 0)) {
-			VALUE_PAIR *myvp;
-
-			/*
-			 *	VP exists, and that's all we're looking for.
-			 */
-			if (token == T_OP_CMP_TRUE) {
-				*presult = (vp != NULL);
-				return true;
-			}
-
-			if (!vp) {
-				const DICT_ATTR *da;
-				
-				/*
-				 *	The attribute on the LHS may
-				 *	have been a dynamically
-				 *	registered callback.  i.e. it
-				 *	doesn't exist as a VALUE_PAIR.
-				 *	If so, try looking for it.
-				 */
-				da = dict_attrbyname(pleft);
-				if (da && (da->vendor == 0) && radius_find_compare(da->attr)) {
-					VALUE_PAIR *check;
-					check = pairmake(request, NULL, pleft, pright, token);
-					*presult = (radius_callback_compare(request, NULL, check, NULL, NULL) == 0);
-					RDEBUG3("  Callback returns %d",
-						*presult);
-					pairfree(&check);
-					return true;
-				}
-				
-				RDEBUG2("    (Attribute %s was not found)",
-				       pleft);
-				*presult = 0;
-				return true;
-			}
-
-#ifdef HAVE_REGEX_H
-			/*
-			 * 	Regex comparisons treat everything as
-			 *	strings.
-			 */
-			if ((token == T_OP_REG_EQ) ||
-			    (token == T_OP_REG_NE)) {
-				vp_prints_value(buffer, sizeof(buffer), vp, 0);
-				pleft = buffer;
-				goto do_checks;
-			}
-#endif
-
-			myvp = paircopyvp(request, vp);
-			if (!pairparsevalue(myvp, pright)) {
-				pairbasicfree(myvp);
-				RDEBUG2("Failed parsing \"%s\": %s",
-				       pright, fr_strerror());
-				return false;
-			}
-
-			myvp->op = token;
-			*presult = paircmp(myvp, vp);
-			pairbasicfree(myvp);
-			RDEBUG3("  paircmp -> %d", *presult);
-			return true;
-		} /* else it's not a VP in a list */
-	}
-
-#ifdef HAVE_REGEX_H
-	do_checks:
-#endif
-	switch (token) {
-	case T_OP_GE:
-	case T_OP_GT:
-	case T_OP_LE:
-	case T_OP_LT:
-		if (!all_digits(pright)) {
-			RDEBUG2("    (Right field is not a number at: %s)", pright);
-			return false;
-		}
-		rint = strtoul(pright, NULL, 0);
-		if (!all_digits(pleft)) {
-			RDEBUG2("    (Left field is not a number at: %s)", pleft);
-			return false;
-		}
-		lint = strtoul(pleft, NULL, 0);
+	switch (vpt->type) {
+	case VPT_TYPE_LITERAL:
+		EVAL_DEBUG("TMPL LITERAL");
+		buffer = talloc_strdup(request, vpt->name);
 		break;
-		
+
+	case VPT_TYPE_EXEC:
+		EVAL_DEBUG("TMPL EXEC");
+		buffer = talloc_array(request, char, 1024);
+		if (radius_exec_program(vpt->name, request, 1,
+					buffer, 1024, NULL, NULL, 0) != 0) {
+			talloc_free(buffer);
+			return NULL;
+		}
+		break;
+
+	case VPT_TYPE_REGEX:
+		EVAL_DEBUG("TMPL REGEX");
+		if (strchr(vpt->name, '%') == NULL) {
+			buffer = talloc_strdup(request, vpt->name);
+			break;
+		}
+		/* FALL-THROUGH */
+
+	case VPT_TYPE_XLAT:
+		EVAL_DEBUG("TMPL XLAT");
+		buffer = NULL;
+		if (radius_axlat(&buffer, request, vpt->name, NULL, NULL) == 0) {
+			return NULL;
+		}
+		break;
+
+	case VPT_TYPE_ATTR:
+		EVAL_DEBUG("TMPL ATTR");
+		vp = radius_vpt_get_vp(request, vpt);
+		if (!vpt) return NULL;
+
+		buffer = vp_aprint(request, vp);
+		break;
+
 	default:
-		lint = rint = 0;  /* quiet the compiler */
+		buffer = NULL;
 		break;
 	}
-	
-	switch (token) {
-	case T_OP_CMP_TRUE:
+
+	EVAL_DEBUG("Expand tmpl --> %s", buffer);
+	return buffer;
+}
+
+/** Evaluate a template
+ *
+ * @param[in] request the REQUEST
+ * @param[in] modreturn the previous module return code
+ * @param[in] depth of the recursion (only used for debugging)
+ * @param[in] vpt the template to evaluate
+ * @return -1 on error, 0 for "no match", 1 for "match".
+ */
+int radius_evaluate_tmpl(REQUEST *request, int modreturn, UNUSED int depth,
+			 value_pair_tmpl_t const *vpt)
+{
+	int rcode;
+	int modcode;
+	char *buffer;
+
+	switch (vpt->type) {
+	case VPT_TYPE_LITERAL:
+		modcode = fr_str2int(modreturn_table, vpt->name, RLM_MODULE_UNKNOWN);
+		if (modcode != RLM_MODULE_UNKNOWN) {
+			rcode = (modcode == modreturn);
+			break;
+		}
+
 		/*
-		 *	Check for truth or falsehood.
+		 *	Else it's a literal string.  Empty string is
+		 *	false, non-empty string is true.
+		 *
+		 *	@todo: Maybe also check for digits?
+		 *
+		 *	The VPT *doesn't* have a "bare word" type,
+		 *	which arguably it should.
 		 */
-		if (all_digits(pleft)) {
-			lint = strtoul(pleft, NULL, 0);
-			result = (lint != 0);
-			
+		rcode = (vpt->name != '\0');
+		break;
+
+	case VPT_TYPE_ATTR:
+	case VPT_TYPE_LIST:
+		if (radius_vpt_get_vp(request, vpt) != NULL) {
+			rcode = true;
 		} else {
-			result = (*pleft != '\0');
+			rcode = false;
 		}
 		break;
-		
 
-	case T_OP_CMP_EQ:
-		result = (strcmp(pleft, pright) == 0);
-		break;
-		
-	case T_OP_NE:
-		result = (strcmp(pleft, pright) != 0);
-		break;
-		
-	case T_OP_GE:
-		result = (lint >= rint);
-		break;
-		
-	case T_OP_GT:
-		result = (lint > rint);
-		break;
-		
-	case T_OP_LE:
-		result = (lint <= rint);
-		break;
-		
-	case T_OP_LT:
-		result = (lint < rint);
-		break;
-
-#ifdef HAVE_REGEX_H
-	case T_OP_REG_EQ: {
-		int i, compare;
-		regex_t reg;
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-		
 		/*
-		 *	Include substring matches.
+		 *	FIXME: expand the strings
+		 *	if not empty, return!
 		 */
-		compare = regcomp(&reg, pright, cflags);
-		if (compare != 0) {
-			if (debug_flag) {
-				char errbuf[128];
-
-				regerror(compare, &reg, errbuf, sizeof(errbuf));
-				DEBUGE("Failed compiling regular expression: %s", errbuf);
-			}
-			return false;
+	case VPT_TYPE_XLAT:
+	case VPT_TYPE_EXEC:
+		if (!*vpt->name) return false;
+		buffer = radius_expand_tmpl(request, vpt);
+		if (!buffer) {
+			EVAL_DEBUG("FAIL %d", __LINE__);
+			return -1;
 		}
-
-		compare = regexec(&reg, pleft,
-				  REQUEST_MAX_REGEX + 1,
-				  rxmatch, 0);
-		regfree(&reg);
-		
-		/*
-		 *	Add new %{0}, %{1}, etc.
-		 */
-		if (compare == 0) for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
-			char *r;
-
-			free(request_data_get(request, request,
-					      REQUEST_DATA_REGEX | i));
-
-			/*
-			 *	No %{i}, skip it.
-			 *	We MAY have %{2} without %{1}.
-			 */
-			if (rxmatch[i].rm_so == -1) continue;
-			
-			/*
-			 *	Copy substring into allocated buffer
-			 */
-			r = rad_malloc(rxmatch[i].rm_eo -rxmatch[i].rm_so + 1);
-			memcpy(r, pleft + rxmatch[i].rm_so,
-			       rxmatch[i].rm_eo - rxmatch[i].rm_so);
-			r[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
-
-			request_data_add(request, request,
-					 REQUEST_DATA_REGEX | i,
-					 r, free);
-		}
-		result = (compare == 0);
-	}
+		rcode = (*buffer != '\0');
+		talloc_free(buffer);
 		break;
-		
-	case T_OP_REG_NE: {
-		int compare;
-		regex_t reg;
-		regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
-		
+
 		/*
-		 *	Include substring matches.
+		 *	Can't have a bare ... (/foo/) ...
 		 */
-		compare = regcomp(&reg, pright, cflags);
-		if (compare != 0) {
-			if (debug_flag) {
-				char errbuf[128];
+	case VPT_TYPE_REGEX:
+		EVAL_DEBUG("FAIL %d", __LINE__);
+		rad_assert(0 == 1);
+		/* FALL-THROUGH */
 
-				regerror(compare, &reg, errbuf, sizeof(errbuf));
-				DEBUGE("Failed compiling regular expression: %s", errbuf);
-			}
-			return false;
-		}
-
-		compare = regexec(&reg, pleft,
-				  REQUEST_MAX_REGEX + 1,
-				  rxmatch, 0);
-		regfree(&reg);
-		
-		result = (compare != 0);
-	}
-		break;
-#endif
-		
 	default:
-		DEBUGE("Comparison operator %s is not supported",
-		      fr_token_name(token));
-		result = false;
+		rcode = -1;
 		break;
 	}
-	
-	*presult = result;
-	return true;
+
+	return rcode;
 }
 
 
-int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
-			      char const **ptr, int evaluate_it, int *presult)
+static int do_regex(REQUEST *request, const char *lhs, const char *rhs, int iflag)
 {
-	int found_condition = false;
-	int result = true;
-	int invert = false;
-	int evaluate_next_condition = evaluate_it;
-	char const *p;
-	char const *q, *start;
-	FR_TOKEN token, lt, rt;
-	char left[1024], right[1024], comp[4];
-	char const *pleft, *pright;
-	char  xleft[1024], xright[1024];
-	int cflags = 0;
+	int i, compare;
+	int cflags = REG_EXTENDED;
+	regex_t reg;
+	regmatch_t rxmatch[REQUEST_MAX_REGEX + 1];
+
+	if (iflag) cflags |= REG_ICASE;
+
+	/*
+	 *	Include substring matches.
+	 */
+	compare = regcomp(&reg, rhs, cflags);
+	if (compare != 0) {
+		if (debug_flag) {
+			char errbuf[128];
+
+			regerror(compare, &reg, errbuf, sizeof(errbuf));
+			DEBUGE("Failed compiling regular expression: %s", errbuf);
+		}
+		EVAL_DEBUG("FAIL %d", __LINE__);
+		return -1;
+	}
 	
-	if (!ptr || !*ptr || (depth >= 64)) {
-		ERROR("Internal sanity check failed in evaluate condition");
-		return false;
+	compare = regexec(&reg, lhs, REQUEST_MAX_REGEX + 1, rxmatch, 0);
+	regfree(&reg);
+
+	/*
+	 *	Add new %{0}, %{1}, etc.
+	 */
+	if (compare == 0) for (i = 0; i <= REQUEST_MAX_REGEX; i++) {
+		char *r;
+			
+		free(request_data_get(request, request,
+				      REQUEST_DATA_REGEX | i));
+		
+		/*
+		 *	No %{i}, skip it.
+		 *	We MAY have %{2} without %{1}.
+		 */
+		if (rxmatch[i].rm_so == -1) continue;
+		
+		/*
+		 *	Copy substring into allocated buffer
+		 */
+		r = rad_malloc(rxmatch[i].rm_eo -rxmatch[i].rm_so + 1);
+		memcpy(r, lhs + rxmatch[i].rm_so,
+		       rxmatch[i].rm_eo - rxmatch[i].rm_so);
+		r[rxmatch[i].rm_eo - rxmatch[i].rm_so] = '\0';
+
+		request_data_add(request, request,
+				 REQUEST_DATA_REGEX | i,
+				 r, free);
+		}
+	return (compare == 0);
+}
+
+/** Evaluate a map
+ *
+ * @param[in] request the REQUEST
+ * @param[in] modreturn the previous module return code
+ * @param[in] depth of the recursion (only used for debugging)
+ * @param[in] map the map to evaluate
+ * @return -1 on error, 0 for "no match", 1 for "match".
+ */
+int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth,
+			value_pair_map_t const *map, int iflag)
+{
+	int rcode;
+	char *lhs, *rhs;
+
+	rad_assert(map->dst->type != VPT_TYPE_UNKNOWN);
+	rad_assert(map->src->type != VPT_TYPE_UNKNOWN);
+	rad_assert(map->dst->type != VPT_TYPE_LIST);
+	rad_assert(map->src->type != VPT_TYPE_LIST);
+	rad_assert(map->dst->type != VPT_TYPE_REGEX);
+
+	/*
+	 *	Verify regexes.
+	 */
+	if (map->src->type == VPT_TYPE_REGEX) {
+		rad_assert((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE));
+	} else {
+		rad_assert(!((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)));
 	}
 
 	/*
-	 *	Horrible parser.
+	 *	They're both attributes.  Do attribute-specific work.
 	 */
-	p =  *ptr;
-	while (*p) {
-		while ((*p == ' ') || (*p == '\t')) p++;
+	if ((map->src->type == VPT_TYPE_ATTR) && (map->dst->type == VPT_TYPE_ATTR)) {
+		VALUE_PAIR *lhs_vp, *rhs_vp;
 
-		/*
-		 *	! EXPR
-		 */
-		if (!found_condition && (*p == '!')) {
-			/*
-			 *	Don't change the results if we're not
-			 *	evaluating the condition.
-			 */
-			if (evaluate_next_condition) {
-				RDEBUG4(">>> INVERT");
-				invert = true;
-			}
-			p++;
+		lhs_vp = radius_vpt_get_vp(request, map->src);
+		rhs_vp = radius_vpt_get_vp(request, map->dst);
 
-			while ((*p == ' ') || (*p == '\t')) p++;
-		}
-
-		/*
-		 *	( EXPR )
-		 */
-		if (!found_condition && (*p == '(')) {
-			char const *end = p + 1;
-
-			/*
-			 *	Evaluate the condition, bailing out on
-			 *	parse error.
-			 */
-			RDEBUG4(">>> RECURSING WITH ... %s", end);
-			if (!radius_evaluate_condition(request, modreturn,
-						       depth + 1, &end,
-						       evaluate_next_condition,
-						       &result)) {
-				return false;
-			}
-
-			if (invert) {
-				if (evaluate_next_condition) {
-					RDEBUG2("%.*s Converting !%s -> %s",
-						depth, filler,
-						(result != false) ? "true" : "false",
-						(result == false) ? "true" : "false");
-					result = (result == false);
-				}
-				invert = false;
-			}
-
-			/*
-			 *	Start from the end of the previous
-			 *	condition
-			 */
-			p = end;
-			RDEBUG4(">>> AFTER RECURSION ... %s", end);
-
-			while ((*p == ' ') || (*p == '\t')) p++;
-
-			if (!*p) {
-				ERROR("No closing brace");
-				return false;
-			}
-
-			if (*p == ')') p++; /* eat closing brace */
-			found_condition = true;
-
-			while ((*p == ' ') || (*p == '\t')) p++;
-		}
-
-		/*
-		 *	At EOL or closing brace, update && return.
-		 */
-		if (found_condition && (!*p || (*p == ')'))) break;
-
-		/*
-		 *	Now it's either:
-		 *
-		 *	WORD
-		 *	WORD1 op WORD2
-		 *	&& EXPR
-		 *	|| EXPR
-		 */
-		if (found_condition) {
-			/*
-			 *	(A && B) means "evaluate B
-			 *	only if A was true"
-			 */
-			if ((p[0] == '&') && (p[1] == '&')) {
-				if (!result) evaluate_next_condition = false;
-				p += 2;
-				found_condition = false;
-				continue; /* go back to the start */
-			}
-
-			/*
-			 *	(A || B) means "evaluate B
-			 *	only if A was false"
-			 */
-			if ((p[0] == '|') && (p[1] == '|')) {
-				if (result) evaluate_next_condition = false;
-				p += 2;
-				found_condition = false;
-				continue;
-			}
-
-			/*
-			 *	It must be:
-			 *
-			 *	WORD
-			 *	WORD1 op WORD2
-			 */
-		}
-
-		if (found_condition) {
-			ERROR("Consecutive conditions at %s", p);
-			return false;
-		}
-
-		RDEBUG4(">>> LOOKING AT %s", p);
-		start = p;
-
-		/*
-		 *	Look for common errors.
-		 */
-		if ((p[0] == '%') && (p[1] == '{')) {
-			ERROR("Bare %%{...} is invalid in condition at: %s", p);
-			return false;
-		}
-
-		/*
-		 *	Look for WORD1 op WORD2
-		 */
-		lt = gettoken(&p, left, sizeof(left));
-		if ((lt != T_BARE_WORD) &&
-		    (lt != T_DOUBLE_QUOTED_STRING) &&
-		    (lt != T_SINGLE_QUOTED_STRING) &&
-		    (lt != T_BACK_QUOTED_STRING)) {
-			ERROR("Expected string or numbers at: %s", p);
-			return false;
-		}
-
-		pleft = left;
-		if (evaluate_next_condition) {
-			pleft = expand_string(xleft, sizeof(xleft), request,
-					      lt, left);
-			if (!pleft) {
-				ERROR("Failed expanding string at: %s",
-				       left);
-				return false;
-			}
-		}
-
-		/*
-		 *	Peek ahead, to see if it's:
-		 *
-		 *	WORD
-		 *
-		 *	or something else, such as
-		 *
-		 *	WORD1 op WORD2
-		 *	WORD )
-		 *	WORD && EXPR
-		 *	WORD || EXPR
-		 */
-		q = p;
-		while ((*q == ' ') || (*q == '\t')) q++;
-
-		/*
-		 *	If the next thing is:
-		 *
-		 *	EOL
-		 *	end of condition
-		 *      &&
-		 *	||
-		 *
-		 *	Then WORD is just a test for existence.
-		 *	Remember that and skip ahead.
-		 */
-		if (!*q || (*q == ')') ||
-		    ((q[0] == '&') && (q[1] == '&')) ||
-		    ((q[0] == '|') && (q[1] == '|'))) {
-			token = T_OP_CMP_TRUE;
-			rt = T_OP_INVALID;
-			pright = NULL;
-			goto do_cmp;
-		}
-
-		/*
-		 *	Otherwise, it's:
-		 *
-		 *	WORD1 op WORD2
-		 */
-		token = gettoken(&p, comp, sizeof(comp));
-		if ((token < T_OP_NE) || (token > T_OP_CMP_EQ) ||
-		    (token == T_OP_CMP_TRUE)) {
-			ERROR("Expected comparison at: %s", comp);
-			return false;
-		}
-		
-		/*
-		 *	Look for common errors.
-		 */
-		if ((p[0] == '%') && (p[1] == '{')) {
-			ERROR("Bare %%{...} is invalid in condition at: %s", p);
-			return false;
-		}
-		
-		/*
-		 *	Validate strings.
-		 */
-#ifdef HAVE_REGEX_H
-		if ((token == T_OP_REG_EQ) ||
-		    (token == T_OP_REG_NE)) {
-			rt = getregex(&p, right, sizeof(right), &cflags);
-			if (rt != T_DOUBLE_QUOTED_STRING) {
-				ERROR("Expected regular expression at: %s", p);
-				return false;
-			}
-		} else
-#endif
-			rt = gettoken(&p, right, sizeof(right));
-
-		if ((rt != T_BARE_WORD) &&
-		    (rt != T_DOUBLE_QUOTED_STRING) &&
-		    (rt != T_SINGLE_QUOTED_STRING) &&
-		    (rt != T_BACK_QUOTED_STRING)) {
-			ERROR("Expected string or numbers at: %s", p);
-			return false;
-		}
-		
-		pright = right;
-		if (evaluate_next_condition) {
-			pright = expand_string(xright, sizeof(xright), request,
-					       rt, right);
-			if (!pright) {
-				ERROR("Failed expanding string at: %s",
-				       right);
-				return false;
-			}
-		}
-		
-		RDEBUG4(">>> %d:%s %d %d:%s",
-		       lt, pleft, token, rt, pright);
-		
-	do_cmp:
-		if (evaluate_next_condition) {
-			/*
-			 *	More parse errors.
-			 */
-			if (!radius_do_cmp(request, &result, lt, pleft, token,
-					   rt, pright, cflags, modreturn)) {
-				return false;
-			}
-			RDEBUG4(">>> Comparison returned %d", result);
-
-			if (invert) {
-				RDEBUG4(">>> INVERTING result");
-				result = (result == false);
-			}
-
-			RDEBUG2("%.*s Evaluating %s(%.*s) -> %s",
-			       depth, filler,
-			       invert ? "!" : "", p - start, start,
-			       (result != false) ? "true" : "false");
-
-			invert = false;
-			RDEBUG4(">>> GOT result %d", result);
-
-			/*
-			 *	Not evaluating it.  We may be just
-			 *	parsing it.
-			 */
-		} else if (request) {
-			RDEBUG2("%.*s Skipping %s(%.*s)",
-			       depth, filler,
-			       invert ? "!" : "", p - start, start);
-		}
-
-		found_condition = true;
-	} /* loop over the input condition */
-
-	if (!found_condition) {
-		ERROR("Syntax error.  Expected condition at %s", p);
-		return false;
+		return paircmp_op(lhs_vp, map->op, rhs_vp);
 	}
 
-	RDEBUG4(">>> AT EOL -> %d", result);
-	*ptr = p;
-	if (evaluate_it) *presult = result;
-	return true;
+	/*
+	 *	The LHS is an attribute.  It MAY be a virtual one (ugh)
+	 */
+	rhs = radius_expand_tmpl(request, map->src);
+	if (!rhs) {
+		EVAL_DEBUG("FAIL %d", __LINE__);
+		return -1;
+	}
+
+	/*
+	 *	User-Name == FOO
+	 *
+	 *	Parse the RHS to be the same DA as the LHS.  do
+	 *	comparisons.  So long as it's not a regex, which does
+	 *	string comparisons.
+	 */
+	if ((map->dst->type == VPT_TYPE_ATTR) &&
+	    (map->src->type != VPT_TYPE_REGEX)) {
+		VALUE_PAIR *lhs_vp, *rhs_vp;
+
+		/*
+		 *	No LHS means no match
+		 */
+		lhs_vp = radius_vpt_get_vp(request, map->dst);
+		if (!lhs_vp) {
+			return false;
+		}
+
+		/*
+		 *	Get VP for RHS
+		 */
+		rhs_vp = pairalloc(request, map->dst->da);
+		rad_assert(rhs_vp != NULL);
+		if (!pairparsevalue(rhs_vp, rhs)) {
+			talloc_free(rhs);
+			pairfree(&rhs_vp);
+			EVAL_DEBUG("FAIL %d", __LINE__);
+			return -1;
+		}
+
+		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
+		talloc_free(rhs);
+		pairfree(&rhs_vp);
+		return rcode;
+	}
+
+	/*
+	 *	The LHS is a string.  Expand it.
+	 */
+	lhs = radius_expand_tmpl(request, map->dst);
+	if (!lhs) {
+		talloc_free(rhs);
+		EVAL_DEBUG("FAIL %d", __LINE__);
+		return -1;
+	}
+
+	/*
+	 *	Compile  the RHS to a regex, and do regex stuff
+	 *
+	 *	FIXME: do case-insensitive checks!
+	 */
+	if (map->src->type == VPT_TYPE_REGEX) {
+		rcode = do_regex(request, lhs, rhs, iflag);
+		if (rcode < 0) return rcode;
+
+		if (map->op == T_OP_REG_NE) {
+			rcode = !rcode;
+		}
+
+		return rcode;
+	}
+
+	/*
+	 *	Loop over the string, doing comparisons
+	 */
+	rcode = strcmp(lhs, rhs);
+	talloc_free(lhs);
+	talloc_free(rhs);
+
+	switch (map->op) {
+	case T_OP_CMP_EQ:
+		return (rcode == 0);
+
+	case T_OP_NE:
+		return (rcode != 0);
+
+	case T_OP_LT:
+		return (rcode < 0);
+
+	case T_OP_GT:
+		return (rcode > 0);
+
+	case T_OP_LE:
+		return (rcode <= 0);
+
+	case T_OP_GE:
+		return (rcode >= 0);
+
+	default:
+		break;
+	}
+
+	EVAL_DEBUG("FAIL %d", __LINE__);
+	return -1;
+}
+
+
+/** Evaluate a fr_cond_t;
+ *
+ * @param[in] request the REQUEST
+ * @param[in] modreturn the previous module return code
+ * @param[in] depth of the recursion (only used for debugging)
+ * @param[in] c the condition to evaluate
+ * @return -1 on error, 0 for "no match", 1 for "match".
+ */
+int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
+			 fr_cond_t const *c)
+{
+	int rcode = -1;
+
+	while (c) {
+		switch (c->type) {
+		case COND_TYPE_EXISTS:
+			rcode = radius_evaluate_tmpl(request, modreturn, depth, c->data.vpt);
+			break;
+
+		case COND_TYPE_MAP:
+			rcode = radius_evaluate_map(request, modreturn, depth, c->data.map, c->regex_i);
+			break;
+
+		case COND_TYPE_CHILD:
+			rcode = radius_evaluate_cond(request, modreturn, depth + 1, c->data.child);
+			break;
+
+		default:
+			EVAL_DEBUG("FAIL %d", __LINE__);
+			return -1;
+		}
+
+		if (rcode < 0) return rcode;
+
+		if (c->negate) rcode = !rcode;
+
+		if (!c->next) break;
+
+		/*
+		 *	FALSE && ... = FALSE
+		 */
+		if (!rcode && (c->next_op == COND_AND)) return false;
+
+		/*
+		 *	TRUE || ... = TRUE
+		 */
+		if (rcode && (c->next_op == COND_OR)) return true;
+		
+		c = c->next;
+	}
+
+	if (rcode < 0) {
+		EVAL_DEBUG("FAIL %d", __LINE__);
+	}
+	return rcode;
 }
 #endif
 

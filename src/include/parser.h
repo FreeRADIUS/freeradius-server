@@ -30,7 +30,12 @@ RCSIDH(parser_h, "$Id$");
 extern "C" {
 #endif
 
+#ifndef RADIUSD_H
+/*
+ *	Also defined in radiusd.h for radius_evalute_cond()
+ */
 typedef struct fr_cond_t fr_cond_t;
+#endif
 
 typedef enum cond_op_t {
 	COND_NONE = 0,

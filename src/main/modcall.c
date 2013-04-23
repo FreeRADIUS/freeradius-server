@@ -458,8 +458,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	"if" or "elsif".  Evaluate the condition.
 		 */
 		if ((child->type == MOD_IF) || (child->type == MOD_ELSIF)) {
-			int condition = true;
-			char const *p = child->name;
+			int condition;
 			modgroup *g;
 
 			g = mod_callabletogroup(child);
@@ -470,19 +469,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       (child->type == MOD_IF) ? "if" : "elsif",
 			       child->name);
 
-			if (radius_evaluate_condition(request, myresult,
-						      0, &p, true, &condition)) {
-				RDEBUG2("%.*s? %s %s -> %s",
-				       stack.pointer + 1, modcall_spaces,
-				       (child->type == MOD_IF) ? "if" : "elsif",
-				       child->name, (condition != false) ? "true" : "false");
-			} else {
-				/*
-				 *	This should never happen, the
-				 *	condition is checked when the
-				 *	module section is loaded.
-				 */
+			condition = radius_evaluate_cond(request, myresult, 0, g->cond);
+			if (condition < 0) {
 				condition = false;
+				RDEBUGE("Evaluation of condition failed for some reason.");
+			} else {
+				RDEBUG2("%.*s? %s %s -> %s",
+					stack.pointer + 1, modcall_spaces,
+					(child->type == MOD_IF) ? "if" : "elsif",
+					child->name, condition ? "TRUE" : "FALSE");
 			}
 
 			/*

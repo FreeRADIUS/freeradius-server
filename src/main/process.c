@@ -47,7 +47,7 @@ RCSID("$Id$")
 
 extern pid_t radius_pid;
 extern int check_config;
-extern char *debug_condition;
+extern fr_cond_t *debug_condition;
 
 static int spawn_flag = 0;
 static int just_started = true;
@@ -998,16 +998,10 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 		
 #ifdef WITH_UNLANG
 		if (debug_condition) {
-			int result = false;
-			char const *my_debug = debug_condition;
-
 			/*
 			 *	Ignore parse errors.
 			 */
-			(void) radius_evaluate_condition(request, RLM_MODULE_OK,
-							 0, &my_debug, 1,
-							 &result);
-			if (result) {
+			if (radius_evaluate_cond(request, RLM_MODULE_OK, 0, debug_condition)) {
 				request->options = 2;
 				request->radlog = radlog_request;
 			}
