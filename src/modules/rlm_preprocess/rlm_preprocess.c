@@ -62,9 +62,10 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_preprocess_t,with_cisco_vsa_hack), NULL, "no" },
 	{ "with_alvarion_vsa_hack",	PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_alvarion_vsa_hack), NULL, "no" },
+#if 0
 	{ "with_cablelabs_vsa_hack",	PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_cablelabs_vsa_hack), NULL, NULL },
-
+#endif
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -80,7 +81,6 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 /*
- *	dgreer --
  *	This hack changes Ascend's wierd port numberings
  *	to standard 0-??? port numbers so that the "+" works
  *	for IP address assignments.
@@ -98,14 +98,12 @@ static void ascend_nasport_hack(VALUE_PAIR *nas_port, int channels_per_line)
 	if (nas_port->vp_integer > 9999) {
 		service = nas_port->vp_integer/10000; /* 1=digital 2=analog */
 		line = (nas_port->vp_integer - (10000 * service)) / 100;
-		channel = nas_port->vp_integer-((10000 * service)+(100 * line));
-		nas_port->vp_integer =
-			(channel - 1) + (line - 1) * channels_per_line;
+		channel = nas_port->vp_integer - ((10000 * service) + (100 * line));
+		nas_port->vp_integer = (channel - 1) + ((line - 1) * channels_per_line);
 	}
 }
 
 /*
- *	ThomasJ --
  *	This hack strips out Cisco's VSA duplicities in lines
  *	(Cisco not implemented VSA's in standard way.
  *
@@ -122,16 +120,22 @@ static void cisco_vsa_hack(REQUEST *request)
 
 	for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
 		vendorcode = vp->da->vendor;
-		if (!((vendorcode == 9) || (vendorcode == 6618))) continue; /* not a Cisco or Quintum VSA, continue */
-
-		if (vp->da->type != PW_TYPE_STRING) continue;
-
+		if (!((vendorcode == 9) || (vendorcode == 6618))) {
+			continue; /* not a Cisco or Quintum VSA, continue */
+		}
+		
+		if (vp->da->type != PW_TYPE_STRING) {
+			continue;
+		}
+		
 		/*
 		 *  No weird packing.  Ignore it.
 		 */
 		ptr = strchr(vp->vp_strvalue, '='); /* find an '=' */
-		if (!ptr) continue;
-
+		if (!ptr) {
+			continue;
+		}
+		
 		/*
 		 *	Cisco-AVPair's get packed as:
 		 *
@@ -159,8 +163,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			 *	the right side of the '=' character.
 			 */
 			strlcpy(newattr, ptr + 1, sizeof(newattr));
-			strlcpy((char *)vp->vp_strvalue, newattr,
-				sizeof(vp->vp_strvalue));
+			strlcpy(vp->vp_strvalue, newattr, sizeof(vp->vp_strvalue));
 			vp->length = strlen((char *)vp->vp_strvalue);
 		}
 	}
@@ -172,17 +175,24 @@ static void cisco_vsa_hack(REQUEST *request)
  */
 static void alvarion_vsa_hack(VALUE_PAIR *vp)
 {
-	int		number = 1;
+	int number = 1;
 
 	for ( ; vp != NULL; vp = vp->next) {
 		const DICT_ATTR *da;
 
-		if (vp->da->vendor != 12394) continue;
-		if (vp->da->type != PW_TYPE_STRING) continue;
-
+		if (vp->da->vendor != 12394) {
+			continue;
+		}
+		
+		if (vp->da->type != PW_TYPE_STRING) {
+			continue;
+		}
+		
 		da = dict_attrbyvalue(number, 12394);
-		if (!da) continue;
-
+		if (!da) {
+			continue;
+		}
+		
 		vp->da = da;
 
 		number++;
@@ -239,15 +249,15 @@ static void cablelabs_vsa_hack(VALUE_PAIR **list)
 	VALUE_PAIR *ev;
 
 	ev = pairfind(*list, 1, 4491, TAG_ANY); /* Cablelabs-Event-Message */
-	if (!ev) return;
-
+	if (!ev) {
+		return;
+	}
+	
 	/*
 	 *	FIXME: write 100's of lines of code to decode
 	 *	each data structure above.
 	 */
 }
-
-
 
 /*
  *	Mangle username if needed, IN PLACE.
@@ -265,14 +275,13 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	 */
 	request_pairs = request->packet->vps;
 	namepair = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY);
-	if ((!namepair) ||
-	    (namepair->length <= 0)) {
-	  return;
+	if ((!namepair) || (namepair->length <= 0)) {
+		return;
 	}
 
 	if (inst->with_ntdomain_hack) {
-		char		*ptr;
-		char		newname[MAX_STRING_LEN];
+		char *ptr;
+		char newname[MAX_STRING_LEN];
 
 		/*
 		 *	Windows NT machines often authenticate themselves as
@@ -289,7 +298,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	}
 
 	if (inst->with_specialix_jetstream_hack) {
-		char		*ptr;
+		char *ptr;
 
 		/*
 		 *	Specialix Jetstream 8500 24 port access server.
@@ -301,9 +310,11 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 		 */
 		if ((strlen((char *)namepair->vp_strvalue) > 10) &&
 		    (namepair->vp_strvalue[10] == '/')) {
-			for (ptr = (char *)namepair->vp_strvalue + 11; *ptr; ptr++)
+			for (ptr = (char *)namepair->vp_strvalue + 11; *ptr; ptr++) {
 				*(ptr - 1) = *ptr;
+			}
 			*(ptr - 1) = 0;
+			
 			namepair->length = strlen((char *)namepair->vp_strvalue);
 		}
 	}
@@ -314,16 +325,20 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	 */
 	if (pairfind(request_pairs, PW_FRAMED_PROTOCOL, 0, TAG_ANY) != NULL &&
 	    pairfind(request_pairs, PW_SERVICE_TYPE, 0, TAG_ANY) == NULL) {
-		tmp = radius_paircreate(request, &request->packet->vps,
-					PW_SERVICE_TYPE, 0);
+		tmp = radius_paircreate(request, &request->packet->vps, PW_SERVICE_TYPE, 0);
 		tmp->vp_integer = PW_FRAMED_USER;
 	}
 
 	num_proxy_state = 0;
 	for (tmp = request->packet->vps; tmp != NULL; tmp = tmp->next) {
-		if (tmp->da->vendor != 0) continue;
-		if (tmp->da->attr != PW_PROXY_STATE) continue;
-
+		if (tmp->da->vendor != 0) {
+			continue;
+		}
+		
+		if (tmp->da->attr != PW_PROXY_STATE) {
+			continue;
+		}
+		
 		num_proxy_state++;
 	}
 
@@ -371,9 +386,8 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	VALUE_PAIR	*add;
 	VALUE_PAIR	*tmp;
 	PAIR_LIST	*i;
-	VALUE_PAIR *request_pairs;
+	VALUE_PAIR	*request_pairs;
 	int		updated = 0, ft;
-
 
 	request_pairs = request->packet->vps;
 
@@ -383,26 +397,22 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 	/*
 	 *	Check for valid input, zero length names not permitted
 	 */
-	if ((tmp = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY)) == NULL)
-		name = NULL;
-	else
-		name = (char *)tmp->vp_strvalue;
-
-	if (!name || name[0] == 0)
+	name = (tmp = pairfind(request_pairs, PW_USER_NAME, 0, TAG_ANY)) ?
+		tmp->vp_strvalue : NULL;
+	if (!name || name[0] == 0) {
 		/*
 		 *	No name, nothing to do.
 		 */
 		return RLM_MODULE_NOOP;
-
+	}
+	
 	for (i = hints; i; i = i->next) {
 		/*
 		 *	Use "paircompare", which is a little more general...
 		 */
-		if (((strcmp(i->name, "DEFAULT") == 0) ||
-		     (strcmp(i->name, name) == 0)) &&
+		if (((strcmp(i->name, "DEFAULT") == 0) || (strcmp(i->name, name) == 0)) &&
 		    (paircompare(request, request_pairs, i->check, NULL) == 0)) {
-			RDEBUG2("  hints: Matched %s at %d",
-			       i->name, i->lineno);
+			RDEBUG2("  hints: Matched %s at %d", i->name, i->lineno);
 			/*
 			 *	Now add all attributes to the request list,
 			 *	except PW_STRIP_USER_NAME and PW_FALL_THROUGH
@@ -410,17 +420,23 @@ static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 			 */
 			add = paircopy(request->packet, i->reply);
 			ft = fallthrough(add);
+			
 			pairdelete(&add, PW_STRIP_USER_NAME, 0, TAG_ANY);
 			pairdelete(&add, PW_FALL_THROUGH, 0, TAG_ANY);
 			radius_xlat_move(request, &request->packet->vps, &add);
+			
 			pairfree(&add);
 			updated = 1;
-			if (!ft) break;
+			if (!ft) {
+				break;
+			}
 		}
 	}
 
-	if (updated == 0) return RLM_MODULE_NOOP;
-
+	if (updated == 0) {
+		return RLM_MODULE_NOOP;
+	}
+	
 	return RLM_MODULE_UPDATED;
 }
 
@@ -437,16 +453,18 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 	 *	We're not controlling access by huntgroups:
 	 *	Allow them in.
 	 */
-	if (!huntgroups)
+	if (!huntgroups) {
 		return RLM_MODULE_OK;
-
-	for(i = huntgroups; i; i = i->next) {
+	}
+	
+	for (i = huntgroups; i; i = i->next) {
 		/*
 		 *	See if this entry matches.
 		 */
-		if (paircompare(request, request_pairs, i->check, NULL) != 0)
+		if (paircompare(request, request_pairs, i->check, NULL) != 0) {
 			continue;
-
+		}
+		
 		/*
 		 *	Now check for access.
 		 */
@@ -460,11 +478,8 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			 */
 			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME, 0, TAG_ANY);
 			if (!vp) {
-				vp = radius_paircreate(request,
-						       &request->packet->vps,
-						       PW_HUNTGROUP_NAME, 0);
-				strlcpy(vp->vp_strvalue, i->name,
-					sizeof(vp->vp_strvalue));
+				vp = radius_paircreate(request, &request->packet->vps, PW_HUNTGROUP_NAME, 0);
+				strlcpy(vp->vp_strvalue, i->name, sizeof(vp->vp_strvalue));
 				vp->length = strlen(vp->vp_strvalue);
 			}
 			r = RLM_MODULE_OK;
@@ -487,8 +502,7 @@ static int add_nas_attr(REQUEST *request)
 	case AF_INET:
 		nas = pairfind(request->packet->vps, PW_NAS_IP_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
-			nas = radius_paircreate(request, &request->packet->vps,
-						PW_NAS_IP_ADDRESS, 0);
+			nas = radius_paircreate(request, &request->packet->vps, PW_NAS_IP_ADDRESS, 0);
 			nas->vp_ipaddr = request->packet->src_ipaddr.ipaddr.ip4addr.s_addr;
 		}
 		break;
@@ -496,10 +510,8 @@ static int add_nas_attr(REQUEST *request)
 	case AF_INET6:
 		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
-			nas = radius_paircreate(request, &request->packet->vps,
-						PW_NAS_IPV6_ADDRESS, 0);
-			memcpy(nas->vp_strvalue,
-			       &request->packet->src_ipaddr.ipaddr,
+			nas = radius_paircreate(request, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
+			memcpy(nas->vp_strvalue, &request->packet->src_ipaddr.ipaddr,
 			       sizeof(request->packet->src_ipaddr.ipaddr));
 		}
 		break;
@@ -518,18 +530,17 @@ static int add_nas_attr(REQUEST *request)
  */
 static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
-	int	rcode;
+	int ret;
 	rlm_preprocess_t *inst = instance;
 
 	/*
 	 *	Read the huntgroups file.
 	 */
 	if (inst->huntgroup_file) {
-		rcode = pairlist_read(inst, inst->huntgroup_file,
-				      &(inst->huntgroups), 0);
-		if (rcode < 0) {
-			ERROR("rlm_preprocess: Error reading %s",
-			       inst->huntgroup_file);
+		ret = pairlist_read(inst, inst->huntgroup_file, &(inst->huntgroups), 0);
+		if (ret < 0) {
+			ERROR("rlm_preprocess: Error reading %s", inst->huntgroup_file);
+			
 			return -1;
 		}
 	}
@@ -538,10 +549,10 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 *	Read the hints file.
 	 */
 	if (inst->hints_file) {
-		rcode = pairlist_read(inst, inst->hints_file, &(inst->hints), 0);
-		if (rcode < 0) {
-			ERROR("rlm_preprocess: Error reading %s",
-			       inst->hints_file);
+		ret = pairlist_read(inst, inst->hints_file, &(inst->hints), 0);
+		if (ret < 0) {
+			ERROR("rlm_preprocess: Error reading %s", inst->hints_file);
+			
 			return -1;
 		}
 	}
@@ -618,18 +629,18 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		VALUE_PAIR *vp;
 
-		vp = radius_paircreate(request, &request->packet->vps,
-				       PW_CHAP_CHALLENGE, 0);
+		vp = radius_paircreate(request, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
 		vp->length = AUTH_VECTOR_LEN;
+		
 		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
-	if ((r = huntgroup_access(request,
-				  inst->huntgroups)) != RLM_MODULE_OK) {
+	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
-		radlog_request(L_AUTH, 0, request, "No huntgroup access: [%s] (%s)",
-		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
-		       auth_name(buf, sizeof(buf), request, 1));
+		RDEBUGI("No huntgroup access: [%s] (%s)",
+			request->username ? request->username->vp_strvalue : "<NO User-Name>",
+			auth_name(buf, sizeof(buf), request, 1));
+		
 		return r;
 	}
 
@@ -693,19 +704,20 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 	if (!vp) {
 		VALUE_PAIR *delay;
 
-		vp = radius_paircreate(request, &request->packet->vps,
-				       PW_EVENT_TIMESTAMP, 0);
+		vp = radius_paircreate(request, &request->packet->vps, PW_EVENT_TIMESTAMP, 0);
 		vp->vp_date = request->packet->timestamp.tv_sec;
+		
 		delay = pairfind(request->packet->vps, PW_ACCT_DELAY_TIME, 0, TAG_ANY);
-		if (delay) vp->vp_date -= delay->vp_integer;
+		if (delay) {
+			vp->vp_date -= delay->vp_integer;
+		}
 	}
 
-	if ((r = huntgroup_access(request,
-				  inst->huntgroups)) != RLM_MODULE_OK) {
+	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
-		radlog_request(L_INFO, 0, request, "No huntgroup access: [%s] (%s)",
-		       request->username ? request->username->vp_strvalue : "<NO User-Name>",
-		       auth_name(buf, sizeof(buf), request, 1));
+		RDEBUGI("No huntgroup access: [%s] (%s)",
+		        request->username ? request->username->vp_strvalue : "<NO User-Name>",
+		        auth_name(buf, sizeof(buf), request, 1));
 		return r;
 	}
 
@@ -716,20 +728,20 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 module_t rlm_preprocess = {
 	RLM_MODULE_INIT,
 	"preprocess",
-	RLM_TYPE_CHECK_CONFIG_SAFE,   	/* type */
+	RLM_TYPE_CHECK_CONFIG_SAFE,   		/* type */
 	sizeof(rlm_preprocess_t),
 	module_config,
-	mod_instantiate,	/* instantiation */
-	NULL,			/* detach */
+	mod_instantiate,			/* instantiation */
+	NULL,					/* detach */
 	{
-		NULL,			/* authentication */
-		mod_authorize,	/* authorization */
-		preprocess_preaccounting, /* pre-accounting */
-		NULL,			/* accounting */
-		NULL,			/* checksimul */
-		NULL,			/* pre-proxy */
-		NULL,			/* post-proxy */
-		NULL			/* post-auth */
+		NULL,				/* authentication */
+		mod_authorize,			/* authorization */
+		preprocess_preaccounting,	/* pre-accounting */
+		NULL,				/* accounting */
+		NULL,				/* checksimul */
+		NULL,				/* pre-proxy */
+		NULL,				/* post-proxy */
+		NULL				/* post-auth */
 	},
 };
 
