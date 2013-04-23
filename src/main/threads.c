@@ -179,7 +179,7 @@ typedef struct THREAD_POOL {
 } THREAD_POOL;
 
 static THREAD_POOL thread_pool;
-static int pool_initialized = FALSE;
+static int pool_initialized = false;
 
 #ifndef WITH_GCD
 static time_t last_cleaned = 0;
@@ -365,14 +365,14 @@ int request_enqueue(REQUEST *request)
 	thread_pool.request_count++;
 
 	if (thread_pool.num_queued >= thread_pool.max_queue_size) {
-		int complain = FALSE;
+		int complain = false;
 		time_t now;
 		static time_t last_complained = 0;
 
 		now = time(NULL);
 		if (last_complained != now) {
 			last_complained = now;
-			complain = TRUE;
+			complain = true;
 		}
 		
 		pthread_mutex_unlock(&thread_pool.queue_mutex);
@@ -656,7 +656,7 @@ static void *request_handler_thread(void *arg)
 	 */
 	self->request = NULL;
 	self->status = THREAD_EXITED;
-	exec_trigger(NULL, NULL, "server.thread.stop", TRUE);
+	exec_trigger(NULL, NULL, "server.thread.stop", true);
 
 	return NULL;
 }
@@ -722,7 +722,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	 */
 	if (thread_pool.total_threads >= thread_pool.max_threads) {
 		DEBUG2("Thread spawn failed.  Maximum number of threads (%d) already running.", thread_pool.max_threads);
-		exec_trigger(NULL, NULL, "server.thread.max_threads", TRUE);
+		exec_trigger(NULL, NULL, "server.thread.max_threads", true);
 		return NULL;
 	}
 
@@ -759,7 +759,7 @@ static THREAD_HANDLE *spawn_thread(time_t now, int do_trigger)
 	thread_pool.total_threads++;
 	DEBUG2("Thread spawned new child %d. Total threads in pool: %d",
 			handle->thread_num, thread_pool.total_threads);
-	if (do_trigger) exec_trigger(NULL, NULL, "server.thread.start", TRUE);
+	if (do_trigger) exec_trigger(NULL, NULL, "server.thread.start", true);
 
 	/*
 	 *	Add the thread handle to the tail of the thread pool list.
@@ -820,12 +820,12 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 	now = time(NULL);
 
 	rad_assert(spawn_flag != NULL);
-	rad_assert(*spawn_flag == TRUE);
-	rad_assert(pool_initialized == FALSE); /* not called on HUP */
+	rad_assert(*spawn_flag == true);
+	rad_assert(pool_initialized == false); /* not called on HUP */
 
 #ifndef WITH_GCD
 	pool_cf = cf_subsection_find_next(cs, NULL, "thread");
-	if (!pool_cf) *spawn_flag = FALSE;
+	if (!pool_cf) *spawn_flag = false;
 #endif
 
 	/*
@@ -961,7 +961,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 #endif
 
 	DEBUG2("Thread pool initialized");
-	pool_initialized = TRUE;
+	pool_initialized = true;
 	return 0;
 }
 

@@ -238,7 +238,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			isreturn = fr_str2int(modreturn_table, pleft, -1);
 			if (isreturn != -1) {
 				*presult = (modreturn == isreturn);
-				return TRUE;
+				return true;
 			}
 		}
 
@@ -253,7 +253,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 			 */
 			if (token == T_OP_CMP_TRUE) {
 				*presult = (vp != NULL);
-				return TRUE;
+				return true;
 			}
 
 			if (!vp) {
@@ -274,13 +274,13 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 					RDEBUG3("  Callback returns %d",
 						*presult);
 					pairfree(&check);
-					return TRUE;
+					return true;
 				}
 				
 				RDEBUG2("    (Attribute %s was not found)",
 				       pleft);
 				*presult = 0;
-				return TRUE;
+				return true;
 			}
 
 #ifdef HAVE_REGEX_H
@@ -301,14 +301,14 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				pairbasicfree(myvp);
 				RDEBUG2("Failed parsing \"%s\": %s",
 				       pright, fr_strerror());
-				return FALSE;
+				return false;
 			}
 
 			myvp->op = token;
 			*presult = paircmp(myvp, vp);
 			pairbasicfree(myvp);
 			RDEBUG3("  paircmp -> %d", *presult);
-			return TRUE;
+			return true;
 		} /* else it's not a VP in a list */
 	}
 
@@ -322,12 +322,12 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 	case T_OP_LT:
 		if (!all_digits(pright)) {
 			RDEBUG2("    (Right field is not a number at: %s)", pright);
-			return FALSE;
+			return false;
 		}
 		rint = strtoul(pright, NULL, 0);
 		if (!all_digits(pleft)) {
 			RDEBUG2("    (Left field is not a number at: %s)", pleft);
-			return FALSE;
+			return false;
 		}
 		lint = strtoul(pleft, NULL, 0);
 		break;
@@ -393,7 +393,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				regerror(compare, &reg, errbuf, sizeof(errbuf));
 				DEBUGE("Failed compiling regular expression: %s", errbuf);
 			}
-			return FALSE;
+			return false;
 		}
 
 		compare = regexec(&reg, pleft,
@@ -448,7 +448,7 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 				regerror(compare, &reg, errbuf, sizeof(errbuf));
 				DEBUGE("Failed compiling regular expression: %s", errbuf);
 			}
-			return FALSE;
+			return false;
 		}
 
 		compare = regexec(&reg, pleft,
@@ -464,21 +464,21 @@ static int radius_do_cmp(REQUEST *request, int *presult,
 	default:
 		DEBUGE("Comparison operator %s is not supported",
 		      fr_token_name(token));
-		result = FALSE;
+		result = false;
 		break;
 	}
 	
 	*presult = result;
-	return TRUE;
+	return true;
 }
 
 
 int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			      char const **ptr, int evaluate_it, int *presult)
 {
-	int found_condition = FALSE;
-	int result = TRUE;
-	int invert = FALSE;
+	int found_condition = false;
+	int result = true;
+	int invert = false;
 	int evaluate_next_condition = evaluate_it;
 	char const *p;
 	char const *q, *start;
@@ -490,7 +490,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 	
 	if (!ptr || !*ptr || (depth >= 64)) {
 		ERROR("Internal sanity check failed in evaluate condition");
-		return FALSE;
+		return false;
 	}
 
 	/*
@@ -510,7 +510,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 */
 			if (evaluate_next_condition) {
 				RDEBUG4(">>> INVERT");
-				invert = TRUE;
+				invert = true;
 			}
 			p++;
 
@@ -532,18 +532,18 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 						       depth + 1, &end,
 						       evaluate_next_condition,
 						       &result)) {
-				return FALSE;
+				return false;
 			}
 
 			if (invert) {
 				if (evaluate_next_condition) {
 					RDEBUG2("%.*s Converting !%s -> %s",
 						depth, filler,
-						(result != FALSE) ? "TRUE" : "FALSE",
-						(result == FALSE) ? "TRUE" : "FALSE");
-					result = (result == FALSE);
+						(result != false) ? "true" : "false",
+						(result == false) ? "true" : "false");
+					result = (result == false);
 				}
-				invert = FALSE;
+				invert = false;
 			}
 
 			/*
@@ -557,11 +557,11 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 
 			if (!*p) {
 				ERROR("No closing brace");
-				return FALSE;
+				return false;
 			}
 
 			if (*p == ')') p++; /* eat closing brace */
-			found_condition = TRUE;
+			found_condition = true;
 
 			while ((*p == ' ') || (*p == '\t')) p++;
 		}
@@ -585,9 +585,9 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 *	only if A was true"
 			 */
 			if ((p[0] == '&') && (p[1] == '&')) {
-				if (!result) evaluate_next_condition = FALSE;
+				if (!result) evaluate_next_condition = false;
 				p += 2;
-				found_condition = FALSE;
+				found_condition = false;
 				continue; /* go back to the start */
 			}
 
@@ -596,9 +596,9 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 *	only if A was false"
 			 */
 			if ((p[0] == '|') && (p[1] == '|')) {
-				if (result) evaluate_next_condition = FALSE;
+				if (result) evaluate_next_condition = false;
 				p += 2;
-				found_condition = FALSE;
+				found_condition = false;
 				continue;
 			}
 
@@ -612,7 +612,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 
 		if (found_condition) {
 			ERROR("Consecutive conditions at %s", p);
-			return FALSE;
+			return false;
 		}
 
 		RDEBUG4(">>> LOOKING AT %s", p);
@@ -623,7 +623,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 */
 		if ((p[0] == '%') && (p[1] == '{')) {
 			ERROR("Bare %%{...} is invalid in condition at: %s", p);
-			return FALSE;
+			return false;
 		}
 
 		/*
@@ -635,7 +635,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		    (lt != T_SINGLE_QUOTED_STRING) &&
 		    (lt != T_BACK_QUOTED_STRING)) {
 			ERROR("Expected string or numbers at: %s", p);
-			return FALSE;
+			return false;
 		}
 
 		pleft = left;
@@ -645,7 +645,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			if (!pleft) {
 				ERROR("Failed expanding string at: %s",
 				       left);
-				return FALSE;
+				return false;
 			}
 		}
 
@@ -693,7 +693,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		if ((token < T_OP_NE) || (token > T_OP_CMP_EQ) ||
 		    (token == T_OP_CMP_TRUE)) {
 			ERROR("Expected comparison at: %s", comp);
-			return FALSE;
+			return false;
 		}
 		
 		/*
@@ -701,7 +701,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		 */
 		if ((p[0] == '%') && (p[1] == '{')) {
 			ERROR("Bare %%{...} is invalid in condition at: %s", p);
-			return FALSE;
+			return false;
 		}
 		
 		/*
@@ -713,7 +713,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			rt = getregex(&p, right, sizeof(right), &cflags);
 			if (rt != T_DOUBLE_QUOTED_STRING) {
 				ERROR("Expected regular expression at: %s", p);
-				return FALSE;
+				return false;
 			}
 		} else
 #endif
@@ -724,7 +724,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 		    (rt != T_SINGLE_QUOTED_STRING) &&
 		    (rt != T_BACK_QUOTED_STRING)) {
 			ERROR("Expected string or numbers at: %s", p);
-			return FALSE;
+			return false;
 		}
 		
 		pright = right;
@@ -734,7 +734,7 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			if (!pright) {
 				ERROR("Failed expanding string at: %s",
 				       right);
-				return FALSE;
+				return false;
 			}
 		}
 		
@@ -748,21 +748,21 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			 */
 			if (!radius_do_cmp(request, &result, lt, pleft, token,
 					   rt, pright, cflags, modreturn)) {
-				return FALSE;
+				return false;
 			}
 			RDEBUG4(">>> Comparison returned %d", result);
 
 			if (invert) {
 				RDEBUG4(">>> INVERTING result");
-				result = (result == FALSE);
+				result = (result == false);
 			}
 
 			RDEBUG2("%.*s Evaluating %s(%.*s) -> %s",
 			       depth, filler,
 			       invert ? "!" : "", p - start, start,
-			       (result != FALSE) ? "TRUE" : "FALSE");
+			       (result != false) ? "true" : "false");
 
-			invert = FALSE;
+			invert = false;
 			RDEBUG4(">>> GOT result %d", result);
 
 			/*
@@ -775,18 +775,18 @@ int radius_evaluate_condition(REQUEST *request, int modreturn, int depth,
 			       invert ? "!" : "", p - start, start);
 		}
 
-		found_condition = TRUE;
+		found_condition = true;
 	} /* loop over the input condition */
 
 	if (!found_condition) {
 		ERROR("Syntax error.  Expected condition at %s", p);
-		return FALSE;
+		return false;
 	}
 
 	RDEBUG4(">>> AT EOL -> %d", result);
 	*ptr = p;
 	if (evaluate_it) *presult = result;
-	return TRUE;
+	return true;
 }
 #endif
 
@@ -874,7 +874,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 		 */
 		if (from_list[i]->op == T_OP_ADD) goto append;
 
-		found = FALSE;
+		found = false;
 		for (j = 0; j < to_count; j++) {
 			if (edited[j] || !to_list[j] || !from_list[i]) continue;
 
@@ -903,7 +903,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 				pairfree(&to_list[j]);
 				to_list[j] = from_list[i];
 				from_list[i] = NULL;
-				edited[j] = TRUE;
+				edited[j] = true;
 				break;
 			}
 
@@ -913,7 +913,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 			 *	looking.
 			 */
 			if (from_list[i]->op == T_OP_EQ) {
-				found = TRUE;
+				found = true;
 				break;
 			}
 
@@ -981,7 +981,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 						pairfree(&to_list[j]);
 						to_list[j] = from_list[i];
 						from_list[i] = NULL;
-						edited[j] = TRUE;
+						edited[j] = true;
 					}
 					break;
 
@@ -992,7 +992,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 						pairfree(&to_list[j]);
 						to_list[j] = from_list[i];
 						from_list[i] = NULL;
-						edited[j] = TRUE;
+						edited[j] = true;
 					}
 					break;
 				}

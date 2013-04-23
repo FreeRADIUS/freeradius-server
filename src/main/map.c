@@ -101,7 +101,7 @@ int radius_parse_attr(char const *name, value_pair_tmpl_t *vpt,
 
 	da = dict_attrbyname(p);
 	if (!da) {
-		da = dict_attrunknownbyname(p, FALSE);
+		da = dict_attrunknownbyname(p, false);
 		if (!da) return -1;
 	}
 	vpt->da = da;

@@ -50,7 +50,7 @@ ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *requ
 {
 	return -1;
 }
-int check_config = FALSE;
+int check_config = false;
 
 static int usage(void)
 {

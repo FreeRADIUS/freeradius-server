@@ -48,9 +48,9 @@ RCSID("$Id$")
 
 #define IPX_NODE_ADDR_LEN		6
 
-#if ! defined( FALSE )
-# define FALSE		0
-# define TRUE		(! FALSE)
+#if ! defined( false )
+# define false		0
+# define true		(! false)
 #endif
 
 
@@ -72,8 +72,8 @@ RCSID("$Id$")
  *
  *	proto:		The IP protocol number
  *
- *	established:	A boolean value.  TRUE when we care about the
- *			established state of a TCP connection.  FALSE when
+ *	established:	A boolean value.  true when we care about the
+ *			established state of a TCP connection.  false when
  *			we dont care.
  *
  *	srcport:	TCP or UDP source port number.
@@ -186,11 +186,11 @@ typedef struct ascend_generic_filter_t {
  *
  *	type:		Either RAD_FILTER_GENERIC or RAD_FILTER_IP.
  *
- *	forward:	TRUE if we should forward packets that match this
- *			filter, FALSE if we should drop packets that match
+ *	forward:	true if we should forward packets that match this
+ *			filter, false if we should drop packets that match
  *			this filter.
  *
- *	direction:	TRUE if this is an input filter, FALSE if this is
+ *	direction:	true if this is an input filter, false if this is
  *			an output filter.
  *
  *	fill:		Round things out to a dword boundary.
@@ -917,12 +917,12 @@ static int ascend_parse_generic(int argc, char **argv,
 		switch (token) {
 		case FILTER_GENERIC_COMPNEQ:
 			if (flags & 0x01) return -1;
-			filter->compNeq = TRUE;
+			filter->compNeq = true;
 			flags |= 0x01;
 			break;
 		case FILTER_GENERIC_COMPEQ:
 			if (flags & 0x01) return -1;
-			filter->compNeq = FALSE;
+			filter->compNeq = false;
 			flags |= 0x01;
 			break;
 
@@ -1085,7 +1085,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	   ( filt->indirection != radFil.indirection ) ||
 	   ( filt->forward != radFil.forward ) ) {
 	    gen = &filt->u.generic;
-	    gen->more = FALSE;
+	    gen->more = false;
 	    fr_strerror_printf("filterBinary:  'more' for previous entry doesn't match: %s.\n",
 		     valstr);
 	}

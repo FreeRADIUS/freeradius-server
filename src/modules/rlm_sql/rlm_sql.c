@@ -1172,7 +1172,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 	
 	sql_set_user(inst, request, NULL);
 
-	while (TRUE) {
+	while (true) {
 		value = cf_pair_value(pair);
 		if (!value) {
 			RDEBUG("Ignoring null query");
@@ -1419,7 +1419,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 			/*
 			 *	Stale record - zap it.
 			 */
-			if (inst->config->deletestalesessions == TRUE) {
+			if (inst->config->deletestalesessions == true) {
 				uint32_t framed_addr = 0;
 				char proto = 0;
 				int sess_time = 0;

@@ -62,8 +62,8 @@ char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
 int log_stripped_names;
 int debug_flag = 0;
-int check_config = FALSE;
-int memory_report = FALSE;
+int check_config = false;
+int memory_report = false;
 
 char const *radiusd_version = "FreeRADIUS Version " RADIUSD_VERSION_STRING
 #ifdef RADIUSD_VERSION_COMMIT
@@ -102,9 +102,9 @@ int main(int argc, char *argv[])
 {
 	int rcode;
 	int argval;
-	int spawn_flag = TRUE;
-	int dont_fork = FALSE;
-	int write_pid = FALSE;
+	int spawn_flag = true;
+	int dont_fork = false;
+	int write_pid = false;
 	int flag = 0;
 
 #ifdef HAVE_SIGACTION
@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 #endif
 
 	debug_flag = 0;
-	spawn_flag = TRUE;
+	spawn_flag = true;
 	radius_dir = talloc_strdup(NULL, RADIUS_DIR);
 
 	/*
@@ -161,9 +161,9 @@ int main(int argc, char *argv[])
 
 		switch(argval) {
 			case 'C':
-				check_config = TRUE;
-				spawn_flag = FALSE;
-				dont_fork = TRUE;
+				check_config = true;
+				spawn_flag = false;
+				dont_fork = true;
 				break;
 
 			case 'd':
@@ -174,7 +174,7 @@ int main(int argc, char *argv[])
 				break;
 
 			case 'f':
-				dont_fork = TRUE;
+				dont_fork = true;
 				break;
 
 			case 'h':
@@ -229,16 +229,16 @@ int main(int argc, char *argv[])
 				
 			case 'P':
 				/* Force the PID to be written, even in -f mode */
-				write_pid = TRUE;
+				write_pid = true;
 				break;
 
 			case 's':	/* Single process mode */
-				spawn_flag = FALSE;
-				dont_fork = TRUE;
+				spawn_flag = false;
+				dont_fork = true;
 				break;
 
 			case 't':	/* no child threads */
-				spawn_flag = FALSE;
+				spawn_flag = false;
 				break;
 
 			case 'v':
@@ -251,12 +251,12 @@ int main(int argc, char *argv[])
 				version();
 				exit(0);
 			case 'X':
-				spawn_flag = FALSE;
-				dont_fork = TRUE;
+				spawn_flag = false;
+				dont_fork = true;
 				debug_flag += 2;
-				mainconfig.log_auth = TRUE;
-				mainconfig.log_auth_badpass = TRUE;
-				mainconfig.log_auth_goodpass = TRUE;
+				mainconfig.log_auth = true;
+				mainconfig.log_auth_badpass = true;
+				mainconfig.log_auth_goodpass = true;
 		do_stdout:
 				fr_log_fp = stdout;
 				mainconfig.radlog_dest = RADLOG_STDOUT;
@@ -310,7 +310,7 @@ int main(int argc, char *argv[])
 	/*
 	 *  Disconnect from session
 	 */
-	if (dont_fork == FALSE) {
+	if (dont_fork == false) {
 		pid_t pid = fork();
 
 		if (pid < 0) {
@@ -429,7 +429,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Write out the PID anyway if were in foreground mode.
 	 */
-	if (!dont_fork) write_pid = TRUE;
+	if (!dont_fork) write_pid = true;
 
 	/*
 	 *  Only write the PID file if we're running as a daemon.
@@ -455,7 +455,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	exec_trigger(NULL, NULL, "server.start", FALSE);
+	exec_trigger(NULL, NULL, "server.start", false);
 
 	/*
 	 *	Process requests until HUP or exit.
@@ -475,7 +475,7 @@ int main(int argc, char *argv[])
 		radlog(L_INFO, "Exiting normally.");
 	}
 
-	exec_trigger(NULL, NULL, "server.stop", FALSE);
+	exec_trigger(NULL, NULL, "server.stop", false);
 
 	/*
 	 *	Ignore the TERM signal: we're
@@ -498,7 +498,7 @@ int main(int argc, char *argv[])
 	 *	file.  (If it doesn't exist, we can ignore
 	 *	the error returned by unlink)
 	 */
-	if (dont_fork == FALSE) {
+	if (dont_fork == false) {
 		unlink(mainconfig.pid_file);
 	}
 		

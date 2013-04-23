@@ -111,7 +111,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	if (colourise) {
 		len += strlcpy(buffer + len, fr_int2str(colours, lvl, ""),
 			       sizeof(buffer) - len) ;
-		if (len == 0) colourise = FALSE;
+		if (len == 0) colourise = false;
 	}
 	
 	/*

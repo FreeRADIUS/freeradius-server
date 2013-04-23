@@ -160,8 +160,8 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_pap_t *inst = instance;
-	int auth_type = FALSE;
-	int found_pw = FALSE;
+	int auth_type = false;
+	int found_pw = false;
 	VALUE_PAIR *vp, *next;
 
 	for (vp = request->config_items; vp != NULL; vp = next) {
@@ -184,7 +184,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			char charbuf[128];
 			VALUE_PAIR *new_vp;
 
-			found_pw = TRUE;
+			found_pw = true;
 		redo:
 			q = vp->vp_strvalue;
 			p = strchr(q + 1, '}');
@@ -249,7 +249,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		case PW_CLEARTEXT_PASSWORD:
 		case PW_CRYPT_PASSWORD:
 		case PW_NS_MTA_MD5_PASSWORD:
-			found_pw = TRUE;
+			found_pw = true;
 			break;	/* don't touch these */
 
 		case PW_MD5_PASSWORD:
@@ -257,13 +257,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		case PW_NT_PASSWORD:
 		case PW_LM_PASSWORD:
 			normify(request, vp, 16); /* ensure it's in the right format */
-			found_pw = TRUE;
+			found_pw = true;
 			break;
 
 		case PW_SHA_PASSWORD:
 		case PW_SSHA_PASSWORD:
 			normify(request, vp, 20); /* ensure it's in the right format */
-			found_pw = TRUE;
+			found_pw = true;
 			break;
 
 			/*
@@ -280,7 +280,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		}
 
 		case PW_AUTH_TYPE:
-			auth_type = TRUE;
+			auth_type = true;
 
 			/*
 			 *	Auth-Type := Accept

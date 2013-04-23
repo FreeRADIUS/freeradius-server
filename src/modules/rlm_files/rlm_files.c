@@ -143,10 +143,10 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 	if ((debug_flag) ||
 	    (strcmp(compat_mode_str, "cistron") == 0)) {
 		VALUE_PAIR *vp;
-		int compat_mode = FALSE;
+		int compat_mode = false;
 
 		if (strcmp(compat_mode_str, "cistron") == 0) {
-			compat_mode = TRUE;
+			compat_mode = true;
 		}
 
 		entry = users;

@@ -478,7 +478,7 @@ static module_entry_t *linkto_module(char const *module_name,
 module_instance_t *find_module_instance(CONF_SECTION *modules,
 					char const *askedname, int do_link)
 {
-	int check_config_safe = FALSE;
+	int check_config_safe = false;
 	CONF_SECTION *cs;
 	char const *name1, *instname;
 	module_instance_t *node, myNode;
@@ -551,7 +551,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		cf_log_module(cs, "Skipping instantiation of %s", instname);
 	} else {
 	print_inst:
-		check_config_safe = TRUE;
+		check_config_safe = true;
 		cf_log_module(cs, "Instantiating module \"%s\" from file %s",
 			      instname, cf_section_filename(cs));
 	}
@@ -1207,7 +1207,7 @@ static int load_byserver(CONF_SECTION *cs)
 		if ((!name && !server->name) ||
 		    (name && server->name &&
 		     (strcmp(server->name, name) == 0))) {
-			server->can_free = TRUE;
+			server->can_free = true;
 			break;
 		}
 		server = server->next;
@@ -1223,7 +1223,7 @@ static int load_byserver(CONF_SECTION *cs)
 int virtual_servers_load(CONF_SECTION *config)
 {
 	CONF_SECTION *cs;
-	static int first_time = TRUE;
+	static int first_time = true;
 
 	DEBUG2("%s: #### Loading Virtual Servers ####", mainconfig.name);
 
@@ -1286,7 +1286,7 @@ int virtual_servers_load(CONF_SECTION *config)
 	/*
 	 *	If we succeed the first time around, remember that.
 	 */
-	first_time = FALSE;
+	first_time = false;
 
 	return 0;
 }

@@ -303,7 +303,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	ldap_instance_t	*inst = instance;
 	rlm_rcode_t	rcode;
 	
-	int		found = FALSE;
+	int		found = false;
 	int		check_is_dn;
 
 	ldap_handle_t	*conn = NULL;
@@ -325,7 +325,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 			case RLM_MODULE_NOTFOUND:
 				break;
 			case RLM_MODULE_OK:
-				found = TRUE;
+				found = true;
 			default:
 				goto finish;
 		}
@@ -337,7 +337,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 	/*
 	 *	This is used in the default membership filter.
 	 */
-	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
+	user_dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!user_dn) {
 		rlm_ldap_release_socket(inst, conn);
 		return 1;
@@ -353,7 +353,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 			case RLM_MODULE_NOTFOUND:
 				break;
 			case RLM_MODULE_OK:
-				found = TRUE;
+				found = true;
 			default:
 				goto finish;
 		}
@@ -369,7 +369,7 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 			case RLM_MODULE_NOTFOUND:
 				break;
 			case RLM_MODULE_OK:
-				found = TRUE;
+				found = true;
 			default:
 				goto finish;
 		}
@@ -661,7 +661,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Get the DN by doing a search.
 	 */
-	dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
+	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!dn) {
 		rlm_ldap_release_socket(inst, conn);
 		
@@ -671,8 +671,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	/*
 	 *	Bind as the user
 	 */
-	conn->rebound = TRUE;
-	status = rlm_ldap_bind(inst, request, &conn, dn, request->password->vp_strvalue, TRUE);
+	conn->rebound = true;
+	status = rlm_ldap_bind(inst, request, &conn, dn, request->password->vp_strvalue, true);
 	switch (status) {
 	case LDAP_PROC_SUCCESS:
 		rcode = RLM_MODULE_OK;
@@ -765,7 +765,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	
 	expanded.attrs[expanded.count] = NULL;
 	
-	dn = rlm_ldap_find_user(inst, request, &conn, expanded.attrs, TRUE, &result, &rcode);
+	dn = rlm_ldap_find_user(inst, request, &conn, expanded.attrs, true, &result, &rcode);
 	if (!dn) {
 		goto finish;			
 	}
@@ -844,8 +844,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			/*
 			 *	Bind as the user
 			 */
-			conn->rebound = TRUE;
-			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, TRUE);
+			conn->rebound = true;
+			status = rlm_ldap_bind(inst, request, &conn, dn, vp->vp_strvalue, true);
 			switch (status) {
 			case LDAP_PROC_SUCCESS:
 				rcode = RLM_MODULE_OK;
@@ -995,7 +995,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	 *	Iterate over all the pairs, building our mods array
 	 */
 	for (ci = cf_item_find_next(cs, NULL); ci != NULL; ci = cf_item_find_next(cs, ci)) {
-	     	int do_xlat = FALSE;
+	     	int do_xlat = false;
 	     	
 	     	if (total == LDAP_MAX_ATTRMAP) {
 	     		RDEBUGE("Modify map size exceeded");
@@ -1030,7 +1030,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 			break;
 			case T_BACK_QUOTED_STRING:
 			case T_DOUBLE_QUOTED_STRING:
-				do_xlat = TRUE;		
+				do_xlat = true;		
 			break;
 			default:
 				rad_assert(0);
@@ -1117,7 +1117,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	if (!conn) return RLM_MODULE_FAIL;
 
 
-	dn = rlm_ldap_find_user(inst, request, &conn, NULL, FALSE, NULL, &rcode);
+	dn = rlm_ldap_find_user(inst, request, &conn, NULL, false, NULL, &rcode);
 	if (!dn || (rcode != RLM_MODULE_OK)) {
 		goto error;
 	}

@@ -290,7 +290,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	}
 
 	request->server = client->server;
-	exec_trigger(request, NULL, "server.client.add", FALSE);
+	exec_trigger(request, NULL, "server.client.add", false);
 
 	request_free(&request);
 
@@ -2740,7 +2740,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 	        )
 
 {
-	int		override = FALSE;
+	int		override = false;
 	CONF_SECTION	*cs = NULL;
 	rad_listen_t	**last;
 	rad_listen_t	*this;
@@ -2787,7 +2787,7 @@ int listen_init(CONF_SECTION *config, rad_listen_t **head,
 
 		memcpy(&server_ipaddr, &mainconfig.myip,
 		       sizeof(server_ipaddr));
-		override = TRUE;
+		override = true;
 
 #ifdef WITH_VMPS
 		if (strcmp(progname, "vmpsd") == 0) {
@@ -2986,7 +2986,7 @@ add_sockets:
 	 *	Otherwise, don't do anything.
 	 */
 #ifdef WITH_PROXY
-	if ((mainconfig.proxy_requests == TRUE) &&
+	if ((mainconfig.proxy_requests == true) &&
 	    !check_config &&
 	    (*head != NULL) && !defined_proxy) {
 		listen_socket_t *sock = NULL;

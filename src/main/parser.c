@@ -284,7 +284,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	 */
 	if (*p == '!') {
 		p++;
-		c->negate = TRUE;
+		c->negate = true;
 		while (isspace((int) *p)) p++; /* skip spaces after negation */
 
 		/*
@@ -309,7 +309,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		 *	brackets.  Go recurse to get more.
 		 */
 		c->type = COND_TYPE_CHILD;
-		slen = condition_tokenize(c, p, TRUE, &c->data.child, error);
+		slen = condition_tokenize(c, p, true, &c->data.child, error);
 		if (slen <= 0) {
 			talloc_free(c);
 			COND_DEBUG("RETURN %d", __LINE__);
@@ -399,7 +399,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			/*
 			 *	The next thing should now be a comparison operator.
 			 */
-			regex = FALSE;
+			regex = false;
 			c->type = COND_TYPE_MAP;
 			switch (*p) {
 			default:
@@ -414,7 +414,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					p += 2;
 
 				} else if (p[1] == '~') {
-				regex = TRUE;
+				regex = true;
 
 				op = T_OP_REG_NE;
 				p += 2;
@@ -446,7 +446,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					p += 2;
 
 				} else if (p[1] == '~') {
-					regex = TRUE;
+					regex = true;
 
 					op = T_OP_REG_EQ;
 					p += 2;
@@ -520,7 +520,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				 *	Allow /foo/i
 				 */
 				if (p[slen] == 'i') {
-					c->regex_i = TRUE;
+					c->regex_i = true;
 					slen++;
 				}
 
@@ -561,7 +561,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 		p++;
 		while (isspace((int) *p)) p++; /* skip spaces after closing brace */
-		brace = FALSE;
+		brace = false;
 		goto done;
 	}
 
@@ -631,9 +631,9 @@ done:
 		 */
 		if ((c->negate && !child->negate) ||
 		    (!c->negate && child->negate)) {
-			child->negate = TRUE;
+			child->negate = true;
 		} else {
-			child->negate = FALSE;
+			child->negate = false;
 		}
 
 		(void) talloc_steal(ctx, child);
@@ -672,5 +672,5 @@ done:
  */
 ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **head, char const **error)
 {
-	return condition_tokenize(ctx, start, FALSE, head, error);
+	return condition_tokenize(ctx, start, false, head, error);
 }

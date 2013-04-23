@@ -2849,7 +2849,7 @@ static ssize_t data2vp_tlvs(RADIUS_PACKET const *packet,
 				return -1;
 			}
 
-			child = dict_attrunknown(my_attr, my_vendor, TRUE);
+			child = dict_attrunknown(my_attr, my_vendor, true);
 			if (!child) {
 				pairfree(&head);
 				return -1;
@@ -2944,7 +2944,7 @@ static ssize_t data2vp_vsa(RADIUS_PACKET const *packet,
 	 *	See if the VSA is known.
 	 */
 	da = dict_attrbyvalue(attribute, dv->vendorpec);
-	if (!da) da = dict_attrunknown(attribute, dv->vendorpec, TRUE);
+	if (!da) da = dict_attrunknown(attribute, dv->vendorpec, true);
 	if (!da) return -1;
 
 	my_len = data2vp(packet, original, secret, da,
@@ -3004,7 +3004,7 @@ static ssize_t data2vp_wimax(RADIUS_PACKET const *packet,
 	end = data + packetlen;
 
 	while (frag < end) {
-		int last_frag = FALSE;
+		int last_frag = false;
 
 		if (last_frag ||
 		    (frag[0] != PW_VENDOR_SPECIFIC) ||
@@ -3435,7 +3435,7 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 		 *	therefore of type "octets", and will be
 		 *	handled below.
 		 */
-		da = dict_attrunknown(da->attr, da->vendor, TRUE);
+		da = dict_attrunknown(da->attr, da->vendor, true);
 		if (!da) {
 			fr_strerror_printf("Internal sanity check %d", __LINE__);
 			return -1;
@@ -3582,7 +3582,7 @@ ssize_t rad_attr2vp(RADIUS_PACKET const *packet,
 	}
 
 	da = dict_attrbyvalue(data[0], 0);
-	if (!da) da = dict_attrunknown(data[0], 0, TRUE);
+	if (!da) da = dict_attrunknown(data[0], 0, true);
 
 	/*
 	 *	Note that we pass the entire length, not just the
@@ -3611,7 +3611,7 @@ ssize_t  rad_data2vp(unsigned int attribute, unsigned int vendor,
 	if (!data || (length == 0) || !pvp) return -1;
 
 	da = dict_attrbyvalue(attribute, vendor);
-	if (!da) da = dict_attrunknown(attribute, vendor, TRUE);
+	if (!da) da = dict_attrunknown(attribute, vendor, true);
 	if (!da) return -1;
 
 	return data2vp(NULL, NULL, NULL, da,
@@ -4255,7 +4255,7 @@ uint32_t fr_rand(void)
  *
  * @param ctx the context in which the packet is allocated. May be NULL if
  *	the packet is not associated with a REQUEST.
- * @param newvector if TRUE a new request authenticator will be generated.
+ * @param newvector if true a new request authenticator will be generated.
  * @return a new RADIUS_PACKET or NULL on error.
  */
 RADIUS_PACKET *rad_alloc(TALLOC_CTX *ctx, int newvector)

@@ -50,7 +50,7 @@ extern int check_config;
 extern char *debug_condition;
 
 static int spawn_flag = 0;
-static int just_started = TRUE;
+static int just_started = true;
 time_t				fr_start_time;
 static fr_packet_list_t *pl = NULL;
 static fr_event_list_t *el = NULL;
@@ -171,7 +171,7 @@ static fr_packet_list_t *proxy_list = NULL;
 #ifdef WITH_PROXY
 static pthread_mutex_t	proxy_mutex;
 static rad_listen_t *proxy_listener_list = NULL;
-static int proxy_no_new_sockets = FALSE;
+static int proxy_no_new_sockets = false;
 #endif
 
 #define PTHREAD_MUTEX_LOCK if (spawn_flag) pthread_mutex_lock
@@ -482,7 +482,7 @@ STATE_MACHINE_DECL(request_done)
 	 */
 	if (request->in_request_hash) {
 		fr_packet_list_yank(pl, request->packet);
-		request->in_request_hash = FALSE;
+		request->in_request_hash = false;
 		
 		request_stats_final(request);
 		
@@ -686,7 +686,7 @@ static void request_process_timer(REQUEST *request)
 				       request->number,
 				       request->component ? request->component : "<server core>",
 			       request->module ? request->module : "<server core>");
-				exec_trigger(request, NULL, "server.thread.unresponsive", TRUE);
+				exec_trigger(request, NULL, "server.thread.unresponsive", true);
 			}
 #endif
 
@@ -998,7 +998,7 @@ static int request_pre_handler(REQUEST *request, UNUSED int action)
 		
 #ifdef WITH_UNLANG
 		if (debug_condition) {
-			int result = FALSE;
+			int result = false;
 			char const *my_debug = debug_condition;
 
 			/*
@@ -1319,7 +1319,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		radlog(L_INFO, "WARNING: Please check the configuration file.\n"
 		       "\tThe value for 'max_requests' is probably set too low.\n");
 
-		exec_trigger(NULL, NULL, "server.max_requests", TRUE);
+		exec_trigger(NULL, NULL, "server.max_requests", true);
 		return 0;
 	}
 
@@ -1413,7 +1413,7 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 		return 1;
 	}
 
-	request->in_request_hash = TRUE;
+	request->in_request_hash = true;
 	request->root = &mainconfig;
 	mainconfig.refcount++;
 #ifdef WITH_TCP
@@ -1650,7 +1650,7 @@ static void remove_from_proxy_hash_nl(REQUEST *request)
 	 *	grabs the mutex, the "not in hash" flag is correct.
 	 */
 	RDEBUG3("proxy: request is no longer in proxy hash");
-	request->in_proxy_hash = FALSE;
+	request->in_proxy_hash = false;
 }
 
 static void remove_from_proxy_hash(REQUEST *request)
@@ -1751,7 +1751,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 		return 0;
 	}
 
-	request->in_proxy_hash = TRUE;
+	request->in_proxy_hash = true;
 	RDEBUG3("proxy: request is now in proxy hash");
 
 	/*
@@ -2204,7 +2204,7 @@ static int request_will_proxy(REQUEST *request)
 	 *	Doing it here catches the case of proxied tunneled
 	 *	requests.
 	 */
-	if (realm && (realm->striprealm == TRUE) &&
+	if (realm && (realm->striprealm == true) &&
 	   (strippedname = pairfind(request->proxy->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY)) != NULL) {
 		/*
 		 *	If there's a Stripped-User-Name attribute in
@@ -2535,7 +2535,7 @@ STATE_MACHINE_DECL(request_ping)
 		 *	pings.
 		 */
 		home->state = HOME_STATE_ALIVE;
-		exec_trigger(request, request->home_server->cs, "home_server.alive", FALSE);
+		exec_trigger(request, request->home_server->cs, "home_server.alive", false);
 		home->currently_outstanding = 0;
 		home->num_sent_pings = 0;
 		home->num_received_pings = 0;
@@ -2714,7 +2714,7 @@ static void home_trigger(home_server *home, char const *trigger)
 	my_packet.dst_ipaddr = home->ipaddr;
 	my_packet.src_ipaddr = home->src_ipaddr;
 
-	exec_trigger(&my_request, home->cs, trigger, FALSE);
+	exec_trigger(&my_request, home->cs, trigger, false);
 }
 
 static void mark_home_server_zombie(home_server *home)
@@ -3498,7 +3498,7 @@ static void event_status(struct timeval *wake)
 	if (debug_flag == 0) {
 		if (just_started) {
 			radlog(L_INFO, "Ready to process requests.");
-			just_started = FALSE;
+			just_started = false;
 		}
 		return;
 	}
@@ -3564,7 +3564,7 @@ int event_new_fd(rad_listen_t *this)
 						       this)) {
 
 #ifdef HAVE_PTHREAD_H
-				proxy_no_new_sockets = TRUE;
+				proxy_no_new_sockets = true;
 #endif
 				PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 
@@ -3895,7 +3895,7 @@ static void handle_signal_self(int flag)
 			fr_event_loop_exit(el, 1);
 		} else {
 			radlog(L_INFO, "Signalled to terminate");
-			exec_trigger(NULL, NULL, "server.signal.term", TRUE);
+			exec_trigger(NULL, NULL, "server.signal.term", true);
 			fr_event_loop_exit(el, 2);
 		}
 
@@ -3919,7 +3919,7 @@ static void handle_signal_self(int flag)
 
 		last_hup = when;
 
-		exec_trigger(NULL, NULL, "server.signal.hup", TRUE);
+		exec_trigger(NULL, NULL, "server.signal.hup", true);
 		fr_event_loop_exit(el, 0x80);
 	}
 
@@ -4185,7 +4185,7 @@ static int request_hash_cb(UNUSED void *ctx, void *data)
 	REQUEST *request = fr_packet2myptr(REQUEST, packet, data);
 
 #ifdef WITH_PROXY
-	rad_assert(request->in_proxy_hash == FALSE);
+	rad_assert(request->in_proxy_hash == false);
 #endif
 
 	request_done(request, FR_ACTION_DONE);

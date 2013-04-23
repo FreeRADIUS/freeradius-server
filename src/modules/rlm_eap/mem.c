@@ -138,7 +138,7 @@ typedef struct check_handler_t {
 
 static void check_handler(void *data)
 {
-	int do_warning = FALSE;
+	int do_warning = false;
 	uint8_t state[8];
 	check_handler_t *check = data;
 
@@ -178,7 +178,7 @@ static void check_handler(void *data)
 	if (time(NULL) < (check->handler->timestamp + 3)) goto done;
 
 	if (!check->handler->finished) {
-		do_warning = TRUE;
+		do_warning = true;
 		memcpy(state, check->handler->state, sizeof(state));
 	}
 

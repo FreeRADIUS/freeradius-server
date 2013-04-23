@@ -97,7 +97,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 */
 	now.tv_sec -= 1;
 	if (timercmp(&data->last_packet, &now, <)) {
-		data->has_rtt = FALSE;
+		data->has_rtt = false;
 	}
 	now.tv_sec += 1;
 
@@ -126,7 +126,7 @@ int detail_send(rad_listen_t *listener, REQUEST *request)
 	 *	processing the packet.
 	 */
 	if (!data->has_rtt) {
-		data->has_rtt = TRUE;
+		data->has_rtt = true;
 		data->srtt = rtt;
 		data->rttvar = rtt / 2;
 

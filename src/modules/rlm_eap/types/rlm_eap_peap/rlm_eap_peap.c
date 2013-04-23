@@ -202,13 +202,13 @@ static int eappeap_initiate(void *type_arg, eap_handler_t *handler)
 	tls_session_t	*ssn;
 	rlm_eap_peap_t	*inst;
 	VALUE_PAIR	*vp;
-	int		client_cert = FALSE;
+	int		client_cert = false;
 	REQUEST		*request = handler->request;
 
 	inst = type_arg;
 
-	handler->tls = TRUE;
-	handler->finished = FALSE;
+	handler->tls = true;
+	handler->finished = false;
 
 	/*
 	 *	Check if we need a client certificate.

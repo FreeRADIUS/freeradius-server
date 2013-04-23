@@ -53,7 +53,7 @@ int debug_flag = 0;
 char const *progname = "radwho";
 char const *radlog_dir = NULL;
 char const *radutmp_file = NULL;
-int check_config = FALSE;
+int check_config = false;
 
 char const *raddb_dir = NULL;
 char const *radacct_dir = NULL;

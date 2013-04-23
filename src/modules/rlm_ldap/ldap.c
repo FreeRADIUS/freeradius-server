@@ -100,7 +100,7 @@ size_t rlm_ldap_escape_func(UNUSED REQUEST *request, char *out, size_t outlen, c
  */
 int rlm_ldap_is_dn(char const *str)
 {
-	return strrchr(str, ',') == NULL ? FALSE : TRUE;
+	return strrchr(str, ',') == NULL ? false : true;
 }
 
 /** Find the place at which the two DN strings diverge
@@ -250,7 +250,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 	char *srv_err = NULL;		// Server's extended error message.
 	char *p, *a;
 
-	int freeit = FALSE;		// Whether the message should be freed after being processed.
+	int freeit = false;		// Whether the message should be freed after being processed.
 	int len;
 	
 	struct timeval tv;		// Holds timeout values.
@@ -273,7 +273,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 	 */
 	if (!result) {
 		result = &tmp_msg;
-		freeit = TRUE;
+		freeit = true;
 	}
 	
 	*result = NULL;
@@ -369,7 +369,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 		break;
 		
 	case LDAP_TIMEOUT:
-		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
+		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
 		
 		*error = "Timed out while waiting for server to respond";
 		       
@@ -383,7 +383,7 @@ static ldap_rcode_t rlm_ldap_result(ldap_instance_t const *inst, ldap_handle_t c
 		break;
 		
 	case LDAP_TIMELIMIT_EXCEEDED:
-		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", TRUE);
+		exec_trigger(NULL, inst->cs, "modules.ldap.timeout", true);
 		
 		*error = "Time limit exceeded";
 		/* FALL-THROUGH */
@@ -629,14 +629,14 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 	 *	Do all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, TRUE);
+		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
 
 		rad_assert(*pconn);
 		
-		(*pconn)->rebound = FALSE;
+		(*pconn)->rebound = false;
 	}
 
 	RDEBUG2("Performing search in '%s' with filter '%s'", dn, filter);
@@ -723,14 +723,14 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 	 *	Perform all modifications as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, TRUE);
+		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			return LDAP_PROC_ERROR;
 		}
 
 		rad_assert(*pconn);
 		
-		(*pconn)->rebound = FALSE;
+		(*pconn)->rebound = false;
 	}
 	
 	RDEBUG2("Modifying object with DN \"%s\"", dn);
@@ -800,14 +800,14 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	char	    	filter[LDAP_MAX_FILTER_STR_LEN];	
 	char	    	base_dn[LDAP_MAX_DN_STR_LEN];
 	
-	int freeit = FALSE;					//!< Whether the message should
+	int freeit = false;					//!< Whether the message should
 								//!< be freed after being processed.
 
 	*rcode = RLM_MODULE_FAIL;
 
 	if (!result) {
 		result = &tmp_msg;
-		freeit = TRUE;
+		freeit = true;
 	}
 	*result = NULL;
 	
@@ -831,7 +831,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	 *	Perform all searches as the admin user.
 	 */
 	if ((*pconn)->rebound) {
-		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, TRUE);
+		status = rlm_ldap_bind(inst, request, pconn, inst->admin_dn, inst->password, true);
 		if (status != LDAP_PROC_SUCCESS) {
 			*rcode = RLM_MODULE_FAIL;
 			return NULL;
@@ -839,7 +839,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 
 		rad_assert(*pconn);
 		
-		(*pconn)->rebound = FALSE;
+		(*pconn)->rebound = false;
 	}
 	
 	if (radius_xlat(filter, sizeof(filter), request, inst->userobj_filter, rlm_ldap_escape_func, NULL) < 0) {
@@ -922,7 +922,7 @@ rlm_rcode_t rlm_ldap_check_access(ldap_instance_t const *inst, REQUEST *request,
 
 	vals = ldap_get_values(conn->handle, entry, inst->userobj_access_attr);
 	if (vals) {
-		if (inst->access_positive && (strncmp(vals[0], "FALSE", 5) == 0)) {
+		if (inst->access_positive && (strncmp(vals[0], "false", 5) == 0)) {
 			RDEBUG("\"%s\" attribute exists but is set to 'false' - user locked out");
 			rcode = RLM_MODULE_USERLOCK;
 		} else {
@@ -987,13 +987,13 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
 	
 	int ldap_errno;
 
-	conn->referred = TRUE;
-	conn->rebound = TRUE;	/* not really, but oh well... */
+	conn->referred = true;
+	conn->rebound = true;	/* not really, but oh well... */
 	rad_assert(handle == conn->handle);
 
 	DEBUG("rlm_ldap (%s): Rebinding to URL %s", conn->inst->xlat_name, url);
 
-	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password, FALSE);
+	status = rlm_ldap_bind(conn->inst, NULL, &conn, conn->inst->admin_dn, conn->inst->password, false);
 	if (status != LDAP_PROC_SUCCESS) {
 		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
 			
@@ -1157,10 +1157,10 @@ void *mod_conn_create(void *instance)
 	conn = talloc_zero(instance, ldap_handle_t);
 	conn->inst = inst;
 	conn->handle = handle;
-	conn->rebound = FALSE;
-	conn->referred = FALSE;
+	conn->rebound = false;
+	conn->referred = false;
 
-	status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, FALSE);
+	status = rlm_ldap_bind(inst, NULL, &conn, inst->admin_dn, inst->password, false);
 	if (status != LDAP_PROC_SUCCESS) {
 		goto error;
 	}

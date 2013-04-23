@@ -592,13 +592,13 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 
 		switch (inst->methods[num_types]) {
 		case EAP_TYPE_TLS:
-			has_tls = TRUE;
+			has_tls = true;
 			/* FALL-THROUGH */
 
 		case EAP_TYPE_TTLS:
 		case EAP_TYPE_PEAP:
 		case EAP_TYPE_FAST:
-			do_tls = TRUE;
+			do_tls = true;
 			break;
 
 		default:
@@ -900,15 +900,15 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		handler->server_ctx.eap_if = eap_get_interface(handler->server_ctx.eap);
 		
 		/* Enable "port" and request EAP to start authentication. */
-		handler->server_ctx.eap_if->portEnabled = TRUE;
-		handler->server_ctx.eap_if->eapRestart = TRUE;
+		handler->server_ctx.eap_if->portEnabled = true;
+		handler->server_ctx.eap_if->eapRestart = true;
 	}
 
 	handler->request = request;
 	wpabuf_free(handler->server_ctx.eap_if->eapRespData);
 	handler->server_ctx.eap_if->eapRespData = wpabuf_alloc_copy(data, data_len);
 	if (handler->server_ctx.eap_if->eapRespData) {
-		handler->server_ctx.eap_if->eapResp = TRUE;
+		handler->server_ctx.eap_if->eapResp = true;
 	}
 	
 	if (eap_example_server_step(handler) < 0) {

@@ -560,7 +560,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	 *	Undocumented extension for testing without
 	 *	destroying your network!
 	 */
-	sock->suppress_responses = FALSE;
+	sock->suppress_responses = false;
 	cp = cf_pair_find(cs, "suppress_responses");
 	if (cp) {
 		cf_item_parse(cs, "suppress_responses", PW_TYPE_BOOLEAN,

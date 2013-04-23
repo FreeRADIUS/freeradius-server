@@ -345,11 +345,11 @@ int radius_find_compare(unsigned int attribute)
 
 	for (c = cmp; c; c = c->next) {
 		if (c->attribute == attribute) {
-			return TRUE;
+			return true;
 		}
 	}
 
-	return FALSE;
+	return false;
 }
 
 

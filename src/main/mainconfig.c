@@ -96,7 +96,7 @@ static char const *my_name = NULL;
 static char const *sbindir = NULL;
 static char const *run_dir = NULL;
 static char *syslog_facility = NULL;
-static int do_colourise = FALSE;
+static int do_colourise = false;
 
 /*
  *	Syslog facility table.
@@ -233,7 +233,7 @@ static const CONF_PARSER server_config[] = {
 	{ "cleanup_delay", PW_TYPE_INTEGER, 0, &mainconfig.cleanup_delay, Stringify(CLEANUP_DELAY) },
 	{ "max_requests", PW_TYPE_INTEGER, 0, &mainconfig.max_requests, Stringify(MAX_REQUESTS) },
 #ifdef DELETE_BLOCKED_REQUESTS
-	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, Stringify(FALSE) },
+	{ "delete_blocked_requests", PW_TYPE_INTEGER, 0, &mainconfig.kill_unresponsive_children, Stringify(false) },
 #endif
 	{ "pidfile", PW_TYPE_STRING_PTR, 0, &mainconfig.pid_file, "${run_dir}/radiusd.pid"},
 	{ "checkrad", PW_TYPE_STRING_PTR, 0, &mainconfig.checkrad, "${sbindir}/checkrad" },
@@ -477,7 +477,7 @@ static void fr_set_dumpable(void)
 }
 
 #ifdef HAVE_SETUID
-static int doing_setuid = FALSE;
+static int doing_setuid = false;
 
 #if defined(HAVE_SETRESUID) && defined (HAVE_GETRESUID)
 void fr_suid_up(void)
@@ -714,7 +714,7 @@ static int switch_users(CONF_SECTION *cs)
 	}		
 
 	if (uid_name) {
-		doing_setuid = TRUE;
+		doing_setuid = true;
 
 		fr_suid_down();
 	}
@@ -907,9 +907,9 @@ int read_mainconfig(int reload)
 		p = getenv("TERM");
 		if (!p || !isatty(mainconfig.radlog_fd) ||
 		    (strstr(p, "xterm") == 0)) {
-			mainconfig.colourise = FALSE;
+			mainconfig.colourise = false;
 		} else {
-			mainconfig.colourise = TRUE;
+			mainconfig.colourise = true;
 		}
 		p = NULL;
 	}

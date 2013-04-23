@@ -265,7 +265,7 @@ static const signed char b64[0x100] = {
  * Note that '=' is padding and not considered to be part of the alphabet.
  *
  * @param c char to check.
- * @return TRUE if CH is a character from the Base64 alphabet, and FALSE
+ * @return true if CH is a character from the Base64 alphabet, and false
  *	otherwise.
  */
 int fr_isbase64(char c)
@@ -276,14 +276,14 @@ int fr_isbase64(char c)
 /* Decode base64 encoded input array.
  *
  * Decode base64 encoded input array IN of length INLEN to output array OUT that
- * can hold *OUTLEN bytes.  Return TRUE if decoding was successful, i.e.
- * if the input was valid base64 data, FALSE otherwise.
+ * can hold *OUTLEN bytes.  Return true if decoding was successful, i.e.
+ * if the input was valid base64 data, false otherwise.
  *
  * If *OUTLEN is too small, as many bytes as possible will be written to OUT.
  * On return, *OUTLEN holds the length of decoded bytes in OUT.
  *
  * Note that as soon as any non-alphabet characters are encountered,
- * decoding is stopped and FALSE is returned.
+ * decoding is stopped and false is returned.
  *
  * This means that, when applicable, you must remove any line terminators
  * that is part of the data stream before calling this function.
@@ -351,11 +351,11 @@ ssize_t fr_base64_decode(char const *in, size_t inlen, uint8_t *out,
  * *OUT may be NULL to indicate an out of memory error, in which case *OUTLEN
  * contains the size of the memory block needed.
  *
- * The function returns TRUE on successful decoding and memory allocation
+ * The function returns true on successful decoding and memory allocation
  * errors.  (Use the *OUT and *OUTLEN parameters to differentiate between
  * successful decoding and memory error.)
  *
- * The function returns FALSE if the input was invalid, in which case *OUT is
+ * The function returns false if the input was invalid, in which case *OUT is
  * NULL and *OUTLEN is undefined.
  *
  * @param[in] in Base64 string to decode.

@@ -107,7 +107,7 @@ static int get_number(REQUEST *request, char const **string, int64_t *answer)
 		/*
 		 *  Discover which token it is.
 		 */
-		found = FALSE;
+		found = false;
 		for (i = 0; map[i].token != TOKEN_LAST; i++) {
 			if (*p == map[i].op) {
 				if (this != TOKEN_NONE) {
@@ -116,7 +116,7 @@ static int get_number(REQUEST *request, char const **string, int64_t *answer)
 				}
 				this = map[i].token;
 				p++;
-				found = TRUE;
+				found = true;
 				break;
 			}
 		}

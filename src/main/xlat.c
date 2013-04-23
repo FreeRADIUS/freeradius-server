@@ -432,14 +432,14 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 				      xlat_foreach, NULL, &xlat_inst[i]);
 			c = xlat_find(xlat_foreach_names[i]);
 			rad_assert(c != NULL);
-			c->internal = TRUE;
+			c->internal = true;
 		}
 #endif
 
 #define XLAT_REGISTER(_x) xlat_register(Stringify(_x), xlat_ ## _x, NULL, NULL); \
 		c = xlat_find(Stringify(_x)); \
 		rad_assert(c != NULL); \
-		c->internal = TRUE
+		c->internal = true
 
 		XLAT_REGISTER(integer);
 		XLAT_REGISTER(hex);
@@ -451,7 +451,7 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		xlat_register("debug", xlat_debug, NULL, &xlat_inst[0]);
 		c = xlat_find("debug");
 		rad_assert(c != NULL);
-		c->internal = TRUE;
+		c->internal = true;
 	}
 
 	/*
@@ -582,7 +582,7 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	}
 	p++;
 
-	slen = xlat_tokenize_literal(node, p,  &node->alternate, TRUE, error);
+	slen = xlat_tokenize_literal(node, p,  &node->alternate, true, error);
 	if (slen <= 0) {
 		talloc_free(node);
 		return slen - (p - fmt);
@@ -674,7 +674,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			node->type = XLAT_MODULE;
 			
 			XLAT_DEBUG("MOD: %s --> %s", node->fmt, p);
-			slen = xlat_tokenize_literal(node, p + 1, &node->child, TRUE, error);
+			slen = xlat_tokenize_literal(node, p + 1, &node->child, true, error);
 			if (slen <= 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
@@ -1105,7 +1105,7 @@ static char const xlat_spaces[] = "                                             
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 		      char const **error)
 {
-	return xlat_tokenize_literal(ctx, fmt, head, FALSE, error);
+	return xlat_tokenize_literal(ctx, fmt, head, false, error);
 }
 
 
@@ -1131,7 +1131,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	tokens = talloc_strdup(request, fmt);
 	if (!tokens) return -1;
 
-	slen = xlat_tokenize_literal(request, tokens, head, FALSE, &error);
+	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
 
 	/*
 	 *	Output something like:

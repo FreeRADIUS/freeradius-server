@@ -506,7 +506,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 			 *	unknown attr.
 			 */
 			vp->da = dict_attrunknown(vp->da->attr, vp->da->vendor,
-						  TRUE);
+						  true);
 			/* FALL-THROUGH */
 
 		default:

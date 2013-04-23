@@ -1218,7 +1218,7 @@ static int seen_too_much(char const *filename, int lineno, char const *ptr)
 			continue;
 		}
 
-		if (*ptr == '#') return FALSE;
+		if (*ptr == '#') return false;
 
 		break;
 	}
@@ -1226,10 +1226,10 @@ static int seen_too_much(char const *filename, int lineno, char const *ptr)
 	if (*ptr) {
 		ERROR("%s[%d] Unexpected text %s.  See \"man unlang\"",
 		       filename, lineno, ptr);
-		return TRUE;
+		return true;
 	}
 
-	return FALSE;
+	return false;
 }
 
 
@@ -1249,7 +1249,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 	char buf2[8192];
 	char buf3[8192];
 	int t1, t2, t3;
-	int spaces = FALSE;
+	int spaces = false;
 	char *cbuf = buf;
 	size_t len;
 	fr_cond_t *cond = NULL;
@@ -1324,7 +1324,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			 *	Check for "suppress spaces" magic.
 			 */
 			if (!spaces && (len > 2) && (cbuf[len - 2] == '"')) {
-				spaces = TRUE;
+				spaces = true;
 			}
 
 			cbuf[len - 1] = '\0';
@@ -1333,7 +1333,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 		}
 
 		ptr = cbuf = buf;
-		spaces = FALSE;
+		spaces = false;
 
 		/*
 		 *	The parser is getting to be evil.
@@ -1736,7 +1736,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			css->item.lineno = *lineno;
 
 			if (cond) {
-				cf_data_add_internal(css, "if", cond, NULL, FALSE);
+				cf_data_add_internal(css, "if", cond, NULL, false);
 				cond = NULL; /* eaten by the above line */
 			}
 
@@ -1976,7 +1976,7 @@ VALUE_PAIR *cf_pairtovp(CONF_PAIR *pair)
 	}
 
 	/*
-	 *	FALSE comparisons never match.  BUT if it's a "string"
+	 *	false comparisons never match.  BUT if it's a "string"
 	 *	or `string`, then remember to expand it later.
 	 */
 	if ((pair->op != T_OP_CMP_FALSE) &&

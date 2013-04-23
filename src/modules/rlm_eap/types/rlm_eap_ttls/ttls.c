@@ -276,7 +276,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				 */
 		raw:
 				if (vp) pairfree(&vp);
-				da = dict_attrunknown(attr, vendor, TRUE);
+				da = dict_attrunknown(attr, vendor, true);
 				if (!da) return NULL;
 				vp = pairalloc(NULL, da);
 				if (size >= 253) size = 253;
@@ -701,7 +701,7 @@ static int process_reply(UNUSED eap_handler_t *handler, tls_session_t *tls_sessi
 		if (vp) {
 			RDEBUG("Got MS-CHAP2-Success, tunneling it to the client in a challenge.");
 			rcode = RLM_MODULE_HANDLED;
-			t->authenticated = TRUE;
+			t->authenticated = true;
 
 			/*
 			 *	Delete MPPE keys & encryption policy.  We don't

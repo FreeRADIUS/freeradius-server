@@ -2521,7 +2521,7 @@ void dict_attr_free(DICT_ATTR const **da)
  * If the attr is known, a pointer to the da will be returned.
  *
  * @param da to copy.
- * @param vp_free if TRUE, da will be freed at the same time as the
+ * @param vp_free if true, da will be freed at the same time as the
  *	VALUE_PAIR which contains it.
  * @return return a copy of the da.
  */
@@ -2579,7 +2579,7 @@ const DICT_ATTR *dict_attrunknown(unsigned int attr, unsigned int vendor,
 	da->attr = attr;
 	da->vendor = vendor;
 	da->type = PW_TYPE_OCTETS;
-	da->flags.is_unknown = TRUE;
+	da->flags.is_unknown = true;
 	da->flags.vp_free = (vp_free != 0);
 	
 	p = da->name;
@@ -2873,7 +2873,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 	unsigned int attr, vendor;
 	DICT_ATTR dattr;
 
-	if (!parent || !pattr || !pvendor) return FALSE;
+	if (!parent || !pattr || !pvendor) return false;
 
 	attr = *pattr;
 	vendor = *pvendor;
@@ -2882,7 +2882,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 	 *	Only some types can have children
 	 */
 	switch (parent->type) {
-	default: return FALSE;
+	default: return false;
 
 	case PW_TYPE_VSA:
 	case PW_TYPE_TLV:
@@ -2892,7 +2892,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 	  break;
 	}
 
-	if ((vendor == 0) && (parent->vendor != 0)) return FALSE;
+	if ((vendor == 0) && (parent->vendor != 0)) return false;
 
 	/*
 	 *	Bootstrap by starting off with the parents values.
@@ -2922,7 +2922,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 		 *	Trying to nest too deep.  It's an error
 		 */
 		if (parent->attr & (fr_attr_mask[MAX_TLV_NEST] << fr_attr_shift[MAX_TLV_NEST])) {
-			return FALSE;
+			return false;
 		}
 
 		for (i = MAX_TLV_NEST - 1; i >= 0; i--) {
@@ -2932,7 +2932,7 @@ int dict_attr_child(DICT_ATTR const *parent,
 			}
 		}
 
-		return FALSE;
+		return false;
 	}
 
 find:
@@ -2944,7 +2944,7 @@ find:
 
 	*pattr = dattr.attr;
 	*pvendor = dattr.vendor;
-	return TRUE;
+	return true;
 }
 
 /*

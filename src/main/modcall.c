@@ -413,7 +413,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 	stack.start[0] = NULL;
 	myresult = stack.result[0] = default_component_results[component];
 	mypriority = 0;
-	was_if = if_taken = FALSE;
+	was_if = if_taken = false;
 
 	while (1) {
 		/*
@@ -458,7 +458,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		 *	"if" or "elsif".  Evaluate the condition.
 		 */
 		if ((child->type == MOD_IF) || (child->type == MOD_ELSIF)) {
-			int condition = TRUE;
+			int condition = true;
 			char const *p = child->name;
 			modgroup *g;
 
@@ -471,18 +471,18 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			       child->name);
 
 			if (radius_evaluate_condition(request, myresult,
-						      0, &p, TRUE, &condition)) {
+						      0, &p, true, &condition)) {
 				RDEBUG2("%.*s? %s %s -> %s",
 				       stack.pointer + 1, modcall_spaces,
 				       (child->type == MOD_IF) ? "if" : "elsif",
-				       child->name, (condition != FALSE) ? "TRUE" : "FALSE");
+				       child->name, (condition != false) ? "true" : "false");
 			} else {
 				/*
 				 *	This should never happen, the
 				 *	condition is checked when the
 				 *	module section is loaded.
 				 */
-				condition = FALSE;
+				condition = false;
 			}
 
 			/*
@@ -491,8 +491,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			 *	list.
 			 */
 			if (!condition) {
-				was_if = TRUE;
-				if_taken = FALSE;
+				was_if = true;
+				if_taken = false;
 				goto next_section;
 			} /* else process it as a simple group */
 		}
@@ -951,9 +951,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 #ifdef WITH_UNLANG
 			if ((parent->type == MOD_IF) ||
 			    (parent->type == MOD_ELSIF)) {
-				if_taken = was_if = TRUE;
+				if_taken = was_if = true;
 			} else {
-				if_taken = was_if = FALSE;
+				if_taken = was_if = false;
 			}
 #endif
 
@@ -1471,7 +1471,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED int compone
 {
 	modcallable *csingle;
 	CONF_ITEM *ci;
-	int had_seen_default = FALSE;
+	int had_seen_default = false;
 
 	if (!cf_section_name2(cs)) {
 		cf_log_err_cs(cs,
@@ -1511,7 +1511,7 @@ static modcallable *do_compile_modswitch(modcallable *parent, UNUSED int compone
 
 		name2 = cf_section_name2(subcs);
 		if (!name2 && !had_seen_default) {
-			had_seen_default = TRUE;
+			had_seen_default = true;
 			continue;
 		}
 
@@ -1623,7 +1623,7 @@ static modcallable *do_compile_modxlat(modcallable *parent,
 	mx->xlat_name = strdup(fmt);
 	if (fmt[0] != '%') {
 		char *p;
-		mx->exec = TRUE;
+		mx->exec = true;
 
 		strcpy(mx->xlat_name, fmt + 1);
 		p = strrchr(mx->xlat_name, '`');

@@ -126,7 +126,7 @@ EXTERN_C void boot_DynaLoader(pTHX_ CV* cv);
 #define dl_modules "DynaLoader::dl_modules"
 static void rlm_perl_clear_handles(pTHX)
 {
-	AV *librefs = get_av(dl_librefs, FALSE);
+	AV *librefs = get_av(dl_librefs, false);
 	if (librefs) {
 		av_clear(librefs);
 	}
@@ -135,8 +135,8 @@ static void rlm_perl_clear_handles(pTHX)
 static void **rlm_perl_get_handles(pTHX)
 {
 	I32 i;
-	AV *librefs = get_av(dl_librefs, FALSE);
-	AV *modules = get_av(dl_modules, FALSE);
+	AV *librefs = get_av(dl_librefs, false);
+	AV *modules = get_av(dl_modules, false);
 	void **handles;
 
 	if (!librefs) return NULL;
@@ -149,7 +149,7 @@ static void **rlm_perl_get_handles(pTHX)
 
 	for (i=0; i<=AvFILL(librefs); i++) {
 		void *handle;
-		SV *handle_sv = *av_fetch(librefs, i, FALSE);
+		SV *handle_sv = *av_fetch(librefs, i, false);
 
 		if(!handle_sv) {
 			ERROR("Could not fetch $%s[%d]!\n",
@@ -521,7 +521,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 
 			av = newAV();
 			for (vp = sublist; vp; vp = vp->next) {
-				len = vp_prints_value(buffer, sizeof(buffer), vp, FALSE);
+				len = vp_prints_value(buffer, sizeof(buffer), vp, false);
 				av_push(av, newSVpv(buffer, len));
 			}
 			(void)hv_store(rad_hv, name, strlen(name), newRV_noinc((SV *)av), 0);
@@ -531,7 +531,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 			 *	added to the hash.
 			 */
 		} else {
-			len = vp_prints_value(buffer, sizeof(buffer), sublist, FALSE);
+			len = vp_prints_value(buffer, sizeof(buffer), sublist, false);
 			(void)hv_store(rad_hv, name, strlen(name), newSVpv(buffer, len), 0);
 		}
 

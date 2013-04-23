@@ -112,7 +112,7 @@ int rlm_ldap_map_verify(ldap_instance_t *inst, value_pair_map_t **head)
 						  map->dst->da->name);
 				}
 				
-				inst->expect_password = TRUE;
+				inst->expect_password = true;
 			default:
 				break;	
 			}

@@ -38,6 +38,7 @@ RCSIDH(libradius_h, "$Id$")
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
+#include <stdbool.h>
 
 #include <freeradius-devel/radius.h>
 #include <freeradius-devel/token.h>
@@ -47,18 +48,6 @@ RCSIDH(libradius_h, "$Id$")
 #if SIZEOF_UNSIGNED_INT != 4
 #error FATAL: sizeof(unsigned int) != 4
 #endif
-#endif
-
-#ifndef FALSE
-#define FALSE 0
-#endif
-#ifndef TRUE
-/*
- *	This definition of true as NOT false is definitive. :) Making
- *	it '1' can cause problems on stupid platforms.  See articles
- *	on C portability for more information.
- */
-#define TRUE (!FALSE)
 #endif
 
 /*

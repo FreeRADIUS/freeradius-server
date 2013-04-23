@@ -91,13 +91,13 @@ static int eaptls_initiate(void *type_arg, eap_handler_t *handler)
 
 	inst = type_arg;
 
-	handler->tls = TRUE;
-	handler->finished = FALSE;
+	handler->tls = true;
+	handler->finished = false;
 
 	/*
 	 *	EAP-TLS always requires a client certificate.
 	 */
-	ssn = eaptls_session(inst->tls_conf, handler, TRUE);
+	ssn = eaptls_session(inst->tls_conf, handler, true);
 	if (!ssn) {
 		return 0;
 	}

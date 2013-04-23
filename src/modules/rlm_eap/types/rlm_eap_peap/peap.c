@@ -561,7 +561,7 @@ static int eappeap_postproxy(eap_handler_t *handler, void *data)
 	if (fake && (handler->request->proxy_reply->code == PW_AUTHENTICATION_ACK)) {
 		peap_tunnel_t *t = tls_session->opaque;
 
-		t->home_access_accept = TRUE;
+		t->home_access_accept = true;
 
 		/*
 		 *	Terrible hacks.

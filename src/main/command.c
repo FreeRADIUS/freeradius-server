@@ -347,7 +347,7 @@ static int command_hup(rad_listen_t *listener, int argc, char *argv[])
 
 	snprintf(buffer, sizeof(buffer), "modules.%s.hup",
 		 cf_section_name1(mi->cs));
-	exec_trigger(NULL, mi->cs, buffer, TRUE);
+	exec_trigger(NULL, mi->cs, buffer, true);
 
 	return 1;		/* success */
 }
@@ -1616,10 +1616,10 @@ static int command_set_module_status(rad_listen_t *listener, int argc, char *arg
 
 
 	if (strcmp(argv[1], "alive") == 0) {
-		mi->dead = FALSE;
+		mi->dead = false;
 
 	} else if (strcmp(argv[1], "dead") == 0) {
-		mi->dead = TRUE;
+		mi->dead = true;
 
 	} else {
 		cprintf(listener, "ERROR: Unknown status \"%s\"\n", argv[2]);
@@ -1794,7 +1794,7 @@ static int command_stats_home_server(rad_listen_t *listener, int argc, char *arg
 
 static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 {
-	int auth = TRUE;
+	int auth = true;
 	fr_stats_t *stats;
 	RADCLIENT *client, fake;
 
@@ -1828,12 +1828,12 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 	}
 
 	if (strcmp(argv[0], "auth") == 0) {
-		auth = TRUE;
+		auth = true;
 		stats = &client->auth;
 
 	} else if (strcmp(argv[0], "acct") == 0) {
 #ifdef WITH_ACCOUNTING
-		auth = FALSE;
+		auth = false;
 		stats = &client->acct;
 #else
 		cprintf(listener, "ERROR: This server was built without accounting support.\n");
@@ -1842,7 +1842,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 	} else if (strcmp(argv[0], "coa") == 0) {
 #ifdef WITH_COA
-		auth = FALSE;
+		auth = false;
 		stats = &client->coa;
 #else
 		cprintf(listener, "ERROR: This server was built without CoA support.\n");
@@ -1851,7 +1851,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 	} else if (strcmp(argv[0], "disconnect") == 0) {
 #ifdef WITH_COA
-		auth = FALSE;
+		auth = false;
 		stats = &client->dsc;
 #else
 		cprintf(listener, "ERROR: This server was built without CoA support.\n");
@@ -1882,7 +1882,7 @@ static int command_stats_client(rad_listen_t *listener, int argc, char *argv[])
 
 static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 {
-	int auth = TRUE;
+	int auth = true;
 	rad_listen_t *sock;
 
 	sock = get_socket(listener, argc, argv, NULL);
@@ -1890,7 +1890,7 @@ static int command_stats_socket(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	if (sock->type != RAD_LISTEN_AUTH) auth = FALSE;
+	if (sock->type != RAD_LISTEN_AUTH) auth = false;
 
 	return command_print_stats(listener, &sock->stats, auth, 0);
 }
@@ -1909,7 +1909,7 @@ static int command_add_client_file(rad_listen_t *listener, int argc, char *argv[
 	/*
 	 *	Read the file and generate the client.
 	 */
-	c = client_read(argv[0], FALSE, FALSE);
+	c = client_read(argv[0], false, false);
 	if (!c) {
 		cprintf(listener, "ERROR: Unknown error reading client file.\n");
 		return 0;
@@ -2496,9 +2496,9 @@ static int command_domain_recv_co(rad_listen_t *listener, fr_cs_buffer_t *co)
 
 		do_help:
 			if ((argc > 1) && (strcmp(argv[1], "-r") == 0)) {
-				recursive = TRUE;
+				recursive = true;
 			} else {
-				recursive = FALSE;
+				recursive = false;
 			}
 
 			print_help(listener, table, recursive);
@@ -2625,7 +2625,7 @@ static int command_tcp_recv(rad_listen_t *this)
 			goto close_socket;
 		}
 
-		co->auth = TRUE;
+		co->auth = true;
 		co->offset = 0;
 	}
 

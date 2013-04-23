@@ -275,7 +275,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 /*
  * given a radius request with an EAP-SIM body, decode it into TLV pairs
  *
- * return value is TRUE if it succeeded, false if there was something
+ * return value is true if it succeeded, false if there was something
  * wrong and the packet should be discarded.
  *
  */

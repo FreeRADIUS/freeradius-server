@@ -98,10 +98,10 @@ ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *requ
 {
 	return -1;
 }
-int check_config = FALSE;
+int check_config = false;
 
 static FILE *outputfp = NULL;
-static int echo = FALSE;
+static int echo = false;
 static char const *secret = "testing123";
 
 static int fr_domain_socket(char const *path)
@@ -408,7 +408,7 @@ int main(int argc, char **argv)
 			break;
 
 		case 'E':
-			echo = TRUE;
+			echo = true;
 			break;
 
 		case 'f':

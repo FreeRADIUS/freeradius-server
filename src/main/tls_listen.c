@@ -131,7 +131,7 @@ static int tls_socket_write(rad_listen_t *listener, REQUEST *request)
 
 static int tls_socket_recv(rad_listen_t *listener)
 {
-	int doing_init = FALSE;
+	int doing_init = false;
 	ssize_t rcode;
 	RADIUS_PACKET *packet;
 	REQUEST *request;
@@ -194,7 +194,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_REQUEST, (void *)request);
 		SSL_set_ex_data(sock->ssn->ssl, FR_TLS_EX_INDEX_CERTS, (void *)&request->packet->vps);
 
-		doing_init = TRUE;
+		doing_init = true;
 	}
 
 	rad_assert(sock->request != NULL);

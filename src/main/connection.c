@@ -91,11 +91,11 @@ struct fr_connection_pool_t {
 	int		idle_timeout;	//!< How long a connection can be idle
 					//!< before being closed.
 					
-	int		trigger;	//!< If TRUE execute connection triggers
+	int		trigger;	//!< If true execute connection triggers
 					//!< associated with the connection
 					//!< pool.
 					
-	int		spread;		//!< If TRUE requests will be spread 
+	int		spread;		//!< If true requests will be spread 
 					//!< across all connections, instead of
 					//!< re-using the most recently used
 					//!< connections first.
@@ -298,10 +298,10 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	rad_assert(pool->num <= pool->max);
 
 	if ((pool->last_failed == now) || pool->spawning) {
-		int complain = FALSE;
+		int complain = false;
 		
 		if (pool->last_throttled != now) {
-			complain = TRUE;
+			complain = true;
 			
 			pool->last_throttled = now;
 		}
@@ -323,7 +323,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		return NULL;
 	}
 
-	pool->spawning = TRUE;
+	pool->spawning = true;
 
 	/*
 	 *	Unlock the mutex while we try to open a new
@@ -353,7 +353,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		
 		pool->last_failed = now;
 		free(this);
-		pool->spawning = FALSE; /* atomic, so no lock is needed */
+		pool->spawning = false; /* atomic, so no lock is needed */
 		return NULL;
 	}
 	
@@ -370,12 +370,12 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	this->last_used = now;
 	fr_connection_link_head(pool, this);
 	pool->num++;
-	pool->spawning = FALSE;
+	pool->spawning = false;
 	pool->last_spawned = time(NULL);
 
 	pthread_mutex_unlock(&pool->mutex);
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "open", TRUE);
+	if (pool->trigger) exec_trigger(NULL, pool->cs, "open", true);
 
 	return this;
 }
@@ -432,7 +432,7 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
 
 	pthread_mutex_unlock(&pool->mutex);
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "open", TRUE);
+	if (pool->trigger) exec_trigger(NULL, pool->cs, "open", true);
 
 	return 1;
 }
@@ -452,9 +452,9 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
 static void fr_connection_close(fr_connection_pool_t *pool,
 				fr_connection_t *this)
 {
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", TRUE);
+	if (pool->trigger) exec_trigger(NULL, pool->cs, "close", true);
 
-	rad_assert(this->in_use == FALSE);
+	rad_assert(this->in_use == false);
 
 	fr_connection_unlink(pool, this);
 	pool->delete(pool->ctx, this->connection);
@@ -520,8 +520,8 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
 	 *	If it's in use, release it.
 	 */
 	if (this->in_use) {
-		rad_assert(this->in_use == TRUE);
-		this->in_use = FALSE;
+		rad_assert(this->in_use == true);
+		this->in_use = false;
 		
 		rad_assert(pool->active > 0);
 		pool->active--;
@@ -564,7 +564,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 		fr_connection_close(pool, this);
 	}
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "stop", TRUE);
+	if (pool->trigger) exec_trigger(NULL, pool->cs, "stop", true);
 
 	rad_assert(pool->head == NULL);
 	rad_assert(pool->tail == NULL);
@@ -660,7 +660,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 			goto error;
 		}
 
-		if (cf_section_sub_find(cs, "trigger")) pool->trigger = TRUE;
+		if (cf_section_sub_find(cs, "trigger")) pool->trigger = true;
 	} else {
 		pool->start = 5;
 		pool->min = 5;
@@ -695,7 +695,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
 		}
 	}
 
-	if (pool->trigger) exec_trigger(NULL, pool->cs, "start", TRUE);
+	if (pool->trigger) exec_trigger(NULL, pool->cs, "start", true);
 
 	return pool;
 }
@@ -917,13 +917,13 @@ void *fr_connection_get(fr_connection_pool_t *pool)
 	}
 
 	if (pool->num == pool->max) {
-		int complain = FALSE;
+		int complain = false;
 
 		/*
 		 *	Rate-limit complaints.
 		 */
 		if (pool->last_at_max != now) {
-			complain = TRUE;
+			complain = true;
 			pool->last_at_max = now;
 		}
 		
@@ -946,7 +946,7 @@ do_return:
 	pool->active++;
 	this->num_uses++;
 	this->last_used = now;
-	this->in_use = TRUE;
+	this->in_use = true;
 
 	pthread_mutex_unlock(&pool->mutex);
 	
@@ -971,8 +971,8 @@ void fr_connection_release(fr_connection_pool_t *pool, void *conn)
 	this = fr_connection_find(pool, conn);
 	if (!this) return;
 
-	rad_assert(this->in_use == TRUE);
-	this->in_use = FALSE;
+	rad_assert(this->in_use == true);
+	this->in_use = false;
 	
 	/*
 	 *	Determines whether the last used connection gets
@@ -1050,7 +1050,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 	
 	conn_number = this->number;
 
-	rad_assert(this->in_use == TRUE);
+	rad_assert(this->in_use == true);
 	
 	DEBUG("%s: Reconnecting (%i)", pool->log_prefix, conn_number);
 	
@@ -1064,7 +1064,7 @@ void *fr_connection_reconnect(fr_connection_pool_t *pool, void *conn)
 			pool->last_complained = now;
 		}
 	
-		this->in_use = FALSE;
+		this->in_use = false;
 
 		rad_assert(pool->active > 0);
 		pool->active--;

@@ -46,7 +46,7 @@ static int sql_conn_destructor(void *conn)
 	
 	rad_assert(inst);
 	
-	exec_trigger(NULL, inst->cs, "modules.sql.close", FALSE);
+	exec_trigger(NULL, inst->cs, "modules.sql.close", false);
 	
 	return 0;
 }
@@ -75,12 +75,12 @@ static void *mod_conn_create(void *instance)
 
 	rcode = (inst->module->sql_socket_init)(handle, inst->config);
 	if (rcode == 0) {
-		exec_trigger(NULL, inst->cs, "modules.sql.open", FALSE);
+		exec_trigger(NULL, inst->cs, "modules.sql.open", false);
 		
 		return handle;
 	}
 
-	exec_trigger(NULL, inst->cs, "modules.sql.fail", TRUE);
+	exec_trigger(NULL, inst->cs, "modules.sql.fail", true);
 
 	/*
 	 *	Destroy any half opened connections.

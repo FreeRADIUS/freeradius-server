@@ -68,8 +68,8 @@ tls_session_t *eaptls_session(fr_tls_server_conf_t *tls_conf, eap_handler_t *han
 	int		verify_mode = 0;
 	REQUEST		*request = handler->request;
 
-	handler->tls = TRUE;
-	handler->finished = FALSE;
+	handler->tls = true;
+	handler->finished = false;
 
 	/*
 	 *	Every new session is started only from EAP-TLS-START.
@@ -142,7 +142,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 	REQUEST *request = handler->request;
 	tls_session_t *tls_session = handler->opaque;
 
-	handler->finished = TRUE;
+	handler->finished = true;
 	reply.code = FR_TLS_SUCCESS;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
@@ -176,7 +176,7 @@ int eaptls_fail(eap_handler_t *handler, int peap_flag)
 	EAPTLS_PACKET	reply;
 	tls_session_t *tls_session = handler->opaque;
 
-	handler->finished = TRUE;
+	handler->finished = true;
 	reply.code = FR_TLS_FAIL;
 	reply.length = TLS_HEADER_LEN;
 	reply.flags = peap_flag;
@@ -213,11 +213,11 @@ int eaptls_request(EAP_DS *eap_ds, tls_session_t *ssn)
 		EVERY packet we send and add corresponding
 		"TLS Message Length" field.
 
-	length_flag = TRUE;
+	length_flag = true;
 		This means we include L flag and "TLS Msg Len" in EVERY
 		packet we send out.
 
-	length_flag = FALSE;
+	length_flag = false;
 		This means we include L flag and "TLS Msg Len" **ONLY**
 		in First packet of a fragment series. We do not use
 		it anywhere else.

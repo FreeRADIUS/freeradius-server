@@ -52,7 +52,7 @@ typedef enum fr_cond_type_t {
  *
  *	FOO			no OP, RHS is NULL
  *	FOO OP BAR
- *	(COND)			no LHS/RHS, child is COND, child OP is TRUE
+ *	(COND)			no LHS/RHS, child is COND, child OP is true
  *	(!(COND))		no LHS/RHS, child is COND, child OP is NOT
  *	(COND1 OP COND2)	no LHS/RHS, next is COND2, next OP is OP
  */

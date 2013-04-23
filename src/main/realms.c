@@ -416,7 +416,7 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 {
 	char const *name2;
 	home_server *home;
-	int dual = FALSE;
+	int dual = false;
 	CONF_PAIR *cp;
 	CONF_SECTION *tls;
 
@@ -531,12 +531,12 @@ static int home_server_add(realm_config_t *rc, CONF_SECTION *cs)
 
 	} else if (strcasecmp(hs_type, "auth+acct") == 0) {
 		home->type = HOME_TYPE_AUTH;
-		dual = TRUE;
+		dual = true;
 
 #ifdef WITH_COA
 	} else if (strcasecmp(hs_type, "coa") == 0) {
 		home->type = HOME_TYPE_COA;
-		dual = FALSE;
+		dual = false;
 
 		if (home->server != NULL) {
 			cf_log_err_cs(cs,
@@ -1603,7 +1603,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "acct_pool");
 	if (cp) acct_pool_name = cf_pair_value(cp);
 	if (cp && acct_pool_name) {
-		int do_print = TRUE;
+		int do_print = true;
 
 		if (acct_pool) {
 			cf_log_err_cs(cs, "Cannot use \"pool\" and \"acct_pool\" at the same time.");
@@ -1613,7 +1613,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 		if (!auth_pool ||
 		    (auth_pool_name &&
 		     (strcmp(auth_pool_name, acct_pool_name) != 0))) {
-			do_print = TRUE;
+			do_print = true;
 		}
 
 		if (!add_pool_to_realm(rc, cs,
@@ -1627,7 +1627,7 @@ static int realm_add(realm_config_t *rc, CONF_SECTION *cs)
 	cp = cf_pair_find(cs, "coa_pool");
 	if (cp) coa_pool_name = cf_pair_value(cp);
 	if (cp && coa_pool_name) {
-		int do_print = TRUE;
+		int do_print = true;
 
 		if (!add_pool_to_realm(rc, cs,
 				       coa_pool_name, &coa_pool,
@@ -1958,7 +1958,7 @@ int realms_init(CONF_SECTION *config)
 			return 0;
 		}
 
-		if (!server_pool_add(rc, cs, type, TRUE)) {
+		if (!server_pool_add(rc, cs, type, true)) {
 			free(rc);
 			realms_free();
 			return 0;
@@ -2097,7 +2097,7 @@ void home_server_update_request(home_server *home, REQUEST *request)
 	 *	module, and encapsulated into an EAP packet.
 	 */
 	if (!request->proxy) {
-		request->proxy = rad_alloc(request, TRUE);
+		request->proxy = rad_alloc(request, true);
 		if (!request->proxy) {
 			ERROR("no memory");
 			exit(1);
@@ -2362,7 +2362,7 @@ home_server *home_server_ldb(char const *realmname,
 		      pool->name, found->server);
 		if (pool->in_fallback) goto update_and_return;
 
-		pool->in_fallback = TRUE;
+		pool->in_fallback = true;
 		
 		/*
 		 *      Run the trigger once an hour saying that
@@ -2370,15 +2370,15 @@ home_server *home_server_ldb(char const *realmname,
 		 */
 		if ((pool->time_all_dead + 3600) < request->timestamp) {
 			pool->time_all_dead = request->timestamp;
-			exec_trigger(request, pool->cs, "home_server_pool.fallback", FALSE);
+			exec_trigger(request, pool->cs, "home_server_pool.fallback", false);
 		}
 	}
 
 	if (found) {
 	update_and_return:
 		if ((found != pool->fallback) && pool->in_fallback) {
-			pool->in_fallback = FALSE;
-			exec_trigger(request, pool->cs, "home_server_pool.normal", FALSE);
+			pool->in_fallback = false;
+			exec_trigger(request, pool->cs, "home_server_pool.normal", false);
 		}
 
 		return found;

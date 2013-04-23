@@ -815,7 +815,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
  */
 RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 {
-	int		global = FALSE, in_server = FALSE;
+	int		global = false, in_server = false;
 	CONF_SECTION	*cs;
 	RADCLIENT	*c;
 	RADCLIENT_LIST	*clients;
@@ -830,9 +830,9 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 	clients = clients_init(section);
 	if (!clients) return NULL;
 
-	if (cf_top_section(section) == section) global = TRUE;
+	if (cf_top_section(section) == section) global = true;
 
-	if (strcmp("server", cf_section_name1(section)) == 0) in_server = TRUE;
+	if (strcmp("server", cf_section_name1(section)) == 0) in_server = true;
 
 	/*
 	 *	Associate the clients structure with the section.
@@ -919,7 +919,7 @@ RADCLIENT_LIST *clients_parse_section(CONF_SECTION *section)
 				if ((stat(buf2, &stat_buf) != 0) ||
 				    S_ISDIR(stat_buf.st_mode)) continue;
 
-				dc = client_read(buf2, in_server, TRUE);
+				dc = client_read(buf2, in_server, true);
 				if (!dc) {
 					cf_log_err_cs(cs,
 						   "Failed reading client file \"%s\"", buf2);
@@ -1034,7 +1034,7 @@ int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	/*
 	 *	Initialize the remaining fields.
 	 */
-	c->dynamic = TRUE;
+	c->dynamic = true;
 	c->lifetime = master->lifetime;
 	c->created = time(NULL);
 	c->longname = talloc_strdup(c, c->shortname);

@@ -89,10 +89,10 @@ int getusersfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list, c
 		(strcmp(compat_mode_str, "cistron") == 0)) {
 		PAIR_LIST *entry;
 		VALUE_PAIR *vp;
-		int compat_mode = FALSE;
+		int compat_mode = false;
 
 		if (strcmp(compat_mode_str, "cistron") == 0) {
-			compat_mode = TRUE;
+			compat_mode = true;
 		}
 
 		entry = users;

@@ -226,7 +226,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	MEM(inst->vic_options = talloc_zero(inst, krb5_verify_init_creds_opt));
 	
 	krb5_verify_init_creds_opt_init(inst->vic_options);
-	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, TRUE);
+	krb5_verify_init_creds_opt_set_ap_req_nofail(inst->vic_options, true);
 	
 #endif
 	
@@ -345,7 +345,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	}
 	
 	krb5_verify_opt_set_keytab(&options, keytab);
-	krb5_verify_opt_set_secure(&options, TRUE);
+	krb5_verify_opt_set_secure(&options, true);
 
 	if (inst->service) {
 		krb5_verify_opt_set_service(&options, inst->service);

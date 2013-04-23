@@ -246,7 +246,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	VALUE_PAIR *vp, *found, **to_req, **to_cache, **from;
 	const DICT_ATTR *da;
 
-	int merge = TRUE;
+	int merge = true;
 	REQUEST *context;
 
 	const value_pair_map_t *map;
@@ -286,7 +286,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	 */
 	vp = pairfind(request->config_items, PW_CACHE_MERGE, 0, TAG_ANY);
 	if (vp && (vp->vp_integer == 0)) {
-		merge = FALSE;
+		merge = false;
 		RDEBUG2("Told not to merge new entry into request");
 	}
 	

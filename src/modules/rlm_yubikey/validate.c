@@ -47,7 +47,7 @@ static void *mod_socket_create(void *instance)
  *
  * @param[in] instance configuration data.
  * @param[in] handle rlm_yubikey_handle_t to close and free.
- * @return returns TRUE.
+ * @return returns true.
  */
 static int mod_socket_delete(UNUSED void *instance, void *handle)
 {
@@ -55,7 +55,7 @@ static int mod_socket_delete(UNUSED void *instance, void *handle)
 	
 	ykclient_handle_done(&yandle);
 	
-	return TRUE;
+	return true;
 }
 
 int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
