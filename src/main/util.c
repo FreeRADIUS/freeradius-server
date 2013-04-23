@@ -942,6 +942,7 @@ pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
 {
 	char const *p = *name;
 	char const *q;
+	pair_lists_t output;
 	
 	/* This should never be a NULL pointer or zero length string */
 	rad_assert(name && *name);
@@ -964,12 +965,16 @@ pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
 	
 	if (q) {
 		*name = (q + 1);	/* Consume the list and delimiter */
-	} else {
-		q = (p + strlen(p));	/* Consume the entire string */
+		return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+	}
+
+	q = (p + strlen(p));	/* Consume the entire string */
+	output = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+	if (output != PAIR_LIST_UNKNOWN) {
 		*name = q;
 	}
 	
-	return fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
+	return output;
 }
 
 
