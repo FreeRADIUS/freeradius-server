@@ -1193,6 +1193,46 @@ int radius_str2vp(REQUEST *request, char const *raw, request_refs_t request_def,
 	return 0;
 }
 
+
+/** Return a VP from a value_pair_tmpl_t
+ *
+ * @param request current request.
+ * @param vpt the value pair template
+ * @return NULL if not found, or the VPs.
+ */
+VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
+{
+	VALUE_PAIR **vps;
+
+	if (radius_request(&request, vpt->request) < 0) {
+		return NULL;
+	}
+	
+	vps = radius_list(request, vpt->list);
+	if (!vps) {
+		return NULL;
+	}
+	
+	switch (vpt->type)
+	{
+	/*
+	 *	May not may not be found, but it *is* a known name.
+	 */
+	case VPT_TYPE_ATTR:
+		return pairfind(*vps, vpt->da->attr, vpt->da->vendor, TAG_ANY);
+		
+	case VPT_TYPE_LIST:
+		return *vps;
+		
+	default:
+		break;
+	}
+
+	return NULL;
+}
+
+
+
 /** Return a VP from the specified request.
  *
  * @param request current request.
@@ -1204,43 +1244,15 @@ int radius_str2vp(REQUEST *request, char const *raw, request_refs_t request_def,
 int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
 {
 	value_pair_tmpl_t vpt;
-	VALUE_PAIR **vps;
 
 	*vp_p = NULL;
-	
+
 	if (radius_parse_attr(name, &vpt, REQUEST_CURRENT,
 	    PAIR_LIST_REQUEST) < 0) {
 		return -1;
 	}
-	
-	if (radius_request(&request, vpt.request) < 0) {
-		return 0;
-	}
-	
-	vps = radius_list(request, vpt.list);
-	if (!vps) {
-		return 0;
-	}
-	
-	switch (vpt.type)
-	{
-	/*
-	 *	May not may not be found, but it *is* a known name.
-	 */
-	case VPT_TYPE_ATTR:
-		*vp_p = pairfind(*vps, vpt.da->attr, vpt.da->vendor, TAG_ANY);
-		break;
-		
-	case VPT_TYPE_LIST:
-		*vp_p = *vps;
-		break;
-		
-	default:
-		rad_assert(0);
-		return -1;
-		break;
-	}
 
+	*vp_p = radius_vpt_get_vp(request, &vpt);
 	return 0;
 }
 
