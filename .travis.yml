@@ -16,4 +16,5 @@ env:
 script:
   - ./configure -C --prefix=$HOME/travis
   - make -j8
+after_script:
   - make travis-test
