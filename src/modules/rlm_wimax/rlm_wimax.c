@@ -197,9 +197,8 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		if (len > 128) len = 128; /* buffer size */
 
 		fr_bin2hex(mip_rk, buffer, len);
-		radlog_request(L_DBG, 0, request, "MIP-RK = 0x%s", buffer);
-		radlog_request(L_DBG, 0, request, "MIP-SPI = %08x",
-			       ntohl(mip_spi));
+		RDEBUG("MIP-RK = 0x%s", buffer);
+		RDEBUG("MIP-SPI = %08x", ntohl(mip_spi));
 	}
 
 	/*

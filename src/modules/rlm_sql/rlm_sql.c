@@ -572,8 +572,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	 *	Get the list of groups this user is a member of
 	 */
 	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
-		radlog_request(L_ERR, 0, request,
-			       "Error getting group membership");
+		RDEBUGE("Error getting group membership");
 		sql_release_socket(inst, handle);
 		return 1;
 	}
@@ -612,7 +611,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	 *	Get the list of groups this user is a member of
 	 */
 	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
-		radlog_request(L_ERR, 0, request, "Error retrieving group list");
+		RDEBUGE("Error retrieving group list");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -1458,7 +1457,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 			 *      Failed to check the terminal server for
 			 *      duplicate logins: return an error.
 			 */
-			radlog_request(L_ERR, 0, request, "Failed to check the terminal server for user '%s'.", row[2]);
+			RDEBUGE("Failed to check the terminal server for user '%s'.", row[2]);
 			
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
