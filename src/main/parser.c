@@ -280,12 +280,22 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	}
 
 	/*
-	 *	!COND == !(COND)
+	 *	!COND
 	 */
 	if (*p == '!') {
 		p++;
 		c->negate = TRUE;
 		while (isspace((int) *p)) p++; /* skip spaces after negation */
+
+		/*
+		 *  Just for stupidity
+		 */
+		if (*p == '!') {
+			talloc_free(c);
+			COND_DEBUG("RETURN %d", __LINE__);
+			*error = "Double negation is invalid";
+			return -(p - start);
+		}
 	}
 
 	/*

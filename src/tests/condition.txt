@@ -69,6 +69,15 @@ data a == b
 condition (!a)
 data !a
 
+condition !(a)
+data !a
+
+condition !!a
+data ERROR offset 1 Double negation is invalid
+
+condition !(!a)
+data a
+
 #
 #  Hmm... these next two should really be identical.
 #
