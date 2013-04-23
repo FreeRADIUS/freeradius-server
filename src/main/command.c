@@ -23,8 +23,8 @@
 
 #ifdef WITH_COMMAND_SOCKET
 
+#include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modpriv.h>
-#include <freeradius-devel/conffile.h>
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 #include <freeradius-devel/parser.h>
@@ -385,7 +385,7 @@ static int command_show_config(rad_listen_t *listener, int argc, char *argv[])
 		return 0;
 	}
 
-	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
+	ci = cf_reference_item(cf_get_root(), cf_get_root(), argv[0]);
 	if (!ci) return 0;
 
 	if (!cf_item_is_pair(ci)) return 0;
@@ -759,7 +759,7 @@ static int command_show_xml(rad_listen_t *listener, UNUSED int argc, UNUSED char
 		return 0;
 	}
 	
-	ci = cf_reference_item(mainconfig.config, mainconfig.config, argv[0]);
+	ci = cf_reference_item(cf_get_root(), cf_get_root(), argv[0]);
 	if (!ci) {
 		cprintf(listener, "ERROR: No such item <reference>\n");
 		fclose(fp);
@@ -809,7 +809,6 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 	return 0;
 }
 
-char *debug_log_file = NULL;
 static char debug_log_file_buffer[1024];
 
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
@@ -823,10 +822,10 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 		cprintf(listener, "ERROR: Cannot direct debug logs to absolute path.\n");
 	}
 
-	debug_log_file = NULL;
-
-	if (argc == 0) return 0;
-
+	if (argc == 0) {
+		return 0;
+	}
+	
 	/*
 	 *	This looks weird, but it's here to avoid locking
 	 *	a mutex for every log message.
@@ -839,7 +838,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 	snprintf(debug_log_file_buffer, sizeof(debug_log_file_buffer),
 		 "%s/%s", radlog_dir, argv[0]);
 
-	debug_log_file = &debug_log_file_buffer[0];
+	log_set_debug_file(&debug_log_file_buffer[0]);
 
 	return 0;
 }
@@ -889,9 +888,11 @@ static int command_show_debug_condition(rad_listen_t *listener,
 static int command_show_debug_file(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
-	if (!debug_log_file) return 0;
-
-	cprintf(listener, "%s\n", debug_log_file);
+	if (!log_get_file_debug()) {
+		return 0;
+	}
+	
+	cprintf(listener, "%s\n", log_get_file_debug());
 	return 0;
 }
 

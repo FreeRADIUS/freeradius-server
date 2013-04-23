@@ -65,8 +65,6 @@ int log_stripped_names;
  *	Global, for log.c to use.
  */
 struct main_config_t mainconfig;
-char *request_log_file = NULL;
-char *debug_log_file = NULL;
 ssize_t radius_xlat(char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
 		    UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)
 {

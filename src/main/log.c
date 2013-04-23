@@ -71,8 +71,47 @@ static const FR_NAME_NUMBER colours[] = {
 	{ NULL, 0 }
 };
 
-int log_dates_utc = 0;
 
+static bool log_dates_utc = false;
+#ifdef WITH_COMMAND_SOCKET
+static char *log_file_debug = NULL;
+#endif
+static char *log_file_request = NULL;
+
+/*
+ *	Icky getters and setters for log configuration options
+ */
+void log_set_dates_utc(bool value)
+{
+	log_dates_utc = value;
+}
+
+bool log_get_dates_utc(void)
+{
+	return log_dates_utc;
+}
+
+#ifdef WITH_COMMAND_SOCKET
+void log_set_debug_file(char *file)
+{
+	log_file_debug = file;
+}
+
+char const *log_get_file_debug(void)
+{
+	return log_file_debug;
+}
+#endif
+
+void log_set_request_file(char *file)
+{
+	log_file_request = file;
+}
+
+char const *log_get_file_request(void)
+{
+	return log_file_request;
+}
 
 /*
  *	Log the message to the logfile. Include the severity and
@@ -261,15 +300,10 @@ void vp_listdebug(VALUE_PAIR *vp)
 	}
 }
 
-extern char *request_log_file;
-#ifdef WITH_COMMAND_SOCKET
-extern char *debug_log_file;
-#endif
-
 void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...)
 {
 	size_t len = 0;
-	char const *filename = request_log_file;
+	char const *filename = log_get_file_request();
 	FILE *fp = NULL;
 	va_list ap;
 	char buffer[8192];
@@ -295,16 +329,16 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
 		}
 
 		/*
-		 *	Use the debug output file, if specified,
-		 *	otherwise leave it as "request_log_file".
+		 *	Use the debug output file, if specified
 		 */
 #ifdef WITH_COMMAND_SOCKET
-		filename = debug_log_file;
-		if (!filename)
+		{
+			const char *debug_file = log_get_file_debug();
+			if (debug_file) {
+				filename = debug_file;
+			}
+		}
 #endif
-		  filename = request_log_file;
-
-		filename = request_log_file;
 	}
 
 	if (request && filename) {

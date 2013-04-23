@@ -60,7 +60,7 @@ RCSID("$Id$")
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_condition = NULL;
-extern int log_dates_utc;
+static int log_dates_utc;
 
 typedef struct cached_config_t {
 	struct cached_config_t *next;
@@ -364,8 +364,7 @@ static size_t xlat_config(UNUSED void *instance, UNUSED REQUEST *request, char c
 		return 0;
 	}
 
-	ci = cf_reference_item(request->root->config,
-			       request->root->config, buffer);
+	ci = cf_reference_item(cf_get_root(), cf_get_root(), buffer);
 	if (!ci || !cf_item_is_pair(ci)) {
 		*out = '\0';
 		return 0;
@@ -786,6 +785,13 @@ int read_mainconfig(int reload, bool strict)
 #endif
 	cf_set_strict(strict);
 
+	/*
+	 *	Set some persistent library options
+	 */
+	cf_set_strict(strict);
+	log_set_dates_utc(log_dates_utc);
+	log_set_request_file(request_log_file);
+
 	radlog(L_INFO, "Starting - reading configuration files ...");
 
 	/* Initialize the dictionary */
@@ -923,9 +929,9 @@ int read_mainconfig(int reload, bool strict)
 	 *	Note that where possible, we do atomic switch-overs,
 	 *	to ensure that the pointers are always valid.
 	 */
-	rad_assert(mainconfig.config == NULL);
-	mainconfig.config = cs;
-
+	rad_assert(cf_get_root() == NULL);
+	cf_set_root(cs);
+	
 	DEBUG2("%s: #### Loading Realms and Home Servers ####", mainconfig.name);
 	if (!realms_init(cs)) {
 		return -1;
@@ -967,7 +973,7 @@ int read_mainconfig(int reload, bool strict)
 	if (mainconfig.reject_delay < 0) mainconfig.reject_delay = 0;
 
 	/*  Reload the modules.  */
-	if (setup_modules(reload, mainconfig.config) < 0) {
+	if (setup_modules(reload, cf_get_root()) < 0) {
 		return -1;
 	}
 

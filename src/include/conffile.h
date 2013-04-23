@@ -50,6 +50,8 @@ typedef struct CONF_PARSER {
 #define XStringify(x) #x
 #define Stringify(x) XStringify(x)
 
+void cf_set_root(CONF_SECTION *root);
+CONF_SECTION *cf_get_root(void);
 void cf_set_strict(bool strict);
 bool cf_get_strict(void);
 CONF_SECTION	*cf_section_alloc(CONF_SECTION *parent, char const *name1,
