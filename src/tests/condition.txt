@@ -116,3 +116,12 @@ data foo
 
 condition /foo/ =~ bar
 data ERROR offset 0 Conditional check cannot begin with a regular expression
+
+condition reply == request
+data ERROR offset 0 Cannot use list references in condition
+
+condition reply == "hello"
+data ERROR offset 0 Cannot use list references in condition
+
+condition "hello" == reply
+data ERROR offset 0 Cannot use list references in condition

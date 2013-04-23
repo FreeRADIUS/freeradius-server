@@ -549,6 +549,19 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
+
+			/*
+			 *	@todo: check LHS and RHS separately, to
+			 *	get better errors
+			 */
+			if ((c->data.map->src->type == VPT_TYPE_LIST) ||
+			    (c->data.map->dst->type == VPT_TYPE_LIST)) {
+				talloc_free(c);
+				*error = "Cannot use list references in condition";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return 0;
+			}
+
 			p += slen;
 
 			while (isspace((int) *p)) p++; /* skip spaces after RHS */
