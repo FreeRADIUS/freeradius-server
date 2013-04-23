@@ -562,6 +562,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				return 0;
 			}
 
+			if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
+			    (c->data.map->dst->type != VPT_TYPE_ATTR)) {
+				talloc_free(c);
+				*error = "Cannot use attribute reference on right side of condition";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return 0;
+			}
+
+			if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
+			    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
+			    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
+				talloc_free(c);
+				*error = "Attribute comparisons must be of the same attribute type";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return 0;
+			}
+
 			p += slen;
 
 			while (isspace((int) *p)) p++; /* skip spaces after RHS */

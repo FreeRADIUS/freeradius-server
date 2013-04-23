@@ -125,3 +125,6 @@ data ERROR offset 0 Cannot use list references in condition
 
 condition "hello" == reply
 data ERROR offset 0 Cannot use list references in condition
+
+condition request:User-Name == reply:User-Name
+data &User-Name == &reply:User-Name
