@@ -15,81 +15,92 @@ data a == b || c == d
 #  appear in parser.c
 #
 condition ("foo\
-data ERROR offset 6 'End of string after escape'
+data ERROR offset 6 End of string after escape
 
 condition ("foo
-data ERROR offset 2 'Unterminated string'
+data ERROR offset 2 Unterminated string
 
 condition ()
-data ERROR offset 1 'Empty string is invalid'
+data ERROR offset 1 Empty string is invalid
 
 condition (!)
-data ERROR offset 2 'Empty string is invalid'
+data ERROR offset 2 Empty string is invalid
 
 condition (foo == bar
-data ERROR offset 11 'No closing brace at end of string'
+data ERROR offset 11 No closing brace at end of string
 
 condition (|| b)
-data ERROR offset 1 'Empty string is invalid'
+data ERROR offset 1 Empty string is invalid
 
 condition ((a || b) foo)
-data ERROR offset 10 'Unexpected text after condition'
+data ERROR offset 10 Unexpected text after condition
 
 # escapes in names are illegal
 condition (a\ foo || b)
-data ERROR offset 2 'Unexpected escape'
+data ERROR offset 2 Unexpected escape
 
 condition (a FOO b)
-data ERROR offset 3 'Invalid text. Expected comparison operator'
+data ERROR offset 3 Invalid text. Expected comparison operator
 
 condition (a !x b)
-data ERROR offset 3 'Invalid operator'
+data ERROR offset 3 Invalid operator
 
 condition (a =x b)
-data ERROR offset 3 'Invalid operator'
+data ERROR offset 3 Invalid operator
 
 condition (a =~ b)
-data ERROR offset 6 'Expected regular expression'
+data ERROR offset 6 Expected regular expression
 
 condition (a == /b/)
-data ERROR offset 6 'Unexpected regular expression'
+data ERROR offset 6 Unexpected regular expression
 
 condition (a == b"foo")
-data ERROR offset 7 'Unexpected start of string'
+data ERROR offset 7 Unexpected start of string
 
 # And now we have a bunch of VALID conditions we want to parse.
 
 # sillyness is OK
 condition ((((((a))))))
-data (a)
+data a
 
 condition (a == b)
-data (a == b)
+data a == b
 
 condition (!a)
-data (!a)
+data !a
 
 #
 #  Hmm... these next two should really be identical.
 #
 condition (a == b || c == d)
-data (a == b || c == d)
+data a == b || c == d
 
 condition ((a == b) || (c == d))
-data (a == b) || (c == d)
+data a == b || c == d
 
 condition (!(a == b) || (c == d))
-data (!(a == b) || (c == d))
+data !a == b || c == d
 
 # different from above!
 condition (!((a == b) || (c == d)))
-data (!((a == b) || (c == d)))
+data !(a == b || c == d)
 
 condition ((a == b) || (c == d)))
-data ERROR offset 22 'Unexpected closing brace'
+data ERROR offset 22 Unexpected closing brace
 
+#
+#  FIXME: The attribute should be parsed as an attribute ref!
+#
 condition (handled && (Response-Packet-Type == Access-Challenge))
-data (handled && (Response-Packet-Type == Access-Challenge))
+data handled && &Response-Packet-Type == Access-Challenge
+
+# This is OK, without the braces
+condition handled && &Response-Packet-Type == Access-Challenge
+data handled && &Response-Packet-Type == Access-Challenge
+
+# and this, though it's not a good idea.
+condition handled &&&Response-Packet-Type == Access-Challenge
+data handled && &Response-Packet-Type == Access-Challenge
 
 condition (!(!foo))
 data foo

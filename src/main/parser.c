@@ -43,83 +43,6 @@ RCSID("$Id$")
 #endif
 #endif
 
-static size_t cond_sprint_string(char *buffer, size_t bufsize, char const *str, FR_TOKEN type)
-{
-	char c;
-	const char *p = str;
-	char *q = buffer;
-	char *end = q + bufsize - 3;
-
-	switch (type) {
-	default:
-		return 0;
-
-	case T_BARE_WORD:
-		strlcpy(buffer, str, bufsize);
-		return strlen(buffer);
-
-	case T_OP_REG_EQ:
-		c = '/';
-		break;
-
-	case T_DOUBLE_QUOTED_STRING:
-		c = '"';
-		break;
-
-	case T_SINGLE_QUOTED_STRING:
-		c = '\'';
-		break;
-
-	case T_BACK_QUOTED_STRING:
-		c = '`';
-		break;
-	}
-
-	*(q++) = c;
-
-	while (*p && (q < end)) {
-		if (*p == c) {
-			*(q++) = '\\';
-			*(q++) = *(p++);
-			continue;
-		}
-
-		switch (*p) {
-		case '\\':
-			*(q++) = '\\';
-			*(q++) = *(p++);
-			break;
-
-		case '\r':
-			*(q++) = '\\';
-			*(q++) = 'r';
-			p++;
-			break;
-
-		case '\n':
-			*(q++) = '\\';
-			*(q++) = 'r';
-			p++;
-			break;
-
-		case '\t':
-			*(q++) = '\\';
-			*(q++) = 't';
-			p++;
-			break;
-
-		default:
-			*(q++) = *(p++);
-			break;
-		}
-	}
-
-	*(q++) = c;
-	*(q++) = '\0';
-
-	return q - buffer;
-}
-
 size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c)
 {
 	size_t len;
@@ -127,39 +50,40 @@ size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c)
 	char *end = buffer + bufsize - 1;
 
 next:
-	if (c->child_op == COND_NOT) {
-		*(p++) = '!';
+	if (c->negate) {
+		*(p++) = '!';	/* FIXME: only allow for child? */
 	}
 
-	if (c->op != T_OP_INVALID) {
-		rad_assert(c->lhs != NULL);
-
-		len = cond_sprint_string(p, end - p, c->lhs, c->lhs_type);
+	switch (c->type) {
+	case COND_TYPE_EXISTS:
+		rad_assert(c->data.vpt != NULL);
+		len = radius_tmpl2str(p, end - p, c->data.vpt);
 		p += len;
+		break;
 
-		if (c->op != T_OP_CMP_TRUE) {
-			*(p++) = ' ';
-			strlcpy(p, fr_token_name(c->op), end - p);
-			p += strlen(p);
-			*(p++) = ' ';
+	case COND_TYPE_MAP:
+		rad_assert(c->data.map != NULL);
+#if 0
+		*(p++) = '[';	/* for extra-clear debugging */
+#endif
+		len = radius_map2str(p, end - p, c->data.map);
+		p += len;
+#if 0
+		*(p++) = ']';
+#endif
+		break;
 
-			rad_assert(c->rhs != NULL);
-
-			len = cond_sprint_string(p, end - p, c->rhs, c->rhs_type);
-			p += len;
-		}
-
-	} else {
-		rad_assert(c->child != NULL);
-
-		rad_assert(c->child_op != COND_AND);
-		rad_assert(c->child_op != COND_OR);
-		rad_assert(c->child != NULL);
-
+	case COND_TYPE_CHILD:
+		rad_assert(c->data.child != NULL);
 		*(p++) = '(';
-		len = fr_cond_sprint(p, end - p, c->child);
+		len = fr_cond_sprint(p, end - p, c->data.child);
 		p += len;
 		*(p++) = ')';
+		break;
+
+	default:
+		*buffer = '\0';
+		return 0;
 	}
 
 	if (c->next_op == COND_NONE) {
@@ -167,9 +91,6 @@ next:
 		*p = '\0';
 		return p - buffer;
 	}
-
-	rad_assert(c->next_op != COND_TRUE);
-	rad_assert(c->next_op != COND_NOT);
 
 	if (c->next_op == COND_AND) {
 		strlcpy(p, " && ", end - p);
@@ -186,8 +107,6 @@ next:
 	c = c->next;
 	goto next;
 }
-
-DIAG_ON(unused-function)
 
 
 static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, char **out,
@@ -278,6 +197,7 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 	}
 
 	*op = T_BARE_WORD;
+	if (*p == '&') p++;	/* special-case &User-Name */
 
 	while (*p) {
 		/*
@@ -341,6 +261,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	ssize_t slen;
 	const char *p = start;
 	fr_cond_t *c;
+	char *lhs, *rhs;
+	FR_TOKEN op, lhs_type, rhs_type;
 
 	COND_DEBUG("START %s", p);
 
@@ -358,12 +280,12 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	}
 
 	/*
-	 *	!COND
+	 *	!COND == !(COND)
 	 */
 	if (*p == '!') {
-		 p++;
-		 c->child_op = COND_NOT;
-		 while (isspace((int) *p)) p++; /* skip spaces after negation */
+		p++;
+		c->negate = TRUE;
+		while (isspace((int) *p)) p++; /* skip spaces after negation */
 	}
 
 	/*
@@ -372,20 +294,19 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	if (*p == '(') {
 		p++;
 
-		if (c->child_op == COND_NONE) c->child_op = COND_TRUE;
-
 		/*
 		 *	We've already eaten one layer of
 		 *	brackets.  Go recurse to get more.
 		 */
-		slen = condition_tokenize(c, p, TRUE, &c->child, error);
+		c->type = COND_TYPE_CHILD;
+		slen = condition_tokenize(c, p, TRUE, &c->data.child, error);
 		if (slen <= 0) {
 			talloc_free(c);
 			COND_DEBUG("RETURN %d", __LINE__);
 			return slen - (p - start);
 		}
 
-		if (!c->child) {
+		if (!c->data.child) {
 			talloc_free(c);
 			*error = "Empty condition is invalid";
 			COND_DEBUG("RETURN %d", __LINE__);
@@ -407,7 +328,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		 *	Grab the LHS
 		 */
 		COND_DEBUG("LHS %s", p);
-		slen = condition_tokenize_word(c, p, &c->lhs, &c->lhs_type, error);
+		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
 			talloc_free(c);
 			COND_DEBUG("RETURN %d", __LINE__);
@@ -429,7 +350,15 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			/*
 			 *	don't skip the brace.  We'll look for it later.
 			 */
-			c->op = T_OP_CMP_TRUE;
+		exists:
+			c->type = COND_TYPE_EXISTS;
+			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
+			if (!c->data.vpt) {
+				talloc_free(c);
+				*error = "Failed creating exists";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return -(p - start);
+			}
 
 			/*
 			 *	FOO
@@ -442,7 +371,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				return -(p - start);
 			}
 
-			c->op = T_OP_CMP_TRUE;
+			goto exists;
 
 			/*
 			 *	FOO && ...
@@ -450,7 +379,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		} else if (((p[0] == '&') && (p[1] == '&')) ||
 			   ((p[0] == '|') && (p[1] == '|'))) {
 
-			c->op = T_OP_CMP_TRUE;
+			goto exists;
 
 		} else { /* it's an operator */
 			int regex;
@@ -461,6 +390,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			 *	The next thing should now be a comparison operator.
 			 */
 			regex = FALSE;
+			c->type = COND_TYPE_MAP;
 			switch (*p) {
 			default:
 				talloc_free(c);
@@ -470,13 +400,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 			case '!':
 				if (p[1] == '=') {
-					c->op = T_OP_NE;
+					op = T_OP_NE;
 					p += 2;
 
 				} else if (p[1] == '~') {
 				regex = TRUE;
 
-				c->op = T_OP_REG_NE;
+				op = T_OP_REG_NE;
 				p += 2;
 
 				} else if (p[1] == '*') {
@@ -488,7 +418,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					 *	FIXME: we should
 					 *	really re-write it...
 					 */
-					c->op = T_OP_CMP_FALSE;
+					op = T_OP_CMP_FALSE;
 					p += 2;
 
 				} else {
@@ -502,17 +432,17 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 			case '=':
 				if (p[1] == '=') {
-					c->op = T_OP_CMP_EQ;
+					op = T_OP_CMP_EQ;
 					p += 2;
 
 				} else if (p[1] == '~') {
 					regex = TRUE;
 
-					c->op = T_OP_REG_EQ;
+					op = T_OP_REG_EQ;
 					p += 2;
 
 				} else if (p[1] == '*') {
-					c->op = T_OP_CMP_TRUE;
+					op = T_OP_CMP_TRUE;
 					p += 2;
 
 				} else {
@@ -523,22 +453,22 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 			case '<':
 				if (p[1] == '=') {
-					c->op = T_OP_LE;
+					op = T_OP_LE;
 					p += 2;
 
 				} else {
-					c->op = T_OP_LT;
+					op = T_OP_LT;
 					p++;
 				}
 				break;
 
 			case '>':
 				if (p[1] == '=') {
-					c->op = T_OP_GE;
+					op = T_OP_GE;
 					p += 2;
 
 				} else {
-					c->op = T_OP_GT;
+					op = T_OP_GT;
 					p++;
 				}
 				break;
@@ -558,7 +488,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			/*
 			 *	Grab the RHS
 			 */
-			slen = condition_tokenize_word(c, p, &c->rhs, &c->rhs_type, error);
+			slen = condition_tokenize_word(c, p, &rhs, &rhs_type, error);
 			if (slen <= 0) {
 				talloc_free(c);
 				COND_DEBUG("RETURN %d", __LINE__);
@@ -593,6 +523,15 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				return -(p - start);
 			}
 
+			c->data.map = radius_str2map(c, lhs, lhs_type, op, rhs, rhs_type,
+						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
+						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
+			if (!c->data.map) {
+				talloc_free(c);
+				*error = "Failed creating check";
+				COND_DEBUG("RETURN %d", __LINE__);
+				return -(p - start);
+			}
 			p += slen;
 
 			while (isspace((int) *p)) p++; /* skip spaces after RHS */
@@ -660,27 +599,53 @@ done:
 	COND_DEBUG("RETURN %d", __LINE__);
 
 	/*
-	 *	Normalize it.
-	 *
-	 *	((FOO)) --> FOO
-	 *	!(!FOO) --> FOO
-	 *
-	 *	FIXME: do more normalization.
-	 *
-	 *	(FOO) --> FOO
-	 *	((COND1) || (COND2)) --> COND1 || COND2
-	 *	etc.
+	 *	Normalize it before returning it.
 	 */
-	if (c->child && !c->next &&
-	    (c->child->child_op == c->child_op)) {
-		fr_cond_t *child = c->child;
+
+	/*
+	 *	(FOO)     --> FOO
+	 *	(FOO) ... --> FOO ...
+	 */
+	if ((c->type == COND_TYPE_CHILD) &&
+	    !c->data.child->next) {
+		fr_cond_t *child;
+
+		child = c->data.child;
+		child->next = c->next;
+		child->next_op = c->next_op;
+		c->next = NULL;
+		c->data.child = NULL;
+
+		/*
+		 *	Set the negation properly
+		 */
+		if ((c->negate && !child->negate) ||
+		    (!c->negate && child->negate)) {
+			child->negate = TRUE;
+		} else {
+			child->negate = FALSE;
+		}
 
 		(void) talloc_steal(ctx, child);
-
-		c->child = NULL;
 		talloc_free(c);
 		c = child;
-		c->child_op = COND_TRUE;
+	}
+
+	/*
+	 *	(FOO ...) --> FOO ...
+	 *
+	 *	But don't do !(FOO || BAR) --> !FOO || BAR
+	 *	Because that's different.
+	 */
+	if ((c->type == COND_TYPE_CHILD) && !c->next &&
+	    !c->negate) {
+		fr_cond_t *child;
+
+		child = c->data.child;
+		c->data.child = NULL;
+		(void) talloc_steal(ctx, child);
+		talloc_free(c);
+		c = child;
 	}
 
 	*pcond = c;

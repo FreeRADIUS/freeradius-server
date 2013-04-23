@@ -24,6 +24,8 @@
 
 RCSIDH(parser_h, "$Id$");
 
+#include <freeradius-devel/map.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -32,11 +34,17 @@ typedef struct fr_cond_t fr_cond_t;
 
 typedef enum cond_op_t {
 	COND_NONE = 0,
-	COND_TRUE,
-	COND_NOT = '!',
 	COND_AND = '&',
 	COND_OR = '|'
 } cond_op_t;
+
+
+typedef enum fr_cond_type_t {
+	COND_TYPE_INVALID = 0,
+	COND_TYPE_EXISTS,
+	COND_TYPE_MAP,
+	COND_TYPE_CHILD
+} fr_cond_type_t;
 
 
 /*
@@ -49,19 +57,18 @@ typedef enum cond_op_t {
  *	(COND1 OP COND2)	no LHS/RHS, next is COND2, next OP is OP
  */
 struct fr_cond_t {
-	char		*lhs;
-	char		*rhs;
-	FR_TOKEN 	op;
+	fr_cond_type_t	type;
 
-	FR_TOKEN 	lhs_type;
-	FR_TOKEN 	rhs_type;
-
+	union {
+		value_pair_map_t *map;
+		value_pair_tmpl_t *vpt;
+		fr_cond_t  	*child;
+	} data;
 	int		regex_i;
 
 	cond_op_t	next_op;
 	fr_cond_t	*next;
-	cond_op_t	child_op;
-	fr_cond_t  	*child;
+	int		negate;
 };
 
 ssize_t fr_condition_tokenize(TALLOC_CTX *ctx, char const *start, fr_cond_t **head, char const **error);
