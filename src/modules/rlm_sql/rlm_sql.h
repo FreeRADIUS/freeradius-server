@@ -10,9 +10,9 @@
 
 RCSIDH(rlm_sql_h, "$Id$")
 
+#include	<freeradius-devel/radiusd.h>
 #include	<freeradius-devel/connection.h>
 #include	<freeradius-devel/modpriv.h>
-
 
 #define MAX_QUERY_LEN		4096
 
@@ -28,7 +28,7 @@ typedef enum {
 	RLM_SQL_RECONNECT = 1
 } sql_rcode_t;
 
-typedef char** rlm_sql_row_t;
+typedef char **rlm_sql_row_t;
 
 /*
  * Sections where we dynamically resolve the config entry to use,
