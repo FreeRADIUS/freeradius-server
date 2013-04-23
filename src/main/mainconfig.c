@@ -753,7 +753,6 @@ static const FR_NAME_NUMBER str2dest[] = {
 int read_mainconfig(int reload)
 {
 	char const *p = NULL;
-	CONF_PAIR *cp;
 	CONF_SECTION *cs;
 	struct stat statbuf;
 	cached_config_t *cc;
@@ -787,6 +786,15 @@ int read_mainconfig(int reload)
 #endif
 
 	radlog(L_INFO, "Starting - reading configuration files ...");
+
+	/* Initialize the dictionary */
+	mainconfig.dictionary_dir = radius_dir;
+	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
+	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
+		ERROR("Errors reading dictionary: %s",
+				fr_strerror());
+		return -1;
+	}
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
@@ -878,17 +886,6 @@ int read_mainconfig(int reload)
 			cf_file_free(cs);
 			return -1;
 		}
-	}
-
-	/* Initialize the dictionary */
-	cp = cf_pair_find(cs, "dictionary");
-	if (cp) mainconfig.dictionary_dir = cf_pair_value(cp);
-	if (!mainconfig.dictionary_dir) mainconfig.dictionary_dir = radius_dir;
-	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
-	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
-		ERROR("Errors reading dictionary: %s",
-				fr_strerror());
-		return -1;
 	}
 
 	/*
