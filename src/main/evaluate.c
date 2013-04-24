@@ -312,6 +312,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		lhs_vp = radius_vpt_get_vp(request, map->src);
 		rhs_vp = radius_vpt_get_vp(request, map->dst);
 
+		if (!lhs_vp || !rhs_vp) return false;
+
 		return paircmp_op(lhs_vp, map->op, rhs_vp);
 	}
 
