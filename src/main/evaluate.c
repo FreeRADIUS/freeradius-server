@@ -328,6 +328,26 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		 */
 		lhs_vp = radius_vpt_get_vp(request, map->dst);
 		if (!lhs_vp) {
+			/*
+			 *	Not a real attr: might be a dynamic comparison.
+			 */
+			if ((map->dst->type == VPT_TYPE_ATTR) &&
+			    (map->dst->da->vendor == 0) &&
+			    radius_find_compare(map->dst->da->attr)) {
+				VALUE_PAIR *check = pairalloc(request, map->dst->da);
+
+				if (!pairparsevalue(check, rhs)) {
+					talloc_free(rhs);
+					EVAL_DEBUG("FAIL %d", __LINE__);
+					return -1;
+				}
+				talloc_free(rhs);
+
+				rcode = (radius_callback_compare(request, NULL, check, NULL, NULL) == 0);
+				pairfree(&check);
+				return rcode;
+			}
+
 			return false;
 		}
 
