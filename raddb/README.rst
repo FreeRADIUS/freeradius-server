@@ -21,6 +21,8 @@ The list of moved options is::
   reject_delay
   status_server
 
+These entries should be moved from "radiusd.conf" to the "security"
+subsection of that file
 
 Modules Directory
 -----------------
@@ -28,8 +30,10 @@ Modules Directory
 As of version 3.0, the ``modules/`` directory no longer exists.
 
 Instead, all "example" modules have been put into the
-``mods-available/`` directory.  Modules which can be loaded by the server
-are placed in the ``mods-enabled/`` directory.
+``mods-available/`` directory.  Modules which can be loaded by the
+server are placed in the ``mods-enabled/`` directory.  All of the
+modules in that directory will be loaded.  This means that the
+"instantiate" section of radiusd.conf is less important.
 
 Modules can be enabled by creating a soft link.  For module ``foo``, do::
 
@@ -50,7 +54,7 @@ The SQL configuration has been moved from ``sql.conf`` to
 moved to ``mods-available/sqlippool``.
 
 The SQL module configuration has been changed.  The old connection
-pool options are no longer understood::
+pool options are no longer accepted::
 
   num_sql_socks
   connect_failure_retry_delay
@@ -289,13 +293,13 @@ rlm_attr_rewrite
 The attr_rewrite module looked for an attribute, and then re-wrote it,
 or created a new attribute.  All of that can be done in "unlang".
 
-A sample configuration in "unlang" is:
+A sample configuration in "unlang" is::
 
-    if (request:Calling-Station-Id) {
-        update request {
-            Calling-Station-Id := "...."
-        }
+  if (request:Calling-Station-Id) {
+    update request {
+      Calling-Station-Id := "...."
     }
+  }
 
 We suggest updating all uses of attr_write to use unlang instead.
 
@@ -303,11 +307,11 @@ We suggest updating all uses of attr_write to use unlang instead.
 rlm_checkval
 ============
 
-The checkval module compared two attributes.  All of that can be done in "unlang".
+The checkval module compared two attributes.  All of that can be done in "unlang"::
 
-    if (&request:Calling-Station-Id == &control:Calling-Station-Id) {
-        ok
-    }
+  if (&request:Calling-Station-Id == &control:Calling-Station-Id) {
+    ok
+  }
 
 We suggest updating all uses of checkval to use unlang instead.
 
