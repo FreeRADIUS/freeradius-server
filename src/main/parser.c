@@ -228,6 +228,13 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 	return len;
 }
 
+/*
+ *	Less code means less bugs
+ */
+#define return_P(_x) talloc_free(c);*error = _x;return -(p - start)
+#define return_SLEN talloc_free(c);return slen -(p - start)
+
+
 /** Tokenize a conditional check
  *
  *  @param[in] ctx for talloc
@@ -252,9 +259,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	while (isspace((int) *p)) p++; /* skip spaces before condition */
 
 	if (!*p) {
-		talloc_free(c);
-		*error = "Empty condition is invalid";
-		return -(p - start);
+		return_P("Empty condition is invalid");
 	}
 
 	/*
@@ -269,9 +274,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		 *  Just for stupidity
 		 */
 		if (*p == '!') {
-			talloc_free(c);
-			*error = "Double negation is invalid";
-			return -(p - start);
+			return_P("Double negation is invalid");
 		}
 	}
 
@@ -288,14 +291,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		c->type = COND_TYPE_CHILD;
 		slen = condition_tokenize(c, p, true, &c->data.child, error);
 		if (slen <= 0) {
-			talloc_free(c);
-			return slen - (p - start);
+			return_SLEN;
 		}
 
 		if (!c->data.child) {
-			talloc_free(c);
-			*error = "Empty condition is invalid";
-			return -(p - start);
+			return_P("Empty condition is invalid");
 		}
 
 		p += slen;
@@ -313,15 +313,12 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		 *	Grab the LHS
 		 */
 		if (*p == '/') {
-			talloc_free(c);
-			*error = "Conditional check cannot begin with a regular expression";
-			return -(p - start);
+			return_P("Conditional check cannot begin with a regular expression");
 		}
 
 		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
-			talloc_free(c);
-			return slen - (p - start);
+			return_SLEN;
 		}
 		p += slen;
 
@@ -339,23 +336,14 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			/*
 			 *	don't skip the brace.  We'll look for it later.
 			 */
-		exists:
-			c->type = COND_TYPE_EXISTS;
-			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
-			if (!c->data.vpt) {
-				talloc_free(c);
-				*error = "Failed creating exists";
-				return -(p - start);
-			}
+			goto exists;
 
 			/*
 			 *	FOO
 			 */
 		} else if (!*p) {
 			if (brace) {
-				talloc_free(c);
-				*error = "No closing brace at end of string";
-				return -(p - start);
+				return_P("No closing brace at end of string");
 			}
 
 			goto exists;
@@ -366,7 +354,12 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		} else if (((p[0] == '&') && (p[1] == '&')) ||
 			   ((p[0] == '|') && (p[1] == '|'))) {
 
-			goto exists;
+		exists:
+			c->type = COND_TYPE_EXISTS;
+			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
+			if (!c->data.vpt) {
+				return_P("Failed creating exists");
+			}
 
 		} else { /* it's an operator */
 			int regex;
@@ -378,9 +371,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			c->type = COND_TYPE_MAP;
 			switch (*p) {
 			default:
-				talloc_free(c);
-				*error = "Invalid text. Expected comparison operator";
-				return -(p - start);
+				return_P("Invalid text. Expected comparison operator");
 
 			case '!':
 				if (p[1] == '=') {
@@ -406,10 +397,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					p += 2;
 
 				} else {
-				invalid_operator:
-					talloc_free(c);
-					*error = "Invalid operator";
-					return -(p - start);
+					goto invalid_operator;
 				}
 				break;
 
@@ -429,7 +417,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					p += 2;
 
 				} else {
-					goto invalid_operator;
+				invalid_operator:
+					return_P("Invalid operator");
 				}
 
 				break;
@@ -460,9 +449,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			while (isspace((int) *p)) p++; /* skip spaces after operator */
 
 			if (!*p) {
-				talloc_free(c);
-				*error = "Expected text after operator";
-				return -(p - start);
+				return_P("Expected text after operator");
 			}
 
 			/*
@@ -470,8 +457,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			 */
 			slen = condition_tokenize_word(c, p, &rhs, &rhs_type, error);
 			if (slen <= 0) {
-				talloc_free(c);
-				return slen - (p - start);
+				return_SLEN;
 			}
 
 			/*
@@ -479,9 +465,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			 */
 			if (regex) {
 				if (*p != '/') {
-					talloc_free(c);
-					*error = "Expected regular expression";
-					return -(p - start);
+					return_P("Expected regular expression");
 				}
 
 				/*
@@ -493,18 +477,14 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				}
 
 			} else if (!regex && (*p == '/')) {
-				talloc_free(c);
-				*error = "Unexpected regular expression";
-				return -(p - start);
+				return_P("Unexpected regular expression");
 			}
 
 			c->data.map = radius_str2map(c, lhs, lhs_type, op, rhs, rhs_type,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST,
 						     REQUEST_CURRENT, PAIR_LIST_REQUEST);
 			if (!c->data.map) {
-				talloc_free(c);
-				*error = "Failed creating check";
-				return -(p - start);
+				return_P("Failed creating check");
 			}
 
 			/*
@@ -544,9 +524,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	 */
 	if (*p == ')') {
 		if (!brace) {
-			talloc_free(c);
-			*error = "Unexpected closing brace";
-			return -(p - start);
+			return_P("Unexpected closing brace");
 		}
 
 		p++;
@@ -560,9 +538,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	 */
 	if (!*p) {
 		if (brace) {
-			talloc_free(c);
-			*error = "No closing brace at end of string";
-			return -(p - start);
+			return_P("No closing brace at end of string");
 		}
 
 		goto done;
@@ -570,9 +546,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 	if (!(((p[0] == '&') && (p[1] == '&')) ||
 	      ((p[0] == '|') && (p[1] == '|')))) {
-		talloc_free(c);
-		*error = "Unexpected text after condition";
-		return -(p - start);
+		return_P("Unexpected text after condition");
 	}
 
 	/*
@@ -586,8 +560,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	 */
 	slen = condition_tokenize(c, p, brace, &c->next, error);
 	if (slen <= 0) {
-		talloc_free(c);
-		return slen - (p - start);
+		return_SLEN;
 	}
 	p += slen;
 
