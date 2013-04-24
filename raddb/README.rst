@@ -283,6 +283,34 @@ rlm_acctlog
 You should use rlm_linelog instead.  That module has a superset of the
 acctlog functionality.
 
+rlm_attr_rewrite
+================
+
+The attr_rewrite module looked for an attribute, and then re-wrote it,
+or created a new attribute.  All of that can be done in "unlang".
+
+A sample configuration in "unlang" is:
+
+    if (request:Calling-Station-Id) {
+        update request {
+            Calling-Station-Id := "...."
+        }
+    }
+
+We suggest updating all uses of attr_write to use unlang instead.
+
+
+rlm_checkval
+============
+
+The checkval module compared two attributes.  All of that can be done in "unlang".
+
+    if (&request:Calling-Station-Id == &control:Calling-Station-Id) {
+        ok
+    }
+
+We suggest updating all uses of checkval to use unlang instead.
+
 rlm_dbm
 =======
 
