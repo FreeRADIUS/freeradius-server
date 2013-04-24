@@ -28,20 +28,9 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
-#if 0
-#define COND_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
-#endif
-
 /*
  *	This file shouldn't use any functions from the server core.
  */
-#ifndef COND_DEBUG
-#if 0
-#define COND_DEBUG DEBUG
-#else
-#define COND_DEBUG(...)
-#endif
-#endif
 
 size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c)
 {
@@ -142,14 +131,10 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, cha
 
 	q = *out;
 
-	COND_DEBUG("STRING %s", start);
 	while (*p) {
 		if (*p == *start) {
 			*q = '\0';
 			p++;
-
-			COND_DEBUG("end of string %s", p);
-
 			return (p - start);
 		}
 
@@ -157,7 +142,6 @@ static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, cha
 			p++;
 			if (!*p) {
 				*error = "End of string after escape";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
 
@@ -206,7 +190,6 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 		 */
 		if (*p == '\\') {
 			*error = "Unexpected escape";
-			COND_DEBUG("RETURN %d", __LINE__);
 			return -(p - start);
 		}
 
@@ -226,7 +209,6 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 		}
 
 		if ((*p == '"') || (*p == '\'') || (*p == '`')) {
-			COND_DEBUG("RETURN %d", __LINE__);
 			*error = "Unexpected start of string";
 			return -(p - start);
 		}
@@ -243,7 +225,6 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 	*out = talloc_array(ctx, char, len + 1);
 	memcpy(*out, start, len);
 	(*out)[len] = '\0';
-	COND_DEBUG("PARSED WORD %s", *out);
 	return len;
 }
 
@@ -264,8 +245,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	char *lhs, *rhs;
 	FR_TOKEN op, lhs_type, rhs_type;
 
-	COND_DEBUG("START %s", p);
-
 	c = talloc_zero(ctx, fr_cond_t);
 
 	rad_assert(c != NULL);
@@ -274,7 +253,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 	if (!*p) {
 		talloc_free(c);
-		COND_DEBUG("RETURN %d", __LINE__);
 		*error = "Empty condition is invalid";
 		return -(p - start);
 	}
@@ -292,7 +270,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		 */
 		if (*p == '!') {
 			talloc_free(c);
-			COND_DEBUG("RETURN %d", __LINE__);
 			*error = "Double negation is invalid";
 			return -(p - start);
 		}
@@ -312,14 +289,12 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		slen = condition_tokenize(c, p, true, &c->data.child, error);
 		if (slen <= 0) {
 			talloc_free(c);
-			COND_DEBUG("RETURN %d", __LINE__);
 			return slen - (p - start);
 		}
 
 		if (!c->data.child) {
 			talloc_free(c);
 			*error = "Empty condition is invalid";
-			COND_DEBUG("RETURN %d", __LINE__);
 			return -(p - start);
 		}
 
@@ -337,18 +312,15 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		/*
 		 *	Grab the LHS
 		 */
-		COND_DEBUG("LHS %s", p);
 		if (*p == '/') {
 			talloc_free(c);
 			*error = "Conditional check cannot begin with a regular expression";
-			COND_DEBUG("RETURN %d", __LINE__);
 			return -(p - start);
 		}
 
 		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
 			talloc_free(c);
-			COND_DEBUG("RETURN %d", __LINE__);
 			return slen - (p - start);
 		}
 		p += slen;
@@ -373,7 +345,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			if (!c->data.vpt) {
 				talloc_free(c);
 				*error = "Failed creating exists";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
 
@@ -384,7 +355,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			if (brace) {
 				talloc_free(c);
 				*error = "No closing brace at end of string";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
 
@@ -401,8 +371,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		} else { /* it's an operator */
 			int regex;
 
-			COND_DEBUG("OPERATOR %s", p);
-
 			/*
 			 *	The next thing should now be a comparison operator.
 			 */
@@ -412,7 +380,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			default:
 				talloc_free(c);
 				*error = "Invalid text. Expected comparison operator";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 
 			case '!':
@@ -442,7 +409,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				invalid_operator:
 					talloc_free(c);
 					*error = "Invalid operator";
-					COND_DEBUG("RETURN %d", __LINE__);
 					return -(p - start);
 				}
 				break;
@@ -496,11 +462,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			if (!*p) {
 				talloc_free(c);
 				*error = "Expected text after operator";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
-
-			COND_DEBUG("RHS %s", p);
 
 			/*
 			 *	Grab the RHS
@@ -508,7 +471,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			slen = condition_tokenize_word(c, p, &rhs, &rhs_type, error);
 			if (slen <= 0) {
 				talloc_free(c);
-				COND_DEBUG("RETURN %d", __LINE__);
 				return slen - (p - start);
 			}
 
@@ -519,7 +481,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				if (*p != '/') {
 					talloc_free(c);
 					*error = "Expected regular expression";
-					COND_DEBUG("RETURN %d", __LINE__);
 					return -(p - start);
 				}
 
@@ -531,12 +492,9 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					slen++;
 				}
 
-				COND_DEBUG("DONE REGEX %s", p + slen);
-
 			} else if (!regex && (*p == '/')) {
 				talloc_free(c);
 				*error = "Unexpected regular expression";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
 
@@ -546,7 +504,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			if (!c->data.map) {
 				talloc_free(c);
 				*error = "Failed creating check";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return -(p - start);
 			}
 
@@ -558,7 +515,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			    (c->data.map->dst->type == VPT_TYPE_LIST)) {
 				talloc_free(c);
 				*error = "Cannot use list references in condition";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return 0;
 			}
 
@@ -566,7 +522,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			    (c->data.map->dst->type != VPT_TYPE_ATTR)) {
 				talloc_free(c);
 				*error = "Cannot use attribute reference on right side of condition";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return 0;
 			}
 
@@ -575,7 +530,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
 				talloc_free(c);
 				*error = "Attribute comparisons must be of the same attribute type";
-				COND_DEBUG("RETURN %d", __LINE__);
 				return 0;
 			}
 
@@ -592,7 +546,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		if (!brace) {
 			talloc_free(c);
 			*error = "Unexpected closing brace";
-			COND_DEBUG("RETURN %d", __LINE__);
 			return -(p - start);
 		}
 
@@ -609,7 +562,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		if (brace) {
 			talloc_free(c);
 			*error = "No closing brace at end of string";
-			COND_DEBUG("RETURN %d", __LINE__);
 			return -(p - start);
 		}
 
@@ -626,25 +578,20 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	/*
 	 *	Recurse to parse the next condition.
 	 */
-	COND_DEBUG("GOT %c%c", p[0], p[1]);
 	c->next_op = p[0];
 	p += 2;
 
 	/*
 	 *	May still be looking for a closing brace.
 	 */
-	COND_DEBUG("RECURSE AND/OR");
 	slen = condition_tokenize(c, p, brace, &c->next, error);
 	if (slen <= 0) {
 		talloc_free(c);
-		COND_DEBUG("RETURN %d", __LINE__);
 		return slen - (p - start);
 	}
 	p += slen;
 
 done:
-	COND_DEBUG("RETURN %d", __LINE__);
-
 	/*
 	 *	Normalize it before returning it.
 	 */
