@@ -73,6 +73,17 @@ static const FR_NAME_NUMBER modreturn_table[] = {
 };
 
 
+static int all_digits(const char *string)
+{
+	const char *p = string;
+
+	if (*p == '-') p++;
+
+	while (isdigit((int) *p)) p++;
+
+	return (*p == '\0');
+}
+
 static char *radius_expand_tmpl(REQUEST *request, value_pair_tmpl_t const *vpt)
 {
 	char *buffer = NULL;
@@ -399,31 +410,64 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	/*
 	 *	Loop over the string, doing comparisons
 	 */
-	rcode = strcmp(lhs, rhs);
-	talloc_free(lhs);
-	talloc_free(rhs);
+	if (all_digits(lhs) && all_digits(rhs)) {
+		int lint, rint;
 
-	switch (map->op) {
-	case T_OP_CMP_EQ:
-		return (rcode == 0);
+		lint = strtoul(lhs, NULL, 0);
+		rint = strtoul(rhs, NULL, 0);
+		talloc_free(lhs);
+		talloc_free(rhs);
 
-	case T_OP_NE:
-		return (rcode != 0);
+		switch (map->op) {
+		case T_OP_CMP_EQ:
+			return (lint == rint);
 
-	case T_OP_LT:
-		return (rcode < 0);
+		case T_OP_NE:
+			return (lint != rint);
 
-	case T_OP_GT:
-		return (rcode > 0);
+		case T_OP_LT:
+			return (lint < rint);
 
-	case T_OP_LE:
-		return (rcode <= 0);
+		case T_OP_GT:
+			return (lint > rint);
 
-	case T_OP_GE:
-		return (rcode >= 0);
+		case T_OP_LE:
+			return (lint <= rint);
 
-	default:
-		break;
+		case T_OP_GE:
+			return (lint >= rint);
+
+		default:
+			break;
+		}
+
+	} else {
+		rcode = strcmp(lhs, rhs);
+		talloc_free(lhs);
+		talloc_free(rhs);
+
+		switch (map->op) {
+		case T_OP_CMP_EQ:
+			return (rcode == 0);
+
+		case T_OP_NE:
+			return (rcode != 0);
+
+		case T_OP_LT:
+			return (rcode < 0);
+
+		case T_OP_GT:
+			return (rcode > 0);
+
+		case T_OP_LE:
+			return (rcode <= 0);
+
+		case T_OP_GE:
+			return (rcode >= 0);
+
+		default:
+			break;
+		}
 	}
 
 	EVAL_DEBUG("FAIL %d", __LINE__);
