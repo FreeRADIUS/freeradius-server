@@ -115,9 +115,7 @@ static char *radius_expand_tmpl(REQUEST *request, value_pair_tmpl_t const *vpt)
 	case VPT_TYPE_ATTR:
 		EVAL_DEBUG("TMPL ATTR");
 		vp = radius_vpt_get_vp(request, vpt);
-		if (!vpt) return NULL;
-
-		buffer = vp_aprint(request, vp);
+		if (!vp) return NULL;
 		break;
 
 	default:
