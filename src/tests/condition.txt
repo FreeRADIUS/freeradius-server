@@ -128,3 +128,28 @@ data ERROR offset 0 Cannot use list references in condition
 
 condition request:User-Name == reply:User-Name
 data &User-Name == &reply:User-Name
+
+#
+#  Convert !~ to !(COND) for regex
+#
+condition foo =~ /bar/
+data foo =~ /bar/
+
+condition foo !~ /bar/
+data !foo =~ /bar/
+
+condition !foo !~ /bar/
+data foo =~ /bar/
+
+#
+#  Convert !~ to !(COND) for normal checks
+#
+condition foo == "bar"
+data foo == "bar"
+
+condition foo != "bar"
+data !foo == "bar"
+
+condition !foo != "bar"
+data foo == "bar"
+

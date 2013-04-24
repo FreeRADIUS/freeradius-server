@@ -653,8 +653,7 @@ done:
 	 *	(FOO)     --> FOO
 	 *	(FOO) ... --> FOO ...
 	 */
-	if ((c->type == COND_TYPE_CHILD) &&
-	    !c->data.child->next) {
+	if ((c->type == COND_TYPE_CHILD) && !c->data.child->next) {
 		fr_cond_t *child;
 
 		child = c->data.child;
@@ -672,7 +671,7 @@ done:
 		} else {
 			child->negate = false;
 		}
-
+		
 		(void) talloc_steal(ctx, child);
 		talloc_free(c);
 		c = child;
@@ -684,8 +683,8 @@ done:
 	 *	But don't do !(FOO || BAR) --> !FOO || BAR
 	 *	Because that's different.
 	 */
-	if ((c->type == COND_TYPE_CHILD) && !c->next &&
-	    !c->negate) {
+	if ((c->type == COND_TYPE_CHILD) &&
+	    !c->next && !c->negate) {
 		fr_cond_t *child;
 
 		child = c->data.child;
@@ -693,6 +692,48 @@ done:
 		(void) talloc_steal(ctx, child);
 		talloc_free(c);
 		c = child;
+	}
+
+	/*
+	 *	Normalize negation.  This doesn't really make any
+	 *	difference, but it simplifies the run-time code in
+	 *	evaluate.c
+	 */
+	if (c->type == COND_TYPE_MAP) {
+		/*
+		 *	!FOO !~ BAR --> FOO =~ BAR
+		 */
+		if (c->negate && (c->data.map->op == T_OP_REG_NE)) {
+			c->negate = false;
+			c->data.map->op = T_OP_REG_EQ;
+		}
+
+		/*
+		 *	FOO !~ BAR --> !FOO =~ BAR
+		 */
+		if (!c->negate && (c->data.map->op == T_OP_REG_NE)) {
+			c->negate = true;
+			c->data.map->op = T_OP_REG_EQ;
+		}
+
+		/*
+		 *	!FOO != BAR --> FOO == BAR
+		 */
+		if (c->negate && (c->data.map->op == T_OP_NE)) {
+			c->negate = false;
+			c->data.map->op = T_OP_CMP_EQ;
+		}
+
+		/*
+		 *	This next one catches "LDAP-Group != foo",
+		 *	which doesn't really work, but this hack fixes it.
+		 *
+		 *	FOO != BAR --> !FOO == BAR
+		 */
+		if (!c->negate && (c->data.map->op == T_OP_NE)) {
+			c->negate = true;
+			c->data.map->op = T_OP_CMP_EQ;
+		}
 	}
 
 	*pcond = c;

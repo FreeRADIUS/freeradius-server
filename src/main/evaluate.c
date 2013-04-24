@@ -298,7 +298,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	Verify regexes.
 	 */
 	if (map->src->type == VPT_TYPE_REGEX) {
-		rad_assert((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE));
+		rad_assert(map->op == T_OP_REG_EQ);
 	} else {
 		rad_assert(!((map->op == T_OP_REG_EQ) || (map->op == T_OP_REG_NE)));
 	}
@@ -318,7 +318,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	}
 
 	/*
-	 *	The LHS is an attribute.  It MAY be a virtual one (ugh)
+	 *	The RHS is a string.  Expand it.
 	 */
 	rhs = radius_expand_tmpl(request, map->src);
 	if (!rhs) {
@@ -332,6 +332,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	Parse the RHS to be the same DA as the LHS.  do
 	 *	comparisons.  So long as it's not a regex, which does
 	 *	string comparisons.
+	 *
+	 *	The LHS may be a virtual attribute, too.
 	 */
 	if ((map->dst->type == VPT_TYPE_ATTR) &&
 	    (map->src->type != VPT_TYPE_REGEX)) {
@@ -395,18 +397,9 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 	/*
 	 *	Compile  the RHS to a regex, and do regex stuff
-	 *
-	 *	FIXME: do case-insensitive checks!
 	 */
 	if (map->src->type == VPT_TYPE_REGEX) {
-		rcode = do_regex(request, lhs, rhs, iflag);
-		if (rcode < 0) return rcode;
-
-		if (map->op == T_OP_REG_NE) {
-			rcode = !rcode;
-		}
-
-		return rcode;
+		return do_regex(request, lhs, rhs, iflag);
 	}
 
 	/*
