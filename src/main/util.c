@@ -972,9 +972,10 @@ pair_lists_t radius_list_name(char const **name, pair_lists_t unknown)
 	output = fr_substr2int(pair_lists, p, PAIR_LIST_UNKNOWN, (q - p));
 	if (output != PAIR_LIST_UNKNOWN) {
 		*name = q;
+		return output;
 	}
-	
-	return output;
+
+	return unknown;
 }
 
 
