@@ -789,7 +789,7 @@ int read_mainconfig(int reload, bool strict)
 	radlog(L_INFO, "Starting - reading configuration files ...");
 
 	/* Initialize the dictionary */
-	mainconfig.dictionary_dir = radius_dir;
+	if (!mainconfig.dictionary_dir) mainconfig.dictionary_dir = radius_dir;
 	DEBUG2("including dictionary file %s/%s", mainconfig.dictionary_dir, RADIUS_DICTIONARY);
 	if (dict_init(mainconfig.dictionary_dir, RADIUS_DICTIONARY) != 0) {
 		ERROR("Errors reading dictionary: %s",
