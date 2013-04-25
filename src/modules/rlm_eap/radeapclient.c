@@ -58,7 +58,7 @@ char const *progname = "radeapclient";
 #include <freeradius-devel/tls.h>
 #endif
 
-radlog_dest_t radlog_dest = RADLOG_STDERR;
+log_dst_t radlog_dest = RADLOG_STDERR;
 char const *radlog_dir = NULL;
 int debug_flag = 0;
 char password[256];

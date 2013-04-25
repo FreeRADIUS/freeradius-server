@@ -29,23 +29,40 @@ RCSIDH(log_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum radlog_dest_t {
-  RADLOG_STDOUT = 0,
-  RADLOG_FILES,
-  RADLOG_SYSLOG,
-  RADLOG_STDERR,
-  RADLOG_NULL,
-  RADLOG_NUM_DEST
-} radlog_dest_t;
+typedef enum log_lvl {
+	L_AUTH = 2,		//!< Authentication message.
+	L_INFO = 3,		//!< Informational message.
+	L_ERR = 4,		//!< Error message.
+	L_WARN = 5,		//!< Warning.
+	L_PROXY	= 6,		//!< Proxy messages
+	L_ACCT = 7,		//!< Accounting messages
+
+	L_DBG = 16,		//!< Only displayed when debugging is enabled.
+	L_DBG_WARN = 17,	//!< Warning only displayed when debugging is enabled.
+	L_DBG_ERR = 18,		//!< Error only displayed when debugging is enabled.
+	L_DBG_WARN2 = 19,	//!< Less severe warning only displayed when debugging is enabled.
+	L_DBG_ERR2 = 20		//!< Less severe warning only displayed when debugging is enabled.
+} log_lvl_t;
+
+typedef enum log_dst {
+	RADLOG_STDOUT = 0,	//!< Log to stdout.
+	RADLOG_FILES,		//!< Log to a file on disk.
+	RADLOG_SYSLOG,		//!< Log to syslog.
+	RADLOG_STDERR,		//!< Log to stderr.
+	RADLOG_NULL,		//!< Discard log messages.
+	RADLOG_NUM_DEST
+} log_dst_t;
 
 typedef struct fr_log_t {
 	int		colourise;
 	int		fd;
-	radlog_dest_t	dest;
+	log_dst_t	dest;
 	char		*file;
 	char		*debug_file;
 } fr_log_t;
 
+extern FR_NAME_NUMBER const syslog_str2fac[];
+extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
 /*

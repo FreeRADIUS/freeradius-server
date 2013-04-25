@@ -40,16 +40,16 @@ RCSID("$Id$")
  * Logging facility names
  */
 static const FR_NAME_NUMBER levels[] = {
-	{ ": Debug: ",		L_DBG   },
-	{ ": Auth: ",		L_AUTH  },
-	{ ": Proxy: ",		L_PROXY },
-	{ ": Info: ",		L_INFO  },
-	{ ": Acct: ",		L_ACCT  },
-	{ ": Error: ",		L_ERR   },
-	{ ": WARNING: ",	L_DBG_WARN   },
-	{ ": ERROR: ",		L_DBG_ERR   },
-	{ ": WARNING: ",	L_DBG_WARN2   },
-	{ ": ERROR: ",		L_DBG_ERR2   },
+	{ ": Debug: ",		L_DBG		},
+	{ ": Auth: ",		L_AUTH		},
+	{ ": Proxy: ",		L_PROXY		},
+	{ ": Info: ",		L_INFO		},
+	{ ": Acct: ",		L_ACCT		},
+	{ ": Error: ",		L_ERR		},
+	{ ": WARNING: ",	L_DBG_WARN	},
+	{ ": ERROR: ",		L_DBG_ERR	},
+	{ ": WARNING: ",	L_DBG_WARN2	},
+	{ ": ERROR: ",		L_DBG_ERR2	},
 	{ NULL, 0 }
 };
 
@@ -59,17 +59,90 @@ static const FR_NAME_NUMBER levels[] = {
 #define VTC_RESET	"\x1b[0m"
 
 static const FR_NAME_NUMBER colours[] = {
-	{ "",			L_DBG   },
-	{ VTC_BOLD,		L_AUTH  },
-	{ VTC_BOLD,		L_PROXY },
-	{ VTC_BOLD,		L_INFO  },
-	{ VTC_BOLD,		L_ACCT  },
-	{ VTC_RED,		L_ERR   },
-	{ VTC_BOLD VTC_RED,	L_DBG_ERR   },
-	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN  },
-	{ VTC_BOLD VTC_RED,	L_DBG_ERR2  },
-	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN2 },
+	{ "",			L_DBG		},
+	{ VTC_BOLD,		L_AUTH		},
+	{ VTC_BOLD,		L_PROXY		},
+	{ VTC_BOLD,		L_INFO		},
+	{ VTC_BOLD,		L_ACCT		},
+	{ VTC_RED,		L_ERR		},
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR	},
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN	},
+	{ VTC_BOLD VTC_RED,	L_DBG_ERR2	},
+	{ VTC_BOLD VTC_YELLOW,	L_DBG_WARN2	},
 	{ NULL, 0 }
+};
+
+/*
+ *	Syslog facility table.
+ */
+const FR_NAME_NUMBER syslog_str2fac[] = {
+#ifdef LOG_KERN
+	{ "kern",		LOG_KERN	},
+#endif
+#ifdef LOG_USER
+	{ "user",		LOG_USER	},
+#endif
+#ifdef LOG_MAIL
+	{ "mail",		LOG_MAIL	},
+#endif
+#ifdef LOG_DAEMON
+	{ "daemon",		LOG_DAEMON	},
+#endif
+#ifdef LOG_AUTH
+	{ "auth",		LOG_AUTH	},
+#endif
+#ifdef LOG_LPR
+	{ "lpr",		LOG_LPR		},
+#endif
+#ifdef LOG_NEWS
+	{ "news",		LOG_NEWS	},
+#endif
+#ifdef LOG_UUCP
+	{ "uucp",		LOG_UUCP	},
+#endif
+#ifdef LOG_CRON
+	{ "cron",		LOG_CRON	},
+#endif
+#ifdef LOG_AUTHPRIV
+	{ "authpriv",		LOG_AUTHPRIV	},
+#endif
+#ifdef LOG_FTP
+	{ "ftp",		LOG_FTP		},
+#endif
+#ifdef LOG_LOCAL0
+	{ "local0",		LOG_LOCAL0	},
+#endif
+#ifdef LOG_LOCAL1
+	{ "local1",		LOG_LOCAL1	},
+#endif
+#ifdef LOG_LOCAL2
+	{ "local2",		LOG_LOCAL2	},
+#endif
+#ifdef LOG_LOCAL3
+	{ "local3",		LOG_LOCAL3	},
+#endif
+#ifdef LOG_LOCAL4
+	{ "local4",		LOG_LOCAL4	},
+#endif
+#ifdef LOG_LOCAL5
+	{ "local5",		LOG_LOCAL5	},
+#endif
+#ifdef LOG_LOCAL6
+	{ "local6",		LOG_LOCAL6	},
+#endif
+#ifdef LOG_LOCAL7
+	{ "local7",		LOG_LOCAL7	},
+#endif
+	{ NULL,			-1		}
+};
+
+const FR_NAME_NUMBER log_str2dst[] = {
+	{ "null",		RADLOG_NULL	},
+	{ "files",		RADLOG_FILES	},
+	{ "syslog",		RADLOG_SYSLOG	},
+	{ "stdout",		RADLOG_STDOUT	},
+	{ "stderr",		RADLOG_STDERR	},
+	{ NULL,			RADLOG_NUM_DEST	}
 };
 
 int log_dates_utc = 0;

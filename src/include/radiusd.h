@@ -444,20 +444,6 @@ void log_talloc_report(TALLOC_CTX *ctx);
 #define RETRY_COUNT	     3
 #define DEAD_TIME	       120
 
-#define L_AUTH			2
-#define L_INFO			3
-#define L_ERR			4
-#define L_WARN			5
-#define L_PROXY			6
-#define L_ACCT			7
-
-#define L_DBG			16
-#define L_DBG_WARN		17
-#define L_DBG_ERR		18
-#define L_DBG_WARN2		19
-#define L_DBG_ERR2		20
-
-
 /* for paircompare_register */
 typedef int (*RAD_COMPARE_FUNC)(void *instance, REQUEST *,VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR *, VALUE_PAIR **);
 
