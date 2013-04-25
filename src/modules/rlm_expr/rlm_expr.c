@@ -548,7 +548,7 @@ static size_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	}
 
 	fr_MD5Init(&ctx);
-	fr_MD5Update(&ctx, (void *) fmt, strlen(fmt));
+	fr_MD5Update(&ctx, (const void *) fmt, strlen(fmt));
 	fr_MD5Final(digest, &ctx);
 
 	/*
@@ -587,7 +587,7 @@ static size_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		return 0;
 	}
 	
-	return	fr_base64_encode((uint8_t *) fmt, len, out, outlen);
+	return	fr_base64_encode((const uint8_t *) fmt, len, out, outlen);
 }
 
 /**
