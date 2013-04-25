@@ -106,10 +106,8 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 		     if ((vp->da->vendor == 0) &&
 			 (vp->da->attr > 0xff) &&
 			 (vp->da->attr > 1000)) {
-			log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
-				  "\tfound in filter list for realm \"%s\".\n",
-				  filename, entry->lineno, vp->da->name,
-				  entry->name);
+			WDEBUG("[%s]:%d Check item \"%s\"\n\tfound in filter list for realm \"%s\".\n",
+			       filename, entry->lineno, vp->da->name, entry->name);
 		    }
 		}
 

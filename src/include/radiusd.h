@@ -571,25 +571,6 @@ int 		ssl_check_version(void);
 char const	*ssl_version(void);
 void		version(void);
 
-/* log.c */
-int		vradlog(int, char const *, va_list ap);
-int		radlog(int, char const *, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 2, 3)))
-#endif
-;
-int		log_debug(char const *, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 1, 2)))
-#endif
-;
-void 		vp_listdebug(VALUE_PAIR *vp);
-void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...)
-#ifdef __GNUC__
-		__attribute__ ((format (printf, 4, 5)))
-#endif
-;
-
 /* auth.c */
 char	*auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli);
 int		rad_authenticate (REQUEST *);

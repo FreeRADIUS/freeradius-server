@@ -189,12 +189,11 @@ int getusersfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list, c
 				 if ((vp->da->vendor == 0) &&
 					(vp->da->attr > 0xff) &&
 					(vp->da->attr > 1000)) {
-					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
-							"\tfound in reply item list for user \"%s\".\n"
-							"\tThis attribute MUST go on the first line"
-							" with the other check items",
-							filename, entry->lineno, vp->da->name,
-							entry->name);
+					WDEBUG("[%s]:%d Check item \"%s\"\n"
+					       "\tfound in reply item list for user \"%s\".\n"
+					       "\tThis attribute MUST go on the first line"
+					       " with the other check items",
+					       filename, entry->lineno, vp->da->name, entry->name);
 				}
 			}
 

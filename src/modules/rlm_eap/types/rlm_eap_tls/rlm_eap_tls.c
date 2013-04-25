@@ -218,7 +218,7 @@ static int mod_authenticate(void *type_arg, eap_handler_t *handler)
 
 			data_len = (tls_session->record_minus)(&tls_session->dirty_in,
 						buffer, sizeof(buffer));
-			log_debug("  Tunneled data (%u bytes)\n", data_len);
+			DEBUG("  Tunneled data (%u bytes)", data_len);
 			for (i = 0; i < data_len; i++) {
 				if ((i & 0x0f) == 0x00) fprintf(fr_log_fp, "  %x: ", i);
 				if ((i & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");

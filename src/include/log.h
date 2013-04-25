@@ -65,6 +65,21 @@ extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
+int		vradlog(int, char const *, va_list ap);
+int		radlog(int, char const *, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
+int		log_debug(char const *, ...)
+;
+void 		vp_listdebug(VALUE_PAIR *vp);
+void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 4, 5)))
+#endif
+;
+
 /*
  *	Logging macros.
  *
@@ -76,7 +91,7 @@ extern fr_log_t default_log;
  *	*DEBUG* 		- Macros with the word DEBUG, will only be displayed if the server or request debug 
  *				  level is above 0.
  *	*[IWE]DEBUG[0-9]?	- Macros with I, W, E after the prefix, will log with the priority specified by the
- *				  integer, if the server or request log level at or above that integer. If there
+ *				  integer if the server or request log level at or above that integer. If there
  *				  is no integer the level is 1.
  */
  

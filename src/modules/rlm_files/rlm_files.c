@@ -212,12 +212,12 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 							(vp->da->attr <= 0xffff) &&
 							(vp->da->attr != PW_HINT) &&
 							(vp->da->attr != PW_HUNTGROUP_NAME)) {
-						DEBUG("\tChanging '%s =' to '%s +='",
-								vp->da->name, vp->da->name);
+						DEBUG("\tChanging '%s =' to '%s +='", vp->da->name, vp->da->name);
+						
 						vp->op = T_OP_ADD;
 					} else {
-						DEBUG("\tChanging '%s =' to '%s =='",
-								vp->da->name, vp->da->name);
+						DEBUG("\tChanging '%s =' to '%s =='", vp->da->name, vp->da->name);
+						
 						vp->op = T_OP_CMP_EQ;
 					}
 				}
@@ -242,12 +242,11 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 				 if ((vp->da->vendor == 0) &&
 					(vp->da->attr > 0xff) &&
 					(vp->da->attr > 1000)) {
-					log_debug("[%s]:%d WARNING! Check item \"%s\"\n"
-							"\tfound in reply item list for user \"%s\".\n"
-							"\tThis attribute MUST go on the first line"
-							" with the other check items",
-							filename, entry->lineno, vp->da->name,
-							entry->name);
+					WDEBUG("[%s]:%d Check item \"%s\"\n"
+					       "\tfound in reply item list for user \"%s\".\n"
+					       "\tThis attribute MUST go on the first line"
+					       " with the other check items", filename, entry->lineno, vp->da->name,
+					       entry->name);
 				}
 			}
 

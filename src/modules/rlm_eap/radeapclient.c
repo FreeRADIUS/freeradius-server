@@ -113,19 +113,6 @@ int radlog(int lvl, char const *msg, ...)
 	return r;
 }
 
-int log_debug(char const *msg, ...)
-{
-	va_list ap;
-	int r;
-
-	va_start(ap, msg);
-	r = vfprintf(stderr, msg, ap);
-	va_end(ap);
-	fputc('\n', stderr);
-
-	return r;
-}
-
 void radlog_request(UNUSED int lvl, UNUSED int priority,
 		    UNUSED REQUEST *request, char const *msg, ...)
 {
