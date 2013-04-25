@@ -432,6 +432,7 @@ typedef struct main_config_t {
 	int		syslog_facility;
 	int		radlog_fd;
 	radlog_dest_t	radlog_dest;
+	CONF_SECTION	*config;
 	char const	*name;
 	char const	*auth_badpass_msg;
 	char const	*auth_goodpass_msg;
@@ -638,14 +639,6 @@ char const	*ssl_version(void);
 void		version(void);
 
 /* log.c */
-void		log_set_dates_utc(bool value);
-bool		log_get_dates_utc(void);
-#ifdef WITH_COMMAND_SOCKET
-void		log_set_debug_file(char *file);
-char const	*log_get_file_debug(void);
-#endif
-void		log_set_request_file(char *file);
-char const	*log_get_file_request(void);
 int		vradlog(int, char const *, va_list ap);
 int		radlog(int, char const *, ...)
 #ifdef __GNUC__

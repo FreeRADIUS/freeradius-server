@@ -103,7 +103,6 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				       char const *input);
 
 static bool cf_strict = false;		//!< If true, fail parsing if we find any deprecated items
-static CONF_SECTION *cf_root = NULL;	//!< Root of the global configuration (like the NULL ctx in Talloc).
 
 /** Turn on strict parsing
  *
@@ -123,24 +122,6 @@ void cf_set_strict(bool strict)
 bool cf_get_strict(void)
 {
 	return cf_strict;
-}
-
-/** Set the root of the configuration tree.
- *
- * @param root section.
- */
-void cf_set_root(CONF_SECTION *root)
-{
-	cf_root = talloc_get_type_abort(root, CONF_SECTION);
-}
-
-/** Return the global root of the configuration tree.
- *
- * @return the current tree root node.
- */
-CONF_SECTION *cf_get_root(void)
-{
-	return cf_root;
 }
 
 /*
@@ -2132,11 +2113,10 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
 
 CONF_SECTION *cf_section_find(char const *name)
 {
-	if (name) {
-		return cf_section_sub_find(cf_get_root(), name);
-	} else {
-		return cf_get_root();
-	}
+	if (name)
+		return cf_section_sub_find(mainconfig.config, name);
+	else
+		return mainconfig.config;
 }
 
 /** Find a sub-section in a section
@@ -2178,10 +2158,8 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 {
 	CONF_ITEM    *ci;
 
-	if (!cs) {
-		cs = cf_get_root();
-	}
-	
+	if (!cs) cs = mainconfig.config;
+
 	if (name1 && (cs->section_tree)) {
 		CONF_SECTION mycs, *master_cs;
 

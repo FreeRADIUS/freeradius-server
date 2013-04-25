@@ -379,7 +379,7 @@ int main(int argc, char *argv[])
 	/*
 	 *	Initialize the event pool, including threads.
 	 */
-	radius_event_init(cf_get_root(), spawn_flag);
+	radius_event_init(mainconfig.config, spawn_flag);
 
 	/*
 	 *	Now that we've set everything up, we can install the signal

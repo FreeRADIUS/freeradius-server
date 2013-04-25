@@ -2469,7 +2469,7 @@ rad_listen_t *proxy_new_listener(home_server *home, int src_port)
 		return NULL;
 	}
 
-	this = listen_alloc(cf_get_root(), RAD_LISTEN_PROXY);
+	this = listen_alloc(mainconfig.config, RAD_LISTEN_PROXY);
 
 	sock = this->data;
 	sock->other_ipaddr = home->ipaddr;

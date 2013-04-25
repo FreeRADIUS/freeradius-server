@@ -43,6 +43,8 @@ char const *progname = "radconf2xml";
  */
 int debug_flag = 0;
 struct main_config_t mainconfig;
+char *request_log_file = NULL;
+char *debug_log_file = NULL;
 ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
 		    UNUSED RADIUS_ESCAPE_STRING func, UNUSED void *arg)
 {
