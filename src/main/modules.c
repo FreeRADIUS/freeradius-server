@@ -502,7 +502,7 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	cs = cf_section_sub_find_name2(modules, NULL, instname);
 	if (cs == NULL) {
-		ERROR("ERROR: Cannot find a configuration entry for module \"%s\".\n", instname);
+		ERROR("Cannot find a configuration entry for module \"%s\".\n", instname);
 		return NULL;
 	}
 
@@ -1418,7 +1418,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 */
 	modules = cf_section_sub_find(config, "modules");
 	if (!modules) {
-		INFO("WARNING: Cannot find a \"modules\" section in the configuration file!");
+		WARN("Cannot find a \"modules\" section in the configuration file!");
 	}
 
 	DEBUG2("%s: #### Instantiating modules ####", mainconfig.name);

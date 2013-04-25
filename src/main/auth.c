@@ -550,7 +550,7 @@ autz_redo:
 
 				size = fr_utf8_char(p);
 				if (!size) {
-					log_debug("  WARNING: Unprintable characters in the password.  Double-check the shared secret on the server and the NAS!");
+					RWDEBUG("Unprintable characters in the password.  Double-check the shared secret on the server and the NAS!");
 					break;
 				}
 				p += size;

@@ -451,24 +451,18 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 
 			if (last_logged < handler->timestamp) {
 				last_logged = handler->timestamp;
-				ERROR("rlm_eap (%s): Too many open "
-				       "sessions.  Try increasing "
-				       "\"max_sessions\" in the EAP module "
-				       "configuration", inst->xlat_name);
+				ERROR("rlm_eap (%s): Too many open sessions. Try increasing \"max_sessions\" "
+				      "in the EAP module configuration", inst->xlat_name);
 			}				
 		} else {
-			ERROR("rlm_eap (%s): Internal error: "
-			       "failed to store handler", inst->xlat_name);
+			ERROR("rlm_eap (%s): Failed to store handler", inst->xlat_name);
 		}
 		return 0;
 	}
 
-	RDEBUG("New EAP session, adding 'State' attribute to reply "
-	       "0x%02x%02x%02x%02x%02x%02x%02x%02x",
-	       state->vp_octets[0], state->vp_octets[1],
-	       state->vp_octets[2], state->vp_octets[3],
-	       state->vp_octets[4], state->vp_octets[5],
-	       state->vp_octets[6], state->vp_octets[7]);
+	RDEBUG("New EAP session, adding 'State' attribute to reply 0x%02x%02x%02x%02x%02x%02x%02x%02x",
+	       state->vp_octets[0], state->vp_octets[1], state->vp_octets[2], state->vp_octets[3],
+	       state->vp_octets[4], state->vp_octets[5], state->vp_octets[6], state->vp_octets[7]);
 
 	return 1;
 }

@@ -1064,7 +1064,7 @@ static int server_pool_add(realm_config_t *rc,
 		}
 
 		if (0) {
-			DEBUG2("Warning: Duplicate home server %s in server pool %s", home->name, pool->name);
+			WDEBUG2("Duplicate home server %s in server pool %s", home->name, pool->name);
 			continue;
 		}
 

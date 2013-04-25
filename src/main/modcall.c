@@ -314,8 +314,7 @@ static int call_modsingle(int component, modsingle *sp, REQUEST *request)
 	 */
 	blocked = (request->master_state == REQUEST_STOP_PROCESSING);
 	if (blocked) {
-		INFO("WARNING: Module %s became unblocked for request %u",
-		       sp->modinst->entry->name, request->number);
+		RWARN("Module %s became unblocked for request %u", sp->modinst->entry->name, request->number);
 	}
 
  fail:

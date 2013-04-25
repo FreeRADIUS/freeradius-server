@@ -232,8 +232,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
 
 	if (!dissocket->reply) {
-		ERROR("rlm_redis: (%s) REDIS error: %s",
-		       inst->xlat_name, dissocket->conn->errstr);
+		RERROR("%s", dissocket->conn->errstr);
 
 		dissocket = fr_connection_reconnect(inst->pool, dissocket);
 		if (!dissocket) {
@@ -244,8 +243,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 
 		dissocket->reply = redisCommand(dissocket->conn, query);
 		if (!dissocket->reply) {
-			ERROR("rlm_redis (%s): failed after re-connect",
-			       inst->xlat_name);
+			RERROR("Failed after re-connect", inst->xlat_name);
 			fr_connection_del(inst->pool, dissocket);
 			goto error;
 		}
@@ -254,8 +252,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	}
 
 	if (dissocket->reply->type == REDIS_REPLY_ERROR) {
-		ERROR("rlm_redis (%s): query failed, %s",
-		       inst->xlat_name, query);
+		RERROR("Query failed, %s", inst->xlat_name, query);
 		return -1;
 	}
 

@@ -559,7 +559,7 @@ static int pairadd_sv(TALLOC_CTX *ctx, VALUE_PAIR **vps, char *key, SV *sv, FR_T
 			DEBUG("rlm_perl: Added pair %s = %s", key, val);
 			return 1;
 		} else {
-			DEBUG("rlm_perl: ERROR: Failed to create pair %s = %s", key, val);
+			EDEBUG("rlm_perl: Failed to create pair %s = %s", key, val);
 		}
 	}
 	return 0;

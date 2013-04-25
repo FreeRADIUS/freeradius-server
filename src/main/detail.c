@@ -895,7 +895,8 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		char *p;
 
 #ifndef HAVE_GLOB_H
-		INFO("WARNING: Detail file \"%s\" appears to use file globbing, but it is not supported on this system.", data->filename);
+		WARN("Detail file \"%s\" appears to use file globbing, but it is not supported on this system.",
+		     data->filename);
 #endif
 		strlcpy(buffer, data->filename, sizeof(buffer));
 		p = strrchr(buffer, FR_DIR_SEP);

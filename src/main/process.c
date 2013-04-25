@@ -681,7 +681,7 @@ static void request_process_timer(REQUEST *request)
 			 */
 			if (spawn_flag &&
 			    (pthread_equal(request->child_pid, NO_SUCH_CHILD_PID) == 0)) {
-				ERROR("WARNING: Unresponsive child for request %u, in component %s module %s",
+				ERROR("Unresponsive child for request %u, in component %s module %s",
 				       request->number,
 				       request->component ? request->component : "<server core>",
 			       request->module ? request->module : "<server core>");
@@ -1309,8 +1309,8 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 		       client->shortname,
 		       packet->src_port, packet->id);
-		INFO("WARNING: Please check the configuration file.\n"
-		       "\tThe value for 'max_requests' is probably set too low.\n");
+		WARN("Please check the configuration file.\n"
+		     "\tThe value for 'max_requests' is probably set too low.\n");
 
 		exec_trigger(NULL, NULL, "server.max_requests", true);
 		return 0;

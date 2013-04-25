@@ -247,13 +247,13 @@ static int dhcprelay_process_server_reply(REQUEST *request)
 #else  /* WITH_UDPFROMTO */
 static int dhcprelay_process_server_reply(UNUSED REQUEST *request)
 {
-	DEBUG("WARNING: DHCP Relaying requires the server to be configured with UDPFROMTO");
+	WDEBUG("DHCP Relaying requires the server to be configured with UDPFROMTO");
 	return -1;
 }
 
 static int dhcprelay_process_client_request(UNUSED REQUEST *request)
 {
-	DEBUG("WARNING: DHCP Relaying requires the server to be configured with UDPFROMTO");
+	WDEBUG("DHCP Relaying requires the server to be configured with UDPFROMTO");
 	return -1;
 }
 
@@ -528,7 +528,7 @@ static int dhcp_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	sock = this->data;
 
 	if (!sock->interface) {
-		DEBUG("WARNING: No \"interface\" setting is defined.  Only unicast DHCP will work.");
+		WDEBUG("No \"interface\" setting is defined.  Only unicast DHCP will work.");
 	}
 
 	/*

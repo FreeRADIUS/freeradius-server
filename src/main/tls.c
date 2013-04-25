@@ -1283,7 +1283,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	/* Send OCSP request and wait for response */
 	resp = OCSP_sendreq_bio(cbio, path, req);
 	if (!resp) {
-		ERROR("Error: Couldn't get OCSP response");
+		ERROR("Couldn't get OCSP response");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1293,14 +1293,14 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 
 	rc = BIO_do_connect(cbio);
 	if ((rc <= 0) && ((!conf->ocsp_timeout) || !BIO_should_retry(cbio))) {
-		ERROR("Error: Couldn't connect to OCSP responder");
+		ERROR("Couldn't connect to OCSP responder");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
 
 	ctx = OCSP_sendreq_new(cbio, path, req, -1);
 	if (!ctx) {
-		ERROR("Error: Couldn't send OCSP request");
+		ERROR("Couldn't send OCSP request");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1318,7 +1318,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	} while ((rc == -1) && BIO_should_retry(cbio));
 
 	if (conf->ocsp_timeout && (rc == -1) && BIO_should_retry(cbio)) {
-		ERROR("Error: OCSP response timed out");
+		ERROR("OCSP response timed out");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1326,7 +1326,7 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	OCSP_REQ_CTX_free(ctx);
 
 	if (rc == 0) {
-		ERROR("Error: Couldn't get OCSP response");
+		ERROR("Couldn't get OCSP response");
 		ocsp_ok = 2;
 		goto ocsp_end;
 	}
@@ -1336,23 +1336,23 @@ static int ocsp_check(X509_STORE *store, X509 *issuer_cert, X509 *client_cert,
 	status = OCSP_response_status(resp);
 	DEBUG2("[ocsp] --> Response status: %s",OCSP_response_status_str(status));
 	if(status != OCSP_RESPONSE_STATUS_SUCCESSFUL) {
-		ERROR("Error: OCSP response status: %s", OCSP_response_status_str(status));
+		ERROR("OCSP response status: %s", OCSP_response_status_str(status));
 		goto ocsp_end;
 	}
 	bresp = OCSP_response_get1_basic(resp);
 	if(conf->ocsp_use_nonce && OCSP_check_nonce(req, bresp)!=1) {
-		ERROR("Error: OCSP response has wrong nonce value");
+		ERROR("OCSP response has wrong nonce value");
 		goto ocsp_end;
 	}
 	if(OCSP_basic_verify(bresp, NULL, store, 0)!=1){
-		ERROR("Error: Couldn't verify OCSP basic response");
+		ERROR("Couldn't verify OCSP basic response");
 		goto ocsp_end;
 	}
 
 	/*	Verify OCSP cert status */
 	if(!OCSP_resp_find_status(bresp, certid, &status, &reason,
 						      &rev, &thisupd, &nextupd)) {
-		ERROR("ERROR: No Status found.\n");
+		ERROR("No Status found.\n");
 		goto ocsp_end;
 	}
 
@@ -1697,7 +1697,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		if (my_ok && conf->ocsp_enable){
 			RDEBUG2("--> Starting OCSP Request");
 			if(X509_STORE_CTX_get1_issuer(&issuer_cert, ctx, client_cert)!=1) {
-				ERROR("Error: Couldn't get issuer_cert for %s", common_name);
+				ERROR("Couldn't get issuer_cert for %s", common_name);
 			}
 			my_ok = ocsp_check(ocsp_store, issuer_cert, client_cert, conf);
 		}
@@ -2258,7 +2258,7 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 */
 	conf = cf_data_find(cs, "tls-conf");
 	if (conf) {
-		DEBUG(" debug: Using cached TLS configuration from previous invocation");
+		DEBUG("Using cached TLS configuration from previous invocation");
 		return conf;
 	}
 
@@ -2361,7 +2361,7 @@ fr_tls_server_conf_t *tls_client_conf_parse(CONF_SECTION *cs)
 
 	conf = cf_data_find(cs, "tls-conf");
 	if (conf) {
-		DEBUG(" debug: Using cached TLS configuration from previous invocation");
+		DEBUG("Using cached TLS configuration from previous invocation");
 		return conf;
 	}
 

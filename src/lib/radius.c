@@ -1786,9 +1786,9 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		 */
 		if (len == 0) {
 			if (last_len != 0) {
-				DEBUG("WARNING: Failed encoding attribute %s\n", last_name);
+				fr_strerror_printf("WARNING: Failed encoding attribute %s\n", last_name);
 			} else {
-				DEBUG("WARNING: Skipping zero-length attribute %s\n", last_name);
+				fr_strerror_printf("WARNING: Skipping zero-length attribute %s\n", last_name);
 			}
 		}
 

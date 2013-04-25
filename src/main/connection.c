@@ -733,8 +733,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	do_delete:
 		if ((pool->num <= pool->min) &&
 		    (pool->last_complained < now)) {
-			INFO("%s: WARNING: You probably need to "
-			       "lower \"min\"", pool->log_prefix);
+			WARN("%s: You probably need to lower \"min\"", pool->log_prefix);
 			
 			pool->last_complained = now;
 		}
