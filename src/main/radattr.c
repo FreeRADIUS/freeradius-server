@@ -36,14 +36,16 @@ RCSID("$Id$")
 
 #include <assert.h>
 
-int debug_flag = 0;
+typedef struct REQUEST REQUEST;
+
+#include <freeradius-devel/log.h>
+log_debug_t debug_flag = 0;
 
 /**********************************************************************
  *	Hacks for xlat
  */
 #include <stdarg.h>
 
-typedef struct REQUEST REQUEST;
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
 typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 

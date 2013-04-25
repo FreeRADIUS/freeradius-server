@@ -13,8 +13,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef FR_LOG_H
-#define FR_LOG_H
+#ifndef FR_DBG_H
+#define FR_DBG_H
 /*
  * $Id$
  *
@@ -29,7 +29,7 @@ RCSIDH(log_h, "$Id$")
 extern "C" {
 #endif
 
-typedef enum log_lvl {
+typedef enum log_type {
 	L_AUTH = 2,		//!< Authentication message.
 	L_INFO = 3,		//!< Informational message.
 	L_ERR = 4,		//!< Error message.
@@ -42,15 +42,23 @@ typedef enum log_lvl {
 	L_DBG_ERR = 18,		//!< Error only displayed when debugging is enabled.
 	L_DBG_WARN2 = 19,	//!< Less severe warning only displayed when debugging is enabled.
 	L_DBG_ERR2 = 20		//!< Less severe warning only displayed when debugging is enabled.
-} log_lvl_t;
+} log_type_t;
+
+typedef enum log_debug {
+	L_DBG_LVL_OFF = 0,	//!< No debug messages
+	L_DBG_LVL_1,		//!< Highest priority debug messages (-x)
+	L_DBG_LVL_2,		//!< 2nd highest priority debug messages (-xx | -X)
+	L_DBG_LVL_3,		//!< 3rd highest priority debug messages (-xxx | -Xx)
+	L_DBG_LVL_MAX		//!< Lowest priority debug messages (-xxxx | -Xxx)
+} log_debug_t;
 
 typedef enum log_dst {
-	RADLOG_STDOUT = 0,	//!< Log to stdout.
-	RADLOG_FILES,		//!< Log to a file on disk.
-	RADLOG_SYSLOG,		//!< Log to syslog.
-	RADLOG_STDERR,		//!< Log to stderr.
-	RADLOG_NULL,		//!< Discard log messages.
-	RADLOG_NUM_DEST
+	L_DST_STDOUT = 0,	//!< Log to stdout.
+	L_DST_FILES,		//!< Log to a file on disk.
+	L_DST_SYSLOG,		//!< Log to syslog.
+	L_DST_STDERR,		//!< Log to stderr.
+	L_DST_NULL,		//!< Discard log messages.
+	L_DST_NUM_DEST
 } log_dst_t;
 
 typedef struct fr_log_t {
@@ -61,20 +69,20 @@ typedef struct fr_log_t {
 	char		*debug_file;
 } fr_log_t;
 
+typedef		void (*radlog_func_t)(log_type_t lvl, log_debug_t priority, REQUEST *, char const *, ...);
+
 extern FR_NAME_NUMBER const syslog_str2fac[];
 extern FR_NAME_NUMBER const log_str2dst[];
 extern fr_log_t default_log;
 
-int		vradlog(int, char const *, va_list ap);
-int		radlog(int, char const *, ...)
+int		vradlog(log_type_t lvl, char const *fmt, va_list ap);
+int		radlog(log_type_t lvl, char const *fmt, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 2, 3)))
 #endif
 ;
-int		log_debug(char const *, ...)
-;
 void 		vp_listdebug(VALUE_PAIR *vp);
-void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...)
+void		radlog_request(log_type_t lvl, log_debug_t priority, REQUEST *request, char const *msg, ...)
 #ifdef __GNUC__
 		__attribute__ ((format (printf, 4, 5)))
 #endif
@@ -100,25 +108,25 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
  */
 #define _SL(_l, _p, _f, ...)	if (debug_flag >= _p) radlog(_l, _f, ## __VA_ARGS__)
  
-#define AUTH(fmt, ...)		_SL(L_AUTH, 0, fmt, ## __VA_ARGS__)
-#define ACCT(fmt, ...)		_SL(L_ACCT, 0, fmt, ## __VA_ARGS__)
-#define PROXY(fmt, ...)		_SL(L_PROXY, 0, fmt, ## __VA_ARGS__)
+#define AUTH(fmt, ...)		_SL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define ACCT(fmt, ...)		_SL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define PROXY(fmt, ...)		_SL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
  
-#define DEBUG(fmt, ...)		_SL(L_DBG, 1, fmt, ## __VA_ARGS__)
-#define DEBUG2(fmt, ...)	_SL(L_DBG, 2, fmt, ## __VA_ARGS__)
-#define DEBUG3(fmt, ...)	_SL(L_DBG, 3, fmt, ## __VA_ARGS__)
-#define DEBUG4(fmt, ...)	_SL(L_DBG, 4, fmt, ## __VA_ARGS__)
+#define DEBUG(fmt, ...)		_SL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define DEBUG2(fmt, ...)	_SL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define DEBUG3(fmt, ...)	_SL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
+#define DEBUG4(fmt, ...)	_SL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
  
-#define INFO(fmt, ...)		_SL(L_INFO, 0, fmt, ## __VA_ARGS__)
-#define DEBUGI(fmt, ...)	_SL(L_INFO, 1, fmt, ## __VA_ARGS__)
+#define INFO(fmt, ...)		_SL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define DEBUGI(fmt, ...)	_SL(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
  
-#define WARN(fmt, ...)		_SL(L_WARN, 0, fmt, ## __VA_ARGS__)
-#define WDEBUG(fmt, ...)	_SL(L_WARN, 1, fmt, ## __VA_ARGS__)
-#define WDEBUG2(fmt, ...)	_SL(L_WARN, 2, fmt, ## __VA_ARGS__)
+#define WARN(fmt, ...)		_SL(L_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define WDEBUG(fmt, ...)	_SL(L_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define WDEBUG2(fmt, ...)	_SL(L_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
  
-#define ERROR(fmt, ...)		_SL(L_ERR, 0, fmt, ## __VA_ARGS__)
-#define EDEBUG(fmt, ...)	_SL(L_ERR, 1, fmt, ## __VA_ARGS__)
-#define EDEBUG2(fmt, ...)	_SL(L_ERR, 1, fmt, ## __VA_ARGS__)
+#define ERROR(fmt, ...)		_SL(L_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define EDEBUG(fmt, ...)	_SL(L_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define EDEBUG2(fmt, ...)	_SL(L_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
  
 /*
  *	Log request driven messages which including elements from the current request, like section and module
@@ -133,28 +141,28 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
 					} \
 				} while(0)
 				
-#define RAUTH(fmt, ...)		_RL(L_AUTH, 0, fmt, ## __VA_ARGS__)
-#define RACCT(fmt, ...)		_RL(L_PROXY, 0, fmt, ## __VA_ARGS__)
-#define RPROXY(fmt, ...)	_RL(L_PROXY, 0, fmt, ## __VA_ARGS__)
+#define RAUTH(fmt, ...)		_RL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RACCT(fmt, ...)		_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RPROXY(fmt, ...)	_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
  
-#define RDEBUG(fmt, ...)	_RL(L_DBG, 1, fmt, ## __VA_ARGS__)
-#define RDEBUG2(fmt, ...)	_RL(L_DBG, 2, fmt, ## __VA_ARGS__)
-#define RDEBUG3(fmt, ...)	_RL(L_DBG, 3, fmt, ## __VA_ARGS__)
-#define RDEBUG4(fmt, ...)	_RL(L_DBG, 4, fmt, ## __VA_ARGS__)
+#define RDEBUG(fmt, ...)	_RL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define RDEBUG2(fmt, ...)	_RL(L_DBG, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
+#define RDEBUG3(fmt, ...)	_RL(L_DBG, L_DBG_LVL_3, fmt, ## __VA_ARGS__)
+#define RDEBUG4(fmt, ...)	_RL(L_DBG, L_DBG_LVL_MAX, fmt, ## __VA_ARGS__)
  
-#define RINFO(fmt, ...)		_RL(L_INFO, 0, fmt, ## __VA_ARGS__)
-#define RIDEBUG(fmt, ...)	_RL(L_INFO, 1, fmt, ## __VA_ARGS__)
+#define RINFO(fmt, ...)		_RL(L_INFO, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RIDEBUG(fmt, ...)	_RL(L_INFO, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
  
-#define RWARN(fmt, ...)		_RL(L_DBG_WARN, 0, fmt, ## __VA_ARGS__)
-#define RWDEBUG(fmt, ...)	_RL(L_DBG_WARN, 1, fmt, ## __VA_ARGS__)
-#define RWDEBUG2(fmt, ...)	_RL(L_DBG_WARN, 2, fmt, ## __VA_ARGS__)
+#define RWARN(fmt, ...)		_RL(L_DBG_WARN, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RWDEBUG(fmt, ...)	_RL(L_DBG_WARN, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define RWDEBUG2(fmt, ...)	_RL(L_DBG_WARN, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
  
-#define RERROR(fmt, ...)	_RM(L_DBG_ERR, 0, fmt, ## __VA_ARGS__)
-#define REDEBUG(fmt, ...)	_RM(L_DBG_ERR, 1, fmt, ## __VA_ARGS__)
-#define REDEBUG2(fmt, ...)	_RM(L_DBG_ERR, 2, fmt, ## __VA_ARGS__)
+#define RERROR(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define REDEBUG(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
+#define REDEBUG2(fmt, ...)	_RM(L_DBG_ERR, L_DBG_LVL_2, fmt, ## __VA_ARGS__)
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* FR_LOG_H */
+#endif /* FR_DBG_H */

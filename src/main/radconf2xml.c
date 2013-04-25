@@ -41,7 +41,7 @@ char const *progname = "radconf2xml";
  *	they're running inside of the server.  And we don't (yet)
  *	have a "libfreeradius-server", or "libfreeradius-util".
  */
-int debug_flag = 0;
+log_debug_t debug_flag = 0;
 struct main_config_t mainconfig;
 char *request_log_file = NULL;
 char *debug_log_file = NULL;

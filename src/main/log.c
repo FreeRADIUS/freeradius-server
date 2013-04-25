@@ -137,12 +137,12 @@ const FR_NAME_NUMBER syslog_str2fac[] = {
 };
 
 const FR_NAME_NUMBER log_str2dst[] = {
-	{ "null",		RADLOG_NULL	},
-	{ "files",		RADLOG_FILES	},
-	{ "syslog",		RADLOG_SYSLOG	},
-	{ "stdout",		RADLOG_STDOUT	},
-	{ "stderr",		RADLOG_STDERR	},
-	{ NULL,			RADLOG_NUM_DEST	}
+	{ "null",		L_DST_NULL	},
+	{ "files",		L_DST_FILES	},
+	{ "syslog",		L_DST_SYSLOG	},
+	{ "stdout",		L_DST_STDOUT	},
+	{ "stderr",		L_DST_STDERR	},
+	{ NULL,			L_DST_NUM_DEST	}
 };
 
 int log_dates_utc = 0;
@@ -151,7 +151,7 @@ int log_dates_utc = 0;
 fr_log_t default_log = {
 	.colourise = true,
 	.fd = STDOUT_FILENO,
-	.dest = RADLOG_STDOUT,
+	.dest = L_DST_STDOUT,
 	.file = NULL,
 	.debug_file = NULL,
 };
@@ -161,7 +161,7 @@ fr_log_t default_log = {
  *	a time stamp.
  */
 DIAG_OFF(format-nonliteral)
-int vradlog(int lvl, char const *fmt, va_list ap)
+int vradlog(log_type_t type, char const *fmt, va_list ap)
 {
 	unsigned char *p;
 	char buffer[8192];
@@ -174,7 +174,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	 *
 	 *	Throw the message away.
 	 */
-	if (!debug_flag && ((lvl & L_DBG) != 0)) {
+	if (!debug_flag && ((type & L_DBG) != 0)) {
 		return 0;
 	}
 
@@ -182,7 +182,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (default_log.dest == RADLOG_NULL) {
+	if (default_log.dest == L_DST_NULL) {
 		return 0;
 	}
 
@@ -190,7 +190,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	len = 0;
 
 	if (colourise) {
-		len += strlcpy(buffer + len, fr_int2str(colours, lvl, ""),
+		len += strlcpy(buffer + len, fr_int2str(colours, type, ""),
 			       sizeof(buffer) - len) ;
 		if (len == 0) colourise = false;
 	}
@@ -207,7 +207,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	 *	Print timestamps for non-debugging, and for high levels
 	 *	of debugging.
 	 */
-	if ((default_log.dest != RADLOG_SYSLOG) &&
+	if ((default_log.dest != L_DST_SYSLOG) &&
 	    (debug_flag != 1) && (debug_flag != 2)) {
 		time_t timeval;
 
@@ -217,11 +217,11 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 		len = strlen(buffer);
 
 		len += strlcpy(buffer + len,
-			       fr_int2str(levels, lvl, ": "),
+			       fr_int2str(levels, type, ": "),
 			       sizeof(buffer) - len);
 	}
 
-	switch (lvl) {
+	switch (type) {
 	case L_DBG_WARN:
 		len += strlcpy(buffer + len, "WARNING: ", sizeof(buffer) - len);
 		break;
@@ -264,40 +264,39 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	switch (default_log.dest) {
 
 #ifdef HAVE_SYSLOG_H
-	case RADLOG_SYSLOG:
-		switch(lvl) {
+	case L_DST_SYSLOG:
+		switch(type) {
 			case L_DBG:
+			case L_WARN:
 			case L_DBG_WARN:
+			case L_DBG_WARN2:
 			case L_DBG_ERR:
-				lvl = LOG_DEBUG;
+			case L_DBG_ERR2:
+				type = LOG_DEBUG;
 				break;
 			case L_AUTH:
-				lvl = LOG_NOTICE;
-				break;
 			case L_PROXY:
-				lvl = LOG_NOTICE;
-				break;
 			case L_ACCT:
-				lvl = LOG_NOTICE;
+				type = LOG_NOTICE;
 				break;
 			case L_INFO:
-				lvl = LOG_INFO;
+				type = LOG_INFO;
 				break;
 			case L_ERR:
-				lvl = LOG_ERR;
+				type = LOG_ERR;
 				break;
 		}
-		syslog(lvl, "%s", buffer);
+		syslog(type, "%s", buffer);
 		break;
 #endif
 
-	case RADLOG_FILES:
-	case RADLOG_STDOUT:
-	case RADLOG_STDERR:
+	case L_DST_FILES:
+	case L_DST_STDOUT:
+	case L_DST_STDERR:
 		return write(default_log.fd, buffer, strlen(buffer));
 
 	default:
-	case RADLOG_NULL:	/* should have been caught above */
+	case L_DST_NULL:	/* should have been caught above */
 		break;
 	}
 
@@ -305,30 +304,17 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 }
 DIAG_ON(format-nonliteral)
 
-int log_debug(char const *msg, ...)
+int radlog(log_type_t type, char const *msg, ...)
 {
 	va_list ap;
 	int r;
 
 	va_start(ap, msg);
-	r = vradlog(L_DBG, msg, ap);
+	r = vradlog(type, msg, ap);
 	va_end(ap);
 
 	return r;
 }
-
-int radlog(int lvl, char const *msg, ...)
-{
-	va_list ap;
-	int r;
-
-	va_start(ap, msg);
-	r = vradlog(lvl, msg, ap);
-	va_end(ap);
-
-	return r;
-}
-
 
 /*
  *      Dump a whole list of attributes to DEBUG2
@@ -342,7 +328,7 @@ void vp_listdebug(VALUE_PAIR *vp)
 	}
 }
 
-void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...)
+void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char const *msg, ...)
 {
 	size_t len = 0;
 	char const *filename = default_log.file;
@@ -357,15 +343,15 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
 	/*
 	 *	Debug messages get treated specially.
 	 */
-	if ((lvl & L_DBG) != 0) {
+	if ((type & L_DBG) != 0) {
 		/*
 		 *	There is log function, but the debug level
 		 *	isn't high enough.  OR, we're in debug mode,
 		 *	and the debug level isn't high enough.  Return.
 		 */
 		if ((request && request->radlog &&
-		     (priority > request->options)) ||
-		    ((debug_flag != 0) && (priority > debug_flag))) {
+		     (lvl > request->options)) ||
+		    ((debug_flag != 0) && (lvl > debug_flag))) {
 			va_end(ap);
 			return;
 		}
@@ -437,7 +423,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
 		}
 		
 		len += strlcpy(buffer + len,
-			       fr_int2str(levels, lvl, ": "),
+			       fr_int2str(levels, type, ": "),
 		 	       sizeof(buffer) - len);
 		 	
 		if (len >= sizeof(buffer)) goto finish;
@@ -453,25 +439,25 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
 	vsnprintf(buffer + len, sizeof(buffer) - len, msg, ap);
 	
 	finish:
-	switch (lvl) {
+	switch (type) {
 	case L_DBG_WARN:
 		extra = "WARNING: ";
-		lvl = L_DBG_WARN2;
+		type = L_DBG_WARN2;
 		break;
 
 	case L_DBG_ERR:
 		extra = "ERROR: ";
-		lvl = L_DBG_ERR2;
+		type = L_DBG_ERR2;
 		break;
-
+	default:
 		break;
 	}
 
 	if (!fp) {
 		if (request) {
-			radlog(lvl, "(%u) %s%s", request->number, extra, buffer);
+			radlog(type, "(%u) %s%s", request->number, extra, buffer);
 		} else {
-			radlog(lvl, "%s%s", extra, buffer);
+			radlog(type, "%s%s", extra, buffer);
 		}
 	} else {
 		if (request) fprintf(fp, "(%u) ", request->number);

@@ -2,7 +2,7 @@
 
 #define RADIUS_DIR		RADDBDIR
 #define RADACCT_DIR		RADIR
-#define RADLOG_DIR		LOGDIR
+#define L_DST_DIR		LOGDIR
 
 #define RADIUS_DICTIONARY	"dictionary"
 #define RADIUS_CLIENTS		"clients"

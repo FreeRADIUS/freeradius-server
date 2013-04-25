@@ -814,7 +814,7 @@ static char debug_log_file_buffer[1024];
 
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 {
-	if (debug_flag && default_log.dest == RADLOG_STDOUT) {
+	if (debug_flag && default_log.dest == L_DST_STDOUT) {
 		cprintf(listener, "ERROR: Cannot redirect debug logs to a file when already in debugging mode.\n");
 		return -1;
 	}

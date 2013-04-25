@@ -62,7 +62,7 @@ char const *radacct_dir = NULL;
 char const *radlog_dir = NULL;
 char const *radlib_dir = NULL;
 int log_stripped_names;
-int debug_flag = 0;
+log_debug_t debug_flag = 0;
 int check_config = false;
 int memory_report = false;
 
@@ -153,7 +153,7 @@ int main(int argc, char *argv[])
 	 *	Don't put output anywhere until we get told a little
 	 *	more.
 	 */
-	default_log.dest = RADLOG_NULL;
+	default_log.dest = L_DST_NULL;
 	default_log.fd = -1;
 	mainconfig.log_file = NULL;
 
@@ -191,7 +191,7 @@ int main(int argc, char *argv[])
 					goto do_stdout;
 				}
 				mainconfig.log_file = strdup(optarg);
-				default_log.dest = RADLOG_FILES;
+				default_log.dest = L_DST_FILES;
 				default_log.fd = open(mainconfig.log_file,
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
@@ -250,7 +250,7 @@ int main(int argc, char *argv[])
 				/* Don't print timestamps */
 				debug_flag += 2;
 				fr_log_fp = stdout;
-				default_log.dest = RADLOG_STDOUT;
+				default_log.dest = L_DST_STDOUT;
 				default_log.fd = STDOUT_FILENO;
 				
 				version();
@@ -264,7 +264,7 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth_goodpass = true;
 		do_stdout:
 				fr_log_fp = stdout;
-				default_log.dest = RADLOG_STDOUT;
+				default_log.dest = L_DST_STDOUT;
 				default_log.fd = STDOUT_FILENO;
 				break;
 
@@ -355,13 +355,13 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		dup2(devnull, STDIN_FILENO);
-		if (default_log.dest == RADLOG_STDOUT) {
+		if (default_log.dest == L_DST_STDOUT) {
 			setlinebuf(stdout);
 			default_log.fd = STDOUT_FILENO;
 		} else {
 			dup2(devnull, STDOUT_FILENO);
 		}
-		if (default_log.dest == RADLOG_STDERR) {
+		if (default_log.dest == L_DST_STDERR) {
 			setlinebuf(stderr);
 			default_log.fd = STDERR_FILENO;
 		} else {

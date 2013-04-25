@@ -156,7 +156,6 @@ typedef enum RAD_LISTEN_TYPE {
  *	For listening on multiple IP's and ports.
  */
 typedef struct rad_listen_t rad_listen_t;
-typedef		void (*radlog_func_t)(int, int, REQUEST *, char const *, ...);
 
 typedef		void (*fr_request_process_t)(REQUEST *, int);
 /*
@@ -236,7 +235,7 @@ struct request {
 						//!< 2 is true.
 #endif
 
-	int			options;	//!< Request options, currently
+	log_debug_t		options;	//!< Request options, currently
 						//!< just holds the debug level
 						//!< for the request.
 						
@@ -469,7 +468,7 @@ typedef enum request_fail {
  *	We really shouldn't have this many.
  */
 extern char const	*progname;
-extern int		debug_flag;
+extern log_debug_t	debug_flag;
 extern char const	*radacct_dir;
 extern char const	*radlog_dir;
 extern char const	*radlib_dir;

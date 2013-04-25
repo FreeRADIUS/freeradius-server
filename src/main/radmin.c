@@ -89,7 +89,7 @@ char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
  *	they're running inside of the server.  And we don't (yet)
  *	have a "libfreeradius-server", or "libfreeradius-util".
  */
-int debug_flag = 0;
+log_debug_t debug_flag = 0;
 struct main_config_t mainconfig;
 ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
 		    UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)

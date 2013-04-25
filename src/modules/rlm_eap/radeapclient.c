@@ -58,9 +58,9 @@ char const *progname = "radeapclient";
 #include <freeradius-devel/tls.h>
 #endif
 
-log_dst_t radlog_dest = RADLOG_STDERR;
+log_dst_t radlog_dest = L_DST_STDERR;
 char const *radlog_dir = NULL;
-int debug_flag = 0;
+log_debug_t debug_flag = 0;
 char password[256];
 
 struct eapsim_keys eapsim_mk;
@@ -971,7 +971,7 @@ int main(int argc, char **argv)
 	id = ((int)getpid() & 0xff);
 	fr_debug_flag = 0;
 
-	radlog_dest = RADLOG_STDERR;
+	radlog_dest = L_DST_STDERR;
 
 	while ((c = getopt(argc, argv, "46c:d:f:hi:qst:r:S:xXv")) != EOF)
 	{
