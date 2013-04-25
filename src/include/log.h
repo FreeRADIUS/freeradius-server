@@ -1,10 +1,4 @@
-#ifndef FR_LOG_H
-#define FR_LOGP_H
-
 /*
- * log.h	Structures and prototypes for logging.
- * Version:	$Id$
- *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU General Public License as published by
  *   the Free Software Foundation; either version 2 of the License, or
@@ -18,11 +12,18 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
- *
- * Copyright 2013 Alan DeKok <aland@freeradius.org>
  */
-
-RCSIDH(heap_h, "$Id$")
+#ifndef FR_LOG_H
+#define FR_LOG_H
+/*
+ * $Id$
+ *
+ * @file log.h
+ * @brief Structures and prototypes for logging.
+ *
+ * @copyright 2013 Alan DeKok <aland@freeradius.org>
+ */
+RCSIDH(log_h, "$Id$")
 
 #ifdef __cplusplus
 extern "C" {
