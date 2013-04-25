@@ -494,16 +494,19 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		if (child->type == MOD_UPDATE) {
 			int rcode;
 			modgroup *g = mod_callabletogroup(child);
+			value_pair_map_t *map;
 
 			RDEBUG2("%.*supdate %s {",
 				stack.pointer + 1, modcall_spaces,
 				child->name);
 
-			rcode = radius_map2request(request, g->map, "update",
-						   radius_map2vp, NULL);
-			if (rcode < 0) {
-				myresult = RLM_MODULE_FAIL;
-				goto handle_priority;
+			for (map = g->map; map != NULL; map = map->next) {
+				rcode = radius_map2request(request, map, "update",
+							   radius_map2vp, NULL);
+				if (rcode < 0) {
+					myresult = RLM_MODULE_FAIL;
+					goto handle_priority;
+				}
 			}
 
 			/* else leave myresult && mypriority alone */
