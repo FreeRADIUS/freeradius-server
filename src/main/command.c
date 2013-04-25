@@ -28,6 +28,7 @@
 #include <freeradius-devel/stats.h>
 #include <freeradius-devel/realms.h>
 #include <freeradius-devel/parser.h>
+#include <freeradius-devel/log.h>
 
 #ifdef HAVE_INTTYPES_H
 #include <inttypes.h>
@@ -809,12 +810,11 @@ static int command_debug_level(rad_listen_t *listener, int argc, char *argv[])
 	return 0;
 }
 
-char *debug_log_file = NULL;
 static char debug_log_file_buffer[1024];
 
 static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 {
-	if (debug_flag && mainconfig.radlog_dest == RADLOG_STDOUT) {
+	if (debug_flag && default_log.dest == RADLOG_STDOUT) {
 		cprintf(listener, "ERROR: Cannot redirect debug logs to a file when already in debugging mode.\n");
 		return -1;
 	}
@@ -823,7 +823,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 		cprintf(listener, "ERROR: Cannot direct debug logs to absolute path.\n");
 	}
 
-	debug_log_file = NULL;
+	default_log.debug_file = NULL;
 
 	if (argc == 0) return 0;
 
@@ -839,7 +839,7 @@ static int command_debug_file(rad_listen_t *listener, int argc, char *argv[])
 	snprintf(debug_log_file_buffer, sizeof(debug_log_file_buffer),
 		 "%s/%s", radlog_dir, argv[0]);
 
-	debug_log_file = &debug_log_file_buffer[0];
+	default_log.debug_file = &debug_log_file_buffer[0];
 
 	return 0;
 }
@@ -889,9 +889,9 @@ static int command_show_debug_condition(rad_listen_t *listener,
 static int command_show_debug_file(rad_listen_t *listener,
 					UNUSED int argc, UNUSED char *argv[])
 {
-	if (!debug_log_file) return 0;
+	if (!default_log.debug_file) return 0;
 
-	cprintf(listener, "%s\n", debug_log_file);
+	cprintf(listener, "%s\n", default_log.debug_file);
 	return 0;
 }
 

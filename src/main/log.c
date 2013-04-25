@@ -26,6 +26,7 @@
 RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
+#include <freeradius-devel/log.h>
 
 #ifdef HAVE_SYS_STAT_H
 #include <sys/stat.h>
@@ -74,6 +75,14 @@ static const FR_NAME_NUMBER colours[] = {
 int log_dates_utc = 0;
 
 
+fr_log_t default_log = {
+	.colourise = true,
+	.fd = STDOUT_FILENO,
+	.dest = RADLOG_STDOUT,
+	.file = NULL,
+	.debug_file = NULL,
+};
+
 /*
  *	Log the message to the logfile. Include the severity and
  *	a time stamp.
@@ -81,12 +90,11 @@ int log_dates_utc = 0;
 DIAG_OFF(format-nonliteral)
 int vradlog(int lvl, char const *fmt, va_list ap)
 {
-	struct main_config_t *myconfig = &mainconfig;
 	unsigned char *p;
 	char buffer[8192];
 	char *unsan;
 	size_t len;
-	int colourise = myconfig->colourise;
+	int colourise = default_log.colourise;
 
 	/*
 	 *	NOT debugging, and trying to log debug messages.
@@ -101,7 +109,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	 *	If we don't want any messages, then
 	 *	throw them away.
 	 */
-	if (myconfig->radlog_dest == RADLOG_NULL) {
+	if (default_log.dest == RADLOG_NULL) {
 		return 0;
 	}
 
@@ -126,7 +134,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	 *	Print timestamps for non-debugging, and for high levels
 	 *	of debugging.
 	 */
-	if ((myconfig->radlog_dest != RADLOG_SYSLOG) &&
+	if ((default_log.dest != RADLOG_SYSLOG) &&
 	    (debug_flag != 1) && (debug_flag != 2)) {
 		time_t timeval;
 
@@ -180,7 +188,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 		buffer[sizeof(buffer) - 1] = '\0';
 	}
 	
-	switch (myconfig->radlog_dest) {
+	switch (default_log.dest) {
 
 #ifdef HAVE_SYSLOG_H
 	case RADLOG_SYSLOG:
@@ -213,7 +221,7 @@ int vradlog(int lvl, char const *fmt, va_list ap)
 	case RADLOG_FILES:
 	case RADLOG_STDOUT:
 	case RADLOG_STDERR:
-		return write(myconfig->radlog_fd, buffer, strlen(buffer));
+		return write(default_log.fd, buffer, strlen(buffer));
 
 	default:
 	case RADLOG_NULL:	/* should have been caught above */
@@ -261,15 +269,10 @@ void vp_listdebug(VALUE_PAIR *vp)
 	}
 }
 
-extern char *request_log_file;
-#ifdef WITH_COMMAND_SOCKET
-extern char *debug_log_file;
-#endif
-
 void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ...)
 {
 	size_t len = 0;
-	char const *filename = request_log_file;
+	char const *filename = default_log.file;
 	FILE *fp = NULL;
 	va_list ap;
 	char buffer[8192];
@@ -296,15 +299,14 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
 
 		/*
 		 *	Use the debug output file, if specified,
-		 *	otherwise leave it as "request_log_file".
+		 *	otherwise leave it as the default log file.
 		 */
 #ifdef WITH_COMMAND_SOCKET
-		filename = debug_log_file;
+		filename = default_log.debug_file;
 		if (!filename)
 #endif
-		  filename = request_log_file;
 
-		filename = request_log_file;
+		filename = default_log.file;
 	}
 
 	if (request && filename) {
@@ -415,8 +417,6 @@ void log_talloc(char const *msg)
 
 void log_talloc_report(TALLOC_CTX *ctx)
 {
-
-	struct main_config_t *myconfig = &mainconfig;
 	FILE *fd;
 	char const *null_ctx;
 	int i = 0;
@@ -425,7 +425,7 @@ void log_talloc_report(TALLOC_CTX *ctx)
 		null_ctx = talloc_get_name(NULL);
 	}
 
-	fd = fdopen(myconfig->radlog_fd, "w");
+	fd = fdopen(default_log.fd, "w");
 	if (!fd) {
 		ERROR("Couldn't write memory report, fdopen failed: %s", strerror(errno));
 

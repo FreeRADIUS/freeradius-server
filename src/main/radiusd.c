@@ -29,6 +29,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/log.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/file.h>
@@ -152,8 +153,8 @@ int main(int argc, char *argv[])
 	 *	Don't put output anywhere until we get told a little
 	 *	more.
 	 */
-	mainconfig.radlog_dest = RADLOG_NULL;
-	mainconfig.radlog_fd = -1;
+	default_log.dest = RADLOG_NULL;
+	default_log.fd = -1;
 	mainconfig.log_file = NULL;
 
 	/*  Process the options.  */
@@ -190,14 +191,14 @@ int main(int argc, char *argv[])
 					goto do_stdout;
 				}
 				mainconfig.log_file = strdup(optarg);
-				mainconfig.radlog_dest = RADLOG_FILES;
-				mainconfig.radlog_fd = open(mainconfig.log_file,
+				default_log.dest = RADLOG_FILES;
+				default_log.fd = open(mainconfig.log_file,
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
-				if (mainconfig.radlog_fd < 0) {
+				if (default_log.fd < 0) {
 					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
 					exit(1);
 				}
-				fr_log_fp = fdopen(mainconfig.radlog_fd, "a");
+				fr_log_fp = fdopen(default_log.fd, "a");
 				break;		
 
 			case 'i':
@@ -249,8 +250,8 @@ int main(int argc, char *argv[])
 				/* Don't print timestamps */
 				debug_flag += 2;
 				fr_log_fp = stdout;
-				mainconfig.radlog_dest = RADLOG_STDOUT;
-				mainconfig.radlog_fd = STDOUT_FILENO;
+				default_log.dest = RADLOG_STDOUT;
+				default_log.fd = STDOUT_FILENO;
 				
 				version();
 				exit(0);
@@ -263,8 +264,8 @@ int main(int argc, char *argv[])
 				mainconfig.log_auth_goodpass = true;
 		do_stdout:
 				fr_log_fp = stdout;
-				mainconfig.radlog_dest = RADLOG_STDOUT;
-				mainconfig.radlog_fd = STDOUT_FILENO;
+				default_log.dest = RADLOG_STDOUT;
+				default_log.fd = STDOUT_FILENO;
 				break;
 
 			case 'x':
@@ -354,15 +355,15 @@ int main(int argc, char *argv[])
 			exit(1);
 		}
 		dup2(devnull, STDIN_FILENO);
-		if (mainconfig.radlog_dest == RADLOG_STDOUT) {
+		if (default_log.dest == RADLOG_STDOUT) {
 			setlinebuf(stdout);
-			mainconfig.radlog_fd = STDOUT_FILENO;
+			default_log.fd = STDOUT_FILENO;
 		} else {
 			dup2(devnull, STDOUT_FILENO);
 		}
-		if (mainconfig.radlog_dest == RADLOG_STDERR) {
+		if (default_log.dest == RADLOG_STDERR) {
 			setlinebuf(stderr);
-			mainconfig.radlog_fd = STDERR_FILENO;
+			default_log.fd = STDERR_FILENO;
 		} else {
 			dup2(devnull, STDERR_FILENO);
 		}

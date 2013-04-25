@@ -79,6 +79,7 @@ struct conf_part {
 	const CONF_PARSER *variables;
 };
 
+CONF_SECTION *root_config = NULL;
 
 /*
  *	Internal data that is associated with a configuration section,
@@ -2114,9 +2115,9 @@ CONF_PAIR *cf_pair_find_next(CONF_SECTION const *cs,
 CONF_SECTION *cf_section_find(char const *name)
 {
 	if (name)
-		return cf_section_sub_find(mainconfig.config, name);
+		return cf_section_sub_find(root_config, name);
 	else
-		return mainconfig.config;
+		return root_config;
 }
 
 /** Find a sub-section in a section
@@ -2158,7 +2159,7 @@ CONF_SECTION *cf_section_sub_find_name2(CONF_SECTION const *cs,
 {
 	CONF_ITEM    *ci;
 
-	if (!cs) cs = mainconfig.config;
+	if (!cs) cs = root_config;
 
 	if (name1 && (cs->section_tree)) {
 		CONF_SECTION mycs, *master_cs;

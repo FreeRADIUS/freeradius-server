@@ -394,15 +394,6 @@ typedef struct listen_socket_t {
 #define RAD_LISTEN_STATUS_CLOSED (3)
 #define RAD_LISTEN_STATUS_FINISH (4)
 
-typedef enum radlog_dest_t {
-  RADLOG_STDOUT = 0,
-  RADLOG_FILES,
-  RADLOG_SYSLOG,
-  RADLOG_STDERR,
-  RADLOG_NULL,
-  RADLOG_NUM_DEST
-} radlog_dest_t;
-
 typedef struct main_config_t {
 	struct main_config *next;
 	int		refcount;
@@ -430,8 +421,6 @@ typedef struct main_config_t {
 	char const      *pid_file;
 	rad_listen_t	*listen;
 	int		syslog_facility;
-	int		radlog_fd;
-	radlog_dest_t	radlog_dest;
 	CONF_SECTION	*config;
 	char const	*name;
 	char const	*auth_badpass_msg;

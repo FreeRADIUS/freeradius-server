@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/modules.h>
+#include <freeradius-devel/log.h>
 #include <freeradius-devel/rad_assert.h>
 
 #include <sys/stat.h>
@@ -58,7 +59,6 @@ RCSID("$Id$")
 #endif
 
 struct main_config_t mainconfig;
-char *request_log_file = NULL;
 char *debug_condition = NULL;
 extern int log_dates_utc;
 
@@ -181,7 +181,7 @@ static const CONF_PARSER logdest_config[] = {
 	{ "syslog_facility",  PW_TYPE_STRING_PTR, 0, &syslog_facility, Stringify(0) },
 
 	{ "file", PW_TYPE_STRING_PTR, 0, &mainconfig.log_file, "${logdir}/radius.log" },
-	{ "requests", PW_TYPE_STRING_PTR, 0, &request_log_file, NULL },
+	{ "requests", PW_TYPE_STRING_PTR, 0, &default_log.file, NULL },
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -696,11 +696,11 @@ static int switch_users(CONF_SECTION *cs)
 	 *	specified on the command-line.
 	 */
 	if (uid_name || gid_name) {
-		if ((mainconfig.radlog_dest == RADLOG_FILES) &&
-		    (mainconfig.radlog_fd < 0)) {
-			mainconfig.radlog_fd = open(mainconfig.log_file,
-						    O_WRONLY | O_APPEND | O_CREAT, 0640);
-			if (mainconfig.radlog_fd < 0) {
+		if ((default_log.dest == RADLOG_FILES) &&
+		    (default_log.fd < 0)) {
+			default_log.fd = open(mainconfig.log_file,
+					      O_WRONLY | O_APPEND | O_CREAT, 0640);
+			if (default_log.fd < 0) {
 				fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
 				return 0;
 			}
@@ -809,7 +809,7 @@ int read_mainconfig(int reload, bool strict)
 	 *	If there was no log destination set on the command line,
 	 *	set it now.
 	 */
-	if (mainconfig.radlog_dest == RADLOG_NULL) {
+	if (default_log.dest == RADLOG_NULL) {
 		if (cf_section_parse(cs, NULL, serverdest_config) < 0) {
 			fprintf(stderr, "radiusd: Error: Failed to parse log{} section.\n");
 			cf_file_free(cs);
@@ -822,16 +822,16 @@ int read_mainconfig(int reload, bool strict)
 			return -1;
 		}
 		
-		mainconfig.radlog_dest = fr_str2int(str2dest, radlog_dest,
-						    RADLOG_NUM_DEST);
-		if (mainconfig.radlog_dest == RADLOG_NUM_DEST) {
+		default_log.dest = fr_str2int(str2dest, radlog_dest,
+					      RADLOG_NUM_DEST);
+		if (default_log.dest == RADLOG_NUM_DEST) {
 			fprintf(stderr, "radiusd: Error: Unknown log_destination %s\n",
 				radlog_dest);
 			cf_file_free(cs);
 			return -1;
 		}
 		
-		if (mainconfig.radlog_dest == RADLOG_SYSLOG) {
+		if (default_log.dest == RADLOG_SYSLOG) {
 			/*
 			 *	Make sure syslog_facility isn't NULL
 			 *	before using it
@@ -857,7 +857,7 @@ int read_mainconfig(int reload, bool strict)
 			openlog(progname, LOG_PID, mainconfig.syslog_facility);
 #endif
 
-		} else if (mainconfig.radlog_dest == RADLOG_FILES) {
+		} else if (default_log.dest == RADLOG_FILES) {
 			if (!mainconfig.log_file) {
 				fprintf(stderr, "radiusd: Error: Specified \"files\" as a log destination, but no log filename was given!\n");
 				cf_file_free(cs);
@@ -878,11 +878,11 @@ int read_mainconfig(int reload, bool strict)
 	 *	did switch uid/gid, then the code in switch_users()
 	 *	took care of setting the file permissions correctly.
 	 */
-	if ((mainconfig.radlog_dest == RADLOG_FILES) &&
-	    (mainconfig.radlog_fd < 0)) {
-		mainconfig.radlog_fd = open(mainconfig.log_file,
+	if ((default_log.dest == RADLOG_FILES) &&
+	    (default_log.fd < 0)) {
+		default_log.fd = open(mainconfig.log_file,
 					    O_WRONLY | O_APPEND | O_CREAT, 0640);
-		if (mainconfig.radlog_fd < 0) {
+		if (default_log.fd < 0) {
 			fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
 			cf_file_free(cs);
 			return -1;
@@ -903,7 +903,7 @@ int read_mainconfig(int reload, bool strict)
 	 */
 	if (do_colourise) {
 		p = getenv("TERM");
-		if (!p || !isatty(mainconfig.radlog_fd) ||
+		if (!p || !isatty(default_log.fd) ||
 		    (strstr(p, "xterm") == 0)) {
 			mainconfig.colourise = false;
 		} else {
@@ -924,7 +924,7 @@ int read_mainconfig(int reload, bool strict)
 	 *	to ensure that the pointers are always valid.
 	 */
 	rad_assert(mainconfig.config == NULL);
-	mainconfig.config = cs;
+	root_config = mainconfig.config = cs;
 
 	DEBUG2("%s: #### Loading Realms and Home Servers ####", mainconfig.name);
 	if (!realms_init(cs)) {
@@ -1024,7 +1024,7 @@ void hup_logfile(void)
 {
 		int fd, old_fd;
 		
-		if (mainconfig.radlog_dest != RADLOG_FILES) return;
+		if (default_log.dest != RADLOG_FILES) return;
 
  		fd = open(mainconfig.log_file,
 			  O_WRONLY | O_APPEND | O_CREAT, 0640);
@@ -1037,8 +1037,8 @@ void hup_logfile(void)
 			 *	do.  So... we have the case where a
 			 *	log message *might* be lost on HUP.
 			 */
-			old_fd = mainconfig.radlog_fd;
-			mainconfig.radlog_fd = fd;
+			old_fd = default_log.fd;
+			default_log.fd = fd;
 			close(old_fd);
 		}
 }
