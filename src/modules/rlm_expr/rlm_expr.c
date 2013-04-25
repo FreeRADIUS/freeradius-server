@@ -25,6 +25,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/sha1.h>
 #include <freeradius-devel/base64.h>
 #include <freeradius-devel/modules.h>
 
@@ -566,6 +567,44 @@ static size_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 }
 
 /**
+ * @brief Calculate the SHA1 hash of a string.
+ *
+ * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+ */
+static size_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
+                       char const *fmt, char *out, size_t outlen)
+{
+        uint8_t digest[16];
+        int i, len;
+        fr_SHA1_CTX ctx;
+
+        /*
+         *      We need room for at least one octet of output.
+         */
+        if (outlen < 3) {
+                *out = '\0';
+                return 0;
+        }
+
+        fr_SHA1Init(&ctx);
+        fr_SHA1Update(&ctx, (const void *) fmt, strlen(fmt));
+        fr_SHA1Final(digest, &ctx);
+
+        /*
+         *      Each digest octet takes two hex digits, plus one for
+         *      the terminating NUL. SHA1 is 160 bits (20 bytes)
+         */
+        len = (outlen / 2) - 1;
+        if (len > 20) len = 20;
+
+        for (i = 0; i < len; i++) {
+                snprintf(out + i * 2, 3, "%02x", digest[i]);
+        }
+
+        return strlen(out);
+}
+
+/**
  * @brief Encode string as base64
  *
  * Example: "%{tobase64:foo}" == "Zm9v"
@@ -660,6 +699,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	xlat_register("tolower", lc_xlat, NULL, inst);
 	xlat_register("toupper", uc_xlat, NULL, inst);
 	xlat_register("md5", md5_xlat, NULL, inst);
+	xlat_register("sha1", sha1_xlat, NULL, inst);
 	xlat_register("tobase64", base64_xlat, NULL, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, NULL, inst);
 
