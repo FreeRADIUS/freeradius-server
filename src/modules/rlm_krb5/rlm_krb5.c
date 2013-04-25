@@ -112,10 +112,10 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 #ifndef KRB5_IS_THREAD_SAFE
 	if (!krb5_is_thread_safe()) {
 		DEBUGI("libkrb5 is not threadsafe, recompile it with thread support enabled");
-		DEBUGW("rlm_krb5 will run in single threaded mode, performance may be degraded");
+		WDEBUG("rlm_krb5 will run in single threaded mode, performance may be degraded");
 	} else {
-		DEBUGW("Build time libkrb5 was not threadsafe, but run time library claims to be");
-		DEBUGW("Reconfigure and recompile rlm_krb5 to enable thread support");
+		WDEBUG("Build time libkrb5 was not threadsafe, but run time library claims to be");
+		WDEBUG("Reconfigure and recompile rlm_krb5 to enable thread support");
 	}
 #endif
 
@@ -126,7 +126,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	
 	ret = krb5_init_context(&inst->context);
 	if (ret) {
-		DEBUGE("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
+		EDEBUG("rlm_krb5 (%s): Context initialisation failed: %s", inst->xlat_name, error_message(ret));
 
 		return -1;
 	}
@@ -167,7 +167,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	ret = krb5_sname_to_principal(inst->context, inst->hostname, inst->service, KRB5_NT_SRV_HST, &(inst->server));
 	if (ret) {
-		DEBUGE("rlm_krb5 (%s): Failed parsing service principal: %s", inst->xlat_name, error_message(ret));
+		EDEBUG("rlm_krb5 (%s): Failed parsing service principal: %s", inst->xlat_name, error_message(ret));
 
 		return -1;
 	}
@@ -175,7 +175,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_unparse_name(inst->context, inst->server, &princ_name);
 	if (ret) {
 		/* Uh? */
-		DEBUGE("rlm_krb5 (%s): Failed constructing service principal string: %s", inst->xlat_name,
+		EDEBUG("rlm_krb5 (%s): Failed constructing service principal string: %s", inst->xlat_name,
 		       error_message(ret));
 
 		return -1;
@@ -195,7 +195,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	/* For some reason the 'init' version of this function is deprecated */
 	ret = krb5_get_init_creds_opt_alloc(inst->context, &(inst->gic_options));
 	if (ret) {
-		DEBUGE("rlm_krb5 (%s): Couldn't allocated inital credential options: %s", inst->xlat_name,
+		EDEBUG("rlm_krb5 (%s): Couldn't allocated inital credential options: %s", inst->xlat_name,
 		       error_message(ret));
 		
 		return -1;
@@ -208,7 +208,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 		krb5_kt_resolve(inst->context, inst->keytabname, &keytab) :
 		krb5_kt_default(inst->context, &keytab);
 	if (ret) {
-		DEBUGE("rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
+		EDEBUG("rlm_krb5 (%s): Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
 		
 		return -1;
 	}
@@ -216,7 +216,7 @@ static int krb5_instantiate(CONF_SECTION *conf, void *instance)
 	ret = krb5_kt_get_name(inst->context, keytab, keytab_name, sizeof(keytab_name));
 	krb5_kt_close(inst->context, keytab);
 	if (ret) {
-		DEBUGE("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name, error_message(ret)); 
+		EDEBUG("rlm_krb5 (%s): Can't retrieve keytab name: %s", inst->xlat_name, error_message(ret)); 
 	
 		return -1;
 	}
@@ -243,7 +243,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	 * 	a User-Name attribute.
 	 */
 	if (!request->username) {
-		RDEBUGE("Attribute \"User-Name\" is required for authentication");
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -253,7 +253,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	 * 	a User-Password attribute.
 	 */
 	if (!request->password) {
-		RDEBUGE("Attribute \"User-Password\" is required for authentication");
+		REDEBUG("Attribute \"User-Password\" is required for authentication");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -263,7 +263,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	 * 	and not anything else.
 	 */
 	if (request->password->da->attr != PW_USER_PASSWORD) {
-		RDEBUGE("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".",
+		REDEBUG("Attribute \"User-Password\" is required for authentication.  Cannot use \"%s\".",
 		       request->password->da->name);
 		
 		return RLM_MODULE_INVALID;
@@ -271,7 +271,7 @@ static rlm_rcode_t krb5_parse_user(REQUEST *request, krb5_context context, krb5_
 	
 	ret = krb5_parse_name(context, request->username->vp_strvalue, client);
 	if (ret) {
-		RDEBUGE("Failed parsing username as principal: %s", error_message(ret));
+		REDEBUG("Failed parsing username as principal: %s", error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -309,7 +309,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
-		RDEBUGE("Error cloning krb5 context: %s", error_message(ret));
+		REDEBUG("Error cloning krb5 context: %s", error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -339,7 +339,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_resolve(context, inst->keytabname, &keytab) :
 		krb5_kt_default(context, &keytab);
 	if (ret) {
-		RDEBUGE("Resolving keytab failed: %s", error_message(ret));
+		REDEBUG("Resolving keytab failed: %s", error_message(ret));
 		
 		goto cleanup;
 	}
@@ -362,14 +362,14 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			RDEBUGE("Provided password was incorrect (%i): %s", ret, error_message(ret));
+			REDEBUG("Provided password was incorrect (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_REJECT;
 		
 			break;
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			RDEBUGE("Account has been locked out (%i): %s", ret, error_message(ret));
+			REDEBUG("Account has been locked out (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
 		
 			break;
@@ -378,7 +378,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			rcode = RLM_MODULE_NOTFOUND;
 					
 		default:
-			RDEBUGE("Error verifying credentials (%i): %s", ret, error_message(ret));
+			REDEBUG("Error verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 		
 			break;
@@ -431,7 +431,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	 */
 	ret = krb5_copy_context(inst->context, &context);
 	if (ret) {
-		RDEBUGE("Error cloning krb5 context: %s", inst->xlat_name, error_message(ret));
+		REDEBUG("Error cloning krb5 context: %s", inst->xlat_name, error_message(ret));
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -461,7 +461,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		krb5_kt_resolve(context, inst->keytabname, &keytab) :
 		krb5_kt_default(context, &keytab);
 	if (ret) {
-		RDEBUGE("Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
+		REDEBUG("Resolving keytab failed: %s", inst->xlat_name, error_message(ret));
 		
 		goto cleanup;
 	}
@@ -476,14 +476,14 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 		switch (ret) {
 		case KRB5_LIBOS_BADPWDMATCH:
 		case KRB5KRB_AP_ERR_BAD_INTEGRITY:
-			RDEBUGE("Provided password was incorrect (%i): %s", ret, error_message(ret));
+			REDEBUG("Provided password was incorrect (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_REJECT;
 			break;
 			
 		case KRB5KDC_ERR_KEY_EXP:
 		case KRB5KDC_ERR_CLIENT_REVOKED:
 		case KRB5KDC_ERR_SERVICE_REVOKED:
-			RDEBUGE("Account has been locked out (%i): %s", ret, error_message(ret));
+			REDEBUG("Account has been locked out (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_USERLOCK;
 			break;
 			
@@ -493,7 +493,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 			break;
 			
 		default:
-			RDEBUGE("Error retrieving or verifying credentials (%i): %s", ret, error_message(ret));
+			REDEBUG("Error retrieving or verifying credentials (%i): %s", ret, error_message(ret));
 			rcode = RLM_MODULE_FAIL;
 			break;
 		}

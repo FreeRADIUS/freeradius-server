@@ -108,7 +108,7 @@ static void check_lib_access(char const *name)
 {
 	if (access(name, R_OK) < 0) switch (errno) {
 		case EACCES:
-			DEBUGW("Library \"%s\" exists, but we don't have permission to read", name);
+			WDEBUG("Library \"%s\" exists, but we don't have permission to read", name);
 			break;
 		case ENOENT:
 			DEBUG4("Library not found at path \"%s\"", name);
@@ -703,7 +703,7 @@ rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
 
 	if (idx == 0) {
 		list = server->mc[comp];
-		if (!list) RDEBUG2W("Empty %s section.  Using default return values.", section_type_value[comp].section);
+		if (!list) RWDEBUG2("Empty %s section.  Using default return values.", section_type_value[comp].section);
 
 	} else {
 		indexed_modcallable *this;
@@ -712,7 +712,7 @@ rlm_rcode_t indexed_modcall(int comp, int idx, REQUEST *request)
 		if (this) {
 			list = this->modulelist;
 		} else {
-			RDEBUG2W("Unknown value specified for %s.  Cannot perform requested action.",
+			RWDEBUG2("Unknown value specified for %s.  Cannot perform requested action.",
 				section_type_value[comp].typename);
 		}
 	}
@@ -894,7 +894,7 @@ static int load_component_section(CONF_SECTION *cs,
 		 *	It's OK for the module to not exist.
 		 */
 		if (!this && modname && (modname[0] == '-')) {
-			DEBUGW("Ignoring \"%s\" (see raddb/mods-available/README.rst)", modname + 1);
+			WDEBUG("Ignoring \"%s\" (see raddb/mods-available/README.rst)", modname + 1);
 			continue;
 		}
 
@@ -1181,7 +1181,7 @@ static int load_byserver(CONF_SECTION *cs)
 	cf_log_info(cs, "} # server");
 
 	if (!found && name) {
-		DEBUGW("Server %s is empty, and will do nothing!",
+		WDEBUG("Server %s is empty, and will do nothing!",
 		      name);
 	}
 

@@ -343,8 +343,8 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	}
 
 	if (num_proxy_state > 10) {
-		RDEBUGW("There are more than 10 Proxy-State attributes in the request.");
-		RDEBUGW("You have likely configured an infinite proxy loop.");
+		RWDEBUG("There are more than 10 Proxy-State attributes in the request.");
+		RWDEBUG("You have likely configured an infinite proxy loop.");
 	}
 }
 
@@ -637,7 +637,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
-		RDEBUGI("No huntgroup access: [%s] (%s)",
+		RIDEBUG("No huntgroup access: [%s] (%s)",
 			request->username ? request->username->vp_strvalue : "<NO User-Name>",
 			auth_name(buf, sizeof(buf), request, 1));
 		
@@ -715,7 +715,7 @@ static rlm_rcode_t preprocess_preaccounting(void *instance, REQUEST *request)
 
 	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {
 		char buf[1024];
-		RDEBUGI("No huntgroup access: [%s] (%s)",
+		RIDEBUG("No huntgroup access: [%s] (%s)",
 		        request->username ? request->username->vp_strvalue : "<NO User-Name>",
 		        auth_name(buf, sizeof(buf), request, 1));
 		return r;

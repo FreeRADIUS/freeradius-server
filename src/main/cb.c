@@ -73,7 +73,7 @@ void cbtls_info(SSL const *s, int where, int ret)
 	}
 
 	if (buffer[0] && request) {
-		RDEBUGE("SSL says: %s", buffer);
+		REDEBUG("SSL says: %s", buffer);
 	}
 }
 

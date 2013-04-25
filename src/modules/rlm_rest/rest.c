@@ -985,7 +985,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
-			RDEBUGW("Invalid request qualifier, skipping");
+			RWDEBUG("Invalid request qualifier, skipping");
 
 			curl_free(name);
 
@@ -993,7 +993,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 		}
 
 		if (!radius_request(&reference, request_name)) {
-			RDEBUGW("Attribute name refers to outer request"
+			RWDEBUG("Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 
 			curl_free(name);
@@ -1003,7 +1003,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
 		if (list_name == PAIR_LIST_UNKNOWN) {
-			RDEBUGW("Invalid list qualifier, skipping");
+			RWDEBUG("Invalid list qualifier, skipping");
 
 			curl_free(name);
 
@@ -1012,7 +1012,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 
 		da = dict_attrbyname(attribute);
 		if (!da) {
-			RDEBUGW("Attribute \"%s\" unknown, skipping",
+			RWDEBUG("Attribute \"%s\" unknown, skipping",
 			       attribute);
 
 			curl_free(name);
@@ -1164,7 +1164,7 @@ static VALUE_PAIR *json_pairmake_leaf(UNUSED rlm_rest_t *instance,
 
 	vp = paircreate(NULL, da->attr, da->vendor);
 	if (!vp) {
-		RDEBUGE("Failed creating valuepair");
+		REDEBUG("Failed creating valuepair");
 		talloc_free(expanded);
 		
 		return NULL;
@@ -1301,13 +1301,13 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 		
 		request_name = radius_request_name(&attribute, REQUEST_CURRENT);
 		if (request_name == REQUEST_UNKNOWN) {
-			RDEBUGW("Request qualifier unknown, skipping");
+			RWDEBUG("Request qualifier unknown, skipping");
 
 			continue;
 		}
 
 		if (!radius_request(&reference, request_name)) {
-			RDEBUGW("Attribute name refers to outer request"
+			RWDEBUG("Attribute name refers to outer request"
 		       	       " but not in a tunnel, skipping");
 
 			continue;
@@ -1315,14 +1315,14 @@ static VALUE_PAIR *json_pairmake(rlm_rest_t *instance,
 
 		list_name = radius_list_name(&attribute, PAIR_LIST_REPLY);
 		if (list_name == PAIR_LIST_UNKNOWN) {
-			RDEBUGW("Invalid list qualifier, skipping");
+			RWDEBUG("Invalid list qualifier, skipping");
 
 			continue;
 		}
 
 		da = dict_attrbyname(attribute);
 		if (!da) {
-			RDEBUGW("Attribute \"%s\" unknown, skipping",
+			RWDEBUG("Attribute \"%s\" unknown, skipping",
 			       attribute);
 
 			continue;

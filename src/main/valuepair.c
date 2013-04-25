@@ -515,9 +515,9 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 			 */
 			case PW_USER_PASSWORD:
 				if (check_item->op == T_OP_CMP_EQ) {
-					DEBUGW("Found User-Password == \"...\".");
-					DEBUGW("Are you sure you don't mean Cleartext-Password?");
-					DEBUGW("See \"man rlm_pap\" for more information.");
+					WDEBUG("Found User-Password == \"...\".");
+					WDEBUG("Are you sure you don't mean Cleartext-Password?");
+					WDEBUG("See \"man rlm_pap\" for more information.");
 				}
 				if (pairfind(req_list, PW_USER_PASSWORD, 0, TAG_ANY) == NULL) {
 					continue;
@@ -889,7 +889,7 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
 		if (!talloc_get_type(vp, VALUE_PAIR)) {
-			RDEBUGE("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
+			REDEBUG("Expected VALUE_PAIR pointer got \"%s\"", talloc_get_name(vp));
 			
 			log_talloc_report(vp);	
 			rad_assert(0);
@@ -972,7 +972,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 #endif
 	}
 	
-	RDEBUG2W("List \"%s\" is not available",
+	RWDEBUG2("List \"%s\" is not available",
 		fr_int2str(pair_lists, list, "<INVALID>"));
 	
 	return NULL;
@@ -1001,7 +1001,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	char buffer[MAX_STRING_LEN];
 	
 	if (radius_request(&request, map->dst->request) < 0) {
-		RDEBUGW("Mapping \"%s\" -> \"%s\" "
+		RWDEBUG("Mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
 		       map->src->name, map->dst->name);
 		
@@ -1010,7 +1010,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 	
 	list = radius_list(request, map->dst->list);
 	if (!list) {
-		RDEBUGW("Mapping \"%s\" -> \"%s\" "
+		RWDEBUG("Mapping \"%s\" -> \"%s\" "
 		       "invalid in this context, skipping!",
 		       map->src->name, map->dst->name);
 		
@@ -1108,7 +1108,7 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 		 */
 		found = pairfind(*from, map->src->da->attr, map->src->da->vendor, TAG_ANY);
 		if (!found) {
-			RDEBUGW("\"%s\" not found, skipping",
+			RWDEBUG("\"%s\" not found, skipping",
 				map->src->name);
 			goto error;
 		}
@@ -1159,7 +1159,7 @@ int radius_str2vp(REQUEST *request, char const *raw, request_refs_t request_def,
 	req = radius_request_name(&p, request_def);
 	len = p - raw;
 	if (req == REQUEST_UNKNOWN) {
-		RDEBUGE("Invalid request qualifier \"%.*s\"", (int) len, raw);
+		REDEBUG("Invalid request qualifier \"%.*s\"", (int) len, raw);
 		
 		return -1;
 	}
@@ -1169,7 +1169,7 @@ int radius_str2vp(REQUEST *request, char const *raw, request_refs_t request_def,
 	if (list == PAIR_LIST_UNKNOWN) {
 		len = p - raw;
 				
-		RDEBUGE("Invalid list qualifier \"%.*s\"", (int) len, raw);
+		REDEBUG("Invalid list qualifier \"%.*s\"", (int) len, raw);
 		
 		return -1;
 	}

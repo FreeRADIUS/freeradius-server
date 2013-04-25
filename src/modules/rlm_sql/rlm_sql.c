@@ -572,7 +572,7 @@ static int sql_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *req
 	 *	Get the list of groups this user is a member of
 	 */
 	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
-		RDEBUGE("Error getting group membership");
+		REDEBUG("Error getting group membership");
 		sql_release_socket(inst, handle);
 		return 1;
 	}
@@ -611,7 +611,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 	 *	Get the list of groups this user is a member of
 	 */
 	if (sql_get_grouplist(inst, handle, request, &head) < 0) {
-		RDEBUGE("Error retrieving group list");
+		REDEBUG("Error retrieving group list");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -623,7 +623,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		 */
 		sql_group = pairmake_packet("Sql-Group", entry->name, T_OP_EQ);
 		if (!sql_group) {
-			RDEBUGE("Error creating Sql-Group attribute");
+			REDEBUG("Error creating Sql-Group attribute");
 			rcode = RLM_MODULE_FAIL;
 			
 			goto finish;
@@ -634,7 +634,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		 */
 		if (radius_axlat(&expanded, request, inst->config->authorize_group_check_query, sql_escape_func,
 				inst) < 0) {
-			RDEBUGE("Error generating query");
+			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 			
 			goto finish;
@@ -643,7 +643,7 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		rows = sql_getvpdata(inst, &handle, request, &check_tmp, expanded);
 		TALLOC_FREE(expanded);
 		if (rows < 0) {
-			RDEBUGE("Error retrieving check pairs for group %s", entry->name);
+			REDEBUG("Error retrieving check pairs for group %s", entry->name);
 			rcode = RLM_MODULE_FAIL;
 			
 			goto finish;
@@ -666,14 +666,14 @@ static rlm_rcode_t rlm_sql_process_groups(rlm_sql_t *inst, REQUEST *request, rlm
 		 */
 		if (radius_axlat(&expanded, request, inst->config->authorize_group_reply_query, sql_escape_func,
 				inst) < 0) {
-			RDEBUGE("Error generating query");
+			REDEBUG("Error generating query");
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
 		}
 		
 		if (sql_getvpdata(inst, &handle, request->reply, &reply_tmp, expanded) < 0) {
-			RDEBUGE("Error retrieving reply pairs for group %s", entry->name);
+			REDEBUG("Error retrieving reply pairs for group %s", entry->name);
 			rcode = RLM_MODULE_FAIL;
 
 			goto finish;
@@ -969,14 +969,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 	if (inst->config->authorize_check_query && *inst->config->authorize_check_query) {
 		if (radius_axlat(&expanded, request, inst->config->authorize_check_query,
 				sql_escape_func, inst) < 0) {
-			RDEBUGE("Error generating query");
+			REDEBUG("Error generating query");
 	
 			goto error;
 		}
 		
 		rows = sql_getvpdata(inst, &handle, request, &check_tmp, expanded);
 		if (rows < 0) {
-			RDEBUGE("SQL query error");
+			REDEBUG("SQL query error");
 	
 			goto error;
 		}
@@ -1008,14 +1008,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		 */
 		if (radius_axlat(&expanded, request, inst->config->authorize_reply_query,
 				sql_escape_func, inst) < 0) {
-			RDEBUGE("Error generating query");
+			REDEBUG("Error generating query");
 			
 			goto error;
 		}
 		
 		rows = sql_getvpdata(inst, &handle, request->reply, &reply_tmp, expanded);
 		if (rows < 0) {
-			RDEBUGE("SQL query error");
+			REDEBUG("SQL query error");
 
 			goto error;
 		}
@@ -1075,14 +1075,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST * request)
 		RDEBUG("Checking profile %s", profile);
 		
 		if (sql_set_user(inst, request, profile) < 0) {
-			RDEBUGE("Error setting profile");
+			REDEBUG("Error setting profile");
 
 			goto error;
 		}
 		
 		rcode = rlm_sql_process_groups(inst, request, handle, &dofallthrough);
 		if (rcode != RLM_MODULE_OK) {
-			RDEBUGE("Error processing profile groups");
+			REDEBUG("Error processing profile groups");
 
 			goto release;
 		}
@@ -1151,7 +1151,7 @@ static int acct_redundant(rlm_sql_t *inst, REQUEST *request, sql_acct_section_t 
 	}
 	
 	if (cf_item_is_section(item)){
-		RDEBUGE("Sections are not supported as references");
+		REDEBUG("Sections are not supported as references");
 		rcode = RLM_MODULE_FAIL;
 		
 		goto finish;
@@ -1304,7 +1304,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 	}
 
 	if((!request->username) || (request->username->length == '\0')) {
-		RDEBUGE("Zero Length username not permitted");
+		REDEBUG("Zero Length username not permitted");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -1457,7 +1457,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 			 *      Failed to check the terminal server for
 			 *      duplicate logins: return an error.
 			 */
-			RDEBUGE("Failed to check the terminal server for user '%s'.", row[2]);
+			REDEBUG("Failed to check the terminal server for user '%s'.", row[2]);
 			
 			rcode = RLM_MODULE_FAIL;
 			goto finish;

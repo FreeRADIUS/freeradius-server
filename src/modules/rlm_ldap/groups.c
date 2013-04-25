@@ -66,7 +66,7 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 	}
 	
 	if (!inst->groupobj_name_attr) {
-		RDEBUGE("Told to convert group names to DNs but missing 'group.name_attribute' directive");
+		REDEBUG("Told to convert group names to DNs but missing 'group.name_attribute' directive");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -106,28 +106,28 @@ static rlm_rcode_t rlm_ldap_group_name2dn(ldap_instance_t const *inst, REQUEST *
 	
 	entry_cnt = ldap_count_entries((*pconn)->handle, result);
 	if (entry_cnt > name_cnt) {
-		RDEBUGE("Number of DNs exceeds number of names, group and/or dn should be more restrictive");
+		REDEBUG("Number of DNs exceeds number of names, group and/or dn should be more restrictive");
 		rcode = RLM_MODULE_INVALID;
 		
 		goto finish;
 	}
 	
 	if (entry_cnt > (outlen - 1)) {
-		RDEBUGE("Number of DNs exceeds limit (%i)", outlen - 1);
+		REDEBUG("Number of DNs exceeds limit (%i)", outlen - 1);
 		rcode = RLM_MODULE_INVALID;
 		
 		goto finish;
 	}
 	
 	if (entry_cnt < name_cnt) {
-		RDEBUGW("Got partial mapping of group names (%i) to DNs (%i), membership information may be incomplete",
+		RWDEBUG("Got partial mapping of group names (%i) to DNs (%i), membership information may be incomplete",
 			name_cnt, entry_cnt);
 	}
 	
 	entry = ldap_first_entry((*pconn)->handle, result);
 	if (!entry) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 			
 		rcode = RLM_MODULE_FAIL;	 
 		goto finish;
@@ -183,7 +183,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 	*out = NULL;
 	
 	if (!inst->groupobj_name_attr) {
-		RDEBUGE("Told to convert group DN to name but missing 'group.name_attribute' directive");
+		REDEBUG("Told to convert group DN to name but missing 'group.name_attribute' directive");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -196,7 +196,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 		case LDAP_PROC_SUCCESS:
 			break;
 		case LDAP_PROC_NO_RESULT:
-			RDEBUGE("DN \"%s\" did not resolve to an object");
+			REDEBUG("DN \"%s\" did not resolve to an object");
 			
 			return RLM_MODULE_INVALID;
 		default:
@@ -206,7 +206,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 	entry = ldap_first_entry((*pconn)->handle, result);
 	if (!entry) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 			
 		rcode = RLM_MODULE_INVALID;	 
 		goto finish;
@@ -214,7 +214,7 @@ static rlm_rcode_t rlm_ldap_group_dn2name(ldap_instance_t const *inst, REQUEST *
 
 	vals = ldap_get_values((*pconn)->handle, entry, inst->groupobj_name_attr);
 	if (!vals) {
-		RDEBUGE("No %s attributes found in object", inst->groupobj_name_attr);
+		REDEBUG("No %s attributes found in object", inst->groupobj_name_attr);
 		
 		rcode = RLM_MODULE_INVALID;
 		
@@ -379,7 +379,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 	}
 
 	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
-		RDEBUGE("Failed creating base_dn");
+		REDEBUG("Failed creating base_dn");
 	
 		return RLM_MODULE_INVALID;
 	}
@@ -397,7 +397,7 @@ rlm_rcode_t rlm_ldap_cacheable_groupobj(ldap_instance_t const *inst, REQUEST *re
 	entry = ldap_first_entry((*pconn)->handle, result);
 	if (!entry) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 			 
 		goto finish;
 	}
@@ -468,7 +468,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 		char const *filters[] = { name_filter, inst->groupobj_filter, inst->groupobj_membership_filter };
 		
 		if (!inst->groupobj_name_attr) {
-			RDEBUGE("Told to search for group by name, but missing 'group.name_attribute' "
+			REDEBUG("Told to search for group by name, but missing 'group.name_attribute' "
 				"directive");
 				
 			return RLM_MODULE_INVALID;
@@ -486,7 +486,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 		 */
 		if (radius_xlat(base_dn, sizeof(base_dn), request, inst->groupobj_base_dn, 
 				rlm_ldap_escape_func, NULL) < 0) {		
-			RDEBUGE("Failed creating base_dn");
+			REDEBUG("Failed creating base_dn");
 		
 			return RLM_MODULE_INVALID;
 		}
@@ -553,7 +553,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 	entry = ldap_first_entry((*pconn)->handle, result);
 	if (!entry) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 		
 		rcode = RLM_MODULE_FAIL;
 		

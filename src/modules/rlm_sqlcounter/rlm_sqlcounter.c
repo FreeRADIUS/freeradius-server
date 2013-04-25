@@ -289,7 +289,7 @@ static size_t sqlcounter_expand(char *out, int outlen, char const *fmt, rlm_sqlc
 				q += strlen(q);
 				break;
 			case 'k': /* Key Name */
-				DEBUG2W("Please replace '%%k' with '${key}'");
+				WDEBUG2("Please replace '%%k' with '${key}'");
 				strlcpy(q, inst->key_name, freespace);
 				q += strlen(q);
 				break;
@@ -324,7 +324,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 
 	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
 	if (len >= sizeof(query) - 1) {
-		RDEBUGE("Insufficient query buffer space");
+		REDEBUG("Insufficient query buffer space");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -334,7 +334,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	/* first, expand %k, %b and %e in query */
 	len = sqlcounter_expand(p, p - query, inst->query, inst);
 	if (len <= 0) {
-		RDEBUGE("Insufficient query buffer space");
+		REDEBUG("Insufficient query buffer space");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -342,7 +342,7 @@ static int sqlcounter_cmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR *r
 	p += len;
 	
 	if ((p - query) < 2) {
-		RDEBUGE("Insufficient query buffer space");
+		REDEBUG("Insufficient query buffer space");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -519,7 +519,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 
 	len = snprintf(query, sizeof(query), "%%{%s:%s}", inst->sqlmod_inst, query);
 	if (len >= sizeof(query) - 1) {
-		RDEBUGE("Insufficient query buffer space");
+		REDEBUG("Insufficient query buffer space");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -529,7 +529,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	/* first, expand %k, %b and %e in query */
 	len = sqlcounter_expand(p, p - query, inst->query, inst);
 	if (len <= 0) {
-		RDEBUGE("Insufficient query buffer space");
+		REDEBUG("Insufficient query buffer space");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -537,7 +537,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	p += len;
 	
 	if ((p - query) < 2) {
-		RDEBUGE("Insufficient query buffer space");
+		REDEBUG("Insufficient query buffer space");
 		
 		return RLM_MODULE_FAIL;
 	}
@@ -613,7 +613,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		snprintf(msg, sizeof(msg), "Your maximum %s usage time has been reached", inst->reset);
 		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
-		RDEBUGE("Maximum %s usage time reached",
+		REDEBUG("Maximum %s usage time reached",
 				   inst->reset);
 		rcode = RLM_MODULE_REJECT;
 

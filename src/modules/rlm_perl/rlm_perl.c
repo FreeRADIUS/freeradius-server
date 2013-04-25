@@ -348,7 +348,7 @@ static size_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char 
 
 		SPAGAIN;
 		if (SvTRUE(ERRSV)) {
-			RDEBUGE("Exit %s", SvPV(ERRSV,n_a));
+			REDEBUG("Exit %s", SvPV(ERRSV,n_a));
 			(void)POPs;
 		} else if (count > 0) {
 			tmp = POPp;

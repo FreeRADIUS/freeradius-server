@@ -1145,8 +1145,8 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 
 		rad_assert(error != NULL);
 		if (indent < sizeof(xlat_spaces)) {
-			RDEBUGE("%s", fmt);
-			RDEBUGE("%.*s^ %s", (int) -slen, xlat_spaces, error);
+			REDEBUG("%s", fmt);
+			REDEBUG("%.*s^ %s", (int) -slen, xlat_spaces, error);
 		}
 		return slen;
 	}

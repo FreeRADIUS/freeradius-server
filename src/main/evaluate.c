@@ -234,7 +234,7 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, int ifla
 			char errbuf[128];
 
 			regerror(compare, &reg, errbuf, sizeof(errbuf));
-			DEBUGE("Failed compiling regular expression: %s", errbuf);
+			EDEBUG("Failed compiling regular expression: %s", errbuf);
 		}
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;

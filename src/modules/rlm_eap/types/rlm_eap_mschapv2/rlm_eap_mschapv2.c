@@ -326,7 +326,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 	 *	No response, die.
 	 */
 	if (!response) {
-		RDEBUGE("Proxied reply contained no MS-CHAP-Success or MS-CHAP-Error");
+		REDEBUG("Proxied reply contained no MS-CHAP-Success or MS-CHAP-Error");
 		return 0;
 	}
 
@@ -383,7 +383,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	Sanity check the response.
 	 */
 	if (eap_ds->response->length <= 5) {
-		RDEBUGE("corrupted data");
+		REDEBUG("corrupted data");
 		return 0;
 	}
 
@@ -456,7 +456,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 			 * we sent a failure and are expecting a failure back
 			 */
 			if (ccode != PW_EAP_MSCHAPV2_FAILURE) {
-				RDEBUGE("Sent FAILURE expecting FAILURE but got %d", ccode);
+				REDEBUG("Sent FAILURE expecting FAILURE but got %d", ccode);
 				return 0;
 			}
 
@@ -493,7 +493,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 						  &data->reply, 0, 0, TAG_ANY);
 					return 1;
 			}
-			RDEBUGE("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
+			REDEBUG("Sent SUCCESS expecting SUCCESS (or ACK) but got %d", ccode);
 			return 0;
 
 		case PW_EAP_MSCHAPV2_CHALLENGE:
@@ -503,7 +503,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 			 * we sent a challenge, expecting a response
 			 */
 			if (ccode != PW_EAP_MSCHAPV2_RESPONSE) {
-				RDEBUGE("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
+				REDEBUG("Sent CHALLENGE expecting RESPONSE but got %d", ccode);
 				return 0;
 			}
 			/* authentication happens below */
@@ -512,7 +512,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 		default:
 			/* should never happen */
-			RDEBUGE("unknown state %d", data->code);
+			REDEBUG("unknown state %d", data->code);
 			return 0;
 	}
 
@@ -526,7 +526,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	MS-CHAP value length.
 	 */
 	if (eap_ds->response->length < (4 + 1 + 1 + 1 + 2 + 1)) {
-		RDEBUGE("Response is too short");
+		REDEBUG("Response is too short");
 		return 0;
 	}
 
@@ -536,7 +536,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	bytes) plus 1 byte of flags at the end.
 	 */
 	if (eap_ds->response->type.data[4] != 49) {
-		RDEBUGE("Response is of incorrect length %d", eap_ds->response->type.data[4]);
+		REDEBUG("Response is of incorrect length %d", eap_ds->response->type.data[4]);
 		return 0;
 	}
 
@@ -546,7 +546,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 */
 	if (((eap_ds->response->type.data[2] << 8) |
 	     eap_ds->response->type.data[3]) < (5 + 49)) {
-		RDEBUGE("Response contains contradictory length %d %d",
+		REDEBUG("Response contains contradictory length %d %d",
 			(eap_ds->response->type.data[2] << 8) |
 		       eap_ds->response->type.data[3], 5 + 49);
 		return 0;
@@ -731,7 +731,7 @@ packet_ready:
 	 *	No response, die.
 	 */
 	if (!response) {
-		RDEBUGE("No MS-CHAP-Success or MS-CHAP-Error was found.");
+		REDEBUG("No MS-CHAP-Success or MS-CHAP-Error was found.");
 		return 0;
 	}
 

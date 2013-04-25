@@ -654,7 +654,7 @@ static void request_process_timer(REQUEST *request)
 		 *	there is no point in continuing.
 		 */
 		if (request->listener->status != RAD_LISTEN_STATUS_KNOWN) {
-			DEBUGW("Socket was closed while processing request %u: Stopping it.", request->number);
+			WDEBUG("Socket was closed while processing request %u: Stopping it.", request->number);
 			goto done;
 		}
 	}
@@ -1730,7 +1730,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	}
 
 	if (!proxy_listener || (rcode == 0)) {
-		RDEBUG2E("proxy: Failed allocating Id for proxied request");
+		REDEBUG2("proxy: Failed allocating Id for proxied request");
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
 		return 0;
 	}
@@ -2016,7 +2016,7 @@ static int setup_post_proxy_fail(REQUEST *request)
 		dval = dict_valbyname(PW_POST_PROXY_TYPE, 0, "Fail-Disconnect");
 #endif
 	} else {
-		DEBUGW("Unknown packet type in Post-Proxy-Type Fail: ignoring");
+		WDEBUG("Unknown packet type in Post-Proxy-Type Fail: ignoring");
 		request_cleanup_delay_init(request, NULL);
 		return 0;
 	}
@@ -2106,7 +2106,7 @@ static int request_will_proxy(REQUEST *request)
 	if (vp) {
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
-			RDEBUG2E("Cannot proxy to unknown realm %s",
+			REDEBUG2("Cannot proxy to unknown realm %s",
 				vp->vp_strvalue);
 			return 0;
 		}
@@ -2166,7 +2166,7 @@ static int request_will_proxy(REQUEST *request)
 	}
 	
 	if (!pool) {
-		RDEBUG2W("Cancelling proxy as no home pool exists");
+		RWDEBUG2("Cancelling proxy as no home pool exists");
 		return 0;
 	}
 
@@ -2174,7 +2174,7 @@ static int request_will_proxy(REQUEST *request)
 
 	home = home_server_ldb(realmname, pool, request);
 	if (!home) {
-		RDEBUG2E("Failed to find live home server: Cancelling proxy");
+		REDEBUG2("Failed to find live home server: Cancelling proxy");
 		return 0;
 	}
 	home_server_update_request(home, request);
@@ -2321,7 +2321,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 
 #ifdef WITH_COA
 	if (request->coa) {
-		RDEBUGW("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
+		RWDEBUG("Cannot proxy and originate CoA packets at the same time.  Cancelling CoA request");
 		request_done(request->coa, FR_ACTION_DONE);
 	}
 #endif
@@ -2409,7 +2409,7 @@ static int request_proxy_anew(REQUEST *request)
 	 */
 	home = home_server_ldb(NULL, request->home_pool, request);
 	if (!home) {
-		RDEBUG2E("Failed to find live home server for request");
+		REDEBUG2("Failed to find live home server for request");
 	post_proxy_fail:
 		remove_from_proxy_hash(request);
 
@@ -2722,7 +2722,7 @@ static void mark_home_server_zombie(home_server *home)
 
 #ifdef WITH_TCP
 	if (home->proto == IPPROTO_TCP) {
-		DEBUGW("Not marking TCP server %s zombie", home->name);
+		WDEBUG("Not marking TCP server %s zombie", home->name);
 		return;
 	}
 #endif
@@ -2786,7 +2786,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 
 #ifdef WITH_TCP
 	if (home->proto == IPPROTO_TCP) {
-		DEBUGW("Not marking TCP server dead");
+		WDEBUG("Not marking TCP server dead");
 		return;
 	}
 #endif
@@ -3054,7 +3054,7 @@ static void request_coa_originate(REQUEST *request)
 		coa->home_pool = home_pool_byname(vp->vp_strvalue,
 						  HOME_TYPE_COA);
 		if (!coa->home_pool) {
-			RDEBUG2W("No such home_server_pool %s",
+			RWDEBUG2("No such home_server_pool %s",
 			       vp->vp_strvalue);
 			goto fail;
 		}
@@ -3082,7 +3082,7 @@ static void request_coa_originate(REQUEST *request)
 	if (coa->home_pool) {
 		coa->home_server = home_server_ldb(NULL, coa->home_pool, coa);
 		if (!coa->home_server) {
-			RDEBUGW("No live home server for home_server_pool %s", vp->vp_strvalue);
+			RWDEBUG("No live home server for home_server_pool %s", vp->vp_strvalue);
 			goto fail;
 		}
 		home_server_update_request(coa->home_server, coa);
@@ -3095,7 +3095,7 @@ static void request_coa_originate(REQUEST *request)
 
 		coa->home_server = home_server_find(&ipaddr, port, IPPROTO_UDP);
 		if (!coa->home_server) {
-			RDEBUG2W("Unknown destination %s:%d for CoA request.",
+			RWDEBUG2("Unknown destination %s:%d for CoA request.",
 			       inet_ntop(ipaddr.af, &ipaddr.ipaddr,
 					 buffer, sizeof(buffer)), port);
 			goto fail;

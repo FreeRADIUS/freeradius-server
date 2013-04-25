@@ -114,7 +114,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 	}
 
 	if (TYPE(rb_value) != T_ARRAY) {
-		RDEBUGE("add_vp_tuple, %s: non-array passed", function_name);
+		REDEBUG("add_vp_tuple, %s: non-array passed", function_name);
 		return;
 	}
 
@@ -131,7 +131,7 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 			long tuplesize;
 
 			if ((tuplesize = RARRAY_LEN(pTupleElement)) != 2) {
-				RDEBUGE("%s: tuple element %d is a tuple "
+				REDEBUG("%s: tuple element %d is a tuple "
 					" of size %d. must be 2\n", function_name,
 					i, tuplesize);
 			} else {
@@ -165,16 +165,16 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 							DEBUG("%s: s1, s2 FAILED", function_name);
 						}
 					} else {
-						RDEBUGE("%s: string conv failed", function_name);
+						REDEBUG("%s: string conv failed", function_name);
 					}
 
 				} else {
-					RDEBUGE("%s: tuple element %d must be "
+					REDEBUG("%s: tuple element %d must be "
 						"(string, string)", function_name, i);
 				}
 			}
 		} else {
-			RDEBUGE("%s: tuple element %d is not a tuple\n",
+			REDEBUG("%s: tuple element %d is not a tuple\n",
 				function_name, i);
 		}
 	}
@@ -252,7 +252,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 	 */
 	if (TYPE(rb_result) == T_ARRAY) {
 		if (!FIXNUM_P(rb_ary_entry(rb_result, 0))) {
-			RDEBUGE("First element of an array was not a "
+			REDEBUG("First element of an array was not a "
 				"FIXNUM (Which has to be a return_value)");
 
 			rcode = RLM_MODULE_FAIL;
@@ -341,7 +341,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	int status;
 	
 	if (!inst->script_file) {
-		DEBUGE("Script File was not set");
+		EDEBUG("Script File was not set");
 		return -1;
 	}
 
@@ -360,7 +360,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	module = inst->module = rb_define_module(inst->module_name);
 	if (!module) {
-		DEBUGE("Ruby rb_define_module failed");
+		EDEBUG("Ruby rb_define_module failed");
 		
 		return -1;
 	}
@@ -380,7 +380,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	DEBUG("Loading file %s...", inst->script_file);
 	rb_load_protect(rb_str_new2(inst->script_file), 0, &status);
 	if (status) {
-		DEBUGE("Error loading file %s status: %d", inst->script_file, status);
+		EDEBUG("Error loading file %s status: %d", inst->script_file, status);
 		
 		return -1;
 	}

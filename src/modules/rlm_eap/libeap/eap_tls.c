@@ -163,7 +163,7 @@ int eaptls_success(eap_handler_t *handler, int peap_flag)
 		eaptls_gen_mppe_keys(handler->request,
 				     tls_session->ssl, tls_session->prf_label);
 	} else {
-		RDEBUGW("Not adding MPPE keys because there is no PRF label");
+		RWDEBUG("Not adding MPPE keys because there is no PRF label");
 	}
 
 	eaptls_gen_eap_key(handler->request->reply, tls_session->ssl,

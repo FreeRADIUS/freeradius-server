@@ -174,20 +174,20 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 		 */
 		vp = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 		if (!vp) {
-			RDEBUG2E("Cleartext-Password is required for authentication.");
+			REDEBUG2("Cleartext-Password is required for authentication.");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
 		if (eap_ds->response->type.length != vp->length) {
-			RDEBUG2E("Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->length);
+			REDEBUG2("Passwords are of different length. %u %u", (unsigned) eap_ds->response->type.length, (unsigned) vp->length);
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}
 
 		if (memcmp(eap_ds->response->type.data,
 			   vp->vp_strvalue, vp->length) != 0) {
-			RDEBUG2E("Passwords are different");
+			REDEBUG2("Passwords are different");
 			eap_ds->request->code = PW_EAP_FAILURE;
 			return 0;
 		}

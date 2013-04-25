@@ -117,7 +117,7 @@ static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char c
 	len = modhex2hex(fmt, (uint8_t *) out, strlen(fmt));
 	if (len <= 0) {
 		*out = '\0';
-		RDEBUGE("Modhex string invalid");
+		REDEBUG("Modhex string invalid");
 		
 		return 0;
 	}
@@ -146,7 +146,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifndef HAVE_YUBIKEY
 	if (inst->decrypt) {
-		DEBUGE("rlm_yubikey (%s): Requires libyubikey for OTP decryption", inst->name);
+		EDEBUG("rlm_yubikey (%s): Requires libyubikey for OTP decryption", inst->name);
 		return -1;
 	}
 #endif
@@ -157,7 +157,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			
 		cs = cf_section_sub_find(conf, "validation");
 		if (!cs) {
-			DEBUGE("rlm_yubikey (%s): Missing validation section", inst->name);
+			EDEBUG("rlm_yubikey (%s): Missing validation section", inst->name);
 			return -1;
 		}
 		
@@ -165,7 +165,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			return -1;
 		}
 #else
-		DEBUGE("rlm_yubikey (%s): Requires libykclient for OTP validation against Yubicloud servers", inst->name);
+		EDEBUG("rlm_yubikey (%s): Requires libykclient for OTP validation against Yubicloud servers", inst->name);
 		return -1;
 #endif
 	}
@@ -256,7 +256,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (inst->id_len) {
 		vp = pairmake(request, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
 		if (!vp) {
-			RDEBUGE("Failed creating Yubikey-Public-ID");
+			REDEBUG("Failed creating Yubikey-Public-ID");
 			
 			return RLM_MODULE_FAIL;
 		}
@@ -285,7 +285,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	Can't do yubikey auth if there's no password.
 	 */
 	if (!request->password || (request->password->da->attr != PW_USER_PASSWORD)) {
-		RDEBUGE("No Clear-Text password in the request. Can't do Yubikey authentication.");
+		REDEBUG("No Clear-Text password in the request. Can't do Yubikey authentication.");
 		return RLM_MODULE_INVALID;
 	}
 	
@@ -298,7 +298,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	<public_id (6-16 bytes)> + <aes-block (32 bytes)>
 	 */
 	if (len != (inst->id_len + 32)) {
-		RDEBUGE("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
+		REDEBUG("User-Password value is not the correct length, expected %u, got %zu", inst->id_len + 32, len);
 		return RLM_MODULE_INVALID;	
 	}
 

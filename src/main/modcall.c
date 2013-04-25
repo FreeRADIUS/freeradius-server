@@ -472,7 +472,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			condition = radius_evaluate_cond(request, myresult, 0, g->cond);
 			if (condition < 0) {
 				condition = false;
-				RDEBUGE("Evaluation of condition failed for some reason.");
+				REDEBUG("Evaluation of condition failed for some reason.");
 			} else {
 				RDEBUG2("%.*s? %s %s -> %s",
 					stack.pointer + 1, modcall_spaces,
@@ -543,7 +543,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			}
 
 			if (depth < 0) {
-				RDEBUGE("foreach Nesting too deep!");
+				REDEBUG("foreach Nesting too deep!");
 				myresult = RLM_MODULE_FAIL;
 				goto handle_result;
 			}
@@ -605,7 +605,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			char const *server = request->server;
 
 			if (server == mr->ref_name) {
-				RDEBUGW("Suppressing recursive call to server %s", server);
+				RWDEBUG("Suppressing recursive call to server %s", server);
 				myresult = RLM_MODULE_NOOP;
 				goto handle_priority;
 			}

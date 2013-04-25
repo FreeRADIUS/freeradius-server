@@ -305,7 +305,7 @@ static int sqlippool_command(char const * fmt, rlm_sql_handle_t * handle, rlm_sq
 
 	ret = data->sql_inst->sql_query(&handle, data->sql_inst, expanded);
 	if (!ret){
-		RDEBUGE("database query error in: '%s'", expanded);
+		REDEBUG("database query error in: '%s'", expanded);
 		talloc_free(expanded);
 		
 		return 0;
@@ -353,7 +353,7 @@ static int sqlippool_query1(char *out, int outlen, char const *fmt,
 	talloc_free(expanded);
 	
 	if (retval != 0){
-		RDEBUGE("database query error on '%s'", query);
+		REDEBUG("database query error on '%s'", query);
 		
 		return 0;
 	}
@@ -476,7 +476,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 	handle = inst->sql_inst->sql_get_socket(inst->sql_inst);
 	if (!handle) {
-		RDEBUGE("cannot get sql connection");
+		REDEBUG("cannot get sql connection");
 		return RLM_MODULE_FAIL;
 	}
 

@@ -36,6 +36,8 @@ RCSIDH(radiusd_h, "$Id$")
 
 typedef struct request REQUEST;
 
+#include <freeradius-devel/log.h>
+
 #ifdef HAVE_PTHREAD_H
 #include	<pthread.h>
 #endif
@@ -431,51 +433,6 @@ typedef struct main_config_t {
 	int		debug_memory;
 } MAIN_CONFIG_T;
 
-/* DEBUG is defined below */
-#define DEBUG3  if (debug_flag > 2) log_debug
-#define DEBUG4  if (debug_flag > 3) log_debug
-
-#if __GNUC__ >= 3
-#define RDEBUG(fmt, ...)    if(request && request->radlog) request->radlog(L_DBG, 1, request, fmt, ## __VA_ARGS__)
-#define RDEBUGI(fmt, ...)   if(request && request->radlog) request->radlog(L_INFO, 1, request, fmt, ## __VA_ARGS__)
-#define RDEBUGW(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG_WARN, 1, request, fmt, ## __VA_ARGS__)
-#define RDEBUGE(fmt, ...)   do { if(request) { \
-					module_failure_msg(request, fmt, ## __VA_ARGS__); \
-					if (request->radlog) request->radlog(L_DBG_ERR, 1, request, fmt, ## __VA_ARGS__); \
-				 } \
-			    } while(0)
-
-#define RDEBUG2(fmt, ...)   if(request && request->radlog) request->radlog(L_DBG, 2, request, fmt, ## __VA_ARGS__)
-#define RDEBUG2W(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG_WARN, 2, request, fmt, ## __VA_ARGS__)
-#define RDEBUG2E(fmt, ...)  do { if(request) { \
-					module_failure_msg(request, fmt, ## __VA_ARGS__); \
-					if (request->radlog) request->radlog(L_DBG_ERR, 2, request, fmt, ## __VA_ARGS__); \
-				 } \
-			    } while(0)
-
-#define RDEBUG3(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 3, request, fmt, ## __VA_ARGS__)
-#define RDEBUG4(fmt, ...)  if(request && request->radlog) request->radlog(L_DBG, 4, request, fmt, ## __VA_ARGS__)
-
-#define ERROR(...)	radlog(L_ERR, ## __VA_ARGS__)
-#define INFO(...)	radlog(L_INFO, ## __VA_ARGS__)
-#define DEBUG(...)	if (debug_flag) radlog(L_DBG, ## __VA_ARGS__)
-#define DEBUGI(...)	if (debug_flag) radlog(L_INFO, ## __VA_ARGS__)
-#define DEBUGW(...)	if (debug_flag) radlog(L_DBG_WARN, ## __VA_ARGS__)
-#define DEBUGE(...)	if (debug_flag) radlog(L_DBG_ERR, ## __VA_ARGS__)
-
-#define DEBUG2  if (debug_flag > 1) log_debug
-#define DEBUG2W(...)  if (debug_flag > 1) radlog(L_DBG_WARN, ## __VA_ARGS__)
-
-#else
-#define DEBUG	if (debug_flag) log_debug
-#define DEBUG2  if (debug_flag > 1) log_debug
-
-#define RDEBUG  DEBUG
-#define RDEBUG2 DEBUG2
-#define RDEBUG3 DEBUG3
-#define RDEBUG4 DEBUG4
-#endif
-
 void log_talloc(char const *message);
 void log_talloc_report(TALLOC_CTX *ctx);
 
@@ -490,8 +447,9 @@ void log_talloc_report(TALLOC_CTX *ctx);
 #define L_AUTH			2
 #define L_INFO			3
 #define L_ERR			4
-#define L_PROXY			5
-#define L_ACCT			6
+#define L_WARN			5
+#define L_PROXY			6
+#define L_ACCT			7
 
 #define L_DBG			16
 #define L_DBG_WARN		17

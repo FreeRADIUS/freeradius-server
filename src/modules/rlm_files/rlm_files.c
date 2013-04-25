@@ -181,7 +181,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 				if ((vp->da->vendor != 0) ||
 						(vp->da->attr < 0x100)) {
 					if (!compat_mode) {
-						DEBUGW("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
+						WDEBUG("[%s]:%d Changing '%s =' to '%s =='\n\tfor comparing RADIUS attribute in check item list for user %s",
 								filename, entry->lineno,
 								vp->da->name, vp->da->name,
 								entry->name);

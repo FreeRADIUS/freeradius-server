@@ -840,7 +840,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 			inst->reset);
 		pairmake_reply("Reply-Message", msg, T_OP_EQ);
 
-		RDEBUGE("Maximum %s usage time reached",
+		REDEBUG("Maximum %s usage time reached",
 				   inst->reset);
 		rcode = RLM_MODULE_REJECT;
 

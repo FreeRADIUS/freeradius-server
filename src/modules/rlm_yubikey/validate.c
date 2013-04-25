@@ -35,7 +35,7 @@ static void *mod_socket_create(void *instance)
 
 	status = ykclient_handle_init(inst->ykc, &yandle);
 	if (status != YKCLIENT_OK) {
-		DEBUGE("rlm_yubikey (%s): %s", inst->name, ykclient_strerror(status));
+		EDEBUG("rlm_yubikey (%s): %s", inst->name, ykclient_strerror(status));
 		
 		return NULL;
 	}
@@ -68,13 +68,13 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 	int count = 0;
 
 	if (!inst->client_id) {
-		DEBUGE("rlm_yubikey (%s): client_id must be set when validation is enabled", inst->name); 
+		EDEBUG("rlm_yubikey (%s): client_id must be set when validation is enabled", inst->name); 
 	
 		return -1;
 	}
 	
 	if (!inst->api_key) {
-		DEBUGE("rlm_yubikey (%s): api_key must be set when validation is enabled", inst->name);
+		EDEBUG("rlm_yubikey (%s): api_key must be set when validation is enabled", inst->name);
 		
 		return -1;
 	}
@@ -84,7 +84,7 @@ int rlm_yubikey_ykclient_init(CONF_SECTION *conf, rlm_yubikey_t *inst)
 	status = ykclient_global_init();
 	if (status != YKCLIENT_OK) {
 yk_error:
-		DEBUGE("rlm_yubikey (%s): %s", ykclient_strerror(status), inst->name);
+		EDEBUG("rlm_yubikey (%s): %s", ykclient_strerror(status), inst->name);
 		
 		return -1;
 	}
@@ -129,7 +129,7 @@ yk_error:
 init:
 	status = ykclient_set_client_b64(inst->ykc, inst->client_id, inst->api_key);
 	if (status != YKCLIENT_OK) {
-		DEBUGE("rlm_yubikey (%s): Failed setting API credentials: %s", ykclient_strerror(status), inst->name);	
+		EDEBUG("rlm_yubikey (%s): Failed setting API credentials: %s", ykclient_strerror(status), inst->name);	
 		
 		return -1;
 	}
@@ -183,7 +183,7 @@ rlm_rcode_t rlm_yubikey_validate(rlm_yubikey_t *inst, REQUEST *request,  VALUE_P
 	
 	status = ykclient_request_process(inst->ykc, yandle, otp->vp_strvalue);
 	if (status != YKCLIENT_OK) {
-		RDEBUGE("%s", ykclient_strerror(status));
+		REDEBUG("%s", ykclient_strerror(status));
 		
 		switch (status) {
 			case YKCLIENT_BAD_OTP:

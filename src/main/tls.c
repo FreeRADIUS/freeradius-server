@@ -279,7 +279,7 @@ static int int_ssl_check(REQUEST *request, SSL *s, int ret, char const *text)
 	if ((l = ERR_get_error()) != 0) {
 		char const *p = ERR_error_string(l, NULL);
 
-		if (request && p) RDEBUGE("SSL says: %s", p);
+		if (request && p) REDEBUG("SSL says: %s", p);
 	}
 	e = SSL_get_error(s, ret);
 
@@ -927,8 +927,8 @@ static int load_dh_params(SSL_CTX *ctx, char *file)
 	dh = PEM_read_bio_DHparams(bio, NULL, NULL, NULL);
 	BIO_free(bio);
 	if (!dh) {
-		DEBUG2W("rlm_eap_tls: Unable to set DH parameters.  DH cipher suites may not work!");
-		DEBUG2W("Fix this by running the OpenSSL command listed in eap.conf");
+		WDEBUG2("rlm_eap_tls: Unable to set DH parameters.  DH cipher suites may not work!");
+		WDEBUG2("Fix this by running the OpenSSL command listed in eap.conf");
 		return 0;
 	}
 
@@ -1634,7 +1634,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	if (!my_ok) {
 		char const *p = X509_verify_cert_error_string(err);
 		ERROR("--> verify error:num=%d:%s\n",err, p);
-		RDEBUGE("SSL says error %d : %s", err, p);
+		REDEBUG("SSL says error %d : %s", err, p);
 		return my_ok;
 	}
 
@@ -2499,7 +2499,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				}
 			}
 		} else {
-			RDEBUG2W("No information to cache: session caching will be disabled for session %s", buffer);
+			RWDEBUG2("No information to cache: session caching will be disabled for session %s", buffer);
 			SSL_CTX_remove_session(ssn->ctx,
 					       ssn->ssl->session);
 		}
@@ -2520,7 +2520,7 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 		vps = SSL_SESSION_get_ex_data(ssn->ssl->session,
 					     FR_TLS_EX_INDEX_VPS);
 		if (!vps) {
-			RDEBUGW("No information in cached session %s", buffer);
+			RWDEBUG("No information in cached session %s", buffer);
 			return -1;
 
 		} else {
@@ -2637,7 +2637,7 @@ fr_tls_status_t tls_application_data(tls_session_t *ssn,
 	}
 	
 	if (err == 0) {
-		RDEBUGW("No data inside of the tunnel.");
+		RWDEBUG("No data inside of the tunnel.");
 	}
 	
 	/*

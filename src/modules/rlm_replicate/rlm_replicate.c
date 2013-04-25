@@ -74,7 +74,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {
-			RDEBUG2E("Cannot Replicate to unknown realm %s", realm);
+			REDEBUG2("Cannot Replicate to unknown realm %s", realm);
 			continue;
 		}
 		
@@ -83,7 +83,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		 */
 		switch (request->packet->code) {
 		default:
-			RDEBUG2E("Cannot replicate unknown packet code %d",
+			REDEBUG2("Cannot replicate unknown packet code %d",
 				request->packet->code);
 			cleanup(packet);
 			return RLM_MODULE_FAIL;
@@ -108,13 +108,13 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		}
 		
 		if (!pool) {
-			RDEBUG2W("Cancelling replication to Realm %s, as the realm is local.", realm->name);
+			RWDEBUG2("Cancelling replication to Realm %s, as the realm is local.", realm->name);
 			continue;
 		}
 		
 		home = home_server_ldb(realm->name, pool, request);
 		if (!home) {
-			RDEBUG2E("Failed to find live home server for realm %s",
+			REDEBUG2("Failed to find live home server for realm %s",
 				realm->name);
 			continue;
 		}
@@ -132,14 +132,14 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 
 			packet->sockfd = fr_socket(&home->src_ipaddr, 0);
 			if (packet->sockfd < 0) {
-				RDEBUGE("Failed opening socket: %s", fr_strerror());
+				REDEBUG("Failed opening socket: %s", fr_strerror());
 				rcode = RLM_MODULE_FAIL;
 				goto done;
 			}
 			
 			vps = radius_list(request, list);
 			if (!vps) {
-				RDEBUGW("List '%s' doesn't exist for "
+				RWDEBUG("List '%s' doesn't exist for "
 				       "this packet", fr_int2str(pair_lists,
 				       list, "?unknown?"));
 				rcode = RLM_MODULE_INVALID;
@@ -200,7 +200,7 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 		RDEBUG("Replicating list '%s' to Realm '%s'",
 		       fr_int2str(pair_lists, list, "¿unknown?"),realm->name);
 		if (rad_send(packet, NULL, home->secret) < 0) {
-			RDEBUGE("Failed replicating packet: %s",
+			REDEBUG("Failed replicating packet: %s",
 			       fr_strerror());
 			rcode = RLM_MODULE_FAIL;
 			goto done;

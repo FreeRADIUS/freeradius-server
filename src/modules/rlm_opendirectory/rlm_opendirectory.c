@@ -283,7 +283,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		RDEBUGE("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Name attribute!");
+		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Name attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -292,7 +292,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	 */
 	if (!request->password ||
 		(request->password->da->attr != PW_PASSWORD)) {
-		RDEBUGE("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
+		REDEBUG("You set 'Auth-Type = OpenDirectory' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 	
@@ -429,7 +429,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	}
 	
 	if (uuid_is_null(uuid)) {
-		RDEBUGE("Could not get the user's uuid",
+		REDEBUG("Could not get the user's uuid",
 				   T_OP_EQ);
 		return RLM_MODULE_NOTFOUND;
 	}
@@ -437,12 +437,12 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	if (!uuid_is_null(guid_sacl)) {
 		err = mbr_check_service_membership(uuid, kRadiusServiceName, &ismember);
 		if (err != 0) {
-			RDEBUGE("Failed to check group membership", T_OP_EQ);
+			REDEBUG("Failed to check group membership", T_OP_EQ);
 			return RLM_MODULE_FAIL;
 		}
 		
 		if (ismember == 0) {
-			RDEBUGE("User is not authorized", T_OP_EQ);
+			REDEBUG("User is not authorized", T_OP_EQ);
 			return RLM_MODULE_USERLOCK;
 		}
 	}
@@ -450,12 +450,12 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	if (!uuid_is_null(guid_nasgroup)) {
 		err = mbr_check_membership_refresh(uuid, guid_nasgroup, &ismember);
 		if (err != 0) {
-			RDEBUGE("Failed to check group membership", T_OP_EQ);
+			REDEBUG("Failed to check group membership", T_OP_EQ);
 			return RLM_MODULE_FAIL;
 		}
 		
 		if (ismember == 0) {
-			RDEBUGE("User is not authorized", T_OP_EQ);
+			REDEBUG("User is not authorized", T_OP_EQ);
 			return RLM_MODULE_USERLOCK;
 		}
 	}

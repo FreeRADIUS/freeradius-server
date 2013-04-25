@@ -261,7 +261,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		closefrom(3);
 
 		execve(argv_p[0], argv_p, envp);
-		RDEBUGW("Failed to execute %s: %s", argv[0], strerror(errno));
+		RWDEBUG("Failed to execute %s: %s", argv[0], strerror(errno));
 		exit(1);
 	}
 
@@ -583,7 +583,7 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 			}
 
 			if (userparse(request, answer, &vp) == T_OP_INVALID) {
-				RDEBUGE("Unparsable reply from '%s'", cmd);
+				REDEBUG("Unparsable reply from '%s'", cmd);
 
 			} else {
 				/*
@@ -601,7 +601,7 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	 */
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
-		RDEBUGE("Timeout waiting for child");
+		REDEBUG("Timeout waiting for child");
 		return 2;
 	}
 
@@ -609,7 +609,7 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			if (status != 0) {
-				RDEBUGE("Child returned error %d", status);
+				REDEBUG("Child returned error %d", status);
 				return status;
 			}
 			
@@ -618,7 +618,7 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 		}
 	}
 
-	RDEBUGE("Abnormal child exit: %s", strerror(errno));
+	REDEBUG("Abnormal child exit: %s", strerror(errno));
 #endif	/* __MINGW32__ */
 
 	return 1;

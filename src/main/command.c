@@ -1364,7 +1364,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 			DEBUG("\t%s", buffer);
 		}
 
-		DEBUGW("INJECTION IS LEAKING MEMORY!");
+		WDEBUG("INJECTION IS LEAKING MEMORY!");
 	}
 
 	if (!request_receive(fake, packet, sock->inject_client, fun)) {

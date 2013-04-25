@@ -85,7 +85,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 				pairmake_reply("Reply-Message", msg, T_OP_ADD);
 			}
 
-			RDEBUGE("Account has expired [Expiration %s]", check_item->vp_strvalue);
+			REDEBUG("Account has expired [Expiration %s]", check_item->vp_strvalue);
 			return RLM_MODULE_USERLOCK;
 		}
 		/*

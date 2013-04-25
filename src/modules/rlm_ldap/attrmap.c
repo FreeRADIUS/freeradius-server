@@ -299,7 +299,7 @@ void rlm_ldap_map_do(UNUSED const ldap_instance_t *inst, REQUEST *request, LDAP 
 		
 		for (i = 0; i < count; i++) {
 			if (radius_str2vp(request, values[i], REQUEST_CURRENT, PAIR_LIST_REPLY) < 0) {
-				RDEBUGW("Failed parsing '%s' value \"%s\" as valuepair, skipping...",
+				RWDEBUG("Failed parsing '%s' value \"%s\" as valuepair, skipping...",
 					inst->valuepair_attr, values[i]);
 			}
 		}
@@ -352,7 +352,7 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 	entry = ldap_first_entry(handle, result);
 	if (!entry) {
 		ldap_get_option(handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 		
 		rcode = RLM_MODULE_NOTFOUND;
 	 	

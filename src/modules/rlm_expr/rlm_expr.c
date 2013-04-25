@@ -582,7 +582,7 @@ static size_t base64_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 	 *  if it's larger than outlen, the output would be useless so abort.
 	 */
 	if ((len < 0) || ((FR_BASE64_ENC_LENGTH(len) + 1) > (ssize_t) outlen)) {
-		RDEBUGE("xlat failed.");
+		REDEBUG("xlat failed.");
 		*out = '\0';
 		return 0;
 	}
@@ -608,7 +608,7 @@ static size_t base64_to_hex_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 		
 	declen = fr_base64_decode(fmt, len, decbuf, sizeof(decbuf));
 	if (declen < 0) {
-		RDEBUGE("Base64 string invalid");
+		REDEBUG("Base64 string invalid");
 		return 0;
 	}
 	

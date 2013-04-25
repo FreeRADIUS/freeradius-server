@@ -192,7 +192,7 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, 
 				
 				if ((size_t) len >= outlen) {
 					oob:
-					RDEBUGE("Out of buffer space creating filter");
+					REDEBUG("Out of buffer space creating filter");
 					
 					return -1;
 				}
@@ -211,7 +211,7 @@ ssize_t rlm_ldap_xlat_filter(REQUEST *request, char const **sub, size_t sublen, 
 
 	len = radius_xlat(out, outlen, request, in, rlm_ldap_escape_func, NULL);
 	if (len < 0) {
-		RDEBUGE("Failed creating filter");
+		REDEBUG("Failed creating filter");
 		
 		return -1;
 	}
@@ -659,7 +659,7 @@ retry:
 		case LDAP_PROC_RETRY:
 			*pconn = fr_connection_reconnect(inst->pool, *pconn);
 			if (*pconn) {
-				RDEBUGW("Search failed: %s. Got new socket, retrying...", error);
+				RWDEBUG("Search failed: %s. Got new socket, retrying...", error);
 				
 				talloc_free(extra); /* don't leak debug info */
 				
@@ -670,8 +670,8 @@ retry:
 			
 			/* FALL-THROUGH */
 		default:
-			RDEBUGE("Failed performing search: %s", error);
-			if (extra) RDEBUGE("%s", extra);
+			REDEBUG("Failed performing search: %s", error);
+			if (extra) REDEBUG("%s", extra);
 
 			goto finish;
 	}
@@ -745,7 +745,7 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 		case LDAP_PROC_RETRY:
 			*pconn = fr_connection_reconnect(inst->pool, *pconn);
 			if (*pconn) {
-				RDEBUGW("Modify failed: %s. Got new socket, retrying...", error);
+				RWDEBUG("Modify failed: %s. Got new socket, retrying...", error);
 				
 				talloc_free(extra); /* don't leak debug info */
 				
@@ -756,8 +756,8 @@ ldap_rcode_t rlm_ldap_modify(ldap_instance_t const *inst, REQUEST *request, ldap
 			
 			/* FALL-THROUGH */
 		default:
-			RDEBUGE("Failed modifying object: %s", error);
-			RDEBUGE("%s", extra);
+			REDEBUG("Failed modifying object: %s", error);
+			REDEBUG("%s", extra);
 			
 			goto finish;
 	}		     
@@ -843,14 +843,14 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	}
 	
 	if (radius_xlat(filter, sizeof(filter), request, inst->userobj_filter, rlm_ldap_escape_func, NULL) < 0) {
-		RDEBUGE("Unable to create filter");
+		REDEBUG("Unable to create filter");
 		
 		*rcode = RLM_MODULE_INVALID;
 		return NULL;
 	}
 
 	if (radius_xlat(base_dn, sizeof(base_dn), request, inst->userobj_base_dn, rlm_ldap_escape_func, NULL) < 0) {
-		RDEBUGE("Unable to create base_dn");
+		REDEBUG("Unable to create base_dn");
 		
 		*rcode = RLM_MODULE_INVALID;
 		return NULL;
@@ -873,7 +873,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	entry = ldap_first_entry((*pconn)->handle, *result);
 	if (!entry) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", 
+		REDEBUG("Failed retrieving entry: %s", 
 			ldap_err2string(ldap_errno));
 			 
 		goto finish;
@@ -883,7 +883,7 @@ char const *rlm_ldap_find_user(ldap_instance_t const *inst, REQUEST *request, ld
 	if (!dn) {
 		ldap_get_option((*pconn)->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 				
-		RDEBUGE("Retrieving object DN from entry failed: %s",
+		REDEBUG("Retrieving object DN from entry failed: %s",
 			ldap_err2string(ldap_errno));
 		       
 		goto finish;
@@ -960,9 +960,9 @@ void rlm_ldap_check_reply(ldap_instance_t const *inst, REQUEST *request)
 		    !pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_PASSWORD_WITH_HEADER, 0, TAG_ANY) &&
 		    !pairfind(request->config_items, PW_CRYPT_PASSWORD, 0, TAG_ANY)) {
-			RDEBUGW("No \"reference\" password added. Ensure the admin user has permission to "
+			RWDEBUG("No \"reference\" password added. Ensure the admin user has permission to "
 				"read the password attribute");
-			RDEBUGW("PAP authentication will *NOT* work with Active Directory (if that is what you "
+			RWDEBUG("PAP authentication will *NOT* work with Active Directory (if that is what you "
 				"were trying to configure)");
 		}
        }
@@ -1072,7 +1072,7 @@ void *mod_conn_create(void *instance)
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 				ldap_set_rebind_proc(handle, rlm_ldap_rebind, inst);
 #else
-				DEBUGW("The flag 'rebind = yes' is not supported by the system LDAP library. "
+				WDEBUG("The flag 'rebind = yes' is not supported by the system LDAP library. "
 				       "Ignoring.");
 #endif
 			}
@@ -1138,7 +1138,7 @@ void *mod_conn_create(void *instance)
 	 */
 	if (inst->start_tls) {
 		if (inst->port == 636) {
-			DEBUGW("Told to Start TLS on LDAPS port this will probably fail, please correct the "
+			WDEBUG("Told to Start TLS on LDAPS port this will probably fail, please correct the "
 			       "configuration");
 		}
 		
@@ -1210,7 +1210,7 @@ ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request
 
 	conn = fr_connection_get(inst->pool);
 	if (!conn) {
-		RDEBUGE("All ldap connections are in use");
+		REDEBUG("All ldap connections are in use");
 		
 		return NULL;
 	}

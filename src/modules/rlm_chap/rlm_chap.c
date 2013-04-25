@@ -34,7 +34,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance,
 	}
 
 	if (pairfind(request->config_items, PW_AUTHTYPE, 0, TAG_ANY) != NULL) {
-		RDEBUG2W("Auth-Type already set.  Not setting to CHAP");
+		RWDEBUG2("Auth-Type already set.  Not setting to CHAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -58,23 +58,23 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 	uint8_t pass_str[MAX_STRING_LEN];
 
 	if (!request->username) {
-		RDEBUGW("Attribute \"User-Name\" is required for authentication.\n");
+		RWDEBUG("Attribute \"User-Name\" is required for authentication.\n");
 		return RLM_MODULE_INVALID;
 	}
 
 	chap = pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY);
 	if (!chap) {
-		RDEBUGE("You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
+		REDEBUG("You set 'Auth-Type = CHAP' for a request that does not contain a CHAP-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length == 0) {
-		RDEBUGE("CHAP-Password is empty");
+		REDEBUG("CHAP-Password is empty");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (chap->length != CHAP_VALUE_LENGTH + 1) {
-		RDEBUGE("CHAP-Password has invalid length");
+		REDEBUG("CHAP-Password has invalid length");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -86,16 +86,16 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 
 	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
 		if (pairfind(request->config_items, PW_USER_PASSWORD, 0, TAG_ANY) != NULL){
-			RDEBUGE("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-			RDEBUGE("!!! Please update your configuration so that the \"known !!!");
-			RDEBUGE("!!! good\" clear text password is in Cleartext-Password, !!!");
-			RDEBUGE("!!! and NOT in User-Password.			   !!!");
-			RDEBUGE("!!!						     !!!");
-			RDEBUGE("!!! Authentication will fail because of this.	   !!!");
-			RDEBUGE("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
+			REDEBUG("!!! Please update your configuration so that the \"known !!!");
+			REDEBUG("!!! good\" clear text password is in Cleartext-Password, !!!");
+			REDEBUG("!!! and NOT in User-Password.			   !!!");
+			REDEBUG("!!!						     !!!");
+			REDEBUG("!!! Authentication will fail because of this.	   !!!");
+			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 
-		RDEBUGE("Clear text password is required for authentication");
+		REDEBUG("Clear text password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -107,7 +107,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 
 	if (rad_digest_cmp(pass_str + 1, chap->vp_octets + 1,
 			   CHAP_VALUE_LENGTH) != 0) {
-		RDEBUGE("Password is comparison failed: password is incorrect");
+		REDEBUG("Password is comparison failed: password is incorrect");
 		return RLM_MODULE_REJECT;
 	}
 

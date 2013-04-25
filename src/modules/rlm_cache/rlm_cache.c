@@ -366,7 +366,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 
 			found = pairfind(*from, da->attr, da->vendor, TAG_ANY);
 			if (!found) {
-				RDEBUGW("\"%s\" not found, skipping",
+				RWDEBUG("\"%s\" not found, skipping",
 				       map->src->name);
 				continue;
 			}
@@ -517,13 +517,13 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 	}
 	
 	if (!rbtree_insert(inst->cache, c)) {
-		RDEBUGE("FAILED adding entry for key %s", key);
+		REDEBUG("FAILED adding entry for key %s", key);
 		cache_entry_free(c);
 		return NULL;
 	}
 
 	if (!fr_heap_insert(inst->heap, c)) {
-		RDEBUGE("FAILED adding entry for key %s", key);
+		REDEBUG("FAILED adding entry for key %s", key);
 		rbtree_deletebydata(inst->cache, c);
 		return NULL;
 	}
@@ -613,7 +613,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	
 	target = dict_attrbyname(p);
 	if (!target) {
-		RDEBUGE("Unknown attribute \"%s\"", p);
+		REDEBUG("Unknown attribute \"%s\"", p);
 		return -1;
 	}
 	
@@ -640,12 +640,12 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 		
 	case PAIR_LIST_UNKNOWN:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
-		RDEBUGE("Unknown list qualifier in \"%s\"", fmt);
+		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
 		return 0;
 		
 	default:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
-		RDEBUGE("Unsupported list \"%s\"",
+		REDEBUG("Unsupported list \"%s\"",
 		       fr_int2str(pair_lists, list, "¿Unknown?"));
 		return 0;
 	}
@@ -741,7 +741,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 #ifdef HAVE_PTHREAD_H
 	if (pthread_mutex_init(&inst->cache_mutex, NULL) < 0) {
-		DEBUGE("Failed initializing mutex: %s",
+		EDEBUG("Failed initializing mutex: %s",
 		       strerror(errno));
 		return -1;
 	}
@@ -752,7 +752,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->cache = rbtree_create(cache_entry_cmp, cache_entry_free, 0);
 	if (!inst->cache) {
-		DEBUGE("Failed to create cache");
+		EDEBUG("Failed to create cache");
 		return -1;
 	}
 
@@ -762,7 +762,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->heap = fr_heap_create(cache_heap_cmp,
 				    offsetof(rlm_cache_entry_t, offset));
 	if (!inst->heap) {
-		DEBUGE("Failed to create heap for the cache");
+		EDEBUG("Failed to create heap for the cache");
 		return -1;
 	}
 

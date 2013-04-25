@@ -311,7 +311,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 			msg[len - 1] = '\0';
 		}
 		
-		RDEBUGE("%s", msg);
+		REDEBUG("%s", msg);
 	}
 	
 	return result-1;
@@ -355,7 +355,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	pairfree(&tmp);
 
 	if (result < 0) {
-		RDEBUGE("Login incorrect (external check failed)");
+		REDEBUG("Login incorrect (external check failed)");
 
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		return RLM_MODULE_REJECT;
@@ -368,7 +368,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		 */
 		request->reply->code = PW_AUTHENTICATION_REJECT;
 		
-		RDEBUGE("Login incorrect (external check said so)");
+		REDEBUG("Login incorrect (external check said so)");
 		return RLM_MODULE_REJECT;
 	}
 

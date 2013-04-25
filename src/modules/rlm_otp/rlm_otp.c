@@ -90,7 +90,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	    (inst->challenge_len > OTP_MAX_CHALLENGE_LEN)) {
 		inst->challenge_len = 6;
 
-		DEBUGW("invalid challenge_length %d, "
+		WDEBUG("invalid challenge_length %d, "
 		       "range 5-%d, using default of 6",
 		       inst->challenge_len, OTP_MAX_CHALLENGE_LEN);
 	}
@@ -104,25 +104,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	if ((inst->mschapv2_mppe_policy > 2) ||
 	    (inst->mschapv2_mppe_policy < 0)) {
 		inst->mschapv2_mppe_policy = 2;
-		DEBUGW("Invalid value for mschapv2_mppe, "
+		WDEBUG("Invalid value for mschapv2_mppe, "
 			"using default of 2");
 	}
 
 	if ((inst->mschapv2_mppe_types > 2) || (inst->mschapv2_mppe_types < 0)) {
 		inst->mschapv2_mppe_types = 2;
-		DEBUGW("Invalid value for "
+		WDEBUG("Invalid value for "
 		       "mschapv2_mppe_bits, using default of 2");
 	}
 
 	if ((inst->mschap_mppe_policy > 2) || (inst->mschap_mppe_policy < 0)) {
 		inst->mschap_mppe_policy = 2;
-		DEBUGW("Invalid value for mschap_mppe, "
+		WDEBUG("Invalid value for mschap_mppe, "
 		       "using default of 2");
   	}
 
 	if (inst->mschap_mppe_types != 2) {
 		inst->mschap_mppe_types = 2;
-		DEBUGW("Invalid value for "
+		WDEBUG("Invalid value for "
 		       "mschap_mppe_bits, using default of 2");
 	}
 
@@ -166,14 +166,14 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	/* User-Name attribute required. */
 	if (!request->username) {
-		RDEBUGW("Attribute \"User-Name\" "
+		RWDEBUG("Attribute \"User-Name\" "
 		       "required for authentication.");
 		
 		return RLM_MODULE_INVALID;
 	}
 
 	if (otp_pwe_present(request) == 0) {
-		RDEBUGW("Attribute "
+		RWDEBUG("Attribute "
 			"\"User-Password\" or equivalent required "
 			"for authentication.");
 		
@@ -322,7 +322,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 
 	/* User-Name attribute required. */
 	if (!request->username) {
-		RDEBUGW("Attribute \"User-Name\" required "
+		RWDEBUG("Attribute \"User-Name\" required "
 			"for authentication.");
 	  	
 		return RLM_MODULE_INVALID;
@@ -332,7 +332,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	
 	pwe = otp_pwe_present(request);
 	if (pwe == 0) {
-		RDEBUGW("Attribute \"User-Password\" "
+		RWDEBUG("Attribute \"User-Password\" "
 			"or equivalent required for authentication.");
 		
 		return RLM_MODULE_INVALID;
@@ -356,7 +356,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		elen = (inst->challenge_len * 2) + 8 + 8 + 32;
 
 		if (vp->length != elen) {
-			RDEBUGE("Bad radstate for [%s]: length", username);
+			REDEBUG("Bad radstate for [%s]: length", username);
 			return RLM_MODULE_INVALID;
 		}
 
@@ -373,7 +373,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		len = fr_hex2bin(vp->vp_strvalue, bin_state, vp->length);
 		if (len != (vp->length / 2)) {
-			RDEBUGE("bad radstate for [%s]: not hex", username);
+			REDEBUG("bad radstate for [%s]: not hex", username);
 		
 			return RLM_MODULE_INVALID;
 		}
@@ -400,7 +400,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 *	to verify hmac.
 		 */
 		if (memcmp(gen_state, vp->vp_octets, vp->length)) {
-			RDEBUGE("bad radstate for [%s]: hmac", username);
+			REDEBUG("bad radstate for [%s]: hmac", username);
 	
 			return RLM_MODULE_REJECT;
 		}
@@ -410,7 +410,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		then = ntohl(then);
 		if (time(NULL) - then > inst->challenge_delay) {
-			RDEBUGE("bad radstate for [%s]: expired",username);
+			REDEBUG("bad radstate for [%s]: expired",username);
 
 			return RLM_MODULE_REJECT;
 		}

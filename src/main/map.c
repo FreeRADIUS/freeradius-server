@@ -339,7 +339,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 				map->src = radius_attr2tmpl(map, value, src_request_def, src_list_def);
 			}
 			if (map->src) {
-				DEBUGW("%s[%d]: Please add '&' for attribute reference '%s = &%s'",
+				WDEBUG("%s[%d]: Please add '&' for attribute reference '%s = &%s'",
 				       cf_pair_filename(cp), cf_pair_lineno(cp),
 				       attr, value);
 			} else {

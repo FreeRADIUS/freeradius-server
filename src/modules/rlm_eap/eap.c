@@ -251,7 +251,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	 *	0 for no alternative.
 	 */
 	if (!nak->data) {
-		RDEBUGE("Peer sent empty (invalid) NAK. "
+		REDEBUG("Peer sent empty (invalid) NAK. "
 			"Can't select method to continue with");
 
 		return PW_EAP_INVALID;
@@ -279,7 +279,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 		 *	notification & nak in nak.
 		 */
 		if (nak->data[i] < PW_EAP_MD5) {
-			RDEBUGE("Peer NAK'd asking for bad "
+			REDEBUG("Peer NAK'd asking for bad "
 				"type %s (%d)",
 				eap_type2name(nak->data[i]),
 				nak->data[i]);
@@ -336,7 +336,7 @@ static eap_type_t eap_process_nak(rlm_eap_t *inst, REQUEST *request,
 	}
 	
 	if (method == PW_EAP_INVALID) {
-		RDEBUGE("No mutually acceptable types found");
+		REDEBUG("No mutually acceptable types found");
 	}
 	
 	return method;
@@ -365,7 +365,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Don't trust anyone.
 	 */
 	if ((type->num == 0) || (type->num >= PW_EAP_MAX_TYPES)) {
-		RDEBUGE("Peer sent type (%d), which is outside known range");
+		REDEBUG("Peer sent type (%d), which is outside known range");
 		
 		return EAP_INVALID;
 	}
@@ -398,7 +398,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		if ((next < PW_EAP_MD5) ||
 		    (next >= PW_EAP_MAX_TYPES) ||
 		    (!inst->methods[next])) {
-			RDEBUG2E("Tried to start unsupported method (%d)",
+			REDEBUG2("Tried to start unsupported method (%d)",
 				 next);
 			
 			return EAP_INVALID;
@@ -416,7 +416,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 		handler->type = next;
 
 		if (eap_module_call(inst->methods[next], handler) == 0) {
-			RDEBUG2E("Failed starting EAP %s (%d) session. "
+			REDEBUG2("Failed starting EAP %s (%d) session. "
 				 "EAP sub-module failed",
 				 eap_type2name(next),
 				 next);	
@@ -460,7 +460,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			 *	We haven't configured it, it doesn't exit.
 			 */
 			if (!inst->methods[type->num]) {
-				RDEBUG2E("Client asked for unsupported "
+				REDEBUG2("Client asked for unsupported "
 					 "type %s (%d)",
 					 eap_type2name(type->num),
 					 type->num);
@@ -472,7 +472,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 			handler->type = type->num;
 			if (eap_module_call(inst->methods[type->num],
 					    handler) == 0) {
-				RDEBUG2E("Failed continuing EAP %s (%d) session. "
+				REDEBUG2("Failed continuing EAP %s (%d) session. "
 					 "EAP sub-module failed",
 				       	 eap_type2name(type->num),
 					 type->num);
@@ -1144,7 +1144,7 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*	request vps so that autz's work
 			*	correctly
 			*/
-		       RDEBUG2W("NAS did not set User-Name.  Setting it locally from EAP Identity");
+		       RWDEBUG2("NAS did not set User-Name.  Setting it locally from EAP Identity");
 		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
 		       if (!vp) {
 			       goto error2;

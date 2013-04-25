@@ -85,7 +85,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 
 	fd = open(filename, O_RDWR);
 	if (fd < 0) {
-		RDEBUGE("Error accessing file %s: %s", filename, strerror(errno));
+		REDEBUG("Error accessing file %s: %s", filename, strerror(errno));
 		return RLM_MODULE_FAIL;
 	}
 
@@ -93,7 +93,7 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 	*	Lock the utmp file, prefer lockf() over flock().
 	*/
 	if (rad_lockfd(fd, LOCK_LEN) < 0) {
-		RDEBUGE("Failed to acquire lock on file %s: %s", filename, strerror(errno));
+		REDEBUG("Failed to acquire lock on file %s: %s", filename, strerror(errno));
 		close(fd);
 		return RLM_MODULE_FAIL;
 	}
@@ -109,14 +109,14 @@ static rlm_rcode_t radutmp_zap(REQUEST *request, char const *filename, uint32_t 
 		 *	Match. Zap it.
 		 */
 		if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-			RDEBUGE("radutmp_zap: negative lseek!");
+			REDEBUG("radutmp_zap: negative lseek!");
 			lseek(fd, (off_t)0, SEEK_SET);
 		}
 		u.type = P_IDLE;
 		u.time = t;
 
 		if (write(fd, &u, sizeof(u)) < 0) {
-			RDEBUGE("Failed writing: %s", strerror(errno));
+			REDEBUG("Failed writing: %s", strerror(errno));
 	
 			close(fd);
 			return RLM_MODULE_FAIL;
@@ -319,14 +319,14 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	UDP packets out of order.
 	 */
 	if (status == PW_STATUS_ACCOUNTING_ON && (ut.nas_address != htonl(INADDR_NONE))) {
-		RDEBUGI("NAS %s restarted (Accounting-On packet seen)", nas);
+		RIDEBUG("NAS %s restarted (Accounting-On packet seen)", nas);
 		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
 		
 		goto finish;
 	}
 
 	if (status == PW_STATUS_ACCOUNTING_OFF && (ut.nas_address != htonl(INADDR_NONE))) {
-		RDEBUGI("NAS %s rebooted (Accounting-Off packet seen)", nas);	
+		RIDEBUG("NAS %s rebooted (Accounting-Off packet seen)", nas);	
 		rcode = radutmp_zap(request, filename, ut.nas_address, ut.time);
 		
 		goto finish;
@@ -336,7 +336,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	If we don't know this type of entry pretend we succeeded.
 	 */
 	if (status != PW_STATUS_START && status != PW_STATUS_STOP && status != PW_STATUS_ALIVE) {
-		RDEBUGE("NAS %s port %u unknown packet type %d)", nas, ut.nas_port, status);
+		REDEBUG("NAS %s port %u unknown packet type %d)", nas, ut.nas_port, status);
 		rcode = RLM_MODULE_NOOP;
 		
 		goto finish;
@@ -361,7 +361,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	- with the username "!root" (console admin login)
 	 */
 	if (!port_seen) {
-		RDEBUG2W("No NAS-Port seen.  Cannot do anything. Checkrad will probably not work!");
+		RWDEBUG2("No NAS-Port seen.  Cannot do anything. Checkrad will probably not work!");
 		rcode = RLM_MODULE_NOOP;
 		
 		goto finish;
@@ -379,7 +379,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 */
 	fd = open(filename, O_RDWR|O_CREAT, inst->permission);
 	if (fd < 0) {
-		RDEBUGE("Error accessing file %s: %s", filename, strerror(errno));
+		REDEBUG("Error accessing file %s: %s", filename, strerror(errno));
 		rcode = RLM_MODULE_FAIL;
 	
 		goto finish;
@@ -419,7 +419,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			 *	send _only_ logout records).
 			 */
 			if (u.type == P_LOGIN) {
-				RDEBUGW("Logout entry for NAS %s port %u has wrong ID", nas, u.nas_port);
+				RWDEBUG("Logout entry for NAS %s port %u has wrong ID", nas, u.nas_port);
 			}
 			
 			r = -1;
@@ -435,7 +435,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 				break;
 			}
 			
-			RDEBUGW("Login entry for NAS %s port %u wrong order", nas, u.nas_port);
+			RWDEBUG("Login entry for NAS %s port %u wrong order", nas, u.nas_port);
 			r = -1;
 			break;
 		}
@@ -453,7 +453,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		}
 
 		if (lseek(fd, -(off_t)sizeof(u), SEEK_CUR) < 0) {
-			RDEBUGW("negative lseek!");
+			RWDEBUG("negative lseek!");
 			lseek(fd, (off_t)0, SEEK_SET);
 			off = 0;
 		} else {
@@ -486,7 +486,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 
 		ut.type = P_LOGIN;
 		if (write(fd, &ut, sizeof(u)) < 0) {
-			RDEBUGE("Failed writing: %s", strerror(errno));
+			REDEBUG("Failed writing: %s", strerror(errno));
 			
 			rcode = RLM_MODULE_FAIL;
 			goto finish;
@@ -503,13 +503,13 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			u.time = ut.time;
 			u.delay = ut.delay;
 			if (write(fd, &u, sizeof(u)) < 0) {
-				RDEBUGE("Failed writing: %s", strerror(errno));
+				REDEBUG("Failed writing: %s", strerror(errno));
 			
 				rcode = RLM_MODULE_FAIL;
 				goto finish;
 			}
 		} else if (r == 0) {
-			RDEBUGW("Logout for NAS %s port %u, but no Login record", nas, ut.nas_port);
+			RWDEBUG("Logout for NAS %s port %u, but no Login record", nas, ut.nas_port);
 		}
 	}
 
@@ -701,7 +701,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 					request->simul_mpp = 2;
 				}
 			} else {
-				RDEBUGW("Failed to check the terminal server for user '%s'.", utmp_login);
+				RWDEBUG("Failed to check the terminal server for user '%s'.", utmp_login);
 				rcode = RLM_MODULE_FAIL;
 				
 				goto finish;

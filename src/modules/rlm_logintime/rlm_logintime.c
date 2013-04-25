@@ -174,7 +174,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	We don't know were going to get another chance to lock out the user, so we need to do it now.
 	 */	
 	if (left < inst->min_time) {
-		RDEBUGE("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
+		REDEBUG("Login outside of allowed time-slot (session end %s, with lockout %i seconds before)",
 			ends->vp_strvalue, inst->min_time);
 		
 		return RLM_MODULE_USERLOCK;

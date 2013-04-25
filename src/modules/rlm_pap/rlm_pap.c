@@ -322,8 +322,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_NOOP;
 		}
 
-		RDEBUGW("No \"known good\" password found for the user.  Not setting Auth-Type.");
-		RDEBUGW("Authentication will fail unless a \"known good\" password is available.");
+		RWDEBUG("No \"known good\" password found for the user.  Not setting Auth-Type.");
+		RWDEBUG("Authentication will fail unless a \"known good\" password is available.");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -331,7 +331,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	Don't touch existing Auth-Types.
 	 */
 	if (auth_type) {
-		RDEBUG2W("Auth-Type already set.  Not setting to PAP");
+		RWDEBUG2("Auth-Type already set.  Not setting to PAP");
 		return RLM_MODULE_NOOP;
 	}
 
@@ -373,7 +373,7 @@ static int pap_auth_clear(REQUEST *request, VALUE_PAIR *vp)
 	    (rad_digest_cmp(vp->vp_octets,
 			    request->password->vp_octets,
 			    vp->length) != 0)) {
-		RDEBUGE("CLEAR TEXT password check failed");
+		REDEBUG("CLEAR TEXT password check failed");
 		return RLM_MODULE_REJECT;
 	}
 	return RLM_MODULE_OK;
@@ -385,7 +385,7 @@ static int pap_auth_crypt(REQUEST *request, VALUE_PAIR *vp)
 
 	if (fr_crypt_check(request->password->vp_strvalue,
 			   vp->vp_strvalue) != 0) {
-		RDEBUGE("CRYPT password check failed");
+		REDEBUG("CRYPT password check failed");
 		return RLM_MODULE_REJECT;
 	}
 	return RLM_MODULE_OK;
@@ -400,7 +400,7 @@ static int pap_auth_md5(REQUEST *request, VALUE_PAIR *vp)
 
 	normify(request, vp, 16);
 	if (vp->length != 16) {
-		RDEBUGE("Configured MD5 password has incorrect length");
+		REDEBUG("Configured MD5 password has incorrect length");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -410,7 +410,7 @@ static int pap_auth_md5(REQUEST *request, VALUE_PAIR *vp)
 	fr_MD5Final(binbuf, &md5_context);
 
 	if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
-		RDEBUGE("MD5 password check failed");
+		REDEBUG("MD5 password check failed");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -427,7 +427,7 @@ static int pap_auth_smd5(REQUEST *request, VALUE_PAIR *vp)
 
 	normify(request, vp, 16);
 	if (vp->length <= 16) {
-		RDEBUGE("Configured SMD5 password has incorrect length");
+		REDEBUG("Configured SMD5 password has incorrect length");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -441,7 +441,7 @@ static int pap_auth_smd5(REQUEST *request, VALUE_PAIR *vp)
 	 *	Compare only the MD5 hash results, not the salt.
 	 */
 	if (rad_digest_cmp(binbuf, vp->vp_octets, 16) != 0) {
-		RDEBUGE("SMD5 password check failed");
+		REDEBUG("SMD5 password check failed");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -457,7 +457,7 @@ static int pap_auth_sha(REQUEST *request, VALUE_PAIR *vp)
 
 	normify(request, vp, 20);
 	if (vp->length != 20) {
-		RDEBUGE("SHA1 password has incorrect length");
+		REDEBUG("SHA1 password has incorrect length");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -467,7 +467,7 @@ static int pap_auth_sha(REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1Final(binbuf,&sha1_context);
 
 	if (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0) {
-		RDEBUGE("SHA1 password check failed");
+		REDEBUG("SHA1 password check failed");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -483,7 +483,7 @@ static int pap_auth_ssha(REQUEST *request, VALUE_PAIR *vp)
 
 	normify(request, vp, 20);
 	if (vp->length <= 20) {
-		RDEBUGE("SSHA password has incorrect length");
+		REDEBUG("SSHA password has incorrect length");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -494,7 +494,7 @@ static int pap_auth_ssha(REQUEST *request, VALUE_PAIR *vp)
 	fr_SHA1Final(binbuf,&sha1_context);
 
 	if (rad_digest_cmp(binbuf, vp->vp_octets, 20) != 0) {
-		RDEBUGE("SSHA password check failed");
+		REDEBUG("SSHA password check failed");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -510,7 +510,7 @@ static int pap_auth_nt(REQUEST *request, VALUE_PAIR *vp)
 
 	normify(request, vp, 16);
 	if (vp->length != 16) {
-		RDEBUGE("Configured NT-Password has incorrect length");
+		REDEBUG("Configured NT-Password has incorrect length");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -520,7 +520,7 @@ static int pap_auth_nt(REQUEST *request, VALUE_PAIR *vp)
 
 	if ((fr_hex2bin(charbuf, binbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
-		RDEBUGE("NT password check failed");
+		REDEBUG("NT password check failed");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -537,7 +537,7 @@ static int pap_auth_lm(REQUEST *request, VALUE_PAIR *vp)
 
 	normify(request, vp, 16);
 	if (vp->length != 16) {
-		RDEBUGE("Configure LM-Password has incorrect length");
+		REDEBUG("Configure LM-Password has incorrect length");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -547,7 +547,7 @@ static int pap_auth_lm(REQUEST *request, VALUE_PAIR *vp)
 
 	if ((fr_hex2bin(charbuf, binbuf, sizeof(binbuf)) != vp->length) ||
 	    (rad_digest_cmp(binbuf, vp->vp_octets, vp->length) != 0)) {
-		RDEBUGE("LM password check failed");
+		REDEBUG("LM password check failed");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -564,7 +564,7 @@ static int pap_auth_ns_mta_md5(REQUEST *request, VALUE_PAIR *vp)
 	RDEBUG("Using NT-MTA-MD5 password");
 
 	if (vp->length != 64) {
-		RDEBUGE("Configured NS-MTA-MD5-Password has incorrect length");
+		REDEBUG("Configured NS-MTA-MD5-Password has incorrect length");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -572,7 +572,7 @@ static int pap_auth_ns_mta_md5(REQUEST *request, VALUE_PAIR *vp)
 	 *	Sanity check the value of NS-MTA-MD5-Password
 	 */
 	if (fr_hex2bin(vp->vp_strvalue, binbuf, 32) != 16) {
-		RDEBUGE("Configured NS-MTA-MD5-Password has invalid value");
+		REDEBUG("Configured NS-MTA-MD5-Password has invalid value");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -582,7 +582,7 @@ static int pap_auth_ns_mta_md5(REQUEST *request, VALUE_PAIR *vp)
 	 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 	 */
 	if (strlen(request->password->vp_strvalue) >= (sizeof(buff) - 2 - 2 * 32)) {
-		RDEBUGE("Configured password is too long");
+		REDEBUG("Configured password is too long");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -607,7 +607,7 @@ static int pap_auth_ns_mta_md5(REQUEST *request, VALUE_PAIR *vp)
 	}
 
 	if (rad_digest_cmp(binbuf, buff, 16) != 0) {
-		RDEBUGE("NS-MTA-MD5 password check failed");
+		REDEBUG("NS-MTA-MD5 password check failed");
 		return RLM_MODULE_REJECT;
 	}
 
@@ -626,7 +626,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		RDEBUGE("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
+		REDEBUG("You set 'Auth-Type = PAP' for a request that does not contain a User-Password attribute!");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -634,7 +634,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	 *	The user MUST supply a non-zero-length password.
 	 */
 	if (request->password->length == 0) {
-		RDEBUGE("Password must not be empty");
+		REDEBUG("Password must not be empty");
 		return RLM_MODULE_INVALID;
 	}
 

@@ -204,12 +204,12 @@ static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
 	url = fmt;
 
 	if (!ldap_is_ldap_url(url)) {
-		RDEBUGE("String passed does not look like an LDAP URL");
+		REDEBUG("String passed does not look like an LDAP URL");
 		return 0;
 	}
 
 	if (ldap_url_parse(url, &ldap_url)){
-		RDEBUGE("Parsing LDAP URL failed");
+		REDEBUG("Parsing LDAP URL failed");
 		return 0;
 	}
 
@@ -220,7 +220,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
 	    !*ldap_url->lud_attrs[0] ||
 	    (strcmp(ldap_url->lud_attrs[0], "*") == 0) ||
 	    ldap_url->lud_attrs[1]) {
-		RDEBUGE("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
+		REDEBUG("Bad attributes list in LDAP URL. URL must specify exactly one attribute to retrieve");
 		       
 		goto free_urldesc;
 	}
@@ -255,7 +255,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 		goto free_result;
 	}
 
@@ -629,26 +629,26 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 
 	if (!request->username) {
-		RDEBUGE("Attribute \"User-Name\" is required for authentication");
+		REDEBUG("Attribute \"User-Name\" is required for authentication");
 
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
-		RDEBUGW("You have set \"Auth-Type := LDAP\" somewhere.");
-		RDEBUGW("*********************************************");
-		RDEBUGW("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
-		RDEBUGW("* YOU ARE PREVENTING THE SERVER FROM WORKING.");
-		RDEBUGW("*********************************************");
+		RWDEBUG("You have set \"Auth-Type := LDAP\" somewhere.");
+		RWDEBUG("*********************************************");
+		RWDEBUG("* THAT CONFIGURATION IS WRONG.  DELETE IT.   ");
+		RWDEBUG("* YOU ARE PREVENTING THE SERVER FROM WORKING.");
+		RWDEBUG("*********************************************");
 		
-		RDEBUGE("Attribute \"User-Password\" is required for authentication.");
+		REDEBUG("Attribute \"User-Password\" is required for authentication.");
 		
 		return RLM_MODULE_INVALID;
 	}
 
 	if (request->password->length == 0) {
-		RDEBUGE("Empty password supplied");
+		REDEBUG("Empty password supplied");
 		
 		return RLM_MODULE_INVALID;
 	}
@@ -773,7 +773,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	entry = ldap_first_entry(conn->handle, result);
 	if (!entry) {
 		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
-		RDEBUGE("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
 			 
 		goto finish;
 	}
@@ -824,7 +824,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 */
 		res = nmasldap_get_password(conn->handle, dn, password, &pass_size);
 		if (res != 0) {
-			RDEBUGW("Failed to retrieve eDirectory password");
+			RWDEBUG("Failed to retrieve eDirectory password");
 			rcode = RLM_MODULE_NOOP;
 
 			goto finish;
@@ -979,14 +979,14 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	}
 	
 	if (!cf_item_is_section(ci)){
-		RDEBUGE("Reference must resolve to a section");
+		REDEBUG("Reference must resolve to a section");
 		
 		goto error;	
 	}
 	
 	cs = cf_section_sub_find(cf_itemtosection(ci), "update");
 	if (!cs) {
-		RDEBUGE("Section must contain 'update' subsection");
+		REDEBUG("Section must contain 'update' subsection");
 		
 		goto error;
 	}
@@ -998,13 +998,13 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 	     	int do_xlat = false;
 	     	
 	     	if (total == LDAP_MAX_ATTRMAP) {
-	     		RDEBUGE("Modify map size exceeded");
+	     		REDEBUG("Modify map size exceeded");
 	
 	     		goto error;
 	     	}
 	     	
 		if (!cf_item_is_pair(ci)) {
-			RDEBUGE("Entry is not in \"ldap-attribute = value\" format");
+			REDEBUG("Entry is not in \"ldap-attribute = value\" format");
 			       
 			goto error;
 		}
@@ -1090,7 +1090,7 @@ static rlm_rcode_t user_modify(ldap_instance_t *inst, REQUEST *request, ldap_acc
 			break;
 #endif
 		default:
-			RDEBUGE("Operator '%s' is not supported for LDAP modify operations",
+			REDEBUG("Operator '%s' is not supported for LDAP modify operations",
 			        fr_int2str(fr_tokens, op, "¿unknown?"));
 			       
 			goto error;
