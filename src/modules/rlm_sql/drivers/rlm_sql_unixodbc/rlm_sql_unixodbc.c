@@ -396,7 +396,7 @@ static sql_rcode_t sql_state(long err_handle, rlm_sql_handle_t *handle, UNUSED r
 		switch(state[1]) {
 		/* SQLSTATE 01 class contains info and warning messages */
 		case '1':
-			radlog(L_INFO, "rlm_sql_unixodbc: %s %s\n", state, error);
+			INFO("rlm_sql_unixodbc: %s %s\n", state, error);
 			/* FALL-THROUGH */
 		case '0':		/* SQLSTATE 00 class means success */
 			res = 0;

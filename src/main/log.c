@@ -412,7 +412,7 @@ void radlog_request(int lvl, int priority, REQUEST *request, char const *msg, ..
 
 void log_talloc(char const *msg)
 {
-	radlog(L_INFO, "%s", msg);
+	INFO("%s", msg);
 }
 
 void log_talloc_report(TALLOC_CTX *ctx)
@@ -436,7 +436,7 @@ void log_talloc_report(TALLOC_CTX *ctx)
 		talloc_report_full(NULL, fd);
 	} else {
 		do {
-			radlog(L_INFO, "Context level %i", i++);
+			INFO("Context level %i", i++);
 		
 			talloc_report_full(ctx, fd);
 		} while ((ctx = talloc_parent(ctx)) && (talloc_get_name(ctx) != null_ctx));  /* Stop before we hit NULL ctx */

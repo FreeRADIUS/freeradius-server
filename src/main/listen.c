@@ -586,7 +586,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		radlog(L_INFO, "Ignoring new connection due to client max_connections (%d)", client->limit.max_connections);
+		INFO("Ignoring new connection due to client max_connections (%d)", client->limit.max_connections);
 		close(newfd);
 		return 0;
 	}
@@ -597,7 +597,7 @@ static int dual_tcp_accept(rad_listen_t *listener)
 		/*
 		 *	FIXME: Print client IP/port, and server IP/port.
 		 */
-		radlog(L_INFO, "Ignoring new connection due to socket max_connections");
+		INFO("Ignoring new connection due to socket max_connections");
 		close(newfd);
 		return 0;
 	}
@@ -1183,7 +1183,7 @@ static int auth_socket_send(rad_listen_t *listener, REQUEST *request)
 	
 	if (rad_send(request->reply, request->packet,
 		     request->client->secret) < 0) {
-		radlog_request(L_ERR, 0, request, "Failed sending reply: %s",
+		RERROR("Failed sending reply: %s",
 			       fr_strerror());
 		return -1;
 	}
@@ -1223,7 +1223,7 @@ static int acct_socket_send(rad_listen_t *listener, REQUEST *request)
 	
 	if (rad_send(request->reply, request->packet,
 		     request->client->secret) < 0) {
-		radlog_request(L_ERR, 0, request, "Failed sending reply: %s",
+		RERROR("Failed sending reply: %s",
 			       fr_strerror());
 		return -1;
 	}
@@ -1245,7 +1245,7 @@ static int proxy_socket_send(rad_listen_t *listener, REQUEST *request)
 
 	if (rad_send(request->proxy, NULL,
 		     request->home_server->secret) < 0) {
-		radlog_request(L_ERR, 0, request, "Failed sending proxied request: %s",
+		RERROR("Failed sending proxied request: %s",
 			       fr_strerror());
 		return -1;
 	}
@@ -1859,14 +1859,14 @@ static int client_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 
 	if (rad_encode(request->reply, request->packet,
 		       request->client->secret) < 0) {
-		radlog_request(L_ERR, 0, request, "Failed encoding packet: %s",
+		RERROR("Failed encoding packet: %s",
 			       fr_strerror());
 		return -1;
 	}
 
 	if (rad_sign(request->reply, request->packet,
 		     request->client->secret) < 0) {
-		radlog_request(L_ERR, 0, request, "Failed signing packet: %s",
+		RERROR("Failed signing packet: %s",
 			       fr_strerror());
 		return -1;
 	}
@@ -1890,13 +1890,13 @@ static int client_socket_decode(UNUSED rad_listen_t *listener, REQUEST *request)
 static int proxy_socket_encode(UNUSED rad_listen_t *listener, REQUEST *request)
 {
 	if (rad_encode(request->proxy, NULL, request->home_server->secret) < 0) {
-		radlog_request(L_ERR, 0, request, "Failed encoding proxied packet: %s",
+		RERROR("Failed encoding proxied packet: %s",
 			       fr_strerror());
 		return -1;
 	}
 
 	if (rad_sign(request->proxy, NULL, request->home_server->secret) < 0) {
-		radlog_request(L_ERR, 0, request, "Failed signing proxied packet: %s",
+		RERROR("Failed signing proxied packet: %s",
 			       fr_strerror());
 		return -1;
 	}

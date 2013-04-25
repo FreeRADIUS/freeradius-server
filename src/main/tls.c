@@ -1671,7 +1671,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		 */
 		if (conf->check_cert_issuer &&
 		    (strcmp(issuer, conf->check_cert_issuer) != 0)) {
-			radlog(L_AUTH, "rlm_eap_tls: Certificate issuer (%s) does not match specified value (%s)!", issuer, conf->check_cert_issuer);
+			AUTH("rlm_eap_tls: Certificate issuer (%s) does not match specified value (%s)!", issuer, conf->check_cert_issuer);
 			my_ok = 0;
 		}
 
@@ -1687,7 +1687,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			} else {
 				RDEBUG2("checking certificate CN (%s) with xlat'ed value (%s)", common_name, cn_str);
 				if (strcmp(cn_str, common_name) != 0) {
-					radlog(L_AUTH, "rlm_eap_tls: Certificate CN (%s) does not match specified value (%s)!", common_name, cn_str);
+					AUTH("rlm_eap_tls: Certificate CN (%s) does not match specified value (%s)!", common_name, cn_str);
 					my_ok = 0;
 				}
 			}
@@ -1744,7 +1744,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 						request, 1, NULL, 0,
 						request->packet->vps,
 						NULL, 1) != 0) {
-				radlog(L_AUTH, "rlm_eap_tls: Certificate CN (%s) fails external verification!", common_name);
+				AUTH("rlm_eap_tls: Certificate CN (%s) fails external verification!", common_name);
 				my_ok = 0;
 			} else {
 				RDEBUG("Client certificate CN %s passed external validation", common_name);
@@ -2660,7 +2660,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 	RDEBUG2("Received TLS ACK");
 
 	if (ssn == NULL){
-		radlog_request(L_ERR, 0, request, "FAIL: Unexpected ACK received.  Could not obtain session information.");
+		RERROR("FAIL: Unexpected ACK received.  Could not obtain session information.");
 		return FR_TLS_INVALID;
 	}
 	if (ssn->info.initialized == 0) {
@@ -2669,7 +2669,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 	}
 	if ((ssn->info.content_type == handshake) &&
 	    (ssn->info.origin == 0)) {
-		radlog_request(L_ERR, 0, request, "FAIL: ACK without earlier message.");
+		RERROR("FAIL: ACK without earlier message.");
 		return FR_TLS_INVALID;
 	}
 
@@ -2706,7 +2706,7 @@ fr_tls_status_t tls_ack_handler(tls_session_t *ssn, REQUEST *request)
 		 */
 	default:
 		RDEBUG2("ACK default");
-		radlog_request(L_ERR, 0, request, "Invalid ACK received: %d",
+		RERROR("Invalid ACK received: %d",
 		       ssn->info.content_type);
 		return FR_TLS_INVALID;
 	}

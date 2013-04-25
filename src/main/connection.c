@@ -334,7 +334,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 	 */
 	pthread_mutex_unlock(&pool->mutex);
 
-	radlog(L_INFO, "%s: Opening additional connection (%i)",
+	INFO("%s: Opening additional connection (%i)",
 	       pool->log_prefix, pool->count);
 	
 	this = rad_malloc(sizeof(*this));
@@ -407,7 +407,7 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
 			return 0;
 		}
 		
-		radlog(L_INFO, "%s: Opening connection successful (%i)",
+		INFO("%s: Opening connection successful (%i)",
 	       	       pool->log_prefix, pool->count);
 	}
 
@@ -527,7 +527,7 @@ int fr_connection_del(fr_connection_pool_t *pool, void *conn)
 		pool->active--;
 	}
 
-	radlog(L_INFO, "%s: Deleting connection (%i)", pool->log_prefix,
+	INFO("%s: Deleting connection (%i)", pool->log_prefix,
 	       this->number);
 
 	fr_connection_close(pool, this);
@@ -558,7 +558,7 @@ void fr_connection_pool_delete(fr_connection_pool_t *pool)
 	for (this = pool->head; this != NULL; this = next) {
 		next = this->next;
 		
-		radlog(L_INFO, "%s: Closing connection (%i)", pool->log_prefix,
+		INFO("%s: Closing connection (%i)", pool->log_prefix,
 		       this->number);
 		
 		fr_connection_close(pool, this);
@@ -733,7 +733,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	do_delete:
 		if ((pool->num <= pool->min) &&
 		    (pool->last_complained < now)) {
-			radlog(L_INFO, "%s: WARNING: You probably need to "
+			INFO("%s: WARNING: You probably need to "
 			       "lower \"min\"", pool->log_prefix);
 			
 			pool->last_complained = now;
@@ -751,7 +751,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 
 	if ((pool->idle_timeout > 0) &&
 	    ((this->last_used + pool->idle_timeout) < now)) {
-		radlog(L_INFO, "%s: Closing connection (%i): Hit idle_timeout, "
+		INFO("%s: Closing connection (%i): Hit idle_timeout, "
 		       "was idle for %u seconds", pool->log_prefix, this->number,
 		       (int) (now - this->last_used));
 		goto do_delete;
@@ -824,7 +824,7 @@ static int fr_connection_pool_check(fr_connection_pool_t *pool)
 
 		rad_assert(idle != NULL);
 		
-		radlog(L_INFO, "%s: Closing connection (%i): Too many "
+		INFO("%s: Closing connection (%i): Too many "
 		       "free connections (%d > %d)", pool->log_prefix,
 		       idle->number, spare, pool->spare);
 		fr_connection_close(pool, idle);

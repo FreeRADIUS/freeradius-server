@@ -220,7 +220,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 *	Responses are 50 octets.
 			 */
 			if (response->length < 50) {
-				radlog_request(L_AUTH, 0, request, "MS-CHAP-Response has the wrong format.");
+				RAUTH("MS-CHAP-Response has the wrong format.");
 				return 0;
 			}
 
@@ -1364,7 +1364,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 			lm_password->length = 16;
 
 		} else {
-			radlog_request(L_ERR, 0, request, "Invalid LM-Password");
+			RERROR("Invalid LM-Password");
 			lm_password = NULL;
 		}
 
@@ -1374,7 +1374,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 	} else {		/* there is a configured Cleartext-Password */
 		lm_password = pairmake_config("LM-Password", "", T_OP_EQ);
 		if (!lm_password) {
-			radlog_request(L_ERR, 0, request, "No memory");
+			RERROR("No memory");
 		} else {
 			smbdes_lmpwdhash(password->vp_strvalue,
 					 lm_password->vp_octets);
@@ -1395,7 +1395,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 			nt_password->length = 16;
 
 		} else {
-			radlog_request(L_ERR, 0, request, "Invalid NT-Password");
+			RERROR("Invalid NT-Password");
 			nt_password = NULL;
 		}
 	} else if (!password) {
@@ -1404,7 +1404,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 	} else {		/* there is a configured Cleartext-Password */
 		nt_password = pairmake_config("NT-Password", "", T_OP_EQ);
 		if (!nt_password) {
-			radlog_request(L_ERR, 0, request, "No memory");
+			RERROR("No memory");
 			return RLM_MODULE_FAIL;
 		} else {
 			mschap_ntpwdhash(nt_password->vp_octets,
@@ -1560,7 +1560,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	MS-CHAPv1 challenges are 8 octets.
 		 */
 		if (challenge->length < 8) {
-			radlog_request(L_AUTH, 0, request, "MS-CHAP-Challenge has the wrong format.");
+			RAUTH("MS-CHAP-Challenge has the wrong format.");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1568,7 +1568,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	Responses are 50 octets.
 		 */
 		if (response->length < 50) {
-			radlog_request(L_AUTH, 0, request, "MS-CHAP-Response has the wrong format.");
+			RAUTH("MS-CHAP-Response has the wrong format.");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1607,7 +1607,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	MS-CHAPv2 challenges are 16 octets.
 		 */
 		if (challenge->length < 16) {
-			radlog_request(L_AUTH, 0, request, "MS-CHAP-Challenge has the wrong format.");
+			RAUTH("MS-CHAP-Challenge has the wrong format.");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1615,7 +1615,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 *	Responses are 50 octets.
 		 */
 		if (response->length < 50) {
-			radlog_request(L_AUTH, 0, request, "MS-CHAP-Response has the wrong format.");
+			RAUTH("MS-CHAP-Response has the wrong format.");
 			return RLM_MODULE_INVALID;
 		}
 
@@ -1624,7 +1624,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 */
 		username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!username) {
-			radlog_request(L_AUTH, 0, request, "We require a User-Name for MS-CHAPv2");
+			RAUTH("We require a User-Name for MS-CHAPv2");
 			return RLM_MODULE_INVALID;
 		}
 

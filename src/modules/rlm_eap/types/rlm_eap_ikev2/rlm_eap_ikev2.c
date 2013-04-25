@@ -58,7 +58,7 @@ static int set_mppe_keys(eap_handler_t *handler)
 	session = ((struct IKEv2Data*)handler->opaque)->session;
 
 	if (session->eapKeyData==NULL){
-		radlog( L_INFO,IKEv2_LOG_PREFIX "Key session not available!!!");
+		INFO(IKEv2_LOG_PREFIX "Key session not available!!!");
 		return 1;
 	}
 
@@ -224,7 +224,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	    break;
     }
     if(!i2->trusted) {
-	radlog(L_AUTH,IKEv2_LOG_PREFIX "'CA_file' item not set, client cert based authentication will fail");
+	AUTH(IKEv2_LOG_PREFIX "'CA_file' item not set, client cert based authentication will fail");
     } else {
 	if(!file_exists(i2->trusted)) {
 	    ERROR(IKEv2_LOG_PREFIX "Can not open 'CA_file' %s",i2->trusted);
@@ -273,7 +273,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 
 static int ikev2_initiate(void *instance, eap_handler_t *handler)
 {
-    radlog( L_INFO,IKEv2_LOG_PREFIX "Initiate connection!");
+    INFO(IKEv2_LOG_PREFIX "Initiate connection!");
 // This is the way for silent discarding behavior
 //    handler->request->options|=RAD_REQUEST_OPTION_FAKE_REQUEST;
 //    handler->request->options|=RAD_REQUEST_OPTION_DONT_CACHE;
@@ -367,7 +367,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 {
 
 	struct ikev2_ctx *i2=(struct ikev2_ctx*)instance;
-	radlog( L_INFO, IKEv2_LOG_PREFIX "authenticate" );
+	INFO(IKEv2_LOG_PREFIX "authenticate" );
 
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->stage == AUTHENTICATE);
@@ -430,7 +430,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 	{
 		if(ikemsg!=NULL) free (ikemsg);
 		handler->eap_ds->request->code=PW_EAP_FAILURE;
-		radlog(L_INFO,IKEv2_LOG_PREFIX "Discarded packet");
+		INFO(IKEv2_LOG_PREFIX "Discarded packet");
 		return 1;
 	}
 
@@ -455,7 +455,7 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 
 	if( IKEv2ProcessMsg( i2, ikemsg, &sikemsg, &slen, session) != IKEv2_RET_OK )
 	{
-		radlog(L_INFO, IKEv2_LOG_PREFIX "EAP_STATE_DISCARD");
+		INFO(IKEv2_LOG_PREFIX "EAP_STATE_DISCARD");
 		//session->State = EAP_STATE_DISCARD;
 		free(out);
 		return 1;
@@ -473,12 +473,12 @@ static int ikev2_authenticate(void *instance, eap_handler_t *handler)
 
 		if( session->Status == IKEv2_SST_FAILED )
 		{
-			radlog(L_INFO,IKEv2_LOG_PREFIX "FAILED");
+			INFO(IKEv2_LOG_PREFIX "FAILED");
 			olen = CreateResultMessage( false, session, &out );
 		}
 		if( session->Status == IKEv2_SST_ESTABLISHED )
 		{
-			radlog(L_INFO,IKEv2_LOG_PREFIX "SUCCESS");
+			INFO(IKEv2_LOG_PREFIX "SUCCESS");
 			olen = CreateResultMessage( true, session, &out );
 			session->fFastReconnect=i2->enableFastReconnect;
 

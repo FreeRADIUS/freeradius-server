@@ -733,7 +733,7 @@ static int parse_sub_section(CONF_SECTION *parent,
 	
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
-		radlog(L_INFO, "rlm_sql (%s): Couldn't find configuration for "
+		INFO("rlm_sql (%s): Couldn't find configuration for "
 		       "%s, will return NOOP for calls from this section",
 		       inst->config->xlat_name, name);
 		
@@ -902,14 +902,14 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 	}
 
-	radlog(L_INFO, "rlm_sql (%s): Driver %s (module %s) loaded and linked",
+	INFO("rlm_sql (%s): Driver %s (module %s) loaded and linked",
 	       inst->config->xlat_name, inst->config->sql_driver_name,
 	       inst->module->name);
 
 	/*
 	 *	Initialise the connection pool for this instance
 	 */
-	radlog(L_INFO, "rlm_sql (%s): Attempting to connect to database \"%s\"",
+	INFO("rlm_sql (%s): Attempting to connect to database \"%s\"",
 	       inst->config->xlat_name, inst->config->sql_db);
 	
 	if (sql_socket_pool_init(inst) < 0) return -1;

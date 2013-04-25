@@ -410,7 +410,7 @@ int detail_recv(rad_listen_t *listener)
 				rad_assert(data->vps == NULL);
 
 				if (data->one_shot) {
-					radlog(L_INFO, "Finished reading \"one shot\" detail file - Exiting");
+					INFO("Finished reading \"one shot\" detail file - Exiting");
 					radius_signal_self(RADIUS_SIGNAL_SELF_EXIT);
 				}
 
@@ -895,7 +895,7 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		char *p;
 
 #ifndef HAVE_GLOB_H
-		radlog(L_INFO, "WARNING: Detail file \"%s\" appears to use file globbing, but it is not supported on this system.", data->filename);
+		INFO("WARNING: Detail file \"%s\" appears to use file globbing, but it is not supported on this system.", data->filename);
 #endif
 		strlcpy(buffer, data->filename, sizeof(buffer));
 		p = strrchr(buffer, FR_DIR_SEP);

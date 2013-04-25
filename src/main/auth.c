@@ -145,7 +145,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		*extra = '\0';
 	}
 
-	radlog_request(L_AUTH, 0, request, "%s: [%s%s%s] (%s)%s",
+	RAUTH("%s: [%s%s%s] (%s)%s",
 		       msg,
 		       clean_username,
 		       logit ? "/" : "",
@@ -200,7 +200,7 @@ static int rad_check_password(REQUEST *request)
 	 *	one found will actually be used.
 	 */
 	if (( auth_type_count > 1) && (debug_flag)) {
-		radlog_request(L_ERR, 0, request, "Warning:  Found %d auth-types on request for user '%s'",
+		RERROR("Warning:  Found %d auth-types on request for user '%s'",
 			auth_type_count, request->username->vp_strvalue);
 	}
 

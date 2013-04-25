@@ -110,7 +110,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 	sqlite3_stmt *statement;
 	char const *z_tail;
 
-	radlog(L_INFO, "rlm_sql_sqlite: Executing SQL statements from file \"%s\"", filename);
+	INFO("rlm_sql_sqlite: Executing SQL statements from file \"%s\"", filename);
 
 	f = fopen(filename, "r");
 	if (!f) {
@@ -156,7 +156,7 @@ static int sql_loadfile(TALLOC_CTX *ctx, sqlite3 *db, char const *filename)
 			return -1;
 		}
 		
-		radlog(L_DBG, "rlm_sql_sqlite: Ignoring empty SQL file");
+		DEBUG("rlm_sql_sqlite: Ignoring empty SQL file");
 		
 		fclose(f);
 		talloc_free(buffer);
@@ -238,7 +238,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		return -1;
 	}
 	
-	radlog(L_INFO, "rlm_sql_sqlite: SQLite library version: %s", sqlite3_libversion());
+	INFO("rlm_sql_sqlite: SQLite library version: %s", sqlite3_libversion());
 	if (!driver->filename) {
 		MEM(driver->filename = talloc_asprintf(driver, "%s/%s", radius_dir, config->sql_db));
 	}
@@ -258,7 +258,7 @@ static int mod_instantiate(CONF_SECTION *conf, rlm_sql_config_t *config)
 		char *buff;
 		sqlite3 *db = NULL;
 		
-		radlog(L_INFO, "rlm_sql_sqlite: Database doesn't exist, creating it and loading schema");
+		INFO("rlm_sql_sqlite: Database doesn't exist, creating it and loading schema");
 		
 		p = strrchr(driver->filename, '/');
 		if (p) {
@@ -346,7 +346,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_sqlite_conn_t));
 	talloc_set_destructor((void *) conn, sql_socket_destructor);
 
-	radlog(L_INFO, "rlm_sql_sqlite: Opening SQLite database \"%s\"", driver->filename);
+	INFO("rlm_sql_sqlite: Opening SQLite database \"%s\"", driver->filename);
 
 #ifdef HAVE_SQLITE_V2_API	
 	status = sqlite3_open_v2(driver->filename, &(conn->db), SQLITE_OPEN_READWRITE | SQLITE_OPEN_NOMUTEX, NULL);

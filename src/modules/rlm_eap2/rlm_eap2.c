@@ -567,7 +567,7 @@ static int mod_instantiate(CONF_SECTION *cs, void *instance)
 		if (!auth_type)  continue;
 
 		if (num_types >= EAP_MAX_METHODS) {
-			radlog(L_INFO, "WARNING: Ignoring EAP type %s: too many types defined", auth_type);
+			INFO("WARNING: Ignoring EAP type %s: too many types defined", auth_type);
 			continue;
 		}
 

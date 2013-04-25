@@ -239,7 +239,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 *	a directory that the server was using.
 		 */
 		if (rad_mkdir(buffer, inst->dirperm) < 0) {
-			radlog_request(L_ERR, 0, request, "rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
+			RERROR("rlm_detail: Failed to create directory %s: %s", buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
 		
@@ -255,7 +255,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 */
 		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
 				  inst->detailperm)) < 0) {
-			radlog_request(L_ERR, 0, request, "rlm_detail: Couldn't open file %s: %s",
+			RERROR("rlm_detail: Couldn't open file %s: %s",
 			       buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
 		}
@@ -281,7 +281,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 			 *	the lock (race condition)
 			 */
 			if (fstat(outfd, &st) != 0) {
-				radlog_request(L_ERR, 0, request, "rlm_detail: Couldn't stat file %s: %s",
+				RERROR("rlm_detail: Couldn't stat file %s: %s",
 				       buffer, strerror(errno));
 				close(outfd);
 				return RLM_MODULE_FAIL;
@@ -302,7 +302,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 
 	if (inst->locking && !locked) {
 		close(outfd);
-		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to acquire filelock for %s, giving up",
+		RERROR("rlm_detail: Failed to acquire filelock for %s, giving up",
 		       buffer);
 		return RLM_MODULE_FAIL;
 	}
@@ -333,7 +333,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 */
 	fsize = lseek(outfd, 0L, SEEK_END);
 	if (fsize < 0) {
-		radlog_request(L_ERR, 0, request, "rlm_detail: Failed to seek to the end of detail file %s",
+		RERROR("rlm_detail: Failed to seek to the end of detail file %s",
 			buffer);
 		close(outfd);
 		return RLM_MODULE_FAIL;
@@ -348,7 +348,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 *	Open the FP for buffering.
 	 */
 	if ((fp = fdopen(outfd, "a")) == NULL) {
-		radlog_request(L_ERR, 0, request, "rlm_detail: Couldn't open file %s: %s",
+		RERROR("rlm_detail: Couldn't open file %s: %s",
 			       buffer, strerror(errno));
 		close(outfd);
 		return RLM_MODULE_FAIL;

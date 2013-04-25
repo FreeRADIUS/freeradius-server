@@ -246,7 +246,7 @@ typedef enum {
  *	simplifies switching certain messages from the request log to
  *	the main log.
  */
-#define LDAP_INFO(fmt, ...) radlog(L_INFO, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+#define LDAP_INFO(fmt, ...) INFO("rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
  
 #define LDAP_DBGW(fmt, ...) radlog(L_DBG_WARN, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
 #define LDAP_DBGW_REQ(fmt, ...) do { if (request) {RWDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBGW(fmt, ##__VA_ARGS__);}} while (0)

@@ -209,11 +209,11 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 
 			acm_ret = SD_Next(securid_session->sdiHandle, securid_pass);
 			if (acm_ret == ACM_OK) {
-				radlog(L_INFO, "Next SecurID token accepted for [%s].", securid_session->identity);
+				INFO("Next SecurID token accepted for [%s].", securid_session->identity);
 				rc = RC_SECURID_AUTH_SUCCESS;
 
 			} else {
-				radlog(L_INFO, "SecurID: Next token rejected for [%s].", securid_session->identity);
+				INFO("SecurID: Next token rejected for [%s].", securid_session->identity);
 				rc = RC_SECURID_AUTH_FAILURE;
 			}
 
@@ -300,7 +300,7 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 				rc = RC_SECURID_AUTH_SUCCESS;
 
 			} else {
-				radlog(L_INFO, "SecurID: New passcode rejected for [%s].", securid_session->identity);
+				INFO("SecurID: New passcode rejected for [%s].", securid_session->identity);
 				rc = RC_SECURID_AUTH_FAILURE;
 			}
 
@@ -465,12 +465,12 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	a User-Name attribute.
 	 */
 	if (!request->username) {
-		radlog(L_AUTH, "rlm_securid: Attribute \"User-Name\" is required for authentication.");
+		AUTH("rlm_securid: Attribute \"User-Name\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
 	if (!request->password) {
-		radlog_request(L_AUTH, 0, request, "Attribute \"Password\" is required for authentication.");
+		RAUTH("Attribute \"Password\" is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -478,7 +478,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	Clear-text passwords are the only ones we support.
 	 */
 	if (request->password->da->attr != PW_USER_PASSWORD) {
-		radlog_request(L_AUTH, 0, request, "Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->da->name);
+		RAUTH("Attribute \"User-Password\" is required for authentication. Cannot use \"%s\".", request->password->da->name);
 		return RLM_MODULE_INVALID;
 	}
 

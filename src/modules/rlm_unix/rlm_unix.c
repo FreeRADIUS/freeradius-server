@@ -166,7 +166,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	 *	Check if account is locked.
 	 */
 	if (pr_pw->uflg.fg_lock!=1) {
-		radlog(L_AUTH, "rlm_unix: [%s]: account locked", name);
+		AUTH("rlm_unix: [%s]: account locked", name);
 		return RLM_MODULE_USERLOCK;
 	}
 #else /* OSFC2 */
@@ -203,8 +203,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	 *	Users with a particular shell are denied access
 	 */
 	if (strcmp(pwd->pw_shell, DENY_SHELL) == 0) {
-		radlog_request(L_AUTH, 0, request,
-			       "rlm_unix: [%s]: invalid shell", name);
+		RAUTH("rlm_unix: [%s]: invalid shell", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -222,7 +221,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	}
 	endusershell();
 	if (!shell) {
-		radlog_request(L_AUTH, 0, request, "[%s]: invalid shell [%s]",
+		RAUTH("[%s]: invalid shell [%s]",
 		       name, pwd->pw_shell);
 		return RLM_MODULE_REJECT;
 	}
@@ -235,7 +234,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	 */
 	if (spwd && spwd->sp_lstchg > 0 && spwd->sp_max >= 0 &&
 	    (request->timestamp / 86400) > (spwd->sp_lstchg + spwd->sp_max)) {
-		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
+		RAUTH("[%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 	/*
@@ -243,7 +242,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	 */
 	if (spwd && spwd->sp_expire > 0 &&
 	    (request->timestamp / 86400) > spwd->sp_expire) {
-		radlog_request(L_AUTH, 0, request, "[%s]: account has expired", name);
+		RAUTH("[%s]: account has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif
@@ -254,7 +253,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 	 */
 	if ((pwd->pw_expire > 0) &&
 	    (request->timestamp > pwd->pw_expire)) {
-		radlog_request(L_AUTH, 0, request, "[%s]: password has expired", name);
+		RAUTH("[%s]: password has expired", name);
 		return RLM_MODULE_REJECT;
 	}
 #endif

@@ -280,7 +280,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 */
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
-		radlog_request(L_ERR, 0, request, "Malformed EAP Message");
+		RERROR("Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 
@@ -569,7 +569,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 							      request->proxy,
 							      REQUEST_DATA_EAP_TUNNEL_CALLBACK);
 		if (!data) {
-			radlog_request(L_ERR, 0, request, "Failed to retrieve callback for tunneled session!");
+			RERROR("Failed to retrieve callback for tunneled session!");
 			eap_handler_free(inst, handler);
 			return RLM_MODULE_FAIL;
 		}
@@ -725,7 +725,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	
 	eap_packet = eap_vp2packet(request, request->packet->vps);
 	if (!eap_packet) {
-		radlog_request(L_ERR, 0, request, "Malformed EAP Message");
+		RERROR("Malformed EAP Message");
 		return RLM_MODULE_FAIL;
 	}
 

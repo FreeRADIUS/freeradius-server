@@ -518,8 +518,7 @@ redo:
 	       (unsigned int) length);
 
 	if (length > sock->ssn->offset) {
-		radlog(L_INFO,
-		       "Received packet will be too large! Set \"fragment_size=%u\"",
+		INFO("Received packet will be too large! Set \"fragment_size=%u\"",
 		       (data[2] << 8) | data[3]);
 		goto do_close;
 	}

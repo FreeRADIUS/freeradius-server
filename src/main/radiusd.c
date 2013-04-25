@@ -477,7 +477,7 @@ int main(int argc, char *argv[])
 		       fr_strerror());
 		rcode = 2;
 	} else {
-		radlog(L_INFO, "Exiting normally.");
+		INFO("Exiting normally.");
 	}
 
 	exec_trigger(NULL, NULL, "server.stop", false);
@@ -528,7 +528,7 @@ int main(int argc, char *argv[])
 #endif
 
 	if (memory_report) {
-		radlog(L_INFO, "Allocated memory at time of report:");
+		INFO("Allocated memory at time of report:");
 		log_talloc_report(NULL);
 	}
 

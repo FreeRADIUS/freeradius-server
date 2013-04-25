@@ -582,7 +582,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		switch (check_item->op) {
 			case T_OP_EQ:
 			default:
-				radlog(L_INFO, "Invalid operator for item %s: "
+				INFO("Invalid operator for item %s: "
 				       "reverting to '=='", check_item->da->name);
 				/* FALL-THROUGH */
 			case T_OP_CMP_TRUE:

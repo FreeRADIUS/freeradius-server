@@ -727,7 +727,7 @@ static int switch_users(CONF_SECTION *cs)
 	fr_set_dumpable();
 
 	if (allow_core_dumps) {
-		radlog(L_INFO, "Core dumps are enabled.");
+		INFO("Core dumps are enabled.");
 	}
 
 	return 1;
@@ -786,7 +786,7 @@ int read_mainconfig(int reload, bool strict)
 #endif
 	cf_set_strict(strict);
 
-	radlog(L_INFO, "Starting - reading configuration files ...");
+	INFO("Starting - reading configuration files ...");
 
 	/* Initialize the dictionary */
 	if (!mainconfig.dictionary_dir) mainconfig.dictionary_dir = radius_dir;
@@ -1049,7 +1049,7 @@ void hup_mainconfig(void)
 	CONF_SECTION *cs;
 	char buffer[1024];
 
-	radlog(L_INFO, "HUP - Re-reading configuration files");
+	INFO("HUP - Re-reading configuration files");
 
 	/* Read the configuration file */
 	snprintf(buffer, sizeof(buffer), "%.200s/%.50s.conf",
@@ -1085,7 +1085,7 @@ void hup_mainconfig(void)
 	 */
 	hup_logfile();
 
-	radlog(L_INFO, "HUP - loading modules");
+	INFO("HUP - loading modules");
 
 	/*
 	 *	Prefer the new module configuration.

@@ -405,8 +405,8 @@ int rad_get_authtype(char* authtype_name)
 	DEBUG(IKEv2_LOG_PREFIX "Using server auth type: secret");
 	return IKEv2_AUTH_SK;
 	}
-	radlog(L_AUTH,IKEv2_LOG_PREFIX "Unsupported server auth type: %s",authtype_name);
-	radlog(L_AUTH,IKEv2_LOG_PREFIX "Using server auth type: secret (default)");
+	AUTH(IKEv2_LOG_PREFIX "Unsupported server auth type: %s",authtype_name);
+	AUTH(IKEv2_LOG_PREFIX "Using server auth type: secret (default)");
 	return IKEv2_AUTH_SK;
 }
 

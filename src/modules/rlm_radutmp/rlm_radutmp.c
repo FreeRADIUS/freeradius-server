@@ -207,7 +207,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		if (check1 == 0 || check2 == 0) {
 			break;
 		}
-		radlog(L_INFO, "rlm_radutmp: converting reboot records.");
+		INFO("rlm_radutmp: converting reboot records.");
 		if (status == PW_STATUS_STOP)
 			status = PW_STATUS_ACCOUNTING_OFF;
 		if (status == PW_STATUS_START)
@@ -429,7 +429,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		if ((status == PW_STATUS_START) && strncmp(ut.session_id, u.session_id, sizeof(u.session_id)) == 0  &&
 		    u.time >= ut.time) {
 			if (u.type == P_LOGIN) {
-				radlog(L_INFO, "rlm_radutmp: Login entry for NAS %s port %u duplicate",
+				INFO("rlm_radutmp: Login entry for NAS %s port %u duplicate",
 				       nas, u.nas_port);
 				r = -1;
 				break;

@@ -83,7 +83,7 @@ char const *ssl_version()
  */
 void version(void)
 {
-	radlog(L_INFO, "%s: %s", progname, radiusd_version);
+	INFO("%s: %s", progname, radiusd_version);
 	
 	DEBUG3("Server was built with: ");
 		
@@ -152,12 +152,12 @@ void version(void)
 	DEBUG3("  ssl    : %s", ssl_version());
 
 
-	radlog(L_INFO, "Copyright (C) 1999-2013 The FreeRADIUS server project and contributors.");
-	radlog(L_INFO, "There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
-	radlog(L_INFO, "PARTICULAR PURPOSE.");
-	radlog(L_INFO, "You may redistribute copies of FreeRADIUS under the terms of the");
-	radlog(L_INFO, "GNU General Public License.");
-	radlog(L_INFO, "For more information about these matters, see the file named COPYRIGHT.");
+	INFO("Copyright (C) 1999-2013 The FreeRADIUS server project and contributors.");
+	INFO("There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A");
+	INFO("PARTICULAR PURPOSE.");
+	INFO("You may redistribute copies of FreeRADIUS under the terms of the");
+	INFO("GNU General Public License.");
+	INFO("For more information about these matters, see the file named COPYRIGHT.");
 	
 	fflush(NULL);
 }

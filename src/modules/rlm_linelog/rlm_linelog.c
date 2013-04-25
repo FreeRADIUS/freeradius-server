@@ -265,7 +265,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		if (p) {
 			*p = '\0';
 			if (rad_mkdir(buffer, 0700) < 0) {
-				radlog_request(L_ERR, 0, request, "rlm_linelog: Failed to create directory %s: %s", buffer, strerror(errno));
+				RERROR("rlm_linelog: Failed to create directory %s: %s", buffer, strerror(errno));
 				return RLM_MODULE_FAIL;
 			}
 			*p = '/';

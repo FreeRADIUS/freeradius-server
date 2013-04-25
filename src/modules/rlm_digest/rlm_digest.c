@@ -223,14 +223,14 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	passwd = pairfind(request->config_items, PW_DIGEST_HA1, 0, TAG_ANY);
 	if (passwd) {
 		if (passwd->length != 32) {
-			radlog_request(L_AUTH, 0, request, "Digest-HA1 has invalid length, authentication failed.");
+			RAUTH("Digest-HA1 has invalid length, authentication failed.");
 			return RLM_MODULE_INVALID;
 		}
 	} else {
 		passwd = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
 	}
 	if (!passwd) {
-		radlog_request(L_AUTH, 0, request, "Cleartext-Password or Digest-HA1 is required for authentication.");
+		RAUTH("Cleartext-Password or Digest-HA1 is required for authentication.");
 		return RLM_MODULE_INVALID;
 	}
 

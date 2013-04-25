@@ -931,14 +931,13 @@ static int eap_validation(REQUEST *request, eap_packet_raw_t *eap_packet)
 	    (eap_packet->data[0] <= 0) ||
 	    (eap_packet->data[0] >= PW_EAP_MAX_TYPES)) {
 
-		radlog_request(L_AUTH, 0, request,
-			       "Badly formatted EAP Message: Ignoring the packet");
+		RAUTH("Badly formatted EAP Message: Ignoring the packet");
 		return EAP_INVALID;
 	}
 
 	/* we don't expect notification, but we send it */
 	if (eap_packet->data[0] == PW_EAP_NOTIFICATION) {
-		radlog_request(L_AUTH, 0, request, "Got NOTIFICATION, "
+		RAUTH("Got NOTIFICATION, "
 			       "Ignoring the packet");
 		return EAP_INVALID;
 	}

@@ -684,7 +684,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			end = strchr(ptr, '}');
 			if (end == NULL) {
 				*p = '\0';
-				radlog(L_INFO, "%s[%d]: Variable expansion missing }",
+				INFO("%s[%d]: Variable expansion missing }",
 				       cf, *lineno);
 				return NULL;
 			}
@@ -744,7 +744,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			end = strchr(ptr, '}');
 			if (end == NULL) {
 				*p = '\0';
-				radlog(L_INFO, "%s[%d]: Environment variable expansion missing }",
+				INFO("%s[%d]: Environment variable expansion missing }",
 				       cf, *lineno);
 				return NULL;
 			}
@@ -1795,7 +1795,7 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 	time_t		*mtime;
 	CONF_DATA	*cd;
 
-	DEBUG2( "including configuration file %s", filename);
+	DEBUG2("including configuration file %s", filename);
 
 	fp = fopen(filename, "r");
 	if (!fp) {

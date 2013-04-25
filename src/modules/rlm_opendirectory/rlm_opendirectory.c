@@ -382,12 +382,12 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 			/* attempt to resolve the name */
 			groupdata = getgrnam(rad_client->community);
 			if (!groupdata) {
-				radlog(L_AUTH, "rlm_opendirectory: The group \"%s\" does not exist on this system.", rad_client->community);
+				AUTH("rlm_opendirectory: The group \"%s\" does not exist on this system.", rad_client->community);
 				return RLM_MODULE_FAIL;
 			}
 			err = mbr_gid_to_uuid(groupdata->gr_gid, guid_nasgroup);
 			if (err != 0) {
-				radlog(L_AUTH, "rlm_opendirectory: The group \"%s\" does not have a GUID.", rad_client->community);
+				AUTH("rlm_opendirectory: The group \"%s\" does not have a GUID.", rad_client->community);
 				return RLM_MODULE_FAIL;
 			}
 		}

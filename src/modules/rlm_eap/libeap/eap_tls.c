@@ -354,7 +354,7 @@ static fr_tls_status_t eaptls_verify(eap_handler_t *handler)
 			RDEBUG2("Received TLS ACK");
 			return tls_ack_handler(handler->opaque, request);
 		} else {
-			radlog_request(L_ERR, 0, request, "Received Invalid TLS ACK");
+			RERROR("Received Invalid TLS ACK");
 			return FR_TLS_INVALID;
 		}
 	}
@@ -958,7 +958,7 @@ fr_tls_server_conf_t *eaptls_conf_parse(CONF_SECTION *cs, char const *attr)
 		 *	We don't fall back if the 'attr' is specified, but we can't
 		 *	find the section - that is just a config error.
 		 */
-		radlog(L_INFO, "debug: '%s' option missing, trying to use legacy configuration", attr);
+		INFO("debug: '%s' option missing, trying to use legacy configuration", attr);
 		tls_cs = cf_section_sub_find(parent, "tls");
 	}
 

@@ -1186,7 +1186,7 @@ static int load_byserver(CONF_SECTION *cs)
 	}
 
 	if (debug_flag == 0) {
-		radlog(L_INFO, "Loaded virtual server %s",
+		INFO("Loaded virtual server %s",
 		       (name != NULL) ? name : "<default>");
 	}
 
@@ -1311,7 +1311,7 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 		return 0;
 	}
 
-	radlog(L_INFO, " Module: Reloaded module \"%s\"", node->name);
+	INFO(" Module: Reloaded module \"%s\"", node->name);
 
 	module_instance_free_old(cs, node, when);
 
@@ -1418,7 +1418,7 @@ int setup_modules(int reload, CONF_SECTION *config)
 	 */
 	modules = cf_section_sub_find(config, "modules");
 	if (!modules) {
-		radlog(L_INFO, "WARNING: Cannot find a \"modules\" section in the configuration file!");
+		INFO("WARNING: Cannot find a \"modules\" section in the configuration file!");
 	}
 
 	DEBUG2("%s: #### Instantiating modules ####", mainconfig.name);

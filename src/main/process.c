@@ -424,8 +424,7 @@ STATE_MACHINE_DECL(request_done)
 		 */
 		if (request->reply->data) break;
 
-		radlog_request(L_ERR, 0, request,
-			       "Received conflicting packet from "
+		RERROR("Received conflicting packet from "
 			       "client %s port %d - ID: %d due to "
 			       "unfinished request.  Giving up on old request.",
 			       request->client->shortname,
@@ -1310,7 +1309,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		ERROR("Dropping request (%d is too many): from client %s port %d - ID: %d", count,
 		       client->shortname,
 		       packet->src_port, packet->id);
-		radlog(L_INFO, "WARNING: Please check the configuration file.\n"
+		INFO("WARNING: Please check the configuration file.\n"
 		       "\tThe value for 'max_requests' is probably set too low.\n");
 
 		exec_trigger(NULL, NULL, "server.max_requests", true);
@@ -1402,7 +1401,7 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 	 *	Remember the request in the list.
 	 */
 	if (!fr_packet_list_insert(pl, &request->packet)) {
-		radlog_request(L_ERR, 0, request, "Failed to insert request in the list of live requests: discarding it");
+		RERROR("Failed to insert request in the list of live requests: discarding it");
 		request_done(request, FR_ACTION_DONE);
 		return 1;
 	}
@@ -1741,7 +1740,7 @@ static int insert_into_proxy_hash(REQUEST *request)
 	if (!fr_packet_list_insert(proxy_list, &request->proxy)) {
 		fr_packet_list_id_free(proxy_list, request->proxy);
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		radlog_request(L_PROXY, 0, request, "Failed to insert entry into proxy list.");
+		RPROXY("Failed to insert entry into proxy list.");
 		return 0;
 	}
 
@@ -1883,7 +1882,7 @@ int request_proxy_reply(RADIUS_PACKET *packet)
 
 	if (!proxy_p) {
 		PTHREAD_MUTEX_UNLOCK(&proxy_mutex);
-		radlog(L_PROXY, "No outstanding request was found for reply from host %s port %d - ID %d",
+		PROXY( "No outstanding request was found for reply from host %s port %d - ID %d",
 		       inet_ntop(packet->src_ipaddr.af,
 				 &packet->src_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
@@ -2352,7 +2351,7 @@ static int request_proxy(REQUEST *request, int retransmit)
 	 *	We're actually sending a proxied packet.  Do that now.
 	 */
 	if (!request->in_proxy_hash && !insert_into_proxy_hash(request)) {
-		radlog_request(L_PROXY, 0, request, "Failed to insert initial packet into the proxy list.");
+		RPROXY("Failed to insert initial packet into the proxy list.");
 		return -1;
 	}
 
@@ -2426,7 +2425,7 @@ static int request_proxy_anew(REQUEST *request)
 	 *	Don't free the old Id (if any) on error.
 	 */
 	if (!insert_into_proxy_hash(request)) {
-		radlog_request(L_PROXY, 0, request, "Failed to insert retransmission into the proxy list.");
+		RPROXY("Failed to insert retransmission into the proxy list.");
 		goto post_proxy_fail;
 	}
 
@@ -2499,7 +2498,7 @@ STATE_MACHINE_DECL(request_ping)
 		rad_assert(request->in_proxy_hash);
 
 		request->home_server->num_received_pings++;
-		radlog_request(L_PROXY, 0, request, "Received response to status check %d (%d in current sequence)",
+		RPROXY("Received response to status check %d (%d in current sequence)",
 		       request->number, home->num_received_pings);
 
 		/*
@@ -2537,7 +2536,7 @@ STATE_MACHINE_DECL(request_ping)
 		
 		fr_event_delete(el, &home->ev);
 
-		radlog_request(L_PROXY, 0, request, "Marking home server %s port %d alive",
+		RPROXY("Marking home server %s port %d alive",
 		       inet_ntop(request->proxy->dst_ipaddr.af,
 				 &request->proxy->dst_ipaddr.ipaddr,
 				 buffer, sizeof(buffer)),
@@ -2658,7 +2657,7 @@ static void ping_home_server(void *ctx)
 	rad_assert(request->proxy_listener == NULL);
 
 	if (!insert_into_proxy_hash(request)) {
-		radlog_request(L_PROXY, 0, request, "Failed to insert status check %d into proxy list.  Discarding it.",
+		RPROXY("Failed to insert status check %d into proxy list.  Discarding it.",
 		       request->number);
 
 		rad_assert(!request->in_request_hash);
@@ -2745,7 +2744,7 @@ static void mark_home_server_zombie(home_server *home)
 	home->num_sent_pings = 0;
 	home->num_received_pings = 0;
 	
-	radlog(L_PROXY, "Marking home server %s port %d as zombie (it has not responded in %d seconds).",
+	PROXY( "Marking home server %s port %d as zombie (it has not responded in %d seconds).",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       home->port, home->response_window);
@@ -2773,7 +2772,7 @@ void revive_home_server(void *ctx)
 	 */
 	if (home->ev) fr_event_delete(el, &home->ev);
 
-	radlog(L_PROXY, "Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
+	PROXY( "Marking home server %s port %d alive again... we have no idea if it really is alive or not.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       home->port);
@@ -2791,7 +2790,7 @@ void mark_home_server_dead(home_server *home, struct timeval *when)
 	}
 #endif
 
-	radlog(L_PROXY, "Marking home server %s port %d as dead.",
+	PROXY( "Marking home server %s port %d as dead.",
 	       inet_ntop(home->ipaddr.af, &home->ipaddr.ipaddr,
 			 buffer, sizeof(buffer)),
 	       home->port);
@@ -2960,7 +2959,7 @@ STATE_MACHINE_DECL(proxy_wait_for_reply)
 		 *	may have failed over to another home server.
 		 *	But that one may be dead, too.
 		 */
-		radlog_request(L_ERR, 0, request, "Failing request due to lack of any response from home server %s port %d",
+		RERROR("Failing request due to lack of any response from home server %s port %d",
 			       inet_ntop(request->proxy->dst_ipaddr.af,
 					 &request->proxy->dst_ipaddr.ipaddr,
 					 buffer, sizeof(buffer)),
@@ -3491,14 +3490,14 @@ static void event_status(struct timeval *wake)
 
 	if (debug_flag == 0) {
 		if (just_started) {
-			radlog(L_INFO, "Ready to process requests.");
+			INFO("Ready to process requests.");
 			just_started = false;
 		}
 		return;
 	}
 
 	if (!wake) {
-		radlog(L_INFO, "Ready to process requests.");
+		INFO("Ready to process requests.");
 
 	} else if ((wake->tv_sec != 0) ||
 		   (wake->tv_usec >= 100000)) {
@@ -3541,7 +3540,7 @@ int event_new_fd(rad_listen_t *this)
 		if (just_started) {
 			DEBUG("Listening on %s", buffer);
 		} else {
-			radlog(L_INFO, " ... adding new socket %s", buffer);
+			INFO(" ... adding new socket %s", buffer);
 		}
 
 #ifdef WITH_PROXY
@@ -3828,7 +3827,7 @@ finish:
 		listen_socket_t *sock = this->data;
 
 		rad_assert(this->count == 0);
-		radlog(L_INFO, " ... closing socket %s", buffer);
+		INFO(" ... closing socket %s", buffer);
 
 		/*
 		 *	Remove it from the list of live FD's.  Note
@@ -3885,10 +3884,10 @@ static void handle_signal_self(int flag)
 {
 	if ((flag & (RADIUS_SIGNAL_SELF_EXIT | RADIUS_SIGNAL_SELF_TERM)) != 0) {
 		if ((flag & RADIUS_SIGNAL_SELF_EXIT) != 0) {
-			radlog(L_INFO, "Signalled to exit");
+			INFO("Signalled to exit");
 			fr_event_loop_exit(el, 1);
 		} else {
-			radlog(L_INFO, "Signalled to terminate");
+			INFO("Signalled to terminate");
 			exec_trigger(NULL, NULL, "server.signal.term", true);
 			fr_event_loop_exit(el, 2);
 		}
@@ -3905,11 +3904,11 @@ static void handle_signal_self(int flag)
 
 		when = time(NULL);
 		if ((int) (when - last_hup) < 5) {
-			radlog(L_INFO, "Ignoring HUP (less than 5s since last one)");
+			INFO("Ignoring HUP (less than 5s since last one)");
 			return;
 		}
 
-		radlog(L_INFO, "Received HUP signal.");
+		INFO("Received HUP signal.");
 
 		last_hup = when;
 

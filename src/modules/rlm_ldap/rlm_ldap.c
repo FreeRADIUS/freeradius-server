@@ -426,7 +426,7 @@ static int parse_sub_section(ldap_instance_t *inst, CONF_SECTION *parent, ldap_a
 	
 	cs = cf_section_sub_find(parent, name);
 	if (!cs) {
-		radlog(L_INFO, "rlm_ldap (%s): Couldn't find configuration for %s, will return NOOP for calls "
+		INFO("rlm_ldap (%s): Couldn't find configuration for %s, will return NOOP for calls "
 		       "from this section", inst->xlat_name, name);
 		
 		return 0;
