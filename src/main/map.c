@@ -80,7 +80,6 @@ int radius_parse_attr(char const *name, value_pair_tmpl_t *vpt,
 	len = p - name;
 	if (vpt->request == REQUEST_UNKNOWN) {
 		ERROR("Invalid request qualifier \"%.*s\"", (int) len, name);
-
 		return -1;
 	}
 	name += len;
@@ -89,25 +88,25 @@ int radius_parse_attr(char const *name, value_pair_tmpl_t *vpt,
 	if (vpt->list == PAIR_LIST_UNKNOWN) {
 		len = p - name;
 		ERROR("Invalid list qualifier \"%.*s\"", (int) len, name);
-
 		return -1;
 	}
 
 	if (*p == '\0') {
 		vpt->type = VPT_TYPE_LIST;
-
 		return 0;
 	}
 
 	da = dict_attrbyname(p);
 	if (!da) {
 		da = dict_attrunknownbyname(p, false);
-		if (!da) return -1;
+		if (!da) {
+			ERROR("Unknown attribute \"%s\"", p);
+			return -1;
+		}
 	}
 	vpt->da = da;
 
 	vpt->type = VPT_TYPE_ATTR;
-
 	return 0;
 }
 
@@ -317,12 +316,12 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	value = cf_pair_value(cp);
 	if (!value) {
 		cf_log_err(ci, "Missing attribute value");
-
 		goto error;
 	}
 
 	map->dst = radius_attr2tmpl(map, attr, dst_request_def, dst_list_def);
-	if (!map->dst){
+	if (!map->dst) {
+		cf_log_err(ci, "Syntax error in attribute definition");
 		goto error;
 	}
 
@@ -367,7 +366,6 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	if (map->dst->da && map->src->da &&
 	    (map->src->da->type != map->dst->da->type)) {
 		cf_log_err(ci, "Attribute type mismatch");
-
 		goto error;
 	}
 
@@ -377,7 +375,6 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	if ((map->dst->type == VPT_TYPE_ATTR) &&
 	    (map->src->type == VPT_TYPE_LIST)) {
 		cf_log_err(ci, "Can't copy list into an attribute");
-
 		goto error;
 	}
 
@@ -399,9 +396,7 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 		}
 	}
 
-	switch (map->src->type)
-	{
-
+	switch (map->src->type) {
 		/*
 		 *	Only += and -= operators are supported for list copy.
 		 */
