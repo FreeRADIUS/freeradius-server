@@ -26,6 +26,7 @@ RCSID("$Id$")
 
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/md5.h>
+#include <freeradius-devel/sha1.h>
 #include <freeradius-devel/base64.h>
 #include <freeradius-devel/modules.h>
 
@@ -575,6 +576,41 @@ static size_t md5_xlat(UNUSED void *instance, REQUEST *request,
 }
 
 /**
+ * @brief Calculate the SHA1 hash of a string.
+ *
+ * Example: "%{sha1:foo}" == "0beec7b5ea3f0fdbc95d0dd47f3c5bc275da8a33"
+ */
+static size_t sha1_xlat(UNUSED void *instance, REQUEST *request,
+                       char *fmt, char *out, size_t outlen,
+                       UNUSED RADIUS_ESCAPE_STRING func)
+{
+        char buffer[1024];
+        uint8_t digest[16];
+        int i;
+        fr_SHA1_CTX ctx;
+
+        if (!radius_xlat(buffer, sizeof(buffer), fmt, request, func)) {
+                *out = '\0';
+                return 0;
+        }
+
+        fr_SHA1Init(&ctx);
+        fr_SHA1Update(&ctx, (void *) buffer, strlen(buffer));
+        fr_SHA1Final(digest, &ctx);
+
+        if (outlen < 41) {
+                snprintf(out, outlen, "sha1_overflow");
+                return strlen(out);
+        }
+
+        for (i = 0; i < 20; i++) {
+                snprintf(out + i * 2, 3, "%02x", digest[i]);
+        }
+
+        return strlen(out);
+}
+
+/**
  * @brief Encode string as base64
  *
  * Example: "%{tobase64:foo}" == "Zm9v"
@@ -689,6 +725,7 @@ static int expr_instantiate(CONF_SECTION *conf, void **instance)
 	xlat_register("tolower", lc_xlat, inst);
 	xlat_register("toupper", uc_xlat, inst);
 	xlat_register("md5", md5_xlat, inst);
+	xlat_register("sha1", sha1_xlat, inst);
 	xlat_register("tobase64", base64_xlat, inst);
 	xlat_register("base64tohex", base64_to_hex_xlat, inst);
 
