@@ -689,7 +689,6 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 
 	vp = request->config_items;
 	while ((vp = pairfind(vp, inst->group_da->attr, inst->group_da->vendor, TAG_ANY))) {
-		
 		ret = radius_compare_vps(request, check, vp);
 		if (ret == 0) {
 			RDEBUG2("User found. Matched cached membership");
@@ -699,6 +698,7 @@ rlm_rcode_t rlm_ldap_check_cached(ldap_instance_t const *inst, REQUEST *request,
 		if (ret < 0) {
 			return RLM_MODULE_FAIL;
 		}
+		vp = vp->next;
 	}
 	
 	RDEBUG2("Membership not found");
