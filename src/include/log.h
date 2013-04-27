@@ -13,8 +13,8 @@
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
  */
-#ifndef FR_DBG_H
-#define FR_DBG_H
+#ifndef FR_LOG_H
+#define FR_LOG_H
 /*
  * $Id$
  *
@@ -45,11 +45,11 @@ typedef enum log_type {
 } log_type_t;
 
 typedef enum log_debug {
-	L_DBG_LVL_OFF = 0,	//!< No debug messages
-	L_DBG_LVL_1,		//!< Highest priority debug messages (-x)
-	L_DBG_LVL_2,		//!< 2nd highest priority debug messages (-xx | -X)
-	L_DBG_LVL_3,		//!< 3rd highest priority debug messages (-xxx | -Xx)
-	L_DBG_LVL_MAX		//!< Lowest priority debug messages (-xxxx | -Xxx)
+	L_DBG_LVL_OFF = 0,	//!< No debug messages.
+	L_DBG_LVL_1,		//!< Highest priority debug messages (-x).
+	L_DBG_LVL_2,		//!< 2nd highest priority debug messages (-xx | -X).
+	L_DBG_LVL_3,		//!< 3rd highest priority debug messages (-xxx | -Xx).
+	L_DBG_LVL_MAX		//!< Lowest priority debug messages (-xxxx | -Xxx).
 } log_debug_t;
 
 typedef enum log_dst {
@@ -62,11 +62,12 @@ typedef enum log_dst {
 } log_dst_t;
 
 typedef struct fr_log_t {
-	int		colourise;
-	int		fd;
-	log_dst_t	dest;
-	char		*file;
-	char		*debug_file;
+	int		colourise;	//!< Prefix log messages with VT100 escape codes to change text
+					//!< colour.
+	int		fd;		//!< File descriptor to write messages to.
+	log_dst_t	dest;		//!< Log destination.
+	char		*file;		//!< Path to log file.
+	char		*debug_file;	//!< Path to debug log file.
 } fr_log_t;
 
 typedef		void (*radlog_func_t)(log_type_t lvl, log_debug_t priority, REQUEST *, char const *, ...);
@@ -98,9 +99,10 @@ void		radlog_request(log_type_t lvl, log_debug_t priority, REQUEST *request, cha
  *	INFO | WARN | ERROR	- Macros containing these words will be displayed at all log levels.
  *	*DEBUG* 		- Macros with the word DEBUG, will only be displayed if the server or request debug 
  *				  level is above 0.
- *	*[IWE]DEBUG[0-9]?	- Macros with I, W, E after the prefix, will log with the priority specified by the
- *				  integer if the server or request log level at or above that integer. If there
- *				  is no integer the level is 1.
+ *	*[IWE]DEBUG[0-9]?	- Macros with I, W, E as (or just after) the prefix, will log with the priority
+ *				  specified by the integer if the server or request log level at or above that integer.
+ *				  If there is no integer the level is 1. The I|W|E prefix determines the type 
+ *				  (INFO, WARN, ERROR), if there is no I|W|E prefix the DEBUG type will be used.
  */
  
 /*
