@@ -32,6 +32,8 @@ RCSID("$Id$")
 
 #include	<ctype.h>
 
+extern int log_dates_utc; /* log.c */
+
 typedef struct xlat_t {
 	char		module[MAX_STRING_LEN];
 	int		length;
@@ -1315,7 +1317,14 @@ int radius_xlat(char *out, int outlen, const char *fmt,
 				p++;
 				break;
 			case 't': /* request timestamp */
-				CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
+#ifdef HAVE_GMTIME_R
+				if (log_dates_utc) {
+					struct tm utc;
+					gmtime_r(&request->timestamp, &utc);
+					asctime_r(&utc, tmpdt);
+				} else
+#endif
+					CTIME_R(&request->timestamp, tmpdt, sizeof(tmpdt));
 				nl = strchr(tmpdt, '\n');
 				if (nl) *nl = '\0';
 				strlcpy(q, tmpdt, freespace);
