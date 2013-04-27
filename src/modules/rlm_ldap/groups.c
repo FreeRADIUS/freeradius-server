@@ -474,7 +474,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 			return RLM_MODULE_INVALID;
 		}
 
-		snprintf(name_filter, sizeof(name_filter), "(%s=%s)", inst->groupobj_name_attr, name_filter);
+		snprintf(name_filter, sizeof(name_filter), "(%s=%s)", inst->groupobj_name_attr, name);
 		if (rlm_ldap_xlat_filter(request,
 					 filters, sizeof(filters) / sizeof(*filters),
 					 filter, sizeof(filter)) < 0) {
