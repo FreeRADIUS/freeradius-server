@@ -188,7 +188,7 @@ static size_t xlat_packet(void *instance, REQUEST *request,
 		int do_count = FALSE;
 		int do_all = FALSE;
 		int tag = 0;
-		size_t count, total;
+		size_t count = 0, total;
 		char *p;
 		char buffer[256];
 
@@ -814,7 +814,7 @@ int xlat_register(const char *module, RAD_XLAT_FUNC func, void *instance)
 		rad_assert(c != NULL);
 		c->internal = TRUE;
 		
-		xlat_register("base64", xlat_hex, "");
+		xlat_register("base64", xlat_base64, "");
 		c = xlat_find("base64");
 		rad_assert(c != NULL);
 		c->internal = TRUE;
