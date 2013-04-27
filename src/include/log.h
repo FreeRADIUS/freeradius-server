@@ -167,4 +167,4 @@ void		radlog_request(log_type_t lvl, log_debug_t priority, REQUEST *request, cha
 }
 #endif
 
-#endif /* FR_DBG_H */
+#endif /* FR_LOG_H */
