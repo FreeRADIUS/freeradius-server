@@ -237,7 +237,6 @@ $INCLUDE dictionary.usr
 $INCLUDE dictionary.utstarcom
 $INCLUDE dictionary.valemount
 $INCLUDE dictionary.versanet
-$INCLUDE dictionary.vqp
 $INCLUDE dictionary.waverider
 $INCLUDE dictionary.walabi
 $INCLUDE dictionary.wichorus
@@ -251,6 +250,9 @@ $INCLUDE dictionary.zyxel
 
 # 	DHCP dictionary for DHCP functionality and use of dhcp module
 $INCLUDE dictionary.dhcp
+
+# 	VQP dictionary for VMPS functionality and use of vmps module
+$INCLUDE dictionary.vqp
 
 #
 #	And finally the server internal attributes.
