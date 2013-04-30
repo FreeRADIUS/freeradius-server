@@ -2294,3 +2294,24 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 	vp->vp_strvalue[size] = '\0';
 	vp->length = size;
 }
+
+
+/** Print data into an "string" data type.
+ *
+ * @param[in,out] vp to update
+ * @param[in] fmt the format string
+ * @param[in] size of the data
+ */
+void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
+{
+	va_list ap;
+
+	va_start(ap, fmt);
+	vsnprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), fmt, ap);
+	va_end(ap);
+
+	/*
+	 *	vsnprintf returns random things on different platforms
+	 */
+	vp->length = strlen(vp->vp_strvalue);
+}

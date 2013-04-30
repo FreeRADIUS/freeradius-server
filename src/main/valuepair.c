@@ -1272,7 +1272,8 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 		return;
 	}
 
-	len = snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s: ", request->module);
+	pairsprintf(vp, "%s: ", request->module);
+	len = vp->length;
 	
 	vsnprintf(vp->vp_strvalue + len, sizeof(vp->vp_strvalue) - len, fmt, ap);
 	pairadd(&request->packet->vps, vp);

@@ -174,8 +174,9 @@ config.status: configure
 check-includes:
 	scripts/min-includes.pl `find . -name "*.c" -print`
 
+.PHONY: TAGS
 TAGS:
-	etags `find src -type f -name '*.[ch]' -print`
+	etags `find src -type f -name '*.[ch]' -print` > $@
 
 #
 #  Make test certificates.

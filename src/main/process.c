@@ -2252,9 +2252,7 @@ static int request_will_proxy(REQUEST *request)
 	 */
 	vp = radius_paircreate(request, &request->proxy->vps,
 			       PW_PROXY_STATE, 0);
-	snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%d",
-		 request->packet->id);
-	vp->length = strlen(vp->vp_strvalue);
+	pairsprintf(vp, "%d", request->packet->id);
 
 	/*
 	 *	Should be done BEFORE inserting into proxy hash, as
@@ -2634,10 +2632,8 @@ static void ping_home_server(void *ctx)
 	vp = pairmake(request->proxy, &request->proxy->vps,
 		      "NAS-Identifier", "", T_OP_SET);
 	if (vp) {
-		snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue),
-			 "Status Check %u. Are you alive?",
-			 home->num_sent_pings);
-		vp->length = strlen(vp->vp_strvalue);
+		pairsprintf(vp, "Status Check %u. Are you alive?",
+			    home->num_sent_pings);
 	}
 
 	request->proxy->src_ipaddr = home->src_ipaddr;

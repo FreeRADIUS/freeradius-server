@@ -532,31 +532,31 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 							s = "security-updates";
 							switch (hcstatus) {
 								case 0xff0005:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s ok all-installed", s);
+									pairsprintf(vp, "%s ok all-installed", s);
 									break;
 								case 0xff0006:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn some-missing", s);
+									pairsprintf(vp, "%s warn some-missing", s);
 									break;
 								case 0xff0008:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn never-started", s);
+									pairsprintf(vp, "%s warn never-started", s);
 									break;
 								case 0xc0ff000c:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s error no-wsus-srv", s);
+									pairsprintf(vp, "%s error no-wsus-srv", s);
 									break;
 								case 0xc0ff000d:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s error no-wsus-clid", s);
+									pairsprintf(vp, "%s error no-wsus-clid", s);
 									break;
 								case 0xc0ff000e:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn wsus-disabled", s);
+									pairsprintf(vp, "%s warn wsus-disabled", s);
 									break;
 								case 0xc0ff000f:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s error comm-failure", s);
+									pairsprintf(vp, "%s error comm-failure", s);
 									break;
 								case 0xc0ff0010:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn needs-reboot", s);
+									pairsprintf(vp, "%s warn needs-reboot", s);
 									break;
 								default:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s error %08x", s, hcstatus);
+									pairsprintf(vp, "%s error %08x", s, hcstatus);
 									break;
 							}
 							break;
@@ -566,28 +566,28 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 							s = "auto-updates";
 							switch (hcstatus) {
 								case 1:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn disabled", s);
+									pairsprintf(vp, "%s warn disabled", s);
 									break;
 								case 2:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s ok action=check-only", s);
+									pairsprintf(vp, "%s ok action=check-only", s);
 									break;
 								case 3:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s ok action=download", s);
+									pairsprintf(vp, "%s ok action=download", s);
 									break;
 								case 4:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s ok action=install", s);
+									pairsprintf(vp, "%s ok action=install", s);
 									break;
 								case 5:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn unconfigured", s);
+									pairsprintf(vp, "%s warn unconfigured", s);
 									break;
 								case 0xc0ff0003:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn service-down", s);
+									pairsprintf(vp, "%s warn service-down", s);
 									break;
 								case 0xc0ff0018:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s warn never-started", s);
+									pairsprintf(vp, "%s warn never-started", s);
 									break;
 								default:
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s error %08x", s, hcstatus);
+									pairsprintf(vp, "%s error %08x", s, hcstatus);
 									break;
 							}
 							break;
@@ -604,12 +604,12 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 									 */
 									t = clientstatus2str(hcstatus);
 									if (t) {
-										snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s error %s", s, t);
+										pairsprintf(vp, "%s error %s", s, t);
 									} else {
-										snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%s error %08x", s, hcstatus);
+										pairsprintf(vp, "%s error %08x", s, hcstatus);
 									}
 								} else {
-									snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue),
+									pairsprintf(vp,
 											"%s ok snoozed=%i microsoft=%i up2date=%i enabled=%i",
 											s,
 											hcstatus & 0x8 ? 1 : 0,
@@ -619,7 +619,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 											);
 								}
 							} else {
-								snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%i unknown %08x", curr_hc, hcstatus);
+								pairsprintf(vp, "%i unknown %08x", curr_hc, hcstatus);
 							}
 							break;
 					}
@@ -628,7 +628,7 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 					if (!vp) return 0;
 
 					/* FIXME: what to do with the payload? */
-					snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%08x/%i ?", curr_shid, curr_shid_c);
+					pairsprintf(vp, "%08x/%i ?", curr_shid, curr_shid_c);
 				}
 				break;
 
@@ -639,7 +639,6 @@ int soh_verify(REQUEST *request, uint8_t const *data, unsigned int data_len) {
 
 		data += tlv.tlv_len;
 		data_len -= tlv.tlv_len;
-
 	}
 
 	return 0;

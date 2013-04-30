@@ -430,6 +430,11 @@ VALUE_PAIR	*paircopy(TALLOC_CTX *ctx, VALUE_PAIR *vp);
 VALUE_PAIR	*paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairmemcpy(VALUE_PAIR *vp, uint8_t const * src, size_t len);
 void		pairstrcpy(VALUE_PAIR *vp, char const * src);
+void		pairsprintf(VALUE_PAIR *vp, char const * fmt, ...)
+#ifdef __GNUC__
+		__attribute__ ((format (printf, 2, 3)))
+#endif
+;
 void		pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from);
 void		pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from,
 			  unsigned int attr, unsigned int vendor, int8_t tag);
