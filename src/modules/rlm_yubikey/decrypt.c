@@ -76,8 +76,7 @@ rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, VALUE_PAI
 		
 		return RLM_MODULE_FAIL;
 	}
-	memcpy(vp->vp_octets, token.uid, YUBIKEY_UID_SIZE);
-	vp->length = YUBIKEY_UID_SIZE;
+	pairmemcpy(vp, token.uid, YUBIKEY_UID_SIZE);
 	
 	/*
 	 *	Token timestamp

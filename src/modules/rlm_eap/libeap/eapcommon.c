@@ -272,8 +272,7 @@ VALUE_PAIR *eap_packet2vp(RADIUS_PACKET *packet, eap_packet_raw_t const *eap)
 			pairfree(&head);
 			return NULL;
 		}
-		memcpy(vp->vp_octets, ptr, size);
-		vp->length = size;
+		pairmemcpy(vp, ptr, size);
 
 		*tail = vp;
 		tail = &(vp->next);
@@ -391,6 +390,5 @@ void eap_add_reply(REQUEST *request,
 		return;
 	}
 
-	memcpy(vp->vp_octets, value, len);
-	vp->length = len;
+	pairmemcpy(vp, value, len);
 }

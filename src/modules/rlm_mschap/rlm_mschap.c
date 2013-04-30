@@ -623,8 +623,7 @@ static void mppe_add_reply(REQUEST *request,
 	       return;
        }
 
-       memcpy(vp->vp_octets, value, len);
-       vp->length = len;
+       pairmemcpy(vp, value, len);
 }
 
 static int write_all(int fd, char const *buf, int len) {
@@ -978,7 +977,7 @@ ntlm_auth_err:
 		 * this lets us fall through to the authentication
 		 * code using the new hash, not the old one
 		 */
-		memcpy(nt_password->vp_octets, new_hash->vp_octets, new_hash->length);
+		pairmemcpy(nt_password, new_hash->vp_octets, new_hash->length);
 
 		/*
 		 * rock on! password change succeeded

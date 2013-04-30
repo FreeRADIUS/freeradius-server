@@ -296,22 +296,16 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 	head = vp;
 	tail = &(vp->next);
 	while (total < data_len) {
-		int vp_len;
-
-
 		vp = paircreate(packet, PW_EAP_MESSAGE, 0);
 		if (!vp) {
 			RDEBUG2("Failure in creating VP");
 			pairfree(&head);
 			return NULL;
 		}
-		vp_len = (data_len - total);
-		if (vp_len > 253) vp_len = 253;
 
-		memcpy(vp->vp_octets, data + total, vp_len);
-		vp->length = vp_len;
+		pairmemcpy(vp, data + total, (data_len - total));
 		
-		total += vp_len;
+		total += vp->length;
 		*tail = vp;
 		tail = &(vp->next);
 	}

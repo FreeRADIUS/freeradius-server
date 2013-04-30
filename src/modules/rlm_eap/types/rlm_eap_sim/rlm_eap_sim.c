@@ -82,8 +82,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	words[2] = 0;
 
 	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_VERSION_LIST, 0);
-       	memcpy(newvp->vp_octets, words, sizeof(words));
-	newvp->length = sizeof(words);
+	pairmemcpy(newvp, (uint8_t const *) words, sizeof(words));
 
 	pairadd(vps, newvp);
 
@@ -250,13 +249,11 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	 */
 
 	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_MAC, 0);
-	memcpy(newvp->vp_strvalue, ess->keys.nonce_mt, 16);
-	newvp->length = 16;
+	pairmemcpy(newvp, ess->keys.nonce_mt, 16);
 	pairreplace(outvps, newvp);
 
 	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_KEY, 0);
-	memcpy(newvp->vp_strvalue, ess->keys.K_aut, 16);
-	newvp->length = 16;
+	pairmemcpy(newvp, ess->keys.K_aut, 16);
 	pairreplace(outvps, newvp);
 
 	/* the SUBTYPE, set to challenge. */

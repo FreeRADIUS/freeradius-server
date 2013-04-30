@@ -383,8 +383,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 		}		
 	}
 
-	memcpy(state->vp_octets, handler->state, sizeof(handler->state));
-	state->length = EAP_STATE_LEN;
+	pairmemcpy(state, handler->state, sizeof(handler->state));
 
 	/*
 	 *	Add some more data to distinguish the sessions.

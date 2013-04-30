@@ -279,9 +279,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				da = dict_attrunknown(attr, vendor, true);
 				if (!da) return NULL;
 				vp = pairalloc(NULL, da);
-				if (size >= 253) size = 253;
-				vp->length = size;
-				memcpy(vp->vp_octets, data, vp->length);
+				pairmemcpy(vp, data, size);
 				break;
 			}
 			memcpy(&vp->vp_integer, data, vp->length);
@@ -355,11 +353,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				 *	vp exists the first time around.
 				 */
 				while (1) {
-					vp->length = size;
-					if (vp->length > 253) vp->length = 253;
-					memcpy(vp->vp_octets, eap_message,
-					       vp->length);
-
+					pairmemcpy(vp, eap_message, size);
 					size -= vp->length;
 					eap_message += vp->length;
 
@@ -381,9 +375,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			/* FALL-THROUGH */
 
 		default:
-			if (size >= 253) size = 253;
-			vp->length = size;
-			memcpy(vp->vp_strvalue, data, vp->length);
+			pairmemcpy(vp, data, size);
 			break;
 		}
 

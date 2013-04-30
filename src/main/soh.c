@@ -263,8 +263,7 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 				vp = pairmake_packet("SoH-MS-Correlation-Id", NULL, T_OP_EQ);
 				if (!vp) return 0;
 
-				memcpy(vp->vp_octets, p, 24);
-				vp->length = 24;
+				pairmemcpy(vp, p, 24);
 				p += 24;
 				data_len -= 24;
 				break;

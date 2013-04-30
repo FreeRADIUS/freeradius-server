@@ -511,10 +511,13 @@ int vqp_decode(RADIUS_PACKET *packet)
 
 		default:
 		case PW_TYPE_OCTETS:
+			pairmemcpy(vp, ptr, length);
+			break;
+
 		case PW_TYPE_STRING:
 			vp->length = (length > MAX_VMPS_LEN) ? MAX_VMPS_LEN : length;
-			memcpy(vp->vp_octets, ptr, vp->length);
-			vp->vp_octets[vp->length] = '\0';
+			memcpy(vp->vp_strvalue, ptr, vp->length);
+			vp->vp_strvalue[vp->length] = '\0';
 			break;
 		}
 		ptr += length;

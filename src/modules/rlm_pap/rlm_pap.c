@@ -122,8 +122,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 				     vp->length >> 1);
 		if (decoded == (vp->length >> 1)) {
 			RDEBUG2("Normalizing %s from hex encoding", vp->da->name);
-			memcpy(vp->vp_octets, buffer, decoded);
-			vp->length = decoded;
+			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
 	}
@@ -139,8 +138,7 @@ static void normify(REQUEST *request, VALUE_PAIR *vp, size_t min_length)
 		if (decoded < 0) return;
 		if (decoded >= (ssize_t) min_length) {
 			RDEBUG2("Normalizing %s from base64 encoding", vp->da->name);
-			memcpy(vp->vp_octets, buffer, decoded);
-			vp->length = decoded;
+			pairmemcpy(vp, buffer, decoded);
 			return;
 		}
 	}
@@ -212,8 +210,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 							   sizeof(binbuf));
 				if ((decoded > 0) && (binbuf[0] == '{') &&
 				     memchr(binbuf, '}', decoded)) {
-					memcpy(vp->vp_octets, binbuf, decoded);
-					vp->length = decoded;
+					pairmemcpy(vp, binbuf, decoded);
 					goto redo;
 				}
 

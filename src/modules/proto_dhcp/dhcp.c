@@ -564,7 +564,7 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		
 	case PW_TYPE_OCTETS:
 		if (alen > 253) return -1;
-		memcpy(vp->vp_octets, p, alen);
+		pairmemcpy(vp, p, alen);
 		break;
 
 	case PW_TYPE_TLV:
@@ -669,7 +669,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 			if ((da->vendor == DHCP_MAGIC_VENDOR) &&
 			    (da->attr == 61) && !da->flags.array &&
 			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
-				memcpy(vp->vp_octets, p + 1, 6);
+				pairmemcpy(vp, p + 1, 6);
 				vp->length = alen;
 
 			} else if (fr_dhcp_attr2vp(packet, vp, p, alen) < 0) {
@@ -768,8 +768,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case PW_TYPE_OCTETS:
-			memcpy(vp->vp_octets, p, packet->data[2]);
-			vp->length = packet->data[2];
+			pairmemcpy(vp, p, packet->data[2]);
 			break;
 
 		case PW_TYPE_ETHERNET:
@@ -1322,8 +1321,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 				break;
 
 			case PW_TYPE_OCTETS: /* only for Client HW Address */
-				memcpy(vp->vp_octets, p, packet->data[2]);
-				vp->length = packet->data[2];
+				pairmemcpy(vp, p, packet->data[2]);
 				break;
 
 			case PW_TYPE_ETHERNET: /* only for Client HW Address */

@@ -649,8 +649,7 @@ static int eap_req2vp(EAP_HANDLER *handler)
 			pairfree(&head);
 			return -1;
 		}
-		memcpy(vp->vp_octets, ptr, size);
-		vp->length = size;
+		pairmemcpy(vp, ptr, size);
 
 		*tail = vp;
 		tail = &(vp->next);
@@ -698,18 +697,16 @@ static int eap_example_server_step(EAP_HANDLER *handler)
 
 			vp = pairmake_reply("MS-MPPE-Recv-Key", "", T_OP_EQ);
 			if (vp) {
-				memcpy(vp->vp_octets,
-				       handler->server_ctx.eap_if->eapKeyData,
-				       length);
-				vp->length = length;
+				pairmemcpy(vp,
+					   handler->server_ctx.eap_if->eapKeyData,
+					   length);
 			}
 			
 			vp = pairmake_reply("MS-MPPE-Send-Key", "", T_OP_EQ);
 			if (vp) {
-				memcpy(vp->vp_octets,
-				       handler->server_ctx.eap_if->eapKeyData + length,
-				       length);
-				vp->length = length;
+				pairmemcpy(vp,
+					   handler->server_ctx.eap_if->eapKeyData + length,
+					   length);
 			}
 		}
 	}

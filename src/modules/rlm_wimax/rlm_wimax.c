@@ -139,8 +139,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 		vp = pairmake_reply("WiMAX-MSK", "0x00", T_OP_EQ);
 		if (vp) {
-			memcpy(vp->vp_octets, msk->vp_octets, msk->length);
-			vp->length = msk->length;
+			pairmemcpy(vp, msk->vp_octets, msk->length);
 		}
 	}
 
@@ -259,8 +258,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-Key");
 			break;
 		}
-		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
-		vp->length = rk1_len;
+		pairmemcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-PMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
@@ -310,8 +308,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP4-Key");
 			break;
 		}
-		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
-		vp->length = rk1_len;
+		pairmemcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP4-SPI into WiMAX-MN-hHA-MIP4-SPI
@@ -361,8 +358,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 			RWDEBUG("Failed creating WiMAX-MN-hHA-MIP6-Key");
 			break;
 		}
-		memcpy(vp->vp_octets, &mip_rk_1[0], rk1_len);
-		vp->length = rk1_len;
+		pairmemcpy(vp, &mip_rk_1[0], rk1_len);
 
 		/*
 		 *	Put MN-HA-CMIP6-SPI into WiMAX-MN-hHA-MIP6-SPI
@@ -396,8 +392,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 
 		HMAC_Final(&hmac, &mip_rk_1[0], &rk1_len);
 
-		memcpy(fa_rk->vp_octets, &mip_rk_1[0], rk1_len);
-		fa_rk->length = rk1_len;
+		pairmemcpy(fa_rk, &mip_rk_1[0], rk1_len);
 	}
 
 	/*

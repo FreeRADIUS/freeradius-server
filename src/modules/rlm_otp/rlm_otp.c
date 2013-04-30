@@ -232,9 +232,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 
-		memcpy(vp->vp_octets, gen_state, len);	
-		vp->length = len;
-		
+		pairmemcpy(vp, (uint8_t const *) gen_state, len);
 		pairadd(&request->reply->vps, vp);
 	}
 

@@ -2261,3 +2261,17 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 
 	return 0;
 }
+
+/** Copy data into an "octets" data type.
+ *
+ * @param[in,out] vp to update
+ * @param[in] src data to copy
+ * @param[in] size of the data
+ */
+void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
+{
+	if (size > sizeof(vp->vp_octets)) size = sizeof(vp->vp_octets);
+
+	memcpy(vp->vp_octets, src, size);
+	vp->length = size;
+}
