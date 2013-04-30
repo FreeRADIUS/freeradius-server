@@ -619,9 +619,7 @@ static int send_one_packet(radclient_t *radclient)
 			VALUE_PAIR *vp;
 
 			if ((vp = pairfind(radclient->request->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-				strlcpy(vp->vp_strvalue, radclient->password,
-					sizeof(vp->vp_strvalue));
-				vp->length = strlen(vp->vp_strvalue);
+				pairstrcpy(vp, radclient->password);
 
 			} else if ((vp = pairfind(radclient->request->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
 				int already_hex = 0;
@@ -646,9 +644,7 @@ static int send_one_packet(radclient_t *radclient)
 				 *	Allow the user to specify ASCII or hex CHAP-Password
 				 */
 				if (!already_hex) {
-					strlcpy(vp->vp_strvalue, radclient->password,
-						sizeof(vp->vp_strvalue));
-					vp->length = strlen(vp->vp_strvalue);
+					pairstrcpy(vp, radclient->password);
 					
 					rad_chap_encode(radclient->request,
 							vp->vp_octets,

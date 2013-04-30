@@ -162,8 +162,7 @@ static int presufcmp(UNUSED void *instance,
 		req->username = vp;
 	}
 
-	strlcpy((char *)vp->vp_strvalue, rest, sizeof(vp->vp_strvalue));
-	vp->length = strlen(vp->vp_strvalue);
+	pairstrcpy(vp, rest);
 
 	return ret;
 }

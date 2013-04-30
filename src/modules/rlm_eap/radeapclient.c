@@ -903,16 +903,13 @@ static int sendrecv_eap(RADIUS_PACKET *rep)
 
 	if (*password != '\0') {
 		if ((vp = pairfind(rep->vps, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) != NULL) {
-			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
-			vp->length = strlen(password);
+			pairstrcpy(vp, password);
 
 		} else if ((vp = pairfind(rep->vps, PW_USER_PASSWORD, 0, TAG_ANY)) != NULL) {
-			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
-			vp->length = strlen(password);
+			pairstrcpy(vp, password);
 
 		} else if ((vp = pairfind(rep->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) != NULL) {
-			strlcpy((char *)vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
-			vp->length = strlen(password);
+			pairstrcpy(vp, password);
 
 			rad_chap_encode(rep, vp->vp_octets, rep->id, vp);
 			vp->length = 17;

@@ -292,8 +292,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 		if ((ptr = strchr(namepair->vp_strvalue, '\\')) != NULL) {
 			strlcpy(newname, ptr + 1, sizeof(newname));
 			/* Same size */
-			strcpy(namepair->vp_strvalue, newname);
-			namepair->length = strlen(newname);
+			pairstrcpy(namepair, newname);
 		}
 	}
 
@@ -479,8 +478,7 @@ static int huntgroup_access(REQUEST *request, PAIR_LIST *huntgroups)
 			vp = pairfind(request_pairs, PW_HUNTGROUP_NAME, 0, TAG_ANY);
 			if (!vp) {
 				vp = radius_paircreate(request, &request->packet->vps, PW_HUNTGROUP_NAME, 0);
-				strlcpy(vp->vp_strvalue, i->name, sizeof(vp->vp_strvalue));
-				vp->length = strlen(vp->vp_strvalue);
+				pairstrcpy(vp, i->name);
 			}
 			r = RLM_MODULE_OK;
 		}

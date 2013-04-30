@@ -834,7 +834,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		 *	Add Cleartext-Password attribute to the request
 		 */
 		vp = radius_paircreate(request, &request->config_items, PW_CLEARTEXT_PASSWORD, 0);
-		strlcpy(vp->vp_strvalue, password, sizeof(vp->vp_strvalue));
+		pairstrcpy(vp, password);
 		vp->length = pass_size;
 		
 		RDEBUG2("Added eDirectory password in check items as %s = %s", vp->da->name, vp->vp_strvalue);

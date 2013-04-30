@@ -443,11 +443,8 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		 */
 		vp = pairfind(request->reply->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
-			vp = pairmake_reply("User-Name", "",
-				      T_OP_EQ);
-			strlcpy(vp->vp_strvalue, request->username->vp_strvalue,
-				sizeof(vp->vp_strvalue));
-			vp->length = request->username->length;
+			vp = paircopyvp(request->reply, request->username);
+			pairadd(&request->reply->vps, vp);
 		}
 
 		/*

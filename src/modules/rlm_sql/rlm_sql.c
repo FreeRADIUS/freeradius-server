@@ -464,11 +464,10 @@ int sql_set_user(rlm_sql_t *inst, REQUEST *request, char const *username)
 	vp = pairalloc(request->packet, inst->sql_user);
 	vp->op = T_OP_SET;
 	
-	strlcpy(vp->vp_strvalue, expanded, sizeof(vp->vp_strvalue));
-	talloc_free(expanded);
-	
-	vp->length = strlen(vp->vp_strvalue);
+	pairstrcpy(vp, expanded); /* FIXME: pairsteal */
 	pairadd(&request->packet->vps, vp);
+
+	talloc_free(expanded);
 
 	RDEBUG2("SQL-User-Name updated");
 

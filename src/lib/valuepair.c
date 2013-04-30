@@ -997,12 +997,13 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 	VERIFY(vp);
 
 	/*
-	 *	Even for integers, dates and ip addresses we
-	 *	keep the original string in vp->vp_strvalue.
+	 *      Even for integers, dates and ip addresses we
+	 *      keep the original string in vp->vp_strvalue.
+	 *
+	 *	@todo: too many things depend on this!
 	 */
 	if (vp->da->type != PW_TYPE_TLV) {
-		strlcpy(vp->vp_strvalue, value, sizeof(vp->vp_strvalue));
-		vp->length = strlen(vp->vp_strvalue);
+		pairstrcpy(vp, value);
 	}
 
 	switch(vp->da->type) {
@@ -2273,5 +2274,23 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 	if (size > sizeof(vp->vp_octets)) size = sizeof(vp->vp_octets);
 
 	memcpy(vp->vp_octets, src, size);
+	vp->length = size;
+}
+
+
+/** Copy data into an "string" data type.
+ *
+ * @param[in,out] vp to update
+ * @param[in] src data to copy
+ * @param[in] size of the data
+ */
+void pairstrcpy(VALUE_PAIR *vp, char const *src)
+{
+	size_t size = strlen(src);
+
+	if (size >= sizeof(vp->vp_strvalue)) size = sizeof(vp->vp_strvalue) - 1;
+
+	memcpy(vp->vp_strvalue, src, size);
+	vp->vp_strvalue[size] = '\0';
 	vp->length = size;
 }

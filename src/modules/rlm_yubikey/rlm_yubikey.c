@@ -252,6 +252,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	 *	needs to verify it's associated with the user.
 	 *
 	 *	It's left up to the user if they want to decode it or not.
+	 *
+	 *	@todo: is this even right?  Is there anything in passcode other than
+	 *	the public ID?  Why pairmake(...NULL) instead of pairmake(..., passcode) ?
 	 */
 	if (inst->id_len) {
 		vp = pairmake(request, &request->packet->vps, "Yubikey-Public-ID", NULL, T_OP_SET);
@@ -261,9 +264,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		
-		strlcpy(vp->vp_strvalue, passcode, inst->id_len + 1);
-		
-		vp->length = inst->id_len;
+		pairstrcpy(vp, passcode);
 	}
 
 	return RLM_MODULE_OK;

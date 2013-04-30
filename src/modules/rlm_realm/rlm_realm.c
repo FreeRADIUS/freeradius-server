@@ -189,8 +189,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 			RDEBUG2("Setting Stripped-User-Name = \"%s\"", username);
 		}
 
-		strlcpy(vp->vp_strvalue, username, sizeof(vp->vp_strvalue));
-		vp->length = strlen((char *)vp->vp_strvalue);
+		pairstrcpy(vp, username);
 		request->username = vp;
 	}
 
