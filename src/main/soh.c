@@ -585,6 +585,7 @@ int soh_verify(REQUEST *request, VALUE_PAIR *sohvp, const uint8_t *data, unsigne
 					/* FIXME: what to do with the payload? */
 					snprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), "%08x/%i ?", curr_shid, curr_shid_c);
 				}
+				vp->length = strlen(vp->vp_strvalue);
 				pairadd(&sohvp, vp);
 				break;
 
