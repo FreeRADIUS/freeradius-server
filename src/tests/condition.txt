@@ -79,7 +79,7 @@ condition !(!a)
 data a
 
 #
-#  Hmm... these next two should really be identical.
+#  These next two are identical after normalization
 #
 condition (a == b || c == d)
 data a == b || c == d
@@ -90,9 +90,12 @@ data a == b || c == d
 condition (!(a == b) || (c == d))
 data !a == b || c == d
 
-# different from above!
+#  different from the previous ones.
 condition (!((a == b) || (c == d)))
 data !(a == b || c == d)
+
+condition (!(a == b) || (c == d))
+data !a == b || c == d
 
 condition ((a == b) || (c == d)))
 data ERROR offset 22 Unexpected closing brace
@@ -142,7 +145,7 @@ condition !foo !~ /bar/
 data foo =~ /bar/
 
 #
-#  Convert !~ to !(COND) for normal checks
+#  Convert != to !(COND) for normal checks
 #
 condition foo == "bar"
 data foo == "bar"
@@ -152,4 +155,3 @@ data !foo == "bar"
 
 condition !foo != "bar"
 data foo == "bar"
-
