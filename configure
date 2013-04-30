@@ -728,6 +728,7 @@ enable_option_checking
 enable_developer
 enable_largefile
 enable_strict_dependencies
+enable_werror
 with_docdir
 with_logdir
 with_radacctdir
@@ -1377,6 +1378,7 @@ Optional Features:
   --enable-developer      enables features of interest to developers.
   --disable-largefile     omit support for large files
   --enable-strict-dependencies  Fail configure on lack of module dependancy.
+  --enable-werror         causes the build to fail if any warnings are generated.
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -4838,6 +4840,19 @@ if test "${enable_strict_dependencies+set}" = set; then :
 fi
 
 
+# Check whether --enable-werror was given.
+if test "${enable_werror+set}" = set; then :
+  enableval=$enable_werror;  case "$enableval" in
+    no)
+	werror=no
+	;;
+    *)
+	werror=yes
+  esac
+
+fi
+
+
 docdir='${datadir}/doc/freeradius'
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking docdir" >&5
 $as_echo_n "checking docdir... " >&6; }
@@ -7576,7 +7591,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for talloc.h in $try" >&5
 $as_echo_n "checking for talloc.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -7591,7 +7606,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -7671,7 +7686,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for talloc.h in $try" >&5
 $as_echo_n "checking for talloc.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -7686,7 +7701,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -8146,6 +8161,11 @@ done
 subdirs="$subdirs $mysubdirs"
 
 
+
+
+if test "x$werror" == "xyes"; then
+  CFLAGS="-Werror $CFLAGS"
+fi
 
 
 ac_config_commands="$ac_config_commands stamp-h"
