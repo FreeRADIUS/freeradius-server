@@ -48,11 +48,6 @@ RCSID("$Id$")
 #endif
 
 /*
- *	Syslog facilities from main/mainconfig.c
- */
-extern const FR_NAME_NUMBER syslog_str2fac[];
-
-/*
  *	Define a structure for our module configuration.
  */
 typedef struct rlm_linelog_t {
