@@ -856,7 +856,7 @@ static VALUE_PAIR *rad_vp2tlv(VALUE_PAIR *vps)
 		    vp->flags.encoded ||
 		    (vp->flags.encrypt != FLAG_ENCRYPT_NONE) ||
 		    ((vp->attribute & 0xffff00ff) != attribute) ||
-		    ((vp->attribute & 0x0000ff00) <= maxattr)) {
+		    ((vp->attribute & 0x0000ff00) < maxattr)) {
 			break;
 		}
 
