@@ -27,6 +27,8 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+int		timestr_match(char const *, time_t);
+
 static char const *days[] =
 	{ "su", "mo", "tu", "we", "th", "fr", "sa", "wk", "any", "al" };
 
@@ -172,7 +174,7 @@ static int day_fill(char *bitmap, char const *tm)
 /*
  *	Fill the week bitmap with allowed times.
  */
-static int week_fill(char *bitmap, char *tm)
+static int week_fill(char *bitmap, char const *tm)
 {
 	char *s;
 	char tmp[128];
@@ -195,7 +197,7 @@ static int week_fill(char *bitmap, char *tm)
  *	Match a timestring and return seconds left.
  *	-1 for no match, 0 for unlimited.
  */
-int timestr_match(char *tmstr, time_t t)
+int timestr_match(char const *tmstr, time_t t)
 {
 	struct tm *tm, s_tm;
 	char bitmap[WEEKMIN / 8];

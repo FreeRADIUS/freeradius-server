@@ -163,6 +163,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 			   char const *password)
 {
 	unsigned int i;
+	uint8_t *p;
 	VALUE_PAIR *challenge, *response;
 	uint8_t nthash[16];
 
@@ -174,8 +175,9 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	pairadd(request, challenge);
 	challenge->length = 8;
+	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->length);
 	for (i = 0; i < challenge->length; i++) {
-		challenge->vp_octets[i] = fr_rand();
+		p[i] = fr_rand();
 	}
 
 	response = paircreate(packet, PW_MSCHAP_RESPONSE, VENDORPEC_MICROSOFT);
@@ -186,14 +188,15 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 
 	pairadd(request, response);
 	response->length = 50;
-	memset(response->vp_octets, 0, response->length);
+	response->vp_octets = p = talloc_array(response, uint8_t, response->length);
+	memset(p, 0, response->length);
 
-	response->vp_octets[1] = 0x01; /* NT hash */
+	p[1] = 0x01; /* NT hash */
 
 	mschap_ntpwdhash(nthash, password);
 
 	smbdes_mschap(nthash, challenge->vp_octets,
-		      response->vp_octets + 26);
+		      p + 26);
 	return 1;
 }
 
@@ -343,14 +346,16 @@ static int radclient_init(char const *filename)
 				/* overlapping! */
 				{
 					const DICT_ATTR *da;
-					
-					memmove(&vp->vp_octets[2],
-						&vp->vp_octets[0],
-						vp->length);
+					uint8_t *p;
 
-					vp->vp_octets[0] = vp->da->attr - PW_DIGEST_REALM + 1;
+					p = talloc_array(vp, uint8_t, vp->length + 2);
+
+					memcpy(p + 2, vp->vp_octets, vp->length);
+					p[0] = vp->da->attr - PW_DIGEST_REALM + 1;
 					vp->length += 2;
-					vp->vp_octets[1] = vp->length;
+					p[1] = vp->length;
+//					talloc_free(vp->vp_octets);
+					vp->vp_octets = p;
 					
 					da = dict_attrbyvalue(PW_DIGEST_ATTRIBUTES, 0);
 					if (!da) {
@@ -644,11 +649,20 @@ static int send_one_packet(radclient_t *radclient)
 				 *	Allow the user to specify ASCII or hex CHAP-Password
 				 */
 				if (!already_hex) {
-					pairstrcpy(vp, radclient->password);
-					
+					uint8_t *p;
+					size_t len, len2;
+
+					len = len2 = strlen(radclient->password);
+					if (len2 < 17) len2 = 17;
+
+					p = talloc_zero_array(vp, uint8_t, len2);
+
+					memcpy(p, radclient->password, len);
+
 					rad_chap_encode(radclient->request,
-							vp->vp_octets,
+							p,
 							fr_rand() & 0xff, vp);
+					vp->vp_octets = p;
 					vp->length = 17;
 				}
 			} else if (pairfind(radclient->request->vps, PW_MSCHAP_PASSWORD, 0, TAG_ANY) != NULL) {

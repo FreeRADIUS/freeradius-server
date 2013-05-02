@@ -3156,6 +3156,7 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 	DICT_VENDOR *dv;
 	VALUE_PAIR *vp;
 	const uint8_t *data = start;
+	char *p;
 	uint8_t buffer[256];
 
 	if (!da || (attrlen > 253) || (attrlen > packetlen) ||
@@ -3467,13 +3468,15 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 
 	switch (da->type) {
 	case PW_TYPE_STRING:
-		memcpy(vp->vp_strvalue, data, vp->length);
-		vp->vp_strvalue[vp->length] = '\0';
+		p = talloc_array(vp, char, vp->length + 1);
+		memcpy(p, data, vp->length);
+		p[vp->length] = '\0';
+		vp->vp_strvalue = p;
 		break;
 
 	case PW_TYPE_OCTETS:
 	case PW_TYPE_ABINARY:
-		memcpy(vp->vp_octets, data, vp->length);
+		vp->vp_octets = talloc_memdup(vp, data, vp->length);
 		break;
 
 	case PW_TYPE_BYTE:
@@ -3543,7 +3546,7 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 			mask = ~mask;
 			mask = htonl(mask);
 			addr &= mask;
-			memcpy(vp->vp_octets + 2, &addr, sizeof(addr));
+			memcpy(vp->vp_ipv4prefix + 2, &addr, sizeof(addr));
 		}
 		break;
 

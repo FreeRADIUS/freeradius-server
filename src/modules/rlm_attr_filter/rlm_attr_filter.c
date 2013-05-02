@@ -152,7 +152,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 	PAIR_LIST	*pl;
 	int		found = 0;
 	int		pass, fail = 0;
-	char		*keyname = NULL;
+	char const	*keyname = NULL;
 	VALUE_PAIR	**input;
 	char		buffer[256];
 

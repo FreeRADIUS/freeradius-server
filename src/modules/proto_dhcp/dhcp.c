@@ -522,6 +522,8 @@ make_tlv:
  */
 static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const *p, size_t alen)
 {
+	char *q;
+
 	switch (vp->da->type) {
 	case PW_TYPE_BYTE:
 		if (alen != 1) goto raw;
@@ -550,9 +552,9 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 		break;
 
 	case PW_TYPE_STRING:
-		if (alen > 253) return -1;
-		memcpy(vp->vp_strvalue, p , alen);
-		vp->vp_strvalue[alen] = '\0';
+		vp->vp_strvalue = q = talloc_array(vp, char, alen + 1);
+		memcpy(q, p , alen);
+		q[alen] = '\0';
 		break;
 	
 	/*
@@ -580,11 +582,11 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 }
 
 ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
-			       uint8_t *data, size_t len, VALUE_PAIR **head)
+			       uint8_t const *data, size_t len, VALUE_PAIR **head)
 {
 	int i;
 	VALUE_PAIR *vp, **tail;
-	uint8_t *p, *next;
+	uint8_t const *p, *next;
 	next = data;
 
 	*head = NULL;
@@ -721,6 +723,8 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 *	Decode the header.
 	 */
 	for (i = 0; i < 14; i++) {
+		char *q;
+
 		vp = pairmake(packet, NULL, dhcp_header_names[i], NULL, T_OP_EQ);
 		if (!vp) {
 			char buffer[256];
@@ -759,8 +763,9 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case PW_TYPE_STRING:
-			memcpy(vp->vp_strvalue, p, dhcp_header_sizes[i]);
-			vp->vp_strvalue[dhcp_header_sizes[i]] = '\0';
+			vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i] + 1);
+			memcpy(q, p, dhcp_header_sizes[i]);
+			q[dhcp_header_sizes[i]] = '\0';
 			vp->length = strlen(vp->vp_strvalue);
 			if (vp->length == 0) {
 				pairfree(&vp);
@@ -1094,53 +1099,6 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		if (mms > MAX_PACKET_SIZE) mms = MAX_PACKET_SIZE;
 	}
 
-	/*
-	 *	RFC 3118: Authentication option.
-	 */
-	vp = pairfind(packet->vps, 90, DHCP_MAGIC_VENDOR, TAG_ANY);
-	if (vp) {
-		if (vp->length < 2) {
-			memset(vp->vp_octets + vp->length, 0,
-			       2 - vp->length);
-			vp->length = 2;
-		}
-
-		if (vp->length < 3) {
-			struct timeval tv;
-
-			gettimeofday(&tv, NULL);
-			vp->vp_octets[2] = 0;
-			timeval2ntp(&tv, vp->vp_octets + 3);
-			vp->length = 3 + 8;
-		}
-
-		/*
-		 *	Configuration token (clear-text token)
-		 */
-		if (vp->vp_octets[0] == 0) {
-			VALUE_PAIR *pass;
-			vp->vp_octets[1] = 0;
-
-			pass = pairfind(packet->vps, PW_CLEARTEXT_PASSWORD, DHCP_MAGIC_VENDOR, TAG_ANY);
-			if (pass) {
-				length = pass->length;
-				if ((length + 11) > sizeof(vp->vp_octets)) {
-					length -= ((length + 11) - sizeof(vp->vp_octets));
-				}
-				memcpy(vp->vp_octets + 11, pass->vp_strvalue,
-				       length);
-				vp->length = length + 11;
-			} else {
-				vp->length = 11 + 8;
-				memset(vp->vp_octets + 11, 0, 8);
-				vp->length = 11 + 8;
-			}
-		} else {	/* we don't support this type! */
-			fr_strerror_printf("DHCP-Authentication %d unsupported",
-					   vp->vp_octets[0]);
-		}
-	}
-
 	vp = pairfind(packet->vps, 256, DHCP_MAGIC_VENDOR, TAG_ANY);
 	if (vp) {
 		*p++ = vp->vp_integer & 0xff;
@@ -1283,6 +1241,8 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 		p = packet->data;
 
 		for (i = 0; i < 14; i++) {
+			char *q;
+
 			vp = pairmake(packet, NULL,
 				      dhcp_header_names[i], NULL, T_OP_EQ);
 			if (!vp) {
@@ -1315,8 +1275,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 				break;
 
 			case PW_TYPE_STRING:
-				memcpy(vp->vp_strvalue, p, dhcp_header_sizes[i]);
-				vp->vp_strvalue[dhcp_header_sizes[i]] = '\0';
+				vp->vp_strvalue = q = talloc_array(vp, char, dhcp_header_sizes[i]);
+				memcpy(q, p, dhcp_header_sizes[i]);
+				q[dhcp_header_sizes[i]] = '\0';
 				vp->length = strlen(vp->vp_strvalue);
 				break;
 

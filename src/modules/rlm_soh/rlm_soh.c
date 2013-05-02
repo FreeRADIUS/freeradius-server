@@ -134,7 +134,8 @@ static rlm_rcode_t mod_post_auth(UNUSED void * instance, REQUEST *request)
 		 *
 		 * vendor opt 222/0xde - SoH correlation ID as utf-16 string, yuck...
 		 */
-		uint8_t vopt, vlen, *data;
+		uint8_t vopt, vlen;
+		uint8_t const *data;
 
 		data = vp->vp_octets;
 		while (data < vp->vp_octets + vp->length) {
@@ -143,15 +144,19 @@ static rlm_rcode_t mod_post_auth(UNUSED void * instance, REQUEST *request)
 			switch (vopt) {
 				case 220:
 					if (vlen <= 1) {
+						uint8_t *p;
+
 						RDEBUG("SoH adding NAP marker to DHCP reply");
 						/* client probe; send "NAP" in the reply */
 						vp = paircreate(request->reply, 43, DHCP_MAGIC_VENDOR);
-						vp->vp_octets[0] = 220;
-						vp->vp_octets[1] = 3;
-						vp->vp_octets[4] = 'N';
-						vp->vp_octets[3] = 'A';
-						vp->vp_octets[2] = 'P';
 						vp->length = 5;
+						vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+
+						p[0] = 220;
+						p[1] = 3;
+						p[4] = 'N';
+						p[3] = 'A';
+						p[2] = 'P';
 
 						pairadd(&request->reply->vps, vp);
 

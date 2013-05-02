@@ -143,6 +143,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	size_t		offset;
 	size_t		size;
 	size_t		data_left = data_len;
+	char		*p;
 	VALUE_PAIR	*first = NULL;
 	VALUE_PAIR	**last = &first;
 	VALUE_PAIR	*vp;
@@ -263,6 +264,8 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		/*
 		 *	If it's a type from our dictionary, then
 		 *	we need to put the data in a relevant place.
+		 *
+		 *	@todo: Export the lib/radius.c decoder, and use it here!
 		 */
 		switch (vp->da->type) {
 		case PW_TYPE_INTEGER:
@@ -342,58 +345,22 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 			break;
 
 			/*
-			 *	String, octet, etc.  Copy the data from the
-			 *	value field over verbatim.
+			 *	Ensure it's NUL terminated.
+			 */
+		case PW_TYPE_STRING:
+			vp->vp_strvalue = p = talloc_array(vp, char, size + 1);
+			memcpy(p, data, size);
+			p[size] = '\0';
+			vp->length = strlen(p);
+			break;
+
+			/*
+			 *	Copy it over verbatim.
 			 */
 		case PW_TYPE_OCTETS:
-			if (attr == PW_EAP_MESSAGE) {
-				const uint8_t *eap_message = data;
-
-				/*
-				 *	vp exists the first time around.
-				 */
-				while (1) {
-					pairmemcpy(vp, eap_message, size);
-					size -= vp->length;
-					eap_message += vp->length;
-
-					*last = vp;
-					last = &(vp->next);
-
-					if (size == 0) break;
-
-					vp = paircreate(packet, attr, vendor);
-					if (!vp) {
-						RDEBUG2("Failure in creating VP");
-						pairfree(&first);
-						return NULL;
-					}
-				}
-
-				goto next_attr;
-			} /* else it's another kind of attribute */
-			/* FALL-THROUGH */
-
 		default:
 			pairmemcpy(vp, data, size);
 			break;
-		}
-
-		/*
-		 *	User-Password is NUL padded to a multiple
-		 *	of 16 bytes.  Let's chop it to something
-		 *	more reasonable.
-		 *
-		 *	NOTE: This means that the User-Password
-		 *	attribute CANNOT EVER have embedded zeros in it!
-		 */
-		if ((vp->da->vendor == 0) && (vp->da->attr == PW_USER_PASSWORD)) {
-			/*
-			 *	If the password is exactly 16 octets,
-			 *	it won't be zero-terminated.
-			 */
-			vp->vp_strvalue[vp->length] = '\0';
-			vp->length = strlen(vp->vp_strvalue);
 		}
 
 		/*
@@ -1065,16 +1032,19 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 			    (vp->vp_strvalue[0] == PW_EAP_RESPONSE) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN] == PW_EAP_IDENTITY) &&
 			    (vp->vp_strvalue[EAP_HEADER_LEN + 1] != 0)) {
+				char *p;
+
 				/*
 				 *	Create & remember a User-Name
 				 */
-				t->username = pairmake(t, NULL, "User-Name", "", T_OP_EQ);
+				t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 				rad_assert(t->username != NULL);
-
-				memcpy(t->username->vp_strvalue, vp->vp_strvalue + 5,
-				       vp->length - 5);
 				t->username->length = vp->length - 5;
-				t->username->vp_strvalue[t->username->length] = 0;
+
+				t->username->vp_strvalue = p = talloc_array(t->username, char,
+									    t->username->length + 1);
+				memcpy(p, vp->vp_octets + 5, t->username->length);
+				p[t->username->length] = 0;
 
 				RDEBUG("Got tunneled identity of %s",
 				       t->username->vp_strvalue);

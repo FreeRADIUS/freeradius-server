@@ -324,7 +324,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
-	char *pname;       /* name of requested IP pool */
+	char const *pname;       /* name of requested IP pool */
 	uint32_t nasip;	     /* NAS IP in host byte order */
 	struct in_addr ip = {0};    /* reserved IP for client (net. byte order) */
 	rlm_sql_handle_t *sqlsock;
@@ -645,7 +645,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	VALUE_PAIR *vp;
 	rlm_sql_handle_t *sqlsock;
 	struct in_addr nasip;      /* NAS IP */
-	char *sessid;     /* unique session id */
+	char const *sessid;     /* unique session id */
 	char nasipstr[16];	 /* NAS IP in string format */
 	uint32_t framedip = 0;     /* client's IP, host byte order */
 	uint32_t acct_type;

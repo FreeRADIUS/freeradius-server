@@ -390,11 +390,11 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 			break;
 		case AF_INET6:
 			src_vp.da = dict_attrbyvalue(PW_PACKET_SRC_IPV6_ADDRESS, 0);
-			memcpy(src_vp.vp_strvalue,
+			memcpy(&src_vp.vp_ipv6addr,
 			       &packet->src_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->src_ipaddr.ipaddr.ip6addr));
 			dst_vp.da = dict_attrbyvalue(PW_PACKET_DST_IPV6_ADDRESS, 0);
-			memcpy(dst_vp.vp_strvalue,
+			memcpy(&dst_vp.vp_ipv6addr,
 			       &packet->dst_ipaddr.ipaddr.ip6addr,
 			       sizeof(packet->dst_ipaddr.ipaddr.ip6addr));
 			break;

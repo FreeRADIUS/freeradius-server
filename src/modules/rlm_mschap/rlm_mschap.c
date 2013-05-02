@@ -167,7 +167,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		       char const *fmt, char *out, size_t outlen)
 {
 	size_t		i, data_len;
-	uint8_t		*data = NULL;
+	uint8_t const  	*data = NULL;
 	uint8_t		buffer[32];
 	VALUE_PAIR	*user_name;
 	VALUE_PAIR	*chap_challenge, *response;
@@ -202,7 +202,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 */
 		} else if (chap_challenge->length == 16) {
 			VALUE_PAIR *name_attr, *response_name;
-			char *username_string;
+			char const *username_string;
 
 			response = pairfind(request->packet->vps, PW_MSCHAP2_RESPONSE, VENDORPEC_MICROSOFT, TAG_ANY);
 			if (!response) {
@@ -395,7 +395,7 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 		 *	Pull the User-Name out of the User-Name...
 		 */
 	} else if (strncasecmp(fmt, "User-Name", 9) == 0) {
-		char *p;
+		char const *p;
 
 		user_name = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!user_name) {
@@ -419,13 +419,17 @@ static size_t mschap_xlat(void *instance, REQUEST *request,
 			 * 	a $ to the end.
 			 */
 			p = strchr(user_name->vp_strvalue, '.');
+
 			/*
 			 * use the same hack as above
 			 * only if a period was found
 			 */
-			if (p) *p = '\0';
-			snprintf(out, outlen, "%s$", user_name->vp_strvalue + 5);
-			if (p) *p = '.';
+			if (p) {
+				snprintf(out, outlen, "%.*s$",
+					 (int) (p - user_name->vp_strvalue), user_name->vp_strvalue + 5);
+			} else {
+				snprintf(out, outlen, "%s$", user_name->vp_strvalue + 5);
+			}
 		} else {
 			p = strchr(user_name->vp_strvalue, '\\');
 			if (p) {
@@ -597,16 +601,18 @@ void mschap_add_reply(REQUEST *request, unsigned char ident,
 		      char const* name, char const* value, int len)
 {
 	VALUE_PAIR *vp;
+	uint8_t *p;
 
-	vp = pairmake_reply(name, "", T_OP_EQ);
+	vp = pairmake_reply(name, NULL, T_OP_EQ);
 	if (!vp) {
 		RDEBUG("Failed to create attribute %s: %s\n", name, fr_strerror());
 		return;
 	}
-
-	vp->vp_octets[0] = ident;
-	memcpy(vp->vp_octets + 1, value, len);
 	vp->length = len + 1;
+	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+
+	p[0] = ident;
+	memcpy(p + 1, value, len);
 }
 
 /*
@@ -617,7 +623,7 @@ static void mppe_add_reply(REQUEST *request,
 {
        VALUE_PAIR *vp;
 
-       vp = pairmake_reply(name, "", T_OP_EQ);
+       vp = pairmake_reply(name, NULL, T_OP_EQ);
        if (!vp) {
 	       RDEBUG("rlm_mschap: mppe_add_reply failed to create attribute %s: %s\n", name, fr_strerror());
 	       return;
@@ -834,7 +840,8 @@ ntlm_auth_err:
 		 */
 
 		VALUE_PAIR *new_pass, *new_hash;
-		uint8_t *p;
+		uint8_t *p, *q;
+		char *x;
 		size_t i;
 		size_t passlen;
 		ssize_t result_len;
@@ -885,17 +892,18 @@ ntlm_auth_err:
 		 * the new NT hash - this should be preferred over the
 		 * cleartext password as it avoids unicode hassles
 		 */
-		new_hash = pairmake_packet("MS-CHAP-New-NT-Password", "",
+		new_hash = pairmake_packet("MS-CHAP-New-NT-Password", NULL,
 					   T_OP_EQ);
-		fr_md4_calc(new_hash->vp_octets, p, passlen);
 		new_hash->length = 16;
+		new_hash->vp_octets = q = talloc_array(new_hash, uint8_t, new_hash->length);
+		fr_md4_calc(q, p, passlen);
 
 		/*
 		 * check that nt_password encrypted with new_hash
 		 * matches the old_hash value from the client
 		 */
-		smbhash(old_nt_hash_expected, nt_password->vp_octets, new_hash->vp_octets);
-		smbhash(old_nt_hash_expected+8, nt_password->vp_octets+8, new_hash->vp_octets+7);
+		smbhash(old_nt_hash_expected, nt_password->vp_octets, q);
+		smbhash(old_nt_hash_expected+8, nt_password->vp_octets+8, q + 7);
 		if (memcmp(old_nt_hash_expected, old_nt_hash, 16)!=0) {
 			RDEBUG2("old NT hash value from client does not match our value");
 			return -1;
@@ -906,9 +914,10 @@ ntlm_auth_err:
 		 * do some unpleasant vileness to turn it into
 		 * utf8 without pulling in libraries like iconv
 		 */
-		new_pass = pairmake_packet("MS-CHAP-New-Cleartext-Password", "",
+		new_pass = pairmake_packet("MS-CHAP-New-Cleartext-Password", NULL,
 					   T_OP_EQ);
 		new_pass->length = 0;
+		new_pass->vp_strvalue = x = talloc_array(new_pass, char, 254);
 		i = 0;
 		while (i<passlen) {
 			/*
@@ -935,29 +944,26 @@ ntlm_auth_err:
 					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
 					break;
 				}
-				new_pass->vp_strvalue[new_pass->length++] = c;
+				x[new_pass->length++] = c;
 			} else if (c < 0x7ff) {
 				/* 2-byte */
 				if (new_pass->length >= 252) {
 					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
 					break;
 				}
-				new_pass->vp_strvalue[new_pass->length++] = 0xc0 + (c >> 6);
-				new_pass->vp_strvalue[new_pass->length++] = 0x80 + (c & 0x3f);
+				x[new_pass->length++] = 0xc0 + (c >> 6);
+				x[new_pass->length++] = 0x80 + (c & 0x3f);
 			} else {
 				/* 3-byte */
 				if (new_pass->length >= 251) {
 					RDEBUG("Ran out of room turning new password into utf8 at %d - cleartext will be truncated!", i);
 					break;
 				}
-				new_pass->vp_strvalue[new_pass->length++] = 0xe0 + (c >> 12);
-				new_pass->vp_strvalue[new_pass->length++] = 0x80 + ((c>>6) & 0x3f);
-				new_pass->vp_strvalue[new_pass->length++] = 0x80 + (c & 0x3f);
+				x[new_pass->length++] = 0xe0 + (c >> 12);
+				x[new_pass->length++] = 0x80 + ((c>>6) & 0x3f);
+				x[new_pass->length++] = 0x80 + (c & 0x3f);
 			}
 		}
-
-
-
 
 		/*
 		 * perform the xlat
@@ -1003,7 +1009,7 @@ ntlm_auth_err:
  */
 static int do_mschap(rlm_mschap_t *inst,
 		     REQUEST *request, VALUE_PAIR *password,
-		     uint8_t *challenge, uint8_t *response,
+		     uint8_t const *challenge, uint8_t const *response,
 		     uint8_t *nthashhash, int do_ntlm_auth)
 {
 	uint8_t		calculated[24];
@@ -1149,7 +1155,7 @@ static const uint8_t magic3[84] =
 		 0x6b, 0x65, 0x79, 0x2e };
 
 
-static void mppe_GetMasterKey(uint8_t *nt_hashhash,uint8_t *nt_response,
+static void mppe_GetMasterKey(uint8_t const *nt_hashhash,uint8_t const *nt_response,
 			      uint8_t *masterkey)
 {
        uint8_t digest[20];
@@ -1191,7 +1197,7 @@ static void mppe_GetAsymmetricStartKey(uint8_t *masterkey,uint8_t *sesskey,
 }
 
 
-static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
+static void mppe_chap2_get_keys128(uint8_t const *nt_hashhash,uint8_t const *nt_response,
 				   uint8_t *sendkey,uint8_t *recvkey)
 {
        uint8_t masterkey[16];
@@ -1205,7 +1211,7 @@ static void mppe_chap2_get_keys128(uint8_t *nt_hashhash,uint8_t *nt_response,
 /*
  *	Generate MPPE keys.
  */
-static void mppe_chap2_gen_keys128(uint8_t *nt_hashhash,uint8_t *response,
+static void mppe_chap2_gen_keys128(uint8_t const *nt_hashhash,uint8_t const *response,
 				   uint8_t *sendkey,uint8_t *recvkey)
 {
 	uint8_t enckey1[16];
@@ -1293,7 +1299,8 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 	VALUE_PAIR *username;
 	uint8_t nthashhash[16];
 	char msch2resp[42];
-	char *username_string;
+	uint8_t *p;
+	char const *username_string;
 	int chap = 0;
 	int		do_ntlm_auth;
 
@@ -1352,15 +1359,18 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 	 */
 	lm_password = pairfind(request->config_items, PW_LM_PASSWORD, 0, TAG_ANY);
 	if (lm_password) {
+		p = talloc_array(lm_password, uint8_t, 16);
+
 		/*
 		 *	Allow raw octets.
 		 */
 		if ((lm_password->length == 16) ||
 		    ((lm_password->length == 32) &&
 		     (fr_hex2bin(lm_password->vp_strvalue,
-				 lm_password->vp_octets, 16) == 16))) {
+				 p, 16) == 16))) {
 			RDEBUG2("Found LM-Password");
 			lm_password->length = 16;
+			lm_password->vp_octets = p;
 
 		} else {
 			RERROR("Invalid LM-Password");
@@ -1371,13 +1381,14 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create LM-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
-		lm_password = pairmake_config("LM-Password", "", T_OP_EQ);
+		lm_password = pairmake_config("LM-Password", NULL, T_OP_EQ);
 		if (!lm_password) {
 			RERROR("No memory");
 		} else {
-			smbdes_lmpwdhash(password->vp_strvalue,
-					 lm_password->vp_octets);
 			lm_password->length = 16;
+			lm_password->vp_octets = p = talloc_array(lm_password, uint8_t, lm_password->length);
+			smbdes_lmpwdhash(password->vp_strvalue,
+					 p);
 		}
 	}
 
@@ -1386,12 +1397,15 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 	 */
 	nt_password = pairfind(request->config_items, PW_NT_PASSWORD, 0, TAG_ANY);
 	if (nt_password) {
+		p = talloc_array(nt_password, uint8_t, 16);
+
 		if ((nt_password->length == 16) ||
 		    ((nt_password->length == 32) &&
 		     (fr_hex2bin(nt_password->vp_strvalue,
-				 nt_password->vp_octets, 16) == 16))) {
+				 p, 16) == 16))) {
 			RDEBUG2("Found NT-Password");
 			nt_password->length = 16;
+			nt_password->vp_octets = p;
 
 		} else {
 			RERROR("Invalid NT-Password");
@@ -1401,14 +1415,15 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		if (!do_ntlm_auth) RDEBUG2("No Cleartext-Password configured.  Cannot create NT-Password.");
 
 	} else {		/* there is a configured Cleartext-Password */
-		nt_password = pairmake_config("NT-Password", "", T_OP_EQ);
+		nt_password = pairmake_config("NT-Password", NULL, T_OP_EQ);
 		if (!nt_password) {
 			RERROR("No memory");
 			return RLM_MODULE_FAIL;
 		} else {
-			mschap_ntpwdhash(nt_password->vp_octets,
-				  password->vp_strvalue);
 			nt_password->length = 16;
+			nt_password->vp_octets = p = talloc_array(nt_password, uint8_t, nt_password->length);
+				mschap_ntpwdhash(p,
+						 password->vp_strvalue);
 		}
 	}
 
@@ -1531,11 +1546,13 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 					     PW_MSCHAP2_RESPONSE,
 					     VENDORPEC_MICROSOFT);
 		response->length = 50;
+		response->vp_octets = p = talloc_array(response, uint8_t, response->length);
+
 		/* ident & flags */
-		response->vp_octets[0] = cpw->vp_octets[1];
-		response->vp_octets[1] = 0;
+		p[0] = cpw->vp_octets[1];
+		p[1] = 0;
 		/* peer challenge and client NT response */
-		memcpy(response->vp_octets+2, cpw->vp_octets + 18, 48);
+		memcpy(p + 2, cpw->vp_octets + 18, 48);
 	}
 
 	challenge = pairfind(request->packet->vps, PW_MSCHAP_CHALLENGE, VENDORPEC_MICROSOFT, TAG_ANY);

@@ -144,6 +144,7 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 	VALUE_PAIR *vp;
 	uint8_t c;
 	int t;
+	char *q;
 
 	while (data_len > 0) {
 		c = *p++;
@@ -246,8 +247,10 @@ static int eapsoh_mstlv(REQUEST *request, uint8_t const *p, unsigned int data_le
 				vp = pairmake_packet("SoH-MS-Machine-Name", NULL, T_OP_EQ);
 				if (!vp) return 0;
 
-				memcpy(vp->vp_strvalue, p, t);
-				vp->vp_strvalue[t] = 0;
+				vp->vp_strvalue = q = talloc_array(vp, char, t);
+
+				memcpy(q, p, t);
+				q[t] = 0;
 
 				p += t;
 				data_len -= 2 + t;

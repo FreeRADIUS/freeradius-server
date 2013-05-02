@@ -223,16 +223,18 @@ static int mschapv2_initiate(UNUSED void *instance, eap_handler_t *handler)
 	VALUE_PAIR	*challenge;
 	mschapv2_opaque_t *data;
 	REQUEST		*request = handler->request;
+	uint8_t 	*p;
 
 	challenge = pairmake(handler, NULL,
-			     "MS-CHAP-Challenge", "0x00", T_OP_EQ);
+			     "MS-CHAP-Challenge", NULL, T_OP_EQ);
 
 	/*
 	 *	Get a random challenge.
 	 */
 	challenge->length = MSCHAPV2_CHALLENGE_LEN;
+	challenge->vp_octets = p = talloc_array(challenge, uint8_t, challenge->length);
 	for (i = 0; i < MSCHAPV2_CHALLENGE_LEN; i++) {
-		challenge->vp_strvalue[i] = fr_rand();
+		p[i] = fr_rand();
 	}
 	RDEBUG2("Issuing Challenge");
 
@@ -368,6 +370,7 @@ static int mschap_postproxy(eap_handler_t *handler, UNUSED void *tunnel_data)
 static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 {
 	int rcode, ccode;
+	uint8_t *p;
 	mschapv2_opaque_t *data;
 	EAP_DS *eap_ds = handler->eap_ds;
 	VALUE_PAIR *challenge, *response, *name;
@@ -409,18 +412,19 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 
 				RDEBUG2("password change packet received");
 
-				challenge = pairmake_packet("MS-CHAP-Challenge", "0x00", T_OP_EQ);
+				challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
 				if (!challenge) {
 					return 0;
 				}
-				challenge->length = MSCHAPV2_CHALLENGE_LEN;
-				memcpy(challenge->vp_strvalue, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+				pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
-				cpw = pairmake_packet("MS-CHAP2-CPW", "", T_OP_EQ);
-				cpw->vp_octets[0] = 7;
-				cpw->vp_octets[1] = mschap_id;
-				memcpy(cpw->vp_octets+2, eap_ds->response->type.data + 520, 66);
+				cpw = pairmake_packet("MS-CHAP2-CPW", NULL, T_OP_EQ);
 				cpw->length = 68;
+
+				cpw->vp_octets = p = talloc_array(cpw, uint8_t, cpw->length);
+				p[0] = 7;
+				p[1] = mschap_id;
+				memcpy(p + 2, eap_ds->response->type.data + 520, 66);
 
 				/*
 				 * break the encoded password into VPs (3 of them)
@@ -432,15 +436,18 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 					if (to_copy > 243)
 						to_copy = 243;
 
-					nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", "", T_OP_ADD);
-					nt_enc->vp_octets[0] = 6;
-					nt_enc->vp_octets[1] = mschap_id;
-					nt_enc->vp_octets[2] = 0;
-					nt_enc->vp_octets[3] = seq++;
-
-					memcpy(nt_enc->vp_octets + 4, eap_ds->response->type.data + 4 + copied, to_copy);
-					copied += to_copy;
+					nt_enc = pairmake_packet("MS-CHAP-NT-Enc-PW", NULL, T_OP_ADD);
 					nt_enc->length = 4 + to_copy;
+
+					nt_enc->vp_octets = p = talloc_array(nt_enc, uint8_t, nt_enc->length);
+
+					p[0] = 6;
+					p[1] = mschap_id;
+					p[2] = 0;
+					p[3] = seq++;
+
+					memcpy(p + 4, eap_ds->response->type.data + 4 + copied, to_copy);
+					copied += to_copy;
 				}
 
 				RDEBUG2("built change password packet");
@@ -561,25 +568,26 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	 *	to pass to the 'mschap' module.  This is a little wonky,
 	 *	but it works.
 	 */
-	challenge = pairmake_packet("MS-CHAP-Challenge", "0x00", T_OP_EQ);
+	challenge = pairmake_packet("MS-CHAP-Challenge", NULL, T_OP_EQ);
 	if (!challenge) {
 		return 0;
 	}
-	challenge->length = MSCHAPV2_CHALLENGE_LEN;
-	memcpy(challenge->vp_strvalue, data->challenge, MSCHAPV2_CHALLENGE_LEN);
+	pairmemcpy(challenge, data->challenge, MSCHAPV2_CHALLENGE_LEN);
 
-	response = pairmake_packet("MS-CHAP2-Response", "0x00", T_OP_EQ);
+	response = pairmake_packet("MS-CHAP2-Response", NULL, T_OP_EQ);
 	if (!response) {
 		return 0;
 	}
 
 	response->length = MSCHAPV2_RESPONSE_LEN;
-	memcpy(response->vp_strvalue + 2, &eap_ds->response->type.data[5],
-	       MSCHAPV2_RESPONSE_LEN - 2);
-	response->vp_strvalue[0] = eap_ds->response->type.data[1];
-	response->vp_strvalue[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
+	response->vp_octets = p = talloc_array(response, uint8_t, response->length);
 
-	name = pairmake_packet("NTLM-User-Name", "", T_OP_EQ);
+	p[0] = eap_ds->response->type.data[1];
+	p[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
+	memcpy(p + 2, &eap_ds->response->type.data[5],
+	       MSCHAPV2_RESPONSE_LEN - 2);
+
+	name = pairmake_packet("NTLM-User-Name", NULL, T_OP_EQ);
 	if (!name) {
 		return 0;
 	}
@@ -590,14 +598,11 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	name->length = (((eap_ds->response->type.data[2] << 8) |
 			 eap_ds->response->type.data[3]) -
 			eap_ds->response->type.data[4] - 5);
-	if (name->length >= sizeof(name->vp_strvalue)) {
-		name->length = sizeof(name->vp_strvalue) - 1;
-	}
-
-	memcpy(name->vp_strvalue,
+	name->vp_octets = p = talloc_array(name, uint8_t, name->length + 1);
+	memcpy(p,
 	       &eap_ds->response->type.data[4 + MSCHAPV2_RESPONSE_LEN],
 	       name->length);
-	name->vp_strvalue[name->length] = '\0';
+	p[name->length] = '\0';
 
 packet_ready:
 
@@ -662,10 +667,7 @@ packet_ready:
 			 *	FIXME: Put it into MS-CHAP-Domain?
 			 */
 			username++; /* skip the \\ */
-			memmove(challenge->vp_strvalue,
-				username,
-				strlen(username) + 1); /* include \0 */
-			challenge->length = strlen(challenge->vp_strvalue);
+			pairstrcpy(challenge, username);
 		}
 
 		/*

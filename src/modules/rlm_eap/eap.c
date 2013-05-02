@@ -604,8 +604,8 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 	vp = pairfind(request->reply->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
 		vp = paircreate(request->reply, PW_MESSAGE_AUTHENTICATOR, 0);
-		memset(vp->vp_octets, 0, AUTH_VECTOR_LEN);
 		vp->length = AUTH_VECTOR_LEN;
+		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->length);
 		pairadd(&(request->reply->vps), vp);
 	}
 
@@ -708,6 +708,8 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 	 *	EAP-Starts.
 	 */
 	if ((eap_msg->length == 0) || (eap_msg->length == 2)) {
+		uint8_t *p;
+
 		/*
 		 *	It's a valid EAP-Start, but the request
 		 *	was marked as being proxied.  So we don't
@@ -728,12 +730,14 @@ int eap_start(rlm_eap_t *inst, REQUEST *request)
 		/*
 		 *	Manually create an EAP Identity request
 		 */
-		vp->vp_octets[0] = PW_EAP_REQUEST;
-		vp->vp_octets[1] = 0; /* ID */
-		vp->vp_octets[2] = 0;
-		vp->vp_octets[3] = 5; /* length */
-		vp->vp_octets[4] = PW_EAP_IDENTITY;
 		vp->length = 5;
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+
+		p[0] = PW_EAP_REQUEST;
+		p[1] = 0; /* ID */
+		p[2] = 0;
+		p[3] = 5; /* length */
+		p[4] = PW_EAP_IDENTITY;
 
 		return EAP_FOUND;
 	} /* end of handling EAP-Start */

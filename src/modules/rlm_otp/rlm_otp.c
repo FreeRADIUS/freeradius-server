@@ -254,8 +254,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		
-		memcpy(vp->vp_strvalue, challenge, inst->challenge_len);	
-		vp->length = inst->challenge_len;
+		pairstrcpy(vp, challenge);
 		vp->op = T_OP_SET;
 	
 		pairadd(&request->reply->vps, vp);
@@ -276,10 +275,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			return RLM_MODULE_FAIL;
 		}
 		
-		memcpy(vp->vp_strvalue, expanded, len);
-		talloc_free(expanded);
-			
-		vp->length = inst->challenge_len;
+		(void) talloc_steal(vp, expanded);
+		vp->vp_strvalue = expanded;
+		vp->length = len;
 		vp->op = T_OP_SET;
 		
 		pairadd(&request->reply->vps, vp);

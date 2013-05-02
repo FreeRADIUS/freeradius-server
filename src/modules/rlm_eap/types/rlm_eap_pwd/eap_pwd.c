@@ -107,7 +107,7 @@ eap_pwd_kdf(uint8_t *key, int keylen, char const *label, int labellen,
 
 int
 compute_password_element (pwd_session_t *sess, uint16_t grp_num,
-			  char *password, int password_len,
+			  char const *password, int password_len,
 			  char *id_server, int id_server_len,
 			  char *id_peer, int id_peer_len,
 			  uint32_t *token)

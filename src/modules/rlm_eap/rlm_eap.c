@@ -364,7 +364,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 				pairmake(request->proxy,
 					 &request->proxy->vps,
 					 "Message-Authenticator",
-					 "0x00", T_OP_EQ);
+					 NULL, T_OP_EQ);
 			}
 		}
 
@@ -450,11 +450,15 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 		/*
 		 *	Cisco AP1230 has a bug and needs a zero
 		 *	terminated string in Access-Accept.
+		 *
+		 *	@todo: fix this
 		 */
 		if ((inst->mod_accounting_username_bug) &&
 		    (vp->length < (int) sizeof(vp->vp_strvalue))) {
+#if 0
 			vp->vp_strvalue[vp->length] = '\0';
 			vp->length++;
+#endif
 		}
 	}
 
@@ -542,6 +546,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 {
 	size_t		i;
 	size_t		len;
+	char		*p;
 	VALUE_PAIR	*vp;
 	eap_handler_t	*handler;
 
@@ -677,7 +682,8 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	 *	Decrypt the session key, using the proxy data.
 	 */
 	i = 34;			/* starts off with 34 octets */
-	len = rad_tunnel_pwdecode(vp->vp_octets + 17, &i,
+	p = talloc_strdup(vp, vp->vp_strvalue);
+	len = rad_tunnel_pwdecode((uint8_t *)p + 17, &i,
 				  request->home_server->secret,
 				  request->proxy->vector);
 
@@ -688,9 +694,11 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	/*
 	 *	Encrypt the session key again, using the request data.
 	 */
-	rad_tunnel_pwencode(vp->vp_strvalue + 17, &len,
+	rad_tunnel_pwencode(p + 17, &len,
 			    request->client->secret,
 			    request->packet->vector);
+//	talloc_free(vp->vp_strvalue);
+	vp->vp_strvalue = p;
 
 	return RLM_MODULE_UPDATED;
 }

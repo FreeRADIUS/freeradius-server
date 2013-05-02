@@ -198,6 +198,7 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 		 */
 	} else if (eap_ds->response->type.length <= 128) {
 		int rcode;
+		char *p;
 
 		/*
 		 *	If there was a User-Password in the request,
@@ -205,13 +206,14 @@ static int mod_authenticate(void *instance, eap_handler_t *handler)
 		 */
 		pairdelete(&request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
 
-		vp = pairmake_packet("User-Password", "", T_OP_EQ);
+		vp = pairmake_packet("User-Password", NULL, T_OP_EQ);
 		if (!vp) {
 			return 0;
 		}
 		vp->length = eap_ds->response->type.length;
-		memcpy(vp->vp_strvalue, eap_ds->response->type.data, vp->length);
-		vp->vp_strvalue[vp->length] = 0;
+		vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+		memcpy(p, eap_ds->response->type.data, vp->length);
+		p[vp->length] = 0;
 
 		/*
 		 *	Add the password to the request, and allow

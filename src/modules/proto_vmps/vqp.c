@@ -476,6 +476,8 @@ int vqp_decode(RADIUS_PACKET *packet)
 	 *	be called before vqp_decode().
 	 */
 	while (ptr < end) {
+		char *p;
+
 		attribute = (ptr[2] << 8) | ptr[3];
 		length = (ptr[4] << 8) | ptr[5];
 		ptr += 6;
@@ -515,9 +517,10 @@ int vqp_decode(RADIUS_PACKET *packet)
 			break;
 
 		case PW_TYPE_STRING:
-			vp->length = (length > MAX_VMPS_LEN) ? MAX_VMPS_LEN : length;
-			memcpy(vp->vp_strvalue, ptr, vp->length);
-			vp->vp_strvalue[vp->length] = '\0';
+			vp->length = length;
+			vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
+			memcpy(p, ptr, vp->length);
+			p[vp->length] = '\0';
 			break;
 		}
 		ptr += length;

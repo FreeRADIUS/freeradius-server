@@ -60,7 +60,7 @@ static int digest_fix(REQUEST *request)
 	while (vp) {
 		int length = vp->length;
 		int attrlen;
-		uint8_t *p = &vp->vp_octets[0];
+		uint8_t const *p = vp->vp_octets;
 
 		/*
 		 *	Until this stupidly encoded attribute is exhausted.
@@ -110,7 +110,8 @@ static int digest_fix(REQUEST *request)
 	while (vp) {
 		int length = vp->length;
 		int attrlen;
-		uint8_t *p = &vp->vp_octets[0];
+		uint8_t const *p = vp->vp_octets;
+		char *q;
 		VALUE_PAIR *sub;
 
 		/*
@@ -151,12 +152,13 @@ static int digest_fix(REQUEST *request)
 			 */
 			sub = radius_paircreate(request, &request->packet->vps,
 						PW_DIGEST_REALM - 1 + p[0], 0);
-			memcpy(&sub->vp_octets[0], &p[2], attrlen - 2);
-			sub->vp_octets[attrlen - 2] = '\0';
 			sub->length = attrlen - 2;
+			sub->vp_strvalue = q = talloc_array(sub, char, sub->length + 1);
+			memcpy(q, p + 2, attrlen - 2);
+			q[attrlen - 2] = '\0';
 
 			if ((debug_flag > 1) && fr_log_fp) {
-			  vp_print(fr_log_fp, sub);
+				vp_print(fr_log_fp, sub);
 			}
 
 			/*
@@ -282,7 +284,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 		REDEBUG("No Digest-User-Name: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a1[0], &vp->vp_octets[0], vp->length);
+	memcpy(&a1[0], vp->vp_octets, vp->length);
 	a1_len = vp->length;
 
 	a1[a1_len] = ':';
@@ -293,14 +295,14 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 		REDEBUG("No Digest-Realm: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
+	memcpy(&a1[a1_len], vp->vp_octets, vp->length);
 	a1_len += vp->length;
 
 	a1[a1_len] = ':';
 	a1_len++;
 
 	if (passwd->da->attr == PW_CLEARTEXT_PASSWORD) {
-		memcpy(&a1[a1_len], &passwd->vp_octets[0], passwd->length);
+		memcpy(&a1[a1_len], passwd->vp_octets, passwd->length);
 		a1_len += passwd->length;
 		a1[a1_len] = '\0';
 		RDEBUG2("A1 = %s", a1);
@@ -352,7 +354,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 			REDEBUG("Received Digest-Nonce hex string with invalid length: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
-		memcpy(&a1[a1_len], &nonce->vp_octets[0], nonce->length);
+		memcpy(&a1[a1_len], nonce->vp_octets, nonce->length);
 		a1_len += nonce->length;
 
 		a1[a1_len] = ':';
@@ -371,7 +373,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 			REDEBUG("Received Digest-CNonce hex string with invalid length: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
-		memcpy(&a1[a1_len], &vp->vp_octets[0], vp->length);
+		memcpy(&a1[a1_len], vp->vp_octets, vp->length);
 		a1_len += vp->length;
 
 	} else if ((algo != NULL) &&
@@ -392,7 +394,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 		REDEBUG("No Digest-Method: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a2[0], &vp->vp_octets[0], vp->length);
+	memcpy(&a2[0], vp->vp_octets, vp->length);
 	a2_len = vp->length;
 
 	a2[a2_len] = ':';
@@ -403,7 +405,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 		REDEBUG("No Digest-URI: Cannot perform Digest authentication");
 		return RLM_MODULE_INVALID;
 	}
-	memcpy(&a2[a2_len], &vp->vp_octets[0], vp->length);
+	memcpy(&a2[a2_len], vp->vp_octets, vp->length);
 	a2_len += vp->length;
 
 	/*
@@ -499,7 +501,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 			REDEBUG("No Digest-Nonce-Count: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
-		memcpy(&kd[kd_len], &vp->vp_octets[0], vp->length);
+		memcpy(&kd[kd_len], vp->vp_octets, vp->length);
 		kd_len += vp->length;
 
 		kd[kd_len] = ':';
@@ -510,13 +512,13 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 			REDEBUG("No Digest-CNonce: Cannot perform Digest authentication");
 			return RLM_MODULE_INVALID;
 		}
-		memcpy(&kd[kd_len], &vp->vp_octets[0], vp->length);
+		memcpy(&kd[kd_len], vp->vp_octets, vp->length);
 		kd_len += vp->length;
 
 		kd[kd_len] = ':';
 		kd_len++;
 
-		memcpy(&kd[kd_len], &qop->vp_octets[0], qop->length);
+		memcpy(&kd[kd_len], qop->vp_octets, qop->length);
 		kd_len += qop->length;
 	}
 
@@ -560,7 +562,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 
-	if (fr_hex2bin(&vp->vp_strvalue[0], &hash[0], vp->length >> 1) != (vp->length >> 1)) {
+	if (fr_hex2bin(vp->vp_strvalue, &hash[0], vp->length >> 1) != (vp->length >> 1)) {
 		RDEBUG2("Invalid text in Digest-Response");
 		return RLM_MODULE_INVALID;
 	}

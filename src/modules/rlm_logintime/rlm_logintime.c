@@ -28,6 +28,9 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+/* timestr.c */
+int		timestr_match(char const *, time_t);
+
 /*
  *	Define a structure for our module configuration.
  *
@@ -80,7 +83,7 @@ static int time_of_day(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *r
 {
 	int scan;
 	int hhmmss, when;
-	char *p;
+	char const *p;
 	struct tm *tm, s_tm;
 
 	/*

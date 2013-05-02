@@ -180,6 +180,7 @@ void eapttls_gen_challenge(SSL *s, uint8_t *buffer, size_t size)
 void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 {
 	VALUE_PAIR *vp;
+	uint8_t *p;
 
 	if (!s->s3) {
 		EDEBUG("No SSLv3 information");
@@ -189,10 +190,13 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 	vp = paircreate(packet, PW_EAP_SESSION_ID, PW_TYPE_OCTETS);
 	if (!vp) return;
 
-	vp->vp_octets[0] = header & 0xff;
-	memcpy(vp->vp_octets + 1, s->s3->client_random, SSL3_RANDOM_SIZE);
-	memcpy(vp->vp_octets + 1 + SSL3_RANDOM_SIZE,
-	       s->s3->server_random, SSL3_RANDOM_SIZE);
 	vp->length = 1 + 2 * SSL3_RANDOM_SIZE;
+	p = talloc_array(vp, uint8_t, vp->length);
+
+	p[0] = header & 0xff;
+	memcpy(p + 1, s->s3->client_random, SSL3_RANDOM_SIZE);
+	memcpy(p + 1 + SSL3_RANDOM_SIZE,
+	       s->s3->server_random, SSL3_RANDOM_SIZE);
+	vp->vp_octets = p;
 	pairadd(&packet->vps, vp);
 }

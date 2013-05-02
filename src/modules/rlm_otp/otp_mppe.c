@@ -151,7 +151,7 @@ otp_mppe(REQUEST *request, otp_pwe_t pwe, rlm_otp_t const *opt, char const *pass
       /*		    0x  (ID) ( ASCII("S="ASCII(auth_md))) */
       char auth_octet_string[2 + 2 + (2 * sizeof(auth_md_string))];
 
-      char *username = request->username->vp_strvalue;
+      char const *username = request->username->vp_strvalue;
       int username_len = request->username->length;
 
       /* "Magic server to client signing constant" */

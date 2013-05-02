@@ -186,17 +186,22 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 		fr_md4_calc(ntpwdhash, unicode, password->length * 2);
 
 	} else {		/* MUST be NT-Password */
+		uint8_t *p;
+
 		if (password->length == 32) {
+			p = talloc_array(password, uint8_t, 16);
 			password->length = fr_hex2bin(password->vp_strvalue,
-							password->vp_octets,
-							16);
+						      p,
+						      16);
 		}
 		if (password->length != 16) {
 			ERROR("rlm_eap_leap: Bad NT-Password");
 			return 0;
 		}
 
-		memcpy(ntpwdhash, password->vp_strvalue, 16);
+//		talloc_free(password->vp_octets);
+		password->vp_octets = p;
+		memcpy(ntpwdhash, p, 16);
 	}
 	return 1;
 }
@@ -245,10 +250,10 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 			    leap_session_t *session)
 {
 	size_t i;
-	unsigned char ntpwdhash[16], ntpwdhashhash[16];
-	unsigned char buffer[256];
+	uint8_t ntpwdhash[16], ntpwdhashhash[16];
+	uint8_t *p, buffer[256];
 	leap_packet_t *reply;
-	unsigned char *p;
+	char *q;
 	VALUE_PAIR *vp;
 
 	/*
@@ -305,7 +310,7 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	/*
 	 *  Calculate the leap:session-key attribute
 	 */
-	vp = pairmake_reply("Cisco-AVPair", "leap:session-key=", T_OP_ADD);
+	vp = pairmake_reply("Cisco-AVPair", NULL, T_OP_ADD);
 	if (!vp) {
 		ERROR("rlm_eap_leap: Failed to create Cisco-AVPair attribute.  LEAP cancelled.");
 		talloc_free(reply);
@@ -331,14 +336,17 @@ leap_packet_t *eapleap_stage6(leap_packet_t *packet, REQUEST *request,
 	 */
 	fr_md5_calc(ntpwdhash, buffer, 16 + 8 + 24 + 8 + 24);
 
-	memcpy(vp->vp_strvalue + vp->length, ntpwdhash, 16);
-	memset(vp->vp_strvalue + vp->length + 16, 0,
-	       sizeof(vp->vp_strvalue) - (vp->length + 16));
+	q = talloc_array(vp, char, 16 + sizeof("leap:session-key="));
+	strcpy(q, "leap:session-key=");
+
+	memcpy(q + 17, ntpwdhash, 16);
 
 	i = 16;
-	rad_tunnel_pwencode(vp->vp_strvalue + vp->length, &i,
+	rad_tunnel_pwencode(q + 17, &i,
 			    request->client->secret, request->packet->vector);
-	vp->length += i;
+	vp->length = 17 + i;
+//	talloc_free(vp->vp_strvalue);
+	vp->vp_strvalue = q;
 
 	return reply;
 }

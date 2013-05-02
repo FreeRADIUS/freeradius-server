@@ -66,7 +66,8 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	int		encoded_size;
 	uint8_t		*encodedmsg, *attr;
 	unsigned int	id, eapcode;
-	unsigned char	*macspace, *append;
+	uint8_t		*macspace;
+	uint8_t const	*append;
 	int		appendlen;
 	unsigned char	subtype;
 
@@ -309,6 +310,8 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 
 	/* now, loop processing each attribute that we find */
 	while(attrlen > 0) {
+		uint8_t *p;
+
 		if(attrlen < 2) {
 			ERROR("eap: EAP-Sim attribute %d too short: %d < 2", es_attribute_count, attrlen);
 			return 0;
@@ -334,8 +337,9 @@ int unmap_eapsim_basictypes(RADIUS_PACKET *r,
 		}
 
 		newvp = paircreate(r, eapsim_attribute+ATTRIBUTE_EAP_SIM_BASE, 0);
-		memcpy(newvp->vp_strvalue, &attr[2], eapsim_len-2);
 		newvp->length = eapsim_len-2;
+		newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->length);
+		memcpy(p, &attr[2], eapsim_len-2);
 		pairadd(&(r->vps), newvp);
 		newvp = NULL;
 

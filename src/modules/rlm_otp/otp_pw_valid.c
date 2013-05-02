@@ -75,7 +75,7 @@ int otp_pw_valid(REQUEST *request, int pwe, char const *challenge,
 	otp_request_t	otp_request;
 	otp_reply_t	otp_reply;
 	VALUE_PAIR	*cvp, *rvp;
-	char		*username = request->username->vp_strvalue;
+	char const	*username = request->username->vp_strvalue;
 	int		rc;
 
 	if (request->username->length > OTP_MAX_USERNAME_LEN) {

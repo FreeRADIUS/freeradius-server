@@ -269,6 +269,7 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 			  uint8_t const *data, size_t data_len)
 {
 	size_t total;
+	uint8_t *p;
 	VALUE_PAIR *vp = NULL, *head, **tail;
 
 	if (data_len > 65535) return NULL; /* paranoia */
@@ -285,13 +286,15 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 	/*
 	 *	Hand-build an EAP packet from the crap in PEAP version 0.
 	 */
-	vp->vp_octets[0] = PW_EAP_RESPONSE;
-	vp->vp_octets[1] = eap_ds->response->id;
-	vp->vp_octets[2] = (data_len + EAP_HEADER_LEN) >> 8;
-	vp->vp_octets[3] = (data_len + EAP_HEADER_LEN) & 0xff;
-
-	memcpy(vp->vp_octets + EAP_HEADER_LEN, data, total);
 	vp->length = EAP_HEADER_LEN + total;
+	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+
+	p[0] = PW_EAP_RESPONSE;
+	p[1] = eap_ds->response->id;
+	p[2] = (data_len + EAP_HEADER_LEN) >> 8;
+	p[3] = (data_len + EAP_HEADER_LEN) & 0xff;
+
+	memcpy(p + EAP_HEADER_LEN, data, total);
 
 	head = vp;
 	tail = &(vp->next);
@@ -733,6 +736,7 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 	int rcode = RLM_MODULE_REJECT;
 	const uint8_t	*data;
 	unsigned int data_len;
+	char *p;
 
 	REQUEST *request = handler->request;
 	EAP_DS *eap_ds = handler->eap_ds;
@@ -788,20 +792,16 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 			return RLM_MODULE_REJECT;
 		}
 
-		if (data_len >= sizeof(t->username->vp_strvalue)) {
-			RDEBUG("EAP-Identity is too long");
-			return RLM_MODULE_REJECT;
-		}
-		
 		/*
 		 *	Save it for later.
 		 */
-		t->username = pairmake(t, NULL, "User-Name", "", T_OP_EQ);
+		t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 		rad_assert(t->username != NULL);
 		
-		memcpy(t->username->vp_strvalue, data + 1, data_len - 1);
+		t->username->vp_strvalue = p = talloc_array(t->username, char, data_len);
+		memcpy(p, data + 1, data_len - 1);
 		t->username->length = data_len - 1;
-		t->username->vp_strvalue[t->username->length] = 0;
+		p[t->username->length] = 0;
 		RDEBUG("Got inner identity '%s'", t->username->vp_strvalue);
 		if (t->soh) {
 			t->status = PEAP_STATUS_WAIT_FOR_SOH_RESPONSE;
@@ -923,21 +923,22 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		
 	case PEAP_STATUS_PHASE2_INIT: {
 		size_t len = t->username->length + EAP_HEADER_LEN + 1;
+		uint8_t *q;
 
 		t->status = PEAP_STATUS_PHASE2;
 
 		vp = paircreate(fake->packet, PW_EAP_MESSAGE, 0);
-
-		vp->vp_octets[0] = PW_EAP_RESPONSE;
-		vp->vp_octets[1] = eap_ds->response->id;
-		vp->vp_octets[2] = (len >> 8) & 0xff;
-		vp->vp_octets[3] = len & 0xff;
-		vp->vp_octets[4] = PW_EAP_IDENTITY;
-
-		if (len > sizeof(vp->vp_octets)) len = sizeof(vp->vp_octets);
-		memcpy(vp->vp_octets + EAP_HEADER_LEN + 1,
-		       t->username->vp_strvalue, len - EAP_HEADER_LEN - 1);
 		vp->length = len;
+		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->length);
+
+		p[0] = PW_EAP_RESPONSE;
+		p[1] = eap_ds->response->id;
+		p[2] = (len >> 8) & 0xff;
+		p[3] = len & 0xff;
+		p[4] = PW_EAP_IDENTITY;
+
+		memcpy(p + EAP_HEADER_LEN + 1,
+		       t->username->vp_strvalue, len - EAP_HEADER_LEN - 1);
 
 		pairadd(&fake->packet->vps, vp);
 
@@ -982,12 +983,13 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		 *	EAP-Identity packet.
 		 */
 		if ((data[0] == PW_EAP_IDENTITY) && (data_len > 1)) {
-			t->username = pairmake(t, NULL, "User-Name", "", T_OP_EQ);
+			t->username = pairmake(t, NULL, "User-Name", NULL, T_OP_EQ);
 			rad_assert(t->username != NULL);
 
-			memcpy(t->username->vp_strvalue, data + 1, data_len - 1);
+			t->username->vp_strvalue = p = talloc_array(t->username, char, data_len);
+			memcpy(p, data + 1, data_len - 1);
 			t->username->length = data_len - 1;
-			t->username->vp_strvalue[t->username->length] = 0;
+			p[t->username->length] = 0;
 			DEBUG2("  PEAP: Got tunneled identity of %s", t->username->vp_strvalue);
 
 			/*

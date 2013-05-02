@@ -287,6 +287,7 @@ mod_authenticate (void *arg, eap_handler_t *handler)
     uint8_t exch, *buf, *ptr, msk[MSK_EMSK_LEN], emsk[MSK_EMSK_LEN];
     uint8_t peer_confirm[SHA256_DIGEST_LENGTH];
     BIGNUM *x = NULL, *y = NULL;
+    char *p;
 
     if ((!handler) ||
 	((eap_ds = handler->eap_ds) == NULL) ||
@@ -417,16 +418,18 @@ mod_authenticate (void *arg, eap_handler_t *handler)
 		RDEBUG("pwd unable to create fake request!");
 		return 0;
 	    }
-	    fake->username = pairmake_packet("User-Name", "", T_OP_EQ);
+	    fake->username = pairmake_packet("User-Name", NULL, T_OP_EQ);
 	    if (!fake->username) {
 		RDEBUG("pwd unanable to create value pair for username!");
 		request_free(&fake);
 		return 0;
 	    }
-	    memcpy(fake->username->vp_strvalue, pwd_session->peer_id,
-		   pwd_session->peer_id_len);
 	    fake->username->length = pwd_session->peer_id_len;
-	    fake->username->vp_strvalue[fake->username->length] = 0;
+	    fake->username->vp_strvalue = p = talloc_array(fake->username, char, fake->username->length + 1);
+
+	    memcpy(p, pwd_session->peer_id,
+		   pwd_session->peer_id_len);
+	    p[fake->username->length] = 0;
 
 	    if ((vp = pairfind(request->config_items, PW_VIRTUAL_SERVER, 0, TAG_ANY)) != NULL) {
 		    fake->server = vp->vp_strvalue;

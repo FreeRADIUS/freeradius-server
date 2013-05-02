@@ -1118,8 +1118,9 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 		 *	actually data.
 		 */
 		rad_assert(found->type == VT_DATA);
-		memcpy(&vp->data, &found->data, found->length);
-		vp->length = found->length;
+		pairfree(&vp);	/* ugh */
+		vp = paircopyvpdata(request, map->dst->da, found);
+		vp->op = map->op;
 		break;
 
 	default:
@@ -1261,8 +1262,8 @@ int radius_get_vp(REQUEST *request, char const *name, VALUE_PAIR **vp_p)
 DIAG_OFF(format-nonliteral)
 void module_failure_msg(REQUEST *request, char const *fmt, ...)
 {
-	size_t len;
 	va_list ap;
+	char *p;
 	VALUE_PAIR *vp;
 
 	va_start(ap, fmt);
@@ -1272,10 +1273,9 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 		return;
 	}
 
-	pairsprintf(vp, "%s: ", request->module);
-	len = vp->length;
-	
-	vsnprintf(vp->vp_strvalue + len, sizeof(vp->vp_strvalue) - len, fmt, ap);
+	p = talloc_vasprintf(vp, fmt, ap);
+	pairsprintf(vp, "%s: %s", request->module, p);
+	talloc_free(p);
 	pairadd(&request->packet->vps, vp);
 }
 DIAG_ON(format-nonliteral)

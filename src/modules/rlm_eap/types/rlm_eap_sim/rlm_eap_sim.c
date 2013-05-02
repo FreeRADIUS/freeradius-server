@@ -60,6 +60,7 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	uint16_t words[3];
 	struct eap_sim_server_state *ess;
 	RADIUS_PACKET *packet;
+	uint8_t *p;
 
 	rad_assert(handler->request != NULL);
 	rad_assert(handler->request->reply);
@@ -98,8 +99,10 @@ static int eap_sim_sendstart(eap_handler_t *handler)
 	/* the ANY_ID attribute. We do not support re-auth or pseudonym */
 	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_FULLAUTH_ID_REQ, 0);
 	newvp->length = 2;
-	newvp->vp_strvalue[0]=0;
-	newvp->vp_strvalue[0]=1;
+	newvp->vp_octets = p = talloc_array(newvp, uint8_t, 2);
+
+	p[0] = 0;
+	p[0] = 1;
 	pairadd(vps, newvp);
 
 	/* the SUBTYPE, set to start. */
@@ -182,6 +185,7 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 	struct eap_sim_server_state *ess;
 	VALUE_PAIR **invps, **outvps, *newvp;
 	RADIUS_PACKET *packet;
+	uint8_t *p;
 
 	ess = (struct eap_sim_server_state *)handler->opaque;
 	rad_assert(handler->request != NULL);
@@ -204,11 +208,13 @@ static int eap_sim_sendchallenge(eap_handler_t *handler)
 
 	/* okay, we got the challenges! Put them into an attribute */
 	newvp = paircreate(packet, ATTRIBUTE_EAP_SIM_BASE+PW_EAP_SIM_RAND, 0);
-	memset(newvp->vp_strvalue,    0, 2); /* clear reserved bytes */
-	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*0, ess->keys.rand[0], EAPSIM_RAND_SIZE);
-	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*1, ess->keys.rand[1], EAPSIM_RAND_SIZE);
-	memcpy(newvp->vp_strvalue+2+EAPSIM_RAND_SIZE*2, ess->keys.rand[2], EAPSIM_RAND_SIZE);
 	newvp->length = 2+EAPSIM_RAND_SIZE*3;
+	newvp->vp_octets = p = talloc_array(newvp, uint8_t, newvp->length);
+
+	memset(p,    0, 2); /* clear reserved bytes */
+	memcpy(p+2+EAPSIM_RAND_SIZE*0, ess->keys.rand[0], EAPSIM_RAND_SIZE);
+	memcpy(p+2+EAPSIM_RAND_SIZE*1, ess->keys.rand[1], EAPSIM_RAND_SIZE);
+	memcpy(p+2+EAPSIM_RAND_SIZE*2, ess->keys.rand[2], EAPSIM_RAND_SIZE);
 	pairadd(outvps, newvp);
 
 	/* set the EAP_ID - new value */

@@ -543,7 +543,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 	int		fd = -1;
 	VALUE_PAIR	*vp;
 	uint32_t	ipno = 0;
-	char		*call_num = NULL;
+	char const     	*call_num = NULL;
 	rlm_radutmp_t	*inst = instance;
 	
 	char		*expanded = NULL;

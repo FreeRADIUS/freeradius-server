@@ -198,7 +198,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	rlm_yubikey_t *inst = instance;
 
 	DICT_VALUE *dval;
-	char *passcode;
+	char const *passcode;
 	size_t i, len;
 	VALUE_PAIR *vp;
 	
@@ -279,7 +279,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	rlm_rcode_t rcode = RLM_MODULE_NOOP;
 #endif
 	rlm_yubikey_t *inst = instance;
-	char *passcode;
+	char const *passcode;
 	size_t i, len;
 	
 	/*

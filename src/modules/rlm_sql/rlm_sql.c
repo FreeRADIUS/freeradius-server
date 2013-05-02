@@ -1289,7 +1289,7 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST * request) {
 	rlm_sql_row_t		row;
 	int			check = 0;
 	uint32_t		ipno = 0;
-	char			*call_num = NULL;
+	char const     		*call_num = NULL;
 	VALUE_PAIR		*vp;
 	int			ret;
 	uint32_t		nas_addr = 0;

@@ -966,6 +966,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	int		argc;
 	char		*argv[32];
 	ascend_filter_t filter;
+	char		*p;
 
 	rcode = -1;
 
@@ -982,8 +983,12 @@ ascend_parse_filter(VALUE_PAIR *pair)
 	 *	Once the filter is *completelty* parsed, then we will
 	 *	over-write it with the final binary filter.
 	 */
-	argc = str2argv(pair->vp_strvalue, argv, 32);
-	if (argc < 3) return -1;
+	p = talloc_strdup(pair, pair->vp_strvalue);
+	argc = str2argv(p, argv, 32);
+	if (argc < 3) {
+		talloc_free(p);
+		return -1;
+	}
 
 	/*
 	 *	Decide which filter type it is: ip, ipx, or generic
@@ -1003,6 +1008,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 
 	default:
 		fr_strerror_printf("Unknown Ascend filter type \"%s\"", argv[0]);
+		talloc_free(p);
 		return -1;
 		break;
 	}
@@ -1022,6 +1028,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 
 	default:
 		fr_strerror_printf("Unknown Ascend filter direction \"%s\"", argv[1]);
+		talloc_free(p);
 		return -1;
 		break;
 	}
@@ -1041,6 +1048,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 
 	default:
 		fr_strerror_printf("Unknown Ascend filter action \"%s\"", argv[2]);
+		talloc_free(p);
 		return -1;
 		break;
 	}
@@ -1069,6 +1077,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
 		memcpy(pair->vp_filter, &filter, sizeof(filter));
 	}
 
+	talloc_free(p);
 	return rcode;
 
 #if 0
@@ -1098,7 +1107,7 @@ ascend_parse_filter(VALUE_PAIR *pair)
     }
 
     if( rc != -1 ) {
-	memcpy( pair->vp_strvalue, &radFil, pair->length );
+	    pairmemcpy(pair, &radFil, pair->length );
     }
     return(rc);
 

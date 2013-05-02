@@ -213,9 +213,10 @@ int eap_basic_compose(RADIUS_PACKET *packet, eap_packet_t *reply)
 	 */
 	vp = pairfind(packet->vps, PW_MESSAGE_AUTHENTICATOR, 0, TAG_ANY);
 	if (!vp) {
-	  vp = paircreate(packet, PW_MESSAGE_AUTHENTICATOR, 0);
-		memset(vp->vp_strvalue, 0, AUTH_VECTOR_LEN);
+		vp = paircreate(packet, PW_MESSAGE_AUTHENTICATOR, 0);
 		vp->length = AUTH_VECTOR_LEN;
+		vp->vp_octets = talloc_zero_array(vp, uint8_t, vp->length);
+
 		pairadd(&(packet->vps), vp);
 	}
 
@@ -383,7 +384,7 @@ void eap_add_reply(REQUEST *request,
 {
 	VALUE_PAIR *vp;
 
-	vp = pairmake_reply(name, "", T_OP_EQ);
+	vp = pairmake_reply(name, NULL, T_OP_EQ);
 	if (!vp) {
 		REDEBUG("Did not create attribute %s: %s\n",
 			name, fr_strerror());

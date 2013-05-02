@@ -337,7 +337,7 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pairmake_reply("State", "0x00", T_OP_EQ);
+	state = pairmake_reply("State", NULL, T_OP_EQ);
 	if (!state) return 0;
 
 	/*
@@ -383,19 +383,14 @@ int eaplist_add(rlm_eap_t *inst, eap_handler_t *handler)
 		}		
 	}
 
-	pairmemcpy(state, handler->state, sizeof(handler->state));
-
 	/*
 	 *	Add some more data to distinguish the sessions.
 	 */
-	state->vp_octets[4] = handler->trips ^ handler->state[0];
-	state->vp_octets[5] = handler->eap_id ^ handler->state[1];
-	state->vp_octets[6] = handler->type ^ handler->state[2];
+	handler->state[4] = handler->trips ^ handler->state[0];
+	handler->state[5] = handler->eap_id ^ handler->state[1];
+	handler->state[6] = handler->type ^ handler->state[2];
 
-	/*
-	 *	and copy the state back again.
-	 */
-	memcpy(handler->state, state->vp_octets, sizeof(handler->state));
+	pairmemcpy(state, handler->state, sizeof(handler->state));
 
 	/*
 	 *	Big-time failure.

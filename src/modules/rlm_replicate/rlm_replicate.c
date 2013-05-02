@@ -167,10 +167,12 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 			if ((code == PW_AUTHENTICATION_REQUEST) &&
 			    (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) != NULL) &&
 			    (pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL)) {
+				uint8_t *p;
 				vp = radius_paircreate(request, &packet->vps,
 						       PW_CHAP_CHALLENGE, 0);
 				vp->length = AUTH_VECTOR_LEN;
-				memcpy(vp->vp_strvalue, request->packet->vector,
+				vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+				memcpy(p, request->packet->vector,
 				       AUTH_VECTOR_LEN);
 			}
 		} else {

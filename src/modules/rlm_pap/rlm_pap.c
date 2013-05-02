@@ -177,8 +177,9 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		case PW_PASSWORD_WITH_HEADER: /* preferred */
 		{
 			int attr;
-			char *p, *q;
-			uint8_t binbuf[128];
+			char *p;
+			char const *q;
+			uint8_t *b, binbuf[128];
 			char charbuf[128];
 			VALUE_PAIR *new_vp;
 
@@ -239,7 +240,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			 */
 			new_vp->length = vp->length;
 			new_vp->length -= (p - q + 1);
-			memcpy(new_vp->vp_strvalue, p + 1, new_vp->length);
+			new_vp->vp_octets = b = talloc_array(new_vp, uint8_t, new_vp->length);
+			memcpy(b, p + 1, new_vp->length);
 		}
 			break;
 

@@ -66,9 +66,12 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 	vp =  pairfind(request->packet->vps, PW_CALLING_STATION_ID, 0, TAG_ANY);
 	if (vp && (vp->length == 6)) {
 		int i;
+		char *p;
 		uint8_t buffer[6];
 
-		memcpy(buffer, vp->vp_octets, 6);
+		memcpy(buffer, vp->vp_strvalue, 6);
+		vp->length = (5*3)+2;
+		vp->vp_strvalue = p = talloc_array(vp, char, vp->length + 1);
 
 		/*
 		 *	RFC 3580 Section 3.20 says this is the preferred
@@ -76,12 +79,11 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		 *	so we fix it here.
 		 */
 		for (i = 0; i < 6; i++) {
-			fr_bin2hex(&buffer[i], &vp->vp_strvalue[i * 3], 1);
-			vp->vp_strvalue[(i * 3) + 2] = '-';
+			fr_bin2hex(&buffer[i], &p[i * 3], 1);
+			p[(i * 3) + 2] = '-';
 		}
 
-		vp->vp_strvalue[(5*3)+2] = '\0';
-		vp->length = (5*3)+2;
+		p[(5*3)+2] = '\0';
 
 		DEBUG2("rlm_wimax: Fixing WiMAX binary Calling-Station-Id to %s",
 		       vp->vp_strvalue);
@@ -137,7 +139,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 		pairdelete(&request->reply->vps, 16, VENDORPEC_MICROSOFT, TAG_ANY);
 		pairdelete(&request->reply->vps, 17, VENDORPEC_MICROSOFT, TAG_ANY);
 
-		vp = pairmake_reply("WiMAX-MSK", "0x00", T_OP_EQ);
+		vp = pairmake_reply("WiMAX-MSK", NULL, T_OP_EQ);
 		if (vp) {
 			pairmemcpy(vp, msk->vp_octets, msk->length);
 		}

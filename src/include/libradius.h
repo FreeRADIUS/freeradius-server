@@ -150,8 +150,8 @@ typedef struct dict_vendor {
 } DICT_VENDOR;
 
 typedef union value_pair_data {
-	char			strvalue[MAX_STRING_LEN];
-	uint8_t			octets[MAX_STRING_LEN];
+	char const	        *strvalue;
+	uint8_t const		*octets;
 	struct in_addr		ipaddr;
 	struct in6_addr		ipv6addr;
 	uint32_t		date;

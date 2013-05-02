@@ -415,6 +415,7 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	krb5_creds init_creds;
 	krb5_keytab keytab;	/* ktid */
 	krb5_context context;
+	char *password;		/* compiler warnings */
 	
 	rad_assert(inst->context);
 
@@ -469,8 +470,10 @@ static rlm_rcode_t krb5_auth(void *instance, REQUEST *request)
 	/*
 	 * 	Retrieve the TGT from the TGS/KDC and check we can decrypt it.
 	 */
-	ret = krb5_get_init_creds_password(context, &init_creds, client, request->password->vp_strvalue,
+	memcpy(&password, request->password->vp_strvalue, sizeof(password));
+	ret = krb5_get_init_creds_password(context, &init_creds, client, password,
 					   NULL, NULL, 0, NULL, inst->gic_options);
+	password = NULL;
 	if (ret) {
 		error:
 		switch (ret) {

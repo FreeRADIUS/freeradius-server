@@ -366,10 +366,19 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	
 	n->next = NULL;
 
-	if ((n->da->type == PW_TYPE_TLV) &&
-	    (n->vp_tlv != NULL)) {
-		n->vp_tlv = talloc_array(n, uint8_t, n->length);
-		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
+	if ((n->da->type == PW_TYPE_TLV) ||
+	    (n->da->type == PW_TYPE_OCTETS)) {
+		if (n->vp_octets != NULL) {
+			n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
+		}
+
+	} else if (n->da->type == PW_TYPE_STRING) {
+		if (n->vp_strvalue != NULL) {
+			/*
+			 *	Equivalent to, and faster than strdup.
+			 */
+			n->vp_strvalue = talloc_memdup(n, vp->vp_octets, n->length + 1);
+		}
 	}
 
 	return n;
@@ -409,12 +418,14 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 		n->value.xlat = talloc_strdup(n, n->value.xlat);
 	}
 	
-	if ((n->da->type == PW_TYPE_TLV) &&
-	    (n->vp_tlv != NULL)) {
-		n->vp_tlv = talloc_array(n, uint8_t, n->length);
-		memcpy(n->vp_tlv, vp->vp_tlv, n->length);
+	if ((n->da->type == PW_TYPE_TLV) ||
+	    (n->da->type == PW_TYPE_OCTETS) ||
+	    (n->da->type == PW_TYPE_STRING)) {
+		if (n->vp_octets != NULL) {
+			n->vp_octets = talloc_memdup(n, vp->vp_octets, n->length);
+		}
 	}
-	
+
 	n->next = NULL;
 
 	return n;
@@ -996,26 +1007,17 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 	if (!value) return false;
 	VERIFY(vp);
 
-	/*
-	 *      Even for integers, dates and ip addresses we
-	 *      keep the original string in vp->vp_strvalue.
-	 *
-	 *	@todo: too many things depend on this!
-	 */
-	if (vp->da->type != PW_TYPE_TLV) {
-		pairstrcpy(vp, value);
-	}
-
 	switch(vp->da->type) {
 	case PW_TYPE_STRING:
 		/*
 		 *	Do escaping here
 		 */
-		p = vp->vp_strvalue;
+		p = talloc_strdup(vp, value);
+		vp->vp_strvalue = p;
 		cp = value;
 		length = 0;
 
-		while (*cp && (length < (sizeof(vp->vp_strvalue) - 1))) {
+		while (*cp) {
 			char c = *cp++;
 
 			if (c == '\\') {
@@ -1067,7 +1069,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 			*p++ = c;
 			length++;
 		}
-		vp->vp_strvalue[length] = '\0';
+		*p = '\0';
 		vp->length = length;
 		break;
 
@@ -1159,16 +1161,15 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		p = vp->vp_strvalue;
-		if (sscanf(p, "%" PRIu64, &y) != 1) {
+		if (sscanf(vp->vp_strvalue, "%" PRIu64, &y) != 1) {
 			fr_strerror_printf("Invalid value %s for attribute %s",
 					   value, vp->da->name);
 			return false;
 		}
 		vp->vp_integer64 = y;
 		vp->length = 8;
-		p += strspn(p, "0123456789");
-		if (check_for_whitespace(p)) break;
+		length = strspn(vp->vp_strvalue, "0123456789");
+		if (check_for_whitespace(vp->vp_strvalue + length)) break;
 		break;
 
 	case PW_TYPE_DATE:
@@ -1216,7 +1217,6 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 	/* raw octets: 0x01020304... */
 	case PW_TYPE_VSA:
 		if (strcmp(value, "ANY") == 0) {
-			vp->vp_octets[0] = 0;
 			vp->length = 0;
 			break;
 		} /* else it's hex */
@@ -1230,25 +1230,16 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 		do_octets:
 #endif
 			cp = value + 2;
-			us = vp->vp_octets;
-			vp->length = 0;
+			size = strlen(cp);
+			vp->length = size >> 1;
+			us = talloc_array(vp, uint8_t, vp->length);
 
 			/*
 			 *	Invalid.
 			 */
-			size = strlen(cp);
 			if ((size  & 0x01) != 0) {
 				fr_strerror_printf("Hex string is not an even length string.");
 				return false;
-			}
-
-			vp->length = size >> 1;
-			if (size > 2*sizeof(vp->vp_octets)) {
-				us = vp->vp_tlv = talloc_array(vp, uint8_t, vp->length);
-				if (!us) {
-					fr_strerror_printf("Out of memory.");
-					return false;
-				}
 			}
 
 			if (fr_hex2bin(cp, us,
@@ -1256,6 +1247,9 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 				fr_strerror_printf("Invalid hex data");
 				return false;
 			}
+			vp->vp_octets = us;
+		} else {
+			pairstrcpy(vp, value);
 		}
 		break;
 
@@ -1299,7 +1293,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 			memcpy(buffer, value, p - value);
 			buffer[p - value] = '\0';
 
-			if (inet_pton(AF_INET6, buffer, vp->vp_octets + 2) <= 0) {
+			if (inet_pton(AF_INET6, buffer, vp->vp_ipv6prefix + 2) <= 0) {
 				fr_strerror_printf("failed to parse IPv6 address "
 					   "string \"%s\"", value);
 				return false;
@@ -1311,9 +1305,8 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 					   "string \"%s\"", value);
 				return false;
 			}
-			vp->vp_octets[1] = prefix;
+			vp->vp_ipv6prefix[1] = prefix;
 		}
-		vp->vp_octets[0] = 0;
 		vp->length = 16 + 2;
 		break;
 
@@ -1330,7 +1323,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 			memcpy(buffer, value, p - value);
 			buffer[p - value] = '\0';
 
-			if (inet_pton(AF_INET, buffer, vp->vp_octets + 2) <= 0) {
+			if (inet_pton(AF_INET, buffer, vp->vp_ipv4prefix + 2) <= 0) {
 				fr_strerror_printf("failed to parse IPv6 address "
 					   "string \"%s\"", value);
 				return false;
@@ -1342,22 +1335,21 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 					   "string \"%s\"", value);
 				return false;
 			}
-			vp->vp_octets[1] = prefix;
+			vp->vp_ipv4prefix[1] = prefix;
 
 			if (prefix < 32) {
 				uint32_t addr, mask;
 
-				memcpy(&addr, vp->vp_octets + 2, sizeof(addr));
+				memcpy(&addr, vp->vp_ipv4prefix + 2, sizeof(addr));
 				mask = 1;
 				mask <<= (32 - prefix);
 				mask--;
 				mask = ~mask;
 				mask = htonl(mask);
 				addr &= mask;
-				memcpy(vp->vp_octets + 2, &addr, sizeof(addr));
+				memcpy(vp->vp_ipv4prefix + 2, &addr, sizeof(addr));
 			}
 		}
-		vp->vp_octets[0] = 0;
 		vp->length = sizeof(vp->vp_ipv4prefix);
 		break;
 
@@ -1406,7 +1398,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 		{
 			const DICT_ATTR *da;
 		
-			if (inet_pton(AF_INET6, value, vp->vp_strvalue) > 0) {
+			if (inet_pton(AF_INET6, value, &vp->vp_ipv6addr) > 0) {
 				da = dict_attrbytype(vp->da->attr, vp->da->vendor,
 						     PW_TYPE_IPV6ADDR);
 				if (!da) {
@@ -1414,7 +1406,6 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 				}
 			
 				vp->length = 16; /* length of IPv6 address */
-				vp->vp_strvalue[vp->length] = '\0';
 			} else {
 				fr_ipaddr_t ipaddr;
 			
@@ -1497,7 +1488,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	VALUE_PAIR	*vp;
 	const DICT_ATTR *da;
 	
-	uint8_t		*data;
+	uint8_t 	*data;
 	size_t		size;
 
 	da = dict_attrunknownbyname(attribute, true);
@@ -1530,18 +1521,8 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 	if (!value) return vp;
 
 	size = strlen(value + 2);
-	data = vp->vp_octets;
-
 	vp->length = size >> 1;
-	if (vp->length > sizeof(vp->vp_octets)) {
-		vp->vp_tlv = talloc_array(vp, uint8_t, vp->length);
-		if (!vp->vp_tlv) {
-			fr_strerror_printf("Out of memory");
-			talloc_free(vp);
-			return NULL;
-		}
-		data = vp->vp_tlv;
-	}
+	data = talloc_array(vp, uint8_t, vp->length);
 
 	if (fr_hex2bin(value + 2, data, size) != vp->length) {
 		fr_strerror_printf("Invalid hex string");
@@ -1549,6 +1530,7 @@ static VALUE_PAIR *pairmake_any(TALLOC_CTX *ctx,
 		return NULL;
 	}
 
+	vp->vp_octets = data;
 	return vp;
 }
 
@@ -1667,7 +1649,7 @@ VALUE_PAIR *pairmake(TALLOC_CTX *ctx, VALUE_PAIR **vps,
 
 	case T_OP_CMP_TRUE:
 	case T_OP_CMP_FALSE:
-		vp->vp_strvalue[0] = '\0';
+		vp->vp_strvalue = NULL;
 		vp->length = 0;
 		value = NULL;	/* ignore it! */
 		break;
@@ -1762,8 +1744,6 @@ int pairmark_xlat(VALUE_PAIR *vp, char const *value)
 	
 	vp->type = VT_XLAT;
 	vp->value.xlat = raw;
-	
-	vp->vp_strvalue[0] = '\0';
 	vp->length = 0;
 
 	return 0;	
@@ -2283,9 +2263,15 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
  */
 void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 {
-	if (size > sizeof(vp->vp_octets)) size = sizeof(vp->vp_octets);
+	uint8_t *p, *q;
 
-	memcpy(vp->vp_octets, src, size);
+	p = talloc_memdup(vp, src, size);
+	if (!p) return;
+
+	memcpy(&q, &vp->vp_octets, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_octets = p;
 	vp->length = size;
 }
 
@@ -2297,13 +2283,16 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
  */
 void pairstrcpy(VALUE_PAIR *vp, char const *src)
 {
-	size_t size = strlen(src);
+	char *p, *q;
 
-	if (size >= sizeof(vp->vp_strvalue)) size = sizeof(vp->vp_strvalue) - 1;
+	p = talloc_strdup(vp, src);
+	if (!p) return;
 
-	memcpy(vp->vp_strvalue, src, size);
-	vp->vp_strvalue[size] = '\0';
-	vp->length = size;
+	memcpy(&q, &vp->vp_strvalue, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_strvalue = p;
+	vp->length = strlen(vp->vp_strvalue);
 }
 
 
@@ -2315,10 +2304,18 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 {
 	va_list ap;
+	char *p, *q;
 
 	va_start(ap, fmt);
-	vsnprintf(vp->vp_strvalue, sizeof(vp->vp_strvalue), fmt, ap);
+	p = talloc_vasprintf(vp, fmt, ap);
 	va_end(ap);
+
+	if (!p) return;
+
+	memcpy(&q, &vp->vp_strvalue, sizeof(q));
+	talloc_free(q);
+
+	vp->vp_strvalue = p;
 
 	/*
 	 *	vsnprintf returns random things on different platforms

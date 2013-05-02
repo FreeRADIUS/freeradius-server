@@ -449,7 +449,7 @@ rlm_rcode_t rlm_ldap_check_groupobj_dynamic(ldap_instance_t const *inst, REQUEST
 	char 		filter[LDAP_MAX_FILTER_STR_LEN + 1];
 	char const	*dn = base_dn;
 	
-	char		*name = check->vp_strvalue;
+	char const     	*name = check->vp_strvalue;
 
 	RDEBUG2("Checking for user in group objects");
 	
@@ -529,7 +529,7 @@ rlm_rcode_t rlm_ldap_check_userobj_dynamic(ldap_instance_t const *inst, REQUEST 
 	LDAPMessage     *entry = NULL;
 	char		**vals = NULL;
 	
-	char		*name = check->vp_strvalue;
+	char const     	*name = check->vp_strvalue;
 	
 	char const	*attrs[] = { inst->userobj_membership_attr, NULL };
 	int		i, count, ldap_errno; 

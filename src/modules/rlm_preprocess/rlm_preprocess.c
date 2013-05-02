@@ -162,9 +162,7 @@ static void cisco_vsa_hack(REQUEST *request)
 			 *	value field, we use only the value on
 			 *	the right side of the '=' character.
 			 */
-			strlcpy(newattr, ptr + 1, sizeof(newattr));
-			strlcpy(vp->vp_strvalue, newattr, sizeof(vp->vp_strvalue));
-			vp->length = strlen((char *)vp->vp_strvalue);
+			pairstrcpy(vp, ptr + 1);
 		}
 	}
 }
@@ -381,7 +379,7 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
  */
 static int hints_setup(PAIR_LIST *hints, REQUEST *request)
 {
-	char		*name;
+	char const     	*name;
 	VALUE_PAIR	*add;
 	VALUE_PAIR	*tmp;
 	PAIR_LIST	*i;
@@ -509,7 +507,7 @@ static int add_nas_attr(REQUEST *request)
 		nas = pairfind(request->packet->vps, PW_NAS_IPV6_ADDRESS, 0, TAG_ANY);
 		if (!nas) {
 			nas = radius_paircreate(request, &request->packet->vps, PW_NAS_IPV6_ADDRESS, 0);
-			memcpy(nas->vp_strvalue, &request->packet->src_ipaddr.ipaddr,
+			memcpy(&nas->vp_ipv6addr, &request->packet->src_ipaddr.ipaddr,
 			       sizeof(request->packet->src_ipaddr.ipaddr));
 		}
 		break;
@@ -626,11 +624,13 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY) &&
 	    pairfind(request->packet->vps, PW_CHAP_CHALLENGE, 0, TAG_ANY) == NULL) {
 		VALUE_PAIR *vp;
+		uint8_t *p;
 
 		vp = radius_paircreate(request, &request->packet->vps, PW_CHAP_CHALLENGE, 0);
 		vp->length = AUTH_VECTOR_LEN;
+		vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
 		
-		memcpy(vp->vp_strvalue, request->packet->vector, AUTH_VECTOR_LEN);
+		memcpy(p, request->packet->vector, AUTH_VECTOR_LEN);
 	}
 
 	if ((r = huntgroup_access(request, inst->huntgroups)) != RLM_MODULE_OK) {

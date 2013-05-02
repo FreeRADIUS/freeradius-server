@@ -148,7 +148,7 @@ static int eaplist_add(rlm_eap_t *inst, EAP_HANDLER *handler)
 	 *	Generate State, since we've been asked to add it to
 	 *	the list.
 	 */
-	state = pairmake_reply("State", "0x00", T_OP_EQ);
+	state = pairmake_reply("State", NULL, T_OP_EQ);
 	if (!state) return 0;
 	state->length = EAP_STATE_LEN;
 
@@ -695,14 +695,14 @@ static int eap_example_server_step(EAP_HANDLER *handler)
 				 */
 			}
 
-			vp = pairmake_reply("MS-MPPE-Recv-Key", "", T_OP_EQ);
+			vp = pairmake_reply("MS-MPPE-Recv-Key", NULL, T_OP_EQ);
 			if (vp) {
 				pairmemcpy(vp,
 					   handler->server_ctx.eap_if->eapKeyData,
 					   length);
 			}
 			
-			vp = pairmake_reply("MS-MPPE-Send-Key", "", T_OP_EQ);
+			vp = pairmake_reply("MS-MPPE-Send-Key", NULL, T_OP_EQ);
 			if (vp) {
 				pairmemcpy(vp,
 					   handler->server_ctx.eap_if->eapKeyData + length,

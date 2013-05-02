@@ -592,9 +592,6 @@ int		radius_exec_program(char const *,  REQUEST *, int,
 					int shell_escape);
 void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench);
 
-/* timestr.c */
-int		timestr_match(char *, time_t);
-
 /* valuepair.c */
 int		paircompare_register(unsigned int attr, int otherattr,
 				     RAD_COMPARE_FUNC func,
