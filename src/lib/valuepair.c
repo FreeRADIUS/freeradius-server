@@ -2188,7 +2188,13 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
-		compare = two->vp_integer - one->vp_integer;
+		if (two->vp_integer < one->vp_integer) {
+			compare = -1;
+		} else if (two->vp_integer == one ->vp_integer) {
+			compare = 0;
+		} else {
+			compare = +1;
+		}
 		break;
 
 	case PW_TYPE_INTEGER64:
@@ -2204,7 +2210,13 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		}
 		break;
 	case PW_TYPE_IPADDR:
-		compare = ntohl(two->vp_ipaddr) - ntohl(one->vp_ipaddr);
+		if (ntohl(two->vp_ipaddr)  < ntohl(one->vp_ipaddr) ) {
+			compare = -1;
+		} else if (ntohl(two->vp_ipaddr)  == ntohl(one->vp_ipaddr) ) {
+			compare = 0;
+		} else {
+			compare = +1;
+		}
 		break;
 
 	case PW_TYPE_IPV6ADDR:
