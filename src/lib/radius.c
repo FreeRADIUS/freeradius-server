@@ -904,6 +904,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		len = 4;	/* just in case */
 		slvalue = htonl(vp->vp_signed);
 		memcpy(array, &slvalue, sizeof(slvalue));
+		data = array;
 		break;
 	}
 
