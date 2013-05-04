@@ -15,7 +15,7 @@ xlat %{9}
 data ERROR offset 2 'Invalid regex reference'
 
 xlat %{10}
-data ERROR offset 2 'Invalid regex reference'
+data ERROR offset 2 'Unknown attribute'
 
 xlat %{%{foo}:-%{bar}}
 data ERROR offset 4 'Unknown attribute'
@@ -85,3 +85,6 @@ data OK
 
 xlat %{coaX:User-Name[#]}
 data ERROR offset 2 'Unknown module'
+
+xlat %{3GPP-SGSN-Address}
+data OK

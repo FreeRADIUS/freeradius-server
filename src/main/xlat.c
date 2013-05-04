@@ -620,8 +620,8 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	/*
 	 *	Handle regex's specially.
 	 */
-	if (isdigit((int) fmt[2])) {
-		if ((fmt[2] == '9') || (fmt[3] != '}')) {
+	if (isdigit((int) fmt[2]) && (fmt[3] == '}')) {
+		if (fmt[2] == '9') {
 			talloc_free(node);
 			*error = "Invalid regex reference";
 			return -2;
