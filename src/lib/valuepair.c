@@ -2294,7 +2294,6 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
  *
  * @param[in,out] vp to update
  * @param[in] src data to copy
- * @param[in] size of the data
  */
 void pairstrcpy(VALUE_PAIR *vp, char const *src)
 {
@@ -2312,7 +2311,6 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
  *
  * @param[in,out] vp to update
  * @param[in] fmt the format string
- * @param[in] size of the data
  */
 void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 {
