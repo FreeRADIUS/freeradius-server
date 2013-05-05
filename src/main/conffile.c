@@ -705,32 +705,38 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			name[end - ptr] = '\0';
 
 			ci = cf_reference_item(parentcs, outercs, name);
-			if (!ci || (ci->type != CONF_ITEM_PAIR)) {
-				ERROR("%s[%d]: Reference \"%s\" not found",
-				       cf, *lineno, input);
+			if (!ci) {
+				ERROR("%s[%d]: Reference \"%s\" not found", cf, *lineno, input);
 				return NULL;
 			}
 
-			/*
-			 *  Substitute the value of the variable.
-			 */
-			cp = cf_itemtopair(ci);
-			if (!cp->value) {
-				ERROR("%s[%d]: Reference \"%s\" has no value",
-				       cf, *lineno, input);
+			if (ci->type == CONF_ITEM_PAIR) {
+				/*
+				 *  Substitute the value of the variable.
+				 */
+				cp = cf_itemtopair(ci);
+				if (!cp->value) {
+					ERROR("%s[%d]: Reference \"%s\" has no value",
+					       cf, *lineno, input);
+					return NULL;
+				}
+
+				if (p + strlen(cp->value) >= output + outsize) {
+					ERROR("%s[%d]: Reference \"%s\" is too long",
+					       cf, *lineno, input);
+					return NULL;
+				}
+
+				strcpy(p, cp->value);
+				p += strlen(p);
+				ptr = end + 1;
+			} else if (ci->type == CONF_ITEM_SECTION) {
+				cf_item_add(outercs, ci);
+				talloc_reference(outercs, ci);
+			} else {
+				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, *lineno, input);
 				return NULL;
 			}
-
-			if (p + strlen(cp->value) >= output + outsize) {
-				ERROR("%s[%d]: Reference \"%s\" is too long",
-				       cf, *lineno, input);
-				return NULL;
-			}
-
-			strcpy(p, cp->value);
-			p += strlen(p);
-			ptr = end + 1;
-
 		} else if (memcmp(ptr, "$ENV{", 5) == 0) {
 			char *env;
 
