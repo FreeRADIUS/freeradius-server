@@ -169,16 +169,11 @@ static int parse_sub_section(CONF_SECTION *parent,
 	 *	Convert HTTP method auth and body type strings into their
 	 *	integer equivalents.
 	 */
-	config->auth = fr_str2int(http_auth_table, config->auth_str,
-				  HTTP_AUTH_UNKNOWN);
-				
+	config->auth = fr_str2int(http_auth_table, config->auth_str, HTTP_AUTH_UNKNOWN);			
 	if (config->auth == HTTP_AUTH_UNKNOWN) {
-		cf_log_err_cs(cs, "Unknown HTTP auth type '%s'",
-			      config->auth_str);
+		cf_log_err_cs(cs, "Unknown HTTP auth type '%s'", config->auth_str);
 		return -1;	
-	}
-	
-	if (!http_curl_auth[config->auth]) {
+	} else if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
 		cf_log_err_cs(cs, "Unsupported HTTP auth type \"%s\""
 			      ", check libcurl version, OpenSSL build configuration,"
 			      " then recompile this module",
