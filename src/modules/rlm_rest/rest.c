@@ -2377,12 +2377,15 @@ ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *sec
 		return -1;
 	}
 
-	len = (q - p);
+	len = (section->uri - (p - 1));
 
+	/*
+	 *	Allocate a temporary buffer to hold the first part of the URI
+	 */
 	scheme = talloc_array(request, char, len + 1);
 	strlcpy(scheme, section->uri, len + 1);
 
-	path = (q + 1);
+	path = (section->uri + len);
 
 	len = radius_axlat(out, request, scheme, NULL, NULL);
 	talloc_free(scheme);
