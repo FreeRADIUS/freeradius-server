@@ -1793,6 +1793,7 @@ static void rest_write_free(rlm_rest_write_t *ctx)
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
+ * @param[in] request Current request.
  * @param[in] handle rlm_rest_handle_t to configure.
  * @param[in] func to pass to libcurl for chunked.
  *	      transfers (NULL if not using chunked mode).
@@ -2180,6 +2181,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
  *
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
+ * @param[in] request Current request.
  * @param[in] handle to use.
  * @return 0 on success or -1 on error.
  */
