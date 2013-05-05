@@ -213,7 +213,7 @@ typedef struct json_flags {
  * @see rest_cleanup
  *
  * @param[in] instance configuration data.
- * @return true if init succeeded false if it failed.
+ * @return 0 if init succeeded -1 if it failed.
  */
 int rest_init(rlm_rest_t *instance)
 {
@@ -226,12 +226,12 @@ int rest_init(rlm_rest_t *instance)
 		       ret, curl_easy_strerror(ret));
 
 		curl_global_cleanup();
-		return false;
+		return -1;
 	}
 
 	DEBUG("rlm_rest (%s): CURL library version: %s", instance->xlat_name, curl_version());
 
-	return true;
+	return 0;
 }
 
 /** Cleans up after libcurl.
@@ -456,7 +456,7 @@ static size_t rest_encode_post(void *ptr, size_t size, size_t nmemb,
 		s = (ctx->chunk - 1);
 	}
 
-	if (ctx->state == READ_STATE_END) return false;
+	if (ctx->state == READ_STATE_END) return 0;
 
 	/* Post data requires no headers */
 	if (ctx->state == READ_STATE_INIT) {
@@ -626,7 +626,7 @@ static size_t rest_encode_json(void *ptr, size_t size, size_t nmemb,
 		s = (ctx->chunk - 1);
 	}
 	
-	if (ctx->state == READ_STATE_END) return false;
+	if (ctx->state == READ_STATE_END) return 0;
 
 	if (ctx->state == READ_STATE_INIT) {
 		ctx->state = READ_STATE_ATTR_BEGIN;
@@ -971,7 +971,7 @@ static int rest_decode_post(rlm_rest_t *instance,
 	 * Empty response?
 	 */
 	while (isspace(*p)) p++;
-	if (*p == '\0') return false;
+	if (*p == '\0') return 0;
 
 	while (((q = strchr(p, '=')) != NULL) &&
 	       (count < REST_BODY_MAX_ATTRS)) {
@@ -1476,7 +1476,7 @@ static int rest_decode_json(rlm_rest_t *instance,
 	 *	Empty response?
 	 */
 	while (isspace(*p)) p++;
-	if (*p == '\0') return false;
+	if (*p == '\0') return 0;
 
 	json = json_tokener_parse(p);
 	if (!json) {
@@ -1796,10 +1796,11 @@ static void rest_write_free(rlm_rest_write_t *ctx)
  * @param[in] handle rlm_rest_handle_t to configure.
  * @param[in] func to pass to libcurl for chunked.
  *	      transfers (NULL if not using chunked mode).
- * @return true on success false on error.
+ * @return 0 on success -1 on error.
  */
-static int rest_request_config_body(rlm_rest_t *instance,
+static int rest_request_config_body(UNUSED rlm_rest_t *instance,
 				    rlm_rest_section_t *section,
+				    REQUEST *request,
 				    rlm_rest_handle_t *handle,
 				    rest_read_t func)
 {
@@ -1810,38 +1811,31 @@ static int rest_request_config_body(rlm_rest_t *instance,
 	CURLcode ret;
 
 	if (section->chunk > 0) {
-		ret = curl_easy_setopt(candle, CURLOPT_READDATA,
-				       &ctx->read);
+		ret = curl_easy_setopt(candle, CURLOPT_READDATA, &ctx->read);
 		if (ret != CURLE_OK) goto error;
 
-		ret = curl_easy_setopt(candle, CURLOPT_READFUNCTION,
-				       rest_encode_json);
+		ret = curl_easy_setopt(candle, CURLOPT_READFUNCTION, rest_encode_json);
 		if (ret != CURLE_OK) goto error;
 	} else {
-		len = rest_read_wrapper(&ctx->body, func,
-					REST_BODY_MAX_LEN , &ctx->read);
+		len = rest_read_wrapper(&ctx->body, func, REST_BODY_MAX_LEN,
+					&ctx->read);
 		if (len <= 0) {
-			ERROR("rlm_rest (%s): Failed creating HTTP"
-			       " body content", instance->xlat_name);
-			return false;
+			RERROR("Failed creating HTTP body content");
 		}
 
-		ret = curl_easy_setopt(candle, CURLOPT_POSTFIELDS,
-				       ctx->body);
+		ret = curl_easy_setopt(candle, CURLOPT_POSTFIELDS, ctx->body);
 		if (ret != CURLE_OK) goto error;
 
-		ret = curl_easy_setopt(candle, CURLOPT_POSTFIELDSIZE,
-				       len);
+		ret = curl_easy_setopt(candle, CURLOPT_POSTFIELDSIZE, len);
 		if (ret != CURLE_OK) goto error;
 	}
 
-	return true;
+	return 0;
 
 	error:
-	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s",
-		instance->xlat_name, ret, curl_easy_strerror(ret));
+	RERROR("Failed setting curl option: %i - %s", ret, curl_easy_strerror(ret));
 
-	return false;
+	return -1;
 }
 
 /** Configures request curlopts.
@@ -1864,7 +1858,7 @@ static int rest_request_config_body(rlm_rest_t *instance,
  * @param[in] type Content-Type for request encoding, also sets the default
  * 	for decoding.
  * @param[in] uri buffer containing the expanded URI to send the request to.
- * @return true on success (all opts configured) false on error.
+ * @return 0 on success (all opts configured) -1 on error.
  */
 int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			REQUEST *request, void *handle, http_method_t method,
@@ -2111,9 +2105,8 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	{
 		case HTTP_METHOD_GET :
 		case HTTP_METHOD_DELETE :
-			return false;
-			break;
-
+			return 0;
+			
 		case HTTP_METHOD_POST :
 		case HTTP_METHOD_PUT :
 		case HTTP_METHOD_CUSTOM :
@@ -2133,27 +2126,23 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			{
 #ifdef HAVE_JSON
 				case HTTP_BODY_JSON:
-					rest_read_ctx_init(request,
-							   &ctx->read, 1);
+					rest_read_ctx_init(request, &ctx->read, 1);
 
-					ret = rest_request_config_body(instance,
-								       section,
-								       handle,
-								       rest_encode_json);
-					if (!ret) return -1;
+					if (rest_request_config_body(instance, section, request, handle,
+								     rest_encode_json) < 0) {
+						return -1;
+					}
 
 					break;
 #endif
 
 				case HTTP_BODY_POST:
-					rest_read_ctx_init(request,
-							   &ctx->read, 0);
+					rest_read_ctx_init(request, &ctx->read, 0);
 
-					ret = rest_request_config_body(instance,
-								       section,
-								       handle,
-								       rest_encode_post);
-					if (!ret) return -1;
+					if (rest_request_config_body(instance, section, request, handle,
+								     rest_encode_post) < 0) {
+						return -1;
+					}
 
 					break;
 
@@ -2171,17 +2160,17 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			assert(0);
 	};
 
-	return true;
+	return 0;
 
 	error:
 	ERROR("rlm_rest (%s): Failed setting curl option: %i - %s",
 	       instance->xlat_name, ret, curl_easy_strerror(ret));
-	return false;
+	return -1;
 
 	error_header:
 	ERROR("rlm_rest (%s): Failed creating header",
 	       instance->xlat_name);
-	return false;
+	return -1;
 }
 
 /** Sends a REST (HTTP) request.
@@ -2192,10 +2181,11 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
  * @param[in] handle to use.
- * @return true on success or false on error.
+ * @return 0 on success or -1 on error.
  */
-int rest_request_perform(rlm_rest_t *instance,
-			 UNUSED rlm_rest_section_t *section, void *handle)
+int rest_request_perform(UNUSED rlm_rest_t *instance,
+			 UNUSED rlm_rest_section_t *section, 
+			 REQUEST *request, void *handle)
 {
 	rlm_rest_handle_t *randle = handle;
 	CURL *candle		  = randle->handle;
@@ -2203,12 +2193,12 @@ int rest_request_perform(rlm_rest_t *instance,
 
 	ret = curl_easy_perform(candle);
 	if (ret != CURLE_OK) {
-		ERROR("rlm_rest (%s): Request failed: %i - %s",
-		       instance->xlat_name, ret, curl_easy_strerror(ret));
-		return false;
+		RERROR("Request failed: %i - %s", ret, curl_easy_strerror(ret));
+		
+		return -1;
 	}
 
-	return true;
+	return 0;
 }
 
 /** Sends the response to the correct decode function.
@@ -2221,7 +2211,7 @@ int rest_request_perform(rlm_rest_t *instance,
  * @param[in] section configuration data.
  * @param[in] request Current request.
  * @param[in] handle to use.
- * @return true on success or false on error.
+ * @return 0 on success or -1 on error.
  */
 int rest_request_decode(rlm_rest_t *instance,
 			UNUSED rlm_rest_section_t *section,
@@ -2234,7 +2224,7 @@ int rest_request_decode(rlm_rest_t *instance,
 
 	if (!ctx->write.buffer) {
 		RDEBUG("Skipping attribute processing, no body data received");
-		return false;
+		return -1;
 	}
 
 	RDEBUG("Processing body");
@@ -2276,7 +2266,6 @@ int rest_request_decode(rlm_rest_t *instance,
  * @param[in] instance configuration data.
  * @param[in] section configuration data.
  * @param[in] handle to cleanup.
- * @return true on success or false on error.
  */
 void rest_request_cleanup(UNUSED rlm_rest_t *instance,
 			  UNUSED rlm_rest_section_t *section, void *handle)

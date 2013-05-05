@@ -243,7 +243,8 @@ int rest_request_config(rlm_rest_t *instance,
 			void *handle, http_method_t method,
 			http_body_type_t type, char *uri);
 
-int rest_request_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
+int rest_request_perform(rlm_rest_t *instance, 
+			 rlm_rest_section_t *section, REQUEST *request,
 			 void *handle);
 
 int rest_request_decode(rlm_rest_t *instance,

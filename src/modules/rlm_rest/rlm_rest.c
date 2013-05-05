@@ -123,17 +123,16 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 */
 	ret = rest_request_config(instance, section, request, handle, section->method, section->body, uri);
 	talloc_free(uri);
-	
-	if (ret <= 0) return -1;
+	if (ret < 0) return -1;
 
 	/*
 	 *	Send the CURL request, pre-parse headers, aggregate incoming
 	 *	HTTP body data into a single contiguous buffer.
 	 */
-	ret = rest_request_perform(instance, section, handle);
-	if (ret <= 0) return -1;
+	ret = rest_request_perform(instance, section, request, handle);
+	if (ret < 0) return -1;
 
-	return 1;
+	return 0;
 }
 
 static void rlm_rest_cleanup(rlm_rest_t *instance, rlm_rest_section_t *section,
@@ -246,7 +245,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Initialise REST libraries.
 	 */
-	if (!rest_init(inst)) {
+	if (rest_init(inst) < 0) {
 		return -1;
 	}
 
