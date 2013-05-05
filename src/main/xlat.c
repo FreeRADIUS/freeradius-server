@@ -1122,7 +1122,7 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	char const *error;
 
 	*head = NULL;
-
+	
 	/* 
 	 *	Copy the original format string to a buffer so that
 	 *	the later functions can mangle it in-place, which is
@@ -1132,14 +1132,20 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	if (!tokens) return -1;
 
 	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
-
+	
+	/*
+	 *	Zero length expansion, return a zero length node.
+	 */
+	if (slen == 0) {
+		head = talloc_zero(request, xlat_exp_t);
+	}
 	/*
 	 *	Output something like:
 	 *
 	 *	"format string"
 	 *	"       ^ error was here"
 	 */
-	if (slen <= 0) {
+	if (slen < 0) {
 		size_t indent = -slen;
 		talloc_free(tokens);
 
@@ -1629,7 +1635,13 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	/*
 	 *	Give better errors than the old code.
 	 */
-	if (xlat_tokenize_request(request, fmt, &node) <= 0) {
+	len = xlat_tokenize_request(request, fmt, &node);
+	if (len == 0) {
+		if (*out) *out[0] = '\0';
+		return 0;	
+	}
+	
+	if (len < 0) {
 		if (*out) *out[0] = '\0';
 		return -1;
 	}
