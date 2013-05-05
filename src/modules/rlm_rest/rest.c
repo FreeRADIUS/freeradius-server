@@ -2377,7 +2377,7 @@ ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *sec
 		return -1;
 	}
 
-	len = (section->uri - (p - 1));
+	len = ((p - 1) - section->uri);
 
 	/*
 	 *	Allocate a temporary buffer to hold the first part of the URI
