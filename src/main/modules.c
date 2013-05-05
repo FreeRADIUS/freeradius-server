@@ -434,7 +434,7 @@ static module_entry_t *linkto_module(char const *module_name,
 		return NULL;
 	}
 
-#if !defined(WIT_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
+#if !defined(WITH_LIBLTDL) && defined (HAVE_DLFCN_H) && defined(RTLD_SELF)
  open_self:
 #endif
 	/*
