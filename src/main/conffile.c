@@ -732,7 +732,8 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				ptr = end + 1;
 			} else if (ci->type == CONF_ITEM_SECTION) {
 				cf_item_add(outercs, ci);
-				outercs = talloc_reference(outercs, ci);
+				(void) talloc_reference(outercs, ci);
+				ptr = end + 1;
 			} else {
 				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, *lineno, input);
 				return NULL;
