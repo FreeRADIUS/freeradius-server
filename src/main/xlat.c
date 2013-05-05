@@ -1132,13 +1132,13 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 	if (!tokens) return -1;
 
 	slen = xlat_tokenize_literal(request, tokens, head, false, &error);
-	
 	/*
 	 *	Zero length expansion, return a zero length node.
 	 */
 	if (slen == 0) {
-		head = talloc_zero(request, xlat_exp_t);
+		*head = talloc_zero(request, xlat_exp_t);
 	}
+	
 	/*
 	 *	Output something like:
 	 *
