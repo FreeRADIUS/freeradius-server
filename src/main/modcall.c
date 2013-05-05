@@ -43,7 +43,7 @@ static modcallable *do_compile_modgroup(modcallable *,
 #define MOD_ACTION_REJECT  (-2)
 
 /* Here are our basic types: modcallable, modgroup, and modsingle. For an
- * explanation of what they are all about, see ../../doc/README.failover */
+ * explanation of what they are all about, see doc/configurable_failover.rst */
 struct modcallable {
 	modcallable *parent;
 	struct modcallable *next;
