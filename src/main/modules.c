@@ -1233,7 +1233,7 @@ int virtual_servers_load(CONF_SECTION *config)
 	 *	server, then try to load the old-style sections first.
 	 *
 	 *	In either case, load the "default" virtual server first.
-	 *	this matches better iwth users expectations.
+	 *	this matches better with users expectations.
 	 */
 	cs = cf_section_find_name2(cf_subsection_find_next(config, NULL,
 							   "server"),
