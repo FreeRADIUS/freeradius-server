@@ -218,7 +218,7 @@ static const CONF_PARSER thread_config[] = {
  *
  *	Note: this only implements static callbacks.
  *	OpenSSL does not use dynamic locking callbacks
- *	right now, but may in the futiure, so we will have
+ *	right now, but may in the future, so we will have
  *	to add them at some point.
  */
 
@@ -891,7 +891,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 
 	/*
 	 *	The pool has already been initialized.  Don't spawn
-	 *	new threads, and don't forget about forked children,
+	 *	new threads, and don't forget about forked children.
 	 */
 	if (pool_initialized) {
 		return 0;
