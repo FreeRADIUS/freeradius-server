@@ -873,12 +873,16 @@ static home_pool_t *server_pool_alloc(char const *name, home_pool_type_t type,
 	return pool;
 }
 
-static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
+/*
+ * Ensure any home_server clauses in a home_server_pool section reference
+ * defined home servers, which should already have been created, regardless
+ * of where they appear in the configuration.
+ */
+static int pool_check_home_server(UNUSED realm_config_t *rc, CONF_PAIR *cp,
 				  char const *name, int server_type,
 				  home_server **phome)
 {
 	home_server myhome, *home;
-	CONF_SECTION *server_cs;
 
 	if (!name) {
 		cf_log_err_cp(cp,
@@ -893,24 +897,9 @@ static int pool_check_home_server(realm_config_t *rc, CONF_PAIR *cp,
 		*phome = home;
 		return 1;
 	}
-	
-	server_cs = cf_section_sub_find_name2(rc->cs, "home_server", name);
-	if (!server_cs) {
-		cf_log_err_cp(cp,
-			   "Unknown home_server \"%s\".", name);
-		return 0;
-	}
-	
-	home = rbtree_finddata(home_servers_byname, &myhome);
-	if (!home) {
-		cf_log_err_cp(cp,
-			   "Internal error %d adding home server \"%s\".",
-			   __LINE__, name);
-		return 0;
-	}
 
-	*phome = home;
-	return 1;
+	cf_log_err_cp(cp, "Unknown home_server \"%s\".", name);
+	return 0;
 }
 
 
