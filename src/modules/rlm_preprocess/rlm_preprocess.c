@@ -295,8 +295,6 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	}
 
 	if (inst->with_specialix_jetstream_hack) {
-		char const *ptr;
-
 		/*
 		 *	Specialix Jetstream 8500 24 port access server.
 		 *	If the user name is 10 characters or longer, a "/"
