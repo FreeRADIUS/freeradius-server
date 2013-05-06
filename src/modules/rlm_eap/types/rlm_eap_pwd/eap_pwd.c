@@ -193,7 +193,7 @@ compute_password_element (pwd_session_t *sess, uint16_t grp_num,
 	H_Update(&ctx, (uint8_t *)token, sizeof(*token));
 	H_Update(&ctx, (uint8_t *)id_peer, id_peer_len);
 	H_Update(&ctx, (uint8_t *)id_server, id_server_len);
-	H_Update(&ctx, (uint8_t *)password, password_len);
+	H_Update(&ctx, (uint8_t const *)password, password_len);
 	H_Update(&ctx, (uint8_t *)&ctr, sizeof(ctr));
 	H_Final(&ctx, pwe_digest);
 

@@ -55,7 +55,7 @@ char *auth_name(char *buf, size_t buflen, REQUEST *request, int do_cli)
 
 	snprintf(buf, buflen, "from client %.128s port %u%s%.128s%s",
 			request->client->shortname, port,
-		 (do_cli ? " cli " : ""), (do_cli ? (char *)cli->vp_strvalue : ""),
+		 (do_cli ? " cli " : ""), (do_cli ? cli->vp_strvalue : ""),
 		 tls);
 
 	return buf;
@@ -97,7 +97,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 	if (username == NULL) {
 		strcpy(clean_username, "<no User-Name attribute>");
 	} else {
-		fr_print_string((char *)username->vp_strvalue,
+		fr_print_string(username->vp_strvalue,
 				username->length,
 				clean_username, sizeof(clean_username));
 	}
@@ -542,9 +542,9 @@ autz_redo:
 		/* double check: maybe the secret is wrong? */
 		if ((debug_flag > 1) && (auth_item != NULL) &&
 				(auth_item->da->attr == PW_USER_PASSWORD)) {
-			uint8_t *p;
+			uint8_t const *p;
 
-			p = (uint8_t *) auth_item->vp_strvalue;
+			p = (uint8_t const *) auth_item->vp_strvalue;
 			while (*p) {
 				int size;
 

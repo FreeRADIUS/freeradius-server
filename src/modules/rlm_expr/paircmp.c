@@ -38,7 +38,7 @@ static int connectcmp(UNUSED void *instance,
 {
 	int rate;
 
-	rate = atoi((char *)request->vp_strvalue);
+	rate = atoi(request->vp_strvalue);
 	return rate - check->vp_integer;
 }
 
@@ -58,8 +58,8 @@ static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *reque
 
 	port = request->vp_integer;
 
-	if ((strchr((char *)check->vp_strvalue, ',') == NULL) &&
-			(strchr((char *)check->vp_strvalue, '-') == NULL)) {
+	if ((strchr(check->vp_strvalue, ',') == NULL) &&
+	    (strchr(check->vp_strvalue, '-') == NULL)) {
 		return (request->vp_integer - check->vp_integer);
 	}
 
@@ -120,7 +120,7 @@ static int presufcmp(UNUSED void *instance,
 	printf("Comparing %s and %s, check->attr is %d\n", name, check->vp_strvalue, check->attribute);
 #endif
 
-	len = strlen((char *)check->vp_strvalue);
+	len = strlen(check->vp_strvalue);
 	if (check->da->vendor == 0) switch (check->da->attr) {
 		case PW_PREFIX:
 			ret = strncmp(name, check->vp_strvalue, len);
@@ -132,7 +132,7 @@ static int presufcmp(UNUSED void *instance,
 			if (namelen < len)
 				break;
 			ret = strcmp(name + namelen - len,
-					(char *)check->vp_strvalue);
+				     check->vp_strvalue);
 			if (ret == 0) {
 				strlcpy(rest, name, namelen - len + 1);
 			}

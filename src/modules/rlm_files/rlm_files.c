@@ -376,7 +376,7 @@ static rlm_rcode_t file_common(rlm_files_t *inst, REQUEST *request,
 		VALUE_PAIR	*namepair;
 
 		namepair = request->username;
-		name = namepair ? (char *) namepair->vp_strvalue : "NONE";
+		name = namepair ? namepair->vp_strvalue : "NONE";
 	} else {
 		int len;
 

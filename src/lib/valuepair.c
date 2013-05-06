@@ -589,8 +589,8 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 			case T_OP_SUB:		/* -= */
 				if (found) {
 					if (!i->vp_strvalue[0] ||
-					    (strcmp((char *)found->vp_strvalue,
-						    (char *)i->vp_strvalue) == 0)){
+					    (strcmp(found->vp_strvalue,
+						    i->vp_strvalue) == 0)){
 						pairdelete(to,
 							   found->da->attr,
 							   found->da->vendor,

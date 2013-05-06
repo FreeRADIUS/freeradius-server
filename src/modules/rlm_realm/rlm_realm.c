@@ -102,7 +102,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	We will be modifing this later, so we want our own copy
 	 *	of it.
 	 */
-	strlcpy(namebuf, (char *)request->username->vp_strvalue, sizeof(namebuf));
+	strlcpy(namebuf, request->username->vp_strvalue, sizeof(namebuf));
 	username = namebuf;
 
 	switch(inst->format)
@@ -389,7 +389,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	int rcode;
-	char const *name = (char *)request->username->vp_strvalue;
+	char const *name = request->username->vp_strvalue;
 	REALM *realm;
 
 	if (!name)

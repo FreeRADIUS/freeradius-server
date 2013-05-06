@@ -179,7 +179,7 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 		/*
 		 *	Include substring matches.
 		 */
-		compare = regcomp(&reg, (char *)check->vp_strvalue,
+		compare = regcomp(&reg, check->vp_strvalue,
 				  REG_EXTENDED);
 		if (compare != 0) {
 			char buffer[256];
@@ -229,8 +229,8 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 			break;
 
 		case PW_TYPE_STRING:
-			ret = strcmp((char *)vp->vp_strvalue,
-				     (char *)check->vp_strvalue);
+			ret = strcmp(vp->vp_strvalue,
+				     check->vp_strvalue);
 			break;
 
 		case PW_TYPE_BYTE:
@@ -720,8 +720,8 @@ void radius_xlat_move(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR **from)
 			case T_OP_SUB:		/* -= */
 				if (found) {
 					if (!i->vp_strvalue[0] ||
-				    	    (strcmp((char *)found->vp_strvalue,
-					    	    (char *)i->vp_strvalue) == 0)) {
+				    	    (strcmp(found->vp_strvalue,
+					    	    i->vp_strvalue) == 0)) {
 				  		pairdelete(to, found->da->attr,
 				  			found->da->vendor,
 				  			found->tag);

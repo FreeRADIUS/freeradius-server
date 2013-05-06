@@ -266,7 +266,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			case PW_CALLING_STATION_ID:
 				if(inst->callerid_ok)
 					strlcpy(ut.caller_id,
-						(char *)vp->vp_strvalue,
+						vp->vp_strvalue,
 						sizeof(ut.caller_id));
 				break;
 		}

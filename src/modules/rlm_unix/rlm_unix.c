@@ -154,7 +154,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	name = (char *)request->username->vp_strvalue;
+	name = request->username->vp_strvalue;
 	encrypted_pass = NULL;
 
 #ifdef OSFC2
@@ -370,9 +370,9 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		if (!vp->da->vendor) switch (vp->da->attr) {
 			case PW_USER_NAME:
 				if (vp->length >= sizeof(ut.ut_name)) {
-					memcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
+					memcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));
 				} else {
-					strlcpy(ut.ut_name, (char *)vp->vp_strvalue, sizeof(ut.ut_name));
+					strlcpy(ut.ut_name, vp->vp_strvalue, sizeof(ut.ut_name));
 				}
 				break;
 			case PW_LOGIN_IP_HOST:

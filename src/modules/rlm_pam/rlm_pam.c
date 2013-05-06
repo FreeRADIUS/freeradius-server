@@ -229,10 +229,10 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	 *	for backwards compatibility.
 	 */
 	pair = pairfind(request->config_items, PAM_AUTH_ATTR, 0, TAG_ANY);
-	if (pair) pam_auth_string = (char *)pair->vp_strvalue;
+	if (pair) pam_auth_string = pair->vp_strvalue;
 
-	r = pam_pass((char *)request->username->vp_strvalue,
-		     (char *)request->password->vp_strvalue,
+	r = pam_pass(request->username->vp_strvalue,
+		     request->password->vp_strvalue,
 		     pam_auth_string);
 
 	if (r == 0) {

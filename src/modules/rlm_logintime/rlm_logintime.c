@@ -67,7 +67,7 @@ static int timecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *reque
 	/*
 	 *      If there's a request, use that timestamp.
 	 */
-	if (timestr_match((char *)check->vp_strvalue,
+	if (timestr_match(check->vp_strvalue,
 	req ? req->timestamp : time(NULL)) >= 0)
 		return 0;
 
