@@ -125,7 +125,11 @@ static const CONF_PARSER module_config[] = {
   { NULL, -1, 0, NULL, NULL }
 };
 
-static int mod_detach(void *instance);
+
+/*
+ *	Work around compiler "const" issues.
+ */
+#define ASSIGN(_x,_y) memcpy(&_x, &_y, sizeof(_x))
 
 
 /*
@@ -148,7 +152,7 @@ static int counter_cmp(void *instance, UNUSED REQUEST *req, VALUE_PAIR *request,
 		return RLM_MODULE_NOOP;
 	}
 
-	key_datum.dptr = key_vp->vp_strvalue;
+	ASSIGN(key_datum.dptr,key_vp->vp_strvalue);
 	key_datum.dsize = key_vp->length;
 
 	count_datum = gdbm_fetch(inst->gdbm, key_datum);
@@ -614,7 +618,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		return RLM_MODULE_NOOP;
 	}
 
-	key_datum.dptr = key_vp->vp_strvalue;
+	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
 	key_datum.dsize = key_vp->length;
 
 	DEBUG("rlm_counter: Searching the database for key '%s'",key_vp->vp_strvalue);
@@ -747,7 +751,7 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, UNUSED REQUEST *request)
 		return rcode;
 	}
 
-	key_datum.dptr = key_vp->vp_strvalue;
+	ASSIGN(key_datum.dptr, key_vp->vp_strvalue);
 	key_datum.dsize = key_vp->length;
 
 
