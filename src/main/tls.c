@@ -1563,16 +1563,14 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_oneline(X509_get_subject_name(client_cert), subject,
 			  sizeof(subject));
 	subject[sizeof(subject) - 1] = '\0';
-	if (identity && (lookup <= 1) && subject[0] &&
-	    (strlen(subject) < MAX_STRING_LEN)) {
+	if (identity && (lookup <= 1) && subject[0]) {
 		pairmake(NULL, certs, cert_attr_names[FR_TLS_SUBJECT][lookup], subject, T_OP_SET);
 	}
 
 	X509_NAME_oneline(X509_get_issuer_name(ctx->current_cert), issuer,
 			  sizeof(issuer));
 	issuer[sizeof(issuer) - 1] = '\0';
-	if (identity && (lookup <= 1) && issuer[0] &&
-	    (strlen(issuer) < MAX_STRING_LEN)) {
+	if (identity && (lookup <= 1) && issuer[0]) {
 		pairmake(NULL, certs, cert_attr_names[FR_TLS_ISSUER][lookup], issuer, T_OP_SET);
 	}
 
@@ -1582,8 +1580,7 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	X509_NAME_get_text_by_NID(X509_get_subject_name(client_cert),
 				  NID_commonName, common_name, sizeof(common_name));
 	common_name[sizeof(common_name) - 1] = '\0';
-	if (identity && (lookup <= 1) && common_name[0] && subject[0] &&
-	    (strlen(common_name) < MAX_STRING_LEN)) {
+	if (identity && (lookup <= 1) && common_name[0] && subject[0]) {
 		pairmake(NULL, certs, cert_attr_names[FR_TLS_CN][lookup], common_name, T_OP_SET);
 	}
 
@@ -1604,9 +1601,6 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 				switch (name->type) {
 				case GEN_EMAIL:
-					if (ASN1_STRING_length(name->d.rfc822Name) >= MAX_STRING_LEN)
-						break;
-
 					pairmake(NULL, certs, cert_attr_names[FR_TLS_SAN_EMAIL][lookup],
 						 (char *) ASN1_STRING_data(name->d.rfc822Name), T_OP_SET);
 					break;
