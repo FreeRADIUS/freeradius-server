@@ -580,7 +580,7 @@ static int pap_auth_ns_mta_md5(REQUEST *request, VALUE_PAIR *vp)
 	 *
 	 *	This really: sizeof(buff) - 2 - 2*32 - strlen(passwd)
 	 */
-	if (strlen(request->password->vp_strvalue) >= (sizeof(buff) - 2 - 2 * 32)) {
+	if (request->password->length >= (sizeof(buff) - 2 - 2 * 32)) {
 		REDEBUG("Configured password is too long");
 		return RLM_MODULE_REJECT;
 	}
