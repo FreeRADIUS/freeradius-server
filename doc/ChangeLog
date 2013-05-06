@@ -1,24 +1,7 @@
 FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	Feature improvements
 	* Documentation for upgrading from 2.x is in raddb/README.rst
-	  Please follow it.  Do not just install 3.0.
-	* Updated packet encode/decoder.  The resulting code is much
-	  simpler and easier to extend.
-	* Updated internal API to support new attributes and formats
-	* Added RADIUS over TLS (i.e. RadSec). See raddb/sites-available/tls
-	* Added "extended attributes" using the new encoder/decoder.
-	* Added the "integer64" and "ipv4prefix" data types.
-	* Added full WiMAX support, using the new encoder/decoder.  The old
-	  code could not handle some unusual corner cases.
-	* Added code to send SNMP Traps.  See raddb/trigger.conf.
-	* Added support for Apple's Grand Central Dispatch
-	* Added for MS-CHAP Change Password from Phil Mayers.
-	  See raddb/mods-available/mschap, "passchange" subsection.
-	* Added provisions for raddb/dictionary.local, for local changes.
-	  See raddb/dictionary for more details.
-	* Added EAP-PWD implementation from Dan Harkins
-	* Added packet/s tracking. See max_pps in the "listen" sections,
-	  and auto_limit_acct in the "thread pool" section.
+	  Please follow it.  It will make the upgrade easier.
 	* Moved configuration entries in radiusd.conf to make more sense.
 	* Moved raddb/modules/ to raddb/mods-available, and raddb/mods-enabled,
 	  following the examples of other projects.
@@ -26,21 +9,34 @@ FreeRADIUS 3.0.0 Mon 01 Jan 8:00:00 CEST 2010, urgency=medium
 	* Moved sql.conf to mods-available/sql
 	* Moved TLS configuration for EAP into a common subsection.
 	  See raddb/mods-available/eap, tls-config section.
-	* Added internal connection pool API, this consolidates connection
-	  management code that was previously spread across many modules.
-	  Advantages are that it actually works, well, under nearly all
-	  conditions, supports triggers, and has 'elastic' limits on the numbers
-	  of connections.
-	* SQL now uses the connection pool.
-	* SQL query config has changed to support arbitrary Acct-Status-Types,
-	  this change breaks config compatibility with 2.1.x. Configurations
-	  must be updated.
+	* Added a new RADIUS encode/decoder.
+	* Added RFC 6929 "extended attributes" in the new encoder/decoder.
+	* Added full WiMAX support, in the new encoder/decoder.  The old
+	  code could not handle some unusual corner cases.
+	* Added the "integer64" and "ipv4prefix" data types.
+	* Added RADIUS over TLS (i.e. RadSec). See raddb/sites-available/tls
+	* Updated internal API to support new attributes and formats
+	* Added code to send SNMP Traps.  See raddb/trigger.conf.
+	* Added preliminary support for Apple's Grand Central Dispatch
+	* Added for MS-CHAP Change Password from Phil Mayers.
+	  See raddb/mods-available/mschap, "passchange" subsection.
+	* Added EAP-PWD implementation from Dan Harkins
+	* Added connection pools for modules. This unifies connection
+	  management which was previously different for different modules.
+	* SQL now uses the connection pool.  See mods-available/sql
 	* LADP now uses the connection pool.  The LDAP module has been
 	  completely re-written for performance and simplicity.
-	* Added full support for SQLite.
+	* Updated the SQL module to support arbitrary Acct-Status-Types.
+	  These changes are not compatible with 2.x.
+	* Added full support for SQLite.  See raddb/sql/main/sqlite/
+	* Added provisions for raddb/dictionary.local, for local changes.
+	  See raddb/dictionary for more details.
+	* Added packet/s tracking. See max_pps in the "listen" section.
+	* We now use "talloc" for memory management.  A number of new
+	  features required this change.
+	* Removed all limitations on 253 octet attributes.
 
 	Bug fixes
 	* All known bug fixes from 2.1.x are included.
 	* Removed "addport" functionality.
-	* Removed many unused or duplicate modules.  rlm_acct_unique, rlm_acctlog,
-	  rlm_dbm, rlm_fastusers, rlm_policy, rlm_smb, rlm_sql_log.
+	* Removed many unused or duplicate modules.  See raddb/README.rst.
