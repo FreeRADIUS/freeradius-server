@@ -121,7 +121,7 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
 		} else if (pairfind(request->packet->vps, PW_CHAP_PASSWORD, 0, TAG_ANY)) {
 			strcpy(clean_password, "<CHAP-Password>");
 		} else {
-			fr_print_string((char *)request->password->vp_strvalue,
+			fr_print_string(request->password->vp_strvalue,
 					 request->password->length,
 					 clean_password, sizeof(clean_password));
 		}
