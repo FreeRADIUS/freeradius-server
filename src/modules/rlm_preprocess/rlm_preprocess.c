@@ -295,7 +295,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	}
 
 	if (inst->with_specialix_jetstream_hack) {
-		char *ptr;
+		char const *ptr;
 
 		/*
 		 *	Specialix Jetstream 8500 24 port access server.
@@ -305,14 +305,9 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 		 *
 		 *	Reported by Lucas Heise <root@laonet.net>
 		 */
-		if ((strlen((char *)namepair->vp_strvalue) > 10) &&
+		if ((strlen(namepair->vp_strvalue) > 10) &&
 		    (namepair->vp_strvalue[10] == '/')) {
-			for (ptr = (char *)namepair->vp_strvalue + 11; *ptr; ptr++) {
-				*(ptr - 1) = *ptr;
-			}
-			*(ptr - 1) = 0;
-			
-			namepair->length = strlen((char *)namepair->vp_strvalue);
+			pairstrcpy(namepair, namepair->vp_strvalue + 11);
 		}
 	}
 
