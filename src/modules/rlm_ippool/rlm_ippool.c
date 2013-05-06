@@ -388,7 +388,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 	ippool_key key;
 	ippool_info entry;
 	VALUE_PAIR *vp;
-	char *cli = NULL;
+	char const *cli = NULL;
 	char str[32];
 	uint8_t key_str[17];
 	char hex_str[35];
