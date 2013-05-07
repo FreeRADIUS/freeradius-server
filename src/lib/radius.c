@@ -758,7 +758,7 @@ static ssize_t vp2data_tlvs(RADIUS_PACKET const *packet,
 #endif
 
 	while (vp) {
-		if (room < 2) return ptr - start;
+		if (room <= 2) return ptr - start;
 		
 		ptr[0] = (vp->da->attr >> fr_attr_shift[nest]) & fr_attr_mask[nest];
 		ptr[1] = 2;
@@ -1263,6 +1263,60 @@ int rad_vp2wimax(RADIUS_PACKET const *packet,
 }
 
 /**
+ * @brief Encode an RFC format attribute, with the "concat" flag set.
+ *
+ *	If there isn't enough room in the packet, the data is
+ *	truncated to fit.
+ */
+static ssize_t vp2attr_concat(UNUSED RADIUS_PACKET const *packet,
+			      UNUSED RADIUS_PACKET const *original,
+			      UNUSED char const *secret, VALUE_PAIR const **pvp,
+			      unsigned int attribute, uint8_t *start, size_t room)
+{
+	uint8_t *ptr = start;
+	uint8_t const *p;
+	size_t len, left;
+	VALUE_PAIR const *vp = *pvp;
+
+	debug_pair(vp);
+
+	p = vp->vp_octets;
+	len = vp->length;
+
+	while (len > 0) {
+		if (room <= 2) break;
+
+		ptr[0] = attribute;
+		ptr[1] = 2;
+
+		left = len;
+
+		/* no more than 253 octets */
+		if (left > 253) left = 253;
+
+		/* no more than "room" octets */
+		if (room < (left + 2)) left = room - 2;
+
+		memcpy(ptr + 2, p, left);
+
+#ifndef NDEBUG
+		if ((fr_debug_flag > 3) && fr_log_fp) {
+			fprintf(fr_log_fp, "\t\t%02x %02x  ", ptr[0], ptr[1]);
+			print_hex_data(ptr + 2, len, 3);
+		}
+#endif
+		ptr[1] += left;
+		ptr += ptr[1];
+		p += left;
+		room -= left;
+		len -= left;
+	}
+
+	*pvp = vp->next;
+	return ptr - start;
+}
+
+/**
  * @brief Encode an RFC format TLV.
  *
  * 	This could be a standard attribute,
@@ -1277,7 +1331,7 @@ static ssize_t vp2attr_rfc(RADIUS_PACKET const *packet,
 {
 	ssize_t len;
 
-	if (room < 2) return 0;
+	if (room <= 2) return 0;
 
 	ptr[0] = attribute & 0xff;
 	ptr[1] = 2;
@@ -1541,6 +1595,14 @@ int rad_vp2rfc(RADIUS_PACKET const *packet,
 		
 		*pvp = (*pvp)->next;
 		return 18;
+	}
+
+	/*
+	 *	EAP-Message is special.
+	 */
+	if (vp->da->flags.concat && (vp->length > 253)) {
+		return vp2attr_concat(packet, original, secret, pvp, vp->da->attr,
+				      ptr, room);
 	}
 
 	return vp2attr_rfc(packet, original, secret, pvp, vp->da->attr,
