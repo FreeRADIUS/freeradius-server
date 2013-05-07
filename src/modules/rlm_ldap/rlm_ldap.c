@@ -46,6 +46,18 @@ const FR_NAME_NUMBER ldap_scope[] = {
 	{  NULL , -1 }
 };
 
+#ifdef LDAP_OPT_X_TLS_NEVER
+const FR_NAME_NUMBER ldap_tls_require_cert[] = {
+	{ "never",	LDAP_OPT_X_TLS_NEVER	},
+	{ "demand",	LDAP_OPT_X_TLS_DEMAND	},
+	{ "allow",	LDAP_OPT_X_TLS_ALLOW	},
+	{ "try",	LDAP_OPT_X_TLS_TRY	},
+	{ "hard",	LDAP_OPT_X_TLS_HARD	},	/* oh yes, just like that */
+	
+	{  NULL , -1 }
+};
+#endif
+
 /*
  *	TLS Configuration
  */
@@ -56,7 +68,7 @@ static CONF_PARSER tls_config[] = {
 	{"certfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_certfile), NULL, NULL},
 	{"keyfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_keyfile), NULL, NULL}, // OK if it changes on HUP
 	{"randfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_randfile), NULL, NULL},
-	{"require_cert",PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert), NULL, TLS_DEFAULT_VERIFY},
+	{"require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert_str), NULL, "allow"},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -545,22 +557,36 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 #endif
 
 	/*
-	 *	Convert scope strings to integers
+	 *	Convert scope strings to enumerated constants
 	 */
 	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-		LDAP_ERR("Invalid 'user.scope' value '%s', expected 'sub', 'one' or 'base'",
+		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one' or 'base'",
 			 inst->userobj_scope_str);
 		goto error;
 	}
 	
 	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-		LDAP_ERR("Invalid 'group.scope' value '%s', expected 'sub', 'one' or 'base'",
+		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one' or 'base'",
 			 inst->groupobj_scope_str);
 		goto error;
 	}
 
+#ifdef LDAP_OPT_X_TLS_NEVER	
+	/*
+	 *	Convert cert strictness to enumerated constants
+	 */
+	inst->tls_require_cert = fr_str2int(ldap_tls_require_cert, inst->tls_require_cert_str, -1);
+	if (inst->tls_require_cert < 0) {
+		LDAP_ERR("Invalid 'tls.require_cert' value \"%s\", expected 'never', 'demand', 'allow', 'try' or 'hard'",
+			 inst->tls_require_cert_str);
+		goto error;
+	}
+#else
+	LDAP_DBGW("Modifying 'tls.require_cert' is not supported by current version of libldap. Please upgrade libldap "
+		  "and rebuild this module");
+#endif
 	/*
 	 *	Build the attribute map
 	 */

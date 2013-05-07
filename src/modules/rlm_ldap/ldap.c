@@ -1012,8 +1012,6 @@ static int rlm_ldap_rebind(LDAP *handle, LDAP_CONST char *url, UNUSED ber_tag_t 
  * @param instance rlm_ldap instance.
  * @return A new connection handle or NULL on error.
  */
-DIAG_OFF(implicit-function-declaration)
-DIAG_OFF(nested-externs)
 void *mod_conn_create(void *instance)
 {
 	ldap_rcode_t status;
@@ -1107,6 +1105,16 @@ void *mod_conn_create(void *instance)
 	/*
 	 *	Set all of the TLS options
 	 */
+
+#  ifdef LDAP_OPT_X_TLS_NEWCTX
+	{
+		/* Always use the new TLS configuration context */
+		int is_server = 0;
+		do_ldap_option(LDAP_OPT_X_TLS_NEWCTX, "new TLS context", &is_server);
+
+	}
+#  endif
+
 	if (inst->tls_mode) {
 		do_ldap_option(LDAP_OPT_X_TLS, "tls_mode", &(inst->tls_mode));
 	}
@@ -1117,14 +1125,6 @@ void *mod_conn_create(void *instance)
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "cacertfile", inst->tls_cacertfile);
 	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "cacertdir", inst->tls_cacertdir);
 
-#  ifdef HAVE_LDAP_INT_TLS_CONFIG
-	if (ldap_int_tls_config(NULL, LDAP_OPT_X_TLS_REQUIRE_CERT, inst->tls_require_cert) != LDAP_OPT_SUCCESS) {
-		ldap_get_option(handle, LDAP_OPT_ERROR_NUMBER, &ldap_errno);
-		
-		LDAP_ERR("Could not set LDAP_OPT_X_TLS_REQUIRE_CERT option to %s: %s", inst->tls_require_cert,
-			 ldap_err2string(ldap_errno));
-	}
-#  endif
 
 	/*
 	 *	Set certificate options
@@ -1132,6 +1132,10 @@ void *mod_conn_create(void *instance)
 	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certfile", inst->tls_certfile);
 	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "keyfile", inst->tls_keyfile);
 	maybe_ldap_option(LDAP_OPT_X_TLS_RANDOM_FILE, "randfile", inst->tls_randfile);
+
+#  ifdef LDAP_OPT_X_TLS_NEVER
+	do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "tls_require_cert", &inst->tls_require_cert);
+#  endif
 
 	/*
 	 *	And finally start the TLS code.
@@ -1173,8 +1177,6 @@ void *mod_conn_create(void *instance)
 	
 	return NULL;
 }
-DIAG_ON(nested-externs)
-DIAG_ON(implicit-function-declaration)
 
 
 /** Close and delete a connection

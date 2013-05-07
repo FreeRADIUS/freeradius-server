@@ -122,8 +122,6 @@ if test x$with_[]modname != xno; then
 		[ SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_START_TLS" ])
 	    AC_CHECK_FUNC(ldap_initialize,
 		[ SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INITIALIZE" ])
-	    AC_CHECK_FUNC(ldap_int_tls_config,
-		[ SMART_CFLAGS="$SMART_CFLAGS -DHAVE_LDAP_INT_TLS_CONFIG" ])
 
 
         AC_CHECK_FUNCS(ldap_set_rebind_proc)

@@ -30,11 +30,6 @@
 #define LDAP_MAX_FILTER_STR_LEN		1024		//!< Maximum length of an xlat expanded filter.
 #define LDAP_MAX_DN_STR_LEN		2048		//!< Maximum length of an xlat expanded DN.
 
-/*
- *	The default setting for TLS Certificate Verification
- */
-#define TLS_DEFAULT_VERIFY "allow"
-
 typedef struct ldap_acct_section {
 	CONF_SECTION	*cs;				//!< Section configuration.
 	
@@ -162,8 +157,10 @@ typedef struct ldap_instance {
 	char const	*tls_randfile;			//!< Path to the random file if /dev/random and /dev/urandom
 							//!< are unavailable.
 							
-	char const	*tls_require_cert;		//!< Sets requirements for validating the certificate the 
+	char const	*tls_require_cert_str;		//!< Sets requirements for validating the certificate the 
 							//!< server presents.
+							
+	int		tls_require_cert;		//!< OpenLDAP constant representing the require cert string.
 
 	/*
 	 *	Options
