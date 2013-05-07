@@ -68,7 +68,7 @@ static CONF_PARSER tls_config[] = {
 	{"certfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_certfile), NULL, NULL},
 	{"keyfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_keyfile), NULL, NULL}, // OK if it changes on HUP
 	{"randfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_randfile), NULL, NULL},
-	{"require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert_str), NULL, "allow"},
+	{"require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert_str), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
@@ -573,20 +573,22 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		goto error;
 	}
 
-#ifdef LDAP_OPT_X_TLS_NEVER	
-	/*
-	 *	Convert cert strictness to enumerated constants
-	 */
-	inst->tls_require_cert = fr_str2int(ldap_tls_require_cert, inst->tls_require_cert_str, -1);
-	if (inst->tls_require_cert < 0) {
-		LDAP_ERR("Invalid 'tls.require_cert' value \"%s\", expected 'never', 'demand', 'allow', 'try' or 'hard'",
-			 inst->tls_require_cert_str);
-		goto error;
-	}
+	if (inst->tls_require_cert_str) {
+#ifdef LDAP_OPT_X_TLS_NEVER
+		/*
+		 *	Convert cert strictness to enumerated constants
+		 */
+		inst->tls_require_cert = fr_str2int(ldap_tls_require_cert, inst->tls_require_cert_str, -1);
+		if (inst->tls_require_cert < 0) {
+			LDAP_ERR("Invalid 'tls.require_cert' value \"%s\", expected 'never', 'demand', 'allow', "
+				 "'try' or 'hard'", inst->tls_require_cert_str);
+			goto error;
+		}
 #else
-	LDAP_DBGW("Modifying 'tls.require_cert' is not supported by current version of libldap. Please upgrade libldap "
-		  "and rebuild this module");
+		LDAP_DBGW("Modifying 'tls.require_cert' is not supported by current version of libldap. 
+			  "Please upgrade libldap and rebuild this module");
 #endif
+	}
 	/*
 	 *	Build the attribute map
 	 */

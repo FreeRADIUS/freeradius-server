@@ -1131,7 +1131,9 @@ void *mod_conn_create(void *instance)
 	maybe_ldap_option(LDAP_OPT_X_TLS_RANDOM_FILE, "randfile", inst->tls_randfile);
 
 #  ifdef LDAP_OPT_X_TLS_NEVER
-	do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "tls_require_cert", &inst->tls_require_cert);
+	if (inst->tls_require_cert_str) {
+		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "tls_require_cert", &inst->tls_require_cert);
+	}
 #  endif
 
 	/*
