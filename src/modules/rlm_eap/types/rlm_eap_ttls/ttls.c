@@ -204,7 +204,13 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		}
 
 		/*
-		 * EAP-Message AVPs can be larger than 253 octets.
+		 *	EAP-Message AVPs can be larger than 253 octets.
+		 *
+		 *	For now, we rely on the main decoder in
+		 *	src/lib/radius to decode data into VPs.  This
+		 *	means putting the data into a RADIUS attribute
+		 *	format.  It also means that we can't handle
+		 *	"extended" attributes in the Diameter space.  Oh well...
 		 */
 		if ((size > 253) && !((vendor == 0) && (attr == PW_EAP_MESSAGE))) {
 			RWDEBUG2("diameter2vp skipping long attribute %u", attr);
@@ -481,10 +487,6 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 		 *	together.  Maybe we should...
 		 */
 
-		/*
-		 *	Length is no more than 253, due to RADIUS
-		 *	issues.
-		 */
 		length = vp->length;
 		vendor = vp->da->vendor;
 		if (vendor != 0) {
