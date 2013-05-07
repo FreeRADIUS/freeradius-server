@@ -585,7 +585,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto error;
 		}
 #else
-		LDAP_ERR("Modifying 'tls.require_cert' is not supported by current version of libldap. 
+		LDAP_ERR("Modifying 'tls.require_cert' is not supported by current version of libldap. "
 			 "Please upgrade libldap and rebuild this module");
 
 		goto error;
