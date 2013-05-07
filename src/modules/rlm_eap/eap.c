@@ -487,8 +487,7 @@ eap_rcode_t eap_method_select(rlm_eap_t *inst, eap_handler_t *handler)
 
 
 /*
- *	compose EAP reply packet in EAP-Message attr of RADIUS.  If
- *	EAP exceeds 253, frame it in multiple EAP-Message attrs.
+ *	compose EAP reply packet in EAP-Message attr of RADIUS.
  *
  *	Set the RADIUS reply codes based on EAP request codes.  Append
  *	any additonal VPs to RADIUS reply
@@ -580,19 +579,17 @@ rlm_rcode_t eap_compose(eap_handler_t *handler)
 		eap_ds->request->type.num = handler->type;
 	}
 
-	/*
-	 *	FIXME: We allocate memory for the eap packet, and then
-	 *	immediately copy that data into VALUE_PAIRs.  This
-	 *	could be done more efficiently...
-	 */
 	if (eap_wireformat(reply) == EAP_INVALID) {
 		return RLM_MODULE_INVALID;
 	}
 	eap_packet = (eap_packet_raw_t *)reply->packet;
 
-	vp = eap_packet2vp(request->reply, eap_packet);
+	vp = radius_paircreate(request, &request->reply->vps, PW_EAP_MESSAGE, 0);
 	if (!vp) return RLM_MODULE_INVALID;
-	pairadd(&(request->reply->vps), vp);
+
+	vp->length = eap_packet->length[0] * 256 + eap_packet->length[1];
+	vp->vp_octets = talloc_steal(vp, reply->packet);
+	reply->packet = NULL;
 
 	/*
 	 *	EAP-Message is always associated with
