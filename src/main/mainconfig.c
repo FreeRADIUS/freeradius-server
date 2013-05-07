@@ -287,7 +287,7 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static size_t xlat_config(UNUSED void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t outlen)
+static size_t xlat_config(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	char const *value;
 	CONF_PAIR *cp;
