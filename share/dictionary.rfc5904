@@ -7,9 +7,9 @@
 #	$Id$
 #
 
-# The next two attributes are continued, like EAP-Message/
-ATTRIBUTE	PKM-SS-Cert				137	octets
-ATTRIBUTE	PKM-CA-Cert				138	octets
+# The next two attributes are continued, like EAP-Message
+ATTRIBUTE	PKM-SS-Cert				137	octets concat
+ATTRIBUTE	PKM-CA-Cert				138	octets concat
 
 # 28 bytes of data, 7 integers
 ATTRIBUTE	PKM-Config-Settings			139	octets

@@ -684,6 +684,17 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 		return -1;
 	}
 
+	if (vendor && flags.concat) {
+		fr_strerror_printf("VSAs cannot have the \"concat\" flag set.");
+		return -1;
+	}
+
+	if (flags.concat && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
+			     flags.length || flags.evs || flags.extended || flags.long_extended)) {
+		fr_strerror_printf("Only the \"concat\" flag can be set.");
+		return -1;
+	}
+
 	if ((vendor & (FR_MAX_VENDOR -1)) != 0) {
 		DICT_VENDOR *dv;
 		static DICT_VENDOR *last_vendor = NULL;
@@ -1476,6 +1487,15 @@ static int process_attribute(char const* fn, int const line,
 
 					default:
 						fr_strerror_printf( "dict_init: %s[%d] Only IP addresses can have the \"array\" flag set.",
+							    fn, line);
+						return -1;
+				}
+
+			} else if (strncmp(key, "concat", 6) == 0) {
+				flags.concat = 1;
+
+				if (type != PW_TYPE_OCTETS) {
+						fr_strerror_printf( "dict_init: %s[%d] Only \"octets\" type can have the \"concat\" flag set.",
 							    fn, line);
 						return -1;
 				}

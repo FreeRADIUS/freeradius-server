@@ -112,6 +112,8 @@ typedef struct attr_flags {
 	unsigned int	evs : 1;		//!< Extended VSA.
 	unsigned int	wimax: 1;		//!< WiMAX format=1,1,c.
 
+	unsigned int	concat : 1;		//!< concatenate multiple instances
+
 	uint8_t		encrypt;      		//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;

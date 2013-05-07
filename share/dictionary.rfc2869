@@ -20,7 +20,7 @@ ATTRIBUTE	Password-Retry				75	integer
 ATTRIBUTE	Prompt					76	integer
 ATTRIBUTE	Connect-Info				77	string
 ATTRIBUTE	Configuration-Token			78	string
-ATTRIBUTE	EAP-Message				79	octets
+ATTRIBUTE	EAP-Message				79	octets concat
 ATTRIBUTE	Message-Authenticator			80	octets
 
 ATTRIBUTE	ARAP-Challenge-Response			84	octets[8]
