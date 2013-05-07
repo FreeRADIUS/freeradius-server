@@ -931,14 +931,14 @@ int eappeap_process(eap_handler_t *handler, tls_session_t *tls_session)
 		vp->length = len;
 		vp->vp_octets = q = talloc_array(vp, uint8_t, vp->length);
 
-		p[0] = PW_EAP_RESPONSE;
-		p[1] = eap_ds->response->id;
-		p[2] = (len >> 8) & 0xff;
-		p[3] = len & 0xff;
-		p[4] = PW_EAP_IDENTITY;
+		q[0] = PW_EAP_RESPONSE;
+		q[1] = eap_ds->response->id;
+		q[2] = (len >> 8) & 0xff;
+		q[3] = len & 0xff;
+		q[4] = PW_EAP_IDENTITY;
 
-		memcpy(p + EAP_HEADER_LEN + 1,
-		       t->username->vp_strvalue, len - EAP_HEADER_LEN - 1);
+		memcpy(q + EAP_HEADER_LEN + 1,
+		       t->username->vp_strvalue, t->username->length);
 
 		pairadd(&fake->packet->vps, vp);
 
