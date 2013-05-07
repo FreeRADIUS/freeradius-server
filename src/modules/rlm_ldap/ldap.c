@@ -1066,12 +1066,9 @@ void *mod_conn_create(void *instance)
 		if (inst->chase_referrals) {
 			do_ldap_option(LDAP_OPT_REFERRALS, "chase_referrals", LDAP_OPT_ON);
 			
-			if (inst->rebind == 1) {
+			if (inst->rebind == true) {
 #if LDAP_SET_REBIND_PROC_ARGS == 3
 				ldap_set_rebind_proc(handle, rlm_ldap_rebind, inst);
-#else
-				WDEBUG("The flag 'rebind = yes' is not supported by the system LDAP library. "
-				       "Ignoring.");
 #endif
 			}
 		} else {

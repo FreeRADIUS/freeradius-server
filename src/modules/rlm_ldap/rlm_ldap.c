@@ -548,7 +548,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 *	The 2-argument rebind doesn't take an instance variable.  Our rebind function needs the instance
 	 *	variable for the username, password, etc.
 	 */
-	if (inst->rebind == 1) {
+	if (inst->rebind == true) {
 		LDAP_ERR("Cannot use 'rebind' directive as this version of libldap does not support the API "
 			 "that we need");
 			 
