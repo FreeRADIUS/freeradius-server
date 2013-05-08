@@ -2869,6 +2869,62 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 		       VALUE_PAIR **pvp);
 
 /**
+ * @brief convert a "concatenated" attribute to one long VP.
+ */
+static ssize_t data2vp_concat(UNUSED RADIUS_PACKET const *packet,
+			      DICT_ATTR const *da, uint8_t const *start,
+			      size_t const packetlen, VALUE_PAIR **pvp)
+{
+	size_t total;
+	uint8_t attr;
+	uint8_t const *ptr = start;
+	uint8_t const *end = start + packetlen;
+	uint8_t *p;
+	VALUE_PAIR *vp;
+
+	total = 0;
+	attr = ptr[0];
+
+	/*
+	 *	The packet has already been sanity checked, so we
+	 *	don't care about walking off of the end of it.
+	 */
+	while (ptr < end) {
+		total += ptr[1] - 2;
+
+		ptr += ptr[1];
+
+		/*
+		 *	Attributes MUST be consecutive.
+		 */
+		if (ptr[0] != attr) break;
+	}
+
+	vp = pairalloc(NULL, da); /* FIXME packet? */
+	if (!vp) return -1;
+
+	vp->length = total;
+	vp->vp_octets = p = talloc_array(vp, uint8_t, vp->length);
+	if (!p) {
+		pairfree(&vp);
+		return -1;
+	}
+
+	total = 0;
+	ptr = start;
+	while (total < vp->length) {
+		memcpy(p, ptr + 2, ptr[1] - 2);
+		p += ptr[1] - 2;
+		total += ptr[1] - 2;
+		ptr += ptr[1];
+	}
+
+	*pvp = vp;
+	return ptr - start;
+}
+
+
+/**
  * @brief convert TLVs to one or more VPs
  */
 static ssize_t data2vp_tlvs(RADIUS_PACKET const *packet,
@@ -3522,7 +3578,7 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 	 *	information, decode the actual data.
 	 */
  alloc_cui:
-	vp = pairalloc(NULL, da);
+	vp = pairalloc(NULL, da); /* FIXME, packet? */
 	if (!vp) return -1;
 
 	vp->length = datalen;
@@ -3649,6 +3705,13 @@ ssize_t rad_attr2vp(RADIUS_PACKET const *packet,
 
 	da = dict_attrbyvalue(data[0], 0);
 	if (!da) da = dict_attrunknown(data[0], 0, true);
+
+	/*
+	 *	Pass the entire thing to the decoding function
+	 */
+	if (da->flags.concat) {
+		return data2vp_concat(packet, da, data, length, pvp);
+	}
 
 	/*
 	 *	Note that we pass the entire length, not just the
