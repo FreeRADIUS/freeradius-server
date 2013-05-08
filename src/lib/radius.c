@@ -2861,7 +2861,7 @@ int rad_verify(RADIUS_PACKET *packet, RADIUS_PACKET *original,
 }
 
 
-static ssize_t data2vp(RADIUS_PACKET const *packet,
+static ssize_t data2vp(RADIUS_PACKET *packet,
 		       RADIUS_PACKET const *original,
 		       char const *secret,
 		       DICT_ATTR const *da, uint8_t const *start,
@@ -2871,7 +2871,7 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 /**
  * @brief convert a "concatenated" attribute to one long VP.
  */
-static ssize_t data2vp_concat(UNUSED RADIUS_PACKET const *packet,
+static ssize_t data2vp_concat(RADIUS_PACKET *packet,
 			      DICT_ATTR const *da, uint8_t const *start,
 			      size_t const packetlen, VALUE_PAIR **pvp)
 {
@@ -2900,7 +2900,7 @@ static ssize_t data2vp_concat(UNUSED RADIUS_PACKET const *packet,
 		if (ptr[0] != attr) break;
 	}
 
-	vp = pairalloc(NULL, da); /* FIXME packet? */
+	vp = pairalloc(packet, da);
 	if (!vp) return -1;
 
 	vp->length = total;
@@ -2927,7 +2927,7 @@ static ssize_t data2vp_concat(UNUSED RADIUS_PACKET const *packet,
 /**
  * @brief convert TLVs to one or more VPs
  */
-static ssize_t data2vp_tlvs(RADIUS_PACKET const *packet,
+static ssize_t data2vp_tlvs(RADIUS_PACKET *packet,
 			    RADIUS_PACKET const *original,
 			    char const *secret, DICT_ATTR const *da,
 			    uint8_t const *start, size_t length,
@@ -2994,7 +2994,7 @@ static ssize_t data2vp_tlvs(RADIUS_PACKET const *packet,
  *
  *	"length" can be LONGER than just this sub-vsa
  */
-static ssize_t data2vp_vsa(RADIUS_PACKET const *packet,
+static ssize_t data2vp_vsa(RADIUS_PACKET *packet,
 			   RADIUS_PACKET const *original,
 			   char const *secret, DICT_VENDOR *dv,
 			   uint8_t const *data, size_t length,
@@ -3082,7 +3082,7 @@ static ssize_t data2vp_vsa(RADIUS_PACKET const *packet,
  *
  *	Called ONLY for Vendor-Specific
  */
-static ssize_t data2vp_wimax(RADIUS_PACKET const *packet,
+static ssize_t data2vp_wimax(RADIUS_PACKET *packet,
 			     RADIUS_PACKET const *original,
 			     char const *secret, uint32_t vendor,
 			     uint8_t const *data,
@@ -3180,7 +3180,7 @@ static ssize_t data2vp_wimax(RADIUS_PACKET const *packet,
 /**
  * @brief Convert a top-level VSA to one or more VPs
  */
-static ssize_t data2vp_vsas(RADIUS_PACKET const *packet,
+static ssize_t data2vp_vsas(RADIUS_PACKET *packet,
 			    RADIUS_PACKET const *original,
 			    char const *secret, uint8_t const *data,
 			    size_t attrlen, size_t packetlen,
@@ -3259,7 +3259,7 @@ static ssize_t data2vp_vsas(RADIUS_PACKET const *packet,
  *
  * @return -1 on error, or "length".
  */
-static ssize_t data2vp(RADIUS_PACKET const *packet,
+static ssize_t data2vp(RADIUS_PACKET *packet,
 		       RADIUS_PACKET const *original,
 		       char const *secret,
 		       DICT_ATTR const *da, uint8_t const *start,
@@ -3578,7 +3578,7 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 	 *	information, decode the actual data.
 	 */
  alloc_cui:
-	vp = pairalloc(NULL, da); /* FIXME, packet? */
+	vp = pairalloc(packet, da);
 	if (!vp) return -1;
 
 	vp->length = datalen;
@@ -3688,7 +3688,7 @@ static ssize_t data2vp(RADIUS_PACKET const *packet,
 /**
  * @brief Create a "normal" VALUE_PAIR from the given data.
  */
-ssize_t rad_attr2vp(RADIUS_PACKET const *packet,
+ssize_t rad_attr2vp(RADIUS_PACKET *packet,
 		    RADIUS_PACKET const *original,
 		    char const *secret,
 		    uint8_t const *data, size_t length,

@@ -383,7 +383,7 @@ int rad_attr_ok(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 int rad_tlv_ok(uint8_t const *data, size_t length,
 	       size_t dv_type, size_t dv_length);
 
-ssize_t	rad_attr2vp(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
+ssize_t	rad_attr2vp(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 		    char const *secret,
 		    uint8_t const *data, size_t length,
 		    VALUE_PAIR **pvp);
