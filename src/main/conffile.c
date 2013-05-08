@@ -441,7 +441,7 @@ static void cf_item_add(CONF_SECTION *cs, CONF_ITEM *ci)
 		cs->tail = ci;
 
 		/*
-		 *	For fast lookups, pair's and sections get
+		 *	For fast lookups, pairs and sections get
 		 *	added to rbtree's.
 		 */
 		switch (ci->type) {
