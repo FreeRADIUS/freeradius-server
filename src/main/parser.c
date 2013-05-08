@@ -578,6 +578,7 @@ done:
 
 		child = c->data.child;
 		child->next = c->next;
+		(void) talloc_steal(child, child->next);
 		child->next_op = c->next_op;
 		c->next = NULL;
 		c->data.child = NULL;
