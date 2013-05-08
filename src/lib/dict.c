@@ -689,9 +689,15 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 		return -1;
 	}
 
+	if (flags.concat && (type != PW_TYPE_OCTETS)) {
+		fr_strerror_printf("The \"concat\" flag can only be set for attributes of type \"octets\".");
+		return -1;
+	}
+
 	if (flags.concat && (flags.has_tag || flags.array || flags.is_tlv || flags.has_tlv ||
-			     flags.length || flags.evs || flags.extended || flags.long_extended)) {
-		fr_strerror_printf("Only the \"concat\" flag can be set.");
+			     flags.length || flags.evs || flags.extended || flags.long_extended ||
+			     (flags.encrypt != FLAG_ENCRYPT_NONE))) {
+		fr_strerror_printf("The \"concat\" flag cannot be used with any other flag.");
 		return -1;
 	}
 
