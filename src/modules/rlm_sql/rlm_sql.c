@@ -247,7 +247,6 @@ static int generate_sql_clients(rlm_sql_t *inst)
 {
 	rlm_sql_handle_t *handle;
 	rlm_sql_row_t row;
-	char querystr[MAX_QUERY_LEN];
 	RADCLIENT *c;
 	char *prefix_ptr = NULL;
 	unsigned int i = 0;
@@ -256,15 +255,13 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
 	      inst->config->xlat_name);
 
-	/* NAS query isn't xlat'ed */
-	strlcpy(querystr, inst->config->nas_query, sizeof(querystr));
 	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
-	      inst->config->xlat_name, querystr);
+	      inst->config->xlat_name, inst->config->nas_query);
 
 	handle = sql_get_socket(inst);
 	if (!handle)
 		return -1;
-	if (rlm_sql_select_query(&handle,inst,querystr)){
+	if (rlm_sql_select_query(&handle,inst, inst->config->nas_query)){
 		return -1;
 	}
 
