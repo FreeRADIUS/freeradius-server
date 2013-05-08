@@ -137,7 +137,7 @@ struct sql_inst {
 };
 
 typedef struct sql_grouplist {
-	char			name[MAX_STRING_LEN];
+	char			*name;
 	struct sql_grouplist	*next;
 } rlm_sql_grouplist_t;
 

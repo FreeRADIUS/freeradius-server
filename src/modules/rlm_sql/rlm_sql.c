@@ -518,7 +518,7 @@ static int sql_get_grouplist(rlm_sql_t *inst, rlm_sql_handle_t *handle, REQUEST 
 			entry = entry->next;
 		}
 		entry->next = NULL;
-		strlcpy(entry->name, row[0], MAX_STRING_LEN);
+		entry->name = talloc_strdup(entry, row[0]);
 	}
 
 	(inst->module->sql_finish_select_query)(handle, inst->config);
