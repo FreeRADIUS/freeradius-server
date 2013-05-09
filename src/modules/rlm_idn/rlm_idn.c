@@ -46,7 +46,7 @@ RCSID("$Id$")
  *     domain names to IA5String, so if it is coming from inside an X.509
  *     certificate IDNA should be idempotent in the encode direction.
  *
- * Except for that last loophole, which we will leave up to higher layers
+ * Except for that last loophole, which we will leave up to the user
  * to sort out, we should be safe in processing the realm as UTF-8.
  */
 
@@ -55,10 +55,33 @@ RCSID("$Id$")
  *      A mapping of configuration file names to internal variables.
  */
 static const CONF_PARSER mod_config[] = {
+
+	/* If a STRINGPREP profile other than NAMEPREP is ever desired,
+         * we can implement an option, and it will default to NAMEPREP settings.
+         * ...and if we want raw punycode or to tweak Bootstring parameters,
+         * we can do similar things.  All defaults should result in IDNA
+         * ToASCII with the UseSTD3ASCIIRules flag set, AllowUnassigned unset,
+         * because that is the forseeable use case.
+         *
+         * Note that doing anything much different will require choosing the
+         * appropriate libidn API functions, as we currently call the IDNA
+         * covenience functions.
+         *
+         * Also note that right now we do not provide ToUnicode, which may or
+         * may not be useful as an xlat... depends on how the results need to
+         * be used.
+         */
+
+	/* CamelCase here is to match the identifiers used in RFC 3490 */
+	{"AllowUnassigned", PW_TYPE_BOOLEAN, offsetof(rlm_idn_t, AllowUnassigned), NULL, "no" },
+	{"UseSTD3ASCIIRules",PW_TYPE_BOOLEAN, offsetof(rlm_idn_t, UseSTD3ASCIIRules), NULL, "yes" },
 	{ NULL, -1, 0, NULL, NULL }           /* end the list */
 };
 
-/* Provide IDNA as an xlat.  Might come in handy. */
+/* If and when implementing more profiles/encodings, there are two
+ * options: make this function bigger, or teach rlm_instantiate to
+ * register a different callback.  Ponder that.
+ */
 static size_t xlat_idna(void *instance, UNUSED REQUEST *request,
 	                char const *fmt, char *out, size_t freespace)
 {
@@ -66,10 +89,14 @@ static size_t xlat_idna(void *instance, UNUSED REQUEST *request,
 	char *idna = NULL;
 	int res;
 	size_t len;
+        int flags = 0;
 
         if (freespace <= 1) return 0;
 
-        res = idna_to_ascii_8z(fmt, &idna, IDNA_USE_STD3_ASCII_RULES);
+        if (inst->UseSTD3ASCIIRules) flags |= IDNA_USE_STD3_ASCII_RULES;
+        if (inst->AllowUnassigned) flags |= IDNA_ALLOW_UNASSIGNED;
+
+        res = idna_to_ascii_8z(fmt, &idna, flags);
 	if (res) {
 		if (idna) free (idna); /* Docs unclear, be safe. */
 		RDEBUG("idn (%s): %s", inst->xlat_name, idna_strerror(res));
