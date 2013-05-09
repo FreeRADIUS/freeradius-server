@@ -32,6 +32,7 @@ BuildRequires: autoconf
 BuildRequires: gdbm-devel
 BuildRequires: libtool
 BuildRequires: libtool-ltdl-devel
+BuildRequires: make
 BuildRequires: openssl-devel
 BuildRequires: pam-devel
 BuildRequires: zlib-devel
