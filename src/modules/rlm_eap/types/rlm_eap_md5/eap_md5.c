@@ -131,7 +131,7 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 {
 	char	*ptr;
 	char	string[1 + MAX_STRING_LEN*2];
-	unsigned char output[MAX_STRING_LEN];
+	uint8_t digest[16];
 	unsigned short len;
 
 	/*
@@ -160,14 +160,15 @@ int eapmd5_verify(MD5_PACKET *packet, VALUE_PAIR* password,
 	memcpy(ptr, challenge, MD5_CHALLENGE_LEN);
 	len += MD5_CHALLENGE_LEN;
 
-	fr_md5_calc((u_char *)output, (u_char *)string, len);
+	fr_md5_calc(digest, (u_char *)string, len);
 
 	/*
 	 *	The length of the response is always 16 for MD5.
 	 */
-	if (memcmp(output, packet->value, 16) != 0) {
+	if (rad_digest_cmp(digest, packet->value, 16) != 0) {
 		return 0;
 	}
+
 	return 1;
 }
 
