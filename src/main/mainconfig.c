@@ -293,7 +293,14 @@ static size_t xlat_config(UNUSED void *instance, REQUEST *request, char const *f
 	CONF_PAIR *cp;
 	CONF_ITEM *ci;
 	char buffer[1024];
-	
+
+        if (!fmt || !out || (outlen < 1)) return 0;
+
+        if (!request || !request->root || !request->root->config) {
+		*out = '\0';
+		return 0;
+        }
+
 	/*
 	 *	Expand it safely.
 	 */
