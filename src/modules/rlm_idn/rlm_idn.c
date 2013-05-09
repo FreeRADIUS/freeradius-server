@@ -16,7 +16,7 @@
 /**
  * $Id$
  * @file rlm_idn.c
- * @brief Dynamic DNS resolution including draft-ietf-radext-dynamic-discovery.
+ * @brief Internationalized Domain Name encoding for DNS aka IDNA aka RFC3490
  *
  * @copyright 2013  Brian S. Julin <bjulin@clarku.edu>
  */
