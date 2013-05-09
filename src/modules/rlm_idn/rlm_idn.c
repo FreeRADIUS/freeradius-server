@@ -59,9 +59,10 @@ static const CONF_PARSER mod_config[] = {
 };
 
 /* Provide IDNA as an xlat.  Might come in handy. */
-static size_t xlat_idna(UNUSED void *instance, UNUSED REQUEST *request,
+static size_t xlat_idna(void *instance, UNUSED REQUEST *request,
 	                char const *fmt, char *out, size_t freespace)
 {
+	rlm_idn_t *inst = instance;
 	char *idna = NULL;
 	int res;
 	size_t len;
