@@ -113,7 +113,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->xlat_name = xlat_name;
 
-	xlat_register("idn", xlat_idna, NULL, inst);
+	xlat_register(inst->xlat_name, xlat_idna, NULL, inst);
 
 	return 0;
 }
