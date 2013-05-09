@@ -1,0 +1,8 @@
+# -*- text -*-
+# Copyright (C) 2013 The FreeRADIUS Server project and contributors
+#
+#	Attributes and values defined in RFC 6930
+#	http://www.ietf.org/rfc/rfc6930.txt
+#
+
+ATTRIBUTE	IPv6-6rd-Configuration			173	octets # actually TLV
