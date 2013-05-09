@@ -30,5 +30,7 @@ RCSIDH(other_h, "$Id$")
  */
 typedef struct rlm_idn_t {
 	char const *xlat_name;
+	int UseSTD3ASCIIRules;
+	int AllowUnassigned;
 } rlm_idn_t;
 
