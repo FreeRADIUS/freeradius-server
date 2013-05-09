@@ -237,7 +237,7 @@ rm -rf $RPM_BUILD_ROOT/%{_includedir}
 rm -f $RPM_BUILD_ROOT/%{_sysconfdir}/raddb/experimental.conf
 
 # install doc files omitted by standard install
-for f in COPYRIGHT CREDITS INSTALL README; do
+for f in COPYRIGHT CREDITS INSTALL README.rst; do
     cp $f $RPM_BUILD_ROOT/%{docdir}
 done
 cp LICENSE $RPM_BUILD_ROOT/%{docdir}/LICENSE.gpl
