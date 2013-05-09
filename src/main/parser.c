@@ -576,12 +576,13 @@ done:
 	if ((c->type == COND_TYPE_CHILD) && !c->data.child->next) {
 		fr_cond_t *child;
 
-		child = c->data.child;
-		child->next = c->next;
-		(void) talloc_steal(child, child->next);
-		child->next_op = c->next_op;
-		c->next = NULL;
+		child = talloc_steal(ctx, c->data.child);
 		c->data.child = NULL;
+
+		child->next = talloc_steal(child, c->next);
+		c->next = NULL;
+
+		child->next_op = c->next_op;
 
 		/*
 		 *	Set the negation properly
@@ -592,8 +593,7 @@ done:
 		} else {
 			child->negate = false;
 		}
-		
-		(void) talloc_steal(ctx, child);
+
 		talloc_free(c);
 		c = child;
 	}
@@ -608,9 +608,9 @@ done:
 	    !c->next && !c->negate) {
 		fr_cond_t *child;
 
-		child = c->data.child;
+		child = talloc_steal(ctx, c->data.child);
 		c->data.child = NULL;
-		(void) talloc_steal(ctx, child);
+
 		talloc_free(c);
 		c = child;
 	}
