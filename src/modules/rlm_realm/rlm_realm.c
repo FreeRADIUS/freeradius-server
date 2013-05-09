@@ -56,7 +56,7 @@ static CONF_PARSER module_config[] = {
  */
 static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm)
 {
-	char namebuf[MAX_STRING_LEN];
+	char *namebuf;
 	char *username;
 	char const *realmname = NULL;
 	char *ptr;
@@ -102,7 +102,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	 *	We will be modifing this later, so we want our own copy
 	 *	of it.
 	 */
-	strlcpy(namebuf, request->username->vp_strvalue, sizeof(namebuf));
+	namebuf = talloc_strdup(request,  request->username->vp_strvalue);
 	username = namebuf;
 
 	switch(inst->format)
@@ -145,9 +145,10 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 		RDEBUG2("Looking up realm \"%s\" for User-Name = \"%s\"",
 		       realmname, request->username->vp_strvalue);
 	} else {
-		if( inst->ignore_null ) {
+		if (inst->ignore_null ) {
 			RDEBUG2("No '%c' in User-Name = \"%s\", skipping NULL due to config.",
 			inst->delim[0], request->username->vp_strvalue);
+			talloc_free(namebuf);
 			return RLM_MODULE_NOOP;
 		}
 		RDEBUG2("No '%c' in User-Name = \"%s\", looking up realm NULL",
@@ -160,12 +161,14 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	realm = realm_find(realmname);
 	if (!realm) {
 		RDEBUG2("No such realm \"%s\"",
-		       (!realmname) ? "NULL" : realmname);
+			(!realmname) ? "NULL" : realmname);
+		talloc_free(namebuf);
 		return RLM_MODULE_NOOP;
 	}
 	if( inst->ignore_default &&
 	    (strcmp(realm->name, "DEFAULT")) == 0) {
 		RDEBUG2("Found DEFAULT, but skipping due to config.");
+		talloc_free(namebuf);
 		return RLM_MODULE_NOOP;
 	}
 
@@ -205,6 +208,9 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	pairmake_packet("Realm", realmname, T_OP_EQ);
 	RDEBUG2("Adding Realm = \"%s\"", realmname);
 
+	talloc_free(namebuf);
+	realmname = username = NULL;
+
 	/*
 	 *	Figure out what to do with the request.
 	 */
@@ -237,7 +243,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 
 #ifdef WITH_PROXY
 	RDEBUG2("Proxying request from user %s to realm %s",
-	       username, realm->name);
+	       request->username->vp_strvalue, realm->name);
 
 	/*
 	 *	Skip additional checks if it's not an accounting
