@@ -364,5 +364,10 @@ exit 0
 %files unixODBC
 
 %changelog
+* Thu May  9 2013 Fajar A. Nugraha <list@fajar.net> - 2.2.1-1
+- bump version number to 2.2.1
+- package everything in only two RPM: freeradius and freeradius-utils
+- adapted spec file to be more generic
+
 * Tue Apr 10 2012 John Dennis <jdennis@redhat.com> - 2.1.12-2
 - resolves: bug#810605 Segfault with freeradius-perl threading
