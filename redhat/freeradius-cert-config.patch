@@ -1,7 +1,8 @@
-diff -r -u freeradius-server-2.1.12.orig/raddb/eap.conf freeradius-server-2.1.12/raddb/eap.conf
---- freeradius-server-2.1.12.orig/raddb/eap.conf	2011-09-07 06:59:21.000000000 -0400
-+++ freeradius-server-2.1.12/raddb/eap.conf	2011-09-07 10:28:28.000000000 -0400
-@@ -281,7 +281,11 @@
+diff --git a/raddb/eap.conf b/raddb/eap.conf
+index d2c2b65..8d47925 100644
+--- a/raddb/eap.conf
++++ b/raddb/eap.conf
+@@ -297,7 +297,11 @@
  			# for the server to print out an error message,
  			# and refuse to start.
  			#
@@ -14,4 +15,3 @@ diff -r -u freeradius-server-2.1.12.orig/raddb/eap.conf freeradius-server-2.1.12
  
  			#
  			#  Elliptical cryptography configuration
-Only in freeradius-server-2.1.12/raddb: eap.conf.orig
