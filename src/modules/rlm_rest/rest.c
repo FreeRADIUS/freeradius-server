@@ -2337,15 +2337,13 @@ static size_t rest_uri_escape(UNUSED REQUEST *request, char *out, size_t outlen,
  * @return length of data written to buffer (excluding NULL) or < 0 if an error
  *	occurred.
  */
-ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request)
+ssize_t rest_uri_build(char **out, UNUSED rlm_rest_t *instance, rlm_rest_section_t *section, REQUEST *request)
 {
-	char const *p, *q;
+	char const *p;
 	char *path_exp = NULL;
 	
 	char *scheme;
 	char const *path;
-
-	unsigned short count = 0;
 
 	ssize_t len, outlen;
 
@@ -2354,21 +2352,18 @@ ssize_t rest_uri_build(char **out, rlm_rest_t *instance, rlm_rest_section_t *sec
 	/*
 	 *	All URLs must contain at least <scheme>://<server>/
 	 */
-	while ((q = strchr(p, '/'))) {
-		p = q + 1;
-		
-		if (++count == 3) {
-			break;
-		}
-	}
-
-	if (count != 3) {
-		ERROR("rlm_rest (%s): Error URI is malformed,"
-		       " can't find start of path", instance->xlat_name);
+	p = strchr(p, ':');
+	if (!p || (*++p != '/') || (*++p != '/')) {
+		malformed:
+		RERROR("Error URI is malformed, can't find start of path");
 		return -1;
 	}
+	p = strchr(p + 1, '/');
+	if (!p) {
+		goto malformed;
+	}
 
-	len = ((p - 1) - section->uri);
+	len = (p - section->uri);
 
 	/*
 	 *	Allocate a temporary buffer to hold the first part of the URI
