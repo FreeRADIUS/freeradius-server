@@ -1,17 +1,22 @@
-AC_INIT(rlm_opendirectory.c)
+AC_INIT(rlm_idn.c)
 AC_REVISION($Revision$)
-AC_DEFUN(modname,[rlm_opendirectory])
+AC_DEFUN(modname,[rlm_idn])
 
 if test x$with_[]modname != xno; then
 
 	AC_PROG_CC
 	AC_PROG_CPP
 
-	mod_ldflags="${mod_ldflags} -framework DirectoryService" 
-	
-	FR_SMART_CHECK_INCLUDE(membership.h)
-	if test "$ac_cv_header_membership_h" != "yes"; then
-	  fail="$fail membership.h"
+	mod_ldflags="${mod_ldflags} -lidn"
+
+	FR_SMART_CHECK_LIB(idn, idna_to_ascii_8z)
+        if test "x$ac_cv_lib_idn_idna_to_ascii_8z" != "xyes"; then
+		fail="$fail libidn"
+	fi
+
+	FR_SMART_CHECK_INCLUDE(idna.h)
+	if test "$ac_cv_header_idna_h" != "yes"; then
+		fail="$fail idna.h"
 	fi
 	targetname=modname
 else
