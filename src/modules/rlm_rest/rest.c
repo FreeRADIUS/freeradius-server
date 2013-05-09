@@ -110,10 +110,10 @@ const unsigned long http_curl_auth[HTTP_AUTH_NUM_ENTRIES] = {
  * @see fr_int2str
  */
 const FR_NAME_NUMBER http_method_table[] = {
-	{ "GET",		HTTP_METHOD_GET		},
-	{ "POST",		HTTP_METHOD_POST	},
-	{ "PUT",		HTTP_METHOD_PUT		},
-	{ "DELETE",		HTTP_METHOD_DELETE	},
+	{ "GET",				HTTP_METHOD_GET		},
+	{ "POST",				HTTP_METHOD_POST	},
+	{ "PUT",				HTTP_METHOD_PUT		},
+	{ "DELETE",				HTTP_METHOD_DELETE	},
 
 	{  NULL , -1 }
 };
@@ -128,31 +128,31 @@ const FR_NAME_NUMBER http_method_table[] = {
  * @see fr_int2str
  */
 const FR_NAME_NUMBER http_body_type_table[] = {
-	{ "unknown",		HTTP_BODY_UNKNOWN	},
-	{ "unsupported",	HTTP_BODY_UNSUPPORTED	},
-	{ "unavailable",	HTTP_BODY_UNAVAILABLE	},
-	{ "invalid",		HTTP_BODY_INVALID	},
-	{ "post",		HTTP_BODY_POST		},
-	{ "json",		HTTP_BODY_JSON		},
-	{ "xml",		HTTP_BODY_XML		},
-	{ "yaml",		HTTP_BODY_YAML		},
-	{ "html",		HTTP_BODY_HTML		},
-	{ "plain",		HTTP_BODY_PLAIN		},
+	{ "unknown",				HTTP_BODY_UNKNOWN	},
+	{ "unsupported",			HTTP_BODY_UNSUPPORTED	},
+	{ "unavailable",			HTTP_BODY_UNAVAILABLE	},
+	{ "invalid",				HTTP_BODY_INVALID	},
+	{ "post",				HTTP_BODY_POST		},
+	{ "json",				HTTP_BODY_JSON		},
+	{ "xml",				HTTP_BODY_XML		},
+	{ "yaml",				HTTP_BODY_YAML		},
+	{ "html",				HTTP_BODY_HTML		},
+	{ "plain",				HTTP_BODY_PLAIN		},
 
 	{  NULL , -1 }
 };
 
 const FR_NAME_NUMBER http_auth_table[] = {
-	{ "none",		HTTP_AUTH_NONE		},
-	{ "srp",		HTTP_AUTH_TLS_SRP	},
-	{ "basic",		HTTP_AUTH_BASIC		},
-	{ "digest",		HTTP_AUTH_DIGEST	},
-	{ "digest-ie",		HTTP_AUTH_DIGEST_IE	},
-	{ "gss-negotiate",	HTTP_AUTH_GSSNEGOTIATE	},
-	{ "ntlm",		HTTP_AUTH_NTLM		},
-	{ "ntlm-winbind",	HTTP_AUTH_NTLM_WB	},
-	{ "any",		HTTP_AUTH_ANY		},
-	{ "safe",		HTTP_AUTH_ANY_SAFE	},
+	{ "none",				HTTP_AUTH_NONE		},
+	{ "srp",				HTTP_AUTH_TLS_SRP	},
+	{ "basic",				HTTP_AUTH_BASIC		},
+	{ "digest",				HTTP_AUTH_DIGEST	},
+	{ "digest-ie",				HTTP_AUTH_DIGEST_IE	},
+	{ "gss-negotiate",			HTTP_AUTH_GSSNEGOTIATE	},
+	{ "ntlm",				HTTP_AUTH_NTLM		},
+	{ "ntlm-winbind",			HTTP_AUTH_NTLM_WB	},
+	{ "any",				HTTP_AUTH_ANY		},
+	{ "safe",				HTTP_AUTH_ANY_SAFE	},
 
 	{  NULL , -1 }
 };
@@ -172,15 +172,15 @@ const FR_NAME_NUMBER http_auth_table[] = {
  * @see fr_int2str
  */
 const FR_NAME_NUMBER http_content_type_table[] = {
-	{ "application/x-www-form-urlencoded", HTTP_BODY_POST },
-	{ "application/json",	HTTP_BODY_JSON		},
-	{ "text/html",		HTTP_BODY_HTML		},
-	{ "text/plain",		HTTP_BODY_PLAIN		},
-	{ "text/xml",		HTTP_BODY_XML		},
-	{ "text/yaml",		HTTP_BODY_YAML		},
-	{ "text/x-yaml",	HTTP_BODY_YAML		},
-	{ "application/yaml",	HTTP_BODY_YAML		},
-	{ "application/x-yaml",	HTTP_BODY_YAML		},
+	{ "application/x-www-form-urlencoded",	HTTP_BODY_POST		},
+	{ "application/json",			HTTP_BODY_JSON		},
+	{ "text/html",				HTTP_BODY_HTML		},
+	{ "text/plain",				HTTP_BODY_PLAIN		},
+	{ "text/xml",				HTTP_BODY_XML		},
+	{ "text/yaml",				HTTP_BODY_YAML		},
+	{ "text/x-yaml",			HTTP_BODY_YAML		},
+	{ "application/yaml",			HTTP_BODY_YAML		},
+	{ "application/x-yaml",			HTTP_BODY_YAML		},
 	{  NULL , -1 }
 };
 
