@@ -501,13 +501,15 @@ ocsp_skip:
 /*
  *	For creating certificate attributes.
  */
-static const char *cert_attr_names[6][2] = {
-  { "TLS-Client-Cert-Serial",		"TLS-Cert-Serial" },
-  { "TLS-Client-Cert-Expiration",	"TLS-Cert-Expiration" },
-  { "TLS-Client-Cert-Subject",		"TLS-Cert-Subject" },
-  { "TLS-Client-Cert-Issuer",		"TLS-Cert-Issuer" },
-  { "TLS-Client-Cert-Common-Name",	"TLS-Cert-Common-Name" },
-  { "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" }
+static const char *cert_attr_names[8][2] = {
+  { "TLS-Client-Cert-Serial",			"TLS-Cert-Serial" },
+  { "TLS-Client-Cert-Expiration",		"TLS-Cert-Expiration" },
+  { "TLS-Client-Cert-Subject",			"TLS-Cert-Subject" },
+  { "TLS-Client-Cert-Issuer",			"TLS-Cert-Issuer" },
+  { "TLS-Client-Cert-Common-Name",		"TLS-Cert-Common-Name" },
+  { "TLS-Client-Cert-Subject-Alt-Name-Email",	"TLS-Cert-Subject-Alt-Name-Email" },
+  { "TLS-Client-Cert-SHA1-Fingerprint",		"TLS-Cert-SHA1-Fingerprint" },
+  { "TLS-Client-Cert-Subject-Alt-Name-MS-UPN",	"TLS-Cert-Subject-Alt-Name-MS-UPN" }
 };
 
 #define EAPTLS_SERIAL		(0)
@@ -516,6 +518,8 @@ static const char *cert_attr_names[6][2] = {
 #define EAPTLS_ISSUER		(3)
 #define EAPTLS_CN		(4)
 #define EAPTLS_SAN_EMAIL	(5)
+#define EAPTLS_SHA1_FINGERPRINT	(6)
+#define EAPTLS_SAN_MS_UPN       (7)
 
 /*
  *	Before trusting a certificate, you must make sure that the
@@ -656,7 +660,7 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 
 #ifdef GEN_EMAIL
 	/*
-	 *	Get the RFC822 Subject Alternative Name
+	 *	Get the RFC822 Subject Alternative Name and Microsoft Universal Principal Name
 	 */
 	loc = X509_get_ext_by_NID(client_cert, NID_subject_alt_name, 0);
 	if (lookup <= 1 && loc >= 0) {
@@ -678,6 +682,31 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 						pairmake(cert_attr_names[EAPTLS_SAN_EMAIL][lookup],
 							 ASN1_STRING_data(name->d.rfc822Name), T_OP_SET));
 					break;
+
+				case GEN_OTHERNAME:
+
+					// MS always sets this as UTF8
+					if (V_ASN1_UTF8STRING != name->d.otherName->value->type) {
+						break;
+ 					}
+
+					if (ASN1_STRING_length(name->d.otherName->value->value.utf8string) >= MAX_STRING_LEN) {
+						break;
+					}
+					
+					ASN1_OBJECT *ms_upn;
+					ms_upn = OBJ_nid2obj(NID_ms_upn);
+
+					if (OBJ_cmp(ms_upn, name->d.otherName->type_id) == 0) {
+
+						pairadd(&handler->certs,
+							pairmake(cert_attr_names[EAPTLS_SAN_MS_UPN][lookup],
+								 ASN1_STRING_data(name->d.otherName->value->value.utf8string), T_OP_SET));
+
+					} 
+
+					break;
+
 				default:
 					/* XXX TODO handle other SAN types */
 					break;
@@ -688,6 +717,48 @@ static int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 			sk_GENERAL_NAME_free(names);
 	}
 #endif	/* GEN_EMAIL */
+
+	/*
+	 * Get the client/issuer certificate sha1 fingerprints
+	 */
+	if (lookup <= 1) {
+
+		const EVP_MD *digest;
+		unsigned char md[EVP_MAX_MD_SIZE];
+	        unsigned int n;
+	        int pos;
+        	char hash[60];
+		char *p = hash;
+
+		hash[0] = '\0';
+
+		digest = EVP_get_digestbyname("sha1");
+
+		if (!digest) {
+			radlog(L_ERR, "Failed to get sha1 digest\n");	
+			goto sha1_bail;		
+
+		}
+
+		if (!X509_digest(client_cert, digest, md, &n)) {
+			radlog(L_ERR, "Failed to get digest of certificate\n");	
+			goto sha1_bail;		
+		}
+
+		for(pos = 0; pos < 19 ; pos++) {
+		    sprintf(p, "%02x:", md[pos]);
+		    p += 3;
+	        }
+	        sprintf(p, "%02x", md[19]);
+
+		hash[59] = '\0';
+
+  	    	pairadd(&handler->certs,
+		    pairmake(cert_attr_names[EAPTLS_SHA1_FINGERPRINT][lookup], hash, T_OP_SET));
+
+	}
+
+	sha1_bail: ;
 
 	/*
 	 *	If the CRL has expired, that might still be OK.
