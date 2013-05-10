@@ -112,7 +112,9 @@ static size_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fmt
 		return 0;
 	}
 
-        len = strnlen(idna, 254);  /* 253 is max DNS length */
+        len = strlen(idna);
+
+	/* 253 is max DNS length */
         if (!((len < (freespace - 1)) && (len <= 253))) {
 	        /* Never provide a truncated result, as it may be queried. */
 		RERROR("Conversion was truncated");
