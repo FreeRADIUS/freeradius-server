@@ -273,6 +273,33 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, int ifla
 	return (compare == 0);
 }
 
+/*
+ *	Expand a template to a string, parse it as type of "cast", and
+ *	create a VP from the data.
+ */
+static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, DICT_ATTR const *cast)
+{
+	VALUE_PAIR *vp;
+	char *str;
+
+	str = radius_expand_tmpl(request, vpt);
+	if (!str) return NULL;
+
+	vp = pairalloc(request, cast);
+	if (!vp) {
+		talloc_free(str);
+		return NULL;
+	}
+
+	if (!pairparsevalue(vp, str)) {
+		talloc_free(str);
+		pairfree(&vp);
+		return NULL;
+	}
+	
+	return vp;
+}
+
 /** Evaluate a map
  *
  * @param[in] request the REQUEST
@@ -283,7 +310,7 @@ static int do_regex(REQUEST *request, const char *lhs, const char *rhs, int ifla
  * @return -1 on error, 0 for "no match", 1 for "match".
  */
 int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth,
-			value_pair_map_t const *map, int iflag)
+			value_pair_map_t const *map, int iflag, DICT_ATTR const *cast)
 {
 	int rcode;
 	char *lhs, *rhs;
@@ -305,20 +332,58 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 	/*
 	 *	They're both attributes.  Do attribute-specific work.
+	 *
+	 *	LHS is DST.  RHS is SRC <sigh>
 	 */
-	if ((map->src->type == VPT_TYPE_ATTR) && (map->dst->type == VPT_TYPE_ATTR)) {
-		VALUE_PAIR *lhs_vp, *rhs_vp;
+	if (!cast && (map->src->type == VPT_TYPE_ATTR) && (map->dst->type == VPT_TYPE_ATTR)) {
+		VALUE_PAIR *one, *two;
 
-		lhs_vp = radius_vpt_get_vp(request, map->src);
-		rhs_vp = radius_vpt_get_vp(request, map->dst);
+		one = radius_vpt_get_vp(request, map->src);
+		two = radius_vpt_get_vp(request, map->dst);
 
-		if (!lhs_vp || !rhs_vp) return false;
+		if (!one || !two) return false;
 
-		return paircmp_op(lhs_vp, map->op, rhs_vp);
+		/*
+		 *	FIXME: paircmp_op has its arguments reversed.
+		 */
+		return paircmp_op(one, map->op, two);
 	}
 
 	/*
-	 *	The RHS is a string.  Expand it.
+	 *	LHS is a cast.  Do type-specific comparisons, as if
+	 *	the LHS was a real attribute.
+	 */
+	if (cast) {
+		VALUE_PAIR *lhs_vp, *rhs_vp;
+
+		lhs_vp = get_cast_vp(request, map->dst, cast);
+		if (!lhs_vp) return false;
+
+		/*
+		 *	Get either a real VP, or parse the RHS into a
+		 *	VP, and return that.
+		 */
+		if (map->src->type == VPT_TYPE_ATTR) {
+			rhs_vp = radius_vpt_get_vp(request, map->src);
+		} else {
+			rhs_vp = get_cast_vp(request, map->src, cast);
+		}
+
+		if (!rhs_vp) return false;
+
+		/*
+		 *	FIXME: paircmp_op has its arguments reversed.
+		 */
+		rcode = paircmp_op(rhs_vp, map->op, lhs_vp);
+		pairfree(&lhs_vp);
+		if (map->src->type != VPT_TYPE_ATTR) {
+			pairfree(&rhs_vp);
+		}
+		return rcode;
+	}
+
+	/*
+	 *	The RHS now needs to be expanded into a string.
 	 */
 	rhs = radius_expand_tmpl(request, map->src);
 	if (!rhs) {
@@ -490,7 +555,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			break;
 
 		case COND_TYPE_MAP:
-			rcode = radius_evaluate_map(request, modreturn, depth, c->data.map, c->regex_i);
+			rcode = radius_evaluate_map(request, modreturn, depth, c->data.map, c->regex_i, c->cast);
 			break;
 
 		case COND_TYPE_CHILD:

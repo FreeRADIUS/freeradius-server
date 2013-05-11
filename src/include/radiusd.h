@@ -691,7 +691,8 @@ typedef struct fr_cond_t fr_cond_t;
 int radius_evaluate_tmpl(REQUEST *request, int modreturn, int depth,
 			 value_pair_tmpl_t const *vpt);
 int radius_evaluate_map(REQUEST *request, int modreturn, int depth,
-			value_pair_map_t const *map, int iflag);
+			value_pair_map_t const *map, int iflag,
+			DICT_ATTR const *cast);
 int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			 fr_cond_t const *c);
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from);

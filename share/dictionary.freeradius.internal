@@ -414,6 +414,31 @@ ATTRIBUTE	Tmp-Octets-7				1837	octets
 ATTRIBUTE	Tmp-Octets-8				1838	octets
 ATTRIBUTE	Tmp-Octets-9				1839	octets
 
+#
+#  These attributes shouldn't be used anywhere.  They are defined here
+#  only for casting of values in conditional expressions.
+#
+#  The order and number need to be consistent with the typedefs used
+#  in the server source.
+#
+ATTRIBUTE	Tmp-Cast-String				1851	string
+ATTRIBUTE	Tmp-Cast-Integer			1852	integer
+ATTRIBUTE	Tmp-Cast-Ipaddr				1853	ipaddr
+ATTRIBUTE	Tmp-Cast-Date				1854	date
+ATTRIBUTE	Tmp-Cast-Abinary			1855	abinary
+ATTRIBUTE	Tmp-Cast-Octets				1856	octets
+ATTRIBUTE	Tmp-Cast-Ifid				1857	ifid
+ATTRIBUTE	Tmp-Cast-IPv6Addr			1858	ipv6addr
+ATTRIBUTE	Tmp-Cast-IPv6Prefix			1859	ipv6prefix
+ATTRIBUTE	Tmp-Cast-Byte				1860	byte
+ATTRIBUTE	Tmp-Cast-Short				1861	short
+ATTRIBUTE	Tmp-Cast-Ethernet			1862	ether
+ATTRIBUTE	Tmp-Cast-Signed				1863	signed
+# don't use or define these
+ATTRIBUTE	Tmp-Cast-Integer64			1869	integer64
+ATTRIBUTE	Tmp-Cast-IPv4Prefix			1870	ipv4prefix
+# don't use or define VSA or MAX
+
 #	Range:	1900-1909
 #	WiMAX server-side attributes.
 #

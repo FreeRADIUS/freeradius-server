@@ -70,6 +70,7 @@ struct fr_cond_t {
 		fr_cond_t  	*child;
 	} data;
 	int		regex_i;
+	DICT_ATTR const *cast;
 
 	cond_op_t	next_op;
 	fr_cond_t	*next;

@@ -155,3 +155,18 @@ data !foo == "bar"
 
 condition !foo != "bar"
 data foo == "bar"
+
+condition <ipv6addr>foo
+data ERROR offset 0 Cannot do cast for existence check
+
+condition <ipaddr>Filter-Id == &Framed-IP-Address
+data <ipaddr>&Filter-Id == &Framed-IP-Address
+
+condition <ipaddr>Filter-Id == <ipaddr>&Framed-IP-Address
+data ERROR offset 21 Unexpected cast
+
+condition <ipaddr>Filter-Id == "127.0.0.1"
+data <ipaddr>&Filter-Id == "127.0.0.1"
+
+condition <ipaddr>127.0.0.1 < &Framed-IP-Address
+data <ipaddr>127.0.0.1 < &Framed-IP-Address

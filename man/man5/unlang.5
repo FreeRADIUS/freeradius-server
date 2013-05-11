@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH unlang 5 "13 April 2013" "" "FreeRADIUS Processing un-language"
+.TH unlang 5 "11 May 2013" "" "FreeRADIUS Processing un-language"
 .SH NAME
 unlang \- FreeRADIUS Processing un\-language
 .SH DESCRIPTION
@@ -338,6 +338,59 @@ Compares 'foo' to 'bar', and evaluates to true if the comparison holds
 true.  Valid comparison operators are "==", "!=", "<", "<=", ">",
 ">=", "=~", and "!~", all with their usual meanings.  Invalid
 comparison operators are ":=" and "=".
+.RE
+.IP Attribute Comparisons
+.DS
+	(User-Name == "foo")
+.DE
+
+Compares the value of the User-Name attribute to the string 'foo', and
+evaluates to true if the comparison holds true.  The comparison is
+done by printing the attribute to a string, and then doing a string
+comparison of the two sides of the condition.
+.RE
+.IP Inter-Attribute Comparisons
+.DS
+	(User-Name == &Filter-Id)
+.DE
+
+Compares the value of the User-Name attribute to the contents of the
+Filter-Id attribute, and evaluates to true if the comparison holds
+true.  Unlike the previous example, this comparison is done in a
+type-safe way.  For example, comparing the IP addresses 1.2.3.4 and
+127.0.0.1 as strings will return different results than comparing them
+as IP addresses.
+
+The "&" character in the condition means that the comparison "refers"
+to the Filter-Id attribute.  If left off, it means that the User-Name
+attribute is compared to the literal string "Filter-Id".
+
+Where the left-hand side is an attribute, the "&" can be omitted.
+However, it is allowed for completeness.  e.g. The comparison
+"(&User-Name == &Filter-Id)" is equivalent to the example above.
+.RE
+.IP Casts
+.DS
+	(<type>foo == bar)
+.DE
+
+The left-hand-side of a condition can be "cast" to a specific data
+type.  The data type must be one which is valid for the dictionaries.
+e.g. "integer", "ipaddr", etc.
+
+The comparison is performed in a type-safe way, as with
+"Inter-Attribute Comparisons", above.  Both sides of the condition are
+parsed into temporary attributes, and the attributes compared via
+type-specific methods.  The temporary attributes have no other effect,
+and are not saved anywhere.
+
+Casting allows conditions to perform type-specific comparisons.  In
+previous versions of the server, the data would have to be manually
+placed into an intermediate attribute (or attributes), and then the
+attribute (or attributes) compared.  The use of a cast allows for
+simpler policies.
+
+Casts are allowed only on the left-hand side argument of a condition.
 .PP
 Conditions may be nested to any depth, subject only to line length
 limitations (8192 bytes).

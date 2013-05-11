@@ -46,6 +46,12 @@ next:
 	switch (c->type) {
 	case COND_TYPE_EXISTS:
 		rad_assert(c->data.vpt != NULL);
+		if (c->cast) {
+			len = snprintf(p, end - p, "<%s>", fr_int2str(dict_attr_types,
+								      c->cast->type, "??"));
+			p += len;
+		}
+
 		len = radius_tmpl2str(p, end - p, c->data.vpt);
 		p += len;
 		break;
@@ -55,6 +61,12 @@ next:
 #if 0
 		*(p++) = '[';	/* for extra-clear debugging */
 #endif
+		if (c->cast) {
+			len = snprintf(p, end - p, "<%s>", fr_int2str(dict_attr_types,
+								      c->cast->type, "??"));
+			p += len;
+		}
+
 		len = radius_map2str(p, end - p, c->data.map);
 		p += len;
 #if 0
@@ -228,6 +240,40 @@ static ssize_t condition_tokenize_word(TALLOC_CTX *ctx, char const *start, char 
 	return len;
 }
 
+
+static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda, char const **error)
+{
+	char const *p = start;
+	char const *q;
+	PW_TYPE cast;
+
+	while (isspace((int) *p)) p++; /* skip spaces before condition */
+
+	if (*p != '<') return 0;
+	p++;
+
+	q = p;
+	while (*q && *q != '>') q++;
+
+	cast = fr_substr2int(dict_attr_types, p, PW_TYPE_INVALID, q - p);
+	if (cast == PW_TYPE_INVALID) {
+		*error = "Invalid data type in cast";
+		return -(p - start);
+	}
+
+	*pda = dict_attrbyvalue(1850 + cast, 0);
+	if (!*pda) {
+		*error = "Cannot cast to this data type";
+		return -(p - start);
+	}
+
+	q++;
+
+	while (isspace((int) *q)) q++; /* skip spaces after cast */
+
+	return q - start;
+}
+
 /*
  *	Less code means less bugs
  */
@@ -316,6 +362,12 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			return_P("Conditional check cannot begin with a regular expression");
 		}
 
+		slen = condition_tokenize_cast(p, &c->cast, error);
+		if (slen < 0) {
+			return_SLEN;
+		}
+		p += slen;
+
 		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
 			return_SLEN;
@@ -355,6 +407,12 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			   ((p[0] == '|') && (p[1] == '|'))) {
 
 		exists:
+			if (c->cast) {
+				talloc_free(c);
+				*error = "Cannot do cast for existence check";
+				return 0;
+			}
+
 			c->type = COND_TYPE_EXISTS;
 			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
 			if (!c->data.vpt) {
@@ -453,6 +511,13 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			}
 
 			/*
+			 *	Cannot have a cast on the RHS
+			 */
+			if (*p == '<') {
+				return_P("Unexpected cast");
+			}
+
+			/*
 			 *	Grab the RHS
 			 */
 			slen = condition_tokenize_word(c, p, &rhs, &rhs_type, error);
@@ -498,21 +563,48 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				return 0;
 			}
 
-			if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
-			    (c->data.map->dst->type != VPT_TYPE_ATTR)) {
-				talloc_free(c);
-				*error = "Cannot use attribute reference on right side of condition";
-				return 0;
-			}
+			/*
+			 *	Check cast type.  We can have the RHS
+			 *	a string if the LHS has a cast.  But
+			 *	if the RHS is an attr, it MUST be the
+			 *	same type as the LHS.
+			 */
+			if (c->cast) {
+				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
+				    (c->cast->type != c->data.map->src->da->type)) {
+					goto same_type;
+				}
 
-			if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
-			    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
-			    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
-				talloc_free(c);
-				*error = "Attribute comparisons must be of the same attribute type";
-				return 0;
-			}
+				if (c->data.map->src->type == VPT_TYPE_REGEX) {
+					talloc_free(c);
+					*error = "Cannot use cast with regex comparison";
+					return 0;
+				}
 
+			} else {
+				/*
+				 *	Without a cast, we can't compare "foo" to User-Name,
+				 *	it has to be done the other way around.
+				 */
+				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->dst->type != VPT_TYPE_ATTR)) {
+					talloc_free(c);
+					*error = "Cannot use attribute reference on right side of condition";
+					return 0;
+				}
+
+				/*
+				 *	Two attributes?  They must be of the same type
+				 */
+				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
+				same_type:
+					talloc_free(c);
+					*error = "Attribute comparisons must be of the same attribute type";
+					return 0;
+				}
+			}
 			p += slen;
 
 			while (isspace((int) *p)) p++; /* skip spaces after RHS */
