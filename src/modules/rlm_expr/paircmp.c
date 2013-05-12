@@ -49,7 +49,7 @@ static int connectcmp(UNUSED void *instance,
 static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *request, VALUE_PAIR *check,
 		   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
 {
-	char buf[MAX_STRING_LEN];
+	char *buf;
 	char *s, *p, *next;
 	uint32_t lo, hi;
 	uint32_t port;
@@ -63,8 +63,7 @@ static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *reque
 		return (request->vp_integer - check->vp_integer);
 	}
 
-	/* Same size */
-	strcpy(buf, check->vp_strvalue);
+	buf = talloc_strdup(check, check->vp_strvalue);
 
 	s = buf;
 	while (1) {
@@ -78,6 +77,7 @@ static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *reque
 		lo = strtoul(s, NULL, 10);
 		hi = strtoul(p, NULL, 10);
 		if (lo <= port && port <= hi) {
+			talloc_free(buf);
 			return 0;
 		}
 
@@ -85,6 +85,7 @@ static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *reque
 		s = next + 1;
 	}
 
+	talloc_free(buf);
 	return -1;
 }
 
