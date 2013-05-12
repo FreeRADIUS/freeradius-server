@@ -186,7 +186,7 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 		fr_md4_calc(ntpwdhash, unicode, password->length * 2);
 
 	} else {		/* MUST be NT-Password */
-		uint8_t *p;
+		uint8_t *p = NULL;
 
 		if (password->length == 32) {
 			p = talloc_array(password, uint8_t, 16);
@@ -199,9 +199,12 @@ static int eapleap_ntpwdhash(unsigned char *ntpwdhash, VALUE_PAIR *password)
 			return 0;
 		}
 
-//		talloc_free(password->vp_octets);
-		password->vp_octets = p;
-		memcpy(ntpwdhash, p, 16);
+		if (p) {
+			pairmemcpy(password, p, 16);
+			talloc_free(p);
+		}
+
+		memcpy(ntpwdhash, password->vp_octets, 16);
 	}
 	return 1;
 }
