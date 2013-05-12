@@ -443,14 +443,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				p += 2;
 
 				} else if (p[1] == '*') {
-					/*
-					 *	FOO !* BAR
-					 *
-					 *	is really !(FOO)
-					 *
-					 *	FIXME: we should
-					 *	really re-write it...
-					 */
 					if (lhs_type != T_BARE_WORD) {
 						return_P("Cannot use !* on a string");
 					}
@@ -561,6 +553,30 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			}
 
 			/*
+			 *	foo =* bar is just (foo)
+			 *	foo !* bar is just (!foo)
+			 */
+			if ((op == T_OP_CMP_TRUE) || (op == T_OP_CMP_FALSE)) {
+				value_pair_tmpl_t *vpt;
+
+				vpt = talloc_steal(c, c->data.map->dst);
+				c->data.map->dst = NULL;
+
+				talloc_free(c->data.map);
+				c->type = COND_TYPE_EXISTS;
+				c->data.vpt = vpt;
+
+				/*
+				 *	Invert the negation bit.
+				 */
+				if (op == T_OP_CMP_FALSE) {
+					c->negate = !c->negate;
+				}
+
+				goto done_cond;
+			}
+
+			/*
 			 *	@todo: check LHS and RHS separately, to
 			 *	get better errors
 			 */
@@ -613,6 +629,8 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					return 0;
 				}
 			}
+
+		done_cond:
 			p += slen;
 
 			while (isspace((int) *p)) p++; /* skip spaces after RHS */

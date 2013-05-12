@@ -178,4 +178,15 @@ condition "foo" =* bar
 data ERROR offset 6 Cannot use =* on a string
 
 condition User-Name =* bar
-data 
+data &User-Name
+
+condition User-Name !* bar
+data !&User-Name
+
+condition !User-Name =* bar
+data !&User-Name
+
+condition !User-Name !* bar
+data &User-Name
+
+

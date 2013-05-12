@@ -257,6 +257,9 @@ value_pair_map_t *radius_str2map(TALLOC_CTX *ctx, const char *lhs, FR_TOKEN lhs_
 
 	map->op = op;
 
+	/*
+	 *	Ignore the RHS if it's a true / false comparison.
+	 */
 	if ((map->op == T_OP_CMP_TRUE) || (map->op == T_OP_CMP_FALSE)) {
 		return map;
 	}
