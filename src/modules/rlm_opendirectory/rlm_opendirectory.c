@@ -274,7 +274,6 @@ static long od_check_passwd(char const *uname, char const *password)
  */
 static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
-	char *name, *passwd;
 	int		ret;
 	long odResult = eDSAuthFailed;
 	
@@ -296,10 +295,8 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 		return RLM_MODULE_INVALID;
 	}
 	
-	name = (char *)request->username->vp_strvalue;
-	passwd = (char *)request->password->vp_strvalue;
-	
-	odResult = od_check_passwd(name, passwd);
+	odResult = od_check_passwd(request->username->vp_strvalue,
+				   request->password->vp_strvalue);
 	switch(odResult)
 	{
 		case eDSNoErr:
@@ -324,7 +321,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	}
 	
 	if (ret != RLM_MODULE_OK) {
-		RDEBUG("[%s]: Invalid password", name);
+		RDEBUG("[%s]: Invalid password", request->username->vp_strvalue);
  		return ret;
 	}
 		
@@ -337,7 +334,6 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
  */
 static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 {
-	char *name = NULL;
 	struct passwd *userdata = NULL;
 	struct group *groupdata = NULL;
 	int ismember = 0;
@@ -418,10 +414,8 @@ static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 
 	/* resolve user */
 	uuid_clear(uuid);
-	name = (char *)request->username->vp_strvalue;
-	rad_assert(name != NULL);
 
-	userdata = getpwnam(name);
+	userdata = getpwnam(request->username->vp_strvalue);
 	if (userdata != NULL) {
 		err = mbr_uid_to_uuid(userdata->pw_uid, uuid);
 		if (err != 0)
