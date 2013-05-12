@@ -745,8 +745,6 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		node->list = PAIR_LIST_REQUEST;	
 	}
 
-	if (!brace) brace = strchr(attrname, '}');
-
 	*brace = '\0';
 
 	XLAT_DEBUG("Looking for attribute name in %s", attrname);
