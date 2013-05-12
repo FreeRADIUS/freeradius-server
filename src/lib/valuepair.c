@@ -2109,11 +2109,15 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 		break;
 	}
 
-	return paircmp_op(one, one->op, two);
+	return paircmp_op(two, one->op, one);
 }
 
-/*
- *	Compare two attributes
+/* Compare two attributes
+ *
+ * @param[in] one the first attribute
+ * @param[in] op the operator for comparison
+ * @param[in] two the second attribute
+ * @return true if ONE OP TWO is true, else false.
  */
 int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 {
@@ -2138,14 +2142,14 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 	{
 		size_t length;
 
-		if (one->length < two->length) {
+		if (one->length > two->length) {
 			length = one->length;
 		} else {
 			length = two->length;
 		}
 
 		if (length) {
-			compare = memcmp(two->vp_octets, one->vp_octets,
+			compare = memcmp(one->vp_octets, two->vp_octets,
 					 length);
 			if (compare != 0) break;
 		}
@@ -2156,21 +2160,21 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		 *
 		 *	i.e. "0x00" is smaller than "0x0000"
 		 */
-		compare = two->length - one->length;
+		compare = one->length - two->length;
 	}
 		break;
 
 	case PW_TYPE_STRING:
-		compare = strcmp(two->vp_strvalue, one->vp_strvalue);
+		compare = strcmp(one->vp_strvalue, two->vp_strvalue);
 		break;
 
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
 	case PW_TYPE_DATE:
-		if (two->vp_integer < one->vp_integer) {
+		if (one->vp_integer < two->vp_integer) {
 			compare = -1;
-		} else if (two->vp_integer == one ->vp_integer) {
+		} else if (one->vp_integer == two->vp_integer) {
 			compare = 0;
 		} else {
 			compare = +1;
@@ -2181,18 +2185,18 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		/*
 		 *	Don't want integer overflow!
 		 */
-		if (two->vp_integer64 < one->vp_integer64) {
+		if (one->vp_integer64 < two->vp_integer64) {
 			compare = -1;
-		} else if (two->vp_integer64 > one->vp_integer64) {
+		} else if (one->vp_integer64 > two->vp_integer64) {
 			compare = +1;
 		} else {
 			compare = 0;
 		}
 		break;
 	case PW_TYPE_IPADDR:
-		if (ntohl(two->vp_ipaddr)  < ntohl(one->vp_ipaddr) ) {
+		if (ntohl(one->vp_ipaddr)  < ntohl(two->vp_ipaddr)) {
 			compare = -1;
-		} else if (ntohl(two->vp_ipaddr)  == ntohl(one->vp_ipaddr) ) {
+		} else if (one->vp_ipaddr  == two->vp_ipaddr) {
 			compare = 0;
 		} else {
 			compare = +1;
@@ -2200,26 +2204,29 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 		break;
 
 	case PW_TYPE_IPV6ADDR:
-		compare = memcmp(&two->vp_ipv6addr, &one->vp_ipv6addr,
-				 sizeof(two->vp_ipv6addr));
+		compare = memcmp(&one->vp_ipv6addr, &two->vp_ipv6addr,
+				 sizeof(one->vp_ipv6addr));
 		break;
 
+		/*
+		 *	FIXME: do a smarter comparison...
+		 */
 	case PW_TYPE_IPV6PREFIX:
-		compare = memcmp(&two->vp_ipv6prefix, &one->vp_ipv6prefix,
-				 sizeof(two->vp_ipv6prefix));
+		compare = memcmp(&one->vp_ipv6prefix, &two->vp_ipv6prefix,
+				 sizeof(one->vp_ipv6prefix));
 		break;
 
 		/*
 		 *	FIXME: do a smarter comparison...
 		 */
 	case PW_TYPE_IPV4PREFIX:
-		compare = memcmp(&two->vp_ipv4prefix, &one->vp_ipv4prefix,
-				 sizeof(two->vp_ipv4prefix));
+		compare = memcmp(&one->vp_ipv4prefix, &two->vp_ipv4prefix,
+				 sizeof(one->vp_ipv4prefix));
 		break;
 
 	case PW_TYPE_IFID:
-		compare = memcmp(&two->vp_ifid, &one->vp_ifid,
-				 sizeof(two->vp_ifid));
+		compare = memcmp(&one->vp_ifid, &two->vp_ifid,
+				 sizeof(one->vp_ifid));
 		break;
 
 	default:

@@ -337,17 +337,14 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	 *	LHS is DST.  RHS is SRC <sigh>
 	 */
 	if (!cast && (map->src->type == VPT_TYPE_ATTR) && (map->dst->type == VPT_TYPE_ATTR)) {
-		VALUE_PAIR *one, *two;
+		VALUE_PAIR *lhs_vp, *rhs_vp;
 
-		one = radius_vpt_get_vp(request, map->src);
-		two = radius_vpt_get_vp(request, map->dst);
+		lhs_vp = radius_vpt_get_vp(request, map->dst);
+		rhs_vp = radius_vpt_get_vp(request, map->src);
 
-		if (!one || !two) return false;
+		if (!lhs_vp || !rhs_vp) return false;
 
-		/*
-		 *	FIXME: paircmp_op has its arguments reversed.
-		 */
-		return paircmp_op(one, map->op, two);
+		return paircmp_op(lhs_vp, map->op, rhs_vp);
 	}
 
 	/*
@@ -372,10 +369,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		if (!rhs_vp) return false;
 
-		/*
-		 *	FIXME: paircmp_op has its arguments reversed.
-		 */
-		rcode = paircmp_op(rhs_vp, map->op, lhs_vp);
+		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
 		pairfree(&lhs_vp);
 		if (map->src->type != VPT_TYPE_ATTR) {
 			pairfree(&rhs_vp);
@@ -416,17 +410,17 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 			if ((map->dst->type == VPT_TYPE_ATTR) &&
 			    (map->dst->da->vendor == 0) &&
 			    radius_find_compare(map->dst->da->attr)) {
-				VALUE_PAIR *check = pairalloc(request, map->dst->da);
+				rhs_vp = pairalloc(request, map->dst->da);
 
-				if (!pairparsevalue(check, rhs)) {
+				if (!pairparsevalue(rhs_vp, rhs)) {
 					talloc_free(rhs);
 					EVAL_DEBUG("FAIL %d", __LINE__);
 					return -1;
 				}
 				talloc_free(rhs);
 
-				rcode = (radius_callback_compare(request, NULL, check, NULL, NULL) == 0);
-				pairfree(&check);
+				rcode = (radius_callback_compare(request, NULL, rhs_vp, NULL, NULL) == 0);
+				pairfree(&rhs_vp);
 				return rcode;
 			}
 
