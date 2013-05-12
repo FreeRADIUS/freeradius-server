@@ -277,8 +277,8 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 /*
  *	Less code means less bugs
  */
-#define return_P(_x) talloc_free(c);*error = _x;return -(p - start)
-#define return_SLEN talloc_free(c);return slen -(p - start)
+#define return_P(_x) *error = _x;goto return_p
+#define return_SLEN goto return_slen
 
 
 /** Tokenize a conditional check
@@ -301,6 +301,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	c = talloc_zero(ctx, fr_cond_t);
 
 	rad_assert(c != NULL);
+	lhs = rhs = NULL;
 
 	while (isspace((int) *p)) p++; /* skip spaces before condition */
 
@@ -664,7 +665,12 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 	if (!(((p[0] == '&') && (p[1] == '&')) ||
 	      ((p[0] == '|') && (p[1] == '|')))) {
-		return_P("Unexpected text after condition");
+		*error = "Unexpected text after condition";
+	return_p:
+		if (lhs) talloc_free(lhs);
+		if (rhs) talloc_free(rhs);
+		talloc_free(c);
+		return -(p - start);
 	}
 
 	/*
@@ -678,7 +684,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 	 */
 	slen = condition_tokenize(c, p, brace, &c->next, error);
 	if (slen <= 0) {
-		return_SLEN;
+	return_slen:
+		if (lhs) talloc_free(lhs);
+		if (rhs) talloc_free(rhs);
+		talloc_free(c);
+		return slen - (p - start);
 	}
 	p += slen;
 
@@ -774,6 +784,9 @@ done:
 			c->data.map->op = T_OP_CMP_EQ;
 		}
 	}
+
+	if (lhs) talloc_free(lhs);
+	if (rhs) talloc_free(rhs);
 
 	*pcond = c;
 	return p - start;
