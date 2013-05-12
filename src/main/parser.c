@@ -606,6 +606,14 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					return 0;
 				}
 
+				/*
+				 *	Casting to a redundant type means we don't need the cast.
+				 */
+				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
+				    (c->cast->type == c->data.map->dst->da->type)) {
+					c->cast = NULL;
+				}
+
 			} else {
 				/*
 				 *	Without a cast, we can't compare "foo" to User-Name,

@@ -171,12 +171,14 @@ data <ipaddr>&Filter-Id == "127.0.0.1"
 condition <ipaddr>127.0.0.1 < &Framed-IP-Address
 data <ipaddr>127.0.0.1 < &Framed-IP-Address
 
+# =* and !* are only for attrs / lists
 condition "foo" !* bar
 data ERROR offset 6 Cannot use !* on a string
 
 condition "foo" =* bar
 data ERROR offset 6 Cannot use =* on a string
 
+# existence checks don't need the RHS
 condition User-Name =* bar
 data &User-Name
 
@@ -189,4 +191,6 @@ data !&User-Name
 condition !User-Name !* bar
 data &User-Name
 
-
+# redundant casts get squashed
+condition <ipaddr>Framed-IP-Address == 127.0.0.1
+data &Framed-IP-Address == 127.0.0.1
