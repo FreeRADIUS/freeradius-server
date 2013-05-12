@@ -194,3 +194,6 @@ data &User-Name
 # redundant casts get squashed
 condition <ipaddr>Framed-IP-Address == 127.0.0.1
 data &Framed-IP-Address == 127.0.0.1
+
+condition <cidr>Framed-IP-Address <= 192.168/16
+data <cidr>&Framed-IP-Address <= 192.168/16

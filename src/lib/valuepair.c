@@ -1312,7 +1312,26 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 
 	case PW_TYPE_IPV4PREFIX:
 		p = strchr(value, '/');
-		if (!p || ((p - value) >= 256)) {
+
+		/*
+		 *	192.168.1.2 is parsed as if it was /32
+		 */
+		if (!p) {
+			vp->vp_ipv4prefix[1] = 32;
+
+			if (inet_pton(AF_INET, value, vp->vp_ipv4prefix + 2) <= 0) {
+				fr_strerror_printf("failed to parse IPv4 address "
+					   "string \"%s\"", value);
+				return false;
+			}
+			vp->length = sizeof(vp->vp_ipv4prefix);
+			break;
+		}
+
+		/*
+		 *	Otherwise parse the prefix
+		 */
+		if ((p - value) >= 256) {
 			fr_strerror_printf("invalid IPv4 prefix "
 				   "string \"%s\"", value);
 			return false;
@@ -1324,14 +1343,14 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 			buffer[p - value] = '\0';
 
 			if (inet_pton(AF_INET, buffer, vp->vp_ipv4prefix + 2) <= 0) {
-				fr_strerror_printf("failed to parse IPv6 address "
+				fr_strerror_printf("failed to parse IPv4 address "
 					   "string \"%s\"", value);
 				return false;
 			}
 
 			prefix = strtoul(p + 1, &eptr, 10);
 			if ((prefix > 32) || *eptr) {
-				fr_strerror_printf("failed to parse IPv6 address "
+				fr_strerror_printf("failed to parse IPv4 address "
 					   "string \"%s\"", value);
 				return false;
 			}
@@ -2216,12 +2235,108 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 				 sizeof(one->vp_ipv6prefix));
 		break;
 
-		/*
-		 *	FIXME: do a smarter comparison...
-		 */
 	case PW_TYPE_IPV4PREFIX:
-		compare = memcmp(&one->vp_ipv4prefix, &two->vp_ipv4prefix,
-				 sizeof(one->vp_ipv4prefix));
+		/*
+		 *	Handle the case of netmasks being identical.
+		 */
+		if (one->vp_ipv4prefix[1] == two->vp_ipv4prefix[1]) {
+			compare = memcmp(one->vp_ipv4prefix + 2,
+					 two->vp_ipv4prefix + 2,
+					 4);
+			/*
+			 *	If they're identical return true for
+			 *	identical.
+			 */
+			if ((compare == 0) &&
+			    ((op == T_OP_CMP_EQ) ||
+			     (op == T_OP_LE) ||
+			     (op == T_OP_GE))) {
+				return true;
+			}
+
+			/*
+			 *	Everything else returns false.
+			 *
+			 *	10/8 == 24/8  --> false
+			 *	10/8 <= 24/8  --> false
+			 *	10/8 >= 24/8  --> false
+			 */
+			return false;
+		}
+
+		/*
+		 *	Netmasks are different.  That limits the
+		 *	possible results, based on the operator.
+		 */
+		switch (op) {
+		case T_OP_CMP_EQ:
+			return false;
+
+		case T_OP_NE:
+			return true;
+
+		case T_OP_LE:
+		case T_OP_LT:	/* 192/8 < 192.168/16 --> false */
+			if (one->vp_ipv4prefix[1] < two->vp_ipv4prefix[1]) {
+				return false;
+			}
+			break;
+
+		case T_OP_GE:
+		case T_OP_GT:	/* 192/16 > 192.168/8 --> false */
+			if (one->vp_ipv4prefix[1] > two->vp_ipv4prefix[1]) {
+				return false;
+			}
+			break;
+
+		default:
+			return false;
+		}
+
+		/*
+		 *	Now check the prefixes.
+		 */
+		{
+			uint32_t ip1, ip2;
+			uint32_t mask;
+			int len;
+
+			memcpy(&ip1, one->vp_ipv4prefix + 2, 4);
+			memcpy(&ip2, two->vp_ipv4prefix + 2, 4);
+
+			ip1 = ntohl(ip1);
+			ip2 = ntohl(ip2);
+
+			if (one->vp_ipv4prefix[1] < two->vp_ipv4prefix[1]) {
+				len = one->vp_ipv4prefix[1];
+			} else {
+				len = two->vp_ipv4prefix[1];
+			}
+
+			/*
+			 *	Mask off the LOWER bits, because we
+			 *	don't care about them.
+			 */
+			mask = 1;
+			mask <<= (32 - len);
+			mask--;
+			mask = ~mask;
+
+			ip1 &= mask; /* one of these is unnecessary, but oh well */
+			ip2 &= mask;
+
+			/*
+			 *	If the prefixes are identical, the one
+			 *	is within two, or two is within one.
+			 *	We don't care which one it is, as that
+			 *	was checked above with the op /
+			 *	netmask length checks.
+			 */
+			if (ip1 == ip2) return true;
+
+			return false;
+		}
+
 		break;
 
 	case PW_TYPE_IFID:
