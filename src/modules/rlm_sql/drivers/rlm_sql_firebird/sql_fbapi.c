@@ -38,6 +38,8 @@ static void fb_set_tpb(rlm_sql_firebird_conn_t *conn, int count, ...)
 	}
 	
 	conn->tpb_len = count;
+	
+	va_end(arg);
 }
 
 
