@@ -451,6 +451,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					 *	FIXME: we should
 					 *	really re-write it...
 					 */
+					if (lhs_type != T_BARE_WORD) {
+						return_P("Cannot use !* on a string");
+					}
+
 					op = T_OP_CMP_FALSE;
 					p += 2;
 
@@ -471,6 +475,10 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					p += 2;
 
 				} else if (p[1] == '*') {
+					if (lhs_type != T_BARE_WORD) {
+						return_P("Cannot use =* on a string");
+					}
+
 					op = T_OP_CMP_TRUE;
 					p += 2;
 
