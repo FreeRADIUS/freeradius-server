@@ -1221,7 +1221,7 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 	if (t->username) {
 		vp = paircopy(fake->packet, t->username);
 		pairadd(&fake->packet->vps, vp);
-		fake->username = pairfind(fake->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		fake->username = vp;
 		RDEBUG2("Setting User-Name to %s", fake->username->vp_strvalue);
 	} else {
 		RDEBUG2("No tunnel username (SSL resumption?)");
