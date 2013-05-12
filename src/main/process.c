@@ -3078,7 +3078,7 @@ static void request_coa_originate(REQUEST *request)
 	if (coa->home_pool) {
 		coa->home_server = home_server_ldb(NULL, coa->home_pool, coa);
 		if (!coa->home_server) {
-			RWDEBUG("No live home server for home_server_pool %s", vp->vp_strvalue);
+			RWDEBUG("No live home server for home_server_pool %s", coa->home_pool->name);
 			goto fail;
 		}
 		home_server_update_request(coa->home_server, coa);
