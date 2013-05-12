@@ -380,6 +380,7 @@ void radlog_request(log_type_t type, log_debug_t lvl, REQUEST *request, char con
 		
 		 /* FIXME: escape chars! */
 		if (radius_xlat(buffer, sizeof(buffer), request, filename, NULL, NULL) < 0) {
+			va_end(ap);
 			return;
 		}
 		request->radlog = rl;
