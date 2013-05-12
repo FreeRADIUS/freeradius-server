@@ -90,6 +90,9 @@ void		radlog_request(log_type_t lvl, log_debug_t priority, REQUEST *request, cha
 #endif
 ;
 
+void log_talloc(char const *message);
+void log_talloc_report(TALLOC_CTX *ctx);
+
 /*
  *	Logging macros.
  *

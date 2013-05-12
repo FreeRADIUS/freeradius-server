@@ -432,9 +432,6 @@ typedef struct main_config_t {
 	int		debug_memory;
 } MAIN_CONFIG_T;
 
-void log_talloc(char const *message);
-void log_talloc_report(TALLOC_CTX *ctx);
-
 #define SECONDS_PER_DAY		86400
 #define MAX_REQUEST_TIME	30
 #define CLEANUP_DELAY		5
