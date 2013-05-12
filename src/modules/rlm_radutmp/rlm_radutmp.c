@@ -668,7 +668,8 @@ static rlm_rcode_t mod_checksimul(void *instance, REQUEST *request)
 			 *	and the NAS says "no", because "BOB"
 			 *	is using the port.
 			 */
-			strlcpy(utmp_login, u.login, sizeof(u.login));
+			memset(utmp_login, 0, sizeof(utmp_login));
+			memcpy(utmp_login, u.login, sizeof(u.login));
 
 			/*
 			 *	rad_check_ts may take seconds
