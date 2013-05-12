@@ -574,7 +574,7 @@ static size_t md5_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 static size_t sha1_xlat(UNUSED void *instance, UNUSED REQUEST *request,
                        char const *fmt, char *out, size_t outlen)
 {
-        uint8_t digest[16];
+        uint8_t digest[20];
         int i, len;
         fr_SHA1_CTX ctx;
 
