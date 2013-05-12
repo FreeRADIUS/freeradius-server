@@ -777,9 +777,10 @@ static void process_file(char const *filename)
 int main(int argc, char *argv[])
 {
 	int c;
+	int report = false;
 	char const *radius_dir = RADDBDIR;
 
-	while ((c = getopt(argc, argv, "d:x")) != EOF) switch(c) {
+	while ((c = getopt(argc, argv, "d:xM")) != EOF) switch(c) {
 		case 'd':
 			radius_dir = optarg;
 			break;
@@ -787,12 +788,20 @@ int main(int argc, char *argv[])
 			fr_debug_flag++;
 			debug_flag = fr_debug_flag;
 			break;
+		case 'M':
+			report = true;
+			break;
 		default:
 			fprintf(stderr, "usage: radattr [OPTS] filename\n");
 			exit(1);
 	}
 	argc -= (optind - 1);
 	argv += (optind - 1);
+
+	if (report) {
+		talloc_enable_null_tracking();
+		talloc_set_log_fn(log_talloc);
+	}
 
 	if (dict_init(radius_dir, RADIUS_DICTIONARY) < 0) {
 		fr_perror("radattr");
@@ -809,6 +818,11 @@ int main(int argc, char *argv[])
 
 	} else {
 		process_file(argv[1]);
+	}
+
+	if (report) {
+		dict_free();
+		log_talloc_report(NULL);
 	}
 
 	return 0;
