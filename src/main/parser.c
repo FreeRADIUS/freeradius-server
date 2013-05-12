@@ -278,6 +278,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
  *	Less code means less bugs
  */
 #define return_P(_x) *error = _x;goto return_p
+#define return_0(_x) *error = _x;goto return_0
 #define return_SLEN goto return_slen
 
 
@@ -294,6 +295,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 {
 	ssize_t slen;
 	const char *p = start;
+	const char *rhs_p;
 	fr_cond_t *c;
 	char *lhs, *rhs;
 	FR_TOKEN op, lhs_type, rhs_type;
@@ -409,9 +411,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 		exists:
 			if (c->cast) {
-				talloc_free(c);
-				*error = "Cannot do cast for existence check";
-				return 0;
+				return_0("Cannot do cast for existence check");
 			}
 
 			c->type = COND_TYPE_EXISTS;
@@ -521,6 +521,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			/*
 			 *	Grab the RHS
 			 */
+			rhs_p = p;
 			slen = condition_tokenize_word(c, p, &rhs, &rhs_type, error);
 			if (slen <= 0) {
 				return_SLEN;
@@ -583,9 +584,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 			 */
 			if ((c->data.map->src->type == VPT_TYPE_LIST) ||
 			    (c->data.map->dst->type == VPT_TYPE_LIST)) {
-				talloc_free(c);
-				*error = "Cannot use list references in condition";
-				return 0;
+				return_0("Cannot use list references in condition");
 			}
 
 			/*
@@ -601,9 +600,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				}
 
 				if (c->data.map->src->type == VPT_TYPE_REGEX) {
-					talloc_free(c);
-					*error = "Cannot use cast with regex comparison";
-					return 0;
+					return_0("Cannot use cast with regex comparison");
 				}
 
 				/*
@@ -621,8 +618,11 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				 */
 				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->dst->type != VPT_TYPE_ATTR)) {
-					talloc_free(c);
 					*error = "Cannot use attribute reference on right side of condition";
+				return_0:
+					if (lhs) talloc_free(lhs);
+					if (rhs) talloc_free(rhs);
+					talloc_free(c);
 					return 0;
 				}
 
@@ -633,9 +633,23 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
 				same_type:
-					talloc_free(c);
 					*error = "Attribute comparisons must be of the same attribute type";
-					return 0;
+					goto return_0;
+				}
+
+				/*
+				 *	Invalid: User-Name == bob
+				 *	Valid:   User-Name == "bob"
+				 */
+				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->src->type != VPT_TYPE_ATTR) &&
+				    (c->data.map->dst->da->type == PW_TYPE_STRING) &&
+				    (rhs_type == T_BARE_WORD)) {
+					*error = "Must have string as value for attribute";
+					if (lhs) talloc_free(lhs);
+					if (rhs) talloc_free(rhs);
+					talloc_free(c);
+					return -(rhs_p - start);
 				}
 			}
 

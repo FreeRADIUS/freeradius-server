@@ -196,4 +196,19 @@ condition <ipaddr>Framed-IP-Address == 127.0.0.1
 data &Framed-IP-Address == 127.0.0.1
 
 condition <cidr>Framed-IP-Address <= 192.168/16
-data <cidr>&Framed-IP-Address <= 192.168/16
+data <ipv4prefix>&Framed-IP-Address <= 192.168/16
+
+# string attributes must be string
+condition User-Name == "bob"
+data &User-Name == "bob"
+
+condition User-Name == `bob`
+data &User-Name == `bob`
+
+condition User-Name == 'bob'
+data &User-Name == 'bob'
+
+condition User-Name == bob
+data ERROR offset 13 Must have string as value for attribute
+
+
