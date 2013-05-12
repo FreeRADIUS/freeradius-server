@@ -687,8 +687,19 @@ size_t radius_map2str(char *buffer, size_t bufsize, value_pair_map_t const *map)
 	}
 
 	rad_assert(map->src != NULL);
-	len = radius_tmpl2str(p, end - p, map->src);
-	p += len;
+
+	if ((map->dst->type == VPT_TYPE_ATTR) &&
+	    (map->dst->da->type == PW_TYPE_STRING) &&
+	    (map->src->type == VPT_TYPE_LITERAL)) {
+		*(p++) = '\'';
+		len = radius_tmpl2str(p, end - p, map->src);
+		p += len;
+		*(p++) = '\'';
+		*p = '\0';
+	} else {
+		len = radius_tmpl2str(p, end - p, map->src);
+		p += len;
+	}
 
 	return p - buffer;
 }
