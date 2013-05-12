@@ -129,6 +129,10 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 		      (long int) conn->sql_code, conn->error, query);
 
 		if (conn->sql_code == DOWN_SQL_CODE) {
+#ifdef _PTHREAD_H
+			pthread_mutex_lock(&conn->mut);
+#endif
+
 			return RLM_SQL_RECONNECT;
 		}
 	
