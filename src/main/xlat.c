@@ -587,6 +587,13 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 		talloc_free(node);
 		return slen - (p - fmt);
 	}
+
+	if (!node->alternate) {
+		talloc_free(node);
+		*error = "Empty expansion is invalid";
+		return -(p - fmt);
+	}
+
 	p += slen;
 
 	*head = node;
@@ -760,6 +767,12 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		q = strchr(attrname, '[');
 	}
 	if (q) *q = '\0';
+
+	if (!*attrname) {
+		talloc_free(node);
+		*error = "Empty expression is invalid";
+		return -(attrname - fmt);
+	}
 
 	/*
 	 *	It's either an attribute name, or a Tunnel-Password:TAG

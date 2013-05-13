@@ -88,3 +88,20 @@ data ERROR offset 2 'Unknown module'
 
 xlat %{3GPP-SGSN-Address}
 data OK
+
+xlat %{%{Operator-Name}:-}
+data ERROR offset 20 'Empty expansion is invalid'
+
+xlat %{%{}:-}
+data ERROR offset 4 'Empty expansion is invalid'
+
+xlat %{%{}:-foo}
+data ERROR offset 4 'Empty expansion is invalid'
+
+xlat %{}
+data ERROR offset 2 'Empty expression is invalid'
+
+xlat %{ }
+data ERROR offset 2 'Unknown attribute'
+
+
