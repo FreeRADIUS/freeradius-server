@@ -279,6 +279,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
  */
 #define return_P(_x) *error = _x;goto return_p
 #define return_0(_x) *error = _x;goto return_0
+#define return_rhs(_x) *error = _x;goto return_rhs
 #define return_SLEN goto return_slen
 
 
@@ -613,6 +614,16 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 
 			} else {
 				/*
+				 *	Two attributes?  They must be of the same type
+				 */
+				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
+				same_type:
+					return_0("Attribute comparisons must be of the same attribute type");
+				}
+
+				/*
 				 *	Without a cast, we can't compare "foo" to User-Name,
 				 *	it has to be done the other way around.
 				 */
@@ -627,17 +638,6 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				}
 
 				/*
-				 *	Two attributes?  They must be of the same type
-				 */
-				if ((c->data.map->src->type == VPT_TYPE_ATTR) &&
-				    (c->data.map->dst->type == VPT_TYPE_ATTR) &&
-				    (c->data.map->dst->da->type != c->data.map->src->da->type)) {
-				same_type:
-					*error = "Attribute comparisons must be of the same attribute type";
-					goto return_0;
-				}
-
-				/*
 				 *	Invalid: User-Name == bob
 				 *	Valid:   User-Name == "bob"
 				 */
@@ -645,7 +645,22 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				    (c->data.map->src->type != VPT_TYPE_ATTR) &&
 				    (c->data.map->dst->da->type == PW_TYPE_STRING) &&
 				    (rhs_type == T_BARE_WORD)) {
-					*error = "Must have string as value for attribute";
+					return_rhs("Must have string as value for attribute");
+				}
+
+				/*
+				 *	Quotes around non-string
+				 *	attributes mean that it's
+				 *	either xlat, or an exec.
+				 */
+				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->src->type != VPT_TYPE_ATTR) &&
+				    (c->data.map->dst->da->type != PW_TYPE_STRING) &&
+				    (c->data.map->dst->da->type != PW_TYPE_OCTETS) &&
+				    (c->data.map->dst->da->type != PW_TYPE_DATE) &&
+				    (rhs_type == T_SINGLE_QUOTED_STRING)) {
+					*error = "Value must be an unquoted string";
+				return_rhs:
 					if (lhs) talloc_free(lhs);
 					if (rhs) talloc_free(rhs);
 					talloc_free(c);
