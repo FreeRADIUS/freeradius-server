@@ -270,14 +270,6 @@ static PerlInterpreter *rlm_perl_clone(PerlInterpreter *perl, pthread_key_t *key
 }
 #endif
 
-static void xs_init(pTHX)
-{
-	char const *file = __FILE__;
-
-	/* DynaLoader is a special case */
-	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
-
-}
 /*
  *
  * This is wrapper for radlog
@@ -304,6 +296,16 @@ static XS(XS_radiusd_radlog)
 		radlog(level, "rlm_perl: %s", msg);
 	}
 	XSRETURN_NO;
+}
+
+static void xs_init(pTHX)
+{
+	char const *file = __FILE__;
+
+	/* DynaLoader is a special case */
+	newXS("DynaLoader::boot_DynaLoader", boot_DynaLoader, file);
+
+	newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
 }
 
 /*
@@ -446,8 +448,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	end_AV = PL_endav;
 	PL_endav = Nullav;
-
-	newXS("radiusd::radlog",XS_radiusd_radlog, "rlm_perl");
 
 	if(!exitstatus) {
 		exitstatus = perl_run(inst->perl);
