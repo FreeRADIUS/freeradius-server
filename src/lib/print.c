@@ -444,7 +444,17 @@ char *vp_aprint(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 	case PW_TYPE_BYTE:
 	case PW_TYPE_SHORT:
 	case PW_TYPE_INTEGER:
-		p = talloc_asprintf(ctx, "%u", vp->vp_integer);
+		{
+			DICT_VALUE *dv;
+
+			dv = dict_valbyattr(vp->da->attr, vp->da->vendor,
+					    vp->vp_integer);
+			if (dv) {
+				p = talloc_strdup(ctx, dv->name);
+			} else {
+				p = talloc_asprintf(ctx, "%u", vp->vp_integer);
+			}
+		}
 		break;
 
 	case PW_TYPE_SIGNED:
