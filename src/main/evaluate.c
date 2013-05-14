@@ -590,6 +590,13 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 			rcode = radius_evaluate_cond(request, modreturn, depth + 1, c->data.child);
 			break;
 
+		case COND_TYPE_TRUE:
+			rcode = true;
+			break;
+
+		case COND_TYPE_FALSE:
+			rcode = false;
+			break;
 		default:
 			EVAL_DEBUG("FAIL %d", __LINE__);
 			return -1;

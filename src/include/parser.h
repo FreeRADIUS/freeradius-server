@@ -46,6 +46,8 @@ typedef enum cond_op_t {
 
 typedef enum fr_cond_type_t {
 	COND_TYPE_INVALID = 0,
+	COND_TYPE_TRUE,
+	COND_TYPE_FALSE,
 	COND_TYPE_EXISTS,
 	COND_TYPE_MAP,
 	COND_TYPE_CHILD

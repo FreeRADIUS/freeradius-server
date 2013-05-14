@@ -84,6 +84,14 @@ next:
 		*(p++) = ')';
 		break;
 
+	case COND_TYPE_TRUE:
+		strlcpy(buffer, "true", bufsize);
+		return strlen(buffer);
+
+	case COND_TYPE_FALSE:
+		strlcpy(buffer, "false", bufsize);
+		return strlen(buffer);
+
 	default:
 		*buffer = '\0';
 		return 0;
@@ -450,10 +458,26 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				return_0("Cannot do cast for existence check");
 			}
 
-			c->type = COND_TYPE_EXISTS;
-			c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
-			if (!c->data.vpt) {
-				return_P("Failed creating exists");
+			if (lhs_type == T_BARE_WORD) {
+				if ((strcmp(lhs, "true") == 0) ||
+				    ((lhs[0] == '1') && !lhs[1])) {
+					c->type = COND_TYPE_TRUE;
+
+				} else if ((strcmp(lhs, "false") == 0) ||
+					   ((lhs[0] == '0') && !lhs[1])) {
+					c->type = COND_TYPE_FALSE;
+
+				} else {
+					goto create_exists;
+				}
+
+			} else {
+			create_exists:
+				c->type = COND_TYPE_EXISTS;
+				c->data.vpt = radius_str2tmpl(c, lhs, lhs_type);
+				if (!c->data.vpt) {
+					return_P("Failed creating exists");
+				}
 			}
 
 		} else { /* it's an operator */
@@ -826,6 +850,7 @@ done:
 			child->negate = false;
 		}
 
+		lhs = rhs = NULL;
 		talloc_free(c);
 		c = child;
 	}
@@ -843,6 +868,7 @@ done:
 		child = talloc_steal(ctx, c->data.child);
 		c->data.child = NULL;
 
+		lhs = rhs = NULL;
 		talloc_free(c);
 		c = child;
 	}
@@ -887,6 +913,70 @@ done:
 			c->negate = true;
 			c->data.map->op = T_OP_CMP_EQ;
 		}
+	}
+
+	if (c->type == COND_TYPE_TRUE) {
+		if (c->negate) {
+			c->negate = false;
+			c->type = COND_TYPE_FALSE;
+		}
+	}
+
+	if (c->type == COND_TYPE_FALSE) {
+		if (c->negate) {
+			c->negate = false;
+			c->type = COND_TYPE_TRUE;
+		}
+	}
+
+	/*
+	 *	true && FOO --> FOO
+	 */
+	if ((c->type == COND_TYPE_TRUE) &&
+	    (c->next_op == COND_AND)) {
+		fr_cond_t *next;
+
+		next = talloc_steal(ctx, c->next);
+		c->next = NULL;
+
+		lhs = rhs = NULL;
+		talloc_free(c);
+		c = next;
+	}
+
+	/*
+	 *	false && FOO --> false
+	 */
+	if ((c->type == COND_TYPE_FALSE) &&
+	    (c->next_op == COND_AND)) {
+		talloc_free(c->next);
+		c->next = NULL;
+		c->next_op = COND_NONE;
+	}
+
+	/*
+	 *	false || FOO --> FOO
+	 */
+	if ((c->type == COND_TYPE_FALSE) &&
+	    (c->next_op == COND_OR)) {
+		fr_cond_t *next;
+
+		next = talloc_steal(ctx, c->next);
+		c->next = NULL;
+
+		lhs = rhs = NULL;
+		talloc_free(c);
+		c = next;
+	}
+
+	/*
+	 *	true || FOO --> true
+	 */
+	if ((c->type == COND_TYPE_TRUE) &&
+	    (c->next_op == COND_OR)) {
+		talloc_free(c->next);
+		c->next = NULL;
+		c->next_op = COND_NONE;
 	}
 
 	if (lhs) talloc_free(lhs);

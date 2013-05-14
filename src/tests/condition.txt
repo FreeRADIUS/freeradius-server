@@ -243,5 +243,29 @@ data <ether>00:11:22:33:44:55 == 00:11:22:33:44:55
 condition <ether> 00:XX:22:33:44:55 == 00:11:22:33:44:55
 data ERROR offset 8 Failed to parse data
 
+#
+#  Tests for boolean data types.
+#
+condition true
+data true
 
+condition 1
+data true
 
+condition false
+data false
+
+condition 0
+data false
+
+condition true && (User-Name == "bob")
+data &User-Name == "bob"
+
+condition false && (User-Name == "bob")
+data false
+
+condition false || (User-Name == "bob")
+data &User-Name == "bob"
+
+condition true || (User-Name == "bob")
+data true
