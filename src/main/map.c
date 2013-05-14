@@ -594,6 +594,34 @@ size_t radius_tmpl2str(char *buffer, size_t bufsize, value_pair_tmpl_t const *vp
 				 vpt->da->name);
 		}
 		return strlen(buffer);
+
+	case VPT_TYPE_DATA:
+		{
+			VALUE_PAIR *vp;
+			TALLOC_CTX *ctx;
+
+			memcpy(&ctx, &vpt, sizeof(ctx)); /* hack */
+
+			vp = pairalloc(ctx, vpt->da);
+			memcpy(&vp->data, vpt->vpd, sizeof(vp->data));
+			vp->length = vpt->length;
+
+			q = vp_aprint(vp, vp);
+
+			if ((vpt->da->type != PW_TYPE_STRING) &&
+			    (vpt->da->type != PW_TYPE_DATE)) {
+				strlcpy(buffer, q, bufsize);
+			} else {
+				/*
+				 *	FIXME: properly escape the string...
+				 */
+				snprintf(buffer, bufsize, "\"%s\"", q);
+			}
+
+			talloc_free(q);
+			pairfree(&vp);
+			return strlen(buffer);
+		}
 	}
 
 	if (bufsize <= 3) {

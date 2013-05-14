@@ -206,7 +206,7 @@ condition User-Name == `bob`
 data &User-Name == `bob`
 
 condition User-Name == 'bob'
-data &User-Name == 'bob'
+data &User-Name == "bob"
 
 condition User-Name == bob
 data ERROR offset 13 Must have string as value for attribute
@@ -219,8 +219,10 @@ condition Session-Timeout == '10'
 data ERROR offset 19 Value must be an unquoted string
 
 # Except for dates, which can be humanly readable!
+# This one MIGHT be an expansion, so it's left as-is.
 condition Event-Timestamp == "January 1, 2012"
 data &Event-Timestamp == "January 1, 2012"
 
+# This one is NOT an expansion, so it's parsed into normal form
 condition Event-Timestamp == 'January 1, 2012'
-data &Event-Timestamp == 'January 1, 2012'
+data &Event-Timestamp == "Jan  1 2012 00:00:00 EST"

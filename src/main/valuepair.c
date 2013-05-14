@@ -61,7 +61,8 @@ const FR_NAME_NUMBER vpt_types[] = {
 	{"expanded",		VPT_TYPE_XLAT },
 	{"attribute ref",	VPT_TYPE_ATTR },
 	{"list",		VPT_TYPE_LIST },
-	{"exec",		VPT_TYPE_EXEC }
+	{"exec",		VPT_TYPE_EXEC },
+	{"value-pair-data",	VPT_TYPE_DATA }
 };
 
 struct cmp {
@@ -1121,6 +1122,12 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 		pairfree(&vp);	/* ugh */
 		vp = paircopyvpdata(request, map->dst->da, found);
 		vp->op = map->op;
+		break;
+
+	case VPT_TYPE_DATA:
+		rad_assert(map->src->da->type == map->dst->da->type);
+		memcpy(&vp->data, map->src->vpd, sizeof(vp->data));
+		vp->length = map->src->length;
 		break;
 
 	default:

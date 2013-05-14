@@ -74,10 +74,11 @@ typedef enum vpt_type {
 	VPT_TYPE_UNKNOWN = 0,
 	VPT_TYPE_LITERAL,		//!< Is a literal string.
 	VPT_TYPE_XLAT,			//!< Needs to be expanded.
-	VPT_TYPE_ATTR,			//!< Is an attribute.
+	VPT_TYPE_ATTR,			//!< Is a dictionary attribute.
 	VPT_TYPE_LIST,			//!< Is a list.
 	VPT_TYPE_REGEX,			//!< Is a regex.
-	VPT_TYPE_EXEC			//!< Needs to be executed.
+	VPT_TYPE_EXEC,			//!< Needs to be executed.
+	VPT_TYPE_DATA			//!< is a VALUE_PAIR_DATA
 } vpt_type_t;
 
 extern const FR_NAME_NUMBER vpt_types[];
@@ -90,6 +91,7 @@ extern const FR_NAME_NUMBER vpt_types[];
  * @see value_pair_map_t
  */
 typedef struct value_pair_tmpl_t {
+	vpt_type_t		type;	 //!< What type of value tmpl refers to.
 	char const		*name;   //!< Original attribute ref string, or
 					 //!< where this refers to a none FR
 					 //!< attribute, just the string id for
@@ -98,8 +100,9 @@ typedef struct value_pair_tmpl_t {
 	request_refs_t		request; //!< Request to search or insert in.
 	pair_lists_t		list;	 //!< List to search or insert in.
 
-	const DICT_ATTR		*da;	 //!< Resolved dictionary attribute.
-	vpt_type_t		type;	 //!< What type of value tmpl refers to.
+	DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
+	VALUE_PAIR_DATA const	*vpd;	 //!< actual data
+	size_t			length;  //!< of the vpd data
 } value_pair_tmpl_t;
 
 /** Value pair map

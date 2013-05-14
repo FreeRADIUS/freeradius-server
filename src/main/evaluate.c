@@ -282,12 +282,19 @@ static VALUE_PAIR *get_cast_vp(REQUEST *request, value_pair_tmpl_t const *vpt, D
 	VALUE_PAIR *vp;
 	char *str;
 
-	str = radius_expand_tmpl(request, vpt);
-	if (!str) return NULL;
-
 	vp = pairalloc(request, cast);
-	if (!vp) {
-		talloc_free(str);
+	if (!vp) return NULL;
+
+	if (vpt->type == VPT_TYPE_DATA) {
+		rad_assert(vp->da->type == vpt->da->type);
+		memcpy(&vp->data, vpt->vpd, sizeof(vp->data));
+		vp->length = vpt->length;
+		return vp;
+	}
+
+	str = radius_expand_tmpl(request, vpt);
+	if (!str) {
+		pairfree(&vp);
 		return NULL;
 	}
 
