@@ -677,7 +677,20 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				}
 
 				/*
+				 *	The RHS is a literal, and the LHS has been cast to a data
+				 *	type.
+				 */
+				if ((c->data.map->dst->type == VPT_TYPE_DATA) &&
+				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
+				    !cast_vpt(c->data.map->src, c->data.map->dst->da)) {
+					return_rhs("Failed to parse data");
+				}
+
+				/*
 				 *	Casting to a redundant type means we don't need the cast.
+				 *
+				 *	Do this LAST, as the rest of the code above assumes c->cast
+				 *	is not NULL.
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
 				    (c->cast->type == c->data.map->dst->da->type)) {
@@ -912,6 +925,26 @@ done:
 		if (!c->negate && (c->data.map->op == T_OP_NE)) {
 			c->negate = true;
 			c->data.map->op = T_OP_CMP_EQ;
+		}
+
+		if ((c->data.map->dst->type == VPT_TYPE_DATA) &&
+		    (c->data.map->src->type == VPT_TYPE_DATA)) {
+			int rcode;
+
+			rad_assert(c->cast != NULL);
+
+			rcode = radius_evaluate_map(NULL, 0, 0, c->data.map,
+						    c->regex_i,
+						    c->cast);
+			talloc_free(c->data.map);
+			c->data.map = NULL;
+			c->cast = NULL;
+			c->regex_i = false;
+			if (rcode) {
+				c->type = COND_TYPE_TRUE;
+			} else {
+				c->type = COND_TYPE_FALSE;
+			}
 		}
 	}
 
