@@ -28,6 +28,8 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+#define PW_CAST_BASE (1850)
+
 /*
  *	This file shouldn't use any functions from the server core.
  */
@@ -109,6 +111,37 @@ next:
 	goto next;
 }
 
+
+/*
+ *	Cast a literal vpt to a value_pair_data
+ */
+static int cast_vpt(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
+{
+	VALUE_PAIR *vp;
+	VALUE_PAIR_DATA *data;
+
+	rad_assert(vpt->type == VPT_TYPE_LITERAL);
+
+	vp = pairalloc(vpt, da);
+	if (!vp) return false;
+
+	if (!pairparsevalue(vp, vpt->name)) {
+		pairfree(&vp);
+		return false;
+	}
+
+	vpt->length = vp->length;
+	vpt->vpd = data = talloc(vpt, VALUE_PAIR_DATA);
+	if (!vpt->vpd) return false;
+
+	vpt->type = VPT_TYPE_DATA;
+	vpt->da = da;
+
+	memcpy(data, &vp->data, sizeof(*data));
+	pairfree(&vp);
+
+	return true;
+}
 
 static ssize_t condition_tokenize_string(TALLOC_CTX *ctx, char const *start, char **out,
 					 FR_TOKEN *op, char const **error)
@@ -261,7 +294,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
 		return -(p - start);
 	}
 
-	*pda = dict_attrbyvalue(1850 + cast, 0);
+	*pda = dict_attrbyvalue(PW_CAST_BASE + cast, 0);
 	if (!*pda) {
 		*error = "Cannot cast to this data type";
 		return -(p - start);
@@ -279,6 +312,7 @@ static ssize_t condition_tokenize_cast(char const *start, DICT_ATTR const **pda,
  */
 #define return_P(_x) *error = _x;goto return_p
 #define return_0(_x) *error = _x;goto return_0
+#define return_lhs(_x) *error = _x;goto return_lhs
 #define return_rhs(_x) *error = _x;goto return_rhs
 #define return_SLEN goto return_slen
 
@@ -296,7 +330,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 {
 	ssize_t slen;
 	const char *p = start;
-	const char *rhs_p;
+	const char *lhs_p, *rhs_p;
 	fr_cond_t *c;
 	char *lhs, *rhs;
 	FR_TOKEN op, lhs_type, rhs_type;
@@ -372,6 +406,7 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 		}
 		p += slen;
 
+		lhs_p = p;
 		slen = condition_tokenize_word(c, p, &lhs, &lhs_type, error);
 		if (slen <= 0) {
 			return_SLEN;
@@ -605,6 +640,19 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 				}
 
 				/*
+				 *	The LHS is a literal which has been cast to a data type.
+				 *	Cast it to the appropriate data type.
+				 */
+				if ((c->data.map->dst->type == VPT_TYPE_LITERAL) &&
+				    !cast_vpt(c->data.map->dst, c->cast)) {
+					*error = "Failed to parse data";
+					if (lhs) talloc_free(lhs);
+					if (rhs) talloc_free(rhs);
+					talloc_free(c);
+					return -(lhs_p - start);
+				}
+
+				/*
 				 *	Casting to a redundant type means we don't need the cast.
 				 */
 				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
@@ -665,6 +713,25 @@ static ssize_t condition_tokenize(TALLOC_CTX *ctx, char const *start, int brace,
 					if (rhs) talloc_free(rhs);
 					talloc_free(c);
 					return -(rhs_p - start);
+				}
+
+				/*
+				 *	The LHS has been cast to a data type, and the RHS is a
+				 *	literal.  Cast the RHS to the type of the cast.
+				 */
+				if (c->cast && (c->data.map->src->type == VPT_TYPE_LITERAL) &&
+				    !cast_vpt(c->data.map->src, c->cast)) {
+					return_rhs("Failed to parse data");
+				}
+
+				/*
+				 *	The LHS is an attribute, and the RHS is a literal.  Cast the
+				 *	RHS to the data type of the LHS.
+				 */
+				if ((c->data.map->dst->type == VPT_TYPE_ATTR) &&
+				    (c->data.map->src->type == VPT_TYPE_LITERAL) &&
+				    !cast_vpt(c->data.map->src, c->data.map->dst->da)) {
+					return_rhs("Failed to parse data");
 				}
 			}
 

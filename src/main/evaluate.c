@@ -130,6 +130,10 @@ static char *radius_expand_tmpl(REQUEST *request, value_pair_tmpl_t const *vpt)
 		buffer = vp_aprint(request, vp);
 		break;
 
+	case VPT_TYPE_DATA:
+		rad_assert(0 == 1);
+		/* FALL-THROUGH */
+
 	default:
 		buffer = NULL;
 		break;
@@ -383,6 +387,28 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		}
 		return rcode;
 	}
+
+	/*
+	 *	RHS has been pre-parsed into binary data.  Go check
+	 *	that.
+	 */
+	if ((map->dst->type == VPT_TYPE_ATTR) &&
+	    (map->src->type == VPT_TYPE_DATA)) {
+		VALUE_PAIR *lhs_vp, *rhs_vp;
+
+		lhs_vp = radius_vpt_get_vp(request, map->dst);
+		if (!lhs_vp) return false;
+
+		rhs_vp = get_cast_vp(request, map->src, map->dst->da);
+		if (!rhs_vp) return false;
+
+		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
+		pairfree(&rhs_vp);
+		return rcode;
+	}
+
+	rad_assert(map->src->type != VPT_TYPE_DATA);
+	rad_assert(map->dst->type != VPT_TYPE_DATA);
 
 	/*
 	 *	The RHS now needs to be expanded into a string.
