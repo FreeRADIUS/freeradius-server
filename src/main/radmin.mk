@@ -1,6 +1,6 @@
 TARGET 		:= radmin
 
-SOURCES		:= radmin.c conffile.c parser.c log.c util.c map.c
+SOURCES		:= radmin.c conffile.c parser.c log.c util.c map.c evaluate.c
 
 TGT_INSTALLDIR  := ${sbindir}
 TGT_PREREQS	:= libfreeradius-radius.a
