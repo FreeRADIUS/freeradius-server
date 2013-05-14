@@ -91,16 +91,23 @@ char const *radmin_version = "radmin version " RADIUSD_VERSION_STRING
  */
 log_debug_t debug_flag = 0;
 struct main_config_t mainconfig;
-ssize_t radius_xlat(UNUSED char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
-		    UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)
-{
-	return -1;
-}
+
 int check_config = false;
 
 static FILE *outputfp = NULL;
 static int echo = false;
 static char const *secret = "testing123";
+
+#include <sys/wait.h>
+pid_t rad_fork(void)
+{
+	return fork();
+}
+
+pid_t rad_waitpid(pid_t pid, int *status)
+{
+	return waitpid(pid, status, 0);
+}
 
 static int fr_domain_socket(char const *path)
 {

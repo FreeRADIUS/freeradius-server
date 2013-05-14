@@ -65,11 +65,16 @@ int log_stripped_names;
  *	Global, for log.c to use.
  */
 struct main_config_t mainconfig;
-ssize_t radius_xlat(char *out, UNUSED size_t outlen, UNUSED REQUEST *request, UNUSED char const *fmt,
-		    UNUSED RADIUS_ESCAPE_STRING escape, UNUSED void *escape_ctx)
+
+#include <sys/wait.h>
+pid_t rad_fork(void)
 {
-	*out = 0;
-	return 0;
+	return fork();
+}
+
+pid_t rad_waitpid(pid_t pid, int *status)
+{
+	return waitpid(pid, status, 0);
 }
 
 struct radutmp_config_t {

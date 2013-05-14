@@ -1,5 +1,5 @@
 TARGET		:= radattr
-SOURCES		:= radattr.c parser.c xlat.c util.c map.c conffile.c log.c evaluate.c
+SOURCES		:= radattr.c
 
-TGT_PREREQS	:= libfreeradius-radius.a
+TGT_PREREQS	:= libfreeradius-server.a libfreeradius-radius.a
 TGT_LDLIBS	:= $(LIBS)
