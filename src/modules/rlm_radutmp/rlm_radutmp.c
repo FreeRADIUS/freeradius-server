@@ -308,7 +308,8 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	Get the utmp filename, via xlat.
 	 */
-	if (radius_xlat(filename, 0, request, inst->filename, NULL, NULL) < 0) {
+	filename = NULL;
+	if (radius_axlat(&filename, request, inst->filename, NULL, NULL) < 0) {
 		return RLM_MODULE_FAIL;
 	}
 
