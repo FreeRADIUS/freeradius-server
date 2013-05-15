@@ -879,8 +879,14 @@ static int load_component_section(CONF_SECTION *cs,
 
 			cp = NULL;
 
-			if ((strcmp(name1, "if") == 0) ||
-			    (strcmp(name1, "elsif") == 0)) {
+			/*
+			 *	Skip commented-out sections.
+			 *
+			 *	We *don't* skip "elsif" sections, as
+			 *	the run-time interpretor needs the
+			 *	results of the previous "if".
+			 */
+			if (strcmp(name1, "if") == 0) {
 				fr_cond_t const *c;
 
 				c = cf_data_find(scs, "if");
