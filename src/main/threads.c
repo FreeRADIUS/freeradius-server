@@ -1313,3 +1313,106 @@ void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2])
 	}
 }
 #endif /* HAVE_PTHREAD_H */
+
+static void time_free(void *data)
+{
+	free(data);
+}
+
+void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench)
+{
+	CONF_SECTION *subcs;
+	CONF_ITEM *ci;
+	CONF_PAIR *cp;
+	char const *attr;
+	char const *value;
+	VALUE_PAIR *vp;
+
+	/*
+	 *	Use global "trigger" section if no local config is given.
+	 */
+	if (!cs) {
+		cs = mainconfig.config;
+		attr = name;
+	} else {
+		/*
+		 *	Try to use pair name, rather than reference.
+		 */
+		attr = strrchr(name, '.');
+		if (attr) {
+			attr++;
+		} else {
+			attr = name;
+		}
+	}
+
+	/*
+	 *	Find local "trigger" subsection.  If it isn't found,
+	 *	try using the global "trigger" section, and reset the
+	 *	reference to the full path, rather than the sub-path.
+	 */
+	subcs = cf_section_sub_find(cs, "trigger");
+	if (!subcs && (cs != mainconfig.config)) {
+		subcs = cf_section_sub_find(mainconfig.config, "trigger");
+		attr = name;
+	}
+
+	if (!subcs) return;
+
+	ci = cf_reference_item(subcs, mainconfig.config, attr);
+	if (!ci) {
+		RDEBUG3("No such item in trigger section: %s", attr);
+		return;
+	}
+
+	if (!cf_item_is_pair(ci)) {
+		RDEBUG2("Trigger is not a configuration variable: %s", attr);
+		return;
+	}
+
+	cp = cf_itemtopair(ci);
+	if (!cp) return;
+
+	value = cf_pair_value(cp);
+	if (!value) {
+		RDEBUG2("Trigger has no value: %s", name);
+		return;
+	}
+
+	/*
+	 *	May be called for Status-Server packets.
+	 */
+	vp = NULL;
+	if (request && request->packet) vp = request->packet->vps;
+
+	/*
+	 *	Perform periodic quenching.
+	 */
+	if (quench) {
+		time_t *last_time;
+
+		last_time = cf_data_find(cs, value);
+		if (!last_time) {
+			last_time = rad_malloc(sizeof(*last_time));
+			*last_time = 0;
+
+			if (cf_data_add(cs, value, last_time, time_free) < 0) {
+				free(last_time);
+				last_time = NULL;
+			}
+		}
+
+		/*
+		 *	Send the quenched traps at most once per second.
+		 */
+		if (last_time) {
+			time_t now = time(NULL);
+			if (*last_time == now) return;
+
+			*last_time = now;
+		}
+	}
+
+	RDEBUG("Trigger %s -> %s", name, value);
+	radius_exec_program(value, request, 0, NULL, 0, vp, NULL, 1);
+}
