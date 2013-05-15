@@ -879,6 +879,43 @@ static int load_component_section(CONF_SECTION *cs,
 
 			cp = NULL;
 
+			/*
+			 *	Skip commented-out sections.
+			 *
+			 *	We skip an "if" ONLY when there's no
+			 *	"else" after it, as the run-time
+			 *	interpretor needs the results of the
+			 *	previous "if".
+			 */
+			if (strcmp(name1, "if") == 0) {
+				fr_cond_t const *c;
+				CONF_ITEM *next_ci;
+
+				next_ci = cf_item_find_next(scs, modref);
+				if (next_ci && cf_item_is_section(next_ci)) {
+					char const *next_name;
+					CONF_SECTION *next_cs;
+					
+					next_cs = cf_itemtosection(next_ci);
+					next_name = cf_section_name1(next_cs);
+					if ((strcmp(next_name, "else") == 0) ||
+					    (strcmp(next_name, "elseif") == 0)) {
+						c = NULL;
+					} else {
+						c = cf_data_find(scs, "if");
+					}
+				} else {
+					c = cf_data_find(scs, "if");
+				}
+
+				if (c && c->type == COND_TYPE_FALSE) {
+					DEBUG(" # Skipping contents of '%s' at %s:%d as it statically evaluates to 'false'",
+					     name1, cf_section_filename(scs), cf_section_lineno(scs));
+					continue;
+				}
+			}
+
+
 		} else if (cf_item_is_pair(modref)) {
 			cp = cf_itemtopair(modref);
 
