@@ -310,7 +310,7 @@ static rlm_rcode_t do_linelog(void *instance, REQUEST *request)
 		
 		if (write(fd, line, strlen(line)) < 0) {
 			EDEBUG("rlm_linelog: Failed writing: %s", strerror(errno));
-			
+			close(fd);
 			return RLM_MODULE_FAIL;
 		}
 		
