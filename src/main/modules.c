@@ -879,27 +879,6 @@ static int load_component_section(CONF_SECTION *cs,
 
 			cp = NULL;
 
-			/*
-			 *	Skip commented-out sections.
-			 *
-			 *	We *don't* skip "elsif" sections, as
-			 *	the run-time interpretor needs the
-			 *	results of the previous "if".
-			 */
-			if (strcmp(name1, "if") == 0) {
-				fr_cond_t const *c;
-
-				c = cf_data_find(scs, "if");
-				if (!c) continue;
-
-				if (c->type == COND_TYPE_FALSE) {
-					DEBUG(" # Skipping contents of '%s' at %s:%d as it statically evaluates to 'false'",
-					     name1, cf_section_filename(scs), cf_section_lineno(scs));
-					continue;
-				}
-			}
-
-
 		} else if (cf_item_is_pair(modref)) {
 			cp = cf_itemtopair(modref);
 
