@@ -776,7 +776,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	} else {
 		q = strchr(attrname, '[');
 	}
-	if (q) *q = '\0';
+	if (q) *(q++) = '\0';
 
 	if (!*attrname) {
 		talloc_free(node);
@@ -838,13 +838,13 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 		unsigned long num;
 		char *end;
 
-		p = q + 1;
+		p = q;
 		if (*p== '#') {
-			num = 65536;
+			node->num = 65536;
 			p++;
 
 		} else if (*p == '*') {
-			num = 65537;
+			node->num = 65537;
 			p++;
 
 		} else if (isdigit((int) *p)) {
@@ -856,6 +856,7 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 			}
 			p = end;
 			DEBUG("END %s", p);
+			node->num = num;
 
 		} else {
 			talloc_free(node);
