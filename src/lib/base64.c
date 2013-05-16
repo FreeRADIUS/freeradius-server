@@ -270,7 +270,7 @@ static const signed char b64[0x100] = {
  */
 int fr_isbase64(char c)
 {
-	return b64[us(c)] > 0;
+	return b64[us(c)] >= 0;
 }
 
 /* Decode base64 encoded input array.
