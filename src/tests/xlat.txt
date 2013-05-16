@@ -90,7 +90,7 @@ xlat %{3GPP-SGSN-Address}
 data OK
 
 xlat %{%{Operator-Name}:-}
-data ERROR offset 20 'Empty expansion is invalid'
+data OK
 
 xlat %{%{}:-}
 data ERROR offset 4 'Empty expansion is invalid'

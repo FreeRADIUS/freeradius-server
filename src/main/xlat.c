@@ -582,19 +582,29 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	}
 	p++;
 
-	slen = xlat_tokenize_literal(node, p,  &node->alternate, true, error);
-	if (slen <= 0) {
-		talloc_free(node);
-		return slen - (p - fmt);
-	}
+	/*
+	 *	Allow the RHS to be empty as a special case.
+	 */
+	if (*p == '}') {
+		*p = '\0';
+		slen = xlat_tokenize_literal(node, p,  &node->alternate, true, error);
+		rad_assert(slen == 0);
+		p++;
 
-	if (!node->alternate) {
-		talloc_free(node);
-		*error = "Empty expansion is invalid";
-		return -(p - fmt);
-	}
+	} else {
+		slen = xlat_tokenize_literal(node, p,  &node->alternate, true, error);
+		if (slen <= 0) {
+			talloc_free(node);
+			return slen - (p - fmt);
+		}
 
-	p += slen;
+		if (!node->alternate) {
+			talloc_free(node);
+			*error = "Empty expansion is invalid";
+			return -(p - fmt);
+		}
+		p += slen;
+	}
 
 	*head = node;
 	return p - fmt;
