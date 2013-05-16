@@ -88,6 +88,7 @@ size_t fr_cond_sprint(char *buffer, size_t bufsize, fr_cond_t const *c);
 typedef struct xlat_exp xlat_exp_t;
 ssize_t xlat_tokenize(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **head,
 		      char const **error);
+size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node);
 
 #ifdef __cplusplus
 }

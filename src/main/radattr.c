@@ -552,7 +552,6 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 	xlat_exp_t *head;
 
 	slen = xlat_tokenize(fmt, fmt, &head, &error);
-	talloc_free(fmt);
 	if (slen <= 0) {
 		snprintf(output, outlen, "ERROR offset %d '%s'", (int) -slen, error);
 		return;
@@ -563,7 +562,8 @@ static void parse_xlat(char const *input, char *output, size_t outlen)
 		return;
 	}
 
-	strlcpy(output, "OK", outlen);
+	xlat_sprint(output, outlen, head);
+	talloc_free(fmt);
 }
 
 static void process_file(char const *filename)

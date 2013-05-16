@@ -1121,6 +1121,118 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 	}
 }
 
+size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
+{
+	size_t len;
+	char *p, *end;
+
+	if (!node) {
+		*buffer = '\0';
+		return 0;
+	}
+
+	p = buffer;
+	end = buffer + bufsize;
+	
+	while (node) {
+		switch (node->type) {
+		case XLAT_LITERAL:
+		case XLAT_PERCENT:
+			strlcpy(p, node->fmt, end - p);
+			p += strlen(p);
+			break;
+
+		case XLAT_ATTRIBUTE:
+			*(p++) = '%';
+			*(p++) = '{';
+
+			if (node->ref != REQUEST_CURRENT) {
+				strlcpy(p, fr_int2str(request_refs, node->ref, "??"), end - p);
+				p += strlen(p);
+				*(p++) = '.';
+			}
+
+			if ((node->ref != REQUEST_CURRENT) ||
+			    (node->list != PAIR_LIST_REQUEST)) {
+				strlcpy(p, fr_int2str(pair_lists, node->list, "??"), end - p);
+				p += strlen(p);
+				*(p++) = ':';
+			}
+
+			strlcpy(p, node->da->name, end - p);
+			p += strlen(p);
+
+			if (node->tag != TAG_ANY) {
+				*(p++) = ':';
+				snprintf(p, end - p, "%u", node->tag);
+				p += strlen(p);
+			}
+
+			if (node->num != 0) {
+				*(p++) = '[';
+
+				if (node->num == 65536) {
+					*(p++) = '#';
+
+				} else if (node->num == 65537) {
+					*(p++) = '*';
+
+				} else {
+					snprintf(p, end - p, "%u", node->num);
+					p += strlen(p);
+				}
+				*(p++) = ']';
+			}
+			*(p++) = '}';
+			break;
+
+		case XLAT_REGEX:
+			snprintf(p, end - p, "%%{%u}", node->num);
+			p += strlen(p);
+			break;
+
+		case XLAT_MODULE:
+			*(p++) = '%';
+			*(p++) = '{';
+			strlcpy(p, node->xlat->name, end - p);
+			p += strlen(p);
+			*(p++) = ':';
+
+			if (node->child) {
+				len = xlat_sprint(p, end - p, node->child);
+				p += len;
+			}
+			*(p++) = '}';
+			break;
+
+		case XLAT_ALTERNATE:
+			*(p++) = '%';
+			*(p++) = '{';
+
+			len = xlat_sprint(p, end - p, node->child);
+			p += len;
+
+			*(p++) = ':';
+			*(p++) = '-';
+
+			len = xlat_sprint(p, end - p, node->alternate);
+			p += len;
+
+			*(p++) = '}';
+			break;
+		}
+
+		if (p == end) break;
+
+		node = node->next;
+	}
+
+	*p = '\0';
+
+	return p - buffer;
+}
+
+
 static char const xlat_spaces[] = "                                                                                                                                                                                                                                                                ";
 
 
