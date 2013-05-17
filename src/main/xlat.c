@@ -586,10 +586,13 @@ static ssize_t xlat_tokenize_alternation(TALLOC_CTX *ctx, char *fmt, xlat_exp_t 
 	 *	Allow the RHS to be empty as a special case.
 	 */
 	if (*p == '}') {
-		*p = '\0';
-		slen = xlat_tokenize_literal(node, p,  &node->alternate, true, error);
-		rad_assert(slen == 0);
-		p++;
+		/*
+		 *	Hack up an empty string.
+		 */
+		node->alternate = talloc_zero(node, xlat_exp_t);
+		node->alternate->type = XLAT_LITERAL;
+		node->alternate->fmt = talloc_strdup(node->alternate, "");
+		*(p++) = '\0';
 
 	} else {
 		slen = xlat_tokenize_literal(node, p,  &node->alternate, true, error);
