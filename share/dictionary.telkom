@@ -23,4 +23,7 @@ ATTRIBUTE	Telkom-Access-Type			1	string
 #       with the SSG.  Used in both Access-Requests and Accounting
 ATTRIBUTE	Telkom-Service-Type			2	string
 
+#	YFi Hotspot Manager trick to implement government regulation (South African)
+ATTRIBUTE	Telkom-Degrade-Token			200	string
+
 END-VENDOR      Telkom
