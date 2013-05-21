@@ -5,7 +5,7 @@
 
 
 Name:         freeradius-server
-Version:      2.2.0
+Version:      2.2.1
 Release:      0
 License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Servers
@@ -36,7 +36,6 @@ BuildRequires: gcc-c++
 BuildRequires: gdbm-devel
 BuildRequires: gettext-devel
 BuildRequires: glibc-devel
-BuildRequires: libpcap-devel
 BuildRequires: libtool
 BuildRequires: ncurses-devel
 BuildRequires: net-snmp-devel
@@ -48,7 +47,6 @@ BuildRequires: perl
 BuildRequires: postgresql-devel
 BuildRequires: python-devel
 BuildRequires: sed
-BuildRequires: sqlite3-devel
 BuildRequires: unixODBC-devel
 
 
@@ -64,6 +62,11 @@ BuildRequires: libapr1-devel
 %if 0%{?suse_version} > 1020
 BuildRequires: libmysqlclient-devel
 %endif
+%if 0%{?suse_version} > 1100
+BuildRequires: libpcap-devel
+BuildRequires: sqlite3-devel
+%endif
+
 
 %description
 The FreeRADIUS server has a number of features found in other servers,
@@ -265,7 +268,6 @@ ln -sf ../..%{_sysconfdir}/init.d/radiusd $RPM_BUILD_ROOT%{_sbindir}/rcradiusd
 install -d %{buildroot}%{_sysconfdir}/tmpfiles.d
 install -m 0644 %{SOURCE104} %{buildroot}%{_sysconfdir}/tmpfiles.d/radiusd.conf
 
-mv -v doc/README doc/README.doc
 # install dialup_admin
 DIALUPADMIN=$RPM_BUILD_ROOT%{_datadir}/dialup_admin
 mkdir -p $DIALUPADMIN
@@ -319,7 +321,7 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 # doc
 %doc suse/README.SuSE
-%doc COPYRIGHT CREDITS LICENSE README doc/ChangeLog
+%doc COPYRIGHT CREDITS LICENSE README.rst doc/ChangeLog
 %doc doc/examples/*
 # SuSE
 #%{_sysconfdir}/init.d/freeradius
