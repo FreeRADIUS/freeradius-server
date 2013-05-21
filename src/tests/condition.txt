@@ -100,9 +100,6 @@ data !a == b || c == d
 condition ((a == b) || (c == d)))
 data ERROR offset 22 Unexpected closing brace
 
-#
-#  FIXME: The attribute should be parsed as an attribute ref!
-#
 condition (handled && (Response-Packet-Type == Access-Challenge))
 data handled && &Response-Packet-Type == Access-Challenge
 
