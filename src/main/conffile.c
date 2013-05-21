@@ -730,10 +730,21 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				strcpy(p, cp->value);
 				p += strlen(p);
 				ptr = end + 1;
+
 			} else if (ci->type == CONF_ITEM_SECTION) {
+				/*
+				 *	Adding an entry again to a
+				 *	section is wrong.  We don't
+				 *	want an infinite loop.
+				 */
+				if (ci->parent == outercs) {
+					ERROR("%s[%d]: Cannot reference different item in same section", cf, *lineno);
+					return NULL;
+				}
 				cf_item_add(outercs, ci);
 				(void) talloc_reference(outercs, ci);
 				ptr = end + 1;
+
 			} else {
 				ERROR("%s[%d]: Reference \"%s\" type is invalid", cf, *lineno, input);
 				return NULL;
