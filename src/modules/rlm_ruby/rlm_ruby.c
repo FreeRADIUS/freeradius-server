@@ -195,7 +195,7 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 	char buf[BUF_SIZE]; /* same size as vp_print buffer */
 
 	VALUE_PAIR *vp;
-	VALUE rb_request, rb_result, rb_reply_items, rb_config_items;
+	VALUE rb_request, rb_result, rb_reply_items, rb_config_items, rbString1, rbString2;
 
 	int n_tuple;
 	DEBUG("Calling ruby function %s which has id: %lu\n", function_name, func);
@@ -231,10 +231,10 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 			} else {
 				strlcpy(buf, vp->da->name, sizeof(buf));
 			}
-			VALUE rbString1 = rb_str_new2(buf);
+			rbString1 = rb_str_new2(buf);
 			/* The value. Use delimiter - don't know what that means */
 			vp_prints_value(buf, sizeof (buf), vp, 1);
-			VALUE rbString2 = rb_str_new2(buf);
+			rbString2 = rb_str_new2(buf);
 
 			rb_ary_push(tmp, rbString1);
 			rb_ary_push(tmp, rbString2);
