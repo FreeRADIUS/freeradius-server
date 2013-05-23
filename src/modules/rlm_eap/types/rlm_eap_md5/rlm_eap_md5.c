@@ -73,7 +73,7 @@ static int md5_initiate(UNUSED void *instance, eap_handler_t *handler)
 	/*
 	 *	Keep track of the challenge.
 	 */
-	handler->opaque = talloc_array(reply, uint8_t, reply->value_size);
+	handler->opaque = talloc_array(handler, uint8_t, reply->value_size);
 	rad_assert(handler->opaque != NULL);
 	memcpy(handler->opaque, reply->value, reply->value_size);
 	handler->free_opaque = NULL;
