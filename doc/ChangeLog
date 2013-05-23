@@ -1,11 +1,12 @@
 FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
-	* Updated dictionaries for alcatel, bskyb, meru, trapeze,
-	  proxim, zeus, and rfc6677
+	* Updated dictionaries for alcatel, bskyb, dlink, meru, telkom,
+	  trapeze, proxim, zeus, rfc6677, 6911, and rfc6930.
 	* Added %{randstr:..} support. Creates random strings in a
 	  controllable format.
 	* Added operator support to rlm_python
 	* Added %{hex:...} for hex version of raw attribute data
+	* Added %{sha1:...} for SHA1 hashing of data
 	* Added %{base64:...} for raw attribute data (e.g. 32-bit IP addr),
 	  and %{tobase64:...} for the printable string form (e.g. 1.2.3.4),
 	  and %{base64tohex:...} to convert a base64 string to a hex string.
@@ -71,6 +72,9 @@ FreeRADIUS 2.2.1 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	  shouldn't have their systems broken.
 	* for EAP-TLS methods, random_file is no longer required.
 	  OpenSSL already reads /dev/urandom.
+	* Fix Suse and Redhat scripts.  Patches from Fajar Nugraha.
+	* Minor bug fix for base64 decoding.
+	* Allow two consecutive WiMAX TLVs of the same number.
 
 FreeRADIUS 2.2.0 Mon 10 Sep 2012 12:00:00 CEST, urgency=medium
 	Feature improvements
