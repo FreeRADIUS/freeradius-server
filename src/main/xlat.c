@@ -1806,7 +1806,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	len = xlat_process(&buff, request, node, escape, escape_ctx);
 	talloc_free(node);
 
-	if (len < 0) {
+	if ((len < 0) || !buff) {
 		rad_assert(buff == NULL);
 		if (*out) *out[0] = '\0';
 		return len;
