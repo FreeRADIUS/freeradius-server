@@ -560,9 +560,6 @@ int fr_ipaddr_cmp(fr_ipaddr_t const *a, fr_ipaddr_t const *b)
 
 #ifdef HAVE_STRUCT_SOCKADDR_IN6
 	case AF_INET6:
-		if (a->scope < b->scope) return -1;
-		if (a->scope > b->scope) return +1;
-
 		return memcmp(&a->ipaddr.ip6addr,
 			      &b->ipaddr.ip6addr,
 			      sizeof(a->ipaddr.ip6addr));
