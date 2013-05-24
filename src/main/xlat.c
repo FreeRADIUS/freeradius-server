@@ -1311,7 +1311,8 @@ static ssize_t xlat_tokenize_request(REQUEST *request, char const *fmt, xlat_exp
 }
 
 
-static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da, int8_t tag)
+static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DICT_ATTR const *da, int8_t tag,
+			bool return_null)
 {
 	VALUE_PAIR *vp, *vps = NULL;
 	RADIUS_PACKET *packet = NULL;
@@ -1323,6 +1324,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	 */
 	switch (list) {
 	default:
+		if (return_null) return NULL;
 		return vp_aprinttype(ctx, da->type);
 
 	case PAIR_LIST_CONTROL:
@@ -1374,9 +1376,7 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	if ((da->vendor != 0) || (da->attr < 256) || (list == PAIR_LIST_CONTROL)) {
 	print_vp:
 		vp = pairfind(vps, da->attr, da->vendor, tag);
-		if (!vp) return vp_aprinttype(ctx, da->type);
-
-		return vp_aprint(ctx, vp);
+		goto do_print;
 	}
 
 	/*
@@ -1411,7 +1411,10 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 	 *	there's no packet, we can't print any attribute
 	 *	referencing it.
 	 */
-	if (!packet) return vp_aprinttype(ctx, da->type);
+	if (!packet) {
+		if (return_null) return NULL;
+		return vp_aprinttype(ctx, da->type);
+	}
 
 	memset(&myvp, 0, sizeof(myvp));
 	myvp.da = da;
@@ -1476,7 +1479,11 @@ static char *xlat_getvp(TALLOC_CTX *ctx, REQUEST *request, pair_lists_t list, DI
 		break;
 	}
 
-	if (!vp) return vp_aprinttype(ctx, da->type);
+do_print:
+	if (!vp) {
+		if (return_null) return NULL;
+		return vp_aprinttype(ctx, da->type);
+	}
 	return vp_aprint(ctx, vp);
 }
 
@@ -1601,14 +1608,14 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	case XLAT_ATTRIBUTE:
 		ref = request;
-		if (radius_request(&ref, node->ref) < 0) {			
+		if (radius_request(&ref, node->ref) < 0) {
 			return NULL;
 		}
 
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
-		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag);
+		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, false);
 		XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
 		break;
 
@@ -1647,7 +1654,20 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		rad_assert(node->child != NULL);
 		rad_assert(node->alternate != NULL);
 
-		str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
+		/*
+		 *	Special-case first situation being an
+		 *	attribute.
+		 */
+		if (node->child->type == XLAT_ATTRIBUTE) {
+			str = NULL;
+			ref = request;
+
+			if (radius_request(&ref, node->child->ref) >= 0) {
+				str = xlat_getvp(ctx, ref, node->child->list, node->child->da, node->child->tag, true);
+			}
+		} else {
+			str = xlat_aprint(ctx, request, node->child, escape, escape_ctx, lvl);
+		}
 		if (str) break;
 
 		str = xlat_aprint(ctx, request, node->alternate, escape, escape_ctx, lvl);
@@ -1786,7 +1806,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	len = xlat_process(&buff, request, node, escape, escape_ctx);
 	talloc_free(node);
 
-	if (len <= 0) {
+	if (len < 0) {
 		rad_assert(buff == NULL);
 		if (*out) *out[0] = '\0';
 		return len;
