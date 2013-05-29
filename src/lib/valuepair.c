@@ -347,7 +347,8 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	 */
 	if (cursor->last->next) {
 		for (i = cursor->last; i; i = i->next) {
-			cursor->last = VERIFY(i);
+			VERIFY(i);
+			cursor->last = i;
 		}
 	}
 	
