@@ -226,17 +226,25 @@ VALUE_PAIR *paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
 		return NULL;
 	}
 	
-	memcpy(&cursor->root, &node, sizeof(cursor->root));
-	cursor->next = *cursor->root;
+	memcpy(&cursor->first, &node, sizeof(cursor->first));
+	cursor->current = *cursor->first;
 	
-	return cursor->next;
+	if (cursor->current) {
+		cursor->next = cursor->current->next;
+	}
+	
+	return cursor->current;
 }
 
 VALUE_PAIR *pairfirst(vp_cursor_t *cursor) 
 {
-	cursor->next = *cursor->root;
+	cursor->current = *cursor->first;
+	
+	if (cursor->current) {
+		cursor->next = cursor->current->next;
+	}
 
-	return cursor->next;
+	return cursor->current;
 }
 
 /** Iterate over attributes of a given type in the pairlist
@@ -248,10 +256,16 @@ VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int ve
 	VALUE_PAIR *i;
 	
 	i = pairfind(cursor->next, attr, vendor, tag);
-	if (i) {
-		cursor->next = i->next;
-	}
-
+	if (!i) {
+		cursor->next = NULL;
+		cursor->current = NULL;
+		
+		return NULL;
+	} 
+	
+	cursor->next = i->next;
+	cursor->current = i;
+	
 	return i;
 }
 
@@ -261,18 +275,26 @@ VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int ve
  */
 VALUE_PAIR *pairnext(vp_cursor_t *cursor)
 {
-	if (!cursor->next) {
-		return NULL;
+	VERIFY(cursor->next);
+	
+	cursor->current = cursor->next;
+
+	if (cursor->current) {
+		/* 
+		 *	Set this now in case 'current' gets freed before
+		 *	pairnext is called again.
+		 */
+		cursor->next = cursor->current->next;
 	}
 	
-	cursor->next = cursor->next->next;
-	
-	return cursor->next;
+	return cursor->current;
 }
 
 VALUE_PAIR *paircurrent(vp_cursor_t *cursor)
 {
-	return cursor->next;
+	VERIFY(cursor->current);
+	
+	return cursor->current;
 }
 
 /** Insert a VP 
@@ -292,10 +314,10 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	/*
 	 *	Cursor was initialised with a pointer to a NULL value_pair
 	 */
-	if (!*cursor->root) {
-		*cursor->root = add;
-		cursor->next = add;
-		cursor->last = add;
+	if (!*cursor->first) {
+		*cursor->first = add;
+		cursor->current = add;
+		cursor->next = cursor->current->next;
 		
 		return;
 	}
@@ -304,10 +326,10 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	 *	We don't yet know where the last VALUE_PAIR is
 	 */
 	if (!cursor->last) {
-		for (i = cursor->next; i; i = i->next) {
-			cursor->last = VERIFY(i);
-		}
+		cursor->last = cursor->current;
 	}
+	
+	VERIFY(cursor->last);
 	
 	/*
 	 *	Something outside of the cursor added another VALUE_PAIR

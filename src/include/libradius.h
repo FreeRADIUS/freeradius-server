@@ -215,8 +215,9 @@ typedef struct value_pair {
 
 
 typedef struct vp_cursor {
-	VALUE_PAIR	**root;			//!< Currently unused.
-	VALUE_PAIR	*last;			//!< Temporary only use for pairinsert
+	VALUE_PAIR	**first;
+	VALUE_PAIR	*last;			//!< Temporary only used for pairinsert
+	VALUE_PAIR	*current;		//!< The current attribute.
 	VALUE_PAIR	*next;			//!< Next attribute to process.
 } vp_cursor_t;
 
