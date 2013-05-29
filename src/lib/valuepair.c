@@ -241,7 +241,10 @@ VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
 	cursor->current = *cursor->first;
 	
 	if (cursor->current) {
+		VERIFY(cursor->current);
 		cursor->next = cursor->current->next;
+		VERIFY(cursor->next);
+		cursor->found = NULL;
 	}
 
 	return cursor->current;
@@ -254,8 +257,8 @@ VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
 VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
 {
 	VALUE_PAIR *i;
-	
-	i = pairfind(cursor->next, attr, vendor, tag);
+
+	i = pairfind(!cursor->found ? cursor->current : cursor->found->next, attr, vendor, tag);
 	if (!i) {
 		cursor->next = NULL;
 		cursor->current = NULL;
@@ -265,6 +268,7 @@ VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int ve
 	
 	cursor->next = i->next;
 	cursor->current = i;
+	cursor->found = i;
 	
 	return i;
 }
@@ -275,16 +279,23 @@ VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int ve
  */
 VALUE_PAIR *pairnext(vp_cursor_t *cursor)
 {
-	VERIFY(cursor->next);
+	if (cursor->next) {
+		VERIFY(cursor->next);
+	}
 	
 	cursor->current = cursor->next;
-
 	if (cursor->current) {
 		/* 
 		 *	Set this now in case 'current' gets freed before
 		 *	pairnext is called again.
 		 */
 		cursor->next = cursor->current->next;
+		
+		/*
+		 *	Next call to pairfindnext will start from the current
+		 *	position in the list, not the last found instance.
+		 */
+		cursor->found = NULL;
 	}
 	
 	return cursor->current;

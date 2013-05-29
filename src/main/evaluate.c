@@ -671,7 +671,7 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	for (vp = paircursor(&cursor, &from); vp; vp = pairnext(&cursor)) count++;
 	from_list = rad_malloc(sizeof(*from_list) * count);
 
-	for (vp = paircursor(&cursor, *to); vp; vp = pairnext(&cursor)) count++;
+	for (vp = paircursor(&cursor, to); vp; vp = pairnext(&cursor)) count++;
 	to_list = rad_malloc(sizeof(*to_list) * count);
 
 	/*
