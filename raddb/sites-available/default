@@ -174,28 +174,36 @@ listen {
 #	interface = eth0
 #	clients = per_socket_clients
 
-	#  The number of packets received can be rate limited via the
-	#  "max_pps" configuration item.  When it is set, the server
-	#  tracks the total number of packets received in the previous
-	#  second.  If the count is greater than "max_pps", then the
-	#  new packet is silently discarded.  This helps the server
-	#  deal with overload situations.
-	#
-	#  The packets/s counter is tracked in a sliding window.  This
-	#  means that the pps calculation is done for the second
-	#  before the current packet was received.  NOT for the current
-	#  wall-clock second, and NOT for the previous wall-clock second.
-	#
-	#  Useful values are 0 (no limit), or 100 to 10000.
-	#  Values lower than 100 will likely cause the server to ignore
-	#  normal traffic.  Few systems are capable of handling more than
-	#  10K packets/s.
-	#
-	#  It is most useful for accounting systems.  Set it to 50%
-	#  more than the normal accounting load, and you can be sure that
-	#  the server will never get overloaded
-	#  
-#	max_pps = 0
+	limit {
+		#  The number of packets received can be rate limited via the
+		#  "max_pps" configuration item.  When it is set, the server
+		#  tracks the total number of packets received in the previous
+		#  second.  If the count is greater than "max_pps", then the
+		#  new packet is silently discarded.  This helps the server
+		#  deal with overload situations.
+		#
+		#  The packets/s counter is tracked in a sliding window.  This
+		#  means that the pps calculation is done for the second
+		#  before the current packet was received.  NOT for the current
+		#  wall-clock second, and NOT for the previous wall-clock second.
+		#
+		#  Useful values are 0 (no limit), or 100 to 10000.
+		#  Values lower than 100 will likely cause the server to ignore
+		#  normal traffic.  Few systems are capable of handling more than
+		#  10K packets/s.
+		#
+		#  It is most useful for accounting systems.  Set it to 50%
+		#  more than the normal accounting load, and you can be sure that
+		#  the server will never get overloaded
+		#
+#		max_pps = 0
+
+		# Only for "proto = tcp". These are ignored for "udp" sockets.
+		#
+#		idle_timeout = 0
+#		lifetime = 0
+#		max_connections = 0
+	}
 }
 
 #  Authorization. First preprocess (hints and huntgroups files),

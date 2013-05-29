@@ -814,8 +814,11 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 
 extern int check_config;	/* radiusd.c */
 
-#ifdef WITH_TCP
 static CONF_PARSER limit_config[] = {
+	{ "max_pps", PW_TYPE_INTEGER,
+	  offsetof(listen_socket_t, max_rate), NULL,   NULL },
+
+#ifdef WITH_TCP
 	{ "max_connections", PW_TYPE_INTEGER,
 	  offsetof(listen_socket_t, limit.max_connections), NULL,   "16" },
 
@@ -824,10 +827,10 @@ static CONF_PARSER limit_config[] = {
 
 	{ "idle_timeout", PW_TYPE_INTEGER,
 	  offsetof(listen_socket_t, limit.idle_timeout), NULL,   "30" },
+#endif
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
-#endif
 
 /*
  *	Parse an authentication or accounting socket.
@@ -835,11 +838,12 @@ static CONF_PARSER limit_config[] = {
 int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 {
 	int		rcode;
-	int		listen_port, max_pps;
+	int		listen_port;
 	fr_ipaddr_t	ipaddr;
 	listen_socket_t *sock = this->data;
 	char		*section_name = NULL;
 	CONF_SECTION	*client_cs, *parentcs;
+	CONF_SECTION *limit;
 
 	this->cs = cs;
 
@@ -878,16 +882,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			return -1;
 	}
 
-	rcode = cf_item_parse(cs, "max_pps", PW_TYPE_INTEGER,
-			      &max_pps, "0");
-	if (rcode < 0) return -1;
-
-	if (max_pps && ((max_pps < 10) || (max_pps > 1000000))) {
-			cf_log_err_cs(cs,
-				   "Invalid value for \"max_pps\"");
-			return -1;
-	}
-
 	sock->proto = IPPROTO_UDP;
 
 	if (cf_pair_find(cs, "proto")) {
@@ -910,25 +904,6 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 
 		} else if (strcmp(proto, "tcp") == 0) {
 			sock->proto = IPPROTO_TCP;
-			CONF_SECTION *limit;
-			
-			limit = cf_section_sub_find(cs, "limit");
-			if (limit) {
-				rcode = cf_section_parse(limit, sock,
-							 limit_config);
-				if (rcode < 0) return -1;
-			} else {
-				sock->limit.max_connections = 60;
-				sock->limit.idle_timeout = 30;
-				sock->limit.lifetime = 0;
-			}
-
-			if ((sock->limit.idle_timeout > 0) && (sock->limit.idle_timeout < 5))
-				sock->limit.idle_timeout = 5;
-			if ((sock->limit.lifetime > 0) && (sock->limit.lifetime < 5))
-				sock->limit.lifetime = 5;
-			if ((sock->limit.lifetime > 0) && (sock->limit.idle_timeout > sock->limit.lifetime))
-				sock->limit.idle_timeout = 0;
 		} else {
 			cf_log_err_cs(cs,
 				   "Unknown proto name \"%s\"", proto);
@@ -1002,9 +977,41 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
+
+	limit = cf_section_sub_find(cs, "limit");
+	if (limit) {
+		rcode = cf_section_parse(limit, sock,
+					 limit_config);
+		if (rcode < 0) return -1;
+
+		if (sock->max_rate && ((sock->max_rate < 10) || (sock->max_rate > 1000000))) {
+			cf_log_err_cs(cs,
+				      "Invalid value for \"max_pps\"");
+			return -1;
+		}
+
+#ifdef WITH_TCP
+		if ((sock->limit.idle_timeout > 0) && (sock->limit.idle_timeout < 5)) {
+			WARN("Setting idle_timeout to 5");
+			sock->limit.idle_timeout = 5;
+		}
+		if ((sock->limit.lifetime > 0) && (sock->limit.lifetime < 5)) {
+			WARN("Setting lifetime to 5");
+			sock->limit.lifetime = 5;
+		}
+		if ((sock->limit.lifetime > 0) && (sock->limit.idle_timeout > sock->limit.lifetime)) {
+			WARN("Setting idle_timeout to 0");
+			sock->limit.idle_timeout = 0;
+		}
+	} else {
+		sock->limit.max_connections = 60;
+		sock->limit.idle_timeout = 30;
+		sock->limit.lifetime = 0;
+#endif
+	}
+
 	sock->my_ipaddr = ipaddr;
 	sock->my_port = listen_port;
-	sock->max_rate = max_pps;
 
 #ifdef WITH_PROXY
 	if (check_config) {
