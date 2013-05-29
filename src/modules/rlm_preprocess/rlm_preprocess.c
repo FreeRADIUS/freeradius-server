@@ -117,8 +117,10 @@ static void cisco_vsa_hack(REQUEST *request)
 	char		*ptr;
 	char		newattr[MAX_STRING_LEN];
 	VALUE_PAIR	*vp;
-
-	for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+	vp_cursor_t	cursor;
+	for (vp = paircursor(&cursor, &request->packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		vendorcode = vp->da->vendor;
 		if (!((vendorcode == 9) || (vendorcode == 6618))) {
 			continue; /* not a Cisco or Quintum VSA, continue */
@@ -174,8 +176,11 @@ static void cisco_vsa_hack(REQUEST *request)
 static void alvarion_vsa_hack(VALUE_PAIR *vp)
 {
 	int number = 1;
-
-	for ( ; vp != NULL; vp = vp->next) {
+	vp_cursor_t cursor;
+	
+	for (vp = paircursor(&cursor, &vp);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		const DICT_ATTR *da;
 
 		if (vp->da->vendor != 12394) {
@@ -266,6 +271,7 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	VALUE_PAIR	*namepair;
 	VALUE_PAIR	*request_pairs;
 	VALUE_PAIR	*tmp;
+	vp_cursor_t	cursor;
 
 	/*
 	 *	Get the username from the request
@@ -320,7 +326,9 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
 	}
 
 	num_proxy_state = 0;
-	for (tmp = request->packet->vps; tmp != NULL; tmp = tmp->next) {
+	for (tmp = paircursor(&cursor, &request->packet->vps);
+	     tmp;
+	     tmp = pairnext(&cursor)) {
 		if (tmp->da->vendor != 0) {
 			continue;
 		}
@@ -345,21 +353,20 @@ static void rad_mangle(rlm_preprocess_t *inst, REQUEST *request)
  */
 static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 {
-	VALUE_PAIR	*check_item = check;
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*check_item;
 	VALUE_PAIR	*tmp;
 	int		result = -1;
 
 	if (!check) return 0;
 
-	while (result != 0 && check_item != NULL) {
-
-		tmp = check_item->next;
-		check_item->next = NULL;
-
+	for (check_item = paircursor(&cursor, check);
+	     check_item && (result != 0);
+	     check_item = pairnext(&cursor)) {
+	     	/* FIXME: paircopy should be removed once VALUE_PAIRs are no longer in linked lists */
+		tmp = paircopyvp(request, check_item);
 		result = paircompare(req, request, check_item, NULL);
-
-		check_item->next = tmp;
-		check_item = check_item->next;
+		pairfree(&tmp);
 	}
 
 	return result;

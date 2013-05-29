@@ -278,6 +278,7 @@ static void tv_add(struct timeval *tv, int usec_delay)
 
 static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 {
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	char buffer[1024];
 	char const *received, *from;
@@ -320,7 +321,9 @@ static void debug_packet(REQUEST *request, RADIUS_PACKET *packet, int direction)
 		       packet->code, packet->id, packet->data_len);
 	}
 
-	for (vp = packet->vps; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &packet->vps);
+	     vp; 
+	     vp = pairnext(&cursor)) {
 		vp_prints(buffer, sizeof(buffer), vp);
 		RDEBUG("\t%s", buffer);
 	}
@@ -2214,11 +2217,14 @@ static int request_will_proxy(REQUEST *request)
 		 */
 		vp = pairfind(request->proxy->vps, PW_USER_NAME, 0, TAG_ANY);
 		if (!vp) {
+			vp_cursor_t cursor;
 			vp = radius_paircreate(request, NULL,
 					       PW_USER_NAME, 0);
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
-			vp->next = request->proxy->vps;
+			/* FIXME: Can't make assumptions about ordering */
+			paircursor(&cursor, vp);
+			pairinsert(&cursor, request->proxy->vps);
 			request->proxy->vps = vp;
 		}
 		pairstrcpy(vp, strippedname->vp_strvalue);

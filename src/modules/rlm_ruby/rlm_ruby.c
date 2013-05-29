@@ -189,8 +189,8 @@ static void add_vp_tuple(TALLOC_CTX *ctx, REQUEST *request, VALUE_PAIR **vpp, VA
 #define BUF_SIZE 1024
 static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 			   VALUE module, char const *function_name) {
-				
 	rlm_rcode_t rcode = RLM_MODULE_OK;
+	vp_cursor_t cursor;
 
 	char buf[BUF_SIZE]; /* same size as vp_print buffer */
 
@@ -210,8 +210,10 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 	n_tuple = 0;
 
 	if (request) {
-		for (vp = request->packet->vps; vp; vp = vp->next) {
-			n_tuple++;
+		for (vp = paircursor(&cursor, &request->packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
+		 	 n_tuple++;    
 		}
 	}
 
@@ -222,7 +224,9 @@ static rlm_rcode_t do_ruby(REQUEST *request, unsigned long func,
 	*/
 	rb_request = rb_ary_new2(n_tuple);
 	if (request) {
-		for (vp = request->packet->vps; vp; vp = vp->next) {
+		for (vp = paircursor(&cursor, &request->packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
 			VALUE tmp = rb_ary_new2(2);
 
 			/* The name. logic from vp_prints, lib/print.c */

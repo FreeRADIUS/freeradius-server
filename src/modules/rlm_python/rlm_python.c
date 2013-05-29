@@ -356,6 +356,7 @@ failed:
 static int do_python(REQUEST *request, PyObject *pFunc,
 		     char const *funcname)
 {
+	vp_cursor_t	cursor;
 	VALUE_PAIR      *vp;
 	PyObject	*pRet = NULL;
 	PyObject	*pArgs = NULL;
@@ -381,8 +382,11 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 	 */
 	tuplelen = 0;
 	if (request != NULL) {
-		for (vp = request->packet->vps; vp; vp = vp->next)
+		for (vp = paircursor(&cursor, &request->packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
 			tuplelen++;
+		}
 	}
 
 	gstate = PyGILState_Ensure();
@@ -395,9 +399,9 @@ static int do_python(REQUEST *request, PyObject *pFunc,
 		if ((pArgs = PyTuple_New(tuplelen)) == NULL)
 			goto failed;
 
-		for (vp = request->packet->vps;
-		     vp != NULL;
-		     vp = vp->next, i++) {
+		for (vp = paircursor(&cursor, &request->packet->vps);
+		     vp;
+		     vp = pairnext(&cursor), i++) {
 			PyObject *pPair;
 			
 			/* The inside tuple has two only: */

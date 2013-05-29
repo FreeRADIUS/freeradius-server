@@ -150,6 +150,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	rlm_rcode_t	rcode = RLM_MODULE_OK;
 	struct radutmp	ut, u;
+	vp_cursor_t	cursor;
 	VALUE_PAIR	*vp;
 	int		status = -1;
 	int		protocol = -1;
@@ -222,7 +223,9 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = request->packet->vps; vp; vp = vp->next) {
+	for (vp = paircursor(&cursor, &request->packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 			case PW_LOGIN_IP_HOST:
 			case PW_FRAMED_IP_ADDRESS:

@@ -89,6 +89,7 @@ static void NEVER_RETURNS usage(void)
 static int request_init(char const *filename)
 {
 	FILE *fp;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	int filedone = 0;
 
@@ -121,7 +122,7 @@ static int request_init(char const *filename)
 	/*
 	 *	Fix / set various options
 	 */
-	for (vp = request->vps; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &request->vps); vp; vp = pairnext(&cursor)) {
 		switch (vp->da->attr) {
 		default:
 			break;

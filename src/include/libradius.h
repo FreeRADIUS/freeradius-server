@@ -214,6 +214,12 @@ typedef struct value_pair {
 } VALUE_PAIR;
 
 
+typedef struct vp_cursor {
+	VALUE_PAIR	**root;			//!< Currently unused.
+	VALUE_PAIR	*last;			//!< Temporary only use for pairinsert
+	VALUE_PAIR	*next;			//!< Next attribute to process.
+} vp_cursor_t;
+
 typedef struct value_pair_raw {
 	char l_opand[64];			//!< Left hand side of the
 						//!< pair.
@@ -419,11 +425,20 @@ VALUE_PAIR	*pairalloc(TALLOC_CTX *ctx, DICT_ATTR const *da);
 VALUE_PAIR	*paircreate(TALLOC_CTX *ctx, unsigned int attr, unsigned int vendor);
 int		pair2unknown(VALUE_PAIR *vp);
 void		pairfree(VALUE_PAIR **);
-void	    pairbasicfree(VALUE_PAIR *pair);
+void		pairbasicfree(VALUE_PAIR *pair);
 VALUE_PAIR	*pairfind(VALUE_PAIR *, unsigned int attr, unsigned int vendor, int8_t tag);
+
+#define		paircursor(_x, _y)	paircursorc(_x,(VALUE_PAIR const * const *) _y)
+VALUE_PAIR	*paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node);
+VALUE_PAIR	*pairfirst(vp_cursor_t *cursor);
+VALUE_PAIR	*pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag);
+VALUE_PAIR	*pairnext(vp_cursor_t *cursor);
+VALUE_PAIR	*pairlast(vp_cursor_t *cursor);
+VALUE_PAIR	*paircurrent(vp_cursor_t *cursor);
+void		pairinsert(vp_cursor_t *cursor, VALUE_PAIR *vp);
 void		pairdelete(VALUE_PAIR **, unsigned int attr, unsigned int vendor, int8_t tag);
 void		pairadd(VALUE_PAIR **, VALUE_PAIR *);
-void	    pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
+void		pairreplace(VALUE_PAIR **first, VALUE_PAIR *add);
 int		paircmp(VALUE_PAIR *check, VALUE_PAIR *data);
 int		paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two);
 VALUE_PAIR	*paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp);

@@ -148,16 +148,18 @@ void pairbasicfree(VALUE_PAIR *vp)
  */
 void pairfree(VALUE_PAIR **vps)
 {
-	VALUE_PAIR	*next, *vp;
+	VALUE_PAIR	*vp;
+	vp_cursor_t	cursor;
 
-	if (!vps) return;
-	vp = *vps;
-
-	while (vp) {
+	if (!vps) {
+		return;
+	}
+	
+	for (vp = paircursor(&cursor, vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		VERIFY(vp);
-		next = vp->next;
 		pairbasicfree(vp);
-		vp = next;
 	}
 
 	*vps = NULL;
@@ -192,21 +194,132 @@ int pair2unknown(VALUE_PAIR *vp)
  * @todo should take DAs and do a pointer comparison.
  */
 VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
-		      int8_t tag)
+		     int8_t tag)
 {
-	while (vp) {
-		VERIFY(vp);
-		if ((vp->da->attr == attr) && (vp->da->vendor == vendor)
-		    && ((tag == TAG_ANY) || (vp->da->flags.has_tag &&
-			(vp->tag == tag)))) {
-			return vp;
+	vp_cursor_t 	cursor;
+	VALUE_PAIR	*i;
+	
+	for (i = paircursor(&cursor, &vp);
+	     i;
+	     i = pairnext(&cursor)) {
+		VERIFY(i);
+		if ((i->da->attr == attr) && (i->da->vendor == vendor)
+		    && ((tag == TAG_ANY) || (i->da->flags.has_tag &&
+			(i->tag == tag)))) {
+			return i;
 		}
-		vp = vp->next;
 	}
 
 	return NULL;
 }
 
+/** Setup a cursor to iterate over attribute pairs
+ *
+ * @param cursor Where to initialise the cursor (uses existing structure).
+ * @param node to start from.
+ */
+VALUE_PAIR *paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
+{
+	memset(cursor, 0, sizeof(*cursor));
+	
+	if (!node || !cursor) {
+		return NULL;
+	}
+	
+	memcpy(&cursor->root, &node, sizeof(cursor->root));
+	cursor->next = *cursor->root;
+	
+	return cursor->next;
+}
+
+VALUE_PAIR *pairfirst(vp_cursor_t *cursor) 
+{
+	cursor->next = *cursor->root;
+
+	return cursor->next;
+}
+
+/** Iterate over attributes of a given type in the pairlist
+ *
+ *
+ */
+VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int vendor, int8_t tag)
+{
+	VALUE_PAIR *i;
+	
+	i = pairfind(cursor->next, attr, vendor, tag);
+	if (i) {
+		cursor->next = i->next;
+	}
+
+	return i;
+}
+
+/** Retrieve the next VALUE_PAIR
+ *
+ *
+ */
+VALUE_PAIR *pairnext(vp_cursor_t *cursor)
+{
+	if (!cursor->next) {
+		return NULL;
+	}
+	
+	cursor->next = cursor->next->next;
+	
+	return cursor->next;
+}
+
+VALUE_PAIR *paircurrent(vp_cursor_t *cursor)
+{
+	return cursor->next;
+}
+
+/** Insert a VP 
+ *
+ * @todo don't use with pairdelete
+ */
+void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
+{
+	VALUE_PAIR *i;
+
+	if (!add) {
+		return;
+	}
+	
+	VERIFY(add);
+
+	/*
+	 *	Cursor was initialised with a pointer to a NULL value_pair
+	 */
+	if (!*cursor->root) {
+		*cursor->root = add;
+		cursor->next = add;
+		cursor->last = add;
+		
+		return;
+	}
+	
+	/*
+	 *	We don't yet know where the last VALUE_PAIR is
+	 */
+	if (!cursor->last) {
+		for (i = cursor->next; i; i = i->next) {
+			cursor->last = VERIFY(i);
+		}
+	}
+	
+	/*
+	 *	Something outside of the cursor added another VALUE_PAIR
+	 */
+	if (cursor->last->next) {
+		for (i = cursor->last; i; i = i->next) {
+			cursor->last = VERIFY(i);
+		}
+	}
+	
+	cursor->last->next = add;
+}
 
 /** Delete matching pairs
  *

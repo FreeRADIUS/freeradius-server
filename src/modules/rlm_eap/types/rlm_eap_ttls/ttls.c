@@ -144,11 +144,13 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 	size_t		size;
 	size_t		data_left = data_len;
 	char		*p;
-	VALUE_PAIR	*first = NULL;
-	VALUE_PAIR	**last = &first;
+	VALUE_PAIR	*first;
 	VALUE_PAIR	*vp;
 	RADIUS_PACKET	*packet = fake->packet; /* FIXME: api issues */
-
+	vp_cursor_t	out;
+	
+	paircursor(&out, &first);
+	
 	while (data_left > 0) {
 		rad_assert(data_left <= data_len);
 		memcpy(&attr, data, sizeof(attr));
@@ -198,8 +200,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		 *	Normal attributes cannot be.
 		 */
 		if ((attr > 255) && (vendor == 0)) {
-			RWDEBUG2("Skipping Diameter attribute %u",
-				attr);
+			RWDEBUG2("Skipping Diameter attribute %u", attr);
 			goto next_attr;
 		}
 
@@ -247,11 +248,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 				goto do_octets;
 			}
 
-			*last = vp;
-			do {
-				last = &(vp->next);
-				vp = vp->next;
-			} while (vp != NULL);
+			pairinsert(&out, vp);
 
 			goto next_attr;
 		}
@@ -418,8 +415,7 @@ static VALUE_PAIR *diameter2vp(REQUEST *request, REQUEST *fake, SSL *ssl,
 		/*
 		 *	Update the list.
 		 */
-		*last = vp;
-		last = &(vp->next);
+		pairinsert(&out, vp);
 
 	next_attr:
 		/*
@@ -469,11 +465,12 @@ static int vp2diameter(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR 
 	size_t		total;
 	uint64_t	attr64;
 	VALUE_PAIR	*vp;
+	vp_cursor_t	cursor;
 
 	p = buffer;
 	total = 0;
 
-	for (vp = first; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &first); vp; vp = pairnext(&cursor)) {
 		/*
 		 *	Too much data: die.
 		 */
@@ -1097,8 +1094,9 @@ int eapttls_process(eap_handler_t *handler, tls_session_t *tls_session)
 	 */
 	if (t->copy_request_to_tunnel) {
 		VALUE_PAIR *copy;
-
-		for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+		vp_cursor_t cursor;
+		
+		for (vp = paircursor(&cursor, &request->packet->vps); vp; vp = pairnext(&cursor)) {
 			/*
 			 *	The attribute is a server-side thingy,
 			 *	don't copy it.

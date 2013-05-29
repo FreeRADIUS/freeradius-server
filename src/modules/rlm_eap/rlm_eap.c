@@ -549,6 +549,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	char		*p;
 	VALUE_PAIR	*vp;
 	eap_handler_t	*handler;
+	vp_cursor_t	cursor;
 
 	/*
 	 *	Just in case the admin lists EAP in post-proxy-type Fail.
@@ -640,7 +641,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 	 *	There may be more than one Cisco-AVPair.
 	 *	Ensure we find the one with the LEAP attribute.
 	 */
-	vp = request->proxy_reply->vps;
+	paircursor(&cursor, &request->proxy_reply->vps);
 	for (;;) {
 		/*
 		 *	Hmm... there's got to be a better way to
@@ -649,7 +650,7 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 		 *	This is vendor Cisco (9), Cisco-AVPair
 		 *	attribute (1)
 		 */
-		vp = pairfind(vp, 1, 9, TAG_ANY);
+		vp = pairfindnext(&cursor, 1, 9, TAG_ANY);
 		if (!vp) {
 			return RLM_MODULE_NOOP;
 		}
@@ -662,11 +663,6 @@ static rlm_rcode_t mod_post_proxy(void *inst, REQUEST *request)
 		if (strncasecmp(vp->vp_strvalue, "leap:session-key=", 17) == 0) {
 			break;
 		}
-
-		/*
-		 *	Not this AV-pair.  Go to the next one.
-		 */
-		vp = vp->next;
 	}
 
 	/*

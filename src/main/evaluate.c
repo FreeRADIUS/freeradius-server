@@ -640,6 +640,7 @@ int radius_evaluate_cond(REQUEST *request, int modreturn, int depth,
 void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 {
 	int i, j, count, from_count, to_count, tailto;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *next, **last;
 	VALUE_PAIR **from_list, **to_list;
 	int *edited = NULL;
@@ -667,10 +668,10 @@ void radius_pairmove(REQUEST *request, VALUE_PAIR **to, VALUE_PAIR *from)
 	 *	the matching attributes are deleted.
 	 */
 	count = 0;
-	for (vp = from; vp != NULL; vp = vp->next) count++;
+	for (vp = paircursor(&cursor, &from); vp; vp = pairnext(&cursor)) count++;
 	from_list = rad_malloc(sizeof(*from_list) * count);
 
-	for (vp = *to; vp != NULL; vp = vp->next) count++;
+	for (vp = paircursor(&cursor, *to); vp; vp = pairnext(&cursor)) count++;
 	to_list = rad_malloc(sizeof(*to_list) * count);
 
 	/*

@@ -75,6 +75,7 @@ static void check_pair(VALUE_PAIR *check_item, VALUE_PAIR *reply_item,
 
 static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST **pair_list)
 {
+	vp_cursor_t cursor;
 	int rcode;
 	PAIR_LIST *attrs = NULL;
 	PAIR_LIST *entry;
@@ -91,12 +92,12 @@ static int attr_filter_getfile(TALLOC_CTX *ctx, char const *filename, PAIR_LIST 
 
 	entry = attrs;
 	while (entry) {
-
 		entry->check = entry->reply;
 		entry->reply = NULL;
 
-		for (vp = entry->check; vp != NULL; vp = vp->next) {
-
+		for (vp = paircursor(&cursor, &entry->check);
+		     vp;
+		     vp = pairnext(&cursor)) {
 		    /*
 		     * If it's NOT a vendor attribute,
 		     * and it's NOT a wire protocol
@@ -141,24 +142,21 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 /*
  *	Common attr_filter checks
  */
-static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
-			      	      RADIUS_PACKET *packet)
+static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_PACKET *packet)
 {
 	rlm_attr_filter_t *inst = instance;
+	vp_cursor_t	cursor;
+	vp_cursor_t	out;
 	VALUE_PAIR	*vp;
-	VALUE_PAIR	*output;
-	VALUE_PAIR	**output_tail;
+	VALUE_PAIR	*output, *input;
 	VALUE_PAIR	*check_item;
 	PAIR_LIST	*pl;
 	int		found = 0;
 	int		pass, fail = 0;
 	char const	*keyname = NULL;
-	VALUE_PAIR	**input;
 	char		buffer[256];
 
 	if (!packet) return RLM_MODULE_NOOP;
-
-	input = &(packet->vps);
 
 	if (!inst->key) {
 		VALUE_PAIR	*namepair;
@@ -181,8 +179,11 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 		keyname = buffer;
 	}
 
+	/*
+	 *	Head of the output list
+	 */
 	output = NULL;
-	output_tail = &output;
+	paircursor(&out, &output);
 
 	/*
 	 *      Find the attr_filter profile entry for the entry.
@@ -201,13 +202,12 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 		    continue;
 		}
 
-		RDEBUG2("Matched entry %s at line %d", pl->name,
-		       pl->lineno);
+		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = pl->check;
-			check_item != NULL;
-			check_item = check_item->next) {
+		for (check_item = paircursor(&cursor, &pl->check);
+		     check_item;
+		     check_item = pairnext(&cursor)) {
 			if (!check_item->da->vendor &&
 			    (check_item->da->attr == PW_FALL_THROUGH) &&
 				(check_item->vp_integer == 1)) {
@@ -227,11 +227,10 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 			if (check_item->op == T_OP_SET ) {
 				vp = paircopyvp(packet, check_item);
 				if (!vp) {
-					pairfree(&output);
-					return RLM_MODULE_FAIL;
+					goto error;
 				}
-				radius_xlat_move(request, output_tail, &vp);
-				output_tail = &((*output_tail)->next);
+				radius_xlat_do(request, vp);
+				pairinsert(&out, vp);
 			}
 		}
 
@@ -243,7 +242,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (vp = *input; vp != NULL; vp = vp->next ) {
+		for (input = paircursor(&cursor, &packet->vps);
+		     input;
+		     input = pairnext(&cursor)) {
 			/* reset the pass,fail vars for each reply item */
 			pass = fail = 0;
 
@@ -251,24 +252,22 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 			 *	reset the check_item pointer to
 			 *	beginning of the list
 			 */
-			for (check_item = pl->check;
-			     check_item != NULL;
-			     check_item = check_item->next) {
+			for (check_item = pairfirst(&cursor);
+			     check_item;
+			     check_item = pairnext(&cursor)) {
 				/*
 				 *	Vendor-Specific is special, and
 				 *	matches any VSA if the comparison
 				 *	is always true.
 				 */
-				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) &&
-					(vp->da->vendor != 0) &&
-					(check_item->op == T_OP_CMP_TRUE)) {
+				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) && (input->da->vendor != 0) &&
+				    (check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
 				}
 
 				if (vp->da->attr == check_item->da->attr) {
-					check_pair(check_item, vp,
-						   &pass, &fail);
+					check_pair(check_item, input, &pass, &fail);
 				}
 			}
 
@@ -281,18 +280,18 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 				if (!pass) {
 					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->da->name);
 				}
-				*output_tail = paircopyvp(packet, vp);
-				if (!*output_tail) {
-					pairfree(&output);
-					return RLM_MODULE_FAIL;
+				vp = paircopyvp(packet, vp);
+				if (!vp) {
+					goto error;
 				}
-				output_tail = &((*output_tail)->next);
+				pairinsert(&out, vp);
 			}
 		}
 
 		/* If we shouldn't fall through, break */
-		if (!fall_through)
+		if (!fall_through) {
 			break;
+		}
 	}
 
 	/*
@@ -303,8 +302,11 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 		return RLM_MODULE_NOOP;
 	}
 
-	pairfree(input);
-	*input = output;
+	/*
+	 *	Replace the existing request list with our filtered one
+	 */
+	pairfree(&packet->vps);
+	packet->vps = output;
 
 	if (request->packet->code == PW_AUTHENTICATION_REQUEST) {
 		request->username = pairfind(request->packet->vps, PW_STRIPPED_USER_NAME, 0, TAG_ANY);
@@ -314,6 +316,10 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request,
 	}
 
 	return RLM_MODULE_UPDATED;
+	
+	error:
+	pairfree(&output);
+	return RLM_MODULE_FAIL;
 }
 
 #define RLM_AF_FUNC(_x, _y) static rlm_rcode_t mod_##_x(void *instance, REQUEST *request) \

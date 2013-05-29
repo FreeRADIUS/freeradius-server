@@ -148,6 +148,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 	envp[0] = NULL;
 
 	if (input_pairs) {
+		vp_cursor_t cursor;
 		int envlen;
 		char buffer[1024];
 
@@ -159,7 +160,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 */
 		envlen = 0;
 
-		for (vp = input_pairs; vp != NULL; vp = vp->next) {
+		for (vp = paircursor(&cursor, &input_pairs); vp; vp = pairnext(&cursor)) {
 			/*
 			 *	Hmm... maybe we shouldn't pass the
 			 *	user's password in an environment

@@ -1123,6 +1123,7 @@ static int null_socket_dencode(UNUSED rad_listen_t *listener, UNUSED REQUEST *re
 
 static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 {
+	vp_cursor_t cursor;
 	char *output_file;
 	FILE *fp;
 	VALUE_PAIR *vp;
@@ -1158,7 +1159,9 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 					 request->reply->code, request->reply->id);
 		}
 
-		for (vp = request->reply->vps; vp != NULL; vp = vp->next) {
+		for (vp = paircursor(&cursor, request->reply->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
 			vp_prints(buffer, sizeof(buffer), vp);
 			fprintf(fp, "%s\n", buffer);
 			if (debug_flag) {
@@ -1275,6 +1278,7 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 	fr_command_socket_t *sock = listener->data;
 	rad_listen_t *fake;
 	RADIUS_PACKET *packet;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	FILE *fp;
 	RAD_REQUEST_FUNP fun = NULL;
@@ -1358,7 +1362,9 @@ static int command_inject_file(rad_listen_t *listener, int argc, char *argv[])
 					  buffer, sizeof(buffer)),
 				packet->code, packet->id);
 		
-		for (vp = packet->vps; vp != NULL; vp = vp->next) {
+		for (vp = paircursor(&cursor, &packet->vps); 
+		     vp;
+		     vp = pairnext(&cursor)) {
 			vp_prints(buffer, sizeof(buffer), vp);
 			DEBUG("\t%s", buffer);
 		}

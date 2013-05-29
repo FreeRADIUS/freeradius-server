@@ -168,8 +168,8 @@ static int rad_authlog(char const *msg, REQUEST *request, int goodpass)
  */
 static int rad_check_password(REQUEST *request)
 {
+	vp_cursor_t cursor;
 	VALUE_PAIR *auth_type_pair;
-	VALUE_PAIR *cur_config_item;
 	int auth_type = -1;
 	int result;
 	int auth_type_count = 0;
@@ -180,17 +180,15 @@ static int rad_check_password(REQUEST *request)
 	 *	if the authentication type is PW_AUTHTYPE_ACCEPT or
 	 *	PW_AUTHTYPE_REJECT.
 	 */
-	cur_config_item = request->config_items;
-	while(((auth_type_pair = pairfind(cur_config_item, PW_AUTH_TYPE, 0, TAG_ANY))) != NULL) {
+	paircursor(&cursor, &request->config_items);
+	while ((auth_type_pair = pairfindnext(&cursor, PW_AUTH_TYPE, 0, TAG_ANY))) {
 		auth_type = auth_type_pair->vp_integer;
 		auth_type_count++;
 
-		RDEBUG2("Found Auth-Type = %s",
-			dict_valnamebyattr(PW_AUTH_TYPE, 0, auth_type));
-		cur_config_item = auth_type_pair->next;
-
+		RDEBUG2("Found Auth-Type = %s", dict_valnamebyattr(PW_AUTH_TYPE, 0, auth_type));
 		if (auth_type == PW_AUTHTYPE_REJECT) {
 			RDEBUG2("Auth-Type = Reject, rejecting user");
+			
 			return -2;
 		}
 	}
@@ -199,7 +197,7 @@ static int rad_check_password(REQUEST *request)
 	 *	Warn if more than one Auth-Type was found, because only the last
 	 *	one found will actually be used.
 	 */
-	if (( auth_type_count > 1) && (debug_flag)) {
+	if ((auth_type_count > 1) && (debug_flag)) {
 		RERROR("Warning:  Found %d auth-types on request for user '%s'",
 			auth_type_count, request->username->vp_strvalue);
 	}

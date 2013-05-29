@@ -394,30 +394,28 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 				
 				break;
 			case T_OP_ADD:
-				do {
-					vp = map->dst->type == VPT_TYPE_LIST ?
-						paircopyvp(c, found) :
-						paircopyvpdata(c, map->dst->da,
-							       found);
-					if (!vp) continue;
+				{
+					vp_cursor_t cursor;
 					
-					vp->op = map->op;
-					pairadd(to_cache, vp);
+					for (found = paircursor(&cursor, &found);
+					     found;
+					     found = pairfindnext(&cursor, da->attr, da->vendor, TAG_ANY)) {
+						vp = map->dst->type == VPT_TYPE_LIST ?
+							paircopyvp(c, found) :
+							paircopyvpdata(c, map->dst->da, found);
+						if (!vp) continue;
 					
-					if (to_req) {
-						vp = paircopyvp(request, vp);
-						radius_pairmove(request, to_req,
-								vp);
+						vp->op = map->op;
+						pairadd(to_cache, vp);
+					
+						if (to_req) {
+							vp = paircopyvp(request, vp);
+							radius_pairmove(request, to_req, vp);
 								
-					}
-					
-					found = pairfind(found->next,
-							 da->attr,
-							 da->vendor,
-							 TAG_ANY);
-				} while (found);
-								
-				break;
+						}
+					}			
+					break;
+				}
 				
 			default:
 				rad_assert(0);
@@ -425,35 +423,40 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			}
 			break;
 		case VPT_TYPE_LIST:
-			rad_assert(map->src->type == VPT_TYPE_LIST);
+			{
+				vp_cursor_t cursor;
+				VALUE_PAIR *i;
+				
+				rad_assert(map->src->type == VPT_TYPE_LIST);
 			
-			from = NULL;
-			context = request;
-			if (radius_request(&context, map->src->request) == 0) {
-				from = radius_list(context, map->src->list);
+				from = NULL;
+				context = request;
+				if (radius_request(&context, map->src->request) == 0) {
+					from = radius_list(context, map->src->list);
+				}
+				if (!from) continue;
+			
+				found = paircopy(c, *from);
+				if (!found) continue;
+			
+				for (i = paircursor(&cursor, &vp);
+				     i != NULL;
+				     i = pairnext(&cursor)) {
+					RDEBUG("\t%s %s %s (%s)", map->dst->name,
+					       fr_int2str(fr_tokens, map->op, "¿unknown?"),
+					       map->src->name, i->da->name);
+					i->op = map->op;
+				}
+			
+				pairadd(to_cache, found);
+			
+				if (to_req) {
+					vp = paircopy(request, found);
+					radius_pairmove(request, to_req, vp);
+				}
+			
+				break;
 			}
-			if (!from) continue;
-			
-			found = paircopy(c, *from);
-			if (!found) continue;
-			
-			for (vp = found; vp != NULL; vp = vp->next) {
-				RDEBUG("\t%s %s %s (%s)", map->dst->name,
-			       	       fr_int2str(fr_tokens, map->op,
-			       	       		  "¿unknown?"),
-			       	       map->src->name,
-			       	       vp->da->name);
-				vp->op = map->op;
-			}
-			
-			pairadd(to_cache, found);
-			
-			if (to_req) {
-				vp = paircopy(request, found);
-				radius_pairmove(request, to_req, vp);
-			}
-			
-			break;
 		/*
 		 *	It was most likely a double quoted string that now
 		 *	needs to be expanded.

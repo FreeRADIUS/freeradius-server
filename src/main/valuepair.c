@@ -471,6 +471,7 @@ void paircompare_unregister_instance(void *instance)
 int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 		VALUE_PAIR **rep_list)
 {
+	vp_cursor_t cursor;
 	VALUE_PAIR *check_item;
 	VALUE_PAIR *auth_item;
 	
@@ -478,9 +479,9 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	int compare;
 	int other;
 
-	for (check_item = check;
-	     check_item != NULL;
-	     check_item = check_item->next) {
+	for (check_item = paircursor(&cursor, check);
+	     check_item;
+	     check_item = pairnext(&cursor)) {
 		/*
 		 *	If the user is setting a configuration value,
 		 *	then don't bother comparing it to any attributes
@@ -535,9 +536,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	try_again:
 		if (other >= 0) {
 			while (auth_item != NULL) {
-				if ((auth_item->da->attr ==
-				    (unsigned int) other) ||
-				    (other == 0)) {
+				if ((auth_item->da->attr == (unsigned int) other) || (other == 0)) {
 					break;
 				}
 				auth_item = auth_item->next;
@@ -855,9 +854,12 @@ void debug_pair(VALUE_PAIR *vp)
  */
 void debug_pair_list(VALUE_PAIR *vp)
 {
+	vp_cursor_t cursor;
 	if (!vp || !debug_flag || !fr_log_fp) return;
 
-	while (vp) {
+	for (vp = paircursor(&cursor, &vp);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
@@ -869,7 +871,6 @@ void debug_pair_list(VALUE_PAIR *vp)
 		}
 		
 		vp_print(fr_log_fp, vp);
-		vp = vp->next;
 	}
 	fflush(fr_log_fp);
 }
@@ -882,10 +883,13 @@ void debug_pair_list(VALUE_PAIR *vp)
  */
 void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 {
+	vp_cursor_t cursor;
 	char buffer[256];
 	if (!vp || !request || !request->radlog) return;
 	
-	while (vp) {
+	for (vp = paircursor(&cursor, &vp);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		/*
 		 *	Take this opportunity to verify all the VALUE_PAIRs are still valid.
 		 */
@@ -899,7 +903,6 @@ void rdebug_pair_list(int level, REQUEST *request, VALUE_PAIR *vp)
 		vp_prints(buffer, sizeof(buffer), vp);
 		
 		request->radlog(L_DBG, level, request, "\t%s", buffer);
-		vp = vp->next;
 	}	
 }
 
@@ -998,6 +1001,7 @@ VALUE_PAIR **radius_list(REQUEST *request, pair_lists_t list)
 int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		       UNUSED char const *src, radius_tmpl_getvalue_t func, void *ctx)
 {
+	vp_cursor_t cursor;
 	VALUE_PAIR **list, *vp, *head;
 	char buffer[MAX_STRING_LEN];
 	
@@ -1023,7 +1027,7 @@ int radius_map2request(REQUEST *request, value_pair_map_t const *map,
 		return -1;
 	}
 
-	if (debug_flag) for (vp = head; vp != NULL; vp = vp->next) {
+	if (debug_flag) for (vp = paircursor(&cursor, &head); vp; vp = pairnext(&cursor)) {
 		 rad_assert(vp->op == map->op);
 
 		 vp_prints_value(buffer, sizeof(buffer), vp, 1);

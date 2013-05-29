@@ -208,6 +208,7 @@ static int mschapv1_encode(RADIUS_PACKET *packet, VALUE_PAIR **request,
 static int radclient_init(char const *filename)
 {
 	FILE *fp;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	radclient_t *radclient;
 	int filedone = 0;
@@ -292,7 +293,9 @@ static int radclient_init(char const *filename)
 		/*
 		 *	Fix up Digest-Attributes issues
 		 */
-		for (vp = radclient->request->vps; vp != NULL; vp = vp->next) {
+		for (vp = paircursor(&cursor, &radclient->request->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
 			if (!vp->da->vendor) switch (vp->da->attr) {
 			default:
 				break;
@@ -423,7 +426,6 @@ static int radclient_sane(radclient_t *radclient)
 				radclient->packet_number, radclient->filename);
 			return -1;
 		}
-
 		radclient->request->code = packet_code;
 	}
 	radclient->request->sockfd = -1;

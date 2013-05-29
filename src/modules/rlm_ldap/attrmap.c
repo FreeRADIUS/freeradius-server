@@ -29,11 +29,11 @@
 static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, value_pair_map_t const *map, void *ctx)
 {
 	rlm_ldap_result_t *self = ctx;
-	VALUE_PAIR *head, **tail, *vp;
+	VALUE_PAIR *head = NULL, *vp;
+	vp_cursor_t out;
 	int i;
 	
-	head = NULL;
-	tail = &head;
+	paircursor(&out, &head);
 	
 	/*
 	 *	Iterate over all the retrieved values,
@@ -52,8 +52,7 @@ static VALUE_PAIR *rlm_ldap_map_getvalue(REQUEST *request, value_pair_map_t cons
 		}
 		
 		vp->op = map->op;
-		*tail = vp;
-		tail = &(vp->next);
+		pairinsert(&out, vp);
 	}
 	
 	return head;		

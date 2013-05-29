@@ -2482,12 +2482,15 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 				if (vp_file == NULL) {
 					RDEBUG2("Could not write session VPs to persistent cache: %s", strerror(errno));
 				} else {
+					vp_cursor_t cursor;
 					/* generate a dummy user-style entry which is easy to read back */
 					fprintf(vp_file, "# SSL cached session\n");
 					fprintf(vp_file, "%s\n", buffer);
-					for (vp=vps; vp; vp = vp->next) {
+					for (vp = paircursor(&cursor, vps);
+					     vp;
+					     vp = pairnext(&cursor)) {
 						vp_prints(buf, sizeof(buf), vp);
-						fprintf(vp_file, "\t%s%s\n", buf, vp->next ? "," : "");
+						fprintf(vp_file, "\t%s%s\n", buf, ",");
 					}
 					fclose(vp_file);
 				}
@@ -2518,11 +2521,14 @@ int tls_success(tls_session_t *ssn, REQUEST *request)
 			return -1;
 
 		} else {
-			RDEBUG("Adding cached attributes for session %s:",
-			       buffer);
+			vp_cursor_t cursor;
+			
+			RDEBUG("Adding cached attributes for session %s:", buffer);
 			debug_pair_list(vps);
 
-			for (vp = vps; vp != NULL; vp = vp->next) {
+			for (vp = paircursor(&cursor, vps);
+			     vp;
+			     vp = pairnext(&cursor)) {
 				/*
 				 *	TLS-* attrs get added back to
 				 *	the request list.

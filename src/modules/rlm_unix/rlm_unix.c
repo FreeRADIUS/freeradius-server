@@ -308,6 +308,7 @@ static char *uue(void *in)
 static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 	VALUE_PAIR	*vp;
+	vp_cursor_t	cursor;
 	FILE		*fp;
 	struct utmp	ut;
 	time_t		t;
@@ -366,7 +367,9 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	/*
 	 *	First, find the interesting attributes.
 	 */
-	for (vp = request->packet->vps; vp; vp = vp->next) {
+	for (vp = paircursor(&cursor, &request->packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 			case PW_USER_NAME:
 				if (vp->length >= sizeof(ut.ut_name)) {

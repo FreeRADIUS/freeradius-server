@@ -352,7 +352,7 @@ int main(void){
 		buffer[strlen(buffer)-1] = 0;
 		pw = get_pw_nam(buffer, ht, &last_found);
 		printpw(pw,4);
-		while (pw = get_next(buffer, ht, &last_found)) printpw(pw,4);
+		while ((pw = get_next(buffer, ht, &last_found))) printpw(pw,4);
 	}
 	release_ht(ht);
 }
@@ -518,31 +518,36 @@ static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
 {
 #define inst ((struct passwd_instance *)instance)
 	char buffer[1024];
-	VALUE_PAIR * key;
+	VALUE_PAIR *key, *i;
 	struct mypasswd * pw, *last_found;
-	int found = 0;
+	vp_cursor_t cursor;
 
-	for (key = request->packet->vps;
-	     key && (key = pairfind(key, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY));
-	     key = key->next ){
+	key = pairfind(request->packet->vps, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY);
+	if (!key) {
+		return RLM_MODULE_NOTFOUND;
+	}
+	
+	for (i = paircursor(&cursor, &key);
+	     i;
+	     i = pairfindnext(&cursor, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY)){
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */
-		vp_prints_value(buffer, sizeof(buffer), key, 0);
-		if (! (pw = get_pw_nam(buffer, inst->ht, &last_found)) ) {
+		vp_prints_value(buffer, sizeof(buffer), i, 0);
+		if (!(pw = get_pw_nam(buffer, inst->ht, &last_found)) ) {
 			continue;
 		}
 		do {
 			addresult(inst, request, request, &request->config_items, pw, 0, "config_items");
 			addresult(inst, request, request->reply, &request->reply->vps, pw, 1, "reply_items");
-			addresult(inst, request, request->packet, &request->packet->vps, 	pw, 2, "request_items");
-		} while ( (pw = get_next(buffer, inst->ht, &last_found)) );
-		found++;
-		if (!inst->allowmultiple) break;
+			addresult(inst, request, request->packet, &request->packet->vps, pw, 2, "request_items");
+		} while ((pw = get_next(buffer, inst->ht, &last_found)));
+		
+		if (!inst->allowmultiple) {
+			break;
+		}
 	}
-	if(!found) {
-		return RLM_MODULE_NOTFOUND;
-	}
+	
 	return RLM_MODULE_OK;
 
 #undef inst

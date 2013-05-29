@@ -48,7 +48,8 @@ typedef struct rlm_dhcp_t {
 static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 			 	char const *fmt, char *out, size_t freespace)
 {
-	VALUE_PAIR *vp, *head = NULL, *next;
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp, *head = NULL;
 	int decoded = 0;
 	
 	while (isspace((int) *fmt)) fmt++;
@@ -67,13 +68,13 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 		goto fail;
 	}
 	
-	next = head;
-	
-	do {
-		 next = next->next;
-		 decoded++;
-	} while (next);
-	
+
+	for (vp = paircursor(&cursor, &head);
+	     vp;
+	     vp = pairnext(&cursor)) {
+		decoded++;
+	}
+
 	pairmove(request->packet, &(request->packet->vps), &head);
 	
 	/* Free any unmoved pairs */

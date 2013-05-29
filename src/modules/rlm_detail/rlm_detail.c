@@ -414,20 +414,25 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		vp_print(fp, &dst_vp);
 	}
 
-	/* Write each attribute/value to the log file */
-	for (vp = packet->vps; vp != NULL; vp = vp->next) {
-		if (inst->ht &&
-		    fr_hash_table_finddata(inst->ht, &vp->da)) continue;
+	{
+		vp_cursor_t cursor;
+		/* Write each attribute/value to the log file */
+		for (vp = paircursor(&cursor, &packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
+			if (inst->ht &&
+			    fr_hash_table_finddata(inst->ht, &vp->da)) continue;
 
-		/*
-		 *	Don't print passwords in old format...
-		 */
-		if (compat && !vp->da->vendor && (vp->da->attr == PW_USER_PASSWORD)) continue;
+			/*
+			 *	Don't print passwords in old format...
+			 */
+			if (compat && !vp->da->vendor && (vp->da->attr == PW_USER_PASSWORD)) continue;
 
-		/*
-		 *	Print all of the attributes.
-		 */
-		vp_print(fp, vp);
+			/*
+			 *	Print all of the attributes.
+			 */
+			vp_print(fp, vp);
+		}
 	}
 
 	/*

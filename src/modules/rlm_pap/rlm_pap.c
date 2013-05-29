@@ -160,11 +160,12 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 	rlm_pap_t *inst = instance;
 	int auth_type = false;
 	int found_pw = false;
-	VALUE_PAIR *vp, *next;
-
-	for (vp = request->config_items; vp != NULL; vp = next) {
-		next = vp->next;
-
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
+	
+	for (vp = paircursor(&cursor, &request->config_items);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		switch (vp->da->attr) {
 		case PW_USER_PASSWORD: /* deprecated */
 			RDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
@@ -621,7 +622,9 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 {
 	VALUE_PAIR *vp;
 	rlm_rcode_t rc = RLM_MODULE_INVALID;
+	vp_cursor_t cursor;
 	int (*auth_func)(REQUEST *, VALUE_PAIR *) = NULL;
+	
 
 	if (!request->password ||
 	    (request->password->da->attr != PW_USER_PASSWORD)) {
@@ -644,7 +647,9 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	 *	config items, to find out which authentication
 	 *	function to call.
 	 */
-	for (vp = request->config_items; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &request->config_items);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		if (!vp->da->vendor) switch (vp->da->attr) {
 		case PW_CLEARTEXT_PASSWORD:
 			auth_func = &pap_auth_clear;

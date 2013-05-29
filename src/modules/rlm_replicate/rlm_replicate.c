@@ -54,23 +54,19 @@ static int replicate_packet(UNUSED void *instance, REQUEST *request,
 			    pair_lists_t list, unsigned int code)
 {
 	int rcode = RLM_MODULE_NOOP;
-	VALUE_PAIR *vp, **vps, *last;
+	VALUE_PAIR *vp, **vps;
+	vp_cursor_t cursor;
 	home_server *home;
 	REALM *realm;
 	home_pool_t *pool;
 	RADIUS_PACKET *packet = NULL;
 
-	last = request->config_items;
-
 	/*
 	 *	Send as many packets as necessary to different
 	 *	destinations.
 	 */
-	while (1) {
-		vp = pairfind(last, PW_REPLICATE_TO_REALM, 0, TAG_ANY);
-		if (!vp) break;
-
-		last = vp->next;
+	paircursor(&cursor, &request->config_items);
+	while ((vp = pairfindnext(&cursor, PW_REPLICATE_TO_REALM, 0, TAG_ANY))) {
 
 		realm = realm_find2(vp->vp_strvalue);
 		if (!realm) {

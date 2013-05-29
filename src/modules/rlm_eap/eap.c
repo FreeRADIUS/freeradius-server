@@ -1095,13 +1095,10 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*	correctly
 			*/
 		       RDEBUG2("Broken NAS did not set User-Name, setting from EAP Identity");
-		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
+		       vp = pairmake(request->packet, &request->packet->vps, "User-Name", handler->identity, T_OP_EQ);
 		       if (!vp) {
 			       goto error;
 		       }
-		       vp->next = request->packet->vps;
-		       request->packet->vps = vp;
-
 	       } else {
 		       /*
 			*      A little more paranoia.  If the NAS
@@ -1145,12 +1142,10 @@ eap_handler_t *eap_handler(rlm_eap_t *inst, eap_packet_raw_t **eap_packet_p,
 			*	correctly
 			*/
 		       RWDEBUG2("NAS did not set User-Name.  Setting it locally from EAP Identity");
-		       vp = pairmake(request->packet, NULL, "User-Name", handler->identity, T_OP_EQ);
+		       vp = pairmake(request->packet, &request->packet->vps, "User-Name", handler->identity, T_OP_EQ);
 		       if (!vp) {
 			       goto error2;
 		       }
-		       vp->next = request->packet->vps;
-		       request->packet->vps = vp;
 	       } else {
 		       /*
 			*      Paranoia.  If the NAS *did* set the

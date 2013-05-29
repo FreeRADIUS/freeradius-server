@@ -270,7 +270,8 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 {
 	size_t total;
 	uint8_t *p;
-	VALUE_PAIR *vp = NULL, *head, **tail;
+	VALUE_PAIR *vp = NULL, *head = NULL;
+	vp_cursor_t cursor;
 
 	if (data_len > 65535) return NULL; /* paranoia */
 
@@ -296,8 +297,8 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 
 	memcpy(p + EAP_HEADER_LEN, data, total);
 
-	head = vp;
-	tail = &(vp->next);
+	paircursor(&cursor, &head);
+	pairinsert(&cursor, vp);
 	while (total < data_len) {
 		vp = paircreate(packet, PW_EAP_MESSAGE, 0);
 		if (!vp) {
@@ -309,8 +310,8 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 		pairmemcpy(vp, data + total, (data_len - total));
 		
 		total += vp->length;
-		*tail = vp;
-		tail = &(vp->next);
+
+		pairinsert(&cursor, vp);
 	}
 
 	return head;
@@ -324,6 +325,8 @@ static VALUE_PAIR *eap2vp(REQUEST *request, RADIUS_PACKET *packet,
 static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 {
 	rad_assert(vp != NULL);
+	VALUE_PAIR *this;
+	vp_cursor_t cursor;
 
 	/*
 	 *	Skip the id, code, and length.  Just write the EAP
@@ -331,42 +334,44 @@ static int vp2eap(REQUEST *request, tls_session_t *tls_session, VALUE_PAIR *vp)
 	 */
 #ifndef NDEBUG
 	if ((debug_flag > 2) && fr_log_fp) {
-		size_t i, total;
-		VALUE_PAIR *this;
-
+		size_t i, total, start = EAP_HEADER_LEN;
 		total = 0;
 
-		for (this = vp; this != NULL; this = this->next) {
-			int start = 0;
-
-			if (this == vp) start = EAP_HEADER_LEN;
-			
+		for (this = paircursor(&cursor, &vp); this; this = pairnext(&cursor)) {
 			for (i = start; i < vp->length; i++) {
-			  if ((total & 0x0f) == 0) fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", (int) total);
-
+				if ((total & 0x0f) == 0) {
+					fprintf(fr_log_fp, "  PEAP tunnel data out %04x: ", (int) total);
+				}		
 				fprintf(fr_log_fp, "%02x ", vp->vp_octets[i]);
 				
-				if ((total & 0x0f) == 0x0f) fprintf(fr_log_fp, "\n");
+				if ((total & 0x0f) == 0x0f) {
+					fprintf(fr_log_fp, "\n");
+				}
+				
 				total++;
 			}
+			
+			start = 0;
 		}
-		if ((total & 0x0f) != 0) fprintf(fr_log_fp, "\n");
+		
+		if ((total & 0x0f) != 0) {
+			fprintf(fr_log_fp, "\n");
+		}
 	}
 #endif
 
 	/*
 	 *	Send the EAP data, WITHOUT the header.
 	 */
-	(tls_session->record_plus)(&tls_session->clean_in,
-				   vp->vp_octets + EAP_HEADER_LEN,
-				   vp->length - EAP_HEADER_LEN);
+	(tls_session->record_plus)(&tls_session->clean_in, vp->vp_octets + EAP_HEADER_LEN, vp->length - EAP_HEADER_LEN);
 	
 	/*
 	 *	Send the rest of the EAP data.
 	 */
-	for (vp = vp->next; vp != NULL; vp = vp->next) {
-		(tls_session->record_plus)(&tls_session->clean_in,
-					   vp->vp_octets, vp->length);
+	for (this = paircursor(&cursor, &vp);
+	     this;
+	     this = pairnext(&cursor)) {
+		(tls_session->record_plus)(&tls_session->clean_in, this->vp_octets, this->length);
 	}
 
 	tls_handshake_send(request, tls_session);
@@ -1247,14 +1252,16 @@ static int setup_fake_request(REQUEST *request, REQUEST *fake, peap_tunnel_t *t)
 	 */
 	if (t->copy_request_to_tunnel) {
 		VALUE_PAIR *copy;
+		vp_cursor_t cursor;
 
-		for (vp = request->packet->vps; vp != NULL; vp = vp->next) {
+		for (vp = paircursor(&cursor, &request->packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
 			/*
 			 *	The attribute is a server-side thingy,
 			 *	don't copy it.
 			 */
-			if ((vp->da->attr > 255) &&
-			    (((vp->da->attr >> 16) & 0xffff) == 0)) {
+			if ((vp->da->attr > 255) && (((vp->da->attr >> 16) & 0xffff) == 0)) {
 				continue;
 			}
 

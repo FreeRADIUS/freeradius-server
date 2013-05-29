@@ -300,7 +300,8 @@ static int detail_open(rad_listen_t *this)
 int detail_recv(rad_listen_t *listener)
 {
 	char		key[256], op[8], value[1024];
-	VALUE_PAIR	*vp, **tail;
+	vp_cursor_t	cursor;
+	VALUE_PAIR	*vp;
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
@@ -469,8 +470,7 @@ int detail_recv(rad_listen_t *listener)
 			goto do_header;
 	}
 	
-	tail = &data->vps;
-	while (*tail) tail = &(*tail)->next;
+	paircursor(&cursor, &data->vps);
 
 	/*
 	 *	Read a header, OR a value-pair.
@@ -563,8 +563,7 @@ int detail_recv(rad_listen_t *listener)
 			vp = paircreate(data, PW_PACKET_ORIGINAL_TIMESTAMP, 0);
 			if (vp) {
 				vp->vp_date = (uint32_t) data->timestamp;
-				*tail = vp;
-				tail = &(vp->next);
+		    		pairinsert(&cursor, vp);
 			}
 			continue;
 		}
@@ -578,8 +577,7 @@ int detail_recv(rad_listen_t *listener)
 		vp = NULL;
 		if ((userparse(data, buffer, &vp) > 0) &&
 		    (vp != NULL)) {
-			*tail = vp;
-			tail = &(vp->next);
+		    	pairinsert(&cursor, vp);
 		}
 	}
 
@@ -727,7 +725,9 @@ int detail_recv(rad_listen_t *listener)
 
 	if (debug_flag) {
 		fr_printf_log("detail_recv: Read packet from %s\n", data->filename_work);
-		for (vp = packet->vps; vp; vp = vp->next) {
+		for (vp = paircursor(&cursor, &packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
 			debug_pair(vp);
 		}
 	}

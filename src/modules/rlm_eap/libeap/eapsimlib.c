@@ -70,6 +70,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	uint8_t const	*append;
 	int		appendlen;
 	unsigned char	subtype;
+	vp_cursor_t	cursor;
 
 	macspace = NULL;
 	append = NULL;
@@ -94,7 +95,9 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * that we need to encode all of this.
 	 */
 	encoded_size = 0;
-	for (vp = r->vps; vp; vp = vp->next) {
+	for (vp = paircursor(&cursor, &r->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		int roundedlen;
 		int vplen;
 
@@ -160,8 +163,6 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 * SIM code adds a subtype, and 2 bytes of reserved = 3.
 	 *
 	 */
-
-
 	encoded_size += 3;
 	encodedmsg = talloc_array(ep, uint8_t, encoded_size);
 	if (!encodedmsg) {
@@ -178,7 +179,7 @@ int map_eapsim_basictypes(RADIUS_PACKET *r, eap_packet_t *ep)
 	 */
 	attr = encodedmsg+3;
 
-	for(vp = r->vps; vp != NULL; vp = vp->next) {
+	for (vp = pairfirst(&cursor); vp; vp = pairnext(&cursor)) {
 		int roundedlen;
 
 		if(vp->da->attr < ATTRIBUTE_EAP_SIM_BASE ||

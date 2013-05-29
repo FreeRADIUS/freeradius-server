@@ -151,6 +151,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 
 		entry = users;
 		while (entry) {
+			vp_cursor_t cursor;
 			if (compat_mode) {
 				DEBUG("[%s]:%d Cistron compatibility checks for entry %s ...",
 						filename, entry->lineno,
@@ -164,7 +165,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 			 *	and probably ':=' for server
 			 *	configuration items.
 			 */
-			for (vp = entry->check; vp != NULL; vp = vp->next) {
+			for (vp = paircursor(&cursor, &entry->check); vp; vp = pairnext(&cursor)) {
 				/*
 				 *	Ignore attributes which are set
 				 *	properly.
@@ -231,7 +232,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 			 *	It's a common enough mistake, that it's
 			 *	worth doing.
 			 */
-			for (vp = entry->reply; vp != NULL; vp = vp->next) {
+			for (vp = paircursor(&cursor, &entry->reply); vp; vp = pairnext(&cursor)) {
 				/*
 				 *	If it's NOT a vendor attribute,
 				 *	and it's NOT a wire protocol

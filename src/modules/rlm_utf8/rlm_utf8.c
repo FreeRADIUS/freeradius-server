@@ -31,11 +31,12 @@ RCSID("$Id$")
 static rlm_rcode_t utf8_clean(UNUSED void *instance, REQUEST *request)
 {
 	size_t i, len;
-	VALUE_PAIR *vp, *next;
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
 
-	for (vp = request->packet->vps; vp != NULL; vp = next) {
-		next = vp->next;
-
+	for (vp = paircursor(&cursor, &request->packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		if (vp->da->type != PW_TYPE_STRING) continue;
 
 		for (i = 0; i < vp->length; i += len) {

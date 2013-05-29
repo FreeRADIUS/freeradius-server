@@ -734,8 +734,11 @@ static void process_file(char const *filename)
 			 *	it if so.
 			 */
 			if (head) {
+				vp_cursor_t cursor;
 				p = output;
-				for (vp = head; vp != NULL; vp = vp->next) {
+				for (vp = paircursor(&cursor, &head);
+				     vp;
+				     vp = pairnext(&cursor)) {
 					vp_prints(p, sizeof(output) - (p - output), vp);
 					p += strlen(p);
 					

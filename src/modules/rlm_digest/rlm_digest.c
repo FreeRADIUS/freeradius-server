@@ -28,28 +28,21 @@ RCSID("$Id$")
 
 static int digest_fix(REQUEST *request)
 {
-	VALUE_PAIR *vp;
-
+	VALUE_PAIR *first, *i;
+	vp_cursor_t cursor;
+	
 	/*
 	 *	We need both of these attributes to do the authentication.
 	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0, TAG_ANY);
-	if (!vp) {
+	first = pairfind(request->packet->vps, PW_DIGEST_RESPONSE, 0, TAG_ANY);
+	if (!first) {
 		return RLM_MODULE_NOOP;
 	}
 
 	/*
 	 *	Check the sanity of the attribute.
 	 */
-	if (vp->length != 32) {
-		return RLM_MODULE_NOOP;
-	}
-
-	/*
-	 *	We need these, too.
-	 */
-	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
-	if (!vp) {
+	if (first->length != 32) {
 		return RLM_MODULE_NOOP;
 	}
 
@@ -57,10 +50,17 @@ static int digest_fix(REQUEST *request)
 	 *	Check for proper format of the Digest-Attributes
 	 */
 	RDEBUG("Checking for correctly formatted Digest-Attributes");
-	while (vp) {
-		int length = vp->length;
+	
+	first = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
+	if (!first) {
+		return RLM_MODULE_NOOP;
+	}
+	
+	paircursor(&cursor, &first);
+	while ((i = pairfindnext(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
+		int length = i->length;
 		int attrlen;
-		uint8_t const *p = vp->vp_octets;
+		uint8_t const *p = i->vp_octets;
 
 		/*
 		 *	Until this stupidly encoded attribute is exhausted.
@@ -95,22 +95,17 @@ static int digest_fix(REQUEST *request)
 			length -= attrlen;
 			p += attrlen;
 		} /* loop over this one attribute */
-
-		/*
-		 *	Find the next one, if it exists.
-		 */
-		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	}
 
 	/*
 	 *	Convert them to something sane.
 	 */
-	RDEBUG("Digest-Attributes look OK.  Converting them to something more usful.");
-	vp = pairfind(request->packet->vps, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
-	while (vp) {
-		int length = vp->length;
+	RDEBUG("Digest-Attributes look OK.  Converting them to something more useful.");
+	pairfirst(&cursor);
+	while ((i = pairfindnext(&cursor, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY))) {
+		int length = i->length;
 		int attrlen;
-		uint8_t const *p = vp->vp_octets;
+		uint8_t const *p = &i->vp_octets[0];
 		char *q;
 		VALUE_PAIR *sub;
 
@@ -169,11 +164,6 @@ static int digest_fix(REQUEST *request)
 			length -= attrlen;
 			p += attrlen;
 		} /* loop over this one attribute */
-
-		/*
-		 *	Find the next one, if it exists.
-		 */
-		vp = pairfind(vp->next, PW_DIGEST_ATTRIBUTES, 0, TAG_ANY);
 	}
 
 	return RLM_MODULE_OK;

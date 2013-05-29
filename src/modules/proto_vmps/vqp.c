@@ -426,14 +426,14 @@ int vqp_decode(RADIUS_PACKET *packet)
 {
 	uint8_t *ptr, *end;
 	int attribute, length;
-	VALUE_PAIR *vp, **tail;
+	vp_cursor_t cursor;
+	VALUE_PAIR *vp;
 
 	if (!packet || !packet->data) return -1;
 
 	if (packet->data_len < VQP_HDR_LEN) return -1;
 
-	tail = &packet->vps;
-
+	paircursor(&cursor, &packet->vps);
 	vp = paircreate(packet, PW_VQP_PACKET_TYPE, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
@@ -441,9 +441,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->data[1];
 	debug_pair(vp);
-
-	*tail = vp;
-	tail = &(vp->next);
+	pairinsert(&cursor, vp);
 
 	vp = paircreate(packet, PW_VQP_ERROR_CODE, 0);
 	if (!vp) {
@@ -452,10 +450,8 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->data[2];
 	debug_pair(vp);
-
-	*tail = vp;
-	tail = &(vp->next);
-
+	pairinsert(&cursor, vp);
+	
 	vp = paircreate(packet, PW_VQP_SEQUENCE_NUMBER, 0);
 	if (!vp) {
 		fr_strerror_printf("No memory");
@@ -463,9 +459,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 	}
 	vp->vp_integer = packet->id; /* already set by vqp_recv */
 	debug_pair(vp);
-
-	*tail = vp;
-	tail = &(vp->next);
+	pairinsert(&cursor, vp);
 
 	ptr = packet->data + VQP_HDR_LEN;
 	end = packet->data + packet->data_len;
@@ -525,9 +519,7 @@ int vqp_decode(RADIUS_PACKET *packet)
 		}
 		ptr += length;
 		debug_pair(vp);
-
-		*tail = vp;
-		tail = &(vp->next);
+		pairinsert(&cursor, vp);
 	}
 
 	/*

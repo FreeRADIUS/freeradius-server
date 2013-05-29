@@ -493,6 +493,7 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 	head = paircopy(ctx, vps);
 
 	while (head) {
+		vp_cursor_t cursor;
 		/*
 		 *	Tagged attributes are added to the hash with name
 		 *	<attribute>:<tag>, others just use the normal attribute
@@ -513,14 +514,17 @@ static void perl_store_vps(TALLOC_CTX *ctx, VALUE_PAIR *vps, HV *rad_hv)
 		sublist = NULL;
 		pairfilter(ctx, &sublist, &head, head->da->attr, head->da->vendor, head->tag);
 
+		paircursor(&cursor, &sublist);
 		/*
 		 *	Attribute has multiple values
 		 */
-		if (sublist->next) {
+		if (pairnext(&cursor)) {
 			VALUE_PAIR *vp;
 
 			av = newAV();
-			for (vp = sublist; vp; vp = vp->next) {
+			for (vp = pairfirst(&cursor);
+			     vp;
+			     vp = pairnext(&cursor)) {
 				len = vp_prints_value(buffer, sizeof(buffer), vp, false);
 				av_push(av, newSVpv(buffer, len));
 			}

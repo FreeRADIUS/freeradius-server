@@ -66,16 +66,19 @@ static char const *radsniff_version = "radsniff version " RADIUSD_VERSION_STRING
 
 static int filter_packet(RADIUS_PACKET *packet)
 {
+	vp_cursor_t cursor, check_cursor;
 	VALUE_PAIR *check_item;
 	VALUE_PAIR *vp;
 	unsigned int pass, fail;
 	int compare;
 
 	pass = fail = 0;
-	for (vp = packet->vps; vp != NULL; vp = vp->next) {
-		for (check_item = filter_vps;
-		     check_item != NULL;
-		     check_item = check_item->next)
+	for (vp = paircursor(&cursor, &packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
+		for (check_item = paircursor(&check_cursor, &filter_vps);
+		     check_item;
+		     check_item = pairnext(&check_cursor))
 			if ((check_item->da == vp->da)
 			 && (check_item->op != T_OP_SET)) {
 				compare = paircmp(check_item, vp);
@@ -148,11 +151,14 @@ static int filter_packet(RADIUS_PACKET *packet)
 static void sort(RADIUS_PACKET *packet)
 {
 	int i, j, size;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *tmp;
 	VALUE_PAIR *array[1024]; /* way more than necessary */
 
 	size = 0;
-	for (vp = packet->vps; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		array[size++] = vp;
 	}
 

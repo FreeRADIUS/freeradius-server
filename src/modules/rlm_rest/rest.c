@@ -852,6 +852,7 @@ static void rest_read_ctx_init(REQUEST *request,
 	unsigned short count = 0, i;
 	unsigned short swap;
 
+	vp_cursor_t cursor;
 	VALUE_PAIR **current, *tmp;
 
 	/*
@@ -863,21 +864,23 @@ static void rest_read_ctx_init(REQUEST *request,
 	/*
 	 * Create sorted array of VP pointers
 	 */
-	tmp = request->packet->vps;
-	while (tmp != NULL) {
-		tmp = tmp->next;
+	for (tmp = paircursor(&cursor, &request->packet->vps);
+	     tmp;
+	     tmp = pairnext(&cursor)) {
 		count++;
 	}
 
 	ctx->first = current = rad_malloc((sizeof(tmp) * (count + 1)));
 	ctx->next = ctx->first;
-
-	tmp = request->packet->vps;
-	while (tmp != NULL) {
-		*current++ = tmp;
-		tmp = tmp->next;
-	}
+	
 	current[0] = NULL;
+
+	for (tmp = paircursor(&cursor, &request->packet->vps);
+	     tmp;
+	     tmp = pairnext(&cursor)) {
+		*current++ = tmp;    
+	}
+	     
 	current = ctx->first;
 
 	if (!sort || (count < 2)) return;

@@ -396,6 +396,7 @@ static void pairfree_wrapper(void *data)
  */
 int modcall(int component, modcallable *c, REQUEST *request)
 {
+	vp_cursor_t cursor;
 	int myresult, mypriority;
 	modcall_stack stack;
 	modcallable *parent, *child;
@@ -579,8 +580,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					if (myresult == MOD_ACTION_RETURN) {
 						break;
 					}
-					vp = pairfind(vp->next, vp->da->attr,
-						      vp->da->vendor, TAG_ANY);
+					paircursor(&cursor, &vp);
+					vp = pairfindnext(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
 
 					/*
 					 *	Delete the cached attribute,

@@ -321,8 +321,11 @@ int radlog(log_type_t type, char const *msg, ...)
  */
 void vp_listdebug(VALUE_PAIR *vp)
 {
+	vp_cursor_t cursor;
 	char tmpPair[70];
-	for (; vp; vp = vp->next) {
+	for (vp = paircursor(&cursor, &vp);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		vp_prints(tmpPair, sizeof(tmpPair), vp);
 		DEBUG2("     %s", tmpPair);
 	}

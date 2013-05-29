@@ -455,7 +455,8 @@ static int fr_dhcp_attr2vp(RADIUS_PACKET *packet, VALUE_PAIR *vp, uint8_t const 
 static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *data, size_t data_len)
 {
 	const uint8_t *p;
-	VALUE_PAIR *head, **tail, *vp;
+	VALUE_PAIR *head, *vp;
+	vp_cursor_t cursor;
 
 	/*
 	 *	Take a pass at parsing it.
@@ -472,8 +473,8 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 	 *	Got here... must be well formed.
 	 */
 	head = NULL;
-	tail = &head;
-
+	paircursor(&cursor, &head);
+	
 	p = data;
 	while (p < (data + data_len)) {
 		vp = paircreate(packet, tlv->da->attr | (p[0] << 8), DHCP_MAGIC_VENDOR);
@@ -487,8 +488,7 @@ static int decode_tlv(RADIUS_PACKET *packet, VALUE_PAIR *tlv, uint8_t const *dat
 			goto make_tlv;
 		}
 
-		*tail = vp;
-		tail = &(vp->next);
+		pairinsert(&cursor, vp);
 		p += 2 + p[1];
 	}
 
@@ -585,12 +585,14 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 			       uint8_t const *data, size_t len, VALUE_PAIR **head)
 {
 	int i;
-	VALUE_PAIR *vp, **tail;
+	VALUE_PAIR *vp;
+	vp_cursor_t cursor;
 	uint8_t const *p, *next;
 	next = data;
 
 	*head = NULL;
-	tail = head;
+	paircursor(&cursor, &head);
+
 	/*
 	 *	FIXME: This should also check sname && file fields.
 	 *	See the dhcp_get_option() function above.
@@ -680,10 +682,12 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 				return -1;
 			}
 
-			*tail = vp;
-			while (*tail) {
-				debug_pair(*tail);
-				tail = &(*tail)->next;
+			pairinsert(&cursor, vp);
+			
+			for (vp = paircurrent(&cursor);
+			     vp;
+			     vp = pairnext(&cursor)) {
+				debug_pair(vp);
 			}
 			p += alen;
 		} /* loop over array entries */
@@ -697,11 +701,12 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	size_t i;
 	uint8_t *p;
 	uint32_t giaddr;
-	VALUE_PAIR *head, *vp, **tail;
+	vp_cursor_t cursor;
+	VALUE_PAIR *head, *vp;
 	VALUE_PAIR *maxms, *mtu;
 
 	head = NULL;
-	tail = &head;
+	paircursor(&cursor, &head);
 	p = packet->data;
 
 	if ((fr_debug_flag > 2) && fr_log_fp) {
@@ -791,8 +796,7 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 		if (!vp) continue;
 
 		debug_pair(vp);
-		*tail = vp;
-		tail = &vp->next;
+		pairinsert(&cursor, vp);
 	}
 
 	/*
@@ -803,10 +807,18 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	 * 	Nothing uses tail after this call, if it does in the future
 	 *	it'll need to find the new tail...
 	 */
-	if (fr_dhcp_decode_options(packet,
-				   packet->data + 240, packet->data_len - 240,
-				   tail) < 0) {
-		return -1;
+	{
+		VALUE_PAIR *options = NULL;
+		
+		if (fr_dhcp_decode_options(packet,
+					   packet->data + 240, packet->data_len - 240,
+					   &options) < 0) {
+			return -1;
+		}
+		
+		if (options) {
+			pairinsert(&cursor, options);
+		}
 	}
 
 	/*
@@ -866,12 +878,6 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	if (maxms && mtu && (maxms->vp_integer > mtu->vp_integer)) {
 		fr_strerror_printf("DHCP WARNING: Client says MTU is smaller than maximum message size: fixing it");
 		maxms->vp_integer = mtu->vp_integer;
-	}
-
-	if (fr_debug_flag > 0) {
-		for (vp = packet->vps; vp != NULL; vp = vp->next) {
-			/* Print debug output here? */
-		}
 	}
 
 	if (fr_debug_flag) fflush(stdout);
@@ -970,6 +976,7 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(RADIUS_PACKET *packet, VALUE_PAIR *vps)
 	int length;
 	unsigned int attribute;
 	uint8_t *ptr;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *tlv;
 
 	attribute = vps->da->attr & 0xffff00ff;
@@ -978,7 +985,9 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(RADIUS_PACKET *packet, VALUE_PAIR *vps)
 	if (!tlv) return NULL;
 
 	tlv->length = 0;
-	for (vp = vps; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		/*
 		 *	Group the attributes ONLY until we see a
 		 *	non-TLV attribute.
@@ -1004,7 +1013,9 @@ static VALUE_PAIR *fr_dhcp_vp2suboption(RADIUS_PACKET *packet, VALUE_PAIR *vps)
 	}
 
 	ptr = tlv->vp_tlv;
-	for (vp = vps; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		if (!vp->da->flags.is_tlv ||
 		    vp->da->flags.extended ||
 		    ((vp->da->attr & 0xffff00ff) != attribute)) {
@@ -1035,6 +1046,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 {
 	unsigned int i, num_vps;
 	uint8_t *p;
+	vp_cursor_t cursor;
 	VALUE_PAIR *vp;
 	uint32_t lvalue, mms;
 	size_t dhcp_size, length;
@@ -1314,30 +1326,31 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 	 *	the later code.
 	 */
 	num_vps = 0;
-	for (vp = packet->vps; vp != NULL; vp = vp->next) {
+	for (vp = paircursor(&cursor, &packet->vps);
+	     vp;
+	     vp = pairnext(&cursor)) {
 		num_vps++;
 	}
 	if (num_vps > 1) {
-		VALUE_PAIR **array, **last;
+		VALUE_PAIR **array;
 
 		array = talloc_array(packet, VALUE_PAIR*, num_vps);
 
 		i = 0;
-		for (vp = packet->vps; vp != NULL; vp = vp->next) {
+		for (vp = paircursor(&cursor, &packet->vps);
+		     vp;
+		     vp = pairnext(&cursor)) {
 			array[i++] = vp;
 		}
 
 		/*
 		 *	Sort the attributes.
 		 */
-		qsort(array, (size_t) num_vps, sizeof(VALUE_PAIR *),
-		      attr_cmp);
+		qsort(array, (size_t) num_vps, sizeof(VALUE_PAIR *), attr_cmp);
 
-		last = &packet->vps;
+		paircursor(&cursor, &packet->vps);
 		for (i = 0; i < num_vps; i++) {
-			*last = array[i];
-			array[i]->next = NULL;
-			last = &(array[i]->next);
+			pairinsert(&cursor, array[i]->next);
 		}
 		talloc_free(array);
 	}
@@ -1366,7 +1379,9 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 		length = vp->length;
 
-		for (same = vp->next; same != NULL; same = same->next) {
+		for (same = paircursor(&cursor, &vp->next);
+		     same;
+		     same = pairnext(&cursor)) {
 			if (same->da->attr != vp->da->attr) break;
 			num_entries++;
 		}

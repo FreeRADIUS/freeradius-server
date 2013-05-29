@@ -1457,9 +1457,13 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		 * 06:<mschapid>:00:02:<2nd chunk>
 		 * 06:<mschapid>:00:03:<3rd chunk>
 		 */
-		for (seq=1;seq<4;seq++) {
-			int found=0;
-			for (nt_enc=request->packet->vps; nt_enc; nt_enc=nt_enc->next) {
+		for (seq = 1; seq < 4; seq++) {
+			vp_cursor_t cursor;
+			int found = 0;
+			
+			for (nt_enc = paircursor(&cursor, &request->packet->vps);
+			     nt_enc;
+			     nt_enc = pairnext(&cursor)) {
 				if (nt_enc->da->vendor != VENDORPEC_MICROSOFT)
 					continue;
 
