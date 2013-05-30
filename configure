@@ -2389,8 +2389,8 @@ fi
 
 if test -d $srcdir/.git; then
   if test "x$developer" != "xno"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: Found .git directory, enabling developer build implicitly, disable with --enable-developer=no" >&5
-$as_echo "$as_me: Found .git directory, enabling developer build implicitly, disable with --enable-developer=no" >&6;}
+    { $as_echo "$as_me:${as_lineno-$LINENO}: found .git directory, enabling developer build implicitly, disable with --enable-developer=no" >&5
+$as_echo "$as_me: found .git directory, enabling developer build implicitly, disable with --enable-developer=no" >&6;}
     developer="yes"
   fi
 fi
@@ -4258,7 +4258,7 @@ else
 
 
     CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Qunused-arguments"
+    CXXFLAGS="$CXXFLAGS -Werror -Qunused-arguments"
     export CXXFLAGS
 
     ac_ext=c
@@ -7573,7 +7573,7 @@ else
 
 
     CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Wdocumentation"
+    CXXFLAGS="$CXXFLAGS -Werror -Wdocumentation"
     export CXXFLAGS
 
     ac_ext=c
@@ -7626,8 +7626,8 @@ $as_echo "$as_me: Developer CFLAGS are \"$devflags\"" >&6;}
 
   CFLAGS="$CFLAGS $devflags"
         if test "x$EXPERIMENTAL" != "xno"; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: Is developer build, enabling experimental modules implicitly, disable with --with-experimental-modules=no" >&5
-$as_echo "$as_me: Is developer build, enabling experimental modules implicitly, disable with --with-experimental-modules=no" >&6;}
+    { $as_echo "$as_me:${as_lineno-$LINENO}: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&5
+$as_echo "$as_me: is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules" >&6;}
     EXPERIMENTAL=yes
   fi
 else

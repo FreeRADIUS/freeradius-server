@@ -19,7 +19,7 @@ AC_DEFUN([AX_QUNUSED_ARGUMENTS_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Qunused-arguments"], [ax_cv_qunused_arguments_flag],[
 
     CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Qunused-arguments"
+    CXXFLAGS="$CXXFLAGS -Werror -Qunused-arguments"
     export CXXFLAGS
 
     AC_LANG_PUSH(C)
@@ -38,7 +38,7 @@ AC_DEFUN([AX_WDOCUMENTATION_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Wdocumentation"], [ax_cv_wdocumentation_flag],[
 
     CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Wdocumentation"
+    CXXFLAGS="$CXXFLAGS -Werror -Wdocumentation"
     export CXXFLAGS
 
     AC_LANG_PUSH(C)
