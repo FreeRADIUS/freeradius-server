@@ -145,11 +145,9 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_PACKET *packet)
 {
 	rlm_attr_filter_t *inst = instance;
-	vp_cursor_t	cursor;
-	vp_cursor_t	out;
 	VALUE_PAIR	*vp;
-	VALUE_PAIR	*output, *input;
-	VALUE_PAIR	*check_item;
+	vp_cursor_t	input, check, out;
+	VALUE_PAIR	*input_item, *check_item, *output;
 	PAIR_LIST	*pl;
 	int		found = 0;
 	int		pass, fail = 0;
@@ -205,9 +203,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 		RDEBUG2("Matched entry %s at line %d", pl->name, pl->lineno);
 		found = 1;
 
-		for (check_item = paircursor(&cursor, &pl->check);
+		for (check_item = paircursor(&check, &pl->check);
 		     check_item;
-		     check_item = pairnext(&cursor)) {
+		     check_item = pairnext(&check)) {
 			if (!check_item->da->vendor &&
 			    (check_item->da->attr == PW_FALL_THROUGH) &&
 				(check_item->vp_integer == 1)) {
@@ -242,9 +240,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 		 *	only if it matches all rules that describe an
 		 *	Idle-Timeout.
 		 */
-		for (input = paircursor(&cursor, &packet->vps);
-		     input;
-		     input = pairnext(&cursor)) {
+		for (input_item = paircursor(&input, &packet->vps);
+		     input_item;
+		     input_item = pairnext(&input)) {
 			/* reset the pass,fail vars for each reply item */
 			pass = fail = 0;
 
@@ -252,22 +250,22 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 			 *	reset the check_item pointer to
 			 *	beginning of the list
 			 */
-			for (check_item = pairfirst(&cursor);
+			for (check_item = pairfirst(&check);
 			     check_item;
-			     check_item = pairnext(&cursor)) {
+			     check_item = pairnext(&check)) {
 				/*
 				 *	Vendor-Specific is special, and
 				 *	matches any VSA if the comparison
 				 *	is always true.
 				 */
-				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) && (input->da->vendor != 0) &&
+				if ((check_item->da->attr == PW_VENDOR_SPECIFIC) && (input_item->da->vendor != 0) &&
 				    (check_item->op == T_OP_CMP_TRUE)) {
 					pass++;
 					continue;
 				}
 
 				if (vp->da->attr == check_item->da->attr) {
-					check_pair(check_item, input, &pass, &fail);
+					check_pair(check_item, input_item, &pass, &fail);
 				}
 			}
 
