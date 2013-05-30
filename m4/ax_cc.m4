@@ -18,9 +18,9 @@ AC_DEFUN([AX_CC_IS_CLANG],[
 AC_DEFUN([AX_QUNUSED_ARGUMENTS_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Qunused-arguments"], [ax_cv_qunused_arguments_flag],[
 
-    CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Werror -Qunused-arguments"
-    export CXXFLAGS
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Qunused-arguments"
+    export CFLAGS
 
     AC_LANG_PUSH(C)
     AC_TRY_COMPILE(
@@ -30,16 +30,16 @@ AC_DEFUN([AX_QUNUSED_ARGUMENTS_FLAG],[
       [ax_cv_qunused_arguments_flag="no"])
     AC_LANG_POP
 
-    CXXFLAGS="$CXXFLAGS_SAVED"
+    CFLAGS="$CFLAGS_SAVED"
   ])
 ])
 
 AC_DEFUN([AX_WDOCUMENTATION_FLAG],[
   AC_CACHE_CHECK([for the compiler flag "-Wdocumentation"], [ax_cv_wdocumentation_flag],[
 
-    CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Werror -Wdocumentation"
-    export CXXFLAGS
+    CFLAGS_SAVED=$CFLAGS
+    CFLAGS="$CFLAGS -Werror -Wdocumentation"
+    export CFLAGS
 
     AC_LANG_PUSH(C)
     AC_TRY_COMPILE(
@@ -49,6 +49,6 @@ AC_DEFUN([AX_WDOCUMENTATION_FLAG],[
       [ax_cv_wdocumentation_flag="no"])
     AC_LANG_POP
 
-    CXXFLAGS="$CXXFLAGS_SAVED"
+    CFLAGS="$CFLAGS_SAVED"
   ])
 ])
