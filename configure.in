@@ -26,6 +26,7 @@ export CFLAGS LIBS LDFLAGS CPPFLAGS
 AC_INIT([freeradius],[$]Id[$],[http://bugs.freeradius.org],,[http://www.freeradius.org])
 AC_CONFIG_SRCDIR([src/main/radiusd.c])
 AC_CONFIG_HEADER([src/include/autoconf.h])
+m4_include([m4/ax_cc.m4])
 
 dnl #############################################################
 dnl #
@@ -80,9 +81,12 @@ AC_ARG_ENABLE(developer,
   esac ]
 )
 
+dnl #
+dnl # Turn on the developer flag when taken from a git checkout (not a release)
+dnl #
 if test -d $srcdir/.git; then
   if test "x$developer" != "xno"; then
-    dnl turn on the developer flag when taken from a git checkout (not a release)
+    AC_MSG_NOTICE([found .git directory, enabling developer build implicitly, disable with --enable-developer=no])
     developer="yes"
   fi  
 fi
@@ -123,33 +127,23 @@ AC_PROG_GCC_TRADITIONAL
 AC_PROG_CC_SUNPRO
 AC_PROG_RANLIB
 
-dnl #
-dnl # check if were compiling with CLANG, autoconf GCC macro
-dnl # identifies CLANG as GCC
-dnl #
-AC_MSG_CHECKING([if compiling with clang])
-
-AC_COMPILE_IFELSE(
-[AC_LANG_PROGRAM([], [[
-#ifndef __clang__
-       not clang
-#endif
-]])],
-[CLANG=yes], [CLANG=no])
-
-AC_MSG_RESULT([$CLANG])
+AX_CC_IS_CLANG
 
 dnl #
 dnl # Set Default CFLAGS for GCC compatible compilers
 dnl #
 if test "x$GCC" = "xyes"; then
-    CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+  CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
 fi
 
-if test "x$CLANG" = "xyes"; then
-    CFLAGS="$CFLAGS -Qunused-arguments"
-    LDFLAGS="$LDFLAGS -Qunused-arguments"
-fi
+dnl #
+dnl # -Qunused-arguments means the compiler won't complain about unsupported arguments
+dnl #
+AX_QUNUSED_ARGUMENTS_FLAG
+if test "x$ax_cv_qunused_arguments_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Qunused-arguments"
+  LDFLAGS="$LDFLAGS -Qunused-arguments"
+fi 
 
 dnl Compile in large (2G+) file support.
 AC_SYS_LARGEFILE
@@ -1009,25 +1003,37 @@ else
 fi
 AC_SUBST(LIBPREFIX)
 
-AC_MSG_CHECKING(for developer gcc flags)
-
-
 if test "x$developer" = "xyes"; then
-  if test "x$GCC" = "xyes"; then
-    devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
-    CFLAGS="$CFLAGS $devflags"
-    INSTALLSTRIP=""
-    AC_MSG_RESULT(yes.  Using $devflags)
+  AC_MSG_NOTICE([Setting additional developer CFLAGS])
+  
+  dnl #
+  dnl # Tell the compiler to parse doxygen documentation and verify it against function and variable declarations
+  dnl #
+  AX_WDOCUMENTATION_FLAG
+  if test "x$ax_cv_wdocumentation_flag" = "xyes"; then
+    devflags="-Wdocumentation"
   fi
 
+  if test "x$GCC" = "xyes"; then
+    devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+    INSTALLSTRIP=""
+  fi
+  
+  AC_MSG_NOTICE([Developer CFLAGS are "$devflags"])
+  
+  CFLAGS="$CFLAGS $devflags"
+  dnl #
+  dnl # Enable experimental modules (we want to know if code changes breaks one of them)
+  dnl #
   if test "x$EXPERIMENTAL" != "xno"; then
+    AC_MSG_NOTICE([is developer build, enabling experimental modules implicitly, disable with --without-experimental-modules])
     EXPERIMENTAL=yes
   fi
 else
   devflags=""
   CFLAGS="$CFLAGS -DNDEBUG"
   INSTALLSTRIP=""
-  AC_MSG_RESULT(no.)
+  AC_MSG_RESULT([no.])
 fi
 
 export EXPERIMENTAL

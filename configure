@@ -2343,6 +2343,12 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
+
+
+
+
 RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
 RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^[^\.]*\.//' | sed 's/\..*$//'`
 RADIUSD_INCRM_VERSION=`cat VERSION | sed 's/^.*\..*\.//' | sed 's/[\.-].*$//'`
@@ -2383,7 +2389,9 @@ fi
 
 if test -d $srcdir/.git; then
   if test "x$developer" != "xno"; then
-        developer="yes"
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Found .git directory, enabling developer build implicitly, disable with --enable-developer=no" >&5
+$as_echo "$as_me: Found .git directory, enabling developer build implicitly, disable with --enable-developer=no" >&6;}
+    developer="yes"
   fi
 fi
 
@@ -4202,41 +4210,96 @@ else
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking if compiling with clang" >&5
-$as_echo_n "checking if compiling with clang... " >&6; }
 
-cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking if compiler is clang" >&5
+$as_echo_n "checking if compiler is clang... " >&6; }
+if ${ax_cv_clang+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
 main ()
 {
 
-#ifndef __clang__
+  #ifndef __clang__
        not clang
-#endif
+  #endif
 
   ;
   return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  CLANG=yes
+  ax_cv_clang=yes
 else
-  CLANG=no
+  ax_cv_clang=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $CLANG" >&5
-$as_echo "$CLANG" >&6; }
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_clang" >&5
+$as_echo "$ax_cv_clang" >&6; }
+
 
 if test "x$GCC" = "xyes"; then
-    CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
+  CFLAGS="$CFLAGS -Wall -D_GNU_SOURCE"
 fi
 
-if test "x$CLANG" = "xyes"; then
-    CFLAGS="$CFLAGS -Qunused-arguments"
-    LDFLAGS="$LDFLAGS -Qunused-arguments"
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Qunused-arguments\"" >&5
+$as_echo_n "checking for the compiler flag \"-Qunused-arguments\"... " >&6; }
+if ${ax_cv_qunused_arguments_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+    CXXFLAGS_SAVED=$CXXFLAGS
+    CXXFLAGS="$CXXFLAGS -Qunused-arguments"
+    export CXXFLAGS
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_qunused_arguments_flag="yes"
+else
+  ax_cv_qunused_arguments_flag="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CXXFLAGS="$CXXFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_qunused_arguments_flag" >&5
+$as_echo "$ax_cv_qunused_arguments_flag" >&6; }
+
+if test "x$ax_cv_qunused_arguments_flag" = "xyes"; then
+  CFLAGS="$CFLAGS -Qunused-arguments"
+  LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi
 
 # Check whether --enable-largefile was given.
@@ -7497,20 +7560,74 @@ else
 fi
 
 
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for developer gcc flags" >&5
-$as_echo_n "checking for developer gcc flags... " >&6; }
-
-
 if test "x$developer" = "xyes"; then
-  if test "x$GCC" = "xyes"; then
-    devflags="-Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
-    CFLAGS="$CFLAGS $devflags"
-    INSTALLSTRIP=""
-    { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes.  Using $devflags" >&5
-$as_echo "yes.  Using $devflags" >&6; }
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Setting additional developer CFLAGS" >&5
+$as_echo "$as_me: Setting additional developer CFLAGS" >&6;}
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wdocumentation\"" >&5
+$as_echo_n "checking for the compiler flag \"-Wdocumentation\"... " >&6; }
+if ${ax_cv_wdocumentation_flag+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+
+    CXXFLAGS_SAVED=$CXXFLAGS
+    CXXFLAGS="$CXXFLAGS -Wdocumentation"
+    export CXXFLAGS
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+int
+main ()
+{
+1;
+  ;
+  return 0;
+}
+_ACEOF
+if ac_fn_c_try_compile "$LINENO"; then :
+  ax_cv_wdocumentation_flag="yes"
+else
+  ax_cv_wdocumentation_flag="no"
+fi
+rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+    CXXFLAGS="$CXXFLAGS_SAVED"
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_wdocumentation_flag" >&5
+$as_echo "$ax_cv_wdocumentation_flag" >&6; }
+
+  if test "x$ax_cv_wdocumentation_flag" = "xyes"; then
+    devflags="-Wdocumentation"
   fi
 
-  if test "x$EXPERIMENTAL" != "xno"; then
+  if test "x$GCC" = "xyes"; then
+    devflags="$devflags -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings -Wstrict-prototypes -Wmissing-prototypes -Wmissing-declarations -Wnested-externs -W -Wredundant-decls -Wundef -Wformat-y2k -Wno-format-extra-args -Wno-format-zero-length -Wno-cast-align -Wformat-nonliteral -Wformat-security -Wformat=2 -DWITH_VERIFY_PTR=1"
+    INSTALLSTRIP=""
+  fi
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: Developer CFLAGS are \"$devflags\"" >&5
+$as_echo "$as_me: Developer CFLAGS are \"$devflags\"" >&6;}
+
+  CFLAGS="$CFLAGS $devflags"
+        if test "x$EXPERIMENTAL" != "xno"; then
+    { $as_echo "$as_me:${as_lineno-$LINENO}: Is developer build, enabling experimental modules implicitly, disable with --with-experimental-modules=no" >&5
+$as_echo "$as_me: Is developer build, enabling experimental modules implicitly, disable with --with-experimental-modules=no" >&6;}
     EXPERIMENTAL=yes
   fi
 else
