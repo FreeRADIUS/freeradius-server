@@ -495,8 +495,8 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
  * here is extraneous.
  *
  * @param[in] name xlat to unregister.
- * @param[in] func
- * @param[in] instance
+ * @param[in] func unused.
+ * @param[in] instance data.
  */
 void xlat_unregister(char const *name, UNUSED RAD_XLAT_FUNC func, void *instance)
 {

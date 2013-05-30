@@ -274,7 +274,7 @@ static void fr_connection_link_tail(fr_connection_pool_t *pool,
  * @note Will call the 'open' trigger.
  * @note Must be called with the mutex free.
  *
- * @param[in] pool
+ * @param[in] pool to modify.
  * @param[in] now Current time.
  * @return the new connection struct or NULL on error.
  */
@@ -709,7 +709,7 @@ fr_connection_pool_t *fr_connection_pool_init(CONF_SECTION *parent,
  * @note Will only close connections not in use.
  * @note Must be called with the mutex held.
  *
- * @param[in,out] pool
+ * @param[in,out] pool to modify.
  * @param[in,out] this Connection to manage.
  * @param[in] now Current time.
  * @return 0 if the connection was closed, otherwise 1.

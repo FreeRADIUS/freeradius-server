@@ -392,7 +392,6 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
  *
  * @param[in] first VP in linked list. Will add new VP to the end of this list.
  * @param[in] add VP to add to list.
- * @return a copy of the input VP
  */
 void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 {
@@ -420,7 +419,6 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
  *
  * @param[in,out] first VP in linked list. Will search and replace in this list.
  * @param[in] replace VP to replace.
- * @return a copy of the input vp
  */
 void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 {

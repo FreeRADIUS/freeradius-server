@@ -14,7 +14,7 @@
  *
  * @param inst Module configuration.
  * @param otp string to decrypt.
- * @param return one of the RLM_RCODE_* constants.
+ * @return one of the RLM_RCODE_* constants.
  */
 rlm_rcode_t rlm_yubikey_decrypt(rlm_yubikey_t *inst, REQUEST *request, VALUE_PAIR *otp)
 {	

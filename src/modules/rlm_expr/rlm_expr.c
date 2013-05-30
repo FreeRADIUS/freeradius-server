@@ -439,7 +439,7 @@ static size_t urlquote_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 /**
  * @brief Equivalent to the old safe-characters functionality in rlm_sql
  *
- * Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60=/img=62"
+ * @verbatim Example: "%{escape:<img>foo.jpg</img>}" == "=60img=62foo.jpg=60=/img=62" @endverbatim
  */
 static size_t escape_xlat(UNUSED void *instance, UNUSED REQUEST *request,
 			  char const *fmt, char *out, size_t outlen)

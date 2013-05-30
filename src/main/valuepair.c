@@ -79,9 +79,11 @@ static struct cmp *cmp;
  * Does not call any per-attribute comparison function, but does honour
  * check.operator. Basically does "vp.value check.op check.value".
  *
- * @param request Current request
- * @param check rvalue, and operator
- * @param vp lvalue
+ * @param request Current request.
+ * @param check rvalue, and operator.
+ * @param vp lvalue.
+ * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
+ *	value.
  */
 int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 {
@@ -294,17 +296,18 @@ int radius_compare_vps(REQUEST *request, VALUE_PAIR *check, VALUE_PAIR *vp)
 }
 
 
-/** Compare check and vp. May call the attribute compare function.
+/** Compare check and vp. May call the attribute comparison function.
  *
  * Unlike radius_compare_vps() this function will call any attribute-specific
- * comparison function.
+ * comparison functions registered.
  *
- * @param req Current request
- * @param request value pairs in the reqiest
- * @param check
- * @param check_pairs
- * @param reply_pairs value pairs in the reply
- * @return
+ * @param req Current request.
+ * @param request list pairs.
+ * @param check item to compare.
+ * @param check_pairs list.
+ * @param reply_pairs list.
+ * @return 0 if check and vp are equal, -1 if vp value is less than check value, 1 is vp value is more than check
+ *	value.
  */
 int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 			    VALUE_PAIR *check, VALUE_PAIR *check_pairs,
@@ -338,7 +341,9 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 
 /** Find a comparison function for two attributes.
  *
- * @param attribute
+ * @fixme this should probably take DA's.
+ * @param attribute to find comparison function for.
+ * @return true if a comparison function was found, else false.
  */
 int radius_find_compare(unsigned int attribute)
 {
@@ -356,7 +361,9 @@ int radius_find_compare(unsigned int attribute)
 
 /** See what attribute we want to compare with.
  *
- * @param attribute
+ * @fixme this should probably take DA's.
+ * @param attribute to find comparison function for.
+ * @return true if a comparison function was found, else false.
  */
 static int otherattr(unsigned int attribute)
 {
@@ -373,7 +380,7 @@ static int otherattr(unsigned int attribute)
 
 /** Register a function as compare function.
  *
- * @param attribute
+ * @param attribute number to register comparison function for.
  * @param other_attr we want to compare with. Normally this is the
  *	same as attribute.
  * You can set this to:
@@ -408,7 +415,6 @@ int paircompare_register(unsigned int attribute, int other_attr,
  *
  * @param attribute attribute to unregister for.
  * @param func comparison function to remove.
- * @return Void.
  */
 void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
 {
@@ -438,7 +444,6 @@ void paircompare_unregister(unsigned int attribute, RAD_COMPARE_FUNC func)
  *  All paircompare() functions for this module will be unregistered.
  *
  * @param instance the module instance
- * @return Void.
  */
 void paircompare_unregister_instance(void *instance)
 {
