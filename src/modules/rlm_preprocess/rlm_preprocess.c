@@ -360,7 +360,7 @@ static int hunt_paircmp(REQUEST *req, VALUE_PAIR *request, VALUE_PAIR *check)
 
 	if (!check) return 0;
 
-	for (check_item = paircursor(&cursor, check);
+	for (check_item = paircursor(&cursor, &check);
 	     check_item && (result != 0);
 	     check_item = pairnext(&cursor)) {
 	     	/* FIXME: paircopy should be removed once VALUE_PAIRs are no longer in linked lists */

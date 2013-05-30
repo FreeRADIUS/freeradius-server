@@ -1159,7 +1159,7 @@ static int null_socket_send(UNUSED rad_listen_t *listener, REQUEST *request)
 					 request->reply->code, request->reply->id);
 		}
 
-		for (vp = paircursor(&cursor, request->reply->vps);
+		for (vp = paircursor(&cursor, &request->reply->vps);
 		     vp;
 		     vp = pairnext(&cursor)) {
 			vp_prints(buffer, sizeof(buffer), vp);

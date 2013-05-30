@@ -479,7 +479,7 @@ int paircompare(REQUEST *request, VALUE_PAIR *req_list, VALUE_PAIR *check,
 	int compare;
 	int other;
 
-	for (check_item = paircursor(&cursor, check);
+	for (check_item = paircursor(&cursor, &check);
 	     check_item;
 	     check_item = pairnext(&cursor)) {
 		/*

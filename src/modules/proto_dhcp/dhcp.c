@@ -591,7 +591,7 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 	next = data;
 
 	*head = NULL;
-	paircursor(&cursor, &head);
+	paircursor(&cursor, head);
 
 	/*
 	 *	FIXME: This should also check sname && file fields.
