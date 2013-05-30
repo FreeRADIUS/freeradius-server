@@ -907,7 +907,7 @@ static int attr_cmp(void const *one, void const *two)
 }
 
 /*
- * @fixme Check room!
+ * @todo Check room!
  */
 static size_t fr_dhcp_vp2attr(VALUE_PAIR *vp, uint8_t *p, UNUSED size_t room)
 {
@@ -1388,7 +1388,7 @@ int fr_dhcp_encode(RADIUS_PACKET *packet)
 
 		/*
 		 *	For client-identifier
-		 * @fixme What's this meant to be doing?!
+		 * @todo What's this meant to be doing?!
 		 */
 #if 0
 		if ((vp->da->type == PW_TYPE_ETHERNET) &&

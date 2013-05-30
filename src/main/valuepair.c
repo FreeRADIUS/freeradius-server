@@ -341,7 +341,7 @@ int radius_callback_compare(REQUEST *req, VALUE_PAIR *request,
 
 /** Find a comparison function for two attributes.
  *
- * @fixme this should probably take DA's.
+ * @todo this should probably take DA's.
  * @param attribute to find comparison function for.
  * @return true if a comparison function was found, else false.
  */
@@ -361,7 +361,7 @@ int radius_find_compare(unsigned int attribute)
 
 /** See what attribute we want to compare with.
  *
- * @fixme this should probably take DA's.
+ * @todo this should probably take DA's.
  * @param attribute to find comparison function for.
  * @return true if a comparison function was found, else false.
  */
