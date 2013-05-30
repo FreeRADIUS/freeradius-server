@@ -2223,7 +2223,7 @@ static int request_will_proxy(REQUEST *request)
 			rad_assert(vp != NULL);	/* handled by above function */
 			/* Insert at the START of the list */
 			/* FIXME: Can't make assumptions about ordering */
-			paircursor(&cursor, vp);
+			paircursor(&cursor, &vp);
 			pairinsert(&cursor, request->proxy->vps);
 			request->proxy->vps = vp;
 		}
