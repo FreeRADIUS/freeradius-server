@@ -4257,17 +4257,18 @@ if ${ax_cv_qunused_arguments_flag+:} false; then :
 else
 
 
-    CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Werror -Qunused-arguments"
-    export CXXFLAGS
+    if "ax_cv_clang" = "yes"; then
+        CFLAGS_SAVED=$CFLAGS
+        CFLAGS="$CFLAGS -Werror -Qunused-arguments"
+        export CFLAGS
 
-    ac_ext=c
+        ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
@@ -4284,14 +4285,15 @@ else
   ax_cv_qunused_arguments_flag="no"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    ac_ext=c
+        ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-    CXXFLAGS="$CXXFLAGS_SAVED"
+        CFLAGS="$CFLAGS_SAVED"
+    fi
 
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_qunused_arguments_flag" >&5
@@ -7572,17 +7574,18 @@ if ${ax_cv_wdocumentation_flag+:} false; then :
 else
 
 
-    CXXFLAGS_SAVED=$CXXFLAGS
-    CXXFLAGS="$CXXFLAGS -Werror -Wdocumentation"
-    export CXXFLAGS
+    if "ax_cv_clang" = "yes"; then
+        CFLAGS_SAVED=$CFLAGS
+        CFLAGS="$CFLAGS -Werror -Wdocumentation"
+        export CFLAGS
 
-    ac_ext=c
+        ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+        cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
 int
@@ -7599,14 +7602,15 @@ else
   ax_cv_wdocumentation_flag="no"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
-    ac_ext=c
+        ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
 ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 
-    CXXFLAGS="$CXXFLAGS_SAVED"
+        CFLAGS="$CFLAGS_SAVED"
+    fi
 
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_wdocumentation_flag" >&5
