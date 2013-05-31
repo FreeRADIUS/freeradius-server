@@ -122,29 +122,27 @@ distclean: clean
 #  Automatic remaking rules suggested by info:autoconf#Automatic_Remaking
 #
 ######################################################################
+#
+#  Do these checks ONLY if we're re-building the "configure"
+#  scripts, and ONLY the "configure" scripts.  If we leave
+#  these rules enabled by default, then they're run too often.
+#
+ifeq "$(MAKECMDGOALS)" "reconfig"
+
 CONFIGURE_IN_FILES := $(shell find . -name configure.in -print)
 CONFIGURE_FILES	   := $(patsubst %.in,%,$(CONFIGURE_IN_FILES))
-
-#  If we've already run configure, then add rules which cause the
-#  module-specific "all.mk" files to depend on the mk.in files, and on
-#  the configure script.
-#x
-ifneq "$(wildcard config.log)" ""
-CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
-
-src/%all.mk: src/%all.mk.in src/%configure
-	@echo CONFIGURE $(dir $@)
-	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
-endif
 
 #
 #  The GNU tools make autoconf=="missing autoconf", which then returns
 #  0, even when autoconf doesn't exist.  This check is to ensure that
 #  we run AUTOCONF only when it exists.
 #
-#AUTOCONF_EXISTS := $(shell autoconf --version 2>/dev/null)
+AUTOCONF_EXISTS := $(shell autoconf --version 2>/dev/null)
 
-ifneq "$(AUTOCONF_EXISTS)" ""
+ifeq "$(AUTOCONF_EXISTS)" ""
+$(error You need to install autoconf to re-build the "configure" scripts)
+endif
+
 # Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
 src/%configure: src/%configure.in acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
@@ -156,19 +154,33 @@ src/%configure: src/%configure.in acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4
 	 fi
 
 # "%configure" doesn't match "configure"
-configure: configure.in $(wildcard ac*.m4)
+configure: configure.in $(wildcard ac*.m4) $(wildcard m4/*.m4)
 	@echo AUTOCONF $@
 	@$(AUTOCONF)
 
 src/include/autoconf.h.in: configure.in
 	@echo AUTOHEADER $@
 	@$(AUTOHEADER)
-endif
 
 reconfig: $(CONFIGURE_FILES) src/include/autoconf.h.in
 
 config.status: configure
 	./config.status --recheck
+
+# target is "configure"
+endif
+
+#  If we've already run configure, then add rules which cause the
+#  module-specific "all.mk" files to depend on the mk.in files, and on
+#  the configure script.
+#
+ifneq "$(wildcard config.log)" ""
+CONFIGURE_ARGS	   := $(shell head -10 config.log | grep '^  \$$' | sed 's/^....//;s:.*configure ::')
+
+src/%all.mk: src/%all.mk.in src/%configure
+	@echo CONFIGURE $(dir $@)
+	@cd $(dir $<) && ./configure $(CONFIGURE_ARGS)
+endif
 
 .PHONY: check-includes
 check-includes:
