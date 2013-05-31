@@ -814,6 +814,20 @@ int common_socket_print(rad_listen_t const *this, char *buffer, size_t bufsize)
 
 extern int check_config;	/* radiusd.c */
 
+static CONF_PARSER performance_config[] = {
+	{ "skip_duplicate_checks", PW_TYPE_BOOLEAN,
+	  offsetof(rad_listen_t, nodup), NULL,   NULL },
+
+	{ "synchronous", PW_TYPE_BOOLEAN,
+	  offsetof(rad_listen_t, synchronous), NULL,   NULL },
+
+	{ "workers", PW_TYPE_INTEGER,
+	  offsetof(rad_listen_t, workers), NULL,   NULL },
+
+	{ NULL, -1, 0, NULL, NULL }		/* end the list */
+};
+
+
 static CONF_PARSER limit_config[] = {
 	{ "max_pps", PW_TYPE_INTEGER,
 	  offsetof(listen_socket_t, max_rate), NULL,   NULL },
@@ -843,7 +857,7 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 	listen_socket_t *sock = this->data;
 	char		*section_name = NULL;
 	CONF_SECTION	*client_cs, *parentcs;
-	CONF_SECTION *limit;
+	CONF_SECTION	*subcs;
 
 	this->cs = cs;
 
@@ -977,10 +991,29 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 		return -1;
 	}
 
+	/*
+	 *	Magical tuning methods!
+	 */
+	subcs = cf_section_sub_find(cs, "performance");
+	if (subcs) {
+		rcode = cf_section_parse(subcs, this,
+					 performance_config);
+		if (rcode < 0) return -1;
 
-	limit = cf_section_sub_find(cs, "limit");
-	if (limit) {
-		rcode = cf_section_parse(limit, sock,
+		if (this->synchronous && sock->max_rate) {
+			WARN("Setting 'max_pps' is incompatible with 'synchronous'.  Disabling 'max_pps'");
+			sock->max_rate = 0;
+		}
+
+		if (!this->synchronous && this->workers) {
+			WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
+			this->workers = 0;
+		}
+	}
+
+	subcs = cf_section_sub_find(cs, "limit");
+	if (subcs) {
+		rcode = cf_section_parse(subcs, sock,
 					 limit_config);
 		if (rcode < 0) return -1;
 
@@ -995,14 +1028,24 @@ int common_socket_parse(CONF_SECTION *cs, rad_listen_t *this)
 			WARN("Setting idle_timeout to 5");
 			sock->limit.idle_timeout = 5;
 		}
+
 		if ((sock->limit.lifetime > 0) && (sock->limit.lifetime < 5)) {
 			WARN("Setting lifetime to 5");
 			sock->limit.lifetime = 5;
 		}
+
 		if ((sock->limit.lifetime > 0) && (sock->limit.idle_timeout > sock->limit.lifetime)) {
 			WARN("Setting idle_timeout to 0");
 			sock->limit.idle_timeout = 0;
 		}
+
+		/*
+		 *	Force no duplicate detection for TCP sockets.
+		 */
+		if (sock->proto == IPPROTO_TCP) {
+			this->nodup = true;
+		}
+
 	} else {
 		sock->limit.max_connections = 60;
 		sock->limit.idle_timeout = 30;
@@ -2362,7 +2405,7 @@ static int listen_bind(rad_listen_t *this)
 	} else
 #endif
 
-	  if (fr_nonblock(this->fd) < 0) {
+	  if (!this->workers && fr_nonblock(this->fd) < 0) {
 		  close(this->fd);
 		  ERROR("Failed setting non-blocking on socket: %s",
 			 strerror(errno));
@@ -2734,6 +2777,26 @@ static int is_loopback(fr_ipaddr_t const *ipaddr)
 }
 #endif
 
+
+#ifdef HAVE_PTHREAD_H
+/*
+ *	A child thread which does NOTHING other than read and process
+ *	packets.
+ */
+static void *recv_thread(void *arg)
+{
+	rad_listen_t *this = arg;
+
+	while (1) {
+		this->recv(this);
+		DEBUG("%p", &this);
+	}
+
+	return NULL;
+}
+#endif
+
+
 /*
  *	Generate a list of listeners.  Takes an input list of
  *	listeners, too, so we don't close sockets with waiting packets.
@@ -2985,7 +3048,42 @@ add_sockets:
 			return -1;
 		}
 #endif
-		if (!check_config) event_new_fd(this);
+		if (!check_config) {
+			if (this->workers && !spawn_flag) {
+				WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
+				this->workers = 0;
+			}
+
+			if (this->workers) {
+#ifndef HAVE_PTHREAD_H
+				WARN("Setting 'workers' requires 'synchronous'.  Disabling 'workers'");
+				this->workers = 0;
+#else
+				int i, rcode;
+				char buffer[256];
+
+				this->print(this, buffer, sizeof(buffer));
+
+				for (i = 0; i < this->workers; i++) {
+					pthread_t id;
+
+					/*
+					 *	FIXME: create detached?
+					 */
+					rcode = pthread_create(&id, 0, recv_thread, this);
+					if (rcode != 0) {
+						ERROR("Thread create failed: %s",
+						      strerror(rcode));
+						exit(1);
+					}
+
+					DEBUG("Thread %d for %s\n", i, buffer);
+				}
+#endif
+			} else
+				event_new_fd(this);
+
+		}
 	}
 
 	/*

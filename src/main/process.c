@@ -214,6 +214,10 @@ static void remove_from_proxy_hash_nl(REQUEST *request);
 static int insert_into_proxy_hash(REQUEST *request);
 #endif
 
+static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
+			      RADCLIENT *client, RAD_REQUEST_FUNP fun,
+			      struct timeval *pnow);
+
 STATE_MACHINE_DECL(request_common);
 
 #if  defined(HAVE_PTHREAD_H) && !defined (NDEBUG)
@@ -486,6 +490,9 @@ STATE_MACHINE_DECL(request_done)
 		fr_packet_list_yank(pl, request->packet);
 		request->in_request_hash = false;
 		
+		/*
+		 *	@todo: do final states for TCP sockets, too?
+		 */
 		request_stats_final(request);
 		
 #ifdef WITH_TCP
@@ -1253,6 +1260,11 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 	gettimeofday(&now, NULL);
 	sock->last_packet = now.tv_sec;
 
+	/*
+	 *	Skip everything if required.
+	 */
+	if (listener->nodup) goto skip_dup;
+
 	packet_p = fr_packet_list_find(pl, packet);
 	if (packet_p) {
 		request = fr_packet2myptr(REQUEST, packet, packet_p);
@@ -1319,6 +1331,7 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		return 0;
 	}
 
+skip_dup:
 	/*
 	 *	Rate-limit the incoming packets
 	 */
@@ -1335,12 +1348,49 @@ int request_receive(rad_listen_t *listener, RADIUS_PACKET *packet,
 		sock->rate_pps_now++;
 	}
 
-	return request_insert(listener, packet, client, fun, &now);
+	request = request_setup(listener, packet, client, fun, &now);
+	if (!request) return 1;
+
+	/*
+	 *	Remember the request in the list.
+	 */
+	if (!listener->nodup) {
+		if (!fr_packet_list_insert(pl, &request->packet)) {
+			RERROR("Failed to insert request in the list of live requests: discarding it");
+			request_done(request, FR_ACTION_DONE);
+			return 1;
+		}
+
+		request->in_request_hash = true;
+	}
+
+	/*
+	 *	Process it.  Send a response, and free it.
+	 */
+	if (listener->synchronous) {
+		request->listener->decode(request->listener, request);
+		request->username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+		request->password = pairfind(request->packet->vps, PW_USER_PASSWORD, 0, TAG_ANY);
+
+		fun(request);
+		request->listener->send(request->listener, request);
+		request_free(&request);
+		return 1;
+	}
+
+	/*
+	 *	Otherwise, insert it into the state machine.
+	 *	The child threads will take care of processing it.
+	 */
+	request_queue_or_run(request, request_running);
+
+	return 1;
 }
 
-int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
-		   RADCLIENT *client, RAD_REQUEST_FUNP fun,
-		   struct timeval *pnow)
+
+static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
+			      RADCLIENT *client, RAD_REQUEST_FUNP fun,
+			      struct timeval *pnow)
 {
 	REQUEST *request;
 
@@ -1352,7 +1402,7 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 	if (!request->reply) {
 		ERROR("No memory");
 		request_free(&request);
-		return 1;
+		return NULL;
 	}
 
 	request->listener = listener;
@@ -1400,16 +1450,6 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 		request->server = NULL;
 	}
 
-	/*
-	 *	Remember the request in the list.
-	 */
-	if (!fr_packet_list_insert(pl, &request->packet)) {
-		RERROR("Failed to insert request in the list of live requests: discarding it");
-		request_done(request, FR_ACTION_DONE);
-		return 1;
-	}
-
-	request->in_request_hash = true;
 	request->root = &mainconfig;
 	mainconfig.refcount++;
 #ifdef WITH_TCP
@@ -1440,9 +1480,7 @@ int request_insert(rad_listen_t *listener, RADIUS_PACKET *packet,
 	request->reply->data = NULL;
 	request->reply->data_len = 0;
 
-	request_queue_or_run(request, request_running);
-
-	return 1;
+	return request;
 }
 
 #ifdef WITH_TCP
@@ -2169,6 +2207,11 @@ static int request_will_proxy(REQUEST *request)
 	
 	if (!pool) {
 		RWDEBUG2("Cancelling proxy as no home pool exists");
+		return 0;
+	}
+
+	if (request->listener->nodup) {
+		WARN("Cannot proxy a request which is from a 'nodup' socket");
 		return 0;
 	}
 

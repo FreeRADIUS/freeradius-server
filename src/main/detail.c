@@ -305,7 +305,6 @@ int detail_recv(rad_listen_t *listener)
 	RADIUS_PACKET	*packet;
 	char		buffer[2048];
 	listen_detail_t *data = listener->data;
-	struct timeval	now;
 
 	/*
 	 *	We may be in the main thread.  It needs to update the
@@ -735,9 +734,8 @@ int detail_recv(rad_listen_t *listener)
 	/*
 	 *	Don't bother doing limit checks, etc.
 	 */
-	gettimeofday(&now, NULL);
-	if (!request_insert(listener, packet, &data->detail_client,
-			    rad_accounting, &now)) {
+	if (!request_receive(listener, packet, &data->detail_client,
+			     rad_accounting)) {
 		rad_free(&packet);
 		data->state = STATE_NO_REPLY;	/* try again later */
 		return 0;
@@ -868,6 +866,12 @@ int detail_parse(CONF_SECTION *cs, rad_listen_t *this)
 		cf_log_err_cs(cs, "Failed parsing listen section");
 		return -1;
 	}
+
+	/*
+	 *	We don't do duplicate detection for "detail" sockets.
+	 */
+	this->nodup = true;
+	this->synchronous = false;
 
 	if (!data->filename) {
 		cf_log_err_cs(cs, "No detail file specified in listen section");

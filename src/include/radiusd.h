@@ -319,6 +319,9 @@ struct rad_listen_t {
 #ifdef WITH_TCP
 	int		count;
 #endif
+	int		nodup;
+	int		synchronous;
+	int		workers;
 
 #ifdef WITH_TLS
 	fr_tls_server_conf_t *tls;
