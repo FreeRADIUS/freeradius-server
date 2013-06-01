@@ -264,7 +264,7 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 					continue;
 				}
 
-				if (vp->da->attr == check_item->da->attr) {
+				if (input_item->da->attr == check_item->da->attr) {
 					check_pair(check_item, input_item, &pass, &fail);
 				}
 			}
@@ -276,9 +276,9 @@ static rlm_rcode_t attr_filter_common(void *instance, REQUEST *request, RADIUS_P
 			 */
 			if (fail == 0 && (pass > 0 || relax_filter)) {
 				if (!pass) {
-					RDEBUG3("Attribute (%s) allowed by relaxed mode", vp->da->name);
+					RDEBUG3("Attribute (%s) allowed by relaxed mode", input_item->da->name);
 				}
-				vp = paircopyvp(packet, vp);
+				vp = paircopyvp(packet, input_item);
 				if (!vp) {
 					goto error;
 				}
