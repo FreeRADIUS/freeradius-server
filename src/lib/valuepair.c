@@ -199,6 +199,8 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
 	
+	VERIFY(vp);
+
 	for (i = paircursor(&cursor, &vp);
 	     i;
 	     i = pairnext(&cursor)) {
@@ -230,6 +232,7 @@ VALUE_PAIR *paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
 	cursor->current = *cursor->first;
 	
 	if (cursor->current) {
+		VERIFY(cursor->current);
 		cursor->next = cursor->current->next;
 	}
 	
@@ -2337,6 +2340,9 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 {
 	int compare;
 
+	VERIFY(one);
+	VERIFY(two);
+
 	switch (one->op) {
 	case T_OP_CMP_TRUE:
 		return (two != NULL);
@@ -2397,6 +2403,9 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 {
 	int compare;
+
+	VERIFY(one);
+	VERIFY(two);
 
 	/*
 	 *	Can't compare two attributes of differing types
@@ -2541,6 +2550,8 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 {
 	uint8_t *p, *q;
 
+	VERIFY(vp);
+
 	p = talloc_memdup(vp, src, size);
 	if (!p) return;
 
@@ -2560,6 +2571,8 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 void pairstrcpy(VALUE_PAIR *vp, char const *src)
 {
 	char *p, *q;
+
+	VERIFY(vp);
 
 	p = talloc_strdup(vp, src);
 	if (!p) return;
@@ -2581,6 +2594,8 @@ void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 {
 	va_list ap;
 	char *p, *q;
+
+	VERIFY(vp);
 
 	va_start(ap, fmt);
 	p = talloc_vasprintf(vp, fmt, ap);
