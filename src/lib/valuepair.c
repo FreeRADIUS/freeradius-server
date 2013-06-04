@@ -198,8 +198,6 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 {
 	vp_cursor_t 	cursor;
 	VALUE_PAIR	*i;
-	
-	VERIFY(vp);
 
 	for (i = paircursor(&cursor, &vp);
 	     i;
