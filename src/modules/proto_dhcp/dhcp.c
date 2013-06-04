@@ -702,10 +702,9 @@ int fr_dhcp_decode(RADIUS_PACKET *packet)
 	uint8_t *p;
 	uint32_t giaddr;
 	vp_cursor_t cursor;
-	VALUE_PAIR *head, *vp;
+	VALUE_PAIR *head = NULL, *vp;
 	VALUE_PAIR *maxms, *mtu;
 
-	head = NULL;
 	paircursor(&cursor, &head);
 	p = packet->data;
 
