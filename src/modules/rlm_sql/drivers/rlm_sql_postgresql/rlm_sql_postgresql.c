@@ -130,7 +130,7 @@ static int sql_socket_destructor(void *c)
 {
 	rlm_sql_postgres_conn_t  *conn = c;
 	
-	DEBUG2("rlm_sql_mysql: Socket destructor called, closing socket");
+	DEBUG2("rlm_sql_postgresql: Socket destructor called, closing socket");
 	
 	if (!conn->db) {
 		return 0;
