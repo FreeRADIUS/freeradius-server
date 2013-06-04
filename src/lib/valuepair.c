@@ -280,12 +280,10 @@ VALUE_PAIR *pairfindnext(vp_cursor_t *cursor, unsigned int attr, unsigned int ve
  */
 VALUE_PAIR *pairnext(vp_cursor_t *cursor)
 {
-	if (cursor->next) {
-		VERIFY(cursor->next);
-	}
-	
 	cursor->current = cursor->next;
 	if (cursor->current) {
+		VERIFY(cursor->current);
+
 		/* 
 		 *	Set this now in case 'current' gets freed before
 		 *	pairnext is called again.
@@ -304,7 +302,9 @@ VALUE_PAIR *pairnext(vp_cursor_t *cursor)
 
 VALUE_PAIR *paircurrent(vp_cursor_t *cursor)
 {
-	VERIFY(cursor->current);
+	if (cursor->current) {
+		VERIFY(cursor->current);
+	}
 	
 	return cursor->current;
 }
