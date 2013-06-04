@@ -1010,7 +1010,7 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			char *c = p;
 
 			while (c) {
-				if (!c[1] || !strchr("%dlmtDGHISTY", c[1])) {
+				if (!c[1] || !strchr("%dlmtDGHISTY{", c[1])) {
 					talloc_free(node);
 					*error = "Invalid variable expansion";
 					c++;
