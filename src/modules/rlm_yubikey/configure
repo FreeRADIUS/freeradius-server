@@ -1902,7 +1902,7 @@ fi
 
 
 
-	have_yubikey="yes"
+    have_yubikey="yes"
     smart_try_dir="$yubikey_include_dir"
     ac_ext=c
 ac_cpp='$CPP $CPPFLAGS'
@@ -2705,7 +2705,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for yubikey.h in $try" >&5
 $as_echo_n "checking for yubikey.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2720,7 +2720,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -2800,7 +2800,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for yubikey.h in $try" >&5
 $as_echo_n "checking for yubikey.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -2815,7 +2815,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -2839,7 +2839,7 @@ if test "x$smart_include" != "x"; then
 fi
 
     if test "x$ac_cv_header_yubikey_h" != "xyes"; then
-	    have_ykclient="no"
+        have_ykclient="no"
         { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey headers not found. Use --with-yubikey-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: yubikey headers not found. Use --with-yubikey-include-dir=<path>." >&2;}
     fi
@@ -3013,23 +3013,23 @@ if test "x$smart_lib" != "x"; then
 fi
 
     if test "x$ac_cv_lib_yubikey_yubikey_aes_decrypt" != "xyes"; then
-	    have_yubikey="no"
+        have_yubikey="no"
         { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: yubikey libraries not found. Use --with-yubikey-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: yubikey libraries not found. Use --with-yubikey-lib-dir=<path>." >&2;}
     fi
 
-	if test "x$have_yubikey" = "xyes"; then
+    if test "x$have_yubikey" = "xyes"; then
 
 $as_echo "#define HAVE_YUBIKEY 1" >>confdefs.h
 
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&5
+    else
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&5
 $as_echo "$as_me: WARNING: silently building without yubikey token decryption support. requires: yubikey" >&2;}
-	fi
+    fi
 
 
-	have_ykclient="yes"
-	smart_try_dir="$ykclient_include_dir"
+    have_ykclient="yes"
+    smart_try_dir="$ykclient_include_dir"
 
 
 ac_safe=`echo "ykclient.h" | sed 'y%./+-%__pm%'`
@@ -3041,7 +3041,7 @@ if test "x$smart_try_dir" != "x"; then
   for try in $smart_try_dir; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ykclient.h in $try" >&5
 $as_echo_n "checking for ykclient.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3056,7 +3056,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3136,7 +3136,7 @@ eval "smart_include_dir=\"\$smart_include_dir $DIRS\""
   for try in $smart_include_dir /usr/local/include /opt/include; do
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ykclient.h in $try" >&5
 $as_echo_n "checking for ykclient.h in $try... " >&6; }
-    CFLAGS="$old_CFLAGS -isystem $try -I$try"
+    CFLAGS="$old_CFLAGS -isystem $try"
     cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
@@ -3151,7 +3151,7 @@ int a = 1;
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
 
-		     smart_include="-isystem $try -I$try"
+		     smart_include="-isystem $try"
 		     { $as_echo "$as_me:${as_lineno-$LINENO}: result: yes" >&5
 $as_echo "yes" >&6; }
 		     break
@@ -3174,14 +3174,14 @@ if test "x$smart_include" != "x"; then
   SMART_CFLAGS="$SMART_CFLAGS $smart_include"
 fi
 
-	if test "x$ac_cv_header_ykclient_h" != "xyes"; then
-		have_ykclient="no"
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&5
+    if test "x$ac_cv_header_ykclient_h" != "xyes"; then
+        have_ykclient="no"
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: ykclient headers not found. Use --with-ykclient-include-dir=<path>." >&2;}
-	fi
+    fi
 
 
-	smart_try_dir="$ykclient_lib_dir"
+    smart_try_dir="$ykclient_lib_dir"
 
 
 sm_lib_safe=`echo "ykclient" | sed 'y%./+-%__p_%'`
@@ -3348,8 +3348,8 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	if test "x$ac_cv_lib_ykclient_ykclient_request_process" != "xyes"; then
-	    have_ykclient="no"
+    if test "x$ac_cv_lib_ykclient_ykclient_request_process" != "xyes"; then
+        have_ykclient="no"
 
 
 sm_lib_safe=`echo "ykclient" | sed 'y%./+-%__p_%'`
@@ -3516,40 +3516,40 @@ if test "x$smart_lib" != "x"; then
   SMART_LIBS="$smart_lib $SMART_LIBS"
 fi
 
-	    if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
-	        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&5
+        if test "x$ac_cv_lib_ykclient_ykclient_request" == "xyes"; then
+            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&5
 $as_echo "$as_me: WARNING: libykclient missing ykclient_request_process. A later version of libykclient is required." >&2;}
-	    else
-		    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&5
+        else
+            { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&5
 $as_echo "$as_me: WARNING: ykclient libraries not found. Use --with-ykclient-lib-dir=<path>." >&2;}
-	    fi
-	fi
+        fi
+    fi
 
-	if test "x$have_ykclient" = "xyes"; then
+    if test "x$have_ykclient" = "xyes"; then
 
 $as_echo "#define HAVE_YKCLIENT 1" >>confdefs.h
 
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubicloud support. requires: ykclient" >&5
+    else
+	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently building without yubicloud support. requires: ykclient" >&5
 $as_echo "$as_me: WARNING: silently building without yubicloud support. requires: ykclient" >&2;}
-	fi
+    fi
 
-	targetname=rlm_yubikey
+    targetname=rlm_yubikey
 else
-	targetname=
-	echo \*\*\* module rlm_yubikey is disabled.
+    targetname=
+    echo \*\*\* module rlm_yubikey is disabled.
 fi
 
 if test x"$fail" != x""; then
-	if test x"${enable_strict_dependencies}" = x"yes"; then
-		as_fn_error $? "set --without-rlm_yubikey to disable it explicitly." "$LINENO" 5
-	else
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_yubikey." >&5
+    if test x"${enable_strict_dependencies}" = x"yes"; then
+        as_fn_error $? "set --without-rlm_yubikey to disable it explicitly." "$LINENO" 5
+    else
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: silently not building rlm_yubikey." >&5
 $as_echo "$as_me: WARNING: silently not building rlm_yubikey." >&2;}
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_yubikey requires: $fail." >&5
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FAILURE: rlm_yubikey requires: $fail." >&5
 $as_echo "$as_me: WARNING: FAILURE: rlm_yubikey requires: $fail." >&2;};
-		targetname=""
-	fi
+        targetname=""
+    fi
 fi
 
 mod_ldflags="${SMART_LIBS}"
