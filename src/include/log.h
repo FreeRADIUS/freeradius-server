@@ -41,7 +41,7 @@ typedef enum log_type {
 	L_DBG_WARN = 17,	//!< Warning only displayed when debugging is enabled.
 	L_DBG_ERR = 18,		//!< Error only displayed when debugging is enabled.
 	L_DBG_WARN2 = 19,	//!< Less severe warning only displayed when debugging is enabled.
-	L_DBG_ERR2 = 20		//!< Less severe warning only displayed when debugging is enabled.
+	L_DBG_ERR2 = 20		//!< Less severe error only displayed when debugging is enabled.
 } log_type_t;
 
 typedef enum log_debug {
