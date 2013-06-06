@@ -1473,6 +1473,8 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 	char cn_str[1024];
 	char buf[64];
 	X509 *client_cert;
+	X509_CINF *client_inf;
+	STACK_OF(X509_EXTENSION) *ext_list;
 	SSL *ssl;
 	int err, depth, lookup, loc;
 	fr_tls_server_conf_t *conf;
@@ -1632,6 +1634,56 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		return my_ok;
 	}
 
+	client_inf = client_cert->cert_info;
+	ext_list = client_inf->extensions;
+
+	/*
+	 *	Grab the X509 extensions, and create attributes out of them.
+	 *	For laziness, we re-use the OpenSSL names
+	 */
+	if (sk_X509_EXTENSION_num(ext_list) > 0) {
+		int i, len;
+		char *p;
+		BIO *out;
+
+		out = BIO_new(BIO_s_mem());
+		strlcpy(subject, "TLS-Client-Cert-", sizeof(subject));
+
+		for (i = 0; i < sk_X509_EXTENSION_num(ext_list); i++) {
+			ASN1_OBJECT *obj;
+			X509_EXTENSION *ext;
+			VALUE_PAIR *vp;
+
+			ext = sk_X509_EXTENSION_value(ext_list, i);
+
+			obj = X509_EXTENSION_get_object(ext);
+			i2a_ASN1_OBJECT(out, obj);
+			len = BIO_read(out, subject + 16 , sizeof(subject) - 16 - 1);
+			if (len <= 0) continue;
+
+			subject[16 + len] = '\0';
+
+			X509V3_EXT_print(out, ext, 0, 0);
+			len = BIO_read(out, issuer , sizeof(issuer) - 1);
+			if (len <= 0) continue;
+
+			issuer[len] = '\0';
+
+			/*
+			 *	Mash the OpenSSL name to our name, and
+			 *	create the attribute.
+			 */
+			for (p = subject + 16; *p != '\0'; p++) {
+				if (*p == ' ') *p = '-';
+			}
+				
+			vp = pairmake(NULL, certs, subject, issuer, T_OP_ADD);
+			if (vp) debug_pair_list(vp);
+		}
+
+		BIO_free_all(out);
+	}
+	
 	switch (ctx->error) {
 
 	case X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT:
