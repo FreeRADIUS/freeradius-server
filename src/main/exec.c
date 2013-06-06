@@ -509,6 +509,8 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	char answer[4096];
 #endif
 
+	if (user_msg) *user_msg = '\0';
+
 	pid = radius_start_program(cmd, request, exec_wait, NULL, &from_child, input_pairs, shell_escape);
 	if (pid < 0) {
 		return -1;
