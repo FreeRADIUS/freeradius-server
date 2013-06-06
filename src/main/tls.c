@@ -1634,8 +1634,12 @@ int cbtls_verify(int ok, X509_STORE_CTX *ctx)
 		return my_ok;
 	}
 
-	client_inf = client_cert->cert_info;
-	ext_list = client_inf->extensions;
+	if (lookup == 0) {
+		client_inf = client_cert->cert_info;
+		ext_list = client_inf->extensions;
+	} else {
+		ext_list = NULL;
+	}
 
 	/*
 	 *	Grab the X509 extensions, and create attributes out of them.
