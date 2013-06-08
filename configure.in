@@ -86,7 +86,7 @@ dnl # Turn on the developer flag when taken from a git checkout (not a release)
 dnl #
 if test -d $srcdir/.git; then
   if test "x$developer" != "xno"; then
-    AC_MSG_NOTICE([found .git directory, enabling developer build implicitly, disable with --enable-developer=no])
+    AC_MSG_NOTICE([found .git directory, enabling developer build implicitly, disable with --disable-developer])
     developer="yes"
   fi  
 fi
