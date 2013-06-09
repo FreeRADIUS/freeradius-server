@@ -752,13 +752,53 @@ static int parse_sub_section(CONF_SECTION *parent,
 static int mod_instantiate(CONF_SECTION *conf, void *instance)
 {
 	rlm_sql_t *inst = instance;
-	char const *xlat_name;
 
 	/*
 	 *	Hack...
 	 */
 	inst->config = &inst->myconfig;
 	inst->cs = conf;
+	
+	inst->config->xlat_name = cf_section_name2(conf);
+	if (!inst->config->xlat_name) {
+		inst->config->xlat_name = cf_section_name1(conf);
+	} else {
+		char *group_name;
+		const DICT_ATTR *dattr;
+		ATTR_FLAGS flags;
+
+		/*
+		 *	Allocate room for <instance>-SQL-Group
+		 */
+		group_name = talloc_asprintf(inst, "%s-SQL-Group", inst->config->xlat_name);
+		DEBUG("rlm_sql (%s): Creating new attribute %s",
+		      inst->config->xlat_name, group_name);
+
+		memset(&flags, 0, sizeof(flags));
+		if (dict_addattr(group_name, -1, 0, PW_TYPE_STRING, flags) < 0) {
+			ERROR("rlm_sql (%s): Failed to create "
+			       "attribute %s: %s", inst->config->xlat_name, group_name,
+			       fr_strerror());
+			return -1;
+		}
+
+		dattr = dict_attrbyname(group_name);
+		if (!dattr) {
+			ERROR("rlm_sql (%s): Failed to create "
+			       "attribute %s", inst->config->xlat_name, group_name);
+			return -1;
+		}
+
+		if (inst->config->groupmemb_query &&
+		    inst->config->groupmemb_query[0]) {
+			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
+			      inst->config->xlat_name, group_name);
+			paircompare_register(dattr->attr, PW_USER_NAME,
+					     sql_groupcmp, inst);
+		}
+	}
+	
+	rad_assert(inst->config->xlat_name);
 
 	/*
 	 *	If the configuration parameters can't be parsed, then fail.
@@ -792,53 +832,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	inst->sql_query			= rlm_sql_query;
 	inst->sql_select_query		= rlm_sql_select_query;
 	inst->sql_fetch_row		= rlm_sql_fetch_row;
-	
-	xlat_name = cf_section_name2(conf);
-	if (!xlat_name) {
-		xlat_name = cf_section_name1(conf);
-	} else {
-		char *group_name;
-		const DICT_ATTR *dattr;
-		ATTR_FLAGS flags;
-
-		/*
-		 *	Allocate room for <instance>-SQL-Group
-		 */
-		group_name = talloc_asprintf(inst, "%s-SQL-Group", xlat_name);
-		DEBUG("rlm_sql (%s): Creating new attribute %s",
-		      xlat_name, group_name);
-
-		memset(&flags, 0, sizeof(flags));
-		if (dict_addattr(group_name, -1, 0, PW_TYPE_STRING, flags) < 0) {
-			ERROR("rlm_sql (%s): Failed to create "
-			       "attribute %s: %s", xlat_name, group_name,
-			       fr_strerror());
-			return -1;
-		}
-
-		dattr = dict_attrbyname(group_name);
-		if (!dattr) {
-			ERROR("rlm_sql (%s): Failed to create "
-			       "attribute %s", xlat_name, group_name);
-			return -1;
-		}
-
-		if (inst->config->groupmemb_query &&
-		    inst->config->groupmemb_query[0]) {
-			DEBUG("rlm_sql (%s): Registering sql_groupcmp for %s",
-			      xlat_name, group_name);
-			paircompare_register(dattr->attr, PW_USER_NAME,
-					     sql_groupcmp, inst);
-		}
-	}
-	
-	rad_assert(xlat_name);
 
 	/*
 	 *	Register the SQL xlat function
 	 */
-	inst->config->xlat_name = talloc_strdup(inst->config, xlat_name);
-	xlat_register(xlat_name, sql_xlat, sql_escape_func, inst);
+	xlat_register(inst->config->xlat_name, sql_xlat, sql_escape_func, inst);
 
 	/*
 	 *	Sanity check for crazy people.
