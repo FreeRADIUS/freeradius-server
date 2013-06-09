@@ -674,7 +674,6 @@ ssize_t fr_dhcp_decode_options(RADIUS_PACKET *packet,
 			    (da->attr == 61) && !da->flags.array &&
 			    (alen == 7) && (*p == 1) && (num_entries == 1)) {
 				pairmemcpy(vp, p + 1, 6);
-				vp->length = alen;
 
 			} else if (fr_dhcp_attr2vp(packet, vp, p, alen) < 0) {
 				pairfree(&vp);
