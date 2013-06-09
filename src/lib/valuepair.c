@@ -336,9 +336,11 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 	
 	/*
 	 *	We don't yet know where the last VALUE_PAIR is
+	 *
+	 *	Assume current is closer to the end of the list and use that if available.
 	 */
 	if (!cursor->last) {
-		cursor->last = cursor->current;
+		cursor->last = cursor->current ? cursor->current : *cursor->first;
 	}
 	
 	VERIFY(cursor->last);
