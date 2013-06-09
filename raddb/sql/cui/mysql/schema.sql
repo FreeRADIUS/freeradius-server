@@ -6,4 +6,4 @@ CREATE TABLE `cui` (
   `creationdate` timestamp NOT NULL default CURRENT_TIMESTAMP,
   `lastaccounting` timestamp NOT NULL default '0000-00-00 00:00:00',
   PRIMARY KEY  (`username`,`clientipaddress`,`callingstationid`)
-) ENGINE=MyISAM DEFAULT CHARSET=latin1;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
