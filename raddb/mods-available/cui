@@ -10,35 +10,29 @@
 #
 sql cuisql {
 
-        # The dialect of SQL you want to use, this should usually match
-        # the driver below.
-        #
-        # If you're using rlm_sql_null, then it should be the type of
-        # database the logged queries are going to be exected against.
-        dialect = "mysql"
+	# The dialect of SQL you want to use, this should usually match
+	# the driver below.
+	#
+	# If you're using rlm_sql_null, then it should be the type of
+	# database the logged queries are going to be exected against.
+	dialect = "sqlite"
         
-                                                 
 	# The submodule to use to execute queries. This should match
 	# the database you're attempting to connect to.
 	#
 	# There are CUI queries available for:
 	#    * rlm_sql_mysql
 	#    * rlm_sql_postgresql
+	#    * rlm_sql_sqlite
 	#    * rlm_sql_null (log queries to disk)
 	#
 	driver = "rlm_sql_${dialect}"
 
-	# The dialect of SQL you want to use, this should usually match
-	# the driver you selected above.
-	#
-	# If you're using rlm_sql_null, then it should be the type of
-	# database the logged queries are going to be exected against.
-	dialect = "mysql"
-	
-	server = "localhost"
-	login = "db_login_name"
-	password = "db_password"
-	radius_db = "db_name"
+	sqlite {
+		filename = ${radacctdir}/cui.sqlite
+		bootstrap = ../sql/cui/sqlite/schema.sql
+	}
+
 #	sqltrace = yes
 #	sqltracefile = ${logdir}/cuitrace.sql
 

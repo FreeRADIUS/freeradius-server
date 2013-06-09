@@ -24,6 +24,7 @@ sql {
 	#    * rlm_sql_mssql
 	#    * rlm_sql_oracle
 	#    * rlm_sql_postgresql
+	#    * rlm_sql_sqlite
 	#    * rlm_sql_null (log queries to disk)
 	#	
 	driver = "rlm_sql_null"
