@@ -46,7 +46,7 @@ struct fr_connection {
 	fr_connection_t	*prev;		//!< Previous connection in list.
 	fr_connection_t	*next;		//!< Next connection in list.
 	
-	time_t		start;		//!< Time connection was created.
+	time_t		created;	//!< Time connection was created.
 	time_t		last_used;	//!< Last time the connection was
 					//!< reserved.
 					
@@ -357,7 +357,7 @@ static fr_connection_t *fr_connection_spawn(fr_connection_pool_t *pool,
 		return NULL;
 	}
 	
-	this->start = now;
+	this->created = now;
 	this->connection = conn;	
 
 	/*
@@ -422,7 +422,7 @@ int fr_connection_add(fr_connection_pool_t *pool, void *conn)
 	this = rad_malloc(sizeof(*this));
 	memset(this, 0, sizeof(*this));
 
-	this->start = time(NULL);
+	this->created = time(NULL);
 	this->connection = conn;
 
 	this->number = pool->count++;
@@ -742,7 +742,7 @@ static int fr_connection_manage(fr_connection_pool_t *pool,
 	}
 
 	if ((pool->lifetime > 0) &&
-	    ((this->start + pool->lifetime) < now)) {
+	    ((this->created + pool->lifetime) < now)) {
 		DEBUG("%s: Closing expired connection (%i) ", pool->log_prefix,
 		      this->number);
 		goto do_delete;
