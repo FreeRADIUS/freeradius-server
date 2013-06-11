@@ -552,7 +552,24 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 
 	VERIFY(vp);
 
-	if (da->type != vp->da->type) return NULL;
+	/*
+	 *	The types have to be identical, OR the "from" VP has
+	 *	to be octets.
+	 */
+	if (da->type != vp->da->type) {
+		if (vp->da->type != PW_TYPE_OCTETS) {
+			return NULL;
+		}
+
+		/*
+		 *	Decode the data.  It may be wrong!
+		 */
+		if (rad_data2vp(da->attr, da->vendor, vp->vp_octets, vp->length, &n) < 0) {
+			return NULL;
+		}
+
+		return n;
+	}
 	
 	n = pairalloc(ctx, da);
 	if (!n) {
