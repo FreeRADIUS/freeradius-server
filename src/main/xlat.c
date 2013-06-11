@@ -524,7 +524,7 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
-#if 0
+#if 1
 #define XLAT_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
 #endif
 
@@ -1007,22 +1007,37 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 		 *	Check for valid single-character expansions.
 		 */
 		if (p[0] == '%') {
-			char *c = p;
+			ssize_t slen;
+			xlat_exp_t *next;
 
-			while (c) {
-				if (c[1] == '{') break; /* this will be checked later */
-
-				if (!c[1] || !strchr("%dlmtDGHISTY", c[1])) {
+			if (!p[1] || !strchr("%dlmtDGHISTY", p[1])) {
 					talloc_free(node);
 					*error = "Invalid variable expansion";
-					c++;
-					return - (c - fmt);
-				}
-
-				c = strchr(c + 2, '%');
+					p++;
+					return - (p - fmt);
 			}
 
-			node->type = XLAT_PERCENT;
+			XLAT_DEBUG("PERCENT: %s --> %c", node->fmt, p[1]);
+			next = talloc_zero(node, xlat_exp_t);
+			next->fmt = p + 1;
+			next->len = 1;
+			next->type = XLAT_PERCENT;
+
+			node->next = next;
+			*p = '\0';
+			p += 2;
+
+			/*
+			 *	And recurse.
+			 */
+			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
+			if (slen <= 0) {
+				talloc_free(node);
+				return slen - (p - fmt);
+			}
+
+			p += slen;
+			break;	/* stop processing the string */
 		}
 
 		/*
@@ -1069,7 +1084,7 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 			break;
 
 		case XLAT_PERCENT:
-			DEBUG("%.*sliteral (with %%): '%s'", lvl, xlat_tabs, node->fmt);
+			DEBUG("%.*sliteral (with %%): '%c'", lvl, xlat_tabs, node->fmt[0]);
 			break;
 
 		case XLAT_ATTRIBUTE:
@@ -1142,9 +1157,14 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 	while (node) {
 		switch (node->type) {
 		case XLAT_LITERAL:
-		case XLAT_PERCENT:
 			strlcpy(p, node->fmt, end - p);
 			p += strlen(p);
+			break;
+
+		case XLAT_PERCENT:
+			p[0] = '%';
+			p[1] = node->fmt[0];
+			p += 2;
 			break;
 
 		case XLAT_ATTRIBUTE:
@@ -1500,11 +1520,14 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 
 	switch (node->type) {
 		/*
-		 *	Don't escape this
+		 *	Don't escape this.
 		 */
 	case XLAT_LITERAL:
 		return talloc_strdup(ctx, node->fmt);
 
+		/*
+		 *	Do a one-character expansion.
+		 */
 	case XLAT_PERCENT: {
 		char const *p;
 		char *q, *nl;
@@ -1521,89 +1544,74 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 			when = request->packet->timestamp.tv_sec;
 		}
 		
-		while (*p) {
-			if (*p != '%') { /* blind copy of non-% characters */
-				*(q++) = *(p++);
-				continue;
+		switch (*p) {
+		case '%':
+			if (freespace < 2) return NULL;
+
+			q[0] = '%';
+			q[1] = '\0';
+			break;
+
+		case 'd': /* request day */
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%d", TM);
+			break;
+
+		case 'l': /* request timestamp */
+			snprintf(q, freespace, "%lu",
+				 (unsigned long) when);
+			break;
+
+		case 'm': /* request month */
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%m", TM);
+			break;
+
+		case 't': /* request timestamp */
+			CTIME_R(&when, q, freespace);
+			nl = strchr(q, '\n');
+			if (nl) *nl = '\0';
+			break;
+
+		case 'D': /* request date */
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%Y%m%d", TM);
+			break;
+
+		case 'G': /* request minute */
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%M", TM);
+			break;
+
+		case 'H': /* request hour */
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%H", TM);
+			break;
+
+		case 'I': /* Request ID */
+			if (request->packet) {
+				snprintf(q, freespace, "%i", request->packet->id);
 			}
+			break;
 
-			p++;
-			freespace = 256 - (q - str);
+		case 'S': /* request timestamp in SQL format*/
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%Y-%m-%d %H:%M:%S", TM);
+			break;
 
-			switch (*p) {
-			case '%':
-				*(q++) = *(p++);
-				continue; /* NOT break */
+		case 'T': /* request timestamp */
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%Y-%m-%d-%H.%M.%S.000000", TM);
+			break;
 
-			case 'd': /* request day */
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%d", TM);
-				break;
+		case 'Y': /* request year */
+			TM = localtime_r(&when, &s_TM);
+			strftime(q, freespace, "%Y", TM);
+			break;
 
-			case 'l': /* request timestamp */
-				snprintf(q, freespace, "%lu",
-					 (unsigned long) when);
-				break;
-
-			case 'm': /* request month */
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%m", TM);
-				break;
-
-			case 't': /* request timestamp */
-				CTIME_R(&when, q, freespace);
-				nl = strchr(q, '\n');
-				if (nl) *nl = '\0';
-				break;
-
-			case 'D': /* request date */
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%Y%m%d", TM);
-				break;
-
-			case 'G': /* request minute */
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%M", TM);
-				break;
-
-			case 'H': /* request hour */
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%H", TM);
-				break;
-
-			case 'I': /* Request ID */
-				if (request->packet) {
-					snprintf(q, freespace, "%i", request->packet->id);
-				}
-				break;
-
-			case 'S': /* request timestamp in SQL format*/
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%Y-%m-%d %H:%M:%S", TM);
-				break;
-
-			case 'T': /* request timestamp */
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%Y-%m-%d-%H.%M.%S.000000", TM);
-				break;
-
-			case 'Y': /* request year */
-				TM = localtime_r(&when, &s_TM);
-				strftime(q, freespace, "%Y", TM);
-				break;
-
-			default: /* should have been checked at parse time */
-				rad_assert(0 == 1);
-				if (freespace > 2) {
-					q[0] = '%';
-					q[1] = *p;
-					q[2] = '\0';
-				}
-				break;
-			}
-
-			q += strlen(q);
-			p++;
+		default:
+			rad_assert(0 == 1);
+			break;
 		}
 	}
 		break;
