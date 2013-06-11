@@ -127,6 +127,7 @@ typedef struct attr_flags {
 #define FLAG_ENCRYPT_ASCEND_SECRET   (3)
 
 extern const FR_NAME_NUMBER dict_attr_types[];
+extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
 
 typedef struct dict_attr {
 	unsigned int		attr;

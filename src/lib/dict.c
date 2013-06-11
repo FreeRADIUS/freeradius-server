@@ -116,6 +116,33 @@ const FR_NAME_NUMBER dict_attr_types[] = {
 	{ NULL, 0 }
 };
 
+/*
+ *	Map data types to min / max data sizes.
+ */
+const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
+	[PW_TYPE_INVALID]	= { ~0, 0 },
+	[PW_TYPE_STRING]	= { 0, ~0 },
+	[PW_TYPE_INTEGER]	= {4, 4 },
+	[PW_TYPE_IPADDR]	= {4, 4},
+	[PW_TYPE_DATE]		= {4, 4},
+	[PW_TYPE_ABINARY]	= {32, ~0},
+	[PW_TYPE_OCTETS]	= {0, ~0},
+	[PW_TYPE_IFID]		= {8, 8},
+	[PW_TYPE_IPV6ADDR]	= { 16, 16},
+	[PW_TYPE_IPV6PREFIX]	= {2, 18},
+	[PW_TYPE_BYTE]		= {1, 1},
+	[PW_TYPE_SHORT]		= {2, 2},
+	[PW_TYPE_ETHERNET]	= {6, 6},
+	[PW_TYPE_SIGNED]	= {4, 4},
+	[PW_TYPE_COMBO_IP]	= {4, 16},
+	[PW_TYPE_TLV]		= {2, ~0},
+	[PW_TYPE_EXTENDED]	= {1, ~0},
+	[PW_TYPE_LONG_EXTENDED]	= {2, ~0},
+	[PW_TYPE_EVS]		= {5, ~0},
+	[PW_TYPE_INTEGER64]	= {8, 8},
+	[PW_TYPE_IPV4PREFIX]	= {6, 6},
+	[PW_TYPE_VSA]		= {4, ~0}
+};
 
 /*
  *	For packing multiple TLV numbers into one 32-bit integer.  The
