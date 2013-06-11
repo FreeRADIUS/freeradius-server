@@ -1530,14 +1530,13 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 	case XLAT_PERCENT: {
 		char const *p;
-		char *q, *nl;
-		size_t freespace;
+		char *nl;
+		size_t freespace = 256;
 		struct tm *TM, s_TM;
 		time_t when;
 
-		str = talloc_array(ctx, char, 256); /* @todo do better allocation */
+		str = talloc_array(ctx, char, freespace); /* @todo do better allocation */
 		p = node->fmt;
-		q = str;
 
 		when = request->timestamp;
 		if (request->packet) {
@@ -1546,67 +1545,65 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		
 		switch (*p) {
 		case '%':
-			if (freespace < 2) return NULL;
-
-			q[0] = '%';
-			q[1] = '\0';
+			str[0] = '%';
+			str[1] = '\0';
 			break;
 
 		case 'd': /* request day */
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%d", TM);
+			strftime(str, freespace, "%d", TM);
 			break;
 
 		case 'l': /* request timestamp */
-			snprintf(q, freespace, "%lu",
+			snprintf(str, freespace, "%lu",
 				 (unsigned long) when);
 			break;
 
 		case 'm': /* request month */
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%m", TM);
+			strftime(str, freespace, "%m", TM);
 			break;
 
 		case 't': /* request timestamp */
-			CTIME_R(&when, q, freespace);
-			nl = strchr(q, '\n');
+			CTIME_R(&when, str, freespace);
+			nl = strchr(str, '\n');
 			if (nl) *nl = '\0';
 			break;
 
 		case 'D': /* request date */
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%Y%m%d", TM);
+			strftime(str, freespace, "%Y%m%d", TM);
 			break;
 
 		case 'G': /* request minute */
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%M", TM);
+			strftime(str, freespace, "%M", TM);
 			break;
 
 		case 'H': /* request hour */
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%H", TM);
+			strftime(str, freespace, "%H", TM);
 			break;
 
 		case 'I': /* Request ID */
 			if (request->packet) {
-				snprintf(q, freespace, "%i", request->packet->id);
+				snprintf(str, freespace, "%i", request->packet->id);
 			}
 			break;
 
 		case 'S': /* request timestamp in SQL format*/
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%Y-%m-%d %H:%M:%S", TM);
+			strftime(str, freespace, "%Y-%m-%d %H:%M:%S", TM);
 			break;
 
 		case 'T': /* request timestamp */
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%Y-%m-%d-%H.%M.%S.000000", TM);
+			strftime(str, freespace, "%Y-%m-%d-%H.%M.%S.000000", TM);
 			break;
 
 		case 'Y': /* request year */
 			TM = localtime_r(&when, &s_TM);
-			strftime(q, freespace, "%Y", TM);
+			strftime(str, freespace, "%Y", TM);
 			break;
 
 		default:
