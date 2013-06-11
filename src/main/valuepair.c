@@ -1100,7 +1100,8 @@ VALUE_PAIR *radius_map2vp(REQUEST *request, value_pair_map_t const *map,
 		break;
 
 	case VPT_TYPE_ATTR:
-		rad_assert(map->src->da->type == map->dst->da->type);
+		rad_assert((map->src->da->type == map->dst->da->type) ||
+			   (map->src->da->type == PW_TYPE_OCTETS));
 		context = request;
 
 		if (radius_request(&context, map->src->request) == 0) {

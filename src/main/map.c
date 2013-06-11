@@ -366,10 +366,12 @@ value_pair_map_t *radius_cp2map(TALLOC_CTX *ctx, CONF_PAIR *cp,
 	 */
 
 	/*
-	 *	We don't support implicit type conversion
+	 *	We don't support implicit type conversion,
+	 *	except for "octets"
 	 */
 	if (map->dst->da && map->src->da &&
-	    (map->src->da->type != map->dst->da->type)) {
+	    (map->src->da->type != map->dst->da->type) &&
+	    (map->src->da->type != PW_TYPE_OCTETS)) {
 		cf_log_err(ci, "Attribute type mismatch");
 		goto error;
 	}
