@@ -106,3 +106,6 @@ data ERROR offset 2 'Unknown attribute'
 
 xlat %{%{User-Name}:-}
 data %{%{User-Name}:-}
+
+xlat "Hello %S goo"
+data "Hello %S goo"
