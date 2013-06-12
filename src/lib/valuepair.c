@@ -598,10 +598,10 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 		n = pairalloc(ctx, da);
 		if (!n) return NULL;
 
-		p = talloc_array(n, uint8_t, dict_attr_sizes[vp->da->type][2] + 2);
+		p = talloc_array(n, uint8_t, dict_attr_sizes[vp->da->type][1] + 2);
 
 		pvp = &vp;
-		length = rad_vp2attr(NULL, NULL, NULL, pvp, p, dict_attr_sizes[vp->da->type][2]);
+		length = rad_vp2attr(NULL, NULL, NULL, pvp, p, dict_attr_sizes[vp->da->type][1]);
 		if (length < 0) {
 			pairfree(&n);
 			return NULL;
