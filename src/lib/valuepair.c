@@ -557,17 +557,58 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 	 *	to be octets.
 	 */
 	if (da->type != vp->da->type) {
-		if (vp->da->type != PW_TYPE_OCTETS) {
-			return NULL;
+		int length;
+		uint8_t *p;
+		VALUE_PAIR const **pvp;
+
+		if (vp->da->type == PW_TYPE_OCTETS) {
+			/*
+			 *	Decode the data.  It may be wrong!
+			 */
+			if (rad_data2vp(da->attr, da->vendor, vp->vp_octets, vp->length, &n) < 0) {
+				return NULL;
+			}
+
+			n->type = VT_DATA;
+			return n;
 		}
 
 		/*
-		 *	Decode the data.  It may be wrong!
+		 *	Else the destination type is octets
 		 */
-		if (rad_data2vp(da->attr, da->vendor, vp->vp_octets, vp->length, &n) < 0) {
+		switch (vp->da->type) {
+		default:
+			return NULL; /* can't do it */
+
+		case PW_TYPE_INTEGER:
+		case PW_TYPE_IPADDR:
+		case PW_TYPE_DATE:
+		case PW_TYPE_IFID:
+		case PW_TYPE_IPV6ADDR:
+		case PW_TYPE_IPV6PREFIX:
+		case PW_TYPE_BYTE:
+		case PW_TYPE_SHORT:
+		case PW_TYPE_ETHERNET:
+		case PW_TYPE_SIGNED:
+		case PW_TYPE_INTEGER64:
+		case PW_TYPE_IPV4PREFIX:
+			break;
+		}
+
+		n = pairalloc(ctx, da);
+		if (!n) return NULL;
+
+		p = talloc_array(n, uint8_t, dict_attr_sizes[vp->da->type][2] + 2);
+
+		pvp = &vp;
+		length = rad_vp2attr(NULL, NULL, NULL, pvp, p, dict_attr_sizes[vp->da->type][2]);
+		if (length < 0) {
+			pairfree(&n);
 			return NULL;
 		}
 
+		pairmemcpy(n, p + 2, length - 2);
+		talloc_free(p);
 		return n;
 	}
 	
