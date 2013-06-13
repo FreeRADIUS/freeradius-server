@@ -585,7 +585,7 @@ static size_t sha1_xlat(UNUSED void *instance, REQUEST *request,
                        UNUSED RADIUS_ESCAPE_STRING func)
 {
         char buffer[1024];
-        uint8_t digest[16];
+        uint8_t digest[20];
         int i;
         fr_SHA1_CTX ctx;
 
