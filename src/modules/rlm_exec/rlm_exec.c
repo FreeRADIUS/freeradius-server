@@ -315,6 +315,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 		}
 		
 		REDEBUG("%s", msg);
+		module_failure_msg(request, msg);
 	}
 	
 	return result-1;
