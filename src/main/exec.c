@@ -477,16 +477,15 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 
 /** Execute a program.
  *
- * @param cmd Command to execute. This is parsed into argv[] parts,
- * 	then each individual argv part is xlat'ed.
- * @param request current request.
- * @param exec_wait set to 1 if you want to read from or write to child
- * @param user_msg buffer to append plaintext (non valuepair) output.
- * @param msg_len length of user_msg buffer.
- * @param input_pairs list of value pairs - these will be put into
- * 	the environment variables of the child.
- * @param[out] output_pairs list of value pairs - child stdout will be
- * 	parsed and added into this list of value pairs.
+ * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
+ *	is xlat'ed.
+ * @param[in] request Current request.
+ * @param[in] exec_wait set to 1 if you want to read from or write to child.
+ * @param[in] user_msg buffer to append plaintext (non valuepair) output.
+ * @param[in] msg_len length of user_msg buffer.
+ * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
+ * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list 
+ *	of value pairs.
  * @param shell_escape values before passing them as arguments.
  * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
  */
