@@ -57,8 +57,8 @@ static const CONF_PARSER module_config[] = {
 	{ "wait", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,wait), NULL, "yes" },
 	{ "program",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,program), NULL, NULL },
-	{ "input_pairs", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
-	  offsetof(rlm_exec_t,input), NULL, "request" },
+	{ "input_pairs", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_exec_t,input), NULL, NULL },
 	{ "output_pairs",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,output), NULL, NULL },
 	{ "packet_type", PW_TYPE_STRING_PTR,
@@ -157,29 +157,25 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst->xlat_name, exec_xlat, shell_escape, inst);
-
-	/*
-	 *	No input pairs defined.  Why are we executing a program?
-	 */
-	rad_assert(inst->input && *inst->input);
-
-	p = inst->input;
-	inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
-	if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
-		cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
-		return -1;
+	
+	if (inst->input) {
+		p = inst->input;
+		inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+			cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
+			return -1;
+		}
 	}
 
-	inst->output_list = PAIR_LIST_UNKNOWN;
 	if (inst->output) {
-		pair_lists_t l;
-
 		p = inst->output;
-		l = radius_list_name(&p, PAIR_LIST_UNKNOWN);
-		if ((l == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+		inst->output_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err_cs(conf, "Invalid output list '%s'", inst->output);
 			return -1;
 		}
+		
+		
 	}
 
 	/*
@@ -221,9 +217,9 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 {
-	rlm_exec_t *inst = (rlm_exec_t *) instance;
+	rlm_exec_t *inst = (rlm_exec_t *)instance;
 	int result;
-	VALUE_PAIR	**input_pairs, **output_pairs;
+	VALUE_PAIR	**input_pairs = NULL, **output_pairs = NULL;
 	VALUE_PAIR	*answer = NULL;
 	char		msg[1024];
 	size_t		len;
@@ -258,12 +254,19 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	/*
 	 *	Decide what input/output the program takes.
 	 */
-	input_pairs = radius_list(request, inst->input_list);
-	if (!input_pairs) {
-		return RLM_MODULE_INVALID;
+	if (inst->input) {
+		input_pairs = radius_list(request, inst->input_list);
+		if (!input_pairs) {
+			return RLM_MODULE_INVALID;
+		}
 	}
 	
-	output_pairs = radius_list(request, inst->output_list);
+	if (inst->output) {
+		output_pairs = radius_list(request, inst->output_list);
+		if (!output_pairs) {
+			return RLM_MODULE_INVALID;
+		}
+	}
 
 	/*
 	 *	This function does it's own xlat of the input program
