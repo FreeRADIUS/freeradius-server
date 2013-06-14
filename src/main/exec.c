@@ -99,12 +99,12 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 #endif
 	int argc;
 	int i;
-	char *argv[MAX_ARGV];
+	char const *argv[MAX_ARGV];
 	char argv_buf[4096];
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
 	
-	argc = rad_expand_xlat(request, cmd, MAX_ARGV, (char const **) argv, 1, sizeof(argv_buf), argv_buf);
+	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, 1, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
 		RDEBUG("invalid command line '%s'.", cmd);
 		return -1;
@@ -258,7 +258,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 */
 		closefrom(3);
 
-		execve(argv[0], argv, envp);
+		execve(argv[0], (char * const *) argv, envp);
 		RWDEBUG("Failed to execute %s: %s", argv[0], strerror(errno));
 		exit(1);
 	}
