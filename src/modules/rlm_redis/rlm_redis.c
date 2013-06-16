@@ -214,14 +214,14 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 {
 	REDISSOCK *dissocket;
 	int argc;
-	char const *argv[MAX_REDIS_ARGS];
+	char *argv[MAX_REDIS_ARGS];
 	char argv_buf[MAX_QUERY_LEN];
 
 	if (!query || !*query || !inst || !dissocket_p) {
 		return -1;
 	}
 
-	argc = rad_expand_xlat(request, query, MAX_REDIS_ARGS, argv, 0,
+	argc = rad_expand_xlat(request, query, MAX_REDIS_ARGS, argv, false,
 				sizeof(argv_buf), argv_buf);
 	if (argc <= 0)
 		return -1;
@@ -229,8 +229,7 @@ int rlm_redis_query(REDISSOCK **dissocket_p, REDIS_INST *inst,
 	dissocket = *dissocket_p;
 
 	DEBUG2("executing %s ...", argv[0]);
-	dissocket->reply = redisCommandArgv(dissocket->conn, argc, argv, NULL);
-
+	dissocket->reply = redisCommandArgv(dissocket->conn, argc, (char const **)(void **)argv, NULL);
 	if (!dissocket->reply) {
 		RERROR("%s", dissocket->conn->errstr);
 

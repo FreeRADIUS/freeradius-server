@@ -99,12 +99,12 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 #endif
 	int argc;
 	int i;
-	char const *argv[MAX_ARGV];
+	char *argv[MAX_ARGV];
 	char argv_buf[4096];
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
 	
-	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, 1, sizeof(argv_buf), argv_buf);
+	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
 		RDEBUG("invalid command line '%s'.", cmd);
 		return -1;
@@ -141,7 +141,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 			}
 		}
 	}
-
+	
 	envp[0] = NULL;
 
 	if (input_pairs) {
@@ -258,7 +258,10 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 */
 		closefrom(3);
 
-		execve(argv[0], (char * const *) argv, envp);
+		/*
+		 *	I swear the signature for execve is wrong and should take 'char const * const argv[]'.
+		 */
+		execve(argv[0], argv, envp);
 		RWDEBUG("Failed to execute %s: %s", argv[0], strerror(errno));
 		exit(1);
 	}
@@ -512,9 +515,10 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 		return -1;
 	}
 
-	if (!exec_wait)
+	if (!exec_wait) {
 		return 0;
-
+	}
+	
 #ifndef __MINGW32__
 	done = radius_readfrom_program(request, from_child, pid, 10, answer, sizeof(answer));
 	if (done < 0) {
@@ -528,7 +532,6 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	}
 	answer[done] = 0;
 
-
 	/*
 	 *	Make sure that the writer can't block while writing to
 	 *	a pipe that no one is reading from anymore.
@@ -536,7 +539,6 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	close(from_child);
 
 	RDEBUG2("Program output is %s", answer);
-
 	/*
 	 *	Parse the output, if any.
 	 */

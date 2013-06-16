@@ -738,13 +738,21 @@ int rad_pps(int *past, int *present, time_t *then, struct timeval *now)
 	return pps;
 }
 
-/*
- * Split a string into words, xlat each one and write into argv array.
- * Return argc or -1 on failure.
+/** Split string into words and expand each one
+ *
+ * @param request Current request.
+ * @param cmd string to split.
+ * @param max_argc the maximum number of arguments to split into.
+ * @param argv Where to write the pointers into argv_buf.
+ * @param can_fail If false, stop processing if any of the xlat expansions fail.
+ * @param argv_buflen size of argv_buf.
+ * @param argv_buf temporary buffer we used to mangle/expand cmd.
+ *	Pointers to offsets of this buffer will be written to argv.
+ * @return argc or -1 on failure.
  */
 
 int rad_expand_xlat(REQUEST *request, char const *cmd,
-		    int max_argc, char const *argv[], int can_fail,
+		    int max_argc, char *argv[], bool can_fail,
 		    size_t argv_buflen, char *argv_buf)
 {
 	char const *from;

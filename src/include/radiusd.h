@@ -537,7 +537,7 @@ int		rad_copy_variable(char *dst, char const *from);
 int		rad_pps(int *past, int *present, time_t *then,
 			struct timeval *now);
 int		rad_expand_xlat(REQUEST *request, char const *cmd,
-				int max_argc, char const *argv[], int can_fail,
+				int max_argc, char *argv[], bool can_fail,
 				size_t argv_buflen, char *argv_buf);
 
 /* client.c */
