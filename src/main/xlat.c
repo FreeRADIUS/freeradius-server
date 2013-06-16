@@ -994,7 +994,8 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			 *	LITERAL		" bar"
 			 */
 			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
-			if (slen <= 0) {
+			rad_assert(slen != 0);
+			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
@@ -1027,11 +1028,14 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			*p = '\0';
 			p += 2;
 
+			if (!*p) break;
+
 			/*
 			 *	And recurse.
 			 */
 			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
-			if (slen <= 0) {
+			rad_assert(slen != 0);
+			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
