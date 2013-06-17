@@ -1377,17 +1377,17 @@ Optional Features:
   --enable-FEATURE[=ARG]  include FEATURE [ARG=yes]
   --enable-developer      enables features of interest to developers.
   --disable-largefile     omit support for large files
-  --enable-strict-dependencies  Fail configure on lack of module dependancy.
+  --enable-strict-dependencies  fail configure on lack of module dependancy.
   --enable-werror         causes the build to fail if any warnings are generated.
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
   --without-PACKAGE       do not use PACKAGE (same as --with-PACKAGE=no)
-  --with-docdir=DIR       Directory for documentation DATADIR/doc/freeradius
-  --with-logdir=DIR       Directory for logfiles LOCALSTATEDIR/log/radius
-  --with-radacctdir=DIR   Directory for detail files LOGDIR/radacct
-  --with-raddbdir=DIR     Directory for config files SYSCONFDIR/raddb
-  --with-ascend-binary    Include support for Ascend binary filter attributes (default=yes)
+  --with-docdir=DIR       directory for documentation DATADIR/doc/freeradius
+  --with-logdir=DIR       directory for logfiles LOCALSTATEDIR/log/radius
+  --with-radacctdir=DIR   directory for detail files LOGDIR/radacct
+  --with-raddbdir=DIR     directory for config files SYSCONFDIR/raddb
+  --with-ascend-binary    include support for Ascend binary filter attributes (default=yes)
   --with-threads          Use threads, if available.  (default=yes)
   --with-tcp              Compile in TCP support. (default=yes)
   --with-vmps             Compile in VMPS support. (default=yes)
@@ -2377,11 +2377,11 @@ _ACEOF
 # Check whether --enable-developer was given.
 if test "${enable_developer+set}" = set; then :
   enableval=$enable_developer;  case "$enableval" in
-    no)
-	developer=no
-	;;
-    *)
-	developer=yes
+  no)
+    developer=no
+    ;;
+  *)
+    developer=yes
   esac
 
 fi
@@ -4852,8 +4852,7 @@ fi
 fi
 makever=`$ac_cv_path_MAKE --version 2>&1 | grep "GNU Make"`
 if test -z "$makever"; then
-  as_fn_error $? "GNU Make is not installed.  Please download and install it
-		from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing." "$LINENO" 5
+  as_fn_error $? "GNU Make is not installed.  Please download and install it from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing." "$LINENO" 5
 fi
 
 # Extract the first word of "git", so it can be a program name with args.
@@ -4906,10 +4905,10 @@ fi
 if test "${enable_werror+set}" = set; then :
   enableval=$enable_werror;  case "$enableval" in
     no)
-	werror=no
-	;;
+      werror=no
+    ;;
     *)
-	werror=yes
+      werror=yes
   esac
 
 fi
@@ -4922,17 +4921,17 @@ $as_echo_n "checking docdir... " >&6; }
 # Check whether --with-docdir was given.
 if test "${with_docdir+set}" = set; then :
   withval=$with_docdir;  case "$withval" in
-    no)
-	docdir=no
-	;;
-    yes)
-	;;
-    [\\/$]* | ?:[\\/]* )
-	docdir="$withval"
-	;;
-    *)
-	as_fn_error $? "expected an absolute directory name for --with-docdir: $withval" "$LINENO" 5
-	;;
+  no)
+    docdir=no
+    ;;
+  yes)
+    ;;
+  [\\/$]* | ?:[\\/]* )
+    docdir="$withval"
+    ;;
+  *)
+    as_fn_error $? "expected an absolute directory name for --with-docdir: $withval" "$LINENO" 5
+    ;;
   esac
 
 fi
@@ -4941,7 +4940,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $docdir" >&5
 $as_echo "$docdir" >&6; }
 if test "x$docdir" = xno; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Documentation files will NOT be installed." >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: Documentation files will NOT be installed." >&5
 $as_echo "$as_me: WARNING: Documentation files will NOT be installed." >&2;}
 fi
 
@@ -4952,17 +4951,17 @@ $as_echo_n "checking logdir... " >&6; }
 # Check whether --with-logdir was given.
 if test "${with_logdir+set}" = set; then :
   withval=$with_logdir;  case "$withval" in
-    no)
-	as_fn_error $? "Need logdir" "$LINENO" 5
-	;;
-    yes)
-	;;
-    [\\/$]* | ?:[\\/]* )
-	logdir="$withval"
-	;;
-    *)
-	as_fn_error $? "expected an absolute directory name for --with-logdir: $withval" "$LINENO" 5
-	;;
+  no)
+    as_fn_error $? "Need logdir" "$LINENO" 5
+    ;;
+  yes)
+    ;;
+  [\\/$]* | ?:[\\/]* )
+    logdir="$withval"
+    ;;
+  *)
+    as_fn_error $? "expected an absolute directory name for --with-logdir: $withval" "$LINENO" 5
+    ;;
   esac
 
 fi
@@ -4978,17 +4977,17 @@ $as_echo_n "checking radacctdir... " >&6; }
 # Check whether --with-radacctdir was given.
 if test "${with_radacctdir+set}" = set; then :
   withval=$with_radacctdir;  case "$withval" in
-    no)
-	as_fn_error $? "Need radacctdir" "$LINENO" 5
-	;;
-    yes)
-	;;
-    [\\/$]* | ?:[\\/]* )
-	radacctdir="$withval"
-	;;
-    *)
-	as_fn_error $? "expected an absolute directory name for --with-radacctdir: $withval" "$LINENO" 5
-	;;
+  no)
+    as_fn_error $? "Need radacctdir" "$LINENO" 5
+    ;;
+  yes)
+    ;;
+  [\\/$]* | ?:[\\/]* )
+    radacctdir="$withval"
+    ;;
+  *)
+    as_fn_error $? "expected an absolute directory name for --with-radacctdir: $withval" "$LINENO" 5
+    ;;
   esac
 
 fi
@@ -5004,17 +5003,17 @@ $as_echo_n "checking raddbdir... " >&6; }
 # Check whether --with-raddbdir was given.
 if test "${with_raddbdir+set}" = set; then :
   withval=$with_raddbdir;  case "$withval" in
-    no)
-	as_fn_error $? "Need raddbdir" "$LINENO" 5
-	;;
-    yes)
-	;;
-    [\\/$]* | ?:[\\/]* )
-	raddbdir="$withval"
-	;;
-    *)
-	as_fn_error $? "expected an absolute directory name for --with-raddbdir: $withval" "$LINENO" 5
-	;;
+  no)
+    as_fn_error $? "Need raddbdir" "$LINENO" 5
+    ;;
+  yes)
+    ;;
+  [\\/$]* | ?:[\\/]* )
+    raddbdir="$withval"
+    ;;
+  *)
+    as_fn_error $? "expected an absolute directory name for --with-raddbdir: $withval" "$LINENO" 5
+    ;;
   esac
 
 fi
@@ -5028,10 +5027,10 @@ WITH_ASCEND_BINARY=yes
 # Check whether --with-ascend-binary was given.
 if test "${with_ascend_binary+set}" = set; then :
   withval=$with_ascend_binary;  case "$withval" in
-    yes)
-	;;
-    *)
-	WITH_ASCEND_BINARY=no
+  yes)
+    ;;
+  *)
+    WITH_ASCEND_BINARY=no
   esac
 
 fi
@@ -5047,10 +5046,10 @@ WITH_THREADS=yes
 # Check whether --with-threads was given.
 if test "${with_threads+set}" = set; then :
   withval=$with_threads;  case "$withval" in
-    yes)
-	;;
-    *)
-	WITH_THREADS=no
+  yes)
+    ;;
+  *)
+    WITH_THREADS=no
   esac
 
 fi
@@ -5061,10 +5060,10 @@ WITH_TCP=yes
 # Check whether --with-tcp was given.
 if test "${with_tcp+set}" = set; then :
   withval=$with_tcp;  case "$withval" in
-    yes)
-        ;;
-    *)
-	WITH_TCP=no
+  yes)
+    ;;
+  *)
+    WITH_TCP=no
   esac
 
 fi
@@ -5080,10 +5079,10 @@ WITH_VMPS=yes
 # Check whether --with-vmps was given.
 if test "${with_vmps+set}" = set; then :
   withval=$with_vmps;  case "$withval" in
-    yes)
-        ;;
-    *)
-	WITH_VMPS=no
+  yes)
+    ;;
+  *)
+    WITH_VMPS=no
   esac
 
 fi
@@ -5099,10 +5098,10 @@ WITH_DHCP=yes
 # Check whether --with-dhcp was given.
 if test "${with_dhcp+set}" = set; then :
   withval=$with_dhcp;  case "$withval" in
-    yes)
-        ;;
-    *)
-	WITH_DHCP=no
+  yes)
+    ;;
+  *)
+    WITH_DHCP=no
   esac
 
 fi
@@ -5142,13 +5141,13 @@ EXPERIMENTAL=
 # Check whether --with-experimental-modules was given.
 if test "${with_experimental_modules+set}" = set; then :
   withval=$with_experimental_modules;  case "$withval" in
-    yes)
-	EXPERIMENTAL=yes
-	;;
-    no)
-        EXPERIMENTAL=no
-	;;
-    *)
+  yes)
+    EXPERIMENTAL=yes
+    ;;
+  no)
+    EXPERIMENTAL=no
+    ;;
+  *)
   esac
 
 fi
@@ -5159,12 +5158,12 @@ WITH_OPENSSL=yes
 # Check whether --with-openssl was given.
 if test "${with_openssl+set}" = set; then :
   withval=$with_openssl;  case "$withval" in
-    no)
-	WITH_OPENSSL=no
-	;;
-    *)
-	WITH_OPENSSL=yes
-	;;
+  no)
+    WITH_OPENSSL=no
+    ;;
+  *)
+    WITH_OPENSSL=yes
+    ;;
   esac
 
 fi
@@ -5175,8 +5174,8 @@ OPENSSL_INCLUDE_DIR=
 # Check whether --with-openssl-includes was given.
 if test "${with_openssl_includes+set}" = set; then :
   withval=$with_openssl_includes;  case "$withval" in
-    *) OPENSSL_INCLUDE_DIR="$withval"
-	;;
+  *) OPENSSL_INCLUDE_DIR="$withval"
+    ;;
   esac
 
 fi
@@ -5187,8 +5186,8 @@ OPENSSL_LIB_DIR=
 # Check whether --with-openssl-libraries was given.
 if test "${with_openssl_libraries+set}" = set; then :
   withval=$with_openssl_libraries;  case "$withval" in
-    *) OPENSSL_LIB_DIR="$withval"
-	;;
+  *) OPENSSL_LIB_DIR="$withval"
+    ;;
   esac
 
 fi
@@ -5199,8 +5198,8 @@ fi
 # Check whether --with-rlm-FOO-lib-dir was given.
 if test "${with_rlm_FOO_lib_dir+set}" = set; then :
   withval=$with_rlm_FOO_lib_dir;  case "$withval" in
-    *)
-	;;
+  *)
+    ;;
   esac
 
 fi
@@ -5210,12 +5209,11 @@ fi
 # Check whether --with-rlm-FOO-include-dir was given.
 if test "${with_rlm_FOO_include_dir+set}" = set; then :
   withval=$with_rlm_FOO_include_dir;  case "$withval" in
-    *)
-	;;
+  *)
+    ;;
   esac
 
 fi
-
 
 
 WITH_UDPFROMTO=no
@@ -5223,11 +5221,11 @@ WITH_UDPFROMTO=no
 # Check whether --with-udpfromto was given.
 if test "${with_udpfromto+set}" = set; then :
   withval=$with_udpfromto;  case "$withval" in
-    yes)
-	WITH_UDPFROMTO=yes
-        ;;
-    *)
-	WITH_UDPFROMTO=no
+  yes)
+    WITH_UDPFROMTO=yes
+    ;;
+  *)
+    WITH_UDPFROMTO=no
   esac
 
 fi
@@ -5592,7 +5590,7 @@ fi
 done
 
 
-  { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
+                { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lpthread" >&5
 $as_echo_n "checking for pthread_create in -lpthread... " >&6; }
 if ${ac_cv_lib_pthread_pthread_create+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -5629,10 +5627,13 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_pthread_pthread_create" >&5
 $as_echo "$ac_cv_lib_pthread_pthread_create" >&6; }
 if test "x$ac_cv_lib_pthread_pthread_create" = xyes; then :
-   CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
-                  LIBS="-lpthread $LIBS"
+
+      CFLAGS="$CFLAGS -D_REENTRANT -D_POSIX_PTHREAD_SEMANTICS"
+      LIBS="-lpthread $LIBS"
+
 else
-   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc_r" >&5
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pthread_create in -lc_r" >&5
 $as_echo_n "checking for pthread_create in -lc_r... " >&6; }
 if ${ac_cv_lib_c_r_pthread_create+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -5674,6 +5675,7 @@ else
    WITH_THREADS="no"
 
 fi
+
 
 
 fi
@@ -6020,14 +6022,18 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_pcap_pcap_open_live" >&5
 $as_echo "$ac_cv_lib_pcap_pcap_open_live" >&6; }
 if test "x$ac_cv_lib_pcap_pcap_open_live" = xyes; then :
-   PCAP_LIBS="-lpcap"
+
+    PCAP_LIBS="-lpcap"
 
 $as_echo "#define HAVE_LIBPCAP 1" >>confdefs.h
 
 
 else
-   { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap library not found, silently disabling the RADIUS sniffer." >&5
+
+    { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap library not found, silently disabling the RADIUS sniffer." >&5
 $as_echo "$as_me: WARNING: pcap library not found, silently disabling the RADIUS sniffer." >&2;}
+
+
 fi
 
 
@@ -6163,13 +6169,13 @@ done
 
 
 case "$host" in
-*-interix*)
-	CFLAGS="$CFLAGS -D_ALL_SOURCE"
-	;;
-*-darwin*)
-	CFLAGS="$CFLAGS -DDARWIN"
-	LIBS="-framework DirectoryService $LIBS"
-	;;
+  *-interix*)
+    CFLAGS="$CFLAGS -D_ALL_SOURCE"
+    ;;
+  *-darwin*)
+    CFLAGS="$CFLAGS -DDARWIN"
+    LIBS="-framework DirectoryService $LIBS"
+    ;;
 esac
 
 ac_header_dirent=no
@@ -6520,45 +6526,45 @@ fi
 
 
 for ac_header in \
-	dlfcn.h \
-	unistd.h \
-	crypt.h \
-	errno.h \
-	resource.h \
-	sys/resource.h \
-	getopt.h \
-	malloc.h \
-	utmp.h \
-	utmpx.h \
-	signal.h \
-	sys/select.h \
-	syslog.h \
-	inttypes.h \
-	stdint.h \
-	stdio.h \
-	netdb.h \
-	semaphore.h \
-	arpa/inet.h \
-	netinet/in.h \
-	sys/types.h \
-	sys/socket.h \
-	winsock.h \
-	utime.h \
-	sys/time.h \
-	sys/wait.h \
-	sys/security.h \
-	fcntl.h \
-	sys/fcntl.h \
-	sys/prctl.h \
-	sys/un.h \
-	glob.h \
-	prot.h \
-	pwd.h \
-	grp.h \
-	stddef.h \
-        fnmatch.h \
-	sia.h \
-	siad.h
+  dlfcn.h \
+  unistd.h \
+  crypt.h \
+  errno.h \
+  resource.h \
+  sys/resource.h \
+  getopt.h \
+  malloc.h \
+  utmp.h \
+  utmpx.h \
+  signal.h \
+  sys/select.h \
+  syslog.h \
+  inttypes.h \
+  stdint.h \
+  stdio.h \
+  netdb.h \
+  semaphore.h \
+  arpa/inet.h \
+  netinet/in.h \
+  sys/types.h \
+  sys/socket.h \
+  winsock.h \
+  utime.h \
+  sys/time.h \
+  sys/wait.h \
+  sys/security.h \
+  fcntl.h \
+  sys/fcntl.h \
+  sys/prctl.h \
+  sys/un.h \
+  glob.h \
+  prot.h \
+  pwd.h \
+  grp.h \
+  stddef.h \
+  fnmatch.h \
+  sia.h \
+  siad.h
 
 do :
   as_ac_Header=`$as_echo "ac_cv_header_$ac_header" | $as_tr_sh`
@@ -6576,8 +6582,8 @@ done
 for ac_header in net/if.h
 do :
   ac_fn_c_check_header_compile "$LINENO" "net/if.h" "ac_cv_header_net_if_h" "#ifdef HAVE_SYS_SOCKET_H
-# include <sys/socket.h>
-# endif
+#  include <sys/socket.h>
+#  endif
 
 "
 if test "x$ac_cv_header_net_if_h" = xyes; then :
@@ -6608,8 +6614,7 @@ $as_echo "#define HAVE_REGEX_H /**/" >>confdefs.h
   REGEX=yes
   LIBS="$LIBS -lpcreposix"
 else
-
-ac_fn_c_check_header_mongrel "$LINENO" "regex.h" "ac_cv_header_regex_h" "$ac_includes_default"
+  ac_fn_c_check_header_mongrel "$LINENO" "regex.h" "ac_cv_header_regex_h" "$ac_includes_default"
 if test "x$ac_cv_header_regex_h" = xyes; then :
 
 $as_echo "#define HAVE_REGEX_H /**/" >>confdefs.h
@@ -6617,16 +6622,17 @@ $as_echo "#define HAVE_REGEX_H /**/" >>confdefs.h
 fi
 
 
-if test "x$ac_cv_header_regex_h" = "xyes"; then
-  REGEX_EXTENDED=no
-  REGEX_PCRE=no
-  REGEX=yes
-  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  if test "x$ac_cv_header_regex_h" = "xyes"; then
+    REGEX_EXTENDED=no
+    REGEX_PCRE=no
+    REGEX=yes
+    cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
-#include <regex.h>
-     #ifdef REG_EXTENDED
-       yes
-     #endif
+
+        #include <regex.h>
+        #ifdef REG_EXTENDED
+        yes
+        #endif
 
 _ACEOF
 if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
@@ -6634,10 +6640,11 @@ if (eval "$ac_cpp conftest.$ac_ext") 2>&5 |
 
 $as_echo "#define HAVE_REG_EXTENDED /**/" >>confdefs.h
  REGEX_EXTENDED=yes
+
 fi
 rm -f conftest*
 
-fi
+  fi
 fi
 
 
@@ -6775,7 +6782,7 @@ fi
     CPPFLAGS="$CPPFLAGS -I$OPENSSL_INCLUDE_DIR"
   fi
 
-    CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
+        CPPFLAGS="$CPPFLAGS -DOPENSSL_NO_KRB5"
   for ac_header in \
     openssl/ssl.h \
     openssl/crypto.h \
@@ -6905,24 +6912,17 @@ fi
 export OPENSSL_LIBS
 
 if test "x$PCAP_LIBS" = x; then
-    { $as_echo "$as_me:${as_lineno-$LINENO}: skipping test for pcap.h." >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: skipping test for pcap.h." >&5
 $as_echo "$as_me: skipping test for pcap.h." >&6;}
 else
-    ac_fn_c_check_header_mongrel "$LINENO" "pcap.h" "ac_cv_header_pcap_h" "$ac_includes_default"
+  ac_fn_c_check_header_mongrel "$LINENO" "pcap.h" "ac_cv_header_pcap_h" "$ac_includes_default"
 if test "x$ac_cv_header_pcap_h" = xyes; then :
+
 
 $as_echo "#define HAVE_PCAP_H 1" >>confdefs.h
 
-else
-   PCAP_LIBS=
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap.h not found, silently disabling the RADIUS sniffer." >&5
-$as_echo "$as_me: WARNING: pcap.h not found, silently disabling the RADIUS sniffer." >&2;}
 
-fi
-
-
-
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcap_fopen_offline in -lpcap" >&5
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcap_fopen_offline in -lpcap" >&5
 $as_echo_n "checking for pcap_fopen_offline in -lpcap... " >&6; }
 if ${ac_cv_lib_pcap_pcap_fopen_offline+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -6960,12 +6960,15 @@ fi
 $as_echo "$ac_cv_lib_pcap_pcap_fopen_offline" >&6; }
 if test "x$ac_cv_lib_pcap_pcap_fopen_offline" = xyes; then :
 
+
 $as_echo "#define HAVE_PCAP_FOPEN_OFFLINE 1" >>confdefs.h
+
 
 
 fi
 
-    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcap_dump_fopen in -lpcap" >&5
+
+      { $as_echo "$as_me:${as_lineno-$LINENO}: checking for pcap_dump_fopen in -lpcap" >&5
 $as_echo_n "checking for pcap_dump_fopen in -lpcap... " >&6; }
 if ${ac_cv_lib_pcap_pcap_dump_fopen+:} false; then :
   $as_echo_n "(cached) " >&6
@@ -7003,10 +7006,23 @@ fi
 $as_echo "$ac_cv_lib_pcap_pcap_dump_fopen" >&6; }
 if test "x$ac_cv_lib_pcap_pcap_dump_fopen" = xyes; then :
 
+
 $as_echo "#define HAVE_PCAP_DUMP_FOPEN 1" >>confdefs.h
 
 
+
 fi
+
+
+else
+
+      PCAP_LIBS=
+      { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: pcap.h not found, silently disabling the RADIUS sniffer." >&5
+$as_echo "$as_me: WARNING: pcap.h not found, silently disabling the RADIUS sniffer." >&2;}
+
+
+fi
+
 
 fi
 
@@ -7086,11 +7102,12 @@ else
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
+    #  include <sys/types.h>
+    #endif
+
+    #ifdef HAVE_SYS_SOCKET_H
+    #  include <sys/socket.h>
+    #endif
 
 int
 main ()
@@ -7127,11 +7144,12 @@ else
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
+    #  include <inttypes.h>
+    #endif
+
+    #ifdef HAVE_STDINT_H
+    #  include <stdint.h>
+    #endif
 
 int
 main ()
@@ -7168,11 +7186,12 @@ else
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
+    #  include <inttypes.h>
+    #endif
+
+    #ifdef HAVE_STDINT_H
+    #  include <stdint.h>
+    #endif
 
 int
 main ()
@@ -7209,11 +7228,12 @@ else
       cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 #ifdef HAVE_INTTYPES_H
-#include <inttypes.h>
-#endif
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
-#endif
+    #  include <inttypes.h>
+    #endif
+
+    #ifdef HAVE_STDINT_H
+    #  include <stdint.h>
+    #endif
 
 int
 main ()
@@ -7241,9 +7261,10 @@ $as_echo "#define uint32_t unsigned int" >>confdefs.h
 
 
 ac_fn_c_check_type "$LINENO" "struct in6_addr" "ac_cv_type_struct_in6_addr" "
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
+    #ifdef HAVE_NETINET_IN_H
+    #  include <netinet/in.h>
+    #endif
+
 
 "
 if test "x$ac_cv_type_struct_in6_addr" = xyes; then :
@@ -7254,12 +7275,13 @@ fi
 
 
 ac_fn_c_check_type "$LINENO" "struct sockaddr_storage" "ac_cv_type_struct_sockaddr_storage" "
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
+    #ifdef HAVE_NETINET_IN_H
+    #  include <netinet/in.h>
+    #endif
+
+    #ifdef HAVE_SYS_SOCKET_H
+    #  include <sys/socket.h>
+    #endif
 
 "
 if test "x$ac_cv_type_struct_sockaddr_storage" = xyes; then :
@@ -7270,9 +7292,9 @@ fi
 
 
 ac_fn_c_check_type "$LINENO" "struct sockaddr_in6" "ac_cv_type_struct_sockaddr_in6" "
-#ifdef HAVE_NETINET_IN_H
-#include <netinet/in.h>
-#endif
+    #ifdef HAVE_NETINET_IN_H
+    #  include <netinet/in.h>
+    #endif
 
 "
 if test "x$ac_cv_type_struct_sockaddr_in6" = xyes; then :
@@ -7283,15 +7305,18 @@ fi
 
 
 ac_fn_c_check_type "$LINENO" "struct addrinfo" "ac_cv_type_struct_addrinfo" "
-#ifdef HAVE_SYS_TYPES_H
-#include <sys/types.h>
-#endif
-#ifdef HAVE_SYS_SOCKET_H
-#include <sys/socket.h>
-#endif
-#ifdef HAVE_NETDB_H
-#include <netdb.h>
-#endif
+    #ifdef HAVE_SYS_TYPES_H
+    #  include <sys/types.h>
+    #endif
+
+    #ifdef HAVE_SYS_SOCKET_H
+    #  include <sys/socket.h>
+    #endif
+
+    #ifdef HAVE_NETDB_H
+    #  include <netdb.h>
+    #endif
+
 
 "
 if test "x$ac_cv_type_struct_addrinfo" = xyes; then :
@@ -7302,38 +7327,38 @@ fi
 
 
 for ac_func in \
-	getopt_long \
-	fcntl \
-	strsignal \
-	sigaction \
-	sigprocmask \
-	pthread_sigmask \
-	snprintf \
-	vsnprintf \
-	setsid \
-	strncasecmp \
-	strcasecmp \
-	localtime_r \
-	ctime_r \
-	gmtime_r \
-	strsep \
-	inet_aton \
-	inet_pton \
-	inet_ntop \
-	setlinebuf \
-	setvbuf \
-	getusershell \
-	initgroups \
-	getaddrinfo \
-	getnameinfo \
-	closefrom \
-	gettimeofday \
-	getpeereid \
-	setuid \
-	setresuid \
-	getresuid \
-	strlcat \
-	strlcpy
+  getopt_long \
+  fcntl \
+  strsignal \
+  sigaction \
+  sigprocmask \
+  pthread_sigmask \
+  snprintf \
+  vsnprintf \
+  setsid \
+  strncasecmp \
+  strcasecmp \
+  localtime_r \
+  ctime_r \
+  gmtime_r \
+  strsep \
+  inet_aton \
+  inet_pton \
+  inet_ntop \
+  setlinebuf \
+  setvbuf \
+  getusershell \
+  initgroups \
+  getaddrinfo \
+  getnameinfo \
+  closefrom \
+  gettimeofday \
+  getpeereid \
+  setuid \
+  setresuid \
+  getresuid \
+  strlcat \
+  strlcpy
 
 do :
   as_ac_var=`$as_echo "ac_cv_func_$ac_func" | $as_tr_sh`
@@ -7381,8 +7406,7 @@ _ACEOF
 
 
 
-if test "x$ac_cv_header_utmpx_h" = "xyes"
-then
+if test "x$ac_cv_header_utmpx_h" = "xyes"; then
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for ut_xtime in struct utmpx" >&5
 $as_echo_n "checking for ut_xtime in struct utmpx... " >&6; }
@@ -7425,8 +7449,7 @@ $as_echo "no" >&6; }
     eval "ac_cv_type_${ac_safe_type}_has_ut_xtime="
  fi
 
- if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"
- then
+ if test "x$ac_cv_type_struct_utmpx_has_ut_xtime" = "x"; then
 
 $as_echo "#define ut_xtime ut_tv.tv_sec" >>confdefs.h
 
@@ -7475,8 +7498,7 @@ $as_echo "no" >&6; }
     eval "ac_cv_type_${ac_safe_type}_has_ipi_addr="
  fi
 
-if test "x$ac_cv_type_struct_in_pktinfo_has_ipi_addr" = "xyes"
-then
+if test "x$ac_cv_type_struct_in_pktinfo_has_ipi_addr" = "xyes"; then
 
 $as_echo "#define HAVE_IP_PKTINFO /**/" >>confdefs.h
 
@@ -7524,8 +7546,7 @@ $as_echo "no" >&6; }
     eval "ac_cv_type_${ac_safe_type}_has_ipi6_addr="
  fi
 
-if test "x$ac_cv_type_struct_in6_pktinfo_has_ipi6_addr" = "xyes"
-then
+if test "x$ac_cv_type_struct_in6_pktinfo_has_ipi6_addr" = "xyes"; then
 
 $as_echo "#define HAVE_IN6_PKTINFO /**/" >>confdefs.h
 
@@ -7620,9 +7641,9 @@ OS=`uname -s`
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $OS" >&5
 $as_echo "$OS" >&6; }
 if test "$OS" = "OS/2"; then
-	LIBPREFIX=
+  LIBPREFIX=
 else
-	LIBPREFIX=lib
+  LIBPREFIX=lib
 fi
 
 
@@ -7748,17 +7769,16 @@ talloc_include_dir=
 # Check whether --with-talloc-include-dir was given.
 if test "${with_talloc_include_dir+set}" = set; then :
   withval=$with_talloc_include_dir; case "$withval" in
-	    no)
-		as_fn_error $? "Need talloc-include-dir" "$LINENO" 5
-	    ;;
-		yes)
-	    ;;
-	    *)
-		talloc_include_dir="$withval"
-	    ;;
-	esac
+    no)
+      as_fn_error $? "Need talloc-include-dir" "$LINENO" 5
+      ;;
+    yes)
+      ;;
+    *)
+      talloc_include_dir="$withval"
+      ;;
+  esac
 fi
-
 
 
 smart_try_dir="$talloc_include_dir"
@@ -7907,12 +7927,12 @@ if test "x$smart_include" != "x"; then
 fi
 
 if test "x$ac_cv_header_talloc_h" != "xyes"; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: talloc headers not found. Use --with-talloc-include-dir=<path>." >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: talloc headers not found. Use --with-talloc-include-dir=<path>." >&5
 $as_echo "$as_me: WARNING: talloc headers not found. Use --with-talloc-include-dir=<path>." >&2;}
-	as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
+  as_fn_error $? "FreeRADIUS requires libtalloc" "$LINENO" 5
 else
-	INCLUDE="${SMART_CFLAGS} ${INCLUDE}"
-	LIBS="-ltalloc ${LIBS}"
+  INCLUDE="${SMART_CFLAGS} ${INCLUDE}"
+  LIBS="-ltalloc ${LIBS}"
 fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking for crypt in -lcrypt" >&5
@@ -7955,6 +7975,7 @@ if test "x$ac_cv_lib_crypt_crypt" = xyes; then :
   CRYPTLIB="-lcrypt"
 
 fi
+
 
 if test "$CRYPTLIB" != ""; then
 
@@ -8017,20 +8038,23 @@ fi
 $as_echo "#define GNUSTYLE 1" >>confdefs.h
 
 
+
 $as_echo "#define SYSVSTYLE 2" >>confdefs.h
 
 
+
 $as_echo "#define BSDSTYLE 3" >>confdefs.h
+
 
 gethostbyaddrrstyle=""
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking gethostbyaddr_r() syntax" >&5
 $as_echo_n "checking gethostbyaddr_r() syntax... " >&6; }
 case "$host" in
-*-freebsd*)
-	ac_fn_c_check_decl "$LINENO" "gethostbyaddr_r" "ac_cv_have_decl_gethostbyaddr_r" "
-#ifdef HAVE_NETDB_H
-#include <netdb.h>
-#endif
+  *-freebsd*)
+                            ac_fn_c_check_decl "$LINENO" "gethostbyaddr_r" "ac_cv_have_decl_gethostbyaddr_r" "
+        #ifdef HAVE_NETDB_H
+        #include <netdb.h>
+        #endif
 
 "
 if test "x$ac_cv_have_decl_gethostbyaddr_r" = xyes; then :
@@ -8049,20 +8073,21 @@ else
 
 $as_echo "#define GETHOSTBYADDRRSTYLE BSDSTYLE" >>confdefs.h
 
-		gethostbyaddrrstyle=BSD
-		{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FreeBSD overridden to BSD-style" >&5
+        gethostbyaddrrstyle=BSD
+        { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING: FreeBSD overridden to BSD-style" >&5
 $as_echo "$as_me: WARNING: FreeBSD overridden to BSD-style" >&2;}
 
 fi
 
-	;;
+    ;;
 esac
+
 if test "x$gethostbyaddrrstyle" = "x"; then
-	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <stdio.h>
-#include <netdb.h>
+      #include <stdio.h>
+      #include <netdb.h>
 
 int
 main ()
@@ -8077,18 +8102,20 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define GETHOSTBYADDRRSTYLE GNUSTYLE" >>confdefs.h
 
-	gethostbyaddrrstyle=GNU
+      gethostbyaddrrstyle=GNU
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 fi
+
 if test "x$gethostbyaddrrstyle" = "x"; then
-	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <stdio.h>
-#include <netdb.h>
+      #include <stdio.h>
+      #include <netdb.h>
 
 int
 main ()
@@ -8103,18 +8130,21 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define GETHOSTBYADDRRSTYLE SYSVSTYLE" >>confdefs.h
 
-		gethostbyaddrrstyle=SYSV
+      gethostbyaddrrstyle=SYSV
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 fi
+
+
 if test "x$gethostbyaddrrstyle" = "x"; then
-	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <stdio.h>
-#include <netdb.h>
+      #include <stdio.h>
+      #include <netdb.h>
 
 int
 main ()
@@ -8129,7 +8159,8 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define GETHOSTBYADDRRSTYLE BSDSTYLE" >>confdefs.h
 
-		gethostbyaddrrstyle=BSD
+      gethostbyaddrrstyle=BSD
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
@@ -8137,15 +8168,15 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$gethostbyaddrrstyle" = "x"; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: none!  It must not exist, here." >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: none!  It must not exist, here." >&5
 $as_echo "none!  It must not exist, here." >&6; }
 else
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${gethostbyaddrrstyle}-style" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: ${gethostbyaddrrstyle}-style" >&5
 $as_echo "${gethostbyaddrrstyle}-style" >&6; }
 fi
 
 if test "x$gethostbyaddrrstyle" = "xBSD"; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:  ****** BSD-style gethostbyaddr might NOT be thread-safe! ****** " >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:  ****** BSD-style gethostbyaddr might NOT be thread-safe! ****** " >&5
 $as_echo "$as_me: WARNING:  ****** BSD-style gethostbyaddr might NOT be thread-safe! ****** " >&2;}
 fi
 
@@ -8155,8 +8186,8 @@ $as_echo_n "checking gethostbyname_r() syntax... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <stdio.h>
-#include <netdb.h>
+    #include <stdio.h>
+    #include <netdb.h>
 
 int
 main ()
@@ -8171,17 +8202,19 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define GETHOSTBYNAMERSTYLE GNUSTYLE" >>confdefs.h
 
-	gethostbynamerstyle=GNU
+    gethostbynamerstyle=GNU
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+
 if test "x$gethostbynamerstyle" = "x"; then
-	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <stdio.h>
-#include <netdb.h>
+      #include <stdio.h>
+      #include <netdb.h>
 
 int
 main ()
@@ -8196,18 +8229,20 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define GETHOSTBYNAMERSTYLE SYSVSTYLE" >>confdefs.h
 
-		gethostbynamerstyle=SYSV
+      gethostbynamerstyle=SYSV
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
 fi
+
 if test "x$gethostbynamerstyle" = "x"; then
-	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <stdio.h>
-#include <netdb.h>
+      #include <stdio.h>
+      #include <netdb.h>
 
 int
 main ()
@@ -8222,7 +8257,8 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define GETHOSTBYNAMERSTYLE BSDSTYLE" >>confdefs.h
 
-		gethostbynamerstyle=BSD
+      gethostbynamerstyle=BSD
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
@@ -8230,15 +8266,15 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 
 if test "x$gethostbynamerstyle" = "x"; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: none!  It must not exist, here." >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: none!  It must not exist, here." >&5
 $as_echo "none!  It must not exist, here." >&6; }
 else
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: ${gethostbynamerstyle}-style" >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: ${gethostbynamerstyle}-style" >&5
 $as_echo "${gethostbynamerstyle}-style" >&6; }
 fi
 
 if test "x$gethostbynamerstyle" = "xBSD"; then
-	{ $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:  ****** BSD-style gethostbyname might NOT be thread-safe! ****** " >&5
+  { $as_echo "$as_me:${as_lineno-$LINENO}: WARNING:  ****** BSD-style gethostbyname might NOT be thread-safe! ****** " >&5
 $as_echo "$as_me: WARNING:  ****** BSD-style gethostbyname might NOT be thread-safe! ****** " >&2;}
 fi
 
@@ -8254,7 +8290,7 @@ $as_echo_n "checking ctime_r() syntax... " >&6; }
 cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <time.h>
+    #include <time.h>
 
 int
 main ()
@@ -8269,16 +8305,18 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define CTIMERSTYLE SOLARISSTYLE" >>confdefs.h
 
-	ctimerstyle="SOLARIS"
+    ctimerstyle="SOLARIS"
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
+
 if test "x$ctimerstyle" = "x"; then
-	cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
 /* end confdefs.h.  */
 
-#include <time.h>
+      #include <time.h>
 
 int
 main ()
@@ -8293,7 +8331,8 @@ if ac_fn_c_try_link "$LINENO"; then :
 
 $as_echo "#define CTIMERSTYLE POSIXSTYLE" >>confdefs.h
 
-		ctimerstyle="POSIX"
+      ctimerstyle="POSIX"
+
 
 fi
 rm -f core conftest.err conftest.$ac_objext \
@@ -8320,14 +8359,13 @@ $as_echo "top_builddir=$top_builddir" >&6; }
 
 
 
-
 if test "x$EXPERIMENTAL" = "xyes"; then
   for foo in `ls -1 "${srcdir}"/src/modules | grep rlm_`; do
     MODULES="$MODULES $foo"
   done
 else
             for foo in `cat "${srcdir}"/src/modules/stable`; do
-    MODULES="$MODULES $foo"
+      MODULES="$MODULES $foo"
    done
 fi
 
@@ -8344,11 +8382,9 @@ subdirs="$subdirs $mysubdirs"
 
 
 
-
 if test "x$werror" == "xyes"; then
   CFLAGS="-Werror $CFLAGS"
 fi
-
 
 ac_config_commands="$ac_config_commands stamp-h"
 
@@ -9639,8 +9675,8 @@ $as_echo "$as_me: executing $ac_file commands" >&6;}
   case $ac_file$ac_mode in
     "stamp-h":C) echo timestamp > src/include/stamp-h ;;
     "build-radpaths-h":C) (cd ./src/include && /bin/sh ./build-radpaths-h) ;;
-    "main-chmod":C) (cd ./src/main   && chmod +x checkrad radlast radtest) ;;
-    "scripts-chmod":C) (cd ./scripts    && chmod +x rc.radiusd radiusd.cron.daily radiusd.cron.monthly cryptpasswd) ;;
+    "main-chmod":C) (cd ./src/main && chmod +x checkrad radlast radtest) ;;
+    "scripts-chmod":C) (cd ./scripts && chmod +x rc.radiusd radiusd.cron.daily radiusd.cron.monthly cryptpasswd) ;;
 
   esac
 done # for ac_tag
