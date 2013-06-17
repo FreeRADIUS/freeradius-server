@@ -522,7 +522,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				copy_p = request_data_get(request,
 							  radius_get_vp, i);
 				if (copy_p) {
-						RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", stack.pointer + 1, modcall_spaces, i);
+						RDEBUG2("%.*s #  BREAK Foreach-Variable:%d", stack.pointer + 1, modcall_spaces, i);
 					pairfree(copy_p);
 					break;
 				}
@@ -568,7 +568,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						char buffer[1024];
 
 						vp_prints_value(buffer, sizeof(buffer), vp, 1);
-						RDEBUG2("%.*s #  Foreach-Variable-%d = %s", stack.pointer + 1, modcall_spaces, depth, buffer);
+						RDEBUG2("%.*s #  Foreach-Variable:%d = %s", stack.pointer + 1, modcall_spaces, depth, buffer);
 					}
 #endif
 
