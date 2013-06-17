@@ -64,11 +64,16 @@ extern "C" {
 /*
  *	Requires typeof(), which is in most modern C compilers.
  */
+ 
+/*
 #define VERIFY_VP(_x) do { (void) talloc_get_type_abort(_x, VALUE_PAIR); \
 			if (_x->da) { \
 			   	(void) talloc_get_type_abort(_x->da, DICT_ATTR); \
 			} \
 		      } while (0)
+*/
+
+#define VERIFY_VP(_x) (void) talloc_get_type_abort(_x, VALUE_PAIR)
 #else
 #define VERIFY_VP(_x)
 #endif
