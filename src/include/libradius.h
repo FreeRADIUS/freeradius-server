@@ -67,7 +67,7 @@ extern "C" {
 #define VERIFY_VP(_x) do { (void) talloc_get_type_abort(_x, VALUE_PAIR); \
 			if (_x->da) { \
 			   	(void) talloc_get_type_abort(_x->da, DICT_ATTR); \
-			} \  
+			} \
 		      } while (0)
 #else
 #define VERIFY_VP(_x)
