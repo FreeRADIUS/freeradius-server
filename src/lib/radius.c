@@ -1704,14 +1704,14 @@ int rad_vp2attr(RADIUS_PACKET const *packet, RADIUS_PACKET const *original,
 int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	       char const *secret)
 {
-	radius_packet_t	*hdr;
-	uint8_t		*ptr;
-	uint16_t	total_length;
-	int		len;
+	radius_packet_t		*hdr;
+	uint8_t			*ptr;
+	uint16_t		total_length;
+	int			len;
 	const VALUE_PAIR	*reply;
-	char const	*what;
-	char		ip_src_buffer[128];
-	char		ip_dst_buffer[128];
+	char const		*what;
+	char			ip_src_buffer[128];
+	char			ip_dst_buffer[128];
 
 	/*
 	 *	A 4K packet, aligned on 64-bits.
@@ -1799,6 +1799,8 @@ int rad_encode(RADIUS_PACKET *packet, RADIUS_PACKET const *original,
 	while (reply) {
 		size_t last_len;
 		char const *last_name = NULL;
+		
+		VERIFY_VP(reply);
 
 		/*
 		 *	Ignore non-wire attributes, but allow extended

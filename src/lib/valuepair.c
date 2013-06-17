@@ -37,15 +37,6 @@ RCSID("$Id$")
 #endif
 #endif
 
-#if defined(WITH_VERIFY_PTR)
-/*
- *	Requires typeof(), which is in most modern C compilers.
- */
-#define VERIFY(_x) _x=talloc_get_type_abort(_x, VALUE_PAIR)
-#else
-#define VERIFY(_x)
-#endif
-
 static char const *months[] = {
 	"jan", "feb", "mar", "apr", "may", "jun",
 	"jul", "aug", "sep", "oct", "nov", "dec" };
@@ -120,7 +111,7 @@ void pairbasicfree(VALUE_PAIR *vp)
 {
 	if (!vp) return;
 
-	VERIFY(vp);
+	VERIFY_VP(vp);
 	
 	/*
 	 *	The lack of DA means something has gone wrong
@@ -158,7 +149,7 @@ void pairfree(VALUE_PAIR **vps)
 	for (vp = paircursor(&cursor, vps);
 	     vp;
 	     vp = pairnext(&cursor)) {
-		VERIFY(vp);
+		VERIFY_VP(vp);
 		pairbasicfree(vp);
 	}
 
@@ -174,7 +165,7 @@ int pair2unknown(VALUE_PAIR *vp)
 {
 	const DICT_ATTR *da;
 	
-	VERIFY(vp);
+	VERIFY_VP(vp);
 	if (vp->da->flags.is_unknown) {
 		return 0;
 	}
@@ -202,7 +193,7 @@ VALUE_PAIR *pairfind(VALUE_PAIR *vp, unsigned int attr, unsigned int vendor,
 	for (i = paircursor(&cursor, &vp);
 	     i;
 	     i = pairnext(&cursor)) {
-		VERIFY(i);
+		VERIFY_VP(i);
 		if ((i->da->attr == attr) && (i->da->vendor == vendor)
 		    && ((tag == TAG_ANY) || (i->da->flags.has_tag &&
 			(i->tag == tag)))) {
@@ -230,7 +221,7 @@ VALUE_PAIR *paircursorc(vp_cursor_t *cursor, VALUE_PAIR const * const *node)
 	cursor->current = *cursor->first;
 	
 	if (cursor->current) {
-		VERIFY(cursor->current);
+		VERIFY_VP(cursor->current);
 		cursor->next = cursor->current->next;
 	}
 	
@@ -242,9 +233,9 @@ VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
 	cursor->current = *cursor->first;
 	
 	if (cursor->current) {
-		VERIFY(cursor->current);
+		VERIFY_VP(cursor->current);
 		cursor->next = cursor->current->next;
-		VERIFY(cursor->next);
+		VERIFY_VP(cursor->next);
 		cursor->found = NULL;
 	}
 
@@ -282,7 +273,7 @@ VALUE_PAIR *pairnext(vp_cursor_t *cursor)
 {
 	cursor->current = cursor->next;
 	if (cursor->current) {
-		VERIFY(cursor->current);
+		VERIFY_VP(cursor->current);
 
 		/* 
 		 *	Set this now in case 'current' gets freed before
@@ -303,7 +294,7 @@ VALUE_PAIR *pairnext(vp_cursor_t *cursor)
 VALUE_PAIR *paircurrent(vp_cursor_t *cursor)
 {
 	if (cursor->current) {
-		VERIFY(cursor->current);
+		VERIFY_VP(cursor->current);
 	}
 	
 	return cursor->current;
@@ -321,7 +312,7 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 		return;
 	}
 	
-	VERIFY(add);
+	VERIFY_VP(add);
 
 	/*
 	 *	Cursor was initialised with a pointer to a NULL value_pair
@@ -343,14 +334,14 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 		cursor->last = cursor->current ? cursor->current : *cursor->first;
 	}
 	
-	VERIFY(cursor->last);
+	VERIFY_VP(cursor->last);
 	
 	/*
 	 *	Something outside of the cursor added another VALUE_PAIR
 	 */
 	if (cursor->last->next) {
 		for (i = cursor->last; i; i = i->next) {
-			VERIFY(i);
+			VERIFY_VP(i);
 			cursor->last = i;
 		}
 	}
@@ -376,7 +367,7 @@ void pairdelete(VALUE_PAIR **first, unsigned int attr, unsigned int vendor,
 	VALUE_PAIR **last = first;
 
 	for(i = *first; i; i = next) {
-		VERIFY(i);
+		VERIFY_VP(i);
 		next = i->next;
 		if ((i->da->attr == attr) && (i->da->vendor == vendor) &&
 		    ((tag == TAG_ANY) ||
@@ -402,14 +393,14 @@ void pairadd(VALUE_PAIR **first, VALUE_PAIR *add)
 
 	if (!add) return;
 
-	VERIFY(add);
+	VERIFY_VP(add);
 
 	if (*first == NULL) {
 		*first = add;
 		return;
 	}
 	for(i = *first; i->next; i = i->next)
-		VERIFY(i);
+		VERIFY_VP(i);
 	i->next = add;
 }
 
@@ -428,7 +419,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	VALUE_PAIR *i, *next;
 	VALUE_PAIR **prev = first;
 
-	VERIFY(replace);
+	VERIFY_VP(replace);
 
 	if (*first == NULL) {
 		*first = replace;
@@ -441,7 +432,7 @@ void pairreplace(VALUE_PAIR **first, VALUE_PAIR *replace)
 	 *	we ignore any others that might exist.
 	 */
 	for(i = *first; i; i = next) {
-		VERIFY(i);
+		VERIFY_VP(i);
 		next = i->next;
 
 		/*
@@ -489,7 +480,7 @@ VALUE_PAIR *paircopyvp(TALLOC_CTX *ctx, VALUE_PAIR const *vp)
 
 	if (!vp) return NULL;
 
-	VERIFY(vp);
+	VERIFY_VP(vp);
 
 	n = pairalloc(ctx, vp->da);
 	if (!n) {
@@ -550,7 +541,7 @@ VALUE_PAIR *paircopyvpdata(TALLOC_CTX *ctx, DICT_ATTR const *da, VALUE_PAIR cons
 
 	if (!vp) return NULL;
 
-	VERIFY(vp);
+	VERIFY_VP(vp);
 
 	/*
 	 *	The types have to be identical, OR the "from" VP has
@@ -659,7 +650,7 @@ VALUE_PAIR *paircopy2(TALLOC_CTX *ctx, VALUE_PAIR *vp,
 	last = &first;
 
 	while (vp) {
-		VERIFY(vp);
+		VERIFY_VP(vp);
 
 		if ((attr > 0) &&
 		    ((vp->da->attr != attr) || (vp->da->vendor != vendor)))
@@ -723,7 +714,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	 */
 	tailto = to;
 	if (*to) for (i = *to; i; i = i->next) {
-		VERIFY(i);
+		VERIFY_VP(i);
 		if (!i->da->vendor &&
 		    (i->da->attr == PW_USER_PASSWORD ||
 		     i->da->attr == PW_CRYPT_PASSWORD))
@@ -735,7 +726,7 @@ void pairmove(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from)
 	 *	Loop over the "from" list.
 	 */
 	for (i = *from; i; i = next) {
-		VERIFY(i);
+		VERIFY_VP(i);
 		next = i->next;
 
 		/*
@@ -925,7 +916,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 	if (*to != NULL) {
 		to_tail = *to;
 		for(i = *to; i; i = i->next) {
-			VERIFY(i);
+			VERIFY_VP(i);
 			to_tail = i;
 		}
 	} else
@@ -951,7 +942,7 @@ void pairfilter(TALLOC_CTX *ctx, VALUE_PAIR **to, VALUE_PAIR **from, unsigned in
 	}
 
 	for(i = *from; i; i = next) {
-		VERIFY(i);
+		VERIFY_VP(i);
 		next = i->next;
 
 		if ((tag != TAG_ANY) && i->da->flags.has_tag &&
@@ -1211,7 +1202,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 	DICT_VALUE	*dval;
 
 	if (!value) return false;
-	VERIFY(vp);
+	VERIFY_VP(vp);
 
 	switch(vp->da->type) {
 	case PW_TYPE_STRING:
@@ -2398,8 +2389,8 @@ int paircmp(VALUE_PAIR *one, VALUE_PAIR *two)
 {
 	int compare;
 
-	VERIFY(one);
-	VERIFY(two);
+	VERIFY_VP(one);
+	VERIFY_VP(two);
 
 	switch (one->op) {
 	case T_OP_CMP_TRUE:
@@ -2462,8 +2453,8 @@ int paircmp_op(VALUE_PAIR const *one, FR_TOKEN op, VALUE_PAIR const *two)
 {
 	int compare;
 
-	VERIFY(one);
-	VERIFY(two);
+	VERIFY_VP(one);
+	VERIFY_VP(two);
 
 	/*
 	 *	Can't compare two attributes of differing types
@@ -2608,7 +2599,7 @@ void pairmemcpy(VALUE_PAIR *vp, uint8_t const *src, size_t size)
 {
 	uint8_t *p, *q;
 
-	VERIFY(vp);
+	VERIFY_VP(vp);
 
 	p = talloc_memdup(vp, src, size);
 	if (!p) return;
@@ -2630,7 +2621,7 @@ void pairstrcpy(VALUE_PAIR *vp, char const *src)
 {
 	char *p, *q;
 
-	VERIFY(vp);
+	VERIFY_VP(vp);
 
 	p = talloc_strdup(vp, src);
 	if (!p) return;
@@ -2653,7 +2644,7 @@ void pairsprintf(VALUE_PAIR *vp, char const *fmt, ...)
 	va_list ap;
 	char *p, *q;
 
-	VERIFY(vp);
+	VERIFY_VP(vp);
 
 	va_start(ap, fmt);
 	p = talloc_vasprintf(vp, fmt, ap);
