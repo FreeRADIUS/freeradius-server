@@ -57,7 +57,16 @@ static CS_RETCODE CS_PUBLIC clientmsg_callback(CS_CONTEXT *context, UNUSED CS_CO
 {
 	rlm_sql_freetds_conn_t *this = NULL;
 	int len = 0;
-		
+
+	/*
+	 *	Not actually an error, but the client wanted to tell us something...
+	 */
+	if (emsgp->severity == CS_SV_INFORM) {
+		INFO("rlm_sql_freetds: %s", emsgp->msgstring);
+	
+		return CS_SUCCEED;
+	}
+
 	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) || !this) {
 		ERROR("rlm_sql_freetds: failed retrieving context userdata");
 		
@@ -93,6 +102,15 @@ static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *em
 	rlm_sql_freetds_conn_t *this = NULL;
 	int len = 0;
 	
+	/*
+	 *	Not actually an error, but the client wanted to tell us something...
+	 */
+	if (emsgp->severity == CS_SV_INFORM) {
+		INFO("rlm_sql_freetds: %s", emsgp->msgstring);
+	
+		return CS_SUCCEED;
+	}
+	
 	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) || !this) {
 		ERROR("rlm_sql_freetds: failed retrieving context userdata");
 		
@@ -116,38 +134,24 @@ static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *em
 
 /** Server error handler
  *
- * Callback for any errors raised by the server. Will overwrite any previous errors associated
- * with a connection.
+ * Callback for any messages sent back from the server.
+ *
+ * There's no standard categorisation of messages sent back from the server, so we don't know they're errors,
+ * the only thing we can do is write them to the long as informational messages.
  *
  * @param context The FreeTDS library context.
  * @param conn DB connection handle.
  * @param msgp Pointer to the error structure.
  * @return CS_SUCCEED
  */
-static CS_RETCODE CS_PUBLIC servermsg_callback(CS_CONTEXT *context, UNUSED CS_CONNECTION *conn, CS_SERVERMSG *msgp)
+static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *context, UNUSED CS_CONNECTION *conn,
+					       CS_SERVERMSG *msgp)
 {
-	rlm_sql_freetds_conn_t *this = NULL;
-	int len;
-	
-	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) || !this) {
-		ERROR("rlm_sql_freetds: failed retrieving context userdata");
-		
-		return CS_SUCCEED;
-	}
-	
-	if (this->error) TALLOC_FREE(this->error);
-	
-	this->error = talloc_asprintf(this, "server error: severity(%ld), number(%ld), origin(%ld), layer(%ld): %s",
-				      (long)msgp->msgnumber, (long)msgp->severity,
-				      (long)msgp->state, (long)msgp->line, msgp->text);
-
-	/*
-	 *	Print the server and procedure names if supplied.
-	 */
-	if (msgp->svrnlen > 0 && msgp->proclen > 0) {
-		this->error = talloc_asprintf_append(this->error, ". server name: %s, procedure name: %s",
-						     msgp->svrname, msgp->proc);
-	}
+	INFO("rlm_sql_freetds: server msg from \"%s\": severity(%ld), number(%ld), origin(%ld), "
+	     "layer(%ld), procedure \"%s\": %s",
+	     (msgp->svrnlen > 0) ? msgp->svrname : "unknown",
+	     (long)msgp->msgnumber, (long)msgp->severity, (long)msgp->state, (long)msgp->line,
+	     (msgp->proclen > 0) ? msgp->proc : "none", msgp->text);
 	
 	return CS_SUCCEED;
 }
