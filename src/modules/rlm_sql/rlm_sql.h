@@ -51,9 +51,7 @@ typedef struct sql_config {
 	char const 	*sql_login;
 	char const 	*sql_password;
 	char const 	*sql_db;
-	char const 	*sql_file;	/*for sqlite */
 
-	
 	char const	*query_user;
 	char const	*default_profile;
 	
