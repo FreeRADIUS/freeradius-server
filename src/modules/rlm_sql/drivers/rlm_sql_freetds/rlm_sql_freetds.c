@@ -58,7 +58,7 @@ static CS_RETCODE CS_PUBLIC clientmsg_callback(CS_CONTEXT *context, UNUSED CS_CO
 	rlm_sql_freetds_conn_t *this = NULL;
 	int len = 0;
 		
-	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) && !this) {
+	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) || !this) {
 		ERROR("rlm_sql_freetds: failed retrieving context userdata");
 		
 		return CS_SUCCEED;
@@ -93,7 +93,7 @@ static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *em
 	rlm_sql_freetds_conn_t *this = NULL;
 	int len = 0;
 	
-	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) && !this) {
+	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) || !this) {
 		ERROR("rlm_sql_freetds: failed retrieving context userdata");
 		
 		return CS_SUCCEED;
@@ -129,7 +129,7 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(CS_CONTEXT *context, UNUSED CS_CO
 	rlm_sql_freetds_conn_t *this = NULL;
 	int len;
 	
-	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) && !this) {
+	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) || !this) {
 		ERROR("rlm_sql_freetds: failed retrieving context userdata");
 		
 		return CS_SUCCEED;
