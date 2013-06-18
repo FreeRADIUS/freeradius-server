@@ -602,6 +602,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 		
 		return RLM_SQL_ERROR;
 	}
+	conn->command = NULL;
 
 	return RLM_SQL_OK;
 }
@@ -625,9 +626,31 @@ static int sql_socket_destructor(void *c)
 	rlm_sql_freetds_conn_t *conn = c;
 	
 	DEBUG2("rlm_sql_freetds: socket destructor called, closing socket");
-	
+
+	if (conn->command) {
+		ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
+		ct_cmd_drop(conn->command);
+	}
+
 	if (conn->db) {
-		ct_close(conn->db, CS_FORCE_CLOSE);
+		/*
+		 *	We first try gracefully closing the connection (which informs the server)
+		 *	Then if that fails we force the connection closure.
+		 *
+		 *	Sybase docs says this usually fails because of pending results, but we 
+		 *	should not have any pending results at this point, so something else must
+		 *	of gone wrong.
+		 */
+		if (ct_close(conn->db, CS_UNUSED) != CS_SUCCEED) {
+			ct_close(conn->db, CS_FORCE_CLOSE);
+		}
+		
+		ct_con_drop(conn->db);
+	}
+	
+	if (conn->context) {
+		ct_exit(conn->context, CS_UNUSED);
+		cs_ctx_drop(conn->context);
 	}
 	
 	return RLM_SQL_OK;
