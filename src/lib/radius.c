@@ -3080,6 +3080,90 @@ static ssize_t data2vp_vsa(RADIUS_PACKET *packet,
 
 
 /**
+ * @brief Convert a fragmented extended attr to a VP
+ *
+ *	Format is:
+ *
+ *	attr
+ *	length
+ *	extended-attr
+ *	flag
+ *	data...
+ *
+ *	But for the first fragment, we get passed a pointer to the
+ *	"extended-attr".
+ */
+static ssize_t data2vp_extended(RADIUS_PACKET *packet,
+				RADIUS_PACKET const *original,
+				char const *secret, DICT_ATTR const *da,
+				uint8_t const *data,
+				size_t attrlen, size_t packetlen,
+				VALUE_PAIR **pvp)
+{
+	ssize_t rcode;
+	size_t fraglen;
+	uint8_t *head, *tail;
+	const uint8_t *frag, *end;
+	uint8_t const *attr;
+
+	if (attrlen < 3) return -1;
+
+	/*
+	 *	Calculate the length of all of the fragments.  For
+	 *	now, they MUST be contiguous in the packet, and they
+	 *	MUST be all of the same TYPE and EXTENDED-TYPE
+	 */
+	attr = data - 2;
+	fraglen = attrlen - 2;
+	frag = data + attrlen;
+	end = data + packetlen;
+
+	while (frag < end) {
+		int last_frag = false;
+
+		if (last_frag ||
+		    (frag[0] != attr[0]) ||
+		    (frag[1] < 4) ||		       /* too short for long-extended */
+		    (frag[2] != attr[2]) ||
+		    ((frag + frag[1]) > end)) {		/* overflow */
+			end = frag;
+			break;
+		}
+
+		last_frag = ((frag[3] & 0x80) == 0);
+
+		fraglen += frag[1] - 4;
+		frag += frag[1];
+	}
+
+	head = tail = malloc(fraglen);
+	if (!head) return -1;
+
+	/*
+	 *	And again, but faster and looser.
+	 *
+	 *	We copy the first fragment, followed by the rest of
+	 *	the fragments.
+	 */
+	frag = attr;
+
+	while (frag < end) {
+		memcpy(tail, frag + 4, frag[1] - 4);
+		tail += frag[1] - 4;
+		frag += frag[1];
+	}
+
+	VP_HEXDUMP("long-extended fragments", head, fraglen);
+
+	rcode = data2vp(packet, original, secret, da,
+			head, fraglen, fraglen, pvp);
+	free(head);
+	if (rcode < 0) return rcode;
+
+	return end - data;
+}
+
+/**
  * @brief Convert a Vendor-Specific WIMAX to vps
  *
  *	Called ONLY for Vendor-Specific
@@ -3095,7 +3179,7 @@ static ssize_t data2vp_wimax(RADIUS_PACKET *packet,
 	size_t fraglen;
 	uint8_t *head, *tail;
 	const uint8_t *frag, *end;
-	const DICT_ATTR *child;
+	DICT_ATTR const *child;
 
 	if (attrlen < 8) return -1;
 
@@ -3279,7 +3363,11 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 	char *p;
 	uint8_t buffer[256];
 
-	if (!da || (attrlen > 253) || (attrlen > packetlen) ||
+	/*
+	 *	FIXME: Attrlen can be larger than 253 for extended attrs!
+	 */
+	if (!da || (attrlen > packetlen) ||
+	    ((attrlen > 253) && (attrlen != packetlen)) ||
 	    (attrlen > 128*1024)) {
 		fr_strerror_printf("data2vp: invalid arguments");
 		return -1;
@@ -3320,7 +3408,7 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 	/*
 	 *	Hacks for tags.  If the attribute is capable of
 	 *	encoding a tag, and there's room for the tag, and
-	 *	there is a tag, or it's encryted with Tunnel-Password,
+	 *	there is a tag, or it's encrypted with Tunnel-Password,
 	 *	then decode the tag.
 	 */
 	if (da->flags.has_tag && (datalen > 1) &&
@@ -3493,7 +3581,28 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 		if (datalen < 3) goto raw; /* etype, flags, value */
 
 		child = dict_attrbyparent(da, data[0], 0);
-		if (!child) goto raw;
+		if (!child) {
+			if ((data[0] != PW_VENDOR_SPECIFIC) ||
+			    (datalen < (3 + 4 + 1))) {
+				/* da->attr < 255, da->vendor == 0 */
+				child = dict_attrunknown(data[0], da->attr * FR_MAX_VENDOR, true);
+			} else {
+				/*
+				 *	Try to find the VSA.
+				 */
+				memcpy(&vendor, data + 3, 4);
+				vendor = ntohl(vendor);
+
+				if (vendor == 0) goto raw;
+
+				child = dict_attrunknown(data[7], vendor | (da->attr * FR_MAX_VENDOR), true);
+			}
+
+			if (!child) {
+				fr_strerror_printf("Internal sanity check %d", __LINE__);
+				return -1;
+			}
+		}
 
 		/*
 		 *	If there no more fragments, then the contents
@@ -3508,8 +3617,11 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 			return 2 + rcode;
 		}
 
-		fr_strerror_printf("Internal sanity check %d", __LINE__);
-		return -1;	/* TODO: fixme! */
+		/*
+		 *	This requires a whole lot more work.
+		 */
+		return data2vp_extended(packet, original, secret, child,
+					start, attrlen, packetlen, pvp);
 
 	case PW_TYPE_EVS:
 		if (datalen < 6) goto raw; /* vid, vtype, value */
@@ -3519,9 +3631,14 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 		memcpy(&vendor, data, 4);
 		vendor = ntohl(vendor);
 		dv = dict_vendorbyvalue(vendor);
-		if (!dv) goto raw;
-
-		child = dict_attrbyparent(da, data[5], vendor);
+		if (!dv) {
+			child = dict_attrunknown(data[4], da->vendor | vendor, true);
+		} else {
+			child = dict_attrbyparent(da, data[4], vendor);
+			if (!child) {
+				child = dict_attrunknown(data[4], da->vendor | vendor, true);
+			}
+		}
 		if (!child) goto raw;
 
 		rcode = data2vp(packet, original, secret, child,
