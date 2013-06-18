@@ -235,7 +235,7 @@ VALUE_PAIR *pairfirst(vp_cursor_t *cursor)
 	if (cursor->current) {
 		VERIFY_VP(cursor->current);
 		cursor->next = cursor->current->next;
-		VERIFY_VP(cursor->next);
+		if (cursor->next) VERIFY_VP(cursor->next);
 		cursor->found = NULL;
 	}
 
