@@ -152,134 +152,6 @@ static CS_RETCODE CS_PUBLIC servermsg_callback(CS_CONTEXT *context, UNUSED CS_CO
 	return CS_SUCCEED;
 }
 
-static int sql_socket_destructor(void *c)
-{
-	rlm_sql_freetds_conn_t *conn = c;
-	
-	DEBUG2("rlm_sql_freetds: socket destructor called, closing socket");
-	
-	if (conn->db) {
-		ct_close(conn->db, CS_FORCE_CLOSE);
-	}
-	
-	return RLM_SQL_OK;
-}
-
-/*************************************************************************
- *
- *	Function: sql_socket_init
- *
- *	Purpose: Establish db to the db
- *
- *************************************************************************/
-static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
-{
-	rlm_sql_freetds_conn_t *conn;
-
-	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_freetds_conn_t));
-	talloc_set_destructor((void *) conn, sql_socket_destructor);
-
-	/*
-	 *	Allocate a CS context structure. This should really only be done once, but because of
-	 *	the db pooling design of rlm_sql, we'll have to go with one context per db
-	 */
-	if (cs_ctx_alloc(CS_VERSION_100, &conn->context) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: unable to allocate CS context structure (cs_ctx_alloc())");
-
-		goto error;
-	}
-
-	/*
-	 *	Initialize ctlib
-	 */
-	if (ct_init(conn->context, CS_VERSION_100) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: unable to initialize Client-Library");
-
-		goto error;
-	}
-
-	/*
-	 *	Install callback functions for error-handling
-	 */
-	if (cs_config(conn->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: unable to install CS Library error callback");
-
-		goto error;
-	}
-	
-	if (cs_config(conn->context, CS_SET, CS_USERDATA,
-		      (CS_VOID *)&handle->conn, sizeof(handle->conn), NULL) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: unable to set userdata pointer");
-		
-		goto error;
-	}
-	
-	if (ct_callback(conn->context, NULL, CS_SET, CS_CLIENTMSG_CB, (CS_VOID *)clientmsg_callback) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: unable to install client message callback");
-
-		goto error;
-	}
-
-	if (ct_callback(conn->context, NULL, CS_SET, CS_SERVERMSG_CB, (CS_VOID *)servermsg_callback) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: unable to install server message callback");
-
-		goto error;
-	}
-
-	/*
-	 *	Allocate a ctlib db structure 
-	 */
-	if (ct_con_alloc(conn->context, &conn->db) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: unable to allocate db structure");
-
-		goto error;
-	}
-
-	/*
-	 *	Set User and Password properties for the db
-	 */
-	{
-		CS_VOID *login, *password;
-		CS_CHAR *server;
-		
-		memcpy(&login, &config->sql_login, sizeof(login));
-		if (ct_con_props(conn->db, CS_SET, CS_USERNAME, login, strlen(config->sql_login), NULL) != CS_SUCCEED) {
-			ERROR("rlm_sql_freetds: unable to set username for db");
-
-			goto error;
-		}
-		
-		memcpy(&password, &config->sql_password, sizeof(password));
-		if (ct_con_props(conn->db, CS_SET, CS_PASSWORD,
-				 password, strlen(config->sql_password), NULL) != CS_SUCCEED) {
-			ERROR("rlm_sql_freetds: unable to set password for db");
-
-			goto error;
-		}
-		
-		/*
-		 *	Connect to the database
-		 */
-		memcpy(&server, &config->sql_server, sizeof(server));
-		if (ct_connect(conn->db, server, strlen(config->sql_server)) != CS_SUCCEED) {
-			ERROR("rlm_sql_freetds: unable to establish db to symbolic servername %s",
-			      config->sql_server);
-			
-			goto error;
-		}
-	}
-
-	return RLM_SQL_OK;
-	
-	error:
-	if (conn->context) {
-		ct_exit(conn->context, CS_FORCE_EXIT);
-		cs_ctx_drop(conn->context);
-	}
-
-	return RLM_SQL_ERROR;
-}
-
 /*************************************************************************
  *
  *	Function: sql_query
@@ -741,6 +613,147 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 static int sql_affected_rows(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
 {
 	return sql_num_rows(handle, config);
+}
+
+
+static int sql_socket_destructor(void *c)
+{
+	rlm_sql_freetds_conn_t *conn = c;
+	
+	DEBUG2("rlm_sql_freetds: socket destructor called, closing socket");
+	
+	if (conn->db) {
+		ct_close(conn->db, CS_FORCE_CLOSE);
+	}
+	
+	return RLM_SQL_OK;
+}
+
+/*************************************************************************
+ *
+ *	Function: sql_socket_init
+ *
+ *	Purpose: Establish db to the db
+ *
+ *************************************************************************/
+static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *config)
+{
+	rlm_sql_freetds_conn_t *conn;
+
+	MEM(conn = handle->conn = talloc_zero(handle, rlm_sql_freetds_conn_t));
+	talloc_set_destructor((void *) conn, sql_socket_destructor);
+
+	/*
+	 *	Allocate a CS context structure. This should really only be done once, but because of
+	 *	the db pooling design of rlm_sql, we'll have to go with one context per db
+	 */
+	if (cs_ctx_alloc(CS_VERSION_100, &conn->context) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: unable to allocate CS context structure (cs_ctx_alloc())");
+
+		goto error;
+	}
+
+	/*
+	 *	Initialize ctlib
+	 */
+	if (ct_init(conn->context, CS_VERSION_100) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: unable to initialize Client-Library");
+
+		goto error;
+	}
+
+	/*
+	 *	Install callback functions for error-handling
+	 */
+	if (cs_config(conn->context, CS_SET, CS_MESSAGE_CB, (CS_VOID *)csmsg_callback, CS_UNUSED, NULL) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: unable to install CS Library error callback");
+
+		goto error;
+	}
+	
+	if (cs_config(conn->context, CS_SET, CS_USERDATA,
+		      (CS_VOID *)&handle->conn, sizeof(handle->conn), NULL) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: unable to set userdata pointer");
+		
+		goto error;
+	}
+	
+	if (ct_callback(conn->context, NULL, CS_SET, CS_CLIENTMSG_CB, (CS_VOID *)clientmsg_callback) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: unable to install client message callback");
+
+		goto error;
+	}
+
+	if (ct_callback(conn->context, NULL, CS_SET, CS_SERVERMSG_CB, (CS_VOID *)servermsg_callback) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: unable to install server message callback");
+
+		goto error;
+	}
+
+	/*
+	 *	Allocate a ctlib db structure 
+	 */
+	if (ct_con_alloc(conn->context, &conn->db) != CS_SUCCEED) {
+		ERROR("rlm_sql_freetds: unable to allocate db structure");
+
+		goto error;
+	}
+
+	/*
+	 *	Set User and Password properties for the db
+	 */
+	{
+		CS_VOID *login, *password;
+		CS_CHAR *server;
+		char database[128];
+		
+		memcpy(&login, &config->sql_login, sizeof(login));
+		if (ct_con_props(conn->db, CS_SET, CS_USERNAME, login, strlen(config->sql_login), NULL) != CS_SUCCEED) {
+			ERROR("rlm_sql_freetds: unable to set username for db");
+
+			goto error;
+		}
+		
+		memcpy(&password, &config->sql_password, sizeof(password));
+		if (ct_con_props(conn->db, CS_SET, CS_PASSWORD,
+				 password, strlen(config->sql_password), NULL) != CS_SUCCEED) {
+			ERROR("rlm_sql_freetds: unable to set password for db");
+
+			goto error;
+		}
+		
+		/*
+		 *	Connect to the database
+		 */
+		memcpy(&server, &config->sql_server, sizeof(server));
+		if (ct_connect(conn->db, server, strlen(config->sql_server)) != CS_SUCCEED) {
+			ERROR("rlm_sql_freetds: unable to establish db to symbolic servername %s",
+			      config->sql_server);
+			
+			goto error;
+		}
+		
+		/*
+		 *	There doesn't appear to be a way to set the database with the API, so use an
+		 *	sql statement when we first open the connection.
+		 */
+		snprintf(database, sizeof(database), "use '%s';", config->sql_db); 
+		if (sql_query(handle, config, database) != RLM_SQL_OK) {
+			goto error;
+		}
+		
+		sql_finish_query(handle, config);
+	}
+
+	return RLM_SQL_OK;
+	
+	error:
+	if (conn->context) {
+		ct_exit(conn->context, CS_FORCE_EXIT);
+		cs_ctx_drop(conn->context);
+	}
+
+	return RLM_SQL_ERROR;
 }
 
 /* Exported to rlm_sql */
