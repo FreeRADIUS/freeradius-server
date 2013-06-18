@@ -749,8 +749,15 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	
 	error:
 	if (conn->context) {
+		char const *error;
+		
 		ct_exit(conn->context, CS_FORCE_EXIT);
 		cs_ctx_drop(conn->context);
+		
+		error = sql_error(handle, config);
+		if (error) {
+			ERROR("rlm_sql_freetds: %s", error);
+		}
 	}
 
 	return RLM_SQL_ERROR;
