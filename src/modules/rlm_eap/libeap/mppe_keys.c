@@ -187,7 +187,7 @@ void eaptls_gen_eap_key(RADIUS_PACKET *packet, SSL *s, uint32_t header)
 		return;
 	}
 
-	vp = paircreate(packet, PW_EAP_SESSION_ID, PW_TYPE_OCTETS);
+	vp = paircreate(packet, PW_EAP_SESSION_ID, 0);
 	if (!vp) return;
 
 	vp->length = 1 + 2 * SSL3_RANDOM_SIZE;
