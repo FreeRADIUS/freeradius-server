@@ -109,3 +109,6 @@ data %{%{User-Name}:-}
 
 xlat "Hello %S goo"
 data "Hello %S goo"
+
+xlat "%{Foreach-Variable-0}"
+data "%{Foreach-Variable-0}"
