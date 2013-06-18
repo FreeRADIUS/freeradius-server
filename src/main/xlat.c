@@ -81,20 +81,6 @@ typedef struct xlat_out {
 
 static rbtree_t *xlat_root = NULL;
 
-#ifdef WITH_UNLANG
-static char const * const xlat_foreach_names[] = {"Foreach-Variable-0",
-						  "Foreach-Variable-1",
-						  "Foreach-Variable-2",
-						  "Foreach-Variable-3",
-						  "Foreach-Variable-4",
-						  "Foreach-Variable-5",
-						  "Foreach-Variable-6",
-						  "Foreach-Variable-7",
-						  "Foreach-Variable-8",
-						  "Foreach-Variable-9",
-						  NULL};
-#endif
-
 #if REQUEST_MAX_REGEX > 8
 #error Please fix the following line
 #endif
@@ -255,20 +241,29 @@ static size_t xlat_module(UNUSED void *instance, REQUEST *request,
 }
 
 #ifdef WITH_UNLANG
-/** Implements the Foreach-Variable-X
+
+/** Implements the Foreach-Variable:X
  *
  * @see modcall()
  */
-static size_t xlat_foreach(void *instance, REQUEST *request,
-			   UNUSED char const *fmt, char *out, size_t outlen)
+static size_t xlat_foreach(UNUSED void *instance, REQUEST *request,
+			   char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR	**pvp;
+	int level;
+
+	while (isspace((int) *fmt)) fmt++;
+
+	if (*fmt > '9' || *fmt < '0' || (level = atoi(fmt)) < 0 || level > 9) {
+		*out = '\0';
+		return 0;
+	}
 
 	/*
 	 *	See modcall, "FOREACH" for how this works.
 	 */
 	pvp = (VALUE_PAIR **) request_data_reference(request, radius_get_vp,
-						     *(int*) instance);
+						     level);
 	if (!pvp || !*pvp) {
 		*out = '\0';
 		return 0;
@@ -419,7 +414,6 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 	 *	and into a global "initialization".  But it isn't critical...
 	 */
 	if (!xlat_root) {
-		int i;
 
 		xlat_root = rbtree_create(xlat_cmp, free, 0);
 		if (!xlat_root) {
@@ -428,13 +422,10 @@ int xlat_register(char const *name, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING esc
 		}
 
 #ifdef WITH_UNLANG
-		for (i = 0; xlat_foreach_names[i] != NULL; i++) {
-			xlat_register(xlat_foreach_names[i],
-				      xlat_foreach, NULL, &xlat_inst[i]);
-			c = xlat_find(xlat_foreach_names[i]);
-			rad_assert(c != NULL);
-			c->internal = true;
-		}
+		xlat_register("Foreach-Variable", xlat_foreach, NULL, NULL);
+		c = xlat_find("Foreach-Variable");
+		rad_assert(c != NULL);
+		c->internal = true;
 #endif
 
 #define XLAT_REGISTER(_x) xlat_register(Stringify(_x), xlat_ ## _x, NULL, NULL); \

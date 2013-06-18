@@ -107,15 +107,19 @@ none of the usual variable referenced %{...}.  This is because it is a
 reference to the attribute, and not an expansion of the attribute.
 
 Inside of the "foreach" block, the attribute which is being looped
-over can be referenced as "Foreach-Variable-#".  Where "#" is the
-depth of the loop, starting at "0".  e.g. "Foreach-Variable-0".  The
-loops can be nested up to eight (8) deep, though this is not
+over can be referenced as "Foreach-Variable:#".  Where "#" is the
+depth of the loop, starting at "0".  e.g. "Foreach-Variable:0".  The
+loops can be nested up to ten (10) deep, though this is not
 recommended.
 
 .DS
 	foreach Attribute-Name {
 .br
-		...
+		if ("%{Foreach-Variable:0}") {
+.br
+			...
+.br
+		}
 .br
 	}
 .DE
