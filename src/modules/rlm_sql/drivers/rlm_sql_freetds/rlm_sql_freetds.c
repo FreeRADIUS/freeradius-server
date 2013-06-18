@@ -1,11 +1,7 @@
-/*
- * sql_freetds.c	freetds (ctlibrary) routines for rlm_sql
- *		Error handling stolen from freetds example code "firstapp.c"
- *
- *   This program is free software; you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation; either version 2 of the License, or
- *   (at your option) any later version.
+ /*
+ *   This program is is free software; you can redistribute it and/or modify
+ *   it under the terms of the GNU General Public License, version 2 if the
+ *   License as published by the Free Software Foundation.
  *
  *   This program is distributed in the hope that it will be useful,
  *   but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -15,9 +11,16 @@
  *   You should have received a copy of the GNU General Public License
  *   along with this program; if not, write to the Free Software
  *   Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301, USA
+ */
+
+/**
+ * $Id$
+ * @file rlm_sql.c
+ * @brief Implements FreeTDS rlm_sql driver.
  *
- * Copyright 2000,2006  The FreeRADIUS server project
- * Copyright 2000  Mattias Sjostrom <mattias@nogui.se>
+ * @copyright 2013  Arran Cudbard-Bell <a.cudbardb@freeradius.org>
+ * @copyright 2000,2006  The FreeRADIUS server project
+ * @copyright 2000  Mattias Sjostrom <mattias@nogui.se>
  */
 
 RCSID("$Id$")
@@ -30,25 +33,26 @@ RCSID("$Id$")
 
 #include "rlm_sql.h"
 
-
 typedef struct rlm_sql_freetds_conn {
-	CS_CONTEXT	*context;
-	CS_CONNECTION	*db;
-	CS_COMMAND	*command;
-	char		**results;
-	int		id;
-	int		in_use;
-	struct timeval	tv;
-	char		*error;
+	CS_CONTEXT	*context;	//!< Structure FreeTDS uses to avoid creating globals.
+	CS_CONNECTION	*db;		//!< Handle specifying a single connection to the database.
+	CS_COMMAND	*command;	//!< A prepared statement.
+	char		**results;	//!< Result strings from statement execution.
+	char		*error;		//!< The last error string created by one of the call backs.
 } rlm_sql_freetds_conn_t;
-
 
 #define	MAX_DATASTR_LEN	256
 
-/************************************************************************
-*  Client-Library error handler.
-************************************************************************/
-
+/** Client-Library error handler
+ *
+ * Callback for any errors raised by the Client-Library. Will overwrite any previous errors associated
+ * with a connection.
+ *
+ * @param context The FreeTDS library context.
+ * @param conn DB connection handle.
+ * @param emsgp Pointer to the error structure.
+ * @return CS_CUCCEED
+ */
 static CS_RETCODE CS_PUBLIC clientmsg_callback(CS_CONTEXT *context, UNUSED CS_CONNECTION *conn, CS_CLIENTMSG *emsgp)
 {
 	rlm_sql_freetds_conn_t *this = NULL;
@@ -75,10 +79,15 @@ static CS_RETCODE CS_PUBLIC clientmsg_callback(CS_CONTEXT *context, UNUSED CS_CO
 	return CS_SUCCEED;
 }
 
-/************************************************************************
-*  CS-Library error handler. This function will be invoked
-*  when CS-Library has detected an error.
-************************************************************************/
+/** Client error handler
+ *
+ * Callback for any errors raised by the client. Will overwrite any previous errors associated
+ * with a connection.
+ *
+ * @param context The FreeTDS library context.
+ * @param emsgp Pointer to the error structure.
+ * @return CS_SUCCEED
+ */
 static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *emsgp)
 {
 	rlm_sql_freetds_conn_t *this = NULL;
@@ -105,10 +114,16 @@ static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *em
 	return CS_SUCCEED;
 }
 
-/************************************************************************
-* Handler for server messages. Client-Library will call this
-* routine when it receives a message from the server.
-************************************************************************/
+/** Server error handler
+ *
+ * Callback for any errors raised by the server. Will overwrite any previous errors associated
+ * with a connection.
+ *
+ * @param context The FreeTDS library context.
+ * @param conn DB connection handle.
+ * @param msgp Pointer to the error structure.
+ * @return CS_SUCCEED
+ */
 static CS_RETCODE CS_PUBLIC servermsg_callback(CS_CONTEXT *context, UNUSED CS_CONNECTION *conn, CS_SERVERMSG *msgp)
 {
 	rlm_sql_freetds_conn_t *this = NULL;
@@ -368,7 +383,7 @@ static sql_rcode_t sql_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	results_ret = ct_results(conn->command, &result_type);
 	switch (results_ret) {
 	case CS_FAIL: /* Serious failure, freetds requires us to cancel and maybe even close db */
-		ERROR("rlm_sql_freetds: Failure retrieving query results");
+		ERROR("rlm_sql_freetds: failure retrieving query results");
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			INFO("rlm_sql_freetds: cleaning up.");
 	
@@ -439,7 +454,6 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *config)
 {
 	rlm_sql_freetds_conn_t *conn = handle->conn;
-	int i = 0;
 
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
@@ -448,11 +462,7 @@ static sql_rcode_t sql_finish_select_query(rlm_sql_handle_t *handle, UNUSED rlm_
 		return RLM_SQL_ERROR;
 	}
 
-	if (conn->results) {
-		while(conn->results[i]) free(conn->results[i++]);
-		free(conn->results);
-		conn->results = NULL;
-	}
+	TALLOC_FREE(conn->results);
 
 	return RLM_SQL_OK;
 
@@ -481,7 +491,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	char		**rowdata;
 
 	 if (!conn->db) {
-		ERROR("Socket not connected");
+		ERROR("rlm_sql_freetds: socket not connected");
 		
 		return RLM_SQL_ERROR;
 	}
@@ -493,13 +503,13 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 	}
 
 	if (ct_command(conn->command, CS_LANG_CMD, query, CS_NULLTERM, CS_UNUSED) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: Unable to initiate command structure (ct_command()");
+		ERROR("rlm_sql_freetds: unable to initiate command structure (ct_command()");
 		      
 		return RLM_SQL_ERROR;
 	}
 
 	if (ct_send(conn->command) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: Unable to send command (ct_send())");
+		ERROR("rlm_sql_freetds: unable to send command (ct_send())");
 		return RLM_SQL_ERROR;
 	}
 
@@ -529,21 +539,17 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 			colcount = sql_num_fields(handle, config); /* Get number of elements in row result */
 			
-			rowdata = (char **)rad_malloc(sizeof(char *) * (colcount + 1));	/* Space for pointers */
-			memset(rowdata, 0, (sizeof(char *) * colcount + 1));  /* NULL-pad the pointers */
+			rowdata = talloc_zero_array(conn, char *, colcount + 1); /* Space for pointers */
+			rowdata[colcount] = NULL;
 
 			for (i = 0; i < colcount; i++) {
 				/* Space to hold the result data */
-				rowdata[i] = rad_malloc((MAX_DATASTR_LEN * sizeof(char))+1);
+				rowdata[i] = talloc_array(rowdata, char, MAX_DATASTR_LEN + 1);
 
 				/* Associate the target buffer with the data */
-				if (ct_bind(conn->command, i+1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
-					int j;
-
-					for (j = 0; j <= i; j++) {
-						free(rowdata[j]);
-					}
-					free(rowdata);
+				if (ct_bind(conn->command, i + 1, &descriptor, rowdata[i], NULL, NULL) != CS_SUCCEED) {
+					talloc_free(rowdata);
+					
 					ERROR("rlm_sql_freetds: ct_bind() failed)");
 					
 					return RLM_SQL_ERROR;
@@ -557,12 +563,12 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 
 		case CS_CMD_SUCCEED:
 		case CS_CMD_DONE:
-			ERROR("rlm_sql_freetds: Query returned no data");
+			ERROR("rlm_sql_freetds: query returned no data");
 			break;
 
 		default:
 
-			ERROR("rlm_sql_freetds: Unexpected result type from query");
+			ERROR("rlm_sql_freetds: unexpected result type from query");
 			sql_finish_select_query(handle, config);
 			
 			return RLM_SQL_ERROR;
@@ -575,7 +581,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		 * Serious failure, freetds requires us to cancel the results and maybe even close the db.
 		 */
 
-		ERROR("rlm_sql_freetds: Failure retrieving query results");
+		ERROR("rlm_sql_freetds: failure retrieving query results");
 		      
 		if ((ret = ct_cancel(NULL, conn->command, CS_CANCEL_ALL)) == CS_FAIL) {
 			ERROR("rlm_sql_freetds: cleaning up.");
@@ -586,7 +592,7 @@ static sql_rcode_t sql_select_query(rlm_sql_handle_t *handle, rlm_sql_config_t *
 		return RLM_SQL_ERROR;
 
 	default:
-		ERROR("rlm_sql_freetds: Unexpected return value from ct_results()");
+		ERROR("rlm_sql_freetds: unexpected return value from ct_results()");
 		
 		return RLM_SQL_ERROR;
 	}
@@ -716,7 +722,7 @@ static sql_rcode_t sql_finish_query(rlm_sql_handle_t *handle, UNUSED rlm_sql_con
 	ct_cancel(NULL, conn->command, CS_CANCEL_ALL);
 
 	if (ct_cmd_drop(conn->command) != CS_SUCCEED) {
-		ERROR("rlm_sql_freetds: Freeing command structure failed");
+		ERROR("rlm_sql_freetds: freeing command structure failed");
 		
 		return RLM_SQL_ERROR;
 	}
