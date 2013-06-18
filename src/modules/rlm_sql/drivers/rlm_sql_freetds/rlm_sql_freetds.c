@@ -737,7 +737,7 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 		 *	There doesn't appear to be a way to set the database with the API, so use an
 		 *	sql statement when we first open the connection.
 		 */
-		snprintf(database, sizeof(database), "use '%s';", config->sql_db); 
+		snprintf(database, sizeof(database), "USE %s;", config->sql_db); 
 		if (sql_query(handle, config, database) != RLM_SQL_OK) {
 			goto error;
 		}
