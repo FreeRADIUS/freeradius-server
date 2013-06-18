@@ -39,6 +39,7 @@ typedef struct rlm_sql_freetds_conn {
 	CS_COMMAND	*command;	//!< A prepared statement.
 	char		**results;	//!< Result strings from statement execution.
 	char		*error;		//!< The last error string created by one of the call backs.
+	bool		established;	//!< Set to false once the connection has been properly established.
 } rlm_sql_freetds_conn_t;
 
 #define	MAX_DATASTR_LEN	256
@@ -147,11 +148,34 @@ static CS_RETCODE CS_PUBLIC csmsg_callback(CS_CONTEXT *context, CS_CLIENTMSG *em
 static CS_RETCODE CS_PUBLIC servermsg_callback(UNUSED CS_CONTEXT *context, UNUSED CS_CONNECTION *conn,
 					       CS_SERVERMSG *msgp)
 {
-	INFO("rlm_sql_freetds: server msg from \"%s\": severity(%ld), number(%ld), origin(%ld), "
-	     "layer(%ld), procedure \"%s\": %s",
-	     (msgp->svrnlen > 0) ? msgp->svrname : "unknown",
-	     (long)msgp->msgnumber, (long)msgp->severity, (long)msgp->state, (long)msgp->line,
-	     (msgp->proclen > 0) ? msgp->proc : "none", msgp->text);
+	rlm_sql_freetds_conn_t *this = NULL;
+	int len = 0;
+	
+	if ((cs_config(context, CS_GET, CS_USERDATA, &this, sizeof(this), &len) != CS_SUCCEED) || !this) {
+		ERROR("rlm_sql_freetds: failed retrieving context userdata");
+		
+		return CS_SUCCEED;
+	}
+	
+	/*
+	 *	Because apparently there are no standard severity levels *brilliant*
+	 */
+	if (this->established) {
+		INFO("rlm_sql_freetds: server msg from \"%s\": severity(%ld), number(%ld), origin(%ld), "
+		     "layer(%ld), procedure \"%s\": %s",
+		     (msgp->svrnlen > 0) ? msgp->svrname : "unknown",
+		     (long)msgp->msgnumber, (long)msgp->severity, (long)msgp->state, (long)msgp->line,
+		     (msgp->proclen > 0) ? msgp->proc : "none", msgp->text);
+	} else {
+		if (this->error) TALLOC_FREE(this->error);
+		
+		this->error = talloc_asprintf(this, "server msg from \"%s\": severity(%ld), number(%ld), origin(%ld), "
+		     			      "layer(%ld), procedure \"%s\": %s",
+		     			      (msgp->svrnlen > 0) ? msgp->svrname : "unknown",
+		     			      (long)msgp->msgnumber, (long)msgp->severity, (long)msgp->state,
+		     			      (long)msgp->line,
+		     			      (msgp->proclen > 0) ? msgp->proc : "none", msgp->text);
+	}
 	
 	return CS_SUCCEED;
 }
@@ -786,6 +810,8 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 			ERROR("rlm_sql_freetds: %s", error);
 		}
 	}
+	
+	conn->established = true;
 
 	return RLM_SQL_ERROR;
 }
