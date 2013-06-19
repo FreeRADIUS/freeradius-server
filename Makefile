@@ -100,7 +100,8 @@ $(SUBDIRS):
 distclean: clean
 	rm -f config.cache config.log config.status libtool \
 		src/include/radpaths.h src/include/stamp-h \
-		libltdl/config.log libltdl/config.status \
+		libltdl/config.cache libltdl/config.log \
+		libltdl/config.status \
 		libltdl/libtool
 	-find . ! -name configure.in -name \*.in -print | \
 		sed 's/\.in$$//' | \
