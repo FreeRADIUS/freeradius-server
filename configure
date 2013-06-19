@@ -20679,8 +20679,6 @@ fi
 rm -f core conftest.err conftest.$ac_objext \
     conftest$ac_exeext conftest.$ac_ext
         if test -n "$ac_cv_lib_readline"; then
-          LIBREADLINE="$TRY_LIB"
-
           break
         fi
       done
@@ -20696,6 +20694,9 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_readline" >&5
 $as_echo "$ac_cv_lib_readline" >&6; }
+
+  LIBREADLINE="$ac_cv_lib_readline"
+
 
   if test "$ac_cv_lib_readline" != "no"; then
 

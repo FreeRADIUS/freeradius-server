@@ -408,8 +408,6 @@ AC_DEFUN([AC_LIB_READLINE], [
         LIBS="$ORIG_LIBS $TRY_LIB"
         AC_TRY_LINK_FUNC(readline, ac_cv_lib_readline="$TRY_LIB")
         if test -n "$ac_cv_lib_readline"; then
-          LIBREADLINE="$TRY_LIB"
-          AC_SUBST(LIBREADLINE)
           break
         fi
       done
@@ -422,6 +420,9 @@ AC_DEFUN([AC_LIB_READLINE], [
     fi
     LIBS=$ORIG_LIBS
   ])
+
+  LIBREADLINE="$ac_cv_lib_readline"
+  AC_SUBST(LIBREADLINE)
 
   if test "$ac_cv_lib_readline" != "no"; then
     AC_DEFINE(HAVE_LIBREADLINE, 1,
