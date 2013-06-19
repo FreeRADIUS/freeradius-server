@@ -82,7 +82,7 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	if (inst->input_list) {
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
-			ERROR("rlm_exec (%s): Failed to find input pairs for xlat", inst->xlat_name);
+			REDEBUG("Failed to find input pairs for xlat");
 			out[0] = '\0';
 			return 0;
 		}
@@ -91,14 +91,10 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	/*
 	 *	FIXME: Do xlat of program name?
 	 */
-	RDEBUG2("Executing %s", fmt);
 	result = radius_exec_program(fmt, request,
 				     inst->wait, out, outlen,
 				     input_pairs ? *input_pairs : NULL, NULL, inst->shell_escape);
-	RDEBUG2("rcode %d, output '%s'", result, out);
 	if (result != 0) {
-		REDEBUG("External script failed");
-		
 		out[0] = '\0';
 		return 0;
 	}
@@ -282,8 +278,6 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	result = radius_exec_program(inst->program, request,
 				     inst->wait, out, sizeof(out),
 				     input_pairs ? *input_pairs : NULL, &answer, inst->shell_escape);
-	RDEBUG2("rcode %d, output '%s'", result, out);
-	
 	/*
 	 *	Write any exec output to module failure message
 	 */
@@ -293,12 +287,9 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 		if (out[len - 1] == '\n' || out[len - 1] == '\r') {
 			out[len - 1] = '\0';
 		}
-		
-		REDEBUG("%s", out);
 	}
 	
 	if (result < 0) {
-		REDEBUG("External script failed");
 		module_failure_msg(request, out);
 
 		return RLM_MODULE_FAIL;

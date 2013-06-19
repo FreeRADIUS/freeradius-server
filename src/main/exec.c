@@ -262,7 +262,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 *	I swear the signature for execve is wrong and should take 'char const * const argv[]'.
 		 */
 		execve(argv[0], argv, envp);
-		RWDEBUG("Failed to execute %s: %s", argv[0], strerror(errno));
+		printf("Failed to execute \"%s\": %s", argv[0], strerror(errno)); /* fork output will be captured */
 		exit(1);
 	}
 
@@ -507,6 +507,7 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	int n, done;
 	char answer[4096];
 #endif
+	RDEBUG2("Executing \"%s\"", cmd);
 
 	if (user_msg) *user_msg = '\0';
 
@@ -538,7 +539,6 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	 */
 	close(from_child);
 
-	RDEBUG2("Program output is %s", answer);
 	/*
 	 *	Parse the output, if any.
 	 */
@@ -585,7 +585,6 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 
 			if (userparse(request, answer, &vp) == T_OP_INVALID) {
 				REDEBUG("Unparsable reply from '%s'", cmd);
-
 			} else {
 				/*
 				 *	Tell the caller about the value
@@ -610,11 +609,12 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			if (status != 0) {
-				REDEBUG("Child returned error %d", status);
+				REDEBUG("Program returned error code(%d): %s", status, answer);
 				return status;
 			}
 			
-			RDEBUG("Child executed successfully");
+			RDEBUG("Program executed successfully");
+			RDEBUG2("Program output is \"%s\"", answer);
 			return 0;
 		}
 	}
