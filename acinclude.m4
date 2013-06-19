@@ -353,7 +353,6 @@ AC_DEFUN([VL_LIB_READLINE], [
         LIBS="$ORIG_LIBS $TRY_LIB"
         AC_TRY_LINK_FUNC(readline, vl_cv_lib_readline="$TRY_LIB")
         if test -n "$vl_cv_lib_readline"; then
-          LIBREADLINE="$TRY_LIB"
           break
         fi
       done
@@ -366,7 +365,8 @@ AC_DEFUN([VL_LIB_READLINE], [
       LIBS="$ORIG_LIBS"
     fi
   ])
-
+  LIBREADLINE="$vl_cv_lib_readline"
+  
   if test "$vl_cv_lib_readline" != "no"; then
     AC_DEFINE(HAVE_LIBREADLINE, 1,
               [Define if you have a readline compatible library])
