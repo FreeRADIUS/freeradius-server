@@ -560,11 +560,11 @@ static int mschapv2_authenticate(void *arg, EAP_HANDLER *handler)
 	response->vp_strvalue[0] = eap_ds->response->type.data[1];
 	response->vp_strvalue[1] = eap_ds->response->type.data[5 + MSCHAPV2_RESPONSE_LEN];
 
-	name = pairmake("NTLM-User-Name", "", T_OP_EQ);
+	name = pairmake("MS-CHAP-User-Name", "", T_OP_EQ);
 	if (!name) {
 		pairfree(&challenge);
 		pairfree(&response);
-		radlog(L_ERR, "rlm_eap_mschapv2: Failed creating NTLM-User-Name: %s", fr_strerror());
+		radlog(L_ERR, "rlm_eap_mschapv2: Failed creating MS-CHAP-User-Name: %s", fr_strerror());
 		return 0;
 	}
 	

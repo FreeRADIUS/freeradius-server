@@ -1196,11 +1196,21 @@ static int mschap_authenticate(void * instance, REQUEST *request)
 			username_string = name_attr->vp_strvalue;
 		}
 		
+		/*
+		 *	When the names are ASCII, they should be
+		 *	identical.  When the names are non-ASCII,
+		 *	User-Name is UTF-8, and MS-CHAP-User-Name is
+		 *	some local Windows character set.  So they
+		 *	can't be identical.  And because you don't
+		 *	know what the MS-CHAP character set is,
+		 *	there's no way to do ANY kind of comparison.
+		 *	They could be "bob" and "doug", and you'd have
+		 *	no idea.
+		 */
 		if (response_name &&
 		    ((username->length != response_name->length) ||
 		     (strncasecmp(username->vp_strvalue, response_name->vp_strvalue, username->length) != 0))) {
-			RDEBUG("ERROR: User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", username->vp_strvalue, response_name->vp_strvalue);
-			return RLM_MODULE_REJECT;
+			RDEBUG("WARNING: User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", username->vp_strvalue, response_name->vp_strvalue);
 		}
 
 #ifdef __APPLE__
