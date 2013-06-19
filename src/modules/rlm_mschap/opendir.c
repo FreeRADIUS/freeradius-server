@@ -247,7 +247,7 @@ rlm_rcode_t od_mschap_auth(REQUEST *request, VALUE_PAIR *challenge, VALUE_PAIR *
 	if (!username_string)
 		return RLM_MODULE_FAIL;
 	
-	strlcpy(username_string, (char *)usernamepair->vp_strvalue,
+	strlcpy(username_string, usernamepair->vp_strvalue,
 		usernamepair->length + 1);
 	
 	status = dsOpenDirService(&dsRef);
