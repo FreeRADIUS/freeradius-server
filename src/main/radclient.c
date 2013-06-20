@@ -450,7 +450,7 @@ static int filename_walk(UNUSED void *context, void *data)
 	 *	Read request(s) from the file.
 	 */
 	if (!radclient_init(filename)) {
-		return 1;	/* stop walking */
+		return -1;	/* stop walking */
 	}
 
 	return 0;
