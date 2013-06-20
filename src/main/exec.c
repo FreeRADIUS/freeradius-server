@@ -99,15 +99,12 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 #endif
 	int argc;
 	int i;
-	char const *argv[MAX_ARGV];
-	char **argv_p;
+	char *argv[MAX_ARGV];
 	char argv_buf[4096];
 #define MAX_ENVP 1024
 	char *envp[MAX_ENVP];
 	
-	memcpy(&argv_p, &argv, sizeof(argv_p));
-
-	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, 1, sizeof(argv_buf), argv_buf);
+	argc = rad_expand_xlat(request, cmd, MAX_ARGV, argv, true, sizeof(argv_buf), argv_buf);
 	if (argc <= 0) {
 		RDEBUG("invalid command line '%s'.", cmd);
 		return -1;
@@ -144,7 +141,7 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 			}
 		}
 	}
-
+	
 	envp[0] = NULL;
 
 	if (input_pairs) {
@@ -261,8 +258,11 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 */
 		closefrom(3);
 
-		execve(argv_p[0], argv_p, envp);
-		RWDEBUG("Failed to execute %s: %s", argv[0], strerror(errno));
+		/*
+		 *	I swear the signature for execve is wrong and should take 'char const * const argv[]'.
+		 */
+		execve(argv[0], argv, envp);
+		printf("Failed to execute \"%s\": %s", argv[0], strerror(errno)); /* fork output will be captured */
 		exit(1);
 	}
 
@@ -477,16 +477,15 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 
 /** Execute a program.
  *
- * @param cmd Command to execute. This is parsed into argv[] parts,
- * 	then each individual argv part is xlat'ed.
- * @param request current request.
- * @param exec_wait set to 1 if you want to read from or write to child
- * @param user_msg buffer to append plaintext (non valuepair) output.
- * @param msg_len length of user_msg buffer.
- * @param input_pairs list of value pairs - these will be put into
- * 	the environment variables of the child.
- * @param[out] output_pairs list of value pairs - child stdout will be
- * 	parsed and added into this list of value pairs.
+ * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
+ *	is xlat'ed.
+ * @param[in] request Current request.
+ * @param[in] exec_wait set to 1 if you want to read from or write to child.
+ * @param[in] user_msg buffer to append plaintext (non valuepair) output.
+ * @param[in] msg_len length of user_msg buffer.
+ * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
+ * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list 
+ *	of value pairs.
  * @param shell_escape values before passing them as arguments.
  * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
  */
@@ -508,6 +507,7 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	int n, done;
 	char answer[4096];
 #endif
+	RDEBUG2("Executing \"%s\"", cmd);
 
 	if (user_msg) *user_msg = '\0';
 
@@ -516,9 +516,10 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 		return -1;
 	}
 
-	if (!exec_wait)
+	if (!exec_wait) {
 		return 0;
-
+	}
+	
 #ifndef __MINGW32__
 	done = radius_readfrom_program(request, from_child, pid, 10, answer, sizeof(answer));
 	if (done < 0) {
@@ -532,14 +533,11 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	}
 	answer[done] = 0;
 
-
 	/*
 	 *	Make sure that the writer can't block while writing to
 	 *	a pipe that no one is reading from anymore.
 	 */
 	close(from_child);
-
-	RDEBUG2("Program output is %s", answer);
 
 	/*
 	 *	Parse the output, if any.
@@ -587,7 +585,6 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 
 			if (userparse(request, answer, &vp) == T_OP_INVALID) {
 				REDEBUG("Unparsable reply from '%s'", cmd);
-
 			} else {
 				/*
 				 *	Tell the caller about the value
@@ -612,11 +609,12 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
 			if (status != 0) {
-				REDEBUG("Child returned error %d", status);
+				REDEBUG("Program returned error code(%d): %s", status, answer);
 				return status;
 			}
 			
-			RDEBUG("Child executed successfully");
+			RDEBUG("Program executed successfully");
+			RDEBUG2("Program output is \"%s\"", answer);
 			return 0;
 		}
 	}

@@ -1783,7 +1783,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 			continue;
 
 		default:
-			ERROR("%s[%d]: Parse error after \"%s\"",
+			ERROR("%s[%d]: Parse error after \"%s\": unknown token",
 			       filename, *lineno, buf1);
 			return -1;
 		}

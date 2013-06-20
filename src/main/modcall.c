@@ -555,6 +555,11 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				RDEBUG2("%.*sforeach %s {",
 					stack.pointer + 1, modcall_spaces,
 					child->name);
+				if (vp) {
+					paircursor(&cursor, &vp);
+					/* Prime the cursor. */
+					cursor.found = cursor.current;
+				}
 				while (vp) {
 					VALUE_PAIR *copy = NULL, **copy_p;
 
@@ -580,9 +585,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 					if (myresult == MOD_ACTION_RETURN) {
 						break;
 					}
-					paircursor(&cursor, &vp);
 					vp = pairfindnext(&cursor, vp->da->attr, vp->da->vendor, TAG_ANY);
-
 					/*
 					 *	Delete the cached attribute,
 					 *	if it exists.

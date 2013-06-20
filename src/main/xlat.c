@@ -47,6 +47,7 @@ typedef enum {
 	XLAT_LITERAL,		//!< Literal string
 	XLAT_PERCENT,		//!< Literal string with %v
 	XLAT_MODULE,		//!< xlat module
+	XLAT_VIRTUAL,		//!< virtual attribute
 	XLAT_ATTRIBUTE,		//!< xlat attribute
 #ifdef HAVE_REGEX_H
 	XLAT_REGEX,		//!< regex reference
@@ -524,7 +525,7 @@ void xlat_free(void)
 	rbtree_free(xlat_root);
 }
 
-#if 1
+#if 0
 #define XLAT_DEBUG(fmt, ...) printf(fmt, ## __VA_ARGS__);printf("\n")
 #endif
 
@@ -793,6 +794,21 @@ static ssize_t xlat_tokenize_expansion(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **
 	 */
 	node->da = dict_attrbyname(attrname);
 	if (!node->da) {
+		/*
+		 *	Foreach.  Maybe other stuff, too.
+		 */
+		node->xlat = xlat_find(attrname);
+		if (node->xlat) {
+			node->type = XLAT_VIRTUAL;
+			node->fmt = attrname;
+
+			XLAT_DEBUG("VIRTUAL: %s --> %s", node->fmt);
+			*head = node;
+			rad_assert(node->next == NULL);
+			brace++;
+			return brace - fmt;
+		}
+
 		talloc_free(node);
 		*error = "Unknown attribute";
 		return -(attrname - fmt);
@@ -994,7 +1010,8 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			 *	LITERAL		" bar"
 			 */
 			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
-			if (slen <= 0) {
+			rad_assert(slen != 0);
+			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
@@ -1027,11 +1044,14 @@ static ssize_t xlat_tokenize_literal(TALLOC_CTX *ctx, char *fmt, xlat_exp_t **he
 			*p = '\0';
 			p += 2;
 
+			if (!*p) break;
+
 			/*
 			 *	And recurse.
 			 */
 			slen = xlat_tokenize_literal(node->next, p, &(node->next->next), brace, error);
-			if (slen <= 0) {
+			rad_assert(slen != 0);
+			if (slen < 0) {
 				talloc_free(node);
 				return slen - (p - fmt);
 			}
@@ -1110,6 +1130,11 @@ static void xlat_tokenize_debug(xlat_exp_t const *node, int lvl)
 
 				DEBUG("%.*s}", lvl, xlat_tabs);
 			}
+			break;
+
+		case XLAT_VIRTUAL:
+			rad_assert(node->fmt != NULL);
+			DEBUG("%.*svirtual: %s", lvl, xlat_tabs, node->fmt);
 			break;
 
 		case XLAT_MODULE:
@@ -1216,17 +1241,23 @@ size_t xlat_sprint(char *buffer, size_t bufsize, xlat_exp_t const *node)
 			p += strlen(p);
 			break;
 
+		case XLAT_VIRTUAL:
+			*(p++) = '%';
+			*(p++) = '{';
+			strlcpy(p, node->fmt, end - p);
+			p += strlen(p);
+			*(p++) = '}';
+			break;
+
 		case XLAT_MODULE:
 			*(p++) = '%';
 			*(p++) = '{';
 			strlcpy(p, node->xlat->name, end - p);
 			p += strlen(p);
 			*(p++) = ':';
-
-			if (node->child) {
-				len = xlat_sprint(p, end - p, node->child);
-				p += len;
-			}
+			rad_assert(node->child != NULL);
+			len = xlat_sprint(p, end - p, node->child);
+			p += len;
 			*(p++) = '}';
 			break;
 
@@ -1626,9 +1657,18 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
 		break;
 
+	case XLAT_VIRTUAL:
+		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
+		rcode = node->xlat->func(node->xlat->instance, request,
+					 NULL, str, 1024);
+		if (rcode == 0) {
+			talloc_free(str);
+			return NULL;
+		}
+		break;
+
 	case XLAT_MODULE:
 		rad_assert(node->child != NULL);
-
 		if (xlat_process(&child, request, node->child, node->xlat->escape, node->xlat->instance) == 0) {
 			rad_assert(child == NULL);
 			return NULL;
@@ -1637,7 +1677,6 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		XLAT_DEBUG("%.*sexpand mod %s --> '%s'", lvl, xlat_spaces, node->fmt, child);
 
 		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
-		rad_assert(node->child != NULL);
 
 		rcode = node->xlat->func(node->xlat->instance, request, child, str, 1024);
 		talloc_free(child);

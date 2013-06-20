@@ -587,7 +587,7 @@ static int mschapv2_authenticate(void *arg, eap_handler_t *handler)
 	memcpy(p + 2, &eap_ds->response->type.data[5],
 	       MSCHAPV2_RESPONSE_LEN - 2);
 
-	name = pairmake_packet("NTLM-User-Name", NULL, T_OP_EQ);
+	name = pairmake_packet("MS-CHAP-User-Name", NULL, T_OP_EQ);
 	if (!name) {
 		return 0;
 	}

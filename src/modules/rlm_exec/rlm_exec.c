@@ -57,8 +57,8 @@ static const CONF_PARSER module_config[] = {
 	{ "wait", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,wait), NULL, "yes" },
 	{ "program",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,program), NULL, NULL },
-	{ "input_pairs", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
-	  offsetof(rlm_exec_t,input), NULL, "request" },
+	{ "input_pairs", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_exec_t,input), NULL, NULL },
 	{ "output_pairs",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_exec_t,output), NULL, NULL },
 	{ "packet_type", PW_TYPE_STRING_PTR,
@@ -76,36 +76,35 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
-	VALUE_PAIR	**input_pairs;
+	VALUE_PAIR	**input_pairs = NULL;
 	char *p;
 	
-	input_pairs = radius_list(request, inst->input_list);
-	if (!input_pairs) {
-		ERROR("rlm_exec (%s): Failed to find input pairs"
-		       " for xlat", inst->xlat_name);
-		out[0] = '\0';
-		return 0;
+	if (inst->input_list) {
+		input_pairs = radius_list(request, inst->input_list);
+		if (!input_pairs) {
+			REDEBUG("Failed to find input pairs for xlat");
+			out[0] = '\0';
+			return 0;
+		}
 	}
-
+	
 	/*
 	 *	FIXME: Do xlat of program name?
 	 */
-	RDEBUG2("Executing %s", fmt);
-	result = radius_exec_program(fmt, request, inst->wait,
-				     out, outlen, *input_pairs, NULL, inst->shell_escape);
-	RDEBUG2("result %d --> '%s'", result, out);
+	result = radius_exec_program(fmt, request,
+				     inst->wait, out, outlen,
+				     input_pairs ? *input_pairs : NULL, NULL, inst->shell_escape);
 	if (result != 0) {
 		out[0] = '\0';
 		return 0;
 	}
-
+	
 	for (p = out; *p != '\0'; p++) {
 		if (*p < ' ') *p = ' ';
 	}
 
 	return strlen(out);
 }
-
 
 static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
 
@@ -157,26 +156,20 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	}
 
 	xlat_register(inst->xlat_name, exec_xlat, shell_escape, inst);
-
-	/*
-	 *	No input pairs defined.  Why are we executing a program?
-	 */
-	rad_assert(inst->input && *inst->input);
-
-	p = inst->input;
-	inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
-	if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
-		cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
-		return -1;
+	
+	if (inst->input) {
+		p = inst->input;
+		inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		if ((inst->input_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+			cf_log_err_cs(conf, "Invalid input list '%s'", inst->input);
+			return -1;
+		}
 	}
 
-	inst->output_list = PAIR_LIST_UNKNOWN;
 	if (inst->output) {
-		pair_lists_t l;
-
 		p = inst->output;
-		l = radius_list_name(&p, PAIR_LIST_UNKNOWN);
-		if ((l == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
+		inst->output_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
+		if ((inst->output_list == PAIR_LIST_UNKNOWN) || (*p != '\0')) {
 			cf_log_err_cs(conf, "Invalid output list '%s'", inst->output);
 			return -1;
 		}
@@ -221,11 +214,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 {
-	rlm_exec_t *inst = (rlm_exec_t *) instance;
+	rlm_exec_t *inst = (rlm_exec_t *)instance;
 	int result;
-	VALUE_PAIR	**input_pairs, **output_pairs;
+	VALUE_PAIR	**input_pairs = NULL, **output_pairs = NULL;
 	VALUE_PAIR	*answer = NULL;
-	char		msg[1024];
+	char		out[1024];
 	size_t		len;
 
 	/*
@@ -250,20 +243,26 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	       (request->proxy_reply->code == inst->packet_code))
 #endif
 		    )) {
-		RDEBUG2("Packet type is not %s.  Not executing.",
-		       inst->packet_type);
+		RDEBUG2("Packet type is not %s. Not executing.", inst->packet_type);
 		return RLM_MODULE_NOOP;
 	}
 
 	/*
 	 *	Decide what input/output the program takes.
 	 */
-	input_pairs = radius_list(request, inst->input_list);
-	if (!input_pairs) {
-		return RLM_MODULE_INVALID;
+	if (inst->input) {
+		input_pairs = radius_list(request, inst->input_list);
+		if (!input_pairs) {
+			return RLM_MODULE_INVALID;
+		}
 	}
 	
-	output_pairs = radius_list(request, inst->output_list);
+	if (inst->output) {
+		output_pairs = radius_list(request, inst->output_list);
+		if (!output_pairs) {
+			return RLM_MODULE_INVALID;
+		}
+	}
 
 	/*
 	 *	This function does it's own xlat of the input program
@@ -277,11 +276,22 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	into something else.
 	 */
 	result = radius_exec_program(inst->program, request,
-				     inst->wait, msg, sizeof(msg),
-				     *input_pairs, &answer, inst->shell_escape);
+				     inst->wait, out, sizeof(out),
+				     input_pairs ? *input_pairs : NULL, &answer, inst->shell_escape);
+	/*
+	 *	Write any exec output to module failure message
+	 */
+	if (*out) {
+		/* Trim off returns and newlines */
+		len = strlen(out);
+		if (out[len - 1] == '\n' || out[len - 1] == '\r') {
+			out[len - 1] = '\0';
+		}
+	}
+	
 	if (result < 0) {
-		ERROR("rlm_exec (%s): External script failed",
-		       inst->xlat_name);
+		module_failure_msg(request, out);
+
 		return RLM_MODULE_FAIL;
 	}
 
@@ -290,31 +300,22 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *
 	 *	If we're not waiting, then there are no output pairs.
 	 */
-	if (output_pairs) pairmove(request, output_pairs, &answer);
-
+	if (output_pairs) {
+		pairmove(request, output_pairs, &answer);
+	}
+	
 	pairfree(&answer);
 
 	if (result == 0) {
 		return RLM_MODULE_OK;
 	}
 	if (result > RLM_MODULE_NUMCODES) {
+		module_failure_msg(request, out);
+
 		return RLM_MODULE_FAIL;
 	}
 	
-	/*
-	 *	Write any exec output to module failure message
-	 */
-	if (*msg) {
-		/* Trim off returns and newlines */
-		len = strlen(msg);
-		if (msg[len - 1] == '\n' || msg[len - 1] == '\r') {
-			msg[len - 1] = '\0';
-		}
-		
-		REDEBUG("%s", msg);
-	}
-	
-	return result-1;
+	return result - 1;
 }
 
 

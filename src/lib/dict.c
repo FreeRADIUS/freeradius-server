@@ -155,9 +155,9 @@ const size_t dict_attr_sizes[PW_TYPE_MAX][2] = {
  *	number into the upper 8 bits of the "vendor" field.
  *
  *	e.g.	OID		attribute	vendor
- *		241.1		1		(241 << 8)
- *		241.26.9.1	1		(241 << 8) | (9)
- *		241.1.2		1 | (2 << 8)	(241 << 8)
+ *		241.1		1		(241 << 24)
+ *		241.26.9.1	1		(241 << 24) | (9)
+ *		241.1.2		1 | (2 << 8)	(241 << 24)
  */
 #define MAX_TLV_NEST (4)
 /*
@@ -806,8 +806,8 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 			}
 
 			/*
-			 *	These flags are inhereited inherited
-			 *	from the parent.
+			 *	These flags are inherited from the
+			 *	parent.
 			 */
 			flags.extended = da->flags.extended;
 			flags.long_extended = da->flags.long_extended;

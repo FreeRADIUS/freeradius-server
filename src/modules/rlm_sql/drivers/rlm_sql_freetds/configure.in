@@ -65,16 +65,10 @@ if test x$with_[]modname != xno; then
     dnl ############################################################
 
     smart_try_dir="$freetds_include_dir"
-    FR_SMART_CHECK_INCLUDE(sybdb.h)
-    if test "x$ac_cv_header_sybdb_h" != "xyes"; then
+    FR_SMART_CHECK_INCLUDE(ctpublic.h)
+    if test "x$ac_cv_header_ctpublic_h" != "xyes"; then
       AC_MSG_WARN([freetds headers not found. Use --with-freetds-include-dir=<path>.])
-      fail="$fail sybdb.h"
-    fi
-    
-    FR_SMART_CHECK_INCLUDE(sybfront.h)
-    if test "x$ac_cv_header_sybfront_h" != "xyes"; then
-      AC_MSG_WARN([freetds headers not found. Use --with-freetds-include-dir=<path>.])
-      fail="$fail sybfront.h"
+      fail="$fail ctpublic.h"
     fi
 
     dnl ############################################################
@@ -83,11 +77,11 @@ if test x$with_[]modname != xno; then
 
     dnl try to link to freetds
     smart_try_dir="$freetds_lib_dir"
-    FR_SMART_CHECK_LIB(sybdb, dbopen)
-    if test "x$ac_cv_lib_sybdb_dbopen" != "xyes"
+    FR_SMART_CHECK_LIB(ct, ct_command)
+    if test "x$ac_cv_lib_ct_ct_command" != "xyes"
     then
       AC_MSG_WARN([freetds libraries not found. Use --with-freetds-lib-dir=<path>.])
-      fail="$fail libsybdb"
+      fail="$fail libct"
     fi
 
     targetname=modname

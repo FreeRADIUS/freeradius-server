@@ -1681,8 +1681,7 @@ static rlm_rcode_t mod_authenticate(void * instance, REQUEST *request)
 		if (response_name &&
 		    ((username->length != response_name->length) ||
 		     (strncasecmp(username->vp_strvalue, response_name->vp_strvalue, username->length) != 0))) {
-			REDEBUG("User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", username->vp_strvalue, response_name->vp_strvalue);
-			return RLM_MODULE_REJECT;
+			RWDEBUG("User-Name (%s) is not the same as MS-CHAP Name (%s) from EAP-MSCHAPv2", username->vp_strvalue, response_name->vp_strvalue);
 		}
 
 #ifdef WITH_OPEN_DIRECTORY

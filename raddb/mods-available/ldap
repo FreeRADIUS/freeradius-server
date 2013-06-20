@@ -221,8 +221,6 @@ ldap {
 	#
 	#  Post-Auth can modify LDAP objects too
 	#
-	#  For eDir users this is performed *after* the post-auth login checks
-	#
 	post-auth {
 		update {
 			description := "Authenticated at %S"

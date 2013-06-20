@@ -455,7 +455,7 @@
 #endif
 
 
-/* Include support for Ascend binary filter attributes */
+/* include support for Ascend binary filter attributes */
 #undef WITH_ASCEND_BINARY
 
 /* define if you want DHCP support */
@@ -530,7 +530,7 @@
 /* uint16_t should be the canonical '2 octets' for network traffic */
 #undef uint16_t
 
-/* uint32_t should be the canonical 'network integer */
+/* uint32_t should be the canonical 'network integer' */
 #undef uint32_t
 
 /* uint8_t should be the canonical 'octet' for network traffic */

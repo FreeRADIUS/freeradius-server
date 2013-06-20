@@ -786,6 +786,8 @@ int vp_prints(char *out, size_t outlen, VALUE_PAIR const *vp)
 	out[0] = '\0';
 	if (!vp || !vp->da) return 0;
 
+	VERIFY_VP(vp);
+	
 	if ((vp->op > T_OP_INVALID) &&
 	    (vp->op < T_TOKEN_LAST)) {
 		token = vp_tokens[vp->op];

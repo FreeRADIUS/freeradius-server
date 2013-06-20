@@ -34,15 +34,15 @@ cache {
 	#  This value should be between 10 and 86400.
 	ttl = 10
 
-	#  A timestamp used to flush the cache, via
+	#  You can flush the cache via
 	#
 	#	radmin -e "set module config cache epoch 123456789"
 	#
 	#  Where last value is a 32-bit Unix timestamp.  Cache entries
 	#  older than this are expired, and new entries added.
 	#
-	#  You should ALWAYS leave it as "epoch = 0" here.
-	epoch = 0
+	#  You should never set the "epoch" configuration item in
+	#  this file.
 	
 	#  The module can also operate in status-only mode where it will
 	#  not add new cache entries, or merge existing ones.
