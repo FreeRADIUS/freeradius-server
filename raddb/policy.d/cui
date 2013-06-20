@@ -93,7 +93,7 @@ cui.post-auth {
 		#  or you do not care about accounting, comment out the three lines below.
 		#
 		if (reply:Chargeable-User-Identity) {
-			cuisql
+			-cuisql
 		}
 	}	
 }
@@ -124,6 +124,6 @@ cui.accounting {
 	#  this CUI.
 	#
 	if (Chargeable-User-Identity && (Chargeable-User-Identity != '')) {
-		cuisql
+		-cuisql
 	}
 }
