@@ -159,19 +159,19 @@ ldap {
 	#  to insert into the request. These attribtues are mapped using
 	#  the same mapping scheme appled to user objects.
 	#
-	profiles {
+	profile {
 		# Filter for RAIDUS profile objects, should match all available
 		# group objects a user might be a member of.
 #		filter = "(objectclass=radiusprofile)"
 
 		#  The default profile applied to all users.
-#		default_profile = "cn=radprofile,dc=example,dc=org"
+#		default = "cn=radprofile,dc=example,dc=org"
 
 		#  The list of profiles which are applied (after the default)
 		#  to all users.
 		#  The "User-Profile" attribute in the control list
 		#  will over-ride this setting at run-time.
-#		profile_attribute = "radiusProfileDn"
+#		attribute = "radiusProfileDn"
 	}
 	
 	#

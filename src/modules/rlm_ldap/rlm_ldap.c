@@ -75,8 +75,8 @@ static CONF_PARSER tls_config[] = {
 
 
 static CONF_PARSER profile_config[] = {
-	{"profile_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
-	{"default_profile", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, default_profile), NULL, NULL},
+	{"attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
+	{"default", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, default_profile), NULL, NULL},
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_filter), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -213,7 +213,7 @@ static const CONF_PARSER module_config[] = {
 	
 	{ "client", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_config },
 	
-	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (void const *) profile_config },
+	{ "profile", PW_TYPE_SUBSECTION, 0, NULL, (void const *) profile_config },
 
 	{ "options", PW_TYPE_SUBSECTION, 0, NULL, (void const *) option_config },
 
