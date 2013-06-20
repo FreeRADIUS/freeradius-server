@@ -148,7 +148,7 @@ void log_talloc_report(TALLOC_CTX *ctx);
 				} while(0)
 				
 #define RAUTH(fmt, ...)		_RL(L_AUTH, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
-#define RACCT(fmt, ...)		_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
+#define RACCT(fmt, ...)		_RL(L_ACCT, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
 #define RPROXY(fmt, ...)	_RL(L_PROXY, L_DBG_LVL_OFF, fmt, ## __VA_ARGS__)
  
 #define RDEBUG(fmt, ...)	_RL(L_DBG, L_DBG_LVL_1, fmt, ## __VA_ARGS__)
