@@ -173,6 +173,54 @@ ldap {
 		#  will over-ride this setting at run-time.
 #		profile_attribute = "radiusProfileDn"
 	}
+	
+	#
+	#  Bulk load clients from the directory
+	#
+	client {
+		#
+		#  Filter to match client objects
+		#
+		filter = '(objectClass=frClient)'
+
+		#
+		#  As with all objects the base_dn can be overridden, it's 
+		#  more likely that you'll want to do it here, hence the
+		#  example.
+		#
+#		base_dn = 'ou=clients,dc=example,dc=org'
+
+		#
+		#  Client attribute mappings are in the format:
+		#      <client attribute> = <ldap attribute>
+		#
+		#  Arbitrary attributes (accessible by %{client:<attr>}) are not yet supported.
+		#
+		#  The following attributes are required:
+		#    * identifier - IPv4 address, or IPv4 address with prefix, or hostname)
+		#    * secret - RADIUS shared secret
+		#
+		#  The following attributes are optional:
+		#    * shortname - Friendly name associated with the client
+		#    * type - NAS Type
+		#    * server - Virtual server to associate the client with
+		#    * require_ma - Whether we require the Message-Authenticator
+		#      attribute to be present in requests from the client.
+		#
+		attributes {
+			identifier = 'frClientIdentifier'
+#			shortname = 'frClientShortname'
+#			type = 'frClientType'
+			secret = 'frClientSecret'
+#			server = 'frClientVirtualServer'
+#			require_ma = 'frClientRequireMa'
+		}
+	}
+
+	#
+	#  Load clients on startup
+	#
+#	read_clients = no
 
 	#
 	#  Modify user object on receiving Accounting-Request

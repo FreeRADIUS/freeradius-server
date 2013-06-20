@@ -15,7 +15,7 @@
  
 /**
  * $Id$
- * @file ldap.c
+ * @file groups.c
  * @brief LDAP module group functions.
  *
  * @author Arran Cudbard-Bell <a.cudbardb@freeradius.org>

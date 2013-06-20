@@ -78,7 +78,7 @@ typedef struct ldap_instance {
 	/*
 	 *	User object attributes and filters
 	 */
-	char const	*userobj_filter;		//!< Filter to retrieve only retrieve user objects.
+	char const	*userobj_filter;		//!< Filter to retrieve only user objects.
 	char const	*userobj_base_dn;		//!< DN to search for users under.
 	char const	*userobj_scope_str;		//!< Scope (sub, one, base).
 	int		userobj_scope;			//!< Search scope.
@@ -95,7 +95,7 @@ typedef struct ldap_instance {
 	 *	Group object attributes and filters
 	 */
 	 
-	char const	*groupobj_filter;		//!< Filter to retrieve only retrieve group objects.
+	char const	*groupobj_filter;		//!< Filter to retrieve only group objects.
 	char const	*groupobj_base_dn;		//!< DN to search for users under.
 	char const	*groupobj_scope_str;		//!< Scope (sub, one, base).
 	int		groupobj_scope;			//!< Search scope.
@@ -116,7 +116,24 @@ typedef struct ldap_instance {
 	
 	const DICT_ATTR	*group_da;			//!< The DA associated with this specific version of the
 							//!< rlm_ldap module.
+							
+	/*
+	 *	Dynamic clients
+	 */
+	char const	*clientobj_filter;		//!< Filter to retrieve only client objects.
+	char const	*clientobj_base_dn;		//!< DN to search for clients under.
+	char const	*clientobj_scope_str;		//!< Scope (sub, one, base).
+	int		clientobj_scope;		//!< Search scope.
 	
+	char const	*clientobj_identifier;		//!< IP/FQDN/IP Prefix for the NAS.
+	char const	*clientobj_shortname;		//!< Short/Friendly name to assign.
+	char const	*clientobj_type;		//!< Type of NAS (not usually used).
+	char const	*clientobj_secret;		//!< RADIUS secret.
+	char const	*clientobj_server;		//!< Virtual server to associate the client with.
+	char const	*clientobj_require_ma;		//!< Require message-authenticator.
+	
+	bool		do_clients;			//!< If true, attempt to load clients on instantiation.
+
 	/*
 	 *	Profiles
 	 */
@@ -178,7 +195,7 @@ typedef struct ldap_instance {
 	 */
 	int		edir;				//!< If true attempt to retrieve the user's Cleartext password
 							//!< using the Universal Password feature of Novell eDirectory.
-	int		edir_autz;			//!< If true, and we have the Universal Password, bind with it
+	bool		edir_autz;			//!< If true, and we have the Universal Password, bind with it
 							//!< to perform additional authorisation checks.
 #endif
 	/*
@@ -244,7 +261,8 @@ typedef enum {
  *	the main log.
  */
 #define LDAP_INFO(fmt, ...) INFO("rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
- 
+#define LDAP_WARN(fmt, ...) WARN("rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
+
 #define LDAP_DBGW(fmt, ...) radlog(L_DBG_WARN, "rlm_ldap (%s): " fmt, inst->xlat_name, ##__VA_ARGS__)
 #define LDAP_DBGW_REQ(fmt, ...) do { if (request) {RWDEBUG(fmt, ##__VA_ARGS__);} else {LDAP_DBGW(fmt, ##__VA_ARGS__);}} while (0)
 
@@ -326,6 +344,11 @@ void rlm_ldap_map_do(ldap_instance_t const *inst, REQUEST *request, LDAP *handle
 
 rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, ldap_handle_t **pconn,
 			    	 char const *profile, rlm_ldap_map_xlat_t const *expanded);
+			    	 
+/*
+ *	clients.c - Dynamic clients (bulk load).
+ */
+int  rlm_ldap_load_clients(ldap_instance_t const *inst);
 
 /*
  *	edir.c - Magic extensions for Novell

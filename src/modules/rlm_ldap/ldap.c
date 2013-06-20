@@ -639,7 +639,7 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 		(*pconn)->rebound = false;
 	}
 
-	RDEBUG2("Performing search in '%s' with filter '%s'", dn, filter);
+	LDAP_DBG_REQ("Performing search in '%s' with filter '%s'", dn, filter);
 
 	/*
 	 *	If LDAP search produced an error it should also be logged
@@ -651,7 +651,7 @@ ldap_rcode_t rlm_ldap_search(ldap_instance_t const *inst, REQUEST *request, ldap
 retry:	
 	(void) ldap_search_ext((*pconn)->handle, dn, scope, filter, search_attrs, 0, NULL, NULL, &tv, 0, &msgid);
 
-	RDEBUG2("Waiting for search result...");	       
+	LDAP_DBG_REQ("Waiting for search result...");	       
 	status = rlm_ldap_result(inst, *pconn, msgid, dn, result, &error, &extra);		       
 	switch (status) {
 		case LDAP_PROC_SUCCESS:
@@ -659,7 +659,7 @@ retry:
 		case LDAP_PROC_RETRY:
 			*pconn = fr_connection_reconnect(inst->pool, *pconn);
 			if (*pconn) {
-				RWDEBUG("Search failed: %s. Got new socket, retrying...", error);
+				LDAP_DBGW_REQ("Search failed: %s. Got new socket, retrying...", error);
 				
 				talloc_free(extra); /* don't leak debug info */
 				
@@ -670,8 +670,8 @@ retry:
 			
 			/* FALL-THROUGH */
 		default:
-			REDEBUG("Failed performing search: %s", error);
-			if (extra) REDEBUG("%s", extra);
+			LDAP_ERR_REQ("Failed performing search: %s", error);
+			if (extra) LDAP_ERR_REQ("%s", extra);
 
 			goto finish;
 	}
@@ -682,7 +682,7 @@ retry:
 			ldap_msgfree(*result);
 			*result = NULL;
 		
-			RDEBUG("Search returned no results");
+			LDAP_DBG_REQ("Search returned no results");
 		
 			status = LDAP_PROC_NO_RESULT;
 		}
@@ -1203,7 +1203,7 @@ int mod_conn_delete(UNUSED void *instance, void *handle)
  * Retrieve a socket from the connection pool, or NULL on error (of if no sockets are available).
  *
  * @param inst rlm_ldap configuration.
- * @param request Current request.
+ * @param request Current request (may be NULL).
  */
 ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request)
 {
@@ -1218,6 +1218,7 @@ ldap_handle_t *rlm_ldap_get_socket(ldap_instance_t const *inst, REQUEST *request
 
 	return conn;
 }
+
 
 /** Frees an LDAP socket back to the connection pool
  *

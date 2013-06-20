@@ -114,6 +114,29 @@ static CONF_PARSER group_config[] = {
 };
 
 /*
+ *	Client configuration
+ */    
+static CONF_PARSER client_attributes[] = {
+	{"identifier", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_identifier), NULL, "host"},
+	{"shortname", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_shortname), NULL, "cn"},
+	{"type", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_type), NULL, NULL},
+	{"secret", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, clientobj_secret), NULL, NULL},
+	{"server", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
+	{"require_ma", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, clientobj_require_ma), NULL, NULL},
+	
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+static CONF_PARSER client_config[] = {
+	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
+	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, "sub"},
+	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_scope_str), NULL, NULL},
+	{"attributes", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_attributes},
+
+	{ NULL, -1, 0, NULL, NULL }
+};
+
+/*
  *	Reference for accounting updates
  */
 static const CONF_PARSER acct_section_config[] = {
@@ -182,9 +205,13 @@ static const CONF_PARSER module_config[] = {
 	{"edir_autz", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,edir_autz), NULL, NULL}, /* NULL defaults to "no" */
 #endif
 
+	{"read_clients", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t,do_clients), NULL, NULL}, /* NULL defaults to "no" */
+
 	{ "user", PW_TYPE_SUBSECTION, 0, NULL, (void const *) user_config },
 
 	{ "group", PW_TYPE_SUBSECTION, 0, NULL, (void const *) group_config },
+	
+	{ "client", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_config },
 	
 	{ "profiles", PW_TYPE_SUBSECTION, 0, NULL, (void const *) profile_config },
 
@@ -502,7 +529,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (!inst->groupobj_base_dn) {
 		if (!inst->base_dn) {
-			LDAP_ERR("Must set 'base_dn' if there is no 'group_base_dn'");
+			LDAP_ERR("Must set 'base_dn' if there is no 'group.base_dn'");
 			
 			goto error;
 		}
@@ -512,11 +539,15 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	if (!inst->userobj_base_dn) {
 		if (!inst->base_dn) {
-			LDAP_ERR("Must set 'base_dn' if there is no 'userobj_base_dn'");
+			LDAP_ERR("Must set 'base_dn' if there is no 'user.base_dn'");
 			
 			goto error;
 		}
 		
+		inst->userobj_base_dn = inst->base_dn;
+	}
+	
+	if (!inst->userobj_base_dn) {
 		inst->userobj_base_dn = inst->base_dn;
 	}
 	
@@ -572,6 +603,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			 inst->groupobj_scope_str);
 		goto error;
 	}
+	
+	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
+	if (inst->clientobj_scope < 0) {
+		LDAP_ERR("Invalid 'client.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+			 inst->clientobj_scope_str);
+		goto error;
+	}
 
 	if (inst->tls_require_cert_str) {
 #ifdef LDAP_OPT_X_TLS_NEVER
@@ -619,7 +657,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			goto error;
 		}
 		
-
 		paircompare_register(inst->group_da->attr, PW_USER_NAME, rlm_ldap_groupcmp, inst);
 	}
 
@@ -633,6 +670,17 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 	
+	/*
+	 *	Bulk load dynamic clients.
+	 */
+	if (inst->do_clients) {
+		if (rlm_ldap_load_clients(inst) < 0) {
+			LDAP_ERR("Error loading clients");
+			
+			return -1;
+		}		
+	}
+
 	return 0;
 
 error:

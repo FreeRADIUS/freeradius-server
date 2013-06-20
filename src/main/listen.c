@@ -279,7 +279,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 	 *	don't create the client from attribute-value pairs.
 	 */
 	if (request->client == client) {
-		created = client_create(clients, request);
+		created = client_from_request(clients, request);
 	} else {
 		created = request->client;
 

@@ -351,7 +351,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 	 *	More catching of clients added by rlm_sql.
 	 *
 	 *	The sql modules sets the dynamic flag BEFORE calling
-	 *	us.  The client_create() function sets it AFTER
+	 *	us.  The client_from_request() function sets it AFTER
 	 *	calling us.
 	 */
 	if (client->dynamic && (client->lifetime == 0)) {
@@ -1050,8 +1050,108 @@ int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	return 0;
 }
 
+/** Add a client from a result set (LDAP, SQL, et al)
+ *
+ * @param ctx Talloc context.
+ * @param identifier Client IP Address / IPv4 subnet / FQDN.
+ * @param shortname Client friendly name.
+ * @param secret Client secret.
+ * @param type NAS-Type.
+ * @param server Virtual-Server to associate clients with.
+ * @param require_ma If true all packets from client must include a message-authenticator.
+ * @return The new client, or NULL on error.
+ */
+RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *shortname, char const *secret,
+			     char const *type, char const *server, bool require_ma)
+{
+	RADCLIENT *c;
+	char *id;
+	char *prefix;
+	
+	rad_assert(identifier);
+	rad_assert(secret);
+	
+	c = talloc_zero(ctx, RADCLIENT);
 
-RADCLIENT *client_create(RADCLIENT_LIST *clients, REQUEST *request)
+#ifdef WITH_DYNAMIC_CLIENTS
+	c->dynamic = 1;
+#endif
+
+	id = talloc_strdup(c, identifier);
+
+	/*
+	 *	Look for prefixes
+	 */
+	c->prefix = -1;
+	prefix = strchr(id, '/');
+	if (prefix) {
+		c->prefix = atoi(prefix + 1);
+		if ((c->prefix < 0) || (c->prefix > 128)) {
+			ERROR("Invalid Prefix value '%s' for IP.", prefix + 1);	
+			talloc_free(c);
+			
+			return NULL;
+		}
+		
+		/* Replace '/' with '\0' */
+		*prefix = '\0';
+	}
+
+	/*
+	 *	Always get the numeric representation of IP
+	 */
+	if (ip_hton(id, AF_UNSPEC, &c->ipaddr) < 0) {
+		ERROR("Failed to look up hostname %s: %s", id, fr_strerror());
+		talloc_free(c);
+		
+		return NULL;
+	}
+	
+	{
+		char buffer[256];
+		ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
+		c->longname = talloc_strdup(c, buffer);
+	}
+
+	if (c->prefix < 0) switch (c->ipaddr.af) {
+	case AF_INET:
+		c->prefix = 32;
+		break;
+	case AF_INET6:
+		c->prefix = 128;
+		break;
+	default:
+		break;
+	}
+
+	/*
+	 *	Other values (secret, shortname, nastype, virtual_server)
+	 */
+	c->secret = talloc_strdup(c, secret);
+	
+	if (shortname) { 
+		c->shortname = talloc_strdup(c, shortname);
+	}
+	
+	if (type) {
+		c->nastype = talloc_strdup(c, type);
+	}
+	
+	if (server) {
+		c->server = talloc_strdup(c, server);
+	}
+	
+	c->message_authenticator = require_ma;
+
+	return c;
+	
+	error:
+	client_free(c);
+	
+	return NULL;
+}
+
+RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)
 {
 	int i, *pi;
 	char **p;
