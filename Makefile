@@ -7,7 +7,10 @@
 # Version:	$Id$
 #
 
+$(if $(wildcard Make.inc),,$(error Missing 'Make.inc' Run './configure [options]' and retry")) 
+
 include Make.inc
+
 MFLAGS += --no-print-directory
 
 # The version of GNU Make is too old, don't use it (.FEATURES variable was
