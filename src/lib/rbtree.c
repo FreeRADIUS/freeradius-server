@@ -401,7 +401,7 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
 /*
  *	Delete an element from the tree.
  */
-void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
+static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
 {
 	rbnode_t *X, *Y;
 	rbnode_t *Parent;
@@ -412,7 +412,9 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 
 	if (!Z || Z == NIL) return;
 
-	PTHREAD_MUTEX_LOCK(tree);
+	if (!skiplock) {
+		PTHREAD_MUTEX_LOCK(tree);
+	}
 
 	if (Z->Left == NIL || Z->Right == NIL) {
 		/* Y has a NIL node as a child */
@@ -479,7 +481,12 @@ void rbtree_delete(rbtree_t *tree, rbnode_t *Z)
 	}
 
 	tree->num_elements--;
-	PTHREAD_MUTEX_UNLOCK(tree);
+	if (!skiplock) {
+		PTHREAD_MUTEX_UNLOCK(tree);
+	}
+}
+void rbtree_delete(rbtree_t *tree, rbnode_t *Z) {
+	rbtree_delete_internal(tree, Z, 0);
 }
 
 /*
@@ -540,6 +547,46 @@ void *rbtree_finddata(rbtree_t *tree, void const *Data)
 	if (!X) return NULL;
 
 	return X->Data;
+}
+
+/*
+ * Find a node by data, perform a callback, and perhaps delete the node.
+ */
+void *rbtree_callbydata(rbtree_t *tree, void const *Data,
+			int (*callback)(void *, void *), void *context) {
+
+	/*******************************
+	 *  find node containing Data  *
+	 *******************************/
+
+	rbnode_t *Current;
+
+
+	PTHREAD_MUTEX_LOCK(tree);
+	Current = tree->Root;
+
+	while (Current != NIL) {
+		int result = tree->Compare(Data, Current->Data);
+
+		if (result == 0) {
+			void *data = Current->Data;
+
+			if (callback(context, data) > 0) {
+				rbtree_delete_internal(tree, Current, 1);
+				if (tree->freeNode) {
+					data = NULL;
+				}
+			}
+			PTHREAD_MUTEX_UNLOCK(tree);
+			return data;
+		} else {
+			Current = (result < 0) ?
+				Current->Left : Current->Right;
+		}
+	}
+
+	PTHREAD_MUTEX_UNLOCK(tree);
+	return NULL;
 }
 
 /*

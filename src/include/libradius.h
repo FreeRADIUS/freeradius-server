@@ -597,6 +597,26 @@ typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;
 int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void *), void *context);
 
 /*
+ *	Find a matching data item in an rbtree and, if one is found,
+ *	perform a callback on it.
+ *
+ *	The callback is similar to rbtree_walk above, except that a
+ *	positive return code from the callback will cause the found node
+ *	to be deleted from the tree.  If the tree was created with
+ *	RBTREE_FLAG_LOCK, then the entire find/callback/delete/rebalance
+ *	sequence happens while the lock is held.
+ *
+ *	Note that the callback MUST NOT alter any of the data which
+ *	is used as the rbtree key, nor attempt to alter the rest of
+ *	the rbtree in any way.
+ *
+ *	Returns a pointer to the user data in the found node, or NULL if the
+ *	item was not found, or NULL if the item was deleted and the tree was
+ *	created with a freeNode garbage collection routine.
+ */
+void *rbtree_callbydata(rbtree_t *tree, void const *Data, int (*callback)(void *, void *), void *context);
+
+/*
  *	FIFOs
  */
 typedef struct fr_fifo_t fr_fifo_t;
