@@ -569,12 +569,12 @@ static int WalkNodePostOrder(rbnode_t *X,
 	int rcode;
 
 	if (X->Left != NIL) {
-		rcode = WalkNodeInOrder(X->Left, callback, context);
+		rcode = WalkNodePostOrder(X->Left, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
 	if (X->Right != NIL) {
-		rcode = WalkNodeInOrder(X->Right, callback, context);
+		rcode = WalkNodePostOrder(X->Right, callback, context);
 		if (rcode != 0) return rcode;
 	}
 
