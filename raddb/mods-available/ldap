@@ -20,8 +20,8 @@ ldap {
 #	identity = "cn=admin,dc=example,dc=org"
 #	password = mypass
 
-	#  Unless overridden in user or group, the dn from
-	#  whilch all searches will start at.
+	#  Unless overridden in another section, the dn from whilch all 
+	#  searches will start from.
 #	basedn = "dc=example,dc=org"
 
 	#
