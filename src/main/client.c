@@ -996,7 +996,7 @@ static const CONF_PARSER dynamic_config[] = {
 };
 
 
-int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
+bool client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 {
 	char buffer[128];
 
@@ -1015,18 +1015,14 @@ int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 	 */
 	if (master->server &&
 	     (strcmp(master->server, c->server) != 0)) {
-		DEBUG("- Cannot add client %s: Virtual server %s is not the same as the virtual server for the network.",
-		      ip_ntoh(&c->ipaddr,
-			      buffer, sizeof(buffer)),
-		      c->server);
+		DEBUG("- Cannot add client %s: Virtual server %s is not the same as the virtual server for the network",
+		      ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)), c->server);
 
 		goto error;
 	}
 
 	if (!client_add(clients, c)) {
-		DEBUG("- Cannot add client %s: Internal error",
-		      ip_ntoh(&c->ipaddr,
-			      buffer, sizeof(buffer)));
+		DEBUG("- Cannot add client %s: Internal error", ip_ntoh(&c->ipaddr, buffer, sizeof(buffer)));
 
 		goto error;
 	}
@@ -1045,7 +1041,7 @@ int client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c)
 
 	return 1;
 
- error:
+error:
 	client_free(c);
 	return 0;
 }
@@ -1144,11 +1140,6 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	c->message_authenticator = require_ma;
 
 	return c;
-	
-	error:
-	client_free(c);
-	
-	return NULL;
 }
 
 RADCLIENT *client_from_request(RADCLIENT_LIST *clients, REQUEST *request)

@@ -226,6 +226,6 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		ldap_msgfree(result);
 	}
 
-	return 0;
+	return ret;
 }
 

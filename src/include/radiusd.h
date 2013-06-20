@@ -558,8 +558,7 @@ RADCLIENT	*client_find(RADCLIENT_LIST const *clients,
 RADCLIENT	*client_findbynumber(RADCLIENT_LIST const *clients,
 				     int number);
 RADCLIENT	*client_find_old(fr_ipaddr_t const *ipaddr);
-int		client_validate(RADCLIENT_LIST *clients, RADCLIENT *master,
-				RADCLIENT *c);
+bool		client_validate(RADCLIENT_LIST *clients, RADCLIENT *master, RADCLIENT *c);
 RADCLIENT	*client_read(char const *filename, int in_server, int flag);
 
 
