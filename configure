@@ -20695,10 +20695,8 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_cv_lib_readline" >&5
 $as_echo "$ac_cv_lib_readline" >&6; }
 
-  LIBREADLINE="$ac_cv_lib_readline"
-
-
   if test "$ac_cv_lib_readline" != "no"; then
+    LIBREADLINE="$ac_cv_lib_readline"
 
 $as_echo "#define HAVE_LIBREADLINE 1" >>confdefs.h
 
@@ -20768,6 +20766,7 @@ done
 
     fi
   fi
+
 
 
 
