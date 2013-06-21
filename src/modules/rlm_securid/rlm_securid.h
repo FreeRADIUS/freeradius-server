@@ -41,7 +41,7 @@ typedef struct _securid_session_t {
 	SDI_HANDLE		  sdiHandle;
 	SECURID_SESSION_STATE	  securidSessionState;
 
-	uint8_t			  state[SECURID_STATE_LEN];
+	char			  state[SECURID_STATE_LEN];
 
 	fr_ipaddr_t		  src_ipaddr;
 	time_t			  timestamp;

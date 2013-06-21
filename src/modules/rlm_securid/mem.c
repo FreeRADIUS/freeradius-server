@@ -39,7 +39,7 @@ SECURID_SESSION* securid_session_alloc(void)
 	return session;
 }
 
-void securid_session_free(rlm_securid_t *inst,REQUEST *request,
+void securid_session_free(UNUSED rlm_securid_t *inst,REQUEST *request,
 			  SECURID_SESSION *session)
 {
 	if (!session)
@@ -202,7 +202,7 @@ SECURID_SESSION *securid_sessionlist_find(rlm_securid_t *inst, REQUEST *request)
 	}
 
 	if (state->length != SECURID_STATE_LEN) {
-		ERROR("rlm_securid: Invalid State variable. length=%d",state->length);
+	  ERROR("rlm_securid: Invalid State variable. length=%d", (int) state->length);
 		return NULL;
 	}
 
