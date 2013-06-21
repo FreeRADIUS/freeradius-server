@@ -4213,7 +4213,7 @@ fi
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking if compiler is clang" >&5
 $as_echo_n "checking if compiler is clang... " >&6; }
-if ${ax_cv_clang+:} false; then :
+if ${ax_cv_cc_clang+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
@@ -4234,15 +4234,15 @@ main ()
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ax_cv_clang=yes
+  ax_cv_cc_clang=yes
 else
-  ax_cv_clang=no
+  ax_cv_cc_clang=no
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
 
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_clang" >&5
-$as_echo "$ax_cv_clang" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_clang" >&5
+$as_echo "$ax_cv_cc_clang" >&6; }
 
 
 if test "x$GCC" = "xyes"; then
@@ -4252,7 +4252,7 @@ fi
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Qunused-arguments\"" >&5
 $as_echo_n "checking for the compiler flag \"-Qunused-arguments\"... " >&6; }
-if ${ax_cv_qunused_arguments_flag+:} false; then :
+if ${ax_cv_cc_qunused_arguments_flag+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
@@ -4278,9 +4278,9 @@ return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ax_cv_qunused_arguments_flag="yes"
+  ax_cv_cc_qunused_arguments_flag="yes"
 else
-  ax_cv_qunused_arguments_flag="no"
+  ax_cv_cc_qunused_arguments_flag="no"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     ac_ext=c
@@ -4293,10 +4293,10 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     CFLAGS="$CFLAGS_SAVED"
 
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_qunused_arguments_flag" >&5
-$as_echo "$ax_cv_qunused_arguments_flag" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_qunused_arguments_flag" >&5
+$as_echo "$ax_cv_cc_qunused_arguments_flag" >&6; }
 
-if test "x$ax_cv_qunused_arguments_flag" = "xyes"; then
+if test "x$ax_cc_cv_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi
@@ -7654,7 +7654,7 @@ $as_echo "$as_me: Setting additional developer CFLAGS" >&6;}
 
   { $as_echo "$as_me:${as_lineno-$LINENO}: checking for the compiler flag \"-Wdocumentation\"" >&5
 $as_echo_n "checking for the compiler flag \"-Wdocumentation\"... " >&6; }
-if ${ax_cv_wdocumentation_flag+:} false; then :
+if ${ax_cv_cc_wdocumentation_flag+:} false; then :
   $as_echo_n "(cached) " >&6
 else
 
@@ -7680,9 +7680,9 @@ return 0;
 }
 _ACEOF
 if ac_fn_c_try_compile "$LINENO"; then :
-  ax_cv_wdocumentation_flag="yes"
+  ax_cv_cc_wdocumentation_flag="yes"
 else
-  ax_cv_wdocumentation_flag="no"
+  ax_cv_cc_wdocumentation_flag="no"
 fi
 rm -f core conftest.err conftest.$ac_objext conftest.$ac_ext
     ac_ext=c
@@ -7695,10 +7695,10 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
     CFLAGS="$CFLAGS_SAVED"
 
 fi
-{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_wdocumentation_flag" >&5
-$as_echo "$ax_cv_wdocumentation_flag" >&6; }
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_cc_wdocumentation_flag" >&5
+$as_echo "$ax_cv_cc_wdocumentation_flag" >&6; }
 
-  if test "x$ax_cv_wdocumentation_flag" = "xyes"; then
+  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
     devflags="-Wdocumentation"
   fi
 

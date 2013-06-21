@@ -148,8 +148,8 @@ fi
 dnl #
 dnl #  -Qunused-arguments means the compiler won't complain about unsupported arguments
 dnl #
-AX_QUNUSED_ARGUMENTS_FLAG
-if test "x$ax_cv_qunused_arguments_flag" = "xyes"; then
+AX_CC_QUNUSED_ARGUMENTS_FLAG
+if test "x$ax_cc_cv_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi 
@@ -1146,8 +1146,8 @@ if test "x$developer" = "xyes"; then
   dnl #
   dnl #  Tell the compiler to parse doxygen documentation and verify it against function and variable declarations
   dnl #
-  AX_WDOCUMENTATION_FLAG
-  if test "x$ax_cv_wdocumentation_flag" = "xyes"; then
+  AX_CC_WDOCUMENTATION_FLAG
+  if test "x$ax_cv_cc_wdocumentation_flag" = "xyes"; then
     devflags="-Wdocumentation"
   fi
 
