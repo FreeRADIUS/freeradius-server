@@ -121,12 +121,12 @@ next:
 
 
 /*
- *	Cast a literal vpt to a value_pair_data
+ *	Cast a literal vpt to a value_data_t
  */
 static int cast_vpt(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 {
 	VALUE_PAIR *vp;
-	VALUE_PAIR_DATA *data;
+	value_data_t *data;
 
 	rad_assert(vpt->type == VPT_TYPE_LITERAL);
 
@@ -139,7 +139,7 @@ static int cast_vpt(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 	}
 
 	vpt->length = vp->length;
-	vpt->vpd = data = talloc(vpt, VALUE_PAIR_DATA);
+	vpt->vpd = data = talloc(vpt, value_data_t);
 	if (!vpt->vpd) return false;
 
 	vpt->type = VPT_TYPE_DATA;

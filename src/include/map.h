@@ -78,7 +78,7 @@ typedef enum vpt_type {
 	VPT_TYPE_LIST,			//!< Is a list.
 	VPT_TYPE_REGEX,			//!< Is a regex.
 	VPT_TYPE_EXEC,			//!< Needs to be executed.
-	VPT_TYPE_DATA			//!< is a VALUE_PAIR_DATA
+	VPT_TYPE_DATA			//!< is a value_data_t
 } vpt_type_t;
 
 extern const FR_NAME_NUMBER vpt_types[];
@@ -101,7 +101,7 @@ typedef struct value_pair_tmpl_t {
 	pair_lists_t		list;	 //!< List to search or insert in.
 
 	DICT_ATTR const		*da;	 //!< Resolved dictionary attribute.
-	VALUE_PAIR_DATA const	*vpd;	 //!< actual data
+	value_data_t const	*vpd;	 //!< actual data
 	size_t			length;  //!< of the vpd data
 } value_pair_tmpl_t;
 

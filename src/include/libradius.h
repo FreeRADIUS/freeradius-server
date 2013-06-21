@@ -113,26 +113,24 @@ extern "C" {
 #endif
 
 typedef struct attr_flags {
-	unsigned int 	is_unknown : 1;		//!< Attribute number or
-						//!< vendor is unknown.				
-	unsigned int	is_tlv : 1;		//!< Is a sub attribute.
-	unsigned int	vp_free : 1;		//!< Should be freed when
-						//!< VALUE_PAIR is freed.
+	unsigned int 	is_unknown : 1;				//!< Attribute number or vendor is unknown.				
+	unsigned int	is_tlv : 1;				//!< Is a sub attribute.
+	unsigned int	vp_free : 1;				//!< Should be freed when VALUE_PAIR is freed.
 						
-	unsigned int	has_tag : 1;		//!< Tagged attribute.
-	unsigned int	array : 1; 		//!< Pack multiples into 1 attr.
-	unsigned int	has_value : 1;		//!< Has a value.
-	unsigned int	has_value_alias : 1; 	//!< Has a value alias.
-	unsigned int	has_tlv : 1; 		//!< Has sub attributes.
+	unsigned int	has_tag : 1;				//!< Tagged attribute.
+	unsigned int	array : 1; 				//!< Pack multiples into 1 attr.
+	unsigned int	has_value : 1;				//!< Has a value.
+	unsigned int	has_value_alias : 1; 			//!< Has a value alias.
+	unsigned int	has_tlv : 1; 				//!< Has sub attributes.
 
-	unsigned int	extended : 1; 		//!< Extended attribute.
-	unsigned int	long_extended : 1; 	//!< Long format.
-	unsigned int	evs : 1;		//!< Extended VSA.
-	unsigned int	wimax: 1;		//!< WiMAX format=1,1,c.
+	unsigned int	extended : 1; 				//!< Extended attribute.
+	unsigned int	long_extended : 1; 			//!< Long format.
+	unsigned int	evs : 1;				//!< Extended VSA.
+	unsigned int	wimax: 1;				//!< WiMAX format=1,1,c.
 
-	unsigned int	concat : 1;		//!< concatenate multiple instances
+	unsigned int	concat : 1;				//!< concatenate multiple instances
 
-	uint8_t		encrypt;      		//!< Ecryption method.
+	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
 } ATTR_FLAGS;
 
@@ -147,6 +145,9 @@ typedef struct attr_flags {
 extern const FR_NAME_NUMBER dict_attr_types[];
 extern const size_t dict_attr_sizes[PW_TYPE_MAX][2];
 
+/** dictionary attribute 
+ *
+ */
 typedef struct dict_attr {
 	unsigned int		attr;
 	PW_TYPE			type;
@@ -155,6 +156,9 @@ typedef struct dict_attr {
 	char			name[1];
 } DICT_ATTR;
 
+/** value of an enumerated attribute
+ *
+ */
 typedef struct dict_value {
 	unsigned int		attr;
 	unsigned int		vendor;
@@ -162,95 +166,116 @@ typedef struct dict_value {
 	char			name[1];
 } DICT_VALUE;
 
+/** dictionary vendor
+ *
+ */
 typedef struct dict_vendor {
 	unsigned int		vendorpec;
-	size_t			type; /* length of type data */
-	size_t			length;	/* length of length data */
+	size_t			type; 				//!< Length of type data
+	size_t			length;				//!< Length of length data
 	size_t			flags;
 	char			name[1];
 } DICT_VENDOR;
 
-typedef union value_pair_data {
-	char const	        *strvalue;
-	uint8_t const		*octets;
-	struct in_addr		ipaddr;
-	struct in6_addr		ipv6addr;
-	uint32_t		date;
-	uint32_t		integer;
-	int32_t			sinteger;
-	uint64_t		integer64;
-	size_t			filter[32/sizeof(size_t)];
-	uint8_t			ifid[8]; /* struct? */
-	uint8_t			ipv6prefix[18]; /* struct? */
-	uint8_t			ipv4prefix[6]; /* struct? */
-     	uint8_t			ether[6];
-	uint8_t			*tlv;
-} VALUE_PAIR_DATA;
+/** Union containing all data types supported by the server
+ *
+ * This union contains all data types that can be represented with VALUE_PAIRs. It may also be used in other parts 
+ * of the server where values of different types need to be stored.
+ *
+ * PW_TYPE should be an enumeration of the values in this union.
+ */
+typedef union value_data {
+	char const	        *strvalue;			//!< Pointer to UTF-8 string.
+	uint8_t const		*octets;			//!< Pointer to binary string.
+	struct in_addr		ipaddr;				//!< IPv4 Address.
+	struct in6_addr		ipv6addr;			//!< IPv6 Address.
+	uint32_t		date;				//!< Date (32bit Unix timestamp).
+	uint32_t		integer;			//!< 32bit unsigned integer.
+	int32_t			sinteger;			//!< 32bit signed integer.
+	uint64_t		integer64;			//!< 64bit unsigned integer.
+	size_t			filter[32/sizeof(size_t)];	//!< 64bit signed integer.
+	uint8_t			ifid[8]; /* struct? */		//!< IPv6 interface ID.
+	uint8_t			ipv6prefix[18]; /* struct? */	//!< IPv6 prefix.
+	uint8_t			ipv4prefix[6]; /* struct? */	//!< IPv4 prefix.
+     	uint8_t			ether[6];			//!< Ethernet (MAC) address.
+	uint8_t			*tlv;				//!< Nested TLV (should go away).
+} value_data_t;
 
+/** The type of value a VALUE_PAIR contains
+ *
+ * This is used to add structure to nested VALUE_PAIRs and specifies what type of node it is (set, list, data).
+ *
+ * xlat is another type of data node which must first be expanded before use.
+ */
 typedef enum value_type {
-	VT_NONE = 0,				//!< VALUE_PAIR has no value.
-	VT_SET,					//!< VALUE_PAIR has children.
-	VT_LIST,				//!< VALUE_PAIR has multiple
-						//!< values.
-	VT_DATA,				//!< VALUE_PAIR has a single
-						//!< value.
-	VT_XLAT					//!< valuepair value must be
-						//!< xlat expanded when it's
-						//!< added to VALUE_PAIR tree.
+	VT_NONE = 0,						//!< VALUE_PAIR has no value.
+	VT_SET,							//!< VALUE_PAIR has children.
+	VT_LIST,						//!< VALUE_PAIR has multiple values.
+	VT_DATA,						//!< VALUE_PAIR has a single value.
+	VT_XLAT							//!< valuepair value must be xlat expanded when it's
+								//!< added to VALUE_PAIR tree.
 } value_type_t;
 
+/** Stores an attribute, a value and various bits of other data
+ *
+ * VALUE_PAIRs are the main data structure used in the server, they specify an attribute, it's children and 
+ * it's siblings.
+ *
+ * They also specify what behaviour should be used when the attribute is merged into a new list/tree.
+ */
 typedef struct value_pair {
-	const DICT_ATTR		*da;		//!< Dictionary attribute
-						//!< defines the attribute
-						//!< number, vendor and type
-						//!< of the attribute.
+	const DICT_ATTR		*da;				//!< Dictionary attribute defines the attribute
+								//!< number, vendor and type of the attribute.
 
 	struct value_pair	*next;
 
-	FR_TOKEN		op;		//!< Operator to use when
-						//!< moving or inserting
-						//!< valuepair into a list.
+	FR_TOKEN		op;				//!< Operator to use when moving or inserting
+								//!< valuepair into a list.
 
-	int8_t			tag;		//!< Tag value used to group
-						//!< valuepairs.
+	int8_t			tag;				//!< Tag value used to group valuepairs.
 
 	union {
-	//	VALUE_SET	*set;		//!< Set of child attributes.
-	//	VLAUE_LIST	*list;		//!< List of values for
-						//!< multivalued attribute.
-	//	VALUE_DATA 	*data;		//!< Value data for this
-						//!< attribute.
+	//	VALUE_SET	*set;				//!< Set of child attributes.
+	//	VALUE_LIST	*list;				//!< List of values for
+								//!< multivalued attribute.
+	//	value_data_t	*data;				//!< Value data for this attribute.
 	
-		char const 	*xlat;		//!< Source string for xlat
-						//!< expansion.
+		char const 	*xlat;				//!< Source string for xlat expansion.
 	} value;
 	
-	value_type_t		type;		//!< Type of pointer in value
-						//!< union.
+	value_type_t		type;				//!< Type of pointer in value union.
 						
-	size_t			length;		//!< of Data field.
-	VALUE_PAIR_DATA		data;
+	size_t			length;				//!< of Data field.
+	value_data_t		data;
 } VALUE_PAIR;
 
-
+/** Abstraction to allow iterating over different configurations of VALUE_PAIRs
+ *
+ * This allows functions which do not care about the structure of collections of VALUE_PAIRs 
+ * to iterate over all members in a collection.
+ *
+ * Field within a vp_cursor should not be accessed directly, and vp_cursors should only be
+ * manipulated with the pair* functions.
+ */
 typedef struct vp_cursor {
 	VALUE_PAIR	**first;
-	VALUE_PAIR	*found;			//!< pairfind marker.
-	VALUE_PAIR	*last;			//!< Temporary only used for pairinsert
-	VALUE_PAIR	*current;		//!< The current attribute.
-	VALUE_PAIR	*next;			//!< Next attribute to process.
+	VALUE_PAIR	*found;					//!< pairfind marker.
+	VALUE_PAIR	*last;					//!< Temporary only used for pairinsert
+	VALUE_PAIR	*current;				//!< The current attribute.
+	VALUE_PAIR	*next;					//!< Next attribute to process.
 } vp_cursor_t;
 
+/** A VALUE_PAIR in string format.
+ *
+ * Used to represent pairs in the legacy 'users' file format.
+ */
 typedef struct value_pair_raw {
-	char l_opand[64];			//!< Left hand side of the
-						//!< pair.
-	char r_opand[1024];			//!< Right hand side of the
-						//!< pair.
+	char l_opand[64];					//!< Left hand side of the pair.
+	char r_opand[1024];					//!< Right hand side of the pair.
 	
-	FR_TOKEN quote;				//!< Type of quoting around
-						//!< the r_opand.
+	FR_TOKEN quote;						//!< Type of quoting around the r_opand.
 	
-	FR_TOKEN op;				//!< Operator.
+	FR_TOKEN op;						//!< Operator.
 } VALUE_PAIR_RAW;
 
 #define vp_strvalue   data.strvalue
