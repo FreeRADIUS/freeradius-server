@@ -535,8 +535,6 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, password), 0, NULL },
 	{ "virtual_server",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, server), 0, NULL },
-	{ "server",  PW_TYPE_STRING_PTR, /* compatability with 2.0-pre */
-	  offsetof(RADCLIENT, server), 0, NULL },
 
 #ifdef WITH_TCP
 	{ "proto",  PW_TYPE_STRING_PTR,
