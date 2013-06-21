@@ -43,13 +43,12 @@
 #include <DirectoryService/DirectoryService.h>
 #include <membership.h>
 
-/*
- *	FIXME: The configure script should check for these...
- */
-DIAG_OFF(redundant-decls)
+#ifndef HAVE_DECL_MBR_CHECK_SERVICE_MEMBERSHIP
 extern int mbr_check_service_membership(uuid_t const user, char const *servicename, int *ismember);
+#endif
+#ifndef HAVE_DECL_MBR_CHECK_MEMBERSHIP_REFRESH
 extern int mbr_check_membership_refresh(uuid_t const user, uuid_t group, int *ismember);
-DIAG_ON(redundant-decls)
+#endif
 
 /* RADIUS service ACL constants */
 #define kRadiusSACLName		"com.apple.access_radius"
