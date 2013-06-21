@@ -29,7 +29,7 @@ MAKE		= @MAKE@
 
 # Makeflags set within the makefile appear to be additive and override
 # flags set on the command line and the environmental variables
-MAKEFLAGS	= @MAKEFLAGS@
+MAKEFLAGS	= @FR_MAKEFLAGS@
 
 CC		= @CC@
 RANLIB		= @RANLIB@

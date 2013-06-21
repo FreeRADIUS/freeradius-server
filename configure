@@ -654,6 +654,7 @@ raddbdir
 radacctdir
 logdir
 GIT
+FR_MAKEFLAGS
 MAKE
 GMAKE
 RANLIB
@@ -682,7 +683,6 @@ build_os
 build_vendor
 build_cpu
 build
-MAKEFLAGS
 RADIUSD_VERSION_STRING
 target_alias
 host_alias
@@ -2349,6 +2349,9 @@ ac_config_headers="$ac_config_headers src/include/autoconf.h"
 
 
 
+
+
+
 RADIUSD_MAJOR_VERSION=`cat VERSION | sed 's/\..*//'`
 RADIUSD_MINOR_VERSION=`cat VERSION | sed 's/^[^\.]*\.//' | sed 's/\..*$//'`
 RADIUSD_INCRM_VERSION=`cat VERSION | sed 's/^.*\..*\.//' | sed 's/[\.-].*$//'`
@@ -2397,10 +2400,7 @@ fi
 
 if test "x$developer" = "xyes"; then
   : ${CFLAGS=-g3}
-  : ${MAKEFLAGS=-j8}
 fi
-
-
 
 
 ac_aux_dir=
@@ -4854,6 +4854,97 @@ makever=`$ac_cv_path_MAKE --version 2>&1 | grep "GNU Make"`
 if test -z "$makever"; then
   as_fn_error $? "GNU Make is not installed.  Please download and install it from ftp://prep.ai.mit.edu/pub/gnu/make/ before continuing." "$LINENO" 5
 fi
+
+
+  { $as_echo "$as_me:${as_lineno-$LINENO}: checking number of system cores" >&5
+$as_echo_n "checking number of system cores... " >&6; }
+if ${ax_cv_system_cores+:} false; then :
+  $as_echo_n "(cached) " >&6
+else
+
+      ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+      if test "$cross_compiling" = yes; then :
+  ax_cv_system_cores=
+
+else
+  cat confdefs.h - <<_ACEOF >conftest.$ac_ext
+/* end confdefs.h.  */
+
+          #include <stdio.h>
+          #include <stdint.h>
+          #ifdef _WIN32
+          #  include <windows.h>
+          #elif MACOS
+          #  include <sys/param.h>
+          #  include <sys/sysctl.h>
+          #else
+          #  include <unistd.h>
+          #endif
+
+          int main (int argc, char *argv[])
+          {
+            uint32_t count;
+
+            #ifdef WIN32
+            SYSTEM_INFO sysinfo;
+            GetSystemInfo(&sysinfo);
+
+            count = sysinfo.dwNumberOfProcessors;
+            #elif MACOS
+
+            int nm[2];
+            size_t len = 4;
+
+            nm[0] = CTL_HW;
+            nm[1] = HW_AVAILCPU;
+            sysctl(nm, 2, &count, &len, NULL, 0);
+
+            if(count < 1) {
+              nm[1] = HW_NCPU;
+              sysctl(nm, 2, &count, &len, NULL, 0);
+              if(count < 1) {
+      	      count = 1;
+              }
+            }
+            #else
+
+      	    count = sysconf(_SC_NPROCESSORS_ONLN);
+            #endif
+
+            return count;
+          }
+
+_ACEOF
+if ac_fn_c_try_run "$LINENO"; then :
+  ax_cv_system_cores=$?
+else
+  ax_cv_system_cores=$?
+fi
+rm -f core *.core core.conftest.* gmon.out bb.out conftest$ac_exeext \
+  conftest.$ac_objext conftest.beam conftest.$ac_ext
+fi
+
+    ac_ext=c
+ac_cpp='$CPP $CPPFLAGS'
+ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
+ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
+ac_compiler_gnu=$ac_cv_c_compiler_gnu
+
+
+fi
+{ $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_system_cores" >&5
+$as_echo "$ax_cv_system_cores" >&6; }
+
+if test "x$ax_cv_system_cores" != "x"; then
+  : ${FR_MAKEFLAGS=-j$ax_cv_system_cores}
+fi
+
 
 # Extract the first word of "git", so it can be a program name with args.
 set dummy git; ac_word=$2
