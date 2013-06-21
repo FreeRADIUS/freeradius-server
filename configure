@@ -6092,9 +6092,9 @@ rm -f core conftest.err conftest.$ac_objext \
 fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $vl_cv_lib_readline" >&5
 $as_echo "$vl_cv_lib_readline" >&6; }
-  LIBREADLINE="$vl_cv_lib_readline"
 
   if test "$vl_cv_lib_readline" != "no"; then
+    LIBREADLINE="$vl_cv_lib_readline"
 
 $as_echo "#define HAVE_LIBREADLINE 1" >>confdefs.h
 
