@@ -42,7 +42,7 @@ typedef struct rlm_sql_conn {
 	SQLHANDLE hdbc;
 	SQLHANDLE henv;
 	SQLHANDLE stmt;
-	char const *error;
+	char *error;
 } rlm_sql_db2_conn_t;
 
 static int sql_socket_destructor(void *c)
@@ -259,14 +259,13 @@ static char const *sql_error(rlm_sql_handle_t *handle, UNUSED rlm_sql_config_t *
 	/* this should really be enough, if not, you still got the sqlstate */
 	char sqlstate[6];
 	char msg[1024];
-	char *retval;
 	SQLINTEGER err;
 	SQLSMALLINT rl;
 	rlm_sql_db2_conn_t *conn = handle->conn;
 
 	TALLOC_FREE(conn->error);
 	SQLGetDiagRec(SQL_HANDLE_STMT, conn->stmt, 1, (SQLCHAR *) sqlstate, &err, (SQLCHAR *) msg, sizeof(msg), &rl);
-	conn->error = talloc_aprintf(conn, "sqlstate %s: %s", sqlstate, msg);
+	conn->error = talloc_asprintf(conn, "sqlstate %s: %s", sqlstate, msg);
 	
 	return conn->error;
 }
