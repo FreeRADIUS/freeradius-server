@@ -55,28 +55,25 @@ ${BUILD_DIR}/make/jlibtool: $(HEADERS_DY)
 #
 #  Installation
 #
-
-# Add additional dependecies to the global targets
-install: install.src.include
-clean: clean.src.include
-distclean: distclean.src.include
-
 # define the installation directory
 SRC_INCLUDE_DIR := ${R}${includedir}/freeradius
 
-# the local rule depends on the installed headers
-install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
+$(SRC_INCLUDE_DIR):
+	@$(INSTALL) -d -m 755 ${SRC_INCLUDE_DIR}
 
 # install the headers by re-writing the local files
 #
 # install-sh function for creating directories gets confused
 # if there's a trailing slash, tries to create a directory
 # it already created, and fails...
-${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h
+${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h | $(SRC_INCLUDE_DIR)
 	@echo INSTALL $(notdir $<)
 	@$(INSTALL) -d -m 755 `echo $(dir $@) | sed 's/\/$$//'`
 	@sed 's/^#include <freeradius-devel/#include <freeradius/' < $< > $@
 	@chmod 644 $@
+
+install.src.include: $(addprefix ${SRC_INCLUDE_DIR}/,${HEADERS})
+install: install.src.include
 
 #
 #  Cleaning
@@ -85,6 +82,9 @@ ${SRC_INCLUDE_DIR}/%.h: ${top_srcdir}/src/include/%.h
 clean.src.include:
 	@rm -f $(HEADERS_DY)
 
+clean: clean.src.include
+
 distclean.src.include: clean.src.include
 	@rm -f autoconf.sed
 
+distclean: distclean.src.include
