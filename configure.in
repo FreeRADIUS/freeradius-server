@@ -180,13 +180,16 @@ dnl #
 dnl #  autoconf explicitly sets MAKEFLAGS and MFLAGS to '' even though we 
 dnl #  didn't tell it to, so we have to use FR_MAKEFLAGS.
 dnl #
-dnl #  determine the optimal number of make processes to use and set the
-dnl #  the number of build processes appropriately.
+dnl #  determine the number of cores available and set the number of build
+dnl #  processes appropriately.
 dnl #
 AX_SYSTEM_CORES
-if test "x$ax_cv_system_cores" != "x"; then
-  : ${FR_MAKEFLAGS=-j$ax_cv_system_cores}
-fi
+
+dnl #  Temporarily disabled because test and installation targets do not
+dnl #  have dependencies set up correctly for multiple build processes.
+dnl if test "x$ax_cv_system_cores" != "x"; then
+dnl  : ${FR_MAKEFLAGS=-j$ax_cv_system_cores}
+dnl fi
 AC_SUBST(FR_MAKEFLAGS)
 
 dnl #

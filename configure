@@ -4941,9 +4941,7 @@ fi
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ax_cv_system_cores" >&5
 $as_echo "$ax_cv_system_cores" >&6; }
 
-if test "x$ax_cv_system_cores" != "x"; then
-  : ${FR_MAKEFLAGS=-j$ax_cv_system_cores}
-fi
+
 
 
 # Extract the first word of "git", so it can be a program name with args.
