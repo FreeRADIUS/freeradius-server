@@ -812,7 +812,7 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 {
 	uint32_t lvalue;
 	ssize_t len;
-	const uint8_t *data;
+	uint8_t const *data;
 	uint8_t *ptr = start;
 	uint8_t	array[4];
 	uint64_t lvalue64;
@@ -837,18 +837,26 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	/*
 	 *	Set up the default sources for the data.
 	 */
-	data = vp->vp_octets;
 	len = vp->length;
 
 	switch(vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+	case PW_TYPE_TLV:
+		data = vp->data.ptr;
+		if (!data) {
+			fr_strerror_printf("ERROR: Cannot encode NULL data");
+			return -1;
+		}
+		break;
+
 	case PW_TYPE_IFID:
+	case PW_TYPE_IPADDR:
 	case PW_TYPE_IPV6ADDR:
 	case PW_TYPE_IPV6PREFIX:
 	case PW_TYPE_IPV4PREFIX:
 	case PW_TYPE_ABINARY:
-		/* nothing more to do */
+		data = (uint8_t const *) &vp->data;
 		break;
 
 	case PW_TYPE_BYTE:
@@ -877,11 +885,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		data = (uint8_t *) &lvalue64;
 		break;
 
-	case PW_TYPE_IPADDR:
-		data = (uint8_t const *) &vp->vp_ipaddr;
-		len = 4;	/* just in case */
-		break;
-
 		/*
 		 *  There are no tagged date attributes.
 		 */
@@ -901,14 +904,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 		data = array;
 		break;
 	}
-
-	case PW_TYPE_TLV:
-		data = vp->vp_tlv;
-		if (!data) {
-			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
-			return -1;
-		}
-		break;
 
 	default:		/* unknown type: ignore it */
 		fr_strerror_printf("ERROR: Unknown attribute type %d",
@@ -3493,7 +3488,10 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 	switch (da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
+		break;
+
 	case PW_TYPE_ABINARY:
+		if (datalen > sizeof(vp->vp_filter)) goto raw;
 		break;
 
 	case PW_TYPE_INTEGER:
@@ -3884,7 +3882,7 @@ ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
 		case PW_TYPE_TLV:
-			memcpy(out, vp->vp_octets, len);
+			memcpy(out, vp->data.ptr, len);
 			break;
 
 			/*
