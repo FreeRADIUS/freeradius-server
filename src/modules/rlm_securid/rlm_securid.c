@@ -191,8 +191,10 @@ static SECURID_AUTH_RC securidAuth(void *instance, REQUEST *request,
 		
 			strlcpy(replyMsgBuffer, "\r\nPlease Enter the Next Code from Your Token:", replyMsgBufferSize);
 			return RC_SECURID_AUTH_CHALLENGE;
+
 		default:
 			ERROR("SecurID: Unexpected error from ACE/Agent API acm_ret=%d", acm_ret);
+			securid_session_free(inst, request, securid_session);
 			return RC_SECURID_AUTH_FAILURE;
 
 			
