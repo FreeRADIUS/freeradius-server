@@ -1,4 +1,4 @@
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Build with Apple Open Directory support */
 #undef HAVE_OPEN_DIRECTORY

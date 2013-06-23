@@ -1,4 +1,4 @@
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* Define if the SQLite library has v2 API functions */
 #undef HAVE_SQLITE_V2_API

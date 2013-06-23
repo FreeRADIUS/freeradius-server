@@ -1,4 +1,4 @@
-/* config.h.in.  Generated from configure.in by autoheader.  */
+/* config.h.in.  Generated from configure.ac by autoheader.  */
 
 /* do we have gdbm_fdesc */
 #undef HAVE_GDBM_FDESC

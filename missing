@@ -35,7 +35,7 @@ run=:
 if test -f configure.ac; then
   configure_ac=configure.ac
 else
-  configure_ac=configure.in
+  configure_ac=configure.ac
 fi
 
 case "$1" in

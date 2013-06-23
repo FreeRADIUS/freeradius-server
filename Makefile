@@ -112,11 +112,12 @@ endif
 
 distclean: clean
 	@-find src/modules -regex .\*/config[.][^.]*\$$ -delete
-	@rm -f config.cache config.log config.status libtool \
+	@-find src/modules -name autom4te.cache -exec rm -rf '{}' \;
+	@rm -rf config.cache config.log config.status libtool \
 		src/include/radpaths.h src/include/stamp-h \
 		libltdl/config.log libltdl/config.status \
-		libltdl/libtool
-	@-find . ! -name configure.in -name \*.in -print | \
+		libltdl/libtool autom4te.cache
+	@-find . ! -name configure.ac -name \*.in -print | \
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
 
@@ -132,7 +133,7 @@ distclean: clean
 #
 ifeq "$(MAKECMDGOALS)" "reconfig"
 
-CONFIGURE_IN_FILES := $(shell find . -name configure.in -print)
+CONFIGURE_IN_FILES := $(shell find . -name configure.ac -print)
 CONFIGURE_FILES	   := $(patsubst %.in,%,$(CONFIGURE_IN_FILES))
 
 #
@@ -148,7 +149,7 @@ endif
 
 # Configure files depend on "in" files, and on the top-level macro files
 # If there are headers, run auto-header, too.
-src/%configure: src/%configure.in acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
+src/%configure: src/%configure.ac acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4/*m4) | src/freeradius-devel
 	@echo AUTOCONF $(dir $@)
 	cd $(dir $@) && $(AUTOCONF) -I $(top_builddir) -I $(top_builddir)/m4 -I $(top_builddir)/$(dir $@)m4
 	@if grep AC_CONFIG_HEADERS $@ >/dev/null; then\
@@ -157,11 +158,11 @@ src/%configure: src/%configure.in acinclude.m4 aclocal.m4 $(wildcard $(dir $@)m4
 	 fi
 
 # "%configure" doesn't match "configure"
-configure: configure.in $(wildcard ac*.m4) $(wildcard m4/*.m4)
+configure: configure.ac $(wildcard ac*.m4) $(wildcard m4/*.m4)
 	@echo AUTOCONF $@
 	@$(AUTOCONF)
 
-src/include/autoconf.h.in: configure.in
+src/include/autoconf.h.in: configure.ac
 	@echo AUTOHEADER $@
 	@$(AUTOHEADER)
 
