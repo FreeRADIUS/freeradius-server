@@ -54,6 +54,7 @@ RCSID("$Id$")
 #ifdef WITH_UNLANG
 
 #if 0
+#define WITH_EVAL_DEBUG (1)
 #define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
 #define EVAL_DEBUG(...)
@@ -350,6 +351,7 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	if (!cast && (map->src->type == VPT_TYPE_ATTR) && (map->dst->type == VPT_TYPE_ATTR)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
+		EVAL_DEBUG("ATTR to ATTR");
 		lhs_vp = radius_vpt_get_vp(request, map->dst);
 		rhs_vp = radius_vpt_get_vp(request, map->src);
 
@@ -380,6 +382,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 
 		if (!rhs_vp) return false;
 
+		EVAL_DEBUG("CAST to ...");
+
 		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
 		pairfree(&lhs_vp);
 		if (map->src->type != VPT_TYPE_ATTR) {
@@ -396,11 +400,18 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	    (map->src->type == VPT_TYPE_DATA)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
 
+		EVAL_DEBUG("ATTR to DATA");
+
 		lhs_vp = radius_vpt_get_vp(request, map->dst);
 		if (!lhs_vp) return false;
 
 		rhs_vp = get_cast_vp(request, map->src, map->dst->da);
 		if (!rhs_vp) return false;
+
+#ifdef WITH_EVAL_DEBUG
+		debug_pair(lhs_vp);
+		debug_pair(rhs_vp);
+#endif
 
 		rcode = paircmp_op(lhs_vp, map->op, rhs_vp);
 		pairfree(&rhs_vp);
@@ -431,6 +442,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 	if ((map->dst->type == VPT_TYPE_ATTR) &&
 	    (map->src->type != VPT_TYPE_REGEX)) {
 		VALUE_PAIR *lhs_vp, *rhs_vp;
+
+		EVAL_DEBUG("ATTR to REGEX");
 
 		/*
 		 *	No LHS means no match
@@ -487,6 +500,8 @@ int radius_evaluate_map(REQUEST *request, UNUSED int modreturn, UNUSED int depth
 		EVAL_DEBUG("FAIL %d", __LINE__);
 		return -1;
 	}
+
+	EVAL_DEBUG("LHS is %s", lhs);
 
 	/*
 	 *	Compile  the RHS to a regex, and do regex stuff
