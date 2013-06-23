@@ -129,6 +129,7 @@ typedef struct attr_flags {
 	unsigned int	wimax: 1;				//!< WiMAX format=1,1,c.
 
 	unsigned int	concat : 1;				//!< concatenate multiple instances
+	unsigned int	is_pointer : 1;				//!< data is a pointer
 
 	uint8_t		encrypt;      				//!< Ecryption method.
 	uint8_t		length;
@@ -199,6 +200,7 @@ typedef union value_data {
 	uint8_t			ipv4prefix[6]; /* struct? */	//!< IPv4 prefix.
      	uint8_t			ether[6];			//!< Ethernet (MAC) address.
 	uint8_t			*tlv;				//!< Nested TLV (should go away).
+	void const		*ptr;				//!< generic pointer.
 } value_data_t;
 
 /** The type of value a VALUE_PAIR contains

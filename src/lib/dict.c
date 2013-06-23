@@ -701,7 +701,21 @@ int dict_addattr(char const *name, int attr, unsigned int vendor, int type,
 			return -1;
 		}
 	}
-		
+
+	/*
+	 *	Allow for generic pointers
+	 */
+	switch (type) {
+	default:
+		break;
+
+	case PW_TYPE_STRING:
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_TLV:
+		flags.is_pointer = true;
+		break;
+	}
+
 	if (attr < 0) {
 		fr_strerror_printf("dict_addattr: ATTRIBUTE has invalid number (less than zero)");
 		return -1;
