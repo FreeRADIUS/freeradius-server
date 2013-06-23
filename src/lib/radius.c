@@ -3712,14 +3712,19 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 		break;
 
 	case PW_TYPE_OCTETS:
-	case PW_TYPE_ABINARY:
 		vp->vp_octets = talloc_memdup(vp, data, vp->length);
+		break;
+
+	case PW_TYPE_ABINARY:
+		if (vp->length > sizeof(vp->vp_filter)) {
+			vp->length = sizeof(vp->vp_filter);
+		}
+		memcpy(vp->vp_filter, data, vp->length);
 		break;
 
 	case PW_TYPE_BYTE:
 		vp->vp_integer = data[0];
 		break;
-
 
 	case PW_TYPE_SHORT:
 		vp->vp_integer = (data[0] << 8) | data[1];
