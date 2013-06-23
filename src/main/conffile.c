@@ -1278,7 +1278,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 {
 	CONF_SECTION *this, *css;
 	CONF_PAIR *cpn;
-	char const *ptr;
+	char const *ptr, *start;
 	char const *value;
 	char buf[8192];
 	char buf1[8192];
@@ -1611,6 +1611,23 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				return -1;
 			}
 
+			/*
+			 *	If there's a ${...}.  If so, expand it.
+			 */
+			start = buf;
+			if (strchr(ptr, '$') != NULL) {
+				start = buf3;
+				ptr = cf_expand_variables(filename, lineno,
+							  this,
+							  buf3, sizeof(buf3),
+							  ptr);
+				if (!ptr) {
+					ERROR("%s[%d]: Parse error expanding ${...} in condition",
+					      filename, *lineno);
+					return -1;
+				}
+			} /* else leave it alone */
+
 			p = strrchr(ptr, '{'); /* ugh */
 			if (p) *p = '\0';
 
@@ -1629,7 +1646,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				char *spbuf;
 
 				offset = -slen;
-				offset += ptr - buf;
+				offset += ptr - start;
 
 				spbuf = malloc(offset + 1);
 				memset(spbuf, ' ', offset);
@@ -1638,7 +1655,7 @@ static int cf_section_read(char const *filename, int *lineno, FILE *fp,
 				ERROR("%s[%d]: Parse error in condition",
 				       filename, *lineno);
 
-				EDEBUG("%s", buf);
+				EDEBUG("%s", start);
 				EDEBUG("%.*s^%s", (int) offset, spbuf, error);
 				free(spbuf);
 				return -1;
