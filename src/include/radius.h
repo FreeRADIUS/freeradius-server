@@ -33,8 +33,6 @@ typedef enum {
 	PW_TYPE_MAX		//!< Number of defined data types.
 } PW_TYPE;
 
-#define PW_FLAG_LONG			(1 << 8)
-
 #define PW_AUTHENTICATION_REQUEST	1
 #define PW_AUTHENTICATION_ACK		2
 #define PW_AUTHENTICATION_REJECT	3

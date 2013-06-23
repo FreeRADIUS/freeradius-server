@@ -840,12 +840,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	data = vp->vp_octets;
 	len = vp->length;
 
-	/*
-	 *	Short-circuit it for long attributes.  They can't be
-	 *	encrypted, tagged, etc.
-	 */
-	if ((vp->da->type & PW_FLAG_LONG) != 0) goto do_tlv;
-
 	switch(vp->da->type) {
 	case PW_TYPE_STRING:
 	case PW_TYPE_OCTETS:
@@ -909,7 +903,6 @@ static ssize_t vp2data_any(RADIUS_PACKET const *packet,
 	}
 
 	case PW_TYPE_TLV:
-	do_tlv:
 		data = vp->vp_tlv;
 		if (!data) {
 			fr_strerror_printf("ERROR: Cannot encode NULL TLV");
@@ -3887,11 +3880,6 @@ ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 		return -1;
 	}
 	
-	/*
-	 *	Short-circuit it for long attributes.
-	 */
-	if ((vp->da->type & PW_FLAG_LONG) != 0) goto do_raw;
-
 	switch(vp->da->type) {
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
@@ -3902,7 +3890,6 @@ ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 		case PW_TYPE_IPV4PREFIX:
 		case PW_TYPE_ABINARY:
 		case PW_TYPE_TLV:
-			do_raw:
 			memcpy(out, vp->vp_octets, len);
 			break;
 		case PW_TYPE_BYTE:
