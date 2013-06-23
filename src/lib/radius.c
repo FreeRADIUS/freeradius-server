@@ -3883,15 +3883,23 @@ ssize_t rad_vp2data(VALUE_PAIR const *vp, uint8_t *out, size_t outlen)
 	switch(vp->da->type) {
 		case PW_TYPE_STRING:
 		case PW_TYPE_OCTETS:
+		case PW_TYPE_TLV:
+			memcpy(out, vp->vp_octets, len);
+			break;
+
+			/*
+			 *	All of this data is at the same
+			 *	location.
+			 */
 		case PW_TYPE_IFID:
 		case PW_TYPE_IPADDR:
 		case PW_TYPE_IPV6ADDR:
 		case PW_TYPE_IPV6PREFIX:
 		case PW_TYPE_IPV4PREFIX:
 		case PW_TYPE_ABINARY:
-		case PW_TYPE_TLV:
-			memcpy(out, vp->vp_octets, len);
+			memcpy(out, &vp->data, len);
 			break;
+
 		case PW_TYPE_BYTE:
 			out[0] = vp->vp_integer & 0xff;
 			break;
