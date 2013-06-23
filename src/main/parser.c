@@ -147,25 +147,11 @@ static int cast_vpt(value_pair_tmpl_t *vpt, DICT_ATTR const *da)
 
 	debug_pair(vp);
 
-	switch (vp->da->type) {
-		case PW_TYPE_STRING:
-		data->strvalue = talloc_steal(vpt, vp->vp_strvalue);
-		vp->vp_strvalue = NULL;
-		break;
-
-	case PW_TYPE_OCTETS:
-		data->octets = talloc_steal(vpt, vp->vp_octets);
-		vp->vp_octets = NULL;
-		break;
-
-	case PW_TYPE_TLV:
-		data->tlv = talloc_steal(vpt, vp->vp_tlv);
-		vp->vp_tlv = NULL;
-		break;
-
-	default:
+	if (vp->da->flags.is_pointer) {
+		data->ptr = talloc_steal(vpt, vp->data.ptr);
+		vp->data.ptr = NULL;
+	} else {
 		memcpy(data, &vp->data, sizeof(*data));
-		break;		
 	}
 
 	pairfree(&vp);
