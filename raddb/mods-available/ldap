@@ -22,7 +22,7 @@ ldap {
 
 	#  Unless overridden in another section, the dn from whilch all 
 	#  searches will start from.
-#	basedn = "dc=example,dc=org"
+#	base_dn = "dc=example,dc=org"
 
 	#
 	#  Mapping of LDAP directory attributes to RADIUS dictionary attributes.
@@ -184,7 +184,7 @@ ldap {
 		filter = '(objectClass=frClient)'
 
 		#
-		#  As with all objects the base_dn can be overridden, it's 
+		#  As with all objects the basedn can be overridden, it's 
 		#  more likely that you'll want to do it here, hence the
 		#  example.
 		#

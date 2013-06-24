@@ -88,7 +88,7 @@ static CONF_PARSER profile_config[] = {
 static CONF_PARSER user_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
-	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_base_dn), NULL, NULL},
+	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_base_dn), NULL, NULL},
 	
 	{"access_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
 	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, access_positive), NULL, "yes"},
@@ -102,7 +102,7 @@ static CONF_PARSER user_config[] = {
 static CONF_PARSER group_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_filter), NULL, NULL},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_scope_str), NULL, "sub"},
-	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_base_dn), NULL, NULL},
+	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_base_dn), NULL, NULL},
 	
 	{"name_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, groupobj_name_attr), NULL, "cn"},
 	{"membership_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_membership_attr), NULL, NULL},
@@ -130,7 +130,7 @@ static CONF_PARSER client_attributes[] = {
 static CONF_PARSER client_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_scope_str), NULL, "sub"},
-	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, NULL},
+	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, NULL},
 	{"attributes", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_attributes},
 
 	{ NULL, -1, 0, NULL, NULL }
@@ -190,7 +190,7 @@ static const CONF_PARSER module_config[] = {
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 	
-	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_dn), NULL, ""},
+	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_dn), NULL, ""},
 	
 	{"valuepair_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, base_dn), NULL, NULL},
 
@@ -547,8 +547,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->userobj_base_dn = inst->base_dn;
 	}
 	
-	if (!inst->userobj_base_dn) {
-		inst->userobj_base_dn = inst->base_dn;
+	if (!inst->clientobj_base_dn) {
+		inst->clientobj_base_dn = inst->base_dn;
 	}
 	
 	/*
