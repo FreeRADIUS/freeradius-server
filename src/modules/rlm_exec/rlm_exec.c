@@ -33,7 +33,7 @@ RCSID("$Id$")
 typedef struct rlm_exec_t {
 	char const	*xlat_name;
 	int		bare;
-	int		wait;
+	bool		wait;
 	char		*program;
 	char		*input;
 	char		*output;
@@ -78,7 +78,13 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	rlm_exec_t	*inst = instance;
 	VALUE_PAIR	**input_pairs = NULL;
 	char *p;
-	
+
+	if (!inst->wait) {
+		REDEBUG("'wait' must be enabled to use exec xlat");
+		out[0] = '\0';
+		return 0;
+	}
+
 	if (inst->input_list) {
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
