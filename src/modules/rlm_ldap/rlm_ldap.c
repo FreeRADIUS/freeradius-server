@@ -129,8 +129,8 @@ static CONF_PARSER client_attributes[] = {
 
 static CONF_PARSER client_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_filter), NULL, NULL},
-	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, "sub"},
-	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_scope_str), NULL, NULL},
+	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_scope_str), NULL, "sub"},
+	{"basedn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_base_dn), NULL, NULL},
 	{"attributes", PW_TYPE_SUBSECTION, 0, NULL, (void const *) client_attributes},
 
 	{ NULL, -1, 0, NULL, NULL }
