@@ -198,7 +198,13 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 		}
 		
 		/* FIXME: We should really pass a proper ctx */
-		c = client_from_query(NULL, identifier[0], shortname[0], secret[0], type[0], server[0], require_ma[0]);
+		c = client_from_query(NULL,
+				      identifier[0],
+				      shortname ? shortname[0] : NULL,
+				      secret[0],
+				      type ? type[0] : NULL,
+				      server ? server[0] : NULL,
+				      require_ma ? strncmp(require_ma[0], "true", 4) == 0 : false);
 		if (!c) {
 			goto next;
 		}
