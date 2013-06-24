@@ -123,6 +123,12 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	rlm_exec_t	*inst = instance;
 	VALUE_PAIR	**input_pairs;
 	char *p;
+	
+	if (!inst->wait) {
+		radlog(L_ERR, "rlm_exec (%s): 'wait' must be enabled to use exec xlat", inst->xlat_name);
+		out[0] = '\0';
+		return 0;
+	}
 
 	input_pairs = decode_string(request, inst->input);
 	if (!input_pairs) {
