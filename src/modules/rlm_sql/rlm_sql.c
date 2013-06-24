@@ -247,10 +247,8 @@ static int generate_sql_clients(rlm_sql_t *inst)
 {
 	rlm_sql_handle_t *handle;
 	rlm_sql_row_t row;
-	RADCLIENT *c;
-	char *prefix_ptr = NULL;
 	unsigned int i = 0;
-	int numf = 0;
+	RADCLIENT *c;
 
 	DEBUG("rlm_sql (%s): Processing generate_sql_clients",
 	      inst->config->xlat_name);
@@ -259,17 +257,18 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	      inst->config->xlat_name, inst->config->nas_query);
 
 	handle = sql_get_socket(inst);
-	if (!handle)
+	if (!handle) {
 		return -1;
-	if (rlm_sql_select_query(&handle,inst, inst->config->nas_query)){
+	}
+	
+	if (rlm_sql_select_query(&handle, inst, inst->config->nas_query)){
 		return -1;
 	}
 
-	while(rlm_sql_fetch_row(&handle, inst) == 0) {
+	while((rlm_sql_fetch_row(&handle, inst) == 0) && (row = handle->row)) {
+		char *server = NULL;
 		i++;
-		row = handle->row;
-		if (!row)
-			break;
+
 		/*
 		 *  The return data for each row MUST be in the following order:
 		 *
@@ -297,81 +296,37 @@ static int generate_sql_clients(rlm_sql_t *inst)
 			continue;
 		}
 
-		DEBUG("rlm_sql (%s): Read entry nasname=%s,shortname=%s,secret=%s",inst->config->xlat_name,
-			row[1],row[2],row[4]);
-
-		c = talloc_zero(inst, RADCLIENT);
-
-#ifdef WITH_DYNAMIC_CLIENTS
-		c->dynamic = 1;
-#endif
-
-		/*
-		 *	Look for prefixes
-		 */
-		c->prefix = -1;
-		prefix_ptr = strchr(row[1], '/');
-		if (prefix_ptr) {
-			c->prefix = atoi(prefix_ptr + 1);
-			if ((c->prefix < 0) || (c->prefix > 128)) {
-				ERROR("rlm_sql (%s): Invalid Prefix value '%s' for IP.",
-				       inst->config->xlat_name, prefix_ptr + 1);
-				talloc_free(c);
-				continue;
-			}
-			/* Replace '/' with '\0' */
-			*prefix_ptr = '\0';
+		if (((inst->module->sql_num_fields)(handle, inst->config) > 5) && (row[5] != NULL) && *row[5]) {
+			server = row[5];
 		}
 
-		/*
-		 *	Always get the numeric representation of IP
-		 */
-		if (ip_hton(row[1], AF_UNSPEC, &c->ipaddr) < 0) {
-			ERROR("rlm_sql (%s): Failed to look up hostname %s: %s",
-			       inst->config->xlat_name,
-			       row[1], fr_strerror());
-			talloc_free(c);
-			continue;
-		} else {
-			char buffer[256];
-			ip_ntoh(&c->ipaddr, buffer, sizeof(buffer));
-			c->longname = talloc_strdup(c, buffer);
-		}
-
-		if (c->prefix < 0) switch (c->ipaddr.af) {
-		case AF_INET:
-			c->prefix = 32;
-			break;
-		case AF_INET6:
-			c->prefix = 128;
-			break;
-		default:
-			break;
-		}
-
-		/*
-		 *	Other values (secret, shortname, nastype, virtual_server)
-		 */
-		c->secret = talloc_strdup(c, row[4]);
-		c->shortname = talloc_strdup(c, row[2]);
-		if(row[3] != NULL)
-			c->nastype = strdup(row[3]);
-
-		numf = (inst->module->sql_num_fields)(handle, inst->config);
-		if ((numf > 5) && (row[5] != NULL) && *row[5]) c->server = strdup(row[5]);
-
-		DEBUG("rlm_sql (%s): Adding client %s (%s, server=%s) to clients list",
+		DEBUG("rlm_sql (%s): Adding client %s (%s) to %s clients list",
 		      inst->config->xlat_name,
-		      c->longname,c->shortname, c->server ? c->server : "<none>");
-		if (!client_add(NULL, c)) {
-			sql_release_socket(inst, handle);
-			DEBUG("rlm_sql (%s): Failed to add client %s (%s) to clients list.  Maybe there's a duplicate?",
-			      inst->config->xlat_name,
-			      c->longname,c->shortname);
-			client_free(c);
-			return -1;
+		      row[1], row[2], server ? server : "global");
+		
+		/* FIXME: We should really pass a proper ctx */
+		c = client_from_query(NULL,
+				      row[1],	/* identifier */
+				      row[4],	/* secret */
+				      row[2],	/* shortname */
+				      row[3],	/* type */
+				      server,	/* server */
+				      false);	/* require message authenticator */
+		if (!c) {
+			continue;
 		}
+	
+		if (!client_add(NULL, c)) {
+			WARN("Failed to add client, possible duplicate?");
+
+			client_free(c);
+			continue;
+		}
+	
+		DEBUG("rlm_sql (%s): Client \"%s\" (%s) added", c->longname, c->shortname,
+		      inst->config->xlat_name);
 	}
+	
 	(inst->module->sql_finish_select_query)(handle, inst->config);
 	sql_release_socket(inst, handle);
 

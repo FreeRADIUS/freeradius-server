@@ -568,8 +568,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 
 	name2 = cf_section_name2(cs);
 	if (!name2) {
-		cf_log_err_cs(cs,
-			   "Missing client name");
+		cf_log_err_cs(cs, "Missing client name");
 		return NULL;
 	}
 
@@ -584,8 +583,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 	c->prefix = -1;
 
 	if (cf_section_parse(cs, c, client_config) < 0) {
-		cf_log_err_cs(cs,
-			   "Error parsing client section.");
+		cf_log_err_cs(cs, "Error parsing client section.");
 	error:
 		client_free(c);
 #ifdef WITH_TCP
@@ -622,9 +620,7 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 		if (prefix_ptr) {
 			c->prefix = atoi(prefix_ptr + 1);
 			if ((c->prefix < 0) || (c->prefix > 128)) {
-				cf_log_err_cs(cs,
-					   "Invalid Prefix value '%s' for IP.",
-					   prefix_ptr + 1);
+				cf_log_err_cs(cs, "Invalid Prefix value '%s' for IP.", prefix_ptr + 1);
 				goto error;
 			}
 			/* Replace '/' with '\0' */
@@ -657,8 +653,8 @@ static RADCLIENT *client_parse(CONF_SECTION *cs, int in_server)
 			c->ipaddr.ipaddr.ip4addr = cl_ip4addr;
 
 			if ((c->prefix < -1) || (c->prefix > 32)) {
-				cf_log_err_cs(cs,
-					   "Netmask must be between 0 and 32");
+				cf_log_err_cs(cs, "Netmask must be between 0 and 32");
+				
 				goto error;
 			}
 				
@@ -1048,14 +1044,14 @@ error:
  *
  * @param ctx Talloc context.
  * @param identifier Client IP Address / IPv4 subnet / FQDN.
- * @param shortname Client friendly name.
  * @param secret Client secret.
+ * @param shortname Client friendly name.
  * @param type NAS-Type.
  * @param server Virtual-Server to associate clients with.
  * @param require_ma If true all packets from client must include a message-authenticator.
  * @return The new client, or NULL on error.
  */
-RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *shortname, char const *secret,
+RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname,
 			     char const *type, char const *server, bool require_ma)
 {
 	RADCLIENT *c;

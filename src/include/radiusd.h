@@ -548,7 +548,7 @@ void		client_free(RADCLIENT *client);
 int		client_add(RADCLIENT_LIST *clients, RADCLIENT *client);
 #ifdef WITH_DYNAMIC_CLIENTS
 void		client_delete(RADCLIENT_LIST *clients, RADCLIENT *client);
-RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *shortname, char const *secret,
+RADCLIENT	*client_from_query(TALLOC_CTX *ctx, char const *identifier, char const *secret, char const *shortname, 
 				   char const *type, char const *server, bool require_ma);
 RADCLIENT	*client_from_request(RADCLIENT_LIST *clients, REQUEST *request);
 #endif
