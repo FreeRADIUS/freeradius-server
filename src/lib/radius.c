@@ -3402,6 +3402,10 @@ static ssize_t data2vp(RADIUS_PACKET *packet,
 	if (da->flags.has_tag && (datalen > 1) &&
 	    ((data[0] < 0x20) ||
 	     (da->flags.encrypt == FLAG_ENCRYPT_TUNNEL_PASSWORD))) {
+		/*
+		 *	Only "short" attributes can be encrypted.
+		 */
+		if (datalen >= sizeof(buffer)) return -1;
 
 		if (da->type == PW_TYPE_STRING) {
 			memcpy(buffer, data + 1, datalen - 1);
