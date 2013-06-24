@@ -39,7 +39,7 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 	ldap_handle_t		*conn = NULL;
 	
 	/* This needs to be updated if additional attributes need to be retrieved */
-	char const		*attrs[6];
+	char const		*attrs[7];
 	char const		**attrs_p;
 	
 	LDAPMessage		*result = NULL;
@@ -83,23 +83,23 @@ int rlm_ldap_load_clients(ldap_instance_t const *inst)
 	attrs[1] = inst->clientobj_secret;
 	attrs_p  = attrs + 2;
 	
-	if (inst->clientobj_shortname) {
+	if (inst->clientobj_shortname) { /* 2 */
 		*attrs_p++ = inst->clientobj_shortname;
 	}
 	
-	if (inst->clientobj_type) {
+	if (inst->clientobj_type) { /* 3 */
 		*attrs_p++ = inst->clientobj_type;
 	}
 	
-	if (inst->clientobj_server) {
+	if (inst->clientobj_server) { /* 4 */
 		*attrs_p++ = inst->clientobj_server;
 	}
 	
-	if (inst->clientobj_require_ma) {
+	if (inst->clientobj_require_ma) { /* 5 */
 		*attrs_p++ = inst->clientobj_require_ma;
 	}
 	
-	*attrs_p = NULL;	/* array needs to be NULL terminated */
+	*attrs_p = NULL;	/* 6 - array needs to be NULL terminated */
 
 	conn = rlm_ldap_get_socket(inst, NULL);
 	if (!conn) return -1;
