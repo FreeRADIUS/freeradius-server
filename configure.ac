@@ -146,7 +146,7 @@ dnl #
 dnl #  -Qunused-arguments means the compiler won't complain about unsupported arguments
 dnl #
 AX_CC_QUNUSED_ARGUMENTS_FLAG
-if test "x$ax_cc_cv_qunused_arguments_flag" = "xyes"; then
+if test "x$ax_cv_cc_qunused_arguments_flag" = "xyes"; then
   CFLAGS="$CFLAGS -Qunused-arguments"
   LDFLAGS="$LDFLAGS -Qunused-arguments"
 fi 
