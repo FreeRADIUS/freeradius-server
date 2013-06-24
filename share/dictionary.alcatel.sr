@@ -54,14 +54,14 @@ ATTRIBUTE	Alc-Default-Router			18	ipaddr
 ATTRIBUTE	Alc-Client-Hardware-Addr		27	string
 
 # RADIUS subscriber accounting VSAs
-ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	integer
-ATTRIBUTE	Alc-Acct-I-Outprof-Octets-64		20	integer
-ATTRIBUTE	Alc-Acct-O-Inprof-Octets-64		21	integer
-ATTRIBUTE	Alc-Acct-O-Outprof-Octets-64		22	integer
-ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-64		23	integer
-ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-64		24	integer
-ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-64		25	integer
-ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-64		26	integer
+ATTRIBUTE	Alc-Acct-I-Inprof-Octets-64		19	octets
+ATTRIBUTE	Alc-Acct-I-Outprof-Octets-64		20	octets
+ATTRIBUTE	Alc-Acct-O-Inprof-Octets-64		21	octets
+ATTRIBUTE	Alc-Acct-O-Outprof-Octets-64		22	octets
+ATTRIBUTE	Alc-Acct-I-Inprof-Pkts-64		23	octets
+ATTRIBUTE	Alc-Acct-I-Outprof-Pkts-64		24	octets
+ATTRIBUTE	Alc-Acct-O-Inprof-Pkts-64		25	octets
+ATTRIBUTE	Alc-Acct-O-Outprof-Pkts-64		26	octets
 
 ATTRIBUTE	Alc-Int-Dest-Id-Str			28	string
 ATTRIBUTE	Alc-Primary-Nbns			29	ipaddr
