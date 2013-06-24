@@ -120,9 +120,9 @@ static CONF_PARSER client_attributes[] = {
 	{"identifier", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_identifier), NULL, "host"},
 	{"shortname", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_shortname), NULL, "cn"},
 	{"type", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_type), NULL, NULL},
-	{"secret", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, clientobj_secret), NULL, NULL},
-	{"server", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
-	{"require_ma", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, clientobj_require_ma), NULL, NULL},
+	{"secret", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_secret), NULL, NULL},
+	{"server", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
+	{"require_ma", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_require_ma), NULL, NULL},
 	
 	{ NULL, -1, 0, NULL, NULL }
 };
