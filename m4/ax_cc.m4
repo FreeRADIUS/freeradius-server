@@ -58,7 +58,6 @@ AC_DEFUN([AX_SYSTEM_CORES],[
   AC_CACHE_CHECK([number of system cores], [ax_cv_system_cores],
     [
       AC_LANG_PUSH(C)
-
       AC_TRY_RUN(
         [
           #include <stdio.h>
@@ -81,8 +80,8 @@ AC_DEFUN([AX_SYSTEM_CORES],[
             GetSystemInfo(&sysinfo);
       
             count = sysinfo.dwNumberOfProcessors;
-            #elif MACOS
             
+            #elif MACOS
             int nm[2];
             size_t len = 4;
       
@@ -94,11 +93,11 @@ AC_DEFUN([AX_SYSTEM_CORES],[
               nm[1] = HW_NCPU;
               sysctl(nm, 2, &count, &len, NULL, 0);
               if(count < 1) {
-      	      count = 1;
+                count = 1;
               }
             }
+            
             #else
-      	  
       	    count = sysconf(_SC_NPROCESSORS_ONLN);
             #endif
 
@@ -108,7 +107,7 @@ AC_DEFUN([AX_SYSTEM_CORES],[
         [ax_cv_system_cores=$?],
         [ax_cv_system_cores=$?],
         [ax_cv_system_cores=]
-    ) 
+    )
     AC_LANG_POP
   ])
 ])

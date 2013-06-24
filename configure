@@ -4868,7 +4868,6 @@ ac_compile='$CC -c $CFLAGS $CPPFLAGS conftest.$ac_ext >&5'
 ac_link='$CC -o conftest$ac_exeext $CFLAGS $CPPFLAGS $LDFLAGS conftest.$ac_ext $LIBS >&5'
 ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
-
       if test "$cross_compiling" = yes; then :
   ax_cv_system_cores=
 
@@ -4896,8 +4895,8 @@ else
             GetSystemInfo(&sysinfo);
 
             count = sysinfo.dwNumberOfProcessors;
-            #elif MACOS
 
+            #elif MACOS
             int nm[2];
             size_t len = 4;
 
@@ -4909,11 +4908,11 @@ else
               nm[1] = HW_NCPU;
               sysctl(nm, 2, &count, &len, NULL, 0);
               if(count < 1) {
-      	      count = 1;
+                count = 1;
               }
             }
-            #else
 
+            #else
       	    count = sysconf(_SC_NPROCESSORS_ONLN);
             #endif
 
@@ -9915,7 +9914,7 @@ ac_abs_srcdir=$ac_abs_top_srcdir$ac_dir_suffix
       ac_sub_configure=$ac_srcdir/configure.gnu
     elif test -f "$ac_srcdir/configure"; then
       ac_sub_configure=$ac_srcdir/configure
-    elif test -f "$ac_srcdir/configure.ac"; then
+    elif test -f "$ac_srcdir/configure.in"; then
       # This should be Cygnus configure.
       ac_sub_configure=$ac_aux_dir/configure
     else
