@@ -581,7 +581,7 @@ void	       *rbtree_min(rbtree_t *tree);
 void	       *rbtree_node2data(rbtree_t *tree, rbnode_t *node);
 
 /* callback order for walking  */
-typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;
+typedef enum { PreOrder, InOrder, PostOrder, DeleteOrder } RBTREE_ORDER;
 
 /*
  *	The callback should be declared as:
@@ -593,6 +593,11 @@ typedef enum { PreOrder, InOrder, PostOrder } RBTREE_ORDER;
  *
  *	It should return 0 if all is OK, and !0 for any error.
  *	The walking will stop on any error.
+ *
+ *	Except with DeleteOrder, where the callback should return <0 for
+ *	errors, and may return 1 to delete the current node and halt,
+ *	or 2 to delete the current node and continue.  This may be
+ *	used to batch-delete select nodes from a locked rbtree.
  */
 int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order, int (*callback)(void *, void *), void *context);
 

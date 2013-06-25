@@ -672,6 +672,62 @@ static int WalkNodePostOrder(rbnode_t *X,
 	return 0;		/* we know everything returned zero */
 }
 
+
+/*
+ *	DeleteOrder
+ *
+ *	This executes an InOrder-like walk that adapts to changes in the
+ *	tree above it, which may occur because we allow the callback to
+ *	tell us to delete the current node.
+ */
+static int WalkDeleteOrder(rbtree_t *tree, int (*callback)(void *, void *),
+			   void *context)
+{
+	rbnode_t *Solid, *X;
+	int rcode = 0;
+
+	/* Keep track of last node that refused deletion. */
+	Solid = NIL;
+	while (Solid == NIL) {
+		X = tree->Root;
+		if (X == NIL) break;
+	descend:
+		while (X->Left != NIL) {
+			X = X->Left;
+		}
+	visit:
+		rcode = callback(context, X->Data);
+		if (rcode < 0) {
+			return rcode;
+		}
+		if (rcode) {
+			rbtree_delete_internal(tree, X, 1);
+			if (rcode != 2) {
+				return rcode;
+			}
+		}
+		else {
+			Solid = X;
+		}
+	}
+	if (Solid != NIL) {
+		X = Solid;
+		if (X->Right != NIL) {
+			X = X->Right;
+			goto descend;
+		}
+		while (X->Parent) {
+			if (X->Parent->Left == X) {
+				X = X->Parent;
+				goto visit;
+			}
+			X = X->Parent;
+		}
+	}
+	return rcode;
+}
+
+
 /*
  *	Walk the entire tree.  The callback function CANNOT modify
  *	the tree.
@@ -696,6 +752,9 @@ int rbtree_walk(rbtree_t *tree, RBTREE_ORDER order,
 		break;
 	case PostOrder:
 		rcode = WalkNodePostOrder(tree->Root, callback, context);
+		break;
+	case DeleteOrder:
+		rcode = WalkDeleteOrder(tree, callback, context);
 		break;
 	default:
 		rcode = -1;
