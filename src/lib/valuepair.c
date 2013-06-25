@@ -1698,6 +1698,12 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 	attr[len] = '\0';
 	*ptr = p;
 
+	if (!*attr) {
+		*eol = T_OP_INVALID;
+		fr_strerror_printf("Invalid attribute name);
+		return NULL;
+	}
+
 	/* Now we should have an operator here. */
 	token = gettoken(ptr, buf, sizeof(buf));
 	if (token < T_EQSTART || token > T_EQEND) {
