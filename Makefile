@@ -116,7 +116,7 @@ distclean: clean
 	@rm -rf config.cache config.log config.status libtool \
 		src/include/radpaths.h src/include/stamp-h \
 		libltdl/config.log libltdl/config.status \
-		libltdl/libtool autom4te.cache
+		libltdl/libtool autom4te.cache build
 	@-find . ! -name configure.ac -name \*.in -print | \
 		sed 's/\.in$$//' | \
 		while read file; do rm -f $$file; done
