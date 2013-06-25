@@ -395,7 +395,7 @@ static void DeleteFixup(rbtree_t *tree, rbnode_t *X, rbnode_t *Parent)
 			}
 		}
 	}
-	X->Color = Black;
+	if (X != NIL) X->Color = Black; /* Avoid cache-dirty on NIL */
 }
 
 /*
@@ -448,7 +448,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
 		Z->Data = Y->Data;
 		Y->Data = NULL;
 
-		if (Y->Color == Black && X != NIL)
+		if (Y->Color == Black)
 			DeleteFixup(tree, X, Parent);
 
 		/*
@@ -474,7 +474,7 @@ static void rbtree_delete_internal(rbtree_t *tree, rbnode_t *Z, int skiplock)
 	} else {
 		if (tree->freeNode) tree->freeNode(Y->Data);
 
-		if (Y->Color == Black && X != NIL)
+		if (Y->Color == Black)
 			DeleteFixup(tree, X, Parent);
 
 		free(Y);
