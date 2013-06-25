@@ -111,9 +111,10 @@ in the appropriate sub-section, and resolve this to a configuration
 item. This behaviour is similar to rlm_linelog.
 
 Queries from v2.x.x should be manually copied to the new v3.x.x
-``dialup.conf`` file. When doing this you may also need to update
-references to the accounting tables, as their definitions will 
-now be outside of the subsection containing the query.
+``dialup.conf`` file (``raddb/sql/main/<dialect>/queries.conf``).
+When doing this you may also need to update references to the 
+accounting tables, as their definitions will now be outside of 
+the subsection containing the query.
 
 The mapping is as follows::
 
