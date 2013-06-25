@@ -17,8 +17,8 @@ DEFAULT_MODULES := always attr_filter cache_eap chap \
 
 LOCAL_MODULES   := $(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
-LOCAL_CERT_FILES := Makefile bootstrap README xpextensions \
-		    ca.cnf server.cnf client.cnf
+LOCAL_CERT_FILES := Makefile README xpextensions \
+		    ca.cnf server.cnf client.cnf bootstrap
 
 RADDB_DIRS := sites-available sites-enabled mods-available mods-enabled \
 		filter policy.d certs
@@ -88,8 +88,13 @@ $(R)$(raddbdir)/%: | raddb/%
 	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 
+.PHONY: certs.bootstrap
+certs.bootstrap:
+	@echo BOOTSTRAP certs
+	@$(MAKE) -C $(R)$(raddbdir)/certs/
+
 # Bootstrap is special
-$(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap
+$(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap certs.bootstrap
 	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 
