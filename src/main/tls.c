@@ -836,8 +836,6 @@ static CONF_PARSER tls_server_config[] = {
 	  offsetof(fr_tls_server_conf_t, cipher_list), NULL, NULL},
 	{ "check_cert_issuer", PW_TYPE_STRING_PTR,
 	  offsetof(fr_tls_server_conf_t, check_cert_issuer), NULL, NULL},
-	{ "make_cert_command", PW_TYPE_STRING_PTR,
-	  offsetof(fr_tls_server_conf_t, make_cert_command), NULL, NULL},
 	{ "require_client_cert", PW_TYPE_BOOLEAN,
 	  offsetof(fr_tls_server_conf_t, require_client_cert), NULL, NULL },
 
@@ -2328,26 +2326,6 @@ fr_tls_server_conf_t *tls_server_conf_parse(CONF_SECTION *cs)
 	 *	Save people from their own stupidity.
 	 */
 	if (conf->fragment_size < 100) conf->fragment_size = 100;
-
-	/*
-	 *	This magic makes the administrators life HUGELY easier
-	 *	on initial deployments.
-	 *
-	 *	If the server starts up in debugging mode, AND the
-	 *	bootstrap command is configured, AND it exists, AND
-	 *	there is no server certificate
-	 */
-	if (conf->make_cert_command && (debug_flag >= 2)) {
-		struct stat buf;
-
-		if ((stat(conf->make_cert_command, &buf) == 0) &&
-		    (stat(conf->certificate_file, &buf) < 0) &&
-		    (errno == ENOENT) &&
-		    (radius_exec_program(conf->make_cert_command, NULL, 1,
-					 NULL, 0, NULL, NULL, 0) != 0)) {
-			goto error;
-		}
-	}
 
 	if (!conf->private_key_file) {
 		ERROR("TLS Server requires a private key file");

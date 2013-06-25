@@ -151,10 +151,13 @@ eap {
 	#  built, the "tls", "ttls", and "peap" sections will
 	#  be ignored.
 	#
-	#  Otherwise, when the server first starts in debugging
-	#  mode, test certificates will be created.  See the
-	#  "make_cert_command" below for details, and the README
-	#  file in raddb/certs
+	#  If you do not currently have certifictes signed by
+	#  a trusted CA you may use the 'snakeoil' certificates.
+	#  Included with the server in raddb/certs.
+	#
+	#  If these certificates have not been auto-generated:
+	#    cd raddb/certs
+	#    make
 	#
 	#  These test certificates SHOULD NOT be used in a normal
 	#  deployment.  They are created only to make it easier
@@ -314,23 +317,6 @@ eap {
 		cipher_list = "DEFAULT"
 
 		#
-
-		# This command creates the initial "snake oil"
-		# certificates when the server is run as root,
-		# and via "radiusd -X".
-		#
-		# As of 2.1.11, it *also* checks the server
-		# certificate for validity, including expiration.
-		# This means that radiusd will refuse to start
-		# when the certificate has expired.  The alternative
-		# is to have the 802.1X clients refuse to connect
-		# when they discover the certificate has expired.
-		#
-		# Debugging client issues is hard, so it's better
-		# for the server to print out an error message,
-		# and refuse to start.
-		#
-		make_cert_command = "${certdir}/bootstrap"
 
 		#
 		#  Elliptical cryptography configuration
