@@ -65,17 +65,17 @@ static const CONF_PARSER section_config[] = {
 	{ "uri", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_rest_section_t, uri), 	   NULL, ""  },
 	{ "method", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, method_str), NULL, "GET"   },
+	 offsetof(rlm_rest_section_t, method_str), NULL, "GET" },
 	{ "body", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, body_str),   NULL, "post"  },
+	 offsetof(rlm_rest_section_t, body_str),   NULL, "post" },
 	
 	/* User authentication */
 	{ "auth", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, auth_str),   NULL, "none"  },
+	 offsetof(rlm_rest_section_t, auth_str),   NULL, "none" },
 	{ "username", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, username),   NULL, ""  },
+	 offsetof(rlm_rest_section_t, username),   NULL, NULL },
 	{ "password", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_rest_section_t, password),   NULL, ""  },
+	 offsetof(rlm_rest_section_t, password),   NULL, NULL },
 	{ "require_auth", PW_TYPE_BOOLEAN,
 	 offsetof(rlm_rest_section_t, require_auth), NULL, "no"},
 
@@ -99,7 +99,8 @@ static const CONF_PARSER module_config[] = {
 };
 
 static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
-			    void *handle, REQUEST *request)
+			    void *handle, REQUEST *request,
+			    char const *username, char const *password)
 {
 	size_t uri_len;
 	char *uri = NULL;
@@ -121,7 +122,8 @@ static int rlm_rest_perform(rlm_rest_t *instance, rlm_rest_section_t *section,
 	 *	Configure various CURL options, and initialise the read/write
 	 *	context data.
 	 */
-	ret = rest_request_config(instance, section, request, handle, section->method, section->body, uri);
+	ret = rest_request_config(instance, section, request, handle, section->method, section->body,
+				  uri, username, password);
 	talloc_free(uri);
 	if (ret < 0) return -1;
 
@@ -163,6 +165,15 @@ static int parse_sub_section(CONF_SECTION *parent,
 	 *	Add section name (Maybe add to headers later?).
 	 */
 	config->name = name;
+	
+	/*
+	 *	Sanity check
+	 */
+	 if ((config->username && !config->password) || (!config->username && config->password)) {
+	 	cf_log_err_cs(cs, "'username' and 'password' must both be set or both be absent");
+	 	
+	 	return -1;
+	 }
 
 	/*
 	 *	Convert HTTP method auth and body type strings into their
@@ -173,10 +184,9 @@ static int parse_sub_section(CONF_SECTION *parent,
 		cf_log_err_cs(cs, "Unknown HTTP auth type '%s'", config->auth_str);
 		return -1;	
 	} else if ((config->auth != HTTP_AUTH_NONE) && !http_curl_auth[config->auth]) {
-		cf_log_err_cs(cs, "Unsupported HTTP auth type \"%s\""
-			      ", check libcurl version, OpenSSL build configuration,"
-			      " then recompile this module",
-			      config->auth_str);
+		cf_log_err_cs(cs, "Unsupported HTTP auth type \"%s\", check libcurl version, OpenSSL build "
+			      "configuration, then recompile this module", config->auth_str);
+			      
 		return -1;
 	}
 				
@@ -265,25 +275,24 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
-	rlm_rest_t *my_instance = instance;
-	rlm_rest_section_t *section = &my_instance->authorize;
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->authorize;
 
 	void *handle;
 	int hcode;
 	int rcode = RLM_MODULE_OK;
 	int ret;
 
-	handle = fr_connection_get(my_instance->conn_pool);
+	handle = fr_connection_get(inst->conn_pool);
 	if (!handle) return RLM_MODULE_FAIL;
 
-	ret = rlm_rest_perform(instance, section, handle, request);
+	ret = rlm_rest_perform(instance, section, handle, request, NULL, NULL);
 	if (ret < 0) {
 		rcode = RLM_MODULE_FAIL;
 		goto end;
 	}
 
 	hcode = rest_get_handle_code(handle);
-
 	switch (hcode) {
 		case 404:
 		case 410:
@@ -296,8 +305,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			/*
 			 *	Attempt to parse content if there was any.
 			 */
-			ret = rest_request_decode(my_instance, section,
-						  request, handle);
+			ret = rest_request_decode(inst, section, request, handle);
 			if (ret < 0) {
 				rcode = RLM_MODULE_FAIL;
 				break;
@@ -313,8 +321,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 			 *	Attempt to parse content if there was any.
 			 */
 			if ((hcode >= 200) && (hcode < 300)) {
-				ret = rest_request_decode(my_instance, section,
-							  request, handle);
+				ret = rest_request_decode(inst, section, request, handle);
 				if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
 				else if (ret == 0) rcode = RLM_MODULE_OK;
 				else		   rcode = RLM_MODULE_UPDATED;
@@ -330,7 +337,7 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 
 	rlm_rest_cleanup(instance, section, handle);
 
-	fr_connection_release(my_instance->conn_pool, handle);
+	fr_connection_release(inst->conn_pool, handle);
 
 	return rcode;
 }
@@ -338,35 +345,135 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 /*
  *	Authenticate the user with the given password.
  */
-static rlm_rcode_t mod_authenticate(UNUSED void *instance, UNUSED REQUEST *request)
+static rlm_rcode_t mod_authenticate(void *instance, UNUSED REQUEST *request)
 {
-	return RLM_MODULE_OK;
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->authenticate;
+
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
+	
+	VALUE_PAIR const *username;
+	VALUE_PAIR const *password;
+	
+	username = pairfind(request->packet->vps, PW_USER_NAME, 0, TAG_ANY);
+	if (!username) {
+		REDEBUG("Can't perform authentication, 'User-Name' attribute not found in the request");
+		
+		return RLM_MODULE_INVALID;
+	}
+	
+	password = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY);
+	if (!password) {
+		REDEBUG("Can't perform authentication, 'Cleartext-Password' attribute not found in the control list");
+		
+		return RLM_MODULE_INVALID;
+	}
+
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return RLM_MODULE_FAIL;
+
+	ret = rlm_rest_perform(instance, section, handle, request, username->vp_strvalue, password->vp_strvalue);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto end;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	switch (hcode) {
+		case 404:
+		case 410:
+			rcode = RLM_MODULE_NOTFOUND;
+			break;
+		case 403:
+			rcode = RLM_MODULE_USERLOCK;
+			break;
+		case 401:
+			/*
+			 *	Attempt to parse content if there was any.
+			 */
+			ret = rest_request_decode(inst, section, request, handle);
+			if (ret < 0) {
+				rcode = RLM_MODULE_FAIL;
+				break;
+			}
+
+			rcode = RLM_MODULE_REJECT;
+			break;
+		case 204:
+			rcode = RLM_MODULE_OK;
+			break;
+		default:
+			/*
+			 *	Attempt to parse content if there was any.
+			 */
+			if ((hcode >= 200) && (hcode < 300)) {
+				ret = rest_request_decode(inst, section, request, handle);
+				if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+				else if (ret == 0) rcode = RLM_MODULE_OK;
+				else		   rcode = RLM_MODULE_UPDATED;
+				break;
+			} else if (hcode < 500) {
+				rcode = RLM_MODULE_INVALID;
+			} else {
+				rcode = RLM_MODULE_FAIL;
+			}
+	}
+
+	end:
+
+	rlm_rest_cleanup(instance, section, handle);
+
+	fr_connection_release(inst->conn_pool, handle);
+
+	return rcode;
 }
 
 /*
  *	Write accounting information to this modules database.
  */
-static rlm_rcode_t mod_accounting(UNUSED void *instance,
-				       UNUSED REQUEST *request)
+static rlm_rcode_t mod_accounting(void *instance, UNUSED REQUEST *request)
 {
-	return RLM_MODULE_OK;
-}
+	rlm_rest_t *inst = instance;
+	rlm_rest_section_t *section = &inst->accounting;
+	
+	void *handle;
+	int hcode;
+	int rcode = RLM_MODULE_OK;
+	int ret;
 
-/*
- *	See if a user is already logged in. Sets request->simul_count to the
- *	current session count for this user and sets request->simul_mpp to 2
- *	if it looks like a multilink attempt based on the requested IP
- *	address, otherwise leaves request->simul_mpp alone.
- *
- *	Check twice. If on the first pass the user exceeds his
- *	max. number of logins, do a second pass and validate all
- *	logins by querying the terminal server (using eg. SNMP).
- */
-static rlm_rcode_t mod_checksimul(UNUSED void *instance, REQUEST *request)
-{
-	request->simul_count=0;
+	handle = fr_connection_get(inst->conn_pool);
+	if (!handle) return RLM_MODULE_FAIL;
 
-	return RLM_MODULE_OK;
+	ret = rlm_rest_perform(inst, section, handle, request, NULL, NULL);
+	if (ret < 0) {
+		rcode = RLM_MODULE_FAIL;
+		goto end;
+	}
+
+	hcode = rest_get_handle_code(handle);
+	if (hcode >= 500) {
+		rcode = RLM_MODULE_FAIL;
+	} else if (hcode == 204) {
+		rcode = RLM_MODULE_OK;
+	} else if ((hcode >= 200) && (hcode < 300)) {
+		ret = rest_request_decode(inst, section, request, handle);
+		if (ret < 0) 	   rcode = RLM_MODULE_FAIL;
+		else if (ret == 0) rcode = RLM_MODULE_OK;
+		else		   rcode = RLM_MODULE_UPDATED;	
+	} else {
+		rcode = RLM_MODULE_INVALID;
+	}
+
+	end:
+
+	rlm_rest_cleanup(inst, section, handle);
+
+	fr_connection_release(inst->conn_pool, handle);
+
+	return rcode;
 }
 
 /*
@@ -375,9 +482,9 @@ static rlm_rcode_t mod_checksimul(UNUSED void *instance, REQUEST *request)
  */
 static int mod_detach(void *instance)
 {
-	rlm_rest_t *my_instance = instance;
+	rlm_rest_t *inst = instance;
 
-	fr_connection_pool_delete(my_instance->conn_pool);
+	fr_connection_pool_delete(inst->conn_pool);
 
 	/* Free any memory used by libcurl */
 	rest_cleanup();
@@ -401,13 +508,13 @@ module_t rlm_rest = {
 	sizeof(rlm_rest_t),
 	module_config,
 	mod_instantiate,		/* instantiation */
-	mod_detach,		/* detach */
+	mod_detach,			/* detach */
 	{
 		mod_authenticate,	/* authentication */
-		mod_authorize,	/* authorization */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
-		mod_accounting,	/* accounting */
-		mod_checksimul,	/* checksimul */
+		mod_accounting,		/* accounting */
+		NULL,			/* checksimul */
 		NULL,			/* pre-proxy */
 		NULL,			/* post-proxy */
 		NULL			/* post-auth */

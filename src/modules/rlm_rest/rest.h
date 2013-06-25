@@ -241,7 +241,8 @@ int mod_conn_delete(void *instance, void *handle);
 int rest_request_config(rlm_rest_t *instance,
 			rlm_rest_section_t *section, REQUEST *request,
 			void *handle, http_method_t method,
-			http_body_type_t type, char *uri);
+			http_body_type_t type, char const *uri,
+			char const *username, char const *password);
 
 int rest_request_perform(rlm_rest_t *instance, 
 			 rlm_rest_section_t *section, REQUEST *request,

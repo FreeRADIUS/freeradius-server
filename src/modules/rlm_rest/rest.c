@@ -30,6 +30,7 @@ RCSID("$Id$")
 #include <string.h>
 #include <time.h>
 
+#include <freeradius-devel/rad_assert.h>
 #include <freeradius-devel/radiusd.h>
 #include <freeradius-devel/libradius.h>
 #include <freeradius-devel/connection.h>
@@ -1859,25 +1860,29 @@ static int rest_request_config_body(UNUSED rlm_rest_t *instance,
  * @param[in] handle to configure.
  * @param[in] request Current request.
  * @param[in] method to use (HTTP verbs PUT, POST, DELETE etc...).
- * @param[in] type Content-Type for request encoding, also sets the default
- * 	for decoding.
+ * @param[in] type Content-Type for request encoding, also sets the default for decoding.
+ * @param[in] username to use for HTTP authentication, may be NULL in which case configured defaults will be used.
+ * @param[in] password to use for HTTP authentication, may be NULL in which case configured defaults will be used.
  * @param[in] uri buffer containing the expanded URI to send the request to.
  * @return 0 on success (all opts configured) -1 on error.
  */
 int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			REQUEST *request, void *handle, http_method_t method,
-			http_body_type_t type, char *uri)
+			http_body_type_t type,
+			char const *uri, char const *username, char const *password)
 {
 	rlm_rest_handle_t *randle	= handle;
 	rlm_rest_curl_context_t *ctx	= randle->ctx;
 	CURL *candle			= randle->handle;
-	
+
 	http_auth_type_t auth = section->auth;
 
 	CURLcode ret;
 	long val = 1;
 
 	char buffer[512];
+
+	rad_assert((!username && !password) || (username && password));
 
 	buffer[(sizeof(buffer) - 1)] = '\0';
 
@@ -1970,7 +1975,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			assert(0);
 			break;
 	};
-	
+
 	/*
 	 *	Set user based authentication parameters
 	 */
@@ -1980,7 +1985,12 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			ret = curl_easy_setopt(candle, CURLOPT_HTTPAUTH, http_curl_auth[auth]);
 			if (ret != CURLE_OK) goto error;
 			
-			if (section->username) {				
+			if (username) {
+				ret = curl_easy_setopt(candle, CURLOPT_USERNAME, username);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
+			} else if (section->username) {			
 				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
 					goto error;
 				}
@@ -1989,7 +1999,13 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 					goto error;
 				}
 			}
-			if (section->password) {	
+			
+			if (password) {
+				ret = curl_easy_setopt(candle, CURLOPT_PASSWORD, password);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
+			} else if (section->password) {
 				if (radius_xlat(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
 					goto error;
 				}
@@ -1997,22 +2013,32 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				if (ret != CURLE_OK) {
 					goto error;
 				}
-			}
-
+			} 
 #ifdef CURLOPT_TLSAUTH_USERNAME
 		} else if (type == HTTP_AUTH_TLS_SRP) {
 			ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_TYPE, http_curl_auth[auth]);
-		
-			if (section->username) {
+
+			if (username) {
+				ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_USERNAME, username);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
+			} else if (section->username) {			
 				if (radius_xlat(buffer, sizeof(buffer), request, section->username, NULL, NULL) < 0) {
 					goto error;
-				}	
+				}
 				ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_USERNAME, buffer);
 				if (ret != CURLE_OK) {
 					goto error;
 				}
 			}
-			if (section->password) {
+			
+			if (password) {
+				ret = curl_easy_setopt(candle, CURLOPT_TLSAUTH_PASSWORD, password);
+				if (ret != CURLE_OK) {
+					goto error;
+				}
+			} else if (section->password) {
 				if (radius_xlat(buffer, sizeof(buffer), request, section->password, NULL, NULL) < 0) {
 					goto error;
 				}
@@ -2020,7 +2046,7 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 				if (ret != CURLE_OK) {
 					goto error;
 				}
-			}
+			} 
 #endif
 		}
 	}
