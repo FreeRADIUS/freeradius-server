@@ -328,6 +328,8 @@ rlm_rcode_t rlm_ldap_map_profile(ldap_instance_t const *inst, REQUEST *request, 
 	int		ldap_errno;
 	LDAP		*handle = (*pconn)->handle;
 	char		filter[LDAP_MAX_FILTER_STR_LEN];
+	
+	rad_assert(inst->profile_filter); 	/* We always have a default filter set */
 
 	if (!dn || !*dn) {
 		return RLM_MODULE_OK;

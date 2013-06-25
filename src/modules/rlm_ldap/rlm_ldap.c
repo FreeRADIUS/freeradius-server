@@ -75,9 +75,11 @@ static CONF_PARSER tls_config[] = {
 
 
 static CONF_PARSER profile_config[] = {
+	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_filter), NULL, "(&)"},	//!< Correct filter for
+												//!< when the DN is 
+												//!< known.
 	{"attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_attr), NULL, NULL},
 	{"default", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, default_profile), NULL, NULL},
-	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, profile_filter), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }
 };
