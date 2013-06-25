@@ -189,10 +189,8 @@ static const CONF_PARSER module_config[] = {
 
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
-	
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,base_dn), NULL, ""},
-	
-	{"valuepair_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, base_dn), NULL, NULL},
+
+	{"valuepair_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
@@ -347,6 +345,12 @@ static int rlm_ldap_groupcmp(void *instance, REQUEST *request, UNUSED VALUE_PAIR
 
 	ldap_handle_t	*conn = NULL;
 	char const	*user_dn;
+
+	if (!inst->groupobj_base_dn) {
+		REDEBUG("Directive 'group.base_dn' must be set'");
+			
+		return 1;
+	}
 	
 	RDEBUG("Searching for user in group \"%s\"", check->vp_strvalue);
 
@@ -518,37 +522,24 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Sanity checks for cacheable groups code.
 	 */
-	if (inst->cacheable_group_name && inst->groupobj_membership_filter && !inst->groupobj_name_attr) {
-		LDAP_ERR("Directive 'group.name_attribute' must be set if cacheable group names are enabled");
-		
-		goto error;
-	}
-
-	/*
-	 *	Copy across values from base_dn to the object specific base_dn.
-	 */
-	if (!inst->groupobj_base_dn) {
-		if (!inst->base_dn) {
-			LDAP_ERR("Must set 'base_dn' if there is no 'group.base_dn'");
+	if (inst->cacheable_group_name && inst->groupobj_membership_filter) {
+		if (!inst->groupobj_name_attr) {
+			LDAP_ERR("Directive 'group.name_attribute' must be set if cacheable group names are enabled");
 			
 			goto error;
 		}
-		
-		inst->groupobj_base_dn = inst->base_dn;
+
+		if (!inst->groupobj_base_dn) {
+			LDAP_ERR("Directive 'group.base_dn' must be set if cacheable group names are enabled");
+			
+			goto error;
+		}
 	}
 
 	if (!inst->userobj_base_dn) {
-		if (!inst->base_dn) {
-			LDAP_ERR("Must set 'base_dn' if there is no 'user.base_dn'");
+		LDAP_ERR("Directive 'user.base_dn' must be set'");
 			
-			goto error;
-		}
-		
-		inst->userobj_base_dn = inst->base_dn;
-	}
-	
-	if (!inst->clientobj_base_dn) {
-		inst->clientobj_base_dn = inst->base_dn;
+		goto error;
 	}
 	
 	/*
@@ -560,7 +551,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->is_url = 1;
 		inst->port = 0;
 #else
-		LDAP_ERR("'server' directive is in URL form but ldap_initialize() is not available");
+		LDAP_ERR("Directive 'server' is in URL form but ldap_initialize() is not available");
 		goto error;
 #endif
 	}

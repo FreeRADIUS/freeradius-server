@@ -48,10 +48,6 @@ typedef struct ldap_instance {
 	char const	*admin_dn;			//!< DN we bind as when we need to query the LDAP
 							//!< directory.
 	char const	*password;			//!< Password used in administrative bind.
-	
-	char const	*base_dn;			//!< Provided for convenience and backwards compatibility.
-							//!< is the default value for userobj_base_dn, and 
-							//!< groupobj_base_dn, if no dn is configured explicitly.
 
 	int		chase_referrals;		//!< If the LDAP server returns a referral to another server
 							//!< or point in the tree, follow it, establishing new

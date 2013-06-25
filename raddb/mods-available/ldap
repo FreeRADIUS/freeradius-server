@@ -90,6 +90,9 @@ ldap {
 	#  User object identification.
 	#
 	user {
+		#   Where to start searching in the tree for users
+		base_dn = "${..base_dn}"
+		
 		#  Filter for user objects, should be specific enough
 		#  to identify a single user object.
 		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
@@ -114,6 +117,9 @@ ldap {
 	#  User membership checking.
 	#
 	group {
+		#   Where to start searching in the tree for groups
+		base_dn = "${..base_dn}"
+		
 		#  Filter for group objects, should match all available
 		#  group objects a user might be a member of.
 		filter = "(objectClass=posixGroup)"
@@ -160,8 +166,7 @@ ldap {
 	#  the same mapping scheme appled to user objects.
 	#
 	profile {
-		# Filter for RAIDUS profile objects, should match all available
-		# group objects a user might be a member of.
+		#  Filter for RAIDUS profile objects
 #		filter = "(objectclass=radiusprofile)"
 
 		#  The default profile applied to all users.
@@ -178,6 +183,9 @@ ldap {
 	#  Bulk load clients from the directory
 	#
 	client {
+		#   Where to start searching in the tree for clients
+		base_dn = "${..base_dn}"
+		
 		#
 		#  Filter to match client objects
 		#
