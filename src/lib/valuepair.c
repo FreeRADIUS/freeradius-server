@@ -1435,7 +1435,7 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 			 *	Invalid.
 			 */
 			if ((size  & 0x01) != 0) {
-				fr_strerror_printf("Hex string is not an even length string.");
+				fr_strerror_printf("Hex string is not an even length string");
 				return false;
 			}
 
