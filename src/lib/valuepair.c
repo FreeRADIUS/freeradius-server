@@ -1358,15 +1358,15 @@ int pairparsevalue(VALUE_PAIR *vp, char const *value)
 		/*
 		 *	Note that ALL integers are unsigned!
 		 */
-		if (sscanf(vp->vp_strvalue, "%" PRIu64, &y) != 1) {
+		if (sscanf(value, "%" PRIu64, &y) != 1) {
 			fr_strerror_printf("Invalid value %s for attribute %s",
 					   value, vp->da->name);
 			return false;
 		}
 		vp->vp_integer64 = y;
 		vp->length = 8;
-		length = strspn(vp->vp_strvalue, "0123456789");
-		if (check_for_whitespace(vp->vp_strvalue + length)) break;
+		length = strspn(value, "0123456789");
+		if (check_for_whitespace(value + length)) break;
 		break;
 
 	case PW_TYPE_DATE:
