@@ -955,9 +955,7 @@ skip_edir:
 	 */
 	vp = pairfind(request->config_items, PW_USER_PROFILE, 0, TAG_ANY);
 	if (vp || inst->default_profile) {
-		char const *profile = inst->default_profile;
-
-		if (vp) profile = vp->vp_strvalue;
+		char const *profile = vp ? vp->vp_strvalue : inst->default_profile;
 
 		rlm_ldap_map_profile(inst, request, &conn, profile, &expanded);
 	}
