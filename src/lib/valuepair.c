@@ -324,7 +324,7 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 		
 		return;
 	}
-	
+	 
 	/*
 	 *	We don't yet know where the last VALUE_PAIR is
 	 *
@@ -344,6 +344,14 @@ void pairinsert(vp_cursor_t *cursor, VALUE_PAIR *add)
 			VERIFY_VP(i);
 			cursor->last = i;
 		}
+	}
+	
+	/*
+	 *	Either current was never set, or something iterated to the end of the 
+	 *	attribute list.
+	 */
+	if (!cursor->current) {
+		cursor->current = add;
 	}
 	
 	cursor->last->next = add;
