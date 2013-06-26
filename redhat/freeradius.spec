@@ -310,6 +310,7 @@ fi
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/mods-enabled/*
 %attr(640,root,radiusd) %config(noreplace) /etc/raddb/modules/*
 %dir %attr(755,radiusd,radiusd) /var/run/radiusd/
+%dir %attr(750,root,radiusd) /etc/raddb/conf.d
 # binaries
 %defattr(-,root,root)
 /usr/sbin/checkrad
