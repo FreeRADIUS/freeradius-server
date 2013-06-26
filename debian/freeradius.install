@@ -8,6 +8,7 @@ etc/freeradius/mods-available/*
 etc/freeradius/mods-enabled/*
 etc/freeradius/policy.d/*
 etc/freeradius/certs/*
+etc/freeradius/conf.d/*
 etc/freeradius/preproxy_users
 etc/freeradius/proxy.conf
 etc/freeradius/sites-available/*

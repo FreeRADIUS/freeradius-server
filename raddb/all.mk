@@ -21,7 +21,7 @@ LOCAL_CERT_FILES := Makefile README xpextensions \
 		    ca.cnf server.cnf client.cnf bootstrap
 
 RADDB_DIRS := sites-available sites-enabled mods-available mods-enabled \
-		filter policy.d certs
+		filter policy.d certs conf.d
 
 # Installed directories
 INSTALL_RADDB_DIRS := $(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/, \
