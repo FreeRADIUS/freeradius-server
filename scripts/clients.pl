@@ -51,7 +51,7 @@ if (defined $naslist) {
 	}
 
 	$clients{$_[0]}{"shortname"} = $_[1];
-	$clients{$_[0]}{"nastype"} = $_[2];
+	$clients{$_[0]}{"nas_type"} = $_[2];
     }
 }
 
@@ -61,7 +61,7 @@ foreach $client (keys %clients) {
     print NEW "\tsecret = ", $clients{$client}{"secret"}, "\n";
     if (defined $clients{$client}{"shortname"}) {
 	print NEW "\tshortname = ", $clients{$client}{"shortname"}, "\n";
-	print NEW "\tnastype = ", $clients{$client}{"nastype"}, "\n";
+	print NEW "\tnas_type = ", $clients{$client}{"nas_type"}, "\n";
     }
     print NEW "}\n";
     print NEW "\n";

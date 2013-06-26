@@ -43,8 +43,8 @@ and the RADIUS server.
 A short alias that can be used in place of the IP address or fully
 qualified hostname provided in the first line of the section.
 .TP 0.5i
-.B nastype
-The nastype attribute is used to tell the 
+.B nas_type
+The nas_type attribute is used to tell the 
 .BR checkrad.pl
 script which NAS-specific method it should use when checking
 simultaneous use.
@@ -77,7 +77,7 @@ client localhost {
         ipaddr          = 127.0.0.1
         secret          = testing123
         shortname       = localhost
-        nastype         = other     
+        nas_type         = other     
 }
 .fi
 .LP

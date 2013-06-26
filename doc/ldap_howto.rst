@@ -1704,7 +1704,7 @@ edit huntgroups to specify a NAS to a huntgroup::
     client 127.0.0.1 {
             secret		= example
             shortname	= localhost
-            nastype     	= other
+            nas_type     	= other
     }
 
 
@@ -1712,20 +1712,20 @@ edit huntgroups to specify a NAS to a huntgroup::
     client 10.10.10.1 {
             secret		= example
             shortname	= isdn
-            nastype		= cisco
+            nas_type		= cisco
     }
 
     #dialup only
     client 10.10.10.2 {
             secret		= example
             shortname	= dialup1
-            nastype		= cisco
+            nas_type		= cisco
     }
 
     client 10.10.10.3 {
             secret		= example
             shortname	= dialup2
-            nastype		= cisco
+            nas_type		= cisco
     }
     ----End clients.conf----
 

@@ -121,7 +121,7 @@ server dynamic_client_server {
 			# shortname
 			FreeRADIUS-Client-Shortname = "%{Packet-Src-IP-Address}"
 
-			# nastype
+			# nas_type
 			FreeRADIUS-Client-NAS-Type = "other"
 
 			# virtual_server

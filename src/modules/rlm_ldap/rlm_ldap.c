@@ -121,7 +121,7 @@ static CONF_PARSER group_config[] = {
 static CONF_PARSER client_attributes[] = {
 	{"identifier", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_identifier), NULL, "host"},
 	{"shortname", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_shortname), NULL, "cn"},
-	{"nastype", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_type), NULL, NULL},
+	{"nas_type", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_type), NULL, NULL},
 	{"secret", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_secret), NULL, NULL},
 	{"virtual_server", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_server), NULL, NULL},
 	{"require_message_authenticator", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, clientobj_require_ma),

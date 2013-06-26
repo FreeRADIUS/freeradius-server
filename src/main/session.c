@@ -146,10 +146,10 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, char const *user,
 	}
 
 	/*
-	 *  No nastype, or nas type 'other', trust radutmp.
+	 *  No nas_type, or nas type 'other', trust radutmp.
 	 */
-	if (!cl->nastype || (cl->nastype[0] == '\0') ||
-	    (strcmp(cl->nastype, "other") == 0)) {
+	if (!cl->nas_type || (cl->nas_type[0] == '\0') ||
+	    (strcmp(cl->nas_type, "other") == 0)) {
 		DEBUG2("checkrad: No NAS type, or type \"other\" not checking");
 		return 1;
 	}
@@ -201,10 +201,10 @@ int rad_check_ts(uint32_t nasaddr, unsigned int portnum, char const *user,
 	/* OS/2 can't directly execute scripts then we call the command
 	   processor to execute checkrad
 	*/
-	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nastype, address, port,
+	execl(getenv("COMSPEC"), "", "/C","checkrad", cl->nas_type, address, port,
 		user, session_id, NULL);
 #else
-	execl(mainconfig.checkrad, "checkrad", cl->nastype, address, port,
+	execl(mainconfig.checkrad, "checkrad", cl->nas_type, address, port,
 		user, session_id, NULL);
 #endif
 	ERROR("Check-TS: exec %s: %s", mainconfig.checkrad, strerror(errno));

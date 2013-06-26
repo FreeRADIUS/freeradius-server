@@ -81,7 +81,7 @@ typedef struct radclient {
 	char const		*secret;
 	char const		*shortname;
 	int			message_authenticator;
-	char			*nastype;
+	char			*nas_type;
 	char			*login;
 	char			*password;
 	char			*server;

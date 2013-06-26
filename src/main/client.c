@@ -311,7 +311,7 @@ int client_add(RADCLIENT_LIST *clients, RADCLIENT *client)
 		if ((fr_ipaddr_cmp(&old->ipaddr, &client->ipaddr) == 0) &&
 		    (old->prefix == client->prefix) &&
 		    namecmp(longname) && namecmp(secret) &&
-		    namecmp(shortname) && namecmp(nastype) &&
+		    namecmp(shortname) && namecmp(nas_type) &&
 		    namecmp(login) && namecmp(password) && namecmp(server) &&
 #ifdef WITH_DYNAMIC_CLIENTS
 		    (old->lifetime == client->lifetime) &&
@@ -527,8 +527,10 @@ static const CONF_PARSER client_config[] = {
 	  offsetof(RADCLIENT, secret), 0, NULL },
 	{ "shortname",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, shortname), 0, NULL },
-	{ "nastype",  PW_TYPE_STRING_PTR,
-	  offsetof(RADCLIENT, nastype), 0, NULL },
+	{ "nastype",  PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	  offsetof(RADCLIENT, nas_type), 0, NULL },
+	{ "nas_type",  PW_TYPE_STRING_PTR,
+	  offsetof(RADCLIENT, nas_type), 0, NULL },
 	{ "login",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, login), 0, NULL },
 	{ "password",  PW_TYPE_STRING_PTR,
@@ -982,7 +984,7 @@ static const CONF_PARSER dynamic_config[] = {
 	{ "FreeRADIUS-Client-Shortname",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, shortname), 0, "" },
 	{ "FreeRADIUS-Client-NAS-Type",  PW_TYPE_STRING_PTR,
-	  offsetof(RADCLIENT, nastype), 0, NULL },
+	  offsetof(RADCLIENT, nas_type), 0, NULL },
 	{ "FreeRADIUS-Client-Virtual-Server",  PW_TYPE_STRING_PTR,
 	  offsetof(RADCLIENT, server), 0, NULL },
 
@@ -1115,7 +1117,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	}
 
 	/*
-	 *	Other values (secret, shortname, nastype, virtual_server)
+	 *	Other values (secret, shortname, nas_type, virtual_server)
 	 */
 	c->secret = talloc_strdup(c, secret);
 	
@@ -1124,7 +1126,7 @@ RADCLIENT *client_from_query(TALLOC_CTX *ctx, char const *identifier, char const
 	}
 	
 	if (type) {
-		c->nastype = talloc_strdup(c, type);
+		c->nas_type = talloc_strdup(c, type);
 	}
 	
 	if (server) {
