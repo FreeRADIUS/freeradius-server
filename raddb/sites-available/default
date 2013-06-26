@@ -618,6 +618,11 @@ post-auth {
 	#  Get an address from the IP Pool.
 #	main_pool
 
+
+        #  Create the CUI value and add the attribute to Access-Accept.
+        #  Uncomment the line below if *returning* the CUI.
+#       cui
+
 	#
 	#  If you want to have a log of authentication replies,
 	#  un-comment the following line, and enable the
@@ -670,9 +675,6 @@ post-auth {
 	#
 #	wimax
 
-        #  Create the CUI value and add the attribute to Access-Accept.
-        #  Uncomment the line below if *returning* the CUI.
-#       cui
 
 	#  If there is a client certificate (EAP-TLS, sometimes PEAP
 	#  and TTLS), then some attributes are filled out after the
