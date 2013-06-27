@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH rlm_detail 5 "5 February 2004" "" "FreeRADIUS Module"
+.TH rlm_detail 5 "27 June 2013" "" "FreeRADIUS Module"
 .SH NAME
 rlm_detail \- FreeRADIUS Module
 .SH DESCRIPTION
@@ -22,7 +22,7 @@ The file format is similar to that of the old Livingston servers, and
 many 'detail' file parsers should work with FreeRADIUS.
 .PP
 The main configuration items to be aware of are:
-.IP detailfile
+.IP file
 The file name in which to store the radius packet records.  NOTE: this
 variable is run through dynamic string expansion, and can include
 FreeRADIUS variables to create a dynamic filename.
@@ -33,8 +33,8 @@ FreeRADIUS variables to create a dynamic filename.
      This accomplishes 'file rotation' automatically from 
      within the server.
 .PP
-.IP detailperm
-The file permissions of the detailfile.  
+.IP perm
+The file permissions of the file.  
 If omitted, the default is 0600.
 .IP dirperm
 The directory permissions of the directory where the detail files are
@@ -51,9 +51,9 @@ modules {
 .br
   detail {
 .br
-    detailfile = %A/%{Client-IP-Address}/detail-%Y%m
+    file = %A/%{Client-IP-Address}/detail-%Y%m
 .br
-    detailperm = 0600
+    perm = 0600
 .br
     dirperm = 0755
 .br

@@ -50,8 +50,8 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_detail.
  */
 typedef struct detail_instance {
-	char	*detailfile;	//!< File/path to write to.
-	int	detailperm;	//!< Permissions to use for new files.
+	char	*file;		//!< File/path to write to.
+	int	perm;		//!< Permissions to use for new files.
 	char	*group;		//!< Group to use for new files.
 	
 	int	dirperm;	//!< Directory permissions to use for new files.
@@ -65,12 +65,16 @@ typedef struct detail_instance {
 } detail_instance_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "detailfile",    PW_TYPE_STRING_PTR,
-	  offsetof(struct detail_instance,detailfile), NULL, "%A/%{Client-IP-Address}/detail" },
+	{ "detailfile",    PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	  offsetof(struct detail_instance,file), NULL, "%A/%{Client-IP-Address}/detail" },
+	{ "file",    PW_TYPE_STRING_PTR,
+	  offsetof(struct detail_instance,file), NULL, "%A/%{Client-IP-Address}/detail" },
 	{ "header",    PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,header), NULL, "%t" },
-	{ "detailperm",    PW_TYPE_INTEGER,
-	  offsetof(struct detail_instance,detailperm), NULL, "0600" },
+	{ "detailperm",    PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
+	  offsetof(struct detail_instance,perm), NULL, "0600" },
+	{ "perm",    PW_TYPE_INTEGER,
+	  offsetof(struct detail_instance,perm), NULL, "0600" },
 	{ "group",	 PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,group), NULL,  NULL},
 	{ "dirperm",       PW_TYPE_INTEGER,
@@ -196,10 +200,10 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->detailfile, NULL, NULL) < 0) {
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->file, NULL, NULL) < 0) {
 	    return RLM_MODULE_FAIL;
 	}
-	RDEBUG2("%s expands to %s", inst->detailfile, buffer);
+	RDEBUG2("%s expands to %s", inst->file, buffer);
 
 #ifdef HAVE_FNMATCH_H
 #ifdef FNM_FILE_NAME
@@ -254,7 +258,7 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 		 *	permissions.
 		 */
 		if ((outfd = open(buffer, O_WRONLY | O_APPEND | O_CREAT,
-				  inst->detailperm)) < 0) {
+				  inst->perm)) < 0) {
 			RERROR("rlm_detail: Couldn't open file %s: %s",
 			       buffer, strerror(errno));
 			return RLM_MODULE_FAIL;
@@ -484,7 +488,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
-	    strcmp(((struct detail_instance *)instance)->detailfile,
+	    strcmp(((struct detail_instance *)instance)->file,
 		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file.");
 		return RLM_MODULE_NOOP;
