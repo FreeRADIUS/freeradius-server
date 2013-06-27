@@ -611,7 +611,7 @@ modules {
 	#  section, such as authorize, authenticate, accounting,
 	#  pre/post-proxy, etc.
 	#
-	$INCLUDE ${confdir}/mods-enabled/
+	$INCLUDE mods-enabled/
 }
 
 # Instantiation
