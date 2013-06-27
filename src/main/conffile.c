@@ -42,6 +42,19 @@ RCSID("$Id$")
 
 #include <ctype.h>
 
+typedef enum conf_property {
+	CONF_PROPERTY_INVALID = 0,
+	CONF_PROPERTY_NAME,
+	CONF_PROPERTY_INSTANCE,
+} CONF_PROPERTY;
+
+const FR_NAME_NUMBER conf_property_name[] = {
+	{ "name",	CONF_PROPERTY_NAME},
+	{ "instance",	CONF_PROPERTY_INSTANCE},
+	
+	{  NULL , -1 }
+};
+
 typedef enum conf_type {
 	CONF_ITEM_INVALID = 0,
 	CONF_ITEM_PAIR,
@@ -537,9 +550,17 @@ CONF_ITEM *cf_reference_item(CONF_SECTION const *parentcs,
 		 *	enclosing this section" (etc.)
 		 */
 		while (*p == '.') {
-			if (cs->item.parent)
+			if (cs->item.parent) {
 				cs = cs->item.parent;
-			p++;
+			}
+			
+			/*
+			 *	.. means the section 
+			 *	enclosing this section
+			 */
+			if (!*++p) {
+				return cf_sectiontoitem(cs);
+			}
 		}
 
 		/*
@@ -704,32 +725,49 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 
 			memcpy(name, ptr, end - ptr);
 			name[end - ptr] = '\0';
-
-			/*
-			 *	Get properties.
-			 */
+			
 			q = strchr(name, ':');
-			if (q) {
+			if (q) {		
 				*(q++) = '\0';
-				if (strcmp(q, "name") != 0) {
-					ERROR("%s[%d]: Invalid property '%s'",
-					      cf, *lineno, q);
-					return NULL;
-				}
 			}
-
+			
 			ci = cf_reference_item(parentcs, outercs, name);
 			if (!ci) {
 				ERROR("%s[%d]: Reference \"%s\" not found", cf, *lineno, input);
 				return NULL;
 			}
 
-			if (ci->type == CONF_ITEM_PAIR) {
-				if (q) {
-					ERROR("%s[%d]: Cannot get 'name' property of configuration item", cf, *lineno);
+			/*
+			 *	The expansion doesn't refer to another item or section
+			 *	it's the property of a section.
+			 */
+			if (q) {
+				CONF_SECTION *mycs = cf_itemtosection(ci);
+
+				if (ci->type != CONF_ITEM_SECTION) {
+					ERROR("%s[%d]: Can only reference properties of sections", cf, *lineno);
 					return NULL;
 				}
+				
+				switch (fr_str2int(conf_property_name, q, CONF_PROPERTY_INVALID))
+				{
+				case CONF_PROPERTY_NAME:
+					strcpy(p, mycs->name1);
+					break;
+					
+				case CONF_PROPERTY_INSTANCE:
+					strcpy(p, mycs->name2 ? mycs->name2 : mycs->name1);
+					break;
+					
+				default:
+					ERROR("%s[%d]: Invalid property '%s'", cf, *lineno, q);
+					return NULL;
+				}
+				
+				return output;
+			}
 
+			if (ci->type == CONF_ITEM_PAIR) {
 				/*
 				 *  Substitute the value of the variable.
 				 */
@@ -751,19 +789,6 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				ptr = end + 1;
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
-				if (q) {
-					CONF_SECTION *mycs;
-
-					mycs = cf_itemtosection(ci);
-
-					if (mycs->name2) {
-						strcpy(p, mycs->name2);
-					} else {
-						strcpy(p, mycs->name1);
-					}
-					return output;
-				}
-
 				/*
 				 *	Adding an entry again to a
 				 *	section is wrong.  We don't
