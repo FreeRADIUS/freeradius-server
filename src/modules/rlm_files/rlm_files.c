@@ -35,6 +35,9 @@ typedef struct rlm_files_t {
 
 	char *key;
 
+	char *file;
+	fr_hash_table_t *common;
+
 	/* autz */
 	char *usersfile;
 	fr_hash_table_t *users;
@@ -76,6 +79,8 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 static const CONF_PARSER module_config[] = {
+	{ "file",	   PW_TYPE_FILENAME,
+	  offsetof(rlm_files_t,file), NULL, NULL },
 	{ "usersfile",	   PW_TYPE_FILENAME,
 	  offsetof(rlm_files_t,usersfile), NULL, NULL },
 	{ "acctusersfile", PW_TYPE_FILENAME,
@@ -344,6 +349,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 #undef READFILE
 #define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { ERROR("Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
 
+	READFILE(file, common);
 	READFILE(usersfile, users);
 	READFILE(acctusersfile, acctusers);
 
@@ -470,7 +476,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "users", inst->users,
+	return file_common(inst, request, "users", 
+			   inst->users ? inst->users : inst->common,
 			   request->packet->vps, &request->reply->vps);
 }
 
@@ -484,7 +491,8 @@ static rlm_rcode_t mod_preacct(void *instance, REQUEST *request)
 {
 	rlm_files_t *inst = instance;
 
-	return file_common(inst, request, "acct_users", inst->acctusers,
+	return file_common(inst, request, "acct_users", 
+			   inst->acctusers ? inst->acctusers : inst->common,
 			   request->packet->vps, &request->reply->vps);
 }
 
@@ -494,7 +502,7 @@ static rlm_rcode_t file_preproxy(void *instance, REQUEST *request)
 	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "preproxy_users",
-			   inst->preproxy_users,
+			   inst->preproxy_users ? inst->preproxy_users : inst->common,
 			   request->packet->vps, &request->proxy->vps);
 }
 
@@ -503,7 +511,7 @@ static rlm_rcode_t file_postproxy(void *instance, REQUEST *request)
 	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "postproxy_users",
-			   inst->postproxy_users,
+			   inst->postproxy_users ? inst->postproxy_users : inst->common,
 			   request->proxy_reply->vps, &request->reply->vps);
 }
 #endif
@@ -513,7 +521,7 @@ static rlm_rcode_t mod_authenticate(void *instance, REQUEST *request)
 	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "auth_users",
-			   inst->auth_users,
+			   inst->auth_users ? inst->auth_users : inst->common,
 			   request->packet->vps, &request->reply->vps);
 }
 
@@ -522,7 +530,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	rlm_files_t *inst = instance;
 
 	return file_common(inst, request, "postauth_users",
-			   inst->postauth_users,
+			   inst->postauth_users ? inst->postauth_users : inst->common,
 			   request->packet->vps, &request->reply->vps);
 }
 
