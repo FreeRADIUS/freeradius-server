@@ -92,17 +92,16 @@ $(R)$(raddbdir)/%: | raddb/%
 	
 # Create symbolic links for legacy files
 $(R)$(raddbdir)/huntgroups : $(R)$(modconfdir)/preprocess/huntgroups
-	@echo "LN-S $@ -> $<"
-	@ln -s $< $@
+	@echo "LN-S $@"
+	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 	
 $(R)$(raddbdir)/hints : $(R)$(modconfdir)/preprocess/hints
-	@echo "LN-S $@ -> $<"
-	@ln -s $< $@
+	@echo "LN-S $@"
+	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 	
 $(R)$(raddbdir)/users : $(R)$(modconfdir)/files/authorize
-	@echo "LN-S $@ -> $<"
-	@ln -s $< $@
-
+	@echo "LN-S $@"
+	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 $(LOCAL_CERT_PRODUCTS):
 	@echo BOOTSTRAP $(R)$(raddbdir)/certs/
