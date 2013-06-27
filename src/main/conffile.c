@@ -973,7 +973,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 	case PW_TYPE_STRING_PTR:
 		q = (char **) data;
 		if (*q != NULL) {
-			free(*q);
+			talloc_free(*q);
 		}
 
 		/*
