@@ -12,8 +12,8 @@ TGT_LDLIBS	:= @mod_ldflags@
 install: $(R)$(modconfdir)/ruby/example.rb
 
 $(R)$(modconfdir)/ruby: $(R)$(modconfdir)
-	@echo MKDIR $@
-	@mkdir -p $@
+	@echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
+	@$(INSTALL) -d -m 750 $@
 
 $(R)$(modconfdir)/ruby/example.rb: src/modules/rlm_ruby/example.rb | $(R)$(modconfdir)/ruby
 	@$(ECHO) INSTALL $(notdir $<)

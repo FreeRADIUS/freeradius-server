@@ -52,9 +52,9 @@ install: install.raddb
 
 # Local build rules
 raddb/sites-enabled raddb/mods-enabled:
-	@echo MKDIR $@
-	@mkdir -p $@
-
+	@echo INSTALL $@
+	@$(INSTALL) -d -m 750 $@
+	
 # Set up the default modules for running in-source builds
 raddb/mods-enabled/%: raddb/mods-available/% | raddb/mods-enabled
 	@echo "LN-S $@"
@@ -92,19 +92,19 @@ $(R)$(raddbdir)/%: | raddb/%
 	
 # Create symbolic links for legacy files
 $(R)$(raddbdir)/huntgroups : $(R)$(modconfdir)/preprocess/huntgroups
-	@echo "LN-S $@"
+	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 	
 $(R)$(raddbdir)/hints : $(R)$(modconfdir)/preprocess/hints
-	@echo "LN-S $@"
+	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 	
 $(R)$(raddbdir)/users : $(R)$(modconfdir)/files/authorize
-	@echo "LN-S $@"
+	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
 $(LOCAL_CERT_PRODUCTS):
-	@echo BOOTSTRAP $(R)$(raddbdir)/certs/
+	@echo BOOTSTRAP raddb/certs/
 	@$(MAKE) -C $(R)$(raddbdir)/certs/
 
 # Bootstrap is special

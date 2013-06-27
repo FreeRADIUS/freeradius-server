@@ -9,7 +9,7 @@ DOCINSTALL	:= $(patsubst doc/%,$(R)$(docdir)/%,$(DOCFILES))
 
 #  Create the directories
 $(DOCDIRS):
-	@echo INSTALL $@
+	@echo INSTALL $(patsubst $(R)$(docdir)/%,doc/%,$@)
 	@$(INSTALL) -d -m 755 $@
 
 #  Files depend on directories (order only).

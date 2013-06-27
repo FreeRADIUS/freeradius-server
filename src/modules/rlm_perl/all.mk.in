@@ -12,8 +12,8 @@ TGT_LDLIBS	:= @mod_ldflags@
 install: $(R)$(modconfdir)/perl/example.pl
 
 $(R)$(modconfdir)/perl: $(R)$(modconfdir)
-	@echo MKDIR $@
-	@mkdir -p $@
+	@echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
+	@$(INSTALL) -d -m 750 $@
 
 $(R)$(modconfdir)/perl/example.pl: src/modules/rlm_perl/example.pl | $(R)$(modconfdir)/perl
 	@$(ECHO) INSTALL $(notdir $<)
