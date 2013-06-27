@@ -4,15 +4,15 @@ set -e
 
 case "$1" in
   remove)
-        for file in `find /etc/freeradius/sql/main/postgresql/ -print`
+        for file in `find /etc/freeradius/mods-config/sql/main/postgresql/ -print`
         do
           if dpkg-statoverride --list | grep -qw $file$; then
             dpkg-statoverride --remove $file
           fi
         done
 
-        for dir in /etc/freeradius/sql/main \
-          /etc/freeradius/sql/main/postgresql
+        for dir in /etc/freeradius/mods-config/sql/main \
+          /etc/freeradius/mods-config/sql/main/postgresql
         do
           if dpkg-statoverride --list | grep -qw $dir$; then
             dpkg-statoverride --remove $dir

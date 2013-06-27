@@ -55,15 +55,6 @@ case "$1" in
         rm_conffile "/etc/freeradius/certs/root.der"
         rm_conffile "/etc/freeradius/certs/root.p12"
         rm_conffile "/etc/freeradius/certs/root.pem"
-
-        rm_conffile "/etc/freeradius/sqlippool.conf"
-        rm_conffile "/etc/freeradius/mssql.conf"
-        rm_conffile "/etc/freeradius/postgresql.conf"
-
-        rm_conffile "/etc/freeradius/naslist"
-        rm_conffile "/etc/freeradius/naspasswd"
-        rm_conffile "/etc/freeradius/realms"
-
     fi
 
     # old files shipped by this package previously, but dropped upstream
