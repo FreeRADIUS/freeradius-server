@@ -30,7 +30,7 @@ sql cuisql {
 
 	sqlite {
 		filename = ${radacctdir}/cui.sqlite
-		bootstrap = ../sql/cui/sqlite/schema.sql
+		bootstrap = ${modconfdir}/${..:name}/cui/sqlite/schema.sql
 	}
 
 #	sqltrace = yes
@@ -49,5 +49,5 @@ sql cuisql {
 	cui_table = "cui"
 	sql_user_name = "%{User-Name}"
 	
-	$INCLUDE ../sql/cui/${dialect}/queries.conf
+	$INCLUDE ${modconfdir}/${.:name}/cui/${dialect}/queries.conf
 }

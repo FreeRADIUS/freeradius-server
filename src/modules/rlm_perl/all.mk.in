@@ -9,8 +9,12 @@ SOURCES		:= rlm_perl.c
 SRC_CFLAGS	:= @mod_cflags@
 TGT_LDLIBS	:= @mod_ldflags@
 
-install: $(R)$(raddbdir)/example.pl
+install: $(R)$(modconfdir)/perl/example.pl
 
-$(R)$(raddbdir)/example.pl: src/modules/rlm_perl/example.pl | $(R)$(raddbdir)/
+$(R)$(modconfdir)/perl: $(R)$(modconfdir)
+	@echo MKDIR $@
+	@mkdir -p $@
+
+$(R)$(modconfdir)/perl/example.pl: src/modules/rlm_perl/example.pl | $(R)$(modconfdir)/perl
 	@$(ECHO) INSTALL $(notdir $<)
-	@$(INSTALL) -m 755 $< $(R)$(raddbdir)/
+	@$(INSTALL) -m 755 $< $(R)$(modconfdir)/perl

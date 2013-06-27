@@ -15,7 +15,7 @@ sqlippool dhcp_sqlippool {
 	pool-key = "%{Calling-Station-Id}"
 
 	# For now, it only works with MySQL.
-	$INCLUDE ${confdir}/sql/ippool-dhcp/mysql/queries.conf
+	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf
  
 	sqlippool_log_exists = "DHCP: Existing IP: %{reply:Framed-IP-Address} (did %{Called-Station-Id} cli %{Calling-Station-Id} port %{NAS-Port} user %{User-Name})"
 

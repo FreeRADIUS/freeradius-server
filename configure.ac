@@ -317,6 +317,9 @@ AC_ARG_WITH(raddbdir,
 AC_SUBST(raddbdir)
 AC_MSG_RESULT($raddbdir)
 
+modconfdir="$raddbdir/mods-config"
+AC_SUBST(modconfdir)
+
 dnl #
 dnl #  extra argument: --with-ascend-binary
 dnl #

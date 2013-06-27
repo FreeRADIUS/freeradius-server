@@ -650,6 +650,7 @@ RUSERS
 SNMPWALK
 SNMPGET
 PERL
+modconfdir
 raddbdir
 radacctdir
 logdir
@@ -5109,6 +5110,9 @@ fi
 
 { $as_echo "$as_me:${as_lineno-$LINENO}: result: $raddbdir" >&5
 $as_echo "$raddbdir" >&6; }
+
+modconfdir="$raddbdir/mods-config"
+
 
 WITH_ASCEND_BINARY=yes
 

@@ -11,7 +11,7 @@ perl {
 	#  'rlm_exec' module, but it is persistent, and therefore
 	#  faster.
 	#
-	module = ${confdir}/example.pl
+	module = ${modconfdir}/${.:instance}/example.pl
 
 	#
 	#  The following hashes are given to the module and

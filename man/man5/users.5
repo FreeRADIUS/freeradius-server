@@ -14,10 +14,10 @@
 .SH NAME
 users \- user authorization file for the FreeRADIUS server
 .SH DESCRIPTION
-The \fBusers\fP file resides in the RADIUS database directory, by
-default \fB/etc/raddb\fP.  It contains a series of configuration
-directives which are used by the \fIfiles\fP module to decide how to
-authorize and authenticate each user request.
+The \fBusers\fP files reside in the files module configuration directory,
+by default \fB/etc/raddb/mods-config/files/\fP.  It contains a series
+of configuration directives which are used by the \fIfiles\fP 
+module to decide how to authorize and authenticate each user request.
 
 Every line starting with a hash sign
 .RB (' # ')
@@ -238,7 +238,7 @@ next.  Any DEFAULT entries should usually come last, except as fall-through
 entries that set reply attributes.
 
 .SH FILES
-/etc/raddb/users
+/etc/raddb/mods-config/files/
 .SH "SEE ALSO"
 .BR radclient (1),
 .BR radiusd (8),

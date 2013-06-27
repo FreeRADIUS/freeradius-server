@@ -1,43 +1,45 @@
 #
 #  The list of files to install.
 #
-LOCAL_FILES := acct_users clients.conf dictionary templates.conf \
-		experimental.conf hints huntgroups \
-		preproxy_users proxy.conf radiusd.conf trigger.conf \
-		users README.rst
+LOCAL_FILES :=		clients.conf dictionary templates.conf experimental.conf \
+			proxy.conf radiusd.conf trigger.conf README.rst
 
-DEFAULT_SITES := default inner-tunnel
-LOCAL_SITES   := $(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
+DEFAULT_SITES :=	default inner-tunnel
+LOCAL_SITES :=		$(addprefix raddb/sites-enabled/,$(DEFAULT_SITES))
 
-DEFAULT_MODULES := always attr_filter cache_eap chap \
-		detail detail.log digest dhcp dynamic_clients eap \
-		echo exec expiration expr files linelog logintime \
-		mschap ntlm_auth pap passwd preprocess radutmp realm \
-		replicate soh sradutmp unix utf8
+DEFAULT_MODULES :=	always attr_filter cache_eap chap \
+			detail detail.log digest dhcp dynamic_clients eap \
+			echo exec expiration expr files linelog logintime \
+			mschap ntlm_auth pap passwd preprocess radutmp realm \
+			replicate soh sradutmp unix utf8
 
-LOCAL_MODULES   := $(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
+LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
-LOCAL_CERT_FILES := Makefile README xpextensions \
-		    ca.cnf server.cnf client.cnf bootstrap
+LOCAL_CERT_FILES :=	Makefile README xpextensions \
+			ca.cnf server.cnf client.cnf bootstrap
+			
+LOCAL_CERT_PRODUCTS :=	$(addprefix $(R)$(raddbdir)/certs/,ca.key ca.pem \
+			client.key client.pem server.key server.pem)
+			
+LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 
-RADDB_DIRS := sites-available sites-enabled mods-available mods-enabled \
-		filter policy.d certs
+RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
+			sites-available sites-enabled \
+			$(patsubst raddb/%,%,$(shell find raddb/mods-config -type d -print))
 
 # Installed directories
-INSTALL_RADDB_DIRS := $(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/, \
-			$(RADDB_DIRS) $(shell find raddb/sql -type d -print))
+INSTALL_RADDB_DIRS :=	$(R)$(raddbdir)/ $(addprefix $(R)$(raddbdir)/, $(RADDB_DIRS))
 
 # Grab files from the various subdirectories
-INSTALL_FILES := $(wildcard raddb/sites-available/* raddb/mods-available/*) \
-		 $(LOCAL_SITES) $(LOCAL_MODULES) \
-		 $(addprefix raddb/,$(LOCAL_FILES)) \
-		 $(addprefix raddb/certs/,$(LOCAL_CERT_FILES)) \
-		 $(wildcard raddb/policy.d/* raddb/filter/*) \
-		 $(shell find raddb/sql -type f -print)
-
+INSTALL_FILES := 	$(wildcard raddb/sites-available/* raddb/mods-available/*) \
+		 	$(LOCAL_SITES) $(LOCAL_MODULES) \
+		 	$(addprefix raddb/,$(LOCAL_FILES)) \
+		 	$(addprefix raddb/certs/,$(LOCAL_CERT_FILES)) \
+		 	$(shell find raddb/mods-config -type f -print) \
+		 	$(shell find raddb/policy.d -type f -print)
 
 # Re-write local files to installed files, filtering out editor backups
-INSTALL_RADDB := $(patsubst raddb/%,$(R)$(raddbdir)/%,\
+INSTALL_RADDB :=	$(patsubst raddb/%,$(R)$(raddbdir)/%,\
 			$(filter-out %~,$(INSTALL_FILES)))
 
 all: build.raddb
@@ -55,12 +57,12 @@ raddb/sites-enabled raddb/mods-enabled:
 
 # Set up the default modules for running in-source builds
 raddb/mods-enabled/%: raddb/mods-available/% | raddb/mods-enabled
-	@echo LN-S $@
+	@echo "LN-S $@"
 	@cd $(dir $@) && ln -sf ../mods-available/$(notdir $@)
 
 # Set up the default sites for running in-source builds
 raddb/sites-enabled/%: raddb/sites-available/% | raddb/sites-enabled
-	@echo LN-S $@
+	@echo "LN-S $@"
 	@cd $(dir $@) && ln -sf ../sites-available/$(notdir $@)
 
 # Installation rules for directories.  Note permissions are 750!
@@ -87,20 +89,33 @@ $(R)$(raddbdir)/sites-enabled/%: | $(R)$(raddbdir)/sites-available/%
 $(R)$(raddbdir)/%: | raddb/%
 	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
+	
+# Create symbolic links for legacy files
+$(R)$(raddbdir)/huntgroups : $(R)$(modconfdir)/preprocess/huntgroups
+	@echo "LN-S $@ -> $<"
+	@ln -s $< $@
+	
+$(R)$(raddbdir)/hints : $(R)$(modconfdir)/preprocess/hints
+	@echo "LN-S $@ -> $<"
+	@ln -s $< $@
+	
+$(R)$(raddbdir)/users : $(R)$(modconfdir)/files/authorize
+	@echo "LN-S $@ -> $<"
+	@ln -s $< $@
 
-.PHONY: certs.bootstrap
-certs.bootstrap:
-	@echo BOOTSTRAP certs
+
+$(LOCAL_CERT_PRODUCTS):
+	@echo BOOTSTRAP $(R)$(raddbdir)/certs/
 	@$(MAKE) -C $(R)$(raddbdir)/certs/
 
 # Bootstrap is special
-$(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap certs.bootstrap
+$(R)$(raddbdir)/certs/bootstrap: | raddb/certs/bootstrap $(LOCAL_CERT_PRODUCTS)
 	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@$(INSTALL) -m 750 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 
 #  List directories before the file targets.
 #  It's not clear why GNU Make doesn't deal well with this.
-install.raddb: $(INSTALL_RADDB_DIRS) $(INSTALL_RADDB)
+install.raddb: | $(INSTALL_RADDB_DIRS) $(INSTALL_RADDB) $(LEGACY_LINKS)
 
 clean.raddb:
 	@rm -f *~ $(addprefix raddb/sites-enabled/,$(DEFAULT_SITES)) \

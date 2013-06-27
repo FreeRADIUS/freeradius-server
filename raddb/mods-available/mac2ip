@@ -19,7 +19,7 @@
 ######################################################################
 
 passwd mac2ip {
-	filename = ${confdir}/mac2ip
+	filename = ${modconfdir}/${.:name}/${.:instance}
 	format = "*DHCP-Client-Hardware-Address:=DHCP-Your-IP-Address"
 	delimiter = ","
 }

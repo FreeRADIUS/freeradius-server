@@ -19,6 +19,7 @@ dictdir		= $(datadir)/freeradius
 logdir		= @logdir@
 includedir	= @includedir@
 raddbdir	= @raddbdir@
+modconfdir	= @modconfdir@
 radacctdir	= @radacctdir@
 top_builddir	= @abs_top_builddir@
 top_build_prefix=@abs_top_builddir@/

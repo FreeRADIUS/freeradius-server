@@ -12,7 +12,7 @@
 #	...
 #
 passwd mac2vlan {
-	filename = ${confdir}/mac2vlan
+	filename = ${modconfdir}/${.:name}/${.:instance}
 	format = "*VMPS-Mac:=VMPS-VLAN-Name"
 	delimiter = ","
 }

@@ -5,14 +5,24 @@
 # Livingston-style 'users' file
 #
 files {
+	# Search for files in a subdirectory of mods-config which 
+	# matches this instance of the files module.
+	moddir = ${modconfdir}/${.:instance}
+	
 	# The default key attribute to use for matches.  The content
 	# of this attribute is used to match the "name" of the
 	# entry.
 	#key = "%{Stripped-User-Name:-%{User-Name}}"
 
-	usersfile = ${confdir}/users
-	acctusersfile = ${confdir}/acct_users
-	preproxy_usersfile = ${confdir}/preproxy_users
+	# Sets a common file for all sections which do not have
+	# specific files configured. It's recommended that 
+	# per section instances of 'files' are used, as per section
+	# files will be deprecated in a future release.
+	file = ${moddir}/authorize
+
+	usersfile = ${moddir}/authorize
+	acctusersfile = ${moddir}/accounting
+	preproxy_usersfile = ${moddir}/pre-proxy
 
 	#  If you want to use the old Cistron 'users' file
 	#  with FreeRADIUS, you should change the next line
