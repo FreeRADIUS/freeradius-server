@@ -1700,7 +1700,7 @@ VALUE_PAIR *pairread(const char **ptr, FR_TOKEN *eol)
 
 	if (!*attr) {
 		*eol = T_OP_INVALID;
-		fr_strerror_printf("Invalid attribute name);
+		fr_strerror_printf("Invalid attribute name");
 		return NULL;
 	}
 
