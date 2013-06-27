@@ -66,13 +66,13 @@ typedef struct detail_instance {
 
 static const CONF_PARSER module_config[] = {
 	{ "detailfile",    PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
-	  offsetof(struct detail_instance,file), NULL, "%A/%{Client-IP-Address}/detail" },
+	  offsetof(struct detail_instance,file), NULL, NULL },
 	{ "file",    PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,file), NULL, "%A/%{Client-IP-Address}/detail" },
 	{ "header",    PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,header), NULL, "%t" },
 	{ "detailperm",    PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
-	  offsetof(struct detail_instance,perm), NULL, "0600" },
+	  offsetof(struct detail_instance,perm), NULL, NULL },
 	{ "perm",    PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,perm), NULL, "0600" },
 	{ "group",	 PW_TYPE_STRING_PTR,
