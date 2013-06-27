@@ -3,11 +3,9 @@ install: install.doc
 
 clean: clean.doc
 
-DOCFILES	:= $(filter-out %~ %/Makefile doc/00-OLD doc/examples doc/rfc doc/source,$(wildcard doc/* doc/rfc/*.txt doc/examples/*))
+DOCDIRS		:= $(patsubst doc/%,$(R)$(docdir)/%,$(filter-out doc/source%,$(shell find doc -type d)))
+DOCFILES	:= $(filter-out %~ %/all.mk %.gitignore doc/rfc/update.sh doc/source/%,$(shell find doc -type f))
 DOCINSTALL	:= $(patsubst doc/%,$(R)$(docdir)/%,$(DOCFILES))
-
-DOCDIRS		:= $(R)/$(docdir)/ $(R)/$(docdir)/rfc/ $(R)/$(docdir)/examples/
-
 
 #  Create the directories
 $(DOCDIRS):
