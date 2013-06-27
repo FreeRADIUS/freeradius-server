@@ -11,7 +11,7 @@ TGT_LDLIBS	:= @mod_ldflags@
 
 install: $(R)$(modconfdir)/python/example.py
 
-$(R)$(modconfdir)/python: $(R)$(modconfdir)
+$(R)$(modconfdir)/python: | $(R)$(modconfdir)
 	@echo INSTALL $(patsubst $(R)$(raddbdir)%,raddb%,$@)
 	@$(INSTALL) -d -m 750 $@
 
