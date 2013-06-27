@@ -763,11 +763,10 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 					ERROR("%s[%d]: Invalid property '%s'", cf, *lineno, q);
 					return NULL;
 				}
+				p += strlen(p);
+				ptr = end + 1;
 				
-				return output;
-			}
-
-			if (ci->type == CONF_ITEM_PAIR) {
+			} else if (ci->type == CONF_ITEM_PAIR) {
 				/*
 				 *  Substitute the value of the variable.
 				 */
