@@ -25,7 +25,7 @@ attr_filter attr_filter.pre-proxy {
 #
 attr_filter attr_filter.access_reject {
 	key = %{User-Name}
-	file =  ${modconfdir}/${.:name}/access_reject
+	file = ${modconfdir}/${.:name}/access_reject
 }
 
 # Enforce RFC requirements on the contents of Access-Challenge
