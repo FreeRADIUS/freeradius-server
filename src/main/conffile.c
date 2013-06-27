@@ -670,6 +670,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 		if ((*ptr == '$') && (ptr[1] == '{')) {
 			CONF_ITEM *ci;
 			CONF_PAIR *cp;
+			char *q;
 
 			/*
 			 *	FIXME: Add support for ${foo:-bar},
@@ -704,6 +705,19 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			memcpy(name, ptr, end - ptr);
 			name[end - ptr] = '\0';
 
+			/*
+			 *	Get properties.
+			 */
+			q = strchr(name, ':');
+			if (q) {
+				*(q++) = '\0';
+				if (strcmp(q, "name") != 0) {
+					ERROR("%s[%d]: Invalid property '%s'",
+					      cf, *lineno, q);
+					return NULL;
+				}
+			}
+
 			ci = cf_reference_item(parentcs, outercs, name);
 			if (!ci) {
 				ERROR("%s[%d]: Reference \"%s\" not found", cf, *lineno, input);
@@ -711,6 +725,11 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 			}
 
 			if (ci->type == CONF_ITEM_PAIR) {
+				if (q) {
+					ERROR("%s[%d]: Cannot get 'name' property of configuration item", cf, *lineno);
+					return NULL;
+				}
+
 				/*
 				 *  Substitute the value of the variable.
 				 */
@@ -732,6 +751,19 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				ptr = end + 1;
 
 			} else if (ci->type == CONF_ITEM_SECTION) {
+				if (q) {
+					CONF_SECTION *mycs;
+
+					mycs = cf_itemtosection(ci);
+
+					if (mycs->name2) {
+						strcpy(p, mycs->name2);
+					} else {
+						strcpy(p, mycs->name1);
+					}
+					return output;
+				}
+
 				/*
 				 *	Adding an entry again to a
 				 *	section is wrong.  We don't
