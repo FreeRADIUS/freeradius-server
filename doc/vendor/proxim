@@ -1,12 +1,3 @@
-Miscellaneous NASes and RADIUS
-==============================
-
-Introduction
-------------
-
-Some NASes have quirks when it comes to speaking RADIUS.  This document
-exposes those flaws and, where applicable, workarounds for those quirks.
-
 Proxim
 ^^^^^^
 

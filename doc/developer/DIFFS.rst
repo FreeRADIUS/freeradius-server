@@ -7,8 +7,17 @@ not familiar with "the system." This text is a collection of
 suggestions which can greatly increase the chances of your change
 being accepted.
 
-Creating and Sending Your Change 
---------------------------------
+Only trivial patches will be accepted via email.
+Large patches, or patches that modify a number of files MUST be
+submitted as a pull-request via GitHub.
+
+See the following for more details: 
+	- https://help.github.com/articles/fork-a-repo
+	- http://wiki.freeradius.org/contributing/GitHub
+
+
+Submitting patches via email
+----------------------------
 
    1. "diff -u" 
 
@@ -131,74 +140,3 @@ Creating and Sending Your Change
            Your patch got lost among other patches
 
       When in doubt, re-submit.
-
-Hints, Tips, and Tricks 
------------------------
-
-This section lists many of the common "rules" associated with code
-submitted to the project. There are always exceptions... but you must
-have a really good reason for doing so.
-
-   1. Read the Documentation and follow the CodingStyle 
-
-      The FreeRADIUS server has a common coding style.  Use real tabs
-      to indent.  There is whitespace in variable assignments.
-      (i = 1, NOT i=1).
-
-      When in doubt, format your code to look the same as code already
-      in the server.  If your code deviates too much from the current
-      style, it is likely to be rejected without further review, and
-      without comment.
-
-   2. #ifdefs are ugly 
-
-      Code cluttered with ifdefs is difficult to read and
-      maintain. Don't do it. Instead, put your ifdefs in a header, and
-      conditionally define 'static inline' functions, or macros, which
-      are used in the code. Let the compiler optimize away the "no-op"
-      case.
-
-      Simple example, of poor code:: 
-
-           #ifdef CONFIG_MY_FUNKINESS 
-                 init_my_stuff(foo);
-           #endif 
-
-      Cleaned-up example: 
-
-      (in header):: 
-
-           #ifndef CONFIG_MY_FUNKINESS
-           static inline void init_my_stuff(char *foo) {}
-           #endif 
-
-      (in the code itself):: 
-
-           init_my_stuff(dev); 
-
-   3. 'static inline' is better than a macro 
-
-      Static inline functions are greatly preferred over macros. They
-      provide type safety, have no length limitations, no formatting
-      limitations, and under gcc they are as cheap as macros.
-
-      Macros should only be used for cases where a static inline is
-      clearly suboptimal [there a few, isolated cases of this in fast
-      paths], or where it is impossible to use a static inline
-      function [such as string-izing].
-
-      'static inline' is preferred over 'static __inline__', 'extern
-      inline', and 'extern __inline__'.
-
-   4. Don't over-design. 
-
-      Don't try to anticipate nebulous future cases which may or may
-      not be useful: "Make it as simple as you can, and no simpler"
-
-      Split up functionality as much as possible.  If your code needs
-      to do two unrelated things, write two functions.  Mashing two
-      kinds of work into one function makes the server difficult to
-      debug and maintain.
-
-      See the 'coding-methods.txt' document in this directory for
-      further description of coding methods.

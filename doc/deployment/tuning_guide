@@ -23,8 +23,6 @@ o freeradius is multi threaded and i/o bound.  That means you should use
   network performance.
 
 ------------ LDAP MODULE -------------
-o Tune the ldap_connections_number to be larger than the number of
-  simultaneous user authentication requests.
 o Try to maximize caching in the ldap server.  In particular *always*
   enable indexing of the uid attribute (equality index) and the
   cn attribute (equality index - the cn attribute is used to search
@@ -34,18 +32,15 @@ o Try to maximize caching in the ldap server.  In particular *always*
 o Put default profiles in ldap.  User entries should only contain
   non standard values in order to remain small and maximize the gains
   of caching the user default/regular profiles.
-o Enable caching in the ldap module (try it first, the openldap code
-  is not quite mature).
+o Enable group caching in groups.
 
 ------------ SQL MODULE --------------
-o Tune the num_sql_socks to be larger than the number of simultaneous
-  authentication/accounting requests.
 o Use the sql module in the session section instead of the radutmp module.
   It works *much* quicker.
 o Create a multi column index for the (UserName,AcctStopTime) attributes especially
   if you are using sql for double login detection.
 o If you are using mysql and you do a lot of accounting try using InnoDB for the radacct
-  table instead of MyISAM
+  table instead of MyISAM (this should be the default in all schemas)
 o Add AcctUniqueId in the accounting_stop query. Especially if you have a lot of access
   servers or your NAS does not send very random Session-Ids. That way you will always have
   one candidate row to search for, instead of all the rows that have the same AcctSessionId
