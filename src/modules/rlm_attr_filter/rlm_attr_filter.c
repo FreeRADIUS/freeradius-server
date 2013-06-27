@@ -47,7 +47,7 @@ typedef struct rlm_attr_filter {
 
 static const CONF_PARSER module_config[] = {
 	{ "file",     PW_TYPE_FILENAME,
-	  offsetof(rlm_attr_filter_t, file), NULL, "${raddbdir}/attrs" },
+	  offsetof(rlm_attr_filter_t, file), NULL, NULL},
 	{ "key",     PW_TYPE_STRING_PTR,
 	  offsetof(rlm_attr_filter_t, key), NULL, "%{Realm}" },
 	{ "relaxed",    PW_TYPE_BOOLEAN,
@@ -127,6 +127,12 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 {
 	rlm_attr_filter_t *inst = instance;
 	int rcode;
+
+	if (!inst->file) {
+		ERROR("'file' must be set");
+		
+		return -1;
+	}
 
 	rcode = attr_filter_getfile(inst, inst->file, &inst->attrs);
 	if (rcode != 0) {
