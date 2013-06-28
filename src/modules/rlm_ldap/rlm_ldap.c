@@ -90,7 +90,7 @@ static CONF_PARSER profile_config[] = {
 static CONF_PARSER user_config[] = {
 	{"filter", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_filter), NULL, "(uid=%u)"},
 	{"scope", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_scope_str), NULL, "sub"},
-	{"base_dn", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,userobj_base_dn), NULL, NULL},
+	{"base_dn", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(ldap_instance_t,userobj_base_dn), NULL, NULL},
 	
 	{"access_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, userobj_access_attr), NULL, NULL},
 	{"access_positive", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, access_positive), NULL, "yes"},
@@ -537,12 +537,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			
 			goto error;
 		}
-	}
-
-	if (!inst->userobj_base_dn) {
-		LDAP_ERR("Directive 'user.base_dn' must be set'");
-			
-		goto error;
 	}
 	
 	/*

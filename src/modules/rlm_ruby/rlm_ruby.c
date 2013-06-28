@@ -77,7 +77,7 @@ typedef struct rlm_ruby_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "script_file", PW_TYPE_FILENAME,
+	{ "script_file", PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
 	  offsetof(struct rlm_ruby_t, script_file), NULL, NULL},
 	{ "module_name", PW_TYPE_STRING_PTR,
 	  offsetof(struct rlm_ruby_t, module_name), NULL, "Radiusd"},
@@ -343,11 +343,6 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	
 	int idx;
 	int status;
-	
-	if (!inst->script_file) {
-		EDEBUG("Script File was not set");
-		return -1;
-	}
 
 	/*
 	 *	Initialize Ruby interpreter. Fatal error if this fails.

@@ -55,7 +55,7 @@ typedef struct rlm_sql_sqlite_config {
 } rlm_sql_sqlite_config_t;
 
 static const CONF_PARSER driver_config[] = {
-	{"filename", PW_TYPE_STRING_PTR,
+	{"filename", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	 offsetof(rlm_sql_sqlite_config_t, filename), NULL, NULL},
 	{"bootstrap", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_sqlite_config_t, bootstrap), NULL, NULL},

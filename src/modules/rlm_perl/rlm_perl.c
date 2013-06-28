@@ -84,8 +84,8 @@ typedef struct rlm_perl_t {
 			offsetof(rlm_perl_t,func_##_x), NULL, Stringify(_x)}
 
 static const CONF_PARSER module_config[] = {
-	{ "module",  PW_TYPE_FILENAME,
-	  offsetof(rlm_perl_t,module), NULL,  "module"},
+	{ "module",  PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
+	  offsetof(rlm_perl_t,module), NULL,  NULL},
 
 	RLM_PERL_CONF(authorize),
 	RLM_PERL_CONF(authenticate),
