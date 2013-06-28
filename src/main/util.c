@@ -119,8 +119,7 @@ int request_data_add(REQUEST *request,
 		}
 	}
 
-	if (!this) this = rad_malloc(sizeof(*this));
-	memset(this, 0, sizeof(*this));
+	if (!this) this = talloc_zero(request, request_data_t);
 
 	this->next = next;
 	this->unique_ptr = unique_ptr;
@@ -154,7 +153,7 @@ void *request_data_get(REQUEST *request,
 			 *	Remove the entry from the list, and free it.
 			 */
 			*last = this->next;
-			free(this);
+			talloc_free(this);
 			return ptr; /* don't free it, the caller does that */
 		}
 	}
@@ -234,7 +233,7 @@ void request_free(REQUEST **request_ptr)
 			if (this->opaque && /* free it, if necessary */
 			    this->free_opaque)
 				this->free_opaque(this->opaque);
-			free(this);
+			talloc_free(this);
 		}
 		request->data = NULL;
 	}
