@@ -1,34 +1,34 @@
 rest {
-        #
-        #  This subsection configures the tls related items
-        #  that control how FreeRADIUS connects to a HTTPS
-        #  server. 
-        #
-        tls {
-#               cacertfile      = ${certdir}/cacert.pem
-#               cacertdir       = ${certdir}
+	#
+	#  This subsection configures the tls related items
+	#  that control how FreeRADIUS connects to a HTTPS
+	#  server. 
+	#
+	tls {
+#		cacertfile      = ${certdir}/cacert.pem
+#		cacertdir       = ${certdir}
 
-#               certfile        = /path/to/radius.crt
-#               keyfile         = /path/to/radius.key
-#               keypassword     = "supersecret"
-#               randfile        = ${certdir}/random
+#		certfile	= /path/to/radius.crt
+#		keyfile		= /path/to/radius.key
+#		keypassword     = "supersecret"
+#		randfile	= ${certdir}/random
 
-                #  Server certificate verification requirements.  Can be:
-                #    "no"  (don't even bother trying)
-                #    "yes" (verify the cert was issued by one of the
-                #           trusted CAs)
-                #
-                #  The default is "yes"
-#               verify_cert     = "yes"
+		#  Server certificate verification requirements.  Can be:
+		#    "no"  (don't even bother trying)
+		#    "yes" (verify the cert was issued by one of the
+		#	   trusted CAs)
+		#
+		#  The default is "yes"
+#		verify_cert     = "yes"
 
-                #  Server certificate CN verification requirements.  Can be:
-                #    "no"  (don't even bother trying)
-                #    "yes" (verify the CN in the certificate matches the host
-                #           in the URI)
-                #
-                #  The default is "yes"
-#               verify_cert_cn  = "yes"
-        }
+		#  Server certificate CN verification requirements.  Can be:
+		#    "no"  (don't even bother trying)
+		#    "yes" (verify the CN in the certificate matches the host
+		#	   in the URI)
+		#
+		#  The default is "yes"
+#		verify_cert_cn  = "yes"
+	}
 
 	# rlm_rest will open a connection to the server specified in connect_uri
 	# to populate the connection cache, ready for the first request.
