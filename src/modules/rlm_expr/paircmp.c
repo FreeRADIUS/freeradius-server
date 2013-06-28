@@ -42,53 +42,6 @@ static int connectcmp(UNUSED void *instance,
 	return rate - check->vp_integer;
 }
 
-
-/*
- *	Compare a portno with a range.
- */
-static int portcmp(UNUSED void *instance, REQUEST *req UNUSED, VALUE_PAIR *request, VALUE_PAIR *check,
-		   UNUSED VALUE_PAIR *check_pairs, UNUSED VALUE_PAIR **reply_pairs)
-{
-	char *buf;
-	char *s, *p, *next;
-	uint32_t lo, hi;
-	uint32_t port;
-
-	if (!request) return -1;
-
-	port = request->vp_integer;
-
-	if ((strchr(check->vp_strvalue, ',') == NULL) &&
-	    (strchr(check->vp_strvalue, '-') == NULL)) {
-		return (request->vp_integer - check->vp_integer);
-	}
-
-	buf = talloc_strdup(check, check->vp_strvalue);
-
-	s = buf;
-	while (1) {
-		next = strchr(s, ',');
-		if (next) *next = '\0';
-
-		if ((p = strchr(s, '-')) != NULL)
-			p++;
-		else
-			p = s;
-		lo = strtoul(s, NULL, 10);
-		hi = strtoul(p, NULL, 10);
-		if (lo <= port && port <= hi) {
-			talloc_free(buf);
-			return 0;
-		}
-
-		if (!next) break;
-		s = next + 1;
-	}
-
-	talloc_free(buf);
-	return -1;
-}
-
 /*
  *	Compare prefix/suffix.
  *
@@ -282,7 +235,6 @@ void pair_builtincompare_add(void *instance)
 {
 	int i;
 
-	paircompare_register(PW_NAS_PORT, PW_NAS_PORT, portcmp, instance);
 	paircompare_register(PW_PREFIX, PW_USER_NAME, presufcmp, instance);
 	paircompare_register(PW_SUFFIX, PW_USER_NAME, presufcmp, instance);
 	paircompare_register(PW_CONNECT_RATE, PW_CONNECT_INFO, connectcmp, instance);
