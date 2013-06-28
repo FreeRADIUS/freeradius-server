@@ -493,8 +493,10 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	exist."
 	 */
 	instname = askedname;
-	if (instname[0] == '-') instname++;
-
+	if (instname[0] == '-') {
+		instname++;
+	}
+	
 	/*
 	 *	Module instances are declared in the modules{} block
 	 *	and referenced later by their name, which is the
@@ -502,8 +504,8 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	no name2.
 	 */
 	cs = cf_section_sub_find_name2(modules, NULL, instname);
-	if (cs == NULL) {
-		ERROR("Cannot find a configuration entry for module \"%s\".\n", instname);
+	if (!cs) {
+		ERROR("Cannot find a configuration entry for module \"%s\"", instname);
 		return NULL;
 	}
 
@@ -511,15 +513,22 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	If there's already a module instance, return it.
 	 */
 	strlcpy(myNode.name, instname, sizeof(myNode.name));
+	
 	node = rbtree_finddata(instance_tree, &myNode);
-	if (node) return node;
+	if (node) {
+		return node;
+	}
 
-	if (!do_link) return NULL;
-
+	if (!do_link) {
+		return NULL;
+	}
+	
 	name1 = cf_section_name1(cs);
 
 	/*
-	 *	Found the configuration entry.
+	 *	Found the configuration entry, hang the node struct off of the
+	 *	configuration section. If the CS is free'd the instance will
+	 *	be too.
 	 */
 	node = talloc_zero(cs, module_instance_t);
 
@@ -532,6 +541,9 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 */
 	snprintf(module_name, sizeof(module_name), "rlm_%s", name1);
 
+	/*
+	 *	Pull in the module object
+	 */
 	node->entry = linkto_module(module_name, cs);
 	if (!node->entry) {
 		talloc_free(node);
@@ -545,16 +557,18 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		CONF_PAIR *cp;
 
 		cp = cf_pair_find(cs, "force_check_config");
-		if (cp) value = cf_pair_value(cp);
-
+		if (cp) {
+			value = cf_pair_value(cp);
+		}
+		
 		if (value && (strcmp(value, "yes") == 0)) goto print_inst;
 
 		cf_log_module(cs, "Skipping instantiation of %s", instname);
 	} else {
 	print_inst:
 		check_config_safe = true;
-		cf_log_module(cs, "Instantiating module \"%s\" from file %s",
-			      instname, cf_section_filename(cs));
+		cf_log_module(cs, "Instantiating module \"%s\" from file %s", instname,
+			      cf_section_filename(cs));
 	}
 
 	/*
@@ -597,10 +611,9 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	if ((node->entry->module->instantiate) &&
 	    (!check_config || check_config_safe) &&
 	    ((node->entry->module->instantiate)(cs, node->insthandle) < 0)) {
-		cf_log_err_cs(cs,
-			      "Instantiation failed for module \"%s\"",
-			      instname);
+		cf_log_err_cs(cs, "Instantiation failed for module \"%s\"", node->name);
 		talloc_free(node);
+		
 		return NULL;
 	}
 
