@@ -45,6 +45,10 @@ instead.  This leaves the original file (with documentation) in the
 ``mods-available/`` directory.  Local changes should go into the
 ``mods-enabled/`` directory.
 
+Module-specific configuration files are now in the ``mods-config/``
+directory.  This change allows for better organization, and means that
+there are fewer files in the main ``raddb`` directory.  See
+``mods-config/README.rst`` for more details.
 
 SQL
 ---
