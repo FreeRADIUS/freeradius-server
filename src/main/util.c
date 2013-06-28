@@ -203,28 +203,6 @@ void request_free(REQUEST **request_ptr)
 #endif
 	rad_assert(!request->ev);
 
-	if (request->packet)
-		rad_free(&request->packet);
-
-#ifdef WITH_PROXY
-	if (request->proxy)
-		rad_free(&request->proxy);
-#endif
-
-	if (request->reply)
-		rad_free(&request->reply);
-
-#ifdef WITH_PROXY
-	if (request->proxy_reply)
-		rad_free(&request->proxy_reply);
-#endif
-
-	if (request->config_items)
-		pairfree(&request->config_items);
-
-	request->username = NULL;
-	request->password = NULL;
-
 	if (request->data) {
 		request_data_t *this, *next;
 
@@ -425,11 +403,11 @@ void NEVER_RETURNS rad_assert_fail (char const *file, unsigned int line,
 /*
  *	Create a new REQUEST data structure.
  */
-REQUEST *request_alloc(void)
+REQUEST *request_alloc(TALLOC_CTX *ctx)
 {
 	REQUEST *request;
 
-	request = talloc_zero(NULL, REQUEST);
+	request = talloc_zero(ctx, REQUEST);
 #ifndef NDEBUG
 	request->magic = REQUEST_MAGIC;
 #endif
@@ -464,7 +442,7 @@ REQUEST *request_alloc_fake(REQUEST *request)
 {
 	REQUEST *fake;
 
-	fake = request_alloc();
+	fake = request_alloc(request);
 
 	fake->number = request->number;
 #ifdef HAVE_PTHREAD_H

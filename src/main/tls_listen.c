@@ -159,7 +159,7 @@ static int tls_socket_recv(rad_listen_t *listener)
 	 *	Allocate a REQUEST for debugging.
 	 */
 	if (!sock->request) {
-		sock->request = request = request_alloc();
+		sock->request = request = request_alloc(listener);
 		if (!sock->request) {
 			ERROR("Out of memory");
 			return 0;

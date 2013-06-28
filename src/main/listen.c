@@ -234,7 +234,7 @@ RADCLIENT *client_listener_find(rad_listen_t *listener,
 
 	client->last_new_client = now;
 
-	request = request_alloc();
+	request = request_alloc(listener);
 	if (!request) goto unknown;
 
 	request->listener = listener;

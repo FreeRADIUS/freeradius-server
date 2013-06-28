@@ -1398,7 +1398,7 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	/*
 	 *	Create and initialize the new request.
 	 */
-	request = request_alloc(); /* never fails */
+	request = request_alloc(listener);
 	request->reply = rad_alloc(request, 0);
 	if (!request->reply) {
 		ERROR("No memory");
@@ -2635,7 +2635,7 @@ static void ping_home_server(void *ctx)
 		}
 	}
 
-	request = request_alloc();
+	request = request_alloc(NULL);
 	request->number = request_num_counter++;
 #ifdef HAVE_PTHREAD_H
 	request->child_pid = NO_SUCH_CHILD_PID;
