@@ -58,7 +58,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 	uint8_t pass_str[MAX_STRING_LEN];
 
 	if (!request->username) {
-		RWDEBUG("Attribute \"User-Name\" is required for authentication.\n");
+		RWDEBUG("Attribute 'User-Name' is required for authentication.\n");
 		return RLM_MODULE_INVALID;
 	}
 
@@ -81,7 +81,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 	/*
 	 *	Don't print out the CHAP password here.  It's binary crap.
 	 */
-	RDEBUG("login attempt by \"%s\" with CHAP password",
+	RDEBUG("Login attempt by \"%s\" with CHAP password",
 		request->username->vp_strvalue);
 
 	if ((passwd_item = pairfind(request->config_items, PW_CLEARTEXT_PASSWORD, 0, TAG_ANY)) == NULL){
@@ -95,11 +95,11 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 			REDEBUG("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
 		}
 
-		REDEBUG("Clear text password is required for authentication");
+		REDEBUG("Clear-Text password is required for authentication");
 		return RLM_MODULE_INVALID;
 	}
 
-	RDEBUG("Using clear text password \"%s\" for user %s authentication.",
+	RDEBUG("Using Clear-Text password \"%s\" for user %s authentication.",
 	      passwd_item->vp_strvalue, request->username->vp_strvalue);
 
 	rad_chap_encode(request->packet,pass_str,
@@ -111,7 +111,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance,
 		return RLM_MODULE_REJECT;
 	}
 
-	RDEBUG("chap user %s authenticated succesfully",
+	RDEBUG("CHAP user \"%s\" authenticated succesfully",
 	      request->username->vp_strvalue);
 
 	return RLM_MODULE_OK;
