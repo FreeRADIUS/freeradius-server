@@ -66,36 +66,36 @@ cui.pre-proxy {
 #  use_tunneled_reply parameter MUST be set to yes
 #
 cui.post-auth {
-	if (outer.request:EAP-Message) {
-		if (outer.request:Chargeable-User-Identity && \
-		    (outer.request:Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
-			update reply {
-				Chargeable-User-Identity := "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}}%{%{outer.request:Operator-Name}:-}}"
-			}
-		}
-	}
-	else {
-		if (!control:Proxy-To-Realm && \
-		    Chargeable-User-Identity && \
-		    !reply:Chargeable-User-Identity && \
-		    (Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
-			update reply {
-				Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}}%{%{Operator-Name}:-}}"
-			}
-		}
-		update reply {
-			User-Name -= "%{reply:User-Name}"
-		}
-		#
-		#  The section below will store a CUI for the User in the DB.
-		#  You need to configure the cuisql module and your database for this to work.
-		#  If your NAS-es can do CUI based accounting themselves
-		#  or you do not care about accounting, comment out the three lines below.
-		#
-		if (reply:Chargeable-User-Identity) {
-			cuisql
-		}
-	}	
+        if (!control:Proxy-To-Realm && \
+            Chargeable-User-Identity && \
+            !reply:Chargeable-User-Identity && \
+            (Operator-Name || ('${policy.cui_require_operator_name}' != 'yes')) ) {
+                update reply {
+                        Chargeable-User-Identity = "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}}%{%{Operator-Name}:-}}"
+                }
+        }
+        update reply {
+                User-Name -= "%{reply:User-Name}"
+        }
+        #
+        #  The section below will store a CUI for the User in the DB.
+        #  You need to configure the cuisql module and your database for this to work.
+        #  If your NAS-es can do CUI based accounting themselves
+        #  or you do not care about accounting, comment out the three lines below.
+        #
+        if (reply:Chargeable-User-Identity) {
+                cuisql
+        }
+}
+
+
+cui-inner.post-auth {
+        if (outer.request:Chargeable-User-Identity && \
+            (outer.request:Operator-Name || ('${policy.cui_require_operator_name}' != 'yes'))) {
+                update reply {
+                        Chargeable-User-Identity := "%{sha1:${policy.cui_hash_key}%{tolower:%{User-Name}}%{%{outer.request:Operator-Name}:-}}"
+                }
+        }
 }
 
 #

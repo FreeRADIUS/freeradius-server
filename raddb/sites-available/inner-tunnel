@@ -257,7 +257,7 @@ post-auth {
         #  If you want privacy to remain, see the
         #  Chargeable-User-Identity attribute from RFC 4372.
         #  If you want to use it just uncomment the line below.
-#       cui
+#       cui-inner
 
 	#
 	#  If you want to have a log of authentication replies,
