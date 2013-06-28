@@ -1,10 +1,10 @@
 #
-#	Please read the documentation file ../doc/processing_users_file,
-#	or 'man 5 users' (after installing the server) for more information.
+# 	Configuration file for the rlm_files module.
+# 	Please see rlm_files(5) manpage for more information.
 #
-#	This file contains authentication security and configuration
+# 	This file contains authentication security and configuration
 #	information for each user.  Accounting requests are NOT processed
-#	through this file.  Instead, see 'acct_users', in this directory.
+#	through this file.  Instead, see 'accounting', in this directory.
 #
 #	The first field is the user's name and can be up to
 #	253 characters in length.  This is followed (on the same line) with
@@ -27,10 +27,6 @@
 #	matches the login-request will stop processing unless you use
 #	the Fall-Through variable.
 #
-#	If you use the database support to turn this file into a .db or .dbm
-#	file, the DEFAULT entries _have_ to be at the end of this file and
-#	you can't have multiple entries for one username.
-#
 #	Indented (with the tab character) lines following the first
 #	line indicate the configuration values to be passed back to
 #	the comm server to allow the initiation of a user session.
@@ -38,13 +34,14 @@
 #	or the host to log the user onto.
 #
 #	You can include another `users' file with `$INCLUDE users.other'
-#
 
 #
 #	For a list of RADIUS attributes, and links to their definitions,
-#	see:
+#	see: http://www.freeradius.org/rfc/attributes.html
 #
-#	http://www.freeradius.org/rfc/attributes.html
+#	Entries below this point are examples included in the server for
+#	educational purposes. They may be deleted from the deployed 
+#	configuration without impacting the operation of the server.
 #
 
 #
