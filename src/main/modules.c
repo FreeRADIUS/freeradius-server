@@ -473,6 +473,47 @@ static module_entry_t *linkto_module(char const *module_name,
 	return node;
 }
 
+/** Parse module's configuration section and setup destructors
+ *
+ */
+static int module_conf_parse(module_instance_t *node, void **handle)
+{
+	*handle = NULL;
+	
+	/*
+	 *	If there is supposed to be instance data, allocate it now.
+	 *	Also parse the configuration data, if required.
+	 */
+	if (node->entry->module->inst_size) {
+		/* FIXME: make this rlm_config_t ?? */
+		*handle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
+		rad_assert(handle);
+
+		/*
+		 *	So we can see where this configuration is from
+		 *	FIXME: set it to rlm_NAME_t, or some such thing
+		 */
+		talloc_set_name(*handle, "rlm_config_t");
+
+		if (node->entry->module->config &&
+		    (cf_section_parse(node->cs, *handle, node->entry->module->config) < 0)) {
+			cf_log_err_cs(node->cs,"Invalid configuration for module \"%s\"", node->name);
+			talloc_free(*handle);
+			
+			return -1;
+		}
+		
+		/*
+		 *	Set the destructor.
+		 */
+		if (node->entry->module->detach) {
+			talloc_set_destructor((void *) *handle, node->entry->module->detach);
+		}
+	}
+	
+	return 0;
+}
+
 /*
  *	Find a module instance.
  */
@@ -531,8 +572,6 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 	 *	be too.
 	 */
 	node = talloc_zero(cs, module_instance_t);
-
-	node->insthandle = NULL;
 	node->cs = cs;
 
 	/*
@@ -570,39 +609,18 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		cf_log_module(cs, "Instantiating module \"%s\" from file %s", instname,
 			      cf_section_filename(cs));
 	}
+	
+	strlcpy(node->name, instname, sizeof(node->name));
 
 	/*
-	 *	If there is supposed to be instance data, allocate it now.
-	 *	Also parse the configuration data, if required.
+	 *	Parse the module configuration, and setup destructors so the
+	 *	module's detach method is called when it's instance data is
+	 *	about to be freed.
 	 */
-	if (node->entry->module->inst_size) {
-		/* FIXME: make this rlm_config_t ?? */
-		node->insthandle = talloc_zero_array(node, uint8_t, node->entry->module->inst_size);
-		rad_assert(node->insthandle != NULL);
-
-		/*
-		 *	So we can see where this configuration is from
-		 *	FIXME: set it to rlm_NAME_t, or some such thing
-		 */
-		talloc_set_name(node->insthandle, "rlm_config_t");
-
-		if (node->entry->module->config &&
-		    (cf_section_parse(cs, node->insthandle,
-				      node->entry->module->config) < 0)) {
-			cf_log_err_cs(cs,
-				      "Invalid configuration for module \"%s\"",
-				      instname);
-			talloc_free(node);
-			return NULL;
-		}
-		
-		/*
-		 *	Set the destructor.
-		 */
-		if (node->entry->module->detach) {
-			talloc_set_destructor((void *) node->insthandle,
-					      node->entry->module->detach);
-		}
+	if (module_conf_parse(node, &node->insthandle) < 0) {
+		talloc_free(node);
+	
+		return NULL;
 	}
 
 	/*
@@ -616,12 +634,6 @@ module_instance_t *find_module_instance(CONF_SECTION *modules,
 		
 		return NULL;
 	}
-
-	/*
-	 *	We're done.  Fill in the rest of the data structure,
-	 *	and link it to the module instance list.
-	 */
-	strlcpy(node->name, instname, sizeof(node->name));
 
 #ifdef HAVE_PTHREAD_H
 	/*
@@ -1344,7 +1356,7 @@ int virtual_servers_load(CONF_SECTION *config)
 
 int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 {
-	void *insthandle = NULL;
+	void *insthandle;
 	fr_module_hup_t *mh;
 
 	if (!node ||
@@ -1354,11 +1366,23 @@ int module_hup_module(CONF_SECTION *cs, module_instance_t *node, time_t when)
 	}
 
 	cf_log_module(cs, "Trying to reload module \"%s\"", node->name);
+
+	/*
+	 *	Parse the module configuration, and setup destructors so the
+	 *	module's detach method is called when it's instance data is
+	 *	about to be freed.
+	 */
+	if (module_conf_parse(node, &insthandle) < 0) {
+		cf_log_err_cs(cs, "HUP failed for module \"%s\" (parsing config failed). "
+			      "Using old configuration", node->name);
 	
-	if ((node->entry->module->instantiate)(cs, &insthandle) < 0) {
-		cf_log_err_cs(cs,
-			   "HUP failed for module \"%s\".  Using old configuration.",
-			   node->name);
+		return 0;
+	}
+	
+	if ((node->entry->module->instantiate)(cs, insthandle) < 0) {
+		cf_log_err_cs(cs, "HUP failed for module \"%s\".  Using old configuration.", node->name);
+		talloc_free(insthandle);
+		
 		return 0;
 	}
 
