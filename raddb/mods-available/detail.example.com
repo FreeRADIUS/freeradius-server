@@ -23,5 +23,5 @@
 #  $Id$
 #
 detail detail.example.com {
-	file = ${radacctdir}/detail.example.com/detail-%Y%m%d:%H:%G
+	filename = ${radacctdir}/detail.example.com/detail-%Y%m%d:%H:%G
 }

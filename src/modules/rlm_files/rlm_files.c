@@ -35,7 +35,7 @@ typedef struct rlm_files_t {
 
 	char *key;
 
-	char *file;
+	char *filename;
 	fr_hash_table_t *common;
 
 	/* autz */
@@ -79,8 +79,8 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 static const CONF_PARSER module_config[] = {
-	{ "file",	   PW_TYPE_FILENAME,
-	  offsetof(rlm_files_t,file), NULL, NULL },
+	{ "filename",	   PW_TYPE_FILENAME,
+	  offsetof(rlm_files_t,filename), NULL, NULL },
 	{ "usersfile",	   PW_TYPE_FILENAME,
 	  offsetof(rlm_files_t,usersfile), NULL, NULL },
 	{ "acctusersfile", PW_TYPE_FILENAME,
@@ -326,6 +326,7 @@ static int getusersfile(TALLOC_CTX *ctx, char const *filename, fr_hash_table_t *
 static int mod_detach(void *instance)
 {
 	rlm_files_t *inst = instance;
+	fr_hash_table_free(inst->common);
 	fr_hash_table_free(inst->users);
 	fr_hash_table_free(inst->acctusers);
 #ifdef WITH_PROXY
@@ -349,7 +350,7 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 #undef READFILE
 #define READFILE(_x, _y) do { if (getusersfile(inst, inst->_x, &inst->_y, inst->compat_mode) != 0) { ERROR("Failed reading %s", inst->_x); mod_detach(inst);return -1;} } while (0)
 
-	READFILE(file, common);
+	READFILE(filename, common);
 	READFILE(usersfile, users);
 	READFILE(acctusersfile, acctusers);
 

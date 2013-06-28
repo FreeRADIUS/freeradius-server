@@ -50,7 +50,7 @@ RCSID("$Id$")
  * Holds the configuration and preparsed data for a instance of rlm_detail.
  */
 typedef struct detail_instance {
-	char	*file;		//!< File/path to write to.
+	char	*filename;	//!< File/path to write to.
 	int	perm;		//!< Permissions to use for new files.
 	char	*group;		//!< Group to use for new files.
 	
@@ -66,18 +66,20 @@ typedef struct detail_instance {
 
 static const CONF_PARSER module_config[] = {
 	{ "detailfile",    PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
-	  offsetof(struct detail_instance,file), NULL, NULL },
-	{ "file",    PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
-	  offsetof(struct detail_instance,file), NULL, "%A/%{Client-IP-Address}/detail" },
+	  offsetof(struct detail_instance,filename), NULL, NULL },
+	{ "file",    PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	  offsetof(struct detail_instance,filename), NULL, NULL },
+	{ "filename",    PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	  offsetof(struct detail_instance,filename), NULL, "%A/%{Client-IP-Address}/detail" },
 	{ "header",    PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,header), NULL, "%t" },
 	{ "detailperm",    PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
 	  offsetof(struct detail_instance,perm), NULL, NULL },
-	{ "perm",    PW_TYPE_INTEGER,
+	{ "permissions",    PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,perm), NULL, "0600" },
 	{ "group",	 PW_TYPE_STRING_PTR,
 	  offsetof(struct detail_instance,group), NULL,  NULL},
-	{ "dirperm",       PW_TYPE_INTEGER,
+	{ "dir_permissions", PW_TYPE_INTEGER,
 	  offsetof(struct detail_instance,dirperm),    NULL, "0755" },
 	{ "locking",       PW_TYPE_BOOLEAN,
 	  offsetof(struct detail_instance,locking),    NULL, "no" },
@@ -160,8 +162,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 /*
  *	Do detail, compatible with old accounting
  */
-static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet,
-			     int compat)
+static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *packet, int compat)
 {
 	int		outfd;
 	char		timestamp[256];
@@ -200,10 +201,10 @@ static rlm_rcode_t do_detail(void *instance, REQUEST *request, RADIUS_PACKET *pa
 	 *	feed it through radius_xlat() to expand the
 	 *	variables.
 	 */
-	if (radius_xlat(buffer, sizeof(buffer), request, inst->file, NULL, NULL) < 0) {
+	if (radius_xlat(buffer, sizeof(buffer), request, inst->filename, NULL, NULL) < 0) {
 	    return RLM_MODULE_FAIL;
 	}
-	RDEBUG2("%s expands to %s", inst->file, buffer);
+	RDEBUG2("%s expands to %s", inst->filename, buffer);
 
 #ifdef HAVE_FNMATCH_H
 #ifdef FNM_FILE_NAME
@@ -488,7 +489,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
 #ifdef WITH_DETAIL
 	if (request->listener->type == RAD_LISTEN_DETAIL &&
-	    strcmp(((struct detail_instance *)instance)->file,
+	    strcmp(((struct detail_instance *)instance)->filename,
 		   ((listen_detail_t *)request->listener->data)->filename) == 0) {
 		RDEBUG("Suppressing writes to detail file as the request was just read from a detail file.");
 		return RLM_MODULE_NOOP;

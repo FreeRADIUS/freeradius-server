@@ -15,12 +15,12 @@
 #  in the 'authorize' section, below.
 #
 detail auth_log {
-	file = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/auth-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/auth-detail-%Y%m%d
 
 	#
 	#  This MUST be 0600, otherwise anyone can read
 	#  the users passwords!
-	perm = 0600
+	permissions = 0600
 
 	# You may also strip out passwords completely
 	suppress {
@@ -37,9 +37,9 @@ detail auth_log {
 #  in the 'post-auth' section, below.
 #
 detail reply_log {
-	file = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/reply-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/reply-detail-%Y%m%d
 
-	perm = 0600
+	permissions = 0600
 }
 
 #
@@ -49,12 +49,12 @@ detail reply_log {
 #  in the 'pre-proxy' section, below.
 #
 detail pre_proxy_log {
-	file = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/pre-proxy-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/pre-proxy-detail-%Y%m%d
 
 	#
 	#  This MUST be 0600, otherwise anyone can read
 	#  the users passwords!
-	perm = 0600
+	permissions = 0600
 
 	# You may also strip out passwords completely
 	#suppress {
@@ -69,7 +69,7 @@ detail pre_proxy_log {
 #  in the 'post-proxy' section, below.
 #
 detail post_proxy_log {
-	file = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/post-proxy-detail-%Y%m%d
+	filename = ${radacctdir}/%{%{Packet-Src-IP-Address}:-%{Packet-Src-IPv6-Address}}/post-proxy-detail-%Y%m%d
 
-	perm = 0600
+	permissions = 0600
 }

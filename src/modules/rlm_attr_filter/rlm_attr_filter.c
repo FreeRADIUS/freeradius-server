@@ -39,7 +39,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_attr_filter {
-	char		*file;
+	char		*filename;
 	char		*key;
 	int		relaxed;
 	PAIR_LIST	*attrs;
@@ -47,9 +47,11 @@ typedef struct rlm_attr_filter {
 
 static const CONF_PARSER module_config[] = {
 	{ "attrsfile",     PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_attr_filter_t, file), NULL, NULL},
-	{ "file",     PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
-	  offsetof(rlm_attr_filter_t, file), NULL, NULL},
+	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
+	{ "file",     PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
+	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
+	{ "filename",     PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
+	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
 	{ "key",     PW_TYPE_STRING_PTR,
 	  offsetof(rlm_attr_filter_t, key), NULL, "%{Realm}" },
 	{ "relaxed",    PW_TYPE_BOOLEAN,
@@ -130,9 +132,9 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	rlm_attr_filter_t *inst = instance;
 	int rcode;
 
-	rcode = attr_filter_getfile(inst, inst->file, &inst->attrs);
+	rcode = attr_filter_getfile(inst, inst->filename, &inst->attrs);
 	if (rcode != 0) {
-		ERROR("Errors reading %s", inst->file);
+		ERROR("Errors reading %s", inst->filename);
 
 		return -1;
 	}

@@ -47,7 +47,7 @@ radutmp {
 
 	# Set the file permissions, as the contents of this file
 	# are usually private.
-	perm = 0600
+	permissions = 0600
 
 	callerid = "yes"
 }

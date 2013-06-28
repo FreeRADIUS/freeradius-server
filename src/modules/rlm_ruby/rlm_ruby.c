@@ -61,7 +61,7 @@ typedef struct rlm_ruby_t {
 #endif
 	RLM_RUBY_STRUCT(detach);
 
-	char *script_file;
+	char *filename;
 	char *module_name;
 	VALUE module;
 
@@ -77,9 +77,9 @@ typedef struct rlm_ruby_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "script_file", PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
-	  offsetof(struct rlm_ruby_t, script_file), NULL, NULL},
-	{ "module_name", PW_TYPE_STRING_PTR,
+	{ "filename", PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
+	  offsetof(struct rlm_ruby_t, filename), NULL, NULL},
+	{ "module", PW_TYPE_STRING_PTR,
 	  offsetof(struct rlm_ruby_t, module_name), NULL, "Radiusd"},
 	{ NULL, -1, 0, NULL, NULL} /* end of module_config */
 };
@@ -376,14 +376,14 @@ static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
 	 */
 	rb_define_module_function(module, "radlog", radlog_rb, 2);
 
-	DEBUG("Loading file %s...", inst->script_file);
-	rb_load_protect(rb_str_new2(inst->script_file), 0, &status);
+	DEBUG("Loading file %s...", inst->filename);
+	rb_load_protect(rb_str_new2(inst->filename), 0, &status);
 	if (status) {
-		EDEBUG("Error loading file %s status: %d", inst->script_file, status);
+		EDEBUG("Error loading file %s status: %d", inst->filename, status);
 		
 		return -1;
 	}
-	DEBUG("Loaded file %s", inst->script_file);
+	DEBUG("Loaded file %s", inst->filename);
 
 	/*
 	 *	Import user modules.

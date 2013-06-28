@@ -1170,9 +1170,9 @@ the machine.  The first one is done in a regular detail file as defined in the
 following::
 
     detail detail1 {
-    detailfile = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
-    detailperm = 0600
-    dirperm = 0755
+        filename = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
+        permissions = 0600
+        dir_permissions = 0755
     }
 
 The second detail file will be used by the program radrelay to relay a copy of
@@ -1186,11 +1186,11 @@ back online, an attempt to re-send the packets to the Accounting server will
 made.  This file is defined in the following section of radiusd.conf::
 
     detail detail2 {
-    detailfile= ${radacctdir}/detail-combined
-    detailperm = 0600
-    dirperm = 0755
-    locking = yes
-            }
+    	filename = ${radacctdir}/detail-combined
+        permissions = 0600
+        dir_permissions = 0755
+        locking = yes
+    }
 
 INSTALLATION
 ------------
@@ -1565,27 +1565,27 @@ edit radiusd.conf::
             }
             # regular detail files
             detail detail1 {
-                    detailfile = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
-                    detailperm = 0600
-                    dirperm = 0755
+                    filename = ${radacctdir}/%{Client-IP-Address}/detail-%Y%m%d
+                    permissions = 0600
+                    dir_permissions = 0755
             }
             # temp detail file to replicate to accountrad
             detail detail2 {
-                    detailfile= ${radacctdir}/detail-combined
-                    detailperm = 0600
-                    dirperm = 0755
+                    filename = ${radacctdir}/detail-combined
+                    permissions = 0600
+                    dir_permissions = 0755
                     locking = yes
             }
 
             #radutmp {
             #	filename = ${logdir}/radutmp
-            #	perm = 0600
+            #	permissions =  0600
             #	callerid = "yes"
             #}
 
             #radutmp sradutmp {
             #	filename = ${logdir}/sradutmp
-            #	perm = 0644
+            #	permissions =  0644
             #	callerid = "no"
             #}
 

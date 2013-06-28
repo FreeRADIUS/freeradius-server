@@ -65,11 +65,11 @@ For example:
 .DS
 	detail radrelay-detail {
 .br
-		detailfile = ${radacctdir}/radrelay/detail
+		filename = ${radacctdir}/radrelay/detail
 .br
-		detailperm = 0600
+		permissions = 0600
 .br
-		dirperm = 0755
+		dir_permissions = 0755
 .br
 		locking = yes
 .br
@@ -105,7 +105,7 @@ file, configure \fBradrelay.conf\fP with the following section:
 .br
 		type = detail
 .br
-		detail = ${radacctdir}/radrelay/detail
+		filename = ${radacctdir}/radrelay/detail
 .br
 		max_outstanding = 100
 .br

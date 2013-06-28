@@ -18,7 +18,7 @@ files {
 	# specific files configured. It's recommended that 
 	# per section instances of 'files' are used, as per section
 	# files will be deprecated in a future release.
-	file = ${moddir}/authorize
+	filename = ${moddir}/authorize
 
 	usersfile = ${moddir}/authorize
 	acctusersfile = ${moddir}/accounting

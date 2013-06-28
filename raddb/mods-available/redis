@@ -10,7 +10,7 @@
 redis {
 	#  Host where the redis server is located.
 	#  We recommend using ONLY 127.0.0.1 !
-	hostname = 127.0.0.1
+	server = 127.0.0.1
 
 	#  The default port.
 	port = 6379

@@ -35,7 +35,7 @@ And in radiusd.conf::
   $INCLUDE  ${confdir}/sql2.conf # Instance named 'sql2'.
   
   detail othernas {
-        detailfile = ${radacctdir}/10.0.0.1/detail-%Y%m%d
+        filename = ${radacctdir}/10.0.0.1/detail-%Y%m%d
   }
   
   preacct {
