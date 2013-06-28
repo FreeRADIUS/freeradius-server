@@ -86,6 +86,16 @@ struct request_data_t {
 	void		(*free_opaque)(void *);
 };
 
+static int request_data_free_opaque(void *ctx)
+{
+	request_data_t *this;
+
+	this = talloc_get_type_abort(ctx, request_data_t);
+	this->free_opaque(this->opaque);
+
+	return 0;
+}
+
 /*
  *	Add opaque data (with a "free" function) to a REQUEST.
  *
@@ -113,8 +123,9 @@ int request_data_add(REQUEST *request,
 			next = this->next;
 
 			if (this->opaque && /* free it, if necessary */
-			    this->free_opaque)
+			    this->free_opaque) {
 				this->free_opaque(this->opaque);
+			}
 			break;	/* replace the existing entry */
 		}
 	}
@@ -126,6 +137,7 @@ int request_data_add(REQUEST *request,
 	this->unique_int = unique_int;
 	this->opaque = opaque;
 	this->free_opaque = free_opaque;
+	talloc_set_destructor((void *) this, request_data_free_opaque);
 
 	*last = this;
 
@@ -203,19 +215,6 @@ void request_free(REQUEST **request_ptr)
 #endif
 	rad_assert(!request->ev);
 
-	if (request->data) {
-		request_data_t *this, *next;
-
-		for (this = request->data; this != NULL; this = next) {
-			next = this->next;
-			if (this->opaque && /* free it, if necessary */
-			    this->free_opaque)
-				this->free_opaque(this->opaque);
-			talloc_free(this);
-		}
-		request->data = NULL;
-	}
-
 	if (request->root &&
 	    (request->root->refcount > 0)) {
 		request->root->refcount--;
@@ -225,7 +224,6 @@ void request_free(REQUEST **request_ptr)
 #ifdef WITH_COA
 	if (request->coa) {
 		request->coa->parent = NULL;
-		rad_assert(request->coa->ev == NULL);
 		request_free(&request->coa);
 	}
 
