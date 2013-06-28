@@ -10,7 +10,7 @@
 .RE
 .sp
 ..
-.TH radiusd.conf 5 "12 Jun 2007" "" "FreeRADIUS configuration file"
+.TH radiusd.conf 5 "28 Jun 2013" "" "FreeRADIUS configuration file"
 .SH NAME
 radiusd.conf \- configuration file for the FreeRADIUS server
 .SH DESCRIPTION
@@ -158,6 +158,38 @@ section which contains the current section.
 Will set variable \fBblogs\fP to the value of variable \fBdetailfile\fP,
 of the \fBdetail\fP module, which is in the \fBmodules\fP section of
 the configuration file.
+
+Properties of anonymous parent sections may also be referenced, currently
+\fBname\fP and \fBinstance\fP are supported.
+
+.DS
+	modules {
+		example foo {
+			file = ${.:name}
+		}
+	}
+.DE
+Will set variable \fBfile\fP to the name of the containing section (example).
+
+.DS
+	modules {
+		example foo {
+			file = ${.:instance}
+		}
+	}
+.DE
+Will set variable \fBfile\fP to the instance name of the containing 
+section (foo).
+
+.DS
+	modules {
+		example foo {
+			file = ${..:name}
+		}
+	}
+.DE
+Will set variable \fBfile\fP to the name of the parent of the containing
+section (modules).
 .SH FILES
 /etc/raddb/radiusd.conf
 .SH "SEE ALSO"
