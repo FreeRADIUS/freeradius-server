@@ -215,12 +215,6 @@ void request_free(REQUEST **request_ptr)
 #endif
 	rad_assert(!request->ev);
 
-	if (request->root &&
-	    (request->root->refcount > 0)) {
-		request->root->refcount--;
-		request->root = NULL;
-	}
-
 #ifdef WITH_COA
 	if (request->coa) {
 		request->coa->parent = NULL;

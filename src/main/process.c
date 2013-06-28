@@ -1452,7 +1452,6 @@ static REQUEST *request_setup(rad_listen_t *listener, RADIUS_PACKET *packet,
 	}
 
 	request->root = &mainconfig;
-	mainconfig.refcount++;
 #ifdef WITH_TCP
 	request->listener->count++;
 #endif

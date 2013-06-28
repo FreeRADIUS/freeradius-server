@@ -400,7 +400,6 @@ typedef struct listen_socket_t {
 
 typedef struct main_config_t {
 	struct main_config *next;
-	int		refcount;
 	fr_ipaddr_t	myip;	/* from the command-line only */
 	int		port;	/* from the command-line only */
 	int		log_auth;
