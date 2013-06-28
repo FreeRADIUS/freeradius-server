@@ -410,19 +410,6 @@ void rad_const_free(void const *ptr)
 
 
 /*
- *	Signature for free is dumb, and raises errors when we try
- *	to free const ptrs.
- */
-void rad_cfree(void const *ptr)
-{
-	void *tmp;
-	if (!ptr) return;
-
-	memcpy(&tmp, &ptr, sizeof(tmp));
-	free(tmp);
-}
-
-/*
  *	Logs an error message and aborts the program
  *
  */
