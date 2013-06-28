@@ -462,83 +462,83 @@ REQUEST *request_alloc(void)
  */
 REQUEST *request_alloc_fake(REQUEST *request)
 {
-  REQUEST *fake;
+	REQUEST *fake;
 
-  fake = request_alloc();
+	fake = request_alloc();
 
-  fake->number = request->number;
+	fake->number = request->number;
 #ifdef HAVE_PTHREAD_H
-  fake->child_pid = request->child_pid;
+	fake->child_pid = request->child_pid;
 #endif
-  fake->parent = request;
-  fake->root = request->root;
-  fake->client = request->client;
+	fake->parent = request;
+	fake->root = request->root;
+	fake->client = request->client;
 
-  /*
-   *	For new server support.
-   *
-   *	FIXME: Key instead off of a "virtual server" data structure.
-   *
-   *	FIXME: Permit different servers for inner && outer sessions?
-   */
-  fake->server = request->server;
+	/*
+	 *	For new server support.
+	 *
+	 *	FIXME: Key instead off of a "virtual server" data structure.
+	 *
+	 *	FIXME: Permit different servers for inner && outer sessions?
+	 */
+	fake->server = request->server;
 
-  fake->packet = rad_alloc(request, 1);
-  if (!fake->packet) {
-	  request_free(&fake);
-	  return NULL;
-  }
+	fake->packet = rad_alloc(request, 1);
+	if (!fake->packet) {
+		request_free(&fake);
+		return NULL;
+	}
 
-  fake->reply = rad_alloc(request, 0);
-  if (!fake->reply) {
-	  request_free(&fake);
-	  return NULL;
-  }
+	fake->reply = rad_alloc(request, 0);
+	if (!fake->reply) {
+		request_free(&fake);
+		return NULL;
+	}
 
-  fake->master_state = REQUEST_ACTIVE;
-  fake->child_state = REQUEST_RUNNING;
+	fake->master_state = REQUEST_ACTIVE;
+	fake->child_state = REQUEST_RUNNING;
 
-  /*
-   *	Fill in the fake request.
-   */
-  fake->packet->sockfd = -1;
-  fake->packet->src_ipaddr = request->packet->src_ipaddr;
-  fake->packet->src_port = request->packet->src_port;
-  fake->packet->dst_ipaddr = request->packet->dst_ipaddr;
-  fake->packet->dst_port = 0;
+	/*
+	 *	Fill in the fake request.
+	 */
+	fake->packet->sockfd = -1;
+	fake->packet->src_ipaddr = request->packet->src_ipaddr;
+	fake->packet->src_port = request->packet->src_port;
+	fake->packet->dst_ipaddr = request->packet->dst_ipaddr;
+	fake->packet->dst_port = 0;
 
-  /*
-   *	This isn't STRICTLY required, as the fake request MUST NEVER
-   *	be put into the request list.  However, it's still reasonable
-   *	practice.
-   */
-  fake->packet->id = fake->number & 0xff;
-  fake->packet->code = request->packet->code;
-  fake->timestamp = request->timestamp;
+	/*
+	 *	This isn't STRICTLY required, as the fake request MUST NEVER
+	 *	be put into the request list.  However, it's still reasonable
+	 *	practice.
+	 */
+	fake->packet->id = fake->number & 0xff;
+	fake->packet->code = request->packet->code;
+	fake->timestamp = request->timestamp;
 
-  /*
-   *	Required for new identity support
-   */
-  fake->listener = request->listener;
+	/*
+	 *	Required for new identity support
+	 */
+	fake->listener = request->listener;
 
-  /*
-   *	Fill in the fake reply, based on the fake request.
-   */
-  fake->reply->sockfd = fake->packet->sockfd;
-  fake->reply->src_ipaddr = fake->packet->dst_ipaddr;
-  fake->reply->src_port = fake->packet->dst_port;
-  fake->reply->dst_ipaddr = fake->packet->src_ipaddr;
-  fake->reply->dst_port = fake->packet->src_port;
-  fake->reply->id = fake->packet->id;
-  fake->reply->code = 0; /* UNKNOWN code */
+	/*
+	 *	Fill in the fake reply, based on the fake request.
+	 */
+	fake->reply->sockfd = fake->packet->sockfd;
+	fake->reply->src_ipaddr = fake->packet->dst_ipaddr;
+	fake->reply->src_port = fake->packet->dst_port;
+	fake->reply->dst_ipaddr = fake->packet->src_ipaddr;
+	fake->reply->dst_port = fake->packet->src_port;
+	fake->reply->id = fake->packet->id;
+	fake->reply->code = 0; /* UNKNOWN code */
 
-  /*
-   *	Copy debug information.
-   */
-  fake->options = request->options;
-  fake->radlog = request->radlog;
+	/*
+	 *	Copy debug information.
+	 */
+	fake->options = request->options;
+	fake->radlog = request->radlog;
 
-  return fake;
+	return fake;
 }
 
 #ifdef WITH_COA
