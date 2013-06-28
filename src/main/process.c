@@ -601,11 +601,9 @@ static void request_cleanup_delay_init(REQUEST *request, struct timeval const *p
 		gettimeofday(&now, NULL);
 	}
 
-	if (request->reply->timestamp.tv_sec == 0) {
-		when = now;
-	} else {
-		when = request->reply->timestamp;
-	}
+	rad_assert(request->reply->timestamp.tv_sec != 0);
+	when = request->reply->timestamp;
+
 	request->delay = request->root->cleanup_delay;
 	when.tv_sec += request->delay;
 
@@ -1051,6 +1049,8 @@ STATE_MACHINE_DECL(request_finish)
 
 	(void) action;	/* -Wunused */
 
+	gettimeofday(&request->reply->timestamp, NULL);
+
 	if (request->master_state == REQUEST_STOP_PROCESSING) return;
 
 	/*
@@ -1132,8 +1132,6 @@ STATE_MACHINE_DECL(request_finish)
 		request->listener->send(request->listener,
 					request);
 	}
-
-	gettimeofday(&request->reply->timestamp, NULL);
 
 	/*
 	 *	Clean up.  These are no longer needed.
