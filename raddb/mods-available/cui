@@ -16,7 +16,7 @@ sql cuisql {
 	# If you're using rlm_sql_null, then it should be the type of
 	# database the logged queries are going to be exected against.
 	dialect = "sqlite"
-        
+	
 	# The submodule to use to execute queries. This should match
 	# the database you're attempting to connect to.
 	#
@@ -36,16 +36,16 @@ sql cuisql {
 #	sqltrace = yes
 #	sqltracefile = ${logdir}/cuitrace.sql
 
-        pool {
-                start = 5
-                min = 4
-                max = 10
-                spare = 3
-                uses = 0
-                lifetime = 0
-                idle_timeout = 60
-        }
-        
+	pool {
+		start = 5
+		min = 4
+		max = 10
+		spare = 3
+		uses = 0
+		lifetime = 0
+		idle_timeout = 60
+	}
+	
 	cui_table = "cui"
 	sql_user_name = "%{User-Name}"
 	

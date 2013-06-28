@@ -126,8 +126,8 @@ dhcp DHCP-Discover {
 
 	#  The contents here are invented.  Change them!
 	update reply {
-	        DHCP-Domain-Name-Server = 127.0.0.1
-	        DHCP-Domain-Name-Server = 127.0.0.2
+		DHCP-Domain-Name-Server = 127.0.0.1
+		DHCP-Domain-Name-Server = 127.0.0.2
 		DHCP-Subnet-Mask = 255.255.255.0
 		DHCP-Router-Address = 192.168.1.1
 		DHCP-IP-Address-Lease-Time = 86400
@@ -161,8 +161,8 @@ dhcp DHCP-Request {
 
 	#  The contents here are invented.  Change them!
 	update reply {
-	        DHCP-Domain-Name-Server = 127.0.0.1
-	        DHCP-Domain-Name-Server = 127.0.0.2
+		DHCP-Domain-Name-Server = 127.0.0.1
+		DHCP-Domain-Name-Server = 127.0.0.2
 		DHCP-Subnet-Mask = 255.255.255.0
 		DHCP-Router-Address = 192.168.1.1
 		DHCP-IP-Address-Lease-Time = 86400

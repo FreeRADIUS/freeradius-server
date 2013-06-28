@@ -10,7 +10,7 @@
 #  in the authorize and preacct sections.
 #
 #  Four config options:
-#	format         -  must be "prefix" or "suffix"
+#	format	 -  must be "prefix" or "suffix"
 #			  The special cases of "DEFAULT"
 #			  and "NULL" are allowed, too.
 #	delimiter      -  must be a single character
