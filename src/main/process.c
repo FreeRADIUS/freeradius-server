@@ -67,7 +67,6 @@ static char const *action_codes[] = {
 #endif
 };
 
-#define DEBUG_STATE_MACHINE
 #ifdef DEBUG_STATE_MACHINE
 #define TRACE_STATE_MACHINE if (debug_flag) printf("(%u) ********\tSTATE %s action %s live M%u C%u\t********\n", request->number, __FUNCTION__, action_codes[action], request->master_state, request->child_state)
 #else
