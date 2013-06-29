@@ -1130,6 +1130,7 @@ STATE_MACHINE_DECL(request_finish)
 		DEBUG_PACKET(request, request->reply, 1);
 		request->listener->send(request->listener,
 					request);
+		pairfree(&request->reply->vps);
 	}
 
 	/*
@@ -1141,17 +1142,12 @@ STATE_MACHINE_DECL(request_finish)
 	request->username = NULL;
 	request->password = NULL;
 	
-	if (request->reply->code != PW_AUTHENTICATION_REJECT) {
-		pairfree(&request->reply->vps);
-	}
-
 #ifdef WITH_PROXY
 	if (request->proxy) {
 		pairfree(&request->proxy->vps);
-
-		if (request->proxy_reply) {
-			pairfree(&request->proxy_reply->vps);
-		}
+	}
+	if (request->proxy_reply) {
+		pairfree(&request->proxy_reply->vps);
 	}
 #endif
 	
