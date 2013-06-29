@@ -339,19 +339,69 @@ int request_enqueue(REQUEST *request)
 		struct timeval now;
 
 		/*
-		 *	Throw away accounting requests if we're too busy.
+		 *	Throw away accounting requests if we're too
+		 *	busy.  The NAS should retransmit these, and no
+		 *	one should notice.
+		 *
+		 *	In contrast, we always try to process
+		 *	authentication requests.  Those are more time
+		 *	critical, and it's harder to determine which
+		 *	we can throw away, and which we can keep.
+		 *
+		 *	We allow the queue to get half full before we
+		 *	start worrying.  Even then, we still require
+		 *	that the rate of input packets is higher than
+		 *	the rate of outgoing packets.  i.e. the queue
+		 *	is growing.
+		 *
+		 *	Once that happens, we roll a dice to see where
+		 *	the barrier is for "keep" versus "toss".  If
+		 *	the queue is smaller than the barrier, we
+		 *	allow it.  If the queue is larger than the
+		 *	barrier, we throw the packet away.  Otherwise,
+		 *	we keep it.
+		 *
+		 *	i.e. the probability of throwing the packet
+		 *	away increases from 0 (queue is half full), to
+		 *	100 percent (queue is completely full).
+		 *
+		 *	A probabilistic approach allows us to process
+		 *	SOME of the new accounting packets.
 		 */
 		if ((request->packet->code == PW_ACCOUNTING_REQUEST) &&
-		    (fr_fifo_num_elements(thread_pool.fifo[RAD_LISTEN_ACCT]) > 0) &&
 		    (thread_pool.num_queued > (thread_pool.max_queue_size / 2)) &&
 		    (thread_pool.pps_in.pps_now > thread_pool.pps_out.pps_now)) {
-			
-			pthread_mutex_unlock(&thread_pool.queue_mutex);
-			return 0;
+			uint32_t prob;
+			int keep;
+
+			/*
+			 *	Take a random value of how full we
+			 *	want the queue to be.  It's OK to be
+			 *	half full, but we get excited over
+			 *	anything more than that.
+			 */
+			keep = (thread_pool.max_queue_size / 2);
+			prob = fr_rand() & ((1 << 10) - 1);
+			keep *= prob;
+			keep >>= 10;
+			keep += (thread_pool.max_queue_size / 2);
+
+			/*
+			 *	If the queue is larger than our dice
+			 *	roll, we throw the packet away.
+			 */
+			if (thread_pool.num_queued > keep) {
+				pthread_mutex_unlock(&thread_pool.queue_mutex);
+				return 0;
+			}
 		}
 
 		gettimeofday(&now, NULL);
 		
+		/*
+		 *	Calculate the instantaneous arrival rate into
+		 *	the queue.
+		 */
 		thread_pool.pps_in.pps = rad_pps(&thread_pool.pps_in.pps_old,
 						 &thread_pool.pps_in.pps_now,
 						 &thread_pool.pps_in.time_old,
@@ -435,6 +485,10 @@ static int request_dequeue(REQUEST **prequest)
 
 		gettimeofday(&now, NULL);
 		
+		/*
+		 *	Calculate the instantaneous departure rate
+		 *	from the queue.
+		 */
 		thread_pool.pps_out.pps  = rad_pps(&thread_pool.pps_out.pps_old,
 						   &thread_pool.pps_out.pps_now,
 						   &thread_pool.pps_out.time_old,
@@ -883,7 +937,7 @@ int thread_pool_init(UNUSED CONF_SECTION *cs, int *spawn_flag)
 		thread_pool.max_spare_threads = thread_pool.min_spare_threads;
 	if (thread_pool.max_threads == 0)
 		thread_pool.max_threads = 256;
-	if ((thread_pool.max_queue_size < 2) || (thread_pool.max_queue_size > 1048576)) {
+	if ((thread_pool.max_queue_size < 2) || (thread_pool.max_queue_size > 1024*1024)) {
 		ERROR("FATAL: max_queue_size value must be in range 2-1048576");
 		return -1;
 	}

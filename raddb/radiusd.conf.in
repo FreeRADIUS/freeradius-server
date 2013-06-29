@@ -567,10 +567,18 @@ thread pool {
 	#  comparing that to the packets/s handled by the child
 	#  threads.
 	#
+
 	#  If the received PPS is larger than the processed PPS, *and*
-	#  the queue is more than half full, then all new accounting
-	#  requests are discarded.  This lowers the received rate,
-	#  and over time allows the server to "catch up" to the traffic.
+	#  the queue is more than half full, then new accounting
+	#  requests are probabalistically discarded.  This lowers the
+	#  number of packets that the server needs to process.  Over
+	#  time, the server will "catch up" with the traffic.
+	#
+	#  Throwing away accounting packets is usually safe and low
+	#  impact.  The NAS will retransmit them in a few seconds, or
+	#  even a few minutes.  Vendors should read RFC 5080 Section 2.2.1
+	#  to see how accounting packets should be retransmitted.  Using
+	#  any other method is likely to cause network meltdowns.
 	#
 	auto_limit_acct = no
 }
