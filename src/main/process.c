@@ -1628,7 +1628,8 @@ static int remove_all_requests(void *ctx, void *data)
 	request = fr_packet2myptr(REQUEST, packet, packet_p);
 	if (request->packet->sockfd != this->fd) return 0;
 
-	request_done(request, FR_ACTION_DONE);
+	request->master_state = REQUEST_STOP_PROCESSING;
+
 	return 0;
 }
 #endif	/* WITH_TCP */
