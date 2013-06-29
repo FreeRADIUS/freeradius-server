@@ -50,6 +50,30 @@ directory.  This change allows for better organization, and means that
 there are fewer files in the main ``raddb`` directory.  See
 ``mods-config/README.rst`` for more details.
 
+Naming
+------
+
+Many names used by configuration items were inconsistent in earlier
+versions of the server.  These names have been unified in version 3.
+
+If a file is being referenced or created the config item ``filename``
+is used.
+    
+If a file is being created, the initial permissions are set by the
+``permissions`` config item.
+    
+If a directory hierarchy needs to be created, the permissions are set
+by ``dir_permissions``.
+    
+If an external host is referenced in the context of a module the
+``server`` config item is used.
+    
+The configuration items ``file``, ``script_file``, ``module``,
+``detail``, ``detailfile``, ``attrsfile``, ``perm``, ``dirperm``,
+``detailperm``, and ``hostname`` are deprecated.  Please update your
+module configuration to use the new syntax.
+
+
 SQL
 ---
 
