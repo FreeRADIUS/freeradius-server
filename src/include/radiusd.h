@@ -654,7 +654,7 @@ extern		void thread_pool_queue_stats(int array[RAD_LISTEN_MAX], int pps[2]);
 /* Define a global config structure */
 extern struct main_config_t mainconfig;
 
-int read_mainconfig(int reload, bool strict);
+int read_mainconfig(int reload);
 int free_mainconfig(void);
 void hup_mainconfig(void);
 void hup_logfile(void);

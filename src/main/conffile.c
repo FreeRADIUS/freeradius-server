@@ -116,28 +116,6 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 				       char *output, size_t outsize,
 				       char const *input);
 
-static bool cf_strict = false;		//!< If true, fail parsing if we find any deprecated items
-
-/** Turn on strict parsing
- *
- * Turns on strict parsing globally for all configuration files except dictionaries.
- *
- * @param strict If true, return an error if a section/item marked with PW_TYPE_DEPRECATED.
- */
-void cf_set_strict(bool strict)
-{
-	cf_strict = strict;
-}
-
-/** Get current strict parsing value
- *
- * @return the current strict parsing value.
- */
-bool cf_get_strict(void)
-{
-	return cf_strict;
-}
-
 /*
  *	Isolate the scary casts in these tiny provably-safe functions
  */
@@ -938,9 +916,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 	if (deprecated) {
 		cf_log_err(&(cs->item), "Configuration item \"%s\" is deprecated.  Please replace "
 			   "it with the up-to-date name", name);
-		if (cf_get_strict()) {
-			return -1;
-		}
+		return -1;
 	}
 
 	switch (type) {

@@ -677,7 +677,7 @@ static int switch_users(CONF_SECTION *cs)
  *
  *	This function can ONLY be called from the main server process.
  */
-int read_mainconfig(int reload, bool strict)
+int read_mainconfig(int reload)
 {
 	char const *p = NULL;
 	CONF_SECTION *cs;
@@ -711,8 +711,6 @@ int read_mainconfig(int reload, bool strict)
 		return -1;
 	}
 #endif
-	cf_set_strict(strict);
-
 	INFO("Starting - reading configuration files ...");
 
 	/* Initialize the dictionary */
