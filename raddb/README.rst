@@ -1,8 +1,8 @@
 Upgrading to Version 3.0
 ========================
 
-The configuration for 3.0 is *largely* compatible with the 2.x
-configuration.  However, it is NOT possible to simply use the 2.x
+The configuration for 3.0 is *largely* compatible with the 2.x.x
+configuration.  However, it is NOT possible to simply use the 2.x.x
 configuration as-is.  Instead, you should re-create it.
 
 Security
@@ -54,7 +54,7 @@ Naming
 ------
 
 Many names used by configuration items were inconsistent in earlier
-versions of the server.  These names have been unified in version 3.
+versions of the server.  These names have been unified in version 3.0.
 
 If a file is being referenced or created the config item ``filename``
 is used.
@@ -157,8 +157,8 @@ The mapping is as follows::
 
 
 
-Alternatively a v2.x.x config may be patched to work with the
-v3.x.x module by adding the following::
+Alternatively a 2.x.x config may be patched to work with the
+3.0 module by adding the following::
 
   accounting {
   	reference = "%{tolower:type.%{Acct-Status-Type}.query}"
@@ -204,7 +204,7 @@ You will need to read your old LDAP configuration, and migrate it
 manually to the new configuration.  Simply copying the old
 configuration WILL NOT WORK.
 
-Users upgrading from 2.0.0 who used to call the ldap module in
+Users upgrading from 2.x.x who used to call the ldap module in
 post-auth should now set ``edir_autz = yes``, and remove the ``ldap``
 module from the post-auth section.
 
