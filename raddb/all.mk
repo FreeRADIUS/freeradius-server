@@ -91,15 +91,15 @@ $(R)$(raddbdir)/%: | raddb/%
 	@$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
 	
 # Create symbolic links for legacy files
-$(R)$(raddbdir)/huntgroups : $(R)$(modconfdir)/preprocess/huntgroups
+$(R)$(raddbdir)/huntgroups : | $(R)$(modconfdir)/preprocess/huntgroups
 	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 	
-$(R)$(raddbdir)/hints : $(R)$(modconfdir)/preprocess/hints
+$(R)$(raddbdir)/hints : | $(R)$(modconfdir)/preprocess/hints
 	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 	
-$(R)$(raddbdir)/users : $(R)$(modconfdir)/files/authorize
+$(R)$(raddbdir)/users : | $(R)$(modconfdir)/files/authorize
 	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
