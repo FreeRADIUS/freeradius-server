@@ -1653,7 +1653,10 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		/*
 		 *	Some attributes are virtual <sigh>
 		 */
-		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, false);
+		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, true);
+		if (!str) {
+			str = talloc_strdup(ctx, "");
+		}
 		XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
 		break;
 
