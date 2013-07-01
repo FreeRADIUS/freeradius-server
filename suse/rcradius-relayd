@@ -13,7 +13,9 @@
 ### BEGIN INIT INFO
 # Provides:          radius-relayd
 # Required-Start:    $network $syslog $remotefs
-# Required-Stop:
+# Should-Start:      $time ypbind smtp
+# Required-Stop:     $syslog $remote_fs
+# Should-Stop:       ypbind smtp
 # Default-Start:     3 5
 # Default-Stop:      0 1 2 6
 # Short-Description: RADIUS Relay Server

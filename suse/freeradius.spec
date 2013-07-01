@@ -1,69 +1,41 @@
 Name:         freeradius-server
-License:      GPL, LGPL
+Version:      3.0.0
+Release:      0
+License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Servers
 Provides:     radiusd
-Conflicts:    freeradius
-Version: 2.2.0
-Release:      0
-URL:          http://www.freeradius.org/
-Summary:      The world's most popular RADIUS Server
-Source0:      %{name}-%{version}.tar.bz2
-
-PreReq:       /usr/sbin/useradd /usr/sbin/groupadd
+Provides:     freeradius = %{version}
+Obsoletes:    freeradius < %{version}
+Conflicts:    radiusd-livingston radiusd-cistron icradius
+Url:          http://www.freeradius.org/
+Summary:      Very Highly Configurable Radius Server
+Source:       ftp://ftp.freeradius.org/pub/freeradius/%{name}-%{version}.tar.bz2
+Source90:     %{name}-rpmlintrc
+Source104:    %{name}-tmpfiles.conf
+PreReq:       %{_sbindir}/useradd %{_sbindir}/groupadd
 PreReq:       perl
-%if %{?suse_version:1}0
 PreReq:       %insserv_prereq %fillup_prereq
-%endif
-
 BuildRoot:    %{_tmppath}/%{name}-%{version}-build
-
 %define _oracle_support	0
-
-%define apxs2 apxs2-prefork
-%define apache2_sysconfdir %(%{apxs2} -q SYSCONFDIR)
-Requires:     %{name}-libs = %{version}
-Requires:     python
-
-
+Requires:      %{name}-libs = %{version}
+Requires:      python
+Recommends:    logrotate
 BuildRequires: db-devel
-BuildRequires: e2fsprogs-devel
 BuildRequires: gcc-c++
 BuildRequires: gdbm-devel
-BuildRequires: gettext-devel
 BuildRequires: glibc-devel
-BuildRequires: libtool
-BuildRequires: ncurses-devel
+BuildRequires: libtalloc-devel
 BuildRequires: openldap2-devel
 BuildRequires: openssl-devel
 BuildRequires: pam-devel
-BuildRequires: libpcap
 BuildRequires: perl
 BuildRequires: postgresql-devel
 BuildRequires: python-devel
 BuildRequires: sed
 BuildRequires: unixODBC-devel
-BuildRequires: zlib-devel
 
-%if %{?fedora_version:1}0
-BuildRequires: cyrus-sasl-devel
-BuildRequires: httpd-devel
-BuildRequires: libtool-ltdl-devel
-BuildRequires: perl-devel
-BuildRequires: syslog-ng
-BuildRequires: mysql-devel
-%endif
 
-%if %{?mandriva_version:1}0
-BuildRequires: apache2-devel
-BuildRequires: libtool-devel
-BuildRequires: mysql-devel
-%endif
-
-%if %{?suse_version:1}0
-BuildRequires: apache2-devel
-BuildRequires: cyrus-sasl-devel
 %if 0%{?suse_version} > 910
-BuildRequires: bind-libs
 BuildRequires: krb5-devel
 %endif
 %if 0%{?suse_version} > 930
@@ -74,10 +46,12 @@ BuildRequires: libapr1-devel
 %endif
 %if 0%{?suse_version} > 1020
 BuildRequires: libmysqlclient-devel
-%else
-BuildRequires: mysql-devel
 %endif
+%if 0%{?suse_version} > 1100
+BuildRequires: libpcap-devel
+BuildRequires: sqlite3-devel
 %endif
+
 
 %description
 The FreeRADIUS server has a number of features found in other servers,
@@ -89,40 +63,32 @@ Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 Accounting methods
 
-%if %_oracle_support == 1
-%package oracle
-BuildRequires: oracle-instantclient-basic oracle-instantclient-devel
-Group:        Productivity/Networking/Radius/Servers
-Summary:      FreeRADIUS Oracle database support
-Requires:     oracle-instantclient-basic
-Requires:     %{name}-libs = %{version}
-Requires:     %{name} = %{version}
-Autoreqprov:  off
-
-%description oracle
-The FreeRADIUS server has a number of features found in other servers,
-and additional features not found in any other server. Rather than
-doing a feature by feature comparison, we will simply list the features
-of the server, and let you decide if they satisfy your needs.
-
-Support for RFC and VSA Attributes Additional server configuration
-attributes Selecting a particular configuration Authentication methods
-%endif
-
 %package libs
+License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Servers
-Summary:      FreeRADIUS share library
+Summary:      FreeRADIUS shared library
 
 %description libs
 The FreeRADIUS shared library
 
+
+
+Authors:
+--------
+    Miquel van Smoorenburg <miquels@cistron.nl>
+    Alan DeKok <aland@ox.org>
+    Mike Machado <mike@innercite.com>
+    Alan Curry
+    various other people
+
 %package utils
+License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Clients
 Summary:      FreeRADIUS Clients
 Requires:     %{name}-libs = %{version}
 
 %description utils
-The FreeRADIUS server has a number of features found in other servers,
+The FreeRADIUS server has a number of features found in other servers
 and additional features not found in any other server. Rather than
 doing a feature by feature comparison, we will simply list the features
 of the server, and let you decide if they satisfy your needs.
@@ -131,67 +97,75 @@ Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 
 %package devel
+License:      GPLv2 ; LGPLv2.1
 Group:        Development/Libraries/C and C++
 Summary:      FreeRADIUS Development Files (static libs)
-Autoreqprov:  off
 Requires:     %{name}-libs = %{version}
 
 %description devel
 These are the static libraries for the FreeRADIUS package.
 
 
-%if %{?suse_version:1}0
-%debug_package
-%endif
+
+Authors:
+--------
+    Miquel van Smoorenburg <miquels@cistron.nl>
+    Alan DeKok <aland@ox.org>
+    Mike Machado <mike@innercite.com>
+    Alan Curry
+    various other people
+
+%package doc
+License:        GPLv2 ; LGPLv2.1
+Group:          Productivity/Networking/Radius/Servers
+Summary:        FreeRADIUS Documentation
+Requires:       %{name}
+
+%description doc
+This package contains FreeRADIUS Documentation
+
+
+
+Authors:
+--------
+    Miquel van Smoorenburg <miquels@cistron.nl>
+    Alan DeKok <aland@ox.org>
+    Mike Machado <mike@innercite.com>
+    Alan Curry
+    various other people
 
 %prep
 %setup -q
 
-rm -rf `find . -name CVS`
-
 %build
-export CFLAGS="$RPM_OPT_FLAGS -fno-strict-aliasing -DLDAP_DEPRECATED -fPIC -DPIC"
-#export CFLAGS="$CFLAGS -std=c99 -pedantic"
-
+# This package failed when testing with -Wl,-as-needed being default.
+# So we disable it here, if you want to retest, just delete this comment and the line below.
+export SUSE_ASNEEDED=0
+export CFLAGS="$RPM_OPT_FLAGS -fstack-protector -fno-strict-aliasing"
+%ifarch x86_64 ppc ppc64 s390 s390x
+export CFLAGS="$CFLAGS -fPIC -DPIC"
+%endif
+export LDFLAGS="-pie"
 %configure \
 		--libdir=%{_libdir}/freeradius \
-                --disable-ltdl-install \
-                --enable-developer \
-		--with-edir \
 		--with-experimental-modules \
-		--with-system-libtool \
 		--with-udpfromto \
-		--without-rlm_eap_ikev2 \
-		--without-rlm_opendirectory \
-%if %{?fedora_version:1}0
-                --with-rlm-krb5-include-dir=/usr/kerberos/include \
-                --with-rlm-krb5-lib-dir=/usr/kerberos/lib \
-%endif
-%if %{?mandriva_version:1}0
-		--without-rlm_dbm \
-		--without-rlm_krb5 \
-		--without-rlm_perl \
-%endif
-%if %{?suse_version:1}0
 %if 0%{?suse_version} <= 920 
 		--without-rlm_sql_mysql \
 		--without-rlm_krb5 \
 %endif
-%endif
-%if %_oracle_support == 1
+%if %{_oracle_support} == 1
 		--with-rlm_sql_oracle \
 		--with-oracle-lib-dir=%{_libdir}/oracle/10.1.0.3/client/lib/
 %else
 		--without-rlm_sql_oracle
 %endif
-
 # no parallel build possible
 make
 
 %install
 rm -rf $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT/var/lib/radiusd
+mkdir -p $RPM_BUILD_ROOT%{_localstatedir}/lib/radiusd
 make install R=$RPM_BUILD_ROOT
 # modify default configuration
 RADDB=$RPM_BUILD_ROOT%{_sysconfdir}/raddb
@@ -199,36 +173,33 @@ perl -i -pe 's/^#user =.*$/user = radiusd/'   $RADDB/radiusd.conf
 perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radiusd.conf
 perl -i -pe 's/^#user =.*$/user = radiusd/'   $RADDB/radrelay.conf
 perl -i -pe 's/^#group =.*$/group = radiusd/' $RADDB/radrelay.conf
-#ldconfig -n $RPM_BUILD_ROOT/usr/lib/freeradius
+/sbin/ldconfig -n $RPM_BUILD_ROOT%{_libdir}/freeradius
 # logs
-touch $RPM_BUILD_ROOT/var/log/radius/radutmp
-touch $RPM_BUILD_ROOT/var/log/radius/radius.log
+touch $RPM_BUILD_ROOT%{_localstatedir}/log/radius/radutmp
+touch $RPM_BUILD_ROOT%{_localstatedir}/log/radius/radius.log
 # SuSE
 install -d     $RPM_BUILD_ROOT%{_sysconfdir}/pam.d
 install -d     $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d
-%if 0%{?suse_version} > 920
 install -m 644 suse/radiusd-pam $RPM_BUILD_ROOT%{_sysconfdir}/pam.d/radiusd
-%else
-install -m 644 suse/radiusd-pam-old $RPM_BUILD_ROOT%{_sysconfdir}/pam.d/radiusd
-%endif
-install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/radiusd
+install -m 644 suse/radiusd-logrotate $RPM_BUILD_ROOT%{_sysconfdir}/logrotate.d/freeradius-server
 install -d -m 755 $RPM_BUILD_ROOT%{_sysconfdir}/init.d
 install    -m 744 suse/rcradiusd $RPM_BUILD_ROOT%{_sysconfdir}/init.d/freeradius
-ln -sf ../..%{_sysconfdir}/init.d/freeradius $RPM_BUILD_ROOT/usr/sbin/rcfreeradius
-cp $RPM_BUILD_ROOT/usr/sbin/radiusd $RPM_BUILD_ROOT/usr/sbin/radrelay
+ln -sf ../..%{_sysconfdir}/init.d/freeradius $RPM_BUILD_ROOT%{_sbindir}/rcfreeradius
+cp $RPM_BUILD_ROOT%{_sbindir}/radiusd $RPM_BUILD_ROOT%{_sbindir}/radrelay
 install    -m 744 suse/rcradius-relayd $RPM_BUILD_ROOT%{_sysconfdir}/init.d/freeradius-relay
-ln -sf ../../etc/init.d/freeradius-relay $RPM_BUILD_ROOT/usr/sbin/rcfreeradius-relay
-mv -v doc/README doc/README.doc
+ln -sf ../../etc/init.d/freeradius-relay $RPM_BUILD_ROOT%{_sbindir}/rcfreeradius-relay
+install -d %{buildroot}%{_sysconfdir}/tmpfiles.d
+install -m 0644 %{SOURCE104} %{buildroot}%{_sysconfdir}/tmpfiles.d/radiusd.conf
 # remove unneeded stuff
 rm -rf doc/00-OLD
-rm -f $RPM_BUILD_ROOT/usr/sbin/rc.radiusd
+rm -f $RPM_BUILD_ROOT%{_sbindir}/rc.radiusd
 rm -rf $RPM_BUILD_ROOT/usr/share/doc/freeradius*
-rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
+rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.*a
 
 %pre
-/usr/sbin/groupadd -r radiusd 2> /dev/null || :
-/usr/sbin/useradd -r -g radiusd -s /bin/false -c "Radius daemon" -d \
-                  /var/lib/radiusd radiusd 2> /dev/null || :
+%{_sbindir}/groupadd -r radiusd 2> /dev/null || :
+%{_sbindir}/useradd -r -g radiusd -s /bin/false -c "Radius daemon" -d \
+                  %{_localstatedir}/lib/radiusd radiusd 2> /dev/null || :
 
 %post
 %ifarch x86_64
@@ -239,7 +210,7 @@ rm -rf $RPM_BUILD_ROOT/%{_libdir}/freeradius/*.la
 # Generate default certificates
 /etc/raddb/certs/bootstrap
 
-%{fillup_and_insserv -s freeradius START_RADIUSD }
+%{fillup_and_insserv freeradius}
 %if 0%{?suse_version} > 820
 
 %preun
@@ -259,52 +230,23 @@ rm -rf $RPM_BUILD_ROOT
 %defattr(-,root,root)
 # doc
 %doc suse/README.SuSE
-%doc doc/* LICENSE COPYRIGHT CREDITS README
+%doc doc/* LICENSE COPYRIGHT CREDITS README.rst
 %doc doc/examples/*
 # SuSE
 %{_sysconfdir}/init.d/freeradius
 %{_sysconfdir}/init.d/freeradius-relay
 %config %{_sysconfdir}/pam.d/radiusd
-%config %{_sysconfdir}/logrotate.d/radiusd
-%dir %attr(755,radiusd,radiusd) /var/lib/radiusd
+%config %{_sysconfdir}/logrotate.d/freeradius-server
+%config %{_sysconfdir}/tmpfiles.d/radiusd.conf
+%dir %attr(755,radiusd,radiusd) %{_localstatedir}/lib/radiusd
 # configs
-%dir %attr(750,-,radiusd) %{_sysconfdir}/raddb
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/filter/*
 %defattr(-,root,radiusd)
-%config(noreplace) %{_sysconfdir}/raddb/dictionary
-%config(noreplace) %{_sysconfdir}/raddb/acct_users
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/clients.conf
-%config(noreplace) %{_sysconfdir}/raddb/hints
-%config(noreplace) %{_sysconfdir}/raddb/huntgroups
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sqlippool.conf
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/preproxy_users
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/proxy.conf
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/radiusd.conf
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql.conf
-%dir %attr(640,-,radiusd) %{_sysconfdir}/raddb/sql
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/*/*.conf
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/*/*.sql
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/*/README
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sql/oracle/msqlippool.txt
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/users
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/experimental.conf
-%dir %attr(750,-,radiusd) %{_sysconfdir}/raddb/certs
-%{_sysconfdir}/raddb/certs/Makefile
-%{_sysconfdir}/raddb/certs/README
-%{_sysconfdir}/raddb/certs/xpextensions
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/certs/*.cnf
-%attr(750,-,radiusd) %{_sysconfdir}/raddb/certs/bootstrap
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-available/*
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/modules/*
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/sites-enabled/*
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/eap.conf
-%attr(640,-,radiusd) %{_sysconfdir}/raddb/example.pl
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/policy.d/*.
-%attr(640,-,radiusd) %config(noreplace) %{_sysconfdir}/raddb/templates.conf
-%attr(700,radiusd,radiusd) %dir /var/run/radiusd/
+%dir %attr(750,root,radiusd) %{_sysconfdir}/raddb
+%config(noreplace) %{_sysconfdir}/raddb/*
+%attr(700,radiusd,radiusd) %dir %{_localstatedir}/run/radiusd/
 # binaries
 %defattr(-,root,root)
-/usr/sbin/*
+%{_sbindir}/*
 # man-pages
 %doc %{_mandir}/man1/*
 %doc %{_mandir}/man5/*
@@ -313,10 +255,10 @@ rm -rf $RPM_BUILD_ROOT
 %attr(755,root,root) %dir /usr/share/freeradius
 /usr/share/freeradius/*
 # logs
-%attr(700,radiusd,radiusd) %dir /var/log/radius/
-%attr(700,radiusd,radiusd) %dir /var/log/radius/radacct/
-%attr(644,radiusd,radiusd) /var/log/radius/radutmp
-%config(noreplace) %attr(600,radiusd,radiusd) /var/log/radius/radius.log
+%attr(700,radiusd,radiusd) %dir %{_localstatedir}/log/radius/
+%attr(700,radiusd,radiusd) %dir %{_localstatedir}/log/radius/radacct/
+%attr(644,radiusd,radiusd) %{_localstatedir}/log/radius/radutmp
+%config(noreplace) %attr(600,radiusd,radiusd) %{_localstatedir}/log/radius/radius.log
 # RADIUS Loadable Modules
 %attr(755,root,root) %dir %{_libdir}/freeradius
 %attr(755,root,root) %{_libdir}/freeradius/rlm_*.so*
@@ -325,19 +267,10 @@ rm -rf $RPM_BUILD_ROOT
 /usr/bin/*
 
 %files libs
-# RADIU shared libs
+# RADIUS shared libs
 %attr(755,root,root) %dir %{_libdir}/freeradius
-%attr(755,root,root) %{_libdir}/freeradius/lib*.so*
-
-%if %_oracle_support == 1
-%files oracle
-%defattr(-,root,root)
-%attr(755,root,root) %dir %{_libdir}/freeradius
-%attr(755,root,root) %{_libdir}/freeradius/rlm_sql_oracle*.so*
-%endif
+%attr(755,root,root) %{_libdir}/freeradius/*.so*
 
 %files devel
 %defattr(-,root,root)
-%attr(644,root,root) %{_libdir}/freeradius/*.a
-#%attr(644,root,root) %{_libdir}/freeradius/*.la
 %attr(644,root,root) /usr/include/freeradius/*.h

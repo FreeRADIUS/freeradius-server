@@ -13,12 +13,15 @@
 ### BEGIN INIT INFO
 # Provides:          radiusd
 # Required-Start:    $network $syslog $remotefs
-# Required-Stop:
+# Should-Start:      $time ypbind smtp
+# Required-Stop:     $syslog $remote_fs
+# Should-Stop:       ypbind smtp
 # Default-Start:     3 5
 # Default-Stop:      0 1 2 6
 # Short-Description: RADIUS-Server
 # Description:       Remote Authentication Dialin User Server
 ### END INIT INFO
+
 
 RADIUSD_BIN=/usr/sbin/radiusd
 test -x $RADIUSD_BIN || { echo "$RADIUSD_BIN not installed"; \
