@@ -868,7 +868,8 @@ static char const *parse_spaces = "                                             
 int cf_item_parse(CONF_SECTION *cs, char const *name,
 		  int type, void *data, char const *dflt)
 {
-	int deprecated, required, attribute, rcode;
+	int rcode;
+	bool deprecated, required, attribute, exists;
 	char **q;
 	char const *value;
 	fr_ipaddr_t ipaddr;
@@ -880,6 +881,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
+	exists = (type & PW_TYPE_EXISTS);
+
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
 
@@ -1033,26 +1036,28 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 		cf_log_info(cs, "%.*s\t%s = \"%s\"",
 			    cs->depth, parse_spaces, name, value);
 		*q = value ? talloc_strdup(cs, value) : NULL;
-
+			
 		/*
 		 *	And now we "stat" the file.
-		 *
-		 *	FIXME: This appears to leak memory on exit,
-		 *	and we don't use this information.  So it's
-		 *	commented out for now.
 		 */
-		if (0 && *q) {
+		if (*q) {
 			struct stat buf;
 
 			if (stat(*q, &buf) == 0) {
-				time_t *mtime;
-
-				mtime = rad_malloc(sizeof(*mtime));
+				time_t *mtime = talloc(cs, time_t);
+				
 				*mtime = buf.st_mtime;
 				/* FIXME: error? */
 				cf_data_add_internal(cs, *q, mtime, free,
 						     PW_TYPE_FILENAME);
+			/*
+			 *	We were expecting the file to exist...
+			 */
+			} else if (exists) {
+				ERROR("File \"%s\" does not exist", value);
+				return -1;
 			}
+
 		}
 		break;
 
