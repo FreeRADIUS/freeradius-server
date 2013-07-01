@@ -54,16 +54,13 @@ typedef struct rlm_exec_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "wait", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,wait), NULL, "yes" },
-	{ "program",  PW_TYPE_STRING_PTR,
-	  offsetof(rlm_exec_t,program), NULL, NULL },
-	{ "input_pairs", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_exec_t,input), NULL, NULL },
-	{ "output_pairs",  PW_TYPE_STRING_PTR,
-	  offsetof(rlm_exec_t,output), NULL, NULL },
-	{ "packet_type", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_exec_t,packet_type), NULL, NULL },
+	{ "wait", PW_TYPE_BOOLEAN, offsetof(rlm_exec_t,wait), NULL, "yes" },
+	{ "program",  PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,program), NULL, NULL },
+	{ "input_pairs", PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,input), NULL, NULL },
+	{ "output_pairs",  PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,output), NULL, NULL },
+	{ "packet_type", PW_TYPE_STRING_PTR, offsetof(rlm_exec_t,packet_type), NULL, NULL },
 	{ "shell_escape", PW_TYPE_BOOLEAN,  offsetof(rlm_exec_t,shell_escape), NULL, "yes" },
+	
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -163,6 +160,10 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	xlat_register(inst->xlat_name, exec_xlat, shell_escape, inst);
 	
+	/*
+	 *	Check whether program actually exists
+	 */
+	
 	if (inst->input) {
 		p = inst->input;
 		inst->input_list = radius_list_name(&p, PAIR_LIST_UNKNOWN);
@@ -202,10 +203,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 		dval = dict_valbyname(PW_PACKET_TYPE, 0, inst->packet_type);
 		if (!dval) {
-			cf_log_err_cs(conf, "Unknown packet type %s: "
-				      "See list of VALUEs for Packet-Type in "
-				      "share/dictionary",
-				      inst->packet_type);
+			cf_log_err_cs(conf, "Unknown packet type %s: See list of VALUEs for Packet-Type in "
+				      "share/dictionary", inst->packet_type);
 			return -1;
 		}
 		inst->packet_code = dval->value;
@@ -231,22 +230,18 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	We need a program to execute.
 	 */
 	if (!inst->program) {
-		ERROR("rlm_exec (%s): We require a program to execute",
-		       inst->xlat_name);
+		ERROR("rlm_exec (%s): We require a program to execute", inst->xlat_name);
 		return RLM_MODULE_FAIL;
 	}
 
 	/*
 	 *	See if we're supposed to execute it now.
 	 */
-	if (!((inst->packet_code == 0) ||
-	      (request->packet->code == inst->packet_code) ||
+	if (!((inst->packet_code == 0) || (request->packet->code == inst->packet_code) ||
 	      (request->reply->code == inst->packet_code)
 #ifdef WITH_PROXY
-	      || (request->proxy &&
-	       (request->proxy->code == inst->packet_code)) ||
-	      (request->proxy_reply &&
-	       (request->proxy_reply->code == inst->packet_code))
+	      || (request->proxy && (request->proxy->code == inst->packet_code)) ||
+	      (request->proxy_reply && (request->proxy_reply->code == inst->packet_code))
 #endif
 		    )) {
 		RDEBUG2("Packet type is not %s. Not executing.", inst->packet_type);
@@ -351,8 +346,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	}
 
 	tmp = NULL;
-	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
-				     NULL, 0, request->packet->vps, &tmp,
+	result = radius_exec_program(vp->vp_strvalue, request, exec_wait, NULL, 0, request->packet->vps, &tmp,
 				     inst->shell_escape);
 
 	/*
@@ -398,17 +392,20 @@ static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	 *	The "bare" exec module takes care of handling
 	 *	Exec-Program and Exec-Program-Wait.
 	 */
-	if (!inst->bare) return exec_dispatch(instance, request);
-
+	if (!inst->bare) {
+		return exec_dispatch(instance, request);
+	}
+	
 	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
 	if (vp) {
 		exec_wait = 0;
-
 	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
 		exec_wait = 1;
 	}
-	if (!vp) return RLM_MODULE_NOOP;
-
+	if (!vp) {
+		return RLM_MODULE_NOOP;
+	}
+	
 	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
 				     NULL, 0, request->packet->vps, NULL,
 				     inst->shell_escape);
@@ -440,7 +437,7 @@ module_t rlm_exec = {
 		exec_dispatch,		/* authentication */
 		exec_dispatch,		/* authorization */
 		exec_dispatch,		/* pre-accounting */
-		mod_accounting,	/* accounting */
+		mod_accounting,		/* accounting */
 		NULL,			/* check simul */
 		exec_dispatch,		/* pre-proxy */
 		exec_dispatch,		/* post-proxy */
