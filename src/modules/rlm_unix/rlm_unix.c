@@ -62,7 +62,7 @@ struct unix_instance {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "radwtmp",  PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
+	{ "radwtmp",  PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED,
 	  offsetof(struct unix_instance,radwtmp), NULL,   "NULL" },
 
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */

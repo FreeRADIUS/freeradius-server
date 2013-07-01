@@ -71,7 +71,7 @@ typedef struct rlm_linelog_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-	{ "filename",  PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "filename",  PW_TYPE_FILE_OUTPUT| PW_TYPE_REQUIRED,
 	  offsetof(rlm_linelog_t,filename), NULL,  NULL},
 	{ "syslog_facility",  PW_TYPE_STRING_PTR,
 	  offsetof(rlm_linelog_t,syslog_facility), NULL,  NULL},

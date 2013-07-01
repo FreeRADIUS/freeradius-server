@@ -44,9 +44,9 @@ typedef struct rlm_preprocess_t {
 } rlm_preprocess_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "huntgroups",			PW_TYPE_FILENAME,
+	{ "huntgroups",			PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_preprocess_t,huntgroup_file), NULL, NULL },
-	{ "hints",			PW_TYPE_FILENAME,
+	{ "hints",			PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_preprocess_t,hints_file), NULL, NULL },
 	{ "with_ascend_hack",		PW_TYPE_BOOLEAN,
 	  offsetof(rlm_preprocess_t,with_ascend_hack), NULL, "no" },

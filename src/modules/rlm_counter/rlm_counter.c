@@ -113,7 +113,7 @@ typedef struct rad_counter {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "filename", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED , offsetof(rlm_counter_t,filename), NULL, NULL },
+  { "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED , offsetof(rlm_counter_t,filename), NULL, NULL },
   { "key", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE, offsetof(rlm_counter_t,key_name), NULL, NULL },
   { "reset", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_counter_t,reset), NULL,  NULL },
   { "count-attribute", PW_TYPE_STRING_PTR | PW_TYPE_ATTRIBUTE, offsetof(rlm_counter_t,count_attribute), NULL, NULL },

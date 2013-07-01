@@ -375,7 +375,7 @@ struct passwd_instance {
 };
 
 static const CONF_PARSER module_config[] = {
-	{ "filename",   PW_TYPE_FILENAME | PW_TYPE_EXISTS | PW_TYPE_REQUIRED,
+	{ "filename",   PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED,
 	  offsetof(struct passwd_instance, filename), NULL,  NULL },
 	{ "format",   PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
 	  offsetof(struct passwd_instance, format), NULL,  NULL },

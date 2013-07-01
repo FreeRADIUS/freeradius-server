@@ -53,8 +53,7 @@ RCSID("$Id$")
 
 #ifdef WITH_UNLANG
 
-#if 0
-#define WITH_EVAL_DEBUG (1)
+#ifdef WITH_EVAL_DEBUG
 #define EVAL_DEBUG(fmt, ...) printf("EVAL: ");printf(fmt, ## __VA_ARGS__);printf("\n");fflush(stdout)
 #else
 #define EVAL_DEBUG(...)

@@ -79,21 +79,21 @@ static int fallthrough(VALUE_PAIR *vp)
 }
 
 static const CONF_PARSER module_config[] = {
-	{ "filename",	   PW_TYPE_FILENAME,
+	{ "filename",	   PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,filename), NULL, NULL },
-	{ "usersfile",	   PW_TYPE_FILENAME,
+	{ "usersfile",	   PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,usersfile), NULL, NULL },
-	{ "acctusersfile", PW_TYPE_FILENAME,
+	{ "acctusersfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,acctusersfile), NULL, NULL },
 #ifdef WITH_PROXY
-	{ "preproxy_usersfile", PW_TYPE_FILENAME,
+	{ "preproxy_usersfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,preproxy_usersfile), NULL, NULL },
-	{ "postproxy_usersfile", PW_TYPE_FILENAME,
+	{ "postproxy_usersfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,postproxy_usersfile), NULL, NULL },
 #endif
-	{ "auth_usersfile", PW_TYPE_FILENAME,
+	{ "auth_usersfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,auth_usersfile), NULL, NULL },
-	{ "postauth_usersfile", PW_TYPE_FILENAME,
+	{ "postauth_usersfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_files_t,postauth_usersfile), NULL, NULL },
 	{ "compat",	   PW_TYPE_STRING_PTR,
 	  offsetof(rlm_files_t,compat_mode), NULL, "cistron" },

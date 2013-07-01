@@ -829,9 +829,9 @@ int detail_decode(rad_listen_t *this, UNUSED REQUEST *request)
 
 
 static const CONF_PARSER detail_config[] = {
-	{ "detail",   PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	{ "detail",   PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED,
 	  offsetof(listen_detail_t, filename), NULL,  NULL },
-	{ "filename",   PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	{ "filename",   PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED,
 	  offsetof(listen_detail_t, filename), NULL,  NULL },
 	{ "load_factor",   PW_TYPE_INTEGER,
 	  offsetof(listen_detail_t, load_factor), NULL, Stringify(10)},

@@ -164,7 +164,7 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	    offsetof(ikev2_ctx,DHCounterMax),NULL,IKEv2_DEFAULT_DH_COUNTER_MAX_STR},
 	{  "default_authtype",PW_TYPE_STRING_PTR,
 	    0,&default_authtype,"both" },
-	{  "usersfile",PW_TYPE_STRING_PTR,
+	{  "usersfile",PW_TYPE_FILE_INPUT,
 	    0,&usersfilename,"${confdir}/users" },
 	{  "server_authtype",PW_TYPE_STRING_PTR,
 	    0,&server_authtype,"secret" },

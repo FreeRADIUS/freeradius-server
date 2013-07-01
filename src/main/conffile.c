@@ -869,7 +869,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 		  int type, void *data, char const *dflt)
 {
 	int rcode;
-	bool deprecated, required, attribute, exists;
+	bool deprecated, required, attribute;
 	char **q;
 	char const *value;
 	fr_ipaddr_t ipaddr;
@@ -881,7 +881,6 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 	deprecated = (type & PW_TYPE_DEPRECATED);
 	required = (type & PW_TYPE_REQUIRED);
 	attribute = (type & PW_TYPE_ATTRIBUTE);
-	exists = (type & PW_TYPE_EXISTS);
 
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
@@ -1005,7 +1004,8 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 		 *	except that we also "stat" the file, and
 		 *	cache the result.
 		 */
-	case PW_TYPE_FILENAME:
+	case PW_TYPE_FILE_INPUT:
+	case PW_TYPE_FILE_OUTPUT:
 		q = (char **) data;
 		if (*q != NULL) {
 			free(*q);
@@ -1048,12 +1048,11 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 				
 				*mtime = buf.st_mtime;
 				/* FIXME: error? */
-				cf_data_add_internal(cs, *q, mtime, free,
-						     PW_TYPE_FILENAME);
+				cf_data_add_internal(cs, *q, mtime, free, type);
 			/*
 			 *	We were expecting the file to exist...
 			 */
-			} else if (exists) {
+			} else if (type == PW_TYPE_FILE_INPUT) {
 				ERROR("File \"%s\" does not exist", value);
 				return -1;
 			}
@@ -1166,7 +1165,8 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 		}
 
 		if ((variables[i].type != PW_TYPE_STRING_PTR) &&
-		    (variables[i].type != PW_TYPE_FILENAME)) {
+		    (variables[i].type != PW_TYPE_FILE_INPUT) &&
+		    (variables[i].type != PW_TYPE_FILE_OUTPUT)) {
 			continue;
 		}
 
@@ -1896,7 +1896,7 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 #endif
 	}
 
-	if (cf_data_find_internal(cs, filename, PW_TYPE_FILENAME)) {
+	if (cf_data_find_internal(cs, filename, PW_TYPE_FILE_INPUT)) {
 		fclose(fp);
 		ERROR("Cannot include the same file twice: \"%s\"",
 		       filename);
@@ -1909,15 +1909,14 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 	mtime = rad_malloc(sizeof(*mtime));
 	*mtime = statbuf.st_mtime;
 
-	if (cf_data_add_internal(cs, filename, mtime, free,
-				 PW_TYPE_FILENAME) < 0) {
+	if (cf_data_add_internal(cs, filename, mtime, free, PW_TYPE_FILE_INPUT) < 0) {
 		fclose(fp);
 		ERROR("Internal error opening file \"%s\"",
 		       filename);
 		return -1;
 	}
 
-	cd = cf_data_find_internal(cs, filename, PW_TYPE_FILENAME);
+	cd = cf_data_find_internal(cs, filename, PW_TYPE_FILE_INPUT);
 	if (!cd) {
 		fclose(fp);
 		ERROR("Internal error opening file \"%s\"",
@@ -2553,7 +2552,7 @@ static int filename_stat(UNUSED void *context, void *data)
 	struct stat buf;
 	CONF_DATA *cd = data;
 
-	if (cd->flag != PW_TYPE_FILENAME) return 0;
+	if (cd->flag != PW_TYPE_FILE_INPUT) return 0;
 
 	if (stat(cd->name, &buf) < 0) return -1;
 
@@ -2631,7 +2630,7 @@ static int cf_section_cmp(CONF_SECTION *a, CONF_SECTION *b)
 	}
 
 	/*
-	 *	Walk over the CONF_DATA, stat'ing PW_TYPE_FILENAME.
+	 *	Walk over the CONF_DATA, stat'ing PW_TYPE_FILE_INPUT.
 	 */
 	if (a->data_tree &&
 	    (rbtree_walk(a->data_tree, InOrder, filename_stat, NULL) != 0)) {

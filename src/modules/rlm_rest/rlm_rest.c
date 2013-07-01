@@ -32,13 +32,13 @@ RCSID("$Id$")
  *	TLS Configuration
  */
 static CONF_PARSER tls_config[] = {
-	{ "cacertfile", PW_TYPE_FILENAME,
+	{ "cacertfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_rest_section_t,tls_cacertfile), NULL, NULL},
-	{ "cacertdir", PW_TYPE_FILENAME,
+	{ "cacertdir", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_rest_section_t,tls_cacertdir), NULL, NULL},
-	{ "certfile", PW_TYPE_FILENAME,
+	{ "certfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_rest_section_t,tls_certfile), NULL, NULL},
-	{ "keyfile", PW_TYPE_FILENAME,
+	{ "keyfile", PW_TYPE_FILE_INPUT,
 	  offsetof(rlm_rest_section_t,tls_keyfile), NULL, NULL },
 	{ "keypassword", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_rest_section_t, tls_keypassword), NULL, NULL },

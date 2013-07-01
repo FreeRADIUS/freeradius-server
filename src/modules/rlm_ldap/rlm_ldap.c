@@ -63,11 +63,11 @@ const FR_NAME_NUMBER ldap_tls_require_cert[] = {
  */
 static CONF_PARSER tls_config[] = {
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, start_tls), NULL, "no"},
-	{"cacertfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_cacertfile), NULL, NULL},
-	{"cacertdir", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_cacertdir), NULL, NULL},
-	{"certfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_certfile), NULL, NULL},
-	{"keyfile", PW_TYPE_FILENAME, offsetof(ldap_instance_t, tls_keyfile), NULL, NULL}, // OK if it changes on HUP
-	{"randfile", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_randfile), NULL, NULL},
+	{"cacertfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_cacertfile), NULL, NULL},
+	{"cacertdir", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_cacertdir), NULL, NULL},
+	{"certfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_certfile), NULL, NULL},
+	{"keyfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_keyfile), NULL, NULL}, // OK if it changes on HUP
+	{"randfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_randfile), NULL, NULL},
 	{"require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert_str), NULL, NULL},
 
 	{ NULL, -1, 0, NULL, NULL }

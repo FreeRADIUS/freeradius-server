@@ -473,7 +473,8 @@ static void cprint_conf_parser(rad_listen_t *listener, int indent, CONF_SECTION 
 			break;
 			
 		case PW_TYPE_STRING_PTR:
-		case PW_TYPE_FILENAME:
+		case PW_TYPE_FILE_INPUT:
+		case PW_TYPE_FILE_OUTPUT:
 			/*
 			 *	FIXME: Escape things in the string!
 			 */

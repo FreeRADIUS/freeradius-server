@@ -46,11 +46,11 @@ typedef struct rlm_attr_filter {
 } rlm_attr_filter_t;
 
 static const CONF_PARSER module_config[] = {
-	{ "attrsfile",     PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
+	{ "attrsfile",     PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
-	{ "file",     PW_TYPE_FILENAME | PW_TYPE_DEPRECATED,
+	{ "file",     PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
-	{ "filename",     PW_TYPE_FILENAME | PW_TYPE_REQUIRED,
+	{ "filename",     PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED,
 	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
 	{ "key",     PW_TYPE_STRING_PTR,
 	  offsetof(rlm_attr_filter_t, key), NULL, "%{Realm}" },
