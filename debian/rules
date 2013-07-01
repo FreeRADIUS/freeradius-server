@@ -69,6 +69,8 @@ endif
 	
 
 	./configure $(confflags) \
+		--config-cache \
+		--disable-developer \
 		--prefix=/usr \
 		--exec-prefix=/usr \
 		--mandir=$(mandir) \
@@ -78,12 +80,8 @@ endif
 		--localstatedir=/var \
 		--with-raddbdir=$(raddbdir) \
 		--with-logdir=/var/log/$(package) \
-		--enable-ltdl-install=no --enable-strict-dependencies \
-		--with-experimental-modules=no \
-		--enable-boilermake \
-		--disable-developer \
-		--with-large-files --with-udpfromto --with-edir \
-		--config-cache \
+		--with-large-files \
+		--with-udpfromto \
 		--without-rlm_eap_tnc \
 		--with-rlm_sql_postgresql_lib_dir=`pg_config --libdir` \
 		--with-rlm_sql_postgresql_include_dir=`pg_config --includedir` \
