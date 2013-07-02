@@ -363,14 +363,14 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	int		status;
 
 	char		out[1024];
-	bool		wait = false;
+	bool		we_wait = false;
 	VALUE_PAIR	*vp, *tmp;
 
 	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
 	if (vp) {
-		wait = false;
+		we_wait = false;
 	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
-		wait = true;
+		we_wait = true;
 	}
 	if (!vp) {
 		if (!inst->program) {
@@ -382,7 +382,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	}
 
 	tmp = NULL;
-	status = radius_exec_program(request, vp->vp_strvalue, wait, inst->shell_escape,
+	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
 				     out, sizeof(out),
 				     request->packet->vps, &tmp);
 	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
@@ -418,7 +418,7 @@ static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	int		status;
 	
 	char		out[1024];
-	bool 		wait = false;
+	bool 		we_wait = false;
 	VALUE_PAIR	*vp;
 
 	/*
@@ -431,15 +431,15 @@ static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	
 	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
 	if (vp) {
-		wait = true;
+		we_wait = true;
 	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
-		wait = false;
+		we_wait = false;
 	}
 	if (!vp) {
 		return RLM_MODULE_NOOP;
 	}
 	
-	status = radius_exec_program(request, vp->vp_strvalue, wait, inst->shell_escape,
+	status = radius_exec_program(request, vp->vp_strvalue, we_wait, inst->shell_escape,
 				     out, sizeof(out),
 				     request->packet->vps, NULL);
 	return rlm_exec_status2rcode(request, out, strlen(out), status);
