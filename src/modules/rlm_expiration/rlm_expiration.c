@@ -49,9 +49,7 @@ typedef struct rlm_expiration_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "reply-message", PW_TYPE_STRING_PTR, offsetof(rlm_expiration_t,msg),
-    NULL, "Password Has Expired\r\n"},
-  { NULL, -1, 0, NULL, NULL }
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
