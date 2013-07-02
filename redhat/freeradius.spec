@@ -11,8 +11,6 @@ Source100: freeradius-radiusd-init
 Source102: freeradius-logrotate
 Source103: freeradius-pam-conf
 
-Patch1: freeradius-cert-config.patch
-
 Obsoletes: freeradius-devel
 Obsoletes: freeradius-libs
 
