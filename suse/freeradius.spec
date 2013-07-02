@@ -127,7 +127,7 @@ See http://wiki.freeradius.org/project/Acknowledgements
 # This package failed when testing with -Wl,-as-needed being default.
 # So we disable it here, if you want to retest, just delete this comment and the line below.
 export SUSE_ASNEEDED=0
-export CFLAGS="$RPM_OPT_FLAGS -fstack-protector -fno-strict-aliasing"
+export CFLAGS="$RPM_OPT_FLAGS"
 %ifarch x86_64 ppc ppc64 s390 s390x
 export CFLAGS="$CFLAGS -fPIC -DPIC"
 %endif
