@@ -210,16 +210,16 @@ ldap {
 		#
 		#  The following attributes are optional:
 		#    * shortname - Friendly name associated with the client
-		#    * type - NAS Type
-		#    * server - Virtual server to associate the client with
-		#    * require_ma - Whether we require the Message-Authenticator
+		#    * nas_type - NAS Type
+		#    * virtual_server - Virtual server to associate the client with
+		#    * require_message_authenticator - Whether we require the Message-Authenticator
 		#      attribute to be present in requests from the client.
 		#
 		attributes {
 			identifier = 'frClientIdentifier'
+			secret = 'frClientSecret'
 #			shortname = 'frClientShortname'
 #			nas_type = 'frClientType'
-			secret = 'frClientSecret'
 #			virtual_server = 'frClientVirtualServer'
 #			require_message_authenticator = 'frClientRequireMa'
 		}
