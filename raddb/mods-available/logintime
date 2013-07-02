@@ -14,18 +14,10 @@
 # calculated based on the remaining time.  See "doc/README".
 #
 logintime {
-	#
-	# The Reply-Message which will be sent back in case
-	# the account is calling outside of the allowed
-	# timespan. Dynamic substitution is supported.
-	#
-	reply-message = "You are calling outside your allowed timespan\r\n"
-	#reply-message = "Outside allowed timespan (%{control:Login-Time}), %{User-Name}\r\n"
-
 	# The minimum timeout (in seconds) a user is allowed
 	# to have. If the calculated timeout is lower we don't
 	# allow the logon. Some NASes do not handle values
 	# lower than 60 seconds well.
-	minimum-timeout = 60
+	minimum_timeout = 60
 }
 

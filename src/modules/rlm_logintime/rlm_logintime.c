@@ -52,7 +52,8 @@ typedef struct rlm_logintime_t {
  *	buffer over-flows.
  */
 static const CONF_PARSER module_config[] = {
-  { "minimum-timeout", PW_TYPE_INTEGER, offsetof(rlm_logintime_t,min_time), NULL, "60" },
+  { "minimum-timeout", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_logintime_t,min_time), NULL, "60" },
+  { "minimum_timeout", PW_TYPE_INTEGER, offsetof(rlm_logintime_t,min_time), NULL, "60" },
   
   { NULL, -1, 0, NULL, NULL }
 };
@@ -222,7 +223,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rlm_logintime_t *inst = instance;
 
 	if (inst->min_time == 0) {
-		cf_log_err_cs(conf, "Invalid value '0' for minimum-timeout");
+		cf_log_err_cs(conf, "Invalid value '0' for minimum_timeout");
 		return -1;
 	}
 
