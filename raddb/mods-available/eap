@@ -181,7 +181,7 @@ eap {
 		#  certificate_file must contain the same file
 		#  name.
 		#
-		#  If CA_file (below) is not used, then the
+		#  If ca_file (below) is not used, then the
 		#  certificate_file below MUST include not
 		#  only the server certificate, but ALSO all
 		#  of the CA certificates used to sign the
@@ -203,7 +203,7 @@ eap {
 		#  not use client certificates, and you do not want
 		#  to permit EAP-TLS authentication, then delete
 		#  this configuration item.
-		CA_file = ${cadir}/ca.pem
+		ca_file = ${cadir}/ca.pem
 
 		#
 		#  If OpenSSL supports TLS-PSK, then we can use
@@ -215,8 +215,8 @@ eap {
 		#	private_key_password
 		#	private_key_file
 		#	certificate_file
-		#	CA_file
-		#	CA_path
+		#	ca_file
+		#	ca_path
 		#
 		#  For now, the identity is fixed, and must be the
 		#  same on the client.  The passphrase must be a hex
@@ -277,7 +277,7 @@ eap {
 		#  3) uncomment the line below.
 		#  5) Restart radiusd
 	#	check_crl = yes
-		CA_path = ${cadir}
+		ca_path = ${cadir}
 
 	       #
 	       #  If check_cert_issuer is set, the value will
@@ -441,15 +441,15 @@ eap {
 			#  We recommend using the OpenSSL command-line
 			#  tool.
 			#
-			#  The ${..CA_path} text is a reference to
-			#  the CA_path variable defined above.
+			#  The ${..ca_path} text is a reference to
+			#  the ca_path variable defined above.
 			#
 			#  The %{TLS-Client-Cert-Filename} is the name
 			#  of the temporary file containing the cert
 			#  in PEM format.  This file is automatically
 			#  deleted by the server when the command
 			#  returns.
-	#    		client = "/path/to/openssl verify -CApath ${..CA_path} %{TLS-Client-Cert-Filename}"
+	#    		client = "/path/to/openssl verify -CApath ${..ca_path} %{TLS-Client-Cert-Filename}"
 		}
 
 		#

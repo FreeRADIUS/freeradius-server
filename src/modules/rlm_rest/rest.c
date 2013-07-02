@@ -2054,52 +2054,52 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *	Set SSL/TLS authentication parameters
 	 */
-	if (section->tls_certfile) {
+	if (section->tls_certificate_file) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_SSLCERT,
-				       section->tls_certfile);
+				       section->tls_certificate_file);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->tls_keyfile) {
+	if (section->tls_private_key_file) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_SSLKEY,
-				       section->tls_keyfile);
+				       section->tls_private_key_file);
 		if (ret != CURLE_OK) goto error;
 	}
 
-	if (section->tls_keypassword) {
+	if (section->tls_private_key_password) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_KEYPASSWD,
-				       section->tls_keypassword);
+				       section->tls_private_key_password);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->tls_cacertfile) {
+	if (section->tls_ca_file) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_ISSUERCERT,
-				       section->tls_cacertfile);
+				       section->tls_ca_file);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->tls_cacertdir) {
+	if (section->tls_ca_path) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_CAPATH,
-				       section->tls_cacertdir);
+				       section->tls_ca_path);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->tls_randfile) {
+	if (section->tls_random_file) {
 		ret = curl_easy_setopt(candle,
 			       	       CURLOPT_RANDOM_FILE,
-				       section->tls_randfile);
+				       section->tls_random_file);
 		if (ret != CURLE_OK) goto error;
 	}
 	
-	if (section->tls_verify_cert) {
+	if (section->tls_check_cert) {
 		ret = curl_easy_setopt(candle,
 				       CURLOPT_SSL_VERIFYHOST,
-				       (section->tls_verify_cert_cn == true) ?
+				       (section->tls_check_cert_cn == true) ?
 					2 : 0);
 		if (ret != CURLE_OK) goto error;
 	} else {

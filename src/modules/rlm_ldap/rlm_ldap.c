@@ -63,14 +63,30 @@ const FR_NAME_NUMBER ldap_tls_require_cert[] = {
  *	TLS Configuration
  */
 static CONF_PARSER tls_config[] = {
+	/*
+	 *	Deprecated attributes
+	 */
+	{"cacertfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_ca_file), NULL, NULL},
+	{"cacertdir", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_ca_path), NULL, NULL},
+	{"certfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_certificate_file), NULL, NULL},
+	{"keyfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_private_key_file), NULL, NULL}, // OK if it changes on HUP
+	{"randfile", PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED, offsetof(ldap_instance_t, tls_random_file), NULL, NULL},
+	
+	/*
+	 *	Generic TLS attributes
+	 */
+	{"ca_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_ca_file), NULL, NULL},
+	{"ca_path", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_ca_path), NULL, NULL},
+	{"certificate_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_certificate_file), NULL, NULL},
+	{"private_key_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_private_key_file), NULL, NULL}, // OK if it changes on HUP
+	{"random_file", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_random_file), NULL, NULL},
+	
+	/*
+	 *	LDAP Specific TLS attributes
+	 */
 	{"start_tls", PW_TYPE_BOOLEAN, offsetof(ldap_instance_t, start_tls), NULL, "no"},
-	{"cacertfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_cacertfile), NULL, NULL},
-	{"cacertdir", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_cacertdir), NULL, NULL},
-	{"certfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_certfile), NULL, NULL},
-	{"keyfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_keyfile), NULL, NULL}, // OK if it changes on HUP
-	{"randfile", PW_TYPE_FILE_INPUT, offsetof(ldap_instance_t, tls_randfile), NULL, NULL},
 	{"require_cert", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, tls_require_cert_str), NULL, NULL},
-
+	
 	{ NULL, -1, 0, NULL, NULL }
 };
 

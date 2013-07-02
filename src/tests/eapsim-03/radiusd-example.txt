@@ -635,7 +635,7 @@ modules {
 		#	certificate_file = /path/filename
 
 		#	Trusted Root CA list
-			#CA_file = /path/filename
+			#ca_file = /path/filename
 
 		#	dh_file = /path/filename
 			#random_file = /path/filename

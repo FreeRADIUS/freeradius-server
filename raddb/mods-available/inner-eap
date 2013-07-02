@@ -57,7 +57,7 @@ eap inner-eap {
 		#  certificate_file must contain the same file
 		#  name.
 		#
-		#  If CA_file (below) is not used, then the
+		#  If ca_file (below) is not used, then the
 		#  certificate_file below MUST include not
 		#  only the server certificate, but ALSO all
 		#  of the CA certificates used to sign the
@@ -66,7 +66,7 @@ eap inner-eap {
 
 		#  You may want different CAs for inner and outer
 		#  certificates.  If so, edit this file.
-		CA_file = ${cadir}/ca.pem
+		ca_file = ${cadir}/ca.pem
 
 		cipher_list = "DEFAULT"
 
@@ -84,7 +84,7 @@ eap inner-eap {
 		#  CRL and OCSP things go here.  See the main "eap"
 		#  file for details.
 	#	check_crl = yes
-	#	CA_path = /path/to/directory/with/ca_certs/and/crls/
+	#	ca_path = /path/to/directory/with/ca_certs/and/crls/
 
 		#
 		#  The session resumption / fast reauthentication

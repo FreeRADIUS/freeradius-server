@@ -5,13 +5,13 @@ rest {
 	#  server. 
 	#
 	tls {
-#		cacertfile      = ${certdir}/cacert.pem
-#		cacertdir       = ${certdir}
+#		ca_file	= ${certdir}/cacert.pem
+#		ca_path	= ${certdir}
 
-#		certfile	= /path/to/radius.crt
-#		keyfile		= /path/to/radius.key
-#		keypassword     = "supersecret"
-#		randfile	= ${certdir}/random
+#		certificate_file	= /path/to/radius.crt
+#		private_key_file	= /path/to/radius.key
+#		private_key_password	= "supersecret"
+#		random_file		= ${certdir}/random
 
 		#  Server certificate verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
@@ -19,7 +19,7 @@ rest {
 		#	   trusted CAs)
 		#
 		#  The default is "yes"
-#		verify_cert     = "yes"
+#		check_cert     = "yes"
 
 		#  Server certificate CN verification requirements.  Can be:
 		#    "no"  (don't even bother trying)
@@ -27,7 +27,7 @@ rest {
 		#	   in the URI)
 		#
 		#  The default is "yes"
-#		verify_cert_cn  = "yes"
+#		check_cert_cn  = "yes"
 	}
 
 	# rlm_rest will open a connection to the server specified in connect_uri

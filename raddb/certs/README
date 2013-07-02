@@ -15,7 +15,7 @@ refuse to authenticate to FreeRADIUS.
 
   In general, you should use self-signed certificates for 802.1x (EAP)
 authentication.  When you list root CAs from other organizations in
-the "CA_file", you permit them to masquerade as you, to authenticate
+the "ca_file", you permit them to masquerade as you, to authenticate
 your users, and to issue client certificates for EAP-TLS.
 
   If FreeRADIUS was configured to use OpenSSL, then simply starting

@@ -156,18 +156,18 @@ typedef struct ldap_instance {
 							//!< to start encrypted communications using the standard
 							//!< LDAP port.
 
-	char const	*tls_cacertfile;		//!< Sets the full path to a CA certificate (used to validate
+	char const	*tls_ca_file;			//!< Sets the full path to a CA certificate (used to validate
 							//!< the certificate the server presents).
 							
-	char const	*tls_cacertdir;			//!< Sets the path to a directory containing CA certificates.
+	char const	*tls_ca_path;			//!< Sets the path to a directory containing CA certificates.
 	
-	char const	*tls_certfile;			//!< Sets the path to the public certificate file we present
+	char const	*tls_certificate_file;		//!< Sets the path to the public certificate file we present
 							//!< to the servers.
 							
-	char const	*tls_keyfile;			//!< Sets the path to the private key for our public 
+	char const	*tls_private_key_file;		//!< Sets the path to the private key for our public 
 							//!< certificate.
 							
-	char const	*tls_randfile;			//!< Path to the random file if /dev/random and /dev/urandom
+	char const	*tls_random_file;		//!< Path to the random file if /dev/random and /dev/urandom
 							//!< are unavailable.
 							
 	char const	*tls_require_cert_str;		//!< Sets requirements for validating the certificate the 

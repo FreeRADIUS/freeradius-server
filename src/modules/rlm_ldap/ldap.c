@@ -1119,20 +1119,20 @@ void *mod_conn_create(void *instance)
 #  define maybe_ldap_option(_option, _name, _value) \
 	if (_value) do_ldap_option(_option, _name, _value)
 
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "cacertfile", inst->tls_cacertfile);
-	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "cacertdir", inst->tls_cacertdir);
+	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTFILE, "ca_file", inst->tls_ca_file);
+	maybe_ldap_option(LDAP_OPT_X_TLS_CACERTDIR, "ca_path", inst->tls_ca_path);
 
 
 	/*
 	 *	Set certificate options
 	 */
-	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certfile", inst->tls_certfile);
-	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "keyfile", inst->tls_keyfile);
-	maybe_ldap_option(LDAP_OPT_X_TLS_RANDOM_FILE, "randfile", inst->tls_randfile);
+	maybe_ldap_option(LDAP_OPT_X_TLS_CERTFILE, "certificate_file", inst->tls_certificate_file);
+	maybe_ldap_option(LDAP_OPT_X_TLS_KEYFILE, "private_key_file", inst->tls_private_key_file);
+	maybe_ldap_option(LDAP_OPT_X_TLS_RANDOM_FILE, "random_file", inst->tls_random_file);
 
 #  ifdef LDAP_OPT_X_TLS_NEVER
 	if (inst->tls_require_cert_str) {
-		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "tls_require_cert", &inst->tls_require_cert);
+		do_ldap_option(LDAP_OPT_X_TLS_REQUIRE_CERT, "require_cert", &inst->tls_require_cert);
 	}
 #  endif
 

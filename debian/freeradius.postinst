@@ -95,7 +95,7 @@ case "$1" in
 	        adduser --quiet freerad ssl-cert
 	      fi
 	    fi
-            if egrep -q '^[ 	]*CA_file = \${cadir}/ca.pem' /etc/freeradius/modules/eap && \
+            if egrep -q '^[ 	]*ca_file = \${cadir}/ca.pem' /etc/freeradius/modules/eap && \
                test ! -f /etc/freeradius/certs/ca.pem
             then
 	      ln -s /etc/ssl/certs/ca.pem /etc/freeradius/certs/ca.pem

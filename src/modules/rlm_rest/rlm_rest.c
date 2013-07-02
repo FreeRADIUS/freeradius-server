@@ -32,22 +32,22 @@ RCSID("$Id$")
  *	TLS Configuration
  */
 static CONF_PARSER tls_config[] = {
-	{ "cacertfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_rest_section_t,tls_cacertfile), NULL, NULL},
-	{ "cacertdir", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_rest_section_t,tls_cacertdir), NULL, NULL},
-	{ "certfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_rest_section_t,tls_certfile), NULL, NULL},
-	{ "keyfile", PW_TYPE_FILE_INPUT,
-	  offsetof(rlm_rest_section_t,tls_keyfile), NULL, NULL },
-	{ "keypassword", PW_TYPE_STRING_PTR,
-	  offsetof(rlm_rest_section_t, tls_keypassword), NULL, NULL },
-	{ "randfile", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
-	  offsetof(rlm_rest_section_t,tls_randfile), NULL, NULL },
-	{ "verify_cert", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_rest_section_t, tls_verify_cert), NULL, "yes" },
-	{ "verify_cert_cn", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_rest_section_t, tls_verify_cert_cn), NULL, "yes" },
+	{ "ca_file", PW_TYPE_FILE_INPUT,
+	  offsetof(rlm_rest_section_t,tls_ca_file), NULL, NULL},
+	{ "ca_path", PW_TYPE_FILE_INPUT,
+	  offsetof(rlm_rest_section_t,tls_ca_path), NULL, NULL},
+	{ "certificate_file", PW_TYPE_FILE_INPUT,
+	  offsetof(rlm_rest_section_t,tls_certificate_file), NULL, NULL},
+	{ "private_key_file", PW_TYPE_FILE_INPUT,
+	  offsetof(rlm_rest_section_t,tls_private_key_file), NULL, NULL },
+	{ "private_key_password", PW_TYPE_STRING_PTR,
+	  offsetof(rlm_rest_section_t, tls_private_key_password), NULL, NULL },
+	{ "random_file", PW_TYPE_STRING_PTR, /* OK if it changes on HUP */
+	  offsetof(rlm_rest_section_t,tls_random_file), NULL, NULL },
+	{ "check_cert", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_rest_section_t, tls_check_cert), NULL, "yes" },
+	{ "check_cert_cn", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_rest_section_t, tls_check_cert_cn), NULL, "yes" },
 	
 	{ NULL, -1, 0, NULL, NULL }
 };

@@ -352,12 +352,12 @@ ldap {
 		# using ldaps (port 636) connections
 #		start_tls = yes
 
-#		cacertfile	= ${certdir}/cacert.pem
+#		ca_file	= ${certdir}/cacert.pem
 
-#		cacertdir	= ${certdir}
-#		certfile	= /path/to/radius.crt
-#		keyfile		= /path/to/radius.key
-#		randfile	= ${certdir}/random
+#		ca_path	= ${certdir}
+#		certificate_file = /path/to/radius.crt
+#		private_key_file = /path/to/radius.key
+#		random_file = ${certdir}/random
 
 		#  Certificate Verification requirements.  Can be:
 		#    "never" (don't even bother trying)

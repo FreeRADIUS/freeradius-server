@@ -146,14 +146,14 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
     char *server_idtype=NULL;
 
     CONF_PARSER module_config[] = {
-	{  "CA_file", PW_TYPE_STRING_PTR,
+	{  "ca_file", PW_TYPE_STRING_PTR,
 	    offsetof(ikev2_ctx,trusted),NULL,NULL },
 	{  "private_key_file",PW_TYPE_STRING_PTR,
 	    offsetof(ikev2_ctx,pkfile),NULL,NULL },
 	{  "private_key_password",PW_TYPE_STRING_PTR,
 	    offsetof(ikev2_ctx,pkfile_pwd),NULL,NULL },
 	{  "certificate_file", PW_TYPE_STRING_PTR,
-	    offsetof(ikev2_ctx,certfile),NULL,NULL },
+	    offsetof(ikev2_ctx,certificate_file),NULL,NULL },
 	{  "crl_file", PW_TYPE_STRING_PTR,
 	    offsetof(ikev2_ctx,crl_file),NULL,NULL },
 	{   "id", PW_TYPE_STRING_PTR,
@@ -208,12 +208,12 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	case IKEv2_AUTH_SK:
 	    break;
 	case IKEv2_AUTH_CERT:
-	    if(!i2->certfile || !i2->pkfile) {
+	    if(!i2->certificate_file || !i2->pkfile) {
 		ERROR(IKEv2_LOG_PREFIX "'certificate_file' and 'private_key_file' items are required for 'cert' auth type");
 		return -1;
 	    }
-	    if(!file_exists(i2->certfile)) {
-		ERROR(IKEv2_LOG_PREFIX "Can not open 'certificate_file' %s",i2->certfile);
+	    if(!file_exists(i2->certificate_file)) {
+		ERROR(IKEv2_LOG_PREFIX "Can not open 'certificate_file' %s",i2->certificate_file);
 		return -1;
 	    }
 	    if(!file_exists(i2->pkfile)) {
@@ -224,10 +224,10 @@ static int ikev2_attach(CONF_SECTION *conf, void **instance)
 	    break;
     }
     if(!i2->trusted) {
-	AUTH(IKEv2_LOG_PREFIX "'CA_file' item not set, client cert based authentication will fail");
+	AUTH(IKEv2_LOG_PREFIX "'ca_file' item not set, client cert based authentication will fail");
     } else {
 	if(!file_exists(i2->trusted)) {
-	    ERROR(IKEv2_LOG_PREFIX "Can not open 'CA_file' %s",i2->trusted);
+	    ERROR(IKEv2_LOG_PREFIX "Can not open 'ca_file' %s",i2->trusted);
 	    return -1;
 	}
     }
