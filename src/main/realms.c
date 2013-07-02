@@ -990,9 +990,13 @@ static int server_pool_add(realm_config_t *rc,
 	if (cp) {
 		static FR_NAME_NUMBER pool_types[] = {
 			{ "load-balance", HOME_POOL_LOAD_BALANCE },
+			
 			{ "fail-over", HOME_POOL_FAIL_OVER },
-			{ "round_robin", HOME_POOL_LOAD_BALANCE },
 			{ "fail_over", HOME_POOL_FAIL_OVER },
+			
+			{ "round-robin", HOME_POOL_LOAD_BALANCE },
+			{ "round_robin", HOME_POOL_LOAD_BALANCE },
+
 			{ "client-balance", HOME_POOL_CLIENT_BALANCE },
 			{ "client-port-balance", HOME_POOL_CLIENT_PORT_BALANCE },
 			{ "keyed-balance", HOME_POOL_KEYED_BALANCE },
