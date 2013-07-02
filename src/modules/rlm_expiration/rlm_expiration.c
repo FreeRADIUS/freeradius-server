@@ -29,37 +29,11 @@ RCSID("$Id$")
 #include <ctype.h>
 
 /*
- *	Define a structure for our module configuration.
- *
- *	These variables do not need to be in a structure, but it's
- *	a lot cleaner to do so, and a pointer to the structure can
- *	be used as the instance handle.
- */
-typedef struct rlm_expiration_t {
-	char *msg;		/* The Reply-Message passed back to the user if the account is expired */
-} rlm_expiration_t;
-
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
-static const CONF_PARSER module_config[] = {
-	{ NULL, -1, 0, NULL, NULL }
-};
-
-/*
  *      Check if account has expired, and if user may login now.
  */
-static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
+static rlm_rcode_t mod_authorize(UNUSED void *instance, REQUEST *request)
 {
-	rlm_expiration_t *inst = instance;
 	VALUE_PAIR *vp, *check_item = NULL;
-	char msg[MAX_STRING_LEN];
 
 	check_item = pairfind(request->config_items, PW_EXPIRATION, 0, TAG_ANY);
 	if (check_item != NULL) {
@@ -120,14 +94,12 @@ static int expirecmp(UNUSED void *instance, REQUEST *req, UNUSED VALUE_PAIR *req
  *	that must be referenced in later calls, store a handle to it
  *	in *instance otherwise put a null pointer there.
  */
-static int mod_instantiate(UNUSED CONF_SECTION *conf, void *instance)
+static int mod_instantiate(UNUSED CONF_SECTION *conf, UNUSED void *instance)
 {
-	rlm_expiration_t *inst = instance;
-
 	/*
-	 * Register the expiration comparison operation.
+	 *	Register the expiration comparison operation.
 	 */
-	paircompare_register(PW_EXPIRATION, 0, expirecmp, inst);
+	paircompare_register(PW_EXPIRATION, 0, expirecmp, instance);
 	return 0;
 }
 
@@ -144,13 +116,13 @@ module_t rlm_expiration = {
 	RLM_MODULE_INIT,
 	"expiration",
 	RLM_TYPE_THREAD_SAFE,		/* type */
-	sizeof(rlm_expiration_t),
-	module_config,
+	0,
+	NULL,
 	mod_instantiate,		/* instantiation */
 	NULL,				/* detach */
 	{
 		NULL,			/* authentication */
-		mod_authorize, 	/* authorization */
+		mod_authorize,		/* authorization */
 		NULL,			/* preaccounting */
 		NULL,			/* accounting */
 		NULL,			/* checksimul */
