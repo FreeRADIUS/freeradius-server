@@ -37,7 +37,7 @@ typedef struct rlm_soh_t {
 /*
  * Not sure how to make this useful yet...
  */
-static size_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen) {
+static ssize_t soh_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen) {
 
 	VALUE_PAIR* vp[6];
 	char const *osname;

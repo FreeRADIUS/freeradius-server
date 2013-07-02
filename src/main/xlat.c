@@ -137,8 +137,8 @@ static int valuepair2str(char * out,int outlen,VALUE_PAIR * pair, int type)
 /** Print data as integer, not as VALUE.
  *
  */
-static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
-			   char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
+			    char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR 	*vp;
 
@@ -176,15 +176,18 @@ static size_t xlat_integer(UNUSED void *instance, REQUEST *request,
 			break;
 	}
 	
+	REDEBUG("Type \"%s\" cannot be converted to integer",
+		fr_int2str(dict_attr_types, vp->da->type, PW_TYPE_INVALID));
 	*out = '\0';
-	return 0;
+	
+	return -1;
 }
 
 /** Print data as hex, not as VALUE.
  *
  */
-static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
-		       char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_hex(UNUSED void *instance, REQUEST *request,
+		        char const *fmt, char *out, size_t outlen)
 {
 	size_t i;
 	VALUE_PAIR *vp;
@@ -196,7 +199,7 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
 		*out = '\0';
-		return 0;
+		return -1;
 	}
 	
 	ret = rad_vp2data(vp, buffer, sizeof(buffer));
@@ -220,8 +223,8 @@ static size_t xlat_hex(UNUSED void *instance, REQUEST *request,
 /** Print data as base64, not as VALUE
  *
  */
-static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
-			  char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_base64(UNUSED void *instance, REQUEST *request,
+			   char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
 	uint8_t buffer[MAX_STRING_LEN];
@@ -236,8 +239,8 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 	
 	ret = rad_vp2data(vp, buffer, sizeof(buffer));
 	if (ret < 0) {
-		*out = 0;
-		return 0;
+		*out = '\0';
+		return ret;
 	}
 
 	return fr_base64_encode(buffer, (size_t) ret, out, outlen);
@@ -246,8 +249,8 @@ static size_t xlat_base64(UNUSED void *instance, REQUEST *request,
 /** Prints the current module processing the request
  *
  */
-static size_t xlat_module(UNUSED void *instance, REQUEST *request,
-			  UNUSED char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_module(UNUSED void *instance, REQUEST *request,
+			   UNUSED char const *fmt, char *out, size_t outlen)
 {
 	strlcpy(out, request->module, outlen);
 
@@ -259,8 +262,8 @@ static size_t xlat_module(UNUSED void *instance, REQUEST *request,
  *
  * @see modcall()
  */
-static size_t xlat_foreach(void *instance, REQUEST *request,
-			   UNUSED char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_foreach(void *instance, REQUEST *request,
+			    UNUSED char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR	**pvp;
 
@@ -284,8 +287,8 @@ static size_t xlat_foreach(void *instance, REQUEST *request,
  * be printed as 0x0a0a0a. The xlat "%{string:Foo}" will instead
  * expand to "\n\n\n"
  */
-static size_t xlat_string(UNUSED void *instance, REQUEST *request,
-			  char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_string(UNUSED void *instance, REQUEST *request,
+			   char const *fmt, char *out, size_t outlen)
 {
 	int len;
 	VALUE_PAIR *vp;
@@ -311,7 +314,7 @@ static size_t xlat_string(UNUSED void *instance, REQUEST *request,
 /** xlat expand string attribute value
  *
  */
-static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
+static ssize_t xlat_xlat(UNUSED void *instance, REQUEST *request,
 			char const *fmt, char *out, size_t outlen)
 {
 	VALUE_PAIR *vp;
@@ -333,8 +336,8 @@ static size_t xlat_xlat(UNUSED void *instance, REQUEST *request,
  *
  * Example %{debug:3}
  */
-static size_t xlat_debug(UNUSED void *instance, REQUEST *request,
-			 char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_debug(UNUSED void *instance, REQUEST *request,
+			  char const *fmt, char *out, size_t outlen)
 {
 	int level = 0;
 	
@@ -1543,7 +1546,7 @@ do_print:
 static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * const node,
 			 RADIUS_ESCAPE_STRING escape, void *escape_ctx, int lvl)
 {
-	size_t rcode;
+	ssize_t rcode;
 	char *str = NULL, *child;
 	REQUEST *ref;
 
@@ -1680,10 +1683,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		XLAT_DEBUG("%.*sexpand mod %s --> '%s'", lvl, xlat_spaces, node->fmt, child);
 
 		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
-
+		*str = '\0';	/* Be sure the string is NULL terminated, we now only free on error */
+		
 		rcode = node->xlat->func(node->xlat->instance, request, child, str, 1024);
 		talloc_free(child);
-		if (rcode == 0) {
+		if (rcode < 0) {
 			talloc_free(str);
 			return NULL;
 		}

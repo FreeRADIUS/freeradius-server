@@ -102,7 +102,7 @@ static ssize_t modhex2hex(char const *modhex, uint8_t *hex, size_t len)
  *
  * Example: "%{modhextohex:vvrbuctetdhc}" == "ffc1e0d3d260"
  */
-static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {	
 	ssize_t len;
 
@@ -119,7 +119,7 @@ static size_t modhex_to_hex_xlat(UNUSED void *instance, REQUEST *request, char c
 		*out = '\0';
 		REDEBUG("Modhex string invalid");
 		
-		return 0;
+		return -1;
 	}
 	
 	return len;

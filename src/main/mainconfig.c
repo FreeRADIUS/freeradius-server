@@ -287,7 +287,7 @@ static size_t config_escape_func(UNUSED REQUEST *request, char *out, size_t outl
 /*
  *	Xlat for %{config:section.subsection.attribute}
  */
-static size_t xlat_config(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_config(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	char const *value;
 	CONF_PAIR *cp;
@@ -304,8 +304,9 @@ static size_t xlat_config(UNUSED void *instance, REQUEST *request, char const *f
 	ci = cf_reference_item(request->root->config,
 			       request->root->config, buffer);
 	if (!ci || !cf_item_is_pair(ci)) {
+		REDEBUG("Config item \"%s\" does not exist", fmt);
 		*out = '\0';
-		return 0;
+		return -1;
 	}
 
 	cp = cf_itemtopair(ci);
@@ -334,9 +335,7 @@ static size_t xlat_config(UNUSED void *instance, REQUEST *request, char const *f
 /*
  *	Xlat for %{client:foo}
  */
-static size_t xlat_client(UNUSED void *instance, REQUEST *request,
-		       char const *fmt, char *out,
-		       size_t outlen)
+static ssize_t xlat_client(UNUSED void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	char const *value = NULL;
 	CONF_PAIR *cp;
@@ -344,6 +343,7 @@ static size_t xlat_client(UNUSED void *instance, REQUEST *request,
 	if (!fmt || !out || (outlen < 1)) return 0;
 
 	if (!request || !request->client) {
+		RWDEBUG("No client associated with this request");
 		*out = '\0';
 		return 0;
 	}
@@ -354,7 +354,7 @@ static size_t xlat_client(UNUSED void *instance, REQUEST *request,
 			strlcpy(out, request->client->shortname, outlen);
 			return strlen(out);
 		}
-
+		RDEBUG("Client does not contain config item \"%s\"", fmt);
 		*out = '\0';
 		return 0;
 	}

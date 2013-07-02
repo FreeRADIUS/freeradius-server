@@ -163,8 +163,8 @@ typedef struct rlm_mschap_t {
  *	Pulls NT-Response, LM-Response, or Challenge from MSCHAP
  *	attributes.
  */
-static size_t mschap_xlat(void *instance, REQUEST *request,
-		       char const *fmt, char *out, size_t outlen)
+static ssize_t mschap_xlat(void *instance, REQUEST *request,
+			   char const *fmt, char *out, size_t outlen)
 {
 	size_t		i, data_len;
 	uint8_t const  	*data = NULL;

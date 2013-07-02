@@ -153,7 +153,7 @@ static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t 
 /*
  *	Do xlat of strings.
  */
-static size_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
+static ssize_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
@@ -162,16 +162,16 @@ static size_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char 
 
 	if (!inst->wait) {
 		REDEBUG("'wait' must be enabled to use exec xlat");
-		out[0] = '\0';
-		return 0;
+		*out = '\0';
+		return -1;
 	}
 
 	if (inst->input_list) {
 		input_pairs = radius_list(request, inst->input_list);
 		if (!input_pairs) {
 			REDEBUG("Failed to find input pairs for xlat");
-			out[0] = '\0';
-			return 0;
+			*out = '\0';
+			return -1;
 		}
 	}
 	
@@ -182,7 +182,7 @@ static size_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char 
 				     out, outlen, input_pairs ? *input_pairs : NULL, NULL);
 	if (result != 0) {
 		out[0] = '\0';
-		return 0;
+		return -1;
 	}
 	
 	for (p = out; *p != '\0'; p++) {

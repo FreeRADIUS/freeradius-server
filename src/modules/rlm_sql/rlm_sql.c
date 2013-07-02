@@ -126,12 +126,13 @@ static size_t sql_escape_func(REQUEST *, char *out, size_t outlen, char const *i
  *  for inserts, updates and deletes the number of rows afftected will be
  *  returned instead.
  */
-static size_t sql_xlat(void *instance, REQUEST *request, char const *query, char *out, size_t freespace)
+static ssize_t sql_xlat(void *instance, REQUEST *request, char const *query, char *out, size_t freespace)
 {
 	rlm_sql_handle_t *handle = NULL;
 	rlm_sql_row_t row;
 	rlm_sql_t *inst = instance;
-	size_t ret = 0;
+	ssize_t ret = 0;
+	size_t len = 0;
 
 	/*
 	 *	Add SQL-User-Name attribute just in case it is needed
@@ -178,24 +179,27 @@ static size_t sql_xlat(void *instance, REQUEST *request, char const *query, char
 		 */
 		snprintf(buffer, sizeof(buffer), "%d", numaffected);
 		
-		ret = strlen(buffer);
-		if (ret >= freespace){
+		len = strlen(buffer);
+		if (len >= freespace){
 			RDEBUG("rlm_sql (%s): Can't write result, insufficient string space", inst->config->xlat_name);
 			
 			(inst->module->sql_finish_query)(handle, inst->config);
 
-			ret = 0;
+			ret = -1;
 			goto finish;
 		}
 		
-		memcpy(out, buffer, ret + 1); /* we did bounds checking above */
-
+		memcpy(out, buffer, len + 1); /* we did bounds checking above */
+		ret = len;
+		
 		(inst->module->sql_finish_query)(handle, inst->config);
 		
 		goto finish;
 	} /* else it's a SELECT statement */
 
 	if (rlm_sql_select_query(&handle, inst, query)){
+		ret = -1;
+		
 		goto finish;
 	}
 
@@ -203,6 +207,7 @@ static size_t sql_xlat(void *instance, REQUEST *request, char const *query, char
 	if (ret) {
 		RDEBUG("SQL query failed");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
+		ret = -1;
 		
 		goto finish;
 	}
@@ -222,16 +227,17 @@ static size_t sql_xlat(void *instance, REQUEST *request, char const *query, char
 		goto finish;
 	}
 	
-	ret = strlen(row[0]);
-	if (ret >= freespace){
+	len = strlen(row[0]);
+	if (len >= freespace){
 		RDEBUG("Insufficient string space");
 		(inst->module->sql_finish_select_query)(handle, inst->config);
 
-		ret = 0;
+		ret = -1;
 		goto finish;
 	}
 
 	strlcpy(out, row[0], freespace);
+	ret = len;
 
 	RDEBUG("sql_xlat finished");
 

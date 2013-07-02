@@ -313,7 +313,7 @@ static void xs_init(pTHX)
 /*
  * The xlat function
  */
-static size_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t perl_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 
 	rlm_perl_t	*inst= (rlm_perl_t *) instance;

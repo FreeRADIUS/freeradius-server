@@ -47,7 +47,7 @@ log_debug_t debug_flag = 0;
 #include <stdarg.h>
 
 typedef size_t (*RADIUS_ESCAPE_STRING)(REQUEST *, char *out, size_t outlen, char const *in, void *arg);
-typedef size_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
+typedef ssize_t (*RAD_XLAT_FUNC)(void *instance, REQUEST *, char const *, char *, size_t);
 int            xlat_register(char const *module, RAD_XLAT_FUNC func, RADIUS_ESCAPE_STRING escape,
 			     void *instance);
 void module_failure_msg(UNUSED REQUEST *request, UNUSED char const *fmt, ...);
@@ -66,8 +66,8 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	return waitpid(pid, status, 0);
 }
 
-static size_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
-		       UNUSED char const *fmt, UNUSED char *out, UNUSED size_t outlen)
+static ssize_t xlat_test(UNUSED void *instance, UNUSED REQUEST *request,
+			 UNUSED char const *fmt, UNUSED char *out, UNUSED size_t outlen)
 {
 	return 0;
 }

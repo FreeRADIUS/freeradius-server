@@ -601,8 +601,8 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 /*
  *	Allow single attribute values to be retrieved from the cache.
  */
-static size_t cache_xlat(void *instance, REQUEST *request,
-			 char const *fmt, char *out, size_t freespace)
+static ssize_t cache_xlat(void *instance, REQUEST *request,
+			  char const *fmt, char *out, size_t freespace)
 {
 	rlm_cache_entry_t *c;
 	rlm_cache_t *inst = instance;
@@ -625,6 +625,7 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	
 	if (!c) {
 		RDEBUG("No cache entry for key \"%s\"", fmt);
+		*out = '\0';
 		goto done;
 	}
 
@@ -644,18 +645,19 @@ static size_t cache_xlat(void *instance, REQUEST *request,
 	case PAIR_LIST_UNKNOWN:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
 		REDEBUG("Unknown list qualifier in \"%s\"", fmt);
-		return 0;
+		return -1;
 		
 	default:
 		PTHREAD_MUTEX_UNLOCK(&inst->cache_mutex);
 		REDEBUG("Unsupported list \"%s\"",
-		       fr_int2str(pair_lists, list, "¿Unknown?"));
-		return 0;
+		        fr_int2str(pair_lists, list, "¿Unknown?"));
+		return -1;
 	}
 
 	vp = pairfind(vps, target->attr, target->vendor, TAG_ANY);
 	if (!vp) {
 		RDEBUG("No instance of this attribute has been cached");
+		*out = '\0';
 		goto done;
 	}
 	

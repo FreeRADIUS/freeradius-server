@@ -87,7 +87,7 @@ static const CONF_PARSER mod_config[] = {
 	{ NULL, -1, 0, NULL, NULL }
 };
 
-static size_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t freespace)
+static ssize_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 	rlm_idn_t *inst = instance;
 	char *idna = NULL;
@@ -108,8 +108,8 @@ static size_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fmt
 			free (idna); /* Docs unclear, be safe. */
 		}
 
-		RERROR("%s", idna_strerror(res));
-		return 0;
+		REDEBUG("%s", idna_strerror(res));
+		return -1;
 	}
 
         len = strlen(idna);
@@ -117,10 +117,10 @@ static size_t xlat_idna(void *instance, UNUSED REQUEST *request, char const *fmt
 	/* 253 is max DNS length */
         if (!((len < (freespace - 1)) && (len <= 253))) {
 	        /* Never provide a truncated result, as it may be queried. */
-		RERROR("Conversion was truncated");
+		REDEBUG("Conversion was truncated");
 		
 		free(idna);
-		return 0;
+		return -1;
 
 	}
 

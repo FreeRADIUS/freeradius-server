@@ -137,8 +137,7 @@ static void *mod_conn_create(void *ctx)
 	return dissocket;
 }
 
-static size_t redis_xlat(void *instance, REQUEST *request,
-		      char const *fmt, char *out, size_t freespace)
+static ssize_t redis_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 	REDIS_INST *inst = instance;
 	REDISSOCK *dissocket;
@@ -151,7 +150,7 @@ static size_t redis_xlat(void *instance, REQUEST *request,
 		ERROR("rlm_redis (%s): redis_get_socket() failed",
 		       inst->xlat_name);
 
-		return 0;
+		return -1;
 	}
 
 	/* Query failed for some reason, release socket and return */
@@ -182,7 +181,7 @@ static size_t redis_xlat(void *instance, REQUEST *request,
 	if ((ret >= freespace) || (!buffer_ptr)) {
 		RDEBUG("rlm_redis (%s): Can't write result, insufficient space or unsupported result\n",
 		       inst->xlat_name);
-		ret = 0;
+		ret = -1;
 		goto release;
 	}
 	

@@ -228,12 +228,14 @@ static size_t xlat_cs(CONF_SECTION *cs, char const *fmt, char *out, size_t outle
 /*
  *	Xlat for %{home_server:foo}
  */
-static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
-			       char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_home_server(UNUSED void *instance, REQUEST *request,
+			        char const *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
 	if (!request || !request->home_server) {
+		RWDEBUG("No home_server associated with this request");
+		
 		*out = '\0';
 		return 0;
 	}
@@ -245,12 +247,14 @@ static size_t xlat_home_server(UNUSED void *instance, REQUEST *request,
 /*
  *	Xlat for %{home_server_pool:foo}
  */
-static size_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
-			       char const *fmt, char *out, size_t outlen)
+static ssize_t xlat_server_pool(UNUSED void *instance, REQUEST *request,
+			        char const *fmt, char *out, size_t outlen)
 {
 	if (!fmt || !out || (outlen < 1)) return 0;
 
 	if (!request || !request->home_pool) {
+		RWDEBUG("No home_pool associated with this request");
+		
 		*out = '\0';
 		return 0;
 	}

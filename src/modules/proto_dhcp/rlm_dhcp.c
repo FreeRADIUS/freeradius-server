@@ -45,8 +45,8 @@ typedef struct rlm_dhcp_t {
 /*
  *	Allow single attribute values to be retrieved from the dhcp.
  */
-static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
-			 	char const *fmt, char *out, size_t freespace)
+static ssize_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
+			 	 char const *fmt, char *out, size_t freespace)
 {
 	vp_cursor_t cursor;
 	VALUE_PAIR *vp, *head = NULL;
@@ -57,15 +57,14 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	
 	if ((radius_get_vp(request, fmt, &vp) < 0) || !vp) {
 		 *out = '\0';
-		
 		 return 0;
 	}
 	
 	if ((fr_dhcp_decode_options(request->packet,
-				    vp->vp_octets, vp->length, &head) < 0) ||
-	    (!head)) {
+				    vp->vp_octets, vp->length, &head) < 0) || (!head)) {
 		RWDEBUG("DHCP option decoding failed");
-		goto fail;
+		*out = '\0';
+		return -1;
 	}
 	
 
@@ -79,8 +78,6 @@ static size_t dhcp_options_xlat(UNUSED void *instance, REQUEST *request,
 	
 	/* Free any unmoved pairs */
 	pairfree(&head);
-	
-	fail:
 	
 	snprintf(out, freespace, "%i", decoded);
 			

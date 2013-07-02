@@ -226,11 +226,10 @@ static const CONF_PARSER module_config[] = {
 /** Expand an LDAP URL into a query, and return a string result from that query.
  *
  */
-static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
-			char *out, size_t freespace)
+static ssize_t ldap_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t freespace)
 {
 	ldap_rcode_t status;
-	size_t length = 0;
+	size_t len = 0;
 	ldap_instance_t *inst = instance;
 	LDAPURLDesc *ldap_url;
 	LDAPMessage *result = NULL;
@@ -245,12 +244,12 @@ static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
 
 	if (!ldap_is_ldap_url(url)) {
 		REDEBUG("String passed does not look like an LDAP URL");
-		return 0;
+		return -1;
 	}
 
 	if (ldap_url_parse(url, &ldap_url)){
 		REDEBUG("Parsing LDAP URL failed");
-		return 0;
+		return -1;
 	}
 
 	/*
@@ -296,6 +295,7 @@ static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
 	if (!entry) {
 		ldap_get_option(conn->handle, LDAP_OPT_RESULT_CODE, &ldap_errno);
 		REDEBUG("Failed retrieving entry: %s", ldap_err2string(ldap_errno));
+		len = -1;
 		goto free_result;
 	}
 
@@ -305,9 +305,8 @@ static size_t ldap_xlat(void *instance, REQUEST *request, char const *fmt,
 		goto free_result;
 	}
 
-	length = strlen(vals[0]);
-	if (length >= freespace){
-
+	len = strlen(vals[0]);
+	if (len >= freespace){
 		goto free_vals;
 	}
 
@@ -322,7 +321,7 @@ free_socket:
 free_urldesc:
 	ldap_free_urldesc(ldap_url);
 
-	return length;
+	return len;
 }
 
 /** Perform LDAP-Group comparison checking
