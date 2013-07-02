@@ -74,8 +74,10 @@ distinct words seperated by underscores ``_``.
     
 The configuration items ``file``, ``script_file``, ``module``,
 ``detail``, ``detailfile``, ``attrsfile``, ``perm``, ``dirperm``,
-``detailperm``, and ``hostname`` are deprecated.  Please update your
-module configuration to use the new syntax.
+``detailperm``, and ``hostname`` are deprecated. As well as any
+faux portmanteaus, and configuration items that used hyphens
+as word delimiters.
+Please update your module configuration to use the new syntax.
 
 In most cases the server will tell you the replacement config item to
 use.
