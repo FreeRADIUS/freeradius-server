@@ -134,6 +134,7 @@ export CFLAGS="$CFLAGS -fPIC -DPIC"
 export LDFLAGS="-pie"
 %configure \
 		--libdir=%{_libdir}/freeradius \
+		--disable-developer \
 		--with-experimental-modules \
 		--with-udpfromto \
 %if 0%{?suse_version} <= 920 
