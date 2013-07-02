@@ -58,6 +58,11 @@ struct modcallable {
 	int actions[RLM_MODULE_NUMCODES];
 };
 
+#define MOD_LOG_OPEN_BRACE(_name) RDEBUG2("%.*s%s %s {", stack.pointer + 1, modcall_spaces, _name, child->name)
+#define MOD_LOG_CLOSE_BRACE() RDEBUG2("%.*s} # %s %s = %s", stack.pointer + 1, modcall_spaces, \
+				      group_name[child->type], child->name ? child->name : "", \
+				      fr_int2str(mod_rcode_table, myresult, "<invalid>"))
+
 #define GROUPTYPE_SIMPLE	0
 #define GROUPTYPE_REDUNDANT	1
 #define GROUPTYPE_APPEND	2
@@ -440,16 +445,14 @@ int modcall(int component, modcallable *c, REQUEST *request)
 
 			if (!was_if) { /* error */
 				RDEBUG2("%.*s ... skipping %s for request %d: No preceding \"if\"",
-				       stack.pointer + 1, modcall_spaces,
-				       group_name[child->type],
-				       request->number);
+					stack.pointer + 1, modcall_spaces,
+					group_name[child->type], request->number);
 				goto unroll;
 			}
 			if (if_taken) {
 				RDEBUG2("%.*s ... skipping %s for request %d: Preceding \"if\" was taken",
-				       stack.pointer + 1, modcall_spaces,
-				       group_name[child->type],
-				       request->number);
+					stack.pointer + 1, modcall_spaces,
+					group_name[child->type], request->number);
 				goto unroll;
 			}
 		}
@@ -464,18 +467,15 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			g = mod_callabletogroup(child);
 			rad_assert(g->cond != NULL);
 
-			RDEBUG2("%.*s? %s %s",
-			       stack.pointer + 1, modcall_spaces,
-			       (child->type == MOD_IF) ? "if" : "elsif",
-			       child->name);
+			RDEBUG2("%.*s? %s %s", stack.pointer + 1, modcall_spaces,
+				(child->type == MOD_IF) ? "if" : "elsif", child->name);
 
 			condition = radius_evaluate_cond(request, myresult, 0, g->cond);
 			if (condition < 0) {
 				condition = false;
 				REDEBUG("Evaluation of condition failed for some reason.");
 			} else {
-				RDEBUG2("%.*s? %s %s -> %s",
-					stack.pointer + 1, modcall_spaces,
+				RDEBUG2("%.*s? %s %s -> %s", stack.pointer + 1, modcall_spaces,
 					(child->type == MOD_IF) ? "if" : "elsif",
 					child->name, condition ? "TRUE" : "FALSE");
 			}
@@ -497,15 +497,13 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			modgroup *g = mod_callabletogroup(child);
 			value_pair_map_t *map;
 
-			RDEBUG2("%.*supdate %s {",
-				stack.pointer + 1, modcall_spaces,
-				child->name);
-
+			MOD_LOG_OPEN_BRACE("update");
 			for (map = g->map; map != NULL; map = map->next) {
-				rcode = radius_map2request(request, map, "update",
-							   radius_map2vp, NULL);
+				rcode = radius_map2request(request, map, "update", radius_map2vp, NULL);
 				if (rcode < 0) {
 					myresult = RLM_MODULE_FAIL;
+					
+					MOD_LOG_CLOSE_BRACE();
 					goto handle_priority;
 				}
 			}
@@ -522,7 +520,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				copy_p = request_data_get(request,
 							  radius_get_vp, i);
 				if (copy_p) {
-						RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", stack.pointer + 1, modcall_spaces, i);
+					RDEBUG2("%.*s #  BREAK Foreach-Variable-%d", stack.pointer + 1,
+						modcall_spaces, i);
 					pairfree(copy_p);
 					break;
 				}
@@ -552,9 +551,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			}
 
 			if (!(radius_get_vp(request, child->name, &vp) < 0)) {
-				RDEBUG2("%.*sforeach %s {",
-					stack.pointer + 1, modcall_spaces,
-					child->name);
+				MOD_LOG_OPEN_BRACE("foreach");
 				if (vp) {
 					paircursor(&cursor, &vp);
 					/* Prime the cursor. */
@@ -568,7 +565,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						char buffer[1024];
 
 						vp_prints_value(buffer, sizeof(buffer), vp, 1);
-						RDEBUG2("%.*s #  Foreach-Variable-%d = %s", stack.pointer + 1, modcall_spaces, depth, buffer);
+						RDEBUG2("%.*s #  Foreach-Variable-%d = %s", stack.pointer + 1,
+							modcall_spaces, depth, buffer);
 					}
 #endif
 
@@ -599,6 +597,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 						break;
 					}
 				} /* loop over VPs */
+				MOD_LOG_CLOSE_BRACE();
 			}  /* if the VP exists */
 
 			myresult = RLM_MODULE_OK;
@@ -667,9 +666,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.priority[stack.pointer] = stack.priority[stack.pointer - 1];
 			stack.result[stack.pointer] = stack.result[stack.pointer - 1];
 
-			RDEBUG2("%.*s%s %s {",
-				stack.pointer + 1, modcall_spaces,
-				group_name[child->type], child->name);
+			MOD_LOG_OPEN_BRACE(group_name[child->type]);
 
 			switch (child->type) {
 #ifdef WITH_UNLANG
@@ -748,9 +745,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 #endif
 
 			default:
-				RDEBUG2("Internal sanity check failed in modcall %d", child->type);
+				RERROR("FATA: Internal sanity check failed in modcall %d", child->type);
 				exit(1); /* internal sanity check failure */
-				break;
 			}
 
 
@@ -766,13 +762,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				/*
 				 *	Print message for NULL group
 				 */
-				RDEBUG2("%.*s- %s %s = %s",
-				       stack.pointer + 1, modcall_spaces,
-				       group_name[child->type],
-				       child->name ? child->name : "",
-				       fr_int2str(mod_rcode_table,
-						    stack.result[stack.pointer],
-						  "??"));
+				RDEBUG2("%.*s- %s %s = %s", stack.pointer + 1, modcall_spaces, group_name[child->type],
+					child->name ? child->name : "",
+					fr_int2str(mod_rcode_table, stack.result[stack.pointer], "<invalid>"));
 				goto do_return;
 			}
 
@@ -791,10 +783,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		sp = mod_callabletosingle(child);
 
 		myresult = call_modsingle(child->method, sp, request);
-		RDEBUG2("%.*s[%s] = %s",
-			stack.pointer + 1, modcall_spaces,
-			child->name ? child->name : "",
-			fr_int2str(mod_rcode_table, myresult, "??"));
+		RDEBUG2("%.*s[%s] = %s", stack.pointer + 1, modcall_spaces, child->name ? child->name : "",
+			fr_int2str(mod_rcode_table, myresult, "<invalid>"));
 
 	handle_priority:
 		mypriority = child->actions[myresult];
@@ -803,10 +793,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 		if (0) {
 		handle_result:
 			if (child->type != MOD_BREAK) {
-				RDEBUG2("%.*s} # %s %s = %s",
-					stack.pointer + 1, modcall_spaces,
-					group_name[child->type], child->name ? child->name : "",
-					fr_int2str(mod_rcode_table, myresult, "??"));
+				MOD_LOG_CLOSE_BRACE();
 			}
 		}
 #else
@@ -924,7 +911,7 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				}
 				break;
 			default:
-				RDEBUG2("Internal sanity check failed in modcall  next %d", child->type);
+				RERROR("FATAL: Internal sanity check failed in modcall next %d", child->type);
 				exit(1);
 		}
 
@@ -941,11 +928,9 @@ int modcall(int component, modcallable *c, REQUEST *request)
 			stack.pointer--;
 			if (stack.pointer == 0) break;
 
-			RDEBUG2("%.*s- %s %s returns %s",
-			       stack.pointer + 1, modcall_spaces,
-			       group_name[parent->type],
-			       parent->name ? parent->name : "",
-				fr_int2str(mod_rcode_table, myresult, "??"));
+			RDEBUG2("%.*s- %s %s returns %s", stack.pointer + 1, modcall_spaces,
+				group_name[parent->type], parent->name ? parent->name : "",
+				fr_int2str(mod_rcode_table, myresult, "<invalid>"));
 
 #ifdef WITH_UNLANG
 			if ((parent->type == MOD_IF) ||
@@ -1004,7 +989,7 @@ static void dump_mc(modcallable *c, int indent)
 
 	for(i = 0; i<RLM_MODULE_NUMCODES; ++i) {
 		DEBUG("%.*s%s = %s", indent+1, "\t\t\t\t\t\t\t\t\t\t\t",
-		      fr_int2str(mod_rcode_table, i, "??"),
+		      fr_int2str(mod_rcode_table, i, "<invalid>"),
 		      action2str(c->actions[i]));
 	}
 
