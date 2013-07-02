@@ -861,12 +861,11 @@ static char const *parse_spaces = "                                             
  *	Parses an item (not a CONF_ITEM) into the specified format,
  *	with a default value.
  *
- *	Returns -1 on error, 0 for correctly parsed, and 1 if the
- *	default value was used.  Note that the default value will be
- *	used ONLY if the CONF_PAIR is NULL.
+ *	Returns -1 on error, -2 if deprecated, 0 for correctly parsed,
+ *	and 1 if the default value was used.  Note that the default 
+ *	value will be used ONLY if the CONF_PAIR is NULL.
  */
-int cf_item_parse(CONF_SECTION *cs, char const *name,
-		  int type, void *data, char const *dflt)
+int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char const *dflt)
 {
 	int rcode;
 	bool deprecated, required, attribute;
@@ -885,13 +884,13 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 	type &= 0xff;		/* normal types are small */
 	rcode = 0;
 
-	if (attribute) required = 1;
-
-	cp = cf_pair_find(cs, name);
+	if (attribute) {
+		required = 1;
+	}
 	
+	cp = cf_pair_find(cs, name);
 	if (cp) {
 		value = cp->value;
-		
 	} else {
 		rcode = 1;
 		value = dflt;
@@ -916,9 +915,9 @@ int cf_item_parse(CONF_SECTION *cs, char const *name,
 	}
 
 	if (deprecated) {
-		cf_log_err(&(cs->item), "Configuration item \"%s\" is deprecated.  Please replace "
-			   "it with the up-to-date name", name);
-		return -1;
+		cf_log_err(&(cs->item), "Configuration item \"%s\" is deprecated", name);
+		
+		return -2;
 	}
 
 	switch (type) {
@@ -1189,6 +1188,7 @@ static void cf_section_parse_init(CONF_SECTION *cs, void *base,
 int cf_section_parse(CONF_SECTION *cs, void *base,
 		     CONF_PARSER const *variables)
 {
+	int ret;
 	int i;
 	void *data;
 
@@ -1240,8 +1240,16 @@ int cf_section_parse(CONF_SECTION *cs, void *base,
 		/*
 		 *	Parse the pair we found, or a default value.
 		 */
-		if (cf_item_parse(cs, variables[i].name, variables[i].type,
-				  data, variables[i].dflt) < 0) {
+		ret = cf_item_parse(cs, variables[i].name, variables[i].type, data, variables[i].dflt);
+		if (ret < 0) {
+			/*
+			 *	Be nice, and print the name of the new config item.
+			 */
+			if ((ret == -2) && (variables[i + 1].offset == variables[i].offset)) {
+				cf_log_err(&(cs->item), "Replace \"%s\" with \"%s\"", variables[i].name,
+					   variables[i + 1].name);
+			}
+			
 			goto error;
 		}
 	} /* for all variables in the configuration section */
