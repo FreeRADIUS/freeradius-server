@@ -147,8 +147,7 @@ export LDFLAGS="-pie"
 %else
 		--without-rlm_sql_oracle
 %endif
-# no parallel build possible
-make
+make %{?_smp_mflags}
 
 %install
 rm -rf $RPM_BUILD_ROOT
