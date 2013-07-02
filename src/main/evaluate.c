@@ -100,8 +100,7 @@ static char *radius_expand_tmpl(REQUEST *request, value_pair_tmpl_t const *vpt)
 	case VPT_TYPE_EXEC:
 		EVAL_DEBUG("TMPL EXEC");
 		buffer = talloc_array(request, char, 1024);
-		if (radius_exec_program(vpt->name, request, 1,
-					buffer, 1024, NULL, NULL, 0) != 0) {
+		if (radius_exec_program(request, vpt->name, true, false, buffer, 1024, NULL, NULL) != 0) {
 			talloc_free(buffer);
 			return NULL;
 		}

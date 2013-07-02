@@ -1468,5 +1468,5 @@ void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quen
 	}
 
 	RDEBUG("Trigger %s -> %s", name, value);
-	radius_exec_program(value, request, 0, NULL, 0, vp, NULL, 1);
+	radius_exec_program(request, value, false, true, NULL, 0, vp, NULL);
 }

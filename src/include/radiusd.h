@@ -476,7 +476,7 @@ extern char const	*radius_libdir;
 extern uint32_t		expiration_seconds;
 extern int		log_stripped_names;
 extern int		log_auth_detail;
-extern char const      *radiusd_version;
+extern char const	*radiusd_version;
 void			radius_signal_self(int flag);
 
 #define RADIUS_SIGNAL_SELF_NONE		(0)
@@ -584,11 +584,9 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 			int shell_escape);
 int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 			    char *answer, int left);
-int		radius_exec_program(char const *,  REQUEST *, int,
-				    char *user_msg, int msg_len,
-				    VALUE_PAIR *input_pairs,
-				    VALUE_PAIR **output_pairs,
-					int shell_escape);
+int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,
+			char *user_msg, size_t msg_len,
+			VALUE_PAIR *input_pairs, VALUE_PAIR **output_pairs);
 void exec_trigger(REQUEST *request, CONF_SECTION *cs, char const *name, int quench);
 
 /* valuepair.c */

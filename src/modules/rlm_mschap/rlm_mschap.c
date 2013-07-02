@@ -1053,10 +1053,9 @@ static int do_mschap(rlm_mschap_t *inst,
 		/*
 		 *	Run the program, and expect that we get 16
 		 */
-		result = radius_exec_program(inst->ntlm_auth, request,
-					     true, /* wait */
+		result = radius_exec_program(request, inst->ntlm_auth, true, true,
 					     buffer, sizeof(buffer),
-					     NULL, NULL, 1);
+					     NULL, NULL);
 		if (result != 0) {
 			char *p;
 

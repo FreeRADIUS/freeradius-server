@@ -1285,6 +1285,10 @@ void module_failure_msg(REQUEST *request, char const *fmt, ...)
 	char *p;
 	VALUE_PAIR *vp;
 
+	if (!fmt) {
+		return;
+	}
+	
 	va_start(ap, fmt);
 	vp = paircreate(request->packet, PW_MODULE_FAILURE_MESSAGE, 0);
 	if (!vp) {

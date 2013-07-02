@@ -209,8 +209,14 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		devnull = open("/dev/null", O_RDWR);
 		if (devnull < 0) {
 			RDEBUG("Failed opening /dev/null: %s\n", strerror(errno));
-			
-			exit(1);
+	
+			/* 
+			 *	Where the status code is interpreted as a module rcode
+			 * 	one is subtracted from it, to allow 0 to equal success
+			 *
+			 *	2 is RLM_MODULE_FAIL + 1
+			 */
+			exit(2);	
 		}
 
 		/*
@@ -263,7 +269,14 @@ pid_t radius_start_program(char const *cmd, REQUEST *request,
 		 */
 		execve(argv[0], argv, envp);
 		printf("Failed to execute \"%s\": %s", argv[0], strerror(errno)); /* fork output will be captured */
-		exit(1);
+		
+		/* 
+		 *	Where the status code is interpreted as a module rcode
+		 * 	one is subtracted from it, to allow 0 to equal success
+		 *
+		 *	2 is RLM_MODULE_FAIL + 1
+		 */
+		exit(2);
 	}
 
 	/*
@@ -477,24 +490,22 @@ int radius_readfrom_program(REQUEST *request, int fd, pid_t pid, int timeout,
 
 /** Execute a program.
  *
- * @param cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
- *	is xlat'ed.
  * @param[in] request Current request.
+ * @param[in] cmd Command to execute. This is parsed into argv[] parts, then each individual argv part
+ *	is xlat'ed.
  * @param[in] exec_wait set to 1 if you want to read from or write to child.
+ * @param[in] shell_escape values before passing them as arguments.
  * @param[in] user_msg buffer to append plaintext (non valuepair) output.
  * @param[in] msg_len length of user_msg buffer.
  * @param[in] input_pairs list of value pairs - these will be available in the environment of the child.
  * @param[out] output_pairs list of value pairs - child stdout will be parsed and added into this list 
  *	of value pairs.
- * @param shell_escape values before passing them as arguments.
  * @return 0 if exec_wait==0, exit code if exec_wait!=0, -1 on error.
  */
-int radius_exec_program(char const *cmd, REQUEST *request,
-			int exec_wait,
-			char *user_msg, int msg_len,
-			VALUE_PAIR *input_pairs,
-			VALUE_PAIR **output_pairs,
-			int shell_escape)
+int radius_exec_program(REQUEST *request, char const *cmd, bool exec_wait, bool shell_escape,
+			char *user_msg, size_t msg_len,
+			VALUE_PAIR *input_pairs, VALUE_PAIR **output_pairs)
+
 {
 	pid_t pid;
 	int from_child;
@@ -528,10 +539,10 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 		 * have called close(from_child) for us
 		 */
 		DEBUG("Failed to read from child output");
-		return 1;
+		return -1;
 
 	}
-	answer[done] = 0;
+	answer[done] = '\0';
 
 	/*
 	 *	Make sure that the writer can't block while writing to
@@ -585,6 +596,8 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 
 			if (userparse(request, answer, &vp) == T_OP_INVALID) {
 				REDEBUG("Unparsable reply from '%s'", cmd);
+				
+				return -1;
 			} else {
 				/*
 				 *	Tell the caller about the value
@@ -602,25 +615,22 @@ int radius_exec_program(char const *cmd, REQUEST *request,
 	child_pid = rad_waitpid(pid, &status);
 	if (child_pid == 0) {
 		REDEBUG("Timeout waiting for child");
-		return 2;
+		
+		return -2;
 	}
 
 	if (child_pid == pid) {
 		if (WIFEXITED(status)) {
 			status = WEXITSTATUS(status);
-			if (status != 0) {
-				REDEBUG("Program returned error code(%d): %s", status, answer);
-				return status;
-			}
 			
-			RDEBUG("Program executed successfully");
-			RDEBUG2("Program output is \"%s\"", answer);
-			return 0;
+			RDEBUG("Program returned code (%d): %s", status, answer);
+
+			return status;
 		}
 	}
 
 	REDEBUG("Abnormal child exit: %s", strerror(errno));
 #endif	/* __MINGW32__ */
 
-	return 1;
+	return -1;
 }

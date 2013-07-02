@@ -64,12 +64,96 @@ static const CONF_PARSER module_config[] = {
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
+static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
+
+/*
+ *	Escape special characters
+ */
+static size_t rlm_exec_shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in,
+				    UNUSED void *inst)
+{
+	char *q, *end;
+	char const *p;
+
+	q = out;
+	end = out + outlen;
+	p = in;
+
+	while (*p) {
+		if ((q + 3) >= end) break;
+
+		if (strchr(special, *p) != NULL) {
+			*(q++) = '\\';
+		}
+		*(q++) = *(p++);
+	}
+
+	*q = '\0';
+	return q - out;
+}
+
+/** Process the exit code returned by one of the exec functions
+ *
+ * @param request Current request.
+ * @param answer Output string from exec call.
+ * @param len length of data in answer.
+ * @param status code returned by exec call.
+ * @return One of the RLM_MODULE_* values.
+ */
+static rlm_rcode_t rlm_exec_status2rcode(REQUEST *request, char *answer, size_t len, int status)
+{
+	if (status < 0) {
+		return RLM_MODULE_FAIL;
+	}
+	
+	/*
+	 *	Exec'd programs are meant to return exit statuses that correspond 
+	 *	to the standard RLM_MODULE_* + 1. 
+	 *
+	 *	This frees up 0, for success where it'd normally be reject.
+	 */		
+	if (status == 0) {
+		RDEBUG("Program executed successfully");
+
+		return RLM_MODULE_OK;	
+	}
+
+	if (status > RLM_MODULE_NUMCODES) {
+		REDEBUG("Program returned invalid code (greater than max rcode) (%i > %i): %s",
+			status, RLM_MODULE_NUMCODES, answer);
+		goto fail;
+
+		return RLM_MODULE_FAIL;
+	}
+
+	status--;	/* Lets hope no one ever re-enumerates RLM_MODULE_* */
+
+	if (status == RLM_MODULE_FAIL) {
+		fail:
+	
+		if (len > 0) {
+			char *p = &answer[len - 1];
+		
+			/*
+			 *	Trim off trailing returns
+			 */
+			while((p > answer) && ((*p == '\r') || (*p == '\n'))) {
+				*p-- = '\0';
+			}
+	
+			module_failure_msg(request, answer);
+		}
+
+		return RLM_MODULE_FAIL;
+	}
+
+	return status;		
+}
 
 /*
  *	Do xlat of strings.
  */
-static size_t exec_xlat(void *instance, REQUEST *request,
-			char const *fmt, char *out, size_t outlen)
+static size_t exec_xlat(void *instance, REQUEST *request, char const *fmt, char *out, size_t outlen)
 {
 	int		result;
 	rlm_exec_t	*inst = instance;
@@ -94,9 +178,8 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 	/*
 	 *	FIXME: Do xlat of program name?
 	 */
-	result = radius_exec_program(fmt, request,
-				     inst->wait, out, outlen,
-				     input_pairs ? *input_pairs : NULL, NULL, inst->shell_escape);
+	result = radius_exec_program(request, fmt, inst->wait, inst->shell_escape,
+				     out, outlen, input_pairs ? *input_pairs : NULL, NULL);
 	if (result != 0) {
 		out[0] = '\0';
 		return 0;
@@ -108,34 +191,6 @@ static size_t exec_xlat(void *instance, REQUEST *request,
 
 	return strlen(out);
 }
-
-static char const special[] = "\\'\"`<>|; \t\r\n()[]?#$^&*=";
-
-/*
- *	Escape special characters
- */
-static size_t shell_escape(UNUSED REQUEST *request, char *out, size_t outlen, char const *in, UNUSED void *inst)
-{
-	char *q, *end;
-	char const *p;
-
-	q = out;
-	end = out + outlen;
-	p = in;
-
-	while (*p) {
-		if ((q + 3) >= end) break;
-
-		if (strchr(special, *p) != NULL) {
-			*(q++) = '\\';
-		}
-		*(q++) = *(p++);
-	}
-
-	*q = '\0';
-	return q - out;
-}
-
 
 /*
  *	Do any per-module initialization that is separate to each
@@ -158,7 +213,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		inst->bare = 1;
 	}
 
-	xlat_register(inst->xlat_name, exec_xlat, shell_escape, inst);
+	xlat_register(inst->xlat_name, exec_xlat, rlm_exec_shell_escape, inst);
 	
 	/*
 	 *	Check whether program actually exists
@@ -188,8 +243,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	if (!inst->wait &&
 	    (inst->output != NULL)) {
-		cf_log_err_cs(conf, "Cannot read output pairs if "
-			      "wait=no");
+		cf_log_err_cs(conf, "Cannot read output pairs if wait = no");
 		return -1;
 	}
 
@@ -219,12 +273,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
  */
 static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 {
-	rlm_exec_t *inst = (rlm_exec_t *)instance;
-	int result;
+	rlm_exec_t	*inst = (rlm_exec_t *)instance;
+	rlm_rcode_t	rcode;
+	int		status;
+
 	VALUE_PAIR	**input_pairs = NULL, **output_pairs = NULL;
 	VALUE_PAIR	*answer = NULL;
 	char		out[1024];
-	size_t		len;
 
 	/*
 	 *	We need a program to execute.
@@ -245,6 +300,7 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 #endif
 		    )) {
 		RDEBUG2("Packet type is not %s. Not executing.", inst->packet_type);
+		
 		return RLM_MODULE_NOOP;
 	}
 
@@ -276,25 +332,10 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	 *	exec program function xlat's it's string value
 	 *	into something else.
 	 */
-	result = radius_exec_program(inst->program, request,
-				     inst->wait, out, sizeof(out),
-				     input_pairs ? *input_pairs : NULL, &answer, inst->shell_escape);
-	/*
-	 *	Write any exec output to module failure message
-	 */
-	if (*out) {
-		/* Trim off returns and newlines */
-		len = strlen(out);
-		if (out[len - 1] == '\n' || out[len - 1] == '\r') {
-			out[len - 1] = '\0';
-		}
-	}
-	
-	if (result < 0) {
-		module_failure_msg(request, out);
-
-		return RLM_MODULE_FAIL;
-	}
+	status = radius_exec_program(request, inst->program, inst->wait, inst->shell_escape,
+				     out, sizeof(out),
+				     input_pairs ? *input_pairs : NULL, &answer);
+	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
 	/*
 	 *	Move the answer over to the output pairs.
@@ -304,19 +345,9 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
 	if (output_pairs) {
 		pairmove(request, output_pairs, &answer);
 	}
-	
 	pairfree(&answer);
-
-	if (result == 0) {
-		return RLM_MODULE_OK;
-	}
-	if (result > RLM_MODULE_NUMCODES) {
-		module_failure_msg(request, out);
-
-		return RLM_MODULE_FAIL;
-	}
 	
-	return result - 1;
+	return rcode;
 }
 
 
@@ -327,53 +358,53 @@ static rlm_rcode_t exec_dispatch(void *instance, REQUEST *request)
  */
 static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 {
-	int result;
-	int exec_wait = 0;
-	VALUE_PAIR *vp, *tmp;
-	rlm_exec_t *inst = (rlm_exec_t *) instance;
+	rlm_exec_t	*inst = (rlm_exec_t *) instance;
+	rlm_rcode_t 	rcode;
+	int		status;
+
+	char		out[1024];
+	bool		wait = false;
+	VALUE_PAIR	*vp, *tmp;
 
 	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
 	if (vp) {
-		exec_wait = 0;
-
+		wait = false;
 	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
-		exec_wait = 1;
+		wait = true;
 	}
 	if (!vp) {
-		if (!inst->program) return RLM_MODULE_NOOP;
+		if (!inst->program) {
+			return RLM_MODULE_NOOP;
+		}
 		
-		return exec_dispatch(instance, request);
+		rcode = exec_dispatch(instance, request);
+		goto finish;
 	}
 
 	tmp = NULL;
-	result = radius_exec_program(vp->vp_strvalue, request, exec_wait, NULL, 0, request->packet->vps, &tmp,
-				     inst->shell_escape);
+	status = radius_exec_program(request, vp->vp_strvalue, wait, inst->shell_escape,
+				     out, sizeof(out),
+				     request->packet->vps, &tmp);
+	rcode = rlm_exec_status2rcode(request, out, strlen(out), status);
 
 	/*
 	 *	Always add the value-pairs to the reply.
 	 */
 	pairmove(request->reply, &request->reply->vps, &tmp);
 	pairfree(&tmp);
-
-	if (result < 0) {
-		REDEBUG("Login incorrect (external check failed)");
-
-		request->reply->code = PW_AUTHENTICATION_REJECT;
-		return RLM_MODULE_REJECT;
-	}
-	if (result > 0) {
-		/*
-		 *	Reject. radius_exec_program() returns >0
-		 *	if the exec'ed program had a non-zero
-		 *	exit status.
-		 */
-		request->reply->code = PW_AUTHENTICATION_REJECT;
-		
-		REDEBUG("Login incorrect (external check said so)");
-		return RLM_MODULE_REJECT;
+	
+	finish:
+	switch (rcode) {
+		case RLM_MODULE_FAIL:
+		case RLM_MODULE_INVALID:
+		case RLM_MODULE_REJECT:
+			request->reply->code = PW_AUTHENTICATION_REJECT;
+			break;
+		default:
+			break;
 	}
 
-	return RLM_MODULE_OK;
+	return rcode;
 }
 
 /*
@@ -383,10 +414,12 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
  */
 static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 {
-	int result;
-	int exec_wait = 0;
-	VALUE_PAIR *vp;
-	rlm_exec_t *inst = (rlm_exec_t *) instance;
+	rlm_exec_t	*inst = (rlm_exec_t *) instance;
+	int		status;
+	
+	char		out[1024];
+	bool 		wait = false;
+	VALUE_PAIR	*vp;
 
 	/*
 	 *	The "bare" exec module takes care of handling
@@ -398,22 +431,18 @@ static  rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 	
 	vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM, 0, TAG_ANY);
 	if (vp) {
-		exec_wait = 0;
+		wait = true;
 	} else if ((vp = pairfind(request->reply->vps, PW_EXEC_PROGRAM_WAIT, 0, TAG_ANY)) != NULL) {
-		exec_wait = 1;
+		wait = false;
 	}
 	if (!vp) {
 		return RLM_MODULE_NOOP;
 	}
 	
-	result = radius_exec_program(vp->vp_strvalue, request, exec_wait,
-				     NULL, 0, request->packet->vps, NULL,
-				     inst->shell_escape);
-	if (result != 0) {
-		return RLM_MODULE_REJECT;
-	}
-
-	return RLM_MODULE_OK;
+	status = radius_exec_program(request, vp->vp_strvalue, wait, inst->shell_escape,
+				     out, sizeof(out),
+				     request->packet->vps, NULL);
+	return rlm_exec_status2rcode(request, out, strlen(out), status);
 }
 
 /*

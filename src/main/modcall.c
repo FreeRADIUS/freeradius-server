@@ -632,10 +632,8 @@ int modcall(int component, modcallable *c, REQUEST *request)
 				radius_xlat(buffer, sizeof(buffer), request, mx->xlat_name, NULL, NULL);
 			} else {
 				RDEBUG("`%s`", mx->xlat_name);
-				radius_exec_program(mx->xlat_name, request,
-						    0, NULL, 0,
-						    request->packet->vps,
-						    NULL, 1);
+				radius_exec_program(request, mx->xlat_name, false, true,
+						    NULL, 0, request->packet->vps, NULL);
 			}
 					    
 			goto skip; /* don't change anything on the stack */
