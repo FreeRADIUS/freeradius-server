@@ -55,7 +55,7 @@ typedef struct sql_config {
 	char const	*query_user;
 	char const	*default_profile;
 	
-	char const	*nas_query;
+	char const	*client_query;
 	char const	*authorize_check_query;
 	char const 	*authorize_reply_query;
 	char const	*authorize_group_check_query;

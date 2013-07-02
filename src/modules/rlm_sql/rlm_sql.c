@@ -74,8 +74,10 @@ static const CONF_PARSER module_config[] = {
 	 offsetof(rlm_sql_config_t,logfile), NULL, NULL},
 	{"default_user_profile", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,default_profile), NULL, ""},
-	{"nas_query", PW_TYPE_STRING_PTR,
-	 offsetof(rlm_sql_config_t,nas_query), NULL,
+	{"nas_query", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	 offsetof(rlm_sql_config_t,client_query), NULL, NULL},
+	{"client_query", PW_TYPE_STRING_PTR,
+	 offsetof(rlm_sql_config_t,client_query), NULL,
 	 "SELECT id,nasname,shortname,type,secret FROM nas"},
 	{"authorize_check_query", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,authorize_check_query), NULL, ""},
@@ -266,14 +268,14 @@ static int generate_sql_clients(rlm_sql_t *inst)
 	      inst->config->xlat_name);
 
 	DEBUG("rlm_sql (%s) in generate_sql_clients: query is %s",
-	      inst->config->xlat_name, inst->config->nas_query);
+	      inst->config->xlat_name, inst->config->client_query);
 
 	handle = sql_get_socket(inst);
 	if (!handle) {
 		return -1;
 	}
 	
-	if (rlm_sql_select_query(&handle, inst, inst->config->nas_query)){
+	if (rlm_sql_select_query(&handle, inst, inst->config->client_query)){
 		return -1;
 	}
 
