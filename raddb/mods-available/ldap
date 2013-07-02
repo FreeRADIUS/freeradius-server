@@ -16,7 +16,7 @@ ldap {
 	#  able to be used.
 #	port = 389
 
-	# Read-only administrator account for initial binding and searching
+	# Administrator account for searching and possibly modifying.
 #	identity = "cn=admin,dc=example,dc=org"
 #	password = mypass
 
