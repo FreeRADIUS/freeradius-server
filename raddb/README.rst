@@ -82,8 +82,8 @@ Please update your module configuration to use the new syntax.
 In most cases the server will tell you the replacement config item to
 use.
 
-SQL
----
+rlm_sql
+-------
 
 The SQL configuration has been moved from ``sql.conf`` to
 ``mods-available/sql``.  The ``sqlippool.conf`` file has also been
@@ -138,7 +138,7 @@ And all of the SQL queries will be logged to that file.  The
 connection pool	will still need to be configured for the NULL SQL
 driver, but the defaults will work.
 
-SQL-dialup.conf
+sql/dialup.conf
 ---------------
 
 Queries for post-auth and accounting calls have been re-arranged.
@@ -196,8 +196,8 @@ Alternatively a 2.x.x config may be patched to work with the
   	query = "${..postauth_query}"
   }
 
-LDAP
-----
+rlm_ldap
+--------
 
 The LDAP module configuration has been substantially changed.  Please
 read raddb/mods-available/ldap.  It now uses a connection pool, just
@@ -217,19 +217,29 @@ post-auth should now set ``edir_autz = yes``, and remove the ``ldap``
 module from the post-auth section.
 
 
-EAP
----
+rlm_eap
+-------
 
 The EAP configuration has been moved from ``eap.conf`` to
 ``mods-available/eap``.  A new ``pwd`` subsection has been added for
 EAP-PWD.
 
-It is otherwise unchanged.  You chould be able to copy your old
-``eap.conf`` file directly to ``mods-enabled/eap``.
+rlm_expiration & rlm_logintime
+-------------------------------
 
+The rlm_expiration and rlm_logintime modules no longer add a ``Reply-Message``,
+the same behaviour can be achieved checking the return code of the module and 
+adding the ``Reply-Message`` with unlang::
 
-Unix
-----
+  expiration
+  if (userlock) {
+    update reply {
+      Reply-Message := "Your account has expired"
+    }
+  }
+
+rlm_unix
+--------
 
 The unix module does not have an "authenticate" section.  So you
 cannot set "Auth-Type := System".  The "unix" module has also been
@@ -242,13 +252,6 @@ of Unix authentication.
 The Unix module still can pull the passwords from /etc/passwd, or
 /etc/shadow.  This is done by listing it in the "authorize" section,
 as is done in the sites-available/ examples.
-
-SIM_FILES
----------
-
-The rlm_sim_files module has been deleted.  It was never marked "stable",
-and was never used in a production environment.  There are better ways
-to test EAP.
 
 
 RadSec
@@ -299,7 +302,7 @@ attribute::
 However, this should only be seen as a temporary, not permanent, fix.
 
 Deleted Modules
----------------
+===============
 
 The following modules have been deleted, and are no longer supported
 in Version 3.  If you are using one of these modules, your
@@ -307,7 +310,7 @@ configuration can probably be changed to not need it.  Otherwise email
 the freeradius-devel list, and ask.
 
 rlm_acct_unique
-===============
+---------------
 
 This module has been replaced by the "acct_unique" policy.  See
 raddb/policy.d/accounting.
@@ -319,13 +322,13 @@ same database at the same time.  They will calculate different values
 for Acct-Unique-Id.
 
 rlm_acctlog
-===========
+-----------
 
 You should use rlm_linelog instead.  That module has a superset of the
 acctlog functionality.
 
 rlm_attr_rewrite
-================
+----------------
 
 The attr_rewrite module looked for an attribute, and then re-wrote it,
 or created a new attribute.  All of that can be done in "unlang".
@@ -342,7 +345,7 @@ We suggest updating all uses of attr_write to use unlang instead.
 
 
 rlm_checkval
-============
+------------
 
 The checkval module compared two attributes.  All of that can be done in "unlang"::
 
@@ -353,7 +356,7 @@ The checkval module compared two attributes.  All of that can be done in "unlang
 We suggest updating all uses of checkval to use unlang instead.
 
 rlm_dbm
-=======
+-------
 
 No one seems to use it.  There is no sample configuration for it.
 There is no speed advantage to using it over the "files" module.
@@ -362,20 +365,28 @@ Modern systems are fast enough that 10K entries can be read from the
 real database such as SQL.
 
 rlm_fastusers
-=============
+-------------
 
 No one seems to use it.  It has been deprecated since Version 2.0.0.
 The "files" module was rewritten so that the "fastusers" module was no
 longer necessary.
 
 rlm_policy
-==========
+----------
 
 No one seems to use it.  Almost all of its functionality is available
 via "unlang".
 
+rlm_sim_files
+-------------
+
+The rlm_sim_files module has been deleted.  It was never marked "stable",
+and was never used in a production environment.  There are better ways
+to test EAP.
+
+
 rlm_sql_log
-===========
+-----------
 
 This has been replaced with the "null" sql driver.  See
 raddb/mods-available/sql for an example configuration.
