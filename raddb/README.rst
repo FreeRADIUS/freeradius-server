@@ -67,12 +67,18 @@ by ``dir_permissions``.
     
 If an external host is referenced in the context of a module the
 ``server`` config item is used.
+
+Unless the config item is a well recognised portmanteau 
+(as ``filename`` is for example), it must be written as multiple
+distinct words seperated by underscores ``_``.
     
 The configuration items ``file``, ``script_file``, ``module``,
 ``detail``, ``detailfile``, ``attrsfile``, ``perm``, ``dirperm``,
 ``detailperm``, and ``hostname`` are deprecated.  Please update your
 module configuration to use the new syntax.
 
+In most cases the server will tell you the replacement config item to
+use.
 
 SQL
 ---
