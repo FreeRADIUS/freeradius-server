@@ -63,6 +63,10 @@ Support for RFC and VSA Attributes Additional server configuration
 attributes Selecting a particular configuration Authentication methods
 Accounting methods
 
+Authors:
+--------
+See http://wiki.freeradius.org/project/Acknowledgements
+
 %package libs
 License:      GPLv2 ; LGPLv2.1
 Group:        Productivity/Networking/Radius/Servers
@@ -71,15 +75,9 @@ Summary:      FreeRADIUS shared library
 %description libs
 The FreeRADIUS shared library
 
-
-
 Authors:
 --------
-    Miquel van Smoorenburg <miquels@cistron.nl>
-    Alan DeKok <aland@ox.org>
-    Mike Machado <mike@innercite.com>
-    Alan Curry
-    various other people
+See http://wiki.freeradius.org/project/Acknowledgements
 
 %package utils
 License:      GPLv2 ; LGPLv2.1
@@ -105,15 +103,9 @@ Requires:     %{name}-libs = %{version}
 %description devel
 These are the static libraries for the FreeRADIUS package.
 
-
-
 Authors:
 --------
-    Miquel van Smoorenburg <miquels@cistron.nl>
-    Alan DeKok <aland@ox.org>
-    Mike Machado <mike@innercite.com>
-    Alan Curry
-    various other people
+See http://wiki.freeradius.org/project/Acknowledgements
 
 %package doc
 License:        GPLv2 ; LGPLv2.1
@@ -124,15 +116,9 @@ Requires:       %{name}
 %description doc
 This package contains FreeRADIUS Documentation
 
-
-
 Authors:
 --------
-    Miquel van Smoorenburg <miquels@cistron.nl>
-    Alan DeKok <aland@ox.org>
-    Mike Machado <mike@innercite.com>
-    Alan Curry
-    various other people
+See http://wiki.freeradius.org/project/Acknowledgements
 
 %prep
 %setup -q
