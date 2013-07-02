@@ -75,7 +75,7 @@ sql {
 	# read_groups = yes
 
 	# Remove stale session if checkrad does not see a double login
-	deletestalesessions = yes
+	delete_stale_sessions = yes
 
 	# Print all SQL statements when in debug mode (-x)
 	sqltrace = no
@@ -140,7 +140,7 @@ sql {
 	# and security reasons, finding clients via SQL queries CANNOT
 	# be done "live" while the server is running.
 	# 
-	#readclients = yes
+	#read_clients = yes
 
 	# Table to keep radius client info
 	nas_table = "nas"

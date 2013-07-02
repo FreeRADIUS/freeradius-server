@@ -948,7 +948,7 @@ fi
     * Enabled the administration socket in the default install.
       See raddb/sites-available/control-socket, and "man radmin"
     * Handle duplicate clients, such as with replicated or
-      load-balanced SQL servers and "readclients = yes"
+      load-balanced SQL servers and "read_clients = yes"
   Bug fixes
     * Minor changes to allow building without VQP.
     * Minor fixes from John Center
