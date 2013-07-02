@@ -217,7 +217,7 @@ ldap {
 		#    * require_message_authenticator - Whether we require the Message-Authenticator
 		#      attribute to be present in requests from the client.
 		#
-		attributes {
+		attribute {
 			identifier = 'frClientIdentifier'
 			secret = 'frClientSecret'
 #			shortname = 'frClientShortname'
