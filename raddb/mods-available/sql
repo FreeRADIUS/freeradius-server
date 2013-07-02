@@ -139,11 +139,10 @@ sql {
 	# Clients will ONLY be read on server startup.  For performance
 	# and security reasons, finding clients via SQL queries CANNOT
 	# be done "live" while the server is running.
-	# 
-	#read_clients = yes
+#	read_clients = yes
 
 	# Table to keep radius client info
-	nas_table = "nas"
+	client_table = "nas"
 
 	# Read database-specific queries
 	$INCLUDE ${modconfdir}/${.:name}/${dialect}/queries.conf
