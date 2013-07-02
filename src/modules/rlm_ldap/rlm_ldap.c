@@ -42,6 +42,7 @@ const FR_NAME_NUMBER ldap_scope[] = {
 	{ "sub",	LDAP_SCOPE_SUB	},
 	{ "one",	LDAP_SCOPE_ONE	},
 	{ "base",	LDAP_SCOPE_BASE },
+	{ "children",	LDAP_SCOPE_CHILDREN },
 	
 	{  NULL , -1 }
 };
@@ -579,21 +580,21 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	 */
 	inst->userobj_scope = fr_str2int(ldap_scope, inst->userobj_scope_str, -1);
 	if (inst->userobj_scope < 0) {
-		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+		LDAP_ERR("Invalid 'user.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			 inst->userobj_scope_str);
 		goto error;
 	}
 	
 	inst->groupobj_scope = fr_str2int(ldap_scope, inst->groupobj_scope_str, -1);
 	if (inst->groupobj_scope < 0) {
-		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+		LDAP_ERR("Invalid 'group.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			 inst->groupobj_scope_str);
 		goto error;
 	}
 	
 	inst->clientobj_scope = fr_str2int(ldap_scope, inst->clientobj_scope_str, -1);
 	if (inst->clientobj_scope < 0) {
-		LDAP_ERR("Invalid 'client.scope' value \"%s\", expected 'sub', 'one' or 'base'",
+		LDAP_ERR("Invalid 'client.scope' value \"%s\", expected 'sub', 'one', 'base' or 'children'",
 			 inst->clientobj_scope_str);
 		goto error;
 	}

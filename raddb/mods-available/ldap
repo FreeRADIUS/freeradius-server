@@ -89,13 +89,16 @@ ldap {
 	#
 	#  User object identification.
 	#
-	user {
+	user {	
 		#   Where to start searching in the tree for users
 		base_dn = "${..base_dn}"
 		
 		#  Filter for user objects, should be specific enough
 		#  to identify a single user object.
 		filter = "(uid=%{%{Stripped-User-Name}:-%{User-Name}})"
+		
+		# Search scope, may be 'base', 'one', sub' or 'children'
+#		scope = 'sub'
 		
 		#  Control whether or not "access_attribute" is used to
 		#  determine authorization.  If set to "yes", then
@@ -123,6 +126,9 @@ ldap {
 		#  Filter for group objects, should match all available
 		#  group objects a user might be a member of.
 		filter = "(objectClass=posixGroup)"
+		
+		# Search scope, may be 'base', 'one', sub' or 'children'
+#		scope = 'sub'
 
 		#  Attribute that uniquely identifies a group.
 		#  Is used when converting group DNs to group
@@ -175,7 +181,7 @@ ldap {
 		#  The list of profiles which are applied (after the default)
 		#  to all users.
 		#  The "User-Profile" attribute in the control list
-		#  will over-ride this setting at run-time.
+		#  will override this setting at run-time.
 #		attribute = "radiusProfileDn"
 	}
 	
@@ -190,13 +196,9 @@ ldap {
 		#  Filter to match client objects
 		#
 		filter = '(objectClass=frClient)'
-
-		#
-		#  As with all objects the basedn can be overridden, it's 
-		#  more likely that you'll want to do it here, hence the
-		#  example.
-		#
-#		base_dn = 'ou=clients,dc=example,dc=org'
+		
+		# Search scope, may be 'base', 'one', 'sub' or 'children'
+#		scope = 'sub'
 
 		#
 		#  Client attribute mappings are in the format:
@@ -292,7 +294,7 @@ ldap {
 		#  The following two configuration items are for Active Directory
 		#  compatibility.  If you set these to "no", then searches
 		#  will likely return "operations error", instead of a
-		#  useful resuly.
+		#  useful result.
 		#
 		chase_referrals = yes
 		rebind = yes
