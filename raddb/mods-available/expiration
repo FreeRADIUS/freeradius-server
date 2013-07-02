@@ -10,10 +10,4 @@
 # compare function
 #
 expiration {
-	#
-	# The Reply-Message which will be sent back in case the
-	# account has expired. Dynamic substitution is supported
-	#
-	reply-message = "Password Has Expired\r\n" 
-	#reply-message = "Your account has expired, %{User-Name}\r\n"
 }

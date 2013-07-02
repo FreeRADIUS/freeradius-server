@@ -74,18 +74,8 @@ static rlm_rcode_t mod_authorize(void *instance, REQUEST *request)
 		*/
 		RDEBUG("Checking Expiration time: '%s'",check_item->vp_strvalue);
 		if (((time_t) check_item->vp_date) <= request->timestamp) {
-			RDEBUG("Account has expired");
-
-			if (inst->msg && inst->msg[0]){
-				if (radius_xlat(msg, sizeof(msg), request, inst->msg, NULL, NULL) < 0) {
-					return RLM_MODULE_FAIL;
-				}
-
-				pairfree(&request->reply->vps);
-				pairmake_reply("Reply-Message", msg, T_OP_ADD);
-			}
-
 			REDEBUG("Account has expired [Expiration %s]", check_item->vp_strvalue);
+			
 			return RLM_MODULE_USERLOCK;
 		}
 		/*
