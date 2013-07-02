@@ -95,7 +95,7 @@ static const CONF_PARSER module_config[] = {
 	{"simul_verify_query", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,simul_verify_query), NULL, ""},
 #endif
-	{"safe-characters", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	{"safe_characters", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
 	 offsetof(rlm_sql_config_t,allowed_chars), NULL, NULL},
 	{"safe_characters", PW_TYPE_STRING_PTR,
 	 offsetof(rlm_sql_config_t,allowed_chars), NULL,

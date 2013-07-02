@@ -179,7 +179,7 @@ US-ASCII and thus international characters will fail.
 N.B. this could be fixed, if we wanted to pull in something like iconv.
 
 In addition, you should beware of Cleartext-Password when using SQL;
-any password character not in safe-characters will be encoded as a hex
+any password character not in safe_characters will be encoded as a hex
 number, e.g. =20.
 
 Password changes over EAP

@@ -22,5 +22,5 @@ expr {
 	# Characters that will not be encoded by the %{encode}
 	# xlat function.
 	# 
-	safe-characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
+	safe_characters = "@abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789.-_: /"
 }
