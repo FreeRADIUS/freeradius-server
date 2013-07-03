@@ -23,10 +23,10 @@ with the following content (for mysql):
 
 #-----#
 sqlcounter noresetcounter {
-                counter-name = Max-All-Session-Time
-                check-name = Max-All-Session
-                reply-name = Session-Timeout
-                sqlmod-inst = sql
+                sql_module_instance = sqlcca3
+                counter_name = Max-All-Session-Time
+                check_name = Max-All-Session
+                reply_name = Session-Timeout
                 key = User-Name
                 reset = never
 
@@ -36,11 +36,11 @@ sqlcounter noresetcounter {
 
 
 sqlcounter dailycounter {
+                sql_module_instance = sqlcca3
                 driver = "rlm_sqlcounter"
-                counter-name = Daily-Session-Time
-                check-name = Max-Daily-Session
-                reply-name = Session-Timeout
-                sqlmod-inst = sqlcca3
+                counter_name = Daily-Session-Time
+                check_name = Max-Daily-Session
+                reply_name = Session-Timeout
                 key = User-Name
                 reset = daily
 
@@ -49,10 +49,10 @@ sqlcounter dailycounter {
         }
 
 sqlcounter monthlycounter {
-                counter-name = Monthly-Session-Time
-                check-name = Max-Monthly-Session
-                reply-name = Session-Timeout
-                sqlmod-inst = sqlcca3
+                sql_module_instance = sqlcca3
+                counter_name = Monthly-Session-Time
+                check_name = Max-Monthly-Session
+                reply_name = Session-Timeout
                 key = User-Name
                 reset = monthly
 

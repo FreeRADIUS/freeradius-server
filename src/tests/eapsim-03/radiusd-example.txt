@@ -753,10 +753,10 @@ modules {
 	#            of attributes.
 	#   authtype - if record found this Auth-Type is used to authenticate
 	#            user
-	#   hashsize - hashtable size. If 0 or not specified records are not
+	#   hash_size - hashtable size. If 0 or not specified records are not
 	#            stored in memory and file is red on every request.
-	#   allowmultiplekeys - if few records for every key are allowed
-	#   ignorenislike - ignore NIS-related records
+	#   allow_multiple_keys - if few records for every key are allowed
+	#   ignore_nislike - ignore NIS-related records
 	#   delimiter - symbol to use as a field separator in passwd file,
 	#            for format ':' symbol is always used. '\0', '\n' are
         #	     not allowed 
@@ -768,9 +768,9 @@ modules {
 	#	filename = /etc/smbpasswd
 	#	format = "*User-Name::LM-Password:NT-Password:SMB-Account-CTRL-TEXT::"
 	#	authtype = MS-CHAP
-	#	hashsize = 100
-	#	ignorenislike = no
-	#	allowmultiplekeys = no
+	#	hash_size = 100
+	#	ignore_nislike = no
+	#	allow_multiple_keys = no
 	#}
 
 	#  Similar configuration, for the /etc/group file. Adds a Group-Name
@@ -779,9 +779,9 @@ modules {
 	#passwd etc_group {
 	#	filename = /etc/group
 	#	format = "=Group-Name:::*,User-Name"
-	#	hashsize = 50
-	#	ignorenislike = yes
-	#	allowmultiplekeys = yes
+	#	hash_size = 50
+	#	ignore_nislike = yes
+	#	allow_multiple_keys = yes
 	#	delimiter = ":"
 	#}
 
@@ -974,7 +974,7 @@ modules {
 		# are usually private.
 		perm = 0600
 
-		callerid = "yes"
+		caller_id = "yes"
 	}
 
 	# "Safe" radutmp - does not contain caller ID, so it can be
@@ -987,7 +987,7 @@ modules {
 	radutmp sradutmp {
 		filename = ${logdir}/sradutmp
 		perm = 0644
-		callerid = "no"
+		caller_id = "no"
 	}
 
 	# attr_filter - filters the attributes received in replies from
@@ -998,7 +998,7 @@ modules {
 	}
 
 	#  counter module:
-	#  This module takes an attribute (count-attribute).
+	#  This module takes an attribute (count_attribute).
 	#  It also takes a key, and creates a counter for each unique
 	#  key.  The count is incremented when accounting packets are
 	#  received by the server.  The value of the increment depends
@@ -1023,7 +1023,7 @@ modules {
 	#  reset = 12  (reset every 12 days)
 	#
 	#
-	#  The check-name attribute defines an attribute which will be
+	#  The check_name attribute defines an attribute which will be
 	#  registered by the counter module and can be used to set the
 	#  maximum allowed value for the counter after which the user
 	#  is rejected.
@@ -1033,16 +1033,16 @@ modules {
 	#          Fall-Through = 1
 	#
 	#  You should add the counter module in the instantiate
-	#  section so that it registers check-name before the files
+	#  section so that it registers check_name before the files
 	#  module reads the users file.
 	#
-	#  If check-name is set and the user is to be rejected then we
+	#  If check_name is set and the user is to be rejected then we
 	#  send back a Reply-Message and we log a Failure-Message in
 	#  the radius.log
 	#  If the count attribute is Acct-Session-Time then on each login
 	#  we send back the remaining online time as a Session-Timeout attribute
 	#
-	#  The counter-name can also be used instead of using the check-name
+	#  The counter-name can also be used instead of using the check_name
 	#  like below:
 	#
 	#  DEFAULT  Daily-Session-Time > 3600, Auth-Type = Reject
@@ -1057,17 +1057,17 @@ modules {
 	#  The module should be added in the instantiate, authorize and
 	#  accounting sections.  Make sure that in the authorize
 	#  section it comes after any module which sets the
-	#  'check-name' attribute.
+	#  'check_name' attribute.
 	#
 	counter daily {
 		filename = ${raddbdir}/db.daily
 		key = User-Name
-		count-attribute = Acct-Session-Time
+		count_attribute = Acct-Session-Time
 		reset = daily
-		counter-name = Daily-Session-Time
-		check-name = Max-Daily-Session
-		allowed-servicetype = Framed-User
-		cache-size = 5000
+		counter_name = Daily-Session-Time
+		check_name = Max-Daily-Session
+		allowed_service_type = Framed-User
+		cache_size = 5000
 	}
 
 	# The "always" module is here for debugging purposes. Each
@@ -1221,10 +1221,10 @@ modules {
 		#  netmask: The network mask used for the ip's
 		netmask = 255.255.255.0
 
-		#  cache-size: The gdbm cache size for the db
+		#  cache_size: The gdbm cache size for the db
 		#  files. Should be equal to the number of ip's
 		#  available in the ip pool
-		cache-size = 800
+		cache_size = 800
 
 		# session-db: The main db file used to allocate ip's to clients
 		session-db = ${raddbdir}/db.ippool
@@ -1273,7 +1273,7 @@ instantiate {
 
 	#
 	# We add the counter module here so that it registers
-	# the check-name attribute before any module which sets
+	# the check_name attribute before any module which sets
 	# it
 #	daily
 }

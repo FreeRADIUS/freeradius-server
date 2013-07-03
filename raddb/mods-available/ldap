@@ -75,7 +75,7 @@ ldap {
 	# 			If the attribute name is wrapped in double
 	# 			quotes it will be xlat expanded.
 	#
-#	valuepair_attr = "radiusValuePair"
+#	valuepair_attribute = "radiusValuePair"
 
 	# Set to yes if you have eDirectory and want to use the universal
 	# password mechanism.

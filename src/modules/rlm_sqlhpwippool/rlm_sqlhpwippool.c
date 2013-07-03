@@ -54,32 +54,32 @@ typedef struct rlm_sqlhpwippool_t {
 	rlm_sql_t *sqlinst;	  /* rlm_sql_t for requested instance */
 	rlm_sql_module_t *db;       /* here the fun takes place ;-) */
 #ifdef HAVE_PTHREAD_D
-	pthread_mutex_t mutex;      /* used "with" syncafter */
+	pthread_mutex_t mutex;      /* used "with" sync_after */
 #endif
 	int sincesync;	      /* req. done so far since last free IP sync. */
 
 	/* from config */
-	char *sqlinst_name;	 /* rlm_sql instance to use */
+	char *sql_module_instance;	 /* rlm_sql instance to use */
 	char *db_name;	      /* netvim database */
-	int nofreefail;	     /* fail if no free IP addresses found */
-	int freeafter;	      /* how many seconds an IP should not be used after
+	int no_free_fail;	     /* fail if no free IP addresses found */
+	int free_after;	      /* how many seconds an IP should not be used after
 				       freeing */
-	int syncafter;	      /* how often to sync with radacct */
+	int sync_after;	      /* how often to sync with radacct */
 } rlm_sqlhpwippool_t;
 
 /* char *name, int type,
  * size_t offset, void *data, char *dflt */
 static CONF_PARSER module_config[] = {
-	{ "sqlinst_name",       PW_TYPE_STRING_PTR,
-	  offsetof(rlm_sqlhpwippool_t, sqlinst_name),       NULL, "sql" },
+	{ "sql_module_instance",       PW_TYPE_STRING_PTR,
+	  offsetof(rlm_sqlhpwippool_t, sql_module_instance),       NULL, "sql" },
 	{ "db_name",	    PW_TYPE_STRING_PTR,
 	  offsetof(rlm_sqlhpwippool_t, db_name),	    NULL, "netvim" },
-	{ "nofreefail",	 PW_TYPE_BOOLEAN,
-	  offsetof(rlm_sqlhpwippool_t, nofreefail),	 NULL, "yes" },
-	{ "freeafter",	  PW_TYPE_INTEGER,
-	  offsetof(rlm_sqlhpwippool_t, freeafter),	  NULL, "300" },
-	{ "syncafter",	  PW_TYPE_INTEGER,
-	  offsetof(rlm_sqlhpwippool_t, syncafter),	  NULL, "25" },
+	{ "no_free_fail",	 PW_TYPE_BOOLEAN,
+	  offsetof(rlm_sqlhpwippool_t, no_free_fail),	 NULL, "yes" },
+	{ "free_after",	  PW_TYPE_INTEGER,
+	  offsetof(rlm_sqlhpwippool_t, free_after),	  NULL, "300" },
+	{ "sync_after",	  PW_TYPE_INTEGER,
+	  offsetof(rlm_sqlhpwippool_t, sync_after),	  NULL, "25" },
 	{ NULL, -1, 0, NULL, NULL } /* end */
 };
 
@@ -197,7 +197,7 @@ static int nvp_freeclosed(rlm_sqlhpwippool_t *data, rlm_sql_handle_t *sqlsock)
 	    			"(`rsv_until` = 0 OR `rsv_until` > NOW())"
 	    		") AND "
 	    		"`radacct`.`acctuniqueid` = `ips`.`rsv_by`",
-	    data->db_name, data->freeafter)) {
+	    data->db_name, data->free_after)) {
 		return 0;
 	}
 
@@ -295,12 +295,12 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	inst->sincesync = 0;
 
-	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sqlinst_name), 1 );
+	sqlinst = find_module_instance(cf_section_find("modules"), (inst->sql_module_instance), 1 );
 	if (!sqlinst) {
 		nvp_log(__LINE__, inst, L_ERR,
 			"mod_instantiate(): cannot find module instance "
 			"named \"%s\"",
-			inst->sqlinst_name);
+			inst->sql_module_instance);
 		return -1;
 	}
 
@@ -309,7 +309,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		nvp_log(__LINE__, inst, L_ERR,
 			"mod_instantiate(): given instance (%s) is not "
 			"an instance of the rlm_sql module",
-			inst->sqlinst_name);
+			inst->sql_module_instance);
 		return -1;
 	}
 
@@ -393,7 +393,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 	nvp_select_finish(inst, sqlsock);
 
 	/* synchronize with radacct db, if needed */
-	if (++inst->sincesync >= inst->syncafter
+	if (++inst->sincesync >= inst->sync_after
 #ifdef HAVE_PTHREAD_D
 	    && (pthread_mutex_trylock(&inst->mutex)) == 0
 #endif
@@ -559,7 +559,7 @@ static rlm_rcode_t mod_post_auth(void *instance, REQUEST *request)
 				    		") "
 				    	"ORDER BY RAND() "
 				    	"LIMIT 1",
-				    inst->db_name, pid, connid, inst->freeafter, ip_start, ip_stop)) {
+				    inst->db_name, pid, connid, inst->free_after, ip_start, ip_stop)) {
 					sql_release_socket(inst->sqlinst, sqlsock);
 					return RLM_MODULE_FAIL;
 				}
@@ -620,7 +620,7 @@ end_gid:
 		nvp_log(__LINE__, inst, L_INFO,
 			"mod_post_auth(): no free IP address found!");
 
-		if (inst->nofreefail) {
+		if (inst->no_free_fail) {
 			nvp_log(__LINE__, inst, L_DBG, "mod_post_auth(): rejecting user");
 			return RLM_MODULE_REJECT;
 		}
@@ -724,7 +724,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			    	"WHERE "
 			    		"`ips`.`rsv_by` = '%s' AND "
 			    		"`ips`.`ip` BETWEEN `ip_pools`.`ip_start` AND `ip_pools`.`ip_stop`",
-			    inst->db_name, inst->freeafter, sessid)) {
+			    inst->db_name, inst->free_after, sessid)) {
 				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}
@@ -749,7 +749,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 			    	"WHERE "
 			    		"`radacct`.`nasipaddress` = '%s' AND "
 			    		"`ips`.`rsv_by` = `radacct`.`acctuniqueid`",
-			    inst->db_name, inst->freeafter, nasipstr)) {
+			    inst->db_name, inst->free_after, nasipstr)) {
 				sql_release_socket(inst->sqlinst, sqlsock);
 				return RLM_MODULE_FAIL;
 			}

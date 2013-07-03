@@ -20,9 +20,9 @@
 passwd etc_group {
 	filename = /etc/group
 	format = "=Etc-Group-Name:::*,User-Name"
-	hashsize = 50
-	ignorenislike = yes
-	allowmultiplekeys = yes
+	hash_size = 50
+	ignore_nislike = yes
+	allow_multiple_keys = yes
 	delimiter = ":"
 }
 

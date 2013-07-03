@@ -54,7 +54,7 @@ typedef struct rlm_radutmp_t {
 	int		case_sensitive;
 	int		check_nas;
 	int		permission;
-	int		callerid_ok;
+	int		caller_id_ok;
 } rlm_radutmp_t;
 
 static const CONF_PARSER module_config[] = {
@@ -70,8 +70,10 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(rlm_radutmp_t,permission), NULL,  NULL },
 	{ "permissions",     PW_TYPE_INTEGER,
 	  offsetof(rlm_radutmp_t,permission), NULL,  "0644" },
-	{ "callerid", PW_TYPE_BOOLEAN,
-	  offsetof(rlm_radutmp_t,callerid_ok), NULL, "no" },
+	{ "callerid", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
+	  offsetof(rlm_radutmp_t,caller_id_ok), NULL, "no" },
+	{ "caller_id", PW_TYPE_BOOLEAN,
+	  offsetof(rlm_radutmp_t,caller_id_ok), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
 };
 
@@ -269,7 +271,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 					ut.porttype = porttypes[vp->vp_integer];
 				break;
 			case PW_CALLING_STATION_ID:
-				if(inst->callerid_ok)
+				if(inst->caller_id_ok)
 					strlcpy(ut.caller_id,
 						vp->vp_strvalue,
 						sizeof(ut.caller_id));

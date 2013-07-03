@@ -29,26 +29,26 @@ ippool main_pool {
 
 	#  range-start,range-stop:
 	#	The start and end ip addresses for this pool.
-	range-start = 192.168.1.1
-	range-stop = 192.168.3.254
+	range_start = 192.168.1.1
+	range_stop = 192.168.3.254
 
 	#  netmask:
 	#	The network mask used for this pool.
 	netmask = 255.255.255.0
 
-	#  cache-size:
+	#  cache_size:
 	#	The gdbm cache size for the db files. Should
 	#	be equal to the number of ip's available in
 	#	the ip pool
-	cache-size = 800
+	cache_size = 800
 
 	# session-db:
 	#	The main db file used to allocate addresses.
-	session-db = ${db_dir}/db.ippool
+	session_db = ${db_dir}/db.ippool
 
 	# ip-index:
 	#	Helper db index file used in multilink
-	ip-index = ${db_dir}/db.ipindex
+	ip_index = ${db_dir}/db.ipindex
 
 	# override:
 	#	If set, the Framed-IP-Address already in the
@@ -60,7 +60,7 @@ ippool main_pool {
 	#	Specifies the maximum time in seconds that an
 	#	entry may be active.  If set to zero, means
 	#	"no timeout".  The default value is 0
-	maximum-timeout = 0
+	maximum_timeout = 0
 
 	# key:
 	#	The key to use for the session database (which

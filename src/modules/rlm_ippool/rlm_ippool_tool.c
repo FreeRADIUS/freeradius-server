@@ -570,7 +570,7 @@ void viewdb(char *sessiondbname, char *indexdbname, char *ipaddress, int old) {
 }
 
 void NEVER_RETURNS usage(char *argv0) {
-	printf("Usage: %s [-a] [-c] [-o] [-v] <session-db> <index-db> [ipaddress]\n", argv0);
+	printf("Usage: %s [-a] [-c] [-o] [-v] <filename> <index-db> [ipaddress]\n", argv0);
 	printf("  -a: print all active entries\n");
 	printf("  -c: report number of active entries\n");
 	printf("  -r: remove active entries\n");
@@ -578,9 +578,9 @@ void NEVER_RETURNS usage(char *argv0) {
 	printf("  -o: Assume old database format (nas/port pair, not md5 output)\n");
 	printf("  If an ipaddress is specified then that address is used to\n");
 	printf("  limit the actions or output.\n");
-	printf("  Usage: %s -n  <session-db> <index-db> <ipaddress> <nasIP> <nasPort>\n", argv0);
+	printf("  Usage: %s -n  <filename> <index-db> <ipaddress> <nasIP> <nasPort>\n", argv0);
 	printf("  -n: Mark the entry nasIP/nasPort as having ipaddress\n");
-	printf("  Usage: %s -u <session-db> <new-session-db>\n", argv0);
+	printf("  Usage: %s -u <filename> <new-filename>\n", argv0);
 	printf("  -u: Update old format database to new.\n");
 	exit(0);
 }

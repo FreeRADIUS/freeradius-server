@@ -10,7 +10,7 @@
 passwd smbpasswd {
 	filename = /etc/smbpasswd
 	format = "*User-Name::LM-Password:NT-Password:SMB-Account-CTRL-TEXT::"
-	hashsize = 100
-	ignorenislike = no
-	allowmultiplekeys = no
+	hash_size = 100
+	ignore_nislike = no
+	allow_multiple_keys = no
 }

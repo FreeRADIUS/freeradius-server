@@ -10,11 +10,11 @@
 rediswho {
 	#  How many sessions to keep track of per user.
 	#  If there are more than this number, older sessions are deleted.
-	trim-count = 15
+	trim_count = 15
 
 	#  Expiry time in seconds.  Any sessions which have not received
 	#  an update in this time will be automatically expired.
-	expire-time = 86400
+	expire_time = 86400
 
 	#
 	#  Each subsection contains insert / trim / expire queries.
@@ -28,19 +28,19 @@ rediswho {
 	#
 	Start {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim-count}"
-		expire = "EXPIRE %{User-Name} ${..expire-time}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
+		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
 
 	Interim-Update {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim-count}"
-		expire = "EXPIRE %{User-Name} ${..expire-time}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
+		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
 
 	Stop {
 		insert = "LPUSH %{User-Name} %l,%{Acct-Session-Id},%{NAS-IP-Address},%{Acct-Session-Time},%{Framed-IP-Address},%{%{Acct-Input-Gigawords}:-0},%{%{Acct-Output-Gigawords}:-0},%{%{Acct-Input-Octets}:-0},%{%{Acct-Output-Octets}:-0}"
-		trim =   "LTRIM %{User-Name} 0 ${..trim-count}"
-		expire = "EXPIRE %{User-Name} ${..expire-time}"
+		trim =   "LTRIM %{User-Name} 0 ${..trim_count}"
+		expire = "EXPIRE %{User-Name} ${..expire_time}"
 	}
 }

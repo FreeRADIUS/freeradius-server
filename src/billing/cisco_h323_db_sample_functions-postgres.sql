@@ -91,19 +91,19 @@ SELECT DISTINCT ON(h323SetupTime, CallID) * FROM StopVoIP;
 
 
 CREATE OR REPLACE VIEW call_history_csps2 AS
-SELECT StartVoIP.h323ConnectTime, StopVoIP.h323DisconnectTime, (EXTRACT(EPOCH FROM(StopVoIP.h323DisconnectTime - StartVoIP.h323ConnectTime)))::BIGINT AS CallLength, StopVoIP.CalledStationId AS Number, StopVoIP.UserName AS UserName, StopVoIP.CallingStationId AS CallerID, StopVoIP.CallID
+SELECT StartVoIP.h323ConnectTime, StopVoIP.h323DisconnectTime, (EXTRACT(EPOCH FROM(StopVoIP.h323DisconnectTime - StartVoIP.h323ConnectTime)))::BIGINT AS CallLength, StopVoIP.CalledStationId AS Number, StopVoIP.UserName AS UserName, StopVoIP.CallingStationId AS caller_id, StopVoIP.CallID
 FROM StopVoIPd AS StopVoIP LEFT OUTER JOIN StartVoIPd AS StartVoIP
 ON (StopVoIP.CallID = StartVoIP.CallID)
 WHERE StopVoIP.NASIPAddress = '212.50.54.122'
 ORDER BY StartVoIP.h323ConnectTime;
 
 CREATE OR REPLACE VIEW call_history_csps AS
-SELECT CAST ((h323DisconnectTime::date AT TIME ZONE 'UTC') AS date) AS Date, CAST ((h323DisconnectTime AT TIME ZONE 'UTC') AS time without time zone) AS Time, AcctSessionTime AS Length, CalledStationId AS Number, UserName AS UserName, CallingStationId AS CallerID, CallID
+SELECT CAST ((h323DisconnectTime::date AT TIME ZONE 'UTC') AS date) AS Date, CAST ((h323DisconnectTime AT TIME ZONE 'UTC') AS time without time zone) AS Time, AcctSessionTime AS Length, CalledStationId AS Number, UserName AS UserName, CallingStationId AS caller_id, CallID
 FROM StopVoIP
 WHERE NASIPAddress = '212.50.54.122';
 
 CREATE OR REPLACE VIEW call_history AS
-SELECT CAST ((h323SetupTime::date AT TIME ZONE 'UTC') AS date) AS Date, CAST ((h323SetupTime AT TIME ZONE 'UTC') AS time without time zone) AS Time, AcctSessionTime AS Length, CalledStationId AS Number, UserName AS UserName, CallingStationId AS CallerID, H323RemoteAddress, NASIPAddress, CallID
+SELECT CAST ((h323SetupTime::date AT TIME ZONE 'UTC') AS date) AS Date, CAST ((h323SetupTime AT TIME ZONE 'UTC') AS time without time zone) AS Time, AcctSessionTime AS Length, CalledStationId AS Number, UserName AS UserName, CallingStationId AS caller_id, H323RemoteAddress, NASIPAddress, CallID
 FROM StopVoIP;
 
 CREATE OR REPLACE VIEW call_history AS

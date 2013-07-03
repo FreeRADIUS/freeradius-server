@@ -364,14 +364,14 @@ struct passwd_instance {
 	char			*filename;
 	char			*format;
 	char			*delimiter;
-	int			allowmultiple;
-	int			ignorenislike;
-	int			hashsize;
+	int			allow_multiple;
+	int			ignore_nislike;
+	int			hash_size;
 	int			nfields;
 	int			keyfield;
 	int			listable;
 	const DICT_ATTR		*keyattr;
-	int			ignoreempty;
+	int			ignore_empty;
 };
 
 static const CONF_PARSER module_config[] = {
@@ -381,14 +381,27 @@ static const CONF_PARSER module_config[] = {
 	  offsetof(struct passwd_instance, format), NULL,  NULL },
 	{ "delimiter",   PW_TYPE_STRING_PTR,
 	  offsetof(struct passwd_instance, delimiter), NULL,  ":" },
-	{ "ignorenislike",   PW_TYPE_BOOLEAN,
-	  offsetof(struct passwd_instance, ignorenislike), NULL,  "yes" },
-	{ "ignoreempty",   PW_TYPE_BOOLEAN,
-	  offsetof(struct passwd_instance, ignoreempty), NULL,  "yes" },
-	{ "allowmultiplekeys",   PW_TYPE_BOOLEAN,
-	  offsetof(struct passwd_instance, allowmultiple), NULL,  "no" },
-	{ "hashsize",   PW_TYPE_INTEGER,
-	  offsetof(struct passwd_instance, hashsize), NULL,  "100" },
+	  
+	{ "ignorenislike",   PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
+	  offsetof(struct passwd_instance, ignore_nislike), NULL,  NULL },
+	{ "ignore_nislike",   PW_TYPE_BOOLEAN,
+	  offsetof(struct passwd_instance, ignore_nislike), NULL,  "yes" },
+
+	{ "ignoreempty",   PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
+	  offsetof(struct passwd_instance, ignore_empty), NULL,  NULL },	  
+	{ "ignore_empty",   PW_TYPE_BOOLEAN,
+	  offsetof(struct passwd_instance, ignore_empty), NULL,  "yes" },
+	  
+	{ "allowmultiplekeys",   PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
+	  offsetof(struct passwd_instance, allow_multiple), NULL,  NULL },
+	{ "allow_multiple_keys",   PW_TYPE_BOOLEAN,
+	  offsetof(struct passwd_instance, allow_multiple), NULL,  "no" },
+
+	{ "hashsize",   PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
+	  offsetof(struct passwd_instance, hash_size), NULL,  NULL },  
+	{ "hash_size",   PW_TYPE_INTEGER,
+	  offsetof(struct passwd_instance, hash_size), NULL,  "100" },
+	  
 	{ NULL, -1, 0, NULL, NULL }
 };
 
@@ -405,8 +418,8 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->format && *inst->format);
 
-	if (inst->hashsize == 0) {
-		cf_log_err_cs(conf, "Invalid value '0' for hashsize");
+	if (inst->hash_size == 0) {
+		cf_log_err_cs(conf, "Invalid value '0' for hash_size");
 		return -1;
 	}
 
@@ -444,7 +457,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			      inst->format);
 		return -1;
 	}
-	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hashsize, inst->ignorenislike, *inst->delimiter)) ){
+	if (! (inst->ht = build_hash_table (inst->filename, nfields, keyfield, listable, inst->hash_size, inst->ignore_nislike, *inst->delimiter)) ){
 		ERROR("rlm_passwd: can't build hashtable from passwd file");
 		return -1;
 	}
@@ -503,7 +516,7 @@ static void addresult (struct passwd_instance * inst, REQUEST *request, TALLOC_C
 
 	for (i=0; i<inst->nfields; i++) {
 		if (inst->pwdfmt->field[i] && *inst->pwdfmt->field[i] && pw->field[i] && i != inst->keyfield  && inst->pwdfmt->listflag[i] == when) {
-			if ( !inst->ignoreempty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
+			if ( !inst->ignore_empty || pw->field[i][0] != 0 ) { /* if value in key/value pair is not empty */
 				vp = pairmake(ctx, vps, inst->pwdfmt->field[i], pw->field[i], T_OP_EQ);
 				if (vp) {
 					RDEBUG("Added %s: '%s' to %s ", inst->pwdfmt->field[i], pw->field[i], listname);
@@ -543,7 +556,7 @@ static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
 			addresult(inst, request, request->packet, &request->packet->vps, pw, 2, "request_items");
 		} while ((pw = get_next(buffer, inst->ht, &last_found)));
 		
-		if (!inst->allowmultiple) {
+		if (!inst->allow_multiple) {
 			break;
 		}
 	}

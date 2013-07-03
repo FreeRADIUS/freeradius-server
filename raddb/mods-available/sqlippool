@@ -11,21 +11,21 @@ sqlippool {
 	#
 	#  If you have multiple sql instances, such as "sql sql1 {...}",
 	#  use the *instance* name here: sql1.
-	sql-instance-name = "sql"
+	sql_instance_name = "sql"
 
 	# SQL table to use for ippool range and lease info
 	ippool_table = "radippool"
 	
 	# IP lease duration. (Leases expire even if Acct Stop packet is lost)
-	lease-duration = 3600
+	lease_duration = 3600
 	
 	# Attribute which should be considered unique per NAS
 	#
 	#  Using NAS-Port gives behaviour similar to rlm_ippool. (And ACS)
 	#  Using Calling-Station-Id works for NAS that send fixed NAS-Port
 	#  ONLY change this if you know what you are doing!
-	pool-key = "%{NAS-Port}"
-	# pool-key = "%{Calling-Station-Id}"
+	pool_key = "%{NAS-Port}"
+	# pool_key = "%{Calling-Station-Id}"
 	
 	################################################################
 	#

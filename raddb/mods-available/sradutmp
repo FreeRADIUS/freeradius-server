@@ -12,5 +12,5 @@
 radutmp sradutmp {
 	filename = ${logdir}/sradutmp
 	permissions = 0644
-	callerid = "no"
+	caller_id = "no"
 }

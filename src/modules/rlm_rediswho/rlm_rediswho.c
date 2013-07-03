@@ -49,10 +49,16 @@ typedef struct rlm_rediswho_t {
 } rlm_rediswho_t;
 
 static CONF_PARSER module_config[] = {
-	{ "redis-instance-name", PW_TYPE_STRING_PTR,
+	{ "redis-instance-name", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED,
+	  offsetof(rlm_rediswho_t, redis_instance_name), NULL, NULL},
+	{ "redis_module_instance", PW_TYPE_STRING_PTR,
 	  offsetof(rlm_rediswho_t, redis_instance_name), NULL, "redis"},
-	{ "trim-count", PW_TYPE_INTEGER,
+
+	{ "trim-count", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED,
+	  offsetof(rlm_rediswho_t, trim_count), NULL, NULL},
+	{ "trim_count", PW_TYPE_INTEGER,
 	  offsetof(rlm_rediswho_t, trim_count), NULL, "-1"},
+	  
 	{ NULL, -1, 0, NULL, NULL}
 };
 

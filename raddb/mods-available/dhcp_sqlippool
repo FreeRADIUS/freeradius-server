@@ -5,14 +5,14 @@
 ##  $Id$
 
 sqlippool dhcp_sqlippool {
-	sql-instance-name = "sql"
+	sql_instance_name = "sql"
 
 	ippool_table = "radippool"
 
-	lease-duration = 7200
+	lease_duration = 7200
 
 	# Client's MAC address is mapped to Calling-Station-Id in policy.conf
-	pool-key = "%{Calling-Station-Id}"
+	pool_key = "%{Calling-Station-Id}"
 
 	# For now, it only works with MySQL.
 	$INCLUDE ${modconfdir}/sql/ippool-dhcp/mysql/queries.conf

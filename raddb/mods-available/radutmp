@@ -49,5 +49,5 @@ radutmp {
 	# are usually private.
 	permissions = 0600
 
-	callerid = "yes"
+	caller_id = "yes"
 }

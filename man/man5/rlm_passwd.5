@@ -34,17 +34,17 @@ The path to the file.
 .IP delimiter\ =\ ":"
 The character to use as a delimiter between fields.  The default is
 ":"
-.IP hashsize
+.IP hash_size
 The size of the hashtable.  If 0, then the passwords are not cached
 and the passwd file is parsed for every request.  We do not recommend
-such a configuration.  A larger hashsize means less probability of
-collision and faster search in hashtable. Having a hashsize in the range
+such a configuration.  A larger hash_size means less probability of
+collision and faster search in hashtable. Having a hash_size in the range
 of 30-100% of the number of passwd file records is reasonable.
-.IP allowmultiplekeys
+.IP allow_multiple_keys
 If set to 'yes', and more than one record in file matches the request,
 then the attributes from all records will be used. If set to 'no' (the
 default) the module will warn about duplicated records.
-.IP ignorenislike
+.IP ignore_nislike
 If set to 'yes', then all records from the file beginning with the '+'
 sign will be ignored.  The default is 'no'.
 .IP format
@@ -66,7 +66,7 @@ prefix the attribute name in the "format" string with the '~' character.
 .PP
 To add an attribute to the reply (to be sent back to the NAS) prefix
 the attribute name in the "format" string with the '=' character.
-.IP ignoreempty
+.IP ignore_empty
 This configuration item defaults to "yes".  If there is no value for
 the attribute, then the attribute is not added.  By setting this value
 to "no", you can force the attribute to be added, even if there is no

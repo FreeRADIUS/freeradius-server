@@ -41,7 +41,7 @@ A: In case you configured realm to strip username, User-Password attribute
 
 Q: How can I say passwd to add attribute even if it's value is empty?
 
-A: set ignoreempty to "no" in module configuration.
+A: set ignore_empty to "no" in module configuration.
 
 
 5. Acknowlegements:

@@ -60,7 +60,7 @@ RCSID("$Id$")
  *	be used as the instance handle.
  */
 typedef struct rlm_ippool_t {
-	char *session_db;
+	char *filename;
 	char *ip_index;
 	char *name;
 	char *key;
@@ -100,26 +100,33 @@ typedef struct ippool_key {
 	char key[16];
 } ippool_key;
 
-/*
- *	A mapping of configuration file names to internal variables.
- *
- *	Note that the string is dynamically allocated, so it MUST
- *	be freed.  When the configuration file parse re-reads the string,
- *	it free's the old one, and strdup's the new one, placing the pointer
- *	to the strdup'd string into 'config.string'.  This gets around
- *	buffer over-flows.
- */
 static const CONF_PARSER module_config[] = {
-  { "session-db", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,session_db), NULL, NULL },
-  { "ip-index", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
-  { "key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,key), NULL, "%{NAS-IP-Address} %{NAS-Port}" },
-  { "range-start", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_start), NULL, "0" },
-  { "range-stop", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_stop), NULL, "0" },
-  { "netmask", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,netmask), NULL, "0" },
-  { "cache-size", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,cache_size), NULL, "1000" },
-  { "override", PW_TYPE_BOOLEAN, offsetof(rlm_ippool_t,override), NULL, "no" },
-  { "maximum-timeout", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,max_timeout), NULL, "0" },
-  { NULL, -1, 0, NULL, NULL }
+	{ "session-db", PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,filename), NULL, NULL },
+	{ "filename", PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,filename), NULL, NULL },
+
+	{ "ip-index", PW_TYPE_STRING_PTR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
+	{ "ip_index", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED, offsetof(rlm_ippool_t,ip_index), NULL, NULL },
+
+	{ "key", PW_TYPE_STRING_PTR | PW_TYPE_REQUIRED,
+	  offsetof(rlm_ippool_t,key), NULL, "%{NAS-IP-Address} %{NAS-Port}" },
+
+	{ "range-start", PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,range_start), NULL, NULL },
+	{ "range_start", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_start), NULL, "0" },
+	
+	{ "range-stop", PW_TYPE_IPADDR | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,range_stop), NULL, NULL },
+	{ "range_stop", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,range_stop), NULL, "0" },
+
+	{ "netmask", PW_TYPE_IPADDR, offsetof(rlm_ippool_t,netmask), NULL, "0" },
+
+	{ "cache-size", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,cache_size), NULL, NULL },
+	{ "cache_size", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,cache_size), NULL, "1000" },
+
+	{ "override", PW_TYPE_BOOLEAN, offsetof(rlm_ippool_t,override), NULL, "no" },
+
+	{ "maximum-timeout", PW_TYPE_INTEGER | PW_TYPE_DEPRECATED, offsetof(rlm_ippool_t,max_timeout), NULL, NULL },
+	{ "maximum_timeout", PW_TYPE_INTEGER, offsetof(rlm_ippool_t,max_timeout), NULL, "0" },
+  
+	{ NULL, -1, 0, NULL, NULL }
 };
 
 /*
@@ -145,7 +152,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 
 	cache_size = inst->cache_size;
 
-	rad_assert(inst->session_db && *inst->session_db);
+	rad_assert(inst->filename && *inst->filename);
 	rad_assert(inst->ip_index && *inst->ip_index);
 
 	inst->range_start = htonl(inst->range_start);
@@ -157,11 +164,11 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		return -1;
 	}
 
-	inst->gdbm = gdbm_open(inst->session_db, sizeof(int),
+	inst->gdbm = gdbm_open(inst->filename, sizeof(int),
 			GDBM_WRCREAT | GDBM_IPPOOL_OPTS, 0600, NULL);
 	if (!inst->gdbm) {
 		ERROR("rlm_ippool: Failed to open file %s: %s",
-				inst->session_db, strerror(errno));
+				inst->filename, strerror(errno));
 		return -1;
 	}
 	inst->ip = gdbm_open(inst->ip_index, sizeof(int),
@@ -223,7 +230,7 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 			rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 			if (rcode < 0) {
 				ERROR("rlm_ippool: Failed storing data to %s: %s",
-						inst->session_db, gdbm_strerror(gdbm_errno));
+						inst->filename, gdbm_strerror(gdbm_errno));
 				gdbm_close(inst->gdbm);
 				gdbm_close(inst->ip);
 				return -1;
@@ -326,7 +333,7 @@ static rlm_rcode_t mod_accounting(void *instance, REQUEST *request)
 		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
 			ERROR("rlm_ippool: Failed storing data to %s: %s",
-					inst->session_db, gdbm_strerror(gdbm_errno));
+					inst->filename, gdbm_strerror(gdbm_errno));
 			pthread_mutex_unlock(&inst->op_mutex);
 			return RLM_MODULE_FAIL;
 		}
@@ -473,7 +480,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 			rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 			if (rcode < 0) {
 				ERROR("rlm_ippool: Failed storing data to %s: %s",
-					inst->session_db, gdbm_strerror(gdbm_errno));
+					inst->filename, gdbm_strerror(gdbm_errno));
 				pthread_mutex_unlock(&inst->op_mutex);
 				return RLM_MODULE_FAIL;
 			}
@@ -531,7 +538,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 
 	/*
 	 * Walk through the database searching for an active=0 entry.
-	 * We search twice. Once to see if we have an active entry with the same callerid
+	 * We search twice. Once to see if we have an active entry with the same caller_id
 	 * so that MPPP can work ok and then once again to find a free entry.
 	 */
 
@@ -645,7 +652,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 				free(data_datum_tmp.dptr);
 				if (rcode < 0) {
 					ERROR("rlm_ippool: Failed storing data to %s: %s",
-						inst->session_db, gdbm_strerror(gdbm_errno));
+						inst->filename, gdbm_strerror(gdbm_errno));
 						pthread_mutex_unlock(&inst->op_mutex);
 					return RLM_MODULE_FAIL;
 				}
@@ -706,7 +713,7 @@ static rlm_rcode_t mod_post_auth(UNUSED void *instance, UNUSED REQUEST *request)
 		rcode = gdbm_store(inst->gdbm, key_datum, data_datum, GDBM_REPLACE);
 		if (rcode < 0) {
 			ERROR("rlm_ippool: Failed storing data to %s: %s",
-				inst->session_db, gdbm_strerror(gdbm_errno));
+				inst->filename, gdbm_strerror(gdbm_errno));
 				pthread_mutex_unlock(&inst->op_mutex);
 			return RLM_MODULE_FAIL;
 		}

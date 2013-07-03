@@ -1580,13 +1580,13 @@ edit radiusd.conf::
             #radutmp {
             #	filename = ${logdir}/radutmp
             #	permissions =  0600
-            #	callerid = "yes"
+            #	caller_id = "yes"
             #}
 
             #radutmp sradutmp {
             #	filename = ${logdir}/sradutmp
             #	permissions =  0644
-            #	callerid = "no"
+            #	caller_id = "no"
             #}
 
             #attr_filter {
