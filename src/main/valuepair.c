@@ -1233,8 +1233,7 @@ VALUE_PAIR *radius_vpt_get_vp(REQUEST *request, value_pair_tmpl_t const *vpt)
 		return NULL;
 	}
 	
-	switch (vpt->type)
-	{
+	switch (vpt->type) {
 	/*
 	 *	May not may not be found, but it *is* a known name.
 	 */

@@ -151,29 +151,28 @@ static ssize_t xlat_integer(UNUSED void *instance, REQUEST *request,
 		return 0;
 	}
 
-	switch (vp->da->type)
-	{		
-		case PW_TYPE_OCTETS:
-		case PW_TYPE_STRING:
-			if (vp->length > 8) {
-				break;
-			}
-
-			memcpy(&integer, &(vp->vp_octets), vp->length);
-			
-			return snprintf(out, outlen, "%" PRIu64, ntohll(integer));	
-			
-		case PW_TYPE_INTEGER64:
-			return snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
-			
-		case PW_TYPE_IPADDR:
-		case PW_TYPE_INTEGER:
-		case PW_TYPE_SHORT:
-		case PW_TYPE_BYTE:
-		case PW_TYPE_DATE:
-			return snprintf(out, outlen, "%u", vp->vp_integer);
-		default:
+	switch (vp->da->type) {		
+	case PW_TYPE_OCTETS:
+	case PW_TYPE_STRING:
+		if (vp->length > 8) {
 			break;
+		}
+
+		memcpy(&integer, &(vp->vp_octets), vp->length);
+		
+		return snprintf(out, outlen, "%" PRIu64, ntohll(integer));	
+		
+	case PW_TYPE_INTEGER64:
+		return snprintf(out, outlen, "%" PRIu64, vp->vp_integer64);
+		
+	case PW_TYPE_IPADDR:
+	case PW_TYPE_INTEGER:
+	case PW_TYPE_SHORT:
+	case PW_TYPE_BYTE:
+	case PW_TYPE_DATE:
+		return snprintf(out, outlen, "%u", vp->vp_integer);
+	default:
+		break;
 	}
 	
 	REDEBUG("Type \"%s\" cannot be converted to integer",

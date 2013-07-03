@@ -155,52 +155,51 @@ value_pair_tmpl_t *radius_str2tmpl(TALLOC_CTX *ctx, char const *name, FR_TOKEN t
 	vpt = talloc_zero(ctx, value_pair_tmpl_t);
 	vpt->name = talloc_strdup(vpt, name);
 
-	switch (type)
-	{
-		case T_BARE_WORD:
-			if (!isdigit((int) *name)) {
-				request_refs_t ref;
-				pair_lists_t list;
-				const char *p = name;
+	switch (type) {
+	case T_BARE_WORD:
+		if (!isdigit((int) *name)) {
+			request_refs_t ref;
+			pair_lists_t list;
+			const char *p = name;
 
-				ref = radius_request_name(&p, REQUEST_CURRENT);
-				list = radius_list_name(&p, PAIR_LIST_REQUEST);
+			ref = radius_request_name(&p, REQUEST_CURRENT);
+			list = radius_list_name(&p, PAIR_LIST_REQUEST);
 
-				if ((p != name) && !*p) {
-					vpt->type = VPT_TYPE_LIST;
+			if ((p != name) && !*p) {
+				vpt->type = VPT_TYPE_LIST;
 
-				} else {
-					const DICT_ATTR *da;
-					da = dict_attrbyname(p);
-					if (!da) {
-						vpt->type = VPT_TYPE_LITERAL;
-						break;
-					}
-					vpt->da = da;
-					vpt->type = VPT_TYPE_ATTR;
+			} else {
+				const DICT_ATTR *da;
+				da = dict_attrbyname(p);
+				if (!da) {
+					vpt->type = VPT_TYPE_LITERAL;
+					break;
 				}
-
-				vpt->request = ref;
-				vpt->list = list;
-				break;
+				vpt->da = da;
+				vpt->type = VPT_TYPE_ATTR;
 			}
-			/* FALL-THROUGH */
 
-		case T_SINGLE_QUOTED_STRING:
-			vpt->type = VPT_TYPE_LITERAL;
+			vpt->request = ref;
+			vpt->list = list;
 			break;
-		case T_DOUBLE_QUOTED_STRING:
-			vpt->type = VPT_TYPE_XLAT;
-			break;
-		case T_BACK_QUOTED_STRING:
-			vpt->type = VPT_TYPE_EXEC;
-			break;
-		case T_OP_REG_EQ: /* hack */
-			vpt->type = VPT_TYPE_REGEX;
-			break;
-		default:
-			rad_assert(0);
-			return NULL;
+		}
+		/* FALL-THROUGH */
+
+	case T_SINGLE_QUOTED_STRING:
+		vpt->type = VPT_TYPE_LITERAL;
+		break;
+	case T_DOUBLE_QUOTED_STRING:
+		vpt->type = VPT_TYPE_XLAT;
+		break;
+	case T_BACK_QUOTED_STRING:
+		vpt->type = VPT_TYPE_EXEC;
+		break;
+	case T_OP_REG_EQ: /* hack */
+		vpt->type = VPT_TYPE_REGEX;
+		break;
+	default:
+		rad_assert(0);
+		return NULL;
 	}
 
 	return vpt;

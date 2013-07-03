@@ -289,9 +289,14 @@ static struct mypasswd * get_next(char *name, struct hashtable *ht,
 			else {
 				for (list = passwd->field[ht->keyfield], nextlist = list; nextlist; list = nextlist) {
 					for(nextlist = list; *nextlist && *nextlist!=','; nextlist++);
-					if(!*nextlist)nextlist = 0;
-					else *nextlist++ = 0;
-					if(!strcmp(list, name)) return passwd;
+					if(!*nextlist) {
+						nextlist = 0;
+					} else {
+						*nextlist++ = 0;
+					}
+					if (!strcmp(list, name)) {
+						return passwd;
+					}
 				}
 			}
 
@@ -312,12 +317,14 @@ static struct mypasswd * get_pw_nam(char * name, struct hashtable* ht,
 	*last_found = NULL;
 	if (ht->tablesize > 0) {
 		h = hash (name, ht->tablesize);
-		for (hashentry = ht->table[h]; hashentry; hashentry = hashentry->next)
+		for (hashentry = ht->table[h]; hashentry; hashentry = hashentry->next) {
 			if (!strcmp(hashentry->field[ht->keyfield], name)){
 				/* save address of next item to check into buffer */
 				*last_found=hashentry->next;
 				return hashentry;
 			}
+		}
+		
 		return NULL;
 	}
 	if (ht->fp) {
@@ -343,10 +350,14 @@ int main(void){
 		printf("Hash table not built\n");
 		return -1;
 	}
-	for (i=0; i<ht->tablesize; i++) if (ht->table[i]) {
+	for (i = 0; i < ht->tablesize; i++) {
+		if (ht->table[i]) {
 			printf("%d:\n", i);
-			for(pw=ht->table[i]; pw; pw=pw->next) printpw(pw, 4);
+			for (pw = ht->table[i]; pw; pw = pw->next) {
+				printpw(pw, 4);
+			}
 		}
+	}
 
 	while(fgets(buffer, 1024, stdin)){
 		buffer[strlen(buffer)-1] = 0;
@@ -542,7 +553,7 @@ static rlm_rcode_t passwd_map(void *instance, REQUEST *request)
 	
 	for (i = paircursor(&cursor, &key);
 	     i;
-	     i = pairfindnext(&cursor, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY)){
+	     i = pairfindnext(&cursor, inst->keyattr->attr, inst->keyattr->vendor, TAG_ANY)) {
 		/*
 		 *	Ensure we have the string form of the attribute
 		 */

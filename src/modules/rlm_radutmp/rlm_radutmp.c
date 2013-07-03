@@ -138,10 +138,12 @@ static NAS_PORT *nas_port_find(NAS_PORT *nas_port_list, uint32_t nasaddr, unsign
 {
 	NAS_PORT	*cl;
 
-	for(cl = nas_port_list; cl; cl = cl->next)
+	for(cl = nas_port_list; cl; cl = cl->next) {
 		if (nasaddr == cl->nasaddr &&
 			port == cl->port)
 			break;
+	}
+	
 	return cl;
 }
 

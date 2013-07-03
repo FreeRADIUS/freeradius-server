@@ -105,9 +105,7 @@ static int check_for_realm(void *instance, REQUEST *request, REALM **returnrealm
 	namebuf = talloc_strdup(request,  request->username->vp_strvalue);
 	username = namebuf;
 
-	switch(inst->format)
-	{
-
+	switch(inst->format) {
 	case REALM_FORMAT_SUFFIX:
 
 	  /* DEBUG2("  rlm_realm: Checking for suffix after \"%c\"", inst->delim[0]); */

@@ -2096,8 +2096,7 @@ FR_TOKEN pairread(char const **ptr, VALUE_PAIR_RAW *raw)
 	p = *ptr;
 	
 	next = gettoken(&p, buf, sizeof(buf));
-	switch (next)
-	{
+	switch (next) {
 	case T_EOL:
 	case T_HASH:
 		break;

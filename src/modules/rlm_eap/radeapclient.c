@@ -1331,8 +1331,7 @@ static void unmap_eap_methods(RADIUS_PACKET *rep)
 	eap1->vp_integer = e->code;
 	pairadd(&(rep->vps), eap1);
 
-	switch(e->code)
-	{
+	switch(e->code) {
 	default:
 	case PW_EAP_SUCCESS:
 	case PW_EAP_FAILURE:

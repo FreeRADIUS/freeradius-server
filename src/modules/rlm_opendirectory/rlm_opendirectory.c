@@ -296,8 +296,7 @@ static rlm_rcode_t mod_authenticate(UNUSED void *instance, REQUEST *request)
 	
 	odResult = od_check_passwd(request->username->vp_strvalue,
 				   request->password->vp_strvalue);
-	switch(odResult)
-	{
+	switch(odResult) {
 		case eDSNoErr:
 			ret = RLM_MODULE_OK;
 			break;

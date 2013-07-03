@@ -1092,8 +1092,7 @@ STATE_MACHINE_DECL(request_finish)
 		       PW_PROXY_STATE, 0, TAG_ANY);
 	if (vp) pairadd(&request->reply->vps, vp);
 
-	switch (request->reply->code)
-	{
+	switch (request->reply->code) {
 	case PW_AUTHENTICATION_ACK:
 		rad_postauth(request);
 		break;

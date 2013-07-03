@@ -1531,149 +1531,148 @@ static size_t rest_write_header(void *ptr, size_t size, size_t nmemb,
 	http_body_type_t type;
 	http_body_type_t supp;
 
-	switch (ctx->state)
-	{
-		case WRITE_STATE_INIT:
-			RDEBUG("Processing header");
+	switch (ctx->state) {
+	case WRITE_STATE_INIT:
+		RDEBUG("Processing header");
 
-			/*
-			 * HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
-			 *
-			 * "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
-			 */
-			if (s < 14) goto malformed;
+		/*
+		 * HTTP/<version> <reason_code>[ <reason_phrase>]\r\n
+		 *
+		 * "HTTP/1.1 " (8) + "100 " (4) + "\r\n" (2) = 14
+		 */
+		if (s < 14) goto malformed;
 
-			/*
-			 * Check start of header matches...
-			 */
-			if (strncasecmp("HTTP/", p, 5) != 0) goto malformed;
+		/*
+		 * Check start of header matches...
+		 */
+		if (strncasecmp("HTTP/", p, 5) != 0) goto malformed;
 
-			p += 5;
-			s -= 5;
+		p += 5;
+		s -= 5;
 
-			/*
-			 * Skip the version field, next space should mark start
-			 * of reason_code.
-			 */
-			q = memchr(p, ' ', s);
+		/*
+		 * Skip the version field, next space should mark start
+		 * of reason_code.
+		 */
+		q = memchr(p, ' ', s);
+		if (!q) goto malformed;
+
+		s -= (q - p);
+		p  = q;
+
+		/*
+		 * Process reason_code.
+		 *
+		 * " 100" (4) + "\r\n" (2) = 6
+		 */
+		if (s < 6) goto malformed;
+		p++;
+		s--;
+
+		/* Char after reason code must be a space, or \r */
+		if (!((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
+
+		ctx->code = atoi(p);
+
+		/*
+		 *	Process reason_phrase (if present).
+		 */
+		if (p[3] == ' ') {
+			p += 4;
+			s -= 4;
+
+			q = memchr(p, '\r', s);
 			if (!q) goto malformed;
 
-			s -= (q - p);
-			p  = q;
+			len = (q - p);
+
+			tmp = rad_malloc(len + 1);
+			strlcpy(tmp, p, len + 1);
+
+			RDEBUG("\tStatus : %i (%s)", ctx->code, tmp);
+
+			free(tmp);
+		} else {
+			RDEBUG("\tStatus : %i", ctx->code);
+		}
+
+		ctx->state = WRITE_STATE_PARSE_HEADERS;
+
+		break;
+
+	case WRITE_STATE_PARSE_HEADERS:
+		if ((s >= 14) &&
+		    (strncasecmp("Content-Type: ", p, 14) == 0)) {
+			p += 14;
+			s -= 14;
 
 			/*
-			 * Process reason_code.
-			 *
-			 * " 100" (4) + "\r\n" (2) = 6
+			 *	Check to see if there's a parameter
+			 *	separator.
 			 */
-			if (s < 6) goto malformed;
-			p++;
-			s--;
-
-			/* Char after reason code must be a space, or \r */
-			if (!((p[3] == ' ') || (p[3] == '\r'))) goto malformed;
-
-			ctx->code = atoi(p);
+			q = memchr(p, ';', s);
 
 			/*
-			 *	Process reason_phrase (if present).
+			 *	If there's not, find the end of this
+			 *	header.
 			 */
-			if (p[3] == ' ') {
-				p += 4;
-				s -= 4;
+			if (!q) q = memchr(p, '\r', s);
 
-				q = memchr(p, '\r', s);
-				if (!q) goto malformed;
+			len = (!q) ? s : (unsigned)(q - p);
 
-				len = (q - p);
+			type = fr_substr2int(http_content_type_table,
+				p, HTTP_BODY_UNKNOWN,
+				len);
 
-				tmp = rad_malloc(len + 1);
-				strlcpy(tmp, p, len + 1);
+			supp = http_body_type_supported[type];
 
-				RDEBUG("\tStatus : %i (%s)", ctx->code, tmp);
+			tmp = rad_malloc(len + 1);
+			strlcpy(tmp, p, len + 1);
 
-				free(tmp);
-			} else {
-				RDEBUG("\tStatus : %i", ctx->code);
+			RDEBUG("\tType   : %s (%s)",
+				fr_int2str(http_body_type_table, type,
+					"¿Unknown?"), tmp);
+
+			free(tmp);
+
+			if (type == HTTP_BODY_UNKNOWN) {
+				RDEBUG("Couldn't determine type, using"
+				       " request type \"%s\".",
+				       fr_int2str(http_body_type_table,
+						  ctx->type,
+						  "¿Unknown?"));
+
+			} else if (supp == HTTP_BODY_UNSUPPORTED) {
+				RDEBUG("Type \"%s\" is currently"
+				       " unsupported",
+				       fr_int2str(http_body_type_table,
+						  type, "¿Unknown?"));
+				ctx->type = HTTP_BODY_UNSUPPORTED;
+			} else if (supp == HTTP_BODY_UNAVAILABLE) {
+				RDEBUG("Type \"%s\" is currently"
+				       " unavailable, please rebuild"
+				       " this module with the required"
+				       " headers",
+				       fr_int2str(http_body_type_table,
+						  type, "¿Unknown?"));
+				ctx->type = HTTP_BODY_UNSUPPORTED;
+
+			} else if (supp == HTTP_BODY_INVALID) {
+				RDEBUG("Type \"%s\" is not a valid web"
+				       " API data markup format",
+				       fr_int2str(http_body_type_table,
+						  type, "¿Unknown?"));
+
+				ctx->type = HTTP_BODY_INVALID;
+
+			} else if (type != ctx->type) {
+				ctx->type = type;
 			}
-
-			ctx->state = WRITE_STATE_PARSE_HEADERS;
-
-			break;
-
-		case WRITE_STATE_PARSE_HEADERS:
-			if ((s >= 14) &&
-			    (strncasecmp("Content-Type: ", p, 14) == 0)) {
-				p += 14;
-				s -= 14;
-
-				/*
-				 *	Check to see if there's a parameter
-				 *	separator.
-				 */
-				q = memchr(p, ';', s);
-
-				/*
-				 *	If there's not, find the end of this
-				 *	header.
-				 */
-				if (!q) q = memchr(p, '\r', s);
-
-				len = (!q) ? s : (unsigned)(q - p);
-
-				type = fr_substr2int(http_content_type_table,
-					p, HTTP_BODY_UNKNOWN,
-					len);
-
-				supp = http_body_type_supported[type];
-
-				tmp = rad_malloc(len + 1);
-				strlcpy(tmp, p, len + 1);
-
-				RDEBUG("\tType   : %s (%s)",
-					fr_int2str(http_body_type_table, type,
-						"¿Unknown?"), tmp);
-
-				free(tmp);
-
-				if (type == HTTP_BODY_UNKNOWN) {
-					RDEBUG("Couldn't determine type, using"
-					       " request type \"%s\".",
-					       fr_int2str(http_body_type_table,
-							  ctx->type,
-							  "¿Unknown?"));
-
-				} else if (supp == HTTP_BODY_UNSUPPORTED) {
-					RDEBUG("Type \"%s\" is currently"
-					       " unsupported",
-					       fr_int2str(http_body_type_table,
-					       		  type, "¿Unknown?"));
-					ctx->type = HTTP_BODY_UNSUPPORTED;
-				} else if (supp == HTTP_BODY_UNAVAILABLE) {
-					RDEBUG("Type \"%s\" is currently"
-					       " unavailable, please rebuild"
-					       " this module with the required"
-					       " headers",
-					       fr_int2str(http_body_type_table,
-					       		  type, "¿Unknown?"));
-					ctx->type = HTTP_BODY_UNSUPPORTED;
-
-				} else if (supp == HTTP_BODY_INVALID) {
-					RDEBUG("Type \"%s\" is not a valid web"
-					       " API data markup format",
-					       fr_int2str(http_body_type_table,
-							  type, "¿Unknown?"));
-
-					ctx->type = HTTP_BODY_INVALID;
-
-				} else if (type != ctx->type) {
-					ctx->type = type;
-				}
-			}
-			break;
-			
-		default:
-			break;
+		}
+		break;
+		
+	default:
+		break;
 	}
 	return t;
 
@@ -1714,41 +1713,40 @@ static size_t rest_write_body(void *ptr, size_t size, size_t nmemb,
 		ctx->state = WRITE_STATE_PARSE_CONTENT;
 	}
 
-	switch (ctx->type)
-	{
-		case HTTP_BODY_UNSUPPORTED:
-			return t;
+	switch (ctx->type) {
+	case HTTP_BODY_UNSUPPORTED:
+		return t;
 
-		case HTTP_BODY_INVALID:
-			tmp = rad_malloc(t + 1);
-			strlcpy(tmp, p, t + 1);
+	case HTTP_BODY_INVALID:
+		tmp = rad_malloc(t + 1);
+		strlcpy(tmp, p, t + 1);
 
-			RDEBUG2("%s", tmp);
+		RDEBUG2("%s", tmp);
 
-			free(tmp);
+		free(tmp);
 
-			return t;
+		return t;
 
-		default:
-			if (t > (ctx->alloc - ctx->used)) {
-				ctx->alloc += ((t + 1) > REST_BODY_INCR) ?
-					t + 1 : REST_BODY_INCR;
+	default:
+		if (t > (ctx->alloc - ctx->used)) {
+			ctx->alloc += ((t + 1) > REST_BODY_INCR) ?
+				t + 1 : REST_BODY_INCR;
 
-				tmp = ctx->buffer;
+			tmp = ctx->buffer;
 
-				ctx->buffer = rad_malloc(ctx->alloc);
+			ctx->buffer = rad_malloc(ctx->alloc);
 
-				/* If data has been written previously */
-				if (tmp) {
-					strlcpy(ctx->buffer, tmp,
-					       (ctx->used + 1));
-					free(tmp);
-				}
+			/* If data has been written previously */
+			if (tmp) {
+				strlcpy(ctx->buffer, tmp,
+				       (ctx->used + 1));
+				free(tmp);
 			}
-			strlcpy(ctx->buffer + ctx->used, p, t + 1);
-			ctx->used += t;
+		}
+		strlcpy(ctx->buffer + ctx->used, p, t + 1);
+		ctx->used += t;
 
-			break;
+		break;
 	}
 
 	return t;
@@ -1926,54 +1924,53 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 	/*
 	 *	Configure HTTP verb (GET, POST, PUT, DELETE, other...)
 	 */
-	switch (method)
-	{
-		case HTTP_METHOD_GET :
-			ret = curl_easy_setopt(candle, CURLOPT_HTTPGET,
-					       val);
-			if (ret != CURLE_OK) goto error;
+	switch (method) {
+	case HTTP_METHOD_GET :
+		ret = curl_easy_setopt(candle, CURLOPT_HTTPGET,
+				       val);
+		if (ret != CURLE_OK) goto error;
 
-			break;
+		break;
 
-		case HTTP_METHOD_POST :
-			ret = curl_easy_setopt(candle, CURLOPT_POST,
-					       val);
-			if (ret != CURLE_OK) goto error;
+	case HTTP_METHOD_POST :
+		ret = curl_easy_setopt(candle, CURLOPT_POST,
+				       val);
+		if (ret != CURLE_OK) goto error;
 
-			break;
+		break;
 
-		case HTTP_METHOD_PUT :
-			ret = curl_easy_setopt(candle, CURLOPT_PUT,
-					       val);
-			if (ret != CURLE_OK) goto error;
+	case HTTP_METHOD_PUT :
+		ret = curl_easy_setopt(candle, CURLOPT_PUT,
+				       val);
+		if (ret != CURLE_OK) goto error;
 
-			break;
+		break;
 
-		case HTTP_METHOD_DELETE :
-			ret = curl_easy_setopt(candle, CURLOPT_HTTPGET,
-					       val);
-			if (ret != CURLE_OK) goto error;
+	case HTTP_METHOD_DELETE :
+		ret = curl_easy_setopt(candle, CURLOPT_HTTPGET,
+				       val);
+		if (ret != CURLE_OK) goto error;
 
-			ret = curl_easy_setopt(candle,
-					       CURLOPT_CUSTOMREQUEST, "DELETE");
-			if (ret != CURLE_OK) goto error;
+		ret = curl_easy_setopt(candle,
+				       CURLOPT_CUSTOMREQUEST, "DELETE");
+		if (ret != CURLE_OK) goto error;
 
-			break;
+		break;
 
-		case HTTP_METHOD_CUSTOM :
-			ret = curl_easy_setopt(candle, CURLOPT_HTTPGET,
-					       val);
-			if (ret != CURLE_OK) goto error;
+	case HTTP_METHOD_CUSTOM :
+		ret = curl_easy_setopt(candle, CURLOPT_HTTPGET,
+				       val);
+		if (ret != CURLE_OK) goto error;
 
-			ret = curl_easy_setopt(candle,
-					       CURLOPT_CUSTOMREQUEST,
-					       section->method);
-			if (ret != CURLE_OK) goto error;
-			break;
+		ret = curl_easy_setopt(candle,
+				       CURLOPT_CUSTOMREQUEST,
+				       section->method);
+		if (ret != CURLE_OK) goto error;
+		break;
 
-		default:
-			assert(0);
-			break;
+	default:
+		assert(0);
+		break;
 	};
 
 	/*
@@ -2131,63 +2128,61 @@ int rest_request_config(rlm_rest_t *instance, rlm_rest_section_t *section,
 			       &ctx->write);
 	if (ret != CURLE_OK) goto error;
 
-	switch (method)
-	{
-		case HTTP_METHOD_GET :
-		case HTTP_METHOD_DELETE :
-			return 0;
-			
-		case HTTP_METHOD_POST :
-		case HTTP_METHOD_PUT :
-		case HTTP_METHOD_CUSTOM :
-			if (section->chunk > 0) {
-				ctx->read.chunk = section->chunk;
+	switch (method) {
+	case HTTP_METHOD_GET :
+	case HTTP_METHOD_DELETE :
+		return 0;
+		
+	case HTTP_METHOD_POST :
+	case HTTP_METHOD_PUT :
+	case HTTP_METHOD_CUSTOM :
+		if (section->chunk > 0) {
+			ctx->read.chunk = section->chunk;
 
-				ctx->headers = curl_slist_append(ctx->headers,
-								 "Expect:");
-				if (!ctx->headers) goto error_header;
+			ctx->headers = curl_slist_append(ctx->headers,
+							 "Expect:");
+			if (!ctx->headers) goto error_header;
 
-				ctx->headers = curl_slist_append(ctx->headers,
-								 "Transfer-Encoding: chunked");
-				if (!ctx->headers) goto error_header;
+			ctx->headers = curl_slist_append(ctx->headers,
+							 "Transfer-Encoding: chunked");
+			if (!ctx->headers) goto error_header;
+		}
+
+		switch (type) {
+#ifdef HAVE_JSON
+		case HTTP_BODY_JSON:
+			rest_read_ctx_init(request, &ctx->read, 1);
+
+			if (rest_request_config_body(instance, section, request, handle,
+						     rest_encode_json) < 0) {
+				return -1;
 			}
 
-			switch (type)
-			{
-#ifdef HAVE_JSON
-				case HTTP_BODY_JSON:
-					rest_read_ctx_init(request, &ctx->read, 1);
-
-					if (rest_request_config_body(instance, section, request, handle,
-								     rest_encode_json) < 0) {
-						return -1;
-					}
-
-					break;
+			break;
 #endif
 
-				case HTTP_BODY_POST:
-					rest_read_ctx_init(request, &ctx->read, 0);
+		case HTTP_BODY_POST:
+			rest_read_ctx_init(request, &ctx->read, 0);
 
-					if (rest_request_config_body(instance, section, request, handle,
-								     rest_encode_post) < 0) {
-						return -1;
-					}
-
-					break;
-
-				default:
-					assert(0);
+			if (rest_request_config_body(instance, section, request, handle,
+						     rest_encode_post) < 0) {
+				return -1;
 			}
-
-			ret = curl_easy_setopt(candle, CURLOPT_HTTPHEADER,
-					       ctx->headers);
-			if (ret != CURLE_OK) goto error;
 
 			break;
 
 		default:
 			assert(0);
+		}
+
+		ret = curl_easy_setopt(candle, CURLOPT_HTTPHEADER,
+				       ctx->headers);
+		if (ret != CURLE_OK) goto error;
+
+		break;
+
+	default:
+		assert(0);
 	};
 
 	return 0;
@@ -2260,27 +2255,26 @@ int rest_request_decode(rlm_rest_t *instance,
 
 	RDEBUG("Processing body");
 
-	switch (ctx->write.type)
-	{
-		case HTTP_BODY_POST:
-			ret = rest_decode_post(instance, section, request,
-					       handle, ctx->write.buffer,
-					       ctx->write.used);
-			break;
+	switch (ctx->write.type) {
+	case HTTP_BODY_POST:
+		ret = rest_decode_post(instance, section, request,
+				       handle, ctx->write.buffer,
+				       ctx->write.used);
+		break;
 #ifdef HAVE_JSON
-		case HTTP_BODY_JSON:
-			ret = rest_decode_json(instance, section, request,
-					       handle, ctx->write.buffer,
-					       ctx->write.used);
-			break;
+	case HTTP_BODY_JSON:
+		ret = rest_decode_json(instance, section, request,
+				       handle, ctx->write.buffer,
+				       ctx->write.used);
+		break;
 #endif
-		case HTTP_BODY_UNSUPPORTED:
-		case HTTP_BODY_UNAVAILABLE:
-		case HTTP_BODY_INVALID:
-			return -1;
+	case HTTP_BODY_UNSUPPORTED:
+	case HTTP_BODY_UNAVAILABLE:
+	case HTTP_BODY_INVALID:
+		return -1;
 
-		default:
-			assert(0);
+	default:
+		assert(0);
 	}
 
 	return ret;

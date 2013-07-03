@@ -486,10 +486,8 @@ static sql_rcode_t sql_fetch_row(rlm_sql_handle_t *handle, rlm_sql_config_t *con
 	
 	MEM(row = handle->row = talloc_zero_array(handle->conn, char *, conn->col_count + 1));
 	
-	for (i = 0; i < conn->col_count; i++)
-	{
-		switch (sqlite3_column_type(conn->statement, i))
-		{
+	for (i = 0; i < conn->col_count; i++) {
+		switch (sqlite3_column_type(conn->statement, i)) {
 		case SQLITE_INTEGER:	
 			MEM(row[i] = talloc_asprintf(row, "%d", sqlite3_column_int(conn->statement, i)));
 			break;

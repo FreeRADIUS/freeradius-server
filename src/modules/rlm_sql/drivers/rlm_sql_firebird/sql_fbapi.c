@@ -224,20 +224,19 @@ void fb_store_row(rlm_sql_firebird_conn_t *conn)
 				char *p;
 				p = conn->row[i];
 				
-				switch (dtype)
-					{
-					case SQL_SHORT:
-						value = (ISC_INT64) *(short *)var->sqldata;
-						field_width = 6;
-						break;
-					case SQL_LONG:
-						value = (ISC_INT64) *(int *)var->sqldata;
-						field_width = 11;
-						break;
-					case SQL_INT64:
-						value = (ISC_INT64) *(ISC_INT64 *)var->sqldata;
-						field_width = 21;
-						break;
+				switch (dtype) {
+				case SQL_SHORT:
+					value = (ISC_INT64) *(short *)var->sqldata;
+					field_width = 6;
+					break;
+				case SQL_LONG:
+					value = (ISC_INT64) *(int *)var->sqldata;
+					field_width = 11;
+					break;
+				case SQL_INT64:
+					value = (ISC_INT64) *(ISC_INT64 *)var->sqldata;
+					field_width = 21;
+					break;
 				}
 				dscale = var->sqlscale;
 				

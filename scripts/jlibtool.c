@@ -2000,8 +2000,7 @@ static void link_fixup(command_t *cmd)
 
 static void post_parse_fixup(command_t *cmd)
 {
-	switch (cmd->mode)
-	{
+	switch (cmd->mode) {
 	case MODE_COMPILE:
 #ifdef PIC_FLAG
 		if (cmd->options.pic_mode != PIC_AVOID) {
@@ -2051,8 +2050,7 @@ static int run_mode(command_t *cmd)
 	cctemp = (count_chars*)lt_malloc(sizeof(count_chars));
 	init_count_chars(cctemp);
 
-	switch (cmd->mode)
-	{
+	switch (cmd->mode) {
 	case MODE_COMPILE:
 		rv = run_command(cmd, cmd->arglist);
 		if (rv) goto finish;

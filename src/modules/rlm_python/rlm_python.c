@@ -210,11 +210,12 @@ static int mod_init(void)
 					     "FreeRADIUS Module.")) == NULL)
 		goto failed;
 	
-	for (i = 0; radiusd_constants[i].name; i++)
-		if ((PyModule_AddIntConstant(radiusd_module,
-					     radiusd_constants[i].name,
-					     radiusd_constants[i].value)) < 0)
+	for (i = 0; radiusd_constants[i].name; i++) {
+		if ((PyModule_AddIntConstant(radiusd_module, radiusd_constants[i].name,
+					     radiusd_constants[i].value)) < 0) {
 			goto failed;
+		}
+	}
 	
 	PyEval_ReleaseLock(); /* Drop lock grabbed by InitThreads */
 	

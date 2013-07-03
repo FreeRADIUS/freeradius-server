@@ -572,8 +572,7 @@ void tls_session_information(tls_session_t *tls_session)
 
 	str_write_p = tls_session->info.origin ? ">>>" : "<<<";
 
-	switch (tls_session->info.version)
-	{
+	switch (tls_session->info.version) {
 	case SSL2_VERSION:
 		str_version = "SSL 2.0";
 		break;
@@ -701,8 +700,7 @@ void tls_session_information(tls_session_t *tls_session)
 			str_details1 = "???";
 
 			if (tls_session->info.record_len > 0)
-			switch (tls_session->info.handshake_type)
-			{
+			switch (tls_session->info.handshake_type) {
 			case SSL3_MT_HELLO_REQUEST:
 				str_details1 = ", HelloRequest";
 				break;

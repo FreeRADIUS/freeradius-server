@@ -348,8 +348,7 @@ static rlm_cache_entry_t *cache_add(rlm_cache_t *inst, REQUEST *request,
 			fr_int2str(vpt_types, map->dst->type, "¿unknown?"),
 			fr_int2str(vpt_types, map->src->type, "¿unknown?"));
 			
-		switch (map->src->type)
-		{
+		switch (map->src->type) {
 		case VPT_TYPE_ATTR:
 			from = NULL;
 			da = map->src->da;
@@ -566,8 +565,7 @@ static int cache_verify(rlm_cache_t *inst, value_pair_map_t **head)
 			return -1;
 		}
 	
-		switch (map->src->type)
-		{
+		switch (map->src->type) {
 		/*
 		 *	Only =, :=, += and -= operators are supported for
 		 *	cache entries.

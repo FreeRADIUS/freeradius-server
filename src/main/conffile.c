@@ -729,8 +729,7 @@ static char const *cf_expand_variables(char const *cf, int *lineno,
 					return NULL;
 				}
 				
-				switch (fr_str2int(conf_property_name, q, CONF_PROPERTY_INVALID))
-				{
+				switch (fr_str2int(conf_property_name, q, CONF_PROPERTY_INVALID)) {
 				case CONF_PROPERTY_NAME:
 					strcpy(p, mycs->name1);
 					break;
