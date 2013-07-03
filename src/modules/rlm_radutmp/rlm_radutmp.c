@@ -71,7 +71,7 @@ static const CONF_PARSER module_config[] = {
 	{ "permissions",     PW_TYPE_INTEGER,
 	  offsetof(rlm_radutmp_t,permission), NULL,  "0644" },
 	{ "callerid", PW_TYPE_BOOLEAN | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_radutmp_t,caller_id_ok), NULL, "no" },
+	  offsetof(rlm_radutmp_t,caller_id_ok), NULL, NULL },
 	{ "caller_id", PW_TYPE_BOOLEAN,
 	  offsetof(rlm_radutmp_t,caller_id_ok), NULL, "no" },
 	{ NULL, -1, 0, NULL, NULL }		/* end the list */
