@@ -101,7 +101,7 @@ static void die_horribly(char const *reason)
  */
 int main(int argc, char *argv[])
 {
-	int rcode;
+	int rcode = 0;
 	int argval;
 	int spawn_flag = true;
 	int dont_fork = false;
@@ -302,9 +302,9 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (debug_flag)
+	if (debug_flag) {
 		version();
-		
+	}
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
@@ -424,6 +424,12 @@ int main(int argc, char *argv[])
 	 */
 	if (check_config) {
 		DEBUG("Configuration appears to be OK.");
+		
+		/* for -C -m|-M */
+		if (mainconfig.debug_memory) {
+			goto cleanup;
+		}
+		
 		exit(0);
 	}
 
@@ -506,9 +512,10 @@ int main(int argc, char *argv[])
 	if (dont_fork == false) {
 		unlink(mainconfig.pid_file);
 	}
-		
-	radius_event_free();
 	
+	radius_event_free();
+
+cleanup:
 	/*
 	 *	Detach any modules.
 	 */
