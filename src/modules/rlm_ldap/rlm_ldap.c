@@ -643,8 +643,6 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 	/*
 	 *	Group comparison checks.
 	 */
-	inst->group_da = dict_attrbyvalue(PW_LDAP_GROUP, 0);
-	paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, rlm_ldap_groupcmp, inst);	
 	if (cf_section_name2(conf)) {
 		ATTR_FLAGS flags;
 		char buffer[256];
@@ -662,7 +660,13 @@ static int mod_instantiate(CONF_SECTION *conf, void *instance)
 		}
 		
 		paircompare_register(inst->group_da->attr, PW_USER_NAME, rlm_ldap_groupcmp, inst);
-	}
+	/*
+	 *	Were the default instance
+	 */
+	} else {
+		inst->group_da = dict_attrbyvalue(PW_LDAP_GROUP, 0);
+		paircompare_register(PW_LDAP_GROUP, PW_USER_NAME, rlm_ldap_groupcmp, inst);
+	}	
 
 	xlat_register(inst->xlat_name, ldap_xlat, rlm_ldap_escape_func, inst);
 
