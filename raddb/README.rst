@@ -141,10 +141,14 @@ driver, but the defaults will work.
 sql/dialup.conf
 ---------------
 
-Queries for post-auth and accounting calls have been re-arranged.
-The SQL module will now expand the 'reference' configuration item
-in the appropriate sub-section, and resolve this to a configuration
-item. This behaviour is similar to rlm_linelog.
+Queries for post-auth and accounting calls have been re-arranged.  The
+SQL module will now expand the 'reference' configuration item in the
+appropriate sub-section, and resolve this to a configuration
+item. This behaviour is similar to rlm_linelog.  This dynamic
+expansion allows for a dynamic mapping between accounting types and
+SQL qeuries.  Previously, the mapping was fixed.  Any "new" accounting
+type was ignored by the module.  Now, support for any accounting type
+can be added by just adding a new target, as below.
 
 Queries from v2.x.x may be manually copied to the new v3.0
 ``dialup.conf`` file (``raddb/sql/main/<dialect>/queries.conf``).
@@ -152,7 +156,7 @@ When doing this you may also need to update references to the
 accounting tables, as their definitions will now be outside of 
 the subsection containing the query.
 
-The mapping is as follows::
+The mapping from old "fixed" query to new "dynamic" query is as follows::
 
   accounting_onoff_query		-> accounting.type.accounting-on.query
   accounting_update_query		-> accounting.type.interim-update.query
@@ -162,8 +166,6 @@ The mapping is as follows::
   accounting_stop_query			-> accounting.type.stop.query
   accounting_stop_query_alt		+> accounting.type.stop.query
   postauth_query			-> post-auth.query
-
-
 
 Alternatively a 2.x.x config may be patched to work with the
 3.0 module by adding the following::
@@ -195,6 +197,9 @@ Alternatively a 2.x.x config may be patched to work with the
   post-auth {
   	query = "${..postauth_query}"
   }
+
+In general, it is safer to migrate the configuration rather than
+trying to "patch" it, to make it look like a v2 configuration.
 
 rlm_ldap
 --------
@@ -278,6 +283,7 @@ you will need to do::
 
   $ radiusd -fxx -l stdout
 
+Sorry, but that's the price to pay for using RadSec.
 
 PAP and User-Password
 ---------------------
@@ -287,7 +293,8 @@ against a cleartext password in the 'User-Password' attribute. Any
 occurances of this (for instance, in the users file) should now be changed
 to 'Cleartext-Password' instead.
 
-If this is not done, authentication is likely to fail.
+If this is not done, authentication will likely fail.  The server will
+also print a helpful message in debugging mode.
 
 If it really is impossible to do this, the following unlang inserted above
 the call to the pap module may be used to copy User-Password to the correct
@@ -343,7 +350,6 @@ A sample configuration in "unlang" is::
 
 We suggest updating all uses of attr_write to use unlang instead.
 
-
 rlm_checkval
 ------------
 
@@ -384,6 +390,8 @@ The rlm_sim_files module has been deleted.  It was never marked "stable",
 and was never used in a production environment.  There are better ways
 to test EAP.
 
+If you want similar functionality, see rlm_passwd.  It can read CSV
+files, and create attributes from them.
 
 rlm_sql_log
 -----------
