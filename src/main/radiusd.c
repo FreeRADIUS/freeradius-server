@@ -101,7 +101,8 @@ static void die_horribly(char const *reason)
  */
 int main(int argc, char *argv[])
 {
-	int rcode = 0;
+	int rcode = EXIT_SUCCESS;
+	int status;
 	int argval;
 	int spawn_flag = true;
 	int dont_fork = false;
@@ -471,17 +472,15 @@ int main(int argc, char *argv[])
 	/*
 	 *	Process requests until HUP or exit.
 	 */
-	while ((rcode = radius_event_process()) == 0x80) {
+	while ((status = radius_event_process()) == 0x80) {
 #ifdef WITH_STATS
 		radius_stats_init(1);
 #endif
 		hup_mainconfig();
 	}
-
-	if (rcode < 0) {
-		ERROR("Exiting due to internal error: %s",
-		       fr_strerror());
-		rcode = 2;
+	if (status < 0) {
+		ERROR("Exiting due to internal error: %s", fr_strerror());
+		rcode = EXIT_FAILURE;
 	} else {
 		INFO("Exiting normally.");
 	}
@@ -539,7 +538,7 @@ cleanup:
 		log_talloc_report(NULL);
 	}
 
-	return (rcode - 1);
+	return rcode;
 }
 
 
