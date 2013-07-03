@@ -197,7 +197,7 @@ int main(int argc, char *argv[])
 							    O_WRONLY | O_APPEND | O_CREAT, 0640);
 				if (default_log.fd < 0) {
 					fprintf(stderr, "radiusd: Failed to open log file %s: %s\n", mainconfig.log_file, strerror(errno));
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				fr_log_fp = fdopen(default_log.fd, "a");
 				break;		
@@ -205,7 +205,7 @@ int main(int argc, char *argv[])
 			case 'i':
 				if (ip_hton(optarg, AF_UNSPEC, &mainconfig.myip) < 0) {
 					fprintf(stderr, "radiusd: Invalid IP Address or hostname \"%s\"\n", optarg);
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				flag |= 1;
 				break;
@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 				if ((mainconfig.port <= 0) ||
 				    (mainconfig.port >= 65536)) {
 					fprintf(stderr, "radiusd: Invalid port number %s\n", optarg);
-					exit(1);
+					exit(EXIT_FAILURE);
 				}
 				flag |= 2;
 				break;
@@ -255,7 +255,7 @@ int main(int argc, char *argv[])
 				default_log.fd = STDOUT_FILENO;
 				
 				version();
-				exit(0);
+				exit(EXIT_SUCCESS);
 			case 'X':
 				spawn_flag = false;
 				dont_fork = true;
@@ -294,13 +294,13 @@ int main(int argc, char *argv[])
 	 */
 #ifdef HAVE_OPENSSL_CRYPTO_H
 	if (ssl_check_version() < 0) {
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 #endif
 
 	if (flag && (flag != 0x03)) {
 		fprintf(stderr, "radiusd: The options -i and -p cannot be used individually.\n");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (debug_flag) {
@@ -309,7 +309,7 @@ int main(int argc, char *argv[])
 
 	/*  Read the configuration files, BEFORE doing anything else.  */
 	if (read_mainconfig(0) < 0) {
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 #ifndef __MINGW32__
@@ -321,14 +321,14 @@ int main(int argc, char *argv[])
 
 		if (pid < 0) {
 			ERROR("Couldn't fork: %s", strerror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 
 		/*
 		 *  The parent exits, so the child can run in the background.
 		 */
 		if (pid > 0) {
-			exit(0);
+			exit(EXIT_SUCCESS);
 		}
 #ifdef HAVE_SETSID
 		setsid();
@@ -353,7 +353,7 @@ int main(int argc, char *argv[])
 		if (devnull < 0) {
 			ERROR("Failed opening /dev/null: %s\n",
 			       strerror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 		dup2(devnull, STDIN_FILENO);
 		if (default_log.dest == L_DST_STDOUT) {
@@ -431,7 +431,7 @@ int main(int argc, char *argv[])
 			goto cleanup;
 		}
 		
-		exit(0);
+		exit(EXIT_SUCCESS);
 	}
 
 #ifdef WITH_STATS
@@ -463,7 +463,7 @@ int main(int argc, char *argv[])
 		} else {
 			ERROR("Failed creating PID file %s: %s\n",
 			       mainconfig.pid_file, strerror(errno));
-			exit(1);
+			exit(EXIT_FAILURE);
 		}
 	}
 
