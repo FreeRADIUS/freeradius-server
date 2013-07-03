@@ -109,6 +109,23 @@ pid_t rad_waitpid(pid_t pid, int *status)
 	return waitpid(pid, status, 0);
 }
 
+static void NEVER_RETURNS usage(int status)
+{
+	FILE *output = status ? stderr : stdout;
+	fprintf(output, "Usage: %s [ args ]\n", progname);
+	fprintf(output, "  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
+	fprintf(output, "  -e command      Execute 'command' and then exit.\n");
+	fprintf(output, "  -E              Echo commands as they are being executed.\n");
+	fprintf(output, "  -f socket_file  Open socket_file directly, without reading radius.conf\n");
+	fprintf(output, "  -h              Print usage help information.\n");
+	fprintf(output, "  -i input_file   Read commands from 'input_file'.\n");
+	fprintf(output, "  -n name         Read raddb/name.conf instead of raddb/radiusd.conf\n");
+	fprintf(output, "  -o output_file  Write commands to 'output_file'.\n");
+	fprintf(output, "  -q              Quiet mode.\n");
+
+	exit(status);
+}
+
 static int fr_domain_socket(char const *path)
 {
 	int sockfd = -1;
@@ -244,23 +261,6 @@ static void do_challenge(int sockfd)
 		fprintf(stderr, "%s: Failed writing challenge data: %s\n",
 			progname, strerror(errno));
 	}
-}
-
-
-static int usage(void)
-{
-	printf("Usage: %s [ args ]\n", progname);
-	printf("  -d raddb_dir    Configuration files are in \"raddbdir/*\".\n");
-	printf("  -e command      Execute 'command' and then exit.\n");
-	printf("  -E	      Echo commands as they are being executed.\n");
-	printf("  -f socket_file  Open socket_file directly, without reading radius.conf\n");
-	printf("  -h	      Print usage help information.\n");
-	printf("  -i input_file   Read commands from 'input_file'.\n");
-	printf("  -n name	 Read raddb/name.conf instead of raddb/radiusd.conf\n");
-	printf("  -o output_file  Write commands to 'output_file'.\n");
-	printf("  -q	      Quiet mode.\n");
-
-	exit(1);
 }
 
 static ssize_t run_command(int sockfd, char const *command,
@@ -423,7 +423,7 @@ int main(int argc, char **argv)
 
 		default:
 		case 'h':
-			usage();
+			usage(0);
 			break;
 
 		case 'i':
@@ -451,7 +451,7 @@ int main(int argc, char **argv)
 		case 's':
 			if (file) {
 				fprintf(stderr, "%s: -s and -f cannot be used together.\n", progname);
-				exit(1);
+				usage(1);
 			}
 			radius_dir = NULL;
 			server = optarg;
@@ -474,9 +474,8 @@ int main(int argc, char **argv)
 
 		cs = cf_file_read(buffer);
 		if (!cs) {
-			fprintf(stderr, "%s: Errors reading or parsing %s\n",
-				progname, buffer);
-			exit(1);
+			fprintf(stderr, "%s: Errors reading or parsing %s\n", progname, buffer);
+			usage(1);
 		}
 
 		subcs = NULL;
@@ -503,16 +502,14 @@ int main(int argc, char **argv)
 			}
 
 			if (!file) {
-				fprintf(stderr, "%s: No path given for socket\n",
-					progname);
-				exit(1);
+				fprintf(stderr, "%s: No path given for socket\n", progname);
+				usage(1);
 			}
 			break;
 		}
 
 		if (!file) {
-			fprintf(stderr, "%s: Could not find control socket in %s\n",
-				progname, buffer);
+			fprintf(stderr, "%s: Could not find control socket in %s\n", progname, buffer);
 			exit(1);
 		}
 	}
@@ -520,8 +517,7 @@ int main(int argc, char **argv)
 	if (input_file) {
 		inputfp = fopen(input_file, "r");
 		if (!inputfp) {
-			fprintf(stderr, "%s: Failed opening %s: %s\n",
-				progname, input_file, strerror(errno));
+			fprintf(stderr, "%s: Failed opening %s: %s\n", progname, input_file, strerror(errno));
 			exit(1);
 		}
 	}
@@ -529,8 +525,7 @@ int main(int argc, char **argv)
 	if (output_file) {
 		outputfp = fopen(output_file, "w");
 		if (!outputfp) {
-			fprintf(stderr, "%s: Failed creating %s: %s\n",
-				progname, output_file, strerror(errno));
+			fprintf(stderr, "%s: Failed creating %s: %s\n", progname, output_file, strerror(errno));
 			exit(1);
 		}
 	}

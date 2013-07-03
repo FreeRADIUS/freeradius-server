@@ -549,8 +549,7 @@ static void NEVER_RETURNS usage(int status)
 {
 	FILE *output = status?stderr:stdout;
 
-	fprintf(output,
-			"Usage: %s [-d db_dir] [-l log_dir] [-i address] [-n name] [-fsvXx]\n", progname);
+	fprintf(output, "Usage: %s [-d db_dir] [-l log_dir] [-i address] [-n name] [-fsvXx]\n", progname);
 	fprintf(output, "Options:\n\n");
 	fprintf(output, "  -C            Check configuration and exit.\n");
 	fprintf(output, "  -d raddb_dir  Configuration files are in \"raddbdir/*\".\n");

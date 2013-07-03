@@ -170,23 +170,22 @@ static void NEVER_RETURNS usage(int status)
 	FILE *output = status?stderr:stdout;
 
 	fprintf(output, "Usage: radwho [-d raddb] [-cfihnprRsSZ] [-N nas] [-P nas_port] [-u user] [-U user]\n");
-	fprintf(output, "       -c: show caller ID, if available\n");
-	fprintf(output, "       -d: set the raddb directory (default is %s)\n",
-		RADIUS_DIR);
-	fprintf(output, "       -F <file>: Use radutmp <file>\n");
-	fprintf(output, "       -i: show session ID\n");
-	fprintf(output, "       -n: no full name\n");
-	fprintf(output, "       -N <nas-ip-address>: Show entries matching the given NAS IP address\n");
-	fprintf(output, "       -p: show port type\n");
-	fprintf(output, "       -P <port>: Show entries matching the given nas port\n");
-	fprintf(output, "       -r: Print output as raw comma-delimited data\n");
-	fprintf(output, "       -R: Print output as RADIUS attributes and values\n");
-	fprintf(output, "	   Includes ALL information from the radutmp record.\n");
-	fprintf(output, "       -s: show full name\n");
-	fprintf(output, "       -S: hide shell users from radius\n");
-	fprintf(output, "       -u <user>: Show entries matching the given user\n");
-	fprintf(output, "       -U <user>: like -u, but case-sensitive\n");
-	fprintf(output, "       -Z: Include accounting stop information in radius output.  Requires -R.\n");
+	fprintf(output, "  -c                   Show caller ID, if available.\n");
+	fprintf(output, "  -d                   Set the raddb directory (default is %s).\n", RADIUS_DIR);
+	fprintf(output, "  -F <file>            Use radutmp <file>.\n");
+	fprintf(output, "  -i                   Show session ID.\n");
+	fprintf(output, "  -n                   No full name.\n");
+	fprintf(output, "  -N <nas-ip-address>  Show entries matching the given NAS IP address.\n");
+	fprintf(output, "  -p                   Show port type.\n");
+	fprintf(output, "  -P <port>            Show entries matching the given nas port.\n");
+	fprintf(output, "  -r                   Print output as raw comma-delimited data.\n");
+	fprintf(output, "  -R                   Print output as RADIUS attributes and values.\n");
+	fprintf(output, "                       includes ALL information from the radutmp record.\n");
+	fprintf(output, "  -s                   Show full name.\n");
+	fprintf(output, "  -S                   Hide shell users from radius.\n");
+	fprintf(output, "  -u <user>            Show entries matching the given user.\n");
+	fprintf(output, "  -U <user>            Like -u, but case-sensitive.\n");
+	fprintf(output, "  -Z                   Include accounting stop information in radius output.  Requires -R.\n");
 	exit(status);
 }
 
