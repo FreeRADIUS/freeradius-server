@@ -6,6 +6,7 @@ etc/freeradius/huntgroups
 etc/freeradius/mods-available/*
 etc/freeradius/mods-enabled/*
 etc/freeradius/mods-config/*
+etc/freeradius/local.d/*
 etc/freeradius/policy.d/*
 etc/freeradius/certs/*
 etc/freeradius/proxy.conf

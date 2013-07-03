@@ -437,6 +437,19 @@ security {
 	status_server = yes
 }
 
+# SITE SPECIFIC CONFIGURATION
+#
+#  Load site specific configuration directives
+#
+#  This next $INCLUDE line loads files in the directory that
+#  match the regular expression: /[a-zA-Z0-9_.]+/
+#
+#  It allows you to define configuration values used in other files
+#  like clients.conf, proxy.conf and any virtual server
+
+$INCLUDE local.d/
+
+
 # PROXY CONFIGURATION
 #
 #  proxy_requests: Turns proxying of RADIUS requests on or off.
