@@ -210,7 +210,7 @@ static const CONF_PARSER module_config[] = {
 	{"password", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,password), NULL, ""},
 	{"identity", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t,admin_dn), NULL, ""},
 
-	{"valuepair_attr", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},
+	{"valuepair_attribute", PW_TYPE_STRING_PTR, offsetof(ldap_instance_t, valuepair_attr), NULL, NULL},
 
 #ifdef WITH_EDIR
 	/* support for eDirectory Universal Password */
