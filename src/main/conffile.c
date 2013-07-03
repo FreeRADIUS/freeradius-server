@@ -217,7 +217,9 @@ static int cf_data_free(void *ctx)
 	CONF_DATA *cd;
 
 	cd = talloc_get_type_abort(ctx, CONF_DATA);
-	cd->free(cd->data);
+	if (cd->free) {
+		cd->free(cd->data);
+	}
 
 	return 0;
 }
@@ -1047,7 +1049,7 @@ int cf_item_parse(CONF_SECTION *cs, char const *name, int type, void *data, char
 				
 				*mtime = buf.st_mtime;
 				/* FIXME: error? */
-				cf_data_add_internal(cs, *q, mtime, free, type);
+				cf_data_add_internal(cs, *q, mtime, NULL, type);
 			/*
 			 *	We were expecting the file to exist...
 			 */
@@ -1914,10 +1916,10 @@ int cf_file_include(CONF_SECTION *cs, char const *filename)
 	/*
 	 *	Add the filename to the section
 	 */
-	mtime = rad_malloc(sizeof(*mtime));
+	mtime = talloc(cs, time_t);
 	*mtime = statbuf.st_mtime;
 
-	if (cf_data_add_internal(cs, filename, mtime, free, PW_TYPE_FILE_INPUT) < 0) {
+	if (cf_data_add_internal(cs, filename, mtime, NULL, PW_TYPE_FILE_INPUT) < 0) {
 		fclose(fp);
 		ERROR("Internal error opening file \"%s\"",
 		       filename);
