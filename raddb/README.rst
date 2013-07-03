@@ -221,6 +221,16 @@ Users upgrading from 2.x.x who used to call the ldap module in
 post-auth should now set ``edir_autz = yes``, and remove the ``ldap``
 module from the post-auth section.
 
+rlm_ldap/LDAP-Group
+-------------------
+
+In 2.x.x the registration of the ``LDAP-Group`` pair comparison was done
+by the last instance of rlm_ldap to be instantiated. In 3.0 this has 
+changed so that only the default ``ldap {}`` instance registers 
+``LDAP-Group``.
+
+If ``<instance>-LDAP-Group`` is already used throughout your configuration
+no changes need to be made.
 
 rlm_eap
 -------
