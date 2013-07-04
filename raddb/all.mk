@@ -17,10 +17,10 @@ LOCAL_MODULES :=	$(addprefix raddb/mods-enabled/,$(DEFAULT_MODULES))
 
 LOCAL_CERT_FILES :=	Makefile README xpextensions \
 			ca.cnf server.cnf client.cnf bootstrap
-			
+
 LOCAL_CERT_PRODUCTS :=	$(addprefix $(R)$(raddbdir)/certs/,ca.key ca.pem \
 			client.key client.pem server.key server.pem)
-			
+
 LEGACY_LINKS :=		$(addprefix $(R)$(raddbdir)/,users huntgroups hints)
 
 RADDB_DIRS :=		certs mods-available mods-enabled policy.d \
@@ -54,7 +54,7 @@ install: install.raddb
 raddb/sites-enabled raddb/mods-enabled:
 	@echo INSTALL $@
 	@$(INSTALL) -d -m 750 $@
-	
+
 # Set up the default modules for running in-source builds
 raddb/mods-enabled/%: raddb/mods-available/% | raddb/mods-enabled
 	@echo "LN-S $@"
@@ -89,17 +89,17 @@ $(R)$(raddbdir)/sites-enabled/%: | $(R)$(raddbdir)/sites-available/%
 $(R)$(raddbdir)/%: | raddb/%
 	@echo INSTALL $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@$(INSTALL) -m 640 $(patsubst $(R)$(raddbdir)/%,raddb/%,$@) $@
-	
+
 # Create symbolic links for legacy files
-$(R)$(raddbdir)/huntgroups : $(R)$(modconfdir)/preprocess/huntgroups
+$(R)$(raddbdir)/huntgroups: $(R)$(modconfdir)/preprocess/huntgroups
 	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
-	
-$(R)$(raddbdir)/hints : $(R)$(modconfdir)/preprocess/hints
+
+$(R)$(raddbdir)/hints: $(R)$(modconfdir)/preprocess/hints
 	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
-	
-$(R)$(raddbdir)/users : $(R)$(modconfdir)/files/authorize
+
+$(R)$(raddbdir)/users: $(R)$(modconfdir)/files/authorize
 	@echo LN-S $(patsubst $(R)$(raddbdir)/%,raddb/%,$@)
 	@[ -e $@ ] || ln -s $(patsubst $(R)$(raddbdir)/%,./%,$<) $@
 
