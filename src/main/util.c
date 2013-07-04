@@ -136,8 +136,11 @@ int request_data_add(REQUEST *request,
 	this->unique_ptr = unique_ptr;
 	this->unique_int = unique_int;
 	this->opaque = opaque;
-	this->free_opaque = free_opaque;
-	talloc_set_destructor((void *) this, request_data_free_opaque);
+
+	if (free_opaque) {
+		this->free_opaque = free_opaque;
+		talloc_set_destructor((void *) this, request_data_free_opaque);
+	}
 
 	*last = this;
 
@@ -165,6 +168,7 @@ void *request_data_get(REQUEST *request,
 			 *	Remove the entry from the list, and free it.
 			 */
 			*last = this->next;
+			talloc_set_destructor((void *) this, NULL);
 			talloc_free(this);
 			return ptr; /* don't free it, the caller does that */
 		}
