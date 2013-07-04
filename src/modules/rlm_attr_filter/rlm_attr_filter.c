@@ -48,8 +48,6 @@ typedef struct rlm_attr_filter {
 static const CONF_PARSER module_config[] = {
 	{ "attrsfile",     PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED,
 	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
-	{ "file",     PW_TYPE_FILE_INPUT | PW_TYPE_DEPRECATED,
-	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
 	{ "filename",     PW_TYPE_FILE_INPUT | PW_TYPE_REQUIRED,
 	  offsetof(rlm_attr_filter_t, filename), NULL, NULL},
 	{ "key",     PW_TYPE_STRING_PTR,

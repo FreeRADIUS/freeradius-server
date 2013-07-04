@@ -67,8 +67,6 @@ typedef struct detail_instance {
 static const CONF_PARSER module_config[] = {
 	{ "detailfile",    PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED,
 	  offsetof(struct detail_instance,filename), NULL, NULL },
-	{ "file",    PW_TYPE_FILE_OUTPUT | PW_TYPE_DEPRECATED,
-	  offsetof(struct detail_instance,filename), NULL, NULL },
 	{ "filename",    PW_TYPE_FILE_OUTPUT | PW_TYPE_REQUIRED,
 	  offsetof(struct detail_instance,filename), NULL, "%A/%{Client-IP-Address}/detail" },
 	{ "header",    PW_TYPE_STRING_PTR,
