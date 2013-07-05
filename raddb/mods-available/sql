@@ -143,5 +143,5 @@ sql {
 	client_table = "nas"
 
 	# Read database-specific queries
-	$INCLUDE ${modconfdir}/${.:name}/${dialect}/queries.conf
+	$INCLUDE ${modconfdir}/${.:name}/main/${dialect}/queries.conf
 }
