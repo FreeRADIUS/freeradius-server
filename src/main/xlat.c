@@ -1657,16 +1657,15 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 		 */
 		str = xlat_getvp(ctx, ref, node->list, node->da, node->tag, true);
 		if (!str) {
-			str = talloc_strdup(ctx, "");
+			str = talloc_zero_array(ctx, char, 1);
 		}
 		XLAT_DEBUG("expand attr %s --> '%s'", node->da->name, str);
 		break;
 
 	case XLAT_VIRTUAL:
 		str = talloc_array(ctx, char, 1024); /* FIXME: have the module call talloc_asprintf */
-		rcode = node->xlat->func(node->xlat->instance, request,
-					 NULL, str, 1024);
-		if (rcode == 0) {
+		rcode = node->xlat->func(node->xlat->instance, request, NULL, str, 1024);
+		if (rcode < 0) {
 			talloc_free(str);
 			return NULL;
 		}
@@ -1731,17 +1730,11 @@ static char *xlat_aprint(TALLOC_CTX *ctx, REQUEST *request, xlat_exp_t const * c
 	 *	Escape the non-literals we found above.
 	 */
 	if (escape) {
-		size_t esclen;
 		char *escaped;
 
 		escaped = talloc_array(ctx, char, 1024); /* FIXME: do something intelligent */
-		esclen = escape(request, escaped, 1024, str, escape_ctx);
+		escape(request, escaped, 1024, str, escape_ctx);
 		talloc_free(str);
-		if (esclen == 0) {
-			talloc_free(escaped);
-			return NULL;
-		}
-
 		str = escaped;
 	}
 
@@ -1796,6 +1789,7 @@ static size_t xlat_process(char **out, REQUEST *request, xlat_exp_t const * cons
 
 	if (!total) {
 		talloc_free(array);
+		*out = talloc_zero_array(request, char, 1);
 		return 0;
 	}
 
@@ -1846,7 +1840,11 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	 */
 	len = xlat_tokenize_request(request, fmt, &node);
 	if (len == 0) {
-		if (*out) *out[0] = '\0';
+		if (*out) {
+			*out[0] = '\0';
+		} else {
+			*out = talloc_zero_array(request, char, 1);
+		}
 		return 0;	
 	}
 	
