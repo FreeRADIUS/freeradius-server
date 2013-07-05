@@ -748,10 +748,14 @@ instantiate {
 	#
 	#	Session-Timeout = `%{expr:2 + 3}`
 	#
-	#  So the module needs to be instantiated, but CANNOT be
+	#  This module needs to be instantiated, but CANNOT be
 	#  listed in any other section.  See 'doc/rlm_expr' for
 	#  more information.
 	#
+	#  rlm_expr is also responsible for registering many 
+	#  other xlat functions such as md5, sha1 and lc.
+	#
+	#  We do not recommend removing it's listing here.
 	expr
 
 	#
