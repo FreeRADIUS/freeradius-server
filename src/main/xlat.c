@@ -1846,7 +1846,11 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 	 */
 	len = xlat_tokenize_request(request, fmt, &node);
 	if (len == 0) {
-		if (*out) *out[0] = '\0';
+		if (*out) {
+			*out[0] = '\0';
+		} else {
+			*out = talloc_zero_array(request, char, 1);
+		}
 		return 0;	
 	}
 	
