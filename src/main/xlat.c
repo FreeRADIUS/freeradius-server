@@ -1864,7 +1864,7 @@ static ssize_t xlat_expand(char **out, size_t outlen, REQUEST *request, char con
 		return len;
 	}
 
-	RDEBUG2("\texpand: '%s' -> '%s'", fmt, buff);
+	RDEBUG2("\texpand: \"%s\" -> \"%s\"", fmt, buff);
 
 	if (!*out) {
 		*out = buff;

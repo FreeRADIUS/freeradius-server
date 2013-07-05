@@ -300,7 +300,7 @@ static int sqlippool_expand(char * out, int outlen, char const * fmt,
 	*q = '\0';
 
 #if 0
-	DEBUG2("sqlippool_expand: '%s'", out);
+	DEBUG2("sqlippool_expand: \"%s\"", out);
 #endif
 
 	return strlen(out);
