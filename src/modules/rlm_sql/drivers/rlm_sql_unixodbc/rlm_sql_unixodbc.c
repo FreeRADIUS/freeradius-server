@@ -49,7 +49,7 @@ static int sql_socket_destructor(void *c)
 {
 	rlm_sql_unixodbc_conn_t *conn = c;
 	
-	DEBUG2("rlm_sql_sybase: Socket destructor called, closing socket");
+	DEBUG2("rlm_sql_unixodbc: Socket destructor called, closing socket");
 
 	if (conn->statement) {
 		SQLFreeStmt(conn->statement, SQL_DROP);
@@ -119,7 +119,10 @@ static sql_rcode_t sql_socket_init(rlm_sql_handle_t *handle, rlm_sql_config_t *c
 	if (sql_state(err_handle, handle, config)) {
 		ERROR("rlm_sql_unixodbc: Connection failed\n");
 		SQLFreeHandle(SQL_HANDLE_DBC, conn->dbc);
+		conn->dbc = NULL;
 		SQLFreeHandle(SQL_HANDLE_ENV, conn->env);
+		conn->env = NULL;
+		
 		return -1;
 	}
 
